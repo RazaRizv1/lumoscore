@@ -400,6 +400,14 @@ function legacyClean(pathname, params){
   const pool = params && params.get('pool');
   if (base === 'lumoscore-amm-pool') return pool ? '/pools/stellar/id/' + pool : '/pools/stellar';
 
+  // "/" is registered in ROUTES against "index" (the landing page is copied to index.html so the
+  // front door is not a redirect), so the ROUTES loop below never matches "lumoscore-landing" and
+  // returned null. That mattered because the wallet gate used to redirect with the bare filename:
+  // from /asset/stellar/<ASSET> the browser asked for /asset/stellar/lumoscore-landing.html, no 301
+  // fired, and "/asset/stellar/:asset" then matched with the asset literally being
+  // "lumoscore-landing.html" — rendering an asset page for an asset that does not exist, i.e. blank.
+  if (base === 'lumoscore-landing') return '/';
+
   for (const r of ROUTES){
     if (r[0].indexOf('/:') >= 0) continue;
     if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];

@@ -6,7 +6,12 @@
 // "Connected" = localStorage lumos.wallet/address (set by the real or demo connect flow). Idempotent.
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
-const GUARD='<script id="lx-authgate">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))location.replace("lumoscore-landing.html");}catch(_){}})();</script>';
+// Redirect to "/" — an ABSOLUTE path. It used to be the bare filename "lumoscore-landing.html", which
+// is relative, so it resolved against whatever clean url the visitor was on: from /asset/stellar/<ASSET>
+// the browser asked for /asset/stellar/lumoscore-landing.html, which "/asset/stellar/:asset" then
+// matched with the asset being the literal string "lumoscore-landing.html" — a blank asset page.
+// "/" is the landing page (index.html is a copy of it), so this needs no redirect hop either.
+const GUARD='<script id="lx-authgate">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))location.replace("/");}catch(_){}})();</script>';
 const OLD_LAUNCH="window.top.lxNavigate(['lumoscore-signin.html','lumoscore-signin-mobile.html'])";
 const PREV_LAUNCH="window.lxwOpenWallet((window.lxGetChain&&window.lxGetChain())||'aptos','lumoscore-home.html')";
 const NEW_LAUNCH="window.lxChooseNetwork&&window.lxChooseNetwork('lumoscore-home.html')";
