@@ -484,38 +484,27 @@ export async function onRequest(context){
 `;
 }
 
-function routesJson(routePairs){
-  // Cloudflare only supports a TRAILING wildcard, so "/pools/stellar/:a/:b" collapses to
-  // "/pools/stellar/*" rather than "/pools/stellar/*/*", which it rejects.
-  // robots.txt and sitemap.xml are Functions too — both need the request's host to emit absolute urls
-  // legacy filenames must reach the Function so it can 301 them to the clean url
-  // Cloudflare REJECTS the whole file if a splat rule overlaps another rule — emitting both
-  // "/trade/stellar/*" and "/trade/stellar" fails the deploy with "Overlapping rules found".
-  // So collapse each dynamic route to ONE splat, then drop any exact path that splat already covers.
-  const splats = new Set(['/lxapi/*', '/lumoscore-*']);
-  const exact  = new Set(['/robots.txt', '/sitemap.xml']);
-  for(const [url] of routePairs){
-    const i = url.indexOf('/:');
-    if(i >= 0) splats.add(url.slice(0, i) + '/*');
-    else exact.add(url);
-  }
-  // a splat can also swallow another splat: "/pools/stellar/*" already covers "/pools/stellar/id/*",
-  // and shipping both is the same "Overlapping rules" failure
-  const keptSplats = [...splats].filter(s =>
-    ![...splats].some(o => o !== s && s.startsWith(o.slice(0, -1))));
-
-  const include = new Set(keptSplats);
-  for(const p of exact){
-    const covered = keptSplats.some(s => {
-      const stem = s.slice(0, -1);                 // "/trade/stellar/*" -> "/trade/stellar/"
-      return p.startsWith(stem) || p === stem.replace(/\/$/, '');
-    });
-    if(!covered) include.add(p);
-  }
+function routesJson(){
+  // WHICH PATHS REACH THE FUNCTIONS RUNTIME. Anything not included here is served straight from
+  // static storage and `functions/_middleware.js` never runs for it.
+  //
+  // This used to enumerate the routes ("/trade/stellar/*", "/lumoscore-*", …) so that only real
+  // pages cost an invocation. That silently broke the legacy->clean 301: the app navigates with a
+  // RELATIVE url (`location.href="lumoscore-dex-asset.html?asset=…"`), so from /trade/stellar the
+  // browser asks for **/trade/lumoscore-dex-asset.html**. The middleware matches on the LAST path
+  // segment and would have redirected it — but "/lumoscore-*" only matches at the ROOT, so that
+  // path hit no include rule, the middleware never ran, and it fell through to a static 404.
+  // Enumerating routes cannot fix this in general: a relative navigation can land the legacy
+  // filename under ANY prefix, including ones added later.
+  //
+  // So: include everything, and exclude what must stay static. `/assets/*` is the only high-volume
+  // path and it stays excluded, so images/video/fonts still bypass the runtime and stay free. Every
+  // other request is an HTML page view, which was already invoking the middleware anyway.
+  // A single "/*" also sidesteps the "Overlapping rules found" failure that used to require careful
+  // splat-vs-splat and splat-vs-exact deduping — one rule cannot overlap itself.
   return JSON.stringify({
     version: 1,
-    include: [...include],
-    // everything static bypasses the Functions runtime entirely, so it stays free
+    include: ['/*'],
     exclude: ['/assets/*', '/_headers', '/_redirects', '/404.html'],
   }, null, 2) + '\n';
 }
@@ -605,7 +594,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
       .filter(n => /-mobile\.html$/.test(n))
       .map(n => n.replace(/\.html$/, ''));
 
-    fs.writeFileSync(path.join(outDir, '_routes.json'), routesJson(routePairs), 'utf8');
+    fs.writeFileSync(path.join(outDir, '_routes.json'), routesJson(), 'utf8');
     const fnDir = path.join(__dirname, '..', 'functions');
     fs.mkdirSync(fnDir, { recursive: true });
     fs.writeFileSync(path.join(fnDir, '_middleware.js'), middlewareJs(routePairs, mobileFiles), 'utf8');
