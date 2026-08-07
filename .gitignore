@@ -21,8 +21,13 @@ _tools/*.bak_*
 # The design exports the transforms read from. Excluded to keep the repo small.
 # NOTE: that means GitHub is a DEPLOYMENT mechanism here, not a backup of your source. Keep
 # C:\LumosCore\_BACKUP_* (and ideally an off-machine copy) — the repo will not save you.
-lumoscore-*-desktop.html
-lumoscore-*-mobile.html
+# LEADING SLASH IS LOAD-BEARING. Without it these patterns match at EVERY depth, which also excluded
+# dist/lumoscore-*-mobile.html — the 16 built mobile pages. They were never committed, so the deployed
+# site had no mobile pages at all and every phone visitor got a 404 on every route. The middleware
+# rewrites a mobile request to lumoscore-<page>-mobile, and that file simply was not on the server.
+# Anchor these to the repo root so they only exclude the source containers they were written for.
+/lumoscore-*-desktop.html
+/lumoscore-*-mobile.html
 
 # --- local build/run artefacts ---------------------------------------------------------------
 node_modules/
