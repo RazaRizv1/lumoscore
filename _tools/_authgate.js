@@ -16,6 +16,43 @@ const OLD_LAUNCH="window.top.lxNavigate(['lumoscore-signin.html','lumoscore-sign
 const PREV_LAUNCH="window.lxwOpenWallet((window.lxGetChain&&window.lxGetChain())||'aptos','lumoscore-home.html')";
 const NEW_LAUNCH="window.lxChooseNetwork&&window.lxChooseNetwork('lumoscore-home.html')";
 
+// WHICH PAGES ARE VIEWABLE WITHOUT A WALLET.
+//
+// Read-only pages are public. They render public chain data — prices, pools, holders, trustlines —
+// and need no wallet to be useful. They are also 780 of the 785 urls in the sitemap, so gating them
+// meant every search-engine visitor was bounced to the landing page before seeing the content the
+// whole SEO layer exists to rank. Crawlers (no JS) saw the page; humans never did.
+//
+// Gated pages are the personal and transactional ones, where a wallet is genuinely required for the
+// page to show anything at all.
+//
+// Admin pages are public HERE because their gate is Cloudflare Access, which authenticates at the
+// edge before any HTML is served. Gating them would also break them outright: the guard redirects to
+// the landing page, which does not exist on the admin origin (a separate Pages project holding only
+// admin pages). extract_site.js strips the guard from the admin build too, belt and braces.
+const PUBLIC_BASES = new Set([
+  'lumoscore-landing',        // the front door
+  'lumoscore-signin',         // where the gate sends people
+  'lumoscore-dex',            // Trade
+  'lumoscore-dex-asset',      // Trade — per-asset  (the big SEO surface)
+  'lumoscore-amm',            // Pools
+  'lumoscore-amm-pool',       // Pools — per-pool
+  'lumoscore-asset-overview', // Asset overview
+  'lumoscore-lumos-token',    // LUMOS
+  'lumoscore-mcp',            // MCP
+]);
+// GATED (deliberately): home/dashboard, wallet, bridge, rewards, launch-token/review/confirm.
+
+// Keys are filenames and carry variant suffixes (-dark, -light, -mobile). Strip them before
+// comparing, or "lumoscore-dex-asset-dark" misses the set. Substring matching is NOT safe here:
+// "lumoscore-amm" is a prefix of "lumoscore-amm-pool", and an unanchored test would leak.
+function isPublicPage(k){
+  let b = k.replace(/\.html$/, '');
+  let prev;
+  do { prev = b; b = b.replace(/-(dark|light|mobile)$/, ''); } while (b !== prev);
+  return /^lumoscore-admin-/.test(b) || PUBLIC_BASES.has(b);
+}
+
 let gated=0, rewired=0;
 for(const dev of ['desktop','mobile']){
   const file=`lumoscore-aptos-${dev}.html`;
@@ -24,12 +61,7 @@ for(const dev of ['desktop','mobile']){
   for(const k of Object.keys(json)){
     let h=json[k];
     h=h.replace(/<script id="lx-authgate">[\s\S]*?<\/script>/,''); // idempotent
-    // Admin pages are NOT wallet-gated. Their gate is Cloudflare Access, which authenticates at the
-    // edge before any HTML is served. Worse, the guard's redirect target (lumoscore-landing.html)
-    // does not exist on the admin origin — it is a separate Pages project holding only admin pages —
-    // so gating them 404s every page for anyone without a wallet already in that origin's
-    // localStorage. extract_site.js strips the guard from the admin build too, belt and braces.
-    const isPublic=/landing|signin|^lumoscore-admin-/.test(k);
+    const isPublic=isPublicPage(k);
     if(isPublic){
       if(/landing/.test(k)){
         if(h.indexOf(OLD_LAUNCH)>=0){ h=h.split(OLD_LAUNCH).join(NEW_LAUNCH); rewired++; }
