@@ -1,0 +1,23 @@
+{
+  "name": "lumoscore",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LumosCore — multi-chain DeFi front end on Stellar mainnet. Static build, deployed to Cloudflare Pages as TWO separate projects: the public site (dist) and the admin panel (dist-admin, behind Cloudflare Access).",
+  "scripts": {
+    "build": "node _tools/extract_site.js aptos --root",
+    "build:admin": "node _tools/extract_site.js aptos --admin",
+    "build:all": "npm run build && npm run build:admin",
+
+    "serve": "node serve.js 8080",
+    "serve:admin": "node serve.js 8080 --admin",
+
+    "deploy": "wrangler pages deploy dist --project-name=lumoscore --commit-dirty=true",
+    "deploy:admin": "wrangler pages deploy dist-admin --project-name=lumoscore-admin --commit-dirty=true",
+
+    "predeploy": "node _tools/predeploy_check.js",
+    "predeploy:admin": "node _tools/predeploy_check.js --admin"
+  },
+  "devDependencies": {
+    "wrangler": "^4.19.0"
+  }
+}
