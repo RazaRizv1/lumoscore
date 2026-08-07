@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "include": [
+    "/lxapi/*",
+    "/lumoscore-*",
+    "/trade/stellar/*",
+    "/pools/stellar/*",
+    "/asset/stellar/*",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/",
+    "/launchpad/review",
+    "/launchpad/confirm",
+    "/launchpad",
+    "/dashboard",
+    "/bridge",
+    "/wallet",
+    "/rewards",
+    "/lumos",
+    "/signin",
+    "/mcp"
+  ],
+  "exclude": [
+    "/assets/*",
+    "/_headers",
+    "/_redirects",
+    "/404.html"
+  ]
+}

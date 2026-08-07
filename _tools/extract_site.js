@@ -1,0 +1,628 @@
+const fs = require('fs');
+const path = require('path');
+
+function read(f){ return fs.readFileSync(f, 'utf8'); }
+function getContents(data){
+  const i = data.indexOf('id="designContents"');
+  const s = data.indexOf('>', i) + 1;
+  const e = data.indexOf('</script>', s);
+  return JSON.parse(data.slice(s, e));
+}
+
+const BS = String.fromCharCode(92); // backslash
+
+// Standalone runtime injected into every extracted page:
+//  - real window.lxNavigate (picks the candidate matching this page's desktop/mobile variant)
+//  - inert guard: links to pages not shipped in this folder, or bare "#", do nothing (no 404, no jump)
+// old build filename -> clean url. Derived from ROUTES so there is one source of truth.
+// Used at RUNTIME (lxNavigate + click) because most navigation here is built dynamically in JS;
+// the static hrefs are additionally rewritten at build time so crawlers follow clean urls too.
+function cleanMapJson(){
+  const m = {};
+  for(const [url, file] of ROUTES){
+    if(/:/.test(url)) continue;                     // dynamic routes are handled by query conversion
+    // key on the BASE name: /rewards is served by lumoscore-rewards-dark.html, but links to it appear
+    // as -dark, -light and -mobile, and every one of them is the same page.
+    m[file.replace(/\.html$/, '').replace(/-(dark|light|mobile)$/, '')] = url;
+  }
+  m['lumoscore-landing'] = '/';
+  // dynamic routes with no identifier in the link fall back to the list page
+  m['lumoscore-dex-asset'] = '/trade/stellar';
+  m['lumoscore-asset-overview'] = '/asset/stellar';
+  return JSON.stringify(m);
+}
+
+function runtime(validArray){
+  const VALID = JSON.stringify(validArray);
+  return '<script>(function(){if(window.__lxSite)return;window.__lxSite=1;'
+    + 'var CLEAN=' + cleanMapJson() + ';'
+    // Turn "lumoscore-x[-dark|-light|-mobile].html?query" into its clean url. Theme and device are no
+    // longer part of a url, so those suffixes are dropped. An unmapped file is returned untouched
+    // rather than guessed at, so nothing can navigate somewhere that does not exist.
+    + 'function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;'
+    + '  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}'
+    + '  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}'
+    + '  var base=u.replace(/'+BS+'.html$/,"").replace(/-(dark|light|mobile)$/,"");'
+    + '  var p=new URLSearchParams(q), a=p.get("asset");'
+    // the two dynamic routes: an ?asset= becomes a path segment
+    + '  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);'
+    + '  if(base==="lumoscore-asset-overview") return a?("/asset/stellar/"+a+h):("/asset/stellar"+h);'
+    // a pool is addressed by its two assets, which a ?pool=<id> link does not carry — leave it alone
+    + '  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;'
+    + '  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;'
+    + '  return c+(q?("?"+q):"")+h; }'
+    + 'window.lxCleanUrl=lxClean;'
+    + 'var self=(location.pathname.split("/").pop()||"");'
+    // Cloudflare Pages 308-redirects /foo.html -> /foo, so the extension is NOT present at runtime on
+    // a hosted deploy (it is on localhost). Matching only "-mobile.html" made every mobile visitor look
+    // like a desktop one and sent them to desktop pages. Accept both forms.
+    + 'var MOB=/-mobile('+BS+'.html)?$/.test(self);'
+    + 'var VALID=' + VALID + ';'
+    + 'window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;'
+    // 1) candidate matching this device (desktop/mobile) AND that actually exists
+    + 'for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile'+BS+'.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}'
+    // 2) any candidate that exists
+    + 'if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}'
+    // 3) device-matching even if not in VALID, else first
+    + 'for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile'+BS+'.html$/.test(g)){p=g;break;}}'
+    // candidate selection above works on FILENAMES (that is what VALID holds); only the final
+    // destination is converted to its clean url
+    + 'if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};'
+    + 'document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;'
+    + 'var h=a.getAttribute("href")||"";'
+    + 'if(h==="#"||h==="#!"){e.preventDefault();return;}'
+    // strip query/hash before the existence check — without this, "…dex-asset.html?asset=X" never
+    // matched the guard at all, so a link to a page not shipped here would 404 instead of going inert
+    + 'var hb=h.split("?")[0].split("#")[0];'
+    + 'if(/^lumoscore-['+BS+'w-]+'+BS+'.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}'
+    // anything still pointing at a build filename navigates to the clean url instead
+    + 'if(/^lumoscore-['+BS+'w-]+'+BS+'.html/.test(h)){var cl=lxClean(h);'
+    + 'if(cl!==h){e.preventDefault();location.href=cl;}}'
+    + '},true);'
+    // __lxNav is a SECOND navigation helper used by onclick="" handlers across many transforms, and
+    // it was never mapped — that is why clicking Dashboard still landed on lumoscore-home.html.
+    // Wrapped lazily on an interval because the transforms that define it run after this runtime.
+    + 'var wrapped=0,tries=0;var iv=setInterval(function(){tries++;'
+    + 'if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){'
+    + 'var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;'
+    + 'window.__lxNav=w;wrapped=1;}'
+    + 'if(wrapped||tries>40)clearInterval(iv);},50);'
+    + '})();</scr' + 'ipt>'
+    // light-theme was missing --surface-3 (elevated surface), leaving the account-widget wallet chip dark in light mode
+    + '<style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style>';
+}
+
+// Clean URLs put pages at depth (/trade/stellar/<ASSET>), where a relative "assets/x.png" resolves to
+// /trade/stellar/assets/x.png and 404s. Every asset reference is therefore rooted at build time.
+// A <base href="/"> would be one line, but it also rewrites every bare "#" anchor into a navigation
+// to "/", and this design uses href="#" widely — so rewriting the references is the safe fix.
+function rootRelative(html){
+  return html
+    .replace(/(\s(?:src|href|poster|data-src)=")assets\//g, '$1/assets/')
+    .replace(/(\ssrcset=")assets\//g, '$1/assets/')
+    .replace(/url\((['"]?)assets\//g, 'url($1/assets/');
+}
+
+// Rewrite literal href="lumoscore-x.html" to the clean url at build time. The runtime mapper already
+// handles clicks, but a crawler never clicks — it reads hrefs. Only exact matches (quote immediately
+// after .html) are touched, so the JS string concatenations that build "…?asset='+code" are left alone
+// and handled at runtime instead.
+function cleanLinks(html){
+  const map = JSON.parse(cleanMapJson());
+  return html.replace(/href="(lumoscore-[a-z0-9-]+)\.html"/g, (full, base) => {
+    const key = base.replace(/-(dark|light|mobile)$/, '');
+    const clean = map[key];
+    return clean ? 'href="' + clean + '"' : full;
+  });
+}
+
+function injectRuntime(html, validArray){
+  if(html.indexOf('window.__lxSite')>=0) return html;
+  const rt = runtime(validArray);
+  const bi = html.lastIndexOf('</body>');
+  return bi>=0 ? html.slice(0,bi)+rt+html.slice(bi) : html+rt;
+}
+
+// "/" must BE the landing page, not a shim that bounces to /lumoscore-landing — otherwise the site's
+// front door is a redirect, the clean url is pointless, and search engines index the wrong address.
+// So index.html is a copy of the landing page itself, with one small script that swaps to the mobile
+// build. That swap is still a redirect on phones; it goes away once device is resolved at the edge.
+// No client-side device swap here any more: the edge picks desktop vs mobile from the User-Agent and
+// serves both at the same url. A width-based redirect would undo that — a desktop window narrower than
+// 760px would bounce to /lumoscore-landing-mobile, recreating the second url the whole design avoids.
+function indexHtml(landingHtml){
+  return landingHtml;
+}
+
+// The admin panel must never land in the public build.
+//
+// This is a static site: the server hands any file it holds to anyone who asks, and every admin page
+// carries its logic in readable JavaScript. A password checked in that JavaScript is not a gate, and
+// an unlinked URL is not a secret (history, referrers, crawlers). The only reliable protection for a
+// static site is to NOT SHIP THE FILE. So the public build simply omits every lumoscore-admin-* page,
+// and `--admin` writes them to a separate folder that is never the public root.
+//
+// Note this hides the PANEL, not the numbers: the fee collector's payment history is public on-chain
+// and readable on stellar.expert by anyone. What is protected is the admin UI and its write actions.
+const ADMIN_RE = /^lumoscore-admin-/;
+
+// Cloudflare Pages reads _headers from the deployed directory. Emitted by the build so a rebuild
+// never silently drops them.
+//
+// X-Frame-Options DENY matters more than usual here: this app asks a wallet to sign transactions, and
+// a framed signing prompt is a clickjacking target. Verified nothing in the build frames its own pages.
+// No CSP — the design carries hundreds of inline <script> and style attributes, so any useful policy
+// would need 'unsafe-inline' and buy nothing. Adding a real CSP means moving that inline code out first.
+function headersFile(isAdmin){
+  const common =
+      '  X-Content-Type-Options: nosniff\n'
+    + '  X-Frame-Options: DENY\n'
+    + '  Referrer-Policy: strict-origin-when-cross-origin\n'
+    + '  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()\n';
+  if(isAdmin){
+    // belt and braces: the admin site is behind Cloudflare Access, but if a policy is ever
+    // misconfigured this at least keeps it out of search results.
+    return '/*\n' + common + '  X-Robots-Tag: noindex, nofollow, noarchive\n';
+  }
+  return '/*\n' + common
+    + '\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n'
+    + '\n/*.html\n  Cache-Control: public, max-age=0, must-revalidate\n';
+}
+
+// Without this, Cloudflare Pages falls back to index.html with a 200 for ANY unmatched path — so a
+// mistyped or probed URL silently returns the landing page and looks like a hit. A real 404.html makes
+// Pages answer with an actual 404, which is both correct and stops a prober from inferring anything.
+// ---- clean URLs -------------------------------------------------------------------------------
+// The public URL scheme. Left side is what visitors and search engines see; right side is the file
+// that actually answers. Cloudflare Pages reads _redirects from the deployed directory; status 200
+// means REWRITE (serve that file at this URL, address bar unchanged) rather than redirect.
+//
+// Ordering matters: Pages applies the FIRST matching rule, so more specific paths must come first.
+// Placeholders (:name) match a single segment. Theme never appears in a URL — light and dark are the
+// same page — and device is resolved server-side, not by a separate URL.
+const ROUTES = [
+  // dynamic first: these carry an asset or pool identifier in the path
+  ['/trade/stellar/:asset',            'lumoscore-dex-asset.html'],
+  ['/trade/stellar',                   'lumoscore-dex.html'],
+  ['/pools/stellar/id/:pool',          'lumoscore-amm-pool.html'],   // fallback: id-only links
+  ['/pools/stellar/:a/:b',             'lumoscore-amm-pool.html'],
+  ['/pools/stellar',                   'lumoscore-amm.html'],
+  ['/asset/stellar/:asset',            'lumoscore-asset-overview.html'],
+  // launchpad flow: /launchpad/review must precede /launchpad
+  ['/launchpad/review',                'lumoscore-launch-review.html'],
+  ['/launchpad/confirm',               'lumoscore-launch-confirm.html'],
+  ['/launchpad',                       'lumoscore-launch-token.html'],
+  // flat pages
+  ['/dashboard',                       'lumoscore-home.html'],
+  ['/bridge',                          'lumoscore-bridge.html'],
+  ['/wallet',                          'lumoscore-wallet.html'],
+  ['/rewards',                         'lumoscore-rewards-dark.html'],   // only variant that exists
+  ['/lumos',                           'lumoscore-lumos-token.html'],
+  ['/signin',                          'lumoscore-signin.html'],
+  ['/mcp',                             'lumoscore-mcp.html'],
+];
+
+// Case: fixed segments are lowercase, but an asset segment must keep its case — yUSDC and YUSDC are
+// genuinely different assets on Stellar. Pages matches paths case-sensitively, so these redirects
+// only forgive the fixed part.
+const CASE_FIXES = [
+  ['/Trade/*', '/trade/:splat'], ['/Pools/*', '/pools/:splat'],
+  ['/Bridge',  '/bridge'], ['/Wallet', '/wallet'], ['/Rewards', '/rewards'],
+  ['/MCP',     '/mcp'],    ['/Dashboard', '/dashboard'], ['/Launchpad', '/launchpad'],
+];
+
+function redirectsFile(){
+  const L = [];
+  L.push('# Clean URLs. 200 = rewrite (url stays put); 301 = permanent redirect.');
+  L.push('# Generated by _tools/extract_site.js — edit the ROUTES table there, not this file.');
+  L.push('');
+  // Target the EXTENSIONLESS path. Pages 308-redirects /foo.html -> /foo automatically, so rewriting
+  // to "/x.html" makes it answer with that 308 instead of the page — every clean url returned 308
+  // until this was changed.
+  for(const [from, to] of ROUTES) L.push(pad(from) + '/' + to.replace(/\.html$/, '') + '  200');
+  L.push('');
+  L.push('# forgive capitalised entry points');
+  for(const [from, to] of CASE_FIXES) L.push(pad(from) + to + '  301');
+  L.push('');
+  L.push('# the landing page IS the site root, so its old path must not be a second copy of it');
+  L.push(pad('/lumoscore-landing') + '/  301');
+  // Deliberately NO "legacy filename -> clean url" rules: nothing has ever been deployed, so there are
+  // no old links in the wild, and such a rule collides with the rewrite above and loops.
+  return L.join('\n') + '\n';
+}
+function pad(s){ return s + ' '.repeat(Math.max(1, 42 - s.length)); }
+
+// ---- one URL per page, device resolved at the edge -----------------------------------------------
+// Desktop and mobile are genuinely different markup here, but they must NOT be different urls: a link
+// copied from a phone would carry the phone layout to a desktop, and search engines would see two
+// urls serving one page. So the edge picks the variant from the User-Agent and the address bar never
+// changes.
+//
+// Vary: User-Agent is mandatory, not optional. Without it Cloudflare caches whichever variant it saw
+// first and serves it to everyone — the classic way this technique breaks.
+//
+// _routes.json keeps the cost at zero: only these paths invoke a Function. /assets/* and every other
+// static file is served directly and never counts against the Functions quota.
+function middlewareJs(routePairs, mobileFiles){
+  return `// GENERATED by _tools/extract_site.js — edit the ROUTES table there, not this file.
+const MOBILE = /Android|iPhone|iPod|IEMobile|BlackBerry|Opera Mini|Mobile Safari|Windows Phone/i;
+// [urlPattern, desktopFile, mobileFile|null] — "/" names both explicitly because its desktop file is
+// index (fetching /lumoscore-landing would hit the 301 back to "/" and loop).
+const ROUTES = ${JSON.stringify(routePairs, null, 2)};
+const HAS_MOBILE = new Set(${JSON.stringify(mobileFiles)});
+
+function match(pathname){
+  const segs = pathname.replace(/^\\/+|\\/+$/g, '').split('/').filter(Boolean);
+  for (const r of ROUTES){
+    const p = r[0].replace(/^\\/+|\\/+$/g, '').split('/').filter(Boolean);
+    if (p.length !== segs.length) continue;
+    let ok = true;
+    for (let i = 0; i < p.length; i++){
+      if (p[i].startsWith(':')) continue;
+      if (p[i] !== segs[i]) { ok = false; break; }
+    }
+    // strip a theme suffix before deriving the mobile name: /rewards is served by
+    // lumoscore-rewards-dark, whose mobile build is lumoscore-rewards-mobile — NOT
+    // lumoscore-rewards-dark-mobile, which does not exist.
+    if (ok) return { desktop: r[1], mobile: r[2] || (r[1].replace(/-(dark|light)$/, '') + '-mobile') };
+  }
+  return null;
+}
+
+// ---- per-page SEO, injected at the edge ---------------------------------------------------------
+// /trade/stellar/<ASSET> is ONE file serving hundreds of assets, so without this every asset page
+// ships an identical title and description — duplicate content on exactly the pages that could rank.
+// Crawlers that do not run JavaScript (GPTBot, ClaudeBot, PerplexityBot) see only what arrives in the
+// HTML, so the runtime title the page sets for itself is invisible to them. Injecting here fixes both.
+//
+// The host comes from the request, so no domain is hardcoded anywhere.
+const SEO_CACHE_TTL = 300;
+
+// The site's ONE canonical origin. Every canonical/og:url points here regardless of which host served
+// the request, so the *.pages.dev preview url cannot compete with the real domain in search results.
+const PRIMARY_ORIGIN = 'https://lumoscore.com';
+
+function esc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+function fmtUsd(n){
+  if (n == null || !isFinite(n)) return null;
+  if (n >= 1000) return '$' + Math.round(n).toLocaleString('en-US');
+  if (n < 0.0001) return '$' + Number(n).toPrecision(3);
+  return '$' + Number(n).toFixed(n < 1 ? 4 : 2);
+}
+
+async function assetFacts(assetId){
+  try {
+    const r = await fetch(
+      'https://api.stellar.expert/explorer/public/asset?search=' + encodeURIComponent(assetId) + '&limit=5',
+      { cf: { cacheTtl: SEO_CACHE_TTL, cacheEverything: true } });
+    if (!r.ok) return null;
+    const d = await r.json();
+    const recs = (d && d._embedded && d._embedded.records) || [];
+    const m = recs.filter(x => String(x.asset || '').indexOf(assetId) === 0)[0];
+    if (!m) return null;
+    const toml = m.tomlInfo || m.toml_info || {};
+    return {
+      code: assetId.split('-')[0],
+      price: +m.price || null,
+      trustlines: (m.trustlines && m.trustlines[0]) || 0,
+      domain: m.domain || '',
+      image: toml.image || '',
+      name: toml.name || '',
+    };
+  } catch (e) { return null; }
+}
+
+function assetSeo(f, assetId){
+  const code = f ? f.code : assetId.split('-')[0];
+  const bits = [];
+  const px = f && fmtUsd(f.price);
+  if (px) bits.push('Price ' + px);
+  if (f && f.trustlines) bits.push(f.trustlines.toLocaleString('en-US') + ' trustlines');
+  if (f && f.domain) bits.push('issued by ' + f.domain);
+  const facts = bits.length ? bits.join(' · ') + '. ' : '';
+  return {
+    title: code + ' price, pools and holders on Stellar | LumosCore',
+    desc: (facts + 'Live ' + code + ' price, liquidity pools, top holders and recent trades on the '
+      + 'Stellar network. Buy or sell ' + code + ' non-custodially from your own wallet.').slice(0, 300),
+    image: (f && f.image) || '',
+  };
+}
+
+function poolSeo(a, b){
+  const A = a === 'native' ? 'XLM' : a.split('-')[0];
+  const B = b === 'native' ? 'XLM' : b.split('-')[0];
+  return {
+    title: A + ' / ' + B + ' liquidity pool on Stellar | LumosCore',
+    desc: 'Reserves, total value locked, 24h volume and fees for the ' + A + ' / ' + B
+      + ' liquidity pool on Stellar. Add or withdraw liquidity from your own wallet.',
+    image: '',
+  };
+}
+
+function seoFor(pathname){
+  const segs = pathname.split('/').filter(Boolean);
+  if ((segs[0] === 'trade' || segs[0] === 'asset') && segs[2]) return { kind: 'asset', id: segs[2] };
+  if (segs[0] === 'pools' && segs[2] && segs[3]) return { kind: 'pool', a: segs[2], b: segs[3] };
+  return null;
+}
+
+class HeadInjector {
+  constructor(html){ this.html = html; this.done = false; }
+  element(el){ if (this.done) return; this.done = true; el.append(this.html, { html: true }); }
+}
+class TitleSetter {
+  constructor(t){ this.t = t; }
+  element(el){ el.setInnerContent(this.t); }
+}
+
+// Legacy build filename -> clean url, as a REAL redirect.
+//
+// The build rewrites static hrefs and the runtime maps lxNavigate/clicks, but the app also navigates
+// by assigning location.href="lumoscore-x.html?..." directly in a dozen places (_dexdata, _trending,
+// _walletdata, _feemodal, …) and through a second helper, __lxNav. Chasing every call site is
+// whack-a-mole; redirecting at the edge catches all of them, including any added later.
+//
+// Done HERE rather than in _redirects on purpose: a 301 there can collide with the 200-rewrite for
+// the same page and loop. Here the order is explicit and the rewrite path uses env.ASSETS/next(),
+// which never re-enters this check.
+function legacyClean(pathname, params){
+  // Take the LAST path segment, not the whole path. The app navigates with RELATIVE urls
+  // (location.href="lumoscore-dex-asset.html?asset=…"), which used to resolve at the site root but
+  // now resolve against a nested clean url — /trade/stellar + "lumoscore-dex-asset.html" becomes
+  // /trade/lumoscore-dex-asset.html and 404s. Matching the last segment redirects it from any depth.
+  //
+  // plain string ops, not regex: this file is emitted from a template literal, where a lone
+  // backslash does not survive and silently corrupts the pattern.
+  const segs = pathname.split('/');
+  let base = segs[segs.length - 1] || '';
+  if (base.slice(-5) === '.html') base = base.slice(0, -5);
+  if (!base.startsWith('lumoscore-')) return null;
+  base = base.replace(/-(dark|light|mobile)$/, '');
+
+  // the two dynamic routes carry their identifier in the query — promote it into the path
+  const asset = params && params.get('asset');
+  if (base === 'lumoscore-dex-asset')      return asset ? '/trade/stellar/' + asset : '/trade/stellar';
+  if (base === 'lumoscore-asset-overview') return asset ? '/asset/stellar/' + asset : '/asset/stellar';
+  // a pool is addressed by its two assets, which ?pool=<id> does not carry — leave it alone
+  const pool = params && params.get('pool');
+  if (base === 'lumoscore-amm-pool') return pool ? '/pools/stellar/id/' + pool : '/pools/stellar';
+
+  for (const r of ROUTES){
+    if (r[0].indexOf('/:') >= 0) continue;
+    if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];
+  }
+  return null;
+}
+
+export async function onRequest(context){
+  const { request, next } = context;
+  const url = new URL(request.url);
+
+  // 1) someone navigated to a raw build filename -> send them to the canonical clean url
+  const legacy = legacyClean(url.pathname, url.searchParams);
+  if (legacy){
+    const to = new URL(legacy, url.origin);
+    // ?asset= became a path segment, so carrying it too would duplicate it
+    const promoted = legacy.indexOf('/trade/stellar/') === 0 || legacy.indexOf('/asset/stellar/') === 0
+      || legacy.indexOf('/pools/stellar/id/') === 0;
+    if (!promoted) to.search = url.search;
+    to.hash = url.hash;
+    return Response.redirect(to.toString(), 301);
+  }
+
+  const hit = match(url.pathname);
+
+  // not a page route -> let Pages serve it as usual
+  if (!hit) return next();
+
+  const isMobile = MOBILE.test(request.headers.get('user-agent') || '');
+  const wantMobile = isMobile && HAS_MOBILE.has(hit.mobile);
+
+  // Desktop needs no rewrite — Pages already serves the right file for this url. Rewriting anyway
+  // broke "/", whose desktop file is index: fetching /index just 308s back to /.
+  // Vary is still set on BOTH branches, or a cache would hand a desktop page to a phone.
+  const res = wantMobile
+    ? await context.env.ASSETS.fetch(
+        new Request(new URL('/' + hit.mobile, request.url).toString(), request))
+    : await next();
+
+  let out = new Response(res.body, res);
+  out.headers.set('Vary', 'User-Agent');
+
+  const ct = out.headers.get('content-type') || '';
+  if (ct.indexOf('text/html') < 0) return out;
+
+  // canonical is the clean url WITHOUT query or hash, on whatever host served this request
+  const canonical = PRIMARY_ORIGIN + (url.pathname === '/' ? '/' : url.pathname.replace(/\\/+$/, ''));
+  const want = seoFor(url.pathname);
+
+  let seo = null;
+  if (want && want.kind === 'asset') seo = assetSeo(await assetFacts(want.id), want.id);
+  else if (want && want.kind === 'pool') seo = poolSeo(want.a, want.b);
+
+  const head = [
+    '<link rel="canonical" href="' + esc(canonical) + '">',
+    '<meta property="og:url" content="' + esc(canonical) + '">',
+    '<meta property="og:site_name" content="LumosCore">',
+    '<meta property="og:type" content="website">',
+    '<meta name="twitter:card" content="summary_large_image">',
+  ];
+  if (seo){
+    head.push('<meta property="og:title" content="' + esc(seo.title) + '">');
+    head.push('<meta property="og:description" content="' + esc(seo.desc) + '">');
+    head.push('<meta name="twitter:title" content="' + esc(seo.title) + '">');
+    head.push('<meta name="twitter:description" content="' + esc(seo.desc) + '">');
+    if (seo.image) head.push('<meta property="og:image" content="' + esc(seo.image) + '">');
+    // a description already exists from the build; replace rather than duplicate
+    head.push('<meta name="lx-seo-desc" content="' + esc(seo.desc) + '">');
+  }
+
+  let rw = new HTMLRewriter().on('head', new HeadInjector(head.join('')));
+  if (seo){
+    rw = rw.on('title', new TitleSetter(seo.title))
+           .on('meta[name="description"]', {
+             element(el){ el.setAttribute('content', seo.desc); },
+           });
+  }
+  out = rw.transform(out);
+  out.headers.set('Vary', 'User-Agent');
+  return out;
+}
+`;
+}
+
+function routesJson(routePairs){
+  // Cloudflare only supports a TRAILING wildcard, so "/pools/stellar/:a/:b" collapses to
+  // "/pools/stellar/*" rather than "/pools/stellar/*/*", which it rejects.
+  // robots.txt and sitemap.xml are Functions too — both need the request's host to emit absolute urls
+  // legacy filenames must reach the Function so it can 301 them to the clean url
+  // Cloudflare REJECTS the whole file if a splat rule overlaps another rule — emitting both
+  // "/trade/stellar/*" and "/trade/stellar" fails the deploy with "Overlapping rules found".
+  // So collapse each dynamic route to ONE splat, then drop any exact path that splat already covers.
+  const splats = new Set(['/lxapi/*', '/lumoscore-*']);
+  const exact  = new Set(['/robots.txt', '/sitemap.xml']);
+  for(const [url] of routePairs){
+    const i = url.indexOf('/:');
+    if(i >= 0) splats.add(url.slice(0, i) + '/*');
+    else exact.add(url);
+  }
+  // a splat can also swallow another splat: "/pools/stellar/*" already covers "/pools/stellar/id/*",
+  // and shipping both is the same "Overlapping rules" failure
+  const keptSplats = [...splats].filter(s =>
+    ![...splats].some(o => o !== s && s.startsWith(o.slice(0, -1))));
+
+  const include = new Set(keptSplats);
+  for(const p of exact){
+    const covered = keptSplats.some(s => {
+      const stem = s.slice(0, -1);                 // "/trade/stellar/*" -> "/trade/stellar/"
+      return p.startsWith(stem) || p === stem.replace(/\/$/, '');
+    });
+    if(!covered) include.add(p);
+  }
+  return JSON.stringify({
+    version: 1,
+    include: [...include],
+    // everything static bypasses the Functions runtime entirely, so it stays free
+    exclude: ['/assets/*', '/_headers', '/_redirects', '/404.html'],
+  }, null, 2) + '\n';
+}
+
+function notFoundHtml(isAdmin){
+  const home = isAdmin ? 'lumoscore-admin-dashboard.html' : '/';
+  return '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<meta name="robots" content="noindex">'
+    + '<link rel="icon" type="image/png" href="/assets/favicon.png">'
+    + '<title>Page not found — LumosCore</title>'
+    + '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;'
+    + 'background:#0f111a;color:#e7e9ee;font:16px/1.6 system-ui,-apple-system,Segoe UI,sans-serif;text-align:center}'
+    + 'div{padding:32px}h1{font-size:56px;margin:0 0 8px;letter-spacing:-.02em}'
+    + 'p{margin:0 0 22px;color:#9aa0ad}a{display:inline-block;padding:11px 20px;border-radius:10px;'
+    + 'background:#ea6a2c;color:#fff;text-decoration:none;font-weight:700}</style></head><body>'
+    + '<div><h1>404</h1><p>That page doesn’t exist.</p>'
+    + '<a href="' + home + '">Back to LumosCore</a></div></body></html>';
+}
+
+function adminIndexHtml(){
+  return '<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<meta name="robots" content="noindex,nofollow">'
+    + '<link rel="icon" type="image/png" href="/assets/favicon.png">'
+    + '<title>LumosCore Admin</title></head><body>'
+    + '<script>location.replace("lumoscore-admin-dashboard.html");</scr' + 'ipt>'
+    + '<noscript><a href="lumoscore-admin-dashboard.html">LumosCore Admin</a></noscript>'
+    + '</body></html>';
+}
+
+function build(chain, srcDir, outRoot, atRoot, adminOnly){
+  const desktop = getContents(read(path.join(srcDir, 'lumoscore-'+chain+'-desktop.html')));
+  const mobile  = getContents(read(path.join(srcDir, 'lumoscore-'+chain+'-mobile.html')));
+  const all = Object.assign({}, desktop, mobile);
+  const files = Object.keys(all).filter(n => ADMIN_RE.test(n) === adminOnly);
+  const validArray = files.slice(); // filenames shipped in this folder
+
+  // --root: single-version build lands directly in dist/ (no per-chain subfolder), so the
+  // landing page sits at the site root. Assets are left in place (extract only writes html).
+  const outDir = adminOnly ? ADMIN_OUT : (atRoot ? outRoot : path.join(outRoot, chain));
+  fs.mkdirSync(outDir, { recursive: true });
+
+  let written = 0;
+  for(const name of files){
+    const html = cleanLinks(rootRelative(injectRuntime(all[name], validArray)));
+    fs.writeFileSync(path.join(outDir, name), html, 'utf8');
+    written++;
+  }
+  // an admin build is not a site: no landing redirect, and it opens on the dashboard
+  if(adminOnly) fs.writeFileSync(path.join(outDir, 'index.html'), adminIndexHtml(), 'utf8');
+  else {
+    const landing = all['lumoscore-landing.html'];
+    if(!landing) throw new Error('lumoscore-landing.html missing — cannot build the site root');
+    fs.writeFileSync(path.join(outDir, 'index.html'),
+      indexHtml(cleanLinks(rootRelative(injectRuntime(landing, validArray)))), 'utf8');
+  }
+  // The admin panel deploys as its OWN Cloudflare project, so it cannot borrow dist/assets the way
+  // serve.js lets it locally — without this its favicon and wallet logos 404 in production.
+  // Only what the admin build actually references is copied (~470 KB), not the whole 19 MB folder.
+  if(adminOnly){
+    const need = ['favicon.png', 'wallets'];
+    for(const item of need){
+      const src = path.join(outRoot, 'assets', item);
+      const dst = path.join(outDir, 'assets', item);
+      if(!fs.existsSync(src)) { console.warn('  ! admin asset missing: ' + item); continue; }
+      fs.mkdirSync(path.dirname(dst), { recursive: true });
+      fs.cpSync(src, dst, { recursive: true });
+    }
+    // no Functions needed on the admin origin; this keeps them from running on every request
+    fs.writeFileSync(path.join(outDir, '_routes.json'),
+      JSON.stringify({ version: 1, include: ['/lxapi/*'], exclude: ['/*'] }, null, 2) + '\n', 'utf8');
+  }
+
+  fs.writeFileSync(path.join(outDir, '_headers'), headersFile(adminOnly), 'utf8');
+  fs.writeFileSync(path.join(outDir, '404.html'), notFoundHtml(adminOnly), 'utf8');
+  // clean URLs are a public-site concern; the admin build keeps its filenames
+  if(!adminOnly){
+    fs.writeFileSync(path.join(outDir, '_redirects'), redirectsFile(), 'utf8');
+
+    // device resolution at the edge. "/" is the landing page, which _redirects never covers because
+    // index.html answers it directly — so it is added here explicitly.
+    const routePairs = [['/', 'index', 'lumoscore-landing-mobile']]
+      .concat(ROUTES.map(([u, f]) => [u, f.replace(/\.html$/, ''), null]));
+    const mobileFiles = files
+      .filter(n => /-mobile\.html$/.test(n))
+      .map(n => n.replace(/\.html$/, ''));
+
+    fs.writeFileSync(path.join(outDir, '_routes.json'), routesJson(routePairs), 'utf8');
+    const fnDir = path.join(__dirname, '..', 'functions');
+    fs.mkdirSync(fnDir, { recursive: true });
+    fs.writeFileSync(path.join(fnDir, '_middleware.js'), middlewareJs(routePairs, mobileFiles), 'utf8');
+  }
+
+  // a stale admin page left over from an earlier build would still be served, so sweep the public dir
+  let purged = 0;
+  if(!adminOnly){
+    for(const f of fs.readdirSync(outDir)){
+      if(ADMIN_RE.test(f)){ fs.unlinkSync(path.join(outDir, f)); purged++; }
+    }
+  }
+  return { chain, total: written, purged, dir: outDir };
+}
+
+const SRC = 'C:/LumosCore';
+const OUT = 'C:/LumosCore/dist';
+const ADMIN_OUT = 'C:/LumosCore/dist-admin';
+const chains = ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl'];
+const argv = process.argv.slice(2).filter(a=>a!=='--root'&&a!=='--admin');
+const atRoot = process.argv.includes('--root');
+const adminOnly = process.argv.includes('--admin');
+const target = argv[0];
+const list = target ? [target] : chains;
+if(atRoot && list.length>1){ console.error('--root builds a single version; pass one chain (e.g. aptos --root)'); process.exit(1); }
+if(adminOnly && list.length>1){ console.error('--admin builds one version; pass one chain (e.g. aptos --admin)'); process.exit(1); }
+for(const c of list){
+  const r = build(c, SRC, OUT, atRoot, adminOnly);
+  console.log(r.chain.padEnd(11), 'pages:'+r.total, (r.purged?('purged '+r.purged+' stale admin page(s)  '):''), '->', r.dir);
+}
+if(!adminOnly) console.log('admin pages excluded from the public build \u2014 build them with: node _tools/extract_site.js '+(target||'aptos')+' --admin');
