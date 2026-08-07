@@ -146,6 +146,16 @@ function indexHtml(landingHtml){
 // and readable on stellar.expert by anyone. What is protected is the admin UI and its write actions.
 const ADMIN_RE = /^lumoscore-admin-/;
 
+// _authgate.js puts a "no wallet connected -> location.replace('lumoscore-landing.html')" guard in the
+// head of every in-app page. That is correct for the public site and fatal for the admin one: the admin
+// origin is a separate Pages project that contains ONLY admin pages, so there is no landing page to
+// land on and every route 404s unless a wallet happens to be in that origin's localStorage. The admin
+// panel is gated by Cloudflare Access instead, which authenticates before any HTML is served.
+// _authgate.js no longer gates admin pages; this strips any guard already baked into the containers.
+function stripAuthGate(h){
+  return h.replace(/<script id="lx-authgate">[\s\S]*?<\/script>/g, '');
+}
+
 // Cloudflare Pages reads _headers from the deployed directory. Emitted by the build so a rebuild
 // never silently drops them.
 //
@@ -551,7 +561,8 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
 
   let written = 0;
   for(const name of files){
-    const html = cleanLinks(rootRelative(injectRuntime(all[name], validArray)));
+    const src  = adminOnly ? stripAuthGate(all[name]) : all[name];
+    const html = cleanLinks(rootRelative(injectRuntime(src, validArray)));
     fs.writeFileSync(path.join(outDir, name), html, 'utf8');
     written++;
   }

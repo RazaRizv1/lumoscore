@@ -19,7 +19,12 @@ for(const dev of ['desktop','mobile']){
   for(const k of Object.keys(json)){
     let h=json[k];
     h=h.replace(/<script id="lx-authgate">[\s\S]*?<\/script>/,''); // idempotent
-    const isPublic=/landing|signin/.test(k);
+    // Admin pages are NOT wallet-gated. Their gate is Cloudflare Access, which authenticates at the
+    // edge before any HTML is served. Worse, the guard's redirect target (lumoscore-landing.html)
+    // does not exist on the admin origin — it is a separate Pages project holding only admin pages —
+    // so gating them 404s every page for anyone without a wallet already in that origin's
+    // localStorage. extract_site.js strips the guard from the admin build too, belt and braces.
+    const isPublic=/landing|signin|^lumoscore-admin-/.test(k);
     if(isPublic){
       if(/landing/.test(k)){
         if(h.indexOf(OLD_LAUNCH)>=0){ h=h.split(OLD_LAUNCH).join(NEW_LAUNCH); rewired++; }
