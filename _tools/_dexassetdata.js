@@ -488,6 +488,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
 
   // ================= RECENT EXCHANGES (#dxaExTable) =================
   var TRADE_FILTER=0;
+  var EX_PAGE=1, EX_PER_PAGE=50;
   function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)return "just now"; if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; }
   // deterministic identicon (matches the design's look; pure ASCII SVG)
   var _icoCache={};
@@ -513,28 +514,78 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       renderExchanges();
     }).catch(function(){});
   }
+  // The exchanges pager. The design ships one in .panel-foot .pgn whose buttons we did not own, and
+  // whose handler regenerates the design's MOCK rows (Ethereum addresses, APT prices, USDC amounts) —
+  // one click replaced real Stellar trades with fabricated ones. Rebuilding the control from our own
+  // data on every render kills that: new button nodes carry none of the design's listeners, and the
+  // page numbers now describe the real filtered set. Hidden entirely when there is only one page.
+  function renderExPager(total, pages){
+    var tb=q("#dxaExTable"); if(!tb) return;
+    var panel=tb.closest?tb.closest(".panel"):null; if(!panel) return;
+    var foot=panel.querySelector(".panel-foot .pgn"); if(!foot) return;
+    var sig="p"+EX_PAGE+"/"+pages+"/"+total;
+    if(foot.__lxpgsig===sig && foot.querySelector("button[data-pg]")) return;
+    foot.__lxpgsig=sig;
+    if(pages<=1){ foot.innerHTML=""; foot.style.display="none"; return; }
+    foot.style.display="";
+    var lo=Math.max(1,EX_PAGE-2), hi=Math.min(pages,lo+4); lo=Math.max(1,hi-4);
+    var h='<button data-pg="'+(EX_PAGE-1)+'"'+(EX_PAGE<=1?" disabled":"")+'>‹</button>';
+    if(lo>1){ h+='<button data-pg="1">1</button>'; if(lo>2) h+='<button disabled>…</button>'; }
+    for(var p=lo;p<=hi;p++) h+='<button data-pg="'+p+'"'+(p===EX_PAGE?' class="active"':"")+'>'+p+'</button>';
+    if(hi<pages){ if(hi<pages-1) h+='<button disabled>…</button>'; h+='<button data-pg="'+pages+'">'+pages+'</button>'; }
+    h+='<button data-pg="'+(EX_PAGE+1)+'"'+(EX_PAGE>=pages?" disabled":"")+'>›</button>';
+    foot.innerHTML=h;
+    if(!foot.__lxpgwired){ foot.__lxpgwired=1;
+      // capture phase, so this wins even if the design has a delegated handler on an ancestor
+      foot.addEventListener("click", function(e){
+        var b=e.target&&e.target.closest?e.target.closest("button[data-pg]"):null;
+        if(!b||b.disabled) return;
+        e.preventDefault(); e.stopPropagation();
+        var n=parseInt(b.getAttribute("data-pg"),10); if(!n) return;
+        EX_PAGE=n; renderExchanges();
+      }, true);
+    }
+  }
+
   function renderExchanges(){
     var rows=window.__lxDXAtrades; var tb=q("#dxaExTable"); if(!tb||!rows)return;
-    var f=rows.filter(function(r){ return r.xlm>=TRADE_FILTER; }).slice(0,50);   // show top 50 (lighter DOM = smoother)
-    // skip the rebuild when the filter+data haven't changed — kills the applyAll churn/lag
-    var sig=TRADE_FILTER+"|"+f.length+"|"+((f[0]&&f[0].addr)||"")+"|"+((f[f.length-1]&&f[f.length-1].addr)||"");
+    // PAGE the filtered set instead of hard-slicing the first 50. The design's own pager sat in
+    // .panel-foot unowned by us, and its "next" handler called the DESIGN's renderExchanges(), which
+    // builds 15 rows from a hardcoded WALLETS array of ETHEREUM addresses priced in APT/USDC. One
+    // click on a real asset page replaced live Stellar trades with fabricated ones. We now own the
+    // pager, so that path is unreachable.
+    var all=rows.filter(function(r){ return r.xlm>=TRADE_FILTER; });
+    var pages=Math.max(1, Math.ceil(all.length/EX_PER_PAGE));
+    if(EX_PAGE>pages) EX_PAGE=pages;           // filter narrowed while on a later page
+    if(EX_PAGE<1) EX_PAGE=1;
+    var from=(EX_PAGE-1)*EX_PER_PAGE;
+    var f=all.slice(from, from+EX_PER_PAGE);
+    // skip the rebuild when the filter+data+page haven't changed — kills the applyAll churn/lag
+    var sig=TRADE_FILTER+"|"+EX_PAGE+"|"+all.length+"|"+f.length+"|"+((f[0]&&f[0].addr)||"")+"|"+((f[f.length-1]&&f[f.length-1].addr)||"");
     // AUDIT: the old guard trusted the .lxda class, which survives when the design replaces the ROWS
     // underneath it — so once the mock came back we refused to repaint and left it on screen. Trust the
-    // content instead: our rows always carry .wallet-cell, our empty state carries .lxda-ex-empty.
-    var ours=!!(tb.querySelector(".wallet-cell")||tb.querySelector(".lxda-ex-empty"));
+    // content instead — but NOT .wallet-cell: the design's mock rows use that class too, so the guard
+    // read fabricated rows as "ours" and refused to repaint them. Every row we write carries
+    // data-lxda, which the design never emits, so this cannot be spoofed by the mock.
+    var ours=!!(tb.querySelector("tr[data-lxda]")||tb.querySelector(".lxda-ex-empty"));
     if(tb.__lxexsig===sig && ours)return; tb.__lxexsig=sig;
     // and re-assert if the design repaints this table (or its info line) behind our back
     if(!tb.__lxexobs){ tb.__lxexobs=1; try{
-      var reassert=function(){ if(!(tb.querySelector(".wallet-cell")||tb.querySelector(".lxda-ex-empty"))){ tb.__lxexsig=null; renderExchanges(); } };
+      var reassert=function(){ if(!(tb.querySelector("tr[data-lxda]")||tb.querySelector(".lxda-ex-empty"))){ tb.__lxexsig=null; renderExchanges(); } };
       new MutationObserver(reassert).observe(tb,{childList:true});
       var inf=q("#dxaPanelInfo");
       if(inf)new MutationObserver(function(){ if(!/recent trades/.test(inf.textContent||"")){ tb.__lxexsig=null; renderExchanges(); } }).observe(inf,{childList:true,characterData:true,subtree:true});
     }catch(_){} }
-    var info=q("#dxaPanelInfo"); if(info){ var ft=TRADE_FILTER>0?(" · ≥ "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000).toFixed(0)+"K":TRADE_FILTER)+" XLM"):""; info.textContent="Showing "+f.length+" recent trades"+ft; }
+    var info=q("#dxaPanelInfo"); if(info){ var ft=TRADE_FILTER>0?(" · ≥ "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000).toFixed(0)+"K":TRADE_FILTER)+" XLM"):"";
+      // say WHICH slice of the filtered set is on screen, not just how many rows were drawn
+      info.textContent = all.length
+        ? ("Showing "+(from+1)+"–"+(from+f.length)+" of "+num(all.length)+" recent trades"+ft)
+        : ("Showing 0 recent trades"+ft); }
+    renderExPager(all.length, pages);
     function decs(p){ return p>=1?4:(p>=0.01?5:7); }
     if(!f.length){ tb.innerHTML='<tr class="lxda-ex-empty"><td colspan="6" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">No trades'+(TRADE_FILTER>0?" \\u2265 "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000)+"K":TRADE_FILTER)+" XLM":"")+' in the recent window.</td></tr>'; tb.classList.add("lxda"); return; }
     tb.innerHTML=f.map(function(r){
-      return '<tr>'
+      return '<tr data-lxda="1">'
         +'<td><div class="wallet-cell">'+identicon(r.addr,26)+'<span class="mono wa">'+shortG(r.addr)+'</span></div></td>'
         +'<td><span class="type-badge '+r.side+'">'+(r.side==="buy"?"▲ Buy":"▼ Sell")+'</span></td>'
         +'<td><span class="mono">'+r.px.toFixed(decs(r.px))+' XLM</span></td>'
@@ -563,7 +614,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       var c=e.target&&e.target.closest?e.target.closest("#dxaPanelFilters .chip"):null; if(!c)return;
       e.preventDefault(); e.stopImmediatePropagation();
       qa("#dxaPanelFilters .chip").forEach(function(o){o.classList.toggle("active",o===c);});
-      TRADE_FILTER=parseFloat(c.getAttribute("data-min-xlm"))||0; renderExchanges();
+      TRADE_FILTER=parseFloat(c.getAttribute("data-min-xlm"))||0; EX_PAGE=1; renderExchanges();
     },true);
   }
 
