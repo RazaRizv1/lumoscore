@@ -3496,7 +3496,9 @@ function needsSetup(msg){var e=new Error(msg);e.code='NEEDS_SETUP';return e;}
 // It is a PUBLIC client identifier and ships in this page's JS by design, so it is not a secret — but
 // do restrict it to lumoscore.com in the Reown dashboard so nobody else can spend the relay quota.
 // While it is empty EVERY WalletConnect path stays off and the extension-only behaviour is unchanged.
-var WC_PROJECT_ID='';
+// PUBLIC client identifier, not a secret: it ships in the page js and is designed to be readable.
+// Lock it down by allowed domain in the Reown dashboard rather than by trying to hide it.
+var WC_PROJECT_ID='8ef28ece795a0868371b0e5fd6cc76ad';
 var WC_CHAIN='stellar:pubnet';
 var WC_METHODS=['stellar_signXDR','stellar_signAndSubmitXDR'];
 // LOBSTR's registered WalletConnect link. The NATIVE scheme is used, not the https universal link
@@ -3765,7 +3767,13 @@ var A={
       // extension module loads fine from the CDN on a phone (it is just javascript), so getPk exists
       // there even with no extension present, and the old code threw notInstalled from inside that
       // branch. Mobile therefore reported 'LOBSTR not detected' without ever trying the app.
-      if(lxSep7Supported())return lxLobstrApp();
+      if(lxSep7Supported()){
+        // WalletConnect first: it opens the LOBSTR app and hands back the address, no typing. SEP-7
+        // cannot do that - it has no way to return an address - so it is only the fallback for a
+        // build with no project id.
+        if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};});
+        return lxLobstrApp();
+      }
       // Desktop: real extension, else WalletConnect if a project id is configured.
       if(getPk)return Promise.resolve(getPk()).then(function(pk){
         return pk?{address:pk,transport:'ext'}:null;
