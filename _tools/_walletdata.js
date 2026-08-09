@@ -326,6 +326,10 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'Promise.all(toks.map(function(b){return priceXLM(b).then(function(p){return{b:b,px:p,xlm:(+b.balance)*p};});})).then(function(rows){'
 +'rows.sort(function(a,b){return b.xlm-a.xlm;});'
 +'var totalXLM=rows.reduce(function(s,r){return s+r.xlm;},0);var totalUSD=totalXLM*xu;window.__lxTotalXLM=totalXLM;'
+// Published for the mobile renderer: rows carry the per-asset value in XLM (balance x price), which is
+// the only place that number exists — __lxHoldings has balances but no valuation. lps are the raw
+// liquidity-pool share balances.
++'try{window.__lxRows=rows;window.__lxLps=lps;}catch(_){}'
 +'window.__lxHoldings=bals.filter(function(bb){return bb.asset_type!=="liquidity_pool_shares"&&(bb.asset_type==="native"||+bb.balance>0);}).map(function(bb){var nat=bb.asset_type==="native";return{code:nat?"XLM":bb.asset_code,iss:nat?"":(bb.asset_issuer||""),bal:+bb.balance,native:nat};}).filter(function(h){return h.code;}).sort(function(a,b){return (b.native?1:0)-(a.native?1:0)||b.bal-a.bal;});'
 // ---- address ----
 +'var ad=document.querySelector(".wallet-chip .text");if(ad)ad.textContent=shrt(ME);'
