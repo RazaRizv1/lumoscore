@@ -52,6 +52,25 @@ const STYLE = '<style id="lx-assetstats">'
   + '@container (max-width:880px){.stat-cell{padding:11px 8px !important}'
   + '.stat-cell .val{font-size:11.5px}.stat-cell .val .u{font-size:8.5px}'
   + '.stat-cell .lbl{font-size:8.5px;margin-bottom:6px}.stat-cell .sub{font-size:9px}}'
+  // ---- MOBILE ----------------------------------------------------------------------------------
+  // Everything above is a @container query keyed on .asset-header — but the MOBILE build has no
+  // .asset-header (its wrapper is .asset-top inside .asset-card), so no container was ever
+  // established and every one of those queries silently never matched. All a phone got was the
+  // unconditional six-column rule, which squeezed its four cards into 48px each: "$0.00204" rendered
+  // as "0." and the labels clipped to "VOLUM". A plain media query needs no container, and on a phone
+  // the viewport IS the container, so this is both correct and free of containment side effects.
+  // Placed LAST so cascade position cannot defeat it — media queries add no specificity.
+  + '@media (max-width:760px){'
+  + '.stat-row{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px}'
+  + '.stat-cell{padding:13px 14px !important;min-width:0}'
+  + '.stat-cell .val{font-size:17px}.stat-cell .val .u{font-size:12px}'
+  + '.stat-cell .lbl{font-size:10px;letter-spacing:.06em;margin-bottom:5px}'
+  + '.stat-cell .sub{font-size:11px;white-space:normal;overflow-wrap:anywhere}'
+  // The tab strip was overflow-x:auto with ~442px of tabs in a 342px box, so it slid freely under a
+  // finger and settled anywhere — it read as broken rather than scrollable, with no scrollbar on a
+  // phone to hint otherwise. Four tabs wrap onto two tidy rows and then nothing moves at all.
+  + '.tabs-bar{overflow-x:visible !important;flex-wrap:wrap;row-gap:2px}'
+  + '}'
   + '</style>';
 
 // Wrap a trailing " UNIT" (2-5 uppercase letters) inside stat-cell .val divs, within the stat-row block only.
