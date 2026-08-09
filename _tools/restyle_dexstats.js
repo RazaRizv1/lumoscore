@@ -72,7 +72,16 @@ const STYLE = '<style id="lx-assetstats">'
   // The count badges are what overflow it — they alone are ~100px (Holders 191,691 is 48px of that).
   // Dropping them below 760px buys enough room that even a seven-digit holder count cannot reopen the
   // problem; desktop keeps its counts, and each count is still shown inside its own tab panel.
-  + '.tabs-bar{overflow-x:hidden !important;flex-wrap:nowrap !important;gap:0 !important}'
+  // overflow must be set on BOTH axes. Setting overflow-x alone leaves overflow-y computed as auto (the
+  // spec forces a non-visible value on one axis to make the other auto), and the row is 1px taller than
+  // its box — so the strip became draggable UP AND DOWN instead. `overflow:hidden` closes both.
+  // overflow must be set on BOTH axes. Setting overflow-x alone leaves overflow-y computed as auto (the
+  // spec forces the other axis to auto when one is not visible), and the row is 1px taller than its box
+  // — so the strip became draggable UP AND DOWN instead. The 2px of padding removes that 1px overflow
+  // outright, so there is no scroll container left to drag and the active-tab underline (which sits on
+  // the bottom edge and was being clipped by the hidden overflow) is fully visible again.
+  + '.tabs-bar{overflow:hidden !important;flex-wrap:nowrap !important;gap:0 !important;'
+  + 'padding-bottom:2px !important}'
   + '.tabs-bar>*{flex:1 1 0 !important;min-width:0 !important;padding-left:4px !important;'
   + 'padding-right:4px !important;font-size:12.5px !important;justify-content:center !important;'
   + 'text-align:center;white-space:nowrap}'

@@ -112,10 +112,26 @@ const SCRIPT = '<script id="lx-mobtrade">(function(){'
 + 'if(want&&pin.value!==want)pin.value=want;}'
 + 'var shown=pin?parseFloat(String(pin.value).replace(/[^0-9.]/g,"")):NaN;'
 + 'var op=side(pane)==="sell"?"\\u2265":"\\u2264";'
+// Desktop states the pair, not a bare number: "APT/USDC <= 4.18". Match that shape.
 + 'qa(".mdxa-tsum",pane).forEach(function(row){var sps=row.querySelectorAll("span");if(sps.length<2)return;'
 + 'if(!/filled when/i.test((sps[0].textContent||"")))return;'
 + 'var v=sps[sps.length-1];'
-+ 'v.textContent=isFinite(shown)&&shown>0?(op+" "+fmt(shown,7)+" XLM"):DASH;});}'
++ 'v.textContent=isFinite(shown)&&shown>0?((c?c+"/XLM ":"")+op+" "+fmt(shown,7)):DASH;});'
+// Desktop's limit pane has a Total field that mobile never had — the single real structural gap
+// between the two. Add it as a summary row (mobile has no room for a fourth full field) and keep it
+// in step with price x amount, with the USD estimate desktop also shows.
++ 'var amtIn=qa(".mdxa-trade-field input",pane)[1];'
++ 'var amt=amtIn?parseFloat(String(amtIn.value).replace(/[^0-9.]/g,"")):NaN;'
++ 'var sums=q(".mdxa-tsum",pane); var host=sums&&sums.parentNode;'
++ 'if(host){var tr=q(".lxmt-total",pane);'
++ 'if(!tr){tr=document.createElement("div");tr.className="mdxa-tsum lxmt-total";'
++ 'tr.innerHTML="<span>Total</span><span class=\\"mono\\"></span>";'
++ 'host.insertBefore(tr,sums);}'
++ 'var tv=tr.querySelector(".mono");'
++ 'if(isFinite(shown)&&shown>0&&isFinite(amt)&&amt>0){var tot=shown*amt;'
++ 'var u=num(window.__lxDXAxlmUsd);'
++ 'tv.textContent=fmt(tot,7)+" XLM"+(u?" \\u00b7 \\u2248 $"+fmt(tot*u,2):"");}'
++ 'else tv.textContent=DASH;}}'
 // ---- swap summary: rate / price impact / min received --------------------------------------------
 // These were computed by the mock from the mock price. Nothing here quotes, so they must not pretend.
 + 'function fixSummary(){var pane=q(".mdxa-pane-swap");if(!pane)return;'

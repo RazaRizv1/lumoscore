@@ -291,7 +291,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     // Published for the MOBILE trade adapter (_mobtrade.js). That pane is built from .mdxa-* markup with
     // no desktop counterpart, so it cannot reuse the selectors above — but it can reuse the values.
     try{ window.__lxDXAcode=CODE; window.__lxDXAissuer=ISSUER; window.__lxDXAnative=!!NATIVE;
-         if(assetXlm>0)window.__lxDXAassetXlm=assetXlm; }catch(_){}
+         if(assetXlm>0)window.__lxDXAassetXlm=assetXlm;
+         if(xlmUsd>0)window.__lxDXAxlmUsd=xlmUsd; }catch(_){}
     // chart-head price display (keep consistent with the selected asset). Same mock problem as the stat
     // cells: dash the baked price + HIDE the baked "▲ 2.66% (24h)" pill until the real change is known.
     var _pill=q(".price-display .change-pill");
