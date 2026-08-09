@@ -20,7 +20,7 @@ const IMAP='var I={'+Object.keys(IK).map(k=>k+':'+iconJS(IK[k][0],IK[k][1])).joi
 function slug(n){return n.toLowerCase().replace(/[^a-z0-9]/g,'');}
 const NFILE={hashpack:'hashpack.png',kabila:'kabila.png',gemwallet:'gem.png',gem:'gem.png',ready:'ready.png',argent:'ready.png',xaman:'xaman.png',crossmark:'crossmark.webp',rabet:'rabet.jpg'};
 
-const STYLE='<style id="lx-wl-css">.lx-wl{font:800 15px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:-.02em;display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%}.lxw-ico,.opt-card .ico{position:relative;overflow:hidden}.lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}</style>';
+const STYLE='<style id="lx-wl-css">/* lx-wico-square: wallet marks are SQUARE app icons whose artwork runs edge to edge. The container was border-radius:50% with object-fit:cover, so a circular mask cut the corners off and the logos read as different, simpler marks at 40px. A rounded square shows the whole artwork. */.lxw-ico{border-radius:12px !important}.lxw-ico .lx-wimg{border-radius:12px !important}.lx-wl{font:800 15px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:-.02em;display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%}.lxw-ico,.opt-card .ico{position:relative;overflow:hidden}.lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}</style>';
 
 let inApp=0, optc=0;
 for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
@@ -47,7 +47,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
         optc++;
       }
       if(h!==before){
-        if(h.indexOf('id="lx-wl-css"')<0){ const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+STYLE+h.slice(bi); }
+        if(h.indexOf('id="lx-wl-css"')<0){ const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+STYLE+h.slice(bi); } else { h = h.replace(/<style id="lx-wl-css">[\s\S]*?<\/style>/, function(){ return STYLE; }); }
         json[k]=h;
       }
     }

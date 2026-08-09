@@ -4665,7 +4665,10 @@ function showErr(row,err){
   var t=q('.lxw-ctitle'),nm=row.querySelector('.lxw-name'),name=nm?nm.textContent:'wallet';
   var onFile=(location.protocol==='file:');
   var msg;
-  if(err&&err.code==='NOT_INSTALLED'){
+  var lxMobileHint=/Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent||'');
+    if(err&&err.code==='NOT_INSTALLED'&&lxMobileHint){
+      msg=name+' is a desktop browser extension — on mobile, connect with Albedo';
+    } else if(err&&err.code==='NOT_INSTALLED'){
     msg=onFile?('Open LumosCore over http://localhost \u2014 wallet extensions can\u0027t inject into file:// pages'):(name+' not detected \u2014 install it, then try again');
   } else if(err&&(err.code==='NEEDS_SETUP'||err.code==='SHOW_MSG')){ msg=err.message; }
   else { msg=name+' connection failed or was rejected'; }
