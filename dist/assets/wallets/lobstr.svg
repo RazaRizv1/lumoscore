@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="LOBSTR">
+  <defs>
+    <linearGradient id="lbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#63b3d4"/>
+      <stop offset="1" stop-color="#3f93b8"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#lbg)"/>
+  <!-- rounded droplet with a crescent bite taken out of the upper left, per the mark -->
+  <path fill="#fff" d="M279 122c-63 47-108 92-125 137-9 24-11 46-6 66 10 43 49 73 96 73 56 0 101-45 101-101 0-33-15-63-40-89 5 26 3 48-7 66-9 16-24 29-45 39-4-33 2-63 16-93 8-18 18-35 30-52 3-4 0-9-4-6-11 8-21 16-30 24z"/>
+</svg>
