@@ -176,6 +176,9 @@ function lxCctpSignXdr(xdr, addr){
   if(w==="albedo"){ return lxCctpMod("https://esm.sh/@albedo-link/intent@0.12.0").then(function(m){ var al=m.default||m.albedo||m; if(!al||!al.tx) throw new Error("Albedo SDK failed to load"); return al.tx({xdr:xdr, network:"public", pubkey:addr, submit:false}); })
     .then(function(r){ var s=r&&(r.signed_envelope_xdr||r.xdr); if(!s) throw new Error("Albedo did not return a signed transaction"); return s; }); }
   if(w==="rabet"){ if(!window.rabet||!window.rabet.sign) return Promise.reject(new Error("Rabet not found. Unlock the Rabet extension and retry.")); return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error) throw new Error((r.error&&r.error.message)||r.error); var s=r&&(r.xdr||r.signedXDR); if(!s) throw new Error("Rabet did not return a signed transaction"); return s; }); }
+  // A phone has no LOBSTR extension — that session signs over WalletConnect instead. Only true when
+  // the connect step recorded transport=wc, so extension sessions still take the line below.
+  if((w==="lobstr"||w==="walletconnect")&&window.__lxWcActive&&window.__lxWcActive()) return window.__lxWcSign(xdr,pass);
   if(w==="lobstr"){ return lxCctpMod("https://esm.sh/@lobstrco/signer-extension-api").then(function(m){ var sign=m.signTransaction||(m.default&&m.default.signTransaction); if(!sign) throw new Error("LOBSTR API unavailable"); return sign(xdr); }).then(function(s){ if(!s||typeof s!=="string") throw new Error("LOBSTR couldn't sign — unlock the LOBSTR extension, make sure it's connected and set to Mainnet, then retry."); return s; }); }
   // WalletConnect signing isn't wired yet — don't silently fall through to Freighter (wrong account).
   if(w==="walletconnect") return Promise.reject(new Error("WalletConnect signing isn't enabled yet. Reconnect with Freighter, Albedo, Rabet or LOBSTR."));

@@ -131,6 +131,9 @@ function lxLpSignXdr(xdr, addr){
     var x=window.xBullSDK; if(!x||!x.signXDR) return Promise.reject(new Error("xBull not found. Unlock the xBull extension and retry."));
     return Promise.resolve(x.signXDR(xdr,{network:"PUBLIC",networkPassphrase:pass,publicKey:addr})).then(function(r){ var s=r&&(r.signedXDR||r.xdr||r); if(!s||typeof s!=="string") throw new Error("xBull did not return a signed transaction"); return s; });
   }
+  // A phone has no LOBSTR extension — that session signs over WalletConnect instead. Only true when
+  // the connect step recorded transport=wc, so extension sessions still take the branch below.
+  if((w==="lobstr"||w==="walletconnect")&&window.__lxWcActive&&window.__lxWcActive()) return window.__lxWcSign(xdr,pass);
   if(w==="lobstr"){
     return lxLpMod("https://esm.sh/@lobstrco/signer-extension-api").then(function(m){ var sign=m.signTransaction||(m.default&&m.default.signTransaction); if(!sign) throw new Error("LOBSTR API unavailable"); return sign(xdr); }).then(function(s){ if(!s||typeof s!=="string") throw new Error("LOBSTR couldn't sign — unlock the LOBSTR extension, make sure it's connected and set to Testnet, then retry."); return s; });
   }

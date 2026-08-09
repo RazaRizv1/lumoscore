@@ -393,6 +393,9 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'if(w==="rabet"){return window.rabet.sign(xdr,(LX_NET==="testnet"?"testnet":"mainnet")).then(function(r){return r.xdr;});}'
 +'if(w==="xbull"){return window.xBullSDK.signXDR(xdr,{network:(LX_NET==="testnet"?"TESTNET":"PUBLIC"),publicKey:ME}).then(function(r){return (r&&(r.signedXDR||r.xdr))||r;});}'
 +'if(w==="albedo"){return import("https://esm.sh/@albedo-link/intent@0.12.0").then(function(m){var al=m.default||m.albedo||m;return al.tx({xdr:xdr,network:(LX_NET==="testnet"?"testnet":"public"),pubkey:ME});}).then(function(r){return r.signed_envelope_xdr;});}'
+// A phone has no LOBSTR extension - that session signs over WalletConnect instead. Only ever true when
+// the connect step recorded transport=wc, so every extension session keeps the line below unchanged.
++'if((w==="lobstr"||w==="walletconnect")&&window.__lxWcActive&&window.__lxWcActive())return window.__lxWcSign(xdr,PP);'
 +'if(w==="lobstr"){return import("https://esm.sh/@lobstrco/signer-extension-api").then(function(m){var s=m.signTransaction||(m.default&&m.default.signTransaction);return s(xdr);}).then(function(r){return (r&&r.signedTransaction)||r;});}'
 +'return Promise.reject(new Error("Reconnect your Stellar wallet to sign (unsupported: "+(w||"none")+")"));}'
 +'function lxAsset(S,nt,code,iss){return nt?S.Asset.native():new S.Asset(code,iss);}'
