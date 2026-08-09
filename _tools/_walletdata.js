@@ -350,6 +350,9 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'var mh=findH2("My Assets");if(mh){var m=mh.querySelector(".meta");if(m)m.textContent=rows.length+" Holding"+(rows.length===1?"":"s")+" | Total worth: ~"+num(totalXLM,0)+" XLM";}'
 // ---- OPEN ORDERS (real offers) ----
 +'var offRecs=(offers._embedded&&offers._embedded.records)||[];'
+// Published for the MOBILE wallet renderer (_mobwallet.js). The mobile page has none of the desktop
+// containers this layer writes into, so it consumes the data instead of the DOM.
++'try{window.__lxOffers=offRecs;window.__lxOps=(ops._embedded&&ops._embedded.records)||[];window.__lxWalletReady=1;}catch(_){}'
 +'var oh=findH2("Open Orders");if(oh){var om=oh.querySelector(".meta");if(om)om.textContent=offRecs.length+" active";}'
 +'renderOrders(offRecs);'
 // ---- summary cards: open orders + liquidity pools counts ----
@@ -528,7 +531,14 @@ for(const dev of ['desktop','mobile']){
   for(const k of Object.keys(json)){
     if(k.indexOf('wallet')<0) continue;
     let h=json[k];
-    if(h.indexOf('assetsTable')<0) continue;
+    // The DESKTOP wallet renders into #assetsTable; the MOBILE wallet has no table at all (its list is
+    // #assetList), so gating on #assetsTable alone excluded mobile entirely — which is why every figure
+    // on the mobile wallet was the design's mock, right down to an Ethereum 0x… address presented as the
+    // user's Stellar account. Let the layer run on both: its Horizon fetching and the globals it
+    // publishes (__lxAssets/__lxHoldings/__lxNative/__lxTotalXLM/__lxXlmUsd/__lxAct) are layout-agnostic,
+    // and its desktop-only DOM writes simply find nothing on mobile. _mobwallet.js renders those globals
+    // into the mobile markup.
+    if(h.indexOf('assetsTable')<0 && h.indexOf('id="assetList"')<0) continue;
     h=h.replace(/<style id="lx-walletdata-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-qrlib">[\s\S]*?<\/script>/,'').replace(/<script id="lx-walletdata">[\s\S]*?<\/script>/,'');
     // CSS into <head> so hide-until-ready applies before first paint (no flash of mock)
     if(h.indexOf('</head>')>=0){ h=h.replace('</head>', CSS+'</head>'); }
