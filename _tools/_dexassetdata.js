@@ -797,12 +797,41 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   // Copy the issuer by routing the click through a HIDDEN .lx-tw-copy proxy, so the design's own copy handler
   // runs (real "Copied to clipboard" toast) without restyling our small issuer icon (adding .lx-tw-copy to the
   // icon itself enlarged it + triggered the design's check-swap animation).
+  // Clipboard with a fallback: the async API needs a secure context, and the execCommand path keeps
+  // older mobile browsers working rather than failing silently.
+  function dxCopyText(v){
+    function legacy(){ return new Promise(function(res,rej){ try{
+      var ta=document.createElement("textarea"); ta.value=v; ta.setAttribute("readonly","");
+      ta.style.cssText="position:fixed;left:-9999px;top:0;opacity:0"; document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0,v.length);
+      var ok=document.execCommand("copy"); document.body.removeChild(ta);
+      ok?res():rej(new Error("copy rejected"));
+    }catch(err){ rej(err); } }); }
+    // The async API is present far more often than it is USABLE — it rejects without a secure context,
+    // without document focus, or on a denied permission. Existing is not the same as working, so fall
+    // through to execCommand on rejection rather than reporting a failure the user cannot act on.
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText)
+      return navigator.clipboard.writeText(v).catch(legacy); }catch(_){}
+    return legacy();
+  }
   function wireCopy(){ if(window.__lxDXAcopy)return; window.__lxDXAcopy=1;
     var proxy=document.createElement("button"); proxy.className="lx-tw-copy"; proxy.setAttribute("aria-hidden","true"); proxy.style.cssText="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none"; document.body.appendChild(proxy);
-    document.addEventListener("click",function(e){ var t=e.target; if(!t||!t.closest)return; var ci=t.closest(".copy-i"); if(!ci)return;
+    // The MOBILE issuer chip has no .copy-i — its icons are bare <svg> inside the .addr[data-copy] span
+    // — so this handler never fired on a phone and the button looked dead. Accept a tap anywhere on the
+    // issuer chip as well, which is also the better touch target.
+    document.addEventListener("click",function(e){ var t=e.target; if(!t||!t.closest)return;
+      var ci=t.closest(".copy-i")||t.closest(".asset-meta .addr[data-copy],.asset-meta-row .addr[data-copy]"); if(!ci)return;
       var host=ci.closest("[data-copy]"); var val=host?host.getAttribute("data-copy"):null; if(!val||val==="native")return;
       e.preventDefault(); e.stopPropagation();
-      proxy.setAttribute("data-copy",val); proxy.dispatchEvent(new MouseEvent("click",{bubbles:true}));
+      // The proxy exists to borrow the design's own copy handler, which owns the "Copied" toast — but
+      // that handler ships with the DESKTOP header chip. No .lx-topwallet means no handler, so the
+      // click vanished silently on mobile. There, do the copy and the toast ourselves.
+      if(document.querySelector(".lx-topwallet")){
+        proxy.setAttribute("data-copy",val); proxy.dispatchEvent(new MouseEvent("click",{bubbles:true}));
+      } else {
+        dxCopyText(val).then(function(){ dxCenterToast("Issuer address copied"); },
+                             function(){ dxCenterToast("Could not copy \\u2014 long-press to select"); });
+      }
     },true);
   }
   function dxLoadSdk(){ if(window.StellarSdk)return Promise.resolve(window.StellarSdk); if(_dxsdk)return _dxsdk;
