@@ -7682,6 +7682,8 @@ var WC_METHODS=['stellar_signXDR','stellar_signAndSubmitXDR'];
 // (https://lobstr.co/uni/wc): an unhandled custom scheme leaves the page exactly where it is, whereas
 // an unhandled universal link NAVIGATES to lobstr.co and takes the pending connect/sign promise with it.
 var WC_LOBSTR='lobstr://wc';
+// LOBSTR in the WalletConnect explorer registry (looked up via explorer-api.walletconnect.com).
+var WC_LOBSTR_ID="76a3d548a08cf402f5c7d021f24fd2881d767084b387a5325df88bc3d4b6f21b";
 function isMobile(){return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');}
 function wcPoke(link,uri){try{location.href=link+(uri?('?uri='+encodeURIComponent(uri)):'');}catch(_){}}
 // Getting as far as a pairing URI must not be able to hang. A bad or unreachable relay leaves
@@ -7716,7 +7718,13 @@ function wcConnect(deepLink){
           // WalletConnect Modal defaults to z-index 89. Our own connect modal sits at 100000, so the
           // pairing UI opened UNDERNEATH it and could not be tapped. Lift it above everything, and
           // set the host element too in case the theme variable is ignored by a future version.
-          var md=new Modal({projectId:WC_PROJECT_ID,themeVariables:{"--wcm-z-index":"2147483000"}});
+          // Show ONLY LOBSTR. The WalletConnect registry is almost entirely EVM wallets that cannot sign
+          // a Stellar transaction, so listing them invites a user to pick one and fail. Excluding ALL
+          // and then recommending a single id is the documented way to pin the list.
+          var md=new Modal({projectId:WC_PROJECT_ID,
+            themeVariables:{"--wcm-z-index":"2147483000"},
+            explorerExcludedWalletIds:"ALL",
+            explorerRecommendedWalletIds:[WC_LOBSTR_ID]});
         if(res.uri)md.openModal({uri:res.uri});
           try{setTimeout(function(){var el=document.querySelector("wcm-modal,w3m-modal");if(el)el.style.zIndex="2147483000";},60);}catch(_){}
           return md;
