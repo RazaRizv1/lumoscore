@@ -2846,21 +2846,97 @@ function waitFor(get,ms){return new Promise(function(res){var t0=Date.now();(fun
 // Dynamic ESM loader (cached) for web/SDK wallets that aren't simple window globals (Albedo, LOBSTR).
 var _mods={};function loadMod(u){return _mods[u]||(_mods[u]=import(u));}
 function needsSetup(msg){var e=new Error(msg);e.code='NEEDS_SETUP';return e;}
-// WalletConnect: paste a free project id from https://cloud.reown.com to enable it.
+// WalletConnect: paste a free project id from https://cloud.reown.com between the quotes to enable it.
+// It is a PUBLIC client identifier and ships in this page's JS by design, so it is not a secret — but
+// do restrict it to lumoscore.com in the Reown dashboard so nobody else can spend the relay quota.
+// While it is empty EVERY WalletConnect path stays off and the extension-only behaviour is unchanged.
 var WC_PROJECT_ID='';
-// WalletConnect v2 flow (SignClient + QR modal). Ready to run as soon as WC_PROJECT_ID is set.
-function wcConnect(chain,methods){
-  return Promise.all([loadMod('https://esm.sh/@walletconnect/sign-client@2'),loadMod('https://esm.sh/@walletconnect/modal@2')]).then(function(mods){
-    var SignClient=mods[0].default||mods[0];var Modal=mods[1].WalletConnectModal||mods[1].default;
-    return SignClient.init({projectId:WC_PROJECT_ID,metadata:{name:'LumosCore',description:'Multichain DeFi',url:location.origin,icons:[]}}).then(function(client){
-      return client.connect({requiredNamespaces:{stellar:{methods:methods,chains:[chain],events:[]}}}).then(function(res){
-        var modal=new Modal({projectId:WC_PROJECT_ID});if(res.uri)modal.openModal({uri:res.uri});
-        return res.approval().then(function(session){modal.closeModal();var acct=session.namespaces.stellar.accounts[0];return acct.split(':').pop();},
-          function(err){modal.closeModal();throw err;});
+var WC_CHAIN='stellar:pubnet';
+var WC_METHODS=['stellar_signXDR','stellar_signAndSubmitXDR'];
+// LOBSTR's registered WalletConnect link. The NATIVE scheme is used, not the https universal link
+// (https://lobstr.co/uni/wc): an unhandled custom scheme leaves the page exactly where it is, whereas
+// an unhandled universal link NAVIGATES to lobstr.co and takes the pending connect/sign promise with it.
+var WC_LOBSTR='lobstr://wc';
+function isMobile(){return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');}
+function wcPoke(link,uri){try{location.href=link+(uri?('?uri='+encodeURIComponent(uri)):'');}catch(_){}}
+// Getting as far as a pairing URI must not be able to hang. A bad or unreachable relay leaves
+// SignClient.init pending forever, and the connect modal would sit on "Confirming with <wallet>" with
+// no error and no way back. This bounds ONLY the handshake — never res.approval(), where the user is
+// legitimately taking their time in their wallet.
+function wcTimeout(p,ms,msg){return new Promise(function(res,rej){var done=false;
+  var to=setTimeout(function(){if(!done){done=true;var e=new Error(msg);e.code='SHOW_MSG';rej(e);}},ms);
+  p.then(function(v){if(!done){done=true;clearTimeout(to);res(v);}},function(e){if(!done){done=true;clearTimeout(to);rej(e);}});});}
+// One SignClient per page, created lazily. Cleared on failure so a retry can rebuild it.
+var _wcClient=null;
+function wcClient(){
+  if(!WC_PROJECT_ID)return Promise.reject(needsSetup('WalletConnect needs a free Project ID (cloud.reown.com) \u2014 add it to enable this option'));
+  if(!_wcClient)_wcClient=wcTimeout(loadMod('https://esm.sh/@walletconnect/sign-client@2').then(function(m){
+    var SignClient=m.default||m.SignClient||m;
+    return SignClient.init({projectId:WC_PROJECT_ID,metadata:{name:'LumosCore',description:'Multichain DeFi',url:location.origin,icons:[]}});
+  }),20000,'Could not reach WalletConnect \u2014 check your connection and try again').catch(function(e){_wcClient=null;throw e;});
+  return _wcClient;
+}
+function wcAddr(s){var a=s&&s.namespaces&&s.namespaces.stellar&&s.namespaces.stellar.accounts&&s.namespaces.stellar.accounts[0];
+  if(!a)throw new Error('WalletConnect returned no Stellar account');return String(a).split(':').pop();}
+// WalletConnect v2 connect. The modal is always opened: it carries the QR that desktop needs AND, on a
+// phone, a per-wallet "Open" button whose deep link comes from the registry and is tapped by the user,
+// so it is never popup-blocked. On a phone we ALSO poke the wallet directly so the usual case is zero
+// extra taps, and the modal is just the fallback if that poke goes nowhere.
+function wcConnect(deepLink){
+  return wcClient().then(function(client){
+    return wcTimeout(client.connect({requiredNamespaces:{stellar:{methods:WC_METHODS,chains:[WC_CHAIN],events:[]}}}),20000,'WalletConnect did not respond \u2014 try again').then(function(res){
+      if(res.uri&&deepLink&&isMobile())wcPoke(deepLink,res.uri);
+      return loadMod('https://esm.sh/@walletconnect/modal@2').then(function(mm){
+        var Modal=mm.WalletConnectModal||mm.default;var md=new Modal({projectId:WC_PROJECT_ID});
+        if(res.uri)md.openModal({uri:res.uri});return md;
+      },function(){return null;}).then(function(md){
+        var close=function(){if(md){try{md.closeModal();}catch(_){}}};
+        return res.approval().then(function(session){close();
+          try{localStorage.setItem('lumos.wcTopic',session.topic);}catch(_){}
+          return wcAddr(session);},function(err){close();throw err;});
       });
     });
   });
 }
+
+// --- WalletConnect SIGNING -----------------------------------------------------------------------
+// Exposed as globals because signing happens on other pages entirely (Trade, Pools, Bridge, Launch,
+// LUMOS, Wallet), each with its own data layer. Sessions live in WalletConnect's own storage, so
+// re-initialising the client on a later page restores them; lumos.wcTopic records WHICH one is ours.
+function wcSession(){
+  return wcClient().then(function(client){
+    var topic='';try{topic=localStorage.getItem('lumos.wcTopic')||'';}catch(_){}
+    var all=[];try{all=client.session.getAll()||[];}catch(_){}
+    var s=null;for(var i=0;i<all.length;i++){if(all[i]&&all[i].topic===topic)s=all[i];}
+    if(!s)throw new Error('Your WalletConnect session has expired \u2014 connect your wallet again.');
+    return {client:client,session:s};
+  });
+}
+// True ONLY for a wallet currently connected over WalletConnect. A missing or different value means the
+// extension path — which is what every session created before this existed has — so nothing that already
+// works changes. Disconnect removes lumos.wallet, which turns this off on its own.
+window.__lxWcActive=function(){try{
+  return !!WC_PROJECT_ID&&(localStorage.getItem('lumos.transport')||'')==='wc'
+    &&!!localStorage.getItem('lumos.wallet')&&!!localStorage.getItem('lumos.wcTopic');
+}catch(_){return false;}};
+window.__lxWcSign=function(xdr,passphrase){
+  var chain=(String(passphrase||'').indexOf('Test Network')>=0)?'stellar:testnet':WC_CHAIN;
+  return wcSession().then(function(cs){
+    // Refuse rather than sign against a network this session never approved.
+    var accs=(cs.session.namespaces&&cs.session.namespaces.stellar&&cs.session.namespaces.stellar.accounts)||[];
+    var ok=false;for(var i=0;i<accs.length;i++){if(String(accs[i]).indexOf(chain+':')===0)ok=true;}
+    if(!ok)throw new Error('This WalletConnect session cannot sign on '+chain.split(':')[1]+' \u2014 reconnect your wallet.');
+    // The request travels over the relay, and on a phone the user is looking at the browser, not at the
+    // wallet, so nothing would prompt them to approve it. Poke the app forward; harmless if already open.
+    var wn='';try{wn=(localStorage.getItem('lumos.wallet')||'').toLowerCase();}catch(_){}
+    if(isMobile()&&wn.indexOf('lobstr')>=0)wcPoke(WC_LOBSTR,'');
+    return cs.client.request({topic:cs.session.topic,chainId:chain,request:{method:'stellar_signXDR',params:{xdr:xdr}}});
+  }).then(function(r){
+    var s=(r&&(r.signedXDR||r.signedTxXdr||r.xdr))||(typeof r==='string'?r:null);
+    if(!s||typeof s!=='string')throw new Error('Your wallet did not return a signed transaction');
+    return s;
+  });
+};
 
 // EVM helper (World Chain = EVM, chainId 480 / 0x1e0)
 function pickEvm(flag){var e=window.ethereum;if(e&&e.providers&&e.providers.length){for(var i=0;i<e.providers.length;i++){if(e.providers[i]&&e.providers[i][flag])return e.providers[i];}}if(e)return e;return window.coinbaseWalletExtension||null;}
@@ -2914,14 +2990,25 @@ var A={
     albedo:function(){return loadMod('https://esm.sh/@albedo-link/intent@0.12.0').then(function(m){var al=m.default||m.albedo||m;
       if(!al||!al.publicKey)throw new Error('Albedo SDK failed to load');
       return al.publicKey({}).then(function(r){var a=r&&(r.pubkey||r.publicKey||r.address);if(!a)throw new Error('No address returned');return a;});});},
-    // LOBSTR signer extension: talks to the extension via its signer-extension-api package.
+    // LOBSTR is a signer EXTENSION on desktop and a MOBILE APP that speaks WalletConnect. This used to
+    // load the extension package and nothing else, so every phone was told "LOBSTR not detected" while
+    // the row promised "Mobile & web". Now: extension when it is actually there, WalletConnect when it
+    // is not. Detection is separated from the call so that a user REJECTING the extension surfaces as a
+    // rejection instead of silently escalating into a QR modal.
     lobstr:function(){return loadMod('https://esm.sh/@lobstrco/signer-extension-api').then(function(m){
       var isC=m.isConnected||(m.default&&m.default.isConnected), getPk=m.getPublicKey||(m.default&&m.default.getPublicKey);
-      if(!getPk)throw new Error('LOBSTR API failed to load');
-      return Promise.resolve(isC?isC():true).then(function(c){if(!c)throw notInstalled('LOBSTR');return getPk();}).then(function(pk){if(!pk)throw notInstalled('LOBSTR');return pk;});});},
+      if(!getPk)return null;
+      return Promise.resolve(isC?isC():true).then(function(c){return c?getPk:null;},function(){return null;});
+    },function(){return null;}).then(function(getPk){
+      if(getPk)return Promise.resolve(getPk()).then(function(pk){if(!pk)throw notInstalled('LOBSTR');return {address:pk,transport:'ext'};});
+      // No extension. Without a Project ID WalletConnect cannot init, so keep the old, useful message
+      // rather than replacing it with one about configuration the visitor cannot act on.
+      if(!WC_PROJECT_ID)throw notInstalled('LOBSTR');
+      return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};});
+    });},
     // WalletConnect needs a project id to init the SignClient — gated until one is provided.
     walletconnect:function(){if(!WC_PROJECT_ID)return Promise.reject(needsSetup('WalletConnect needs a free Project ID (cloud.reown.com) \u2014 add it to enable this option'));
-      return wcConnect('stellar:pubnet',['stellar_signXDR','stellar_signAndSubmitXDR']);}
+      return wcConnect(null).then(function(a){return {address:a,transport:'wc'};});}
   },
   starknet:{argent:sn('starknet_argentX','Argent'),braavos:sn('starknet_braavos','Braavos')},
   vechain:{
@@ -2953,14 +3040,16 @@ function wait(ms){return new Promise(function(r){setTimeout(r,ms);});}
 // 3-step progress choreography on the connecting screen. setStep(i): steps < i are done, step i is active.
 function stepEls(){return document.querySelectorAll('.lxw-steps .lxw-step');}
 function setStep(i){var s=stepEls();for(var k=0;k<s.length;k++){s[k].classList.remove('is-done','is-active');if(k<i)s[k].classList.add('is-done');else if(k===i)s[k].classList.add('is-active');}}
-function setConnected(net,row,addr){
+function setConnected(net,row,addr,transport){
   var ic=row.querySelector('.lxw-ico'),nm=row.querySelector('.lxw-name');
   var grad=ic?ic.style.background:'',ih=ic?ic.innerHTML:'',name=nm?nm.textContent:'';
   var ai=q('.lxw-acct-ico');if(ai){ai.style.background=grad;ai.innerHTML=ih;}
   var aa=q('.lxw-acct-addr');if(aa)aa.textContent=trunc(addr);
   var wd=q('.lxw-wnamedone');if(wd)wd.textContent=name;
   var cn=q('.lxw-chipname');if(cn)cn.textContent=NETLABEL[net]||net;
-  try{localStorage.setItem('lumos.wallet',name);localStorage.setItem('lumos.network',net);localStorage.setItem('lumos.address',String(addr));}catch(_){}
+  // lumos.transport tells the signing paths WHICH LOBSTR to talk to on this device. Always written, so
+  // reconnecting with the extension can never inherit a stale 'wc' from an earlier phone session.
+  try{localStorage.setItem('lumos.wallet',name);localStorage.setItem('lumos.network',net);localStorage.setItem('lumos.address',String(addr));localStorage.setItem('lumos.transport',transport||'ext');}catch(_){}
   if(window.lxnsSetConnected)try{window.lxnsSetConnected(net,name);}catch(_){}
   screen('connected');
 // lxPostConnectHome: land on the dashboard after connecting from anywhere in the app. Connecting is
@@ -2982,7 +3071,7 @@ function showErr(row,err){
   var msg;
   if(err&&err.code==='NOT_INSTALLED'){
     msg=onFile?('Open LumosCore over http://localhost \u2014 wallet extensions can\u0027t inject into file:// pages'):(name+' not detected \u2014 install it, then try again');
-  } else if(err&&err.code==='NEEDS_SETUP'){ msg=err.message; }
+  } else if(err&&(err.code==='NEEDS_SETUP'||err.code==='SHOW_MSG')){ msg=err.message; }
   else { msg=name+' connection failed or was rejected'; }
   if(t){t.textContent=msg;t.style.color='#ff6b6b';}
   setTimeout(function(){if(t)t.style.color='';screen('wallet');},onFile?4200:2600);
@@ -3020,14 +3109,17 @@ window.addEventListener('click',function(e){
   setStep(0);
   var t0=Date.now();
   var awaitT=setTimeout(function(){setStep(1);},520);          // Opening -> Awaiting after a beat
-  Promise.resolve().then(fn).then(function(addr){
+  // Adapters return either a plain address string or {address,transport} when the transport matters
+  // (LOBSTR resolves to the extension on desktop and to WalletConnect on a phone).
+  Promise.resolve().then(fn).then(function(res){
+    var addr=(res&&res.address)?res.address:res, tr=(res&&res.transport)||'ext';
     if(!addr)throw new Error('No address returned');
     clearTimeout(awaitT);setStep(1);
     var el=Date.now()-t0;
     return wait(Math.max(0,900-el))                            // let "Awaiting signature" breathe
       .then(function(){setStep(2);return wait(760);})           // Finalizing
       .then(function(){setStep(3);return wait(200);})           // all done
-      .then(function(){setConnected(net,row,addr);});
+      .then(function(){setConnected(net,row,addr,tr);});
   }).catch(function(err){clearTimeout(awaitT);showErr(row,err);});
 },true);
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
