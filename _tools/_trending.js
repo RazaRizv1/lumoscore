@@ -64,7 +64,12 @@ function setTab(tf){_tf=tf;var t=tList(),card=t?t.closest(".market-card"):null;i
 function wireTabs(){var t=tList();if(!t)return;var card=t.closest(".market-card");if(!card)return;var tabs=card.querySelectorAll(".tf-mini button");if(!tabs.length)return;var arr=[];[].forEach.call(tabs,function(b){var nb=b.cloneNode(true);b.parentNode.replaceChild(nb,b);arr.push(nb);});arr.forEach(function(nb){nb.addEventListener("click",function(){var lbl=(nb.textContent||"").trim();arr.forEach(function(x){x.classList.toggle("active",x===nb);});setTab(lbl.toLowerCase());});});}
 function load(){skeleton();fetch(SE+"?sort=volume7d&order=desc&limit=40").then(function(r){return r.json();}).then(function(j){var recs=(j._embedded&&j._embedded.records)||[];var seen={},out=[];recs.forEach(function(x){var parts=(x.asset||"").split("-"),code=parts[0],iss=parts[1]||"";if(!code||seen[code])return;var toml=x.tomlInfo||x.toml_info||{};var logo=LOGOS[code]||toml.image||"";var rating=(x.rating&&x.rating.average)||0;
 // quality gate: must have a real logo AND be a known/decently-rated asset AND a non-dust price -> drops spam like USDCAllow / $0 mint tokens
-if(!logo||!(LOGOS[code]||rating>=6)||!(+x.price>=1e-7))return;seen[code]=1;
+if(!logo||!(LOGOS[code]||rating>=6)||!(+x.price>=1e-7))return;
+// XLM is the quote currency for every row here (prices and volume are denominated in it) and every
+// row's Trade button opens a pair against it, so a native XLM row would mean swapping XLM for XLM.
+// Any NON-native asset calling itself XLM is an impostor, so the code alone is enough to drop it.
+if(code==="XLM")return;
+seen[code]=1;
 var nm=x.domain||toml.name||toml.orgName||code;if(nm.length>22)nm=nm.slice(0,21)+"\\u2026";
 var p7=(x.price7d||[]).map(function(p){return +p[1];}).filter(function(v){return v>0;});
 out.push({code:code,iss:iss,price:+x.price,p7:p7,vol7d:(+x.volume7d||0)/1e7,name:nm,logo:logo,created:+x.created||0});});if(!out.length)throw new Error("empty");_roster=out.slice(0,14);wireTabs();render();}).catch(function(){var t=tList();if(t&&!t.classList.contains("lx-tready"))setTimeout(load,8000);});}
