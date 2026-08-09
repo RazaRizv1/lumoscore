@@ -66,10 +66,28 @@ const STYLE = '<style id="lx-assetstats">'
   + '.stat-cell .val{font-size:17px}.stat-cell .val .u{font-size:12px}'
   + '.stat-cell .lbl{font-size:10px;letter-spacing:.06em;margin-bottom:5px}'
   + '.stat-cell .sub{font-size:11px;white-space:normal;overflow-wrap:anywhere}'
-  // The tab strip was overflow-x:auto with ~442px of tabs in a 342px box, so it slid freely under a
-  // finger and settled anywhere — it read as broken rather than scrollable, with no scrollbar on a
-  // phone to hint otherwise. Four tabs wrap onto two tidy rows and then nothing moves at all.
-  + '.tabs-bar{overflow-x:visible !important;flex-wrap:wrap;row-gap:2px}'
+  // The tab strip holds ~442px of tabs in a 342px box. Wrapping it onto two rows pushed Pools onto a
+  // line of its own, so keep all four on ONE line and make the horizontal scroll deliberate instead:
+  // snap points so it comes to rest on a tab rather than mid-label, momentum scrolling, and no
+  // scrollbar gutter. flex:0 0 auto stops the tabs from being squeezed to fit.
+  + '.tabs-bar{overflow-x:auto !important;flex-wrap:nowrap !important;scroll-snap-type:x proximity;'
+  + '-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior-x:contain}'
+  + '.tabs-bar::-webkit-scrollbar{display:none}'
+  + '.tabs-bar>*{flex:0 0 auto;scroll-snap-align:start}'
+  // The swap panel painted each token logo into a 10px box inside a 20px black circle, so the icon read
+  // as a dot with a black ring around it. The 10px comes from an INLINE style on the design's wrapper,
+  // which is why these need !important to win.
+  + '.mdxa-trade-ic{width:24px !important;height:24px !important;background:transparent !important;'
+  + 'overflow:hidden;border-radius:50%;flex:0 0 auto}'
+  + '.mdxa-trade-ic>*{width:24px !important;height:24px !important}'
+  + '.mdxa-trade-ic img{width:100% !important;height:100% !important;object-fit:cover;display:block}'
+  + '.mdxa-trade-asset{gap:7px}'
+  // "You receive" builds its logo differently from "You pay": no .mdxa-trade-ic, just an EMPTY span
+  // carrying the image as a background. It collapsed to its content box — 15x10 — so the logo rendered
+  // as a speck. Give the chip a real square to paint into.
+  + '.mdxa-trade-asset[data-logo]{width:24px !important;height:24px !important;min-width:24px;'
+  + 'border-radius:50%;background-size:cover !important;background-position:50% 50% !important;'
+  + 'background-repeat:no-repeat !important;flex:0 0 auto}'
   + '}'
   + '</style>';
 
