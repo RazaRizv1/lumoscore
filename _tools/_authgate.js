@@ -37,7 +37,6 @@ const PUBLIC_BASES = new Set([
   'lumoscore-dex-asset',      // Trade — per-asset  (the big SEO surface)
   'lumoscore-amm',            // Pools
   'lumoscore-amm-pool',       // Pools — per-pool
-  'lumoscore-asset-overview', // Asset overview
   'lumoscore-lumos-token',    // LUMOS
   'lumoscore-mcp',            // MCP
 ]);

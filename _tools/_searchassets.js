@@ -1,7 +1,7 @@
 // Search: replace the mock asset results (LUMOS/CELL/... Aptos placeholders) with the real
 // TESTNET tokens minted via Launchpad, each linking to the Asset Overview page. Read-only.
 // The design filters a hardcoded `Assets` array into #spAssetList; we override the render so only
-// real testnet assets show, and rows are <a href=asset-overview?asset=CODE-ISSUER> (the nav
+// real mainnet assets show, and rows are <a href=dex-asset?asset=CODE-ISSUER> (the nav
 // resolver respects a[href], so clicking opens the asset page rather than the Trade page).
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
@@ -38,7 +38,9 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
     var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
     var sub = t.tl!=null ? (nfmt(t.tl)+" trustlines") : "Launchpad token";
-    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="lumoscore-asset-overview.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
+    // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
+    // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
       ico+
       '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+' <span class="sp-domain">'+esc(t.domain||"Stellar mainnet")+'</span></div>'+
       '<div class="sp-sub">'+esc(t.code)+' \u00b7 '+esc(sub)+'</div></div>'+
