@@ -7712,8 +7712,14 @@ function wcConnect(deepLink){
     return wcTimeout(client.connect({requiredNamespaces:{stellar:{methods:WC_METHODS,chains:[WC_CHAIN],events:[]}}}),20000,'WalletConnect did not respond \u2014 try again').then(function(res){
       if(res.uri&&deepLink&&isMobile())wcPoke(deepLink,res.uri);
       return loadMod('https://esm.sh/@walletconnect/modal@2').then(function(mm){
-        var Modal=mm.WalletConnectModal||mm.default;var md=new Modal({projectId:WC_PROJECT_ID});
-        if(res.uri)md.openModal({uri:res.uri});return md;
+        var Modal=mm.WalletConnectModal||mm.default;
+          // WalletConnect Modal defaults to z-index 89. Our own connect modal sits at 100000, so the
+          // pairing UI opened UNDERNEATH it and could not be tapped. Lift it above everything, and
+          // set the host element too in case the theme variable is ignored by a future version.
+          var md=new Modal({projectId:WC_PROJECT_ID,themeVariables:{"--wcm-z-index":"2147483000"}});
+        if(res.uri)md.openModal({uri:res.uri});
+          try{setTimeout(function(){var el=document.querySelector("wcm-modal,w3m-modal");if(el)el.style.zIndex="2147483000";},60);}catch(_){}
+          return md;
       },function(){return null;}).then(function(md){
         var close=function(){if(md){try{md.closeModal();}catch(_){}}};
         return res.approval().then(function(session){close();
