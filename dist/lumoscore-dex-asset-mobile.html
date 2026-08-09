@@ -6627,7 +6627,9 @@ function lxMobileOnlyWallets(){
   // Stellar only. XRP Ledger offers Gem/Xaman/Crossmark, which are mobile wallets in their own right,
   // and blanket-filtering would leave that list empty on a phone.
   if((window.__lxNet||"stellar")!=="stellar")return;
-  var KEEP={lobstr:1,albedo:1};
+  // WalletConnect is kept as the generic option: it shows a pairing prompt any WalletConnect-capable
+  // Stellar wallet can answer, so someone whose wallet is not LOBSTR still has a route on mobile.
+  var KEEP={lobstr:1,albedo:1,walletconnect:1};
   var rows=document.querySelectorAll('.lxw-row[data-wallet]');
   for(var i=0;i<rows.length;i++){
     var w=(rows[i].getAttribute('data-wallet')||'').toLowerCase().replace(/[^a-z]/g,'');
