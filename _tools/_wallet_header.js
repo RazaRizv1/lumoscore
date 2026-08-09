@@ -82,7 +82,11 @@ function scriptFor(net){
   // network rows carry .lxw-row but no data-wallet, so the real handler skipped them and the design's
   // demo listener navigated. It now claims data-lxnet rows too, so this flow stays in the modal.
   +'var dc=t.closest(".lx-topwallet[data-lxdisc=\\"1\\"]");if(dc){e.preventDefault();e.stopImmediatePropagation();if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}'
-  +'var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.reload();}catch(_){sync();}return;}},true);'
+  // Disconnect leaves for the landing page rather than reloading in place. Reloading only worked on
+  // GATED pages, where the auth gate then bounced to "/" — on a public page (Trade, Pools, an asset
+  // page) it reloaded a signed-out view of somewhere that assumes a wallet. replace() not href, so the
+  // signed-in page does not sit in history for the back button to restore.
+  +'var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);'
   +'if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);'
   +'setTimeout(sync,300);'
   +'})();</script>';
