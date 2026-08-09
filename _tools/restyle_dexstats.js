@@ -21,8 +21,12 @@ const STYLE = '<style id="lx-assetstats">'
   // .asset-header becomes the query container so the counts below follow the column the row actually
   // lives in (~712px beside the swap panel) rather than the window.
   + '.asset-header{container-type:inline-size}'
-  + '@container (max-width:1000px){.stat-row{grid-template-columns:repeat(3,minmax(0,1fr))}}'
-  + '@container (max-width:560px){.stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+  // SIX ACROSS, ALWAYS — on desktop the row stays one line whatever the sidebar is doing. The cards
+  // compress instead of wrapping, which is why minmax(0,1fr) and .stat-cell{min-width:0} matter: the
+  // grid default of min-content plus nowrap text is what made the row overflow and clip Supply.
+  // Below ~760px of container (real phones) six cards would be unreadable, so it drops to 3 then 2.
+  + '@container (max-width:760px){.stat-row{grid-template-columns:repeat(3,minmax(0,1fr))}}'
+  + '@container (max-width:430px){.stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}}'
   // min-width:0 is the other half of the crop fix. A grid item defaults to min-width:auto, i.e. its
   // min-content width, and every line in here is white-space:nowrap — so the cells refused to shrink
   // and the row overflowed its container instead of adapting. With 0 they shrink and the .sub line
@@ -34,6 +38,20 @@ const STYLE = '<style id="lx-assetstats">'
   + '.stat-cell .val{font-size:18px;font-weight:800;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05;color:var(--text)}'
   + '.stat-cell .val .u{font-size:11.5px;font-weight:600;color:var(--text-muted);margin-left:2px}'
   + '.stat-cell .sub{font-size:12px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  // ---- compact ramp, LAST ON PURPOSE ----------------------------------------------------------
+  // Tighten padding and type as the container narrows so six cards stay legible instead of
+  // ellipsising. These MUST come after the base .stat-cell/.lbl/.val/.sub rules above: a container
+  // query adds no specificity, so if they sat earlier the base font-size would simply win and the
+  // whole ramp would silently do nothing (which is exactly what happened the first time).
+  + '@container (max-width:1140px){.stat-cell{padding:13px 12px !important}'
+  + '.stat-cell .val{font-size:15px}.stat-cell .val .u{font-size:10.5px}'
+  + '.stat-cell .lbl{font-size:9.5px;letter-spacing:.06em}.stat-cell .sub{font-size:11px}}'
+  + '@container (max-width:1000px){.stat-cell{padding:12px 10px !important}'
+  + '.stat-cell .val{font-size:13px}.stat-cell .val .u{font-size:9.5px}'
+  + '.stat-cell .lbl{font-size:9px}.stat-cell .sub{font-size:10px}}'
+  + '@container (max-width:880px){.stat-cell{padding:11px 8px !important}'
+  + '.stat-cell .val{font-size:11.5px}.stat-cell .val .u{font-size:8.5px}'
+  + '.stat-cell .lbl{font-size:8.5px;margin-bottom:6px}.stat-cell .sub{font-size:9px}}'
   + '</style>';
 
 // Wrap a trailing " UNIT" (2-5 uppercase letters) inside stat-cell .val divs, within the stat-row block only.
