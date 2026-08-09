@@ -5,7 +5,7 @@
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);const Q=String.fromCharCode(34);
 
 // var-I key -> [fallback letter, file | null]
-const IK={freighter:['F','freighter.svg'],xbull:['X',null],rabet:['R','rabet.jpg'],albedo:['A','albedo.png'],lobstr:['L','lobstr.svg'],
+const IK={freighter:['F','freighter.png'],xbull:['X',null],rabet:['R','rabet.jpg'],albedo:['A','albedo.png'],lobstr:['L','lobstr.png'],
   wc:['W',null],gem:['G','gem.png'],xaman:['X','xaman.png'],joey:['J',null],crossmark:['C','crossmark.webp'],
   hashpack:['H','hashpack.png'],kabila:['K','kabila.png'],blade:['B',null],metamask:['M',null],
   argent:['R','ready.png'],braavos:['B',null],petra:['P',null],martian:['M',null],pontem:['P',null],
