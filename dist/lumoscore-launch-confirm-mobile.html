@@ -3486,6 +3486,11 @@ function lxSep7Sign(xdr,passphrase){
     });
   });
 }
+// The LOBSTR MOBILE APP route: ask for the address, then every signature goes out over the
+// web+stellar: deep link. Nothing here touches the browser extension.
+function lxLobstrApp(){
+  return lxSep7Connect().then(function(a){ return {address:a,transport:'sep7'}; });
+}
 window.__lxSep7Active=function(){ try{ return (localStorage.getItem('lumos.transport')||'')==='sep7'; }catch(_){ return false; } };
 window.__lxWcActive=function(){try{
   if((localStorage.getItem('lumos.transport')||'')==='sep7')return true;
@@ -3576,14 +3581,21 @@ var A={
       if(!getPk)return null;
       return Promise.resolve(isC?isC():true).then(function(c){return c?getPk:null;},function(){return null;});
     },function(){return null;}).then(function(getPk){
-      if(getPk)return Promise.resolve(getPk()).then(function(pk){if(!pk)throw notInstalled('LOBSTR');return {address:pk,transport:'ext'};});
-      // No extension. Without a Project ID WalletConnect cannot init, so keep the old, useful message
-      // rather than replacing it with one about configuration the visitor cannot act on.
-      // Order matters: WalletConnect is the better experience where it is configured, so prefer it.
-      // Fall back to SEP-7 on mobile - no relay, no project id, and verified opening LOBSTR on a
-      // real device. Desktop with neither has nothing left to try.
+      // MOBILE FIRST. On a phone LOBSTR is an APP reached by the web+stellar: deep link, not an
+      // extension — so try that before anything extension-shaped. This ordering is the fix: the
+      // extension module loads fine from the CDN on a phone (it is just javascript), so getPk exists
+      // there even with no extension present, and the old code threw notInstalled from inside that
+      // branch. Mobile therefore reported 'LOBSTR not detected' without ever trying the app.
+      if(lxSep7Supported())return lxLobstrApp();
+      // Desktop: real extension, else WalletConnect if a project id is configured.
+      if(getPk)return Promise.resolve(getPk()).then(function(pk){
+        return pk?{address:pk,transport:'ext'}:null;
+      },function(){return null;}).then(function(r){
+        if(r)return r;
+        if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};});
+        throw notInstalled('LOBSTR');
+      });
       if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};});
-      if(lxSep7Supported())return lxSep7Connect().then(function(a){return {address:a,transport:'sep7'};});
       throw notInstalled('LOBSTR');
     });},
     // WalletConnect needs a project id to init the SignClient — gated until one is provided.
