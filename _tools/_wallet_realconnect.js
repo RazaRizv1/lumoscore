@@ -153,7 +153,13 @@ function showErr(row,err){
   setTimeout(function(){if(t)t.style.color='';screen('wallet');},onFile?4200:2600);
 }
 
-document.addEventListener('click',function(e){
+// WINDOW, not document, for CAPTURE ORDER. Capture runs outermost-first (window -> document ->
+// target), so a document-capture listener the design registered earlier won the click and ran its
+// DEMO connect, which navigates. Symptom: clicking a wallet reloaded the page in under 350ms —
+// before this connector's 1800ms detection wait — and the "Confirming with <wallet>" screen never
+// appeared, because the real handler never received the event at all. Binding on window puts us
+// ahead of it, so the stopImmediatePropagation below actually suppresses the demo flow.
+window.addEventListener('click',function(e){
   var row=e.target&&e.target.closest?e.target.closest('.lxw-row'):null;if(!row)return;
   var id=(row.getAttribute('data-wallet')||'').toLowerCase();if(!id)return;
   var net=window.__lxNet||'stellar';
