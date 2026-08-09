@@ -140,6 +140,18 @@ function setConnected(net,row,addr){
   try{localStorage.setItem('lumos.wallet',name);localStorage.setItem('lumos.network',net);localStorage.setItem('lumos.address',String(addr));}catch(_){}
   if(window.lxnsSetConnected)try{window.lxnsSetConnected(net,name);}catch(_){}
   screen('connected');
+// lxPostConnectHome: land on the dashboard after connecting from anywhere in the app. Connecting is
+// the gateway into the product, so leaving someone on the read-only page they happened to be browsing
+// strands them one step short of what they just enabled. Short delay so 'Connected' is actually seen.
+// Skipped on the dashboard (already there) and on /wallet, where the page you are on IS what
+// connecting unlocks and bouncing away would be perverse.
+function lxPostConnectHome(){try{var _p=location.pathname||'';
+  if(/dashboard|lumoscore-home|wallet/.test(_p))return;
+  setTimeout(function(){
+    try{ if(window.__lxNav){window.__lxNav('lumoscore-home.html');return;} }catch(_){}
+    try{ location.href='/dashboard'; }catch(_){}
+  },1100);}catch(_){}}
+lxPostConnectHome();
 }
 function showErr(row,err){
   var t=q('.lxw-ctitle'),nm=row.querySelector('.lxw-name'),name=nm?nm.textContent:'wallet';
