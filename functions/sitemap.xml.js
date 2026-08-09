@@ -66,8 +66,10 @@ export async function onRequestGet({ request }) {
     for (const s of [a, b]){
       if (s === 'native' || seenAsset.has(s)) continue;
       seenAsset.add(s);
+      // one url per asset. /asset/stellar/<ASSET> used to be listed too, but the asset-overview page
+      // it pointed at was removed (it duplicated Trade-asset). Listing a url that 301s elsewhere is
+      // a sitemap smell — submit the destination, not the redirect.
       urls.push({ loc: origin + '/trade/stellar/' + s, priority: '0.7', freq: 'daily' });
-      urls.push({ loc: origin + '/asset/stellar/' + s, priority: '0.5', freq: 'weekly' });
     }
   }
 

@@ -28,7 +28,9 @@ function cleanMapJson(){
   m['lumoscore-landing'] = '/';
   // dynamic routes with no identifier in the link fall back to the list page
   m['lumoscore-dex-asset'] = '/trade/stellar';
-  m['lumoscore-asset-overview'] = '/asset/stellar';
+  // asset-overview was REMOVED — it duplicated Trade-asset without the ability to act on what it
+  // showed. Anything still pointing at it resolves to the Trade page instead.
+  m['lumoscore-asset-overview'] = '/trade/stellar';
   return JSON.stringify(m);
 }
 
@@ -46,7 +48,7 @@ function runtime(validArray){
     + '  var p=new URLSearchParams(q), a=p.get("asset");'
     // the two dynamic routes: an ?asset= becomes a path segment
     + '  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);'
-    + '  if(base==="lumoscore-asset-overview") return a?("/asset/stellar/"+a+h):("/asset/stellar"+h);'
+    + '  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);'
     // a pool is addressed by its two assets, which a ?pool=<id> link does not carry — leave it alone
     + '  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;'
     + '  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;'
@@ -152,6 +154,20 @@ const ADMIN_RE = /^lumoscore-admin-/;
 // land on and every route 404s unless a wallet happens to be in that origin's localStorage. The admin
 // panel is gated by Cloudflare Access instead, which authenticates before any HTML is served.
 // _authgate.js no longer gates admin pages; this strips any guard already baked into the containers.
+// Pages that are built by the design but must NOT ship. asset-overview duplicated Trade-asset — same
+// price, holders, pools and trustlines, but read-only — so it was removed rather than maintained
+// twice. Dropping the FILE (not just the route) is what makes that real: a stray link to
+// lumoscore-asset-overview.html cannot quietly keep working. Everything pointing at it is redirected:
+// the clean map and lxClean send it to /trade/stellar, legacyClean 301s the raw filename, and the
+// middleware 301s /asset/stellar/<ASSET> for urls already published in the sitemap.
+const DROPPED = new Set(['lumoscore-asset-overview']);
+function isDropped(name){
+  let b = name.replace(/\.html$/, '');
+  let prev;
+  do { prev = b; b = b.replace(/-(dark|light|mobile)$/, ''); } while (b !== prev);
+  return DROPPED.has(b);
+}
+
 function stripAuthGate(h){
   return h.replace(/<script id="lx-authgate">[\s\S]*?<\/script>/g, '');
 }
@@ -197,7 +213,9 @@ const ROUTES = [
   ['/pools/stellar/id/:pool',          'lumoscore-amm-pool.html'],   // fallback: id-only links
   ['/pools/stellar/:a/:b',             'lumoscore-amm-pool.html'],
   ['/pools/stellar',                   'lumoscore-amm.html'],
-  ['/asset/stellar/:asset',            'lumoscore-asset-overview.html'],
+  // NO /asset/stellar route. The asset-overview page was removed — it showed the same facts as
+  // Trade-asset with no way to act on them. /asset/stellar/<ASSET> is now a permanent 301 to
+  // /trade/stellar/<ASSET>, handled in the middleware so already-indexed urls keep their value.
   // launchpad flow: /launchpad/review must precede /launchpad
   ['/launchpad/review',                'lumoscore-launch-review.html'],
   ['/launchpad/confirm',               'lumoscore-launch-confirm.html'],
@@ -395,7 +413,7 @@ function legacyClean(pathname, params){
   // the two dynamic routes carry their identifier in the query — promote it into the path
   const asset = params && params.get('asset');
   if (base === 'lumoscore-dex-asset')      return asset ? '/trade/stellar/' + asset : '/trade/stellar';
-  if (base === 'lumoscore-asset-overview') return asset ? '/asset/stellar/' + asset : '/asset/stellar';
+  if (base === 'lumoscore-asset-overview') return asset ? '/trade/stellar/' + asset : '/trade/stellar';
   // a pool is addressed by its two assets, which ?pool=<id> does not carry — leave it alone
   const pool = params && params.get('pool');
   if (base === 'lumoscore-amm-pool') return pool ? '/pools/stellar/id/' + pool : '/pools/stellar';
@@ -424,9 +442,22 @@ export async function onRequest(context){
   if (legacy){
     const to = new URL(legacy, url.origin);
     // ?asset= became a path segment, so carrying it too would duplicate it
-    const promoted = legacy.indexOf('/trade/stellar/') === 0 || legacy.indexOf('/asset/stellar/') === 0
+    const promoted = legacy.indexOf('/trade/stellar/') === 0
       || legacy.indexOf('/pools/stellar/id/') === 0;
     if (!promoted) to.search = url.search;
+    to.hash = url.hash;
+    return Response.redirect(to.toString(), 301);
+  }
+
+  // 1b) /asset/stellar/<ASSET> -> /trade/stellar/<ASSET>, permanently.
+  // The asset-overview page was removed; Trade-asset shows the same facts and can act on them.
+  // These urls were published in the sitemap and may already be indexed, so this is a 301 rather
+  // than a 404: search engines transfer the ranking to the Trade page instead of dropping it.
+  // Bare /asset/stellar (no asset) goes to the Trade list.
+  if (url.pathname === '/asset/stellar' || url.pathname.indexOf('/asset/stellar/') === 0){
+    const rest = url.pathname.slice('/asset/stellar'.length);
+    const to = new URL('/trade/stellar' + rest, url.origin);
+    to.search = url.search;
     to.hash = url.hash;
     return Response.redirect(to.toString(), 301);
   }
@@ -548,7 +579,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
   const desktop = getContents(read(path.join(srcDir, 'lumoscore-'+chain+'-desktop.html')));
   const mobile  = getContents(read(path.join(srcDir, 'lumoscore-'+chain+'-mobile.html')));
   const all = Object.assign({}, desktop, mobile);
-  const files = Object.keys(all).filter(n => ADMIN_RE.test(n) === adminOnly);
+  const files = Object.keys(all).filter(n => ADMIN_RE.test(n) === adminOnly && !isDropped(n));
   const validArray = files.slice(); // filenames shipped in this folder
 
   // --root: single-version build lands directly in dist/ (no per-chain subfolder), so the

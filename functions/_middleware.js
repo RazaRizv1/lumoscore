@@ -34,11 +34,6 @@ const ROUTES = [
     null
   ],
   [
-    "/asset/stellar/:asset",
-    "lumoscore-asset-overview",
-    null
-  ],
-  [
     "/launchpad/review",
     "lumoscore-launch-review",
     null
@@ -89,7 +84,7 @@ const ROUTES = [
     null
   ]
 ];
-const HAS_MOBILE = new Set(["lumoscore-asset-overview-mobile","lumoscore-home-mobile","lumoscore-landing-mobile","lumoscore-launch-confirm-mobile","lumoscore-launch-review-mobile","lumoscore-launch-token-mobile","lumoscore-wallet-mobile","lumoscore-amm-mobile","lumoscore-amm-pool-mobile","lumoscore-lumos-token-mobile","lumoscore-dex-mobile","lumoscore-dex-asset-mobile","lumoscore-bridge-mobile","lumoscore-signin-mobile","lumoscore-rewards-mobile","lumoscore-mcp-mobile"]);
+const HAS_MOBILE = new Set(["lumoscore-home-mobile","lumoscore-landing-mobile","lumoscore-launch-confirm-mobile","lumoscore-launch-review-mobile","lumoscore-launch-token-mobile","lumoscore-wallet-mobile","lumoscore-amm-mobile","lumoscore-amm-pool-mobile","lumoscore-lumos-token-mobile","lumoscore-dex-mobile","lumoscore-dex-asset-mobile","lumoscore-bridge-mobile","lumoscore-signin-mobile","lumoscore-rewards-mobile","lumoscore-mcp-mobile"]);
 
 function match(pathname){
   const segs = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
@@ -225,7 +220,7 @@ function legacyClean(pathname, params){
   // the two dynamic routes carry their identifier in the query — promote it into the path
   const asset = params && params.get('asset');
   if (base === 'lumoscore-dex-asset')      return asset ? '/trade/stellar/' + asset : '/trade/stellar';
-  if (base === 'lumoscore-asset-overview') return asset ? '/asset/stellar/' + asset : '/asset/stellar';
+  if (base === 'lumoscore-asset-overview') return asset ? '/trade/stellar/' + asset : '/trade/stellar';
   // a pool is addressed by its two assets, which ?pool=<id> does not carry — leave it alone
   const pool = params && params.get('pool');
   if (base === 'lumoscore-amm-pool') return pool ? '/pools/stellar/id/' + pool : '/pools/stellar';
@@ -254,9 +249,22 @@ export async function onRequest(context){
   if (legacy){
     const to = new URL(legacy, url.origin);
     // ?asset= became a path segment, so carrying it too would duplicate it
-    const promoted = legacy.indexOf('/trade/stellar/') === 0 || legacy.indexOf('/asset/stellar/') === 0
+    const promoted = legacy.indexOf('/trade/stellar/') === 0
       || legacy.indexOf('/pools/stellar/id/') === 0;
     if (!promoted) to.search = url.search;
+    to.hash = url.hash;
+    return Response.redirect(to.toString(), 301);
+  }
+
+  // 1b) /asset/stellar/<ASSET> -> /trade/stellar/<ASSET>, permanently.
+  // The asset-overview page was removed; Trade-asset shows the same facts and can act on them.
+  // These urls were published in the sitemap and may already be indexed, so this is a 301 rather
+  // than a 404: search engines transfer the ranking to the Trade page instead of dropping it.
+  // Bare /asset/stellar (no asset) goes to the Trade list.
+  if (url.pathname === '/asset/stellar' || url.pathname.indexOf('/asset/stellar/') === 0){
+    const rest = url.pathname.slice('/asset/stellar'.length);
+    const to = new URL('/trade/stellar' + rest, url.origin);
+    to.search = url.search;
     to.hash = url.hash;
     return Response.redirect(to.toString(), 301);
   }

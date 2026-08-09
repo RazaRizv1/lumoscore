@@ -6,7 +6,6 @@
 /pools/stellar/id/:pool                   /lumoscore-amm-pool  200
 /pools/stellar/:a/:b                      /lumoscore-amm-pool  200
 /pools/stellar                            /lumoscore-amm  200
-/asset/stellar/:asset                     /lumoscore-asset-overview  200
 /launchpad/review                         /lumoscore-launch-review  200
 /launchpad/confirm                        /lumoscore-launch-confirm  200
 /launchpad                                /lumoscore-launch-token  200
