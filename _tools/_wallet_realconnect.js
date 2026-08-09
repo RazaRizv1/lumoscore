@@ -161,7 +161,15 @@ function showErr(row,err){
 // ahead of it, so the stopImmediatePropagation below actually suppresses the demo flow.
 window.addEventListener('click',function(e){
   var row=e.target&&e.target.closest?e.target.closest('.lxw-row'):null;if(!row)return;
-  var id=(row.getAttribute('data-wallet')||'').toLowerCase();if(!id)return;
+  // Network rows share the .lxw-row class but carry data-lxnet instead of data-wallet. Without this
+        // they fell through to the design's demo listener, which navigates — picking a network reloaded
+        // the page and destroyed the modal. Claim them here and drive the real chain switch + wallet list.
+        var netId=row.getAttribute('data-lxnet');
+        if(netId){e.preventDefault();e.stopImmediatePropagation();
+          try{if(window.lxSetChain)window.lxSetChain(netId);}catch(_){}
+          try{if(window.lxwOpenWallet)window.lxwOpenWallet(netId);}catch(_){}
+          return;}
+        var id=(row.getAttribute('data-wallet')||'').toLowerCase();if(!id)return;
   var net=window.__lxNet||'stellar';
   var ad=A[net];var fn=ad&&(ad[id]||ad[id.replace(/[^a-z]/g,'')]);
   if(!fn)return; // unsupported wallet -> let the existing demo flow run

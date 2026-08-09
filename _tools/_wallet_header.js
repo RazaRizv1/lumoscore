@@ -34,6 +34,7 @@ function scriptFor(net){
   +'function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\\u2026"+a.slice(-4):a;}'
   +'function sync(){var chip=document.querySelector(".lx-topwallet");if(!chip)return;'
   +'var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);'
+  +'try{var _lo=document.querySelector(".nx-logout");if(_lo)_lo.style.display=on?"":"none";}catch(_){}'
   +'if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");}'
   // AUDIT #7 (FUNDS): the chip's text was updated to the real G… address but the sibling copy button kept the
   // design's baked data-copy="0x068dc5d4…" (an Aptos/EVM address), so "Copy address" silently yielded a foreign
@@ -65,14 +66,13 @@ function scriptFor(net){
   +'if(own)t.setAttribute("data-copy",a);}catch(_){}},true);'
   +'[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});'
   +'window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;'
-  // "Connect Wallet" opens the WALLET PICKER for the network we are already on — it must not open the
-  // network screen. lxChooseNetwork is a chain SWITCHER: picking a network navigates to that chain's
-  // copy of the page. On a Stellar-only site, choosing Stellar from /pools/stellar navigated to
-  // /pools/stellar — a reload that destroyed the modal, so the button looked dead. Passing no
-  // destination did not help: the navigation is in the network-pick handler, not the home argument.
-  // lxwOpenWallet(net) with NO destination opens the picker in place and leaves you where you were,
-  // which is what someone pressing "Connect" on a pools page actually wants.
-  +'var dc=t.closest(".lx-topwallet[data-lxdisc=\\"1\\"]");if(dc){e.preventDefault();e.stopImmediatePropagation();if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());else if(window.lxChooseNetwork)window.lxChooseNetwork();return;}'
+  // "Connect Wallet" opens the NETWORK screen first, then the wallet list for whatever is picked.
+  // Call lxChooseNetwork with NO destination: passing one (it used to get location.href) makes the
+  // network pick NAVIGATE to that destination instead of advancing to the wallet list, which reloaded
+  // the page and destroyed the modal. The other half of that bug lived in _wallet_realconnect.js —
+  // network rows carry .lxw-row but no data-wallet, so the real handler skipped them and the design's
+  // demo listener navigated. It now claims data-lxnet rows too, so this flow stays in the modal.
+  +'var dc=t.closest(".lx-topwallet[data-lxdisc=\\"1\\"]");if(dc){e.preventDefault();e.stopImmediatePropagation();if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}'
   +'var lo=t.closest(".nx-logout");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.reload();}catch(_){sync();}return;}},true);'
   +'if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);'
   +'setTimeout(sync,300);'
