@@ -4757,11 +4757,34 @@ var A={
 // Hide wallets that can't work here: xBull (its extension mis-handles liquidity-pool / local-submit txs)
 // and WalletConnect while no Project ID is configured (it can't connect without one). WalletConnect
 // re-appears automatically once WC_PROJECT_ID is set. These only appear for Stellar.
+// On a phone, only wallets that can actually connect there belong in the list. LOBSTR reaches its
+// MOBILE APP over WalletConnect; Albedo is a hosted web wallet and needs no install. Freighter,
+// Rabet and xBull are browser extensions with no mobile browser equivalent, so offering them on a
+// phone can only end in 'not detected'. Section headings whose rows all disappear are removed too,
+// otherwise POPULAR sits above nothing.
+function lxMobileOnlyWallets(){
+  if(!/Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent||''))return;
+  // Stellar only. XRP Ledger offers Gem/Xaman/Crossmark, which are mobile wallets in their own right,
+  // and blanket-filtering would leave that list empty on a phone.
+  if((window.__lxNet||"stellar")!=="stellar")return;
+  var KEEP={lobstr:1,albedo:1};
+  var rows=document.querySelectorAll('.lxw-row[data-wallet]');
+  for(var i=0;i<rows.length;i++){
+    var w=(rows[i].getAttribute('data-wallet')||'').toLowerCase().replace(/[^a-z]/g,'');
+    if(!KEEP[w]&&rows[i].parentNode)rows[i].parentNode.removeChild(rows[i]);
+  }
+  // Each section is a .lxw-group wrapper holding a .lxw-section label and its rows, so an orphaned
+  // heading is simply a group with no rows left in it.
+  var groups=document.querySelectorAll('.lxw-modal .lxw-group');
+  for(var j=0;j<groups.length;j++){
+    if(!groups[j].querySelector('.lxw-row')&&groups[j].parentNode)groups[j].parentNode.removeChild(groups[j]);
+  }
+}
 function lxHideXbull(){var rows=document.querySelectorAll('.lxw-row');for(var i=0;i<rows.length;i++){var w=(rows[i].getAttribute('data-wallet')||'').toLowerCase().replace(/[^a-z]/g,'');if((w==='xbull'||(w==='walletconnect'&&!WC_PROJECT_ID))&&rows[i].parentNode)rows[i].parentNode.removeChild(rows[i]);}}
 // record which network the modal was opened for
 var _open=window.lxwOpenWallet;
-if(typeof _open==='function'){window.lxwOpenWallet=function(net,home){var n2=(net==='xrp')?'xrpl':(A[net]||net?net:'stellar');window.__lxNet=n2;var ret=_open.apply(this,arguments);var c=0,iv=setInterval(function(){c++;lxHideXbull();if(c>18)clearInterval(iv);},70);return ret;};}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',lxHideXbull);else lxHideXbull();
+if(typeof _open==='function'){window.lxwOpenWallet=function(net,home){var n2=(net==='xrp')?'xrpl':(A[net]||net?net:'stellar');window.__lxNet=n2;var ret=_open.apply(this,arguments);var c=0,iv=setInterval(function(){c++;lxHideXbull();lxMobileOnlyWallets();if(c>18)clearInterval(iv);},70);return ret;};}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){lxHideXbull();lxMobileOnlyWallets();});else lxHideXbull();lxMobileOnlyWallets();
 
 function q(sel){return document.querySelector(sel);}
 function screen(name){var s=document.querySelectorAll('.lxw-screen');for(var i=0;i<s.length;i++){s[i].toggleAttribute('hidden',s[i].getAttribute('data-screen')!==name);}}
