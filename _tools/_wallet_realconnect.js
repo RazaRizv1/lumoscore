@@ -66,7 +66,10 @@ function wcAddr(s){var a=s&&s.namespaces&&s.namespaces.stellar&&s.namespaces.ste
 function wcConnect(deepLink){
   return wcClient().then(function(client){
     return wcTimeout(client.connect({requiredNamespaces:{stellar:{methods:WC_METHODS,chains:[WC_CHAIN],events:[]}}}),20000,'WalletConnect did not respond \\u2014 try again').then(function(res){
-      if(res.uri&&deepLink&&isMobile())wcPoke(deepLink,res.uri);
+      // Deep-linked straight into the wallet app? Then the pairing modal is noise - the user is already
+        // in LOBSTR approving. Only the generic WalletConnect row (no deepLink) needs the QR/list UI.
+        var wentDirect=!!(res.uri&&deepLink&&isMobile());
+        if(wentDirect)wcPoke(deepLink,res.uri);
       return loadMod('https://esm.sh/@walletconnect/modal@2').then(function(mm){
         var Modal=mm.WalletConnectModal||mm.default;
           // WalletConnect Modal defaults to z-index 89. Our own connect modal sits at 100000, so the
@@ -79,7 +82,7 @@ function wcConnect(deepLink){
             themeVariables:{"--wcm-z-index":"2147483000"},
             explorerExcludedWalletIds:"ALL",
             explorerRecommendedWalletIds:[WC_LOBSTR_ID]});
-        if(res.uri)md.openModal({uri:res.uri});
+        if(res.uri&&!wentDirect)md.openModal({uri:res.uri});
           try{setTimeout(function(){var el=document.querySelector("wcm-modal,w3m-modal");if(el)el.style.zIndex="2147483000";},60);}catch(_){}
           return md;
       },function(){return null;}).then(function(md){
