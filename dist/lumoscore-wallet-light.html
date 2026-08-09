@@ -7735,11 +7735,120 @@ function wcSession(){
 // True ONLY for a wallet currently connected over WalletConnect. A missing or different value means the
 // extension path — which is what every session created before this existed has — so nothing that already
 // works changes. Disconnect removes lumos.wallet, which turns this off on its own.
+// ---- SEP-0007 transport (LOBSTR mobile, no WalletConnect) -------------------------------------
+// LOBSTR registers the web+stellar: scheme on mobile, verified on a real device. That gives a route
+// that needs no WalletConnect relay and no Reown project id.
+// Two halves, because SEP-7 only covers SIGNING:
+//   connect - SEP-7 has no way to return an address, so the user supplies their public key. This is
+//             identity only: it proves nothing and grants nothing. Every state-changing action still
+//             has to be approved inside LOBSTR, so a wrong or hostile address can only mislead the
+//             person who typed it, never move funds.
+//   sign    - the tx hash is computed BEFORE signing (signing does not change it), LOBSTR is handed
+//             the xdr and signs AND SUBMITS it itself, and we poll Horizon for that hash. Once it
+//             lands we return the envelope_xdr, so the seven existing signing paths submit it as
+//             usual. Horizon returns the original result for a duplicate submission, so that second
+//             submit is a harmless no-op and none of those transforms needed changing.
+var SEP7_HORIZON='https://horizon.stellar.org';
+var _sbP=null;
+function lxSbase(){ if(_sbP)return _sbP; _sbP=new Promise(function(res,rej){
+  if(window.StellarBase)return res(window.StellarBase);
+  var el=document.createElement('script');
+  el.src='https://cdn.jsdelivr.net/npm/@stellar/stellar-base@13.0.1/dist/stellar-base.min.js';
+  el.onload=function(){ window.StellarBase?res(window.StellarBase):rej(new Error('Stellar SDK failed to load')); };
+  el.onerror=function(){ rej(new Error('Stellar SDK failed to load')); };
+  document.head.appendChild(el); }); return _sbP; }
+function lxIsMobile(){ return /Android|iPhone|iPad|iPod|Mobi/i.test(navigator.userAgent||''); }
+function lxSep7Supported(){ return lxIsMobile(); }
+// G... StrKey, 56 chars. Cheap shape check first, then the SDK confirms the checksum, then Horizon
+// confirms the account actually exists - a typo that survives the checksum still gets caught.
+function lxValidAddr(a){ return /^G[A-Z2-7]{55}$/.test(String(a||'').trim()); }
+function lxSep7Connect(){
+  return new Promise(function(resolve,reject){
+    var modal=document.querySelector('.lxw-modal'); if(!modal)return reject(new Error('modal missing'));
+    var scr=modal.querySelector('.lxw-screen[data-screen="sep7addr"]');
+    if(!scr){
+      scr=document.createElement('div');
+      scr.className='lxw-screen'; scr.setAttribute('data-screen','sep7addr'); scr.setAttribute('data-lx-noswap','');
+      scr.innerHTML='<div class="lxw-head"><div class="lxw-htitles"><h3 class="lxw-title">Connect LOBSTR</h3>'
+        +'<p class="lxw-sub">Paste your Stellar address. You approve every transaction in the LOBSTR app.</p></div></div>'
+        +'<div style="padding:4px 20px 20px">'
+        +'<input class="lxw-searchin lx-s7in" type="text" inputmode="verbatim" autocapitalize="characters" spellcheck="false" placeholder="G..." style="width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px">'
+        +'<div class="lx-s7err" style="min-height:18px;margin:8px 2px 0;font-size:12.5px;color:#ff6b6b"></div>'
+        +'<button type="button" class="lx-s7go" style="width:100%;margin-top:10px;padding:13px 16px;border:0;border-radius:12px;background:var(--accent,#ea6a2c);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Continue</button>'
+        +'<p style="margin:14px 2px 0;font-size:12px;line-height:1.5;color:var(--text-soft,#8a8fa3)">Open LOBSTR, tap your account and copy the address. This only tells LumosCore which account to display - it cannot move funds.</p>'
+        +'</div>';
+      modal.appendChild(scr);
+    }
+    var inp=scr.querySelector('.lx-s7in'), go=scr.querySelector('.lx-s7go'), er=scr.querySelector('.lx-s7err');
+    er.textContent=''; inp.value='';
+    screen('sep7addr');
+    setTimeout(function(){ try{inp.focus();}catch(_){} },60);
+    var busy=false;
+    function fail(m){ er.textContent=m; go.disabled=false; go.style.opacity=''; busy=false; }
+    function submit(){
+      if(busy)return; var a=String(inp.value||'').trim().toUpperCase();
+      if(!lxValidAddr(a))return fail('That is not a Stellar address - it should start with G and be 56 characters.');
+      busy=true; go.disabled=true; go.style.opacity='.6'; er.textContent='';
+      lxSbase().then(function(SB){
+        try{ SB.Keypair.fromPublicKey(a); }catch(_){ throw new Error('checksum'); }
+        return fetch(SEP7_HORIZON+'/accounts/'+a).then(function(r){
+          if(r.status===404)throw new Error('missing');
+          if(!r.ok)throw new Error('horizon');
+          return a;
+        });
+      }).then(function(addr){
+        try{ localStorage.setItem('lumos.transport','sep7'); }catch(_){}
+        resolve(addr);
+      }).catch(function(e){
+        var m=(e&&e.message)||'';
+        if(m==='checksum')return fail('That address has a typo - the checksum does not match.');
+        if(m==='missing') return fail('No account with that address exists on Stellar mainnet yet.');
+        return fail('Could not reach Stellar to check that address. Try again.');
+      });
+    }
+    go.onclick=submit;
+    inp.onkeydown=function(e){ if(e.key==='Enter')submit(); };
+  });
+}
+// Hand the xdr to LOBSTR and wait for the network, not for the app - there is no return channel.
+function lxSep7Sign(xdr,passphrase){
+  return lxSbase().then(function(SB){
+    var net=passphrase||SB.Networks.PUBLIC;
+    var hash;
+    try{ hash=new SB.Transaction(xdr,net).hash().toString('hex'); }
+    catch(e){ throw new Error('Could not read that transaction'); }
+    var link='web+stellar:tx?xdr='+encodeURIComponent(xdr)+'&msg='+encodeURIComponent('LumosCore');
+    try{ window.location.href=link; }catch(_){}
+    // Poll for the hash. Signing does not change it, so this is the same transaction LOBSTR submits.
+    var tries=0, MAX=72;   // 72 x 2.5s = 3 minutes to approve in the app
+    return new Promise(function(res,rej){
+      (function tick(){
+        tries++;
+        fetch(SEP7_HORIZON+'/transactions/'+hash).then(function(r){
+          if(r.status===200)return r.json().then(function(tx){
+            if(tx&&tx.envelope_xdr)return res(tx.envelope_xdr);
+            rej(new Error('Signed, but the transaction could not be read back'));
+          });
+          if(tries>=MAX){ var e=new Error('No approval received - open LOBSTR, approve the request, then try again'); e.code='SHOW_MSG'; return rej(e); }
+          setTimeout(tick,2500);
+        }).catch(function(){
+          if(tries>=MAX){ var e2=new Error('Lost contact with Stellar while waiting for approval'); e2.code='SHOW_MSG'; return rej(e2); }
+          setTimeout(tick,2500);
+        });
+      })();
+    });
+  });
+}
+window.__lxSep7Active=function(){ try{ return (localStorage.getItem('lumos.transport')||'')==='sep7'; }catch(_){ return false; } };
 window.__lxWcActive=function(){try{
+  if((localStorage.getItem('lumos.transport')||'')==='sep7')return true;
   return !!WC_PROJECT_ID&&(localStorage.getItem('lumos.transport')||'')==='wc'
     &&!!localStorage.getItem('lumos.wallet')&&!!localStorage.getItem('lumos.wcTopic');
 }catch(_){return false;}};
 window.__lxWcSign=function(xdr,passphrase){
+  // sep7 is a separate transport behind the same entry point, so the seven signing paths that call
+  // __lxWcSign need no changes at all.
+  if(window.__lxSep7Active&&window.__lxSep7Active())return lxSep7Sign(xdr,passphrase);
   var chain=(String(passphrase||'').indexOf('Test Network')>=0)?'stellar:testnet':WC_CHAIN;
   return wcSession().then(function(cs){
     // Refuse rather than sign against a network this session never approved.
@@ -7823,8 +7932,12 @@ var A={
       if(getPk)return Promise.resolve(getPk()).then(function(pk){if(!pk)throw notInstalled('LOBSTR');return {address:pk,transport:'ext'};});
       // No extension. Without a Project ID WalletConnect cannot init, so keep the old, useful message
       // rather than replacing it with one about configuration the visitor cannot act on.
-      if(!WC_PROJECT_ID)throw notInstalled('LOBSTR');
-      return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};});
+      // Order matters: WalletConnect is the better experience where it is configured, so prefer it.
+      // Fall back to SEP-7 on mobile - no relay, no project id, and verified opening LOBSTR on a
+      // real device. Desktop with neither has nothing left to try.
+      if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};});
+      if(lxSep7Supported())return lxSep7Connect().then(function(a){return {address:a,transport:'sep7'};});
+      throw notInstalled('LOBSTR');
     });},
     // WalletConnect needs a project id to init the SignClient — gated until one is provided.
     walletconnect:function(){if(!WC_PROJECT_ID)return Promise.reject(needsSetup('WalletConnect needs a free Project ID (cloud.reown.com) \u2014 add it to enable this option'));
