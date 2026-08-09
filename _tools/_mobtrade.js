@@ -65,6 +65,27 @@ const SCRIPT = '<script id="lx-mobtrade">(function(){'
 // The design paints XLM as an <img> inside the pay chip. Grab it once, before we rebuild anything.
 + 'function grabXlm(){if(XLMICON)return XLMICON;try{var img=q(".mdxa-pane .mdxa-trade-ic img");'
 + 'if(img&&img.src)XLMICON="url(\\""+img.src+"\\")";}catch(_){}return XLMICON;}'
+// ---- the adapter ---------------------------------------------------------------------------
+// The mobile pane mirrors the desktop pane one-for-one — .mdxa-pane-swap / .mdxa-trade-field /
+// .mdxa-trade-ir / .mdxa-side-btn / .mdxa-trade-cta all have exact .dxa-* counterparts. So rather
+// than write a second implementation of quoting and transaction building for a real-funds page, we
+// give each mobile element the DESKTOP class name alongside its own. The engine in _dexassetdata.js
+// then finds these panes with the selectors it already has, and mobile executes through exactly the
+// same, already-proven code path as desktop: same quote, same fee, same manageBuyOffer /
+// manageSellOffer / pathPaymentStrictSend, same signing.
+//
+// Class names are exact tokens, so .dxa-pane-swap never matched .mdxa-pane-swap by accident — the
+// two sets stay independent, and the .dxa-* CSS the engine injects is attribute-gated (data-lxic,
+// data-lxbal, .lxq-active) so it stays inert here.
+//
+// applyAll() re-runs constantly (init, a settle interval, mutation observers, on every data
+// arrival), so it does not matter that we alias after the engine has already started.
++ 'var ALIAS=[["mdxa-pane-swap","dxa-pane-swap"],["mdxa-pane-limit","dxa-pane-limit"],'
++ '["mdxa-trade-field","dxa-trade-field"],["mdxa-trade-ir","dxa-trade-ir"],'
++ '["mdxa-trade-frow","dxa-trade-frow"],["mdxa-side-btn","dxa-side-btn"],'
++ '["mdxa-trade-cta","dxa-trade-cta"],["mdxa-tsum","dxa-tsum-row"]];'
++ 'function alias(){ALIAS.forEach(function(a){qa("."+a[0]).forEach(function(el){'
++ 'if(!el.classList.contains(a[1]))el.classList.add(a[1]);});});}'
 + 'function side(pane){var b=q(".mdxa-side-btn.active,button.active",pane);'
 + 'var t=b?(b.textContent||"").trim().toLowerCase():"buy";return t.indexOf("sell")===0?"sell":"buy";}'
 // ---- chips --------------------------------------------------------------------------------------
@@ -91,98 +112,29 @@ const SCRIPT = '<script id="lx-mobtrade">(function(){'
 + 'if(i.hasAttribute("data-lxmt-keep"))return;'
 + 'if(String(i.value).trim()==="100"){i.value="";}'
 + 'if(!i.placeholder)i.placeholder="0.00";});}'
-// ---- swap quote ---------------------------------------------------------------------------------
-// Mid-market from the same price the header shows. It is an estimate, which is what the "≈" already
-// says; price impact and min received stay dashed because nothing here routes an order.
-+ 'function fixQuote(){var pane=q(".mdxa-pane-swap");if(!pane)return;'
-+ 'var p=price(),c=code(),sell=side(pane)==="sell",u=usdRate();'
-+ 'var ins=qa(".mdxa-trade-field input",pane),pin=ins[0],rin=ins[1];'
-+ 'if(!pin)return;'
-+ 'if(!pin.__lxmtBound){pin.__lxmtBound=1;pin.addEventListener("input",function(){setTimeout(fixQuote,0);});}'
-+ 'var pay=parseFloat(String(pin.value).replace(/[^0-9.]/g,""));'
-+ 'var out=null;if(p&&p>0&&isFinite(pay)&&pay>0)out=sell?pay*p:pay/p;'
-+ 'if(rin){rin.setAttribute("readonly","readonly");rin.setAttribute("data-lxmt-keep","1");'
-+ 'rin.value=out==null?"":amt(out);if(!rin.placeholder)rin.placeholder=DASH;}'
-// the "≈ $x" line above the receive field
-+ 'var f=qa(".mdxa-trade-field",pane)[1];'
-+ 'if(f){var est=q(".mdxa-trade-frow .mono",f);'
-+ 'if(est){var usd=(out!=null&&u)?(sell?out*u:out*p*u):null;est.textContent=usd==null?DASH:"\\u2248 "+money(usd);}}'
-// Rate is knowable; the other two are not.
-+ 'qa(".mdxa-tsum",pane).forEach(function(row){var sps=row.querySelectorAll("span");if(sps.length<2)return;'
-+ 'var lab=(sps[0].textContent||"").trim().toLowerCase(),v=sps[sps.length-1];'
-+ 'if(lab.indexOf("rate")===0){v.textContent=(p&&p>0&&c)?("1 "+c+" = "+fmt(p,7)+" XLM"):DASH;}'
-+ 'else if(lab.indexOf("price impact")===0||lab.indexOf("min received")===0){if(v.textContent.trim()!==DASH)v.textContent=DASH;}});}'
-// ---- balances -----------------------------------------------------------------------------------
-+ 'function fixBalances(){var xlm=num(window.__lxDXAxlmFree);if(xlm==null)xlm=num(window.__lxDXAxlm);'
-+ 'var ab=num(window.__lxDXAassetBal),c=code();'
-+ 'qa(".mdxa-pane .mdxa-trade-frow").forEach(function(row){var sp=row.querySelector(".mono");if(!sp)return;'
-+ 'var m=/^(Bal|Avail):/.exec((sp.textContent||"").trim());if(!m)return;'
-+ 'var pane=row.closest(".mdxa-pane");'
-+ 'var sell=pane?side(pane)==="sell":false;'
-+ 'var isLimit=pane&&pane.classList.contains("mdxa-pane-limit");'
-// Whichever asset is being SPENT is the balance that matters: XLM when buying, the asset when selling.
-+ 'var useAsset=sell;var v=useAsset?ab:xlm,unit=useAsset?(c||""):"XLM";'
-+ 'sp.textContent=m[1]+": "+(v==null?DASH:fmt(v,v>=1?2:7)+(unit?" "+unit:""));});}'
 // ---- limit tab ----------------------------------------------------------------------------------
-+ 'function fixLimit(){var pane=q(".mdxa-pane-limit");if(!pane)return;var p=price(),c=code(),u=usdRate();'
-+ 'qa(".mdxa-trade-frow .mono",pane).forEach(function(sp){if(!/^Mkt:/.test((sp.textContent||"").trim()))return;'
-+ 'sp.textContent="Mkt: "+(p==null?DASH:fmt(p,7));});'
-+ 'var sell=side(pane)==="sell",a=assetIcon(),x=grabXlm();'
-+ 'var fields=qa(".mdxa-trade-field",pane);'
-// price is quoted in XLM per CODE; amount is denominated in CODE
-+ 'if(fields[0])setChip(q(".mdxa-trade-asset",fields[0]),"XLM",x);'
-+ 'if(fields[1])setChip(q(".mdxa-trade-asset",fields[1]),c||"",a);'
-+ 'var pin=fields[0]?q("input",fields[0]):null;'
-+ 'var ain=fields[1]?q("input",fields[1]):null;'
-// keep the limit price on the market until the user types (desktop prefills the same way)
-+ 'if(pin){if(!pin.__lxmtBound){pin.__lxmtBound=1;pin.setAttribute("data-lxmt-keep","1");'
-+ 'pin.addEventListener("input",function(){pin.__lxmtTouched=1;setTimeout(fixLimit,0);});}'
-+ 'if(!pin.__lxmtTouched){var want=(p==null?"":String(+(+p).toFixed(7)));if(want&&pin.value!==want)pin.value=want;}}'
-+ 'if(ain&&!ain.__lxmtBound){ain.__lxmtBound=1;ain.addEventListener("input",function(){setTimeout(fixLimit,0);});}'
-+ 'var pv=pin?parseFloat(String(pin.value).replace(/[^0-9.]/g,"")):NaN;'
-+ 'var av=ain?parseFloat(String(ain.value).replace(/[^0-9.]/g,"")):NaN;'
-// ---- Total: a real field, as on desktop (which has Limit price / Amount / Total / Expiry) --------
+// Structure only. Desktop's limit pane has Limit price / Amount / TOTAL / Expiry / Filled when and
+// mobile shipped without a Total, so the engine's limTotInput() — which reads limFields()[2] — had
+// nothing to write into. Build that third field and the engine fills it, keeps it in step with
+// price x amount, and reads it back when the order is placed. Values, balances and the Filled-when
+// row are all the engine's now; we only own the chips, which it cannot paint here.
++ 'function fixLimit(){var pane=q(".mdxa-pane-limit");if(!pane)return;'
++ 'var c=code(),a=assetIcon(),x=grabXlm(),fields=qa(".mdxa-trade-field",pane);'
 + 'var tf=q(".lxmt-totalfield",pane);'
 + 'if(!tf&&fields[1]&&fields[1].parentNode){'
 + 'tf=document.createElement("div");tf.className="mdxa-trade-field lxmt-totalfield";'
-+ 'tf.innerHTML="<div class=\\"mdxa-trade-frow\\"><span>Total</span><span class=\\"mono lxmt-totusd\\"></span></div>"'
-+ '+"<div class=\\"mdxa-trade-ir\\"><input type=\\"text\\" inputmode=\\"decimal\\" placeholder=\\"0.00\\" data-lxmt-keep=\\"1\\"><span class=\\"mdxa-trade-asset\\"></span></div>";'
-+ 'fields[1].parentNode.insertBefore(tf,fields[1].nextSibling);}'
-+ 'if(tf){setChip(q(".mdxa-trade-asset",tf),"XLM",x);'
-+ 'var tin=q("input",tf);'
-+ 'if(tin&&!tin.__lxmtBound){tin.__lxmtBound=1;'
-// Editable, and it drives Amount back the other way: Amount = Total / price.
-+ 'tin.addEventListener("input",function(){tin.__lxmtTouched=1;'
-+ 'var tv=parseFloat(String(tin.value).replace(/[^0-9.]/g,""));var pp=price();'
-+ 'var pv2=pin?parseFloat(String(pin.value).replace(/[^0-9.]/g,"")):NaN;'
-+ 'var use=isFinite(pv2)&&pv2>0?pv2:pp;'
-+ 'if(ain&&isFinite(tv)&&tv>0&&use&&use>0)ain.value=amt(tv/use);'
-+ 'setTimeout(function(){tin.__lxmtTouched=0;fixLimit();},0);});}'
-+ 'if(tin&&!tin.__lxmtTouched){'
-+ 'var tot=(isFinite(pv)&&pv>0&&isFinite(av)&&av>0)?pv*av:null;'
-+ 'tin.value=tot==null?"":amt(tot);}'
-+ 'var tu=q(".lxmt-totusd",tf);'
-+ 'if(tu){var tvNow=parseFloat(String(tin?tin.value:"").replace(/[^0-9.]/g,""));'
-+ 'tu.textContent=(isFinite(tvNow)&&tvNow>0&&u)?("\\u2248 "+money(tvNow*u)+" USD"):DASH;}}'
-// desktop states the pair: "APT/USDC <= 4.18"
-+ 'var op=sell?"\\u2265":"\\u2264";'
-+ 'qa(".mdxa-tsum",pane).forEach(function(row){var sps=row.querySelectorAll("span");if(sps.length<2)return;'
-+ 'if(!/filled when/i.test((sps[0].textContent||"")))return;var v=sps[sps.length-1];'
-+ 'v.textContent=isFinite(pv)&&pv>0?((c?c+"/XLM ":"")+op+" "+fmt(pv,7)):DASH;});}'
-// ---- the fake confirmation ----------------------------------------------------------------------
-+ 'function guardCta(){if(window.__lxMobCta)return;window.__lxMobCta=1;'
-+ 'window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;'
-+ 'if(!t.closest(".mdxa-trade-cta"))return;'
-+ 'e.preventDefault();e.stopImmediatePropagation();'
-+ 'var m="Trading from mobile is not available yet \\u2014 open this page on desktop to place an order.";'
-+ 'try{ if(window.__lxDXAtoast)window.__lxDXAtoast(m,true); else if(window.showToast)window.showToast(m); else alert(m); }catch(_){}'
-+ '},true);'
-+ 'qa(".mdxa-trade-cta").forEach(function(b){if(b.__lxmtNote)return;b.__lxmtNote=1;'
-+ 'var n=document.createElement("div");n.className="lxmt-note";'
-+ 'n.textContent="Order placement is desktop-only for now.";'
-+ 'if(b.parentNode)b.parentNode.insertBefore(n,b.nextSibling);});}'
++ 'tf.innerHTML="<div class=\\"mdxa-trade-frow\\"><span>Total</span><span class=\\"mono\\"></span></div>"'
++ '+"<div class=\\"mdxa-trade-ir\\"><input type=\\"text\\" inputmode=\\"decimal\\" placeholder=\\"0.00\\" readonly><span class=\\"mdxa-trade-asset\\"></span></div>";'
++ 'fields[1].parentNode.insertBefore(tf,fields[1].nextSibling);fields=qa(".mdxa-trade-field",pane);}'
++ 'if(fields[0])setChip(q(".mdxa-trade-asset",fields[0]),"XLM",x);'
++ 'if(fields[1])setChip(q(".mdxa-trade-asset",fields[1]),c||"",a);'
++ 'if(fields[2])setChip(q(".mdxa-trade-asset",fields[2]),"XLM",x);'
+// Re-assert readonly every pass: something downstream strips the attribute off the freshly built
+// field, and an editable Total would let a user type a figure the order does not actually use.
++ 'var tin=fields[2]?q("input",fields[2]):null;'
++ 'if(tin&&!tin.hasAttribute("readonly"))tin.setAttribute("readonly","readonly");}'
 // ---- run ----------------------------------------------------------------------------------------
-+ 'function pass(){try{grabXlm();fixSides();fixSwapChips();clearDefaults();fixQuote();fixBalances();fixLimit();guardCta();}catch(_){}}'
++ 'function pass(){try{alias();grabXlm();fixSides();fixSwapChips();clearDefaults();fixLimit();}catch(_){}}'
 + 'if(document.readyState!=="loading")pass();else document.addEventListener("DOMContentLoaded",pass);'
 + 'setInterval(pass,900);'
 + 'window.addEventListener("click",function(){setTimeout(pass,60);},true);'
