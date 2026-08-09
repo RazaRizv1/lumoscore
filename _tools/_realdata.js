@@ -12,7 +12,7 @@ const DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="
 
 // CSS goes in <head> so the "hide value pills until the script paints them" rule applies BEFORE first
 // paint. When it was bundled with the script at body-end it loaded too late and the mock pills flashed.
-const CSS='<style id="lx-realdata-css">.greeting-row>.greeting{flex:1 1 auto!important;min-width:0!important}.status-row{display:grid!important;grid-template-columns:auto 1fr 1fr 1fr 1fr!important;gap:10px!important;width:100%!important}.status-row .status-pill{width:auto!important}'
+const CSS='<style id="lx-realdata-css">.greeting-row>.greeting{flex:1 1 auto!important;min-width:0!important}.status-row{display:grid!important;grid-template-columns:auto 1fr 1fr 1fr 1fr!important;gap:10px!important;width:100%!important}/* lx-nstats-mobile: the five-column row above is a DESKTOP layout. On a phone it overflows - auto sizes to its content and every 1fr floors at min-content, so the last card runs off screen. Two columns fit, and min-width:0 lets the cards actually shrink into them. */@media (max-width:760px){.status-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}.status-row>.status-pill{min-width:0!important;width:auto!important}.status-row>.status-pill.lx-netcard{grid-column:1 / -1}}.status-row .status-pill{width:auto!important}'
 +'.status-row .status-pill:not(.lx-netcard){opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready .status-pill:not(.lx-netcard){opacity:1!important;animation:none;transition:opacity .3s ease}'
 +'</style>';
 const SCRIPT='<script id="lx-realdata">(function(){'

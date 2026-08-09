@@ -32,9 +32,10 @@ function scriptFor(net){
   +'var PLUG=\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>\';'
   +'function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}'
   +'function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\\u2026"+a.slice(-4):a;}'
-  +'function sync(){var chip=document.querySelector(".lx-topwallet");if(!chip)return;'
+  +'function sync(){'
   +'var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);'
-  +'try{var _lo=document.querySelector(".nx-logout");if(_lo)_lo.style.display=on?"":"none";}catch(_){}'
+  +'mobileMenu(on,addr);'
+  +'var chip=document.querySelector(".lx-topwallet");if(!chip){if(addr)fixOwnAddrCopies(addr);return;}'
   +'if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");}'
   // AUDIT #7 (FUNDS): the chip's text was updated to the real G… address but the sibling copy button kept the
   // design's baked data-copy="0x068dc5d4…" (an Aptos/EVM address), so "Copy address" silently yielded a foreign
@@ -48,7 +49,15 @@ function scriptFor(net){
   // baked a demo EVM/Aptos address into data-copy. Rewrite ONLY targets that clearly mean "this user's wallet
   // address" AND currently hold a 0x value — so a legitimate EVM address (bridge destination) is never touched.
   // NOTE: must sit AFTER sync()'s closing brace — putting it between the if(on) and its else broke the script.
-  +'function fixOwnAddrCopies(addr){if(!addr)return;try{'
+  +'function mobileMenu(on,addr){try{'
+  +'var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");'
+  +'for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";'
+  +'var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");'
+  +'if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");'
+  +'if(ms)ms.textContent=on?("Connected \\u00b7 "+netLabel()):"Tap to connect a wallet";'
+  +'}catch(_){}}'
+  +'function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}'
+    +'function fixOwnAddrCopies(addr){if(!addr)return;try{'
   +'var all=document.querySelectorAll("[data-copy]");'
   +'for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";'
   +'if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;'
@@ -73,7 +82,7 @@ function scriptFor(net){
   // network rows carry .lxw-row but no data-wallet, so the real handler skipped them and the design's
   // demo listener navigated. It now claims data-lxnet rows too, so this flow stays in the modal.
   +'var dc=t.closest(".lx-topwallet[data-lxdisc=\\"1\\"]");if(dc){e.preventDefault();e.stopImmediatePropagation();if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}'
-  +'var lo=t.closest(".nx-logout");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.reload();}catch(_){sync();}return;}},true);'
+  +'var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.reload();}catch(_){sync();}return;}},true);'
   +'if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);'
   +'setTimeout(sync,300);'
   +'})();</script>';
