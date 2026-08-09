@@ -18,6 +18,20 @@ const B = String.fromCharCode(92);
 const STYLE = '<style id="lx-mobwallet-css">'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
   + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block{visibility:hidden}'
+  // The shared activity renderer emits DESKTOP row markup, and at 375px .activity-info collapsed to
+  // ~92px so the 'From G…' line wrapped and spilled out of the card. Let the middle column take the
+  // slack and truncate, and stop the amount and the explorer link from being squeezed.
+  + '.activity-block .activity-row{align-items:center;gap:10px}'
+  + '.activity-block .activity-info{flex:1 1 auto;min-width:0}'
+  // .type is itself a flex container, so white-space could never stop it wrapping — it was breaking
+  // onto three lines and making every row 93px tall. Keep its children on one line and let the ticker
+  // be the thing that truncates.
+  + '.activity-block .activity-info .type{display:flex;flex-wrap:nowrap;align-items:center;gap:6px;min-width:0;white-space:nowrap;overflow:hidden}'
+  + '.activity-block .activity-info .type>*{flex:0 0 auto}'
+  + '.activity-block .activity-amt{min-width:0}'
+  + '.activity-block .activity-info .meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}'
+  + '.activity-block .activity-amt{flex:0 0 auto;text-align:right;white-space:nowrap}'
+  + '.activity-block .lx-txlink{flex:0 0 auto;margin-left:8px}'
   + '.lxmw-empty{padding:18px 4px;text-align:center;color:var(--text-soft,#8a8fa3);'
   + 'font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}'
   + '.lxmw-row{display:flex;align-items:center;gap:11px;padding:13px 2px;border-bottom:1px solid var(--border)}'
@@ -96,7 +110,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'function fixAssets(){var list=q("#assetList");if(!list||activeTab()!==0)return;'
 + 'var hold=window.__lxHoldings;if(!hold||!hold.length)return;'
 + 'var u=rate();'
-+ 'var sig="a|"+hold.map(function(h){return (h.code||"")+":"+(h.bal||h.balance||0);}).join("|");'
++ 'var sig="a|"+(window.__lxRows?"v":"n")+"|"+hold.map(function(h){return (h.code||"")+":"+(h.bal||h.balance||0);}).join("|");'
 + 'if(list.getAttribute("data-lxmw")===sig)return;list.setAttribute("data-lxmw",sig);'
 + 'var html="";'
 + 'hold.forEach(function(h){'
@@ -149,7 +163,22 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'b.forEach(function(btn){btn.addEventListener("click",function(){setTimeout(pass,30);setTimeout(pass,260);});});}'
 
 // ---- recent activity --------------------------------------------------------------------------------
+// Desktop tints .activity-icon by operation type and paints the asset logo over it. The mobile rows
+// shipped with no icon element at all, so there was nothing for the logo guard to heal either.
++ 'function actIcon(kind,code,native){'
++ 'var tint={Received:"#10b981",Sent:"#ef4444",Swapped:"#8b5cf6",Trustline:"#64748b",Order:"#ea6a2c",Liquidity:"#06b6d4"}[kind]||"#64748b";'
++ 'var lg=logoFor(code,native);'
++ 'var st="background-color:"+tint+"22;color:"+tint+";";'
++ 'if(lg)st+="background-image:url(\\x27"+lg+"\\x27);background-size:cover;background-position:50% 50%;";'
++ 'return \'<div class="lxmw-ico lxmw-actico" style="\'+st+\'"></div>\';}'
 + 'function fixActivity(){var block=q(".activity-block");if(!block)return;'
+// _walletdata.js renders this same block — .activity-block is shared by both layouts — and its version
+  // is richer: tinted type icons with the asset logo painted over them, day dividers, explorer links. But
+  // it runs after the per-asset pricing, so on a phone the section sat empty for a long time. Ours is a
+  // fast first paint that STANDS DOWN the moment the real one lands. .lxp is that renderer own ownership
+  // marker (its CSS hides every un-marked node), so it is the honest test — the design mock also uses
+  // .activity-row, which is why matching on the tag alone would never render anything.
++ 'if(q(".activity-row .lxp",block)||q(".day-divider.lxp",block))return;'
 + 'var ops=window.__lxOps;if(!ops)return;'
 + 'var sig=ops.length+":"+((ops[0]&&ops[0].id)||"");'
 + 'if(block.getAttribute("data-lxmw")===sig)return;block.setAttribute("data-lxmw",sig);'
@@ -157,6 +186,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'var me=addr(),html="";'
 + 'ops.slice(0,25).forEach(function(o){'
 + 'var lbl=o.type||"operation",sub="",amt="";'
++ 'var aCode=(o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,aNat=(o.asset_type==="native");'
 + 'if(o.type==="payment"){lbl=(o.to===me)?"Received":"Sent";'
 + 'amt=fmt(+o.amount)+" "+(o.asset_type==="native"?"XLM":(o.asset_code||""));'
 + 'sub=(o.to===me)?("from "+trunc(o.from)):("to "+trunc(o.to));}'
@@ -169,13 +199,13 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'sub=(+o.amount===0)?"cancelled":"placed";amt=(+o.amount?fmt(+o.amount):"");}'
 + 'else if(o.type&&o.type.indexOf("liquidity_pool")===0){lbl="Liquidity";sub=o.type.replace(/_/g," ");}'
 + 'var when=o.created_at?String(o.created_at).slice(0,10):"";'
-+ 'html+=\'<div class="lxmw-row"><div><div class="lxmw-nm">\'+esc(lbl)+\'</div>\''
++ 'html+=\'<div class="lxmw-row">\'+actIcon(lbl,aCode,aNat)+\'<div><div class="lxmw-nm">\'+esc(lbl)+\'</div>\''
 + '+\'<div class="lxmw-sub">\'+esc(sub||when)+\'</div></div>\''
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(amt)+\'</div><div class="u">\'+esc(when)+\'</div></div></div>\';});'
 + 'block.innerHTML=html;}'
 // ---- run --------------------------------------------------------------------------------------------
 + 'function pass(){try{fixHeader();fixOrders();wireTabs();fixAssets();fixPools();fixActivity();'
-+ 'if(window.__lxWalletReady&&!document.body.classList.contains("lxmw-ready"))document.body.classList.add("lxmw-ready");'
++ 'if((window.__lxWalletEarly||window.__lxWalletReady)&&!document.body.classList.contains("lxmw-ready"))document.body.classList.add("lxmw-ready");'
 + '}catch(_){}}'
 + 'if(document.readyState!=="loading")pass();else document.addEventListener("DOMContentLoaded",pass);'
 + 'setInterval(pass,900);'
