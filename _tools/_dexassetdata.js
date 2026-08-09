@@ -944,8 +944,15 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       var _spon=(+a.num_sponsoring||0)-(+a.num_sponsored||0);
       var _minRes=(2+sub+_spon)*0.5;   // Stellar base reserve: 0.5 XLM per (2 base + each subentry/sponsored entry)
       var _free=Math.max(0, nat-_minRes-_sellLiab-0.001);   // 0.001 covers a few hundred base fees
+      // AUDIT (user-reported: "it showed XLM available, then the swap failed on insufficient balance"):
+      // buying an asset the account does not hold yet adds a changeTrust op, and that new subentry raises
+      // the minimum reserve by a further 0.5 XLM. Both _free and the wallet's __lxMaxXLM describe the
+      // balance BEFORE that op, so offering all of it guaranteed a failure at submit. Exclude the reserve
+      // the trade itself is about to lock up, so the figure shown is what is genuinely tradable.
+      var _trustRes=(!has&&!NATIVE)?0.5:0;
       window.__lxDXAxlm=nat; window.__lxDXAxlmFree=Math.max(0, nat-_minRes-_sellLiab);
-      window.__lxDXAxlmSpend=(window.__lxMaxXLM!=null)?window.__lxMaxXLM:_free;
+      var _spendBase=(window.__lxMaxXLM!=null)?window.__lxMaxXLM:_free;
+      window.__lxDXAxlmSpend=Math.max(0,_spendBase-_trustRes);
       window.__lxDXAassetBal=has?ab:0; window.__lxDXAhasTrust=has; guardApply();
     }).catch(function(){ window.__lxDXAwalletLoading=false; window.__lxDXAxlm=null; });
   }
