@@ -348,7 +348,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       // the user may hold LP shares in pools outside the KNOWN launchpad set — fetch those so "My
       // Positions" here matches the wallet's Liq Pools count instead of only counting KNOWN pools.
       var haveIds={}; pools.forEach(function(p){ haveIds[p.id]=1; });
-      var extraIds=[]; for(var _id in myShares){ if(myShares[_id]>0.001&&!haveIds[_id])extraIds.push(_id); }
+      // ANY non-zero balance counts. The old >0.001 dust cut is exactly why this page disagreed with
+      // the wallet: an XLM/LUMOS position of 0.0000715 LP tokens is a real position that Horizon
+      // reports and the wallet lists, so hiding it showed "My Pools 8" against "Liq Pools 9".
+      // A held position is a held position — it is still owned and still withdrawable.
+      var extraIds=[]; for(var _id in myShares){ if(myShares[_id]>0&&!haveIds[_id])extraIds.push(_id); }
       return Promise.all(extraIds.map(function(id){ return getJSON(H+"/liquidity_pools/"+id).then(function(p){ if(!p)return null; return volLater(id,poolFromRec(p)); }); })).then(function(ex){
       var extra=(ex||[]).filter(Boolean);
       function _fin(p){ p.tvlXlm=p.xlm*2; p.tvlUsd=p.tvlXlm*xlmUsd; p.vol24Usd=(p.vol24Xlm||0)*xlmUsd; p.fees24Xlm=(p.vol24Xlm||0)*p.fee/100; p.fees24Usd=p.fees24Xlm*xlmUsd; p.mineShares=myShares[p.id]||0; p.mineFrac=p.shares>0?p.mineShares/p.shares:0; }
@@ -1359,6 +1363,25 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var opts=assets().filter(function(a){ return akey(a)!==other; });   // a pool cannot pair an asset with itself
       if(!opts.length){ list.innerHTML='<div class="lx-cpnone" style="padding:14px 12px;font-size:13px;color:var(--text-soft,#6b6b76)">No other asset in your wallet to pair with. A pool needs two different assets.</div>'; return; }
       list.innerHTML=opts.map(function(a){ return '<button type="button" class="ad-item lx-cpitem" data-code="'+esc(a.code)+'" data-issuer="'+esc(a.issuer)+'"><span class="ad-ico" style="width:26px;height:26px;overflow:hidden;border-radius:50%;display:inline-flex;background:transparent">'+logo(a)+'</span><span class="ad-meta"><span class="ad-tk">'+esc(a.code)+'</span><span class="ad-nm">'+(a.native?"Stellar Lumens":esc(a.code))+'</span></span><span class="ad-bal">'+famt(a.bal)+'</span></button>'; }).join("");
+      // Resolve the real token art. logo() above only consults two STATIC maps keyed on code, so any
+      // asset not pre-seeded there fell back to a coloured letter — which is why this dropdown showed
+      // X / A / B / D badges while the pool tables next to it showed proper logos. amFetchLogo is the
+      // same resolver those tables use: cache first, then the asset's TOML via stellar.expert.
+      list.querySelectorAll(".lx-cpitem").forEach(function(it){
+        var code=it.getAttribute("data-code")||"", iss=it.getAttribute("data-issuer")||"";
+        var host=it.querySelector(".ad-ico>span")||it.querySelector(".ad-ico");
+        if(host && !host.querySelector("img")){
+          try{ amFetchLogo(code,iss,function(u){
+            if(!u||!host.isConnected)return;
+            if(host.querySelector("img"))return;
+            var im=document.createElement("img");
+            im.src=u; im.alt=""; im.setAttribute("data-lxc",code); im.setAttribute("data-lxi",iss);
+            im.style.cssText="position:absolute;inset:0;width:100%;height:100%;object-fit:cover";
+            im.onerror=function(){ this.remove(); };   // fall back to the letter already underneath
+            host.appendChild(im);
+          }); }catch(_){}
+        }
+      });
       list.querySelectorAll(".lx-cpitem").forEach(function(it){ it.addEventListener("click",function(e){ e.preventDefault(); e.stopImmediatePropagation(); selectItem(idx,it); }); });
     }
     var dds=[].slice.call(modal.querySelectorAll(".asset-dropdown")); dds.forEach(function(dd,i){ fill(dd,i); });

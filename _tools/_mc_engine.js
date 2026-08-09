@@ -1,7 +1,11 @@
 (function(){
 if(window.__lxMC)return;window.__lxMC=true;
 var CHAINS=/*CHAINS*/;
-var ORDER=["aptos","hedera","starknet","vechain","worldchain","stellar","xrpl"];
+// Networks offered in the "Choose a network" screen. Only the chains LumosCore actually runs on —
+// listing Aptos/Hedera/Starknet/VeChain/World Chain advertised connections that go nowhere.
+// CHAINS still defines the others: this controls what is OFFERED, not what the engine understands,
+// so an existing session on another chain keeps rendering rather than breaking.
+var ORDER=["stellar","xrpl"];
 var BASE="aptos",cur=BASE,obs=null;
 function noswap(node){
   var el=node.nodeType===3?node.parentNode:node;
