@@ -288,6 +288,10 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       else if(lbl.indexOf("supply")===0){ if(supply!=null){ if(val)setText(val,abbrNum(supply)); } else if(val)setText(val,"—"); if(sub)setText(sub,NATIVE?"XLM circulating":(CODE+" issued")); }   /* sub ALWAYS names THIS asset (the mock says "USDC issued") */
     });
     if(assetXlm>0||supply!=null){ var sr=q(".stat-row"); if(sr)sr.classList.add("lxda"); }
+    // Published for the MOBILE trade adapter (_mobtrade.js). That pane is built from .mdxa-* markup with
+    // no desktop counterpart, so it cannot reuse the selectors above — but it can reuse the values.
+    try{ window.__lxDXAcode=CODE; window.__lxDXAissuer=ISSUER; window.__lxDXAnative=!!NATIVE;
+         if(assetXlm>0)window.__lxDXAassetXlm=assetXlm; }catch(_){}
     // chart-head price display (keep consistent with the selected asset). Same mock problem as the stat
     // cells: dash the baked price + HIDE the baked "▲ 2.66% (24h)" pill until the real change is known.
     var _pill=q(".price-display .change-pill");
@@ -814,6 +818,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       return navigator.clipboard.writeText(v).catch(legacy); }catch(_){}
     return legacy();
   }
+  // Exposed so the mobile trade layer (_mobtrade.js) raises the SAME toast as everything else here
+  // rather than inventing a second look.
+  try{ window.__lxDXAtoast=dxToast; }catch(_){}
   function wireCopy(){ if(window.__lxDXAcopy)return; window.__lxDXAcopy=1;
     var proxy=document.createElement("button"); proxy.className="lx-tw-copy"; proxy.setAttribute("aria-hidden","true"); proxy.style.cssText="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;opacity:0;pointer-events:none"; document.body.appendChild(proxy);
     // The MOBILE issuer chip has no .copy-i — its icons are bare <svg> inside the .addr[data-copy] span
@@ -829,8 +836,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       if(document.querySelector(".lx-topwallet")){
         proxy.setAttribute("data-copy",val); proxy.dispatchEvent(new MouseEvent("click",{bubbles:true}));
       } else {
-        dxCopyText(val).then(function(){ dxCenterToast("Issuer address copied"); },
-                             function(){ dxCenterToast("Could not copy \\u2014 long-press to select"); });
+        // Match desktop exactly: the design's handler raises "Copied to clipboard" in a dark pill with a
+        // green check, and dxToast is a deliberate copy of that styling — so use it rather than the
+        // plain centre pill, and use the same wording.
+        dxCopyText(val).then(function(){ dxToast("Copied to clipboard"); },
+                             function(){ dxToast("Could not copy \\u2014 long-press to select",true); });
       }
     },true);
   }

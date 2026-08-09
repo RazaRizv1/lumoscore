@@ -66,18 +66,23 @@ const STYLE = '<style id="lx-assetstats">'
   + '.stat-cell .val{font-size:17px}.stat-cell .val .u{font-size:12px}'
   + '.stat-cell .lbl{font-size:10px;letter-spacing:.06em;margin-bottom:5px}'
   + '.stat-cell .sub{font-size:11px;white-space:normal;overflow-wrap:anywhere}'
-  // The tab strip holds ~442px of tabs in a 342px box. Wrapping it onto two rows pushed Pools onto a
-  // line of its own, so keep all four on ONE line and make the horizontal scroll deliberate instead:
-  // snap points so it comes to rest on a tab rather than mid-label, momentum scrolling, and no
-  // scrollbar gutter. flex:0 0 auto stops the tabs from being squeezed to fit.
-  + '.tabs-bar{overflow-x:auto !important;flex-wrap:nowrap !important;scroll-snap-type:x proximity;'
-  + '-webkit-overflow-scrolling:touch;scrollbar-width:none;-ms-overflow-style:none;overscroll-behavior-x:contain}'
-  + '.tabs-bar::-webkit-scrollbar{display:none}'
-  + '.tabs-bar>*{flex:0 0 auto;scroll-snap-align:start}'
+  // The tab strip is ~428px of tabs in a 342px box. Wrapping pushed Pools onto its own row; scrolling
+  // let the whole strip slide under a finger and settle anywhere. Neither is "fixed in place", so make
+  // the tabs FIT instead: the four share the width equally and the row cannot scroll at all.
+  // The count badges are what overflow it — they alone are ~100px (Holders 191,691 is 48px of that).
+  // Dropping them below 760px buys enough room that even a seven-digit holder count cannot reopen the
+  // problem; desktop keeps its counts, and each count is still shown inside its own tab panel.
+  + '.tabs-bar{overflow-x:hidden !important;flex-wrap:nowrap !important;gap:0 !important}'
+  + '.tabs-bar>*{flex:1 1 0 !important;min-width:0 !important;padding-left:4px !important;'
+  + 'padding-right:4px !important;font-size:12.5px !important;justify-content:center !important;'
+  + 'text-align:center;white-space:nowrap}'
+  + '.tabs-bar .count{display:none !important}'
   // The swap panel painted each token logo into a 10px box inside a 20px black circle, so the icon read
   // as a dot with a black ring around it. The 10px comes from an INLINE style on the design's wrapper,
   // which is why these need !important to win.
-  + '.mdxa-trade-ic{width:24px !important;height:24px !important;background:transparent !important;'
+  // background-COLOR, not the `background` shorthand: the shorthand also resets background-image, and
+  // with !important it beat the inline logo URL the trade layer sets, blanking the icon it just fixed.
+  + '.mdxa-trade-ic{width:24px !important;height:24px !important;background-color:transparent !important;'
   + 'overflow:hidden;border-radius:50%;flex:0 0 auto}'
   + '.mdxa-trade-ic>*{width:24px !important;height:24px !important}'
   + '.mdxa-trade-ic img{width:100% !important;height:100% !important;object-fit:cover;display:block}'
