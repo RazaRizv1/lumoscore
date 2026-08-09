@@ -15,6 +15,7 @@ const KEYS = ['lumoscore-dex-asset.html', 'lumoscore-dex-asset-dark.html', 'lumo
 const STYLE = `<style id="lx-dxa-css">
 /* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
 .asset-header:not(.lxda) .asset-name,.asset-header:not(.lxda) .asset-ticker,.asset-header:not(.lxda) .asset-description,.asset-header:not(.lxda) .addr,.asset-header:not(.lxda) .website{visibility:hidden}
+.asset-top:not(.lxda) .asset-name,.asset-top:not(.lxda) .asset-ticker,.asset-top:not(.lxda) .asset-description,.asset-top:not(.lxda) .addr,.asset-top:not(.lxda) .website{visibility:hidden}
 .stat-row:not(.lxda) .val,.stat-row:not(.lxda) .sub{visibility:hidden}
 /* AUDIT (flash sweep): the .lxda gates above only covered the header + stat cells. A static-vs-settled diff
    showed 9 more groups still painting the design's Aptos mock (4.2271 APT, 2.66%, 18 holders, 189.93K vol)
@@ -205,7 +206,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
 
   // ================= HEADER =================
   function applyHeader(){
-    var hdr=q(".asset-header"); if(!hdr)return;
+    // The MOBILE build wraps the same header in .asset-top, not .asset-header. Matching only the
+    // desktop wrapper meant applyHeader() returned on its first line on every phone, so the header kept
+    // the design's baked demo asset: open AQUA and you got AQUA's price under USDC's name, logo,
+    // description, circle.com link and a foreign 0x… issuer. Every INNER class is shared, so accepting
+    // both wrappers is the whole fix.
+    var hdr=q(".asset-header")||q(".asset-top"); if(!hdr)return;
     // name + ticker
     setText(q(".asset-name"), CODE);
     setText(q(".asset-ticker"), CODE);
@@ -218,7 +224,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     // with the dedicated synchronous header observer (guardHeader) this sits rock-steady with no flicker.
     function fixTextNode(el,want){ var tn=[].slice.call(el.childNodes).filter(function(n){return n.nodeType===3&&(n.nodeValue||"").replace(/\\s/g,"");})[0];
       if(tn){ if(tn.nodeValue.trim()!==want)tn.nodeValue=" "+want+" "; return true; } return false; }
-    qa(".asset-meta-row .addr").forEach(function(sp){
+    qa(".asset-meta-row .addr,.asset-meta .addr").forEach(function(sp){
       var want=NATIVE?"Native (XLM)":shortG(ISSUER);
       if(sp.getAttribute("data-lxfixed")!=="1"){
         var c=sp.cloneNode(true); c.setAttribute("data-lx-noswap",""); c.setAttribute("data-lxfixed","1");
@@ -232,7 +238,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     // website / home domain (same engine-revert issue -> clone-replace once, then re-assert)
     // While the domain is UNKNOWN (fetch pending/failed) hide the link entirely — the baked mock reads
     // "circle.com" and was visible from first paint on every non-USDC asset until home_domain resolved.
-    var web=q(".asset-meta-row .website");
+    var web=q(".asset-meta-row .website,.asset-meta .website");
     if(web&&homeDomain==null){ if(web.style.display!=="none")web.style.display="none"; }
     if(web&&homeDomain!=null){
       if(web.getAttribute("data-lxfixed")!=="1"){
@@ -268,8 +274,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       var val=cell.querySelector(".val"), sub=cell.querySelector(".sub");
       if(lbl.indexOf("price")===0){ if(NATIVE){ if(xlmUsd>0){ if(val)setText(val,usd(xlmUsd)); if(sub)setText(sub,"Stellar Lumens \\u00b7 native"); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }   /* native: USD is the price — "1 XLM" was meaningless */
         else if(assetXlm>0){ if(val)val.innerHTML=xlmAmt(assetXlm)+'<span class="u">XLM</span>'; if(sub&&pu>0)setText(sub,usd(pu)); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }
-      else if(lbl.indexOf("24h change")===0){ if(chg24!=null&&val){ var up=chg24>=0; val.className="val change "+(up?"up":"down")+" mono"; setText(val,(up?"+":"")+chg24.toFixed(2)+"%"); } else if(val){ setText(val,"—"); if(val.className!=="val mono")val.className="val mono"; } if(sub&&sub.style.display!=="none")sub.style.display="none"; }   /* % only, no XLM sub */
-      else if(lbl.indexOf("24h volume")===0){ if(NATIVE){ if(natVol>0){ if(val)setText(val,abbrUsd(natVol)); if(sub)setText(sub,"across all markets"); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }
+      // Dispatch is by LABEL TEXT, and the mobile build abbreviates two of them: "24h Change" -> "24h"
+      // and "24h Volume" -> "Volume". Neither matched, so on every phone those two cells kept the
+      // design's baked demo (+2.66% / +0.0422 XLM and 4.14M / $980K) for EVERY asset — the two cells
+      // beside them updated, which made the fake pair look real. Exact-match the short labels too.
+      else if(lbl.indexOf("24h change")===0||lbl==="24h"){ if(chg24!=null&&val){ var up=chg24>=0; val.className="val change "+(up?"up":"down")+" mono"; setText(val,(up?"+":"")+chg24.toFixed(2)+"%"); } else if(val){ setText(val,"—"); if(val.className!=="val mono")val.className="val mono"; } if(sub&&sub.style.display!=="none")sub.style.display="none"; }   /* % only, no XLM sub */
+      else if(lbl.indexOf("24h volume")===0||lbl==="volume"){ if(NATIVE){ if(natVol>0){ if(val)setText(val,abbrUsd(natVol)); if(sub)setText(sub,"across all markets"); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }
         else if(vol24Xlm!=null){ if(val)val.innerHTML=abbrNum(vol24Xlm)+'<span class="u">XLM</span>'; if(sub&&xlmUsd>0)setText(sub,usd(vol24Xlm*xlmUsd)); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }
       else if(lbl.indexOf("market cap")===0){ if(pu>0&&supply>0){ if(val)setText(val,abbrUsd(supply*pu)); } else if(val)setText(val,"—"); if(sub&&sub.style.display!=="none")sub.style.display="none"; }   /* no FDV sub */
       else if(lbl.indexOf("liquidity")===0){ if(liqXlm!=null&&xlmUsd>0){ if(val)setText(val,abbrUsd(liqXlm*xlmUsd)); if(sub){ if(sub.style.display==="none")sub.style.display="";
@@ -1415,7 +1425,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   // place or re-creates the nodes, re-assert applyHeader immediately (no 200ms debounce) so the mock hex is
   // never visibly painted -> zero flicker. Self-guarded (disconnect while we write) to avoid a loop.
   function guardHeader(){
-    var hdr=q(".asset-header"); if(!hdr||hdr.__lxhg)return; hdr.__lxhg=1;
+    var hdr=q(".asset-header")||q(".asset-top"); if(!hdr||hdr.__lxhg)return; hdr.__lxhg=1;
     try{ var mo=new MutationObserver(function(){ if(hdr.__lxhgBusy)return; hdr.__lxhgBusy=1; mo.disconnect(); try{ applyHeader(); }catch(_){} try{ mo.observe(hdr,{childList:true,subtree:true,characterData:true}); }catch(_){} hdr.__lxhgBusy=0; });
       mo.observe(hdr,{childList:true,subtree:true,characterData:true}); }catch(_){}
   }
