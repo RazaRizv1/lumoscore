@@ -212,6 +212,13 @@ radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
 @keyframes lxDrift{0%{transform:translateY(20px);opacity:0}12%{opacity:1}86%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
 #poolsBody tr td:last-child,#panelAllPools thead th:last-child{text-align:center!important}
 #lx-mypanel{opacity:1!important;visibility:visible!important;animation:none!important}
+/* lx-poolsweight: match the Trade tables. Pools body numbers computed to font-weight 400 while the
+   Trade tables render theirs at 700 (both JetBrains Mono), so the two sections read as different
+   typefaces. Only the PRIMARY numeric line is bolded — the $ sub-line under it stays lighter, which
+   is how Trade does it too. Columns 1-2 (# and PAIR) are left alone; :last-child covers Participants,
+   which is bare text in the td with no inner div. */
+table.pools tbody tr.lx-ammrow td:nth-child(n+3)>div:first-child,
+table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 </style>`;
 
 const SCRIPT = `<script id="lx-ammdata">(function(){
