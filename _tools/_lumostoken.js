@@ -224,6 +224,17 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   // Fill the hero price block + issuer address. Idempotent (only writes when different) so the
   // MutationObserver can re-assert after the design re-renders, without looping.
   function applyHero(){
+    // The hero token mark was being replaced by the site-wide logo guard with its generic letter-"L"
+    // SVG (it stamps data-logoed and clears the background), so the LUMOS page showed a placeholder for
+    // its own token. data-lxc is that guard's documented opt-out, and re-asserting each pass keeps it
+    // put if anything repaints. Same logo the wallet uses for LUMOS, and absolute so nested clean URLs
+    // cannot mis-resolve it.
+    try{ var bi=q(".lumos-big-icon");
+      if(bi){ if(bi.getAttribute("data-lxc")==null)bi.setAttribute("data-lxc","LUMOS");
+        if(bi.getAttribute("data-lxlogo")!=="1"||bi.querySelector("svg")){
+          bi.setAttribute("data-lxlogo","1"); bi.innerHTML="";
+          bi.style.setProperty("background",'url("/assets/favicon.png") center/cover no-repeat',"important");
+          bi.style.setProperty("border-radius","50%","important"); } } }catch(_){}
     var hp=q(".hero-price-block");
     if(hp&&lumosXlm>0){
       var priceUsd=lumosXlm*xlmUsd;
@@ -855,6 +866,13 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     var co=cl.map(function(v,i){return [(i/(n-1))*W, H-PAD-((v-mn)/rg)*(H-2*PAD)];});
     var ln="M"+co.map(function(c){return c[0].toFixed(1)+" "+c[1].toFixed(1);}).join(" L");
     var ar=ln+" L "+W+" "+H+" L 0 "+H+" Z";
+    // The coordinates above are built in a W x H (1000 x 320) space, but the svg keeps the design's
+    // baked viewBox="0 0 700 200" unless we say otherwise — so every point below y=200 was drawn
+    // outside the viewBox and, with overflow visible, spilled over the date row and out of the card.
+    // PAD=26 puts the lowest price at y=294, which is exactly the constant seen in the clipped output.
+    // Match the viewBox to the space the path is actually drawn in; preserveAspectRatio="none" then
+    // stretches it to the element box, so the curve fills the chart instead of hanging out of it.
+    svg.setAttribute("viewBox","0 0 "+W+" "+H);
     svg.setAttribute("preserveAspectRatio","none");
     svg.innerHTML='<defs><linearGradient id="gradAptos" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#ea6a2c" stop-opacity="0.20"></stop><stop offset="100%" stop-color="#ea6a2c" stop-opacity="0"></stop></linearGradient></defs>'
       +'<path class="lx-carea" d="'+ar+'"></path><path class="lx-cline" d="'+ln+'"></path>';
