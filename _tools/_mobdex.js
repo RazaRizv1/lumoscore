@@ -31,9 +31,22 @@ const STYLE = '<style id="lx-mobdex-css">'
   + 'body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}'
   + '.lxmd-empty{padding:16px 4px;text-align:center;color:var(--text-soft,#8a8fa3);'
   + 'font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}'
-  // The design's icon spans are sized by their own rules; only the image source is ours.
-  + '.mdx-mint-ic.lxmd-ic,.mdx-mover-ic.lxmd-ic,.mdx-mk-ic.lxmd-ic{background-size:cover!important;'
-  + 'background-position:50% 50%!important;background-repeat:no-repeat!important;overflow:hidden}'
+  // PAINTER-PROOF ICONS, same construction as the desktop layer.
+  //
+  // The design ships a logo "healer" that scans for [class*="mover-ic"] (among others), sets the element's
+  // background to transparent and replaces its contents with an <img> from a map keyed by TICKER TEXT. On
+  // Stellar a ticker is not an identity, so it painted Circle's USDC mark onto ARST, BTC and yXLM alike.
+  // Only the movers were hit: "mdx-mover-ic" matches its "mover-ic" selector, while "mdx-mint-ic" and
+  // "mdx-mk-ic" match nothing in its list — which is why exactly one of the three lists was wrong.
+  //
+  // A pseudo-element is out of its reach: it replaces innerHTML and inline background, and can do neither
+  // to a ::before. data-lxc is belt and braces — the healer's own opt-out, so it skips these outright.
+  + '.mdx-mint-ic[data-lxic],.mdx-mover-ic[data-lxic],.mdx-mk-ic[data-lxic]{position:relative;overflow:hidden;'
+  + 'color:transparent!important;font-size:0!important}'
+  + '.mdx-mint-ic[data-lxic]::before,.mdx-mover-ic[data-lxic]::before,.mdx-mk-ic[data-lxic]::before{content:"";'
+  + 'position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}'
+  // Anything the healer already injected sits UNDER the ::before; hide it so it cannot show through.
+  + '.mdx-mint-ic[data-lxic]>*,.mdx-mover-ic[data-lxic]>*,.mdx-mk-ic[data-lxic]>*{display:none!important}'
   + '</style>';
 
 const SCRIPT = '<script id="lx-mobdex">' + String.raw`
@@ -59,10 +72,25 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     if(x>0)return x.toExponential(2);return "0";}
   function priceOf(a){return (a&&a.px!=null&&isFinite(+a.px))?+a.px:null;}
   function assets(){return window.__lxDEXassets||null;}
-  // The roster carries a brand colour (a.b) for assets with no logo; keep that rather than a grey disc.
-  function icoStyle(a){var lg=a&&a.logo;
-    if(lg)return 'background-image:url("'+String(lg).replace(/"/g,"%22")+'")';
-    return "background:linear-gradient(135deg,"+((a&&a.b)||"#333")+","+((a&&a.b)||"#333")+"cc)";}
+  // Defer to the layer's own resolver so both layouts show one logo per asset. It prefers the hardcoded
+  // brand logo, falls back to the stellar.toml-resolved image (a.img — which the earlier mobile code
+  // ignored, so toml-only assets never got their real logo), and finally to a lettered avatar. A flat
+  // brand-colour disc, which is what this used to emit, just reads as a missing logo.
+  function avatarBg(code){var c=String(code||"?"),hue=0,i;
+    for(i=0;i<c.length;i++)hue=(hue*31+c.charCodeAt(i))%360;
+    var init=c.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?",fz=init.length>1?15:20;
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('
+      +hue+',60%,50%)"/><text x="20" y="'+(init.length>1?26:27)+'" text-anchor="middle" '
+      +'font-family="system-ui,sans-serif" font-weight="800" font-size="'+fz+'" fill="#fff">'+init+'</text></svg>';
+    return 'url("data:image/svg+xml,'+encodeURIComponent(svg)+'")';}
+  function logoCss(a){
+    try{if(window.__lxDEXlogoCss)return window.__lxDEXlogoCss(a);}catch(_e){}
+    var u=a&&(a.logo||a.img); return u?"url("+u+")":avatarBg(a&&a.code);}
+  // The icon carries the code twice on purpose: data-lxic is what we paint from, data-lxc is the healer's
+  // documented opt-out. See PAINTER-PROOF ICONS in STYLE.
+  function ico(cls,a){
+    return '<span class="'+cls+' lxmd-ic" data-lxic="'+esc(a.code)+'" data-lxc="'+esc(a.code)+'"'
+      +' style="--lxvar:'+esc(logoCss(a))+'"></span>';}
   function href(a){return "/trade/stellar/"+encodeURIComponent(a.code+"-"+a.issuer);}
 
   // We reuse the design own row classes, so the design can repaint a list with its mock rows at any
@@ -86,7 +114,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     list.innerHTML=d.map(function(a){
       return '<div class="mdx-mint-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
-        +'<span class="mdx-mint-ic lxmd-ic" style="'+esc(icoStyle(a))+'"></span>'
+        +ico("mdx-mint-ic",a)
         +'<div><div class="mdx-mint-name"><span class="tk">'+esc(a.code)+'</span></div>'
         +'<div class="mdx-mint-sub">'+esc(a.domain||"Stellar")+'</div></div>'
         +'<div class="mdx-mint-right"><div>'+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</div>'
@@ -109,7 +137,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     list.innerHTML=d.map(function(a){var up=(a.chg||0)>=0;
       return '<div class="mdx-mover-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
-        +'<span class="mdx-mover-ic lxmd-ic" style="'+esc(icoStyle(a))+'"></span>'
+        +ico("mdx-mover-ic",a)
         +'<div class="mdx-mover-main"><div class="mdx-mover-pair">'+esc(a.code)+'</div>'
         +'<div class="mdx-mover-sub">'+esc(a.domain||"Stellar")+'</div></div>'
         +'<div class="mdx-mover-right">'
@@ -136,7 +164,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     if(!d.length){list.innerHTML='<div class="lxmd-empty">No pairs match</div>';return;}
     list.innerHTML=d.map(function(a){var up=(a.chg||0)>=0;
       return '<div class="mdx-mk-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
-        +'<div class="mdx-mk-top"><span class="mdx-mk-ic lxmd-ic" style="'+esc(icoStyle(a))+'"></span>'
+        +'<div class="mdx-mk-top">'+ico("mdx-mk-ic",a)
         +'<div class="mdx-mk-meta"><div class="mdx-mk-name-row">'
         +'<span class="mdx-mk-name">'+esc(a.code)+'</span>'
         +'<span class="mdx-mk-domain">'+esc(a.domain||"Stellar")+'</span></div>'
@@ -162,8 +190,19 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     var si=q(".mdx-mk-search input");
     if(si)si.addEventListener("input",function(){setTimeout(pass,0);});
   }
+  // Logos resolved from stellar.toml land AFTER the first render, and a late logo alone does not change
+  // a row's signature, so nothing would repaint. Re-applying the variable each pass costs nothing and is
+  // what the desktop layer's paintIcons does.
+  function repaintIcons(){
+    var A=assets();if(!A)return;var by={};
+    A.forEach(function(a){by[a.code]=a;});
+    [].slice.call(document.querySelectorAll("[data-lxic]")).forEach(function(ic){
+      var a=by[ic.getAttribute("data-lxic")];if(!a)return;
+      var css=logoCss(a);
+      if(css&&ic.style.getPropertyValue("--lxvar")!==css)ic.style.setProperty("--lxvar",css);});
+  }
   function pass(){try{
-    wire();renderMints();renderMovers();renderPairs();
+    wire();renderMints();renderMovers();renderPairs();repaintIcons();
     if(assets()&&!document.body.classList.contains("lxmd-ready"))
       document.body.classList.add("lxmd-ready");
   }catch(_){}}
