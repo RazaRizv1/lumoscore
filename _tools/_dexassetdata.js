@@ -36,13 +36,22 @@ const STYLE = `<style id="lx-dxa-css">
    all three dex-asset variants. Complete rules must stay OUTSIDE the selector list. The Holders/.count
    selectors above cover the panel the design re-renders on tab-switch (baked 12,408 / 38.4% / 67.2%). */
 .lx-dxa-nochart{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--text-soft,#8a8fa3);pointer-events:none}
-#dxaChart{position:relative}
-#dxaChart:not(.lxda) svg{visibility:hidden}
+#dxaChart,#mdxaChart{position:relative}
+#dxaChart:not(.lxda) svg,#mdxaChart:not(.lxda) svg{visibility:hidden}
 /* also hide the design's OWN chart marks at all times (it renders a mock svg on load + on every */
 /* tool/timeframe click before ours replaces it -> a flash). Only our lxda paths ever render. */
-#dxaChart svg path:not(.lxda-line):not(.lxda-area),#dxaChart svg rect:not(.lxda-candle),#dxaChart svg line:not(.lxda-candle),#dxaChart svg polyline,#dxaChart svg polygon:not(.lxda-area){display:none!important}
+#dxaChart svg path:not(.lxda-line):not(.lxda-area),#dxaChart svg rect:not(.lxda-candle),#dxaChart svg line:not(.lxda-candle),#dxaChart svg polyline,#dxaChart svg polygon:not(.lxda-area),#mdxaChart svg path:not(.lxda-line):not(.lxda-area),#mdxaChart svg rect:not(.lxda-candle),#mdxaChart svg line:not(.lxda-candle),#mdxaChart svg polyline,#mdxaChart svg polygon:not(.lxda-area){display:none!important}
 #dxaObAsks:not(.lxda) .dxa-ob-row,#dxaObBids:not(.lxda) .dxa-ob-row{visibility:hidden}
 #dxaExTable:not(.lxda) tr{visibility:hidden}
+#mdxaExList:not(.lxda) .ex-row{visibility:hidden}
+/* the design .ex-row grid is "24px 1fr 70px auto"; our rows add a 5th cell for the explorer link */
+#mdxaExList .ex-row[data-lxda]{grid-template-columns:24px 1fr auto auto 16px}
+/* real amounts run longer than the mock 18 USDC; the design fixed 70px column wrapped them onto a
+   second line and left rows at uneven heights. Size to content and never wrap. */
+#mdxaExList .ex-row[data-lxda] .ex-num{white-space:nowrap;text-align:right}
+#mdxaExList .ex-row[data-lxda] .ex-num .sub{display:block}
+.lxda-exlink{display:inline-flex;align-items:center;justify-content:center;color:var(--text-soft,#8a8fa3)}
+.lxda-exlink:hover{color:var(--accent)}
 /* chart x-axis dates as an absolute HTML row (SVG text is squished by preserveAspectRatio=none) */
 .lxda-cdates{position:absolute;left:14px;right:64px;bottom:5px;display:flex;justify-content:space-between;gap:8px;font:600 11.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);pointer-events:none}
 /* chart hover readout */
@@ -52,7 +61,10 @@ const STYLE = `<style id="lx-dxa-css">
 .lxda-chtip .v{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-top:1px}
 .lxda-chdot{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--accent,#ea6a2c);border:2px solid var(--surface,#fff);box-shadow:0 0 0 2px rgba(234,106,44,.35);pointer-events:none;opacity:0;transition:opacity .1s;z-index:5}
 .lxda-chvl{position:absolute;width:1px;background:rgba(234,106,44,.45);pointer-events:none;opacity:0;transition:opacity .1s;z-index:4;top:16px;bottom:28px}
-#dxaChart svg{cursor:crosshair}
+#dxaChart svg,#mdxaChart svg{cursor:crosshair}
+/* a wide range can take 6-8s on Horizon; say so rather than leaving the previous range looking final */
+#dxaChart.lxda-loading::after,#mdxaChart.lxda-loading::after{content:"Loading…";position:absolute;top:8px;right:12px;font:600 10.5px/1 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.04em;color:var(--text-soft,#8a8fa3);opacity:.9;z-index:6;pointer-events:none;animation:lxdaPulse 1.1s ease-in-out infinite}
+@keyframes lxdaPulse{0%,100%{opacity:.35}50%{opacity:.95}}
 /* header logo: paint via background so the site logo-painter can't clear the token mark */
 .asset-logo[data-lxlogo]{background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;overflow:hidden;color:transparent!important;font-size:0!important}
 /* trade-widget: inline error + disabled CTA while amount is invalid/over balance */
@@ -340,11 +352,18 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     "1M":{res:86400000,span:2592000000},
     "1Y":{res:604800000,span:31536000000}}; return m[tf]||m["1D"]; }
   function axisLbl(t,tf){ var d=new Date(t),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; if(tf==="1D")return (d.getHours()<10?"0":"")+d.getHours()+":00"; if(tf==="1Y")return mo[d.getMonth()]+" '"+String(d.getFullYear()).slice(2); return mo[d.getMonth()]+" "+d.getDate(); }
+  // Label the axis from the DATA span, not the selected timeframe. While a new range loads, the chart
+  // guardian keeps redrawing the PREVIOUS points, and keying the labels off chartTF stamped a fresh "1Y"
+  // format onto one month of data — the axis read "Jul '26, Jul '26, Jul '26" while the line was still 1M.
+  function spanTF(pts){ var d=pts[pts.length-1].t-pts[0].t;
+    if(d<=172800000)return "1D";           // <= 2 days  -> hours
+    if(d<=10368000000)return "1M";         // <= 120 days -> "Mon D"
+    return "1Y"; }
   function fullDate(t){ var d=new Date(t),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; var hm=(chartTF==="1D")?(", "+(d.getHours()<10?"0":"")+d.getHours()+":"+(d.getMinutes()<10?"0":"")+d.getMinutes()):""; return mo[d.getMonth()]+" "+d.getDate()+hm; }
   function drawChart(pts){ pts=pts||chartPts; if(!pts)return; if(chartMode==="candle"){ try{ drawCandles(pts); return; }catch(_){} } drawLine(pts); }
   // ---- candlesticks (real OHLC from the trade aggregations) ----
   function drawCandles(pts){
-    var pc=q("#dxaChart"); if(!pc||!pts||pts.length<2)return;
+    var pc=q("#dxaChart,#mdxaChart"); if(!pc||!pts||pts.length<2)return;
     var svg=pc.querySelector("svg"); if(!svg){ svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); pc.insertBefore(svg,pc.firstChild); }
     var W=900,HT=380,PADL=14,PADR=64,PADT=16,PADB=28,n=pts.length;
     var lows=pts.map(function(p){return p.l||p.v;}).slice().sort(function(a,b){return a-b;});
@@ -361,11 +380,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     });
     svg.setAttribute("viewBox","0 0 "+W+" "+HT); svg.setAttribute("preserveAspectRatio","none"); svg.innerHTML=h;
     var dr=pc.querySelector(".lxda-cdates"); if(!dr){ dr=document.createElement("div"); dr.className="lxda-cdates"; pc.appendChild(dr); }
-    var NL=5,dh=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); dh+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,chartTF))+'</span>'; } dr.innerHTML=dh;
+    var NL=5,dh=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); dh+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=dh;
     pc.classList.add("lxda"); chartPts=pts; pc.__lxpts=pts; pc.__lxco=co; window._dxaChartState=null; setupChartHover(pc);
   }
   function drawLine(pts){
-    var pc=q("#dxaChart"); if(!pc||!pts||pts.length<2)return;
+    var pc=q("#dxaChart,#mdxaChart"); if(!pc||!pts||pts.length<2)return;
     var svg=pc.querySelector("svg");
     if(!svg){ svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); pc.insertBefore(svg,pc.firstChild); }
     var W=900,HT=380,PADL=14,PADR=64,PADT=16,PADB=28,n=pts.length;
@@ -385,7 +404,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     var l=svg.querySelector(".lxda-line"); if(l){l.setAttribute("fill","none");l.setAttribute("stroke","var(--accent,#ea6a2c)");l.setAttribute("stroke-width","2.5");l.setAttribute("stroke-linecap","round");l.setAttribute("stroke-linejoin","round");}
     // x-axis date row (absolute HTML)
     var dr=pc.querySelector(".lxda-cdates"); if(!dr){ dr=document.createElement("div"); dr.className="lxda-cdates"; pc.appendChild(dr); }
-    var NL=5,h=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,chartTF))+'</span>'; } dr.innerHTML=h;
+    var NL=5,h=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=h;
     pc.classList.add("lxda"); chartPts=pts; pc.__lxpts=pts; pc.__lxco=co;
     window._dxaChartState=null;                                // disable the design's stale hover state
     setupChartHover(pc);
@@ -430,7 +449,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     drawChart(pts);
   }
   function chartEmpty(hasOlder){
-    try{ var host=q("#dxaChart"); if(!host)return;
+    try{ var host=q("#dxaChart,#mdxaChart"); if(!host)return;
       var d=host.querySelector(".lx-dxa-nochart");
       if(!d){ d=document.createElement("div"); d.className="lx-dxa-nochart"; host.appendChild(d); }
       d.textContent=hasOlder?"No trades in this period \u2014 try a longer range.":"No trades yet \u2014 this asset has no price history to chart.";
@@ -439,17 +458,26 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       host.classList.add("lxda");
     }catch(_){}
   }
-  function loadChart(tf){
+  // The wide ranges are SLOW on Horizon — the 1Y weekly aggregation measures 6-8s against 0.8s for 1D —
+  // and it intermittently answers with zero records (1 in 3 on measurement). Both failed silently: the
+  // chart guardian keeps the PREVIOUS range on screen, so a 1Y click looked like it had been ignored, and
+  // an empty answer fell straight through to chartFromTrades, drawing the last few HOURS of trades as the
+  // "1Y" chart. So: mark the host while a fetch is in flight, and retry once before accepting "no data".
+  function loadChart(tf,attempt){
     if(NATIVE)return; if(loadChart._pending===tf)return; loadChart._pending=tf;   // dedupe concurrent fetches for the same timeframe
     chartTF=tf; var cfg=tfCfg(tf), now=Date.now(), start=now-cfg.span;
+    var host=q("#dxaChart,#mdxaChart"); if(host)host.classList.add("lxda-loading");
+    var clear=function(){ loadChart._pending=null; if(host)host.classList.remove("lxda-loading"); };
+    var again=function(){ loadChart._pending=null; loadChart(tf,1); };   // keep the marker on across the retry
     var url=H+"/trade_aggregations?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+cfg.res+"&start_time="+start+"&end_time="+now+"&order=asc&limit=200";
-    j(url).then(function(d){ loadChart._pending=null;
+    j(url).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
       var pts=r.map(function(x){return {t:+x.timestamp, v:(+x.avg||+x.close||0)*xlmUsd, vol:(+x.counter_volume||0)*xlmUsd,
         o:(+x.open||0)*xlmUsd, h:(+x.high||0)*xlmUsd, l:(+x.low||0)*xlmUsd, c:(+x.close||0)*xlmUsd};}).filter(function(p){return p.v>0;});
-      if(pts.length>=2){drawChart(pts);return;}
-      chartFromTrades(tf);
-    }).catch(function(){ loadChart._pending=null; chartFromTrades(tf); });
+      if(pts.length>=2){ clear(); drawChart(pts); return; }
+      if(!attempt){ again(); return; }
+      clear(); chartFromTrades(tf);
+    }).catch(function(){ if(!attempt){ again(); return; } clear(); chartFromTrades(tf); });
   }
   function wireChartTabs(){
     if(chartWired)return; var btns=qa(".timeframes button");
@@ -459,7 +487,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   // Dedicated SYNCHRONOUS chart guardian: the design's timeframe handler wipes our line/candles (drawing its own
   // hidden mock) on every click -> a ~50ms blank flash before our observer catches up. Redraw IMMEDIATELY (no
   // debounce) whenever our marks disappear, so the previous chart stays until the new timeframe's data lands.
-  function guardChart(){ var pc=q("#dxaChart"); if(!pc||pc.__lxcg)return; pc.__lxcg=1;
+  function guardChart(){ var pc=q("#dxaChart,#mdxaChart"); if(!pc||pc.__lxcg)return; pc.__lxcg=1;
     try{ var mo=new MutationObserver(function(){ if(pc.__lxcgBusy)return; if(chartPts&&!pc.querySelector(".lxda-line,.lxda-candle")){ pc.__lxcgBusy=1; mo.disconnect(); try{ drawChart(chartPts); }catch(_){} try{ mo.observe(pc,{childList:true,subtree:true}); }catch(_){} pc.__lxcgBusy=0; } });
       mo.observe(pc,{childList:true,subtree:true}); }catch(_){}
   }
@@ -563,7 +591,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   }
 
   function renderExchanges(){
-    var rows=window.__lxDXAtrades; var tb=q("#dxaExTable"); if(!tb||!rows)return;
+    // The mobile page renders these as .ex-row DIVs in #mdxaExList, not <tr> in a <tbody>, so only the
+    // markup differs — filtering, paging and the anti-mock guards below are shared. Without the mobile
+    // host this bailed on its first line, and the page kept the design's mock: 15 rows of ETHEREUM
+    // addresses (0x0f…3ce6) at invented prices, on a Stellar asset page.
+    var rows=window.__lxDXAtrades; var tb=q("#dxaExTable"); var MOB=false;
+    if(!tb){ tb=q("#mdxaExList"); MOB=!!tb; }
+    if(!tb||!rows)return;
     // PAGE the filtered set instead of hard-slicing the first 50. The design's own pager sat in
     // .panel-foot unowned by us, and its "next" handler called the DESIGN's renderExchanges(), which
     // builds 15 rows from a hardcoded WALLETS array of ETHEREUM addresses priced in APT/USDC. One
@@ -582,11 +616,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     // content instead — but NOT .wallet-cell: the design's mock rows use that class too, so the guard
     // read fabricated rows as "ours" and refused to repaint them. Every row we write carries
     // data-lxda, which the design never emits, so this cannot be spoofed by the mock.
-    var ours=!!(tb.querySelector("tr[data-lxda]")||tb.querySelector(".lxda-ex-empty"));
+    var ours=!!(tb.querySelector("[data-lxda]")||tb.querySelector(".lxda-ex-empty"));
     if(tb.__lxexsig===sig && ours)return; tb.__lxexsig=sig;
     // and re-assert if the design repaints this table (or its info line) behind our back
     if(!tb.__lxexobs){ tb.__lxexobs=1; try{
-      var reassert=function(){ if(!(tb.querySelector("tr[data-lxda]")||tb.querySelector(".lxda-ex-empty"))){ tb.__lxexsig=null; renderExchanges(); } };
+      var reassert=function(){ if(!(tb.querySelector("[data-lxda]")||tb.querySelector(".lxda-ex-empty"))){ tb.__lxexsig=null; renderExchanges(); } };
       new MutationObserver(reassert).observe(tb,{childList:true});
       var inf=q("#dxaPanelInfo");
       if(inf)new MutationObserver(function(){ if(!/recent trades/.test(inf.textContent||"")){ tb.__lxexsig=null; renderExchanges(); } }).observe(inf,{childList:true,characterData:true,subtree:true});
@@ -598,7 +632,26 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         : ("Showing 0 recent trades"+ft); }
     renderExPager(all.length, pages);
     function decs(p){ return p>=1?4:(p>=0.01?5:7); }
-    if(!f.length){ tb.innerHTML='<tr class="lxda-ex-empty"><td colspan="6" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">No trades'+(TRADE_FILTER>0?" \\u2265 "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000)+"K":TRADE_FILTER)+" XLM":"")+' in the recent window.</td></tr>'; tb.classList.add("lxda"); return; }
+    if(!f.length){
+      var emptyTxt='No trades'+(TRADE_FILTER>0?" \\u2265 "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000)+"K":TRADE_FILTER)+" XLM":"")+' in the recent window.';
+      tb.innerHTML=MOB
+        ? '<div class="lxda-ex-empty" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">'+emptyTxt+'</div>'
+        : '<tr class="lxda-ex-empty"><td colspan="6" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">'+emptyTxt+'</td></tr>';
+      tb.classList.add("lxda"); return; }
+    // Mobile row: the design's own .ex-row shape, plus the explorer link desktop has and the mock omits.
+    if(MOB){ tb.innerHTML=f.map(function(r){
+      return '<div class="ex-row" data-lxda="1">'
+        +'<span class="ex-ident">'+identicon(r.addr,28)+'</span>'
+        +'<div class="ex-meta"><div class="nm mono">'+shortG(r.addr)+'</div>'
+        +'<div class="ex-sub"><span class="type-badge '+r.side+'">'+(r.side==="buy"?"▲ Buy":"▼ Sell")+'</span></div></div>'
+        +'<div class="ex-num">'+r.px.toFixed(decs(r.px))+' XLM<span class="sub">'+xlmAmt(r.amount)+' '+CODE+'</span></div>'
+        +'<div class="ex-time">'+r.time+'</div>'
+        +'<a class="row-link lxda-exlink" href="'+EXPLORER+'" target="_blank" rel="noopener" aria-label="View on stellar.expert">'
+        +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+        +'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/>'
+        +'<line x1="10" y1="14" x2="21" y2="3"/></svg></a>'
+        +'</div>'; }).join("");
+      tb.classList.add("lxda"); return; }
     tb.innerHTML=f.map(function(r){
       return '<tr data-lxda="1">'
         +'<td><div class="wallet-cell">'+identicon(r.addr,26)+'<span class="mono wa">'+shortG(r.addr)+'</span></div></td>'
@@ -616,8 +669,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   // wire the filter chips. DELEGATED on the container so it survives the design re-rendering the chips
   // (direct per-chip listeners were lost on re-render -> the filters appeared dead).
   function wireExchangeFilters(){
-    var fl=q("#dxaPanelFilters"); if(!fl)return;
-    qa("#dxaPanelFilters .chip").forEach(function(c){ var t=c.textContent||""; if(/APT/.test(t))c.textContent=t.replace(/APT/g,"XLM"); });   // relabel APT->XLM every pass
+    // Mobile names this container #mdxaPanelFilters. Gating on the desktop id alone meant the listener was
+    // never registered there, so chip clicks fell through to the design's handler: the chip went active
+    // (which looks like it worked) while TRADE_FILTER never moved and every trade stayed on screen.
+    var fl=q("#dxaPanelFilters,#mdxaPanelFilters"); if(!fl)return;
+    qa(".chip",fl).forEach(function(c){ var t=c.textContent||""; if(/APT/.test(t))c.textContent=t.replace(/APT/g,"XLM"); });   // relabel APT->XLM every pass
     if(fl.__lxwired)return; fl.__lxwired=1;
     // AUDIT (user-reported: "recent exchanges are not real"): this listener lived on the filters container,
     // but the design ALSO handles chip clicks from a document-level capture listener — and document capture
@@ -626,9 +682,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     // asset like ARMYXLM, whose trades are ~0.0000012 XLM, picking "100+ XLM" left ONLY the mock on screen,
     // presented as genuine market activity. Window capture + stopImmediatePropagation keeps the design out.
     window.addEventListener("click",function(e){
-      var c=e.target&&e.target.closest?e.target.closest("#dxaPanelFilters .chip"):null; if(!c)return;
+      var c=e.target&&e.target.closest?e.target.closest("#dxaPanelFilters .chip,#mdxaPanelFilters .chip"):null; if(!c)return;
       e.preventDefault(); e.stopImmediatePropagation();
-      qa("#dxaPanelFilters .chip").forEach(function(o){o.classList.toggle("active",o===c);});
+      qa(".chip",c.parentNode).forEach(function(o){o.classList.toggle("active",o===c);});
       TRADE_FILTER=parseFloat(c.getAttribute("data-min-xlm"))||0; EX_PAGE=1; renderExchanges();
     },true);
   }
@@ -1323,7 +1379,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     try{ wireExchangeFilters(); }catch(_){}
     try{ wireChartTabs(); }catch(_){}
     try{ wireChartType(); }catch(_){}
-    try{ var pc=q("#dxaChart"); if(pc&&chartPts&&!pc.querySelector(".lxda-line,.lxda-candle"))drawChart(chartPts); }catch(_){}
+    try{ var pc=q("#dxaChart,#mdxaChart"); if(pc&&chartPts&&!pc.querySelector(".lxda-line,.lxda-candle"))drawChart(chartPts); }catch(_){}
     try{ applyHolders(); }catch(_){}
     // update the bottom Pools tab count (best-effort; the design's Pools panel itself is left as-is)
     try{ if(poolCount!=null){ var pt=qa(".tabs-bar .tab").filter(function(t){return /pools/i.test(t.getAttribute("data-tab")||"");})[0]; if(pt){ var c=pt.querySelector(".count"); if(c){c.textContent=String(poolCount);lxMark(c);} } } }catch(_){}
