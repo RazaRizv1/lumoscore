@@ -102,6 +102,11 @@ const STYLE = `<style id="lx-dxa-css">
 .dxa-disc-text{margin-top:4px;line-height:1.5;word-break:break-word}
 /* Exchanges tab: hide its count badge INSTANTLY (JS was hiding it after data load -> a visible count->hidden flash) */
 .tabs-bar .tab[data-tab="exchanges"] .count,.tab[data-tab="exchanges"] .count{display:none!important}
+/* restyle_dexstats hides EVERY tab count under 760px, and for good reason: the badges are what overflowed
+   the 342px strip and made it draggable. But that also hid the Discussions count, so a comment you post
+   shows nowhere. Bring back just that one — it is 1-2 characters, not a seven-digit holder count — and
+   leave Holders/Pools/Exchanges hidden so the strip still fits. */
+@media (max-width:760px){.tabs-bar .tab[data-tab="discussions"] .count{display:inline-block!important}}
 /* Limit-tab chips: force a real 26px circle (they were rendering as ovals) */
 .dxa-pane-limit .dxa-trade-asset[data-lxic]{width:26px!important;height:26px!important;min-width:26px!important;max-width:26px!important;flex:0 0 26px!important;border-radius:50%!important;padding:0!important;box-sizing:border-box}
 /* Smart Swap badge — shown in the swap pane when a Soroban AMM (Soroswap/Phoenix/Aquarius) beats the classic Horizon path */
@@ -738,14 +743,21 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     }
     page(H+"/accounts?asset="+CODE+":"+ISSUER+"&limit=200&order=desc",0);
   }
+  // Both bottom panels live under a different id AND class prefix on mobile (#mdxaPanel > .mdxa-holders),
+  // and mobile renders rows as DIVs where desktop uses a <table>. These two helpers pick the panel and say
+  // which markup to build; without them both renderers returned on their first line and the design's mock
+  // stayed — Ethereum-style holder wallets and pool pairs like USDC/CELL that do not exist on Stellar.
+  function panelWrap(kind){ return q("#dxaPanel .dxa-"+kind+",#mdxaPanel .mdxa-"+kind); }
+  function isMobPanel(w){ return !!w && (" "+(w.className||"")).indexOf(" mdxa-")>=0; }
   function applyHolders(){
-    var wrap=q("#dxaPanel .dxa-holders"); if(!wrap)return;                       // only when the Holders tab is open
+    var wrap=panelWrap("holders"); if(!wrap)return;                              // only when the Holders tab is open
+    var MOB=isMobPanel(wrap);
     try{ loadHolders(); }catch(_){}                                              // lazy: page the top-holders list only once the tab is actually opened
     // header stat count (accurate trustline count from /assets)
-    if(holders!=null){ var st=wrap.querySelectorAll(".dxa-hl-stat .val"); if(st[0]){st[0].textContent=num(holders);lxMark(st[0]);} }
+    if(holders!=null){ var st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val"); if(st[0]){st[0].textContent=num(holders);lxMark(st[0]);} }
     // Only the rare fallback (no ranked source) leaves these unknown; dash them then, with no prose.
     if(holders!=null&&!canRankHolders()){
-      var _st=wrap.querySelectorAll(".dxa-hl-stat .val");
+      var _st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val");
       [1,2].forEach(function(i){ if(_st[i]){ _st[i].textContent="\u2014"; lxMark(_st[i]); } });
     }
     var _n0=wrap.querySelector(".lxda-hl-note"); if(_n0&&_n0.parentNode)_n0.parentNode.removeChild(_n0);
@@ -754,26 +766,36 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     // Clear them and say we're loading instead.
     var hold=window.__lxDXAhold;
     if(!hold||!hold.length){
-      var _tb0=wrap.querySelector("table tbody");
+      var _tb0=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody");
       if(_tb0&&_tb0.getAttribute("data-lxbuilt")!=="1"&&_tb0.getAttribute("data-lxload")!=="1"){
         _tb0.setAttribute("data-lxload","1");
-        _tb0.innerHTML='<tr><td colspan="5" style="padding:22px 14px;text-align:center;color:var(--text-muted)">Loading holders…</td></tr>';
+        _tb0.innerHTML=MOB?'<div style="padding:22px 14px;text-align:center;color:var(--text-muted)">Loading holders…</div>'
+          :'<tr><td colspan="5" style="padding:22px 14px;text-align:center;color:var(--text-muted)">Loading holders…</td></tr>';
       }
       return;
     }
     var pu=priceUsd();
-    var tbody=wrap.querySelector("table tbody"); if(!tbody||tbody.getAttribute("data-lxbuilt")==="1")return;
+    var tbody=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody"); if(!tbody||tbody.getAttribute("data-lxbuilt")==="1")return;
     var top=hold.slice(0,50), tot=holders!=null?holders:hold.length;
     // top-10 / top-50 concentration (of paged supply — approximate for capped assets)
     var pagedTot=0; hold.forEach(function(h){pagedTot+=h.bal;});
     var sup=supply||pagedTot||1;   // hold is the COMPLETE holder set here (canRankHolders), so pagedTot is a sound fallback
     var t10=0,t50=0; hold.slice(0,10).forEach(function(h){t10+=h.bal;}); hold.slice(0,50).forEach(function(h){t50+=h.bal;});
-    var st2=wrap.querySelectorAll(".dxa-hl-stat .val");
+    var st2=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val");
     if(canRankHolders()){   // hold is a TRUE ranking -> the top-10/top-50 sums are the real thing
       if(st2[1]){st2[1].textContent=(Math.min(100,t10/sup*100)).toFixed(1)+"%";st2[1].removeAttribute("title");lxMark(st2[1]);}
       if(st2[2]){st2[2].textContent=(Math.min(100,t50/sup*100)).toFixed(1)+"%";st2[2].removeAttribute("title");lxMark(st2[2]);}
     }
+    var EXPL='https://stellar.expert/explorer/public/account/';
     var html=top.map(function(h,i){ var pct=h.bal/sup*100;
+      var pctTxt=(pct>=0.001?pct.toFixed(3):"<0.001")+'%';
+      // Mobile's row is the design's .mdxa-hl-row grid, not a table row.
+      if(MOB) return '<div class="mdxa-hl-row"><span class="mdxa-hl-rank">#'+(i+1)+'</span>'
+        +'<span class="mdxa-hl-ident">'+identicon(h.addr,28)+'</span>'
+        +'<div class="mdxa-hl-meta"><div class="mdxa-hl-addr mono">'+shortG(h.addr)+'</div>'
+        +'<a class="mdxa-hl-explorer" href="'+EXPL+h.addr+'" target="_blank" rel="noopener">View on Explorer \\u2197</a></div>'
+        +'<div class="mdxa-hl-vals"><div class="mdxa-hl-bal mono">'+abbrNum(h.bal)+'</div>'
+        +'<div class="mdxa-hl-pct mono">'+pctTxt+'</div></div></div>';
       return '<tr><td class="dxa-hl-rank">'+(i+1)+'</td>'
         +'<td><div class="wallet-cell">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span></div></td>'
         +'<td class="mono">'+abbrNum(h.bal)+'</td>'
@@ -781,11 +803,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         +'<td style="text-align:right"><a class="dxa-hl-explorer" href="https://stellar.expert/explorer/public/account/'+h.addr+'" target="_blank" rel="noopener">View on Explorer <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a></td></tr>'; }).join("");
     tbody.innerHTML=html; tbody.setAttribute("data-lxbuilt","1");
     // pagination info line
-    var pg=wrap.querySelector(".dxa-hl-pgn .info");
+    var pg=wrap.querySelector(".dxa-hl-pgn .info,.mdxa-hl-pgn .info");
     if(pg)pg.textContent=canRankHolders()?("Showing 1–"+top.length+" of "+num(tot)+" holders")
                                          :("Showing "+top.length+" of "+num(tot)+" holders (sample)");
     // the design ships a mock pager ("1 2 3 … 249 Next") — we only ever render one page, so drop it
-    qa(".dxa-hl-pgn .pages, .dxa-hl-pgn .pager, .dxa-hl-pgn button").forEach(function(b){ b.style.display="none"; });   // qa() is document-scoped; .dxa-hl-pgn is unique to this panel
+    qa(".dxa-hl-pgn .pages, .dxa-hl-pgn .pager, .dxa-hl-pgn button, .mdxa-hl-pgn .pages, .mdxa-hl-pgn .pager, .mdxa-hl-pgn button").forEach(function(b){ b.style.display="none"; });   // qa() is document-scoped; .dxa-hl-pgn is unique to this panel
     // Holders bottom-tab count
     var htab=qa(".tabs-bar .tab").filter(function(t){return /holders/i.test(t.getAttribute("data-tab")||"");})[0];
     if(htab){ var c=htab.querySelector(".count"); if(c){c.textContent=num(tot);lxMark(c);} }
@@ -810,7 +832,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){ var recs=(d&&d._embedded&&d._embedded.records)||[]; var m=recs.filter(function(r){return (r.asset||"").indexOf(code+"-"+iss)===0;})[0]; if(!m)return;   // exact code+issuer ONLY — never fall back to another issuer's same-ticker asset
     var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||""; if(!img)return; (window.__lxLogosI=window.__lxLogosI||{})[_k]=img;
       qa('.dxa-pl-ico[data-lxc="'+code+'"][data-lxi="'+(iss||"")+'"]:not([data-lxknown])').forEach(function(el){ el.style.backgroundColor="transparent"; el.style.backgroundImage="url("+img+")"; }); }).catch(function(){}); }
-  function applyPools(){ var wrap=q("#dxaPanel .dxa-pools"); if(!wrap)return; var raw=window.__lxDXApoolsRaw; if(!raw||!raw.length)return;
+  function applyPools(){ var wrap=panelWrap("pools"); if(!wrap)return; var MOB=isMobPanel(wrap); var raw=window.__lxDXApoolsRaw; if(!raw||!raw.length)return;
     var list=raw.map(function(p){ var other=null; (p.res||[]).forEach(function(rv){ if(rv.code!==CODE&&!other)other=rv; }); if(!other)other=(p.res||[])[0]||{code:"XLM",iss:""};
       var tvlXlm=p.nat>0?p.nat*2:((p.ass>0&&assetXlm>0)?p.ass*assetXlm*2:0);
       return {id:p.id,other:other.code,otherIss:other.iss,tvlXlm:tvlXlm,fee:p.feeBp,tl:p.tl}; })
@@ -832,14 +854,32 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         +'<td class="mono">'+num(p.tl)+'</td>'
         +'<td class="mono">'+(share>=0.1?share.toFixed(1):"<0.1")+'%</td>'
         +'<td style="text-align:right"><a class="dxa-pl-cta" href="'+poolHref(p.id)+'">Add liquidity \\u2192</a></td></tr>'; }).join("");
-    wrap.innerHTML=head+'<table class="ex-table"><thead><tr><th>Pool</th><th>TVL</th><th>LP holders</th><th>Pool share</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+    if(MOB){
+      // Mobile's panel is .mdxa-pl-head + a .mdxa-pl-list of .mdxa-pl-row divs. Its mock row carries an APR
+      // badge; we have no honest APR (the desktop table deliberately shows none), so that slot gets the real
+      // pool share instead of an invented yield.
+      var mhead='<div class="mdxa-pl-head">'
+        +'<div class="mdxa-hl-stat"><span class="lbl">Active pools</span><span class="val mono">'+num(list.length)+'</span></div>'
+        +'<div class="mdxa-hl-stat"><span class="lbl">Combined TVL</span><span class="val mono">'+(xlmUsd>0?abbrUsd(combined*xlmUsd):abbrNum(combined)+" XLM")+'</span></div>'
+        +'<div class="mdxa-hl-stat"><span class="lbl">LP positions</span><span class="val mono">'+abbrNum(lps)+'</span></div>'
+        +'</div>';
+      var mrows=top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
+        return '<a class="mdxa-pl-row" href="'+poolHref(p.id)+'">'
+          +'<div class="mdxa-pl-l"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
+          +'<div><div class="mdxa-pl-name">'+CODE+' / '+p.other+'</div>'
+          +'<div class="mdxa-pl-net"><span class="net-pill">'+num(p.tl)+' LP holders</span></div></div></div>'
+          +'<div class="mdxa-pl-r"><div class="mdxa-pl-tvl mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</div>'
+          +'<div class="mdxa-pl-apr">'+(share>=0.1?share.toFixed(1):"<0.1")+'% share</div></div></a>'; }).join("");
+      wrap.innerHTML=mhead+'<div class="mdxa-pl-list">'+mrows+'</div>';
+    }
+    else wrap.innerHTML=head+'<table class="ex-table"><thead><tr><th>Pool</th><th>TVL</th><th>LP holders</th><th>Pool share</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
     wrap.setAttribute("data-lxsig",sig);
     // ".dxa-hl-stat .val" is in LXSTRICT, so the mask observer deliberately never auto-reveals it — a strict
     // element only unmasks where WE mark it. These four are built fresh by the innerHTML above, so without
     // this they stayed visibility:hidden forever: the labels (Active pools / Combined TVL / LP positions /
     // Avg fee) rendered with a blank space under each. applyHolders already lxMark()s its stats; this is the
     // same obligation. Any NEW strict element created by a painter must be marked here too.
-    qa(".dxa-pools .dxa-hl-stat .val").forEach(function(v){ lxMark(v); });
+    qa(".dxa-pools .dxa-hl-stat .val,.mdxa-pools .mdxa-hl-stat .val").forEach(function(v){ lxMark(v); });
     top.forEach(function(p){ dxaFetchPoolLogo(p.other,p.otherIss); });
   }
 
