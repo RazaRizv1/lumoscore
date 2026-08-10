@@ -146,6 +146,10 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   })();
   var ATYPE=NATIVE?"native":(CODE.length<=4?"credit_alphanum4":"credit_alphanum12");
   var RESV=CODE+":"+ISSUER;                                   // liquidity-pool reserve id form
+  // stellar.expert has no page for one trade; /op/<id> opens the TRANSACTION that contains it with its
+  // operations listed, which is the closest thing. The row link used EXPLORER — the asset page — so every
+  // row on every asset pointed at the same place and told you nothing about the trade you clicked.
+  function tradeHref(r){ return (r&&r.op)?("https://stellar.expert/explorer/public/op/"+r.op):EXPLORER; }
   var EXPLORER=NATIVE?"https://stellar.expert/explorer/public/asset/XLM":("https://stellar.expert/explorer/public/asset/"+CODE+"-"+ISSUER);
 
   // ---- live data ----
@@ -553,7 +557,10 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         // BOUGHT it. Measured against a live AQUA/XLM book: base_is_seller=true trades average 0.0019965,
         // i.e. the best ASK (0.0019966) = takers lifting offers = buys; false averages the bid exactly.
         // This query pins base=CODE, counter=native, so base IS the token and no orientation flip is needed.
-        return {addr:t.base_account||t.counter_account||"", side:t.base_is_seller?"buy":"sell", px:pr, amount:+t.base_amount, xlm:+t.counter_amount, ts:Date.parse(t.ledger_close_time||"")||0, time:relTime(t.ledger_close_time)}; });
+        return {addr:t.base_account||t.counter_account||"", side:t.base_is_seller?"buy":"sell", px:pr, amount:+t.base_amount, xlm:+t.counter_amount, ts:Date.parse(t.ledger_close_time||"")||0, time:relTime(t.ledger_close_time),
+          // Horizon trade ids are "<operationId>-<order>"; keep the operation id so the row can link to
+          // THIS trade rather than to the asset. Matches t._links.operation.href.
+          op:String(t.id||"").split("-")[0]}; });
       renderExchanges();
     }).catch(function(){});
   }
@@ -646,7 +653,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         +'<div class="ex-sub"><span class="type-badge '+r.side+'">'+(r.side==="buy"?"▲ Buy":"▼ Sell")+'</span></div></div>'
         +'<div class="ex-num">'+r.px.toFixed(decs(r.px))+' XLM<span class="sub">'+xlmAmt(r.amount)+' '+CODE+'</span></div>'
         +'<div class="ex-time">'+r.time+'</div>'
-        +'<a class="row-link lxda-exlink" href="'+EXPLORER+'" target="_blank" rel="noopener" aria-label="View on stellar.expert">'
+        +'<a class="row-link lxda-exlink" href="'+tradeHref(r)+'" target="_blank" rel="noopener" aria-label="View this trade on stellar.expert">'
         +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
         +'<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/>'
         +'<line x1="10" y1="14" x2="21" y2="3"/></svg></a>'
@@ -659,7 +666,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         +'<td><span class="mono">'+r.px.toFixed(decs(r.px))+' XLM</span></td>'
         +'<td><span class="mono">'+xlmAmt(r.amount)+' '+CODE+'</span></td>'
         +'<td><span class="time">'+r.time+'</span></td>'
-        +'<td style="text-align:right"><a class="row-link" href="'+EXPLORER+'" target="_blank" rel="noopener" aria-label="View on explorer"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></td>'
+        +'<td style="text-align:right"><a class="row-link" href="'+tradeHref(r)+'" target="_blank" rel="noopener" aria-label="View this trade on stellar.expert"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></td>'
         +'</tr>'; }).join("");
     tb.classList.add("lxda");
     // bottom Exchanges tab: remove the count badge (per request)
