@@ -179,13 +179,20 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   // ---- tabs, filters, search, row navigation -------------------------------------------------------
   function wire(){
     if(window.__lxmdWired)return;window.__lxmdWired=1;
-    document.addEventListener("click",function(e){
+    // WINDOW-capture, the earliest phase, for the same reason the desktop layer uses it: the design has
+    // its own delegated nav handler on DOCUMENT capture. A document-capture listener here loses that race
+    // and the design's handler wins, which is why tapping a row re-served the Trade page instead of the
+    // asset page. stopImmediatePropagation, not stopPropagation — the latter still lets other listeners
+    // on the same node and phase run, and the design's is one of them.
+    window.addEventListener("click",function(e){
       var t=e.target;if(!t||!t.closest)return;
+      // Tabs and filters are the design's to handle (it owns the .active toggle); only schedule a repaint.
       if(t.closest(".mdx-mover-tabs")||t.closest(".mdx-mk-filters")){
         setTimeout(pass,30);setTimeout(pass,240);return;}
       var row=t.closest("[data-href]");
       if(row&&/mdx-(mint|mover|mk)-row/.test(String(row.className||""))){
-        e.preventDefault();e.stopPropagation();location.href=row.getAttribute("data-href");}
+        e.preventDefault();e.stopImmediatePropagation();
+        location.href=row.getAttribute("data-href");}
     },true);
     var si=q(".mdx-mk-search input");
     if(si)si.addEventListener("input",function(){setTimeout(pass,0);});
