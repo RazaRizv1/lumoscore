@@ -244,6 +244,17 @@ export async function onRequest(context){
   const { request, next } = context;
   const url = new URL(request.url);
 
+  // 0) ONE ORIGIN. www.lumoscore.com was serving the whole app on a 200 with no redirect, so the site
+  // answered on two hostnames — and a browser keeps localStorage PER ORIGIN. The wallet session lives
+  // there (lumos.wallet / lumos.address), so connecting on one host and later arriving on the other
+  // looked exactly like being logged out, with no way for the user to tell why. It also split every
+  // SEO signal in spite of the canonical tag pointing at the apex. 301 so the browser stops asking.
+  if (url.hostname.startsWith('www.')){
+    const to = new URL(url.toString());
+    to.hostname = url.hostname.slice(4);
+    return Response.redirect(to.toString(), 301);
+  }
+
   // 1) someone navigated to a raw build filename -> send them to the canonical clean url
   const legacy = legacyClean(url.pathname, url.searchParams);
   if (legacy){
