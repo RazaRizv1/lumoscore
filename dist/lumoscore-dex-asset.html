@@ -2096,6 +2096,7 @@
 .price-display .meta b.mono:not(.lxp),
 .ohlc-strip .pair .v:not(.lxp),
 .dxa-perf-grid .dxa-perf-cell .ch:not(.lxp),
+.mdxa-perf-grid .mdxa-perf-cell .ch:not(.lxp),
 .dxa-hl-stat .val:not(.lxp),
 .tabs-bar .tab .count:not(.lxp),
 .dxa-trade-frow .mono:not(.lxp),
@@ -5577,7 +5578,7 @@ window.addEventListener('click',function(e){
   // AUDIT (flash sweep): reveal each masked mock the instant the engine overwrites it. One observer beats
   // patching every write site (setText, the OHLC set(), setSummary, the balance row, the tab counts) and
   // stays correct as new writers are added.
-  var LXMASK=".crumb span:last-child,.price-display .big,.price-display .change-pill,.price-display .meta b.mono,.ohlc-strip .pair .v,.dxa-perf-grid .dxa-perf-cell .ch,.tabs-bar .tab .count,.dxa-trade-frow .mono,.dxa-trade-summary .dxa-tsum-row .mono,.dxa-hl-stat .val";
+  var LXMASK=".crumb span:last-child,.price-display .big,.price-display .change-pill,.price-display .meta b.mono,.ohlc-strip .pair .v,.dxa-perf-grid .dxa-perf-cell .ch,.mdxa-perf-grid .mdxa-perf-cell .ch,.tabs-bar .tab .count,.dxa-trade-frow .mono,.dxa-trade-summary .dxa-tsum-row .mono,.dxa-hl-stat .val";
   // mark the masked element itself AND any masked descendants: if a block is rebuilt wholesale the mutation
   // target is the container, so closest() alone would never reach the masked leaves inside it.
   // AUDIT (user-reported: Holders flashed 12,408 before 199): these two groups sit inside blocks the DESIGN
@@ -5730,10 +5731,12 @@ window.addEventListener('click',function(e){
   // Fully baked design mock (+0.42%/+2.66%/… — the data layer never touched it, so every asset showed the
   // same fake numbers). Fill 24h from the real chg24 and 7d from stellar.expert price7d; the horizons we
   // have no real data for get an honest "—" instead of an invented percentage.
+  // Mobile names these .mdxa-perf-grid/.mdxa-perf-cell, so this returned on its first line there and the
+  // baked mock survived — a dollar stablecoin reading "+47.62%" over 6 months. Same numbers, both layouts.
   function applyPerf(){
-    var g=q(".dxa-perf-grid"); if(!g)return;
+    var g=q(".dxa-perf-grid,.mdxa-perf-grid"); if(!g)return;
     var TFS=["1h","24h","7d","1m","3m","6m"];
-    qa(".dxa-perf-grid .dxa-perf-cell").forEach(function(cell,i){
+    qa(".dxa-perf-grid .dxa-perf-cell,.mdxa-perf-grid .mdxa-perf-cell").forEach(function(cell,i){
       // LANDMINE: the design's data-logo painter treats ANY rounded element whose stripped text is 1-5
       // chars as a token-icon slot ("1h—" qualifies; the baked "+2.66%" escaped at 6 chars), wipes it and
       // paints a logo background. Its isCandidate() skips elements containing an <svg>/<img> child — so
@@ -5747,8 +5750,15 @@ window.addEventListener('click',function(e){
       else if(key==="1m")v=chg1m; else if(key==="3m")v=chg3m; else if(key==="6m")v=chg6m;
       // NEVER leave the bare "dxa-perf-cell" class: the logo-painter targets exactly that (cells with an
       // up/down modifier are skipped) — dashed cells carry an inert "lx-nd" modifier to stay off its radar.
-      if(v!=null){ setText(ch,(v>=0?"+":"")+v.toFixed(2)+"%"); var cls="dxa-perf-cell "+(v>=0?"up":"down"); if(cell.className!==cls)cell.className=cls; }
-      else { setText(ch,"—"); if(cell.className!=="dxa-perf-cell lx-nd")cell.className="dxa-perf-cell lx-nd"; }
+      // Rewriting className wholesale would strip the layout's own class — writing "dxa-perf-cell up" onto
+      // a mobile cell drops mdxa-perf-cell and the grid loses its styling. Keep whichever base the cell
+      // already has; only the state modifier is ours.
+      // No regex here on purpose: this whole script lives inside a JS string in the transform, so a "s"
+      // written here reaches the browser as a bare "s" — /(^|s)mdxa-perf-cell(s|$)/ silently became
+      // /(^|s)mdxa-perf-cell(s|$)/, never matched, and every mobile cell got the desktop class.
+      var base=(" "+(cell.className||"")+" ").indexOf(" mdxa-perf-cell ")>=0?"mdxa-perf-cell":"dxa-perf-cell";
+      if(v!=null){ setText(ch,(v>=0?"+":"")+v.toFixed(2)+"%"); var cls=base+" "+(v>=0?"up":"down"); if(cell.className!==cls)cell.className=cls; }
+      else { setText(ch,"—"); if(cell.className!==base+" lx-nd")cell.className=base+" lx-nd"; }
     });
   }
 
