@@ -65,9 +65,17 @@ const SCRIPT = '<script id="lx-mobtrade">(function(){'
 // never cache it: it arrives asynchronously, and caching the first value is what left the receive chip
 // showing a blank placeholder on assets whose logo resolved late.
 + 'function assetIcon(){try{var l=q(".asset-logo");if(!l)return "";var b=getComputedStyle(l).backgroundImage;return (b&&b!=="none")?b:"";}catch(_){return "";}}'
-// The design paints XLM as an <img> inside the pay chip. Grab it once, before we rebuild anything.
-+ 'function grabXlm(){if(XLMICON)return XLMICON;try{var img=q(".mdxa-pane .mdxa-trade-ic img");'
-+ 'if(img&&img.src)XLMICON="url(\\""+img.src+"\\")";}catch(_){}return XLMICON;}'
+// XLM's mark comes from the data layer, which publishes the same canonical logo the DESKTOP chips use.
+//
+// This used to scrape the <img> the design paints inside the pay chip. That image belongs to the
+// multi-chain source these pages are built from, so on Stellar it handed back the APTOS logo — every XLM
+// chip in the swap and limit panes wore the wrong network's mark, while desktop showed the right one.
+// Scraping the design for an identity is the bug, not the selector: fall back to the same literal URL the
+// desktop helper returns rather than to whatever markup happens to be there.
++ 'var XLM_FALLBACK="url(/assets/tokens/xlm.png)";'
++ 'function grabXlm(){if(XLMICON)return XLMICON;'
++ 'try{if(window.__lxDXAxlmLogo){XLMICON=window.__lxDXAxlmLogo;return XLMICON;}}catch(_){}'
++ 'return XLM_FALLBACK;}'
 // ---- the adapter ---------------------------------------------------------------------------
 // The mobile pane mirrors the desktop pane one-for-one — .mdxa-pane-swap / .mdxa-trade-field /
 // .mdxa-trade-ir / .mdxa-side-btn / .mdxa-trade-cta all have exact .dxa-* counterparts. So rather
