@@ -325,6 +325,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     // no desktop counterpart, so it cannot reuse the selectors above — but it can reuse the values.
     try{ window.__lxDXAcode=CODE; window.__lxDXAissuer=ISSUER; window.__lxDXAnative=!!NATIVE;
          if(assetXlm>0)window.__lxDXAassetXlm=assetXlm;
+         // The canonical XLM mark, published so the mobile pane paints the same one. It used to scrape the
+         // icon out of the design's markup, which on an Aptos-derived build is the APTOS logo.
+         window.__lxDXAxlmLogo=xlmLogoCss();
          if(xlmUsd>0)window.__lxDXAxlmUsd=xlmUsd; }catch(_){}
     // chart-head price display (keep consistent with the selected asset). Same mock problem as the stat
     // cells: dash the baked price + HIDE the baked "▲ 2.66% (24h)" pill until the real change is known.
@@ -1004,7 +1007,10 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   // load-time race), so we paint the icon OURSELVES via a ::before driven by the --lxtic custom property
   // (the painter can't touch pseudo-elements) -> reliable + painter-proof. Token uses the page asset's real
   // logo; XLM uses the embedded Stellar mark.
-  function xlmLogoCss(){ return 'url(https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg)'; }   /* canonical XLM logo, consistent with the rest of the site */
+  // The site ships its own Stellar mark and already uses it in the app bar, pools, trending, launchpad and
+  // the bridge. CoinGecko renders the same logo on a WHITE SQUARE, which reads as a different asset next to
+  // the black-circle version sitting inches above it in the header. One file, one mark, everywhere.
+  function xlmLogoCss(){ return 'url(/assets/tokens/xlm.png)'; }
   function setChip(field,a){ if(!field)return; var chip=field.querySelector(".dxa-trade-asset"); if(!chip)return;
     var lbl=a.native?"XLM":a.code;
     var tn=[].slice.call(chip.childNodes).filter(function(n){return n.nodeType===3&&(n.nodeValue||"").replace(/\\s/g,"");})[0];
