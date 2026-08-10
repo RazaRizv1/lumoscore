@@ -12,6 +12,21 @@ const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');cons
 // matched with the asset being the literal string "lumoscore-landing.html" — a blank asset page.
 // "/" is the landing page (index.html is a copy of it), so this needs no redirect hop either.
 const GUARD='<script id="lx-authgate">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))location.replace("/");}catch(_){}})();</script>';
+// The INVERSE of the guard above. "/" is the marketing landing page, so a connected user opening the
+// site in a new tab — or from a bookmark, or by typing the domain — was dropped back on the front door
+// with no sign the app already knew who they were. Connected means past the front door: go to the
+// dashboard. Sits in <head> and uses replace(), so the landing never paints and never enters history
+// (a back-button entry that instantly bounces forward again traps you).
+//
+// Cannot loop against the guard: that one fires only when NOT connected, this one only when connected,
+// and disconnect clears the keys BEFORE sending you to "/", so the landing stays put afterwards.
+// A ?stay=1 escape hatch keeps the landing reachable while connected — useful for checking the
+// marketing page without disconnecting.
+const HOMEGATE='<script id="lx-homegate">(function(){try{'
+  +'if(location.search.indexOf("stay=1")>=0)return;'
+  +'if(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"))location.replace("/dashboard");'
+  +'}catch(_){}})();</scr'+'ipt>';
+
 const OLD_LAUNCH="window.top.lxNavigate(['lumoscore-signin.html','lumoscore-signin-mobile.html'])";
 const PREV_LAUNCH="window.lxwOpenWallet((window.lxGetChain&&window.lxGetChain())||'aptos','lumoscore-home.html')";
 const NEW_LAUNCH="window.lxChooseNetwork&&window.lxChooseNetwork('lumoscore-home.html')";
@@ -52,7 +67,7 @@ function isPublicPage(k){
   return /^lumoscore-admin-/.test(b) || PUBLIC_BASES.has(b);
 }
 
-let gated=0, rewired=0;
+let gated=0, rewired=0, homed=0;
 for(const dev of ['desktop','mobile']){
   const file=`lumoscore-aptos-${dev}.html`;
   let data; try{ data=read(file); }catch(e){ continue; }
@@ -65,6 +80,8 @@ for(const dev of ['desktop','mobile']){
       if(/landing/.test(k)){
         if(h.indexOf(OLD_LAUNCH)>=0){ h=h.split(OLD_LAUNCH).join(NEW_LAUNCH); rewired++; }
         if(h.indexOf(PREV_LAUNCH)>=0){ h=h.split(PREV_LAUNCH).join(NEW_LAUNCH); rewired++; }
+        h=h.replace(/<script id="lx-homegate">[\s\S]*?<\/script>/,'');   // idempotent
+        if(h.indexOf('</head>')>=0){ h=h.replace('</head>', HOMEGATE+'</head>'); homed++; }
       }
     } else {
       if(h.indexOf('</head>')>=0){ h=h.replace('</head>', GUARD+'</head>'); gated++; }
@@ -75,4 +92,4 @@ for(const dev of ['desktop','mobile']){
   const serialized=JSON.stringify(json).split('</').join('<'+B+'/');
   fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');
 }
-console.log('auth gate: protected pages='+gated+' | landing Launch-App rewired='+rewired);
+console.log('auth gate: protected pages='+gated+' | landing Launch-App rewired='+rewired+' | landing->dashboard when connected='+homed);
