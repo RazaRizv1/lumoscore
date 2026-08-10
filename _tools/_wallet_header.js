@@ -18,6 +18,18 @@ const STYLE='<style id="lx-whead-css">'
 +'.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}'
 +'.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}'
 +'@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}'
+// MOBILE app bar. The design puts a bare initials circle top-right, which renders as an empty disc
+// once the baked demo initials are cleared — it tells the user nothing. Desktop shows the network mark
+// plus the shortened address, so mirror that: the avatar becomes a chip.
++'.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;'
++'border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}'
++'.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;'
++'background:var(--lx-netlogo) center/cover no-repeat}'
++'.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}'
+// The slide-menu account row leads with a generic wallet glyph; on a Stellar-only app the network mark
+// is the more useful thing to show, and it matches the app bar.
++'.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}'
++'.mu-av.lx-mav-net>svg{display:none!important}'
 +'</style>';
 
 // strip the baked demo address out of the chip markup (idempotent: after one pass there is no 0x… left)
@@ -55,7 +67,20 @@ function scriptFor(net){
   +'var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");'
   +'if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");'
   +'if(ms)ms.textContent=on?("Connected \\u00b7 "+netLabel()):"Tap to connect a wallet";'
+  // The account row leads with a generic wallet glyph — swap it for the network mark.
+  +'var av=document.querySelector(".mu-av");'
+  +'if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}'
+  // App bar, top right: an initials disc that says nothing becomes the network mark + short address,
+  // matching the desktop chip. Only when connected — with no wallet there is no address to show, so
+  // the design's own avatar is left alone.
+  +'var sm=document.querySelector(".avatar-sm");'
+  +'if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);'
+  +'sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}'
+  +'else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}}'
   +'}catch(_){}}'
+  // Absolute, not relative: these pages answer on nested clean URLs like /trade/stellar/<ASSET>, where a
+  // relative "assets/…" would resolve against that path and 404.
+  +'var NETLOGO=\'url("/assets/tokens/xlm.png")\';'
   +'function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}'
     +'function fixOwnAddrCopies(addr){if(!addr)return;try{'
   +'var all=document.querySelectorAll("[data-copy]");'

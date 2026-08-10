@@ -28,6 +28,15 @@ const STYLE = `<style id="lx-lt-css">
 /* ours replaces it → a flash). Only our lx-cline/lx-carea paths are ever visible. */
 #priceChart svg path:not(.lx-cline):not(.lx-carea),#priceChart svg polyline,#priceChart svg polygon:not(.lx-carea),#priceChart svg line,#priceChart svg rect{display:none!important}
 .lx-cdates{display:flex;justify-content:space-between;gap:8px;padding:8px 2px 0;font:600 12.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3)}
+/* The date row is appended AFTER the svg inside #priceChart, but .chart-body is a fixed 240px and
+   .chart-card is overflow:hidden — so the row overflowed by ~5px and the labels were sliced in half
+   along the bottom edge. Let the body size to its contents and keep the plot itself at its old height,
+   so the chart is unchanged and the labels simply have somewhere to sit. */
+.chart-card .chart-body{height:auto!important;padding-bottom:12px}
+.chart-card .chart-body>svg{height:214px!important}
+/* Two legend swatches, both reading "Stellar", on a chart with ONE series — a leftover from the
+   multi-chain design. Nothing to distinguish, so nothing to label. */
+.chart-card .chart-head .chart-legend{display:none!important}
 /* price-chart hover readout */
 #priceChart{position:relative}
 #priceChart svg{cursor:crosshair}
