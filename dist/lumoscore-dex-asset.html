@@ -6466,9 +6466,45 @@ window.addEventListener('click',function(e){
   // single source of truth for the receive side + summary; the design keeps re-asserting its own mock
   // (USDC / 0.23659), so we paint from _dxView and re-assert it via guardSwap the instant it reverts.
   function reAssertView(){ var rin=recvInput(), ra=recvAsset();
+    // Do not fight the user for the box they are typing in. While You receive has focus it is an INPUT,
+    // not a readout: the reverse quote drives You pay from it, and overwriting it mid-keystroke would
+    // make it impossible to type. The summary and USD line still update from _dxView.
+    if(rin&&document.activeElement===rin)rin=null;
     if(_dxView){ if(rin&&rin.value!==_dxView.recv)rin.value=_dxView.recv; setRecvUsd(_dxView.usd);
       setSummary("Rate",_dxView.rate); setSummary("Price impact",_dxView.impact,_dxView.impUp?"up":"down"); setSummary("Slippage",SLIP+"%"); setSummary("Min received",_dxView.minR); setSummary("Network fee","0.00001 XLM"); dxSmartBadge(_dxView.soro||null); }
     else { if(rin&&rin.value!=="")rin.value=""; setRecvUsd(0); setSummary("Rate","\u2014"); setSummary("Price impact","\u2014"); setSummary("Min received","\u2014"); dxSmartBadge(null); }
+  }
+  // REVERSE QUOTE: type what you want to RECEIVE and we solve for the pay amount.
+  //
+  // Horizon's strict-receive path returns the source amount needed for an exact destination amount. The
+  // platform fee comes off the pay side BEFORE the path runs (dxQuote sends amt-fee), so the gross pay is
+  // source/(1-feeRate). We write that into You pay and hand back to the normal forward quote, which then
+  // recomputes rate, impact, min received and the CTA exactly as if you had typed the pay amount.
+  //
+  // Deliberately NOT a strict-receive swap: the signed transaction is the same pathPaymentStrictSend it
+  // has always been, priced from the pay amount. Only which box you type in changes, so nothing about
+  // execution, fees or slippage handling moves.
+  var _dxRevT=null, _dxRevSeq=0;
+  function dxQuoteReverse(){
+    var rin=recvInput(), pin=payInput(); if(!rin||!pin)return;
+    if(_dxRevT){ clearTimeout(_dxRevT); _dxRevT=null; }
+    var want=parseFloat((rin.value||"").replace(/[^0-9.]/g,""))||0;
+    if(!(want>0)){ pin.value=""; _dxLastPay=""; _dxView=null; dxErr(""); reAssertView(); return; }
+    var pa=payAsset(), ra=recvAsset(), seq=++_dxRevSeq;
+    _dxRevT=setTimeout(function(){
+      j(H+"/paths/strict-receive?source_assets="+(pa.native?"native":encodeURIComponent(pa.code+":"+pa.iss))
+        +"&"+apParam("destination",ra)+"&destination_amount="+want.toFixed(7)).then(function(pd){
+        if(seq!==_dxRevSeq)return;                       // a later keystroke already superseded this one
+        var recs=(pd&&pd._embedded&&pd._embedded.records)||[];
+        var src=recs.length?parseFloat(recs[0].source_amount):0;
+        if(!(src>0)){ dxErr("No route for that amount"); return; }
+        dxErr("");
+        var gross=src/(1-FEE_RATE());
+        pin.value=(+gross.toFixed(7)).toString();
+        _dxQuick=null; qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(o){o.classList.remove("lxq-active");});
+        dxQuote();
+      }).catch(function(){ if(seq===_dxRevSeq)dxErr("Could not price that amount"); });
+    },350);
   }
   function enforceWidget(){ var pane=q(".dxa-pane-swap"); if(!pane)return; applyTradeWidget(); if(NATIVE)return;
     var pin=payInput(); var pv=pin?(pin.value||"").trim():""; if(pv!==_dxLastPay)dxQuote(); else reAssertView(); }
@@ -6576,6 +6612,9 @@ window.addEventListener('click',function(e){
   function resetWidget(){ _dxQuick=null; window.__lxDXASoro=null; var pin=payInput(), rin=recvInput(); if(pin)pin.value=""; if(rin)rin.value=""; dxErr(""); setRecvUsd(0); dxSmartBadge(null); var cta=q(".dxa-trade-cta"); if(cta)cta.removeAttribute("data-lxdis"); }
   function applySwap(){
     var pane=q(".dxa-pane-swap"); if(!pane)return;
+    // You receive ships readonly in the design markup, on BOTH layouts — it was a readout, so there was no
+    // way to say "I want exactly N of this". Re-applied every pass because the design re-renders the field.
+    var _ri=recvInput(); if(_ri){ if(_ri.hasAttribute("readonly"))_ri.removeAttribute("readonly"); if(_ri.hasAttribute("disabled"))_ri.removeAttribute("disabled"); }
     var pa=payAsset(), pf=payEl();
     // "You pay" balance label follows the pay asset (or "—" when no wallet connected)
     if(pf){ var balSpan=pf.querySelector(".dxa-trade-frow .mono"); if(balSpan){ var b=spendOf(pa); var t=(b==null)?"Balance: —":"Balance: "+xlmAmt(b)+" "+(pa.native?"XLM":pa.code); if(balSpan.textContent!==t)balSpan.textContent=t;
@@ -6593,7 +6632,13 @@ window.addEventListener('click',function(e){
       var qb=t.closest(".dxa-trade-quick button"); if(qb){ _dxQuick=(qb.textContent||"").trim().toUpperCase(); qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(o){o.classList.toggle("lxq-active",(o.textContent||"").trim().toUpperCase()===_dxQuick);}); var base=spendOf(payAsset()), pin=payInput(); if(base!=null&&pin){ var pct=_dxQuick==="MAX"?1:((parseFloat(_dxQuick)||0)/100); var v=Math.floor(base*pct*1e7)/1e7; pin.value=v>0?(+v.toFixed(7)).toString():"0"; dxQuote(); } return; }   // 7-dp (Stellar precision), floored so MAX fills the WHOLE balance (toFixed(4) left dust like 0.0000059)
       var cta=t.closest(".dxa-trade-cta"); if(cta){ e.preventDefault(); e.stopPropagation(); dxExecute(); return; }
     },true);
-    pane.addEventListener("input",function(e){ var t=e.target; if(t&&t.tagName==="INPUT"){ var pf=payEl(); if(pf&&pf.contains(t)){ _dxQuick=null; qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(o){o.classList.remove("lxq-active");}); dxQuote(); } } },true);
+    pane.addEventListener("input",function(e){ var t=e.target; if(t&&t.tagName==="INPUT"){
+      var pf=payEl(); if(pf&&pf.contains(t)){ _dxQuick=null; qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(o){o.classList.remove("lxq-active");}); dxQuote(); return; }
+      var rf=recvEl(); if(rf&&rf.contains(t)){ dxQuoteReverse(); } } },true);
+    // When You receive loses focus, settle it to the figure the forward quote actually returned, so the
+    // number on screen is always the one the swap was priced at rather than what was typed.
+    pane.addEventListener("blur",function(e){ var t=e.target;
+      if(t&&t.tagName==="INPUT"){ var rf=recvEl(); if(rf&&rf.contains(t))setTimeout(reAssertView,0); } },true);
   }
 
   // ================= Limit orders (Phase 4): real manageSellOffer / manageBuyOffer =================
