@@ -292,9 +292,12 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // now yields the correct set (previously a single global freeze made all 3 tabs show the same 4 assets).
   var _moverFrozen={};
   function moverCat(){ var t=q(".dex-mover-tab.active"); return (t&&t.getAttribute)?(t.getAttribute("data-cat")||"gainers"):"gainers"; }
-  function moverData(){
+  // Takes an optional category so the mobile renderer can ask for a specific tab. Without it, the
+  // category comes from ".dex-mover-tab.active" — a selector the mobile markup does not have, so a
+  // mobile caller silently got "gainers" for all three tabs.
+  function moverData(forceCat){
     if(!window.__lxDEXloaded)return ASSETS.slice(0,4);           // stable placeholder order during load
-    var cat=moverCat();
+    var cat=forceCat||moverCat();
     if(_moverFrozen[cat])return _moverFrozen[cat].map(function(c){return byCode[c];}).filter(Boolean);
     var d=ASSETS.slice();
     if(cat==="losers")d=d.filter(function(a){return a.chg!=null&&a.chg<0;}).sort(function(a,b){return a.chg-b.chg;});
@@ -459,9 +462,9 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     j(CG).then(function(d){ if(d&&d.stellar){ if(+d.stellar.usd){ xlmUsd=+d.stellar.usd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } if(d.stellar.usd_24h_change!=null)xlmChg=+d.stellar.usd_24h_change; } recomputeAllTvl(); touch(); }).catch(function(){});
     // load ALL assets in PARALLEL so values + logos land together (no "loading one by one" cascade). When
     // every asset is in, flag loaded -> the movers compute their final top-4 order ONCE (no re-sort glitch).
-    Promise.all(ASSETS.map(function(a){ return loadAsset(a).catch(function(){}); })).then(function(){ window.__lxDEXloaded=1; touch(); });
+    Promise.all(ASSETS.map(function(a){ return loadAsset(a).catch(function(){}); })).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;}catch(_){} touch(); });
     // safety: reveal details even if an asset's request hangs (never leave the table stuck on placeholders)
-    setTimeout(function(){ if(!window.__lxDEXloaded){ window.__lxDEXloaded=1; touch(); } }, 4500);
+    setTimeout(function(){ if(!window.__lxDEXloaded){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;}catch(_){} touch(); } }, 4500);
   }
 
   // dedicated per-section guardian: fires only on a CHILDLIST change of the container (i.e. the design blew
