@@ -24,28 +24,28 @@ const SCRIPT='<script id="lx-reactions">(function(){'
 +'function writeAll(o){ try{ localStorage.setItem(KEY,JSON.stringify(o)); }catch(e){} }'
 +'function mine(){ var a=readAll()[assetKey()]; return (a&&a.length)?a:[]; }'
 +'function setMine(list){ var all=readAll(); if(list.length)all[assetKey()]=list; else delete all[assetKey()]; writeAll(all); }'
-+'function btns(){ return [].slice.call(document.querySelectorAll(".dxa-react-btn")); }'
++'function btns(){ return [].slice.call(document.querySelectorAll(".dxa-react-btn,.mdxa-react-btn")); }'
 +'function paint(){ var m=mine(); btns().forEach(function(b,i){'
 +'  var n=b.querySelector(".num"); if(n){ var on=m.indexOf(i)>=0; var v=on?1:0; if(n.textContent!==String(v))n.textContent=String(v); }'
 +'  b.classList.toggle("lx-reacted",m.indexOf(i)>=0); b.setAttribute("aria-pressed",m.indexOf(i)>=0?"true":"false"); }); }'
 // capture phase + stopImmediatePropagation: the design has its own listener on these buttons that bumps
 // the DOM number and sets a one-way `tapped` flag. Let it run and the two disagree, so it never runs.
 +'document.addEventListener("click",function(e){'
-+'  var b=e.target&&e.target.closest&&e.target.closest(".dxa-react-btn"); if(!b)return;'
++'  var b=e.target&&e.target.closest&&e.target.closest(".dxa-react-btn,.mdxa-react-btn"); if(!b)return;'
 +'  var list=btns(), i=list.indexOf(b); if(i<0)return;'
 +'  e.preventDefault(); e.stopImmediatePropagation();'
 +'  var m=mine(), at=m.indexOf(i);'
 +'  if(at>=0)m.splice(at,1); else m.push(i);'
 +'  setMine(m); paint();'
 +'},true);'
-+'function boot(){ if(!document.querySelector(".dxa-react-btn"))return; paint();'
++'function boot(){ if(!document.querySelector(".dxa-react-btn,.mdxa-react-btn"))return; paint();'
 +'  try{ new MutationObserver(function(){ paint(); }).observe(document.body,{childList:true,subtree:true}); }catch(e){} }'
 +'if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);'
 +'})();</'+'script>';
 
-const CSS='<style id="lx-reactions-css">.dxa-react-btn{position:relative}'
-+'.dxa-react-btn.lx-reacted{border-color:var(--accent,#ea6a2c)!important;background:color-mix(in srgb,var(--accent,#ea6a2c) 12%,transparent)}'
-+'.dxa-react-btn.lx-reacted .num{color:var(--accent,#ea6a2c);font-weight:800}</style>';
+const CSS='<style id="lx-reactions-css">.dxa-react-btn,.mdxa-react-btn{position:relative}'
++'.dxa-react-btn.lx-reacted,.mdxa-react-btn.lx-reacted{border-color:var(--accent,#ea6a2c)!important;background:color-mix(in srgb,var(--accent,#ea6a2c) 12%,transparent)}'
++'.dxa-react-btn.lx-reacted .num,.mdxa-react-btn.lx-reacted .num{color:var(--accent,#ea6a2c);font-weight:800}</style>';
 
 let n=0;
 for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']){
@@ -56,11 +56,11 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
     let changed=false;
     for(const k of Object.keys(json)){
       let h=json[k];
-      if(h.indexOf('dxa-react-btn')<0) continue;                                  // widget not on this page
+      if(h.indexOf('dxa-react-btn')<0 && h.indexOf('mdxa-react-btn')<0) continue;   // mobile names it mdxa-react-btn                                  // widget not on this page
       h=h.replace(/<script id="lx-reactions">[\s\S]*?<\/script>/g,'');            // idempotent: strip first
       h=h.replace(/<style id="lx-reactions-css">[\s\S]*?<\/style>/g,'');
       // zero the design's fabricated seed count so the widget only ever shows real taps
-      h=h.replace(/(<button class="dxa-react-btn">(?:(?!<\/button>)[\s\S])*?<span class="num">)[^<]*(<\/span>)/g,'$1'+'0'+'$2');
+      h=h.replace(/(<button class="m?dxa-react-btn">(?:(?!<\/button>)[\s\S])*?<span class="num">)[^<]*(<\/span>)/g,'$1'+'0'+'$2');
       const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
       json[k]=h.slice(0,bi)+CSS+SCRIPT+h.slice(bi); changed=true; n++;
     }
