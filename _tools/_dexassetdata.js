@@ -97,7 +97,7 @@ const STYLE = `<style id="lx-dxa-css">
 .lx-ctoast.lxda-terr .ci{background:var(--red,#ff5b5b)}
 @keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 /* Discussions: hide the design's mock comment rows INSTANTLY (no flash); JS removes them + renders real posts (.lxda-mine) */
-.dxa-disc-list .dxa-disc-row:not(.lxda-mine){display:none!important}
+.dxa-disc-list .dxa-disc-row:not(.lxda-mine),.mdxa-disc-list .mdxa-disc-row:not(.lxda-mine){display:none!important}
 .lxda-disc-empty{text-align:center;padding:30px 12px;color:var(--text-soft,#8a8fa3);font:600 14px/1.5 'Hanken Grotesk',system-ui,sans-serif}
 .dxa-disc-text{margin-top:4px;line-height:1.5;word-break:break-word}
 /* Exchanges tab: hide its count badge INSTANTLY (JS was hiding it after data load -> a visible count->hidden flash) */
@@ -1383,7 +1383,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   }
   function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
   function discCountTab(){ return qa(".tabs-bar .tab").filter(function(x){return /discussions/i.test(x.getAttribute("data-tab")||"");})[0]; }
-  function refreshDiscEmpty(list){ if(!list)return; var has=list.querySelector(".dxa-disc-row"); var em=list.querySelector(".lxda-disc-empty");
+  function refreshDiscEmpty(list){ if(!list)return; var has=list.querySelector(".dxa-disc-row,.mdxa-disc-row"); var em=list.querySelector(".lxda-disc-empty");
     if(has){ if(em&&em.parentNode)em.parentNode.removeChild(em); }
     else if(!em){ var d=document.createElement("div"); d.className="lxda-disc-empty"; d.textContent="No discussions yet — be the first to share your thoughts."; list.appendChild(d); } }
   // The discussions feed is mock (no backend). Each pass: strip the design's placeholder rows and re-render the
@@ -1399,22 +1399,27 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     var d=h/24; if(d<30)return Math.floor(d)+"d ago";
     try{ return new Date(t).toLocaleDateString(); }catch(e){ return Math.floor(d)+"d ago"; } }
   var _dxPosts=(function(){ try{ var a=dsAll()[CODE+"-"+ISSUER]; return (a&&a.length)?a.slice():[]; }catch(e){ return []; } })();
-  function postRowHtml(p){ return '<div class="dxa-disc-av">'+identicon(p.addr,34)+'</div><div class="dxa-disc-body"><div class="dxa-disc-head"><span class="mono dxa-disc-addr">'+shortG(p.addr)+'</span><span class="dxa-disc-time">'+dsAgo(p.t)+'</span></div><div class="dxa-disc-text">'+escapeHtml(p.txt)+'</div></div>'; }
+  // Mobile prefixes every one of these classes with "m" and calls the text cell -txt, not -text. Emitting
+  // desktop names there produced an unstyled row, so the row is built for whichever list is actually present.
+  function discList(){ return q(".dxa-disc-list,.mdxa-disc-list"); }
+  function discPfx(){ var l=discList(); return (l&&(" "+(l.className||"")+" ").indexOf(" mdxa-disc-list ")>=0)?"mdxa":"dxa"; }
+  function postRowHtml(p){ var P=discPfx(), T=(P==="mdxa")?"txt":"text";
+    return '<div class="'+P+'-disc-av">'+identicon(p.addr,34)+'</div><div class="'+P+'-disc-body"><div class="'+P+'-disc-head"><span class="mono '+P+'-disc-addr">'+shortG(p.addr)+'</span><span class="'+P+'-disc-time">'+dsAgo(p.t)+'</span></div><div class="'+P+'-disc-'+T+'">'+escapeHtml(p.txt)+'</div></div>'; }
   function wireDiscussions(){
-    var list=q(".dxa-disc-list");
+    var list=discList();
     if(list){
-      qa(".dxa-disc-row",list).forEach(function(r){ if(!r.classList.contains("lxda-mine")&&r.parentNode)r.parentNode.removeChild(r); });   // kill mock rows every pass
+      qa(".dxa-disc-row,.mdxa-disc-row").forEach(function(r){ if(!r.classList.contains("lxda-mine")&&r.parentNode)r.parentNode.removeChild(r); });   // kill mock rows every pass
       var _dsig=_dxPosts.map(function(p){ return (p.t||0)+":"+dsAgo(p.t)+":"+(p.txt||"").length; }).join("|");
       if(list.getAttribute("data-lxdsig")!==_dsig){                                                                                        // (re)render our posts (newest on top)
-        qa(".dxa-disc-row.lxda-mine",list).forEach(function(r){ if(r.parentNode)r.parentNode.removeChild(r); });
-        _dxPosts.forEach(function(p){ var row=document.createElement("div"); row.className="dxa-disc-row lxda-mine"; row.innerHTML=postRowHtml(p); list.insertBefore(row,list.firstChild); });
+        qa(".dxa-disc-row.lxda-mine,.mdxa-disc-row.lxda-mine").forEach(function(r){ if(r.parentNode)r.parentNode.removeChild(r); });
+        _dxPosts.forEach(function(p){ var row=document.createElement("div"); row.className=discPfx()+"-disc-row lxda-mine"; row.innerHTML=postRowHtml(p); list.insertBefore(row,list.firstChild); });
         list.setAttribute("data-lxdsig",_dsig);
       }
       refreshDiscEmpty(list);
     }
     if(!window.__lxDXAdw){ window.__lxDXAdw=1;
       document.addEventListener("click",function(e){ var b=e.target&&e.target.closest?e.target.closest(".dc-post"):null; if(!b)return; e.preventDefault();
-        var ta=q(".dxa-disc-compose textarea"); var txt=ta?(ta.value||"").trim():""; if(!txt)return;
+        var ta=q(".dxa-disc-compose textarea,.mdxa-disc-compose textarea"); var txt=ta?(ta.value||"").trim():""; if(!txt)return;
         _dxPosts.push({addr:lxAddr()||"You", txt:txt, t:Date.now()}); dsSave(); if(ta)ta.value=""; wireDiscussions();
       },true);
     }
