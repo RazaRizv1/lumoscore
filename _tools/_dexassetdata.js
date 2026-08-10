@@ -98,15 +98,26 @@ const STYLE = `<style id="lx-dxa-css">
 @keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 /* Discussions: hide the design's mock comment rows INSTANTLY (no flash); JS removes them + renders real posts (.lxda-mine) */
 .dxa-disc-list .dxa-disc-row:not(.lxda-mine),.mdxa-disc-list .mdxa-disc-row:not(.lxda-mine){display:none!important}
+/* The row is an <a> where the design shipped a <div>. With no anchor rule it took the browser default
+   link styling -- blue and underlined, inherited by every child. Neutralise the ANCHOR only; the children
+   keep whatever the design gives them. */
+.mdxa-pl-list a.mdxa-pl-row{color:var(--text);text-decoration:none}
+.mdxa-pl-list a.mdxa-pl-row .mdxa-pl-lp{font-size:10.5px;color:var(--text-soft)}
 .lxda-disc-empty{text-align:center;padding:30px 12px;color:var(--text-soft,#8a8fa3);font:600 14px/1.5 'Hanken Grotesk',system-ui,sans-serif}
 .dxa-disc-text{margin-top:4px;line-height:1.5;word-break:break-word}
 /* Exchanges tab: hide its count badge INSTANTLY (JS was hiding it after data load -> a visible count->hidden flash) */
 .tabs-bar .tab[data-tab="exchanges"] .count,.tab[data-tab="exchanges"] .count{display:none!important}
-/* restyle_dexstats hides EVERY tab count under 760px, and for good reason: the badges are what overflowed
-   the 342px strip and made it draggable. But that also hid the Discussions count, so a comment you post
-   shows nowhere. Bring back just that one — it is 1-2 characters, not a seven-digit holder count — and
-   leave Holders/Pools/Exchanges hidden so the strip still fits. */
-@media (max-width:760px){.tabs-bar .tab[data-tab="discussions"] .count{display:inline-block!important}}
+/* restyle_dexstats hides EVERY tab count under 760px because the badges overflowed the 342px strip and
+   made it draggable. Bring all three back, but abbreviated on mobile (2.32M, not 2,322,349) so the width
+   they cost is bounded -- a seven-digit holder count is what caused the overflow, not the badge itself.
+   Exchanges stays hidden: that badge was removed deliberately. */
+@media (max-width:760px){
+.tabs-bar .tab[data-tab="discussions"] .count,
+.tabs-bar .tab[data-tab="holders"] .count,
+.tabs-bar .tab[data-tab="pools"] .count{display:inline-block!important}
+.tabs-bar .tab[data-tab="discussions"] .count,.tabs-bar .tab[data-tab="holders"] .count{margin-left:3px}
+.tabs-bar .tab{font-size:11px!important;letter-spacing:-0.1px}
+.tabs-bar .tab .count{font-size:9px!important;padding:1px 4px!important;margin-left:3px!important}}
 /* Limit-tab chips: force a real 26px circle (they were rendering as ovals) */
 .dxa-pane-limit .dxa-trade-asset[data-lxic]{width:26px!important;height:26px!important;min-width:26px!important;max-width:26px!important;flex:0 0 26px!important;border-radius:50%!important;padding:0!important;box-sizing:border-box}
 /* Smart Swap badge — shown in the swap pane when a Soroban AMM (Soroswap/Phoenix/Aquarius) beats the classic Horizon path */
@@ -810,7 +821,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     qa(".dxa-hl-pgn .pages, .dxa-hl-pgn .pager, .dxa-hl-pgn button, .mdxa-hl-pgn .pages, .mdxa-hl-pgn .pager, .mdxa-hl-pgn button").forEach(function(b){ b.style.display="none"; });   // qa() is document-scoped; .dxa-hl-pgn is unique to this panel
     // Holders bottom-tab count
     var htab=qa(".tabs-bar .tab").filter(function(t){return /holders/i.test(t.getAttribute("data-tab")||"");})[0];
-    if(htab){ var c=htab.querySelector(".count"); if(c){c.textContent=num(tot);lxMark(c);} }
+    if(htab){ var c=htab.querySelector(".count"); if(c){ c.textContent=q("#mdxaPanel")?abbrNum(tot):num(tot); lxMark(c);} }
   }
 
   // ================= AMM Pools tab — REAL per-asset pools (replaces the hardcoded design mock) =================
@@ -867,9 +878,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         return '<a class="mdxa-pl-row" href="'+poolHref(p.id)+'">'
           +'<div class="mdxa-pl-l"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
           +'<div><div class="mdxa-pl-name">'+CODE+' / '+p.other+'</div>'
-          +'<div class="mdxa-pl-net"><span class="net-pill">'+num(p.tl)+' LP holders</span></div></div></div>'
+          +'<div class="mdxa-pl-net mdxa-pl-lp">'+num(p.tl)+' LP holders</div></div></div>'
           +'<div class="mdxa-pl-r"><div class="mdxa-pl-tvl mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</div>'
-          +'<div class="mdxa-pl-apr">'+(share>=0.1?share.toFixed(1):"<0.1")+'% share</div></div></a>'; }).join("");
+          +'<div class="mdxa-pl-apr apr-low">'+(share>=0.1?share.toFixed(1):"<0.1")+'% share</div></div></a>'; }).join("");
       wrap.innerHTML=mhead+'<div class="mdxa-pl-list">'+mrows+'</div>';
     }
     else wrap.innerHTML=head+'<table class="ex-table"><thead><tr><th>Pool</th><th>TVL</th><th>LP holders</th><th>Pool share</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
@@ -1489,11 +1500,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     try{ var pc=q("#dxaChart,#mdxaChart"); if(pc&&chartPts&&!pc.querySelector(".lxda-line,.lxda-candle"))drawChart(chartPts); }catch(_){}
     try{ applyHolders(); }catch(_){}
     // update the bottom Pools tab count (best-effort; the design's Pools panel itself is left as-is)
-    try{ if(poolCount!=null){ var pt=qa(".tabs-bar .tab").filter(function(t){return /pools/i.test(t.getAttribute("data-tab")||"");})[0]; if(pt){ var c=pt.querySelector(".count"); if(c){c.textContent=String(poolCount);lxMark(c);} } } }catch(_){}
+    try{ if(poolCount!=null){ var pt=qa(".tabs-bar .tab").filter(function(t){return /pools/i.test(t.getAttribute("data-tab")||"");})[0]; if(pt){ var c=pt.querySelector(".count"); if(c){ c.textContent=q("#mdxaPanel")?abbrNum(poolCount):String(poolCount); lxMark(c);} } } }catch(_){}
     // Holders bottom-tab count — written HERE (eagerly, from the /assets fetch) rather than at the end
     // of applyHolders(), which returns early unless the Holders panel is already in the DOM. That made the
     // badge sit on "—" until the user opened the tab, while Pools (written eagerly) showed its count.
-    try{ if(holders!=null){ var ht=qa(".tabs-bar .tab").filter(function(t){return /holders/i.test(t.getAttribute("data-tab")||"");})[0]; if(ht){ var hc=ht.querySelector(".count"); if(hc){hc.textContent=num(holders);lxMark(hc);} } } }catch(_){}
+    try{ if(holders!=null){ var ht=qa(".tabs-bar .tab").filter(function(t){return /holders/i.test(t.getAttribute("data-tab")||"");})[0]; if(ht){ var hc=ht.querySelector(".count"); if(hc){ hc.textContent=q("#mdxaPanel")?abbrNum(holders):num(holders); lxMark(hc);} } } }catch(_){}
     try{ applyPools(); }catch(_){}
   }
 
