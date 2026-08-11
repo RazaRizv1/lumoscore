@@ -1,21 +1,27 @@
-// Make the mobile bottom nav (Home / Trade / Bridge / Pools / Wallet) respond to a tap.
+// Make a TAP work on the mobile layouts.
 //
-// The bar is plain markup — <a class="nb-tab" href="/wallet"> — so on a desktop pointer it just works, and
-// that is why this never showed up in a browser-pane check. On a handset it did nothing: the tap never
-// became the click that follows the link, so the href was never used. Nothing on the page cancels the
-// touch (verified: no touchstart/touchend handler outside the chart tooltip, and hit-testing at each tab's
-// centre lands inside the anchor with pointer-events:auto), so the fix is simply to stop relying on the
-// synthesised click and navigate from touchend ourselves.
+// On this class of handset a tap never becomes the click that page scripts (and plain <a href>) rely on.
+// It is invisible in a desktop browser pane, where a pointer click is real, which is why it kept coming
+// back as separate bug reports: the bottom nav did nothing, asset rows did nothing, the pool list did
+// nothing, the panel tabs did nothing, the explorer icon did nothing. One cause, many symptoms.
 //
-// Bound at WINDOW CAPTURE so it runs ahead of any page script, and only for anchors with a real href —
-// the design's own handler owns the href="#" ones (the "More" tab opens the slide menu).
+// So bridge it once, globally: on a touch that is actually a tap, cancel the touch's default and dispatch
+// the click ourselves. Cancelling touchend is also what suppresses the browser's own synthesised click, so
+// a device that WOULD have produced one still ends up with exactly one — never two.
 //
-// A touchend is NOT automatically a tap: it also ends a scroll, and this bar sits exactly where a thumb
-// finishes a swipe. Without the movement/duration guard, scrolling would navigate. The finger has to stay
-// within 12px for under 600ms.
+// Scope and safety:
+//   * only <a href> and <button>-ish elements. Form controls (input/select/textarea/label) are excluded:
+//     their touch default is focus/picker behaviour, and cancelling it would break typing.
+//   * anchors keep their own semantics — target=_blank opens a tab, everything else navigates. We do not
+//     call location.href for in-page hrefs, we let the dispatched click run so page handlers still see it.
+//   * href="#" is left entirely alone; the design owns those (e.g. the "More" tab opens the slide menu).
+//   * a touchend is NOT automatically a tap — it also ends a scroll, and the bottom bar sits exactly where
+//     a thumb finishes a swipe. The finger has to stay within 12px for under 600ms.
+//   * bound at WINDOW CAPTURE so a page script that stops propagation cannot swallow it, and it yields to
+//     any handler that already claimed the gesture (those call stopImmediatePropagation first).
 //
 // Idempotent: keyed on the script id, and re-running replaces the block rather than stacking copies.
-// Mobile containers only — the desktop layouts have no .nb-bar and no touch to fix.
+// Mobile containers only — the desktop layouts have a real pointer and need none of this.
 //
 // Usage: node _tools/_mobnav.js
 const fs = require('fs');
@@ -27,13 +33,19 @@ const SCRIPT = `<script id="lx-mobnav">(function(){
     var p=e.touches&&e.touches[0]; t0=p?{x:p.clientX,y:p.clientY,t:Date.now()}:null;
   },true);
   window.addEventListener("touchend",function(e){
+    if(e.defaultPrevented)return;                                                  // someone already handled it
     var p=e.changedTouches&&e.changedTouches[0]; if(!p||!t0)return;
-    if(Math.abs(p.clientX-t0.x)>=12||Math.abs(p.clientY-t0.y)>=12||(Date.now()-t0.t)>=600)return;   // a scroll, not a tap
+    if(Math.abs(p.clientX-t0.x)>=12||Math.abs(p.clientY-t0.y)>=12||(Date.now()-t0.t)>=600)return;   // a scroll
     var el=e.target; if(!el||!el.closest)return;
-    var a=el.closest(".nb-tab[href],.bn-item[href],.bottom-nav a[href]"); if(!a)return;
-    var h=a.getAttribute("href")||""; if(!h||h==="#")return;                                        // design owns href="#"
-    e.preventDefault(); e.stopImmediatePropagation();
-    location.href=h;
+    if(el.closest("input,select,textarea,label,[contenteditable]"))return;         // native focus/picker wins
+    var t=el.closest("a[href],button,[role=button]"); if(!t)return;
+    if(t.disabled)return;
+    var h=t.tagName==="A"?(t.getAttribute("href")||""):null;
+    if(h==="#")return;                                                             // design owns these
+    e.preventDefault();                                                            // also suppresses any native click
+    // Re-dispatch as a real click so every existing handler — ours, the design's, the browser's default
+    // link activation — behaves exactly as it does with a mouse.
+    t.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));
   },true);
 })();</script>`;
 
@@ -64,7 +76,7 @@ for (const c of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'stella
   for (const k of Object.keys(json)) {
     let p = json[k];
     if (typeof p !== 'string') continue;
-    if (p.indexOf('nb-tab') < 0 && p.indexOf('bottom-nav') < 0) continue;   // no bottom nav on this page
+    if (p.indexOf('</body>') < 0) continue;
     const before = p;
     p = p.replace(/<script id="lx-mobnav">[\s\S]*?<\/script>/, '');          // re-runnable: drop the old copy
     const bi = p.lastIndexOf('</body>'); if (bi < 0) continue;

@@ -447,12 +447,33 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       function setMonies(v){ var d=usd(v); monies.forEach(function(m){ if(m.textContent!==d){ m.textContent=d; if(m.setAttribute){m.setAttribute("data-usd",v);m.setAttribute("data-orig",d);} } }); }
       // left sub = a STATIC descriptive caption, set unconditionally so the design's mock (e.g. "51,250 XLM
       // swapped") never persists and never flashes into the script value. The $ figure goes to setMonies (vsub).
-      if(/liquidity/.test(ic)){ if(val){setText(val,num(DATA.totLiqXlm)+" XLM");snapDone(val);} setMonies(DATA.totLiqUsd); if(subL)setText(subL,"Across all pools"); }
-      else if(/pools/.test(ic)){ if(val){setText(val,String(DATA.activePools));snapDone(val);} if(subL){setText(subL,"");subL.style.display="none";} }
-      else if(/volume/.test(ic)){ if(!volReady()){ if(val)setText(val,"\u2014"); if(subL)setText(subL,"Swapped (24h)"); }
+      // NET is the whole Stellar network (see /lxapi/poolstats). Until it lands \u2014 or if it fails \u2014 fall
+      // back to the LumosCore-only totals, which are at least real, rather than showing nothing.
+      var N=window.__lxNet, xu=DATA.xlmUsd||0;
+      if(/liquidity/.test(ic)){
+        if(N&&N.tvlXlm>0){ if(val){setText(val,num(N.tvlXlm)+" XLM");snapDone(val);} setMonies(N.tvlXlm*xu); }
+        else { if(val){setText(val,num(DATA.totLiqXlm)+" XLM");snapDone(val);} setMonies(DATA.totLiqUsd); }
+        if(subL)setText(subL,N?"Across all Stellar pools":"Across all pools"); }
+      else if(/pools/.test(ic)){
+        // The network count comes from a separate (rate-limited) probe, so it can be missing while the
+        // rest of NET is present. Never let that silently put a LumosCore number under a network panel —
+        // if we fall back, the caption says whose count it is.
+        var netN=N&&N.pools;
+        if(val){setText(val,num(netN||DATA.activePools));snapDone(val);}
+        if(subL){ subL.style.display=""; subL.classList.remove("up");
+          setText(subL,netN?"Liquidity pools on Stellar":"Listed on LumosCore"); } }
+      else if(/volume/.test(ic)){
+        if(N){ if(val){setText(val,usd(N.vol24Usd));snapDone(val);} if(subL)setText(subL,(xu>0?num(N.vol24Usd/xu)+" XLM":"Swapped")+" (24h)"); }
+        else if(!volReady()){ if(val)setText(val,"\u2014"); if(subL)setText(subL,"Swapped (24h)"); }
         else { if(val){setText(val,num(DATA.totVolXlm)+" XLM");snapDone(val);} setMonies(DATA.totVolUsd); if(subL)setText(subL,"Swapped (24h)"); } }
-      else if(/participant/.test(ic)){ if(val){setText(val,num(DATA.participants));snapDone(val);} if(subL)setText(subL,"Unique LP wallets"); }
-      else if(/fees/.test(ic)){ if(!volReady()){ if(val)setText(val,"\u2014"); if(subL)setText(subL,"Across all pools"); return; }
+      else if(/participant/.test(ic)){
+        // NET counts LP POSITIONS, not wallets: a wallet in three pools is counted three times. Say that
+        // rather than relabelling it "unique", which would be false.
+        if(N&&N.lpAccounts){ if(val){setText(val,num(N.lpAccounts));snapDone(val);} if(subL)setText(subL,"LP positions network-wide"); }
+        else { if(val){setText(val,num(DATA.participants));snapDone(val);} if(subL)setText(subL,"Unique LP wallets"); } }
+      else if(/fees/.test(ic)){
+        if(N){ if(val){setText(val,usd(N.fees24Usd));snapDone(val);} if(subL)setText(subL,"Across all Stellar pools"); return; }
+        if(!volReady()){ if(val)setText(val,"\u2014"); if(subL)setText(subL,"Across all pools"); return; }
         var _fu=DATA.pools.reduce(function(s,p){return s+(p.fees24Usd||0);},0); if(val){setText(val,usd(_fu));snapDone(val);} if(subL)setText(subL,"Across all pools"); }
     });
     buildFeesRow();
@@ -512,6 +533,45 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       +'<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.trustlines)+'</div></div>'
       +'</div></a>';
   }
+  // MOBILE "My Pools". Same problem as the all-pools list, in a different panel: the phone ships
+  // #panelMine holding one baked LUMOS/APT card, and the tab wiring only ever knew the desktop panel ids
+  // (#lx-mypanel / #panelAllPools / #panelMyPositions), none of which exist here. So tapping My Pools
+  // either showed nothing or showed the mock. Render the real positions as the same .pool-card the
+  // all-pools list uses, so both panels look and behave alike.
+  function myCard(p){
+    // Mirror myRow exactly. Two things bite here: the user's share is p.mineFrac (myFrac is the DETAIL
+    // page's field — reading it made every card say "0 XLM"), and a position can be in a pool with NO
+    // XLM leg, which must show both real assets rather than being labelled "… / XLM".
+    var f=p.mineFrac||0, nonX=p.nonXlm&&p.a0&&p.a1;
+    var pct=(f*100>=0.01?(f*100).toFixed(2):"<0.01")+"%";
+    var name=nonX?(esc(p.a0.code)+" / "+esc(p.a1.code)):(esc(p.code)+" / XLM");
+    var ico=nonX?icoPairG(p.a0,p.a1):icoPairM(p.code,p.issuer);
+    var l1,v1,vs1,l2,v2;
+    if(nonX){ l1=esc(p.a0.code); v1=qty(p.a0.amount*f); vs1=""; l2=esc(p.a1.code); v2=qty(p.a1.amount*f); }
+    else { l1="Your liquidity"; v1=qty(p.xlm*f)+" XLM"; vs1=usd(p.tvlUsd*f); l2=esc(p.code); v2=qty((p.tok||0)*f); }
+    // the detail page is X/XLM only, so a non-XLM position opens on the explorer instead (same as desktop)
+    var href=nonX?("https://stellar.expert/explorer/public/liquidity-pool/"+p.id):detailUrl(p.id,null,pairVal(p));
+    return '<a class="pool-card my-pos lx-ammcard lx-mycard" data-pool="'+p.id+'"'+pairAttr(p)+(nonX?' data-nonxlm="1" target="_blank" rel="noopener"':'')+' href="'+href+'">'
+      +'<div class="pc-head">'+ico
+      +'<div class="pc-info"><div class="pc-name">'+name+'</div>'
+      +'<div class="pc-sub">'+p.fee+'% fee \\u00b7 Stellar AMM</div></div></div>'
+      +'<div class="pc-stats">'
+      +'<div class="pc-stat"><div class="l">'+l1+'</div><div class="v">'+v1+'</div>'+(vs1?'<div class="vs">'+vs1+'</div>':'')+'</div>'
+      +'<div class="pc-stat"><div class="l">Pool share</div><div class="v">'+pct+'</div></div>'
+      +'<div class="pc-stat"><div class="l">'+l2+'</div><div class="v">'+v2+'</div></div>'
+      +'</div></a>';
+  }
+  function fillMyPosMobile(){
+    var box=q("#panelMine"); if(!box||!DATA)return false;
+    var mine=DATA.mine||[];
+    var want=mine.length||1;
+    if(box.querySelectorAll(".lx-mycard,.lx-myempty").length===want&&box.__lxMineN===want)return true;
+    box.__lxMineN=want;
+    box.innerHTML=mine.length?mine.map(myCard).join("")
+      :('<div class="lx-myempty" style="text-align:center;color:var(--text-muted);padding:26px 14px;font-size:13px">'
+        +(myAddr()?"You have no liquidity in any Stellar pool yet.":"Connect your wallet to see your pools.")+"</div>");
+    return true;
+  }
   function allRow(p,i){
     var idx=(i+1<10?"0":"")+(i+1);
     return '<tr class="lx-ammrow" data-pool="'+p.id+'"'+pairAttr(p)+' style="cursor:pointer"><td class="idx">'+idx+'</td>'+
@@ -558,6 +618,22 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     host.insertBefore(d, host.firstChild);
     buildHeroStats();   // show the 4 stat labels (+ skeleton values) instantly, not ~2s after data lands
     buildFeesRow();     // add the 5th Market-Overview row up front too
+    loadNet();          // and start the network-wide numbers the overview actually describes
+  }
+  // Whole-network AMM figures for Market Overview. Stellar has ~40,000 liquidity pools, far too many for a
+  // phone to enumerate (~3MB per 2,600), so /lxapi/poolstats aggregates them at the edge and returns a few
+  // hundred bytes. Cached for 10 minutes there and reused from sessionStorage here.
+  // Purely additive: if it fails, paintSnapshot keeps the LumosCore-only totals.
+  function loadNet(){
+    if(window.__lxNetP)return; window.__lxNetP=1;
+    try{ var c=JSON.parse(sessionStorage.getItem("lumos.netpools")||"null");
+      if(c&&c.ts&&Date.now()-c.ts<600000&&c.tvlXlm>0){ window.__lxNet=c; try{paintSnapshot();}catch(_){} return; } }catch(_){}
+    getJSON("/lxapi/poolstats").then(function(d){
+      if(!d||d.error||!(d.tvlXlm>0))return;
+      window.__lxNet=d;
+      try{ sessionStorage.setItem("lumos.netpools",JSON.stringify(d)); }catch(_){}
+      try{ paintSnapshot(); }catch(_){}
+    }).catch(function(){});
   }
   function myEmptyRow(){ return '<tr class="lx-ammrow"><td colspan="5"><div class="lx-amm-empty"><b>No open positions</b>Add liquidity to a pool to start earning a share of its swap fees.</div></td></tr>'; }
   // The design's #panelMyPositions gets emptied on some machines (can't repro / find the cause), so we OWN
@@ -576,8 +652,18 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   function wireMyPosTab(){
     if(window.__lxMyTab)return; var bar=q("#poolTabs"); if(!bar)return; window.__lxMyTab=1;
-    buildMyPanel();
+    if(!q("#panelMine"))buildMyPanel();   // desktop only: the phone already has a My Pools panel to fill
     function apply(){ var mineActive=!!window.__lxMine;    // our own click flag — NOT the design's unreliable .active
+      // Mobile uses #panelAll / #panelMine and has none of the desktop panels, so the desktop-only branch
+      // below left the phone showing its baked "LUMOS / APT" position card under My Pools.
+      var mAll=q("#panelAll"), mMine=q("#panelMine");
+      if(mAll&&mMine){
+        fillMyPosMobile();
+        mAll.style.display=mineActive?"none":"";
+        mMine.style.display=mineActive?"":"none";
+        var srch=q(".search-box.inline-filter"); if(srch)srch.style.display=mineActive?"none":"";
+        return;
+      }
       var lp=q("#lx-mypanel"), ap=q("#panelAllPools"), mp=q("#panelMyPositions");
       if(mp)mp.style.display="none";                       // never show the design's (emptied) panel
       if(lp){ lp.style.setProperty("display",mineActive?"block":"none","important"); lp.style.setProperty("opacity","1","important"); lp.style.setProperty("visibility","visible","important"); }
@@ -831,7 +917,24 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var xlmP=getJSON("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd");
     var poolP=poolTry(2);
     var trP=getJSON(H+"/liquidity_pools/"+hex+"/trades?order=desc&limit=100");
-    var opP=getJSON(H+"/liquidity_pools/"+hex+"/operations?order=desc&limit=50");
+    // Deposits/withdrawals are RARE next to swaps: this pool runs ~600 path-payments for every 5 LP
+    // operations, so a 50-record window held 3 deposits and 0 withdrawals and the Withdrawals filter came
+    // up empty on a pool that has had withdrawals. Horizon cannot filter operations by type, so widen the
+    // window (200 is its max) and walk two more pages. 600 records covers every LP action this pool has
+    // seen, and the pages are fetched in sequence only while they keep arriving.
+    var opP=(function(){
+      var url=H+"/liquidity_pools/"+hex+"/operations?order=desc&limit=200", all=[], pages=0;
+      function step(u){
+        return getJSON(u).then(function(r){
+          var recs=(r&&r._embedded&&r._embedded.records)||[];
+          all=all.concat(recs); pages++;
+          var nx=r&&r._links&&r._links.next&&r._links.next.href;
+          if(recs.length===200&&nx&&pages<3)return step(nx);
+          return {_embedded:{records:all}};
+        }).catch(function(){ return {_embedded:{records:all}}; });
+      }
+      return step(url);
+    })();
     var partP=getJSON(H+"/accounts?liquidity_pool="+hex+"&limit=100");
     var acctP=myAddr()?(window.__lxAcct?window.__lxAcct(myAddr()):getJSON(H+"/accounts/"+myAddr())):Promise.resolve(null);
     Promise.all([xlmP,poolP,trP,opP,partP,acctP]).then(function(r){
@@ -931,8 +1034,18 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       if(t.indexOf("Pool ID:")===0)setText(s,"Pool ID: "+hshort(d.hex));
       else if(t.indexOf("ID:")===0)setText(s,"ID: "+hshort(d.hex)); });
     qa(".pool-header button[data-copy],.ph-id button[data-copy]").forEach(function(b){ b.setAttribute("data-copy",d.hex); });
-    // "View on Explorer" (the external-link icon button, path starts "M18 13"): open the pool on stellar.expert.
-    qa(".pool-header button").forEach(function(b){ if(b.__lxex)return; var p=b.querySelector("svg path"); var dd=(p&&p.getAttribute("d"))||""; if(dd.indexOf("M18 13")!==0&&dd.indexOf("M15 3")!==0&&!/3h6|14L21/.test(dd))return; b.__lxex=1; var c=b.cloneNode(true); b.parentNode.replaceChild(c,b); c.setAttribute("title","View on Explorer"); c.addEventListener("click",function(e){ e.preventDefault(); e.stopImmediatePropagation(); window.open("https://stellar.expert/explorer/public/liquidity-pool/"+d.hex,"_blank","noopener"); },true); });
+    // "View on Explorer" (the external-link icon button, path starts "M18 13"): open the pool on
+    // stellar.expert. Replace the <button> with a real <a target=_blank> rather than calling window.open
+    // from a handler — a mobile browser will block a programmatic window.open that it does not attribute
+    // to a link activation, which is why the icon did nothing on the phone while the handler ran fine.
+    var exHref="https://stellar.expert/explorer/public/liquidity-pool/"+d.hex;
+    qa(".pool-header button").forEach(function(b){ if(b.__lxex)return; var p=b.querySelector("svg path"); var dd=(p&&p.getAttribute("d"))||""; if(dd.indexOf("M18 13")!==0&&dd.indexOf("M15 3")!==0&&!/3h6|14L21/.test(dd))return;
+      var a=document.createElement("a"); a.className=b.className; a.innerHTML=b.innerHTML;
+      a.setAttribute("href",exHref); a.setAttribute("target","_blank"); a.setAttribute("rel","noopener");
+      a.setAttribute("title","View on Explorer"); a.setAttribute("aria-label","View pool on stellar.expert");
+      a.style.cssText=(b.getAttribute("style")||"")+";display:inline-flex;align-items:center;justify-content:center;color:inherit;text-decoration:none";
+      a.__lxex=1; b.parentNode.replaceChild(a,b); });
+    qa(".pool-header a[title='View on Explorer']").forEach(function(a){ if(a.getAttribute("href")!==exHref)a.setAttribute("href",exHref); });
     var pi=q(".ph-icons"); if(pi&&pi.getAttribute("data-lxdet")!=="1"){ pi.setAttribute("data-lxdet","1"); pi.innerHTML='<div class="pa" data-lxfixed="1">'+tokLogo()+'</div><div class="pb" data-lxfixed="1">'+xlmLogo()+'</div>'; amFetchLogo(d.code,d.issuer,function(url){ var im=pi.querySelector(".pa img"); if(im&&url)im.src=url; }); }
     var pv=q(".ph-price .v"), pm=q(".ph-price .lc-money");
     if(d.nonXlm){ if(pv)setText(pv,fprice(d.pxA0perA1)+" "+d.a0.code); if(pm)setMoneyEl(pm,d.priceUsd,d.priceUsd>0?pusd(d.priceUsd):"\\u2014"); }
@@ -1152,12 +1265,24 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function txFilterM(label){
     var f=String(label||"").trim().toLowerCase();
     qa(".tx-filter-m button").forEach(function(b){ b.classList.toggle("active",(b.textContent||"").trim().toLowerCase()===f); });
+    var shown=0;
     qa(".ptab-panel[data-panel=transactions] .lx-txrow").forEach(function(rw){
+      if(rw.classList.contains("lx-txnone"))return;
       var ty=rw.getAttribute("data-txtype")||"";
       var show=(f.indexOf("all")===0)||(f.indexOf("swap")===0&&ty==="swap")
              ||(f.indexOf("deposit")===0&&ty==="deposit")||(f.indexOf("withdraw")===0&&ty==="withdraw");
-      rw.style.display=show?"":"none";
+      rw.style.display=show?"":"none"; if(show)shown++;
     });
+    // A filter with no matches used to leave the panel blank, which reads as "broken" rather than
+    // "this pool has had none". Say which it is.
+    var box=q(".ptab-panel[data-panel=transactions] .card"); if(!box)return;
+    var none=box.querySelector(".lx-txnone");
+    if(shown){ if(none)none.style.display="none"; return; }
+    if(!none){ none=document.createElement("div"); none.className="tx-item lx-txrow lx-txnone";
+      none.style.cssText="justify-content:center;color:var(--text-muted);text-align:center"; box.appendChild(none); }
+    none.style.display="";
+    none.textContent=(f.indexOf("all")===0)?"No transactions yet"
+      :("No "+f+" in this pool's recent activity");
   }
   function copyText(s){
     try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(s); return true; } }catch(_){}
@@ -1187,6 +1312,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     }
     var act=function(e){
       var t=e.target; if(!t||!t.closest)return;
+      // The global tap bridge (lx-mobnav) runs first and turns a tap into a real click. When it has done
+      // so this touchend is already spent — acting on it too would run everything twice, which for a
+      // toggle like the metric menu means opening and immediately closing it.
+      if(e.type==="touchend"&&e.defaultPrevented)return;
       if(!isTap(e))return;
       var tb=t.closest("#ptabs button[data-ptab]");
       if(tb){ e.preventDefault(); e.stopImmediatePropagation(); ptabShow(tb.getAttribute("data-ptab")); return; }
@@ -1208,9 +1337,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         var ok=copyText(v);
         try{ ammToast(ok?"Pool ID copied":"Could not copy",!ok); }catch(_){}
         return; }
-      var xp=t.closest(".ph-id button");
-      if(xp&&DET&&DET.hex){ e.preventDefault(); e.stopImmediatePropagation();
-        window.open("https://stellar.expert/explorer/public/liquidity-pool/"+DET.hex,"_blank","noopener"); return; }
+      // the explorer control is a real <a target=_blank> now — the browser opens it, we stay out of the way
       // tapping anywhere else closes an open metric menu
       var om=q(".chart-mode-menu.open"); if(om&&!t.closest(".chart-mode-menu"))om.classList.remove("open");
     };
@@ -1282,7 +1409,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var box=it?it.parentElement:q(".ptab-panel[data-panel=transactions] .card");
     if(!box)return true;
     var want=d.txs.length||1;
-    if(box.querySelectorAll(".lx-txrow").length!==want){
+    // count real rows only — the "no deposits…" placeholder is ours and would otherwise make the count
+    // never match, re-rendering the whole list on every pass
+    if(box.querySelectorAll(".lx-txrow:not(.lx-txnone)").length!==want){
       [].slice.call(box.querySelectorAll(".tx-item")).forEach(function(r){ if(r.parentNode)r.parentNode.removeChild(r); });
       box.insertAdjacentHTML("beforeend", d.txs.length?d.txs.map(txRowM).join("")
         :'<div class="tx-item lx-txrow" style="justify-content:center;color:var(--text-muted)">No transactions yet</div>');
@@ -1769,6 +1898,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     // meant load() never ran on a phone at all: no fetch, no DATA, so every renderer below was moot and
     // the design's mock pools stayed put. This is the gate, not paintTables — the layer never started.
     if(q("#poolsBody")||q("#panelAll")){ try{ renameMineTab(); }catch(_){}
+      // Network-wide Market Overview figures. Hooked HERE, not to the hero decoration builder — that
+      // builder is desktop-shaped and never runs on the phone, so loadNet() was never called there.
+      try{ loadNet(); }catch(_){}
       // fetch just the balances up-front so Create Pool's asset dropdown is populated immediately
       // (it used to wait on the full pools load and showed an empty list for seconds)
       try{ var _cpa=myAddr(); if(_cpa)(window.__lxAcct?window.__lxAcct(_cpa):getJSON(H+"/accounts/"+_cpa)).then(function(acc){ _cpBals=(acc&&acc.balances)||[]; try{ wireCreatePool(); }catch(_e){} }).catch(function(){}); }catch(_){}
