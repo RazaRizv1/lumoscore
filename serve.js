@@ -83,6 +83,71 @@ function holdersProxy(req, res, q) {
   })).catch(e => { res.writeHead(502, {'content-type':'application/json'}); res.end(JSON.stringify({error:String(e&&e.message||e)})); });
 }
 
+// Local mirror of functions/lxapi/poolstats — network-wide AMM aggregates for the Pools Market Overview.
+// Same shape as the Pages Function so the page behaves identically in dev and production. Kept in step
+// with functions/lxapi/poolstats.js; see that file for what is exact and what is sampled.
+const PS_API = 'https://api.stellar.expert/explorer/public/liquidity-pool';
+let PS_CACHE = null;
+function poolStats(req, res) {
+  if (PS_CACHE && Date.now() - PS_CACHE.ts < 600000) {
+    res.writeHead(200, {'content-type':'application/json'});
+    return res.end(PS_CACHE.body);
+  }
+  // Upstream 429s on bursts, so everything here is sequential with retry — same as the Pages Function.
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const getJ = async url => {
+    for (let a = 0; a < 3; a++) {
+      const r = await fetch(url);
+      if (r.status === 429) { await sleep(1200 * (a + 1)); continue; }
+      if (!r.ok) return null;
+      return r.json();
+    }
+    return null;
+  };
+  const has = async off => {
+    const d = await getJ(PS_API + '?limit=1&cursor=' + off);
+    if (!d) throw new Error('rate limited');
+    return ((((d._embedded || {}).records) || []).length > 0);
+  };
+  (async () => {
+    // Walk DOWN the TVL ranking — sorting by volume or LP count returns the same top pools, so breadth
+    // across sort orders bought nothing. Sequential + paced: a burst gets 429ed.
+    const pages = [];
+    for (let cursor = 0; cursor < 800; cursor += 200) {
+      if (pages.length) await sleep(1200);
+      pages.push(await getJ(PS_API + '?limit=200&order=desc&sort=tvl&cursor=' + cursor).catch(() => null));
+    }
+    const pools = await (async () => {
+      let lo = 0, hi = 1024;
+      while (await has(hi)) { lo = hi; hi *= 2; if (hi > (1 << 22)) return null; }
+      while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (await has(mid)) lo = mid; else hi = mid; }
+      return lo + 1;
+    })().catch(() => null);
+    const seen = new Set();
+    let tvlXlm = 0, vol24Usd = 0, fees24Usd = 0, lpAccounts = 0, trades24 = 0, sampled = 0;
+    for (const p of pages) for (const r of ((p && p._embedded && p._embedded.records) || [])) {
+      if (!r || !r.id || seen.has(r.id)) continue;
+      seen.add(r.id); sampled++;
+      const xlm = (r.assets || []).filter(a => (a.asset || a.name) === 'XLM')[0];
+      if (xlm) tvlXlm += (2 * (+xlm.amount || 0)) / 1e7;
+      vol24Usd += ((r.volume_value && +r.volume_value['1d']) || 0) / 1e7;
+      fees24Usd += ((r.earned_value && +r.earned_value['1d']) || 0) / 1e7;
+      lpAccounts += +r.accounts || 0;
+      trades24 += (r.trades && +r.trades['1d']) || 0;
+    }
+    if (!sampled) throw new Error('no upstream records');
+    const body = JSON.stringify({ pools, sampled, tvlXlm: Math.round(tvlXlm),
+      vol24Usd: Math.round(vol24Usd * 100) / 100, fees24Usd: Math.round(fees24Usd * 100) / 100,
+      lpAccounts, trades24, ts: Date.now() });
+    PS_CACHE = { ts: Date.now(), body };
+    res.writeHead(200, {'content-type':'application/json','cache-control':'public, max-age=600'});
+    res.end(body);
+  })().catch(e => {
+    res.writeHead(502, {'content-type':'application/json'});
+    res.end(JSON.stringify({ error: String((e && e.message) || e) }));
+  });
+}
+
 // Local mirror of functions/lxapi/soroswap — same allow-list, same shape, so the swap path behaves
 // identically in dev and production. The key comes from the environment, never the repo:
 //   $env:SOROSWAP_KEY = "sk_…" ; node serve.js 8080 --admin
@@ -164,6 +229,7 @@ function cleanUrl(p) {
 http.createServer((req, res) => {
   let p = decodeURIComponent((req.url || '/').split('?')[0]);
   if (p === '/lxapi/holders') return holdersProxy(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/poolstats') return poolStats(req, res);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
   }
