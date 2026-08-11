@@ -5650,6 +5650,16 @@ window.addEventListener('click',function(e){
   function chSync(){ var g=q("#tvlChart svg"); if(!g||!DET)return; var s=(window.__tvlChartState&&window.__tvlChartState())||{type:"line",metric:"tvl",range:"1Y"}; var sig=s.type+"|"+s.metric+"|"+s.range; var dirty=!!g.querySelector("rect:not(.lx-ch)"); if(!dirty){ var dp=g.querySelector("path:not(.lx-ch)"); dirty=!!(dp&&dp.getAttribute("d")); } if(sig!==DET.__chSig||dirty)chDraw(); }
   function pdChart(){
     var svg=q("#tvlChart svg"); if(!svg)return; chDraw();
+    // The range strip ships with 1M pre-selected, but the design chart state defaults to 1Y — so on load the
+    // button said 1M while the series drawn was a whole year. Press the pre-selected button once so the label
+    // and the data agree; the design keeps them in step from then on.
+    if(!window.__lxRangeSync){ window.__lxRangeSync=1;
+      try{ var ab=q(".tf-mini .active,.tf-mini button.active");
+        var st0=(window.__tvlChartState&&window.__tvlChartState())||{};
+        var lbl=ab?(ab.textContent||"").trim().toUpperCase():"";
+        if(ab&&lbl&&st0.range&&lbl!==String(st0.range).toUpperCase())ab.click();
+      }catch(_){}
+    }
     if(!window.__lxChHook){ window.__lxChHook=1;
       document.addEventListener("click",function(e){ var t=e.target; if(t&&t.closest&&t.closest(".chart-type,.tf-mini,.chart-mode-select,.chart-menu,.menu")){ [40,160,400,800].forEach(function(ms){ setTimeout(chSync,ms); }); } },true);
       setInterval(chSync,500);   // catch the design's late/animated re-renders without flicker (guarded)
@@ -5667,8 +5677,40 @@ window.addEventListener('click',function(e){
       '<td>'+when+'</td>'+
       '<td><a class="ext-link" href="'+ex+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H8M17 7v9"></path></svg></a></td></tr>';
   }
+  // Mobile has no tx TABLE: the panel is a .card holding .tx-item rows after its .card-head and
+  // .tx-filter-m. Rendering desktop <tr>s into it would put table rows inside a div, so the rows get the
+  // phone markup and only the rows are replaced -- the head and the filter strip stay put.
+  function txRowM(t){
+    var kind=(t.type==="deposit"||t.type==="withdraw")?t.type:"swap";
+    var label=kind==="deposit"?"Deposit":(kind==="withdraw"?"Withdraw":"Swap");
+    var when=t.time?new Date(t.time).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}):"—";
+    var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(t.who||"");
+    var amounts=famt(t.xlm)+" XLM ↔ "+famt(t.tok)+" "+esc(DET.code);
+    return '<div class="tx-item lx-txrow" data-txtype="'+kind+'">'
+      +'<div class="tx-icon '+kind+'"></div>'
+      +'<div class="tx-info"><div class="tx-type '+kind+'">'+label+'</div>'
+      +'<div class="tx-amounts">'+amounts+'</div>'
+      +'<a class="tx-meta" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(t.who||"")+'</a></div>'
+      +'<div class="tx-time">'+when+'</div></div>';
+  }
+  function pdTxMobile(){
+    // Attribute value left UNQUOTED on purpose. This whole script is a JS string in the transform, so the
+    // " I first wrote here reached the browser as a bare " and closed the selector string early — a parse
+    // error that killed the entire layer, not just this function. CSS allows an unquoted value when it is a
+    // valid identifier, so there is no quote left to lose.
+    var d=DET; var it=q(".ptab-panel[data-panel=transactions] .tx-item,.ptab-panel[data-panel=transactions] .lx-txrow");
+    var box=it?it.parentElement:q(".ptab-panel[data-panel=transactions] .card");
+    if(!box)return true;
+    var want=d.txs.length||1;
+    if(box.querySelectorAll(".lx-txrow").length!==want){
+      [].slice.call(box.querySelectorAll(".tx-item")).forEach(function(r){ if(r.parentNode)r.parentNode.removeChild(r); });
+      box.insertAdjacentHTML("beforeend", d.txs.length?d.txs.map(txRowM).join("")
+        :'<div class="tx-item lx-txrow" style="justify-content:center;color:var(--text-muted)">No transactions yet</div>');
+    }
+    return true;
+  }
   function pdTx(){
-    var d=DET; var tb=q("table.tx tbody"); if(!tb)return;
+    var d=DET; var tb=q("table.tx tbody"); if(!tb){ pdTxMobile(); return; }
     tb.__lxPP=1;
     var wantTx=d.txs.length||1;
     if(tb.querySelectorAll(".lx-txrow").length!==wantTx){
@@ -5682,35 +5724,43 @@ window.addEventListener('click',function(e){
       fb.forEach(function(b){ b.addEventListener("click",function(e){ e.stopPropagation(); fb.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); var f=b.textContent.trim().toLowerCase(); qa("table.tx tbody .lx-txrow").forEach(function(rw){ var ty=rw.getAttribute("data-txtype")||""; var show=(f.indexOf("all")===0)||(f.indexOf("swap")===0&&ty==="swap")||(f.indexOf("deposit")===0&&ty==="deposit")||(f.indexOf("withdraw")===0&&ty==="withdraw"); rw.style.display=show?"":"none"; }); }); });
     }
   }
-  function pdAssetRow(a,name,ico,amt){ if(!a)return; var icoEl=a.querySelector(".mp-asset-ico"); if(icoEl){ icoEl.setAttribute("data-lxfixed","1"); icoEl.style.overflow="hidden"; if(icoEl.getAttribute("data-lxd")!=="1"){icoEl.setAttribute("data-lxd","1");icoEl.innerHTML=ico;} } var nm=a.querySelector(".mp-asset-name"); if(nm)setText(nm,name); var am=a.querySelector(".mp-asset-amt"); if(am)setText(am,amt); }
+  function pdAssetRow(a,name,ico,amt){ if(!a)return; var icoEl=a.querySelector(".mp-asset-ico,.mpm-asset-ico"); if(icoEl){ icoEl.setAttribute("data-lxfixed","1"); icoEl.style.overflow="hidden"; if(icoEl.getAttribute("data-lxd")!=="1"){icoEl.setAttribute("data-lxd","1");icoEl.innerHTML=ico;} } var nm=a.querySelector(".mp-asset-name,.mpm-asset-name"); if(nm)setText(nm,name); var am=a.querySelector(".mp-asset-amt,.mpm-asset-amt"); if(am)setText(am,amt); }
   function pdPosition(){
-    var d=DET; var mp=q(".my-position"); if(!mp)return;
+    var d=DET; var mp=q(".my-position,.my-position-m"); if(!mp)return;
     // Header: rename "My Position" -> "Position Value" and drop the irrelevant top "100%" pill (per user);
     // the position value moves up (the redundant inner "Position Value" label is hidden).
     var head=mp.previousElementSibling; if(head&&/side-head/.test(String(head.className||""))){
       [].slice.call(head.childNodes).forEach(function(nd){ if(nd.nodeType===3&&/my position/i.test(nd.textContent))nd.textContent="Position Value"; });
       [].slice.call(head.querySelectorAll("*")).forEach(function(el){ if(el.children.length===0&&/^\s*my position\s*$/i.test(el.textContent||""))el.textContent="Position Value"; });
     }
-    var sp=q(".position-share-pill"); if(sp)sp.style.display="none";
-    var lbl0=mp.querySelector(".mp-label"); if(lbl0)lbl0.style.display="none";
-    var assets=qa(".mp-asset");
+    var sp=q(".position-share-pill,.mpm-share"); if(sp)sp.style.display="none";
+    var lbl0=mp.querySelector(".mp-label,.mpm-label"); if(lbl0)lbl0.style.display="none";
+    var assets=qa(".mp-asset,.mpm-asset");
     if(d.myFrac>0){
       mp.classList.add("active");
       var myUsd=d.tvlUsd*d.myFrac;
-      var amt=q(".mp-amount .lc-money")||q(".mp-amount"); setMoneyEl(amt,myUsd,d.tvlUsd>0?usd(myUsd):"\u2014");
-      var pill=q(".position-share-pill"); if(pill)setText(pill,(d.myFrac*100>=0.01?(d.myFrac*100).toFixed(2):"<0.01")+"%");
-      var pnl=q(".mp-pnl"); if(pnl)pnl.innerHTML='<span style="color:var(--text-muted)">'+(d.myFrac*100>=0.01?(d.myFrac*100).toFixed(2):"<0.01")+'% of pool \u00b7 current value</span>';
+      var amt=q(".mp-amount .lc-money,.mpm-amount .lc-money")||q(".mp-amount,.mpm-amount"); setMoneyEl(amt,myUsd,d.tvlUsd>0?usd(myUsd):"\u2014");
+      var pill=q(".position-share-pill,.mpm-share"); if(pill)setText(pill,(d.myFrac*100>=0.01?(d.myFrac*100).toFixed(2):"<0.01")+"%");
+      var pnl=q(".mp-pnl,.mpm-pnl"); if(pnl)pnl.innerHTML='<span style="color:var(--text-muted)">'+(d.myFrac*100>=0.01?(d.myFrac*100).toFixed(2):"<0.01")+'% of pool \u00b7 current value</span>';
       if(d.nonXlm){ pdAssetRow(assets[0],d.a0.code,genLogo(d.a0),famt(d.a0.amt*d.myFrac)); pdAssetRow(assets[1],d.a1.code,genLogo(d.a1),famt(d.a1.amt*d.myFrac)); }
       else { pdAssetRow(assets[0],d.code,tokLogo(),famt(d.tok*d.myFrac)); pdAssetRow(assets[1],"XLM",xlmLogo(),famt(d.xlm*d.myFrac)); }
     } else {
       mp.classList.remove("active");
-      var val=q(".mp-value"); if(val)val.innerHTML='<div class="mp-label">Your Position</div><div class="mp-amount">\u2014</div><div class="mp-pnl" style="color:var(--text-muted)">'+(myAddr()?"You have no liquidity in this pool":"Connect your wallet to see your position")+'</div>';
+      // Mobile ships no .mpm-value wrapper — just .mpm-amount and .mpm-pnl — so the desktop path left the
+      // baked "$1,247.50 / +$32.18 (2.65%)" untouched on a wallet with no position in this pool.
+      var mAmt=q(".mpm-amount"), mPnl=q(".mpm-pnl"), mShare=q(".mpm-share");
+      if(mAmt&&!q(".mp-value,.mpm-value")){
+        mAmt.textContent="—";
+        if(mPnl)mPnl.innerHTML='<span style="color:var(--text-muted)">'+(myAddr()?"No position in this pool":"Connect a wallet to see your position")+'</span>';
+        if(mShare)mShare.textContent="0%";
+      }
+      var val=q(".mp-value,.mpm-value"); if(val)val.innerHTML='<div class="mp-label">Your Position</div><div class="mp-amount">\u2014</div><div class="mp-pnl" style="color:var(--text-muted)">'+(myAddr()?"You have no liquidity in this pool":"Connect your wallet to see your position")+'</div>';
       if(d.nonXlm){ pdAssetRow(assets[0],d.a0.code,genLogo(d.a0),"0"); pdAssetRow(assets[1],d.a1.code,genLogo(d.a1),"0"); }
       else { pdAssetRow(assets[0],d.code,tokLogo(),"0"); pdAssetRow(assets[1],"XLM",xlmLogo(),"0"); }
     }
     // The "Earned fees" ($8.92) + "LP tokens" (23,415.82) rows are baked mock. LP tokens = the real LP-share
     // balance; earned fees can't be derived without a deposit cost-basis, so show "—" instead of a fake number.
-    qa(".my-position .mp-fee-row").forEach(function(rw){ var lab=(rw.querySelector(".mp-fee-label")||{}).textContent||""; var val=rw.querySelector(".mp-fee-val"); if(!val)return;
+    qa(".my-position .mp-fee-row,.my-position-m .mpm-fee-row").forEach(function(rw){ var lab=(rw.querySelector(".mp-fee-label,.mpm-fee-label")||{}).textContent||""; var val=rw.querySelector(".mp-fee-val,.mpm-fee-val"); if(!val)return;
       if(/lp tokens/i.test(lab)){ setText(val,d.myFrac>0?famt(d.myShares):"0"); }
       else if(/earned fees/i.test(lab)){ val.innerHTML='<span style="color:var(--text-muted)">\u2014</span>'; } });
   }
@@ -5727,18 +5777,25 @@ window.addEventListener('click',function(e){
     var lp=q("#dwWithdraw .balance"); if(lp)setText(lp,"Your LP: "+famt(d.myShares));
     qa(".dw-summary .r").forEach(function(rw){ var lab=(rw.querySelector("span")||{}).textContent||""; var st=rw.querySelector("strong"); if(!st)return; if(/fee tier/i.test(lab))setText(st,d.fee+"%"); else if(/network fee/i.test(lab))setText(st,"\u2248 0.00001 XLM"); });
   }
-  function partRow(p){
+  // Mobile names the inner cells .wallet/.share and adds a .share-bar meter; desktop uses
+  // .part-addr/.part-share. Same row, two skins.
+  function partRow(p,mob){
     var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(p.addr);
+    var pct=(p.frac*100>=0.01?(p.frac*100).toFixed(2):"<0.01")+"%";
+    if(mob) return '<div class="part-row lx-partrow"><div class="part-avatar">'+ident(p.addr,26)+'</div>'
+      +'<a class="wallet" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'
+      +'<div class="share">'+pct+'</div>'
+      +'<div class="share-bar"><div class="fill" style="width:'+Math.min(100,p.frac*100).toFixed(2)+'%"></div></div></div>';
     return '<div class="part-row lx-partrow"><div class="part-avatar">'+ident(p.addr,26)+'</div>'+
       '<a class="part-addr" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'+
       '<span class="part-share">'+(p.frac*100>=0.01?(p.frac*100).toFixed(2):"<0.01")+'%</span></div>';
   }
   function pdParts(){
-    var d=DET; var list=q("#partList"); if(!list)return;
+    var d=DET; var list=q("#partList,#participantsList"); if(!list)return;
     list.__lxPP=1;  // block the design's participant paginator/cloner
     var wantP=d.parts.length||1;
     if(list.querySelectorAll(".lx-partrow").length!==wantP){
-      list.innerHTML=d.parts.length?d.parts.map(partRow).join(""):'<div class="part-row lx-partrow" style="justify-content:center;color:var(--text-muted)">No liquidity providers yet</div>';
+      list.innerHTML=d.parts.length?d.parts.map(function(_p){return partRow(_p,list.id==="participantsList");}).join(""):'<div class="part-row lx-partrow" style="justify-content:center;color:var(--text-muted)">No liquidity providers yet</div>';
     }
     var pg=q("#lx-partpage"); if(pg)pg.style.display="none";
     qa(".part-count, .participants-count, [data-partcount]").forEach(function(e){ setText(e,String(d.parts.length)); });
