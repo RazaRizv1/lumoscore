@@ -4798,7 +4798,7 @@ window.addEventListener('click',function(e){
         qa(".ph-stat .v, .ph-stat .s, .ph-price .v").forEach(function(e){ setText(e,"\u2014"); });
         var svg=q("#tvlChart svg");
         if(svg){ [].slice.call(svg.querySelectorAll(".lx-chload")).forEach(function(e){ if(e.parentNode)e.parentNode.removeChild(e); });
-          var t=chS("text",{"class":"lx-chload",x:"500",y:"140","text-anchor":"middle","dominant-baseline":"middle",fill:"var(--text-muted,#8b90a0)","font-size":"13"});
+          var t=chS("text",{"class":"lx-chload",x:String(chBox(svg).w/2),y:String(chBox(svg).h/2),"text-anchor":"middle","dominant-baseline":"middle",fill:"var(--text-muted,#8b90a0)","font-size":"13"});
           t.textContent="Pool history unavailable"; svg.appendChild(t); }
         document.documentElement.classList.add("lx-chartready");
         var host=q(".pool-header")||q("main");
@@ -4975,8 +4975,16 @@ window.addEventListener('click',function(e){
   // Real historical series from Horizon trade_aggregations over the SELECTED range (the tx-reconstruction only
   // spans the last ~100 trades ≈ minutes for busy pools, so the range buttons did nothing and TVL looked flat).
   // Price + volume are REAL; TVL(t)=TVL_now·sqrt(price(t)/price_now) from the constant-product invariant, anchored to the live reserve.
+  var __lxRangeSel="";
   var CH_RES={"1D":900000,"1W":3600000,"1M":86400000,"3M":86400000,"1Y":604800000,"ALL":604800000};
   var CH_DAYS={"1D":1,"1W":7,"1M":30,"3M":90,"1Y":365,"ALL":730};
+  // Centre of whatever viewBox this svg has. The loader/empty texts hardcoded x=500,y=140 — the middle of
+  // a 1000x280 box — which on the phone 400x220 box sits 100 units off the right edge.
+  // Read it through the SVG DOM, NOT a regex on the attribute: this code is emitted from inside a JS string,
+  // so a "\s" in a character class arrives in the browser as a literal "s" and the split silently never
+  // matches. That exact bug made every caller fall back to 1000x280 on a 400x220 phone svg.
+  function chBox(sv){ var v=sv&&sv.viewBox&&sv.viewBox.baseVal;
+    return (v&&v.width>0&&v.height>0)?{w:v.width,h:v.height}:{w:1000,h:280}; }
   function chAgg(range,cb){
     var d=DET; if(!d||!d.issuer||!(d.priceXlm>0)){ cb(null); return; }
     d.__agg=d.__agg||{}; if(d.__agg[range]){ cb(d.__agg[range].__empty?null:d.__agg[range]); return; }
@@ -4999,29 +5007,31 @@ window.addEventListener('click',function(e){
     // AUDIT (user-reported "Pools-Pool takes ages to load"): this label had NO class, and every cleanup pass
     // only removes .lx-ch nodes — so once painted it stayed forever. The page finished loading in ~4s and
     // then sat there saying "Loading pool history…" on top of a fully drawn chart. Tag it so it can be cleared.
-    var t=chS("text",{"class":"lx-chload",x:"500",y:"140","text-anchor":"middle","dominant-baseline":"middle",fill:"var(--text-muted,#8b90a0)","font-size":"13"}); t.textContent="Loading pool history\u2026";
+    var t=chS("text",{"class":"lx-chload",x:String(chBox(svg).w/2),y:String(chBox(svg).h/2),"text-anchor":"middle","dominant-baseline":"middle",fill:"var(--text-muted,#8b90a0)","font-size":"13"}); t.textContent="Loading pool history\u2026";
     var o=chS("animate",{attributeName:"opacity",values:"0.35;0.8;0.35",dur:"1.1s",repeatCount:"indefinite"}); t.appendChild(o); svg.appendChild(t);
   }
   function chPairEmpty(){ var svg=q("#tvlChart svg"); document.documentElement.classList.add("lx-chartready"); if(!svg)return;
     [].slice.call(svg.querySelectorAll(".lx-chload")).forEach(function(e){ if(e.parentNode)e.parentNode.removeChild(e); });
     [].slice.call(svg.querySelectorAll("path")).forEach(function(pp){ if((pp.getAttribute("class")||"").indexOf("lx-ch")<0)pp.setAttribute("d",""); });
-    if(!svg.querySelector(".lx-chpair")){ var t=chS("text",{"class":"lx-chpair",x:"500",y:"140","text-anchor":"middle","dominant-baseline":"middle",fill:"var(--text-muted,#8b90a0)","font-size":"13"}); t.textContent="No chart for this pair yet"; svg.appendChild(t); } }
+    if(!svg.querySelector(".lx-chpair")){ var t=chS("text",{"class":"lx-chpair",x:String(chBox(svg).w/2),y:String(chBox(svg).h/2),"text-anchor":"middle","dominant-baseline":"middle",fill:"var(--text-muted,#8b90a0)","font-size":"13"}); t.textContent="No chart for this pair yet"; svg.appendChild(t); } }
   function chDraw(){
     var svg=q("#tvlChart svg"); if(!svg)return; document.documentElement.classList.add("lx-chartready"); if(!DET)return;
     if(DET.nonXlm){ chPairEmpty(); return; }   // TVL/volume series are XLM-denominated; honest empty beats garbage
     var s=(window.__tvlChartState&&window.__tvlChartState())||{type:"line",metric:"tvl",range:"1Y"};
+    if(__lxRangeSel)s={type:s.type,metric:s.metric,range:__lxRangeSel};   // our strip wins: the design state does not follow a phone tap
     var agg=DET.__agg&&DET.__agg[s.range], ser;
     if(agg&&!agg.__empty){ ser=agg; }
     else if(agg&&agg.__empty){ if(!DET.__chSer)DET.__chSer=chBuild(); ser=DET.__chSer; }   // no trade_aggregations for this range -> tx-reconstruction fallback
     else { chAgg(s.range,function(){ chDraw(); }); chLoading(svg); return; }   // range not fetched yet: show a loader, DON'T flash the wrong (minutes-long) reconstruction while ALL/1Y loads
-    var W=1000,H=280,DW=936,padT=12,padB=24;
-    // The design sizes this svg per layout and sets the viewBox itself — 1000x280 on desktop, but 400x220
-    // on the phone — while we always lay the series out in a 1000x280 space. So on mobile everything below
-    // y=220 (the lower half of the line and the whole date row) fell outside the viewBox and was clipped:
-    // the chart "cropped from the bottom". Pin the box to the space we actually draw in. No-op on desktop,
-    // where the two already agree.
-    try{ if(svg.getAttribute("viewBox")!=="0 0 "+W+" "+H){ svg.setAttribute("viewBox","0 0 "+W+" "+H); }
-         if(svg.getAttribute("preserveAspectRatio")!=="none")svg.setAttribute("preserveAspectRatio","none"); }catch(_){}
+    // Draw into the viewBox the svg ACTUALLY has. The design sizes it per layout — 1000x280 on desktop but
+    // 400x220 on the phone — and we used to assume 1000x280 everywhere, so on mobile everything below y=220
+    // fell outside the box and was clipped: the chart cropped from the bottom.
+    //
+    // My first fix rewrote the viewBox to 1000x280 instead. That un-cropped the line but rescaled the
+    // DESIGN's own axis labels, which are positioned in its 400x220 space — that is what wrecked the 1M
+    // labels. Adapt to the svg; never resize it under the design's text.
+    var _vb=chBox(svg), W=_vb.w, H=_vb.h;
+    var DW=Math.max(1,Math.round(W*0.936)),padT=Math.max(6,Math.round(H*0.043)),padB=Math.max(12,Math.round(H*0.086));
     var RD={"1D":1,"1W":7,"1M":30,"3M":90,"1Y":365,"ALL":null}, days=RD[s.range];
     var t1=Date.now(), t0=(days==null)?ser.t0:Math.max(ser.t0,t1-days*86400000); if(!(t0<t1))t0=t1-86400000;
     var isVol=(s.metric==="volume"||s.metric==="vol"), isBar=isVol||(s.type!=="line"&&s.type!=="area");   // volume always draws as bars (matches the design)
@@ -5062,7 +5072,12 @@ window.addEventListener('click',function(e){
       svg.appendChild(chS("path",{d:dd+"L"+lastX+" "+(H-padB)+" L"+firstX+" "+(H-padB)+" Z",fill:accent,"fill-opacity":"0.10",stroke:"none"}));
       svg.appendChild(chS("path",{d:dd,fill:"none",stroke:accent,"stroke-width":"2","stroke-linejoin":"round","stroke-linecap":"round"}));
     }
-    var yt=[].slice.call(svg.querySelectorAll("text")).filter(function(t){return t.getAttribute("x")==="996";});
+    // Pick the axis labels by POSITION inside the actual viewBox, not by the desktop's literal coordinates.
+    // These used to test x==="996" / y==="278" — the right/bottom edge of the 1000x280 desktop box. The phone
+    // box is 400x220 with its labels at x=396 / y=218, so neither filter ever matched and the design's baked
+    // mock survived: a 1D chart still reading "Aug | Nov | Feb | May | Aug" down the time axis.
+    var _ax=[].slice.call(svg.querySelectorAll("text")).filter(function(t){return (t.getAttribute("class")||"").indexOf("lx-ch")<0;});
+    var yt=_ax.filter(function(t){ return (+t.getAttribute("x")||0)>=W*0.9; });
     // AUDIT FIX: fixed 2-dp labels collapse on near-flat data (all 5 gridlines read "1.09M XLM") — pick the
     // decimals from the per-gridline STEP so adjacent labels always differ (capped at 5 dp).
     var _step=(mx-mn)/Math.max(1,yt.length-1);
@@ -5070,7 +5085,7 @@ window.addEventListener('click',function(e){
       var d=2; if(_step>0){ d=Math.max(2,Math.min(5,Math.ceil(-Math.log10(_step/sc))+1)); if(!isFinite(d))d=2; }
       return sc===1?((a>=1?num(x):x.toFixed(Math.max(2,d)))+" XLM"):((x/sc).toFixed(d)+sfx); }
     yt.forEach(function(t,i){ var frac=yt.length<=1?1:(1-i/(yt.length-1)); setText(t,yfmt(mn+(mx-mn)*frac)); });
-    var xt=[].slice.call(svg.querySelectorAll("text")).filter(function(t){return t.getAttribute("y")==="278";}).sort(function(a,b){return (+a.getAttribute("x"))-(+b.getAttribute("x"));});
+    var xt=_ax.filter(function(t){ return (+t.getAttribute("y")||0)>=H*0.9&&yt.indexOf(t)<0; }).sort(function(a,b){return (+a.getAttribute("x"))-(+b.getAttribute("x"));});
     var span=t1-t0, MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     function fmt(t){ var dt=new Date(t); if(span<2*86400000){ var hh=dt.getHours(),mm=dt.getMinutes(); return (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm; } if(span<120*86400000)return MO[dt.getMonth()]+" "+dt.getDate(); return MO[dt.getMonth()]; }
     xt.forEach(function(t,i){ var frac=xt.length<=1?1:i/(xt.length-1); setText(t,fmt(t0+span*frac)); });
@@ -5079,8 +5094,44 @@ window.addEventListener('click',function(e){
   // Re-assert real data only when needed: the active view changed, OR the design re-rendered its own mock
   // (its candle <rect>s reappear / its <path> d gets re-set — e.g. during the design's ~1-2s enter animation).
   function chSync(){ var g=q("#tvlChart svg"); if(!g||!DET)return; var s=(window.__tvlChartState&&window.__tvlChartState())||{type:"line",metric:"tvl",range:"1Y"}; var sig=s.type+"|"+s.metric+"|"+s.range; var dirty=!!g.querySelector("rect:not(.lx-ch)"); if(!dirty){ var dp=g.querySelector("path:not(.lx-ch)"); dirty=!!(dp&&dp.getAttribute("d")); } if(sig!==DET.__chSig||dirty)chDraw(); }
+  // OWN THE PHONE TAB STRIPS OUTRIGHT.
+  //
+  // Both strips depend on the design own click handler, and on a real handset that handler is not firing —
+  // a synthetic touchstart+touchend here switches nothing; only a synthesised click does, which is exactly
+  // the event a phone can withhold. Rather than keep guessing what eats it, do the switching ourselves from
+  // WINDOW capture (ahead of every other listener) and on touchend as well as click, so a tap works even if
+  // no click is ever synthesised. Idempotent and additive: if the design handler does run, it sets the same
+  // classes we do.
+  function ptabShow(name){
+    qa("#ptabs button[data-ptab]").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-ptab")===name); });
+    qa(".ptab-panel").forEach(function(p){ var on=p.getAttribute("data-panel")===name;
+      p.classList.toggle("active",on); p.style.display=on?"":"none"; });
+    try{ paintDetail(); }catch(_){}
+  }
+  function dwShow(mode){
+    qa("[data-dw]").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-dw")===mode); });
+  }
+  function rangeShow(lbl){
+    qa(".tf-mini button").forEach(function(b){ b.classList.toggle("active",(b.textContent||"").trim().toUpperCase()===lbl); });
+    __lxRangeSel=lbl;                                   // chDraw prefers this over the design state
+    try{ chDraw(); }catch(_){}
+  }
+  function wirePhoneTabs(){
+    if(window.__lxPtabWired)return; window.__lxPtabWired=1;
+    var act=function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      var tb=t.closest("#ptabs button[data-ptab]");
+      if(tb){ e.preventDefault(); e.stopImmediatePropagation(); ptabShow(tb.getAttribute("data-ptab")); return; }
+      var rb=t.closest(".tf-mini button");
+      if(rb){ e.preventDefault(); e.stopImmediatePropagation(); rangeShow((rb.textContent||"").trim().toUpperCase()); return; }
+      var dw=t.closest("[data-dw]");
+      if(dw){ e.preventDefault(); e.stopImmediatePropagation(); dwShow(dw.getAttribute("data-dw")); return; }
+    };
+    window.addEventListener("click",act,true);
+    window.addEventListener("touchend",act,true);
+  }
   function pdChart(){
-    var svg=q("#tvlChart svg"); if(!svg)return; chDraw();
+    var svg=q("#tvlChart svg"); if(!svg)return; wirePhoneTabs(); chDraw();
     // The range strip ships with 1M pre-selected, but the design chart state defaults to 1Y — so on load the
     // button said 1M while the series drawn was a whole year. Press the pre-selected button once so the label
     // and the data agree; the design keeps them in step from then on.
@@ -5362,7 +5413,10 @@ window.addEventListener('click',function(e){
     var dpanel=q("#dwDeposit"); if(dpanel&&!dpanel.__lxDIn){ dpanel.__lxDIn=1; dpanel.addEventListener("input",function(e){ if(!e.target||e.target.tagName!=="INPUT")return; var di=dInputs(); if(e.target===di[0]){ var t=parseFloat(String(di[0].value).replace(/,/g,""))||0; if(di[1])di[1].value=fmtIn(t*r); shareAfter(); } else if(e.target===di[1]){ var x=parseFloat(String(di[1].value).replace(/,/g,""))||0; if(di[0])di[0].value=fmtIn(r>0?x/r:0); shareAfter(); } }); }
     // DELEGATED MAX/% on the deposit panel (a one-time clone dies when the design re-creates the panel on tab
     // switch -> "MAX does nothing"). Capture+stopPropagation so the design's own unbalanced handler can't also run.
-    if(dpanel&&!dpanel.__lxDMax){ dpanel.__lxDMax=1; dpanel.addEventListener("click",function(e){ var t=e.target; if(!t||!t.closest)return; var btn=t.closest(".max-btn, .dw-pct-b, .dw-pct button, button, [class*=max], [class*=pct]"); if(!btn||!dpanel.contains(btn))return; var txt=(btn.textContent||"").trim().toLowerCase(); if(txt!=="max"&&!/^d+(.d+)?%?$/.test(txt))return; e.preventDefault(); e.stopPropagation(); var m=maxBal(); var f=(txt==="max")?1:((parseFloat(txt)||0)/100); if(!(m.tok*f>0)&&!(m.xlm*f>0)){ var msg=(usableXlm()<=0)?("No spendable XLM to deposit \u2014 your "+num(d.balXlm)+" XLM is below the account reserve.") : ("You need some "+d.code+" and XLM to deposit here."); try{ ammToast(msg,true); }catch(_){ } return; } setDep(m.tok*f,m.xlm*f); },true); }
+    // "25%" -> 25, else 0. Written without a regex on purpose: /^\d+(\.\d+)?%?$/ would arrive in the browser
+    // as /^d+(.d+)?%?$/ (this code is emitted from inside a JS string) and reject every percentage button.
+    function pctTxt(t){ var s=String(t).replace("%",""); var n=parseFloat(s); return (s.length&&s===String(n))?n:0; }
+    if(dpanel&&!dpanel.__lxDMax){ dpanel.__lxDMax=1; dpanel.addEventListener("click",function(e){ var t=e.target; if(!t||!t.closest)return; var btn=t.closest(".max-btn, .dw-pct-b, .dw-pct button, button, [class*=max], [class*=pct]"); if(!btn||!dpanel.contains(btn))return; var txt=(btn.textContent||"").trim().toLowerCase(); if(txt!=="max"&&!pctTxt(txt))return; e.preventDefault(); e.stopPropagation(); var m=maxBal(); var f=(txt==="max")?1:((parseFloat(txt)||0)/100); if(!(m.tok*f>0)&&!(m.xlm*f>0)){ var msg=(usableXlm()<=0)?("No spendable XLM to deposit \u2014 your "+num(d.balXlm)+" XLM is below the account reserve.") : ("You need some "+d.code+" and XLM to deposit here."); try{ ammToast(msg,true); }catch(_){ } return; } setDep(m.tok*f,m.xlm*f); },true); }
     // Withdraw %/Max + LP input, DELEGATED on #dwWithdraw so it survives the design re-creating the buttons/input
     // on tab switch. Replicates the design's inline accent highlight (which our earlier clone stripped).
     function wBtns(){ return qa("#dwWithdraw .dw-pct-b, #dwWithdraw .dw-pct button, #dwWithdraw .max-btn"); }
