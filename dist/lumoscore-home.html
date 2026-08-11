@@ -1462,6 +1462,18 @@ radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
    which is bare text in the td with no inner div. */
 table.pools tbody tr.lx-ammrow td:nth-child(n+3)>div:first-child,
 table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
+
+/* My Position asset logos. We insert a real <img> into the design's 24px .mpm-asset-ico bubble, but the
+   phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
+   inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
+   placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
+.mp-asset-ico img,.mpm-asset-ico img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.mpm-asset-ico{overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
+
+/* Trailing explorer arrow on a phone transaction row (desktop has one per table row). */
+.tx-item .lx-txext{flex-shrink:0;margin-left:8px;align-self:center;color:var(--text-muted);display:inline-flex;
+  align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;text-decoration:none}
+.tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
 </style></head>
 <body>
 <div class="app">
@@ -5374,7 +5386,9 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
         // The old plain negation only held when base was native; it was inverted for every pair whose
         // base is the token. base_is_seller=true means the taker BOUGHT the base (verified against a live
         // order book: those trades execute at the ask), so flip only when base is XLM.
-        txs.push({type:"swap",xlm:xa,tok:ta,who:(x.base_account||x.counter_account||""),time:ts,buy:nb?!x.base_is_seller:!!x.base_is_seller});
+        // Horizon trade ids are "<operation-id>-<index>"; the leading part is what stellar.expert's /op/ route
+        // wants, so the row can link to the actual trade rather than just the trader's account.
+        txs.push({type:"swap",xlm:xa,tok:ta,who:(x.base_account||x.counter_account||""),time:ts,op:String(x.id||"").split("-")[0],buy:nb?!x.base_is_seller:!!x.base_is_seller});
       });
       var vol24Xlm=vol, vol24Usd=vol*xlmUsd, fees24Xlm=vol*fee/100, fees24Usd=fees24Xlm*xlmUsd;
       if(nonXlm){ var _a0usd=(a0.code==="USDC"&&a0.issuer===USDC_ISS); vol24Usd=_a0usd?vol:0; fees24Usd=_a0usd?fees24Xlm:0; }
@@ -5382,8 +5396,8 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       function amt(arr){ var xx=0,tt=0; (arr||[]).forEach(function(rv){ if(rv.asset==="native")xx=+rv.amount; else tt=+rv.amount; }); return {x:xx,t:tt}; }
       ops.forEach(function(o){
         var ts=Date.parse(o.created_at||"");
-        if(o.type==="liquidity_pool_deposit"){ var a=amt(o.reserves_deposited); txs.push({type:"deposit",xlm:a.x,tok:a.t,who:o.source_account,time:ts}); }
-        else if(o.type==="liquidity_pool_withdraw"){ var b=amt(o.reserves_received||o.reserves_min); txs.push({type:"withdraw",xlm:b.x,tok:b.t,who:o.source_account,time:ts}); }
+        if(o.type==="liquidity_pool_deposit"){ var a=amt(o.reserves_deposited); txs.push({type:"deposit",xlm:a.x,tok:a.t,who:o.source_account,time:ts,op:String(o.id||"")}); }
+        else if(o.type==="liquidity_pool_withdraw"){ var b=amt(o.reserves_received||o.reserves_min); txs.push({type:"withdraw",xlm:b.x,tok:b.t,who:o.source_account,time:ts,op:String(o.id||"")}); }
       });
       txs.sort(function(a,b){return b.time-a.time;});
       var accs=(r[4]&&r[4]._embedded&&r[4]._embedded.records)||[];
@@ -5421,7 +5435,13 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   function pdHeader(){
     var d=DET;
     var name=q(".ph-name"); if(name)setText(name,d.pairName||(d.code+" / XLM"));
-    qa(".pool-header span").forEach(function(s){ if(/Pool ID:/.test(s.textContent))setText(s,"Pool ID: "+hshort(d.hex)); });
+    // Desktop writes "Pool ID: <short>"; the phone header writes just "ID: <short>", so matching on the
+    // desktop wording alone left the design's fabricated a468d4…0088 sitting on the page — and the copy
+    // button was still handing out that fake id. Match either wording, and re-point data-copy at the real one.
+    qa(".pool-header span,.ph-id span").forEach(function(s){ var t=(s.textContent||"").trim();
+      if(t.indexOf("Pool ID:")===0)setText(s,"Pool ID: "+hshort(d.hex));
+      else if(t.indexOf("ID:")===0)setText(s,"ID: "+hshort(d.hex)); });
+    qa(".pool-header button[data-copy],.ph-id button[data-copy]").forEach(function(b){ b.setAttribute("data-copy",d.hex); });
     // "View on Explorer" (the external-link icon button, path starts "M18 13"): open the pool on stellar.expert.
     qa(".pool-header button").forEach(function(b){ if(b.__lxex)return; var p=b.querySelector("svg path"); var dd=(p&&p.getAttribute("d"))||""; if(dd.indexOf("M18 13")!==0&&dd.indexOf("M15 3")!==0&&!/3h6|14L21/.test(dd))return; b.__lxex=1; var c=b.cloneNode(true); b.parentNode.replaceChild(c,b); c.setAttribute("title","View on Explorer"); c.addEventListener("click",function(e){ e.preventDefault(); e.stopImmediatePropagation(); window.open("https://stellar.expert/explorer/public/liquidity-pool/"+d.hex,"_blank","noopener"); },true); });
     var pi=q(".ph-icons"); if(pi&&pi.getAttribute("data-lxdet")!=="1"){ pi.setAttribute("data-lxdet","1"); pi.innerHTML='<div class="pa" data-lxfixed="1">'+tokLogo()+'</div><div class="pb" data-lxfixed="1">'+xlmLogo()+'</div>'; amFetchLogo(d.code,d.issuer,function(url){ var im=pi.querySelector(".pa img"); if(im&&url)im.src=url; }); }
@@ -5478,7 +5498,17 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   // Real historical series from Horizon trade_aggregations over the SELECTED range (the tx-reconstruction only
   // spans the last ~100 trades ≈ minutes for busy pools, so the range buttons did nothing and TVL looked flat).
   // Price + volume are REAL; TVL(t)=TVL_now·sqrt(price(t)/price_now) from the constant-product invariant, anchored to the live reserve.
-  var __lxRangeSel="";
+  var __lxRangeSel="", __lxMetricSel="";
+  // The ONE place the effective chart view is decided. Our strips win over the design's own state, because
+  // that state does not follow a phone tap.
+  //
+  // chDraw and chSync must both read THIS, not the raw design state. They didn't: chDraw stamped its
+  // signature from the overridden values while chSync compared the raw ones, so once a range was chosen by
+  // touch the two never agreed and the 500ms chSync redrew the chart forever.
+  function chState(){
+    var s=(window.__tvlChartState&&window.__tvlChartState())||{type:"line",metric:"tvl",range:"1Y"};
+    return {type:s.type,metric:__lxMetricSel||s.metric,range:__lxRangeSel||s.range};
+  }
   var CH_RES={"1D":900000,"1W":3600000,"1M":86400000,"3M":86400000,"1Y":604800000,"ALL":604800000};
   var CH_DAYS={"1D":1,"1W":7,"1M":30,"3M":90,"1Y":365,"ALL":730};
   // Centre of whatever viewBox this svg has. The loader/empty texts hardcoded x=500,y=140 — the middle of
@@ -5520,8 +5550,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   function chDraw(){
     var svg=q("#tvlChart svg"); if(!svg)return; document.documentElement.classList.add("lx-chartready"); if(!DET)return;
     if(DET.nonXlm){ chPairEmpty(); return; }   // TVL/volume series are XLM-denominated; honest empty beats garbage
-    var s=(window.__tvlChartState&&window.__tvlChartState())||{type:"line",metric:"tvl",range:"1Y"};
-    if(__lxRangeSel)s={type:s.type,metric:s.metric,range:__lxRangeSel};   // our strip wins: the design state does not follow a phone tap
+    var s=chState();
     var agg=DET.__agg&&DET.__agg[s.range], ser;
     if(agg&&!agg.__empty){ ser=agg; }
     else if(agg&&agg.__empty){ if(!DET.__chSer)DET.__chSer=chBuild(); ser=DET.__chSer; }   // no trade_aggregations for this range -> tx-reconstruction fallback
@@ -5596,7 +5625,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   }
   // Re-assert real data only when needed: the active view changed, OR the design re-rendered its own mock
   // (its candle <rect>s reappear / its <path> d gets re-set — e.g. during the design's ~1-2s enter animation).
-  function chSync(){ var g=q("#tvlChart svg"); if(!g||!DET)return; var s=(window.__tvlChartState&&window.__tvlChartState())||{type:"line",metric:"tvl",range:"1Y"}; var sig=s.type+"|"+s.metric+"|"+s.range; var dirty=!!g.querySelector("rect:not(.lx-ch)"); if(!dirty){ var dp=g.querySelector("path:not(.lx-ch)"); dirty=!!(dp&&dp.getAttribute("d")); } if(sig!==DET.__chSig||dirty)chDraw(); }
+  function chSync(){ var g=q("#tvlChart svg"); if(!g||!DET)return; var s=chState(); var sig=s.type+"|"+s.metric+"|"+s.range; var dirty=!!g.querySelector("rect:not(.lx-ch)"); if(!dirty){ var dp=g.querySelector("path:not(.lx-ch)"); dirty=!!(dp&&dp.getAttribute("d")); } if(sig!==DET.__chSig||dirty)chDraw(); }
   // OWN THE PHONE TAB STRIPS OUTRIGHT.
   //
   // Both strips depend on the design own click handler, and on a real handset that handler is not firing —
@@ -5619,16 +5648,82 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     __lxRangeSel=lbl;                                   // chDraw prefers this over the design state
     try{ chDraw(); }catch(_){}
   }
+  // Pool Activity metric dropdown (Pool TVL / Volume).
+  //
+  // Unlike the range strip, the design's OWN click handler for this menu works — it opens/closes the menu,
+  // updates its state and rewrites the trigger's label. The only thing missing on a handset is the click.
+  // So do not reimplement it: driving the chart ourselves while the design kept its stale state meant the
+  // button still read "Pool TVL" while volume bars were drawn (the design rewrites that label from its own
+  // state, so re-asserting our own text just fought it). Synthesise the click and let the design lead;
+  // we only note the choice so chDraw agrees.
+  function metricNote(el){
+    __lxMetricSel=/volume/i.test(el.textContent||"")?"volume":"tvl";
+    [40,160,400,800].forEach(function(ms){ setTimeout(function(){ try{ chDraw(); }catch(_){} },ms); });
+  }
+  function txFilterM(label){
+    var f=String(label||"").trim().toLowerCase();
+    qa(".tx-filter-m button").forEach(function(b){ b.classList.toggle("active",(b.textContent||"").trim().toLowerCase()===f); });
+    qa(".ptab-panel[data-panel=transactions] .lx-txrow").forEach(function(rw){
+      var ty=rw.getAttribute("data-txtype")||"";
+      var show=(f.indexOf("all")===0)||(f.indexOf("swap")===0&&ty==="swap")
+             ||(f.indexOf("deposit")===0&&ty==="deposit")||(f.indexOf("withdraw")===0&&ty==="withdraw");
+      rw.style.display=show?"":"none";
+    });
+  }
+  function copyText(s){
+    try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(s); return true; } }catch(_){}
+    try{ var ta=document.createElement("textarea"); ta.value=s; ta.setAttribute("readonly","");
+      ta.style.cssText="position:fixed;top:0;left:0;opacity:0"; document.body.appendChild(ta);
+      ta.select(); ta.setSelectionRange(0,s.length); document.execCommand("copy");
+      document.body.removeChild(ta); return true; }catch(_){ return false; }
+  }
+  // OWN EVERY TAP TARGET ON THIS PAGE THAT THE DESIGN WIRES TO A CLICK.
+  //
+  // The design's handlers are click-only and on a real handset that click is not arriving, so each control
+  // has to be driven from touchend as well. Bound at WINDOW CAPTURE so we run ahead of everything else.
+  //
+  // touchend alone is not a tap: it also ends a scroll. Without the movement/duration guard below, a swipe
+  // that happens to finish over the bottom nav would navigate. Record the touchstart point and only act if
+  // the finger stayed within ~12px for under 600ms.
   function wirePhoneTabs(){
     if(window.__lxPtabWired)return; window.__lxPtabWired=1;
+    var t0=null;
+    window.addEventListener("touchstart",function(e){
+      var p=e.touches&&e.touches[0]; t0=p?{x:p.clientX,y:p.clientY,t:Date.now()}:null;
+    },true);
+    function isTap(e){
+      if(e.type!=="touchend")return true;                       // a click is already a tap
+      var p=e.changedTouches&&e.changedTouches[0]; if(!p||!t0)return false;
+      return Math.abs(p.clientX-t0.x)<12&&Math.abs(p.clientY-t0.y)<12&&(Date.now()-t0.t)<600;
+    }
     var act=function(e){
       var t=e.target; if(!t||!t.closest)return;
+      if(!isTap(e))return;
       var tb=t.closest("#ptabs button[data-ptab]");
       if(tb){ e.preventDefault(); e.stopImmediatePropagation(); ptabShow(tb.getAttribute("data-ptab")); return; }
       var rb=t.closest(".tf-mini button");
       if(rb){ e.preventDefault(); e.stopImmediatePropagation(); rangeShow((rb.textContent||"").trim().toUpperCase()); return; }
       var dw=t.closest("[data-dw]");
       if(dw){ e.preventDefault(); e.stopImmediatePropagation(); dwShow(dw.getAttribute("data-dw")); return; }
+      // Metric dropdown: the design's click logic works, so hand it a click instead of replacing it.
+      // preventDefault on touchend suppresses the browser's own synthesised click, so this fires once.
+      var md=t.closest(".chart-mode-menu button,.chart-mode-select");
+      if(md){ if(e.type==="touchend"){ e.preventDefault(); md.click(); }
+        else if(md.closest(".chart-mode-menu")) metricNote(md);
+        return; }
+      var tf=t.closest(".tx-filter-m button");
+      if(tf){ e.preventDefault(); e.stopImmediatePropagation(); txFilterM(tf.textContent); return; }
+      var cp=t.closest(".ph-id button[data-copy],.pool-header button[data-copy]");
+      if(cp){ e.preventDefault(); e.stopImmediatePropagation();
+        var v=cp.getAttribute("data-copy")||"";
+        var ok=copyText(v);
+        try{ ammToast(ok?"Pool ID copied":"Could not copy",!ok); }catch(_){}
+        return; }
+      var xp=t.closest(".ph-id button");
+      if(xp&&DET&&DET.hex){ e.preventDefault(); e.stopImmediatePropagation();
+        window.open("https://stellar.expert/explorer/public/liquidity-pool/"+DET.hex,"_blank","noopener"); return; }
+      // tapping anywhere else closes an open metric menu
+      var om=q(".chart-mode-menu.open"); if(om&&!t.closest(".chart-mode-menu"))om.classList.remove("open");
     };
     window.addEventListener("click",act,true);
     window.addEventListener("touchend",act,true);
@@ -5654,13 +5749,20 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     var pill=t.type==="deposit"?'<span class="type-pill deposit">Deposit</span>':(t.type==="withdraw"?'<span class="type-pill withdraw">Withdraw</span>':'<span class="type-pill swap">Swap</span>');
     var when=t.time?new Date(t.time).toLocaleString():"\u2014";
     var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(t.who||"");
+    var op=txHref(t);
     return '<tr class="lx-txrow" data-txtype="'+t.type+'">'+
       '<td>'+pill+'</td>'+
       '<td><span class="num">'+famt(t.xlm)+' XLM</span></td>'+
       '<td><span class="num">'+famt(t.tok)+' '+esc(DET.code)+'</span></td>'+
       '<td><a class="wallet-cell" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><div class="wallet-avatar">'+ident(t.who,22)+'</div><span class="lx-waddr">'+ashort(t.who)+'</span></a></td>'+
       '<td>'+when+'</td>'+
-      '<td><a class="ext-link" href="'+ex+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H8M17 7v9"></path></svg></a></td></tr>';
+      '<td><a class="ext-link" href="'+op+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H8M17 7v9"></path></svg></a></td></tr>';
+  }
+  // The row's own explorer target: the operation itself when Horizon gave us an id, the trader's account
+  // otherwise. Used by both layouts so the desktop arrow and the phone arrow point at the same thing.
+  function txHref(t){
+    return (t&&t.op) ? ("https://stellar.expert/explorer/public/op/"+encodeURIComponent(t.op))
+                     : ("https://stellar.expert/explorer/public/account/"+encodeURIComponent((t&&t.who)||""));
   }
   // Mobile has no tx TABLE: the panel is a .card holding .tx-item rows after its .card-head and
   // .tx-filter-m. Rendering desktop <tr>s into it would put table rows inside a div, so the rows get the
@@ -5676,7 +5778,11 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       +'<div class="tx-info"><div class="tx-type '+kind+'">'+label+'</div>'
       +'<div class="tx-amounts">'+amounts+'</div>'
       +'<a class="tx-meta" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(t.who||"")+'</a></div>'
-      +'<div class="tx-time">'+when+'</div></div>';
+      +'<div class="tx-time">'+when+'</div>'
+      // Desktop's table has a trailing explorer arrow per row; the phone card had none, so a tap could only
+      // reach the trader's account via the address line. Same target, same icon, right edge of the row.
+      +'<a class="lx-txext" href="'+txHref(t)+'" target="_blank" rel="noopener" aria-label="View on stellar.expert"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H8M17 7v9"></path></svg></a>'
+      +'</div>';
   }
   function pdTxMobile(){
     // Attribute value left UNQUOTED on purpose. This whole script is a JS string in the transform, so the
@@ -5691,6 +5797,8 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       [].slice.call(box.querySelectorAll(".tx-item")).forEach(function(r){ if(r.parentNode)r.parentNode.removeChild(r); });
       box.insertAdjacentHTML("beforeend", d.txs.length?d.txs.map(txRowM).join("")
         :'<div class="tx-item lx-txrow" style="justify-content:center;color:var(--text-muted)">No transactions yet</div>');
+      // rows were just replaced -> they are all visible again; re-apply whatever filter is selected
+      var af=q(".tx-filter-m button.active"); if(af)try{ txFilterM(af.textContent); }catch(_){}
     }
     return true;
   }
