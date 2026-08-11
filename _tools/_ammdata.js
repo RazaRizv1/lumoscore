@@ -287,7 +287,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
                 : ico1("a pa",gcolor(code),(code&&code[0]?code[0]:"?").toUpperCase(),code,issuer);
     var xlm=ico1("b pb","url(/assets/tokens/xlm.png)",null);
     return '<div class="pair-icons" data-paired="1">'+tok+xlm+'</div>'; }
-  function icoPair(code,issuer){ var up=amTokUrl(code,issuer); var tok= up ? ico1('pa','url('+up+')',null,code,issuer) : ico1('pa',gcolor(code),(code&&code[0]?code[0]:"?").toUpperCase(),code,issuer); var xlm=ico1('pb','url(assets/tokens/xlm.png)',null); return '<div class="pair-icons" data-paired="1">'+tok+xlm+'</div>'; }
+  function icoPair(code,issuer){ var up=amTokUrl(code,issuer); var tok= up ? ico1('pa','url('+up+')',null,code,issuer) : ico1('pa',gcolor(code),(code&&code[0]?code[0]:"?").toUpperCase(),code,issuer); var xlm=ico1('pb','url(/assets/tokens/xlm.png)',null); return '<div class="pair-icons" data-paired="1">'+tok+xlm+'</div>'; }
 
   // build a pool object from a raw Horizon /liquidity_pools/{id} record (for the user's positions
   // that aren't in the KNOWN launchpad set, so Pools "My Positions" matches the wallet's Liq Pools tab)
@@ -296,7 +296,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     rs.forEach(function(rv){ if(rv.native)xlm=rv.amount; else { tok=rv.amount; code=rv.code; issuer=rv.issuer; } });
     return {code:code,issuer:issuer,id:p.id,xlm:xlm,tok:tok,a0:rs[0]||null,a1:rs[1]||null,nonXlm:xlm===0,shares:+p.total_shares,fee:(p.fee_bp||30)/100,trustlines:+(p.total_trustlines||0)}; }
   // generic pair icon (both sides real logos) — for non-XLM pools like AQUA/EURC. Reuses amTokUrl (known map + stellar.expert cache).
-  function assetIcoBg(a){ if(!a)return null; if(a.native||a.code==="XLM")return "url(assets/tokens/xlm.png)"; var u=amTokUrl(a.code,a.issuer); return u?("url("+u+")"):null; }
+  function assetIcoBg(a){ if(!a)return null; if(a.native||a.code==="XLM")return "url(/assets/tokens/xlm.png)"; var u=amTokUrl(a.code,a.issuer); return u?("url("+u+")"):null; }
   function icoPairG(a0,a1){ var b0=assetIcoBg(a0),b1=assetIcoBg(a1);
     var e0=b0?ico1("pa",b0,null,a0.code,a0.issuer):ico1("pa",gcolor(a0.code),(a0.code&&a0.code[0]?a0.code[0]:"?").toUpperCase(),a0.code,a0.issuer);
     var e1=b1?ico1("pb",b1,null,a1.code,a1.issuer):ico1("pb",gcolor(a1.code),(a1.code&&a1.code[0]?a1.code[0]:"?").toUpperCase(),a1.code,a1.issuer);
@@ -686,6 +686,16 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       return _nav?_nav.apply(this,arguments):(cands&&cands[0]&&(location.href=cands[0]));
     };
     document.addEventListener("click",function(e){ var r=e.target&&e.target.closest&&e.target.closest(".lx-ammrow[data-pool]"); if(r&&!r.getAttribute("data-nonxlm")&&!(e.target.closest&&e.target.closest("a[href]"))){ e.stopImmediatePropagation(); location.href=detailUrl(r.getAttribute("data-pool"),null,r.getAttribute("data-pair")); } },true);
+    // The mobile pool card IS an <a href>, so the handler above skips it by design (that exclusion exists so
+    // real links like "View position" still work). The design's own nav shim then claims the click, maps the
+    // href through its page table and lands back on the pools list — the "tapping a pool just refreshes"
+    // report. WINDOW capture runs before that document-capture shim, so the card's own href wins. Same
+    // ordering fix as the Trade rows.
+    window.addEventListener("click",function(e){
+      var c=e.target&&e.target.closest&&e.target.closest("a.lx-ammcard[href]"); if(!c)return;
+      var h=c.getAttribute("href"); if(!h)return;
+      e.preventDefault(); e.stopImmediatePropagation(); location.href=h;
+    },true);
   }
   // ==================== DETAIL PAGE ====================
   var IPAL=["#ea6a2c","#7c6cf5","#2dd4bf","#ec4899","#3b82f6","#06b6d4","#f59e0b","#22c55e"];
@@ -724,12 +734,12 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function ident(seed,size){ size=size||26; var s=(seed||"x")+""; var hh=2166136261; for(var i=0;i<s.length;i++){ hh^=s.charCodeAt(i); hh=(hh*16777619)>>>0; } var bg=IPAL[hh%IPAL.length]; var fg=IPAL[(Math.floor(hh/7))%IPAL.length]; if(fg===bg)fg="#ffffff"; var cell=size/5,rects=""; for(var c=0;c<3;c++){ for(var rr=0;rr<5;rr++){ if((hh>>(c*5+rr))&1){ var xs=[c]; if(c<2)xs.push(4-c); xs.forEach(function(xx){ rects+='<rect x="'+(xx*cell).toFixed(2)+'" y="'+(rr*cell).toFixed(2)+'" width="'+cell.toFixed(2)+'" height="'+cell.toFixed(2)+'" fill="'+fg+'"></rect>'; }); } } } return '<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="border-radius:50%;background:'+bg+'" xmlns="http://www.w3.org/2000/svg">'+rects+'</svg>'; }
   // real token logo for the pool's non-XLM asset (was a hardcoded placeholder). Known map + launch icons +
   // harvested cache, with a stellar.expert toml fallback that fills the header <img> async.
-  var AMLOGOS={XLM:"assets/tokens/xlm.png",AQUA:"assets/tokens/aqua.png",USDC:"assets/tokens/usdc.png",yUSDC:"assets/tokens/usdc.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",BLND:"assets/tokens/blnd.svg",SHX:"assets/tokens/shx.png",SSLX:"assets/tokens/sslx.png"};
+  var AMLOGOS={XLM:"/assets/tokens/xlm.png",AQUA:"/assets/tokens/aqua.png",USDC:"/assets/tokens/usdc.png",yUSDC:"/assets/tokens/usdc.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",BLND:"/assets/tokens/blnd.svg",SHX:"/assets/tokens/shx.png",SSLX:"/assets/tokens/sslx.png"};
   function amTokUrl(code,issuer){ return AMLOGOS[code]||launchIcon(code,issuer)||((window.__lxLogos||{})[code])||""; }
   function amFetchLogo(code,issuer,cb){ var u=amTokUrl(code,issuer); if(u){cb(u);return;} if(!code||!issuer){cb("");return;} getJSON("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){ var recs=(d&&d._embedded&&d._embedded.records)||[]; var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+issuer)===0;})[0]; var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||ti.orgLogo||""; if(img){AMLOGOS[code]=img;try{(window.__lxLogos=window.__lxLogos||{})[code]=img;}catch(_){}} cb(img||""); }).catch(function(){cb("");}); }
   function tokLogo(){ var c=(DET&&DET.code)||"", i=(DET&&DET.issuer)||""; var av=avatarUri(c); var u=amTokUrl(c,i)||av;
     return '<img class="lx-tokimg" data-lxc="'+esc(c)+'" data-lxi="'+esc(i)+'" src="'+u+'" alt="" onerror="this.onerror=null;this.src=\\x27'+av+'\\x27">'; }
-  function xlmLogo(){ return '<img src="assets/tokens/xlm.png" alt="">'; }
+  function xlmLogo(){ return '<img src="/assets/tokens/xlm.png" alt="">'; }
   // logo for ANY pair side (nonXlm pools have two credit assets; tokLogo only knows DET.code)
   function genLogo(a){ if(!a||a.native||a.code==="XLM")return xlmLogo(); var av=avatarUri(a.code); var u=amTokUrl(a.code,a.issuer)||av;
     return '<img class="lx-tokimg" data-lxc="'+esc(a.code)+'" data-lxi="'+esc(a.issuer)+'" src="'+u+'" alt="" onerror="this.onerror=null;this.src=\\x27'+av+'\\x27">'; }
@@ -1372,7 +1382,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     function assets(){ var arr=[]; if((balMap.XLM||0)>0)arr.push({code:"XLM",issuer:"",bal:balMap.XLM,native:true}); (_bals||[]).forEach(function(b){   /* _bals, NOT DATA.balances — DATA is still null on the early (fast) wire path and this threw */ if(b.asset_type&&b.asset_type!=="native"&&b.asset_type!=="liquidity_pool_shares"&&b.asset_code&&+b.balance>0)arr.push({code:b.asset_code,issuer:b.asset_issuer,bal:+b.balance,native:false}); }); return arr; }
     // real asset logos: local PNGs where they exist, known CDN URLs otherwise, and a colored-letter fallback
     // (the letter shows through if the image 404s/fails — so an asset never renders a generic placeholder).
-    var LOGOS={XLM:"assets/tokens/xlm.png",AQUA:"assets/tokens/aqua.png",USDC:"assets/tokens/usdc.png",yUSDC:"assets/tokens/usdc.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg"};
+    var LOGOS={XLM:"/assets/tokens/xlm.png",AQUA:"/assets/tokens/aqua.png",USDC:"/assets/tokens/usdc.png",yUSDC:"/assets/tokens/usdc.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg"};
     var _CPCOLS=["#6f5ded","#ff894c","#2bb673","#e0447b","#3aa0ff","#f5b301","#9b5de5","#00bbf9"];
     function cpCol(s){ s=s||"?"; var h=0; for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0; return _CPCOLS[h%_CPCOLS.length]; }
     function logo(a){ var code=a.native?"XLM":a.code; var u=LOGOS[code]||((window.__lxLogos||{})[code])||"";
