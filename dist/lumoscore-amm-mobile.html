@@ -1228,6 +1228,30 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
 .lx-ctoast a{color:inherit;text-decoration:underline}
 @keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
+/* POOL-DETAIL TAB STRIPS ON A PHONE.
+   #ptabs measures 432px of tabs inside a 345px box, so "Participants" sits past the right edge and is
+   simply unreachable — on a narrower handset "Transactions" and "My Position" go with it. The strip is
+   overflow:auto on BOTH axes too, so instead of doing nothing a tap drags the row (the same defect the
+   Trade-asset tab strip had). Deposit/Withdraw is the same shape: two fixed 152px buttons, 304px of
+   content that stops fitting below ~330px of viewport.
+   Fix both the way the Trade strip was fixed: the tabs SHARE the width and the row cannot scroll at all.
+   overflow must be set on both axes — one non-visible axis forces the other to auto, which is what made
+   it draggable vertically. */
+@media (max-width:760px){
+  #ptabs.panel-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important;gap:0!important;padding-bottom:2px}
+  /* size to content, share what is left: equal quarters clipped "Deposit / Withdraw", which is much longer
+     than the other three. The four together measure ~333px inside 345px, so they all fit unclipped; the
+     min-width:0 + ellipsis below is the safety net for a narrower handset. */
+  #ptabs.panel-tabs>*{flex:1 1 auto!important;min-width:0!important;padding-left:3px!important;padding-right:3px!important;
+    font-size:11px!important;letter-spacing:-.1px;white-space:nowrap;text-align:center;justify-content:center!important;overflow:hidden;text-overflow:ellipsis}
+  .dw-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important}
+  .dw-tabs>*{flex:1 1 0!important;min-width:0!important;white-space:nowrap}
+}
+/* Small handsets (iPhone SE and friends): at 11px the four labels want ~302px inside a 290px strip, so
+   every one of them ellipsised by a few pixels. A step down to 10px needs ~269px and they read in full. */
+@media (max-width:359px){
+  #ptabs.panel-tabs>*{font-size:10px!important;padding-left:2px!important;padding-right:2px!important}
+}
 /* Market Overview box: show its structure (title/labels) instantly; only the value+sub cells shimmer as a
    skeleton until real data lands — so the box never sits blank for ~2s and never flashes mock numbers. */
 /* Skeleton the RIGHT-side dynamic cells (value + vsub). The left label/sub are static design text.
