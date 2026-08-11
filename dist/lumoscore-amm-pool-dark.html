@@ -5623,6 +5623,13 @@ window.addEventListener('click',function(e){
     else if(agg&&agg.__empty){ if(!DET.__chSer)DET.__chSer=chBuild(); ser=DET.__chSer; }   // no trade_aggregations for this range -> tx-reconstruction fallback
     else { chAgg(s.range,function(){ chDraw(); }); chLoading(svg); return; }   // range not fetched yet: show a loader, DON'T flash the wrong (minutes-long) reconstruction while ALL/1Y loads
     var W=1000,H=280,DW=936,padT=12,padB=24;
+    // The design sizes this svg per layout and sets the viewBox itself — 1000x280 on desktop, but 400x220
+    // on the phone — while we always lay the series out in a 1000x280 space. So on mobile everything below
+    // y=220 (the lower half of the line and the whole date row) fell outside the viewBox and was clipped:
+    // the chart "cropped from the bottom". Pin the box to the space we actually draw in. No-op on desktop,
+    // where the two already agree.
+    try{ if(svg.getAttribute("viewBox")!=="0 0 "+W+" "+H){ svg.setAttribute("viewBox","0 0 "+W+" "+H); }
+         if(svg.getAttribute("preserveAspectRatio")!=="none")svg.setAttribute("preserveAspectRatio","none"); }catch(_){}
     var RD={"1D":1,"1W":7,"1M":30,"3M":90,"1Y":365,"ALL":null}, days=RD[s.range];
     var t1=Date.now(), t0=(days==null)?ser.t0:Math.max(ser.t0,t1-days*86400000); if(!(t0<t1))t0=t1-86400000;
     var isVol=(s.metric==="volume"||s.metric==="vol"), isBar=isVol||(s.type!=="line"&&s.type!=="area");   // volume always draws as bars (matches the design)
