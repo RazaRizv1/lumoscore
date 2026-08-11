@@ -4362,9 +4362,15 @@ window.addEventListener('click',function(e){
     return {code:code,issuer:issuer,id:p.id,xlm:xlm,tok:tok,a0:rs[0]||null,a1:rs[1]||null,nonXlm:xlm===0,shares:+p.total_shares,fee:(p.fee_bp||30)/100,trustlines:+(p.total_trustlines||0)}; }
   // generic pair icon (both sides real logos) — for non-XLM pools like AQUA/EURC. Reuses amTokUrl (known map + stellar.expert cache).
   function assetIcoBg(a){ if(!a)return null; if(a.native||a.code==="XLM")return "url(/assets/tokens/xlm.png)"; var u=amTokUrl(a.code,a.issuer); return u?("url("+u+")"):null; }
-  function icoPairG(a0,a1){ var b0=assetIcoBg(a0),b1=assetIcoBg(a1);
-    var e0=b0?ico1("pa",b0,null,a0.code,a0.issuer):ico1("pa",gcolor(a0.code),(a0.code&&a0.code[0]?a0.code[0]:"?").toUpperCase(),a0.code,a0.issuer);
-    var e1=b1?ico1("pb",b1,null,a1.code,a1.issuer):ico1("pb",gcolor(a1.code),(a1.code&&a1.code[0]?a1.code[0]:"?").toUpperCase(),a1.code,a1.issuer);
+  // mob=true adds the phone's class names alongside the desktop ones — the SAME trap icoPairM documents:
+  // the card CSS positions ".pair-icons .a/.b" while the rule that paints the logo is scoped to
+  // ".pair-icons .pa.lx-ico/.pb.lx-ico", so both sets are required or the icons have a box with no image
+  // (or no box at all). My Pools is mostly non-XLM pairs, which come through here, so on the phone those
+  // cards showed no logos at all.
+  function icoPairG(a0,a1,mob){ var b0=assetIcoBg(a0),b1=assetIcoBg(a1);
+    var c0=mob?"a pa":"pa", c1=mob?"b pb":"pb";
+    var e0=b0?ico1(c0,b0,null,a0.code,a0.issuer):ico1(c0,gcolor(a0.code),(a0.code&&a0.code[0]?a0.code[0]:"?").toUpperCase(),a0.code,a0.issuer);
+    var e1=b1?ico1(c1,b1,null,a1.code,a1.issuer):ico1(c1,gcolor(a1.code),(a1.code&&a1.code[0]?a1.code[0]:"?").toUpperCase(),a1.code,a1.issuer);
     return '<div class="pair-icons" data-paired="1">'+e0+e1+'</div>'; }
   function fetchVol(id,pool){ return getJSON(H+"/liquidity_pools/"+id+"/trades?order=desc&limit=100").then(function(tr){ var trs=(tr&&tr._embedded&&tr._embedded.records)||[]; var now=Date.now(),vol=0,n=0; trs.forEach(function(x){ var xa=x.base_asset_type==="native"?+x.base_amount:+x.counter_amount; var ts=Date.parse(x.ledger_close_time||""); if(now-ts<=864e5){vol+=xa;n++;} }); pool.vol24Xlm=vol; pool.n24=n; return pool; }); }
   // vol24Xlm === null means "not fetched yet" (distinct from 0, a real "no trades in 24h"), so
@@ -4574,7 +4580,7 @@ window.addEventListener('click',function(e){
     var f=p.mineFrac||0, nonX=p.nonXlm&&p.a0&&p.a1;
     var pct=(f*100>=0.01?(f*100).toFixed(2):"<0.01")+"%";
     var name=nonX?(esc(p.a0.code)+" / "+esc(p.a1.code)):(esc(p.code)+" / XLM");
-    var ico=nonX?icoPairG(p.a0,p.a1):icoPairM(p.code,p.issuer);
+    var ico=nonX?icoPairG(p.a0,p.a1,true):icoPairM(p.code,p.issuer);
     var l1,v1,vs1,l2,v2;
     if(nonX){ l1=esc(p.a0.code); v1=qty(p.a0.amount*f); vs1=""; l2=esc(p.a1.code); v2=qty(p.a1.amount*f); }
     else { l1="Your liquidity"; v1=qty(p.xlm*f)+" XLM"; vs1=usd(p.tvlUsd*f); l2=esc(p.code); v2=qty((p.tok||0)*f); }
