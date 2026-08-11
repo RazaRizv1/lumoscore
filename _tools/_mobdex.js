@@ -171,7 +171,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         +'<div class="mdx-mk-vol">Vol '+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</div></div>'
         +'<div class="mdx-mk-right">'
         +'<div class="mdx-mk-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
-        +'<div class="mdx-mk-change '+(up?"up":"down")+'">'+esc(pct(n(a.chg)))+'</div>'
+        +'<div class="mdx-mk-pct '+(up?"up":"down")+'">'+esc(pct(n(a.chg)))+'</div>'
         +'</div></div></div>';
     }).join("");
   }

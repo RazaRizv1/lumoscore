@@ -276,6 +276,17 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       amFetchLogo(c,i,function(img){ if(img)applyLogo(c,img); }); });
   }
   // real token logo (known map + launch icons + harvested cache) for the pair's non-XLM side; letter fallback only when truly unknown
+  // Same pair of icons, mobile class names. The card CSS positions ".pair-icons .a/.b"; icoPair emits the
+  // desktop "pa/pb", which nothing on the phone styles, so the icons rendered as zero-size invisible divs.
+  // Built through ico1 like the desktop pair, so logo resolution and the data-lxc opt-out are identical.
+  // BOTH class sets on purpose. The phone card CSS positions ".pair-icons .a/.b"; the layer's own rule
+  // that actually paints the logo is scoped to ".pair-icons .pa.lx-ico/.pb.lx-ico". With only the mobile
+  // names the icons had the right 32x32 box and no image in it.
+  function icoPairM(code,issuer){ var up=amTokUrl(code,issuer);
+    var tok= up ? ico1("a pa","url("+up+")",null,code,issuer)
+                : ico1("a pa",gcolor(code),(code&&code[0]?code[0]:"?").toUpperCase(),code,issuer);
+    var xlm=ico1("b pb","url(/assets/tokens/xlm.png)",null);
+    return '<div class="pair-icons" data-paired="1">'+tok+xlm+'</div>'; }
   function icoPair(code,issuer){ var up=amTokUrl(code,issuer); var tok= up ? ico1('pa','url('+up+')',null,code,issuer) : ico1('pa',gcolor(code),(code&&code[0]?code[0]:"?").toUpperCase(),code,issuer); var xlm=ico1('pb','url(assets/tokens/xlm.png)',null); return '<div class="pair-icons" data-paired="1">'+tok+xlm+'</div>'; }
 
   // build a pool object from a raw Horizon /liquidity_pools/{id} record (for the user's positions
@@ -439,6 +450,32 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
 
   function volTxt(v){ if(v==null)return "\u2014"; if(v>0&&v<0.01)return "<0.01 XLM"; return num(v)+" XLM"; }
   function feeTxt(f){ if(f==null)return "\u2014"; if(f>0&&f<0.01)return "<0.01 XLM"; return num(f>=0.01?+f.toFixed(2):0)+" XLM"; }
+  // MOBILE all-pools list. The phone layout is a stack of .pool-card ANCHORS in #panelAll, not a table
+  // body, so the desktop <tr> builder has nowhere to go and the design's own cards survived — CELL / XLM
+  // and friends, Aptos tokens on a Stellar AMM.
+  //
+  // The href matters as much as the data. Every mock card pointed at the bare filename
+  // "lumoscore-amm-pool-mobile.html" with no pool on it, and from the clean url /pools/stellar that
+  // resolves to /pools/lumoscore-amm-pool-mobile.html — which routes straight back to the list. That is
+  // why tapping a pool "refreshed" the page. detailUrl() builds the real per-pool url the desktop rows
+  // navigate to, so the card is a plain working link.
+  function allCard(p,i){
+    var idx=(i+1<10?"0":"")+(i+1);
+    var _xu=(DATA&&DATA.xlmUsd)||0;
+    var volCell=(p.vol24Xlm==null)?'<div class="v">\\u2014</div>'
+      :('<div class="v">'+qty(p.vol24Xlm)+'</div><div class="vs">'+usd(p.vol24Xlm*_xu)+'</div>');
+    return '<a class="pool-card lx-ammcard" data-pool="'+p.id+'"'+pairAttr(p)+' href="'+detailUrl(p.id,null,pairVal(p))+'">'
+      +'<div class="pc-head">'+icoPairM(p.code,p.issuer)
+      +'<div class="pc-info"><div class="pc-name">'+esc(p.code)+' / XLM</div>'
+      +'<div class="pc-sub">'+p.fee+'% fee \\u00b7 Stellar AMM</div></div>'
+      +'<div class="pc-idx">#'+idx+'</div></div>'
+      +'<div class="pc-stats">'
+      +'<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+qty(p.xlm)+' XLM</div>'
+      +'<div class="vs">'+usd(p.tvlUsd)+'</div></div>'
+      +'<div class="pc-stat"><div class="l">24h Vol</div>'+volCell+'</div>'
+      +'<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.trustlines)+'</div></div>'
+      +'</div></a>';
+  }
   function allRow(p,i){
     var idx=(i+1<10?"0":"")+(i+1);
     return '<tr class="lx-ammrow" data-pool="'+p.id+'"'+pairAttr(p)+' style="cursor:pointer"><td class="idx">'+idx+'</td>'+
@@ -590,6 +627,14 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       allBody.setAttribute("data-lxsig",_tsig);
       try{ healLogos(); }catch(_){}
     }
+    // Mobile has no #poolsBody: its all-pools list is a stack of .pool-card anchors in #panelAll.
+    var mobList=allBody?null:q("#panelAll");
+    if(mobList && (!mobList.querySelector(".lx-ammcard") || mobList.getAttribute("data-lxsig")!==_tsig)){
+      mobList.innerHTML=DATA.pools.length?sortedPools().map(allCard).join("")
+        :'<div class="lx-amm-empty"><b>No pools yet</b>Launch a token to create the first one.</div>';
+      mobList.setAttribute("data-lxsig",_tsig);
+      try{ healLogos(); }catch(_){}
+    }
     wireSort();
     // My Positions TAB panel (design's original tab layout, restored)
     fillMyPos();
@@ -613,14 +658,17 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function urlSeg(x){ return (!x||x.native||x.code==="XLM") ? "native" : (x.code+"-"+x.issuer); }
   // TWO record shapes reach a row: wallet pools go through poolFromRec (a0/a1), while the curated
   // KNOWN list builds {code,issuer,...} directly and is always <code>/XLM.
-  function pairAttr(p){ try{ if(!p)return "";
+  // The pair value on its own, so a link can be built from it directly instead of only ever being read
+  // back off the rendered attribute. pairAttr stays the single caller for markup.
+  function pairVal(p){ try{ if(!p)return "";
     var a,b;
     if(p.a0&&p.a1){ a=urlSeg(p.a0); b=urlSeg(p.a1); }
     else if(p.code&&p.issuer){ a="native"; b=p.code+"-"+p.issuer; }
     else return "";
     if(b==="native"){ var t=a; a=b; b=t; }   // native first = Stellar's canonical order = one url per pool
     if(a===b)return "";
-    return ' data-pair="'+a+'|'+b+'"'; }catch(e){ return ""; } }
+    return a+"|"+b; }catch(e){ return ""; } }
+  function pairAttr(p){ var v=pairVal(p); return v?(' data-pair="'+v+'"'):""; }
   var sched=false;
   function schedule(){ if(sched)return; sched=true; (window.requestAnimationFrame||function(f){setTimeout(f,16);})(function(){ sched=false; paint(); }); }
   function detailUrl(hex,fromDest,pair){
@@ -1457,7 +1505,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function boot(){
     if(window.__lxAmmBoot)return; window.__lxAmmBoot=1;
     var root=q("main")||document.body;
-    if(q("#poolsBody")){ try{ renameMineTab(); }catch(_){}
+    // The pools LIST page is #poolsBody on desktop and #panelAll on mobile. Testing only the desktop id
+    // meant load() never ran on a phone at all: no fetch, no DATA, so every renderer below was moot and
+    // the design's mock pools stayed put. This is the gate, not paintTables — the layer never started.
+    if(q("#poolsBody")||q("#panelAll")){ try{ renameMineTab(); }catch(_){}
       // fetch just the balances up-front so Create Pool's asset dropdown is populated immediately
       // (it used to wait on the full pools load and showed an empty list for seconds)
       try{ var _cpa=myAddr(); if(_cpa)(window.__lxAcct?window.__lxAcct(_cpa):getJSON(H+"/accounts/"+_cpa)).then(function(acc){ _cpBals=(acc&&acc.balances)||[]; try{ wireCreatePool(); }catch(_e){} }).catch(function(){}); }catch(_){}
