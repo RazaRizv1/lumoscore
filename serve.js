@@ -135,7 +135,8 @@ function poolStats(req, res) {
       lpAccounts += +r.accounts || 0;
       trades24 += (r.trades && +r.trades['1d']) || 0;
     }
-    if (!sampled) throw new Error('no upstream records');
+    // All pages or nothing — a partial aggregate is a WRONG total, not a smaller one (see the Pages Function)
+    if (pages.some(p => !p) || sampled < 800) throw new Error('incomplete sample');
     const body = JSON.stringify({ pools, sampled, tvlXlm: Math.round(tvlXlm),
       vol24Usd: Math.round(vol24Usd * 100) / 100, fees24Usd: Math.round(fees24Usd * 100) / 100,
       lpAccounts, trades24, ts: Date.now() });

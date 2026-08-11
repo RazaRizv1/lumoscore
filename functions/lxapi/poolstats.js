@@ -53,7 +53,15 @@ async function poolCount() {
   return lo + 1;
 }
 
-export async function onRequestGet() {
+export async function onRequestGet(ctx) {
+  // Cache the RESPONSE, not just the upstream calls. cf.cacheTtl on a subrequest does not cache what this
+  // function returns, so without this every visitor recomputed: measured 11-20s per call on production and
+  // ~25 upstream requests each, which is also what was getting us throttled.
+  const key = new Request('https://lumoscore.internal/lxapi/poolstats', { method: 'GET' });
+  const cache = caches.default;
+  const hit = await cache.match(key);
+  if (hit) return hit;
+
   try {
     // Depth, not breadth. Sorting by volume or by LP count returns the SAME top 200 pools as sorting by
     // TVL — the big pools are big on every axis — so fanning out across sort orders added nothing and
@@ -87,7 +95,11 @@ export async function onRequestGet() {
         trades24 += (r.trades && +r.trades['1d']) || 0;
       }
     }
-    if (!sampled) throw new Error('no upstream records');
+    // ALL pages or nothing. A partial aggregate is not a smaller number, it is a WRONG one: when the
+    // top-TVL page was the one throttled, the total came back as 938,179 XLM against a true 43.8M — and
+    // it would have been shown as the network's liquidity. Better to fail and let the page keep its own
+    // clearly-labelled figures.
+    if (pages.some((p) => !p) || sampled < 4 * PAGE) throw new Error('incomplete sample');
 
     const body = JSON.stringify({
       pools, sampled,
@@ -97,9 +109,12 @@ export async function onRequestGet() {
       lpAccounts, trades24,
       ts: Date.now(),
     });
-    return new Response(body, {
+    const res = new Response(body, {
       headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + SAMPLE_TTL },
     });
+    // Only a complete result is ever cached, so a throttled minute cannot be frozen in for 10 more.
+    try { ctx && ctx.waitUntil && ctx.waitUntil(cache.put(key, res.clone())); } catch (_) {}
+    return res;
   } catch (e) {
     return new Response(JSON.stringify({ error: String((e && e.message) || e) }), {
       status: 502,
@@ -109,8 +124,9 @@ export async function onRequestGet() {
 }
 
 // Anything other than GET is not part of this route's contract.
-export async function onRequest({ request }) {
-  if (request.method === 'GET') return onRequestGet();
+export async function onRequest(ctx) {
+  const request = ctx.request;
+  if (request.method === 'GET') return onRequestGet(ctx);
   return new Response('{"error":"method not allowed"}', {
     status: 405,
     headers: { 'content-type': 'application/json', allow: 'GET' },
