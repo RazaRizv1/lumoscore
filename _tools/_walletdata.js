@@ -438,6 +438,11 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // characters, and the user only finds out when the funds do not appear. Check before we ask them to sign.
 // Written without \\\\d / \\\\s on purpose: this is emitted inside a JS string, where a lone backslash is lost.
 +'if(memoT==="id"&&memoRaw){memo=memoRaw.replace(/[ ,]/g,"");if(!/^[0-9]+$/.test(memo)){lxToast("Memo ID must be digits only");return;}try{if(memo.length>20||BigInt(memo)>BigInt("18446744073709551615")){lxToast("Memo ID is out of range");return;}}catch(_){}}'
+// A memo copied from an exchange can arrive already formatted ("242,102,035") if it was copied from a
+// page that groups digits. As TEXT we used to forward that verbatim, and the deposit lands unattributed
+// because the exchange matches on the bare number. If a text memo is nothing but digits and separators,
+// strip them and SAY SO — silently changing what someone is about to sign is not acceptable either.
++'if(memoT==="text"&&memo&&/^[0-9][0-9 ,]*$/.test(memo)&&/[ ,]/.test(memo)){memo=memo.replace(/[ ,]/g,"");lxToast("Removed separators from the memo \\u2014 sending "+memo);}'
 +'if(memoT==="text"&&memo){var _mb;try{_mb=new TextEncoder().encode(memo).length;}catch(_){_mb=memo.length;}if(_mb>28){lxToast("Text memo is too long \\u2014 28 bytes max");return;}}'
 +'if(!(amount>0)){lxToast("Enter an amount to send");return;}var _av=(sym==="XLM")?window.__lxNative:((window.__lxHoldings||[]).filter(function(x){return x.code===sym;})[0]||{}).bal;if(_av!=null&&amount>_av){lxToast("Amount exceeds your "+sym+" balance");return;}var ot=b.textContent;b.disabled=true;b.textContent="Signing\\u2026";lxPay(dest,sym,amount,memo,memoT).then(function(){b.textContent="Sent \\u2713";lxToast("Sent "+amount+" "+sym);setTimeout(function(){var cl=m.querySelector(".modal-close,[data-close],.close");if(cl)cl.click();else{m.classList.remove("open");m.setAttribute("hidden","");}},1200);}).catch(function(err){b.disabled=false;b.textContent=ot;lxToast((err&&err.message)||"Send failed");});},true);}'
 // ---- My Assets row actions (Trade on DEX / Send / more) wired to finalized flows ----
