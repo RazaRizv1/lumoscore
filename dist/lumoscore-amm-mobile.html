@@ -4900,7 +4900,10 @@ window.addEventListener('click',function(e){
   function amFetchLogo(code,issuer,cb){ var u=amTokUrl(code,issuer); if(u){cb(u);return;} if(!code||!issuer){cb("");return;} getJSON("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){ var recs=(d&&d._embedded&&d._embedded.records)||[]; var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+issuer)===0;})[0]; var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||ti.orgLogo||""; if(img){AMLOGOS[code]=img;try{(window.__lxLogos=window.__lxLogos||{})[code]=img;}catch(_){}} cb(img||""); }).catch(function(){cb("");}); }
   function tokLogo(){ var c=(DET&&DET.code)||"", i=(DET&&DET.issuer)||""; var av=avatarUri(c); var u=amTokUrl(c,i)||av;
     return '<img class="lx-tokimg" data-lxc="'+esc(c)+'" data-lxi="'+esc(i)+'" src="'+u+'" alt="" onerror="this.onerror=null;this.src=\x27'+av+'\x27">'; }
-  function xlmLogo(){ return '<img src="/assets/tokens/xlm.png" alt="">'; }
+  // data-lxc so the "is this icon already ours, and for THIS asset?" test in wrSide reads the same way for
+  // the XLM side as for a credit asset. Without it that test never matched and the icon was rebuilt on
+  // every repaint. healLogos ignores XLM, so tagging it costs nothing.
+  function xlmLogo(){ return '<img class="lx-tokimg" data-lxc="XLM" src="/assets/tokens/xlm.png" alt="">'; }
   // logo for ANY pair side (nonXlm pools have two credit assets; tokLogo only knows DET.code)
   function genLogo(a){ if(!a||a.native||a.code==="XLM")return xlmLogo(); var av=avatarUri(a.code); var u=amTokUrl(a.code,a.issuer)||av;
     return '<img class="lx-tokimg" data-lxc="'+esc(a.code)+'" data-lxi="'+esc(a.issuer)+'" src="'+u+'" alt="" onerror="this.onerror=null;this.src=\x27'+av+'\x27">'; }
@@ -5719,7 +5722,13 @@ window.addEventListener('click',function(e){
       [].slice.call(r.a.childNodes).forEach(function(nd){ if(nd.nodeType===3&&nd.textContent.trim()){ _hasTxt=true; if(nd.textContent!==" "+a.code+" ")nd.textContent=" "+a.code+" "; } });
       if(!_hasTxt)r.a.appendChild(document.createTextNode(" "+a.code+" "));   // freshly built cell has no label yet
       var ic=r.a.querySelector(".ico");
-      if(ic&&(ic.getAttribute("data-logo")||!ic.querySelector("img"))){ ic.removeAttribute("data-logo"); ic.style.removeProperty("background"); ic.style.removeProperty("background-image"); ic.setAttribute("data-lxfixed","1"); ic.style.overflow="hidden"; ic.innerHTML=genLogo(a); }
+      // Replace the icon unless it is ALREADY OURS AND FOR THIS ASSET. The old test was "no img present",
+      // which the design's logo painter defeats: it drops its own <img> in first (the Stellar mark, since
+      // the mock's second row is the native side), we then saw an img and skipped — so a DOPE/LUMOS pool
+      // showed the XLM logo against the LUMOS label, permanently. Ours carry data-lxc; the painter's do
+      // not, so comparing that identifies a foreign icon and a stale one from a previously viewed pool.
+      var cur=ic?ic.querySelector("img"):null;
+      if(ic&&(ic.getAttribute("data-logo")||!cur||cur.getAttribute("data-lxc")!==a.code)){ ic.removeAttribute("data-logo"); ic.style.removeProperty("background"); ic.style.removeProperty("background-image"); ic.setAttribute("data-lxfixed","1"); ic.style.overflow="hidden"; ic.innerHTML=genLogo(a); }
       // MUST tag: the mask rule "#dwWithdraw .dw-field .row .asset:not([data-lxpair]){visibility:hidden}"
       // hides EVERY asset cell in the panel until it is claimed. fixWithdrawPair() only ever claims the
       // first one (querySelector), i.e. the "Withdraw from position" row — so the You-Receive cells stayed
