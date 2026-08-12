@@ -5434,14 +5434,18 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   // handler (it has to — the design's state is unreliable here), which means nothing else was left to
   // show #dwWithdraw. The tab highlighted correctly and the CTA relabelled, while the Deposit form
   // stayed on screen underneath: the "Withdraw tab does not open" report, still half-true.
+  // Set by wireDW once its inner painters exist; dwShow lives out here and cannot reach them directly.
+  var __dwRefresh=null;
   function dwShow(mode){
     var w=(mode==="withdraw");
     qa("[data-dw]").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-dw")===mode); });
     var dp=q("#dwDeposit"), wd=q("#dwWithdraw");
     if(dp)dp.style.display=w?"none":"";
     if(wd)wd.style.display=w?"":"none";
-    try{ syncCta(); }catch(_){}
-    if(w){ try{ withRecv(); }catch(_){} }
+    // Repaint through the bridge, NOT by calling syncCta/withRecv directly: those are declared inside
+    // wireDW and are not in scope here, so the calls threw ReferenceError straight into the catch and the
+    // panel switched without ever being painted — leaving the design's baked "620.30 / 1,860.90" on show.
+    if(__dwRefresh)__dwRefresh();
   }
   function rangeShow(lbl){
     qa(".tf-mini button").forEach(function(b){ b.classList.toggle("active",(b.textContent||"").trim().toUpperCase()===lbl); });
@@ -5801,6 +5805,8 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   function dwCta(){ return q(".dw-card .dw-cta")||q("#dwCta")||q(".dw-cta"); }
   function wireDW(){
     if(window.__lxDWwired||!DET)return; var card=dwCard(); if(!card)return; window.__lxDWwired=1;
+    // Publish the repaint entry point for dwShow (function declarations below are hoisted).
+    __dwRefresh=function(){ try{ syncCta(); }catch(_){} try{ if(isWith())withRecv(); }catch(_){} };
     var d=DET, r=d.tok>0?d.xlm/d.tok:0;               // XLM per 1 token
     var depIn=qa("#dwDeposit .dw-field input");        // [0]=token, [1]=XLM
     function wInEl(){ return q("#dwWithdraw .dw-field input")||q("#dwWithdraw .row input")||q("#dwWithdraw input"); }   // re-query (design re-creates withdraw inputs on tab switch)
@@ -5831,6 +5837,11 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       // is the order withRecv passes them in.
       return {A:rows[0]||null,B:rows[1]||null}; }
     function wrSide(r,a,amtTxt){ if(!r)return;
+      // Claim the cell from the multichain re-skin observer BEFORE writing the ticker. That observer
+      // rewrites Aptos-era text (APT -> LUMOS/XLM) and was reverting our label straight back to the
+      // mock's "LUMOS"/"APT" — the icon stayed correct because it is an <img> the logo healer re-resolves
+      // from data-lxc, so the row ended up showing the USDC logo labelled LUMOS.
+      if(!r.a.hasAttribute("data-lx-noswap"))r.a.setAttribute("data-lx-noswap","1");
       var _hasTxt=false;
       [].slice.call(r.a.childNodes).forEach(function(nd){ if(nd.nodeType===3&&nd.textContent.trim()){ _hasTxt=true; if(nd.textContent!==" "+a.code+" ")nd.textContent=" "+a.code+" "; } });
       if(!_hasTxt)r.a.appendChild(document.createTextNode(" "+a.code+" "));   // freshly built cell has no label yet
@@ -5849,6 +5860,11 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       if(r.a.getAttribute("data-lxpair")!=="1")r.a.setAttribute("data-lxpair","1");
       if(r.sp.textContent!==amtTxt)r.sp.textContent=amtTxt; }
     function withRecv(){ try{ fixWithdrawPair(); }catch(_){} var w=wInEl(); var sh=parseFloat(String((w&&w.value)||"").replace(/,/g,""))||0; var frac=d.totShares>0?sh/d.totShares:0; if(frac<0)frac=0; if(frac>1)frac=1; var e=withRecvEls();
+      // "You receive" is a preview of a withdrawal you have not described yet, so it has nothing to say
+      // until an amount exists — and while it sat there empty-handed it displayed the design's baked
+      // 620.30 / 1,860.90, which reads as a real quote. Hide the whole field until there is an amount.
+      var _host=(e.A&&e.A.a.closest&&e.A.a.closest(".dw-field"))||(e.B&&e.B.a.closest&&e.B.a.closest(".dw-field"))||null;
+      if(_host)_host.style.display=(sh>0)?"":"none";
       var sideA=d.nonXlm?d.a0:{code:d.code,issuer:d.issuer}, sideB=d.nonXlm?d.a1:{code:"XLM",native:true};
       var amtA=(d.nonXlm?d.a0.amt:d.tok)*frac, amtB=(d.nonXlm?d.a1.amt:d.xlm)*frac;
       wrSide(e.A,sideA,famt(amtA)); wrSide(e.B,sideB,famt(amtB));
