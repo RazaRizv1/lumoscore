@@ -452,10 +452,19 @@ export async function onRequest(context){
   const legacy = legacyClean(url.pathname, url.searchParams);
   if (legacy){
     const to = new URL(legacy, url.origin);
-    // ?asset= became a path segment, so carrying it too would duplicate it
+    // ?asset= / ?pool= became a path segment, so carrying THEM would duplicate the identifier — but
+    // dropping the whole query took every OTHER param with it. That silently broke the Wallet's
+    // "Remove" button on an LP position, which links to ...?pool=<id>&act=withdraw so the pool page
+    // opens on the Withdraw tab: the redirect promoted the pool into the path and threw act= away, so
+    // the user always landed on Deposit. Drop only the key that was promoted.
     const promoted = legacy.indexOf('/trade/stellar/') === 0
       || legacy.indexOf('/pools/stellar/id/') === 0;
-    if (!promoted) to.search = url.search;
+    if (promoted){
+      const keep = new URLSearchParams(url.search);
+      keep.delete('asset'); keep.delete('pool');
+      const qs = keep.toString();
+      to.search = qs ? ('?' + qs) : '';
+    } else to.search = url.search;
     to.hash = url.hash;
     return Response.redirect(to.toString(), 301);
   }
