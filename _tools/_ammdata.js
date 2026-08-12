@@ -1510,7 +1510,13 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var btns=foot.querySelectorAll(".controls button");
     if(btns[0])btns[0].disabled=(txPage<=0);
     if(btns[1])btns[1].disabled=(txPage>=pages-1);
-    var ind=foot.querySelector(".controls span");            // the design's "Page 1 of 3" chip
+    var ctr=foot.querySelector(".controls");
+    var ind=ctr&&ctr.querySelector(".lx-txpg");
+    if(ctr&&!ind){                                            // the design ships bare Prev/Next: add the page chip
+      ind=document.createElement("span"); ind.className="lx-txpg";
+      ind.style.cssText="margin:0 12px;color:var(--text-soft);font-size:13px";
+      ctr.insertBefore(ind, btns[1]||null);
+    }
     if(ind)setText(ind,"Page "+(txPage+1)+" of "+pages);
   }
   function pdTx(){
@@ -1521,7 +1527,6 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       tb.innerHTML=d.txs.length?d.txs.map(txRow).join(""):'<tr class="lx-txrow"><td colspan="6" style="text-align:center;color:var(--text-muted);padding:22px">No transactions yet</td></tr>';
       txPage=0;
     }
-    var pg=q("#lx-txpage"); if(pg)pg.style.display="none";
     // Prev/Next, bound once. Capture + stopImmediatePropagation so the design's own pager (which walks
     // its mock rows) cannot also run and fight us over the same buttons.
     var foot=q(".tx-foot");
