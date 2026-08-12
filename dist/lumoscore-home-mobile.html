@@ -5077,26 +5077,34 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     window.__lxDetLoading=1;
     var xlmP=getJSON("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd");
     var poolP=poolTry(2);
-    var trP=getJSON(H+"/liquidity_pools/"+hex+"/trades?order=desc&limit=100");
+    // The pool record got three chances; its auxiliaries got ONE, and getJSON turns any failure into null.
+    // A throttled or blipped /trades therefore rendered as "this pool has had 1 transaction" (on a pool with
+    // 100) and "24h Volume 0 XLM" — a failure wearing the costume of a fact. Same retry as the pool record.
+    function tryJSON(u,n){ return getJSON(u).then(function(r){
+      if(r||n<=0)return r;
+      return new Promise(function(rs){ setTimeout(rs,700); }).then(function(){ return tryJSON(u,n-1); }); }); }
+    var trP=tryJSON(H+"/liquidity_pools/"+hex+"/trades?order=desc&limit=100",2);
     // Deposits/withdrawals are RARE next to swaps: this pool runs ~600 path-payments for every 5 LP
     // operations, so a 50-record window held 3 deposits and 0 withdrawals and the Withdrawals filter came
     // up empty on a pool that has had withdrawals. Horizon cannot filter operations by type, so widen the
     // window (200 is its max) and walk two more pages. 600 records covers every LP action this pool has
     // seen, and the pages are fetched in sequence only while they keep arriving.
     var opP=(function(){
-      var url=H+"/liquidity_pools/"+hex+"/operations?order=desc&limit=200", all=[], pages=0;
+      var url=H+"/liquidity_pools/"+hex+"/operations?order=desc&limit=200", all=[], pages=0, failed=false;
+      function done(){ return {_embedded:{records:all},__failed:(failed&&!all.length)}; }   // no pages at all -> unknown, not "none"
       function step(u){
-        return getJSON(u).then(function(r){
+        return tryJSON(u,2).then(function(r){
+          if(!r)failed=true;
           var recs=(r&&r._embedded&&r._embedded.records)||[];
           all=all.concat(recs); pages++;
           var nx=r&&r._links&&r._links.next&&r._links.next.href;
           if(recs.length===200&&nx&&pages<3)return step(nx);
-          return {_embedded:{records:all}};
-        }).catch(function(){ return {_embedded:{records:all}}; });
+          return done();
+        }).catch(function(){ failed=true; return done(); });
       }
       return step(url);
     })();
-    var partP=getJSON(H+"/accounts?liquidity_pool="+hex+"&limit=100");
+    var partP=tryJSON(H+"/accounts?liquidity_pool="+hex+"&limit=100",2);
     var acctP=myAddr()?(window.__lxAcct?window.__lxAcct(myAddr()):getJSON(H+"/accounts/"+myAddr())):Promise.resolve(null);
     Promise.all([xlmP,poolP,trP,opP,partP,acctP]).then(function(r){
       window.__lxDetLoading=0;
@@ -5126,6 +5134,10 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
         if(a0.code==="USDC"&&a0.issuer===USDC_ISS){ tvlUsd=a0.amt*2; priceUsd=pxA0perA1; } }
       var pairName=nonXlm?(a0.code+" / "+a1.code):(code+" / XLM");
       var now=Date.now();
+      // getJSON resolves null on any failure, so null here means "we never got an answer" while an empty
+      // records array means "this pool genuinely has none". Those are not the same claim and must not render
+      // the same way: the first is what showed a 100-swap pool as having 1 transaction.
+      var trFail=!(r[2]&&r[2]._embedded), opFail=!!(r[3]&&r[3].__failed);
       var trs=(r[2]&&r[2]._embedded&&r[2]._embedded.records)||[];
       var vol=0, txs=[];
       trs.forEach(function(x){
@@ -5145,6 +5157,9 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       });
       var vol24Xlm=vol, vol24Usd=vol*xlmUsd, fees24Xlm=vol*fee/100, fees24Usd=fees24Xlm*xlmUsd;
       if(nonXlm){ var _a0usd=(a0.code==="USDC"&&a0.issuer===USDC_ISS); vol24Usd=_a0usd?vol:0; fees24Usd=_a0usd?fees24Xlm:0; }
+      // volume is derived ENTIRELY from the trades we fetched, so if that fetch failed the honest answer is
+      // "unknown", not 0. null is already this file's word for unknown (see volLater on the list page).
+      if(trFail){ vol24Xlm=null; vol24Usd=null; fees24Xlm=null; fees24Usd=null; }
       var ops=(r[3]&&r[3]._embedded&&r[3]._embedded.records)||[];
       function amt(arr){ var xx=0,tt=0; (arr||[]).forEach(function(rv){ if(rv.asset==="native")xx=+rv.amount; else tt=+rv.amount; }); return {x:xx,t:tt}; }
       ops.forEach(function(o){
@@ -5172,7 +5187,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       var myFrac=totShares>0?myShares/totShares:0;
       var _det={hex:hex,code:code,issuer:issuer,xlm:xlm,tok:tok,fee:fee,priceXlm:priceXlm,priceUsd:priceUsd,xlmUsd:xlmUsd,
         tvlXlm:tvlXlm,tvlUsd:tvlUsd,vol24Xlm:vol24Xlm,vol24Usd:vol24Usd,fees24Xlm:fees24Xlm,fees24Usd:fees24Usd,
-        txs:txs,parts:parts,totShares:totShares,myShares:myShares,myFrac:myFrac,balTok:balTok,balXlm:balXlm,balXlmRaw:balXlmRaw,subs:subs,
+        txs:txs,txFail:(trFail||opFail),parts:parts,totShares:totShares,myShares:myShares,myFrac:myFrac,balTok:balTok,balXlm:balXlm,balXlmRaw:balXlmRaw,subs:subs,
         pairName:pairName,nonXlm:nonXlm,a0:a0,a1:a1,pxA0perA1:pxA0perA1,balA0:balA0};
       // MUTATE the existing DET in place on refresh (don't replace it) so wireDW's captured d (===DET)
       // stays valid with fresh numbers — this lets add/withdraw re-fetch+repaint with NO page reload.
@@ -5290,8 +5305,14 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,num(d.a0.amt)+" "+U0);
           if(sub)setText(sub,"+ "+num(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \u00b7 \u2248 "+usd(d.tvlUsd)):"")); }
         else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+num(d.tok)+" "+d.code+" \u00b7 \u2248 "+usd(d.tvlUsd)); } }
-      else if(/vol/.test(cn)){ if(v)setText(v,num(d.vol24Xlm)+" "+U0); if(sub)setText(sub,d.nonXlm?(d.vol24Usd>0?"\u2248 "+usd(d.vol24Usd):"24h volume"):"\u2248 "+usd(d.vol24Usd)); }
-      else if(/fee/.test(cn)){ if(v)setText(v,(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\u2248 "+usd(d.fees24Usd)+" \u00b7 ")+d.fee+"% fee tier"); }
+      // null = the trades fetch never answered. Print a dash: a confident "0 XLM" on a pool that traded all
+      // day is worse than admitting we do not know.
+      else if(/vol/.test(cn)){
+        if(d.vol24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
+        else { if(v)setText(v,num(d.vol24Xlm)+" "+U0); if(sub)setText(sub,d.nonXlm?(d.vol24Usd>0?"\u2248 "+usd(d.vol24Usd):"24h volume"):"\u2248 "+usd(d.vol24Usd)); } }
+      else if(/fee/.test(cn)){
+        if(d.fees24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,d.fee+"% fee tier"); }
+        else { if(v)setText(v,(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\u2248 "+usd(d.fees24Usd)+" \u00b7 ")+d.fee+"% fee tier"); } }
     });
   }
   // ---- REAL-DATA chart engine: takes over the design's synthetic candlestick/line/volume renderer ----
@@ -5826,19 +5847,38 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     if(box.querySelectorAll(".lx-txrow:not(.lx-txnone)").length!==want){
       [].slice.call(box.querySelectorAll(".tx-item")).forEach(function(r){ if(r.parentNode)r.parentNode.removeChild(r); });
       box.insertAdjacentHTML("beforeend", d.txs.length?d.txs.map(txRowM).join("")
-        :'<div class="tx-item lx-txrow" style="justify-content:center;color:var(--text-muted)">No transactions yet</div>');
+        :('<div class="tx-item lx-txrow" style="justify-content:center;color:var(--text-muted)">'+(d.txFail?"Couldn\u2019t load this pool\u2019s transactions":"No transactions yet")+'</div>'));
       // rows were just replaced -> they are all visible again; re-apply whatever filter is selected,
       // keeping the reader on the page they were on
       var af=q(".tx-filter-m button.active");
       try{ txFilterM(af?af.textContent:"all",true); }catch(_){}
     }
     else { try{ txApplyM(); }catch(_){} }   // no re-render: still reconcile the pager (first paint, tab switch)
+    try{ txFailNote(box); }catch(_){}
     return true;
   }
   // ---- Pool Transactions: filtering and paging over ONE list ----------------------------------------
   // The design ships a Prev/Next footer that paged its own mock rows. We replace the tbody with the real
   // ones and never wired those buttons, so every page showed the same transactions. Filter and page are
   // now the same pass: pick the rows matching the filter, then reveal only the current page's slice.
+  // When the trades or operations fetch failed, whatever rows we do have are a PARTIAL list — the pool that
+  // showed "1 transaction" really had 101. Say so above the list, with a retry, instead of letting the count
+  // pass for the truth. Removes itself once a later load succeeds.
+  function txFailNote(host){
+    if(!host)return;
+    var n=host.querySelector(".lx-txfail");
+    if(!DET||!DET.txFail){ if(n&&n.parentNode)n.parentNode.removeChild(n); return; }
+    if(n)return;
+    n=document.createElement("div"); n.className="lx-txfail";
+    n.style.cssText="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 16px 12px;padding:9px 12px;border:1px solid rgba(234,106,44,.38);background:rgba(234,106,44,.10);border-radius:9px;font-size:12.5px;color:var(--text-muted)";
+    n.innerHTML='<span>Some transactions couldn\u2019t be loaded \u2014 this list may be incomplete.</span>';
+    var b=document.createElement("button"); b.type="button"; b.textContent="Retry";
+    b.style.cssText="margin-left:auto;padding:5px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;color:inherit;font:600 12px/1 'Hanken Grotesk',sans-serif";
+    b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation(); b.disabled=true; b.textContent="Retrying\u2026"; try{ loadDetail(); }catch(_){} });
+    n.appendChild(b);
+    var head=host.querySelector(".tx-head")||host.querySelector(".card-head");
+    if(head&&head.nextSibling)host.insertBefore(n,head.nextSibling); else host.insertBefore(n,host.firstChild);
+  }
   var TXPP=20, txPage=0, txFilt="all";
   function txAll(){ return qa("table.tx tbody .lx-txrow").filter(function(rw){ return !rw.classList.contains("lx-txnone"); }); }
   function txApply(){
@@ -5870,9 +5910,10 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     tb.__lxPP=1;
     var wantTx=d.txs.length||1;
     if(tb.querySelectorAll(".lx-txrow").length!==wantTx){
-      tb.innerHTML=d.txs.length?d.txs.map(txRow).join(""):'<tr class="lx-txrow"><td colspan="6" style="text-align:center;color:var(--text-muted);padding:22px">No transactions yet</td></tr>';
+      tb.innerHTML=d.txs.length?d.txs.map(txRow).join(""):('<tr class="lx-txrow"><td colspan="6" style="text-align:center;color:var(--text-muted);padding:22px">'+(d.txFail?"Couldn\u2019t load this pool\u2019s transactions":"No transactions yet")+'</td></tr>');
       txPage=0;
     }
+    txFailNote(q(".tx-card")||tb.closest("table").parentNode);
     // Prev/Next, bound once. Capture + stopImmediatePropagation so the design's own pager (which walks
     // its mock rows) cannot also run and fight us over the same buttons.
     var foot=q(".tx-foot");
