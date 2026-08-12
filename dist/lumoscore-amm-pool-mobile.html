@@ -6099,12 +6099,17 @@ window.addEventListener('click',function(e){
     var op=txHref(t);
     return '<tr class="lx-txrow" data-txtype="'+t.type+'">'+
       '<td>'+pill+'</td>'+
-      '<td><span class="num">'+famt(t.xlm)+' XLM</span></td>'+
-      '<td><span class="num">'+famt(t.tok)+' '+esc(DET.code)+'</span></td>'+
+      '<td><span class="num">'+famt(t.xlm)+' '+esc(txCodeA())+'</span></td>'+
+      '<td><span class="num">'+famt(t.tok)+' '+esc(txCodeB())+'</span></td>'+
       '<td><a class="wallet-cell" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><div class="wallet-avatar">'+ident(t.who,22)+'</div><span class="lx-waddr">'+ashort(t.who)+'</span></a></td>'+
       '<td>'+when+'</td>'+
       '<td><a class="ext-link" href="'+op+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H8M17 7v9"></path></svg></a></td></tr>';
   }
+  // Which asset each transaction column is denominated in. The fields are named .xlm/.tok for historical
+  // reasons but on a credit/credit pool they carry a0 and a1, so labelling them "XLM" and DET.code printed
+  // "28.45 XLM / 92.83 LMBW" on a DOPE/LMBW pool -- an asset that isn't in it. Both layouts read these.
+  function txCodeA(){ return (DET&&DET.nonXlm&&DET.a0)?DET.a0.code:"XLM"; }
+  function txCodeB(){ return (DET&&DET.nonXlm&&DET.a1)?DET.a1.code:((DET&&DET.code)||""); }
   // The row's own explorer target: the operation itself when Horizon gave us an id, the trader's account
   // otherwise. Used by both layouts so the desktop arrow and the phone arrow point at the same thing.
   function txHref(t){
@@ -6119,7 +6124,7 @@ window.addEventListener('click',function(e){
     var label=kind==="deposit"?"Deposit":(kind==="withdraw"?"Withdraw":"Swap");
     var when=t.time?new Date(t.time).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}):"—";
     var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(t.who||"");
-    var amounts=famt(t.xlm)+" XLM ↔ "+famt(t.tok)+" "+esc(DET.code);
+    var amounts=famt(t.xlm)+" "+esc(txCodeA())+" ↔ "+famt(t.tok)+" "+esc(txCodeB());
     // Desktop gives each transaction a wallet IDENTICON for the counterparty. The phone left this slot
     // empty, so the design's logo painter claimed it and every row showed the same orange disc — the row
     // already says "Swap"/"Deposit"/"Withdraw" in words, so the slot is better spent identifying WHO.
