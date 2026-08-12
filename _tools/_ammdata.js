@@ -24,7 +24,10 @@ const STYLE = `<style id="lx-amm-css">
 .lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
 .lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}
-.lx-ctoast a{color:inherit;text-decoration:underline}
+/* The stack is pointer-events:none so a toast never blocks the page underneath — but that also made the
+   explorer link inside it unclickable, which is why "view" appeared to lead nowhere. Re-enable pointer
+   events on the LINK only, so the rest of the toast stays click-through. */
+.lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
 @keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
 /* POOL-DETAIL TAB STRIPS ON A PHONE.
@@ -1624,12 +1627,14 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // inline status message under a CTA (no new modals — a small line the existing card already has room for)
   // bottom-center toast, identical to the site's "Copied to clipboard" toast (self-contained CSS above)
   function ammToast(msg,isErr,hash){ var CK='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-    var view=hash?(' \\u00b7 <a href="https://stellar.expert/explorer/public/tx/'+hash+'" target="_blank" rel="noopener">view</a>'):'';
+    var view=hash?(' \\u00b7 <a href="https://stellar.expert/explorer/public/tx/'+hash+'" target="_blank" rel="noopener">View on Explorer</a>'):'';
     var stack=document.querySelector(".lx-ctoast-stack"); if(!stack){ stack=document.createElement("div"); stack.className="lx-ctoast-stack"; document.body.appendChild(stack); }
     var t=document.createElement("div"); t.className="lx-ctoast"+(isErr?" lxa-terr":""); t.innerHTML='<span class="ci">'+CK+'</span><span>'+esc(msg||"")+view+'</span>'; stack.appendChild(t);
-    setTimeout(function(){ t.style.transition="opacity .22s,transform .22s"; t.style.opacity="0"; t.style.transform="translateY(8px)"; setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },240); }, isErr?4000:3200); }
+    // A toast carrying a link has to outlive the reflex to reach for it — 3.2s was not enough to notice
+    // the link, move to it and tap, which is its own way of "leading nowhere". Give linked toasts 9s.
+    setTimeout(function(){ t.style.transition="opacity .22s,transform .22s"; t.style.opacity="0"; t.style.transform="translateY(8px)"; setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },240); }, isErr?4000:(hash?9000:3200)); }
   function wMsg(btn, text, isErr, hash){ var el=btn.parentNode.querySelector(":scope > .lx-dwmsg"); if(!text){ if(el)el.style.display="none"; return; }
-    var view=(hash?' \\u00b7 <a href="https://stellar.expert/explorer/public/tx/'+hash+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">view</a>':'');
+    var view=(hash?' \\u00b7 <a href="https://stellar.expert/explorer/public/tx/'+hash+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">View on Explorer</a>':'');
     // SUCCESS -> bottom-center toast (same as the site's copy-address toast), not an inline line under the button
     if(!isErr){ if(el)el.style.display="none"; try{ ammToast(text,false,hash); return; }catch(_){} }
     if(!el){ el=document.createElement("div"); el.className="lx-dwmsg"; el.style.cssText="margin-top:10px;font-size:12.5px;line-height:1.45;text-align:center;font-weight:600"; btn.parentNode.insertBefore(el,btn.nextSibling); } el.style.display="block"; el.style.color=isErr?"#ef4444":"#16a34a"; el.innerHTML=esc(text)+view; }
@@ -1804,7 +1809,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         if(!(sh>0)){ wMsg(cta,"Enter the amount of LP shares to withdraw.",true); return; }
         if(sh>d.myShares*(1+1e-6)+1e-4){ wMsg(cta,"You hold "+fmtIn(d.myShares)+" LP shares.",true); return; }
         var shW=Math.min(sh,d.myShares);   // clamp so a rounded "Max" never exceeds the real balance (no op_underfunded)
-        wRun(cta,addr,function(S){ return [ S.Operation.liquidityPoolWithdraw({liquidityPoolId:d.hex, amount:wAmt(shW), minAmountA:"0", minAmountB:"0"}) ]; }, {ok:"\\u2713 Withdrawn",okMsg:"Liquidity withdrawn."}, function(){ var w=wInEl(); if(w)w.value=""; wHi(null); setTimeout(loadDetail,2600); });
+        wRun(cta,addr,function(S){ return [ S.Operation.liquidityPoolWithdraw({liquidityPoolId:d.hex, amount:wAmt(shW), minAmountA:"0", minAmountB:"0"}) ]; }, {ok:"\\u2713 Withdrawn",okMsg:"Liquidity is withdrawn"}, function(){ var w=wInEl(); if(w)w.value=""; wHi(null); setTimeout(loadDetail,2600); });
       } else {
         // AUDIT (FUNDS): for a nonXlm pool this builder would construct a native/token LiquidityPoolAsset —
         // i.e. deposit into a DIFFERENT pool than the page shows. Block until arbitrary-pair deposits are
@@ -1818,7 +1823,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
           var hasTrust=(a.balances||[]).some(function(b){return b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===d.hex;});
           if(!hasTrust)ops.push(S.Operation.changeTrust({asset:poolAsset}));
           ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:d.hex, maxAmountA:wAmt(xa), maxAmountB:wAmt(ta), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
-          return ops; }, {ok:"\\u2713 Added",okMsg:"Liquidity added."}, function(){ var di=dInputs(); if(di[0])di[0].value=""; if(di[1])di[1].value=""; setTimeout(loadDetail,2600); });
+          return ops; }, {ok:"\\u2713 Added",okMsg:"Liquidity is added"}, function(){ var di=dInputs(); if(di[0])di[0].value=""; if(di[1])di[1].value=""; setTimeout(loadDetail,2600); });
       }
     });
   }
@@ -1957,7 +1962,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         [sel[0],sel[1]].forEach(function(x){ if(!x.native){ var held=(a.balances||[]).some(function(b){return b.asset_code===x.code&&b.asset_issuer===x.issuer;}); if(!held)ops.push(S.Operation.changeTrust({asset:new S.Asset(x.code,x.issuer)})); } });
         if(!(a.balances||[]).some(function(b){return b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===poolId;}))ops.push(S.Operation.changeTrust({asset:poolAsset}));
         ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:poolId, maxAmountA:wAmt(amtA), maxAmountB:wAmt(amtB), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
-        return ops; }, {ok:"\\u2713 Pool created",okMsg:"Pool created & liquidity added."}, function(){ setTimeout(function(){ location.reload(); },2600); });
+        return ops; }, {ok:"\\u2713 Pool created",okMsg:"Pool created & liquidity added"}, function(){ setTimeout(function(){ location.reload(); },2600); });
     });
   }
 
