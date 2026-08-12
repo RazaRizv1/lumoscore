@@ -6000,20 +6000,57 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     }
     return true;
   }
+  // ---- Pool Transactions: filtering and paging over ONE list ----------------------------------------
+  // The design ships a Prev/Next footer that paged its own mock rows. We replace the tbody with the real
+  // ones and never wired those buttons, so every page showed the same transactions. Filter and page are
+  // now the same pass: pick the rows matching the filter, then reveal only the current page's slice.
+  var TXPP=20, txPage=0, txFilt="all";
+  function txAll(){ return qa("table.tx tbody .lx-txrow").filter(function(rw){ return !rw.classList.contains("lx-txnone"); }); }
+  function txApply(){
+    var rows=txAll();
+    var vis=rows.filter(function(rw){ return txFilt==="all"||(rw.getAttribute("data-txtype")||"")===txFilt; });
+    var foot=q(".tx-foot");
+    if(!foot){ rows.forEach(function(rw){ rw.style.display="none"; }); vis.forEach(function(rw){ rw.style.display=""; }); return; }  // no pager in this layout: list everything
+    var total=vis.length, pages=Math.max(1,Math.ceil(total/TXPP));
+    if(txPage>pages-1)txPage=pages-1; if(txPage<0)txPage=0;
+    var start=txPage*TXPP, end=start+TXPP;
+    rows.forEach(function(rw){ rw.style.display="none"; });
+    vis.forEach(function(rw,i){ if(i>=start&&i<end)rw.style.display=""; });
+    var lbl=[].slice.call(foot.children).filter(function(c){ return !c.classList.contains("controls"); })[0];
+    if(lbl)setText(lbl,total?("Showing "+(start+1)+"\u2013"+Math.min(end,total)+" of "+num(total)+" transactions"):"No transactions");
+    var btns=foot.querySelectorAll(".controls button");
+    if(btns[0])btns[0].disabled=(txPage<=0);
+    if(btns[1])btns[1].disabled=(txPage>=pages-1);
+    var ind=foot.querySelector(".controls span");            // the design's "Page 1 of 3" chip
+    if(ind)setText(ind,"Page "+(txPage+1)+" of "+pages);
+  }
   function pdTx(){
     var d=DET; var tb=q("table.tx tbody"); if(!tb){ pdTxMobile(); return; }
     tb.__lxPP=1;
     var wantTx=d.txs.length||1;
     if(tb.querySelectorAll(".lx-txrow").length!==wantTx){
       tb.innerHTML=d.txs.length?d.txs.map(txRow).join(""):'<tr class="lx-txrow"><td colspan="6" style="text-align:center;color:var(--text-muted);padding:22px">No transactions yet</td></tr>';
+      txPage=0;
     }
     var pg=q("#lx-txpage"); if(pg)pg.style.display="none";
+    // Prev/Next, bound once. Capture + stopImmediatePropagation so the design's own pager (which walks
+    // its mock rows) cannot also run and fight us over the same buttons.
+    var foot=q(".tx-foot");
+    if(foot&&!foot.__lxPg){ foot.__lxPg=1;
+      var pb=foot.querySelectorAll(".controls button");
+      if(pb[0])pb[0].addEventListener("click",function(e){ e.preventDefault(); e.stopImmediatePropagation(); txPage--; txApply(); },true);
+      if(pb[1])pb[1].addEventListener("click",function(e){ e.preventDefault(); e.stopImmediatePropagation(); txPage++; txApply(); },true);
+    }
     var bar=q(".tx-filter");
     if(bar&&!bar.__lxf){ bar.__lxf=1;
       qa(".tx-filter button").forEach(function(b){ b.parentNode.replaceChild(b.cloneNode(true),b); });  // strip the design's own filter listeners
       var fb=qa(".tx-filter button");
-      fb.forEach(function(b){ b.addEventListener("click",function(e){ e.stopPropagation(); fb.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); var f=b.textContent.trim().toLowerCase(); qa("table.tx tbody .lx-txrow").forEach(function(rw){ var ty=rw.getAttribute("data-txtype")||""; var show=(f.indexOf("all")===0)||(f.indexOf("swap")===0&&ty==="swap")||(f.indexOf("deposit")===0&&ty==="deposit")||(f.indexOf("withdraw")===0&&ty==="withdraw"); rw.style.display=show?"":"none"; }); }); });
+      fb.forEach(function(b){ b.addEventListener("click",function(e){ e.stopPropagation(); fb.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); var f=b.textContent.trim().toLowerCase();
+        txFilt=(f.indexOf("swap")===0)?"swap":((f.indexOf("deposit")===0)?"deposit":((f.indexOf("withdraw")===0)?"withdraw":"all"));
+        txPage=0;                       // a new filter starts at its first page, not wherever you were
+        txApply(); }); });
     }
+    txApply();
   }
   function pdAssetRow(a,name,ico,amt){ if(!a)return; var icoEl=a.querySelector(".mp-asset-ico,.mpm-asset-ico"); if(icoEl){ icoEl.setAttribute("data-lxfixed","1"); icoEl.style.overflow="hidden"; if(icoEl.getAttribute("data-lxd")!=="1"){icoEl.setAttribute("data-lxd","1");icoEl.innerHTML=ico;} } var nm=a.querySelector(".mp-asset-name,.mpm-asset-name"); if(nm)setText(nm,name); var am=a.querySelector(".mp-asset-amt,.mpm-asset-amt"); if(am)setText(am,amt); }
   function pdPosition(){
