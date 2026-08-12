@@ -1148,7 +1148,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var ic=s.querySelector(".ic"); var cn=ic?((ic.className&&ic.className.baseVal!==undefined)?ic.className.baseVal:ic.className):"";
       var v=s.querySelector(".v"), sub=s.querySelector(".s");
       var U0=d.nonXlm?d.a0.code:"XLM";
-      if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,num(d.a0.amt)+" "+U0); if(sub)setText(sub,"+ "+num(d.a1.amt)+" "+d.a1.code+" \\u00b7 \\u2248 "+(d.tvlUsd>0?usd(d.tvlUsd):"\\u2014")); }
+      // When no USD figure exists, drop the whole "· ≈ …" clause. It used to print "· ≈ —", which reads as a
+      // broken field rather than an unpriced pair — and is what made the Liquidity box look wrong.
+      if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,num(d.a0.amt)+" "+U0);
+          if(sub)setText(sub,"+ "+num(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \\u00b7 \\u2248 "+usd(d.tvlUsd)):"")); }
         else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+num(d.tok)+" "+d.code+" \\u00b7 \\u2248 "+usd(d.tvlUsd)); } }
       else if(/vol/.test(cn)){ if(v)setText(v,num(d.vol24Xlm)+" "+U0); if(sub)setText(sub,d.nonXlm?(d.vol24Usd>0?"\\u2248 "+usd(d.vol24Usd):"24h volume"):"\\u2248 "+usd(d.vol24Usd)); }
       else if(/fee/.test(cn)){ if(v)setText(v,(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\\u2248 "+usd(d.fees24Usd)+" \\u00b7 ")+d.fee+"% fee tier"); }
@@ -1373,9 +1376,24 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       if(cx<hr.left||cx>hr.right||cy<hr.top||cy>hr.bottom)return hide();
       var pt=svg.createSVGPoint(); pt.x=cx; pt.y=cy;
       var vp=pt.matrixTransform(m.inverse());
-      var best=0,bd=Infinity;
-      for(var i=0;i<st.pts.length;i++){ var dx=Math.abs(st.pts[i].x-vp.x); if(dx<bd){bd=dx;best=i;} }
-      var p=st.pts[best];
+      // A real pool's series is SPARSE — one point per interval that actually traded — so snapping to the
+      // nearest point made whole stretches of the chart report the same day (Jul 26 for three cursor-widths,
+      // and Jul 20/21/24/25 unreachable entirely). For a line, read the value ALONG the segment under the
+      // cursor: that is the value the line is drawing at that x, so every date in the range is reachable and
+      // the dot slides on the line. Bars keep snapping — a bar IS its bucket, there is nothing between two.
+      var P=st.pts, n=P.length, p, key;
+      if(st.bars||n<2){
+        var best=0,bd=Infinity;
+        for(var i=0;i<n;i++){ var dx=Math.abs(P[i].x-vp.x); if(dx<bd){bd=dx;best=i;} }
+        p=P[best]; key="b"+best;
+      } else {
+        var vx=Math.max(P[0].x,Math.min(P[n-1].x,vp.x));
+        var j=1; while(j<n-1&&P[j].x<vx)j++;
+        var A=P[j-1], B=P[j];
+        var f=(B.x>A.x)?((vx-A.x)/(B.x-A.x)):0;
+        p={x:vx,y:A.y+(B.y-A.y)*f,t:A.t+(B.t-A.t)*f,v:A.v+(B.v-A.v)*f};
+        key="l"+Math.round(vx);
+      }
       var sp=svg.createSVGPoint(); sp.x=p.x; sp.y=p.y;
       var scr=sp.matrixTransform(m);
       var lx=scr.x-hr.left, ly=scr.y-hr.top;
@@ -1383,7 +1401,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       dot.style.left=lx+"px"; dot.style.top=ly+"px";
       dot.style.background=st.color; dot.style.boxShadow="0 0 0 3px "+st.color+"55";
       dot.style.opacity=st.bars?"0":"1";
-      var sig=best+"|"+st.metric+"|"+st.unit;
+      var sig=key+"|"+st.metric+"|"+st.unit+"|"+(st.usdPerUnit>0?1:0);
       if(box.__lxSig!==sig){ box.__lxSig=sig;
         var usdTxt=(st.usdPerUnit>0)?usd(p.v*st.usdPerUnit):"";
         box.innerHTML='<div style="font-size:12.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">'+(st.metric==="vol"?"Volume":"TVL")+'</div>'
@@ -1825,7 +1843,46 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // AUDIT (user-reported, pool 344e66\\u2026): one painter throwing killed every LATER painter, so the whole
   // right rail (position, deposit/withdraw) stayed on the design mock — a fake $1,247.50 position on a real
   // pool. Isolate each painter: one failure can no longer take the rest of the page down with it.
+  // USD for a credit/credit pool.
+  //
+  // loadDetail only ever derived USD two ways: XLM reserve x XLM price, or a USDC leg taken at $1. A pool of
+  // two other credit assets therefore had tvlUsd = 0, and every USD readout on the page collapsed to a dash:
+  // "Liquidity ... = —", no $ under 24h volume or fees, no $ on the position, and the chart hover (which asks
+  // for the same rate) showed no USD line at all. The assets ARE priceable — Horizon will quote a path to
+  // USDC for them — so ask, once, and repaint.
+  //
+  // The probe sends 0.1% of the reserve rather than a round 100 units: on a shallow pool a large probe walks
+  // its own price down and the quote comes back meaningfully low.
+  var USDC_ISSUER="GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+  function pxUsd(a,cb){
+    if(!a||!a.code){ cb(0); return; }
+    if(a.native||a.code==="XLM"){ cb((DET&&DET.xlmUsd)||0); return; }
+    if(a.code==="USDC"&&a.issuer===USDC_ISSUER){ cb(1); return; }
+    var samp=Math.max(0.0000001,(+a.amt||100)*0.001);
+    var u=H+"/paths/strict-send?source_asset_type=credit_alphanum"+(a.code.length>4?"12":"4")
+      +"&source_asset_code="+encodeURIComponent(a.code)+"&source_asset_issuer="+encodeURIComponent(a.issuer)
+      +"&source_amount="+samp.toFixed(7)
+      +"&destination_assets="+encodeURIComponent("USDC:"+USDC_ISSUER);
+    getJSON(u).then(function(r){
+      var recs=(r&&r._embedded&&r._embedded.records)||[], best=0;
+      recs.forEach(function(x){ var dv=+x.destination_amount||0; if(dv>best)best=dv; });
+      cb(best>0?(best/samp):0);
+    }).catch(function(){ cb(0); });
+  }
+  function ensureUsd(){
+    var d=DET; if(!d||!d.nonXlm||d.__usdTried||d.tvlUsd>0)return; d.__usdTried=1;
+    pxUsd(d.a0,function(px){
+      if(!(px>0)||DET!==d)return;
+      d.usdPerA0=px;
+      d.tvlUsd=(d.a0.amt||0)*2*px;
+      d.priceUsd=(d.pxA0perA1||0)*px;   // price is quoted a0-per-a1, so a0's USD rate converts it
+      d.vol24Usd=(d.vol24Xlm||0)*px;    // .vol24Xlm/.fees24Xlm hold a0 amounts on a non-XLM pool
+      d.fees24Usd=(d.fees24Xlm||0)*px;
+      try{ paintDetail(); }catch(_){}
+    });
+  }
   function paintDetail(){ if(!DET)return;
+    try{ ensureUsd(); }catch(_){}
     [pdHeader,pdStats,pdChart,pdTx,pdPosition,pdDW,pdParts,pdCopy,wireDW,healLogos].forEach(function(fn){ try{ fn(); }catch(_){} }); }
   var schedD=false;
   function scheduleDetail(){ if(schedD)return; schedD=true; (window.requestAnimationFrame||function(f){setTimeout(f,16);})(function(){ schedD=false; if(DET)paintDetail(); }); }
