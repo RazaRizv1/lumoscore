@@ -366,7 +366,10 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // asset does NOT show up as a balance and the row honestly reads 0. Ask, then name the actual blocker.
 +'.catch(function(err){bt.__lxb=0;bt.innerHTML=lbl;var m=((err&&err.message)||err)+"";'
 +'function say(t){try{lxToast(t);}catch(_){}}'
-+'if(!/reserve|sub_entries|invalid_limit|trust/i.test(m)){say("Could not remove trustline");return;}'
+// Do NOT gate the diagnosis on the error text. Stellar returns op_cannot_delete when a liquidity-pool share
+// still depends on the trustline -- that string contains none of the words the old filter looked for, so the
+// one case this message exists for was the one case it never explained. Diagnose every failure instead.
++'if(/tx_bad_auth|tx_bad_seq|cancelled|timed out|denied|rejected/i.test(m)){say("Trustline removal cancelled");return;}'
 +'j(H+"/accounts/"+ME).then(function(a2){var bals=((a2&&a2.balances)||[]);'
 +'var b=bals.filter(function(x){return x.asset_code===code&&x.asset_issuer===iss;})[0];'
 +'var inPool=bals.some(function(x){return x.asset_type==="liquidity_pool_shares"&&+x.balance>0;});'

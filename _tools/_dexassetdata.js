@@ -1151,7 +1151,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   function dxQuoteReverse(){
     var rin=recvInput(), pin=payInput(); if(!rin||!pin)return;
     if(_dxRevT){ clearTimeout(_dxRevT); _dxRevT=null; }
-    var want=parseFloat((rin.value||"").replace(/[^0-9.]/g,""))||0;
+    var want=dxNum(rin.value);
     if(!(want>0)){ pin.value=""; _dxLastPay=""; _dxView=null; dxErr(""); reAssertView(); return; }
     var pa=payAsset(), ra=recvAsset(), seq=++_dxRevSeq;
     _dxRevT=setTimeout(function(){
@@ -1177,12 +1177,17 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     try{ var mo=new MutationObserver(function(){ if(pane.__lxsgBusy)return; pane.__lxsgBusy=1; mo.disconnect(); try{ enforceWidget(); }catch(_){} try{ mo.observe(pane,{childList:true,subtree:true,characterData:true}); }catch(_){} pane.__lxsgBusy=0; });
       mo.observe(pane,{childList:true,subtree:true,characterData:true}); }catch(_){}
   }
+  // Stellar amounts go down to 7 decimals, and JS renders anything below 1e-6 in exponential form. The old
+  // parser stripped every character outside [0-9.] -- so "1e-7" lost its "e" and "-" and became SEVENTEEN.
+  // A dust balance therefore read as a huge amount and the panel claimed "Insufficient balance" for the very
+  // number MAX had just written. Strip separators only and let parseFloat read the notation it produced.
+  function dxNum(v){ return parseFloat(String(v==null?"":v).replace(/[,s]/g,""))||0; }
   function dxQuote(){
     var pane=q(".dxa-pane-swap"); if(!pane||NATIVE)return;
     var pin=payInput(), cta=q(".dxa-trade-cta"); if(!pin)return;
     var raw=(pin.value||"").trim(); _dxLastPay=raw;
     var pa=payAsset(), ra=recvAsset();
-    var amt=parseFloat(raw.replace(/[^0-9.]/g,""))||0;
+    var amt=dxNum(raw);
     if(!(amt>0)){ _dxView=null; _dxQuoteOut=0; window.__lxDXASoro=null; dxErr(""); if(cta)cta.setAttribute("data-lxdis","1"); reAssertView(); return; }
     var bal=balOf(pa);
     if(bal!=null&&amt>bal+1e-9){ dxErr("Insufficient "+(pa.native?"XLM":pa.code)+" balance \\u2014 you have "+xlmAmt(bal)); if(cta)cta.setAttribute("data-lxdis","1"); }
@@ -1218,7 +1223,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     if(NATIVE)return; var cta=q(".dxa-trade-cta"); if(!cta)return;
     var addr=lxAddr(); if(!addr){ dxToast("Connect a Stellar wallet first."); return; }
     if(cta.getAttribute("data-lxdis")==="1"){ dxToast("Enter an amount within your balance"); return; }
-    var pin=payInput(); var amt=parseFloat(((pin&&pin.value)||"").replace(/[^0-9.]/g,""))||0; if(!(amt>0)){ dxToast("Enter an amount"); return; }
+    var pin=payInput(); var amt=dxNum(pin&&pin.value); if(!(amt>0)){ dxToast("Enter an amount"); return; }
     var pa=payAsset(), ra=recvAsset(), fr=FEE_RATE(), fee=+(amt*fr).toFixed(7), net=+(amt-fee).toFixed(7);
     if(!(net>0)){ dxToast("Amount too small after fee"); return; }
     var lbl0=cta.textContent; cta.__lxbusy=1; cta.disabled=true; cta.classList.add("lx-btnload"); cta.textContent="Confirm in wallet\\u2026";
@@ -1292,8 +1297,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       var t=e.target; if(!t||!t.closest)return;
       var side=t.closest(".dxa-side-btn"); if(side&&pane.contains(side)){ window.__lxDXAside=side.classList.contains("sell")?"sell":"buy"; resetWidget(); guardApply(); return; }
       if(t.closest(".dxa-trade-flip")){ e.preventDefault(); window.__lxDXAside=dxSide()==="buy"?"sell":"buy"; resetWidget(); guardApply(); return; }
-      var qb=t.closest(".dxa-trade-quick button"); if(qb){ _dxQuick=(qb.textContent||"").trim().toUpperCase(); qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(o){o.classList.toggle("lxq-active",(o.textContent||"").trim().toUpperCase()===_dxQuick);}); var base=spendOf(payAsset()), pin=payInput(); if(base!=null&&pin){ var pct=_dxQuick==="MAX"?1:((parseFloat(_dxQuick)||0)/100); var v=Math.floor(base*pct*1e7)/1e7; pin.value=v>0?(+v.toFixed(7)).toString():"0"; dxQuote(); } return; }   // 7-dp (Stellar precision), floored so MAX fills the WHOLE balance (toFixed(4) left dust like 0.0000059)
-      var cta=t.closest(".dxa-trade-cta"); if(cta){ e.preventDefault(); e.stopPropagation(); dxExecute(); return; }
+      var qb=t.closest(".dxa-trade-quick button"); if(qb){ _dxQuick=(qb.textContent||"").trim().toUpperCase(); qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(o){o.classList.toggle("lxq-active",(o.textContent||"").trim().toUpperCase()===_dxQuick);}); var base=spendOf(payAsset()), pin=payInput(); if(base!=null&&pin){ var pct=_dxQuick==="MAX"?1:((parseFloat(_dxQuick)||0)/100); var v=Math.floor(base*pct*1e7)/1e7; var _t=v.toFixed(7);while(_t.length>1&&_t.charAt(_t.length-1)==="0")_t=_t.slice(0,-1);if(_t.charAt(_t.length-1)===".")_t=_t.slice(0,-1);pin.value=v>0?_t:"0"; dxQuote(); } return; }   // 7-dp (Stellar precision), floored so MAX fills the WHOLE balance (toFixed(4) left dust like 0.0000059)
+      // A button drawn as disabled must BEHAVE disabled. data-lxdis only dimmed it, so a "blocked" Swap still
+      // opened the review — and with a bad amount behind it, the review read "You pay 0 STONER".
+      var cta=t.closest(".dxa-trade-cta"); if(cta){ e.preventDefault(); e.stopPropagation();
+        if(cta.getAttribute("data-lxdis")==="1")return;
+        dxExecute(); return; }
     },true);
     pane.addEventListener("input",function(e){ var t=e.target; if(t&&t.tagName==="INPUT"){
       var pf=payEl(); if(pf&&pf.contains(t)){ _dxQuick=null; qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(o){o.classList.remove("lxq-active");}); dxQuote(); return; }
@@ -1347,13 +1356,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   }
   // user typed in Total (XLM) -> back-compute Amount (= total / price)
   function limFromTotal(){ var pin=limPriceInput(), ain=limAmtInput(), tin=limTotInput(); if(!pin||!ain||!tin)return;
-    var price=parseFloat((pin.value||"").replace(/[^0-9.]/g,""))||0, total=parseFloat((tin.value||"").replace(/[^0-9.]/g,""))||0;
+    var price=dxNum(pin.value), total=dxNum(tin.value);
     var amt=price>0?(total/price):0; ain.value=amt>0?xlmAmt(amt):"";
   }
   // MAX button on the Total row: fills the order to use your whole balance. Sell -> all CODE; Buy -> spend all
   // spendable XLM at the current (or market) limit price. Sets the Amount field, then recomputes the total.
   function limMax(){ var side=limSide(); var ain=limAmtInput(); if(!ain)return;
-    var price=parseFloat(((limPriceInput()&&limPriceInput().value)||"").replace(/[^0-9.]/g,""))||assetXlm||0;
+    var price=dxNum(limPriceInput()&&limPriceInput().value)||assetXlm||0;
     var maxAmt=0;
     if(side==="sell"){ maxAmt=window.__lxDXAassetBal||0; }
     else { var xb=(window.__lxDXAxlmSpend!=null?window.__lxDXAxlmSpend:window.__lxDXAxlm)||0; maxAmt=price>0?(xb/price):0; }
@@ -1361,7 +1370,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   }
   function limRecalc(){
     var pin=limPriceInput(), ain=limAmtInput(), tin=limTotInput(); if(!pin||!ain)return;
-    var price=parseFloat((pin.value||"").replace(/[^0-9.]/g,""))||0, amt=parseFloat((ain.value||"").replace(/[^0-9.]/g,""))||0, total=price*amt;
+    var price=dxNum(pin.value), amt=dxNum(ain.value), total=price*amt;
     if(tin&&document.activeElement!==tin)tin.value=total>0?xlmAmt(total):"";   // don't clobber the Total field while the user is typing in it
     // (the total field's .mono now shows the asset Balance + MAX, set in applyLimit — no longer the USD estimate)
     // "Filled when" summary row
@@ -1371,8 +1380,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     if(NATIVE)return; var cta=q(".dxa-pane-limit .dxa-trade-cta"); if(!cta)return;
     var addr=lxAddr(); if(!addr){ dxToast("Connect a Stellar wallet first."); return; }
     var side=limSide();
-    var price=parseFloat(((limPriceInput()&&limPriceInput().value)||"").replace(/[^0-9.]/g,""))||0;
-    var amt=parseFloat(((limAmtInput()&&limAmtInput().value)||"").replace(/[^0-9.]/g,""))||0;
+    var price=dxNum(limPriceInput()&&limPriceInput().value);
+    var amt=dxNum(limAmtInput()&&limAmtInput().value);
     if(!(price>0)){ dxToast("Enter a limit price"); return; }
     if(!(amt>0)){ dxToast("Enter an amount"); return; }
     if(side==="sell"){ var cb=window.__lxDXAassetBal; if(cb!=null&&amt>cb+1e-9){ dxToast("Insufficient "+CODE+" balance"); return; } }
@@ -1420,8 +1429,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     var modal=q(".lx-feemodal"); if(!modal||getComputedStyle(modal).display==="none")return;
     var lim=q(".dxa-pane-limit"); if(!lim||!lim.classList.contains("active"))return;
     var side=limSide();
-    var price=parseFloat(((limPriceInput()&&limPriceInput().value)||"").replace(/[^0-9.]/g,""))||0;
-    var amt=parseFloat(((limAmtInput()&&limAmtInput().value)||"").replace(/[^0-9.]/g,""))||0;
+    var price=dxNum(limPriceInput()&&limPriceInput().value);
+    var amt=dxNum(limAmtInput()&&limAmtInput().value);
     var total=price*amt, payEl=modal.querySelector("[data-pay]"), recEl=modal.querySelector("[data-receive]");
     if(side==="buy"){ if(payEl)payEl.textContent=xlmAmt(total)+" XLM"; if(recEl)recEl.textContent=xlmAmt(amt)+" "+CODE; }
     else { if(payEl)payEl.textContent=xlmAmt(amt)+" "+CODE; if(recEl)recEl.textContent=xlmAmt(total)+" XLM"; }
