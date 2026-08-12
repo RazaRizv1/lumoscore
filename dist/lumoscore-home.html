@@ -1473,6 +1473,10 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 /* Trailing explorer arrow on a phone transaction row (desktop has one per table row). */
 .tx-item .lx-txext{flex-shrink:0;margin-left:8px;align-self:center;color:var(--text-muted);display:inline-flex;
   align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;text-decoration:none}
+/* identicon fills the icon slot edge to edge; the design tints that slot per type, which would show
+   through the identicon's transparent corners */
+.tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
+.tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
 </style></head>
 <body>
@@ -5951,8 +5955,12 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     var when=t.time?new Date(t.time).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}):"—";
     var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(t.who||"");
     var amounts=famt(t.xlm)+" XLM ↔ "+famt(t.tok)+" "+esc(DET.code);
+    // Desktop gives each transaction a wallet IDENTICON for the counterparty. The phone left this slot
+    // empty, so the design's logo painter claimed it and every row showed the same orange disc — the row
+    // already says "Swap"/"Deposit"/"Withdraw" in words, so the slot is better spent identifying WHO.
+    // data-lxfixed/data-logoed mark it as already-painted so the painter leaves it alone.
     return '<div class="tx-item lx-txrow" data-txtype="'+kind+'">'
-      +'<div class="tx-icon '+kind+'"></div>'
+      +'<div class="tx-icon '+kind+' lx-txident" data-lxfixed="1" data-logoed="1">'+ident(t.who||kind,32)+'</div>'
       +'<div class="tx-info"><div class="tx-type '+kind+'">'+label+'</div>'
       +'<div class="tx-amounts">'+amounts+'</div>'
       +'<a class="tx-meta" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(t.who||"")+'</a></div>'
@@ -6148,8 +6156,17 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   function wCtaText(btn,txt){ var tn=null; [].slice.call(btn.childNodes).forEach(function(n){ if(n.nodeType===3&&n.textContent.trim())tn=n; }); if(tn)tn.textContent=" "+txt; else btn.appendChild(document.createTextNode(" "+txt)); }
 
   // ---- DETAIL: Add Liquidity + Withdraw (shares the one .dw-cta; action = active tab) ----
+  //
+  // The whole engine used to be gated on ".dw-card", which ONLY THE DESKTOP layout has — the phone puts
+  // the same tabs, panels and CTA inside a plain .card, with the button as #dwCta. So wireDW returned on
+  // its first line on mobile and nothing below ever ran: no CTA wiring, no ?act=withdraw deep link, and
+  // no withRecv, which is why the phone's "You receive" rows still showed the design's baked
+  // 620.30 LUMOS / 1,860.90 APT and their asset cells stayed masked (they are hidden until wrSide claims
+  // them). Resolve both by shape instead of by the desktop-only wrapper.
+  function dwCard(){ var c=q(".dw-card"); if(c)return c; var t=q(".dw-tabs"); return (t&&t.parentNode)||null; }
+  function dwCta(){ return q(".dw-card .dw-cta")||q("#dwCta")||q(".dw-cta"); }
   function wireDW(){
-    if(window.__lxDWwired||!DET)return; var card=q(".dw-card"); if(!card)return; window.__lxDWwired=1;
+    if(window.__lxDWwired||!DET)return; var card=dwCard(); if(!card)return; window.__lxDWwired=1;
     var d=DET, r=d.tok>0?d.xlm/d.tok:0;               // XLM per 1 token
     var depIn=qa("#dwDeposit .dw-field input");        // [0]=token, [1]=XLM
     function wInEl(){ return q("#dwWithdraw .dw-field input")||q("#dwWithdraw .row input")||q("#dwWithdraw input"); }   // re-query (design re-creates withdraw inputs on tab switch)
@@ -6173,12 +6190,12 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
           var _ic=document.createElement("div"); _ic.className="ico"; a.appendChild(_ic);
           a.appendChild(document.createTextNode(" ")); rw.insertBefore(a,rw.firstChild); }
         rows.push({a:a,sp:sp}); });
-      var e={A:null,B:null};
-      rows.forEach(function(r){ var side=r.a.getAttribute("data-lxside");
-        if(!side){ var t=(r.a.textContent||"").replace(/[^A-Za-z0-9]/g,"").toUpperCase(); side=(t==="XLM")?"B":"A"; r.a.setAttribute("data-lxside",side); }
-        e[side]=r; });
-      if(!e.A&&rows[0])e.A=rows[0]; if(!e.B&&rows[1]&&rows[1]!==e.A)e.B=rows[1];
-      return e; }
+      // Assign by POSITION. This used to read each cell's label and call the XLM one side B — which works
+      // only while one side IS XLM. On a two-credit-asset pool (USDC/EURC) neither matched, so both rows
+      // claimed side A, side B stayed null, and one row was never painted: it kept the design's baked
+      // "620.30 LUMOS" with its asset cell still masked. The design emits the rows in reserve order, which
+      // is the order withRecv passes them in.
+      return {A:rows[0]||null,B:rows[1]||null}; }
     function wrSide(r,a,amtTxt){ if(!r)return;
       var _hasTxt=false;
       [].slice.call(r.a.childNodes).forEach(function(nd){ if(nd.nodeType===3&&nd.textContent.trim()){ _hasTxt=true; if(nd.textContent!==" "+a.code+" ")nd.textContent=" "+a.code+" "; } });
@@ -6226,7 +6243,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       try{ new MutationObserver(function(){ if(wp.__lxRecvBusy)return; wp.__lxRecvBusy=1;
         try{ withRecv(); }catch(_){} wp.__lxRecvBusy=0; }).observe(wp,{childList:true,subtree:true}); }catch(_){} })();
     function shareAfter(){ if(isWith())return; var x=parseFloat(depIn[1]&&depIn[1].value)||0; var pr=q(".dw-summary .r strong"); if(!pr)return; if(x>0&&d.xlm>0&&d.totShares>0){ var delta=d.totShares*(x/d.xlm); var f=(d.myShares+delta)/(d.totShares+delta); pr.textContent=(f*100>=0.01?(f*100).toFixed(2):"<0.01")+"%"; } else pr.textContent=(d.myFrac*100>=0.01?(d.myFrac*100).toFixed(2):"\u2014"); }
-    var cta=q(".dw-card .dw-cta"); if(!cta)return; var c2=cta.cloneNode(true); cta.parentNode.replaceChild(c2,cta); cta=c2;
+    var cta=dwCta(); if(!cta)return; var c2=cta.cloneNode(true); cta.parentNode.replaceChild(c2,cta); cta=c2;
     // Keep the shared CTA label in sync with the active tab. The design re-renders the button label at
     // unpredictable times (so fixed setTimeout re-asserts lost the race and it stayed "Add Liquidity"),
     // and it keys off the tab's .active class, which flips synchronously on click. A MutationObserver on
@@ -6254,7 +6271,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     // EVERY write here is diff-guarded. applyCtaState runs from the .dw-card MutationObserver, so an
     // unconditional write would re-trigger the observer forever — that is exactly what froze this page once.
     function applyCtaState(){
-      var b=q(".dw-card .dw-cta"); if(!b||b.__lxBusy)return;                        // mid-transaction: wRun owns the button
+      var b=dwCta(); if(!b||b.__lxBusy)return;                        // mid-transaction: wRun owns the button
       var why=ctaBlockReason(), off=!!why;
       if(b.classList.contains("lx-dwoff")!==off)b.classList.toggle("lx-dwoff",off);
       if((b.getAttribute("aria-disabled")==="true")!==off){ if(off)b.setAttribute("aria-disabled","true"); else b.removeAttribute("aria-disabled"); }
@@ -6271,10 +6288,10 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     // would see as a mutation and re-fire forever, freezing the page (that blanked the whole pool detail page).
     // b.__lxBusy => a transaction is in flight and wRun owns the label ("Confirm in wallet…"); relabelling
     // it here would wipe the loading state the moment it was set.
-    function syncLabel(){ var b=q(".dw-card .dw-cta"); if(!b||b.__lxBusy)return; var want=tabIsWithdraw()?"Withdraw":"Add Liquidity"; if((b.textContent||"").replace(/\s+/g," ").trim()!==want)wCtaText(b,want); applyCtaState(); }
+    function syncLabel(){ var b=dwCta(); if(!b||b.__lxBusy)return; var want=tabIsWithdraw()?"Withdraw":"Add Liquidity"; if((b.textContent||"").replace(/\s+/g," ").trim()!==want)wCtaText(b,want); applyCtaState(); }
     function syncCta(){ syncLabel(); if(tabIsWithdraw())withRecv(); else shareAfter(); }
     qa(".dw-tabs button").forEach(function(tb){ tb.addEventListener("click",function(){ [0,30,150,400].forEach(function(ms){ setTimeout(syncCta,ms); }); }); });
-    var _dwc=q(".dw-card"); if(_dwc&&!_dwc.__lxCtaObs){ _dwc.__lxCtaObs=1; try{ new MutationObserver(function(){ syncLabel(); }).observe(_dwc,{childList:true,subtree:true,attributes:true,attributeFilter:["class","style"]}); }catch(_){} }
+    var _dwc=dwCard(); if(_dwc&&!_dwc.__lxCtaObs){ _dwc.__lxCtaObs=1; try{ new MutationObserver(function(){ syncLabel(); }).observe(_dwc,{childList:true,subtree:true,attributes:true,attributeFilter:["class","style"]}); }catch(_){} }
     syncCta();
     if(isWith())withRecv();
     // deep-link: ?act=withdraw (e.g. from the Wallet "Remove" button) opens the Withdraw tab
