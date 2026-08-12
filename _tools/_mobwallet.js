@@ -66,6 +66,9 @@ const STYLE = '<style id="lx-mobwallet-css">'
   + 'font:700 12.5px/1 "Hanken Grotesk",system-ui,sans-serif}'
   + '.lxmw-lpbtn:active{border-color:var(--accent);color:var(--accent)}'
   + '.lxmw-lpbtn.ghost{color:var(--text-soft,#8a8fa3)}'
+  // icon-only copy: fixed width so it never steals room from the three labelled actions
+  + '.lxmw-lpbtn.icon{flex:0 0 42px;padding:0;display:inline-flex;align-items:center;justify-content:center;'
+  + 'color:var(--text-soft,#8a8fa3);cursor:pointer}'
   + '</style>';
 
 const SCRIPT = '<script id="lx-mobwallet">(function(){'
@@ -249,8 +252,24 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + '+\'<a class="lxmw-lpbtn" href="\'+esc(href)+\'">Add</a>\''
 + '+\'<a class="lxmw-lpbtn" href="\'+esc(href)+\'?act=withdraw">Remove</a>\''
 + '+\'<a class="lxmw-lpbtn ghost" href="\'+esc(href)+\'">Details</a>\''
+// The desktop row's ... menu also offers "Copy pool address". Icon-only and fixed-width so the three
+// labelled actions keep the rest of the line.
++ '+\'<button type="button" class="lxmw-lpbtn icon" data-lpcopy="\'+esc(b.liquidity_pool_id)+\'" aria-label="Copy pool address" title="Copy pool address">\''
++ '+\'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>\''
 + '+\'</div></div>\';});'
 + 'list.innerHTML=html;}'
+// Copy the pool address. Delegated on DOCUMENT and registered once, because fixPools replaces the whole
+// list with innerHTML on every data change — a listener bound to the button itself would not survive it.
++ 'function lpCopy(v){try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(v);return true;}}catch(_){}'
++ 'try{var ta=document.createElement("textarea");ta.value=v;ta.setAttribute("readonly","");ta.style.cssText="position:fixed;top:0;left:0;opacity:0";'
++ 'document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,v.length);document.execCommand("copy");document.body.removeChild(ta);return true;}catch(_){return false;}}'
++ 'function wireLpCopy(){if(window.__lxmwCopy)return;window.__lxmwCopy=1;'
++ 'document.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;'
++ 'var b=t.closest("[data-lpcopy]");if(!b)return;'
++ 'e.preventDefault();e.stopPropagation();'
++ 'var id=b.getAttribute("data-lpcopy")||"";var ok=lpCopy(id);'
++ 'try{if(window.lxToast)window.lxToast(ok?"Pool address copied":"Could not copy");}catch(_){}'
++ '},true);}'
 + 'function wireTabs(){var b=qa(".asset-tabs button");if(!b.length||window.__lxmwTabs)return;window.__lxmwTabs=1;'
 + 'b.forEach(function(btn){btn.addEventListener("click",function(){setTimeout(pass,30);setTimeout(pass,260);});});}'
 
@@ -296,7 +315,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(amt)+\'</div><div class="u">\'+esc(when)+\'</div></div></div>\';});'
 + 'block.innerHTML=html;}'
 // ---- run --------------------------------------------------------------------------------------------
-+ 'function pass(){try{fixHeader();fixOrders();wireTabs();fixAssets();fixPools();fixActivity();seeRows();'
++ 'function pass(){try{fixHeader();fixOrders();wireTabs();wireLpCopy();fixAssets();fixPools();fixActivity();seeRows();'
 + 'if((window.__lxWalletEarly||window.__lxWalletReady)&&!document.body.classList.contains("lxmw-ready"))document.body.classList.add("lxmw-ready");'
 + '}catch(_){}}'
 + 'if(document.readyState!=="loading")pass();else document.addEventListener("DOMContentLoaded",pass);'
