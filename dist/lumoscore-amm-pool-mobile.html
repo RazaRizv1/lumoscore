@@ -1678,6 +1678,14 @@ table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
 .lx-ammview{display:inline-flex;align-items:center;gap:5px;padding:7px 15px;border-radius:9px;font:700 12.5px/1 'Hanken Grotesk',sans-serif;text-decoration:none!important;white-space:nowrap;border:1px solid rgba(234,106,44,.38);color:var(--accent,#ea6a2c)!important;background:rgba(234,106,44,.10);transition:background .15s ease,color .15s ease,border-color .15s ease}
 .lx-ammview:hover{background:var(--accent,#ea6a2c);color:#fff!important;border-color:var(--accent,#ea6a2c)}
 .pair-icons .pa .lx-mono{display:grid;place-items:center;width:100%;height:100%;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:12px;border-radius:50%}
+/* Pool Transactions pager, phone. The design ships a .tx-foot on desktop and nothing here, so this is
+   built to match it: same wording, same Prev / Page N of M / Next, sized for a thumb (44px targets). */
+.lx-txfoot-m{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-top:1px solid var(--border);font-size:12px;color:var(--text-muted)}
+.lx-txfoot-m .controls{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto}
+.lx-txfoot-m button{min-height:34px;padding:8px 11px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text);font:600 12px/1 'Hanken Grotesk',sans-serif;-webkit-tap-highlight-color:transparent}
+.lx-txfoot-m button:disabled{opacity:.4}
+.lx-txfoot-m .lx-txpg{margin:0 7px;white-space:nowrap;font-size:12px;color:var(--text-muted)}
+.lx-txfoot-m .lx-txinfo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* injected cosmic decor (nebulae drift, orb floats, particles rise, stars twinkle) */
 .lx-cosmic{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
 .lx-neb{position:absolute;border-radius:50%;filter:blur(50px);mix-blend-mode:screen;will-change:transform}
@@ -5979,27 +5987,64 @@ window.addEventListener('click',function(e){
     __lxMetricSel=/volume/i.test(el.textContent||"")?"volume":"tvl";
     [40,160,400,800].forEach(function(ms){ setTimeout(function(){ try{ chDraw(); }catch(_){} },ms); });
   }
-  function txFilterM(label){
+  // Selecting a filter only owns the button state and the filter itself; which rows end up visible is
+  // txApplyM's job, exactly as the desktop strip defers to txApply. keepPage is for the re-render path,
+  // where the rows were rebuilt underneath a reader who is sitting on page 3 and should stay there.
+  function txFilterM(label,keepPage){
     var f=String(label||"").trim().toLowerCase();
     qa(".tx-filter-m button").forEach(function(b){ b.classList.toggle("active",(b.textContent||"").trim().toLowerCase()===f); });
-    var shown=0;
-    qa(".ptab-panel[data-panel=transactions] .lx-txrow").forEach(function(rw){
-      if(rw.classList.contains("lx-txnone"))return;
-      var ty=rw.getAttribute("data-txtype")||"";
-      var show=(f.indexOf("all")===0)||(f.indexOf("swap")===0&&ty==="swap")
-             ||(f.indexOf("deposit")===0&&ty==="deposit")||(f.indexOf("withdraw")===0&&ty==="withdraw");
-      rw.style.display=show?"":"none"; if(show)shown++;
-    });
+    txFiltM=(f.indexOf("swap")===0)?"swap":((f.indexOf("deposit")===0)?"deposit":((f.indexOf("withdraw")===0)?"withdraw":"all"));
+    txFiltLabelM=f||"all";
+    if(!keepPage)txPageM=0;
+    txApplyM();
+  }
+  // Phone equivalent of txApply: one pass that filters, then reveals only the current page's slice, then
+  // reconciles the footer. The phone card has no pager markup of its own, so txFootM builds one.
+  var txPageM=0, txFiltM="all", txFiltLabelM="all";
+  function txFootM(box){
+    var foot=box.querySelector(".lx-txfoot-m");
+    if(!foot){
+      foot=document.createElement("div"); foot.className="lx-txfoot-m";
+      foot.innerHTML='<div class="lx-txinfo"></div><div class="controls">'
+        +'<button type="button" data-txpg="prev">\u2039 Prev</button>'
+        +'<span class="lx-txpg"></span>'
+        +'<button type="button" data-txpg="next">Next \u203a</button></div>';
+      box.appendChild(foot);
+    }
+    // rows and the empty-state notice are appended to the same card, so the pager has to be pushed back
+    // to the end after any of them are added, or it ends up floating in the middle of the list
+    if(box.lastElementChild!==foot)box.appendChild(foot);
+    return foot;
+  }
+  function txApplyM(){
+    var box=q(".ptab-panel[data-panel=transactions] .card"); if(!box)return;
+    var rows=[].slice.call(box.querySelectorAll(".lx-txrow")).filter(function(rw){ return !rw.classList.contains("lx-txnone"); });
+    var vis=rows.filter(function(rw){ return txFiltM==="all"||(rw.getAttribute("data-txtype")||"")===txFiltM; });
+    var total=vis.length, pages=Math.max(1,Math.ceil(total/TXPP));
+    if(txPageM>pages-1)txPageM=pages-1; if(txPageM<0)txPageM=0;
+    var start=txPageM*TXPP, end=start+TXPP;
+    rows.forEach(function(rw){ rw.style.display="none"; });
+    vis.forEach(function(rw,i){ if(i>=start&&i<end)rw.style.display=""; });
     // A filter with no matches used to leave the panel blank, which reads as "broken" rather than
     // "this pool has had none". Say which it is.
-    var box=q(".ptab-panel[data-panel=transactions] .card"); if(!box)return;
     var none=box.querySelector(".lx-txnone");
-    if(shown){ if(none)none.style.display="none"; return; }
-    if(!none){ none=document.createElement("div"); none.className="tx-item lx-txrow lx-txnone";
-      none.style.cssText="justify-content:center;color:var(--text-muted);text-align:center"; box.appendChild(none); }
-    none.style.display="";
-    none.textContent=(f.indexOf("all")===0)?"No transactions yet"
-      :("No "+f+" in this pool's recent activity");
+    if(total){ if(none)none.style.display="none"; }
+    else {
+      if(!none){ none=document.createElement("div"); none.className="tx-item lx-txrow lx-txnone";
+        none.style.cssText="justify-content:center;color:var(--text-muted);text-align:center"; box.appendChild(none); }
+      none.style.display="";
+      none.textContent=(txFiltM==="all")?"No transactions yet":("No "+txFiltLabelM+" in this pool's recent activity");
+    }
+    var foot=txFootM(box);
+    // one page of results needs no pager — hide the whole strip rather than show two dead buttons
+    foot.style.display=(total>TXPP)?"":"none";
+    var info=foot.querySelector(".lx-txinfo");
+    if(info)setText(info,total?("Showing "+(start+1)+"\u2013"+Math.min(end,total)+" of "+num(total)):"");
+    var pb=foot.querySelectorAll("button[data-txpg]");
+    if(pb[0])pb[0].disabled=(txPageM<=0);
+    if(pb[1])pb[1].disabled=(txPageM>=pages-1);
+    var ind=foot.querySelector(".lx-txpg");
+    if(ind)setText(ind,"Page "+(txPageM+1)+" of "+pages);
   }
   function copyText(s){
     try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(s); return true; } }catch(_){}
@@ -6048,6 +6093,16 @@ window.addEventListener('click',function(e){
         return; }
       var tf=t.closest(".tx-filter-m button");
       if(tf){ e.preventDefault(); e.stopImmediatePropagation(); txFilterM(tf.textContent); return; }
+      // Pool Transactions pager. Ours entirely — no design handler to defer to — so drive it from the tap
+      // and scroll the list head back into view, otherwise paging from the footer leaves the reader at the
+      // bottom of a page they have not seen the top of.
+      var pgb=t.closest(".lx-txfoot-m button[data-txpg]");
+      if(pgb){ e.preventDefault(); e.stopImmediatePropagation();
+        if(pgb.disabled)return;
+        txPageM+=(pgb.getAttribute("data-txpg")==="next")?1:-1;
+        txApplyM();
+        try{ var hd=q(".ptab-panel[data-panel=transactions] .card"); if(hd&&hd.scrollIntoView)hd.scrollIntoView({block:"start",behavior:"smooth"}); }catch(_){}
+        return; }
       var cp=t.closest(".ph-id button[data-copy],.pool-header button[data-copy]");
       if(cp){ e.preventDefault(); e.stopImmediatePropagation();
         var v=cp.getAttribute("data-copy")||"";
@@ -6136,9 +6191,12 @@ window.addEventListener('click',function(e){
       [].slice.call(box.querySelectorAll(".tx-item")).forEach(function(r){ if(r.parentNode)r.parentNode.removeChild(r); });
       box.insertAdjacentHTML("beforeend", d.txs.length?d.txs.map(txRowM).join("")
         :'<div class="tx-item lx-txrow" style="justify-content:center;color:var(--text-muted)">No transactions yet</div>');
-      // rows were just replaced -> they are all visible again; re-apply whatever filter is selected
-      var af=q(".tx-filter-m button.active"); if(af)try{ txFilterM(af.textContent); }catch(_){}
+      // rows were just replaced -> they are all visible again; re-apply whatever filter is selected,
+      // keeping the reader on the page they were on
+      var af=q(".tx-filter-m button.active");
+      try{ txFilterM(af?af.textContent:"all",true); }catch(_){}
     }
+    else { try{ txApplyM(); }catch(_){} }   // no re-render: still reconcile the pager (first paint, tab switch)
     return true;
   }
   // ---- Pool Transactions: filtering and paging over ONE list ----------------------------------------
