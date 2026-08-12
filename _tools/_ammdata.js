@@ -2156,7 +2156,13 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         if(!(sh>0)){ wMsg(cta,"Enter the amount of LP shares to withdraw.",true); return; }
         if(sh>d.myShares*(1+1e-6)+1e-4){ wMsg(cta,"You hold "+fmtIn(d.myShares)+" LP shares.",true); return; }
         var shW=Math.min(sh,d.myShares);   // clamp so a rounded "Max" never exceeds the real balance (no op_underfunded)
-        wRun(cta,addr,function(S){ return [ S.Operation.liquidityPoolWithdraw({liquidityPoolId:d.hex, amount:wAmt(shW), minAmountA:"0", minAmountB:"0"}) ]; }, {ok:"\\u2713 Withdrawn",okMsg:"Liquidity is withdrawn"}, function(){ var w=wInEl(); if(w)w.value=""; wHi(null); setTimeout(loadDetail,2600); });
+        wRun(cta,addr,function(S){ return [ S.Operation.liquidityPoolWithdraw({liquidityPoolId:d.hex, amount:wAmt(shW), minAmountA:"0", minAmountB:"0"}) ]; }, {ok:"\\u2713 Withdrawn",okMsg:"Liquidity is withdrawn"}, function(){ var w=wInEl(); if(w)w.value=""; wHi(null);
+          // Clearing the input programmatically fires no input event, so the "You receive" rows were never
+          // repainted and sat there after a completed withdrawal showing the amounts you had just taken out
+          // — under the design's mock LUMOS/APT labels, since nothing re-claimed them either. withRecv hides
+          // the block when the amount is 0, which is exactly the state we are now in.
+          try{ withRecv(); }catch(_){}
+          setTimeout(loadDetail,2600); });
       } else {
         // AUDIT (FUNDS): for a nonXlm pool this builder would construct a native/token LiquidityPoolAsset —
         // i.e. deposit into a DIFFERENT pool than the page shows. Block until arbitrary-pair deposits are

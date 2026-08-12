@@ -24,7 +24,9 @@ other:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="curre
 const STELLAR_SVG='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#000"/><path d="M23.13 9.292l-2.4 1.224-11.598 5.907A6.909 6.909 0 0119.35 9.498l1.374-.7.205-.105a8.439 8.439 0 00-13.371 7.472 1.535 1.535 0 01-.834 1.484l-.725.37v1.724l2.134-1.088.691-.353.681-.347 12.226-6.23 1.374-.699 2.84-1.447V7.856zm2.816 2.012L10.201 19.32l-1.374.7L6 21.463v1.723l2.808-1.43 2.401-1.224 11.61-5.916a6.909 6.909 0 01-10.229 6.93l-.085.045-1.49.76a8.439 8.439 0 0013.372-7.475 1.536 1.536 0 01.833-1.483l.726-.37v-1.718z" fill="#FFF"/></svg>';
 const STELLAR_URI='data:image/svg+xml;base64,'+Buffer.from(STELLAR_SVG).toString('base64');
 // Finalized My-Assets row action buttons (Trade on DEX / Send / more) — restored verbatim.
-const QA_ACTIONS='<div class="row-quick-actions"><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg> Trade</button><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send</button><button class="qa-row-btn icon-only"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>';
+// The Trade action used to carry the two-arrows SWAP glyph, which is a different verb from the one the
+// button performs and from the Trade item in the left nav. Same candlestick mark as that nav item.
+const QA_ACTIONS='<div class="row-quick-actions"><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 6v3"/><rect x="6" y="9" width="4" height="6" rx="1"/><path d="M8 15v3"/><path d="M16 4v2"/><rect x="14" y="6" width="4" height="9" rx="1"/><path d="M16 15v3"/></svg> Trade</button><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send</button><button class="qa-row-btn icon-only"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>';
 // Same row actions, but Send -> "Remove Trustline" (for zero-balance trustlines). __RMC__/__RMI__ filled per row.
 const QA_REMOVE = QA_ACTIONS.replace(
   '<button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send</button>',
@@ -143,6 +145,12 @@ const CSS='<style id="lx-walletdata-css">'
 +'#assetsTable .row-quick-actions>.qa-row-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;flex-shrink:0}'
 +'#assetsTable .row-quick-actions>.qa-row-btn:nth-child(2){width:118px;min-width:118px;justify-content:center}'
 +'#assetsTable .qa-row-btn.lx-rmtrust svg{stroke:var(--red,#ea3943)!important}'
+// DEX / Swap chooser hung off the row's Trade button
++'.lx-trmenu{position:fixed;z-index:100003;min-width:198px;background:var(--surface,#171922);border:1px solid var(--border,rgba(255,255,255,.14));border-radius:12px;padding:6px;box-shadow:0 14px 44px rgba(0,0,0,.55)}'
++'.lx-trmenu button{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;padding:9px 11px;border:0;border-radius:9px;background:transparent;color:var(--text);font:700 13px/1.25 \\x27Hanken Grotesk\\x27,sans-serif;text-align:left;cursor:pointer}'
++'.lx-trmenu button:hover{background:rgba(234,106,44,.12);color:var(--accent,#ea6a2c)}'
++'.lx-trmenu small{font-weight:600;font-size:11.5px;color:var(--text-muted,#8b90a0)}'
++'.lx-trmenu button:hover small{color:inherit;opacity:.8}'
 +'#assetsTable .row-quick-actions>.qa-row-btn.icon-only{min-width:0;width:30px;flex:0 0 30px;justify-content:center;padding-left:0;padding-right:0}'
 +'#assetsTable .qa-row-btn.lx-rmtrust:hover{color:var(--red,#ea3943)!important;border-color:rgba(234,57,67,.4)!important}'
 +'#assetsTable td:nth-child(5){padding-right:20px}'
@@ -484,7 +492,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'var _swapTxCache=null;function lxSwapByHash(h){try{if(_swapTxCache===null)_swapTxCache=JSON.parse(localStorage.getItem("lumos.swaps")||"[]");if(!h)return null;for(var i=0;i<_swapTxCache.length;i++){if(_swapTxCache[i]&&_swapTxCache[i].hash===h)return _swapTxCache[i];}}catch(_){}return null;}'
 +'function mapOp(o){var day=dayLabel(o.created_at);var st="confirmed",stl="Confirmed";var A=function(c){return c==="native"||!c?"XLM":c;};'
 +'if(o.type==="payment"){var c=A(o.asset_code),ai=o.asset_issuer||"",nat=(o.asset_type==="native"||!o.asset_code);if(o.from===ME)return{kind:"sent",type:"Sent "+c,metaPre:"To",addr:o.to,meta:"To "+shrt(o.to),code:c,iss:ai,native:nat,amt:"-"+amt(o.amount)+" "+c,day:day,st:st,stl:stl};return{kind:"received",type:"Received "+c,metaPre:"From",addr:o.from,meta:"From "+shrt(o.from),code:c,iss:ai,native:nat,amt:"+"+amt(o.amount)+" "+c,day:day,st:st,stl:stl};}'
-+'if(o.type&&o.type.indexOf("path_payment")===0){var cc=A(o.asset_code),sc=A(o.source_asset_code);return{kind:"swap",type:"Swap "+sc+" \\u2192 "+cc,meta:"via Stellar DEX",srcCode:sc,srcNative:(o.source_asset_type==="native"||!o.source_asset_code),srcIss:o.source_asset_issuer||"",dstCode:cc,dstNative:(o.asset_type==="native"||!o.asset_code),dstIss:o.asset_issuer||"",amt:"+"+amt(o.amount)+" "+cc,day:day,st:"filled",stl:"Filled"};}'
++'if(o.type&&o.type.indexOf("path_payment")===0){var cc=A(o.asset_code),sc=A(o.source_asset_code);return{kind:"swap",type:"Swap "+sc+" \\u2192 "+cc,meta:"via Stellar DEX",srcCode:sc,srcNative:(o.source_asset_type==="native"||!o.source_asset_code),srcIss:o.source_asset_issuer||"",dstCode:cc,dstNative:(o.asset_type==="native"||!o.asset_code),dstIss:o.asset_issuer||"",amt:"+"+amt(o.amount)+" "+cc,amtSub:(o.source_amount?("-"+amt(o.source_amount)+" "+sc):""),day:day,st:"filled",stl:"Filled"};}'
 +'if(o.type==="create_account"){if(o.account===ME)return{kind:"received",type:"Account funded",metaPre:"From",addr:o.funder,meta:"From "+shrt(o.funder),code:"XLM",native:true,amt:"+"+amt(o.starting_balance)+" XLM",day:day,st:st,stl:stl};return{kind:"sent",type:"Created account",metaPre:"",addr:o.account,meta:shrt(o.account),code:"XLM",native:true,amt:"-"+amt(o.starting_balance)+" XLM",day:day,st:st,stl:stl};}'
 +'if(o.type==="change_trust"){var tc=A(o.asset_code);var removed=(+o.limit===0);return{kind:"order",tl:1,code:tc,native:(o.asset_type==="native"||!o.asset_code),iss:o.asset_issuer||"",type:"Trustline "+(removed?"removed":"added"),meta:shrt(o.trustee||o.asset_issuer),amt:"",day:day,st:st,stl:stl};}'
 +'if(o.type&&o.type.indexOf("offer")>=0){var sll=A(o.selling_asset_code),buy=A(o.buying_asset_code);return{kind:"order",type:"Order "+sll+"/"+buy,meta:"DEX offer",amt:o.amount?amt(o.amount)+" "+sll:"",day:day,st:"pending",stl:"Pending"};}'
@@ -552,7 +560,34 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // "Trade on DEX" row button: the site's global nav shim (a document-CAPTURE handler) maps the button LABEL
 // to the generic Trade page and stopImmediatePropagation()s before our #assetsTable handler runs — so the
 // asset-specific ?asset= URL never fired. Beat it with a WINDOW-capture handler (runs before document-capture).
-+'function wireTradeNav(){if(window.__lxTradeNav)return;window.__lxTradeNav=1;window.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest("#assetsTable .qa-row-btn"):null;if(!btn||!/Trade/i.test(btn.textContent||""))return;var row=btn.closest("tr"),ico=row?row.querySelector(".lx-aico"):null,code=ico?ico.getAttribute("data-lxc"):"",iss=ico?ico.getAttribute("data-lxi"):"";e.preventDefault();e.stopImmediatePropagation();var _isX=(!code||code==="XLM");window.location.href=_isX?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(code)+(iss?("-"+iss):""));},true);}'
+// Row "Trade" used to jump straight to the DEX page. There are two reasonable things to mean by it, so ask:
+// DEX opens this asset's Trade page, Swap opens the swap modal with the asset already on the You-pay side.
+// The Swap branch deliberately re-dispatches the click WITHOUT our interception (__lxPass) so the design's
+// own "row Trade -> openModal(modalSwap)" handler does the opening; then we set the asset through the API
+// _swapcalc publishes. Driving the design's opener beats reimplementing it.
++'function tradeMenu(btn,code,iss){'
++'var old=document.querySelector(".lx-trmenu");if(old)old.remove();'
+// data-lxnonav is the global nav bridge's own opt-out. Without it that bridge sees a click on something
+// labelled "Trade on DEX", matches its own rule for that phrase and navigates to the DEX page WITHOUT the
+// ?asset= we are trying to pass — it runs at window capture, so it wins before this menu's handler is reached.
++'var m=document.createElement("div");m.className="lx-trmenu";m.setAttribute("data-lxnonav","");'
++'m.innerHTML=\'<button type="button" data-tr="dex"><span>Trade on DEX</span><small>Order book &amp; charts</small></button><button type="button" data-tr="swap"><span>Swap</span><small>Instant swap</small></button>\';'
++'document.body.appendChild(m);'
++'var r=btn.getBoundingClientRect();m.style.top=(r.bottom+6)+"px";'
++'m.style.left=Math.max(8,Math.min(r.left,(window.innerWidth||360)-m.offsetWidth-8))+"px";'
++'function close(){if(m.parentNode)m.remove();document.removeEventListener("click",away,true);}'
++'function away(ev){if(!m.contains(ev.target))close();}'
++'setTimeout(function(){document.addEventListener("click",away,true);},0);'
++'m.addEventListener("click",function(ev){var b=ev.target&&ev.target.closest?ev.target.closest("button[data-tr]"):null;if(!b)return;'
++'ev.preventDefault();ev.stopPropagation();var kind=b.getAttribute("data-tr");close();'
++'if(kind==="dex"){var isX=(!code||code==="XLM");window.location.href=isX?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(code)+(iss?("-"+iss):""));return;}'
+// Open the modal the way the design does (class "open" + locked scroll) rather than replaying a click on
+// the Trade button: the page ALSO carries a global label-based nav bridge, and a synthetic click on a button
+// reading "Trade" gets grabbed by it and navigates to the asset page instead of opening anything.
++'var sm=document.getElementById("modalSwap");if(sm){sm.classList.add("open");document.body.style.overflow="hidden";}'
++'setTimeout(function(){try{if(window.__lxSwapFrom)window.__lxSwapFrom(code,iss);}catch(_){}} ,60);'
++'});}'
++'function wireTradeNav(){if(window.__lxTradeNav)return;window.__lxTradeNav=1;window.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest("#assetsTable .qa-row-btn"):null;if(!btn||!/Trade/i.test(btn.textContent||""))return;if(btn.__lxPass)return;var row=btn.closest("tr"),ico=row?row.querySelector(".lx-aico"):null,code=ico?ico.getAttribute("data-lxc"):"",iss=ico?ico.getAttribute("data-lxi"):"";e.preventDefault();e.stopImmediatePropagation();tradeMenu(btn,code,iss);},true);}'
 // portfolio chart spans only the wallet's real lifetime — a wallet created 8 days ago must NOT show XLM price
 // since 2020. Fetch the account's FIRST operation (creation) date, then re-render the active tab clamped to it.
 +'function lxLoadAcctAge(){var done=false;function go(){if(done)return;done=true;window.__lxChartGo=1;try{window.__lxCC={};}catch(_){}var ab=document.querySelector(".tf-btn.active");var tf=ab?(ab.textContent||"").trim():"1M";try{renderChart(tf);}catch(_){}}if(!ME){go();return;}setTimeout(go,3500);j(H+"/accounts/"+ME+"/operations?order=asc&limit=1&include_failed=false").then(function(d){var recs=(d&&d._embedded&&d._embedded.records)||[];var t=Date.parse((recs[0]&&recs[0].created_at)||"");if(t>0)window.__lxAcctCreated=t;go();}).catch(function(){go();});}'
