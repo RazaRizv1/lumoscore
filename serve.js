@@ -262,8 +262,18 @@ http.createServer((req, res) => {
     // this is what actually keeps the address bar clean.
     const lg = legacyClean(p, new URL(req.url, 'http://x').searchParams);
     if (lg) {
-      const q = (lg.indexOf('/trade/stellar/') === 0 || lg.indexOf('/asset/stellar/') === 0 || lg.indexOf('/pools/stellar/id/') === 0)
-        ? '' : (req.url.split('?')[1] ? '?' + req.url.split('?')[1] : '');
+      // Keep every param EXCEPT the one promoted into the path (see functions/_middleware.js). Dropping
+      // the whole query took act=withdraw with it, so the Wallet's "Remove" deep link always landed on
+      // the Deposit tab.
+      const promoted = lg.indexOf('/trade/stellar/') === 0 || lg.indexOf('/asset/stellar/') === 0
+        || lg.indexOf('/pools/stellar/id/') === 0;
+      const raw = req.url.split('?')[1] || '';
+      let q = raw ? '?' + raw : '';
+      if (promoted) {
+        const keep = new URLSearchParams(raw);
+        keep.delete('asset'); keep.delete('pool');
+        q = keep.toString() ? '?' + keep.toString() : '';
+      }
       res.writeHead(301, { location: lg + q });
       return res.end();
     }

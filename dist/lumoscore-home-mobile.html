@@ -5263,16 +5263,45 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   // matches. That exact bug made every caller fall back to 1000x280 on a 400x220 phone svg.
   function chBox(sv){ var v=sv&&sv.viewBox&&sv.viewBox.baseVal;
     return (v&&v.width>0&&v.height>0)?{w:v.width,h:v.height}:{w:1000,h:280}; }
+  // Which asset the chart is denominated in, and the pair to ask Horizon for.
+  //
+  // This used to assume every pool had an XLM leg and hard-coded counter_asset_type=native, so a pool
+  // of two credit assets (USDC/EURC) fell straight through to "No chart for this pair yet" — while the
+  // y-axis still said XLM. trade_aggregations takes any base/counter, so build the query from the pool's
+  // OWN reserves: base = the second asset, counter = the first, and the series is denominated in the
+  // first asset exactly as the XLM pools are denominated in XLM.
+  function chPair(){
+    var d=DET; if(!d)return null;
+    function leg(a){ return (!a||a.native||a.code==="XLM")?{native:true,code:"XLM"}:{code:a.code,issuer:a.issuer}; }
+    if(!d.nonXlm) return {base:{code:d.code,issuer:d.issuer},counter:{native:true,code:"XLM"},unit:"XLM",reserve:d.xlm,price:d.priceXlm};
+    if(!d.a0||!d.a1) return null;
+    // The DETAIL model names the reserve .amt (the pools LIST model names it .amount) and already carries
+    // the ratio as pxA0perA1. Reading .amount here left price and reserve at 0, chAgg refused to build a
+    // query, and chDraw re-entered it forever — the chart sat on "Loading pool history…" indefinitely.
+    var pr=(d.pxA0perA1>0)?d.pxA0perA1:((d.a1.amt>0)?(d.a0.amt/d.a1.amt):0);   // a0 per a1 = counter per base
+    return {base:leg(d.a1),counter:leg(d.a0),unit:d.a0.code,reserve:d.a0.amt,price:pr};
+  }
+  function aggQ(side,which){
+    if(side.native) return which+"_asset_type=native";
+    return which+"_asset_type=credit_alphanum"+(side.code.length>4?"12":"4")
+      +"&"+which+"_asset_code="+encodeURIComponent(side.code)
+      +"&"+which+"_asset_issuer="+side.issuer;
+  }
   function chAgg(range,cb){
-    var d=DET; if(!d||!d.issuer||!(d.priceXlm>0)){ cb(null); return; }
+    var d=DET; if(!d){ cb(null); return; }
+    // Mark the range empty when no query can be built, rather than just calling back. chDraw's callback
+    // is chDraw itself, so a bare cb(null) with nothing recorded made it ask again on every pass and the
+    // loader never cleared. Recording __empty lets it fall through to the tx-reconstruction/empty state.
+    d.__agg=d.__agg||{};
+    var P=chPair(); if(!P||!(P.price>0)||!(P.reserve>0)){ d.__agg[range]={__empty:1}; cb(null); return; }
     d.__agg=d.__agg||{}; if(d.__agg[range]){ cb(d.__agg[range].__empty?null:d.__agg[range]); return; }
     d.__aggP=d.__aggP||{}; if(d.__aggP[range])return; d.__aggP[range]=1;
     var res=CH_RES[range]||86400000, end=Math.ceil(Date.now()/res)*res, start=Math.floor((end-(CH_DAYS[range]||365)*86400000)/res)*res;
-    var url=H+"/trade_aggregations?base_asset_type=credit_alphanum"+(d.code.length>4?"12":"4")+"&base_asset_code="+encodeURIComponent(d.code)+"&base_asset_issuer="+d.issuer+"&counter_asset_type=native&resolution="+res+"&start_time="+start+"&end_time="+end+"&order=asc&limit=200";
+    var url=H+"/trade_aggregations?"+aggQ(P.base,"base")+"&"+aggQ(P.counter,"counter")+"&resolution="+res+"&start_time="+start+"&end_time="+end+"&order=asc&limit=200";
     getJSON(url).then(function(r){ d.__aggP[range]=0; var recs=(r&&r._embedded&&r._embedded.records)||[]; var pts=[],vol=[];
-      recs.forEach(function(x){ var t=+x.timestamp; var price=+x.avg||+x.close||0; if(price>0)pts.push({t:t,r:d.xlm*Math.sqrt(price/d.priceXlm)}); vol.push({t:t,v:+x.counter_volume||0}); });
+      recs.forEach(function(x){ var t=+x.timestamp; var price=+x.avg||+x.close||0; if(price>0)pts.push({t:t,r:P.reserve*Math.sqrt(price/P.price)}); vol.push({t:t,v:+x.counter_volume||0}); });
       if(pts.length<2){ d.__agg[range]={__empty:1}; cb(null); return; }
-      pts.push({t:Date.now(),r:d.xlm});   // pin the newest point to the live reserve
+      pts.push({t:Date.now(),r:P.reserve});   // pin the newest point to the live reserve
       d.__agg[range]={pts:pts,vol:vol,t0:pts[0].t,t1:Date.now()}; cb(d.__agg[range]);
     }).catch(function(){ d.__aggP[range]=0; d.__agg[range]={__empty:1}; cb(null); });
   }
@@ -5294,7 +5323,10 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     if(!svg.querySelector(".lx-chpair")){ var t=chS("text",{"class":"lx-chpair",x:String(chBox(svg).w/2),y:String(chBox(svg).h/2),"text-anchor":"middle","dominant-baseline":"middle",fill:"var(--text-muted,#8b90a0)","font-size":"13"}); t.textContent="No chart for this pair yet"; svg.appendChild(t); } }
   function chDraw(){
     var svg=q("#tvlChart svg"); if(!svg)return; document.documentElement.classList.add("lx-chartready"); if(!DET)return;
-    if(DET.nonXlm){ chPairEmpty(); return; }   // TVL/volume series are XLM-denominated; honest empty beats garbage
+    // A pool of two credit assets now charts too — chAgg asks Horizon for that pair directly and
+    // denominates the series in the pool's first asset — so this no longer bails on nonXlm. chAgg still
+    // reports empty when Horizon has no trade history for the pair, and chPairEmpty says so honestly.
+    if(!chPair()){ chPairEmpty(); return; }
     var s=chState();
     var agg=DET.__agg&&DET.__agg[s.range], ser;
     if(agg&&!agg.__empty){ ser=agg; }
@@ -5358,9 +5390,12 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     // AUDIT FIX: fixed 2-dp labels collapse on near-flat data (all 5 gridlines read "1.09M XLM") — pick the
     // decimals from the per-gridline STEP so adjacent labels always differ (capped at 5 dp).
     var _step=(mx-mn)/Math.max(1,yt.length-1);
-    function yfmt(x){ x=+x||0; var a=Math.abs(x), sc=a>=1e6?1e6:(a>=1e3?1e3:1), sfx=sc===1e6?"M XLM":(sc===1e3?"K XLM":" XLM");
+    // Label the axis in the asset the series is actually denominated in. It said XLM unconditionally,
+    // which was already wrong on a USDC/EURC pool before this pair could chart at all.
+    var _u=" "+(((chPair()||{}).unit)||"XLM");
+    function yfmt(x){ x=+x||0; var a=Math.abs(x), sc=a>=1e6?1e6:(a>=1e3?1e3:1), sfx=sc===1e6?("M"+_u):(sc===1e3?("K"+_u):_u);
       var d=2; if(_step>0){ d=Math.max(2,Math.min(5,Math.ceil(-Math.log10(_step/sc))+1)); if(!isFinite(d))d=2; }
-      return sc===1?((a>=1?num(x):x.toFixed(Math.max(2,d)))+" XLM"):((x/sc).toFixed(d)+sfx); }
+      return sc===1?((a>=1?num(x):x.toFixed(Math.max(2,d)))+_u):((x/sc).toFixed(d)+sfx); }
     yt.forEach(function(t,i){ var frac=yt.length<=1?1:(1-i/(yt.length-1)); setText(t,yfmt(mn+(mx-mn)*frac)); });
     var xt=_ax.filter(function(t){ return (+t.getAttribute("y")||0)>=H*0.9&&yt.indexOf(t)<0; }).sort(function(a,b){return (+a.getAttribute("x"))-(+b.getAttribute("x"));});
     var span=t1-t0, MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -5385,8 +5420,18 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       p.classList.toggle("active",on); p.style.display=on?"":"none"; });
     try{ paintDetail(); }catch(_){}
   }
+  // Switch the PANELS, not just the button styling. This owned handler stops the design's own click
+  // handler (it has to — the design's state is unreliable here), which means nothing else was left to
+  // show #dwWithdraw. The tab highlighted correctly and the CTA relabelled, while the Deposit form
+  // stayed on screen underneath: the "Withdraw tab does not open" report, still half-true.
   function dwShow(mode){
+    var w=(mode==="withdraw");
     qa("[data-dw]").forEach(function(b){ b.classList.toggle("active", b.getAttribute("data-dw")===mode); });
+    var dp=q("#dwDeposit"), wd=q("#dwWithdraw");
+    if(dp)dp.style.display=w?"none":"";
+    if(wd)wd.style.display=w?"":"none";
+    try{ syncCta(); }catch(_){}
+    if(w){ try{ withRecv(); }catch(_){} }
   }
   function rangeShow(lbl){
     qa(".tf-mini button").forEach(function(b){ b.classList.toggle("active",(b.textContent||"").trim().toUpperCase()===lbl); });
@@ -5859,7 +5904,9 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     syncCta();
     if(isWith())withRecv();
     // deep-link: ?act=withdraw (e.g. from the Wallet "Remove" button) opens the Withdraw tab
-    try{ if(!window.__lxActDone && /[?&]act=withdraw/.test(location.search)){ window.__lxActDone=1; var _wt=qa(".dw-tabs button").filter(function(b){return /withdraw/i.test(b.textContent);})[0]; if(_wt)_wt.click(); } }catch(e){}
+    // Set the "done" flag only AFTER the tab was actually switched. It used to be set on entry, so if
+    // this ran before the design had rendered .dw-tabs the deep link was consumed and never retried.
+    try{ if(!window.__lxActDone && /[?&]act=withdraw/.test(location.search)){ var _wt=qa(".dw-tabs button").filter(function(b){return /withdraw/i.test(b.textContent);})[0]; if(_wt){ window.__lxActDone=1; _wt.click(); try{ dwShow("withdraw"); }catch(_){} } } }catch(e){}
     cta.addEventListener("click",function(e){ e.preventDefault(); e.stopImmediatePropagation();
       var _blk=ctaBlockReason(); if(_blk){ wMsg(cta,_blk,true); return; }
       var addr=myAddr(); if(!addr){ wMsg(cta,"Connect your Stellar wallet first.",true); return; }
