@@ -5358,7 +5358,88 @@ window.addEventListener('click',function(e){
     var span=t1-t0, MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     function fmt(t){ var dt=new Date(t); if(span<2*86400000){ var hh=dt.getHours(),mm=dt.getMinutes(); return (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm; } if(span<120*86400000)return MO[dt.getMonth()]+" "+dt.getDate(); return MO[dt.getMonth()]; }
     xt.forEach(function(t,i){ var frac=xt.length<=1?1:i/(xt.length-1); setText(t,fmt(t0+span*frac)); });
+    // Publish exactly what was plotted, so the hover reports the series on screen instead of inventing one.
+    // Points are kept in viewBox coordinates; chHover converts through the svg's own CTM, which is correct
+    // on both layouts and survives whatever scaling the phone box applies.
+    // usdPerUnit is the pool's live USD TVL divided by its live size in the denominating asset. Zero when
+    // no USD price exists for this pair (most credit/credit pools) -> the tooltip then shows no USD line at
+    // all, rather than a number derived from a made-up rate.
+    var _P=chPair(), _cur=_P?_P.reserve*2:0, _tu=+DET.tvlUsd||0;
+    DET.__chH={ metric:isVol?"vol":"tvl", bars:isBar, color:accent, unit:_u.replace(" ",""), span:span,
+      usdPerUnit:(_cur>0&&_tu>0)?(_tu/_cur):0,
+      pts:vals.map(function(p){ return {t:p.t,v:p.v,x:X(p.t),
+        y:isVol?(H-padB-(H-padT-padB)*(mx>0?p.v/mx:0)):Y(p.v)}; }) };
     DET.__chSig=s.type+"|"+s.metric+"|"+s.range;
+  }
+  // ---- Chart hover -----------------------------------------------------------------------------------
+  // The design shipped its own hover that claimed to read the rendered points but read ITS mock series and
+  // formatted with baked maths ("M APT", a fixed 0.153 USD rate, a date computed from the cursor position).
+  // On a pool holding 2,179 DOPE it read "2.79M XLM / $427,381". That script is stripped at build time by
+  // _tools/_chart_hover.js; this is the replacement, driven by DET.__chH.
+  function chHovDate(t,span){
+    var dt=new Date(t);
+    if(span<2*86400000) return dt.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
+    var o={month:"short",day:"numeric"}; if(span>=180*86400000)o.year="numeric";
+    return dt.toLocaleDateString("en-US",o);
+  }
+  function chHover(){
+    var host=q("#tvlChart"); if(!host||host.__lxHov)return; host.__lxHov=1;
+    try{ if(getComputedStyle(host).position==="static")host.style.position="relative"; }catch(_){}
+    host.style.cursor="crosshair";
+    function mk(cls,css){ var el=document.createElement("div"); el.className="lx-chov "+cls;
+      el.style.cssText="position:absolute;pointer-events:none;opacity:0;transition:opacity .08s linear;"+css;
+      host.appendChild(el); return el; }
+    var vline=mk("lx-chov-v","top:0;bottom:0;width:1px;background:rgba(180,180,200,.55);z-index:4"),
+        dot=mk("lx-chov-dot","width:11px;height:11px;border-radius:50%;border:2px solid var(--surface);transform:translate(-50%,-50%);z-index:6"),
+        box=mk("lx-chov-box","background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;box-shadow:0 8px 22px rgba(0,0,0,.25);min-width:140px;z-index:8;color:var(--text)");
+    function hide(){ vline.style.opacity="0"; dot.style.opacity="0"; box.style.opacity="0"; }
+    function at(cx,cy){
+      var svg=q("#tvlChart svg"), st=DET&&DET.__chH;
+      if(!svg||!st||!st.pts||!st.pts.length)return hide();
+      var m=null; try{ m=svg.getScreenCTM(); }catch(_){}
+      if(!m)return hide();
+      var hr=host.getBoundingClientRect();
+      if(cx<hr.left||cx>hr.right||cy<hr.top||cy>hr.bottom)return hide();
+      var pt=svg.createSVGPoint(); pt.x=cx; pt.y=cy;
+      var vp=pt.matrixTransform(m.inverse());
+      var best=0,bd=Infinity;
+      for(var i=0;i<st.pts.length;i++){ var dx=Math.abs(st.pts[i].x-vp.x); if(dx<bd){bd=dx;best=i;} }
+      var p=st.pts[best];
+      var sp=svg.createSVGPoint(); sp.x=p.x; sp.y=p.y;
+      var scr=sp.matrixTransform(m);
+      var lx=scr.x-hr.left, ly=scr.y-hr.top;
+      vline.style.left=lx+"px"; vline.style.opacity="1";
+      dot.style.left=lx+"px"; dot.style.top=ly+"px";
+      dot.style.background=st.color; dot.style.boxShadow="0 0 0 3px "+st.color+"55";
+      dot.style.opacity=st.bars?"0":"1";
+      var sig=best+"|"+st.metric+"|"+st.unit;
+      if(box.__lxSig!==sig){ box.__lxSig=sig;
+        var usdTxt=(st.usdPerUnit>0)?usd(p.v*st.usdPerUnit):"";
+        box.innerHTML='<div style="font-size:12.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">'+(st.metric==="vol"?"Volume":"TVL")+'</div>'
+          +'<div style="font-weight:700;font-size:15px;color:var(--text);margin-top:3px">'+esc(famt(p.v)+" "+st.unit)+'</div>'
+          +(usdTxt?('<div style="font-size:13.5px;color:var(--text-muted);margin-top:1px">'+esc(usdTxt)+'</div>'):'')
+          +'<div style="font-size:13px;color:var(--text-soft);margin-top:5px">'+esc(chHovDate(p.t,st.span))+'</div>';
+      }
+      box.style.opacity="1";
+      var bw=box.offsetWidth||160, bh=box.offsetHeight||74;
+      var bx=lx+14; if(bx+bw>hr.width)bx=lx-bw-14; if(bx<4)bx=4;
+      var by=ly-24; if(by+bh>hr.height)by=hr.height-bh-4; if(by<4)by=4;
+      box.style.left=bx+"px"; box.style.top=by+"px";
+    }
+    host.addEventListener("mousemove",function(e){ at(e.clientX,e.clientY); });
+    host.addEventListener("mouseleave",hide);
+    // Touch: read on tap and follow a drag, but only claim the gesture once it is clearly horizontal —
+    // otherwise the page cannot be scrolled with a finger that started on the chart. And DON'T hide on
+    // touchend: on a phone the finger is the cursor, so lifting it would erase the value the tap was for.
+    // A tap anywhere else clears it (same behaviour as the wallet chart).
+    var _t0=null;
+    host.addEventListener("touchstart",function(e){ var t=e.touches&&e.touches[0]; if(!t)return;
+      _t0={x:t.clientX,y:t.clientY}; at(t.clientX,t.clientY); },{passive:true});
+    host.addEventListener("touchmove",function(e){ var t=e.touches&&e.touches[0]; if(!t)return;
+      if(_t0&&Math.abs(t.clientX-_t0.x)>Math.abs(t.clientY-_t0.y))e.preventDefault();
+      at(t.clientX,t.clientY); },{passive:false});
+    document.addEventListener("touchstart",function(e){ var t=e.target;
+      if(t&&t.closest&&t.closest("#tvlChart"))return; hide(); },true);
   }
   // Re-assert real data only when needed: the active view changed, OR the design re-rendered its own mock
   // (its candle <rect>s reappear / its <path> d gets re-set — e.g. during the design's ~1-2s enter animation).
@@ -5541,7 +5622,7 @@ window.addEventListener('click',function(e){
     window.addEventListener("touchend",act,true);
   }
   function pdChart(){
-    var svg=q("#tvlChart svg"); if(!svg)return; wirePhoneTabs(); chDraw();
+    var svg=q("#tvlChart svg"); if(!svg)return; wirePhoneTabs(); chHover(); chDraw();
     // The range strip ships with 1M pre-selected, but the design chart state defaults to 1Y — so on load the
     // button said 1M while the series drawn was a whole year. Press the pre-selected button once so the label
     // and the data agree; the design keeps them in step from then on.
