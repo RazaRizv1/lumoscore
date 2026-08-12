@@ -5667,11 +5667,47 @@ window.addEventListener('click',function(e){
       a.style.cssText=(b.getAttribute("style")||"")+";display:inline-flex;align-items:center;justify-content:center;color:inherit;text-decoration:none";
       a.__lxex=1; b.parentNode.replaceChild(a,b); });
     qa(".pool-header a[title='View on Explorer']").forEach(function(a){ if(a.getAttribute("href")!==exHref)a.setAttribute("href",exHref); });
-    var pi=q(".ph-icons"); if(pi&&pi.getAttribute("data-lxdet")!=="1"){ pi.setAttribute("data-lxdet","1"); pi.innerHTML='<div class="pa" data-lxfixed="1">'+tokLogo()+'</div><div class="pb" data-lxfixed="1">'+xlmLogo()+'</div>'; amFetchLogo(d.code,d.issuer,function(url){ var im=pi.querySelector(".pa img"); if(im&&url)im.src=url; }); }
+    // Header pair icons. This used to hardcode "the token, then XLM", which is only true for XLM pools:
+    // on a credit/credit pool like DOPE/LMBW slot A got DET.code (which is a1 = LMBW, so its letter
+    // avatar landed where DOPE belongs) and slot B got the XLM logo for an asset that isn't in the pool.
+    // Paint from a0/a1 in the same order the name is built (pairName = a0 / a1), via genLogo like every
+    // other pair on the page. Key the guard on the pair itself so navigating pool->pool repaints.
+    var pi=q(".ph-icons");
+    if(pi){
+      var s0 = d.nonXlm&&d.a0 ? d.a0 : {code:d.code,issuer:d.issuer};
+      var s1 = d.nonXlm&&d.a1 ? d.a1 : {code:"XLM",issuer:"",native:true};
+      var sig=(s0.code||"?")+"|"+(s1.code||"?");
+      if(pi.getAttribute("data-lxdet")!==sig){
+        pi.setAttribute("data-lxdet",sig);
+        pi.innerHTML='<div class="pa" data-lxfixed="1">'+genLogo(s0)+'</div><div class="pb" data-lxfixed="1">'+genLogo(s1)+'</div>';
+        // resolve whatever the sync map didn't know (stellar.expert toml) for BOTH sides, not just A
+        [[s0,".pa"],[s1,".pb"]].forEach(function(pr){ var a=pr[0]; if(!a.code||a.code==="XLM"||a.native)return;
+          amFetchLogo(a.code,a.issuer,function(url){ var im=pi.querySelector(pr[1]+" img"); if(im&&url)im.src=url; }); });
+      }
+    }
     var pv=q(".ph-price .v"), pm=q(".ph-price .lc-money");
     if(d.nonXlm){ if(pv)setText(pv,fprice(d.pxA0perA1)+" "+d.a0.code); if(pm)setMoneyEl(pm,d.priceUsd,d.priceUsd>0?pusd(d.priceUsd):"\u2014"); }
     else { if(pv)setText(pv,fprice(d.priceXlm)+" XLM"); if(pm)setMoneyEl(pm,d.priceUsd,pusd(d.priceUsd)); }
     var ps=q(".ph-price .s"); if(ps){ [].slice.call(ps.childNodes).forEach(function(nd){ if(nd.nodeType===3&&/per /.test(nd.textContent)&&nd.textContent.indexOf(d.code)<0)nd.textContent=" per "+d.code; }); }
+    // The phone header ships an entirely different price block: .ph-price-row > div > .label/.value/.vs,
+    // with no .ph-price wrapper at all. Everything above is desktop-only selectors, so on mobile the
+    // design's mock "0.000713 APT / $0.000108 per LUMOS" survived on EVERY pool page. Same numbers, the
+    // phone's class names. data-lx-noswap keeps the multichain re-skin from rewriting the asset code we
+    // just wrote (it is the one that turns a stale "APT" into "XLM" on pairs we do not own).
+    var mrow=q(".ph-price-row");
+    if(mrow){
+      var mv=mrow.querySelector(".value"), mvs=mrow.querySelector(".vs"), mm=mrow.querySelector(".vs .lc-money");
+      var per=d.nonXlm?d.a1.code:d.code;
+      if(mv){ mv.setAttribute("data-lx-noswap","1"); setText(mv,d.nonXlm?(fprice(d.pxA0perA1)+" "+d.a0.code):(fprice(d.priceXlm)+" XLM")); }
+      // text BEFORE money, each isolated: every painter in the boot list runs inside a silent try/catch,
+      // so anything that throws in the money path used to take the rest of pdHeader with it and leave the
+      // mock "per LUMOS" sitting under a correct price until some later repaint happened to fix it.
+      if(mvs){ mvs.setAttribute("data-lx-noswap","1");
+        // leading space on purpose: the money span it follows may or may not end in one (setMoneyEl's
+        // "\u2014" does not), and "\u2014per LMBW" reads as a typo
+        [].slice.call(mvs.childNodes).forEach(function(nd){ if(nd.nodeType===3&&/per /.test(nd.textContent)&&nd.textContent.indexOf(per)<0)nd.textContent=" per "+per; }); }
+      if(mm){ try{ setMoneyEl(mm,d.priceUsd,d.priceUsd>0?pusd(d.priceUsd):"\u2014"); }catch(_){} }
+    }
     guardHeader(); fixWithdrawPair();
     document.documentElement.classList.add("lx-detpr");   // real pair painted -> reveal the (until-now masked) pair labels
   }
@@ -5689,6 +5725,17 @@ window.addEventListener('click',function(e){
       ic.setAttribute("data-lxwp","1"); ic.setAttribute("data-lxfixed","1"); ic.style.overflow="hidden"; ic.innerHTML=tokLogo(); }
     row.setAttribute("data-lxpair","1"); }
   function guardHeader(){
+    // Phone header: the site's money formatter re-renders .vs from its data-orig on a timer, restoring
+    // "per LUMOS" over the asset code we wrote — measured flip-flopping about once a second. Writing it
+    // once in pdHeader cannot win that; own it with the same observer the desktop block uses. Converges
+    // rather than loops: our own write leaves the code present, so the next callback is a no-op.
+    var pr=q(".ph-price-row");
+    if(pr&&!pr.__lxg){ pr.__lxg=1;
+      try{ new MutationObserver(function(){ if(!DET)return; var vs=pr.querySelector(".vs"); if(!vs)return;
+        var per=DET.nonXlm?DET.a1.code:DET.code; if(!per)return;
+        [].slice.call(vs.childNodes).forEach(function(nd){ if(nd.nodeType===3&&/per /.test(nd.textContent)&&nd.textContent.indexOf(per)<0)nd.textContent=" per "+per; });
+      }).observe(pr,{childList:true,subtree:true,characterData:true}); }catch(e){}
+    }
     var pp=q(".ph-price"); if(!pp||pp.__lxg)return; pp.__lxg=1;
     try{ new MutationObserver(function(){ if(!DET)return; var ps=q(".ph-price .s"); if(!ps)return; [].slice.call(ps.childNodes).forEach(function(nd){ if(nd.nodeType===3&&/per /.test(nd.textContent)&&nd.textContent.indexOf(DET.code)<0)nd.textContent=" per "+DET.code; }); }).observe(pp,{childList:true,subtree:true,characterData:true}); }catch(e){}
   }
