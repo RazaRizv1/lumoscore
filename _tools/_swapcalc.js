@@ -369,7 +369,11 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'
 +'window.__lxSwapFrom=function(code,iss){try{var h;'
 +'if(!code||code==="XLM"){h={code:"XLM",native:true,bal:(window.__lxMaxXLM!=null?window.__lxMaxXLM:(window.__lxNative||0))};}'
 +'else{h=(window.__lxHoldings||[]).filter(function(x){return x.code===code&&!x.native&&(!iss||!x.iss||x.iss===iss);})[0]||{code:code,iss:iss||lxIssuer(code),native:false,bal:heldBal(code)};}'
-+'selectSwap(fromF,h);var o=toF.__lxasset;if(o&&o.code===h.code)selectSwap(toF,swDefaultOther(h),true);'
+// Pair it with the NATIVE asset, always — not only when the two sides collide. Opening this from a row in
+// My Assets means "trade this holding", and on Stellar the counter asset for that is XLM; the dialog's own
+// default of USDC left every such swap needing a manual change of the receive side. swDefaultOther returns
+// XLM for any credit asset, and USDC when the chosen asset IS XLM (a pair of XLM/XLM is not a swap).
++'selectSwap(fromF,h);selectSwap(toF,swDefaultOther(h),true);'
 +'if(fromInput){fromInput.value="";try{fromInput.focus();}catch(_e){}}'
 +'}catch(_){}};'
 +'function openSwapMenu(f,ap,withSearch){var ex=document.querySelector(".lx-asset-menu");if(ex){ex.remove();return;}var hs=window.__lxHoldings||[];var menu=document.createElement("div");menu.className="lx-asset-menu lx-swap-menu";var si=null;if(withSearch){si=document.createElement("input");si.className="lx-am-search";si.placeholder=(withSearch==="local"?"Search your assets\\u2026":"Search any Stellar asset\\u2026");var sw=document.createElement("div");sw.className="lx-am-searchwrap";sw.innerHTML=\'<svg class="lx-am-searchic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>\';sw.appendChild(si);menu.appendChild(sw);}var list=document.createElement("div");list.className="lx-am-list";menu.appendChild(list);'
