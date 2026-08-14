@@ -69,7 +69,15 @@ const STYLE = '<style id="lx-mobwallet-css">'
   // My Assets rows get the same actions the desktop table has (Trade / Send / more). Same button shape as
   // the pool rows so the two tabs read as one list, and the row itself wraps to give them their own line.
   + '.lxmw-row.lxmw-ast{flex-wrap:wrap}'
-  + '.lxmw-astacts{display:flex;gap:8px;flex:1 0 100%;margin-top:11px}'
+  // Sized to their labels and pushed to the right, under the amount column. Stretching two words across a
+  // third of the screen each (flex:1, the pool-row rule) made them read as banners rather than buttons.
+  + '.lxmw-astacts{display:flex;gap:8px;flex:1 0 100%;margin-top:10px;justify-content:flex-end}'
+  + '.lxmw-astbtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;flex:0 0 auto;'
+  + 'padding:7px 13px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2,#1a1a24);'
+  + 'color:var(--text);text-decoration:none;font:700 12.5px/1 "Hanken Grotesk",system-ui,sans-serif;cursor:pointer}'
+  + '.lxmw-astbtn svg{width:12px;height:12px;flex:0 0 auto}'
+  + '.lxmw-astbtn:active{border-color:var(--accent);color:var(--accent)}'
+  + '.lxmw-astbtn.icon{width:36px;padding:0;color:var(--text-soft,#8a8fa3)}'
   + '.lxmw-astmenu{position:fixed;z-index:100003;min-width:214px;background:var(--surface,#171922);border:1px solid var(--border);border-radius:12px;padding:6px;box-shadow:0 14px 44px rgba(0,0,0,.55)}'
   + '.lxmw-astmenu button,.lxmw-astmenu a{display:block;width:100%;padding:10px 11px;border:0;border-radius:9px;background:transparent;color:var(--text);text-align:left;text-decoration:none;font:700 13px/1.25 "Hanken Grotesk",system-ui,sans-serif}'
   + '.lxmw-astmenu button:active,.lxmw-astmenu a:active{background:rgba(234,106,44,.12);color:var(--accent)}'
@@ -208,17 +216,18 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + '+\'<div class="lxmw-sub">\'+esc(h.name||h.domain||"")+\'</div></div>\''
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(fmt(bal))+\'</div>\''
 + '+\'<div class="u">\'+(v==null?"":esc(usd(v)))+\'</div></div>\''
-// Trade is a real <a>: an anchor navigates on a phone without depending on a synthesised click, which is
-// the trap that has bitten every tap target on this site. Send and the overflow menu are buttons, wired
-// below. data-lxnonav keeps the global label-based nav bridge from hijacking a control labelled Trade.
+// Same three controls as the desktop table, same marks: the nav's candlestick for Trade, the paper plane
+// for Send, the vertical dots for the overflow. Trade is a BUTTON now, because it opens the DEX/Swap
+// chooser rather than navigating straight off — wireAstActs drives it from touchend as well as click, since
+// a phone does not reliably synthesise the click an anchor would have got for free.
+// data-lxnonav keeps the global label-based nav bridge off a control reading "Trade".
 + '+\'<div class="lxmw-astacts" data-lxnonav>\''
-+ '+\'<a class="lxmw-lpbtn" href="\'+(h.native?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(code)+(h.iss?("-"+h.iss):"")))+\'">Trade</a>\''
-+ '+\'<button type="button" class="lxmw-lpbtn" data-astsend="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'">Send</button>\''
-// The overflow control is an ICON, not a third labelled button: at a third of the row it read as an equal
-// peer of Trade and Send, which it is not. Fixed 42px (the same .icon rule the pool rows use) leaves Trade
-// and Send an equal half each, and it carries the desktop table's own vertical-dots mark.
-+ '+\'<button type="button" class="lxmw-lpbtn ghost icon" data-astmore="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'" aria-label="More actions" title="More actions">\''
-+ '+\'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>\''
++ '+\'<button type="button" class="lxmw-astbtn" data-asttrade="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'" data-astnat="\'+(h.native?"1":"")+\'">\''
++ '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M8 6v3"></path><rect x="6" y="9" width="4" height="6" rx="1"></rect><path d="M8 15v3"></path><path d="M16 4v2"></path><rect x="14" y="6" width="4" height="9" rx="1"></rect><path d="M16 15v3"></path></svg>Trade</button>\''
++ '+\'<button type="button" class="lxmw-astbtn" data-astsend="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'">\''
++ '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>Send</button>\''
++ '+\'<button type="button" class="lxmw-astbtn icon" data-astmore="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'" aria-label="More actions" title="More actions">\''
++ '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>\''
 + '+\'</div></div>\';});'
 + 'list.innerHTML=html;}'
 // ---- liquidity pools -------------------------------------------------------------------------------
@@ -298,14 +307,43 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'setTimeout(function(){document.addEventListener("click",away,true);document.addEventListener("touchend",away,true);},60);'
 + 'm.addEventListener("click",function(ev){var b=ev.target&&ev.target.closest?ev.target.closest("[data-astcopy]"):null;if(!b)return;'
 + 'ev.preventDefault();try{navigator.clipboard.writeText(iss);}catch(_){}b.textContent="Copied \u2713";setTimeout(shut,700);});}'
+// Trade offers the same two destinations the desktop row does: the asset's own DEX page, or the swap
+// dialog with the asset already on the pay side (__lxSwapFrom, published by the swap wiring).
++ 'function astTradeMenu(btn,code,iss,nat){var old=q(".lxmw-astmenu");if(old)old.remove();'
++ 'var m=document.createElement("div");m.className="lxmw-astmenu";m.setAttribute("data-lxnonav","");'
++ 'm.innerHTML=\'<button type="button" data-tr="dex">Trade on DEX</button><button type="button" data-tr="swap">Swap</button>\';'
++ 'document.body.appendChild(m);var r=btn.getBoundingClientRect();'
++ 'm.style.top=Math.max(8,Math.min(r.bottom+6,(window.innerHeight||600)-m.offsetHeight-8))+"px";'
++ 'm.style.left=Math.max(8,Math.min(r.left,(window.innerWidth||360)-m.offsetWidth-8))+"px";'
++ 'function shut(){if(m.parentNode)m.remove();document.removeEventListener("click",away,true);document.removeEventListener("touchend",away,true);}'
++ 'function away(ev){if(m.contains(ev.target))return;shut();}'
++ 'setTimeout(function(){document.addEventListener("click",away,true);document.addEventListener("touchend",away,true);},60);'
++ 'function pick(kind){shut();'
++ 'if(kind==="dex"){location.href=nat?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(code)+(iss?("-"+iss):""));return;}'
++ 'var sm=document.getElementById("modalSwap");if(sm){sm.classList.add("open");try{document.body.style.overflow="hidden";}catch(_){}}'
++ 'setTimeout(function(){try{if(window.__lxSwapFrom)window.__lxSwapFrom(code,iss);}catch(_){}},60);}'
++ 'function hit(ev){var b=ev.target&&ev.target.closest?ev.target.closest("[data-tr]"):null;if(!b)return;'
++ 'ev.preventDefault();ev.stopPropagation();pick(b.getAttribute("data-tr"));}'
++ 'm.addEventListener("click",hit);m.addEventListener("touchend",hit);}'
+// touchend as well as click: these are <button>s, and this page is the one where a tap is not guaranteed to
+// become a click. The 12px/600ms guard keeps a scroll that happens to end on a button from firing it.
 + 'function wireAstActs(){if(window.__lxmwAst)return;window.__lxmwAst=1;'
-+ 'document.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;'
++ 'var _t0=null;'
++ 'document.addEventListener("touchstart",function(e){var p=e.touches&&e.touches[0];_t0=p?{x:p.clientX,y:p.clientY,t:Date.now()}:null;},true);'
++ 'function isTap(e){if(e.type!=="touchend")return true;var p=e.changedTouches&&e.changedTouches[0];if(!p||!_t0)return false;'
++ 'return Math.abs(p.clientX-_t0.x)<12&&Math.abs(p.clientY-_t0.y)<12&&(Date.now()-_t0.t)<600;}'
++ 'function act(e){var t=e.target;if(!t||!t.closest)return;'
++ 'if(e.type==="touchend"&&e.defaultPrevented)return;'
++ 'if(!isTap(e))return;'
++ 'var tr=t.closest("[data-asttrade]");'
++ 'if(tr){e.preventDefault();e.stopPropagation();astTradeMenu(tr,tr.getAttribute("data-asttrade")||"",tr.getAttribute("data-astiss")||"",tr.getAttribute("data-astnat")==="1");return;}'
 + 'var sd=t.closest("[data-astsend]");'
 + 'if(sd){e.preventDefault();e.stopPropagation();var sm=document.getElementById("modalSend");'
 + 'if(sm){sm.classList.add("open");try{document.body.style.overflow="hidden";}catch(_){}}return;}'
 + 'var mr=t.closest("[data-astmore]");'
 + 'if(mr){e.preventDefault();e.stopPropagation();astMenu(mr,mr.getAttribute("data-astmore")||"",mr.getAttribute("data-astiss")||"");return;}'
-+ '},true);}'
++ '}'
++ 'document.addEventListener("click",act,true);document.addEventListener("touchend",act,true);}'
 + 'function wireLpCopy(){if(window.__lxmwCopy)return;window.__lxmwCopy=1;'
 + 'document.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;'
 + 'var b=t.closest("[data-lpcopy]");if(!b)return;'
