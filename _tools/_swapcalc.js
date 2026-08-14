@@ -304,8 +304,15 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'
 // the modal open/close may not touch THIS element\'s attributes (ancestor-driven), so the observer alone
 // missed reopens and stale amounts persisted — ALSO reset whenever the dashboard "Swap tokens" quick-card
 // is clicked (the only way this modal opens).
-+'if(!modal.__lxQCw){modal.__lxQCw=1;document.addEventListener("click",function(e){var c=e.target&&e.target.closest&&e.target.closest(".quick-actions .quick-card");if(c&&/swap/i.test(c.textContent||""))setTimeout(resetFields,120);},true);}'
-+'if(!modal.__lxReset){modal.__lxReset=1;new MutationObserver(function(){var op=/(^|\\s)(open|show|active)(\\s|$)/.test(modal.className)||!modal.hasAttribute("hidden")&&getComputedStyle(modal).display!=="none";if(op&&!modal.__wasOpen){modal.__wasOpen=1;resetFields();}else if(!op){modal.__wasOpen=0;}}).observe(modal,{attributes:true,attributeFilter:["class","hidden","style"]});}'
++'if(!modal.__lxQCw){modal.__lxQCw=1;document.addEventListener("click",function(e){var c=e.target&&e.target.closest&&e.target.closest(".quick-actions .quick-card");if(c&&/swap/i.test(c.textContent||"")){setTimeout(resetFields,120);[60,220,500].forEach(function(ms){setTimeout(shutTwin,ms);});}},true);}'
+// The dashboard page carries TWO swap dialogs: this one (#swapModal, the wired one) and the design's own
+// #modalSwap. The quick-action click reaches both openers, so a single tap stacked them — ours at z-index
+// 9999 over the design's at 2500. Nothing looked wrong until the top one was dismissed, and then the user
+// was staring at the design's untouched dialog: default XLM/USDC, no logos, none of their input. Whenever
+// this dialog opens, make sure the other one is shut. Only pages carrying both are affected; the wallet
+// page has no #swapModal, so its #modalSwap is never touched by this.
++'function shutTwin(){var tw=document.getElementById("modalSwap");if(!tw)return;tw.classList.remove("open","show");tw.style.display="none";try{document.body.style.overflow="";}catch(_){}}'
++'if(!modal.__lxReset){modal.__lxReset=1;new MutationObserver(function(){var op=/(^|\\s)(open|show|active)(\\s|$)/.test(modal.className)||!modal.hasAttribute("hidden")&&getComputedStyle(modal).display!=="none";if(op&&!modal.__wasOpen){modal.__wasOpen=1;shutTwin();resetFields();}else if(!op){modal.__wasOpen=0;}}).observe(modal,{attributes:true,attributeFilter:["class","hidden","style"]});}'
 +'toA.bal=dashHeld("USDC")||null;applyChips();dis(true);quoteRate();return true;}'
 // ---- #modalSwap (wallet quick-action Swap, class-based) ----
 +'function bootB(){var modal=document.getElementById("modalSwap");if(!modal)return true;if(modal.__lxd)return true;'
