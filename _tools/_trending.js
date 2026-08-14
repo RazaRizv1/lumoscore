@@ -13,6 +13,12 @@ const CSS=`<style id="lx-trending-css">
 .trending-row .lx-tico::before{content:"";position:absolute;inset:0;background:var(--lxtic,#20222c) center/cover no-repeat;border-radius:50%;z-index:2}
 .trending-row .lx-tico[data-l]::after{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;z-index:3}
 .trending-row .lx-tico img{display:none!important}
+/* The design styles .trade-btn on the desktop page only, so on a phone this row ended with a raw browser
+   button — grey, square, 1.6px outset border. Restate the desktop rule (it is a no-op there) and step the
+   type down on a narrow row, where a 16.5px/72px control crowds out the price. */
+.trending-row .trade-btn{padding:8px 14px;border-radius:9px;border:1px solid var(--border,#26262c);background:transparent;color:var(--text,#f6f5f3);font-family:inherit;font-size:16.5px;font-weight:700;line-height:1.2;cursor:pointer;flex-shrink:0}
+.trending-row .trade-btn:active{border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}
+@media (max-width:560px){.trending-row .trade-btn{font-size:13.5px;padding:7px 11px;border-radius:8px}}
 .lx-tskel-row{padding:14px 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
 .lx-tskel-row:last-child{border-bottom:none}
 .lx-sk{background:linear-gradient(90deg,rgba(140,142,165,.10) 25%,rgba(140,142,165,.22) 37%,rgba(140,142,165,.10) 63%);background-size:400% 100%;animation:lxtsh 1.25s ease infinite;border-radius:6px}
@@ -86,6 +92,10 @@ for(const dev of ['desktop','mobile']){
   for(const k of Object.keys(json)){
     let h=json[k];
     if(h.indexOf('trendingList')<0) continue;   // dashboard page only
+    // The container is the Aptos original, so this heading still read "Trending on Aptos" on a product
+    // that is Stellar-only — on both layouts, and live. The rows underneath have always been Stellar
+    // assets, which made it worse, not better.
+    if(h.indexOf('Trending on Aptos')>=0) h=h.split('Trending on Aptos').join('Trending on Stellar');
     h=h.replace(/<style id="lx-trending-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-trending">[\s\S]*?<\/script>/,'');  // idempotent
     if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');
     const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
