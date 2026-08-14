@@ -122,7 +122,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     list.innerHTML=d.map(function(a){
       return '<div class="mdx-mint-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +ico("mdx-mint-ic",a)
-        +'<div><div class="mdx-mint-name"><span class="tk">'+esc(a.code)+'</span></div>'
+        +'<div><div class="mdx-mint-name">'+esc(a.code)+'</div>'
         +'<div class="mdx-mint-sub">'+esc(a.domain||"Stellar")+'</div></div>'
         +'<div class="mdx-mint-right"><div>'+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</div>'
         +'<div class="mdx-mint-sub">'+esc(a.trades==null?DASH:num(a.trades,0)+" trades")+'</div></div></div>';
