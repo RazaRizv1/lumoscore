@@ -32,6 +32,29 @@ const STYLE = '<style id="lx-mobwallet-css">'
   + '.activity-block .activity-info .meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}'
   + '.activity-block .activity-amt{flex:0 0 auto;text-align:right;white-space:nowrap}'
   + '.activity-block .lx-txlink{flex:0 0 auto;margin-left:8px}'
+  // --- hero quick actions ------------------------------------------------------------------------------
+  // The design declares FOUR columns for three tiles (Send / Receive / Swap), so the row always ended in an
+  // empty fourth cell — that is the dead space on the right, not a margin. Three columns, sharing the full
+  // width, and a slightly taller tile so the icons are not marooned in the middle.
+  + '.actions-grid{grid-template-columns:repeat(3,1fr)!important;gap:10px!important}'
+  + '.actions-grid .action-btn{width:100%;padding:15px 8px}'
+  // --- Open Orders / Liquidity Pools -------------------------------------------------------------------
+  // Two summary cards stacked as two full-width rows; side by side they read as one line and give the page
+  // back ~90px of height. The third card in this stack is display:none, and a hidden grid item takes no
+  // cell, so the two visible ones fill the two columns.
+  + '.insights-stack{display:grid!important;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}'
+  + '.insights-stack .insight-card{min-width:0}'
+  + '.insights-stack .insight-card .body{min-width:0}'
+  // At ~166px a card fits a label and a number, not a sentence. Tighten the label so "LIQUIDITY POOLS"
+  // fits whole, and drop the descriptive line rather than serve "Across your p…" — a truncated sentence
+  // reads as broken, and the title plus the count already say the whole thing.
+  + '.insights-stack .insight-card{padding:12px 12px;gap:10px}'
+  + '.insights-stack .insight-card .ttl{font-size:9.5px;letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  + '.insights-stack .insight-card .head{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  + '.insights-stack .insight-card .sub{display:none}'
+  + '.insights-stack .insight-card .ic{width:34px;height:34px;flex:0 0 34px}'
+  // the chevron is decoration; at half width it competes with the number
+  + '.insights-stack .insight-card>svg:last-child,.insights-stack .insight-card .chev{display:none}'
   + '.lxmw-empty{padding:18px 4px;text-align:center;color:var(--text-soft,#8a8fa3);'
   + 'font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}'
   + '.lxmw-row{display:flex;align-items:center;gap:11px;padding:13px 2px;border-bottom:1px solid var(--border)}'
