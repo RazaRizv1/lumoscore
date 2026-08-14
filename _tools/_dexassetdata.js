@@ -7,12 +7,15 @@
 // via a debounced+self-guarded MutationObserver + a bounded interval, CSS no-flash gates, no emoji/\\u
 // in the injected string, ES5 var in the browser code).
 const fs = require('fs');
-const { read, getContents } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, VTICK_SVG } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-dex-asset.html', 'lumoscore-dex-asset-dark.html', 'lumoscore-dex-asset-mobile.html'];
 
 const STYLE = `<style id="lx-dxa-css">
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
+.lx-vtick svg{width:9px;height:9px;display:block}
+
 /* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
 .asset-header:not(.lxda) .asset-name,.asset-header:not(.lxda) .asset-ticker,.asset-header:not(.lxda) .asset-description,.asset-header:not(.lxda) .addr,.asset-header:not(.lxda) .website{visibility:hidden}
 .asset-top:not(.lxda) .asset-name,.asset-top:not(.lxda) .asset-ticker,.asset-top:not(.lxda) .asset-description,.asset-top:not(.lxda) .addr,.asset-top:not(.lxda) .website{visibility:hidden}
@@ -132,6 +135,9 @@ const STYLE = `<style id="lx-dxa-css">
 </style>`;
 
 const SCRIPT = `<script id="lx-dxadata">(function(){
+  // shared verified set, same as the wallet, Trade main and search
+  var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
+  var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
   if(window.__lxDXA)return;window.__lxDXA=true;
   var H="https://horizon.stellar.org";                       // MAINNET
   var CG="https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd";
@@ -247,6 +253,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     var hdr=q(".asset-header")||q(".asset-top"); if(!hdr)return;
     // name + ticker
     setText(q(".asset-name"), CODE);
+    try{ var _nm=q(".asset-name");
+      if(_nm&&_nm.parentNode){
+        var _ok=!!VFD[CODE+"|"+ISSUER], _b=_nm.parentNode.querySelector(".lx-vtick");
+        if(_ok&&!_b){ var _s=document.createElement("span"); _s.className="lx-vtick"; _s.title="Verified issuer";
+          _s.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'; _nm.parentNode.insertBefore(_s,_nm.nextSibling); }
+        else if(!_ok&&_b&&_b.parentNode){ _b.parentNode.removeChild(_b); }
+      } }catch(_){}
     setText(q(".asset-ticker"), CODE);
     // logo mark
     var lg=q(".asset-logo"); if(lg&&lg.getAttribute("data-lxlogo")!==CODE){ lg.setAttribute("data-lxlogo",CODE); lg.textContent=""; lg.style.setProperty("background-image",knownLogo()?logoBg():plainBg(CODE),"important"); }
