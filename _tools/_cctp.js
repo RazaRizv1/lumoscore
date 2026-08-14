@@ -780,7 +780,11 @@ function lxCctpWireStep2(){
 
 // ---- Step 3: populate Review from state + hook Confirm -> lxCctpBridgeFull + append Recent transaction ----
 function lxBrStellarIcon(){ var el=document.querySelector('.br-step[data-step="1"] .br-netbox .br-netchip .br-ic')||document.querySelector('.br-step[data-step="2"] .br-side .br-wallet .br-ic.lx-netic'); return el?el.innerHTML:''; }
-function lxBrXpIcon(){ var a=document.querySelector('.br-table .br-xplink'); return a?a.innerHTML:'↗'; }
+// This used to scrape the icon out of a seeded row. Emptying the design's mock rows took that source away
+// and every link fell back to a text arrow. Inline the mark instead — the same external-link glyph the
+// Trade-asset Recent trades table uses, so the two read identically.
+var LX_XPSVG='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
+function lxBrXpIcon(){ return LX_XPSVG; }
 function lxBrReview(){
   var s3=document.querySelector('.br-step[data-step="3"]'); if(!s3)return;
   var legs=s3.querySelectorAll('.br-rv-leg'); if(legs.length<2)return;
