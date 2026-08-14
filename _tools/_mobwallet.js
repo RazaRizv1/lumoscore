@@ -214,7 +214,11 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + '+\'<div class="lxmw-astacts" data-lxnonav>\''
 + '+\'<a class="lxmw-lpbtn" href="\'+(h.native?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(code)+(h.iss?("-"+h.iss):"")))+\'">Trade</a>\''
 + '+\'<button type="button" class="lxmw-lpbtn" data-astsend="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'">Send</button>\''
-+ '+\'<button type="button" class="lxmw-lpbtn ghost" data-astmore="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'" aria-label="More">\u22ef</button>\''
+// The overflow control is an ICON, not a third labelled button: at a third of the row it read as an equal
+// peer of Trade and Send, which it is not. Fixed 42px (the same .icon rule the pool rows use) leaves Trade
+// and Send an equal half each, and it carries the desktop table's own vertical-dots mark.
++ '+\'<button type="button" class="lxmw-lpbtn ghost icon" data-astmore="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'" aria-label="More actions" title="More actions">\''
++ '+\'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>\''
 + '+\'</div></div>\';});'
 + 'list.innerHTML=html;}'
 // ---- liquidity pools -------------------------------------------------------------------------------
