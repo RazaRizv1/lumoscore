@@ -29,7 +29,7 @@ const STYLE = '<style id="lx-mobdex-css">'
   // the rewriting. CSS wins outright — the design can rewrite that text node as often as it likes and
   // never see it painted. The svg carries width/height attributes, so font-size:0 does not shrink it.
   + '.mdx-mints-title{font-size:0!important}'
-  + '.mdx-mints-title::after{content:"Featured on Stellar";font-size:13px;font-weight:700;color:var(--text)}'
+  + '.mdx-mints-title::after{content:"Featured on Stellar";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}'
   // Hide the mock rows until ours land, so nobody sees Aptos tokens on a Stellar exchange even briefly.
   + 'body:not(.lxmd-ready) .mdx-mints-list,body:not(.lxmd-ready) .mdx-mover-list,'
   + 'body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}'
