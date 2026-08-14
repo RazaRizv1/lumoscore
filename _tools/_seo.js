@@ -28,7 +28,7 @@ const BRAND = 'LumosCore';
 const PAGES = {
   'landing': {
     title: 'LumosCore — Trade, Pool and Bridge on Stellar',
-    desc: 'Swap tokens, provide liquidity, bridge USDC across 10 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.',
+    desc: 'Swap tokens, provide liquidity, bridge USDC across 8 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.',
   },
   'home': {
     title: 'Dashboard — Your Stellar Portfolio | ' + BRAND,

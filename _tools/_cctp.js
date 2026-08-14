@@ -7,8 +7,12 @@
 // Layered ON TOP of the finalized bridge + _bridge*.js transforms (never edits them). See GUARDRAILS.md.
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
-const CCTP_DOMAINS={Ethereum:0,Avalanche:1,Optimism:2,Arbitrum:3,Base:6,Polygon:7,Solana:5,Sui:8,Linea:11,'World Chain':14};
-const HIDE=['BNB Chain','Hedera','Mantle','Near','Scroll','Sei','Starknet','zkSync Era'];
+// Solana (5) and Sui (8) are CCTP chains but are NOT offered as destinations. Claiming there is the user's
+// step, and neither has a route a user can actually take: their explorers cannot submit an arbitrary
+// instruction or Move call, and no wallet composes one. Offering a destination whose USDC cannot be
+// retrieved is worse than not offering it. Re-add them the day LumosCore can sign on those chains.
+const CCTP_DOMAINS={Ethereum:0,Avalanche:1,Optimism:2,Arbitrum:3,Base:6,Polygon:7,Linea:11,'World Chain':14};
+const HIDE=['BNB Chain','Hedera','Mantle','Near','Scroll','Sei','Starknet','zkSync Era','Solana','Sui'];
 
 const OLD_SUB='Swap assets seamlessly between networks via Wormhole and LayerZero.';
 const NEW_SUB='Bridge USDC natively across chains with Circle CCTP — burn on Stellar, mint on the destination.';
@@ -128,7 +132,9 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brhow>summary::-webkit-details-marker{display:none}'
 +'.lx-brhow>summary::before{content:"\\25b8";display:inline-block;margin-right:8px;transition:transform .15s;color:var(--accent,#ea6a2c)}'
 +'.lx-brhow[open]>summary::before{transform:rotate(90deg)}'
-+'.lx-brvid{display:inline-block;margin:12px 0 2px;text-decoration:none}'
++'.lx-brvid-top{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--accent,#ea6a2c);color:#fff!important;font:650 12px/1 inherit;text-decoration:none;white-space:nowrap;transition:filter .15s}'
++'.lx-brvid-top:hover{filter:brightness(1.07)}'
++'.lx-brvid-top svg{flex:0 0 auto}'
 +'.lx-brhow-l{margin:12px 0 0;padding-left:20px;font-size:12.8px;line-height:1.65;color:var(--text-soft,#6b6b76);max-width:78ch}'
 +'.lx-brhow-l li{margin-bottom:9px}'
 +'.lx-brhow-l b{color:var(--text,#0e0e10);font-weight:600}'
@@ -146,7 +152,7 @@ const CSS='<style id="lx-cctp-css">'
 
 // ---- Browser engine (no backticks / no ${ } inside the browser code; no literal closing script tag) ----
 const BODY=`(function(){
-try{ document.title="Bridge USDC across 10 chains with Circle CCTP | LumosCore"; }catch(_){}   /* baked title said "DEX" */
+try{ document.title="Bridge USDC across 8 chains with Circle CCTP | LumosCore"; }catch(_){}   /* baked title said "DEX" */
 try{ window.__lxCCTP={
   testnet:false, sourceDomain:27,
   tokenMessenger:"CAE2G5Z77UP7GYPYGFOWFGW7C7J6I4YP2AFGSADRKQY62SYUFLPNFTXL",
@@ -880,6 +886,42 @@ function lxCctpGateSign(label, doSign){
 //
 // Anything we cannot check (an RPC hiccup, a chain with no usable public endpoint) passes. Our own
 // infrastructure failing is not evidence against the user's address.
+// Exchange destinations ---------------------------------------------------------------------------------
+// Sending bridged USDC straight to an exchange deposit or hot wallet is a well-known way to lose it. The
+// mint arrives from a contract call rather than a normal transfer, often on a chain the account was never
+// meant to receive on, and exchanges routinely fail to credit those — with no way to reverse it. And the
+// user cannot claim from an address they do not hold the keys to.
+//
+// Every address below was checked on Ethereum mainnet before being listed: each has either a transaction
+// count in the thousands-to-millions or a balance no individual holds. A blocklist that guesses would stop
+// real users, so nothing goes in unverified. Exchanges reuse these addresses across EVM chains, so one
+// list covers every destination we offer.
+var LX_CEX={
+  "0xbe0eb53f46cd790cd13851d5eff43d12404d33e8":"Binance","0xf977814e90da44bfa03b6295a0616a897441acec":"Binance",
+  "0x28c6c06298d514db089934071355e5743bf21d60":"Binance","0x21a31ee1afc51d94c2efccaa2092ad1028285549":"Binance",
+  "0xdfd5293d8e347dfe59e90efd55b2956a1343963d":"Binance","0x56eddb7aa87536c09ccc2793473599fd21a8b17f":"Binance",
+  "0x4976a4a02f38326660d17bf34b431dc6e2eb2327":"Binance",
+  "0x71660c4005ba85c37ccec55d0c4493e66fe775d3":"Coinbase","0x503828976d22510aad0201ac7ec88293211d23da":"Coinbase",
+  "0xddfabcdc4d8ffc6d5beaf154f18b778f892a0740":"Coinbase","0x3cd751e6b0078be393132286c442345e5dc49699":"Coinbase",
+  "0xeb2629a2734e272bcc07bda959863f316f4bd4cf":"Coinbase","0xa9d1e08c7793af67e9d92fe308d5697fb81d3e43":"Coinbase",
+  "0xae2d4617c862309a3d75a0ffb358c7a5009c673f":"Kraken",
+  "0x6cc5f688a315f3dc28a7781717a9a798a59fda7b":"OKX","0x236f9f97e0e62388479bf9e5ba4889e46b0273c3":"OKX",
+  "0xf89d7b9c864f589bbf53a82105107622b35eaa40":"Bybit",
+  "0x2b5634c42055806a59e9107ed44d43c426e58258":"KuCoin",
+  "0x0d0707963952f2fba59dd06f2b425ace40b492fe":"Gate.io",
+  "0x876eabf441b2ee5b5b0554fd502a8e0600950cfa":"Bitfinex",
+  "0xab5c66752a9e8167967685f1450532fb96d5d24f":"HTX",
+  "0x5bdf85216ec1e38d6458c870992a69e38e03f7ef":"Bitget",
+  "0x2efb50e952580f4ff32d8d2122853432bbf2e204":"Robinhood",
+  "0x390de26d772d2e2005c6d1d24afc902bae37a4bb":"Upbit",
+  "0x6262998ced04146fa42253a5c0af90ca02dfd2a3":"Crypto.com",
+  "0x0211f3cedbef3143223d3acf0e589747933e8527":"MEXC"
+};
+// No list stays current. A live signal catches the rest: nobody sends a hundred thousand transactions from
+// a wallet they hold personally, so a nonce that high is an exchange, a bridge or a bot — none of which is
+// somewhere to receive a claimable transfer.
+var LX_CEX_NONCE=100000;
+
 var LX_MINUSD=0.5;
 var LX_NATIVE={0:"ethereum",1:"avalanche-2",2:"ethereum",3:"ethereum",5:"solana",6:"ethereum",7:"polygon-ecosystem-token",11:"ethereum",14:"ethereum"};
 var LX_NATSYM={0:"ETH",1:"AVAX",2:"ETH",3:"ETH",5:"SOL",6:"ETH",7:"POL",11:"ETH",14:"ETH"};
@@ -907,6 +949,23 @@ function lxBrDestFunded(domain,addr){
   }).catch(function(){ return {ok:true}; }); }
 window.lxBrDestFunded=lxBrDestFunded;
 
+// Named exchange first (instant, certain), then the nonce signal (one call, catches what the list misses).
+function lxBrDestExchange(domain,addr){
+  var cfg=LX_EVM[domain]; if(!cfg) return Promise.resolve({ok:true});
+  var named=LX_CEX[String(addr||"").toLowerCase()];
+  if(named) return Promise.resolve({ok:false,msg:"That looks like a "+named+" address. A cross-chain transfer cannot be sent to an exchange \\u2014 the USDC arrives from a contract call that exchanges usually will not credit, and you would have no way to claim it. Use a wallet you hold the keys to, then send to "+named+" from there."});
+  return lxJrpc(cfg.rpc,"eth_getTransactionCount",[addr,"latest"]).then(function(d){
+    var n=(d&&d.result)?parseInt(d.result,16):0;
+    if(n>=LX_CEX_NONCE) return {ok:false,msg:"That address has sent "+n.toLocaleString("en-US")+" transactions, which means it is an exchange, a bridge or an automated service rather than a personal wallet. Send to a wallet you control \\u2014 you need its keys to claim the USDC."};
+    return {ok:true};
+  }).catch(function(){ return {ok:true}; }); }
+window.lxBrDestExchange=lxBrDestExchange;
+
+// One gate, cheapest and most certain check first.
+function lxBrDestCheck(domain,addr){
+  return lxBrDestExchange(domain,addr).then(function(x){ return x.ok?lxBrDestFunded(domain,addr):x; }); }
+window.lxBrDestCheck=lxBrDestCheck;
+
 function lxBrConfirm(btn){
   var B=window.__lxBr, k=B.srcKey, A=LX_ASSETS[k]||LX_ASSETS.USDC, C=window.__lxCCTP, net=lxBrDestNet();
   var domain=(C&&C.domains)?C.domains[net]:null;
@@ -922,7 +981,7 @@ function lxBrConfirm(btn){
   // last moment a wrong address costs nothing
   if(btn) btn.disabled=true;
   say("Checking the destination address\\u2026");
-  lxBrDestFunded(domain,recipient).then(function(chk){
+  lxBrDestCheck(domain,recipient).then(function(chk){
     if(btn) btn.disabled=false;
     if(!chk.ok){ say(chk.msg); return; }
     say(""); go();
@@ -970,7 +1029,10 @@ function lxCctpWireStep3(){
 // meant the recovery store was invisible: the user saw the burn hash once, in a modal, and then never again.
 // This surfaces every unredeemed transfer, re-checks Circle for a late attestation, and hands over the exact
 // payload needed to claim the USDC. Panel stays hidden entirely when there is nothing pending.
-function lxBrDomName(d){ var C=window.__lxCCTP,m=(C&&C.domains)||{}; for(var k in m){ if(m[k]===d) return k; } return "chain "+d; }
+// Includes domains no longer offered as destinations: a transfer burned before Solana/Sui were withdrawn
+// still has to name its chain properly in the pending list rather than read "chain 5".
+var LX_DOMNAME={0:"Ethereum",1:"Avalanche",2:"Optimism",3:"Arbitrum",5:"Solana",6:"Base",7:"Polygon",8:"Sui",11:"Linea",14:"World Chain"};
+function lxBrDomName(d){ var C=window.__lxCCTP,m=(C&&C.domains)||{}; for(var k in m){ if(m[k]===d) return k; } return LX_DOMNAME[d]||("chain "+d); }
 function lxBrEsc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function lxBrShortH(h){ h=String(h||""); return h.length>16?(h.slice(0,8)+"\\u2026"+h.slice(-6)):h; }
 // stored amounts are 7dp strings ("124.500000") — show them the way the rest of the bridge does
@@ -1059,10 +1121,16 @@ function lxBrPendPanel(){ var p=document.getElementById("lxBrPending"); if(p) re
   return null; }
 // Paste a video URL here (YouTube, Loom, anything with a public link) and a "Watch how to claim" button
 // appears in the panel. Leave it empty and the written steps stand on their own.
-var LX_CLAIMVID="";
+var LX_CLAIMVID="";   // <-- paste the tutorial video URL here; the Watch tutorial button appears once it is set
+// Sits in the panel header, next to the count — the first thing you see, not something you have to open.
+function lxBrVidBtn(){
+  return LX_CLAIMVID
+    ? '<a class="lx-brvid-top" target="_blank" rel="noopener" href="'+lxBrEsc(LX_CLAIMVID)+'">'
+      +'<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>'
+      +'Watch tutorial</a>'
+    : ''; }
 function lxBrHowTo(){
   return '<details class="lx-brhow"><summary>How to claim your USDC</summary>'
-  +(LX_CLAIMVID?'<a class="lx-brp-b primary lx-brvid" target="_blank" rel="noopener" href="'+lxBrEsc(LX_CLAIMVID)+'">Watch how to claim</a>':'')
   +'<ol class="lx-brhow-l">'
   +'<li><b>Get a little gas on the destination chain.</b> Claiming is a transaction on that chain, so the receiving address needs its native token \\u2014 ETH on Ethereum and the L2s, POL on Polygon, AVAX on Avalanche. A few cents is enough everywhere except Ethereum mainnet.</li>'
   +'<li><b>Wait for the chip to read \\u201cReady to claim\\u201d.</b> Circle signs an attestation a minute or two after the burn. Press Check status if it is still waiting.</li>'
@@ -1096,7 +1164,7 @@ function lxBrRenderPending(){ try{
     +(evm?'':'<div class="lx-brp-relay warn">Claiming on '+lxBrEsc(lxBrDomName(r.destDomain))+' cannot be done from a wallet or a block explorer \\u2014 it needs Circle\\u2019s CLI or SDK. Copy redeem data gives you everything the call requires. Your USDC is safe with Circle until then.</div>')
     +'<div class="lx-brp-msg" style="display:none"></div>'
     +'</div>'; }).join("");
-  p.innerHTML='<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span></div>'
+  p.innerHTML='<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span>'+lxBrVidBtn()+'</div>'
     +'<p class="lx-brp-note">CCTP burns your USDC on Stellar and Circle holds it until the mint is submitted on the destination chain. That last step is yours to make: press Claim, approve it in your EVM wallet, and the USDC appears. You need a little gas on the destination chain to do it. Nothing here expires \\u2014 an unclaimed transfer waits indefinitely.</p>'
     +lxBrHowTo()
     +rows;
