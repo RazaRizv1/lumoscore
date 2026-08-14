@@ -8,12 +8,15 @@
 // the design's mock values never flash; painter-proof icons (::before driven by --lxvar); ES5 var in the
 // browser code, no emoji/astral chars and no \\u escapes that would break JSON re-serialization.
 const fs = require('fs');
-const { read, getContents } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, VTICK_SVG } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-dex.html', 'lumoscore-dex-dark.html', 'lumoscore-dex-mobile.html'];
 
 const STYLE = `<style id="lx-dexmain-css">
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
+.lx-vtick svg{width:9px;height:9px;display:block}
+
 /* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
 #dexMintsList:not(.lxd) .dex-mint-row{visibility:hidden}
 #dexMoverGrid:not(.lxd) .dex-mover-card{visibility:hidden}
@@ -113,6 +116,11 @@ svg.lm-svg.lx-dxc{overflow:visible}
 </style>`;
 
 const SCRIPT = `<script id="lx-dexmain">(function(){
+  // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
+  // between screens would make an asset trustworthy here and not there.
+  var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
+  var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+  function vtick(c,i){ return VFD[c+"|"+i]?VTICK:""; }
   if(window.__lxDEX)return;window.__lxDEX=true;
   var H="https://horizon.stellar.org";                       // MAINNET (+ lobstr fallback in j())
   var CG="https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_change=true";
@@ -313,7 +321,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         return '<div class="dex-mover-card" data-tkr="'+a.code+'" data-cat="'+a.cat+'">'
           +'<div class="dex-mover-head">'
             +'<span class="dex-mover-ico" data-lxic="'+a.code+'" style="background:linear-gradient(135deg,'+a.b+','+a.b+'cc)">'+initials(a.code)+'</span>'
-            +'<div class="dex-mover-pair">'+a.code+'<span class="sub">\\u2014</span></div>'
+            +'<div class="dex-mover-pair">'+a.code+vtick(a.code,a.issuer)+'<span class="sub">\\u2014</span></div>'
             +'<span class="dex-mover-pct">\\u2014</span>'
           +'</div>'
           +'<div class="dex-mover-body">'
@@ -370,7 +378,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         return '<tr data-tkr="'+a.code+'" data-iss="'+a.issuer+'" data-cat="'+a.cat+'">'
           +'<td><div class="dex-mk-pair-cell">'
             +'<span class="dex-mk-pair-ic" data-lxic="'+a.code+'" style="background:linear-gradient(135deg,'+a.b+','+a.b+'aa)">'+initials(a.code)+'</span>'
-            +'<div class="dex-mk-pair-name"><div class="dex-mk-pair-head">'+a.code+'</div><span class="sub">'+(a.domain?a.domain:shortG(a.issuer))+'</span></div>'
+            +'<div class="dex-mk-pair-name"><div class="dex-mk-pair-head">'+a.code+vtick(a.code,a.issuer)+'</div><span class="sub">'+(a.domain?a.domain:shortG(a.issuer))+'</span></div>'
           +'</div></td>'
           +'<td><div class="dex-mk-price">\\u2014</div></td>'
           +'<td><div class="dex-mk-change">\\u2014</div></td>'

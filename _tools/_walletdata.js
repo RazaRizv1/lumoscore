@@ -5,7 +5,7 @@
 //  - Recent Activity: real operations (sent/received/swap/lp/order), grouped by day.
 //  - Holdings / open-orders / pools counts.
 // Public + CORS Horizon + CoinGecko. Stellar-only; leaves sample data otherwise. Idempotent.
-const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
+const fs=require('fs');const{read,getContents,VERIFIED}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 // Vendored QR encoder (qrcode-generator, MIT) so the Receive popup QR is real, not decorative.
 const QRLIB='<script id="lx-qrlib">'+fs.readFileSync(__dirname+'/_qrlib.js','utf8')+'<\/script>';
 
@@ -313,14 +313,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // A ticker is not an identity on Stellar: anyone can issue an asset called USDC, and hundreds have. So
 // verification is keyed on code+ISSUER, never code, and every pair below was checked against its own
 // issuer's home_domain on mainnet before being listed.
-+'var LX_VFD={'
-+'"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com",'
-+'"EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com",'
-+'"yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz",'
-+'"yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz",'
-+'"SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co",'
-+'"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io",'
-+'"AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};'
++'var LX_VFD='+JSON.stringify(VERIFIED)+';'
 +'function lxVfd(code,iss){return (code&&iss)?(LX_VFD[code+"|"+iss]||""):"";}'
 // everything else gets its home domain from the issuer account itself, cached a week
 +'var LX_HDQ={};'

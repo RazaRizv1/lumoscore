@@ -4,7 +4,7 @@
 // real mainnet assets show, and rows are <a href=dex-asset?asset=CODE-ISSUER> (the nav
 // resolver respects a[href], so clicking opens the asset page rather than the Trade page).
 const fs = require('fs');
-const { read, getContents } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const STYLE = `<style id="lx-searchassets-css">
@@ -35,15 +35,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
   function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
   // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
   // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
-  var VFD={
-    "USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":1,
-    "EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":1,
-    "yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":1,
-    "yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":1,
-    "SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":1,
-    "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":1,
-    "AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":1
-  };
+  var VFD=${JSON.stringify(VERIFIED)};
   var VTICK='<span class="lx-seavfd" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
   function row(t){
     var g=GRAD[(t.code.charCodeAt(0)||0)%GRAD.length];
