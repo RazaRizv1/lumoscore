@@ -4616,6 +4616,64 @@ function lxBrAddRecentTx(o){
   try{ lxBrTxPage=1; lxBrTxApply(); }catch(_){}
 }
 window.lxBrAddRecentTx=lxBrAddRecentTx; window.lxBrReview=lxBrReview;
+// ---- history from the chain ----------------------------------------------------------------------
+function lxB64(v){ try{ var s=atob(v), a=new Uint8Array(s.length); for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i); return a; }catch(_){ return new Uint8Array(0); } }
+function lxB64Str(v){ try{ return atob(v); }catch(_){ return ""; } }
+function lxHex(a){ var o=""; for(var i=0;i<a.length;i++){ var h=a[i].toString(16); o+=(h.length<2?"0":"")+h; } return o; }
+// ScVal wire layout: 4-byte type discriminant, then the value. u32 is 4 bytes big-endian; a byte
+// string is a 4-byte length then the payload, and the EVM recipient is the low 20 bytes of a bytes32.
+function lxScU32(a){ return a.length<8?0:((a[4]<<24)>>>0)+(a[5]<<16)+(a[6]<<8)+a[7]; }
+function lxScBytes(a){ return a.length<8?new Uint8Array(0):a.slice(8); }
+
+function lxBrChainHistory(){
+  var addr=""; try{ addr=localStorage.getItem("lumos.address")||""; }catch(_){}
+  if(!/^G[A-Z2-7]{55}$/.test(addr)) return Promise.resolve([]);
+  var url="https://horizon.stellar.org/accounts/"+addr+"/operations?limit=200&order=desc";
+  return fetch(url).then(function(r){ return r.ok?r.json():null; }).then(function(d){
+    var recs=((d&&d._embedded)||{}).records||[], out=[];
+    for(var i=0;i<recs.length;i++){
+      var o=recs[i];
+      if(o.type!=="invoke_host_function"||!o.transaction_successful) continue;
+      var P=o.parameters||[]; if(P.length<6) continue;
+      var isBurn=false;
+      for(var j=0;j<P.length;j++){ if(lxB64Str(P[j].value).indexOf("deposit_for_burn")>=0){ isBurn=true; break; } }
+      if(!isBurn) continue;
+
+      var dom=lxScU32(lxB64(P[4].value));
+      var mr=lxScBytes(lxB64(P[5].value));
+      var rcpt=mr.length>=20?("0x"+lxHex(mr.slice(mr.length-20))):"";
+      // the transfer leg of the balance change is the USDC that left the wallet
+      var amt=0, ch=o.asset_balance_changes||[];
+      for(var k=0;k<ch.length;k++){ if(ch[k].type==="transfer"&&ch[k].amount){ amt=parseFloat(ch[k].amount)||0; break; } }
+      if(!amt) for(var k2=0;k2<ch.length;k2++){ if(ch[k2].amount){ amt=parseFloat(ch[k2].amount)||0; break; } }
+
+      out.push({ ts:Date.parse(o.created_at)||0, hash:o.transaction_hash,
+                 amount:amt, srcAmount:String(amt), srcKey:"USDC",
+                 net:LX_DOMNAME[dom]||("Domain "+dom), recipient:rcpt, onchain:true });
+    }
+    return out;
+  }).catch(function(){ return []; });
+}
+// Chain first, local store second: a locally-saved record carries what the user actually PAID
+// (they may have swapped XLM into USDC), which the burn alone does not tell us, so matching records
+// are merged rather than replaced. Anything local that is not on chain yet is still shown.
+function lxBrMergedTxs(){
+  var local=[]; try{ local=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); }catch(_){}
+  return lxBrChainHistory().then(function(chain){
+    if(!chain.length) return local;
+    var byHash={}; local.forEach(function(o){ if(o&&o.hash) byHash[o.hash]=o; });
+    var merged=chain.map(function(c){
+      var l=byHash[c.hash];
+      if(l){ c.srcAmount=l.srcAmount||c.srcAmount; c.srcKey=l.srcKey||c.srcKey; delete byHash[c.hash]; }
+      return c;
+    });
+    Object.keys(byHash).forEach(function(h){ merged.push(byHash[h]); });
+    merged.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
+    return merged;
+  });
+}
+window.lxBrChainHistory=lxBrChainHistory; window.lxBrMergedTxs=lxBrMergedTxs;
+
 // ---- MOBILE recent transactions ------------------------------------------------------------------
 // The phone has no .br-table: each transaction is a .brm-txc card. Everything above targets the table
 // and bailed on its first line here, so the design's seeded mock transfers were what users saw. The
@@ -4639,7 +4697,9 @@ function lxBrMobCard(o){
 }
 function lxBrRenderMobileTxs(){ try{
   var host=document.querySelector('.lx-brmhost'); if(!host) return;
-  var a=[]; try{ a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); }catch(_){ a=[]; }
+  lxBrMergedTxs().then(function(a){ lxBrPaintMobileTxs(host, a||[]); });
+}catch(_){} }
+function lxBrPaintMobileTxs(host, a){ try{
   if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
   if(!a.length){ host.innerHTML='<div class="brm-txc" style="text-align:center;color:var(--text-soft);font-size:13px">No cross-chain transactions yet.</div>'; return; }
   var out=""; for(var i=0;i<a.length;i++){ var o=a[i]; o.when=lxBrRelTime(o.ts); out+=lxBrMobCard(o); }
