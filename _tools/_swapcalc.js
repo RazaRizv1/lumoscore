@@ -170,7 +170,12 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'
 +'function calc(set,panel,amt,rate,fSym,tSym){'
 +'if(amt>0&&isFinite(rate)){var fr=(window.__lxFeeRate||0.005),fee=amt*fr,out=(amt-fee)*rate,slip=0.5,minR=out*(1-slip/100);'
 +'var piPct=Math.min(2.5,out*0.00002);var piTxt=piPct<0.01?"&lt; 0.01%":piPct.toFixed(2)+"%";'
-+'set("feelbl","Swap fee ("+(fr*100).toFixed(1).replace(/\\.0$/,"")+"%)");'
+// toFixed(1) rounded the discounted 0.25% tier to "0.3%". The amount charged was always right; the LABEL
+// misstated the rate, on the one line of the panel a user reads to check what they are paying. Two decimals,
+// trailing zeros trimmed by hand -- no regex here, since a "\." inside this template literal is exactly how
+// an escape gets lost on the way to the browser.
++'function pctTxt(v){var t=(+v).toFixed(2);while(t.length&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);if(t.charAt(t.length-1)===".")t=t.slice(0,-1);return t;}'
++'set("feelbl","Swap fee ("+pctTxt(fr*100)+"%)");'
 +'set("feenote",fr<=0.0025?\'<div class="lx-fee-banner holder"><span class="lx-fee-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4 0-7-2.7-7-6.5 0-2.3 1.2-4 2.4-5.4.3.9 1 1.6 1.9 1.6 1.4 0 1.7-1 1.6-3.5-.1-2.4 1-4.6 3.1-6.2-.4 2 .3 3.2 1.6 4.6C19 9.6 19 11.8 19 16.5c0 3.8-3 6.5-7 6.5z"></path></svg></span><span class="txt">You qualify for lower fees for holding <b>250K LUMOS</b>. Discounted fee: <b>0.25%</b></span></div>\':\'<div class="lx-fee-banner nudge"><span class="lx-fee-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4 0-7-2.7-7-6.5 0-2.3 1.2-4 2.4-5.4.3.9 1 1.6 1.9 1.6 1.4 0 1.7-1 1.6-3.5-.1-2.4 1-4.6 3.1-6.2-.4 2 .3 3.2 1.6 4.6C19 9.6 19 11.8 19 16.5c0 3.8-3 6.5-7 6.5z"></path></svg></span><span class="txt"><b>Trade like a whale \\ud83d\\udc0b</b> Hold <b>250,000 LUMOS</b> and cut your swap fee from 0.5% to just <b>0.25%</b>.</span><a class="lx-fee-buy" href="lumoscore-lumos-token.html">Buy LUMOS</a></div>\');'
 +'set("rate","1 "+fSym+" \\u2248 "+fmt(rate)+" "+tSym);set("slip",slip+"%");set("fee",fmt(fee)+" "+fSym);'
 +'set("net","~0.00001 "+fSym);set("pi",piTxt);var pe=panel.querySelector(\'[data-k="pi"]\');if(pe)pe.style.color=piPct<0.5?"var(--green,#35c07f)":"var(--yellow,#ffb547)";'
