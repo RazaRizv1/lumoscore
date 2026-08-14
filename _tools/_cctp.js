@@ -123,6 +123,17 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brp-b.primary{background:var(--accent,#ea6a2c);border-color:var(--accent,#ea6a2c);color:#fff}'
 +'.lx-brp-b.primary:hover:not(:disabled){filter:brightness(1.06);color:#fff}'
 +'.lx-bfee .lx-bamt{opacity:.72;font-weight:500;margin-left:2px}'
++'.lx-brhow{margin:2px 0 16px;padding:12px 14px;border:1px solid var(--border,#e6e6ea);border-radius:12px;background:var(--surface-2,#f6f6f8)}'
++'.lx-brhow>summary{cursor:pointer;font-size:13px;font-weight:650;color:var(--text,#0e0e10);list-style:none}'
++'.lx-brhow>summary::-webkit-details-marker{display:none}'
++'.lx-brhow>summary::before{content:"\\25b8";display:inline-block;margin-right:8px;transition:transform .15s;color:var(--accent,#ea6a2c)}'
++'.lx-brhow[open]>summary::before{transform:rotate(90deg)}'
++'.lx-brvid{display:inline-block;margin:12px 0 2px;text-decoration:none}'
++'.lx-brhow-l{margin:12px 0 0;padding-left:20px;font-size:12.8px;line-height:1.65;color:var(--text-soft,#6b6b76);max-width:78ch}'
++'.lx-brhow-l li{margin-bottom:9px}'
++'.lx-brhow-l b{color:var(--text,#0e0e10);font-weight:600}'
++'.lx-brhow-l .mono,.lx-brhow-p .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.6px;word-break:break-all}'
++'.lx-brhow-p{margin:10px 0 0;font-size:12.3px;line-height:1.6;color:var(--text-soft,#6b6b76);max-width:78ch}'
 +'.lx-brp-relay{flex:1 1 100%;margin-top:2px;font-size:12.3px;line-height:1.5;color:var(--text-soft,#6b6b76)}'
 +'.lx-brp-relay.ok{color:#2a9a63}'
 +'.lx-brp-relay.warn{color:#c9791f}'
@@ -459,10 +470,6 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
         var rec={ burnHash:res.hash, approveHash:res.approveHash||null, netUsdc:netHuman, feeRate:feeRate,
                   destDomain:parseInt(destDomain,10), recipient:recipient, status:"burned", ts:Date.now() };
         lxBrSavePending(rec);
-        // hand it to the delivery relayer straight away. Fire-and-forget on purpose: if the relayer is not
-        // provisioned, or the request fails, the transfer still sits in the pending list with a Claim button,
-        // exactly as it did before. Auto-delivery is an upgrade on a flow that already works.
-        lxRelayEnqueue(res.hash,parseInt(destDomain,10));
         // fee now that the burn is confirmed. A fee failure must NEVER fail the bridge (the USDC is already
         // burned) — record it and carry on so the user still gets their attestation + redeem data.
         // a fee failure must NEVER fail the bridge — but it must not vanish either: what could not be
@@ -867,10 +874,9 @@ function lxCctpGateSign(label, doSign){
 // chain, burns the USDC into something nobody can spend — and unlike a Stellar payment there is no
 // account-not-found error to stop it, because any 20-byte string is a valid EVM address.
 //
-// Requiring the destination to already hold a little gas is a cheap proof that it is a real, used account
-// on THAT chain. Note what this is not: with automatic delivery the recipient needs no gas to receive, so
-// this rejects some legitimate brand-new wallets. That is the deliberate trade — a funded-address rule
-// costs those users a top-up; no rule at all costs someone their whole transfer.
+// Requiring the destination to already hold a little gas does two jobs. It is a cheap proof the address is
+// a real, used account on THAT chain, and — because claiming is the user's own transaction — it is proof
+// they can actually complete the transfer once the USDC is burned. An address with no gas cannot claim.
 //
 // Anything we cannot check (an RPC hiccup, a chain with no usable public endpoint) passes. Our own
 // infrastructure failing is not evidence against the user's address.
@@ -1036,79 +1042,6 @@ function lxEvmMint(rec,onStatus){
 }
 window.lxEvmMint=lxEvmMint; window.lxAbiReceive=lxAbiReceive;
 
-// ---- automatic delivery ------------------------------------------------------------------------------
-// The claim above works, but it asks a Stellar user to install an EVM wallet, fund it with gas on a chain
-// they may never have used, and press a button — for a step the protocol considers part of the transfer.
-// So LumosCore runs a relayer that submits receiveMessage() for them. This is only the client half: queue
-// the burn, then show what the relayer has done with it.
-//
-// receiveMessage mints to the recipient encoded inside Circle's attested message, so the relayer cannot
-// redirect anything; it can only pay the gas. Everything here degrades to the manual flow — if the endpoint
-// is missing, off, or the relayer declines (dust on Ethereum, say), the Claim button is what the user sees.
-var LX_RELAY={};              // burnHash -> {status,reason,deliverHash}
-var lxRelayOn=null;           // null = not asked yet, false = no relayer on this deployment
-var lxRelayFails=0;
-function lxRelayEnqueue(hash,domain){ try{
-  fetch("/lxapi/cctp/enqueue",{method:"POST",headers:{"content-type":"application/json"},
-    body:JSON.stringify({burnHash:String(hash||"").toLowerCase(),destDomain:domain})})
-    .then(function(r){ return r.json(); })
-    .then(function(d){ if(!d)return; lxRelayOn=(d.relayer==="on");
-      if(d.relayer==="on"){ LX_RELAY[String(hash).toLowerCase()]={status:d.status||"queued"}; lxBrRenderPending(); } })
-    .catch(function(){});
-}catch(_){} }
-// one request for every pending row, not one per row
-function lxRelayFetch(){
-  var list=lxBrListPending().filter(function(r){ return !r.relayDone; });
-  if(!list.length||lxRelayOn===false) return Promise.resolve(false);
-  var hs=list.map(function(r){ return String(r.burnHash||"").toLowerCase(); }).slice(0,20).join(",");
-  return fetch("/lxapi/cctp/status?hash="+hs).then(function(r){ return r.json(); }).then(function(d){
-    if(!d||d.relayer!=="on"){ lxRelayOn=false; return false; }
-    lxRelayOn=true; var changed=false;
-    var items=d.items||{};
-    for(var h in items){ var prev=LX_RELAY[h]; var now=items[h];
-      if(!prev||prev.status!==now.status||prev.deliverHash!==now.deliverHash){ changed=true; }
-      LX_RELAY[h]=now; }
-    lxRelayFails=0;
-    return changed;
-  }).catch(function(){
-    // no endpoint, or it is down. Tolerate a blip, but stop polling rather than loop forever against a
-    // deployment that simply has no relayer — the Claim button is still there and still works.
-    if(++lxRelayFails>=3) lxRelayOn=false;
-    return false; });
-}
-function lxRelayOf(hash){ return LX_RELAY[String(hash||"").toLowerCase()]||null; }
-// true while the relayer still intends to deliver this one
-function lxRelayWorking(st){ return st==="queued"||st==="awaiting-attestation"||st==="retrying"||st==="sent"; }
-function lxRelayChip(rec,ready){
-  var s=lxRelayOf(rec.burnHash), st=s&&s.status;
-  if(st==="delivered") return {cls:"ok",txt:"Delivered automatically"};
-  if(lxRelayWorking(st)) return {cls:"wait",txt:(st==="awaiting-attestation"?"Awaiting Circle attestation":"Delivering automatically\\u2026")};
-  return {cls:(ready?"ok":"wait"),txt:(ready?"Ready to redeem":"Awaiting Circle attestation")};
-}
-// the relayer declined (below the gas floor for that chain, or it gave up) — say why, plainly
-function lxRelayNote(rec){ var s=lxRelayOf(rec.burnHash); if(!s) return "";
-  if(s.status==="manual"&&s.reason) return '<div class="lx-brp-relay warn">Automatic delivery skipped \\u2014 '+lxBrEsc(s.reason)+'. Claim it yourself below; nothing was lost.</div>';
-  if(s.status==="delivered") return '<div class="lx-brp-relay ok">LumosCore submitted the mint for you'+(s.deliverHash?' \\u00b7 <span class="mono">'+lxBrEsc(lxBrShortH(s.deliverHash))+'</span>':'')+'.</div>';
-  if(lxRelayWorking(s.status)) return '<div class="lx-brp-relay">LumosCore is delivering this for you \\u2014 no wallet or gas needed on the destination chain. You can still claim it yourself at any time.</div>';
-  return ""; }
-// poll while anything is still moving; stop once every row is settled so an idle tab is silent
-function lxRelayPoll(){
-  var pend=lxBrListPending();
-  if(!pend.length||lxRelayOn===false) return;
-  lxRelayFetch().then(function(changed){
-    // a burn made before the relayer existed (or while it was down) is queued on first sight, once
-    pend.forEach(function(r){ var s=lxRelayOf(r.burnHash);
-      if(lxRelayOn&&s&&s.status==="unknown"&&!r.relayQ){ r.relayQ=1; lxBrSavePending(r); lxRelayEnqueue(r.burnHash,r.destDomain); } });
-    var done=[];
-    pend.forEach(function(r){ var s=lxRelayOf(r.burnHash); if(s&&s.status==="delivered"&&!r.relayDone){ r.relayDone=1; lxBrSavePending(r); done.push(r); } });
-    if(changed||done.length) lxBrRenderPending();
-    // give the user a beat to read "Delivered", then retire the row — the Recent transactions entry stays
-    if(done.length) setTimeout(function(){ done.forEach(function(r){ lxBrClearPending(r.burnHash); }); lxBrRenderPending(); },6000);
-    var busy=lxBrListPending().some(function(r){ var s=lxRelayOf(r.burnHash); return !s||lxRelayWorking(s.status); });
-    if(busy&&lxRelayOn!==false) setTimeout(lxRelayPoll,15000);
-  });
-}
-window.lxRelayEnqueue=lxRelayEnqueue; window.lxRelayPoll=lxRelayPoll; window.lxRelayOf=lxRelayOf;
 
 function lxBrRedeemJSON(r){ var C=window.__lxCCTP||{};
   return JSON.stringify({ burnHash:r.burnHash, sourceChain:"Stellar", sourceDomain:C.sourceDomain,
@@ -1124,42 +1057,48 @@ function lxBrPendPanel(){ var p=document.getElementById("lxBrPending"); if(p) re
   var card=document.querySelector(".br-card")||document.querySelector(".br-wizard");
   if(card&&card.parentNode){ card.parentNode.insertBefore(p,card.nextSibling); return p; }
   return null; }
+// Paste a video URL here (YouTube, Loom, anything with a public link) and a "Watch how to claim" button
+// appears in the panel. Leave it empty and the written steps stand on their own.
+var LX_CLAIMVID="";
+function lxBrHowTo(){
+  return '<details class="lx-brhow"><summary>How to claim your USDC</summary>'
+  +(LX_CLAIMVID?'<a class="lx-brp-b primary lx-brvid" target="_blank" rel="noopener" href="'+lxBrEsc(LX_CLAIMVID)+'">Watch how to claim</a>':'')
+  +'<ol class="lx-brhow-l">'
+  +'<li><b>Get a little gas on the destination chain.</b> Claiming is a transaction on that chain, so the receiving address needs its native token \\u2014 ETH on Ethereum and the L2s, POL on Polygon, AVAX on Avalanche. A few cents is enough everywhere except Ethereum mainnet.</li>'
+  +'<li><b>Wait for the chip to read \\u201cReady to claim\\u201d.</b> Circle signs an attestation a minute or two after the burn. Press Check status if it is still waiting.</li>'
+  +'<li><b>Press Claim.</b> LumosCore connects your EVM wallet, switches it to the right network, checks the claim will succeed before anything is signed, and then asks you to approve one transaction. The USDC arrives when it confirms.</li>'
+  +'<li><b>Or do it by hand.</b> Copy redeem data, then open the destination chain\\u2019s explorer at <span class="mono">'+LX_MT+'</span> \\u2014 the same address on every EVM chain \\u2014 go to Contract \\u203a Write, connect your wallet, and call <span class="mono">receiveMessage</span> with the <span class="mono">message</span> and <span class="mono">attestation</span> from the copied data.</li>'
+  +'</ol>'
+  +'<p class="lx-brhow-p">Claiming is permissionless: the mint always goes to the address encoded in Circle\\u2019s attestation, so it does not matter which wallet pays the gas. If a claim fails, nothing is lost \\u2014 the burn stays valid and you can try again.</p>'
+  +'</details>'; }
+
 function lxBrRenderPending(){ try{
   var p=lxBrPendPanel(); if(!p) return false;
-  // Now that delivery is automatic, a transfer the relayer has in hand needs nothing from the user, and a
-  // standing "Awaiting redemption" list of things they cannot act on is just noise — the transfer already
-  // appears in Recent transactions and in Wallet activity. Show a row ONLY when the user is the one who
-  // has to move: the relayer declined it, gave up on it, or is not running on this deployment.
-  var list=lxBrListPending().filter(function(r){
-    var s=lxRelayOf(r.burnHash);
-    return !s || s.status==="unknown" || s.status==="manual";
-  });
+  var list=lxBrListPending();
   if(!list.length){ p.style.display="none"; p.innerHTML=""; return true; }
   var rows=list.map(function(r){
     var ready=!!(r.status==="attested"&&r.message&&r.attestation);
-    var rs=lxRelayOf(r.burnHash), working=!!(rs&&lxRelayWorking(rs.status)), deliv=!!(rs&&rs.status==="delivered"), chip=lxRelayChip(r,ready);
+    var evm=!!LX_EVM[r.destDomain];
     return '<div class="lx-brp-row" data-h="'+lxBrEsc(r.burnHash)+'">'
     +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC <span class="lx-brp-ar">\\u2192</span> '+lxBrEsc(lxBrDomName(r.destDomain))+'</div>'
     +'<div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \\u00b7 <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
     +(r.feeError?' \\u00b7 <span class="lx-brp-warn">platform fee not collected</span>':'')+'</div></div>'
-    +'<span class="lx-brp-chip '+chip.cls+'">'+chip.txt+'</span>'
+    +'<span class="lx-brp-chip '+(ready?'ok':'wait')+'">'+(ready?'Ready to claim':'Awaiting Circle attestation')+'</span>'
     +'<div class="lx-brp-btns">'
-    +((ready||deliv)?'':'<button type="button" class="lx-brp-b" data-act="check">Check status</button>')
-    // while the relayer is on it, claiming yourself is still allowed — just no longer the thing to do.
-    // once it IS delivered, offering a claim would only invite a transaction that must revert.
-    +((ready&&!deliv&&LX_EVM[r.destDomain])?'<button type="button" class="lx-brp-b'+(working?'':' primary')+'" data-act="mint">Claim'+(working?' it myself':' on '+lxBrEsc(LX_EVM[r.destDomain].n))+'</button>':'')
+    +(ready?'':'<button type="button" class="lx-brp-b" data-act="check">Check status</button>')
+    +((ready&&evm)?'<button type="button" class="lx-brp-b primary" data-act="mint">Claim on '+lxBrEsc(LX_EVM[r.destDomain].n)+'</button>':'')
     +'<button type="button" class="lx-brp-b" data-act="copy">Copy redeem data</button>'
     +'<button type="button" class="lx-brp-b ghost" data-act="done">Mark redeemed</button>'
     +'</div>'
-    +lxRelayNote(r)
+    // Solana and Sui have no "connect wallet and press a button" route — not here, and not on their block
+    // explorers either, which offer no way to submit an arbitrary instruction. Saying "use Copy redeem
+    // data" as though that were equivalent would be misleading, so say what it actually takes.
+    +(evm?'':'<div class="lx-brp-relay warn">Claiming on '+lxBrEsc(lxBrDomName(r.destDomain))+' cannot be done from a wallet or a block explorer \\u2014 it needs Circle\\u2019s CLI or SDK. Copy redeem data gives you everything the call requires. Your USDC is safe with Circle until then.</div>')
     +'<div class="lx-brp-msg" style="display:none"></div>'
     +'</div>'; }).join("");
-  var anyRelay=list.some(function(r){ var s=lxRelayOf(r.burnHash); return !!s&&s.status!=="unknown"; });
-  p.innerHTML='<div class="lx-brp-head"><h2>Needs your action</h2><span class="lx-brp-n">'+list.length+'</span></div>'
-    +'<p class="lx-brp-note">'+(anyRelay
-      ? 'LumosCore delivers cross-chain transfers for you, and anything it is handling is not listed here. These are the ones it could not: claim them yourself on the destination chain. Your USDC is held by Circle until you do, and nothing here expires. On Solana and Sui, use Copy redeem data.'
-      : 'These transfers were burned on Stellar and are held by Circle. CCTP only delivers once the mint is submitted on the destination chain. On Ethereum, Avalanche, Optimism, Arbitrum, Base, Polygon, Linea and World Chain you can do that here with Claim. Solana and Sui are not wired yet, so use Copy redeem data. Nothing here expires.')
-    +'</p>'
+  p.innerHTML='<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span></div>'
+    +'<p class="lx-brp-note">CCTP burns your USDC on Stellar and Circle holds it until the mint is submitted on the destination chain. That last step is yours to make: press Claim, approve it in your EVM wallet, and the USDC appears. You need a little gas on the destination chain to do it. Nothing here expires \\u2014 an unclaimed transfer waits indefinitely.</p>'
+    +lxBrHowTo()
     +rows;
   p.style.display="";
   return true;
@@ -1222,7 +1161,7 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
  function pass(){ var tb=document.querySelector('.br-table tbody'), card=document.querySelector('.br-card')||document.querySelector('.br-wizard');
   if(!tb&&!card) return false;
   if(tb){ lxBrTableCols(); lxBrRestoreTxs(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); }
-  lxBrRenderPending(); lxBrResumePending(); lxRelayPoll(); return true; }
+  lxBrRenderPending(); lxBrResumePending(); return true; }
  if(!pass()){ var n=0,iv=setInterval(function(){ n++; if(pass()||n>40) clearInterval(iv); },120); } })();
 })();`;
 

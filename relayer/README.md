@@ -1,3 +1,9 @@
+> **NOT DEPLOYED — parked.** LumosCore decided against paying destination gas: it comes straight out of
+> the 0.5% fee and on Ethereum L1 a single delivery costs more than the fee on a $400 transfer. Users claim
+> their own transfers, and the Bridge page walks them through it. This directory is kept because the
+> argument does not hold on Solana and Sui, where gas is a fraction of a cent and there is no way for a
+> normal user to claim at all. Nothing here runs until someone deploys it; the site does not call it.
+
 # CCTP delivery relayer
 
 Submits the destination-chain `receiveMessage()` for cross-chain transfers so users never have to.
