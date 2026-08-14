@@ -57,6 +57,17 @@ function wcClient(){
   }),20000,'Could not reach WalletConnect \\u2014 check your connection and try again').catch(function(e){_wcClient=null;throw e;});
   return _wcClient;
 }
+// PREWARM. The LOBSTR deep link cannot fire until the WalletConnect SDK has been fetched from the CDN
+// AND SignClient.init has finished a relay handshake. Doing both lazily at tap time is why the modal
+// sat on "Awaiting confirmation" for seconds before LOBSTR opened -- the wait was ours, not the
+// wallet's. Kick it off on the first user gesture instead: by the time a wallet is picked the client
+// is usually already up, and wcClient() memoises so the real call reuses it. Failures are swallowed --
+// this is only a head start, and the normal path still reports errors properly.
+(function(){ if(!isMobile())return; var warmed=false;
+  function warm(){ if(warmed)return; warmed=true; try{ wcClient().catch(function(){}); }catch(_){} }
+  try{ ["pointerdown","touchstart","keydown"].forEach(function(ev){
+    window.addEventListener(ev, warm, {once:true, passive:true}); }); }catch(_){}
+})();
 function wcAddr(s){var a=s&&s.namespaces&&s.namespaces.stellar&&s.namespaces.stellar.accounts&&s.namespaces.stellar.accounts[0];
   if(!a)throw new Error('WalletConnect returned no Stellar account');return String(a).split(':').pop();}
 // WalletConnect v2 connect. The modal is always opened: it carries the QR that desktop needs AND, on a

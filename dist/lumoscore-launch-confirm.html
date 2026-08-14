@@ -3200,7 +3200,258 @@ window.lxLpTest=function(draft){
     }).then(function(result){ console.log("[lxLpTest] RESULT", result); return {distributor:dist.publicKey(), result:result}; });
   });
 };
-})();</script><style id="lx-realconnect-css">.lxw-cwallet-ico,.lxw-acct-ico{position:relative;overflow:hidden}.lxw-cwallet-ico .lx-wimg,.lxw-acct-ico .lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}.lxw-step{transition:background .28s ease,border-color .28s ease,color .28s ease}.lxw-step.is-done{color:var(--text,#fff)!important;border-color:rgba(52,192,127,.55)!important;background:rgba(52,192,127,.13)!important}.lxw-step.is-done::after{content:"\2713";margin-left:auto;color:#35c07f;font-weight:800;font-size:13px;line-height:1}</style><script id="lx-realconnect">(function(){
+})();</script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent);border-color:var(--accent);color:#fff;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22;border-color:#d85f22}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Connect a wallet");chip.innerHTML='<span class="lx-tw-cbtn">'+PLUG+'Connect Wallet</span>';}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]");if(dc){e.preventDefault();e.stopImmediatePropagation();if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(sync,300);})();</script><script id="lx-feerate">(function(){if(window.__lxFrBooted)return;window.__lxFrBooted=1;var ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S",THRESH=250000,H="https://horizon.stellar.org";if(typeof window.__lxFeeRate!=="number")window.__lxFeeRate=0.005;if(!("__lxLumosBal" in window))window.__lxLumosBal=null;window.__lxLumosThresh=THRESH;window.__lxLumosIssuer=ISS;function pub(bal){window.__lxLumosBal=bal;window.__lxFeeRate=(bal>=THRESH)?0.0025:0.005;try{window.dispatchEvent(new CustomEvent("lx:feetier",{detail:{bal:bal,rate:window.__lxFeeRate,thresh:THRESH}}));}catch(_){}}window.__lxFeeTier=function(){return{bal:window.__lxLumosBal,rate:window.__lxFeeRate,thresh:THRESH};};window.__lxFeeTierSet=pub;window.__lxAcctP=window.__lxAcctP||{};window.__lxAcct=function(addr){if(!addr)return Promise.resolve(null);if(!window.__lxAcctP[addr])window.__lxAcctP[addr]=fetch(H+"/accounts/"+addr).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxAcctP[addr];};window.__lxPoolP=window.__lxPoolP||{};function poolRec(id){if(!window.__lxPoolP[id])window.__lxPoolP[id]=fetch(H+"/liquidity_pools/"+id).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxPoolP[id];}function poolLumos(bals,cb){var sh=bals.filter(function(b){return b.asset_type==="liquidity_pool_shares"&&(+b.balance||0)>0;}).slice(0,25);if(!sh.length){cb(0);return;}var want="LUMOS:"+ISS,left=sh.length,tot=0;sh.forEach(function(s){poolRec(s.liquidity_pool_id).then(function(p){try{if(p&&p.reserves){var r=p.reserves.filter(function(x){return x.asset===want;})[0];var ts=+p.total_shares||0;if(r&&ts>0)tot+=(+r.amount||0)*((+s.balance||0)/ts);}}catch(_){}if(--left===0)cb(tot);});});}function resolve(force){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(!ME){if(window.__lxLumosBal!==null)pub(null);else{window.__lxLumosBal=null;window.__lxFeeRate=0.005;}return;}if(!force&&window.__lxFrFor===ME)return;window.__lxFrFor=ME;if(force){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxAcct(ME).then(function(acc){if(!acc||!acc.balances){window.__lxFrFor="";return;}var lum=acc.balances.filter(function(b){return b.asset_code==="LUMOS"&&b.asset_issuer===ISS;}).reduce(function(s,b){return s+(+b.balance||0);},0);pub(lum);if(lum>=THRESH)return;poolLumos(acc.balances,function(extra){if(extra>0&&window.__lxFrFor===ME)pub(lum+extra);});}).catch(function(){window.__lxFrFor="";});}window.__lxFeeTierRefresh=function(){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(ME){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxFrFor="";resolve(true);};resolve();window.addEventListener("storage",function(e){if(e&&e.key==="lumos.address"){window.__lxFrFor="";resolve();}});setTimeout(resolve,1200);setTimeout(resolve,4000);})();</script><script id="lx-searchassets">(function(){
+  // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
+  // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
+  //
+  // A ticker is NOT an identity here — "SHX" alone matches six different issuers, one of which is Stronghold
+  // (91,001 trustlines, stronghold.co) and five of which are look-alikes. So every row carries the domain,
+  // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
+  var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
+  function launchTokens(){ try{ var e=JSON.parse(localStorage.getItem("lumos.launches")||"[]"); return (e&&e.length)?e:[]; }catch(_){ return []; } }
+  var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#3b82f6"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
+  function short(a){return a?a.slice(0,4)+"…"+a.slice(-4):"";}
+  function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+  function avatarUri(code){ var c=String(code||"?"),h=0; for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;
+    var t=c.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+h+',60%,50%)"/><text x="20" y="26" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="15" fill="#fff">'+t+'</text></svg>';
+    return "data:image/svg+xml,"+encodeURIComponent(svg); }
+  function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
+  // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
+  // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
+  var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
+  var VTICK='<span class="lx-seavfd" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+  function row(t){
+    var g=GRAD[(t.code.charCodeAt(0)||0)%GRAD.length];
+    // Always emit an <img>. The shared '.sp-ico.lx-spico-on' rule sets background:initial!important, so a
+    // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
+    // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
+    var sub = t.tl!=null ? (nfmt(t.tl)+" trustlines") : "Launchpad token";
+    // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
+    // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
+      ico+
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(t.domain||"Stellar mainnet")+'</span></div>'+
+      '<div class="sp-sub">'+esc(t.code)+' · '+esc(sub)+'</div></div>'+
+      '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
+  }
+  function paint(list,html){ if(list.innerHTML!==html) list.innerHTML=html; }
+  function seaFetch(q,cb){
+    if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
+    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var recs=(d&&d._embedded&&d._embedded.records)||[];
+        var out=recs.map(function(x){
+          var id=String(x.asset||""), p=id.split("-");
+          var ti=x.tomlInfo||{};
+          return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
+                  tl:(x.trustlines&&x.trustlines[0])||0, img:ti.image||ti.orgLogo||""};
+        }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
+        out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
+        SEA_CACHE[q]=out; cb(out);
+      })
+      .catch(function(){ cb(null); });                          // null = upstream failed (distinct from "no results")
+  }
+  function render(){
+    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
+    if(!inp||!list)return;
+    var raw=(inp.value||"").trim(), q=raw.toLowerCase();
+    if(!q){ return; }                       // empty -> let the design clear the list
+    // locally minted Launchpad tokens match instantly, with no round trip
+    var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&t.code.toLowerCase().indexOf(q)>=0; });
+    var seq=++SEA_SEQ;
+    if(SEA_CACHE[q]===undefined) paint(list,'<div class="sp-seaempty">Searching Stellar mainnet…</div>');
+    clearTimeout(SEA_T);
+    SEA_T=setTimeout(function(){
+      seaFetch(q,function(remote){
+        if(seq!==SEA_SEQ)return;                                // a newer keystroke already won
+        if(remote===null){ paint(list,'<div class="sp-seaempty">Couldn’t reach the asset index — check your connection.</div>'); return; }
+        var seen={}, all=[];
+        local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
+        paint(list, all.length ? all.map(row).join("")
+                               : '<div class="sp-seaempty">No mainnet assets match “'+esc(raw)+'”</div>');
+      });
+    }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
+  }
+  function isMine(list){ return !!(list.querySelector(".lx-searow")||list.querySelector(".sp-seaempty")); }
+
+  function wire(){
+    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
+    if(!inp||!list||inp.__lxsea) return;
+    inp.__lxsea=1;
+    inp.addEventListener("input", render);
+    inp.addEventListener("keyup", render);
+    // re-assert if the design re-renders its own rows while a query is active
+    try{ new MutationObserver(function(){ var q=(inp.value||"").trim(); if(q && !isMine(list)) render(); }).observe(list,{childList:true}); }catch(e){}
+  }
+  function boot(){ wire(); setTimeout(wire,400); setTimeout(wire,1200); }
+  if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
+  // the search popup mounts lazily on some pages; re-wire when the header search button is clicked
+  document.addEventListener("click", function(e){ var b=e.target&&e.target.closest&&e.target.closest("#headerSearchBtn,[data-open-search]"); if(b) setTimeout(wire,60); }, true);
+  // AUDIT FIX: the bare topbar "Search assets" input (dashboard + other in-app pages) was completely DEAD —
+  // it is not the popup's #spSearchInput and nothing ever bound it. Make it a LAUNCHER: focusing (or having
+  // typed into) it opens the search popup via the design's own #headerSearchBtn path and forwards the query.
+  function launchPopup(seed){
+    // some pages (the dashboard) have NO #headerSearchBtn / opener at all — open the overlay directly.
+    var btn=document.getElementById("headerSearchBtn")||document.querySelector("[data-open-search]");
+    var ov=document.getElementById("searchPopup");
+    if(btn){ btn.click(); }
+    else if(ov){ ov.style.display="flex"; ov.classList.add("open");
+      if(!ov.__lxclose){ ov.__lxclose=1;
+        ov.addEventListener("click",function(e){ if(e.target===ov){ ov.style.display="none"; ov.classList.remove("open"); } });
+        document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&ov.style.display!=="none"){ ov.style.display="none"; ov.classList.remove("open"); } });
+      } }
+    setTimeout(function(){ wire(); var si=document.getElementById("spSearchInput");
+      if(si){ if(seed){ si.value=seed; try{ si.dispatchEvent(new Event("input",{bubbles:true})); }catch(_){} } try{ si.focus(); }catch(_){} } },90);
+  }
+  // STRICT structural scope: ONLY the header topbar's .search-box input (the dead one). An earlier version
+  // matched ANY input whose placeholder said "search", which hijacked the asset/network pickers inside the
+  // Bridge destination, wallet Send, Swap and Create Pool modals — focusing those opened the global search.
+  document.addEventListener("focusin", function(e){ var t=e.target;
+    if(!t||t.tagName!=="INPUT"||t.id==="spSearchInput"||!t.closest)return;
+    var box=t.closest(".search-box"); if(!box||!box.closest(".topbar"))return;          // header search box only
+    if(t.closest("#searchPopup,[class*=modal],[class*=dropdown],[class*=menu],[class*=picker],[class*=popup],[role=dialog]"))return;
+    var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
+    launchPopup(seed);
+  }, true);
+})();</script><style id="lx-mc-css">.lxmc{position:relative;flex-shrink:0}.lxmc-trig{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;font:600 14px/1 "Hanken Grotesk",system-ui,sans-serif;transition:.15s}.lxmc-trig:hover{border-color:var(--border-strong)}.lxmc-logo,.lxmc-ol{width:24px;height:24px;border-radius:50%;overflow:hidden;display:inline-flex;flex-shrink:0;background:var(--surface-3,#eee)}.lxmc-logo img,.lxmc-ol img{width:100%;height:100%;object-fit:cover;display:block}.lxmc-name{white-space:nowrap}.lxmc-trig svg{width:14px;height:14px;color:var(--text-soft)}.lxmc-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:200;min-width:216px;background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.28)}.lxmc-menu[hidden]{display:none}.lxmc-opt{width:100%;display:flex;align-items:center;gap:11px;padding:9px 11px;border:none;background:transparent;color:var(--text);border-radius:10px;cursor:pointer;font:600 14.5px/1 "Hanken Grotesk",system-ui,sans-serif;text-align:left}.lxmc-opt:hover{background:var(--surface-2)}.lxmc-opt.active{background:var(--accent-soft);color:var(--accent)}@media(max-width:1080px){.lxmc-name{display:none}.lxmc-trig{padding:0 9px}}.lxw-neti{overflow:hidden;background:var(--surface-3,#eee)!important}.lxw-neti img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}</style><script id="lx-mc">(function(){
+if(window.__lxMC)return;window.__lxMC=true;
+var CHAINS={"aptos":{"name":"Aptos","tk":"APT","logo":"data:image/webp;base64,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"},"hedera":{"name":"Hedera","tk":"HBAR","logo":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMDAwMCIvPjxwYXRoIGQ9Ik0xMSA5djE0TTIxIDl2MTRNMTAgMTQuNWgxMk0xMCAxNy41aDEyIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4="},"starknet":{"name":"Starknet","tk":"STRK","logo":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzBjMGM0ZiIvPjxnIHRyYW5zZm9ybT0icm90YXRlKC0xOCAxNiAxNikiPjxyZWN0IHg9IjciIHk9IjEyIiB3aWR0aD0iMTIiIGhlaWdodD0iMy40IiByeD0iMS43IiBmaWxsPSIjZWM3OTZiIi8+PHJlY3QgeD0iMTEiIHk9IjE3IiB3aWR0aD0iMTIiIGhlaWdodD0iMy40IiByeD0iMS43IiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjg1Ii8+PC9nPjwvc3ZnPg=="},"vechain":{"name":"VeChain","tk":"VET","logo":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzE1QkRGRiIvPjxwYXRoIGZpbGw9IiNGRkYiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTTE0LjczOCAyNC43MzRMNy4wNCA5LjA0NmEuMzguMzggMCAwMS4zNC0uNTQ2aDIuNjY4Yy4xNDMgMCAuMjc3LjA4LjM0LjIwNmw1LjYyMiAxMS4zODFjLjUgMS4wMiAxLjk1MSAxLjAyIDIuNDUyIDBsNS42MDQtMTEuMzcyYS4zODIuMzgyIDAgMDEuMzQtLjIwNmguMzMyYy4xOTcgMCAuMzIyLjIwNi4yMzMuMzc2bC03Ljc4IDE1Ljg1Yy0uNTAxIDEuMDItMS45NTEgMS4wMi0yLjQ1MyAweiIvPjwvZz48L3N2Zz4="},"worldchain":{"name":"World Chain","tk":"WLD","logo":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMDAwMCIvPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjcuNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuNyIvPjxlbGxpcHNlIGN4PSIxNiIgY3k9IjE2IiByeD0iMy40IiByeT0iNy42IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS43Ii8+PHBhdGggZD0iTTguNCAxNmgxNS4yIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS43Ii8+PC9zdmc+"},"stellar":{"name":"Stellar","tk":"XLM","logo":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+"},"xrpl":{"name":"XRP Ledger","tk":"XRP","logo":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzIzMjkyRiIvPjxwYXRoIGQ9Ik0yMy4wNyA4aDIuODlsLTYuMDE1IDUuOTU3YTUuNjIxIDUuNjIxIDAgMDEtNy44OSAwTDYuMDM1IDhIOC45M2w0LjU3IDQuNTIzYTMuNTU2IDMuNTU2IDAgMDA0Ljk5NiAwTDIzLjA3IDh6TTguODk1IDI0LjU2M0g2bDYuMDU1LTUuOTkzYTUuNjIxIDUuNjIxIDAgMDE3Ljg5IDBMMjYgMjQuNTYyaC0yLjg5NUwxOC41IDIwYTMuNTU2IDMuNTU2IDAgMDAtNC45OTYgMGwtNC42MSA0LjU2M3oiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+"}};
+// Networks offered in the "Choose a network" screen. Only the chains LumosCore actually runs on —
+// listing Aptos/Hedera/Starknet/VeChain/World Chain advertised connections that go nowhere.
+// CHAINS still defines the others: this controls what is OFFERED, not what the engine understands,
+// so an existing session on another chain keeps rendering rather than breaking.
+var ORDER=["stellar","xrpl"];
+var BASE="aptos",cur=BASE,obs=null;
+function noswap(node){
+  var el=node.nodeType===3?node.parentNode:node;
+  while(el){
+    if(el.nodeType===1){
+      var tn=el.tagName;
+      if(tn==="SCRIPT"||tn==="STYLE"||tn==="NOSCRIPT")return true;
+      if(el.hasAttribute&&el.hasAttribute("data-lx-noswap"))return true;
+      var cn=el.className;
+      if(cn&&typeof cn==="string"&&/lxw-|lxns-|lxmc/.test(cn))return true;
+    }
+    el=el.parentNode;
+  }
+  return false;
+}
+function esc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");}
+// swap a subtree/text node from chain fc -> tc (text identity + logos)
+function walkSwap(root,fc,tc){
+  if(fc===tc||!CHAINS[fc]||!CHAINS[tc])return;
+  var f=CHAINS[fc],t=CHAINS[tc];
+  var nameRe=new RegExp(esc(f.name),"g"),tkRe=new RegExp("\\b"+esc(f.tk)+"\\b","g");
+  function fix(nd){nd.nodeValue=nd.nodeValue.replace(nameRe,t.name).replace(tkRe,t.tk);}
+  if(root.nodeType===3){ if(!noswap(root)&&root.nodeValue&&(root.nodeValue.indexOf(f.name)>=0||root.nodeValue.indexOf(f.tk)>=0))fix(root); return; }
+  if(root.nodeType!==1)return;
+  var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:function(n){
+    if(!n.nodeValue||noswap(n))return NodeFilter.FILTER_REJECT;
+    return (n.nodeValue.indexOf(f.name)>=0||n.nodeValue.indexOf(f.tk)>=0)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
+  }});
+  var arr=[],n;while(n=w.nextNode())arr.push(n);arr.forEach(fix);
+  var imgs=root.querySelectorAll?root.querySelectorAll("img"):[];
+  for(var i=0;i<imgs.length;i++){if(imgs[i].getAttribute("src")===f.logo&&!(imgs[i].closest&&imgs[i].closest("[data-lx-noswap]")))imgs[i].setAttribute("src",t.logo);}
+  if(root.tagName==="IMG"&&root.getAttribute("src")===f.logo&&!(root.closest&&root.closest("[data-lx-noswap]")))root.setAttribute("src",t.logo);
+}
+function guard(fn){if(obs)obs.disconnect();try{fn();}finally{if(obs&&document.body)obs.observe(document.body,{childList:true,subtree:true,characterData:true});}}
+function applyChain(to){
+  if(!CHAINS[to]||to===cur)return;
+  guard(function(){walkSwap(document.body,cur,to);});
+  cur=to;try{localStorage.setItem("lumos.chain",to);}catch(_){}
+  updSwitcher();try{window.dispatchEvent(new Event("lx-chainchange"));}catch(_){}
+}
+window.lxSetChain=applyChain;window.lxGetChain=function(){return cur;};
+function updSwitcher(){
+  var sw=document.getElementById("lxmc");if(!sw)return;
+  var nm=sw.querySelector(".lxmc-name");if(nm)nm.textContent=CHAINS[cur].name;
+  var lg=sw.querySelector(".lxmc-logo");if(lg)lg.innerHTML='<img src="'+CHAINS[cur].logo+'" alt="">';
+  sw.querySelectorAll(".lxmc-opt").forEach(function(o){o.classList.toggle("active",o.getAttribute("data-net")===cur);});
+}
+function buildSwitcher(){
+  if(document.getElementById("lxmc"))return;
+  var host=document.querySelector(".lx-topwallet");
+  var bar=host?host.parentNode:(document.querySelector(".topbar-right")||document.querySelector(".ah-right"));
+  if(!bar)return;
+  var sw=document.createElement("div");sw.id="lxmc";sw.className="lxmc";sw.setAttribute("data-lx-noswap","");
+  var opts=ORDER.map(function(id){return '<button class="lxmc-opt" type="button" data-net="'+id+'"><span class="lxmc-ol"><img src="'+CHAINS[id].logo+'" alt=""></span>'+CHAINS[id].name+'</button>';}).join("");
+  sw.innerHTML='<button class="lxmc-trig" type="button"><span class="lxmc-logo"></span><span class="lxmc-name"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button><div class="lxmc-menu" hidden>'+opts+'</div>';
+  if(host)bar.insertBefore(sw,host);else bar.appendChild(sw);
+  sw.querySelector(".lxmc-trig").addEventListener("click",function(e){e.stopPropagation();sw.querySelector(".lxmc-menu").toggleAttribute("hidden");});
+  sw.querySelectorAll(".lxmc-opt").forEach(function(o){o.addEventListener("click",function(e){e.stopPropagation();applyChain(o.getAttribute("data-net"));sw.querySelector(".lxmc-menu").setAttribute("hidden","");});});
+  document.addEventListener("click",function(){var m=sw.querySelector(".lxmc-menu");if(m)m.setAttribute("hidden","");});
+  updSwitcher();
+}
+// "Choose a network" step — a screen INSIDE the existing .lxw connect modal (same design as the
+// wallet list), shown before the wallet step. Pick network -> that network's wallet list.
+var npHome=null;
+function showScr(name){var s=document.querySelectorAll(".lxw-screen");for(var i=0;i<s.length;i++)s[i].toggleAttribute("hidden",s[i].getAttribute("data-screen")!==name);}
+var NP_CLOSE='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+var NP_SICO='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+var NP_CHEV='<svg class="lxw-wchev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
+function injectNetScreen(){
+  var modal=document.querySelector(".lxw-modal");if(!modal)return false;
+  if(modal.querySelector('.lxw-screen[data-screen="network"]'))return true;
+  var scr=document.createElement("div");scr.className="lxw-screen";scr.setAttribute("data-screen","network");scr.setAttribute("data-lx-noswap","");
+  var rows=ORDER.map(function(id){return '<button class="lxw-row" type="button" data-lxnet="'+id+'" data-lxq="'+CHAINS[id].name.toLowerCase()+' '+CHAINS[id].tk.toLowerCase()+'"><span class="lxw-ico lxw-neti"><img src="'+CHAINS[id].logo+'" alt=""></span><span class="lxw-main"><span class="lxw-name">'+CHAINS[id].name+'</span><span class="lxw-wsub">Connect on '+CHAINS[id].name+'</span></span>'+NP_CHEV+'</button>';}).join("");
+  // exact same shell as the finalized "wallet" screen: head + search + list
+  scr.innerHTML='<div class="lxw-head"><div class="lxw-htitles"><h3 class="lxw-title">Choose a network</h3><p class="lxw-sub">Choose a network to continue</p></div><button class="lxw-close lxw-netx" type="button" aria-label="Close">'+NP_CLOSE+'</button></div>'
+   +'<div class="lxw-search">'+NP_SICO+'<input type="text" placeholder="Search networks…" class="lxw-searchin lxw-netsearch"/></div>'
+   +'<div class="lxw-list">'+rows+'</div>';
+  modal.appendChild(scr);
+  scr.querySelector(".lxw-netx").addEventListener("click",function(){var mo=document.querySelector(".lxw-modal");if(mo&&mo.parentNode)mo.parentNode.setAttribute("hidden","");});
+  var inp=scr.querySelector(".lxw-netsearch");
+  if(inp)inp.addEventListener("input",function(){var q=(this.value||"").trim().toLowerCase();scr.querySelectorAll(".lxw-row").forEach(function(r){r.style.display=(!q||r.getAttribute("data-lxq").indexOf(q)>=0)?"":"none";});});
+  scr.querySelectorAll(".lxw-row").forEach(function(r){r.addEventListener("click",function(){var net=r.getAttribute("data-lxnet");applyChain(net);if(window.lxwOpenWallet)window.lxwOpenWallet(net,npHome);});});
+  return true;
+}
+function chooseNetwork(home){
+  npHome=home||null;
+  if(window.lxwOpenWallet)window.lxwOpenWallet(cur,npHome);
+  if(injectNetScreen())showScr("network");
+  else setTimeout(function(){if(injectNetScreen())showScr("network");},60);
+}
+window.lxChooseNetwork=chooseNetwork;
+// keep newly-rendered (base-identity) content in sync with the active chain
+function startObserver(){
+  if(obs||!document.body)return;
+  obs=new MutationObserver(function(muts){
+    if(cur===BASE)return;
+    guard(function(){
+      for(var j=0;j<muts.length;j++){var m=muts[j];
+        for(var i=0;i<m.addedNodes.length;i++)walkSwap(m.addedNodes[i],BASE,cur);
+        if(m.type==="characterData"&&m.target)walkSwap(m.target,BASE,cur);
+      }
+    });
+  });
+  obs.observe(document.body,{childList:true,subtree:true,characterData:true});
+}
+function reskin(){ if(cur!==BASE) guard(function(){walkSwap(document.body,BASE,cur);}); } // catch anything rendered late
+function boot(){
+  // No in-app network switcher: the network is chosen at connect time (Choose a network -> wallet).
+  // To change networks the user disconnects and reconnects on another network. We still re-skin the
+  // app to whichever network was connected (via the saved lumos.chain), but show no topbar dropdown.
+  startObserver();
+  var saved=null;try{saved=localStorage.getItem("lumos.chain");}catch(_){}
+  // Nothing saved means a visitor who has never connected — and they were being shown the raw Aptos
+  // base: "Trending on Aptos", NETWORK Aptos with the Aptos mark, "Petra or Nightly", APT tickers, on
+  // a product that only runs on Stellar. The base is an artefact of where these pages came from, never
+  // something a user should see, so default to the first offered chain instead of leaving it unrun.
+  if(!saved||!CHAINS[saved]) saved=ORDER[0];
+  try{ if(saved&&CHAINS[saved]&&saved!==cur)applyChain(saved); }catch(_){}
+  // Signal that the initial rebrand is done. A TARGETED CSS gate (in _multichain.js) hides ONLY the
+  // small network logo/name elements until now — NOT the whole body (that blanked heavy pages).
+  // Added unconditionally (incl. aptos/no-saved) so those elements always reveal.
+  try{document.documentElement.classList.add("lx-chainready");}catch(_){}
+  setTimeout(reskin,300);setTimeout(reskin,1200);setTimeout(reskin,3000);
+  window.addEventListener("load",reskin);
+}
+if(document.readyState!=="loading")boot();else document.addEventListener("DOMContentLoaded",boot);
+})();
+</script><style id="lx-realconnect-css">.lxw-cwallet-ico,.lxw-acct-ico{position:relative;overflow:hidden}.lxw-cwallet-ico .lx-wimg,.lxw-acct-ico .lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}.lxw-step{transition:background .28s ease,border-color .28s ease,color .28s ease}.lxw-step.is-done{color:var(--text,#fff)!important;border-color:rgba(52,192,127,.55)!important;background:rgba(52,192,127,.13)!important}.lxw-step.is-done::after{content:"\2713";margin-left:auto;color:#35c07f;font-weight:800;font-size:13px;line-height:1}</style><script id="lx-realconnect">(function(){
 if(window.__lxReal)return;window.__lxReal=true;
 var NETLABEL={aptos:'Aptos',hedera:'Hedera',starknet:'Starknet',vechain:'VeChain',worldchain:'World Chain',stellar:'Stellar',xrpl:'XRP Ledger'};
 function trunc(a){a=String(a||'');if(a.length<=14)return a;return a.slice(0,6)+'\u2026'+a.slice(-4);}
@@ -3245,6 +3496,17 @@ function wcClient(){
   }),20000,'Could not reach WalletConnect \u2014 check your connection and try again').catch(function(e){_wcClient=null;throw e;});
   return _wcClient;
 }
+// PREWARM. The LOBSTR deep link cannot fire until the WalletConnect SDK has been fetched from the CDN
+// AND SignClient.init has finished a relay handshake. Doing both lazily at tap time is why the modal
+// sat on "Awaiting confirmation" for seconds before LOBSTR opened -- the wait was ours, not the
+// wallet's. Kick it off on the first user gesture instead: by the time a wallet is picked the client
+// is usually already up, and wcClient() memoises so the real call reuses it. Failures are swallowed --
+// this is only a head start, and the normal path still reports errors properly.
+(function(){ if(!isMobile())return; var warmed=false;
+  function warm(){ if(warmed)return; warmed=true; try{ wcClient().catch(function(){}); }catch(_){} }
+  try{ ["pointerdown","touchstart","keydown"].forEach(function(ev){
+    window.addEventListener(ev, warm, {once:true, passive:true}); }); }catch(_){}
+})();
 function wcAddr(s){var a=s&&s.namespaces&&s.namespaces.stellar&&s.namespaces.stellar.accounts&&s.namespaces.stellar.accounts[0];
   if(!a)throw new Error('WalletConnect returned no Stellar account');return String(a).split(':').pop();}
 // WalletConnect v2 connect. The modal is always opened: it carries the QR that desktop needs AND, on a
@@ -3665,256 +3927,5 @@ window.addEventListener('click',function(e){
       .then(function(){setConnected(net,row,addr,tr);});
   }).catch(function(err){clearTimeout(awaitT);showErr(row,err);});
 },true);
-})();</script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent);border-color:var(--accent);color:#fff;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22;border-color:#d85f22}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Connect a wallet");chip.innerHTML='<span class="lx-tw-cbtn">'+PLUG+'Connect Wallet</span>';}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]");if(dc){e.preventDefault();e.stopImmediatePropagation();if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(sync,300);})();</script><script id="lx-feerate">(function(){if(window.__lxFrBooted)return;window.__lxFrBooted=1;var ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S",THRESH=250000,H="https://horizon.stellar.org";if(typeof window.__lxFeeRate!=="number")window.__lxFeeRate=0.005;if(!("__lxLumosBal" in window))window.__lxLumosBal=null;window.__lxLumosThresh=THRESH;window.__lxLumosIssuer=ISS;function pub(bal){window.__lxLumosBal=bal;window.__lxFeeRate=(bal>=THRESH)?0.0025:0.005;try{window.dispatchEvent(new CustomEvent("lx:feetier",{detail:{bal:bal,rate:window.__lxFeeRate,thresh:THRESH}}));}catch(_){}}window.__lxFeeTier=function(){return{bal:window.__lxLumosBal,rate:window.__lxFeeRate,thresh:THRESH};};window.__lxFeeTierSet=pub;window.__lxAcctP=window.__lxAcctP||{};window.__lxAcct=function(addr){if(!addr)return Promise.resolve(null);if(!window.__lxAcctP[addr])window.__lxAcctP[addr]=fetch(H+"/accounts/"+addr).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxAcctP[addr];};window.__lxPoolP=window.__lxPoolP||{};function poolRec(id){if(!window.__lxPoolP[id])window.__lxPoolP[id]=fetch(H+"/liquidity_pools/"+id).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxPoolP[id];}function poolLumos(bals,cb){var sh=bals.filter(function(b){return b.asset_type==="liquidity_pool_shares"&&(+b.balance||0)>0;}).slice(0,25);if(!sh.length){cb(0);return;}var want="LUMOS:"+ISS,left=sh.length,tot=0;sh.forEach(function(s){poolRec(s.liquidity_pool_id).then(function(p){try{if(p&&p.reserves){var r=p.reserves.filter(function(x){return x.asset===want;})[0];var ts=+p.total_shares||0;if(r&&ts>0)tot+=(+r.amount||0)*((+s.balance||0)/ts);}}catch(_){}if(--left===0)cb(tot);});});}function resolve(force){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(!ME){if(window.__lxLumosBal!==null)pub(null);else{window.__lxLumosBal=null;window.__lxFeeRate=0.005;}return;}if(!force&&window.__lxFrFor===ME)return;window.__lxFrFor=ME;if(force){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxAcct(ME).then(function(acc){if(!acc||!acc.balances){window.__lxFrFor="";return;}var lum=acc.balances.filter(function(b){return b.asset_code==="LUMOS"&&b.asset_issuer===ISS;}).reduce(function(s,b){return s+(+b.balance||0);},0);pub(lum);if(lum>=THRESH)return;poolLumos(acc.balances,function(extra){if(extra>0&&window.__lxFrFor===ME)pub(lum+extra);});}).catch(function(){window.__lxFrFor="";});}window.__lxFeeTierRefresh=function(){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(ME){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxFrFor="";resolve(true);};resolve();window.addEventListener("storage",function(e){if(e&&e.key==="lumos.address"){window.__lxFrFor="";resolve();}});setTimeout(resolve,1200);setTimeout(resolve,4000);})();</script><script id="lx-searchassets">(function(){
-  // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
-  // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
-  //
-  // A ticker is NOT an identity here — "SHX" alone matches six different issuers, one of which is Stronghold
-  // (91,001 trustlines, stronghold.co) and five of which are look-alikes. So every row carries the domain,
-  // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
-  var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
-  function launchTokens(){ try{ var e=JSON.parse(localStorage.getItem("lumos.launches")||"[]"); return (e&&e.length)?e:[]; }catch(_){ return []; } }
-  var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#3b82f6"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
-  function short(a){return a?a.slice(0,4)+"…"+a.slice(-4):"";}
-  function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
-  function avatarUri(code){ var c=String(code||"?"),h=0; for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;
-    var t=c.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
-    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+h+',60%,50%)"/><text x="20" y="26" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="15" fill="#fff">'+t+'</text></svg>';
-    return "data:image/svg+xml,"+encodeURIComponent(svg); }
-  function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
-  // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
-  // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
-  var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
-  var VTICK='<span class="lx-seavfd" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
-  function row(t){
-    var g=GRAD[(t.code.charCodeAt(0)||0)%GRAD.length];
-    // Always emit an <img>. The shared '.sp-ico.lx-spico-on' rule sets background:initial!important, so a
-    // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
-    // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
-    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
-    var sub = t.tl!=null ? (nfmt(t.tl)+" trustlines") : "Launchpad token";
-    // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
-    // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
-    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
-      ico+
-      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(t.domain||"Stellar mainnet")+'</span></div>'+
-      '<div class="sp-sub">'+esc(t.code)+' · '+esc(sub)+'</div></div>'+
-      '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
-  }
-  function paint(list,html){ if(list.innerHTML!==html) list.innerHTML=html; }
-  function seaFetch(q,cb){
-    if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
-    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var recs=(d&&d._embedded&&d._embedded.records)||[];
-        var out=recs.map(function(x){
-          var id=String(x.asset||""), p=id.split("-");
-          var ti=x.tomlInfo||{};
-          return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
-                  tl:(x.trustlines&&x.trustlines[0])||0, img:ti.image||ti.orgLogo||""};
-        }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
-        out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
-        SEA_CACHE[q]=out; cb(out);
-      })
-      .catch(function(){ cb(null); });                          // null = upstream failed (distinct from "no results")
-  }
-  function render(){
-    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
-    if(!inp||!list)return;
-    var raw=(inp.value||"").trim(), q=raw.toLowerCase();
-    if(!q){ return; }                       // empty -> let the design clear the list
-    // locally minted Launchpad tokens match instantly, with no round trip
-    var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&t.code.toLowerCase().indexOf(q)>=0; });
-    var seq=++SEA_SEQ;
-    if(SEA_CACHE[q]===undefined) paint(list,'<div class="sp-seaempty">Searching Stellar mainnet…</div>');
-    clearTimeout(SEA_T);
-    SEA_T=setTimeout(function(){
-      seaFetch(q,function(remote){
-        if(seq!==SEA_SEQ)return;                                // a newer keystroke already won
-        if(remote===null){ paint(list,'<div class="sp-seaempty">Couldn’t reach the asset index — check your connection.</div>'); return; }
-        var seen={}, all=[];
-        local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
-        paint(list, all.length ? all.map(row).join("")
-                               : '<div class="sp-seaempty">No mainnet assets match “'+esc(raw)+'”</div>');
-      });
-    }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
-  }
-  function isMine(list){ return !!(list.querySelector(".lx-searow")||list.querySelector(".sp-seaempty")); }
-
-  function wire(){
-    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
-    if(!inp||!list||inp.__lxsea) return;
-    inp.__lxsea=1;
-    inp.addEventListener("input", render);
-    inp.addEventListener("keyup", render);
-    // re-assert if the design re-renders its own rows while a query is active
-    try{ new MutationObserver(function(){ var q=(inp.value||"").trim(); if(q && !isMine(list)) render(); }).observe(list,{childList:true}); }catch(e){}
-  }
-  function boot(){ wire(); setTimeout(wire,400); setTimeout(wire,1200); }
-  if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
-  // the search popup mounts lazily on some pages; re-wire when the header search button is clicked
-  document.addEventListener("click", function(e){ var b=e.target&&e.target.closest&&e.target.closest("#headerSearchBtn,[data-open-search]"); if(b) setTimeout(wire,60); }, true);
-  // AUDIT FIX: the bare topbar "Search assets" input (dashboard + other in-app pages) was completely DEAD —
-  // it is not the popup's #spSearchInput and nothing ever bound it. Make it a LAUNCHER: focusing (or having
-  // typed into) it opens the search popup via the design's own #headerSearchBtn path and forwards the query.
-  function launchPopup(seed){
-    // some pages (the dashboard) have NO #headerSearchBtn / opener at all — open the overlay directly.
-    var btn=document.getElementById("headerSearchBtn")||document.querySelector("[data-open-search]");
-    var ov=document.getElementById("searchPopup");
-    if(btn){ btn.click(); }
-    else if(ov){ ov.style.display="flex"; ov.classList.add("open");
-      if(!ov.__lxclose){ ov.__lxclose=1;
-        ov.addEventListener("click",function(e){ if(e.target===ov){ ov.style.display="none"; ov.classList.remove("open"); } });
-        document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&ov.style.display!=="none"){ ov.style.display="none"; ov.classList.remove("open"); } });
-      } }
-    setTimeout(function(){ wire(); var si=document.getElementById("spSearchInput");
-      if(si){ if(seed){ si.value=seed; try{ si.dispatchEvent(new Event("input",{bubbles:true})); }catch(_){} } try{ si.focus(); }catch(_){} } },90);
-  }
-  // STRICT structural scope: ONLY the header topbar's .search-box input (the dead one). An earlier version
-  // matched ANY input whose placeholder said "search", which hijacked the asset/network pickers inside the
-  // Bridge destination, wallet Send, Swap and Create Pool modals — focusing those opened the global search.
-  document.addEventListener("focusin", function(e){ var t=e.target;
-    if(!t||t.tagName!=="INPUT"||t.id==="spSearchInput"||!t.closest)return;
-    var box=t.closest(".search-box"); if(!box||!box.closest(".topbar"))return;          // header search box only
-    if(t.closest("#searchPopup,[class*=modal],[class*=dropdown],[class*=menu],[class*=picker],[class*=popup],[role=dialog]"))return;
-    var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
-    launchPopup(seed);
-  }, true);
-})();</script><style id="lx-mc-css">.lxmc{position:relative;flex-shrink:0}.lxmc-trig{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;font:600 14px/1 "Hanken Grotesk",system-ui,sans-serif;transition:.15s}.lxmc-trig:hover{border-color:var(--border-strong)}.lxmc-logo,.lxmc-ol{width:24px;height:24px;border-radius:50%;overflow:hidden;display:inline-flex;flex-shrink:0;background:var(--surface-3,#eee)}.lxmc-logo img,.lxmc-ol img{width:100%;height:100%;object-fit:cover;display:block}.lxmc-name{white-space:nowrap}.lxmc-trig svg{width:14px;height:14px;color:var(--text-soft)}.lxmc-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:200;min-width:216px;background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.28)}.lxmc-menu[hidden]{display:none}.lxmc-opt{width:100%;display:flex;align-items:center;gap:11px;padding:9px 11px;border:none;background:transparent;color:var(--text);border-radius:10px;cursor:pointer;font:600 14.5px/1 "Hanken Grotesk",system-ui,sans-serif;text-align:left}.lxmc-opt:hover{background:var(--surface-2)}.lxmc-opt.active{background:var(--accent-soft);color:var(--accent)}@media(max-width:1080px){.lxmc-name{display:none}.lxmc-trig{padding:0 9px}}.lxw-neti{overflow:hidden;background:var(--surface-3,#eee)!important}.lxw-neti img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}</style><script id="lx-mc">(function(){
-if(window.__lxMC)return;window.__lxMC=true;
-var CHAINS={"aptos":{"name":"Aptos","tk":"APT","logo":"data:image/webp;base64,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"},"hedera":{"name":"Hedera","tk":"HBAR","logo":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMDAwMCIvPjxwYXRoIGQ9Ik0xMSA5djE0TTIxIDl2MTRNMTAgMTQuNWgxMk0xMCAxNy41aDEyIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4="},"starknet":{"name":"Starknet","tk":"STRK","logo":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzBjMGM0ZiIvPjxnIHRyYW5zZm9ybT0icm90YXRlKC0xOCAxNiAxNikiPjxyZWN0IHg9IjciIHk9IjEyIiB3aWR0aD0iMTIiIGhlaWdodD0iMy40IiByeD0iMS43IiBmaWxsPSIjZWM3OTZiIi8+PHJlY3QgeD0iMTEiIHk9IjE3IiB3aWR0aD0iMTIiIGhlaWdodD0iMy40IiByeD0iMS43IiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjg1Ii8+PC9nPjwvc3ZnPg=="},"vechain":{"name":"VeChain","tk":"VET","logo":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzE1QkRGRiIvPjxwYXRoIGZpbGw9IiNGRkYiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTTE0LjczOCAyNC43MzRMNy4wNCA5LjA0NmEuMzguMzggMCAwMS4zNC0uNTQ2aDIuNjY4Yy4xNDMgMCAuMjc3LjA4LjM0LjIwNmw1LjYyMiAxMS4zODFjLjUgMS4wMiAxLjk1MSAxLjAyIDIuNDUyIDBsNS42MDQtMTEuMzcyYS4zODIuMzgyIDAgMDEuMzQtLjIwNmguMzMyYy4xOTcgMCAuMzIyLjIwNi4yMzMuMzc2bC03Ljc4IDE1Ljg1Yy0uNTAxIDEuMDItMS45NTEgMS4wMi0yLjQ1MyAweiIvPjwvZz48L3N2Zz4="},"worldchain":{"name":"World Chain","tk":"WLD","logo":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMDAwMCIvPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjcuNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuNyIvPjxlbGxpcHNlIGN4PSIxNiIgY3k9IjE2IiByeD0iMy40IiByeT0iNy42IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS43Ii8+PHBhdGggZD0iTTguNCAxNmgxNS4yIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS43Ii8+PC9zdmc+"},"stellar":{"name":"Stellar","tk":"XLM","logo":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+"},"xrpl":{"name":"XRP Ledger","tk":"XRP","logo":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzIzMjkyRiIvPjxwYXRoIGQ9Ik0yMy4wNyA4aDIuODlsLTYuMDE1IDUuOTU3YTUuNjIxIDUuNjIxIDAgMDEtNy44OSAwTDYuMDM1IDhIOC45M2w0LjU3IDQuNTIzYTMuNTU2IDMuNTU2IDAgMDA0Ljk5NiAwTDIzLjA3IDh6TTguODk1IDI0LjU2M0g2bDYuMDU1LTUuOTkzYTUuNjIxIDUuNjIxIDAgMDE3Ljg5IDBMMjYgMjQuNTYyaC0yLjg5NUwxOC41IDIwYTMuNTU2IDMuNTU2IDAgMDAtNC45OTYgMGwtNC42MSA0LjU2M3oiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+"}};
-// Networks offered in the "Choose a network" screen. Only the chains LumosCore actually runs on —
-// listing Aptos/Hedera/Starknet/VeChain/World Chain advertised connections that go nowhere.
-// CHAINS still defines the others: this controls what is OFFERED, not what the engine understands,
-// so an existing session on another chain keeps rendering rather than breaking.
-var ORDER=["stellar","xrpl"];
-var BASE="aptos",cur=BASE,obs=null;
-function noswap(node){
-  var el=node.nodeType===3?node.parentNode:node;
-  while(el){
-    if(el.nodeType===1){
-      var tn=el.tagName;
-      if(tn==="SCRIPT"||tn==="STYLE"||tn==="NOSCRIPT")return true;
-      if(el.hasAttribute&&el.hasAttribute("data-lx-noswap"))return true;
-      var cn=el.className;
-      if(cn&&typeof cn==="string"&&/lxw-|lxns-|lxmc/.test(cn))return true;
-    }
-    el=el.parentNode;
-  }
-  return false;
-}
-function esc(s){return s.replace(/[.*+?^${}()|[\]\\]/g,"\\$&");}
-// swap a subtree/text node from chain fc -> tc (text identity + logos)
-function walkSwap(root,fc,tc){
-  if(fc===tc||!CHAINS[fc]||!CHAINS[tc])return;
-  var f=CHAINS[fc],t=CHAINS[tc];
-  var nameRe=new RegExp(esc(f.name),"g"),tkRe=new RegExp("\\b"+esc(f.tk)+"\\b","g");
-  function fix(nd){nd.nodeValue=nd.nodeValue.replace(nameRe,t.name).replace(tkRe,t.tk);}
-  if(root.nodeType===3){ if(!noswap(root)&&root.nodeValue&&(root.nodeValue.indexOf(f.name)>=0||root.nodeValue.indexOf(f.tk)>=0))fix(root); return; }
-  if(root.nodeType!==1)return;
-  var w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:function(n){
-    if(!n.nodeValue||noswap(n))return NodeFilter.FILTER_REJECT;
-    return (n.nodeValue.indexOf(f.name)>=0||n.nodeValue.indexOf(f.tk)>=0)?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT;
-  }});
-  var arr=[],n;while(n=w.nextNode())arr.push(n);arr.forEach(fix);
-  var imgs=root.querySelectorAll?root.querySelectorAll("img"):[];
-  for(var i=0;i<imgs.length;i++){if(imgs[i].getAttribute("src")===f.logo&&!(imgs[i].closest&&imgs[i].closest("[data-lx-noswap]")))imgs[i].setAttribute("src",t.logo);}
-  if(root.tagName==="IMG"&&root.getAttribute("src")===f.logo&&!(root.closest&&root.closest("[data-lx-noswap]")))root.setAttribute("src",t.logo);
-}
-function guard(fn){if(obs)obs.disconnect();try{fn();}finally{if(obs&&document.body)obs.observe(document.body,{childList:true,subtree:true,characterData:true});}}
-function applyChain(to){
-  if(!CHAINS[to]||to===cur)return;
-  guard(function(){walkSwap(document.body,cur,to);});
-  cur=to;try{localStorage.setItem("lumos.chain",to);}catch(_){}
-  updSwitcher();try{window.dispatchEvent(new Event("lx-chainchange"));}catch(_){}
-}
-window.lxSetChain=applyChain;window.lxGetChain=function(){return cur;};
-function updSwitcher(){
-  var sw=document.getElementById("lxmc");if(!sw)return;
-  var nm=sw.querySelector(".lxmc-name");if(nm)nm.textContent=CHAINS[cur].name;
-  var lg=sw.querySelector(".lxmc-logo");if(lg)lg.innerHTML='<img src="'+CHAINS[cur].logo+'" alt="">';
-  sw.querySelectorAll(".lxmc-opt").forEach(function(o){o.classList.toggle("active",o.getAttribute("data-net")===cur);});
-}
-function buildSwitcher(){
-  if(document.getElementById("lxmc"))return;
-  var host=document.querySelector(".lx-topwallet");
-  var bar=host?host.parentNode:(document.querySelector(".topbar-right")||document.querySelector(".ah-right"));
-  if(!bar)return;
-  var sw=document.createElement("div");sw.id="lxmc";sw.className="lxmc";sw.setAttribute("data-lx-noswap","");
-  var opts=ORDER.map(function(id){return '<button class="lxmc-opt" type="button" data-net="'+id+'"><span class="lxmc-ol"><img src="'+CHAINS[id].logo+'" alt=""></span>'+CHAINS[id].name+'</button>';}).join("");
-  sw.innerHTML='<button class="lxmc-trig" type="button"><span class="lxmc-logo"></span><span class="lxmc-name"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button><div class="lxmc-menu" hidden>'+opts+'</div>';
-  if(host)bar.insertBefore(sw,host);else bar.appendChild(sw);
-  sw.querySelector(".lxmc-trig").addEventListener("click",function(e){e.stopPropagation();sw.querySelector(".lxmc-menu").toggleAttribute("hidden");});
-  sw.querySelectorAll(".lxmc-opt").forEach(function(o){o.addEventListener("click",function(e){e.stopPropagation();applyChain(o.getAttribute("data-net"));sw.querySelector(".lxmc-menu").setAttribute("hidden","");});});
-  document.addEventListener("click",function(){var m=sw.querySelector(".lxmc-menu");if(m)m.setAttribute("hidden","");});
-  updSwitcher();
-}
-// "Choose a network" step — a screen INSIDE the existing .lxw connect modal (same design as the
-// wallet list), shown before the wallet step. Pick network -> that network's wallet list.
-var npHome=null;
-function showScr(name){var s=document.querySelectorAll(".lxw-screen");for(var i=0;i<s.length;i++)s[i].toggleAttribute("hidden",s[i].getAttribute("data-screen")!==name);}
-var NP_CLOSE='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
-var NP_SICO='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
-var NP_CHEV='<svg class="lxw-wchev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>';
-function injectNetScreen(){
-  var modal=document.querySelector(".lxw-modal");if(!modal)return false;
-  if(modal.querySelector('.lxw-screen[data-screen="network"]'))return true;
-  var scr=document.createElement("div");scr.className="lxw-screen";scr.setAttribute("data-screen","network");scr.setAttribute("data-lx-noswap","");
-  var rows=ORDER.map(function(id){return '<button class="lxw-row" type="button" data-lxnet="'+id+'" data-lxq="'+CHAINS[id].name.toLowerCase()+' '+CHAINS[id].tk.toLowerCase()+'"><span class="lxw-ico lxw-neti"><img src="'+CHAINS[id].logo+'" alt=""></span><span class="lxw-main"><span class="lxw-name">'+CHAINS[id].name+'</span><span class="lxw-wsub">Connect on '+CHAINS[id].name+'</span></span>'+NP_CHEV+'</button>';}).join("");
-  // exact same shell as the finalized "wallet" screen: head + search + list
-  scr.innerHTML='<div class="lxw-head"><div class="lxw-htitles"><h3 class="lxw-title">Choose a network</h3><p class="lxw-sub">Choose a network to continue</p></div><button class="lxw-close lxw-netx" type="button" aria-label="Close">'+NP_CLOSE+'</button></div>'
-   +'<div class="lxw-search">'+NP_SICO+'<input type="text" placeholder="Search networks…" class="lxw-searchin lxw-netsearch"/></div>'
-   +'<div class="lxw-list">'+rows+'</div>';
-  modal.appendChild(scr);
-  scr.querySelector(".lxw-netx").addEventListener("click",function(){var mo=document.querySelector(".lxw-modal");if(mo&&mo.parentNode)mo.parentNode.setAttribute("hidden","");});
-  var inp=scr.querySelector(".lxw-netsearch");
-  if(inp)inp.addEventListener("input",function(){var q=(this.value||"").trim().toLowerCase();scr.querySelectorAll(".lxw-row").forEach(function(r){r.style.display=(!q||r.getAttribute("data-lxq").indexOf(q)>=0)?"":"none";});});
-  scr.querySelectorAll(".lxw-row").forEach(function(r){r.addEventListener("click",function(){var net=r.getAttribute("data-lxnet");applyChain(net);if(window.lxwOpenWallet)window.lxwOpenWallet(net,npHome);});});
-  return true;
-}
-function chooseNetwork(home){
-  npHome=home||null;
-  if(window.lxwOpenWallet)window.lxwOpenWallet(cur,npHome);
-  if(injectNetScreen())showScr("network");
-  else setTimeout(function(){if(injectNetScreen())showScr("network");},60);
-}
-window.lxChooseNetwork=chooseNetwork;
-// keep newly-rendered (base-identity) content in sync with the active chain
-function startObserver(){
-  if(obs||!document.body)return;
-  obs=new MutationObserver(function(muts){
-    if(cur===BASE)return;
-    guard(function(){
-      for(var j=0;j<muts.length;j++){var m=muts[j];
-        for(var i=0;i<m.addedNodes.length;i++)walkSwap(m.addedNodes[i],BASE,cur);
-        if(m.type==="characterData"&&m.target)walkSwap(m.target,BASE,cur);
-      }
-    });
-  });
-  obs.observe(document.body,{childList:true,subtree:true,characterData:true});
-}
-function reskin(){ if(cur!==BASE) guard(function(){walkSwap(document.body,BASE,cur);}); } // catch anything rendered late
-function boot(){
-  // No in-app network switcher: the network is chosen at connect time (Choose a network -> wallet).
-  // To change networks the user disconnects and reconnects on another network. We still re-skin the
-  // app to whichever network was connected (via the saved lumos.chain), but show no topbar dropdown.
-  startObserver();
-  var saved=null;try{saved=localStorage.getItem("lumos.chain");}catch(_){}
-  // Nothing saved means a visitor who has never connected — and they were being shown the raw Aptos
-  // base: "Trending on Aptos", NETWORK Aptos with the Aptos mark, "Petra or Nightly", APT tickers, on
-  // a product that only runs on Stellar. The base is an artefact of where these pages came from, never
-  // something a user should see, so default to the first offered chain instead of leaving it unrun.
-  if(!saved||!CHAINS[saved]) saved=ORDER[0];
-  try{ if(saved&&CHAINS[saved]&&saved!==cur)applyChain(saved); }catch(_){}
-  // Signal that the initial rebrand is done. A TARGETED CSS gate (in _multichain.js) hides ONLY the
-  // small network logo/name elements until now — NOT the whole body (that blanked heavy pages).
-  // Added unconditionally (incl. aptos/no-saved) so those elements always reveal.
-  try{document.documentElement.classList.add("lx-chainready");}catch(_){}
-  setTimeout(reskin,300);setTimeout(reskin,1200);setTimeout(reskin,3000);
-  window.addEventListener("load",reskin);
-}
-if(document.readyState!=="loading")boot();else document.addEventListener("DOMContentLoaded",boot);
-})();
-</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
+})();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>
