@@ -145,7 +145,15 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brtab.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:2px;background:var(--accent,#ea6a2c)}'
 +'.lx-brtab[hidden]{display:none!important}'
 +'.lx-brtab-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--accent,#ea6a2c);color:#fff;font:700 11.5px/20px inherit;text-align:center;vertical-align:middle}'
-+'.lx-brpbody{padding-top:4px}'
+// inset to the same 23px the tab labels sit at, so rows do not run to the card's edge
++'.lx-brpbody{padding:4px 16px 10px}'
+// the 72/78ch reading caps suit the narrow mobile card; in the full-width tab they left half the row empty
++'.lx-brpbody .lx-brhow-l,.lx-brpbody .lx-brhow-p{max-width:none}'
++'.lx-brpbody .lx-brhow-l{font-size:13.4px}'
+// the fox was invisible sitting on orange — a white disc at the left edge makes it read at a glance
++'.lx-brp-b.lx-hasico{padding-left:5px;gap:8px}'
++'.lx-wbadge{width:23px;height:23px;flex:0 0 23px;border-radius:50%;background:#fff;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.18)}'
++'.lx-wbadge .lx-wico{width:15px;height:15px;color:#3b3b42}'
 +'.lx-brpbody .lx-brp-row:first-of-type{border-top:0}'
 +'.lx-brp-intro{display:flex;align-items:flex-start;gap:24px}'
 // the standalone panel is a narrow card, so 72ch reads well there. Inside the tab the section is full
@@ -1207,15 +1215,17 @@ function lxBrVidBtn(){
       +'<svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>'
       +'Watch tutorial</a>'
     : ''; }
+// Deliberately NOT "How to claim your USDC" — the same panel will carry XRPL transfers over Wanchain,
+// where the asset landing on the destination is not USDC.
 function lxBrHowTo(){
-  return '<details class="lx-brhow"><summary>How to claim your USDC</summary>'
+  return '<details class="lx-brhow"><summary>How to claim</summary>'
   +'<ol class="lx-brhow-l">'
-  +'<li><b>Get a little gas on the destination chain.</b> Claiming is a transaction on that chain, so the receiving address needs its native token \\u2014 ETH on Ethereum and the L2s, POL on Polygon, AVAX on Avalanche. A few cents is enough everywhere except Ethereum mainnet.</li>'
-  +'<li><b>Wait for the chip to read \\u201cReady to claim\\u201d.</b> Circle signs an attestation a minute or two after the burn. Press Check status if it is still waiting.</li>'
-  +'<li><b>Press Claim.</b> LumosCore connects your EVM wallet, switches it to the right network, checks the claim will succeed before anything is signed, and then asks you to approve one transaction. The USDC arrives when it confirms.</li>'
-  +'<li><b>Or do it by hand.</b> Copy redeem data, then open the destination chain\\u2019s explorer at <span class="mono">'+LX_MT+'</span> \\u2014 the same address on every EVM chain \\u2014 go to Contract \\u203a Write, connect your wallet, and call <span class="mono">receiveMessage</span> with the <span class="mono">message</span> and <span class="mono">attestation</span> from the copied data.</li>'
+  +'<li><b>Fund the destination address with a little gas.</b> ETH on Ethereum and the L2s, POL on Polygon, AVAX on Avalanche. Cents are enough anywhere but Ethereum.</li>'
+  +'<li><b>Wait for Circle to attest</b> \\u2014 a minute or two. Press Check status if it is still waiting.</li>'
+  +'<li><b>Press Claim and approve one transaction.</b> Your wallet is switched to the right network and the claim is checked before anything is signed.</li>'
+  +'<li><b>Or do it yourself:</b> Copy redeem data, then call <span class="mono">receiveMessage</span> on <span class="mono">'+LX_MT+'</span> from that chain\\u2019s explorer.</li>'
   +'</ol>'
-  +'<p class="lx-brhow-p">Claiming is permissionless: the mint always goes to the address encoded in Circle\\u2019s attestation, so it does not matter which wallet pays the gas. If a claim fails, nothing is lost \\u2014 the burn stays valid and you can try again.</p>'
+  +'<p class="lx-brhow-p">Anyone can submit the claim \\u2014 it always pays out to the address in the attestation, so a failed attempt costs nothing but gas.</p>'
   +'</details>'; }
 
 function lxBrRenderPending(){ try{
@@ -1242,13 +1252,17 @@ function lxBrRenderPending(){ try{
     return '<div class="lx-brp-row" data-h="'+lxBrEsc(r.burnHash)+'">'
     +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC <span class="lx-brp-ar">\\u2192</span> '+lxBrEsc(lxBrDomName(r.destDomain))+'</div>'
     +'<div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \\u00b7 <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
-    +(r.feeError?' \\u00b7 <span class="lx-brp-warn">platform fee not collected</span>':'')+'</div></div>'
-    +'<span class="lx-brp-chip '+(ready?'ok':'wait')+'">'+(ready?'Ready to claim':'Awaiting Circle attestation')+'</span>'
+    // the platform fee is LumosCore's problem, not the user's: they can do nothing about it, it does not
+    // affect what they receive, and it is already carried to their next bridge. It stays recorded on the
+    // record, it just no longer sits in their way.
+    +'</div></div>'
+    // no "Ready to claim" chip — the Claim button next to it already says exactly that. The waiting state
+    // is the one worth a chip, because then there is nothing else on the row explaining the delay.
+    +(ready?'':'<span class="lx-brp-chip wait">Awaiting Circle attestation</span>')
     +'<div class="lx-brp-btns">'
     +(ready?'':'<button type="button" class="lx-brp-b" data-act="check">Check status</button>')
-    +((ready&&evm)?'<button type="button" class="lx-brp-b primary lx-hasico" data-act="mint" title="Opens '+lxBrEsc(lxEvmWalletName())+' on '+lxBrEsc(LX_EVM[r.destDomain].n)+'">'+lxEvmWalletIcon()+'Claim on '+lxBrEsc(LX_EVM[r.destDomain].n)+'</button>':'')
+    +((ready&&evm)?'<button type="button" class="lx-brp-b primary lx-hasico" data-act="mint" title="Opens '+lxBrEsc(lxEvmWalletName())+' on '+lxBrEsc(LX_EVM[r.destDomain].n)+'"><span class="lx-wbadge">'+lxEvmWalletIcon()+'</span>Claim on '+lxBrEsc(LX_EVM[r.destDomain].n)+'</button>':'')
     +'<button type="button" class="lx-brp-b" data-act="copy">Copy redeem data</button>'
-    +'<button type="button" class="lx-brp-b ghost" data-act="done">Mark redeemed</button>'
     +'</div>'
     // Solana and Sui have no "connect wallet and press a button" route — not here, and not on their block
     // explorers either, which offer no way to submit an arbitrary instruction. Saying "use Copy redeem
@@ -1309,6 +1323,23 @@ document.addEventListener("click",function(e){
     return; }
   if(act==="done"){ if(window.confirm("Remove this transfer from the pending list? Only do this once the USDC has actually been minted on "+lxBrDomName(rec.destDomain)+" \\u2014 the burn hash, message and attestation will be deleted from this browser.")){ lxBrClearPending(hash); lxBrRenderPending(); } return; }
 },true);
+// A transfer claimed anywhere — here, from an explorer, by a script — is finished, and the row should not
+// need the user to tell us so. Ask the destination chain instead: an eth_call of the very same
+// receiveMessage reverts with "Nonce already used" once the message has been spent. Read-only, no wallet,
+// no gas, and verified against a real claimed transfer on Base. This is what replaced "Mark redeemed".
+function lxBrAutoClear(){ try{
+  lxBrListPending().filter(function(r){ return r.status==="attested"&&r.message&&r.attestation&&LX_EVM[r.destDomain]; })
+    .slice(0,6).forEach(function(r){
+      var cfg=LX_EVM[r.destDomain];
+      lxJrpc(cfg.rpc,"eth_call",[{from:"0x0000000000000000000000000000000000000001",to:LX_MT,data:lxAbiReceive(r.message,r.attestation)},"latest"])
+        .then(function(d){
+          var em=(d&&d.error&&(d.error.message||""))||"";
+          if(em&&lxAlreadyMinted({message:em})){ lxBrClearPending(r.burnHash); lxBrRenderPending(); }
+        }).catch(function(){});
+    });
+}catch(_){} }
+window.lxBrAutoClear=lxBrAutoClear;
+
 // a burn whose attestation timed out (or whose tab was closed mid-poll) resolves itself on the next visit
 function lxBrResumePending(){ try{
   lxBrListPending().filter(function(x){ return !(x.status==="attested"&&x.attestation); }).slice(0,6).forEach(function(r){
@@ -1324,7 +1355,7 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
  function pass(){ var tb=document.querySelector('.br-table tbody'), card=document.querySelector('.br-card')||document.querySelector('.br-wizard');
   if(!tb&&!card) return false;
   if(tb){ lxBrTableCols(); lxBrRestoreTxs(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); }
-  lxBrRenderPending(); lxBrResumePending(); return true; }
+  lxBrRenderPending(); lxBrResumePending(); lxBrAutoClear(); return true; }
  if(!pass()){ var n=0,iv=setInterval(function(){ n++; if(pass()||n>40) clearInterval(iv); },120); } })();
 })();`;
 
