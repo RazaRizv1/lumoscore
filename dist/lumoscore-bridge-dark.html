@@ -4697,7 +4697,12 @@ function lxBrMobCard(o){
 }
 function lxBrRenderMobileTxs(){ try{
   var host=document.querySelector('.lx-brmhost'); if(!host) return;
-  lxBrMergedTxs().then(function(a){ lxBrPaintMobileTxs(host, a||[]); });
+  // Paint exactly what desktop paints, immediately and with NO wallet gate: the local store, the same
+  // single source lxBrRestoreTxs uses on desktop. The chain lookup then upgrades the list only if it
+  // returns something, so mobile can never show LESS than desktop while a network call is in flight.
+  var loc=[]; try{ loc=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); }catch(_){}
+  lxBrPaintMobileTxs(host, loc);
+  try{ lxBrMergedTxs().then(function(a){ if(a&&a.length) lxBrPaintMobileTxs(host, a); }); }catch(_){}
 }catch(_){} }
 function lxBrPaintMobileTxs(host, a){ try{
   if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
