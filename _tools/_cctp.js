@@ -122,6 +122,7 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brp-b.ghost{background:transparent;color:var(--text-soft,#6b6b76)}'
 +'.lx-brp-b.primary{background:var(--accent,#ea6a2c);border-color:var(--accent,#ea6a2c);color:#fff}'
 +'.lx-brp-b.primary:hover:not(:disabled){filter:brightness(1.06);color:#fff}'
++'.lx-bfee .lx-bamt{opacity:.72;font-weight:500;margin-left:2px}'
 +'.lx-brp-relay{flex:1 1 100%;margin-top:2px;font-size:12.3px;line-height:1.5;color:var(--text-soft,#6b6b76)}'
 +'.lx-brp-relay.ok{color:#2a9a63}'
 +'.lx-brp-relay.warn{color:#c9791f}'
@@ -733,6 +734,18 @@ function lxBrReview(){
   var srcRow=s3.querySelector('[data-rv="src"]'); if(srcRow) srcRow.innerHTML='<span class="lx-rvaddric">'+lxBrStellarIcon()+'</span><span>'+lxBrShort(B.pk||LX_SRC_ADDR)+'</span>';
   var dstIn=s2?s2.querySelector('.br-addr-in'):null; var dst=dstIn?(dstIn.value||"").trim():""; var nkey=LX_NETMAP[net];
   var dstRow=s3.querySelector('[data-rv="dst"]'); if(dstRow){ if(dst){ dstRow.innerHTML=(nkey?'<span class="lx-rvaddric"><img class="lx-netimg" src="assets/networks/'+nkey+'.png" alt=""></span>':'')+'<span>'+lxBrShort(dst)+'</span>'; } else dstRow.textContent="—"; }
+  // Bridge fee row: show the actual amount, not just the rate. It always read "0.5%" and nothing else,
+  // while "You send" showed the gross amount — so from the review alone there was no way to tell the fee
+  // had been taken at all. It is deducted from the source asset, so name it in the source asset.
+  var bf=s3.querySelector('.lx-bfee .v');
+  if(bf){
+    var _fr=(window.__lxFeeRate||(window.__lxCCTP&&window.__lxCCTP.feeRate)||0.005);
+    var _sa=parseFloat(String(amt).replace(/,/g,""))||0, _fa=_sa*_fr;
+    var _amtTxt=_fa>0?(_fa<0.0001?_fa.toFixed(7):_fa.toLocaleString("en-US",{maximumFractionDigits:6})):"";
+    var _pct=(_fr*100).toFixed(2).replace(/0$/,"").replace(/\\.$/,"")+"%";
+    bf.innerHTML=_pct+(_amtTxt?' <span class="lx-bamt">\\u00b7 '+_amtTxt+' '+lxBrEsc(k)+'</span>':'')
+      +(_fr>0.003?'<span class="lx-bchip">0.25% with LUMOS</span>':'<span class="lx-bchip">LUMOS holder rate</span>');
+  }
   // Circle CCTP fee row — Standard transfer is free (only our 0.5%/0.25% applies). Structured so a Fast-transfer fee could slot in later.
   var list=s3.querySelector('.br-rv-list');
   if(list && !list.querySelector('.lx-cfee')){ var feeRow=list.querySelector('.lx-bfee'); var r=document.createElement('div'); r.className='r lx-cfee'; r.innerHTML='<span class="k">Circle CCTP fee</span><span class="v">Free <span class="lx-cchip">Standard transfer</span></span>'; if(feeRow) feeRow.parentNode.insertBefore(r, feeRow.nextSibling); else list.appendChild(r); }
