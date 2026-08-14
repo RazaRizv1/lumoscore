@@ -1,5 +1,37 @@
 # Release process
 
+Two repositories, on purpose:
+
+| Repo | Visibility | Holds | Feeds |
+|---|---|---|---|
+| `RazaRizv1/lumoscore` | **public**, open source | `main` only | lumoscore.com |
+| `RazaRizv1/lumoscore-staging` | **private** | `testing-lumoscore` | the gated staging site |
+
+Work happens on `testing-lumoscore` in the **private** repo. Nothing work-in-progress is ever
+pushed to the public one — no half-finished commits, no broken intermediate states, no reverts.
+
+## Promoting to production
+
+Every few days, once staging has been audited and is genuinely good:
+
+```
+git checkout main
+git merge --squash testing-lumoscore     # one clean commit, WIP history stays private
+git commit -m "<what changed, in plain terms>"
+git push origin main                     # public repo -> lumoscore.com
+```
+
+**Squash, never a plain merge.** A normal merge replays every staging commit onto public `main`,
+which would publish exactly the messy middle the private repo exists to hide.
+
+After promoting, bring `testing-lumoscore` back in line so the next cycle starts clean:
+
+```
+git checkout testing-lumoscore
+git merge main
+git push staging testing-lumoscore
+```
+
 `main` is what lumoscore.com serves. **Nothing lands on `main` without going through
 `testing-lumoscore` first.**
 
