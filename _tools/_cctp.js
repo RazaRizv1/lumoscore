@@ -148,6 +148,13 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brtab[hidden]{display:none!important}'
 +'.lx-brtab-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--accent,#ea6a2c);color:#fff;font:700 11.5px/20px inherit;text-align:center;vertical-align:middle}'
 // inset to the same 23px the tab labels sit at, so rows do not run to the card's edge
+// The site's copy toast, verbatim from the rules _ammdata.js uses on the pools pages. The bridge page
+// ships none of this — there is no global toast() here and no .lx-ctoast stylesheet — so it comes along.
++'.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}'
++'.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}'
++'.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}'
++'.lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}'
++'@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}'
 +'.lx-brpbody{padding:6px 24px 14px}'
 // USDC disc with the chain it lives on badged onto it — the same read as the Recent transactions chips
 +'.lx-brp-amt{display:flex;align-items:center;gap:9px;flex-wrap:wrap}'
@@ -1141,6 +1148,19 @@ function lxEvmMint(rec,onStatus){
 window.lxEvmMint=lxEvmMint; window.lxAbiReceive=lxAbiReceive;
 
 
+// Bottom-centre dark pill with a green circled check — the same toast the wallet and issuer copy buttons
+// use elsewhere on the site, same markup and same timing.
+function lxBrToast(msg,isErr){
+  var CK='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  var stack=document.querySelector(".lx-ctoast-stack");
+  if(!stack){ stack=document.createElement("div"); stack.className="lx-ctoast-stack"; document.body.appendChild(stack); }
+  var t=document.createElement("div"); t.className="lx-ctoast"+(isErr?" lxa-terr":"");
+  t.innerHTML='<span class="ci">'+CK+'</span><span>'+lxBrEsc(msg||"")+'</span>';
+  stack.appendChild(t);
+  setTimeout(function(){ t.style.transition="opacity .22s,transform .22s"; t.style.opacity="0"; t.style.transform="translateY(8px)";
+    setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); },240); }, isErr?4000:3200); }
+window.lxBrToast=lxBrToast;
+
 function lxBrRedeemJSON(r){ var C=window.__lxCCTP||{};
   return JSON.stringify({ burnHash:r.burnHash, sourceChain:"Stellar", sourceDomain:C.sourceDomain,
     destinationChain:lxBrDomName(r.destDomain), destinationDomain:r.destDomain, recipient:r.recipient,
@@ -1325,8 +1345,10 @@ document.addEventListener("click",function(e){
   var rec=lxBrListPending().filter(function(x){return x.burnHash===hash;})[0]
     ||((lxBrDemoList()||[]).filter(function(x){return x.burnHash===hash;})[0]); if(!rec) return;
   e.preventDefault(); e.stopPropagation();
-  if(act==="copy"){ var txt=lxBrRedeemJSON(rec); var old=b.textContent;
-    try{ navigator.clipboard.writeText(txt).then(function(){ b.textContent="Copied \\u2713"; setTimeout(function(){ b.textContent=old; },1600); },function(){ window.prompt("Redeem data",txt); }); }
+  // the button used to relabel itself to "Copied ✓"; the toast is the site's established confirmation, and
+  // two acknowledgements for one action is one too many
+  if(act==="copy"){ var txt=lxBrRedeemJSON(rec);
+    try{ navigator.clipboard.writeText(txt).then(function(){ lxBrToast("Redeem data copied"); },function(){ window.prompt("Redeem data",txt); }); }
     catch(_){ window.prompt("Redeem data",txt); } return; }
   if(act==="check"){ var lbl=b.textContent; b.disabled=true; b.textContent="Checking\\u2026";
     lxBrPeekAttest(hash).then(function(att){
