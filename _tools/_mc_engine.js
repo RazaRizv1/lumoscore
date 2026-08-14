@@ -118,11 +118,6 @@ function boot(){
   // app to whichever network was connected (via the saved lumos.chain), but show no topbar dropdown.
   startObserver();
   var saved=null;try{saved=localStorage.getItem("lumos.chain");}catch(_){}
-  // Nothing saved means a visitor who has never connected — and they were being shown the raw Aptos base:
-  // "Trending on Aptos", NETWORK Aptos with the Aptos mark, "Petra or Nightly", APT tickers, on a product
-  // that only runs on Stellar. The base is an artefact of where these pages came from, never something a
-  // user should see, so default to the first offered chain instead of leaving the rebrand unrun.
-  if(!saved||!CHAINS[saved]) saved=ORDER[0];
   try{ if(saved&&CHAINS[saved]&&saved!==cur)applyChain(saved); }catch(_){}
   // Signal that the initial rebrand is done. A TARGETED CSS gate (in _multichain.js) hides ONLY the
   // small network logo/name elements until now — NOT the whole body (that blanked heavy pages).

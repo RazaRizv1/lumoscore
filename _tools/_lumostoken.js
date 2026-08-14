@@ -359,14 +359,9 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
           else if(/^\\s*and\\s*$/.test(v)) n.nodeValue=" ";
           else if(v.indexOf("with identical tokenomics")>=0) n.nodeValue=v.replace(/with identical tokenomics — 1 billion LUMOS per chain/,"with a fixed on-chain supply");
         });
-        // Matched only "Stellar", but this runs against the Aptos base where the strongs still read
-        // "Aptos" — so nothing was de-duped and the sentence kept both chain names. Accept either.
-        var st=[].slice.call(c.querySelectorAll("strong")).filter(function(s){var t=(s.textContent||"").trim();return t==="Stellar"||t==="Aptos";});
+        var st=[].slice.call(c.querySelectorAll("strong")).filter(function(s){return (s.textContent||"").trim()==="Stellar";});
         for(var k=1;k<st.length;k++){ if(st[k].parentNode)st[k].parentNode.removeChild(st[k]); }
-        // no data-lx-noswap: that froze the paragraph before the chain rebrand could reach it, which is
-        // how "Aptos Aptos" survived every sweep. The de-dupe above is idempotent, so letting the engine
-        // name the chain here is safe — and keeps the sentence right on whichever chain is connected.
-        c.setAttribute("data-lxfixed","1");
+        c.setAttribute("data-lx-noswap",""); c.setAttribute("data-lxfixed","1");
         if(p.parentNode)p.parentNode.replaceChild(c,p);
       });
     }catch(_){}

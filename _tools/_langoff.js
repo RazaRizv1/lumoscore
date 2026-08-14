@@ -7,21 +7,17 @@
 //   2. the language picker (.ft-lang / .ft-lang-wrap) plus the small IIFE that opens it and writes a
 //      language preference.
 //
-// The site is English-only, so the whole locale layer goes:
-//   * the 138KB dictionary + engine (<script data-lumos-locale="1">) — the single largest thing on every
-//     page, translating into languages nobody can select any more;
-//   * the rerun observer, which called __lumosApplyLocale on EVERY dom mutation (debounced 120ms) — on
-//     the data-heavy pages that is constant work for no output;
-//   * the locale prefs script and its UI (.locale-chip / .locale-panel / .locale-sheet), the language and
-//     currency picker.
-// Checked before cutting: every reference to lumos.locale.lang, lumos.locale.ccy and __lumosApplyLocale
-// lives inside those scripts. Nothing else on the site reads them, so this cannot strand another module.
-//
-// The English pin stays. It is 159 bytes, it costs nothing, and a browser that already has another
-// language in localStorage from an earlier visit keeps a definitive "en" written over it.
+// The site is English-only for now, so the picker and its wiring are removed. The 138KB locale ENGINE
+// (<script data-lumos-locale="1">) is deliberately LEFT IN PLACE: it defaults to English on its own
+// (STATE={lang:"en"}), and cutting a script that size out of every page key is a much bigger risk than it
+// is worth for a UI change. What matters is that nobody can be left stuck in another language --
+// so a tiny script ahead of the engine pins BOTH keys to English:
+//     lumos.locale.lang  (what the engine reads)
+//     lumos.lang         (what the old footer picker wrote)
+// It is set, not removed: the engine patches localStorage.setItem and listens for cross-tab storage
+// events, so an explicit "en" keeps every tab and every later write on English.
 //
 // Idempotent: re-running finds nothing to do.
-let engineN=0, obsN=0, prefsN=0, uiN=0;
 const {read,writeContents}=require(__dirname+'/lib.js');
 
 const INCORP_NEW = 'LumosCore OÜ · Estonia · 17336483';
@@ -75,29 +71,9 @@ for(const chain of ['aptos','hedera','starknet','vechain','worldchain','stellar'
         h = h.replace(/<style id="lx-langcss">[\s\S]*?<\/style>/g, ()=>{ cssN++; return ''; });
         h = h.replace(/<style id="lx-mlang">[\s\S]*?<\/style>/g, ()=>{ cssN++; return ''; });
 
-        // 2d. the dictionary + engine (the 138KB one)
-        h = h.replace(/<script data-lumos-locale="1">[\s\S]*?<\/script>/g, ()=>{ engineN++; return ''; });
-
-        // 2e. the observer that re-ran the locale pass on every dom mutation
-        h = h.replace(/<script>\(function\(\)\{function rerun\(\)\{[\s\S]*?__lumosApplyLocale[\s\S]*?<\/script>/g, ()=>{ obsN++; return ''; });
-
-        // 2f. the language/currency prefs script (identified by the key it declares, not by position)
-        h = h.replace(/<script>\s*\n?\(function\(\) \{[\s\S]*?K_LANG = 'lumos\.locale\.lang'[\s\S]*?<\/script>/g, ()=>{ prefsN++; return ''; });
-
-        // 2g. the picker UI it drove. The trigger is a <button id="localeChip"> — an id on a button, not
-        // the class a div-walker would find — so it survived the first pass as a dead globe in the header
-        // that opened nothing. Cut by id, then the sheet/backdrop wrappers by class.
-        h = h.replace(/<button[^>]*id="localeChip"[\s\S]*?<\/button>/g, ()=>{ uiN++; return ''; });
-        h = h.replace(/<div[^>]*id="localeSheetBackdrop"[^>]*>[\s\S]*?<\/div>/g, ()=>{ uiN++; return ''; });
-        for(const cls of ['locale-chip','locale-panel','locale-sheet','locale-sheet-backdrop','locale-backdrop']){
-          const rr = cutDiv(h, cls); h = rr.out; uiN += rr.n;
-        }
-
-        // 3. pin English. This used to be inserted immediately before the locale engine, but the engine
-        // is now cut above, so anchor it to </head> — otherwise a container that has never been processed
-        // would come out with no pin at all.
-        if(h.indexOf('lx-langen') < 0 && h.indexOf('</head>') >= 0){
-          h = h.replace('</head>', PIN+'</head>');
+        // 3. pin English ahead of the locale engine
+        if(h.indexOf('lx-langen') < 0 && h.indexOf('data-lumos-locale') >= 0){
+          h = h.replace('<script data-lumos-locale="1">', PIN+'<script data-lumos-locale="1">');
           pinN++;
         }
 
@@ -108,4 +84,3 @@ for(const chain of ['aptos','hedera','starknet','vechain','worldchain','stellar'
   }
 }
 console.log(`english-only: ${f} containers — incorp lines ${incorpN}, pickers ${langN}, wiring scripts ${scriptN}, css blocks ${cssN}, en-pins ${pinN}`);
-console.log('  locale layer removed: engine '+engineN+', observer '+obsN+', prefs '+prefsN+', ui blocks '+uiN);
