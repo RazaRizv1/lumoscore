@@ -1237,7 +1237,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       (needT?dxEnsureTrust(ra):Promise.resolve()).then(function(){ cta.textContent="Confirm in wallet\\u2026"; return soroExecute(soro); }).then(function(resp){
         cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload");
         if(resp&&(resp.success||resp.txHash)){ cta.textContent=(side==="buy"?"Bought ":"Sold ")+CODE+" \\u2713";
-          try{ dxRecordSwap(resp.txHash||resp.hash,pa,ra,amt,soro.out); }catch(_){}
+          try{ dxRecordSwap(resp.txHash||resp.hash,pa,ra,amt,soro.out); }catch(_){} try{if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh();}catch(_){}
           dxToast((side==="buy"?"Bought ":"Sold ")+xlmAmt(soro.out)+" "+(side==="buy"?CODE:"XLM"));
           window.__lxDXASoro=null; window.__lxDXAwalletLoading=false; try{ loadWalletBalance(); }catch(_){}
           if(pin)pin.value=""; var rin=recvInput(); if(rin)rin.value=""; setRecvUsd(0); dxSmartBadge(null);
@@ -1269,7 +1269,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     }).then(function(resp){
       cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload");
       if(resp&&(resp.successful||resp.hash)){ cta.textContent=(side==="buy"?"Bought ":"Sold ")+CODE+" \\u2713";
-        try{ dxRecordSwap(resp.hash,pa,ra,amt,_dxQuoteOut); }catch(_){}
+        try{ dxRecordSwap(resp.hash,pa,ra,amt,_dxQuoteOut); }catch(_){} try{if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh();}catch(_){}
         dxToast((side==="buy"?"Bought ":"Sold ")+xlmAmt(_dxQuoteOut)+" "+(side==="buy"?CODE:"XLM"));
         window.__lxDXAwalletLoading=false; try{ loadWalletBalance(); }catch(_){}
         var rin=recvInput(); if(pin)pin.value=""; if(rin)rin.value=""; setRecvUsd(0);
