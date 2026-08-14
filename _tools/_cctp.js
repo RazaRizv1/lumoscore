@@ -147,8 +147,13 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brtab-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--accent,#ea6a2c);color:#fff;font:700 11.5px/20px inherit;text-align:center;vertical-align:middle}'
 // inset to the same 23px the tab labels sit at, so rows do not run to the card's edge
 +'.lx-brpbody{padding:4px 16px 10px}'
-+'.lx-brdemo{margin:0 0 14px;padding:9px 12px;border:1px dashed rgba(234,106,44,.5);border-radius:9px;font-size:12.4px;line-height:1.5;color:#c9791f}'
-+'.lx-brdemo .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}'
+// USDC disc with the chain it lives on badged onto it — the same read as the Recent transactions chips
++'.lx-brp-amt{display:flex;align-items:center;gap:9px;flex-wrap:wrap}'
++'.lx-brp-ico{position:relative;width:24px;height:24px;flex:0 0 24px;display:inline-block}'
++'.lx-brp-ico>img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}'
++'.lx-brp-ico>i{position:absolute;right:-4px;bottom:-4px;width:13px;height:13px;border-radius:50%;overflow:hidden;display:block;background:var(--surface,#16161a);box-shadow:0 0 0 2px var(--surface,#16161a)}'
++'.lx-brp-ico>i img,.lx-brp-ico>i svg{width:100%;height:100%;display:block;object-fit:cover}'
+// the closing note sat at the ol's edge while every line above it was indented past the numbers
 // the 72/78ch reading caps suit the narrow mobile card; in the full-width tab they left half the row empty
 +'.lx-brpbody .lx-brhow-l,.lx-brpbody .lx-brhow-p{max-width:none}'
 +'.lx-brpbody .lx-brhow-l{font-size:13.4px}'
@@ -168,7 +173,7 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brhow-l li{margin-bottom:9px}'
 +'.lx-brhow-l b{color:var(--text,#0e0e10);font-weight:600}'
 +'.lx-brhow-l .mono,.lx-brhow-p .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.6px;word-break:break-all}'
-+'.lx-brhow-p{margin:10px 0 0;font-size:12.3px;line-height:1.6;color:var(--text-soft,#6b6b76);max-width:78ch}'
++'.lx-brhow-p{margin:10px 0 0 20px;font-size:12.3px;line-height:1.6;color:var(--text-soft,#6b6b76);max-width:78ch}'
 +'.lx-brp-relay{flex:1 1 100%;margin-top:2px;font-size:12.3px;line-height:1.5;color:var(--text-soft,#6b6b76)}'
 +'.lx-brp-relay.ok{color:#2a9a63}'
 +'.lx-brp-relay.warn{color:#c9791f}'
@@ -1246,6 +1251,16 @@ function lxBrDemoList(){
   ];
 }
 
+var LX_STELLAR_SVG='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#000"/><path d="M23.13 9.292l-2.4 1.224-11.598 5.907A6.909 6.909 0 0119.35 9.498l1.374-.7.205-.105a8.439 8.439 0 00-13.371 7.472 1.535 1.535 0 01-.834 1.484l-.725.37v1.724l2.134-1.088.691-.353.681-.347 12.226-6.23 1.374-.699 2.84-1.447V7.856zm2.816 2.012L10.201 19.32l-1.374.7L6 21.463v1.723l2.808-1.43 2.401-1.224 11.61-5.916a6.909 6.909 0 01-10.229 6.93l-.085.045-1.49.76a8.439 8.439 0 0013.372-7.475 1.536 1.536 0 01.833-1.483l.726-.37v-1.718z" fill="#FFF"/></svg>';
+// USDC on the source chain, USDC on the destination chain — each token disc badged with its network.
+// Stellar is inlined because there is no assets/networks/stellar.png, and scraping the wizard's chip would
+// break the moment that markup moves.
+function lxBrNetImg(dom){ var n=LX_NETMAP[lxBrDomName(dom)]; return n?('<img src="assets/networks/'+n+'.png" alt="">'):''; }
+function lxBrPairIco(kind,dom){
+  var badge=(kind==="src")?LX_STELLAR_SVG:lxBrNetImg(dom);
+  var name=(kind==="src")?"Stellar":lxBrDomName(dom);
+  return '<span class="lx-brp-ico" title="USDC on '+lxBrEsc(name)+'"><img src="assets/tokens/usdc.png" alt="USDC"><i>'+badge+'</i></span>'; }
+
 function lxBrRenderPending(){ try{
   var host=lxBrPendHost(); if(!host) return false;
   var p=host.el, list=lxBrListPending(), demo=false;
@@ -1269,7 +1284,7 @@ function lxBrRenderPending(){ try{
     var ready=!!(r.status==="attested"&&r.message&&r.attestation);
     var evm=!!LX_EVM[r.destDomain];
     return '<div class="lx-brp-row" data-h="'+lxBrEsc(r.burnHash)+'">'
-    +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC <span class="lx-brp-ar">\\u2192</span> '+lxBrEsc(lxBrDomName(r.destDomain))+'</div>'
+    +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrPairIco("src",r.destDomain)+'<span>'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC</span><span class="lx-brp-ar">\\u2192</span>'+lxBrPairIco("dst",r.destDomain)+'<span>'+lxBrEsc(lxBrDomName(r.destDomain))+'</span></div>'
     +'<div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \\u00b7 <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
     // the platform fee is LumosCore's problem, not the user's: they can do nothing about it, it does not
     // affect what they receive, and it is already carried to their next bridge. It stays recorded on the
@@ -1294,7 +1309,6 @@ function lxBrRenderPending(){ try{
   p.innerHTML=(host.tabbed?'':'<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span>'+lxBrVidBtn()+'</div>')
     +'<div class="lx-brp-intro"><p class="lx-brp-note">CCTP burns your USDC on Stellar and Circle holds it until the mint is submitted on the destination chain. That last step is yours to make: press Claim, approve it in your EVM wallet, and the USDC appears. You need a little gas on the destination chain to do it. Nothing here expires \\u2014 an unclaimed transfer waits indefinitely.</p>'
     +(host.tabbed?lxBrVidBtn():'')+'</div>'
-    +(demo?'<div class="lx-brdemo">Sample data \\u2014 shown only because this url carries <span class="mono">?demo=claims</span>. No real transfer is pending, and the buttons below do nothing.</div>':'')
     +lxBrHowTo()
     +rows;
   if(!host.tabbed) p.style.display="";
@@ -1304,7 +1318,8 @@ document.addEventListener("click",function(e){
   var b=e.target&&e.target.closest?e.target.closest(".lx-brp-b"):null; if(!b) return;
   var row=b.closest(".lx-brp-row"); if(!row) return;
   var hash=row.getAttribute("data-h"), act=b.getAttribute("data-act");
-  var rec=lxBrListPending().filter(function(x){return x.burnHash===hash;})[0]; if(!rec) return;
+  var rec=lxBrListPending().filter(function(x){return x.burnHash===hash;})[0]
+    ||((lxBrDemoList()||[]).filter(function(x){return x.burnHash===hash;})[0]); if(!rec) return;
   e.preventDefault(); e.stopPropagation();
   if(act==="copy"){ var txt=lxBrRedeemJSON(rec); var old=b.textContent;
     try{ navigator.clipboard.writeText(txt).then(function(){ b.textContent="Copied \\u2713"; setTimeout(function(){ b.textContent=old; },1600); },function(){ window.prompt("Redeem data",txt); }); }
