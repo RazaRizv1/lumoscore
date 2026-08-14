@@ -108,8 +108,10 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brp-head h2{margin:0;font-size:17px;font-weight:700;color:var(--text,#0e0e10)}'
 +'.lx-brp-n{min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--accent,#ea6a2c);color:#fff;font:700 12px/22px inherit;text-align:center}'
 +'.lx-brp-note{margin:0 0 16px;font-size:12.8px;line-height:1.55;color:var(--text-soft,#6b6b76);max-width:72ch}'
-+'.lx-brp-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:13px 0;border-top:1px solid var(--border,#e6e6ea)}'
-+'.lx-brp-main{flex:1 1 240px;min-width:0}'
++'.lx-brp-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:15px 0;border-top:1px solid var(--border,#e6e6ea)}'
++'.lx-brp-main{flex:0 1 auto;min-width:0}'
++'.lx-brp-meta{flex:1 1 180px;min-width:0}'
++'.lx-brp-sub{margin-top:0!important}'
 +'.lx-brp-amt{font-size:14.5px;font-weight:650;color:var(--text,#0e0e10)}'
 +'.lx-brp-ar{opacity:.45;margin:0 3px}'
 +'.lx-brp-sub{margin-top:3px;font-size:12px;color:var(--text-soft,#6b6b76)}'
@@ -119,7 +121,7 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brp-chip{flex:0 0 auto;padding:5px 11px;border-radius:20px;font-size:11.5px;font-weight:650;white-space:nowrap}'
 +'.lx-brp-chip.wait{background:rgba(201,121,31,.12);color:#c9791f}'
 +'.lx-brp-chip.ok{background:rgba(53,192,127,.14);color:#2a9a63}'
-+'.lx-brp-btns{display:flex;gap:8px;flex-wrap:wrap}'
++'.lx-brp-btns{display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;flex:0 0 auto}'
 +'.lx-brp-b .lx-wico{width:15px;height:15px;flex:0 0 15px;display:block}'
 // an explicit class rather than :has() — if :has() ever fails the block-level icon would drop onto its
 // own line and the button would look broken, and this costs nothing
@@ -146,7 +148,7 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brtab[hidden]{display:none!important}'
 +'.lx-brtab-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--accent,#ea6a2c);color:#fff;font:700 11.5px/20px inherit;text-align:center;vertical-align:middle}'
 // inset to the same 23px the tab labels sit at, so rows do not run to the card's edge
-+'.lx-brpbody{padding:4px 16px 10px}'
++'.lx-brpbody{padding:6px 24px 14px}'
 // USDC disc with the chain it lives on badged onto it — the same read as the Recent transactions chips
 +'.lx-brp-amt{display:flex;align-items:center;gap:9px;flex-wrap:wrap}'
 +'.lx-brp-ico{position:relative;width:24px;height:24px;flex:0 0 24px;display:inline-block}'
@@ -1284,8 +1286,10 @@ function lxBrRenderPending(){ try{
     var ready=!!(r.status==="attested"&&r.message&&r.attestation);
     var evm=!!LX_EVM[r.destDomain];
     return '<div class="lx-brp-row" data-h="'+lxBrEsc(r.burnHash)+'">'
-    +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrPairIco("src",r.destDomain)+'<span>'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC</span><span class="lx-brp-ar">\\u2192</span>'+lxBrPairIco("dst",r.destDomain)+'<span>'+lxBrEsc(lxBrDomName(r.destDomain))+'</span></div>'
-    +'<div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \\u00b7 <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
+    // amount left, provenance in the middle, actions hard right — the row reads across the full width the
+    // way the transactions table above it does, instead of clumping everything against the left edge
+    +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrPairIco("src",r.destDomain)+'<span>'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC</span><span class="lx-brp-ar">\\u2192</span>'+lxBrPairIco("dst",r.destDomain)+'<span>'+lxBrEsc(lxBrDomName(r.destDomain))+'</span></div></div>'
+    +'<div class="lx-brp-meta"><div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \\u00b7 <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
     // the platform fee is LumosCore's problem, not the user's: they can do nothing about it, it does not
     // affect what they receive, and it is already carried to their next bridge. It stays recorded on the
     // record, it just no longer sits in their way.
