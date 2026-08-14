@@ -13,8 +13,17 @@ const SCRIPT='<script id="lx-mc">'+engine+'</script>';
 // swap. This HEAD CSS hides ONLY those small elements (netcard logo/name + bridge source-network chip)
 // until mc-engine adds html.lx-chainready after its first rebrand. The 3s failsafe reveals them even if
 // mc-engine never runs. The rest of the page renders immediately — no blank page.
+// The named selectors below were found one at a time, as each flash got reported. That approach cannot
+// win: the base is Aptos, so EVERY static chain mark in the markup flashes, and there are more of them
+// than anyone will enumerate (the topbar wallet avatar .lx-tw-av, the search filter pill .ch-ico, the
+// asset-dropdown .ad-ico, …). So gate on the thing they all have in common instead — the Aptos logo
+// itself, matched by an attribute-prefix selector. walkSwap rewrites that src to the active chain's
+// logo, at which point the selector stops matching and the image reveals itself. One rule, every page,
+// nothing left to miss. The prefix is long enough to be unique to this asset.
+const APTOS_LOGO_PREFIX = CH.aptos.logo.slice(0, 96);
 const HEAD='<style id="lx-chainready-css">'
 +'html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}'
++'html:not(.lx-chainready) img[src^="'+APTOS_LOGO_PREFIX+'"]{visibility:hidden!important}'
 +'</style>'
 +'<script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();<'+'/script>';
 
