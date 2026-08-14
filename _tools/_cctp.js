@@ -1238,9 +1238,11 @@ function lxBrHowTo(){
 function lxBrDemoList(){
   var q=""; try{ q=String(location.search||"")+String(location.hash||""); }catch(_){ return null; }
   if(q.indexOf("demo=claims")<0) return null;
+  // One row, in the state that matters for review: attested and ready to claim. The second sample was a
+  // not-yet-attested transfer — same design, earlier moment, no Claim button because there is nothing to
+  // claim yet — and it read as a leftover of the old layout, which is worse than not showing it.
   return [
-    {burnHash:"71085fcb0ba8193e97331b709da680edcb451d33b4e9e4606ce3cd30551ff853",netUsdc:"1.2698190",destDomain:6,status:"attested",message:"0x00",attestation:"0x01",ts:Date.now()-1.8e7},
-    {burnHash:"9c2ad41e77b30f5a6e18c4b90d3f27ae5518c6b04ff29e13aa7c50d6e83b1a4f",netUsdc:"250.0000000",destDomain:0,status:"burned",ts:Date.now()-240000}
+    {burnHash:"71085fcb0ba8193e97331b709da680edcb451d33b4e9e4606ce3cd30551ff853",netUsdc:"1.2698190",destDomain:6,status:"attested",message:"0x00",attestation:"0x01",ts:Date.now()-1.8e7}
   ];
 }
 
