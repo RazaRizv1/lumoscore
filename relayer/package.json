@@ -1,0 +1,16 @@
+{
+  "name": "lumoscore-cctp-relayer",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.19.0"
+  }
+}

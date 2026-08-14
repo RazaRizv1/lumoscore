@@ -1,0 +1,25 @@
+name = "lumoscore-cctp-relayer"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# Cloudflare PAGES has no cron. This is a separate Worker purely so the queue can be
+# drained on a schedule; the public site keeps talking to it through Pages Functions
+# that write into the same KV namespace.
+[triggers]
+crons = ["* * * * *"]      # every minute — a burn is claimable ~seconds after attestation
+
+# Create with:  npx wrangler kv namespace create CCTP
+# then paste the id here AND bind the same namespace to the Pages project.
+[[kv_namespaces]]
+binding = "CCTP"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
+
+[vars]
+IRIS = "https://iris-api.circle.com"
+SOURCE_DOMAIN = "27"                 # Stellar
+HORIZON = "https://horizon.stellar.org"
+
+# Secrets (never in this file — set them once, they live encrypted at Cloudflare):
+#   npx wrangler secret put RELAYER_KEY     # 0x-prefixed private key of the delivery wallet
+# Optional:
+#   npx wrangler secret put ENQUEUE_TOKEN   # shared with the Pages Function, gates /enqueue

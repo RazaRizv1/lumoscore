@@ -122,6 +122,10 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brp-b.ghost{background:transparent;color:var(--text-soft,#6b6b76)}'
 +'.lx-brp-b.primary{background:var(--accent,#ea6a2c);border-color:var(--accent,#ea6a2c);color:#fff}'
 +'.lx-brp-b.primary:hover:not(:disabled){filter:brightness(1.06);color:#fff}'
++'.lx-brp-relay{flex:1 1 100%;margin-top:2px;font-size:12.3px;line-height:1.5;color:var(--text-soft,#6b6b76)}'
++'.lx-brp-relay.ok{color:#2a9a63}'
++'.lx-brp-relay.warn{color:#c9791f}'
++'.lx-brp-relay .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}'
 +'.lx-brp-msg{flex:1 1 100%;margin-top:2px;font-size:12.3px;line-height:1.5;color:var(--text-soft,#6b6b76)}'
 +'.lx-brp-msg.err{color:#d1542f}'
 +'.lx-brp-msg.ok{color:#2a9a63}'
@@ -425,6 +429,10 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
         var rec={ burnHash:res.hash, approveHash:res.approveHash||null, netUsdc:netHuman, feeRate:feeRate,
                   destDomain:parseInt(destDomain,10), recipient:recipient, status:"burned", ts:Date.now() };
         lxBrSavePending(rec);
+        // hand it to the delivery relayer straight away. Fire-and-forget on purpose: if the relayer is not
+        // provisioned, or the request fails, the transfer still sits in the pending list with a Claim button,
+        // exactly as it did before. Auto-delivery is an upgrade on a flow that already works.
+        lxRelayEnqueue(res.hash,parseInt(destDomain,10));
         // fee now that the burn is confirmed. A fee failure must NEVER fail the bridge (the USDC is already
         // burned) — record it and carry on so the user still gets their attestation + redeem data.
         var feeP = deferredFee ? deferredFee().catch(function(fe){ rec.feeError=(fe&&fe.message)||"fee not collected"; lxBrSavePending(rec); }) : Promise.resolve();
@@ -933,35 +941,123 @@ function lxEvmMint(rec,onStatus){
 }
 window.lxEvmMint=lxEvmMint; window.lxAbiReceive=lxAbiReceive;
 
+// ---- automatic delivery ------------------------------------------------------------------------------
+// The claim above works, but it asks a Stellar user to install an EVM wallet, fund it with gas on a chain
+// they may never have used, and press a button — for a step the protocol considers part of the transfer.
+// So LumosCore runs a relayer that submits receiveMessage() for them. This is only the client half: queue
+// the burn, then show what the relayer has done with it.
+//
+// receiveMessage mints to the recipient encoded inside Circle's attested message, so the relayer cannot
+// redirect anything; it can only pay the gas. Everything here degrades to the manual flow — if the endpoint
+// is missing, off, or the relayer declines (dust on Ethereum, say), the Claim button is what the user sees.
+var LX_RELAY={};              // burnHash -> {status,reason,deliverHash}
+var lxRelayOn=null;           // null = not asked yet, false = no relayer on this deployment
+var lxRelayFails=0;
+function lxRelayEnqueue(hash,domain){ try{
+  fetch("/lxapi/cctp/enqueue",{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({burnHash:String(hash||"").toLowerCase(),destDomain:domain})})
+    .then(function(r){ return r.json(); })
+    .then(function(d){ if(!d)return; lxRelayOn=(d.relayer==="on");
+      if(d.relayer==="on"){ LX_RELAY[String(hash).toLowerCase()]={status:d.status||"queued"}; lxBrRenderPending(); } })
+    .catch(function(){});
+}catch(_){} }
+// one request for every pending row, not one per row
+function lxRelayFetch(){
+  var list=lxBrListPending().filter(function(r){ return !r.relayDone; });
+  if(!list.length||lxRelayOn===false) return Promise.resolve(false);
+  var hs=list.map(function(r){ return String(r.burnHash||"").toLowerCase(); }).slice(0,20).join(",");
+  return fetch("/lxapi/cctp/status?hash="+hs).then(function(r){ return r.json(); }).then(function(d){
+    if(!d||d.relayer!=="on"){ lxRelayOn=false; return false; }
+    lxRelayOn=true; var changed=false;
+    var items=d.items||{};
+    for(var h in items){ var prev=LX_RELAY[h]; var now=items[h];
+      if(!prev||prev.status!==now.status||prev.deliverHash!==now.deliverHash){ changed=true; }
+      LX_RELAY[h]=now; }
+    lxRelayFails=0;
+    return changed;
+  }).catch(function(){
+    // no endpoint, or it is down. Tolerate a blip, but stop polling rather than loop forever against a
+    // deployment that simply has no relayer — the Claim button is still there and still works.
+    if(++lxRelayFails>=3) lxRelayOn=false;
+    return false; });
+}
+function lxRelayOf(hash){ return LX_RELAY[String(hash||"").toLowerCase()]||null; }
+// true while the relayer still intends to deliver this one
+function lxRelayWorking(st){ return st==="queued"||st==="awaiting-attestation"||st==="retrying"||st==="sent"; }
+function lxRelayChip(rec,ready){
+  var s=lxRelayOf(rec.burnHash), st=s&&s.status;
+  if(st==="delivered") return {cls:"ok",txt:"Delivered automatically"};
+  if(lxRelayWorking(st)) return {cls:"wait",txt:(st==="awaiting-attestation"?"Awaiting Circle attestation":"Delivering automatically\\u2026")};
+  return {cls:(ready?"ok":"wait"),txt:(ready?"Ready to redeem":"Awaiting Circle attestation")};
+}
+// the relayer declined (below the gas floor for that chain, or it gave up) — say why, plainly
+function lxRelayNote(rec){ var s=lxRelayOf(rec.burnHash); if(!s) return "";
+  if(s.status==="manual"&&s.reason) return '<div class="lx-brp-relay warn">Automatic delivery skipped \\u2014 '+lxBrEsc(s.reason)+'. Claim it yourself below; nothing was lost.</div>';
+  if(s.status==="delivered") return '<div class="lx-brp-relay ok">LumosCore submitted the mint for you'+(s.deliverHash?' \\u00b7 <span class="mono">'+lxBrEsc(lxBrShortH(s.deliverHash))+'</span>':'')+'.</div>';
+  if(lxRelayWorking(s.status)) return '<div class="lx-brp-relay">LumosCore is delivering this for you \\u2014 no wallet or gas needed on the destination chain. You can still claim it yourself at any time.</div>';
+  return ""; }
+// poll while anything is still moving; stop once every row is settled so an idle tab is silent
+function lxRelayPoll(){
+  var pend=lxBrListPending();
+  if(!pend.length||lxRelayOn===false) return;
+  lxRelayFetch().then(function(changed){
+    // a burn made before the relayer existed (or while it was down) is queued on first sight, once
+    pend.forEach(function(r){ var s=lxRelayOf(r.burnHash);
+      if(lxRelayOn&&s&&s.status==="unknown"&&!r.relayQ){ r.relayQ=1; lxBrSavePending(r); lxRelayEnqueue(r.burnHash,r.destDomain); } });
+    var done=[];
+    pend.forEach(function(r){ var s=lxRelayOf(r.burnHash); if(s&&s.status==="delivered"&&!r.relayDone){ r.relayDone=1; lxBrSavePending(r); done.push(r); } });
+    if(changed||done.length) lxBrRenderPending();
+    // give the user a beat to read "Delivered", then retire the row — the Recent transactions entry stays
+    if(done.length) setTimeout(function(){ done.forEach(function(r){ lxBrClearPending(r.burnHash); }); lxBrRenderPending(); },6000);
+    var busy=lxBrListPending().some(function(r){ var s=lxRelayOf(r.burnHash); return !s||lxRelayWorking(s.status); });
+    if(busy&&lxRelayOn!==false) setTimeout(lxRelayPoll,15000);
+  });
+}
+window.lxRelayEnqueue=lxRelayEnqueue; window.lxRelayPoll=lxRelayPoll; window.lxRelayOf=lxRelayOf;
+
 function lxBrRedeemJSON(r){ var C=window.__lxCCTP||{};
   return JSON.stringify({ burnHash:r.burnHash, sourceChain:"Stellar", sourceDomain:C.sourceDomain,
     destinationChain:lxBrDomName(r.destDomain), destinationDomain:r.destDomain, recipient:r.recipient,
     amountUSDC:r.netUsdc, status:r.status, message:r.message||null, attestation:r.attestation||null }, null, 2); }
 function lxBrPendPanel(){ var p=document.getElementById("lxBrPending"); if(p) return p;
-  var anchor=document.querySelector(".br-txwrap"); if(!anchor) return null;
   p=document.createElement("section"); p.id="lxBrPending"; p.className="lx-brpend"; p.style.display="none";
-  anchor.parentNode.insertBefore(p,anchor); return p; }
+  // Desktop sits it above Recent transactions. The MOBILE bridge page has no such table, and anchoring on
+  // it alone meant the whole pending-claims panel silently never existed on a phone — the one place a
+  // Stellar-only user is most likely to be. Fall back to the wizard card and put it directly after.
+  var anchor=document.querySelector(".br-txwrap");
+  if(anchor&&anchor.parentNode){ anchor.parentNode.insertBefore(p,anchor); return p; }
+  var card=document.querySelector(".br-card")||document.querySelector(".br-wizard");
+  if(card&&card.parentNode){ card.parentNode.insertBefore(p,card.nextSibling); return p; }
+  return null; }
 function lxBrRenderPending(){ try{
   var p=lxBrPendPanel(); if(!p) return false;
   var list=lxBrListPending();
   if(!list.length){ p.style.display="none"; p.innerHTML=""; return true; }
   var rows=list.map(function(r){
     var ready=!!(r.status==="attested"&&r.message&&r.attestation);
+    var rs=lxRelayOf(r.burnHash), working=!!(rs&&lxRelayWorking(rs.status)), deliv=!!(rs&&rs.status==="delivered"), chip=lxRelayChip(r,ready);
     return '<div class="lx-brp-row" data-h="'+lxBrEsc(r.burnHash)+'">'
     +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC <span class="lx-brp-ar">\\u2192</span> '+lxBrEsc(lxBrDomName(r.destDomain))+'</div>'
     +'<div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \\u00b7 <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
     +(r.feeError?' \\u00b7 <span class="lx-brp-warn">platform fee not collected</span>':'')+'</div></div>'
-    +'<span class="lx-brp-chip '+(ready?'ok':'wait')+'">'+(ready?'Ready to redeem':'Awaiting Circle attestation')+'</span>'
+    +'<span class="lx-brp-chip '+chip.cls+'">'+chip.txt+'</span>'
     +'<div class="lx-brp-btns">'
-    +(ready?'':'<button type="button" class="lx-brp-b" data-act="check">Check status</button>')
-    +((ready&&LX_EVM[r.destDomain])?'<button type="button" class="lx-brp-b primary" data-act="mint">Claim on '+lxBrEsc(LX_EVM[r.destDomain].n)+'</button>':'')
+    +((ready||deliv)?'':'<button type="button" class="lx-brp-b" data-act="check">Check status</button>')
+    // while the relayer is on it, claiming yourself is still allowed — just no longer the thing to do.
+    // once it IS delivered, offering a claim would only invite a transaction that must revert.
+    +((ready&&!deliv&&LX_EVM[r.destDomain])?'<button type="button" class="lx-brp-b'+(working?'':' primary')+'" data-act="mint">Claim'+(working?' it myself':' on '+lxBrEsc(LX_EVM[r.destDomain].n))+'</button>':'')
     +'<button type="button" class="lx-brp-b" data-act="copy">Copy redeem data</button>'
     +'<button type="button" class="lx-brp-b ghost" data-act="done">Mark redeemed</button>'
     +'</div>'
+    +lxRelayNote(r)
     +'<div class="lx-brp-msg" style="display:none"></div>'
     +'</div>'; }).join("");
+  var anyRelay=list.some(function(r){ var s=lxRelayOf(r.burnHash); return !!s&&s.status!=="unknown"; });
   p.innerHTML='<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span></div>'
-    +'<p class="lx-brp-note">These transfers were burned on Stellar and are held by Circle. CCTP only delivers once the mint is submitted on the destination chain. On Ethereum, Avalanche, Optimism, Arbitrum, Base, Polygon, Linea and World Chain you can do that here with Claim. Solana and Sui are not wired yet, so use Copy redeem data. Nothing here expires.</p>'
+    +'<p class="lx-brp-note">'+(anyRelay
+      ? 'These transfers were burned on Stellar and are held by Circle. CCTP only delivers once the mint is submitted on the destination chain \\u2014 LumosCore does that for you, so you need no wallet and no gas there. Claim it yourself any time you prefer; on Solana and Sui use Copy redeem data. Nothing here expires.'
+      : 'These transfers were burned on Stellar and are held by Circle. CCTP only delivers once the mint is submitted on the destination chain. On Ethereum, Avalanche, Optimism, Arbitrum, Base, Polygon, Linea and World Chain you can do that here with Claim. Solana and Sui are not wired yet, so use Copy redeem data. Nothing here expires.')
+    +'</p>'
     +rows;
   p.style.display="";
   return true;
@@ -1020,7 +1116,11 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
 
 // restore persisted bridge transactions into the Recent transactions table on load
 (function(){ function fixFrom(){ try{ var rows=document.querySelectorAll('.br-table tbody tr'); for(var i=0;i<rows.length;i++){ var tds=rows[i].querySelectorAll('td'); var ft=tds[1]; if(!ft)continue; var am=ft.querySelector('.am'), ic=ft.querySelector('.br-ic'); if(!am||!ic||ic.__lxfrom)continue; var t=am.textContent||''; var img=/USDC/i.test(t)?'assets/tokens/usdc.png':(/XLM/i.test(t)?'assets/tokens/xlm.png':''); if(!img)continue; ic.__lxfrom=1; ic.innerHTML='<img class="lx-netimg" src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; } }catch(_){} }
- function pass(){ if(document.querySelector('.br-table tbody')){ lxBrTableCols(); lxBrRestoreTxs(); lxBrRenderPending(); lxBrResumePending(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); return true; } return false; }
+ // the table half is desktop-only; the pending-claims half has to run wherever the bridge card exists
+ function pass(){ var tb=document.querySelector('.br-table tbody'), card=document.querySelector('.br-card')||document.querySelector('.br-wizard');
+  if(!tb&&!card) return false;
+  if(tb){ lxBrTableCols(); lxBrRestoreTxs(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); }
+  lxBrRenderPending(); lxBrResumePending(); lxRelayPoll(); return true; }
  if(!pass()){ var n=0,iv=setInterval(function(){ n++; if(pass()||n>40) clearInterval(iv); },120); } })();
 })();`;
 

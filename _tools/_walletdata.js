@@ -90,6 +90,16 @@ const CSS='<style id="lx-walletdata-css">'
 +'.activity-icon.claim{background:rgba(16,185,129,.14)!important;color:#10b981!important}'
 +'.activity-icon.contract{background:rgba(139,92,246,.14)!important;color:#8b5cf6!important}'
 +'.activity-icon.bridge{background:rgba(6,182,212,.15)!important;color:#06b6d4!important}'
+// A cross-chain transfer is only finished once the destination chain mints. Until then the USDC exists
+// nowhere the user can see, so it gets its own row at the top of activity rather than being invisible.
++'.lx-pendclaim{text-decoration:none!important;color:inherit!important}'
++'.lx-pendclaim .activity-amt .a2{color:#c9791f}'
++'.lx-pendclaim:hover{background:rgba(6,182,212,.06)}'
+// the mobile sheet clips .type/.meta to one nowrap line for op rows; these rows carry a sentence, and
+// clipping it mid-word ("Waiting to be claime…") is worse than two lines. The leading "·" separator
+// belongs to rows whose meta follows an address — there is none here.
++'.lx-pendclaim .activity-info .type,.lx-pendclaim .activity-info .meta{white-space:normal!important;overflow:visible!important;text-overflow:clip!important}'
++'.lx-pendclaim .activity-info .meta::before{content:""!important;margin:0!important}'
 +'.activity-icon.settings{background:rgba(100,116,139,.16)!important;color:#64748b!important}'
 +'.activity-icon.data{background:rgba(99,102,241,.14)!important;color:#6366f1!important}'
 +'.activity-icon.other{background:rgba(100,116,139,.14)!important;color:#64748b!important}'
@@ -413,7 +423,29 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'function lxRenderActs(limit){if(!cont)return;var use=recs.slice(0,limit||recs.length);var html="",prev=null;use.forEach(function(o){var a=mapOp(o);if(!a)return;a.tx=o.transaction_hash;if(a.day!==prev){html+=\'<div class="day-divider">\'+esc(a.day)+\'</div>\';prev=a.day;}var ac=a.kind==="received"?"up":(a.kind==="sent"?"down":"swap");'
 +'var ia=actIconAttrs(a);'
 +'var metaHtml=a.addr?(esc(a.metaPre||"")+\' <a class="lx-addr-link" href="https://stellar.expert/explorer/public/account/\'+esc(a.addr)+\'" target="_blank" rel="noopener">\'+esc(shrt(a.addr))+\'</a>\'):esc(a.meta||"");'
-+'html+=\'<div class="activity-row"><div class="activity-icon \'+a.kind+ia.cls+\'" style="\'+ia.style+\'" data-l="\'+esc(ia.dl)+\'">\'+ia.svg+\'</div><div class="activity-info"><div class="type">\'+typeHtml(a)+\'</div><div class="meta">\'+metaHtml+\'</div></div>\'+\'<div class="activity-amt"><div class="a1 \'+ac+\'">\'+esc(a.amt)+\'</div><div class="a2">\'+esc(a.amtSub||"")+\'</div></div><a class="lx-txlink" href="https://stellar.expert/explorer/public/tx/\'+esc(a.tx||"")+\'" target="_blank" rel="noopener" title="View on Stellar.Expert"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></div>\';});cont.innerHTML=html||\'<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:14px">No recent activity</div>\';var _cb=(document.getElementById("actCount")||{}).parentElement;if(_cb)_cb.innerHTML=\'Showing <span id="actCount">\'+use.length+\'</span> of \'+recs.length+\' activities\';lxHarvestActLogos();}'
++'html+=\'<div class="activity-row"><div class="activity-icon \'+a.kind+ia.cls+\'" style="\'+ia.style+\'" data-l="\'+esc(ia.dl)+\'">\'+ia.svg+\'</div><div class="activity-info"><div class="type">\'+typeHtml(a)+\'</div><div class="meta">\'+metaHtml+\'</div></div>\'+\'<div class="activity-amt"><div class="a1 \'+ac+\'">\'+esc(a.amt)+\'</div><div class="a2">\'+esc(a.amtSub||"")+\'</div></div><a class="lx-txlink" href="https://stellar.expert/explorer/public/tx/\'+esc(a.tx||"")+\'" target="_blank" rel="noopener" title="View on Stellar.Expert"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></div>\';});cont.innerHTML=html||\'<div style="padding:24px;text-align:center;color:var(--text-muted);font-size:14px">No recent activity</div>\';var _cb=(document.getElementById("actCount")||{}).parentElement;if(_cb)_cb.innerHTML=\'Showing <span id="actCount">\'+use.length+\'</span> of \'+recs.length+\' activities\';lxHarvestActLogos();lxPendClaims(cont);}'
+// ---- pending cross-chain claims ----
+// These are not Horizon operations: the burn already showed up in activity, but the transfer is not done
+// until the destination chain mints. Reading the local bridge store puts that unfinished state where the
+// user actually looks, and says whether LumosCore is delivering it or whether they need to claim it.
++'function lxPendClaims(cont){if(!cont)return;var list=[];try{list=JSON.parse(localStorage.getItem("lumos.cctp.pending")||"[]");}catch(_){}'
++'list=(list||[]).filter(function(r){return r&&r.burnHash&&!r.relayDone;});if(!list.length)return;'
++'var CH={0:"Ethereum",1:"Avalanche",2:"Optimism",3:"Arbitrum",5:"Solana",6:"Base",7:"Polygon",8:"Sui",11:"Linea",14:"World Chain"};'
+// stored as a 7dp string ("1.2700000") — show it the way every other amount on this page is shown
++'function usdc(v){var n=parseFloat(v);return isFinite(n)?n.toLocaleString("en-US",{maximumFractionDigits:6}):String(v||"");}'
++'var html="";list.forEach(function(r){var to=CH[r.destDomain]||("chain "+r.destDomain);'
++'html+=\'<a class="activity-row lx-pendclaim" data-h="\'+esc(r.burnHash)+\'" href="/bridge"><div class="activity-icon bridge">\'+IC.bridge+\'</div>\''
++'+\'<div class="activity-info"><div class="type">Cross-chain \\u2192 \'+esc(to)+\'</div><div class="meta lxp lx-pcs">Checking\\u2026</div></div>\''
++'+\'<div class="activity-amt"><div class="a1 lxp">\'+esc(usdc(r.netUsdc))+\' USDC</div><div class="a2">Not delivered yet</div></div></a>\';});'
++'cont.insertAdjacentHTML("afterbegin",\'<div class="day-divider lxp">Pending cross-chain claims</div>\'+html);'
++'function setMeta(h,t){var row=cont.querySelector(".lx-pendclaim[data-h=\\x27"+h+"\\x27]");var m=row&&row.querySelector(".lx-pcs");if(m)m.textContent=t;}'
++'var hs=list.map(function(r){return String(r.burnHash).toLowerCase();}).slice(0,20).join(",");'
++'fetch("/lxapi/cctp/status?hash="+hs).then(function(x){return x.json();}).then(function(d){var items=(d&&d.items)||{};'
++'list.forEach(function(r){var st=(items[String(r.burnHash).toLowerCase()]||{}).status;'
++'if(st==="delivered")setMeta(r.burnHash,"Delivered by LumosCore");'
++'else if(st==="queued"||st==="awaiting-attestation"||st==="retrying"||st==="sent")setMeta(r.burnHash,"LumosCore is delivering it");'
++'else setMeta(r.burnHash,"Open Bridge to claim");});})'
++'.catch(function(){list.forEach(function(r){setMeta(r.burnHash,"Open Bridge to claim");});});}'
 +'function lxWireActSize(){var box=document.querySelector(".act-size-tabs");if(!box||box.__lxw)return;box.__lxw=1;var btns=[].slice.call(box.querySelectorAll("button")).map(function(b){var nb=b.cloneNode(true);b.parentNode.replaceChild(nb,b);return nb;});btns.forEach(function(nb){nb.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var n=parseInt((nb.textContent||"").replace(/[^0-9]/g,""))||100;btns.forEach(function(x){x.classList.remove("active");});nb.classList.add("active");lxRenderActs(n);},true);});btns.forEach(function(x){x.classList.remove("active");if((x.textContent||"").trim()==="100")x.classList.add("active");});}'
 +'lxWireActSize();lxRenderActs(100);'
 +'try{lxHealAllLogos(document);setTimeout(function(){lxHealAllLogos(document);},900);setTimeout(function(){lxHealAllLogos(document);},2400);}catch(_){}'
