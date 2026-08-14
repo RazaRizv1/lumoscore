@@ -76,6 +76,10 @@ const STYLE = '<style id="lx-mobwallet-css">'
   + '.lxmw-ast .lxmw-sub .lx-hd:empty{display:none}'
   + '.lxmw-ast .lxmw-sub .lx-isscopy{width:20px;height:20px;padding:0;border:0;border-radius:6px;background:transparent;color:inherit;display:inline-flex;align-items:center;justify-content:center;cursor:pointer}'
   + '.lxmw-ast .lxmw-sub .lx-isscopy svg{width:12px;height:12px;display:block}'
+  // same red bin as the desktop table's Trustline button. Desktop also reddens the label on hover; a phone
+  // has no hover, so :active carries that feedback instead.
+  + '.lxmw-astbtn.lx-rmtrust svg{stroke:var(--red,#ea3943)!important}'
+  + '.lxmw-astbtn.lx-rmtrust:active{color:var(--red,#ea3943);border-color:rgba(234,57,67,.45)}'
   + '.lxmw-sub{font:600 11.5px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#8a8fa3);margin-top:3px}'
   + '.lxmw-amt{margin-left:auto;text-align:right}'
   + '.lxmw-amt .a{font:800 14px/1.2 "JetBrains Mono",ui-monospace,monospace}'
