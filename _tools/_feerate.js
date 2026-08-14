@@ -34,14 +34,39 @@ const SCRIPT='<script id="lx-feerate">(function(){if(window.__lxFrBooted)return;
 +'window.__lxAcct=function(addr){if(!addr)return Promise.resolve(null);'
 +'if(!window.__lxAcctP[addr])window.__lxAcctP[addr]=fetch(H+"/accounts/"+addr).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});'
 +'return window.__lxAcctP[addr];};'
-+'function resolve(){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}'
+// LUMOS deposited into a liquidity pool is still held LUMOS — it just lives as pool shares rather than as a
+// balance line, so counting only the wallet told an LP provider they held nothing. Each share balance gives
+// the pool id; the pool record gives the reserves and total shares, and this account's cut is
+// reserve x (myShares / totalShares). Memoised per pool id, and capped, so a wallet in dozens of pools
+// cannot turn one fee lookup into dozens of requests.
++'window.__lxPoolP=window.__lxPoolP||{};'
++'function poolRec(id){if(!window.__lxPoolP[id])window.__lxPoolP[id]=fetch(H+"/liquidity_pools/"+id).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxPoolP[id];}'
++'function poolLumos(bals,cb){'
++'var sh=bals.filter(function(b){return b.asset_type==="liquidity_pool_shares"&&(+b.balance||0)>0;}).slice(0,25);'
++'if(!sh.length){cb(0);return;}'
++'var want="LUMOS:"+ISS,left=sh.length,tot=0;'
++'sh.forEach(function(s){poolRec(s.liquidity_pool_id).then(function(p){'
++'try{if(p&&p.reserves){var r=p.reserves.filter(function(x){return x.asset===want;})[0];'
++'var ts=+p.total_shares||0;if(r&&ts>0)tot+=(+r.amount||0)*((+s.balance||0)/ts);}}catch(_){}'
++'if(--left===0)cb(tot);});});}'
++'function resolve(force){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}'
 +'if(!ME){if(window.__lxLumosBal!==null)pub(null);else{window.__lxLumosBal=null;window.__lxFeeRate=0.005;}return;}'
-+'if(window.__lxFrFor===ME)return;window.__lxFrFor=ME;'
++'if(!force&&window.__lxFrFor===ME)return;window.__lxFrFor=ME;'
++'if(force){try{delete window.__lxAcctP[ME];}catch(_){}}'
 +'window.__lxAcct(ME).then(function(acc){'
 +'if(!acc||!acc.balances){window.__lxFrFor="";return;}'                        // let a later pass retry
 +'var lum=acc.balances.filter(function(b){return b.asset_code==="LUMOS"&&b.asset_issuer===ISS;})'
 +'.reduce(function(s,b){return s+(+b.balance||0);},0);pub(lum);'
+// publish the wallet figure FIRST so the tier is never held up by pool lookups, then top it up
++'if(lum>=THRESH)return;'
++'poolLumos(acc.balances,function(extra){'
++'if(extra>0&&window.__lxFrFor===ME)pub(lum+extra);});'
 +'}).catch(function(){window.__lxFrFor="";});}'
+// Balances move: a swap, a pool deposit, a withdrawal. Without this the tier stayed on whatever it read at
+// page load, so the banner kept quoting a figure the user had already changed. Engines call this the moment
+// a transaction of theirs lands; it drops the memoised account so the next read is genuinely fresh.
++'window.__lxFeeTierRefresh=function(){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}'
++'if(ME){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxFrFor="";resolve(true);};'
 +'resolve();'
 +'window.addEventListener("storage",function(e){if(e&&e.key==="lumos.address"){window.__lxFrFor="";resolve();}});'
 +'setTimeout(resolve,1200);setTimeout(resolve,4000);'                          // wallet connects after load

@@ -1982,6 +1982,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var orig=btn.innerHTML; btn.disabled=true; btn.style.opacity="0.7"; btn.style.cursor="wait"; btn.classList.add("lx-btnload"); btn.textContent=labels.wait||"Confirm in wallet\\u2026"; wMsg(btn,"",false);
     function restore(){ btn.__lxBusy=false; btn.classList.remove("lx-btnload"); btn.disabled=false; btn.style.opacity="1"; btn.style.cursor=""; btn.innerHTML=orig; }
     wSend(addr,buildOps).then(function(res){ btn.classList.remove("lx-btnload"); btn.textContent=labels.ok||"\\u2713 Done"; btn.style.opacity="1"; wMsg(btn,labels.okMsg||"Success.",false,res&&res.hash); if(onDone)onDone(res);
+        // adding or withdrawing liquidity moves LUMOS between wallet and pool, and the fee tier now counts
+        // both — tell the resolver to re-read rather than leave it on the figure it took at page load
+        try{ if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh(); }catch(_){}
         setTimeout(restore,2500); })                              // brief "\\u2713 Done", then usable again
       .catch(function(e){ restore(); wMsg(btn,(e&&e.message)||"Transaction failed.",true); });
   }
