@@ -6487,7 +6487,12 @@ window.addEventListener('click',function(e){
       window.__lxDXAxlm=nat; window.__lxDXAxlmFree=Math.max(0, nat-_minRes-_sellLiab);
       var _spendBase=(window.__lxMaxXLM!=null)?window.__lxMaxXLM:_free;
       window.__lxDXAxlmSpend=Math.max(0,_spendBase-_trustRes);
-      window.__lxDXAassetBal=has?ab:0; window.__lxDXAhasTrust=has; guardApply();
+      window.__lxDXAassetBal=has?ab:0; window.__lxDXAhasTrust=has;
+      // Release the in-flight latch on SUCCESS too. It was only cleared in the catch, so after the first
+      // good load the flag stayed true for the life of the page and every later call returned at line one —
+      // which is why the balance never moved again on its own, and why callers had to poke the flag by hand.
+      window.__lxDXAwalletLoading=false;
+      guardApply();
     }).catch(function(){ window.__lxDXAwalletLoading=false; window.__lxDXAxlm=null; });
   }
   // ---- quote helpers ----
@@ -6643,8 +6648,7 @@ window.addEventListener('click',function(e){
         if(resp&&(resp.success||resp.txHash)){ cta.textContent=(side==="buy"?"Bought ":"Sold ")+CODE+" \u2713";
           try{ dxRecordSwap(resp.txHash||resp.hash,pa,ra,amt,soro.out); }catch(_){} try{if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh();}catch(_){}
           dxToast((side==="buy"?"Bought ":"Sold ")+xlmAmt(soro.out)+" "+(side==="buy"?CODE:"XLM"));
-          window.__lxDXASoro=null; window.__lxDXAwalletLoading=false; try{ loadWalletBalance(); }catch(_){}
-          if(pin)pin.value=""; var rin=recvInput(); if(rin)rin.value=""; setRecvUsd(0); dxSmartBadge(null);
+          dxPostSwapReset();
           setTimeout(function(){ cta.textContent="Swap"; },1600);
         } else { throw new Error("Submit failed"); }
       }).catch(function(e){ cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload"); cta.textContent="Swap"; dxToast("Swap failed \u2014 "+((e&&e.message)||e),true); });
@@ -6675,13 +6679,31 @@ window.addEventListener('click',function(e){
       if(resp&&(resp.successful||resp.hash)){ cta.textContent=(side==="buy"?"Bought ":"Sold ")+CODE+" \u2713";
         try{ dxRecordSwap(resp.hash,pa,ra,amt,_dxQuoteOut); }catch(_){} try{if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh();}catch(_){}
         dxToast((side==="buy"?"Bought ":"Sold ")+xlmAmt(_dxQuoteOut)+" "+(side==="buy"?CODE:"XLM"));
-        window.__lxDXAwalletLoading=false; try{ loadWalletBalance(); }catch(_){}
-        var rin=recvInput(); if(pin)pin.value=""; if(rin)rin.value=""; setRecvUsd(0);
+        dxPostSwapReset();
         setTimeout(function(){ cta.textContent="Swap"; },1600);
       } else { var x=resp&&resp.extras&&resp.extras.result_codes; throw new Error(x?JSON.stringify(x):"Submit failed"); }
     }).catch(function(e){ cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload"); cta.textContent="Swap"; dxToast("Swap failed \u2014 "+((e&&e.message)||e),true); });
   }
   function resetWidget(){ _dxQuick=null; window.__lxDXASoro=null; var pin=payInput(), rin=recvInput(); if(pin)pin.value=""; if(rin)rin.value=""; dxErr(""); setRecvUsd(0); dxSmartBadge(null); var cta=q(".dxa-trade-cta"); if(cta)cta.removeAttribute("data-lxdis"); }
+  // AFTER A COMPLETED SWAP.
+  //
+  // Emptying the two inputs is not enough, and that is why the widget kept showing a spent balance and the
+  // amounts of a trade that had already happened:
+  //   - _dxView still held the finished quote, and reAssertView() paints it straight back into You receive;
+  //   - _dxLastPay still held the old figure, so enforceWidget() saw a mismatch and re-quoted from it;
+  //   - the %/MAX chip kept its lxq-active highlight, so MAX still looked selected;
+  //   - and the balance was re-read ONCE, immediately, when Horizon can still be serving the pre-swap
+  //     ledger — one stale answer and the number sat there until the page was reloaded.
+  // Clear the state the guards read, then re-read the balance a few times over the next few seconds.
+  function dxPostSwapReset(){
+    try{ resetWidget(); }catch(_){}
+    _dxView=null; _dxLastPay=""; _dxQuoteOut=0; _dxMinRecv=0; window.__lxDXASoro=null;
+    try{ qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(b){ b.classList.remove("lxq-active"); }); }catch(_){}
+    try{ setRecvUsd(0); }catch(_){}
+    [0,1500,4000,9000].forEach(function(ms){ setTimeout(function(){
+      window.__lxDXAwalletLoading=false; try{ loadWalletBalance(); }catch(_){}
+    },ms); });
+  }
   function applySwap(){
     var pane=q(".dxa-pane-swap"); if(!pane)return;
     // You receive ships readonly in the design markup, on BOTH layouts — it was a readout, so there was no
