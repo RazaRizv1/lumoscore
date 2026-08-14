@@ -14,11 +14,15 @@
 //
 // Usage: node _tools/_mobdex.js [--write]
 const fs = require('fs');
-const { read, getContents } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, VTICK_SVG } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-dex-mobile.html'];
 
 const STYLE = '<style id="lx-mobdex-css">'
+// Verified-issuer tick, same disc/check as desktop Trade and Wallet so the mark reads identically
+// on both layouts. flex:0 0 so a long code can never squeeze it out of the row.
++'.mdx-mover-pair .lx-vtick,.mdx-mk-name-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 13px}'
++'.mdx-mover-pair .lx-vtick svg,.mdx-mk-name-row .lx-vtick svg{width:8px;height:8px;display:block}'
   // RETITLE. The list under this heading is the curated launch set, not new mints, so the desktop layer
   // renames it. Doing that in JS here is a losing game: the design rewrites the heading's text in place
   // after we set it, and re-asserting from a MutationObserver risks trading writes with whatever does
@@ -88,6 +92,9 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     var u=a&&(a.logo||a.img); return u?"url("+u+")":avatarBg(a&&a.code);}
   // The icon carries the code twice on purpose: data-lxic is what we paint from, data-lxc is the healer's
   // documented opt-out. See PAINTER-PROOF ICONS in STYLE.
+  var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":1,"EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":1,"yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":1,"yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":1,"SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":1,"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":1,"AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":1};
+  var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+  function vtick(a){ return (a && a.code && a.issuer && VFD[a.code+"|"+a.issuer]) ? VTICK : ""; }
   function ico(cls,a){
     return '<span class="'+cls+' lxmd-ic" data-lxic="'+esc(a.code)+'" data-lxc="'+esc(a.code)+'"'
       +' style="--lxvar:'+esc(logoCss(a))+'"></span>';}
@@ -138,7 +145,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     list.innerHTML=d.map(function(a){var up=(a.chg||0)>=0;
       return '<div class="mdx-mover-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +ico("mdx-mover-ic",a)
-        +'<div class="mdx-mover-main"><div class="mdx-mover-pair">'+esc(a.code)+'</div>'
+        +'<div class="mdx-mover-main"><div class="mdx-mover-pair">'+esc(a.code)+vtick(a)+'</div>'
         +'<div class="mdx-mover-sub">'+esc(a.domain||"Stellar")+'</div></div>'
         +'<div class="mdx-mover-right">'
         +'<div class="mdx-mover-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
@@ -166,7 +173,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       return '<div class="mdx-mk-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +'<div class="mdx-mk-top">'+ico("mdx-mk-ic",a)
         +'<div class="mdx-mk-meta"><div class="mdx-mk-name-row">'
-        +'<span class="mdx-mk-name">'+esc(a.code)+'</span>'
+        +'<span class="mdx-mk-name">'+esc(a.code)+vtick(a)+'</span>'
         +'<span class="mdx-mk-domain">'+esc(a.domain||"Stellar")+'</span></div>'
         +'<div class="mdx-mk-vol">Vol '+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</div></div>'
         +'<div class="mdx-mk-right">'
