@@ -150,6 +150,12 @@ const CSS='<style id="lx-cctp-css">'
 // inset to the same 23px the tab labels sit at, so rows do not run to the card's edge
 // The site's copy toast, verbatim from the rules _ammdata.js uses on the pools pages. The bridge page
 // ships none of this — there is no global toast() here and no .lx-ctoast stylesheet — so it comes along.
++'.lx-brtxpg{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 24px 6px;border-top:1px solid var(--border,#e6e6ea)}'
++'.lx-brtxpg-n{font-size:12.5px;color:var(--text-soft,#6b6b76)}'
++'.lx-brtxpg-b{display:flex;gap:6px}'
++'.lx-brtxpg-p{min-width:30px;height:30px;padding:0 8px;border-radius:8px;border:1px solid var(--border-strong,#d5d5dd);background:var(--surface-2,#f6f6f8);color:var(--text,#0e0e10);font:650 12.5px/1 inherit;cursor:pointer;transition:.15s}'
++'.lx-brtxpg-p:hover{border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}'
++'.lx-brtxpg-p.active{background:var(--accent,#ea6a2c);border-color:var(--accent,#ea6a2c);color:#fff}'
 +'.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}'
 +'.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}'
 +'.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}'
@@ -821,11 +827,41 @@ function lxBrAddRecentTx(o){
     +'<td class="lx-buse"><span class="lx-buse-cctp">CCTP</span></td>'
     +'<td class="br-xp"><a class="br-xplink" href="https://stellar.expert/explorer/public/tx/'+o.hash+'" target="_blank" rel="noopener" aria-label="View on explorer" title="View burn on Stellar Expert">'+xp+'</a></td>';
   tbody.insertBefore(tr, tbody.firstChild);
+  // a new row lands at the top, which shifts every page boundary — repage, and show the page it is on
+  try{ lxBrTxPage=1; lxBrTxApply(); }catch(_){}
 }
 window.lxBrAddRecentTx=lxBrAddRecentTx; window.lxBrReview=lxBrReview;
 // ---- persist completed bridges so they survive a page refresh ----
 function lxBrRelTime(ts){ if(!ts)return "Just now"; var s=Math.floor((Date.now()-ts)/1000); if(s<60)return "Just now"; var m=Math.floor(s/60); if(m<60)return m+(m===1?" min ago":" mins ago"); var h=Math.floor(m/60); if(h<24)return h+(h===1?" hr ago":" hrs ago"); var d=Math.floor(h/24); return d+(d===1?" day ago":" days ago"); }
-function lxBrSaveTx(o){ try{ var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); a.unshift(o); if(a.length>25)a=a.slice(0,25); localStorage.setItem("lumos.cctp.txs",JSON.stringify(a)); }catch(_){} }
+// 100 kept, shown 25 at a time over at most 4 pages. Nothing older is retained: this is a local record
+// in one browser, not a server-side feed, so it is bounded on purpose.
+var LX_TXPP=25, LX_TXMAX=100, lxBrTxPage=1;
+function lxBrSaveTx(o){ try{ var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); a.unshift(o); if(a.length>LX_TXMAX)a=a.slice(0,LX_TXMAX); localStorage.setItem("lumos.cctp.txs",JSON.stringify(a)); }catch(_){} }
+function lxBrTxRows(){ var tb=document.querySelector(".br-table tbody"); return tb?[].slice.call(tb.querySelectorAll("tr")):[]; }
+function lxBrTxApply(){
+  var rows=lxBrTxRows(); if(!rows.length) return;
+  var total=Math.min(rows.length,LX_TXMAX);
+  var pages=Math.max(1,Math.min(4,Math.ceil(total/LX_TXPP)));
+  if(lxBrTxPage>pages) lxBrTxPage=pages;
+  var from=(lxBrTxPage-1)*LX_TXPP, to=from+LX_TXPP;
+  rows.forEach(function(tr,i){ tr.style.display=(i>=from&&i<to&&i<LX_TXMAX)?"":"none"; });
+  lxBrTxFoot(pages,total,from,Math.min(to,total));
+}
+function lxBrTxFoot(pages,total,from,to){
+  var wrap=document.querySelector(".br-txwrap"); if(!wrap) return;
+  var foot=wrap.querySelector(".lx-brtxpg");
+  if(pages<2){ if(foot) foot.style.display="none"; return; }
+  if(!foot){ foot=document.createElement("div"); foot.className="lx-brtxpg"; wrap.appendChild(foot);
+    foot.addEventListener("click",function(e){ var b=e.target&&e.target.closest?e.target.closest("[data-txp]"):null; if(!b) return;
+      e.preventDefault(); e.stopPropagation(); lxBrTxPage=parseInt(b.getAttribute("data-txp"),10)||1; lxBrTxApply(); },true); }
+  // hidden while the pending-claims tab is showing — it belongs to the table, not to that view
+  var tbl=wrap.querySelector(".br-table");
+  foot.style.display=(tbl&&getComputedStyle(tbl).display==="none")?"none":"";
+  var h='<span class="lx-brtxpg-n">Showing '+(from+1)+'–'+to+' of '+total+'</span><div class="lx-brtxpg-b">';
+  for(var i=1;i<=pages;i++) h+='<button type="button" data-txp="'+i+'" class="lx-brtxpg-p'+(i===lxBrTxPage?" active":"")+'">'+i+'</button>';
+  foot.innerHTML=h+'</div>';
+}
+window.lxBrTxApply=lxBrTxApply;
 // AUDIT #1/#3 (FUNDS) — recovery store. A CCTP transfer is only finished once the destination chain mints.
 // Everything needed to redeem later (burn hash + Circle message + attestation) is written here the moment it
 // exists, keyed by burn hash and upserted, so a timeout, refresh or closed tab can never strand burned USDC.
@@ -840,7 +876,11 @@ function lxBrSavePending(rec){ try{
 function lxBrListPending(){ try{ return JSON.parse(localStorage.getItem("lumos.cctp.pending")||"[]"); }catch(_){ return []; } }
 function lxBrClearPending(hash){ try{ var a=lxBrListPending().filter(function(x){return x.burnHash!==hash;}); localStorage.setItem("lumos.cctp.pending",JSON.stringify(a)); }catch(_){} }
 window.lxBrSavePending=lxBrSavePending; window.lxBrListPending=lxBrListPending; window.lxBrClearPending=lxBrClearPending;
-function lxBrRestoreTxs(){ try{ var tbody=document.querySelector('.br-table tbody'); if(!tbody||tbody.__lxRestored)return; tbody.__lxRestored=true; var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); for(var i=a.length-1;i>=0;i--){ var o=a[i]; o.when=lxBrRelTime(o.ts); lxBrAddRecentTx(o); } }catch(_){} }
+function lxBrRestoreTxs(){ try{ var tbody=document.querySelector('.br-table tbody'); if(!tbody||tbody.__lxRestored)return; tbody.__lxRestored=true; var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]");
+  // a store written before the cap existed can hold more than 100 — render only what is reachable, rather
+  // than building rows the pager will hide forever
+  if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
+  for(var i=a.length-1;i>=0;i--){ var o=a[i]; o.when=lxBrRelTime(o.ts); lxBrAddRecentTx(o); } }catch(_){} }
 // add a "Bridge Used" column after "To" + rename the explorer header; backfill existing (non-CCTP) rows with a dash
 function lxBrTableCols(){ try{
   var table=document.querySelector('.br-table'); if(!table||table.__lxCols)return; table.__lxCols=true;
@@ -1194,6 +1234,8 @@ function lxBrPendHost(){
         // the design paints .br-table as display:table, so the hidden attribute alone would not win
         tbl.style.display=pend?"none":"";
         body.style.display=pend?"":"none";
+        // the pager belongs to the table, so it leaves with it
+        var pg=wrap.querySelector(".lx-brtxpg"); if(pg) pg.style.display=pend?"none":"";
       },true);
     }
     return {el:body,tabbed:true,wrap:wrap};
@@ -1415,7 +1457,7 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
  // the table half is desktop-only; the pending-claims half has to run wherever the bridge card exists
  function pass(){ var tb=document.querySelector('.br-table tbody'), card=document.querySelector('.br-card')||document.querySelector('.br-wizard');
   if(!tb&&!card) return false;
-  if(tb){ lxBrTableCols(); lxBrRestoreTxs(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); }
+  if(tb){ lxBrTableCols(); lxBrRestoreTxs(); lxBrTxApply(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); }
   lxBrRenderPending(); lxBrResumePending(); lxBrAutoClear(); return true; }
  if(!pass()){ var n=0,iv=setInterval(function(){ n++; if(pass()||n>40) clearInterval(iv); },120); } })();
 })();`;
