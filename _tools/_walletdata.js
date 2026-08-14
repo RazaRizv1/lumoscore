@@ -293,6 +293,29 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'}).catch(function(){});}'
 +'function reveal(){try{document.body.classList.add("lx-wd-ready");}catch(_){}}'
 +'function sparkFor(s){var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;var pts=[],y=14,y0=14;for(var x=0;x<=80;x+=10){h=(h*1103515245+12345)>>>0;y=Math.max(3,Math.min(25,y+(((h>>>16)%11)-5)));if(x===0)y0=y;pts.push(x+","+y);}var up=y<=y0;return \'<svg width="80" height="28" viewBox="0 0 80 28" fill="none"><polyline points="\'+pts.join(" ")+\'" stroke="\'+(up?"#35c07f":"#ef5350")+\'" stroke-width="1.5" opacity=".75"/></svg>\';}'
+// Registered OUTSIDE the #assetsTable block on purpose. It used to sit inside it, so on the mobile
+// wallet — which has no such table — the handler never installed and the Trustline button had nothing
+// listening. It is a delegated document listener; with no matching buttons on a page it costs nothing.
++'if(!window.__lxRmWired){window.__lxRmWired=1;document.addEventListener("click",function(e){var bt=e.target&&e.target.closest?e.target.closest(".lx-rmtrust"):null;if(!bt)return;e.preventDefault();e.stopPropagation();if(bt.__lxb)return;bt.__lxb=1;var code=bt.getAttribute("data-rmc"),iss=bt.getAttribute("data-rmi"),lbl=bt.innerHTML;bt.textContent="Removing\\u2026";lxStellar().then(function(S){return j(H+"/accounts/"+ME).then(function(acc){var tx=new S.TransactionBuilder(new S.Account(ME,acc.sequence),{fee:"1000",networkPassphrase:(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC)}).addOperation(S.Operation.changeTrust({asset:new S.Asset(code,iss),limit:"0"})).setTimeout(120).build();return lxTimeout(lxSign(tx.toXDR(),S),150000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Signing cancelled");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();});});});}).then(function(res){if(res&&(res.successful||res.hash)){try{lxToast(code+" trustline removed \\u2713");}catch(_){}setTimeout(function(){location.reload();},1200);}else{var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?JSON.stringify(x):"failed");}})'
+// "Could not remove trustline" told the user nothing they could act on. Stellar refuses limit=0 while the
+// trustline is still backing something, and the account itself says which: a leftover balance, an open
+// offer selling it, or -- the case that prompted this -- deposits sitting in a liquidity pool, where the
+// asset does NOT show up as a balance and the row honestly reads 0. Ask, then name the actual blocker.
++'.catch(function(err){bt.__lxb=0;bt.innerHTML=lbl;var m=((err&&err.message)||err)+"";'
++'function say(t){try{lxToast(t);}catch(_){}}'
+// Do NOT gate the diagnosis on the error text. Stellar returns op_cannot_delete when a liquidity-pool share
+// still depends on the trustline -- that string contains none of the words the old filter looked for, so the
+// one case this message exists for was the one case it never explained. Diagnose every failure instead.
++'if(/tx_bad_auth|tx_bad_seq|cancelled|timed out|denied|rejected/i.test(m)){say("Trustline removal cancelled");return;}'
++'j(H+"/accounts/"+ME).then(function(a2){var bals=((a2&&a2.balances)||[]);'
++'var b=bals.filter(function(x){return x.asset_code===code&&x.asset_issuer===iss;})[0];'
++'var inPool=bals.some(function(x){return x.asset_type==="liquidity_pool_shares"&&+x.balance>0;});'
++'if(b&&+b.balance>0){say("Can\u2019t remove "+code+" yet \u2014 the balance must be 0 (you still hold "+amt(b.balance)+").");return;}'
++'if(b&&+b.selling_liabilities>0){say("Can\u2019t remove "+code+" yet \u2014 cancel your open "+code+" offers first.");return;}'
++'if(inPool){say("Can\u2019t remove "+code+" yet \u2014 your "+code+" is deposited in a liquidity pool. Withdraw it there first.");return;}'
++'say("Can\u2019t remove "+code+" yet \u2014 it is still in use (pool deposit, balance or open offer).");'
++'}).catch(function(){say("Can\u2019t remove "+code+" yet \u2014 it is still in use (pool deposit, balance or open offer).");});'
++'});},true);}'
 +'function prep(){var v=document.querySelector(".value-side .value");if(v)v.innerHTML=\'<span class="lx-skel" style="width:230px;height:40px"></span>\';var ad=document.querySelector(".wallet-chip .text");if(ad)ad.textContent=shrt(ME);var tb=document.getElementById("assetsTable");if(tb){var s="";for(var i=0;i<4;i++)s+=\'<tr><td colspan="5"><div class="lx-skel" style="width:96%;height:38px;margin:9px 2%"></div></td></tr>\';tb.innerHTML=s;}if(!window.__lxAct){var ar=document.querySelector(".activity-row");window.__lxAct=ar?ar.parentNode:null;}var acn=window.__lxAct;if(acn){var a="";for(var i=0;i<5;i++)a+=\'<div class="lx-skel" style="height:40px;margin:11px 22px"></div>\';acn.innerHTML=a;}var ob=document.querySelector(".orders-block");if(ob){var o="";for(var i=0;i<3;i++)o+=\'<div class="lx-skel" style="height:44px;margin:11px 22px"></div>\';ob.innerHTML=o;}}'
 +'function setPortfolio(xlm,u){var v=document.querySelector(".value-side .value");if(v)v.innerHTML=num(xlm,2)+\' <span style="font-size:.6em;color:var(--text-muted);font-weight:700">XLM</span>\';var sv=document.querySelector(".sub-value");if(sv)sv.textContent="\\u2248 "+usd(u)+" USD";'
 // 7d change line is mock (no portfolio history feed) — hide it so we do not show fake data
@@ -413,26 +436,6 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'+\'<td class="spark-cell"></td>\''
 +'+\'<td class="right balance-cell"><div class="b1">\'+amt(bal)+\' \'+esc(c)+\'</div><div class="b2">\'+(r.xlm>0?"\\u2248 "+usd(r.xlm*xu):"")+\'</div></td>\''
 +'+\'<td class="right">\'+_act+\'</td></tr>\';});if(out){tb.innerHTML=out;applyPins();lxFillHd(tb);lxLoadChanges(rows);try{lxHealAllLogos(tb);}catch(_){}}'
-+'if(!window.__lxRmWired){window.__lxRmWired=1;document.addEventListener("click",function(e){var bt=e.target&&e.target.closest?e.target.closest(".lx-rmtrust"):null;if(!bt)return;e.preventDefault();e.stopPropagation();if(bt.__lxb)return;bt.__lxb=1;var code=bt.getAttribute("data-rmc"),iss=bt.getAttribute("data-rmi"),lbl=bt.innerHTML;bt.textContent="Removing\\u2026";lxStellar().then(function(S){return j(H+"/accounts/"+ME).then(function(acc){var tx=new S.TransactionBuilder(new S.Account(ME,acc.sequence),{fee:"1000",networkPassphrase:(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC)}).addOperation(S.Operation.changeTrust({asset:new S.Asset(code,iss),limit:"0"})).setTimeout(120).build();return lxTimeout(lxSign(tx.toXDR(),S),150000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Signing cancelled");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();});});});}).then(function(res){if(res&&(res.successful||res.hash)){try{lxToast(code+" trustline removed \\u2713");}catch(_){}setTimeout(function(){location.reload();},1200);}else{var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?JSON.stringify(x):"failed");}})'
-// "Could not remove trustline" told the user nothing they could act on. Stellar refuses limit=0 while the
-// trustline is still backing something, and the account itself says which: a leftover balance, an open
-// offer selling it, or -- the case that prompted this -- deposits sitting in a liquidity pool, where the
-// asset does NOT show up as a balance and the row honestly reads 0. Ask, then name the actual blocker.
-+'.catch(function(err){bt.__lxb=0;bt.innerHTML=lbl;var m=((err&&err.message)||err)+"";'
-+'function say(t){try{lxToast(t);}catch(_){}}'
-// Do NOT gate the diagnosis on the error text. Stellar returns op_cannot_delete when a liquidity-pool share
-// still depends on the trustline -- that string contains none of the words the old filter looked for, so the
-// one case this message exists for was the one case it never explained. Diagnose every failure instead.
-+'if(/tx_bad_auth|tx_bad_seq|cancelled|timed out|denied|rejected/i.test(m)){say("Trustline removal cancelled");return;}'
-+'j(H+"/accounts/"+ME).then(function(a2){var bals=((a2&&a2.balances)||[]);'
-+'var b=bals.filter(function(x){return x.asset_code===code&&x.asset_issuer===iss;})[0];'
-+'var inPool=bals.some(function(x){return x.asset_type==="liquidity_pool_shares"&&+x.balance>0;});'
-+'if(b&&+b.balance>0){say("Can\u2019t remove "+code+" yet \u2014 the balance must be 0 (you still hold "+amt(b.balance)+").");return;}'
-+'if(b&&+b.selling_liabilities>0){say("Can\u2019t remove "+code+" yet \u2014 cancel your open "+code+" offers first.");return;}'
-+'if(inPool){say("Can\u2019t remove "+code+" yet \u2014 your "+code+" is deposited in a liquidity pool. Withdraw it there first.");return;}'
-+'say("Can\u2019t remove "+code+" yet \u2014 it is still in use (pool deposit, balance or open offer).");'
-+'}).catch(function(){say("Can\u2019t remove "+code+" yet \u2014 it is still in use (pool deposit, balance or open offer).");});'
-+'});},true);}'
 // hide the now-empty "Last 7d" column header + cells so nothing misaligns
 +'var thd=tb.parentNode&&tb.parentNode.querySelector("thead");if(thd){var ths=thd.querySelectorAll("th");if(ths[2])ths[2].style.display="none";}'
 // fetch each held asset’s real logo from Stellar.Expert and swap it into the icon (bg-image is CORS-free)
