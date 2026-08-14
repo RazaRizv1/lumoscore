@@ -16,7 +16,7 @@
 //   * routing  = Horizon /paths/strict-send + /paths/strict-receive (covers DEX orderbook AND AMM
 //                pools) plus Soroswap and Aquarius                (_swapcalc.js)
 //   * bridge   = Circle CCTP to 9 chains: Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche,
-//                Linea, Solana, World Chain                       (_cctp.js)
+//                Linea, World Chain                               (_cctp.js)
 //   * pool fee = 0.30%, fixed by the Stellar protocol
 // No timing claims for the bridge (attestation time varies and is Circle's, not ours), and no FAQ on
 // Rewards at all — parts of that page are still placeholder, so there is nothing honest to assert.
@@ -37,7 +37,7 @@ const FAQ = {
     ['Is LumosCore custodial?', NONCUSTODIAL],
     ['Which wallets does LumosCore support?', WALLETS],
     ['What does it cost to use LumosCore?', FEE],
-    ['Which networks does LumosCore support?', 'Trading, liquidity pools and the token launchpad run on Stellar mainnet. USDC can be bridged between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea, Solana and World Chain using Circle CCTP.'],
+    ['Which networks does LumosCore support?', 'Trading, liquidity pools and the token launchpad run on Stellar mainnet. USDC can be bridged between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain using Circle CCTP.'],
   ],
   'dex': [
     ['How do I swap tokens on Stellar?', 'Connect a Stellar wallet, choose the asset you are paying with and the asset you want, enter an amount, review the quote and sign the transaction in your wallet. The swap settles on Stellar in a few seconds.'],
@@ -73,7 +73,7 @@ const FAQ = {
   'bridge': [
     ['How do I bridge USDC to or from Stellar?', 'Choose the source and destination chains, enter an amount of USDC, and sign. Your USDC is burned on the source chain and an equivalent amount is minted on the destination chain once Circle attests to the burn.'],
     ['What is Circle CCTP?', 'Cross-Chain Transfer Protocol is Circle’s official mechanism for moving USDC between chains. It burns USDC on the source chain and mints native USDC on the destination, so you never hold a wrapped or synthetic version.'],
-    ['Which chains are supported?', 'USDC can move between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea, Solana and World Chain.'],
+    ['Which chains are supported?', 'USDC can move between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain.'],
     ['Is bridged USDC the same as native USDC?', 'Yes. Because CCTP burns and mints rather than locking and wrapping, what arrives is genuine Circle-issued USDC on the destination chain.'],
   ],
   'wallet': [

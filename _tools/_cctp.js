@@ -132,6 +132,19 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brhow>summary::-webkit-details-marker{display:none}'
 +'.lx-brhow>summary::before{content:"\\25b8";display:inline-block;margin-right:8px;transition:transform .15s;color:var(--accent,#ea6a2c)}'
 +'.lx-brhow[open]>summary::before{transform:rotate(90deg)}'
+// tabs live inside the design's own .br-txhead, so they inherit its spacing and only add their own row
+// the design's .br-txhead is space-between (it held a lone h2); tabs have to sit next to each other
++'.br-txhead.lx-brtabs{display:flex!important;justify-content:flex-start!important;align-items:center;gap:24px;flex-wrap:wrap}'
++'.lx-brtab{position:relative;padding:0 0 10px;border:0;background:none;cursor:pointer;font:650 17px/1.3 inherit;color:var(--text-soft,#6b6b76);transition:color .15s}'
++'.lx-brtab:hover{color:var(--text,#0e0e10)}'
++'.lx-brtab.active{color:var(--text,#0e0e10)}'
++'.lx-brtab.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:2px;background:var(--accent,#ea6a2c)}'
++'.lx-brtab[hidden]{display:none!important}'
++'.lx-brtab-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--accent,#ea6a2c);color:#fff;font:700 11.5px/20px inherit;text-align:center;vertical-align:middle}'
++'.lx-brpbody{padding-top:4px}'
++'.lx-brpbody .lx-brp-row:first-of-type{border-top:0}'
++'.lx-brp-intro{display:flex;align-items:flex-start;gap:16px}'
++'.lx-brp-intro .lx-brp-note{flex:1 1 auto}'
 +'.lx-brvid-top{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--accent,#ea6a2c);color:#fff!important;font:650 12px/1 inherit;text-decoration:none;white-space:nowrap;transition:filter .15s}'
 +'.lx-brvid-top:hover{filter:brightness(1.07)}'
 +'.lx-brvid-top svg{flex:0 0 auto}'
@@ -1109,16 +1122,47 @@ function lxBrRedeemJSON(r){ var C=window.__lxCCTP||{};
   return JSON.stringify({ burnHash:r.burnHash, sourceChain:"Stellar", sourceDomain:C.sourceDomain,
     destinationChain:lxBrDomName(r.destDomain), destinationDomain:r.destDomain, recipient:r.recipient,
     amountUSDC:r.netUsdc, status:r.status, message:r.message||null, attestation:r.attestation||null }, null, 2); }
-function lxBrPendPanel(){ var p=document.getElementById("lxBrPending"); if(p) return p;
-  p=document.createElement("section"); p.id="lxBrPending"; p.className="lx-brpend"; p.style.display="none";
-  // Desktop sits it above Recent transactions. The MOBILE bridge page has no such table, and anchoring on
-  // it alone meant the whole pending-claims panel silently never existed on a phone — the one place a
-  // Stellar-only user is most likely to be. Fall back to the wizard card and put it directly after.
-  var anchor=document.querySelector(".br-txwrap");
-  if(anchor&&anchor.parentNode){ anchor.parentNode.insertBefore(p,anchor); return p; }
-  var card=document.querySelector(".br-card")||document.querySelector(".br-wizard");
-  if(card&&card.parentNode){ card.parentNode.insertBefore(p,card.nextSibling); return p; }
-  return null; }
+// Where the pending claims render.
+//
+// DESKTOP: as a second tab inside the Recent transactions section — "Recent transactions | Pending claims
+// (N)". A standalone panel stacked above it was a second heading competing with the one below it for the
+// same subject; a tab puts both views of your transfers in one place.
+//
+// MOBILE: that section does not exist on the phone build at all, so there it stays a standalone panel
+// after the wizard card. Anchoring only on the table is what previously made the whole thing invisible on
+// mobile, which is the one place a Stellar-only user is most likely to be.
+function lxBrPendHost(){
+  var wrap=document.querySelector(".br-txwrap");
+  if(wrap){
+    var body=wrap.querySelector(".lx-brpbody");
+    if(!body){
+      var head=wrap.querySelector(".br-txhead"), tbl=wrap.querySelector(".br-table");
+      if(!head||!tbl) return null;
+      head.classList.add("lx-brtabs");
+      head.innerHTML='<button type="button" class="lx-brtab active" data-brtab="tx">Recent transactions</button>'
+        +'<button type="button" class="lx-brtab" data-brtab="pend" hidden>Pending claims <span class="lx-brtab-n">0</span></button>';
+      body=document.createElement("div"); body.className="lx-brpbody"; body.style.display="none";
+      tbl.parentNode.insertBefore(body,tbl.nextSibling);
+      head.addEventListener("click",function(e){
+        var b=e.target&&e.target.closest?e.target.closest(".lx-brtab"):null; if(!b) return;
+        e.preventDefault(); e.stopPropagation();
+        var pend=b.getAttribute("data-brtab")==="pend";
+        [].slice.call(head.querySelectorAll(".lx-brtab")).forEach(function(x){ x.classList.toggle("active",x===b); });
+        // the design paints .br-table as display:table, so the hidden attribute alone would not win
+        tbl.style.display=pend?"none":"";
+        body.style.display=pend?"":"none";
+      },true);
+    }
+    return {el:body,tabbed:true,wrap:wrap};
+  }
+  var p=document.getElementById("lxBrPending");
+  if(!p){
+    p=document.createElement("section"); p.id="lxBrPending"; p.className="lx-brpend"; p.style.display="none";
+    var card=document.querySelector(".br-card")||document.querySelector(".br-wizard");
+    if(!card||!card.parentNode) return null;
+    card.parentNode.insertBefore(p,card.nextSibling);
+  }
+  return {el:p,tabbed:false}; }
 // Paste a video URL here (YouTube, Loom, anything with a public link) and a "Watch how to claim" button
 // appears in the panel. Leave it empty and the written steps stand on their own.
 var LX_CLAIMVID="";   // <-- paste the tutorial video URL here; the Watch tutorial button appears once it is set
@@ -1141,9 +1185,23 @@ function lxBrHowTo(){
   +'</details>'; }
 
 function lxBrRenderPending(){ try{
-  var p=lxBrPendPanel(); if(!p) return false;
-  var list=lxBrListPending();
-  if(!list.length){ p.style.display="none"; p.innerHTML=""; return true; }
+  var host=lxBrPendHost(); if(!host) return false;
+  var p=host.el, list=lxBrListPending();
+  // keep the tab label's count honest whether or not there is anything to show
+  if(host.tabbed){
+    var tabBtn=host.wrap.querySelector('.lx-brtab[data-brtab="pend"]');
+    if(tabBtn){
+      var nEl=tabBtn.querySelector(".lx-brtab-n"); if(nEl) nEl.textContent=list.length;
+      tabBtn.hidden=!list.length;
+      // nothing left to claim while sitting on that tab — fall back to the transactions view
+      if(!list.length&&tabBtn.classList.contains("active")){
+        var txBtn=host.wrap.querySelector('.lx-brtab[data-brtab="tx"]'), tbl=host.wrap.querySelector(".br-table");
+        tabBtn.classList.remove("active"); if(txBtn) txBtn.classList.add("active");
+        if(tbl) tbl.style.display=""; p.style.display="none";
+      }
+    }
+  }
+  if(!list.length){ if(!host.tabbed) p.style.display="none"; p.innerHTML=""; return true; }
   var rows=list.map(function(r){
     var ready=!!(r.status==="attested"&&r.message&&r.attestation);
     var evm=!!LX_EVM[r.destDomain];
@@ -1164,11 +1222,14 @@ function lxBrRenderPending(){ try{
     +(evm?'':'<div class="lx-brp-relay warn">Claiming on '+lxBrEsc(lxBrDomName(r.destDomain))+' cannot be done from a wallet or a block explorer \\u2014 it needs Circle\\u2019s CLI or SDK. Copy redeem data gives you everything the call requires. Your USDC is safe with Circle until then.</div>')
     +'<div class="lx-brp-msg" style="display:none"></div>'
     +'</div>'; }).join("");
-  p.innerHTML='<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span>'+lxBrVidBtn()+'</div>'
-    +'<p class="lx-brp-note">CCTP burns your USDC on Stellar and Circle holds it until the mint is submitted on the destination chain. That last step is yours to make: press Claim, approve it in your EVM wallet, and the USDC appears. You need a little gas on the destination chain to do it. Nothing here expires \\u2014 an unclaimed transfer waits indefinitely.</p>'
+  // In tab mode the tab IS the heading — a second "Awaiting redemption" title under it would just repeat
+  // itself. The standalone mobile panel still needs one.
+  p.innerHTML=(host.tabbed?'':'<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span>'+lxBrVidBtn()+'</div>')
+    +'<div class="lx-brp-intro"><p class="lx-brp-note">CCTP burns your USDC on Stellar and Circle holds it until the mint is submitted on the destination chain. That last step is yours to make: press Claim, approve it in your EVM wallet, and the USDC appears. You need a little gas on the destination chain to do it. Nothing here expires \\u2014 an unclaimed transfer waits indefinitely.</p>'
+    +(host.tabbed?lxBrVidBtn():'')+'</div>'
     +lxBrHowTo()
     +rows;
-  p.style.display="";
+  if(!host.tabbed) p.style.display="";
   return true;
 }catch(_){ return false; } }
 document.addEventListener("click",function(e){
