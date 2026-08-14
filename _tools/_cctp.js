@@ -810,7 +810,7 @@ function lxBrReview(){
     var _sa=parseFloat(String(amt).replace(/,/g,""))||0, _fa=_sa*_fr;
     var _amtTxt=_fa>0?(_fa<0.0001?_fa.toFixed(7):_fa.toLocaleString("en-US",{maximumFractionDigits:6})):"";
     var _pct=(_fr*100).toFixed(2).replace(/0$/,"").replace(/\\.$/,"")+"%";
-    bf.innerHTML=_pct+(_amtTxt?' <span class="lx-bamt">\\u00b7 '+_amtTxt+' '+lxBrEsc(k)+'</span>':'')
+    bf.innerHTML=_pct+(_amtTxt?' <span class="lx-bamt">\· '+_amtTxt+' '+lxBrEsc(k)+'</span>':'')
       +(_fr>0.003?'<span class="lx-bchip">0.25% with LUMOS</span>':'<span class="lx-bchip">LUMOS holder rate</span>');
   }
   // Circle CCTP fee row — Standard transfer is free (only our 0.5%/0.25% applies). Structured so a Fast-transfer fee could slot in later.
@@ -836,12 +836,43 @@ function lxBrAddRecentTx(o){
   try{ lxBrTxPage=1; lxBrTxApply(); }catch(_){}
 }
 window.lxBrAddRecentTx=lxBrAddRecentTx; window.lxBrReview=lxBrReview;
+// ---- MOBILE recent transactions ------------------------------------------------------------------
+// The phone has no .br-table: each transaction is a .brm-txc card. Everything above targets the table
+// and bailed on its first line here, so the design's seeded mock transfers were what users saw. The
+// build step strips those; this fills the .lx-brmhost left in their place.
+function lxBrMobCard(o){
+  var nkey=LX_NETMAP[o.net]||"";
+  var srcImg=(o.srcKey==="USDC")?"assets/tokens/usdc.png":((o.srcKey==="XLM")?"assets/tokens/xlm.png":"");
+  var srcIco=srcImg?('<img class="lx-netimg" src="'+srcImg+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'):lxBrStellarIcon();
+  return '<div class="brm-txc lx-brmtx">'
+    +'<div class="brm-tr1"><span class="brm-tm">'+(o.when||'Just now')+'</span>'
+      +'<a class="br-xplink" style="margin-left:auto" href="https://stellar.expert/explorer/public/tx/'+o.hash+'" target="_blank" rel="noopener" title="View burn on Stellar Expert">'+lxBrXpIcon()+'</a></div>'
+    +'<div class="brm-flow">'
+      +'<span class="br-asschip"><span class="br-ic lx-netic">'+srcIco+'</span>'
+        +'<span><span class="am">'+o.srcAmount+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span>'
+      +'<span class="br-ar">→</span>'
+      +'<span class="br-asschip"><span class="br-ic lx-netic"><img class="lx-netimg" src="assets/networks/'+nkey+'.png" style="width:100%;height:100%;object-fit:cover;display:block" alt=""></span>'
+        +'<span><span class="am">'+lxBrFmt(o.amount,2)+' USDC</span><span class="nt">'+o.net+'</span></span></span>'
+    +'</div>'
+    +'<div class="brm-recv">To <a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener">'+lxBrShort(o.recipient)+'</a> · via CCTP</div>'
+  +'</div>';
+}
+function lxBrRenderMobileTxs(){ try{
+  var host=document.querySelector('.lx-brmhost'); if(!host) return;
+  var a=[]; try{ a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); }catch(_){ a=[]; }
+  if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
+  if(!a.length){ host.innerHTML='<div class="brm-txc" style="text-align:center;color:var(--text-soft);font-size:13px">No cross-chain transactions yet.</div>'; return; }
+  var out=""; for(var i=0;i<a.length;i++){ var o=a[i]; o.when=lxBrRelTime(o.ts); out+=lxBrMobCard(o); }
+  host.innerHTML=out;
+}catch(_){} }
+window.lxBrRenderMobileTxs=lxBrRenderMobileTxs;
+
 // ---- persist completed bridges so they survive a page refresh ----
 function lxBrRelTime(ts){ if(!ts)return "Just now"; var s=Math.floor((Date.now()-ts)/1000); if(s<60)return "Just now"; var m=Math.floor(s/60); if(m<60)return m+(m===1?" min ago":" mins ago"); var h=Math.floor(m/60); if(h<24)return h+(h===1?" hr ago":" hrs ago"); var d=Math.floor(h/24); return d+(d===1?" day ago":" days ago"); }
 // 100 kept, shown 25 at a time over at most 4 pages. Nothing older is retained: this is a local record
 // in one browser, not a server-side feed, so it is bounded on purpose.
 var LX_TXPP=25, LX_TXMAX=100, lxBrTxPage=1;
-function lxBrSaveTx(o){ try{ var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); a.unshift(o); if(a.length>LX_TXMAX)a=a.slice(0,LX_TXMAX); localStorage.setItem("lumos.cctp.txs",JSON.stringify(a)); }catch(_){} }
+function lxBrSaveTx(o){ setTimeout(function(){try{lxBrRenderMobileTxs();}catch(_){}},0); try{ var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); a.unshift(o); if(a.length>LX_TXMAX)a=a.slice(0,LX_TXMAX); localStorage.setItem("lumos.cctp.txs",JSON.stringify(a)); }catch(_){} }
 function lxBrTxRows(){ var tb=document.querySelector(".br-table tbody"); return tb?[].slice.call(tb.querySelectorAll("tr:not(.lx-txempty)")):[]; }
 // an empty table has to say so rather than look broken
 function lxBrTxEmpty(){ var tb=document.querySelector(".br-table tbody"); if(!tb) return;
@@ -1347,8 +1378,8 @@ function lxBrRenderPending(){ try{
     return '<div class="lx-brp-row" data-h="'+lxBrEsc(r.burnHash)+'">'
     // amount left, provenance in the middle, actions hard right — the row reads across the full width the
     // way the transactions table above it does, instead of clumping everything against the left edge
-    +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrPairIco("src",r.destDomain)+'<span>'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC</span><span class="lx-brp-ar">\\u2192</span>'+lxBrPairIco("dst",r.destDomain)+'<span>'+lxBrEsc(lxBrDomName(r.destDomain))+'</span></div></div>'
-    +'<div class="lx-brp-meta"><div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \\u00b7 <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
+    +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrPairIco("src",r.destDomain)+'<span>'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC</span><span class="lx-brp-ar">\→</span>'+lxBrPairIco("dst",r.destDomain)+'<span>'+lxBrEsc(lxBrDomName(r.destDomain))+'</span></div></div>'
+    +'<div class="lx-brp-meta"><div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \· <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
     // the platform fee is LumosCore's problem, not the user's: they can do nothing about it, it does not
     // affect what they receive, and it is already carried to their next bridge. It stays recorded on the
     // record, it just no longer sits in their way.
@@ -1453,6 +1484,7 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
  // the table half is desktop-only; the pending-claims half has to run wherever the bridge card exists
  function pass(){ var tb=document.querySelector('.br-table tbody'), card=document.querySelector('.br-card')||document.querySelector('.br-wizard');
   if(!tb&&!card) return false;
+  lxBrRenderMobileTxs();   // mobile has no tb, so this must sit OUTSIDE the if(tb) gate below
   if(tb){ lxBrTableCols(); lxBrRestoreTxs(); lxBrTxApply(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); }
   lxBrRenderPending(); lxBrResumePending(); lxBrAutoClear(); return true; }
  if(!pass()){ var n=0,iv=setInterval(function(){ n++; if(pass()||n>40) clearInterval(iv); },120); } })();
@@ -1460,7 +1492,7 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
 
 const SCRIPT='<script id="lx-cctp-js">'+BODY+'<'+'/script>';
 
-let n=0;
+let brmN=0; let n=0;
 for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']){
   for(const dev of ['desktop','mobile']){
     const file=`lumoscore-${c}-${dev}.html`;
@@ -1474,6 +1506,32 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       // The design seeded Recent transactions with fabricated transfers — Aptos and XRPL assets, invented
       // addresses, "19 days ago" — on a page that otherwise reports real money movements. Empty the tbody
       // at build time so only real bridges appear, and ~138KB of mock markup stops shipping with it.
+      // MOBILE: the phone renders each transaction as a .brm-txc card, not a table row, so the
+      // <tbody> emptying below never reached it and the design's mock transfers shipped as real ones.
+      // Walk div depth so a nested <div> cannot end the slice early.
+      { let guard=0;
+        for(;;){
+          const i=h.indexOf('<div class="brm-txc"');
+          if(i<0 || ++guard>200) break;
+          let depth=0, j=i, cut=-1;
+          for(;;){
+            const nd=h.indexOf('<div', j+1), cd=h.indexOf('</div>', j+1);
+            if(cd<0) break;
+            if(nd>=0 && nd<cd){ depth++; j=nd; continue; }
+            if(depth===0){ cut=cd+6; break; }
+            depth--; j=cd;
+          }
+          if(cut<0) break;
+          h = h.slice(0,i) + h.slice(cut);
+          brmN++;
+        }
+        // leave one empty host the runtime fills
+        const hi=h.indexOf('<div class="brm-txh">Recent transactions</div>');
+        if(hi>=0 && h.indexOf('lx-brmhost')<0)
+          h = h.slice(0, hi+'<div class="brm-txh">Recent transactions</div>'.length)
+            + '<div class="lx-brmhost"></div>'
+            + h.slice(hi+'<div class="brm-txh">Recent transactions</div>'.length);
+      }
       { const ti=h.indexOf('<table class="br-table">');
         if(ti>=0){ const tb=h.indexOf('<tbody>',ti), te=h.indexOf('</tbody>',tb);
           if(tb>=0&&te>tb) h=h.slice(0,tb+'<tbody>'.length)+h.slice(te); } }
