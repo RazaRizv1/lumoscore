@@ -120,6 +120,10 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brp-chip.wait{background:rgba(201,121,31,.12);color:#c9791f}'
 +'.lx-brp-chip.ok{background:rgba(53,192,127,.14);color:#2a9a63}'
 +'.lx-brp-btns{display:flex;gap:8px;flex-wrap:wrap}'
++'.lx-brp-b .lx-wico{width:15px;height:15px;flex:0 0 15px;display:block}'
+// an explicit class rather than :has() — if :has() ever fails the block-level icon would drop onto its
+// own line and the button would look broken, and this costs nothing
++'.lx-brp-b.lx-hasico{display:inline-flex;align-items:center;gap:7px}'
 +'.lx-brp-b{padding:7px 12px;border-radius:9px;border:1px solid var(--border-strong,#d5d5dd);background:var(--surface-2,#f6f6f8);color:var(--text,#0e0e10);font:650 12.5px/1 inherit;cursor:pointer;transition:.15s}'
 +'.lx-brp-b:hover:not(:disabled){border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}'
 +'.lx-brp-b:disabled{opacity:.55;cursor:default}'
@@ -143,8 +147,10 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brtab-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--accent,#ea6a2c);color:#fff;font:700 11.5px/20px inherit;text-align:center;vertical-align:middle}'
 +'.lx-brpbody{padding-top:4px}'
 +'.lx-brpbody .lx-brp-row:first-of-type{border-top:0}'
-+'.lx-brp-intro{display:flex;align-items:flex-start;gap:16px}'
-+'.lx-brp-intro .lx-brp-note{flex:1 1 auto}'
++'.lx-brp-intro{display:flex;align-items:flex-start;gap:24px}'
+// the standalone panel is a narrow card, so 72ch reads well there. Inside the tab the section is full
+// width, and that cap left the paragraph stopping around 40% across with dead space beside it.
++'.lx-brpbody .lx-brp-note{flex:1 1 auto;max-width:none;font-size:14px;line-height:1.65;margin-bottom:18px}'
 +'.lx-brvid-top{margin-left:auto;display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;background:var(--accent,#ea6a2c);color:#fff!important;font:650 12px/1 inherit;text-decoration:none;white-space:nowrap;transition:filter .15s}'
 +'.lx-brvid-top:hover{filter:brightness(1.07)}'
 +'.lx-brvid-top svg{flex:0 0 auto}'
@@ -1167,6 +1173,34 @@ function lxBrPendHost(){
 // appears in the panel. Leave it empty and the written steps stand on their own.
 var LX_CLAIMVID="";   // <-- paste the tutorial video URL here; the Watch tutorial button appears once it is set
 // Sits in the panel header, next to the count — the first thing you see, not something you have to open.
+// Which wallet the Claim button will actually open. MetaMask is the default and what most people have,
+// but window.ethereum is whatever is injected — showing a fox to someone using Rabby would be a lie, so
+// an unrecognised provider gets a neutral wallet glyph and its own name in the tooltip.
+var LX_FOX='<svg class="lx-wico" viewBox="0 0 32 32" aria-hidden="true">'
++'<polygon fill="#e17726" points="30.1,1.5 17.6,10.8 19.9,5.3"/><polygon fill="#e27625" points="1.9,1.5 14.3,10.9 12.1,5.3"/>'
++'<polygon fill="#e27625" points="25.6,22.1 22.3,27.2 29.4,29.2 31.4,22.2"/><polygon fill="#e27625" points="0.6,22.2 2.6,29.2 9.7,27.2 6.4,22.1"/>'
++'<polygon fill="#e27625" points="9.3,14.5 7.4,17.4 14.4,17.7 14.2,10.2"/><polygon fill="#e27625" points="22.7,14.5 17.7,10.1 17.6,17.7 24.6,17.4"/>'
++'<polygon fill="#e27625" points="9.7,27.2 13.9,25.1 10.3,22.3"/><polygon fill="#e27625" points="18.1,25.1 22.3,27.2 21.7,22.3"/>'
++'<polygon fill="#d5bfb2" points="22.3,27.2 18.1,25.1 18.4,27.8 18.4,28.9"/><polygon fill="#d5bfb2" points="9.7,27.2 13.6,28.9 13.6,27.8 13.9,25.1"/>'
++'<polygon fill="#233447" points="13.7,20.5 10.2,19.5 12.7,18.4"/><polygon fill="#233447" points="18.3,20.5 19.3,18.4 21.8,19.5"/>'
++'<polygon fill="#cc6228" points="9.7,27.2 10.3,22.1 6.4,22.2"/><polygon fill="#cc6228" points="21.7,22.1 22.3,27.2 25.6,22.2"/>'
++'<polygon fill="#cc6228" points="24.6,17.4 17.6,17.7 18.3,20.5 19.3,18.4 21.8,19.5"/><polygon fill="#cc6228" points="10.2,19.5 12.7,18.4 13.7,20.5 14.4,17.7 7.4,17.4"/>'
++'<polygon fill="#e27525" points="7.4,17.4 10.3,23.4 10.2,19.5"/><polygon fill="#e27525" points="21.8,19.5 21.7,23.4 24.6,17.4"/>'
++'<polygon fill="#e27525" points="14.4,17.7 13.7,20.5 14.6,25.1 14.8,19"/><polygon fill="#e27525" points="17.6,17.7 17.2,19 17.4,25.1 18.3,20.5"/>'
++'<polygon fill="#f5841f" points="18.3,20.5 17.4,25.1 18.1,25.1 21.7,22.3 21.8,19.5"/><polygon fill="#f5841f" points="10.2,19.5 10.3,22.3 13.9,25.1 14.6,25.1 13.7,20.5"/>'
++'<polygon fill="#c0ac9d" points="18.4,28.9 18.4,27.8 18.1,27.5 13.9,27.5 13.6,27.8 13.6,28.9 9.7,27.2 11.1,28.3 13.9,30.3 18.1,30.3 20.9,28.3 22.3,27.2"/>'
++'<polygon fill="#161616" points="18.1,25.1 17.4,25.1 14.6,25.1 13.9,25.1 13.6,27.8 13.9,27.5 18.1,27.5 18.4,27.8"/>'
++'<polygon fill="#763e1a" points="30.6,11.4 31.7,6.3 30.1,1.5 18.1,10.4 22.7,14.5 29.2,16.4 30.7,14.7 30.1,14.3 31.1,13.4 30.3,12.8 31.3,12"/>'
++'<polygon fill="#763e1a" points="0.3,6.3 1.4,11.4 0.7,12 1.7,12.8 0.9,13.4 1.9,14.3 1.3,14.7 2.8,16.4 9.3,14.5 13.9,10.4 1.9,1.5"/>'
++'<polygon fill="#f5841f" points="29.2,16.4 22.7,14.5 24.6,17.4 21.7,23.4 25.6,23.3 31.4,23.3"/><polygon fill="#f5841f" points="9.3,14.5 2.8,16.4 0.6,23.3 6.4,23.3 10.3,23.4 7.4,17.4"/>'
++'<polygon fill="#f5841f" points="17.6,17.7 18.1,10.4 19.9,5.3 12.1,5.3 14.2,10.4 14.4,17.7 14.6,19 14.6,25.1 17.4,25.1 17.4,19"/></svg>';
+var LX_GENWALLET='<svg class="lx-wico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><path d="M18 12a2 2 0 0 0 0 4h4v-4z"/></svg>';
+function lxEvmWalletName(){ var e=window.ethereum; if(!e) return "MetaMask";
+  if(e.isRabby) return "Rabby"; if(e.isCoinbaseWallet) return "Coinbase Wallet"; if(e.isBraveWallet) return "Brave Wallet";
+  if(e.isTrust||e.isTrustWallet) return "Trust Wallet"; if(e.isOkxWallet||e.isOKExWallet) return "OKX Wallet";
+  if(e.isPhantom) return "Phantom"; if(e.isMetaMask) return "MetaMask"; return "your wallet"; }
+function lxEvmWalletIcon(){ return lxEvmWalletName()==="MetaMask"?LX_FOX:LX_GENWALLET; }
+
 function lxBrVidBtn(){
   return LX_CLAIMVID
     ? '<a class="lx-brvid-top" target="_blank" rel="noopener" href="'+lxBrEsc(LX_CLAIMVID)+'">'
@@ -1212,7 +1246,7 @@ function lxBrRenderPending(){ try{
     +'<span class="lx-brp-chip '+(ready?'ok':'wait')+'">'+(ready?'Ready to claim':'Awaiting Circle attestation')+'</span>'
     +'<div class="lx-brp-btns">'
     +(ready?'':'<button type="button" class="lx-brp-b" data-act="check">Check status</button>')
-    +((ready&&evm)?'<button type="button" class="lx-brp-b primary" data-act="mint">Claim on '+lxBrEsc(LX_EVM[r.destDomain].n)+'</button>':'')
+    +((ready&&evm)?'<button type="button" class="lx-brp-b primary lx-hasico" data-act="mint" title="Opens '+lxBrEsc(lxEvmWalletName())+' on '+lxBrEsc(LX_EVM[r.destDomain].n)+'">'+lxEvmWalletIcon()+'Claim on '+lxBrEsc(LX_EVM[r.destDomain].n)+'</button>':'')
     +'<button type="button" class="lx-brp-b" data-act="copy">Copy redeem data</button>'
     +'<button type="button" class="lx-brp-b ghost" data-act="done">Mark redeemed</button>'
     +'</div>'
