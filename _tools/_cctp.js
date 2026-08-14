@@ -147,6 +147,8 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brtab-n{display:inline-block;min-width:20px;padding:0 6px;margin-left:6px;border-radius:10px;background:var(--accent,#ea6a2c);color:#fff;font:700 11.5px/20px inherit;text-align:center;vertical-align:middle}'
 // inset to the same 23px the tab labels sit at, so rows do not run to the card's edge
 +'.lx-brpbody{padding:4px 16px 10px}'
++'.lx-brdemo{margin:0 0 14px;padding:9px 12px;border:1px dashed rgba(234,106,44,.5);border-radius:9px;font-size:12.4px;line-height:1.5;color:#c9791f}'
++'.lx-brdemo .mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}'
 // the 72/78ch reading caps suit the narrow mobile card; in the full-width tab they left half the row empty
 +'.lx-brpbody .lx-brhow-l,.lx-brpbody .lx-brhow-p{max-width:none}'
 +'.lx-brpbody .lx-brhow-l{font-size:13.4px}'
@@ -1228,9 +1230,24 @@ function lxBrHowTo(){
   +'<p class="lx-brhow-p">Anyone can submit the claim \\u2014 it always pays out to the address in the attestation, so a failed attempt costs nothing but gas.</p>'
   +'</details>'; }
 
+// Sample rows for design review, behind ?demo=claims. TEMPORARY — remove once the layout is signed off.
+// Deliberately not written into lumos.cctp.pending: a fabricated "you have unclaimed funds" row on a live
+// mainnet page is alarming, so it exists only for whoever types the flag, and only when nothing real is
+// pending. The buttons are inert by construction — the click handler looks the row up in the real store,
+// does not find it, and returns.
+function lxBrDemoList(){
+  var q=""; try{ q=String(location.search||"")+String(location.hash||""); }catch(_){ return null; }
+  if(q.indexOf("demo=claims")<0) return null;
+  return [
+    {burnHash:"71085fcb0ba8193e97331b709da680edcb451d33b4e9e4606ce3cd30551ff853",netUsdc:"1.2698190",destDomain:6,status:"attested",message:"0x00",attestation:"0x01",ts:Date.now()-1.8e7},
+    {burnHash:"9c2ad41e77b30f5a6e18c4b90d3f27ae5518c6b04ff29e13aa7c50d6e83b1a4f",netUsdc:"250.0000000",destDomain:0,status:"burned",ts:Date.now()-240000}
+  ];
+}
+
 function lxBrRenderPending(){ try{
   var host=lxBrPendHost(); if(!host) return false;
-  var p=host.el, list=lxBrListPending();
+  var p=host.el, list=lxBrListPending(), demo=false;
+  if(!list.length){ var dl=lxBrDemoList(); if(dl&&dl.length){ list=dl; demo=true; } }
   // keep the tab label's count honest whether or not there is anything to show
   if(host.tabbed){
     var tabBtn=host.wrap.querySelector('.lx-brtab[data-brtab="pend"]');
@@ -1275,6 +1292,7 @@ function lxBrRenderPending(){ try{
   p.innerHTML=(host.tabbed?'':'<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span>'+lxBrVidBtn()+'</div>')
     +'<div class="lx-brp-intro"><p class="lx-brp-note">CCTP burns your USDC on Stellar and Circle holds it until the mint is submitted on the destination chain. That last step is yours to make: press Claim, approve it in your EVM wallet, and the USDC appears. You need a little gas on the destination chain to do it. Nothing here expires \\u2014 an unclaimed transfer waits indefinitely.</p>'
     +(host.tabbed?lxBrVidBtn():'')+'</div>'
+    +(demo?'<div class="lx-brdemo">Sample data \\u2014 shown only because this url carries <span class="mono">?demo=claims</span>. No real transfer is pending, and the buttons below do nothing.</div>':'')
     +lxBrHowTo()
     +rows;
   if(!host.tabbed) p.style.display="";
