@@ -427,25 +427,19 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // ---- pending cross-chain claims ----
 // These are not Horizon operations: the burn already showed up in activity, but the transfer is not done
 // until the destination chain mints. Reading the local bridge store puts that unfinished state where the
-// user actually looks, and says whether LumosCore is delivering it or whether they need to claim it.
+// user actually looks. Claiming is the user's own step on the destination chain, so the row says so and
+// links straight to the Bridge page, where the Claim button lives.
 +'function lxPendClaims(cont){if(!cont)return;var list=[];try{list=JSON.parse(localStorage.getItem("lumos.cctp.pending")||"[]");}catch(_){}'
-+'list=(list||[]).filter(function(r){return r&&r.burnHash&&!r.relayDone;});if(!list.length)return;'
++'list=(list||[]).filter(function(r){return r&&r.burnHash;});if(!list.length)return;'
 +'var CH={0:"Ethereum",1:"Avalanche",2:"Optimism",3:"Arbitrum",5:"Solana",6:"Base",7:"Polygon",8:"Sui",11:"Linea",14:"World Chain"};'
 // stored as a 7dp string ("1.2700000") — show it the way every other amount on this page is shown
 +'function usdc(v){var n=parseFloat(v);return isFinite(n)?n.toLocaleString("en-US",{maximumFractionDigits:6}):String(v||"");}'
 +'var html="";list.forEach(function(r){var to=CH[r.destDomain]||("chain "+r.destDomain);'
 +'html+=\'<a class="activity-row lx-pendclaim" data-h="\'+esc(r.burnHash)+\'" href="/bridge"><div class="activity-icon bridge">\'+IC.bridge+\'</div>\''
-+'+\'<div class="activity-info"><div class="type">Cross-chain \\u2192 \'+esc(to)+\'</div><div class="meta lxp lx-pcs">Checking\\u2026</div></div>\''
-+'+\'<div class="activity-amt"><div class="a1 lxp">\'+esc(usdc(r.netUsdc))+\' USDC</div><div class="a2">Not delivered yet</div></div></a>\';});'
++'+\'<div class="activity-info"><div class="type">Cross-chain \\u2192 \'+esc(to)+\'</div><div class="meta lxp lx-pcs">Open Bridge to claim</div></div>\''
++'+\'<div class="activity-amt"><div class="a1 lxp">\'+esc(usdc(r.netUsdc))+\' USDC</div><div class="a2">Not claimed yet</div></div></a>\';});'
 +'cont.insertAdjacentHTML("afterbegin",\'<div class="day-divider lxp">Pending cross-chain claims</div>\'+html);'
-+'function setMeta(h,t){var row=cont.querySelector(".lx-pendclaim[data-h=\\x27"+h+"\\x27]");var m=row&&row.querySelector(".lx-pcs");if(m)m.textContent=t;}'
-+'var hs=list.map(function(r){return String(r.burnHash).toLowerCase();}).slice(0,20).join(",");'
-+'fetch("/lxapi/cctp/status?hash="+hs).then(function(x){return x.json();}).then(function(d){var items=(d&&d.items)||{};'
-+'list.forEach(function(r){var st=(items[String(r.burnHash).toLowerCase()]||{}).status;'
-+'if(st==="delivered")setMeta(r.burnHash,"Delivered by LumosCore");'
-+'else if(st==="queued"||st==="awaiting-attestation"||st==="retrying"||st==="sent")setMeta(r.burnHash,"LumosCore is delivering it");'
-+'else setMeta(r.burnHash,"Open Bridge to claim");});})'
-+'.catch(function(){list.forEach(function(r){setMeta(r.burnHash,"Open Bridge to claim");});});}'
++'}'
 +'function lxWireActSize(){var box=document.querySelector(".act-size-tabs");if(!box||box.__lxw)return;box.__lxw=1;var btns=[].slice.call(box.querySelectorAll("button")).map(function(b){var nb=b.cloneNode(true);b.parentNode.replaceChild(nb,b);return nb;});btns.forEach(function(nb){nb.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var n=parseInt((nb.textContent||"").replace(/[^0-9]/g,""))||100;btns.forEach(function(x){x.classList.remove("active");});nb.classList.add("active");lxRenderActs(n);},true);});btns.forEach(function(x){x.classList.remove("active");if((x.textContent||"").trim()==="100")x.classList.add("active");});}'
 +'lxWireActSize();lxRenderActs(100);'
 +'try{lxHealAllLogos(document);setTimeout(function(){lxHealAllLogos(document);},900);setTimeout(function(){lxHealAllLogos(document);},2400);}catch(_){}'
