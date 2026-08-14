@@ -5581,22 +5581,6 @@ function lxBrHowTo(){
   +'<p class="lx-brhow-p">Anyone can submit the claim \u2014 it always pays out to the address in the attestation, so a failed attempt costs nothing but gas.</p>'
   +'</details>'; }
 
-// Sample rows for design review, behind ?demo=claims. TEMPORARY — remove once the layout is signed off.
-// Deliberately not written into lumos.cctp.pending: a fabricated "you have unclaimed funds" row on a live
-// mainnet page is alarming, so it exists only for whoever types the flag, and only when nothing real is
-// pending. The buttons are inert by construction — the click handler looks the row up in the real store,
-// does not find it, and returns.
-function lxBrDemoList(){
-  var q=""; try{ q=String(location.search||"")+String(location.hash||""); }catch(_){ return null; }
-  if(q.indexOf("demo=claims")<0) return null;
-  // One row, in the state that matters for review: attested and ready to claim. The second sample was a
-  // not-yet-attested transfer — same design, earlier moment, no Claim button because there is nothing to
-  // claim yet — and it read as a leftover of the old layout, which is worse than not showing it.
-  return [
-    {burnHash:"71085fcb0ba8193e97331b709da680edcb451d33b4e9e4606ce3cd30551ff853",netUsdc:"1.2698190",destDomain:6,status:"attested",message:"0x00",attestation:"0x01",ts:Date.now()-1.8e7}
-  ];
-}
-
 var LX_STELLAR_SVG='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#000"/><path d="M23.13 9.292l-2.4 1.224-11.598 5.907A6.909 6.909 0 0119.35 9.498l1.374-.7.205-.105a8.439 8.439 0 00-13.371 7.472 1.535 1.535 0 01-.834 1.484l-.725.37v1.724l2.134-1.088.691-.353.681-.347 12.226-6.23 1.374-.699 2.84-1.447V7.856zm2.816 2.012L10.201 19.32l-1.374.7L6 21.463v1.723l2.808-1.43 2.401-1.224 11.61-5.916a6.909 6.909 0 01-10.229 6.93l-.085.045-1.49.76a8.439 8.439 0 0013.372-7.475 1.536 1.536 0 01.833-1.483l.726-.37v-1.718z" fill="#FFF"/></svg>';
 // USDC on the source chain, USDC on the destination chain — each token disc badged with its network.
 // Stellar is inlined because there is no assets/networks/stellar.png, and scraping the wizard's chip would
@@ -5609,8 +5593,7 @@ function lxBrPairIco(kind,dom){
 
 function lxBrRenderPending(){ try{
   var host=lxBrPendHost(); if(!host) return false;
-  var p=host.el, list=lxBrListPending(), demo=false;
-  if(!list.length){ var dl=lxBrDemoList(); if(dl&&dl.length){ list=dl; demo=true; } }
+  var p=host.el, list=lxBrListPending();
   // keep the tab label's count honest whether or not there is anything to show
   if(host.tabbed){
     var tabBtn=host.wrap.querySelector('.lx-brtab[data-brtab="pend"]');
@@ -5666,8 +5649,7 @@ document.addEventListener("click",function(e){
   var b=e.target&&e.target.closest?e.target.closest(".lx-brp-b"):null; if(!b) return;
   var row=b.closest(".lx-brp-row"); if(!row) return;
   var hash=row.getAttribute("data-h"), act=b.getAttribute("data-act");
-  var rec=lxBrListPending().filter(function(x){return x.burnHash===hash;})[0]
-    ||((lxBrDemoList()||[]).filter(function(x){return x.burnHash===hash;})[0]); if(!rec) return;
+  var rec=lxBrListPending().filter(function(x){return x.burnHash===hash;})[0]; if(!rec) return;
   e.preventDefault(); e.stopPropagation();
   // the button used to relabel itself to "Copied ✓"; the toast is the site's established confirmation, and
   // two acknowledgements for one action is one too many
