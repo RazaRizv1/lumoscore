@@ -150,6 +150,7 @@ const CSS='<style id="lx-cctp-css">'
 // inset to the same 23px the tab labels sit at, so rows do not run to the card's edge
 // The site's copy toast, verbatim from the rules _ammdata.js uses on the pools pages. The bridge page
 // ships none of this — there is no global toast() here and no .lx-ctoast stylesheet — so it comes along.
++'.lx-txempty-c{padding:26px 14px!important;text-align:center;color:var(--text-soft,#6b6b76);font-size:13px}'
 +'.lx-brtxpg{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:14px 24px 6px;border-top:1px solid var(--border,#e6e6ea)}'
 +'.lx-brtxpg-n{font-size:12.5px;color:var(--text-soft,#6b6b76)}'
 +'.lx-brtxpg-b{display:flex;gap:6px}'
@@ -837,15 +838,24 @@ function lxBrRelTime(ts){ if(!ts)return "Just now"; var s=Math.floor((Date.now()
 // in one browser, not a server-side feed, so it is bounded on purpose.
 var LX_TXPP=25, LX_TXMAX=100, lxBrTxPage=1;
 function lxBrSaveTx(o){ try{ var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); a.unshift(o); if(a.length>LX_TXMAX)a=a.slice(0,LX_TXMAX); localStorage.setItem("lumos.cctp.txs",JSON.stringify(a)); }catch(_){} }
-function lxBrTxRows(){ var tb=document.querySelector(".br-table tbody"); return tb?[].slice.call(tb.querySelectorAll("tr")):[]; }
+function lxBrTxRows(){ var tb=document.querySelector(".br-table tbody"); return tb?[].slice.call(tb.querySelectorAll("tr:not(.lx-txempty)")):[]; }
+// an empty table has to say so rather than look broken
+function lxBrTxEmpty(){ var tb=document.querySelector(".br-table tbody"); if(!tb) return;
+  var real=lxBrTxRows().length, e=tb.querySelector(".lx-txempty");
+  if(real){ if(e&&e.parentNode) e.parentNode.removeChild(e); return; }
+  if(e) return;
+  var cols=document.querySelectorAll(".br-table thead th").length||6;
+  var tr=document.createElement("tr"); tr.className="lx-txempty";
+  tr.innerHTML='<td colspan="'+cols+'" class="lx-txempty-c">No cross-chain transfers yet \u2014 bridges you make appear here.</td>';
+  tb.appendChild(tr); }
 function lxBrTxApply(){
-  var rows=lxBrTxRows(); if(!rows.length) return;
+  var rows=lxBrTxRows(); if(!rows.length){ lxBrTxEmpty(); return; }
   var total=Math.min(rows.length,LX_TXMAX);
   var pages=Math.max(1,Math.min(4,Math.ceil(total/LX_TXPP)));
   if(lxBrTxPage>pages) lxBrTxPage=pages;
   var from=(lxBrTxPage-1)*LX_TXPP, to=from+LX_TXPP;
   rows.forEach(function(tr,i){ tr.style.display=(i>=from&&i<to&&i<LX_TXMAX)?"":"none"; });
-  lxBrTxFoot(pages,total,from,Math.min(to,total));
+  lxBrTxFoot(pages,total,from,Math.min(to,total)); lxBrTxEmpty();
 }
 function lxBrTxFoot(pages,total,from,to){
   var wrap=document.querySelector(".br-txwrap"); if(!wrap) return;
@@ -1457,6 +1467,12 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       let h=json[k]; const before=h;
       if(h.indexOf(OLD_SUB)>=0) h=h.split(OLD_SUB).join(NEW_SUB);
       if(h.indexOf(BUGGY_SUB)>=0) h=h.split(BUGGY_SUB).join(NEW_SUB);
+      // The design seeded Recent transactions with fabricated transfers — Aptos and XRPL assets, invented
+      // addresses, "19 days ago" — on a page that otherwise reports real money movements. Empty the tbody
+      // at build time so only real bridges appear, and ~138KB of mock markup stops shipping with it.
+      { const ti=h.indexOf('<table class="br-table">');
+        if(ti>=0){ const tb=h.indexOf('<tbody>',ti), te=h.indexOf('</tbody>',tb);
+          if(tb>=0&&te>tb) h=h.slice(0,tb+'<tbody>'.length)+h.slice(te); } }
       h=h.replace(/<style id="lx-cctp-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-cctp-js">[\s\S]*?<\/script>/,'');
       if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');
       const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+SCRIPT+h.slice(bi);
