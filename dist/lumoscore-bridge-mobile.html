@@ -4347,6 +4347,17 @@ function lxStrictPath(C,srcSpec,amount,destSpec){
     return { out:parseFloat(recs[0].destination_amount), path:recs[0].path||[] };
   });
 }
+// Unpaid platform fee, carried to the next bridge -----------------------------------------------------
+// On the USDC path the fee is a second transaction that can only run AFTER the burn (a Soroban op cannot
+// share a transaction with classic ops). If the user closes the tab or dismisses that second prompt, the
+// old code swallowed the error and the fee was simply never charged. Remember it instead and add it to
+// the next bridge, so a missed signature costs a delay rather than the fee.
+function lxFeeOwed(pk){ try{ var o=JSON.parse(localStorage.getItem("lumos.cctp.feeowed")||"null");
+  return (o&&o.addr===pk&&parseFloat(o.usdc)>0)?parseFloat(o.usdc):0; }catch(_){ return 0; } }
+function lxFeeOwedSet(pk,v){ try{ if(!(v>0)) localStorage.removeItem("lumos.cctp.feeowed");
+  else localStorage.setItem("lumos.cctp.feeowed",JSON.stringify({addr:pk,usdc:+v.toFixed(7)})); }catch(_){} }
+function lxFeeOwedAdd(pk,v){ if(!(v>0))return; lxFeeOwedSet(pk,lxFeeOwed(pk)+v); }
+
 function lxAssetOf(S,spec){ return spec.native?S.Asset.native():new S.Asset(spec.code,spec.issuer); }
 function lxToAssets(S,arr){ return arr.map(function(a){ return a.asset_type==="native"?S.Asset.native():new S.Asset(a.asset_code,a.asset_issuer); }); }
 
@@ -4358,7 +4369,7 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
   var srcAmt=parseFloat(String(sourceAmountHuman).replace(/,/g,"")); if(!(srcAmt>0)) return Promise.reject(new Error("Enter a valid amount"));
   return lxCctpSdk().then(function(S){ return lxCctpSigner().then(function(f){
     var pk;
-    var deferredFee=null;   // AUDIT #2 (FUNDS): USDC-path fee runs AFTER a successful burn, never before
+    var deferredFee=null, deferredFeeAmt=0;   // AUDIT #2 (FUNDS): USDC-path fee runs AFTER a successful burn, never before
     function acc(){ return fetch(C.horizon+"/accounts/"+pk).then(function(r){return r.json();}); }
     function usdcBal(){ return acc().then(function(a){ var b=(a.balances||[]).filter(function(x){return x.asset_code==="USDC"&&x.asset_issuer===UI;})[0]; return b?parseFloat(b.balance):0; }); }
     function signSubmit(txB,label){ onStatus("Waiting for signature ("+label+")…"); return lxCctpGateSign(label, function(){ return Promise.resolve(f.signTransaction(txB.toXDR(),{networkPassphrase:C.passphrase,network:"PUBLIC",address:pk})); }).then(function(sig){ var xdr=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof xdr!=="string") throw new Error("Signing cancelled."); onStatus("Submitting "+label+"…"); return lxSubmitClassic(C,xdr); }); }
@@ -4370,14 +4381,30 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
         // AUDIT #2 (FUNDS): this fee tx used to be signed and submitted BEFORE lxCctpBurn ran its
         // simulation — so a burn that failed validation (destination not enabled, amount too small, …)
         // left the user charged with nothing bridged. Defer it: burn first, collect the fee only after.
+        deferredFeeAmt=feeAmt;
         deferredFee=function(){
-          onStatus("Collecting fee ("+(feeRate*100).toFixed(1)+"% → XLM)…");
-          return lxStrictPath(C,{code:"USDC",issuer:UI},feeAmt.toFixed(7),{native:true}).then(function(p){ return acc().then(function(ad){
-            var tb=new S.TransactionBuilder(new S.Account(pk,ad.sequence),{fee:"1000",networkPassphrase:C.passphrase})
-              .addOperation(S.Operation.pathPaymentStrictSend({sendAsset:new S.Asset("USDC",UI),sendAmount:feeAmt.toFixed(7),destination:C.feeCollector,destAsset:S.Asset.native(),destMin:(p.out*0.97).toFixed(7),path:lxToAssets(S,p.path)}))
-              .setTimeout(120).build();
-            return signSubmit(tb,"fee");
-          }); });
+          // A fee paid to yourself is not a fee. When the connected wallet IS the collector (which is the
+          // case whenever the operator tests the product) this used to submit a real self-payment: a
+          // network fee spent to move money nowhere, and a row that then reads as revenue it is not.
+          if(C.feeCollector===pk) return Promise.resolve();
+          // Was a path payment USDC -> XLM. That added a pathfinding call, a slippage bound and a
+          // destMin that can all fail on a fee this small, and a failure here is invisible to the user
+          // because the burn already succeeded. A plain USDC payment has none of those failure modes.
+          var owed=+(feeAmt+lxFeeOwed(pk)).toFixed(7);
+          if(!(owed>0)) return Promise.resolve();
+          function attempt(){
+            onStatus("Approve the "+(feeRate*100).toFixed(2)+"% platform fee \u2014 one more signature ("+owed.toFixed(7)+" USDC)");
+            return acc().then(function(ad){
+              var tb=new S.TransactionBuilder(new S.Account(pk,ad.sequence),{fee:"1000",networkPassphrase:C.passphrase})
+                .addOperation(S.Operation.payment({destination:C.feeCollector,asset:new S.Asset("USDC",UI),amount:owed.toFixed(7)}))
+                .setTimeout(180).build();
+              return signSubmit(tb,"fee");
+            });
+          }
+          // one silent retry: a stale sequence number or a dropped submit is worth another go before
+          // this is written off, since nothing else in the flow will ever come back for it
+          return attempt().catch(function(e){ if(/cancel/i.test((e&&e.message)||"")) throw e; return attempt(); })
+            .then(function(r){ lxFeeOwedSet(pk,0); return r; });
         };
         return Promise.resolve(netAmt);
       }
@@ -4395,9 +4422,11 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
           var hasUsdcTrust=(ad.balances||[]).some(function(b){ return b.asset_code==="USDC" && b.asset_issuer===UI; });
           var _tbb=new S.TransactionBuilder(new S.Account(pk,ad.sequence),{fee:"3000",networkPassphrase:C.passphrase});
           if(!hasUsdcTrust) _tbb.addOperation(S.Operation.changeTrust({asset:new S.Asset("USDC",UI)}));
-          var tb=_tbb.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:src,sendAmount:swapAmt.toFixed(7),destination:pk,destAsset:new S.Asset("USDC",UI),destMin:(pSwap.out*0.97).toFixed(7),path:lxToAssets(S,pSwap.path)}))
-            .addOperation(feeOp)
-            .setTimeout(120).build();
+          var _tb2=_tbb.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:src,sendAmount:swapAmt.toFixed(7),destination:pk,destAsset:new S.Asset("USDC",UI),destMin:(pSwap.out*0.97).toFixed(7),path:lxToAssets(S,pSwap.path)}));
+          // same self-payment rule as the USDC path: paying the fee to yourself only costs a network fee
+          // and fabricates a revenue row, so leave the slice in the user's wallet instead
+          if(C.feeCollector!==pk) _tb2=_tb2.addOperation(feeOp);
+          var tb=_tb2.setTimeout(120).build();
           return signSubmit(tb,"swap+fee").then(function(){ return usdcBal().then(function(after){ var got=+(after-before).toFixed(7); if(!(got>0)) throw new Error("Swap produced no USDC."); var net=(netUsdcTarget>0&&netUsdcTarget<=got)?+netUsdcTarget.toFixed(7):got; return net; }); });
         }); }); });
       });
@@ -4415,7 +4444,10 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
         lxRelayEnqueue(res.hash,parseInt(destDomain,10));
         // fee now that the burn is confirmed. A fee failure must NEVER fail the bridge (the USDC is already
         // burned) — record it and carry on so the user still gets their attestation + redeem data.
-        var feeP = deferredFee ? deferredFee().catch(function(fe){ rec.feeError=(fe&&fe.message)||"fee not collected"; lxBrSavePending(rec); }) : Promise.resolve();
+        // a fee failure must NEVER fail the bridge — but it must not vanish either: what could not be
+        // collected is remembered against this wallet and added to its next bridge
+        var feeP = deferredFee ? deferredFee().catch(function(fe){
+          rec.feeError=(fe&&fe.message)||"fee not collected"; lxFeeOwedAdd(pk,deferredFeeAmt); lxBrSavePending(rec); }) : Promise.resolve();
         return feeP.then(function(){ return lxCctpAttest(res.hash,onStatus); }).then(function(att){
           rec.message=att.message; rec.attestation=att.attestation; rec.decodedMessage=att.decodedMessage;
           rec.status="attested";                       // redeemable: message + attestation are now stored
@@ -4797,6 +4829,45 @@ function lxCctpGateSign(label, doSign){
     b.addEventListener("click", onClick);
   });
 }
+// Destination-address funding gate ---------------------------------------------------------------------
+// A cross-chain transfer is one-way and final. A typo'd address, or a right-looking address on the wrong
+// chain, burns the USDC into something nobody can spend — and unlike a Stellar payment there is no
+// account-not-found error to stop it, because any 20-byte string is a valid EVM address.
+//
+// Requiring the destination to already hold a little gas is a cheap proof that it is a real, used account
+// on THAT chain. Note what this is not: with automatic delivery the recipient needs no gas to receive, so
+// this rejects some legitimate brand-new wallets. That is the deliberate trade — a funded-address rule
+// costs those users a top-up; no rule at all costs someone their whole transfer.
+//
+// Anything we cannot check (an RPC hiccup, a chain with no usable public endpoint) passes. Our own
+// infrastructure failing is not evidence against the user's address.
+var LX_MINUSD=0.5;
+var LX_NATIVE={0:"ethereum",1:"avalanche-2",2:"ethereum",3:"ethereum",5:"solana",6:"ethereum",7:"polygon-ecosystem-token",11:"ethereum",14:"ethereum"};
+var LX_NATSYM={0:"ETH",1:"AVAX",2:"ETH",3:"ETH",5:"SOL",6:"ETH",7:"POL",11:"ETH",14:"ETH"};
+var lxPxP=null;
+function lxNativeUsd(){ if(lxPxP) return lxPxP;
+  lxPxP=fetch("https://api.coingecko.com/api/v3/simple/price?ids=ethereum,avalanche-2,polygon-ecosystem-token,solana&vs_currencies=usd")
+    .then(function(r){ return r.json(); }).catch(function(){ return null; });
+  return lxPxP; }
+function lxJrpc(url,method,params){
+  return fetch(url,{method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({jsonrpc:"2.0",id:1,method:method,params:params||[]})}).then(function(r){ return r.json(); }); }
+function lxBrDestFunded(domain,addr){
+  var cfg=LX_EVM[domain], bp;
+  if(cfg) bp=lxJrpc(cfg.rpc,"eth_getBalance",[addr,"latest"]).then(function(d){ return (d&&d.result)?parseInt(d.result,16)/1e18:null; });
+  else if(domain===5) bp=lxJrpc("https://api.mainnet-beta.solana.com","getBalance",[addr]).then(function(d){ var v=d&&d.result&&d.result.value; return (v==null)?null:v/1e9; });
+  else return Promise.resolve({ok:true});      // Sui has no usable public JSON-RPC left to ask
+  return bp.then(function(bal){ if(bal==null) return {ok:true};
+    return lxNativeUsd().then(function(px){
+      var id=LX_NATIVE[domain], u=px&&px[id]&&px[id].usd; if(!u) return {ok:true};
+      if(bal*u>=LX_MINUSD) return {ok:true};
+      var sym=LX_NATSYM[domain]||"gas", nm=lxBrDomName(domain);
+      return {ok:false,msg:"That "+nm+" address holds "+(bal>0?(bal.toFixed(6)+" "+sym):("no "+sym))
+        +". LumosCore only sends to a destination already funded with at least $0.50 \u2014 an unused address is usually a wrong one, and a cross-chain transfer cannot be undone. Check the address, fund it on "+nm+", then try again."};
+    });
+  }).catch(function(){ return {ok:true}; }); }
+window.lxBrDestFunded=lxBrDestFunded;
+
 function lxBrConfirm(btn){
   var B=window.__lxBr, k=B.srcKey, A=LX_ASSETS[k]||LX_ASSETS.USDC, C=window.__lxCCTP, net=lxBrDestNet();
   var domain=(C&&C.domains)?C.domains[net]:null;
@@ -4808,6 +4879,16 @@ function lxBrConfirm(btn){
   if(!(parseFloat(amt)>0)){ say("Enter a valid amount on the previous step."); return; }
   if(domain==null){ say("Select a CCTP-supported destination network."); return; }
   if(!recipient){ say("Paste the destination address on the previous step."); return; }
+  // check the destination is a live account BEFORE any signature — nothing is burned yet, so this is the
+  // last moment a wrong address costs nothing
+  if(btn) btn.disabled=true;
+  say("Checking the destination address\u2026");
+  lxBrDestFunded(domain,recipient).then(function(chk){
+    if(btn) btn.disabled=false;
+    if(!chk.ok){ say(chk.msg); return; }
+    say(""); go();
+  });
+  function go(){
   lxBrProgShow();
   function status(m){ lxBrProgUpdate(m); }
   try{ lxCctpBridgeFull(domain, amt, recipient, A.spec, status, window.__lxBr.netUsdc).then(function(res){
@@ -4825,6 +4906,7 @@ function lxBrConfirm(btn){
     } else { lxBrProgFail((e&&e.message)||"Bridge failed."); }
   });
   }catch(e){ lxBrProgFail((e&&e.message)||"Bridge failed."); }
+  }
 }
 function lxCctpWireStep3(){
   var s3=document.querySelector('.br-step[data-step="3"]'); if(!s3)return;
@@ -5011,7 +5093,14 @@ function lxBrPendPanel(){ var p=document.getElementById("lxBrPending"); if(p) re
   return null; }
 function lxBrRenderPending(){ try{
   var p=lxBrPendPanel(); if(!p) return false;
-  var list=lxBrListPending();
+  // Now that delivery is automatic, a transfer the relayer has in hand needs nothing from the user, and a
+  // standing "Awaiting redemption" list of things they cannot act on is just noise — the transfer already
+  // appears in Recent transactions and in Wallet activity. Show a row ONLY when the user is the one who
+  // has to move: the relayer declined it, gave up on it, or is not running on this deployment.
+  var list=lxBrListPending().filter(function(r){
+    var s=lxRelayOf(r.burnHash);
+    return !s || s.status==="unknown" || s.status==="manual";
+  });
   if(!list.length){ p.style.display="none"; p.innerHTML=""; return true; }
   var rows=list.map(function(r){
     var ready=!!(r.status==="attested"&&r.message&&r.attestation);
@@ -5033,9 +5122,9 @@ function lxBrRenderPending(){ try{
     +'<div class="lx-brp-msg" style="display:none"></div>'
     +'</div>'; }).join("");
   var anyRelay=list.some(function(r){ var s=lxRelayOf(r.burnHash); return !!s&&s.status!=="unknown"; });
-  p.innerHTML='<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span></div>'
+  p.innerHTML='<div class="lx-brp-head"><h2>Needs your action</h2><span class="lx-brp-n">'+list.length+'</span></div>'
     +'<p class="lx-brp-note">'+(anyRelay
-      ? 'These transfers were burned on Stellar and are held by Circle. CCTP only delivers once the mint is submitted on the destination chain \u2014 LumosCore does that for you, so you need no wallet and no gas there. Claim it yourself any time you prefer; on Solana and Sui use Copy redeem data. Nothing here expires.'
+      ? 'LumosCore delivers cross-chain transfers for you, and anything it is handling is not listed here. These are the ones it could not: claim them yourself on the destination chain. Your USDC is held by Circle until you do, and nothing here expires. On Solana and Sui, use Copy redeem data.'
       : 'These transfers were burned on Stellar and are held by Circle. CCTP only delivers once the mint is submitted on the destination chain. On Ethereum, Avalanche, Optimism, Arbitrum, Base, Polygon, Linea and World Chain you can do that here with Claim. Solana and Sui are not wired yet, so use Copy redeem data. Nothing here expires.')
     +'</p>'
     +rows;
