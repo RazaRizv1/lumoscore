@@ -45,6 +45,12 @@ const CSS='<style id="lx-cctp-css">'
 +'@keyframes lxtblrev{to{opacity:1}}'
 +'.br-table.lx-tbl-ready{opacity:1!important;animation:none;transition:opacity .28s ease}'
 // clickable recent-tx addresses -> explorer wallet pages
+// The .lx-txaddr rules are scoped to .br-table, which is the DESKTOP layout only, so on the phone the
+// card's address link fell back to the browser default and rendered blue + underlined on both themes.
+// Same treatment, scoped to the mobile card. color:inherit keeps it white on dark and black on light
+// rather than hard-coding either.
++'.brm-txc .lx-txaddr{color:inherit;text-decoration:none;-webkit-text-fill-color:currentColor;border-bottom:1px dashed rgba(120,130,150,.45)}'
++'.brm-txc .lx-txaddr:hover{color:#ea6a2c;-webkit-text-fill-color:#ea6a2c;border-bottom-color:#ea6a2c}'
 +'.br-table .lx-txaddr{color:inherit;text-decoration:none;border-bottom:1px dashed rgba(120,130,150,.45);transition:color .12s,border-color .12s}'
 +'.br-table .lx-txaddr:hover{color:#ea6a2c;border-bottom-color:#ea6a2c}'
 // editable amount input (replaces the contenteditable div — guaranteed typeable)
