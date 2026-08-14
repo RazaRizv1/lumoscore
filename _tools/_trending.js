@@ -3,10 +3,15 @@
 //  24h/7d change+sparkline derived from the 8-point daily price7d; 30d fetched lazily per-asset from Horizon
 //  trade_aggregations (real, XLM->USD). Overrides the design's mock renderTrending. Runs only when the
 //  connected network is Stellar. Idempotent. Injects into the dashboard page (the one with #trendingList).
-const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
+const fs=require('fs');const{read,getContents,VERIFIED,VTICK_SVG}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
 const CSS=`<style id="lx-trending-css">
 #trendingList:not(.lx-tready) .trending-row{display:none!important}
+/* Verified-issuer tick, identical to the one on Trade and Wallet — same 14px green disc, same 9px check,
+   so the mark means one thing everywhere. Sits inside .nm-row, which is already a flex row, and is
+   flex:0 0 so a long asset name can never squeeze it. */
+.trending-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
+.trending-row .lx-vtick svg{width:9px;height:9px;display:block}
 /* the site's global logo-painter clears an icon's background + inserts its own <img>; it can't touch a ::before
    pseudo-element, so we paint the real logo there via the --lxtic custom property (painter-proof, as on Pools/Trade) */
 .trending-row .lx-tico{position:relative;width:40px;height:40px;border-radius:50%;flex-shrink:0;overflow:hidden;background:transparent}
@@ -32,6 +37,12 @@ function net(){try{return (localStorage.getItem("lumos.network")||localStorage.g
 var nw=net();if(nw&&nw!=="stellar")return;
 var SE="https://api.stellar.expert/explorer/public/asset";
 var H="https://horizon.stellar.org";
+// Verified issuers come from the one shared list in lib.js, keyed CODE|ISSUER — never on the ticker
+// alone, because a ticker is not an identity on Stellar (there are hundreds of "USDC" issuers and only
+// one of them is Circle's). Stamped in at build time so the row needs no extra request to draw it.
+var VFD=${JSON.stringify(Object.keys(VERIFIED).reduce((m,k)=>(m[k]=1,m),{}))};
+var VTICK='<span class="lx-vtick" title="Verified issuer">${VTICK_SVG}</span>';
+function vtick(c,i){ return (c&&i&&VFD[c+"|"+i])?VTICK:""; }
 var LOGOS={XLM:"assets/tokens/xlm.png",USDC:"assets/tokens/usdc.png",AQUA:"assets/tokens/aqua.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",yUSDC:"assets/tokens/usdc.png",SHX:"assets/tokens/shx.png",BLND:"assets/tokens/blnd.svg",SSLX:"assets/tokens/sslx.png",LUMOS:"assets/favicon.png"};
 var GRAD=["linear-gradient(135deg,#22d3ee,#0891b2)","linear-gradient(135deg,#35c07f,#16a34a)","linear-gradient(135deg,#ea6a2c,#ff9a3d)","linear-gradient(135deg,#a855f7,#6d28d9)","linear-gradient(135deg,#3aa0ff,#1d4ed8)","linear-gradient(135deg,#f5b301,#d97706)","linear-gradient(135deg,#e0447b,#be185d)","linear-gradient(135deg,#2dd4bf,#0d9488)"];
 function grad(s){s=s||"?";var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return GRAD[h%GRAD.length];}
@@ -50,7 +61,7 @@ function skeleton(){var t=tList();if(!t)return;var s="";for(var i=0;i<8;i++){s+=
 function render(){var t=tList();if(!t||!_roster)return;var tf=_tf,html="";_roster.forEach(function(a,i){var c=chg(a,tf),up=c>=0,rank=i+1;var isNew=a.created>0&&(Date.now()/1000-a.created)<21*86400;var ico=a.logo?('<div class="lx-tico" style="--lxtic:url(\\x27'+eu(a.logo)+'\\x27)"></div>'):('<div class="lx-tico" style="--lxtic:'+grad(a.code)+'" data-l="'+esc(a.code.slice(0,1).toUpperCase())+'"></div>');
 html+='<div class="trending-row" data-lxasset="'+esc(a.code+(a.iss?("-"+a.iss):""))+'">'
 +'<div class="rank '+(rank<=3?"top":"")+'">#'+rank+'</div>'+ico
-+'<div class="info"><div class="nm-row"><span class="nm">'+esc(a.code)+'</span>'+(isNew?'<span class="new-badge">NEW</span>':'')+'</div><div class="sub">'+esc(isNew?"Just launched":a.name)+' \\u00b7 Stellar \\u00b7 Vol $'+abbr(vol(a,tf))+'</div></div>'
++'<div class="info"><div class="nm-row"><span class="nm">'+esc(a.code)+'</span>'+vtick(a.code,a.iss)+(isNew?'<span class="new-badge">NEW</span>':'')+'</div><div class="sub">'+esc(isNew?"Just launched":a.name)+' \\u00b7 Stellar \\u00b7 Vol $'+abbr(vol(a,tf))+'</div></div>'
 +'<div class="spark">'+spark(sdata(a,tf),up)+'</div>'
 +'<div class="price"><div class="p1">'+fmtP(a.price)+'</div><div class="p2"><span class="change-pill '+(up?"up":"down")+'">'+(up?"\\u25b2":"\\u25bc")+' '+pct(c)+'%</span></div></div>'
 +'<button class="trade-btn">Trade</button></div>';});
