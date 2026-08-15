@@ -168,6 +168,7 @@ const STYLE = `<style id="lx-dxa-css">
 .lx-dxsmart .lx-sb-best{flex:0 0 auto;font:800 10.5px/1 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#ea6a2c;background:rgba(234,106,44,.14);border:1px solid rgba(234,106,44,.4);border-radius:7px;padding:5px 8px}
 ${DXA_SUPINFO_CSS}
 .stat-cell .val.lx-hasinfo{overflow:visible!important}
+.dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}
 .stat-cell .lx-supinfo::before{content:"i";display:block;font:italic 700 10px/16px Georgia,serif;color:inherit}
 .stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
 .stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style>`;
@@ -586,14 +587,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){var DXA_SUPPLY_NOTE_S="${DXA
   // ================= ORDERBOOK (.dxa-ob-*) =================
   function loadOrderbook(){
     if(NATIVE)return;
-    var url=H+"/order_book?selling_asset_type="+ATYPE+"&selling_asset_code="+CODE+"&selling_asset_issuer="+ISSUER+"&buying_asset_type=native&limit=12";
+    var url=H+"/order_book?selling_asset_type="+ATYPE+"&selling_asset_code="+CODE+"&selling_asset_issuer="+ISSUER+"&buying_asset_type=native&limit=20";
     j(url).then(function(d){ window.__lxDXAob=d; renderOrderbook(); }).catch(function(){});
   }
   function renderOrderbook(){
     var d=window.__lxDXAob; if(!d)return;
     var asksEl=q("#dxaObAsks"), bidsEl=q("#dxaObBids"); if(!asksEl||!bidsEl)return;
     if(asksEl.__lxobd===d && asksEl.classList.contains("lxda"))return; asksEl.__lxobd=d;   // same book already rendered -> skip
-    var asks=(d.asks||[]).slice(0,11), bids=(d.bids||[]).slice(0,11);
+    var asks=(d.asks||[]).slice(0,16), bids=(d.bids||[]).slice(0,16);
     if(!asks.length&&!bids.length)return;
     // header labels: Price (XLM) / Amount (CODE) / Depth
     var head=q(".dxa-ob-head"); if(head){ var hs=head.querySelectorAll("span"); if(hs[0])hs[0].textContent="Price (XLM)"; if(hs[1])hs[1].textContent="Amount ("+CODE+")"; if(hs[2])hs[2].textContent="Depth (XLM)"; }
