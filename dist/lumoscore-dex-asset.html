@@ -5980,7 +5980,15 @@ window.addEventListener('click',function(e){
     if(poolsPage>pages)poolsPage=pages; if(poolsPage<1)poolsPage=1;
     var start=(poolsPage-1)*POOLS_PER, end=Math.min(start+POOLS_PER,v.list.length), top=v.list.slice(start,end);
     var body=v.wrap.querySelector(v.MOB?".mdxa-pl-list":".ex-table tbody");
-    if(body)body.innerHTML=v.MOB?poolsMRowsHTML(top,v.combined):poolsRowsHTML(top,v.combined);
+    if(!body)return;
+    // Repaint ONLY when the page or the underlying rows actually changed. applyPools is re-run on every
+    // data tick (~4x/s), and repainting blindly destroyed and recreated the row nodes each time -- which
+    // dropped :hover off whatever the pointer was over, so "Add liquidity" strobed orange/white under the
+    // cursor. The stamp lives on the body, which a genuine rebuild replaces, so real changes still repaint.
+    var stamp=poolsPage+"/"+v.list.length+"/"+Math.round(v.combined)+"/"+Math.round(xlmUsd*1000);
+    if(body.getAttribute("data-lxpage")===stamp)return;
+    body.setAttribute("data-lxpage",stamp);
+    body.innerHTML=v.MOB?poolsMRowsHTML(top,v.combined):poolsRowsHTML(top,v.combined);
     var foot=v.wrap.querySelector(".lx-pl-foot");
     if(foot){ foot.style.display=pages>1?"":"none";
       foot.innerHTML='<span class="info">Showing '+num(start+1)+'\u2013'+num(end)+' of '+num(v.list.length)+' pools</span>'
