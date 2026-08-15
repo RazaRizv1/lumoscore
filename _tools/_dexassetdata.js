@@ -1397,7 +1397,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       +'<div class="lx-oc-r"><span>Spread</span><b>'+(spread==null?"\u2014":spread.toFixed(2)+"%")+'</b></div>'
       +'<div class="lx-oc-r"><span>Your price</span><b class="'+(fills?"lx-oc-ok":"")+'">'+awayTxt+'</b></div>'
       +'<div class="lx-oc-r"><span>Ahead of you</span><b class="'+(n?"lx-oc-hi":"lx-oc-ok")+'">'
-      +(pr>0?(fills?((fillPct==null)?"fills now":(fillPct>=99.5?"fills now":(fillPct<0.5?"<1% fills now":Math.round(fillPct)+"% fills now"))):(n?(abbrNum(q0)+" "+(side==="buy"?"XLM":CODE)+" \u00b7 "+n+(n===1?" order":" orders")):"nothing \u2014 first in line")):"\u2014")
+      +(pr>0?(fills?((fillPct==null)?"fills now":(fillPct>=99.5?"fills now":(fillPct<0.5?"<1% now, rest rests":Math.round(fillPct)+"% now, rest rests"))):(n?(abbrNum(q0)+" "+(side==="buy"?"XLM":CODE)+" \u00b7 "+n+(n===1?" order":" orders")):"nothing \u2014 first in line")):"\u2014")
       +'</b></div>';
   }catch(_){} }
   function setLimitTotalUsd(){ try{

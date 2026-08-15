@@ -13,7 +13,7 @@ const TYPES=[
 ];
 
 function scriptFor(net,sel){
-  return '<script id="lx-gate">(function(){'
+  return '<style id="lx-gate-css">'+'[data-lxgate="1"]{font-size:0!important;color:transparent!important}'+'[data-lxgate="1"]::after{content:"Connect wallet";font-size:15px;font-weight:800;letter-spacing:0;color:#fff;display:inline-block}'+'</'+'style>'+'<script id="lx-gate">(function(){'
   +'var NET="'+net+'",SEL="'+sel+'";'
   +'function conn(){try{return !!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"));}catch(_){return false;}}'
   +'function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}'
@@ -21,7 +21,7 @@ function scriptFor(net,sel){
   +'if(on){if(b.getAttribute("data-lxgate")){if(b.getAttribute("data-lxorig")!=null)b.textContent=b.getAttribute("data-lxorig");'
   +'if(b.getAttribute("data-lxdis")==="1"){try{b.disabled=true;}catch(_){}b.setAttribute("disabled","");}'
   +'b.style.removeProperty("opacity");b.style.removeProperty("cursor");b.removeAttribute("data-lxdis");'
-  +'b.removeAttribute("data-lxgate");}}'
+  +'b.removeAttribute("aria-label");b.removeAttribute("data-lxgate");}}'
   // Disconnected, the CTA must be ACTIVE — it is the way in, not a preview of something you cannot do.
   // The data layer disables it (no amount, no balance, nothing to quote) which is right when connected
   // and wrong when there is no wallet at all: it rendered a pale, untappable "Swap". So clear the
@@ -32,7 +32,7 @@ function scriptFor(net,sel){
   +'try{b.disabled=false;}catch(_){}b.removeAttribute("disabled");b.removeAttribute("aria-disabled");'
   +'b.classList.remove("disabled","is-disabled","btn-disabled");'
   +'b.style.removeProperty("pointer-events");b.style.setProperty("opacity","1","important");b.style.setProperty("cursor","pointer","important");'
-  +'b.setAttribute("data-lxgate","1");}}}'
+  +'b.setAttribute("aria-label","Connect wallet");b.setAttribute("data-lxgate","1");}}}'
   // window-capture so this runs BEFORE any document-capture interceptor (e.g. the Trade "Review order" modal)
   +'window.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-lxgate=\\"1\\"]"):null;if(b){e.preventDefault();e.stopImmediatePropagation();'
   // Remember the chain this page was showing when they clicked. Connect on the same chain and they
@@ -61,7 +61,7 @@ for(const chain of ['aptos','hedera','starknet','vechain','worldchain','stellar'
       if(!type) continue;
       let h=json[k];
       if(h.indexOf(type.mark)<0) continue;                 // CTA not on this page — skip
-      h=h.replace(/<script id="lx-gate">[\s\S]*?<\/script>/,''); // idempotent
+      h=h.replace(/<style id="lx-gate-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-gate">[\s\S]*?<\/script>/g,''); // idempotent: BOTH, or rebuilds stack them
       const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
       h=h.slice(0,bi)+scriptFor(chain,type.sel)+h.slice(bi);
       json[k]=h; n++;
