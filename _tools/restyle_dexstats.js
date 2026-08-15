@@ -7,7 +7,7 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const STYLE = '<style id="lx-assetstats">'
-  + '.stat-row{gap:11px;background:transparent !important;border-top:none !important;'
+  + '.stat-row{gap:9px;background:transparent !important;border-top:none !important;'
   // The design sizes this row by VIEWPORT width (6 cols, 3 below 1280px, 2 below 880px). The sidebar
   // is ~285px and expands WITHOUT changing the viewport, so on a wide window the row still asked for
   // 6 columns in a container too narrow to hold them, and the last card (Supply) was cropped off the
@@ -31,13 +31,13 @@ const STYLE = '<style id="lx-assetstats">'
   // min-content width, and every line in here is white-space:nowrap — so the cells refused to shrink
   // and the row overflowed its container instead of adapting. With 0 they shrink and the .sub line
   // ellipsises as it was already styled to.
-  + '.stat-cell{min-width:0;padding:15px 16px !important;border:1px solid var(--border) !important;border-radius:13px;background:var(--surface);display:flex;flex-direction:column;justify-content:flex-start;min-height:92px;transition:border-color .15s ease,box-shadow .15s ease}'
+  + '.stat-cell{min-width:0;padding:11px 14px !important;border:1px solid var(--border) !important;border-radius:13px;background:var(--surface);display:flex;flex-direction:column;justify-content:flex-start;min-height:0;transition:border-color .15s ease,box-shadow .15s ease}'
   + '.stat-cell:hover{border-color:var(--accent-soft,rgba(234,106,44,.32)) !important;box-shadow:0 10px 24px -18px rgba(234,106,44,.5)}'
-  + '.stat-cell .lbl{font-size:11.5px;letter-spacing:.08em;font-weight:700;margin-bottom:8px;white-space:nowrap}'
+  + '.stat-cell .lbl{font-size:11.5px;letter-spacing:.08em;font-weight:700;margin-bottom:4px;white-space:nowrap}'
   // ellipsis rather than a value that spills past the card edge once the cell can shrink
-  + '.stat-cell .val{font-size:19px;font-weight:800;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05;color:var(--text)}'
+  + '.stat-cell .val{font-size:17.5px;font-weight:800;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05;color:var(--text)}'
   + '.stat-cell .val .u{font-size:11.5px;font-weight:600;color:var(--text-muted);margin-left:2px}'
-  + '.stat-cell .sub{font-size:12px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  + '.stat-cell .sub{font-size:11.5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
   // ---- compact ramp, LAST ON PURPOSE ----------------------------------------------------------
   // Tighten padding and type as the container narrows so six cards stay legible instead of
   // ellipsising. These MUST come after the base .stat-cell/.lbl/.val/.sub rules above: a container
