@@ -1000,16 +1000,16 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
 
   // ================= Buy/Sell trade widget — REAL execution (Phase 2) =================
   // Buy CODE = pay XLM -> receive CODE; Sell CODE = pay CODE -> receive XLM. Quotes come from Horizon
-  // strict-send paths; execution is a real pathPaymentStrictSend (+0.5% LumosCore fee op, auto trustline)
+  // strict-send paths; execution is a real pathPaymentStrictSend (+0.2% LumosCore fee op, auto trustline)
   // signed by the connected wallet via our OWN SDK/Freighter signer (this page has none of _swapcalc's
   // globals). Mirrors _swapcalc.lxSwap + _lumostoken's signer. NATIVE (?asset=XLM) has no counter-asset
   // here, so the widget stays display-only.
   var WPASS_PUB="Public Global Stellar Network ; September 2015";
   var FEE_COLLECTOR="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";
   var SLIP=0.5;
-  // audit #38: this was a flat 0.005, so a 250,000-LUMOS holder was charged the standard fee on
-  // Trade-Asset Buy/Sell while every other surface honoured their 0.25% tier. Read the live rate.
-  function FEE_RATE(){var r=window.__lxFeeRate;return (typeof r==="number"&&r>0&&r<=0.005)?r:0.005;}
+  // audit #38: this was a flat 0.002, so a 250,000-LUMOS holder was charged the standard fee on
+  // Trade-Asset Buy/Sell while every other surface honoured their 0.1% tier. Read the live rate.
+  function FEE_RATE(){var r=window.__lxFeeRate;return (typeof r==="number"&&r>0&&r<=0.002)?r:0.002;}
   var _dxsdk=null, _dxTmr=null, _dxSeq=0, _dxQuoteOut=0, _dxMinRecv=0, _dxSpot={}, _dxView=null, _dxLastPay=null, _dxQuick=null;
   // Swap toast, styled exactly like the design's "Copied to clipboard" toast (dark pill + circular icon,
   // bottom-center). isErr -> red ✕ icon; otherwise green ✓. Replaces the old native alert().
@@ -1421,7 +1421,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       }).catch(function(){});
     },260);
   }
-  // real pathPaymentStrictSend (+0.5% fee op, auto trustline) signed by the connected wallet — mirrors _swapcalc.lxSwap
+  // real pathPaymentStrictSend (+0.2% fee op, auto trustline) signed by the connected wallet — mirrors _swapcalc.lxSwap
   // record each executed swap so the Wallet activity feed can label it "Swapped X -> Y" with amounts, even when
   // it routes through Soroswap (a Soroban invoke_host_function that otherwise shows only "Contract call").
   function dxRecordSwap(hash,pa,ra,fromAmt,toAmt){ if(!hash)return; try{ var a=JSON.parse(localStorage.getItem("lumos.swaps")||"[]"); a.unshift({hash:hash,from:(pa.native?"XLM":pa.code),fromIss:(pa.native?"":pa.iss||""),to:(ra.native?"XLM":ra.code),toIss:(ra.native?"":ra.iss||""),fromAmt:+fromAmt||0,toAmt:+toAmt||0,ts:Date.now()}); localStorage.setItem("lumos.swaps",JSON.stringify(a.slice(0,40))); }catch(_){} }

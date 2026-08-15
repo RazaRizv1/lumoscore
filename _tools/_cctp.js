@@ -219,7 +219,7 @@ try{ window.__lxCCTP={
   passphrase:"Public Global Stellar Network ; September 2015",
   decimals:7, iris:"https://iris-api.circle.com",
   horizon:"https://horizon.stellar.org",
-  feeCollector:"GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD", feeRate:0.005,
+  feeCollector:"GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD", feeRate:0.002,
   domains:${JSON.stringify(CCTP_DOMAINS)}, chains:${JSON.stringify(Object.keys(CCTP_DOMAINS))}
 }; }catch(_){}
 
@@ -426,7 +426,7 @@ function lxCctpBridge(destDomain, amountHuman, recipient, onStatus){
 }
 window.lxCctpBridge=lxCctpBridge;
 
-// ---- Fee (0.5%, to XLM) + optional source->USDC hop, then CCTP burn(net) + attest ----
+// ---- Fee (0.2%, to XLM) + optional source->USDC hop, then CCTP burn(net) + attest ----
 function lxSubmitClassic(C,xdr){
   return fetch(C.horizon+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(xdr)}).then(function(r){return r.json();}).then(function(res){
     if(res.successful||res.hash) return res;
@@ -458,7 +458,7 @@ function lxToAssets(S,arr){ return arr.map(function(a){ return a.asset_type==="n
 // sourceSpec: "USDC" | {native:true} | {code,issuer}. Returns {burnHash,netUsdc,feeRate,message,attestation,decodedMessage,...}
 function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, onStatus, netUsdcTarget){
   var C=window.__lxCCTP; onStatus=onStatus||function(){}; netUsdcTarget=parseFloat(netUsdcTarget)||0;
-  var feeRate=(window.__lxFeeRate||C.feeRate||0.005), UI=C.usdcIssuer;   // honor the 250K-LUMOS tier (0.25%) same as swap
+  var feeRate=(window.__lxFeeRate||C.feeRate||0.002), UI=C.usdcIssuer;   // honor the 250K-LUMOS tier (0.1%) same as swap
   var isUSDC=!sourceSpec||sourceSpec==="USDC"||sourceSpec.code==="USDC";
   var srcAmt=parseFloat(String(sourceAmountHuman).replace(/,/g,"")); if(!(srcAmt>0)) return Promise.reject(new Error("Enter a valid amount"));
   return lxCctpSdk().then(function(S){ return lxCctpSigner().then(function(f){
@@ -699,7 +699,7 @@ function lxBrCalc(){
   var amtIn=sides[0].querySelector('.br-amt .lx-amtin'); var amtEl=sides[0].querySelector('.br-amt .v'); var outEl=sides[1].querySelector('.br-amt .v'); if(!outEl)return;
   var raw=((amtIn?amtIn.value:(amtEl?amtEl.textContent:""))||"").split(",").join("").trim(); var amt=parseFloat(raw)||0; window.__lxBr.amount=raw;
   lxBrValidateStep2();
-  var k=window.__lxBr.srcKey, A=LX_ASSETS[k]||LX_ASSETS.USDC, C=window.__lxCCTP, feeRate=(window.__lxFeeRate||(C&&C.feeRate)||0.005);
+  var k=window.__lxBr.srcKey, A=LX_ASSETS[k]||LX_ASSETS.USDC, C=window.__lxCCTP, feeRate=(window.__lxFeeRate||(C&&C.feeRate)||0.002);
   // AUDIT #3 bug 1/2 (FUNDS): "You get" used the static px table — a TESTNET-era decision ("don't quote the
   // testnet pool") that was flat wrong on mainnet, where the pools ARE the market. LUMOS (not on CoinGecko)
   // kept its baked px:0.25 against a real ~$0.00005, quoting ~4,800x the deliverable amount; execution then
@@ -807,19 +807,19 @@ function lxBrReview(){
   var srcRow=s3.querySelector('[data-rv="src"]'); if(srcRow) srcRow.innerHTML='<span class="lx-rvaddric">'+lxBrStellarIcon()+'</span><span>'+lxBrShort(B.pk||LX_SRC_ADDR)+'</span>';
   var dstIn=s2?s2.querySelector('.br-addr-in'):null; var dst=dstIn?(dstIn.value||"").trim():""; var nkey=LX_NETMAP[net];
   var dstRow=s3.querySelector('[data-rv="dst"]'); if(dstRow){ if(dst){ dstRow.innerHTML=(nkey?'<span class="lx-rvaddric"><img class="lx-netimg" src="assets/networks/'+nkey+'.png" alt=""></span>':'')+'<span>'+lxBrShort(dst)+'</span>'; } else dstRow.textContent="—"; }
-  // Bridge fee row: show the actual amount, not just the rate. It always read "0.5%" and nothing else,
+  // Bridge fee row: show the actual amount, not just the rate. It always read "0.2%" and nothing else,
   // while "You send" showed the gross amount — so from the review alone there was no way to tell the fee
   // had been taken at all. It is deducted from the source asset, so name it in the source asset.
   var bf=s3.querySelector('.lx-bfee .v');
   if(bf){
-    var _fr=(window.__lxFeeRate||(window.__lxCCTP&&window.__lxCCTP.feeRate)||0.005);
+    var _fr=(window.__lxFeeRate||(window.__lxCCTP&&window.__lxCCTP.feeRate)||0.002);
     var _sa=parseFloat(String(amt).replace(/,/g,""))||0, _fa=_sa*_fr;
     var _amtTxt=_fa>0?(_fa<0.0001?_fa.toFixed(7):_fa.toLocaleString("en-US",{maximumFractionDigits:6})):"";
     var _pct=(_fr*100).toFixed(2).replace(/0$/,"").replace(/\\.$/,"")+"%";
     bf.innerHTML=_pct+(_amtTxt?' <span class="lx-bamt">\· '+_amtTxt+' '+lxBrEsc(k)+'</span>':'')
-      +(_fr>0.003?'<span class="lx-bchip">0.25% with LUMOS</span>':'<span class="lx-bchip">LUMOS holder rate</span>');
+      +(_fr>0.0015?'<span class="lx-bchip">0.1% with LUMOS</span>':'<span class="lx-bchip">LUMOS holder rate</span>');
   }
-  // Circle CCTP fee row — Standard transfer is free (only our 0.5%/0.25% applies). Structured so a Fast-transfer fee could slot in later.
+  // Circle CCTP fee row — Standard transfer is free (only our 0.2%/0.1% applies). Structured so a Fast-transfer fee could slot in later.
   var list=s3.querySelector('.br-rv-list');
   if(list && !list.querySelector('.lx-cfee')){ var feeRow=list.querySelector('.lx-bfee'); var r=document.createElement('div'); r.className='r lx-cfee'; r.innerHTML='<span class="k">Circle CCTP fee</span><span class="v">Free <span class="lx-cchip">Standard transfer</span></span>'; if(feeRow) feeRow.parentNode.insertBefore(r, feeRow.nextSibling); else list.appendChild(r); }
 }
