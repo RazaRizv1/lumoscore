@@ -156,7 +156,13 @@ const ROWS='\'<div class="r"><span>Rate</span><strong data-k="rate">&mdash;</str
 +'+\'<div class="r"><span>Slippage tolerance</span><strong data-k="slip">&mdash;</strong></div>\''
 +'+\'<div class="r"><span data-k="feelbl">Swap fee (0.5%)</span><strong data-k="fee">&mdash;</strong></div>\''
 +'+\'<div class="r"><span>Network fee</span><strong data-k="net">&mdash;</strong></div>\''
-+'+\'<div class="r"><span>Price impact</span><strong data-k="pi">&mdash;</strong></div>\''
+// No "Price impact" row here, deliberately. This panel serves the generic swap boxes (Dashboard quick
+// actions, Wallet > My assets), where the user picks BOTH sides. Price impact is a statement about one
+// asset -- "this trade moves X's price by N%" -- and with no subject asset there is nothing for the sign
+// to refer to; either side is equally the thing being traded. The Trade-Asset page keeps it, because
+// there the page itself names the asset. The set("pi", ...) calls in the render paths are left alone on
+// purpose: setter() skips keys it cannot find, so with the row gone they are no-ops, and unpicking four
+// call sites out of long statement chains is more risk than a dead assignment is worth.
 +'+\'<div class="r rtot"><span>Minimum received</span><strong data-k="min">&mdash;</strong></div>\''
 +'+\'<div class="lx-feenote" data-k="feenote"></div>\'';
 
@@ -403,7 +409,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'
 +'if(document.readyState!=="loading")loop();else document.addEventListener("DOMContentLoaded",loop);'
 +'})();</script>';
 
-let n=0;
+let n=0, stale=0;
 for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
   for(const dev of ['desktop','mobile']){
     const file=`lumoscore-${c}-${dev}.html`;
@@ -411,8 +417,15 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
     const {json,s,e}=getContents(data);
     for(const k of Object.keys(json)){
       let h=json[k];
-      if(h.indexOf('id="swapModal"')<0 && h.indexOf('id="modalSwap"')<0) continue;
+      // Strip FIRST, on every key, before deciding whether to inject. Stripping only where we re-inject
+      // leaves a stale copy behind on any page that once qualified and no longer does -- and the
+      // containers are gitignored, so that stale copy outlives every rebuild and every revert. It had
+      // already happened: wallet-mobile was still serving an lx-swapcalc from an earlier build, complete
+      // with the Price impact row this change removes, while the transform reported success.
+      const had=/<script id="lx-swapcalc">/.test(h);
       h=h.replace(/<style id="lx-swapcalc-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-swapcalc">[\s\S]*?<\/script>/g,'');
+      const want=h.indexOf('id="swapModal"')>=0||h.indexOf('id="modalSwap"')>=0;
+      if(!want){ if(had){ json[k]=h; stale++; } continue; }
       const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
       json[k]=h.slice(0,bi)+STYLE+SCRIPT+h.slice(bi); n++;
     }
@@ -420,4 +433,4 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
     fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');
   }
 }
-console.log('swap live-details wired on '+n+' pages');
+console.log(`swap live-details wired on ${n} pages` + (stale?`; stripped ${stale} stale copies`:``));

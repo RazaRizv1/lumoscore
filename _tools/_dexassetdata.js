@@ -1190,6 +1190,17 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   function soroHeaders(){ return {"Content-Type":"application/json"}; }
   var _dxSacCache={};
   function dxSac(S,a){ var k=a.native?"native":(a.code+":"+a.iss); if(_dxSacCache[k])return _dxSacCache[k]; var as=a.native?S.Asset.native():new S.Asset(a.code,a.iss); var c=as.contractId(S.Networks.PUBLIC); _dxSacCache[k]=c; return c; }
+  // Price impact on this page is a statement about THIS page's asset, because that is what the page is
+  // about. Buying it consumes asks and pushes its price up, so the impact is positive; selling it eats
+  // bids and pushes it down, so it is negative. The underlying arithmetic cannot supply that sign -- both
+  // the Soroswap figure and the classic spot-probe measure how much worse than spot you executed, which is
+  // a worsening in either direction and so always came out negative. Hence a buy of LUMOS reported -4.65%
+  // when the trade was pushing LUMOS UP. Magnitude from the quote; direction from which side the asset is
+  // on. The pair on this widget is always CODE against XLM (Buy = receive CODE, Sell = pay CODE).
+  function dxImpDir(ra){ return (ra&&!ra.native&&ra.code===CODE)?1:-1; }
+  function dxImpTxt(v,ra){ var m=Math.abs(v); if(m<0.01)return "<0.01%"; return (dxImpDir(ra)>0?"+":"-")+m.toFixed(2)+"%"; }
+  function dxImpUp(v,ra){ return Math.abs(v)<0.01||dxImpDir(ra)>0; }
+
   // POST /quote (EXACT_IN on the post-fee amount) -> {out, impact, quote, route, usesSoroban, usesAqua} or null
   function soroQuote(pa,ra,amtStroops){
     return dxLoadSdk().then(function(S){ var ai,ao; try{ ai=dxSac(S,pa); ao=dxSac(S,ra); }catch(e){ return null; }
@@ -1301,10 +1312,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         window.__lxDXASoro=useSoro?{quote:soro.quote,out:soro.out,pa:pa,ra:ra}:null;
         var best=useSoro?soro.out:out; if(!(best>0)){ dxSmartBadge(null); return; }
         _dxQuoteOut=best; var minR=best*(1-SLIP/100); _dxMinRecv=minR; var effRate=best/net;
-        _dxView={recv:xlmAmt(best), usd:best*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+effRate.toPrecision(6))+" "+rcode, impact:useSoro?((soro.impact||0)<0.01?"<0.01%":"-"+soro.impact.toFixed(2)+"%"):"<0.01%", impUp:!useSoro||((soro.impact||0)<0.05), minR:xlmAmt(minR)+" "+rcode, soro:useSoro?soro:null};
+        _dxView={recv:xlmAmt(best), usd:best*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+effRate.toPrecision(6))+" "+rcode, impact:useSoro?dxImpTxt(soro.impact||0,ra):"<0.01%", impUp:useSoro?dxImpUp(soro.impact||0,ra):true, minR:xlmAmt(minR)+" "+rcode, soro:useSoro?soro:null};
         reAssertView();
-        // classic route: refine price impact vs the honest top-of-book probe (a larger order fills worse -> negative impact)
-        if(!useSoro){ dxSpotRate(pa,ra,function(sr){ if(seq!==_dxSeq||!(sr>0)||!_dxView||_dxView.soro)return; var imp=(effRate-sr)/sr*100; if(imp>0.05)imp=0; _dxView.impact=(Math.abs(imp)<0.01?"<0.01%":(imp>=0?"+":"")+imp.toFixed(2)+"%"); _dxView.impUp=imp>=-0.01; reAssertView(); }); }
+        // classic route: size the impact against the honest top-of-book probe. That arithmetic only ever
+        // measures execution against spot, so it is negative whichever way you trade -- the direction has
+        // to come from dxImpTxt, not from its sign.
+        if(!useSoro){ dxSpotRate(pa,ra,function(sr){ if(seq!==_dxSeq||!(sr>0)||!_dxView||_dxView.soro)return; var imp=(effRate-sr)/sr*100; if(imp>0.05)imp=0; _dxView.impact=dxImpTxt(imp,ra); _dxView.impUp=dxImpUp(imp,ra); reAssertView(); }); }
       }).catch(function(){});
     },260);
   }
