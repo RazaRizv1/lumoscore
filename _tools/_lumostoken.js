@@ -304,7 +304,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     var priceUsd=lumosXlm*xlmUsd;
     qa(".lh-stats .cstat").forEach(function(card){
       var t=(card.textContent||"").toUpperCase();
-      var money=card.querySelector(".lc-money"), val=card.querySelector(".val"), sub=card.querySelector(".sub");
+      var val=card.querySelector(".val"), sub=card.querySelector(".sub"); var money=card.querySelector(".lc-money")||val;
       var done=false;
       // check DILUTED before MARKET CAP: the FDV card's own sub contains the words "market cap"
       if(/DILUTED/.test(t)){ if(priceUsd>0&&supply>0){ setMoney(money,abbrUsd(supply*priceUsd)); if(sub)setText(sub,"on "+abbrNum(supply)+" total supply"); done=true; } }
