@@ -141,6 +141,43 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   ];
   var byCode={}; ASSETS.forEach(function(a){ byCode[a.code]=a; a.px=0; a.chg=null; a.vol=null; a.high=null; a.low=null;
     a.tvlUsd=null; a.holders=null; a.supply=null; a.spark=null; a.domain=null; a.img=null; a.trades=null; });
+  // ---- LumosCore-native assets: issuer home_domain = lumoscore.com (minted through our Launchpad) ----
+  var NATIVE=[], nativeState=0;                             // 0 idle | 1 loading | 2 loaded
+  var SX="https://api.stellar.expert/explorer/public/asset?search=lumoscore&limit=200";
+  function loadNative(){
+    if(nativeState)return; nativeState=1;
+    // LUMOS is the platform's own token, but its issuer still declares the pre-rename lumosdao.io, so a
+    // strict domain match drops it from its own tab. Pin it in until that home_domain is updated.
+    var l=byCode["LUMOS"]; if(l&&NATIVE.indexOf(l)<0)NATIVE.push(l);
+    touch();
+    fetchJ(SX).then(function(d){
+      var r=(d&&d._embedded&&d._embedded.records)||[], add=[];
+      r.forEach(function(x){
+        if(String(x.domain||"").toLowerCase()!=="lumoscore.com")return;
+        var q0=String(x.asset||"").split("-"), code=q0[0], iss=q0[1];
+        if(!code||!iss||code.length>12||iss.length!==56)return;
+        // Retired and mistyped tickers linger in the index as husks: zero supply, no trustlines, no toml.
+        // They cannot be traded, and padding the tab with dead rows buries the real ones.
+        var tl=x.trustlines; tl=(tl&&typeof tl==="object"&&tl.length)?(+tl[0]||0):(+tl||0);
+        if(!(+x.supply>0)||tl<1)return;
+        var key=byCode[code]?code+"~"+iss.slice(0,4):code;
+        if(byCode[key])return;
+        var a={code:code,issuer:iss,cat:"native",tkr:key,b:"#3d4351",
+          logo:(x.tomlInfo&&x.tomlInfo.image)||"",domain:x.domain||"",
+          px:0,chg:null,vol:null,high:null,low:null,tvlUsd:null,holders:null,
+          supply:null,spark:null,img:null,trades:null};
+        byCode[key]=a; NATIVE.push(a); add.push(a);
+      });
+      touch();
+      // Horizon in small waves: loadAsset is ~5 requests per asset, and firing 30 assets at once is a
+      // burst that gets throttled -- which surfaces as rows stuck on a dash, not as an error.
+      (function wave(i){ if(i>=add.length){ nativeState=2; touch(); return; }
+        Promise.all(add.slice(i,i+4).map(function(a){ return loadAsset(a).catch(function(){}); }))
+          .then(function(){ wave(i+4); },function(){ wave(i+4); });
+      })(0);
+    }).catch(function(){ nativeState=0; });                  // allow a retry on the next click
+  }
+  function curFilter(){ var el=q(".dex-mk-filter.active"); return (el&&el.getAttribute)?(el.getAttribute("data-filter")||"all"):"all"; }
   var MINTS=["LUMOS","AQUA","EURC","ARST","SHX"];             // "new mints" subset (LUMOS = the project token, tagged NEW)
 
   // seed XLM/USD from a shared localStorage cache so a CoinGecko 429 never blanks the USD values (falls back
@@ -354,13 +391,14 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function tableData(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all";
     var qs=""; var si=q("#dexMkSearch"); if(si)qs=(si.value||"").trim().toLowerCase();
     var d=ASSETS.slice();
-    if(f==="utility")d=d.filter(function(a){return a.cat==="utility";});
+    if(f==="native"){ loadNative(); d=NATIVE.slice(); }
+    else if(f==="utility")d=d.filter(function(a){return a.cat==="utility";});
     else if(f==="stables")d=d.filter(function(a){return a.cat==="stable";});
     else if(f==="memes")d=[];
     if(qs)d=d.filter(function(a){ return a.code.toLowerCase().indexOf(qs)>=0 || (a.issuer||"").toLowerCase().indexOf(qs)>=0 || (a.domain||"").toLowerCase().indexOf(qs)>=0; });
     return d;
   }
-  function tableSig(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all"; var qs=(q("#dexMkSearch")||{}).value||""; return f+"|"+qs.trim().toLowerCase(); }
+  function tableSig(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all"; var qs=(q("#dexMkSearch")||{}).value||""; return f+"|"+qs.trim().toLowerCase()+"|"+NATIVE.length+"|"+nativeState; }
   // the thead is design markup (8 cols); insert a "Trades (24h)" th once, right after Volume (24h), so the 24h-activity columns sit together.
   function ensureTradesHeader(){ var tb=q("#dexMkTbody"); if(!tb||!tb.closest)return; var tbl=tb.closest("table"); if(!tbl)return;
     var thr=tbl.querySelector("thead tr"); if(!thr||thr.querySelector(".th-trades"))return;
@@ -375,7 +413,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(tb.__lxsig!==sig || (!tb.querySelector("tr[data-tkr]")&&!tb.querySelector("tr.lx-dex-empty-row"))){
       if(!data.length){ tb.innerHTML='<tr class="lx-dex-empty-row"><td colspan="9"><div class="lx-dex-empty">No matching markets on Stellar right now.</div></td></tr>'; }
       else tb.innerHTML=data.map(function(a){
-        return '<tr data-tkr="'+a.code+'" data-iss="'+a.issuer+'" data-cat="'+a.cat+'">'
+        return '<tr data-tkr="'+(a.tkr||a.code)+'" data-iss="'+a.issuer+'" data-cat="'+a.cat+'">'
           +'<td><div class="dex-mk-pair-cell">'
             +'<span class="dex-mk-pair-ic" data-lxic="'+a.code+'" style="background:linear-gradient(135deg,'+a.b+','+a.b+'aa)">'+initials(a.code)+'</span>'
             +'<div class="dex-mk-pair-name"><div class="dex-mk-pair-head">'+a.code+vtick(a.code,a.issuer)+'</div><span class="sub">'+(a.domain?a.domain:shortG(a.issuer))+'</span></div>'
@@ -390,13 +428,13 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
             +'<div class="row"><span class="lab">L</span><span class="v-l">\\u2014</span></div>'
           +'</div></td>'
           +'<td style="text-align:right">'+sparkSvg(null,true)+'</td>'
-          +'<td style="text-align:right"><button class="dex-mk-action-btn" data-tkr="'+a.code+'">Trade</button></td>'
+          +'<td style="text-align:right"><button class="dex-mk-action-btn" data-tkr="'+(a.tkr||a.code)+'">Trade</button></td>'
         +'</tr>'; }).join("");
       tb.__lxsig=sig; paintIcons(tb);
       qa("tr[data-tkr]",tb).forEach(function(tr){ tr.addEventListener("click",function(){ var a=byCode[tr.getAttribute("data-tkr")]; if(a)navTo(a); }); });
       qa(".dex-mk-action-btn",tb).forEach(function(btn){ btn.addEventListener("click",function(e){ e.stopPropagation(); var a=byCode[btn.getAttribute("data-tkr")]; if(a)navTo(a); }); });
       var shown=q("#dexMkShown"); if(shown)setTxt(shown,data.length===0?"0":"1\\u2013"+data.length);
-      var strongs=qa(".dex-mk-page-info strong"); if(strongs[1])setTxt(strongs[1],String(ASSETS.length));
+      var strongs=qa(".dex-mk-page-info strong"); if(strongs[1])setTxt(strongs[1],String(curFilter()==="native"?NATIVE.length:ASSETS.length));
       tb.classList.add("lxd");
     }
     // fill values in place (no innerHTML churn -> no glitch); gated so ALL rows' details reveal together
@@ -489,6 +527,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function sched(){ if(sched2)return; sched2=true; setTimeout(function(){ sched2=false; guardApply(); },200); }
   function touch(){ DV++; sched(); }                          // real data landed -> bump version + re-render
   window.__lxDEXapply=guardApply;
+  window.__lxDEXloadNative=loadNative;
+  window.__lxDEXnativeList=function(){ return {list:NATIVE,state:nativeState}; };
   window.__lxDEXdbg=function(){ return {xlmUsd:xlmUsd,xlmChg:xlmChg,assets:ASSETS.map(function(a){return {code:a.code,px:a.px,chg:a.chg,vol:a.vol,tvlUsd:a.tvlUsd,holders:a.holders,supply:a.supply,domain:a.domain,img:a.img};})}; };
 
   function boot(){
@@ -508,7 +548,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // doesn't change #dexMoverGrid's children, so the childList observer wouldn't fire). Delegated so it
     // survives node replacement; a short + backup tick lets the design toggle .active first.
     if(!window.__lxDEXtab){ window.__lxDEXtab=1;
-      document.addEventListener("click",function(e){ var t=e.target&&e.target.closest?e.target.closest(".dex-mover-tab"):null; if(t){ setTimeout(guardApply,30); setTimeout(guardApply,160); } });
+      document.addEventListener("click",function(e){ var t=e.target&&e.target.closest?e.target.closest(".dex-mover-tab,.dex-mk-filter"):null; if(t){ setTimeout(guardApply,30); setTimeout(guardApply,160); } });
     }
     guardEl("#dexMintsList",renderMints);
     guardEl("#dexMoverGrid",renderMovers);
