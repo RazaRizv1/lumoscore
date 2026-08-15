@@ -6271,9 +6271,16 @@ window.addEventListener('click',function(e){
   // The arithmetic behind it was always right -- receive x priceUsd(), or x xlmUsd when receiving XLM --
   // it just had nowhere to land. Match the span that is really there, and keep the design's "= $x USD"
   // shape so the row still reads as drawn.
+  // Compact once the digits stop being readable. A swap can legitimately price in the billions, and
+  // "$145,613,063,694.22" is a wall that says less than "$145.61B" while being wide enough to fight the
+  // label for the row. Full precision stays below a million, where the cents are the point.
+  function dxUsdTxt(v){ if(!(v>0))return "\u2248 $0.00 USD";
+    var b=v>=1e12?[1e12,"T"]:v>=1e9?[1e9,"B"]:v>=1e6?[1e6,"M"]:null;
+    if(b)return "\u2248 $"+(v/b[0]).toFixed(2)+b[1]+" USD";
+    return "\u2248 $"+(v>=1?v.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):v.toFixed(4))+" USD"; }
   function setRecvUsd(usdv){ var rf=recvEl(); if(!rf)return;
     var lc=rf.querySelector(".dxa-trade-frow .lc-money")||rf.querySelector(".dxa-trade-frow .mono"); if(!lc)return;
-    var t=usdv>0?("\u2248 $"+(usdv>=1?usdv.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):usdv.toFixed(4))+" USD"):"\u2248 $0.00 USD";
+    var t=dxUsdTxt(usdv);
     if(lc.getAttribute("data-orig")!=null)lc.setAttribute("data-orig",t);
     if(lc.textContent!==t)lc.textContent=t; try{lxMark(lc);}catch(_){} }
   // Same figure for the pay side, so both halves of the trade are priced and the cost of the swap is
@@ -6286,7 +6293,7 @@ window.addEventListener('click',function(e){
     if(!(usdv>0)){ if(el)el.textContent=""; return; }
     if(!el){ el=document.createElement("span"); el.className="mono lxp lx-payusd";
       var bal=row.querySelector(".mono:not(.lx-payusd)"); if(bal)row.insertBefore(el,bal); else row.appendChild(el); }
-    var t="\u2248 $"+(usdv>=1?usdv.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):usdv.toFixed(4))+" USD";
+    var t=dxUsdTxt(usdv);
     if(el.textContent!==t)el.textContent=t; try{lxMark(el);}catch(_){} }
   function setSummary(label,val,cls){ var rows=qa(".dxa-pane-swap .dxa-tsum-row"); for(var i=0;i<rows.length;i++){ var sps=rows[i].querySelectorAll("span"); var lab=sps[0]?(sps[0].textContent||""):""; if(new RegExp(label,"i").test(lab)){ var m=rows[i].querySelector(".mono")||sps[1]; if(m){ if(cls!=null){ m.classList.remove("up","down"); if(cls)m.classList.add(cls); } if(m.textContent!==val)m.textContent=val; } return; } } }
   // single source of truth for the receive side + summary; the design keeps re-asserting its own mock
