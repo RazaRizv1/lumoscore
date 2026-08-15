@@ -7,6 +7,15 @@
 // via a debounced+self-guarded MutationObserver + a bounded interval, CSS no-flash gates, no emoji/\\u
 // in the injected string, ES5 var in the browser code).
 const fs = require('fs');
+// The (i) note and its tooltip are defined on the LUMOS token page. Lifted at build time so there is one
+// definition. Deliberately NOT the later ".lx-supinfo,.lt-cmp-v .lx-supinfo" override in that file -- it
+// resizes the badge to a 26px image slot and sets font-size:0, which would blank the "i" here.
+const DXA_SUPINFO_CSS = (function(){
+  const t = fs.readFileSync(__dirname + '/_lumostoken.js', 'utf8');
+  const rules = (t.match(/\.lx-supinfo(?::hover::after)?\{[^}]*\}/g) || []).join('');
+  if (rules.length < 200) throw new Error('_dexassetdata: .lx-supinfo CSS not found in _lumostoken.js');
+  return rules; })();
+const DXA_SUPPLY_NOTE = '90% (9B LUMOS) supply is locked forever. The circulating supply is 1B LUMOS.';
 const { read, getContents, VERIFIED, VTICK_SVG } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
@@ -157,9 +166,10 @@ const STYLE = `<style id="lx-dxa-css">
 .lx-dxsmart .lx-sb-sub{font:600 11.5px/1.3 'Hanken Grotesk',system-ui,sans-serif;color:var(--text-soft,#8a8fa3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lx-dxsmart .lx-sb-sub b{color:#ea6a2c}
 .lx-dxsmart .lx-sb-best{flex:0 0 auto;font:800 10.5px/1 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#ea6a2c;background:rgba(234,106,44,.14);border:1px solid rgba(234,106,44,.4);border-radius:7px;padding:5px 8px}
-</style>`;
+${DXA_SUPINFO_CSS}
+.stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style>`;
 
-const SCRIPT = `<script id="lx-dxadata">(function(){
+const SCRIPT = `<script id="lx-dxadata">(function(){var DXA_SUPPLY_NOTE_S="${DXA_SUPPLY_NOTE}";
   // shared verified set, same as the wallet, Trade main and search
   var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
   var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
@@ -352,7 +362,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       else if(lbl.indexOf("24h change")===0||lbl==="24h"){ if(chg24!=null&&val){ var up=chg24>=0; val.className="val change "+(up?"up":"down")+" mono"; setText(val,(up?"+":"")+chg24.toFixed(2)+"%"); } else if(val){ setText(val,"—"); if(val.className!=="val mono")val.className="val mono"; } if(sub&&sub.style.display!=="none")sub.style.display="none"; }   /* % only, no XLM sub */
       else if(lbl.indexOf("24h volume")===0||lbl==="volume"){ if(NATIVE){ if(natVol>0){ if(val)setText(val,abbrUsd(natVol)); if(sub)setText(sub,"across all markets"); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }
         else if(vol24Xlm!=null){ if(val)val.innerHTML=abbrNum(vol24Xlm)+'<span class="u">XLM</span>'; if(sub&&xlmUsd>0)setText(sub,usd(vol24Xlm*xlmUsd)); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }
-      else if(lbl.indexOf("market cap")===0){ if(pu>0&&supply>0){ if(val)setText(val,abbrUsd(supply*pu)); } else if(val)setText(val,"—"); if(sub&&sub.style.display!=="none")sub.style.display="none"; }   /* no FDV sub */
+      else if(lbl.indexOf("market cap")===0){ if(pu>0&&supply>0){ var _lum=(CODE==="LUMOS");var _circ=_lum?supply*0.1:supply; if(val){ if(_lum){ val.innerHTML=abbrUsd(_circ*pu)+'<span class="lx-supinfo" data-tip="'+DXA_SUPPLY_NOTE_S+'">i</span>'; lxMark(val); } else setText(val,abbrUsd(_circ*pu)); } } else if(val)setText(val,"—"); if(sub&&sub.style.display!=="none")sub.style.display="none"; }   /* no FDV sub */
       else if(lbl.indexOf("liquidity")===0){ if(liqXlm!=null&&xlmUsd>0){ if(val)setText(val,abbrUsd(liqXlm*xlmUsd)); if(sub){ if(sub.style.display==="none")sub.style.display="";
         if(liqPoolPair){ setText(sub, liqPoolPair[0].code+": "+abbrNum(liqPoolPair[0].amt)+" | "+liqPoolPair[1].code+": "+abbrNum(liqPoolPair[1].amt)); }
         else if(assetInPools!=null){ var _p=[]; if(assetInPools>0)_p.push(CODE+": "+abbrNum(assetInPools)); if(liqNat>0)_p.push("XLM: "+abbrNum(liqNat)); setText(sub,_p.join(" | ")||(abbrNum(liqXlm)+" XLM TVL")); } } } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }
