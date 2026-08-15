@@ -161,8 +161,15 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   function renderPairs(){
     var list=q(".mdx-mk-list");if(!list)return;var A=assets();if(!A)return;
     var cat=mkFilter(),qy=mkQuery();
-    var d=A.filter(function(a){
-      if(cat&&cat!=="all"){var c=String(a.cat||"").toLowerCase();
+    // The native roster is not part of __lxDEXassets -- it is discovered on demand by the desktop data
+    // layer (which is injected here too) so the curated roster, and the headline volume/TVL sums built
+    // from it, stay exactly as they were.
+    var src=A;
+    if(cat==="native"){ try{ if(window.__lxDEXloadNative)window.__lxDEXloadNative(); }catch(_){}
+      var nv=null; try{ nv=window.__lxDEXnativeList?window.__lxDEXnativeList():null; }catch(_){}
+      src=(nv&&nv.list)||[]; }
+    var d=src.filter(function(a){
+      if(cat&&cat!=="all"&&cat!=="native"){var c=String(a.cat||"").toLowerCase();
         if(c!==cat&&c+"s"!==cat)return false;}
       if(qy&&(a.code+" "+(a.domain||"")).toLowerCase().indexOf(qy)<0)return false;
       return true;});
