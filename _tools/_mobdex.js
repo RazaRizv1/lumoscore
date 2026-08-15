@@ -51,6 +51,11 @@ const STYLE = '<style id="lx-mobdex-css">'
   + 'position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}'
   // Anything the healer already injected sits UNDER the ::before; hide it so it cannot show through.
   + '.mdx-mint-ic[data-lxic]>*,.mdx-mover-ic[data-lxic]>*,.mdx-mk-ic[data-lxic]>*{display:none!important}'
+  + '.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 2px 2px}'
+  + '.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);'
+  + 'border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}'
+  + '.lxmd-pg[disabled]{opacity:.4;cursor:default}'
+  + '.lxmd-pg-info{font-size:13px;color:var(--text-soft);font-weight:600;white-space:nowrap}'
   + '</style>';
 
 const SCRIPT = '<script id="lx-mobdex">' + String.raw`
@@ -158,6 +163,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   function mkFilter(){var t=q(".mdx-mk-filters .active,.mdx-mk-filters button.active");
     return t?((t.getAttribute("data-cat")||(t.textContent||"").trim().toLowerCase())):"all";}
   function mkQuery(){var i=q(".mdx-mk-search input");return i?String(i.value||"").trim().toLowerCase():"";}
+  var MK_PER=25, mkPage=1, mkKey="";
   function renderPairs(){
     var list=q(".mdx-mk-list");if(!list)return;var A=assets();if(!A)return;
     var cat=mkFilter(),qy=mkQuery();
@@ -173,9 +179,18 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         if(c!==cat&&c+"s"!==cat)return false;}
       if(qy&&(a.code+" "+(a.domain||"")).toLowerCase().indexOf(qy)<0)return false;
       return true;});
-    var sig="p|"+cat+"|"+qy+"|"+d.map(function(a){return a.code+":"+(priceOf(a)==null?"":a.px);}).join("|");
+    // A new filter or search starts at page 1; a data refresh does not.
+    var fkey=cat+"|"+qy; if(mkKey!==fkey){ mkKey=fkey; mkPage=1; }
+    var pages=Math.max(1,Math.ceil(d.length/MK_PER)); if(mkPage>pages)mkPage=pages;
+    var start=(mkPage-1)*MK_PER, all=d; d=all.slice(start,start+MK_PER);
+    var sig="p|"+cat+"|"+qy+"|"+mkPage+"/"+pages+"|"+d.map(function(a){return a.code+":"+(priceOf(a)==null?"":a.px);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     if(!d.length){list.innerHTML='<div class="lxmd-empty">No pairs match</div>';return;}
+    var pgh=pages<2?"":('<div class="lxmd-pager">'
+      +'<button class="lxmd-pg" data-pg="'+(mkPage-1)+'"'+(mkPage<=1?" disabled":"")+'>Prev</button>'
+      +'<span class="lxmd-pg-info">Page '+mkPage+' of '+pages+'</span>'
+      +'<button class="lxmd-pg" data-pg="'+(mkPage+1)+'"'+(mkPage>=pages?" disabled":"")+'>Next</button>'
+      +'</div>');
     list.innerHTML=d.map(function(a){var up=(a.chg||0)>=0;
       return '<div class="mdx-mk-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +'<div class="mdx-mk-top">'+ico("mdx-mk-ic",a)
@@ -187,7 +202,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         +'<div class="mdx-mk-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
         +'<div class="mdx-mk-pct '+(up?"up":"down")+'">'+esc(pct(n(a.chg)))+'</div>'
         +'</div></div></div>';
-    }).join("");
+    }).join("")+pgh;
   }
 
   // ---- tabs, filters, search, row navigation -------------------------------------------------------
@@ -203,6 +218,13 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       // Tabs and filters are the design's to handle (it owns the .active toggle); only schedule a repaint.
       if(t.closest(".mdx-mover-tabs")||t.closest(".mdx-mk-filters")){
         setTimeout(pass,30);setTimeout(pass,240);return;}
+      // Before the row check: a pager button sits outside any [data-href], but claiming it here keeps
+      // the design's own delegated handlers off it entirely.
+      var pgb=t.closest(".lxmd-pg[data-pg]");
+      if(pgb){ if(!pgb.disabled){ e.preventDefault(); e.stopImmediatePropagation();
+          mkPage=+pgb.getAttribute("data-pg")||1; renderPairs();
+          try{ var hd=q(".mdx-section-head"); if(hd&&hd.scrollIntoView)hd.scrollIntoView({block:"start"}); }catch(_){} }
+        return; }
       var row=t.closest("[data-href]");
       if(row&&/mdx-(mint|mover|mk)-row/.test(String(row.className||""))){
         e.preventDefault();e.stopImmediatePropagation();
