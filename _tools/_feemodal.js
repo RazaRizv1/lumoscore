@@ -110,7 +110,11 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'function rateTxt(){return disc()?"0.1%":"0.2%";}'
 +'function feeHTML(){return disc()?\'<span class="lx-feerate mono">0.1%</span>\''
 +':\'<span class="lx-feerate lx-feeold mono">0.2%</span><span class="lx-feechip">'+DOWN+'0.1% with LUMOS</span>\';}'
-+'function addRows(){var sums=document.querySelectorAll(".dxa-pane-swap .dxa-trade-summary,.dxa-pane-limit .dxa-trade-summary");'
+// Mobile ships the same summary under a DIFFERENT class -- .mdxa-trade-summary -- while the pane
+// itself still carries .dxa-pane-swap. So this selector matched nothing there and the Trading fee row
+// was simply never appended: the phone showed Rate / Price impact / Min received and stopped, with no
+// fee stated anywhere on the screen someone actually swaps from.
++'function addRows(){var sums=document.querySelectorAll(".dxa-pane-swap .dxa-trade-summary,.dxa-pane-limit .dxa-trade-summary,.dxa-pane-swap .mdxa-trade-summary,.dxa-pane-limit .mdxa-trade-summary");'
 +'sums.forEach(function(sum){var ex=sum.querySelector(".lx-feerow");'
 +'if(ex){var hint=ex.querySelector(".lx-feehint");if(hint)hint.innerHTML=feeHTML();return;}'
 +'var row=document.createElement("div");row.className="dxa-tsum-row lx-feerow";'
