@@ -2177,6 +2177,11 @@
    keep whatever the design gives them. */
 .mdxa-pl-list a.mdxa-pl-row{color:var(--text);text-decoration:none}
 .mdxa-pl-list a.mdxa-pl-row .mdxa-pl-lp{font-size:10.5px;color:var(--text-soft)}
+/* Pay-side dollar value. The row is space-between with "You pay" on the left and the balance on the
+   right; margin-left:auto pulls this into the right-hand group so the two sit together and the balance
+   keeps its place. Allowed to shrink and ellipsis rather than push the balance off a narrow phone. */
+.dxa-trade-frow .lx-payusd{margin-left:auto;margin-right:10px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dxa-trade-frow .lx-payusd:empty{display:none}
 /* Pools tab pagination. An asset can sit in hundreds of pools (AQUA: 1,301), so the list is paged at
    25 rather than truncated -- the header count and the rows on screen have to agree. */
 .lx-pl-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:13px 4px 2px;margin-top:6px;border-top:1px solid var(--border);font-size:13px;color:var(--text-soft)}
@@ -6354,9 +6359,21 @@ window.addEventListener('click',function(e){
   // shape so the row still reads as drawn.
   function setRecvUsd(usdv){ var rf=recvEl(); if(!rf)return;
     var lc=rf.querySelector(".dxa-trade-frow .lc-money")||rf.querySelector(".dxa-trade-frow .mono"); if(!lc)return;
-    var t=usdv>0?("\u2248 $"+(usdv>=1?usdv.toLocaleString("en-US",{maximumFractionDigits:2}):usdv.toFixed(4))+" USD"):"\u2248 $0.00 USD";
+    var t=usdv>0?("\u2248 $"+(usdv>=1?usdv.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):usdv.toFixed(4))+" USD"):"\u2248 $0.00 USD";
     if(lc.getAttribute("data-orig")!=null)lc.setAttribute("data-orig",t);
     if(lc.textContent!==t)lc.textContent=t; try{lxMark(lc);}catch(_){} }
+  // Same figure for the pay side, so both halves of the trade are priced and the cost of the swap is
+  // readable straight off the two lines. The pay row already ends in "Balance: ...", which shares the
+  // exact classes the receive USD span uses -- so this gets its OWN element rather than a selector that
+  // would have quietly eaten the balance. margin-left:auto parks it beside the balance on the right.
+  function payFieldEl(){ return qa(".dxa-pane-swap .dxa-trade-field")[0]; }
+  function setPayUsd(usdv){ var pf=payFieldEl(); if(!pf)return; var row=pf.querySelector(".dxa-trade-frow"); if(!row)return;
+    var el=row.querySelector(".lx-payusd");
+    if(!(usdv>0)){ if(el)el.textContent=""; return; }
+    if(!el){ el=document.createElement("span"); el.className="mono lxp lx-payusd";
+      var bal=row.querySelector(".mono:not(.lx-payusd)"); if(bal)row.insertBefore(el,bal); else row.appendChild(el); }
+    var t="\u2248 $"+(usdv>=1?usdv.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}):usdv.toFixed(4))+" USD";
+    if(el.textContent!==t)el.textContent=t; try{lxMark(el);}catch(_){} }
   function setSummary(label,val,cls){ var rows=qa(".dxa-pane-swap .dxa-tsum-row"); for(var i=0;i<rows.length;i++){ var sps=rows[i].querySelectorAll("span"); var lab=sps[0]?(sps[0].textContent||""):""; if(new RegExp(label,"i").test(lab)){ var m=rows[i].querySelector(".mono")||sps[1]; if(m){ if(cls!=null){ m.classList.remove("up","down"); if(cls)m.classList.add(cls); } if(m.textContent!==val)m.textContent=val; } return; } } }
   // single source of truth for the receive side + summary; the design keeps re-asserting its own mock
   // (USDC / 0.23659), so we paint from _dxView and re-assert it via guardSwap the instant it reverts.
@@ -6365,9 +6382,9 @@ window.addEventListener('click',function(e){
     // not a readout: the reverse quote drives You pay from it, and overwriting it mid-keystroke would
     // make it impossible to type. The summary and USD line still update from _dxView.
     if(rin&&document.activeElement===rin)rin=null;
-    if(_dxView){ if(rin&&rin.value!==_dxView.recv)rin.value=_dxView.recv; setRecvUsd(_dxView.usd);
+    if(_dxView){ if(rin&&rin.value!==_dxView.recv)rin.value=_dxView.recv; setRecvUsd(_dxView.usd); setPayUsd(_dxView.payUsd||0);
       setSummary("Rate",_dxView.rate); setSummary("Price impact",_dxView.impact,_dxView.impUp?"up":"down"); setSummary("Slippage",SLIP+"%"); setSummary("Min received",_dxView.minR); setSummary("Network fee","0.00001 XLM"); dxSmartBadge(_dxView.soro||null); }
-    else { if(rin&&rin.value!=="")rin.value=""; setRecvUsd(0); setSummary("Rate","\u2014"); setSummary("Price impact","\u2014"); setSummary("Min received","\u2014"); dxSmartBadge(null); }
+    else { if(rin&&rin.value!=="")rin.value=""; setRecvUsd(0); setPayUsd(0); setSummary("Rate","\u2014"); setSummary("Price impact","\u2014"); setSummary("Min received","\u2014"); dxSmartBadge(null); }
   }
   // REVERSE QUOTE: type what you want to RECEIVE and we solve for the pay amount.
   //
@@ -6426,7 +6443,7 @@ window.addEventListener('click',function(e){
     else { dxErr(""); if(cta)cta.removeAttribute("data-lxdis"); }
     var fee=amt*FEE_RATE(), net=amt-fee, spot=pa.native?(assetXlm>0?1/assetXlm:0):assetXlm; // receive per pay
     var rcode=ra.native?"XLM":ra.code, pcode=pa.native?"XLM":pa.code;
-    if(spot>0){ var est=net*spot; _dxView={recv:xlmAmt(est), usd:est*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+spot.toPrecision(6))+" "+rcode, impact:"\u2026", impUp:true, minR:xlmAmt(est*(1-SLIP/100))+" "+rcode}; reAssertView(); }
+    if(spot>0){ var est=net*spot; _dxView={payUsd:amt*(pa.native?xlmUsd:priceUsd()), recv:xlmAmt(est), usd:est*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+spot.toPrecision(6))+" "+rcode, impact:"\u2026", impUp:true, minR:xlmAmt(est*(1-SLIP/100))+" "+rcode}; reAssertView(); }
     var seq=++_dxSeq; clearTimeout(_dxTmr);
     _dxTmr=setTimeout(function(){
       // price the classic Horizon path AND the Soroswap aggregator in parallel; route through whichever returns more
@@ -6440,7 +6457,7 @@ window.addEventListener('click',function(e){
         window.__lxDXASoro=useSoro?{quote:soro.quote,out:soro.out,pa:pa,ra:ra}:null;
         var best=useSoro?soro.out:out; if(!(best>0)){ dxSmartBadge(null); return; }
         _dxQuoteOut=best; var minR=best*(1-SLIP/100); _dxMinRecv=minR; var effRate=best/net;
-        _dxView={recv:xlmAmt(best), usd:best*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+effRate.toPrecision(6))+" "+rcode, impact:useSoro?dxImpTxt(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):"<0.01%", impUp:useSoro?dxImpUp(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):true, minR:xlmAmt(minR)+" "+rcode, soro:useSoro?soro:null};
+        _dxView={payUsd:amt*(pa.native?xlmUsd:priceUsd()), recv:xlmAmt(best), usd:best*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+effRate.toPrecision(6))+" "+rcode, impact:useSoro?dxImpTxt(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):"<0.01%", impUp:useSoro?dxImpUp(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):true, minR:xlmAmt(minR)+" "+rcode, soro:useSoro?soro:null};
         reAssertView();
         // classic route: size the impact against the honest top-of-book probe. That arithmetic only ever
         // measures execution against spot, so it is negative whichever way you trade -- the direction has
