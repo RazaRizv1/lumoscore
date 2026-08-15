@@ -564,7 +564,12 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   }
   // circulating supply = 10% of total (90% is locked forever — see SUPPLY_NOTE). Market cap uses THIS
   // (~1B), so it reads exactly 10x below the fully-diluted value (which uses the ~9.97B total).
-  function circSupply(){ return supply==null?null:supply*0.1; }
+  function circSupply(){ if(supply==null)return null;
+    // HISTORY: 10B was minted when this was LumosDAO. Going multi-chain, 1B per chain is the clean
+    // number, so 9B was locked on Stellar rather than reissued -- leaving 1B circulating of a 10B
+    // total. That is a STELLAR fact. Every later chain issues 1B from day one, where circulating IS
+    // the supply, so this multiplier must never follow the code to another issuer.
+    return (ISSUER === "GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S") ? supply * 0.1 : supply; }
 
   // ---- Add-trustline: real MAINNET changeTrust via the connected wallet (mirrors the AMM signer) ----
   var WPASS_PUB="Public Global Stellar Network ; September 2015";
