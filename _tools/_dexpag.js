@@ -30,7 +30,11 @@ const SCRIPT='<script id="lx-dexpag">(function(){'
 +'function apply(){'
 +'var foots=document.querySelectorAll(".lx-pag-foot");for(var i=0;i<foots.length;i++)foots[i].remove();cur=null;'
 +'var t=activeTab();var total=t?num(t.textContent):0;'
-+'if(t&&(t.getAttribute("data-tab")||"").toLowerCase()==="holders")return;'  // Holders has its own native pagination (.dxa-hl-pgn) — leave it, no second paginator
++'if(t&&/^(holders|pools)$/.test((t.getAttribute("data-tab")||"").toLowerCase()))return;'
+// Holders has its own native pagination (.dxa-hl-pgn). Pools is now REAL data with a real paginator in
+// _dexassetdata.js, and this one must never touch it: MAT materialises rows by CLONING the template
+// (kids[j%kids.length]), which was harmless over a mock list but, once the tab count read 59 against 20
+// real rows, padded the table to 137 rows of duplicated pools — fabricated liquidity on a live page.
 +'if(total<=PER)return;'                       // small lists (Discussions 18, Pools 7): no pagination
 +'var list=activeList();if(!list)return;'
 +'var kids=Array.prototype.slice.call(list.children);if(kids.length<3)return;'
