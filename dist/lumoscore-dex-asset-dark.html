@@ -6297,6 +6297,26 @@ window.addEventListener('click',function(e){
   function dxImpTxt(m,ra){ m=Math.abs(m); if(!isFinite(m))return dxImpDir(ra)>0?"\u003e+999,999%":"-100%";
     if(m<0.01)return "<0.01%"; return (dxImpDir(ra)>0?"+":"-")+dxImpNum(m)+"%"; }
   function dxImpUp(m,ra){ return Math.abs(m)<0.01||dxImpDir(ra)>0; }
+  // Past a point the market cannot fill the order at all, and a percentage stops meaning anything -- it
+  // just counts how far beyond the end of the book you typed. On an AMM the output asymptotes to the whole
+  // pool reserve, so more money buys nothing more; Horizon goes further and returns LESS for a bigger
+  // input once it can no longer find a path (57.3B XLM quoted 16.3M LUMOS where 2.3M XLM quoted 22.2M).
+  // Test it empirically rather than guessing a cutoff: re-quote at HALF the spend. If halving what you
+  // pay barely changes (or improves) what you get, the quote has saturated and the size is not fillable.
+  // Only runs once the impact is already large, so ordinary typing still costs two requests, not three.
+  function dxSatCheck(pa,ra,net,out,cb){
+    j(H+"/paths/strict-send?"+apParam("source",pa)+"&source_amount="+(net/2).toFixed(7)+"&"+destParam(ra))
+      .then(function(pd){ var r=(pd._embedded&&pd._embedded.records)||[]; var half=r.length?parseFloat(r[0].destination_amount):0;
+        cb(!(out>0)||(half>0&&out<=half*1.01)); })
+      .catch(function(){ cb(false); }); }
+  function dxSetImp(mag,ra,pa,net,best,seq){
+    if(seq!==_dxSeq||!_dxView)return;
+    _dxView.impact=dxImpTxt(mag,ra); _dxView.impUp=dxImpUp(mag,ra); reAssertView();
+    if(mag<=100)return;                                   // a doubling of price is steep but still real
+    dxSatCheck(pa,ra,net,best,function(sat){ if(seq!==_dxSeq||!_dxView||!sat)return;
+      _dxView.impact="\u2014"; _dxView.impUp=false; _dxView.unfillable=1; reAssertView();
+      dxErr("Not enough liquidity to fill this size \u2014 try a smaller amount");
+      var c=q(".dxa-trade-cta"); if(c)c.setAttribute("data-lxdis","1"); }); }
 
   // POST /quote (EXACT_IN on the post-fee amount) -> {out, impact, quote, route, usesSoroban, usesAqua} or null
   function soroQuote(pa,ra,amtStroops){
@@ -6414,7 +6434,8 @@ window.addEventListener('click',function(e){
         // classic route: size the impact against the honest top-of-book probe. That arithmetic only ever
         // measures execution against spot, so it is negative whichever way you trade -- the direction has
         // to come from dxImpTxt, not from its sign.
-        if(!useSoro){ dxSpotRate(pa,ra,function(sr){ if(seq!==_dxSeq||!(sr>0)||!_dxView||_dxView.soro)return; var mag=dxImpMag(effRate/sr,ra); _dxView.impact=dxImpTxt(mag,ra); _dxView.impUp=dxImpUp(mag,ra); reAssertView(); }); }
+        if(!useSoro){ dxSpotRate(pa,ra,function(sr){ if(seq!==_dxSeq||!(sr>0)||!_dxView||_dxView.soro)return; dxSetImp(dxImpMag(effRate/sr,ra),ra,pa,net,best,seq); }); }
+        else dxSetImp(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra,pa,net,best,seq);
       }).catch(function(){});
     },260);
   }
