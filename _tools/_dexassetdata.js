@@ -126,6 +126,13 @@ const STYLE = `<style id="lx-dxa-css">
 /* Pay-side dollar value. The row is space-between with "You pay" on the left and the balance on the
    right; margin-left:auto pulls this into the right-hand group so the two sit together and the balance
    keeps its place. Allowed to shrink and ellipsis rather than push the balance off a narrow phone. */
+.lx-oc{margin:10px 0 0;padding:11px 13px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.lx-oc-t{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft);margin-bottom:8px}
+.lx-oc-r{display:flex;align-items:baseline;justify-content:space-between;gap:10px;font-size:12px;line-height:1.5}
+.lx-oc-r span:first-child{color:var(--text-soft);white-space:nowrap}
+.lx-oc-r b{font-weight:700;font-family:"JetBrains Mono",monospace;font-size:12px;white-space:nowrap}
+.lx-oc-hi{color:var(--accent,#ea6a2c)}
+.lx-oc-ok{color:var(--green,#35c07f)}
 .dxa-trade-frow .lx-ltusd{margin-left:auto;margin-right:10px;white-space:nowrap;color:var(--text-soft)}
 .dxa-trade-frow .lx-ltusd:empty{display:none}
 .dxa-trade-frow .lx-payusd{margin-left:auto;margin-right:10px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -175,7 +182,7 @@ ${DXA_SUPINFO_CSS}
 .stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
 .stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style>`;
 
-const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("input",function(e){var t=e.target;if(t&&t.tagName==="INPUT"&&t.closest&&t.closest(".dxa-pane-limit")){try{setLimitTotalUsd();}catch(_){}}},true);setInterval(function(){try{setLimitTotalUsd();}catch(_){}},1000);var DXA_SUPPLY_NOTE_S="${DXA_SUPPLY_NOTE}";
+const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("input",function(e){var t=e.target;if(t&&t.tagName==="INPUT"&&t.closest&&t.closest(".dxa-pane-limit")){try{setLimitTotalUsd();}catch(_){}try{setOrderCtx();}catch(_){}}},true);setInterval(function(){try{setLimitTotalUsd();}catch(_){}try{setOrderCtx();}catch(_){}},1000);var DXA_SUPPLY_NOTE_S="${DXA_SUPPLY_NOTE}";
   // shared verified set, same as the wallet, Trade main and search
   var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
   var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
@@ -596,7 +603,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var d=window.__lxDXAob; if(!d)return;
     var asksEl=q("#dxaObAsks"), bidsEl=q("#dxaObBids"); if(!asksEl||!bidsEl)return;
     if(asksEl.__lxobd===d && asksEl.classList.contains("lxda"))return; asksEl.__lxobd=d;   // same book already rendered -> skip
-    var asks=(d.asks||[]).slice(0,16), bids=(d.bids||[]).slice(0,16);
+    try{window.__lxDXAbook=d;}catch(_){} var asks=(d.asks||[]).slice(0,16), bids=(d.bids||[]).slice(0,16);
     if(!asks.length&&!bids.length)return;
     // header labels: Price (XLM) / Amount (CODE) / Depth
     var head=q(".dxa-ob-head"); if(head){ var hs=head.querySelectorAll("span"); if(hs[0])hs[0].textContent="Price (XLM)"; if(hs[1])hs[1].textContent="Amount ("+CODE+")"; if(hs[2])hs[2].textContent="Depth (XLM)"; }
@@ -1339,6 +1346,48 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   function payFieldEl(){ return qa(".dxa-pane-swap .dxa-trade-field")[0]; }
   // Limit tab: price the TOTAL (denominated in XLM) at the current market rate. Amount and Limit price
   // are deliberately untouched -- on a limit order those are the users own numbers, not market ones.
+  // Everything here is derived from the live book plus the price the user typed, so it moves as they type.
+  // Buy joins the BIDS, sell joins the ASKS -- "ahead of you" is the volume that would fill first.
+  function limitSide(){ try{ var pane=q(".dxa-pane-limit"); if(!pane)return "buy";
+    var btns=[].slice.call(pane.querySelectorAll("button,div"));
+    for(var i=0;i<btns.length;i++){ var t=(btns[i].textContent||"").trim().toLowerCase();
+      if((t==="buy"||t==="sell")&&/\bactive\b|\bon\b|\bsel\b/.test(btns[i].className||"")) return t; }
+  }catch(_){} return "buy"; }
+  function setOrderCtx(){ try{
+    var pane=q(".dxa-pane-limit"); if(!pane)return;
+    var bk=window.__lxDXAbook; if(!bk)return;
+    var asks=(bk.asks||[]), bids=(bk.bids||[]);
+    if(!asks.length&&!bids.length)return;
+    var host=pane.querySelector(".lx-oc");
+    if(!host){ host=document.createElement("div"); host.className="lx-oc";
+      var sum=pane.querySelector(".dxa-trade-summary");
+      if(sum&&sum.parentNode)sum.parentNode.insertBefore(host,sum); else pane.appendChild(host); }
+    var f=pane.querySelectorAll(".dxa-trade-field");
+    var pin=f.length?f[0].querySelector("input"):null;
+    var pr=parseFloat(String((pin&&pin.value)||"").replace(/,/g,""))||0;
+    var bb=bids.length?parseFloat(bids[0].price):0, ba=asks.length?parseFloat(asks[0].price):0;
+    var mid=(bb&&ba)?(bb+ba)/2:(bb||ba);
+    var spread=(bb&&ba&&mid)?((ba-bb)/mid*100):null;
+    var side=limitSide(), ref=(side==="buy")?ba:bb;
+    // how far the typed price sits from the price it would have to reach to fill immediately
+    var away=(pr>0&&ref)?((pr-ref)/ref*100):null;
+    var awayTxt=(away==null)?"\u2014":(Math.abs(away)<0.01?"at the "+(side==="buy"?"ask":"bid")
+      :(Math.abs(away).toFixed(2)+"% "+(away<0?"below ":"above ")+(side==="buy"?"the ask":"the bid")));
+    var fills=(pr>0&&ref)&&((side==="buy")?pr>=ba:pr<=bb);
+    // queue: orders already at your price or better on YOUR side of the book
+    var q0=0,n=0;
+    if(pr>0){ var list=(side==="buy")?bids:asks;
+      for(var i=0;i<list.length;i++){ var lp=parseFloat(list[i].price);
+        var better=(side==="buy")?(lp>=pr):(lp<=pr);
+        if(!better)break; q0+=parseFloat(list[i].amount)||0; n++; } }
+    host.innerHTML='<div class="lx-oc-t">Order context</div>'
+      +'<div class="lx-oc-r"><span>Best bid / ask</span><b>'+(bb?(+bb.toPrecision(6)):"\u2014")+' / '+(ba?(+ba.toPrecision(6)):"\u2014")+'</b></div>'
+      +'<div class="lx-oc-r"><span>Spread</span><b>'+(spread==null?"\u2014":spread.toFixed(2)+"%")+'</b></div>'
+      +'<div class="lx-oc-r"><span>Your price</span><b class="'+(fills?"lx-oc-ok":"")+'">'+awayTxt+'</b></div>'
+      +'<div class="lx-oc-r"><span>Ahead of you</span><b class="'+(n?"lx-oc-hi":"lx-oc-ok")+'">'
+      +(pr>0?(fills?"fills now":(n?(abbrNum(q0)+" "+(side==="buy"?"XLM":CODE)+" \u00b7 "+n+(n===1?" order":" orders")):"nothing \u2014 first in line")):"\u2014")
+      +'</b></div>';
+  }catch(_){} }
   function setLimitTotalUsd(){ try{
     var pane=q(".dxa-pane-limit"); if(!pane)return;
     var f=pane.querySelectorAll(".dxa-trade-field"); if(f.length<3)return;
