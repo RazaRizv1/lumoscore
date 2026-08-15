@@ -126,6 +126,8 @@ const STYLE = `<style id="lx-dxa-css">
 /* Pay-side dollar value. The row is space-between with "You pay" on the left and the balance on the
    right; margin-left:auto pulls this into the right-hand group so the two sit together and the balance
    keeps its place. Allowed to shrink and ellipsis rather than push the balance off a narrow phone. */
+.dxa-trade-frow .lx-ltusd{margin-left:auto;margin-right:10px;white-space:nowrap;color:var(--text-soft)}
+.dxa-trade-frow .lx-ltusd:empty{display:none}
 .dxa-trade-frow .lx-payusd{margin-left:auto;margin-right:10px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dxa-trade-frow .lx-payusd:empty{display:none}
 /* Pools tab pagination. An asset can sit in hundreds of pools (AQUA: 1,301), so the list is paged at
@@ -173,7 +175,7 @@ ${DXA_SUPINFO_CSS}
 .stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
 .stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style>`;
 
-const SCRIPT = `<script id="lx-dxadata">(function(){var DXA_SUPPLY_NOTE_S="${DXA_SUPPLY_NOTE}";
+const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("input",function(e){var t=e.target;if(t&&t.tagName==="INPUT"&&t.closest&&t.closest(".dxa-pane-limit")){try{setLimitTotalUsd();}catch(_){}}},true);setInterval(function(){try{setLimitTotalUsd();}catch(_){}},1000);var DXA_SUPPLY_NOTE_S="${DXA_SUPPLY_NOTE}";
   // shared verified set, same as the wallet, Trade main and search
   var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
   var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
@@ -1335,6 +1337,19 @@ const SCRIPT = `<script id="lx-dxadata">(function(){var DXA_SUPPLY_NOTE_S="${DXA
   // exact classes the receive USD span uses -- so this gets its OWN element rather than a selector that
   // would have quietly eaten the balance. margin-left:auto parks it beside the balance on the right.
   function payFieldEl(){ return qa(".dxa-pane-swap .dxa-trade-field")[0]; }
+  // Limit tab: price the TOTAL (denominated in XLM) at the current market rate. Amount and Limit price
+  // are deliberately untouched -- on a limit order those are the users own numbers, not market ones.
+  function setLimitTotalUsd(){ try{
+    var pane=q(".dxa-pane-limit"); if(!pane)return;
+    var f=pane.querySelectorAll(".dxa-trade-field"); if(f.length<3)return;
+    var row=f[2].querySelector(".dxa-trade-frow"); if(!row)return;
+    var el=row.querySelector(".lx-ltusd");
+    if(!el){ el=document.createElement("span"); el.className="lx-ltusd"; row.appendChild(el); }
+    var inp=f[2].querySelector("input");
+    var t=parseFloat(String((inp&&inp.value)||"").replace(/,/g,""))||0;
+    var txt=(t>0&&xlmUsd>0)?dxUsdTxt(t*xlmUsd):"";
+    if(el.textContent!==txt)el.textContent=txt;
+  }catch(_){} }
   function setPayUsd(usdv){ var pf=payFieldEl(); if(!pf)return; var row=pf.querySelector(".dxa-trade-frow"); if(!row)return;
     var el=row.querySelector(".lx-payusd");
     if(!(usdv>0)){ if(el)el.textContent=""; return; }
