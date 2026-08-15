@@ -3,7 +3,13 @@
 // Trading fee), with a compact "hold 250,000 LUMOS for 0.1% fees" note near the bottom and a "Confirm order"
 // button (re-fires the native CTA to continue the real flow). Plus an inline "Trading fee 0.2% · 0.1% with
 // LUMOS" chip in the summary that links to the $LUMOS page. No panel-layout impact. Theme-aware. Idempotent.
-const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
+const fs=require('fs');
+// Every rule whose selector mentions the fee banner or its Buy button, taken straight out of _swapcalc.
+const FM_BANNER_CSS = (function(){
+  const w = fs.readFileSync(__dirname + '/_swapcalc.js', 'utf8');
+  const out = (w.match(/\.lx-fee-(?:banner|ic|buy)[^{}]*\{[^}]*\}/g) || []).join('');
+  if (out.length < 300) throw new Error('_feemodal: fee-banner CSS not found in _swapcalc.js');
+  return out; })();const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
 const DOWN='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1 8.5L18.5 10.5H12z"/></svg>';
 const CLOSE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
@@ -53,7 +59,7 @@ const STYLE='<style id="lx-feemodal-css">'
 +'.lx-fm-foot{padding:14px 18px 18px}'
 +'.lx-fm-confirm{width:100%;height:48px;border:none;border-radius:12px;background:var(--accent,#ea6a2c);color:#fff;font-weight:800;font-size:15px;cursor:pointer;transition:filter .14s}'
 +'.lx-fm-confirm:hover{filter:brightness(1.05)}'
-+'</style>';
++FM_BANNER_CSS+'.lx-feebanner-wrap{margin-top:10px}'+'</style>';
 
 const SCRIPT='<script id="lx-feemodal">(function(){'
 +'var URL="lumoscore-lumos-token.html";var modal=null,lastCta=null,proceeding=false;'
@@ -109,7 +115,7 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'function disc(){return window.__lxFeeRate===0.001;}'
 +'function rateTxt(){return disc()?"0.1%":"0.2%";}'
 +'function feeHTML(){return disc()?\'<span class="lx-feerate mono">0.1%</span>\''
-+':\'<span class="lx-feerate lx-feeold mono">0.2%</span><span class="lx-feechip">'+DOWN+'GET 50% OFF</span>\';}'
++':\'<span class="lx-feerate lx-feeold mono">0.2%</span>\';}'
 // Mobile ships the same summary under a DIFFERENT class -- .mdxa-trade-summary -- while the pane
 // itself still carries .dxa-pane-swap. So this selector matched nothing there and the Trading fee row
 // was simply never appended: the phone showed Rate / Price impact / Min received and stopped, with no
@@ -119,7 +125,12 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'if(ex){var hint=ex.querySelector(".lx-feehint");if(hint)hint.innerHTML=feeHTML();return;}'
 +'var row=document.createElement("div");var sib=sum.querySelector(".dxa-tsum-row");row.className=(sib?sib.className.replace(/\blx-feerow\b/g,"")+" ":"dxa-tsum-row ")+"lx-feerow";'
 +'row.innerHTML=\'<span>Trading fee</span><span class="lx-feehint">\'+feeHTML()+\'</span>\';'
-+'sum.appendChild(row);});return sums.length>0;}'
++'sum.appendChild(row);'
+  +'var bw=sum.querySelector(".lx-feebanner-wrap");if(!bw){bw=document.createElement("div");bw.className="lx-feebanner-wrap";sum.appendChild(bw);}'
+  +'bw.innerHTML=disc()'
+  +'?\'<div class="lx-fee-banner holder"><span class="lx-fee-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4 0-7-2.7-7-6.5 0-2.3 1.2-4 2.4-5.4.3.9 1 1.6 1.9 1.6 1.4 0 1.7-1 1.6-3.5-.1-2.4 1-4.6 3.1-6.2-.4 2 .3 3.2 1.6 4.6C19 9.6 19 11.8 19 16.5c0 3.8-3 6.5-7 6.5z"></path></svg></span><span class="txt">You qualify for lower fees for holding <b>250K LUMOS</b>. Discounted fee: <b>0.1%</b></span></div>\''
+  +':\'<div class="lx-fee-banner nudge"><span class="lx-fee-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4 0-7-2.7-7-6.5 0-2.3 1.2-4 2.4-5.4.3.9 1 1.6 1.9 1.6 1.4 0 1.7-1 1.6-3.5-.1-2.4 1-4.6 3.1-6.2-.4 2 .3 3.2 1.6 4.6C19 9.6 19 11.8 19 16.5c0 3.8-3 6.5-7 6.5z"></path></svg></span><span class="txt"><b>GET 50% OFF</b> \\u2014 hold 250,000 LUMOS</span><a class="lx-fee-buy" href="lumoscore-lumos-token.html">Buy LUMOS</a></div>\';'
+  +'});return sums.length>0;}'
 +'window.addEventListener("lx:feetier",function(){addRows();});'
 +'function run(){var n=0,iv=setInterval(function(){if(addRows()||++n>25)clearInterval(iv);},180);}'
 +'if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);'
