@@ -6229,7 +6229,18 @@ window.addEventListener('click',function(e){
   // honest reference for price impact (the daily-close spot can drift and show a false favorable impact)
   function dxSpotRate(pa,ra,cb){ var key=(pa.native?"X":pa.code)+">"+(ra.native?"X":ra.code); if(_dxSpot[key]>0){ cb(_dxSpot[key]); return; } var probe=pa.native?"5":"1"; j(H+"/paths/strict-send?"+apParam("source",pa)+"&source_amount="+probe+"&"+destParam(ra)).then(function(pd){ var recs=(pd._embedded&&pd._embedded.records)||[]; var out=recs.length?parseFloat(recs[0].destination_amount):0; if(out>0){ _dxSpot[key]=out/parseFloat(probe); cb(_dxSpot[key]); } }).catch(function(){}); }
   function dxErr(m){ var pane=q(".dxa-pane-swap"); if(!pane)return; var cta=q(".dxa-trade-cta"); var e=pane.querySelector(".lxda-swaperr"); if(!e){ if(!m)return; e=document.createElement("div"); e.className="lxda-swaperr"; if(cta&&cta.parentNode)cta.parentNode.insertBefore(e,cta); } if(m){ e.textContent=m; e.style.display="block"; } else { e.style.display="none"; e.textContent=""; } }
-  function setRecvUsd(usdv){ var rf=recvEl(); if(!rf)return; var lc=rf.querySelector(".dxa-trade-frow .lc-money"); if(lc){ var t=usdv>0?("$"+(usdv>=1?usdv.toLocaleString("en-US",{maximumFractionDigits:2}):usdv.toFixed(4))):"$0.00"; if(lc.getAttribute("data-orig")!=null)lc.setAttribute("data-orig",t); if(lc.textContent!==t)lc.textContent=t; } }
+  // The design ships the receive-side dollar value as mock text -- a literal "\u2248 $21.67 USD" in a plain
+  // .mono span. This looked for .lc-money, which does not exist in that field, found nothing, and returned
+  // without writing. So the mock stood in for every quote ever shown: 1,000 XLM of LUMOS (~$165) read
+  // $21.67, and so did 5,000,000 LUMOS sold for 989 XLM, and so did every other size in both directions.
+  // The arithmetic behind it was always right -- receive x priceUsd(), or x xlmUsd when receiving XLM --
+  // it just had nowhere to land. Match the span that is really there, and keep the design's "= $x USD"
+  // shape so the row still reads as drawn.
+  function setRecvUsd(usdv){ var rf=recvEl(); if(!rf)return;
+    var lc=rf.querySelector(".dxa-trade-frow .lc-money")||rf.querySelector(".dxa-trade-frow .mono"); if(!lc)return;
+    var t=usdv>0?("\u2248 $"+(usdv>=1?usdv.toLocaleString("en-US",{maximumFractionDigits:2}):usdv.toFixed(4))+" USD"):"\u2248 $0.00 USD";
+    if(lc.getAttribute("data-orig")!=null)lc.setAttribute("data-orig",t);
+    if(lc.textContent!==t)lc.textContent=t; try{lxMark(lc);}catch(_){} }
   function setSummary(label,val,cls){ var rows=qa(".dxa-pane-swap .dxa-tsum-row"); for(var i=0;i<rows.length;i++){ var sps=rows[i].querySelectorAll("span"); var lab=sps[0]?(sps[0].textContent||""):""; if(new RegExp(label,"i").test(lab)){ var m=rows[i].querySelector(".mono")||sps[1]; if(m){ if(cls!=null){ m.classList.remove("up","down"); if(cls)m.classList.add(cls); } if(m.textContent!==val)m.textContent=val; } return; } } }
   // single source of truth for the receive side + summary; the design keeps re-asserting its own mock
   // (USDC / 0.23659), so we paint from _dxView and re-assert it via guardSwap the instant it reverts.
