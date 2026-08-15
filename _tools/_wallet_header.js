@@ -47,6 +47,10 @@ function scriptFor(net){
   return '<script id="lx-whead">(function(){'
   +'var NET="'+net+'";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}'
   +'var PLUG=\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>\';'
+  // The landing page\'s Launch App button uses a right arrow AFTER the label, not a plug before it.
+  // Same button, same journey, so it gets the same mark — copied from lumoscore-landing rather than
+  // redrawn, so the two cannot drift.
+  +'var ARROW=\'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>\';'
   +'function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}'
   +'function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\\u2026"+a.slice(-4):a;}'
   +'function sync(){'
@@ -64,7 +68,7 @@ function scriptFor(net){
   +'var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}'
   +'if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);'
   +'fixOwnAddrCopies(addr);}}'
-  +'else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML=\'<span class="lx-tw-cbtn">\'+PLUG+\'Launch App</span>\';}}'
+  +'else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML=\'<span class="lx-tw-cbtn">Launch App\'+ARROW+\'</span>\';}}'
   // AUDIT #7 (FUNDS) — same bug outside the chip (e.g. the wallet hero "copy my address" button): the design
   // baked a demo EVM/Aptos address into data-copy. Rewrite ONLY targets that clearly mean "this user's wallet
   // address" AND currently hold a 0x value — so a legitimate EVM address (bridge destination) is never touched.
@@ -79,7 +83,7 @@ function scriptFor(net){
   +'if(btn)return;'
   +'btn=document.createElement("button");btn.type="button";btn.className="lx-launch";'
   +'btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");'
-  +'btn.textContent="Launch App";'
+  +'btn.innerHTML="Launch App"+ARROW;'
   +'if(av.parentNode)av.parentNode.insertBefore(btn,av);'
   +'}catch(_){}}'
   +'function mobileMenu(on,addr){try{'
