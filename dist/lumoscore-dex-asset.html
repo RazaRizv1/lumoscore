@@ -6281,8 +6281,22 @@ window.addEventListener('click',function(e){
   // when the trade was pushing LUMOS UP. Magnitude from the quote; direction from which side the asset is
   // on. The pair on this widget is always CODE against XLM (Buy = receive CODE, Sell = pay CODE).
   function dxImpDir(ra){ return (ra&&!ra.native&&ra.code===CODE)?1:-1; }
-  function dxImpTxt(v,ra){ var m=Math.abs(v); if(m<0.01)return "<0.01%"; return (dxImpDir(ra)>0?"+":"-")+m.toFixed(2)+"%"; }
-  function dxImpUp(v,ra){ return Math.abs(v)<0.01||dxImpDir(ra)>0; }
+  // Turn "execution came out r times spot" into the move in the ASSET's price.
+  //
+  // The quote degradation (how much less you receive than spot) can only ever fall to zero, so reading it
+  // as the impact pinned the number above 100% however large the order got -- 2.3M XLM into LUMOS showed
+  // +99.75%, which was the formula reaching its own asymptote, not the market. Price is the reciprocal on
+  // the buy side: paying r times fewer LUMOS per XLM means each LUMOS costs 1/r times more, and 1/r has no
+  // ceiling. So a buy deep enough to clear the book can honestly read +500%, +15,000%, higher.
+  //
+  // Sells stay bounded, and correctly so: the floor is -100% because a price cannot fall past zero.
+  function dxImpMag(r,ra){ if(!(r>0))return 0; if(r>1)r=1;           // your own order cannot improve the price it pays
+    return dxImpDir(ra)>0?(1/r-1)*100:(1-r)*100; }
+  // 2dp while small, then progressively coarser -- "+38,412%" reads; "+38412.37%" does not.
+  function dxImpNum(m){ if(m<100)return m.toFixed(2); if(m<10000)return m.toFixed(1); return num(Math.round(m)); }
+  function dxImpTxt(m,ra){ m=Math.abs(m); if(!isFinite(m))return dxImpDir(ra)>0?"\u003e+999,999%":"-100%";
+    if(m<0.01)return "<0.01%"; return (dxImpDir(ra)>0?"+":"-")+dxImpNum(m)+"%"; }
+  function dxImpUp(m,ra){ return Math.abs(m)<0.01||dxImpDir(ra)>0; }
 
   // POST /quote (EXACT_IN on the post-fee amount) -> {out, impact, quote, route, usesSoroban, usesAqua} or null
   function soroQuote(pa,ra,amtStroops){
@@ -6395,12 +6409,12 @@ window.addEventListener('click',function(e){
         window.__lxDXASoro=useSoro?{quote:soro.quote,out:soro.out,pa:pa,ra:ra}:null;
         var best=useSoro?soro.out:out; if(!(best>0)){ dxSmartBadge(null); return; }
         _dxQuoteOut=best; var minR=best*(1-SLIP/100); _dxMinRecv=minR; var effRate=best/net;
-        _dxView={recv:xlmAmt(best), usd:best*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+effRate.toPrecision(6))+" "+rcode, impact:useSoro?dxImpTxt(soro.impact||0,ra):"<0.01%", impUp:useSoro?dxImpUp(soro.impact||0,ra):true, minR:xlmAmt(minR)+" "+rcode, soro:useSoro?soro:null};
+        _dxView={recv:xlmAmt(best), usd:best*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+effRate.toPrecision(6))+" "+rcode, impact:useSoro?dxImpTxt(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):"<0.01%", impUp:useSoro?dxImpUp(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):true, minR:xlmAmt(minR)+" "+rcode, soro:useSoro?soro:null};
         reAssertView();
         // classic route: size the impact against the honest top-of-book probe. That arithmetic only ever
         // measures execution against spot, so it is negative whichever way you trade -- the direction has
         // to come from dxImpTxt, not from its sign.
-        if(!useSoro){ dxSpotRate(pa,ra,function(sr){ if(seq!==_dxSeq||!(sr>0)||!_dxView||_dxView.soro)return; var imp=(effRate-sr)/sr*100; if(imp>0.05)imp=0; _dxView.impact=dxImpTxt(imp,ra); _dxView.impUp=dxImpUp(imp,ra); reAssertView(); }); }
+        if(!useSoro){ dxSpotRate(pa,ra,function(sr){ if(seq!==_dxSeq||!(sr>0)||!_dxView||_dxView.soro)return; var mag=dxImpMag(effRate/sr,ra); _dxView.impact=dxImpTxt(mag,ra); _dxView.impUp=dxImpUp(mag,ra); reAssertView(); }); }
       }).catch(function(){});
     },260);
   }
