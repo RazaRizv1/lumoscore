@@ -5234,6 +5234,15 @@ window.addEventListener('click',function(e){
   function usd(x){x=+x||0;if(x>=1)return "$"+x.toLocaleString("en-US",{maximumFractionDigits:2});if(x>=0.01)return "$"+x.toFixed(4);if(x>0)return "$"+x.toFixed(8);return "$0";}
   function xlmAmt(x){x=+x||0;if(x>=1000)return Math.round(x).toLocaleString("en-US");if(x>=1)return (+x.toFixed(4)).toString();if(x>0)return (+x.toPrecision(4)).toString();return "0";}
   function num(n){return Math.round(+n||0).toLocaleString("en-US");}
+    // abbrNum rounds sub-1000 values to whole units, which reads as "0 BTC" for a real holding. Keep the
+  // abbreviation for big numbers and give small ones enough places to exist. Trailing zeros trimmed so
+  // 0.00002000 shows as 0.00002 rather than padding noise.
+  function qtyTxt(n){ n=+n||0; var a=Math.abs(n);
+    if(a>=1000)return abbrNum(n);
+    if(a>=1)return n.toLocaleString("en-US",{maximumFractionDigits:2});
+    if(a===0)return "0";
+    var t=n.toFixed(8).replace(/0+$/,"").replace(/.$/,"");
+    return (t==="0"||t==="-0")?("<0.00000001"):t; }
   function abbrNum(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}
   function abbrUsd(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(n/1e3).toFixed(1)+"K";if(a>=1)return "$"+n.toFixed(2);return usd(n);}
   function shortG(a){a=String(a||"");return a.length>12?a.slice(0,4)+"…"+a.slice(-4):a;}
@@ -5495,7 +5504,21 @@ window.addEventListener('click',function(e){
     var cfg=tfCfg(tf), cut=Date.now()-cfg.span;
     var src=rows.slice().filter(function(r){ return r.px>0; });
     var use=src.filter(function(r){ return (r.ts||0)>=cut; });
-    if(use.length<2){ chartEmpty(src.length?1:0); return; }
+    if(use.length<2){
+      // step out to the first range that actually has a line, rather than asking the user to guess
+      var _ORD=["1D","1W","1M","1Y"], _i=_ORD.indexOf(tf), _w=null, _wtf=null;
+      for(var _k=(_i<0?0:_i+1);_k<_ORD.length;_k++){
+        var _c=Date.now()-tfCfg(_ORD[_k]).span;
+        var _u=src.filter(function(r){ return (r.ts||0)>=_c; });
+        if(_u.length>=2){ _w=_u; _wtf=_ORD[_k]; break; } }
+      // nothing inside any window but history exists -> draw everything we hold
+      if(!_w&&src.length>=2){ _w=src; _wtf="1Y"; }
+      if(!_w){ chartEmpty(src.length?1:0); return; }
+      use=_w;
+      try{ qa("[data-period],[data-tf],.timeframes button").forEach(function(b){
+        var v=b.getAttribute("data-period")||b.getAttribute("data-tf")||(b.textContent||"").trim();
+        if(v===_wtf)b.classList.add("active"); else if(_ORD.indexOf(v)>=0)b.classList.remove("active"); }); }catch(_){}
+    }
     var pts=use.slice().sort(function(a,b){ return (a.ts||0)-(b.ts||0); }).map(function(r){
       var v=r.px*xlmUsd; return {t:r.ts||0, v:v, vol:(r.xlm||0)*xlmUsd, o:v, h:v, l:v, c:v}; });
     drawChart(pts);
@@ -6367,7 +6390,7 @@ window.addEventListener('click',function(e){
       else { var _a=(_pf<0.5)?"<1%":(Math.round(_pf)+"%"), _b=Math.max(0,100-Math.round(_pf));
         ocV=_a+" fills now | "+_b+"% open order"; ocC="lx-oc-hi"; } }
     else { ocL="Ahead of you"; ocC=n?"lx-oc-hi":"lx-oc-ok";
-      var _cq=(n>0&&n>=list0.length); ocV=n?((_cq?"over ":"")+abbrNum(q0)+" "+CODE+" \u00b7 "+n+(_cq?"+ orders":(n===1?" order":" orders"))):"nothing \u2014 first in line"; }
+      var _cq=(n>0&&n>=list0.length); ocV=n?((_cq?"over ":"")+qtyTxt(q0)+" "+CODE+" \u00b7 "+n+(_cq?"+ orders":(n===1?" order":" orders"))):"nothing \u2014 first in line"; }
     host.innerHTML+='<div class="lx-oc-r"><span>'+ocL+'</span><b class="'+ocC+'">'+ocV+'</b></div>';
   }catch(_){} }
   function setLimitTotalUsd(){ try{
