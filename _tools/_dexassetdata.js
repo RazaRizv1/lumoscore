@@ -2013,6 +2013,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       j(CG).then(function(d){ var u=(d&&d.stellar&&+d.stellar.usd)||0; if(u>0){ xlmUsd=u; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} applyAll(); } }).catch(function(){});
       try{ loadChart(chartTF); }catch(_){}
       try{ loadOrderbook(); }catch(_){}
+    setInterval(function(){ try{ loadOrderbook(); }catch(_){} },20000);
       try{ loadTrades(); }catch(_){}
     },60000);
   }
