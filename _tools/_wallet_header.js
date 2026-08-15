@@ -8,10 +8,15 @@
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
 const STYLE='<style id="lx-whead-css">'
-+'.lx-topwallet.lx-tw-disc{background:var(--accent);border-color:var(--accent);color:#fff;justify-content:center;padding:0 20px;gap:8px}'
-+'.lx-topwallet.lx-tw-disc:hover{background:#d85f22;border-color:#d85f22}'
+// !important because a later chip stylesheet (_topwallet / _walletchip2) also paints .lx-topwallet, and
+// it was winning — the disconnected chip lost its accent fill and rendered white label on near-white
+// (computed rgb(250,251,252)), so the button was present but unreadable.
++'.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}'
++'.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}'
 +'.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}'
 +'.lx-tw-cbtn svg{width:16px;height:16px}'
++'.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}'
++'.lx-launch:active{background:#d85f22;border-color:#d85f22}'
 // AUDIT #12 (FUNDS): the design baked a foreign address into the chip markup, so every page paints
 // "0x068d…1e1c" for a beat before sync() swaps in the real one — and it is a *copyable* fake.
 // The build now empties both, and these rules keep the chip from collapsing in the meantime.
@@ -47,8 +52,11 @@ function scriptFor(net){
   +'function sync(){'
   +'var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);'
   +'mobileMenu(on,addr);'
-  +'var chip=document.querySelector(".lx-topwallet");if(!chip){if(addr)fixOwnAddrCopies(addr);return;}'
-  +'if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");}'
+  +'var chip=document.querySelector(".lx-topwallet");'
+  // MOBILE: no .lx-topwallet on these pages. The design leaves an empty .avatar-sm circle in the top
+  // bar, which looked like a broken button. Build a real Launch App pill beside it while disconnected.
+  +'if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}'
+  +'if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}'
   // AUDIT #7 (FUNDS): the chip's text was updated to the real G… address but the sibling copy button kept the
   // design's baked data-copy="0x068dc5d4…" (an Aptos/EVM address), so "Copy address" silently yielded a foreign
   // address. Re-point EVERY copy affordance in the chip at the real address whenever we sync it.
@@ -56,11 +64,24 @@ function scriptFor(net){
   +'var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}'
   +'if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);'
   +'fixOwnAddrCopies(addr);}}'
-  +'else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Connect a wallet");chip.innerHTML=\'<span class="lx-tw-cbtn">\'+PLUG+\'Connect Wallet</span>\';}}'
+  +'else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML=\'<span class="lx-tw-cbtn">\'+PLUG+\'Launch App</span>\';}}'
   // AUDIT #7 (FUNDS) — same bug outside the chip (e.g. the wallet hero "copy my address" button): the design
   // baked a demo EVM/Aptos address into data-copy. Rewrite ONLY targets that clearly mean "this user's wallet
   // address" AND currently hold a 0x value — so a legitimate EVM address (bridge destination) is never touched.
   // NOTE: must sit AFTER sync()'s closing brace — putting it between the if(on) and its else broke the script.
+  +'function mobileLaunch(on){try{'
+  +'var av=document.querySelector(".avatar-sm");if(!av)return;'
+  +'var btn=document.querySelector(".lx-launch");'
+  // connected: drop the button, give the avatar back
+  +'if(on){if(btn)btn.remove();av.style.display="";return;}'
+  // disconnected: hide the empty circle, put the button where it was
+  +'av.style.display="none";'
+  +'if(btn)return;'
+  +'btn=document.createElement("button");btn.type="button";btn.className="lx-launch";'
+  +'btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");'
+  +'btn.textContent="Launch App";'
+  +'if(av.parentNode)av.parentNode.insertBefore(btn,av);'
+  +'}catch(_){}}'
   +'function mobileMenu(on,addr){try{'
   +'var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");'
   +'for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";'
@@ -106,7 +127,7 @@ function scriptFor(net){
   // the page and destroyed the modal. The other half of that bug lived in _wallet_realconnect.js —
   // network rows carry .lxw-row but no data-wallet, so the real handler skipped them and the design's
   // demo listener navigated. It now claims data-lxnet rows too, so this flow stays in the modal.
-  +'var dc=t.closest(".lx-topwallet[data-lxdisc=\\"1\\"]");if(dc){e.preventDefault();e.stopImmediatePropagation();if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}'
+  +'var dc=t.closest(".lx-topwallet[data-lxdisc=\\"1\\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}'
   // Disconnect leaves for the landing page rather than reloading in place. Reloading only worked on
   // GATED pages, where the auth gate then bounced to "/" — on a public page (Trade, Pools, an asset
   // page) it reloaded a signed-out view of somewhere that assumes a wallet. replace() not href, so the
