@@ -5,18 +5,18 @@
 // LUMOS" chip in the summary that links to the $LUMOS page. No panel-layout impact. Theme-aware. Idempotent.
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
-const DOWN='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M8 11l4 4 4-4"/></svg>';
+const DOWN='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M13 2 4.5 13.5H11l-1 8.5L18.5 10.5H12z"/></svg>';
 const CLOSE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
 const DARROW='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/></svg>';
 
 const STYLE='<style id="lx-feemodal-css">'
 +'.lx-feerow{border-top:1px dashed var(--border);margin-top:4px !important;padding-top:8px !important}'
-+'.lx-feehint{display:inline-flex;align-items:center;gap:7px}'
-+'.lx-feeold{color:var(--text);font-weight:600}'
-+'.lx-feechip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#0f9257;background:rgba(31,169,104,.1);border:1px solid rgba(31,169,104,.26);border-radius:20px;padding:2px 8px;cursor:pointer;transition:.14s;white-space:nowrap}'
-+'.lx-feechip:hover{background:rgba(31,169,104,.2)}'
-+'.lx-feechip svg{width:11px;height:11px}'
-+'[data-theme="dark"] .lx-feechip{color:#5fe6a8;background:rgba(53,192,127,.14);border-color:rgba(95,230,168,.3)}'
++'.lx-feehint{display:inline-flex;align-items:center;gap:9px;flex-wrap:nowrap;min-width:0}'
++'.lx-feeold{color:var(--text);font-weight:800;letter-spacing:-.01em}.lx-feerate{font-weight:800}.lx-feehint .lx-feerate:only-child{color:#0b7a48}[data-theme="dark"] .lx-feehint .lx-feerate:only-child{color:#6ef0b4}'
++'.lx-feechip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;letter-spacing:.2px;color:#0b7a48;background:linear-gradient(135deg,rgba(31,169,104,.18),rgba(31,169,104,.07));border:1px solid rgba(31,169,104,.34);border-radius:999px;padding:4px 11px;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px -5px rgba(31,169,104,.6);transition:transform .16s ease,box-shadow .16s ease,background .16s ease}'
++'.lx-feechip:hover{transform:translateY(-1px);background:linear-gradient(135deg,rgba(31,169,104,.26),rgba(31,169,104,.12));box-shadow:0 5px 14px -6px rgba(31,169,104,.65)}.lx-feechip:active{transform:translateY(0)}'
++'.lx-feechip svg{width:12px;height:12px;flex:0 0 auto}'
++'[data-theme="dark"] .lx-feechip{color:#6ef0b4;background:linear-gradient(135deg,rgba(53,192,127,.24),rgba(53,192,127,.09));border-color:rgba(110,240,180,.38);box-shadow:0 2px 10px -5px rgba(53,192,127,.6)}[data-theme="dark"] .lx-feechip:hover{background:linear-gradient(135deg,rgba(53,192,127,.34),rgba(53,192,127,.14))}'
 +'.lx-feemodal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,10,14,.55);backdrop-filter:blur(3px)}'
 +'.lx-fm-card{width:min(420px,94vw);max-height:92vh;overflow:auto;background:var(--surface,#fff);border:1px solid var(--border);border-radius:18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55);animation:lxfmin .22s ease}'
 +'@keyframes lxfmin{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}'
