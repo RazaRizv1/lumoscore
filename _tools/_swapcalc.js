@@ -11,10 +11,17 @@ const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');cons
 // initial-letter placeholder. Baked as a LAST resort so the icons are right on every page carrying a
 // swap; the runtime globals still win where they exist. The Stellar mark is read out of _walletdata.js
 // at build time so it stays defined in exactly one place.
-const SW_STELLAR_URI = (function(){ const w = fs.readFileSync(__dirname + "/_walletdata.js", "utf8");
-  const m = /STELLAR_URIs*=s*'([^']+)'/.exec(w);
-  if (!m) throw new Error("_swapcalc: STELLAR_URI not found in _walletdata.js");
-  return m[1]; })();
+const SW_STELLAR_URI = (function(){
+  // Build it the way _walletdata does -- from the SVG -- because STELLAR_URI there is a CONCATENATION
+  // (data:...base64, + Buffer.from(SVG)). My first attempt regexed the quoted part and captured only
+  // the 26-character prefix, so what shipped was a data URI with no payload: a broken image, which is
+  // why the review circles stayed blank. Assert the length so a truncated URI can never ship again.
+  const w = fs.readFileSync(__dirname + "/_walletdata.js", "utf8");
+  const m = /const STELLAR_SVG='([^']+)'/.exec(w);
+  if (!m) throw new Error("_swapcalc: STELLAR_SVG not found in _walletdata.js");
+  const uri = "data:image/svg+xml;base64," + Buffer.from(m[1]).toString("base64");
+  if (uri.length < 400) throw new Error("_swapcalc: STELLAR_URI looks truncated (" + uri.length + " chars)");
+  return uri; })();
 const SW_LUMOS_LOGO = "https://stellar.myfilebase.com/ipfs/QmTrohhpDADXPw9fkLT2J8aip7SxZEoqcvpZ7jBgW9HYSp";
 
 const STYLE='<style id="lx-swapcalc-css">'
