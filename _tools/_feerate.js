@@ -2,14 +2,14 @@
 //
 // Two real problems this fixes:
 //  a) `window.__lxFeeRate` was only ever set by _swapcalc.js / _walletdata.js, so it exists on the
-//     Wallet + Dashboard only. Bridge, Trade, Trade-asset and Pools all fell back to the 0.5% default —
+//     Wallet + Dashboard only. Bridge, Trade, Trade-asset and Pools all fell back to the 0.2% default —
 //     a 250,000-LUMOS holder was OVER-charged everywhere except the two pages that happened to compute it.
 //  b) the tier test summed every balance whose asset_code === "LUMOS", with NO issuer check. Anyone can
 //     issue their own "LUMOS" and mint themselves 250K, then pay half fee forever. Now it only counts the
 //     canonical mainnet issuer.
 //
 // This injects one tiny resolver on EVERY page. It publishes:
-//     window.__lxFeeRate   0.005 | 0.0025      (never undefined — 0.005 from the first line)
+//     window.__lxFeeRate   0.002 | 0.001      (never undefined — 0.002 from the first line)
 //     window.__lxLumosBal  number | null       (null = unknown/disconnected, distinct from a real 0)
 // and fires a `lx:feetier` event once resolved, so the Trade fee banner (_feetier.js) can render the
 // user's ACTUAL holding instead of the hardcoded demo number.
@@ -19,10 +19,10 @@ const LUMOS_ISS='GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S';
 
 const SCRIPT='<script id="lx-feerate">(function(){if(window.__lxFrBooted)return;window.__lxFrBooted=1;'
 +'var ISS="'+LUMOS_ISS+'",THRESH=250000,H="https://horizon.stellar.org";'
-+'if(typeof window.__lxFeeRate!=="number")window.__lxFeeRate=0.005;'          // never leave it undefined
++'if(typeof window.__lxFeeRate!=="number")window.__lxFeeRate=0.002;'          // never leave it undefined
 +'if(!("__lxLumosBal" in window))window.__lxLumosBal=null;'                   // null = not resolved yet
 +'window.__lxLumosThresh=THRESH;window.__lxLumosIssuer=ISS;'
-+'function pub(bal){window.__lxLumosBal=bal;window.__lxFeeRate=(bal>=THRESH)?0.0025:0.005;'
++'function pub(bal){window.__lxLumosBal=bal;window.__lxFeeRate=(bal>=THRESH)?0.001:0.002;'
 +'try{window.dispatchEvent(new CustomEvent("lx:feetier",{detail:{bal:bal,rate:window.__lxFeeRate,thresh:THRESH}}));}catch(_){}}'
 +'window.__lxFeeTier=function(){return{bal:window.__lxLumosBal,rate:window.__lxFeeRate,thresh:THRESH};};'
 +'window.__lxFeeTierSet=pub;'   // _swapcalc / _walletdata already fetch the account — they publish through here
@@ -50,7 +50,7 @@ const SCRIPT='<script id="lx-feerate">(function(){if(window.__lxFrBooted)return;
 +'var ts=+p.total_shares||0;if(r&&ts>0)tot+=(+r.amount||0)*((+s.balance||0)/ts);}}catch(_){}'
 +'if(--left===0)cb(tot);});});}'
 +'function resolve(force){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}'
-+'if(!ME){if(window.__lxLumosBal!==null)pub(null);else{window.__lxLumosBal=null;window.__lxFeeRate=0.005;}return;}'
++'if(!ME){if(window.__lxLumosBal!==null)pub(null);else{window.__lxLumosBal=null;window.__lxFeeRate=0.002;}return;}'
 +'if(!force&&window.__lxFrFor===ME)return;window.__lxFrFor=ME;'
 +'if(force){try{delete window.__lxAcctP[ME];}catch(_){}}'
 +'window.__lxAcct(ME).then(function(acc){'

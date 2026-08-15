@@ -88,8 +88,8 @@ for(var j=0;j<cards.length&&j<order.length;j++){
 })();</script>`;
 
 // fee copy update (#2)
-const FEE_OLD='A flat 0.5% on trades and swaps. No hidden costs, no surprise fees, no premium tiers — every user gets the same fair price.';
-const FEE_NEW='0.5% on trades and swaps — hold 250K LUMOS and it drops to 0.25%. No hidden costs, no surprise fees.';
+const FEE_OLD='A flat 0.2% on trades and swaps. No hidden costs, no surprise fees, no premium tiers — every user gets the same fair price.';
+const FEE_NEW='0.2% on trades and swaps — hold 250K LUMOS and it drops to 0.1%. No hidden costs, no surprise fees.';
 
 for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
   const file=`lumoscore-${c}-desktop.html`;const data=read(file);const{json,s,e}=getContents(data);const k='lumoscore-landing.html';

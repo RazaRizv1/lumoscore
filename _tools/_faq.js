@@ -12,7 +12,7 @@
 // EVERY ANSWER IS FACT-CHECKED AGAINST THE CODE — these become what AI tools state about LumosCore,
 // so a wrong one propagates. Verified while writing:
 //   * wallets  = Freighter, Rabet, Albedo, xBull, WalletConnect   (connect modal — NOT Hana)
-//   * fee      = 0.5%, or 0.25% holding 250,000+ LUMOS            (_feerate.js: 0.005 / 0.0025)
+//   * fee      = 0.2%, or 0.1% holding 250,000+ LUMOS            (_feerate.js: 0.002 / 0.001)
 //   * routing  = Horizon /paths/strict-send + /paths/strict-receive (covers DEX orderbook AND AMM
 //                pools) plus Soroswap and Aquarius                (_swapcalc.js)
 //   * bridge   = Circle CCTP to 9 chains: Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche,
@@ -24,7 +24,7 @@ const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
-const FEE = 'LumosCore charges 0.5% per trade, reduced to 0.25% if you hold at least 250,000 LUMOS. '
+const FEE = 'LumosCore charges 0.2% per trade, reduced to 0.1% if you hold at least 250,000 LUMOS. '
           + 'On top of that Stellar itself charges a network fee of a small fraction of a cent.';
 const NONCUSTODIAL = 'No. LumosCore is non-custodial and never holds your funds or your keys. '
           + 'Every transaction is built in your browser and signed in your own wallet.';
@@ -90,7 +90,7 @@ const FAQ = {
   ],
   'lumos-token': [
     ['What is LUMOS?', 'LUMOS is the platform token of LumosCore, issued on Stellar. It is used to reduce trading fees and to distribute liquidity and holder incentives.'],
-    ['What does holding LUMOS do?', 'Holding at least 250,000 LUMOS halves your LumosCore trading fee from 0.5% to 0.25%. The balance is checked on-chain when you trade.'],
+    ['What does holding LUMOS do?', 'Holding at least 250,000 LUMOS halves your LumosCore trading fee from 0.2% to 0.1%. The balance is checked on-chain when you trade.'],
     ['How do I buy LUMOS?', 'LUMOS trades on the Stellar network. You can swap into it from XLM or another asset on the Trade page, using the same routing as any other Stellar asset.'],
   ],
   'mcp': [

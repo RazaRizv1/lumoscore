@@ -1,7 +1,7 @@
 // Trade-Asset (dex-asset) page — a "Review order" modal that intercepts "Place Buy/Limit Order" and shows
 // the full order details (You pay / You receive + Rate, Price impact, Slippage, Min received, Network fee,
-// Trading fee), with a compact "hold 250,000 LUMOS for 0.25% fees" note near the bottom and a "Confirm order"
-// button (re-fires the native CTA to continue the real flow). Plus an inline "Trading fee 0.5% · 0.25% with
+// Trading fee), with a compact "hold 250,000 LUMOS for 0.1% fees" note near the bottom and a "Confirm order"
+// button (re-fires the native CTA to continue the real flow). Plus an inline "Trading fee 0.2% · 0.1% with
 // LUMOS" chip in the summary that links to the $LUMOS page. No panel-layout impact. Theme-aware. Idempotent.
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
@@ -66,7 +66,7 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'+\'<div class="lx-rv-leg"><span class="lx-rv-lbl">You receive</span><span class="lx-rv-amt" data-receive>&mdash;</span></div><div class="lx-rv-ar">'+DARROW+'</div></div>\''
 +'+\'<div class="lx-rv-details" data-details></div>\''
 +'+\'<div class="lx-rv-lumos"><span class="lx-rv-lumos-ic"><img src="assets/favicon.png" alt="LUMOS"></span>\''
-+'+\'<div class="lx-rv-lumos-main"><div class="lx-rv-lumos-txt">Hold <b>250,000 LUMOS</b> to lower your fee to <b>0.25%</b></div>\''
++'+\'<div class="lx-rv-lumos-main"><div class="lx-rv-lumos-txt">Hold <b>250,000 LUMOS</b> to lower your fee to <b>0.1%</b></div>\''
 +'+\'<div class="lx-rv-lumos-bar"><div class="f" style="width:19%"></div></div>\''
 +'+\'<div class="lx-rv-lumos-bal">You hold <b>48,240</b> / 250,000 LUMOS</div></div>\''
 +'+\'<button class="lx-buy-sm" type="button">Buy LUMOS</button></div></div>\''
@@ -86,7 +86,7 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 // ~0.5% more than the user would actually get, and a Min received to match. Trust the pane's own figures.
 +'var recIn=fields[1]&&fields[1].querySelector("input");'
 +'var recNum=parseFloat((((recIn&&recIn.value)||"")+"").replace(/,/g,""))||0;'
-+'function fr(){var r=window.__lxFeeRate;return (typeof r==="number"&&r>0&&r<=0.005)?r:0.005;}'
++'function fr(){var r=window.__lxFeeRate;return (typeof r==="number"&&r>0&&r<=0.002)?r:0.002;}'
 +'var rate=0,slip=0.5,det="";var rows=pane.querySelectorAll(".dxa-trade-summary .dxa-tsum-row");'
 +'[].forEach.call(rows,function(r){var sp=r.querySelectorAll("span");var k=(sp[0]||{}).textContent.trim();var v;'
 +'if(r.querySelector(".lx-feerate")){v=rateTxt();}else{v=((sp[sp.length-1]||{}).textContent||"").replace(/\\s+/g," ").trim();}'
@@ -104,12 +104,12 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'var cta=t.closest(".dxa-trade-cta");if(cta){if(cta.closest(".dxa-pane-limit"))return;if(proceeding){proceeding=false;return;}e.preventDefault();e.stopImmediatePropagation();open(cta);return;}'
 +'var chip=t.closest(".lx-feechip");if(chip){e.preventDefault();e.stopPropagation();if(window.__lxNav)__lxNav(URL);else location.href=URL;}'
 +'},true);'
-// audit #38 (display half): the row always advertised "0.5% -> 0.25% with LUMOS", so a holder who was
+// audit #38 (display half): the row always advertised "0.2% -> 0.1% with LUMOS", so a holder who was
 // already ON the discounted tier saw the wrong rate in the order review. Show what they are actually charged.
-+'function disc(){return window.__lxFeeRate===0.0025;}'
-+'function rateTxt(){return disc()?"0.25%":"0.5%";}'
-+'function feeHTML(){return disc()?\'<span class="lx-feerate mono">0.25%</span>\''
-+':\'<span class="lx-feerate lx-feeold mono">0.5%</span><span class="lx-feechip">'+DOWN+'0.25% with LUMOS</span>\';}'
++'function disc(){return window.__lxFeeRate===0.001;}'
++'function rateTxt(){return disc()?"0.1%":"0.2%";}'
++'function feeHTML(){return disc()?\'<span class="lx-feerate mono">0.1%</span>\''
++':\'<span class="lx-feerate lx-feeold mono">0.2%</span><span class="lx-feechip">'+DOWN+'0.1% with LUMOS</span>\';}'
 +'function addRows(){var sums=document.querySelectorAll(".dxa-pane-swap .dxa-trade-summary,.dxa-pane-limit .dxa-trade-summary");'
 +'sums.forEach(function(sum){var ex=sum.querySelector(".lx-feerow");'
 +'if(ex){var hint=ex.querySelector(".lx-feehint");if(hint)hint.innerHTML=feeHTML();return;}'

@@ -1,4 +1,4 @@
-// Trade-Asset (dex-asset) page — Swap & Limit panes: "hold 250,000 LUMOS for the 0.25% fee tier" card.
+// Trade-Asset (dex-asset) page — Swap & Limit panes: "hold 250,000 LUMOS for the 0.1% fee tier" card.
 // FULLER layout (icon+title / progress / balance+Buy) as a flex column with the foot pinned to the bottom
 // (margin-top:auto) so the card fills gracefully when _dexlayout grows its height to align Total Reactions
 // with the chart bottom. Theme-aware (dark Neon-Cyber / light emerald). LUMOS-logo icon. Shown only when
@@ -50,14 +50,14 @@ const SCRIPT='<script id="lx-feetier">(function(){'
 +'function html(){var b=bal();var pct=(b===null||b<=0)?0:Math.max(3,Math.min(100,Math.round(b/THRESH*100)));'
 +'var foot=(b===null)?"Connect your wallet to see your balance":("You hold <b>"+fmt(b)+"</b> / "+fmt(THRESH));'
 +'return \'<div class="lx-ft-head"><div class="lx-ft-ic">'+ICON+'</div>\''
-+'+\'<div class="lx-ft-t">Hold <b>250,000 LUMOS</b> to lower your fee to <span class="pct">0.25%</span></div></div>\''
++'+\'<div class="lx-ft-t">Hold <b>250,000 LUMOS</b> to lower your fee to <span class="pct">0.1%</span></div></div>\''
 +'+\'<div class="lx-ft-p"><div class="lx-ft-pf" style="width:\'+pct+\'%"></div></div>\''
 +'+\'<div class="lx-ft-foot"><div class="lx-ft-s">\'+foot+\'</div>\''
 +'+\'<button class="lx-ft-buy" type="button">Buy LUMOS'+ARROW+'</button></div>\';}'
 +'function boot(){var panes=document.querySelectorAll(".dxa-pane-swap,.dxa-pane-limit");if(!panes.length)return false;'
 +'var b=bal(),qualifies=(b!==null&&b>=THRESH);'
 +'[].forEach.call(panes,function(p){var ex=p.querySelector(".lx-feetier");'
-+'if(qualifies){if(ex&&ex.parentNode)ex.parentNode.removeChild(ex);return;}'   // already on the 0.25% tier -> no nudge
++'if(qualifies){if(ex&&ex.parentNode)ex.parentNode.removeChild(ex);return;}'   // already on the 0.1% tier -> no nudge
 +'if(ex){ex.innerHTML=html();return;}'                                         // repaint in place (no remove/re-add flash)
 +'var d=document.createElement("div");d.className="lx-feetier";d.innerHTML=html();'
 +'var cta=p.querySelector(".dxa-trade-cta");if(cta)cta.parentNode.insertBefore(d,cta.nextSibling);else p.appendChild(d);});'
