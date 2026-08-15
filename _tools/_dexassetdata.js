@@ -876,6 +876,25 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   // saw a 59 count over a 20-row table and padded it out with CLONED rows to 137, inventing pools that do
   // not exist. Real paging here; _dexpag is told to leave this tab alone.
   var POOLS_PER=25, poolsPage=1, poolsView=null;
+  function setTxt(el,t){ if(!el)return; t=String(t); if(el.textContent!==t)el.textContent=t; }
+  // Write the live numbers into the rows that are already on screen. TVL and pool share move on every
+  // tick; re-rendering the row for that destroys the node under the pointer, which is what made the
+  // hovered "Add liquidity" flash between its normal and hover colour.
+  function poolsNums(body,top,combined,MOB){ var rows=body.children;
+    for(var i=0;i<rows.length&&i<top.length;i++){ var p=top[i],r=rows[i];
+      var share=combined>0?(p.tvlXlm/combined*100):0;
+      var tvl=xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM";
+      var sh=(share>=0.1?share.toFixed(1):"<0.1")+"%";
+      if(MOB){ setTxt(r.querySelector(".mdxa-pl-tvl"),tvl); setTxt(r.querySelector(".mdxa-pl-lp"),num(p.tl)+" LP holders");
+        setTxt(r.querySelector(".mdxa-pl-apr"),sh+" share"); }
+      else { var c=r.children; if(c.length>=4){ setTxt(c[1],tvl); setTxt(c[2],num(p.tl)); setTxt(c[3],sh); } } } }
+  // Same idea for the three stats above the table.
+  function poolsHead(){ var v=poolsView; if(!v||!v.wrap)return;
+    var vals=v.wrap.querySelectorAll(v.MOB?".mdxa-hl-stat .val":".dxa-hl-stat .val"); if(vals.length<3)return;
+    setTxt(vals[0],num(v.list.length));
+    setTxt(vals[1],xlmUsd>0?abbrUsd(v.combined*xlmUsd):abbrNum(v.combined)+" XLM");
+    setTxt(vals[2],abbrNum(v.lps));
+    for(var i=0;i<3;i++)lxMark(vals[i]); }
   function poolsRowsHTML(top,combined){ return top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
       return '<tr><td><div class="dxa-pl-pair"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
         +'<span class="dxa-pl-name">'+CODE+' / '+p.other+'</span></div></td>'
@@ -898,21 +917,24 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     var start=(poolsPage-1)*POOLS_PER, end=Math.min(start+POOLS_PER,v.list.length), top=v.list.slice(start,end);
     var body=v.wrap.querySelector(v.MOB?".mdxa-pl-list":".ex-table tbody");
     if(!body)return;
-    // Repaint ONLY when the page or the underlying rows actually changed. applyPools is re-run on every
-    // data tick (~4x/s), and repainting blindly destroyed and recreated the row nodes each time -- which
-    // dropped :hover off whatever the pointer was over, so "Add liquidity" strobed orange/white under the
-    // cursor. The stamp lives on the body, which a genuine rebuild replaces, so real changes still repaint.
-    var stamp=poolsPage+"/"+v.list.length+"/"+Math.round(v.combined)+"/"+Math.round(xlmUsd*1000);
-    if(body.getAttribute("data-lxpage")===stamp)return;
-    body.setAttribute("data-lxpage",stamp);
-    body.innerHTML=v.MOB?poolsMRowsHTML(top,v.combined):poolsRowsHTML(top,v.combined);
+    // Rebuild the rows only when WHICH pools are on screen changes (a page turn, or the list itself
+    // changing). A number moving is not a reason to throw the nodes away -- it is written into the row
+    // that is already there, so the element under the pointer keeps its identity and its :hover.
+    var ids=""; for(var i=0;i<top.length;i++)ids+=top[i].id+",";
+    var key=poolsPage+"|"+v.list.length+"|"+ids;
+    if(body.getAttribute("data-lxrows")===key)poolsNums(body,top,v.combined,v.MOB);
+    else{ body.setAttribute("data-lxrows",key);
+      body.innerHTML=v.MOB?poolsMRowsHTML(top,v.combined):poolsRowsHTML(top,v.combined);
+      top.forEach(function(p){ dxaFetchPoolLogo(p.other,p.otherIss); }); }
     var foot=v.wrap.querySelector(".lx-pl-foot");
     if(foot){ foot.style.display=pages>1?"":"none";
-      foot.innerHTML='<span class="info">Showing '+num(start+1)+'\\u2013'+num(end)+' of '+num(v.list.length)+' pools</span>'
-        +'<span class="pc"><button type="button" class="lx-pl-prev"'+(poolsPage<=1?' disabled':'')+'>\\u2039 Prev</button>'
-        +'<span class="pmid">Page '+poolsPage+' of '+pages+'</span>'
-        +'<button type="button" class="lx-pl-next"'+(poolsPage>=pages?' disabled':'')+'>Next \\u203a</button></span>'; }
-    top.forEach(function(p){ dxaFetchPoolLogo(p.other,p.otherIss); });
+      // The footer carries the buttons; rebuilding it on a tick would cancel a click already in flight.
+      var fkey=poolsPage+"|"+pages+"|"+v.list.length;
+      if(foot.getAttribute("data-lxfoot")!==fkey){ foot.setAttribute("data-lxfoot",fkey);
+        foot.innerHTML='<span class="info">Showing '+num(start+1)+'\\u2013'+num(end)+' of '+num(v.list.length)+' pools</span>'
+          +'<span class="pc"><button type="button" class="lx-pl-prev"'+(poolsPage<=1?' disabled':'')+'>\\u2039 Prev</button>'
+          +'<span class="pmid">Page '+poolsPage+' of '+pages+'</span>'
+          +'<button type="button" class="lx-pl-next"'+(poolsPage>=pages?' disabled':'')+'>Next \\u203a</button></span>'; } }
   }
   function applyPools(){ var wrap=panelWrap("pools"); if(!wrap)return; var MOB=isMobPanel(wrap); var raw=window.__lxDXApoolsRaw; if(!raw||!raw.length)return;
     var list=raw.map(function(p){ var other=null; (p.res||[]).forEach(function(rv){ if(rv.code!==CODE&&!other)other=rv; }); if(!other)other=(p.res||[])[0]||{code:"XLM",iss:""};
@@ -927,11 +949,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     try{ var _pt=qa(".tabs-bar .tab").filter(function(t){return /pools/i.test(t.getAttribute("data-tab")||"");})[0];
       if(_pt){ var _c=_pt.querySelector(".count"); if(_c){ var _w=MOB?abbrNum(list.length):num(list.length);
         if(_c.textContent!==String(_w))_c.textContent=_w; lxMark(_c); } } }catch(_){}
-    var sig=list.length+"|"+Math.round(combined)+"|"+Math.round(xlmUsd*1000);
-    poolsView={list:list,combined:combined,wrap:wrap,MOB:MOB};
-    // Data unchanged: the shell is already right, so just repaint the current page. Rebuilding would
-    // reset the reader back to page 1 every time a price tick re-runs this.
-    if(wrap.getAttribute("data-lxsig")===sig){ poolsPaint(); return; }
+    // STRUCTURAL only -- deliberately no TVL and no price. Folding the numbers in here meant every tick
+    // changed the signature and rebuilt the entire panel via innerHTML, taking the hovered row with it.
+    // Numbers now flow through poolsHead()/poolsNums() into the nodes that already exist.
+    var sig=list.length+"|"+(MOB?1:0);
+    poolsView={list:list,combined:combined,lps:lps,wrap:wrap,MOB:MOB};
+    if(wrap.getAttribute("data-lxsig")===sig){ poolsHead(); poolsPaint(); return; }
     var head='<div class="dxa-pl-head">'
       +'<div class="dxa-hl-stat"><span class="lbl">Active pools</span><span class="val mono">'+num(list.length)+'</span></div>'
       +'<div class="dxa-hl-stat"><span class="lbl">Combined TVL</span><span class="val mono">'+(xlmUsd>0?abbrUsd(combined*xlmUsd):abbrNum(combined)+" XLM")+'</span></div>'
