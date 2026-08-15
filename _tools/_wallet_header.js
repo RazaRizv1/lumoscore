@@ -92,6 +92,11 @@ function scriptFor(net){
   +'var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");'
   +'if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");'
   +'if(ms)ms.textContent=on?("Connected \\u00b7 "+netLabel()):"Tap to connect a wallet";'
+  // Disconnected, the whole account row is redundant now that Launch App sits in the header — it said
+  // the same thing twice and gave the visitor a second, less obvious way in. Hide the row (not just the
+  // text) while disconnected; it comes back the moment there is an address to show.
+  +'var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;'
+  +'if(row&&row.style)row.style.display=on?"":"none";'
   // The account row leads with a generic wallet glyph — swap it for the network mark.
   +'var av=document.querySelector(".mu-av");'
   +'if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}'
