@@ -34,7 +34,12 @@ function scriptFor(net,sel){
   +'b.style.removeProperty("pointer-events");b.style.setProperty("opacity","1","important");b.style.setProperty("cursor","pointer","important");'
   +'b.setAttribute("data-lxgate","1");}}}'
   // window-capture so this runs BEFORE any document-capture interceptor (e.g. the Trade "Review order" modal)
-  +'window.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-lxgate=\\"1\\"]"):null;if(b){e.preventDefault();e.stopImmediatePropagation();if(window.lxChooseNetwork)window.lxChooseNetwork(location.href);else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet(),location.href);return;}setTimeout(apply,60);},true);'
+  +'window.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-lxgate=\\"1\\"]"):null;if(b){e.preventDefault();e.stopImmediatePropagation();'
+  // Remember the chain this page was showing when they clicked. Connect on the same chain and they
+  // come back to exactly this asset/pool; connect on a different one and this page is meaningless to
+  // them, so the post-connect step sends them to that chain's dashboard instead.
+  +'try{sessionStorage.setItem("lumos.connDest","stay:"+actNet());}catch(_){}'
+  +'if(window.lxChooseNetwork)window.lxChooseNetwork(location.href);else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet(),location.href);return;}setTimeout(apply,60);},true);'
   +'if(document.readyState!=="loading")apply();else document.addEventListener("DOMContentLoaded",apply);'
   +'setTimeout(apply,350);setTimeout(apply,1000);'
   // The data layer re-renders this button whenever the quote changes, which puts "Swap" and the disabled
