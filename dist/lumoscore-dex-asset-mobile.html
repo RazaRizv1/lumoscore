@@ -6332,6 +6332,18 @@ window.addEventListener('click',function(e){
     var awayTxt=(away==null)?"—":(Math.abs(away)<0.01?"at the "+(side==="buy"?"ask":"bid")
       :(Math.abs(away).toFixed(2)+"% "+(away<0?"below ":"above ")+(side==="buy"?"the ask":"the bid")));
     var fills=(pr>0&&ref)&&((side==="buy")?pr>=ba:pr<=bb);
+    // How much of THIS order the book can actually absorb right now. Crossing the spread does not mean
+    // filling: 100,000,000 LUMOS against a book holding a few hundred XLM crosses and barely fills.
+    // Buy consumes asks at or below your price (their amount is in CODE); sell consumes bids at or above
+    // it (their amount is in XLM, so it converts at each level price to compare like for like).
+    var fillPct=null;
+    if(fills){ var amtIn=f.length>1?f[1].querySelector("input"):null;
+      var want=parseFloat(String((amtIn&&amtIn.value)||"").replace(/,/g,""))||0;
+      if(want>0){ var have=0, src=(side==="buy")?asks:bids;
+        for(var k=0;k<src.length;k++){ var kp=parseFloat(src[k].price), ka=parseFloat(src[k].amount)||0;
+          var usable=(side==="buy")?(kp<=pr):(kp>=pr); if(!usable)break;
+          have+=(side==="buy")?ka:(kp>0?ka/kp:0); }
+        fillPct=Math.max(0,Math.min(100,have/want*100)); } }
     // queue: orders already at your price or better on YOUR side of the book
     var q0=0,n=0;
     if(pr>0){ var list=(side==="buy")?bids:asks;
@@ -6343,7 +6355,7 @@ window.addEventListener('click',function(e){
       +'<div class="lx-oc-r"><span>Spread</span><b>'+(spread==null?"—":spread.toFixed(2)+"%")+'</b></div>'
       +'<div class="lx-oc-r"><span>Your price</span><b class="'+(fills?"lx-oc-ok":"")+'">'+awayTxt+'</b></div>'
       +'<div class="lx-oc-r"><span>Ahead of you</span><b class="'+(n?"lx-oc-hi":"lx-oc-ok")+'">'
-      +(pr>0?(fills?"fills now":(n?(abbrNum(q0)+" "+(side==="buy"?"XLM":CODE)+" · "+n+(n===1?" order":" orders")):"nothing — first in line")):"—")
+      +(pr>0?(fills?((fillPct==null)?"fills now":(fillPct>=99.5?"fills now":(fillPct<0.5?"<1% fills now":Math.round(fillPct)+"% fills now"))):(n?(abbrNum(q0)+" "+(side==="buy"?"XLM":CODE)+" · "+n+(n===1?" order":" orders")):"nothing — first in line")):"—")
       +'</b></div>';
   }catch(_){} }
   function setLimitTotalUsd(){ try{
