@@ -25,17 +25,17 @@ const STYLE = '<style id="lx-assetstats">'
   // compress instead of wrapping, which is why minmax(0,1fr) and .stat-cell{min-width:0} matter: the
   // grid default of min-content plus nowrap text is what made the row overflow and clip Supply.
   // Below ~760px of container (real phones) six cards would be unreadable, so it drops to 3 then 2.
-  + '@container (max-width:760px){.stat-row{grid-template-columns:repeat(3,minmax(0,1fr))}}'
+  + '@container (max-width:1140px){.stat-row{grid-template-columns:repeat(3,minmax(0,1fr))}}'
   + '@container (max-width:430px){.stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}}'
   // min-width:0 is the other half of the crop fix. A grid item defaults to min-width:auto, i.e. its
   // min-content width, and every line in here is white-space:nowrap — so the cells refused to shrink
   // and the row overflowed its container instead of adapting. With 0 they shrink and the .sub line
   // ellipsises as it was already styled to.
-  + '.stat-cell{min-width:0;padding:15px 16px !important;border:1px solid var(--border) !important;border-radius:13px;background:var(--surface);display:flex;flex-direction:column;justify-content:center;min-height:92px;transition:border-color .15s ease,box-shadow .15s ease}'
+  + '.stat-cell{min-width:0;padding:15px 16px !important;border:1px solid var(--border) !important;border-radius:13px;background:var(--surface);display:flex;flex-direction:column;justify-content:flex-start;min-height:92px;transition:border-color .15s ease,box-shadow .15s ease}'
   + '.stat-cell:hover{border-color:var(--accent-soft,rgba(234,106,44,.32)) !important;box-shadow:0 10px 24px -18px rgba(234,106,44,.5)}'
-  + '.stat-cell .lbl{font-size:10.5px;letter-spacing:.09em;font-weight:700;margin-bottom:9px;white-space:nowrap}'
+  + '.stat-cell .lbl{font-size:11.5px;letter-spacing:.08em;font-weight:700;margin-bottom:8px;white-space:nowrap}'
   // ellipsis rather than a value that spills past the card edge once the cell can shrink
-  + '.stat-cell .val{font-size:18px;font-weight:800;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05;color:var(--text)}'
+  + '.stat-cell .val{font-size:19px;font-weight:800;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05;color:var(--text)}'
   + '.stat-cell .val .u{font-size:11.5px;font-weight:600;color:var(--text-muted);margin-left:2px}'
   + '.stat-cell .sub{font-size:12px;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
   // ---- compact ramp, LAST ON PURPOSE ----------------------------------------------------------
@@ -43,15 +43,17 @@ const STYLE = '<style id="lx-assetstats">'
   // ellipsising. These MUST come after the base .stat-cell/.lbl/.val/.sub rules above: a container
   // query adds no specificity, so if they sat earlier the base font-size would simply win and the
   // whole ramp would silently do nothing (which is exactly what happened the first time).
-  + '@container (max-width:1140px){.stat-cell{padding:13px 12px !important}'
-  + '.stat-cell .val{font-size:15px}.stat-cell .val .u{font-size:10.5px}'
-  + '.stat-cell .lbl{font-size:9.5px;letter-spacing:.06em}.stat-cell .sub{font-size:11px}}'
-  + '@container (max-width:1000px){.stat-cell{padding:12px 10px !important}'
-  + '.stat-cell .val{font-size:13px}.stat-cell .val .u{font-size:9.5px}'
-  + '.stat-cell .lbl{font-size:9px}.stat-cell .sub{font-size:10px}}'
-  + '@container (max-width:880px){.stat-cell{padding:11px 8px !important}'
-  + '.stat-cell .val{font-size:11.5px}.stat-cell .val .u{font-size:8.5px}'
-  + '.stat-cell .lbl{font-size:8.5px;margin-bottom:6px}.stat-cell .sub{font-size:9px}}'
+  // The ramp only has to cope with THREE wide cards now, not six squeezed ones, so its floors stay
+  // readable instead of bottoming out at an 8.5px label. Padding stays generous at every step.
+  + '@container (max-width:620px){.stat-cell{padding:14px 15px !important}'
+  + '.stat-cell .val{font-size:17px}.stat-cell .val .u{font-size:11px}'
+  + '.stat-cell .lbl{font-size:11px;letter-spacing:.07em}.stat-cell .sub{font-size:11.5px}}'
+  + '@container (max-width:470px){.stat-cell{padding:13px 13px !important}'
+  + '.stat-cell .val{font-size:16px}.stat-cell .val .u{font-size:10.5px}'
+  + '.stat-cell .lbl{font-size:10.5px}.stat-cell .sub{font-size:11px}}'
+  + '@container (max-width:360px){.stat-cell{padding:12px 12px !important}'
+  + '.stat-cell .val{font-size:15px}.stat-cell .val .u{font-size:10px}'
+  + '.stat-cell .lbl{font-size:10px;margin-bottom:7px}.stat-cell .sub{font-size:10.5px}}'
   // ---- MOBILE ----------------------------------------------------------------------------------
   // Everything above is a @container query keyed on .asset-header — but the MOBILE build has no
   // .asset-header (its wrapper is .asset-top inside .asset-card), so no container was ever
