@@ -1,0 +1,536 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Stellar Network Stats — sample (not on the site)</title>
+<style>
+  /* #e2662a is the chart mark: the brand orange #ea6a2c sits at OKLCH L 0.671, a thousandth outside the
+     dark-mode band, so marks use the step that passes and the chrome keeps the brand value. */
+  :root{
+    --bg:#0e0e10; --surface:#16161a; --surface-2:#1d1d22; --border:#26262c; --border-2:#33333b;
+    --text:#f6f5f3; --text-soft:#9a9aa5; --text-mute:#6b6b76;
+    --accent:#ea6a2c; --mark:#e2662a; --good:#35c07f; --bad:#ef5350;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+       font:400 15px/1.5 "Hanken Grotesk",system-ui,-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1280px;margin:0 auto;padding:26px 20px 60px}
+  .note{margin:0 0 22px;padding:11px 14px;border:1px dashed rgba(234,106,44,.5);border-radius:10px;
+        font-size:12.6px;line-height:1.55;color:#c9791f}
+
+  .head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin:0 0 18px}
+  .head h1{margin:0;font-size:24px;font-weight:800;letter-spacing:-.01em}
+  .since{font-size:12.5px;font-weight:650;color:var(--text-soft)}
+  .stamp{margin-left:auto;font-size:12px;color:var(--text-mute)}
+
+  .tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin:0 0 14px}
+  .tile{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:15px 16px;min-width:0}
+  .tile .k{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-mute)}
+  .tile .v{margin-top:8px;font:800 23px/1.15 var(--mono);letter-spacing:-.02em;white-space:nowrap;
+           overflow:hidden;text-overflow:ellipsis}
+  .tile .s{margin-top:5px;font-size:12px;color:var(--text-soft);font-family:var(--mono)}
+  .pill{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font:700 11.5px/1.5 var(--mono)}
+  .pill.up{background:rgba(53,192,127,.14);color:var(--good)}
+  .pill.dn{background:rgba(239,83,80,.14);color:var(--bad)}
+
+  /* top-3 traded: a ranked list, so rank + name carry identity and the bar is only magnitude */
+  .top{margin-top:9px;display:flex;flex-direction:column;gap:7px}
+  .top .r{display:grid;grid-template-columns:14px 1fr auto;align-items:center;gap:8px;font-size:12.5px}
+  .top .r .n{color:var(--text-mute);font:700 11px/1 var(--mono)}
+  .top .r .c{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .top .r .a{font-family:var(--mono);font-size:11.5px;color:var(--text-soft);white-space:nowrap}
+  .top .r .track{grid-column:2/4;height:4px;border-radius:2px;background:var(--surface-2);overflow:hidden;margin-top:-3px}
+  .top .r .track i{display:block;height:100%;background:var(--mark);border-radius:2px}
+
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 16px 8px}
+  .ctl{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .tabs{display:flex;gap:4px;background:var(--surface-2);border-radius:10px;padding:3px}
+  .tab{border:0;background:transparent;color:var(--text-soft);font:650 13px/1 inherit;padding:7px 12px;
+       border-radius:8px;cursor:pointer;white-space:nowrap}
+  .tab:hover{color:var(--text)} .tab.on{background:var(--accent);color:#fff}
+  .ranges{display:flex;gap:4px;margin-left:auto;flex-wrap:wrap}
+  .rg{border:1px solid var(--border-2);background:transparent;color:var(--text-soft);
+      font:650 12px/1 var(--mono);padding:7px 10px;border-radius:8px;cursor:pointer}
+  .rg:hover{border-color:var(--accent);color:var(--accent)}
+  .rg.on{background:var(--accent);border-color:var(--accent);color:#fff}
+
+  .cheadline{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin:14px 2px 2px;min-height:34px}
+  .cheadline .big{font:800 26px/1.1 var(--mono);letter-spacing:-.02em}
+  .cheadline .lbl{font-size:12.5px;color:var(--text-mute)}
+
+  .plot{position:relative;margin-top:6px}
+  .plot.busy svg.chart{opacity:.28;transition:opacity .12s}
+  .lbl.busy{color:var(--accent)}
+  svg.chart{display:block;width:100%;height:280px;overflow:visible}
+  .gridline{stroke:var(--border);stroke-width:1}
+  .axis{fill:var(--text-mute);font-size:11px;font-family:var(--mono)}
+  .mark-line{fill:none;stroke:var(--mark);stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+  .mark-bar{fill:var(--mark)} .mark-bar.dim{opacity:.42} .mark-bar.part{opacity:.45}
+  .cross{stroke:var(--border-2);stroke-width:1;stroke-dasharray:3 3}
+  .dot{fill:var(--mark);stroke:var(--surface);stroke-width:2}
+  .tip{position:absolute;pointer-events:none;opacity:0;transition:opacity .1s;background:#000;
+       border:1px solid var(--border-2);border-radius:9px;padding:8px 10px;font-size:12.5px;
+       white-space:nowrap;transform:translate(-50%,-115%);z-index:5}
+  .tip .t1{font:700 13.5px/1.3 var(--mono)} .tip .t2{color:var(--text-soft);font-size:11.5px;margin-top:2px}
+
+  .health{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+  .hcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 15px}
+  .hcard .k{font-size:10.5px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-mute)}
+  .hcard .v{margin-top:7px;font:800 20px/1.15 var(--mono)}
+  .hcard .s{margin-top:4px;font-size:11.5px;color:var(--text-soft)}
+
+  .prov{margin:20px 2px 0;font-size:12px;line-height:1.65;color:var(--text-mute)}
+  .prov b{color:var(--text-soft);font-weight:650}
+  .err{color:var(--bad);font-size:12.5px}
+  .sk{background:linear-gradient(90deg,var(--surface-2) 25%,#24242b 37%,var(--surface-2) 63%);
+      background-size:400% 100%;animation:sh 1.3s ease infinite;border-radius:6px;color:transparent!important}
+  @keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+  @media(max-width:1120px){ .tiles{grid-template-columns:repeat(3,1fr)} .tiles .tile:last-child{grid-column:span 3} }
+  @media(max-width:900px){
+    .tiles{grid-template-columns:repeat(2,1fr)} .tiles .tile:last-child{grid-column:span 2}
+    .health{grid-template-columns:repeat(2,1fr)} .tile .v{font-size:21px}
+  }
+  @media(max-width:560px){
+    .wrap{padding:16px 13px 46px} .head h1{font-size:20px}
+    .stamp{margin-left:0;width:100%} .ranges{margin-left:0;width:100%}
+    .tabs{width:100%} .tab{flex:1;padding:8px 4px;font-size:11.5px}
+    .rg{flex:1;padding:7px 4px} svg.chart{height:220px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <p class="note"><b>Sample — not on the site.</b> This file is deliberately uncommitted, so it cannot reach
+  lumoscore.com. Every number below is live from Horizon, DefiLlama, CoinGecko and stellar.expert.</p>
+
+  <div class="head">
+    <h1>Stellar Network Stats</h1>
+    <span class="since">Last 24 hours</span>
+    <span class="stamp" id="stamp">loading…</span>
+  </div>
+
+  <div class="tiles">
+    <div class="tile"><div class="k">XLM price</div><div class="v sk" id="t-px">$0.0000</div>
+      <div class="s" id="t-px-s">—</div></div>
+    <div class="tile"><div class="k">Market cap</div><div class="v sk" id="t-mc">$0.00B</div>
+      <div class="s" id="t-mc-s">—</div></div>
+    <div class="tile"><div class="k">Network TVL</div><div class="v sk" id="t-tvl">$0.0M</div>
+      <div class="s" id="t-tvl-s">—</div></div>
+    <div class="tile"><div class="k" id="t-vol-k">DEX volume · 24h</div><div class="v sk" id="t-vol">$0.0M</div>
+      <div class="s" id="t-vol-s">—</div></div>
+    <div class="tile"><div class="k">Most traded · 24h</div>
+      <div class="top" id="t-top"><div class="s sk">loading</div></div></div>
+  </div>
+
+  <div class="panel">
+    <div class="ctl">
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-m="price">Price</button>
+        <button class="tab" data-m="volume">DEX volume</button>
+        <button class="tab" data-m="trades">DEX trades</button>
+        <button class="tab" data-m="tvl">TVL</button>
+      </div>
+      <div class="ranges" id="ranges">
+        <button class="rg" data-d="7">7D</button>
+        <button class="rg on" data-d="30">30D</button>
+        <button class="rg" data-d="90">90D</button>
+        <button class="rg" data-d="182">6M</button>
+        <button class="rg" data-d="365">1Y</button>
+        <button class="rg" data-d="max">All</button>
+      </div>
+    </div>
+
+    <div class="cheadline"><span class="big" id="c-big">—</span><span class="lbl" id="c-lbl"></span></div>
+
+    <div class="plot" id="plot">
+      <svg class="chart" id="svg" preserveAspectRatio="none" role="img" aria-label="Stellar network metric over time"></svg>
+      <div class="tip" id="tip"><div class="t1"></div><div class="t2"></div></div>
+    </div>
+  </div>
+
+  <div class="health">
+    <div class="hcard"><div class="k">Avg transaction cost</div><div class="v sk" id="h-fee">0 XLM</div>
+      <div class="s" id="h-fee-s">—</div></div>
+    <div class="hcard"><div class="k">Avg transaction time</div><div class="v sk" id="h-close">0.0s</div>
+      <div class="s" id="h-close-s">—</div></div>
+    <div class="hcard"><div class="k">Total assets</div><div class="v sk" id="h-assets">0</div>
+      <div class="s" id="h-assets-s">—</div></div>
+    <div class="hcard"><div class="k">Lifetime transactions</div><div class="v sk" id="h-life">0</div>
+      <div class="s" id="h-life-s">—</div></div>
+  </div>
+
+  <p class="prov" id="prov">
+    <b>Where these come from.</b> Price and market cap: CoinGecko. TVL: DefiLlama. Transaction cost and time:
+    Stellar Horizon fee stats and ledger close times — <b>exact</b>. Total assets: counted on stellar.expert.
+    Lifetime transactions counts XLM payments plus DEX trades — <b>the one figure that is not a whole-network
+    total</b>, because no free source publishes one. DEX volume, trades and most-traded are summed over the
+    major XLM pairs (<span id="prov-pairs">—</span>) — <b>a sample of the DEX</b>, so read them as a floor.
+  </p>
+</div>
+
+<script>
+(function(){
+"use strict";
+var HZ="https://horizon.stellar.org", EX="https://api.stellar.expert/explorer/public";
+var PAIRS=[
+  ["USDC","GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"],
+  ["yXLM","GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"],
+  ["AQUA","GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"],
+  ["yUSDC","GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF"],
+  ["SHX","GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH"],
+  ["EURC","GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"]
+];
+var $=function(id){return document.getElementById(id);};
+function j(u){return fetch(u).then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); });}
+function usd(n){ n=+n||0; var a=Math.abs(n);
+  if(a>=1e12)return "$"+(n/1e12).toFixed(2)+"T"; if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B";
+  if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M"; if(a>=1e3)return "$"+(n/1e3).toFixed(1)+"K";
+  if(a>=1)return "$"+n.toFixed(2); return "$"+n.toFixed(4); }
+// K / M / B / T, as asked
+function num(n){ n=+n||0; var a=Math.abs(n);
+  if(a>=1e12)return (n/1e12).toFixed(2)+"T"; if(a>=1e9)return (n/1e9).toFixed(2)+"B";
+  if(a>=1e6)return (n/1e6).toFixed(2)+"M"; if(a>=1e3)return (n/1e3).toFixed(1)+"K";
+  return String(Math.round(n)); }
+function pctPill(p){ var up=p>=0; return '<span class="pill '+(up?"up":"dn")+'">'+(up?"▲":"▼")+" "+Math.abs(p).toFixed(2)+"%</span>"; }
+function unskel(el){ if(el) el.classList.remove("sk"); }
+function dayKey(ms){ return new Date(ms).toISOString().slice(0,10); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";}); }
+
+var STATE={metric:"price",days:30};
+var DATA={price:null,tvl:null,volume:null,trades:null};
+var XLMUSD=0, PARTIAL_T=null, VOLRES=null;
+var STALE=false;               // last fetch was throttled; what is drawn is the previous range
+
+// ---------------- tiles ----------------
+j("https://api.coingecko.com/api/v3/coins/stellar?localization=false&tickers=false&community_data=false&developer_data=false")
+ .then(function(d){
+   var m=d.market_data; XLMUSD=m.current_price.usd;
+   $("t-px").textContent="$"+XLMUSD.toFixed(4); unskel($("t-px"));
+   $("t-px-s").innerHTML=pctPill(m.price_change_percentage_24h||0)+" <span style='color:var(--text-mute)'>24h</span>";
+   $("t-mc").textContent=usd(m.market_cap.usd); unskel($("t-mc"));
+   $("t-mc-s").textContent=num(m.circulating_supply)+" XLM circulating";
+   feeCost();
+ })
+ .catch(function(){ $("t-px").textContent="—"; unskel($("t-px"));
+   $("t-px-s").innerHTML='<span class="err">price source unavailable</span>'; feeCost(); });
+
+j("https://api.llama.fi/v2/historicalChainTvl/Stellar").then(function(a){
+  DATA.tvl=a.map(function(p){ return {t:p.date*1000, v:p.tvl}; });
+  var last=DATA.tvl[DATA.tvl.length-1], wk=DATA.tvl[DATA.tvl.length-8];
+  $("t-tvl").textContent=usd(last.v); unskel($("t-tvl"));
+  if(wk) $("t-tvl-s").innerHTML=pctPill((last.v-wk.v)/wk.v*100)+" <span style='color:var(--text-mute)'>7d</span>";
+  if(STATE.metric==="tvl") draw();
+}).catch(function(){ $("t-tvl").textContent="—"; unskel($("t-tvl"));
+  $("t-tvl-s").innerHTML='<span class="err">TVL source unavailable</span>'; });
+
+// ---------------- transaction cost + time ----------------
+function feeCost(){
+  j(HZ+"/fee_stats").then(function(f){
+    // p50, not the mean: when the ledger fills, surge bids drag an average far above what a normal
+    // transaction actually pays. The spread goes in the sub-line rather than being hidden.
+    var stroops=+f.fee_charged.p50, xlm=stroops/1e7;
+    $("h-fee").textContent=xlm.toFixed(7).replace(/0+$/,"")+" XLM"; unskel($("h-fee"));
+    var p95=+f.fee_charged.p95/1e7;
+    $("h-fee-s").textContent=(XLMUSD?("≈ $"+(xlm*XLMUSD).toFixed(7).replace(/0+$/,"")+" · "):"")
+      +"busy ledgers up to "+p95.toFixed(4)+" XLM";
+  }).catch(function(){ $("h-fee").textContent="—"; unskel($("h-fee")); });
+}
+
+j(HZ+"/ledgers?order=desc&limit=30").then(function(d){
+  var r=d._embedded.records;
+  var span=(new Date(r[0].closed_at)-new Date(r[r.length-1].closed_at))/1000;
+  var close=span/(r.length-1);
+  // a transaction is final when its ledger closes, so ledger close time IS confirmation time
+  $("h-close").textContent=close.toFixed(1)+"s"; unskel($("h-close"));
+  $("h-close-s").textContent="time to finality, averaged over "+r.length+" ledgers";
+}).catch(function(){ $("h-close").textContent="—"; unskel($("h-close")); });
+
+// ---------------- total assets (binary search, cached a day) ----------------
+(function assets(){
+  var K="lx.netstats.assets";
+  try{ var c=JSON.parse(localStorage.getItem(K)||"null");
+    if(c&&Date.now()-c.ts<864e5){ showAssets(c.n); return; } }catch(_){}
+  var probe=function(cur){ return j(EX+"/asset?limit=1&order=desc&cursor="+cur)
+    .then(function(d){ return ((d._embedded||{}).records||[]).length>0; }).catch(function(){ return null; }); };
+  var lo=0, hi=1000000, steps=0;
+  (function step(){
+    if(lo>=hi-1||steps>24){ try{localStorage.setItem(K,JSON.stringify({n:lo+1,ts:Date.now()}));}catch(_){}
+      showAssets(lo+1); return; }
+    var mid=Math.floor((lo+hi)/2); steps++;
+    probe(mid).then(function(hit){ if(hit===null){ showAssets(null); return; }
+      if(hit) lo=mid; else hi=mid; step(); });
+  })();
+  function showAssets(n){
+    if(n==null){ $("h-assets").textContent="—"; unskel($("h-assets")); return; }
+    $("h-assets").textContent=num(n); unskel($("h-assets"));
+    $("h-assets-s").textContent=n.toLocaleString()+" issued on Stellar";
+  }
+})();
+
+// ---------------- lifetime transactions ----------------
+// /asset/XLM answers from node but not from a browser — that path fails CORS while the LIST endpoint
+// does not, and the list's first record IS XLM carrying the same counters. Same numbers, reachable route.
+j(EX+"/asset?limit=1&order=desc&cursor=0").then(function(d){
+  var rec=((d._embedded||{}).records||[])[0]||{};
+  var pay=+rec.payments||0, trd=+rec.trades||0;
+  if(!pay&&!trd) throw new Error("no counters");
+  $("h-life").textContent=num(pay+trd); unskel($("h-life"));
+  // spelled out, because this counts XLM activity rather than every transaction ever
+  $("h-life-s").textContent=num(pay)+" payments + "+num(trd)+" DEX trades (XLM)";
+}).catch(function(){ $("h-life").textContent="—"; unskel($("h-life")); });
+
+// ---------------- DEX volume, trades, most-traded ----------------
+function volParams(days){
+  // Horizon caps a page at 200 buckets, so anything past ~90 days switches to weekly resolution.
+  // start is snapped DOWN to a whole day so the value is stable between clicks — built from a raw
+  // Date.now() it changed every millisecond, so the cache signature never repeated and every click
+  // re-issued six Horizon requests.
+  var day=86400000, today=Math.floor(Date.now()/day)*day;
+  if(days==="max") return {res:604800000,limit:200,start:0};
+  var d=+days;
+  if(d<=90) return {res:day,limit:Math.min(200,d+5),start:today-(d+5)*day};
+  return {res:604800000,limit:200,start:today-(d+14)*day};
+}
+var volCache={}, volSeq=0;
+function loadVolume(days){
+  var p=volParams(days);
+  // signature, not resolution: 6M/1Y/All share the weekly resolution but cover different spans, and
+  // keying on resolution alone let the first weekly range answer for every later one.
+  var sig=p.res+"|"+p.start+"|"+p.limit;
+  if(volCache[sig]){ DATA.volume=volCache[sig].v; DATA.trades=volCache[sig].t;
+                     PARTIAL_T=volCache[sig].p; VOLRES=p.res; return Promise.resolve(); }
+  var seq=++volSeq;                       // only the newest request may write DATA
+  VOLRES=p.res;
+  return Promise.all(PAIRS.map(function(pr){
+    var u=HZ+"/trade_aggregations?base_asset_type="+(pr[0].length>4?"credit_alphanum12":"credit_alphanum4")
+      +"&base_asset_code="+pr[0]+"&base_asset_issuer="+pr[1]
+      +"&counter_asset_type=native&resolution="+p.res+"&start_time="+p.start
+      +"&limit="+p.limit+"&order=desc";
+    return j(u).then(function(d){ return {code:pr[0],rows:d._embedded.records,ok:true}; })
+               .catch(function(){ return {code:pr[0],rows:[],ok:false}; });
+  })).then(function(sets){
+    if(seq!==volSeq) return;              // a newer range is already on screen; drop this answer
+    // every pair failing is a throttle, not an empty market — let ensure() keep what is drawn
+    if(!sets.some(function(x){ return x.ok; })) throw new Error("all pairs failed");
+    var vol={},trd={},per={};
+    var newest=0;
+    sets.forEach(function(s){ s.rows.forEach(function(r){
+      var t=+r.timestamp; if(t>newest) newest=t;
+      vol[t]=(vol[t]||0)+(+r.counter_volume||0);
+      trd[t]=(trd[t]||0)+(+r.trade_count||0);
+    }); });
+    // most traded over the newest complete bucket
+    sets.forEach(function(s){
+      var row=s.rows.filter(function(r){ return +r.timestamp===newest; })[0];
+      per[s.code]=row?+row.counter_volume||0:0;
+    });
+    var keys=Object.keys(vol).map(Number).sort(function(a,b){return a-b;});
+    DATA.volume=keys.map(function(k){ return {t:k, v:vol[k]}; });
+    DATA.trades=keys.map(function(k){ return {t:k, v:trd[k]}; });
+    if(p.res===86400000){
+      var iLast=DATA.volume.length-1;
+      var partial=(dayKey(DATA.volume[iLast].t)===dayKey(Date.now()));
+      PARTIAL_T=partial?DATA.volume[iLast].t:null;
+      var iFull=partial?iLast-1:iLast, full=DATA.volume[iFull];
+      if(full){
+        $("t-vol").textContent=XLMUSD?usd(full.v*XLMUSD):num(full.v)+" XLM"; unskel($("t-vol"));
+        $("t-vol-s").textContent=num(full.v)+" XLM · "+num(DATA.trades[iFull].v)+" trades";
+        $("t-vol-k").textContent="DEX volume · "+new Date(full.t).toLocaleDateString("en-US",{month:"short",day:"numeric"});
+      }
+      renderTop(per);
+    } else PARTIAL_T=null;
+    volCache[sig]={v:DATA.volume,t:DATA.trades,p:PARTIAL_T};
+  });
+}
+function renderTop(per){
+  var rows=Object.keys(per).map(function(c){ return {c:c,v:per[c]}; })
+    .sort(function(a,b){ return b.v-a.v; }).slice(0,3);
+  var box=$("t-top");
+  if(!rows.length||!rows[0].v){ box.innerHTML='<div class="s">no trades in that window</div>'; return; }
+  var mx=rows[0].v;
+  box.innerHTML=rows.map(function(r,i){
+    return '<div class="r"><span class="n">'+(i+1)+'</span>'
+      +'<span class="c">'+esc(r.c)+'</span>'
+      +'<span class="a">'+(XLMUSD?usd(r.v*XLMUSD):num(r.v)+" XLM")+'</span>'
+      +'<span class="track"><i style="width:'+Math.max(3,r.v/mx*100)+'%"></i></span></div>';
+  }).join("");
+}
+
+function loadPrice(days){
+  // CoinGecko's free tier stops at 365 days — ask for more and the 401 comes back without CORS headers,
+  // so the browser reports a bare network failure and "All" drew nothing. Everything up to 1Y still comes
+  // from CoinGecko (it is the spot source the tiles already use); "All" falls back to Binance weekly
+  // closes, which reach back to XLM's 2018 listing. That matches how the other metrics behave: "All"
+  // means as far back as THAT metric's source goes, not a common genesis date.
+  if(days==="max"){
+    return j("https://api.binance.com/api/v3/klines?symbol=XLMUSDT&interval=1w&limit=1000")
+      .then(function(k){ return k.map(function(r){ return {t:+r[0], v:+r[4]}; }); });
+  }
+  return j("https://api.coingecko.com/api/v3/coins/stellar/market_chart?vs_currency=usd&days="+days)
+    .then(function(d){ return d.prices.map(function(p){ return {t:p[0], v:p[1]}; }); });
+}
+
+// ---------------- chart ----------------
+var SVG=$("svg"), TIP=$("tip"), PLOT=$("plot"), pts=[], kind="line", fmt=function(v){return v;};
+function cutoff(){ return STATE.days==="max"?0:Date.now()-(+STATE.days)*86400000; }
+function series(){ var a=DATA[STATE.metric]||[], c=cutoff(); return a.filter(function(p){ return p.t>=c; }); }
+
+var RNAME={"7":"7 days","30":"30 days","90":"90 days","182":"6 months","365":"1 year","max":"all time"};
+function setBusy(on){
+  PLOT.classList.toggle("busy",!!on);
+  var l=$("c-lbl"); if(!l) return;
+  l.classList.toggle("busy",!!on);
+  if(on) l.textContent="loading "+(RNAME[String(STATE.days)]||"")+"…";
+}
+function draw(){
+  var a=series();
+  var W=SVG.clientWidth||900, H=SVG.clientHeight||280, PL=56, PR=8, PT=10, PB=24;
+  SVG.setAttribute("viewBox","0 0 "+W+" "+H);
+  if(!a.length){ SVG.innerHTML='<text x="'+(W/2)+'" y="'+(H/2)+'" class="axis" text-anchor="middle">loading…</text>';
+    $("c-big").textContent="—"; $("c-lbl").textContent=""; return; }
+
+  kind=(STATE.metric==="price"||STATE.metric==="tvl")?"line":"bar";
+  fmt=(STATE.metric==="price")?function(v){return "$"+v.toFixed(4);}
+     :(STATE.metric==="tvl")?usd
+     :(STATE.metric==="volume")?function(v){return num(v)+" XLM"+(XLMUSD?" · "+usd(v*XLMUSD):"");}
+     :function(v){return num(v)+" trades";};
+
+  var vs=a.map(function(p){return p.v;});
+  var mn=Math.min.apply(null,vs), mx=Math.max.apply(null,vs);
+  if(kind==="bar") mn=0;
+  if(mn===mx){ mn=mn*0.98; mx=mx*1.02||1; }
+  var pad=(mx-mn)*0.08; mx+=pad; if(kind==="line") mn-=pad;
+  var x=function(i){ return PL+(W-PL-PR)*(a.length<2?0.5:i/(a.length-1)); };
+  var y=function(v){ return PT+(H-PT-PB)*(1-(v-mn)/(mx-mn)); };
+
+  var s="", i;
+  for(i=0;i<=3;i++){
+    var gv=mn+(mx-mn)*i/3, gy=y(gv);
+    s+='<line class="gridline" x1="'+PL+'" y1="'+gy+'" x2="'+(W-PR)+'" y2="'+gy+'"/>';
+    s+='<text class="axis" x="'+(PL-8)+'" y="'+(gy+4)+'" text-anchor="end">'+
+       (STATE.metric==="price"?"$"+gv.toFixed(3):num(gv))+'</text>';
+  }
+  if(kind==="bar"){
+    var bw=Math.max(1,(W-PL-PR)/a.length-2);
+    for(i=0;i<a.length;i++){
+      var bh=Math.max(1,y(mn)-y(a[i].v));
+      var isP=(PARTIAL_T&&a[i].t===PARTIAL_T);
+      s+='<rect class="mark-bar'+(isP?" part":"")+'" x="'+(x(i)-bw/2)+'" y="'+y(a[i].v)+'" width="'+bw+'" height="'+bh+'" rx="'+Math.min(4,bw/2)+'"/>';
+    }
+  } else {
+    var d="";
+    for(i=0;i<a.length;i++) d+=(i?"L":"M")+x(i).toFixed(1)+" "+y(a[i].v).toFixed(1);
+    s+='<path class="mark-line" d="'+d+'"/>';
+  }
+  var step=Math.max(1,Math.floor(a.length/5)), longRange=(STATE.days==="max"||+STATE.days>90);
+  for(i=0;i<a.length;i+=step){
+    var dt=new Date(a[i].t);
+    var lab=longRange?(dt.toLocaleDateString("en-US",{month:"short"})+" "+String(dt.getFullYear()).slice(2))
+                     :((dt.getMonth()+1)+"/"+dt.getDate());
+    s+='<text class="axis" x="'+x(i)+'" y="'+(H-6)+'" text-anchor="middle">'+lab+'</text>';
+  }
+  s+='<line id="cx" class="cross" x1="0" y1="'+PT+'" x2="0" y2="'+(H-PB)+'" style="opacity:0"/>';
+  s+='<circle id="cd" class="dot" r="4.5" cx="0" cy="0" style="opacity:0"/>';
+  SVG.innerHTML=s;
+
+  pts=a.map(function(p,idx){ return {x:x(idx),y:y(p.v),t:p.t,v:p.v}; });
+  var last=a[a.length-1], first=a[0];
+  $("c-big").textContent=fmt(last.v);
+  var ch=first.v?((last.v-first.v)/first.v*100):0;
+  var rl=({"7":"7 days","30":"30 days","90":"90 days","182":"6 months","365":"1 year"})[String(STATE.days)]||"all time";
+  // When the requested range was throttled we are drawing the PREVIOUS one, so the button no longer
+  // describes the pixels. Word the label from the span actually plotted — a wrong label is worse than
+  // a missing range, because the percentage below it is real and would be read against the wrong period.
+  if(STALE){
+    var dd=Math.max(1,Math.round((last.t-first.t)/86400000));
+    rl=(dd>=365?(dd/365).toFixed(1)+" years":dd+" days")+" · rate-limited, could not load the range you picked";
+  }
+  $("c-lbl").innerHTML=pctPill(ch)+" over "+rl;
+}
+
+function onMove(ev){
+  if(!pts.length) return;
+  var r=SVG.getBoundingClientRect();
+  var px=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left;
+  px*=(SVG.viewBox.baseVal.width||r.width)/r.width;
+  var best=0,bd=1e9;
+  for(var i=0;i<pts.length;i++){ var d=Math.abs(pts[i].x-px); if(d<bd){bd=d;best=i;} }
+  var p=pts[best], cx=SVG.querySelector("#cx"), cd=SVG.querySelector("#cd");
+  if(cx){ cx.setAttribute("x1",p.x); cx.setAttribute("x2",p.x); cx.style.opacity=kind==="line"?"1":"0"; }
+  if(cd){ cd.setAttribute("cx",p.x); cd.setAttribute("cy",p.y); cd.style.opacity=kind==="line"?"1":"0"; }
+  if(kind==="bar"){ var bars=SVG.querySelectorAll(".mark-bar");
+    for(var k=0;k<bars.length;k++) bars[k].classList.toggle("dim",k!==best); }
+  var sc=r.width/(SVG.viewBox.baseVal.width||r.width);
+  TIP.style.left=(p.x*sc)+"px"; TIP.style.top=(p.y*sc)+"px"; TIP.style.opacity="1";
+  TIP.querySelector(".t1").textContent=fmt(p.v);
+  var when=new Date(p.t).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"});
+  TIP.querySelector(".t2").textContent=when
+    +((PARTIAL_T&&p.t===PARTIAL_T)?" · today, still filling":(VOLRES===604800000&&kind==="bar"?" · week of":""));
+}
+function onLeave(){
+  TIP.style.opacity="0";
+  var cx=SVG.querySelector("#cx"), cd=SVG.querySelector("#cd");
+  if(cx) cx.style.opacity="0"; if(cd) cd.style.opacity="0";
+  var bars=SVG.querySelectorAll(".mark-bar");
+  for(var k=0;k<bars.length;k++) bars[k].classList.remove("dim");
+}
+PLOT.addEventListener("mousemove",onMove);
+PLOT.addEventListener("mouseleave",onLeave);
+PLOT.addEventListener("touchmove",onMove,{passive:true});
+PLOT.addEventListener("touchend",onLeave);
+window.addEventListener("resize",draw);
+
+$("tabs").addEventListener("click",function(e){
+  var b=e.target.closest(".tab"); if(!b) return;
+  [].forEach.call(this.querySelectorAll(".tab"),function(x){x.classList.toggle("on",x===b);});
+  STATE.metric=b.getAttribute("data-m"); setBusy(true); ensure().then(function(){ setBusy(false); draw(); });
+});
+$("ranges").addEventListener("click",function(e){
+  var b=e.target.closest(".rg"); if(!b) return;
+  [].forEach.call(this.querySelectorAll(".rg"),function(x){x.classList.toggle("on",x===b);});
+  var d=b.getAttribute("data-d"); STATE.days=(d==="max")?"max":+d;
+  setBusy(true); ensure().then(function(){ setBusy(false); draw(); });
+});
+
+// CoinGecko's free tier throttles by IP, and its 429 carries no CORS headers — the browser sees only
+// an opaque "Failed to fetch". Two consequences are handled here: cache each range in sessionStorage so
+// re-clicking a range or reloading the page costs nothing, and on failure KEEP the series already drawn
+// rather than blanking the chart, since a wiped chart reads as "the network has no data".
+var priceCache={}, PCK="lx.netstats.price.";
+try{
+  for(var _i=0;_i<sessionStorage.length;_i++){
+    var _k=sessionStorage.key(_i); if(_k.indexOf(PCK)!==0) continue;
+    var _v=JSON.parse(sessionStorage.getItem(_k)||"null");
+    if(_v&&Date.now()-_v.at<600000) priceCache[_k.slice(PCK.length)]=_v.a;
+    else sessionStorage.removeItem(_k);
+  }
+}catch(_){}
+function priceSave(d,a){ try{ sessionStorage.setItem(PCK+d,JSON.stringify({at:Date.now(),a:a})); }catch(_){} }
+function ensure(){
+  var m=STATE.metric;
+  if(m==="price"){
+    var d=String(STATE.days);
+    if(priceCache[d]){ DATA.price=priceCache[d]; STALE=false; return Promise.resolve(); }
+    return loadPrice(d).then(function(a){ priceCache[d]=a; priceSave(d,a); DATA.price=a; STALE=false; })
+                       .catch(function(){ STALE=true; });   // leave DATA.price on the last good series
+  }
+  if(m==="volume"||m==="trades") return loadVolume(STATE.days)
+    .then(function(){ STALE=false; })
+    .catch(function(){ STALE=true; });   // keep the drawn series; draw() words the label from it
+  STALE=false;
+  return Promise.resolve();
+}
+
+$("prov-pairs").textContent=PAIRS.map(function(p){return p[0];}).join(", ")+" vs XLM";
+$("stamp").textContent="updated "+new Date().toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"});
+loadVolume(30);                       // fills the 24h tile + most-traded regardless of the opening chart
+setBusy(true); ensure().then(function(){ setBusy(false); draw(); });
+})();
+</script>
+</body>
+</html>
