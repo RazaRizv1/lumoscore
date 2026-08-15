@@ -610,8 +610,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     function fmtN(n){ n=+n||0; return n.toLocaleString("en-US",{maximumFractionDigits:2}); }
     function px(o){ return +o.price; }
     var cumA=0,cumB=0,aList=[],bList=[];
-    asks.forEach(function(o){ cumA+=+o.amount; aList.push({px:px(o),am:+o.amount,sum:cumA}); });
-    bids.forEach(function(o){ cumB+=+o.amount; bList.push({px:px(o),am:+o.amount,sum:cumB}); });
+    // Horizon reports ASK amounts in the base asset (CODE) and BID amounts in the counter (XLM) --
+    // proved by refetching this market with the pair reversed: bid amounts came back identical to the
+    // reversed asks rather than scaled by price. Rendering both raw made the header "Amount (CODE)"
+    // true for asks and false for bids, and left the two sides incomparable. Normalise so each column
+    // means one thing: amount is CODE, depth is XLM.
+    asks.forEach(function(o){ var am=+o.amount, xlm=am*px(o); cumA+=xlm; aList.push({px:px(o),am:am,sum:cumA}); });
+    bids.forEach(function(o){ var xlm=+o.amount, am=px(o)>0?xlm/px(o):0; cumB+=xlm; bList.push({px:px(o),am:am,sum:cumB}); });
     var maxA=cumA||1, maxB=cumB||1;
     function decs(p){ return p>=1?4:(p>=0.01?5:7); }
     asksEl.innerHTML=aList.slice().reverse().map(function(r){ var w=(r.sum/maxA*100).toFixed(1);
@@ -1391,7 +1396,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     if(pr>0){ var list=(side==="buy")?bids:asks;
       for(var i=0;i<list.length;i++){ var lp=parseFloat(list[i].price);
         var better=(side==="buy")?(lp>=pr):(lp<=pr);
-        if(!better)break; q0+=parseFloat(list[i].amount)||0; n++; } }
+        if(!better)break; var _raw=parseFloat(list[i].amount)||0; q0+=(side==="buy")?(lp>0?_raw/lp:0):_raw; n++; } }
     host.innerHTML='<div class="lx-oc-t">Order context</div>'
       +'<div class="lx-oc-r"><span>Best bid / ask (XLM)</span><b>'+(bb?(+bb.toPrecision(6)):"\u2014")+' / '+(ba?(+ba.toPrecision(6)):"\u2014")+'</b></div>'
       +'<div class="lx-oc-r"><span>Spread</span><b>'+(spread==null?"\u2014":spread.toFixed(2)+"%")+'</b></div>'
@@ -1404,7 +1409,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       else { var _a=(_pf<0.5)?"<1%":(Math.round(_pf)+"%"), _b=Math.max(0,100-Math.round(_pf));
         ocV=_a+" fills now | "+_b+"% open order"; ocC="lx-oc-hi"; } }
     else { ocL="Ahead of you"; ocC=n?"lx-oc-hi":"lx-oc-ok";
-      ocV=n?(abbrNum(q0)+" "+(side==="buy"?"XLM":CODE)+" \\u00b7 "+n+(n===1?" order":" orders")):"nothing \\u2014 first in line"; }
+      ocV=n?(abbrNum(q0)+" "+CODE+" \\u00b7 "+n+(n===1?" order":" orders")):"nothing \\u2014 first in line"; }
     host.innerHTML+='<div class="lx-oc-r"><span>'+ocL+'</span><b class="'+ocC+'">'+ocV+'</b></div>';
   }catch(_){} }
   function setLimitTotalUsd(){ try{
