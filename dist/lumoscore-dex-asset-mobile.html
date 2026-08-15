@@ -6354,9 +6354,16 @@ window.addEventListener('click',function(e){
       +'<div class="lx-oc-r"><span>Best bid / ask (XLM)</span><b>'+(bb?(+bb.toPrecision(6)):"—")+' / '+(ba?(+ba.toPrecision(6)):"—")+'</b></div>'
       +'<div class="lx-oc-r"><span>Spread</span><b>'+(spread==null?"—":spread.toFixed(2)+"%")+'</b></div>'
       +'<div class="lx-oc-r"><span>Your price</span><b class="'+(fills?"lx-oc-ok":"")+'">'+awayTxt+'</b></div>'
-      +'<div class="lx-oc-r"><span>Ahead of you</span><b class="'+(n?"lx-oc-hi":"lx-oc-ok")+'">'
-      +(pr>0?(fills?((fillPct==null)?"fills now":(fillPct>=99.5?"fills now":(fillPct<0.5?"<1% now, rest rests":Math.round(fillPct)+"% now, rest rests"))):(n?(abbrNum(q0)+" "+(side==="buy"?"XLM":CODE)+" · "+n+(n===1?" order":" orders")):"nothing — first in line")):"—")
-      +'</b></div>';
+      +'';
+    var ocL,ocV,ocC;
+    if(!(pr>0)){ ocL="Ahead of you"; ocV="\u2014"; ocC=""; }
+    else if(fills){ ocL="Execution"; var _pf=(fillPct==null)?100:fillPct;
+      if(_pf>=99.5){ ocV="fills now"; ocC="lx-oc-ok"; }
+      else { var _a=(_pf<0.5)?"<1%":(Math.round(_pf)+"%"), _b=Math.max(0,100-Math.round(_pf));
+        ocV=_a+" fills now | "+_b+"% open order"; ocC="lx-oc-hi"; } }
+    else { ocL="Ahead of you"; ocC=n?"lx-oc-hi":"lx-oc-ok";
+      ocV=n?(abbrNum(q0)+" "+(side==="buy"?"XLM":CODE)+" \u00b7 "+n+(n===1?" order":" orders")):"nothing \u2014 first in line"; }
+    host.innerHTML+='<div class="lx-oc-r"><span>'+ocL+'</span><b class="'+ocC+'">'+ocV+'</b></div>';
   }catch(_){} }
   function setLimitTotalUsd(){ try{
     var pane=q(".dxa-pane-limit"); if(!pane)return;
