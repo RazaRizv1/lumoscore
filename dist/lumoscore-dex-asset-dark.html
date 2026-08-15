@@ -2230,6 +2230,7 @@
 .lx-dxsmart .lx-sb-best{flex:0 0 auto;font:800 10.5px/1 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#ea6a2c;background:rgba(234,106,44,.14);border:1px solid rgba(234,106,44,.4);border-radius:7px;padding:5px 8px}
 .lx-supinfo{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:7px;border-radius:50%;border:1.4px solid var(--text-soft,#8a8fa3);color:var(--text-soft,#8a8fa3);font:italic 700 10px/16px Georgia,serif;cursor:default;vertical-align:middle;text-align:center}.lx-supinfo:hover::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);width:220px;background:var(--surface,#fff);color:var(--text,#0e0e10);border:1px solid var(--border,#ececef);border-radius:9px;padding:9px 11px;font:500 12px/1.45 'Hanken Grotesk',system-ui,sans-serif;font-style:normal;letter-spacing:0;text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.22);z-index:60;pointer-events:none;white-space:normal}.lx-supinfo{width:26px!important;height:26px!important;border:0!important;border-radius:50%!important;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;flex:0 0 26px!important;font-size:0!important;margin-left:8px!important}
 .stat-cell .val.lx-hasinfo{overflow:visible!important}
+.dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}
 .stat-cell .lx-supinfo::before{content:"i";display:block;font:italic 700 10px/16px Georgia,serif;color:inherit}
 .stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
 .stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style></head>
@@ -5660,14 +5661,14 @@ window.addEventListener('click',function(e){
   // ================= ORDERBOOK (.dxa-ob-*) =================
   function loadOrderbook(){
     if(NATIVE)return;
-    var url=H+"/order_book?selling_asset_type="+ATYPE+"&selling_asset_code="+CODE+"&selling_asset_issuer="+ISSUER+"&buying_asset_type=native&limit=12";
+    var url=H+"/order_book?selling_asset_type="+ATYPE+"&selling_asset_code="+CODE+"&selling_asset_issuer="+ISSUER+"&buying_asset_type=native&limit=20";
     j(url).then(function(d){ window.__lxDXAob=d; renderOrderbook(); }).catch(function(){});
   }
   function renderOrderbook(){
     var d=window.__lxDXAob; if(!d)return;
     var asksEl=q("#dxaObAsks"), bidsEl=q("#dxaObBids"); if(!asksEl||!bidsEl)return;
     if(asksEl.__lxobd===d && asksEl.classList.contains("lxda"))return; asksEl.__lxobd=d;   // same book already rendered -> skip
-    var asks=(d.asks||[]).slice(0,11), bids=(d.bids||[]).slice(0,11);
+    var asks=(d.asks||[]).slice(0,16), bids=(d.bids||[]).slice(0,16);
     if(!asks.length&&!bids.length)return;
     // header labels: Price (XLM) / Amount (CODE) / Depth
     var head=q(".dxa-ob-head"); if(head){ var hs=head.querySelectorAll("span"); if(hs[0])hs[0].textContent="Price (XLM)"; if(hs[1])hs[1].textContent="Amount ("+CODE+")"; if(hs[2])hs[2].textContent="Depth (XLM)"; }
