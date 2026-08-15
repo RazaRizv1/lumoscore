@@ -1381,7 +1381,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         var better=(side==="buy")?(lp>=pr):(lp<=pr);
         if(!better)break; q0+=parseFloat(list[i].amount)||0; n++; } }
     host.innerHTML='<div class="lx-oc-t">Order context</div>'
-      +'<div class="lx-oc-r"><span>Best bid / ask</span><b>'+(bb?(+bb.toPrecision(6)):"\u2014")+' / '+(ba?(+ba.toPrecision(6)):"\u2014")+'</b></div>'
+      +'<div class="lx-oc-r"><span>Best bid / ask (XLM)</span><b>'+(bb?(+bb.toPrecision(6)):"\u2014")+' / '+(ba?(+ba.toPrecision(6)):"\u2014")+'</b></div>'
       +'<div class="lx-oc-r"><span>Spread</span><b>'+(spread==null?"\u2014":spread.toFixed(2)+"%")+'</b></div>'
       +'<div class="lx-oc-r"><span>Your price</span><b class="'+(fills?"lx-oc-ok":"")+'">'+awayTxt+'</b></div>'
       +'<div class="lx-oc-r"><span>Ahead of you</span><b class="'+(n?"lx-oc-hi":"lx-oc-ok")+'">'
