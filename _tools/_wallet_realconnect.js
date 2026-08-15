@@ -421,6 +421,16 @@ function setConnected(net,row,addr,transport){
 // Skipped on the dashboard (already there) and on /wallet, where the page you are on IS what
 // connecting unlocks and bouncing away would be perverse.
 function lxPostConnectHome(){try{var _p=location.pathname||'';
+  var _d=null;try{_d=sessionStorage.getItem('lumos.connDest');sessionStorage.removeItem('lumos.connDest');}catch(_){}
+  // Connecting from an in-page CTA (Swap on an asset, Add liquidity on a pool, Next on the bridge):
+  // the page they were reading is only worth returning to if the wallet they picked is on the SAME
+  // chain. Pick XRPL while reading a Stellar asset and that asset is not theirs to trade any more,
+  // so the dashboard is the honest destination. Header "Launch App" always means the dashboard.
+  if(_d&&_d.indexOf('stay:')===0){
+    var _was=_d.slice(5),_now='';
+    try{_now=localStorage.getItem('lumos.network')||localStorage.getItem('lumos.chain')||'';}catch(_){}
+    if(_was&&_now&&_was===_now)return;
+  }
   if(/dashboard|lumoscore-home|wallet/.test(_p))return;
   setTimeout(function(){
     try{ if(window.__lxNav){window.__lxNav('lumoscore-home.html');return;} }catch(_){}

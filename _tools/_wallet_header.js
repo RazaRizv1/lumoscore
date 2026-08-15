@@ -136,7 +136,11 @@ function scriptFor(net){
   // the page and destroyed the modal. The other half of that bug lived in _wallet_realconnect.js —
   // network rows carry .lxw-row but no data-wallet, so the real handler skipped them and the design's
   // demo listener navigated. It now claims data-lxnet rows too, so this flow stays in the modal.
-  +'var dc=t.closest(".lx-topwallet[data-lxdisc=\\"1\\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}'
+  +'var dc=t.closest(".lx-topwallet[data-lxdisc=\\"1\\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();'
+  // "Launch App" means take me into the app, not take me back to what I was reading. Always the
+  // dashboard, whatever page it was clicked from and whichever chain they end up connecting on.
+  +'try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}'
+  +'if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}'
   // Disconnect leaves for the landing page rather than reloading in place. Reloading only worked on
   // GATED pages, where the auth gate then bounced to "/" — on a public page (Trade, Pools, an asset
   // page) it reloaded a signed-out view of somewhere that assumes a wallet. replace() not href, so the
