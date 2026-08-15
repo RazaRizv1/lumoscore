@@ -106,6 +106,18 @@ const STYLE = `<style id="lx-dxa-css">
    keep whatever the design gives them. */
 .mdxa-pl-list a.mdxa-pl-row{color:var(--text);text-decoration:none}
 .mdxa-pl-list a.mdxa-pl-row .mdxa-pl-lp{font-size:10.5px;color:var(--text-soft)}
+/* Pools tab pagination. An asset can sit in hundreds of pools (AQUA: 1,301), so the list is paged at
+   25 rather than truncated -- the header count and the rows on screen have to agree. */
+.lx-pl-foot{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:13px 4px 2px;margin-top:6px;border-top:1px solid var(--border);font-size:13px;color:var(--text-soft)}
+.lx-pl-foot .pc{display:flex;align-items:center;gap:0}
+.lx-pl-foot button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6px 13px;font:600 13px/1 'Hanken Grotesk',system-ui,sans-serif;color:var(--text);cursor:pointer}
+.lx-pl-foot button:hover:not(:disabled){border-color:var(--accent-soft)}
+.lx-pl-foot button:disabled{opacity:.4;cursor:default}
+.lx-pl-foot .pmid{margin:0 12px;white-space:nowrap}
+/* Phones: the info line stacks above the controls, and the controls stretch to a comfortable tap size. */
+.mdxa-pools .lx-pl-foot{flex-direction:column;align-items:stretch;gap:8px;text-align:center;font-size:12.5px}
+.mdxa-pools .lx-pl-foot .pc{justify-content:space-between}
+.mdxa-pools .lx-pl-foot button{padding:9px 16px;font-size:13px}
 .lxda-disc-empty{text-align:center;padding:30px 12px;color:var(--text-soft,#8a8fa3);font:600 14px/1.5 'Hanken Grotesk',system-ui,sans-serif}
 .dxa-disc-text{margin-top:4px;line-height:1.5;word-break:break-word}
 /* Exchanges tab: hide its count badge INSTANTLY (JS was hiding it after data load -> a visible count->hidden flash) */
@@ -859,6 +871,41 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){ var recs=(d&&d._embedded&&d._embedded.records)||[]; var m=recs.filter(function(r){return (r.asset||"").indexOf(code+"-"+iss)===0;})[0]; if(!m)return;   // exact code+issuer ONLY — never fall back to another issuer's same-ticker asset
     var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||""; if(!img)return; (window.__lxLogosI=window.__lxLogosI||{})[_k]=img;
       qa('.dxa-pl-ico[data-lxc="'+code+'"][data-lxi="'+(iss||"")+'"]:not([data-lxknown])').forEach(function(el){ el.style.backgroundColor="transparent"; el.style.backgroundImage="url("+img+")"; }); }).catch(function(){}); }
+  // Pools are paged at 25, not truncated. The header says "59 active pools" and the tab badge says 59, so
+  // showing 20 rows and stopping was a straight contradiction -- and the design-era paginator (_dexpag)
+  // saw a 59 count over a 20-row table and padded it out with CLONED rows to 137, inventing pools that do
+  // not exist. Real paging here; _dexpag is told to leave this tab alone.
+  var POOLS_PER=25, poolsPage=1, poolsView=null;
+  function poolsRowsHTML(top,combined){ return top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
+      return '<tr><td><div class="dxa-pl-pair"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
+        +'<span class="dxa-pl-name">'+CODE+' / '+p.other+'</span></div></td>'
+        +'<td class="mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</td>'
+        +'<td class="mono">'+num(p.tl)+'</td>'
+        +'<td class="mono">'+(share>=0.1?share.toFixed(1):"<0.1")+'%</td>'
+        +'<td style="text-align:right"><a class="dxa-pl-cta" href="'+poolHref(p.id)+'">Add liquidity \\u2192</a></td></tr>'; }).join(""); }
+  function poolsMRowsHTML(top,combined){ return top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
+      return '<a class="mdxa-pl-row" href="'+poolHref(p.id)+'">'
+        +'<div class="mdxa-pl-l"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
+        +'<div><div class="mdxa-pl-name">'+CODE+' / '+p.other+'</div>'
+        +'<div class="mdxa-pl-net mdxa-pl-lp">'+num(p.tl)+' LP holders</div></div></div>'
+        +'<div class="mdxa-pl-r"><div class="mdxa-pl-tvl mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</div>'
+        +'<div class="mdxa-pl-apr apr-low">'+(share>=0.1?share.toFixed(1):"<0.1")+'% share</div></div></a>'; }).join(""); }
+  // Repaints rows + footer for the current page. Called on build and by the Prev/Next buttons, so paging
+  // never re-runs the whole panel build (which would refetch logos and re-mask the stat row).
+  function poolsPaint(){ var v=poolsView; if(!v||!v.wrap||!v.wrap.isConnected)return;
+    var pages=Math.max(1,Math.ceil(v.list.length/POOLS_PER));
+    if(poolsPage>pages)poolsPage=pages; if(poolsPage<1)poolsPage=1;
+    var start=(poolsPage-1)*POOLS_PER, end=Math.min(start+POOLS_PER,v.list.length), top=v.list.slice(start,end);
+    var body=v.wrap.querySelector(v.MOB?".mdxa-pl-list":".ex-table tbody");
+    if(body)body.innerHTML=v.MOB?poolsMRowsHTML(top,v.combined):poolsRowsHTML(top,v.combined);
+    var foot=v.wrap.querySelector(".lx-pl-foot");
+    if(foot){ foot.style.display=pages>1?"":"none";
+      foot.innerHTML='<span class="info">Showing '+num(start+1)+'\\u2013'+num(end)+' of '+num(v.list.length)+' pools</span>'
+        +'<span class="pc"><button type="button" class="lx-pl-prev"'+(poolsPage<=1?' disabled':'')+'>\\u2039 Prev</button>'
+        +'<span class="pmid">Page '+poolsPage+' of '+pages+'</span>'
+        +'<button type="button" class="lx-pl-next"'+(poolsPage>=pages?' disabled':'')+'>Next \\u203a</button></span>'; }
+    top.forEach(function(p){ dxaFetchPoolLogo(p.other,p.otherIss); });
+  }
   function applyPools(){ var wrap=panelWrap("pools"); if(!wrap)return; var MOB=isMobPanel(wrap); var raw=window.__lxDXApoolsRaw; if(!raw||!raw.length)return;
     var list=raw.map(function(p){ var other=null; (p.res||[]).forEach(function(rv){ if(rv.code!==CODE&&!other)other=rv; }); if(!other)other=(p.res||[])[0]||{code:"XLM",iss:""};
       var tvlXlm=p.nat>0?p.nat*2:((p.ass>0&&assetXlm>0)?p.ass*assetXlm*2:0);
@@ -866,21 +913,22 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
       .filter(function(p){return p.tvlXlm>0;}).sort(function(a,b){return b.tvlXlm-a.tvlXlm;});
     if(!list.length)return;
     var combined=0,lps=0,feeSum=0; list.forEach(function(p){combined+=p.tvlXlm;lps+=p.tl;feeSum+=p.fee;});
-    var top=list.slice(0,20);
-    var sig=list.length+"|"+Math.round(combined)+"|"+Math.round(xlmUsd*1000)+"|"+top.length;
-    if(wrap.getAttribute("data-lxsig")===sig)return;
+    // The tab badge was written from poolCount (every pool Horizon returns) while the list drops pools with
+    // no TVL, so AQUA advertised 1306 and listed 1,280 — the same "says N, shows fewer" complaint. The badge
+    // now reports what is actually listed, and is re-stated here because this runs after the earlier write.
+    try{ var _pt=qa(".tabs-bar .tab").filter(function(t){return /pools/i.test(t.getAttribute("data-tab")||"");})[0];
+      if(_pt){ var _c=_pt.querySelector(".count"); if(_c){ var _w=MOB?abbrNum(list.length):num(list.length);
+        if(_c.textContent!==String(_w))_c.textContent=_w; lxMark(_c); } } }catch(_){}
+    var sig=list.length+"|"+Math.round(combined)+"|"+Math.round(xlmUsd*1000);
+    poolsView={list:list,combined:combined,wrap:wrap,MOB:MOB};
+    // Data unchanged: the shell is already right, so just repaint the current page. Rebuilding would
+    // reset the reader back to page 1 every time a price tick re-runs this.
+    if(wrap.getAttribute("data-lxsig")===sig){ poolsPaint(); return; }
     var head='<div class="dxa-pl-head">'
       +'<div class="dxa-hl-stat"><span class="lbl">Active pools</span><span class="val mono">'+num(list.length)+'</span></div>'
       +'<div class="dxa-hl-stat"><span class="lbl">Combined TVL</span><span class="val mono">'+(xlmUsd>0?abbrUsd(combined*xlmUsd):abbrNum(combined)+" XLM")+'</span></div>'
       +'<div class="dxa-hl-stat"><span class="lbl">LP positions</span><span class="val mono">'+abbrNum(lps)+'</span></div>'
       +'</div>';
-    var rows=top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
-      return '<tr><td><div class="dxa-pl-pair"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
-        +'<span class="dxa-pl-name">'+CODE+' / '+p.other+'</span></div></td>'
-        +'<td class="mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</td>'
-        +'<td class="mono">'+num(p.tl)+'</td>'
-        +'<td class="mono">'+(share>=0.1?share.toFixed(1):"<0.1")+'%</td>'
-        +'<td style="text-align:right"><a class="dxa-pl-cta" href="'+poolHref(p.id)+'">Add liquidity \\u2192</a></td></tr>'; }).join("");
     if(MOB){
       // Mobile's panel is .mdxa-pl-head + a .mdxa-pl-list of .mdxa-pl-row divs. Its mock row carries an APR
       // badge; we have no honest APR (the desktop table deliberately shows none), so that slot gets the real
@@ -890,16 +938,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         +'<div class="mdxa-hl-stat"><span class="lbl">Combined TVL</span><span class="val mono">'+(xlmUsd>0?abbrUsd(combined*xlmUsd):abbrNum(combined)+" XLM")+'</span></div>'
         +'<div class="mdxa-hl-stat"><span class="lbl">LP positions</span><span class="val mono">'+abbrNum(lps)+'</span></div>'
         +'</div>';
-      var mrows=top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
-        return '<a class="mdxa-pl-row" href="'+poolHref(p.id)+'">'
-          +'<div class="mdxa-pl-l"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
-          +'<div><div class="mdxa-pl-name">'+CODE+' / '+p.other+'</div>'
-          +'<div class="mdxa-pl-net mdxa-pl-lp">'+num(p.tl)+' LP holders</div></div></div>'
-          +'<div class="mdxa-pl-r"><div class="mdxa-pl-tvl mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</div>'
-          +'<div class="mdxa-pl-apr apr-low">'+(share>=0.1?share.toFixed(1):"<0.1")+'% share</div></div></a>'; }).join("");
-      wrap.innerHTML=mhead+'<div class="mdxa-pl-list">'+mrows+'</div>';
+      wrap.innerHTML=mhead+'<div class="mdxa-pl-list"></div><div class="lx-pl-foot"></div>';
     }
-    else wrap.innerHTML=head+'<table class="ex-table"><thead><tr><th>Pool</th><th>TVL</th><th>LP holders</th><th>Pool share</th><th></th></tr></thead><tbody>'+rows+'</tbody></table>';
+    else wrap.innerHTML=head+'<table class="ex-table"><thead><tr><th>Pool</th><th>TVL</th><th>LP holders</th><th>Pool share</th><th></th></tr></thead><tbody></tbody></table><div class="lx-pl-foot"></div>';
+    // Delegated, and bound to the freshly-built wrap, so it cannot double-fire across rebuilds.
+    wrap.addEventListener("click",function(e){ var t=e.target&&e.target.closest?e.target.closest(".lx-pl-prev,.lx-pl-next"):null; if(!t)return;
+      e.preventDefault(); poolsPage+=t.className.indexOf("lx-pl-next")>=0?1:-1; poolsPaint(); });
+    poolsPaint();
     wrap.setAttribute("data-lxsig",sig);
     // ".dxa-hl-stat .val" is in LXSTRICT, so the mask observer deliberately never auto-reveals it — a strict
     // element only unmasks where WE mark it. These four are built fresh by the innerHTML above, so without
@@ -907,7 +952,6 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
     // Avg fee) rendered with a blank space under each. applyHolders already lxMark()s its stats; this is the
     // same obligation. Any NEW strict element created by a painter must be marked here too.
     qa(".dxa-pools .dxa-hl-stat .val,.mdxa-pools .mdxa-hl-stat .val").forEach(function(v){ lxMark(v); });
-    top.forEach(function(p){ dxaFetchPoolLogo(p.other,p.otherIss); });
   }
 
   // ================= Buy/Sell trade widget — REAL execution (Phase 2) =================
