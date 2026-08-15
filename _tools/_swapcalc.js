@@ -5,6 +5,18 @@
 // Rate is read from each popup's own displayed rate so every chain keeps its native pair. Idempotent.
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
+// The review step drew letter avatars instead of logos on the LUMOS token page. ssIco() resolved XLM via
+// window.__lxStellarUri and everything else via window.__lxLogos -- both published by _walletdata.js,
+// which only runs on the wallet pages. Anywhere else the lookup found nothing and fell through to the
+// initial-letter placeholder. Baked as a LAST resort so the icons are right on every page carrying a
+// swap; the runtime globals still win where they exist. The Stellar mark is read out of _walletdata.js
+// at build time so it stays defined in exactly one place.
+const SW_STELLAR_URI = (function(){ const w = fs.readFileSync(__dirname + "/_walletdata.js", "utf8");
+  const m = /STELLAR_URIs*=s*'([^']+)'/.exec(w);
+  if (!m) throw new Error("_swapcalc: STELLAR_URI not found in _walletdata.js");
+  return m[1]; })();
+const SW_LUMOS_LOGO = "https://stellar.myfilebase.com/ipfs/QmTrohhpDADXPw9fkLT2J8aip7SxZEoqcvpZ7jBgW9HYSp";
+
 const STYLE='<style id="lx-swapcalc-css">'
 +'.lx-swapd{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:8px 13px;margin:0 0 13px;font-size:13.5px}'
 +'.lx-swapd .r{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:4px 0;color:var(--text-soft)}'
@@ -166,7 +178,7 @@ const ROWS='\'<div class="r"><span>Rate</span><strong data-k="rate">&mdash;</str
 +'+\'<div class="r rtot"><span>Minimum received</span><strong data-k="min">&mdash;</strong></div>\''
 +'+\'<div class="lx-feenote" data-k="feenote"></div>\'';
 
-const SCRIPT='<script id="lx-swapcalc">(function(){'
+const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI+'",SWLL="'+SW_LUMOS_LOGO+'";'+''
 +'function fmt(x){if(!isFinite(x))return "0";return x.toLocaleString("en-US",{maximumFractionDigits:6});}'
 +'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'
 +'function swAbbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e12)return (n/1e12).toFixed(2)+"T";if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3&&a<1e5)return fmt(n);if(a>=1e5)return (n/1e3).toFixed(1)+"K";return fmt(n);}'
@@ -345,7 +357,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'
 +'function smartBadge(){var b=modal.querySelector(".lx-smart-badge");if(!b){b=document.createElement("div");b.className="lx-smart-badge";var pr=modal.querySelector(".swap-pair");if(pr&&pr.parentNode)pr.parentNode.insertBefore(b,pr.nextSibling);}return b;}'
 +'function hideBadge(){var b=modal.querySelector(".lx-smart-badge");if(b)b.style.display="none";}'
 // step-2 compact "you pay / you receive" summary (replaces the full picker on the review screen)
-+'function ssIco(a){if(!a)return "";var lg=(a.native||a.code==="XLM")?(window.__lxStellarUri||""):(a.logo||(window.__lxLogos||{})[a.code]||"");var bg=lg?("url(\\x27"+String(lg).replace(/\\x27/g,"%27")+"\\x27)"):swCol(a.code||"?");return \'<span class="lx-ss-ico" style="--al:\'+bg+\'" data-l="\'+(lg?"":esc((a.code||"?").slice(0,1).toUpperCase()))+\'"></span>\';}'
++'function ssIco(a){if(!a)return "";var lg=(a.native||a.code==="XLM")?(window.__lxStellarUri||SWSU):(a.logo||(window.__lxLogos||{})[a.code]||(a.code==="LUMOS"?SWLL:""));var bg=lg?("url(\\x27"+String(lg).replace(/\\x27/g,"%27")+"\\x27)"):swCol(a.code||"?");return \'<span class="lx-ss-ico" style="--al:\'+bg+\'" data-l="\'+(lg?"":esc((a.code||"?").slice(0,1).toUpperCase()))+\'"></span>\';}'
 +'function fillSummary(){if(!_summary)return;var fa=fromF.__lxasset||{code:symOf(fromF)},ta=toF.__lxasset||{code:symOf(toF)};var _fvR=(fromInput.value||"").trim();var _fvN=parseFloat(_fvR.replace(/,/g,""))||0;var fv=(_fvN>=1000)?Math.round(_fvN).toLocaleString("en-US"):_fvR;var _tvR=(toInput.value||"").trim();var _tvN=parseFloat(_tvR.replace(/,/g,""))||0;var tv=(_tvN>=1)?Math.round(_tvN).toLocaleString("en-US"):_tvR;_summary.innerHTML=\'<div class="lx-ss-row"><div class="lx-ss-head">\'+ssIco(fa)+\'<span class="lx-ss-lbl">You pay</span></div><div class="lx-ss-val">\'+esc(fv)+\'<span class="lx-ss-code">\'+esc(fa.code)+\'</span></div></div><div class="lx-ss-arrow"><svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></div><div class="lx-ss-row"><div class="lx-ss-head">\'+ssIco(ta)+\'<span class="lx-ss-lbl">You receive</span></div><div class="lx-ss-val">\'+esc(tv)+\'<span class="lx-ss-code">\'+esc(ta.code)+\'</span></div></div>\';}'
 +'function protLabel(soro){var ps=(soro.route||[]).map(function(x){return x.p;}).filter(function(v,i,a){return v&&a.indexOf(v)===i;});var nice={aqua:"Aquarius",soroswap:"Soroswap",phoenix:"Phoenix",sdex:"Stellar DEX"};return ps.map(function(p){return nice[p]||p;}).join(" + ")||"Aquarius";}'
 // render the review panel from a Soroswap best-rate quote (full amount, no LumosCore fee -> best price)
