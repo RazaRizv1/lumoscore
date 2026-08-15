@@ -596,7 +596,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // ================= ORDERBOOK (.dxa-ob-*) =================
   function loadOrderbook(){
     if(NATIVE)return;
-    var url=H+"/order_book?selling_asset_type="+ATYPE+"&selling_asset_code="+CODE+"&selling_asset_issuer="+ISSUER+"&buying_asset_type=native&limit=20";
+    var url=H+"/order_book?selling_asset_type="+ATYPE+"&selling_asset_code="+CODE+"&selling_asset_issuer="+ISSUER+"&buying_asset_type=native&limit=200";
     j(url).then(function(d){ window.__lxDXAob=d; renderOrderbook(); }).catch(function(){});
   }
   function renderOrderbook(){
@@ -1392,8 +1392,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
           have+=(side==="buy")?ka:(kp>0?ka/kp:0); }
         fillPct=Math.max(0,Math.min(100,have/want*100)); } }
     // queue: orders already at your price or better on YOUR side of the book
-    var q0=0,n=0;
-    if(pr>0){ var list=(side==="buy")?bids:asks;
+    var q0=0,n=0,list0=[];
+    if(pr>0){ var list=(side==="buy")?bids:asks; list0=list;
       for(var i=0;i<list.length;i++){ var lp=parseFloat(list[i].price);
         var better=(side==="buy")?(lp>=pr):(lp<=pr);
         if(!better)break; var _raw=parseFloat(list[i].amount)||0; q0+=(side==="buy")?(lp>0?_raw/lp:0):_raw; n++; } }
@@ -1409,7 +1409,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       else { var _a=(_pf<0.5)?"<1%":(Math.round(_pf)+"%"), _b=Math.max(0,100-Math.round(_pf));
         ocV=_a+" fills now | "+_b+"% open order"; ocC="lx-oc-hi"; } }
     else { ocL="Ahead of you"; ocC=n?"lx-oc-hi":"lx-oc-ok";
-      ocV=n?(abbrNum(q0)+" "+CODE+" \\u00b7 "+n+(n===1?" order":" orders")):"nothing \\u2014 first in line"; }
+      var _cq=(n>0&&n>=list0.length); ocV=n?((_cq?"over ":"")+abbrNum(q0)+" "+CODE+" \\u00b7 "+n+(_cq?"+ orders":(n===1?" order":" orders"))):"nothing \\u2014 first in line"; }
     host.innerHTML+='<div class="lx-oc-r"><span>'+ocL+'</span><b class="'+ocC+'">'+ocV+'</b></div>';
   }catch(_){} }
   function setLimitTotalUsd(){ try{
