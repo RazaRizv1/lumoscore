@@ -1355,12 +1355,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   }catch(_){} return "buy"; }
   function setOrderCtx(){ try{
     var pane=q(".dxa-pane-limit"); if(!pane)return;
-    var bk=window.__lxDXAbook; if(!bk)return;
+    var bk=window.__lxDXAob||window.__lxDXAbook; if(!bk)return;
     var asks=(bk.asks||[]), bids=(bk.bids||[]);
     if(!asks.length&&!bids.length)return;
     var host=pane.querySelector(".lx-oc");
     if(!host){ host=document.createElement("div"); host.className="lx-oc";
-      var sum=pane.querySelector(".dxa-trade-summary");
+      var sum=pane.querySelector(".dxa-trade-summary,.mdxa-trade-summary");
       if(sum&&sum.parentNode)sum.parentNode.insertBefore(host,sum); else pane.appendChild(host); }
     var f=pane.querySelectorAll(".dxa-trade-field");
     var pin=f.length?f[0].querySelector("input"):null;
