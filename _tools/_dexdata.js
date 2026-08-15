@@ -406,9 +406,49 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var volTh=thr.querySelector(".th-vol");
     if(volTh){ thr.insertBefore(th,volTh.nextSibling); } else { thr.appendChild(th); }
   }
+  // ---- pagination -----------------------------------------------------------------------------------
+  var MK_PER=25, mkPage=1;
+  var PG_F='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>';
+  var PG_P='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="15 18 9 12 15 6"/></svg>';
+  var PG_N='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="9 18 15 12 9 6"/></svg>';
+  var PG_L='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>';
+  function renderPager(pages){
+    var pg=q(".dex-mk-pager"); if(!pg)return;
+    // One page needs no controls -- a lone "1" with four dead arrows is furniture, not navigation.
+    if(pages<2){ if(pg.__lxh!=="")  { pg.innerHTML=""; pg.__lxh=""; } pg.style.display="none"; return; }
+    pg.style.display="";
+    var h="";
+    function nav(ic,to,lab){ var off=(to<1||to>pages||to===mkPage);
+      return '<button class="dex-mk-pgbtn" data-pg="'+to+'" aria-label="'+lab+'"'+(off?' disabled style="opacity:.4;cursor:default"':"")+'>'+ic+'</button>'; }
+    h+=nav(PG_F,1,"First")+nav(PG_P,mkPage-1,"Previous");
+    // a five-wide window around the current page, with the first/last page always reachable
+    var lo=Math.max(1,mkPage-2), hi=Math.min(pages,lo+4); lo=Math.max(1,hi-4);
+    if(lo>1){ h+='<button class="dex-mk-pgbtn" data-pg="1">1</button>'; if(lo>2)h+='<span class="dex-mk-dots">\u2026</span>'; }
+    for(var i=lo;i<=hi;i++)h+='<button class="dex-mk-pgbtn'+(i===mkPage?" active":"")+'" data-pg="'+i+'">'+i+'</button>';
+    if(hi<pages){ if(hi<pages-1)h+='<span class="dex-mk-dots">\u2026</span>'; h+='<button class="dex-mk-pgbtn" data-pg="'+pages+'">'+pages+'</button>'; }
+    h+=nav(PG_N,mkPage+1,"Next")+nav(PG_L,pages,"Last");
+    if(pg.__lxh!==h){ pg.innerHTML=h; pg.__lxh=h; }
+    if(!pg.__lxw){ pg.__lxw=1;
+      // CAPTURE, and stop the event here: the layer already runs a window-capture nav handler for rows,
+      // and the design has its own click plumbing in this footer.
+      pg.addEventListener("click",function(e){
+        var b=e.target&&e.target.closest?e.target.closest("[data-pg]"):null; if(!b||b.disabled)return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        var n=+b.getAttribute("data-pg")||1; if(n===mkPage)return; mkPage=n; guardApply();
+        try{ var sec=q(".dex-markets"); if(sec&&sec.scrollIntoView)sec.scrollIntoView({block:"start",behavior:"smooth"}); }catch(_){}
+      },true); }
+  }
   function renderTable(){ var tb=q("#dexMkTbody"); if(!tb)return;
     try{ ensureTradesHeader(); }catch(_){}
-    var data=tableData(), sig=tableSig();
+    var all=tableData();
+    // A new filter or search starts at page 1 -- but NOT a data refresh. tableSig() also moves as the
+    // native roster loads, so keying the reset on it would yank a reader back to page 1 mid-browse.
+    var fkey=curFilter()+"|"+(((q("#dexMkSearch")||{}).value)||"").trim().toLowerCase();
+    if(tb.__lxfk!==fkey){ tb.__lxfk=fkey; mkPage=1; }
+    var pages=Math.max(1,Math.ceil(all.length/MK_PER)); if(mkPage>pages)mkPage=pages;
+    var start=(mkPage-1)*MK_PER, data=all.slice(start,start+MK_PER);
+    var sig=tableSig()+"|p"+mkPage;
+    try{ renderPager(pages); }catch(_){}
     // rebuild the skeleton ONLY when the filter/search changes (user action) or our rows were clobbered
     if(tb.__lxsig!==sig || (!tb.querySelector("tr[data-tkr]")&&!tb.querySelector("tr.lx-dex-empty-row"))){
       if(!data.length){ tb.innerHTML='<tr class="lx-dex-empty-row"><td colspan="9"><div class="lx-dex-empty">No matching markets on Stellar right now.</div></td></tr>'; }
@@ -433,8 +473,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       tb.__lxsig=sig; paintIcons(tb);
       qa("tr[data-tkr]",tb).forEach(function(tr){ tr.addEventListener("click",function(){ var a=byCode[tr.getAttribute("data-tkr")]; if(a)navTo(a); }); });
       qa(".dex-mk-action-btn",tb).forEach(function(btn){ btn.addEventListener("click",function(e){ e.stopPropagation(); var a=byCode[btn.getAttribute("data-tkr")]; if(a)navTo(a); }); });
-      var shown=q("#dexMkShown"); if(shown)setTxt(shown,data.length===0?"0":"1\\u2013"+data.length);
-      var strongs=qa(".dex-mk-page-info strong"); if(strongs[1])setTxt(strongs[1],String(curFilter()==="native"?NATIVE.length:ASSETS.length));
+      var shown=q("#dexMkShown"); if(shown)setTxt(shown,data.length===0?"0":(start+1)+"\\u2013"+(start+data.length));
+      var strongs=qa(".dex-mk-page-info strong"); if(strongs[1])setTxt(strongs[1],String(all.length));
       tb.classList.add("lxd");
     }
     // fill values in place (no innerHTML churn -> no glitch); gated so ALL rows' details reveal together
