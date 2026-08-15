@@ -109,7 +109,7 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'function disc(){return window.__lxFeeRate===0.001;}'
 +'function rateTxt(){return disc()?"0.1%":"0.2%";}'
 +'function feeHTML(){return disc()?\'<span class="lx-feerate mono">0.1%</span>\''
-+':\'<span class="lx-feerate lx-feeold mono">0.2%</span><span class="lx-feechip">'+DOWN+'GET 50% Discount<i class="lx-fmsep"></i><b class="lx-fmore">Learn more<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></b></span>\';}'
++':\'<span class="lx-feerate lx-feeold mono">0.2%</span><span class="lx-feechip">'+DOWN+'GET 50% OFF</span>\';}'
 // Mobile ships the same summary under a DIFFERENT class -- .mdxa-trade-summary -- while the pane
 // itself still carries .dxa-pane-swap. So this selector matched nothing there and the Trading fee row
 // was simply never appended: the phone showed Rate / Price impact / Min received and stopped, with no
