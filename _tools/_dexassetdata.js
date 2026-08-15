@@ -106,6 +106,14 @@ const STYLE = `<style id="lx-dxa-css">
    keep whatever the design gives them. */
 .mdxa-pl-list a.mdxa-pl-row{color:var(--text);text-decoration:none}
 .mdxa-pl-list a.mdxa-pl-row .mdxa-pl-lp{font-size:10.5px;color:var(--text-soft)}
+/* Layout guard for the swap panel, independent of the input cap above. A long number should shorten
+   itself, never rearrange the card around it: the label row must stay one line with the label at its
+   natural width, and the numbers ellipsis inside whatever space is left. Without this a big enough value
+   wrapped "You pay" onto two lines and pushed the dollar figure outside the panel. */
+.dxa-trade-frow{flex-wrap:nowrap;gap:10px;align-items:baseline}
+.dxa-trade-frow>span:first-child{flex:0 0 auto;white-space:nowrap}
+.dxa-trade-frow .mono{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dxa-trade-field input{min-width:0;max-width:100%}
 /* Pay-side dollar value. The row is space-between with "You pay" on the left and the balance on the
    right; margin-left:auto pulls this into the right-hand group so the two sit together and the balance
    keeps its place. Allowed to shrink and ellipsis rather than push the balance off a narrow phone. */
@@ -1202,6 +1210,28 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
   // a worsening in either direction and so always came out negative. Hence a buy of LUMOS reported -4.65%
   // when the trade was pushing LUMOS UP. Magnitude from the quote; direction from which side the asset is
   // on. The pair on this widget is always CODE against XLM (Buy = receive CODE, Sell = pay CODE).
+  // Input ceiling. Stellar amounts are int64 stroops, so 922,337,203,685.4775807 is the largest quantity
+  // of ANY asset the protocol can carry -- there is no such thing as a larger swap, which makes this the
+  // real limit rather than a number picked to look sensible. Past it the figures meant nothing, and since
+  // every line on the panel derives from this one box, the digits grew wide enough to shove the labels out
+  // of their own cards ("You pay" wrapping onto two lines, values spilling the panel).
+  // Also holds the field to Stellar's 7 decimal places and to a single decimal point.
+  var DX_MAXSTR="922337203685.4775807";
+  var DX_MAXMSG="Maximum is 922,337,203,685.4775807 \\u2014 Stellar cannot carry a larger amount";
+  // Compare in STROOPS as integers. A double cannot hold the limit: parseFloat("922337203685.4775808")
+  // rounds to exactly the maximum, so a float compare let the one value just past the ceiling through,
+  // and String(max) rendered as "922337203685.4775" -- clamping to a number that was not the limit.
+  function dxStroops(v){ var p=v.split("."), a=(p[0]||"0"), b=(p[1]||"").slice(0,7);
+    while(b.length<7)b+="0";
+    try{ return BigInt(a||"0")*BigInt(10000000)+BigInt(b||"0"); }catch(e){ return null; } }
+  function dxClamp(inp){ if(!inp)return false;
+    var raw=String(inp.value==null?"":inp.value), v=raw.replace(/[^0-9.]/g,"");
+    var i=v.indexOf("."); if(i>=0)v=v.slice(0,i+1)+v.slice(i+1).replace(/\\./g,"");   // one decimal point only
+    var d=v.indexOf("."); if(d>=0&&v.length-d-1>7)v=v.slice(0,d+8);                  // 7dp, Stellar precision
+    var capped=false, st=v?dxStroops(v):null;
+    if(st!==null&&st>BigInt("9223372036854775807")){ v=DX_MAXSTR; capped=true; }
+    if(v!==raw)inp.value=v;
+    return capped; }
   function dxImpDir(ra){ return (ra&&!ra.native&&ra.code===CODE)?1:-1; }
   // Turn "execution came out r times spot" into the move in the ASSET's price.
   //
@@ -1491,8 +1521,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){
         dxExecute(); return; }
     },true);
     pane.addEventListener("input",function(e){ var t=e.target; if(t&&t.tagName==="INPUT"){
-      var pf=payEl(); if(pf&&pf.contains(t)){ _dxQuick=null; qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(o){o.classList.remove("lxq-active");}); dxQuote(); return; }
-      var rf=recvEl(); if(rf&&rf.contains(t)){ dxQuoteReverse(); } } },true);
+      var capped=dxClamp(t);
+      var pf=payEl(); if(pf&&pf.contains(t)){ _dxQuick=null; qa(".dxa-pane-swap .dxa-trade-quick button").forEach(function(o){o.classList.remove("lxq-active");}); dxQuote(); if(capped)dxErr(DX_MAXMSG); return; }
+      var rf=recvEl(); if(rf&&rf.contains(t)){ dxQuoteReverse(); if(capped)dxErr(DX_MAXMSG); } } },true);
     // When You receive loses focus, settle it to the figure the forward quote actually returned, so the
     // number on screen is always the one the swap was priced at rather than what was typed.
     pane.addEventListener("blur",function(e){ var t=e.target;
