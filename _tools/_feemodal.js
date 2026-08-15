@@ -10,12 +10,12 @@ const CLOSE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-w
 const DARROW='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="6 13 12 19 18 13"/></svg>';
 
 const STYLE='<style id="lx-feemodal-css">'
-+'.lx-feerow{border-top:1px dashed var(--border);margin-top:4px !important;padding-top:8px !important}'
++'.lx-feerow{border-top:1px dashed var(--border);margin-top:4px !important;padding-top:8px !important;gap:12px}'+'.lx-feerow>*:first-child{flex:0 0 auto;margin-right:2px}'+'@media (max-width:430px){.lx-feechip{font-size:10.5px;padding:4px 9px;gap:4px}.lx-feerow{gap:8px}}'
 +'.lx-feehint{display:inline-flex;align-items:center;gap:9px;flex-wrap:nowrap;min-width:0}'
 +'.lx-feeold{color:var(--text);font-weight:800;letter-spacing:-.01em}.lx-feerate{font-weight:800}.lx-feehint .lx-feerate:only-child{color:#0b7a48}[data-theme="dark"] .lx-feehint .lx-feerate:only-child{color:#6ef0b4}'
 +'.lx-feechip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:800;letter-spacing:.2px;color:#0b7a48;background:linear-gradient(135deg,rgba(31,169,104,.18),rgba(31,169,104,.07));border:1px solid rgba(31,169,104,.34);border-radius:999px;padding:4px 11px;cursor:pointer;white-space:nowrap;box-shadow:0 2px 8px -5px rgba(31,169,104,.6);transition:transform .16s ease,box-shadow .16s ease,background .16s ease}'
 +'.lx-feechip:hover{transform:translateY(-1px);background:linear-gradient(135deg,rgba(31,169,104,.26),rgba(31,169,104,.12));box-shadow:0 5px 14px -6px rgba(31,169,104,.65)}.lx-feechip:active{transform:translateY(0)}'
-+'.lx-feechip svg{width:12px;height:12px;flex:0 0 auto}'
++'.lx-feechip svg{width:12px;height:12px;flex:0 0 auto}.lx-fmsep{width:1px;height:11px;background:currentColor;opacity:.32;margin:0 1px;flex:0 0 auto}.lx-fmore{display:inline-flex;align-items:center;gap:2px;font-weight:700;opacity:.92}.lx-fmore svg{width:9px;height:9px}'
 +'[data-theme="dark"] .lx-feechip{color:#6ef0b4;background:linear-gradient(135deg,rgba(53,192,127,.24),rgba(53,192,127,.09));border-color:rgba(110,240,180,.38);box-shadow:0 2px 10px -5px rgba(53,192,127,.6)}[data-theme="dark"] .lx-feechip:hover{background:linear-gradient(135deg,rgba(53,192,127,.34),rgba(53,192,127,.14))}'
 +'.lx-feemodal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,10,14,.55);backdrop-filter:blur(3px)}'
 +'.lx-fm-card{width:min(420px,94vw);max-height:92vh;overflow:auto;background:var(--surface,#fff);border:1px solid var(--border);border-radius:18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55);animation:lxfmin .22s ease}'
@@ -109,7 +109,7 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'function disc(){return window.__lxFeeRate===0.001;}'
 +'function rateTxt(){return disc()?"0.1%":"0.2%";}'
 +'function feeHTML(){return disc()?\'<span class="lx-feerate mono">0.1%</span>\''
-+':\'<span class="lx-feerate lx-feeold mono">0.2%</span><span class="lx-feechip">'+DOWN+'0.1% with LUMOS</span>\';}'
++':\'<span class="lx-feerate lx-feeold mono">0.2%</span><span class="lx-feechip">'+DOWN+'0.1% with LUMOS<i class="lx-fmsep"></i><b class="lx-fmore">View more<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 6 15 12 9 18"/></svg></b></span>\';}'
 // Mobile ships the same summary under a DIFFERENT class -- .mdxa-trade-summary -- while the pane
 // itself still carries .dxa-pane-swap. So this selector matched nothing there and the Trading fee row
 // was simply never appended: the phone showed Rate / Price impact / Min received and stopped, with no
@@ -117,7 +117,7 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'function addRows(){var sums=document.querySelectorAll(".dxa-pane-swap .dxa-trade-summary,.dxa-pane-limit .dxa-trade-summary,.dxa-pane-swap .mdxa-trade-summary,.dxa-pane-limit .mdxa-trade-summary");'
 +'sums.forEach(function(sum){var ex=sum.querySelector(".lx-feerow");'
 +'if(ex){var hint=ex.querySelector(".lx-feehint");if(hint)hint.innerHTML=feeHTML();return;}'
-+'var row=document.createElement("div");row.className="dxa-tsum-row lx-feerow";'
++'var row=document.createElement("div");var sib=sum.querySelector(".dxa-tsum-row");row.className=(sib?sib.className.replace(/\blx-feerow\b/g,"")+" ":"dxa-tsum-row ")+"lx-feerow";'
 +'row.innerHTML=\'<span>Trading fee</span><span class="lx-feehint">\'+feeHTML()+\'</span>\';'
 +'sum.appendChild(row);});return sums.length>0;}'
 +'window.addEventListener("lx:feetier",function(){addRows();});'
