@@ -4368,6 +4368,7 @@ window.addEventListener('click',function(e){
   // ---- helpers (mirrors _dexassetdata) ----
   function fetchJ(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
   // at most MAXQ requests in flight; everything else waits its turn
+  function wait(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
   var MAXQ=6, qRun=0, qWait=[];
   function qNext(){ if(qRun>=MAXQ||!qWait.length)return; qRun++; var t=qWait.shift();
     t.go().then(t.ok,t.no).then(function(){ qRun--; qNext(); },function(){ qRun--; qNext(); }); }
@@ -4375,11 +4376,12 @@ window.addEventListener('click',function(e){
   function j(u){
     return queued(function(){
       return fetchJ(u).catch(function(e){
-        // one retry on the primary before switching hosts: a dropped connection is not a missing asset,
-        // and the mirror does not carry every asset (ZERO/UPT 404 there).
-        return fetchJ(u).catch(function(){
-          if(u.indexOf("horizon.stellar.org")>=0)return fetchJ(u.replace("horizon.stellar.org","horizon.stellar.lobstr.co"));
-          throw e; });
+        // A 429 arrives without CORS headers, so we cannot tell it apart from a network fault -- assume
+        // the worse of the two and back off. Retrying instantly is what deepens a rate limit.
+        return wait(500).then(function(){ return fetchJ(u); }).catch(function(){
+          return wait(1400).then(function(){ return fetchJ(u); }).catch(function(){
+            if(u.indexOf("horizon.stellar.org")>=0)return fetchJ(u.replace("horizon.stellar.org","horizon.stellar.lobstr.co"));
+            throw e; }); });
       });
     });
   }
@@ -4795,7 +4797,9 @@ window.addEventListener('click',function(e){
       if(rec.balances)a.supply=+rec.balances.authorized||+rec.balances.authorized_to_maintain_liabilities||a.supply;
       else if(rec.amount!=null)a.supply=+rec.amount; touch(); }).catch(function(){}));
     // issuer home_domain (-> mint/mover sub + stellar.toml logo)
-    calls.push(j(H+"/accounts/"+a.issuer).then(function(acc){ a.domain=acc.home_domain||""; touch(); if(acc.home_domain)loadToml(a,acc.home_domain); }).catch(function(){ a.domain=""; }));
+    // home_domain is stable and the cached roster already carries it -- only ask when we do not know
+    if(a.domain){ loadToml(a,a.domain); }
+    else calls.push(j(H+"/accounts/"+a.issuer).then(function(acc){ a.domain=acc.home_domain||""; touch(); if(acc.home_domain)loadToml(a,acc.home_domain); }).catch(function(){ a.domain=""; }));
     return Promise.all(calls);
   }
 
