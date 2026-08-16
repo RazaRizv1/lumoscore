@@ -1652,23 +1652,28 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       }).catch(function(){ LPQ.busy=0; });
     }
   }
-  // "2 withdrawals" reads like a fault until you know it means 2 in the last 3,000 operations. This line
-  // says how deep the search went, so the number can be read for what it is.
+  // REMOVER ONLY. This used to append "Searched the last 600 pool operations (about 185 days)." under the
+  // transactions card, on the reasoning that "2 withdrawals" reads like a fault until you know it means 2
+  // out of 600. That reasoning still holds, but the line as built did not: it had no stylesheet rule, so it
+  // inherited page body type and landed under the card as loose sentence-case prose rather than a footnote,
+  // reading as stray text. Removed on request.
   //
-  // There is deliberately no "keep looking" control here, unlike the Trade-asset one. A deeper crawl is
+  // The same depth is still stated where it actually resolves an ambiguity -- the EMPTY state, which says
+  // "No withdraw in the last 600 pool operations (about 185 days)." There a zero is genuinely misleading
+  // without it. That one is inside the list and styled with it, and is deliberately kept.
+  //
+  // Kept as a function rather than deleted at the call sites so a node left over from a cached page still
+  // gets cleaned rather than sitting there forever.
+  //
+  // Also still true: there is no "keep looking" control here, unlike the Trade-asset one. A deeper crawl is
   // written (lpDeepen) and it demonstrably runs -- it walks to the 3,000-operation ceiling -- but the rows
   // it should append never reached DET.txs and I have not isolated why. Shipping a control that spends ten
   // Horizon requests and then changes nothing on screen is worse than not offering it, so it stays
   // unhooked until the append is understood and proven.
   function lpDepthNote(host){
     if(!host) return;
-    var rare=(txFiltM==="deposit"||txFiltM==="withdraw")||(txFilt==="deposit"||txFilt==="withdraw");
     var n=host.querySelector(".lx-lpdepth");
-    if(!rare||!LPQ.scanned){ if(n&&n.parentNode)n.parentNode.removeChild(n); return; }
-    if(!n){ n=document.createElement("div"); n.className="lx-lpdepth"; host.appendChild(n); }
-    if(host.lastElementChild!==n)host.appendChild(n);
-    var t="Searched the last "+num(LPQ.scanned)+" pool operations"+lpSpan()+".";
-    if(n.textContent!==t) n.textContent=t;
+    if(n&&n.parentNode)n.parentNode.removeChild(n);
   }
   function txFilterM(label,keepPage){
     var f=String(label||"").trim().toLowerCase();
