@@ -813,7 +813,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     if(MOB){ tb.innerHTML=f.map(function(r){
       return '<div class="ex-row" data-lxda="1">'
         +'<span class="ex-ident">'+identicon(r.addr,28)+'</span>'
-        +'<div class="ex-meta"><div class="nm mono">'+shortG(r.addr)+'</div>'
+        +'<div class="ex-meta"><div class="nm mono">'+(r.addr.charAt(0)==="C"
+          ? (shortG(r.addr)+'<span class="lx-sortag">Soroban</span>')
+          : ('<a class="lx-acct" href="/account/stellar/'+r.addr+'">'+shortG(r.addr)+'</a>'))+'</div>'
         +'<div class="ex-sub"><span class="type-badge '+r.side+'">'+(r.side==="buy"?"▲ Buy":"▼ Sell")+'</span></div></div>'
         +'<div class="ex-num">'+r.px.toFixed(decs(r.px))+' XLM<span class="sub">'+xlmAmt(r.amount)+' '+CODE+'</span></div>'
         +'<div class="ex-time">'+r.time+'</div>'
@@ -825,7 +827,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       tb.classList.add("lxda"); return; }
     tb.innerHTML=f.map(function(r){
       return '<tr data-lxda="1">'
-        +'<td><div class="wallet-cell">'+identicon(r.addr,26)+'<span class="mono wa">'+shortG(r.addr)+'</span></div></td>'
+        +'<td>'+(r.addr.charAt(0)==="C"
+          ? ('<span class="wallet-cell lx-nolink">'+identicon(r.addr,26)+'<span class="mono wa">'+shortG(r.addr)+'</span><span class="lx-sortag">Soroban</span></span>')
+          : ('<a class="lx-acct wallet-cell" href="/account/stellar/'+r.addr+'">'+identicon(r.addr,26)+'<span class="mono wa">'+shortG(r.addr)+'</span></a>'))+'</td>'
         +'<td><span class="type-badge '+r.side+'">'+(r.side==="buy"?"▲ Buy":"▼ Sell")+'</span></td>'
         +'<td><span class="mono">'+r.px.toFixed(decs(r.px))+' XLM</span></td>'
         +'<td><span class="mono">'+xlmAmt(r.amount)+' '+CODE+'</span></td>'
