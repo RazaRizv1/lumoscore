@@ -1684,6 +1684,8 @@
 #eligBox .lxrw-empty .s{color:var(--text-muted);font-size:13px;margin-top:6px;line-height:1.55;max-width:44ch;margin-left:auto;margin-right:auto}
 .lxrw-preview{display:inline-flex;align-items:center;gap:5px;margin-left:10px;padding:3px 9px;border-radius:7px;font:700 10.5px/1.3 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#b8860b;background:rgba(245,179,1,.13);border:1px solid rgba(245,179,1,.35);vertical-align:middle;white-space:nowrap}
 </style><script id="lx-route">(function(){var out={network:"",asset:"",poolA:"",poolB:"",poolId:""};try{  var seg=location.pathname.replace(/^\/+|\/+$/g,"").split("/").map(decodeURIComponent);  var head=(seg[0]||"").toLowerCase();  var ASSET=/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;  if(head==="trade"||head==="asset"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]&&(ASSET.test(seg[2])||seg[2].toUpperCase()==="XLM"))out.asset=seg[2]; }  else if(head==="pools"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]==="id"){ out.poolId=seg[3]||""; }    else { if(seg[2])out.poolA=seg[2]; if(seg[3])out.poolB=seg[3]; } }}catch(e){}window.__lxRoute=out;})();</script><style id="lx-theme">html[data-theme="light"]{--bg:#f7f8fa;--surface:#ffffff;--surface-2:#fafbfc;--surface-3:#f6f5f3;--border:#ececef;--border-strong:#e2e2e6;--text:#0e0e10;--text-muted:#6b6b75;--text-soft:#9a9aa3;--accent:#ea6a2c;--accent-soft:#ffe5d3;--accent-pale:#fff3e9;--green:#16a34a;--green-soft:#dcfce7;--red:#dc2626;--red-soft:#fee2e2;--blue:#2563eb;--blue-soft:#dbeafe;--yellow:#d97706}html[data-theme="dark"]{--bg:#0a0a0b;--surface:#131317;--surface-2:#1a1a1f;--surface-3:#1d1d25;--border:#26262c;--border-strong:#34343c;--text:#f6f5f3;--text-muted:#a5a4ac;--text-soft:#6e6d78;--accent:#ea6a2c;--accent-soft:rgba(234,106,44,0.22);--accent-pale:rgba(234,106,44,0.10);--green:#35c07f;--green-soft:rgba(52,210,122,0.18);--red:#ff5b5b;--red-soft:rgba(255,91,91,0.18);--blue:#8b7bff;--blue-soft:rgba(139,123,255,0.15);--yellow:#ffb547}</style><script id="lx-authgate">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))location.replace("/");}catch(_){}})();</script><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-searchassets-css">
+  + '.lx-poolico .lx-pi{width:22px;height:22px;border-radius:50%;display:block;object-fit:cover;border:2px solid var(--surface,#131317);background:var(--surface-2)}'
+  + '.lx-poolico .lx-pi-b{margin-left:-8px}'
 .sp-row--asset.lx-searow{text-decoration:none;color:inherit}
 .sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
 .sp-row--asset.lx-searow .sp-ico img{display:block}
@@ -4103,11 +4105,32 @@ window.addEventListener('click',function(e){
   var POOLI={};
   function poolUsd(n){ n=+n||0; if(n>=1e9)return "$"+(n/1e9).toFixed(2)+"B"; if(n>=1e6)return "$"+(n/1e6).toFixed(2)+"M";
     if(n>=1000)return "$"+Math.round(n).toLocaleString("en-US"); if(n>=1)return "$"+n.toFixed(2); return "$"+n.toFixed(4); }
+  var LXSTELLAR='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L3N2Zz4=';
+  function poolIcoSet(id,which,src){
+    if(!src)return;
+    if(POOLI[id])POOLI[id][which==="a"?"ia":"ib"]=src;   // survive the next repaint
+    var box=document.querySelector('.lx-poolico[data-pool="'+id+'"]'); if(!box)return;
+    var im=box.querySelector(which==="a"?".lx-pi-a":".lx-pi-b"); if(im&&src)im.src=src;
+  }
+  // by ISSUER, never by ticker: a ticker search is score-ranked and small assets are unreachable in it
+  function poolIcoLoad(id,which,code,issuer){
+    if(code==="XLM"||!issuer){ poolIcoSet(id,which,code==="XLM"?LXSTELLAR:avatarUri(code)); return; }
+    poolIcoSet(id,which,avatarUri(code));
+    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(issuer)+"&limit=50")
+      .then(function(r){ return r.json(); }).then(function(d){
+        var recs=(d&&d._embedded&&d._embedded.records)||[];
+        var m=recs.filter(function(x){ return (x.asset||"").indexOf(code+"-"+issuer)===0; })[0];
+        var img=(m&&m.tomlInfo&&m.tomlInfo.image)||"";
+        if(img)poolIcoSet(id,which,img);
+      }).catch(function(){});
+  }
   function poolFill(id){
     var d=POOLI[id]; if(!d)return;
     var pair=document.querySelector('.lx-pool-pair[data-pool="'+id+'"]');
     var sub=document.querySelector('.lx-pool-sub[data-pool="'+id+'"]');
     if(pair&&d.pair)pair.textContent=d.pair;
+    if(d.ia)poolIcoSet(id,"a",d.ia);
+    if(d.ib)poolIcoSet(id,"b",d.ib);
     if(sub){ var bits=[];
       if(d.n!=null)bits.push(d.n===1?"1 participant":(d.n.toLocaleString("en-US")+" participants"));
       if(d.tvl!=null)bits.push(poolUsd(d.tvl)+" TVL");
@@ -4120,17 +4143,20 @@ window.addEventListener('click',function(e){
     fetch("https://horizon.stellar.org/liquidity_pools/"+id).then(function(r){ return r.ok?r.json():null; }).then(function(d){
       if(!d){ POOLI[id]={n:null,tvl:null}; poolFill(id); return; }
       var sides=(d.reserves||[]).map(function(rv){
-        if(rv.asset==="native")return {c:"XLM",a:+rv.amount};
-        return {c:(rv.asset.split(":")[0]||"?"),a:+rv.amount}; });
+        if(rv.asset==="native")return {c:"XLM",i:"",a:+rv.amount};
+        var pr=rv.asset.split(":"); return {c:(pr[0]||"?"),i:(pr[1]||""),a:+rv.amount}; });
       var nat=null; for(var i=0;i<sides.length;i++)if(sides[i].c==="XLM")nat=sides[i];
       POOLI[id]={ pair:sides.map(function(x){return x.c;}).join(" / "),
         n:(d.total_trustlines!=null?+d.total_trustlines:null),
         tvl:(nat&&xu>0)?(nat.a*2*xu):null };
       poolFill(id);
+      if(sides[0])poolIcoLoad(id,"a",sides[0].c,sides[0].i);
+      if(sides[1])poolIcoLoad(id,"b",sides[1].c,sides[1].i);
     }).catch(function(){ POOLI[id]={n:null,tvl:null}; poolFill(id); });
   }
   function poolRow(id){
-    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--text-soft);font-weight:800;font-size:11px">LP</div>';
+    var ico='<div class="sp-ico lx-spico-on lx-poolico" data-pool="'+esc(id)+'" style="position:relative;overflow:visible;background:none;display:flex;align-items:center">'
+      +'<img class="lx-pi lx-pi-a" alt="">'+'<img class="lx-pi lx-pi-b" alt="">'+'</div>';
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/pools/stellar/id/'+esc(id)+'">'+ico+
       '<div class="sp-info"><div class="sp-name-row"><span class="lx-pool-pair" data-pool="'+esc(id)+'">Liquidity pool</span> <span class="sp-domain">Stellar AMM</span></div>'+
       '<div class="sp-sub lx-pool-sub" data-pool="'+esc(id)+'">Loading pool…</div></div>'+
