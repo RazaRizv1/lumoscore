@@ -120,6 +120,84 @@ async function fetchTimeout(url, ms) {
   const t = setTimeout(() => ctl.abort(), ms);
   try { return await fetch(url, { signal: ctl.signal }); } finally { clearTimeout(t); }
 }
+// Local mirror of functions/.well-known/stellar.toml — the SEP-1 file for lumoscore.com.
+// Keep in step with the Pages Function; a toml that differs between local and deployed is worse than none,
+// because this document is what other wallets treat as authoritative about our assets.
+const TOML_FUNDER = 'GA7VKQBOILVBDABEHRSVW72JM3OI54I2GSCCIHGNMECGUMKHLZG7JCDH';
+// LUMOS is named here rather than matched by the funder rule: it predates the launchpad and its issuer
+// was created by a different wallet, so the rule correctly does not recognise it. See the Pages Function.
+const TOML_PLATFORM = [{ code:'LUMOS', issuer:'GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S',
+  name:'Lumos Core', desc:'LumosCore native utility token — powers platform fees and rewards.',
+  image:'https://lumoscore.com/assets/tokens/lumos.png' }];
+function tq(v){ return '"' + String(v == null ? '' : v)
+  .replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').trim() + '"'; }
+async function tomlFundedByUs(issuer){
+  try{
+    const r = await fetchTimeout('https://horizon.stellar.org/accounts/' + issuer + '/operations?order=asc&limit=1', 6000);
+    if(!r.ok) return false;
+    const op = (((await r.json())._embedded || {}).records || [])[0] || {};
+    if(op.type !== 'create_account') return false;
+    return (op.funder || op.source_account) === TOML_FUNDER;
+  }catch(e){ return false; }
+}
+async function stellarToml(req, res){
+  const head = [
+    '# LumosCore — SEP-1 stellar.toml',
+    '#',
+    '# Lists the assets minted through the LumosCore launchpad on Stellar mainnet.',
+    '# An asset appears here only if its issuer account was created by the LumosCore funding wallet,',
+    '# which is recorded on the ledger and cannot be forged. Declaring home_domain=lumoscore.com is not',
+    '# sufficient on its own.',
+    '',
+    'VERSION="2.0.0"',
+    'NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"',
+    '',
+    '[DOCUMENTATION]',
+    'ORG_NAME="LumosCore"',
+    'ORG_URL="https://lumoscore.com"',
+    'ORG_LOGO="https://lumoscore.com/assets/tokens/lumos.png"',
+    'ORG_DESCRIPTION="Multi-chain DeFi on Stellar — trade, pools, launchpad and cross-chain bridge."',
+    '',
+  ];
+  let list = [];
+  try{
+    const r = await fetchTimeout('https://api.stellar.expert/explorer/public/asset?search=lumoscore.com&limit=200', 6000);
+    const recs = r.ok ? (((await r.json())._embedded || {}).records || []) : [];
+    for(const rec of recs){
+      if(String(rec.domain || '').toLowerCase() !== 'lumoscore.com') continue;
+      const dash = String(rec.asset || '').indexOf('-');
+      if(dash < 1) continue;
+      const code = rec.asset.slice(0, dash);
+      const issuer = rec.asset.slice(dash + 1).split('-')[0];
+      if(!/^G[A-Z2-7]{55}$/.test(issuer)) continue;
+      const ti = rec.tomlInfo || rec.toml_info || {};
+      list.push({ code, issuer, name: ti.name || rec.name || '', image: ti.image || '', desc: ti.desc || '' });
+    }
+  }catch(e){}
+  const checked = list.slice(0, 45);
+  const verdicts = await Promise.all(checked.map(a => tomlFundedByUs(a.issuer)));
+  const seen = new Set(); const ours = [];
+  for(const a of TOML_PLATFORM.concat(checked.filter((_, i) => verdicts[i]))){
+    const k = a.code + '|' + a.issuer;
+    if(seen.has(k)) continue;
+    seen.add(k); ours.push(a);
+  }
+  const body = [head.join('\n')];
+  if(list.length > 45) body.push('# NOTE: ' + list.length + ' candidates found; only the first 45 verified this request.', '');
+  for(const a of ours){
+    const c = ['[[CURRENCIES]]', 'code=' + tq(a.code), 'issuer=' + tq(a.issuer), 'display_decimals=7'];
+    if(a.name) c.push('name=' + tq(a.name));
+    if(a.desc) c.push('desc=' + tq(a.desc));
+    if(a.image) c.push('image=' + tq(a.image));
+    c.push('is_asset_anchored=false');
+    body.push(c.join('\n'), '');
+  }
+  if(!ours.length) body.push('# no verified LumosCore assets found at this time', '');
+  res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8',
+    'access-control-allow-origin': '*', 'cache-control': 'public, max-age=21600' });
+  res.end(body.join('\n'));
+}
+
 // Local mirror of functions/lxapi/dexassets — price a batch of assets in one request. Server-side, so
 // neither the browser's six-connection-per-host limit nor Horizon's CORS-less 429 applies. Keep this in
 // step with the Pages Function; the shapes must match or the page behaves differently once deployed.
@@ -380,6 +458,7 @@ http.createServer((req, res) => {
   if (p === '/lxapi/holders') return holdersProxy(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/assetlogo') return assetLogo(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/dexassets') return dexAssets(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/.well-known/stellar.toml') return stellarToml(req, res);
   if (p === '/lxapi/poolstats') return poolStats(req, res);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
