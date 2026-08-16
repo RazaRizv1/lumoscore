@@ -162,7 +162,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         if(!(+x.supply>0)||tl<1)return;
         var key=byCode[code]?code+"~"+iss.slice(0,4):code;
         if(byCode[key])return;
-        var a={code:code,issuer:iss,cat:"native",tkr:key,b:"#3d4351",
+        var a={code:code,issuer:iss,cat:"native",tkr:key,b:"#3d4351",created:(+x.created||0),
           logo:(x.tomlInfo&&x.tomlInfo.image)||"",domain:x.domain||"",
           px:0,chg:null,vol:null,high:null,low:null,tvlUsd:null,holders:null,
           supply:null,spark:null,img:null,trades:null};
@@ -183,6 +183,13 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     for(var i=0;i<NATIVE.length;i++)if(out.indexOf(NATIVE[i])<0)out.push(NATIVE[i]);
     return out; }
   function curFilter(){ var el=q(".dex-mk-filter.active"); return (el&&el.getAttribute)?(el.getAttribute("data-filter")||"all"):"all"; }
+  // Newest first. Assets we have no created stamp for sort last rather than jumping to the top on a 0.
+  function mintList(){
+    return NATIVE.slice()
+      .filter(function(a){ return a.cat==="native"; })            // LUMOS is pinned into NATIVE but was not minted here
+      .sort(function(x,y){ return (y.created||0)-(x.created||0); })
+      .slice(0,5);
+  }
   var MINTS=["LUMOS","AQUA","EURC","ARST","SHX"];             // "new mints" subset (LUMOS = the project token, tagged NEW)
 
   // seed XLM/USD from a shared localStorage cache so a CoinGecko 429 never blanks the USD values (falls back
@@ -320,38 +327,57 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var want=d?'<path d="'+d+'" fill="none" stroke="'+(up?"#35c07f":"#ff5b5b")+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>':"";
     if(svg.innerHTML!==want)svg.innerHTML=want; }
   function renderMints(){ var list=q("#dexMintsList"); if(!list)return;
-    // AUDIT FIX: the design heading says "New Mints on Stellar" but the list is the CURATED launch set
-    // (LUMOS/AQUA/EURC/ARST/SHX — established assets, not new mints). Retitle it honestly.
+    loadNative();                                              // this list IS the native roster
+    // The design ships "New Mints on Stellar" and re-renders the title in place, so the correction is
+    // re-asserted rather than written once.
     try{ var mt=q(".dex-mints-title"); if(mt&&!mt.__lxT){ mt.__lxT=1;
-      var fixT=function(){ [].slice.call(mt.childNodes).forEach(function(tn){ if(tn.nodeType===3&&/New Mints on Stellar/.test(tn.nodeValue))tn.nodeValue=tn.nodeValue.replace(/New Mints on Stellar/,"Featured on Stellar"); }); };
-      fixT(); try{ new MutationObserver(fixT).observe(mt,{childList:true,characterData:true,subtree:true}); }catch(_e){}   // the design re-renders this title in place — re-assert (settles: no match -> no write)
+      var fixT=function(){ [].slice.call(mt.childNodes).forEach(function(tn){
+        if(tn.nodeType===3&&/New Mints on Stellar|Featured on Stellar/.test(tn.nodeValue))
+          tn.nodeValue=tn.nodeValue.replace(/New Mints on Stellar|Featured on Stellar/,"New mints on LumosCore"); }); };
+      fixT(); try{ new MutationObserver(fixT).observe(mt,{childList:true,characterData:true,subtree:true}); }catch(_e){}
     } }catch(_){}
-    if(!list.querySelector(".dex-mint-row[data-tkr]")){                          // build skeleton once
-      list.innerHTML=MINTS.map(function(code){ var a=byCode[code]; if(!a)return "";
-        // no "NEW" badge (the section is already "New Mints", and the site logo-painter hijacks a .new-tag
-        // into a tiny LUMOS logo); show the ticker ONCE (no redundant duplicate).
-        return '<div class="dex-mint-row" data-tkr="'+a.code+'">'
+
+    var rows=mintList();
+    if(!rows.length){
+      if(!list.__lxEmpty){ list.__lxEmpty=1;
+        list.innerHTML='<div class="dex-mint-row" style="justify-content:center;color:var(--text-soft);font-size:14px">Loading mints'+String.fromCharCode(8230)+'</div>'; }
+      return;
+    }
+    list.__lxEmpty=0;
+    // rebuild only when WHICH assets are listed changes -- not on every price tick, or the row under the
+    // pointer is destroyed mid-hover
+    var sig=rows.map(function(a){ return a.tkr||a.code; }).join("|");
+    if(list.__lxsig!==sig){
+      list.__lxsig=sig;
+      list.innerHTML=rows.map(function(a){
+        return '<div class="dex-mint-row" data-tkr="'+(a.tkr||a.code)+'">'
           +'<span class="dex-mint-ic" data-lxic="'+a.code+'" style="background:'+a.b+'">'+initials(a.code)+'</span>'
           +'<div class="dex-mint-meta">'
             +'<div class="dex-mint-name">'+a.code+'</div>'
             +'<div class="dex-mint-sub">\\u2014</div>'
           +'</div>'
           +'<div class="dex-mint-stats">'
-            +'<div class="dex-mint-stat"><span class="l">Volume</span><span class="v" data-k="vol">\\u2014</span></div>'
-            +'<div class="dex-mint-stat"><span class="l">Trades</span><span class="v" data-k="trades">\\u2014</span></div>'
+            +'<div class="dex-mint-stat"><span class="l">Price</span><span class="v" data-k="px">\\u2014</span></div>'
+            +'<div class="dex-mint-stat"><span class="l">Market cap</span><span class="v" data-k="mcap">\\u2014</span></div>'
             +'<div class="dex-mint-stat"><span class="l">Holders</span><span class="v" data-k="holders">\\u2014</span></div>'
           +'</div>'
         +'</div>'; }).join("");
       paintIcons(list);
-      qa(".dex-mint-row",list).forEach(function(row){ row.addEventListener("click",function(){ var a=byCode[row.getAttribute("data-tkr")]; if(a)navTo(a); }); });
+      qa(".dex-mint-row",list).forEach(function(row){ row.addEventListener("click",function(){
+        var a=byCode[row.getAttribute("data-tkr")]; if(a)navTo(a); }); });
       list.classList.add("lxd");
     }
-    qa(".dex-mint-row[data-tkr]",list).forEach(function(row){ var a=byCode[row.getAttribute("data-tkr")]; if(!a)return; paintIcons(row);
-      setTxt(row.querySelector(".dex-mint-sub"),shortG(a.issuer));   // shortened issuer instead of the website url
-      if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
-      var volU=a.vol!=null?a.vol*xlmUsd:null;                   // 3 symmetric stat columns: Volume / Trades / Holders
-      setTxt(row.querySelector('[data-k="vol"]'),volU!=null?abbrUsd(volU):"\\u2014");
-      setTxt(row.querySelector('[data-k="trades"]'),a.trades!=null?num(a.trades):"\\u2014");
+    qa(".dex-mint-row[data-tkr]",list).forEach(function(row){
+      var a=byCode[row.getAttribute("data-tkr")]; if(!a)return; paintIcons(row);
+      setTxt(row.querySelector(".dex-mint-sub"),shortG(a.issuer));
+      if(!window.__lxDEXloaded)return;
+      // price in XLM with the dollar underneath -- the asset trades in XLM, the reader thinks in dollars
+      var pxEl=row.querySelector('[data-k="px"]');
+      if(pxEl){ var pu=priceUsd(a);
+        setHTML(pxEl, a.px>0 ? (fmtPrice(a.px)+' XLM<span class="sub">'+(pu>0?usdSmall(pu):"")+'</span>') : "\\u2014"); }
+      // supply x price: both already fetched by loadAsset, so this costs nothing extra
+      var mc=(a.supply!=null&&a.px>0&&xlmUsd>0)?(a.supply*a.px*xlmUsd):null;
+      setTxt(row.querySelector('[data-k="mcap"]'),mc!=null?abbrUsd(mc):"\\u2014");
       setTxt(row.querySelector('[data-k="holders"]'),a.holders!=null?num(a.holders):"\\u2014");
     });
   }
