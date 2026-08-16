@@ -3856,7 +3856,8 @@ window.addEventListener('click',function(e){
       if(v.charAt(0)==='"'){ var e=v.indexOf('"',1); v=e>0?v.slice(1,e):v.slice(1); }
       return v; }
     return ""; }
-  function fetchLogo(c,i){ if(!c||c==="XLM"||!i)return; if(brand(c,i)||IMG[key(c,i)])return;
+  function fetchLogo(c,i){ if(!c||c==="XLM"||!i)return;
+    if((brand(c,i)||IMG[key(c,i)])&&DOM[key(c,i)])return;   // logo AND domain known -> nothing to fetch
     if(TRIED[key(c,i)])return; TRIED[key(c,i)]=1;
     fetchJ("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(i)+"&limit=50").then(function(d){
       var m=recs(d).filter(function(r){ return (r.asset||"").indexOf(c+"-"+i)===0; })[0];
@@ -3947,7 +3948,13 @@ window.addEventListener('click',function(e){
     var rows=all.slice(0,Math.min(aShown,all.length));
     var tot=totalValue();
     // whatever is on screen gets priced and gets a logo, cap or no cap
-    rows.forEach(function(a){ if(!a.native&&!a.__px){ a.__px=1; loadAssetPx(a); fetchLogo(a.code,a.issuer); } });
+    // Two jobs, two guards. __px used to gate BOTH pricing and logo/domain lookup, and the boot pricing
+    // wave claims __px without ever calling fetchLogo -- so whichever ran first decided whether the asset
+    // ever got a logo. That race is why some wallets showed initials and a bare issuer and others did not.
+    // fetchLogo carries its own TRIED guard, so calling it on every visible row costs nothing extra.
+    rows.forEach(function(a){ if(a.native)return;
+      fetchLogo(a.code,a.issuer);
+      if(!a.__px){ a.__px=1; loadAssetPx(a); } });
     tb.innerHTML=rows.map(function(a){
       var sub = a.native ? "Native asset"
         : ((DOM[key(a.code,a.issuer)]||"") ? (DOM[key(a.code,a.issuer)]+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer));
