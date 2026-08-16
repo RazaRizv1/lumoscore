@@ -6209,6 +6209,18 @@ window.addEventListener('click',function(e){
       new MutationObserver(reassert).observe(tb,{childList:true});
       var inf=q("#dxaPanelInfo");
       if(inf)new MutationObserver(function(){ if(!/recent trades/.test(inf.textContent||"")){ tb.__lxexsig=null; renderExchanges(); } }).observe(inf,{childList:true,characterData:true,subtree:true});
+      // THE FOOTER NEEDED ONE TOO, and its absence is the reported bug. The table and the info line each
+      // re-assert when the design repaints them; the pager did not, so the design's own control could come
+      // back and simply stay -- carrying ITS page state and ITS total. That is how "Page 2 of 3" and
+      // "of 137" sat under a filter holding two trades: the numbers were not wrong, they belonged to a
+      // different pager. Ours is the only one whose buttons carry data-pg, so anything else here is the
+      // design's. No loop risk: our own writes always satisfy that test, and clearing it leaves no button.
+      var pf=tb.closest?tb.closest(".panel"):null; pf=pf?pf.querySelector(".panel-foot"):null;
+      if(pf)new MutationObserver(function(){
+        var pg=pf.querySelector(".pgn"); if(!pg)return;
+        if(pg.querySelector("button")&&!pg.querySelector("button[data-pg]")){
+          pg.__lxpgsig=null; tb.__lxexsig=null; renderExchanges(); }
+      }).observe(pf,{childList:true,subtree:true});
     }catch(_){} }
     var info=q("#dxaPanelInfo"); if(info){ var ft=TRADE_FILTER>0?(" · ≥ "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000).toFixed(0)+"K":TRADE_FILTER)+" XLM"):"";
       // say WHICH slice of the filtered set is on screen, not just how many rows were drawn
