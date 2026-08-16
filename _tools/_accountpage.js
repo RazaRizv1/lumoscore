@@ -40,7 +40,10 @@ const MAIN_INNER = `
       <div class="crumb"><a href="/dashboard">${ICO.back}<span>Back to dashboard</span></a></div>
 
       <section class="acc-head">
-        <span class="acc-avatar" id="accAvatar"></span>
+        <span class="acc-ava-wrap">
+          <span class="acc-avatar" id="accAvatar"></span>
+          <span class="acc-net" id="accNet" title="Stellar"></span>
+        </span>
         <div class="acc-head-body">
           <div class="acc-title-row">
             <h1 class="acc-addr" id="accAddr" title="">&#8212;</h1>
@@ -89,6 +92,10 @@ const MAIN = '<main class="page">' + MAIN_INNER + '</main>';
 // ---------------------------------------------------------------------------------------------------
 const STYLE = `<style id="lx-acc-css">
 .acc-head{display:flex;align-items:center;gap:16px;margin:6px 0 22px}
+.acc-ava-wrap{position:relative;flex:0 0 auto;display:inline-block;line-height:0}
+.acc-net{position:absolute;right:-1px;bottom:-1px;width:24px;height:24px;border-radius:50%;
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  border:2px solid var(--bg,#0b0b0f);box-shadow:0 1px 4px rgba(0,0,0,.55)}
 .acc-avatar{width:64px;height:64px;border-radius:50%;flex:0 0 auto;background:var(--surface-2);
   background-size:cover;background-position:center;border:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.28)}
 .acc-head-body{min-width:0;flex:1 1 auto}
@@ -163,6 +170,7 @@ const STYLE = `<style id="lx-acc-css">
   .acc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .acc-addr{font-size:17px}
   .acc-avatar{width:52px;height:52px}
+  .acc-net{width:20px;height:20px}
   .acc-stat .v{font-size:19px}
 }
 @media (max-width:620px){
@@ -477,11 +485,12 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   function paintHeader(){
     var el=q("#accAddr"); if(el){ el.textContent=ADDR?(ADDR.slice(0,8)+DASH+ADDR.slice(-8)):"No account"; el.title=ADDR; }
     var av=q("#accAvatar"); if(av&&ADDR)av.style.backgroundImage="url("+identicon(ADDR)+")";
+    var nt=q("#accNet"); if(nt&&!nt.style.backgroundImage)nt.style.backgroundImage="url("+STELLAR_URI+")";
     var sub=q("#accSub"); if(!sub)return;
     var bits=[];
     if(ACCT&&ACCT.home_domain)bits.push('<span class="acc-tag">'+esc(ACCT.home_domain)+'</span>');
     if(ACCT&&ACCT.__created)bits.push("Active since "+esc(ACCT.__created));
-    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">stellar.expert '+String.fromCharCode(8599)+'</a>');
+    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer '+String.fromCharCode(8599)+'</a>');
     sub.innerHTML=bits.join("");
   }
   function fail(msg){
@@ -563,7 +572,20 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     });
     loadActs();
     var cp=q("#accCopy");
-    if(cp)cp.addEventListener("click",function(){ try{ navigator.clipboard.writeText(ADDR); cp.setAttribute("aria-label","Copied"); }catch(_){} });
+    // The site owns a bottom-centre toast (window.showToast) that every other copy action uses. Reuse it
+    // rather than inventing a second confirmation style on one page.
+    function accToast(m){ try{ if(typeof window.showToast==="function"){ window.showToast(m); return; } }catch(_){}
+      try{ var t=document.createElement("div"); t.textContent=m;
+        t.style.cssText="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99999;"
+          +"padding:11px 18px;border-radius:12px;background:#1a1a1f;color:#fff;font-size:14px;font-weight:700;"
+          +"box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none";
+        document.body.appendChild(t); setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },1800);
+      }catch(_){} }
+    if(cp)cp.addEventListener("click",function(){
+      if(!ADDR)return;
+      try{ navigator.clipboard.writeText(ADDR); }catch(_){}
+      accToast("Wallet address copied");
+    });
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();<\/script>`;
