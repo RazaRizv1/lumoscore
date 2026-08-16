@@ -83,6 +83,78 @@ function holdersProxy(req, res, q) {
   })).catch(e => { res.writeHead(502, {'content-type':'application/json'}); res.end(JSON.stringify({error:String(e&&e.message||e)})); });
 }
 
+// Local mirror of functions/lxapi/assetlogo — resolve an asset logo from the issuer's stellar.toml.
+// Server-side, so the CORS wall that blocks this in the browser does not apply.
+const LOGO_ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
+const LOGO_HOST_RE = /^[A-Za-z0-9.-]{1,253}$/;
+const LOGO_CACHE = new Map();
+function logoJson(res, body, ttl) {
+  res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=" + ttl,
+    "access-control-allow-origin": "*" });
+  res.end(JSON.stringify(body));
+}
+function tomlCurrency(text, code, issuer) {
+  const blocks = String(text || "").split("[[CURRENCIES]]");
+  for (let i = 1; i < blocks.length; i++) {
+    const b = blocks[i];
+    const get = (key) => {
+      const lines = b.split("\n");
+      for (let n = 0; n < lines.length; n++) {
+        const ln = lines[n].trim(); const eq = ln.indexOf("=");
+        if (eq < 0) continue;
+        if (ln.slice(0, eq).trim() !== key) continue;
+        let v = ln.slice(eq + 1).trim();
+        if (v.charAt(0) === '"') { const e = v.indexOf('"', 1); v = e > 0 ? v.slice(1, e) : v.slice(1); }
+        return v;
+      }
+      return "";
+    };
+    if (get("code") !== code) continue;
+    const iss = get("issuer"); if (iss && iss !== issuer) continue;
+    return { image: get("image") || "", name: get("name") || "" };
+  }
+  return null;
+}
+async function fetchTimeout(url, ms) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try { return await fetch(url, { signal: ctl.signal }); } finally { clearTimeout(t); }
+}
+async function assetLogo(req, res, q) {
+  const asset = q.get("asset") || "";
+  if (!LOGO_ASSET_RE.test(asset)) { res.writeHead(400, { "content-type": "application/json" });
+    return res.end('{"error":"bad asset"}'); }
+  if (LOGO_CACHE.has(asset)) return logoJson(res, LOGO_CACHE.get(asset), 86400);
+  const dash = asset.lastIndexOf("-");
+  const code = asset.slice(0, dash), issuer = asset.slice(dash + 1);
+  let out;
+  try {
+    const accRes = await fetchTimeout("https://horizon.stellar.org/accounts/" + issuer, 4000);
+    if (!accRes.ok) out = { image: "", domain: "", reason: "issuer not found" };
+    else {
+      const acc = await accRes.json();
+      const domain = (acc && acc.home_domain) || "";
+      if (!domain) out = { image: "", domain: "", reason: "no home_domain" };
+      else if (!LOGO_HOST_RE.test(domain)) out = { image: "", domain, reason: "home_domain is not a host" };
+      else {
+        const tr = await fetchTimeout("https://" + domain + "/.well-known/stellar.toml", 4000);
+        if (!tr.ok) out = { image: "", domain, reason: "toml " + tr.status };
+        else {
+          const cur = tomlCurrency(await tr.text(), code, issuer);
+          if (!cur) out = { image: "", domain, reason: "asset not in toml" };
+          else if (!cur.image) out = { image: "", domain, name: cur.name, reason: "no image key" };
+          else out = { image: cur.image, domain, name: cur.name };
+        }
+      }
+    }
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    out = { image: "", domain: "", reason: /abort/i.test(msg) ? "timeout" : msg };
+  }
+  LOGO_CACHE.set(asset, out);
+  return logoJson(res, out, out.image ? 86400 : 3600);
+}
+
 // Local mirror of functions/lxapi/poolstats — network-wide AMM aggregates for the Pools Market Overview.
 // Same shape as the Pages Function so the page behaves identically in dev and production. Kept in step
 // with functions/lxapi/poolstats.js; see that file for what is exact and what is sampled.
@@ -230,6 +302,7 @@ function cleanUrl(p) {
 http.createServer((req, res) => {
   let p = decodeURIComponent((req.url || '/').split('?')[0]);
   if (p === '/lxapi/holders') return holdersProxy(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/assetlogo') return assetLogo(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/poolstats') return poolStats(req, res);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
