@@ -189,11 +189,13 @@ for (const file of files) {
          .replace(/<script id="lx-searchassets">[\s\S]*?<\/script>/, '');
     if (h.indexOf('</head>') >= 0) h = h.replace('</head>', STYLE + '</head>');
     else { const hb = h.lastIndexOf('</body>'); h = h.slice(0, hb) + STYLE + h.slice(hb); }
-    const bi = h.lastIndexOf('</body>'); if (bi < 0) continue;
-    // The box searches three things now, so the prompt and the footer hint should say all three.
+    // Copy FIRST, offset SECOND. bi is a byte offset into h; rewriting h after taking it leaves bi
+    // pointing wherever the old string happened to be -- which spliced our script into the middle of
+    // another one and truncated it. Any mutation of h has to happen before the offset is measured.
     h = h.split('placeholder="Search assets"').join('placeholder="Search assets, pools and wallets"');
     h = h.split('<span>Search assets, users, and networks.</span>')
          .join('<span>Search assets, pools and wallets on Stellar.</span>');
+    const bi = h.lastIndexOf('</body>'); if (bi < 0) continue;
     json[k] = h.slice(0, bi) + SCRIPT + h.slice(bi);
     changed = true; n++;
   }
