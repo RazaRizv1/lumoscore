@@ -9,12 +9,19 @@
 // design's own JS at runtime, so we use an idempotent applyAll() re-asserted via a MutationObserver
 // (one-shot writes get overwritten), plus CSS no-flash gates so the design's sample never shows.
 const fs = require('fs');
-const { read, getContents } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, VTICK_SVG, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-lumos-token.html', 'lumoscore-lumos-token-dark.html', 'lumoscore-lumos-token-mobile.html'];
 
 const STYLE = `<style id="lx-lt-css">
+/* verified mark and home domain: the same badge and link treatment the rest of the site uses */
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:10px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:middle;flex:0 0 22px}
+.lx-vtick svg{width:14px;height:14px;display:block}
+.lx-lt-dom{display:inline-flex;align-items:center;gap:6px;margin-left:12px;color:var(--accent,#ea6a2c);font-weight:700;text-decoration:none;font-size:15px;vertical-align:middle}
+.lx-lt-dom:hover{text-decoration:underline}
+.lx-lt-dom svg{width:15px;height:15px;flex:none}
+
 .hero-price-block:not(.lxlt) .price,.hero-price-block:not(.lxlt) .change,.hero-price-block:not(.lxlt) .sub-volume{visibility:hidden}
 .addr-row:not(.lxlt) .addr-value{visibility:hidden}
 .cstat:not(.lxlt) .lc-money,.cstat:not(.lxlt) .val,.cstat:not(.lxlt) .sub{visibility:hidden}
@@ -195,6 +202,10 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   var xlmUsd=(function(){try{var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0;}catch(e){return (window.__lxXlmUsd||0);}})(), lumosXlm=0, chg24=null;                // price fetches
   var supply=null, holders=null, poolCount=null, activePools=null, vol24Usd=null, vol24Xlm=null, volChg=null;   // stat fetches
   function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
+  var VFD=${JSON.stringify(VERIFIED)};
+  var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
+  var VTICKSVG='${VTICK_SVG}';
+  var GLOBE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
   function q(s){return document.querySelector(s);}
   function qa(s){return [].slice.call(document.querySelectorAll(s));}
   function setText(el,t){if(el&&t!=null&&el.textContent!==t)el.textContent=t;}
@@ -294,6 +305,23 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var link=row.querySelector("a.addr-btn");
       if(link&&link.getAttribute("data-lxex")!=="1"){ link.setAttribute("data-lxex","1"); link.setAttribute("href",EXPLORER); link.setAttribute("target","_blank"); link.setAttribute("rel","noopener"); link.setAttribute("data-tooltip","View on Stellar Explorer"); link.removeAttribute("title"); }
       row.classList.add("lxlt");
+    });
+    // Verified tick on the token name, driven by the shared list rather than asserted here, so removing
+    // LUMOS from VERIFIED removes the badge instead of leaving a stale claim on its own page.
+    var _h1=q("h1");
+    if(_h1 && VFD["LUMOS|"+ISSUER] && !_h1.querySelector(".lx-vtick")){
+      var _tk=document.createElement("span");
+      _tk.className="lx-vtick"; _tk.setAttribute("title","Verified issuer");
+      _tk.innerHTML=VTICKSVG; _h1.appendChild(_tk);
+    }
+    // Home domain: lumoscore.com, matching Trade-Asset and search. The chain still says lumosdao.io.
+    var _dom=DDOM["LUMOS|"+ISSUER]||"";
+    if(_dom)qa(".addr-row").forEach(function(row){
+      var a=row.querySelector(".lx-lt-dom");
+      if(!a){ a=document.createElement("a"); a.className="lx-lt-dom"; a.target="_blank"; a.rel="noopener";
+        a.innerHTML=GLOBE+"<span></span>"; row.appendChild(a); }
+      if(a.getAttribute("href")!=="https://"+_dom)a.setAttribute("href","https://"+_dom);
+      var t=a.querySelector("span"); if(t&&t.textContent!==_dom)t.textContent=_dom;
     });
     // any stray "View on <chain> Explorer" tooltips (title OR data-tooltip) -> Stellar
     qa("[data-tooltip],[title]").forEach(function(e){ ["title","data-tooltip"].forEach(function(a){ var t=e.getAttribute(a)||""; if(/View on .* Explorer/.test(t)&&t.indexOf("Stellar")<0)e.setAttribute(a,"View on Stellar Explorer"); }); });
