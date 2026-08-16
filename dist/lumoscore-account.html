@@ -1436,6 +1436,10 @@
 .lx-seavfd svg{width:9px;height:9px;display:block}
 </style><style id="lx-acc-css">
 .acc-head{display:flex;align-items:center;gap:16px;margin:6px 0 22px}
+.acc-ava-wrap{position:relative;flex:0 0 auto;display:inline-block;line-height:0}
+.acc-net{position:absolute;right:-1px;bottom:-1px;width:24px;height:24px;border-radius:50%;
+  background-size:cover;background-position:center;background-repeat:no-repeat;
+  border:2px solid var(--bg,#0b0b0f);box-shadow:0 1px 4px rgba(0,0,0,.55)}
 .acc-avatar{width:64px;height:64px;border-radius:50%;flex:0 0 auto;background:var(--surface-2);
   background-size:cover;background-position:center;border:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.28)}
 .acc-head-body{min-width:0;flex:1 1 auto}
@@ -1510,6 +1514,7 @@
   .acc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
   .acc-addr{font-size:17px}
   .acc-avatar{width:52px;height:52px}
+  .acc-net{width:20px;height:20px}
   .acc-stat .v{font-size:19px}
 }
 @media (max-width:620px){
@@ -1543,7 +1548,10 @@
       <div class="crumb"><a href="/dashboard"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg><span>Back to dashboard</span></a></div>
 
       <section class="acc-head">
-        <span class="acc-avatar" id="accAvatar"></span>
+        <span class="acc-ava-wrap">
+          <span class="acc-avatar" id="accAvatar"></span>
+          <span class="acc-net" id="accNet" title="Stellar"></span>
+        </span>
         <div class="acc-head-body">
           <div class="acc-title-row">
             <h1 class="acc-addr" id="accAddr" title="">&#8212;</h1>
@@ -4207,11 +4215,12 @@ window.addEventListener('click',function(e){
   function paintHeader(){
     var el=q("#accAddr"); if(el){ el.textContent=ADDR?(ADDR.slice(0,8)+DASH+ADDR.slice(-8)):"No account"; el.title=ADDR; }
     var av=q("#accAvatar"); if(av&&ADDR)av.style.backgroundImage="url("+identicon(ADDR)+")";
+    var nt=q("#accNet"); if(nt&&!nt.style.backgroundImage)nt.style.backgroundImage="url("+STELLAR_URI+")";
     var sub=q("#accSub"); if(!sub)return;
     var bits=[];
     if(ACCT&&ACCT.home_domain)bits.push('<span class="acc-tag">'+esc(ACCT.home_domain)+'</span>');
     if(ACCT&&ACCT.__created)bits.push("Active since "+esc(ACCT.__created));
-    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">stellar.expert '+String.fromCharCode(8599)+'</a>');
+    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer '+String.fromCharCode(8599)+'</a>');
     sub.innerHTML=bits.join("");
   }
   function fail(msg){
@@ -4293,7 +4302,20 @@ window.addEventListener('click',function(e){
     });
     loadActs();
     var cp=q("#accCopy");
-    if(cp)cp.addEventListener("click",function(){ try{ navigator.clipboard.writeText(ADDR); cp.setAttribute("aria-label","Copied"); }catch(_){} });
+    // The site owns a bottom-centre toast (window.showToast) that every other copy action uses. Reuse it
+    // rather than inventing a second confirmation style on one page.
+    function accToast(m){ try{ if(typeof window.showToast==="function"){ window.showToast(m); return; } }catch(_){}
+      try{ var t=document.createElement("div"); t.textContent=m;
+        t.style.cssText="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99999;"
+          +"padding:11px 18px;border-radius:12px;background:#1a1a1f;color:#fff;font-size:14px;font-weight:700;"
+          +"box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none";
+        document.body.appendChild(t); setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },1800);
+      }catch(_){} }
+    if(cp)cp.addEventListener("click",function(){
+      if(!ADDR)return;
+      try{ navigator.clipboard.writeText(ADDR); }catch(_){}
+      accToast("Wallet address copied");
+    });
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
