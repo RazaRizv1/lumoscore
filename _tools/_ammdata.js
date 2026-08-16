@@ -171,7 +171,11 @@ html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready
 .lx-partrow .part-share{font-weight:700;font-size:14px!important}
 /* pool detail: remove the design's green endpoint dot on the TVL chart */
 #tvlChart circle{display:none!important}
-/* pool-tx wallet address is a link to stellar.expert — subtle hover underline */
+/* pool-tx wallet address links to OUR account page — subtle hover underline */
+.lx-sortag{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;font-size:10.5px;
+font-weight:700;letter-spacing:.02em;background:var(--surface);border:1px solid var(--border);color:var(--text-soft);vertical-align:middle}
+.lx-nolink{cursor:default}
+.lx-nolink:hover .lx-waddr{text-decoration:none}
 table.tx .wallet-cell{cursor:pointer}
 table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
 /* pagination row: vertically center "Page X of Y" with the Prev/Next buttons */
@@ -865,6 +869,16 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   function hshort(h){ return h?h.slice(0,6)+"\\u2026"+h.slice(-4):""; }
   function ashort(a){ return a?a.slice(0,4)+"\\u2026"+a.slice(-4):"\\u2014"; }
+  // A Soroban contract id starts with C and is not an account -- Horizon 400s on /accounts/<C...>, so
+  // our account page would always be empty for one. Link G addresses, tag C addresses.
+  function isCtr(a){ return !!a && String(a).charAt(0)==="C"; }
+  function acctHref(a){ return "/account/stellar/"+encodeURIComponent(a||""); }
+  function walletCell(who,size,cls){
+    var av='<div class="wallet-avatar">'+ident(who,size)+'</div>';
+    var lbl='<span class="lx-waddr">'+ashort(who)+'</span>';
+    if(isCtr(who))return '<span class="'+cls+' lx-nolink">'+av+lbl+'<span class="lx-sortag">Soroban</span></span>';
+    return '<a class="'+cls+' lx-acct" href="'+acctHref(who)+'" style="color:inherit;text-decoration:none">'+av+lbl+'</a>';
+  }
   function fprice(x){ x=+x||0; if(x>=1)return x.toFixed(4); if(x>=0.0001)return x.toFixed(6); return x.toPrecision(3); }
   function pusd(x){ x=+x||0; if(!x)return "$0.00"; if(x>=1)return "$"+x.toFixed(2); return "$"+x.toFixed(x>=0.01?4:(x>=0.0001?6:8)); }
   // strip trailing zeros from a fixed-decimal string ("0.0000001000" -> "0.0000001")
@@ -1652,13 +1666,12 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function txRow(t){
     var pill=t.type==="deposit"?'<span class="type-pill deposit">Deposit</span>':(t.type==="withdraw"?'<span class="type-pill withdraw">Withdraw</span>':'<span class="type-pill swap">Swap</span>');
     var when=t.time?new Date(t.time).toLocaleString():"\\u2014";
-    var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(t.who||"");
     var op=txHref(t);
     return '<tr class="lx-txrow" data-txtype="'+t.type+'">'+
       '<td>'+pill+'</td>'+
       '<td><span class="num">'+famt(t.xlm)+' '+esc(txCodeA())+'</span></td>'+
       '<td><span class="num">'+famt(t.tok)+' '+esc(txCodeB())+'</span></td>'+
-      '<td><a class="wallet-cell" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><div class="wallet-avatar">'+ident(t.who,22)+'</div><span class="lx-waddr">'+ashort(t.who)+'</span></a></td>'+
+      '<td>'+walletCell(t.who,22,"wallet-cell")+'</td>'+
       '<td>'+when+'</td>'+
       '<td><a class="ext-link" href="'+op+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H8M17 7v9"></path></svg></a></td></tr>';
   }
@@ -1680,7 +1693,6 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var kind=(t.type==="deposit"||t.type==="withdraw")?t.type:"swap";
     var label=kind==="deposit"?"Deposit":(kind==="withdraw"?"Withdraw":"Swap");
     var when=t.time?new Date(t.time).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}):"—";
-    var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(t.who||"");
     var amounts=famt(t.xlm)+" "+esc(txCodeA())+" ↔ "+famt(t.tok)+" "+esc(txCodeB());
     // Desktop gives each transaction a wallet IDENTICON for the counterparty. The phone left this slot
     // empty, so the design's logo painter claimed it and every row showed the same orange disc — the row
@@ -1690,7 +1702,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       +'<div class="tx-icon '+kind+' lx-txident" data-lxfixed="1" data-logoed="1">'+ident(t.who||kind,32)+'</div>'
       +'<div class="tx-info"><div class="tx-type '+kind+'">'+label+'</div>'
       +'<div class="tx-amounts">'+amounts+'</div>'
-      +'<a class="tx-meta" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(t.who||"")+'</a></div>'
+      +(isCtr(t.who)
+        ? ('<span class="tx-meta lx-nolink">'+ashort(t.who||"")+'<span class="lx-sortag">Soroban</span></span>')
+        : ('<a class="tx-meta lx-acct" href="'+acctHref(t.who)+'" style="color:inherit;text-decoration:none">'+ashort(t.who||"")+'</a>'))+'</div>'
       +'<div class="tx-time">'+when+'</div>'
       // Desktop's table has a trailing explorer arrow per row; the phone card had none, so a tap could only
       // reach the trader's account via the address line. Same target, same icon, right edge of the row.
