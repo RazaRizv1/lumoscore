@@ -49,7 +49,18 @@ const STYLE =
   // basis takes its width and leaves the remainder to the spacer, which is what pins the right-hand
   // controls to the edge. It still shrinks below 560 on a narrow window.
   '.topbar .search-box{flex:0 1 560px;max-width:560px;height:46px;gap:11px;padding:0 16px;border-radius:12px;display:flex}' +
-  '.topbar .search-box input{flex:1;min-width:0}' +
+  // The Dashboard sets its field at 18.5px; inner pages style .search-box at 15px, which is the "smaller
+  // text" half of the mismatch.
+  '.topbar .search-box input{flex:1;min-width:0;font-size:18.5px}' +
+  // ...and the "dimmer text" half is one token: --text-soft is #8b8b97 on the Dashboard but #6e6d78 on
+  // inner pages. Overriding the VARIABLE on the box (rather than colouring the placeholder and the icon
+  // separately) fixes both at once, needs no !important against the icon's inline
+  // style="color:var(--text-soft)", and lets the injected markup stay byte-identical to the Dashboard's.
+  //
+  // Per theme, because the two palettes are inverted: the Dashboard is the brighter of the two in dark
+  // mode and the darker one in light mode, so a single hex would fix one theme and break the other.
+  '.topbar .search-box{--text-soft:#8b8b97}' +
+  '[data-theme="light"] .topbar .search-box{--text-soft:#6f6f79}' +
   '</style>';
 
 let done = 0, repaired = 0, noSlot = [];
