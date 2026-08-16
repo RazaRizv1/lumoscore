@@ -2636,7 +2636,7 @@ margin-top:16px;border-top:1px solid var(--border)}
       
 
       
-    <div class="lxad-wrap" id="lxAdWrap" data-lx-noswap><div class="lxad" data-href="/trade/stellar/LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S" data-adid="lumos" data-adcode="LUMOS"><div class="lxad-top"><span class="lxad-lab">Promoted</span><span class="lxad-tag" data-l="Ad" data-lxc></span></div><div class="lxad-body"><span class="lxad-logo" data-lxc style="background-image:url(/assets/tokens/lumos.png)"></span><span class="lxad-id"><span class="lxad-pair">LUMOS / XLM<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span></span><span class="lxad-sub">Lumos Core &middot; <span class="lxad-dom">lumoscore.com</span></span></span></div><p class="lxad-copy">The asset the platform runs on. Hold 250,000 and your trading fee drops from 0.2% to 0.1% &mdash; and eligible pools pay their rewards in it.</p><div class="lxad-foot"><span class="lxad-cta">View LUMOS &rarr;</span><span class="lxad-why">Promote your token</span></div></div><template id="lxAdAlt"><div class="lxad" data-href="/launchpad" data-adid="launchpad"><div class="lxad-top"><span class="lxad-lab">Promoted</span><span class="lxad-tag" data-l="Ad" data-lxc></span></div><div class="lxad-body"><span class="lxad-logo" data-lxc style="background-image:url(/assets/tokens/lumos.png)"></span><span class="lxad-id"><span class="lxad-pair">Launchpad</span><span class="lxad-sub">LumosCore &middot; <span class="lxad-dom">lumoscore.com</span></span></span></div><p class="lxad-copy">Issue a token on Stellar mainnet in three steps. Set the supply, upload an icon, and the asset is live and tradeable in under a minute.</p><div class="lxad-foot"><span class="lxad-cta">Open Launchpad &rarr;</span><span class="lxad-why">Promote your token</span></div></div></template></div><script id="lx-ad">
+    <div class="lxad-wrap" id="lxAdWrap" data-lx-noswap><div class="lxad" data-href="/trade/stellar/LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S" data-adid="lumos" data-adcode="LUMOS"><div class="lxad-top"><span class="lxad-lab">Promoted</span><span class="lxad-tag" data-l="Ad" data-lxc></span></div><div class="lxad-body"><span class="lxad-logo" data-lxc style="background-image:url(/assets/tokens/lumos.png)"></span><span class="lxad-id"><span class="lxad-pair">LUMOS / XLM<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span></span><span class="lxad-sub">Lumos Core &middot; <span class="lxad-dom">lumoscore.com</span></span></span></div><p class="lxad-copy">The asset the platform runs on. Hold 250,000 and your trading fee drops from 0.2% to 0.1% &mdash; and eligible pools pay their rewards in it.</p><div class="lxad-foot"><span class="lxad-cta">View LUMOS &rarr;</span><span class="lxad-why">Promote your token</span></div></div></div><script id="lx-ad">
 (function(){
   var wrap=document.getElementById("lxAdWrap"); if(!wrap) return;
 
@@ -2654,28 +2654,41 @@ margin-top:16px;border-top:1px solid var(--border)}
     }catch(e){ return "LUMOS"; }
   }
 
-  // Runs at parse time, before first paint, so the swap is never visible as a change.
+  // On the promoted asset's OWN page the card is unchanged -- same pair, same copy, same "View LUMOS" --
+  // but "view" cannot mean "navigate to the page you are already on". Mark it so the click scrolls to the
+  // trade widget instead. Runs at parse time, so the mark is set before anything can be clicked.
   (function(){
-    var ad=wrap.querySelector(".lxad"); var tpl=document.getElementById("lxAdAlt");
-    if(!ad||!tpl) return;
+    var ad=wrap.querySelector(".lxad"); if(!ad) return;
     var code=ad.getAttribute("data-adcode");
-    if(code && code===pageCode()) wrap.innerHTML=tpl.innerHTML;
+    if(code && code===pageCode()) ad.setAttribute("data-adself","1");
   })();
 
   // The design's own click handler opens asset pages without the ?asset= query, so a plain anchor here
   // would land every click on default LUMOS. Window-capture is the earliest phase available, which is
   // what lets us stop that handler before it sees the event.
-  function target(t){
+  // Returns the card itself, not a string. An earlier version returned a "#self" sentinel and its quotes
+  // were lost on the way through the build, leaving a bare hash-self token -- which JS parses as a private
+  // field, so the whole script died with a SyntaxError and NOTHING on the card worked. An element
+  // reference cannot be mangled that way, and the two questions (which card, and is this its own page)
+  // stay separate.
+  function cardOf(t){
     if(!t||!t.closest) return null;
     if(t.closest(".lxad-why")) return null;       // the booking link, not the creative
-    var ad=t.closest(".lxad"); if(!ad) return null;
-    return ad.getAttribute("data-href")||null;
+    return t.closest(".lxad");
   }
-  function go(href,e){ e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+  function go(ad,e){
+    if(!ad) return;
+    e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+    // on the promoted asset's own page there is nowhere to navigate TO, so bring the buy box into view
+    if(ad.getAttribute("data-adself")==="1"){
+      var w=document.querySelector(".dxa-trade-card,.mdxa-trade-card");
+      if(w&&w.scrollIntoView){ try{ w.scrollIntoView({block:"center",behavior:"smooth"}); }catch(_){ w.scrollIntoView(); } }
+      return; }
+    var href=ad.getAttribute("data-href"); if(!href) return;
     try{ window.location.href=href; }catch(_){} }
 
   if(!window.__lxAdNav){ window.__lxAdNav=1;
-    window.addEventListener("click",function(e){ var h=target(e.target); if(h) go(h,e); },true);
+    window.addEventListener("click",function(e){ go(cardOf(e.target),e); },true);
 
     // A TAP IS NOT A CLICK on a handset (DEV landmine 10). The design's own handlers have the same
     // problem, which is why controls that work in the browser pane do nothing on a real phone -- and why
@@ -2687,7 +2700,7 @@ margin-top:16px;border-top:1px solid var(--border)}
     var tx=0, ty=0, tt=0, tid=null;
     window.addEventListener("touchstart",function(e){
       var t=e.touches&&e.touches[0]; if(!t) return;
-      tid=target(e.target); tx=t.clientX; ty=t.clientY; tt=Date.now();
+      tid=cardOf(e.target); tx=t.clientX; ty=t.clientY; tt=Date.now();
     },{passive:true,capture:true});
     window.addEventListener("touchend",function(e){
       if(!tid) return; var h=tid; tid=null;

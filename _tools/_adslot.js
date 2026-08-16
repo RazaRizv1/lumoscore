@@ -14,8 +14,8 @@
 // its own values before our script runs (DEV guide 5a). A slot rendered from JS would have the same
 // problem in reverse -- an empty 228px box at first paint, then a card, which is a layout jump in the
 // rail. Emitting the resolved default as real markup means the common case involves no JavaScript at all
-// and cannot flash. The inline script only intervenes in the one case the build cannot know: when the
-// page's own asset IS the asset the house ad promotes.
+// and cannot flash. The inline script only marks the one case the build cannot know -- whether this page
+// happens to BE the promoted asset's page -- which changes the click target and nothing else.
 //
 // LANDMINES OBSERVED HERE
 //   * The multichain re-skin observer rewrites "XLM"/"Stellar" in text. The card names a specific pair, so
@@ -112,18 +112,15 @@ function card(c) {
   '</div>';
 }
 
-// The build resolves the slot for the ordinary case (a page whose asset is not the house asset). The
-// browser only re-resolves when that assumption fails.
-const DEFAULT_C = CAMPAIGNS[0] || HOUSE[0];
-const ALT_C     = HOUSE[1];
+const DEFAULT_C = CAMPAIGNS[0] || HOUSE[0];   // HOUSE[1] is kept as a ready spare, not rendered today
 
-// The alternate creative rides along as an inert <template> rather than a JS string. Passing markup
-// through JSON.stringify would escape its attribute quotes, and the emitted script lives inside a Node
-// template literal that eats exactly one level of backslash -- so `\"` would arrive as a bare `"`, closing
-// the attribute and killing the whole script. That failure has shipped here before. A <template> is not
-// rendered, not escaped and not parsed as anything but markup, so the class of bug cannot occur.
-const WRAP = '<div class="lxad-wrap" id="lxAdWrap" data-lx-noswap>' + card(DEFAULT_C) +
-  '<template id="lxAdAlt">' + card(ALT_C) + '</template>' + '</div>';
+// ONE CREATIVE, ON EVERY PAGE, INCLUDING LUMOS'S OWN. I originally swapped in a second creative on the
+// LUMOS page, reasoning that advertising LUMOS to somebody already reading the LUMOS page wasted the
+// slot. That was my call to make and it was the wrong one: the rule is that the house ad is LUMOS,
+// everywhere, and a card that silently becomes a different product on one page is a surprise rather than
+// an optimisation. The self-link it was avoiding is handled below instead -- the card stays identical and
+// only its click target changes.
+const WRAP = '<div class="lxad-wrap" id="lxAdWrap" data-lx-noswap>' + card(DEFAULT_C) + '</div>';
 
 const STYLE = `<style id="lx-ad-css">
 /* No margin here on purpose: .dxa-trade-col is already flex-direction:column with gap:10px. That gap has
@@ -193,28 +190,41 @@ const SCRIPT = `<script id="lx-ad">
     }catch(e){ return "LUMOS"; }
   }
 
-  // Runs at parse time, before first paint, so the swap is never visible as a change.
+  // On the promoted asset's OWN page the card is unchanged -- same pair, same copy, same "View LUMOS" --
+  // but "view" cannot mean "navigate to the page you are already on". Mark it so the click scrolls to the
+  // trade widget instead. Runs at parse time, so the mark is set before anything can be clicked.
   (function(){
-    var ad=wrap.querySelector(".lxad"); var tpl=document.getElementById("lxAdAlt");
-    if(!ad||!tpl) return;
+    var ad=wrap.querySelector(".lxad"); if(!ad) return;
     var code=ad.getAttribute("data-adcode");
-    if(code && code===pageCode()) wrap.innerHTML=tpl.innerHTML;
+    if(code && code===pageCode()) ad.setAttribute("data-adself","1");
   })();
 
   // The design's own click handler opens asset pages without the ?asset= query, so a plain anchor here
   // would land every click on default LUMOS. Window-capture is the earliest phase available, which is
   // what lets us stop that handler before it sees the event.
-  function target(t){
+  // Returns the card itself, not a string. An earlier version returned a "#self" sentinel and its quotes
+  // were lost on the way through the build, leaving a bare hash-self token -- which JS parses as a private
+  // field, so the whole script died with a SyntaxError and NOTHING on the card worked. An element
+  // reference cannot be mangled that way, and the two questions (which card, and is this its own page)
+  // stay separate.
+  function cardOf(t){
     if(!t||!t.closest) return null;
     if(t.closest(".lxad-why")) return null;       // the booking link, not the creative
-    var ad=t.closest(".lxad"); if(!ad) return null;
-    return ad.getAttribute("data-href")||null;
+    return t.closest(".lxad");
   }
-  function go(href,e){ e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+  function go(ad,e){
+    if(!ad) return;
+    e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+    // on the promoted asset's own page there is nowhere to navigate TO, so bring the buy box into view
+    if(ad.getAttribute("data-adself")==="1"){
+      var w=document.querySelector(".dxa-trade-card,.mdxa-trade-card");
+      if(w&&w.scrollIntoView){ try{ w.scrollIntoView({block:"center",behavior:"smooth"}); }catch(_){ w.scrollIntoView(); } }
+      return; }
+    var href=ad.getAttribute("data-href"); if(!href) return;
     try{ window.location.href=href; }catch(_){} }
 
   if(!window.__lxAdNav){ window.__lxAdNav=1;
-    window.addEventListener("click",function(e){ var h=target(e.target); if(h) go(h,e); },true);
+    window.addEventListener("click",function(e){ go(cardOf(e.target),e); },true);
 
     // A TAP IS NOT A CLICK on a handset (DEV landmine 10). The design's own handlers have the same
     // problem, which is why controls that work in the browser pane do nothing on a real phone -- and why
@@ -226,7 +236,7 @@ const SCRIPT = `<script id="lx-ad">
     var tx=0, ty=0, tt=0, tid=null;
     window.addEventListener("touchstart",function(e){
       var t=e.touches&&e.touches[0]; if(!t) return;
-      tid=target(e.target); tx=t.clientX; ty=t.clientY; tt=Date.now();
+      tid=cardOf(e.target); tx=t.clientX; ty=t.clientY; tt=Date.now();
     },{passive:true,capture:true});
     window.addEventListener("touchend",function(e){
       if(!tid) return; var h=tid; tid=null;
@@ -244,6 +254,17 @@ const SCRIPT = `<script id="lx-ad">
 // feature just quietly does nothing, and `node --check` cannot see it because it validates THIS file,
 // where the escape is still intact. This code is written without regex for that reason; the guard makes
 // the rule enforceable rather than remembered (DEV landmine 8).
+// PARSE THE EMITTED BROWSER CODE AT BUILD TIME. `node --check` validates THIS file, where the browser
+// code is still just a string, so it cannot see a syntax error inside it. One shipped: a "#self" sentinel
+// lost its quotes on the way through, leaving `return #self`, which JS reads as a private field. The
+// script threw on load, every listener it installs was never registered, and the card silently did
+// nothing -- with no console error visible unless you went looking for it.
+(function assertEmittedParses() {
+  const body = SCRIPT.replace(/^<script id="lx-ad">/, '').replace(/<\/script>\s*$/, '');
+  try { new Function(body); }
+  catch (e) { throw new Error('_adslot: emitted browser code does not parse -- ' + e.message); }
+})();
+
 (function assertNoLoneEscapes() {
   const lone = SCRIPT.split(B).filter((_, i, a) => i > 0 && a[i - 1] !== '');
   if (SCRIPT.indexOf(B) >= 0) {
