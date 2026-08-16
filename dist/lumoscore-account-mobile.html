@@ -1498,10 +1498,10 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
   background-size:cover;background-position:center;border:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.28)}
 .acc-head-body{min-width:0;flex:1 1 auto}
 .acc-title-row{display:flex;align-items:flex-start;gap:8px;min-width:0}
-.acc-copy{margin-top:1px}
+
 .acc-addr{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:17px;font-weight:800;margin:0;
   letter-spacing:-.2px;line-height:1.3;word-break:break-all;overflow-wrap:anywhere}
-.acc-copy{flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid var(--border);
+.acc-copy{flex:0 0 auto;width:24px;height:24px;margin-top:-1px;border-radius:7px;border:1px solid var(--border);
   background:var(--surface-2);color:var(--text-soft);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .acc-copy:hover{color:var(--text);border-color:var(--border-strong)}
 .acc-sub{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:6px;font-size:13.5px;color:var(--text-soft)}
@@ -1519,6 +1519,18 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
 
 .acc-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:18px;overflow:hidden}
 .acc-card-head{display:flex;align-items:center;gap:9px;padding:16px 18px 12px}
+.acc-tabs{display:flex;gap:2px;padding:6px 8px 0;border-bottom:1px solid var(--border)}
+.acc-tab{appearance:none;background:none;border:none;font:inherit;font-size:14.5px;font-weight:800;
+  color:var(--text-muted);padding:12px 14px 11px;cursor:pointer;border-bottom:2px solid transparent;
+  display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.acc-tab:hover{color:var(--text)}
+.acc-tab.active{color:var(--text);border-bottom-color:var(--accent)}
+.acc-pane[hidden]{display:none}
+.acc-view{color:var(--accent);text-decoration:none;font-size:13.5px;font-weight:700;white-space:nowrap}
+.acc-view:hover{text-decoration:underline}
+.acc-iss{display:block;font-size:12px;color:var(--text-soft);font-weight:600}
+.acc-vt{display:inline-flex;vertical-align:-2px;margin-left:4px}
+
 .acc-card-head h2{font-size:17px;font-weight:800;margin:0}
 .acc-n{font-size:12.5px;font-weight:800;color:var(--text-muted);background:var(--surface-2);
   border-radius:999px;padding:2px 9px;min-width:22px;text-align:center}
@@ -1625,25 +1637,27 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
       </section>
 
       <section class="acc-card">
-        <div class="acc-card-head"><h2>Assets</h2><span class="acc-n" id="accAssetsN"></span></div>
-        <div class="acc-scroll">
-          <table class="acc-tbl" id="accAssetsTbl">
-            <thead><tr><th>Asset</th><th class="num">Balance</th><th class="num">Price</th><th class="num">Value</th><th class="num acc-hide-sm">Share</th></tr></thead>
-            <tbody><tr class="acc-empty-row"><td colspan="5"><div class="acc-empty">Loading assets&#8230;</div></td></tr></tbody>
-          </table>
+        <div class="acc-tabs" id="accTabs">
+          <button class="acc-tab active" data-t="assets" type="button">Assets <span class="acc-n" id="accAssetsN"></span></button>
+          <button class="acc-tab" data-t="pools" type="button">Pools <span class="acc-n" id="accPoolsN"></span></button>
+        </div>
+        <div class="acc-pane" data-p="assets">
+          <div class="acc-scroll">
+            <table class="acc-tbl" id="accAssetsTbl">
+              <thead><tr><th>Asset</th><th class="num">Balance</th><th class="num">Value</th><th></th></tr></thead>
+              <tbody><tr class="acc-empty-row"><td colspan="4"><div class="acc-empty">Loading assets&#8230;</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="acc-pane" data-p="pools" hidden>
+          <div class="acc-scroll">
+            <table class="acc-tbl" id="accPoolsTbl">
+              <thead><tr><th>Pool</th><th class="num">Pool share</th><th class="num">Position value</th><th class="num acc-hide-sm">Pool TVL</th><th></th></tr></thead>
+              <tbody><tr class="acc-empty-row"><td colspan="5"><div class="acc-empty">Loading pools&#8230;</div></td></tr></tbody>
+            </table>
+          </div>
         </div>
       </section>
-
-      <section class="acc-card">
-        <div class="acc-card-head"><h2>Liquidity pools</h2><span class="acc-n" id="accPoolsN"></span></div>
-        <div class="acc-scroll">
-          <table class="acc-tbl" id="accPoolsTbl">
-            <thead><tr><th>Pool</th><th class="num">Pool share</th><th class="num">Position value</th><th class="num acc-hide-sm">Pool TVL</th></tr></thead>
-            <tbody><tr class="acc-empty-row"><td colspan="4"><div class="acc-empty">Loading pools&#8230;</div></td></tr></tbody>
-          </table>
-        </div>
-      </section>
-
       <section class="acc-card">
         <div class="acc-card-head"><h2>Recent activity</h2><span class="acc-n" id="accActN"></span></div>
         <div class="acc-acts" id="accActs"><div class="acc-empty">Loading activity&#8230;</div></div>
@@ -3805,7 +3819,11 @@ window.addEventListener('click',function(e){
     BTC:"GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF"};
   var LUMOS_ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
   var LUMOS_LOGO="https://stellar.myfilebase.com/ipfs/QmTrohhpDADXPw9fkLT2J8aip7SxZEoqcvpZ7jBgW9HYSp";
-  var IMG={}, TRIED={};
+  var IMG={}, DOM={}, TRIED={};
+  // the same verified pairs the rest of the site vouches for -- code|issuer, never code alone
+  var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
+  var VTICK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  function vtick(c,i){ return VFD[c+"|"+i]?('<span class="acc-vt">'+VTICK+'</span>'):""; }
   function key(c,i){ return c+"-"+(i||""); }
   function brand(c,i){ if(c==="LUMOS"&&i===LUMOS_ISS)return LUMOS_LOGO;
     var u=LOGOS[c]; if(!u)return ""; return (LOGO_ISS[c]&&i===LOGO_ISS[c])?u:""; }
@@ -3832,6 +3850,7 @@ window.addEventListener('click',function(e){
     fetchJ("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(i)+"&limit=50").then(function(d){
       var m=recs(d).filter(function(r){ return (r.asset||"").indexOf(c+"-"+i)===0; })[0];
       var ti=(m&&(m.tomlInfo||m.toml_info))||{};
+      if(m&&m.domain){ DOM[key(c,i)]=m.domain; try{ renderAssets(); }catch(_){} }
       if(ti.image){ IMG[key(c,i)]=ti.image; paintLogos(); return; }
       return j(H+"/accounts/"+i).then(function(acc){
         var dom=(acc&&acc.home_domain)||""; if(!dom)return;
@@ -3919,16 +3938,15 @@ window.addEventListener('click',function(e){
     // whatever is on screen gets priced and gets a logo, cap or no cap
     rows.forEach(function(a){ if(!a.native&&!a.__px){ a.__px=1; loadAssetPx(a); fetchLogo(a.code,a.issuer); } });
     tb.innerHTML=rows.map(function(a){
-      var share=(tot>0&&a.usd)?(a.usd/tot*100):0;
+      var sub = a.native ? "Native asset"
+        : ((DOM[key(a.code,a.issuer)]||"") ? (DOM[key(a.code,a.issuer)]+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer));
       return '<tr class="acc-row" data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer||"")+'">'
         +'<td><span class="acc-pair"><span class="acc-ico" data-c="'+esc(a.code)+'" data-i="'+esc(a.issuer||"")+'"></span>'
-          +'<span><span class="acc-code">'+esc(a.code)+'</span>'
-          +'<span class="acc-dom">'+esc(a.dom||shortG(a.issuer))+'</span></span></span></td>'
+          +'<span><span class="acc-code">'+esc(a.code)+'</span>'+(a.native?"":vtick(a.code,a.issuer))
+          +'<span class="acc-iss">'+esc(sub)+'</span></span></span></td>'
         +'<td class="num">'+amt(a.bal)+'</td>'
-        +'<td class="num">'+(a.native?"1 XLM":(a.px>0?amt(a.px)+" XLM":DASH))+'</td>'
         +'<td class="num">'+(a.usd!=null&&xlmUsd>0?usd(a.usd):DASH)+'</td>'
-        +'<td class="num acc-hide-sm"><span class="acc-bar" style="display:inline-block;width:74px" title="'+share.toFixed(1)+'%">'
-          +'<i style="width:'+Math.max(2,Math.min(100,share)).toFixed(1)+'%"></i></span></td>'
+        +'<td style="text-align:right">'+(a.native?"":'<a class="acc-view" href="/trade/stellar/'+esc(a.code)+'-'+esc(a.issuer)+'">View asset</a>')+'</td>'
         +'</tr>'; }).join("");
     setMore("#accAssetsTbl","assets",rows.length,all.length);
     paintLogos();
@@ -3938,10 +3956,23 @@ window.addEventListener('click',function(e){
   }
 
   // ---- pools --------------------------------------------------------------------------------------
+  var poolsOpened=false;
+  function wireTabs(){
+    var bar=q("#accTabs"); if(!bar||bar.__w)return; bar.__w=1;
+    bar.addEventListener("click",function(e){
+      var b=e.target&&e.target.closest?e.target.closest(".acc-tab[data-t]"):null; if(!b)return;
+      var t=b.getAttribute("data-t");
+      qa(".acc-tab",bar).forEach(function(x){ x.classList.toggle("active",x===b); });
+      qa(".acc-pane").forEach(function(pn){ pn.hidden=(pn.getAttribute("data-p")!==t); });
+      if(t==="pools"&&!poolsOpened){ poolsOpened=true; renderPools(); }
+    });
+  }
   function renderPools(){
     var tb=q("#accPoolsTbl tbody"); if(!tb)return;
+    var n0=q("#accPoolsN"); if(n0)n0.textContent=String(POOLS.length);
+    if(!poolsOpened)return;                       // deferred until the tab is actually opened
     var n=q("#accPoolsN"); if(n)n.textContent=String(POOLS.length);
-    if(!POOLS.length){ tb.innerHTML='<tr class="acc-empty-row"><td colspan="4"><div class="acc-empty">'
+    if(!POOLS.length){ tb.innerHTML='<tr class="acc-empty-row"><td colspan="5"><div class="acc-empty">'
       +(DONE.pools?"This account provides no pool liquidity.":"Loading pools"+String.fromCharCode(8230))+'</div></td></tr>'; return; }
     // biggest position first, unvalued last -- same rule as the assets table
     var psorted=POOLS.slice().sort(function(x,y){ var vx=(x.usd==null)?-1:x.usd, vy=(y.usd==null)?-1:y.usd; return vy-vx; });
@@ -3957,6 +3988,7 @@ window.addEventListener('click',function(e){
         +'<td class="num">'+(p.share>=0.01?p.share.toFixed(2):"<0.01")+'%</td>'
         +'<td class="num">'+(p.usd!=null&&xlmUsd>0?usd(p.usd):DASH)+'</td>'
         +'<td class="num acc-hide-sm">'+(p.tvl!=null&&xlmUsd>0?usd(p.tvl):DASH)+'</td>'
+        +'<td style="text-align:right"><a class="acc-view" href="/pools/stellar/id/'+esc(p.id)+'">View pool</a></td>'
         +'</tr>'; }).join("");
     setMore("#accPoolsTbl","pools",plist.length,psorted.length);
     paintLogos();
@@ -4090,7 +4122,7 @@ window.addEventListener('click',function(e){
         ASSETS.push({code:b.asset_code,issuer:b.asset_issuer,dom:"",bal:+b.balance,px:0,usd:null});
       });
       DONE.pools=1;
-      paintHeader(); renderStats(); renderAssets(); renderPools();
+      paintHeader(); renderStats(); renderAssets(); wireTabs(); renderPools();
       // Price beyond the first batch so the ORDER is real rather than just Horizon's order, but stop at
       // PRICE_CAP: an account with 400 trustlines must not turn one page view into 400 requests.
       (function wave(i,list){ if(i>=list.length)return;
