@@ -5949,9 +5949,16 @@ window.addEventListener('click',function(e){
   // price axis cannot drift apart -- the axis has to span the PRICE band only, and hard-coding that split
   // in the stylesheet is exactly how it would end up labelling the bars.
   function volGeom(ih){ var volH=Math.round(ih*0.22), gap=12; return {volH:volH, gap:gap, priceH:ih-volH-gap}; }
-  // The bars. Scaled to the largest volume in view, so the band always uses its full height rather than
-  // flattening whenever one outlier session dwarfs the rest -- and clamped to a 1-unit floor so a real but
-  // tiny volume still leaves a mark instead of vanishing, which would read as "no trades" rather than "few".
+  // SQUARE-ROOT SCALE, not linear, and this is the difference between a volume band and an empty strip.
+  // DEX volume is violently long-tailed: measured on yXLM, the median session was 14.6 and the largest
+  // 2,472 -- 169x. Scaled linearly against that maximum, 67 of 95 bars came out UNDER TWO PIXELS and the
+  // median bar was 1.04px, at 38% opacity. The bars were all present in the DOM and none of them were
+  // visible, which is exactly what was reported: "I still don't see any volume bars."
+  //
+  // sqrt compresses the tail so an ordinary session still reads while the outlier keeps the top of the
+  // band. It costs strict proportionality -- a bar twice as tall is four times the volume, not twice --
+  // which is why there is no volume axis and no label: the band answers "was there activity here", and
+  // the hover tooltip carries the exact figure for anyone who wants it.
   // upFn(i) and xFn(i) are passed in because the two renderers disagree on both: candles know their own
   // direction from open vs close and sit on band centres, while the line chart can only compare a close to
   // the one before it and sits on point positions. Baking either assumption in here would misalign the
@@ -5960,13 +5967,16 @@ window.addEventListener('click',function(e){
     var vmax=0, i;
     for(i=0;i<pts.length;i++){ var v=+pts[i].vol||0; if(v>vmax)vmax=v; }
     if(!(vmax>0)) return "";
+    var vroot=Math.sqrt(vmax);
+    // 3 units is about 3px at the rendered size -- the floor is what keeps a real but small session from
+    // rounding away to nothing, which reads as "no trades" rather than "few"
     var bw=Math.max(1, Math.min(14, iw/n*0.62)), out="";
     for(i=0;i<pts.length;i++){
       var vv=+pts[i].vol||0; if(!(vv>0)) continue;
-      var bh=Math.max(1, (vv/vmax)*h);
+      var bh=Math.max(3, (Math.sqrt(vv)/vroot)*h);
       out+='<rect class="lxda-vol" x="'+(xFn(i)-bw/2).toFixed(1)+'" y="'+(top+h-bh).toFixed(1)
         +'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)
-        +'" fill="'+(upFn(i)?"#22c55e":"#ff5b5b")+'" fill-opacity="0.38"></rect>';
+        +'" fill="'+(upFn(i)?"#22c55e":"#ff5b5b")+'" fill-opacity="0.5"></rect>';
     }
     return out;
   }
