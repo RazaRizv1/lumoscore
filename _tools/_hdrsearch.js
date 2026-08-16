@@ -63,15 +63,26 @@ const STYLE =
   // no data-theme attribute is set at all.
   'html[data-theme] .topbar{background:var(--surface);' +
   'backdrop-filter:none;-webkit-backdrop-filter:none}' +
-  '.topbar .search-box{background:var(--bg)}' +
+  // COMPLETE, not a set of overrides. `.search-box` CSS is not present on every page -- Trade and the
+  // Dashboard carry it, the pool detail page does not -- so a rule that only tweaked width and font left
+  // the input with raw browser defaults there: a white fill, an inset 2px border and black text. Anything
+  // that assumes the design already styles this element is only correct on the pages that happen to.
+  // These declarations mirror the Dashboard's own `.search-box` / `.search-box input` rules.
+  //
   // flex:0 1 560px, NOT flex:1 -- the spacer beside it is also flex:1, and two growing siblings split the
   // slack evenly, which is why the field first came out at 363px instead of the Dashboard's 560. A fixed
   // basis takes its width and leaves the remainder to the spacer, which is what pins the right-hand
   // controls to the edge. It still shrinks below 560 on a narrow window.
-  '.topbar .search-box{flex:0 1 560px;max-width:560px;height:46px;gap:11px;padding:0 16px;border-radius:12px;display:flex}' +
+  '.topbar .search-box{flex:0 1 560px;max-width:560px;display:flex;align-items:center;gap:11px;' +
+  'background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:0 16px;height:46px}' +
+  '.topbar .search-box>svg{flex:none}' +
   // The Dashboard sets its field at 18.5px; inner pages style .search-box at 15px, which is the "smaller
-  // text" half of the mismatch.
-  '.topbar .search-box input{flex:1;min-width:0;font-size:18.5px}' +
+  // text" half of the mismatch. appearance:none and the explicit border/background/shadow are what strip
+  // the native input chrome on pages carrying no .search-box rule at all.
+  '.topbar .search-box input{flex:1 1 0%;min-width:0;border:0;outline:none;background:transparent;' +
+  'box-shadow:none;-webkit-appearance:none;appearance:none;padding:0;' +
+  'font-family:inherit;font-size:18.5px;color:var(--text)}' +
+  '.topbar .search-box input::placeholder{color:var(--text-soft)}' +
   // ...and the "dimmer text" half is one token: --text-soft is #8b8b97 on the Dashboard but #6e6d78 on
   // inner pages. Overriding the VARIABLE on the box (rather than colouring the placeholder and the icon
   // separately) fixes both at once, needs no !important against the icon's inline
