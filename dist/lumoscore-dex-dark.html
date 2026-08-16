@@ -1823,7 +1823,11 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .dex-mint-stats{display:flex;gap:22px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
 .dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
 .dex-mint-stat .l{font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft,#6f6f79);margin-bottom:6px}
-.dex-mint-stat .v{font-weight:700;font-size:14px;color:var(--text,#0e0e10);white-space:nowrap}
+.dex-mint-stat .v{font-weight:700;font-size:14px;color:var(--text,#0e0e10);white-space:nowrap;line-height:1.25;text-align:right}
+/* the dollar figure is a second line under the XLM price, not a continuation of it */
+.dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
+/* Price carries the longest string in the row, so it gets room; the counts stay narrow */
+.dex-mint-stat:first-child{min-width:104px}
 </style></head>
 <body>
 <div class="app">
@@ -4282,10 +4286,15 @@ window.addEventListener('click',function(e){
         byCode[key]=a; NATIVE.push(a); add.push(a);
       });
       touch();
+      // The mints box shows the five NEWEST, and they can sit anywhere in discovery order -- so price
+      // those first. Without this the visible rows waited behind up to twenty assets nobody is looking at.
+      var _first=add.slice().sort(function(x,y){ return (y.created||0)-(x.created||0); }).slice(0,5);
+      Promise.all(_first.map(function(a){ a.__px=1; return loadAsset(a).catch(function(){}); })).then(touch);
+
       // Horizon in small waves: loadAsset is ~5 requests per asset, and firing 30 assets at once is a
       // burst that gets throttled -- which surfaces as rows stuck on a dash, not as an error.
       (function wave(i){ if(i>=add.length){ nativeState=2; touch(); return; }
-        Promise.all(add.slice(i,i+4).map(function(a){ return loadAsset(a).catch(function(){}); }))
+        Promise.all(add.slice(i,i+4).map(function(a){ if(a.__px)return null; a.__px=1; return loadAsset(a).catch(function(){}); }))
           .then(function(){ wave(i+4); },function(){ wave(i+4); });
       })(0);
     }).catch(function(){ nativeState=0; });                  // allow a retry on the next click
