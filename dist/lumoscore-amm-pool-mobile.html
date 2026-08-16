@@ -5769,19 +5769,60 @@ window.addEventListener('click',function(e){
       '<a class="part-addr lx-acct" href="/account/stellar/'+p.addr+'" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'+
       '<span class="part-share">'+(p.frac*100>=0.01?(p.frac*100).toFixed(2):"<0.01")+'%</span></div>';
   }
+  // PARTICIPANTS PAGE IN STEP WITH TRANSACTIONS. The two lists sit side by side, so rendering 100 wallets
+  // beside 20 transactions left the right column running hundreds of pixels past the left and the page
+  // scrolling on into empty space. Same page size as the tx list, same slice-before-render rule, so the
+  // columns end together and the DOM stays small.
+  var PARTPP=TXPP, partPage=0;
+  function partSlice(){
+    var t=(DET&&DET.parts)||[];
+    var pages=Math.max(1,Math.ceil(t.length/PARTPP));
+    if(partPage>pages-1)partPage=pages-1; if(partPage<0)partPage=0;
+    return {all:t,pages:pages,rows:t.slice(partPage*PARTPP,(partPage+1)*PARTPP)};
+  }
   function pdParts(){
     var d=DET; var list=q("#partList,#participantsList"); if(!list)return;
     list.__lxPP=1;  // block the design's participant paginator/cloner
-    var wantP=d.parts.length||1;
-    if(list.querySelectorAll(".lx-partrow").length!==wantP){
-      list.innerHTML=d.parts.length?d.parts.map(function(_p){return partRow(_p,list.id==="participantsList");}).join(""):'<div class="part-row lx-partrow" style="justify-content:center;color:var(--text-muted)">No liquidity providers yet</div>';
+    var s=partSlice(), mob=(list.id==="participantsList");
+    var sig=partPage+"|"+s.all.length+"|"+((s.rows[0]&&s.rows[0].addr)||"")+"|"+((s.rows[s.rows.length-1]&&s.rows[s.rows.length-1].addr)||"");
+    if(list.__lxpsig!==sig || !list.querySelector(".lx-partrow")){
+      list.__lxpsig=sig;
+      list.innerHTML=s.rows.length?s.rows.map(function(_p){return partRow(_p,mob);}).join(""):'<div class="part-row lx-partrow" style="justify-content:center;color:var(--text-muted)">No liquidity providers yet</div>';
     }
     var pg=q("#lx-partpage"); if(pg)pg.style.display="none";
     qa(".part-count, .participants-count, [data-partcount]").forEach(function(e){ setText(e,String(d.parts.length)); });
     // the design mocks the participant count ("847") in the "Participants" side-head pill — set the real count.
     qa(".count-pill").forEach(function(e){ var sh=e.closest&&e.closest(".side-head"); if(sh&&/participant/i.test(sh.textContent||""))setText(e,String(d.parts.length)); });
-    // "Viewing 1 - N of N" + hide the mock participant pager (single page for the real, small count)
-    qa("*").forEach(function(e){ if(e.children.length===0&&/Viewing .* of \d/.test(e.textContent||"")){ setText(e,"Viewing 1 \u2013 "+d.parts.length+" of "+d.parts.length); var pcard=(e.closest&&e.closest(".pools-card, .side-card"))||e.parentElement; if(pcard){ [].slice.call(pcard.querySelectorAll(".controls")).forEach(function(c){ if(/Page \d+ of|Prev|Next/.test(c.textContent||""))c.style.display="none"; }); } } });
+    partFoot(list,s);
+  }
+  // The footer the design ships for this list is .part-foot (an info line + a .nav of Prev/Next). Reuse it
+  // when it exists rather than building a second control beside it, and own its buttons outright -- the
+  // design's own handler pages a cloned mock list.
+  function partFoot(list,s){
+    var card=(list.closest&&(list.closest(".side-card")||list.closest(".pools-card")))||list.parentElement;
+    if(!card)return;
+    var foot=card.querySelector(".part-foot");
+    if(!foot){ foot=document.createElement("div"); foot.className="part-foot lx-partfoot";
+      foot.innerHTML='<div></div><div class="nav"></div>'; card.appendChild(foot); }
+    if(card.lastElementChild!==foot)card.appendChild(foot);
+    var info=foot.querySelector("div"), nav=foot.querySelector(".nav");
+    var from=s.all.length?(partPage*PARTPP+1):0, to=partPage*PARTPP+s.rows.length;
+    if(info)setText(info, s.all.length?("Viewing "+from+" \u2013 "+to+" of "+num(s.all.length)):"No liquidity providers yet");
+    if(!nav)return;
+    if(!nav.__lxw){ nav.__lxw=1;
+      nav.innerHTML='<button type="button" data-pp="prev">\u2039</button><span class="lx-pppg"></span><button type="button" data-pp="next">\u203a</button>';
+      nav.addEventListener("click",function(e){
+        var b=e.target&&e.target.closest?e.target.closest("[data-pp]"):null; if(!b||b.disabled)return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        partPage+=(b.getAttribute("data-pp")==="next")?1:-1;
+        try{ pdParts(); }catch(_){}
+      },true);
+    }
+    var bs=nav.querySelectorAll("[data-pp]"), chip=nav.querySelector(".lx-pppg");
+    if(bs[0])bs[0].disabled=(partPage<=0);
+    if(bs[1])bs[1].disabled=(partPage>=s.pages-1);
+    if(chip)setText(chip,"Page "+(partPage+1)+" of "+s.pages);
+    foot.style.display=(s.pages>1)?"":"";
   }
   function pdCopy(){
     var d=DET;
