@@ -1828,6 +1828,7 @@ html[data-theme="light"] .search-popup { box-shadow: 0 24px 48px rgba(15,15,20,0
 #createPoolModal .asset-picker .ap-ico{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
 </style><style id="lx-searchassets-css">
 .sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
 .lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
 .sp-row--asset.lx-searow{text-decoration:none;color:inherit}
 .sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
@@ -5581,6 +5582,7 @@ window.addEventListener('click',function(e){
     if(POOLI[id])POOLI[id][which==="a"?"ia":"ib"]=src;   // survive the next repaint
     var box=document.querySelector('.lx-poolico[data-pool="'+id+'"]'); if(!box)return;
     var im=box.querySelector(which==="a"?".lx-pi-a":".lx-pi-b");
+    if(im)im.classList.toggle("lx-pi-fill",src===LXSTELLAR);
     if(im)im.style.backgroundImage='url("'+src+'")';
   }
   // by ISSUER, never by ticker: a ticker search is score-ranked and small assets are unreachable in it
