@@ -99,7 +99,11 @@ function card(c) {
       '</span>' +
     '</div>' +
     '<p class="lxad-copy">' + c.copy + '</p>' +
-    '<div class="lxad-foot"><span class="lxad-cta">' + c.cta + ' &rarr;</span></div>' +
+    '<div class="lxad-foot"><span class="lxad-cta">' + c.cta + ' &rarr;</span>' +
+      // No href yet: the self-serve booking page is step 4 and does not exist, so an anchor here would
+      // 404. Rendered as a span so it cannot navigate, and excluded from the card's click handler below
+      // so it cannot silently open the advertiser's own asset page instead.
+      '<span class="lxad-why">Promote your token</span></div>' +
   '</div>';
 }
 
@@ -159,6 +163,8 @@ const STYLE = `<style id="lx-ad-css">
 .lxad-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;
   padding-top:11px;border-top:.8px solid var(--border)}
 .lxad-cta{font-size:13.5px;font-weight:800;color:var(--accent)}
+.lxad-why{font-size:12.5px;color:var(--text-soft,#6e6d78);border-bottom:1px solid transparent}
+.lxad:hover .lxad-why{color:var(--text)}
 /* Below 1280 the grid collapses to one column and the rail falls under the chart, where a full-width ad
    would be louder than anything around it. Cap it to the trade card's width and centre it. */
 @media (max-width:1280px){.lxad-wrap{max-width:400px;margin-left:auto;margin-right:auto}}
@@ -196,6 +202,7 @@ const SCRIPT = `<script id="lx-ad">
   if(!window.__lxAdNav){ window.__lxAdNav=1;
     window.addEventListener("click",function(e){
       var t=e.target; if(!t||!t.closest) return;
+      if(t.closest(".lxad-why")) return;          // not a click on the creative
       var ad=t.closest(".lxad"); if(!ad) return;
       var href=ad.getAttribute("data-href"); if(!href) return;
       e.preventDefault(); e.stopImmediatePropagation();
