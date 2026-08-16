@@ -7,6 +7,13 @@
 // via a debounced+self-guarded MutationObserver + a bounded interval, CSS no-flash gates, no emoji/\\u
 // in the injected string, ES5 var in the browser code).
 const fs = require('fs');
+// XLM had a stand-in here: a purple disc with a decorative star, which is not the Stellar mark. It shows
+// in nearly every pool row -- almost all pools are paired against XLM -- so one wrong glyph made the whole
+// column look broken. Same SVG the wallet and bridge use, so XLM is one asset with one face across the app.
+// Base64, not percent-encoded: the URI then carries no quote or backslash to survive a template literal,
+// a JSON round-trip and an HTML attribute.
+const STELLAR_SVG='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32"><circle cx="16" cy="16" r="16" fill="#000"/><path d="M23.13 9.292l-2.4 1.224-11.598 5.907A6.909 6.909 0 0119.35 9.498l1.374-.7.205-.105a8.439 8.439 0 00-13.371 7.472 1.535 1.535 0 01-.834 1.484l-.725.37v1.724l2.134-1.088.691-.353.681-.347 12.226-6.23 1.374-.699 2.84-1.447V7.856zm2.816 2.012L10.201 19.32l-1.374.7L6 21.463v1.723l2.808-1.43 2.401-1.224 11.61-5.916a6.909 6.909 0 01-10.229 6.93l-.085.045-1.49.76a8.439 8.439 0 0013.372-7.475 1.536 1.536 0 01.833-1.483l.726-.37v-1.718z" fill="#FFF"/></svg>';
+const STELLAR_URI='data:image/svg+xml;base64,'+Buffer.from(STELLAR_SVG).toString('base64');
 // The (i) note and its tooltip are defined on the LUMOS token page. Lifted at build time so there is one
 // definition. Deliberately NOT the later ".lx-supinfo,.lt-cmp-v .lx-supinfo" override in that file -- it
 // resizes the badge to a 26px image slot and sets font-size:0, which would blank the "i" here.
@@ -938,7 +945,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // (__lxDXApoolsRaw) we rebuild that block from the pools this asset actually trades in: real pairs + logos +
   // TVL + fee tier + LP-holder count + pool share. TVL is valued in XLM (XLM-paired pool: xlmReserve*2;
   // token-paired: assetReserve*assetXlm*2) then converted to USD. No fabricated APR/volume — only real fields.
-  var XLM_BG="url(\\"data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="#7c3aed"/><text x="20" y="27" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="19" fill="#fff">✦</text></svg>')+"\\")";
+  var XLM_BG="url('${STELLAR_URI}')";
   var dxaLogoTried={};
   function poolBg(code,iss){ if(code==="XLM")return XLM_BG; if(code===CODE&&(!iss||iss===ISSUER)){ if(CODE==="LUMOS")return "url("+LUMOS_LOGO+")"; var kk=brandLogo(CODE,ISSUER); if(kk)return "url("+kk+")"; if(tomlImg)return "url("+tomlImg+")"; } var u=brandLogo(code,iss)||cachedLogo(code,iss); if(u)return "url("+u+")"; return avatarBg(code); }
   function attrBg(v){ return String(v||"").split('"').join("'"); }   // "-delimited attr: url("...") would close it
@@ -947,10 +954,45 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   function poolHref(id){ if(!id)return "lumoscore-amm.html"; var f=(location.pathname.split("/").pop()||""); var suf=f.indexOf("-dark.")>=0?"-dark":(f.indexOf("-mobile.")>=0?"-mobile":""); return "lumoscore-amm-pool"+suf+".html?pool="+id; }
   function poolIco(code,iss){ var _kn=brandLogo(code,iss)?' data-lxknown="1"':"";
     return '<span class="dxa-pl-ico" data-lxc="'+code+'" data-lxi="'+(iss||"")+'"'+_kn+' style="background-color:transparent;background-image:'+attrBg(poolBg(code,iss))+';background-size:cover;background-position:center;background-repeat:no-repeat"></span>'; }
-  function dxaFetchPoolLogo(code,iss){ if(!code||code==="XLM")return; if(brandLogo(code,iss)||cachedLogo(code,iss))return; var _k=logoKey(code,iss); if(dxaLogoTried[_k])return; dxaLogoTried[_k]=1;
-    j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){ var recs=(d&&d._embedded&&d._embedded.records)||[]; var m=recs.filter(function(r){return (r.asset||"").indexOf(code+"-"+iss)===0;})[0]; if(!m)return;   // exact code+issuer ONLY — never fall back to another issuer's same-ticker asset
-    var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||""; if(!img)return; (window.__lxLogosI=window.__lxLogosI||{})[_k]=img;
-      qa('.dxa-pl-ico[data-lxc="'+code+'"][data-lxi="'+(iss||"")+'"]:not([data-lxknown])').forEach(function(el){ el.style.backgroundColor="transparent"; el.style.backgroundImage="url("+img+")"; }); }).catch(function(){}); }
+  function dxaPutLogo(code,iss,img){ if(!img)return;
+    try{ (window.__lxLogosI=window.__lxLogosI||{})[logoKey(code,iss)]=img; }catch(_){}
+    qa('.dxa-pl-ico[data-lxc="'+code+'"][data-lxi="'+(iss||"")+'"]:not([data-lxknown])').forEach(function(el){
+      el.style.backgroundColor="transparent"; el.style.backgroundImage="url("+img+")"; }); }
+  // No regex: this string is emitted through a template literal, which strips one level of backslash.
+  function tomlField(block,key){ var lines=block.split(String.fromCharCode(10));
+    for(var i=0;i<lines.length;i++){ var ln=lines[i].trim(), eq=ln.indexOf("=");
+      if(eq<0)continue; if(ln.slice(0,eq).trim()!==key)continue;
+      var v=ln.slice(eq+1).trim();
+      if(v.charAt(0)==='"'){ var e=v.indexOf('"',1); v=e>0?v.slice(1,e):v.slice(1); }
+      return v; }
+    return ""; }
+  // SEP-1: issuer -> home_domain -> /.well-known/stellar.toml -> the [[CURRENCIES]] block for this asset.
+  function dxaTomlLogo(code,iss){ if(!iss)return;
+    j(H+"/accounts/"+iss).then(function(acc){
+      var dom=(acc&&acc.home_domain)||""; if(!dom)return;
+      // some issuers put a whole URL in home_domain; only a bare host can be joined to the well-known path
+      for(var k=0;k<dom.length;k++){ var c=dom.charAt(k);
+        if(!((c>="a"&&c<="z")||(c>="A"&&c<="Z")||(c>="0"&&c<="9")||c==="."||c==="-"))return; }
+      return fetch("https://"+dom+"/.well-known/stellar.toml").then(function(r){ return r.text(); }).then(function(txt){
+        var blocks=txt.split("[[CURRENCIES]]");
+        for(var b=1;b<blocks.length;b++){
+          if(tomlField(blocks[b],"code")!==code)continue;
+          var bi=tomlField(blocks[b],"issuer"); if(bi&&bi!==iss)continue;
+          dxaPutLogo(code,iss,tomlField(blocks[b],"image")); return; } });
+    }).catch(function(){});   // no CORS on the toml host -> not reachable -> keep the placeholder
+  }
+  function dxaFetchPoolLogo(code,iss){ if(!code||code==="XLM")return;
+    if(brandLogo(code,iss)||cachedLogo(code,iss))return;
+    var _k=logoKey(code,iss); if(dxaLogoTried[_k])return; dxaLogoTried[_k]=1;
+    // by ISSUER, not by ticker: a ticker search is score-ranked and capped, so a small asset sharing a
+    // popular ticker never appears in it at any limit. An issuer has few assets and no ranking problem.
+    j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(iss)+"&limit=50").then(function(d){
+      var recs=(d&&d._embedded&&d._embedded.records)||[];
+      var m=recs.filter(function(r){ return (r.asset||"").indexOf(code+"-"+iss)===0; })[0];   // exact code+issuer ONLY
+      var ti=(m&&(m.tomlInfo||m.toml_info))||{};
+      if(ti.image){ dxaPutLogo(code,iss,ti.image); return; }
+      dxaTomlLogo(code,iss);                        // indexed but no image -> ask the issuer directly
+    }).catch(function(){ dxaTomlLogo(code,iss); }); }
   // Pools are paged at 25, not truncated. The header says "59 active pools" and the tab badge says 59, so
   // showing 20 rows and stopping was a straight contradiction -- and the design-era paginator (_dexpag)
   // saw a 59 count over a 20-row table and padded it out with CLONED rows to 137, inventing pools that do
