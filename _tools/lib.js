@@ -26,6 +26,7 @@ function writeContents(file, transformFn){
 // This lives here rather than being copied into each transform because a verified list that drifts between
 // pages is worse than none: the same asset would be trustworthy on one screen and not on the next.
 const VERIFIED={
+  "XLM|":"stellar.org",                 // the native asset: no issuer to forge
   "USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com",
   "EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com",
   "yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz",
