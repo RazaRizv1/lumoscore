@@ -91,17 +91,18 @@ const MAIN = '<main class="page">' + MAIN_INNER + '</main>';
 // STYLE -- width-driven only. No layout here depends on which build key it landed in.
 // ---------------------------------------------------------------------------------------------------
 const STYLE = `<style id="lx-acc-css">
-.acc-head{display:flex;align-items:center;gap:16px;margin:6px 0 22px}
+.acc-head{display:flex;align-items:flex-start;gap:16px;margin:6px 0 22px}
 .acc-ava-wrap{position:relative;flex:0 0 auto;display:inline-block;line-height:0}
 .acc-net{position:absolute;right:-1px;bottom:-1px;width:24px;height:24px;border-radius:50%;
   background-size:cover;background-position:center;background-repeat:no-repeat;
   border:2px solid var(--bg,#0b0b0f);box-shadow:0 1px 4px rgba(0,0,0,.55)}
-.acc-avatar{width:64px;height:64px;border-radius:50%;flex:0 0 auto;background:var(--surface-2);
+.acc-avatar{display:block;width:64px;height:64px;border-radius:50%;flex:0 0 auto;background:var(--surface-2);
   background-size:cover;background-position:center;border:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.28)}
 .acc-head-body{min-width:0;flex:1 1 auto}
-.acc-title-row{display:flex;align-items:center;gap:8px;min-width:0}
-.acc-addr{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:22px;font-weight:800;margin:0;
-  letter-spacing:-.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acc-title-row{display:flex;align-items:flex-start;gap:8px;min-width:0}
+.acc-copy{margin-top:1px}
+.acc-addr{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:17px;font-weight:800;margin:0;
+  letter-spacing:-.2px;line-height:1.3;word-break:break-all;overflow-wrap:anywhere}
 .acc-copy{flex:0 0 auto;width:30px;height:30px;border-radius:8px;border:1px solid var(--border);
   background:var(--surface-2);color:var(--text-soft);cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .acc-copy:hover{color:var(--text);border-color:var(--border-strong)}
@@ -168,7 +169,7 @@ const STYLE = `<style id="lx-acc-css">
 
 @media (max-width:900px){
   .acc-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .acc-addr{font-size:17px}
+  .acc-addr{font-size:14px}
   .acc-avatar{width:52px;height:52px}
   .acc-net{width:20px;height:20px}
   .acc-stat .v{font-size:19px}
@@ -478,24 +479,24 @@ const SCRIPT = `<script id="lx-accdata">(function(){
         +'<span class="acc-act-b"><span class="acc-act-t">'+esc(d.title)+'</span>'
         +'<span class="acc-act-s">'+esc(d.sub||"")+(d.sub?(" "+MID+" "):"")+(ts?ago(ts):"")+'</span></span>'
         +'<span class="acc-act-r"><span class="'+(d.cls||"")+'">'+esc(d.right||"")+'</span><br>'
-        +'<a href="https://stellar.expert/explorer/public/tx/'+esc(o.transaction_hash||"")+'" target="_blank" rel="noopener">tx '+String.fromCharCode(8599)+'</a></span></div>'; }).join("");
+        +'<a href="https://stellar.expert/explorer/public/tx/'+esc(o.transaction_hash||"")+'" target="_blank" rel="noopener">tx <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a></span></div>'; }).join("");
   }
 
   // ---- load ---------------------------------------------------------------------------------------
   function paintHeader(){
-    var el=q("#accAddr"); if(el){ el.textContent=ADDR?(ADDR.slice(0,8)+DASH+ADDR.slice(-8)):"No account"; el.title=ADDR; }
+    var el=q("#accAddr"); if(el){ el.textContent=ADDR||"No account"; el.title=ADDR; }
     var av=q("#accAvatar"); if(av&&ADDR)av.style.backgroundImage="url("+identicon(ADDR)+")";
     var nt=q("#accNet"); if(nt&&!nt.style.backgroundImage)nt.style.backgroundImage="url("+STELLAR_URI+")";
     var sub=q("#accSub"); if(!sub)return;
     var bits=[];
     if(ACCT&&ACCT.home_domain)bits.push('<span class="acc-tag">'+esc(ACCT.home_domain)+'</span>');
     if(ACCT&&ACCT.__created)bits.push("Active since "+esc(ACCT.__created));
-    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer '+String.fromCharCode(8599)+'</a>');
+    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a>');
     sub.innerHTML=bits.join("");
   }
   function fail(msg){
     qa(".acc-empty").forEach(function(e){ e.textContent=msg; });
-    var el=q("#accAddr"); if(el)el.textContent=ADDR?(ADDR.slice(0,8)+DASH+ADDR.slice(-8)):"No account";
+    var el=q("#accAddr"); if(el)el.textContent=ADDR||"No account";
   }
 
   function loadPrice(){ return fetchJ(CG).then(function(d){
