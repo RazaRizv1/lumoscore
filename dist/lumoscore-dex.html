@@ -4180,6 +4180,11 @@ window.addEventListener('click',function(e){
       })(0);
     }).catch(function(){ nativeState=0; });                  // allow a retry on the next click
   }
+  // "All" means every pair LumosCore lists, curated majors AND our own Launchpad tokens. Identity dedupe,
+  // not code+issuer: LUMOS is literally the same object in both lists, pinned into NATIVE by loadNative.
+  function allAssets(){ var out=ASSETS.slice();
+    for(var i=0;i<NATIVE.length;i++)if(out.indexOf(NATIVE[i])<0)out.push(NATIVE[i]);
+    return out; }
   function curFilter(){ var el=q(".dex-mk-filter.active"); return (el&&el.getAttribute)?(el.getAttribute("data-filter")||"all"):"all"; }
   var MINTS=["LUMOS","AQUA","EURC","ARST","SHX"];             // "new mints" subset (LUMOS = the project token, tagged NEW)
 
@@ -4287,15 +4292,19 @@ window.addEventListener('click',function(e){
     if(!box){ box=document.createElement("div"); box.className="lx-dxstats";   // 2x2 grid like the Pools .lx-hstats
       box.innerHTML='<div class="lx-dxstat" data-k="vol"><span class="v">\u2014</span><span class="l">24h Volume</span></div>'
         +'<div class="lx-dxstat" data-k="liq"><span class="v">\u2014</span><span class="l">Liquidity</span></div>'
-        +'<div class="lx-dxstat" data-k="mkts"><span class="v">'+ASSETS.length+'</span><span class="l">Markets</span></div>'
+        +'<div class="lx-dxstat" data-k="mkts"><span class="v">'+allAssets().length+'</span><span class="l">Markets</span></div>'
         +'<div class="lx-dxstat" data-k="top"><span class="v"><span class="lx-dxpair"><span class="pa"></span><span class="pb"></span></span><span class="lx-dxtxt">\u2014</span></span><span class="l">Top Pair</span></div>';
       (chip||card).appendChild(box);
     }
     if(!window.__lxDEXloaded)return;                              // reveal with the rest, not one by one
-    var vol=0,liq=0; ASSETS.forEach(function(a){ if(a.vol!=null)vol+=a.vol*xlmUsd; if(a.tvlUsd!=null)liq+=a.tvlUsd; });
-    var top=ASSETS.slice().filter(function(a){return a.vol!=null&&a.vol>0;}).sort(function(a,b){return (b.vol||0)-(a.vol||0);})[0];
+    // Sum what the page actually lists. Leaving these on the curated 8 while the table says 39 pairs
+    // would put two different definitions of "this exchange" on one screen.
+    var _agg=allAssets();
+    var vol=0,liq=0; _agg.forEach(function(a){ if(a.vol!=null)vol+=a.vol*xlmUsd; if(a.tvlUsd!=null)liq+=a.tvlUsd; });
+    var top=_agg.slice().filter(function(a){return a.vol!=null&&a.vol>0;}).sort(function(a,b){return (b.vol||0)-(a.vol||0);})[0];
     function set(k,v){ var el=box.querySelector('[data-k="'+k+'"] .v'); if(el&&el.innerHTML!==v)el.innerHTML=v; }
     set("vol",vol>0?abbrUsd(vol):"\u2014"); set("liq",liq>0?abbrUsd(liq):"\u2014");
+    set("mkts",String(_agg.length));   // the strip is built once; the roster grows after
     // Top Pair cell: two overlapping token logos (asset + XLM) + the pair name
     if(top){ var pa=box.querySelector('[data-k="top"] .pa'), pb=box.querySelector('[data-k="top"] .pb'), txt=box.querySelector('[data-k="top"] .lx-dxtxt');
       if(pa){ var pc=logoCss(top); if(pa.style.backgroundImage!==pc)pa.style.backgroundImage=pc; }
@@ -4410,9 +4419,10 @@ window.addEventListener('click',function(e){
   // ================= 4) ALL TRADING PAIRS (#dexMkTbody) =================
   function tableData(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all";
     var qs=""; var si=q("#dexMkSearch"); if(si)qs=(si.value||"").trim().toLowerCase();
-    var d=ASSETS.slice();
-    if(f==="native"){ loadNative(); d=NATIVE.slice(); }
-    else if(f==="utility")d=d.filter(function(a){return a.cat==="utility";});
+    // Kicked off here rather than on the native tab alone: All lists them too, so they load with the page.
+    loadNative();
+    var d=(f==="native")?NATIVE.slice():allAssets();
+    if(f==="utility")d=d.filter(function(a){return a.cat==="utility";});
     else if(f==="stables")d=d.filter(function(a){return a.cat==="stable";});
     else if(f==="memes")d=[];
     if(qs)d=d.filter(function(a){ return a.code.toLowerCase().indexOf(qs)>=0 || (a.issuer||"").toLowerCase().indexOf(qs)>=0 || (a.domain||"").toLowerCase().indexOf(qs)>=0; });

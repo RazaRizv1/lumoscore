@@ -186,10 +186,13 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     // The native roster is not part of __lxDEXassets -- it is discovered on demand by the desktop data
     // layer (which is injected here too) so the curated roster, and the headline volume/TVL sums built
     // from it, stay exactly as they were.
-    var src=A;
-    if(cat==="native"){ try{ if(window.__lxDEXloadNative)window.__lxDEXloadNative(); }catch(_){}
-      var nv=null; try{ nv=window.__lxDEXnativeList?window.__lxDEXnativeList():null; }catch(_){}
-      src=(nv&&nv.list)||[]; }
+    var nv=null;
+    try{ if(window.__lxDEXloadNative)window.__lxDEXloadNative();
+         nv=window.__lxDEXnativeList?window.__lxDEXnativeList():null; }catch(_){}
+    var NL=(nv&&nv.list)||[], src;
+    // All = curated majors + our own tokens; identity dedupe (LUMOS is the same object in both).
+    if(cat==="native")src=NL;
+    else { src=A.slice(); for(var k=0;k<NL.length;k++)if(src.indexOf(NL[k])<0)src.push(NL[k]); }
     var d=src.filter(function(a){
       if(cat&&cat!=="all"&&cat!=="native"){var c=String(a.cat||"").toLowerCase();
         if(c!==cat&&c+"s"!==cat)return false;}
