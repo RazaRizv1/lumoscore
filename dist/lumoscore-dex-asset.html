@@ -6016,7 +6016,7 @@ window.addEventListener('click',function(e){
   var dxaLogoTried={};
   function poolBg(code,iss){ if(code==="XLM")return XLM_BG; if(code===CODE&&(!iss||iss===ISSUER)){ if(CODE==="LUMOS")return "url("+LUMOS_LOGO+")"; var kk=brandLogo(CODE,ISSUER); if(kk)return "url("+kk+")"; if(tomlImg)return "url("+tomlImg+")"; } var u=brandLogo(code,iss)||cachedLogo(code,iss); if(u)return "url("+u+")"; return avatarBg(code); }
   function attrBg(v){ return String(v||"").split('"').join("'"); }   // "-delimited attr: url("...") would close it
-  // "Add liquidity" must open THIS pool, not the pools index. Horizon's liquidity-pool id is already the
+  // "View pool" must open THIS pool, not the pools index. Horizon's liquidity-pool id is already the
   // hex the detail page expects (?pool=<hex>). Keep the page's own variant so the link stays in-theme.
   function poolHref(id){ if(!id)return "lumoscore-amm.html"; var f=(location.pathname.split("/").pop()||""); var suf=f.indexOf("-dark.")>=0?"-dark":(f.indexOf("-mobile.")>=0?"-mobile":""); return "lumoscore-amm-pool"+suf+".html?pool="+id; }
   function poolIco(code,iss){ var _kn=brandLogo(code,iss)?' data-lxknown="1"':"";
@@ -6033,7 +6033,7 @@ window.addEventListener('click',function(e){
   function setTxt(el,t){ if(!el)return; t=String(t); if(el.textContent!==t)el.textContent=t; }
   // Write the live numbers into the rows that are already on screen. TVL and pool share move on every
   // tick; re-rendering the row for that destroys the node under the pointer, which is what made the
-  // hovered "Add liquidity" flash between its normal and hover colour.
+  // hovered pool CTA flash between its normal and hover colour.
   function poolsNums(body,top,combined,MOB){ var rows=body.children;
     for(var i=0;i<rows.length&&i<top.length;i++){ var p=top[i],r=rows[i];
       var share=combined>0?(p.tvlXlm/combined*100):0;
@@ -6055,7 +6055,7 @@ window.addEventListener('click',function(e){
         +'<td class="mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</td>'
         +'<td class="mono">'+num(p.tl)+'</td>'
         +'<td class="mono">'+(share>=0.1?share.toFixed(1):"<0.1")+'%</td>'
-        +'<td style="text-align:right"><a class="dxa-pl-cta" href="'+poolHref(p.id)+'">Add liquidity \u2192</a></td></tr>'; }).join(""); }
+        +'<td style="text-align:right"><a class="dxa-pl-cta" href="'+poolHref(p.id)+'">View pool \u2192</a></td></tr>'; }).join(""); }
   function poolsMRowsHTML(top,combined){ return top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
       return '<a class="mdxa-pl-row" href="'+poolHref(p.id)+'">'
         +'<div class="mdxa-pl-l"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
