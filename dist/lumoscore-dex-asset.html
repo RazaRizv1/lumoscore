@@ -2287,7 +2287,53 @@ margin-top:16px;border-top:1px solid var(--border)}
 .dxa-pl-icos .dxa-pl-ico{position:relative}
 .dxa-pl-icos .dxa-pl-ico:first-child{z-index:2}
 .mdxa-pl-l .dxa-pl-ico{width:30px;height:30px;font-size:13px}
-.stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style></head>
+.stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style><style id="lx-ad-css">
+/* No margin here on purpose: .dxa-trade-col is already flex-direction:column with gap:10px. That gap has
+   never applied because the column has only ever had one child; adding a margin on top of it would make
+   the ad sit at 28px while every other pair of stacked cards on the page sits at the design's 10px. */
+.lxad{background:var(--surface);border:.8px solid var(--border);border-radius:14px;padding:14px;
+  display:flex;flex-direction:column;cursor:pointer;transition:border-color .15s,background .15s}
+/* Tokens, not literals: the app has a light theme, and a hard-coded #16161b hover would turn a white
+   card charcoal under the cursor. --border-strong/--surface-2 are the design's own hover pair. */
+.lxad:hover{border-color:var(--border-strong);background:var(--surface-2)}
+.lxad:hover .lxad-cta{text-decoration:underline}
+.lxad-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.lxad-lab{font-size:11.5px;letter-spacing:.92px;text-transform:uppercase;font-weight:700;color:var(--text-soft,#6e6d78)}
+/* The site's logo painter claimed this chip: it hunts small elements whose text looks like a ticker,
+   and Ad is two characters. It had replaced the background with an inline data-URI of the LUMOS flame
+   and forced display:block, so the chip rendered as an 8px-tall smear with no fill. Two defences, both
+   from DEV landmine 1: !important on everything it writes inline, and the label moved into ::after so
+   there is no text node for it to key on and nothing for it to strip. */
+.lxad-tag{font-size:0;letter-spacing:.6px;text-transform:uppercase;font-weight:800;
+  color:var(--text-soft,#6e6d78);border:.8px solid var(--border);
+  background:var(--surface-2)!important;background-image:none!important;
+  display:inline-block!important;border-radius:6px;padding:3px 8px;line-height:1.35}
+.lxad-tag::after{content:attr(data-l);font-size:10.5px}
+.lxad-body{display:flex;gap:12px;align-items:flex-start}
+/* !important + data-lxc: the logo painter's favourite shape is a small empty element, and it strips
+   whatever it finds there before painting its own guess. */
+.lxad-logo{width:46px;height:46px;border-radius:13px;flex:none;
+  background-color:#0a0a0b!important;background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+.lxad-id{display:block}
+.lxad-pair{display:flex;align-items:center;font-size:19px;font-weight:800;letter-spacing:-.3px;line-height:1.15}
+.lxad-sub{display:block;margin-top:4px;font-size:12.5px;color:var(--text-soft,#6e6d78);font-weight:600}
+.lxad-dom{color:var(--accent)}
+/* Three lines, hard. The rail is 400px wide, so the copy column is ~370px: at 13.5px that is about 171
+   characters of ordinary prose but only ~79 of wide capitals. A character limit alone therefore cannot
+   promise three lines -- the clamp is the guarantee and the form's limit is only guidance. */
+.lxad-copy{margin:12px 0 0;font-size:13.5px;color:var(--text-soft,#6e6d78);line-height:1.5;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;
+  /* an unbroken 400-character paste has nowhere to wrap and rendered as one clipped line, slipping under
+     the clamp entirely */
+  overflow-wrap:anywhere}
+.lxad-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;
+  padding-top:11px;border-top:.8px solid var(--border)}
+.lxad-cta{font-size:13.5px;font-weight:800;color:var(--accent)}
+/* Below 1280 the grid collapses to one column and the rail falls under the chart, where a full-width ad
+   would be louder than anything around it. Cap it to the trade card's width and centre it. */
+@media (max-width:1280px){.lxad-wrap{max-width:400px;margin-left:auto;margin-right:auto}}
+</style></head>
 <body>
 <div class="app">
   <aside class="nx-side"><div class="nx-brand"><div class="logo"><div class="logo-mark"></div><div class="logo-text">LUMOSCORE</div></div><button class="nx-collapse" aria-label="Collapse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button></div><span class="nx-rail"></span><nav class="nx-nav"><a class="nx-item" data-id="dashboard" href="/dashboard" title="Dashboard"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.6"/><rect x="13" y="3" width="8" height="5" rx="1.6"/><rect x="13" y="11" width="8" height="10" rx="1.6"/><rect x="3" y="14" width="8" height="7" rx="1.6"/></svg></span><span class="nx-lab">Dashboard</span></a><a class="nx-item active" data-id="trade" href="/trade/stellar" title="Trade"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 6v3"/><rect x="6" y="9" width="4" height="6" rx="1"/><path d="M8 15v3"/><path d="M16 4v2"/><rect x="14" y="6" width="4" height="9" rx="1"/><path d="M16 15v3"/></svg></span><span class="nx-lab">Trade</span></a><a class="nx-item" data-id="pools" href="/pools/stellar" title="Pools"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A11 11 0 0 0 14 3c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a7 7 0 0 1-11.9 5"/></svg></span><span class="nx-lab">Pools</span></a><a class="nx-item" data-id="bridge" href="/bridge" title="Bridge"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9 1.5 12 4 15"/><path d="M20 9l2.5 3L20 15"/><path d="M2.5 12h19"/></svg></span><span class="nx-lab">Bridge</span></a><a class="nx-item" data-id="launchpad" href="/launchpad" title="Launchpad"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.9 12.9 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span><span class="nx-lab">Launchpad</span></a><a class="nx-item" data-id="lumos" href="/lumos" title="$LUMOS"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span><span class="nx-lab">$LUMOS</span></a><a class="nx-item" data-id="wallet" href="/wallet" title="Wallet"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H6a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M19 12a2 2 0 1 0 0 4h3v-4z"/></svg></span><span class="nx-lab">Wallet</span></a><a class="nx-item" data-id="rewards" href="/rewards" title="Rewards"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v9H4v-9"/><rect x="2" y="7" width="20" height="5" rx="1"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span><span class="nx-lab">Rewards</span></a><a class="nx-item" data-id="mcp" href="/mcp" title="MCP"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.9 4.9l2.8 2.8"/><path d="M16.3 16.3l2.8 2.8"/><path d="M2 12h4"/><path d="M18 12h4"/><circle cx="12" cy="12" r="3"/></svg></span><span class="nx-lab">MCP</span></a></nav><div class="nx-foot"><button class="nx-logout" type="button" title="Disconnect wallet" onclick="event.stopPropagation();if(window.__lxNav)__lxNav('lumoscore-signin.html')"><span class="nx-lo-ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span><span class="nx-lab">Disconnect</span></button></div></aside><script id="lx-sc-early">(function(){try{var s=document.querySelector(".nx-side");if(s&&localStorage.getItem("lumos.side")==="1")s.classList.add("nx-collapsed");}catch(e){}})();</script>
@@ -2567,7 +2613,46 @@ margin-top:16px;border-top:1px solid var(--border)}
       
 
       
-    </aside>
+    <div class="lxad-wrap" id="lxAdWrap" data-lx-noswap><div class="lxad" data-href="/trade/stellar/LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S" data-adid="lumos" data-adcode="LUMOS"><div class="lxad-top"><span class="lxad-lab">Promoted</span><span class="lxad-tag" data-l="Ad" data-lxc></span></div><div class="lxad-body"><span class="lxad-logo" data-lxc style="background-image:url(/assets/tokens/lumos.png)"></span><span class="lxad-id"><span class="lxad-pair">LUMOS / XLM<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span></span><span class="lxad-sub">Lumos Core &middot; <span class="lxad-dom">lumoscore.com</span></span></span></div><p class="lxad-copy">The asset the platform runs on. Hold 250,000 and your trading fee drops from 0.5% to 0.25% &mdash; and eligible pools pay their rewards in it.</p><div class="lxad-foot"><span class="lxad-cta">View LUMOS &rarr;</span></div></div><template id="lxAdAlt"><div class="lxad" data-href="/launchpad" data-adid="launchpad"><div class="lxad-top"><span class="lxad-lab">Promoted</span><span class="lxad-tag" data-l="Ad" data-lxc></span></div><div class="lxad-body"><span class="lxad-logo" data-lxc style="background-image:url(/assets/tokens/lumos.png)"></span><span class="lxad-id"><span class="lxad-pair">Launchpad</span><span class="lxad-sub">LumosCore &middot; <span class="lxad-dom">lumoscore.com</span></span></span></div><p class="lxad-copy">Issue a token on Stellar mainnet in three steps. Set the supply, upload an icon, and the asset is live and tradeable in under a minute.</p><div class="lxad-foot"><span class="lxad-cta">Open Launchpad &rarr;</span></div></div></template></div><script id="lx-ad">
+(function(){
+  var wrap=document.getElementById("lxAdWrap"); if(!wrap) return;
+
+  // Which asset is this page showing? The SAME source of truth the data layer uses, and it has to be:
+  // the site serves clean URLs, so /trade/stellar/AQUA-GBNZ... carries an EMPTY location.search. Reading
+  // the query alone returned the LUMOS default on every asset page, which made the slot swap to the
+  // fallback creative everywhere -- the one bug that would have looked like the feature working.
+  // window.__lxRoute is set by _route.js in <head>, long before this script parses.
+  function pageCode(){
+    try{
+      var a=(window.__lxRoute&&window.__lxRoute.asset)||
+            (new URLSearchParams(window.location.search)).get("asset")||"LUMOS";
+      var dash=a.indexOf("-");
+      return (dash>0?a.slice(0,dash):a).toUpperCase();
+    }catch(e){ return "LUMOS"; }
+  }
+
+  // Runs at parse time, before first paint, so the swap is never visible as a change.
+  (function(){
+    var ad=wrap.querySelector(".lxad"); var tpl=document.getElementById("lxAdAlt");
+    if(!ad||!tpl) return;
+    var code=ad.getAttribute("data-adcode");
+    if(code && code===pageCode()) wrap.innerHTML=tpl.innerHTML;
+  })();
+
+  // The design's own click handler opens asset pages without the ?asset= query, so a plain anchor here
+  // would land every click on default LUMOS. Window-capture is the earliest phase available, which is
+  // what lets us stop that handler before it sees the event.
+  if(!window.__lxAdNav){ window.__lxAdNav=1;
+    window.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest) return;
+      var ad=t.closest(".lxad"); if(!ad) return;
+      var href=ad.getAttribute("data-href"); if(!href) return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      try{ window.location.href=href; }catch(_){}
+    },true);
+  }
+})();
+</script></aside>
 
   </div>
 
