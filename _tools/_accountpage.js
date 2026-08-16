@@ -15,6 +15,8 @@
 // failure in this codebase is a selector that silently no-ops on the other layout, and the only way to be
 // immune is to have one layout.
 //
+// BUILD ORDER: run this AFTER the chrome transforms. It clones their output, so running it first
+// freezes a one-build-old header and footer into this page.
 // Usage: node _tools/_accountpage.js [--write]
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
@@ -602,8 +604,14 @@ function buildPage(shell) {
   // The clone carries the source page's FAQ and its data layer. Strip both -- they answer questions about
   // pools, and lx- scripts from other transforms would run against markup that is no longer there.
   p = p.replace(/<section class="lx-faq"[\s\S]*?<\/section>/g, '');
-  p = p.replace(/<style id="lx-(?!acc-css)[a-z0-9-]+">[\s\S]*?<\/style>/g, '');
-  p = p.replace(/<script id="lx-(?!nonav|accdata)[a-z0-9-]+">[\s\S]*?<\/script>/g, '');
+  // DENYLIST, not an allowlist. The shell carries ~50 lx- blocks and almost all of them are the SITE:
+  // the header logo, the footer, the theme, the wallet chip and its Disconnect button, search. Keeping
+  // only our own left the page in the raw design. Strip just what is about POOLS.
+  const POOL_ONLY = ['ammdata', 'amm-css', 'partpage', 'faq-css'];
+  for (const id of POOL_ONLY) {
+    p = p.replace(new RegExp('<style id="lx-' + id + '">[\\s\\S]*?</style>', 'g'), '');
+    p = p.replace(new RegExp('<script id="lx-' + id + '">[\\s\\S]*?</script>', 'g'), '');
+  }
 
   // title + description
   p = p.replace(/<title>[\s\S]*?<\/title>/, '<title>' + TITLE + '</title>');
