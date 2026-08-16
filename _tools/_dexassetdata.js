@@ -169,6 +169,14 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
 .mdxa-pools .lx-pl-foot{flex-direction:column;align-items:stretch;gap:8px;text-align:center;font-size:12.5px}
 .mdxa-pools .lx-pl-foot .pc{justify-content:space-between}
 .mdxa-pools .lx-pl-foot button{padding:9px 16px;font-size:13px}
+/* description: two lines until asked otherwise. line-clamp keeps the cut on a line boundary rather
+   than mid-glyph, and collapses back cleanly when expanded. */
+.asset-description.lx-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+overflow:hidden;margin-bottom:0}
+.lx-descmore{display:none;margin-top:4px;background:none;border:0;padding:0;cursor:pointer;
+color:var(--accent,#ea6a2c);font:700 14px/1.4 "Hanken Grotesk",system-ui,sans-serif}
+.lx-descmore.on{display:inline-block}
+.lx-descmore:hover{text-decoration:underline}
 .lxda-disc-empty{text-align:center;padding:30px 12px;color:var(--text-soft,#8a8fa3);font:600 14px/1.5 'Hanken Grotesk',system-ui,sans-serif}
 .dxa-disc-text{margin-top:4px;line-height:1.5;word-break:break-word}
 /* Exchanges tab: hide its count badge INSTANTLY (JS was hiding it after data load -> a visible count->hidden flash) */
@@ -352,6 +360,33 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   function logoBg(){ if(CODE==="LUMOS")return "url("+LUMOS_LOGO+")"; if(LOGOS[CODE])return "url("+LOGOS[CODE]+")"; if(tomlImg)return "url("+tomlImg+")"; return avatarBg(CODE); }
 
   // ================= HEADER =================
+  function clampSetup(desc){
+    if(!desc||desc.__lxclamp)return; desc.__lxclamp=1;
+    desc.classList.add("lx-clamp");
+    var b=document.createElement("button");
+    b.type="button"; b.className="lx-descmore"; b.textContent="Show more";
+    b.addEventListener("click",function(){
+      var open=desc.classList.toggle("lx-clamp")===false;
+      desc.__lxopen=open?1:0;                 // remember it: the painter re-runs on every data tick
+      b.textContent=open?"Show less":"Show more";
+    });
+    if(desc.parentNode)desc.parentNode.insertBefore(b,desc.nextSibling);
+    desc.__lxbtn=b;
+  }
+  // Only offer the control when there is actually more to show. Measured against the clamped box, so a
+  // short description gets no button at all rather than one that expands nothing.
+  function clampDesc(desc){
+    if(!desc)return; var bt=desc.__lxbtn; if(!bt)return;
+    // Overflow is measured against the CLAMPED box whatever the current state, then the reader is given
+    // their choice back. Without __lxopen an expanded description snapped shut on the next price tick,
+    // because this runs on every render -- the reader would be mid-sentence and lose the text.
+    var open=desc.__lxopen===1;
+    desc.classList.add("lx-clamp");
+    var overflows=desc.scrollHeight>desc.clientHeight+1;
+    if(open)desc.classList.remove("lx-clamp");
+    if(overflows){ bt.classList.add("on"); bt.textContent=open?"Show less":"Show more"; }
+    else { bt.classList.remove("on"); desc.classList.add("lx-clamp"); desc.__lxopen=0; bt.textContent="Show more"; }
+  }
   function applyHeader(){
     // The MOBILE build wraps the same header in .asset-top, not .asset-header. Matching only the
     // desktop wrapper meant applyHeader() returned on its first line on every phone, so the header kept
@@ -408,10 +443,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var cs=qa(".crumb span").filter(function(s){return s.children.length===0&&(s.textContent||"").trim();}).pop();
     if(cs)setText(cs, CODE);
     var wantTitle=CODE+" price, pools and holders on Stellar | LumosCore"; if(document.title!==wantTitle)document.title=wantTitle;
+    // Two-line clamp + a toggle, kept OUTSIDE the paragraph so the next textContent write cannot
+    // destroy it. Idempotent: the button is created once and only its state is updated afterwards.
+    clampSetup(q(".asset-description"));
     // description (TOML desc if present, else a generic per-asset line)
     var desc=q(".asset-description");
     if(desc){ var d=NATIVE?"XLM (Stellar Lumens) is the native asset of the Stellar network \\u2014 every other asset on this DEX trades against it. Market data is pulled live from CoinGecko and the Stellar network."
-      :(tomlDesc||(CODE+" trades on the LumosCore DEX against XLM on Stellar mainnet. Live price, order book, trades and holders are pulled directly from the Stellar network.")); if(desc.textContent.trim()!==d.trim())desc.textContent=d; }
+      :(tomlDesc||(CODE+" trades on the LumosCore DEX against XLM on Stellar mainnet. Live price, order book, trades and holders are pulled directly from the Stellar network.")); if(desc.textContent.trim()!==d.trim())desc.textContent=d;
+      clampDesc(desc); }
     hdr.classList.add("lxda");
   }
 
