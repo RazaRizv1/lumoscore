@@ -251,16 +251,25 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
 })();</script>`;
 
 const files = fs.readdirSync('.').filter(f => /^lumoscore-.*-(desktop|mobile)\.html$/.test(f));
-let n = 0, containers = 0;
+let n = 0, containers = 0, stripped = 0;
 for (const file of files) {
   let data; try { data = read(file); } catch (e) { continue; }
   const { json, s, e } = getContents(data);
   let changed = false;
   for (const k of Object.keys(json)) {
     let h = json[k];
-    if (h.indexOf('id="spSearchInput"') < 0) continue;           // only pages with the search popup
+    // Strip BEFORE the guard, not after. Pages that no longer carry the search popup were skipped
+    // outright, so an lx-searchassets script injected back when they did stayed in the container and kept
+    // running -- with whatever VERIFIED list was current at the time. That is landmine #11: the transform
+    // is not the code, the container is, and a skipped key is one this transform can never clean. Removing
+    // it unconditionally means "not eligible" now also means "left with nothing of ours".
+    const had = h.indexOf('<script id="lx-searchassets">') >= 0;
     h = h.replace(/<style id="lx-searchassets-css">[\s\S]*?<\/style>/, '')
          .replace(/<script id="lx-searchassets">[\s\S]*?<\/script>/, '');
+    if (h.indexOf('id="spSearchInput"') < 0) {                   // only pages with the search popup
+      if (had) { json[k] = h; changed = true; stripped++; }      // but do persist the removal
+      continue;
+    }
     if (h.indexOf('</head>') >= 0) h = h.replace('</head>', STYLE + '</head>');
     else { const hb = h.lastIndexOf('</body>'); h = h.slice(0, hb) + STYLE + h.slice(hb); }
     // Copy FIRST, offset SECOND. bi is a byte offset into h; rewriting h after taking it leaves bi
@@ -279,4 +288,5 @@ for (const file of files) {
     fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
   }
 }
-console.log('search assets: injected=' + n + ' keys across ' + containers + ' containers');
+console.log('search assets: injected=' + n + ' keys across ' + containers + ' containers'
+  + (stripped ? '  (also removed a stale copy from ' + stripped + ' keys that no longer host the popup)' : ''));
