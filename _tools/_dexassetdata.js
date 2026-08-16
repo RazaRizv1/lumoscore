@@ -1061,7 +1061,20 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         +'<div class="mdxa-pl-apr apr-low">'+(share>=0.1?share.toFixed(1):"<0.1")+'% share</div></div></a>'; }).join(""); }
   // Repaints rows + footer for the current page. Called on build and by the Prev/Next buttons, so paging
   // never re-runs the whole panel build (which would refetch logos and re-mask the stat row).
+  var POOLS_NONE="No liquidity pools yet \u2014 this asset is not paired in any AMM pool.";
+  // Horizon allows 100 requests per 5 minutes per IP, so a failed pool fetch is ordinary. Saying "none"
+  // when we simply could not ask would be a false claim about the asset.
+  var POOLS_ERR="Could not load pools right now \u2014 refresh to try again.";
   function poolsPaint(){ var v=poolsView; if(!v||!v.wrap||!v.wrap.isConnected)return;
+    if(!v.list.length){
+      var eb=v.wrap.querySelector(v.MOB?".mdxa-pl-list":".ex-table tbody");
+      if(eb&&eb.getAttribute("data-lxrows")!=="none"){ eb.setAttribute("data-lxrows","none");
+        var msg=window.__lxDXApoolsErr?POOLS_ERR:POOLS_NONE;
+        eb.innerHTML=v.MOB?('<div class="lxda-disc-empty">'+msg+'</div>')
+          :('<tr><td colspan="5"><div class="lxda-disc-empty">'+msg+'</div></td></tr>'); }
+      var ef=v.wrap.querySelector(".lx-pl-foot"); if(ef)ef.style.display="none";
+      return;
+    }
     var pages=Math.max(1,Math.ceil(v.list.length/POOLS_PER));
     if(poolsPage>pages)poolsPage=pages; if(poolsPage<1)poolsPage=1;
     var start=(poolsPage-1)*POOLS_PER, end=Math.min(start+POOLS_PER,v.list.length), top=v.list.slice(start,end);
@@ -1086,12 +1099,18 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
           +'<span class="pmid">Page '+poolsPage+' of '+pages+'</span>'
           +'<button type="button" class="lx-pl-next"'+(poolsPage>=pages?' disabled':'')+'>Next \\u203a</button></span>'; } }
   }
-  function applyPools(){ var wrap=panelWrap("pools"); if(!wrap)return; var MOB=isMobPanel(wrap); var raw=window.__lxDXApoolsRaw; if(!raw||!raw.length)return;
+  function applyPools(){ var wrap=panelWrap("pools"); if(!wrap)return; var MOB=isMobPanel(wrap); var raw=window.__lxDXApoolsRaw;
+    // undefined = still fetching, so keep the skeleton; [] once done = genuinely none, and that falls
+    // through to the rebuild below so the empty state gets the real header and columns.
+    if(!raw)return;
+    if(!raw.length && !window.__lxDXApoolsDone)return;
     var list=raw.map(function(p){ var other=null; (p.res||[]).forEach(function(rv){ if(rv.code!==CODE&&!other)other=rv; }); if(!other)other=(p.res||[])[0]||{code:"XLM",iss:""};
       var tvlXlm=p.nat>0?p.nat*2:((p.ass>0&&assetXlm>0)?p.ass*assetXlm*2:0);
       return {id:p.id,other:other.code,otherIss:other.iss,tvlXlm:tvlXlm,fee:p.feeBp,tl:p.tl}; })
       .filter(function(p){return p.tvlXlm>0;}).sort(function(a,b){return b.tvlXlm-a.tvlXlm;});
-    if(!list.length)return;
+    // Deliberately NOT an early return: pools that exist but hold no value are still "nothing to show",
+    // and bailing here is what left the comp rows up.
+    if(!list.length && !window.__lxDXApoolsDone)return;
     var combined=0,lps=0,feeSum=0; list.forEach(function(p){combined+=p.tvlXlm;lps+=p.tl;feeSum+=p.fee;});
     // The tab badge was written from poolCount (every pool Horizon returns) while the list drops pools with
     // no TVL, so AQUA advertised 1306 and listed 1,280 — the same "says N, shows fewer" complaint. The badge
@@ -2020,7 +2039,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
           if(r.length===200 && nx && n<PMAX) return pg(nx,n+1);
         });
       }
-      pg(H+"/liquidity_pools?reserves="+CODE+":"+ISSUER+"&limit=200",1).catch(function(){});
+      // Mark the fetch finished either way. Without this, "no pools" and "not arrived yet" are the same
+      // state (raw === undefined), so the panel could only keep waiting -- which is how the comp rows
+      // stayed on screen.
+      function poolsDone(err){ if(!window.__lxDXApoolsRaw)window.__lxDXApoolsRaw=[];
+        if(err)window.__lxDXApoolsErr=1;
+        window.__lxDXApoolsDone=1; try{ applyAll(); }catch(_){} }
+      pg(H+"/liquidity_pools?reserves="+CODE+":"+ISSUER+"&limit=200",1)
+        .then(function(){ poolsDone(0); },function(){ poolsDone(1); });
     })();
     // issuer home_domain (-> website + stellar.toml for logo/description)
     if(ISSUER){ loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false); guardApply(); if(a.home_domain)loadToml(a.home_domain); }).catch(function(){ if(homeDomain==null)homeDomain=false; guardApply(); }); }
