@@ -148,12 +148,46 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // ---- LumosCore-native assets: issuer home_domain = lumoscore.com (minted through our Launchpad) ----
   var NATIVE=[], nativeState=0;                             // 0 idle | 1 loading | 2 loaded
   var SX="https://api.stellar.expert/explorer/public/asset?search=lumoscore&limit=200";
+  var NKEY="lumos.native.v1", NTTL=216e5;                       // 6h: identity changes slowly, prices do not
+  function nativeCached(){
+    try{ var c=JSON.parse(localStorage.getItem(NKEY)||"null");
+      return (c&&c.ts&&(Date.now()-c.ts<NTTL)&&c.a&&c.a.length)?c.a:null; }catch(e){ return null; }
+  }
+  function nativeSave(list){
+    try{ localStorage.setItem(NKEY,JSON.stringify({ts:Date.now(),a:list.map(function(x){
+      return {c:x.code,i:x.issuer,l:x.logo||"",d:x.domain||"",t:x.created||0}; })})); }catch(e){}
+  }
+  // one shape for both paths, so a cached roster and a fresh one cannot drift
+  function nativeMake(code,iss,logo,dom,created){
+    var key=byCode[code]?code+"~"+iss.slice(0,4):code;
+    if(byCode[key])return null;
+    var a={code:code,issuer:iss,cat:"native",tkr:key,b:"#3d4351",created:(+created||0),
+      logo:logo||"",domain:dom||"",px:0,chg:null,vol:null,high:null,low:null,tvlUsd:null,
+      holders:null,supply:null,spark:null,img:null,trades:null};
+    byCode[key]=a; NATIVE.push(a); return a;
+  }
+  function nativePrice(add){
+    // the five newest first, with a 2-request fetch each; the full wave waits so it cannot starve them
+    var _first=add.slice().sort(function(x,y){ return (y.created||0)-(x.created||0); }).slice(0,5);
+    var _lite=Promise.all(_first.map(function(a){ return loadAssetLite(a); })).then(touch);
+    _lite.then(function(){ (function wave(i){ if(i>=add.length){ nativeState=2; touch(); return; }
+      Promise.all(add.slice(i,i+4).map(function(a){ if(a.__px)return null; a.__px=1; return loadAsset(a).catch(function(){}); }))
+        .then(function(){ wave(i+4); },function(){ wave(i+4); });
+    })(0); });
+  }
   function loadNative(){
     if(nativeState)return; nativeState=1;
     // LUMOS is the platform's own token, but its issuer still declares the pre-rename lumosdao.io, so a
     // strict domain match drops it from its own tab. Pin it in until that home_domain is updated.
     var l=byCode["LUMOS"]; if(l&&NATIVE.indexOf(l)<0)NATIVE.push(l);
     touch();
+    var cached=nativeCached();
+    if(cached){
+      var addC=[];
+      cached.forEach(function(x){ var a=nativeMake(x.c,x.i,x.l,x.d,x.t); if(a)addC.push(a); });
+      touch(); nativePrice(addC);
+      return;                                                  // refreshed on the next cold load
+    }
     fetchJ(SX).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[], add=[];
       r.forEach(function(x){
@@ -173,17 +207,21 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         byCode[key]=a; NATIVE.push(a); add.push(a);
       });
       touch();
+      nativeSave(NATIVE.filter(function(x){ return x.cat==="native"; }));
       // The mints box shows the five NEWEST, and they can sit anywhere in discovery order -- so price
       // those first. Without this the visible rows waited behind up to twenty assets nobody is looking at.
+      // Ten requests, fired immediately, and deliberately NOT flagged __px -- the full loadAsset still
+      // runs for these in the normal wave, because the All table wants their TVL and sparkline. This is
+      // a head start for the box, not a replacement for the real load.
       var _first=add.slice().sort(function(x,y){ return (y.created||0)-(x.created||0); }).slice(0,5);
-      Promise.all(_first.map(function(a){ a.__px=1; return loadAsset(a).catch(function(){}); })).then(touch);
+      var _lite=Promise.all(_first.map(function(a){ return loadAssetLite(a); })).then(touch);
 
       // Horizon in small waves: loadAsset is ~5 requests per asset, and firing 30 assets at once is a
       // burst that gets throttled -- which surfaces as rows stuck on a dash, not as an error.
-      (function wave(i){ if(i>=add.length){ nativeState=2; touch(); return; }
+      _lite.then(function(){ (function wave(i){ if(i>=add.length){ nativeState=2; touch(); return; }
         Promise.all(add.slice(i,i+4).map(function(a){ if(a.__px)return null; a.__px=1; return loadAsset(a).catch(function(){}); }))
           .then(function(){ wave(i+4); },function(){ wave(i+4); });
-      })(0);
+      })(0); });
     }).catch(function(){ nativeState=0; });                  // allow a retry on the next click
   }
   // "All" means every pair LumosCore lists, curated majors AND our own Launchpad tokens. Identity dedupe,
@@ -577,6 +615,22 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       var img=(blk.match(/image\\s*=\\s*["']([^"']+)["']/i)||[])[1];
       if(img){ a.img=img; touch(); }
     }).catch(function(){});
+  }
+
+  // Just enough for a mints row: the latest daily bar (price) and /assets (supply + holders). Two
+  // requests instead of five, and none of them the 168-bucket sparkline series.
+  function loadAssetLite(a){
+    var atype=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
+    var base="base_asset_type="+atype+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer+"&counter_asset_type=native";
+    return Promise.all([
+      j(H+"/trade_aggregations?"+base+"&resolution=86400000&order=desc&limit=1").then(function(d){
+        var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||a.px; } }).catch(function(){}),
+      j(H+"/assets?asset_code="+a.code+"&asset_issuer="+a.issuer).then(function(d){
+        var rec=recs(d)[0]; if(!rec)return;
+        if(rec.accounts)a.holders=(+rec.accounts.authorized||0)+(+rec.accounts.authorized_to_maintain_liabilities||0);
+        if(rec.balances)a.supply=+rec.balances.authorized||+rec.balances.authorized_to_maintain_liabilities||a.supply;
+        else if(rec.amount!=null)a.supply=+rec.amount; }).catch(function(){})
+    ]).then(touch);
   }
 
   function loadAsset(a){
