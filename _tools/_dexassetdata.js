@@ -29,6 +29,12 @@ const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-dex-asset.html', 'lumoscore-dex-asset-dark.html', 'lumoscore-dex-asset-mobile.html'];
 
 const STYLE = `<style id="lx-dxa-css">
+.lx-sortag{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;font-size:10.5px;
+  font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);
+  vertical-align:1px;white-space:nowrap}
+.mdxa-hl-addr .lx-sortag{margin-left:6px;font-size:9.5px}
+
 .lx-acct{color:inherit;text-decoration:none;cursor:pointer}
 .lx-acct:hover .wa,.lx-acct:hover .mdxa-hl-addr{color:var(--accent)}
 a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
@@ -932,15 +938,15 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       // Mobile's row is the design's .mdxa-hl-row grid, not a table row.
       if(MOB) return '<a class="mdxa-hl-row lx-acct" href="/account/stellar/'+h.addr+'"><span class="mdxa-hl-rank">#'+(i+1)+'</span>'
         +'<span class="mdxa-hl-ident">'+identicon(h.addr,28)+'</span>'
-        +'<div class="mdxa-hl-meta"><div class="mdxa-hl-addr mono">'+shortG(h.addr)+'</div>'
+        +'<div class="mdxa-hl-meta"><div class="mdxa-hl-addr mono">'+shortG(h.addr)+(h.addr.charAt(0)==="C"?'<span class="lx-sortag">Soroban</span>':"")+'</div>'
         +'<a class="mdxa-hl-explorer" href="'+EXPL+h.addr+'" target="_blank" rel="noopener">View on Explorer \\u2197</a></div>'
         +'<div class="mdxa-hl-vals"><div class="mdxa-hl-bal mono">'+abbrNum(h.bal)+'</div>'
         +'<div class="mdxa-hl-pct mono">'+pctTxt+'</div></div></a>';
       return '<tr><td class="dxa-hl-rank">'+(i+1)+'</td>'
-        +'<td><a class="lx-acct wallet-cell" href="/account/stellar/'+h.addr+'">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span></a></td>'
+        +'<td><a class="lx-acct wallet-cell" href="/account/stellar/'+h.addr+'">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span>'+(h.addr.charAt(0)==="C"?'<span class="lx-sortag">Soroban contract</span>':"")+'</a></td>'
         +'<td class="mono">'+abbrNum(h.bal)+'</td>'
         +'<td class="mono">'+(pct>=0.001?pct.toFixed(3):"<0.001")+'%</td>'
-        +'<td style="text-align:right"><a class="dxa-hl-explorer" href="https://stellar.expert/explorer/public/account/'+h.addr+'" target="_blank" rel="noopener">View on Explorer <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a></td></tr>'; }).join("");
+        +'<td style="text-align:right"><a class="dxa-hl-explorer" href="https://stellar.expert/explorer/public/'+(h.addr.charAt(0)==="C"?"contract":"account")+'/'+h.addr+'" target="_blank" rel="noopener">View on Explorer <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a></td></tr>'; }).join("");
     tbody.innerHTML=html; tbody.setAttribute("data-lxbuilt","1");
     // pagination info line
     var pg=wrap.querySelector(".dxa-hl-pgn .info,.mdxa-hl-pgn .info");
