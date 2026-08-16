@@ -2358,6 +2358,9 @@ margin-top:16px;border-top:1px solid var(--border)}
 .lx-pchg{display:inline-block;font-size:11px;font-weight:800;letter-spacing:-.01em;padding:1px 6px;border-radius:5px;line-height:1.4}
 .lx-pchg.up{color:var(--green,#35c07f);background:rgba(53,192,127,.14)}
 .lx-pchg.down{color:var(--red,#ff5b5b);background:rgba(255,91,91,.14)}
+.lx-exmore{margin-left:10px;padding:3px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:700 12px/1.4 inherit;cursor:pointer;vertical-align:middle}
+.lx-exmore:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.lx-exmore:disabled{opacity:.6;cursor:default}
 .dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}
 .stat-cell .lx-supinfo::before{content:"i";display:block;font:italic 700 10px/16px Georgia,serif;color:inherit}
 .stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
@@ -6085,6 +6088,15 @@ window.addEventListener('click',function(e){
   // reads everything an earlier one paid for, and the total cost of the whole strip is bounded.
   var EX_MIN=25, EX_MAX_SCAN=3000, EX_CURSOR=null, EX_SCANNED=0, EX_DEEP={};
   function exMatches(f){ var r=window.__lxDXAtrades||[]; var n=0; for(var i=0;i<r.length;i++)if(r[i].xlm>=f)n++; return n; }
+  // How much TIME the scanned trades actually cover. A count alone is meaningless as a depth: 3,000 trades
+  // is months of history on a quiet asset and two hours on yXLM.
+  function exSpan(){ var r=window.__lxDXAtrades||[]; if(r.length<2)return "";
+    var a=r[r.length-1].ts, b=r[0].ts; if(!(a>0&&b>a))return "";
+    var h=(b-a)/3600000;
+    var t = h<1 ? (Math.max(1,Math.round(h*60))+" minutes")
+          : h<48 ? (Math.round(h)+" hour"+(Math.round(h)===1?"":"s"))
+          : (Math.round(h/24)+" days");
+    return " (about "+t+")"; }
   function deepenTrades(){
     if(NATIVE)return;
     var f=TRADE_FILTER; if(!(f>0))return;
@@ -6163,8 +6175,27 @@ window.addEventListener('click',function(e){
     if(EX_PAGE<1) EX_PAGE=1;
     var from=(EX_PAGE-1)*EX_PER_PAGE;
     var f=all.slice(from, from+EX_PER_PAGE);
-    // skip the rebuild when the filter+data+page haven't changed — kills the applyAll churn/lag
-    var sig=TRADE_FILTER+"|"+EX_PAGE+"|"+all.length+"|"+f.length+"|"+((f[0]&&f[0].addr)||"")+"|"+((f[f.length-1]&&f[f.length-1].addr)||"");
+    // What the empty state SHOULD say, worked out before the signature so it can go into it.
+    //
+    // It reports the span in TIME, not just a trade count, because the count is a bad proxy for depth and
+    // the difference is enormous: 3,000 trades is months on a quiet asset and TWO HOURS on yXLM, which
+    // trades constantly in small size. "the last 3,000 trades" reads like a lot and can mean almost
+    // nothing, which is exactly the confusion this message existed to prevent.
+    var _sz=(TRADE_FILTER>=1000?(TRADE_FILTER/1000)+"K":TRADE_FILTER)+" XLM";
+    var _busy=!!(EX_DEEP[TRADE_FILTER]&&EX_DEEP[TRADE_FILTER].busy);
+    var emptyTxt = TRADE_FILTER>0
+      ? (_busy ? ("Looking further back for trades \u2265 "+_sz+" \u2026")
+               : ("No trades \u2265 "+_sz+" in the last "+num(EX_SCANNED)+" trades"+exSpan()+"."))
+      : 'No trades in the recent window.';
+    // skip the rebuild when the filter+data+page haven't changed — kills the applyAll churn/lag.
+    //
+    // emptyTxt IS PART OF THE SIGNATURE, and leaving it out is what left "Looking further back…" on
+    // screen forever. When a crawl ends with nothing found, all.length and f.length are both still 0, so
+    // the final render carried the identical signature to the one that painted the searching message --
+    // and this guard skipped it as a no-op. The only thing that had changed was the sentence itself, and
+    // the signature could not see it. Verified on yXLM at 10K+: the crawl finished at 2.8s and the page
+    // still claimed to be looking eleven seconds later.
+    var sig=TRADE_FILTER+"|"+EX_PAGE+"|"+all.length+"|"+f.length+"|"+((f[0]&&f[0].addr)||"")+"|"+((f[f.length-1]&&f[f.length-1].addr)||"")+"|"+emptyTxt;
     // AUDIT: the old guard trusted the .lxda class, which survives when the design replaces the ROWS
     // underneath it — so once the mock came back we refused to repaint and left it on screen. Trust the
     // content instead — but NOT .wallet-cell: the design's mock rows use that class too, so the guard
@@ -6185,16 +6216,32 @@ window.addEventListener('click',function(e){
         ? ("Showing "+(from+1)+"–"+(from+f.length)+" of "+num(all.length)+" recent trades"+ft)
         : ("Showing 0 recent trades"+ft); }
     renderExPager(all.length, pages);
+    // KEEP LOOKING. The scan budget has to be bounded -- Horizon gives 100 requests per five minutes and
+    // this page is not the only thing spending them -- but a fixed ceiling is the wrong place to end the
+    // conversation when the answer is "there might be more further back". So when a size filter has
+    // finished short of its 25 and the budget is spent, offer another lap and let the reader decide
+    // whether it is worth the wait. Default cost stays exactly what it was; the extra is opt-in.
+    (function(){
+      var slot=q("#dxaPanelInfo"); if(!slot)return;
+      var st=EX_DEEP[TRADE_FILTER]||{};
+      var spent=EX_SCANNED>=EX_MAX_SCAN, short=(all.length<EX_MIN);
+      var want=(TRADE_FILTER>0 && short && spent && !st.busy);
+      var btn=slot.parentNode?slot.parentNode.querySelector(".lx-exmore"):null;
+      if(!want){ if(btn)btn.parentNode.removeChild(btn); return; }
+      if(btn)return;
+      btn=document.createElement("button"); btn.type="button"; btn.className="lx-exmore";
+      btn.textContent="Keep looking"; btn.setAttribute("data-lxc","");
+      btn.addEventListener("click",function(){
+        EX_MAX_SCAN+=3000; EX_DEEP={};                 // a fresh allowance, and let every size try again
+        btn.disabled=true; btn.textContent="Looking\u2026";
+        try{ deepenTrades(); }catch(_){}
+      });
+      slot.parentNode.insertBefore(btn, slot.nextSibling);
+    })();
     function decs(p){ return p>=1?4:(p>=0.01?5:7); }
     if(!f.length){
-      // Say how far back we actually looked. "in the recent window" described a limit the reader could
-      // neither see nor trust -- and while the crawl is still running it is not even true yet.
-      var _sz=(TRADE_FILTER>=1000?(TRADE_FILTER/1000)+"K":TRADE_FILTER)+" XLM";
-      var _busy=!!(EX_DEEP[TRADE_FILTER]&&EX_DEEP[TRADE_FILTER].busy);
-      var emptyTxt = TRADE_FILTER>0
-        ? (_busy ? ("Looking further back for trades \u2265 "+_sz+" \u2026")
-                 : ("No trades \u2265 "+_sz+" in the last "+num(EX_SCANNED)+" trades."))
-        : 'No trades in the recent window.';
+      // emptyTxt is computed above, before the signature, so that a change to THIS SENTENCE alone is
+      // enough to force a repaint. Saying how far back we looked is only honest once the looking stopped.
       tb.innerHTML=MOB
         ? '<div class="lxda-ex-empty" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">'+emptyTxt+'</div>'
         : '<tr class="lxda-ex-empty"><td colspan="6" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">'+emptyTxt+'</td></tr>';
