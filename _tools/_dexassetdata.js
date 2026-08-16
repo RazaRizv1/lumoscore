@@ -2154,6 +2154,24 @@ for (const file of files) {
     // Discussions was removed: no backend ever existed, so the tab only led to the design's mock thread
     // plus browser-local posts nobody else could see. Idempotent -- after one pass there is no match.
     p = p.replace(/<button[^>]*data-tab="discussions"[^>]*>[\s\S]*?<\/button>/g, '');
+    // "Total Reactions": emoji buttons wired to nothing. Depth-scan to the card's OWN closing tag --
+    // it wraps nested divs, so a lazy regex would cut it off mid-card. Idempotent: no match, no change.
+    for (;;) {
+      const rm = /<div class="[^"]*\breact-card\b[^"]*">/.exec(p);
+      if (!rm) break;
+      const re = /<div\b[^>]*>|<\/div>/g;
+      re.lastIndex = rm.index;
+      let depth = 0, end = -1, mm;
+      while ((mm = re.exec(p))) {
+        if (mm[0].charAt(1) === '/') { depth--; if (depth === 0) { end = mm.index + mm[0].length; break; } }
+        else depth++;
+      }
+      if (end < 0) break;                                   // unbalanced markup: leave it rather than corrupt the page
+      let start = rm.index;
+      const cmt = p.lastIndexOf('<!-- Total Reactions -->', rm.index);
+      if (cmt >= 0 && rm.index - cmt < 60) start = cmt;      // take the comment with it
+      p = p.slice(0, start) + p.slice(end);
+    }
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');
