@@ -74,11 +74,27 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     if(x>=1e6)return (x/1e6).toFixed(2)+"M";
     if(x>=1e3)return (x/1e3).toFixed(2)+"K";return x.toFixed(2);}
   function pct(v){return v==null?DASH:((v>=0?"+":"")+(+v).toFixed(2)+"%");}
-  // Same helper the desktop rows use, so a price never reads differently between the two layouts.
+  // Below 1e-8 a plain decimal is an unreadable run of zeros and exponential notation is trader-hostile,
+  // so the zeros get counted into a subscript instead: 0.000000001234 -> 0.0(8)1234. At 1e-8 and above we
+  // stay plain and trim the padding.
+  //
+  // Deliberately free of backslash escapes: this code is emitted through a template literal, which eats
+  // one level of them -- a /\.$/ here would ship as /.$/ and delete the last digit of every price.
+  var SUBD=String.fromCharCode(8320,8321,8322,8323,8324,8325,8326,8327,8328,8329);
+  function zsub(n){ var s=String(n),o=""; for(var i=0;i<s.length;i++)o+=SUBD.charAt(+s.charAt(i)); return o; }
+  function trimZ(t){ while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);
+    if(t.charAt(t.length-1)===".")t=t.slice(0,-1); return t; }
+  function smallNum(x,sig){ x=+x||0; if(!(x>0))return "0";
+    if(x>=1e-8)return trimZ(x.toFixed(8));
+    var e=x.toExponential((sig||4)-1), i=e.indexOf("e");
+    if(i<0)return String(x);
+    var mant=trimZ(e.slice(0,i)).split(".").join(""), exp=-parseInt(e.slice(i+1),10);
+    if(!(exp>1))return trimZ(x.toFixed(8));
+    return "0.0"+zsub(exp-1)+mant; }
   function fmtPrice(v){var x=+v||0;
     if(x>=1000)return x.toFixed(2);if(x>=1)return x.toFixed(4);
     if(x>=0.01)return x.toFixed(5);if(x>=0.0001)return x.toFixed(7);
-    if(x>0)return x.toExponential(2);return "0";}
+    if(x>0)return smallNum(x,4);return "0";}
   function priceOf(a){return (a&&a.px!=null&&isFinite(+a.px))?+a.px:null;}
   function assets(){return window.__lxDEXassets||null;}
   // Defer to the layer's own resolver so both layouts show one logo per asset. It prefers the hardcoded

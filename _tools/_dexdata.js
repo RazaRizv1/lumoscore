@@ -193,10 +193,27 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function recs(d){ return (d&&d._embedded&&d._embedded.records)||[]; }
   function priceUsd(a){ return (a.px||0)*xlmUsd; }
   function num(n){ if(n==null)return "\\u2014"; return Math.round(+n||0).toLocaleString("en-US"); }
-  function usdSmall(x){ x=+x||0; if(x>=1)return "$"+x.toLocaleString("en-US",{maximumFractionDigits:2}); if(x>=0.01)return "$"+x.toFixed(4); if(x>0)return "$"+x.toFixed(6); return "$0"; }
+  // Below 1e-8 a plain decimal is an unreadable run of zeros and exponential notation is trader-hostile,
+  // so the zeros get counted into a subscript instead: 0.000000001234 -> 0.0(8)1234. At 1e-8 and above we
+  // stay plain and trim the padding.
+  //
+  // Deliberately free of backslash escapes: this code is emitted through a template literal, which eats
+  // one level of them -- a /\.$/ here would ship as /.$/ and delete the last digit of every price.
+  var SUBD=String.fromCharCode(8320,8321,8322,8323,8324,8325,8326,8327,8328,8329);
+  function zsub(n){ var s=String(n),o=""; for(var i=0;i<s.length;i++)o+=SUBD.charAt(+s.charAt(i)); return o; }
+  function trimZ(t){ while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);
+    if(t.charAt(t.length-1)===".")t=t.slice(0,-1); return t; }
+  function smallNum(x,sig){ x=+x||0; if(!(x>0))return "0";
+    if(x>=1e-8)return trimZ(x.toFixed(8));
+    var e=x.toExponential((sig||4)-1), i=e.indexOf("e");
+    if(i<0)return String(x);
+    var mant=trimZ(e.slice(0,i)).split(".").join(""), exp=-parseInt(e.slice(i+1),10);
+    if(!(exp>1))return trimZ(x.toFixed(8));
+    return "0.0"+zsub(exp-1)+mant; }
+  function usdSmall(x){ x=+x||0; if(x>=1)return "$"+x.toLocaleString("en-US",{maximumFractionDigits:2}); if(x>=0.01)return "$"+x.toFixed(4); if(x>0)return "$"+smallNum(x,4); return "$0"; }
   function abbrUsd(n){ n=+n||0; var a=Math.abs(n); if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B"; if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M"; if(a>=1e3)return "$"+(n/1e3).toFixed(1)+"K"; if(a>=1)return "$"+n.toFixed(2); return usdSmall(n); }
   function fmtAmt(n){ n=+n||0; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(1)+"K"; return n.toFixed(0); }
-  function fmtPrice(n){ n=+n||0; if(n>=1000)return n.toFixed(2); if(n>=1)return n.toFixed(4); if(n>=0.01)return n.toFixed(5); if(n>=0.0001)return n.toFixed(7); if(n>0)return n.toExponential(2); return "0"; }
+  function fmtPrice(n){ n=+n||0; if(n>=1000)return n.toFixed(2); if(n>=1)return n.toFixed(4); if(n>=0.01)return n.toFixed(5); if(n>=0.0001)return n.toFixed(7); if(n>0)return smallNum(n,4); return "0"; }
   function shortG(a){ a=String(a||""); return a.length>12?a.slice(0,4)+"\\u2026"+a.slice(-4):a; }
   // circular initial-avatar as an SVG data-URI (fallback logo for arbitrary Stellar tokens)
   function avatarBg(code){ var c=String(code||"?"); var hue=0; for(var i=0;i<c.length;i++)hue=(hue*31+c.charCodeAt(i))%360;
