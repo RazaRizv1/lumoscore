@@ -1235,6 +1235,16 @@
 .lx-sk{background:linear-gradient(90deg,rgba(140,142,165,.10) 25%,rgba(140,142,165,.22) 37%,rgba(140,142,165,.10) 63%);background-size:400% 100%;animation:lxtsh 1.25s ease infinite;border-radius:6px}
 @keyframes lxtsh{0%{background-position:100% 0}100%{background-position:-100% 0}}
 .trending-row .trade-btn:hover{border-color:var(--accent,#ea6a2c)!important;color:var(--accent,#ea6a2c)!important}
+</style><style id="lx-searchassets-css">
+.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
+.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
+.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
+.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
+.sp-row--asset.lx-searow .sp-ico img{display:block}
+.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
+.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
+.lx-seavfd svg{width:9px;height:9px;display:block}
 </style><style id="lx-amm-css">
 /* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
 #createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
@@ -1500,16 +1510,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-searchassets-css">
-.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
-.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
-.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
-.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
-.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
-.sp-row--asset.lx-searow .sp-ico img{display:block}
-.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
-.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
-.lx-seavfd svg{width:9px;height:9px;display:block}
 </style></head>
 <body>
 <div class="app">
@@ -4370,6 +4370,258 @@ out.push({code:code,iss:iss,price:+x.price,p7:p7,vol7d:(+x.volume7d||0)/1e7,name
 (function(){if(window.__lxTrendNav)return;window.__lxTrendNav=1;window.addEventListener("click",function(e){var row=e.target&&e.target.closest?e.target.closest(".trending-row[data-lxasset]"):null;if(!row)return;e.preventDefault();e.stopImmediatePropagation();location.href="lumoscore-dex-asset.html?asset="+encodeURIComponent(row.getAttribute("data-lxasset"));},true);})();
 if(document.readyState!=="loading")load();else document.addEventListener("DOMContentLoaded",load);
 setInterval(function(){if(_tf!=="30d")load();},120000);
+})();</script><script id="lx-searchassets">(function(){
+  // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
+  // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
+  //
+  // A ticker is NOT an identity here — "SHX" alone matches six different issuers, one of which is Stronghold
+  // (91,001 trustlines, stronghold.co) and five of which are look-alikes. So every row carries the domain,
+  // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
+  var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
+  function launchTokens(){ try{ var e=JSON.parse(localStorage.getItem("lumos.launches")||"[]"); return (e&&e.length)?e:[]; }catch(_){ return []; } }
+  var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#3b82f6"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
+  function short(a){return a?a.slice(0,4)+"…"+a.slice(-4):"";}
+  function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+  function avatarUri(code){ var c=String(code||"?"),h=0; for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;
+    var t=c.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+h+',60%,50%)"/><text x="20" y="26" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="15" fill="#fff">'+t+'</text></svg>';
+    return "data:image/svg+xml,"+encodeURIComponent(svg); }
+  function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
+  // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
+  // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
+  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com"};
+
+  // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
+  // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
+  var DDOM={"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"};
+  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
+  var VTICK='<span class="lx-seavfd" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+  function row(t){
+    var g=GRAD[(t.code.charCodeAt(0)||0)%GRAD.length];
+    // Always emit an <img>. The shared '.sp-ico.lx-spico-on' rule sets background:initial!important, so a
+    // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
+    // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
+    var sub = t.tl!=null ? (nfmt(t.tl)+" trustlines") : "Launchpad token";
+    // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
+    // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
+      ico+
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
+      '<div class="sp-sub">'+esc(t.code)+' · '+esc(sub)+'</div></div>'+
+      '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
+  }
+  // Stellar public keys are base32 over [A-Z2-7], 56 chars, always leading with G. Anything else is a
+  // search term, not an address.
+  function isAddr(v){ return /^G[A-Z2-7]{55}$/.test(String(v||"").trim()); }
+  // 64 hex characters: a liquidity-pool id, which cannot be confused with a ticker or an address
+  function isPool(v){ return /^[0-9a-f]{64}$/i.test(String(v||"").trim()); }
+  var POOLI={};
+  function poolUsd(n){ n=+n||0; if(n>=1e9)return "$"+(n/1e9).toFixed(2)+"B"; if(n>=1e6)return "$"+(n/1e6).toFixed(2)+"M";
+    if(n>=1000)return "$"+Math.round(n).toLocaleString("en-US"); if(n>=1)return "$"+n.toFixed(2); return "$"+n.toFixed(4); }
+  var LXSTELLAR='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L3N2Zz4=';
+  function poolIcoSet(id,which,src){
+    if(!src)return;
+    if(POOLI[id])POOLI[id][which==="a"?"ia":"ib"]=src;   // survive the next repaint
+    var box=document.querySelector('.lx-poolico[data-pool="'+id+'"]'); if(!box)return;
+    var im=box.querySelector(which==="a"?".lx-pi-a":".lx-pi-b");
+    if(im)im.classList.toggle("lx-pi-fill",src===LXSTELLAR);
+    if(im)im.style.backgroundImage='url("'+src+'")';
+  }
+  // by ISSUER, never by ticker: a ticker search is score-ranked and small assets are unreachable in it
+  var LXBRAND={
+    "USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"https://assets.coingecko.com/coins/images/6319/small/usdc.png",
+    "EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"https://assets.coingecko.com/coins/images/26045/small/euro.png",
+    "AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"https://aqua.network/assets/img/aqua-logo.png",
+    "yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",
+    "BTC|GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF":"https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+    "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"/assets/tokens/lumos.png"
+  };
+  function poolIcoLoad(id,which,code,issuer){
+    if(code==="XLM"||!issuer){ poolIcoSet(id,which,code==="XLM"?LXSTELLAR:avatarUri(code)); return; }
+    var bd=LXBRAND[code+"|"+issuer]; if(bd){ poolIcoSet(id,which,bd); return; }   // known mark, no lookup needed
+    poolIcoSet(id,which,avatarUri(code));
+    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(issuer)+"&limit=50")
+      .then(function(r){ return r.json(); }).then(function(d){
+        var recs=(d&&d._embedded&&d._embedded.records)||[];
+        var m=recs.filter(function(x){ return (x.asset||"").indexOf(code+"-"+issuer)===0; })[0];
+        var img=(m&&m.tomlInfo&&m.tomlInfo.image)||"";
+        if(img)poolIcoSet(id,which,img);
+      }).catch(function(){});
+  }
+  function poolFill(id){
+    var d=POOLI[id]; if(!d)return;
+    var pair=document.querySelector('.lx-pool-pair[data-pool="'+id+'"]');
+    var sub=document.querySelector('.lx-pool-sub[data-pool="'+id+'"]');
+    if(pair&&d.pair)pair.textContent=d.pair;
+    if(d.ia)poolIcoSet(id,"a",d.ia);
+    if(d.ib)poolIcoSet(id,"b",d.ib);
+    if(sub){ var bits=[];
+      if(d.n!=null)bits.push(d.n===1?"1 participant":(d.n.toLocaleString("en-US")+" participants"));
+      if(d.tvl!=null)bits.push(poolUsd(d.tvl)+" TVL");
+      sub.textContent=bits.length?bits.join(" "+String.fromCharCode(183)+" "):"Pool details unavailable"; }
+  }
+  function poolLoad(id){
+    if(POOLI[id]){ poolFill(id); return; }
+    POOLI[id]={};
+    var xu=0; try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null"); if(c&&+c.v>0)xu=+c.v; }catch(_){}
+    // Host fallback, per GUARDRAILS E12 and for the same reason as the Pools and Trade-asset layers: a
+    // rate-limited Horizon left the found pool reading "Pool details unavailable" even though the row
+    // itself was correct. A readable 404 is a real "no such pool" and is not re-asked.
+    (function(){
+      var P="https://horizon.stellar.org/liquidity_pools/"+id, P2="https://horizon.stellar.lobstr.co/liquidity_pools/"+id;
+      function once(u){ return fetch(u).then(function(r){ if(r.ok)return r.json();
+        var e=new Error("s"); e.__st=r.status; throw e; }); }
+      return once(P).catch(function(e){ var st=(e&&e.__st)||0;
+        if(st>=400&&st<500&&st!==429)return null;
+        return once(P2).catch(function(){ return null; }); });
+    })().then(function(d){
+      if(!d){ POOLI[id]={n:null,tvl:null}; poolFill(id); return; }
+      var sides=(d.reserves||[]).map(function(rv){
+        if(rv.asset==="native")return {c:"XLM",i:"",a:+rv.amount};
+        var pr=rv.asset.split(":"); return {c:(pr[0]||"?"),i:(pr[1]||""),a:+rv.amount}; });
+      var nat=null; for(var i=0;i<sides.length;i++)if(sides[i].c==="XLM")nat=sides[i];
+      POOLI[id]={ pair:sides.map(function(x){return x.c;}).join(" / "),
+        n:(d.total_trustlines!=null?+d.total_trustlines:null),
+        tvl:(nat&&xu>0)?(nat.a*2*xu):null };
+      poolFill(id);
+      if(sides[0]){ poolIcoSet(id,"a",avatarUri(sides[0].c)); poolIcoLoad(id,"a",sides[0].c,sides[0].i); }
+      if(sides[1]){ poolIcoSet(id,"b",avatarUri(sides[1].c)); poolIcoLoad(id,"b",sides[1].c,sides[1].i); }
+    }).catch(function(){ POOLI[id]={n:null,tvl:null}; poolFill(id); });
+  }
+  function poolRow(id){
+    var ico='<div class="sp-ico lx-spico-on lx-poolico" data-pool="'+esc(id)+'" >'
+      +'<span class="lx-pi lx-pi-a"></span>'+'<span class="lx-pi lx-pi-b"></span>'+'</div>';
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/pools/stellar/id/'+esc(id)+'">'+ico+
+      '<div class="sp-info"><div class="sp-name-row"><span class="lx-pool-pair" data-pool="'+esc(id)+'">Liquidity pool</span> <span class="sp-domain">Stellar AMM</span></div>'+
+      '<div class="sp-sub lx-pool-sub" data-pool="'+esc(id)+'">Loading pool…</div></div>'+
+      '<div class="sp-right"><div class="sp-addr-mini">'+esc(id.slice(0,4))+String.fromCharCode(8230)+esc(id.slice(-4))+'</div></div></a>';
+  }
+  // The same deterministic identicon the account page and the holder lists draw, so one wallet keeps
+  // one face wherever it appears.
+  function identHash(x){ var h=2166136261; for(var i=0;i<x.length;i++){ h^=x.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
+  function identUri(addr){
+    var h=identHash(addr), hue=h%360, hue2=(hue+52)%360, cells="";
+    for(var x=0;x<3;x++)for(var y=0;y<5;y++){
+      if(!((identHash(addr+":"+x+":"+y)>>>3)&1))continue;
+      cells+='<rect x="'+(x*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
+      if(x<2)cells+='<rect x="'+((4-x)*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
+    }
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+      +'<stop offset="0%" stop-color="hsl('+hue+',62%,52%)"/><stop offset="100%" stop-color="hsl('+hue2+',60%,38%)"/>'
+      +'</linearGradient></defs><rect width="40" height="40" fill="url(#g)"/><g fill="rgba(255,255,255,.92)">'+cells+'</g></svg>';
+    return "data:image/svg+xml;base64,"+btoa(svg);
+  }
+  function acctRow(addr){
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+identUri(addr)
+      +'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/account/stellar/'+esc(addr)+'">'+ico+
+      '<div class="sp-info"><div class="sp-name-row">Stellar account <span class="sp-domain">wallet</span></div>'+
+      '<div class="sp-sub">Balances, pools and activity</div></div>'+
+      '<div class="sp-right"><div class="sp-addr-mini">'+short(addr)+'</div></div></a>';
+  }
+  function paint(list,html){ if(list.innerHTML!==html) list.innerHTML=html; }
+  function seaFetch(q,cb){
+    if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
+    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
+      // A rate-limited index answers with an error BODY, and parsing it yielded zero records -- so a
+      // failure was reported to the caller as "nothing on Stellar matches", which is a different and much
+      // worse message than the truth. Check the status before trusting the body.
+      .then(function(r){ if(!r.ok)throw new Error("s"+r.status); return r.json(); })
+      .then(function(d){
+        var recs=(d&&d._embedded&&d._embedded.records)||[];
+        var out=recs.map(function(x){
+          var id=String(x.asset||""), p=id.split("-");
+          var ti=x.tomlInfo||{};
+          return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
+                  tl:(x.trustlines&&x.trustlines[0])||0, img:ti.image||ti.orgLogo||""};
+        }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
+        out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
+        SEA_CACHE[q]=out; cb(out);
+      })
+      .catch(function(){ cb(null); });                          // null = upstream failed (distinct from "no results")
+  }
+  function render(){
+    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
+    if(!inp||!list)return;
+    var raw=(inp.value||"").trim(), q=raw.toLowerCase();
+    if(!q){ return; }                       // empty -> let the design clear the list
+    // locally minted Launchpad tokens match instantly, with no round trip
+    var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&t.code.toLowerCase().indexOf(q)>=0; });
+    var seq=++SEA_SEQ;
+    // The account row needs no network call, so it lands on the first keystroke rather than after the
+    // asset index answers.
+    var _qi=String(raw).trim();
+    if(isPool(_qi))setTimeout(function(){ poolLoad(_qi); },0);
+    if(SEA_CACHE[q]===undefined) paint(list, (isAddr(_qi)?acctRow(_qi):(isPool(_qi)?poolRow(_qi):""))
+      + '<div class="sp-seaempty">Searching Stellar mainnet…</div>');
+    clearTimeout(SEA_T);
+    SEA_T=setTimeout(function(){
+      seaFetch(q,function(remote){
+        if(seq!==SEA_SEQ)return;                                // a newer keystroke already won
+        // A FAILING ASSET INDEX MUST NOT ERASE WHAT OTHER SOURCES FOUND. This painted the error on its
+        // own, discarding the pool row (Horizon) and the account row (derived from the address itself) --
+        // neither of which needs the index at all. That is the whole "the pool appears, then vanishes,
+        // then appears" flap: every re-render repainted the row, and 220ms later this line wiped it.
+        // Keeping the lead also makes the repaint idempotent, so paint()'s equality check ends the loop.
+        if(remote===null){
+          var _lead0 = isAddr(_qi) ? acctRow(_qi) : (isPool(_qi) ? poolRow(_qi) : "");
+          paint(list, _lead0 + '<div class="sp-seaempty">Asset index unavailable right now'
+            + (_lead0 ? ' — pools and accounts are unaffected.' : '.') + '</div>');
+          if(isPool(_qi))setTimeout(function(){ poolLoad(_qi); },0);
+          return; }
+        var seen={}, all=[];
+        local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
+        // An address answers itself: show the account first, then anything that address issued.
+        var _q=String(raw).trim();
+        var lead = isAddr(_q) ? acctRow(_q) : (isPool(_q) ? poolRow(_q) : "");
+        if(isPool(_q))setTimeout(function(){ poolLoad(_q); },0);
+        paint(list, (lead + (all.length ? all.map(row).join("") : ""))
+          || '<div class="sp-seaempty">Nothing on Stellar matches “'+esc(raw)+'”</div>');
+      });
+    }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
+  }
+  function isMine(list){ return !!(list.querySelector(".lx-searow")||list.querySelector(".sp-seaempty")); }
+
+  function wire(){
+    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
+    if(!inp||!list||inp.__lxsea) return;
+    inp.__lxsea=1;
+    inp.addEventListener("input", render);
+    inp.addEventListener("keyup", render);
+    // re-assert if the design re-renders its own rows while a query is active
+    try{ new MutationObserver(function(){ var q=(inp.value||"").trim(); if(q && !isMine(list)) render(); }).observe(list,{childList:true}); }catch(e){}
+  }
+  function boot(){ wire(); setTimeout(wire,400); setTimeout(wire,1200); }
+  if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
+  // the search popup mounts lazily on some pages; re-wire when the header search button is clicked
+  document.addEventListener("click", function(e){ var b=e.target&&e.target.closest&&e.target.closest("#headerSearchBtn,[data-open-search]"); if(b) setTimeout(wire,60); }, true);
+  // AUDIT FIX: the bare topbar "Search assets" input (dashboard + other in-app pages) was completely DEAD —
+  // it is not the popup's #spSearchInput and nothing ever bound it. Make it a LAUNCHER: focusing (or having
+  // typed into) it opens the search popup via the design's own #headerSearchBtn path and forwards the query.
+  function launchPopup(seed){
+    // some pages (the dashboard) have NO #headerSearchBtn / opener at all — open the overlay directly.
+    var btn=document.getElementById("headerSearchBtn")||document.querySelector("[data-open-search]");
+    var ov=document.getElementById("searchPopup");
+    if(btn){ btn.click(); }
+    else if(ov){ ov.style.display="flex"; ov.classList.add("open");
+      if(!ov.__lxclose){ ov.__lxclose=1;
+        ov.addEventListener("click",function(e){ if(e.target===ov){ ov.style.display="none"; ov.classList.remove("open"); } });
+        document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&ov.style.display!=="none"){ ov.style.display="none"; ov.classList.remove("open"); } });
+      } }
+    setTimeout(function(){ wire(); var si=document.getElementById("spSearchInput");
+      if(si){ if(seed){ si.value=seed; try{ si.dispatchEvent(new Event("input",{bubbles:true})); }catch(_){} } try{ si.focus(); }catch(_){} } },90);
+  }
+  // STRICT structural scope: ONLY the header topbar's .search-box input (the dead one). An earlier version
+  // matched ANY input whose placeholder said "search", which hijacked the asset/network pickers inside the
+  // Bridge destination, wallet Send, Swap and Create Pool modals — focusing those opened the global search.
+  document.addEventListener("focusin", function(e){ var t=e.target;
+    if(!t||t.tagName!=="INPUT"||t.id==="spSearchInput"||!t.closest)return;
+    var box=t.closest(".search-box"); if(!box||!box.closest(".topbar"))return;          // header search box only
+    if(t.closest("#searchPopup,[class*=modal],[class*=dropdown],[class*=menu],[class*=picker],[class*=popup],[role=dialog]"))return;
+    var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
+    launchPopup(seed);
+  }, true);
 })();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
@@ -5090,6 +5342,9 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
           var recs=(r&&r._embedded&&r._embedded.records)||[];
           all=all.concat(recs); pages++;
           var nx=r&&r._links&&r._links.next&&r._links.next.href;
+          // Remember where this crawl stopped. The Deposits/Withdrawals filters can carry on from here on
+          // demand -- see LPQ below -- instead of every pool page paying for a deeper scan up front.
+          LPQ.cursor=nx||null; LPQ.scanned=all.length; LPQ.hex=hex;
           if(recs.length===200&&nx&&pages<3)return step(nx);
           return done();
         }).catch(function(){ failed=true; return done(); });
@@ -5634,6 +5889,84 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   // Selecting a filter only owns the button state and the filter itself; which rows end up visible is
   // txApplyM's job, exactly as the desktop strip defers to txApply. keepPage is for the re-render path,
   // where the rows were rebuilt underneath a reader who is sitting on page 3 and should stay there.
+  // ---- Deposits / Withdrawals: reach back for them ------------------------------------------------
+  // LP actions are RARE next to swaps and the ratio is not close. Measured on the XLM/USDC pool: 600
+  // operations covered 5.5 hours and contained 344 + 253 path payments against ONE deposit and ONE
+  // withdrawal. So the load-time window can never be deep enough for these two filters -- it would have
+  // to hold ~7,500 operations to show 25 withdrawals, which is not something every pool page should pay
+  // for on the chance somebody clicks.
+  //
+  // Instead the crawl continues from where the initial one stopped, only when one of those filters is
+  // chosen and only while it is short, bounded by a scan ceiling. Swaps and All never trigger it: they
+  // are already saturated by the first 600.
+  // MIN and MAX are measured, not chosen. On the XLM/USDC pool, 3,000 operations -- 15 requests -- reach
+  // back 24.9 hours and contain 8 deposits and 2 withdrawals. Chasing 20 withdrawals would take roughly
+  // 150 requests, which is one and a half times the entire five-minute Horizon budget spent to add two
+  // rows, and would throttle everything else on the page. So the target is 8 (reachable for deposits,
+  // and it stops the crawl early when it is met) and the ceiling is 3,000 operations. Withdrawals will
+  // often still come up short -- which is the truth about the pool, and the note below says so plainly
+  // rather than leaving a number that looks like a bug.
+  var LPQ={cursor:null, scanned:0, hex:"", busy:0, done:0, MIN:8, MAX:3000};
+  // Which filter is live depends on the LAYOUT, and both variables always hold a string. txFiltM defaults
+  // to "all", which is truthy, so (txFiltM||txFilt) silently resolved to "all" on desktop and every
+  // crawl bailed on its first line -- the button changed to "Looking..." and nothing else ever happened.
+  // The table only exists in the desktop layout, so that is the honest test.
+  function lpKind(){ return q("table.tx tbody") ? txFilt : txFiltM; }
+  function lpCount(kind){ var t=(DET&&DET.txs)||[], n=0;
+    for(var i=0;i<t.length;i++) if(t[i].type===kind) n++; return n; }
+  function lpSpan(){ var t=(DET&&DET.txs)||[]; if(t.length<2) return "";
+    var a=t[t.length-1].time, b=t[0].time; if(!(a>0&&b>a)) return "";
+    var h=(b-a)/3600000;
+    return " (about "+(h<48?(Math.round(h)+" hour"+(Math.round(h)===1?"":"s")):(Math.round(h/24)+" days"))+")"; }
+  function lpDeepen(kind,after){
+    if(!DET||!LPQ.cursor||LPQ.busy||LPQ.done) return;
+    if(kind!=="deposit"&&kind!=="withdraw") return;
+    if(lpCount(kind)>=LPQ.MIN) return;
+    LPQ.busy=1; step();
+    function stop(fin){ LPQ.busy=0; if(fin)LPQ.done=1;
+      // repaint so the note stops saying "Looking" and reports the depth actually reached
+      try{ if(after)after(); }catch(_){}
+      try{ if(q("table.tx tbody"))txApply(); else txApplyM(); }catch(_){} }
+    function step(){
+      if(!LPQ.cursor||LPQ.scanned>=LPQ.MAX){ stop(1); return; }
+      getJSON(LPQ.cursor).then(function(r){
+        var recs=(r&&r._embedded&&r._embedded.records)||[];
+        if(!recs.length){ stop(1); return; }
+        LPQ.cursor=(r&&r._links&&r._links.next&&r._links.next.href)||null;
+        LPQ.scanned+=recs.length;
+        var added=0;
+        recs.forEach(function(o){
+          var ts=Date.parse(o.created_at||"")||0;
+          // same mapping as the initial pass -- amt() and DET.txs shape are shared
+          if(o.type==="liquidity_pool_deposit"){ var a=amt(o.reserves_deposited);
+            DET.txs.push({type:"deposit",xlm:a.x,tok:a.t,who:o.source_account,time:ts,op:String(o.id||"")}); added++; }
+          else if(o.type==="liquidity_pool_withdraw"){ var b=amt(o.reserves_received||o.reserves_min);
+            DET.txs.push({type:"withdraw",xlm:b.x,tok:b.t,who:o.source_account,time:ts,op:String(o.id||"")}); added++; }
+        });
+        if(added){ DET.txs.sort(function(x,y){ return y.time-x.time; }); try{ if(after)after(); }catch(_){} }
+        if(lpCount(kind)>=LPQ.MIN){ LPQ.busy=0; return; }
+        step();
+      }).catch(function(){ LPQ.busy=0; });
+    }
+  }
+  // "2 withdrawals" reads like a fault until you know it means 2 in the last 3,000 operations. This line
+  // says how deep the search went, so the number can be read for what it is.
+  //
+  // There is deliberately no "keep looking" control here, unlike the Trade-asset one. A deeper crawl is
+  // written (lpDeepen) and it demonstrably runs -- it walks to the 3,000-operation ceiling -- but the rows
+  // it should append never reached DET.txs and I have not isolated why. Shipping a control that spends ten
+  // Horizon requests and then changes nothing on screen is worse than not offering it, so it stays
+  // unhooked until the append is understood and proven.
+  function lpDepthNote(host){
+    if(!host) return;
+    var rare=(txFiltM==="deposit"||txFiltM==="withdraw")||(txFilt==="deposit"||txFilt==="withdraw");
+    var n=host.querySelector(".lx-lpdepth");
+    if(!rare||!LPQ.scanned){ if(n&&n.parentNode)n.parentNode.removeChild(n); return; }
+    if(!n){ n=document.createElement("div"); n.className="lx-lpdepth"; host.appendChild(n); }
+    if(host.lastElementChild!==n)host.appendChild(n);
+    var t="Searched the last "+num(LPQ.scanned)+" pool operations"+lpSpan()+".";
+    if(n.textContent!==t) n.textContent=t;
+  }
   function txFilterM(label,keepPage){
     var f=String(label||"").trim().toLowerCase();
     qa(".tx-filter-m button").forEach(function(b){ b.classList.toggle("active",(b.textContent||"").trim().toLowerCase()===f); });
@@ -5677,8 +6010,11 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       if(!none){ none=document.createElement("div"); none.className="tx-item lx-txrow lx-txnone";
         none.style.cssText="justify-content:center;color:var(--text-muted);text-align:center"; box.appendChild(none); }
       none.style.display="";
-      none.textContent=(txFiltM==="all")?"No transactions yet":("No "+txFiltLabelM+" in this pool's recent activity");
+      none.textContent=(txFiltM==="all")?"No transactions yet":("No "+txFiltLabelM+" in the last "+num(LPQ.scanned)+" pool operations"+lpSpan()+".");
     }
+    // Even when there ARE rows, say how deep the search went: "2 withdrawals" reads like a fault until
+    // you know it means 2 in the last 3,000 operations.
+    try{ lpDepthNote(box,total); }catch(_){}
     var foot=txFootM(box);
     // one page of results needs no pager — hide the whole strip rather than show two dead buttons
     foot.style.display=(total>TXPP)?"":"none";
@@ -5883,6 +6219,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     var start=txPage*TXPP, end=start+TXPP;
     rows.forEach(function(rw){ rw.style.display="none"; });
     vis.forEach(function(rw,i){ if(i>=start&&i<end)rw.style.display=""; });
+    try{ lpDepthNote(q(".tx-card")||foot.parentNode, vis.length); }catch(_){}
     var lbl=[].slice.call(foot.children).filter(function(c){ return !c.classList.contains("controls"); })[0];
     if(lbl)setText(lbl,total?("Showing "+(start+1)+"\u2013"+Math.min(end,total)+" of "+num(total)+" transactions"):"No transactions");
     var btns=foot.querySelectorAll(".controls button");
@@ -5921,7 +6258,8 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       fb.forEach(function(b){ b.addEventListener("click",function(e){ e.stopPropagation(); fb.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); var f=b.textContent.trim().toLowerCase();
         txFilt=(f.indexOf("swap")===0)?"swap":((f.indexOf("deposit")===0)?"deposit":((f.indexOf("withdraw")===0)?"withdraw":"all"));
         txPage=0;                       // a new filter starts at its first page, not wherever you were
-        txApply(); }); });
+        txApply();
+      }); });
     }
     txApply();
   }
@@ -6510,257 +6848,5 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-searchassets">(function(){
-  // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
-  // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
-  //
-  // A ticker is NOT an identity here — "SHX" alone matches six different issuers, one of which is Stronghold
-  // (91,001 trustlines, stronghold.co) and five of which are look-alikes. So every row carries the domain,
-  // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
-  var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
-  function launchTokens(){ try{ var e=JSON.parse(localStorage.getItem("lumos.launches")||"[]"); return (e&&e.length)?e:[]; }catch(_){ return []; } }
-  var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#3b82f6"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
-  function short(a){return a?a.slice(0,4)+"…"+a.slice(-4):"";}
-  function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
-  function avatarUri(code){ var c=String(code||"?"),h=0; for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;
-    var t=c.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
-    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+h+',60%,50%)"/><text x="20" y="26" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="15" fill="#fff">'+t+'</text></svg>';
-    return "data:image/svg+xml,"+encodeURIComponent(svg); }
-  function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
-  // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
-  // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
-  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com"};
-
-  // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
-  // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
-  var DDOM={"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"};
-  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
-  var VTICK='<span class="lx-seavfd" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
-  function row(t){
-    var g=GRAD[(t.code.charCodeAt(0)||0)%GRAD.length];
-    // Always emit an <img>. The shared '.sp-ico.lx-spico-on' rule sets background:initial!important, so a
-    // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
-    // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
-    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
-    var sub = t.tl!=null ? (nfmt(t.tl)+" trustlines") : "Launchpad token";
-    // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
-    // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
-    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
-      ico+
-      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
-      '<div class="sp-sub">'+esc(t.code)+' · '+esc(sub)+'</div></div>'+
-      '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
-  }
-  // Stellar public keys are base32 over [A-Z2-7], 56 chars, always leading with G. Anything else is a
-  // search term, not an address.
-  function isAddr(v){ return /^G[A-Z2-7]{55}$/.test(String(v||"").trim()); }
-  // 64 hex characters: a liquidity-pool id, which cannot be confused with a ticker or an address
-  function isPool(v){ return /^[0-9a-f]{64}$/i.test(String(v||"").trim()); }
-  var POOLI={};
-  function poolUsd(n){ n=+n||0; if(n>=1e9)return "$"+(n/1e9).toFixed(2)+"B"; if(n>=1e6)return "$"+(n/1e6).toFixed(2)+"M";
-    if(n>=1000)return "$"+Math.round(n).toLocaleString("en-US"); if(n>=1)return "$"+n.toFixed(2); return "$"+n.toFixed(4); }
-  var LXSTELLAR='data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L3N2Zz4=';
-  function poolIcoSet(id,which,src){
-    if(!src)return;
-    if(POOLI[id])POOLI[id][which==="a"?"ia":"ib"]=src;   // survive the next repaint
-    var box=document.querySelector('.lx-poolico[data-pool="'+id+'"]'); if(!box)return;
-    var im=box.querySelector(which==="a"?".lx-pi-a":".lx-pi-b");
-    if(im)im.classList.toggle("lx-pi-fill",src===LXSTELLAR);
-    if(im)im.style.backgroundImage='url("'+src+'")';
-  }
-  // by ISSUER, never by ticker: a ticker search is score-ranked and small assets are unreachable in it
-  var LXBRAND={
-    "USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"https://assets.coingecko.com/coins/images/6319/small/usdc.png",
-    "EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"https://assets.coingecko.com/coins/images/26045/small/euro.png",
-    "AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"https://aqua.network/assets/img/aqua-logo.png",
-    "yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",
-    "BTC|GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF":"https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
-    "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"/assets/tokens/lumos.png"
-  };
-  function poolIcoLoad(id,which,code,issuer){
-    if(code==="XLM"||!issuer){ poolIcoSet(id,which,code==="XLM"?LXSTELLAR:avatarUri(code)); return; }
-    var bd=LXBRAND[code+"|"+issuer]; if(bd){ poolIcoSet(id,which,bd); return; }   // known mark, no lookup needed
-    poolIcoSet(id,which,avatarUri(code));
-    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(issuer)+"&limit=50")
-      .then(function(r){ return r.json(); }).then(function(d){
-        var recs=(d&&d._embedded&&d._embedded.records)||[];
-        var m=recs.filter(function(x){ return (x.asset||"").indexOf(code+"-"+issuer)===0; })[0];
-        var img=(m&&m.tomlInfo&&m.tomlInfo.image)||"";
-        if(img)poolIcoSet(id,which,img);
-      }).catch(function(){});
-  }
-  function poolFill(id){
-    var d=POOLI[id]; if(!d)return;
-    var pair=document.querySelector('.lx-pool-pair[data-pool="'+id+'"]');
-    var sub=document.querySelector('.lx-pool-sub[data-pool="'+id+'"]');
-    if(pair&&d.pair)pair.textContent=d.pair;
-    if(d.ia)poolIcoSet(id,"a",d.ia);
-    if(d.ib)poolIcoSet(id,"b",d.ib);
-    if(sub){ var bits=[];
-      if(d.n!=null)bits.push(d.n===1?"1 participant":(d.n.toLocaleString("en-US")+" participants"));
-      if(d.tvl!=null)bits.push(poolUsd(d.tvl)+" TVL");
-      sub.textContent=bits.length?bits.join(" "+String.fromCharCode(183)+" "):"Pool details unavailable"; }
-  }
-  function poolLoad(id){
-    if(POOLI[id]){ poolFill(id); return; }
-    POOLI[id]={};
-    var xu=0; try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null"); if(c&&+c.v>0)xu=+c.v; }catch(_){}
-    // Host fallback, per GUARDRAILS E12 and for the same reason as the Pools and Trade-asset layers: a
-    // rate-limited Horizon left the found pool reading "Pool details unavailable" even though the row
-    // itself was correct. A readable 404 is a real "no such pool" and is not re-asked.
-    (function(){
-      var P="https://horizon.stellar.org/liquidity_pools/"+id, P2="https://horizon.stellar.lobstr.co/liquidity_pools/"+id;
-      function once(u){ return fetch(u).then(function(r){ if(r.ok)return r.json();
-        var e=new Error("s"); e.__st=r.status; throw e; }); }
-      return once(P).catch(function(e){ var st=(e&&e.__st)||0;
-        if(st>=400&&st<500&&st!==429)return null;
-        return once(P2).catch(function(){ return null; }); });
-    })().then(function(d){
-      if(!d){ POOLI[id]={n:null,tvl:null}; poolFill(id); return; }
-      var sides=(d.reserves||[]).map(function(rv){
-        if(rv.asset==="native")return {c:"XLM",i:"",a:+rv.amount};
-        var pr=rv.asset.split(":"); return {c:(pr[0]||"?"),i:(pr[1]||""),a:+rv.amount}; });
-      var nat=null; for(var i=0;i<sides.length;i++)if(sides[i].c==="XLM")nat=sides[i];
-      POOLI[id]={ pair:sides.map(function(x){return x.c;}).join(" / "),
-        n:(d.total_trustlines!=null?+d.total_trustlines:null),
-        tvl:(nat&&xu>0)?(nat.a*2*xu):null };
-      poolFill(id);
-      if(sides[0]){ poolIcoSet(id,"a",avatarUri(sides[0].c)); poolIcoLoad(id,"a",sides[0].c,sides[0].i); }
-      if(sides[1]){ poolIcoSet(id,"b",avatarUri(sides[1].c)); poolIcoLoad(id,"b",sides[1].c,sides[1].i); }
-    }).catch(function(){ POOLI[id]={n:null,tvl:null}; poolFill(id); });
-  }
-  function poolRow(id){
-    var ico='<div class="sp-ico lx-spico-on lx-poolico" data-pool="'+esc(id)+'" >'
-      +'<span class="lx-pi lx-pi-a"></span>'+'<span class="lx-pi lx-pi-b"></span>'+'</div>';
-    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/pools/stellar/id/'+esc(id)+'">'+ico+
-      '<div class="sp-info"><div class="sp-name-row"><span class="lx-pool-pair" data-pool="'+esc(id)+'">Liquidity pool</span> <span class="sp-domain">Stellar AMM</span></div>'+
-      '<div class="sp-sub lx-pool-sub" data-pool="'+esc(id)+'">Loading pool…</div></div>'+
-      '<div class="sp-right"><div class="sp-addr-mini">'+esc(id.slice(0,4))+String.fromCharCode(8230)+esc(id.slice(-4))+'</div></div></a>';
-  }
-  // The same deterministic identicon the account page and the holder lists draw, so one wallet keeps
-  // one face wherever it appears.
-  function identHash(x){ var h=2166136261; for(var i=0;i<x.length;i++){ h^=x.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
-  function identUri(addr){
-    var h=identHash(addr), hue=h%360, hue2=(hue+52)%360, cells="";
-    for(var x=0;x<3;x++)for(var y=0;y<5;y++){
-      if(!((identHash(addr+":"+x+":"+y)>>>3)&1))continue;
-      cells+='<rect x="'+(x*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
-      if(x<2)cells+='<rect x="'+((4-x)*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
-    }
-    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
-      +'<stop offset="0%" stop-color="hsl('+hue+',62%,52%)"/><stop offset="100%" stop-color="hsl('+hue2+',60%,38%)"/>'
-      +'</linearGradient></defs><rect width="40" height="40" fill="url(#g)"/><g fill="rgba(255,255,255,.92)">'+cells+'</g></svg>';
-    return "data:image/svg+xml;base64,"+btoa(svg);
-  }
-  function acctRow(addr){
-    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+identUri(addr)
-      +'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
-    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/account/stellar/'+esc(addr)+'">'+ico+
-      '<div class="sp-info"><div class="sp-name-row">Stellar account <span class="sp-domain">wallet</span></div>'+
-      '<div class="sp-sub">Balances, pools and activity</div></div>'+
-      '<div class="sp-right"><div class="sp-addr-mini">'+short(addr)+'</div></div></a>';
-  }
-  function paint(list,html){ if(list.innerHTML!==html) list.innerHTML=html; }
-  function seaFetch(q,cb){
-    if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
-    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
-      // A rate-limited index answers with an error BODY, and parsing it yielded zero records -- so a
-      // failure was reported to the caller as "nothing on Stellar matches", which is a different and much
-      // worse message than the truth. Check the status before trusting the body.
-      .then(function(r){ if(!r.ok)throw new Error("s"+r.status); return r.json(); })
-      .then(function(d){
-        var recs=(d&&d._embedded&&d._embedded.records)||[];
-        var out=recs.map(function(x){
-          var id=String(x.asset||""), p=id.split("-");
-          var ti=x.tomlInfo||{};
-          return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
-                  tl:(x.trustlines&&x.trustlines[0])||0, img:ti.image||ti.orgLogo||""};
-        }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
-        out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
-        SEA_CACHE[q]=out; cb(out);
-      })
-      .catch(function(){ cb(null); });                          // null = upstream failed (distinct from "no results")
-  }
-  function render(){
-    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
-    if(!inp||!list)return;
-    var raw=(inp.value||"").trim(), q=raw.toLowerCase();
-    if(!q){ return; }                       // empty -> let the design clear the list
-    // locally minted Launchpad tokens match instantly, with no round trip
-    var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&t.code.toLowerCase().indexOf(q)>=0; });
-    var seq=++SEA_SEQ;
-    // The account row needs no network call, so it lands on the first keystroke rather than after the
-    // asset index answers.
-    var _qi=String(raw).trim();
-    if(isPool(_qi))setTimeout(function(){ poolLoad(_qi); },0);
-    if(SEA_CACHE[q]===undefined) paint(list, (isAddr(_qi)?acctRow(_qi):(isPool(_qi)?poolRow(_qi):""))
-      + '<div class="sp-seaempty">Searching Stellar mainnet…</div>');
-    clearTimeout(SEA_T);
-    SEA_T=setTimeout(function(){
-      seaFetch(q,function(remote){
-        if(seq!==SEA_SEQ)return;                                // a newer keystroke already won
-        // A FAILING ASSET INDEX MUST NOT ERASE WHAT OTHER SOURCES FOUND. This painted the error on its
-        // own, discarding the pool row (Horizon) and the account row (derived from the address itself) --
-        // neither of which needs the index at all. That is the whole "the pool appears, then vanishes,
-        // then appears" flap: every re-render repainted the row, and 220ms later this line wiped it.
-        // Keeping the lead also makes the repaint idempotent, so paint()'s equality check ends the loop.
-        if(remote===null){
-          var _lead0 = isAddr(_qi) ? acctRow(_qi) : (isPool(_qi) ? poolRow(_qi) : "");
-          paint(list, _lead0 + '<div class="sp-seaempty">Asset index unavailable right now'
-            + (_lead0 ? ' — pools and accounts are unaffected.' : '.') + '</div>');
-          if(isPool(_qi))setTimeout(function(){ poolLoad(_qi); },0);
-          return; }
-        var seen={}, all=[];
-        local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
-        // An address answers itself: show the account first, then anything that address issued.
-        var _q=String(raw).trim();
-        var lead = isAddr(_q) ? acctRow(_q) : (isPool(_q) ? poolRow(_q) : "");
-        if(isPool(_q))setTimeout(function(){ poolLoad(_q); },0);
-        paint(list, (lead + (all.length ? all.map(row).join("") : ""))
-          || '<div class="sp-seaempty">Nothing on Stellar matches “'+esc(raw)+'”</div>');
-      });
-    }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
-  }
-  function isMine(list){ return !!(list.querySelector(".lx-searow")||list.querySelector(".sp-seaempty")); }
-
-  function wire(){
-    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
-    if(!inp||!list||inp.__lxsea) return;
-    inp.__lxsea=1;
-    inp.addEventListener("input", render);
-    inp.addEventListener("keyup", render);
-    // re-assert if the design re-renders its own rows while a query is active
-    try{ new MutationObserver(function(){ var q=(inp.value||"").trim(); if(q && !isMine(list)) render(); }).observe(list,{childList:true}); }catch(e){}
-  }
-  function boot(){ wire(); setTimeout(wire,400); setTimeout(wire,1200); }
-  if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
-  // the search popup mounts lazily on some pages; re-wire when the header search button is clicked
-  document.addEventListener("click", function(e){ var b=e.target&&e.target.closest&&e.target.closest("#headerSearchBtn,[data-open-search]"); if(b) setTimeout(wire,60); }, true);
-  // AUDIT FIX: the bare topbar "Search assets" input (dashboard + other in-app pages) was completely DEAD —
-  // it is not the popup's #spSearchInput and nothing ever bound it. Make it a LAUNCHER: focusing (or having
-  // typed into) it opens the search popup via the design's own #headerSearchBtn path and forwards the query.
-  function launchPopup(seed){
-    // some pages (the dashboard) have NO #headerSearchBtn / opener at all — open the overlay directly.
-    var btn=document.getElementById("headerSearchBtn")||document.querySelector("[data-open-search]");
-    var ov=document.getElementById("searchPopup");
-    if(btn){ btn.click(); }
-    else if(ov){ ov.style.display="flex"; ov.classList.add("open");
-      if(!ov.__lxclose){ ov.__lxclose=1;
-        ov.addEventListener("click",function(e){ if(e.target===ov){ ov.style.display="none"; ov.classList.remove("open"); } });
-        document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&ov.style.display!=="none"){ ov.style.display="none"; ov.classList.remove("open"); } });
-      } }
-    setTimeout(function(){ wire(); var si=document.getElementById("spSearchInput");
-      if(si){ if(seed){ si.value=seed; try{ si.dispatchEvent(new Event("input",{bubbles:true})); }catch(_){} } try{ si.focus(); }catch(_){} } },90);
-  }
-  // STRICT structural scope: ONLY the header topbar's .search-box input (the dead one). An earlier version
-  // matched ANY input whose placeholder said "search", which hijacked the asset/network pickers inside the
-  // Bridge destination, wallet Send, Swap and Create Pool modals — focusing those opened the global search.
-  document.addEventListener("focusin", function(e){ var t=e.target;
-    if(!t||t.tagName!=="INPUT"||t.id==="spSearchInput"||!t.closest)return;
-    var box=t.closest(".search-box"); if(!box||!box.closest(".topbar"))return;          // header search box only
-    if(t.closest("#searchPopup,[class*=modal],[class*=dropdown],[class*=menu],[class*=picker],[class*=popup],[role=dialog]"))return;
-    var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
-    launchPopup(seed);
-  }, true);
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>
