@@ -1913,6 +1913,7 @@
 @media(max-width:560px){.mcp-wrap{padding:2px 0 96px}.mcp-hero{margin-bottom:40px}.mcp-hero h1{font-size:29px}.mcp-hero p{font-size:15px}.mcp-sec{margin-bottom:40px}.mcp-sec-head h2{font-size:23px}.mcp-stats{gap:20px}.mcp-stats b{font-size:19px}.mcp-term-body,.mcp-code pre{font-size:11.5px}.mcp-security{grid-template-columns:1fr}.mcp-btn{flex:1 1 100%;justify-content:center}}
 </style><script id="lx-route">(function(){var out={network:"",asset:"",poolA:"",poolB:"",poolId:""};try{  var seg=location.pathname.replace(/^\/+|\/+$/g,"").split("/").map(decodeURIComponent);  var head=(seg[0]||"").toLowerCase();  var ASSET=/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;  if(head==="trade"||head==="asset"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]&&(ASSET.test(seg[2])||seg[2].toUpperCase()==="XLM"))out.asset=seg[2]; }  else if(head==="pools"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]==="id"){ out.poolId=seg[3]||""; }    else { if(seg[2])out.poolA=seg[2]; if(seg[3])out.poolB=seg[3]; } }}catch(e){}window.__lxRoute=out;})();</script><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-searchassets-css">
 .sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
 .lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
 .sp-row--asset.lx-searow{text-decoration:none;color:inherit}
 .sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
@@ -7706,6 +7707,7 @@ window.addEventListener('click',function(e){
     if(POOLI[id])POOLI[id][which==="a"?"ia":"ib"]=src;   // survive the next repaint
     var box=document.querySelector('.lx-poolico[data-pool="'+id+'"]'); if(!box)return;
     var im=box.querySelector(which==="a"?".lx-pi-a":".lx-pi-b");
+    if(im)im.classList.toggle("lx-pi-fill",src===LXSTELLAR);
     if(im)im.style.backgroundImage='url("'+src+'")';
   }
   // by ISSUER, never by ticker: a ticker search is score-ranked and small assets are unreachable in it
