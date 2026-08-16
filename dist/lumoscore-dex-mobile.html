@@ -4981,7 +4981,17 @@ window.addEventListener('click',function(e){
     if(POOLI[id]){ poolFill(id); return; }
     POOLI[id]={};
     var xu=0; try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null"); if(c&&+c.v>0)xu=+c.v; }catch(_){}
-    fetch("https://horizon.stellar.org/liquidity_pools/"+id).then(function(r){ return r.ok?r.json():null; }).then(function(d){
+    // Host fallback, per GUARDRAILS E12 and for the same reason as the Pools and Trade-asset layers: a
+    // rate-limited Horizon left the found pool reading "Pool details unavailable" even though the row
+    // itself was correct. A readable 404 is a real "no such pool" and is not re-asked.
+    (function(){
+      var P="https://horizon.stellar.org/liquidity_pools/"+id, P2="https://horizon.stellar.lobstr.co/liquidity_pools/"+id;
+      function once(u){ return fetch(u).then(function(r){ if(r.ok)return r.json();
+        var e=new Error("s"); e.__st=r.status; throw e; }); }
+      return once(P).catch(function(e){ var st=(e&&e.__st)||0;
+        if(st>=400&&st<500&&st!==429)return null;
+        return once(P2).catch(function(){ return null; }); });
+    })().then(function(d){
       if(!d){ POOLI[id]={n:null,tvl:null}; poolFill(id); return; }
       var sides=(d.reserves||[]).map(function(rv){
         if(rv.asset==="native")return {c:"XLM",i:"",a:+rv.amount};
@@ -5030,7 +5040,10 @@ window.addEventListener('click',function(e){
   function seaFetch(q,cb){
     if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
     fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
-      .then(function(r){ return r.json(); })
+      // A rate-limited index answers with an error BODY, and parsing it yielded zero records -- so a
+      // failure was reported to the caller as "nothing on Stellar matches", which is a different and much
+      // worse message than the truth. Check the status before trusting the body.
+      .then(function(r){ if(!r.ok)throw new Error("s"+r.status); return r.json(); })
       .then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[];
         var out=recs.map(function(x){
@@ -5062,7 +5075,17 @@ window.addEventListener('click',function(e){
     SEA_T=setTimeout(function(){
       seaFetch(q,function(remote){
         if(seq!==SEA_SEQ)return;                                // a newer keystroke already won
-        if(remote===null){ paint(list,'<div class="sp-seaempty">Couldn’t reach the asset index — check your connection.</div>'); return; }
+        // A FAILING ASSET INDEX MUST NOT ERASE WHAT OTHER SOURCES FOUND. This painted the error on its
+        // own, discarding the pool row (Horizon) and the account row (derived from the address itself) --
+        // neither of which needs the index at all. That is the whole "the pool appears, then vanishes,
+        // then appears" flap: every re-render repainted the row, and 220ms later this line wiped it.
+        // Keeping the lead also makes the repaint idempotent, so paint()'s equality check ends the loop.
+        if(remote===null){
+          var _lead0 = isAddr(_qi) ? acctRow(_qi) : (isPool(_qi) ? poolRow(_qi) : "");
+          paint(list, _lead0 + '<div class="sp-seaempty">Asset index unavailable right now'
+            + (_lead0 ? ' — pools and accounts are unaffected.' : '.') + '</div>');
+          if(isPool(_qi))setTimeout(function(){ poolLoad(_qi); },0);
+          return; }
         var seen={}, all=[];
         local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
         // An address answers itself: show the account first, then anything that address issued.
