@@ -47,9 +47,6 @@ const STYLE = '<style id="lx-assetstats">'
   + '.stat-cell{min-width:0;padding:11px 14px !important;border:1px solid var(--border) !important;border-radius:13px;background:var(--surface);display:flex;flex-direction:column;justify-content:flex-start;min-height:0;transition:border-color .15s ease,box-shadow .15s ease}'
   + '.stat-cell:hover{border-color:var(--accent-soft,rgba(234,106,44,.32)) !important;box-shadow:0 10px 24px -18px rgba(234,106,44,.5)}'
   + '.stat-cell .lbl{font-size:11.5px;letter-spacing:.08em;font-weight:700;margin-bottom:4px;white-space:nowrap;'
-  // Reserving room for the Price card's change chip HERE starved the other three: they have no chip, so
-  // 58px of padding-right just ellipsised "24h Volume" and "Market Cap" at narrow widths. The reservation
-  // belongs with the chip, in _dexassetdata's own sheet, scoped to the one cell that carries it.
   + 'overflow:hidden;text-overflow:ellipsis}'
   // ellipsis rather than a value that spills past the card edge once the cell can shrink
   + '.stat-cell .val{font-size:17.5px;font-weight:800;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05;color:var(--text)}'

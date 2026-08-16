@@ -2282,16 +2282,15 @@ margin-top:16px;border-top:1px solid var(--border)}
 .lx-supinfo{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:7px;border-radius:50%;border:1.4px solid var(--text-soft,#8a8fa3);color:var(--text-soft,#8a8fa3);font:italic 700 10px/16px Georgia,serif;cursor:default;vertical-align:middle;text-align:center}.lx-supinfo:hover::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);width:220px;background:var(--surface,#fff);color:var(--text,#0e0e10);border:1px solid var(--border,#ececef);border-radius:9px;padding:9px 11px;font:500 12px/1.45 'Hanken Grotesk',system-ui,sans-serif;font-style:normal;letter-spacing:0;text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.22);z-index:60;pointer-events:none;white-space:normal}.lx-supinfo{width:26px!important;height:26px!important;border:0!important;border-radius:50%!important;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;flex:0 0 26px!important;font-size:0!important;margin-left:8px!important}
 .stat-cell .val.lx-hasinfo{overflow:visible!important}
 /* The 24h change, small, inside the Price card -- it used to have a whole card to itself.
-   It sits on the LABEL row, not beside the number, and that is the whole design. Sharing the value line
-   was the obvious reading of "next to the price" and it does not survive a narrow track: the chip is ~54px
-   of a 167px measure, so the price -- the single most important number on the page -- was the thing that
-   ellipsised. Measured: clipped at every container under ~807px. On the label row it competes with the
-   word "PRICE" instead, which is short and fixed, so the value keeps the full width at every size.
-   Absolute rather than a flex sibling so it never enters .lbl's textContent: applyStats dispatches on
-   that string, and "price+0.41%" would be one refactor away from matching nothing. */
-.stat-cell{position:relative}
-.stat-cell.lx-haschg .lbl{padding-right:58px}
-.lx-pchg{position:absolute;top:9px;right:12px;font-size:12px;font-weight:800;letter-spacing:-.01em;padding:2px 6px;border-radius:6px;line-height:1.3}
+   It rides on the SUB line, immediately after the dollar price, and the placement is measured rather than
+   picked. Beside the big number is the obvious reading of "next to the price", and it does not survive the
+   widths people actually use: the value line has 181px at a 1600px window and 141px at 1440, against 126px
+   of price plus a ~50px chip, so the PRICE -- the one number the page exists for -- is what ellipsises.
+   The sub line carries "$0.00032045" at ~75px in the same measure, so the pair fits with room, and .sub is
+   allowed two lines, so a longer price wraps instead of truncating anything. It also groups the two
+   secondary figures -- what it is worth, and how it moved -- on one line under the headline. */
+.stat-cell .sub .lx-pchg{margin-left:7px}
+.lx-pchg{display:inline-block;font-size:11px;font-weight:800;letter-spacing:-.01em;padding:1px 6px;border-radius:5px;line-height:1.4}
 .lx-pchg.up{color:var(--green,#35c07f);background:rgba(53,192,127,.14)}
 .lx-pchg.down{color:var(--red,#ff5b5b);background:rgba(255,91,91,.14)}
 .dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}
@@ -5789,16 +5788,16 @@ window.addEventListener('click',function(e){
       // The 24h change now rides INSIDE this cell rather than owning one of its own, pinned to the label
       // row -- see .lx-pchg in the stylesheet for why it is not beside the number.
       if(lbl.indexOf("price")===0){
-        // Own element, re-used rather than re-created: applyStats runs on every data arrival and again
-        // from the observer, so building a fresh node each time would churn the DOM under the painter.
-        var _chip=cell.querySelector(".lx-pchg");
-        if(chg24!=null){ if(!_chip){ _chip=document.createElement("span"); _chip.setAttribute("data-lxc",""); cell.appendChild(_chip); } cell.classList.add("lx-haschg");
-          var _up=chg24>=0, _txt=(_up?"+":"")+chg24.toFixed(2)+"%";
-          if(_chip.className!=="lx-pchg "+(_up?"up":"down"))_chip.className="lx-pchg "+(_up?"up":"down");
-          if(_chip.textContent!==_txt)_chip.textContent=_txt;
-        } else { cell.classList.remove("lx-haschg"); if(_chip)_chip.parentNode.removeChild(_chip); }
-        if(NATIVE){ if(xlmUsd>0){ if(val)setText(val,usd(xlmUsd)); if(sub)setText(sub,"Stellar Lumens \u00b7 native"); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }   /* native: USD is the price — "1 XLM" was meaningless */
-        else if(assetXlm>0){ if(val)val.innerHTML=xlmAmt(assetXlm)+'<span class="u">XLM</span>'; if(sub&&pu>0)setText(sub,usd(pu)); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }
+        // The change chip lives on the sub line, so the sub is written as markup rather than through
+        // setText. Guarded on a signature: applyStats runs on every data arrival AND again from the
+        // observer, and rewriting innerHTML unconditionally would churn the node on every pass -- which is
+        // both a wasted reflow and an invitation for the logo painter to have another go at it.
+        var _chip=(chg24!=null)?('<span class="lx-pchg '+(chg24>=0?"up":"down")+'" data-lxc>'+(chg24>=0?"+":"")+chg24.toFixed(2)+'%</span>'):"";
+        function _setSub(txt){ if(!sub)return; var sig=txt+"|"+_chip;
+          if(sub.getAttribute("data-lxsub")===sig)return;
+          sub.setAttribute("data-lxsub",sig); sub.innerHTML=txt+_chip; }
+        if(NATIVE){ if(xlmUsd>0){ if(val)setText(val,usd(xlmUsd)); _setSub("Stellar Lumens \u00b7 native"); } else { if(val)setText(val,"—"); _setSub(""); } }   /* native: USD is the price — "1 XLM" was meaningless */
+        else if(assetXlm>0){ if(val)val.innerHTML=xlmAmt(assetXlm)+'<span class="u">XLM</span>'; if(pu>0)_setSub(usd(pu)); } else { if(val)setText(val,"—"); _setSub(""); } }
       // Dispatch is by LABEL TEXT, and the mobile build abbreviates two of them: "24h Change" -> "24h"
       // and "24h Volume" -> "Volume". Neither matched, so on every phone those two cells kept the
       // design's baked demo (+2.66% / +0.0422 XLM and 4.14M / $980K) for EVERY asset — the two cells
