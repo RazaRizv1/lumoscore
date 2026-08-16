@@ -6300,6 +6300,22 @@ window.addEventListener('click',function(e){
       ? (_busy ? ("Looking further back for trades \u2265 "+_sz+" \u2026")
                : ("No trades \u2265 "+_sz+" in the last "+num(EX_SCANNED)+" trades"+exSpan()+"."))
       : 'No trades in the recent window.';
+    // THE FOOTER AND THE COUNT LINE ARE WRITTEN BEFORE THE SKIP-GUARD, ON EVERY PASS, and that ordering
+    // is the fix rather than a tidy-up. They used to sit after it, so a pass that found the TABLE unchanged
+    // returned without ever touching them -- and the design's own pager, which it repaints from its own
+    // state, was then free to sit there indefinitely saying "Page 1 of 3 / of 137" over two real rows.
+    // The observer added for that only fires on a mutation; if the design won the race before it was
+    // installed, or repainted while the table happened to be unchanged, nothing ever put ours back.
+    // Re-asserting both unconditionally removes the dependency on catching the moment: every applyAll tick
+    // now restores them. Each has its own internal signature, so this costs nothing when nothing changed.
+    var info=q("#dxaPanelInfo"); if(info){ var ft=TRADE_FILTER>0?(" · ≥ "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000).toFixed(0)+"K":TRADE_FILTER)+" XLM"):"";
+      // say WHICH slice of the filtered set is on screen, not just how many rows were drawn
+      var _it = all.length
+        ? ("Showing "+(from+1)+"–"+(from+f.length)+" of "+num(all.length)+" recent trades"+ft)
+        : ("Showing 0 recent trades"+ft);
+      if(info.textContent!==_it) info.textContent=_it; }
+    renderExPager(all.length, pages);
+
     // skip the rebuild when the filter+data+page haven't changed — kills the applyAll churn/lag.
     //
     // emptyTxt IS PART OF THE SIGNATURE, and leaving it out is what left "Looking further back…" on
@@ -6335,12 +6351,6 @@ window.addEventListener('click',function(e){
           pg.__lxpgsig=null; tb.__lxexsig=null; renderExchanges(); }
       }).observe(pf,{childList:true,subtree:true});
     }catch(_){} }
-    var info=q("#dxaPanelInfo"); if(info){ var ft=TRADE_FILTER>0?(" · ≥ "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000).toFixed(0)+"K":TRADE_FILTER)+" XLM"):"";
-      // say WHICH slice of the filtered set is on screen, not just how many rows were drawn
-      info.textContent = all.length
-        ? ("Showing "+(from+1)+"–"+(from+f.length)+" of "+num(all.length)+" recent trades"+ft)
-        : ("Showing 0 recent trades"+ft); }
-    renderExPager(all.length, pages);
     // KEEP LOOKING. The scan budget has to be bounded -- Horizon gives 100 requests per five minutes and
     // this page is not the only thing spending them -- but a fixed ceiling is the wrong place to end the
     // conversation when the answer is "there might be more further back". So when a size filter has
