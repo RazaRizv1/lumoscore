@@ -2150,7 +2150,10 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
    line. Positioned as absolute HTML rather than <text> inside the svg because that svg is
    preserveAspectRatio="none": glyphs in it would be stretched by the width/height ratio, differently at
    every window size. Percentages below mirror PADT/PADB against the 380-unit viewBox. */
-.lxda-cprices{position:absolute;right:4px;top:4.211%;bottom:7.368%;width:64px;pointer-events:none}
+/* top/bottom are set from JS, not here: they have to track the PRICE band, and the price band moved
+   when the volume band was added. A percentage frozen in the stylesheet would have gone on describing the
+   old split and quietly labelled the bars. */
+.lxda-cprices{position:absolute;right:4px;width:64px;pointer-events:none}
 .lxda-cprices span{position:absolute;right:0;transform:translateY(-50%);font:600 10.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);white-space:nowrap}
 /* chart hover readout */
 .lxda-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
@@ -5933,14 +5936,40 @@ window.addEventListener('click',function(e){
   // so winsorising in dollars and dividing gives the same numbers as winsorising in XLM. If the rate has
   // not landed yet the values are still honest dollars, so they are labelled as dollars rather than
   // mislabelled as XLM.
-  function priceAxis(pc,mn,mx){
+  function priceAxis(pc,mn,mx,topPct,botPct){
     var pr=pc.querySelector(".lxda-cprices");
     if(!pr){ pr=document.createElement("div"); pr.className="lxda-cprices"; pc.appendChild(pr); }
+    if(topPct!=null){ pr.style.top=topPct.toFixed(3)+"%"; pr.style.bottom=botPct.toFixed(3)+"%"; }
     if(!(mx>mn)){ pr.innerHTML=""; return; }
     var rate=+xlmUsd, xlm=(rate>0), a=xlm?(mn/rate):mn, b=xlm?(mx/rate):mx, pre=xlm?"":"$";
     var N=5,h="";
     for(var i=0;i<N;i++){ var f=i/(N-1); h+='<span style="top:'+(f*100).toFixed(3)+'%">'+pre+axisNum(b-f*(b-a))+'</span>'; }
     pr.innerHTML=h; }
+  // How the plot is divided between price and volume. One function so the line chart, the candles and the
+  // price axis cannot drift apart -- the axis has to span the PRICE band only, and hard-coding that split
+  // in the stylesheet is exactly how it would end up labelling the bars.
+  function volGeom(ih){ var volH=Math.round(ih*0.22), gap=12; return {volH:volH, gap:gap, priceH:ih-volH-gap}; }
+  // The bars. Scaled to the largest volume in view, so the band always uses its full height rather than
+  // flattening whenever one outlier session dwarfs the rest -- and clamped to a 1-unit floor so a real but
+  // tiny volume still leaves a mark instead of vanishing, which would read as "no trades" rather than "few".
+  // upFn(i) and xFn(i) are passed in because the two renderers disagree on both: candles know their own
+  // direction from open vs close and sit on band centres, while the line chart can only compare a close to
+  // the one before it and sits on point positions. Baking either assumption in here would misalign the
+  // bars under one of them.
+  function volBars(pts, upFn, xFn, iw, top, h, n){
+    var vmax=0, i;
+    for(i=0;i<pts.length;i++){ var v=+pts[i].vol||0; if(v>vmax)vmax=v; }
+    if(!(vmax>0)) return "";
+    var bw=Math.max(1, Math.min(14, iw/n*0.62)), out="";
+    for(i=0;i<pts.length;i++){
+      var vv=+pts[i].vol||0; if(!(vv>0)) continue;
+      var bh=Math.max(1, (vv/vmax)*h);
+      out+='<rect class="lxda-vol" x="'+(xFn(i)-bw/2).toFixed(1)+'" y="'+(top+h-bh).toFixed(1)
+        +'" width="'+bw.toFixed(1)+'" height="'+bh.toFixed(1)
+        +'" fill="'+(upFn(i)?"#22c55e":"#ff5b5b")+'" fill-opacity="0.38"></rect>';
+    }
+    return out;
+  }
   function drawChart(pts){ pts=pts||chartPts; if(!pts)return; if(chartMode==="candle"){ try{ drawCandles(pts); return; }catch(_){} } drawLine(pts); }
   // ---- candlesticks (real OHLC from the trade aggregations) ----
   function drawCandles(pts){
@@ -5957,8 +5986,16 @@ window.addEventListener('click',function(e){
     var highs=pts.map(function(p){return p.h||p.v;}).slice().sort(function(a,b){return a-b;});
     var lo=lows[Math.floor(lows.length*0.03)]||lows[0], hi=highs[Math.ceil(highs.length*0.97)-1]||highs[highs.length-1];
     var rg=(hi-lo)||(hi||1), iw=W-PADL-PADR, ih=HT-PADT-PADB;
-    function Y(v){ v=Math.max(lo,Math.min(hi,v)); return PADT+ih-((v-lo)/rg)*ih; }
-    var cw=Math.max(1.4, iw/n*0.6), co=[], h="";
+    var vol=volGeom(ih);
+    function Y(v){ v=Math.max(lo,Math.min(hi,v)); return PADT+vol.priceH-((v-lo)/rg)*vol.priceH; }
+    // Candles carry their own direction, so the bars take it from open/close rather than from the previous
+    // close the way the line chart has to.
+    var dir=pts.map(function(p){ return ((p.c||p.v)>=(p.o||p.v))?1:0; });
+    var h=volBars(pts,
+      function(i){ return !!dir[i]; },                                 // candles carry their own direction
+      function(i){ return PADL+(i+0.5)/n*iw; },                        // and sit on band centres, not point positions
+      iw, PADT+vol.priceH+vol.gap, vol.volH, n);
+    var cw=Math.max(1.4, iw/n*0.6), co=[];
     pts.forEach(function(p,i){ var x=PADL+(i+0.5)/n*iw; co.push([x,Y(p.c||p.v)]);
       var up=(p.c||p.v)>=(p.o||p.v), col=up?"#22c55e":"#ff5b5b";
       var yH=Y(p.h||p.v),yL=Y(p.l||p.v),yO=Y(p.o||p.v),yC=Y(p.c||p.v), yT=Math.min(yO,yC), bh=Math.max(1,Math.abs(yC-yO));
@@ -5968,7 +6005,7 @@ window.addEventListener('click',function(e){
     svg.setAttribute("viewBox","0 0 "+W+" "+HT); svg.setAttribute("preserveAspectRatio","none"); svg.innerHTML=h;
     var dr=pc.querySelector(".lxda-cdates"); if(!dr){ dr=document.createElement("div"); dr.className="lxda-cdates"; pc.appendChild(dr); }
     var NL=5,dh=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); dh+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=dh;
-    priceAxis(pc,lo,hi);
+    priceAxis(pc,lo,hi, PADT/HT*100, (HT-(PADT+vol.priceH))/HT*100);
     pc.classList.add("lxda"); chartPts=pts; pc.__lxpts=pts; pc.__lxco=co; window._dxaChartState=null; setupChartHover(pc);
   }
   function drawLine(pts){
@@ -5988,11 +6025,24 @@ window.addEventListener('click',function(e){
     var cl=pts.map(function(p){return Math.max(lo,Math.min(hi,p.v));});
     var mn=Math.min.apply(null,cl),mx=Math.max.apply(null,cl),rg=(mx-mn)||(mx||1);
     var iw=W-PADL-PADR, ih=HT-PADT-PADB;
-    var co=cl.map(function(v,i){return [PADL+(i/(n-1))*iw, PADT+ih-((v-mn)/rg)*ih];});
+    // Split the plot: price on top, a volume band underneath. The volume was already on every point --
+    // loadChart carries it and the hover tooltip has always printed it -- it simply was never drawn, so
+    // the chart could show that a move happened but never whether anyone traded into it.
+    var vol=volGeom(ih);
+    var co=cl.map(function(v,i){return [PADL+(i/(n-1))*iw, PADT+vol.priceH-((v-mn)/rg)*vol.priceH];});
     var ln="M"+co.map(function(c){return c[0].toFixed(1)+" "+c[1].toFixed(1);}).join(" L");
-    var ar=ln+" L "+(PADL+iw)+" "+(PADT+ih)+" L "+PADL+" "+(PADT+ih)+" Z";
+    // the area closes on the bottom of the PRICE band, not the bottom of the plot, or the fill would
+    // pour down through the bars
+    var base=PADT+vol.priceH;
+    var ar=ln+" L "+(PADL+iw)+" "+base+" L "+PADL+" "+base+" Z";
+    // direction per point, for bar colour: a bar is green when that close is at or above the one before it
+    var bars=volBars(pts,
+      function(i){ return i===0 ? true : (cl[i]>=cl[i-1]); },        // line chart: close vs previous close
+      function(i){ return PADL+(n>1?(i/(n-1))*iw:iw/2); },            // and point positions, matching the line
+      iw, PADT+vol.priceH+vol.gap, vol.volH, n);
     svg.setAttribute("viewBox","0 0 "+W+" "+HT); svg.setAttribute("preserveAspectRatio","none");
     svg.innerHTML='<defs><linearGradient id="lxdaGrad" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="var(--accent,#ea6a2c)" stop-opacity="0.20"></stop><stop offset="100%" stop-color="var(--accent,#ea6a2c)" stop-opacity="0"></stop></linearGradient></defs>'
+      +bars
       +'<path class="lxda-area" d="'+ar+'"></path><path class="lxda-line" d="'+ln+'"></path>';
     var a=svg.querySelector(".lxda-area"); if(a)a.setAttribute("fill","url(#lxdaGrad)");
     var l=svg.querySelector(".lxda-line"); if(l){l.setAttribute("fill","none");l.setAttribute("stroke","var(--accent,#ea6a2c)");l.setAttribute("stroke-width","2.5");l.setAttribute("stroke-linecap","round");l.setAttribute("stroke-linejoin","round");}
@@ -6000,7 +6050,7 @@ window.addEventListener('click',function(e){
     var dr=pc.querySelector(".lxda-cdates"); if(!dr){ dr=document.createElement("div"); dr.className="lxda-cdates"; pc.appendChild(dr); }
     var NL=5,h=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=h;
     pc.classList.add("lxda"); chartPts=pts; pc.__lxpts=pts; pc.__lxco=co;
-    priceAxis(pc,mn,mx);
+    priceAxis(pc,mn,mx, PADT/HT*100, (HT-(PADT+vol.priceH))/HT*100);
     window._dxaChartState=null;                                // disable the design's stale hover state
     setupChartHover(pc);
   }
