@@ -3167,7 +3167,7 @@ html[data-theme="light"] .search-popup { box-shadow: 0 24px 48px rgba(15,15,20,0
     <div class="search-popup">
       <div class="sp-input-row">
         <svg class="s-ico" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" id="spSearchInput" placeholder="Search assets" autocomplete="off" />
+        <input type="text" id="spSearchInput" placeholder="Search assets, pools and wallets" autocomplete="off" />
         <span class="esc-hint">ESC</span>
       </div>
       <div class="sp-body">
@@ -3189,7 +3189,7 @@ html[data-theme="light"] .search-popup { box-shadow: 0 24px 48px rgba(15,15,20,0
         
       </div>
       <div class="sp-foot">
-        <span>Search assets, users, and networks.</span>
+        <span>Search assets, pools and wallets on Stellar.</span>
         <span>Type <span class="kbd-mini">?</span> for help.</span>
       </div>
     </div>
@@ -5528,8 +5528,7 @@ window.addEventListener('click',function(e){
     var ticks=0, iv=setInterval(function(){ guardApply(); if(++ticks>30)clearInterval(iv); },700);
   }
   if(document.readyState!=="loading")boot();
-  else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-searchassets">(function(){
+  else document.addEventListener("DOMContentL<script id="lx-searchassets">(function(){
   // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
   // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
   //
@@ -5568,6 +5567,15 @@ window.addEventListener('click',function(e){
   // Stellar public keys are base32 over [A-Z2-7], 56 chars, always leading with G. Anything else is a
   // search term, not an address.
   function isAddr(v){ return /^G[A-Z2-7]{55}$/.test(String(v||"").trim()); }
+  // 64 hex characters: a liquidity-pool id, which cannot be confused with a ticker or an address
+  function isPool(v){ return /^[0-9a-f]{64}$/i.test(String(v||"").trim()); }
+  function poolRow(id){
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--text-soft);font-weight:800;font-size:11px">LP</div>';
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/pools/stellar/id/'+esc(id)+'">'+ico+
+      '<div class="sp-info"><div class="sp-name-row">Liquidity pool <span class="sp-domain">Stellar AMM</span></div>'+
+      '<div class="sp-sub">Reserves, TVL and participants</div></div>'+
+      '<div class="sp-right"><div class="sp-addr-mini">'+esc(id.slice(0,4))+String.fromCharCode(8230)+esc(id.slice(-4))+'</div></div></a>';
+  }
   // The same deterministic identicon the account page and the holder lists draw, so one wallet keeps
   // one face wherever it appears.
   function identHash(x){ var h=2166136261; for(var i=0;i<x.length;i++){ h^=x.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
@@ -5619,7 +5627,8 @@ window.addEventListener('click',function(e){
     var seq=++SEA_SEQ;
     // The account row needs no network call, so it lands on the first keystroke rather than after the
     // asset index answers.
-    if(SEA_CACHE[q]===undefined) paint(list, (isAddr(raw)?acctRow(String(raw).trim()):"")
+    var _qi=String(raw).trim();
+    if(SEA_CACHE[q]===undefined) paint(list, (isAddr(_qi)?acctRow(_qi):(isPool(_qi)?poolRow(_qi):""))
       + '<div class="sp-seaempty">Searching Stellar mainnet…</div>');
     clearTimeout(SEA_T);
     SEA_T=setTimeout(function(){
@@ -5629,9 +5638,10 @@ window.addEventListener('click',function(e){
         var seen={}, all=[];
         local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
         // An address answers itself: show the account first, then anything that address issued.
-        var lead = isAddr(raw) ? acctRow(String(raw).trim()) : "";
+        var _q=String(raw).trim();
+        var lead = isAddr(_q) ? acctRow(_q) : (isPool(_q) ? poolRow(_q) : "");
         paint(list, (lead + (all.length ? all.map(row).join("") : ""))
-          || '<div class="sp-seaempty">No mainnet assets match “'+esc(raw)+'”</div>');
+          || '<div class="sp-seaempty">Nothing on Stellar matches “'+esc(raw)+'”</div>');
       });
     }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
   }
@@ -5676,5 +5686,6 @@ window.addEventListener('click',function(e){
     var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
     launchPopup(seed);
   }, true);
+})();</script>oaded",boot);
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>

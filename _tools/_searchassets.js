@@ -55,6 +55,15 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
   // Stellar public keys are base32 over [A-Z2-7], 56 chars, always leading with G. Anything else is a
   // search term, not an address.
   function isAddr(v){ return /^G[A-Z2-7]{55}$/.test(String(v||"").trim()); }
+  // 64 hex characters: a liquidity-pool id, which cannot be confused with a ticker or an address
+  function isPool(v){ return /^[0-9a-f]{64}$/i.test(String(v||"").trim()); }
+  function poolRow(id){
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--text-soft);font-weight:800;font-size:11px">LP</div>';
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/pools/stellar/id/'+esc(id)+'">'+ico+
+      '<div class="sp-info"><div class="sp-name-row">Liquidity pool <span class="sp-domain">Stellar AMM</span></div>'+
+      '<div class="sp-sub">Reserves, TVL and participants</div></div>'+
+      '<div class="sp-right"><div class="sp-addr-mini">'+esc(id.slice(0,4))+String.fromCharCode(8230)+esc(id.slice(-4))+'</div></div></a>';
+  }
   // The same deterministic identicon the account page and the holder lists draw, so one wallet keeps
   // one face wherever it appears.
   function identHash(x){ var h=2166136261; for(var i=0;i<x.length;i++){ h^=x.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
@@ -106,7 +115,8 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     var seq=++SEA_SEQ;
     // The account row needs no network call, so it lands on the first keystroke rather than after the
     // asset index answers.
-    if(SEA_CACHE[q]===undefined) paint(list, (isAddr(raw)?acctRow(String(raw).trim()):"")
+    var _qi=String(raw).trim();
+    if(SEA_CACHE[q]===undefined) paint(list, (isAddr(_qi)?acctRow(_qi):(isPool(_qi)?poolRow(_qi):""))
       + '<div class="sp-seaempty">Searching Stellar mainnet\u2026</div>');
     clearTimeout(SEA_T);
     SEA_T=setTimeout(function(){
@@ -116,9 +126,10 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
         var seen={}, all=[];
         local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
         // An address answers itself: show the account first, then anything that address issued.
-        var lead = isAddr(raw) ? acctRow(String(raw).trim()) : "";
+        var _q=String(raw).trim();
+        var lead = isAddr(_q) ? acctRow(_q) : (isPool(_q) ? poolRow(_q) : "");
         paint(list, (lead + (all.length ? all.map(row).join("") : ""))
-          || '<div class="sp-seaempty">No mainnet assets match \u201c'+esc(raw)+'\u201d</div>');
+          || '<div class="sp-seaempty">Nothing on Stellar matches \u201c'+esc(raw)+'\u201d</div>');
       });
     }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
   }
@@ -179,6 +190,10 @@ for (const file of files) {
     if (h.indexOf('</head>') >= 0) h = h.replace('</head>', STYLE + '</head>');
     else { const hb = h.lastIndexOf('</body>'); h = h.slice(0, hb) + STYLE + h.slice(hb); }
     const bi = h.lastIndexOf('</body>'); if (bi < 0) continue;
+    // The box searches three things now, so the prompt and the footer hint should say all three.
+    h = h.split('placeholder="Search assets"').join('placeholder="Search assets, pools and wallets"');
+    h = h.split('<span>Search assets, users, and networks.</span>')
+         .join('<span>Search assets, pools and wallets on Stellar.</span>');
     json[k] = h.slice(0, bi) + SCRIPT + h.slice(bi);
     changed = true; n++;
   }
