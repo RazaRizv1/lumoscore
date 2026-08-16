@@ -6209,17 +6209,23 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   }
   var TXPP=20, txPage=0, txFilt="all";
   function txAll(){ return qa("table.tx tbody .lx-txrow").filter(function(rw){ return !rw.classList.contains("lx-txnone"); }); }
+  // pdTx() ends by calling txApply(), and txApply() now has to call pdTx() to re-render the page slice --
+  // so without this guard the two call each other forever. The guard makes the pairing safe in both
+  // directions: entering through either one runs the render once and the footer once.
+  var __txInApply=0;
   function txApply(){
-    var rows=txAll();
-    var vis=rows.filter(function(rw){ return txFilt==="all"||(rw.getAttribute("data-txtype")||"")===txFilt; });
+    if(__txInApply) return;
+    __txInApply=1;
+    // The rows in the DOM ARE the current page now, so there is nothing left to hide: re-render instead
+    // of walking 647 elements setting style.display, which was both the slow part and a forced reflow.
+    try{ pdTx(); }catch(_){}
+    __txInApply=0;
+    var s=txSlice();
     var foot=q(".tx-foot");
-    if(!foot){ rows.forEach(function(rw){ rw.style.display="none"; }); vis.forEach(function(rw){ rw.style.display=""; }); return; }  // no pager in this layout: list everything
-    var total=vis.length, pages=Math.max(1,Math.ceil(total/TXPP));
-    if(txPage>pages-1)txPage=pages-1; if(txPage<0)txPage=0;
-    var start=txPage*TXPP, end=start+TXPP;
-    rows.forEach(function(rw){ rw.style.display="none"; });
-    vis.forEach(function(rw,i){ if(i>=start&&i<end)rw.style.display=""; });
-    try{ lpDepthNote(q(".tx-card")||foot.parentNode, vis.length); }catch(_){}
+    if(!foot) return;                                     // no pager in this layout
+    var total=s.all.length, pages=s.pages;
+    var start=txPage*TXPP, end=start+s.rows.length;
+    try{ lpDepthNote(q(".tx-card")||foot.parentNode); }catch(_){}
     var lbl=[].slice.call(foot.children).filter(function(c){ return !c.classList.contains("controls"); })[0];
     if(lbl)setText(lbl,total?("Showing "+(start+1)+"\u2013"+Math.min(end,total)+" of "+num(total)+" transactions"):"No transactions");
     var btns=foot.querySelectorAll(".controls button");
@@ -6234,13 +6240,30 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     }
     if(ind)setText(ind,"Page "+(txPage+1)+" of "+pages);
   }
+  // RENDER ONE PAGE, NOT THE WHOLE LIST. This used to build every transaction as a row and then hide all
+  // but twenty with display:none. Measured on the SSLX/STARDUST pool: 647 rows rendered, 20 visible, and
+  // 18,535 of the document's 20,937 nodes sat inside that tbody -- 89% of the page -- carrying 7,285 SVG
+  // rects of identicon in rows nobody could see. Hidden nodes still cost style recalculation and memory on
+  // every scroll, which is what made the page drag.
+  //
+  // Slicing before rendering is also what makes the pager honest: it now describes the rows that exist
+  // rather than a hidden backlog.
+  function txSlice(){
+    var t=(DET&&DET.txs)||[];
+    var f=[]; for(var i=0;i<t.length;i++) if(txFilt==="all"||t[i].type===txFilt) f.push(t[i]);
+    var pages=Math.max(1,Math.ceil(f.length/TXPP));
+    if(txPage>pages-1)txPage=pages-1; if(txPage<0)txPage=0;
+    return {all:f,pages:pages,rows:f.slice(txPage*TXPP,(txPage+1)*TXPP)};
+  }
   function pdTx(){
     var d=DET; var tb=q("table.tx tbody"); if(!tb){ pdTxMobile(); return; }
     tb.__lxPP=1;
-    var wantTx=d.txs.length||1;
-    if(tb.querySelectorAll(".lx-txrow").length!==wantTx){
-      tb.innerHTML=d.txs.length?d.txs.map(txRow).join(""):('<tr class="lx-txrow"><td colspan="6" style="text-align:center;color:var(--text-muted);padding:22px">'+(d.txFail?"Couldn\u2019t load this pool\u2019s transactions":"No transactions yet")+'</td></tr>');
-      txPage=0;
+    var s=txSlice();
+    // identity of the slice, not just its length: paging between two equal-sized pages must still repaint
+    var sig=txFilt+"|"+txPage+"|"+s.all.length+"|"+((s.rows[0]&&s.rows[0].op)||"")+"|"+((s.rows[s.rows.length-1]&&s.rows[s.rows.length-1].op)||"");
+    if(tb.__lxtxsig!==sig || !tb.querySelector(".lx-txrow")){
+      tb.__lxtxsig=sig;
+      tb.innerHTML=s.rows.length?s.rows.map(txRow).join(""):('<tr class="lx-txrow"><td colspan="6" style="text-align:center;color:var(--text-muted);padding:22px">'+(d.txFail?"Couldn\u2019t load this pool\u2019s transactions":(d.txs.length?("No "+txFilt+"s in the last "+num(LPQ.scanned||0)+" pool operations"):"No transactions yet"))+'</td></tr>');
     }
     txFailNote(q(".tx-card")||tb.closest("table").parentNode);
     // Prev/Next, bound once. Capture + stopImmediatePropagation so the design's own pager (which walks
