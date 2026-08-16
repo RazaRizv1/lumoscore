@@ -3,6 +3,7 @@
 
 /trade/stellar/:asset                     /lumoscore-dex-asset  200
 /trade/stellar                            /lumoscore-dex  200
+/account/stellar/:address                 /lumoscore-account  200
 /pools/stellar/id/:pool                   /lumoscore-amm-pool  200
 /pools/stellar/:a/:b                      /lumoscore-amm-pool  200
 /pools/stellar                            /lumoscore-amm  200
