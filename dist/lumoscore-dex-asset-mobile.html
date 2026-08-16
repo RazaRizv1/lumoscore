@@ -2557,7 +2557,7 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
   <!-- Bottom tabs (Launchpad-Asset style) -->
   <div class="tabs-bar">
     <button class="tab active" data-tab="exchanges">Exchanges <span class="count">2.1k</span></button>
-    <button class="tab" data-tab="discussions">Discussions <span class="count">18</span></button>
+    
     <button class="tab" data-tab="holders">Holders <span class="count">12k</span></button>
     <button class="tab" data-tab="pools">Pools <span class="count">7</span></button>
   </div>
@@ -6964,51 +6964,6 @@ window.addEventListener('click',function(e){
     hook(q(".lx-feemodal"));
   }
   function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];}); }
-  function discCountTab(){ return qa(".tabs-bar .tab").filter(function(x){return /discussions/i.test(x.getAttribute("data-tab")||"");})[0]; }
-  function refreshDiscEmpty(list){ if(!list)return; var has=list.querySelector(".dxa-disc-row,.mdxa-disc-row"); var em=list.querySelector(".lxda-disc-empty");
-    if(has){ if(em&&em.parentNode)em.parentNode.removeChild(em); }
-    else if(!em){ var d=document.createElement("div"); d.className="lxda-disc-empty"; d.textContent="No discussions yet — be the first to share your thoughts."; list.appendChild(d); } }
-  // The discussions feed is mock (no backend). Each pass: strip the design's placeholder rows and re-render the
-  // user's OWN posts (kept in _dxPosts so they survive the design re-rendering the panel). Post appends locally.
-  var DKEY="lumos.discussions";
-  function dsKey(){ return CODE+"-"+ISSUER; }
-  function dsAll(){ try{ return JSON.parse(localStorage.getItem(DKEY)||"{}")||{}; }catch(e){ return {}; } }
-  function dsSave(){ try{ var a=dsAll(); if(_dxPosts.length)a[dsKey()]=_dxPosts; else delete a[dsKey()]; localStorage.setItem(DKEY,JSON.stringify(a)); }catch(e){} }
-  function dsAgo(t){ if(!t)return "just now"; var sec=Math.max(0,(Date.now()-t)/1000);
-    if(sec<60)return "just now";
-    var m=sec/60; if(m<60)return Math.floor(m)+"m ago";
-    var h=m/60; if(h<24)return Math.floor(h)+"h ago";
-    var d=h/24; if(d<30)return Math.floor(d)+"d ago";
-    try{ return new Date(t).toLocaleDateString(); }catch(e){ return Math.floor(d)+"d ago"; } }
-  var _dxPosts=(function(){ try{ var a=dsAll()[CODE+"-"+ISSUER]; return (a&&a.length)?a.slice():[]; }catch(e){ return []; } })();
-  // Mobile prefixes every one of these classes with "m" and calls the text cell -txt, not -text. Emitting
-  // desktop names there produced an unstyled row, so the row is built for whichever list is actually present.
-  function discList(){ return q(".dxa-disc-list,.mdxa-disc-list"); }
-  function discPfx(){ var l=discList(); return (l&&(" "+(l.className||"")+" ").indexOf(" mdxa-disc-list ")>=0)?"mdxa":"dxa"; }
-  function postRowHtml(p){ var P=discPfx(), T=(P==="mdxa")?"txt":"text";
-    return '<div class="'+P+'-disc-av">'+identicon(p.addr,34)+'</div><div class="'+P+'-disc-body"><div class="'+P+'-disc-head"><span class="mono '+P+'-disc-addr">'+shortG(p.addr)+'</span><span class="'+P+'-disc-time">'+dsAgo(p.t)+'</span></div><div class="'+P+'-disc-'+T+'">'+escapeHtml(p.txt)+'</div></div>'; }
-  function wireDiscussions(){
-    var list=discList();
-    if(list){
-      qa(".dxa-disc-row,.mdxa-disc-row").forEach(function(r){ if(!r.classList.contains("lxda-mine")&&r.parentNode)r.parentNode.removeChild(r); });   // kill mock rows every pass
-      var _dsig=_dxPosts.map(function(p){ return (p.t||0)+":"+dsAgo(p.t)+":"+(p.txt||"").length; }).join("|");
-      if(list.getAttribute("data-lxdsig")!==_dsig){                                                                                        // (re)render our posts (newest on top)
-        qa(".dxa-disc-row.lxda-mine,.mdxa-disc-row.lxda-mine").forEach(function(r){ if(r.parentNode)r.parentNode.removeChild(r); });
-        _dxPosts.forEach(function(p){ var row=document.createElement("div"); row.className=discPfx()+"-disc-row lxda-mine"; row.innerHTML=postRowHtml(p); list.insertBefore(row,list.firstChild); });
-        list.setAttribute("data-lxdsig",_dsig);
-      }
-      refreshDiscEmpty(list);
-    }
-    if(!window.__lxDXAdw){ window.__lxDXAdw=1;
-      document.addEventListener("click",function(e){ var b=e.target&&e.target.closest?e.target.closest(".dc-post"):null; if(!b)return; e.preventDefault();
-        var ta=q(".dxa-disc-compose textarea,.mdxa-disc-compose textarea"); var txt=ta?(ta.value||"").trim():""; if(!txt)return;
-        _dxPosts.push({addr:lxAddr()||"You", txt:txt, t:Date.now()}); dsSave(); if(ta)ta.value=""; wireDiscussions();
-      },true);
-    }
-    fixDiscussionsCount();
-  }
-  // count = number of user posts (0 initially, +1 per post)
-  function fixDiscussionsCount(){ var t=discCountTab(); if(!t)return; var c=t.querySelector(".count"); if(!c)return; if(c.textContent!==String(_dxPosts.length))c.textContent=String(_dxPosts.length); }
 
   // ================= apply / observe / boot =================
   function applyAll(){
@@ -7020,8 +6975,6 @@ window.addEventListener('click',function(e){
     try{ applySwap(); }catch(_){}
     try{ reAssertView(); }catch(_){}
     try{ applyLimit(); }catch(_){}
-    try{ wireDiscussions(); }catch(_){}
-    try{ fixDiscussionsCount(); }catch(_){}
     try{ applyOhlc(); }catch(_){}
     try{ renderOrderbook(); }catch(_){}
     try{ renderExchanges(); }catch(_){}
