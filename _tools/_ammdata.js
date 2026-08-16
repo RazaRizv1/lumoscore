@@ -166,6 +166,7 @@ html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready
 .type-pill.deposit{background:rgba(34,197,94,.14)!important;color:#16a34a!important}
 .type-pill.withdraw{background:rgba(239,68,68,.14)!important;color:#ef4444!important}
 .lx-partrow{display:flex;align-items:center;gap:10px}
+.lx-acct:hover{color:var(--accent)!important}
 .lx-partrow .part-addr{flex:1;font-family:'JetBrains Mono',monospace;font-size:13px}
 .lx-partrow .part-share{font-weight:700;font-size:14px!important}
 /* pool detail: remove the design's green endpoint dot on the TVL chart */
@@ -1855,11 +1856,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(p.addr);
     var pct=(p.frac*100>=0.01?(p.frac*100).toFixed(2):"<0.01")+"%";
     if(mob) return '<div class="part-row lx-partrow"><div class="part-avatar">'+ident(p.addr,26)+'</div>'
-      +'<a class="wallet" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'
+      +'<a class="wallet lx-acct" href="/account/stellar/'+p.addr+'" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'
       +'<div class="share">'+pct+'</div>'
       +'<div class="share-bar"><div class="fill" style="width:'+Math.min(100,p.frac*100).toFixed(2)+'%"></div></div></div>';
     return '<div class="part-row lx-partrow"><div class="part-avatar">'+ident(p.addr,26)+'</div>'+
-      '<a class="part-addr" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'+
+      '<a class="part-addr lx-acct" href="/account/stellar/'+p.addr+'" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'+
       '<span class="part-share">'+(p.frac*100>=0.01?(p.frac*100).toFixed(2):"<0.01")+'%</span></div>';
   }
   function pdParts(){
