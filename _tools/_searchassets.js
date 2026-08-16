@@ -57,11 +57,40 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
   function isAddr(v){ return /^G[A-Z2-7]{55}$/.test(String(v||"").trim()); }
   // 64 hex characters: a liquidity-pool id, which cannot be confused with a ticker or an address
   function isPool(v){ return /^[0-9a-f]{64}$/i.test(String(v||"").trim()); }
+  var POOLI={};
+  function poolUsd(n){ n=+n||0; if(n>=1e9)return "$"+(n/1e9).toFixed(2)+"B"; if(n>=1e6)return "$"+(n/1e6).toFixed(2)+"M";
+    if(n>=1000)return "$"+Math.round(n).toLocaleString("en-US"); if(n>=1)return "$"+n.toFixed(2); return "$"+n.toFixed(4); }
+  function poolFill(id){
+    var d=POOLI[id]; if(!d)return;
+    var pair=document.querySelector('.lx-pool-pair[data-pool="'+id+'"]');
+    var sub=document.querySelector('.lx-pool-sub[data-pool="'+id+'"]');
+    if(pair&&d.pair)pair.textContent=d.pair;
+    if(sub){ var bits=[];
+      if(d.n!=null)bits.push(d.n===1?"1 participant":(d.n.toLocaleString("en-US")+" participants"));
+      if(d.tvl!=null)bits.push(poolUsd(d.tvl)+" TVL");
+      sub.textContent=bits.length?bits.join(" "+String.fromCharCode(183)+" "):"Pool details unavailable"; }
+  }
+  function poolLoad(id){
+    if(POOLI[id]){ poolFill(id); return; }
+    POOLI[id]={};
+    var xu=0; try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null"); if(c&&+c.v>0)xu=+c.v; }catch(_){}
+    fetch("https://horizon.stellar.org/liquidity_pools/"+id).then(function(r){ return r.ok?r.json():null; }).then(function(d){
+      if(!d){ POOLI[id]={n:null,tvl:null}; poolFill(id); return; }
+      var sides=(d.reserves||[]).map(function(rv){
+        if(rv.asset==="native")return {c:"XLM",a:+rv.amount};
+        return {c:(rv.asset.split(":")[0]||"?"),a:+rv.amount}; });
+      var nat=null; for(var i=0;i<sides.length;i++)if(sides[i].c==="XLM")nat=sides[i];
+      POOLI[id]={ pair:sides.map(function(x){return x.c;}).join(" / "),
+        n:(d.total_trustlines!=null?+d.total_trustlines:null),
+        tvl:(nat&&xu>0)?(nat.a*2*xu):null };
+      poolFill(id);
+    }).catch(function(){ POOLI[id]={n:null,tvl:null}; poolFill(id); });
+  }
   function poolRow(id){
     var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--surface-2);color:var(--text-soft);font-weight:800;font-size:11px">LP</div>';
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/pools/stellar/id/'+esc(id)+'">'+ico+
-      '<div class="sp-info"><div class="sp-name-row">Liquidity pool <span class="sp-domain">Stellar AMM</span></div>'+
-      '<div class="sp-sub">Reserves, TVL and participants</div></div>'+
+      '<div class="sp-info"><div class="sp-name-row"><span class="lx-pool-pair" data-pool="'+esc(id)+'">Liquidity pool</span> <span class="sp-domain">Stellar AMM</span></div>'+
+      '<div class="sp-sub lx-pool-sub" data-pool="'+esc(id)+'">Loading pool…</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini">'+esc(id.slice(0,4))+String.fromCharCode(8230)+esc(id.slice(-4))+'</div></div></a>';
   }
   // The same deterministic identicon the account page and the holder lists draw, so one wallet keeps
@@ -116,6 +145,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     // The account row needs no network call, so it lands on the first keystroke rather than after the
     // asset index answers.
     var _qi=String(raw).trim();
+    if(isPool(_qi))setTimeout(function(){ poolLoad(_qi); },0);
     if(SEA_CACHE[q]===undefined) paint(list, (isAddr(_qi)?acctRow(_qi):(isPool(_qi)?poolRow(_qi):""))
       + '<div class="sp-seaempty">Searching Stellar mainnet\u2026</div>');
     clearTimeout(SEA_T);
@@ -128,6 +158,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
         // An address answers itself: show the account first, then anything that address issued.
         var _q=String(raw).trim();
         var lead = isAddr(_q) ? acctRow(_q) : (isPool(_q) ? poolRow(_q) : "");
+        if(isPool(_q))setTimeout(function(){ poolLoad(_q); },0);
         paint(list, (lead + (all.length ? all.map(row).join("") : ""))
           || '<div class="sp-seaempty">Nothing on Stellar matches \u201c'+esc(raw)+'\u201d</div>');
       });
