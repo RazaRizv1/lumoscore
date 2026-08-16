@@ -3759,13 +3759,18 @@ window.addEventListener('click',function(e){
     var a="";
     try{ a=new URLSearchParams(location.search).get("address")||new URLSearchParams(location.search).get("addr")||""; }catch(_){}
     if(!a){ var parts=location.pathname.split("/"); var last=parts[parts.length-1]||parts[parts.length-2]||"";
-      if(last.length===56&&(last.charAt(0)==="G"||last.charAt(0)==="C"))a=last; }
+      if(last.length===56&&last.charAt(0)==="G")a=last; }
     a=(a||"").trim();
-    // G = account, C = Soroban contract. Both are 56-char StrKey; only one has balances.
-    return (a.length===56&&(a.charAt(0)==="G"||a.charAt(0)==="C"))?a:"";
+    // G only. A C id is a Soroban contract: Horizon serves it no balances, trustlines or history,
+    // so there is no page to build -- see the message below rather than an empty shell.
+    return (a.length===56&&a.charAt(0)==="G")?a:"";
   }
   var ADDR=readAddr();
-  var IS_CONTRACT=(ADDR.charAt(0)==="C");
+  // not a page, just an explanation: readAddr rejects C ids, so ADDR is empty for one
+  var PASTED_CONTRACT=(function(){ var raw="";
+    try{ raw=new URLSearchParams(location.search).get("address")||""; }catch(_){}
+    if(!raw){ var pp=location.pathname.split("/"); raw=pp[pp.length-1]||""; }
+    raw=(raw||"").trim(); return raw.length===56&&raw.charAt(0)==="C"; })();
 
   // ---- formatting ---------------------------------------------------------------------------------
   var SUBD=String.fromCharCode(8320,8321,8322,8323,8324,8325,8326,8327,8328,8329);
@@ -4063,8 +4068,7 @@ window.addEventListener('click',function(e){
     var bits=[];
 
     if(ACCT&&ACCT.__created)bits.push("Active since "+esc(ACCT.__created));
-    if(IS_CONTRACT)bits.unshift('<span class="acc-ctag">Soroban contract</span>');
-    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/'+(IS_CONTRACT?"contract":"account")+'/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>');
+    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>');
     sub.innerHTML=bits.join("");
   }
   function fail(msg){
@@ -4115,16 +4119,10 @@ window.addEventListener('click',function(e){
       ACTS=recs(d); DONE.acts=1; renderActs(); }).catch(function(){ DONE.acts=1; renderActs(); }); }
 
   function boot(){
-    if(!ADDR){ fail("No Stellar address in this link."); return; }
+    if(!ADDR){ fail(PASTED_CONTRACT
+      ? ("That is a Soroban contract, not a wallet " + String.fromCharCode(8212) + " it holds no balances or history we can show. Open it on stellar.expert to see its state.")
+      : "No Stellar address in this link."); return; }
     paintHeader();
-    if(IS_CONTRACT){
-      // Horizon answers 400 for /accounts/<C...>: a contract has no balances, trustlines or operation
-      // history at that API, and the explorer endpoint that does is not reachable from a browser. Say so
-      // instead of showing four dashes and letting the reader assume the wallet is empty.
-      fail("This is a Soroban contract, not a wallet. Contract balances are not served by Horizon's account API "
-        + String.fromCharCode(8212) + " open it on the explorer to see its state.");
-      return;
-    }
     loadPrice().then(function(){ renderStats(); renderAssets(); });
     j(H+"/accounts/"+ADDR).then(function(acc){
       ACCT=acc;
