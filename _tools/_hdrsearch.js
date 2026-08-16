@@ -44,6 +44,26 @@ const BOX =
 // Geometry only, scoped to the topbar so nothing else that uses .search-box is touched.
 const STYLE =
   '<style id="lx-hdrsearch-css">' +
+  // The whole bar, not just the field. Inner topbars were a translucent rgba(11,11,14,.78) over a 10px
+  // blur at 79px tall with 16px/32px padding; the Dashboard is an opaque var(--surface) at 80px with
+  // 0/36px. Matching the bar is also what makes the darker field safe: on its own, a var(--bg) field on a
+  // near-var(--bg) translucent bar all but disappears, but against an opaque var(--surface) bar it reads
+  // as the recessed well the Dashboard intends.
+  //
+  // z-index is deliberately NOT copied. The Dashboard sits at 10 and inner pages at 30; that is stacking
+  // behaviour rather than appearance, and these pages carry more overlays (modals, the search popup,
+  // dropdowns) whose layering was tuned against 30.
+  '.topbar{height:80px;padding:0 36px;gap:16px;background:var(--surface);' +
+  'backdrop-filter:none;-webkit-backdrop-filter:none}' +
+  // The design paints the bar from html[data-theme="dark"] .topbar / [="light"] .topbar, which is
+  // specificity (0,2,1) and beats a bare .topbar (0,1,0) no matter which sheet comes later. That is why
+  // height, padding and gap took effect on the first attempt and the background silently did not.
+  // html[data-theme] matches the same weight, and ours is the later sheet, so it wins -- for both themes
+  // at once, because var(--surface) is itself theme-aware. The bare rule above still covers the case where
+  // no data-theme attribute is set at all.
+  'html[data-theme] .topbar{background:var(--surface);' +
+  'backdrop-filter:none;-webkit-backdrop-filter:none}' +
+  '.topbar .search-box{background:var(--bg)}' +
   // flex:0 1 560px, NOT flex:1 -- the spacer beside it is also flex:1, and two growing siblings split the
   // slack evenly, which is why the field first came out at 363px instead of the Dashboard's 560. A fixed
   // basis takes its width and leaves the remainder to the spacer, which is what pins the right-hand
