@@ -2195,8 +2195,14 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
 #dxaChart,#mdxaChart{position:relative}
 #dxaChart:not(.lxda) svg,#mdxaChart:not(.lxda) svg{visibility:hidden}
 /* also hide the design's OWN chart marks at all times (it renders a mock svg on load + on every */
-/* tool/timeframe click before ours replaces it -> a flash). Only our lxda paths ever render. */
-#dxaChart svg path:not(.lxda-line):not(.lxda-area),#dxaChart svg rect:not(.lxda-candle),#dxaChart svg line:not(.lxda-candle),#dxaChart svg polyline,#dxaChart svg polygon:not(.lxda-area),#mdxaChart svg path:not(.lxda-line):not(.lxda-area),#mdxaChart svg rect:not(.lxda-candle),#mdxaChart svg line:not(.lxda-candle),#mdxaChart svg polyline,#mdxaChart svg polygon:not(.lxda-area){display:none!important}
+/* tool/timeframe click before ours replaces it -> a flash). Only our lxda marks ever render.    */
+/*                                                                                                */
+/* THIS RULE IS AN ALLOW-LIST AND EVERY NEW MARK HAS TO BE ADDED TO IT. It denies by shape --      */
+/* "any rect that is not a candle" -- so the volume bars, which are rects, were hidden by it the   */
+/* moment they were added: present in the DOM, correct geometry, correct colour, display:none.     */
+/* Three rounds of "the bars are there" measurements missed it because they read attributes and    */
+/* SVG units; getBoundingClientRect() reported 0x0 the first time it was asked.                    */
+#dxaChart svg path:not(.lxda-line):not(.lxda-area),#dxaChart svg rect:not(.lxda-candle):not(.lxda-vol),#dxaChart svg line:not(.lxda-candle),#dxaChart svg polyline,#dxaChart svg polygon:not(.lxda-area),#mdxaChart svg path:not(.lxda-line):not(.lxda-area),#mdxaChart svg rect:not(.lxda-candle):not(.lxda-vol),#mdxaChart svg line:not(.lxda-candle),#mdxaChart svg polyline,#mdxaChart svg polygon:not(.lxda-area){display:none!important}
 #dxaObAsks:not(.lxda) .dxa-ob-row,#dxaObBids:not(.lxda) .dxa-ob-row{visibility:hidden}
 #dxaExTable:not(.lxda) tr{visibility:hidden}
 #mdxaExList:not(.lxda) .ex-row{visibility:hidden}
