@@ -1,7 +1,14 @@
-// #3 (revised) Pool page Participants: show 25 wallets per page with Prev/Next pagination
-// (the earlier height-matching extension looked bad). Rows are generated per-page on demand from
-// the real templates (real wallets first, then deterministic address identicons) so the "of 847"
-// total stays honest and the DOM stays light. Idempotent: keyed on <script id="lx-partpage">.
+// THIS TRANSFORM NOW ONLY REMOVES ITSELF. Do not re-enable the injection.
+//
+// It paginated the Participants list by FABRICATING it: TOTAL was hardcoded to 847, every row past the
+// real ones was cloned from a template, and their wallet addresses were generated arithmetically by
+// addrFor(). Invented accounts, shown as this pool's liquidity providers, with a share percentage made up
+// from a decaying formula.
+//
+// _ammdata has owned this list with real Horizon data for a long time and had to disable this one at
+// runtime (#lx-partpage -> display:none) to stop the two fighting. It also still ran an interval polling
+// for the list 25 times on every pool page. Now that the real list paginates properly there is nothing
+// left for it to do except be wrong -- DEV landmine 11, same as _dexpag: strip it rather than out-run it.
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
 const SCRIPT='<script id="lx-partpage">(function(){'
@@ -38,10 +45,10 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
     for(const k of Object.keys(json)){
       let h=json[k];
       if(h.indexOf('"partList"')<0) continue;
-      // strip the old height-fill script AND any prior paginator
+      const was=h;
       h=h.replace(/<script id="lx-partfill">[\s\S]*?<\/script>/g,'').replace(/<script id="lx-partpage">[\s\S]*?<\/script>/g,'');
-      const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
-      json[k]=h.slice(0,bi)+SCRIPT+h.slice(bi); n++;
+      // STRIP ONLY. Nothing is re-injected -- see the header for why this transform is now a remover.
+      if(h!==was){ json[k]=h; n++; }
     }
     const serialized=JSON.stringify(json).split('</').join('<'+B+'/');
     fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');
