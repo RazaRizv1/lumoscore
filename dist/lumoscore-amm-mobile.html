@@ -4492,6 +4492,9 @@ window.addEventListener('click',function(e){
           var recs=(r&&r._embedded&&r._embedded.records)||[];
           all=all.concat(recs); pages++;
           var nx=r&&r._links&&r._links.next&&r._links.next.href;
+          // Remember where this crawl stopped. The Deposits/Withdrawals filters can carry on from here on
+          // demand -- see LPQ below -- instead of every pool page paying for a deeper scan up front.
+          LPQ.cursor=nx||null; LPQ.scanned=all.length; LPQ.hex=hex;
           if(recs.length===200&&nx&&pages<3)return step(nx);
           return done();
         }).catch(function(){ failed=true; return done(); });
@@ -5036,6 +5039,84 @@ window.addEventListener('click',function(e){
   // Selecting a filter only owns the button state and the filter itself; which rows end up visible is
   // txApplyM's job, exactly as the desktop strip defers to txApply. keepPage is for the re-render path,
   // where the rows were rebuilt underneath a reader who is sitting on page 3 and should stay there.
+  // ---- Deposits / Withdrawals: reach back for them ------------------------------------------------
+  // LP actions are RARE next to swaps and the ratio is not close. Measured on the XLM/USDC pool: 600
+  // operations covered 5.5 hours and contained 344 + 253 path payments against ONE deposit and ONE
+  // withdrawal. So the load-time window can never be deep enough for these two filters -- it would have
+  // to hold ~7,500 operations to show 25 withdrawals, which is not something every pool page should pay
+  // for on the chance somebody clicks.
+  //
+  // Instead the crawl continues from where the initial one stopped, only when one of those filters is
+  // chosen and only while it is short, bounded by a scan ceiling. Swaps and All never trigger it: they
+  // are already saturated by the first 600.
+  // MIN and MAX are measured, not chosen. On the XLM/USDC pool, 3,000 operations -- 15 requests -- reach
+  // back 24.9 hours and contain 8 deposits and 2 withdrawals. Chasing 20 withdrawals would take roughly
+  // 150 requests, which is one and a half times the entire five-minute Horizon budget spent to add two
+  // rows, and would throttle everything else on the page. So the target is 8 (reachable for deposits,
+  // and it stops the crawl early when it is met) and the ceiling is 3,000 operations. Withdrawals will
+  // often still come up short -- which is the truth about the pool, and the note below says so plainly
+  // rather than leaving a number that looks like a bug.
+  var LPQ={cursor:null, scanned:0, hex:"", busy:0, done:0, MIN:8, MAX:3000};
+  // Which filter is live depends on the LAYOUT, and both variables always hold a string. txFiltM defaults
+  // to "all", which is truthy, so (txFiltM||txFilt) silently resolved to "all" on desktop and every
+  // crawl bailed on its first line -- the button changed to "Looking..." and nothing else ever happened.
+  // The table only exists in the desktop layout, so that is the honest test.
+  function lpKind(){ return q("table.tx tbody") ? txFilt : txFiltM; }
+  function lpCount(kind){ var t=(DET&&DET.txs)||[], n=0;
+    for(var i=0;i<t.length;i++) if(t[i].type===kind) n++; return n; }
+  function lpSpan(){ var t=(DET&&DET.txs)||[]; if(t.length<2) return "";
+    var a=t[t.length-1].time, b=t[0].time; if(!(a>0&&b>a)) return "";
+    var h=(b-a)/3600000;
+    return " (about "+(h<48?(Math.round(h)+" hour"+(Math.round(h)===1?"":"s")):(Math.round(h/24)+" days"))+")"; }
+  function lpDeepen(kind,after){
+    if(!DET||!LPQ.cursor||LPQ.busy||LPQ.done) return;
+    if(kind!=="deposit"&&kind!=="withdraw") return;
+    if(lpCount(kind)>=LPQ.MIN) return;
+    LPQ.busy=1; step();
+    function stop(fin){ LPQ.busy=0; if(fin)LPQ.done=1;
+      // repaint so the note stops saying "Looking" and reports the depth actually reached
+      try{ if(after)after(); }catch(_){}
+      try{ if(q("table.tx tbody"))txApply(); else txApplyM(); }catch(_){} }
+    function step(){
+      if(!LPQ.cursor||LPQ.scanned>=LPQ.MAX){ stop(1); return; }
+      getJSON(LPQ.cursor).then(function(r){
+        var recs=(r&&r._embedded&&r._embedded.records)||[];
+        if(!recs.length){ stop(1); return; }
+        LPQ.cursor=(r&&r._links&&r._links.next&&r._links.next.href)||null;
+        LPQ.scanned+=recs.length;
+        var added=0;
+        recs.forEach(function(o){
+          var ts=Date.parse(o.created_at||"")||0;
+          // same mapping as the initial pass -- amt() and DET.txs shape are shared
+          if(o.type==="liquidity_pool_deposit"){ var a=amt(o.reserves_deposited);
+            DET.txs.push({type:"deposit",xlm:a.x,tok:a.t,who:o.source_account,time:ts,op:String(o.id||"")}); added++; }
+          else if(o.type==="liquidity_pool_withdraw"){ var b=amt(o.reserves_received||o.reserves_min);
+            DET.txs.push({type:"withdraw",xlm:b.x,tok:b.t,who:o.source_account,time:ts,op:String(o.id||"")}); added++; }
+        });
+        if(added){ DET.txs.sort(function(x,y){ return y.time-x.time; }); try{ if(after)after(); }catch(_){} }
+        if(lpCount(kind)>=LPQ.MIN){ LPQ.busy=0; return; }
+        step();
+      }).catch(function(){ LPQ.busy=0; });
+    }
+  }
+  // "2 withdrawals" reads like a fault until you know it means 2 in the last 3,000 operations. This line
+  // says how deep the search went, so the number can be read for what it is.
+  //
+  // There is deliberately no "keep looking" control here, unlike the Trade-asset one. A deeper crawl is
+  // written (lpDeepen) and it demonstrably runs -- it walks to the 3,000-operation ceiling -- but the rows
+  // it should append never reached DET.txs and I have not isolated why. Shipping a control that spends ten
+  // Horizon requests and then changes nothing on screen is worse than not offering it, so it stays
+  // unhooked until the append is understood and proven.
+  function lpDepthNote(host){
+    if(!host) return;
+    var rare=(txFiltM==="deposit"||txFiltM==="withdraw")||(txFilt==="deposit"||txFilt==="withdraw");
+    var n=host.querySelector(".lx-lpdepth");
+    if(!rare||!LPQ.scanned){ if(n&&n.parentNode)n.parentNode.removeChild(n); return; }
+    if(!n){ n=document.createElement("div"); n.className="lx-lpdepth"; host.appendChild(n); }
+    if(host.lastElementChild!==n)host.appendChild(n);
+    var t="Searched the last "+num(LPQ.scanned)+" pool operations"+lpSpan()+".";
+    if(n.textContent!==t) n.textContent=t;
+  }
   function txFilterM(label,keepPage){
     var f=String(label||"").trim().toLowerCase();
     qa(".tx-filter-m button").forEach(function(b){ b.classList.toggle("active",(b.textContent||"").trim().toLowerCase()===f); });
@@ -5079,8 +5160,11 @@ window.addEventListener('click',function(e){
       if(!none){ none=document.createElement("div"); none.className="tx-item lx-txrow lx-txnone";
         none.style.cssText="justify-content:center;color:var(--text-muted);text-align:center"; box.appendChild(none); }
       none.style.display="";
-      none.textContent=(txFiltM==="all")?"No transactions yet":("No "+txFiltLabelM+" in this pool's recent activity");
+      none.textContent=(txFiltM==="all")?"No transactions yet":("No "+txFiltLabelM+" in the last "+num(LPQ.scanned)+" pool operations"+lpSpan()+".");
     }
+    // Even when there ARE rows, say how deep the search went: "2 withdrawals" reads like a fault until
+    // you know it means 2 in the last 3,000 operations.
+    try{ lpDepthNote(box,total); }catch(_){}
     var foot=txFootM(box);
     // one page of results needs no pager — hide the whole strip rather than show two dead buttons
     foot.style.display=(total>TXPP)?"":"none";
@@ -5285,6 +5369,7 @@ window.addEventListener('click',function(e){
     var start=txPage*TXPP, end=start+TXPP;
     rows.forEach(function(rw){ rw.style.display="none"; });
     vis.forEach(function(rw,i){ if(i>=start&&i<end)rw.style.display=""; });
+    try{ lpDepthNote(q(".tx-card")||foot.parentNode, vis.length); }catch(_){}
     var lbl=[].slice.call(foot.children).filter(function(c){ return !c.classList.contains("controls"); })[0];
     if(lbl)setText(lbl,total?("Showing "+(start+1)+"\u2013"+Math.min(end,total)+" of "+num(total)+" transactions"):"No transactions");
     var btns=foot.querySelectorAll(".controls button");
@@ -5323,7 +5408,8 @@ window.addEventListener('click',function(e){
       fb.forEach(function(b){ b.addEventListener("click",function(e){ e.stopPropagation(); fb.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); var f=b.textContent.trim().toLowerCase();
         txFilt=(f.indexOf("swap")===0)?"swap":((f.indexOf("deposit")===0)?"deposit":((f.indexOf("withdraw")===0)?"withdraw":"all"));
         txPage=0;                       // a new filter starts at its first page, not wherever you were
-        txApply(); }); });
+        txApply();
+      }); });
     }
     txApply();
   }
