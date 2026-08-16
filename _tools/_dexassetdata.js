@@ -29,6 +29,10 @@ const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-dex-asset.html', 'lumoscore-dex-asset-dark.html', 'lumoscore-dex-asset-mobile.html'];
 
 const STYLE = `<style id="lx-dxa-css">
+.lx-acct{color:inherit;text-decoration:none;cursor:pointer}
+.lx-acct:hover .wa,.lx-acct:hover .mdxa-hl-addr{color:var(--accent)}
+a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
+
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
 
@@ -926,14 +930,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var html=top.map(function(h,i){ var pct=h.bal/sup*100;
       var pctTxt=(pct>=0.001?pct.toFixed(3):"<0.001")+'%';
       // Mobile's row is the design's .mdxa-hl-row grid, not a table row.
-      if(MOB) return '<div class="mdxa-hl-row"><span class="mdxa-hl-rank">#'+(i+1)+'</span>'
+      if(MOB) return '<a class="mdxa-hl-row lx-acct" href="/account/stellar/'+h.addr+'"><span class="mdxa-hl-rank">#'+(i+1)+'</span>'
         +'<span class="mdxa-hl-ident">'+identicon(h.addr,28)+'</span>'
         +'<div class="mdxa-hl-meta"><div class="mdxa-hl-addr mono">'+shortG(h.addr)+'</div>'
         +'<a class="mdxa-hl-explorer" href="'+EXPL+h.addr+'" target="_blank" rel="noopener">View on Explorer \\u2197</a></div>'
         +'<div class="mdxa-hl-vals"><div class="mdxa-hl-bal mono">'+abbrNum(h.bal)+'</div>'
-        +'<div class="mdxa-hl-pct mono">'+pctTxt+'</div></div></div>';
+        +'<div class="mdxa-hl-pct mono">'+pctTxt+'</div></div></a>';
       return '<tr><td class="dxa-hl-rank">'+(i+1)+'</td>'
-        +'<td><div class="wallet-cell">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span></div></td>'
+        +'<td><a class="lx-acct wallet-cell" href="/account/stellar/'+h.addr+'">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span></a></td>'
         +'<td class="mono">'+abbrNum(h.bal)+'</td>'
         +'<td class="mono">'+(pct>=0.001?pct.toFixed(3):"<0.001")+'%</td>'
         +'<td style="text-align:right"><a class="dxa-hl-explorer" href="https://stellar.expert/explorer/public/account/'+h.addr+'" target="_blank" rel="noopener">View on Explorer <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a></td></tr>'; }).join("");
