@@ -177,6 +177,17 @@ overflow:hidden;margin-bottom:0}
 color:var(--accent,#ea6a2c);font:700 14px/1.4 "Hanken Grotesk",system-ui,sans-serif}
 .lx-descmore.on{display:inline-block}
 .lx-descmore:hover{text-decoration:underline}
+/* Price change, relocated under the chart: a row of six inside the chart card rather than a card of
+   its own. Card chrome comes off because it now sits on the chart card surface, and a hairline rule
+   separates it from the plot. */
+.chart-section .dxa-perf-card{background:none;border:0;border-radius:0;padding:14px 0 0;
+margin-top:16px;border-top:1px solid var(--border)}
+/* the six cells say 1h/24h/7d themselves, so the "Price change" caption is redundant here */
+.chart-section .dxa-perf-lbl{display:none}
+.chart-section .dxa-perf-grid{grid-template-columns:repeat(6,1fr);gap:8px}
+/* Six across needs about 110px each. Below that it falls back to the 3x2 it always had, which is a
+   real arrangement rather than six squeezed cells. */
+@media (max-width:1180px){.chart-section .dxa-perf-grid{grid-template-columns:repeat(3,1fr)}}
 .lxda-disc-empty{text-align:center;padding:30px 12px;color:var(--text-soft,#8a8fa3);font:600 14px/1.5 'Hanken Grotesk',system-ui,sans-serif}
 .dxa-disc-text{margin-top:4px;line-height:1.5;word-break:break-word}
 /* Exchanges tab: hide its count badge INSTANTLY (JS was hiding it after data load -> a visible count->hidden flash) */
@@ -2217,6 +2228,50 @@ for (const file of files) {
       if (cmt >= 0 && rm.index - cmt < 60) start = cmt;      // take the comment with it
       p = p.slice(0, start) + p.slice(end);
     }
+    // Move the price-change block under the chart. Idempotent: once it lives inside .chart-section the
+    // scan below finds it there and leaves it alone, so re-running the transform is a no-op.
+    (function(){
+      var OPEN = '<div class="dxa-perf-card">';        // exact, so mobile's mdxa-perf-card cannot match
+      var ci = p.indexOf('<div class="chart-section">');
+      var pi = p.indexOf(OPEN);
+      if (ci < 0 || pi < 0) return;
+
+      // depth-scan a block to its OWN closing tag; both of these wrap nested divs, so a lazy regex
+      // would cut at the first </div> and shred the page
+      function endOf(start){
+        var re = /<div\b[^>]*>|<\/div>/g; re.lastIndex = start;
+        var depth = 0, m;
+        while ((m = re.exec(p))) {
+          if (m[0].charAt(1) === '/') { depth--; if (depth === 0) return m.index + m[0].length; }
+          else depth++;
+        }
+        return -1;
+      }
+
+      var chartEnd = endOf(ci);
+      if (chartEnd < 0) return;
+      if (pi > ci && pi < chartEnd) return;             // already moved
+
+      var perfEnd = endOf(pi);
+      if (perfEnd < 0) return;
+      var block = p.slice(pi, perfEnd);
+
+      // take the design's own comment with it rather than leaving it orphaned above the gap
+      var start = pi;
+      var cmt = p.lastIndexOf('<!-- Price change grid -->', pi);
+      if (cmt >= 0 && pi - cmt < 40) start = cmt;
+
+      var without = p.slice(0, start) + p.slice(perfEnd);
+      // recompute the insertion point against the STRING WE ARE KEEPING: removing the block shifts
+      // every offset after it, and reusing chartEnd here would splice into the middle of a tag.
+      var ci2 = without.indexOf('<div class="chart-section">');
+      var pSave = p; p = without;
+      var end2 = endOf(ci2);
+      p = pSave;
+      if (end2 < 0) return;
+      var closeLen = '</div>'.length;
+      p = without.slice(0, end2 - closeLen) + block + without.slice(end2 - closeLen);
+    })();
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');

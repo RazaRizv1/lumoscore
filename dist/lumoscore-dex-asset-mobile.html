@@ -2300,6 +2300,17 @@ overflow:hidden;margin-bottom:0}
 color:var(--accent,#ea6a2c);font:700 14px/1.4 "Hanken Grotesk",system-ui,sans-serif}
 .lx-descmore.on{display:inline-block}
 .lx-descmore:hover{text-decoration:underline}
+/* Price change, relocated under the chart: a row of six inside the chart card rather than a card of
+   its own. Card chrome comes off because it now sits on the chart card surface, and a hairline rule
+   separates it from the plot. */
+.chart-section .dxa-perf-card{background:none;border:0;border-radius:0;padding:14px 0 0;
+margin-top:16px;border-top:1px solid var(--border)}
+/* the six cells say 1h/24h/7d themselves, so the "Price change" caption is redundant here */
+.chart-section .dxa-perf-lbl{display:none}
+.chart-section .dxa-perf-grid{grid-template-columns:repeat(6,1fr);gap:8px}
+/* Six across needs about 110px each. Below that it falls back to the 3x2 it always had, which is a
+   real arrangement rather than six squeezed cells. */
+@media (max-width:1180px){.chart-section .dxa-perf-grid{grid-template-columns:repeat(3,1fr)}}
 .lxda-disc-empty{text-align:center;padding:30px 12px;color:var(--text-soft,#8a8fa3);font:600 14px/1.5 'Hanken Grotesk',system-ui,sans-serif}
 .dxa-disc-text{margin-top:4px;line-height:1.5;word-break:break-word}
 /* Exchanges tab: hide its count badge INSTANTLY (JS was hiding it after data load -> a visible count->hidden flash) */
