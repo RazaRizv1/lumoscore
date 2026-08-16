@@ -867,22 +867,67 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var svg='<svg width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="border-radius:50%;background:'+c1+'">';
     for(var y=0;y<5;y++)for(var x=0;x<3;x++){ var bit=(h>>((y*3+x)%30))&1; if(bit){ var col=(x+y)%2===0?c2:c3; svg+='<rect x="'+(x*cell).toFixed(2)+'" y="'+(y*cell).toFixed(2)+'" width="'+cell.toFixed(2)+'" height="'+cell.toFixed(2)+'" fill="'+col+'"/>'; if(x<2)svg+='<rect x="'+((4-x)*cell).toFixed(2)+'" y="'+(y*cell).toFixed(2)+'" width="'+cell.toFixed(2)+'" height="'+cell.toFixed(2)+'" fill="'+col+'"/>'; } }
     svg+='<circle cx="'+(size/2)+'" cy="'+(size/2)+'" r="'+(cell*0.42).toFixed(2)+'" fill="'+c4+'"/></svg>'; _icoCache[ck]=svg; return svg; }
-  // single lightweight fetch of the 200 most recent trades (no multi-page crawl — refreshed on the 60s timer).
+  // AUDIT (numeric): the side was inverted — every Buy in Recent Exchanges was really a Sell and vice
+  // versa. base_is_seller means the MAKER sold the base asset, so the taker (whose side a trade feed
+  // reports) BOUGHT it. Measured against a live AQUA/XLM book: base_is_seller=true trades average
+  // 0.0019965, i.e. the best ASK (0.0019966) = takers lifting offers = buys; false averages the bid
+  // exactly. This query pins base=CODE, counter=native, so base IS the token and no flip is needed.
+  function mapTrade(t){ var pr=t.price?(+t.price.n/+t.price.d):0;
+    return {addr:t.base_account||t.counter_account||"", side:t.base_is_seller?"buy":"sell", px:pr, amount:+t.base_amount, xlm:+t.counter_amount, ts:Date.parse(t.ledger_close_time||"")||0, time:relTime(t.ledger_close_time),
+      // Horizon trade ids are "<operationId>-<order>"; keep the operation id so the row can link to
+      // THIS trade rather than to the asset. Matches t._links.operation.href.
+      op:String(t.id||"").split("-")[0]}; }
+  function tradesUrl(cursor){ return H+"/trades?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&order=desc&limit=200"+(cursor?("&cursor="+encodeURIComponent(cursor)):""); }
   function loadTrades(){
     if(NATIVE)return;
-    j(H+"/trades?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&order=desc&limit=200").then(function(d){
-      window.__lxDXAtrades=((d&&d._embedded&&d._embedded.records)||[]).map(function(t){ var pr=t.price?(+t.price.n/+t.price.d):0;
-        // AUDIT (numeric): this was inverted — every Buy in Recent Exchanges was really a Sell and vice versa.
-        // base_is_seller means the MAKER sold the base asset, so the taker (whose side a trade feed reports)
-        // BOUGHT it. Measured against a live AQUA/XLM book: base_is_seller=true trades average 0.0019965,
-        // i.e. the best ASK (0.0019966) = takers lifting offers = buys; false averages the bid exactly.
-        // This query pins base=CODE, counter=native, so base IS the token and no orientation flip is needed.
-        return {addr:t.base_account||t.counter_account||"", side:t.base_is_seller?"buy":"sell", px:pr, amount:+t.base_amount, xlm:+t.counter_amount, ts:Date.parse(t.ledger_close_time||"")||0, time:relTime(t.ledger_close_time),
-          // Horizon trade ids are "<operationId>-<order>"; keep the operation id so the row can link to
-          // THIS trade rather than to the asset. Matches t._links.operation.href.
-          op:String(t.id||"").split("-")[0]}; });
+    j(tradesUrl(null)).then(function(d){
+      var recs=(d&&d._embedded&&d._embedded.records)||[];
+      window.__lxDXAtrades=recs.map(mapTrade);
+      EX_SCANNED=recs.length;
+      EX_CURSOR=recs.length?recs[recs.length-1].paging_token:null;
+      EX_DEEP={};                                   // a refresh invalidates what each filter had crawled
       renderExchanges();
     }).catch(function(){});
+  }
+  // THE SIZE FILTERS USED TO SLICE ONE FIXED WINDOW. loadTrades pulls the 200 most recent trades and every
+  // filter sliced that same 200 -- so on an asset whose recent flow is dust, "1K+ XLM" and "10K+ XLM" read
+  // "no trades" even though plenty had happened a little further back. The window was the answer, not the
+  // data.
+  //
+  // Now a size filter reaches BACK until it has 25 of them (or runs out, or hits the page cap). Only when
+  // it needs to: the crawl is skipped entirely if the trades already in hand satisfy the filter, so "All"
+  // and any busy asset still cost exactly one request. Pages are sequential rather than parallel -- this
+  // is the same Horizon budget everything else on the page is spending, and it stops the moment it has
+  // enough.
+  // The scan budget is GLOBAL, not per filter, and that distinction is the whole cost control. With a
+  // per-filter cap each size got its own eight pages and the cursor kept advancing, so clicking through
+  // 10+, 100+ and 1K+ walked 5,000 trades in 24 requests -- a quarter of the entire five-minute Horizon
+  // budget spent on three clicks. One shared ceiling instead: the buffer is shared too, so a later filter
+  // reads everything an earlier one paid for, and the total cost of the whole strip is bounded.
+  var EX_MIN=25, EX_MAX_SCAN=3000, EX_CURSOR=null, EX_SCANNED=0, EX_DEEP={};
+  function exMatches(f){ var r=window.__lxDXAtrades||[]; var n=0; for(var i=0;i<r.length;i++)if(r[i].xlm>=f)n++; return n; }
+  function deepenTrades(){
+    if(NATIVE)return;
+    var f=TRADE_FILTER; if(!(f>0))return;
+    var st=EX_DEEP[f]||(EX_DEEP[f]={});
+    if(st.busy||st.done)return;
+    if(exMatches(f)>=EX_MIN)return;
+    st.busy=1; step(0);
+    function stop(done){ st.busy=0; if(done)st.done=1; try{ renderExchanges(); }catch(_){} }
+    function step(n){
+      if(EX_SCANNED>=EX_MAX_SCAN||!EX_CURSOR){ stop(1); return; }
+      j(tradesUrl(EX_CURSOR)).then(function(d){
+        if(TRADE_FILTER!==f){ st.busy=0; return; }               // the user moved on; leave the rest for later
+        var recs=(d&&d._embedded&&d._embedded.records)||[];
+        if(!recs.length){ stop(1); return; }                     // reached the start of this pair's history
+        EX_CURSOR=recs[recs.length-1].paging_token;
+        EX_SCANNED+=recs.length;
+        window.__lxDXAtrades=(window.__lxDXAtrades||[]).concat(recs.map(mapTrade));
+        renderExchanges();                                       // show them as they arrive
+        if(exMatches(f)>=EX_MIN){ st.busy=0; return; }
+        step(n+1);
+      }).catch(function(){ st.busy=0; });
+    }
   }
   // The exchanges pager. The design ships one in .panel-foot .pgn whose buttons we did not own, and
   // whose handler regenerates the design's MOCK rows (Ethereum addresses, APT prices, USDC amounts) —
@@ -931,6 +976,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     // click on a real asset page replaced live Stellar trades with fabricated ones. We now own the
     // pager, so that path is unreachable.
     var all=rows.filter(function(r){ return r.xlm>=TRADE_FILTER; });
+    // Short of 25 for this size? Go and find more. Cheap when it is not needed: exMatches short-circuits
+    // and deepenTrades returns without a request.
+    if(TRADE_FILTER>0 && all.length<EX_MIN) try{ deepenTrades(); }catch(_){}
     var pages=Math.max(1, Math.ceil(all.length/EX_PER_PAGE));
     if(EX_PAGE>pages) EX_PAGE=pages;           // filter narrowed while on a later page
     if(EX_PAGE<1) EX_PAGE=1;
@@ -960,7 +1008,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     renderExPager(all.length, pages);
     function decs(p){ return p>=1?4:(p>=0.01?5:7); }
     if(!f.length){
-      var emptyTxt='No trades'+(TRADE_FILTER>0?" \\u2265 "+(TRADE_FILTER>=1000?(TRADE_FILTER/1000)+"K":TRADE_FILTER)+" XLM":"")+' in the recent window.';
+      // Say how far back we actually looked. "in the recent window" described a limit the reader could
+      // neither see nor trust -- and while the crawl is still running it is not even true yet.
+      var _sz=(TRADE_FILTER>=1000?(TRADE_FILTER/1000)+"K":TRADE_FILTER)+" XLM";
+      var _busy=!!(EX_DEEP[TRADE_FILTER]&&EX_DEEP[TRADE_FILTER].busy);
+      var emptyTxt = TRADE_FILTER>0
+        ? (_busy ? ("Looking further back for trades \\u2265 "+_sz+" \\u2026")
+                 : ("No trades \\u2265 "+_sz+" in the last "+num(EX_SCANNED)+" trades."))
+        : 'No trades in the recent window.';
       tb.innerHTML=MOB
         ? '<div class="lxda-ex-empty" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">'+emptyTxt+'</div>'
         : '<tr class="lxda-ex-empty"><td colspan="6" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">'+emptyTxt+'</td></tr>';
