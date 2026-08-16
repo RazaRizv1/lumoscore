@@ -5580,7 +5580,27 @@ window.addEventListener('click',function(e){
   var homeDomain=null, tomlDesc=null, tomlImg=null;
   var dayOHLC=null;                                          // {o,h,l,c,v} from the latest daily aggregation
 
-  function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
+  // HOST FALLBACK, which GUARDRAILS E12 has always required and this layer never had.
+  //
+  // Horizon allows 100 requests per 5 minutes PER IP, and one asset page spends 15-20 of them. Two or
+  // three page views in quick succession exhaust the budget, and after that every figure sourced from
+  // Horizon -- 24h volume, the 24h change, the OHLC strip, 1D high/low -- renders as an honest but useless
+  // dash, while the figures sourced from stellar.expert keep working. That is exactly the state this page
+  // was reported in, on two different machines.
+  //
+  // The retry has to hang off the REJECTION, not off a 429 status: Horizon's 429 carries no CORS header,
+  // so the browser never gets to read the status at all and the whole thing surfaces as a bare
+  // "TypeError: Failed to fetch". A readable 4xx is a real answer ("no such asset") and is not re-asked.
+  var H2="https://horizon.stellar.lobstr.co";
+  function j(u){
+    return fetch(u).then(function(r){ if(!r.ok)throw new Error("HTTP"+r.status); return r.json(); })
+      .catch(function(e){
+        var m=String((e&&e.message)||""), readable=(m.indexOf("HTTP")===0), code=readable?+m.slice(4):0;
+        if(readable && code>=400 && code<500 && code!==429) throw e;   // a real "no" -- do not ask twice
+        if(u.indexOf(H)!==0) throw e;
+        return fetch(H2+u.slice(H.length)).then(function(r){ if(!r.ok)throw new Error("HTTP"+r.status); return r.json(); });
+      });
+  }
   function q(s){return document.querySelector(s);}
   function qa(s){return [].slice.call(document.querySelectorAll(s));}
   function setText(el,t){if(el&&t!=null&&el.textContent!==t)el.textContent=t;}
