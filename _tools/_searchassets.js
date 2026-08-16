@@ -8,8 +8,8 @@ const { read, getContents, VERIFIED } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const STYLE = `<style id="lx-searchassets-css">
-  + '.lx-poolico .lx-pi{width:22px;height:22px;border-radius:50%;display:block;object-fit:cover;border:2px solid var(--surface,#131317);background:var(--surface-2)}'
-  + '.lx-poolico .lx-pi-b{margin-left:-8px}'
+.lx-poolico .lx-pi{width:22px;height:22px;border-radius:50%;display:block;object-fit:cover;border:2px solid var(--surface,#131317);background:var(--surface-2)}
+.lx-poolico .lx-pi-b{margin-left:-8px}
 .sp-row--asset.lx-searow{text-decoration:none;color:inherit}
 .sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
 .sp-row--asset.lx-searow .sp-ico img{display:block}
