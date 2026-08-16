@@ -2242,6 +2242,16 @@
 .dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}
 .stat-cell .lx-supinfo::before{content:"i";display:block;font:italic 700 10px/16px Georgia,serif;color:inherit}
 .stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
+/* Pool pair icons. 22px sat below the 15px pair label beside them, so a row read as text with two specks
+   of colour rather than a pair of tokens. 30px gives a logo enough room to be recognised at a glance and
+   balances the line; the ring is the row background, so overlapping discs stay separated on any surface. */
+.dxa-pl-pair{gap:12px}
+.dxa-pl-ico{width:34px;height:34px;font-size:14px;border-width:3px;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.dxa-pl-ico + .dxa-pl-ico{margin-left:-11px}
+/* the page asset leads the pair, so it sits in front rather than behind the counterpart */
+.dxa-pl-icos .dxa-pl-ico{position:relative}
+.dxa-pl-icos .dxa-pl-ico:first-child{z-index:2}
+.mdxa-pl-l .dxa-pl-ico{width:30px;height:30px;font-size:13px}
 .stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style></head>
 <body>
 <div class="app">
