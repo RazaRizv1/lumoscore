@@ -28,6 +28,7 @@ function cleanMapJson(){
   m['lumoscore-landing'] = '/';
   // dynamic routes with no identifier in the link fall back to the list page
   m['lumoscore-dex-asset'] = '/trade/stellar';
+  m['lumoscore-account']   = '/account/stellar';
   // asset-overview was REMOVED — it duplicated Trade-asset without the ability to act on what it
   // showed. Anything still pointing at it resolves to the Trade page instead.
   m['lumoscore-asset-overview'] = '/trade/stellar';
@@ -47,6 +48,7 @@ function runtime(validArray){
     + '  var base=u.replace(/'+BS+'.html$/,"").replace(/-(dark|light|mobile)$/,"");'
     + '  var p=new URLSearchParams(q), a=p.get("asset");'
     // the two dynamic routes: an ?asset= becomes a path segment
+    + '  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);'
     + '  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);'
     + '  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);'
     // a pool is addressed by its two assets, which a ?pool=<id> link does not carry — leave it alone
@@ -210,6 +212,7 @@ const ROUTES = [
   // dynamic first: these carry an asset or pool identifier in the path
   ['/trade/stellar/:asset',            'lumoscore-dex-asset.html'],
   ['/trade/stellar',                   'lumoscore-dex.html'],
+  ['/account/stellar/:address',        'lumoscore-account.html'],
   ['/pools/stellar/id/:pool',          'lumoscore-amm-pool.html'],   // fallback: id-only links
   ['/pools/stellar/:a/:b',             'lumoscore-amm-pool.html'],
   ['/pools/stellar',                   'lumoscore-amm.html'],
