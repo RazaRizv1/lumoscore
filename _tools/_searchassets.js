@@ -52,6 +52,32 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
       '<div class="sp-sub">'+esc(t.code)+' \u00b7 '+esc(sub)+'</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
   }
+  // Stellar public keys are base32 over [A-Z2-7], 56 chars, always leading with G. Anything else is a
+  // search term, not an address.
+  function isAddr(v){ return /^G[A-Z2-7]{55}$/.test(String(v||"").trim()); }
+  // The same deterministic identicon the account page and the holder lists draw, so one wallet keeps
+  // one face wherever it appears.
+  function identHash(x){ var h=2166136261; for(var i=0;i<x.length;i++){ h^=x.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
+  function identUri(addr){
+    var h=identHash(addr), hue=h%360, hue2=(hue+52)%360, cells="";
+    for(var x=0;x<3;x++)for(var y=0;y<5;y++){
+      if(!((identHash(addr+":"+x+":"+y)>>>3)&1))continue;
+      cells+='<rect x="'+(x*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
+      if(x<2)cells+='<rect x="'+((4-x)*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
+    }
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+      +'<stop offset="0%" stop-color="hsl('+hue+',62%,52%)"/><stop offset="100%" stop-color="hsl('+hue2+',60%,38%)"/>'
+      +'</linearGradient></defs><rect width="40" height="40" fill="url(#g)"/><g fill="rgba(255,255,255,.92)">'+cells+'</g></svg>';
+    return "data:image/svg+xml;base64,"+btoa(svg);
+  }
+  function acctRow(addr){
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+identUri(addr)
+      +'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/account/stellar/'+esc(addr)+'">'+ico+
+      '<div class="sp-info"><div class="sp-name-row">Stellar account <span class="sp-domain">wallet</span></div>'+
+      '<div class="sp-sub">Balances, pools and activity</div></div>'+
+      '<div class="sp-right"><div class="sp-addr-mini">'+short(addr)+'</div></div></a>';
+  }
   function paint(list,html){ if(list.innerHTML!==html) list.innerHTML=html; }
   function seaFetch(q,cb){
     if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
@@ -78,7 +104,10 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     // locally minted Launchpad tokens match instantly, with no round trip
     var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&t.code.toLowerCase().indexOf(q)>=0; });
     var seq=++SEA_SEQ;
-    if(SEA_CACHE[q]===undefined) paint(list,'<div class="sp-seaempty">Searching Stellar mainnet\u2026</div>');
+    // The account row needs no network call, so it lands on the first keystroke rather than after the
+    // asset index answers.
+    if(SEA_CACHE[q]===undefined) paint(list, (isAddr(raw)?acctRow(String(raw).trim()):"")
+      + '<div class="sp-seaempty">Searching Stellar mainnet\u2026</div>');
     clearTimeout(SEA_T);
     SEA_T=setTimeout(function(){
       seaFetch(q,function(remote){
@@ -86,8 +115,10 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
         if(remote===null){ paint(list,'<div class="sp-seaempty">Couldn\u2019t reach the asset index \u2014 check your connection.</div>'); return; }
         var seen={}, all=[];
         local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
-        paint(list, all.length ? all.map(row).join("")
-                               : '<div class="sp-seaempty">No mainnet assets match \u201c'+esc(raw)+'\u201d</div>');
+        // An address answers itself: show the account first, then anything that address issued.
+        var lead = isAddr(raw) ? acctRow(String(raw).trim()) : "";
+        paint(list, (lead + (all.length ? all.map(row).join("") : ""))
+          || '<div class="sp-seaempty">No mainnet assets match \u201c'+esc(raw)+'\u201d</div>');
       });
     }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
   }

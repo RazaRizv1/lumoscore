@@ -1665,14 +1665,7 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
 /* light-mode elevation: cards read as raised surfaces on light bg */
 [data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
 [data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
-</style><script id="lx-route">(function(){var out={network:"",asset:"",poolA:"",poolB:"",poolId:""};try{  var seg=location.pathname.replace(/^\/+|\/+$/g,"").split("/").map(decodeURIComponent);  var head=(seg[0]||"").toLowerCase();  var ASSET=/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;  if(head==="trade"||head==="asset"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]&&(ASSET.test(seg[2])||seg[2].toUpperCase()==="XLM"))out.asset=seg[2]; }  else if(head==="pools"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]==="id"){ out.poolId=seg[3]||""; }    else { if(seg[2])out.poolA=seg[2]; if(seg[3])out.poolB=seg[3]; } }}catch(e){}window.__lxRoute=out;})();</script><style id="lx-searchassets-css">
-.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
-.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
-.sp-row--asset.lx-searow .sp-ico img{display:block}
-.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
-.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
-.lx-seavfd svg{width:9px;height:9px;display:block}
-</style><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-mobmenufix">.slide-menu{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}.menu-theme-row{flex-shrink:0}</style><style id="lx-dexnative-css">.lx-mk-star{color:var(--accent,#ea6a2c);font-size:12.5px;line-height:1;margin-right:1px}.mdx-mk-filters{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}.mdx-mk-filters::-webkit-scrollbar{display:none}.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}.dex-mk-filter{white-space:nowrap}</style><style id="lx-mobdex-css">.mdx-mover-pair .lx-vtick,.mdx-mk-name-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 13px}.mdx-mover-pair .lx-vtick svg,.mdx-mk-name-row .lx-vtick svg{width:8px;height:8px;display:block}.mdx-mints-title{font-size:0!important}.mdx-mints-title::after{content:"Featured on Stellar";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}body:not(.lxmd-ready) .mdx-mints-list,body:not(.lxmd-ready) .mdx-mover-list,body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}.lxmd-empty{padding:16px 4px;text-align:center;color:var(--text-soft,#8a8fa3);font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}.mdx-mint-ic[data-lxic],.mdx-mover-ic[data-lxic],.mdx-mk-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important}.mdx-mint-ic[data-lxic]::before,.mdx-mover-ic[data-lxic]::before,.mdx-mk-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}.mdx-mint-ic[data-lxic]>*,.mdx-mover-ic[data-lxic]>*,.mdx-mk-ic[data-lxic]>*{display:none!important}.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 2px 2px}.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}.lxmd-pg[disabled]{opacity:.4;cursor:default}.lxmd-pg-info{font-size:13px;color:var(--text-soft);font-weight:600;white-space:nowrap}</style><style id="lx-dexmain-css">
+</style><script id="lx-route">(function(){var out={network:"",asset:"",poolA:"",poolB:"",poolId:""};try{  var seg=location.pathname.replace(/^\/+|\/+$/g,"").split("/").map(decodeURIComponent);  var head=(seg[0]||"").toLowerCase();  var ASSET=/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;  if(head==="trade"||head==="asset"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]&&(ASSET.test(seg[2])||seg[2].toUpperCase()==="XLM"))out.asset=seg[2]; }  else if(head==="pools"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]==="id"){ out.poolId=seg[3]||""; }    else { if(seg[2])out.poolA=seg[2]; if(seg[3])out.poolB=seg[3]; } }}catch(e){}window.__lxRoute=out;})();</script><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-mobmenufix">.slide-menu{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}.menu-theme-row{flex-shrink:0}</style><style id="lx-dexnative-css">.lx-mk-star{color:var(--accent,#ea6a2c);font-size:12.5px;line-height:1;margin-right:1px}.mdx-mk-filters{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}.mdx-mk-filters::-webkit-scrollbar{display:none}.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}.dex-mk-filter{white-space:nowrap}</style><style id="lx-mobdex-css">.mdx-mover-pair .lx-vtick,.mdx-mk-name-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 13px}.mdx-mover-pair .lx-vtick svg,.mdx-mk-name-row .lx-vtick svg{width:8px;height:8px;display:block}.mdx-mints-title{font-size:0!important}.mdx-mints-title::after{content:"Featured on Stellar";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}body:not(.lxmd-ready) .mdx-mints-list,body:not(.lxmd-ready) .mdx-mover-list,body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}.lxmd-empty{padding:16px 4px;text-align:center;color:var(--text-soft,#8a8fa3);font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}.mdx-mint-ic[data-lxic],.mdx-mover-ic[data-lxic],.mdx-mk-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important}.mdx-mint-ic[data-lxic]::before,.mdx-mover-ic[data-lxic]::before,.mdx-mk-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}.mdx-mint-ic[data-lxic]>*,.mdx-mover-ic[data-lxic]>*,.mdx-mk-ic[data-lxic]>*{display:none!important}.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 2px 2px}.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}.lxmd-pg[disabled]{opacity:.4;cursor:default}.lxmd-pg-info{font-size:13px;color:var(--text-soft);font-weight:600;white-space:nowrap}</style><style id="lx-dexmain-css">
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
 
@@ -1772,6 +1765,13 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
 .dex-mint-stat .l{font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft,#6f6f79);margin-bottom:6px}
 .dex-mint-stat .v{font-weight:700;font-size:14px;color:var(--text,#0e0e10);white-space:nowrap}
+</style><style id="lx-searchassets-css">
+.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
+.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
+.sp-row--asset.lx-searow .sp-ico img{display:block}
+.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
+.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
+.lx-seavfd svg{width:9px;height:9px;display:block}
 </style></head>
 <body>
 
@@ -3347,122 +3347,6 @@ window.addEventListener('resize',move);requestAnimationFrame(move);setTimeout(mo
     // link activation — behaves exactly as it does with a mouse.
     t.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));
   },true);
-})();</script><script id="lx-searchassets">(function(){
-  // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
-  // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
-  //
-  // A ticker is NOT an identity here — "SHX" alone matches six different issuers, one of which is Stronghold
-  // (91,001 trustlines, stronghold.co) and five of which are look-alikes. So every row carries the domain,
-  // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
-  var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
-  function launchTokens(){ try{ var e=JSON.parse(localStorage.getItem("lumos.launches")||"[]"); return (e&&e.length)?e:[]; }catch(_){ return []; } }
-  var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#3b82f6"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
-  function short(a){return a?a.slice(0,4)+"…"+a.slice(-4):"";}
-  function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
-  function avatarUri(code){ var c=String(code||"?"),h=0; for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;
-    var t=c.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
-    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+h+',60%,50%)"/><text x="20" y="26" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="15" fill="#fff">'+t+'</text></svg>';
-    return "data:image/svg+xml,"+encodeURIComponent(svg); }
-  function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
-  // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
-  // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
-  var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
-  var VTICK='<span class="lx-seavfd" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
-  function row(t){
-    var g=GRAD[(t.code.charCodeAt(0)||0)%GRAD.length];
-    // Always emit an <img>. The shared '.sp-ico.lx-spico-on' rule sets background:initial!important, so a
-    // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
-    // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
-    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
-    var sub = t.tl!=null ? (nfmt(t.tl)+" trustlines") : "Launchpad token";
-    // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
-    // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
-    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
-      ico+
-      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(t.domain||"Stellar mainnet")+'</span></div>'+
-      '<div class="sp-sub">'+esc(t.code)+' · '+esc(sub)+'</div></div>'+
-      '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
-  }
-  function paint(list,html){ if(list.innerHTML!==html) list.innerHTML=html; }
-  function seaFetch(q,cb){
-    if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
-    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
-      .then(function(r){ return r.json(); })
-      .then(function(d){
-        var recs=(d&&d._embedded&&d._embedded.records)||[];
-        var out=recs.map(function(x){
-          var id=String(x.asset||""), p=id.split("-");
-          var ti=x.tomlInfo||{};
-          return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
-                  tl:(x.trustlines&&x.trustlines[0])||0, img:ti.image||ti.orgLogo||""};
-        }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
-        out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
-        SEA_CACHE[q]=out; cb(out);
-      })
-      .catch(function(){ cb(null); });                          // null = upstream failed (distinct from "no results")
-  }
-  function render(){
-    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
-    if(!inp||!list)return;
-    var raw=(inp.value||"").trim(), q=raw.toLowerCase();
-    if(!q){ return; }                       // empty -> let the design clear the list
-    // locally minted Launchpad tokens match instantly, with no round trip
-    var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&t.code.toLowerCase().indexOf(q)>=0; });
-    var seq=++SEA_SEQ;
-    if(SEA_CACHE[q]===undefined) paint(list,'<div class="sp-seaempty">Searching Stellar mainnet…</div>');
-    clearTimeout(SEA_T);
-    SEA_T=setTimeout(function(){
-      seaFetch(q,function(remote){
-        if(seq!==SEA_SEQ)return;                                // a newer keystroke already won
-        if(remote===null){ paint(list,'<div class="sp-seaempty">Couldn’t reach the asset index — check your connection.</div>'); return; }
-        var seen={}, all=[];
-        local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
-        paint(list, all.length ? all.map(row).join("")
-                               : '<div class="sp-seaempty">No mainnet assets match “'+esc(raw)+'”</div>');
-      });
-    }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
-  }
-  function isMine(list){ return !!(list.querySelector(".lx-searow")||list.querySelector(".sp-seaempty")); }
-
-  function wire(){
-    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
-    if(!inp||!list||inp.__lxsea) return;
-    inp.__lxsea=1;
-    inp.addEventListener("input", render);
-    inp.addEventListener("keyup", render);
-    // re-assert if the design re-renders its own rows while a query is active
-    try{ new MutationObserver(function(){ var q=(inp.value||"").trim(); if(q && !isMine(list)) render(); }).observe(list,{childList:true}); }catch(e){}
-  }
-  function boot(){ wire(); setTimeout(wire,400); setTimeout(wire,1200); }
-  if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
-  // the search popup mounts lazily on some pages; re-wire when the header search button is clicked
-  document.addEventListener("click", function(e){ var b=e.target&&e.target.closest&&e.target.closest("#headerSearchBtn,[data-open-search]"); if(b) setTimeout(wire,60); }, true);
-  // AUDIT FIX: the bare topbar "Search assets" input (dashboard + other in-app pages) was completely DEAD —
-  // it is not the popup's #spSearchInput and nothing ever bound it. Make it a LAUNCHER: focusing (or having
-  // typed into) it opens the search popup via the design's own #headerSearchBtn path and forwards the query.
-  function launchPopup(seed){
-    // some pages (the dashboard) have NO #headerSearchBtn / opener at all — open the overlay directly.
-    var btn=document.getElementById("headerSearchBtn")||document.querySelector("[data-open-search]");
-    var ov=document.getElementById("searchPopup");
-    if(btn){ btn.click(); }
-    else if(ov){ ov.style.display="flex"; ov.classList.add("open");
-      if(!ov.__lxclose){ ov.__lxclose=1;
-        ov.addEventListener("click",function(e){ if(e.target===ov){ ov.style.display="none"; ov.classList.remove("open"); } });
-        document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&ov.style.display!=="none"){ ov.style.display="none"; ov.classList.remove("open"); } });
-      } }
-    setTimeout(function(){ wire(); var si=document.getElementById("spSearchInput");
-      if(si){ if(seed){ si.value=seed; try{ si.dispatchEvent(new Event("input",{bubbles:true})); }catch(_){} } try{ si.focus(); }catch(_){} } },90);
-  }
-  // STRICT structural scope: ONLY the header topbar's .search-box input (the dead one). An earlier version
-  // matched ANY input whose placeholder said "search", which hijacked the asset/network pickers inside the
-  // Bridge destination, wallet Send, Swap and Create Pool modals — focusing those opened the global search.
-  document.addEventListener("focusin", function(e){ var t=e.target;
-    if(!t||t.tagName!=="INPUT"||t.id==="spSearchInput"||!t.closest)return;
-    var box=t.closest(".search-box"); if(!box||!box.closest(".topbar"))return;          // header search box only
-    if(t.closest("#searchPopup,[class*=modal],[class*=dropdown],[class*=menu],[class*=picker],[class*=popup],[role=dialog]"))return;
-    var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
-    launchPopup(seed);
-  }, true);
 })();</script><style id="lx-mc-css">.lxmc{position:relative;flex-shrink:0}.lxmc-trig{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;font:600 14px/1 "Hanken Grotesk",system-ui,sans-serif;transition:.15s}.lxmc-trig:hover{border-color:var(--border-strong)}.lxmc-logo,.lxmc-ol{width:24px;height:24px;border-radius:50%;overflow:hidden;display:inline-flex;flex-shrink:0;background:var(--surface-3,#eee)}.lxmc-logo img,.lxmc-ol img{width:100%;height:100%;object-fit:cover;display:block}.lxmc-name{white-space:nowrap}.lxmc-trig svg{width:14px;height:14px;color:var(--text-soft)}.lxmc-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:200;min-width:216px;background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.28)}.lxmc-menu[hidden]{display:none}.lxmc-opt{width:100%;display:flex;align-items:center;gap:11px;padding:9px 11px;border:none;background:transparent;color:var(--text);border-radius:10px;cursor:pointer;font:600 14.5px/1 "Hanken Grotesk",system-ui,sans-serif;text-align:left}.lxmc-opt:hover{background:var(--surface-2)}.lxmc-opt.active{background:var(--accent-soft);color:var(--accent)}@media(max-width:1080px){.lxmc-name{display:none}.lxmc-trig{padding:0 9px}}.lxw-neti{overflow:hidden;background:var(--surface-3,#eee)!important}.lxw-neti img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}</style><script id="lx-mc">(function(){
 if(window.__lxMC)return;window.__lxMC=true;
 var CHAINS={"aptos":{"name":"Aptos","tk":"APT","logo":"data:image/webp;base64,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"},"hedera":{"name":"Hedera","tk":"HBAR","logo":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMDAwMCIvPjxwYXRoIGQ9Ik0xMSA5djE0TTIxIDl2MTRNMTAgMTQuNWgxMk0xMCAxNy41aDEyIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMi40IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz48L3N2Zz4="},"starknet":{"name":"Starknet","tk":"STRK","logo":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzBjMGM0ZiIvPjxnIHRyYW5zZm9ybT0icm90YXRlKC0xOCAxNiAxNikiPjxyZWN0IHg9IjciIHk9IjEyIiB3aWR0aD0iMTIiIGhlaWdodD0iMy40IiByeD0iMS43IiBmaWxsPSIjZWM3OTZiIi8+PHJlY3QgeD0iMTEiIHk9IjE3IiB3aWR0aD0iMTIiIGhlaWdodD0iMy40IiByeD0iMS43IiBmaWxsPSIjZmZmIiBvcGFjaXR5PSIwLjg1Ii8+PC9nPjwvc3ZnPg=="},"vechain":{"name":"VeChain","tk":"VET","logo":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMiAzMiI+PGcgZmlsbD0ibm9uZSIgZmlsbC1ydWxlPSJldmVub2RkIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzE1QkRGRiIvPjxwYXRoIGZpbGw9IiNGRkYiIGZpbGwtcnVsZT0ibm9uemVybyIgZD0iTTE0LjczOCAyNC43MzRMNy4wNCA5LjA0NmEuMzguMzggMCAwMS4zNC0uNTQ2aDIuNjY4Yy4xNDMgMCAuMjc3LjA4LjM0LjIwNmw1LjYyMiAxMS4zODFjLjUgMS4wMiAxLjk1MSAxLjAyIDIuNDUyIDBsNS42MDQtMTEuMzcyYS4zODIuMzgyIDAgMDEuMzQtLjIwNmguMzMyYy4xOTcgMCAuMzIyLjIwNi4yMzMuMzc2bC03Ljc4IDE1Ljg1Yy0uNTAxIDEuMDItMS45NTEgMS4wMi0yLjQ1MyAweiIvPjwvZz48L3N2Zz4="},"worldchain":{"name":"World Chain","tk":"WLD","logo":"data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMzIgMzIiIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMDAwMCIvPjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjcuNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuNyIvPjxlbGxpcHNlIGN4PSIxNiIgY3k9IjE2IiByeD0iMy40IiByeT0iNy42IiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS43Ii8+PHBhdGggZD0iTTguNCAxNmgxNS4yIiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMS43Ii8+PC9zdmc+"},"stellar":{"name":"Stellar","tk":"XLM","logo":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+"},"xrpl":{"name":"XRP Ledger","tk":"XRP","logo":"data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzIzMjkyRiIvPjxwYXRoIGQ9Ik0yMy4wNyA4aDIuODlsLTYuMDE1IDUuOTU3YTUuNjIxIDUuNjIxIDAgMDEtNy44OSAwTDYuMDM1IDhIOC45M2w0LjU3IDQuNTIzYTMuNTU2IDMuNTU2IDAgMDA0Ljk5NiAwTDIzLjA3IDh6TTguODk1IDI0LjU2M0g2bDYuMDU1LTUuOTkzYTUuNjIxIDUuNjIxIDAgMDE3Ljg5IDBMMjYgMjQuNTYyaC0yLjg5NUwxOC41IDIwYTMuNTU2IDMuNTU2IDAgMDAtNC45OTYgMGwtNC42MSA0LjU2M3oiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+"}};
@@ -4813,5 +4697,152 @@ window.addEventListener('click',function(e){
     var ticks=0, iv=setInterval(function(){ guardApply(); if(++ticks>30)clearInterval(iv); },700);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
+})();</script><script id="lx-searchassets">(function(){
+  // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
+  // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
+  //
+  // A ticker is NOT an identity here — "SHX" alone matches six different issuers, one of which is Stronghold
+  // (91,001 trustlines, stronghold.co) and five of which are look-alikes. So every row carries the domain,
+  // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
+  var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
+  function launchTokens(){ try{ var e=JSON.parse(localStorage.getItem("lumos.launches")||"[]"); return (e&&e.length)?e:[]; }catch(_){ return []; } }
+  var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#3b82f6"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
+  function short(a){return a?a.slice(0,4)+"…"+a.slice(-4):"";}
+  function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+  function avatarUri(code){ var c=String(code||"?"),h=0; for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;
+    var t=c.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+h+',60%,50%)"/><text x="20" y="26" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="15" fill="#fff">'+t+'</text></svg>';
+    return "data:image/svg+xml,"+encodeURIComponent(svg); }
+  function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
+  // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
+  // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
+  var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
+  var VTICK='<span class="lx-seavfd" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+  function row(t){
+    var g=GRAD[(t.code.charCodeAt(0)||0)%GRAD.length];
+    // Always emit an <img>. The shared '.sp-ico.lx-spico-on' rule sets background:initial!important, so a
+    // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
+    // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
+    var sub = t.tl!=null ? (nfmt(t.tl)+" trustlines") : "Launchpad token";
+    // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
+    // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
+      ico+
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(t.domain||"Stellar mainnet")+'</span></div>'+
+      '<div class="sp-sub">'+esc(t.code)+' · '+esc(sub)+'</div></div>'+
+      '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
+  }
+  // Stellar public keys are base32 over [A-Z2-7], 56 chars, always leading with G. Anything else is a
+  // search term, not an address.
+  function isAddr(v){ return /^G[A-Z2-7]{55}$/.test(String(v||"").trim()); }
+  // The same deterministic identicon the account page and the holder lists draw, so one wallet keeps
+  // one face wherever it appears.
+  function identHash(x){ var h=2166136261; for(var i=0;i<x.length;i++){ h^=x.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
+  function identUri(addr){
+    var h=identHash(addr), hue=h%360, hue2=(hue+52)%360, cells="";
+    for(var x=0;x<3;x++)for(var y=0;y<5;y++){
+      if(!((identHash(addr+":"+x+":"+y)>>>3)&1))continue;
+      cells+='<rect x="'+(x*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
+      if(x<2)cells+='<rect x="'+((4-x)*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
+    }
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+      +'<stop offset="0%" stop-color="hsl('+hue+',62%,52%)"/><stop offset="100%" stop-color="hsl('+hue2+',60%,38%)"/>'
+      +'</linearGradient></defs><rect width="40" height="40" fill="url(#g)"/><g fill="rgba(255,255,255,.92)">'+cells+'</g></svg>';
+    return "data:image/svg+xml;base64,"+btoa(svg);
+  }
+  function acctRow(addr){
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+identUri(addr)
+      +'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/account/stellar/'+esc(addr)+'">'+ico+
+      '<div class="sp-info"><div class="sp-name-row">Stellar account <span class="sp-domain">wallet</span></div>'+
+      '<div class="sp-sub">Balances, pools and activity</div></div>'+
+      '<div class="sp-right"><div class="sp-addr-mini">'+short(addr)+'</div></div></a>';
+  }
+  function paint(list,html){ if(list.innerHTML!==html) list.innerHTML=html; }
+  function seaFetch(q,cb){
+    if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
+    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        var recs=(d&&d._embedded&&d._embedded.records)||[];
+        var out=recs.map(function(x){
+          var id=String(x.asset||""), p=id.split("-");
+          var ti=x.tomlInfo||{};
+          return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
+                  tl:(x.trustlines&&x.trustlines[0])||0, img:ti.image||ti.orgLogo||""};
+        }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
+        out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
+        SEA_CACHE[q]=out; cb(out);
+      })
+      .catch(function(){ cb(null); });                          // null = upstream failed (distinct from "no results")
+  }
+  function render(){
+    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
+    if(!inp||!list)return;
+    var raw=(inp.value||"").trim(), q=raw.toLowerCase();
+    if(!q){ return; }                       // empty -> let the design clear the list
+    // locally minted Launchpad tokens match instantly, with no round trip
+    var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&t.code.toLowerCase().indexOf(q)>=0; });
+    var seq=++SEA_SEQ;
+    // The account row needs no network call, so it lands on the first keystroke rather than after the
+    // asset index answers.
+    if(SEA_CACHE[q]===undefined) paint(list, (isAddr(raw)?acctRow(String(raw).trim()):"")
+      + '<div class="sp-seaempty">Searching Stellar mainnet…</div>');
+    clearTimeout(SEA_T);
+    SEA_T=setTimeout(function(){
+      seaFetch(q,function(remote){
+        if(seq!==SEA_SEQ)return;                                // a newer keystroke already won
+        if(remote===null){ paint(list,'<div class="sp-seaempty">Couldn’t reach the asset index — check your connection.</div>'); return; }
+        var seen={}, all=[];
+        local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
+        // An address answers itself: show the account first, then anything that address issued.
+        var lead = isAddr(raw) ? acctRow(String(raw).trim()) : "";
+        paint(list, (lead + (all.length ? all.map(row).join("") : ""))
+          || '<div class="sp-seaempty">No mainnet assets match “'+esc(raw)+'”</div>');
+      });
+    }, SEA_CACHE[q]!==undefined ? 0 : 220);                     // debounce only when we must hit the network
+  }
+  function isMine(list){ return !!(list.querySelector(".lx-searow")||list.querySelector(".sp-seaempty")); }
+
+  function wire(){
+    var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
+    if(!inp||!list||inp.__lxsea) return;
+    inp.__lxsea=1;
+    inp.addEventListener("input", render);
+    inp.addEventListener("keyup", render);
+    // re-assert if the design re-renders its own rows while a query is active
+    try{ new MutationObserver(function(){ var q=(inp.value||"").trim(); if(q && !isMine(list)) render(); }).observe(list,{childList:true}); }catch(e){}
+  }
+  function boot(){ wire(); setTimeout(wire,400); setTimeout(wire,1200); }
+  if(document.readyState!=="loading") boot(); else document.addEventListener("DOMContentLoaded",boot);
+  // the search popup mounts lazily on some pages; re-wire when the header search button is clicked
+  document.addEventListener("click", function(e){ var b=e.target&&e.target.closest&&e.target.closest("#headerSearchBtn,[data-open-search]"); if(b) setTimeout(wire,60); }, true);
+  // AUDIT FIX: the bare topbar "Search assets" input (dashboard + other in-app pages) was completely DEAD —
+  // it is not the popup's #spSearchInput and nothing ever bound it. Make it a LAUNCHER: focusing (or having
+  // typed into) it opens the search popup via the design's own #headerSearchBtn path and forwards the query.
+  function launchPopup(seed){
+    // some pages (the dashboard) have NO #headerSearchBtn / opener at all — open the overlay directly.
+    var btn=document.getElementById("headerSearchBtn")||document.querySelector("[data-open-search]");
+    var ov=document.getElementById("searchPopup");
+    if(btn){ btn.click(); }
+    else if(ov){ ov.style.display="flex"; ov.classList.add("open");
+      if(!ov.__lxclose){ ov.__lxclose=1;
+        ov.addEventListener("click",function(e){ if(e.target===ov){ ov.style.display="none"; ov.classList.remove("open"); } });
+        document.addEventListener("keydown",function(e){ if(e.key==="Escape"&&ov.style.display!=="none"){ ov.style.display="none"; ov.classList.remove("open"); } });
+      } }
+    setTimeout(function(){ wire(); var si=document.getElementById("spSearchInput");
+      if(si){ if(seed){ si.value=seed; try{ si.dispatchEvent(new Event("input",{bubbles:true})); }catch(_){} } try{ si.focus(); }catch(_){} } },90);
+  }
+  // STRICT structural scope: ONLY the header topbar's .search-box input (the dead one). An earlier version
+  // matched ANY input whose placeholder said "search", which hijacked the asset/network pickers inside the
+  // Bridge destination, wallet Send, Swap and Create Pool modals — focusing those opened the global search.
+  document.addEventListener("focusin", function(e){ var t=e.target;
+    if(!t||t.tagName!=="INPUT"||t.id==="spSearchInput"||!t.closest)return;
+    var box=t.closest(".search-box"); if(!box||!box.closest(".topbar"))return;          // header search box only
+    if(t.closest("#searchPopup,[class*=modal],[class*=dropdown],[class*=menu],[class*=picker],[class*=popup],[role=dialog]"))return;
+    var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
+    launchPopup(seed);
+  }, true);
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>
