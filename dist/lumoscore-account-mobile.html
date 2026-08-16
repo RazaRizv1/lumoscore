@@ -3836,10 +3836,15 @@ window.addEventListener('click',function(e){
     yXLM:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
     BTC:"GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF"};
   var LUMOS_ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
-  var LUMOS_LOGO="https://stellar.myfilebase.com/ipfs/QmTrohhpDADXPw9fkLT2J8aip7SxZEoqcvpZ7jBgW9HYSp";
+  var LUMOS_LOGO="/assets/tokens/lumos.png";
   var IMG={}, DOM={}, TRIED={};
   // the same verified pairs the rest of the site vouches for -- code|issuer, never code alone
   var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
+
+  // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
+  // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
+  var DDOM={"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"};
+  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
   var VTICK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
   function vtick(c,i){ return VFD[c+"|"+i]?('<span class="lx-vtick" title="Verified issuer">'+VTICK+'</span>'):""; }
   function key(c,i){ return c+"-"+(i||""); }
@@ -3964,7 +3969,8 @@ window.addEventListener('click',function(e){
       if(!a.__px){ a.__px=1; loadAssetPx(a); } });
     tb.innerHTML=rows.map(function(a){
       var sub = a.native ? "Native asset"
-        : ((DOM[key(a.code,a.issuer)]||"") ? (DOM[key(a.code,a.issuer)]+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer));
+        : (function(){ var _d=dispDom(a.code,a.issuer,DOM[key(a.code,a.issuer)]||"");
+            return _d ? (_d+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer); })();
       return '<tr class="acc-row" data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer||"")+'">'
         +'<td><span class="acc-pair"><span class="acc-ico" data-lxc="'+esc(a.code)+'" data-lxi="'+esc(a.issuer||"")+'"></span>'
           +'<span><span class="acc-code">'+esc(a.code)+'</span>'+vtick(a.code,a.issuer||"")

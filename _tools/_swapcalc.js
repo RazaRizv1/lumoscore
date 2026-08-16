@@ -22,7 +22,7 @@ const SW_STELLAR_URI = (function(){
   const uri = "data:image/svg+xml;base64," + Buffer.from(m[1]).toString("base64");
   if (uri.length < 400) throw new Error("_swapcalc: STELLAR_URI looks truncated (" + uri.length + " chars)");
   return uri; })();
-const SW_LUMOS_LOGO = "https://stellar.myfilebase.com/ipfs/QmTrohhpDADXPw9fkLT2J8aip7SxZEoqcvpZ7jBgW9HYSp";
+const SW_LUMOS_LOGO = "/assets/tokens/lumos.png";
 
 const STYLE='<style id="lx-swapcalc-css">'
 +'.lx-swapd{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:8px 13px;margin:0 0 13px;font-size:13.5px}'

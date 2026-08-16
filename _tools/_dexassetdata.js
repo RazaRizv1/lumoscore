@@ -23,7 +23,7 @@ const DXA_SUPINFO_CSS = (function(){
   if (rules.length < 200) throw new Error('_dexassetdata: .lx-supinfo CSS not found in _lumostoken.js');
   return rules; })();
 const DXA_SUPPLY_NOTE = '90% (9B LUMOS) supply is locked forever. The circulating supply is 1B LUMOS.';
-const { read, getContents, VERIFIED, VTICK_SVG } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, VTICK_SVG, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-dex-asset.html', 'lumoscore-dex-asset-dark.html', 'lumoscore-dex-asset-mobile.html'];
@@ -215,12 +215,17 @@ ${DXA_SUPINFO_CSS}
 const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("input",function(e){var t=e.target;if(t&&t.tagName==="INPUT"&&t.closest&&t.closest(".dxa-pane-limit")){try{setLimitTotalUsd();}catch(_){}try{setOrderCtx();}catch(_){}}},true);setInterval(function(){try{setLimitTotalUsd();}catch(_){}try{setOrderCtx();}catch(_){}},1000);var DXA_SUPPLY_NOTE_S="${DXA_SUPPLY_NOTE}";
   // shared verified set, same as the wallet, Trade main and search
   var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
+
+  // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
+  // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
+  var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
+  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
   var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
   if(window.__lxDXA)return;window.__lxDXA=true;
   var H="https://horizon.stellar.org";                       // MAINNET
   var CG="https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd";
   var DEFAULT_CODE="LUMOS", DEFAULT_ISSUER="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
-  var LUMOS_LOGO="https://stellar.myfilebase.com/ipfs/QmTrohhpDADXPw9fkLT2J8aip7SxZEoqcvpZ7jBgW9HYSp";
+  var LUMOS_LOGO="/assets/tokens/lumos.png";
   // hardcoded real logos so common assets never fall back to the initials-avatar placeholder (toml image is CORS-flaky/slow)
   var LOGO_ISS={USDC:"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",EURC:"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",AQUA:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",yXLM:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"};
   // ^ canonical issuers, verified on mainnet by holder count (Horizon /assets -> accounts.authorized).
@@ -394,8 +399,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         var c2=web.cloneNode(true); c2.setAttribute("data-lxfixed","1"); c2.setAttribute("data-lx-noswap","");
         if(web.parentNode){ web.parentNode.replaceChild(c2,web); web=c2; }
       }
-      if(homeDomain){ if(web.style.display==="none")web.style.display=""; if(web.getAttribute("href")!=="https://"+homeDomain){ web.setAttribute("href","https://"+homeDomain); web.setAttribute("target","_blank"); web.setAttribute("rel","noopener"); }
-        if(!fixTextNode(web,homeDomain))web.appendChild(document.createTextNode(" "+homeDomain));
+      var _hd=dispDom(CODE,ISSUER,homeDomain);
+      if(homeDomain){ if(web.style.display==="none")web.style.display=""; if(web.getAttribute("href")!=="https://"+_hd){ web.setAttribute("href","https://"+_hd); web.setAttribute("target","_blank"); web.setAttribute("rel","noopener"); }
+        if(!fixTextNode(web,_hd))web.appendChild(document.createTextNode(" "+_hd));
       } else if(web.style.display!=="none"){ web.style.display="none"; }
     }
     // breadcrumb current-asset segment + document title
