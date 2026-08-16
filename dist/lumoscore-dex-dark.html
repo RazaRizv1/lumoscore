@@ -4279,18 +4279,73 @@ window.addEventListener('click',function(e){
       holders:null,supply:null,spark:null,img:null,trades:null};
     byCode[key]=a; NATIVE.push(a); return a;
   }
+  // One request per 16 assets, served from the edge cache. Falls back to Horizon per asset if the
+  // endpoint is unreachable, so this can never be the reason a price is missing.
+  var BATCH=16;
+  function batchPx(list){
+    var want=list.filter(function(a){ return a&&a.code&&a.issuer; });
+    if(!want.length)return Promise.resolve();
+    var jobs=[];
+    for(var i=0;i<want.length;i+=BATCH)jobs.push(want.slice(i,i+BATCH));
+    return Promise.all(jobs.map(function(grp){
+      var qs=grp.map(function(a){ return a.code+"-"+a.issuer; }).join(",");
+      return fetchJ("/lxapi/dexassets?a="+encodeURIComponent(qs)).then(function(d){
+        if(!d||!d.a)throw new Error("empty");
+        grp.forEach(function(a){
+          var v=d.a[a.code+"-"+a.issuer]; if(!v)return;
+          if(v.px>0)a.px=v.px;
+          if(v.chg!=null)a.chg=v.chg;
+          if(v.vol!=null)a.vol=v.vol;
+          if(v.high!=null)a.high=v.high;
+          if(v.low!=null)a.low=v.low;
+          if(v.tr!=null)a.trades=v.tr;
+          if(v.ho!=null)a.holders=v.ho;
+          if(v.su!=null)a.supply=v.su;
+        });
+        touch();
+      }).catch(function(){
+        // endpoint down -> the old path, so the page degrades instead of emptying
+        return Promise.all(grp.map(function(a){ return loadAssetLite(a).catch(function(){}); }));
+      });
+    }));
+  }
+  // Sparklines and TVL are the bulk of the remaining Horizon traffic, and that traffic is what throttles
+  // the endpoint the prices come from. Hold them until the numbers are painted, then trickle in fours.
+  var EXTRA_HOLD=1200;
+  function deferExtras(list){
+    setTimeout(function(){ (function wave(i){ if(i>=list.length)return;
+      Promise.all(list.slice(i,i+4).map(function(a){ return rowExtras(a).catch(function(){}); }))
+        .then(function(){ wave(i+4); },function(){ wave(i+4); });
+    })(0); }, EXTRA_HOLD);
+  }
+  // Decorative extras, fetched only after the numbers are showing: the 7d sparkline and pool TVL.
+  function rowExtras(a){
+    if(a.__extra)return Promise.resolve(); a.__extra=1;
+    var atype=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
+    var base="base_asset_type="+atype+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer+"&counter_asset_type=native";
+    if(a.domain)loadToml(a,a.domain);
+    return Promise.all([
+      j(H+"/trade_aggregations?"+base+"&resolution=3600000&order=desc&limit=168").then(function(d){
+        var r=recs(d).slice().reverse();
+        var pts=r.map(function(x){ return +x.avg||+x.close||0; }).filter(function(v){ return v>0; });
+        if(pts.length>=2)a.spark=pts; touch(); }).catch(function(){}),
+      j(H+"/liquidity_pools?reserves="+a.code+":"+a.issuer+"&limit=200").then(function(d){
+        a.poolsRaw=recs(d).map(function(pl){ var nat=0,ass=0;
+          (pl.reserves||[]).forEach(function(rv){ if(rv.asset==="native")nat=+rv.amount;
+            else if(rv.asset.indexOf(a.code+":"+a.issuer)===0)ass=+rv.amount; });
+          return {nat:nat,ass:ass}; });
+        computeTvl(a); touch(); }).catch(function(){})
+    ]);
+  }
   function nativePrice(add){
     // ONLY the five the mints box shows, and only two requests each. Everything else is fetched when a
     // row is actually rendered -- see priceVisible(). Sweeping the roster here is what made the page
     // fire ~210 requests before showing a single price.
     var _first=add.slice().sort(function(x,y){ return (y.created||0)-(x.created||0); }).slice(0,5);
-    _first.forEach(function(a){ a.__lite=1; });
-    MINTS_READY=Promise.all(_first.map(function(a){ return loadAssetLite(a); })).then(function(){
-      var still=_first.filter(function(a){ return !(a.px>0); });
-      if(still.length){ still.forEach(function(a){ a.__px=1; });
-        Promise.all(still.map(function(a){ return loadAsset(a).catch(function(){}); })).then(function(){ nativeState=2; touch(); });
-      } else { nativeState=2; touch(); }
-    });
+    _first.forEach(function(a){ a.__lite=1; a.__px=1; });
+    // five assets, one request -- and the edge is not rate-limited the way each visitor was, which is
+    // what used to leave ZERO and UPT permanently showing a dash
+    MINTS_READY=batchPx(_first).then(function(){ nativeState=2; touch(); },function(){ nativeState=2; touch(); });
   }
   // Rows on screen get the full loadAsset (the table shows TVL and a sparkline); in waves of four so a
   // page turn cannot open 25 sockets at once.
@@ -4300,10 +4355,10 @@ window.addEventListener('click',function(e){
     if(!need.length)return;
     need.forEach(function(a){ a.__px=1; });
     var gate=MINTS_READY||Promise.resolve();
-    gate.then(function(){ (function wave(i){ if(i>=need.length)return;
-      Promise.all(need.slice(i,i+4).map(function(a){ return loadAsset(a).catch(function(){}); }))
-        .then(function(){ wave(i+4); },function(){ wave(i+4); });
-    })(0); });
+    gate.then(function(){
+      // numbers first, in one or two requests; the sparkline and TVL follow in waves of four
+      batchPx(need).then(function(){ deferExtras(need); });
+    });
   }
   function loadNative(){
     if(nativeState)return; nativeState=1;
@@ -4806,7 +4861,10 @@ window.addEventListener('click',function(e){
     j(CG).then(function(d){ if(d&&d.stellar){ if(+d.stellar.usd){ xlmUsd=+d.stellar.usd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } if(d.stellar.usd_24h_change!=null)xlmChg=+d.stellar.usd_24h_change; } recomputeAllTvl(); touch(); }).catch(function(){});
     // load ALL assets in PARALLEL so values + logos land together (no "loading one by one" cascade). When
     // every asset is in, flag loaded -> the movers compute their final top-4 order ONCE (no re-sort glitch).
-    Promise.all(ASSETS.map(function(a){ return loadAsset(a).catch(function(){}); })).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;}catch(_){} touch(); });
+    // the curated set the same way as everything else: numbers in one batched request, extras after
+    ASSETS.forEach(function(a){ a.__px=1; });
+    batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;}catch(_){} touch(); deferExtras(ASSETS); },
+      function(){ window.__lxDEXloaded=1; touch(); });
     // safety: reveal details even if an asset's request hangs (never leave the table stuck on placeholders)
     setTimeout(function(){ if(!window.__lxDEXloaded){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;}catch(_){} touch(); } }, 4500);
   }
