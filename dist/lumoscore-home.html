@@ -1497,8 +1497,10 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
 </style><style id="lx-searchassets-css">
-.lx-poolico .lx-pi{width:22px;height:22px;border-radius:50%;display:block;object-fit:cover;border:2px solid var(--surface,#131317);background:var(--surface-2)}
-.lx-poolico .lx-pi-b{margin-left:-8px}
+.lx-poolico{width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi{width:24px;height:24px;border-radius:50%;display:block;object-fit:cover;border:2px solid var(--surface,#131317);background:var(--surface-2);position:relative}
+.lx-poolico .lx-pi-a{z-index:2}
+.lx-poolico .lx-pi-b{margin-left:-12px}
 .sp-row--asset.lx-searow{text-decoration:none;color:inherit}
 .sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
 .sp-row--asset.lx-searow .sp-ico img{display:block}
@@ -6568,7 +6570,7 @@ window.addEventListener('click',function(e){
     }).catch(function(){ POOLI[id]={n:null,tvl:null}; poolFill(id); });
   }
   function poolRow(id){
-    var ico='<div class="sp-ico lx-spico-on lx-poolico" data-pool="'+esc(id)+'" style="position:relative;overflow:visible;background:none;display:flex;align-items:center">'
+    var ico='<div class="sp-ico lx-spico-on lx-poolico" data-pool="'+esc(id)+'" >'
       +'<img class="lx-pi lx-pi-a" alt="">'+'<img class="lx-pi lx-pi-b" alt="">'+'</div>';
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="/pools/stellar/id/'+esc(id)+'">'+ico+
       '<div class="sp-info"><div class="sp-name-row"><span class="lx-pool-pair" data-pool="'+esc(id)+'">Liquidity pool</span> <span class="sp-domain">Stellar AMM</span></div>'+
