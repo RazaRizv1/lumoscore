@@ -164,7 +164,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   var CODE="LUMOS";
   var ISSUER="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
   var RESV="LUMOS:GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
-  var LOGO="https://stellar.myfilebase.com/ipfs/QmTrohhpDADXPw9fkLT2J8aip7SxZEoqcvpZ7jBgW9HYSp";
+  var LOGO="/assets/tokens/lumos.png";
   var EXPLORER="https://stellar.expert/explorer/public/asset/LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
   var SUPPLY_NOTE="90% (9B LUMOS) supply is locked forever. The circulating supply is 1B LUMOS.";
   var DESC="LumosCore's native utility token — powers platform fees and rewards";   // own words, from the About LUMOS copy

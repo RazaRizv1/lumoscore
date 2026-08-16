@@ -38,4 +38,20 @@ const VERIFIED={
 // the tick itself, so every page draws the same mark
 const VTICK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
-module.exports={read,getContents,writeContents,VERIFIED,VTICK_SVG};
+// What WE show as an asset's home domain, where the on-chain value is stale.
+//
+// LUMOS's issuer still declares lumosdao.io, the pre-rename domain, and that is genuinely what Horizon and
+// the explorers report -- changing it on chain would mean re-issuing the asset. So our own surfaces show
+// the current domain and the explorer keeps showing the real one; nothing is concealed, and the link out
+// still goes where the chain says.
+//
+// Deliberately separate from VERIFIED: that map decides whether an asset is trusted (presence only, its
+// value is never compared), while this one decides what a reader sees. Folding the two together would mean
+// a display tweak could silently grant or revoke a verified tick.
+//
+// Lives here, like VERIFIED, because a domain that differs between pages is its own kind of wrong.
+const DOMAIN_DISPLAY={
+  "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"
+};
+
+module.exports={read,getContents,writeContents,VERIFIED,VTICK_SVG,DOMAIN_DISPLAY};

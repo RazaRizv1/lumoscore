@@ -19,7 +19,7 @@
 // freezes a one-build-old header and footer into this page.
 // Usage: node _tools/_accountpage.js [--write]
 const fs = require('fs');
-const { read, getContents, VERIFIED } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
 
 // the page we clone the shell from, and the keys we publish
 const SHELLS = [
@@ -302,10 +302,15 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     yXLM:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
     BTC:"GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF"};
   var LUMOS_ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
-  var LUMOS_LOGO="https://stellar.myfilebase.com/ipfs/QmTrohhpDADXPw9fkLT2J8aip7SxZEoqcvpZ7jBgW9HYSp";
+  var LUMOS_LOGO="/assets/tokens/lumos.png";
   var IMG={}, DOM={}, TRIED={};
   // the same verified pairs the rest of the site vouches for -- code|issuer, never code alone
   var VFD=${JSON.stringify(VERIFIED)};
+
+  // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
+  // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
+  var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
+  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
   var VTICK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
   function vtick(c,i){ return VFD[c+"|"+i]?('<span class="lx-vtick" title="Verified issuer">'+VTICK+'</span>'):""; }
   function key(c,i){ return c+"-"+(i||""); }
@@ -430,7 +435,8 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       if(!a.__px){ a.__px=1; loadAssetPx(a); } });
     tb.innerHTML=rows.map(function(a){
       var sub = a.native ? "Native asset"
-        : ((DOM[key(a.code,a.issuer)]||"") ? (DOM[key(a.code,a.issuer)]+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer));
+        : (function(){ var _d=dispDom(a.code,a.issuer,DOM[key(a.code,a.issuer)]||"");
+            return _d ? (_d+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer); })();
       return '<tr class="acc-row" data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer||"")+'">'
         +'<td><span class="acc-pair"><span class="acc-ico" data-lxc="'+esc(a.code)+'" data-lxi="'+esc(a.issuer||"")+'"></span>'
           +'<span><span class="acc-code">'+esc(a.code)+'</span>'+vtick(a.code,a.issuer||"")

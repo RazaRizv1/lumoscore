@@ -14,7 +14,7 @@
 //
 // Usage: node _tools/_mobdex.js [--write]
 const fs = require('fs');
-const { read, getContents, VERIFIED, VTICK_SVG } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, VTICK_SVG, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-dex-mobile.html'];
 
@@ -114,6 +114,11 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   // The icon carries the code twice on purpose: data-lxic is what we paint from, data-lxc is the healer's
   // documented opt-out. See PAINTER-PROOF ICONS in STYLE.
   var VFD={"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":1,"EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":1,"yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":1,"yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":1,"SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":1,"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":1,"AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":1};
+
+  // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
+  // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
+  var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
+  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
   var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
   function vtick(a){ return (a && a.code && a.issuer && VFD[a.code+"|"+a.issuer]) ? VTICK : ""; }
   function ico(cls,a){
@@ -144,7 +149,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       return '<div class="mdx-mint-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +ico("mdx-mint-ic",a)
         +'<div><div class="mdx-mint-name">'+esc(a.code)+'</div>'
-        +'<div class="mdx-mint-sub">'+esc(a.domain||"Stellar")+'</div></div>'
+        +'<div class="mdx-mint-sub">'+esc(dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</div></div>'
         +'<div class="mdx-mint-right"><div>'+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</div>'
         +'<div class="mdx-mint-sub">'+esc(a.trades==null?DASH:num(a.trades,0)+" trades")+'</div></div></div>';
     }).join("");
@@ -167,7 +172,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       return '<div class="mdx-mover-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +ico("mdx-mover-ic",a)
         +'<div class="mdx-mover-main"><div class="mdx-mover-pair">'+esc(a.code)+vtick(a)+'</div>'
-        +'<div class="mdx-mover-sub">'+esc(a.domain||"Stellar")+'</div></div>'
+        +'<div class="mdx-mover-sub">'+esc(dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</div></div>'
         +'<div class="mdx-mover-right">'
         +'<div class="mdx-mover-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
         +'<div class="mdx-mover-pct '+(up?"up":"down")+'">'+esc(pct(n(a.chg)))+'</div>'
@@ -215,7 +220,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         +'<div class="mdx-mk-top">'+ico("mdx-mk-ic",a)
         +'<div class="mdx-mk-meta"><div class="mdx-mk-name-row">'
         +'<span class="mdx-mk-name">'+esc(a.code)+vtick(a)+'</span>'
-        +'<span class="mdx-mk-domain">'+esc(a.domain||"Stellar")+'</span></div>'
+        +'<span class="mdx-mk-domain">'+esc(dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</span></div>'
         +'<div class="mdx-mk-vol">Vol '+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</div></div>'
         +'<div class="mdx-mk-right">'
         +'<div class="mdx-mk-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
