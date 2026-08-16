@@ -120,6 +120,82 @@ async function fetchTimeout(url, ms) {
   const t = setTimeout(() => ctl.abort(), ms);
   try { return await fetch(url, { signal: ctl.signal }); } finally { clearTimeout(t); }
 }
+// Local mirror of functions/lxapi/dexassets — price a batch of assets in one request. Server-side, so
+// neither the browser's six-connection-per-host limit nor Horizon's CORS-less 429 applies. Keep this in
+// step with the Pages Function; the shapes must match or the page behaves differently once deployed.
+const DEX_CACHE = new Map();
+const DEX_MAX = 16;
+function dexPriceOf(bar) {
+  if (!bar) return 0;
+  const close = +bar.close || 0; if (close > 0) return close;
+  const avg = +bar.avg || 0; if (avg > 0) return avg;
+  // below 1e-7 Horizon reports "0.0000000"; the volumes carry more precision
+  const b = +bar.base_volume || 0, c = +bar.counter_volume || 0;
+  return b > 0 && c > 0 ? c / b : 0;
+}
+async function dexOneAsset(code, issuer) {
+  const type = code.length <= 4 ? "credit_alphanum4" : "credit_alphanum12";
+  const base = "base_asset_type=" + type + "&base_asset_code=" + encodeURIComponent(code) +
+    "&base_asset_issuer=" + issuer + "&counter_asset_type=native";
+  const H = "https://horizon.stellar.org";
+  const out = { px: 0, chg: null, vol: null, high: null, low: null, tr: null, ho: null, su: null };
+  const recs = (d) => (d && d._embedded && d._embedded.records) || [];
+  // Horizon 429s under load and its 429 carries no CORS header, so upstream failure is common and cheap to
+  // ride out. Two backed-off retries here mean a throttled moment does not become a dash on the page.
+  const getJson = async (u) => {
+    let last;
+    for (const delay of [0, 400, 1200]) {
+      if (delay) await new Promise((r) => setTimeout(r, delay));
+      try {
+        const r = await fetchTimeout(u, 6000);
+        if (r.ok) return r.json();
+        last = new Error(String(r.status));
+      } catch (e) { last = e; }
+    }
+    throw last;
+  };
+  const agg = getJson(H + "/trade_aggregations?" + base + "&resolution=86400000&order=desc&limit=2")
+    .then((d) => { const r = recs(d); if (!r[0]) return;
+      out.px = dexPriceOf(r[0]); out.vol = +r[0].counter_volume || 0;
+      out.high = +r[0].high || 0; out.low = +r[0].low || 0; out.tr = +r[0].trade_count || 0;
+      const prev = dexPriceOf(r[1]); if (prev > 0 && out.px > 0) out.chg = ((out.px - prev) / prev) * 100;
+    }).catch(() => {});
+  const meta = getJson(H + "/assets?asset_code=" + encodeURIComponent(code) + "&asset_issuer=" + issuer)
+    .then((d) => { const rec = recs(d)[0]; if (!rec) return;
+      if (rec.accounts) out.ho = (+rec.accounts.authorized || 0) + (+rec.accounts.authorized_to_maintain_liabilities || 0);
+      if (rec.balances) out.su = +rec.balances.authorized || +rec.balances.authorized_to_maintain_liabilities || null;
+      else if (rec.amount != null) out.su = +rec.amount;
+    }).catch(() => {});
+  await Promise.all([agg, meta]);
+  return out;
+}
+async function dexAssets(req, res, q) {
+  const raw = (q.get("a") || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const bad = (m) => { res.writeHead(400, { "content-type": "application/json",
+    "access-control-allow-origin": "*" }); res.end(JSON.stringify({ error: m })); };
+  if (!raw.length) return bad("no assets");
+  if (raw.length > DEX_MAX) return bad("max " + DEX_MAX + " assets per call");
+  const wanted = [];
+  for (const r of raw) {
+    if (!LOGO_ASSET_RE.test(r)) return bad("bad asset: " + r.slice(0, 24));
+    const dash = r.lastIndexOf("-");
+    wanted.push({ key: r, code: r.slice(0, dash), issuer: r.slice(dash + 1) });
+  }
+  const now = Date.now(), a = {}, need = [];
+  for (const w of wanted) {
+    const c = DEX_CACHE.get(w.key);
+    if (c && now - c.ts < 300000) a[w.key] = c.v; else need.push(w);   // 5min: Horizon allows 100 req/5min per IP
+  }
+  const got = await Promise.all(need.map((w) => dexOneAsset(w.code, w.issuer).catch(() => null)));
+  need.forEach((w, i) => {
+    if (!got[i]) return;
+    a[w.key] = got[i];
+    // Never cache a throttled read. A px of 0 is indistinguishable from "we got rate limited", and caching
+    // it would pin a dash on the page for the next minute.
+    if (got[i].px > 0) DEX_CACHE.set(w.key, { ts: now, v: got[i] });
+  });
+  return logoJson(res, { ok: 1, a }, 300);
+}
 async function assetLogo(req, res, q) {
   const asset = q.get("asset") || "";
   if (!LOGO_ASSET_RE.test(asset)) { res.writeHead(400, { "content-type": "application/json" });
@@ -303,6 +379,7 @@ http.createServer((req, res) => {
   let p = decodeURIComponent((req.url || '/').split('?')[0]);
   if (p === '/lxapi/holders') return holdersProxy(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/assetlogo') return assetLogo(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/dexassets') return dexAssets(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/poolstats') return poolStats(req, res);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
