@@ -375,6 +375,115 @@ function poolStats(req, res) {
   });
 }
 
+// Local mirror of functions/lxapi/pools — the network-wide pool list ranked by real USD TVL.
+// Kept in step with functions/lxapi/pools.js; see that file for why the ranking is computed from
+// Horizon reserves rather than read from stellar.expert's total_value_locked.
+const LP_HOSTS = ['https://horizon.stellar.org', 'https://horizon.stellar.lobstr.co'];
+const LP_USDC = 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
+const LP_XPERT = 'https://api.stellar.expert/explorer/public/liquidity-pool';
+let LP_CACHE = null;
+function poolList(req, res, params) {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const getJ = async (path, host0) => {
+    for (let a = 0; a < 4; a++) {
+      try {
+        const r = await fetch(LP_HOSTS[a % LP_HOSTS.length] + path);
+        if (r.status === 429) { await sleep(700 * (a + 1)); continue; }
+        if (!r.ok) { await sleep(200); continue; }
+        return r.json();
+      } catch (_) { await sleep(200); }
+    }
+    return null;
+  };
+  const enumerate = async filter => {
+    const out = []; let cursor = '';
+    for (let g = 0; g < 120; g++) {
+      const d = await getJ('/liquidity_pools?' + filter + '&limit=200&order=asc' + (cursor ? '&cursor=' + cursor : ''));
+      if (!d) return null;
+      const recs = (d._embedded || {}).records || [];
+      for (const p of recs) out.push(p);
+      if (recs.length < 200) return out;
+      cursor = recs[recs.length - 1].paging_token;
+    }
+    return out;
+  };
+  const A32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const strkeyToHex = s => {
+    let bits = '';
+    for (const c of s) { const i = A32.indexOf(c); if (i < 0) return null; bits += i.toString(2).padStart(5, '0'); }
+    const by = [];
+    for (let i = 0; i + 8 <= bits.length; i += 8) by.push(parseInt(bits.slice(i, i + 8), 2));
+    return by.slice(1, 33).map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+  const assetOut = a => a.asset === 'native'
+    ? { code: 'XLM', issuer: null, amount: +a.amount || 0 }
+    : { code: String(a.asset).split(':')[0], issuer: String(a.asset).split(':')[1] || null, amount: +a.amount || 0 };
+
+  (async () => {
+    let ranked = LP_CACHE && Date.now() - LP_CACHE.ts < 900000 ? LP_CACHE.data : null;
+    if (!ranked) {
+      const rs = 900000, end = Math.ceil(Date.now() / rs) * rs;
+      const d = await getJ('/trade_aggregations?base_asset_type=credit_alphanum4&base_asset_code=USDC'
+        + '&base_asset_issuer=' + LP_USDC.split(':')[1] + '&counter_asset_type=native&resolution=' + rs
+        + '&start_time=' + (end - 12 * 3600000) + '&end_time=' + end + '&order=desc&limit=1');
+      const r0 = ((d || {})._embedded || {}).records || [];
+      // counter-per-base: this is XLM PER USDC, so the dollar price is its reciprocal (see the Pages Function)
+      const xlmPerUsdc = r0[0] ? (+r0[0].avg || +r0[0].close || 0) : 0;
+      const px = xlmPerUsdc > 0 ? 1 / xlmPerUsdc : 0;
+      if (!(px > 0.02 && px < 2)) throw new Error('no XLM price');
+
+      const [nat, usd] = await Promise.all([
+        enumerate('reserves=native'),
+        enumerate('reserves=' + encodeURIComponent(LP_USDC)),
+      ]);
+      if (!nat || !usd) throw new Error('incomplete enumeration');
+
+      const vol = new Map();
+      for (let p = 0; p < 6; p++) {
+        let d2 = null;
+        try { const r = await fetch(LP_XPERT + '?limit=200&cursor=' + p * 200, { headers: { accept: 'application/json' } }); if (r.ok) d2 = await r.json(); } catch (_) {}
+        const recs = ((d2 || {})._embedded || {}).records || [];
+        if (!recs.length) break;
+        for (const r of recs) { const h = strkeyToHex(r.id); if (h) vol.set(h, ((r.volume_value && +r.volume_value['1d']) || 0) / 1e7); }
+      }
+
+      const seen = new Set(), rows = [];
+      const push = (rec, tvl) => {
+        if (seen.has(rec.id)) return;
+        seen.add(rec.id);
+        const a = (rec.reserves || []).map(assetOut);
+        rows.push({ id: rec.id, a: a[0] || null, b: a[1] || null,
+          tvl: Math.round(tvl * 100) / 100, fee: (+rec.fee_bp || 0) / 100,
+          members: +rec.total_trustlines || 0,
+          vol24: vol.has(rec.id) ? Math.round(vol.get(rec.id) * 100) / 100 : null });
+      };
+      const leg = (rec, w) => (rec.reserves || []).findIndex(x => x.asset === w);
+      for (const rec of nat) { const i = leg(rec, 'native'); if (i >= 0) push(rec, 2 * (+rec.reserves[i].amount || 0) * px); }
+      for (const rec of usd) { const i = leg(rec, LP_USDC); if (i >= 0) push(rec, 2 * (+rec.reserves[i].amount || 0)); }
+      rows.sort((x, y) => y.tvl - x.tvl);
+      ranked = { rows, px, ranked: rows.length, withVol: rows.filter(r => r.vol24 !== null).length, ts: Date.now() };
+      LP_CACHE = { ts: Date.now(), data: ranked };
+    }
+
+    const per = Math.min(100, Math.max(1, parseInt(params.get('per') || '25', 10) || 25));
+    const page = Math.max(1, parseInt(params.get('page') || '1', 10) || 1);
+    const q = (params.get('q') || '').trim().toUpperCase().slice(0, 24);
+    let rows = ranked.rows;
+    if (q) rows = rows.filter(r => ((r.a && r.a.code) || '').toUpperCase().indexOf(q) >= 0
+      || ((r.b && r.b.code) || '').toUpperCase().indexOf(q) >= 0);
+    const total = rows.length, pages = Math.max(1, Math.ceil(total / per));
+    const start = Math.min((page - 1) * per, Math.max(0, (pages - 1) * per));
+    const body = JSON.stringify({ page: Math.floor(start / per) + 1, per, pages, total,
+      ranked: ranked.ranked, unpriceable: 28882, withVol: ranked.withVol,
+      xlmUsd: ranked.px, ts: ranked.ts, rows: rows.slice(start, start + per) });
+    res.writeHead(200, {'content-type':'application/json','cache-control':'public, max-age=120'});
+    res.end(body);
+  })().catch(e => {
+    res.writeHead(502, {'content-type':'application/json'});
+    res.end(JSON.stringify({ error: String((e && e.message) || e) }));
+  });
+}
+
 // Local mirror of functions/lxapi/soroswap — same allow-list, same shape, so the swap path behaves
 // identically in dev and production. The key comes from the environment, never the repo:
 //   $env:SOROSWAP_KEY = "sk_…" ; node serve.js 8080 --admin
@@ -460,6 +569,7 @@ http.createServer((req, res) => {
   if (p === '/lxapi/dexassets') return dexAssets(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/.well-known/stellar.toml') return stellarToml(req, res);
   if (p === '/lxapi/poolstats') return poolStats(req, res);
+  if (p === '/lxapi/pools') return poolList(req, res, new URL(req.url, 'http://x').searchParams);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
   }
