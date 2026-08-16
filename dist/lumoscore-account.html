@@ -4209,7 +4209,7 @@ window.addEventListener('click',function(e){
         +'<span class="acc-act-b"><span class="acc-act-t">'+esc(d.title)+'</span>'
         +'<span class="acc-act-s">'+esc(d.sub||"")+(d.sub?(" "+MID+" "):"")+(ts?ago(ts):"")+'</span></span>'
         +'<span class="acc-act-r"><span class="'+(d.cls||"")+'">'+esc(d.right||"")+'</span><br>'
-        +'<a href="https://stellar.expert/explorer/public/tx/'+esc(o.transaction_hash||"")+'" target="_blank" rel="noopener">tx <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a></span></div>'; }).join("");
+        +'<a href="https://stellar.expert/explorer/public/tx/'+esc(o.transaction_hash||"")+'" target="_blank" rel="noopener">tx <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span></div>'; }).join("");
   }
 
   // ---- load ---------------------------------------------------------------------------------------
@@ -4219,9 +4219,9 @@ window.addEventListener('click',function(e){
     var nt=q("#accNet"); if(nt&&!nt.style.backgroundImage)nt.style.backgroundImage="url("+STELLAR_URI+")";
     var sub=q("#accSub"); if(!sub)return;
     var bits=[];
-    if(ACCT&&ACCT.home_domain)bits.push('<span class="acc-tag">'+esc(ACCT.home_domain)+'</span>');
+
     if(ACCT&&ACCT.__created)bits.push("Active since "+esc(ACCT.__created));
-    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a>');
+    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>');
     sub.innerHTML=bits.join("");
   }
   function fail(msg){
