@@ -1519,6 +1519,24 @@ html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapsh
 .pair-icons .pa img,.pair-icons .pb img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 /* Typography parity with the rest of the site (e.g. Wallet › My Assets): numeric/value cells + tab counts
    use JetBrains Mono (tabular), the pair NAME stays Hanken Grotesk. Fixes "Pools text looks different". */
+/* network pool-list pager. #paginationAll ships from the design with a static "1-10 of 100"; its
+   contents are replaced wholesale, so these rules describe the whole footer rather than tweaking it. */
+/* display is deliberately NOT !important. The design's tab handler hides the footer by writing
+   pag.style.display="none" when My Pools is selected, and an !important rule in the stylesheet beats an
+   inline style -- so the pager stayed on screen under the My Pools list. Specificity here is the bug. */
+.lx-netpag{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:14px 4px 2px;margin-top:6px;border-top:1px solid var(--border);
+  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:13.5px;color:var(--text-soft)}
+.lx-netpag .lx-netpag-c{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lx-netpag button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  padding:6px 12px;font:inherit;font-weight:600;color:var(--text);cursor:pointer;transition:.16s}
+.lx-netpag button:hover:not(:disabled){border-color:var(--accent-soft)}
+.lx-netpag button:disabled{opacity:.4;cursor:default}
+.lx-netpag .lx-netpag-m{margin:0 8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lx-netpag .lx-netpag-i{font-variant-numeric:tabular-nums}
+.lx-netpag-host{margin-top:10px}
+@media (max-width:700px){ .lx-netpag{justify-content:center;text-align:center}
+  .lx-netpag .lx-netpag-i{width:100%;text-align:center} }
 #poolsBody td, #lx-mypanel td, #poolTabs .count{font-family:'JetBrains Mono',monospace!important}
 #poolsBody .pair-name, #lx-mypanel .pair-name{font-family:'Hanken Grotesk','Hanken Grotesk',sans-serif!important;font-size:15.5px!important;font-weight:700!important}
 #poolsBody .pair-sub, #lx-mypanel .pair-sub{font-size:12.5px!important}
@@ -5084,6 +5102,20 @@ window.addEventListener('click',function(e){
       th.style.cursor="pointer"; th.style.userSelect="none";
     });
   }
+  // Column sorting is OFF while the network list is up, and the headers say so rather than looking
+  // clickable and doing nothing. The old sort reordered DATA.pools, all five of them, in memory. Applied
+  // to the network list it could only reorder the 25 rows on screen out of 10,962 -- a "sort by members"
+  // that silently means "sort these 25 by members" is worse than no sort, because the top of the list
+  // would look authoritative and be wrong. Real column sorting needs the ranking rebuilt server-side per
+  // column; until then the list is ranked by TVL and the Liquidity header carries the arrow to show it.
+  function deadSort(){
+    var t=poolsTable(); if(!t)return;
+    [].slice.call(t.querySelectorAll("thead th")).forEach(function(th){
+      th.removeAttribute("data-lxsortable"); th.__lxsortf=null;
+      th.style.cursor="default";
+      setGlyph(th, /liquidity/i.test(th.textContent) ? "\u2193" : "");
+    });
+  }
   // The click itself is handled at WINDOW capture. A listener on the th cannot win: the design ships a
   // document-level capture shim that maps label text to pages, and document capture runs before the target
   // phase — so clicking "Liquidity" NAVIGATED instead of sorting. Window capture fires first, and
@@ -5102,6 +5134,187 @@ window.addEventListener('click',function(e){
       doSort(th);
     },true);
   }
+  // ---- NETWORK POOL LIST -------------------------------------------------------------------------
+  // "All Pools" used to be the five curated KNOWN pools. This renders the whole network instead, 25 at a
+  // time, ranked by real USD TVL, off /lxapi/pools.
+  //
+  // The ranking is NOT computed here and must not be: it is 10,962 priceable pools out of 39,844, which
+  // is 57 Horizon requests and ~15s against a browser budget of 100 requests per 5 minutes per IP. The
+  // endpoint does it once and caches; the page asks for one page at a time and gets a few KB.
+  //
+  // My Positions is deliberately untouched and still comes from DATA. It is a different question (which
+  // pools is THIS wallet in), it is already correct, and routing it through a network ranking would only
+  // put it at risk.
+  var NETPP=25;
+  var NET={page:1,q:"",rows:null,total:0,pages:1,busy:0,err:"",ranked:0,unpriceable:0,seq:0};
+  function netActive(){ return !!(q("#poolsBody")||q("#panelAll")); }
+  function netFetch(){
+    if(NET.busy)return; NET.busy=1;
+    var mySeq=++NET.seq;                       // a later request always wins; see the flapping note below
+    var u="/lxapi/pools?per="+NETPP+"&page="+NET.page+(NET.q?("&q="+encodeURIComponent(NET.q)):"");
+    fetch(u).then(function(r){ if(!r.ok)throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(d){
+      if(mySeq!==NET.seq)return;               // a newer query already answered; discard this one
+      if(!d||d.error)throw new Error((d&&d.error)||"bad payload");
+      NET.rows=d.rows||[]; NET.total=+d.total||0; NET.pages=Math.max(1,+d.pages||1);
+      NET.page=Math.max(1,+d.page||1); NET.ranked=+d.ranked||0; NET.unpriceable=+d.unpriceable||0;
+      NET.err=""; NET.busy=0; paintNet();
+    }).catch(function(e){
+      if(mySeq!==NET.seq){ NET.busy=0; return; }
+      // Keep whatever is already on screen. The pools SEARCH bug was exactly this: an error branch that
+      // painted itself over rows that had already arrived, so results appeared and then vanished.
+      NET.err=String((e&&e.message)||e); NET.busy=0; paintNet();
+    });
+  }
+  // A pool of two arbitrary assets. The KNOWN list was always CODE/XLM so allRow could hardcode that;
+  // across the network most pairs are not, and 880 ranked pools have no XLM leg at all.
+  function netLegs(p){
+    var a=p.a||{code:"?"},b=p.b||{code:"?"};
+    var la={code:a.code,issuer:a.issuer,native:a.code==="XLM"&&!a.issuer,amount:+a.amount||0};
+    var lb={code:b.code,issuer:b.issuer,native:b.code==="XLM"&&!b.issuer,amount:+b.amount||0};
+    return [la,lb];
+  }
+  // Liquidity reads as the XLM leg where there is one (what the old rows showed), else the first leg.
+  function netLiq(p){
+    var L=netLegs(p), m=L[0].native?L[0]:(L[1].native?L[1]:L[0]);
+    return qty(m.amount)+" "+esc(m.code);
+  }
+  // The detail page is built around an X/XLM pair. A pool with no XLM leg has no detail page, so it opens
+  // on the explorer instead -- same rule myRow/myCard already apply to non-XLM positions.
+  function netHref(p){
+    var L=netLegs(p);
+    return (L[0].native||L[1].native) ? detailUrl(p.id,null,null)
+      : ("https://stellar.expert/explorer/public/liquidity-pool/"+p.id);
+  }
+  function netFees(p){ return (p.vol24==null)?null:(p.vol24*(+p.fee||0)/100); }
+  function netRow(p,i){
+    var L=netLegs(p), n=(NET.page-1)*NETPP+i+1, idx=(n<10?"0":"")+n;
+    var f=netFees(p);
+    var volCell=(p.vol24==null)?'<td><div>&mdash;</div></td><td><div>&mdash;</div></td>'
+      :('<td><div>'+usd(p.vol24)+'</div></td><td><div>'+usd(f)+'</div></td>');
+    return '<tr class="lx-ammrow lx-netrow" data-pool="'+p.id+'" data-href="'+netHref(p)+'" style="cursor:pointer">'+
+      '<td class="idx">'+idx+'</td>'+
+      '<td><div class="pair-cell">'+icoPairG(L[0],L[1])+'<div><div class="pair-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
+      '<div class="pair-sub">'+p.fee+'% fee \u00b7 Stellar AMM</div></div></div></td>'+
+      '<td><div>'+netLiq(p)+'</div><div class="pair-sub">'+usd(p.tvl)+'</div></td>'+
+      volCell+
+      '<td>'+num(p.members)+'</td></tr>';
+  }
+  function netCard(p,i){
+    var L=netLegs(p), n=(NET.page-1)*NETPP+i+1, idx=(n<10?"0":"")+n;
+    var volCell=(p.vol24==null)?'<div class="v">&mdash;</div>':('<div class="v">'+usd(p.vol24)+'</div>');
+    return '<a class="pool-card lx-ammcard lx-netcard" data-pool="'+p.id+'" href="'+netHref(p)+'">'+
+      '<div class="pc-head">'+icoPairG(L[0],L[1],true)+
+      '<div class="pc-info"><div class="pc-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
+      '<div class="pc-sub">'+p.fee+'% fee \u00b7 Stellar AMM</div></div>'+
+      '<div class="pc-idx">#'+idx+'</div></div>'+
+      '<div class="pc-stats">'+
+      '<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+netLiq(p)+'</div><div class="vs">'+usd(p.tvl)+'</div></div>'+
+      '<div class="pc-stat"><div class="l">24h Vol</div>'+volCell+'</div>'+
+      '<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.members)+'</div></div>'+
+      '</div></a>';
+  }
+  function netFootHtml(){
+    var start=(NET.page-1)*NETPP+1, end=Math.min(NET.page*NETPP,NET.total);
+    var info=NET.total?("Showing "+num(start)+"\u2013"+num(end)+" of "+num(NET.total)+" pools"):"No pools";
+    return '<div class="lx-netpag-i">'+info+'</div>'+
+      '<div class="lx-netpag-c">'+
+      '<button type="button" data-np="first"'+(NET.page<=1?" disabled":"")+'>\u00ab First</button>'+
+      '<button type="button" data-np="prev"'+(NET.page<=1?" disabled":"")+'>\u2039 Prev</button>'+
+      '<span class="lx-netpag-m">Page '+num(NET.page)+' of '+num(NET.pages)+'</span>'+
+      '<button type="button" data-np="next"'+(NET.page>=NET.pages?" disabled":"")+'>Next \u203a</button>'+
+      '<button type="button" data-np="last"'+(NET.page>=NET.pages?" disabled":"")+'>Last \u00bb</button>'+
+      '</div>';
+  }
+  function paintNet(){
+    if(!netActive())return;
+    var rows=NET.rows;
+    // Nothing has arrived yet AND nothing failed: leave the page alone rather than flashing an empty
+    // table over the skeleton.
+    if(!rows&&!NET.err)return;
+    var body=q("#poolsBody"), mob=body?null:q("#panelAll");
+    var empty=NET.err
+      ? '<b>Could not load pools</b>'+esc(NET.err)
+      : (NET.q?'<b>No pools match \u201c'+esc(NET.q)+'\u201d</b>Try an asset code, e.g. USDC.':'<b>No pools</b>');
+    if(body){
+      var sig="net|"+NET.page+"|"+NET.q+"|"+(rows?rows.length:-1)+"|"+NET.err;
+      if(body.getAttribute("data-lxsig")!==sig){
+        body.innerHTML=(rows&&rows.length)?rows.map(netRow).join("")
+          :'<tr class="lx-ammrow"><td colspan="6"><div class="lx-amm-empty">'+empty+'</div></td></tr>';
+        body.setAttribute("data-lxsig",sig);
+        try{ healLogos(); }catch(_){}
+      }
+    }
+    if(mob){
+      var msig="net|"+NET.page+"|"+NET.q+"|"+(rows?rows.length:-1)+"|"+NET.err;
+      if(mob.getAttribute("data-lxsig")!==msig){
+        mob.innerHTML=(rows&&rows.length)?rows.map(netCard).join("")
+          :'<div class="lx-amm-empty">'+empty+'</div>';
+        mob.setAttribute("data-lxsig",msig);
+        try{ healLogos(); }catch(_){}
+      }
+    }
+    // The All Pools tab count is the whole ranked network, not the 25 on screen.
+    var allc=q("#poolTabs button[data-tab=all] .count")||q("#poolTabs .count");
+    if(allc){ setText(allc,num(NET.total)); snapDone(allc); }
+    // Footer. The design ships #paginationAll with a static "1-10 of 100"; replace its contents wholesale
+    // so there is exactly one pager, rather than updating its strongs and leaving dead controls beside.
+    var pag=q("#paginationAll");
+    if(!pag&&mob){ pag=q(".lx-netpag-host");
+      if(!pag){ pag=document.createElement("div"); pag.className="lx-netpag-host"; mob.parentNode.insertBefore(pag,mob.nextSibling); } }
+    if(pag){
+      pag.classList.add("lx-netpag");
+      var fsig=NET.page+"|"+NET.pages+"|"+NET.total;
+      if(pag.getAttribute("data-lxpsig")!==fsig){ pag.innerHTML=netFootHtml(); pag.setAttribute("data-lxpsig",fsig); }
+      // Only ever un-hide the pager while the All Pools panel is the one showing. A repaint that landed
+      // while My Pools was open would otherwise drag the All Pools footer back under the positions list.
+      var allPanel=q("#panelAllPools");
+      var allShown=!allPanel||getComputedStyle(allPanel).display!=="none";
+      if(allShown) pag.style.display=(NET.total>NETPP)?"flex":"none";
+    }
+  }
+  function netGo(p){
+    p=Math.max(1,Math.min(NET.pages,p));
+    if(p===NET.page&&NET.rows)return;
+    NET.page=p; NET.rows=null; NET.err="";
+    // Repaint the pager immediately so the click is acknowledged, then fetch.
+    var pag=q("#paginationAll")||q(".lx-netpag-host");
+    if(pag){ pag.innerHTML=netFootHtml(); pag.setAttribute("data-lxpsig",NET.page+"|"+NET.pages+"|"+NET.total); }
+    netFetch();
+    try{ var t=q("#poolsBody")||q("#panelAll"); if(t&&t.scrollIntoView)t.scrollIntoView({block:"start"}); }catch(_){}
+  }
+  if(!window.__lxNetWired){ window.__lxNetWired=1;
+    // Window capture, for the same reason doSort uses it: the design ships a document-level capture shim
+    // that maps label text to pages, and document capture beats the target phase. A plain button handler
+    // would be pre-empted and the click would navigate instead of paging.
+    window.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      var b=t.closest("[data-np]");
+      if(b){ e.preventDefault(); e.stopImmediatePropagation();
+        var k=b.getAttribute("data-np");
+        netGo(k==="first"?1:k==="last"?NET.pages:k==="prev"?NET.page-1:NET.page+1);
+        return; }
+      var row=t.closest(".lx-netrow");
+      if(row&&row.getAttribute("data-href")){ e.preventDefault(); e.stopImmediatePropagation();
+        location.href=row.getAttribute("data-href"); }
+    },true);
+  }
+  // Search runs SERVER-side over all 10,962 ranked pools. Filtering the 25 on screen would search one
+  // page of 439 and report "no pools" for anything not in the current slice.
+  function netWireSearch(){
+    var inp=null;
+    qa("input").forEach(function(x){ if(!inp&&/search pool/i.test(x.getAttribute("placeholder")||""))inp=x; });
+    if(!inp||inp.__lxnet)return; inp.__lxnet=1;
+    var tmr=null;
+    inp.addEventListener("input",function(){
+      clearTimeout(tmr);
+      tmr=setTimeout(function(){
+        var v=(inp.value||"").trim().toUpperCase();
+        if(v===NET.q)return;
+        NET.q=v; NET.page=1; NET.rows=null; NET.err=""; netFetch();
+      },260);
+    });
+  }
   function paintTables(){
     if(!DATA)return;
     wireHeroCover(); wireMyPosTab();
@@ -5112,28 +5325,34 @@ window.addEventListener('click',function(e){
     // + the active sort, so a repaint with nothing new produces byte-identical HTML and the
     // MutationObserver loop still settles on the first pass.
     var _tsig=DATA.pools.length+"|"+(volReady()?1:0)+"|"+String(SORTK)+"|"+SORTD;
-    if(allBody && (!allBody.querySelector(".lx-ammrow") || allBody.getAttribute("data-lxsig")!==_tsig)){
+    // The ALL POOLS list belongs to the network layer (paintNet) on this page. Both writing #poolsBody
+    // would be the two-painters bug: whichever ran last would win, and the MutationObserver that drives
+    // repaints would make them alternate. My Positions below is untouched and still comes from DATA.
+    var _netOwns=netActive();
+    if(!_netOwns && allBody && (!allBody.querySelector(".lx-ammrow") || allBody.getAttribute("data-lxsig")!==_tsig)){
       allBody.innerHTML=DATA.pools.length?sortedPools().map(allRow).join(""):'<tr class="lx-ammrow"><td colspan="6"><div class="lx-amm-empty"><b>No pools yet</b>Launch a token to create its first pool.</div></td></tr>';
       allBody.setAttribute("data-lxsig",_tsig);
       try{ healLogos(); }catch(_){}
     }
     // Mobile has no #poolsBody: its all-pools list is a stack of .pool-card anchors in #panelAll.
     var mobList=allBody?null:q("#panelAll");
-    if(mobList && (!mobList.querySelector(".lx-ammcard") || mobList.getAttribute("data-lxsig")!==_tsig)){
+    if(!_netOwns && mobList && (!mobList.querySelector(".lx-ammcard") || mobList.getAttribute("data-lxsig")!==_tsig)){
       mobList.innerHTML=DATA.pools.length?sortedPools().map(allCard).join("")
         :'<div class="lx-amm-empty"><b>No pools yet</b>Launch a token to create the first one.</div>';
       mobList.setAttribute("data-lxsig",_tsig);
       try{ healLogos(); }catch(_){}
     }
-    wireSort();
+    if(!_netOwns) wireSort();
+    else deadSort();
     // My Positions TAB panel (design's original tab layout, restored)
     fillMyPos();
-    // tab counts: All Pools | My Positions
-    var allc=q("#poolTabs button[data-tab=all] .count")||q("#poolTabs .count"); if(allc){setText(allc,String(DATA.pools.length));snapDone(allc);}
+    // tab counts: All Pools | My Positions. paintNet owns the All count when the network list is up --
+    // DATA.pools is the curated handful and would read "5" over a 10,962-row list.
+    if(!_netOwns){ var allc=q("#poolTabs button[data-tab=all] .count")||q("#poolTabs .count"); if(allc){setText(allc,String(DATA.pools.length));snapDone(allc);} }
     var minec=q("#poolTabs button[data-tab=mine] .count"); if(minec){setText(minec,String(DATA.mine.length));snapDone(minec);}
     renameMineTab();
     // pagination footer: real count, single page (design mock said "1-10 of 100")
-    var pag=q("#paginationAll"); if(pag){ var st=pag.querySelectorAll("strong"); if(st[0])setText(st[0],(DATA.pools.length?"1":"0")+"\u2013"+DATA.pools.length); if(st[1])setText(st[1],String(DATA.pools.length)); var pc=pag.querySelector(".page-controls"); if(pc)pc.style.display=DATA.pools.length>10?"":"none"; }
+    if(!_netOwns){ var pag=q("#paginationAll"); if(pag){ var st=pag.querySelectorAll("strong"); if(st[0])setText(st[0],(DATA.pools.length?"1":"0")+"\u2013"+DATA.pools.length); if(st[1])setText(st[1],String(DATA.pools.length)); var pc=pag.querySelector(".page-controls"); if(pc)pc.style.display=DATA.pools.length>10?"":"none"; } }
     wireCreatePool();
   }
   // header/subtitle testnet wording
@@ -6901,6 +7120,11 @@ window.addEventListener('click',function(e){
       // Network-wide Market Overview figures. Hooked HERE, not to the hero decoration builder — that
       // builder is desktop-shaped and never runs on the phone, so loadNet() was never called there.
       try{ loadNet(); }catch(_){}
+      // The network pool list. Started HERE alongside loadNet for the same reason: this is the gate that
+      // fires on both desktop and phone. It does not wait on load() -- the ranked page comes from
+      // /lxapi/pools and has no dependency on DATA, so the list fills while the wallet-side work runs.
+      try{ netFetch(); netWireSearch(); }catch(_){}
+      [200,700,1600].forEach(function(ms){ setTimeout(function(){ try{ netWireSearch(); paintNet(); }catch(_){} },ms); });
       // fetch just the balances up-front so Create Pool's asset dropdown is populated immediately
       // (it used to wait on the full pools load and showed an empty list for seconds)
       try{ var _cpa=myAddr(); if(_cpa)(window.__lxAcct?window.__lxAcct(_cpa):getJSON(H+"/accounts/"+_cpa)).then(function(acc){ _cpBals=(acc&&acc.balances)||[]; try{ wireCreatePool(); }catch(_e){} }).catch(function(){}); }catch(_){}
