@@ -102,7 +102,16 @@ for(const dev of ['desktop','mobile']){
   const {json,s,e}=getContents(data);
   for(const k of Object.keys(json)){
     let h=json[k];
-    if(h.indexOf('trendingList')<0) continue;   // dashboard page only
+    // Strip BEFORE the guard (landmine #11). A page that no longer hosts the trending list was skipped
+    // outright, so an lx-trending script injected back when it did stayed in the container and kept
+    // running with whatever VERIFIED list was current then. A skipped key is one this transform can
+    // otherwise never clean, so removal happens first and unconditionally.
+    const hadT=h.indexOf('<script id="lx-trending">')>=0;
+    h=h.replace(/<style id="lx-trending-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-trending">[\s\S]*?<\/script>/,'');
+    if(h.indexOf('trendingList')<0){            // dashboard page only
+      if(hadT)json[k]=h;                        // but do persist the removal (the container is always written)
+      continue;
+    }
     // The container is the Aptos original, so this heading still read "Trending on Aptos" on a product
     // that is Stellar-only — on both layouts, and live. The rows underneath have always been Stellar
     // assets, which made it worse, not better.
