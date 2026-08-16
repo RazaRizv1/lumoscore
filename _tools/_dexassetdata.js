@@ -608,7 +608,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   function drawCandles(pts){
     var pc=q("#dxaChart,#mdxaChart"); if(!pc||!pts||pts.length<2)return;
     var svg=pc.querySelector("svg"); if(!svg){ svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); pc.insertBefore(svg,pc.firstChild); }
-    var W=900,HT=380,PADL=14,PADR=100,PADT=16,PADB=28,n=pts.length;   // PADR 64->100: 64 units is 44px at the chart's real width, and a price label needs ~62
+    var W=900,HT=380,PADL=14,PADT=16,PADB=28,n=pts.length;
+    // The gutter is sized in PIXELS, not viewBox units, and that is the whole point. viewBox units scale
+    // with the chart, so one fixed PADR gives 69px of gutter on a desktop and 35px on a phone -- while the
+    // price label it has to hold is the same ~56px on both. A fixed 100 put every label 19px on top of the
+    // line on a 375px handset. Deriving PADR from the measured width keeps the gutter constant instead,
+    // and the cap stops a very narrow chart from spending more than a quarter of itself on the axis.
+    var _pw=pc.getBoundingClientRect().width||622, PADR=Math.min(W*0.25, Math.round(900*70/_pw));
     var lows=pts.map(function(p){return p.l||p.v;}).slice().sort(function(a,b){return a-b;});
     var highs=pts.map(function(p){return p.h||p.v;}).slice().sort(function(a,b){return a-b;});
     var lo=lows[Math.floor(lows.length*0.03)]||lows[0], hi=highs[Math.ceil(highs.length*0.97)-1]||highs[highs.length-1];
@@ -631,7 +637,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var pc=q("#dxaChart,#mdxaChart"); if(!pc||!pts||pts.length<2)return;
     var svg=pc.querySelector("svg");
     if(!svg){ svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); pc.insertBefore(svg,pc.firstChild); }
-    var W=900,HT=380,PADL=14,PADR=100,PADT=16,PADB=28,n=pts.length;   // PADR 64->100: 64 units is 44px at the chart's real width, and a price label needs ~62
+    var W=900,HT=380,PADL=14,PADT=16,PADB=28,n=pts.length;
+    // The gutter is sized in PIXELS, not viewBox units, and that is the whole point. viewBox units scale
+    // with the chart, so one fixed PADR gives 69px of gutter on a desktop and 35px on a phone -- while the
+    // price label it has to hold is the same ~56px on both. A fixed 100 put every label 19px on top of the
+    // line on a 375px handset. Deriving PADR from the measured width keeps the gutter constant instead,
+    // and the cap stops a very narrow chart from spending more than a quarter of itself on the axis.
+    var _pw=pc.getBoundingClientRect().width||622, PADR=Math.min(W*0.25, Math.round(900*70/_pw));
     // winsorize to 5th-95th percentile (thin markets have bad-fill outliers that collapse the y-scale)
     var sorted=pts.map(function(p){return p.v;}).slice().sort(function(a,b){return a-b;});
     var lo=sorted[Math.floor(sorted.length*0.05)]||sorted[0], hi=sorted[Math.ceil(sorted.length*0.95)-1]||sorted[sorted.length-1];
@@ -2275,7 +2287,40 @@ for (const file of files) {
     }
     // Move the price-change block under the chart. Idempotent: once it lives inside .chart-section the
     // scan below finds it there and leaves it alone, so re-running the transform is a no-op.
+    // Mobile: the same move, different markup. The design stacks its cards chart / trade / price-change /
+    // tabs, so the six figures sat BELOW the trade widget -- a screen and a half from the line they describe,
+    // and the opposite of where the desktop layout now puts them. Lift the card to sit directly under the
+    // chart so the reading order matches on both: chart, price change, trade, ad.
+    //
+    // Anchored on the design's own "Trade card" comment rather than on a div index. The mobile page is one
+    // flat column of sibling cards with no wrapper to depth-match against, so a comment is the only marker
+    // here that names what follows it.
     (function(){
+      var POPEN = String.fromCharCode(60) + 'div class="card mdxa-perf-card">';
+      var TRADE = String.fromCharCode(60) + '!-- Trade card';
+      var pi = p.indexOf(POPEN); if (pi < 0) return;
+      var ti = p.indexOf(TRADE); if (ti < 0) return;
+      if (pi < ti) return;                                   // already moved
+      // take the design's own comment with it rather than leaving it orphaned
+      var start = pi, cmt = p.lastIndexOf(String.fromCharCode(60) + '!-- Price change grid --' + String.fromCharCode(62), pi);
+      if (cmt >= 0 && pi - cmt < 40) start = cmt;
+      // depth-walk to the card's own close: indexOf("</div>") stops at the first perf-cell's
+      var d = 0, k = pi;
+      while (k < p.length) {
+        var no = p.indexOf(String.fromCharCode(60) + 'div', k), nc = p.indexOf(String.fromCharCode(60) + '/div>', k);
+        if (nc < 0) return;
+        if (no >= 0 && no < nc) { d++; k = no + 4; continue; }
+        d--; k = nc + 6;
+        if (d === 0) break;
+      }
+      if (d !== 0) return;
+      var block = p.slice(start, k);
+      var without = p.slice(0, start) + p.slice(k);
+      // recompute against the string being KEPT: removing the block shifts every offset after it
+      var ti2 = without.indexOf(TRADE); if (ti2 < 0) return;
+      p = without.slice(0, ti2) + block + String.fromCharCode(10) + '      ' + without.slice(ti2);
+    })();
+        (function(){
       var OPEN = '<div class="dxa-perf-card">';        // exact, so mobile's mdxa-perf-card cannot match
       var ci = p.indexOf('<div class="chart-section">');
       var pi = p.indexOf(OPEN);

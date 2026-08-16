@@ -33,7 +33,12 @@ const fs = require('fs');
 const { read, getContents, VTICK_SVG } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
-const KEYS = ['lumoscore-dex-asset.html', 'lumoscore-dex-asset-dark.html'];
+// The mobile build is a separate container with a separate page key and no rail at all, so it needs its
+// own insertion point (below) -- but the same creatives, the same resolver and the same CSS.
+const CONTAINERS = [
+  { file: 'lumoscore-aptos-desktop.html', keys: ['lumoscore-dex-asset.html', 'lumoscore-dex-asset-dark.html'] },
+  { file: 'lumoscore-aptos-mobile.html',  keys: ['lumoscore-dex-asset-mobile.html'] },
+];
 const LUMOS_ISS = 'GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S';
 
 // ---- creatives -----------------------------------------------------------------------------------------
@@ -199,15 +204,37 @@ const SCRIPT = `<script id="lx-ad">
   // The design's own click handler opens asset pages without the ?asset= query, so a plain anchor here
   // would land every click on default LUMOS. Window-capture is the earliest phase available, which is
   // what lets us stop that handler before it sees the event.
+  function target(t){
+    if(!t||!t.closest) return null;
+    if(t.closest(".lxad-why")) return null;       // the booking link, not the creative
+    var ad=t.closest(".lxad"); if(!ad) return null;
+    return ad.getAttribute("data-href")||null;
+  }
+  function go(href,e){ e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+    try{ window.location.href=href; }catch(_){} }
+
   if(!window.__lxAdNav){ window.__lxAdNav=1;
-    window.addEventListener("click",function(e){
-      var t=e.target; if(!t||!t.closest) return;
-      if(t.closest(".lxad-why")) return;          // not a click on the creative
-      var ad=t.closest(".lxad"); if(!ad) return;
-      var href=ad.getAttribute("data-href"); if(!href) return;
-      e.preventDefault(); e.stopImmediatePropagation();
-      try{ window.location.href=href; }catch(_){}
-    },true);
+    window.addEventListener("click",function(e){ var h=target(e.target); if(h) go(h,e); },true);
+
+    // A TAP IS NOT A CLICK on a handset (DEV landmine 10). The design's own handlers have the same
+    // problem, which is why controls that work in the browser pane do nothing on a real phone -- and why
+    // a pane check alone never catches it. So the card listens for the touch directly.
+    //
+    // The guard matters more than the handler: the ad is a big block in a long scrolling page, so without
+    // it every flick that happens to start on the card would navigate. A touch only counts as a tap if the
+    // finger stayed within 12px and lifted inside 600ms.
+    var tx=0, ty=0, tt=0, tid=null;
+    window.addEventListener("touchstart",function(e){
+      var t=e.touches&&e.touches[0]; if(!t) return;
+      tid=target(e.target); tx=t.clientX; ty=t.clientY; tt=Date.now();
+    },{passive:true,capture:true});
+    window.addEventListener("touchend",function(e){
+      if(!tid) return; var h=tid; tid=null;
+      var t=e.changedTouches&&e.changedTouches[0]; if(!t) return;
+      if(Date.now()-tt>600) return;                                  // a long press, or a paused scroll
+      if(Math.abs(t.clientX-tx)>12||Math.abs(t.clientY-ty)>12) return;  // a swipe, not a tap
+      go(h,e);
+    },{capture:true});
   }
 })();
 </script>`;
@@ -258,6 +285,17 @@ function strip(p) {
   return cutBlock(p, '<div class="lxad-wrap"', 'div');
 }
 
+// MOBILE has no rail: its sections are plain sibling cards in one column. The ad goes where the desktop
+// rail puts it relative to the same content -- after the trade card, before the bottom tab strip -- so the
+// reading order is the same on both: chart, price change, trade, ad.
+function insertBeforeTabsBar(p) {
+  const marker = p.indexOf(String.fromCharCode(60) + "!-- Bottom tabs");
+  const bar = p.indexOf('<div class="tabs-bar">');
+  if (bar < 0) return null;
+  const at = (marker >= 0 && marker < bar) ? marker : bar;   // keep the design's own comment above the ad
+  return p.slice(0, at) + WRAP + SCRIPT + p.slice(at);
+}
+
 // The slot goes at the end of the rail, under the trade card. The rail is an <aside>, and there is exactly
 // one </aside> in the rest of the page, so its close is unambiguous -- but assert that rather than trust it.
 function insertIntoRail(p) {
@@ -275,15 +313,15 @@ function insertIntoRail(p) {
 }
 
 let n = 0, containers = 0;
-for (const file of ['lumoscore-aptos-desktop.html']) {
+for (const { file, keys } of CONTAINERS) {
   const data = read(file);
   const { json, s, e } = getContents(data);
   let changed = false;
-  for (const k of KEYS) {
+  for (const k of keys) {
     if (!json[k]) continue;
     let p = strip(json[k]);
-    const withAd = insertIntoRail(p);
-    if (!withAd) { console.log('  SKIP ' + k + ': .dxa-trade-col rail not found'); continue; }
+    const withAd = insertIntoRail(p) || insertBeforeTabsBar(p);
+    if (!withAd) { console.log('  SKIP ' + k + ': no rail and no tab strip to anchor to'); continue; }
     p = withAd;
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
