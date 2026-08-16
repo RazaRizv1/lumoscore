@@ -4042,8 +4042,8 @@ window.addEventListener('click',function(e){
     return "data:image/svg+xml;base64,"+btoa(svg); }
   function logoOf(c,i){ if(c==="XLM")return STELLAR_URI;
     return brand(c,i)||IMG[key(c,i)]||initials(c); }
-  function paintLogos(){ qa(".acc-ico[data-c]").forEach(function(el){
-    var c=el.getAttribute("data-c"), i=el.getAttribute("data-i")||"";
+  function paintLogos(){ qa(".acc-ico[data-lxc]").forEach(function(el){
+    var c=el.getAttribute("data-lxc"), i=el.getAttribute("data-lxi")||"";
     el.style.backgroundImage="url("+logoOf(c,i)+")"; }); }
   // Same two-source chain the pools tab uses: the issuer-scoped index, then the issuer's own toml.
   function tomlField(block,k){ var lines=block.split(String.fromCharCode(10));
@@ -4156,7 +4156,7 @@ window.addEventListener('click',function(e){
       var sub = a.native ? "Native asset"
         : ((DOM[key(a.code,a.issuer)]||"") ? (DOM[key(a.code,a.issuer)]+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer));
       return '<tr class="acc-row" data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer||"")+'">'
-        +'<td><span class="acc-pair"><span class="acc-ico" data-c="'+esc(a.code)+'" data-i="'+esc(a.issuer||"")+'"></span>'
+        +'<td><span class="acc-pair"><span class="acc-ico" data-lxc="'+esc(a.code)+'" data-lxi="'+esc(a.issuer||"")+'"></span>'
           +'<span><span class="acc-code">'+esc(a.code)+'</span>'+vtick(a.code,a.issuer||"")
           +'<span class="acc-iss">'+esc(sub)+'</span></span></span></td>'
         +'<td class="num">'+amt(a.bal)+'</td>'
@@ -4196,8 +4196,8 @@ window.addEventListener('click',function(e){
     tb.innerHTML=plist.map(function(p){
       return '<tr class="acc-row" data-pool="'+esc(p.id)+'">'
         +'<td><span class="acc-pair"><span class="acc-icos">'
-          +'<span class="acc-ico" data-c="'+esc(p.a)+'" data-i="'+esc(p.ai||"")+'"></span>'
-          +'<span class="acc-ico" data-c="'+esc(p.b)+'" data-i="'+esc(p.bi||"")+'"></span></span>'
+          +'<span class="acc-ico" data-lxc="'+esc(p.a)+'" data-lxi="'+esc(p.ai||"")+'"></span>'
+          +'<span class="acc-ico" data-lxc="'+esc(p.b)+'" data-lxi="'+esc(p.bi||"")+'"></span></span>'
           +'<span><span class="acc-code">'+esc(p.a)+" / "+esc(p.b)+'</span>'
           +'<span class="acc-dom">'+(p.tl!=null?(p.tl+(p.tl===1?" LP holder":" LP holders")):"")+'</span></span></span></td>'
         +'<td class="num">'+(p.share>=0.01?p.share.toFixed(2):"<0.01")+'%</td>'
