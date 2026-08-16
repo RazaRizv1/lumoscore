@@ -49,7 +49,12 @@ const HOUSE = [
     domain: 'lumoscore.com',
     verified: true,
     logo: '/assets/tokens/lumos.png',
-    copy: 'The asset the platform runs on. Hold 250,000 and your trading fee drops from 0.5% to 0.25% ' +
+    // 0.2 -> 0.1, NOT 0.5 -> 0.25. The authority is _feerate.js:
+    //     window.__lxFeeRate = (bal >= 250000) ? 0.001 : 0.002
+    // and the trade card's own fee row is on the same screen as this card, so a wrong number here
+    // contradicts the product in the reader's eye line. If that tier ever changes, this string is one
+    // of the places that has to move with it.
+    copy: 'The asset the platform runs on. Hold 250,000 and your trading fee drops from 0.2% to 0.1% ' +
           '&mdash; and eligible pools pay their rewards in it.',
     cta: 'View LUMOS',
     // The clean-URL form, not lumoscore-dex-asset.html?asset=. The site redirects the query form to
