@@ -301,7 +301,28 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function qty(n){ n=+n||0; var a=Math.abs(n); if(a>=1e6)return (n/1e6).toFixed(2)+"M"; if(a>=1e3)return Math.round(n).toLocaleString("en-US"); if(a>=1)return (Math.round(n*100)/100).toLocaleString("en-US"); if(a>0){ var d=Math.min(7,Math.max(2,2-Math.floor(Math.log(a)/Math.LN10))); var s=n.toFixed(d); if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\\.$/,""); return s; } return "0"; }
   function usd(x){x=+x;if(!x)return "$0";var a=Math.abs(x);if(a>=1e9)return "$"+(x/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(x/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(x/1e3).toFixed(1)+"K";if(a>=1)return "$"+x.toFixed(2);return "$"+x.toFixed(x>=0.01?4:6);}
   function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
-  function getJSON(u){return fetch(u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
+  // HOST FALLBACK, per GUARDRAILS E12. Same gap the Trade-asset layer had, same symptom: Horizon allows
+  // 100 requests per 5 minutes PER IP, this page spends a large share of that on one load, and once the
+  // budget is gone every call fails. The page then shows "Couldn't load this pool from Horizon" and sits
+  // through its retry loop for ten seconds or more -- all of it self-inflicted, and all of it invisible as
+  // a rate limit because Horizon's 429 carries no CORS header, so the browser only ever reports a dead
+  // fetch. Reported from a real session, not a lab.
+  //
+  // The null-on-failure contract the rest of this file depends on is preserved exactly: callers still see
+  // null and their existing retries still key on it. A readable 4xx (no such pool) is a real answer and is
+  // NOT re-asked against the second host.
+  var H2="https://horizon.stellar.lobstr.co";
+  function getJSON(u){
+    function once(url){ return fetch(url).then(function(r){
+      if(r.ok)return r.json();
+      var e=new Error("HTTP"+r.status); e.__st=r.status; throw e; }); }
+    return once(u).catch(function(e){
+      var st=(e&&e.__st)||0;
+      if(st>=400&&st<500&&st!==429)return null;              // a real "no", not a busy network
+      if(u.indexOf(H)!==0)return null;                        // not a Horizon call: nothing to fall back to
+      return once(H2+u.slice(H.length)).catch(function(){ return null; });
+    });
+  }
   function myAddr(){try{var a=localStorage.getItem("lumos.address")||"";return /^G[A-Z2-7]{55}$/.test(a)?a:"";}catch(e){return "";}}
   function gcolor(s){return GRAD[ghash(s)%GRAD.length];}
   function launchIcon(code,issuer){ try{ var m=JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}"); return m[code+"-"+issuer]||""; }catch(e){ return ""; } }
