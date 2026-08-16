@@ -86,7 +86,14 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
 .lxda-exlink{display:inline-flex;align-items:center;justify-content:center;color:var(--text-soft,#8a8fa3)}
 .lxda-exlink:hover{color:var(--accent)}
 /* chart x-axis dates as an absolute HTML row (SVG text is squished by preserveAspectRatio=none) */
-.lxda-cdates{position:absolute;left:14px;right:64px;bottom:5px;display:flex;justify-content:space-between;gap:8px;font:600 11.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);pointer-events:none}
+.lxda-cdates{position:absolute;left:14px;right:70px;bottom:5px;display:flex;justify-content:space-between;gap:8px;font:600 11.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);pointer-events:none}
+/* The price axis. The plot has always reserved a right gutter (PADR) and never drawn anything in it, so
+   the chart could be read for shape but not for value -- there was no way to check a figure against the
+   line. Positioned as absolute HTML rather than <text> inside the svg because that svg is
+   preserveAspectRatio="none": glyphs in it would be stretched by the width/height ratio, differently at
+   every window size. Percentages below mirror PADT/PADB against the 380-unit viewBox. */
+.lxda-cprices{position:absolute;right:4px;top:4.211%;bottom:7.368%;width:64px;pointer-events:none}
+.lxda-cprices span{position:absolute;right:0;transform:translateY(-50%);font:600 10.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);white-space:nowrap}
 /* chart hover readout */
 .lxda-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
 .lxda-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:2px}
@@ -565,12 +572,43 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     if(d<=10368000000)return "1M";         // <= 120 days -> "Mon D"
     return "1Y"; }
   function fullDate(t){ var d=new Date(t),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; var hm=(chartTF==="1D")?(", "+(d.getHours()<10?"0":"")+d.getHours()+":"+(d.getMinutes()<10?"0":"")+d.getMinutes()):""; return mo[d.getMonth()]+" "+d.getDate()+hm; }
+  // A price on Stellar can be 1.5e-5 or 1234.5, so a fixed decimal count is wrong at one end or the other.
+  // Four significant figures reads correctly across that whole range; trailing zeros are trimmed so the
+  // column does not turn into a wall of noughts. No regex anywhere in here on purpose (DEV landmine 8):
+  // a /.$/ written in this file arrives in the browser as /.$/ and would eat the last digit instead.
+  function axisNum(v){ if(!(v>0))return "0";
+    var s=(v>=1)?v.toFixed(4):v.toPrecision(4);
+    if(s.indexOf("e")>=0)return s;
+    if(s.indexOf(".")>=0){ while(s.length&&s.charAt(s.length-1)==="0")s=s.slice(0,-1);
+                           if(s.charAt(s.length-1)===".")s=s.slice(0,-1); }
+    return s; }
+  // Five gridline values from the SAME mn/mx the line was plotted against -- never recomputed from the
+  // raw points. The plot winsorises to the 5th-95th percentile, so an axis built from raw min/max would
+  // label the chart with a scale it is not actually drawn on.
+  // THE AXIS IS IN XLM, and the conversion is the point rather than a detail. loadChart multiplies every
+  // point by xlmUsd, so the line has always been plotted in DOLLARS -- while the headline price, the OHLC
+  // strip, the orderbook and the Price stat card are all in XLM. With no axis on the chart nobody could
+  // see that the two halves of the page were quoting different units, which is exactly the kind of thing
+  // that makes a correct figure look wrong next to a correct chart.
+  //
+  // Dividing the bounds back out is exact, not an approximation: the conversion is one constant multiply,
+  // so winsorising in dollars and dividing gives the same numbers as winsorising in XLM. If the rate has
+  // not landed yet the values are still honest dollars, so they are labelled as dollars rather than
+  // mislabelled as XLM.
+  function priceAxis(pc,mn,mx){
+    var pr=pc.querySelector(".lxda-cprices");
+    if(!pr){ pr=document.createElement("div"); pr.className="lxda-cprices"; pc.appendChild(pr); }
+    if(!(mx>mn)){ pr.innerHTML=""; return; }
+    var rate=+xlmUsd, xlm=(rate>0), a=xlm?(mn/rate):mn, b=xlm?(mx/rate):mx, pre=xlm?"":"$";
+    var N=5,h="";
+    for(var i=0;i<N;i++){ var f=i/(N-1); h+='<span style="top:'+(f*100).toFixed(3)+'%">'+pre+axisNum(b-f*(b-a))+'</span>'; }
+    pr.innerHTML=h; }
   function drawChart(pts){ pts=pts||chartPts; if(!pts)return; if(chartMode==="candle"){ try{ drawCandles(pts); return; }catch(_){} } drawLine(pts); }
   // ---- candlesticks (real OHLC from the trade aggregations) ----
   function drawCandles(pts){
     var pc=q("#dxaChart,#mdxaChart"); if(!pc||!pts||pts.length<2)return;
     var svg=pc.querySelector("svg"); if(!svg){ svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); pc.insertBefore(svg,pc.firstChild); }
-    var W=900,HT=380,PADL=14,PADR=64,PADT=16,PADB=28,n=pts.length;
+    var W=900,HT=380,PADL=14,PADR=100,PADT=16,PADB=28,n=pts.length;   // PADR 64->100: 64 units is 44px at the chart's real width, and a price label needs ~62
     var lows=pts.map(function(p){return p.l||p.v;}).slice().sort(function(a,b){return a-b;});
     var highs=pts.map(function(p){return p.h||p.v;}).slice().sort(function(a,b){return a-b;});
     var lo=lows[Math.floor(lows.length*0.03)]||lows[0], hi=highs[Math.ceil(highs.length*0.97)-1]||highs[highs.length-1];
@@ -586,13 +624,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     svg.setAttribute("viewBox","0 0 "+W+" "+HT); svg.setAttribute("preserveAspectRatio","none"); svg.innerHTML=h;
     var dr=pc.querySelector(".lxda-cdates"); if(!dr){ dr=document.createElement("div"); dr.className="lxda-cdates"; pc.appendChild(dr); }
     var NL=5,dh=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); dh+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=dh;
+    priceAxis(pc,lo,hi);
     pc.classList.add("lxda"); chartPts=pts; pc.__lxpts=pts; pc.__lxco=co; window._dxaChartState=null; setupChartHover(pc);
   }
   function drawLine(pts){
     var pc=q("#dxaChart,#mdxaChart"); if(!pc||!pts||pts.length<2)return;
     var svg=pc.querySelector("svg");
     if(!svg){ svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); pc.insertBefore(svg,pc.firstChild); }
-    var W=900,HT=380,PADL=14,PADR=64,PADT=16,PADB=28,n=pts.length;
+    var W=900,HT=380,PADL=14,PADR=100,PADT=16,PADB=28,n=pts.length;   // PADR 64->100: 64 units is 44px at the chart's real width, and a price label needs ~62
     // winsorize to 5th-95th percentile (thin markets have bad-fill outliers that collapse the y-scale)
     var sorted=pts.map(function(p){return p.v;}).slice().sort(function(a,b){return a-b;});
     var lo=sorted[Math.floor(sorted.length*0.05)]||sorted[0], hi=sorted[Math.ceil(sorted.length*0.95)-1]||sorted[sorted.length-1];
@@ -611,6 +650,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var dr=pc.querySelector(".lxda-cdates"); if(!dr){ dr=document.createElement("div"); dr.className="lxda-cdates"; pc.appendChild(dr); }
     var NL=5,h=""; for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Now":axisLbl(pts[idx].t,spanTF(pts)))+'</span>'; } dr.innerHTML=h;
     pc.classList.add("lxda"); chartPts=pts; pc.__lxpts=pts; pc.__lxco=co;
+    priceAxis(pc,mn,mx);
     window._dxaChartState=null;                                // disable the design's stale hover state
     setupChartHover(pc);
   }
@@ -631,7 +671,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       var sx=ox+co[idx][0]/W*r.width, sy=oy+co[idx][1]/HT*r.height;
       dot.style.left=sx+"px"; dot.style.top=sy+"px"; dot.style.opacity=1;
       vl.style.left=sx+"px"; vl.style.opacity=1;
-      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div><div class="p">'+usd(p.v)+'</div><div class="v">Vol '+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")+'</div>';
+      // Same unit as the axis it sits on, and the same order as the Price stat card: XLM first, dollars
+      // underneath. It read dollars-only while every other price on the page read XLM.
+      var _r=+xlmUsd, _x=(_r>0)?(p.v/_r):null;
+      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div><div class="p">'+(_x!=null?(axisNum(_x)+' XLM'):usd(p.v))+'</div>'
+        +(_x!=null?('<div class="v">'+usd(p.v)+'</div>'):'')
+        +'<div class="v">Vol '+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")+'</div>';
       tip.style.opacity=1;
       var tw=tip.offsetWidth,th=tip.offsetHeight,tx=sx+14; if(tx+tw>pr.width)tx=sx-tw-14; if(tx<2)tx=2;
       tip.style.left=tx+"px"; tip.style.top=Math.max(2,sy-th-12)+"px";
