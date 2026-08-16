@@ -223,6 +223,19 @@ margin-top:16px;border-top:1px solid var(--border)}
 .lx-dxsmart .lx-sb-best{flex:0 0 auto;font:800 10.5px/1 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#ea6a2c;background:rgba(234,106,44,.14);border:1px solid rgba(234,106,44,.4);border-radius:7px;padding:5px 8px}
 ${DXA_SUPINFO_CSS}
 .stat-cell .val.lx-hasinfo{overflow:visible!important}
+/* The 24h change, small, inside the Price card -- it used to have a whole card to itself.
+   It sits on the LABEL row, not beside the number, and that is the whole design. Sharing the value line
+   was the obvious reading of "next to the price" and it does not survive a narrow track: the chip is ~54px
+   of a 167px measure, so the price -- the single most important number on the page -- was the thing that
+   ellipsised. Measured: clipped at every container under ~807px. On the label row it competes with the
+   word "PRICE" instead, which is short and fixed, so the value keeps the full width at every size.
+   Absolute rather than a flex sibling so it never enters .lbl's textContent: applyStats dispatches on
+   that string, and "price+0.41%" would be one refactor away from matching nothing. */
+.stat-cell{position:relative}
+.stat-cell.lx-haschg .lbl{padding-right:58px}
+.lx-pchg{position:absolute;top:9px;right:12px;font-size:12px;font-weight:800;letter-spacing:-.01em;padding:2px 6px;border-radius:6px;line-height:1.3}
+.lx-pchg.up{color:var(--green,#35c07f);background:rgba(53,192,127,.14)}
+.lx-pchg.down{color:var(--red,#ff5b5b);background:rgba(255,91,91,.14)}
 .dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}
 .stat-cell .lx-supinfo::before{content:"i";display:block;font:italic 700 10px/16px Georgia,serif;color:inherit}
 .stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
@@ -484,7 +497,18 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     qa(".stat-row .stat-cell").forEach(function(cell){
       var lbl=((cell.querySelector(".lbl")||{}).textContent||"").trim().toLowerCase();
       var val=cell.querySelector(".val"), sub=cell.querySelector(".sub");
-      if(lbl.indexOf("price")===0){ if(NATIVE){ if(xlmUsd>0){ if(val)setText(val,usd(xlmUsd)); if(sub)setText(sub,"Stellar Lumens \\u00b7 native"); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }   /* native: USD is the price — "1 XLM" was meaningless */
+      // The 24h change now rides INSIDE this cell rather than owning one of its own, pinned to the label
+      // row -- see .lx-pchg in the stylesheet for why it is not beside the number.
+      if(lbl.indexOf("price")===0){
+        // Own element, re-used rather than re-created: applyStats runs on every data arrival and again
+        // from the observer, so building a fresh node each time would churn the DOM under the painter.
+        var _chip=cell.querySelector(".lx-pchg");
+        if(chg24!=null){ if(!_chip){ _chip=document.createElement("span"); _chip.setAttribute("data-lxc",""); cell.appendChild(_chip); } cell.classList.add("lx-haschg");
+          var _up=chg24>=0, _txt=(_up?"+":"")+chg24.toFixed(2)+"%";
+          if(_chip.className!=="lx-pchg "+(_up?"up":"down"))_chip.className="lx-pchg "+(_up?"up":"down");
+          if(_chip.textContent!==_txt)_chip.textContent=_txt;
+        } else { cell.classList.remove("lx-haschg"); if(_chip)_chip.parentNode.removeChild(_chip); }
+        if(NATIVE){ if(xlmUsd>0){ if(val)setText(val,usd(xlmUsd)); if(sub)setText(sub,"Stellar Lumens \\u00b7 native"); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }   /* native: USD is the price — "1 XLM" was meaningless */
         else if(assetXlm>0){ if(val)val.innerHTML=xlmAmt(assetXlm)+'<span class="u">XLM</span>'; if(sub&&pu>0)setText(sub,usd(pu)); } else { if(val)setText(val,"—"); if(sub)setText(sub,""); } }
       // Dispatch is by LABEL TEXT, and the mobile build abbreviates two of them: "24h Change" -> "24h"
       // and "24h Volume" -> "Volume". Neither matched, so on every phone those two cells kept the

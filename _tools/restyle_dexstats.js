@@ -15,10 +15,10 @@ const STYLE = '<style id="lx-assetstats">'
   // available and reflows the moment the sidebar opens or closes. This rule is injected after the
   // design css and media queries add no specificity, so it beats both breakpoints at every width —
   // which is intended: those breakpoints were the bug.
-  // FIVE, not six. The "24h Change" card is gone (dropChangeCell below) because the same figure is
-  // already the change pill directly under the price, three lines above it -- and carrying it twice cost
-  // a whole second row. Five across on one line puts the chart ~72px higher, which was the point.
-  + 'grid-template-columns:repeat(5,minmax(0,1fr))}'
+  // FOUR. 24h Change and Liquidity are both gone (dropChangeCell below), and four is the first count here
+  // that actually divides: it folds to a clean 2+2 instead of stranding a card, and each track is ~211px
+  // at a desktop container instead of the 167px five had to live in.
+  + 'grid-template-columns:repeat(4,minmax(0,1fr))}'
   // minmax(0,1fr) instead of 1fr: a bare 1fr floors at min-content, and every line in a cell is
   // nowrap, so the track could not shrink and the row overflowed rather than fitting.
   // .asset-header becomes the query container so the counts below follow the column the row actually
@@ -33,27 +33,24 @@ const STYLE = '<style id="lx-assetstats">'
   // which is the complaint this change answers. Measured instead of guessed: five cards stay legible
   // down to ~600px of container (each track ~113px, and the compact ramp below has already tightened
   // the type by then). Under that they fold to three, then two.
-  // 660, and the number is measured rather than round: at a 650px container the price track is 122px and
-  // "0.00009532 XLM" no longer fits at any size above the clamp floor. 672 (a 1400px window) is the
-  // narrowest that stays clean, so the fold sits just under it.
-  //
-  // It folds to THREE, not two, even though five leaves a ragged 3+2. Two columns would put five cards on
-  // three rows -- taller than the two-row layout this change exists to remove, and the band below the fold
-  // is real (a 1366px laptop lands in it). A gap on one row beats an extra row.
-  + '@container (max-width:660px){.stat-row{grid-template-columns:repeat(3,minmax(0,1fr))}}'
-  + '@container (max-width:430px){.stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-  // Only in the two-column regime: there the leftover card spanning the full width reads as deliberate.
-  // Scoped, because at five and at three across the same rule would drop that card onto its own row and
-  // cost exactly the height being reclaimed. The mobile build has no container, so its plain media query
-  // below carries the same rule for the three cards it shows.
-  + '@container (max-width:430px){.stat-row>.stat-cell:last-child:nth-child(odd){grid-column:1/-1}}'
+  // Four folds to two, which is most of the advantage of four over five: no ragged last row at any width,
+  // and never a third row. The fold also sits much lower now -- four tracks in a 520px container are still
+  // 121px each, wider than five ever had at 672 -- so the one-line layout survives further down.
+  + '@container (max-width:520px){.stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+  // Kept for the odd-count case only. Four cards, and mobile's two, both end on an even child, so this is
+  // dormant today -- it exists so a future card count cannot strand one in a half-width slot.
+  + '@container (max-width:520px){.stat-row>.stat-cell:last-child:nth-child(odd){grid-column:1/-1}}'
   // min-width:0 is the other half of the crop fix. A grid item defaults to min-width:auto, i.e. its
   // min-content width, and every line in here is white-space:nowrap — so the cells refused to shrink
   // and the row overflowed its container instead of adapting. With 0 they shrink and the .sub line
   // ellipsises as it was already styled to.
   + '.stat-cell{min-width:0;padding:11px 14px !important;border:1px solid var(--border) !important;border-radius:13px;background:var(--surface);display:flex;flex-direction:column;justify-content:flex-start;min-height:0;transition:border-color .15s ease,box-shadow .15s ease}'
   + '.stat-cell:hover{border-color:var(--accent-soft,rgba(234,106,44,.32)) !important;box-shadow:0 10px 24px -18px rgba(234,106,44,.5)}'
-  + '.stat-cell .lbl{font-size:11.5px;letter-spacing:.08em;font-weight:700;margin-bottom:4px;white-space:nowrap}'
+  + '.stat-cell .lbl{font-size:11.5px;letter-spacing:.08em;font-weight:700;margin-bottom:4px;white-space:nowrap;'
+  // Reserving room for the Price card's change chip HERE starved the other three: they have no chip, so
+  // 58px of padding-right just ellipsised "24h Volume" and "Market Cap" at narrow widths. The reservation
+  // belongs with the chip, in _dexassetdata's own sheet, scoped to the one cell that carries it.
+  + 'overflow:hidden;text-overflow:ellipsis}'
   // ellipsis rather than a value that spills past the card edge once the cell can shrink
   + '.stat-cell .val{font-size:17.5px;font-weight:800;letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.05;color:var(--text)}'
   + '.stat-cell .val .u{font-size:11.5px;font-weight:600;color:var(--text-muted);margin-left:2px}'
@@ -79,17 +76,17 @@ const STYLE = '<style id="lx-assetstats">'
   // next, and the longer one clipped at a step size the shorter one cleared. Any ladder of fixed sizes is
   // therefore only ever tuned to whatever the price happened to be when it was measured. clamp() on cqi
   // ties the type to the track it has to fit in, so the number the whole page is about cannot end in an
-  // ellipsis. 2.15cqi hits the 17.5px ceiling at a ~815px container and reads 14.4px at 672 (a 1400px
-  // window beside the swap panel), where 10 characters plus the unit measured 111px against 103px of room.
-  + '@container (min-width:0px){.stat-cell .val{font-size:clamp(13px,2.15cqi,17.5px)}'
-  + '.stat-cell .val .u{font-size:clamp(9.5px,1.42cqi,11.5px)}}'
-  + '@container (max-width:820px){.stat-cell{padding:11px 12px !important}'
+  // ellipsis. Retuned for four across: the tracks are ~50px wider than five had, so the value holds full
+  // size much further down. 2.75cqi reaches the 17.5px ceiling at a ~640px container.
+  + '@container (min-width:0px){.stat-cell .val{font-size:clamp(13px,2.6cqi,17.5px)}'
+  + '.stat-cell .val .u{font-size:clamp(9.5px,1.8cqi,11.5px)}}'
+  + '@container (max-width:700px){.stat-cell{padding:11px 12px !important}'
   + '.stat-cell .lbl{font-size:11px;letter-spacing:.07em}}'
-  + '@container (max-width:700px){.stat-cell{padding:10px 11px !important}'
+  + '@container (max-width:600px){.stat-cell{padding:10px 11px !important}'
   + '.stat-cell .lbl{font-size:10.5px}.stat-cell .sub{font-size:11px}}'
-  // Below the fold the row is three columns, so each track jumps back to ~210px and the type goes back to
+  // Below the fold the row is two columns, so each track jumps back to ~250px and the type goes back to
   // full size — including the clamp, which would otherwise keep shrinking on a measure that just got wider.
-  + '@container (max-width:660px){.stat-cell{padding:13px 14px !important}'
+  + '@container (max-width:520px){.stat-cell{padding:13px 14px !important}'
   + '.stat-cell .val{font-size:17.5px}.stat-cell .val .u{font-size:11.5px}'
   + '.stat-cell .lbl{font-size:11.5px;letter-spacing:.08em}.stat-cell .sub{font-size:11.5px}}'
   // ---- MOBILE ----------------------------------------------------------------------------------
@@ -160,19 +157,25 @@ function statRowBlock(h){
   return { si, ei: i, block: h.slice(si, i) };
 }
 
-// Delete the "24h Change" card. The figure is already the change pill under the price, so the card was
-// a second copy of it that cost an entire row of height.
+// Cards this page does not need to carry.
 //
-// Keyed on the LABEL TEXT, never on position. The card happens to be second today, but :nth-child(2)
-// would silently delete Volume the day someone reorders the row -- and the mobile build abbreviates the
-// label to "24h", so a position rule would also have to be right twice. Matching the text is right once.
+//   24h Change -- already the change pill under the price AND the perf grid under the chart, so the card
+//                 was a third copy of the same figure, and the copy that cost a whole row of height.
+//   Liquidity  -- the Pools tab below itemises every pool and its depth; the card was a total of what
+//                 that tab already lists. It was also the widest card on the row, because its sub line
+//                 carries two reserve amounts, so it set the height for everything beside it.
 //
-// Idempotent by construction: once the card is gone there is nothing left to match.
+// Keyed on the LABEL TEXT, never on position. They are second and fourth today, but an :nth-child rule
+// would silently delete Volume or Supply the day someone reorders the row -- and mobile abbreviates two
+// of the labels, so a position rule would have to be right twice. Matching the text is right once.
+//
+// Idempotent by construction: once a card is gone there is nothing left to match.
+const DROP = /<div class="lbl">\s*(24h(\s+Change)?|Liquidity)\s*<\/div>/;
 function dropChangeCell(h){
   const row = statRowBlock(h);
   if (!row) return h;
   let b = row.block;
-  const li = b.search(/<div class="lbl">\s*24h(\s+Change)?\s*<\/div>/);
+  const li = b.search(DROP);
   if (li < 0) return h;
   const cs = b.lastIndexOf('<div class="stat-cell">', li);
   if (cs < 0) return h;
@@ -184,7 +187,9 @@ function dropChangeCell(h){
   let start = cs;
   while (start > 0 && (b[start - 1] === ' ' || b[start - 1] === '\n')) start--;
   b = b.slice(0, start) + b.slice(i);
-  return h.slice(0, row.si) + b + h.slice(row.ei);
+  // The list has more than one entry and every offset just moved, so re-run on the new string rather
+  // than trying to track the next match across an edit.
+  return dropChangeCell(h.slice(0, row.si) + b + h.slice(row.ei));
 }
 
 // Wrap a trailing " UNIT" (2-5 uppercase letters) inside stat-cell .val divs, within the stat-row block only.
