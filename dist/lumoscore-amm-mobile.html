@@ -4503,7 +4503,19 @@ window.addEventListener('click',function(e){
     })();
     var partP=tryJSON(H+"/accounts?liquidity_pool="+hex+"&limit=100",2);
     var acctP=myAddr()?(window.__lxAcct?window.__lxAcct(myAddr()):getJSON(H+"/accounts/"+myAddr())):Promise.resolve(null);
-    Promise.all([xlmP,poolP,trP,opP,partP,acctP]).then(function(r){
+    // DO NOT BLOCK THE PAGE ON THE TWO BOTTOM TABS. All six calls used to be awaited together, so the
+    // headline cards, the chart and My Position waited for the slowest of them. Timed on the XLM/USDC pool:
+    //
+    //   pool record   960ms      1 KB        trades      3,851ms    137 KB
+    //   participants  2,025ms  3,795 KB      operations    840ms  1,094 KB
+    //
+    // Participants alone returns 3.8 MB, because /accounts returns every balance, signer and data entry of
+    // 100 accounts when all we want from each is one pool-share figure. Together those two are 4.9 MB of
+    // JSON to download and parse before anything could paint -- and neither feeds a single thing above the
+    // fold. They still start at the same moment, so nothing is slower; they just resolve into the page
+    // when they land instead of holding it up.
+    var opsLate=opP, partsLate=partP;
+    Promise.all([xlmP,poolP,trP,Promise.resolve(null),Promise.resolve(null),acctP]).then(function(r){
       window.__lxDetLoading=0;
       var xlmUsd=xuSave((r[0]&&r[0].stellar&&+r[0].stellar.usd)||0)||xuFallback();
       // AUDIT (user-reported "still not loading"): this used to reveal() and give up in silence, so a failed
@@ -4589,6 +4601,42 @@ window.addEventListener('click',function(e){
       // MUTATE the existing DET in place on refresh (don't replace it) so wireDW's captured d (===DET)
       // stays valid with fresh numbers — this lets add/withdraw re-fetch+repaint with NO page reload.
       if(DET){for(var _k in _det)DET[_k]=_det[_k];}else{DET=_det;}
+      // The two heavy feeds land here, after the page is already on screen. Each repaints only its own
+      // list. Both are guarded: a failure leaves the page exactly as it is rather than blanking a tab.
+      if(opsLate){ var _ol=opsLate; opsLate=null;
+        _ol.then(function(o){
+          if(!DET) return;
+          var recs=(o&&o._embedded&&o._embedded.records)||[];
+          if(o&&o.__failed){ DET.txFail=true; try{ txFailNote(q(".tx-card")); }catch(_){} return; }
+          var add=[];
+          recs.forEach(function(op){
+            var ts=Date.parse(op.created_at||"")||0;
+            if(op.type==="liquidity_pool_deposit"){ var a=amt(op.reserves_deposited);
+              add.push({type:"deposit",xlm:a.x,tok:a.t,who:op.source_account,time:ts,op:String(op.id||"")}); }
+            else if(op.type==="liquidity_pool_withdraw"){ var b=amt(op.reserves_received||op.reserves_min);
+              add.push({type:"withdraw",xlm:b.x,tok:b.t,who:op.source_account,time:ts,op:String(op.id||"")}); }
+          });
+          if(!add.length) return;
+          DET.txs=DET.txs.concat(add); DET.txs.sort(function(x,y){ return y.time-x.time; });
+          try{ pdTx(); }catch(_){}
+        }).catch(function(){});
+      }
+      if(partsLate){ var _pl=partsLate; partsLate=null;
+        _pl.then(function(a){
+          if(!DET) return;
+          var accs=(a&&a._embedded&&a._embedded.records)||[]; if(!accs.length) return;
+          var ps=[], mine=0;
+          accs.forEach(function(ac){ var id=ac.account_id||ac.id;
+            (ac.balances||[]).forEach(function(b){
+              if(b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===DET.hex){
+                ps.push({addr:id,shares:+b.balance}); if(myAddr()&&id===myAddr())mine=+b.balance; } }); });
+          var tot=DET.totShares||ps.reduce(function(s,x){return s+x.shares;},0);
+          ps.forEach(function(x){ x.frac=tot>0?x.shares/tot:0; });
+          ps.sort(function(x,y){ return y.shares-x.shares; });
+          DET.parts=ps; if(mine&&!DET.myShares){ DET.myShares=mine; DET.myFrac=tot>0?mine/tot:0; }
+          try{ pdParts(); }catch(_){}
+        }).catch(function(){});
+      }
       try{ var _fb=q(".lx-detfail"); if(_fb)_fb.remove();                      // data arrived after all
         var _cs=q("#tvlChart svg");
         if(_cs){ [].slice.call(_cs.querySelectorAll(".lx-chload")).forEach(function(e){
