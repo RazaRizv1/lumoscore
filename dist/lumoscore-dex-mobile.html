@@ -4467,11 +4467,28 @@ window.addEventListener('click',function(e){
     byCode[key]=a; NATIVE.push(a); return a;
   }
   function nativePrice(add){
-    // the five newest first, with a 2-request fetch each; the full wave waits so it cannot starve them
+    // ONLY the five the mints box shows, and only two requests each. Everything else is fetched when a
+    // row is actually rendered -- see priceVisible(). Sweeping the roster here is what made the page
+    // fire ~210 requests before showing a single price.
     var _first=add.slice().sort(function(x,y){ return (y.created||0)-(x.created||0); }).slice(0,5);
-    var _lite=Promise.all(_first.map(function(a){ return loadAssetLite(a); })).then(touch);
-    _lite.then(function(){ (function wave(i){ if(i>=add.length){ nativeState=2; touch(); return; }
-      Promise.all(add.slice(i,i+4).map(function(a){ if(a.__px)return null; a.__px=1; return loadAsset(a).catch(function(){}); }))
+    _first.forEach(function(a){ a.__lite=1; });
+    MINTS_READY=Promise.all(_first.map(function(a){ return loadAssetLite(a); })).then(function(){
+      var still=_first.filter(function(a){ return !(a.px>0); });
+      if(still.length){ still.forEach(function(a){ a.__px=1; });
+        Promise.all(still.map(function(a){ return loadAsset(a).catch(function(){}); })).then(function(){ nativeState=2; touch(); });
+      } else { nativeState=2; touch(); }
+    });
+  }
+  // Rows on screen get the full loadAsset (the table shows TVL and a sparkline); in waves of four so a
+  // page turn cannot open 25 sockets at once.
+  var MINTS_READY=null;                                       // resolves when the mints box has its prices
+  function priceVisible(list){
+    var need=list.filter(function(a){ return a&&!a.__px; });
+    if(!need.length)return;
+    need.forEach(function(a){ a.__px=1; });
+    var gate=MINTS_READY||Promise.resolve();
+    gate.then(function(){ (function wave(i){ if(i>=need.length)return;
+      Promise.all(need.slice(i,i+4).map(function(a){ return loadAsset(a).catch(function(){}); }))
         .then(function(){ wave(i+4); },function(){ wave(i+4); });
     })(0); });
   }
@@ -4509,19 +4526,9 @@ window.addEventListener('click',function(e){
       touch();
       nativeSave(NATIVE.filter(function(x){ return x.cat==="native"; }));
       // The mints box shows the five NEWEST, and they can sit anywhere in discovery order -- so price
-      // those first. Without this the visible rows waited behind up to twenty assets nobody is looking at.
-      // Ten requests, fired immediately, and deliberately NOT flagged __px -- the full loadAsset still
-      // runs for these in the normal wave, because the All table wants their TVL and sparkline. This is
-      // a head start for the box, not a replacement for the real load.
-      var _first=add.slice().sort(function(x,y){ return (y.created||0)-(x.created||0); }).slice(0,5);
-      var _lite=Promise.all(_first.map(function(a){ return loadAssetLite(a); })).then(touch);
-
-      // Horizon in small waves: loadAsset is ~5 requests per asset, and firing 30 assets at once is a
-      // burst that gets throttled -- which surfaces as rows stuck on a dash, not as an error.
-      _lite.then(function(){ (function wave(i){ if(i>=add.length){ nativeState=2; touch(); return; }
-        Promise.all(add.slice(i,i+4).map(function(a){ if(a.__px)return null; a.__px=1; return loadAsset(a).catch(function(){}); }))
-          .then(function(){ wave(i+4); },function(){ wave(i+4); });
-      })(0); });
+      // Same routine the cached path uses: price the five the mints box shows, and stop. Everything
+      // else is fetched by priceVisible() when a row is rendered.
+      nativePrice(add);
     }).catch(function(){ nativeState=0; });                  // allow a retry on the next click
   }
   // "All" means every pair LumosCore lists, curated majors AND our own Launchpad tokens. Identity dedupe,
@@ -4546,10 +4553,27 @@ window.addEventListener('click',function(e){
 
   // ---- helpers (mirrors _dexassetdata) ----
   function fetchJ(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
-  function j(u){ return fetchJ(u).catch(function(e){ if(u.indexOf("horizon.stellar.org")>=0){ return fetchJ(u.replace("horizon.stellar.org","horizon.stellar.lobstr.co")); } throw e; }); }
+  // at most MAXQ requests in flight; everything else waits its turn
+  var MAXQ=6, qRun=0, qWait=[];
+  function qNext(){ if(qRun>=MAXQ||!qWait.length)return; qRun++; var t=qWait.shift();
+    t.go().then(t.ok,t.no).then(function(){ qRun--; qNext(); },function(){ qRun--; qNext(); }); }
+  function queued(go){ return new Promise(function(ok,no){ qWait.push({go:go,ok:ok,no:no}); qNext(); }); }
+  function j(u){
+    return queued(function(){
+      return fetchJ(u).catch(function(e){
+        // one retry on the primary before switching hosts: a dropped connection is not a missing asset,
+        // and the mirror does not carry every asset (ZERO/UPT 404 there).
+        return fetchJ(u).catch(function(){
+          if(u.indexOf("horizon.stellar.org")>=0)return fetchJ(u.replace("horizon.stellar.org","horizon.stellar.lobstr.co"));
+          throw e; });
+      });
+    });
+  }
   function q(s,r){ return (r||document).querySelector(s); }
   function qa(s,r){ return [].slice.call((r||document).querySelectorAll(s)); }
   function recs(d){ return (d&&d._embedded&&d._embedded.records)||[]; }
+  // close/avg round to 7dp; below that they read "0.0000000" though the asset does have a price
+  function subPx(r){ var b=+r.base_volume||0, c=+r.counter_volume||0; return (b>0&&c>0)?(c/b):0; }
   function priceUsd(a){ return (a.px||0)*xlmUsd; }
   function num(n){ if(n==null)return "\u2014"; return Math.round(+n||0).toLocaleString("en-US"); }
   // Below 1e-8 a plain decimal is an unreadable run of zeros and exponential notation is trader-hostile,
@@ -4847,6 +4871,7 @@ window.addEventListener('click',function(e){
     if(tb.__lxfk!==fkey){ tb.__lxfk=fkey; mkPage=1; }
     var pages=Math.max(1,Math.ceil(all.length/MK_PER)); if(mkPage>pages)mkPage=pages;
     var start=(mkPage-1)*MK_PER, data=all.slice(start,start+MK_PER);
+    try{ priceVisible(data); }catch(_){}                      // fetch the rows this page actually shows
     var sig=tableSig()+"|p"+mkPage;
     try{ renderPager(pages); }catch(_){}
     // rebuild the skeleton ONLY when the filter/search changes (user action) or our rows were clobbered
@@ -4924,7 +4949,7 @@ window.addEventListener('click',function(e){
     var base="base_asset_type="+atype+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer+"&counter_asset_type=native";
     return Promise.all([
       j(H+"/trade_aggregations?"+base+"&resolution=86400000&order=desc&limit=1").then(function(d){
-        var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||a.px; } }).catch(function(){}),
+        var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||subPx(r)||a.px; } }).catch(function(){}),
       j(H+"/assets?asset_code="+a.code+"&asset_issuer="+a.issuer).then(function(d){
         var rec=recs(d)[0]; if(!rec)return;
         if(rec.accounts)a.holders=(+rec.accounts.authorized||0)+(+rec.accounts.authorized_to_maintain_liabilities||0);
@@ -4939,7 +4964,7 @@ window.addEventListener('click',function(e){
     var calls=[];
     // price + 24h change + high/low + 24h volume (daily aggregations)
     calls.push(j(H+"/trade_aggregations?"+base+"&resolution=86400000&order=desc&limit=2").then(function(d){ var r=recs(d);
-      if(r[0]){ a.px=+r[0].close||+r[0].avg||a.px; a.vol=+r[0].counter_volume||0; a.high=+r[0].high||0; a.low=+r[0].low||0; a.trades=+r[0].trade_count||0; }
+      if(r[0]){ a.px=+r[0].close||+r[0].avg||subPx(r[0])||a.px; a.vol=+r[0].counter_volume||0; a.high=+r[0].high||0; a.low=+r[0].low||0; a.trades=+r[0].trade_count||0; }
       if(r[0]&&r[1]&&+r[1].close>0)a.chg=((+r[0].close-+r[1].close)/+r[1].close)*100;
       computeTvl(a); touch(); }).catch(function(){}));
     // 7D trend sparkline: the MOST RECENT 168 hourly buckets (=7 days), desc then reversed to chronological.
