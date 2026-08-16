@@ -137,7 +137,8 @@ const STYLE = `<style id="lx-acc-css">
 .acc-view{color:var(--accent);text-decoration:none;font-size:13.5px;font-weight:700;white-space:nowrap}
 .acc-view:hover{text-decoration:underline}
 .acc-iss{display:block;font-size:12px;color:var(--text-soft);font-weight:600}
-.acc-vt{display:inline-flex;vertical-align:-2px;margin-left:4px}
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
+.lx-vtick svg{width:9px;height:9px;display:block}
 
 .acc-card-head h2{font-size:17px;font-weight:800;margin:0}
 .acc-n{font-size:12.5px;font-weight:800;color:var(--text-muted);background:var(--surface-2);
@@ -300,7 +301,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   // the same verified pairs the rest of the site vouches for -- code|issuer, never code alone
   var VFD=${JSON.stringify(VERIFIED)};
   var VTICK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-  function vtick(c,i){ return VFD[c+"|"+i]?('<span class="acc-vt">'+VTICK+'</span>'):""; }
+  function vtick(c,i){ return VFD[c+"|"+i]?('<span class="lx-vtick" title="Verified issuer">'+VTICK+'</span>'):""; }
   function key(c,i){ return c+"-"+(i||""); }
   function brand(c,i){ if(c==="LUMOS"&&i===LUMOS_ISS)return LUMOS_LOGO;
     var u=LOGOS[c]; if(!u)return ""; return (LOGO_ISS[c]&&i===LOGO_ISS[c])?u:""; }
