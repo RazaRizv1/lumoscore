@@ -6505,14 +6505,70 @@ window.addEventListener('click',function(e){
   // A ranking is real when it came from the ranked source, OR when one Horizon page happened to contain
   // every holder (small assets — then sorting it locally IS the true order).
   function canRankHolders(){ return !!window.__lxDXAranked || (holders!=null && holders<=HCAP); }
+  // ---- HOLDERS PAGING -------------------------------------------------------------------------------
+  // Upstream pages by an OPAQUE cursor, never an offset: cursor=200 returns nothing, while the token out
+  // of _links.next works and the pages stay correctly ranked with no overlap (page 1 ends at balance
+  // 529252300087, page 2 opens at 522663300124, zero shared accounts). So the token is carried forward.
+  var HPP=50;
+  function holdCursor(d){
+    var h=d&&d._links&&d._links.next&&d._links.next.href; if(!h)return "";
+    var m=/[?&]cursor=([^&]+)/.exec(h); return m?m[1]:"";
+  }
+  function holdPage(){ var p=+window.__lxDXAhpage||0; return p>0?p:0; }
+  function holdMore(){
+    if(window.__lxDXAholdBusy||!window.__lxDXAholdNext)return Promise.resolve(false);
+    window.__lxDXAholdBusy=1;
+    return j("/lxapi/holders?asset="+encodeURIComponent(CODE+"-"+ISSUER)+"&limit=200&cursor="+encodeURIComponent(window.__lxDXAholdNext))
+      .then(function(d){
+        window.__lxDXAholdBusy=0;
+        var rk=(d&&d._embedded&&d._embedded.records)||[];
+        if(!rk.length){ window.__lxDXAholdNext=""; return false; }
+        var seen={}; (window.__lxDXAhold||[]).forEach(function(h){ seen[h.addr]=1; });
+        var add=[];
+        rk.forEach(function(r){ var a=r.address||r.account;
+          if(a&&!seen[a]){ seen[a]=1; add.push({addr:a,bal:(+r.balance||0)/1e7}); } });
+        window.__lxDXAhold=(window.__lxDXAhold||[]).concat(add);
+        window.__lxDXAholdNext=holdCursor(d);
+        return add.length>0;
+      }).catch(function(){ window.__lxDXAholdBusy=0; return false; });
+  }
+  // Move the page, then just repaint. NOTHING here clears a built-marker by hand -- that is what failed
+  // the first time: the marker was cleared from outside, the pipeline rebuilt with the OLD page, and the
+  // table never moved. The page is part of the build signature instead (see data-lxbuilt below), so
+  // changing it is by itself what makes the table stale.
+  function holdGo(p){
+    if(p<0)p=0;
+    var hold=window.__lxDXAhold||[];
+    if((p+1)*HPP>hold.length&&window.__lxDXAholdNext){
+      holdMore().then(function(got){
+        var have=(window.__lxDXAhold||[]).length;
+        if(p*HPP<have){ window.__lxDXAhpage=p; }
+        guardApply();
+      });
+      return;
+    }
+    if(p*HPP>=hold.length&&p>0)return;
+    window.__lxDXAhpage=p; guardApply();
+  }
+  if(!window.__lxHoldWired){ window.__lxHoldWired=1;
+    document.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      var b=t.closest("[data-hp]"); if(!b||b.disabled)return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      holdGo(b.getAttribute("data-hp")==="next"?holdPage()+1:holdPage()-1);
+    },true);
+  }
   function loadHolders(){
     if(NATIVE||window.__lxDXAhold||window.__lxDXAholdLoading)return;
     window.__lxDXAholdLoading=true;
     // ranked source first (same-origin proxy -> stellar.expert, ordered by balance)
-    j("/lxapi/holders?asset="+encodeURIComponent(CODE+"-"+ISSUER)+"&limit=50").then(function(d){
+    // 200 is the upstream maximum and it is a single request, so four pages of the table are in hand
+    // before anyone touches Next. Deeper pages come from holdMore() on demand.
+    j("/lxapi/holders?asset="+encodeURIComponent(CODE+"-"+ISSUER)+"&limit=200").then(function(d){
       var rk=(d&&d._embedded&&d._embedded.records)||[];
       if(!rk.length)throw new Error("no ranked holders");
       window.__lxDXAhold=rk.map(function(r){ return {addr:r.address||r.account, bal:(+r.balance||0)/1e7}; });
+      window.__lxDXAholdNext=holdCursor(d);
       window.__lxDXAranked=1; guardApply();
     }).catch(function(){ horizonHolders(); });                 // proxy absent (static hosting) or upstream down
   }
@@ -6554,7 +6610,7 @@ window.addEventListener('click',function(e){
     var hold=window.__lxDXAhold;
     if(!hold||!hold.length){
       var _tb0=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody");
-      if(_tb0&&_tb0.getAttribute("data-lxbuilt")!=="1"&&_tb0.getAttribute("data-lxload")!=="1"){
+      if(_tb0&&!_tb0.getAttribute("data-lxbuilt")&&_tb0.getAttribute("data-lxload")!=="1"){
         _tb0.setAttribute("data-lxload","1");
         _tb0.innerHTML=MOB?'<div style="padding:22px 14px;text-align:center;color:var(--text-muted)">Loading holders…</div>'
           :'<tr><td colspan="5" style="padding:22px 14px;text-align:center;color:var(--text-muted)">Loading holders…</td></tr>';
@@ -6562,8 +6618,14 @@ window.addEventListener('click',function(e){
       return;
     }
     var pu=priceUsd();
-    var tbody=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody"); if(!tbody||tbody.getAttribute("data-lxbuilt")==="1")return;
-    var top=hold.slice(0,50), tot=holders!=null?holders:hold.length;
+    var tbody=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody"); if(!tbody||tbody.getAttribute("data-lxbuilt")===("p"+_hp))return;
+    // Which page is on screen. Deliberately NOT gated on canRankHolders(): gating it there meant the
+    // rows could render page 0 while the pager still drew controls for page 2, and the two disagreed
+    // on screen. The pager below is the thing that is gated, so an unranked sample simply gets no
+    // controls while the rows stay page 0.
+    var _hp=holdPage();
+    if(_hp*HPP>=hold.length){ _hp=Math.max(0,Math.ceil(hold.length/HPP)-1); window.__lxDXAhpage=_hp; }
+    var top=hold.slice(_hp*HPP,_hp*HPP+HPP), tot=holders!=null?holders:hold.length;
     // top-10 / top-50 concentration (of paged supply — approximate for capped assets)
     var pagedTot=0; hold.forEach(function(h){pagedTot+=h.bal;});
     var sup=supply||pagedTot||1;   // hold is the COMPLETE holder set here (canRankHolders), so pagedTot is a sound fallback
@@ -6593,24 +6655,43 @@ window.addEventListener('click',function(e){
       var _addr='<div class="mdxa-hl-addr mono">'
         +(_c ? (shortG(h.addr)+'<span class="lx-sortag">Soroban</span>')
              : ('<a class="lx-acct" href="/account/stellar/'+h.addr+'">'+shortG(h.addr)+'</a>'))+'</div>';
-      return '<div class="mdxa-hl-row'+(_c?' lx-nolink':'')+'"><span class="mdxa-hl-rank">#'+(i+1)+'</span>'
+      return '<div class="mdxa-hl-row'+(_c?' lx-nolink':'')+'"><span class="mdxa-hl-rank">#'+(_hp*HPP+i+1)+'</span>'
         +'<span class="mdxa-hl-ident">'+identicon(h.addr,28)+'</span>'
         +'<div class="mdxa-hl-meta">'+_addr
         +'<a class="mdxa-hl-explorer" href="'+EXPL+h.addr+'" target="_blank" rel="noopener">View on Explorer \u2197</a></div>'
         +'<div class="mdxa-hl-vals"><div class="mdxa-hl-bal mono">'+abbrNum(h.bal)+'</div>'
         +'<div class="mdxa-hl-pct mono">'+pctTxt+'</div></div></div>'; }
-      return '<tr><td class="dxa-hl-rank">'+(i+1)+'</td>'
+      return '<tr><td class="dxa-hl-rank">'+(_hp*HPP+i+1)+'</td>'
         +'<td>'+(h.addr.charAt(0)==="C"? ('<span class="wallet-cell lx-nolink">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span><span class="lx-sortag">Soroban contract</span></span>'): ('<a class="lx-acct wallet-cell" href="/account/stellar/'+h.addr+'">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span></a>'))+'</td>'
         +'<td class="mono">'+abbrNum(h.bal)+'</td>'
         +'<td class="mono">'+(pct>=0.001?pct.toFixed(3):"<0.001")+'%</td>'
         +'<td style="text-align:right"><a class="dxa-hl-explorer" href="https://stellar.expert/explorer/public/'+(h.addr.charAt(0)==="C"?"contract":"account")+'/'+h.addr+'" target="_blank" rel="noopener">View on Explorer <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a></td></tr>'; }).join("");
-    tbody.innerHTML=html; tbody.setAttribute("data-lxbuilt","1");
+    tbody.innerHTML=html; tbody.setAttribute("data-lxbuilt","p"+_hp);
     // pagination info line
+    var _from=_hp*HPP+1, _to=_hp*HPP+top.length;
     var pg=wrap.querySelector(".dxa-hl-pgn .info,.mdxa-hl-pgn .info");
-    if(pg)pg.textContent=canRankHolders()?("Showing 1–"+top.length+" of "+num(tot)+" holders")
+    if(pg)pg.textContent=canRankHolders()?("Showing "+num(_from)+"\u2013"+num(_to)+" of "+num(tot)+" holders")
                                          :("Showing "+top.length+" of "+num(tot)+" holders (sample)");
-    // the design ships a mock pager ("1 2 3 … 249 Next") — we only ever render one page, so drop it
-    qa(".dxa-hl-pgn .pages, .dxa-hl-pgn .pager, .dxa-hl-pgn button, .mdxa-hl-pgn .pages, .mdxa-hl-pgn .pager, .mdxa-hl-pgn button").forEach(function(b){ b.style.display="none"; });   // qa() is document-scoped; .dxa-hl-pgn is unique to this panel
+    // REAL pager. This used to hide the design's mock buttons outright -- "we only ever render one page,
+    // so drop it" -- which was true when the fetch asked for 50 and stopped. It asks for 200 now and
+    // follows the cursor, so there are real pages and the control is built rather than hidden.
+    //
+    // Only when the list is genuinely RANKED. The Horizon fallback is one unordered sample; paging that
+    // would walk an arbitrary slice while implying a ranking, so there the buttons stay gone.
+    qa(".dxa-hl-pgn .pages, .dxa-hl-pgn .pager, .mdxa-hl-pgn .pages, .mdxa-hl-pgn .pager").forEach(function(b){ b.style.display="none"; });
+    var _pgn=wrap.querySelector(".dxa-hl-pgn .pgn,.mdxa-hl-pgn .pgn");
+    if(_pgn){
+      if(!canRankHolders()){ if(_pgn.innerHTML!=="")_pgn.innerHTML=""; }
+      else{
+        var _more=((_hp+1)*HPP<hold.length)||!!window.__lxDXAholdNext;
+        var _sig="p"+_hp+"|"+(_more?1:0);
+        if(_pgn.getAttribute("data-lxhsig")!==_sig){
+          _pgn.setAttribute("data-lxhsig",_sig);
+          _pgn.innerHTML='<button type="button" data-hp="prev"'+(_hp<=0?" disabled":"")+'>\u2039 Prev</button>'
+            +'<button type="button" data-hp="next"'+(_more?"":" disabled")+'>Next \u203a</button>';
+        }
+      }
+    }
     // Holders bottom-tab count
     var htab=qa(".tabs-bar .tab").filter(function(t){return /holders/i.test(t.getAttribute("data-tab")||"");})[0];
     if(htab){ var c=htab.querySelector(".count"); if(c){ c.textContent=q("#mdxaPanel")?abbrNum(tot):num(tot); lxMark(c);} }
