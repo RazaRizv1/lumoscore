@@ -76,7 +76,12 @@ function holdersProxy(req, res, q) {
   const asset = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/.test(q.get('asset') || '') ? q.get('asset') : null;
   if (!asset) { res.writeHead(400, {'content-type':'application/json'}); return res.end('{"error":"bad asset"}'); }
   const limit = Math.min(parseInt(q.get('limit'), 10) || 50, 200);
-  const up = 'https://api.stellar.expert/explorer/public/asset/' + asset + '/holders?order=desc&limit=' + limit;
+  // Opaque-cursor passthrough, same contract as functions/lxapi/holders.js — see that file for why this
+  // cannot be an offset, and for the alphabet/length restriction that keeps it from being an open proxy.
+  const cur = q.get('cursor') || '';
+  const okCur = !!cur && cur.length <= 256 && /^[A-Za-z0-9%+/=_-]+$/.test(cur);
+  const up = 'https://api.stellar.expert/explorer/public/asset/' + asset + '/holders?order=desc&limit=' + limit
+    + (okCur ? '&cursor=' + encodeURIComponent(decodeURIComponent(cur)) : '');
   fetch(up).then(r => r.text().then(body => {
     res.writeHead(r.status, {'content-type':'application/json','cache-control':'public, max-age=120'});
     res.end(body);
