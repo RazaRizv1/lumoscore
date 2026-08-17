@@ -4654,13 +4654,19 @@ window.addEventListener('click',function(e){
     var L=netLegs(p), m=L[0].native?L[0]:(L[1].native?L[1]:L[0]);
     return qty(m.amount)+" "+esc(m.code);
   }
-  // The detail page is built around an X/XLM pair. A pool with no XLM leg has no detail page, so it opens
-  // on the explorer instead -- same rule myRow/myCard already apply to non-XLM positions.
-  function netHref(p){
-    var L=netLegs(p);
-    return (L[0].native||L[1].native) ? detailUrl(p.id,null,null)
-      : ("https://stellar.expert/explorer/public/liquidity-pool/"+p.id);
-  }
+  // EVERY pool opens on our own detail page, including the 880 ranked pools with no XLM leg.
+  //
+  // This used to send those to stellar.expert, on the belief that the detail page was built around an
+  // X/XLM pair -- a rule copied from myRow/myCard without checking whether it was still true. It is not.
+  // The detail page is loaded by pool ID and reads the pool's OWN reserves; chPair() was taught to build
+  // its chart query from any base/counter precisely so two credit assets work.
+  //
+  // Verified on USDC/XTAR (e04397d3...), a pool with no XLM leg: title "USDC / XTAR liquidity pool on
+  // Stellar", liquidity "5,611 USDC + 1,190,438,276 XTAR = $11.2K", 24h volume and fees in USDC, chart
+  // drawn, "Showing 1-20 of 100 transactions", 20 participants. Nothing about it needed an XLM leg.
+  //
+  // Sending a user off-site to read a pool we render perfectly well was the bug.
+  function netHref(p){ return detailUrl(p.id,null,null); }
   function netFees(p){ return (p.vol24==null)?null:(p.vol24*(+p.fee||0)/100); }
   function netRow(p,i){
     var L=netLegs(p), n=(NET.page-1)*NETPP+i+1, idx=(n<10?"0":"")+n;
