@@ -6829,6 +6829,13 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   // adding a second copy, which is what "most recent first" has to mean.
   function recAdd(t){ if(!t||!t.href)return;
     var a=recGet().filter(function(x){ return x.href!==t.href; }); a.unshift(t); recSave(a); }
+  // Accepts a bare URL or a full url(...) value and returns the bare URL. Tolerating both matters because
+  // entries saved before this fix are stored in the url("...") form and would otherwise stay broken.
+  function piUrl(v){
+    v=String(v||"").trim(); if(!v||v==="none")return "";
+    var m=/^url\(\s*["']?([\s\S]*?)["']?\s*\)$/.exec(v);
+    return m?m[1]:v;
+  }
   function recFromRow(a){
     function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace(/\s+/g," "):""; }
     var nm=a.querySelector(".sp-name-row"), name="";
@@ -6837,14 +6844,21 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     var img=a.querySelector(".sp-ico img");
     // A pool draws two circles as background-image on .lx-pi rather than an <img>, so its icon is kept as
     // those two backgrounds. Without this every recent pool would fall back to a letter avatar.
-    var pis=[].slice.call(a.querySelectorAll(".lx-poolico .lx-pi")).map(function(e){ return e.style.backgroundImage||""; }).filter(Boolean);
+    // Store the URL, NOT the whole "url(...)" value. poolIcoSet writes it as url("SRC") with double
+    // quotes, and emitting that verbatim into style="background-image:..." ends the attribute at the
+    // first inner quote -- the pool's two circles then rendered as empty grey discs. Same url(") trap the
+    // logo guard hit. Kept as a bare URL here and re-quoted safely in recRow.
+    var pis=[].slice.call(a.querySelectorAll(".lx-poolico .lx-pi")).map(function(e){
+      return piUrl(e.style.backgroundImage||""); }).filter(Boolean);
     return { href:a.getAttribute("href")||"", name:name, dom:txt(".sp-domain"), sub:txt(".sp-sub"),
       right:txt(".sp-addr-mini"), img:img?(img.getAttribute("src")||""):"", pis:pis };
   }
   function recRow(t){
     var ico = (t.pis&&t.pis.length)
+      // esc() turns the quotes into &quot;, which the browser decodes back to url("...") inside the style
+      // attribute instead of ending it early.
       ? '<div class="sp-ico lx-spico-on lx-poolico">'+t.pis.map(function(b,i){
-          return '<span class="lx-pi lx-pi-'+(i?"b":"a")+'" style="background-image:'+b+'"></span>'; }).join("")+'</div>'
+          return '<span class="lx-pi lx-pi-'+(i?"b":"a")+'" style="background-image:url('+esc('"'+piUrl(b)+'"')+')"></span>'; }).join("")+'</div>'
       : '<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.name||"?"))
         +'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
     return '<a class="sp-row sp-row--asset lx-searow lx-recrow" data-chain="stellar" href="'+esc(t.href)+'">'+ico+

@@ -1289,13 +1289,28 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var html=top.map(function(h,i){ var pct=h.bal/sup*100;
       var pctTxt=(pct>=0.001?pct.toFixed(3):"<0.001")+'%';
       // Mobile's row is the design's .mdxa-hl-row grid, not a table row.
+      // The row is a DIV, never an <a>, even for a normal account.
+      //
+      // It used to be <a class="mdxa-hl-row"> wrapping the whole row -- which also contains
+      // <a class="mdxa-hl-explorer">. An anchor inside an anchor is invalid HTML, and the parser does not
+      // forgive it: it closes the outer <a> when it meets the inner one and re-parents the rest as
+      // SIBLINGS. So each holder became several elements. Measured on USDC: 50 holders rendered as 87
+      // .mdxa-hl-row elements, only 50 of which still held an address and only 13 their values block --
+      // the address, the explorer link and the amounts each landing on their own line. That is the
+      // "design is broken" in the report; it was a nesting bug, not styling.
+      //
+      // With a div the two links are siblings and both keep working. The address carries the account
+      // link, so nothing is lost; lx-acct moves onto it so the existing wiring still finds it.
       if(MOB){ var _c=(h.addr.charAt(0)==="C");
-      return (_c?'<div class="mdxa-hl-row lx-nolink">':('<a class="mdxa-hl-row lx-acct" href="/account/stellar/'+h.addr+'">'))+'<span class="mdxa-hl-rank">#'+(i+1)+'</span>'
+      var _addr='<div class="mdxa-hl-addr mono">'
+        +(_c ? (shortG(h.addr)+'<span class="lx-sortag">Soroban</span>')
+             : ('<a class="lx-acct" href="/account/stellar/'+h.addr+'">'+shortG(h.addr)+'</a>'))+'</div>';
+      return '<div class="mdxa-hl-row'+(_c?' lx-nolink':'')+'"><span class="mdxa-hl-rank">#'+(i+1)+'</span>'
         +'<span class="mdxa-hl-ident">'+identicon(h.addr,28)+'</span>'
-        +'<div class="mdxa-hl-meta"><div class="mdxa-hl-addr mono">'+shortG(h.addr)+(h.addr.charAt(0)==="C"?'<span class="lx-sortag">Soroban</span>':"")+'</div>'
+        +'<div class="mdxa-hl-meta">'+_addr
         +'<a class="mdxa-hl-explorer" href="'+EXPL+h.addr+'" target="_blank" rel="noopener">View on Explorer \\u2197</a></div>'
         +'<div class="mdxa-hl-vals"><div class="mdxa-hl-bal mono">'+abbrNum(h.bal)+'</div>'
-        +'<div class="mdxa-hl-pct mono">'+pctTxt+'</div></div>'+(_c?"</div>":"</a>"); }
+        +'<div class="mdxa-hl-pct mono">'+pctTxt+'</div></div></div>'; }
       return '<tr><td class="dxa-hl-rank">'+(i+1)+'</td>'
         +'<td>'+(h.addr.charAt(0)==="C"? ('<span class="wallet-cell lx-nolink">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span><span class="lx-sortag">Soroban contract</span></span>'): ('<a class="lx-acct wallet-cell" href="/account/stellar/'+h.addr+'">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span></a>'))+'</td>'
         +'<td class="mono">'+abbrNum(h.bal)+'</td>'
