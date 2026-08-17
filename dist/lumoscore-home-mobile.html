@@ -1533,8 +1533,16 @@ html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready
    together. They now share one chart -- TVL line with volume bars beneath it, same as Trade-asset -- which
    leaves this control with nothing to switch between. Hidden rather than deleted from the markup: the
    design ships its own open/close handler and label rewriting for it, and removing the node it expects is
-   how you get a handler throwing on every click. */
-.chart-card .chart-mode-select{display:none!important}
+   how you get a handler throwing on every click.
+
+   NOT scoped to .chart-card. That is where the desktop puts it; the phone puts it in
+   .card > .chart-controls, so a ".chart-card ..." rule hid it on desktop only and left it sitting on
+   mobile. This is the SECOND selector in this file written against the desktop's wrapper and silently
+   missing the phone's (the disabled-CTA rule was the first) -- on this page, scope to the element.
+
+   #chartMetricMenu / .chart-mode-menu is the menu the design's own script builds and appends; with the
+   trigger gone nothing should open it, but a stale "open" class would otherwise leave it on screen. */
+.chart-mode-select,#chartMetricMenu,.chart-mode-menu{display:none!important}
 /* pool-tx wallet address links to OUR account page — subtle hover underline */
 .lx-sortag{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;font-size:10.5px;
 font-weight:700;letter-spacing:.02em;background:var(--surface);border:1px solid var(--border);color:var(--text-soft);vertical-align:middle}
