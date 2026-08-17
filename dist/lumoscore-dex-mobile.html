@@ -1787,7 +1787,7 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
 /* Price carries the longest string in the row, so it gets room; the counts stay narrow */
 .dex-mint-stat:first-child{min-width:104px}
-</style><style id="lx-mobdex-css">.mdx-mover-pair .lx-vtick,.mdx-mk-name-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 13px}.mdx-mover-pair .lx-vtick svg,.mdx-mk-name-row .lx-vtick svg{width:8px;height:8px;display:block}.mdx-mints-title{font-size:0!important}.mdx-mints-title::after{content:"New mints on LumosCore";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}body:not(.lxmd-ready) .mdx-mints-list,body:not(.lxmd-ready) .mdx-mover-list,body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}.lxmd-empty{padding:16px 4px;text-align:center;color:var(--text-soft,#8a8fa3);font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}.mdx-mint-ic[data-lxic],.mdx-mover-ic[data-lxic],.mdx-mk-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important}.mdx-mint-ic[data-lxic]::before,.mdx-mover-ic[data-lxic]::before,.mdx-mk-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}.mdx-mint-ic[data-lxic]>*,.mdx-mover-ic[data-lxic]>*,.mdx-mk-ic[data-lxic]>*{display:none!important}.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 2px 2px}.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}.lxmd-pg[disabled]{opacity:.4;cursor:default}.lxmd-pg-info{font-size:13px;color:var(--text-soft);font-weight:600;white-space:nowrap}</style></head>
+</style><style id="lx-mobdex-css">.mdx-mover-pair .lx-vtick,.mdx-mk-name-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 13px}.mdx-mover-pair .lx-vtick svg,.mdx-mk-name-row .lx-vtick svg{width:8px;height:8px;display:block}.mdx-mints-title{font-size:0!important}.mdx-mints-title::after{content:"New mints on LumosCore";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}body:not(.lxmd-ready) .mdx-mints-list,body:not(.lxmd-ready) .mdx-mover-list,body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}.lxmd-empty{padding:16px 4px;text-align:center;color:var(--text-soft,#8a8fa3);font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}.mdx-mint-ic[data-lxic],.mdx-mover-ic[data-lxic],.mdx-mk-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important}.mdx-mint-ic[data-lxic]::before,.mdx-mover-ic[data-lxic]::before,.mdx-mk-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}.mdx-mint-ic[data-lxic]>*,.mdx-mover-ic[data-lxic]>*,.mdx-mk-ic[data-lxic]>*{display:none!important}.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px;padding:10px 2px 2px;border-top:1px solid var(--border)}.mdx-mk-list{margin-bottom:26px}.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}.lxmd-pg[disabled]{opacity:.4;cursor:default}.lxmd-pg-info{font-size:13px;color:var(--text-soft);font-weight:600;white-space:nowrap}</style></head>
 <body>
 
   <!-- App bar -->
@@ -5014,7 +5014,7 @@ window.addEventListener('click',function(e){
     // list does that itself. The mobile list had no way to ask, so 26 of 32 launchpad tokens sat at
     // "0 XLM / —" -- and they had not simply never traded: LIBERATOR, BLA and TDT had all traded within
     // the hour. It was a missing request, not a missing market.
-    batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;window.__lxDEXpriceRows=priceVisible;}catch(_){} touch(); deferExtras(ASSETS); },
+    batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;window.__lxDEXpriceRows=priceVisible;window.__lxDEXmints=mintList;}catch(_){} touch(); deferExtras(ASSETS); },
       function(){ window.__lxDEXloaded=1; touch(); });
     // safety: reveal details even if an asset's request hangs (never leave the table stuck on placeholders)
     setTimeout(function(){ if(!window.__lxDEXloaded){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;}catch(_){} touch(); } }, 4500);
@@ -5148,7 +5148,15 @@ window.addEventListener('click',function(e){
   function renderMints(){
     var list=q(".mdx-mints-list");if(!list)return;var A=assets();if(!A)return;
     // The heading itself is retitled in CSS, not here — see RETITLE in STYLE.
-    var d=A.slice(0,5);
+    //
+    // The SAME five the desktop shows: the newest LAUNCHPAD mints. This took A.slice(0,5) -- the curated
+    // majors -- so the card headed "New mints on LumosCore" listed USDC, EURC, ARST, AQUA and yXLM, none
+    // of which was minted here. The desktop already computes this (newest-first over the native roster),
+    // so its own list is reused rather than a second one being derived that could drift from it.
+    var d=null;
+    try{ if(window.__lxDEXloadNative)window.__lxDEXloadNative();
+         d=window.__lxDEXmints?window.__lxDEXmints():null; }catch(_){ d=null; }
+    if(!d||!d.length)d=A.slice(0,5);              // roster not in yet: keep the placeholder rows
     var sig="m|"+d.map(function(a){return a.code+":"+(a.trades==null?"":a.trades);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     list.innerHTML=d.map(function(a){
