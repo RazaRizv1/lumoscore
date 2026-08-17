@@ -420,7 +420,14 @@ function poolList(req, res, params) {
     : { code: String(a.asset).split(':')[0], issuer: String(a.asset).split(':')[1] || null, amount: +a.amount || 0 };
 
   (async () => {
-    let ranked = LP_CACHE && Date.now() - LP_CACHE.ts < 900000 ? LP_CACHE.data : null;
+    // Serve a stale ranking rather than rebuilding in front of the caller -- the same rule as the Pages
+    // Function, where expiry was what made every 15th minute "take forever" (see pools.js).
+    //
+    // The production side ALSO revalidates in the background via waitUntil. This mirror deliberately does
+    // not: there is no equivalent here, and faking one by re-entering poolList with a stub response was
+    // fragile enough to be its own bug source. In dev the ranking simply stays until the process restarts,
+    // which is the right trade for a dev server and is stated rather than silently different.
+    let ranked = LP_CACHE ? LP_CACHE.data : null;
     if (!ranked) {
       // Same RESUMABLE build as the Pages Function, and chunked here too even though node has no
       // subrequest cap -- otherwise the page's warming/retry path would never run in dev and would

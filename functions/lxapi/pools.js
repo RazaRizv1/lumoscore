@@ -188,6 +188,35 @@ function assetOut(a) {
 const STEP_BUDGET = 40;
 const STATE_KEY = new Request('https://lumoscore.internal/lxapi/pools-state', { method: 'GET' });
 const RANK_KEY = new Request('https://lumoscore.internal/lxapi/pools-ranked', { method: 'GET' });
+const RANK_HOLD = 3600;      // how long the ranking SURVIVES in cache; freshness is judged by its own ts
+
+// Advance the resumable build by one budget. Returns the finished ranking, or null while still building.
+// Safe to call from waitUntil: it only ever REPLACES the published ranking once a build completes, so a
+// rebuild in flight never takes away the answer that is already being served.
+async function advance(cache) {
+  let state = null;
+  try { const s = await cache.match(STATE_KEY); if (s) state = await s.json(); } catch (_) {}
+  state = await buildStep(state);
+  if (state.phase !== 'done') {
+    try {
+      await cache.put(STATE_KEY, new Response(JSON.stringify(state), {
+        headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=600' },
+      }));
+    } catch (_) {}
+    return null;
+  }
+  const ranked = {
+    rows: state.rows, px: state.px, ranked: state.rows.length,
+    withVol: state.rows.filter((r) => r.vol24 !== null).length, ts: Date.now(),
+  };
+  try {
+    await cache.put(RANK_KEY, new Response(JSON.stringify(ranked), {
+      headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + RANK_HOLD },
+    }));
+    await cache.delete(STATE_KEY);
+  } catch (_) {}
+  return ranked;
+}
 
 function rowsFrom(recs, priceLeg, px, seen, rows) {
   for (const rec of recs) {
@@ -265,33 +294,28 @@ export async function onRequestGet(ctx) {
     let ranked = null;
     const hit = await cache.match(RANK_KEY);
     if (hit) ranked = await hit.json();
+
+    // STALE-WHILE-REVALIDATE. The ranking used to be cached for 15 minutes and then simply vanish, so
+    // every 15 minutes the next visitor paid for a full rebuild and watched "warming" for ~25s. That is
+    // the "takes forever to load" -- not the first build, which is unavoidable, but every expiry after it.
+    //
+    // The entry now lives an hour and freshness is judged by its own timestamp: a stale ranking is served
+    // IMMEDIATELY and the rebuild is advanced behind the response. Nobody waits on a rebuild except the
+    // very first visitor ever, and a rebuild in progress never removes the answer that already works.
+    const stale = ranked && (Date.now() - (ranked.ts || 0) > RANK_TTL * 1000);
+    if (ranked && stale) {
+      try { ctx && ctx.waitUntil && ctx.waitUntil(advance(cache)); } catch (_) {}
+    }
     if (!ranked) {
-      // Resume the in-progress build, spend one budget's worth, and either finish or report progress.
-      let state = null;
-      try { const s = await cache.match(STATE_KEY); if (s) state = await s.json(); } catch (_) {}
-      state = await buildStep(state);
-      if (state.phase !== 'done') {
-        try {
-          const save = new Response(JSON.stringify(state), {
-            headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' },
-          });
-          ctx && ctx.waitUntil && ctx.waitUntil(cache.put(STATE_KEY, save.clone()));
-        } catch (_) {}
-        return new Response(JSON.stringify({ warming: true, scanned: state.rows.length, phase: state.phase }), {
+      const done = await advance(cache);
+      if (!done) {
+        let scanned = 0, phase = 'native';
+        try { const s = await cache.match(STATE_KEY); if (s) { const st = await s.json(); scanned = (st.rows || []).length; phase = st.phase; } } catch (_) {}
+        return new Response(JSON.stringify({ warming: true, scanned, phase }), {
           headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
         });
       }
-      ranked = {
-        rows: state.rows, px: state.px, ranked: state.rows.length,
-        withVol: state.rows.filter((r) => r.vol24 !== null).length, ts: Date.now(),
-      };
-      const store = new Response(JSON.stringify(ranked), {
-        headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + RANK_TTL },
-      });
-      try {
-        ctx && ctx.waitUntil && ctx.waitUntil(cache.put(RANK_KEY, store.clone()));
-        ctx && ctx.waitUntil && ctx.waitUntil(cache.delete(STATE_KEY));
-      } catch (_) {}
+      ranked = done;
     }
 
     let rows = ranked.rows;
