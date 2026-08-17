@@ -29,7 +29,7 @@ const STYLE = '<style id="lx-mobdex-css">'
   // the rewriting. CSS wins outright — the design can rewrite that text node as often as it likes and
   // never see it painted. The svg carries width/height attributes, so font-size:0 does not shrink it.
   + '.mdx-mints-title{font-size:0!important}'
-  + '.mdx-mints-title::after{content:"Featured on Stellar";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}'
+  + '.mdx-mints-title::after{content:"New mints on LumosCore";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}'
   // Hide the mock rows until ours land, so nobody sees Aptos tokens on a Stellar exchange even briefly.
   + 'body:not(.lxmd-ready) .mdx-mints-list,body:not(.lxmd-ready) .mdx-mover-list,'
   + 'body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}'
@@ -165,9 +165,18 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     // does not exist here, so all three tabs came back as Gainers.
     var cat=moverCat();
     var d;try{d=window.__lxDEXmovers?window.__lxDEXmovers(cat):null;}catch(_){d=null;}
-    if(!d||!d.length)d=A.slice(0,4);
+    // Do NOT pad an empty category with "the first four assets". Gainers and Losers are quality-gated
+    // now, and on a day when nothing qualifies the honest answer is that nothing qualifies -- padding it
+    // put arbitrary assets under a heading that claims they moved. Volume is never empty in practice.
+    if(!d)d=[];
+    if(!d.length&&!window.__lxDEXloaded)d=A.slice(0,4);        // still loading: keep the placeholder rows
     var sig="v|"+cat+"|"+d.map(function(a){return a.code+":"+(a.chg==null?"":a.chg);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
+    if(!d.length){
+      list.innerHTML='<div class="lxmd-empty">No '+(cat==="losers"?"losers":"gainers")
+        +' right now among assets with real liquidity and holders.</div>';
+      return;
+    }
     list.innerHTML=d.map(function(a){var up=(a.chg||0)>=0;
       return '<div class="mdx-mover-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +ico("mdx-mover-ic",a)
@@ -207,6 +216,12 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     var fkey=cat+"|"+qy; if(mkKey!==fkey){ mkKey=fkey; mkPage=1; }
     var pages=Math.max(1,Math.ceil(d.length/MK_PER)); if(mkPage>pages)mkPage=pages;
     var start=(mkPage-1)*MK_PER, all=d; d=all.slice(start,start+MK_PER);
+    // Ask the data layer to price THIS page's rows. Only the five newest launchpad tokens are priced up
+    // front; the rest are fetched when a row is rendered, and the desktop list does that itself. Nothing
+    // here ever asked, so 26 of 32 sat at "0 XLM / —" -- and they had not simply never traded:
+    // LIBERATOR, BLA and TDT had each traded within the hour. It was a missing request, not a dead market.
+    // priceVisible dedupes and caches, so calling it per render is cheap and repaint-safe.
+    try{ if(window.__lxDEXpriceRows)window.__lxDEXpriceRows(d); }catch(_){}
     var sig="p|"+cat+"|"+qy+"|"+mkPage+"/"+pages+"|"+d.map(function(a){return a.code+":"+(priceOf(a)==null?"":a.px);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     if(!d.length){list.innerHTML='<div class="lxmd-empty">No pairs match</div>';return;}
@@ -268,7 +283,54 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       var css=logoCss(a);
       if(css&&ic.style.getPropertyValue("--lxvar")!==css)ic.style.setProperty("--lxvar",css);});
   }
+  // ---- Section order + mover tabs (mobile layout) ---------------------------------------------------
+  // Trading pairs first, then the mints card, then Market Movers. The design ships them the other way
+  // round, and each section is a run of SIBLINGS under .page (head, then its controls, then its list)
+  // rather than one wrapper each -- so the whole run moves, in order, or the heads end up over the wrong
+  // lists. Idempotent: it only acts when the order is actually wrong, so the 900ms pass cannot thrash it.
+  function orderSections(){
+    var page=q(".page"); if(!page)return;
+    var kids=[].slice.call(page.children);
+    function headByText(re){ for(var i=0;i<kids.length;i++){
+      var k=kids[i]; if(k.className&&String(k.className).indexOf("mdx-section-head")>=0&&re.test(k.textContent||""))return k; } return null; }
+    var pairsHead=headByText(/trading pairs/i), moversHead=headByText(/market movers/i);
+    var mints=page.querySelector(".mdx-mints-card");
+    if(!pairsHead||!moversHead||!mints)return;
+    // A section is its head plus every sibling up to the next head.
+    function run(head){
+      var out=[head], n=head.nextElementSibling;
+      while(n&&!(n.className&&String(n.className).indexOf("mdx-section-head")>=0)){ out.push(n); n=n.nextElementSibling; }
+      return out;
+    }
+    var pairs=run(pairsHead), movers=run(moversHead);
+    // Already in the wanted order? Then leave the DOM alone.
+    if(pairs[0].compareDocumentPosition(mints)&Node.DOCUMENT_POSITION_FOLLOWING &&
+       mints.compareDocumentPosition(movers[0])&Node.DOCUMENT_POSITION_FOLLOWING) return;
+    var anchor=mints.previousElementSibling;          // keep everything above the mints card where it is
+    var frag=document.createDocumentFragment();
+    pairs.forEach(function(el){frag.appendChild(el);});
+    frag.appendChild(mints);
+    movers.forEach(function(el){frag.appendChild(el);});
+    if(anchor&&anchor.parentNode===page)page.insertBefore(frag,anchor.nextSibling);
+    else page.appendChild(frag);
+  }
+  // Volume first and selected by default: it is the tab that answers "what is actually being traded",
+  // and unlike a percentage it cannot be manufactured on a dead asset. Gainers and Losers follow.
+  function orderMoverTabs(){
+    var bar=q(".mdx-mover-tabs"); if(!bar||bar.__lxOrd)return;
+    var want=["volume","gainers","losers"], have={};
+    [].slice.call(bar.children).forEach(function(b){ var c=b.getAttribute&&b.getAttribute("data-cat"); if(c)have[c]=b; });
+    if(!have.volume||!have.gainers||!have.losers)return;
+    bar.__lxOrd=1;
+    want.forEach(function(c){ bar.appendChild(have[c]); });
+    // Only claim the default when the user has not chosen yet -- re-asserting it on every pass would
+    // drag them back to Volume mid-browse.
+    if(!bar.__lxDef){ bar.__lxDef=1;
+      want.forEach(function(c){ have[c].classList.toggle("active",c==="volume"); });
+    }
+  }
   function pass(){try{
+    orderSections();orderMoverTabs();
     wire();renderMints();renderMovers();renderPairs();repaintIcons();
     if(assets()&&!document.body.classList.contains("lxmd-ready"))
       document.body.classList.add("lxmd-ready");
