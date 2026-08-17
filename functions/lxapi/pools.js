@@ -186,8 +186,75 @@ function assetOut(a) {
 // is not a shorter list, it is a list with real pools missing from the middle of it, and it would look
 // complete. Warming is visible and honest; a silently truncated ranking is not.
 const STEP_BUDGET = 40;
-const STATE_KEY = new Request('https://lumoscore.internal/lxapi/pools-state', { method: 'GET' });
-const RANK_KEY = new Request('https://lumoscore.internal/lxapi/pools-ranked', { method: 'GET' });
+
+// ---------------------------------------------------------------------------------------------
+// WHERE THE RANKING LIVES, AND WHY IT IS SPLIT IN THREE
+//
+// Measured 2026-08-17, and both numbers decide this design:
+//
+//   * `caches.default` IS PER DATA CENTER. Cloudflare: "the contents of the cache do not replicate
+//     outside of the originating data center." So caching the ranking there warms ONE colo, and every
+//     visitor routed anywhere else paid a full ~23s cold build. That -- not the first build -- is what
+//     made this page take a minute. KV is globally replicated, so one build serves the whole planet.
+//
+//   * PARSING THE RANKING COST MORE THAN THE FREE PLAN ALLOWS. The full ranking is 3.38 MB of JSON;
+//     JSON.parse + slice(25) measured 14-45 ms, to emit an 8 KB response. The Free plan's budget is
+//     10 ms of CPU per request, so EVERY request was over it, including perfect cache hits.
+//
+// Hence three entries instead of one, so a request reads only what it needs:
+//   meta  ~200 B   ts / totals / price. Read on every request.
+//   hot   ~158 KB  the top HOT_ROWS rows. Covers page 1..20 at 25/page. Parses in 0.52 ms.
+//   full  ~3.4 MB  every row. Touched only by a deep page or a search.
+// Written in that order -- data first, meta last -- so the presence of meta implies the data is there.
+//
+// On top of that, a finished page RESPONSE is cached per (ts, per, page, q) and returned verbatim on a
+// hit: no parse at all. Keying it on the ranking's own timestamp means it never needs invalidating --
+// a refreshed ranking simply has a new ts and the old slices age out on their own.
+const HOT_ROWS = 500;
+const K = {
+  meta:  'pools:meta:v2',
+  hot:   'pools:hot:v2',
+  full:  'pools:full:v2',
+  state: 'pools:state:v2',
+};
+
+// KV when the binding is present, the per-colo Cache API when it is not. The fallback is the previous
+// behaviour exactly, so this deploys safely BEFORE the KV namespace is bound and improves the moment it
+// is. Bonus on the Free plan: KV operations do not count against the 50-subrequest budget, Cache API
+// calls do.
+function mkStore(env) {
+  const kv = env && (env.LUMOS_KV || env.POOLS_KV);
+  if (kv) {
+    return {
+      kind: 'kv',
+      async get(k) { try { return await kv.get(k, 'json'); } catch (_) { return null; } },
+      async put(k, v, ttl) {
+        try { await kv.put(k, JSON.stringify(v), { expirationTtl: Math.max(60, ttl) }); } catch (_) {}
+      },
+      async del(k) { try { await kv.delete(k); } catch (_) {} },
+    };
+  }
+  const cache = caches.default;
+  const req = (k) => new Request('https://lumoscore.internal/' + encodeURIComponent(k), { method: 'GET' });
+  return {
+    kind: 'cache',
+    async get(k) { try { const r = await cache.match(req(k)); return r ? await r.json() : null; } catch (_) { return null; } },
+    async put(k, v, ttl) {
+      try {
+        await cache.put(req(k), new Response(JSON.stringify(v), {
+          headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + ttl },
+        }));
+      } catch (_) {}
+    },
+    async del(k) { try { await cache.delete(req(k)); } catch (_) {} },
+  };
+}
+
+// The cached page RESPONSE key. `q` is already uppercased and length-capped by the caller.
+function pageKey(ts, per, page, q) {
+  return new Request('https://lumoscore.internal/pools-page/' + ts + '/' + per + '/' + page
+    + '/' + encodeURIComponent(q || ''), { method: 'GET' });
+}
 // How long the ranking SURVIVES in cache. Freshness is judged separately, by its own timestamp against
 // RANK_TTL, so this is not "how stale a visitor may see" -- a stale entry is served instantly and
 // refreshed behind the response. This is only the window in which a cold build becomes possible again.
@@ -281,32 +348,38 @@ async function searchPools(ranked, q) {
   return { rows: out, assetsChased: chased.length, assetsMatched: keys.length };
 }
 
-// Advance the resumable build by one budget. Returns the finished ranking, or null while still building.
-// Safe to call from waitUntil: it only ever REPLACES the published ranking once a build completes, so a
-// rebuild in flight never takes away the answer that is already being served.
-async function advance(cache) {
-  let state = null;
-  try { const s = await cache.match(STATE_KEY); if (s) state = await s.json(); } catch (_) {}
+// Publish a completed build. Data first, meta last: a reader that sees meta can rely on hot/full being
+// there, and one that races in between simply sees no meta and treats it as not-yet-built.
+async function publish(store, rows, px) {
+  const meta = {
+    ts: Date.now(),
+    px,
+    total: rows.length,
+    ranked: rows.length,
+    withVol: rows.filter((r) => r.vol24 !== null).length,
+    hot: Math.min(HOT_ROWS, rows.length),
+  };
+  await store.put(K.full, { rows, px }, RANK_HOLD);
+  await store.put(K.hot, { rows: rows.slice(0, HOT_ROWS), px }, RANK_HOLD);
+  await store.put(K.meta, meta, RANK_HOLD);
+  await store.del(K.state);
+  return { meta, rows };
+}
+
+// Advance the resumable build by one budget. Returns {meta, rows} once complete, or null while still
+// building. Safe to call from waitUntil: it only ever REPLACES the published ranking once a build
+// completes, so a rebuild in flight never takes away the answer that is already being served.
+//
+// It returns the rows it just built rather than re-reading them, because KV is eventually consistent --
+// a read immediately after a write can still answer with the old value, or nothing.
+async function advance(store) {
+  let state = await store.get(K.state);
   state = await buildStep(state);
   if (state.phase !== 'done') {
-    try {
-      await cache.put(STATE_KEY, new Response(JSON.stringify(state), {
-        headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=600' },
-      }));
-    } catch (_) {}
+    await store.put(K.state, state, 900);
     return null;
   }
-  const ranked = {
-    rows: state.rows, px: state.px, ranked: state.rows.length,
-    withVol: state.rows.filter((r) => r.vol24 !== null).length, ts: Date.now(),
-  };
-  try {
-    await cache.put(RANK_KEY, new Response(JSON.stringify(ranked), {
-      headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + RANK_HOLD },
-    }));
-    await cache.delete(STATE_KEY);
-  } catch (_) {}
-  return ranked;
+  return publish(store, state.rows, state.px);
 }
 
 function rowsFrom(recs, priceLeg, px, seen, rows) {
@@ -379,71 +452,111 @@ export async function onRequestGet(ctx) {
   const qRaw = (url.searchParams.get('q') || '').trim().toUpperCase().slice(0, 24);
 
   const cache = caches.default;
-  try {
-    // The RANKING is cached whole and sliced per request. Caching the per-page responses instead would
-    // recompute a 10,962-pool enumeration for every page the user clicks to.
-    let ranked = null;
-    const hit = await cache.match(RANK_KEY);
-    if (hit) ranked = await hit.json();
+  const store = mkStore(ctx && ctx.env);
+  const later = (p) => { try { ctx && ctx.waitUntil && ctx.waitUntil(p); } catch (_) {} };
 
-    // STALE-WHILE-REVALIDATE. The ranking used to be cached for 15 minutes and then simply vanish, so
-    // every 15 minutes the next visitor paid for a full rebuild and watched "warming" for ~25s. That is
-    // the "takes forever to load" -- not the first build, which is unavoidable, but every expiry after it.
-    //
-    // The entry now lives an hour and freshness is judged by its own timestamp: a stale ranking is served
-    // IMMEDIATELY and the rebuild is advanced behind the response. Nobody waits on a rebuild except the
-    // very first visitor ever, and a rebuild in progress never removes the answer that already works.
-    const stale = ranked && (Date.now() - (ranked.ts || 0) > RANK_TTL * 1000);
-    if (ranked && stale) {
-      try { ctx && ctx.waitUntil && ctx.waitUntil(advance(cache)); } catch (_) {}
-    }
-    if (!ranked) {
-      const done = await advance(cache);
-      if (!done) {
-        let scanned = 0, phase = 'native';
-        try { const s = await cache.match(STATE_KEY); if (s) { const st = await s.json(); scanned = (st.rows || []).length; phase = st.phase; } } catch (_) {}
-        return new Response(JSON.stringify({ warming: true, scanned, phase }), {
-          headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+  try {
+    let meta = await store.get(K.meta);
+
+    // FAST PATH -- one cache read, no JSON parsed, response returned verbatim. This is what makes a warm
+    // request cost ~0 ms of CPU instead of the 14-45 ms that parsing 3.38 MB to emit 8 KB used to cost.
+    if (meta && meta.ts) {
+      const hit = await cache.match(pageKey(meta.ts, per, page, qRaw));
+      if (hit) {
+        if (Date.now() - meta.ts > RANK_TTL * 1000) later(advance(store));
+        // Re-headered, not re-read: the stored copy carries a long max-age so it survives as long as its
+        // ranking does, but the CLIENT must still be told 120s or a browser would hold this for hours.
+        // Passing the body through as a stream copies no bytes and parses nothing.
+        return new Response(hit.body, {
+          headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=120' },
         });
       }
-      ranked = done;
     }
 
-    let rows = ranked.rows, searchMeta = null;
+    // STALE-WHILE-REVALIDATE. The ranking used to be cached for 15 minutes and then simply vanish, so
+    // every 15 minutes the next visitor paid for a full rebuild and watched "warming" for ~25s.
+    //
+    // Freshness is judged by the entry's own timestamp, separately from how long it survives: a stale
+    // ranking is served IMMEDIATELY and the rebuild is advanced behind the response. Nobody waits on a
+    // rebuild except the very first visitor ever, and a rebuild in progress never removes the answer
+    // that already works.
+    let built = null;
+    if (!meta) {
+      built = await advance(store);
+      if (!built) {
+        const st = (await store.get(K.state)) || {};
+        return new Response(JSON.stringify({
+          warming: true, scanned: (st.rows || []).length, phase: st.phase || 'native',
+        }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
+      }
+      meta = built.meta;
+    } else if (Date.now() - meta.ts > RANK_TTL * 1000) {
+      later(advance(store));
+    }
+
+    let rows, total, pages, start, searchMeta = null;
+
     if (qRaw) {
-      // Cached per query: the same search repeated (paging through it, or another visitor) costs nothing.
+      // Search resolves a typed CODE to real (code, issuer) pairs off the ranking, so it needs every row.
+      // Cached per query, so the same search repeated -- paging through it, or another visitor -- is free.
       const sKey = new Request('https://lumoscore.internal/lxapi/pools-q/' + encodeURIComponent(qRaw), { method: 'GET' });
       let hitS = null;
       try { const c = await cache.match(sKey); if (c) hitS = await c.json(); } catch (_) {}
       if (!hitS) {
-        hitS = await searchPools(ranked, qRaw);
-        try {
-          await cache.put(sKey, new Response(JSON.stringify(hitS), {
-            headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + SEARCH_TTL },
-          }));
-        } catch (_) {}
+        const full = (built && { rows: built.rows, px: meta.px }) || await store.get(K.full);
+        if (!full) return new Response(JSON.stringify({ warming: true, scanned: 0, phase: 'native' }), {
+          headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+        });
+        hitS = await searchPools({ rows: full.rows, px: meta.px }, qRaw);
+        later(cache.put(sKey, new Response(JSON.stringify(hitS), {
+          headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + SEARCH_TTL },
+        })));
       }
       rows = hitS.rows;
+      total = rows.length;
+      pages = Math.max(1, Math.ceil(total / per));
+      start = Math.min((page - 1) * per, Math.max(0, (pages - 1) * per));
       searchMeta = { assetsChased: hitS.assetsChased, assetsMatched: hitS.assetsMatched };
+    } else {
+      total = meta.total;
+      pages = Math.max(1, Math.ceil(total / per));
+      // Clamp FIRST, then decide how much of the ranking to read -- an out-of-range page clamps back to
+      // the last one, which may sit far outside the hot slice even though `page` looked small.
+      start = Math.min((page - 1) * per, Math.max(0, (pages - 1) * per));
+      const blob = (built && { rows: built.rows })
+        || await store.get(start + per > meta.hot ? K.full : K.hot);
+      if (!blob || !blob.rows) {
+        // meta without its data: the entries expire together, but KV is eventually consistent and one
+        // can lag. Rebuild rather than answer with an empty list that would look like "no pools".
+        later(advance(store));
+        return new Response(JSON.stringify({ warming: true, scanned: 0, phase: 'native' }), {
+          headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+        });
+      }
+      rows = blob.rows;
     }
-
-    const total = rows.length;
-    const pages = Math.max(1, Math.ceil(total / per));
-    const start = Math.min((page - 1) * per, Math.max(0, (pages - 1) * per));
 
     const body = JSON.stringify({
       page: Math.floor(start / per) + 1,
       per, pages, total,
-      ranked: ranked.ranked,
+      ranked: meta.ranked,
       unpriceable: 28882,          // measured; pools with neither an XLM nor a Circle USDC leg
-      withVol: ranked.withVol,
-      xlmUsd: ranked.px,
-      ts: ranked.ts,
+      withVol: meta.withVol,
+      xlmUsd: meta.px,
+      ts: meta.ts,
       // Present only on a search, and only worth reading when assetsChased < assetsMatched: the query
       // matched more distinct assets than one request will chase, so the result is not the whole answer.
       search: searchMeta,
       rows: rows.slice(start, start + per),
     });
+
+    // The stored copy outlives the served one on purpose. The client is told 120s so its own numbers
+    // refresh; the slice is keyed on the ranking's ts, so it stays valid for as long as that ranking is
+    // the published one and never needs invalidating.
+    later(cache.put(pageKey(meta.ts, per, page, qRaw), new Response(body, {
+      headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + RANK_HOLD },
+    })));
+
     return new Response(body, {
       headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=120' },
     });
