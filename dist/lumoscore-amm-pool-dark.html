@@ -1625,6 +1625,21 @@ html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready
 .lx-partrow .part-share{font-weight:700;font-size:14px!important}
 /* pool detail: remove the design's green endpoint dot on the TVL chart */
 #tvlChart circle{display:none!important}
+/* Participants pager. We APPEND this footer ourselves, and the design only ships .part-foot styling in the
+   desktop file -- the phone build has no .part-foot rule at all, so on mobile it rendered as two stacked
+   unstyled divs with bare chevrons overflowing the card. Styled on our own class so it stands up wherever
+   it is inserted; the values mirror the desktop rules so both look the same. */
+.lx-partfoot{display:flex!important;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 14px;border-top:1px solid var(--border);font-size:13px;color:var(--text-soft);
+  font-family:'Hanken Grotesk',system-ui,sans-serif}
+.lx-partfoot > div:first-child{font-variant-numeric:tabular-nums}
+.lx-partfoot .nav{display:inline-flex;align-items:center;gap:6px}
+.lx-partfoot .nav button{width:26px;height:26px;min-width:26px;padding:0;border-radius:6px;
+  border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
+.lx-partfoot .nav button:hover:not(:disabled){color:var(--accent);border-color:var(--accent)}
+.lx-partfoot .nav button:disabled{opacity:.4;cursor:default}
+.lx-partfoot .lx-pppg{font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 2px}
 /* The "Pool TVL / Volume" dropdown chose which of the two series to show, so they were never on screen
    together. They now share one chart -- TVL line with volume bars beneath it, same as Trade-asset -- which
    leaves this control with nothing to switch between. Hidden rather than deleted from the markup: the
