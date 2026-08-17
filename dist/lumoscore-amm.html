@@ -4902,10 +4902,17 @@ window.addEventListener('click',function(e){
     var e1=b1?ico1(c1,b1,null,a1.code,a1.issuer):ico1(c1,gcolor(a1.code),(a1.code&&a1.code[0]?a1.code[0]:"?").toUpperCase(),a1.code,a1.issuer);
     return '<div class="pair-icons" data-paired="1">'+e0+e1+'</div>';
   }
-  // The secondary line under the dollar figure: the reserve of the leg the price came from.
+  // BOTH reserves under the dollar figure, not one.
+  //
+  // It showed a single leg, which made the card look wrong rather than incomplete: the headline is the
+  // value of the WHOLE pool (both sides), while the line under it was half of it. "$4.24M" over
+  // "13.35M XLM" does not reconcile -- 13.35M XLM is about $2.09M -- so a reader checking the arithmetic
+  // concludes the number is broken. Showing both sides makes the headline add up in front of them.
   function netLiq(p){
-    var L=netLegs(p), m=L[0].native?L[0]:(L[1].native?L[1]:L[0]);
-    return qty(m.amount)+" "+esc(m.code);
+    var L=netLegs(p);
+    var a=L[0], b=L[1];
+    if(!b||!b.code) return qty(a.amount)+" "+esc(a.code);
+    return qty(a.amount)+" "+esc(a.code)+" + "+qty(b.amount)+" "+esc(b.code);
   }
   // EVERY pool opens on our own detail page, including the 880 ranked pools with no XLM leg.
   //
