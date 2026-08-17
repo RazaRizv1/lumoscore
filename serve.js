@@ -381,7 +381,7 @@ function poolStats(req, res) {
 const LP_HOSTS = ['https://horizon.stellar.org', 'https://horizon.stellar.lobstr.co'];
 const LP_USDC = 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
 const LP_XPERT = 'https://api.stellar.expert/explorer/public/liquidity-pool';
-let LP_CACHE = null;
+let LP_CACHE = null, LP_STATE = null;
 function poolList(req, res, params) {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const getJ = async (path, host0) => {
@@ -395,17 +395,17 @@ function poolList(req, res, params) {
     }
     return null;
   };
-  const enumerate = async filter => {
-    const out = []; let cursor = '';
-    for (let g = 0; g < 120; g++) {
+  const enumerate = async (filter, cursor0, budget) => {
+    const out = []; let cursor = cursor0 || '';
+    for (let n = 0; n < budget; n++) {
       const d = await getJ('/liquidity_pools?' + filter + '&limit=200&order=asc' + (cursor ? '&cursor=' + cursor : ''));
-      if (!d) return null;
+      if (!d) throw new Error('enumeration page failed');
       const recs = (d._embedded || {}).records || [];
       for (const p of recs) out.push(p);
-      if (recs.length < 200) return out;
+      if (recs.length < 200) return { recs: out, cursor, done: true };
       cursor = recs[recs.length - 1].paging_token;
     }
-    return out;
+    return { recs: out, cursor, done: false };
   };
   const A32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
   const strkeyToHex = s => {
@@ -422,46 +422,92 @@ function poolList(req, res, params) {
   (async () => {
     let ranked = LP_CACHE && Date.now() - LP_CACHE.ts < 900000 ? LP_CACHE.data : null;
     if (!ranked) {
-      const rs = 900000, end = Math.ceil(Date.now() / rs) * rs;
-      const d = await getJ('/trade_aggregations?base_asset_type=credit_alphanum4&base_asset_code=USDC'
-        + '&base_asset_issuer=' + LP_USDC.split(':')[1] + '&counter_asset_type=native&resolution=' + rs
-        + '&start_time=' + (end - 12 * 3600000) + '&end_time=' + end + '&order=desc&limit=1');
-      const r0 = ((d || {})._embedded || {}).records || [];
-      // counter-per-base: this is XLM PER USDC, so the dollar price is its reciprocal (see the Pages Function)
-      const xlmPerUsdc = r0[0] ? (+r0[0].avg || +r0[0].close || 0) : 0;
-      const px = xlmPerUsdc > 0 ? 1 / xlmPerUsdc : 0;
-      if (!(px > 0.02 && px < 2)) throw new Error('no XLM price');
-
-      const [nat, usd] = await Promise.all([
-        enumerate('reserves=native'),
-        enumerate('reserves=' + encodeURIComponent(LP_USDC)),
-      ]);
-      if (!nat || !usd) throw new Error('incomplete enumeration');
-
-      const vol = new Map();
-      for (let p = 0; p < 6; p++) {
-        let d2 = null;
-        try { const r = await fetch(LP_XPERT + '?limit=200&cursor=' + p * 200, { headers: { accept: 'application/json' } }); if (r.ok) d2 = await r.json(); } catch (_) {}
-        const recs = ((d2 || {})._embedded || {}).records || [];
-        if (!recs.length) break;
-        for (const r of recs) { const h = strkeyToHex(r.id); if (h) vol.set(h, ((r.volume_value && +r.volume_value['1d']) || 0) / 1e7); }
+      // Same RESUMABLE build as the Pages Function, and chunked here too even though node has no
+      // subrequest cap -- otherwise the page's warming/retry path would never run in dev and would
+      // ship unexercised. That cap is what returned HTTP 502 in production from a build that worked
+      // perfectly locally.
+      const STEP = 40;
+      let state = LP_STATE;
+      let spent = 0;
+      if (!state) {
+        const rs = 900000, end = Math.ceil(Date.now() / rs) * rs;
+        const d = await getJ('/trade_aggregations?base_asset_type=credit_alphanum4&base_asset_code=USDC'
+          + '&base_asset_issuer=' + LP_USDC.split(':')[1] + '&counter_asset_type=native&resolution=' + rs
+          + '&start_time=' + (end - 12 * 3600000) + '&end_time=' + end + '&order=desc&limit=1');
+        const r0 = ((d || {})._embedded || {}).records || [];
+        // counter-per-base: XLM PER USDC, so the dollar price is its reciprocal (see the Pages Function)
+        const xlmPerUsdc = r0[0] ? (+r0[0].avg || +r0[0].close || 0) : 0;
+        const px = xlmPerUsdc > 0 ? 1 / xlmPerUsdc : 0;
+        if (!(px > 0.02 && px < 2)) throw new Error('no XLM price');
+        state = { phase: 'native', cursor: '', px, rows: [], seen: Object.create(null) };
+        spent++;
       }
-
-      const seen = new Set(), rows = [];
-      const push = (rec, tvl) => {
-        if (seen.has(rec.id)) return;
-        seen.add(rec.id);
-        const a = (rec.reserves || []).map(assetOut);
-        rows.push({ id: rec.id, a: a[0] || null, b: a[1] || null,
-          tvl: Math.round(tvl * 100) / 100, fee: (+rec.fee_bp || 0) / 100,
-          members: +rec.total_trustlines || 0,
-          vol24: vol.has(rec.id) ? Math.round(vol.get(rec.id) * 100) / 100 : null });
+      const grab = (recs, want, px) => {
+        for (const rec of recs) {
+          if (state.seen[rec.id]) continue;
+          const i = (rec.reserves || []).findIndex(x => x.asset === want);
+          if (i < 0) continue;
+          state.seen[rec.id] = 1;
+          const a = (rec.reserves || []).map(assetOut);
+          state.rows.push({ id: rec.id, a: a[0] || null, b: a[1] || null,
+            tvl: Math.round(2 * (+rec.reserves[i].amount || 0) * px * 100) / 100,
+            fee: (+rec.fee_bp || 0) / 100, members: +rec.total_trustlines || 0, vol24: null });
+        }
       };
-      const leg = (rec, w) => (rec.reserves || []).findIndex(x => x.asset === w);
-      for (const rec of nat) { const i = leg(rec, 'native'); if (i >= 0) push(rec, 2 * (+rec.reserves[i].amount || 0) * px); }
-      for (const rec of usd) { const i = leg(rec, LP_USDC); if (i >= 0) push(rec, 2 * (+rec.reserves[i].amount || 0)); }
-      rows.sort((x, y) => y.tvl - x.tvl);
-      ranked = { rows, px, ranked: rows.length, withVol: rows.filter(r => r.vol24 !== null).length, ts: Date.now() };
+      if (state.phase === 'native') {
+        const r = await enumerate('reserves=native', state.cursor, STEP - spent);
+        spent += Math.ceil(r.recs.length / 200) || 1;
+        grab(r.recs, 'native', state.px);
+        state.cursor = r.cursor;
+        if (r.done) { state.phase = 'usdc'; state.cursor = ''; }
+      }
+      if (state.phase === 'usdc' && spent < STEP - 6) {
+        const r = await enumerate('reserves=' + encodeURIComponent(LP_USDC), state.cursor, STEP - spent);
+        spent += Math.ceil(r.recs.length / 200) || 1;
+        grab(r.recs, LP_USDC, 1);
+        state.cursor = r.cursor;
+        if (r.done) state.phase = 'overlay';
+      }
+      if (state.phase === 'overlay') {
+        const vol = new Map(), img = new Map();
+        for (let p = 0; p < 6; p++) {
+          let d2 = null;
+          try { const r = await fetch(LP_XPERT + '?limit=200&cursor=' + p * 200, { headers: { accept: 'application/json' } }); if (r.ok) d2 = await r.json(); } catch (_) {}
+          const recs = ((d2 || {})._embedded || {}).records || [];
+          if (!recs.length) break;
+          for (const r of recs) {
+            const h = strkeyToHex(r.id); if (!h) continue;
+            vol.set(h, ((r.volume_value && +r.volume_value['1d']) || 0) / 1e7);
+            for (const a of (r.assets || [])) {                 // logos, keyed by CODE-ISSUER not code
+              // upstream writes "AQUA-GBNZ...-1" with a trailing asset-TYPE digit; drop it or nothing
+              // ever matches (see the Pages Function)
+              const k = String(a.asset || a.name || '').split('-').slice(0, 2).join('-');
+              const s = a.toml_info || a.tomlInfo || {};
+              const u = s.image || s.orgLogo || '';
+              if (k && u && !img.has(k)) img.set(k, u);
+            }
+          }
+        }
+        for (const r of state.rows) {
+          if (vol.has(r.id)) r.vol24 = Math.round(vol.get(r.id) * 100) / 100;
+          for (const leg of [r.a, r.b]) {
+            if (!leg) continue;
+            if (leg.code === 'XLM' && !leg.issuer) { leg.img = '/assets/tokens/xlm.png'; continue; }
+            const u = img.get(leg.code + '-' + leg.issuer) || img.get(leg.code);
+            if (u) leg.img = u;
+          }
+        }
+        state.rows.sort((x, y) => y.tvl - x.tvl);
+        state.phase = 'done';
+      }
+      if (state.phase !== 'done') {
+        LP_STATE = state;
+        res.writeHead(200, {'content-type':'application/json','cache-control':'no-store'});
+        return res.end(JSON.stringify({ warming: true, scanned: state.rows.length, phase: state.phase }));
+      }
+      LP_STATE = null;
+      ranked = { rows: state.rows, px: state.px, ranked: state.rows.length,
+        withVol: state.rows.filter(r => r.vol24 !== null).length, ts: Date.now() };
       LP_CACHE = { ts: Date.now(), data: ranked };
     }
 
