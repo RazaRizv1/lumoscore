@@ -89,6 +89,8 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lx-dxpair{display:inline-flex;flex:0 0 auto}
 .lx-dxpair span{display:block;width:30px;height:30px;border-radius:50%;background:#222 center/cover no-repeat;border:2.5px solid var(--surface-2,#f0f1f4);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .lx-dxpair .pb{margin-left:-11px}
+/* Empty Gainers/Losers. Spans the grid so the message sits in the panel rather than in one cell. */
+.dex-mover-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--text-muted);font-size:13.5px}
 /* ---- Market Movers: symmetric body — price/vol (left) + Trades 24h (right), spark spans below ---- */
 .dex-mover-body{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
 .dex-mover-l{min-width:0}
@@ -530,14 +532,55 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var cat=forceCat||moverCat();
     if(_moverFrozen[cat])return _moverFrozen[cat].map(function(c){return byCode[c];}).filter(Boolean);
     var d=ASSETS.slice();
-    if(cat==="losers")d=d.filter(function(a){return a.chg!=null&&a.chg<0;}).sort(function(a,b){return a.chg-b.chg;});
+    // GAINERS AND LOSERS ARE QUALITY-GATED. A percentage move is trivially manufactured on an asset
+    // nobody holds: one trade against a few dollars of liquidity is a 900% "gainer", and a board of those
+    // is worthless and looks like an endorsement. So a mover has to clear both bars:
+    //
+    //   * at least $500 of liquidity against XLM   (tvlUsd -- the pool it actually trades in)
+    //   * at least 250 holders                     (holders -- a real base, not one wallet and a bot)
+    //
+    // An asset we cannot measure is EXCLUDED rather than assumed good: null is not a passing score.
+    // Volume is deliberately NOT gated -- it is already self-limiting, since faking a top-volume slot
+    // costs the volume it claims.
+    function worthy(a){ return (+a.tvlUsd||0)>=500 && (+a.holders||0)>=250; }
+    if(cat==="losers")d=d.filter(function(a){return worthy(a)&&a.chg!=null&&a.chg<0;}).sort(function(a,b){return a.chg-b.chg;});
     else if(cat==="volume")d=d.sort(function(a,b){return (b.vol||0)-(a.vol||0);});
-    else d=d.filter(function(a){return a.chg!=null&&a.chg>=0;}).sort(function(a,b){return b.chg-a.chg;});
-    if(d.length<4)d=ASSETS.slice().sort(function(a,b){return Math.abs(b.chg||0)-Math.abs(a.chg||0);});
+    else d=d.filter(function(a){return worthy(a)&&a.chg!=null&&a.chg>=0;}).sort(function(a,b){return b.chg-a.chg;});
+    // NO top-up for gainers/losers. This used to backfill by |chg| whenever a category held fewer than
+    // four, which meant that on a red day -- every asset down -- "Gainers" filled itself with the four
+    // biggest LOSERS and the two tabs showed an identical list of decliners under opposite headings.
+    // A short list is a fact about the market; a padded one is a false claim. Volume keeps its top-up,
+    // since ordering by volume cannot misrepresent direction.
+    if(cat==="volume"&&d.length<4)d=ASSETS.slice().sort(function(a,b){return (b.vol||0)-(a.vol||0);});
     d=d.slice(0,4); _moverFrozen[cat]=d.map(function(a){return a.code;}); return d;
   }
+  // Volume is the default tab: it answers "what is actually trading", and unlike a percentage it cannot
+  // be manufactured on a dead asset. Claimed once, so it never drags the reader back mid-browse.
+  function moverDefault(){
+    var bar=q(".dex-mover-tabs")||q(".dex-mover-tab")&&q(".dex-mover-tab").parentNode;
+    if(!bar||bar.__lxDef)return; bar.__lxDef=1;
+    var tabs=qa(".dex-mover-tab"), vol=null;
+    tabs.forEach(function(t){ if((t.getAttribute("data-cat")||"")==="volume")vol=t; });
+    if(!vol)return;
+    // Order Volume, Gainers, Losers to match.
+    var want=["volume","gainers","losers"], map={};
+    tabs.forEach(function(t){ map[t.getAttribute("data-cat")||""]=t; });
+    if(map.volume&&map.gainers&&map.losers)want.forEach(function(c){ bar.appendChild(map[c]); });
+    tabs.forEach(function(t){ t.classList.toggle("active",t===vol); });
+  }
   function renderMovers(){ var grid=q("#dexMoverGrid"); if(!grid)return;
+    try{ moverDefault(); }catch(_){}
     var data=moverData(); var sig=data.map(function(a){return a.code;}).join(",");
+    // An empty category is now possible and is a real answer: Gainers and Losers are quality-gated, so on
+    // a day when nothing qualifies there is nothing to show. Say so rather than leaving a blank panel --
+    // and never pad it, which would put arbitrary assets under a heading claiming they moved.
+    if(window.__lxDEXloaded&&!data.length){
+      var cat0=moverCat();
+      var msg='<div class="dex-mover-empty">No '+(cat0==="losers"?"losers":"gainers")
+        +' right now among assets with real liquidity and holders.</div>';
+      if(grid.innerHTML!==msg){ grid.innerHTML=msg; grid.__lxsig="empty|"+cat0; }
+      return;
+    }
     if(grid.__lxsig!==sig || !grid.querySelector(".dex-mover-card[data-tkr]")){    // rebuild only when the top-4 order changes
       grid.innerHTML=data.map(function(a){
         return '<div class="dex-mover-card" data-tkr="'+a.code+'" data-cat="'+a.cat+'">'
@@ -755,7 +798,12 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // every asset is in, flag loaded -> the movers compute their final top-4 order ONCE (no re-sort glitch).
     // the curated set the same way as everything else: numbers in one batched request, extras after
     ASSETS.forEach(function(a){ a.__px=1; });
-    batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;}catch(_){} touch(); deferExtras(ASSETS); },
+    // priceVisible is exported because the PHONE renders its own pair list. Only the five newest native
+    // tokens are priced up front; every other row is priced when it is actually rendered, and the desktop
+    // list does that itself. The mobile list had no way to ask, so 26 of 32 launchpad tokens sat at
+    // "0 XLM / —" -- and they had not simply never traded: LIBERATOR, BLA and TDT had all traded within
+    // the hour. It was a missing request, not a missing market.
+    batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;window.__lxDEXpriceRows=priceVisible;}catch(_){} touch(); deferExtras(ASSETS); },
       function(){ window.__lxDEXloaded=1; touch(); });
     // safety: reveal details even if an asset's request hangs (never leave the table stuck on placeholders)
     setTimeout(function(){ if(!window.__lxDEXloaded){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;}catch(_){} touch(); } }, 4500);
