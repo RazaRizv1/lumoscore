@@ -711,6 +711,22 @@ function buildPage(shell) {
     p = p.replace(new RegExp('<script id="lx-' + id + '">[\\s\\S]*?</script>', 'g'), '');
   }
 
+  // ONE back link, in the bar, with the bar's arrow.
+  //
+  // This page is CLONED from a pools page, so the shell arrives carrying that page's crumb-bar --
+  // "<- Back to Pools", pointing at /pools/stellar. That is the source page's navigation, not this
+  // page's: you can reach an account from anywhere. Together with our own "Back to dashboard" crumb
+  // underneath it, the page showed two back links, stacked, going to different places.
+  //
+  // So the inherited bar is RETARGETED rather than removed and rebuilt: keep its markup, its styling and
+  // its arrow (the long one, which is the design's own back glyph), and change only where it goes and
+  // what it says. The inner HTML is preserved through the replace, which is what keeps the svg.
+  p = p.replace(/<a class="back-link" href="[^"]*">([\s\S]*?)<\/a>/,
+    (m, inner) => '<a class="back-link" href="/dashboard">' + inner.replace(/Back to Pools/, 'Back to dashboard') + '</a>');
+  // Our own crumb is then redundant -- but only where the bar exists, which is the mobile shell. The
+  // desktop shell has no crumb-bar at all, so there the crumb IS the back link and must stay.
+  if (/class="crumb-bar"/.test(p)) p = p.replace(/<div class="crumb lx-crumb">[\s\S]*?<\/div>/, '');
+
   // title + description
   p = p.replace(/<title>[\s\S]*?<\/title>/, '<title>' + TITLE + '</title>');
   p = p.replace(/<meta name="description" content="[^"]*"/, '<meta name="description" content="' + DESC + '"');
