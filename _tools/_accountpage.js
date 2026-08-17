@@ -37,7 +37,7 @@ const ICO = {
 };
 
 const MAIN_INNER = `
-      <div class="crumb"><a href="/dashboard">${ICO.back}<span>Back to dashboard</span></a></div>
+      <div class="crumb lx-crumb"><a href="/dashboard">${ICO.back}<span>Back to dashboard</span></a></div>
 
       <section class="acc-head">
         <span class="acc-ava-wrap">
@@ -93,6 +93,16 @@ const MAIN = '<main class="page">' + MAIN_INNER + '</main>';
 // STYLE -- width-driven only. No layout here depends on which build key it landed in.
 // ---------------------------------------------------------------------------------------------------
 const STYLE = `<style id="lx-acc-css">
+/* We INJECT this crumb, so it carries its own styling. The design defines .crumb in the desktop file
+   only -- the mobile build has no .crumb rule at all, just .crumb-bar (the separate "Back to Pools"
+   strip at the top) -- so on a phone the link fell back to browser defaults and rendered as underlined
+   #0000EE, which is what "looks weird" was. Styled on our own .lx-crumb class rather than by adding
+   another .crumb rule, so nothing the design owns changes; the values match the desktop rules so both
+   platforms look the same. */
+.lx-crumb{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--text-soft);margin-bottom:16px}
+.lx-crumb a{color:var(--text-muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.lx-crumb a:hover{color:var(--accent)}
+.lx-crumb a svg{flex:0 0 auto}
 .acc-head{display:flex;align-items:flex-start;gap:16px;margin:6px 0 22px}
 .acc-ava-wrap{position:relative;flex:0 0 auto;display:inline-block;line-height:0}
 .acc-net{position:absolute;right:-1px;bottom:-1px;width:24px;height:24px;border-radius:50%;
