@@ -4555,7 +4555,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   // pools is THIS wallet in), it is already correct, and routing it through a network ranking would only
   // put it at risk.
   var NETPP=25;
-  var NET={page:1,q:"",rows:null,total:0,pages:1,busy:0,err:"",ranked:0,unpriceable:0,seq:0};
+  var NET={page:1,q:"",rows:null,total:0,pages:1,busy:0,err:"",ranked:0,unpriceable:0,seq:0,warm:0};
   function netActive(){ return !!(q("#poolsBody")||q("#panelAll")); }
   function netFetch(){
     if(NET.busy)return; NET.busy=1;
@@ -4565,6 +4565,13 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     .then(function(d){
       if(mySeq!==NET.seq)return;               // a newer query already answered; discard this one
       if(!d||d.error)throw new Error((d&&d.error)||"bad payload");
+      // The ranking is built across several requests (the endpoint has a per-invocation upstream budget).
+      // Until it is complete it reports warming rather than serving half a ranking -- half an
+      // enumeration sorted by TVL is not a shorter list, it is one with real pools missing from the
+      // middle. Show progress and come back for it.
+      if(d.warming){ NET.warm=+d.scanned||0; NET.busy=0; paintNet();
+        setTimeout(function(){ if(mySeq===NET.seq)netFetch(); },1500); return; }
+      NET.warm=0;
       NET.rows=d.rows||[]; NET.total=+d.total||0; NET.pages=Math.max(1,+d.pages||1);
       NET.page=Math.max(1,+d.page||1); NET.ranked=+d.ranked||0; NET.unpriceable=+d.unpriceable||0;
       NET.err=""; NET.busy=0; paintNet();
@@ -4577,13 +4584,40 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   }
   // A pool of two arbitrary assets. The KNOWN list was always CODE/XLM so allRow could hardcode that;
   // across the network most pairs are not, and 880 ranked pools have no XLM leg at all.
+  // img comes from the endpoint. The page cannot resolve these itself: amTokUrl() reads a static map
+  // keyed by asset CODE, which knows the curated handful and nothing else, so network pairs fell back to
+  // coloured letter tiles. It is carried per leg and keyed by CODE-ISSUER upstream, because a ticker is
+  // not an identity on Stellar.
   function netLegs(p){
     var a=p.a||{code:"?"},b=p.b||{code:"?"};
-    var la={code:a.code,issuer:a.issuer,native:a.code==="XLM"&&!a.issuer,amount:+a.amount||0};
-    var lb={code:b.code,issuer:b.issuer,native:b.code==="XLM"&&!b.issuer,amount:+b.amount||0};
+    var la={code:a.code,issuer:a.issuer,native:a.code==="XLM"&&!a.issuer,amount:+a.amount||0,img:a.img||""};
+    var lb={code:b.code,issuer:b.issuer,native:b.code==="XLM"&&!b.issuer,amount:+b.amount||0,img:b.img||""};
     return [la,lb];
   }
-  // Liquidity reads as the XLM leg where there is one (what the old rows showed), else the first leg.
+  // icoPairG resolves through amTokUrl, which does not know these assets. Seed what the endpoint sent
+  // into the same cache amTokUrl reads, so the shared logo path (and healLogos) sees a real URL.
+  function netSeedLogos(rows){
+    try{ var m=(window.__lxLogos=window.__lxLogos||{});
+      (rows||[]).forEach(function(p){ [p.a,p.b].forEach(function(a){
+        if(a&&a.img&&a.code&&!m[a.code])m[a.code]=a.img; }); });
+    }catch(_){}
+  }
+  // Same shape as icoPairG, but prefers the URL the endpoint sent for THIS leg over a code-keyed
+  // lookup. Falls back to icoPairG's path (and then a coloured letter tile) when there is no image.
+  function netIcoBg(a){
+    if(!a)return null;
+    if(a.native||a.code==="XLM")return "url(/assets/tokens/xlm.png)";
+    if(a.img)return "url("+a.img+")";
+    var u=amTokUrl(a.code,a.issuer); return u?("url("+u+")"):null;
+  }
+  function netIcoPair(a0,a1,mob){
+    var b0=netIcoBg(a0),b1=netIcoBg(a1);
+    var c0=mob?"a pa":"pa", c1=mob?"b pb":"pb";
+    var e0=b0?ico1(c0,b0,null,a0.code,a0.issuer):ico1(c0,gcolor(a0.code),(a0.code&&a0.code[0]?a0.code[0]:"?").toUpperCase(),a0.code,a0.issuer);
+    var e1=b1?ico1(c1,b1,null,a1.code,a1.issuer):ico1(c1,gcolor(a1.code),(a1.code&&a1.code[0]?a1.code[0]:"?").toUpperCase(),a1.code,a1.issuer);
+    return '<div class="pair-icons" data-paired="1">'+e0+e1+'</div>';
+  }
+  // The secondary line under the dollar figure: the reserve of the leg the price came from.
   function netLiq(p){
     var L=netLegs(p), m=L[0].native?L[0]:(L[1].native?L[1]:L[0]);
     return qty(m.amount)+" "+esc(m.code);
@@ -4601,11 +4635,14 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     var f=netFees(p);
     var volCell=(p.vol24==null)?'<td><div>&mdash;</div></td><td><div>&mdash;</div></td>'
       :('<td><div>'+usd(p.vol24)+'</div></td><td><div>'+usd(f)+'</div></td>');
+    // DOLLARS on top, the reserve underneath. The list is ranked by USD TVL, so the dollar figure has to
+    // be the one the eye follows down the column -- with the asset amount leading, the ranking looked
+    // wrong wherever the units changed (a USDC-leg pool's reserve is not comparable to an XLM one's).
     return '<tr class="lx-ammrow lx-netrow" data-pool="'+p.id+'" data-href="'+netHref(p)+'" style="cursor:pointer">'+
       '<td class="idx">'+idx+'</td>'+
-      '<td><div class="pair-cell">'+icoPairG(L[0],L[1])+'<div><div class="pair-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
+      '<td><div class="pair-cell">'+netIcoPair(L[0],L[1])+'<div><div class="pair-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
       '<div class="pair-sub">'+p.fee+'% fee \u00b7 Stellar AMM</div></div></div></td>'+
-      '<td><div>'+netLiq(p)+'</div><div class="pair-sub">'+usd(p.tvl)+'</div></td>'+
+      '<td><div>'+usd(p.tvl)+'</div><div class="pair-sub">'+netLiq(p)+'</div></td>'+
       volCell+
       '<td>'+num(p.members)+'</td></tr>';
   }
@@ -4613,12 +4650,12 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     var L=netLegs(p), n=(NET.page-1)*NETPP+i+1, idx=(n<10?"0":"")+n;
     var volCell=(p.vol24==null)?'<div class="v">&mdash;</div>':('<div class="v">'+usd(p.vol24)+'</div>');
     return '<a class="pool-card lx-ammcard lx-netcard" data-pool="'+p.id+'" href="'+netHref(p)+'">'+
-      '<div class="pc-head">'+icoPairG(L[0],L[1],true)+
+      '<div class="pc-head">'+netIcoPair(L[0],L[1],true)+
       '<div class="pc-info"><div class="pc-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
       '<div class="pc-sub">'+p.fee+'% fee \u00b7 Stellar AMM</div></div>'+
       '<div class="pc-idx">#'+idx+'</div></div>'+
       '<div class="pc-stats">'+
-      '<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+netLiq(p)+'</div><div class="vs">'+usd(p.tvl)+'</div></div>'+
+      '<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+usd(p.tvl)+'</div><div class="vs">'+netLiq(p)+'</div></div>'+
       '<div class="pc-stat"><div class="l">24h Vol</div>'+volCell+'</div>'+
       '<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.members)+'</div></div>'+
       '</div></a>';
@@ -4638,15 +4675,18 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   function paintNet(){
     if(!netActive())return;
     var rows=NET.rows;
-    // Nothing has arrived yet AND nothing failed: leave the page alone rather than flashing an empty
-    // table over the skeleton.
-    if(!rows&&!NET.err)return;
+    // Nothing has arrived yet AND nothing failed AND we are not warming: leave the page alone rather
+    // than flashing an empty table over the skeleton.
+    if(!rows&&!NET.err&&!NET.warm)return;
+    if(rows)netSeedLogos(rows);
     var body=q("#poolsBody"), mob=body?null:q("#panelAll");
     var empty=NET.err
       ? '<b>Could not load pools</b>'+esc(NET.err)
-      : (NET.q?'<b>No pools match \u201c'+esc(NET.q)+'\u201d</b>Try an asset code, e.g. USDC.':'<b>No pools</b>');
+      : NET.warm
+        ? '<b>Ranking the network\u2019s pools\u2026</b>'+num(NET.warm)+' scanned so far. This runs once, then it is instant.'
+        : (NET.q?'<b>No pools match \u201c'+esc(NET.q)+'\u201d</b>Try an asset code, e.g. USDC.':'<b>No pools</b>');
     if(body){
-      var sig="net|"+NET.page+"|"+NET.q+"|"+(rows?rows.length:-1)+"|"+NET.err;
+      var sig="net|"+NET.page+"|"+NET.q+"|"+(rows?rows.length:-1)+"|"+NET.err+"|"+NET.warm;
       if(body.getAttribute("data-lxsig")!==sig){
         body.innerHTML=(rows&&rows.length)?rows.map(netRow).join("")
           :'<tr class="lx-ammrow"><td colspan="6"><div class="lx-amm-empty">'+empty+'</div></td></tr>';
@@ -4655,7 +4695,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       }
     }
     if(mob){
-      var msig="net|"+NET.page+"|"+NET.q+"|"+(rows?rows.length:-1)+"|"+NET.err;
+      var msig="net|"+NET.page+"|"+NET.q+"|"+(rows?rows.length:-1)+"|"+NET.err+"|"+NET.warm;
       if(mob.getAttribute("data-lxsig")!==msig){
         mob.innerHTML=(rows&&rows.length)?rows.map(netCard).join("")
           :'<div class="lx-amm-empty">'+empty+'</div>';

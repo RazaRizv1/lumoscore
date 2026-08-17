@@ -61,23 +61,26 @@ async function j(path, ttl = UPSTREAM_TTL) {
   return null;
 }
 
-// Page through one Horizon liquidity_pools filter completely. Returns null if ANY page failed --
-// a partial enumeration is not a shorter list, it is a WRONG ranking with real pools missing.
-async function enumerate(filter) {
+// Page through one Horizon liquidity_pools filter completely, OR until the request's subrequest budget
+// runs out -- see buildStep for why that budget exists. Returns {recs, cursor, done}.
+//
+// It stops on budget, never on error: a page that failed is not a shorter list, it is a WRONG ranking
+// with real pools missing from the middle of it.
+async function enumerate(filter, cursor0, budget) {
   const out = [];
-  let cursor = '';
+  let cursor = cursor0 || '';
   // Horizon paging is cursor-chained: page N+1's cursor is only known once page N is in hand, so these
   // cannot be fanned out. Walk sequentially with no artificial delay -- the edge cache absorbs repeats,
   // and the retry/fallback in j() is what handles a throttle, not pre-emptive sleeping.
-  for (let guard = 0; guard < 120; guard++) {
+  for (let n = 0; n < budget; n++) {
     const d = await j('/liquidity_pools?' + filter + '&limit=' + PAGE + '&order=asc' + (cursor ? '&cursor=' + cursor : ''));
-    if (!d) return null;
+    if (!d) throw new Error('enumeration page failed');
     const recs = (d._embedded && d._embedded.records) || [];
     for (const p of recs) out.push(p);
-    if (recs.length < PAGE) return out;
+    if (recs.length < PAGE) return { recs: out, cursor, done: true };
     cursor = recs[recs.length - 1].paging_token;
   }
-  return out;
+  return { recs: out, cursor, done: false };
 }
 
 // XLM/USD straight off the ledger: Circle USDC against native, from Horizon's own aggregation. No
@@ -120,8 +123,16 @@ function strkeyToHex(s) {
 // where its ordering was already shown to be unusable. Its coverage is size-correlated, so the pools a
 // user actually sees on page 1 have a figure and deep dust pages do not. Missing means missing: those
 // rows report null and the page shows a dash, rather than a fabricated 0.
+// Also harvests LOGOS while it is here. Each stellar.expert pool record carries toml_info.image for both
+// of its assets, so the icons cost nothing extra once this request is being made anyway.
+//
+// This matters because the page cannot resolve them on its own: its amTokUrl() reads a static map keyed
+// by asset CODE, which knows the curated handful and nothing else, so across the network most pairs fell
+// back to coloured letter tiles. Resolving them client-side instead would be 50 lookups per 25-row page.
+// Shipping the URL with the row is one lookup for everybody, and it is issuer-correct rather than
+// code-keyed -- which matters on Stellar, where a ticker is not an identity.
 async function volumeOverlay() {
-  const map = new Map();
+  const vol = new Map(), img = new Map();
   for (let p = 0; p < VOL_PAGES; p++) {
     let d = null;
     try {
@@ -134,11 +145,22 @@ async function volumeOverlay() {
     for (const r of recs) {
       const hex = strkeyToHex(r.id);
       if (!hex) continue;
-      const v = (r.volume_value && +r.volume_value['1d']) || 0;
-      map.set(hex, v / 1e7);
+      vol.set(hex, ((r.volume_value && +r.volume_value['1d']) || 0) / 1e7);
+      for (const a of (r.assets || [])) {
+        // Key by CODE-ISSUER, never by code alone -- a ticker is not an identity on Stellar.
+        // NOTE the shape: upstream writes "AQUA-GBNZ...-1", with a trailing asset-TYPE digit
+        // (1 = alphanum4, 2 = alphanum12). Keying on the raw string never matched what the page
+        // asks for, so every credit leg came back without a logo while XLM, matched separately,
+        // looked fine -- which is exactly how it presented.
+        const raw = (a.asset || a.name || '');
+        const key = raw.split('-').slice(0, 2).join('-');
+        const src = a.toml_info || a.tomlInfo || {};
+        const u = src.image || src.orgLogo || '';
+        if (key && u && !img.has(key)) img.set(key, u);
+      }
     }
   }
-  return map;
+  return { vol, img };
 }
 
 function legOf(rec, want) {
@@ -152,54 +174,83 @@ function assetOut(a) {
   return { code: bits[0], issuer: bits[1] || null, amount: +a.amount || 0 };
 }
 
-async function buildRanking() {
-  const px = await xlmUsd();
-  if (!(px > 0)) throw new Error('no XLM price');
+// A full build is 57 upstream calls: 51 pages of XLM-leg pools, 5 of USDC-leg, the price, and the
+// overlay. A Worker invocation on the Free plan may make 50 subrequests, so doing it in one go returned
+// HTTP 502 in production while working locally, where no such cap exists.
+//
+// So the build is RESUMABLE. Each request spends at most STEP_BUDGET subrequests, saves its position,
+// and returns {warming:true} until the enumeration is complete; the page retries. Two or three requests
+// warm it, then it is cached for everyone.
+//
+// It intentionally does NOT serve a partial ranking in the meantime. Half an enumeration sorted by TVL
+// is not a shorter list, it is a list with real pools missing from the middle of it, and it would look
+// complete. Warming is visible and honest; a silently truncated ranking is not.
+const STEP_BUDGET = 40;
+const STATE_KEY = new Request('https://lumoscore.internal/lxapi/pools-state', { method: 'GET' });
+const RANK_KEY = new Request('https://lumoscore.internal/lxapi/pools-ranked', { method: 'GET' });
 
-  const [nat, usdc] = await Promise.all([
-    enumerate('reserves=native'),
-    enumerate('reserves=' + encodeURIComponent(USDC)),
-  ]);
-  if (!nat || !usdc) throw new Error('incomplete enumeration');
-
-  const vol = await volumeOverlay();
-
-  const seen = new Set();
-  const rows = [];
-  const push = (rec, tvlUsd) => {
-    if (seen.has(rec.id)) return;
-    seen.add(rec.id);
+function rowsFrom(recs, priceLeg, px, seen, rows) {
+  for (const rec of recs) {
+    if (seen[rec.id]) continue;
+    const i = legOf(rec, priceLeg);
+    if (i < 0) continue;                       // the reserves= filter is exact, but do not assume it
+    seen[rec.id] = 1;
     const rs = (rec.reserves || []).map(assetOut);
     rows.push({
       id: rec.id,
       a: rs[0] || null,
       b: rs[1] || null,
-      tvl: Math.round(tvlUsd * 100) / 100,
-      fee: (+rec.fee_bp || 0) / 100,              // basis points -> percent
+      tvl: Math.round(2 * (+rec.reserves[i].amount || 0) * px * 100) / 100,
+      fee: (+rec.fee_bp || 0) / 100,           // basis points -> percent
       members: +rec.total_trustlines || 0,
-      vol24: vol.has(rec.id) ? Math.round(vol.get(rec.id) * 100) / 100 : null,
+      vol24: null,
     });
-  };
-
-  for (const rec of nat) {
-    const i = legOf(rec, 'native');
-    if (i < 0) continue;                          // ?reserves=native is exact, but do not assume it
-    push(rec, 2 * (+rec.reserves[i].amount || 0) * px);
   }
-  // USDC-leg pools that have no XLM leg. Ones that DO have both were already priced above and are
-  // skipped by `seen` -- pricing them twice off different legs would produce two different TVLs for the
-  // same pool depending on which loop won.
-  for (const rec of usdc) {
-    const i = legOf(rec, USDC);
-    if (i < 0) continue;
-    push(rec, 2 * (+rec.reserves[i].amount || 0));
-  }
-
-  rows.sort((x, y) => y.tvl - x.tvl);
-  return { rows, px, ranked: rows.length, withVol: rows.filter((r) => r.vol24 !== null).length };
 }
 
-const RANK_KEY = new Request('https://lumoscore.internal/lxapi/pools-ranked', { method: 'GET' });
+// One resumable step. Returns the state; state.phase === 'done' means the ranking is in state.rows.
+async function buildStep(state) {
+  let spent = 0;
+  if (!state) {
+    const px = await xlmUsd(); spent++;
+    if (!(px > 0)) throw new Error('no XLM price');
+    state = { phase: 'native', cursor: '', px, rows: [], seen: {} };
+  }
+  if (state.phase === 'native') {
+    const r = await enumerate('reserves=native', state.cursor, STEP_BUDGET - spent);
+    spent += Math.ceil(r.recs.length / PAGE) || 1;
+    rowsFrom(r.recs, 'native', state.px, state.seen, state.rows);
+    state.cursor = r.cursor;
+    if (r.done) { state.phase = 'usdc'; state.cursor = ''; }
+    if (spent >= STEP_BUDGET - 1) return state;
+  }
+  if (state.phase === 'usdc') {
+    const r = await enumerate('reserves=' + encodeURIComponent(USDC), state.cursor, STEP_BUDGET - spent);
+    spent += Math.ceil(r.recs.length / PAGE) || 1;
+    // Pools with BOTH legs were already priced off XLM above and are skipped by `seen` -- pricing the
+    // same pool off two different legs would give it two different TVLs depending on which loop won.
+    rowsFrom(r.recs, USDC, 1, state.seen, state.rows);
+    state.cursor = r.cursor;
+    if (r.done) state.phase = 'overlay';
+    if (spent >= STEP_BUDGET - VOL_PAGES) return state;
+  }
+  if (state.phase === 'overlay') {
+    const { vol, img } = await volumeOverlay();
+    for (const r of state.rows) {
+      if (vol.has(r.id)) r.vol24 = Math.round(vol.get(r.id) * 100) / 100;
+      for (const leg of [r.a, r.b]) {
+        if (!leg) continue;
+        if (leg.code === 'XLM' && !leg.issuer) { leg.img = '/assets/tokens/xlm.png'; continue; }
+        const u = img.get(leg.code + '-' + leg.issuer) || img.get(leg.code);
+        if (u) leg.img = u;
+      }
+    }
+    state.rows.sort((x, y) => y.tvl - x.tvl);
+    state.phase = 'done';
+    delete state.seen;                          // ~10,962 keys that nothing reads again
+  }
+  return state;
+}
 
 export async function onRequestGet(ctx) {
   const url = new URL(ctx.request.url);
@@ -215,12 +266,32 @@ export async function onRequestGet(ctx) {
     const hit = await cache.match(RANK_KEY);
     if (hit) ranked = await hit.json();
     if (!ranked) {
-      ranked = await buildRanking();
-      ranked.ts = Date.now();
+      // Resume the in-progress build, spend one budget's worth, and either finish or report progress.
+      let state = null;
+      try { const s = await cache.match(STATE_KEY); if (s) state = await s.json(); } catch (_) {}
+      state = await buildStep(state);
+      if (state.phase !== 'done') {
+        try {
+          const save = new Response(JSON.stringify(state), {
+            headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' },
+          });
+          ctx && ctx.waitUntil && ctx.waitUntil(cache.put(STATE_KEY, save.clone()));
+        } catch (_) {}
+        return new Response(JSON.stringify({ warming: true, scanned: state.rows.length, phase: state.phase }), {
+          headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
+        });
+      }
+      ranked = {
+        rows: state.rows, px: state.px, ranked: state.rows.length,
+        withVol: state.rows.filter((r) => r.vol24 !== null).length, ts: Date.now(),
+      };
       const store = new Response(JSON.stringify(ranked), {
         headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + RANK_TTL },
       });
-      try { ctx && ctx.waitUntil && ctx.waitUntil(cache.put(RANK_KEY, store.clone())); } catch (_) {}
+      try {
+        ctx && ctx.waitUntil && ctx.waitUntil(cache.put(RANK_KEY, store.clone()));
+        ctx && ctx.waitUntil && ctx.waitUntil(cache.delete(STATE_KEY));
+      } catch (_) {}
     }
 
     let rows = ranked.rows;
