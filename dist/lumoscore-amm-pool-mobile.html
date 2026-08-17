@@ -6472,7 +6472,22 @@ window.addEventListener('click',function(e){
     if(window.__lxDWwired||!DET)return; var card=dwCard(); if(!card)return; window.__lxDWwired=1;
     // Publish the repaint entry point for dwShow (function declarations below are hoisted).
     __dwRefresh=function(){ try{ syncCta(); }catch(_){} try{ if(isWith())withRecv(); }catch(_){} };
-    var d=DET, r=d.tok>0?d.xlm/d.tok:0;               // XLM per 1 token
+    // Ratio of the SECOND deposit field to the FIRST, whatever those two assets are.
+    //
+    // It used to be d.xlm/d.tok unconditionally. On a pool with no XLM leg d.xlm is 0 by construction, so
+    // r was 0, and typing in the first field wrote 0 into the second -- one of the reasons deposits here
+    // were blocked rather than merely unwired.
+    //
+    // Field order matches paintDeposit: XLM pool -> [token, XLM]; otherwise -> [a0, a1].
+    var d=DET;
+    var r=d.nonXlm ? ((d.a0&&d.a0.amt>0)?(d.a1.amt/d.a0.amt):0)
+                   : (d.tok>0?d.xlm/d.tok:0);
+    // Balance behind each field. XLM is the only one with a reserve to hold back, so only it goes
+    // through usableXlm().
+    function bal0(){ return d.nonXlm ? (+d.balA0||0) : (+d.balTok||0); }
+    function bal1(){ return d.nonXlm ? (+d.balTok||0) : usableXlm(); }
+    function code0(){ return d.nonXlm ? d.a0.code : d.code; }
+    function code1(){ return d.nonXlm ? d.a1.code : "XLM"; }
     var depIn=qa("#dwDeposit .dw-field input");        // [0]=token, [1]=XLM
     function wInEl(){ return q("#dwWithdraw .dw-field input")||q("#dwWithdraw .row input")||q("#dwWithdraw input"); }   // re-query (design re-creates withdraw inputs on tab switch)
     // XLM the account must keep back: (2+subentries)*0.5 base reserve + 0.5 for the new pool trustline (if not
@@ -6535,7 +6550,9 @@ window.addEventListener('click',function(e){
       wrSide(e.A,sideA,famt(amtA)); wrSide(e.B,sideB,famt(amtB));
       // "Pool share after" (remaining) in the withdraw summary
       var rem=(d.totShares-sh)>0?Math.max(0,(d.myShares-sh))/(d.totShares-sh):0; qa("#dwWithdraw .dw-summary .r, #dwWithdraw .summary .r, #dwWithdraw [class*=summary] > div").forEach(function(rw){ if(!/share/i.test(rw.textContent||""))return; var st=rw.querySelector("strong")||rw.querySelector("span:last-child"); if(st)st.textContent=(rem*100>=0.01?(rem*100).toFixed(2):(sh>0?"0.00":(d.myFrac*100).toFixed(2)))+"%"; }); }
-    function maxBal(){ var fromXlm=r>0?usableXlm()/r:0; var t=Math.min(d.balTok,fromXlm); return {tok:t,xlm:t*r}; }
+    // Largest deposit both balances can cover at the pool's ratio. Keys are {tok,xlm} for historical
+    // reasons -- they mean FIELD 1 and FIELD 2, which are only token/XLM on an XLM pool.
+    function maxBal(){ var from1=r>0?bal1()/r:0; var t=Math.min(bal0(),from1); return {tok:t,xlm:t*r}; }
     function dInputs(){ return qa("#dwDeposit .dw-field input"); }   // re-query each time (design may re-create them)
     function setDep(t,x){ var di=dInputs(); if(di[0])di[0].value=fmtIn(t); if(di[1])di[1].value=fmtIn(x); shareAfter(); }
     // Delegated on the deposit panel so it survives the design re-rendering its inputs: edit one -> compute the other.
@@ -6580,13 +6597,18 @@ window.addEventListener('click',function(e){
     // Returns "" when the CTA should be live, otherwise the reason it is not.
     function ctaBlockReason(){
       if(tabIsWithdraw()) return (d.myShares>0)?"":"You have no LP shares in this pool to withdraw.";
-      if(d.nonXlm) return "Deposits for "+(d.pairName||"this pair")+" aren’t supported here yet — withdrawing works normally.";
-      // Name WHICH side is missing. A flat "no XLM" contradicts the balance shown directly above the button
-      // when the wallet does hold XLM but all of it is pinned by the account reserve — call that case out.
-      var noTok=!(d.balTok>0), noXlm=!(usableXlm()>0);
-      if(noTok&&noXlm) return "Adding liquidity needs both "+d.code+" and XLM — you have neither available.";
-      if(noTok) return "Adding liquidity needs both "+d.code+" and XLM — you have no "+d.code+".";
-      if(noXlm) return "No spendable XLM — ≈"+xlmKeep().toFixed(1)+" XLM must stay for the account reserve + fees.";
+      // The nonXlm branch used to stop here with "Deposits for X / Y aren't supported here yet". That was
+      // true of the BUILDER, not of the pool: it hardcoded Asset.native() as one leg, so on a pool with no
+      // XLM leg it would have funded a DIFFERENT pool than the page shows. Blocking was right; leaving it
+      // blocked was not. The builder now composes both real legs and refuses unless the pool id it derives
+      // matches the pool on screen, so this is an ordinary balance check for every pair.
+      var c0=code0(), c1=code1(), no0=!(bal0()>0), no1=!(bal1()>0);
+      if(no0&&no1) return "Adding liquidity needs both "+c0+" and "+c1+" — you have neither available.";
+      if(no0) return "Adding liquidity needs both "+c0+" and "+c1+" — you have no "+c0+".";
+      // A flat "no XLM" contradicts the balance shown right above the button when the wallet does hold XLM
+      // but all of it is pinned by the account reserve, so that case is named.
+      if(no1) return d.nonXlm ? ("Adding liquidity needs both "+c0+" and "+c1+" — you have no "+c1+".")
+        : ("No spendable XLM — ≈"+xlmKeep().toFixed(1)+" XLM must stay for the account reserve + fees.");
       return "";
     }
     // EVERY write here is diff-guarded. applyCtaState runs from the .dw-card MutationObserver, so an
@@ -6635,18 +6657,45 @@ window.addEventListener('click',function(e){
           try{ withRecv(); }catch(_){}
           setTimeout(loadDetail,2600); });
       } else {
-        // AUDIT (FUNDS): for a nonXlm pool this builder would construct a native/token LiquidityPoolAsset —
-        // i.e. deposit into a DIFFERENT pool than the page shows. Block until arbitrary-pair deposits are
-        // wired (canonical asset ordering + price bounds). Withdraw is pair-agnostic and stays enabled.
-        if(d.nonXlm){ wMsg(cta,"Deposits for "+d.pairName+" aren\u2019t supported here yet \u2014 withdrawing works normally.",true); return; }
-        var di=dInputs(); var ta=parseFloat(String(di[0]&&di[0].value).replace(/,/g,""))||0, xa=parseFloat(String(di[1]&&di[1].value).replace(/,/g,""))||0;
-        if(!(ta>0)||!(xa>0)){ wMsg(cta,"Enter both "+d.code+" and XLM amounts.",true); return; }
-        if(ta>d.balTok+1e-7){ wMsg(cta,"Not enough "+d.code+" \u00b7 balance "+fmtIn(d.balTok),true); return; }
-        if(xa>usableXlm()+1e-7){ wMsg(cta,"Not enough XLM \u2014 keep \u2248"+xlmKeep().toFixed(1)+" for account reserve + fees (usable "+fmtIn(usableXlm())+" of "+fmtIn(d.balXlm)+" XLM)",true); return; }
-        wRun(cta,addr,function(S,a){ var ops=[], asset=new S.Asset(d.code,d.issuer), poolAsset=new S.LiquidityPoolAsset(S.Asset.native(),asset,S.LiquidityPoolFeeV18);
+        // Deposits work for ANY pair now, not only X/XLM.
+        //
+        // This builder used to hardcode LiquidityPoolAsset(native, token). On a pool with no XLM leg that
+        // composes a DIFFERENT pool than the page shows, so depositing would have funded the wrong pool
+        // with the user's money -- which is why it was blocked outright rather than left to misfire. The
+        // block was correct; leaving it in place forever was not.
+        //
+        // Both legs are now taken from the pool's own assets, and there is a HARD GUARD below: the pool id
+        // is re-derived from the assets actually composed and the deposit is refused unless it equals the
+        // pool on screen. Getting the pair or the ordering wrong can no longer send funds anywhere.
+        var di=dInputs();
+        var v0=parseFloat(String(di[0]&&di[0].value).replace(/,/g,""))||0;
+        var v1=parseFloat(String(di[1]&&di[1].value).replace(/,/g,""))||0;
+        var c0=code0(), c1=code1();
+        if(!(v0>0)||!(v1>0)){ wMsg(cta,"Enter both "+c0+" and "+c1+" amounts.",true); return; }
+        if(v0>bal0()+1e-7){ wMsg(cta,"Not enough "+c0+" \u00b7 balance "+fmtIn(bal0()),true); return; }
+        if(v1>bal1()+1e-7){ wMsg(cta, d.nonXlm
+          ? ("Not enough "+c1+" \u00b7 balance "+fmtIn(bal1()))
+          : ("Not enough XLM \u2014 keep \u2248"+xlmKeep().toFixed(1)+" for account reserve + fees (usable "+fmtIn(usableXlm())+" of "+fmtIn(d.balXlm)+" XLM)"),true); return; }
+        wRun(cta,addr,function(S,a){
+          function mk(x){ return (!x||x.native||(x.code==="XLM"&&!x.issuer))?S.Asset.native():new S.Asset(x.code,x.issuer); }
+          var s0=d.nonXlm?d.a0:{code:d.code,issuer:d.issuer};
+          var s1=d.nonXlm?d.a1:{code:"XLM",native:true};
+          var A=mk(s0), B=mk(s1), amtA=v0, amtB=v1, poolAsset;
+          // The SDK REQUIRES assetA < assetB and throws otherwise, which is what makes this swap safe:
+          // A and B and their amounts move together, so maxAmountA always belongs to assetA.
+          try{ poolAsset=new S.LiquidityPoolAsset(A,B,S.LiquidityPoolFeeV18); }
+          catch(err){ var _t=A;A=B;B=_t; var _a=amtA;amtA=amtB;amtB=_a;
+            poolAsset=new S.LiquidityPoolAsset(A,B,S.LiquidityPoolFeeV18); }
+          // HARD GUARD. Derive the id of the pool these two assets actually make and refuse unless it is
+          // the pool being displayed. Independent of everything above: if the pair, the ordering or the
+          // fee tier were wrong, this catches it before anything is signed.
+          var pid="";
+          try{ pid=S.getLiquidityPoolId("constant_product",poolAsset.getLiquidityPoolParameters()).toString("hex"); }catch(_){}
+          if(!pid||pid!==d.hex) throw new Error("Stopped: this deposit would fund a different pool than the one shown.");
+          var ops=[];
           var hasTrust=(a.balances||[]).some(function(b){return b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===d.hex;});
           if(!hasTrust)ops.push(S.Operation.changeTrust({asset:poolAsset}));
-          ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:d.hex, maxAmountA:wAmt(xa), maxAmountB:wAmt(ta), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
+          ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:d.hex, maxAmountA:wAmt(amtA), maxAmountB:wAmt(amtB), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
           return ops; }, {ok:"\u2713 Added",okMsg:"Liquidity is added"}, function(){ var di=dInputs(); if(di[0])di[0].value=""; if(di[1])di[1].value=""; setTimeout(loadDetail,2600); });
       }
     });
