@@ -5525,13 +5525,24 @@ window.addEventListener('click',function(e){
   // -- the row read as empty. Square root compresses that spread into something visible, and a floor
   // keeps a real-but-tiny bucket from rounding away to nothing, which would show "no trades" where there
   // were trades.
-  function chVolBars(svg,ser,t0,t1,X,DW,H,padT,padB){
-    var vol=(ser&&ser.vol)||[]; if(!vol.length)return;
-    var NB=46, bw=(t1-t0)/NB, buck=[], i;
+  // Returns the buckets it drew so the hover can report the same numbers. The tooltip must never
+  // recompute them independently -- two bucketings of the same series drift apart and the box would then
+  // describe a bar that is not the one under the cursor.
+  function chVolBars(svg,ser,t0,t1,X,DW,H,padT,padB,res){
+    var vol=(ser&&ser.vol)||[]; if(!vol.length)return null;
+    // Bucket width follows the SERIES RESOLUTION, it is not a fixed count. With a fixed 46 buckets a 1M
+    // chart cut 30 days of DAILY records into 0.65-day slices, so a third of them could not receive a
+    // record and the hover reported "0 XLM" on days that plainly had trading. A bucket narrower than the
+    // data it holds manufactures gaps.
+    //
+    // At bucket == resolution a zero is a real zero: trade_aggregations only emits intervals that traded,
+    // so an empty bucket means nothing traded then, which is worth showing.
+    var NB=Math.max(6,Math.min(60,Math.round((t1-t0)/(res||86400000))));
+    var bw=(t1-t0)/NB, buck=[], i;
     for(i=0;i<NB;i++)buck.push(0);
     vol.forEach(function(e){ if(e.t<t0||e.t>t1)return;
       var bi=Math.min(NB-1,Math.max(0,Math.floor((e.t-t0)/bw))); buck[bi]+=(+e.v||0); });
-    var mxv=Math.max.apply(null,buck); if(!(mxv>0))return;
+    var mxv=Math.max.apply(null,buck); if(!(mxv>0))return null;
     var band=(H-padT-padB)*0.22, bpx=Math.max(1.5,DW/NB*0.62);
     for(i=0;i<NB;i++){
       var v=buck[i]; if(!(v>0))continue;
@@ -5540,6 +5551,7 @@ window.addEventListener('click',function(e){
       svg.appendChild(chS("rect",{"class":"lx-vol",x:(x-bpx/2).toFixed(1),y:(H-padB-h).toFixed(1),
         width:bpx.toFixed(1),height:h.toFixed(1),rx:"1",fill:"#8b7bf0","fill-opacity":"0.45"}));
     }
+    return {t0:t0,bw:bw,buck:buck};
   }
   function chDraw(){
     var svg=q("#tvlChart svg"); if(!svg)return; document.documentElement.classList.add("lx-chartready"); if(!DET)return;
@@ -5584,6 +5596,7 @@ window.addEventListener('click',function(e){
     }
     function Y(v){ return padT+(H-padT-padB)*(1-(mx>mn?(v-mn)/(mx-mn):0.5)); }
     var accent=isVol?"#8b7bf0":"#16a34a";
+    var _volInfo=null;                 // buckets chVolBars drew, handed to the hover so both agree
     if(isVol&&isBar){
       var bpx=Math.max(2,DW/vals.length*0.6);
       vals.forEach(function(p){ var x=X(p.t), h=(H-padT-padB)*(mx>0?p.v/mx:0); svg.appendChild(chS("rect",{x:(x-bpx/2).toFixed(1),y:(H-padB-h).toFixed(1),width:bpx.toFixed(1),height:Math.max(0,h).toFixed(1),rx:"1",fill:accent,"fill-opacity":"0.85"})); });
@@ -5598,7 +5611,7 @@ window.addEventListener('click',function(e){
     } else {
       // Volume bars UNDER the TVL line, in the same chart -- the Trade-asset treatment. Appended first so
       // the area fill and the line paint over them.
-      chVolBars(svg,ser,t0,t1,X,DW,H,padT,padB);
+      _volInfo=chVolBars(svg,ser,t0,t1,X,DW,H,padT,padB,CH_RES[s.range]);
       var dd=""; vals.forEach(function(p,i){ dd+=(i?"L":"M")+X(p.t).toFixed(1)+" "+Y(p.v).toFixed(1)+" "; });
       var lastX=X(vals[vals.length-1].t).toFixed(1), firstX=X(vals[0].t).toFixed(1);
       svg.appendChild(chS("path",{d:dd+"L"+lastX+" "+(H-padB)+" L"+firstX+" "+(H-padB)+" Z",fill:accent,"fill-opacity":"0.10",stroke:"none"}));
@@ -5633,6 +5646,8 @@ window.addEventListener('click',function(e){
     var _P=chPair(), _cur=_P?_P.reserve*2:0, _tu=+DET.tvlUsd||0;
     DET.__chH={ metric:isVol?"vol":"tvl", bars:isBar, color:accent, unit:_u.replace(" ",""), span:span,
       usdPerUnit:(_cur>0&&_tu>0)?(_tu/_cur):0,
+      vol:_volInfo,                    // null when the range has no traded volume -> the row is omitted
+
       pts:vals.map(function(p){ return {t:p.t,v:p.v,x:X(p.t),
         y:isVol?(H-padB-(H-padT-padB)*(mx>0?p.v/mx:0)):Y(p.v)}; }) };
     DET.__chSig=s.type+"|"+s.metric+"|"+s.range;
@@ -5647,6 +5662,35 @@ window.addEventListener('click',function(e){
     if(span<2*86400000) return dt.toLocaleTimeString([],{hour:"numeric",minute:"2-digit"});
     var o={month:"short",day:"numeric"}; if(span>=180*86400000)o.year="numeric";
     return dt.toLocaleDateString("en-US",o);
+  }
+  // The Volume block in the hover box: the traded volume of the BUCKET the cursor is over, read straight
+  // out of the buckets chVolBars drew rather than recomputed, so the number always describes the bar you
+  // are looking at.
+  //
+  // Bars and line are sampled differently on purpose. The line is interpolated along the segment under the
+  // cursor (a pool's series is sparse, so snapping made whole stretches report the same day), but a bar IS
+  // its bucket -- there is no value "between" two of them. So the TVL figure slides and the volume figure
+  // steps, which is correct for what each one is.
+  //
+  // Returns "" when the chart has no volume series (chVolBars returned null): no row at all beats a row
+  // that says 0 on a chart that never had the data.
+  //
+  // LABELLED "PAIR VOLUME", and that word is load-bearing. The series comes from Horizon's
+  // trade_aggregations for the ASSET PAIR, which spans every DEX venue trading it -- the order book and
+  // all other pools -- not this pool alone. Measured on USDC/XLM: the pair did 2,725,945 XLM on Aug 16
+  // while this pool's own trades did 240,904 XLM in 24h, about 1.8x apart. Calling that "Volume" on a
+  // pool page would read as the pool's, and it would disagree with the 24h Volume card directly above it,
+  // which IS pool-only. Pool-specific volume per bucket across 30 days is not reachable -- it would be a
+  // paged trades crawl per bucket -- so the honest move is to name the number for what it measures.
+  function chHovVol(st,t){
+    var vi=st&&st.vol; if(!vi||!vi.buck||!vi.buck.length)return "";
+    var i=Math.floor((t-vi.t0)/vi.bw);
+    if(i<0)i=0; if(i>vi.buck.length-1)i=vi.buck.length-1;
+    var v=+vi.buck[i]||0;
+    var u=(st.usdPerUnit>0)?usd(v*st.usdPerUnit):"";
+    return '<div style="font-size:12.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-top:7px">Pair volume</div>'
+      +'<div style="font-weight:700;font-size:15px;color:#8b7bf0;margin-top:3px">'+esc(famt(v)+" "+st.unit)+'</div>'
+      +(u?('<div style="font-size:13.5px;color:var(--text-muted);margin-top:1px">'+esc(u)+'</div>'):'');
   }
   function chHover(){
     var host=q("#tvlChart"); if(!host||host.__lxHov)return; host.__lxHov=1;
@@ -5699,6 +5743,7 @@ window.addEventListener('click',function(e){
         box.innerHTML='<div style="font-size:12.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">'+(st.metric==="vol"?"Volume":"TVL")+'</div>'
           +'<div style="font-weight:700;font-size:15px;color:var(--text);margin-top:3px">'+esc(famt(p.v)+" "+st.unit)+'</div>'
           +(usdTxt?('<div style="font-size:13.5px;color:var(--text-muted);margin-top:1px">'+esc(usdTxt)+'</div>'):'')
+          +chHovVol(st,p.t)
           +'<div style="font-size:13px;color:var(--text-soft);margin-top:5px">'+esc(chHovDate(p.t,st.span))+'</div>';
       }
       box.style.opacity="1";
