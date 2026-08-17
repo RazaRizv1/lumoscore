@@ -189,6 +189,88 @@ const STEP_BUDGET = 40;
 const STATE_KEY = new Request('https://lumoscore.internal/lxapi/pools-state', { method: 'GET' });
 const RANK_KEY = new Request('https://lumoscore.internal/lxapi/pools-ranked', { method: 'GET' });
 const RANK_HOLD = 3600;      // how long the ranking SURVIVES in cache; freshness is judged by its own ts
+const SEARCH_TTL = 600;
+const SEARCH_ASSETS = 6;     // distinct assets one query will chase; see searchPools
+
+// SEARCH IS A LIVE QUERY, not a filter over the ranking.
+//
+// The ranking only contains pools we can price -- 10,962 of 39,844 -- so filtering it answered "which
+// PRICEABLE pools mention this asset". Searching LUMOS returned 6 while Horizon has 59 for that issuer;
+// the missing 53 pair it with neither XLM nor Circle USDC, so they can never enter the ranking and could
+// never be found. The pools page said 6, the asset's own Trade page said 59, and the pools page was wrong.
+//
+// Horizon can answer this exactly with ?reserves=CODE:ISSUER -- but only if you know the ISSUER, and a
+// search box gives a code. So the ranking is used for what it is good at: resolving a typed code to real
+// (code, issuer) pairs. Then each is asked of Horizon directly. A couple of requests, and the answer is
+// every pool that holds the asset rather than only the ones we happen to be able to value.
+//
+// Consequence, stated rather than hidden: a pool with no XLM and no USDC leg has no USD value we can
+// compute, so its tvl is null. Those sort last and the page shows a dash -- an unknown, not a zero.
+async function searchPools(ranked, q) {
+  const rowsById = new Map();
+  for (const r of ranked.rows) rowsById.set(r.id, r);
+
+  // (code, issuer) pairs the ranking knows whose code contains the query, plus any logo we have for them
+  const assets = new Map(), imgByKey = new Map();
+  for (const r of ranked.rows) {
+    for (const leg of [r.a, r.b]) {
+      if (!leg || !leg.issuer) continue;
+      const key = leg.code + ':' + leg.issuer;
+      if (leg.img && !imgByKey.has(key)) imgByKey.set(key, leg.img);
+      if (String(leg.code).toUpperCase().indexOf(q) >= 0 && !assets.has(key)) assets.set(key, leg);
+    }
+  }
+  // Exact code matches first, so "LUMOS" chases LUMOS before BLUMOS/yLUMOS/xLUMOS when the cap bites.
+  const keys = [...assets.keys()].sort((a, b) => {
+    const ea = a.split(':')[0].toUpperCase() === q ? 0 : 1, eb = b.split(':')[0].toUpperCase() === q ? 0 : 1;
+    return ea - eb;
+  });
+  const chased = keys.slice(0, SEARCH_ASSETS);
+
+  const found = new Map();
+  for (const key of chased) {
+    let cursor = '';
+    for (let page = 0; page < 4; page++) {
+      const d = await j('/liquidity_pools?reserves=' + encodeURIComponent(key) + '&limit=' + PAGE
+        + '&order=asc' + (cursor ? '&cursor=' + cursor : ''), SEARCH_TTL);
+      const recs = (d && d._embedded && d._embedded.records) || [];
+      if (!recs.length) break;
+      for (const rec of recs) if (!found.has(rec.id)) found.set(rec.id, rec);
+      if (recs.length < PAGE) break;
+      cursor = recs[recs.length - 1].paging_token;
+    }
+  }
+
+  const out = [];
+  for (const [id, rec] of found) {
+    // Already ranked? Use that row -- it carries the volume overlay and logos.
+    const known = rowsById.get(id);
+    if (known) { out.push(known); continue; }
+    const rs = (rec.reserves || []).map(assetOut);
+    const xi = legOf(rec, 'native'), ui = legOf(rec, USDC);
+    const tvl = xi >= 0 ? 2 * (+rec.reserves[xi].amount || 0) * ranked.px
+      : (ui >= 0 ? 2 * (+rec.reserves[ui].amount || 0) : null);
+    for (const leg of rs) {
+      if (leg.code === 'XLM' && !leg.issuer) { leg.img = '/assets/tokens/xlm.png'; continue; }
+      const u = imgByKey.get(leg.code + ':' + leg.issuer);
+      if (u) leg.img = u;
+    }
+    out.push({
+      id, a: rs[0] || null, b: rs[1] || null,
+      tvl: tvl == null ? null : Math.round(tvl * 100) / 100,
+      fee: (+rec.fee_bp || 0) / 100, members: +rec.total_trustlines || 0, vol24: null,
+    });
+  }
+  // Valued pools first, largest down; unvaluable ones after, busiest first. A null is not a zero and must
+  // not sort as one.
+  out.sort((x, y) => {
+    const xn = x.tvl == null, yn = y.tvl == null;
+    if (xn !== yn) return xn ? 1 : -1;
+    if (xn) return (y.members || 0) - (x.members || 0);
+    return y.tvl - x.tvl;
+  });
+  return { rows: out, assetsChased: chased.length, assetsMatched: keys.length };
+}
 
 // Advance the resumable build by one budget. Returns the finished ranking, or null while still building.
 // Safe to call from waitUntil: it only ever REPLACES the published ranking once a build completes, so a
@@ -318,9 +400,23 @@ export async function onRequestGet(ctx) {
       ranked = done;
     }
 
-    let rows = ranked.rows;
-    if (qRaw) rows = rows.filter((r) => (r.a && r.a.code || '').toUpperCase().indexOf(qRaw) >= 0
-      || (r.b && r.b.code || '').toUpperCase().indexOf(qRaw) >= 0);
+    let rows = ranked.rows, searchMeta = null;
+    if (qRaw) {
+      // Cached per query: the same search repeated (paging through it, or another visitor) costs nothing.
+      const sKey = new Request('https://lumoscore.internal/lxapi/pools-q/' + encodeURIComponent(qRaw), { method: 'GET' });
+      let hitS = null;
+      try { const c = await cache.match(sKey); if (c) hitS = await c.json(); } catch (_) {}
+      if (!hitS) {
+        hitS = await searchPools(ranked, qRaw);
+        try {
+          await cache.put(sKey, new Response(JSON.stringify(hitS), {
+            headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + SEARCH_TTL },
+          }));
+        } catch (_) {}
+      }
+      rows = hitS.rows;
+      searchMeta = { assetsChased: hitS.assetsChased, assetsMatched: hitS.assetsMatched };
+    }
 
     const total = rows.length;
     const pages = Math.max(1, Math.ceil(total / per));
@@ -334,6 +430,9 @@ export async function onRequestGet(ctx) {
       withVol: ranked.withVol,
       xlmUsd: ranked.px,
       ts: ranked.ts,
+      // Present only on a search, and only worth reading when assetsChased < assetsMatched: the query
+      // matched more distinct assets than one request will chase, so the result is not the whole answer.
+      search: searchMeta,
       rows: rows.slice(start, start + per),
     });
     return new Response(body, {

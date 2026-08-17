@@ -4715,7 +4715,10 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       '<td class="idx">'+idx+'</td>'+
       '<td><div class="pair-cell">'+netIcoPair(L[0],L[1])+'<div><div class="pair-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
       '<div class="pair-sub">'+p.fee+'% fee \u00b7 Stellar AMM</div></div></div></td>'+
-      '<td><div>'+usd(p.tvl)+'</div><div class="pair-sub">'+netLiq(p)+'</div></td>'+
+      // tvl null = we cannot VALUE this pool (neither leg is XLM or Circle USDC), which is not the same
+      // claim as "it holds nothing". usd(null) renders "$0" and would state the second. Dash, and the
+      // reserve underneath still says what is actually in there.
+      '<td><div>'+(p.tvl==null?'&mdash;':usd(p.tvl))+'</div><div class="pair-sub">'+netLiq(p)+'</div></td>'+
       volCell+
       '<td>'+num(p.members)+'</td></tr>';
   }
@@ -4728,7 +4731,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       '<div class="pc-sub">'+p.fee+'% fee \u00b7 Stellar AMM</div></div>'+
       '<div class="pc-idx">#'+idx+'</div></div>'+
       '<div class="pc-stats">'+
-      '<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+usd(p.tvl)+'</div><div class="vs">'+netLiq(p)+'</div></div>'+
+      '<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+(p.tvl==null?'&mdash;':usd(p.tvl))+'</div><div class="vs">'+netLiq(p)+'</div></div>'+
       '<div class="pc-stat"><div class="l">24h Vol</div>'+volCell+'</div>'+
       '<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.members)+'</div></div>'+
       '</div></a>';
