@@ -55,9 +55,13 @@ const STYLE = '<style id="lx-mobdex-css">'
   // the next section, so it read as floating between the two and it was not obvious which one it paged.
   // Tie it to the list with a rule and tight top spacing, then push the following section away, so the
   // grouping is unambiguous without any extra label.
+  // The rule goes BELOW the pager, not above it. Above, it cut the pager off from the list it belongs to
+  // and left it grouped with whatever came next. Underneath, it closes the pairs section: list, its pager,
+  // then the line, then a wide gap before New mints. Top margin is tight for the same reason -- the pager
+  // should read as the last row of the list above it, not as something sitting between two sections.
   + '.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;'
-  + 'margin-top:8px;padding:10px 2px 2px;border-top:1px solid var(--border)}'
-  + '.mdx-mk-list{margin-bottom:26px}'
+  + 'margin-top:2px;padding:8px 2px 14px;border-bottom:1px solid var(--border)}'
+  + '.mdx-mk-list{margin-bottom:34px}'
   + '.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);'
   + 'border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}'
   + '.lxmd-pg[disabled]{opacity:.4;cursor:default}'
