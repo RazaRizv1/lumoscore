@@ -51,7 +51,13 @@ const STYLE = '<style id="lx-mobdex-css">'
   + 'position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}'
   // Anything the healer already injected sits UNDER the ::before; hide it so it cannot show through.
   + '.mdx-mint-ic[data-lxic]>*,.mdx-mover-ic[data-lxic]>*,.mdx-mk-ic[data-lxic]>*{display:none!important}'
-  + '.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 2px 2px}'
+  // The pager belongs to the list ABOVE it. It used to sit in equal whitespace between the pairs list and
+  // the next section, so it read as floating between the two and it was not obvious which one it paged.
+  // Tie it to the list with a rule and tight top spacing, then push the following section away, so the
+  // grouping is unambiguous without any extra label.
+  + '.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;'
+  + 'margin-top:8px;padding:10px 2px 2px;border-top:1px solid var(--border)}'
+  + '.mdx-mk-list{margin-bottom:26px}'
   + '.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);'
   + 'border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}'
   + '.lxmd-pg[disabled]{opacity:.4;cursor:default}'
@@ -142,7 +148,15 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   function renderMints(){
     var list=q(".mdx-mints-list");if(!list)return;var A=assets();if(!A)return;
     // The heading itself is retitled in CSS, not here — see RETITLE in STYLE.
-    var d=A.slice(0,5);
+    //
+    // The SAME five the desktop shows: the newest LAUNCHPAD mints. This took A.slice(0,5) -- the curated
+    // majors -- so the card headed "New mints on LumosCore" listed USDC, EURC, ARST, AQUA and yXLM, none
+    // of which was minted here. The desktop already computes this (newest-first over the native roster),
+    // so its own list is reused rather than a second one being derived that could drift from it.
+    var d=null;
+    try{ if(window.__lxDEXloadNative)window.__lxDEXloadNative();
+         d=window.__lxDEXmints?window.__lxDEXmints():null; }catch(_){ d=null; }
+    if(!d||!d.length)d=A.slice(0,5);              // roster not in yet: keep the placeholder rows
     var sig="m|"+d.map(function(a){return a.code+":"+(a.trades==null?"":a.trades);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     list.innerHTML=d.map(function(a){

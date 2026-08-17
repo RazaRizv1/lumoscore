@@ -598,6 +598,69 @@ function poolList(req, res, params) {
   });
 }
 
+// Local mirror of functions/lxapi/movers — Market Movers across the whole Stellar DEX, gated on real
+// liquidity and holders. Kept in step with functions/lxapi/movers.js; see that file for the reasoning.
+let MV_CACHE = null;
+function moversRoute(req, res) {
+  if (MV_CACHE && Date.now() - MV_CACHE.ts < 600000) {
+    res.writeHead(200, {'content-type':'application/json'}); return res.end(MV_CACHE.body);
+  }
+  const origin = 'http://127.0.0.1:' + PORT;
+  const gj = async p => { try { const r = await fetch(origin + p); return r.ok ? r.json() : null; } catch (_) { return null; } };
+  (async () => {
+    const MIN_TVL = 500, MIN_HOLDERS = 250, MAX_CAND = 128;
+    const cand = new Map();
+    for (let p = 1; p <= 4; p++) {
+      const d = await gj('/lxapi/pools?per=100&page=' + p);
+      const rows = (d && d.rows) || [];
+      if (!rows.length) break;
+      let anyAbove = false;
+      for (const row of rows) {
+        if (row.tvl == null || row.tvl < MIN_TVL) continue;
+        anyAbove = true;
+        const legs = [row.a, row.b];
+        if (!legs.some(x => x && x.code === 'XLM' && !x.issuer)) continue;
+        for (const x of legs) {
+          if (!x || !x.issuer) continue;
+          const k = x.code + '-' + x.issuer;
+          if (!cand.has(k) && cand.size < MAX_CAND) cand.set(k, { code: x.code, issuer: x.issuer, tvl: row.tvl });
+        }
+      }
+      if (!anyAbove || cand.size >= MAX_CAND) break;
+    }
+    if (!cand.size) throw new Error('no candidates');
+    const keys = [...cand.keys()], out = [];
+    for (let i = 0; i < keys.length; i += 16) {
+      const grp = keys.slice(i, i + 16);
+      const d = await gj('/lxapi/dexassets?a=' + encodeURIComponent(grp.join(',')));
+      if (!d || !d.a) continue;
+      for (const k of grp) {
+        const v = d.a[k], c = cand.get(k);
+        if (!v || !c) continue;
+        const holders = v.ho == null ? null : +v.ho;
+        if (holders == null || holders < MIN_HOLDERS) continue;
+        out.push({ code: c.code, issuer: c.issuer, tvlUsd: c.tvl, holders,
+          px: v.px == null ? null : +v.px, chg: v.chg == null ? null : +v.chg,
+          vol: v.vol == null ? null : +v.vol });
+      }
+    }
+    const wc = out.filter(a => a.chg != null);
+    const body = JSON.stringify({
+      gainers: wc.filter(a => a.chg > 0).sort((a, b) => b.chg - a.chg).slice(0, 4),
+      losers:  wc.filter(a => a.chg < 0).sort((a, b) => a.chg - b.chg).slice(0, 4),
+      volume:  out.filter(a => a.vol != null).sort((a, b) => b.vol - a.vol).slice(0, 4),
+      candidates: cand.size, qualified: out.length,
+      minTvlUsd: MIN_TVL, minHolders: MIN_HOLDERS, ts: Date.now(),
+    });
+    MV_CACHE = { ts: Date.now(), body };
+    res.writeHead(200, {'content-type':'application/json','cache-control':'public, max-age=600'});
+    res.end(body);
+  })().catch(e => {
+    res.writeHead(502, {'content-type':'application/json'});
+    res.end(JSON.stringify({ error: String((e && e.message) || e) }));
+  });
+}
+
 // Local mirror of functions/lxapi/soroswap — same allow-list, same shape, so the swap path behaves
 // identically in dev and production. The key comes from the environment, never the repo:
 //   $env:SOROSWAP_KEY = "sk_…" ; node serve.js 8080 --admin
@@ -684,6 +747,7 @@ http.createServer((req, res) => {
   if (p === '/.well-known/stellar.toml') return stellarToml(req, res);
   if (p === '/lxapi/poolstats') return poolStats(req, res);
   if (p === '/lxapi/pools') return poolList(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/movers') return moversRoute(req, res);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
   }

@@ -5040,7 +5040,7 @@ window.addEventListener('click',function(e){
     // list does that itself. The mobile list had no way to ask, so 26 of 32 launchpad tokens sat at
     // "0 XLM / —" -- and they had not simply never traded: LIBERATOR, BLA and TDT had all traded within
     // the hour. It was a missing request, not a missing market.
-    batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;window.__lxDEXpriceRows=priceVisible;}catch(_){} touch(); deferExtras(ASSETS); },
+    batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;window.__lxDEXpriceRows=priceVisible;window.__lxDEXmints=mintList;}catch(_){} touch(); deferExtras(ASSETS); },
       function(){ window.__lxDEXloaded=1; touch(); });
     // safety: reveal details even if an asset's request hangs (never leave the table stuck on placeholders)
     setTimeout(function(){ if(!window.__lxDEXloaded){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;}catch(_){} touch(); } }, 4500);

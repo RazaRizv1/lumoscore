@@ -983,8 +983,13 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     // wrong wherever the units changed (a USDC-leg pool's reserve is not comparable to an XLM one's).
     return '<tr class="lx-ammrow lx-netrow" data-pool="'+p.id+'" data-href="'+netHref(p)+'" style="cursor:pointer">'+
       '<td class="idx">'+idx+'</td>'+
+      // No fee-tier sub line. Every Stellar AMM pool is 0.3% and every pool in this list is a Stellar AMM
+      // pool, so it carried no information and invited the question it could not answer: a reader seeing
+      // "0.3% fee" beside a pool reasonably asks what THEY are being charged, when it is the pool's own
+      // swap fee paid to its own LPs. The fee tier is still stated on the pool page, where there is room
+      // to say whose fee it is.
       '<td><div class="pair-cell">'+netIcoPair(L[0],L[1])+'<div><div class="pair-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
-      '<div class="pair-sub">'+p.fee+'% fee \\u00b7 Stellar AMM</div></div></div></td>'+
+      '</div></div></td>'+
       // tvl null = we cannot VALUE this pool (neither leg is XLM or Circle USDC), which is not the same
       // claim as "it holds nothing". usd(null) renders "$0" and would state the second. Dash, and the
       // reserve underneath still says what is actually in there.
@@ -998,7 +1003,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     return '<a class="pool-card lx-ammcard lx-netcard" data-pool="'+p.id+'" href="'+netHref(p)+'">'+
       '<div class="pc-head">'+netIcoPair(L[0],L[1],true)+
       '<div class="pc-info"><div class="pc-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
-      '<div class="pc-sub">'+p.fee+'% fee \\u00b7 Stellar AMM</div></div>'+
+      '</div>'+                                   // no fee-tier sub line -- see netRow for why
       '<div class="pc-idx">#'+idx+'</div></div>'+
       '<div class="pc-stats">'+
       '<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+(p.tvl==null?'&mdash;':usd(p.tvl))+'</div><div class="vs">'+netLiq(p)+'</div></div>'+
