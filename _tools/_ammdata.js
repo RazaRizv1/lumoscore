@@ -794,6 +794,35 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       th.style.cursor="default";
       setGlyph(th, /liquidity/i.test(th.textContent) ? "\\u2193" : "");
     });
+    netRelabelVol();
+  }
+  // The list's volume is NOT 24 hours, so the header must not say it is.
+  //
+  // It comes from stellar.expert's volume_value["1d"], and that field is the CURRENT UTC DAY SO FAR, not
+  // a rolling window. Verified against the ledger on SSLX/XLM at 00:35Z: trades since UTC midnight summed
+  // to 267.34 XLM, upstream reported 266.31. So just after midnight the column reads near zero and only
+  // approaches a real day by 23:59Z -- which is exactly why a card said $82 while the pool's own page
+  // said $45, and both were under the true 24h figure of $1,290.
+  //
+  // A true rolling 24h per row is ~11 Horizon requests PER POOL (see volDeepen), which is affordable for
+  // one pool page and not for 25 rows of 10,962. Until that is precomputed server-side, the honest move
+  // is to label the number for the window it actually covers.
+  function netRelabelVol(){
+    var t=poolsTable();
+    if(t) [].slice.call(t.querySelectorAll("thead th")).forEach(function(th){
+      if(th.__lxvol)return;
+      // Fees carries the same window as the volume it is computed from (vol x fee%), so it is relabelled
+      // with it. Leaving it at "Fees (24h)" beside "Vol (today)" would just move the wrong claim one
+      // column across.
+      var vol=/24h\\s*vol/i.test(th.textContent), fee=/fees\\s*\\(24h\\)/i.test(th.textContent);
+      if(!vol&&!fee)return;
+      th.__lxvol=1;
+      var s=th.querySelector(".sort-i");
+      th.textContent=vol?"VOL (TODAY)":"FEES (TODAY)"; if(s)th.appendChild(s);
+    });
+    qa(".lx-netcard .pc-stat .l").forEach(function(l){
+      if(/24h\\s*vol/i.test(l.textContent))setText(l,"Vol (today)");
+    });
   }
   // The click itself is handled at WINDOW capture. A listener on the th cannot win: the design ships a
   // document-level capture shim that maps label text to pages, and document capture runs before the target
@@ -997,6 +1026,13 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var allShown=!allPanel||getComputedStyle(allPanel).display!=="none";
       if(allShown) pag.style.display=(NET.total>NETPP)?"flex":"none";
     }
+    // Mobile cards are rebuilt on every page change, so the label has to be reapplied here.
+    // deadSort runs from here too, NOT only from paintTables: paintTables returns early until DATA
+    // arrives (a wallet-side fetch this list does not depend on), so on a cold load the headers kept
+    // their sort arrows and their pointer cursor while nothing was listening for the click. My earlier
+    // check for that was worthless -- it counted th[data-lxsortable], which is the attribute wireSort
+    // ADDS, so "0 left" meant "never wired", not "successfully disabled".
+    try{ deadSort(); netRelabelVol(); }catch(_){}
   }
   function netGo(p){
     p=Math.max(1,Math.min(NET.pages,p));
@@ -1247,7 +1283,15 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     function tryJSON(u,n){ return getJSON(u).then(function(r){
       if(r||n<=0)return r;
       return new Promise(function(rs){ setTimeout(rs,700); }).then(function(){ return tryJSON(u,n-1); }); }); }
-    var trP=tryJSON(H+"/liquidity_pools/"+hex+"/trades?order=desc&limit=100",2);
+    // 24h volume is a SUM over the day's trades, and a busy day does not fit in one page. This fetched
+    // limit=100 ONCE and summed whatever came back: on SSLX/XLM, which ran 2,114 trades in 24 hours, it
+    // summed the newest 100 and reported 293 XLM against a true 8,272 -- a 28x undercount, printed as a
+    // fact next to a fee figure derived from it.
+    //
+    // Still ONE request here, now 200 (Horizon's max), because this is on the critical path and the page
+    // must not get slower. The rest of the day is walked in the background by volDeepen and the two cards
+    // are corrected when it lands.
+    var trP=tryJSON(H+"/liquidity_pools/"+hex+"/trades?order=desc&limit=200",2);
     // Deposits/withdrawals are RARE next to swaps: this pool runs ~600 path-payments for every 5 LP
     // operations, so a 50-record window held 3 deposits and 0 withdrawals and the Withdrawals filter came
     // up empty on a pool that has had withdrawals. Horizon cannot filter operations by type, so widen the
@@ -1336,6 +1380,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       });
       var vol24Xlm=vol, vol24Usd=vol*xlmUsd, fees24Xlm=vol*fee/100, fees24Usd=fees24Xlm*xlmUsd;
       if(nonXlm){ var _a0usd=(a0.code==="USDC"&&a0.issuer===USDC_ISS); vol24Usd=_a0usd?vol:0; fees24Usd=_a0usd?fees24Xlm:0; }
+      // Did page 1 reach back past the 24h edge? If its OLDEST record is still inside the window there is
+      // more of the day to count, and this figure is a floor, not the answer. Hand volDeepen the cursor.
+      var _trOldest=trs.length?Date.parse(trs[trs.length-1].ledger_close_time||trs[trs.length-1].created_at||""):0;
+      var _trNext=(r[2]&&r[2]._links&&r[2]._links.next&&r[2]._links.next.href)||null;
+      var volNext=(trs.length>=200&&_trOldest>=(now-864e5)&&_trNext)?_trNext:null;
       // volume is derived ENTIRELY from the trades we fetched, so if that fetch failed the honest answer is
       // "unknown", not 0. null is already this file's word for unknown (see volLater on the list page).
       if(trFail){ vol24Xlm=null; vol24Usd=null; fees24Xlm=null; fees24Usd=null; }
@@ -1366,11 +1415,14 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var myFrac=totShares>0?myShares/totShares:0;
       var _det={hex:hex,code:code,issuer:issuer,xlm:xlm,tok:tok,fee:fee,priceXlm:priceXlm,priceUsd:priceUsd,xlmUsd:xlmUsd,
         tvlXlm:tvlXlm,tvlUsd:tvlUsd,vol24Xlm:vol24Xlm,vol24Usd:vol24Usd,fees24Xlm:fees24Xlm,fees24Usd:fees24Usd,
+        volNext:volNext,volPartial:!!volNext,__xlmUsd:xlmUsd,
         txs:txs,txFail:(trFail||opFail),parts:parts,totShares:totShares,myShares:myShares,myFrac:myFrac,balTok:balTok,balXlm:balXlm,balXlmRaw:balXlmRaw,subs:subs,
         pairName:pairName,nonXlm:nonXlm,a0:a0,a1:a1,pxA0perA1:pxA0perA1,balA0:balA0};
       // MUTATE the existing DET in place on refresh (don't replace it) so wireDW's captured d (===DET)
       // stays valid with fresh numbers — this lets add/withdraw re-fetch+repaint with NO page reload.
       if(DET){for(var _k in _det)DET[_k]=_det[_k];}else{DET=_det;}
+      // Finish counting the day's volume behind the already-rendered page (see volDeepen).
+      try{ volDeepen(); }catch(_){}
       // The two heavy feeds land here, after the page is already on screen. Each repaints only its own
       // list. Both are guarded: a failure leaves the page exactly as it is rather than blanking a tab.
       if(opsLate){ var _ol=opsLate; opsLate=null;
@@ -1524,7 +1576,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       // day is worse than admitting we do not know.
       else if(/vol/.test(cn)){
         if(d.vol24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
-        else { if(v)setText(v,num(d.vol24Xlm)+" "+U0); if(sub)setText(sub,d.nonXlm?(d.vol24Usd>0?"\\u2248 "+usd(d.vol24Usd):"24h volume"):"\\u2248 "+usd(d.vol24Usd)); } }
+        // While volDeepen is still walking the day, this is a FLOOR, not the figure. Say so, rather than
+        // printing a partial sum that looks final -- that was the whole defect.
+        else { if(v)setText(v,(d.volPartial?"\\u2265 ":"")+num(d.vol24Xlm)+" "+U0);
+          if(sub)setText(sub, d.volPartial ? "still counting the last 24h\\u2026"
+            : (d.nonXlm?(d.vol24Usd>0?"\\u2248 "+usd(d.vol24Usd):"24h volume"):"\\u2248 "+usd(d.vol24Usd))); } }
       else if(/fee/.test(cn)){
         if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,d.fee+"% fee tier"); }
         else { if(v)setText(v,(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\\u2248 "+usd(d.fees24Usd)+" \\u00b7 ")+d.fee+"% fee tier"); } }
@@ -1574,6 +1630,51 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // y-axis still said XLM. trade_aggregations takes any base/counter, so build the query from the pool's
   // OWN reserves: base = the second asset, counter = the first, and the series is denominated in the
   // first asset exactly as the XLM pools are denominated in XLM.
+  // Finish the 24h volume the first page could only start. Walks older pages until one crosses the 24h
+  // edge, adding each in-window trade, then repaints the Volume and Fees cards.
+  //
+  // Off the critical path on purpose: the headline, chart and tables are already up, and a correction
+  // arriving a second later is much better than a page that waits eleven requests to render. While it is
+  // running the figure is marked partial rather than shown as final -- the old bug was not that the number
+  // was small, it was that a floor was presented as a fact.
+  var VOLMAXP=14;                      // 14 x 200 = 2,800 trades/day before we admit to a cap
+  function volDeepen(){
+    var d=DET; if(!d||!d.volNext||d.__volBusy)return; d.__volBusy=1;
+    var cut=Date.now()-864e5, url=d.volNext, pages=0;
+    function step(){
+      if(!url||pages>=VOLMAXP){ d.volPartial=(!!url); d.volNext=null; d.__volBusy=0; try{ paintDetail(); }catch(_){} return; }
+      pages++;
+      getJSON(url).then(function(j){
+        var rs=(j&&j._embedded&&j._embedded.records)||[];
+        if(!j||!j._embedded){ url=null; return step(); }   // a failed page: stop, stay marked partial
+        var add=0, done=false;
+        for(var i=0;i<rs.length;i++){
+          var x=rs[i], ts=Date.parse(x.ledger_close_time||x.created_at||"");
+          if(ts<cut){ done=true; break; }
+          var nb=x.base_asset_type==="native";
+          var xa=nb?+x.base_amount:+x.counter_amount;
+          if(d.nonXlm&&d.a0){ var _b=(x.base_asset_code===d.a0.code&&x.base_asset_issuer===d.a0.issuer); xa=_b?+x.base_amount:+x.counter_amount; }
+          add+=xa;
+        }
+        d.vol24Xlm=(d.vol24Xlm||0)+add;
+        d.fees24Xlm=d.vol24Xlm*d.fee/100;
+        var px=d.__xlmUsd||0;
+        if(d.nonXlm){ var a0usd=(d.a0&&d.a0.code==="USDC"); d.vol24Usd=a0usd?d.vol24Xlm:0; d.fees24Usd=a0usd?d.fees24Xlm:0; }
+        else { d.vol24Usd=d.vol24Xlm*px; d.fees24Usd=d.fees24Xlm*px; }
+        if(done||rs.length<200){ url=null; }
+        else { url=(j._links&&j._links.next&&j._links.next.href)||null; }
+        // Repaint ONLY when the count is final, so the page is not redrawn eleven times mid-walk.
+        // MEASURED, because I first assumed the repaints were the bottleneck and they are not: settle
+        // time went 65s -> 60s. The cost is the fetches themselves (~5s per paged Horizon trades request
+        // from the browser; the same walk from node takes seconds). Worth knowing before anyone tries to
+        // speed this up by touching the rendering. The card reads ">= N, still counting" throughout,
+        // which is true the whole time.
+        if(!url){ d.volPartial=false; d.volNext=null; try{ paintDetail(); }catch(_){} }
+        step();
+      }).catch(function(){ url=null; d.__volBusy=0; try{ paintDetail(); }catch(_){} });
+    }
+    step();
+  }
   function chPair(){
     var d=DET; if(!d)return null;
     function leg(a){ return (!a||a.native||a.code==="XLM")?{native:true,code:"XLM"}:{code:a.code,issuer:a.issuer}; }
