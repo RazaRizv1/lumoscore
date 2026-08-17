@@ -188,7 +188,16 @@ function assetOut(a) {
 const STEP_BUDGET = 40;
 const STATE_KEY = new Request('https://lumoscore.internal/lxapi/pools-state', { method: 'GET' });
 const RANK_KEY = new Request('https://lumoscore.internal/lxapi/pools-ranked', { method: 'GET' });
-const RANK_HOLD = 3600;      // how long the ranking SURVIVES in cache; freshness is judged by its own ts
+// How long the ranking SURVIVES in cache. Freshness is judged separately, by its own timestamp against
+// RANK_TTL, so this is not "how stale a visitor may see" -- a stale entry is served instantly and
+// refreshed behind the response. This is only the window in which a cold build becomes possible again.
+//
+// Six hours, not one, and the reason is what a cold build costs a VISITOR: it is the single slow path
+// left on this page (~25s, spread over two warming requests) and it is also why the volume column comes
+// up empty -- the overlay only lands when the whole ranking completes. Every hour of hold is an hour in
+// which nobody can hit that. The set of pools barely moves; only their values do, and those are refreshed
+// on the stale path regardless.
+const RANK_HOLD = 21600;
 const SEARCH_TTL = 600;
 const SEARCH_ASSETS = 6;     // distinct assets one query will chase; see searchPools
 
