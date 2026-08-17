@@ -101,6 +101,9 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
 /* top/bottom are set from JS, not here: they have to track the PRICE band, and the price band moved
    when the volume band was added. A percentage frozen in the stylesheet would have gone on describing the
    old split and quietly labelled the bars. */
+/* Unit of the price axis. Sits above the topmost number, right-aligned with them. */
+.lxda-cunit{position:absolute;top:2px;right:4px;z-index:2;pointer-events:none;
+  font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:var(--text-muted,#8a8fa3)}
 .lxda-cprices{position:absolute;right:4px;width:64px;pointer-events:none}
 .lxda-cprices span{position:absolute;right:0;transform:translateY(-50%);font:600 10.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);white-space:nowrap}
 /* chart hover readout */
@@ -658,7 +661,15 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var rate=+xlmUsd, xlm=(rate>0), a=xlm?(mn/rate):mn, b=xlm?(mx/rate):mx, pre=xlm?"":"$";
     var N=5,h="";
     for(var i=0;i<N;i++){ var f=i/(N-1); h+='<span style="top:'+(f*100).toFixed(3)+'%">'+pre+axisNum(b-f*(b-a))+'</span>'; }
-    pr.innerHTML=h; }
+    pr.innerHTML=h;
+    // NAME THE UNIT. Priced in XLM the axis carries no symbol at all -- just bare numbers like 0.002039 --
+    // so nothing on the chart said whether that was lumens or dollars, and for a sub-cent asset the two
+    // are wildly different readings. A dollar axis at least has its "$". Top-right, outside the plot, so
+    // it labels the scale without sitting on the data.
+    var un=pc.querySelector(".lxda-cunit");
+    if(!un){ un=document.createElement("div"); un.className="lxda-cunit"; pc.appendChild(un); }
+    var uw=xlm?"XLM":"USD";
+    if(un.textContent!==uw)un.textContent=uw; }
   // How the plot is divided between price and volume. One function so the line chart, the candles and the
   // price axis cannot drift apart -- the axis has to span the PRICE band only, and hard-coding that split
   // in the stylesheet is exactly how it would end up labelling the bars.
