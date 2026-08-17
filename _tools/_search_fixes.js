@@ -10,7 +10,12 @@ const STYLE='<style id="lx-searchfix">#searchPopup #spFilters,.sp-body #spFilter
 const SCRIPT='<script id="lx-searchctl">(function(){'
 +'function head(){var c=document.getElementById("spAssetCount");return c&&c.closest?c.closest(".sp-section-head"):null;}'
 +'function ctl(){var inp=document.getElementById("spSearchInput");if(!inp)return;var list=document.getElementById("spAssetList");'
-+'var empty=!(inp.value&&inp.value.trim());if(empty&&list&&list.children.length)list.innerHTML="";'
+// An empty box used to mean "there is nothing to show", so this cleared the list. It can now also mean
+// "show the recent searches" (lx-searchassets paints .lx-recrow there). Without this guard that clear
+// deleted them instantly and, because it also runs from a MutationObserver on the same list, it deleted
+// them again on every repaint -- the two scripts painting and wiping in a loop is what hung the page.
++'var empty=!(inp.value&&inp.value.trim());'
++'if(empty&&list&&list.children.length&&!list.querySelector(".lx-recrow"))list.innerHTML="";'
 +'var h=head();if(h)h.style.display=(empty||!list||!list.children.length)?"none":"";}'
 +'document.addEventListener("input",function(e){if(e.target&&e.target.id==="spSearchInput"){ctl();if(window.requestAnimationFrame)requestAnimationFrame(ctl);}},true);'
 +'document.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"){setTimeout(ctl,30);}},true);'

@@ -15,6 +15,12 @@ const STYLE = `<style id="lx-searchassets-css">
 .sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
 .sp-row--asset.lx-searow .sp-ico img{display:block}
 .sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
+/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
+.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
+  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
+.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
+  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
+.lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
 </style>`;
@@ -170,6 +176,70 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
       '<div class="sp-right"><div class="sp-addr-mini">'+short(addr)+'</div></div></a>';
   }
   function paint(list,html){ if(list.innerHTML!==html) list.innerHTML=html; }
+
+  // ---- RECENT SEARCHES ------------------------------------------------------------------------------
+  // ONE list of 5, shared by assets, pools and wallets -- not 5 of each. All three render as the same
+  // .sp-row--asset.lx-searow, so a single capture covers them and the order is simply the order things
+  // were opened in.
+  //
+  // What is stored is FIELDS READ BACK OFF THE ROW that was clicked, not the row's HTML and not a
+  // re-derivation from the href. Storing HTML would mean writing markup from localStorage straight into
+  // innerHTML on every future visit; re-deriving would mean refetching an asset index, a pool record or
+  // an account just to draw five lines. Reading the rendered row gives the same thing for free, and it is
+  // already escaped output.
+  var RKEY="lumos.search.recent", RMAX=5;
+  function recGet(){ try{ var a=JSON.parse(localStorage.getItem(RKEY)||"[]");
+    return Array.isArray(a)?a.filter(function(x){return x&&x.href;}).slice(0,RMAX):[]; }catch(_){ return []; } }
+  function recSave(a){ try{ localStorage.setItem(RKEY,JSON.stringify(a.slice(0,RMAX))); }catch(_){ } }
+  // Dedupe on href, then unshift: reopening something already in the list MOVES it to the top rather than
+  // adding a second copy, which is what "most recent first" has to mean.
+  function recAdd(t){ if(!t||!t.href)return;
+    var a=recGet().filter(function(x){ return x.href!==t.href; }); a.unshift(t); recSave(a); }
+  function recFromRow(a){
+    function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace(/\\s+/g," "):""; }
+    var nm=a.querySelector(".sp-name-row"), name="";
+    if(nm){ var c=nm.cloneNode(true); var d=c.querySelector(".sp-domain"); if(d&&d.parentNode)d.parentNode.removeChild(d);
+      name=c.textContent.trim().replace(/\\s+/g," "); }
+    var img=a.querySelector(".sp-ico img");
+    // A pool draws two circles as background-image on .lx-pi rather than an <img>, so its icon is kept as
+    // those two backgrounds. Without this every recent pool would fall back to a letter avatar.
+    var pis=[].slice.call(a.querySelectorAll(".lx-poolico .lx-pi")).map(function(e){ return e.style.backgroundImage||""; }).filter(Boolean);
+    return { href:a.getAttribute("href")||"", name:name, dom:txt(".sp-domain"), sub:txt(".sp-sub"),
+      right:txt(".sp-addr-mini"), img:img?(img.getAttribute("src")||""):"", pis:pis };
+  }
+  function recRow(t){
+    var ico = (t.pis&&t.pis.length)
+      ? '<div class="sp-ico lx-spico-on lx-poolico">'+t.pis.map(function(b,i){
+          return '<span class="lx-pi lx-pi-'+(i?"b":"a")+'" style="background-image:'+b+'"></span>'; }).join("")+'</div>'
+      : '<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.name||"?"))
+        +'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
+    return '<a class="sp-row sp-row--asset lx-searow lx-recrow" data-chain="stellar" href="'+esc(t.href)+'">'+ico+
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||"Result")
+        +(t.dom?' <span class="sp-domain">'+esc(t.dom)+'</span>':'')+'</div>'+
+      '<div class="sp-sub">'+esc(t.sub)+'</div></div>'+
+      (t.right?'<div class="sp-right"><div class="sp-addr-mini">'+esc(t.right)+'</div></div>':'')+'</a>';
+  }
+  // Returns whether anything was painted, so the caller can leave the design's own empty state alone when
+  // there is no history yet rather than replacing it with a blank "Recent" heading.
+  function recPaint(list){
+    var a=recGet(); if(!a.length) return false;
+    paint(list,'<div class="lx-rechead"><span>Recent</span><button type="button" class="lx-recclear">Clear</button></div>'
+      +a.map(recRow).join(""));
+    return true;
+  }
+  if(!window.__lxRecWired){ window.__lxRecWired=1;
+    // Capture, because the row is an <a> and the click must be recorded before the navigation it causes.
+    document.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      var clr=t.closest(".lx-recclear");
+      if(clr){ e.preventDefault(); e.stopPropagation();
+        try{ localStorage.removeItem(RKEY); }catch(_){}
+        var l=document.getElementById("spAssetList"); if(l)paint(l,"");
+        return; }
+      var row=t.closest(".lx-searow"); if(!row)return;
+      try{ recAdd(recFromRow(row)); }catch(_){}
+    },true);
+  }
   function seaFetch(q,cb){
     if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
     fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
@@ -194,7 +264,9 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     var inp=document.getElementById("spSearchInput"), list=document.getElementById("spAssetList");
     if(!inp||!list)return;
     var raw=(inp.value||"").trim(), q=raw.toLowerCase();
-    if(!q){ return; }                       // empty -> let the design clear the list
+    // Empty box -> recent searches, if there are any. With none, fall through to the design's own empty
+    // state exactly as before rather than showing a "Recent" heading over nothing.
+    if(!q){ recPaint(list); return; }
     // locally minted Launchpad tokens match instantly, with no round trip
     var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&t.code.toLowerCase().indexOf(q)>=0; });
     var seq=++SEA_SEQ;
@@ -238,6 +310,16 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     inp.__lxsea=1;
     inp.addEventListener("input", render);
     inp.addEventListener("keyup", render);
+    // The popup opens with an empty box and the design clears the list as it opens, so nothing would ever
+    // ask for the recents. focus fires on open (the design focuses the input); the timed re-asserts cover
+    // the design clearing the list a beat later.
+    //
+    // BOUNDED ON PURPOSE, and this is not a style preference -- it froze the page. Re-asserting the
+    // recents from the MutationObserver instead made our paint and the design's clear trigger each other:
+    // we paint, that is a childList mutation, the design clears, that is another mutation, we paint. The
+    // observer's original guard is "q && ..." for exactly this reason -- no backticks in here, they would
+    // close the template literal this script is emitted from. A fixed number of attempts cannot ping-pong.
+    inp.addEventListener("focus", function(){ [0,60,180,420].forEach(function(ms){ setTimeout(render,ms); }); });
     // re-assert if the design re-renders its own rows while a query is active
     try{ new MutationObserver(function(){ var q=(inp.value||"").trim(); if(q && !isMine(list)) render(); }).observe(list,{childList:true}); }catch(e){}
   }
