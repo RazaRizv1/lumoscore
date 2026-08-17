@@ -1361,6 +1361,11 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
 .lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
 @keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
+/* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
+   written paintTables filled both and revealed after. The network list changed that: the rows now arrive
+   from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
+   until they landed. Same treatment as the desktop body. */
+html:not(.lx-ammready) #panelAll{visibility:hidden}
 /* POOL-DETAIL TAB STRIPS ON A PHONE.
    #ptabs measures 432px of tabs inside a 345px box, so "Participants" sits past the right edge and is
    simply unreachable — on a narrower handset "Transactions" and "My Position" go with it. The strip is
@@ -4763,6 +4768,8 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     // check for that was worthless -- it counted th[data-lxsortable], which is the attribute wireSort
     // ADDS, so "0 left" meant "never wired", not "successfully disabled".
     try{ deadSort(); netRelabelVol(); }catch(_){}
+    // The list is on screen now (rows, warming notice, or error) -- safe to lift the mask.
+    try{ reveal(); }catch(_){}
   }
   function netGo(p){
     p=Math.max(1,Math.min(NET.pages,p));
@@ -4852,7 +4859,15 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   }
 
   function paint(){ paintSnapshot(); paintTables(); paintCopy(); try{ healLogos(); }catch(_){} }
-  function reveal(){ document.documentElement.classList.add("lx-ammready"); }
+  // On the pools LIST page the rows no longer come from load()/DATA -- they come from /lxapi/pools. So
+  // revealing when DATA lands uncovers the design's baked mock rows and holds them on screen until the
+  // ranked page arrives. That is what "why does it show like this before loading" was: not a loading
+  // state, the template's fake pools. Hold the reveal until paintNet has actually written something,
+  // including its error and empty states, which are also real answers.
+  function reveal(){
+    if(typeof netActive==="function"&&netActive()&&!NET.rows&&!NET.err&&!NET.warm)return;
+    document.documentElement.classList.add("lx-ammready");
+  }
   // poolFromRec normalises Horizon's reserves into a0/a1 ({code,issuer,native}) — there is no
   // .reserves on the record by the time a row is built.
   function urlSeg(x){ return (!x||x.native||x.code==="XLM") ? "native" : (x.code+"-"+x.issuer); }
