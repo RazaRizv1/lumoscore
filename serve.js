@@ -382,6 +382,7 @@ const LP_HOSTS = ['https://horizon.stellar.org', 'https://horizon.stellar.lobstr
 const LP_USDC = 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
 const LP_XPERT = 'https://api.stellar.expert/explorer/public/liquidity-pool';
 let LP_CACHE = null, LP_STATE = null;
+const LP_QCACHE = new Map();          // search results per query (see the search branch below)
 function poolList(req, res, params) {
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const getJ = async (path, host0) => {
@@ -521,9 +522,64 @@ function poolList(req, res, params) {
     const per = Math.min(100, Math.max(1, parseInt(params.get('per') || '25', 10) || 25));
     const page = Math.max(1, parseInt(params.get('page') || '1', 10) || 1);
     const q = (params.get('q') || '').trim().toUpperCase().slice(0, 24);
+    // Search is a LIVE Horizon query, not a filter over the ranking -- the ranking only holds pools we can
+    // price, so filtering it answered "priceable pools mentioning this asset" (LUMOS: 6) instead of "pools
+    // holding this asset" (LUMOS: 59). See functions/lxapi/pools.js for the full reasoning.
     let rows = ranked.rows;
-    if (q) rows = rows.filter(r => ((r.a && r.a.code) || '').toUpperCase().indexOf(q) >= 0
-      || ((r.b && r.b.code) || '').toUpperCase().indexOf(q) >= 0);
+    if (q) {
+      const cached = LP_QCACHE.get(q);
+      if (cached && Date.now() - cached.ts < 600000) rows = cached.rows;
+      else {
+        const rowsById = new Map(ranked.rows.map(r => [r.id, r]));
+        const assets = new Map(), imgByKey = new Map();
+        for (const r of ranked.rows) for (const leg of [r.a, r.b]) {
+          if (!leg || !leg.issuer) continue;
+          const k = leg.code + ':' + leg.issuer;
+          if (leg.img && !imgByKey.has(k)) imgByKey.set(k, leg.img);
+          if (String(leg.code).toUpperCase().indexOf(q) >= 0 && !assets.has(k)) assets.set(k, leg);
+        }
+        const keys = [...assets.keys()].sort((a, b) =>
+          (a.split(':')[0].toUpperCase() === q ? 0 : 1) - (b.split(':')[0].toUpperCase() === q ? 0 : 1));
+        const found = new Map();
+        for (const key of keys.slice(0, 6)) {
+          let cursor = '';
+          for (let p = 0; p < 4; p++) {
+            const d = await getJ('/liquidity_pools?reserves=' + encodeURIComponent(key) + '&limit=200&order=asc'
+              + (cursor ? '&cursor=' + cursor : ''));
+            const recs = ((d || {})._embedded || {}).records || [];
+            if (!recs.length) break;
+            for (const rec of recs) if (!found.has(rec.id)) found.set(rec.id, rec);
+            if (recs.length < 200) break;
+            cursor = recs[recs.length - 1].paging_token;
+          }
+        }
+        const out = [];
+        for (const [id, rec] of found) {
+          const known = rowsById.get(id);
+          if (known) { out.push(known); continue; }
+          const rs = (rec.reserves || []).map(assetOut);
+          const xi = (rec.reserves || []).findIndex(x => x.asset === 'native');
+          const ui = (rec.reserves || []).findIndex(x => x.asset === LP_USDC);
+          const tvl = xi >= 0 ? 2 * (+rec.reserves[xi].amount || 0) * ranked.px
+            : (ui >= 0 ? 2 * (+rec.reserves[ui].amount || 0) : null);
+          for (const leg of rs) {
+            if (leg.code === 'XLM' && !leg.issuer) { leg.img = '/assets/tokens/xlm.png'; continue; }
+            const u = imgByKey.get(leg.code + ':' + leg.issuer); if (u) leg.img = u;
+          }
+          out.push({ id, a: rs[0] || null, b: rs[1] || null,
+            tvl: tvl == null ? null : Math.round(tvl * 100) / 100,
+            fee: (+rec.fee_bp || 0) / 100, members: +rec.total_trustlines || 0, vol24: null });
+        }
+        out.sort((x, y) => {
+          const xn = x.tvl == null, yn = y.tvl == null;
+          if (xn !== yn) return xn ? 1 : -1;
+          if (xn) return (y.members || 0) - (x.members || 0);
+          return y.tvl - x.tvl;
+        });
+        rows = out;
+        LP_QCACHE.set(q, { ts: Date.now(), rows });
+      }
+    }
     const total = rows.length, pages = Math.max(1, Math.ceil(total / per));
     const start = Math.min((page - 1) * per, Math.max(0, (pages - 1) * per));
     const body = JSON.stringify({ page: Math.floor(start / per) + 1, per, pages, total,
