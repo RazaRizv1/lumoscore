@@ -1646,7 +1646,11 @@ html:not(.lx-detpr) .side-head .count-pill{visibility:hidden!important}
 /* AUDIT (user-reported, DWARF/SBB): the deposit CTA looked live even when the deposit could not possibly
    succeed — an AMM deposit needs BOTH sides of the pair, and the user held none of one of them. Grey it out
    and make it inert so the state is legible BEFORE filling in amounts, instead of erroring only on submit. */
-.dw-card .dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
+/* NOT scoped to .dw-card. The phone puts this button in .card > .card-body, so the old
+   ".dw-card .dw-cta.lx-dwoff" never matched there: the CTA was aria-disabled and inert to our handler
+   while still looking and feeling fully enabled. The hint paragraph underneath hid that -- with the
+   paragraph gone the button's own appearance IS the whole message, so it has to be right on both. */
+.dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
 .dw-card .lx-dwhint{margin-top:9px;font-size:12px;line-height:1.45;color:var(--text-muted);text-align:center}
 /* AUDIT: the hero's absolutely-positioned stats chip (.lm-chip) collides with the "Provide liquidity, earn
    swap fees" headline once the promo card narrows (≤1100px) — unreadable jumble. The same numbers live in
@@ -6619,12 +6623,16 @@ window.addEventListener('click',function(e){
       if(b.classList.contains("lx-dwoff")!==off)b.classList.toggle("lx-dwoff",off);
       if((b.getAttribute("aria-disabled")==="true")!==off){ if(off)b.setAttribute("aria-disabled","true"); else b.removeAttribute("aria-disabled"); }
       if((b.getAttribute("title")||"")!==why){ if(why)b.setAttribute("title",why); else b.removeAttribute("title"); }
+      // NO visible reason under the button. An inactive Add Liquidity button already says everything a
+      // sentence could: you cannot deposit what you do not hold. The paragraph explaining it read as a
+      // fault on the page rather than a fact about the wallet.
+      //
+      // The reason still exists -- it drives the disabled state and stays on the title attribute for
+      // hover/screen readers -- and any hint left over from a cached page is removed rather than left
+      // stranded.
       var host=b.parentNode; if(!host)return;
       var h=host.querySelector(":scope > .lx-dwhint");
-      if(!off){ if(h&&h.style.display!=="none")h.style.display="none"; return; }
-      if(!h){ h=document.createElement("div"); h.className="lx-dwhint"; host.appendChild(h); }
-      if(h.textContent!==why)h.textContent=why;
-      if(h.style.display!=="")h.style.display="";
+      if(h&&h.parentNode)h.parentNode.removeChild(h);
     }
     // syncLabel ONLY touches the CTA text (guarded so it settles) — this is what the observer runs. It must
     // NOT call withRecv()/shareAfter(): those write textContent INSIDE .dw-card, which the childList observer
