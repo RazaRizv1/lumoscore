@@ -34,7 +34,9 @@ const PLATFORM = [{
   image: 'https://lumoscore.com/assets/tokens/lumos.png',
 }];
 const DOMAIN = 'lumoscore.com';
-const HORIZON = 'https://horizon.stellar.org';
+// GUARDRAILS E12: a second host, because Horizon rate-limits at 100 requests per 5 minutes per IP and a
+// throttled verification must not be mistaken for a failed one.
+const HOSTS = ['https://horizon.stellar.org', 'https://horizon.stellar.lobstr.co'];
 const PASSPHRASE = 'Public Global Stellar Network ; September 2015';
 
 // Mints are rare, so the file can be cached hard. This also keeps Horizon load near zero: one refresh
@@ -46,8 +48,11 @@ const TIMEOUT_MS = 6000;
 // Free-plan Workers allow 50 subrequests per invocation and we spend one per issuer verification. The cap
 // is stated in the output rather than silently truncating -- a toml that quietly drops assets is worse than
 // one that says it is incomplete. Workers Paid raises the limit to 10,000, which removes the ceiling.
-// Budget: 1 candidates() + MAX_VERIFY + 1 manifest = 47, inside the free cap.
 const MAX_VERIFY = 45;
+// Every verification attempt, first tries and RETRIES alike, draws from this. 50 minus the two spent on
+// candidates() and the icon manifest, minus a small margin. In practice ~19 assets claim our domain, so
+// the first pass costs ~19 and the rest is retry headroom; the cap only binds if that grows a lot.
+const VERIFY_BUDGET = 46;
 
 // WHERE A LAUNCHPAD MINT'S LOGO COMES FROM, and why not from stellar.expert.
 //
@@ -123,17 +128,40 @@ function q(v) {
     .trim() + '"';
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Every upstream call shares one allowance, because exceeding it is not a slow response -- the Worker is
+// killed and the whole document 502s. Retries draw from the same pool as first attempts, so a bad day
+// upstream degrades this into "some assets undetermined" instead of "no toml at all".
+function budget(n) {
+  return { left: n, take() { if (this.left <= 0) return false; this.left--; return true; } };
+}
+
 // Was this issuer account created by us? The first operation on any account is its creation, and the
 // funder recorded there cannot be changed afterwards.
-async function fundedByUs(issuer) {
-  try {
-    const r = await withTimeout(HORIZON + '/accounts/' + issuer + '/operations?order=asc&limit=1');
-    if (!r.ok) return false;
-    const d = await r.json();
-    const op = ((d._embedded || {}).records || [])[0] || {};
-    if (op.type !== 'create_account') return false;
-    return (op.funder || op.source_account) === FUNDER;
-  } catch (e) { return false; }
+//
+// THREE-VALUED ON PURPOSE: true = ours, false = provably not ours, null = could not determine.
+// It used to return false for any non-ok response, which quietly turned a Horizon 429 into "not ours" and
+// dropped a real asset out of the document -- the list would shrink under rate-limiting and then be cached
+// that way for six hours, with nothing to say it had. A null is never published (we must not vouch for an
+// asset we could not check) but it IS counted, stated in the file, and it shortens the cache lifetime.
+async function fundedByUs(issuer, b) {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (!b.take()) return null;                       // out of allowance -> unknown, NOT a denial
+    try {
+      const host = HOSTS[attempt % HOSTS.length];
+      const r = await withTimeout(host + '/accounts/' + issuer + '/operations?order=asc&limit=1');
+      // Throttled or upstream-broken: retryable, and emphatically not an answer.
+      if (r.status === 429 || r.status >= 500) { await sleep(250 * (attempt + 1)); continue; }
+      // A 404 IS an answer: no such account, so it is certainly not one we funded.
+      if (!r.ok) return false;
+      const d = await r.json();
+      const op = ((d._embedded || {}).records || [])[0] || {};
+      if (op.type !== 'create_account') return false;
+      return (op.funder || op.source_account) === FUNDER;
+    } catch (e) { await sleep(250 * (attempt + 1)); }  // timeout / network -> retry, do not conclude
+  }
+  return null;
 }
 
 async function candidates() {
@@ -183,12 +211,14 @@ export async function onRequestGet(ctx) {
   catch (e) { return tomlResponse(head.join('\n') + '\n# asset list temporarily unavailable\n', TTL_ERR); }
 
   const checked = list.slice(0, MAX_VERIFY);
-  const verdicts = await Promise.all(checked.map((a) => fundedByUs(a.issuer)));
+  const b = budget(VERIFY_BUDGET);
+  const verdicts = await Promise.all(checked.map((a) => fundedByUs(a.issuer, b)));
+  const unknown = verdicts.filter((v) => v === null).length;
   // Platform assets first, then launchpad mints. Deduped by code|issuer so a platform asset that also
   // satisfies the funder rule cannot appear twice and give two conflicting entries for one asset.
   const seen = new Set();
   const ours = [];
-  for (const a of PLATFORM.concat(checked.filter((_, i) => verdicts[i]))) {
+  for (const a of PLATFORM.concat(checked.filter((_, i) => verdicts[i] === true))) {
     const k = a.code + '|' + a.issuer;
     if (seen.has(k)) continue;
     seen.add(k); ours.push(a);
@@ -214,6 +244,14 @@ export async function onRequestGet(ctx) {
     body.push(c.join('\n'), '');
   }
 
+  // An incomplete list must say so and must not be cached hard. Six hours of a silently shortened toml
+  // would un-verify a real asset across every wallet that reads this file.
+  if (unknown) {
+    body.push('# NOTE: ' + unknown + ' asset(s) could not be verified in this request (upstream '
+      + 'unavailable or rate-limited). They are omitted rather than listed unchecked, and this document '
+      + 'is cached briefly so it refreshes soon.', '');
+  }
+
   if (!ours.length) body.push('# no verified LumosCore assets found at this time', '');
-  return tomlResponse(body.join('\n'), ours.length ? TTL : TTL_ERR);
+  return tomlResponse(body.join('\n'), (ours.length && !unknown) ? TTL : TTL_ERR);
 }
