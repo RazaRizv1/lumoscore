@@ -375,6 +375,33 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // and nowhere else, so nobody else sees it. Publishing it in our stellar.toml is what makes it real for
   // every visitor, wallet and explorer -- that path is built and waiting on the icon files. This restores
   // the icons wherever the browser that minted them is used, which is the machine looking at this page.
+  // THE ICON MANIFEST, READ FROM OUR OWN ORIGIN. Hosting the logo files was not enough on its own: the
+  // page resolved a mint's image through loadToml(), which fetches the issuer's on-chain home_domain --
+  // lumoscore.com -- no matter which site you are browsing. That URL 404s until the toml Function reaches
+  // production, so a logo hosted on staging was unreachable from staging.
+  //
+  // This reads /assets/tokens/launchpad-icons.json from whatever origin is serving the page, so the icons
+  // appear as soon as they are deployed, on staging and production alike, with no dependency on the toml
+  // or on any third party. The toml still matters -- it is what publishes them to wallets and explorers --
+  // but the site no longer waits on it to draw its own pages.
+  var _man=null, _manStarted=0;
+  function loadManifest(){
+    if(_manStarted)return; _manStarted=1;
+    fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; }).then(function(m){
+      if(!m||typeof m!=="object"||m.constructor===Array)return;
+      _man=m;
+      try{ paintIcons(document); }catch(_e){}
+      touch();                                                  // rows already drawn -> repaint with the real icons
+    }).catch(function(){});
+  }
+  function manifestIcon(code,issuer){
+    if(!_man)return "";
+    var u=_man[code+"-"+issuer];
+    // Same-origin absolute path only. A manifest naming another host would let one bad write repoint
+    // every token icon on the site.
+    return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
+  }
+
   var _liCache=null;
   function launchIcon(code,issuer){
     try{
@@ -385,7 +412,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       return (typeof u==="string"&&u.indexOf("data:image/")===0&&u.indexOf('"')<0&&u.indexOf("'")<0)?u:"";
     }catch(e){ return ""; }
   }
-  function logoCss(a){ var u=a.logo||a.img||launchIcon(a.code,a.issuer); return u?"url("+u+")":avatarBg(a.code); }
+  function logoCss(a){ var u=a.logo||a.img||manifestIcon(a.code,a.issuer)||launchIcon(a.code,a.issuer); return u?"url("+u+")":avatarBg(a.code); }
   // money value wrapped as a .lc-money span (the site money-formatter keys off data-usd/data-orig -> no revert)
   function lcm(v){ v=+v||0; var s=abbrUsd(v); return '<span class="lc-money" data-usd="'+v+'" data-orig="'+s+'">'+s+'</span>'; }
   function lcmExact(v){ v=+v||0; var s=usdSmall(v); return '<span class="lc-money" data-usd="'+v+'" data-orig="'+s+'">'+s+'</span>'; }
@@ -846,6 +873,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   window.__lxDEXdbg=function(){ return {xlmUsd:xlmUsd,xlmChg:xlmChg,assets:ASSETS.map(function(a){return {code:a.code,px:a.px,chg:a.chg,vol:a.vol,tvlUsd:a.tvlUsd,holders:a.holders,supply:a.supply,domain:a.domain,img:a.img};})}; };
 
   function boot(){
+    loadManifest();                                            // our own hosted token icons; independent of the toml
     guardApply();                                              // synchronous skeleton (real tickers/icons, "\\u2014" values, .lxd) -> no mock flash, no blank
     // The design has its own row/Trade click handler that opens the asset page WITHOUT the ?asset= param
     // (lands on default LUMOS). Preempt it with a document-CAPTURE delegated nav that carries the param and
