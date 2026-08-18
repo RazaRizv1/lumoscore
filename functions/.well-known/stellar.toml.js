@@ -46,7 +46,53 @@ const TIMEOUT_MS = 6000;
 // Free-plan Workers allow 50 subrequests per invocation and we spend one per issuer verification. The cap
 // is stated in the output rather than silently truncating -- a toml that quietly drops assets is worse than
 // one that says it is incomplete. Workers Paid raises the limit to 10,000, which removes the ceiling.
+// Budget: 1 candidates() + MAX_VERIFY + 1 manifest = 47, inside the free cap.
 const MAX_VERIFY = 45;
+
+// WHERE A LAUNCHPAD MINT'S LOGO COMES FROM, and why not from stellar.expert.
+//
+// This file used to take every asset's image from stellar.expert's tomlInfo. That silently published
+// nothing, because stellar.expert fills tomlInfo by reading THIS document -- so the image could only ever
+// appear here if it already appeared here. Measured before the fix: 10 [[CURRENCIES]] blocks, one image=
+// line, and that one the hardcoded LUMOS entry. Every launchpad token went out with no logo at all.
+//
+// The loop is broken by publishing images WE host. _tools/_launchicons.js writes the launchpad icons to
+// assets/tokens/ and emits this manifest alongside them, so an image can only be named here if the file
+// it names was written in the same run.
+//
+// It is read over HTTP rather than baked in so that adding an icon needs no edit to this file, and a
+// missing or malformed manifest degrades to exactly the previous behaviour instead of breaking the toml.
+const ICON_MANIFEST = '/assets/tokens/launchpad-icons.json';
+
+// Serve image URLs on the origin this document was served from. A wallet only ever reads the copy at
+// lumoscore.com, so in production these are lumoscore.com URLs; on a preview deploy they point at that
+// preview, which is what makes the result checkable there instead of only after going live.
+function originOf(request) {
+  try {
+    const u = new URL(request.url);
+    if (u.protocol === 'https:' && /^[A-Za-z0-9.-]{1,253}$/.test(u.hostname)) return u.origin;
+  } catch (e) { /* fall through */ }
+  return 'https://' + DOMAIN;
+}
+
+// Never throws and never blocks the document: a toml without images is degraded, a toml that 500s is
+// broken, and a broken one un-verifies every asset we have.
+async function iconManifest(origin) {
+  try {
+    const r = await withTimeout(origin + ICON_MANIFEST);
+    if (!r.ok) return {};
+    const m = await r.json();
+    if (!m || typeof m !== 'object' || Array.isArray(m)) return {};
+    const out = {};
+    for (const k of Object.keys(m)) {
+      const v = m[k];
+      // Only a same-origin absolute path. A manifest that could name an arbitrary host would let a bad
+      // write here point every wallet at someone else's image.
+      if (typeof v === 'string' && v.charAt(0) === '/' && v.indexOf('//') !== 0) out[k] = origin + v;
+    }
+    return out;
+  } catch (e) { return {}; }
+}
 
 function tomlResponse(body, ttl) {
   return new Response(body, {
@@ -110,7 +156,8 @@ async function candidates() {
   return out;
 }
 
-export async function onRequestGet() {
+export async function onRequestGet(ctx) {
+  const origin = originOf(ctx && ctx.request);
   const head = [
     '# LumosCore — SEP-1 stellar.toml',
     '#',
@@ -130,8 +177,9 @@ export async function onRequestGet() {
     '',
   ];
 
-  let list;
-  try { list = await candidates(); }
+  let list, icons;
+  // iconManifest never rejects, so this still fails exactly and only when the asset list does.
+  try { [list, icons] = await Promise.all([candidates(), iconManifest(origin)]); }
   catch (e) { return tomlResponse(head.join('\n') + '\n# asset list temporarily unavailable\n', TTL_ERR); }
 
   const checked = list.slice(0, MAX_VERIFY);
@@ -156,7 +204,10 @@ export async function onRequestGet() {
     const c = ['[[CURRENCIES]]', 'code=' + q(a.code), 'issuer=' + q(a.issuer), 'display_decimals=7'];
     if (a.name) c.push('name=' + q(a.name));
     if (a.desc) c.push('desc=' + q(a.desc));
-    if (a.image) c.push('image=' + q(a.image));
+    // Our own hosted icon wins. a.image (stellar.expert's tomlInfo) stays as the fallback: it is correct
+    // for an asset that publishes a logo through some other domain, and empty for our own mints.
+    const img = icons[a.code + '-' + a.issuer] || a.image;
+    if (img) c.push('image=' + q(img));
     // These are launchpad-issued tokens, not claims on an off-chain reserve. Saying so explicitly stops a
     // reader inferring a backing that does not exist.
     c.push('is_asset_anchored=false');
