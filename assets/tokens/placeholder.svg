@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2740"/>
+      <stop offset="1" stop-color="#0c1220"/>
+    </linearGradient>
+    <linearGradient id="snow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#eaf2ff"/>
+      <stop offset="1" stop-color="#b9cbe6"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.62" r="0.5">
+      <stop offset="0" stop-color="#ffcf7a" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#ffcf7a" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="160" height="160" fill="url(#sky)"/>
+  <circle cx="118" cy="34" r="12" fill="#f4f7ff" opacity="0.85"/>
+  <g opacity="0.7" fill="#dfe8fb">
+    <circle cx="30" cy="26" r="1.4"/><circle cx="52" cy="18" r="1"/><circle cx="90" cy="22" r="1.2"/><circle cx="140" cy="60" r="1.1"/><circle cx="18" cy="52" r="1"/>
+  </g>
+  <ellipse cx="80" cy="150" rx="86" ry="20" fill="url(#snow)"/>
+  <ellipse cx="80" cy="118" rx="60" ry="20" fill="#ffcf7a" opacity="0.18"/>
+  <path d="M20 122 a60 46 0 0 1 120 0 z" fill="url(#snow)"/>
+  <g stroke="#9fb4d4" stroke-width="1.6" fill="none" opacity="0.7">
+    <path d="M23 112 h114"/>
+    <path d="M30 96 h100"/>
+    <path d="M42 82 h76"/>
+    <path d="M46 122 v-40"/><path d="M66 122 v-46"/><path d="M94 122 v-46"/><path d="M114 122 v-40"/>
+    <path d="M80 76 v-6"/>
+  </g>
+  <path d="M64 122 a16 22 0 0 1 32 0 z" fill="#0c1220"/>
+  <path d="M64 122 a16 22 0 0 1 32 0" fill="none" stroke="#9fb4d4" stroke-width="2"/>
+  <circle cx="80" cy="112" r="18" fill="url(#glow)"/>
+  <rect x="76" y="100" width="8" height="14" rx="2" fill="#3a2a12"/>
+  <rect x="77.5" y="102" width="5" height="10" rx="1.5" fill="#ffd98a"/>
+</svg>
