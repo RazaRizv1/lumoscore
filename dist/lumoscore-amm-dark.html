@@ -5857,10 +5857,27 @@ window.addEventListener('click',function(e){
     // Label the axis in the asset the series is actually denominated in. It said XLM unconditionally,
     // which was already wrong on a USDC/EURC pool before this pair could chart at all.
     var _u=" "+(((chPair()||{}).unit)||"XLM");
-    function yfmt(x){ x=+x||0; var a=Math.abs(x), sc=a>=1e6?1e6:(a>=1e3?1e3:1), sfx=sc===1e6?("M"+_u):(sc===1e3?("K"+_u):_u);
+    function yfmt(x,wu){ var u=wu?_u:"";
+      x=+x||0; var a=Math.abs(x), sc=a>=1e6?1e6:(a>=1e3?1e3:1), sfx=sc===1e6?("M"+u):(sc===1e3?("K"+u):u);
       var d=2; if(_step>0){ d=Math.max(2,Math.min(5,Math.ceil(-Math.log10(_step/sc))+1)); if(!isFinite(d))d=2; }
-      return sc===1?((a>=1?num(x):x.toFixed(Math.max(2,d)))+_u):((x/sc).toFixed(d)+sfx); }
-    yt.forEach(function(t,i){ var frac=yt.length<=1?1:(1-i/(yt.length-1)); setText(t,yfmt(mn+(mx-mn)*frac)); });
+      return sc===1?((a>=1?num(x):x.toFixed(Math.max(2,d)))+u):((x/sc).toFixed(d)+sfx); }
+    // THE UNIT ON EVERY GRIDLINE IS AXIS TEXT LYING ACROSS THE SERIES. These labels are text-anchor="end"
+    // pinned at x=396, so a longer one cannot leave the card -- it grows LEFT, over the plot. Measured on
+    // the phone box: "27.35M XLM" covers 14.1% of the plot width, "27.35M PENGULUMENS" 25.4%, and
+    // "0.0000001 PENGULUMENS" 29.6%, five times over. Print the unit once, on the top gridline, and leave
+    // the rest bare numbers; the reader still learns the unit and the chart gets its width back.
+    // (No backticks in this comment: it is emitted from inside a Node template literal — DEV landmine 8.)
+    //
+    // GATE ON RENDERED WIDTH, NOT THE viewBox. DEV landmine 12 says the chart box is 1000x280 on desktop
+    // and 400x220 on the phone -- true elsewhere, but NOT on this page: measured, the pool detail chart is
+    // 400x220 in BOTH builds. A viewBox test therefore fires on desktop too and would have quietly changed
+    // a layout nobody asked to change. The svg scales to its container, so the honest measure of crowding
+    // is the drawn width: 566px on desktop, ~345px on a 375px phone.
+    // Falls back to the previous behaviour when the box has not been laid out yet (width 0).
+    var _drawnW=0; try{ _drawnW=svg.getBoundingClientRect().width||0; }catch(_e){}
+    var _oneUnit=(_drawnW>0&&_drawnW<450);
+    // i===0 is the TOP gridline: frac below is 1-i/(n-1), so i=0 maps to mx.
+    yt.forEach(function(t,i){ var frac=yt.length<=1?1:(1-i/(yt.length-1)); setText(t,yfmt(mn+(mx-mn)*frac,!_oneUnit||i===0)); });
     var xt=_ax.filter(function(t){ return (+t.getAttribute("y")||0)>=H*0.9&&yt.indexOf(t)<0; }).sort(function(a,b){return (+a.getAttribute("x"))-(+b.getAttribute("x"));});
     var span=t1-t0, MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     function fmt(t){ var dt=new Date(t); if(span<2*86400000){ var hh=dt.getHours(),mm=dt.getMinutes(); return (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm; } if(span<120*86400000)return MO[dt.getMonth()]+" "+dt.getDate(); return MO[dt.getMonth()]; }
