@@ -4604,7 +4604,25 @@ window.addEventListener('click',function(e){
     var init=c.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?"; var fz=init.length>1?15:20;
     var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+hue+',60%,50%)"/><text x="20" y="'+(init.length>1?26:27)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="'+fz+'" fill="#fff">'+init+'</text></svg>';
     return "url(\"data:image/svg+xml,"+encodeURIComponent(svg)+"\")"; }
-  function logoCss(a){ var u=a.logo||a.img; return u?"url("+u+")":avatarBg(a.code); }
+  // A LumosCore mint's icon lives in localStorage, written by the launchpad (see _launchpad.js), keyed
+  // CODE-ISSUER. Pools and Asset-Overview have always read it; Trade did not, which is exactly why the
+  // same token showed its real icon there and a coloured letter tile here.
+  //
+  // This is not the whole fix and is not pretending to be: an icon in localStorage is the minting browser
+  // and nowhere else, so nobody else sees it. Publishing it in our stellar.toml is what makes it real for
+  // every visitor, wallet and explorer -- that path is built and waiting on the icon files. This restores
+  // the icons wherever the browser that minted them is used, which is the machine looking at this page.
+  var _liCache=null;
+  function launchIcon(code,issuer){
+    try{
+      if(!_liCache)_liCache=JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}");
+      var u=_liCache[code+"-"+issuer];
+      // Only an image data URI, and none carrying a quote: this value is interpolated into url(...) and a
+      // quote inside it would break out of the CSS value (the url(") trap that bit the logo guard).
+      return (typeof u==="string"&&u.indexOf("data:image/")===0&&u.indexOf('"')<0&&u.indexOf("'")<0)?u:"";
+    }catch(e){ return ""; }
+  }
+  function logoCss(a){ var u=a.logo||a.img||launchIcon(a.code,a.issuer); return u?"url("+u+")":avatarBg(a.code); }
   // money value wrapped as a .lc-money span (the site money-formatter keys off data-usd/data-orig -> no revert)
   function lcm(v){ v=+v||0; var s=abbrUsd(v); return '<span class="lc-money" data-usd="'+v+'" data-orig="'+s+'">'+s+'</span>'; }
   function lcmExact(v){ v=+v||0; var s=usdSmall(v); return '<span class="lc-money" data-usd="'+v+'" data-orig="'+s+'">'+s+'</span>'; }
