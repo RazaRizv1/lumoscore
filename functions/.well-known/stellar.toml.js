@@ -90,10 +90,15 @@ async function iconManifest(origin) {
     if (!m || typeof m !== 'object' || Array.isArray(m)) return {};
     const out = {};
     for (const k of Object.keys(m)) {
+      // An entry is either a bare path (older writes) or {image, name}. Both are accepted so the manifest
+      // can gain names without invalidating what is already published.
       const v = m[k];
+      const img = (v && typeof v === 'object') ? v.image : v;
       // Only a same-origin absolute path. A manifest that could name an arbitrary host would let a bad
       // write here point every wallet at someone else's image.
-      if (typeof v === 'string' && v.charAt(0) === '/' && v.indexOf('//') !== 0) out[k] = origin + v;
+      if (typeof img !== 'string' || img.charAt(0) !== '/' || img.indexOf('//') === 0) continue;
+      const name = (v && typeof v === 'object' && typeof v.name === 'string') ? v.name.slice(0, 80) : '';
+      out[k] = { image: origin + img, name };
     }
     return out;
   } catch (e) { return {}; }
@@ -232,11 +237,13 @@ export async function onRequestGet(ctx) {
 
   for (const a of ours) {
     const c = ['[[CURRENCIES]]', 'code=' + q(a.code), 'issuer=' + q(a.issuer), 'display_decimals=7'];
-    if (a.name) c.push('name=' + q(a.name));
+    // Our own manifest wins for BOTH fields. a.name/a.image (stellar.expert's tomlInfo) stay as the
+    // fallback: correct for an asset that publishes through some other domain, and empty for our mints.
+    const mine = icons[a.code + '-' + a.issuer] || {};
+    const name = mine.name || a.name;
+    const img = mine.image || a.image;
+    if (name) c.push('name=' + q(name));
     if (a.desc) c.push('desc=' + q(a.desc));
-    // Our own hosted icon wins. a.image (stellar.expert's tomlInfo) stays as the fallback: it is correct
-    // for an asset that publishes a logo through some other domain, and empty for our own mints.
-    const img = icons[a.code + '-' + a.issuer] || a.image;
     if (img) c.push('image=' + q(img));
     // These are launchpad-issued tokens, not claims on an off-chain reserve. Saying so explicitly stops a
     // reader inferring a backing that does not exist.
