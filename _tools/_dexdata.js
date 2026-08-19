@@ -103,7 +103,43 @@ svg.lm-svg.lx-dxc{overflow:visible}
    as overrides, scoped to .lx-mobhero so desktop cannot be touched.
    applyMobileHero() lifts the DEX slide's own copy into the desktop structure, so the headline stays
    correct per chain, and hides the carousel. */
-.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:radial-gradient(58% 84% at 70% 30%,rgba(140,96,246,.26),transparent 60%),radial-gradient(46% 64% at 92% 78%,rgba(198,86,232,.14),transparent 62%),radial-gradient(52% 68% at 24% 90%,rgba(74,110,224,.12),transparent 62%),linear-gradient(140deg,#0f1120 0%,#0a0a15 55%,#070610 100%)}
+/* EMBER, not violet. The hero had inherited the Pools purple, which is why the brand-orange button read as
+   a clash: nothing else on the card belonged to the same family. Both themes define --accent as #ea6a2c,
+   so the ground moves to that family and the button stops fighting it. */
+.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:radial-gradient(58% 84% at 72% 26%,rgba(234,106,44,.30),transparent 60%),radial-gradient(50% 70% at 94% 82%,rgba(255,159,90,.17),transparent 62%),radial-gradient(54% 70% at 18% 94%,rgba(255,196,120,.10),transparent 62%),linear-gradient(140deg,#1c1209 0%,#130d07 55%,#0b0705 100%)}
+/* the starfield and constellation came with the purple; warm them to match */
+.lx-mobhero .lx-neb.n1{background:radial-gradient(circle,rgba(234,106,44,.50),transparent 66%)}
+.lx-mobhero .lx-neb.n2{background:radial-gradient(circle,rgba(255,150,80,.34),transparent 66%)}
+.lx-mobhero .lx-neb.n3{background:radial-gradient(circle,rgba(255,196,120,.24),transparent 66%)}
+.lx-mobhero .lx-constel line{stroke:rgba(255,168,110,.24)}
+.lx-mobhero .lx-constel circle{fill:#ffd9b8;filter:drop-shadow(0 0 5px rgba(255,150,80,.9))}
+.lx-mobhero .lx-part{background:rgba(255,214,178,.85);box-shadow:0 0 9px rgba(255,150,80,.9)}
+/* the two page CTAs, moved inside the card: Launch Token leads, How it works sits beside it */
+.lx-mobhero .mdx-hero-ctas{display:grid!important;grid-template-columns:1fr 1fr;gap:9px;width:100%;margin:12px 0 0!important;padding:0!important;position:relative;z-index:3}
+.lx-mobhero .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 10px!important;border-radius:10px;font-weight:700;font-size:12.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important}
+.lx-mobhero .mdx-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
+.lx-mobhero .mdx-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
+.lx-mobhero .mdx-hero-btn.ghost{background:rgba(255,255,255,.09)!important;border-color:rgba(255,255,255,.22)!important;color:#fff!important}
+/* ---- light theme: the same card, warmed rather than darkened ---- */
+html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(234,106,44,.22);background:radial-gradient(58% 84% at 72% 26%,rgba(234,106,44,.16),transparent 62%),radial-gradient(50% 70% at 94% 82%,rgba(255,159,90,.15),transparent 64%),linear-gradient(140deg,#fff8f2 0%,#fff0e4 55%,#ffe7d7 100%)}
+html[data-theme="light"] .lx-mobhero .lx-stars{display:none}          /* white pinpricks read as dust on cream */
+html[data-theme="light"] .lx-mobhero .lx-neb.n1{background:radial-gradient(circle,rgba(234,106,44,.20),transparent 66%)}
+html[data-theme="light"] .lx-mobhero .lx-neb.n2{background:radial-gradient(circle,rgba(255,150,80,.16),transparent 66%)}
+html[data-theme="light"] .lx-mobhero .lx-neb.n3{background:radial-gradient(circle,rgba(255,196,120,.14),transparent 66%)}
+html[data-theme="light"] .lx-mobhero .lx-constel line{stroke:rgba(200,110,50,.20)}
+html[data-theme="light"] .lx-mobhero .lx-constel circle{fill:#e08040;filter:none;opacity:.55}
+html[data-theme="light"] .lx-mobhero .lx-part{background:rgba(226,132,70,.6);box-shadow:none}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h{color:#1b1410!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h em{color:#c2551d!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-sub{color:rgba(48,34,24,.75)!important}
+html[data-theme="light"] .lx-mobhero .mdx-hero-btn.ghost{background:rgba(255,255,255,.78)!important;border-color:rgba(234,106,44,.30)!important;color:#a8491a!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{background:rgba(255,255,255,.72)!important;border-color:rgba(234,106,44,.20)!important;box-shadow:0 10px 24px -14px rgba(120,60,20,.45)!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p1{color:rgba(70,48,32,.7)!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2 .lc-money{color:#1b1410!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,.66));border-top-color:rgba(234,106,44,.20)}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v{color:#1b1410!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l{color:rgba(70,48,32,.7)!important}
+html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,255,.95)}
 .lx-mobhero .lumos-promo-slides,.lx-mobhero .lumos-promo-dots{display:none!important}
 .lx-mobhero .lm{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;min-height:260px}
 .lx-mobhero .lm-c{position:relative;z-index:3;display:flex;flex-direction:column;align-items:flex-start;padding:20px 18px 18px;flex:1 1 auto}
@@ -592,6 +628,21 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     card.appendChild(lm);                                         // after .lx-cosmic, so the copy paints over it
     card.classList.add("lx-mobhero");
   }
+  // Mobile: pull the page's two CTAs inside the hero card and drop the hero's own Start Trading button.
+  // They are MOVED, not rebuilt -- Launch Token already points at /launchpad and any listener bound to
+  // either node survives relocation, which a clone would not.
+  function applyMobileCtas(){
+    var card=q(".lumos-promo"); if(!card||card.className.indexOf("lx-mobhero")<0)return;
+    var box=card.querySelector(".lm-c"); if(!box)return;
+    var ctas=document.querySelector(".mdx-hero-ctas"); if(!ctas)return;
+    if(ctas.parentNode!==box){
+      var own=box.querySelector(".lm-cta"); if(own&&own.parentNode)own.parentNode.removeChild(own);
+      box.appendChild(ctas);
+    }
+    // Launch Token leads so it sits on the LEFT; the design ships How it works first
+    var prim=ctas.querySelector(".mdx-hero-btn.primary");
+    if(prim&&prim!==ctas.firstElementChild)ctas.insertBefore(prim,ctas.firstElementChild);
+  }
   function applyPromoConstel(){
     var svg=q(".lumos-promo .lm-svg"); if(!svg)return;
     if(svg.classList.contains("lx-dxc")&&svg.querySelector(".lx-dxfloat"))return;    // idempotent (rebuild only if clobbered)
@@ -911,6 +962,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // ================= apply / observe / boot =================
   function applyAll(){
     try{ applyMobileHero(); }catch(_){}         // first: builds the .lm the next three expect on mobile
+    try{ applyMobileCtas(); }catch(_){}         // then move the page CTAs into it
     try{ applyHero(); }catch(_){}
     try{ applyCosmic(); }catch(_){}             // same nebula/stars/constellation animation as the Pools hero
     try{ applyPromoConstel(); }catch(_){}       // keeps the original .lm-svg zigzag hidden (rebuilt as hidden .lx-dxc)
