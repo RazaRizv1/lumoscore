@@ -157,7 +157,19 @@ function injectTokenRegistry(html){
   // Guard on the ASSIGNMENT, not the bare name: the data layers mention __lxTokenRegistry in their
   // comments, so a name test matched every page and silently skipped the injection entirely.
   if(html.indexOf('window.__lxTokenRegistry=') >= 0) return html;
-  const tag = '<script>window.__lxTokenRegistry=' + TOKEN_REG_JSON + ';</script>';
+  // Also seed window.__lxLogos, the shared cache every wallet icon path reads (lpIco, ilogo, actBg,
+  // selectSendAsset, the harvesters). It lives in ITS OWN head script, deliberately: the first attempt
+  // spliced this into _walletdata.js's own script string, and when the wallet then reported broken row
+  // clicks and a dead kebab menu I could not clear my own change -- the My Assets table only renders for
+  // a real account, so there was nothing local to click. Here it cannot interact with that script at all.
+  // Seeds only empty slots, so a harvested per-issuer result still wins, and the wallet's own
+  // "window.__lxLogos=window.__lxLogos||{}" preserves whatever is already here.
+  const tag = '<script>window.__lxTokenRegistry=' + TOKEN_REG_JSON + ';'
+    + '(function(){try{var R=window.__lxTokenRegistry,L=(window.__lxLogos=window.__lxLogos||{});'
+    + 'for(var k in R){if(!Object.prototype.hasOwnProperty.call(R,k))continue;'
+    + 'var d=k.indexOf("-");if(d<1)continue;var c=k.slice(0,d),u=R[k]&&R[k].image;'
+    + 'if(typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0&&!L[c])L[c]=u;}}catch(e){}})();'
+    + '</scr'+'ipt>';
   const hi = html.indexOf('<head>');
   if(hi >= 0) return html.slice(0, hi + 6) + tag + html.slice(hi + 6);
   const he = html.indexOf('</head>');
