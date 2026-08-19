@@ -13,6 +13,20 @@ const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-dex.html', 'lumoscore-dex-dark.html', 'lumoscore-dex-mobile.html'];
 
+// Hero art lives under /assets/*, which _headers serves as "max-age=31536000, immutable". With a stable
+// filename that is a one-way door: replace the file and every browser that already has it keeps the old
+// one for a YEAR. That is exactly what happened -- the palette was changed and the phone went on serving
+// the previous image while a fresh browser got the new one, from the same URL. The token manifest already
+// carries ?v=<hash> for this reason; the hero art did not. Now it does, so the bytes decide the URL.
+const heroV = (name) => {
+  try {
+    const buf = fs.readFileSync(__dirname + '/../assets/hero/' + name);
+    return require('crypto').createHash('sha1').update(buf).digest('hex').slice(0, 8);
+  } catch (e) { return '0'; }
+};
+const HERO_DARK = '/assets/hero/trade-hero-dark.svg?v=' + heroV('trade-hero-dark.svg');
+const HERO_LIGHT = '/assets/hero/trade-hero-light.svg?v=' + heroV('trade-hero-light.svg');
+
 const STYLE = `<style id="lx-dexmain-css">
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
@@ -103,8 +117,8 @@ svg.lm-svg.lx-dxc{overflow:visible}
    on. The two page CTAs take the corner the pill vacated.
    Scoped to .lm-on: the mobile card does not carry it, and this stylesheet is only injected into the three
    Trade keys, so the Pools hero (which shares .lumos-promo) is out of reach. */
-html .lumos-promo.lm-on{overflow:hidden!important;border:1px solid rgba(255,255,255,.10)!important;background:#131317 url(/assets/hero/trade-hero-dark.svg) center/cover no-repeat!important}
-html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!important;background:#f7f8fa url(/assets/hero/trade-hero-light.svg) center/cover no-repeat!important}
+html .lumos-promo.lm-on{overflow:hidden!important;border:1px solid rgba(255,255,255,.10)!important;background:#130c07 url(${HERO_DARK}) center/cover no-repeat!important}
+html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!important;background:#fff1e6 url(${HERO_LIGHT}) center/cover no-repeat!important}
 .lumos-promo.lm-on .lm::before,.lumos-promo.lm-on .lm::after{display:none!important}   /* design's scanlines + wash */
 .lumos-promo.lm-on .lm-sub,.lumos-promo.lm-on .lm-cta,.lumos-promo.lm-on .lm-chip,.lumos-promo.lm-on .lm-svg,.lumos-promo.lm-on .lm-bars{display:none!important}
 /* headline gets the room the other three gave up, and centres against the strip */
@@ -143,7 +157,7 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
    follows: border, price pill, stat strip and the secondary button are all neutral too. The only brand
    colour left inside the hero is the primary button and the accent word in the headline.
    The flat colour behind the image is the art's own mid-tone, so a slow image load shows no white flash. */
-.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#131317 url(/assets/hero/trade-hero-dark.svg) center/cover no-repeat}
+.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#130c07 url(${HERO_DARK}) center/cover no-repeat}
 .lx-mobhero .lx-cosmic{display:none!important}     /* belt and braces if a stale layer ever survives */
 /* the two page CTAs, moved inside the card: Launch Token leads, How it works sits beside it */
 /* Copy, then the stat band. The actions are no longer on the card -- they sit in the All Trading Pairs
@@ -168,7 +182,7 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
 .lx-ctas .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 .lx-ctas .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 /* ---- light theme: the same card, warmed rather than darkened ---- */
-html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(16,16,22,.10);background:#f7f8fa url(/assets/hero/trade-hero-light.svg) center/cover no-repeat}
+html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(16,16,22,.10);background:#fff1e6 url(${HERO_LIGHT}) center/cover no-repeat}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h{color:#0e0e10!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h em{color:#c2551d!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-sub{color:rgba(38,38,48,.75)!important}
