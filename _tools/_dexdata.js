@@ -42,6 +42,14 @@ const STYLE = `<style id="lx-dexmain-css">
 #dexMintsList:not(.lxd) .dex-mint-row{visibility:hidden}
 #dexMoverGrid:not(.lxd) .dex-mover-card{visibility:hidden}
 #dexMkTbody:not(.lxd) tr{visibility:hidden}
+/* sortable column headers. Only the five numeric columns take a click -- Asset, Day High/Low and 7d Trend
+   are not single values to order by, and a header that looks clickable but is not is worse than a plain
+   one. The arrow is always present on a sortable column so the affordance does not depend on hover. */
+.dex-mk-table thead th.lx-sortable{cursor:pointer;user-select:none;white-space:nowrap;transition:color .12s ease}
+.dex-mk-table thead th.lx-sortable:hover{color:var(--text)}
+.dex-mk-table thead th.lx-son{color:var(--accent)}
+.lx-sarrow{display:inline-block;margin-left:5px;font-size:9px;line-height:1;opacity:.4;vertical-align:middle}
+.dex-mk-table thead th.lx-son .lx-sarrow{opacity:1}
 .lm-chip:not(.lxd) .p2,.lm-chip:not(.lxd) .p3{visibility:hidden}
 /* ---- painter-proof token icons: the site logo-painter can't touch a ::before pseudo-element ---- */
 .dex-mint-ic[data-lxic],.dex-mover-ico[data-lxic],.dex-mk-pair-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important}
@@ -145,6 +153,27 @@ html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v{color:#0e0e10!importan
 html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l{color:rgba(52,52,64,.72)!important}
 /* the page CTAs, now in the hero's top-right corner */
 .lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:14px;margin:0!important;padding:0!important}
+/* DESKTOP: the CTAs share the headline's row instead of floating above it, so the card reads as one line
+   of content rather than two things pinned to opposite corners.
+   Guarded to >880px because the phone hero is the same .lm markup and keeps its own stacked layout.
+   flex-wrap rather than a viewport breakpoint: the hero is one of two columns, so its width tracks the
+   window rather than any round number -- measured 818px at a 1920 viewport (CTAs fit beside a 420px
+   headline with room to spare) but 647px at 1440 (they do not). Wrapping lets the row decide for itself;
+   when it cannot fit, the CTAs drop to their own line, still flush right, and the headline keeps its size.
+   align-self:flex-start puts them level with the FIRST line of the headline, not its vertical middle. */
+@media(min-width:881px){
+/* align-content matters here: once a flex container can wrap, its single line is STRETCHED to the full
+   height by default, so align-self:flex-start on the CTAs pinned them to the top of the card rather than
+   to the top of the headline -- which is exactly the stranded-in-a-corner look this is meant to end.
+   Centring the line collapses it to its content, and flex-start then means the headline's first line. */
+.lumos-promo.lm-on .lm-c{flex-wrap:wrap;column-gap:24px;row-gap:12px;align-content:center}
+.lumos-promo.lm-on .lm-h{flex:0 0 auto}
+.lumos-promo.lm-on .lx-dctas{position:static!important;top:auto;right:auto;order:9;margin-left:auto!important;align-self:flex-start}
+/* the mark and the second line carry the weight; line one stays as it was */
+.lumos-promo.lm-on .lx-heroico{width:64px;height:64px}
+.lumos-promo.lm-on .lm-h .lx-h1{display:block}
+.lumos-promo.lm-on .lm-h .lx-h2{display:block;font-size:48px;line-height:1.02;letter-spacing:-.022em}
+}
 .lx-dctas .dex-hero-btn.primary{order:1}   /* the design ships the ghost first; Launch Token leads here */
 .lx-dctas .dex-hero-btn.ghost{order:2}
 .lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 15px!important;border-radius:10px;font-weight:700;font-size:13px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
@@ -984,6 +1013,51 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   }
 
   // ================= 4) ALL TRADING PAIRS (#dexMkTbody) =================
+  // Column sorting. Five numeric columns, keyed to the fields the rows already carry.
+  var MK_SORTS=[["th-price","px"],["th-change","chg"],["th-vol","vol"],["th-trades","trades"],["th-tvl","tvlUsd"]];
+  var mkSort={key:"",dir:-1};                                 // dir -1 = biggest first; "" = the default order
+  // Unknowns sink to the bottom in BOTH directions. Sorting ascending by volume should surface the
+  // quietest real market, not the thirty rows whose volume has not been fetched yet -- those carry no
+  // information and would bury the answer.
+  function mkCmp(k,dir){ return function(a,b){
+    var x=a[k], y=b[k];
+    var xn=(x==null||x!==x), yn=(y==null||y!==y);
+    if(xn&&yn)return 0; if(xn)return 1; if(yn)return -1;
+    return dir<0?(y-x):(x-y); }; }
+  function mkSortRows(d){ return mkSort.key?d.slice().sort(mkCmp(mkSort.key,mkSort.dir)):d; }
+  // The thead is design markup; make the numeric columns clickable once and keep the arrows in step.
+  function ensureSortHeaders(){
+    var tb=q("#dexMkTbody"); if(!tb||!tb.closest)return; var tbl=tb.closest("table"); if(!tbl)return;
+    var thr=tbl.querySelector("thead tr"); if(!thr)return;
+    MK_SORTS.forEach(function(s){
+      var th=thr.querySelector("."+s[0]); if(!th)return;
+      if(!th.__lxs){ th.__lxs=1; th.classList.add("lx-sortable"); th.setAttribute("data-sk",s[1]);
+        var ar=document.createElement("span"); ar.className="lx-sarrow"; th.appendChild(ar); }
+      var on=(mkSort.key===s[1]);
+      if(th.classList.contains("lx-son")!==on)th.classList.toggle("lx-son",on);
+      var a2=th.querySelector(".lx-sarrow");
+      if(a2){ var want=on?(mkSort.dir<0?"\\u25bc":"\\u25b2"):"\\u21c5"; if(a2.textContent!==want)a2.textContent=want; }
+    });
+  }
+  // The click has to be caught on WINDOW CAPTURE, not on the header.
+  //
+  // The design ships a delegated navigation handler on DOCUMENT capture, and document capture runs before
+  // the event ever reaches the th -- so a listener on the header itself never fired, and every click on a
+  // column title reloaded the page instead of sorting it (measured: navigation type "navigate", referrer
+  // equal to the page's own URL). Window capture is the only phase that runs earlier. Same reason and the
+  // same shape as the mobile layer's nav interception.
+  function installSortClicks(){
+    if(window.__lxDEXsortClick)return; window.__lxDEXsortClick=1;
+    window.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      var th=t.closest("th.lx-sortable[data-sk]"); if(!th)return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      var k=th.getAttribute("data-sk");
+      if(mkSort.key===k)mkSort.dir=-mkSort.dir; else { mkSort.key=k; mkSort.dir=-1; }
+      mkPage=1;                                               // a new order starts at the top of the list
+      guardApply();
+    },true);
+  }
   function tableData(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all";
     var qs=""; var si=q("#dexMkSearch"); if(si)qs=(si.value||"").trim().toLowerCase();
     // Kicked off here rather than on the native tab alone: All lists them too, so they load with the page.
@@ -993,9 +1067,9 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     else if(f==="stables")d=d.filter(function(a){return a.cat==="stable";});
     else if(f==="memes")d=[];
     if(qs)d=d.filter(function(a){ return a.code.toLowerCase().indexOf(qs)>=0 || (a.issuer||"").toLowerCase().indexOf(qs)>=0 || (a.domain||"").toLowerCase().indexOf(qs)>=0; });
-    return d;
+    return mkSortRows(d);                                     // sorted here, so pagination pages the SORTED set
   }
-  function tableSig(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all"; var qs=(q("#dexMkSearch")||{}).value||""; return f+"|"+qs.trim().toLowerCase()+"|"+NATIVE.length+"|"+nativeState; }
+  function tableSig(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all"; var qs=(q("#dexMkSearch")||{}).value||""; return f+"|"+qs.trim().toLowerCase()+"|"+NATIVE.length+"|"+nativeState+"|"+mkSort.key+mkSort.dir; }
   // the thead is design markup (8 cols); insert a "Trades (24h)" th once, right after Volume (24h), so the 24h-activity columns sit together.
   function ensureTradesHeader(){ var tb=q("#dexMkTbody"); if(!tb||!tb.closest)return; var tbl=tb.closest("table"); if(!tbl)return;
     var thr=tbl.querySelector("thead tr"); if(!thr||thr.querySelector(".th-trades"))return;
@@ -1037,6 +1111,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   }
   function renderTable(){ var tb=q("#dexMkTbody"); if(!tb)return;
     try{ ensureTradesHeader(); }catch(_){}
+    try{ ensureSortHeaders(); installSortClicks(); }catch(_){}  // after the Trades column exists, so it sorts too
     var all=tableData();
     // A new filter or search starts at page 1 -- but NOT a data refresh. tableSig() also moves as the
     // native roster loads, so keying the reset on it would yank a reader back to page 1 mid-browse.
@@ -1408,22 +1483,43 @@ for (const file of files) {
         if (p.indexOf(HL) < 0) throw new Error('dex desktop: .dex-hero-l not found');
         p = p.replace(HL, '<div class="dex-hero-l lx-sronly">');
       }
-      // The two page CTAs move onto the hero card, into the corner the XLM pill is vacating.
-      if (p.indexOf('<div class="dex-hero-r lx-dctas">') < 0) {
-        const cs = p.indexOf('<div class="dex-hero-r">');
-        if (cs < 0) throw new Error('dex desktop: .dex-hero-r not found');
-        let i = p.indexOf('>', cs) + 1, depth = 1;
+      // The two page CTAs move onto the hero card, into the ROW THE HEADLINE OCCUPIES. They have to sit
+      // inside .lm-c to be a flex item of that row -- parked directly in .lm, as they were, the only way
+      // to place them was absolute positioning, which is what left them stranded in a corner.
+      // DOM order within the row does not matter: the CSS above gives them order:9 and margin-left:auto,
+      // so inserting at the START of .lm-c still paints them last and flush right, and no depth scan is
+      // needed to find the row's closing tag.
+      const DC = '<div class="dex-hero-r lx-dctas">';
+      const scanFrom = function (from) {           // index just past the block's matching </div>
+        let i = p.indexOf('>', from) + 1, depth = 1;
         while (depth > 0 && i < p.length) {
           const nd = p.indexOf('<div', i), cd = p.indexOf('</div>', i);
-          if (cd < 0) throw new Error('dex desktop: unbalanced .dex-hero-r');
+          if (cd < 0) throw new Error('dex desktop: unbalanced hero CTA block');
           if (nd >= 0 && nd < cd) { depth++; i = nd + 4; } else { depth--; i = cd + 6; }
         }
-        const block = p.slice(cs, i).replace('<div class="dex-hero-r">', '<div class="dex-hero-r lx-dctas">');
-        p = p.slice(0, cs) + p.slice(i);
-        // straight after <div class="lm"> so it is inside the card; CSS pins it to the top right
-        const lm = p.indexOf('<div class="lm">');
-        if (lm < 0) throw new Error('dex desktop: hero .lm not found');
-        const at = lm + '<div class="lm">'.length;
+        return i;
+      };
+      let block = null;
+      if (p.indexOf(DC) < 0) {
+        const cs = p.indexOf('<div class="dex-hero-r">');
+        if (cs < 0) throw new Error('dex desktop: .dex-hero-r not found');
+        const end = scanFrom(cs);
+        block = p.slice(cs, end).replace('<div class="dex-hero-r">', DC);
+        p = p.slice(0, cs) + p.slice(end);
+      } else if (p.indexOf('<div class="lm-c">' + DC) < 0) {
+        // Built by the earlier version, which parked the block directly inside .lm. Lift it out and let it
+        // land in the row below, so a container built before this change converges instead of keeping the
+        // old layout for ever (the gitignored containers are not rebuilt from scratch).
+        const cs = p.indexOf(DC);
+        const end = scanFrom(cs);
+        block = p.slice(cs, end);
+        p = p.slice(0, cs) + p.slice(end);
+      }
+      if (block) {
+        const anchor = '<div class="lm-c">';
+        const lc = p.indexOf(anchor);
+        if (lc < 0) throw new Error('dex desktop: hero .lm-c not found');
+        const at = lc + anchor.length;
         p = p.slice(0, at) + block + p.slice(at);
       }
     }
@@ -1442,6 +1538,25 @@ for (const file of files) {
     // injected above. Checking the class name alone skipped this replace entirely.
     const MARK = '<span class="lx-heroico" aria-hidden="true"></span>';
     if (p.indexOf(MARK + H_XLM) < 0 && p.indexOf(H_XLM) >= 0) p = p.replace(H_XLM, MARK + H_XLM);
+    // Desktop headline in two addressable lines. It already broke into two visually, but that was the
+    // natural wrap -- there was no hook to size the second line on its own. Desktop only: the phone hero
+    // is built from the carousel slide by applyMobileHero(), which reads this text and adds its own
+    // .lx-hline2 span, and a nested span here would not survive that. Idempotent by construction.
+    if (k === 'lumoscore-dex.html' || k === 'lumoscore-dex-dark.html') {
+      const ONE = '<h2 class="lm-h">The most advanced <em>DEX</em> on Stellar.</h2>';
+      const TWO = '<h2 class="lm-h"><span class="lx-h1">The most advanced</span>'
+                + '<span class="lx-h2"><em>DEX</em> on Stellar.</span></h2>';
+      if (p.indexOf(ONE) >= 0) p = p.replace(ONE, TWO);
+    }
+    // "New mints" card icon. The design ships Feather's activity pulse -- the single most reused glyph in
+    // crypto UI, and it says "chart", not "newly created". A sprout does: stem plus two leaves, drawn on
+    // the same 24-grid at the same stroke weight, so it sits with the other icons on the page rather than
+    // announcing itself. Only the inner geometry is swapped; the <svg> wrapper and its sizing stay.
+    // Idempotent: after one pass the polyline is gone and there is no match.
+    const PULSE = '<polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>';
+    const SPROUT = '<path d="M12 21v-8"/><path d="M12 13c0-3.3-2.7-6-6-6 0 3.3 2.7 6 6 6Z"/>'
+                 + '<path d="M12 13c0-3.9 3.1-7 7-7 0 3.9-3.1 7-7 7Z"/>';
+    if (p.indexOf(PULSE) >= 0) p = p.split(PULSE).join(SPROUT);
     // The crumb shipped as "Back · Home / DEX" -- three controls saying one thing, on a page whose own
     // heading already says DEX. Reduce it to the only part a reader wants, the way out, named for where
     // it actually goes. Done in the MARKUP so it is correct at first paint (rewriting the label at
