@@ -155,7 +155,9 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // ---- LumosCore-native assets: issuer home_domain = lumoscore.com (minted through our Launchpad) ----
   var NATIVE=[], nativeState=0;                             // 0 idle | 1 loading | 2 loaded
   var SX="https://api.stellar.expert/explorer/public/asset?search=lumoscore&limit=200";
-  var NKEY="lumos.native.v1", NTTL=216e5;                       // 6h: identity changes slowly, prices do not
+  // v2: the saved roster is a list of WHICH assets exist, so a copy written before an asset was
+  // registered hides it for six hours. Bumping the key retires those, once.
+  var NKEY="lumos.native.v2", NTTL=216e5;                       // 6h: identity changes slowly, prices do not
   function nativeCached(){
     try{ var c=JSON.parse(localStorage.getItem(NKEY)||"null");
       return (c&&c.ts&&(Date.now()-c.ts<NTTL)&&c.a&&c.a.length)?c.a:null; }catch(e){ return null; }
@@ -264,6 +266,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(cached){
       var addC=[];
       cached.forEach(function(x){ var a=nativeMake(x.c,x.i,x.l,x.d,x.t); if(a)addC.push(a); });
+      // Seed here as well. This path RETURNS, so seeding only in the fetch branch below meant a visitor
+      // with a warm roster never saw an asset we had just registered -- FED, NEIRO and HULK were missing
+      // for exactly that reason while RICHARD, PUMP, PEPE and ZBS happened to arrive via the late
+      // manifest backfill.
+      addManifestNatives(addC);
       touch(); nativePrice(addC);
       return;                                                  // refreshed on the next cold load
     }
