@@ -96,6 +96,36 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lx-dxpair{display:inline-flex;flex:0 0 auto}
 .lx-dxpair span{display:block;width:24px;height:24px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .lx-dxpair .pb{margin-left:-9px}
+/* ===== DESKTOP HERO =====
+   Same treatment as mobile, at desktop scale: the neutral gradient image instead of the violet cosmic
+   animation, and the card reduced to a headline and the stat strip. The description, the XLM price pill
+   and the Start Trading button are gone -- that button linked to /trade/stellar, the page you are already
+   on. The two page CTAs take the corner the pill vacated.
+   Scoped to .lm-on: the mobile card does not carry it, and this stylesheet is only injected into the three
+   Trade keys, so the Pools hero (which shares .lumos-promo) is out of reach. */
+html .lumos-promo.lm-on{overflow:hidden!important;border:1px solid rgba(255,255,255,.10)!important;background:#131317 url(/assets/hero/trade-hero-dark.svg) center/cover no-repeat!important}
+html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!important;background:#f7f8fa url(/assets/hero/trade-hero-light.svg) center/cover no-repeat!important}
+.lumos-promo.lm-on .lm::before,.lumos-promo.lm-on .lm::after{display:none!important}   /* design's scanlines + wash */
+.lumos-promo.lm-on .lm-sub,.lumos-promo.lm-on .lm-cta,.lumos-promo.lm-on .lm-chip,.lumos-promo.lm-on .lm-svg,.lumos-promo.lm-on .lm-bars{display:none!important}
+/* headline gets the room the other three gave up, and centres against the strip */
+.lumos-promo.lm-on .lm-c{justify-content:center;padding:26px 30px!important;max-width:none!important}
+.lumos-promo.lm-on .lm-h{font-size:36px!important;line-height:1.08!important;max-width:420px}
+html[data-theme="light"] .lumos-promo.lm-on .lm-h{color:#0e0e10!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70));border-top-color:rgba(16,16,22,.12)}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v{color:#0e0e10!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l{color:rgba(52,52,64,.72)!important}
+/* the page CTAs, now in the hero's top-right corner */
+.lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:14px;margin:0!important;padding:0!important}
+.lx-dctas .dex-hero-btn.primary{order:1}   /* the design ships the ghost first; Launch Token leads here */
+.lx-dctas .dex-hero-btn.ghost{order:2}
+.lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 15px!important;border-radius:10px;font-weight:700;font-size:13px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
+.lx-dctas .dex-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
+.lx-dctas .dex-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
+.lx-dctas .dex-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:13px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
+/* the header row is empty once the heading is hidden and the buttons have moved out */
+.dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
+
 /* ===== MOBILE HERO =====
    The mobile page ships a different component: a 4-slide auto-rotating .lumos-promo-slides carousel, with
    none of the desktop hero's CSS -- no #lx-livemarket block, so .lm, .lm-h, .lm-sub and .lm-cta have no
@@ -615,13 +645,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // the Pools page's lx-constel (streams + pulsing nodes) plus 5 prominent DATA POINTS (bigger dot + ring).
   // inject the SAME cosmic animation the Pools/AMM hero uses (nebulae + stars + constellation + particles), once
   function applyCosmic(){ var card=q(".lumos-promo"); if(!card)return;
-    // The mobile hero is a static gradient image now. Skip it, and tear down a layer an earlier pass
-    // built, so the eight keyframe animations are not merely invisible -- they do not exist.
-    if(card.className.indexOf("lx-mobhero")>=0){
-      var stale=card.querySelector(".lx-cosmic"); if(stale&&stale.parentNode)stale.parentNode.removeChild(stale);
-      return;
-    }
-    if(card.querySelector(".lx-cosmic"))return;
+    // Both Trade heroes are static gradient images now, so this layer is never built here, and one an
+    // earlier pass left behind is torn out -- the ten keyframe animations do not exist rather than being
+    // invisible. (Pools still runs its own; this file only touches Trade.)
+    var stale=card.querySelector(".lx-cosmic"); if(stale&&stale.parentNode)stale.parentNode.removeChild(stale);
+    return;
     var host=card.querySelector(".lm")||card;
     var d=document.createElement("div"); d.className="lx-cosmic";
     d.innerHTML='<div class="lx-neb n1"></div><div class="lx-neb n2"></div><div class="lx-neb n3"></div><div class="lx-stars"></div>'
@@ -701,20 +729,16 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // not from the chip, so a page still carrying the old placement is found and moved rather than given a
     // second copy of the strip.
     var host=card.querySelector(".lm")||card;
-    // Mobile shows Trades where desktop shows Liquidity. Read off the card's own class rather than the
-    // viewport, so it tracks the build the page actually is.
-    var MOB=card.className.indexOf("lx-mobhero")>=0;
     var box=card.querySelector(".lx-dxstats");
-    // a strip built before the class landed would carry the wrong cell -- relabel rather than rebuild,
-    // so nothing else in the row is disturbed
-    if(box&&MOB){ var wrong=box.querySelector('[data-k="liq"]');
+    // Both builds show Trades now. A strip built by an older pass would carry the Liquidity cell --
+    // relabel it in place rather than rebuilding, so nothing else in the row is disturbed.
+    if(box){ var wrong=box.querySelector('[data-k="liq"]');
       if(wrong){ wrong.setAttribute("data-k","trades");
         var wl=wrong.querySelector(".l"); if(wl)wl.textContent="Trades";
         var wv=wrong.querySelector(".v"); if(wv)wv.innerHTML="\\u2014"; } }
     if(!box){ box=document.createElement("div"); box.className="lx-dxstats";
       box.innerHTML='<div class="lx-dxstat" data-k="vol"><span class="v">\\u2014</span><span class="l">24h Volume</span></div>'
-        +(MOB?'<div class="lx-dxstat" data-k="trades"><span class="v">\\u2014</span><span class="l">Trades</span></div>'
-             :'<div class="lx-dxstat" data-k="liq"><span class="v">\\u2014</span><span class="l">Liquidity</span></div>')
+        +'<div class="lx-dxstat" data-k="trades"><span class="v">\\u2014</span><span class="l">Trades</span></div>'
         +'<div class="lx-dxstat" data-k="mkts"><span class="v">'+allAssets().length+'</span><span class="l">Markets</span></div>'
         +'<div class="lx-dxstat" data-k="top"><span class="v"><span class="lx-dxpair"><span class="pa"></span><span class="pb"></span></span><span class="lx-dxtxt">\\u2014</span></span><span class="l">Top Pair</span></div>';
     }
@@ -727,13 +751,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var top=_agg.slice().filter(function(a){return a.vol!=null&&a.vol>0;}).sort(function(a,b){return (b.vol||0)-(a.vol||0);})[0];
     function set(k,v){ var el=box.querySelector('[data-k="'+k+'"] .v'); if(el&&el.innerHTML!==v)el.innerHTML=v; }
     set("vol",vol>0?abbrUsd(vol):"\\u2014");
-    if(MOB){
-      // Every trade executed against these assets in the last 24h. a.trades is trade_count off the same
-      // daily bar the "Trades (24h)" column reads, so the hero and the table cannot disagree. Assets whose
-      // bar has not arrived yet are skipped, not counted as zero -- the same way vol and liq are summed.
-      var trd=0,seen=0; _agg.forEach(function(a){ if(a.trades!=null){ trd+=+a.trades||0; seen++; } });
-      set("trades",seen?num(trd):"\\u2014");
-    } else set("liq",liq>0?abbrUsd(liq):"\\u2014");
+    // Every trade executed against these assets in the last 24h. a.trades is trade_count off the same
+    // daily bar the "Trades (24h)" column reads, so the hero and the table cannot disagree. Assets whose
+    // bar has not arrived yet are skipped, not counted as zero -- the same way vol is summed.
+    var trd=0,seen=0; _agg.forEach(function(a){ if(a.trades!=null){ trd+=+a.trades||0; seen++; } });
+    set("trades",seen?num(trd):"\\u2014");
     set("mkts",String(_agg.length));   // the strip is built once; the roster grows after
     // Top Pair cell: two overlapping token logos (asset + XLM) + the pair name
     if(top){ var pa=box.querySelector('[data-k="top"] .pa'), pb=box.querySelector('[data-k="top"] .pb'), txt=box.querySelector('[data-k="top"] .lx-dxtxt');
@@ -1223,6 +1245,33 @@ for (const file of files) {
         }
         if (close < 0) throw new Error('dex-mobile: section head close not found');
         p = p.slice(0, close) + block + p.slice(close);
+      }
+    }
+    if (k === 'lumoscore-dex.html' || k === 'lumoscore-dex-dark.html') {
+      // The page heading. Hidden to the eye, kept in the DOM: this h1 is the page's only one and it is
+      // what a crawler reads. Note it is .dex-hero-l > h1 here, NOT .page-title as on mobile.
+      const HL = '<div class="dex-hero-l">';
+      if (p.indexOf('<div class="dex-hero-l lx-sronly">') < 0) {
+        if (p.indexOf(HL) < 0) throw new Error('dex desktop: .dex-hero-l not found');
+        p = p.replace(HL, '<div class="dex-hero-l lx-sronly">');
+      }
+      // The two page CTAs move onto the hero card, into the corner the XLM pill is vacating.
+      if (p.indexOf('<div class="dex-hero-r lx-dctas">') < 0) {
+        const cs = p.indexOf('<div class="dex-hero-r">');
+        if (cs < 0) throw new Error('dex desktop: .dex-hero-r not found');
+        let i = p.indexOf('>', cs) + 1, depth = 1;
+        while (depth > 0 && i < p.length) {
+          const nd = p.indexOf('<div', i), cd = p.indexOf('</div>', i);
+          if (cd < 0) throw new Error('dex desktop: unbalanced .dex-hero-r');
+          if (nd >= 0 && nd < cd) { depth++; i = nd + 4; } else { depth--; i = cd + 6; }
+        }
+        const block = p.slice(cs, i).replace('<div class="dex-hero-r">', '<div class="dex-hero-r lx-dctas">');
+        p = p.slice(0, cs) + p.slice(i);
+        // straight after <div class="lm"> so it is inside the card; CSS pins it to the top right
+        const lm = p.indexOf('<div class="lm">');
+        if (lm < 0) throw new Error('dex desktop: hero .lm not found');
+        const at = lm + '<div class="lm">'.length;
+        p = p.slice(0, at) + block + p.slice(at);
       }
     }
     const bi = p.lastIndexOf('</body>');
