@@ -241,32 +241,40 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'if(window.__lxQOrders)return;window.__lxQOrders=1;'
 +'function q(s,r){return (r||document).querySelector(s);}'
 // dashboard only: the renamed card is the marker, and it exists on no other page
-+'function isDash(){var c=document.querySelectorAll(".quick-actions .quick-card .ttl");'
-+'for(var i=0;i<c.length;i++){if(/Custom Swap \\/ Orders/.test(c[i].textContent||""))return true;}return false;}'
+// THE MODAL IS #swapModal, NOT #modalSwap.
+//
+// The dashboard carries BOTH. #modalSwap is the design's .modal-overlay component and is what the WALLET
+// page opens; #swapModal is a separate inline-styled panel (data-swapmodal) and is what the quick-action
+// card opens -- it is the one with You pay / You receive / Rate. The first build of this feature attached
+// to #modalSwap, so the tabs were real, correct, and on an element nobody ever saw. Grep found the name;
+// it did not tell me which one the card opens.
+//
+// #swapModal exists only on the dashboard (0 occurrences on wallet), so the element itself is now the
+// scoping signal and no card-title check is needed.
 +'function build(){'
-+'var modal=document.getElementById("modalSwap");if(!modal||!isDash())return;'
-+'var body=q(".modal-body",modal);if(!body||body.__lxqo)return;body.__lxqo=1;'
-// the heading keeps its icon span; only the trailing text node is retitled
-+'var h3=q(".modal-head h3",modal);'
-+'if(h3){for(var n=h3.firstChild;n;n=n.nextSibling){if(n.nodeType===3&&(n.nodeValue||"").trim()){n.nodeValue="Custom Swap / Orders";break;}}}'
-// everything the design shipped becomes the Swap pane, untouched and still in the DOM, so every existing
-// selector in this file and in _walletdata keeps matching (all of them are descendant selectors)
++'var modal=document.getElementById("swapModal");if(!modal)return;'
++'var card=modal.firstElementChild;if(!card||card.__lxqo)return;'
++'var head=card.firstElementChild;if(!head)return;card.__lxqo=1;'
+// the title is the first child of the header row, beside the close button
++'var ttl=head.firstElementChild;if(ttl)ttl.textContent="Custom Swap / Orders";'
+// everything after the header row becomes the Swap pane -- moved, not rebuilt, so #swapAmtIn, #swapFrom,
+// #swapFlip and every handler already bound to them keep working untouched
 +'var swap=document.createElement("div");swap.className="lxo-pane";swap.setAttribute("data-pane","swap");'
-+'while(body.firstChild)swap.appendChild(body.firstChild);'
++'while(head.nextSibling)swap.appendChild(head.nextSibling);'
 +'var tabs=document.createElement("div");tabs.className="lxo-tabs";'
 +'tabs.innerHTML=\'<button type="button" data-pane="swap" class="on">Swap</button>\''
 +'+\'<button type="button" data-pane="limit">Limit</button>\''
 +'+\'<button type="button" data-pane="orders">Orders</button>\';'
 +'var limit=document.createElement("div");limit.className="lxo-pane";limit.setAttribute("data-pane","limit");limit.hidden=true;'
 +'var orders=document.createElement("div");orders.className="lxo-pane";orders.setAttribute("data-pane","orders");orders.hidden=true;'
-+'body.appendChild(tabs);body.appendChild(swap);body.appendChild(limit);body.appendChild(orders);'
++'card.appendChild(tabs);card.appendChild(swap);card.appendChild(limit);card.appendChild(orders);'
 // capture + stop: the dashboard runs delegated click handlers that treat clicks in this modal as swap UI
 +'tabs.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("button[data-pane]"):null;if(!b)return;'
 +'e.preventDefault();e.stopImmediatePropagation();show(b.getAttribute("data-pane"));},true);'
 +'try{window.__lxQOshow=show;}catch(_){}'
 +'}'
 +'function show(name){'
-+'var modal=document.getElementById("modalSwap");if(!modal)return;'
++'var modal=document.getElementById("swapModal");if(!modal)return;'
 +'var ps=modal.querySelectorAll(".lxo-pane");for(var i=0;i<ps.length;i++)ps[i].hidden=(ps[i].getAttribute("data-pane")!==name);'
 +'var bs=modal.querySelectorAll(".lxo-tabs button");for(var j=0;j<bs.length;j++)bs[j].classList.toggle("on",bs[j].getAttribute("data-pane")===name);'
 +'try{if(name==="limit"&&window.__lxQOlimit)window.__lxQOlimit();'
@@ -293,7 +301,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'for(var i=0;i<h.length;i++)if(h[i].code===a.code&&(a.native?h[i].native:h[i].issuer===a.issuer))return h[i].bal;return 0;}'
 +'function qShort(g){g=String(g||"");return g.length>10?g.slice(0,4)+"\\u2026"+g.slice(-4):g;}'
 +'function qNum(n){n=+n||0;return n.toLocaleString(undefined,{maximumFractionDigits:7});}'
-+'function qEl(s){return document.querySelector("#modalSwap .lxo-pane[data-pane=\\"limit\\"] "+s);}'
++'function qEl(s){return document.querySelector("#swapModal .lxo-pane[data-pane=\\"limit\\"] "+s);}'
 +'function qClose(){var m=qEl(".lxq-menu");if(m)m.remove();}'
 // picker. Sell side is your balances -- you cannot sell what you do not hold. Buy side adds search,
 // which asks stellar.expert and ALWAYS shows the issuer and domain: 403 mainnet assets use the code
@@ -332,6 +340,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'}'
 +'var f=qEl(".lxq-f");if(f)f.appendChild(m);'
 +'}'
+
 // keep the form and its derived numbers in step
 +'function qSync(){'
 +'var ps=qEl(".lxq-pick[data-side=\\"sell\\"]"),pb=qEl(".lxq-pick[data-side=\\"buy\\"]");if(!ps||!pb)return;'
@@ -357,7 +366,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'go.disabled=!(qS&&qB&&amt>0&&pr>0&&!msg&&qAddr());'
 +'}'
 +'function qBuildUi(){'
-+'var pane=document.querySelector("#modalSwap .lxo-pane[data-pane=\\"limit\\"]");if(!pane||pane.__b)return;pane.__b=1;'
++'var pane=document.querySelector("#swapModal .lxo-pane[data-pane=\\"limit\\"]");if(!pane||pane.__b)return;pane.__b=1;'
 +'pane.innerHTML=\'<div class="lxq-f">\''
 +'+\'<div class="lxq-row"><label>You sell</label><div class="lxq-pick" data-side="sell"></div>\''
 +'+\'<input class="lxq-amt" type="text" inputmode="decimal" placeholder="0.00"></div>\''
@@ -416,11 +425,11 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // order placed on Trade-Asset is the same kind of object, so it belongs in the same list. Cancelling is
 // the same operation that created it with amount 0 and the original offerId, which is how Stellar
 // deletes an offer.
-+'function qOEl(s){return document.querySelector("#modalSwap .lxo-pane[data-pane=\\"orders\\"] "+s);}'
++'function qOEl(s){return document.querySelector("#swapModal .lxo-pane[data-pane=\\"orders\\"] "+s);}'
 +'function qAsset(o){return (o&&o.asset_type==="native")?{code:"XLM",issuer:"",native:true}'
 +':{code:(o&&o.asset_code)||"",issuer:(o&&o.asset_issuer)||"",native:false};}'
 +'function qOrdersUi(){'
-+'var pane=document.querySelector("#modalSwap .lxo-pane[data-pane=\\"orders\\"]");if(!pane||pane.__b)return;pane.__b=1;'
++'var pane=document.querySelector("#swapModal .lxo-pane[data-pane=\\"orders\\"]");if(!pane||pane.__b)return;pane.__b=1;'
 +'pane.innerHTML=\'<div class="lxo-list"><div class="lxo-empty">Loading\\u2026</div></div>\';'
 +'pane.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-off]"):null;'
 +'if(!b)return;e.preventDefault();e.stopImmediatePropagation();qCancel(b);},true);'
