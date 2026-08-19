@@ -221,7 +221,7 @@ async function dexOneAsset(code, issuer) {
   const base = "base_asset_type=" + type + "&base_asset_code=" + encodeURIComponent(code) +
     "&base_asset_issuer=" + issuer + "&counter_asset_type=native";
   const H = "https://horizon.stellar.org";
-  const out = { px: 0, chg: null, vol: null, high: null, low: null, tr: null, ho: null, su: null };
+  const out = { px: 0, chg: null, vol: null, high: null, low: null, tr: null, ho: null, su: null, dom: null };
   const recs = (d) => (d && d._embedded && d._embedded.records) || [];
   // Horizon 429s under load and its 429 carries no CORS header, so upstream failure is common and cheap to
   // ride out. Two backed-off retries here mean a throttled moment does not become a dash on the page.
@@ -248,6 +248,10 @@ async function dexOneAsset(code, issuer) {
       if (rec.accounts) out.ho = (+rec.accounts.authorized || 0) + (+rec.accounts.authorized_to_maintain_liabilities || 0);
       if (rec.balances) out.su = +rec.balances.authorized || +rec.balances.authorized_to_maintain_liabilities || null;
       else if (rec.amount != null) out.su = +rec.amount;
+      // mirrors functions/lxapi/dexassets.js: the issuer's home_domain comes free on this record as
+      // _links.toml -> https://<home_domain>/.well-known/stellar.toml
+      const toml = rec._links && rec._links.toml && rec._links.toml.href;
+      if (toml) { const after = String(toml).split("//")[1] || ""; out.dom = after.split("/")[0] || null; }
     }).catch(() => {});
   await Promise.all([agg, meta]);
   return out;
