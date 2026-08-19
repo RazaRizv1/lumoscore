@@ -1927,7 +1927,7 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
 /* first paint: the carousel is already hidden but .lm is not built yet, so hold the card's height for
    that one frame rather than letting it collapse to nothing and snap open. */
-.lumos-promo.lx-mobhero:not(:has(.lm)){min-height:169px!important}
+.lumos-promo.lx-mobhero:not(:has(.lm)){min-height:120px!important}   /* == the settled height; it was 169 from before the CTAs moved off the card, so the box opened tall and then shrank */
 }
 /* ===== PHONE: the hero becomes a wide banner, about half the height =====
    At 375px the card was 348px tall against 343px of width -- square, and a third of the screen before a
@@ -2118,7 +2118,7 @@ html[data-theme="light"] .lm-bg{opacity:.09}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.9 12.9 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
         Launch Token
       </a>
-    </div><svg class="lm-svg" viewBox="0 0 640 300" preserveAspectRatio="none"><defs><linearGradient id="lmg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><g><animateTransform attributeName="transform" type="translate" from="0 0" to="-640 0" dur="28s" repeatCount="indefinite"/><path class="lm-area" d="M0,300 L0,200 L40,175 L80,210 L120,160 L160,185 L200,140 L240,170 L280,120 L320,150 L360,105 L400,145 L440,115 L480,160 L520,130 L560,190 L600,165 L640,200 L680,175 L720,210 L760,160 L800,185 L840,140 L880,170 L920,120 L960,150 L1000,105 L1040,145 L1080,115 L1120,160 L1160,130 L1200,190 L1240,165 L1280,200 L1280,300 Z"/><path class="lm-line" d="M0,200 L40,175 L80,210 L120,160 L160,185 L200,140 L240,170 L280,120 L320,150 L360,105 L400,145 L440,115 L480,160 L520,130 L560,190 L600,165 L640,200 L680,175 L720,210 L760,160 L800,185 L840,140 L880,170 L920,120 L960,150 L1000,105 L1040,145 L1080,115 L1120,160 L1160,130 L1200,190 L1240,165 L1280,200"/></g></svg><div class="lm-bars"><i style="height:45%;animation-delay:0.00s"></i><i style="height:62%;animation-delay:-0.24s"></i><i style="height:50%;animation-delay:-0.48s"></i><i style="height:70%;animation-delay:-0.72s"></i><i style="height:58%;animation-delay:-0.96s"></i><i style="height:80%;animation-delay:-1.20s"></i><i style="height:66%;animation-delay:-1.44s"></i><i style="height:90%;animation-delay:-1.68s"></i><i style="height:72%;animation-delay:-1.92s"></i><i style="height:85%;animation-delay:-2.16s"></i><i style="height:60%;animation-delay:-2.40s"></i><i style="height:95%;animation-delay:-2.64s"></i><i style="height:78%;animation-delay:-2.88s"></i><i style="height:68%;animation-delay:-3.12s"></i><i style="height:88%;animation-delay:-3.36s"></i><i style="height:74%;animation-delay:-3.60s"></i><i style="height:92%;animation-delay:-3.84s"></i><i style="height:64%;animation-delay:-4.08s"></i><i style="height:82%;animation-delay:-4.32s"></i><i style="height:70%;animation-delay:-4.56s"></i><i style="height:96%;animation-delay:-4.80s"></i><i style="height:80%;animation-delay:-5.04s"></i><i style="height:88%;animation-delay:-5.28s"></i><i style="height:72%;animation-delay:-5.52s"></i></div><div class="lm-chip"><div class="p1">APT</div><div class="p2">$8.41</div><div class="p3"><span>&#9650;</span> 2.41%</div></div><div class="lm-c"><h2 class="lm-h">The most advanced <em>DEX</em> on Aptos.</h2><p class="lm-sub">Pro order types, deep liquidity, and lightning-fast execution &mdash; built for serious traders.</p><a class="lm-cta" href="/trade/stellar">Start Trading <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></div></div></div>
+    </div><svg class="lm-svg" viewBox="0 0 640 300" preserveAspectRatio="none"><defs><linearGradient id="lmg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><g><animateTransform attributeName="transform" type="translate" from="0 0" to="-640 0" dur="28s" repeatCount="indefinite"/><path class="lm-area" d="M0,300 L0,200 L40,175 L80,210 L120,160 L160,185 L200,140 L240,170 L280,120 L320,150 L360,105 L400,145 L440,115 L480,160 L520,130 L560,190 L600,165 L640,200 L680,175 L720,210 L760,160 L800,185 L840,140 L880,170 L920,120 L960,150 L1000,105 L1040,145 L1080,115 L1120,160 L1160,130 L1200,190 L1240,165 L1280,200 L1280,300 Z"/><path class="lm-line" d="M0,200 L40,175 L80,210 L120,160 L160,185 L200,140 L240,170 L280,120 L320,150 L360,105 L400,145 L440,115 L480,160 L520,130 L560,190 L600,165 L640,200 L680,175 L720,210 L760,160 L800,185 L840,140 L880,170 L920,120 L960,150 L1000,105 L1040,145 L1080,115 L1120,160 L1160,130 L1200,190 L1240,165 L1280,200"/></g></svg><div class="lm-bars"><i style="height:45%;animation-delay:0.00s"></i><i style="height:62%;animation-delay:-0.24s"></i><i style="height:50%;animation-delay:-0.48s"></i><i style="height:70%;animation-delay:-0.72s"></i><i style="height:58%;animation-delay:-0.96s"></i><i style="height:80%;animation-delay:-1.20s"></i><i style="height:66%;animation-delay:-1.44s"></i><i style="height:90%;animation-delay:-1.68s"></i><i style="height:72%;animation-delay:-1.92s"></i><i style="height:85%;animation-delay:-2.16s"></i><i style="height:60%;animation-delay:-2.40s"></i><i style="height:95%;animation-delay:-2.64s"></i><i style="height:78%;animation-delay:-2.88s"></i><i style="height:68%;animation-delay:-3.12s"></i><i style="height:88%;animation-delay:-3.36s"></i><i style="height:74%;animation-delay:-3.60s"></i><i style="height:92%;animation-delay:-3.84s"></i><i style="height:64%;animation-delay:-4.08s"></i><i style="height:82%;animation-delay:-4.32s"></i><i style="height:70%;animation-delay:-4.56s"></i><i style="height:96%;animation-delay:-4.80s"></i><i style="height:80%;animation-delay:-5.04s"></i><i style="height:88%;animation-delay:-5.28s"></i><i style="height:72%;animation-delay:-5.52s"></i></div><div class="lm-chip"><div class="p1">APT</div><div class="p2">$8.41</div><div class="p3"><span>&#9650;</span> 2.41%</div></div><div class="lm-c"><h2 class="lm-h">The most advanced <em>DEX</em> on Stellar.</h2><p class="lm-sub">Pro order types, deep liquidity, and lightning-fast execution &mdash; built for serious traders.</p><a class="lm-cta" href="/trade/stellar">Start Trading <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></div></div></div>
 
     <!-- New Mints on Aptos -->
     <div class="dex-mints-card">
@@ -4534,6 +4534,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
 
 
 
+
+
+
+
+
 <script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -5006,11 +5011,21 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     if(!box){ box=document.createElement("div"); box.className="lx-dxstats";
       box.innerHTML='<div class="lx-dxstat" data-k="vol"><span class="v">\u2014</span><span class="l">24h Volume</span></div>'
         +'<div class="lx-dxstat" data-k="trades"><span class="v">\u2014</span><span class="l">Trades</span></div>'
-        +'<div class="lx-dxstat" data-k="mkts"><span class="v">'+allAssets().length+'</span><span class="l">Markets</span></div>'
+        // A dash like the other three, NOT allAssets().length. This is baked at build time of the strip,
+        // which is before the gates below, so a live count here was written while discovery was still
+        // running -- it showed the curated handful and then jumped to the full roster. set("mkts") fills
+        // it after the gates, so all four cells go from dash to final together.
+        +'<div class="lx-dxstat" data-k="mkts"><span class="v">\u2014</span><span class="l">Markets</span></div>'
         +'<div class="lx-dxstat" data-k="top"><span class="v"><span class="lx-dxpair"><span class="pa"></span><span class="pb"></span></span><span class="lx-dxtxt">\u2014</span></span><span class="l">Top Pair</span></div>';
     }
     if(box.parentNode!==host)host.appendChild(box);               // also relocates a strip left inside the chip
     if(!window.__lxDEXloaded)return;                              // reveal with the rest, not one by one
+    // And not while the LumosCore roster is still arriving. These are sums over allAssets(), so writing
+    // them mid-discovery showed a number built from the curated eight -- Markets 8, a part-formed trade
+    // count -- which then climbed as the mints landed. It read as a wrong figure being corrected. Hold at
+    // the dash until discovery has finished (2) or given up (0); a failed load resets to 0, so this can
+    // never latch on permanently.
+    if(nativeState===1)return;
     // Sum what the page actually lists. Leaving these on the curated 8 while the table says 39 pairs
     // would put two different definitions of "this exchange" on one screen.
     var _agg=allAssets();
