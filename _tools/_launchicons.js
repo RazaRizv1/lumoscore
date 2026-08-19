@@ -26,6 +26,7 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const ROOT = path.resolve(__dirname, '..');
 const SRC_DIR = path.join(ROOT, 'assets', 'tokens');
@@ -163,8 +164,13 @@ async function main() {
   try { Object.assign(manifest, JSON.parse(fs.readFileSync(path.join(SRC_DIR, MANIFEST), 'utf8'))); } catch (e) {}
   // An entry is {image, name} when we know a display name, and a bare path otherwise. The toml Function
   // accepts both, so older entries written before names existed keep working untouched.
+  // ?v=<content hash>. The image files ARE immutable-cached for a year, which is right for a file whose
+  // bytes never change -- but a logo REPLACED at the same path is then pinned for a year too, which is
+  // what happened when POTATO's flames avatar was swapped for the real artwork. The hash changes with the
+  // bytes, so a replacement gets a new URL and a re-fetch, while an unchanged file keeps its cache.
   for (const p of planned) {
-    const path_ = '/assets/tokens/' + p.file;
+    const v = crypto.createHash('sha1').update(p.buf).digest('hex').slice(0, 8);
+    const path_ = '/assets/tokens/' + p.file + '?v=' + v;
     manifest[p.code + '-' + p.issuer] = p.title ? { image: path_, name: p.title } : path_;
   }
 
