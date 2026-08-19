@@ -1833,19 +1833,24 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#131317 url(/assets/hero/trade-hero-dark.svg) center/cover no-repeat}
 .lx-mobhero .lx-cosmic{display:none!important}     /* belt and braces if a stale layer ever survives */
 /* the two page CTAs, moved inside the card: Launch Token leads, How it works sits beside it */
-/* Launch Token is the primary action, so it takes the wider column; How it works sits beside it smaller. */
-.lx-mobhero .mdx-hero-ctas{display:grid!important;grid-template-columns:1.18fr .82fr;gap:9px;width:100%;margin:12px 0 0!important;padding:0!important;position:relative;z-index:3}
+/* One button and one text link, not two buttons. */
+.lx-mobhero .mdx-hero-ctas{display:flex!important;align-items:center;gap:16px;width:100%;margin:12px 0 0!important;padding:0!important;position:relative;z-index:3}
+/* visually hidden, still in the document outline and the accessibility tree */
+.lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
 .lx-mobhero .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 10px!important;border-radius:10px;font-weight:700;font-size:12.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important}
 .lx-mobhero .mdx-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
 .lx-mobhero .mdx-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
-.lx-mobhero .mdx-hero-btn.ghost{background:rgba(255,255,255,.09)!important;border-color:rgba(255,255,255,.22)!important;color:#fff!important;height:34px;font-size:11.5px;padding:0 8px!important;align-self:center}
-.lx-mobhero .mdx-hero-btn.ghost svg{width:13px;height:13px}
+.lx-mobhero .mdx-hero-btn.primary{flex:0 0 auto}
+/* the design ships these as flex children that grow; a link must be its own width, not half the row */
+.lx-mobhero .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important}
+.lx-mobhero .mdx-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:12.5px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:rgba(255,255,255,.34)}
+.lx-mobhero .mdx-hero-btn.ghost svg{width:13px;height:13px;opacity:.8}
 /* ---- light theme: the same card, warmed rather than darkened ---- */
 html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(16,16,22,.10);background:#f7f8fa url(/assets/hero/trade-hero-light.svg) center/cover no-repeat}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h{color:#0e0e10!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h em{color:#c2551d!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-sub{color:rgba(38,38,48,.75)!important}
-html[data-theme="light"] .lx-mobhero .mdx-hero-btn.ghost{background:rgba(255,255,255,.80)!important;border-color:rgba(16,16,22,.16)!important;color:#2b2b33!important}
+html[data-theme="light"] .lx-mobhero .mdx-hero-btn.ghost{background:none!important;border:0!important;color:#33333d!important;text-decoration-color:rgba(16,16,22,.32)}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{background:rgba(255,255,255,.78)!important;border-color:rgba(16,16,22,.12)!important;box-shadow:0 10px 24px -14px rgba(16,16,22,.30)!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p1{color:rgba(52,52,64,.72)!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2 .lc-money{color:#0e0e10!important}
@@ -1891,7 +1896,7 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
    so it sat flush in the rounded corner and got clipped -- visible as a small empty blob. */
 @media(max-width:560px){
 .lumos-promo .lm-c{padding:13px 14px 12px!important}
-.lumos-promo .lm-h{font-size:18px!important;line-height:1.18!important;max-width:calc(100% - 96px)!important}
+.lumos-promo .lm-h{font-size:18px!important;line-height:1.18!important;max-width:100%!important}
 .lumos-promo .lm-sub{display:none!important}          /* no room for it at half height; the headline carries the message */
 .lumos-promo .lm-cta{margin-top:11px;font-size:12.5px;padding:8px 14px;border-radius:9px}
 .lumos-promo .lm-cta svg{width:14px;height:14px}
@@ -4876,8 +4881,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var head=t.innerHTML.replace(/<br\s*\/?>/gi," ");
     if(head.indexOf("<em")<0)head=head.replace(/\bDEX\b/,"<em>DEX</em>");   // accent word, as on desktop
     var lm=document.createElement("div"); lm.className="lm";
-    lm.innerHTML='<div class="lm-chip"><div class="p1">XLM</div><div class="p2">\u2014</div><div class="p3"></div></div>'
-      +'<div class="lm-c"><h2 class="lm-h">'+head+'</h2>'
+    // No price pill here: XLM/USD belongs on the pages that trade it, not on this card.
+    lm.innerHTML='<div class="lm-c"><h2 class="lm-h">'+head+'</h2>'
       +'<p class="lm-sub">'+(s?s.innerHTML:"")+'</p>'
       +'<a class="lm-cta" href="/trade/stellar">'+(a?a.innerHTML:"Start Trading")+'</a></div>';
     card.appendChild(lm);                                         // after .lx-cosmic, so the copy paints over it
@@ -4897,6 +4902,14 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // Launch Token leads so it sits on the LEFT; the design ships How it works first
     var prim=ctas.querySelector(".mdx-hero-btn.primary");
     if(prim&&prim!==ctas.firstElementChild)ctas.insertBefore(prim,ctas.firstElementChild);
+    // The page H1 and its subtitle sit directly above this card and say what the hero already says.
+    // Hidden VISUALLY only. .page-title is this page's ONLY h1 and the mobile file is the one Google
+    // indexes, so it keeps its place in the document outline and the accessibility tree instead of being
+    // deleted. Re-asserted every pass, so a re-render cannot put them back on screen.
+    var pg=card.parentNode; if(pg){
+      var hd=[pg.querySelector(".page-title"),pg.querySelector(".page-subtitle")];
+      for(var i=0;i<hd.length;i++)if(hd[i]&&(" "+hd[i].className+" ").indexOf(" lx-sronly ")<0)hd[i].className+=" lx-sronly";
+    }
   }
   function applyPromoConstel(){
     var svg=q(".lumos-promo .lm-svg"); if(!svg)return;
