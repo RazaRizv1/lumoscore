@@ -565,11 +565,17 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // stores price/amount in "buying per selling"/"selling amount"; when the wallet is BUYING the token (selling
 // XLM), price is token-per-XLM and amount is XLM -> invert both so it always reads e.g. "0.0011 XLM per AQUA".
 +'var pxXlm=sNat?(price>0?1/price:0):price;var tokAmt=sNat?amount*price:amount;var xlmTotal=tokAmt*pxXlm;'
+// THE COUNTER ASSET IS NOT ALWAYS XLM. This block was written when every order on the site was against
+// XLM, so Price and Total were labelled "XLM" outright. Custom Swap / Orders can place an offer between
+// any two assets, and a FOX -> DicInu order rendered here as "4,037.5 XLM / 211,549 XLM" -- the figures
+// were right, the unit was a different asset entirely, which reads as a completely different order.
+// When we are SELLING native the quote side is XLM (the selling code); otherwise it is what we are buying.
++'var quote=sNat?sc:bc;'
 +'h+=\'<div class="order-row" data-oid="\'+esc(o.id)+\'" data-price="\'+esc(o.price)+\'" data-amt="\'+esc(o.amount)+\'" data-snt="\'+(sNat?"1":"")+\'" data-sc="\'+esc((o.selling&&o.selling.asset_code)||"")+\'" data-si="\'+esc((o.selling&&o.selling.asset_issuer)||"")+\'" data-bnt="\'+((o.buying&&o.buying.asset_type==="native")?"1":"")+\'" data-bc="\'+esc((o.buying&&o.buying.asset_code)||"")+\'" data-bi="\'+esc((o.buying&&o.buying.asset_issuer)||"")+\'"><div class="order-pair"><div class="pair-ico"><div class="b lx-pico" style="--ic:\'+daIc+\'" data-lxc="\'+esc(da)+\'" data-lxi="\'+esc(daIss)+\'" data-l="\'+(daLg?"":esc(da.slice(0,1)))+\'"></div></div>\''
 // zero-size svg guard: the data-logo painter hijacks rounded 1-5-char elements ("Sell" chips became EURC
 // logo slots and were emptied) — isCandidate() skips any element containing an svg/img child.
 +'+\'<div class="pair-text"><div class="name">\'+esc(da)+\'</div><span class="side \'+(sNat?"buy":"sell")+\'">\'+(sNat?"Buy":"Sell")+\'<svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0"></svg></span></div></div>\''
-+'+\'<div class="order-details"><div class="col"><div class="k">Price</div><div class="v">\'+amt(pxXlm)+\' XLM</div></div><div class="col"><div class="k">Amount</div><div class="v">\'+amt(tokAmt)+\' \'+esc(da)+\'</div></div><div class="col"><div class="k">Total</div><div class="v">\'+amt(xlmTotal)+\' XLM</div></div></div>\''
++'+\'<div class="order-details"><div class="col"><div class="k">Price</div><div class="v">\'+amt(pxXlm)+\' \'+esc(quote)+\'</div></div><div class="col"><div class="k">Amount</div><div class="v">\'+amt(tokAmt)+\' \'+esc(da)+\'</div></div><div class="col"><div class="k">Total</div><div class="v">\'+amt(xlmTotal)+\' \'+esc(quote)+\'</div></div></div>\''
 +'+\'<button class="order-cancel">Cancel</button></div>\';});block.innerHTML=h;try{lxHealAllLogos(block);}catch(_){}'
 // finalized wires cancel per-row at load, so our rebuilt buttons lose it -> delegated handler (survives rebuilds)
 +'function orderCount(){var left=block.querySelectorAll(".order-row").length;var oh=findH2("Open Orders");if(oh){var m=oh.querySelector(".meta");if(m)m.textContent=left+" active";}if(!left){block.innerHTML=\'<div style="padding:26px 22px;text-align:center;color:var(--text-muted);font-size:14px">No open orders on the DEX</div>\';var cah0=findCancelAll();if(cah0)cah0.style.display="none";}return left;}'
