@@ -207,7 +207,8 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
 // LumosCore assets at all, so their search rows arrived with img:"" and drew a letter avatar even though
 // the logo was published in our stellar.toml. Same record the toml is built from, so search agrees with
 // the wallet.
-var _seaMan=null;
+// window.__lxTokenRegistry is baked into <head> at build time, so this is known on the FIRST paint and the letter avatar is never drawn for a token we have. The fetch stays only as a refresh for a page left open across a deploy.
+var _seaMan=(function(){ try{ return window.__lxTokenRegistry||null; }catch(e){ return null; } })();
 try{ fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; })
   .then(function(m){ if(m&&typeof m==="object"&&m.constructor!==Array)_seaMan=m; }).catch(function(){}); }catch(_e){}
 function lxSeaReg(code,issuer){
