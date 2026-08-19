@@ -15,6 +15,11 @@
 //     "https://x.com/<handle>"  |  "@<handle>"  |  "<handle>"   -> the account's profile picture
 //     "https://.../logo.png"                                    -> that image
 //     "data:image/png;base64,..."                               -> that image
+//     { "source": <any of the above>, "name": "Liberator" }     -> that image, plus a display name
+//
+// The NAME matters as much as the image. SEP-1 lets a [[CURRENCIES]] entry carry name= alongside code=,
+// and without it every wallet and explorer shows a bare ticker. Nothing upstream knows these names --
+// stellar.expert has no tomlInfo for our assets at all -- so they can only come from us.
 //
 // Usage:  node _tools/_launchicons.js <sources.json> [--write]
 // Dry-run by default: it reports what it WOULD write and touches nothing.
@@ -133,15 +138,19 @@ async function main() {
     }
     if (!issuer) { skipped.push(code + ' -> no issuer on lumoscore.com found; add it to _tools/lib.js'); continue; }
 
-    const got = await grab(sources[code]);
+    const raw = sources[code];
+    const spec = (raw && typeof raw === 'object') ? raw : { source: raw };
+    const got = await grab(spec.source);
     if (got.err) { skipped.push(code + ' -> ' + got.err); continue; }
-    planned.push({ code, issuer, name: code + '-' + issuer + '.' + got.ext, buf: got.buf, from: got.from || 'inline' });
+    planned.push({ code, issuer, file: code + '-' + issuer + '.' + got.ext, buf: got.buf,
+      title: typeof spec.name === 'string' ? spec.name.trim() : '', from: got.from || 'inline' });
   }
 
   planned.sort((a, b) => a.code.localeCompare(b.code));
   for (const p of planned) {
     console.log('  ' + (write ? 'write' : 'would write') + '  ' + p.code.padEnd(12)
-      + String(Math.round(p.buf.length / 1024)).padStart(4) + ' KB  ' + p.name);
+      + String(Math.round(p.buf.length / 1024)).padStart(4) + ' KB  ' + p.file
+      + (p.title ? '   name="' + p.title + '"' : ''));
   }
   for (const s of skipped) console.log('  SKIP   ' + s);
   console.log(planned.length + ' icon(s), ' + skipped.length + ' skipped');
@@ -152,14 +161,19 @@ async function main() {
   // Merge with any manifest already on disk so a partial run never deletes previously published icons.
   const manifest = {};
   try { Object.assign(manifest, JSON.parse(fs.readFileSync(path.join(SRC_DIR, MANIFEST), 'utf8'))); } catch (e) {}
-  for (const p of planned) manifest[p.code + '-' + p.issuer] = '/assets/tokens/' + p.name;
+  // An entry is {image, name} when we know a display name, and a bare path otherwise. The toml Function
+  // accepts both, so older entries written before names existed keep working untouched.
+  for (const p of planned) {
+    const path_ = '/assets/tokens/' + p.file;
+    manifest[p.code + '-' + p.issuer] = p.title ? { image: path_, name: p.title } : path_;
+  }
 
   // BOTH directories, deliberately. dist/ is what Cloudflare serves and is tracked by git; the root
   // assets/ is the SOURCE extract_site.js copies from and is not tracked. Writing only dist/ means the
   // next rebuild silently deletes these; writing only assets/ means they are never deployed.
   for (const dir of [SRC_DIR, DIST_DIR]) {
     fs.mkdirSync(dir, { recursive: true });
-    for (const p of planned) fs.writeFileSync(path.join(dir, p.name), p.buf);
+    for (const p of planned) fs.writeFileSync(path.join(dir, p.file), p.buf);
     fs.writeFileSync(path.join(dir, MANIFEST), JSON.stringify(manifest, null, 2) + '\n');
   }
   console.log('\nwrote ' + planned.length + ' icon(s) + ' + MANIFEST + ' to:\n  ' + SRC_DIR + '\n  ' + DIST_DIR);
