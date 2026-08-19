@@ -1015,7 +1015,9 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // ================= 4) ALL TRADING PAIRS (#dexMkTbody) =================
   // Column sorting. Five numeric columns, keyed to the fields the rows already carry.
   var MK_SORTS=[["th-price","px"],["th-change","chg"],["th-vol","vol"],["th-trades","trades"],["th-tvl","tvlUsd"]];
-  var mkSort={key:"",dir:-1};                                 // dir -1 = biggest first; "" = the default order
+  // Default: 24h volume, high to low. dir -1 = biggest first. "" would mean roster order, which is now
+  // only reachable by sorting on another column.
+  var mkSort={key:"vol",dir:-1};
   // Unknowns sink to the bottom in BOTH directions. Sorting ascending by volume should surface the
   // quietest real market, not the thirty rows whose volume has not been fetched yet -- those carry no
   // information and would bury the answer.
@@ -1120,7 +1122,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var pages=Math.max(1,Math.ceil(all.length/MK_PER)); if(mkPage>pages)mkPage=pages;
     var start=(mkPage-1)*MK_PER, data=all.slice(start,start+MK_PER);
     try{ priceVisible(data); }catch(_){}                      // fetch the rows this page actually shows
-    var sig=tableSig()+"|p"+mkPage;
+    // The visible ORDER joins the signature whenever a sort is active. Without it the skeleton is only
+    // rebuilt when the filter, search, page or sort CONTROL changes -- and volumes arrive long after
+    // that, so a volume sort would freeze in whatever order the rows had before a single number landed.
+    // Values still fill in place; this only rebuilds when the sequence itself actually differs.
+    var sig=tableSig()+"|p"+mkPage+(mkSort.key?("|"+data.map(function(a){return a.tkr||a.code;}).join(",")):"");
     try{ renderPager(pages); }catch(_){}
     // rebuild the skeleton ONLY when the filter/search changes (user action) or our rows were clobbered
     if(tb.__lxsig!==sig || (!tb.querySelector("tr[data-tkr]")&&!tb.querySelector("tr.lx-dex-empty-row"))){
