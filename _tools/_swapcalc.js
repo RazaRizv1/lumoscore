@@ -331,6 +331,19 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // but it is a private function in the swap wiring -- not exposed -- so the Limit tab was calling a
 // global that never existed and the sell list was always empty. One account read, cached, refreshed
 // each time the tab is opened; __lxHoldings is still used if it happens to be there first.
+// Real artwork for our own tokens. LUMOS already showed its flame because the site's logo healer knows
+// it by ticker; DOPE, FOX, LMNR and the rest are launchpad mints the healer has never heard of, so they
+// fell back to initials. The manifest the Trade pages are built from has an image for every one of them,
+// keyed CODE-ISSUER, so one fetch covers the whole roster. Initials remain only where there is no image.
++'var QICO=null;'
++'function qIcons(){if(QICO)return Promise.resolve(QICO);'
++'return fetch("/assets/tokens/launchpad-icons.json").then(function(r){return r.json();}).then(function(m){'
++'QICO={};Object.keys(m||{}).forEach(function(k){var v=m[k];var img=(v&&typeof v==="object")?v.image:v;'
++'if(img)QICO[k]=img;});return QICO;}).catch(function(){QICO={};return QICO;});}'
++'function qPaintIco(el,a){if(!el||!a||a.native||!QICO)return;'
++'var u=QICO[a.code+"-"+a.issuer];if(!u)return;'
++'el.textContent="";el.style.backgroundImage="url("+u+")";'
++'el.style.backgroundSize="cover";el.style.backgroundPosition="center";}'
 +'var QBAL=null;'
 +'function qMap(b){return b.asset_type==="native"?{code:"XLM",issuer:"",native:true,bal:+b.balance}'
 +':{code:b.asset_code,issuer:b.asset_issuer,native:false,bal:+b.balance};}'
@@ -367,7 +380,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var sub=(a.dom||(a.native?"native asset":qShort(a.issuer)));'
 +'if(a.dom&&!a.native)sub+=" \u00b7 "+qShort(a.issuer);'
 +'var sb=document.createElement("span");sb.className="s";sb.textContent=sub;'
-+'tx.appendChild(cd);tx.appendChild(sb);b.appendChild(ic);b.appendChild(tx);'
++'qPaintIco(ic,a);tx.appendChild(cd);tx.appendChild(sb);b.appendChild(ic);b.appendChild(tx);'
 +'if(right){var rt=document.createElement("span");rt.className="rt";rt.textContent=right;b.appendChild(rt);}'
 +'return b;}'
 +'function qPick(side,anchor){'
@@ -375,7 +388,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'m.style.top=(anchor.offsetTop+anchor.offsetHeight+6)+"px";'
 +'function add(a,right){if(side==="buy"&&qSame(a,qS))return;if(side==="sell"&&qSame(a,qB))return;'
 +'var b=qRow(a,right);b.addEventListener("click",function(e){e.preventDefault();e.stopImmediatePropagation();'
-+'if(side==="sell"){qS=a;if(qSame(qB,a))qB=null;}else{qB=a;if(qSame(qS,a))qS=null;}qClose();qSync();},true);'
++'if(side==="sell"){qS=a;if(qSame(qB,a))qB=null;}else{qB=a;if(qSame(qS,a))qS=null;}qClose();qSync();qQuote();},true);'
 +'m.appendChild(b);}'
 +'function head(t){var h=document.createElement("div");h.className="h";h.textContent=t;m.appendChild(h);return h;}'
 // SELL: the wallet, and nothing else. BUY: the five, and nothing else, then search.
@@ -402,7 +415,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'.filter(function(a){return a.code&&/^G[A-Z2-7]{55}$/.test(a.issuer)&&!qSame(a,qS);})'
 +'.sort(function(a,b){return b.tl-a.tl;})'
 +'.forEach(function(a){var b=qRow(a,qNum(a.tl)+" held");'
-+'b.addEventListener("click",function(e){e.preventDefault();e.stopImmediatePropagation();qB=a;qClose();qSync();},true);'
++'b.addEventListener("click",function(e){e.preventDefault();e.stopImmediatePropagation();qB=a;qClose();qSync();qQuote();},true);'
 +'res.appendChild(b);});'
 // same createElement rule as qRow: a quoted attribute three levels deep is how this broke twice
 +'if(!res.children.length)qMsg(res,"No matches");'
@@ -419,7 +432,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'while(el.firstChild)el.removeChild(el.firstChild);'
 +'if(a){var ic=document.createElement("span");ic.className="lxq-ic";ic.textContent=(a.code||"?").slice(0,2);'
 +'var cd=document.createElement("span");cd.textContent=a.code||"";'
-+'el.appendChild(ic);el.appendChild(cd);'
++'qPaintIco(ic,a);el.appendChild(ic);el.appendChild(cd);'
 +'if(a.v)cd.setAttribute("data-v","1");}'
 +'else{var cv=document.createElement("span");cv.className="cv";cv.textContent="Select asset";el.appendChild(cv);}'
 +'var car=document.createElement("span");car.className="car";car.textContent="▾";el.appendChild(car);}'
@@ -466,11 +479,35 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'if(t.closest&&t.closest(".lxq-go")){e.preventDefault();e.stopImmediatePropagation();qPlace();return;}'
 +'if(!t.closest||!t.closest(".lxq-menu"))qClose();'
 +'},true);'
-+'pane.addEventListener("input",function(){qSync();},true);'
++'pane.addEventListener("input",function(e){if(e.target&&e.target.classList&&e.target.classList.contains("lxq-price"))qAuto=false;qSync();},true);'
 +'qSync();'
 +'}'
 // build the offer. changeTrust rides in the same transaction when the buy asset is new, exactly as the
 // Trade-Asset limit path already does -- one signature, and the order cannot land without the trustline.
+// Seed the price with the live market rate for the chosen pair, so the field opens at something real
+// rather than 0.00 and the reader can see what they are moving away from. Strict-send paths for ONE unit
+// of the sell asset -- the same endpoint the Swap tab quotes with -- and the best destination_amount IS
+// the price in buying-per-selling, which is exactly what the field means.
+//
+// It stops seeding the moment the price is typed in: a limit order is a deliberate number, and a quote
+// arriving late must never overwrite what someone has just entered.
++'var qAuto=true;'
++'function qAssetQ(a,pfx){if(a.native)return pfx+"_asset_type=native";'
++'var t=(a.code.length<=4)?"credit_alphanum4":"credit_alphanum12";'
++'return pfx+"_asset_type="+t+"&"+pfx+"_asset_code="+encodeURIComponent(a.code)+"&"+pfx+"_asset_issuer="+a.issuer;}'
++'function qQuote(){'
++'if(!qS||!qB||!qAuto)return;'
++'var dest=qB.native?"native":(encodeURIComponent(qB.code)+":"+qB.issuer);'
++'var mark=qS.code+"|"+qB.code;qQuote.__k=mark;'
++'fetch(QH+"/paths/strict-send?"+qAssetQ(qS,"source")+"&source_amount=1&destination_assets="+dest)'
++'.then(function(r){return r.json();}).then(function(d){'
++'if(qQuote.__k!==mark||!qAuto)return;'                    // the pair changed while this was in flight
++'var recs=(d&&d._embedded&&d._embedded.records)||[];var best=0;'
++'recs.forEach(function(x){var v=+x.destination_amount||0;if(v>best)best=v;});'
++'var el=qEl(".lxq-price");if(!el)return;'
++'if(best>0){el.value=String(+best.toFixed(7));el.setAttribute("data-mkt","1");}'
++'else{el.value="";el.removeAttribute("data-mkt");}'                 // no route: leave it to the user
++'qSync();}).catch(function(){});}'
 +'function qPlace(){'
 +'var go=qEl(".lxq-go");if(!go||go.disabled||go.__busy)return;'
 +'var addr=qAddr();if(!addr){(window.lxToast||function(){})("Connect a wallet first.",true);return;}'
@@ -499,7 +536,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'.catch(function(){go.__busy=0;go.disabled=false;go.textContent=lbl;'
 +'(window.lxToast||function(){})("Could not place the order.",true);});'
 +'}'
-+'window.__lxQOlimit=function(){qBuildUi();qSync();qLoadBal().then(function(){qSync();});};'
++'window.__lxQOlimit=function(){qBuildUi();qSync();qIcons().then(function(){qSync();});qLoadBal().then(function(){qSync();});};'
 
 // ---------------- Orders tab ----------------
 // Every open offer on the account, not just this modal's -- Horizon returns them for all pairs, and an
