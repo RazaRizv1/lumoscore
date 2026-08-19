@@ -2662,6 +2662,14 @@ for (const file of files) {
     // to relabel. Idempotent: after one pass no APT remains inside the filters block.
     p = p.replace(/(<div class="filters" id="dxaPanelFilters">[\s\S]*?<\/div>)/,
                   function (blk) { return blk.replace(/\bAPT\b/g, 'XLM'); });
+    // The desktop crumb carried a back link AND a "· DEX / CODE" trail: the same destination twice, plus
+    // a segment repeating the asset the page is already titled after. The mobile build ships the back
+    // link alone and reads better for it, so match it. Markup, not runtime, so there is nothing to
+    // relabel on load. Idempotent: with the trail gone the guard no longer matches. applyHeader's
+    // ".crumb span" lookup is already null-guarded, so it simply finds nothing to write.
+    if (/<div class="crumb">[\s\S]*?class="sep"/.test(p)) {
+      p = p.replace(/(<div class="crumb">[\s\S]*?<\/a>)[\s\S]*?<\/div>/, '$1\n  </div>');
+    }
     // Discussions was removed: no backend ever existed, so the tab only led to the design's mock thread
     // plus browser-local posts nobody else could see. Idempotent -- after one pass there is no match.
     p = p.replace(/<button[^>]*data-tab="discussions"[^>]*>[\s\S]*?<\/button>/g, '');
