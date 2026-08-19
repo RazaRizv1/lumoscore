@@ -321,6 +321,10 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
           if(v.tr!=null)a.trades=v.tr;
           if(v.ho!=null)a.holders=v.ho;
           if(v.su!=null)a.supply=v.su;
+          // home_domain now rides along on the cached response. It drives the row's domain label AND the
+          // stellar.toml lookup that resolves the logo, so SHX and friends were unlabelled and
+          // unillustrated purely because nothing ever set this.
+          if(v.dom&&!a.domain){ a.domain=v.dom; if(!a.img)loadToml(a,v.dom); }
         });
         touch();
       }).catch(function(){
@@ -1052,7 +1056,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         var rec=recs(d)[0]; if(!rec)return;
         if(rec.accounts)a.holders=(+rec.accounts.authorized||0)+(+rec.accounts.authorized_to_maintain_liabilities||0);
         if(rec.balances)a.supply=+rec.balances.authorized||+rec.balances.authorized_to_maintain_liabilities||a.supply;
-        else if(rec.amount!=null)a.supply=+rec.amount; }).catch(function(){})
+        else if(rec.amount!=null)a.supply=+rec.amount;
+        // same free home_domain as the edge endpoint, so the degraded path labels rows too
+        var tl=rec._links&&rec._links.toml&&rec._links.toml.href;
+        if(tl&&!a.domain){ var af=String(tl).split("//")[1]||""; a.domain=af.split("/")[0]||""; if(a.domain&&!a.img)loadToml(a,a.domain); }
+      }).catch(function(){})
     ]).then(touch);
   }
 

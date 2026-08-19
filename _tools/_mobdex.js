@@ -228,7 +228,9 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     var d=src.filter(function(a){
       if(cat&&cat!=="all"&&cat!=="native"){var c=String(a.cat||"").toLowerCase();
         if(c!==cat&&c+"s"!==cat)return false;}
-      if(qy&&(a.code+" "+(a.domain||"")).toLowerCase().indexOf(qy)<0)return false;
+      // code + issuer + domain. The box says "ticker or address" but the issuer was not in the haystack,
+      // so pasting an address matched nothing. Desktop already searched all three.
+      if(qy&&(a.code+" "+(a.issuer||"")+" "+(a.domain||"")).toLowerCase().indexOf(qy)<0)return false;
       return true;});
     // A new filter or search starts at page 1; a data refresh does not.
     var fkey=cat+"|"+qy; if(mkKey!==fkey){ mkKey=fkey; mkPage=1; }

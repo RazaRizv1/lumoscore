@@ -90,7 +90,7 @@ async function oneAsset(code, issuer) {
     '&base_asset_issuer=' + issuer +
     '&counter_asset_type=native';
 
-  const out = { px: 0, chg: null, vol: null, high: null, low: null, tr: null, ho: null, su: null };
+  const out = { px: 0, chg: null, vol: null, high: null, low: null, tr: null, ho: null, su: null, dom: null };
 
   // Two bars: the latest gives price/volume/range, the one before it gives the 24h change.
   const agg = getJson(H + '/trade_aggregations?' + base + '&resolution=86400000&order=desc&limit=2')
@@ -118,6 +118,16 @@ async function oneAsset(code, issuer) {
         out.su = +rec.balances.authorized || +rec.balances.authorized_to_maintain_liabilities || null;
       } else if (rec.amount != null) {
         out.su = +rec.amount;
+      }
+      // The issuer's home_domain, free: Horizon hands back _links.toml pointing at
+      // https://<home_domain>/.well-known/stellar.toml on this very record. Without it the client had no
+      // domain for the curated assets at all, so they rendered as a generic "Stellar" tag on mobile and a
+      // shortened G-address on desktop, and their logos never resolved because the toml was never fetched.
+      const toml = rec._links && rec._links.toml && rec._links.toml.href;
+      if (toml) {
+        // host only, no regex: split on "//" then cut at the first "/"
+        const after = String(toml).split('//')[1] || '';
+        out.dom = after.split('/')[0] || null;
       }
     })
     .catch(() => {});
