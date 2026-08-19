@@ -2703,6 +2703,13 @@ for (const file of files) {
     // it reads as USDC on every asset page until our script runs. Removed in the markup so there is
     // nothing to clear at runtime. Idempotent: after one pass the tile is empty and no match remains.
     p = p.split('<div class="asset-logo">$</div>').join('<div class="asset-logo"></div>');
+    // ...and opt the tile out of the design's logo HEALER, which is where the USDC picture actually came
+    // from. That script walks for /ico|asset-logo|token-logo|pair-ic/ and stamps in artwork keyed by
+    // TICKER TEXT ALONE; the page ships baked as USDC, so it injected Circle's mark as a child <img> about
+    // 90ms in and it stayed until our painter cleared it. _logoguard.js already teaches the healer to skip
+    // anything the data layer owns -- the marker is a data-lxc attribute -- but this element never carried
+    // one, so it was fair game on every asset page. Empty value is enough: the check is != null.
+    p = p.split('<div class="asset-logo"></div>').join('<div class="asset-logo" data-lxc=""></div>');
     // The desktop crumb carried a back link AND a "· DEX / CODE" trail: the same destination twice, plus
     // a segment repeating the asset the page is already titled after. The mobile build ships the back
     // link alone and reads better for it, so match it. Markup, not runtime, so there is nothing to
