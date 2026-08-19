@@ -683,10 +683,20 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // not from the chip, so a page still carrying the old placement is found and moved rather than given a
     // second copy of the strip.
     var host=card.querySelector(".lm")||card;
+    // Mobile shows Trades where desktop shows Liquidity. Read off the card's own class rather than the
+    // viewport, so it tracks the build the page actually is.
+    var MOB=card.className.indexOf("lx-mobhero")>=0;
     var box=card.querySelector(".lx-dxstats");
+    // a strip built before the class landed would carry the wrong cell -- relabel rather than rebuild,
+    // so nothing else in the row is disturbed
+    if(box&&MOB){ var wrong=box.querySelector('[data-k="liq"]');
+      if(wrong){ wrong.setAttribute("data-k","trades");
+        var wl=wrong.querySelector(".l"); if(wl)wl.textContent="Trades";
+        var wv=wrong.querySelector(".v"); if(wv)wv.innerHTML="\\u2014"; } }
     if(!box){ box=document.createElement("div"); box.className="lx-dxstats";
       box.innerHTML='<div class="lx-dxstat" data-k="vol"><span class="v">\\u2014</span><span class="l">24h Volume</span></div>'
-        +'<div class="lx-dxstat" data-k="liq"><span class="v">\\u2014</span><span class="l">Liquidity</span></div>'
+        +(MOB?'<div class="lx-dxstat" data-k="trades"><span class="v">\\u2014</span><span class="l">Trades</span></div>'
+             :'<div class="lx-dxstat" data-k="liq"><span class="v">\\u2014</span><span class="l">Liquidity</span></div>')
         +'<div class="lx-dxstat" data-k="mkts"><span class="v">'+allAssets().length+'</span><span class="l">Markets</span></div>'
         +'<div class="lx-dxstat" data-k="top"><span class="v"><span class="lx-dxpair"><span class="pa"></span><span class="pb"></span></span><span class="lx-dxtxt">\\u2014</span></span><span class="l">Top Pair</span></div>';
     }
@@ -698,7 +708,14 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var vol=0,liq=0; _agg.forEach(function(a){ if(a.vol!=null)vol+=a.vol*xlmUsd; if(a.tvlUsd!=null)liq+=a.tvlUsd; });
     var top=_agg.slice().filter(function(a){return a.vol!=null&&a.vol>0;}).sort(function(a,b){return (b.vol||0)-(a.vol||0);})[0];
     function set(k,v){ var el=box.querySelector('[data-k="'+k+'"] .v'); if(el&&el.innerHTML!==v)el.innerHTML=v; }
-    set("vol",vol>0?abbrUsd(vol):"\\u2014"); set("liq",liq>0?abbrUsd(liq):"\\u2014");
+    set("vol",vol>0?abbrUsd(vol):"\\u2014");
+    if(MOB){
+      // Every trade executed against these assets in the last 24h. a.trades is trade_count off the same
+      // daily bar the "Trades (24h)" column reads, so the hero and the table cannot disagree. Assets whose
+      // bar has not arrived yet are skipped, not counted as zero -- the same way vol and liq are summed.
+      var trd=0,seen=0; _agg.forEach(function(a){ if(a.trades!=null){ trd+=+a.trades||0; seen++; } });
+      set("trades",seen?num(trd):"\\u2014");
+    } else set("liq",liq>0?abbrUsd(liq):"\\u2014");
     set("mkts",String(_agg.length));   // the strip is built once; the roster grows after
     // Top Pair cell: two overlapping token logos (asset + XLM) + the pair name
     if(top){ var pa=box.querySelector('[data-k="top"] .pa'), pb=box.querySelector('[data-k="top"] .pb'), txt=box.querySelector('[data-k="top"] .lx-dxtxt');
@@ -1141,9 +1158,15 @@ for (const file of files) {
     if (k === 'lumoscore-dex-mobile.html') {
       // The hero card. Matched as a plain STRING including the carousel attribute, so it can only hit the
       // one element and there is no regex escape to be eaten on the way in.
+      // Idempotent: these transforms are re-run on every build, and the container keeps the previous
+      // pass's output, so the plain form is gone by the second run. Check for the finished form first and
+      // only fail when NEITHER is there, which is the case that would silently ship the flash.
       const HERO = '<div class="lumos-promo" aria-roledescription="carousel"';
-      if (p.indexOf(HERO) < 0) throw new Error('dex-mobile: hero markup not found — refusing to ship the flash');
-      p = p.replace(HERO, '<div class="lumos-promo lx-mobhero" aria-roledescription="carousel"');
+      const DONE = '<div class="lumos-promo lx-mobhero" aria-roledescription="carousel"';
+      if (p.indexOf(DONE) < 0) {
+        if (p.indexOf(HERO) < 0) throw new Error('dex-mobile: hero markup not found — refusing to ship the flash');
+        p = p.replace(HERO, DONE);
+      }
       // the page heading and its subtitle: hidden to the eye, kept in the outline (see .lx-sronly)
       p = p.replace(/<h1 class="page-title"/, '<h1 class="page-title lx-sronly"')
            .replace(/class="page-subtitle"/, 'class="page-subtitle lx-sronly"');
