@@ -4557,7 +4557,13 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     {code:"BTC",  issuer:"GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF", cat:"utility", b:"#f7931a", logo:"https://assets.coingecko.com/coins/images/1/small/bitcoin.png"},
     {code:"LUMOS",issuer:"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S", cat:"utility", b:"#ea6a2c", logo:"/assets/tokens/lumos.png"}
   ];
-  var byCode={}; ASSETS.forEach(function(a){ byCode[a.code]=a; a.px=0; a.chg=null; a.vol=null; a.high=null; a.low=null;
+  // byCode is a TICKER index -- two different issuers can share one. byId is the IDENTITY index, and it
+  // is what decides whether we already hold an asset. Ticker alone could not: the cached roster and the
+  // fresh stellar.expert discovery both offer every token, and the second offer would see the ticker
+  // taken, mint a "collision" key (TDT -> TDT~GBIN) and create a SECOND object for the very same asset.
+  // That is why TDT appeared twice in All Trading Pairs.
+  var byId={};
+  var byCode={}; ASSETS.forEach(function(a){ byCode[a.code]=a; byId[a.code+"|"+a.issuer]=a; a.px=0; a.chg=null; a.vol=null; a.high=null; a.low=null;
     a.tvlUsd=null; a.holders=null; a.supply=null; a.spark=null; a.domain=null; a.img=null; a.trades=null; });
   // ---- LumosCore-native assets: issuer home_domain = lumoscore.com (minted through our Launchpad) ----
   var NATIVE=[], nativeState=0;                             // 0 idle | 1 loading | 2 loaded
@@ -4575,12 +4581,13 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   // one shape for both paths, so a cached roster and a fresh one cannot drift
   function nativeMake(code,iss,logo,dom,created){
+    if(byId[code+"|"+iss])return null;                 // same code AND issuer -> already held
     var key=byCode[code]?code+"~"+iss.slice(0,4):code;
     if(byCode[key])return null;
     var a={code:code,issuer:iss,cat:"native",tkr:key,b:"#3d4351",created:(+created||0),
       logo:logo||"",domain:dom||"",px:0,chg:null,vol:null,high:null,low:null,tvlUsd:null,
       holders:null,supply:null,spark:null,img:null,trades:null};
-    byCode[key]=a; NATIVE.push(a); return a;
+    byCode[key]=a; byId[code+"|"+iss]=a; NATIVE.push(a); return a;
   }
   // One request per 16 assets, served from the edge cache. Falls back to Horizon per asset if the
   // endpoint is unreachable, so this can never be the reason a price is missing.
@@ -4696,13 +4703,9 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         // They cannot be traded, and padding the tab with dead rows buries the real ones.
         var tl=x.trustlines; tl=(tl&&typeof tl==="object"&&tl.length)?(+tl[0]||0):(+tl||0);
         if(!(+x.supply>0)||tl<1)return;
-        var key=byCode[code]?code+"~"+iss.slice(0,4):code;
-        if(byCode[key])return;
-        var a={code:code,issuer:iss,cat:"native",tkr:key,b:"#3d4351",created:(+x.created||0),
-          logo:(x.tomlInfo&&x.tomlInfo.image)||"",domain:x.domain||"",
-          px:0,chg:null,vol:null,high:null,low:null,tvlUsd:null,holders:null,
-          supply:null,spark:null,img:null,trades:null};
-        byCode[key]=a; NATIVE.push(a); add.push(a);
+        // one creation point, one guard: this used to inline a second copy of the ticker-only check
+        var a=nativeMake(code,iss,(x.tomlInfo&&x.tomlInfo.image)||"",x.domain||"",+x.created||0);
+        if(a)add.push(a);
       });
       addManifestNatives(add);
       touch();
@@ -4715,8 +4718,13 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   // "All" means every pair LumosCore lists, curated majors AND our own Launchpad tokens. Identity dedupe,
   // not code+issuer: LUMOS is literally the same object in both lists, pinned into NATIVE by loadNative.
-  function allAssets(){ var out=ASSETS.slice();
-    for(var i=0;i<NATIVE.length;i++)if(out.indexOf(NATIVE[i])<0)out.push(NATIVE[i]);
+  function allAssets(){
+    // Identity dedupe, not object identity. Object identity was enough while LUMOS was literally the same
+    // object in both lists, but it cannot catch two distinct objects describing one asset.
+    var out=[],seen={};
+    function put(a){ if(!a)return; var id=a.code+"|"+a.issuer; if(seen[id])return; seen[id]=1; out.push(a); }
+    for(var i=0;i<ASSETS.length;i++)put(ASSETS[i]);
+    for(var j=0;j<NATIVE.length;j++)put(NATIVE[j]);
     return out; }
   function curFilter(){ var el=q(".dex-mk-filter.active"); return (el&&el.getAttribute)?(el.getAttribute("data-filter")||"all"):"all"; }
   // Newest first. Assets we have no created stamp for sort last rather than jumping to the top on a 0.
