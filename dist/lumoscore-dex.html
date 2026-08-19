@@ -1814,14 +1814,33 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lx-dxpair{display:inline-flex;flex:0 0 auto}
 .lx-dxpair span{display:block;width:24px;height:24px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
 .lx-dxpair .pb{margin-left:-9px}
+/* ===== MOBILE HERO =====
+   The mobile page ships a different component: a 4-slide auto-rotating .lumos-promo-slides carousel, with
+   none of the desktop hero's CSS -- no #lx-livemarket block, so .lm, .lm-h, .lm-sub and .lm-cta have no
+   base rules there at all. Everything the mobile hero needs is therefore declared here in full rather than
+   as overrides, scoped to .lx-mobhero so desktop cannot be touched.
+   applyMobileHero() lifts the DEX slide's own copy into the desktop structure, so the headline stays
+   correct per chain, and hides the carousel. */
+.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:radial-gradient(58% 84% at 70% 30%,rgba(140,96,246,.26),transparent 60%),radial-gradient(46% 64% at 92% 78%,rgba(198,86,232,.14),transparent 62%),radial-gradient(52% 68% at 24% 90%,rgba(74,110,224,.12),transparent 62%),linear-gradient(140deg,#0f1120 0%,#0a0a15 55%,#070610 100%)}
+.lx-mobhero .lumos-promo-slides,.lx-mobhero .lumos-promo-dots{display:none!important}
+.lx-mobhero .lm{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;min-height:260px}
+.lx-mobhero .lm-c{position:relative;z-index:3;display:flex;flex-direction:column;align-items:flex-start;padding:20px 18px 18px;flex:1 1 auto}
+.lx-mobhero .lm-h{margin:0;font-weight:800;letter-spacing:-.02em}
+.lx-mobhero .lm-h em{font-style:normal;color:var(--accent,#ff7a3c)}
+.lx-mobhero .lm-sub{margin:9px 0 0}
+.lx-mobhero .lm-cta{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px;color:#fff;text-decoration:none;background:linear-gradient(180deg,var(--accent-2,#ff894c),var(--accent));padding:10px 17px;border-radius:11px;box-shadow:0 10px 24px -10px var(--accent-soft),inset 0 1px 0 rgba(255,255,255,.28)}
+.lx-mobhero .lm-cta svg{width:16px;height:16px}
 /* Narrow (this also covers the MOBILE page, whose hero is the .lumos-promo-slides carousel -- it has no
    .lm and no .lm-chip, so the strip lands as the card's last child and there is no pill to place).
    The strip folds to 2x2 and everything steps down a size: at 375px the four columns become ~145px, and at
    the desktop sizes "USDC / XLM" plus its two 24px logos overran that by 4px. */
 @media(max-width:880px){
-.lumos-promo .lm-h{max-width:100%!important;font-size:27px!important}
-.lumos-promo .lm-chip{position:static!important;margin:0 0 14px;align-self:flex-start;min-width:0}
-.lumos-promo .lx-dxstats{grid-template-columns:1fr 1fr;gap:12px 0;padding:11px 16px 12px}
+.lumos-promo .lm-c{padding:18px 18px 16px!important}
+.lumos-promo .lm-h{max-width:100%!important;font-size:23px!important;line-height:1.14!important}
+.lumos-promo .lm-sub{font-size:13.5px!important;max-width:100%!important}
+.lumos-promo .lm-cta{margin-top:14px}
+.lumos-promo .lm-chip{position:static!important;margin:0 0 13px;align-self:flex-start;min-width:0}
+.lumos-promo .lx-dxstats{grid-template-columns:1fr 1fr;gap:11px 0;padding:11px 18px 12px}
 .lx-dxstat{padding-left:14px}
 .lx-dxstat:nth-child(3){padding-left:0;border-left:0}
 .lx-dxstat .v{font-size:19px;gap:7px}
@@ -1829,6 +1848,8 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lx-dxstat[data-k=top] .v{font-size:13.5px}
 .lx-dxpair span{width:21px;height:21px}
 .lx-dxpair .pb{margin-left:-8px}
+/* the mobile card carries its own 260px floor, which the carousel needed and this hero does not */
+.lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
 }
 /* Empty Gainers/Losers. Spans the grid so the message sits in the panel rather than in one cell. */
 .dex-mover-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--text-muted);font-size:13.5px}
@@ -4770,6 +4791,30 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       +'<div class="lx-part p1"></div><div class="lx-part p2"></div><div class="lx-part p3"></div><div class="lx-part p4"></div>';
     host.insertBefore(d, host.firstChild);
   }
+  // Give the MOBILE page the same hero as desktop. It ships a 4-slide auto-rotating carousel (DEX,
+  // Launchpad, Low fees, Non-custodial) whose CTAs are all href="#"; the desktop hero is a single DEX
+  // panel. Rather than author new copy -- which would hardcode "Stellar" onto every chain's build -- lift
+  // the carousel's own DEX slide into the desktop structure, so the headline stays right per chain, and
+  // give its dead "#" link the real destination the desktop CTA uses.
+  function applyMobileHero(){
+    var card=q(".lumos-promo"); if(!card)return;
+    if(card.querySelector(".lm"))return;                          // desktop build, or already done
+    var slides=card.querySelector(".lumos-promo-slides"); if(!slides)return;
+    var slide=card.querySelector('.lumos-promo-slide[data-theme="dex"]')||card.querySelector(".lumos-promo-slide");
+    var src=slide&&slide.querySelector(".lumos-promo-content"); if(!src)return;
+    var t=src.querySelector(".lumos-promo-title"), s=src.querySelector(".lumos-promo-sub"), a=src.querySelector(".lumos-promo-cta");
+    if(!t)return;
+    // the slide breaks its title across two lines for a 58%-wide column; ours runs full width
+    var head=t.innerHTML.replace(/<br\s*\/?>/gi," ");
+    if(head.indexOf("<em")<0)head=head.replace(/\bDEX\b/,"<em>DEX</em>");   // accent word, as on desktop
+    var lm=document.createElement("div"); lm.className="lm";
+    lm.innerHTML='<div class="lm-chip"><div class="p1">XLM</div><div class="p2">\u2014</div><div class="p3"></div></div>'
+      +'<div class="lm-c"><h2 class="lm-h">'+head+'</h2>'
+      +'<p class="lm-sub">'+(s?s.innerHTML:"")+'</p>'
+      +'<a class="lm-cta" href="/trade/stellar">'+(a?a.innerHTML:"Start Trading")+'</a></div>';
+    card.appendChild(lm);                                         // after .lx-cosmic, so the copy paints over it
+    card.classList.add("lx-mobhero");
+  }
   function applyPromoConstel(){
     var svg=q(".lumos-promo .lm-svg"); if(!svg)return;
     if(svg.classList.contains("lx-dxc")&&svg.querySelector(".lx-dxfloat"))return;    // idempotent (rebuild only if clobbered)
@@ -5088,6 +5133,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
 
   // ================= apply / observe / boot =================
   function applyAll(){
+    try{ applyMobileHero(); }catch(_){}         // first: builds the .lm the next three expect on mobile
     try{ applyHero(); }catch(_){}
     try{ applyCosmic(); }catch(_){}             // same nebula/stars/constellation animation as the Pools hero
     try{ applyPromoConstel(); }catch(_){}       // keeps the original .lm-svg zigzag hidden (rebuilt as hidden .lx-dxc)
