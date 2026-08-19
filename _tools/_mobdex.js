@@ -19,6 +19,21 @@ const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-dex-mobile.html'];
 
 const STYLE = '<style id="lx-mobdex-css">'
+// Sort control in the search row, plus the sheet it opens. The row is already a flex line with the
+// magnifier and the input, so the button lands at its right end without touching the design's rules.
+// The sheet is anchored to the row (position:relative on the row) rather than to the page, so it cannot
+// drift when the list above it grows or shrinks.
++'.mdx-mk-search.lx-mkq{position:relative}'
++'.lx-msort{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-right:-6px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--text-soft);cursor:pointer}'
++'.lx-msort:hover,.lx-msort.on{background:var(--surface);color:var(--text)}'
++'.lx-msort.act{color:var(--accent)}'
++'.lx-msheet{display:none;position:absolute;z-index:40;top:calc(100% + 6px);right:0;min-width:184px;padding:5px;background:var(--surface);border:1px solid var(--border);border-radius:11px;box-shadow:0 18px 40px -18px rgba(0,0,0,.55)}'
++'.lx-msheet.open{display:block}'
++'.lx-msheet button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:8px 9px;border:0;border-radius:8px;background:transparent;color:var(--text);font:inherit;font-size:12.5px;font-weight:600;text-align:left;cursor:pointer}'
++'.lx-msheet button:hover{background:var(--surface-2)}'
++'.lx-msheet button.on{color:var(--accent)}'
++'.lx-msheet button i{font-style:normal;font-size:9px;line-height:1;opacity:.9}'
++'.lx-msheet .lx-mreset{margin-top:3px;border-top:1px solid var(--border);border-radius:0 0 8px 8px;color:var(--text-soft);font-weight:500}'
 // Verified-issuer tick, same disc/check as desktop Trade and Wallet so the mark reads identically
 // on both layouts. flex:0 0 so a long code can never squeeze it out of the row.
 +'.mdx-mover-pair .lx-vtick,.mdx-mk-name-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 13px}'
@@ -212,6 +227,65 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     return t?((t.getAttribute("data-cat")||(t.textContent||"").trim().toLowerCase())):"all";}
   function mkQuery(){var i=q(".mdx-mk-search input");return i?String(i.value||"").trim().toLowerCase():"";}
   var MK_PER=25, mkPage=1, mkKey="";
+  // ---- sorting -------------------------------------------------------------------------------------
+  // The phone list has no column headers to click, so the control is a button in the search row that
+  // opens a small sheet. Same five fields and the same rules as the desktop table, so a reader moving
+  // between the two gets the same answer: biggest first on the first tap, tap again to flip, and rows
+  // whose value has not been fetched sink to the bottom in BOTH directions rather than leading an
+  // ascending sort with a wall of blanks.
+  var MK_SORTS=[["px","Last price"],["chg","24H change"],["vol","Volume (24H)"],["trades","Trades (24H)"],["tvlUsd","Liquidity"]];
+  var mkSort={key:"",dir:-1};
+  function mkCmp(k,dir){ return function(a,b){ var x=a[k],y=b[k];
+    var xn=(x==null||x!==x), yn=(y==null||y!==y);
+    if(xn&&yn)return 0; if(xn)return 1; if(yn)return -1;
+    return dir<0?(y-x):(x-y); }; }
+  var SORT_IC='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4v16"/><path d="M4 8l3-4 3 4"/><path d="M17 20V4"/><path d="M14 16l3 4 3-4"/></svg>';
+  function sortLabel(){ if(!mkSort.key)return ""; for(var i=0;i<MK_SORTS.length;i++)if(MK_SORTS[i][0]===mkSort.key)return MK_SORTS[i][1]; return ""; }
+  function closeSheet(){ var s=q(".lx-msheet"); if(s)s.classList.remove("open"); var b=q(".lx-msort"); if(b)b.classList.remove("on"); }
+  function ensureSortUi(){
+    var box=q(".mdx-mk-search"); if(!box)return;
+    if(!box.__lxs){ box.__lxs=1; box.classList.add("lx-mkq");
+      var b=document.createElement("button"); b.type="button"; b.className="lx-msort";
+      b.setAttribute("aria-label","Sort pairs"); b.innerHTML=SORT_IC;
+      box.appendChild(b);
+      var sh=document.createElement("div"); sh.className="lx-msheet";
+      sh.innerHTML=MK_SORTS.map(function(s){
+        return '<button type="button" data-sk="'+s[0]+'"><span>'+s[1]+'</span><i></i></button>'; }).join("")
+        + '<button type="button" data-sk="" class="lx-mreset"><span>Default order</span><i></i></button>';
+      box.appendChild(sh);
+    }
+    // keep the sheet and the button in step with the state on every render
+    var bt=q(".lx-msort"); if(bt)bt.classList.toggle("act",!!mkSort.key);
+    var sh2=q(".lx-msheet"); if(!sh2)return;
+    [].slice.call(sh2.querySelectorAll("button")).forEach(function(o){
+      var k=o.getAttribute("data-sk"), on=(k===mkSort.key)&&(k!=="");
+      if(o.classList.contains("on")!==on)o.classList.toggle("on",on);
+      // fromCharCode, not a "\\uXXXX" escape: this file's browser code is not emitted through a template
+      // literal, so the escape survived into the page as the six literal characters ▲.
+      var i=o.querySelector("i"); if(i){ var w=on?String.fromCharCode(mkSort.dir<0?9660:9650):""; if(i.textContent!==w)i.textContent=w; }
+    });
+  }
+  // Window capture, for the same reason the desktop headers need it: the design ships a delegated
+  // navigation handler on document capture, so a listener on the button itself never sees the click.
+  function installSortUi(){
+    if(window.__lxMDXsort)return; window.__lxMDXsort=1;
+    window.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      var bt=t.closest(".lx-msort");
+      if(bt){ e.preventDefault(); e.stopImmediatePropagation();
+        var s=q(".lx-msheet"); if(s){ var open=!s.classList.contains("open"); s.classList.toggle("open",open); bt.classList.toggle("on",open); }
+        return; }
+      var op=t.closest(".lx-msheet button[data-sk]");
+      if(op){ e.preventDefault(); e.stopImmediatePropagation();
+        var k=op.getAttribute("data-sk");
+        if(!k){ mkSort.key=""; mkSort.dir=-1; }
+        else if(mkSort.key===k)mkSort.dir=-mkSort.dir;
+        else { mkSort.key=k; mkSort.dir=-1; }
+        mkPage=1; closeSheet(); try{ pass(); }catch(_){}
+        return; }
+      if(!t.closest(".lx-msheet"))closeSheet();     // a tap anywhere else puts the sheet away
+    },true);
+  }
   function renderPairs(){
     var list=q(".mdx-mk-list");if(!list)return;var A=assets();if(!A)return;
     var cat=mkFilter(),qy=mkQuery();
@@ -241,8 +315,12 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       // so pasting an address matched nothing. Desktop already searched all three.
       if(qy&&(a.code+" "+(a.issuer||"")+" "+(a.domain||"")).toLowerCase().indexOf(qy)<0)return false;
       return true;});
-    // A new filter or search starts at page 1; a data refresh does not.
-    var fkey=cat+"|"+qy; if(mkKey!==fkey){ mkKey=fkey; mkPage=1; }
+    // Sorted before paging, so page 1 holds the top of the SORTED list rather than the top of the
+    // unsorted one re-ordered within itself.
+    if(mkSort.key)d=d.slice().sort(mkCmp(mkSort.key,mkSort.dir));
+    try{ ensureSortUi(); installSortUi(); }catch(_){}
+    // A new filter, search or order starts at page 1; a data refresh does not.
+    var fkey=cat+"|"+qy+"|"+mkSort.key+mkSort.dir; if(mkKey!==fkey){ mkKey=fkey; mkPage=1; }
     var pages=Math.max(1,Math.ceil(d.length/MK_PER)); if(mkPage>pages)mkPage=pages;
     var start=(mkPage-1)*MK_PER, all=d; d=all.slice(start,start+MK_PER);
     // Ask the data layer to price THIS page's rows. Only the five newest launchpad tokens are priced up
