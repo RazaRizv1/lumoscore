@@ -194,6 +194,13 @@ function headersFile(isAdmin){
   }
   return '/*\n' + common
     + '\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n'
+    // The token-icon manifest lives under /assets/ but is the one file there that CHANGES: every new
+    // launchpad logo rewrites it. Left immutable, a visitor who loaded it once keeps that copy for a
+    // YEAR and never sees a logo added afterwards -- which is exactly what happened: four logos went
+    // live, served 200, and still rendered as letter tiles because the browser never re-asked for the
+    // index naming them. Cloudflare applies every matching rule and the LAST one wins, so this must
+    // stay below /assets/*.
+    + '\n/assets/tokens/launchpad-icons.json\n  Cache-Control: public, max-age=60, must-revalidate\n'
     + '\n/*.html\n  Cache-Control: public, max-age=0, must-revalidate\n';
 }
 
