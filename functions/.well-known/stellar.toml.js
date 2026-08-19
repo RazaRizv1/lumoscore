@@ -95,6 +95,15 @@ async function iconManifest(origin) {
       const v = m[k];
       const img = (v && typeof v === 'object') ? v.image : v;
       const name = (v && typeof v === 'object' && typeof v.name === 'string') ? v.name.slice(0, 80) : '';
+      // desc rides along with name. Without this the field was read off the manifest and thrown away, so
+      // every asset we host fell through to the client's generic line and all of them read identically.
+      // Capped, single-line, and quote-stripped: it is written into a quoted TOML value.
+      // Split/join rather than a regex: this value is written into a double-quoted TOML string, and a
+      // stray quote or newline there would break the document for every wallet that parses it.
+      const desc = (v && typeof v === 'object' && typeof v.desc === 'string')
+        ? v.desc.split('"').join('').split("'").join('')
+                .split('\r').join(' ').split('\n').join(' ')
+                .split('\t').join(' ').trim().slice(0, 300) : '';
       // An entry with NO image is still kept. The manifest doubles as our register of which assets are
       // ours, and several are ours without artwork yet -- RICHARD, PUMP, PEPE, ZBS, FED, NEIRO and HULK
       // all declare our domain and were minted by our wallet, but stellar.expert records no domain for
@@ -104,7 +113,7 @@ async function iconManifest(origin) {
       // When there IS an image it must be a same-origin absolute path: a manifest that could name an
       // arbitrary host would let one bad write point every wallet at someone else's picture.
       const ok = typeof img === 'string' && img.charAt(0) === '/' && img.indexOf('//') !== 0;
-      out[k] = { image: ok ? origin + img : '', name };
+      out[k] = { image: ok ? origin + img : '', name, desc };
     }
     return out;
   } catch (e) { return {}; }
@@ -234,8 +243,17 @@ export async function onRequestGet(ctx) {
     if (dash < 1) continue;
     const code = k.slice(0, dash), issuer = k.slice(dash + 1);
     if (!/^[A-Za-z0-9]{1,12}$/.test(code) || !/^G[A-Z2-7]{55}$/.test(issuer)) continue;
-    if (list.some((a) => a.code === code && a.issuer === issuer)) continue;
-    list.push({ code, issuer, name: '', image: '', desc: '' });
+    const mi = icons[k] || {};
+    const hit = list.find((a) => a.code === code && a.issuer === issuer);
+    if (hit) {
+      // Already discovered through stellar.expert. Its tomlInfo is a mirror of THIS document, so it can
+      // never be the source of a name or description we have not published yet -- the manifest is. Fill
+      // in only what the discovered record is missing, so a real upstream value is never overwritten.
+      if (!hit.name && mi.name) hit.name = mi.name;
+      if (!hit.desc && mi.desc) hit.desc = mi.desc;
+      continue;
+    }
+    list.push({ code, issuer, name: mi.name || '', image: '', desc: mi.desc || '' });
   }
 
   const checked = list.slice(0, MAX_VERIFY);

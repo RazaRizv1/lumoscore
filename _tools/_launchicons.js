@@ -144,7 +144,12 @@ async function main() {
     const got = await grab(spec.source);
     if (got.err) { skipped.push(code + ' -> ' + got.err); continue; }
     planned.push({ code, issuer, file: code + '-' + issuer + '.' + got.ext, buf: got.buf,
-      title: typeof spec.name === 'string' ? spec.name.trim() : '', from: got.from || 'inline' });
+      title: typeof spec.name === 'string' ? spec.name.trim() : '',
+      // desc is optional and travels the same road as name: manifest -> [[CURRENCIES]] desc= -> the
+      // Trade-Asset page, which prefers the toml line and only falls back to its generic sentence when
+      // there is none. Without one, every asset we host reads identically.
+      blurb: typeof spec.desc === 'string' ? spec.desc.replace(/\s+/g, ' ').trim().slice(0, 300) : '',
+      from: got.from || 'inline' });
   }
 
   planned.sort((a, b) => a.code.localeCompare(b.code));
@@ -171,7 +176,15 @@ async function main() {
   for (const p of planned) {
     const v = crypto.createHash('sha1').update(p.buf).digest('hex').slice(0, 8);
     const path_ = '/assets/tokens/' + p.file + '?v=' + v;
-    manifest[p.code + '-' + p.issuer] = p.title ? { image: path_, name: p.title } : path_;
+    // Keep whatever the existing entry already carried, so a run that only replaces artwork cannot wipe a
+    // name or a description set earlier.
+    const prev = manifest[p.code + '-' + p.issuer];
+    const kept = (prev && typeof prev === 'object') ? prev : {};
+    const name = p.title || kept.name || '';
+    const desc = p.blurb || kept.desc || '';
+    manifest[p.code + '-' + p.issuer] = (name || desc)
+      ? Object.assign({ image: path_ }, name ? { name } : {}, desc ? { desc } : {})
+      : path_;
   }
 
   // BOTH directories, deliberately. dist/ is what Cloudflare serves and is tracked by git; the root
