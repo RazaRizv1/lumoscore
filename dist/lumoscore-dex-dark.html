@@ -1807,12 +1807,12 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lumos-promo .lx-dxstats{order:9;margin-top:auto;position:relative;z-index:4;display:grid;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0;padding:13px 26px 15px;background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,.075));border-top:1px solid rgba(255,255,255,.12);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
 .lx-dxstat{display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden;padding-left:17px;border-left:1px solid rgba(255,255,255,.10)}
 .lx-dxstat:first-child{padding-left:0;border-left:0}
-.lx-dxstat .v{font:800 23px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:9px}
-.lx-dxstat .l{font:600 10.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
-.lx-dxstat[data-k=top] .v{font-size:15px}
+.lx-dxstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
+.lx-dxstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
+.lx-dxstat[data-k=top] .v{font-size:18px}
 .lx-dxpair{display:inline-flex;flex:0 0 auto}
-.lx-dxpair span{display:block;width:24px;height:24px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
-.lx-dxpair .pb{margin-left:-9px}
+.lx-dxpair span{display:block;width:28px;height:28px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.lx-dxpair .pb{margin-left:-10px}
 /* ===== DESKTOP HERO =====
    Same treatment as mobile, at desktop scale: the neutral gradient image instead of the violet cosmic
    animation, and the card reduced to a headline and the stat strip. The description, the XLM price pill
@@ -1824,8 +1824,16 @@ html .lumos-promo.lm-on{overflow:hidden!important;border:1px solid rgba(255,255,
 html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!important;background:#fff1e6 url(/assets/hero/trade-hero-light.svg?v=c4f4c638) center/cover no-repeat!important}
 .lumos-promo.lm-on .lm::before,.lumos-promo.lm-on .lm::after{display:none!important}   /* design's scanlines + wash */
 .lumos-promo.lm-on .lm-sub,.lumos-promo.lm-on .lm-cta,.lumos-promo.lm-on .lm-chip,.lumos-promo.lm-on .lm-svg,.lumos-promo.lm-on .lm-bars{display:none!important}
-/* headline gets the room the other three gave up, and centres against the strip */
-.lumos-promo.lm-on .lm-c{justify-content:center;padding:26px 30px!important;max-width:none!important}
+/* Mark on the left, headline beside it. .lm-c becomes a ROW here, so justify-content is now the
+   horizontal axis and align-items does the vertical centring the column layout used to do. */
+.lumos-promo.lm-on .lm-c{flex-direction:row;align-items:center;justify-content:flex-start;gap:18px;padding:26px 30px!important;max-width:none!important}
+/* Painted through ::before, not the element background. The site's own painter writes an inline
+   "background:transparent" onto empty spans like this one, and inline beats any stylesheet rule -- the
+   mark rendered as nothing. A pseudo-element is out of its reach; this is the same trick the token icons
+   in this file already use. */
+.lx-heroico{flex:0 0 auto;position:relative;width:56px;height:56px;border-radius:50%;overflow:hidden;box-shadow:0 6px 18px -8px rgba(0,0,0,.55)}
+.lx-heroico::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+") center/contain no-repeat}
+html[data-theme="light"] .lx-heroico{box-shadow:0 6px 18px -10px rgba(16,16,22,.35)}
 .lumos-promo.lm-on .lm-h{font-size:36px!important;line-height:1.08!important;max-width:420px}
 html[data-theme="light"] .lumos-promo.lm-on .lm-h{color:#0e0e10!important}
 html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70));border-top-color:rgba(16,16,22,.12)}
@@ -1910,7 +1918,9 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
    The strip folds to 2x2 and everything steps down a size: at 375px the four columns become ~145px, and at
    the desktop sizes "USDC / XLM" plus its two 24px logos overran that by 4px. */
 @media(max-width:880px){
-.lumos-promo .lm-c{padding:18px 18px 16px!important}
+.lumos-promo .lm-c{padding:18px 18px 16px!important;gap:12px;flex-direction:row;align-items:center}
+.lx-heroico{width:38px;height:38px}
+.lx-hline2{display:block}                 /* forces "on <Chain>." onto its own line on a phone */
 .lumos-promo .lm-h{max-width:100%!important;font-size:23px!important;line-height:1.14!important}
 .lumos-promo .lm-sub{font-size:13.5px!important;max-width:100%!important}
 .lumos-promo .lm-cta{margin-top:14px}
@@ -2118,7 +2128,7 @@ html[data-theme="light"] .lm-bg{opacity:.09}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.9 12.9 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
         Launch Token
       </a>
-    </div><svg class="lm-svg" viewBox="0 0 640 300" preserveAspectRatio="none"><defs><linearGradient id="lmg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><g><animateTransform attributeName="transform" type="translate" from="0 0" to="-640 0" dur="28s" repeatCount="indefinite"/><path class="lm-area" d="M0,300 L0,200 L40,175 L80,210 L120,160 L160,185 L200,140 L240,170 L280,120 L320,150 L360,105 L400,145 L440,115 L480,160 L520,130 L560,190 L600,165 L640,200 L680,175 L720,210 L760,160 L800,185 L840,140 L880,170 L920,120 L960,150 L1000,105 L1040,145 L1080,115 L1120,160 L1160,130 L1200,190 L1240,165 L1280,200 L1280,300 Z"/><path class="lm-line" d="M0,200 L40,175 L80,210 L120,160 L160,185 L200,140 L240,170 L280,120 L320,150 L360,105 L400,145 L440,115 L480,160 L520,130 L560,190 L600,165 L640,200 L680,175 L720,210 L760,160 L800,185 L840,140 L880,170 L920,120 L960,150 L1000,105 L1040,145 L1080,115 L1120,160 L1160,130 L1200,190 L1240,165 L1280,200"/></g></svg><div class="lm-bars"><i style="height:45%;animation-delay:0.00s"></i><i style="height:62%;animation-delay:-0.24s"></i><i style="height:50%;animation-delay:-0.48s"></i><i style="height:70%;animation-delay:-0.72s"></i><i style="height:58%;animation-delay:-0.96s"></i><i style="height:80%;animation-delay:-1.20s"></i><i style="height:66%;animation-delay:-1.44s"></i><i style="height:90%;animation-delay:-1.68s"></i><i style="height:72%;animation-delay:-1.92s"></i><i style="height:85%;animation-delay:-2.16s"></i><i style="height:60%;animation-delay:-2.40s"></i><i style="height:95%;animation-delay:-2.64s"></i><i style="height:78%;animation-delay:-2.88s"></i><i style="height:68%;animation-delay:-3.12s"></i><i style="height:88%;animation-delay:-3.36s"></i><i style="height:74%;animation-delay:-3.60s"></i><i style="height:92%;animation-delay:-3.84s"></i><i style="height:64%;animation-delay:-4.08s"></i><i style="height:82%;animation-delay:-4.32s"></i><i style="height:70%;animation-delay:-4.56s"></i><i style="height:96%;animation-delay:-4.80s"></i><i style="height:80%;animation-delay:-5.04s"></i><i style="height:88%;animation-delay:-5.28s"></i><i style="height:72%;animation-delay:-5.52s"></i></div><div class="lm-chip"><div class="p1">APT</div><div class="p2">$8.41</div><div class="p3"><span>&#9650;</span> 2.41%</div></div><div class="lm-c"><h2 class="lm-h">The most advanced <em>DEX</em> on Stellar.</h2><p class="lm-sub">Pro order types, deep liquidity, and lightning-fast execution &mdash; built for serious traders.</p><a class="lm-cta" href="/trade/stellar">Start Trading <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></div></div></div>
+    </div><svg class="lm-svg" viewBox="0 0 640 300" preserveAspectRatio="none"><defs><linearGradient id="lmg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".28"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><g><animateTransform attributeName="transform" type="translate" from="0 0" to="-640 0" dur="28s" repeatCount="indefinite"/><path class="lm-area" d="M0,300 L0,200 L40,175 L80,210 L120,160 L160,185 L200,140 L240,170 L280,120 L320,150 L360,105 L400,145 L440,115 L480,160 L520,130 L560,190 L600,165 L640,200 L680,175 L720,210 L760,160 L800,185 L840,140 L880,170 L920,120 L960,150 L1000,105 L1040,145 L1080,115 L1120,160 L1160,130 L1200,190 L1240,165 L1280,200 L1280,300 Z"/><path class="lm-line" d="M0,200 L40,175 L80,210 L120,160 L160,185 L200,140 L240,170 L280,120 L320,150 L360,105 L400,145 L440,115 L480,160 L520,130 L560,190 L600,165 L640,200 L680,175 L720,210 L760,160 L800,185 L840,140 L880,170 L920,120 L960,150 L1000,105 L1040,145 L1080,115 L1120,160 L1160,130 L1200,190 L1240,165 L1280,200"/></g></svg><div class="lm-bars"><i style="height:45%;animation-delay:0.00s"></i><i style="height:62%;animation-delay:-0.24s"></i><i style="height:50%;animation-delay:-0.48s"></i><i style="height:70%;animation-delay:-0.72s"></i><i style="height:58%;animation-delay:-0.96s"></i><i style="height:80%;animation-delay:-1.20s"></i><i style="height:66%;animation-delay:-1.44s"></i><i style="height:90%;animation-delay:-1.68s"></i><i style="height:72%;animation-delay:-1.92s"></i><i style="height:85%;animation-delay:-2.16s"></i><i style="height:60%;animation-delay:-2.40s"></i><i style="height:95%;animation-delay:-2.64s"></i><i style="height:78%;animation-delay:-2.88s"></i><i style="height:68%;animation-delay:-3.12s"></i><i style="height:88%;animation-delay:-3.36s"></i><i style="height:74%;animation-delay:-3.60s"></i><i style="height:92%;animation-delay:-3.84s"></i><i style="height:64%;animation-delay:-4.08s"></i><i style="height:82%;animation-delay:-4.32s"></i><i style="height:70%;animation-delay:-4.56s"></i><i style="height:96%;animation-delay:-4.80s"></i><i style="height:80%;animation-delay:-5.04s"></i><i style="height:88%;animation-delay:-5.28s"></i><i style="height:72%;animation-delay:-5.52s"></i></div><div class="lm-chip"><div class="p1">APT</div><div class="p2">$8.41</div><div class="p3"><span>&#9650;</span> 2.41%</div></div><div class="lm-c"><span class="lx-heroico" aria-hidden="true"></span><h2 class="lm-h">The most advanced <em>DEX</em> on Stellar.</h2><p class="lm-sub">Pro order types, deep liquidity, and lightning-fast execution &mdash; built for serious traders.</p><a class="lm-cta" href="/trade/stellar">Start Trading <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></div></div></div>
 
     <!-- New Mints on Aptos -->
     <div class="dex-mints-card">
@@ -4539,6 +4549,14 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
 
 
 
+
+
+
+
+
+
+
+
 <script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -4944,10 +4962,16 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     if(!t)return;
     // the slide breaks its title across two lines for a 58%-wide column; ours runs full width
     var head=t.innerHTML.replace(/<br\s*\/?>/gi," ");
+    // "on Stellar." takes its own line rather than being squeezed onto the first. Matched on the trailing
+    // "on <Word>." so it follows whatever chain the slide names instead of hardcoding one.
+    // The leading space is kept OUTSIDE the span deliberately: without it the text reads "DEXon Stellar."
+    // to anything that flattens the markup -- a screen reader, a crawler, a copy-paste -- even though the
+    // block display hides that from the eye.
+    head=head.replace(/\s*\bon\s+([A-Za-z]+)\.\s*$/, ' <span class="lx-hline2">on $1.</span>');
     if(head.indexOf("<em")<0)head=head.replace(/\bDEX\b/,"<em>DEX</em>");   // accent word, as on desktop
     var lm=document.createElement("div"); lm.className="lm";
     // No price pill here: XLM/USD belongs on the pages that trade it, not on this card.
-    lm.innerHTML='<div class="lm-c"><h2 class="lm-h">'+head+'</h2>'
+    lm.innerHTML='<div class="lm-c"><span class="lx-heroico" aria-hidden="true"></span><h2 class="lm-h">'+head+'</h2>'
       +'<p class="lm-sub">'+(s?s.innerHTML:"")+'</p></div>';   // the actions live in the pairs heading now
     card.appendChild(lm);                                         // after .lx-cosmic, so the copy paints over it
     card.classList.add("lx-mobhero");
