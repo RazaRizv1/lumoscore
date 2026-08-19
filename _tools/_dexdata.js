@@ -108,10 +108,12 @@ svg.lm-svg.lx-dxc{overflow:visible}
    simultaneous keyframe animations on a phone. applyCosmic() now skips this card and removes the layer if
    an earlier pass built one, so the elements are gone rather than merely hidden.
    The art is two authored SVGs under /assets/hero (about 1.3 KB each, pure gradients, no filters), one per
-   theme. The colour is the same ember it was: both themes define --accent as #ea6a2c, and the hero had
-   previously inherited the Pools violet, which is what made the brand-orange button look like a clash.
+   theme, and both are NEUTRAL -- stops taken from the site's own grey ramp, depth from luminance alone, no
+   hue at all. The card is a shade of the page rather than a colour on it. Everything else on the card
+   follows: border, price pill, stat strip and the secondary button are all neutral too. The only brand
+   colour left inside the hero is the primary button and the accent word in the headline.
    The flat colour behind the image is the art's own mid-tone, so a slow image load shows no white flash. */
-.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#130d07 url(/assets/hero/trade-hero-dark.svg) center/cover no-repeat}
+.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#131317 url(/assets/hero/trade-hero-dark.svg) center/cover no-repeat}
 .lx-mobhero .lx-cosmic{display:none!important}     /* belt and braces if a stale layer ever survives */
 /* the two page CTAs, moved inside the card: Launch Token leads, How it works sits beside it */
 /* Launch Token is the primary action, so it takes the wider column; How it works sits beside it smaller. */
@@ -122,17 +124,17 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lx-mobhero .mdx-hero-btn.ghost{background:rgba(255,255,255,.09)!important;border-color:rgba(255,255,255,.22)!important;color:#fff!important;height:34px;font-size:11.5px;padding:0 8px!important;align-self:center}
 .lx-mobhero .mdx-hero-btn.ghost svg{width:13px;height:13px}
 /* ---- light theme: the same card, warmed rather than darkened ---- */
-html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(234,106,44,.22);background:#fff1e6 url(/assets/hero/trade-hero-light.svg) center/cover no-repeat}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h{color:#1b1410!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(16,16,22,.10);background:#f7f8fa url(/assets/hero/trade-hero-light.svg) center/cover no-repeat}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h{color:#0e0e10!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h em{color:#c2551d!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-sub{color:rgba(48,34,24,.75)!important}
-html[data-theme="light"] .lx-mobhero .mdx-hero-btn.ghost{background:rgba(255,255,255,.78)!important;border-color:rgba(234,106,44,.30)!important;color:#a8491a!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{background:rgba(255,255,255,.72)!important;border-color:rgba(234,106,44,.20)!important;box-shadow:0 10px 24px -14px rgba(120,60,20,.45)!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p1{color:rgba(70,48,32,.7)!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2 .lc-money{color:#1b1410!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.30),rgba(255,255,255,.66));border-top-color:rgba(234,106,44,.20)}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v{color:#1b1410!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l{color:rgba(70,48,32,.7)!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-sub{color:rgba(38,38,48,.75)!important}
+html[data-theme="light"] .lx-mobhero .mdx-hero-btn.ghost{background:rgba(255,255,255,.80)!important;border-color:rgba(16,16,22,.16)!important;color:#2b2b33!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{background:rgba(255,255,255,.78)!important;border-color:rgba(16,16,22,.12)!important;box-shadow:0 10px 24px -14px rgba(16,16,22,.30)!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p1{color:rgba(52,52,64,.72)!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2 .lc-money{color:#0e0e10!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70));border-top-color:rgba(16,16,22,.12)}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v{color:#0e0e10!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l{color:rgba(52,52,64,.72)!important}
 html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,255,.95)}
 .lx-mobhero .lumos-promo-slides,.lx-mobhero .lumos-promo-dots{display:none!important}
 .lx-mobhero .lm{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;min-height:260px}
