@@ -1201,6 +1201,102 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();<\/script>`;
 
+
+// ===================================================================================================
+// "How it works" dialog. Its own block on purpose: it does not share a scope with the data layer, so a
+// throw in there cannot take the popup with it, and it needs none of that layer's state.
+// ===================================================================================================
+const HIW = `<style id="lx-hiw-css">
+.lx-hiw{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.lx-hiw[hidden]{display:none}
+.lx-hiw-bd{position:absolute;inset:0;background:rgba(8,8,12,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.lx-hiw-card{position:relative;z-index:1;width:100%;max-width:560px;max-height:86vh;overflow:auto;-webkit-overflow-scrolling:touch;
+  background:var(--surface,#fff);color:var(--text,#0e0e10);border:1px solid var(--border,#ececef);border-radius:18px;
+  padding:26px 26px 22px;box-shadow:0 28px 70px -20px rgba(6,8,16,.55);animation:lxHiwIn .16s ease-out}
+@keyframes lxHiwIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media(prefers-reduced-motion:reduce){.lx-hiw-card{animation:none}}
+.lx-hiw-x{position:absolute;top:14px;right:14px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;
+  border-radius:9px;border:1px solid var(--border,#ececef);background:transparent;color:var(--text-muted,#5c5c66);
+  font-size:19px;line-height:1;cursor:pointer}
+.lx-hiw-x:hover{background:var(--surface-2,#fafbfc);color:var(--text,#0e0e10)}
+.lx-hiw-x:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px}
+.lx-hiw-t{margin:0 34px 2px 0;font-size:21px;font-weight:800;letter-spacing:-.02em}
+.lx-hiw-sub{margin:0 0 16px;font-size:13.5px;line-height:1.5;color:var(--text-muted,#5c5c66)}
+.lx-hiw-h{margin:0 0 12px;font:700 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--accent,#ea6a2c)}
+.lx-hiw-s+.lx-hiw-s{margin-top:18px;padding-top:18px;border-top:1px solid var(--border,#ececef)}
+.lx-hiw-l{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.lx-hiw-l li{display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start}
+.lx-hiw-n{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font:700 12px/1 'JetBrains Mono',monospace;color:var(--accent,#ea6a2c);
+  background:var(--accent-pale,rgba(234,106,44,.10));border:1px solid var(--accent-soft,rgba(234,106,44,.22))}
+.lx-hiw-b{display:block;font-size:14px;font-weight:700;margin-bottom:3px}
+.lx-hiw-p{display:block;font-size:13.5px;line-height:1.55;color:var(--text-muted,#5c5c66)}
+.lx-hiw-f{margin:16px 0 0;padding-top:14px;border-top:1px solid var(--border,#ececef);
+  font-size:12.5px;line-height:1.55;color:var(--text-muted,#5c5c66)}   /* --text-soft measured 3.64 here: under AA */
+/* --accent on a white card measures 3.18 -- under AA for 10.5px labels and the step numerals. Dark
+   theme is fine at 5.82, so only light is deepened. */
+html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a8491a}
+@media(max-width:560px){
+  .lx-hiw{padding:0;align-items:flex-end}
+  .lx-hiw-card{max-width:none;max-height:90vh;border-radius:18px 18px 0 0;padding:22px 18px 20px;animation:lxHiwUp .18s ease-out}
+  @keyframes lxHiwUp{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
+  .lx-hiw-t{font-size:19px}
+}
+</style>
+<script id="lx-hiw">(function(){
+  if(window.__lxHiwReady)return; window.__lxHiwReady=1;
+  var EL=null, prevFocus=null, prevOverflow="", trigger=null;
+  function esc(x){return x;}
+  function step(n,t,b){ return '<li><span class="lx-hiw-n">'+n+'</span><span><span class="lx-hiw-b">'+t+'</span><span class="lx-hiw-p">'+b+'</span></span></li>'; }
+  function build(){
+    if(EL)return EL;
+    var d=document.createElement("div"); d.className="lx-hiw"; d.id="lxHiw"; d.hidden=true;
+    d.innerHTML='<div class="lx-hiw-bd" data-lxhiw-close></div>'
+      +'<div class="lx-hiw-card" role="dialog" aria-modal="true" aria-labelledby="lxHiwT">'
+      +'<button class="lx-hiw-x" data-lxhiw-close aria-label="Close">×</button>'
+      +'<h2 class="lx-hiw-t" id="lxHiwT">How it works</h2>'
+      +'<p class="lx-hiw-sub">Trading and minting on LumosCore, end to end.</p>'
+      +'<div class="lx-hiw-s"><div class="lx-hiw-h">How to trade</div><ol class="lx-hiw-l">'
+      +step(1,"Connect and choose an asset","Connect your Stellar wallet and pick any listed asset. If you do not hold it yet, the trustline is created inside the same transaction, so there is no separate setup step.")
+      +step(2,"We route for the best price","Every order is quoted across the Stellar order book, Soroswap, Phoenix and Aquarius, then filled wherever you get the most. Rate, price impact and minimum received are shown before you sign.")
+      +step(3,"Sign once, settle on Stellar","One signature sends one transaction, protected by a minimum received floor, so a moving market cannot fill you below it. Want a specific price instead? The Limit tab places a real resting order on the Stellar order book.")
+      +'</ol></div>'
+      +'<div class="lx-hiw-s"><div class="lx-hiw-h">How to mint</div><ol class="lx-hiw-l">'
+      +step(1,"Describe your token","Name, ticker, icon, description, links, total supply, and how much you keep, up to 30%. The remainder seeds the liquidity pool, so your token is tradable the moment it exists.")
+      +step(2,"Review the cost","One screen showing the service fee, the pool seed and your starting liquidity, priced in XLM at the live rate, plus the small deposit that creates the issuer account.")
+      +step(3,"One signature does all of it","A single atomic transaction creates the issuer, mints your entire supply to you, seeds the XLM pool, then locks the issuer permanently. Supply is fixed from the first block: nobody can mint more, including you.")
+      +'</ol></div>'
+      +'<p class="lx-hiw-f">Trading fee 0.2% — or 0.1% if you hold 250,000 LUMOS. Stellar network fees are separate and typically a fraction of a cent.</p>'
+      +'</div>';
+    document.body.appendChild(d); EL=d; return d;
+  }
+  function open(){
+    var d=build(); if(!d.hidden)return;
+    prevFocus=trigger||document.activeElement; d.hidden=false;
+    prevOverflow=document.body.style.overflow; document.body.style.overflow="hidden";   // no scrolling the page behind
+    var x=d.querySelector(".lx-hiw-x"); if(x)try{x.focus();}catch(_){}
+  }
+  function close(){
+    if(!EL||EL.hidden)return;
+    EL.hidden=true; document.body.style.overflow=prevOverflow||"";
+    if(prevFocus&&prevFocus.focus)try{prevFocus.focus();}catch(_){}
+  }
+  // WINDOW capture, the earliest phase, and stopImmediatePropagation -- the same reason _mobdex.js gives
+  // for its own listener: the design ships a delegated nav handler on DOCUMENT capture, so a document
+  // listener here loses the race and the design wins. It treated this href="#" as navigation and re-served
+  // the Trade page instead of opening the dialog. stopPropagation is not enough; the design's listener is
+  // on the same node and phase, so it needs stopImmediate.
+  // Delegated rather than bound, because the build moves this link into the hero (desktop) or the pairs
+  // heading (mobile), and a re-rendered list must not be able to orphan the handler.
+  window.addEventListener("click",function(e){
+    var t=e.target; if(!t||!t.closest)return;
+    if(t.closest("[data-lxhiw-close]")){ e.preventDefault(); e.stopImmediatePropagation(); close(); return; }
+    var hit=t.closest("#dexHiwBtn,.lx-dctas .dex-hero-btn.ghost,.lx-ctas .mdx-hero-btn.ghost");
+    if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
+  },true);
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });
+})();</script>`;
+
 // ---- inject into every container that has the dex-main keys ----
 const files = fs.readdirSync('.').filter(f => /^lumoscore-.*-(desktop|mobile)\.html$/.test(f));
 let n = 0, containers = 0;
@@ -1212,7 +1308,9 @@ for (const file of files) {
     if (!json[k]) continue;
     let p = json[k];
     p = p.replace(/<style id="lx-dexmain-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-dexmain">[\s\S]*?<\/script>/, '');
+         .replace(/<script id="lx-dexmain">[\s\S]*?<\/script>/, '')
+         .replace(/<style id="lx-hiw-css">[\s\S]*?<\/style>/, '')
+         .replace(/<script id="lx-hiw">[\s\S]*?<\/script>/, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     // ---- FLASH: put the marker classes in the MARKUP, not on the JS ----
@@ -1297,7 +1395,7 @@ for (const file of files) {
       }
     }
     const bi = p.lastIndexOf('</body>');
-    p = p.slice(0, bi) + SCRIPT + p.slice(bi);
+    p = p.slice(0, bi) + SCRIPT + HIW + p.slice(bi);
     json[k] = p; changed = true; n++;
   }
   if (changed) {
