@@ -5120,20 +5120,22 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
     var m=/^url\(\s*["']?([\s\S]*?)["']?\s*\)$/.exec(v);
     return m?m[1]:v;
   }
+  // Our published token registry. MUST live at top level: first time round this block was inserted
+  // INSIDE recFromRow(), which scoped lxSeaReg to that function -- so the call site below threw a
+  // ReferenceError while mapping results and the search returned nothing at all. It also re-fetched on
+  // every row. The syntax was valid, which is exactly why a parse check did not catch it.
+  //
+  // window.__lxTokenRegistry is baked into <head> at build time, so this is known on the first paint.
+  // The fetch stays only as a refresh for a page left open across a deploy.
+  var _seaMan=(function(){ try{ return window.__lxTokenRegistry||null; }catch(e){ return null; } })();
+  try{ fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; })
+    .then(function(m){ if(m&&typeof m==="object"&&m.constructor!==Array)_seaMan=m; }).catch(function(){}); }catch(_e){}
+  function lxSeaReg(code,issuer){
+    if(!_seaMan||!code||!issuer)return "";
+    var v=_seaMan[code+"-"+issuer]; var u=(v&&typeof v==="object")?v.image:v;
+    return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
+  }
   function recFromRow(a){
-    // Our published token registry, read from our own origin. stellar.expert carries no tomlInfo for
-// LumosCore assets at all, so their search rows arrived with img:"" and drew a letter avatar even though
-// the logo was published in our stellar.toml. Same record the toml is built from, so search agrees with
-// the wallet.
-// window.__lxTokenRegistry is baked into <head> at build time, so this is known on the FIRST paint and the letter avatar is never drawn for a token we have. The fetch stays only as a refresh for a page left open across a deploy.
-var _seaMan=(function(){ try{ return window.__lxTokenRegistry||null; }catch(e){ return null; } })();
-try{ fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; })
-  .then(function(m){ if(m&&typeof m==="object"&&m.constructor!==Array)_seaMan=m; }).catch(function(){}); }catch(_e){}
-function lxSeaReg(code,issuer){
-  if(!_seaMan||!code||!issuer)return "";
-  var v=_seaMan[code+"-"+issuer]; var u=(v&&typeof v==="object")?v.image:v;
-  return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
-}
 function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace(/\s+/g," "):""; }
     var nm=a.querySelector(".sp-name-row"), name="";
     if(nm){ var c=nm.cloneNode(true); var d=c.querySelector(".sp-domain"); if(d&&d.parentNode)d.parentNode.removeChild(d);
