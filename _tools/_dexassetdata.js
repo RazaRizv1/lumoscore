@@ -2524,7 +2524,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       if(!blk)return;
       var img=(blk.match(/image\\s*=\\s*["']([^"']+)["']/i)||[])[1];
       var desc=(blk.match(/desc\\s*=\\s*["']([^"']+)["']/i)||[])[1];
-      if(img)tomlImg=img; if(desc)tomlDesc=desc; if(img||desc)guardApply();
+      if(img)tomlImg=img; if(desc)tomlDesc=desc;
+      // Paint the header HERE, exactly as loadSeLogo does. Storing tomlImg is not enough: applyHeader
+      // only repaints when data-lxlogo !== CODE, and it has already stamped CODE by the time this
+      // resolves -- so the real logo arrived and was never drawn. That is why lumoscore.com assets kept
+      // showing a letter avatar on Trade-Asset even once the toml was live and carrying their image.
+      if(img){ var lgT=q(".asset-logo"); if(lgT){ lgT.setAttribute("data-lxlogo",CODE); lgT.textContent="";
+        lgT.style.setProperty("background-image","url("+img+")","important"); } }
+      if(img||desc)guardApply();
     }).catch(function(){});
   }
 

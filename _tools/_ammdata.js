@@ -381,7 +381,26 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   function myAddr(){try{var a=localStorage.getItem("lumos.address")||"";return /^G[A-Z2-7]{55}$/.test(a)?a:"";}catch(e){return "";}}
   function gcolor(s){return GRAD[ghash(s)%GRAD.length];}
-  function launchIcon(code,issuer){ try{ var m=JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}"); return m[code+"-"+issuer]||""; }catch(e){ return ""; } }
+  function launchIcon(code,issuer){ try{ var m=JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}"); var v=m[code+"-"+issuer]; return (v&&typeof v==="object")?(v.image||""):(v||""); }catch(e){ return ""; } }
+  // The token-icon registry we publish at /assets/tokens/launchpad-icons.json -- the same record the
+  // stellar.toml is built from, so a LumosCore asset shows the SAME logo here as it does in a wallet.
+  // Read from our own origin, so it needs neither the toml round trip nor any third party.
+  var _amMan=null, _amManGo=0;
+  function amManifest(){
+    if(_amManGo)return; _amManGo=1;
+    fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; }).then(function(m){
+      if(!m||typeof m!=="object"||m.constructor===Array)return;
+      _amMan=m;
+      try{ healLogos(); }catch(_e){}                            // rows already drawn -> repaint them
+    }).catch(function(){});
+  }
+  function manIcon(code,issuer){
+    if(!_amMan)return "";
+    var v=_amMan[code+"-"+issuer]; var u=(v&&typeof v==="object")?v.image:v;
+    // same-origin absolute path only, so one bad write cannot repoint every icon at another host
+    return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
+  }
+  amManifest();
   // token side = the token's own uploaded logo if we have it, else a DISTINCT colored monogram (per code); XLM side = xlm.png
   function ico1(cls,mi,mono,code,issuer){ var mo=mono?(' data-mono="'+esc(mono)+'"'):''; var idn=(code!=null&&code!=="")?(' data-lxc="'+esc(code)+'" data-lxi="'+esc(issuer||"")+'"'):''; return '<div class="'+cls+' lx-ico" data-lxfixed="1" data-logoed="1"'+mo+idn+' style="--mi:'+mi+'"></div>'; }
   // letter-avatar data-URI: a per-asset coloured monogram, so an unknown token NEVER renders the generic
@@ -1278,7 +1297,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // real token logo for the pool's non-XLM asset (was a hardcoded placeholder). Known map + launch icons +
   // harvested cache, with a stellar.expert toml fallback that fills the header <img> async.
   var AMLOGOS={XLM:"/assets/tokens/xlm.png",AQUA:"/assets/tokens/aqua.png",USDC:"/assets/tokens/usdc.png",yUSDC:"/assets/tokens/usdc.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",BLND:"/assets/tokens/blnd.svg",SHX:"/assets/tokens/shx.png",SSLX:"/assets/tokens/sslx.png"};
-  function amTokUrl(code,issuer){ return AMLOGOS[code]||launchIcon(code,issuer)||((window.__lxLogos||{})[code])||""; }
+  // Registry first: it is keyed by CODE+ISSUER, where AMLOGOS and __lxLogos are keyed by CODE alone,
+  // and a ticker is not an identity on Stellar. Everything after it is the previous behaviour.
+  function amTokUrl(code,issuer){ return manIcon(code,issuer)||AMLOGOS[code]||launchIcon(code,issuer)||((window.__lxLogos||{})[code])||""; }
   function amFetchLogo(code,issuer,cb){ var u=amTokUrl(code,issuer); if(u){cb(u);return;} if(!code||!issuer){cb("");return;} getJSON("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){ var recs=(d&&d._embedded&&d._embedded.records)||[]; var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+issuer)===0;})[0]; var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||ti.orgLogo||""; if(img){AMLOGOS[code]=img;try{(window.__lxLogos=window.__lxLogos||{})[code]=img;}catch(_){}} cb(img||""); }).catch(function(){cb("");}); }
   function tokLogo(){ var c=(DET&&DET.code)||"", i=(DET&&DET.issuer)||""; var av=avatarUri(c); var u=amTokUrl(c,i)||av;
     return '<img class="lx-tokimg" data-lxc="'+esc(c)+'" data-lxi="'+esc(i)+'" src="'+u+'" alt="" onerror="this.onerror=null;this.src=\\x27'+av+'\\x27">'; }
