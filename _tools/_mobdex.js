@@ -441,7 +441,12 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   function pass(){try{
     orderSections();orderMoverTabs();
     wire();renderMints();renderMovers();renderPairs();repaintIcons();
-    if(assets()&&!document.body.classList.contains("lxmd-ready"))
+    // Hold the reveal until the ORDER is real, not merely until assets exist. The list defaults to 24h
+    // volume, and __lxDEXassets appears as soon as the eight majors are priced -- the launchpad roster
+    // lands after that, so revealing on assets() alone showed volume order for the majors and then
+    // re-sorted when the rest arrived. __lxDEXsortReady is raised by the data layer when both halves are
+    // in, and it carries that layer's own 6s backstop, so this cannot hang waiting.
+    if(assets()&&(window.__lxDEXsortReady||!mkSort.key)&&!document.body.classList.contains("lxmd-ready"))
       document.body.classList.add("lxmd-ready");
   }catch(_){}}
   if(document.readyState!=="loading")pass();else document.addEventListener("DOMContentLoaded",pass);

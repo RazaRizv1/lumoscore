@@ -4592,6 +4592,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
 
 
 
+
+
+
+
 <script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -4725,10 +4729,32 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // one request for all of them -- and the edge is not rate-limited the way each visitor was, which is
     // what used to leave ZERO and UPT permanently showing a dash
     MINTS_READY=batchPx(_first).then(function(){ nativeState=2; touch(); },function(){ nativeState=2; touch(); });
+    // The pair list now DEFAULTS to 24h volume, so the roster needs volumes before its first paint --
+    // otherwise the table shows roster order and visibly re-sorts a second later, which is the flash.
+    // This is batchPx, the edge-cached endpoint at 16 assets per request (two requests for the whole
+    // roster), NOT the per-asset Horizon sweep that priceVisible deliberately avoids -- that one is what
+    // used to fire ~210 requests before a single price appeared, and it stays lazy.
+    var rest=add.filter(function(a){ return a&&!a.__px; });
+    ROSTER_READY=MINTS_READY.then(function(){ return rest.length?batchPx(rest):null; })
+                            .then(rosterDone,rosterDone);
   }
+  function rosterDone(){ rosterPriced=true; try{ markSortReady(); }catch(_){} }
   // Rows on screen get the full loadAsset (the table shows TVL and a sparkline); in waves of four so a
   // page turn cannot open 25 sockets at once.
   var MINTS_READY=null;                                       // resolves when the mints box has its prices
+  var ROSTER_READY=null, rosterPriced=false;                  // ...and when the whole native roster has volumes
+  // The rows stay hidden until the order they are in is the REAL one. With a volume default, revealing
+  // earlier means painting roster order and then re-sorting in front of the reader.
+  var sortReady=false;
+  function markSortReady(){
+    if(sortReady)return;
+    if(mkSort.key && (!window.__lxDEXloaded || !rosterPriced))return;   // both halves of the data, or nothing
+    sortReady=true;
+    // The phone list is rendered by the mobile layer but priced by this one, so it gates on this flag
+    // too -- otherwise it would reveal as soon as the majors landed and re-sort when the roster arrived.
+    try{ window.__lxDEXsortReady=1; }catch(_){}
+    try{ guardApply(); }catch(_){}
+  }
   function priceVisible(list){
     var need=list.filter(function(a){ return a&&!a.__px; });
     if(!need.length)return;
@@ -5411,8 +5437,9 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       qa(".dex-mk-action-btn",tb).forEach(function(btn){ btn.addEventListener("click",function(e){ e.stopPropagation(); var a=byCode[btn.getAttribute("data-tkr")]; if(a)navTo(a); }); });
       var shown=q("#dexMkShown"); if(shown)setTxt(shown,data.length===0?"0":(start+1)+"\u2013"+(start+data.length));
       var strongs=qa(".dex-mk-page-info strong"); if(strongs[1])setTxt(strongs[1],String(all.length));
-      tb.classList.add("lxd");
+      if(sortReady)tb.classList.add("lxd");
     }
+    if(sortReady&&!tb.classList.contains("lxd"))tb.classList.add("lxd");
     // fill values in place (no innerHTML churn -> no glitch); gated so ALL rows' details reveal together
     qa("tr[data-tkr]",tb).forEach(function(tr){ var a=byCode[tr.getAttribute("data-tkr")]; if(!a)return; paintIcons(tr);
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
@@ -5519,9 +5546,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // list does that itself. The mobile list had no way to ask, so 26 of 32 launchpad tokens sat at
     // "0 XLM / —" -- and they had not simply never traded: LIBERATOR, BLA and TDT had all traded within
     // the hour. It was a missing request, not a missing market.
-    batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;window.__lxDEXpriceRows=priceVisible;window.__lxDEXmints=mintList;}catch(_){} touch(); deferExtras(ASSETS); },
-      function(){ window.__lxDEXloaded=1; touch(); });
+    batchPx(ASSETS).then(function(){ window.__lxDEXloaded=1; try{ markSortReady(); }catch(_){} try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;window.__lxDEXpriceRows=priceVisible;window.__lxDEXmints=mintList;}catch(_){} touch(); deferExtras(ASSETS); },
+      function(){ window.__lxDEXloaded=1; try{ markSortReady(); }catch(_){} touch(); });
     // safety: reveal details even if an asset's request hangs (never leave the table stuck on placeholders)
+    setTimeout(function(){ sortReady=true; try{ window.__lxDEXsortReady=1; }catch(_){} try{ guardApply(); }catch(_){} }, 6000);
     setTimeout(function(){ if(!window.__lxDEXloaded){ window.__lxDEXloaded=1; try{window.__lxDEXassets=ASSETS;window.__lxDEXmovers=moverData;window.__lxDEXlogoCss=logoCss;}catch(_){} touch(); } }, 4500);
   }
 
