@@ -385,7 +385,8 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // The token-icon registry we publish at /assets/tokens/launchpad-icons.json -- the same record the
   // stellar.toml is built from, so a LumosCore asset shows the SAME logo here as it does in a wallet.
   // Read from our own origin, so it needs neither the toml round trip nor any third party.
-  var _amMan=null, _amManGo=0;
+  // window.__lxTokenRegistry is baked into <head> at build time, so this is known on the FIRST paint and the letter avatar is never drawn for a token we have. The fetch stays only as a refresh for a page left open across a deploy.
+  var _amMan=(function(){ try{ return window.__lxTokenRegistry||null; }catch(e){ return null; } })(), _amManGo=0;
   function amManifest(){
     if(_amManGo)return; _amManGo=1;
     fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; }).then(function(m){

@@ -392,7 +392,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // appear as soon as they are deployed, on staging and production alike, with no dependency on the toml
   // or on any third party. The toml still matters -- it is what publishes them to wallets and explorers --
   // but the site no longer waits on it to draw its own pages.
-  var _man=null, _manStarted=0;
+  // window.__lxTokenRegistry is baked into <head> at build time, so this is known on the FIRST paint and the letter avatar is never drawn for a token we have. The fetch stays only as a refresh for a page left open across a deploy.
+  var _man=(function(){ try{ return window.__lxTokenRegistry||null; }catch(e){ return null; } })(), _manStarted=0;
   function loadManifest(){
     if(_manStarted)return; _manStarted=1;
     fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; }).then(function(m){

@@ -120,6 +120,51 @@ function cleanLinks(html){
   });
 }
 
+// THE TOKEN REGISTRY, BAKED IN AT BUILD TIME.
+//
+// Every page resolved a LumosCore token's logo by FETCHING this same file at runtime, which meant the
+// first paint had no URL yet and drew the letter avatar, then swapped it for the real logo a moment
+// later. Two paints is one visible flash, on every page and every asset. Fetching earlier does not fix
+// that -- only knowing the answer synchronously does.
+//
+// So it is emitted into <head>, before any data layer runs, exactly like window.__lxRoute. The runtime
+// lookup becomes a property read and the avatar is never painted for a token we have.
+//
+// Read from assets/tokens/ (the source the build copies into dist/), so it is always whatever
+// _tools/_launchicons.js last wrote. A missing or unreadable file yields {} and every page falls back to
+// the behaviour it had before, rather than failing the build.
+function tokenRegistry(){
+  try{
+    const raw = fs.readFileSync(path.join(__dirname, '..', 'assets', 'tokens', 'launchpad-icons.json'), 'utf8');
+    const m = JSON.parse(raw);
+    if(!m || typeof m !== 'object' || Array.isArray(m)) return {};
+    const out = {};
+    for(const k of Object.keys(m)){
+      const v = m[k];
+      const img = (v && typeof v === 'object') ? v.image : v;
+      const name = (v && typeof v === 'object' && typeof v.name === 'string') ? v.name : '';
+      // same-origin absolute path only -- the page interpolates this into url(), so a value naming
+      // another host would let one bad write repoint every icon on the site
+      if(typeof img === 'string' && img.charAt(0) === '/' && img.indexOf('//') !== 0) out[k] = { image: img, name: name };
+      else if(name) out[k] = { image: '', name: name };
+    }
+    return out;
+  }catch(e){ return {}; }
+}
+const TOKEN_REG_JSON = JSON.stringify(tokenRegistry());
+
+function injectTokenRegistry(html){
+  // Guard on the ASSIGNMENT, not the bare name: the data layers mention __lxTokenRegistry in their
+  // comments, so a name test matched every page and silently skipped the injection entirely.
+  if(html.indexOf('window.__lxTokenRegistry=') >= 0) return html;
+  const tag = '<script>window.__lxTokenRegistry=' + TOKEN_REG_JSON + ';</script>';
+  const hi = html.indexOf('<head>');
+  if(hi >= 0) return html.slice(0, hi + 6) + tag + html.slice(hi + 6);
+  const he = html.indexOf('</head>');
+  if(he >= 0) return html.slice(0, he) + tag + html.slice(he);
+  return html;   // no head at all -> leave the page exactly as it was
+}
+
 function injectRuntime(html, validArray){
   if(html.indexOf('window.__lxSite')>=0) return html;
   const rt = runtime(validArray);
@@ -620,7 +665,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
   let written = 0;
   for(const name of files){
     const src  = adminOnly ? stripAuthGate(all[name]) : all[name];
-    const html = cleanLinks(rootRelative(injectRuntime(src, validArray)));
+    const html = cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(src), validArray)));
     fs.writeFileSync(path.join(outDir, name), html, 'utf8');
     written++;
   }
@@ -630,7 +675,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
     const landing = all['lumoscore-landing.html'];
     if(!landing) throw new Error('lumoscore-landing.html missing — cannot build the site root');
     fs.writeFileSync(path.join(outDir, 'index.html'),
-      indexHtml(cleanLinks(rootRelative(injectRuntime(landing, validArray)))), 'utf8');
+      indexHtml(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(landing), validArray)))), 'utf8');
   }
   // The admin panel deploys as its OWN Cloudflare project, so it cannot borrow dist/assets the way
   // serve.js lets it locally — without this its favicon and wallet logos 404 in production.

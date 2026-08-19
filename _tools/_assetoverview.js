@@ -184,7 +184,8 @@ const SCRIPT = `<script id="lx-aodata">(function(){
   // the token's uploaded Launchpad logo (per-asset map, else the last launch result), else neutral placeholder
   // The published registry, read from our own origin. Same record the stellar.toml is built from, so this
   // page shows the same logo a wallet does. Async, so paintIdentity repaints when it lands.
-  var _aoMan=null;
+  // window.__lxTokenRegistry is baked into <head> at build time, so this is known on the FIRST paint and the letter avatar is never drawn for a token we have. The fetch stays only as a refresh for a page left open across a deploy.
+  var _aoMan=(function(){ try{ return window.__lxTokenRegistry||null; }catch(e){ return null; } })();
   (function(){
     fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; }).then(function(m){
       if(!m||typeof m!=="object"||m.constructor===Array)return;
