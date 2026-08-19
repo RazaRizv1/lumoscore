@@ -116,32 +116,33 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#131317 url(/assets/hero/trade-hero-dark.svg) center/cover no-repeat}
 .lx-mobhero .lx-cosmic{display:none!important}     /* belt and braces if a stale layer ever survives */
 /* the two page CTAs, moved inside the card: Launch Token leads, How it works sits beside it */
-/* Copy, then the stat band, then the actions. Set here because the three blocks are appended by
-   different functions, so DOM order is not something to rely on. */
+/* Copy, then the stat band. The actions are no longer on the card -- they sit in the All Trading Pairs
+   heading. Order is set here because the blocks are appended by different functions. */
 .lx-mobhero .lm-c{order:1}
 .lx-mobhero .lx-dxstats{order:2!important;margin-top:0!important}
-.lx-mobhero .mdx-hero-ctas{order:3;margin-top:auto!important}
-/* One button and one text link, not two buttons. */
-.lx-mobhero .mdx-hero-ctas{display:flex!important;align-items:center;gap:16px;width:100%;padding:0!important;position:relative;z-index:3}
+/* the CTA row, now in the section heading: title left, actions right, wrapping onto a second line rather
+   than overflowing when a narrow screen cannot seat all three */
+.mdx-section-head:has(.lx-ctas){display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.lx-ctas{display:flex!important;align-items:center;gap:7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
 /* the strip is no longer the last thing on the card, so it closes with a rule as well as opening with one */
-.lx-mobhero .lx-dxstats{border-bottom:1px solid rgba(255,255,255,.12)}
-html[data-theme="light"] .lx-mobhero .lx-dxstats{border-bottom-color:rgba(16,16,22,.12)}
+
 /* visually hidden, still in the document outline and the accessibility tree */
 .lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
-.lx-mobhero .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 10px!important;border-radius:10px;font-weight:700;font-size:12.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important}
-.lx-mobhero .mdx-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
-.lx-mobhero .mdx-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
-.lx-mobhero .mdx-hero-btn.primary{flex:0 0 auto}
+/* Sized so the pair of them seats beside the 121px heading inside a 343px row at 375px. It was 3px over
+   and wrapped to a second line; the group is 197px now against 212px of space. Narrower phones still wrap
+   rather than overflow -- that is what the flex-wrap on the head is for. */
+.lx-ctas .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5px;height:31px;padding:0 8px!important;border-radius:9px;font-weight:700;font-size:10.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
+.lx-ctas .mdx-hero-btn svg{width:11px;height:11px;flex:0 0 auto}
+.lx-ctas .mdx-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 8px 18px -11px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
 /* the design ships these as flex children that grow; a link must be its own width, not half the row */
-.lx-mobhero .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important}
-.lx-mobhero .mdx-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:12.5px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:rgba(255,255,255,.34)}
-.lx-mobhero .mdx-hero-btn.ghost svg{width:13px;height:13px;opacity:.8}
+.lx-ctas .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+.lx-ctas .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 /* ---- light theme: the same card, warmed rather than darkened ---- */
 html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(16,16,22,.10);background:#f7f8fa url(/assets/hero/trade-hero-light.svg) center/cover no-repeat}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h{color:#0e0e10!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h em{color:#c2551d!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-sub{color:rgba(38,38,48,.75)!important}
-html[data-theme="light"] .lx-mobhero .mdx-hero-btn.ghost{background:none!important;border:0!important;color:#33333d!important;text-decoration-color:rgba(16,16,22,.32)}
+html[data-theme="light"] .lx-ctas .mdx-hero-btn.ghost{color:#33333d!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{background:rgba(255,255,255,.78)!important;border-color:rgba(16,16,22,.12)!important;box-shadow:0 10px 24px -14px rgba(16,16,22,.30)!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p1{color:rgba(52,52,64,.72)!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2 .lc-money{color:#0e0e10!important}
@@ -191,7 +192,6 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 @media(max-width:560px){
 .lumos-promo .lm-c{padding:13px 14px 12px!important}
 .lx-mobhero .lm-c{padding-bottom:13px!important}
-.lx-mobhero .mdx-hero-ctas{padding:12px 14px 13px!important;margin:0!important}
 .lumos-promo .lm-h{font-size:18px!important;line-height:1.18!important;max-width:100%!important}
 .lumos-promo .lm-sub{display:none!important}          /* no room for it at half height; the headline carries the message */
 .lumos-promo .lm-cta{margin-top:11px;font-size:12.5px;padding:8px 14px;border-radius:9px}
@@ -644,8 +644,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var lm=document.createElement("div"); lm.className="lm";
     // No price pill here: XLM/USD belongs on the pages that trade it, not on this card.
     lm.innerHTML='<div class="lm-c"><h2 class="lm-h">'+head+'</h2>'
-      +'<p class="lm-sub">'+(s?s.innerHTML:"")+'</p>'
-      +'<a class="lm-cta" href="lumoscore-dex-asset.html">'+(a?a.innerHTML:"Start Trading")+'</a></div>';
+      +'<p class="lm-sub">'+(s?s.innerHTML:"")+'</p></div>';   // the actions live in the pairs heading now
     card.appendChild(lm);                                         // after .lx-cosmic, so the copy paints over it
     card.classList.add("lx-mobhero");
   }
@@ -656,14 +655,15 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var card=q(".lumos-promo"); if(!card||card.className.indexOf("lx-mobhero")<0)return;
     var box=card.querySelector(".lm-c"); if(!box)return;
     var ctas=document.querySelector(".mdx-hero-ctas"); if(!ctas)return;
-    // A sibling of the copy and the strip, not a child of the copy: the row sits BELOW the stats now,
-    // and the three are ordered in CSS rather than by DOM position -- applyMobileCtas and applyHeroStats
-    // append independently, so whichever runs first would otherwise decide the order.
-    var lm=card.querySelector(".lm")||box;
-    if(ctas.parentNode!==lm){
-      var own=box.querySelector(".lm-cta"); if(own&&own.parentNode)own.parentNode.removeChild(own);
-      lm.appendChild(ctas);
-    }
+    // The build already seats this row inside the All Trading Pairs heading. This is the fallback for a
+    // re-render that moves it: find that heading the same way the build does -- the section head before
+    // the pairs filters, since the mobile renderer reorders the two heads at runtime.
+    var own=card.querySelector(".lm-cta"); if(own&&own.parentNode)own.parentNode.removeChild(own);
+    if(ctas.className.indexOf("lx-ctas")<0)ctas.className+=" lx-ctas";
+    var filt=document.querySelector(".mdx-mk-filters")||document.querySelector(".mdx-mk-list"), head=null;
+    for(var el=filt;el;el=el.previousElementSibling)
+      if(el!==filt&&(" "+el.className+" ").indexOf(" mdx-section-head ")>=0){ head=el; break; }
+    if(head&&ctas.parentNode!==head)head.appendChild(ctas);
     // Launch Token leads so it sits on the LEFT; the design ships How it works first
     var prim=ctas.querySelector(".mdx-hero-btn.primary");
     if(prim&&prim!==ctas.firstElementChild)ctas.insertBefore(prim,ctas.firstElementChild);
@@ -1184,6 +1184,38 @@ for (const file of files) {
       // the page heading and its subtitle: hidden to the eye, kept in the outline (see .lx-sronly)
       p = p.replace(/<h1 class="page-title"/, '<h1 class="page-title lx-sronly"')
            .replace(/class="page-subtitle"/, 'class="page-subtitle lx-sronly"');
+      // The CTA row moves out of the page flow and into the All Trading Pairs heading, in the MARKUP.
+      // Doing it at runtime meant the two buttons painted in their original slot above the hero and then
+      // jumped -- the same class of flash as the carousel, which I missed when fixing that one.
+      // Guard on the MARKUP form, not the bare name: the stylesheet injected a few lines above already
+      // contains ".lx-ctas", so a plain indexOf('lx-ctas') is true on the first pass and skips the move.
+      if (p.indexOf('<div class="mdx-hero-ctas lx-ctas"') < 0) {
+        const cs = p.indexOf('<div class="mdx-hero-ctas"');
+        if (cs < 0) throw new Error('dex-mobile: mdx-hero-ctas not found');
+        let i = p.indexOf('>', cs) + 1, depth = 1;          // depth-match, do not guess at the first </div>
+        while (depth > 0 && i < p.length) {
+          const nd = p.indexOf('<div', i), cd = p.indexOf('</div>', i);
+          if (cd < 0) throw new Error('dex-mobile: unbalanced mdx-hero-ctas');
+          if (nd >= 0 && nd < cd) { depth++; i = nd + 4; } else { depth--; i = cd + 6; }
+        }
+        const block = p.slice(cs, i).replace('<div class="mdx-hero-ctas"', '<div class="mdx-hero-ctas lx-ctas"');
+        p = p.slice(0, cs) + p.slice(i);
+        // The pairs heading is the section head PRECEDING the pairs filters. There are two heads on this
+        // page and the mobile renderer reorders them at runtime, so position is not safe -- anchor on the
+        // filters and walk back.
+        const filt = p.indexOf('<div class="mdx-mk-filters"');
+        if (filt < 0) throw new Error('dex-mobile: mdx-mk-filters not found');
+        const hs = p.lastIndexOf('<div class="mdx-section-head"', filt);
+        if (hs < 0) throw new Error('dex-mobile: pairs section head not found');
+        let j = p.indexOf('>', hs) + 1, d2 = 1, close = -1;
+        while (d2 > 0 && j < p.length) {
+          const nd = p.indexOf('<div', j), cd = p.indexOf('</div>', j);
+          if (cd < 0) throw new Error('dex-mobile: unbalanced section head');
+          if (nd >= 0 && nd < cd) { d2++; j = nd + 4; } else { d2--; close = cd; j = cd + 6; }
+        }
+        if (close < 0) throw new Error('dex-mobile: section head close not found');
+        p = p.slice(0, close) + block + p.slice(close);
+      }
     }
     const bi = p.lastIndexOf('</body>');
     p = p.slice(0, bi) + SCRIPT + p.slice(bi);
