@@ -223,8 +223,17 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
          nv=window.__lxDEXnativeList?window.__lxDEXnativeList():null; }catch(_){}
     var NL=(nv&&nv.list)||[], src;
     // All = curated majors + our own tokens; identity dedupe (LUMOS is the same object in both).
-    if(cat==="native")src=NL;
-    else { src=A.slice(); for(var k=0;k<NL.length;k++)if(src.indexOf(NL[k])<0)src.push(NL[k]); }
+    // Identity dedupe on code+issuer. Object identity cannot catch two distinct objects describing the
+    // same asset, which is how TDT reached the list twice.
+    // Names deliberately prefixed. "q" is this file's DOM query helper, and a for(var q=...) loop here
+    // hoists q to a local number for the WHOLE function -- so q(".mdx-mk-list") on the first line became
+    // undefined(...) and renderPairs threw on every pass. pass() swallows exceptions, so the list simply
+    // froze on its last good render with nothing in the console.
+    var zSeen={};
+    function zPut(dst,a){ if(!a)return; var id=a.code+"|"+a.issuer; if(zSeen[id])return; zSeen[id]=1; dst.push(a); }
+    src=[];
+    if(cat==="native"){ for(var zi=0;zi<NL.length;zi++)zPut(src,NL[zi]); }
+    else { for(var zj=0;zj<A.length;zj++)zPut(src,A[zj]); for(var zk=0;zk<NL.length;zk++)zPut(src,NL[zk]); }
     var d=src.filter(function(a){
       if(cat&&cat!=="all"&&cat!=="native"){var c=String(a.cat||"").toLowerCase();
         if(c!==cat&&c+"s"!==cat)return false;}
