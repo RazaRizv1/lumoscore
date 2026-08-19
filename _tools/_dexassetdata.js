@@ -453,6 +453,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // real logo (fetched async by loadSeLogo) fades in over a plain circle instead of a jarring letter->logo flash.
   function plainBg(code){ var c=String(code||"?"),hue=0; for(var i=0;i<c.length;i++)hue=(hue*31+c.charCodeAt(i))%360; return "linear-gradient(135deg,hsl("+hue+",52%,42%),hsl("+((hue+38)%360)+",52%,30%))"; }
   function knownLogo(){ return (CODE==="LUMOS")||LOGOS[CODE]||dxaReg(CODE,ISSUER)||tomlImg; }
+  // Assets we hold the mark for ourselves, which OUTRANK whatever the issuer's toml publishes.
+  //
+  // LUMOS is the case that matters: its issuer still declares home_domain=lumosdao.io, and that domain's
+  // toml publishes an older Image.png, so preferring the toml put the wrong LumosCore mark on our own
+  // token -- the full flame is /assets/tokens/lumos.png, which is what every other page shows. This is
+  // the same reason the page already DISPLAYS lumoscore.com for LUMOS rather than the on-chain value.
+  // Everything else still prefers the issuer's own artwork; this only covers marks we publish.
+  function brandFirst(){ return (CODE==="LUMOS")||!!LOGOS[CODE]; }
   function logoBg(){ if(CODE==="LUMOS")return "url("+LUMOS_LOGO+")"; if(LOGOS[CODE])return "url("+LOGOS[CODE]+")"; var _r=dxaReg(CODE,ISSUER); if(_r)return "url("+_r+")"; if(tomlImg)return "url("+tomlImg+")"; return avatarBg(CODE); }
 
   // ================= HEADER =================
@@ -513,7 +521,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     // Ranking it first here keeps the final logo byte-identical to before -- the only thing this change
     // removes is the frames in between. The chip painters keep using logoBg() exactly as they did.
     if(lg&&logoSettled&&lg.getAttribute("data-lxlogo")!==CODE){ lg.setAttribute("data-lxlogo",CODE); lg.textContent="";
-      lg.style.setProperty("background-image", tomlImg?("url("+tomlImg+")"):(knownLogo()?logoBg():(NATIVE?plainBg(CODE):avatarBg(CODE))), "important"); }
+      lg.style.setProperty("background-image", (!brandFirst()&&tomlImg)?("url("+tomlImg+")"):(knownLogo()?logoBg():(NATIVE?plainBg(CODE):avatarBg(CODE))), "important"); }
     // issuer address: set data-copy + the visible truncated text. The design's re-render/reskin engine can
     // hold a REFERENCE to the original text node (restoring its baked mock "0x…") OR re-create the whole
     // node. Fix = (1) clone -> replaceChild ONCE to orphan any stored reference; (2) on EVERY pass also
