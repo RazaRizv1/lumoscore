@@ -160,7 +160,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     var d=null;
     try{ if(window.__lxDEXloadNative)window.__lxDEXloadNative();
          d=window.__lxDEXmints?window.__lxDEXmints():null; }catch(_){ d=null; }
-    if(!d||!d.length)d=A.slice(0,3);              // roster not in yet: keep the placeholder rows (same count the card shows)
+    if(!d||!d.length)d=A.slice(0,5);              // roster not in yet: keep the placeholder rows
     var sig="m|"+d.map(function(a){return a.code+":"+(a.trades==null?"":a.trades);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     list.innerHTML=d.map(function(a){

@@ -68,50 +68,27 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lx-part.p3{width:6px;height:6px;left:66%;bottom:22%;animation-duration:23s;animation-delay:-9s}
 .lx-part.p4{width:3px;height:3px;left:85%;bottom:12%;animation-duration:17s;animation-delay:-2s}
 @keyframes lxDrift{0%{transform:translateY(20px);opacity:0}12%{opacity:1}86%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
-/* ===== HERO, COMPACT =====
-   Copy runs the full width, a small live XLM pill sits top-right, and the four exchange stats form a
-   strip along the bottom edge.
-   It used to be one large glass panel in the top-right holding a 2x2 stats grid, which cost twice over:
-   the panel forced .lm-c down to calc(100% - 388px) -- at a 1024px viewport that left the headline 165px
-   wide and three lines tall -- and the hero as a whole ran ~524px, so All Trading Pairs began well below
-   the fold. Full-width copy + a bottom strip carries the same four numbers in roughly 150px less height. */
-.lumos-promo .lm{display:flex!important;flex-direction:column}
-.lumos-promo .lm-c{max-width:none!important;padding:24px 26px 18px!important;flex:1 1 auto;display:flex;flex-direction:column;align-items:flex-start}
-.lumos-promo .lm-h{font-size:32px!important;line-height:1.1!important;letter-spacing:-.015em;color:#fff!important;max-width:calc(100% - 200px)}
-.lumos-promo .lm-sub{font-size:14.5px!important;line-height:1.5!important;color:rgba(228,230,245,.78)!important;max-width:48ch}
-.lumos-promo .lm-cta{margin-top:16px}
-/* live XLM price: a pill now, not a panel. The min-width is deliberate -- .lm-chip:not(.lxd) hides p2/p3
-   until real data lands, so without it the pill would size to "XLM" alone and then jump. */
-.lumos-promo .lm-chip{position:absolute!important;top:18px;right:18px;width:auto!important;max-width:none!important;min-width:152px;box-sizing:border-box;display:inline-flex!important;flex-direction:row;align-items:baseline;gap:9px;padding:9px 14px!important;z-index:5;background:linear-gradient(158deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:12px!important;backdrop-filter:blur(24px) saturate(1.4)!important;-webkit-backdrop-filter:blur(24px) saturate(1.4)!important;box-shadow:0 14px 34px rgba(6,2,20,.45),inset 0 1px 0 rgba(255,255,255,.26)!important}
-.lumos-promo .lm-chip .p1{order:1;margin:0!important;padding:0!important;border:0!important;font-size:11px!important;letter-spacing:.09em;color:rgba(228,230,245,.6)!important}
-.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{order:2;font-size:17px!important;line-height:1.05;color:#fff!important}
-.lumos-promo .lm-chip .p3{order:3;font-size:11px!important;margin-left:auto}
-/* the four exchange stats, as a strip along the bottom edge (z-index 4 clears .lm::after, which is 3) */
-.lumos-promo .lx-dxstats{order:9;margin-top:auto;position:relative;z-index:4;display:grid;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0;padding:13px 26px 15px;background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,.075));border-top:1px solid rgba(255,255,255,.12);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
-.lx-dxstat{display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden;padding-left:17px;border-left:1px solid rgba(255,255,255,.10)}
-.lx-dxstat:first-child{padding-left:0;border-left:0}
-.lx-dxstat .v{font:800 23px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:9px}
-.lx-dxstat .l{font:600 10.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
-.lx-dxstat[data-k=top] .v{font-size:15px}
+/* ONE card, top-right: the XLM price chip EXPANDS to also hold the 2x2 stats grid (mirrors Pools .lm-chip).
+   Fixed min column widths + chip min-width so the card never reflows/squeezes as "\\u2014" placeholders fill in. */
+.lumos-promo .lm-chip{width:auto!important;max-width:none!important;min-width:302px;box-sizing:border-box;display:flex!important;flex-direction:column;padding:17px 23px!important;z-index:4;background:linear-gradient(158deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:17px!important;backdrop-filter:blur(24px) saturate(1.4)!important;-webkit-backdrop-filter:blur(24px) saturate(1.4)!important;box-shadow:0 20px 55px rgba(6,2,20,.5),inset 0 1px 0 rgba(255,255,255,.28)!important}
+.lumos-promo .lm-chip .lx-dxstats{order:1}                          /* stats grid on TOP (Volume/Liquidity, Markets/Top Pair) */
+.lumos-promo .lm-chip .p1{order:2;font-size:12px;margin-top:14px;padding-top:13px;border-top:1px solid rgba(255,255,255,.14);color:rgba(228,230,245,.6)!important}   /* XLM price block moved to the BOTTOM */
+.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{order:3;font-size:28px!important;line-height:1.05;color:#fff!important}   /* SAME size as the other stat values */
+.lumos-promo .lm-chip .p3{order:4;font-size:12px}
+/* match the Pools card's heading/description sizes (Trade rendered them smaller: 26px/13px vs 38px/15.5px) */
+.lumos-promo .lm-h{font-size:38px!important;line-height:1.08!important;letter-spacing:-.01em;color:#fff!important}
+.lumos-promo .lm-sub{font-size:15.5px!important;line-height:1.55!important;color:rgba(228,230,245,.78)!important}
+/* keep the heading/description/button clear of the (now wider) top-right card so they don't overlap */
+.lumos-promo .lm-c{max-width:calc(100% - 388px)!important}
+@media(max-width:880px){.lumos-promo .lm-c{max-width:100%!important}.lumos-promo .lm-chip{position:static!important;margin:0 0 16px;display:inline-flex!important;min-width:0}}
+.lx-dxstats{display:grid;grid-template-columns:118px 172px;gap:15px 22px}
+.lx-dxstat{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lx-dxstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
+.lx-dxstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important}
+.lx-dxstat[data-k=top] .v{font-size:19px}
 .lx-dxpair{display:inline-flex;flex:0 0 auto}
-.lx-dxpair span{display:block;width:24px;height:24px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
-.lx-dxpair .pb{margin-left:-9px}
-/* Narrow (this also covers the MOBILE page, whose hero is the .lumos-promo-slides carousel -- it has no
-   .lm and no .lm-chip, so the strip lands as the card's last child and there is no pill to place).
-   The strip folds to 2x2 and everything steps down a size: at 375px the four columns become ~145px, and at
-   the desktop sizes "USDC / XLM" plus its two 24px logos overran that by 4px. */
-@media(max-width:880px){
-.lumos-promo .lm-h{max-width:100%!important;font-size:27px!important}
-.lumos-promo .lm-chip{position:static!important;margin:0 0 14px;align-self:flex-start;min-width:0}
-.lumos-promo .lx-dxstats{grid-template-columns:1fr 1fr;gap:12px 0;padding:11px 16px 12px}
-.lx-dxstat{padding-left:14px}
-.lx-dxstat:nth-child(3){padding-left:0;border-left:0}
-.lx-dxstat .v{font-size:19px;gap:7px}
-.lx-dxstat .l{font-size:9.5px}
-.lx-dxstat[data-k=top] .v{font-size:13.5px}
-.lx-dxpair span{width:21px;height:21px}
-.lx-dxpair .pb{margin-left:-8px}
-}
+.lx-dxpair span{display:block;width:30px;height:30px;border-radius:50%;background:#222 center/cover no-repeat;border:2.5px solid var(--surface-2,#f0f1f4);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.lx-dxpair .pb{margin-left:-11px}
 /* Empty Gainers/Losers. Spans the grid so the message sits in the panel rather than in one cell. */
 .dex-mover-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--text-muted);font-size:13.5px}
 /* ---- Market Movers: symmetric body — price/vol (left) + Trades 24h (right), spark spans below ---- */
@@ -256,14 +233,13 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         computeTvl(a); touch(); }).catch(function(){})
     ]);
   }
-  var MINTS_SHOWN=3;                                          // rows in the "New mints on LumosCore" card, and the number we price up front
   function nativePrice(add){
-    // ONLY the ones the mints box shows, and only two requests each. Everything else is fetched when a
+    // ONLY the five the mints box shows, and only two requests each. Everything else is fetched when a
     // row is actually rendered -- see priceVisible(). Sweeping the roster here is what made the page
     // fire ~210 requests before showing a single price.
-    var _first=add.slice().sort(function(x,y){ return (y.created||0)-(x.created||0); }).slice(0,MINTS_SHOWN);
+    var _first=add.slice().sort(function(x,y){ return (y.created||0)-(x.created||0); }).slice(0,5);
     _first.forEach(function(a){ a.__lite=1; a.__px=1; });
-    // one request for all of them -- and the edge is not rate-limited the way each visitor was, which is
+    // five assets, one request -- and the edge is not rate-limited the way each visitor was, which is
     // what used to leave ZERO and UPT permanently showing a dash
     MINTS_READY=batchPx(_first).then(function(){ nativeState=2; touch(); },function(){ nativeState=2; touch(); });
   }
@@ -319,8 +295,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       addManifestNatives(add);
       touch();
       nativeSave(NATIVE.filter(function(x){ return x.cat==="native"; }));
-      // The mints box shows the NEWEST few, and they can sit anywhere in discovery order -- so price
-      // Same routine the cached path uses: price the ones the mints box shows, and stop. Everything
+      // The mints box shows the five NEWEST, and they can sit anywhere in discovery order -- so price
+      // Same routine the cached path uses: price the five the mints box shows, and stop. Everything
       // else is fetched by priceVisible() when a row is rendered.
       nativePrice(add);
     }).catch(function(){ nativeState=0; });                  // allow a retry on the next click
@@ -336,7 +312,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     return NATIVE.slice()
       .filter(function(a){ return a.cat==="native"; })            // LUMOS is pinned into NATIVE but was not minted here
       .sort(function(x,y){ return (y.created||0)-(x.created||0); })
-      .slice(0,MINTS_SHOWN);
+      .slice(0,5);
   }
   var MINTS=["LUMOS","AQUA","EURC","ARST","SHX"];             // "new mints" subset (LUMOS = the project token, tagged NEW)
 
@@ -533,19 +509,15 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   var XLM_LOGO="https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg";
   function applyHeroStats(){
     var card=q(".lumos-promo"); if(!card)return;
-    // The strip is a SIBLING of the copy, along the bottom edge -- it used to live inside .lm-chip, which
-    // made the price pill a full panel and pushed the headline into a narrow column. Search from the card,
-    // not from the chip, so a page still carrying the old placement is found and moved rather than given a
-    // second copy of the strip.
-    var host=card.querySelector(".lm")||card;
-    var box=card.querySelector(".lx-dxstats");
-    if(!box){ box=document.createElement("div"); box.className="lx-dxstats";
+    var chip=card.querySelector(".lm-chip");                      // ONE card: put the stats INSIDE the XLM price chip (top-right, like Pools)
+    var box=(chip||card).querySelector(".lx-dxstats");
+    if(!box){ box=document.createElement("div"); box.className="lx-dxstats";   // 2x2 grid like the Pools .lx-hstats
       box.innerHTML='<div class="lx-dxstat" data-k="vol"><span class="v">\\u2014</span><span class="l">24h Volume</span></div>'
         +'<div class="lx-dxstat" data-k="liq"><span class="v">\\u2014</span><span class="l">Liquidity</span></div>'
         +'<div class="lx-dxstat" data-k="mkts"><span class="v">'+allAssets().length+'</span><span class="l">Markets</span></div>'
         +'<div class="lx-dxstat" data-k="top"><span class="v"><span class="lx-dxpair"><span class="pa"></span><span class="pb"></span></span><span class="lx-dxtxt">\\u2014</span></span><span class="l">Top Pair</span></div>';
+      (chip||card).appendChild(box);
     }
-    if(box.parentNode!==host)host.appendChild(box);               // also relocates a strip left inside the chip
     if(!window.__lxDEXloaded)return;                              // reveal with the rest, not one by one
     // Sum what the page actually lists. Leaving these on the curated 8 while the table says 39 pairs
     // would put two different definitions of "this exchange" on one screen.
