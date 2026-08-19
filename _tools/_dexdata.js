@@ -224,7 +224,7 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
 /* first paint: the carousel is already hidden but .lm is not built yet, so hold the card's height for
    that one frame rather than letting it collapse to nothing and snap open. */
-.lumos-promo.lx-mobhero:not(:has(.lm)){min-height:169px!important}
+.lumos-promo.lx-mobhero:not(:has(.lm)){min-height:120px!important}   /* == the settled height; it was 169 from before the CTAs moved off the card, so the box opened tall and then shrank */
 }
 /* ===== PHONE: the hero becomes a wide banner, about half the height =====
    At 375px the card was 348px tall against 343px of width -- square, and a third of the screen before a
@@ -761,11 +761,21 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(!box){ box=document.createElement("div"); box.className="lx-dxstats";
       box.innerHTML='<div class="lx-dxstat" data-k="vol"><span class="v">\\u2014</span><span class="l">24h Volume</span></div>'
         +'<div class="lx-dxstat" data-k="trades"><span class="v">\\u2014</span><span class="l">Trades</span></div>'
-        +'<div class="lx-dxstat" data-k="mkts"><span class="v">'+allAssets().length+'</span><span class="l">Markets</span></div>'
+        // A dash like the other three, NOT allAssets().length. This is baked at build time of the strip,
+        // which is before the gates below, so a live count here was written while discovery was still
+        // running -- it showed the curated handful and then jumped to the full roster. set("mkts") fills
+        // it after the gates, so all four cells go from dash to final together.
+        +'<div class="lx-dxstat" data-k="mkts"><span class="v">\\u2014</span><span class="l">Markets</span></div>'
         +'<div class="lx-dxstat" data-k="top"><span class="v"><span class="lx-dxpair"><span class="pa"></span><span class="pb"></span></span><span class="lx-dxtxt">\\u2014</span></span><span class="l">Top Pair</span></div>';
     }
     if(box.parentNode!==host)host.appendChild(box);               // also relocates a strip left inside the chip
     if(!window.__lxDEXloaded)return;                              // reveal with the rest, not one by one
+    // And not while the LumosCore roster is still arriving. These are sums over allAssets(), so writing
+    // them mid-discovery showed a number built from the curated eight -- Markets 8, a part-formed trade
+    // count -- which then climbed as the mints landed. It read as a wrong figure being corrected. Hold at
+    // the dash until discovery has finished (2) or given up (0); a failed load resets to 0, so this can
+    // never latch on permanently.
+    if(nativeState===1)return;
     // Sum what the page actually lists. Leaving these on the curated 8 while the table says 39 pairs
     // would put two different definitions of "this exchange" on one screen.
     var _agg=allAssets();
@@ -1394,6 +1404,14 @@ for (const file of files) {
         p = p.slice(0, at) + block + p.slice(at);
       }
     }
+    // ALL three Trade keys, not just mobile: the hero headline ships the base chain's wording and
+    // _mc_engine.js rewrites it in a text-node walk after load. "Stellar" is two characters longer than
+    // "Aptos", so the line re-wrapped and the headline visibly jumped on every load. Baking the served
+    // chain in means first paint is already correct; the engine looks for the BASE word, finds none in
+    // this node, and leaves it alone.
+    const H_APT = '<h2 class="lm-h">The most advanced <em>DEX</em> on Aptos.</h2>';
+    const H_XLM = '<h2 class="lm-h">The most advanced <em>DEX</em> on Stellar.</h2>';
+    if (p.indexOf(H_APT) >= 0) p = p.replace(H_APT, H_XLM);
     const bi = p.lastIndexOf('</body>');
     p = p.slice(0, bi) + SCRIPT + HIW + p.slice(bi);
     json[k] = p; changed = true; n++;
