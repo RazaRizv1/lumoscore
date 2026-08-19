@@ -1442,6 +1442,18 @@ for (const file of files) {
     // injected above. Checking the class name alone skipped this replace entirely.
     const MARK = '<span class="lx-heroico" aria-hidden="true"></span>';
     if (p.indexOf(MARK + H_XLM) < 0 && p.indexOf(H_XLM) >= 0) p = p.replace(H_XLM, MARK + H_XLM);
+    // The crumb shipped as "Back · Home / DEX" -- three controls saying one thing, on a page whose own
+    // heading already says DEX. Reduce it to the only part a reader wants, the way out, named for where
+    // it actually goes. Done in the MARKUP so it is correct at first paint (rewriting the label at
+    // runtime would flash "Back" and then jump). Two independent guards, so each half is idempotent on
+    // its own. Mobile is untouched by construction: neither Trade-main mobile build has a .crumb at all,
+    // and it should not gain one -- the footer bar already carries that navigation.
+    if (/<div class="crumb">[\s\S]*?class="sep"/.test(p)) {
+      p = p.replace(/(<div class="crumb">[\s\S]*?<\/a>)[\s\S]*?<\/div>/, '$1\n  </div>');
+    }
+    if (/<div class="crumb">[\s\S]*?\sBack\s*<\/a>/.test(p)) {
+      p = p.replace(/(<div class="crumb">[\s\S]*?)(\s)Back(\s*<\/a>)/, '$1$2Back to dashboard$3');
+    }
     const bi = p.lastIndexOf('</body>');
     p = p.slice(0, bi) + SCRIPT + HIW + p.slice(bi);
     json[k] = p; changed = true; n++;
