@@ -119,6 +119,11 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
 @keyframes lxdaPulse{0%,100%{opacity:.35}50%{opacity:.95}}
 /* header logo: paint via background so the site logo-painter can't clear the token mark */
 .asset-logo[data-lxlogo]{background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;overflow:hidden;color:transparent!important;font-size:0!important}
+/* The tile BEFORE any logo is known. The design ships this element as a blue "$" chip -- USDC's mark, the
+   asset the mock page was drawn around -- so every token began life looking like USDC for as long as it
+   took our script to run. Neutral instead: one quiet surface-coloured tile in both themes, which the real
+   logo then replaces in a single step. Paired with the markup edit that drops the "$" glyph itself. */
+.asset-logo:not([data-lxlogo]){background-image:none!important;background-color:rgba(127,127,127,.18)!important;color:transparent!important;font-size:0!important}
 /* trade-widget: inline error + disabled CTA while amount is invalid/over balance */
 .lxda-swaperr{color:var(--red,#ff5b5b);font-size:12.5px;font-weight:600;line-height:1.4;margin:0 0 9px}
 .dxa-trade-cta[data-lxdis="1"]{opacity:.55;cursor:not-allowed;filter:grayscale(.25)}
@@ -342,6 +347,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // now held back until this is true, so the reader sees one sentence rather than two.
   var tomlSettled=false;
   function tomlDone(){ if(tomlSettled)return; tomlSettled=true; try{ guardApply(); }catch(_){} }
+  // The same idea for the logo, but on its OWN flag rather than sharing tomlSettled: our mints settle the
+  // description early from the icon manifest, and the logo must not settle with them or it would paint
+  // from whatever is known at that instant and then be overwritten when the toml image lands.
+  // ownLogo means the manifest already gave us the authoritative picture for one of our own assets, so a
+  // later toml image -- the same artwork under a different URL -- must not trigger a second paint.
+  var logoSettled=false, ownLogo=false;
+  function logoDone(){ if(logoSettled)return; logoSettled=true; try{ guardApply(); }catch(_){} }
   var dayOHLC=null;                                          // {o,h,l,c,v} from the latest daily aggregation
 
   // HOST FALLBACK, which GUARDRAILS E12 has always required and this layer never had.
@@ -488,8 +500,20 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         else if(!_ok&&_b&&_b.parentNode){ _b.parentNode.removeChild(_b); }
       } }catch(_){}
     setText(q(".asset-ticker"), CODE);
-    // logo mark
-    var lg=q(".asset-logo"); if(lg&&lg.getAttribute("data-lxlogo")!==CODE){ lg.setAttribute("data-lxlogo",CODE); lg.textContent=""; lg.style.setProperty("background-image",knownLogo()?logoBg():plainBg(CODE),"important"); }
+    // logo mark — painted ONCE, and only when the sources have settled.
+    //
+    // This used to paint immediately with whatever was known, so a token could show three marks in a
+    // second: the design's baked blue "$" tile, then stellar.expert's icon, then the issuer's own toml
+    // image. All three are drawn by different code paths, so no single one of them looked wrong.
+    // Holding the paint until logoSettled makes the whole sequence one transition: neutral tile -> the
+    // real logo. Until then this leaves the element alone, so nothing is stamped and nothing repaints.
+    var lg=q(".asset-logo");
+    // tomlImg FIRST, deliberately. logoBg() ranks the hardcoded LOGOS map above it, but the old code
+    // painted the issuer's own toml image LAST and directly, so that is what actually ended up on screen.
+    // Ranking it first here keeps the final logo byte-identical to before -- the only thing this change
+    // removes is the frames in between. The chip painters keep using logoBg() exactly as they did.
+    if(lg&&logoSettled&&lg.getAttribute("data-lxlogo")!==CODE){ lg.setAttribute("data-lxlogo",CODE); lg.textContent="";
+      lg.style.setProperty("background-image", tomlImg?("url("+tomlImg+")"):(knownLogo()?logoBg():(NATIVE?plainBg(CODE):avatarBg(CODE))), "important"); }
     // issuer address: set data-copy + the visible truncated text. The design's re-render/reskin engine can
     // hold a REFERENCE to the original text node (restoring its baked mock "0x…") OR re-create the whole
     // node. Fix = (1) clone -> replaceChild ONCE to orphan any stored reference; (2) on EVERY pass also
@@ -2409,7 +2433,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   function loadData(){
     // XLM/USD
     j(CG).then(function(d){ var u=(d&&d.stellar&&+d.stellar.usd)||0; if(u>0){ xlmUsd=u; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } if(xlmUsd>0){ applyAll(); try{ loadChart(chartTF); }catch(_){} } }).catch(function(){});
-    if(NATIVE){ assetXlm=1; loadNativeStats(); return; }
+    // XLM returns here, before the issuer block below, so none of the settle paths there can ever run for
+    // it. Without this the native page would hold the neutral tile for ever and never draw its mark.
+    if(NATIVE){ assetXlm=1; logoDone(); loadNativeStats(); return; }
     // price + 24h change + 24h volume via daily trade aggregations
     var ta=H+"/trade_aggregations?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution=86400000&order=desc&limit=2";
     j(ta).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
@@ -2478,9 +2504,15 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         .then(function(){ poolsDone(0); },function(){ poolsDone(1); });
     })();
     // issuer home_domain (-> website + stellar.toml for logo/description)
-    if(ISSUER){ loadOwnDesc(); loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false); guardApply(); if(a.home_domain)loadToml(a.home_domain); else tomlDone(); }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); guardApply(); });
+    if(ISSUER){ loadOwnDesc(); loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false); guardApply(); if(a.home_domain)loadToml(a.home_domain); else { tomlDone(); logoDone(); } }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); logoDone(); guardApply(); });
       // Safety net: an unresponsive host must never hold the description back for good.
-      setTimeout(tomlDone, 3000); }
+      setTimeout(tomlDone, 3000);
+      // The logo waits longer than the text on purpose. Its fallback is a quiet neutral tile, which costs
+      // the reader nothing, whereas settling early means keeping stellar.expert's icon when the issuer's
+      // own toml was merely slow -- and since nothing repaints after a settle, that choice is permanent.
+      // Measured at ~1.5s for a cross-origin toml on a warm connection, so this only binds on a bad one.
+      setTimeout(logoDone, 5000); }
+    if(!ISSUER)logoDone();
     // if NO data ever lands (dead/unknown asset), reveal the stat row anyway after 2.5s — the cells hold
     // honest "—" placeholders now, which beats an eternal hidden-skeleton (and never exposes the mock).
     setTimeout(function(){ var sr=q(".stat-row"); if(sr&&!sr.classList.contains("lxda")){ try{ applyStats(); }catch(_){} sr.classList.add("lxda"); } },2500);
@@ -2530,11 +2562,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         var p7=mx.price7d; if(p7&&p7.length>=2){ var _a=+p7[p7.length-2][1],_b=+p7[p7.length-1][1]; if(chg24==null&&_a>0&&_b>0)chg24=(_b/_a-1)*100;
           var _f=+p7[0][1]; if(_f>0&&_b>0)chg7d=(_b/_f-1)*100; }
         var dm=(mx.domain||"").trim(); if(dm&&homeDomain==null)homeDomain=dm; }
-      var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||ti.orgLogo||""; if(img){ tomlImg=img;
-        // paint the header logo DIRECTLY (applyHeader's data-lxlogo===CODE guard blocks the late async repaint);
-        // set data-lxlogo=CODE so applyHeader/guardHeader leave our real logo alone. Chips update via guardApply/setChip.
-        var lg=q(".asset-logo"); if(lg){ lg.setAttribute("data-lxlogo",CODE); lg.textContent=""; lg.style.setProperty("background-image","url("+img+")","important"); } }
-      else { var lg2=q(".asset-logo"); if(lg2&&!knownLogo()){ lg2.style.setProperty("background-image",avatarBg(CODE),"important"); } }   // no logo anywhere -> settle on the letter avatar (over the plain-gradient loading state)
+      // Harvest only. This used to paint the header directly, which is what put stellar.expert's icon on
+      // screen a beat before the issuer's own toml image replaced it. applyHeader owns the paint now and
+      // does it once, at logoDone; and it does NOT settle here, because the issuer's own toml outranks
+      // this and may still be in flight. If no toml is coming, the caller settles instead.
+      var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||ti.orgLogo||"";
+      if(img&&!ownLogo&&!tomlImg)tomlImg=img;
       guardApply();
     }).catch(function(){}); }
   // OUR OWN mints: take the description from the icon manifest rather than waiting on the toml.
@@ -2552,6 +2585,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     fetch("/assets/tokens/launchpad-icons.json").then(function(r){ if(!r.ok)throw 0; return r.json(); }).then(function(m){
       var e=m&&m[CODE+"-"+ISSUER];
       var d=(e&&typeof e==="object"&&typeof e.desc==="string")?e.desc:"";
+      // The manifest carries the artwork as well as the copy, and for our own assets it IS the picture
+      // the toml publishes -- the same file. Taking it here settles the logo at once from a same-origin
+      // fetch instead of waiting on Horizon plus a cross-origin toml, and ownLogo stops that toml from
+      // repainting identical artwork under a different URL.
+      var im=(e&&typeof e==="object"&&typeof e.image==="string")?e.image:"";
+      if(im&&!tomlImg){ tomlImg=im; ownLogo=true; logoDone(); }
       if(!d)return;                          // not ours, or ours with no copy yet: leave the toml path alone
       ownDesc=true; tomlDesc=d;
       tomlDone();                            // settled with the REAL line, so the hold lifts without a flash
@@ -2567,19 +2606,17 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       // FIRST image= in the file -- LUMOS's -- so every unlisted mint rendered with the LUMOS flame.
       // Invisible while lumoscore.com served no toml; wrong the moment it started serving one.
       var blk=(txt.match(re)||[""])[0];
-      if(!blk){ tomlDone(); return; }        // toml served, asset simply not listed in it
+      if(!blk){ tomlDone(); logoDone(); return; }   // toml served, asset simply not listed in it
       var img=(blk.match(/image\\s*=\\s*["']([^"']+)["']/i)||[])[1];
       var desc=(blk.match(/desc\\s*=\\s*["']([^"']+)["']/i)||[])[1];
-      if(img)tomlImg=img; if(desc&&!ownDesc)tomlDesc=desc;
-      // Paint the header HERE, exactly as loadSeLogo does. Storing tomlImg is not enough: applyHeader
-      // only repaints when data-lxlogo !== CODE, and it has already stamped CODE by the time this
-      // resolves -- so the real logo arrived and was never drawn. That is why lumoscore.com assets kept
-      // showing a letter avatar on Trade-Asset even once the toml was live and carrying their image.
-      if(img){ var lgT=q(".asset-logo"); if(lgT){ lgT.setAttribute("data-lxlogo",CODE); lgT.textContent="";
-        lgT.style.setProperty("background-image","url("+img+")","important"); } }
+      if(img&&!ownLogo)tomlImg=img; if(desc&&!ownDesc)tomlDesc=desc;
+      // No direct paint any more. applyHeader draws the logo once logoDone flips the flag below, which is
+      // safe now because that flip also changes the stamp it compares against -- the old blocker (it had
+      // already stamped CODE by the time this resolved, so the real logo was never drawn) is gone.
       tomlDone();                            // parsed: whatever we found is what we have
+      logoDone();                            // and the picture is settled, image or not
       if(img||desc)guardApply();
-    }).catch(function(){ tomlDone(); });      // an unreachable toml is a conclusion too
+    }).catch(function(){ tomlDone(); logoDone(); });   // an unreachable toml is a conclusion too
   }
 
   // Dedicated SYNCHRONOUS header guardian: if any engine reverts the issuer address / website / name in
@@ -2662,6 +2699,10 @@ for (const file of files) {
     // to relabel. Idempotent: after one pass no APT remains inside the filters block.
     p = p.replace(/(<div class="filters" id="dxaPanelFilters">[\s\S]*?<\/div>)/,
                   function (blk) { return blk.replace(/\bAPT\b/g, 'XLM'); });
+    // The "$" the design bakes into the logo tile. With the blue gradient behind it (see the CSS above)
+    // it reads as USDC on every asset page until our script runs. Removed in the markup so there is
+    // nothing to clear at runtime. Idempotent: after one pass the tile is empty and no match remains.
+    p = p.split('<div class="asset-logo">$</div>').join('<div class="asset-logo"></div>');
     // The desktop crumb carried a back link AND a "· DEX / CODE" trail: the same destination twice, plus
     // a segment repeating the asset the page is already titled after. The mobile build ships the back
     // link alone and reads better for it, so match it. Markup, not runtime, so there is nothing to
