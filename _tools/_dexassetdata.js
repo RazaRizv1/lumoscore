@@ -286,6 +286,17 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   //   alone paints a real project's brand onto any look-alike token, so LOGOS is only honoured when the
   //   issuer matches. Codes with no verified issuer (e.g. BTC, ambiguous across anchors) resolve by the
   //   exact code+issuer lookup below instead, and fall back to a generated avatar.
+  // The baked registry (window.__lxTokenRegistry, emitted into <head> at build time). Synchronous, so
+  // it is known on the first paint. This page previously depended on the toml fetch, which only runs once
+  // a home domain is known -- and stellar.expert reports domain:(none) for many of our own assets, so for
+  // those the fetch never happened and the header stayed a letter avatar.
+  function dxaReg(code,iss){
+    try{
+      var R=window.__lxTokenRegistry; if(!R||!code||!iss)return "";
+      var v=R[code+"-"+iss]; var u=(v&&typeof v==="object")?v.image:v;
+      return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
+    }catch(e){ return ""; }
+  }
   function brandLogo(code,iss){ var u=LOGOS[code]; if(!u)return ""; var want=LOGO_ISS[code]; if(!want)return ""; return (iss&&iss===want)?u:""; }   // NOTE: NOT knownLogo() — that name is already taken below by the page-asset check
   function logoKey(code,iss){ return code+"-"+(iss||""); }
   function cachedLogo(code,iss){ try{ return (window.__lxLogosI||{})[logoKey(code,iss)]||""; }catch(e){ return ""; } }
@@ -421,8 +432,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // neutral gradient (NO letter) — the header's initial "logo pending" state for an unknown asset, so the
   // real logo (fetched async by loadSeLogo) fades in over a plain circle instead of a jarring letter->logo flash.
   function plainBg(code){ var c=String(code||"?"),hue=0; for(var i=0;i<c.length;i++)hue=(hue*31+c.charCodeAt(i))%360; return "linear-gradient(135deg,hsl("+hue+",52%,42%),hsl("+((hue+38)%360)+",52%,30%))"; }
-  function knownLogo(){ return (CODE==="LUMOS")||LOGOS[CODE]||tomlImg; }
-  function logoBg(){ if(CODE==="LUMOS")return "url("+LUMOS_LOGO+")"; if(LOGOS[CODE])return "url("+LOGOS[CODE]+")"; if(tomlImg)return "url("+tomlImg+")"; return avatarBg(CODE); }
+  function knownLogo(){ return (CODE==="LUMOS")||LOGOS[CODE]||dxaReg(CODE,ISSUER)||tomlImg; }
+  function logoBg(){ if(CODE==="LUMOS")return "url("+LUMOS_LOGO+")"; if(LOGOS[CODE])return "url("+LOGOS[CODE]+")"; var _r=dxaReg(CODE,ISSUER); if(_r)return "url("+_r+")"; if(tomlImg)return "url("+tomlImg+")"; return avatarBg(CODE); }
 
   // ================= HEADER =================
   function clampSetup(desc){
@@ -1428,7 +1439,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // token-paired: assetReserve*assetXlm*2) then converted to USD. No fabricated APR/volume — only real fields.
   var XLM_BG="url('${STELLAR_URI}')";
   var dxaLogoTried={};
-  function poolBg(code,iss){ if(code==="XLM")return XLM_BG; if(code===CODE&&(!iss||iss===ISSUER)){ if(CODE==="LUMOS")return "url("+LUMOS_LOGO+")"; var kk=brandLogo(CODE,ISSUER); if(kk)return "url("+kk+")"; if(tomlImg)return "url("+tomlImg+")"; } var u=brandLogo(code,iss)||cachedLogo(code,iss); if(u)return "url("+u+")"; return avatarBg(code); }
+  function poolBg(code,iss){ if(code==="XLM")return XLM_BG; if(code===CODE&&(!iss||iss===ISSUER)){ if(CODE==="LUMOS")return "url("+LUMOS_LOGO+")"; var kk=brandLogo(CODE,ISSUER); if(kk)return "url("+kk+")"; if(tomlImg)return "url("+tomlImg+")"; } var u=dxaReg(code,iss)||brandLogo(code,iss)||cachedLogo(code,iss); if(u)return "url("+u+")"; return avatarBg(code); }
   function attrBg(v){ return String(v||"").split('"').join("'"); }   // "-delimited attr: url("...") would close it
   // "View pool" must open THIS pool, not the pools index. Horizon's liquidity-pool id is already the
   // hex the detail page expects (?pool=<hex>). Keep the page's own variant so the link stays in-theme.
