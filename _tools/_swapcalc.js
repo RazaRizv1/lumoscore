@@ -214,8 +214,15 @@ const QSTYLE='<style id="lx-qorders-css">'
 +'.lxq-lab .bal{font-size:12.5px;color:var(--text-muted)}'
 +'.lxq-max,.lxq-mkt{background:var(--accent-soft,rgba(234,106,44,.14));color:var(--accent,#ea6a2c);border:1px solid var(--accent-soft,rgba(234,106,44,.22));border-radius:7px;font:inherit;font-size:11px;font-weight:800;padding:3px 8px;cursor:pointer;letter-spacing:.02em}'
 +'.lxq-max:hover,.lxq-mkt:hover{filter:brightness(1.12)}'
+// the unit reads as a sentence ("USDC per FOX") and MARKET is a control -- they were touching, so the
+// label looked like part of the button
++'.lxq-mkt{margin-left:10px}'
 // the received amount is a figure, not a field: same type as the input beside it, but muted and inert
 +'.lxq-recv{text-align:right;color:var(--text-soft);pointer-events:none}'
+// An inline background-image set by the site logo engine loses to an !important rule, so OUR artwork
+// wins wherever we have some. Where we have none we leave the element alone and the engine may paint
+// its own mark -- this claims the ones we resolved, it does not fight over the rest.
++'.lxq-ic[data-art]{background-image:var(--lxa)!important;background-size:cover!important;background-position:center!important;color:transparent!important;font-size:0!important}'
 +'.lxq-lin{display:flex;align-items:center;justify-content:space-between;gap:10px}'
 +'.lxq-pick{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:16px;color:var(--text);cursor:pointer;min-width:0}'
 +'.lxq-pick .lxq-ic{width:24px;height:24px;border-radius:50%;background:linear-gradient(135deg,#2a2a35,#1a1a23);color:#fff;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto}'
@@ -343,10 +350,31 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'return fetch("/assets/tokens/launchpad-icons.json").then(function(r){return r.json();}).then(function(m){'
 +'QICO={};Object.keys(m||{}).forEach(function(k){var v=m[k];var img=(v&&typeof v==="object")?v.image:v;'
 +'if(img)QICO[k]=img;});return QICO;}).catch(function(){QICO={};return QICO;});}'
+// Artwork straight from the issuer's own stellar.toml, for anything the manifest and stellar.expert do
+// not already cover. Searching "love" returns four assets and stellar.expert carries tomlInfo.image for
+// exactly one of them, so the rest have to be read at the source.
+//
+// Grouped by domain and cached: three results from love.stellarmint.io cost ONE request, and a domain is
+// only ever fetched once per session. Blocks are matched on the ISSUER, which is unique, rather than by
+// building a regex around a quoted code -- that construction is what broke this file twice already.
+// A toml that is missing, unreachable or CORS-blocked simply leaves the lettered mark in place.
++'var QTOML={};'
++'function qTomlFill(rows){'
++'var byDom={};rows.forEach(function(r){ if(!r||!r.a||r.a.img||!r.a.dom||!r.a.issuer)return;'
++'(byDom[r.a.dom]=byDom[r.a.dom]||[]).push(r); });'
++'Object.keys(byDom).slice(0,5).forEach(function(dom){'
++'function apply(txt){ if(!txt)return; var blocks=txt.split("[[CURRENCIES]]");'
++'byDom[dom].forEach(function(r){ for(var i=1;i<blocks.length;i++){ var b=blocks[i];'
++'if(b.indexOf(r.a.issuer)<0)continue;'
++'var m=b.match(/image\\s*=\\s*"([^"]+)"/i);'
++'if(m&&m[1]){ r.a.img=m[1]; try{ qPaintIco(r.el,r.a); }catch(_){} } break; } }); }'
++'if(QTOML[dom]!==undefined){ apply(QTOML[dom]); return; }'
++'fetch("https://"+dom+"/.well-known/stellar.toml").then(function(r){return r.ok?r.text():"";})'
++'.then(function(t){ QTOML[dom]=t||""; apply(QTOML[dom]); }).catch(function(){ QTOML[dom]=""; });'
++'});}'
 +'function qPaintIco(el,a){if(!el||!a||a.native)return;'
 +'var u=a.img||(QICO?QICO[a.code+"-"+a.issuer]:"");if(!u)return;'
-+'el.textContent="";el.style.backgroundImage="url("+u+")";'
-+'el.style.backgroundSize="cover";el.style.backgroundPosition="center";}'
++'el.textContent="";el.style.setProperty("--lxa","url("+u+")");el.setAttribute("data-art","1");}'
 +'var QBAL=null;'
 +'function qMap(b){return b.asset_type==="native"?{code:"XLM",issuer:"",native:true,bal:+b.balance}'
 +':{code:b.asset_code,issuer:b.asset_issuer,native:false,bal:+b.balance};}'
@@ -378,7 +406,11 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // broke the whole script. Nodes have no quoting to get wrong, and asset codes and domains come from
 // upstream data, so this also means none of it is ever parsed as markup.
 +'var b=document.createElement("button");b.type="button";'
-+'var ic=document.createElement("span");ic.className="lxq-ic";ic.textContent=(a.code||"?").slice(0,2);'
+// data-lxc is _logoguard's documented opt-out. Without it the site healer stamps the SAME generic
+// Stellar glyph onto every one of these spans -- which is why six different assets from one domain
+// all looked identical. We supply the artwork ourselves now: curated images, the icon manifest, and
+// the issuer toml. Where none of those has one, initials are the honest answer.
++'var ic=document.createElement("span");ic.className="lxq-ic";ic.setAttribute("data-lxc",a.code||"");ic.textContent=(a.code||"?").slice(0,2);'
 +'var tx=document.createElement("span");tx.className="tx";'
 +'var cd=document.createElement("span");cd.className="cd";cd.textContent=a.code||"";'
 +'if(a.v)cd.setAttribute("data-v","1");'
@@ -413,14 +445,20 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'tmr=setTimeout(function(){'
 +'fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(v)+"&limit=12")'
 +'.then(function(r){return r.json();}).then(function(d){'
-+'var recs=(d&&d._embedded&&d._embedded.records)||[];res.innerHTML="";'
-+'recs.map(function(x){var p=String(x.asset||"").split("-");'
-+'return {code:p[0]||"",issuer:p[1]||"",native:false,dom:x.domain||"",tl:(x.trustlines&&x.trustlines[0])||0};})'
++'var recs=(d&&d._embedded&&d._embedded.records)||[];res.innerHTML="";var pend=[];'
+// tomlInfo is the issuer's OWN stellar.toml, already resolved by stellar.expert on this same response --
+// so the artwork comes from the toml exactly as it should, with no extra request per row. Without this
+// the mapper threw the image away and every search result fell back to a lettered mark.
++'recs.map(function(x){var p=String(x.asset||"").split("-");var ti=x.tomlInfo||x.toml_info||{};'
++'return {code:p[0]||"",issuer:p[1]||"",native:false,dom:x.domain||"",'
++'img:ti.image||ti.orgLogo||"",tl:(x.trustlines&&x.trustlines[0])||0};})'
 +'.filter(function(a){return a.code&&/^G[A-Z2-7]{55}$/.test(a.issuer)&&!qSame(a,qS);})'
 +'.sort(function(a,b){return b.tl-a.tl;})'
 +'.forEach(function(a){var b=qRow(a,qNum(a.tl)+" held");'
 +'b.addEventListener("click",function(e){e.preventDefault();e.stopImmediatePropagation();qB=a;qClose();qSync();qQuote();},true);'
-+'res.appendChild(b);});'
++'res.appendChild(b);pend.push({a:a,el:b.querySelector(".lxq-ic")});});'
+// rows are on screen immediately with a lettered mark; the toml lookup fills in artwork as it arrives
++'qTomlFill(pend);'
 // same createElement rule as qRow: a quoted attribute three levels deep is how this broke twice
 +'if(!res.children.length)qMsg(res,"No matches");'
 +'}).catch(function(){qMsg(res,"Search unavailable");});},260);});'
@@ -437,7 +475,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // the selected asset reads exactly like the Swap pane's pill: round mark, code, then a caret
 +'function qPill(el,a){'
 +'while(el.firstChild)el.removeChild(el.firstChild);'
-+'if(a){var ic=document.createElement("span");ic.className="lxq-ic";ic.textContent=(a.code||"?").slice(0,2);'
++'if(a){var ic=document.createElement("span");ic.className="lxq-ic";ic.setAttribute("data-lxc",a.code||"");ic.textContent=(a.code||"?").slice(0,2);'
 +'var cd=document.createElement("span");cd.textContent=a.code||"";'
 +'qPaintIco(ic,a);el.appendChild(ic);el.appendChild(cd);'
 +'if(a.v)cd.setAttribute("data-v","1");}'
