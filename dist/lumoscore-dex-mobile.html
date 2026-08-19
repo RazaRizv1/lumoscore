@@ -1927,7 +1927,7 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
    (1) #dexMintTabs = an empty 6px leftover in the New Mints header (data-logo="APT");
    (2) .dex-mover-pct = the % badge, which during LOAD (empty "\u2014") gets tagged data-logo=<ticker> and
        painted with a tiny logo until the real % lands. Only suppress while it carries data-logo -> loaded pills untouched. */
-#dexMintTabs,.dex-mints-tabs{display:none!important}
+#dexMintTabs,.dex-mints-tabs,#mdxMintTabs,.mdx-mints-tabs{display:none!important}   /* same empty leftover on the mobile card */
 .dex-mover-pct[data-logo]{background-image:none!important;box-shadow:none!important}
 /* the avatar-painter sometimes injects a stray <svg> initials-avatar INTO our painter-proof icons (it broke the
    LUMOS logo in All Trading Pairs). Our real logo lives in ::before -> hide any injected svg child so it can't cover it. */
@@ -4801,6 +4801,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   setInterval(pass,900);
 })();
 </script>
+
 
 
 
