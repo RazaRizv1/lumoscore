@@ -182,8 +182,24 @@ const SCRIPT = `<script id="lx-aodata">(function(){
   function qa(sel){return [].slice.call(document.querySelectorAll(sel));}
 
   // the token's uploaded Launchpad logo (per-asset map, else the last launch result), else neutral placeholder
+  // The published registry, read from our own origin. Same record the stellar.toml is built from, so this
+  // page shows the same logo a wallet does. Async, so paintIdentity repaints when it lands.
+  var _aoMan=null;
+  (function(){
+    fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; }).then(function(m){
+      if(!m||typeof m!=="object"||m.constructor===Array)return;
+      _aoMan=m; try{ paintIdentity(); }catch(_e){}
+    }).catch(function(){});
+  })();
+  function aoRegIcon(){
+    if(!_aoMan)return "";
+    var v=_aoMan[CODE+"-"+ISSUER]; var u=(v&&typeof v==="object")?v.image:v;
+    return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
+  }
   function aoIcon(){
-    try{ var m=JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}"); var k=CODE+"-"+ISSUER; if(m&&m[k]) return m[k]; }catch(e){}
+    var reg=aoRegIcon(); if(reg) return reg;
+    try{ var m=JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}"); var k=CODE+"-"+ISSUER; var v=m&&m[k];
+      var u=(v&&typeof v==="object")?v.image:v; if(u) return u; }catch(e){}
     try{ var r=JSON.parse(localStorage.getItem("lumos.launch.result")||"null"); if(r&&r.code===CODE&&r.issuer===ISSUER&&r.icon) return r.icon; }catch(e){}
     return "assets/tokens/placeholder.svg";
   }

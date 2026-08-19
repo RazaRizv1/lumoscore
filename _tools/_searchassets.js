@@ -203,7 +203,19 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     return m?m[1]:v;
   }
   function recFromRow(a){
-    function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace(/\\s+/g," "):""; }
+    // Our published token registry, read from our own origin. stellar.expert carries no tomlInfo for
+// LumosCore assets at all, so their search rows arrived with img:"" and drew a letter avatar even though
+// the logo was published in our stellar.toml. Same record the toml is built from, so search agrees with
+// the wallet.
+var _seaMan=null;
+try{ fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; })
+  .then(function(m){ if(m&&typeof m==="object"&&m.constructor!==Array)_seaMan=m; }).catch(function(){}); }catch(_e){}
+function lxSeaReg(code,issuer){
+  if(!_seaMan||!code||!issuer)return "";
+  var v=_seaMan[code+"-"+issuer]; var u=(v&&typeof v==="object")?v.image:v;
+  return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
+}
+function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace(/\\s+/g," "):""; }
     var nm=a.querySelector(".sp-name-row"), name="";
     if(nm){ var c=nm.cloneNode(true); var d=c.querySelector(".sp-domain"); if(d&&d.parentNode)d.parentNode.removeChild(d);
       name=c.textContent.trim().replace(/\\s+/g," "); }
@@ -267,7 +279,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
           var id=String(x.asset||""), p=id.split("-");
           var ti=x.tomlInfo||{};
           return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
-                  tl:(x.trustlines&&x.trustlines[0])||0, img:ti.image||ti.orgLogo||""};
+                  tl:(x.trustlines&&x.trustlines[0])||0, img:ti.image||ti.orgLogo||lxSeaReg(p[0],p[1])||""};
         }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
         out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
         SEA_CACHE[q]=out; cb(out);
