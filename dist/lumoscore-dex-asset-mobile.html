@@ -7805,7 +7805,11 @@ window.addEventListener('click',function(e){
     fetch("https://"+domain+"/.well-known/stellar.toml").then(function(r){ if(!r.ok)throw 0; return r.text(); }).then(function(txt){
       // find the [[CURRENCIES]] block for our code, then image= and desc=
       var re=new RegExp("code\\s*=\\s*[\"']"+CODE+"[\"'][^]*?(?=\\[\\[|$)","i");
-      var blk=(txt.match(re)||[""])[0]||txt;
+      // NOT ||txt. Falling back to the whole document meant an asset the toml does NOT list matched the
+      // FIRST image= in the file -- LUMOS's -- so every unlisted mint rendered with the LUMOS flame.
+      // Invisible while lumoscore.com served no toml; wrong the moment it started serving one.
+      var blk=(txt.match(re)||[""])[0];
+      if(!blk)return;
       var img=(blk.match(/image\s*=\s*["']([^"']+)["']/i)||[])[1];
       var desc=(blk.match(/desc\s*=\s*["']([^"']+)["']/i)||[])[1];
       if(img)tomlImg=img; if(desc)tomlDesc=desc; if(img||desc)guardApply();
