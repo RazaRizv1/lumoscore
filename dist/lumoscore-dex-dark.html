@@ -4522,6 +4522,7 @@ window.addEventListener('click',function(e){
           supply:null,spark:null,img:null,trades:null};
         byCode[key]=a; NATIVE.push(a); add.push(a);
       });
+      addManifestNatives(add);
       touch();
       nativeSave(NATIVE.filter(function(x){ return x.cat==="native"; }));
       // The mints box shows the five NEWEST, and they can sit anywhere in discovery order -- so price
@@ -4627,6 +4628,9 @@ window.addEventListener('click',function(e){
     fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; }).then(function(m){
       if(!m||typeof m!=="object"||m.constructor===Array)return;
       _man=m;
+      // The manifest can land after the roster. Backfill then, or an asset only we know about would wait
+      // for the next cold load to appear.
+      if(nativeState){ var late=[]; addManifestNatives(late); if(late.length)nativePrice(late); }
       try{ paintIcons(document); }catch(_e){}
       touch();                                                  // rows already drawn -> repaint with the real icons
     }).catch(function(){});
@@ -4641,6 +4645,28 @@ window.addEventListener('click',function(e){
     // Same-origin absolute path only. A manifest naming another host would let one bad write repoint
     // every token icon on the site.
     return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
+  }
+
+  // OUR OWN ASSETS, FROM OUR OWN RECORD. The roster is discovered from stellar.expert and filtered on
+  // domain==="lumoscore.com" -- but their index does not always carry the domain. WAZAAA is the case in
+  // point: Horizon says home_domain=lumoscore.com and its issuer was created by our funding wallet, yet
+  // stellar.expert reports domain:(none), so the row was never built and the asset simply did not exist
+  // on LumosCore. Waiting for a third party to notice our own mint is not a plan.
+  //
+  // The manifest knows CODE and ISSUER for everything we host, so anything missing from the roster is
+  // added from there. Discovery only -- price, supply and holders still come from the ledger.
+  function addManifestNatives(add){
+    if(!_man)return;
+    for(var k in _man){ if(!Object.prototype.hasOwnProperty.call(_man,k))continue;
+      var d=k.indexOf("-"); if(d<1)continue;
+      var code=k.slice(0,d), iss=k.slice(d+1);
+      if(!/^[A-Za-z0-9]{1,12}$/.test(code)||!/^G[A-Z2-7]{55}$/.test(iss))continue;
+      var dup=false;
+      for(var i=0;i<NATIVE.length;i++)if(NATIVE[i].code===code&&NATIVE[i].issuer===iss){dup=true;break;}
+      if(dup)continue;
+      var a=nativeMake(code,iss,"","lumoscore.com",0);
+      if(a&&add)add.push(a);
+    }
   }
 
   var _liCache=null;
