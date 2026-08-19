@@ -215,6 +215,23 @@ export async function onRequestGet(ctx) {
   try { [list, icons] = await Promise.all([candidates(), iconManifest(origin)]); }
   catch (e) { return tomlResponse(head.join('\n') + '\n# asset list temporarily unavailable\n', TTL_ERR); }
 
+  // THE CANDIDATE LIST CANNOT COME FROM stellar.expert ALONE. Its index does not carry every asset that
+  // declares our domain -- WAZAAA, GROK, WHALEUM and XLIQM are all absent from it, and were therefore
+  // never even considered here, which looked from the outside exactly like failing verification. They
+  // are not: each one's issuer was created by our funding wallet, checked on the ledger.
+  //
+  // The icon manifest knows CODE and ISSUER for every asset we host, so it is seeded as candidates too.
+  // This widens who gets ASKED, never who gets believed: the funder rule below still decides, so an
+  // entry appearing here cannot vouch for itself.
+  for (const k of Object.keys(icons)) {
+    const dash = k.indexOf('-');
+    if (dash < 1) continue;
+    const code = k.slice(0, dash), issuer = k.slice(dash + 1);
+    if (!/^[A-Za-z0-9]{1,12}$/.test(code) || !/^G[A-Z2-7]{55}$/.test(issuer)) continue;
+    if (list.some((a) => a.code === code && a.issuer === issuer)) continue;
+    list.push({ code, issuer, name: '', image: '', desc: '' });
+  }
+
   const checked = list.slice(0, MAX_VERIFY);
   const b = budget(VERIFY_BUDGET);
   const verdicts = await Promise.all(checked.map((a) => fundedByUs(a.issuer, b)));
