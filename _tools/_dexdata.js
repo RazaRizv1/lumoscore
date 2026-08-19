@@ -13,6 +13,13 @@ const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-dex.html', 'lumoscore-dex-dark.html', 'lumoscore-dex-mobile.html'];
 
+// The hero's network mark. Taken from the site's own chain registry rather than a CDN or a new file:
+// it is already the logo the network switcher paints, it is an inline SVG data URI so there is no
+// request and nothing to cache-bust, and it cannot drift from the rest of the app.
+const CHAIN_REG = JSON.parse(fs.readFileSync(__dirname + '/_chains.json', 'utf8'));
+const HERO_MARK = (CHAIN_REG.stellar && CHAIN_REG.stellar.logo) || '';
+if (!HERO_MARK) throw new Error('_chains.json: no stellar logo — refusing to ship a blank hero mark');
+
 // Hero art lives under /assets/*, which _headers serves as "max-age=31536000, immutable". With a stable
 // filename that is a one-way door: replace the file and every browser that already has it keeps the old
 // one for a YEAR. That is exactly what happened -- the palette was changed and the phone went on serving
@@ -104,12 +111,12 @@ svg.lm-svg.lx-dxc{overflow:visible}
 .lumos-promo .lx-dxstats{order:9;margin-top:auto;position:relative;z-index:4;display:grid;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0;padding:13px 26px 15px;background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,.075));border-top:1px solid rgba(255,255,255,.12);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
 .lx-dxstat{display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden;padding-left:17px;border-left:1px solid rgba(255,255,255,.10)}
 .lx-dxstat:first-child{padding-left:0;border-left:0}
-.lx-dxstat .v{font:800 23px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:9px}
-.lx-dxstat .l{font:600 10.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
-.lx-dxstat[data-k=top] .v{font-size:15px}
+.lx-dxstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
+.lx-dxstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
+.lx-dxstat[data-k=top] .v{font-size:18px}
 .lx-dxpair{display:inline-flex;flex:0 0 auto}
-.lx-dxpair span{display:block;width:24px;height:24px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
-.lx-dxpair .pb{margin-left:-9px}
+.lx-dxpair span{display:block;width:28px;height:28px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.lx-dxpair .pb{margin-left:-10px}
 /* ===== DESKTOP HERO =====
    Same treatment as mobile, at desktop scale: the neutral gradient image instead of the violet cosmic
    animation, and the card reduced to a headline and the stat strip. The description, the XLM price pill
@@ -121,8 +128,16 @@ html .lumos-promo.lm-on{overflow:hidden!important;border:1px solid rgba(255,255,
 html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!important;background:#fff1e6 url(${HERO_LIGHT}) center/cover no-repeat!important}
 .lumos-promo.lm-on .lm::before,.lumos-promo.lm-on .lm::after{display:none!important}   /* design's scanlines + wash */
 .lumos-promo.lm-on .lm-sub,.lumos-promo.lm-on .lm-cta,.lumos-promo.lm-on .lm-chip,.lumos-promo.lm-on .lm-svg,.lumos-promo.lm-on .lm-bars{display:none!important}
-/* headline gets the room the other three gave up, and centres against the strip */
-.lumos-promo.lm-on .lm-c{justify-content:center;padding:26px 30px!important;max-width:none!important}
+/* Mark on the left, headline beside it. .lm-c becomes a ROW here, so justify-content is now the
+   horizontal axis and align-items does the vertical centring the column layout used to do. */
+.lumos-promo.lm-on .lm-c{flex-direction:row;align-items:center;justify-content:flex-start;gap:18px;padding:26px 30px!important;max-width:none!important}
+/* Painted through ::before, not the element background. The site's own painter writes an inline
+   "background:transparent" onto empty spans like this one, and inline beats any stylesheet rule -- the
+   mark rendered as nothing. A pseudo-element is out of its reach; this is the same trick the token icons
+   in this file already use. */
+.lx-heroico{flex:0 0 auto;position:relative;width:56px;height:56px;border-radius:50%;overflow:hidden;box-shadow:0 6px 18px -8px rgba(0,0,0,.55)}
+.lx-heroico::before{content:"";position:absolute;inset:0;background:url("${HERO_MARK}") center/contain no-repeat}
+html[data-theme="light"] .lx-heroico{box-shadow:0 6px 18px -10px rgba(16,16,22,.35)}
 .lumos-promo.lm-on .lm-h{font-size:36px!important;line-height:1.08!important;max-width:420px}
 html[data-theme="light"] .lumos-promo.lm-on .lm-h{color:#0e0e10!important}
 html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70));border-top-color:rgba(16,16,22,.12)}
@@ -207,7 +222,9 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
    The strip folds to 2x2 and everything steps down a size: at 375px the four columns become ~145px, and at
    the desktop sizes "USDC / XLM" plus its two 24px logos overran that by 4px. */
 @media(max-width:880px){
-.lumos-promo .lm-c{padding:18px 18px 16px!important}
+.lumos-promo .lm-c{padding:18px 18px 16px!important;gap:12px;flex-direction:row;align-items:center}
+.lx-heroico{width:38px;height:38px}
+.lx-hline2{display:block}                 /* forces "on <Chain>." onto its own line on a phone */
 .lumos-promo .lm-h{max-width:100%!important;font-size:23px!important;line-height:1.14!important}
 .lumos-promo .lm-sub{font-size:13.5px!important;max-width:100%!important}
 .lumos-promo .lm-cta{margin-top:14px}
@@ -694,10 +711,16 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(!t)return;
     // the slide breaks its title across two lines for a 58%-wide column; ours runs full width
     var head=t.innerHTML.replace(/<br\\s*\\/?>/gi," ");
+    // "on Stellar." takes its own line rather than being squeezed onto the first. Matched on the trailing
+    // "on <Word>." so it follows whatever chain the slide names instead of hardcoding one.
+    // The leading space is kept OUTSIDE the span deliberately: without it the text reads "DEXon Stellar."
+    // to anything that flattens the markup -- a screen reader, a crawler, a copy-paste -- even though the
+    // block display hides that from the eye.
+    head=head.replace(/\\s*\\bon\\s+([A-Za-z]+)\\.\\s*$/, ' <span class="lx-hline2">on $1.</span>');
     if(head.indexOf("<em")<0)head=head.replace(/\\bDEX\\b/,"<em>DEX</em>");   // accent word, as on desktop
     var lm=document.createElement("div"); lm.className="lm";
     // No price pill here: XLM/USD belongs on the pages that trade it, not on this card.
-    lm.innerHTML='<div class="lm-c"><h2 class="lm-h">'+head+'</h2>'
+    lm.innerHTML='<div class="lm-c"><span class="lx-heroico" aria-hidden="true"></span><h2 class="lm-h">'+head+'</h2>'
       +'<p class="lm-sub">'+(s?s.innerHTML:"")+'</p></div>';   // the actions live in the pairs heading now
     card.appendChild(lm);                                         // after .lx-cosmic, so the copy paints over it
     card.classList.add("lx-mobhero");
@@ -1412,6 +1435,13 @@ for (const file of files) {
     const H_APT = '<h2 class="lm-h">The most advanced <em>DEX</em> on Aptos.</h2>';
     const H_XLM = '<h2 class="lm-h">The most advanced <em>DEX</em> on Stellar.</h2>';
     if (p.indexOf(H_APT) >= 0) p = p.replace(H_APT, H_XLM);
+    // The network mark, in the markup so it is there at first paint like everything else on this card.
+    // aria-hidden because the headline already names the network; a screen reader gains nothing from it.
+    // Guard on the MARKUP form. A bare indexOf('lx-heroico') is already true by this point: the
+    // stylesheet carries the rule and the mobile builder carries the same span inside a JS string, both
+    // injected above. Checking the class name alone skipped this replace entirely.
+    const MARK = '<span class="lx-heroico" aria-hidden="true"></span>';
+    if (p.indexOf(MARK + H_XLM) < 0 && p.indexOf(H_XLM) >= 0) p = p.replace(H_XLM, MARK + H_XLM);
     const bi = p.lastIndexOf('</body>');
     p = p.slice(0, bi) + SCRIPT + HIW + p.slice(bi);
     json[k] = p; changed = true; n++;
