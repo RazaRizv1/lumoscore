@@ -5792,8 +5792,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         var out=recs.map(function(x){
           var id=String(x.asset||""), p=id.split("-");
           var ti=x.tomlInfo||{};
+          // LXBRAND first. It already existed but only pool icons consulted it, so an asset result took
+          // whatever the issuer's toml published -- and LUMOS still declares home_domain=lumosdao.io,
+          // whose toml carries an older mark. Keyed by CODE|ISSUER, never by ticker alone.
           return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
-                  tl:(x.trustlines&&x.trustlines[0])||0, img:ti.image||ti.orgLogo||lxSeaReg(p[0],p[1])||""};
+                  tl:(x.trustlines&&x.trustlines[0])||0,
+                  img:LXBRAND[(p[0]||"")+"|"+(p[1]||"")]||ti.image||ti.orgLogo||lxSeaReg(p[0],p[1])||""};
         }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
         out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
         SEA_CACHE[q]=out; cb(out);
