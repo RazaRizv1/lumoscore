@@ -169,6 +169,9 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .lx-dxpair .pb{margin-left:-8px}
 /* the mobile card carries its own 260px floor, which the carousel needed and this hero does not */
 .lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
+/* first paint: the carousel is already hidden but .lm is not built yet, so hold the card's height for
+   that one frame rather than letting it collapse to nothing and snap open. */
+.lumos-promo.lx-mobhero:not(:has(.lm)){min-height:169px!important}
 }
 /* ===== PHONE: the hero becomes a wide banner, about half the height =====
    At 375px the card was 348px tall against 343px of width -- square, and a third of the screen before a
@@ -1129,6 +1132,22 @@ for (const file of files) {
          .replace(/<script id="lx-dexmain">[\s\S]*?<\/script>/, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
+    // ---- FLASH: put the marker classes in the MARKUP, not on the JS ----
+    // Everything the mobile hero replaces -- the page h1 and subtitle, the two CTAs above the card, the
+    // four-slide carousel with its badge, its own Start Trading button and its dots -- ships in the static
+    // HTML and paints before a line of our JS runs. Adding these classes at runtime meant a visible frame
+    // of the untouched design on every load, including the container's "Aptos" wording. Applied here, the
+    // CSS that hides them is in force at first paint. (Markup beats a gate beats a mask.)
+    if (k === 'lumoscore-dex-mobile.html') {
+      // The hero card. Matched as a plain STRING including the carousel attribute, so it can only hit the
+      // one element and there is no regex escape to be eaten on the way in.
+      const HERO = '<div class="lumos-promo" aria-roledescription="carousel"';
+      if (p.indexOf(HERO) < 0) throw new Error('dex-mobile: hero markup not found — refusing to ship the flash');
+      p = p.replace(HERO, '<div class="lumos-promo lx-mobhero" aria-roledescription="carousel"');
+      // the page heading and its subtitle: hidden to the eye, kept in the outline (see .lx-sronly)
+      p = p.replace(/<h1 class="page-title"/, '<h1 class="page-title lx-sronly"')
+           .replace(/class="page-subtitle"/, 'class="page-subtitle lx-sronly"');
+    }
     const bi = p.lastIndexOf('</body>');
     p = p.slice(0, bi) + SCRIPT + p.slice(bi);
     json[k] = p; changed = true; n++;

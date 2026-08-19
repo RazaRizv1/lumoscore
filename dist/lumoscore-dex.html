@@ -1887,6 +1887,9 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .lx-dxpair .pb{margin-left:-8px}
 /* the mobile card carries its own 260px floor, which the carousel needed and this hero does not */
 .lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
+/* first paint: the carousel is already hidden but .lm is not built yet, so hold the card's height for
+   that one frame rather than letting it collapse to nothing and snap open. */
+.lumos-promo.lx-mobhero:not(:has(.lm)){min-height:169px!important}
 }
 /* ===== PHONE: the hero becomes a wide banner, about half the height =====
    At 375px the card was 348px tall against 343px of width -- square, and a third of the screen before a

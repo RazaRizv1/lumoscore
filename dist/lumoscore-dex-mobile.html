@@ -1837,6 +1837,9 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .lx-dxpair .pb{margin-left:-8px}
 /* the mobile card carries its own 260px floor, which the carousel needed and this hero does not */
 .lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
+/* first paint: the carousel is already hidden but .lm is not built yet, so hold the card's height for
+   that one frame rather than letting it collapse to nothing and snap open. */
+.lumos-promo.lx-mobhero:not(:has(.lm)){min-height:169px!important}
 }
 /* ===== PHONE: the hero becomes a wide banner, about half the height =====
    At 375px the card was 348px tall against 343px of width -- square, and a third of the screen before a
@@ -1916,8 +1919,8 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
   <main class="page">
 
   <!-- Hero (launchpad-style) -->
-  <h1 class="page-title">Explore the <span class="hl">Aptos</span> DEX</h1>
-  <p class="page-subtitle">Discover, trade, and launch tokens on Aptos's decentralized exchange.</p>
+  <h1 class="page-title lx-sronly">Explore the <span class="hl">Aptos</span> DEX</h1>
+  <p class="page-subtitle lx-sronly">Discover, trade, and launch tokens on Aptos's decentralized exchange.</p>
 
   <!-- Hero CTAs -->
   <div class="mdx-hero-ctas">
@@ -1932,7 +1935,7 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
   </div>
 
   <!-- Aptos — Trading Activity -->
-  <div class="lumos-promo" aria-roledescription="carousel" aria-label="LumosCore Launchpad">
+  <div class="lumos-promo lx-mobhero" aria-roledescription="carousel" aria-label="LumosCore Launchpad">
   <div class="lumos-promo-slides">
 
     <!-- Slide 1: Advanced DEX -->
