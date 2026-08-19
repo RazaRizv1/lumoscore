@@ -7894,7 +7894,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         .then(function(){ poolsDone(0); },function(){ poolsDone(1); });
     })();
     // issuer home_domain (-> website + stellar.toml for logo/description)
-    if(ISSUER){ loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false); guardApply(); if(a.home_domain)loadToml(a.home_domain); else tomlDone(); }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); guardApply(); });
+    if(ISSUER){ loadOwnDesc(); loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false); guardApply(); if(a.home_domain)loadToml(a.home_domain); else tomlDone(); }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); guardApply(); });
       // Safety net: an unresponsive host must never hold the description back for good.
       setTimeout(tomlDone, 3000); }
     // if NO data ever lands (dead/unknown asset), reveal the stat row anyway after 2.5s — the cells hold
@@ -7953,6 +7953,27 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       else { var lg2=q(".asset-logo"); if(lg2&&!knownLogo()){ lg2.style.setProperty("background-image",avatarBg(CODE),"important"); } }   // no logo anywhere -> settle on the letter avatar (over the plain-gradient loading state)
       guardApply();
     }).catch(function(){}); }
+  // OUR OWN mints: take the description from the icon manifest rather than waiting on the toml.
+  //
+  // Both carry the same sentence -- the toml is BUILT from this manifest -- but they age very differently.
+  // The toml is served max-age=21600 AND browsers partition the HTTP cache per site, so a page that read it
+  // once keeps its own private stale copy for six hours: a description published today can stay invisible
+  // here until tomorrow while the document itself is plainly correct, and it looks per-site random because
+  // each site has its own copy. The manifest is a static same-origin JSON served max-age=60, keyed exactly
+  // CODE-ISSUER, and costs no Function invocation and no Horizon verification -- so it is both fresher and
+  // cheaper. Third-party issuers are not in it and fall through to loadToml exactly as before.
+  var ownDesc=false;
+  function loadOwnDesc(){
+    if(!CODE||!ISSUER)return;
+    fetch("/assets/tokens/launchpad-icons.json").then(function(r){ if(!r.ok)throw 0; return r.json(); }).then(function(m){
+      var e=m&&m[CODE+"-"+ISSUER];
+      var d=(e&&typeof e==="object"&&typeof e.desc==="string")?e.desc:"";
+      if(!d)return;                          // not ours, or ours with no copy yet: leave the toml path alone
+      ownDesc=true; tomlDesc=d;
+      tomlDone();                            // settled with the REAL line, so the hold lifts without a flash
+      try{ guardApply(); }catch(_){}         // tomlDone only applies on the first call; this covers the rest
+    }).catch(function(){});                  // a missing manifest is not an error -- the toml still answers
+  }
   // stellar.toml (best-effort; many issuers' domains are CORS-OK). Pull [[CURRENCIES]].image + desc.
   function loadToml(domain){
     fetch("https://"+domain+"/.well-known/stellar.toml").then(function(r){ if(!r.ok)throw 0; return r.text(); }).then(function(txt){
@@ -7965,7 +7986,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       if(!blk){ tomlDone(); return; }        // toml served, asset simply not listed in it
       var img=(blk.match(/image\s*=\s*["']([^"']+)["']/i)||[])[1];
       var desc=(blk.match(/desc\s*=\s*["']([^"']+)["']/i)||[])[1];
-      if(img)tomlImg=img; if(desc)tomlDesc=desc;
+      if(img)tomlImg=img; if(desc&&!ownDesc)tomlDesc=desc;
       // Paint the header HERE, exactly as loadSeLogo does. Storing tomlImg is not enough: applyHeader
       // only repaints when data-lxlogo !== CODE, and it has already stamped CODE by the time this
       // resolves -- so the real logo arrived and was never drawn. That is why lumoscore.com assets kept
