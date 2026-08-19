@@ -396,7 +396,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   }
   function manifestIcon(code,issuer){
     if(!_man)return "";
-    var u=_man[code+"-"+issuer];
+    var e=_man[code+"-"+issuer];
+    // An entry is a bare path, or {image,name} once the asset has a display name. Reading only the
+    // string form meant every logo that gained a name silently stopped rendering -- BEAR, BLA, BRIDGE,
+    // BROT, FOX, LIBERATOR, PEACE and ZOMBIE all went back to letter tiles the moment names were added.
+    var u=(e&&typeof e==="object")?e.image:e;
     // Same-origin absolute path only. A manifest naming another host would let one bad write repoint
     // every token icon on the site.
     return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
