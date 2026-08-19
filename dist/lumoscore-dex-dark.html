@@ -3814,7 +3814,7 @@ window.addEventListener('resize',moveRail);requestAnimationFrame(moveRail);setTi
   function loadToml(a,domain){
     fetch("https://"+domain+"/.well-known/stellar.toml").then(function(r){ if(!r.ok)throw 0; return r.text(); }).then(function(txt){
       var re=new RegExp("code\\s*=\\s*[\"']"+a.code+"[\"'][^]*?(?=\\[\\[|$)","i");
-      var blk=(txt.match(re)||[""])[0]||txt;
+      var blk=(txt.match(re)||[""])[0];if(!blk)return;
       var img=(blk.match(/image\s*=\s*["']([^"']+)["']/i)||[])[1];
       if(img){ a.img=img; touch(); }
     }).catch(function(){});

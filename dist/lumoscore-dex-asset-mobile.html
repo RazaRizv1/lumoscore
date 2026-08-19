@@ -6031,10 +6031,10 @@ window.addEventListener('resize',move);requestAnimationFrame(move);setTimeout(mo
     fetch("https://"+domain+"/.well-known/stellar.toml").then(function(r){ if(!r.ok)throw 0; return r.text(); }).then(function(txt){
       // find the [[CURRENCIES]] block for our code, then image= and desc=
       var re=new RegExp("code\\s*=\\s*[\"']"+CODE+"[\"'][^]*?(?=\\[\\[|$)","i");
-      var blk=(txt.match(re)||[""])[0]||txt;
+      var blk=(txt.match(re)||[""])[0];if(!blk)return;
       var img=(blk.match(/image\s*=\s*["']([^"']+)["']/i)||[])[1];
       var desc=(blk.match(/desc\s*=\s*["']([^"']+)["']/i)||[])[1];
-      if(img)tomlImg=img; if(desc)tomlDesc=desc; if(img||desc)guardApply();
+      if(img)tomlImg=img; if(desc)tomlDesc=desc; if(img){var lgT=q(".asset-logo");if(lgT){lgT.setAttribute("data-lxlogo",CODE);lgT.textContent="";lgT.style.setProperty("background-image","url("+img+")","important");}} if(img||desc)guardApply();
     }).catch(function(){});
   }
 
