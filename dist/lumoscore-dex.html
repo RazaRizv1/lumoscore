@@ -1851,6 +1851,36 @@ svg.lm-svg.lx-dxc{overflow:visible}
 /* the mobile card carries its own 260px floor, which the carousel needed and this hero does not */
 .lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
 }
+/* ===== PHONE: the hero becomes a wide banner, about half the height =====
+   At 375px the card was 348px tall against 343px of width -- square, and a third of the screen before a
+   single trading pair. This lays it out landscape: headline left with the live XLM price opposite it, the
+   button under them, and the four stats in ONE horizontal row rather than a 2x2 block.
+   Kept at its own 560px breakpoint so a narrowed desktop window keeps the roomier 2x2 treatment.
+   The price also moves to absolute top-right here. In flow it was a child of .lm, outside .lm-c's padding,
+   so it sat flush in the rounded corner and got clipped -- visible as a small empty blob. */
+@media(max-width:560px){
+.lumos-promo .lm-c{padding:13px 14px 12px!important}
+.lumos-promo .lm-h{font-size:18px!important;line-height:1.18!important;max-width:calc(100% - 96px)!important}
+.lumos-promo .lm-sub{display:none!important}          /* no room for it at half height; the headline carries the message */
+.lumos-promo .lm-cta{margin-top:11px;font-size:12.5px;padding:8px 14px;border-radius:9px}
+.lumos-promo .lm-cta svg{width:14px;height:14px}
+.lumos-promo .lm-chip{position:absolute!important;top:12px;right:13px;margin:0;padding:6px 10px!important;flex-direction:column;align-items:flex-end;gap:1px;border-radius:10px!important}
+.lumos-promo .lm-chip .p1{font-size:9px!important;letter-spacing:.1em}
+.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{font-size:13px!important}
+.lumos-promo .lm-chip .p3{font-size:9.5px!important;margin-left:0}
+/* One row of four. The columns size to their CONTENT and the leftover space is spread between them --
+   proportional fr tracks cannot work here, because each column's width is set by a string whose length
+   nobody controls: "$129.2K" against "35", and "USDC / XLM" plus two logos against "LIQUIDITY". Measured
+   at 360px, fr tracks handed 78px to a column needing 87 and 93 to one needing 68. Auto tracks cannot
+   clip while the row as a whole fits, so the dividers give way to spacing. */
+.lumos-promo .lx-dxstats{grid-template-columns:repeat(4,auto);justify-content:space-between;gap:0;padding:9px 14px 10px}
+.lx-dxstat{padding-left:0;border-left:0;gap:3px}
+.lx-dxstat .v{font-size:16px;gap:6px}
+.lx-dxstat .l{font-size:8px;letter-spacing:.03em}
+.lx-dxstat[data-k=top] .v{font-size:10.5px}
+.lx-dxpair span{width:16px;height:16px;border-width:1.5px}
+.lx-dxpair .pb{margin-left:-6px}
+}
 /* Empty Gainers/Losers. Spans the grid so the message sits in the panel rather than in one cell. */
 .dex-mover-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--text-muted);font-size:13.5px}
 /* ---- Market Movers: symmetric body — price/vol (left) + Trades 24h (right), spark spans below ---- */
