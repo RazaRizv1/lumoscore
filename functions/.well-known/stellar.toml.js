@@ -94,11 +94,17 @@ async function iconManifest(origin) {
       // can gain names without invalidating what is already published.
       const v = m[k];
       const img = (v && typeof v === 'object') ? v.image : v;
-      // Only a same-origin absolute path. A manifest that could name an arbitrary host would let a bad
-      // write here point every wallet at someone else's image.
-      if (typeof img !== 'string' || img.charAt(0) !== '/' || img.indexOf('//') === 0) continue;
       const name = (v && typeof v === 'object' && typeof v.name === 'string') ? v.name.slice(0, 80) : '';
-      out[k] = { image: origin + img, name };
+      // An entry with NO image is still kept. The manifest doubles as our register of which assets are
+      // ours, and several are ours without artwork yet -- RICHARD, PUMP, PEPE, ZBS, FED, NEIRO and HULK
+      // all declare our domain and were minted by our wallet, but stellar.expert records no domain for
+      // them, so nothing else surfaces them. Dropping them here would keep them invisible for want of a
+      // picture. They are still funder-checked below before anything is published.
+      //
+      // When there IS an image it must be a same-origin absolute path: a manifest that could name an
+      // arbitrary host would let one bad write point every wallet at someone else's picture.
+      const ok = typeof img === 'string' && img.charAt(0) === '/' && img.indexOf('//') !== 0;
+      out[k] = { image: ok ? origin + img : '', name };
     }
     return out;
   } catch (e) { return {}; }
