@@ -185,6 +185,65 @@ const ROWS='\'<div class="r"><span>Rate</span><strong data-k="rate">&mdash;</str
 +'+\'<div class="r rtot"><span>Minimum received</span><strong data-k="min">&mdash;</strong></div>\''
 +'+\'<div class="lx-feenote" data-k="feenote"></div>\'';
 
+// ===================== Custom Swap / Orders: the dashboard modal's three tabs =====================
+//
+// The SAME #modalSwap markup ships on the wallet page, and this transform injects into both, so every
+// addition here is scoped at runtime to the dashboard instance. The signal is the quick-action card:
+// "Swap tokens" is renamed to "Custom Swap / Orders" in the markup below, and that card exists ONLY on
+// the dashboard (checked: 1 occurrence on home, 0 on wallet). No card, no tabs -- wallet's swap modal
+// stays exactly as it is.
+//
+// Built at runtime rather than in markup, which is the opposite of the usual rule here. It is safe in
+// this one case because the modal is display:none until the card is clicked, so there is no first paint
+// to flash -- and it keeps the wallet copy byte-identical.
+const QSTYLE='<style id="lx-qorders-css">'
++'.lxo-tabs{display:flex;gap:3px;margin:0 0 14px;padding:3px;background:var(--surface-2);border:1px solid var(--border);border-radius:10px}'
++'.lxo-tabs button{flex:1 1 0;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:var(--text-soft);font:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:background .12s ease,color .12s ease}'
++'.lxo-tabs button:hover{color:var(--text)}'
++'.lxo-tabs button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(0,0,0,.18)}'
++'.lxo-pane[hidden]{display:none!important}'
++'</style>';
+
+const QSCRIPT='<script id="lx-qorders">(function(){'
++'if(window.__lxQOrders)return;window.__lxQOrders=1;'
++'function q(s,r){return (r||document).querySelector(s);}'
+// dashboard only: the renamed card is the marker, and it exists on no other page
++'function isDash(){var c=document.querySelectorAll(".quick-actions .quick-card .ttl");'
++'for(var i=0;i<c.length;i++){if(/Custom Swap \\/ Orders/.test(c[i].textContent||""))return true;}return false;}'
++'function build(){'
++'var modal=document.getElementById("modalSwap");if(!modal||!isDash())return;'
++'var body=q(".modal-body",modal);if(!body||body.__lxqo)return;body.__lxqo=1;'
+// the heading keeps its icon span; only the trailing text node is retitled
++'var h3=q(".modal-head h3",modal);'
++'if(h3){for(var n=h3.firstChild;n;n=n.nextSibling){if(n.nodeType===3&&(n.nodeValue||"").trim()){n.nodeValue="Custom Swap / Orders";break;}}}'
+// everything the design shipped becomes the Swap pane, untouched and still in the DOM, so every existing
+// selector in this file and in _walletdata keeps matching (all of them are descendant selectors)
++'var swap=document.createElement("div");swap.className="lxo-pane";swap.setAttribute("data-pane","swap");'
++'while(body.firstChild)swap.appendChild(body.firstChild);'
++'var tabs=document.createElement("div");tabs.className="lxo-tabs";'
++'tabs.innerHTML=\'<button type="button" data-pane="swap" class="on">Swap</button>\''
++'+\'<button type="button" data-pane="limit">Limit</button>\''
++'+\'<button type="button" data-pane="orders">Orders</button>\';'
++'var limit=document.createElement("div");limit.className="lxo-pane";limit.setAttribute("data-pane","limit");limit.hidden=true;'
++'var orders=document.createElement("div");orders.className="lxo-pane";orders.setAttribute("data-pane","orders");orders.hidden=true;'
++'body.appendChild(tabs);body.appendChild(swap);body.appendChild(limit);body.appendChild(orders);'
+// capture + stop: the dashboard runs delegated click handlers that treat clicks in this modal as swap UI
++'tabs.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("button[data-pane]"):null;if(!b)return;'
++'e.preventDefault();e.stopImmediatePropagation();show(b.getAttribute("data-pane"));},true);'
++'try{window.__lxQOshow=show;}catch(_){}'
++'}'
++'function show(name){'
++'var modal=document.getElementById("modalSwap");if(!modal)return;'
++'var ps=modal.querySelectorAll(".lxo-pane");for(var i=0;i<ps.length;i++)ps[i].hidden=(ps[i].getAttribute("data-pane")!==name);'
++'var bs=modal.querySelectorAll(".lxo-tabs button");for(var j=0;j<bs.length;j++)bs[j].classList.toggle("on",bs[j].getAttribute("data-pane")===name);'
++'try{if(name==="limit"&&window.__lxQOlimit)window.__lxQOlimit();'
++'if(name==="orders"&&window.__lxQOorders)window.__lxQOorders();}catch(_){}'
++'}'
++'if(document.readyState!=="loading")build();else document.addEventListener("DOMContentLoaded",build);'
+// the modal can be (re)built by the design after load; keep trying cheaply until it is ours
++'var t=0,iv=setInterval(function(){t++;build();if(t>20)clearInterval(iv);},400);'
++'})();</script>';
+
 const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI+'",SWLL="'+SW_LUMOS_LOGO+'";'+''
 +'function fmt(x){if(!isFinite(x))return "0";return x.toLocaleString("en-US",{maximumFractionDigits:6});}'
 +'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'
@@ -457,11 +516,19 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
       // already happened: wallet-mobile was still serving an lx-swapcalc from an earlier build, complete
       // with the Price impact row this change removes, while the transform reported success.
       const had=/<script id="lx-swapcalc">/.test(h);
-      h=h.replace(/<style id="lx-swapcalc-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-swapcalc">[\s\S]*?<\/script>/g,'');
+      h=h.replace(/<style id="lx-swapcalc-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-swapcalc">[\s\S]*?<\/script>/g,'')
+         .replace(/<script id="lx-qorders">[\s\S]*?<\/script>/g,'')
+         .replace(/<style id="lx-qorders-css">[\s\S]*?<\/style>/g,'');
+      // The dashboard quick action. Renamed in the MARKUP so it is right at first paint, and because the
+      // renamed title is what scopes the runtime tabs to this page -- the wallet ships no such card.
+      // The description said "Orderbook and swap"; it now names the thing that is actually new here.
+      h=h.split('<div class="ttl">Swap tokens</div>').join('<div class="ttl">Custom Swap / Orders</div>');
+      h=h.split('<div class="desc">Orderbook and swap on the Aptos DEX. Best routing across pairs.</div>')
+         .join('<div class="desc">Swap instantly, or place a limit order on any pair.</div>');
       const want=h.indexOf('id="swapModal"')>=0||h.indexOf('id="modalSwap"')>=0;
       if(!want){ if(had){ json[k]=h; stale++; } continue; }
       const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
-      json[k]=h.slice(0,bi)+STYLE+SCRIPT+h.slice(bi); n++;
+      json[k]=h.slice(0,bi)+STYLE+QSTYLE+SCRIPT+QSCRIPT+h.slice(bi); n++;
     }
     const serialized=JSON.stringify(json).split('</').join('<'+B+'/');
     fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');
