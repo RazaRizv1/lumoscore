@@ -169,7 +169,29 @@ function injectTokenRegistry(html){
     + 'for(var k in R){if(!Object.prototype.hasOwnProperty.call(R,k))continue;'
     + 'var d=k.indexOf("-");if(d<1)continue;var c=k.slice(0,d),u=R[k]&&R[k].image;'
     + 'if(typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0&&!L[c])L[c]=u;}}catch(e){}})();'
-    + '</scr'+'ipt>';
+    // Wallet: clicking a My Assets row, or View asset in its row menu, opens Trade-Asset.
+    //
+    // This lives in <head> rather than in _walletdata.js for a reason found the hard way: that script
+    // returns early when no account is connected, so an IIFE placed inside it never executed and the
+    // handler was silently absent. Function declarations hoist past that; statements do not. From here
+    // it is attached before anything else runs and cannot be gated.
+    //
+    // Delegated, so it survives the table being re-rendered, and scoped to #assetsTable and .row-menu,
+    // which exist only on the wallet page -- so it is inert everywhere else.
+    + '(function(){if(document.__lxRowNav)return;document.__lxRowNav=1;'
+    + 'function go(c,i){if(!c)return;window.location.href=(c==="XLM")?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(c)+(i?("-"+i):""));}'
+    + 'document.addEventListener("click",function(e){'
+    + 'if(!e.target||!e.target.closest)return;'
+    + 'var mb=e.target.closest(".row-menu button");'
+    + 'if(mb&&/view/i.test(mb.textContent||"")){var a=window.__lxActiveAsset||{};if(a.code){e.preventDefault();e.stopPropagation();go(a.code,a.iss);}return;}'
+    // everything interactive keeps its own behaviour: Trade, Send, Trustline, the kebab, the issuer copy
+    + 'if(e.target.closest("button,a,input,select,[class*=copy],[data-copy]"))return;'
+    + 'var row=e.target.closest("#assetsTable tbody tr");if(!row)return;'
+    + 'var ico=row.querySelector(".lx-aico");if(!ico)return;'
+    + 'go(ico.getAttribute("data-lxc")||"",ico.getAttribute("data-lxi")||"");'
+    + '},true);})();'
+    + '</scr'+'ipt>'
+    + '<style>#assetsTable tbody tr{cursor:pointer}</style>';
   const hi = html.indexOf('<head>');
   if(hi >= 0) return html.slice(0, hi + 6) + tag + html.slice(hi + 6);
   const he = html.indexOf('</head>');
