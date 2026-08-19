@@ -190,6 +190,8 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
 .mdxa-pools .lx-pl-foot button{padding:9px 16px;font-size:13px}
 /* description: two lines until asked otherwise. line-clamp keeps the cut on a line boundary rather
    than mid-glyph, and collapses back cleanly when expanded. */
+/* held until the stellar.toml attempt concludes, so the generic line is never painted then replaced */
+.asset-description.lx-descwait{visibility:hidden}
 .asset-description.lx-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
 overflow:hidden;margin-bottom:0}
 .lx-descmore{display:none;margin-top:4px;background:none;border:0;padding:0;cursor:pointer;
@@ -334,6 +336,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   var chg1h=null, chg1m=null, chg3m=null, chg6m=null;        // the rest of the performance grid, computed from real candles
   var natMcap=0, natVol=0;                                   // XLM native: real market cap + 24h volume (USD, CoinGecko)
   var homeDomain=null, tomlDesc=null, tomlImg=null;
+  // Has the stellar.toml attempt CONCLUDED, either way? The description used to be written the moment the
+  // header had a code, which meant the generic sentence was painted and then swapped for the real one a
+  // moment later -- a visible flash of the wrong copy on every asset that has a description. The line is
+  // now held back until this is true, so the reader sees one sentence rather than two.
+  var tomlSettled=false;
+  function tomlDone(){ if(tomlSettled)return; tomlSettled=true; try{ guardApply(); }catch(_){} }
   var dayOHLC=null;                                          // {o,h,l,c,v} from the latest daily aggregation
 
   // HOST FALLBACK, which GUARDRAILS E12 has always required and this layer never had.
@@ -524,7 +532,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     clampSetup(q(".asset-description"));
     // description (TOML desc if present, else a generic per-asset line)
     var desc=q(".asset-description");
-    if(desc){ var d=NATIVE?"XLM (Stellar Lumens) is the native asset of the Stellar network \\u2014 every other asset on this DEX trades against it. Market data is pulled live from CoinGecko and the Stellar network."
+    // Hold the line until the toml attempt has CONCLUDED. Writing the generic sentence first and swapping
+    // it for the real one a moment later is a visible flash of copy that was never true for this asset.
+    var descReady=(tomlDesc||tomlSettled||NATIVE);
+    if(desc&&!descReady)desc.classList.add("lx-descwait");
+    if(desc&&descReady){ desc.classList.remove("lx-descwait"); var d=NATIVE?"XLM (Stellar Lumens) is the native asset of the Stellar network \\u2014 every other asset on this DEX trades against it. Market data is pulled live from CoinGecko and the Stellar network."
       :(tomlDesc||(CODE+" trades on the LumosCore DEX against XLM on Stellar mainnet. Live price, order book, trades and holders are pulled directly from the Stellar network.")); if(desc.textContent.trim()!==d.trim())desc.textContent=d;
       clampDesc(desc); }
     hdr.classList.add("lxda");
@@ -2466,7 +2478,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         .then(function(){ poolsDone(0); },function(){ poolsDone(1); });
     })();
     // issuer home_domain (-> website + stellar.toml for logo/description)
-    if(ISSUER){ loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false); guardApply(); if(a.home_domain)loadToml(a.home_domain); }).catch(function(){ if(homeDomain==null)homeDomain=false; guardApply(); }); }
+    if(ISSUER){ loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false); guardApply(); if(a.home_domain)loadToml(a.home_domain); else tomlDone(); }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); guardApply(); });
+      // Safety net: an unresponsive host must never hold the description back for good.
+      setTimeout(tomlDone, 3000); }
     // if NO data ever lands (dead/unknown asset), reveal the stat row anyway after 2.5s — the cells hold
     // honest "—" placeholders now, which beats an eternal hidden-skeleton (and never exposes the mock).
     setTimeout(function(){ var sr=q(".stat-row"); if(sr&&!sr.classList.contains("lxda")){ try{ applyStats(); }catch(_){} sr.classList.add("lxda"); } },2500);
@@ -2532,7 +2546,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       // FIRST image= in the file -- LUMOS's -- so every unlisted mint rendered with the LUMOS flame.
       // Invisible while lumoscore.com served no toml; wrong the moment it started serving one.
       var blk=(txt.match(re)||[""])[0];
-      if(!blk)return;
+      if(!blk){ tomlDone(); return; }        // toml served, asset simply not listed in it
       var img=(blk.match(/image\\s*=\\s*["']([^"']+)["']/i)||[])[1];
       var desc=(blk.match(/desc\\s*=\\s*["']([^"']+)["']/i)||[])[1];
       if(img)tomlImg=img; if(desc)tomlDesc=desc;
@@ -2542,8 +2556,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       // showing a letter avatar on Trade-Asset even once the toml was live and carrying their image.
       if(img){ var lgT=q(".asset-logo"); if(lgT){ lgT.setAttribute("data-lxlogo",CODE); lgT.textContent="";
         lgT.style.setProperty("background-image","url("+img+")","important"); } }
+      tomlDone();                            // parsed: whatever we found is what we have
       if(img||desc)guardApply();
-    }).catch(function(){});
+    }).catch(function(){ tomlDone(); });      // an unreachable toml is a conclusion too
   }
 
   // Dedicated SYNCHRONOUS header guardian: if any engine reverts the issuer address / website / name in
