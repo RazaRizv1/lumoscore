@@ -234,7 +234,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   // whose value has not been fetched sink to the bottom in BOTH directions rather than leading an
   // ascending sort with a wall of blanks.
   var MK_SORTS=[["px","Last price"],["chg","24H change"],["vol","Volume (24H)"],["trades","Trades (24H)"],["tvlUsd","Liquidity"]];
-  var mkSort={key:"",dir:-1};
+  var mkSort={key:"vol",dir:-1};                              // default: 24h volume, high to low
   function mkCmp(k,dir){ return function(a,b){ var x=a[k],y=b[k];
     var xn=(x==null||x!==x), yn=(y==null||y!==y);
     if(xn&&yn)return 0; if(xn)return 1; if(yn)return -1;
@@ -278,7 +278,9 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       var op=t.closest(".lx-msheet button[data-sk]");
       if(op){ e.preventDefault(); e.stopImmediatePropagation();
         var k=op.getAttribute("data-sk");
-        if(!k){ mkSort.key=""; mkSort.dir=-1; }
+        // "Default order" restores the DEFAULT, which is now volume high-to-low -- not "no sorting".
+        // Clearing to "" would leave the roster order, which the label no longer describes.
+        if(!k){ mkSort.key="vol"; mkSort.dir=-1; }
         else if(mkSort.key===k)mkSort.dir=-mkSort.dir;
         else { mkSort.key=k; mkSort.dir=-1; }
         mkPage=1; closeSheet(); try{ pass(); }catch(_){}
