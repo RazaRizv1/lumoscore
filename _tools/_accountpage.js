@@ -189,6 +189,55 @@ const STYLE = `<style id="lx-acc-css">
 .acc-pg-i{font-size:13px;color:var(--text-soft);font-weight:600;white-space:nowrap}
 
 .acc-acts{display:flex;flex-direction:column}
+/* ---- Recent activity, as the Wallet page draws it -------------------------------------------- */
+/* Values copied from the wallet build (.activity-row and friends) rather than re-picked, so the two
+   pages cannot drift. Scoped to #accActs -- these are generic class names and the rest of this page
+   must not inherit them. */
+#accActs .activity-row{padding:14px 22px;display:flex;align-items:center;gap:14px;
+  border-bottom:1px solid var(--border);transition:background .12s;position:relative}
+#accActs .activity-row:hover{background:var(--surface-2)}
+#accActs .activity-row:last-child{border-bottom:none}
+#accActs .activity-icon{width:36px;height:36px;border-radius:10px;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center}
+#accActs .activity-icon.received{background:var(--green-soft);color:var(--green)}
+#accActs .activity-icon.sent{background:var(--red-soft);color:var(--red)}
+#accActs .activity-icon.swap{background:var(--blue-soft);color:var(--blue)}
+#accActs .activity-icon.order{background:var(--accent-pale);color:var(--accent)}
+#accActs .activity-icon.claim{background:rgba(16,185,129,.14);color:#10b981}
+#accActs .activity-icon.settings{background:rgba(100,116,139,.16);color:#64748b}
+#accActs .activity-icon.lp{background:rgba(99,102,241,.14);color:#6366f1}
+#accActs .activity-icon.other{background:rgba(100,116,139,.14);color:#64748b}
+#accActs .activity-info{flex:1;min-width:0;display:flex;flex-flow:row wrap;align-items:baseline;gap:2px 0}
+#accActs .activity-info .type{font-weight:550;font-size:17.5px;line-height:1.2;display:inline-flex;
+  align-items:center;gap:8px}
+#accActs .activity-info .meta{font-size:14.5px;color:var(--text-soft);margin-top:3px;
+  font-family:'JetBrains Mono',monospace}
+#accActs .activity-info .meta::before{content:"\\00b7";margin:0 8px;opacity:.5}
+#accActs .activity-info .meta:empty{display:none}
+#accActs .activity-amt{text-align:right}
+#accActs .activity-amt .a1{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:17.5px}
+#accActs .activity-amt .a1.up{color:var(--green)}
+#accActs .activity-amt .a1.down{color:var(--red)}
+#accActs .activity-amt .a1.swap{color:var(--blue)}
+#accActs .activity-amt .a2{font-size:14px;color:var(--text-soft);margin-top:2px;
+  font-family:'JetBrains Mono',monospace}
+#accActs .lx-txlink{margin-left:14px;color:var(--text-muted);display:inline-flex;align-items:center;
+  flex-shrink:0;transition:color .12s}
+#accActs .lx-txlink:hover{color:var(--accent)}
+/* the asset's own mark, inline in the type line */
+#accActs .lx-act-ilogo{width:18px;height:18px;border-radius:50%;flex:0 0 auto;display:inline-block;
+  background:var(--al) center/cover no-repeat,var(--surface-2);vertical-align:-4px;margin:0 2px;
+  position:relative}
+#accActs .lx-act-ilogo[data-l]:not([data-l=""])::after{content:attr(data-l);position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;font:800 9px/1 'Hanken Grotesk',sans-serif;
+  color:var(--text-muted)}
+@media(max-width:760px){
+#accActs .activity-row{padding:12px 14px;gap:11px}
+#accActs .activity-info .type{font-size:15px}
+#accActs .activity-info .meta{font-size:12.5px}
+#accActs .activity-amt .a1{font-size:15px}
+#accActs .activity-amt .a2{font-size:12px}
+}
 .acc-act{display:flex;align-items:center;gap:12px;padding:12px 18px;border-top:1px solid var(--border)}
 .acc-act:first-child{border-top:1px solid var(--border)}
 .acc-act-ic{width:32px;height:32px;border-radius:10px;flex:0 0 auto;display:inline-flex;align-items:center;
@@ -504,6 +553,23 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   }
 
   // ---- activity -----------------------------------------------------------------------------------
+  // The wallet's own activity icons, so the two pages draw the same marks.
+  var WIC={
+    received:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>',
+    sent:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+    swap:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3M4 13h11M17 14l3-3-3-3M20 11H9"/></svg>',
+    lp:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',
+    order:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    claim:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
+    settings:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    other:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>'
+  };
+  // The asset's own mark, inline in the title -- the wallet's .lx-act-ilogo, same construction.
+  function accIlogo(code,native){
+    var lg=native?STELLAR_URI:((window.__lxLogos||{})[code]||"");
+    var bg=lg?("url('"+String(lg).replace(/'/g,"%27")+"')"):"none";
+    return '<span class="lx-act-ilogo" style="--al:'+bg+'" data-l="'+esc(lg?"":(code||"?").slice(0,1).toUpperCase())+'"></span>';
+  }
   var AIC={
     payment:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
     swap:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>',
@@ -516,30 +582,43 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   function describe(o){
     var t=o.type||"", me=ADDR;
     if(t==="payment"){
-      var out=(o.from===me);
-      return {ic:"payment", title:(out?"Sent ":"Received ")+amt(o.amount)+" "+opCode(o),
+      var out=(o.from===me), pc=opCode(o), pn=(o.asset_type==="native");
+      return {ic:"payment", kind:out?"sent":"received",
+        titleHtml:(out?"Sent":"Received")+accIlogo(pc,pn)+esc(pc),
+        title:(out?"Sent ":"Received ")+pc,
         sub:(out?("to "+shortG(o.to)):("from "+shortG(o.from))), cls:out?"acc-dn":"acc-up",
-        right:(out?"-":"+")+amt(o.amount)+" "+opCode(o)}; }
+        right:(out?"-":"+")+amt(o.amount)+" "+pc}; }
     if(t.indexOf("path_payment")===0){
       var sc=o.source_asset_type==="native"?"XLM":(o.source_asset_code||"");
-      return {ic:"swap", title:"Swapped "+amt(o.source_amount)+" "+sc+" "+ARROW+" "+amt(o.amount)+" "+opCode(o),
-        sub:(o.from===me?"outgoing":"incoming"), right:""}; }
+      var dc=opCode(o), dn=(o.asset_type==="native"), sn=(o.source_asset_type==="native");
+      return {ic:"swap", kind:"swap",
+        titleHtml:"Swap"+accIlogo(sc,sn)+esc(sc)+" "+ARROW+accIlogo(dc,dn)+esc(dc),
+        title:"Swap "+sc+" "+ARROW+" "+dc,
+        sub:"via Stellar DEX",
+        right:"+"+amt(o.amount)+" "+dc, rightSub:"-"+amt(o.source_amount)+" "+sc}; }
     if(t==="change_trust"){
       var add=(+o.limit)>0;
-      return {ic:"trust", title:(add?"Added trustline ":"Removed trustline ")+(o.asset_code||opCode(o)),
+      var tc=(o.asset_code||opCode(o));
+      return {ic:"trust", kind:"settings",
+        titleHtml:(add?"Added trustline":"Removed trustline")+accIlogo(tc,false)+esc(tc),
+        title:(add?"Added trustline ":"Removed trustline ")+tc,
         sub:o.asset_issuer?shortG(o.asset_issuer):"", right:""}; }
-    if(t==="liquidity_pool_deposit")  return {ic:"pool", title:"Deposited into a pool", sub:shortG(o.liquidity_pool_id||""), right:""};
-    if(t==="liquidity_pool_withdraw") return {ic:"pool", title:"Withdrew from a pool", sub:shortG(o.liquidity_pool_id||""), right:""};
+    if(t==="liquidity_pool_deposit")  return {ic:"pool", kind:"lp", title:"Deposited into a pool", sub:shortG(o.liquidity_pool_id||""), right:""};
+    if(t==="liquidity_pool_withdraw") return {ic:"pool", kind:"lp", title:"Withdrew from a pool", sub:shortG(o.liquidity_pool_id||""), right:""};
     if(t.indexOf("offer")>=0){
       var amount=+o.amount||0;
-      return {ic:"offer", title:(amount>0?"Placed an order":"Cancelled an order"),
-        sub:(o.selling_asset_code||(o.selling_asset_type==="native"?"XLM":""))+" / "+(o.buying_asset_code||(o.buying_asset_type==="native"?"XLM":"")), right:""}; }
-    if(t==="create_account") return {ic:"payment", title:"Account created", sub:"funded with "+amt(o.starting_balance)+" XLM", cls:"acc-up", right:""};
-    if(t==="account_merge")  return {ic:"other", title:"Account merged", sub:shortG(o.into||""), right:""};
-    if(t==="claim_claimable_balance") return {ic:"payment", title:"Claimed a balance", sub:"", right:""};
-    if(t==="create_claimable_balance") return {ic:"payment", title:"Created a claimable balance", sub:amt(o.amount)+" "+opCode(o), right:""};
+      var sc2=(o.selling_asset_code||(o.selling_asset_type==="native"?"XLM":"")),
+          bc2=(o.buying_asset_code||(o.buying_asset_type==="native"?"XLM":""));
+      return {ic:"offer", kind:"order",
+        titleHtml:(amount>0?"Placed an order":"Cancelled an order")
+          +accIlogo(sc2,o.selling_asset_type==="native")+esc(sc2)+" /"+accIlogo(bc2,o.buying_asset_type==="native")+esc(bc2),
+        title:(amount>0?"Placed an order":"Cancelled an order"), sub:"", right:""}; }
+    if(t==="create_account") return {ic:"payment", kind:"received", title:"Account created", sub:"", cls:"acc-up", right:"+"+amt(o.starting_balance)+" XLM"};
+    if(t==="account_merge")  return {ic:"other", kind:"other", title:"Account merged", sub:shortG(o.into||""), right:""};
+    if(t==="claim_claimable_balance") return {ic:"payment", kind:"claim", title:"Claimed claimable balance", sub:"", right:""};
+    if(t==="create_claimable_balance") return {ic:"payment", kind:"claim", title:"Created claimable balance", sub:"", right:"-"+amt(o.amount)+" "+opCode(o)};
     // Anything else: say what it was rather than inventing a story for it.
-    return {ic:"other", title:t.split("_").join(" ").replace(/^./,function(m){return m.toUpperCase();}), sub:"", right:""};
+    return {ic:"other", kind:"other", title:t.split("_").join(" ").replace(/^./,function(m){return m.toUpperCase();}), sub:"", right:""};
   }
   function renderActs(){
     var box=q("#accActs"); if(!box)return;
@@ -548,11 +627,17 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       +(DONE.acts?"No activity on this account yet.":"Loading activity"+String.fromCharCode(8230))+'</div>'; return; }
     box.innerHTML=ACTS.map(function(o){
       var d=describe(o), ts=Date.parse(o.created_at||"")||0;
-      return '<div class="acc-act"><span class="acc-act-ic">'+(AIC[d.ic]||AIC.other)+'</span>'
-        +'<span class="acc-act-b"><span class="acc-act-t">'+esc(d.title)+'</span>'
-        +'<span class="acc-act-s">'+esc(d.sub||"")+(d.sub?(" "+MID+" "):"")+(ts?ago(ts):"")+'</span></span>'
-        +'<span class="acc-act-r"><span class="'+(d.cls||"")+'">'+esc(d.right||"")+'</span><br>'
-        +'<a href="https://stellar.expert/explorer/public/tx/'+esc(o.transaction_hash||"")+'" target="_blank" rel="noopener">tx <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></span></div>'; }).join("");
+      // .acc-act -> .activity-row: same element names as the wallet, so the same rules style both.
+      var kind=d.kind||"other";
+      var ac=(kind==="received")?"up":(kind==="sent")?"down":(kind==="swap")?"swap":"";
+      var title=d.titleHtml||esc(d.title);
+      var meta=[esc(d.sub||""),(ts?ago(ts):"")].filter(Boolean).join(" "+MID+" ");
+      return '<div class="activity-row"><div class="activity-icon '+kind+'">'+(WIC[kind]||WIC.other)+'</div>'
+        +'<div class="activity-info"><div class="type">'+title+'</div>'
+        +'<div class="meta">'+meta+'</div></div>'
+        +'<div class="activity-amt"><div class="a1 '+ac+'">'+esc(d.right||"")+'</div>'
+        +'<div class="a2">'+esc(d.rightSub||"")+'</div></div>'
+        +'<a class="lx-txlink" href="https://stellar.expert/explorer/public/tx/'+esc(o.transaction_hash||"")+'" target="_blank" rel="noopener" title="View on Stellar.Expert"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></div>'; }).join("");
   }
 
   // ---- load ---------------------------------------------------------------------------------------
