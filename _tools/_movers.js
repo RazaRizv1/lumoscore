@@ -24,7 +24,10 @@ const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
-const KEYS = ['lumoscore-dex.html', 'lumoscore-dex-dark.html'];
+// The phone build is here now too: its Market Movers renders the SAME card, painted by the same
+// desktop renderer (see _dexdata.js renderMovers, which takes #mdxMoverList as well). Its own
+// container is a flex column rather than a grid, so the card stacks full width.
+const KEYS = ['lumoscore-dex.html', 'lumoscore-dex-dark.html', 'lumoscore-dex-mobile.html'];
 
 const STYLE = `<style id="lx-movers-css">
 /* ---- the grid ---------------------------------------------------------------------------------- */
@@ -87,6 +90,55 @@ html .dex-movers .dex-mover-card:hover{
 /* the same box before the series lands -- a wash, so the tile reads as loading rather than broken */
 .dex-movers .dex-mover-card .dex-mk-spark:empty{
   background:linear-gradient(to top,rgba(127,127,140,.07),rgba(127,127,140,0))}
+
+/* ---- the phone -------------------------------------------------------------------------------- */
+/* Same card, one per row. The rules above are all prefixed .dex-movers, which is the DESKTOP
+   section wrapper; the phone's container is .mdx-mover-list, so each one is restated for it rather
+   than loosening the desktop selectors and letting them leak somewhere else. */
+.mdx-mover-list{display:flex;flex-direction:column;gap:10px}
+html .mdx-mover-list .dex-mover-card{
+  position:relative;overflow:hidden;
+  padding:14px 14px 0;border-radius:15px;gap:9px;
+  display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--border);background-repeat:no-repeat}
+html .mdx-mover-list .dex-mover-card:has(.dex-mover-pct.up){
+  background-image:radial-gradient(128% 74% at 50% 100%,rgba(53,192,127,.085),rgba(53,192,127,0) 72%)}
+html .mdx-mover-list .dex-mover-card:has(.dex-mover-pct.down){
+  background-image:radial-gradient(128% 74% at 50% 100%,rgba(255,91,91,.085),rgba(255,91,91,0) 72%)}
+.mdx-mover-list .dex-mover-head{display:flex;align-items:flex-start;gap:9px}
+.mdx-mover-list .dex-mover-ico{width:32px;height:32px;border-radius:50%;flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}
+.mdx-mover-list .dex-mover-pair{flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--text);padding-top:1px}
+.mdx-mover-list .dex-mover-pair .sub{display:block;font-size:10.5px;font-weight:500;margin-top:2px;
+  color:var(--text-soft);font-family:'JetBrains Mono',monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mdx-mover-list .dex-mover-pct{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:800;line-height:1;
+  padding:5px 8px;border-radius:999px;white-space:nowrap}
+.mdx-mover-list .dex-mover-pct.up{color:var(--green);background:var(--green-soft)}
+.mdx-mover-list .dex-mover-pct.down{color:var(--red);background:var(--red-soft)}
+.mdx-mover-list .dex-mover-pct.up::before{content:"${B}25B2";font-size:7px;line-height:1}
+.mdx-mover-list .dex-mover-pct.down::before{content:"${B}25BC";font-size:7px;line-height:1}
+.mdx-mover-list .dex-mover-body{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.mdx-mover-list .dex-mover-l{min-width:0}
+.mdx-mover-list .dex-mover-r{text-align:right;flex:0 0 auto}
+.mdx-mover-list .dex-mover-price{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;
+  color:var(--text);letter-spacing:-.4px;line-height:1.05}
+.mdx-mover-list .dex-mover-vol{margin-top:4px;display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;
+  font-family:'JetBrains Mono',monospace;font-size:10px}
+.mdx-mover-list .dex-mover-vol .lxk{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-soft);opacity:.7}
+.mdx-mover-list .dex-mover-vol .lxv{color:var(--text-muted);font-weight:700}
+.mdx-mover-list .dex-mover-trades{font:800 15px/1.05 'Hanken Grotesk',sans-serif;color:var(--text)}
+.mdx-mover-list .dex-mover-tlabel{font:600 8.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-soft);margin-top:3px;white-space:nowrap}
+.mdx-mover-list .dex-mover-card .dex-mk-spark{display:block;width:calc(100% + 28px);height:40px;margin:6px -14px 0}
+.mdx-mover-list .dex-mover-card .dex-mk-spark:empty{
+  background:linear-gradient(to top,rgba(127,127,140,.07),rgba(127,127,140,0))}
+/* the phone's own row styling, now unused -- the card replaces it */
+.mdx-mover-list .mdx-mover-row{display:none}
+/* Empty Gainers/Losers keeps the phone's message styling rather than the desktop's grid-spanning one */
+.mdx-mover-list .dex-mover-empty{padding:16px 4px;text-align:center;color:var(--text-soft);font-size:13px}
 </style>`;
 
 let containers = 0, pages = 0;

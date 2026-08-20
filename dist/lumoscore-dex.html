@@ -1733,84 +1733,6 @@
 .lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
-</style><style id="lx-movers-css">
-/* ---- the grid ---------------------------------------------------------------------------------- */
-.dex-movers .dex-mover-grid{gap:14px}
-
-/* ---- the tile ---------------------------------------------------------------------------------- */
-/* No bottom padding: the chart runs to the edge and the tile clips it back to the corner radius. */
-html .dex-movers .dex-mover-card{
-  position:relative;overflow:hidden;
-  padding:15px 15px 0;border-radius:16px;gap:10px;
-  background-repeat:no-repeat}
-/* Direction is read off the pill the paint step already classes, so up/down has ONE source of truth
-   and no new attribute for the logo painter to find and decorate. */
-html .dex-movers .dex-mover-card:has(.dex-mover-pct.up){
-  background-image:radial-gradient(128% 74% at 50% 100%,rgba(53,192,127,.085),rgba(53,192,127,0) 72%)}
-html .dex-movers .dex-mover-card:has(.dex-mover-pct.down){
-  background-image:radial-gradient(128% 74% at 50% 100%,rgba(255,91,91,.085),rgba(255,91,91,0) 72%)}
-html .dex-movers .dex-mover-card:hover{
-  border-color:var(--accent);box-shadow:0 16px 34px -20px rgba(234,106,44,.34)}
-
-/* ---- head: mark, ticker, issuer, change -------------------------------------------------------- */
-.dex-movers .dex-mover-head{gap:9px;align-items:flex-start}
-.dex-movers .dex-mover-ico{width:34px;height:34px;font-size:14px}
-.dex-movers .dex-mover-pair{font-size:14.5px;line-height:1.15;letter-spacing:-.1px;padding-top:2px}
-/* The issuer domain is provenance, not a headline -- and a long one used to push the pill off the row. */
-.dex-movers .dex-mover-pair .sub{
-  font-size:11px;margin-top:3px;max-width:100%;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-
-/* A caret as well as a colour: green and red are the same value to a red-green colourblind reader,
-   and this is the one number on the tile whose sign is the whole point. */
-.dex-movers .dex-mover-pct{
-  display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
-  font-size:12.5px;font-weight:800;line-height:1;letter-spacing:-.2px;
-  padding:6px 9px;border-radius:999px;white-space:nowrap}
-.dex-movers .dex-mover-pct.up::before{content:"\25B2";font-size:7.5px;line-height:1}
-.dex-movers .dex-mover-pct.down::before{content:"\25BC";font-size:7.5px;line-height:1}
-
-/* ---- the numbers ------------------------------------------------------------------------------- */
-.dex-movers .dex-mover-body{align-items:flex-end}
-.dex-movers .dex-mover-price{font-size:21px;letter-spacing:-.5px;line-height:1.05}
-/* Labels, so "Vol" and "TVL" stop reading as part of the numbers they precede. */
-.dex-movers .dex-mover-vol{
-  margin-top:5px;display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;
-  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:-.1px}
-.dex-movers .dex-mover-vol .lxk{
-  font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
-  color:var(--text-soft);opacity:.7}
-.dex-movers .dex-mover-vol .lxv{color:var(--text-muted);font-weight:700}
-.dex-movers .dex-mover-trades{font-size:17px;letter-spacing:-.3px}
-.dex-movers .dex-mover-tlabel{font-size:9px;opacity:.85}
-
-/* ---- the chart --------------------------------------------------------------------------------- */
-/* Fixed height whether or not the series has arrived: it is fetched after the numbers, and a box that
-   grows 46px when it lands would shift every tile below it. */
-.dex-movers .dex-mover-card .dex-mk-spark{
-  display:block;width:calc(100% + 30px);height:46px;margin:6px -15px 0;
-  opacity:.92;transition:opacity .2s ease}
-.dex-movers .dex-mover-card:hover .dex-mk-spark{opacity:1}
-/* the same box before the series lands -- a wash, so the tile reads as loading rather than broken */
-.dex-movers .dex-mover-card .dex-mk-spark:empty{
-  background:linear-gradient(to top,rgba(127,127,140,.07),rgba(127,127,140,0))}
-</style><style id="lx-tabs-css">
-.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:1px}
-.lx-tabic svg{display:block;width:13px;height:13px}
-.mdx-mk-filter .lx-tabic svg,#poolTabs .lx-tabic svg{width:12px;height:12px}
-/* An icon on a tab that is not the active one should read as part of the label, not as a second
-   thing competing with it. Full colour is the active tab's reward. */
-.lx-tabic{opacity:.72;transition:opacity .15s ease}
-.dex-mk-filter:hover .lx-tabic,.mdx-mk-filter:hover .lx-tabic,#poolTabs button:hover .lx-tabic{opacity:.9}
-.dex-mk-filter.active .lx-tabic,.mdx-mk-filter.active .lx-tabic,#poolTabs button.active .lx-tabic{opacity:1}
-/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
-   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
-.lx-tabic+.lx-mk-star{display:none!important}
-/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
-   pushes the list down and reads as two groups. */
-.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.mdx-mk-filters::-webkit-scrollbar{display:none}
-.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
 </style><style id="lx-dexmain-css">
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
@@ -2110,6 +2032,137 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
 /* Price carries the longest string in the row, so it gets room; the counts stay narrow */
 .dex-mint-stat:first-child{min-width:104px}
+</style><style id="lx-movers-css">
+/* ---- the grid ---------------------------------------------------------------------------------- */
+.dex-movers .dex-mover-grid{gap:14px}
+
+/* ---- the tile ---------------------------------------------------------------------------------- */
+/* No bottom padding: the chart runs to the edge and the tile clips it back to the corner radius. */
+html .dex-movers .dex-mover-card{
+  position:relative;overflow:hidden;
+  padding:15px 15px 0;border-radius:16px;gap:10px;
+  background-repeat:no-repeat}
+/* Direction is read off the pill the paint step already classes, so up/down has ONE source of truth
+   and no new attribute for the logo painter to find and decorate. */
+html .dex-movers .dex-mover-card:has(.dex-mover-pct.up){
+  background-image:radial-gradient(128% 74% at 50% 100%,rgba(53,192,127,.085),rgba(53,192,127,0) 72%)}
+html .dex-movers .dex-mover-card:has(.dex-mover-pct.down){
+  background-image:radial-gradient(128% 74% at 50% 100%,rgba(255,91,91,.085),rgba(255,91,91,0) 72%)}
+html .dex-movers .dex-mover-card:hover{
+  border-color:var(--accent);box-shadow:0 16px 34px -20px rgba(234,106,44,.34)}
+
+/* ---- head: mark, ticker, issuer, change -------------------------------------------------------- */
+.dex-movers .dex-mover-head{gap:9px;align-items:flex-start}
+.dex-movers .dex-mover-ico{width:34px;height:34px;font-size:14px}
+.dex-movers .dex-mover-pair{font-size:14.5px;line-height:1.15;letter-spacing:-.1px;padding-top:2px}
+/* The issuer domain is provenance, not a headline -- and a long one used to push the pill off the row. */
+.dex-movers .dex-mover-pair .sub{
+  font-size:11px;margin-top:3px;max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* A caret as well as a colour: green and red are the same value to a red-green colourblind reader,
+   and this is the one number on the tile whose sign is the whole point. */
+.dex-movers .dex-mover-pct{
+  display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
+  font-size:12.5px;font-weight:800;line-height:1;letter-spacing:-.2px;
+  padding:6px 9px;border-radius:999px;white-space:nowrap}
+.dex-movers .dex-mover-pct.up::before{content:"\25B2";font-size:7.5px;line-height:1}
+.dex-movers .dex-mover-pct.down::before{content:"\25BC";font-size:7.5px;line-height:1}
+
+/* ---- the numbers ------------------------------------------------------------------------------- */
+.dex-movers .dex-mover-body{align-items:flex-end}
+.dex-movers .dex-mover-price{font-size:21px;letter-spacing:-.5px;line-height:1.05}
+/* Labels, so "Vol" and "TVL" stop reading as part of the numbers they precede. */
+.dex-movers .dex-mover-vol{
+  margin-top:5px;display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;
+  font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:-.1px}
+.dex-movers .dex-mover-vol .lxk{
+  font-size:9.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-soft);opacity:.7}
+.dex-movers .dex-mover-vol .lxv{color:var(--text-muted);font-weight:700}
+.dex-movers .dex-mover-trades{font-size:17px;letter-spacing:-.3px}
+.dex-movers .dex-mover-tlabel{font-size:9px;opacity:.85}
+
+/* ---- the chart --------------------------------------------------------------------------------- */
+/* Fixed height whether or not the series has arrived: it is fetched after the numbers, and a box that
+   grows 46px when it lands would shift every tile below it. */
+.dex-movers .dex-mover-card .dex-mk-spark{
+  display:block;width:calc(100% + 30px);height:46px;margin:6px -15px 0;
+  opacity:.92;transition:opacity .2s ease}
+.dex-movers .dex-mover-card:hover .dex-mk-spark{opacity:1}
+/* the same box before the series lands -- a wash, so the tile reads as loading rather than broken */
+.dex-movers .dex-mover-card .dex-mk-spark:empty{
+  background:linear-gradient(to top,rgba(127,127,140,.07),rgba(127,127,140,0))}
+
+/* ---- the phone -------------------------------------------------------------------------------- */
+/* Same card, one per row. The rules above are all prefixed .dex-movers, which is the DESKTOP
+   section wrapper; the phone's container is .mdx-mover-list, so each one is restated for it rather
+   than loosening the desktop selectors and letting them leak somewhere else. */
+.mdx-mover-list{display:flex;flex-direction:column;gap:10px}
+html .mdx-mover-list .dex-mover-card{
+  position:relative;overflow:hidden;
+  padding:14px 14px 0;border-radius:15px;gap:9px;
+  display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--border);background-repeat:no-repeat}
+html .mdx-mover-list .dex-mover-card:has(.dex-mover-pct.up){
+  background-image:radial-gradient(128% 74% at 50% 100%,rgba(53,192,127,.085),rgba(53,192,127,0) 72%)}
+html .mdx-mover-list .dex-mover-card:has(.dex-mover-pct.down){
+  background-image:radial-gradient(128% 74% at 50% 100%,rgba(255,91,91,.085),rgba(255,91,91,0) 72%)}
+.mdx-mover-list .dex-mover-head{display:flex;align-items:flex-start;gap:9px}
+.mdx-mover-list .dex-mover-ico{width:32px;height:32px;border-radius:50%;flex:0 0 auto;
+  display:inline-flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800}
+.mdx-mover-list .dex-mover-pair{flex:1;min-width:0;font-size:14px;font-weight:700;color:var(--text);padding-top:1px}
+.mdx-mover-list .dex-mover-pair .sub{display:block;font-size:10.5px;font-weight:500;margin-top:2px;
+  color:var(--text-soft);font-family:'JetBrains Mono',monospace;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mdx-mover-list .dex-mover-pct{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;
+  font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:800;line-height:1;
+  padding:5px 8px;border-radius:999px;white-space:nowrap}
+.mdx-mover-list .dex-mover-pct.up{color:var(--green);background:var(--green-soft)}
+.mdx-mover-list .dex-mover-pct.down{color:var(--red);background:var(--red-soft)}
+.mdx-mover-list .dex-mover-pct.up::before{content:"\25B2";font-size:7px;line-height:1}
+.mdx-mover-list .dex-mover-pct.down::before{content:"\25BC";font-size:7px;line-height:1}
+.mdx-mover-list .dex-mover-body{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.mdx-mover-list .dex-mover-l{min-width:0}
+.mdx-mover-list .dex-mover-r{text-align:right;flex:0 0 auto}
+.mdx-mover-list .dex-mover-price{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:800;
+  color:var(--text);letter-spacing:-.4px;line-height:1.05}
+.mdx-mover-list .dex-mover-vol{margin-top:4px;display:flex;align-items:baseline;gap:5px;flex-wrap:wrap;
+  font-family:'JetBrains Mono',monospace;font-size:10px}
+.mdx-mover-list .dex-mover-vol .lxk{font-size:9px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--text-soft);opacity:.7}
+.mdx-mover-list .dex-mover-vol .lxv{color:var(--text-muted);font-weight:700}
+.mdx-mover-list .dex-mover-trades{font:800 15px/1.05 'Hanken Grotesk',sans-serif;color:var(--text)}
+.mdx-mover-list .dex-mover-tlabel{font:600 8.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-soft);margin-top:3px;white-space:nowrap}
+.mdx-mover-list .dex-mover-card .dex-mk-spark{display:block;width:calc(100% + 28px);height:40px;margin:6px -14px 0}
+.mdx-mover-list .dex-mover-card .dex-mk-spark:empty{
+  background:linear-gradient(to top,rgba(127,127,140,.07),rgba(127,127,140,0))}
+/* the phone's own row styling, now unused -- the card replaces it */
+.mdx-mover-list .mdx-mover-row{display:none}
+/* Empty Gainers/Losers keeps the phone's message styling rather than the desktop's grid-spanning one */
+.mdx-mover-list .dex-mover-empty{padding:16px 4px;text-align:center;color:var(--text-soft);font-size:13px}
+</style><style id="lx-tabs-css">
+.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:2px}
+/* Sized UP. At 13px these read as punctuation beside the label rather than as marks in their own
+   right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
+   afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
+.lx-tabic svg{display:block;width:17px;height:17px}
+.mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
+#poolTabs .lx-tabic svg{width:18px;height:18px}
+@media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}
+/* Full colour on every tab. Dimming the inactive ones to .72 was what made a set of otherwise
+   saturated marks look washed out and cheap; the active tab is already carried by its filled
+   background, so the icons do not need to fade to say which one is on. */
+.lx-tabic{opacity:1}
+/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
+   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
+.lx-tabic+.lx-mk-star{display:none!important}
+/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
+   pushes the list down and reads as two groups. */
+.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mdx-mk-filters::-webkit-scrollbar{display:none}
+.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
 </style><style id="lx-sidecard-css">
 /* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
    drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
@@ -4813,6 +4866,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
 
 
 
+
 <script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -5437,7 +5491,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // frozen top-4 PER category: each tab keeps its OWN stable order (no re-sort glitch), but switching tabs
   // now yields the correct set (previously a single global freeze made all 3 tabs show the same 4 assets).
   var _moverFrozen={};
-  function moverCat(){ var t=q(".dex-mover-tab.active"); return (t&&t.getAttribute)?(t.getAttribute("data-cat")||"gainers"):"gainers"; }
+  function moverCat(){ var t=q(".dex-mover-tab.active")||q(".mdx-mover-tab.active");
+    return (t&&t.getAttribute)?(t.getAttribute("data-cat")||(t.textContent||"").trim().toLowerCase()||"gainers"):"gainers"; }
   // Takes an optional category so the mobile renderer can ask for a specific tab. Without it, the
   // category comes from ".dex-mover-tab.active" — a selector the mobile markup does not have, so a
   // mobile caller silently got "gainers" for all three tabs.
@@ -5482,7 +5537,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     if(map.volume&&map.gainers&&map.losers)want.forEach(function(c){ bar.appendChild(map[c]); });
     tabs.forEach(function(t){ t.classList.toggle("active",t===vol); });
   }
-  function renderMovers(){ var grid=q("#dexMoverGrid"); if(!grid)return;
+  function renderMovers(){ var grid=q("#dexMoverGrid")||q("#mdxMoverList"); if(!grid)return;
     try{ moverDefault(); }catch(_){}
     var data=moverData(); var sig=data.map(function(a){return a.code;}).join(",");
     // An empty category is now possible and is a real answer: Gainers and Losers are quality-gated, so on
@@ -5823,10 +5878,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // doesn't change #dexMoverGrid's children, so the childList observer wouldn't fire). Delegated so it
     // survives node replacement; a short + backup tick lets the design toggle .active first.
     if(!window.__lxDEXtab){ window.__lxDEXtab=1;
-      document.addEventListener("click",function(e){ var t=e.target&&e.target.closest?e.target.closest(".dex-mover-tab,.dex-mk-filter"):null; if(t){ setTimeout(guardApply,30); setTimeout(guardApply,160); } });
+      document.addEventListener("click",function(e){ var t=e.target&&e.target.closest?e.target.closest(".dex-mover-tab,.mdx-mover-tab,.dex-mk-filter,.mdx-mk-filter"):null; if(t){ setTimeout(guardApply,30); setTimeout(guardApply,160); } });
     }
     guardEl("#dexMintsList",renderMints);
     guardEl("#dexMoverGrid",renderMovers);
+    guardEl("#mdxMoverList",renderMovers);
     guardEl("#dexMkTbody",renderTable);
     loadData();
     var ticks=0, iv=setInterval(function(){ guardApply(); if(++ticks>30)clearInterval(iv); },700);

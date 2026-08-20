@@ -193,7 +193,11 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   function moverCat(){var t=q(".mdx-mover-tabs .active,.mdx-mover-tabs button.active");
     return t?((t.getAttribute("data-cat")||(t.textContent||"").trim().toLowerCase())):"gainers";}
   function renderMovers(){
-    var list=q(".mdx-mover-list");if(!list)return;var A=assets();if(!A)return;
+    var list=q(".mdx-mover-list");if(!list)return;
+    // The desktop layer paints this container now -- the same card, with the sparkline, volume, TVL
+    // and trade count that this renderer never had. Standing down rather than racing it.
+    if(window.__lxDEXmovers)return;
+    var A=assets();if(!A)return;
     // Pass the category explicitly: moverData() otherwise reads the DESKTOP active-tab selector, which
     // does not exist here, so all three tabs came back as Gainers.
     var cat=moverCat();
