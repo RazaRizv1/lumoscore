@@ -2031,6 +2031,81 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
 /* Price carries the longest string in the row, so it gets room; the counts stay narrow */
 .dex-mint-stat:first-child{min-width:104px}
+</style><style id="lx-heromono-css">
+/* ---- the card ------------------------------------------------------------------------------- */
+/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
+   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
+   per-page background rules on both pages. */
+html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
+             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
+html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
+             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
+  border:1px solid rgba(16,16,22,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
+/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
+   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
+.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
+
+/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
+/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
+   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
+   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
+   itself is untouched everywhere else it is used. */
+.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
+
+/* ---- type: the loudest thing on the card ----------------------------------------------------- */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
+/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
+   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
+   and colour alone leaves it transparent. */
+.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
+.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
+  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
+html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
+  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
+
+/* ---- the chain mark -------------------------------------------------------------------------- */
+/* It is a dark disc with a white glyph: prominent on a light card, nearly lost on a dark one. A
+   hairline ring gives it an edge to sit against without recolouring the artwork. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 24px -12px rgba(0,0,0,.8)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 0 0 1px rgba(16,16,22,.14),0 10px 24px -14px rgba(16,16,22,.45)!important}
+
+/* ---- the stats strip -------------------------------------------------------------------------- */
+.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip{
+  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
+  border-top:1px solid rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip{
+  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
+  border-top:1px solid rgba(16,16,22,.10)!important}
+.lumos-promo.lm-on .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
+.lumos-promo.lm-on .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
+.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
+html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
+
+/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
+/* A 2px solid ring in near-black read as a thick outline drawn around each coin. A hairline in the
+   card's own ground does the same job -- separating the overlap -- without becoming the loudest
+   thing in the cell. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
+  border:1px solid rgba(255,255,255,.20)!important;box-shadow:0 2px 6px -2px rgba(0,0,0,.5)!important}
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border:1px solid rgba(16,16,22,.14)!important;box-shadow:0 2px 6px -3px rgba(16,16,22,.35)!important}
+
+/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
+/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
+   card, which is the point -- the eye goes to the action. */
+.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
+html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
 </style></head>
 <body>
 <div class="app">
@@ -5716,80 +5791,5 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
     if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
   },true);
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });
-})();</script><style id="lx-heromono-css">
-/* ---- the card ------------------------------------------------------------------------------- */
-/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
-   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
-   per-page background rules on both pages. */
-html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
-             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
-  border:1px solid rgba(255,255,255,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
-html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
-             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
-  border:1px solid rgba(16,16,22,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
-/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
-   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
-.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
-
-/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
-/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
-   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
-   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
-   itself is untouched everywhere else it is used. */
-.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
-
-/* ---- type: the loudest thing on the card ----------------------------------------------------- */
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
-/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
-   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
-   and colour alone leaves it transparent. */
-.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
-.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
-  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
-html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
-  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
-
-/* ---- the chain mark -------------------------------------------------------------------------- */
-/* It is a dark disc with a white glyph: prominent on a light card, nearly lost on a dark one. A
-   hairline ring gives it an edge to sit against without recolouring the artwork. */
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 24px -12px rgba(0,0,0,.8)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 0 0 1px rgba(16,16,22,.14),0 10px 24px -14px rgba(16,16,22,.45)!important}
-
-/* ---- the stats strip -------------------------------------------------------------------------- */
-.lumos-promo .lx-dxstats,.lm-pools .lm-chip{
-  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
-  border-top:1px solid rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo .lx-dxstats,html[data-theme="light"] .lm-pools .lm-chip{
-  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
-  border-top:1px solid rgba(16,16,22,.10)!important}
-.lumos-promo.lm-on .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
-.lumos-promo.lm-on .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
-.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
-html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
-
-/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
-/* A 2px solid ring in near-black read as a thick outline drawn around each coin. A hairline in the
-   card's own ground does the same job -- separating the overlap -- without becoming the loudest
-   thing in the cell. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
-  border:1px solid rgba(255,255,255,.20)!important;box-shadow:0 2px 6px -2px rgba(0,0,0,.5)!important}
-html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border:1px solid rgba(16,16,22,.14)!important;box-shadow:0 2px 6px -3px rgba(16,16,22,.35)!important}
-
-/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
-/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
-   card, which is the point -- the eye goes to the action. */
-.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
-html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
-</style><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
+})();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>
