@@ -56,7 +56,7 @@ html[data-theme="light"] .lumos-promo.lm-on.lm-pools{border-color:rgba(16,16,22,
    twinkling starfield; the Trade hero has none -- its own constellation layer is display:none, and the
    warm art is a still image. These are the animated layers, switched off rather than left running under
    an opaque background where they would still burn a repaint every frame. */
-.lm-pools .lx-constel,.lm-pools .lx-neb,.lm-pools .lx-stars,.lm-pools .lx-part,.lm-pools .lm-svg,.lm-pools .lm-streams,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
+.lm-pools .lx-cosmic,.lm-pools .lx-constel,.lm-pools .lx-neb,.lm-pools .lx-stars,.lm-pools .lx-part,.lm-pools .lm-svg,.lm-pools .lm-streams,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
 /* THE SAME HEIGHT AS TRADE. The Pools card carried min-height:366 on itself and 330 on .lm, from when
    the stats sat beside the copy in a tall chip. With the strip along the bottom the content decides the
    height, exactly as it does on Trade -- and 366 was the difference between a 370px card here and a
@@ -95,7 +95,8 @@ html[data-theme="light"] .lm-pools .lx-heroico{box-shadow:0 6px 18px -10px rgba(
 .lm-pools .lx-hstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
 .lm-pools .lx-hstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
 .lm-pools .lx-hstat[data-k=top] .v{font-size:18px}
-.lm-pools .lx-hstat[data-k=top] .pair-icons{width:57px;height:33px;flex:0 0 57px;overflow:visible}
+.lm-pools .lx-hstat[data-k=top] .pair-icons{width:46px;height:28px;flex:0 0 46px;overflow:visible}
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{width:28px!important;height:28px!important}
 html[data-theme="light"] .lm-pools .lm-chip{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70))!important;border-top-color:rgba(16,16,22,.12)!important}
 html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0e0e10!important}
 html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(52,52,64,.72)!important}
@@ -181,6 +182,17 @@ const SCRIPT = `<script id="lx-poolshero">(function(){
     if(src&&src.parentNode!==copy){
       if((' '+src.className+' ').indexOf(' lx-dctas ')<0)src.className+=' lx-dctas';
       copy.appendChild(src);
+    }
+
+    // 3. Market Overview carries five rows to Trade's New Mints three, so the column beside the hero
+    //    runs taller than the hero itself. Participants and 24h Fees go -- matched on their label rather
+    //    than their position, so a reordered list cannot take the wrong two.
+    var drop={'participants':1,'24h fees':1};
+    var rows=document.querySelectorAll('.amm-snapshot-row');
+    for(var r=0;r<rows.length;r++){
+      var lbl=rows[r].querySelector('.amm-snapshot-label');
+      if(!lbl)continue;
+      if(drop[(lbl.textContent||'').trim().toLowerCase()])rows[r].style.display='none';
     }
 
     // 3. the plain page heading above the card now duplicates the card. Hidden visually only.
