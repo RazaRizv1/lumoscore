@@ -70,10 +70,10 @@ html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"]
   box-shadow:0 0 0 1px rgba(16,16,22,.14),0 10px 24px -14px rgba(16,16,22,.45)!important}
 
 /* ---- the stats strip -------------------------------------------------------------------------- */
-.lumos-promo .lx-dxstats,.lm-pools .lm-chip{
+.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip{
   background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
   border-top:1px solid rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo .lx-dxstats,html[data-theme="light"] .lm-pools .lm-chip{
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip{
   background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
   border-top:1px solid rgba(16,16,22,.10)!important}
 .lumos-promo.lm-on .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
@@ -109,8 +109,12 @@ for (const dev of ['desktop', 'mobile']) {
     if (!json[k]) continue;
     let p = json[k];
     p = p.replace(/<style id="lx-heromono-css">[\s\S]*?<\/style>/, '');
-    if (p.indexOf('</body>') < 0) continue;
-    p = p.replace('</body>', STYLE + '</body>');
+    // INTO <head>, not before </body>. The per-page hero CSS is declared in <head>, so a block that
+    // only lands at the end of the document is parsed AFTER first paint -- which is the orange
+    // flashing on Trade for an instant on every refresh. Last thing in <head> puts it ahead of paint
+    // while still sitting after lx-dexmain-css, so equal-specificity ties still resolve this way.
+    if (p.indexOf('</head>') < 0) continue;
+    p = p.replace('</head>', STYLE + '</head>');
     if (p !== json[k]) { json[k] = p; changed = true; pages++; }
   }
   if (changed) {

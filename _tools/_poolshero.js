@@ -85,20 +85,21 @@ html[data-theme="light"] .lm-pools .lx-heroico{box-shadow:0 6px 18px -10px rgba(
   width:auto!important;max-width:none!important;min-width:0!important;z-index:4!important;
   display:block!important;box-sizing:border-box;
   padding:13px 26px 15px!important;
-  border:0!important;border-top:1px solid rgba(255,255,255,.12)!important;border-radius:0!important;
-  background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,.075))!important;
+  border:0!important;border-radius:0!important;
+  /* colour (background + top border) belongs to _heromono.js, which styles this strip and Trade's
+     together. Declaring it here too is what would let the two drift, and once _heromono moved into
+     <head> to stop the first-paint flash, this later copy would have won. */
   backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
 .lm-pools .lm-chip .lx-hstats{display:grid!important;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0!important}
 .lm-pools .lx-hstat{display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden;padding-left:17px;border-left:1px solid rgba(255,255,255,.10)}
 .lm-pools .lx-hstat:first-child{padding-left:0;border-left:0}
-.lm-pools .lx-hstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
-.lm-pools .lx-hstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
+.lm-pools .lx-hstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
+.lm-pools .lx-hstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 .lm-pools .lx-hstat[data-k=top] .v{font-size:18px}
 .lm-pools .lx-hstat[data-k=top] .pair-icons{width:46px;height:28px;flex:0 0 46px;overflow:visible}
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{width:28px!important;height:28px!important}
-html[data-theme="light"] .lm-pools .lm-chip{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70))!important;border-top-color:rgba(16,16,22,.12)!important}
-html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0e0e10!important}
-html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(52,52,64,.72)!important}
+/* Stat colours -- both themes -- belong to _heromono.js, so Trade and Pools cannot disagree about
+   them. They were declared here too, and with _heromono now in <head> this later copy would win. */
 /* the page CTAs, lifted into the hero's top-right corner */
 .lm-pools .lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:14px;margin:0!important;padding:0!important}
 .lm-pools .lx-dctas .dex-hero-btn.primary{order:1}
