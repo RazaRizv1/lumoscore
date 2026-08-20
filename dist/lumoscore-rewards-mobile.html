@@ -2089,9 +2089,19 @@ html[data-theme="light"] .dropdown-menu { box-shadow: 0 12px 28px rgba(15,15,20,
     modal.querySelector('.lxw-cancel').addEventListener('click', function(){ showScreen('wallet'); });
     modal.querySelector('.lxw-done').addEventListener('click', function(){ close(); if(home){ goHome(); } });
     modal.querySelector('.lxw-acct-copy').addEventListener('click', function(){
-      var a=modal.querySelector('.lxw-acct-addr').textContent;
-      try{ navigator.clipboard&&navigator.clipboard.writeText(a); }catch(_){}
-      if(window.showToast) window.showToast('Address copied to clipboard');
+      var a='';try{a=localStorage.getItem('lumos.address')||'';}catch(_){}
+      if(!a)a=(modal.querySelector('.lxw-acct-addr').textContent||'').trim();
+      function say(){
+        try{ if(typeof window.lxToast==='function'){window.lxToast('Wallet address copied');return;} }catch(_){}
+        try{ if(typeof window.showToast==='function'){window.showToast('Wallet address copied');return;} }catch(_){}
+        try{ var t=document.createElement('div'); t.textContent='Wallet address copied';
+          t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1c1f27;color:#fff;border:1px solid rgba(255,255,255,.16);padding:10px 16px;border-radius:10px;font-size:13px;z-index:100002;box-shadow:0 10px 34px rgba(0,0,0,.45);max-width:82vw;text-align:center';
+          document.body.appendChild(t);
+          setTimeout(function(){t.style.transition='opacity .4s';t.style.opacity='0';setTimeout(function(){t.remove();},420);},2600);
+        }catch(_){}
+      }
+      try{ navigator.clipboard.writeText(a).then(say,function(){window.prompt('Wallet address',a);}); }
+      catch(_){ window.prompt('Wallet address',a); }
     });
     modal.querySelector('.lxw-searchin').addEventListener('input', function(e){ filter(e.target.value); });
     document.addEventListener('keydown', function(e){ if(e.key==='Escape' && !modal.hasAttribute('hidden')) close(); });
