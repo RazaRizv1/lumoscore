@@ -30,6 +30,15 @@ const STYLE = `<style id="lx-sidecard-css">
    window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
    parks New Mints and Market Overview between the hero and the thing people came to read. */
 .dex-overview,.amm-overview{grid-template-columns:1fr!important}
+/* The Market Overview card is AUTHORED inside .amm-overview, beside the hero. On the phone the
+   overview is always one column, so the card always ends up below the list -- and it was being
+   painted in its authored slot first and moved a beat later, which shifted the list heading 258px
+   up the page on every refresh. Measured: in .amm-overview at 598ms, in .container at 919ms.
+   Hidden while it is STILL in the overview at phone widths. The selector stops matching the moment
+   place() moves it, so nothing has to toggle a class and there is no timing to get right. display,
+   not visibility, so it does not hold the 258px open either. Gated on html.lx-sc, which the script
+   below sets as its first act -- a page where the script never runs still shows the card. */
+@media(max-width:880px){html.lx-sc .amm-overview>.amm-snapshot-card{display:none}}
 /* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
    side card is beside it -- the same number both pages already stacked on. */
 @media(min-width:1445px){
@@ -38,6 +47,9 @@ const STYLE = `<style id="lx-sidecard-css">
 </style>`;
 
 const SCRIPT = `<script id="lx-sidecard">(function(){
+  // Set before anything else and synchronously: it is what arms the phone rule above, so a failure
+  // to load this file leaves the card visible where it was authored rather than hidden forever.
+  try{ document.documentElement.className+=' lx-sc'; }catch(_){}
   function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
   function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
   // What the card should sit after once it drops below. Ordered most specific first: the pairs
@@ -58,7 +70,12 @@ const SCRIPT = `<script id="lx-sidecard">(function(){
     var s=side(); if(!s)return;
     var o=ov();
     if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
-    var a=anchor(); if(!a||a===s||a.contains(s))return;
+    var a=anchor();
+    // Nothing to sit after yet -- the pools pager is built at runtime. Move it to the end of the page
+    // anyway: at phone widths the rule above hides it while it is still in the overview, so leaving
+    // it there on a page whose anchor never appears would hide it for good.
+    if(!a){ var host=o&&o.parentNode; if(host&&s.parentNode===o)host.appendChild(s); return; }
+    if(a===s||a.contains(s))return;
     if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
     a.parentNode.insertBefore(s,a.nextSibling);
   }
