@@ -7224,13 +7224,19 @@ html[data-theme="light"] .lumos-promo.lm-on.lm-pools{border-color:rgba(16,16,22,
    twinkling starfield; the Trade hero has none -- its own constellation layer is display:none, and the
    warm art is a still image. These are the animated layers, switched off rather than left running under
    an opaque background where they would still burn a repaint every frame. */
-.lm-pools .lx-constel,.lm-pools .lx-neb,.lm-pools .lx-stars,.lm-pools .lm-svg,.lm-pools .lm-streams,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
+.lm-pools .lx-constel,.lm-pools .lx-neb,.lm-pools .lx-stars,.lm-pools .lx-part,.lm-pools .lm-svg,.lm-pools .lm-streams,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
+/* THE SAME HEIGHT AS TRADE. The Pools card carried min-height:366 on itself and 330 on .lm, from when
+   the stats sat beside the copy in a tall chip. With the strip along the bottom the content decides the
+   height, exactly as it does on Trade -- and 366 was the difference between a 370px card here and a
+   302px one there. */
+html .lumos-promo.lm-on.lm-pools{min-height:300px!important}
+.lm-pools .lm{min-height:300px!important}
 /* The plain page heading says what the card says. Hidden to the eye, kept in the outline. */
 .lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
 .dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
 /* the card is a column: copy on top, stats strip pinned along the bottom edge */
 .lm-pools .lm{display:flex!important;flex-direction:column;position:relative}
-.lm-pools .lm-c-pool,.lm-pools .lm-c{position:relative;z-index:4;display:flex;align-items:center;gap:24px;flex:1 1 auto}
+.lm-pools .lm-c-pool,.lm-pools .lm-c{position:relative;z-index:4;display:flex;align-items:center;gap:24px;flex:1 1 auto;padding:26px 30px!important}
 /* 340, not the Trade hero's 420. Same intent, different sentence: "The most advanced DEX on Stellar."
    wraps of its own accord and renders 311px wide, so 420 never binds there. "Provide liquidity, earn
    swap fees." runs to the full 420 and then the row needs 774px in a 744px card, which is what pushed
@@ -7244,10 +7250,10 @@ html[data-theme="light"] .lumos-promo.lm-on.lm-pools{border-color:rgba(16,16,22,
 html[data-theme="light"] .lm-pools .lx-heroico{box-shadow:0 6px 18px -10px rgba(16,16,22,.35)}
 /* THE CHIP BECOMES THE STRIP. Same element the Pools layer fills; it just spans the bottom edge now
    instead of floating in the top-right corner. z-index 4 clears .lm::after, which is 3. */
-.lm-pools .lm-chip{position:absolute!important;left:0!important;right:0!important;bottom:0!important;top:auto!important;
+.lm-pools .lm-chip{position:relative!important;order:9;margin-top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;top:auto!important;
   width:auto!important;max-width:none!important;min-width:0!important;z-index:4!important;
   display:block!important;box-sizing:border-box;
-  margin:0!important;padding:13px 26px 15px!important;
+  padding:13px 26px 15px!important;
   border:0!important;border-top:1px solid rgba(255,255,255,.12)!important;border-radius:0!important;
   background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,.075))!important;
   backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
@@ -7257,12 +7263,10 @@ html[data-theme="light"] .lm-pools .lx-heroico{box-shadow:0 6px 18px -10px rgba(
 .lm-pools .lx-hstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
 .lm-pools .lx-hstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
 .lm-pools .lx-hstat[data-k=top] .v{font-size:18px}
-.lm-pools .lx-hstat[data-k=top] .pair-icons{width:44px;height:26px;flex:0 0 44px}
+.lm-pools .lx-hstat[data-k=top] .pair-icons{width:57px;height:33px;flex:0 0 57px;overflow:visible}
 html[data-theme="light"] .lm-pools .lm-chip{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70))!important;border-top-color:rgba(16,16,22,.12)!important}
 html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0e0e10!important}
 html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(52,52,64,.72)!important}
-/* the strip is absolutely positioned, so the copy needs room to clear it */
-.lm-pools .lm-c-pool,.lm-pools .lm-c{padding-bottom:96px!important}
 /* the page CTAs, lifted into the hero's top-right corner */
 .lm-pools .lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:14px;margin:0!important;padding:0!important}
 .lm-pools .lx-dctas .dex-hero-btn.primary{order:1}
@@ -7298,6 +7302,12 @@ html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#33333d!i
 @media(max-width:1615px){
 .amm-overview{grid-template-columns:1fr!important}
 }
+/* ...unless the rail is collapsed, which is where the width comes back from. Same pair of rules, same
+   numbers, as the Trade overview: collapse the menu and the hero sits beside Market Overview exactly
+   as it sits beside New Mints there. */
+@media(min-width:1445px) and (max-width:1615px){
+.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
+}
 /* TABLET / PHONE: four columns will not fit, so the strip becomes 2x2 and the mark steps down. */
 @media(max-width:880px){
 .lm-pools .lm-chip .lx-hstats{grid-template-columns:1fr 1fr;gap:11px 0!important}
@@ -7306,14 +7316,12 @@ html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#33333d!i
 .lm-pools .lx-hstat:nth-child(2n+1){padding-left:0;border-left:0}
 .lm-pools .lx-hstat .v{font-size:21px}
 .lm-pools .lx-heroico{width:44px;height:44px}
-.lm-pools .lm-c-pool,.lm-pools .lm-c{padding-bottom:120px!important}
 .lm-pools .lx-dctas{position:static!important;order:9;margin:14px 0 0!important;align-self:flex-start}
 }
 @media(max-width:560px){
 .lm-pools .lx-hstat .v{font-size:16px;gap:6px}
 .lm-pools .lx-hstat .l{font-size:8px;letter-spacing:.03em}
 .lm-pools .lx-hstat[data-k=top] .v{font-size:10.5px}
-.lm-pools .lx-hstat[data-k=top] .pair-icons{width:32px;height:20px;flex:0 0 32px}
 .lm-pools .lx-heroico{width:38px;height:38px}
 }
 </style><script id="lx-poolshero">(function(){
