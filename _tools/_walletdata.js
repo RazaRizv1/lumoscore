@@ -36,6 +36,8 @@ const QA_REMOVE = QA_ACTIONS.replace(
 const LP_ACTIONS='<div class="row-quick-actions"><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add</button><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Remove</button><button class="qa-row-btn icon-only"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>';
 // Painter-proof icon + hide-until-ready (no flash of mock) styles.
 const CSS='<style id="lx-walletdata-css">'
++'.activity-info .meta:empty{display:none!important}'
++'.activity-info .meta:empty::before{content:none!important;margin:0!important}'
 // AUDIT (flash sweep): a static-vs-settled diff showed the hero chip, the hero unit and the whole Recent
 // activity feed painting the design's mock (0x09c7…a802, "142 APT", "From rN9au…Kj3n · 16:21", a May 2026
 // date) before our Horizon data lands. Mask them until written; .lxp is added by the observer in lxWdUnmask
@@ -606,7 +608,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'if(o.type==="liquidity_pool_deposit"){var _rd=_lpRes(o.reserves_deposited),_ra=o.reserves_deposited||[],_a1=_lpAsset(_ra[0]),_a2=_lpAsset(_ra[1]);return{kind:"lp",lp:1,c1:_a1.c,n1:_a1.n,i1:_a1.i,c2:_a2.c,n2:_a2.n,i2:_a2.i,type:"Added liquidity",meta:_rd.length?_rd.join(" + "):("Pool "+String(o.liquidity_pool_id||"").slice(0,8)),amt:"",day:day,st:st,stl:stl};}'
 +'if(o.type==="liquidity_pool_withdraw"){var _rw=_lpRes(o.reserves_received),_rb=o.reserves_received||[],_b1=_lpAsset(_rb[0]),_b2=_lpAsset(_rb[1]);return{kind:"lp",lp:1,c1:_b1.c,n1:_b1.n,i1:_b1.i,c2:_b2.c,n2:_b2.n,i2:_b2.i,type:"Removed liquidity",meta:_rw.length?_rw.join(" + "):("Pool "+String(o.liquidity_pool_id||"").slice(0,8)),amt:"",day:day,st:st,stl:stl};}'
 +'if(o.type==="account_merge")return{kind:"sent",type:"Account merge",meta:shrt(o.into),amt:"",day:day,st:st,stl:stl};'
-+'if(o.type&&o.type.indexOf("claimable_balance")>=0){var _cr=o.type.indexOf("create")>=0;var _cc=(o.asset==="native"||!o.asset)?"XLM":String(o.asset).split(":")[0];return{kind:"claim",type:(_cr?"Created":"Claimed")+" claimable balance",meta:"Stellar",amt:o.amount?((_cr?"-":"+")+amt(o.amount)+" "+_cc):"",day:day,st:st,stl:stl};}'
++'if(o.type&&o.type.indexOf("claimable_balance")>=0){var _cr=o.type.indexOf("create")>=0;var _cc=(o.asset==="native"||!o.asset)?"XLM":String(o.asset).split(":")[0];return{kind:"claim",type:(_cr?"Created":"Claimed")+" claimable balance",meta:"",amt:o.amount?((_cr?"-":"+")+amt(o.amount)+" "+_cc):"",day:day,st:st,stl:stl};}'
 +'if(o.type==="set_options")return{kind:"settings",type:"Account settings",meta:"Options updated",amt:"",day:day,st:st,stl:stl};'
 +'if(o.type==="manage_data")return{kind:"data",type:"Data entry",meta:o.name?String(o.name).slice(0,24):"",amt:"",day:day,st:st,stl:stl};'
 // A Soroban swap reads as "Contract call" the moment it was not made in THIS browser — lxSwapByHash only
