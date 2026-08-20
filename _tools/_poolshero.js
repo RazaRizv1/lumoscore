@@ -31,14 +31,44 @@ const CHAIN_REG = JSON.parse(fs.readFileSync(__dirname + '/_chains.json', 'utf8'
 const HERO_MARK = (CHAIN_REG.stellar && CHAIN_REG.stellar.logo) || '';
 if (!HERO_MARK) throw new Error('_chains.json: no stellar logo — refusing to ship a blank hero mark');
 
+// The SAME artwork the Trade hero uses, hashed the same way. The Trade card is not a gradient at all --
+// it is this SVG over #130c07 -- which is why it reads warm rather than violet, and why it holds still.
+// Same ?v=<hash> discipline: a palette change that reuses the URL is what left phones serving last
+// year's image from cache.
+const heroV = (name) => {
+  try {
+    const buf = fs.readFileSync(__dirname + '/../assets/hero/' + name);
+    return require('crypto').createHash('sha1').update(buf).digest('hex').slice(0, 8);
+  } catch (e) { return '0'; }
+};
+const HERO_DARK = '/assets/hero/trade-hero-dark.svg?v=' + heroV('trade-hero-dark.svg');
+const HERO_LIGHT = '/assets/hero/trade-hero-light.svg?v=' + heroV('trade-hero-light.svg');
+for (const n of ['trade-hero-dark.svg', 'trade-hero-light.svg']) {
+  if (!fs.existsSync(__dirname + '/../assets/hero/' + n)) throw new Error('missing hero art: ' + n);
+}
+
 const STYLE = `<style id="lx-poolshero-css">
+/* THE CARD ITSELF: the Trade hero's own background, not a recolour of the Pools one. The html prefix
+   clears _ammdata.js's .lumos-promo.lm-on.lm-pools !important violet gradient. */
+html .lumos-promo.lm-on.lm-pools{overflow:hidden!important;border:1px solid rgba(255,255,255,.10)!important;background:#130c07 url(${HERO_DARK}) center/cover no-repeat!important}
+html[data-theme="light"] .lumos-promo.lm-on.lm-pools{border-color:rgba(16,16,22,.10)!important;background:#fff1e6 url(${HERO_LIGHT}) center/cover no-repeat!important}
+/* NOTHING MOVES ON THIS CARD. The Pools hero shipped a drifting constellation, three nebula blooms and a
+   twinkling starfield; the Trade hero has none -- its own constellation layer is display:none, and the
+   warm art is a still image. These are the animated layers, switched off rather than left running under
+   an opaque background where they would still burn a repaint every frame. */
+.lm-pools .lx-constel,.lm-pools .lx-neb,.lm-pools .lx-stars,.lm-pools .lm-svg,.lm-pools .lm-streams,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
 /* The plain page heading says what the card says. Hidden to the eye, kept in the outline. */
 .lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
 .dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
 /* the card is a column: copy on top, stats strip pinned along the bottom edge */
 .lm-pools .lm{display:flex!important;flex-direction:column;position:relative}
 .lm-pools .lm-c-pool,.lm-pools .lm-c{position:relative;z-index:4;display:flex;align-items:center;gap:24px;flex:1 1 auto}
-.lm-pools .lm-h{max-width:420px}
+/* 340, not the Trade hero's 420. Same intent, different sentence: "The most advanced DEX on Stellar."
+   wraps of its own accord and renders 311px wide, so 420 never binds there. "Provide liquidity, earn
+   swap fees." runs to the full 420 and then the row needs 774px in a 744px card, which is what pushed
+   the CTAs onto their own line. At 340 it breaks after the comma -- two lines, same shape as Trade -- and
+   the row fits with room to spare. */
+.lm-pools .lm-h{max-width:340px}
 /* the chain mark, beside the headline. A pseudo-element because the site's logo painter rewrites the
    contents of anything icon-shaped -- the same guard the Trade hero and the token icons use. */
 .lm-pools .lx-heroico{flex:0 0 auto;position:relative;width:56px;height:56px;border-radius:50%;overflow:hidden;box-shadow:0 6px 18px -8px rgba(0,0,0,.55)}
@@ -94,10 +124,10 @@ html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#33333d!i
 .lm-pools .lx-dctas{position:static!important;top:auto;right:auto;order:9;margin-left:auto!important;align-self:flex-start}
 .lm-pools .lx-heroico{width:64px;height:64px}
 }
-/* The hero needs ~830px for mark + headline + CTAs on one line; beside the 445px snapshot card it only
-   gets that on a very wide window. Measured the same way as the Trade overview: below this the two
-   stack, the hero runs full width, and the CTAs sit beside the headline as they do on Trade. */
-@media(max-width:1550px){
+/* Stacking point: the SAME number the Trade overview uses, so the two pages change shape together
+   instead of one splitting while the other has already stacked. Measured identical at 1696px -- both
+   rows resolve to 798px + 570px -- so the threshold is the only thing that could put them out of step. */
+@media(max-width:1615px){
 .amm-overview{grid-template-columns:1fr!important}
 }
 /* TABLET / PHONE: four columns will not fit, so the strip becomes 2x2 and the mark steps down. */
