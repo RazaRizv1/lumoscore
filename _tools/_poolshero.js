@@ -48,10 +48,9 @@ for (const n of ['trade-hero-dark.svg', 'trade-hero-light.svg']) {
 }
 
 const STYLE = `<style id="lx-poolshero-css">
-/* THE CARD ITSELF: the Trade hero's own background, not a recolour of the Pools one. The html prefix
-   clears _ammdata.js's .lumos-promo.lm-on.lm-pools !important violet gradient. */
-html .lumos-promo.lm-on.lm-pools{overflow:hidden!important;border:1px solid rgba(255,255,255,.10)!important;background:#130c07 url(${HERO_DARK}) center/cover no-repeat!important}
-html[data-theme="light"] .lumos-promo.lm-on.lm-pools{border-color:rgba(16,16,22,.10)!important;background:#fff1e6 url(${HERO_LIGHT}) center/cover no-repeat!important}
+/* The card's ground is set once, for BOTH heroes, in _heromono.js. Declaring it here as well is how
+   the two drifted apart before. Only overflow stays -- the strip's bottom corners need it. */
+html .lumos-promo.lm-on.lm-pools{overflow:hidden!important}
 /* NOTHING MOVES ON THIS CARD. The Pools hero shipped a drifting constellation, three nebula blooms and a
    twinkling starfield; the Trade hero has none -- its own constellation layer is display:none, and the
    warm art is a still image. These are the animated layers, switched off rather than left running under
