@@ -1681,6 +1681,17 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
 .lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
+</style><style id="lx-sidecard-css">
+/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
+   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
+   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
+   parks New Mints and Market Overview between the hero and the thing people came to read. */
+.dex-overview,.amm-overview{grid-template-columns:1fr!important}
+/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
+   side card is beside it -- the same number both pages already stacked on. */
+@media(min-width:1445px){
+.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
+}
 </style><style id="lx-dexmain-css">
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
@@ -1980,17 +1991,6 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
 /* Price carries the longest string in the row, so it gets room; the counts stay narrow */
 .dex-mint-stat:first-child{min-width:104px}
-</style><style id="lx-sidecard-css">
-/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
-   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
-   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
-   parks New Mints and Market Overview between the hero and the thing people came to read. */
-.dex-overview,.amm-overview{grid-template-columns:1fr!important}
-/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
-   side card is beside it -- the same number both pages already stacked on. */
-@media(min-width:1445px){
-.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
-}
 </style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
@@ -5056,6 +5056,48 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
     launchPopup(seed);
   }, true);
+})();</script>
+<script id="lx-sidecard">(function(){
+  function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
+  function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
+  // What the card should sit after once it drops below. Ordered most specific first: the pairs
+  // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
+  // either build.
+  function anchor(){
+    return document.querySelector('.dex-markets')
+        || document.querySelector('.mdx-mk-list')
+        || document.querySelector('.lx-netpag-host')
+        || document.querySelector('.lx-netpag')
+        || null;
+  }
+  function twoCol(el){
+    try{ var c=getComputedStyle(el).gridTemplateColumns;
+      return !!c && c.indexOf('none')<0 && c.trim().split(/\s+/).length>1; }catch(_){ return false; }
+  }
+  function place(){
+    var s=side(); if(!s)return;
+    var o=ov();
+    if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
+    var a=anchor(); if(!a||a===s||a.contains(s))return;
+    if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
+    a.parentNode.insertBefore(s,a.nextSibling);
+  }
+  function boot(){
+    place();
+    // The rail toggles, the window resizes, and both pages re-render their own lists. Re-assert on
+    // all three rather than assuming the first pass is the last; place() is a no-op once settled.
+    try{ window.addEventListener('resize',place,{passive:true}); }catch(_){}
+    try{
+      var rail=document.querySelector('.nx-side');
+      if(rail) new MutationObserver(place).observe(rail,{attributes:true,attributeFilter:['class']});
+    }catch(_){}
+    try{
+      var host=document.querySelector('main.page')||document.querySelector('.lcmu-in')||document.body;
+      new MutationObserver(function(){ place(); }).observe(host,{childList:true,subtree:true});
+    }catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
+  else boot();
 })();</script><script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -5599,7 +5641,24 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   function setTxt(el,t){ if(el&&el.textContent!==t)el.textContent=t; }
   function setHTML(el,h){ if(el&&el.innerHTML!==h)el.innerHTML=h; }
   function fillSpark(root,vals,up){ if(vals&&vals.length>=2)up=vals[vals.length-1]>=vals[0]; var svg=q(".dex-mk-spark",root); if(!svg)return; var d=sparkPath(vals);
-    var want=d?'<path d="'+d+'" fill="none" stroke="'+(up?"#35c07f":"#ff5b5b")+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>':"";
+    var col=up?"#35c07f":"#ff5b5b";
+    // Market Movers draws this series as a filled area; All Trading Pairs keeps the hairline -- an
+    // 88x28 cell in a table row has no room for a fill, and it is a row, not a chart tile.
+    var mover=!!(root&&root.className&&(" "+root.className+" ").indexOf(" dex-mover-card ")>=0);
+    var want="";
+    if(d&&mover){
+      // The gradient is defined INSIDE this svg rather than once in a shared <defs>: url(#id) is
+      // resolved against the document base, so a <base> tag turns a shared reference into a miss and
+      // the fill silently disappears. Per-card id, so two tiles cannot collide.
+      var gid="lxsp"+String(root.getAttribute("data-tkr")||"").replace(/[^A-Za-z0-9]/g,"")+(up?"u":"d");
+      want='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
+          +'<stop offset="0" stop-color="'+col+'" stop-opacity=".36"/>'
+          +'<stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
+          +'<path d="'+d+' L88 28 L0 28 Z" fill="url(#'+gid+')" stroke="none"></path>'
+          +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>';
+    } else if(d){
+      want='<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>';
+    }
     if(svg.innerHTML!==want)svg.innerHTML=want; }
   function renderMints(){ var list=q("#dexMintsList"); if(!list)return;
     loadNative();                                              // this list IS the native roster
@@ -5749,7 +5808,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       var pct=card.querySelector(".dex-mover-pct"); if(pct){ pct.className="dex-mover-pct"+(a.chg!=null?(up?" up":" down"):""); setTxt(pct,a.chg!=null?(up?"+":"")+a.chg.toFixed(2)+"%":"\u2014"); }
       setHTML(card.querySelector(".dex-mover-price"),fmtPrice(a.px)+' <span style="font-size:14px;color:var(--text-soft);font-weight:600">XLM</span>');
       var vu=a.vol!=null?a.vol*xlmUsd:null;
-      setHTML(card.querySelector(".dex-mover-vol"),'Vol '+(vu!=null?lcm(vu):"\u2014")+' \u00b7 TVL '+(a.tvlUsd!=null?lcm(a.tvlUsd):"\u2014"));
+      setHTML(card.querySelector(".dex-mover-vol"),'<span class="lxk">Vol</span><span class="lxv">'+(vu!=null?lcm(vu):"\u2014")+'</span><span class="lxk">TVL</span><span class="lxv">'+(a.tvlUsd!=null?lcm(a.tvlUsd):"\u2014")+'</span>');
       setTxt(card.querySelector(".dex-mover-trades"),a.trades!=null?num(a.trades):"\u2014");
       fillSpark(card,a.spark,up);
     });
@@ -6147,46 +6206,5 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
     if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
   },true);
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });
-})();</script><script id="lx-sidecard">(function(){
-  function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
-  function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
-  // What the card should sit after once it drops below. Ordered most specific first: the pairs
-  // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
-  // either build.
-  function anchor(){
-    return document.querySelector('.dex-markets')
-        || document.querySelector('.mdx-mk-list')
-        || document.querySelector('.lx-netpag-host')
-        || document.querySelector('.lx-netpag')
-        || null;
-  }
-  function twoCol(el){
-    try{ var c=getComputedStyle(el).gridTemplateColumns;
-      return !!c && c.indexOf('none')<0 && c.trim().split(/\s+/).length>1; }catch(_){ return false; }
-  }
-  function place(){
-    var s=side(); if(!s)return;
-    var o=ov();
-    if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
-    var a=anchor(); if(!a||a===s||a.contains(s))return;
-    if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
-    a.parentNode.insertBefore(s,a.nextSibling);
-  }
-  function boot(){
-    place();
-    // The rail toggles, the window resizes, and both pages re-render their own lists. Re-assert on
-    // all three rather than assuming the first pass is the last; place() is a no-op once settled.
-    try{ window.addEventListener('resize',place,{passive:true}); }catch(_){}
-    try{
-      var rail=document.querySelector('.nx-side');
-      if(rail) new MutationObserver(place).observe(rail,{attributes:true,attributeFilter:['class']});
-    }catch(_){}
-    try{
-      var host=document.querySelector('main.page')||document.querySelector('.lcmu-in')||document.body;
-      new MutationObserver(function(){ place(); }).observe(host,{childList:true,subtree:true});
-    }catch(_){}
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
-  else boot();
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>

@@ -878,7 +878,24 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function setTxt(el,t){ if(el&&el.textContent!==t)el.textContent=t; }
   function setHTML(el,h){ if(el&&el.innerHTML!==h)el.innerHTML=h; }
   function fillSpark(root,vals,up){ if(vals&&vals.length>=2)up=vals[vals.length-1]>=vals[0]; var svg=q(".dex-mk-spark",root); if(!svg)return; var d=sparkPath(vals);
-    var want=d?'<path d="'+d+'" fill="none" stroke="'+(up?"#35c07f":"#ff5b5b")+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>':"";
+    var col=up?"#35c07f":"#ff5b5b";
+    // Market Movers draws this series as a filled area; All Trading Pairs keeps the hairline -- an
+    // 88x28 cell in a table row has no room for a fill, and it is a row, not a chart tile.
+    var mover=!!(root&&root.className&&(" "+root.className+" ").indexOf(" dex-mover-card ")>=0);
+    var want="";
+    if(d&&mover){
+      // The gradient is defined INSIDE this svg rather than once in a shared <defs>: url(#id) is
+      // resolved against the document base, so a <base> tag turns a shared reference into a miss and
+      // the fill silently disappears. Per-card id, so two tiles cannot collide.
+      var gid="lxsp"+String(root.getAttribute("data-tkr")||"").replace(/[^A-Za-z0-9]/g,"")+(up?"u":"d");
+      want='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
+          +'<stop offset="0" stop-color="'+col+'" stop-opacity=".36"/>'
+          +'<stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
+          +'<path d="'+d+' L88 28 L0 28 Z" fill="url(#'+gid+')" stroke="none"></path>'
+          +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>';
+    } else if(d){
+      want='<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>';
+    }
     if(svg.innerHTML!==want)svg.innerHTML=want; }
   function renderMints(){ var list=q("#dexMintsList"); if(!list)return;
     loadNative();                                              // this list IS the native roster
@@ -1028,7 +1045,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       var pct=card.querySelector(".dex-mover-pct"); if(pct){ pct.className="dex-mover-pct"+(a.chg!=null?(up?" up":" down"):""); setTxt(pct,a.chg!=null?(up?"+":"")+a.chg.toFixed(2)+"%":"\\u2014"); }
       setHTML(card.querySelector(".dex-mover-price"),fmtPrice(a.px)+' <span style="font-size:14px;color:var(--text-soft);font-weight:600">XLM</span>');
       var vu=a.vol!=null?a.vol*xlmUsd:null;
-      setHTML(card.querySelector(".dex-mover-vol"),'Vol '+(vu!=null?lcm(vu):"\\u2014")+' \\u00b7 TVL '+(a.tvlUsd!=null?lcm(a.tvlUsd):"\\u2014"));
+      setHTML(card.querySelector(".dex-mover-vol"),'<span class="lxk">Vol</span><span class="lxv">'+(vu!=null?lcm(vu):"\\u2014")+'</span><span class="lxk">TVL</span><span class="lxv">'+(a.tvlUsd!=null?lcm(a.tvlUsd):"\\u2014")+'</span>');
       setTxt(card.querySelector(".dex-mover-trades"),a.trades!=null?num(a.trades):"\\u2014");
       fillSpark(card,a.spark,up);
     });
