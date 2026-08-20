@@ -2783,19 +2783,20 @@ document.addEventListener('DOMContentLoaded', function() {
   }
   function renderList(net){
     var data=NETS[net], html='';
-    if(!window.__lxWalletPresent){
-      window.__lxWalletPresent=function(id){var w=String(id||'').toLowerCase().replace(/[^a-z]/g,'');try{
-        if(w==='freighter')return !!(window.freighterApi||window.freighter);
-        if(w==='rabet')return !!window.rabet;
-        if(w==='xbull')return !!window.xBullSDK;
-        if(w==='lobstr')return !!(window.lobstrApi||window.lobstrExtension||window.__lxLobstrExt);
-      }catch(_){}return false;};
-      window.__lxMarkInstalled=function(){try{
+    if(!window.__lxMarkLastUsed){
+      window.__lxLastWallet=function(){var v='';
+        try{v=localStorage.getItem('lumos.lastWallet')||'';}catch(_){}
+        if(!v){try{var cur=localStorage.getItem('lumos.wallet')||'';
+          if(cur){localStorage.setItem('lumos.lastWallet',cur);v=cur;}}catch(_){}}
+        return String(v||'').toLowerCase().replace(/[^a-z0-9]/g,'');};
+      window.__lxMarkLastUsed=function(){try{
+        var last=window.__lxLastWallet();
         var rows=document.querySelectorAll('.lxw-modal .lxw-row[data-wallet]');
         for(var i=0;i<rows.length;i++){
-          var on=window.__lxWalletPresent(rows[i].getAttribute('data-wallet')||'');
+          var id=String(rows[i].getAttribute('data-wallet')||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+          var on=(!!last && id===last);
           var b=rows[i].querySelector('.lxw-badge');
-          if(on&&!b){var sp=document.createElement('span');sp.className='lxw-badge';sp.textContent='Installed';
+          if(on&&!b){var sp=document.createElement('span');sp.className='lxw-badge';sp.textContent='Last used';
             if(rows[i].lastElementChild)rows[i].insertBefore(sp,rows[i].lastElementChild);else rows[i].appendChild(sp);}
           else if(!on&&b){b.parentNode.removeChild(b);}
         }
@@ -2837,7 +2838,7 @@ document.addEventListener('DOMContentLoaded', function() {
       modal.querySelector('.lxw-acct-addr').textContent=d.addr;
       modal.querySelector('.lxw-chipname').textContent=d.chip;
       modal.querySelector('.lxw-wnamedone').textContent=w.name;
-      try{ localStorage.setItem('lumos.wallet', w.id); localStorage.setItem('lumos.network', net); }catch(_){}
+      try{ localStorage.setItem('lumos.wallet', w.id); localStorage.setItem('lumos.network', net); localStorage.setItem('lumos.lastWallet', w.id); }catch(_){}
       if(window.lxnsSetConnected) window.lxnsSetConnected(net, w.name);
       showScreen('connected');
     }, 1650);
@@ -2855,7 +2856,7 @@ document.addEventListener('DOMContentLoaded', function() {
     modal.querySelector('.lxw-title').textContent='Connect Wallet';
     modal.querySelector('.lxw-sub').textContent=NETS[net].sub;
     modal.querySelector('.lxw-searchin').value='';
-    renderList(net);try{window.__lxMarkInstalled&&window.__lxMarkInstalled();setTimeout(function(){window.__lxMarkInstalled&&window.__lxMarkInstalled();},700);}catch(_){}
+    renderList(net);try{window.__lxMarkLastUsed&&window.__lxMarkLastUsed();}catch(_){}
     showScreen('wallet');
     modal.removeAttribute('hidden');
     // re-trigger entrance animation
@@ -3679,7 +3680,7 @@ function setConnected(net,row,addr,transport){
   var cn=q('.lxw-chipname');if(cn)cn.textContent=NETLABEL[net]||net;
   // lumos.transport tells the signing paths WHICH LOBSTR to talk to on this device. Always written, so
   // reconnecting with the extension can never inherit a stale 'wc' from an earlier phone session.
-  try{localStorage.setItem('lumos.wallet',name);localStorage.setItem('lumos.network',net);localStorage.setItem('lumos.address',String(addr));localStorage.setItem('lumos.transport',transport||'ext');}catch(_){}
+  try{localStorage.setItem('lumos.wallet',name);localStorage.setItem('lumos.network',net);localStorage.setItem('lumos.address',String(addr));localStorage.setItem('lumos.transport',transport||'ext');localStorage.setItem('lumos.lastWallet',name);}catch(_){}
   if(window.lxnsSetConnected)try{window.lxnsSetConnected(net,name);}catch(_){}
   screen('connected');
 // lxPostConnectHome: land on the dashboard after connecting from anywhere in the app. Connecting is
