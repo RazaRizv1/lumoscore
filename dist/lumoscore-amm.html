@@ -7486,15 +7486,48 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
    than Trade's otherwise identical one */
 /* Same selector shape as the desktop rule above on purpose: [data-k=top] gives that one four
    classes to this one's three, so a shorter selector here loses the cascade however late it sits. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons{width:30px!important;height:17px!important;flex:0 0 30px!important}
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{width:17px!important;height:17px!important}
+.lm-pools .lx-hstat[data-k=top] .pair-icons{
+  position:relative!important;display:inline-flex!important;align-items:center;
+  width:auto!important;height:17px!important;flex:0 0 auto!important;overflow:visible}
+/* .lx-ico is named explicitly: the desktop rule above is .lm-pools .lx-hstat[data-k=top]
+   .pair-icons .lx-ico -- five classes to a child selector's four, so it kept winning on height
+   (28px) while flex-basis quietly set the width to 17, which is what left the marks overflowing
+   the strip by 5px. Equal specificity now, and this sheet is later. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons>*,
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{
+  position:static!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;
+  width:17px!important;height:17px!important;flex:0 0 17px}
+.lm-pools .lx-hstat[data-k=top] .pair-icons>*+*,
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico+.lx-ico{margin-left:-6px!important}
 .lm-pools .lm-c,.lm-pools .lm-c-pool{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;padding:14px 14px!important}
-/* 18px is Trade's phone headline. 27px was a desktop size on a 375px screen. */
-.lm-pools .lm-h{font-size:18px!important;line-height:1.22!important;max-width:none!important;flex:1 1 auto}
+/* 18px is Trade's phone headline. 27px was a desktop size on a 375px screen. The margin goes
+   too: the headline box measures 44px inside an 85px column, and that 13px of leftover is the
+   last of the height difference against Trade, whose own headline carries none. */
+.lm-pools .lm-h{font-size:18px!important;line-height:1.22!important;max-width:none!important;flex:1 1 auto;margin:0!important}
 .lm-pools .lm-sub{display:none!important}
-/* the CTA row now sits under the card, in the page's own flow */
-.lumos-promo.lx-mobhero + .mdx-hero-ctas{margin:12px 0 18px!important}
+/* The strip cells: Trade sets 3px between value and label, and its Top Pair value box is exactly
+   as tall as the marks inside it. Pools ran 4px and a 21px value box against 17px marks, which is
+   the whole of the 54px-vs-49px difference between the two strips. */
+.lm-pools .lx-hstat{gap:3px!important}
+.lm-pools .lx-hstat[data-k=top] .v{height:17px!important}
+.lm-pools .lx-hstat[data-k=top] .pair-icons{margin:0!important}
 }
+/* ---- the list section head, matching Trade's -------------------------------------------------- */
+/* Trade heads its list with a title and tucks the two actions in on the right; Pools had them as a
+   full-width bar under the hero, which is the loudest thing on the screen and not what Trade does.
+   Values are copied from the Trade phone build rather than re-picked, so the two cannot drift. */
+.lx-poolhead{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 10px}
+.lx-poolhead h2{margin:0;font-size:17px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.lx-poolhead .mdx-hero-ctas{display:flex!important;align-items:center;gap:7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
+/* primary first, ghost second -- the order Trade reads in */
+.lx-poolhead .mdx-hero-btn.primary{order:1}
+.lx-poolhead .mdx-hero-btn.ghost{order:2}
+.lx-poolhead .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5px;height:31px;padding:0 8px!important;border-radius:9px;font-weight:700;font-size:10.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
+.lx-poolhead .mdx-hero-btn svg{width:11px;height:11px;flex:0 0 auto}
+.lx-poolhead .mdx-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 8px 18px -11px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
+.lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+.lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
+html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
 </style><script id="lx-poolshero">(function(){
   function q(s,r){return (r||document).querySelector(s);}
   // Every step is a MOVE or a class flag on something that already exists, and every step is guarded, so
@@ -7548,7 +7581,20 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
     var phone=(' '+card.className+' ').indexOf(' lx-mobhero ')>=0;
     var src=q('.dex-hero-r')||q('.mdx-hero-ctas');
     if(src&&phone){
-      if(card.nextElementSibling!==src)card.parentNode.insertBefore(src,card.nextSibling);
+      // Trade's two actions live in the list's section head, not in a bar under the hero -- and the
+      // Pools phone page ships no section head at all, so build the one it is missing and move them
+      // into it. Inserted before the All Pools / My Positions tabs, which is where Trade's head sits
+      // relative to its own filter row.
+      var tabs=q('#poolTabs')||q('.filter-tabs');
+      var head=q('.lx-poolhead');
+      if(tabs&&!head){
+        head=document.createElement('div');
+        head.className='mdx-section-head lx-poolhead';
+        var h2=document.createElement('h2'); h2.textContent='Liquidity Pools';
+        head.appendChild(h2);
+        tabs.parentNode.insertBefore(head,tabs);
+      }
+      if(head&&src.parentNode!==head)head.appendChild(src);
     }else if(src&&src.parentNode!==copy){
       if((' '+src.className+' ').indexOf(' lx-dctas ')<0)src.className+=' lx-dctas';
       copy.appendChild(src);
