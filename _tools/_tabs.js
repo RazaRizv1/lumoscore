@@ -31,26 +31,45 @@ const AMM_KEYS = ['lumoscore-amm.html', 'lumoscore-amm-dark.html', 'lumoscore-am
 const PHONE_KEYS = ['lumoscore-amm-mobile.html'];
 
 // ---- icons ---------------------------------------------------------------------------------------
-// One stroke weight, one box, currentColor throughout, so a tab's icon inherits whatever state the
-// tab is in rather than carrying its own palette.
-function ic(paths) {
-  return '<span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" '
-    + 'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
-    + paths + '</svg></span>';
+// Flat colour, not outlines. A hairline stroke in currentColor reads as a second piece of punctuation
+// beside the label; a solid shape with its own colour reads as a mark, which is what makes a row of
+// tabs scannable rather than uniform. Each icon is at most three fills, because these render at 12-13px
+// and anything finer turns to mud.
+//
+// The colours are chosen to be recognisable rather than decorative: the stablecoin blue is USDC's own,
+// the meme face is the yellow every messenger uses, and All carries the four accents of the app itself.
+function ic(body) {
+  return '<span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none">'
+    + body + '</svg></span>';
 }
 const IC = {
-  // four panes: everything, laid out
-  all: ic('<rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/>'),
-  // a coin holding its value
-  stables: ic('<circle cx="12" cy="12" r="9"/><path d="M12 6.5v11"/><path d="M14.8 9.1a2.7 2.7 0 0 0-2.6-1.8h-.6a2.4 2.4 0 0 0 0 4.8h.8a2.4 2.4 0 0 1 0 4.8h-.6a2.7 2.7 0 0 1-2.6-1.8"/>'),
+  // everything: the app's four accents, laid out
+  all: ic('<rect x="3" y="3" width="8" height="8" rx="2.2" fill="#ea6a2c"/>'
+        + '<rect x="13" y="3" width="8" height="8" rx="2.2" fill="#3b82f6"/>'
+        + '<rect x="3" y="13" width="8" height="8" rx="2.2" fill="#22c55e"/>'
+        + '<rect x="13" y="13" width="8" height="8" rx="2.2" fill="#a855f7"/>'),
+  // ours: a filled star, which is what the text star was always standing in for
+  native: ic('<path d="M12 2.4l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5-5.8-3.06-5.8 3.06 1.1-6.5-4.7-4.6 6.5-.95z" fill="#f7b733"/>'
+           + '<path d="M12 2.4l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5-5.8-3.06z" fill="#eb9b1f"/>'),
+  // a coin, in the blue the biggest one on this network actually uses
+  stables: ic('<circle cx="12" cy="12" r="9.2" fill="#2775ca"/>'
+            + '<path d="M12 6.1v11.8" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/>'
+            + '<path d="M14.7 9.2a2.7 2.7 0 0 0-2.6-1.7h-.7a2.35 2.35 0 0 0 0 4.7h1a2.35 2.35 0 0 1 0 4.7h-.7a2.7 2.7 0 0 1-2.6-1.7" stroke="#fff" stroke-width="1.7" stroke-linecap="round" fill="none"/>'),
   // a grin
-  memes: ic('<circle cx="12" cy="12" r="9"/><path d="M8.2 14a4.6 4.6 0 0 0 7.6 0"/><path d="M9 9.4h.01"/><path d="M15 9.4h.01"/>'),
-  // a tool
-  utility: ic('<path d="M14.6 6.4a3.9 3.9 0 0 0 5.1 5.1l-8.2 8.2a2.1 2.1 0 0 1-3-3l8.2-8.2a3.9 3.9 0 0 0-5.1-5.1l3 3-2.1 2.1-3-3a3.9 3.9 0 0 1 5.1-5.1z"/>'),
+  memes: ic('<circle cx="12" cy="12" r="9.2" fill="#fbbf24"/>'
+          + '<path d="M7.8 13.6a4.9 4.9 0 0 0 8.4 0z" fill="#7c3f00"/>'
+          + '<ellipse cx="9.1" cy="9.5" rx="1.25" ry="1.5" fill="#7c3f00"/>'
+          + '<ellipse cx="14.9" cy="9.5" rx="1.25" ry="1.5" fill="#7c3f00"/>'),
+  // a cog: the token that powers something
+  utility: ic('<path d="M12 1.9l2.2 1.5 2.6-.5 1.2 2.4 2.4 1.2-.5 2.6 1.5 2.2-1.5 2.2.5 2.6-2.4 1.2-1.2 2.4-2.6-.5-2.2 1.5-2.2-1.5-2.6.5-1.2-2.4-2.4-1.2.5-2.6L1.9 12l1.5-2.2-.5-2.6 2.4-1.2 1.2-2.4 2.6.5z" fill="#14b8a6"/>'
+            + '<circle cx="12" cy="12" r="3.5" fill="#0b3b38"/>'),
   // stacked pools
-  pools: ic('<path d="M12 2.6 2.8 7 12 11.4 21.2 7 12 2.6z"/><path d="M2.8 16.8 12 21.2l9.2-4.4"/><path d="M2.8 11.9 12 16.3l9.2-4.4"/>'),
-  // one holder
-  mine: ic('<path d="M20 20.4v-1.7a4.2 4.2 0 0 0-4.2-4.2H8.2A4.2 4.2 0 0 0 4 18.7v1.7"/><circle cx="12" cy="7.6" r="3.9"/>'),
+  pools: ic('<path d="M12 2.3 2.5 6.9 12 11.5l9.5-4.6z" fill="#60a5fa"/>'
+          + '<path d="M2.5 12 12 16.6l9.5-4.6-3-1.45L12 13.7l-6.5-3.15z" fill="#3b82f6"/>'
+          + '<path d="M2.5 17.1 12 21.7l9.5-4.6-3-1.45L12 18.8l-6.5-3.15z" fill="#1d4ed8"/>'),
+  // mine
+  mine: ic('<circle cx="12" cy="7.4" r="4.1" fill="#a855f7"/>'
+         + '<path d="M3.9 20.9v-1.5a5 5 0 0 1 5-5h6.2a5 5 0 0 1 5 5v1.5z" fill="#7e22ce"/>'),
 };
 
 const STYLE_ICONS = `<style id="lx-tabs-css">
@@ -58,9 +77,13 @@ const STYLE_ICONS = `<style id="lx-tabs-css">
 .lx-tabic svg{display:block;width:13px;height:13px}
 .mdx-mk-filter .lx-tabic svg,#poolTabs .lx-tabic svg{width:12px;height:12px}
 /* An icon on a tab that is not the active one should read as part of the label, not as a second
-   thing competing with it. */
-.lx-tabic{opacity:.75}
+   thing competing with it. Full colour is the active tab's reward. */
+.lx-tabic{opacity:.72;transition:opacity .15s ease}
+.dex-mk-filter:hover .lx-tabic,.mdx-mk-filter:hover .lx-tabic,#poolTabs button:hover .lx-tabic{opacity:.9}
 .dex-mk-filter.active .lx-tabic,.mdx-mk-filter.active .lx-tabic,#poolTabs button.active .lx-tabic{opacity:1}
+/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
+   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
+.lx-tabic+.lx-mk-star{display:none!important}
 /* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
    pushes the list down and reads as two groups. */
 .mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -95,9 +118,12 @@ const STYLE_PHONE = `<style id="lx-tabs-phone-css">
 </style>`;
 
 // ---- markup --------------------------------------------------------------------------------------
+// The icon is <span class="lx-tabic" ...><svg>...</svg></span> -- ONE closing span. An earlier version
+// of this ended the match at </span></span>, which the icon never contains, so it ran forward to the
+// next one anywhere in the document and deleted everything in between: ~70KB out of each Trade page.
+// End on </svg></span>, which is the icon's own tail and appears nowhere else in these buttons.
 function stripIcons(p) {
-  return p.replace(/<span class="lx-tabic"[\s\S]*?<\/span><\/span>/g, '')
-          .replace(/<span class="lx-tabic" aria-hidden="true">[\s\S]*?<\/svg><\/span>/g, '');
+  return p.replace(/<span class="lx-tabic"[^>]*>[\s\S]*?<\/svg><\/span>/g, '');
 }
 function stripUtility(p) {
   return p.replace(/<button class="(?:dex|mdx)-mk-filter"[^>]*data-cat="utility"[^>]*>[\s\S]*?<\/button>/g, '');
@@ -137,6 +163,7 @@ for (const dev of ['desktop', 'mobile']) {
       }
       const rows = [
         [`<button class="${pre}-mk-filter active" data-filter="all" data-cat="all">`, IC.all],
+        [`<button class="${pre}-mk-filter lx-mk-native" data-filter="native" data-cat="native">`, IC.native],
         [`<button class="${pre}-mk-filter" data-filter="stables" data-cat="stables">`, IC.stables],
         [`<button class="${pre}-mk-filter" data-filter="memes" data-cat="memes">`, IC.memes],
         [`<button class="${pre}-mk-filter" data-filter="utility" data-cat="utility">`, IC.utility],

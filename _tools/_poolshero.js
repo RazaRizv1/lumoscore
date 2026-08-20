@@ -71,6 +71,17 @@ html .lumos-promo.lm-on.lm-pools{min-height:300px!important}
 @media(max-width:1100px){.lm-pools .lm-chip{display:block!important}}
 /* the rotating carousel the built card replaces */
 .lm-pools .lumos-promo-slides,.lm-pools .lumos-promo-dots{display:none!important}
+/* FIRST PAINT. The rule above needs .lm-pools, which the script adds -- so between the first paint
+   and the script running, the phone showed the authored carousel: an accent CTA, an accent headline
+   highlight and the dots. That is the orange flash. This one is keyed on nothing, so it applies to
+   the very first frame. Bounded to phone widths, where the carousel is always replaced by the built
+   card, so the desktop hero is not touched by it. The min-height reserves what the built card
+   occupies; without it the box collapses to nothing and the whole page jumps down when the card
+   lands. */
+@media(max-width:880px){
+.lumos-promo-slides,.lumos-promo-dots{display:none!important}
+.lumos-promo{min-height:123px}
+}
 /* The phone card is one column: mark and headline, then the CTAs, then the strip. */
 @media(max-width:880px){
 .lm-pools .lm-c-pool,.lm-pools .lm-c{flex-wrap:wrap;align-items:center;gap:14px;padding:18px 18px 16px!important}
@@ -352,8 +363,12 @@ for (const dev of ['desktop', 'mobile']) {
     // idempotent: strip any previous copy before re-inserting
     p = p.replace(/<style id="lx-poolshero-css">[\s\S]*?<\/style>/, '')
          .replace(/<script id="lx-poolshero">[\s\S]*?<\/script>/, '');
+    // STYLE into <head>, SCRIPT before </body>. Same split, and for the same reason, as
+    // _heromono.js: a style block that only lands at the end of the document is parsed after the
+    // first paint, which is precisely how the orange carousel got a frame on screen.
+    if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     if (p.indexOf('</body>') < 0) continue;
-    p = p.replace('</body>', STYLE + SCRIPT + '</body>');
+    p = p.replace('</body>', SCRIPT + '</body>');
     if (p !== json[k]) { json[k] = p; changed = true; pages++; }
   }
   if (changed) {

@@ -1733,6 +1733,101 @@
 .lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
+</style><style id="lx-heromono-css">
+/* ---- the card ------------------------------------------------------------------------------- */
+/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
+   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
+   per-page background rules on both pages. */
+html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
+             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
+html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
+             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
+  border:1px solid rgba(16,16,22,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
+/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
+   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
+.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
+
+/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
+/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
+   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
+   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
+   itself is untouched everywhere else it is used. */
+.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
+
+/* ---- type: the loudest thing on the card ----------------------------------------------------- */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
+/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
+   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
+   and colour alone leaves it transparent. */
+.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
+.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
+  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
+html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
+  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
+
+/* ---- the chain mark -------------------------------------------------------------------------- */
+/* It is a dark disc with a white glyph: prominent on a light card, nearly lost on a dark one. A
+   hairline ring gives it an edge to sit against without recolouring the artwork. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 24px -12px rgba(0,0,0,.8)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 0 0 1px rgba(16,16,22,.14),0 10px 24px -14px rgba(16,16,22,.45)!important}
+
+/* ---- the stats strip -------------------------------------------------------------------------- */
+.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
+  border-top:1px solid rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
+  border-top:1px solid rgba(16,16,22,.10)!important}
+.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
+.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
+.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
+html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
+
+/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
+/* A 2px solid ring in near-black read as a thick outline drawn around each coin. A hairline in the
+   card's own ground does the same job -- separating the overlap -- without becoming the loudest
+   thing in the cell. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
+  border:1px solid rgba(255,255,255,.20)!important;box-shadow:0 2px 6px -2px rgba(0,0,0,.5)!important}
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border:1px solid rgba(16,16,22,.14)!important;box-shadow:0 2px 6px -3px rgba(16,16,22,.35)!important}
+
+/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
+/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
+   card, which is the point -- the eye goes to the action. */
+.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
+html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
+</style><style id="lx-sidecard-css">
+/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
+   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
+   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
+   parks New Mints and Market Overview between the hero and the thing people came to read. */
+.dex-overview,.amm-overview{grid-template-columns:1fr!important}
+/* The Market Overview card is AUTHORED inside .amm-overview, beside the hero. On the phone the
+   overview is always one column, so the card always ends up below the list -- and it was being
+   painted in its authored slot first and moved a beat later, which shifted the list heading 258px
+   up the page on every refresh. Measured: in .amm-overview at 598ms, in .container at 919ms.
+   Hidden while it is STILL in the overview at phone widths. The selector stops matching the moment
+   place() moves it, so nothing has to toggle a class and there is no timing to get right. display,
+   not visibility, so it does not hold the 258px open either. Gated on html.lx-sc, which the script
+   below sets as its first act -- a page where the script never runs still shows the card. */
+@media(max-width:880px){html.lx-sc .amm-overview>.amm-snapshot-card{display:none}}
+/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
+   side card is beside it -- the same number both pages already stacked on. */
+@media(min-width:1445px){
+.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
+}
 </style><style id="lx-dexmain-css">
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
@@ -2093,109 +2188,18 @@ html .dex-movers .dex-mover-card:hover{
 /* the same box before the series lands -- a wash, so the tile reads as loading rather than broken */
 .dex-movers .dex-mover-card .dex-mk-spark:empty{
   background:linear-gradient(to top,rgba(127,127,140,.07),rgba(127,127,140,0))}
-</style><style id="lx-heromono-css">
-/* ---- the card ------------------------------------------------------------------------------- */
-/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
-   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
-   per-page background rules on both pages. */
-html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
-             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
-  border:1px solid rgba(255,255,255,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
-html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
-             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
-  border:1px solid rgba(16,16,22,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
-/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
-   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
-.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
-
-/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
-/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
-   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
-   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
-   itself is untouched everywhere else it is used. */
-.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
-
-/* ---- type: the loudest thing on the card ----------------------------------------------------- */
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
-/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
-   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
-   and colour alone leaves it transparent. */
-.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
-.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
-  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
-html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
-  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
-
-/* ---- the chain mark -------------------------------------------------------------------------- */
-/* It is a dark disc with a white glyph: prominent on a light card, nearly lost on a dark one. A
-   hairline ring gives it an edge to sit against without recolouring the artwork. */
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 24px -12px rgba(0,0,0,.8)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 0 0 1px rgba(16,16,22,.14),0 10px 24px -14px rgba(16,16,22,.45)!important}
-
-/* ---- the stats strip -------------------------------------------------------------------------- */
-.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
-  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
-  border-top:1px solid rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
-  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
-  border-top:1px solid rgba(16,16,22,.10)!important}
-.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
-.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
-.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
-html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
-
-/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
-/* A 2px solid ring in near-black read as a thick outline drawn around each coin. A hairline in the
-   card's own ground does the same job -- separating the overlap -- without becoming the loudest
-   thing in the cell. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
-  border:1px solid rgba(255,255,255,.20)!important;box-shadow:0 2px 6px -2px rgba(0,0,0,.5)!important}
-html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border:1px solid rgba(16,16,22,.14)!important;box-shadow:0 2px 6px -3px rgba(16,16,22,.35)!important}
-
-/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
-/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
-   card, which is the point -- the eye goes to the action. */
-.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
-html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
-</style><style id="lx-sidecard-css">
-/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
-   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
-   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
-   parks New Mints and Market Overview between the hero and the thing people came to read. */
-.dex-overview,.amm-overview{grid-template-columns:1fr!important}
-/* The Market Overview card is AUTHORED inside .amm-overview, beside the hero. On the phone the
-   overview is always one column, so the card always ends up below the list -- and it was being
-   painted in its authored slot first and moved a beat later, which shifted the list heading 258px
-   up the page on every refresh. Measured: in .amm-overview at 598ms, in .container at 919ms.
-   Hidden while it is STILL in the overview at phone widths. The selector stops matching the moment
-   place() moves it, so nothing has to toggle a class and there is no timing to get right. display,
-   not visibility, so it does not hold the 258px open either. Gated on html.lx-sc, which the script
-   below sets as its first act -- a page where the script never runs still shows the card. */
-@media(max-width:880px){html.lx-sc .amm-overview>.amm-snapshot-card{display:none}}
-/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
-   side card is beside it -- the same number both pages already stacked on. */
-@media(min-width:1445px){
-.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
-}
 </style><style id="lx-tabs-css">
 .lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:1px}
 .lx-tabic svg{display:block;width:13px;height:13px}
 .mdx-mk-filter .lx-tabic svg,#poolTabs .lx-tabic svg{width:12px;height:12px}
 /* An icon on a tab that is not the active one should read as part of the label, not as a second
-   thing competing with it. */
-.lx-tabic{opacity:.75}
+   thing competing with it. Full colour is the active tab's reward. */
+.lx-tabic{opacity:.72;transition:opacity .15s ease}
+.dex-mk-filter:hover .lx-tabic,.mdx-mk-filter:hover .lx-tabic,#poolTabs button:hover .lx-tabic{opacity:.9}
 .dex-mk-filter.active .lx-tabic,.mdx-mk-filter.active .lx-tabic,#poolTabs button.active .lx-tabic{opacity:1}
+/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
+   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
+.lx-tabic+.lx-mk-star{display:none!important}
 /* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
    pushes the list down and reads as two groups. */
 .mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
@@ -2374,10 +2378,10 @@ html[data-theme="light"] .lm-bg{opacity:.09}
       </div>
       <div class="dex-mk-controls">
         <div class="dex-mk-filters" id="dexMkFilters">
-          <button class="dex-mk-filter active" data-filter="all" data-cat="all"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.6"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.6"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.6"/></svg></span>All</button>
-          <button class="dex-mk-filter lx-mk-native" data-filter="native" data-cat="native"><span class="lx-mk-star" aria-hidden="true">&#9733;</span>LumosCore native</button>
-          <button class="dex-mk-filter" data-filter="stables" data-cat="stables"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 6.5v11"/><path d="M14.8 9.1a2.7 2.7 0 0 0-2.6-1.8h-.6a2.4 2.4 0 0 0 0 4.8h.8a2.4 2.4 0 0 1 0 4.8h-.6a2.7 2.7 0 0 1-2.6-1.8"/></svg></span>Stables</button>
-          <button class="dex-mk-filter" data-filter="memes" data-cat="memes"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.2 14a4.6 4.6 0 0 0 7.6 0"/><path d="M9 9.4h.01"/><path d="M15 9.4h.01"/></svg></span>Memes</button><button class="dex-mk-filter" data-filter="utility" data-cat="utility"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M14.6 6.4a3.9 3.9 0 0 0 5.1 5.1l-8.2 8.2a2.1 2.1 0 0 1-3-3l8.2-8.2a3.9 3.9 0 0 0-5.1-5.1l3 3-2.1 2.1-3-3a3.9 3.9 0 0 1 5.1-5.1z"/></svg></span>Utility</button>
+          <button class="dex-mk-filter active" data-filter="all" data-cat="all"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="8" height="8" rx="2.2" fill="#ea6a2c"/><rect x="13" y="3" width="8" height="8" rx="2.2" fill="#3b82f6"/><rect x="3" y="13" width="8" height="8" rx="2.2" fill="#22c55e"/><rect x="13" y="13" width="8" height="8" rx="2.2" fill="#a855f7"/></svg></span>All</button>
+          <button class="dex-mk-filter lx-mk-native" data-filter="native" data-cat="native"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.4l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5-5.8-3.06-5.8 3.06 1.1-6.5-4.7-4.6 6.5-.95z" fill="#f7b733"/><path d="M12 2.4l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5-5.8-3.06z" fill="#eb9b1f"/></svg></span><span class="lx-mk-star" aria-hidden="true">&#9733;</span>LumosCore native</button>
+          <button class="dex-mk-filter" data-filter="stables" data-cat="stables"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.2" fill="#2775ca"/><path d="M12 6.1v11.8" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><path d="M14.7 9.2a2.7 2.7 0 0 0-2.6-1.7h-.7a2.35 2.35 0 0 0 0 4.7h1a2.35 2.35 0 0 1 0 4.7h-.7a2.7 2.7 0 0 1-2.6-1.7" stroke="#fff" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg></span>Stables</button>
+          <button class="dex-mk-filter" data-filter="memes" data-cat="memes"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.2" fill="#fbbf24"/><path d="M7.8 13.6a4.9 4.9 0 0 0 8.4 0z" fill="#7c3f00"/><ellipse cx="9.1" cy="9.5" rx="1.25" ry="1.5" fill="#7c3f00"/><ellipse cx="14.9" cy="9.5" rx="1.25" ry="1.5" fill="#7c3f00"/></svg></span>Memes</button><button class="dex-mk-filter" data-filter="utility" data-cat="utility"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 1.9l2.2 1.5 2.6-.5 1.2 2.4 2.4 1.2-.5 2.6 1.5 2.2-1.5 2.2.5 2.6-2.4 1.2-1.2 2.4-2.6-.5-2.2 1.5-2.2-1.5-2.6.5-1.2-2.4-2.4-1.2.5-2.6L1.9 12l1.5-2.2-.5-2.6 2.4-1.2 1.2-2.4 2.6.5z" fill="#14b8a6"/><circle cx="12" cy="12" r="3.5" fill="#0b3b38"/></svg></span>Utility</button>
         </div>
         <div class="dex-mk-search">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -4796,7 +4800,57 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     launchPopup(seed);
   }, true);
 })();</script>
-<script id="lx-dexmain">(function(){
+
+<script id="lx-sidecard">(function(){
+  // Set before anything else and synchronously: it is what arms the phone rule above, so a failure
+  // to load this file leaves the card visible where it was authored rather than hidden forever.
+  try{ document.documentElement.className+=' lx-sc'; }catch(_){}
+  function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
+  function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
+  // What the card should sit after once it drops below. Ordered most specific first: the pairs
+  // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
+  // either build.
+  function anchor(){
+    return document.querySelector('.dex-markets')
+        || document.querySelector('.mdx-mk-list')
+        || document.querySelector('.lx-netpag-host')
+        || document.querySelector('.lx-netpag')
+        || null;
+  }
+  function twoCol(el){
+    try{ var c=getComputedStyle(el).gridTemplateColumns;
+      return !!c && c.indexOf('none')<0 && c.trim().split(/\s+/).length>1; }catch(_){ return false; }
+  }
+  function place(){
+    var s=side(); if(!s)return;
+    var o=ov();
+    if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
+    var a=anchor();
+    // Nothing to sit after yet -- the pools pager is built at runtime. Move it to the end of the page
+    // anyway: at phone widths the rule above hides it while it is still in the overview, so leaving
+    // it there on a page whose anchor never appears would hide it for good.
+    if(!a){ var host=o&&o.parentNode; if(host&&s.parentNode===o)host.appendChild(s); return; }
+    if(a===s||a.contains(s))return;
+    if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
+    a.parentNode.insertBefore(s,a.nextSibling);
+  }
+  function boot(){
+    place();
+    // The rail toggles, the window resizes, and both pages re-render their own lists. Re-assert on
+    // all three rather than assuming the first pass is the last; place() is a no-op once settled.
+    try{ window.addEventListener('resize',place,{passive:true}); }catch(_){}
+    try{
+      var rail=document.querySelector('.nx-side');
+      if(rail) new MutationObserver(place).observe(rail,{attributes:true,attributeFilter:['class']});
+    }catch(_){}
+    try{
+      var host=document.querySelector('main.page')||document.querySelector('.lcmu-in')||document.body;
+      new MutationObserver(function(){ place(); }).observe(host,{childList:true,subtree:true});
+    }catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();</script><script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
   var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
@@ -5350,10 +5404,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       // the fill silently disappears. Per-card id, so two tiles cannot collide.
       var gid="lxsp"+String(root.getAttribute("data-tkr")||"").replace(/[^A-Za-z0-9]/g,"")+(up?"u":"d");
       want='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
-          +'<stop offset="0" stop-color="'+col+'" stop-opacity=".36"/>'
+          +'<stop offset="0" stop-color="'+col+'" stop-opacity=".22"/>'
           +'<stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
           +'<path d="'+d+' L88 28 L0 28 Z" fill="url(#'+gid+')" stroke="none"></path>'
-          +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>';
+          +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path>';
     } else if(d){
       want='<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>';
     }
@@ -5904,54 +5958,5 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
     if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
   },true);
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });
-})();</script><script id="lx-sidecard">(function(){
-  // Set before anything else and synchronously: it is what arms the phone rule above, so a failure
-  // to load this file leaves the card visible where it was authored rather than hidden forever.
-  try{ document.documentElement.className+=' lx-sc'; }catch(_){}
-  function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
-  function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
-  // What the card should sit after once it drops below. Ordered most specific first: the pairs
-  // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
-  // either build.
-  function anchor(){
-    return document.querySelector('.dex-markets')
-        || document.querySelector('.mdx-mk-list')
-        || document.querySelector('.lx-netpag-host')
-        || document.querySelector('.lx-netpag')
-        || null;
-  }
-  function twoCol(el){
-    try{ var c=getComputedStyle(el).gridTemplateColumns;
-      return !!c && c.indexOf('none')<0 && c.trim().split(/\s+/).length>1; }catch(_){ return false; }
-  }
-  function place(){
-    var s=side(); if(!s)return;
-    var o=ov();
-    if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
-    var a=anchor();
-    // Nothing to sit after yet -- the pools pager is built at runtime. Move it to the end of the page
-    // anyway: at phone widths the rule above hides it while it is still in the overview, so leaving
-    // it there on a page whose anchor never appears would hide it for good.
-    if(!a){ var host=o&&o.parentNode; if(host&&s.parentNode===o)host.appendChild(s); return; }
-    if(a===s||a.contains(s))return;
-    if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
-    a.parentNode.insertBefore(s,a.nextSibling);
-  }
-  function boot(){
-    place();
-    // The rail toggles, the window resizes, and both pages re-render their own lists. Re-assert on
-    // all three rather than assuming the first pass is the last; place() is a no-op once settled.
-    try{ window.addEventListener('resize',place,{passive:true}); }catch(_){}
-    try{
-      var rail=document.querySelector('.nx-side');
-      if(rail) new MutationObserver(place).observe(rail,{attributes:true,attributeFilter:['class']});
-    }catch(_){}
-    try{
-      var host=document.querySelector('main.page')||document.querySelector('.lcmu-in')||document.body;
-      new MutationObserver(function(){ place(); }).observe(host,{childList:true,subtree:true});
-    }catch(_){}
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
-  else boot();
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>
