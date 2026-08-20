@@ -64,7 +64,7 @@ html .lumos-promo.lm-on.lm-pools{overflow:hidden!important}
    carrying the desktop 300 onto mobile was doubling the height of a card with the same rows in it. */
 @media(min-width:881px){
 html .lumos-promo.lm-on.lm-pools{min-height:300px!important}
-.lm-pools .lm{min-height:300px!important}
+html .lumos-promo.lm-pools .lm{min-height:300px!important}
 }
 /* _ammdata hides the chip below 1100px -- correct while it was a floating 2x2 box beside the copy,
    wrong now that it IS the stats strip along the bottom edge. */
@@ -162,12 +162,9 @@ html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#33333d!i
 @media(max-width:1615px){
 .amm-overview{grid-template-columns:1fr!important}
 }
-/* ...unless the rail is collapsed, which is where the width comes back from. Same pair of rules, same
-   numbers, as the Trade overview: collapse the menu and the hero sits beside Market Overview exactly
-   as it sits beside New Mints there. */
-@media(min-width:1445px) and (max-width:1615px){
-.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
-}
+/* The collapsed rail used to bring the second column back here, mirroring the Trade overview. It no
+   longer does on either page: the hero keeps ONE shape regardless of a control that has nothing to do
+   with it, and Market Overview stays below the list. The matching rule in _sidecard.js went with it. */
 /* TABLET / PHONE: four columns will not fit, so the strip becomes 2x2 and the mark steps down. */
 @media(max-width:880px){
 .lm-pools .lm-chip .lx-hstats{grid-template-columns:1fr 1fr;gap:11px 0!important}
@@ -196,7 +193,7 @@ html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#33333d!i
 /* _ammdata floors the card at 366px, which is a desktop number; Trade's phone card has no floor
    and sizes to its three rows. It declares the floor TWICE -- on the card and on the inner .lm --
    so releasing one alone still leaves a 366px card wrapped round a 147px one. */
-.lm-pools .lm{min-height:0!important}
+html .lumos-promo.lm-pools .lm{min-height:0!important}
 html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 /* the Top Pool pair marks are sized for the desktop strip and are what make this row taller
    than Trade's otherwise identical one */

@@ -39,11 +39,11 @@ const STYLE = `<style id="lx-sidecard-css">
    not visibility, so it does not hold the 258px open either. Gated on html.lx-sc, which the script
    below sets as its first act -- a page where the script never runs still shows the card. */
 @media(max-width:880px){html.lx-sc .amm-overview>.amm-snapshot-card{display:none}}
-/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
-   side card is beside it -- the same number both pages already stacked on. */
-@media(min-width:1445px){
-.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
-}
+/* The rail no longer changes this. Collapsing it used to put New Mints / Market Overview back
+   beside the hero, which meant the hero had two different shapes depending on a control that has
+   nothing to do with it -- and the full-width one is the one worth keeping: the headline gets its
+   own line, and the four stats sit across the bottom instead of being squeezed into half the width.
+   One column at every rail state, so the card below the list is where that panel always lives. */
 </style>`;
 
 const SCRIPT = `<script id="lx-sidecard">(function(){
