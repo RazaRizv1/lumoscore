@@ -41,17 +41,12 @@ html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-prom
    ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
 .lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
 
-/* ---- the horizontal rules --------------------------------------------------------------------- */
-/* Both cards already carried these -- a 1px line every 44px on .lm::before, at half opacity. They were
-   simply too faint to register, which is why they read as missing on Trade rather than as subtle. Same
-   rhythm, stated at full opacity with the line colour set against each ground: a light line on the dark
-   card, a darker one on the light card, since a darker line on a dark ground would only disappear. */
-.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{
-  background:repeating-linear-gradient(0deg,rgba(255,255,255,0) 0px,rgba(255,255,255,0) 43px,rgba(255,255,255,.075) 43px,rgba(255,255,255,.075) 44px)!important;
-  opacity:1!important}
-html[data-theme="light"] .lumos-promo.lm-on .lm::before,html[data-theme="light"] .lumos-promo.lx-mobhero .lm::before{
-  background:repeating-linear-gradient(0deg,rgba(16,16,22,0) 0px,rgba(16,16,22,0) 43px,rgba(16,16,22,.17) 43px,rgba(16,16,22,.17) 44px)!important;
-  opacity:1!important}
+/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
+/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
+   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
+   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
+   itself is untouched everywhere else it is used. */
+.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
 
 /* ---- type: the loudest thing on the card ----------------------------------------------------- */
 .lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
