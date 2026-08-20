@@ -84,13 +84,23 @@ html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light
 html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
 
 /* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
-/* A 2px solid ring in near-black read as a thick outline drawn around each coin. A hairline in the
-   card's own ground does the same job -- separating the overlap -- without becoming the loudest
-   thing in the cell. */
+/* These two coins OVERLAP by 10px, and the ring is what keeps them reading as two coins.
+   The design drew it in near-black, which read as an outline drawn around each coin. A 0.8px
+   hairline fixed that and broke the other half: against a black XLM mark on a near-white card it is
+   invisible, so the pair merged into one blob wherever they overlap -- the broken edge.
+   The answer is the ring every overlapping-avatar stack uses: keep the design's 2px, but paint it in
+   the card's OWN ground, so it reads as a gap between the coins rather than a line around them.
+   The drop shadow goes with it -- on a light card it was just a grey smudge under each coin. */
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
-  border:1px solid rgba(255,255,255,.20)!important;box-shadow:0 2px 6px -2px rgba(0,0,0,.5)!important}
+  border:2px solid #17171d!important;box-shadow:none!important}
 html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border:1px solid rgba(16,16,22,.14)!important;box-shadow:0 2px 6px -3px rgba(16,16,22,.35)!important}
+  border:2px solid #ebebee!important;box-shadow:none!important}
+/* 2px of ring on a 16-17px phone mark is most of the coin; the design already steps this down. */
+@media(max-width:560px){
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span,
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border-width:1.5px!important}
+}
 
 /* ---- the CTAs: the only colour left ------------------------------------------------------------ */
 /* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the

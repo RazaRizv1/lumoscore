@@ -87,6 +87,23 @@ if (ADMIN) {
   if (strays.length) warn.push(`${strays.length} non-admin page(s) in the admin build: ${strays.slice(0, 3).map(rel).join(', ')}`);
 }
 
+// ---- hero style order ----------------------------------------------------------------------------------
+// _heromono.js holds the shared monochrome look for both heroes and beats the per-page hero CSS on
+// document order, not specificity. Every one of these tools re-appends its block at the end of <head>,
+// so running _dexdata.js or _poolshero.js AFTER _heromono.js silently puts the orange ground back --
+// which is exactly what shipped once. The build is only correct when lx-heromono-css is last.
+if (!ADMIN) {
+  for (const f of files.filter(f => /lumoscore-(dex|amm)(-dark|-mobile)?\.html$/.test(rel(f)))) {
+    const s = fs.readFileSync(f, 'utf8');
+    const mono = s.indexOf('<style id="lx-heromono-css"');
+    if (mono < 0) continue;
+    const after = ['lx-dexmain-css', 'lx-poolshero-css']
+      .filter(id => { const at = s.indexOf('<style id="' + id + '"'); return at >= 0 && at > mono; });
+    if (after.length) fail.push(`${rel(f)}: ${after.join(' and ')} sits AFTER lx-heromono-css — the hero will `
+      + `paint in its per-page colour, not the monochrome one. Re-run _tools/_heromono.js last and rebuild.`);
+  }
+}
+
 // ---- report -------------------------------------------------------------------------------------------
 const size = (files.reduce((s, f) => s + fs.statSync(f).size, 0) / 1048576).toFixed(1);
 console.log(`\n  Pre-deploy check — ${LABEL} build (${files.length} files, ${size} MB)\n`);

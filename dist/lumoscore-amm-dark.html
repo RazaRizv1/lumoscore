@@ -1736,6 +1736,43 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 .lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
+</style><style id="lx-tabs-css">
+.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:1px}
+.lx-tabic svg{display:block;width:13px;height:13px}
+.mdx-mk-filter .lx-tabic svg,#poolTabs .lx-tabic svg{width:12px;height:12px}
+/* An icon on a tab that is not the active one should read as part of the label, not as a second
+   thing competing with it. Full colour is the active tab's reward. */
+.lx-tabic{opacity:.72;transition:opacity .15s ease}
+.dex-mk-filter:hover .lx-tabic,.mdx-mk-filter:hover .lx-tabic,#poolTabs button:hover .lx-tabic{opacity:.9}
+.dex-mk-filter.active .lx-tabic,.mdx-mk-filter.active .lx-tabic,#poolTabs button.active .lx-tabic{opacity:1}
+/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
+   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
+.lx-tabic+.lx-mk-star{display:none!important}
+/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
+   pushes the list down and reads as two groups. */
+.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mdx-mk-filters::-webkit-scrollbar{display:none}
+.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
+</style><style id="lx-sidecard-css">
+/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
+   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
+   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
+   parks New Mints and Market Overview between the hero and the thing people came to read. */
+.dex-overview,.amm-overview{grid-template-columns:1fr!important}
+/* The Market Overview card is AUTHORED inside .amm-overview, beside the hero. On the phone the
+   overview is always one column, so the card always ends up below the list -- and it was being
+   painted in its authored slot first and moved a beat later, which shifted the list heading 258px
+   up the page on every refresh. Measured: in .amm-overview at 598ms, in .container at 919ms.
+   Hidden while it is STILL in the overview at phone widths. The selector stops matching the moment
+   place() moves it, so nothing has to toggle a class and there is no timing to get right. display,
+   not visibility, so it does not hold the 258px open either. Gated on html.lx-sc, which the script
+   below sets as its first act -- a page where the script never runs still shows the card. */
+@media(max-width:880px){html.lx-sc .amm-overview>.amm-snapshot-card{display:none}}
+/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
+   side card is beside it -- the same number both pages already stacked on. */
+@media(min-width:1445px){
+.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
+}
 </style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
@@ -1798,56 +1835,29 @@ html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light
 html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
 
 /* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
-/* A 2px solid ring in near-black read as a thick outline drawn around each coin. A hairline in the
-   card's own ground does the same job -- separating the overlap -- without becoming the loudest
-   thing in the cell. */
+/* These two coins OVERLAP by 10px, and the ring is what keeps them reading as two coins.
+   The design drew it in near-black, which read as an outline drawn around each coin. A 0.8px
+   hairline fixed that and broke the other half: against a black XLM mark on a near-white card it is
+   invisible, so the pair merged into one blob wherever they overlap -- the broken edge.
+   The answer is the ring every overlapping-avatar stack uses: keep the design's 2px, but paint it in
+   the card's OWN ground, so it reads as a gap between the coins rather than a line around them.
+   The drop shadow goes with it -- on a light card it was just a grey smudge under each coin. */
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
-  border:1px solid rgba(255,255,255,.20)!important;box-shadow:0 2px 6px -2px rgba(0,0,0,.5)!important}
+  border:2px solid #17171d!important;box-shadow:none!important}
 html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border:1px solid rgba(16,16,22,.14)!important;box-shadow:0 2px 6px -3px rgba(16,16,22,.35)!important}
+  border:2px solid #ebebee!important;box-shadow:none!important}
+/* 2px of ring on a 16-17px phone mark is most of the coin; the design already steps this down. */
+@media(max-width:560px){
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span,
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border-width:1.5px!important}
+}
 
 /* ---- the CTAs: the only colour left ------------------------------------------------------------ */
 /* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
    card, which is the point -- the eye goes to the action. */
 .lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
 html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
-</style><style id="lx-sidecard-css">
-/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
-   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
-   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
-   parks New Mints and Market Overview between the hero and the thing people came to read. */
-.dex-overview,.amm-overview{grid-template-columns:1fr!important}
-/* The Market Overview card is AUTHORED inside .amm-overview, beside the hero. On the phone the
-   overview is always one column, so the card always ends up below the list -- and it was being
-   painted in its authored slot first and moved a beat later, which shifted the list heading 258px
-   up the page on every refresh. Measured: in .amm-overview at 598ms, in .container at 919ms.
-   Hidden while it is STILL in the overview at phone widths. The selector stops matching the moment
-   place() moves it, so nothing has to toggle a class and there is no timing to get right. display,
-   not visibility, so it does not hold the 258px open either. Gated on html.lx-sc, which the script
-   below sets as its first act -- a page where the script never runs still shows the card. */
-@media(max-width:880px){html.lx-sc .amm-overview>.amm-snapshot-card{display:none}}
-/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
-   side card is beside it -- the same number both pages already stacked on. */
-@media(min-width:1445px){
-.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
-}
-</style><style id="lx-tabs-css">
-.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:1px}
-.lx-tabic svg{display:block;width:13px;height:13px}
-.mdx-mk-filter .lx-tabic svg,#poolTabs .lx-tabic svg{width:12px;height:12px}
-/* An icon on a tab that is not the active one should read as part of the label, not as a second
-   thing competing with it. Full colour is the active tab's reward. */
-.lx-tabic{opacity:.72;transition:opacity .15s ease}
-.dex-mk-filter:hover .lx-tabic,.mdx-mk-filter:hover .lx-tabic,#poolTabs button:hover .lx-tabic{opacity:.9}
-.dex-mk-filter.active .lx-tabic,.mdx-mk-filter.active .lx-tabic,#poolTabs button.active .lx-tabic{opacity:1}
-/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
-   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
-.lx-tabic+.lx-mk-star{display:none!important}
-/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
-   pushes the list down and reads as two groups. */
-.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.mdx-mk-filters::-webkit-scrollbar{display:none}
-.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
 </style></head>
 <body>
 <div class="app">
