@@ -889,10 +889,10 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       // the fill silently disappears. Per-card id, so two tiles cannot collide.
       var gid="lxsp"+String(root.getAttribute("data-tkr")||"").replace(/[^A-Za-z0-9]/g,"")+(up?"u":"d");
       want='<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
-          +'<stop offset="0" stop-color="'+col+'" stop-opacity=".36"/>'
+          +'<stop offset="0" stop-color="'+col+'" stop-opacity=".22"/>'
           +'<stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
           +'<path d="'+d+' L88 28 L0 28 Z" fill="url(#'+gid+')" stroke="none"></path>'
-          +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>';
+          +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path>';
     } else if(d){
       want='<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>';
     }
