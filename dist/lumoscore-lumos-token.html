@@ -1848,6 +1848,54 @@ html[data-theme="light"] .search-popup { box-shadow: 0 24px 48px rgba(15,15,20,0
 .lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
+</style><style id="lx-lumosutil-css">
+/* ---- band 1: the fee, across the top ---------------------------------------------------------- */
+.utility-grid{grid-template-columns:repeat(3,1fr)}
+.utility-grid .util-card.fee{grid-column:1/-1}
+/* Two columns inside the card WITHOUT wrapping its children in a new element: the copy is assigned to
+   column one, the figure to column two spanning every row. */
+.util-card.fee{
+  display:grid;grid-template-columns:1fr auto;column-gap:34px;align-items:center;
+  padding:24px 26px;
+  background:linear-gradient(115deg,var(--accent-pale,rgba(234,106,44,.12)) 0%,transparent 56%),var(--surface);
+  border-color:rgba(234,106,44,.30)}
+.util-card.fee>.u-ico,.util-card.fee>h4,.util-card.fee>p,.util-card.fee>.u-link{grid-column:1;margin-right:0}
+.util-card.fee>p{max-width:62ch}
+.util-card.fee>.u-link{justify-self:start}
+.util-card.fee>.lxu-figure{grid-column:2;grid-row:1/-1;align-self:center;justify-self:end}
+
+/* the rate, as a figure */
+.lxu-figure{display:flex;flex-direction:column;align-items:flex-end;gap:9px;flex:0 0 auto}
+.lxu-rate{display:inline-flex;align-items:baseline;gap:9px;
+  font:800 40px/1 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:-1.4px;color:var(--text)}
+.lxu-from{font-size:24px;font-weight:700;color:var(--text-soft);text-decoration:line-through;
+  text-decoration-thickness:2px;opacity:.8}
+.lxu-arrow{font-size:20px;font-weight:700;color:var(--text-soft)}
+.lxu-to{color:var(--accent)}
+.lxu-off{font:800 11px/1 'JetBrains Mono',monospace;letter-spacing:.10em;text-transform:uppercase;
+  padding:5px 10px;border-radius:999px;background:var(--accent);color:#fff;
+  box-shadow:0 8px 18px -10px rgba(234,106,44,.9)}
+
+/* ---- band 2: one box per incentive reward ----------------------------------------------------- */
+/* Three boxes were asked for. Liquidity Pairing is not an incentive reward and is not live; its
+   markup is untouched, so deleting this one rule brings it back. */
+.utility-grid .util-card.pairing{display:none}
+/* Equal height, and the link pinned to the bottom edge so three boxes of unequal copy still line up. */
+.utility-grid .util-card.native,.utility-grid .util-card.eco,.utility-grid .util-card.whale{
+  display:flex;flex-direction:column}
+.utility-grid .util-card.native .u-link,.utility-grid .util-card.eco .u-link,
+.utility-grid .util-card.whale .u-link{margin-top:auto}
+
+/* ---- phone: the figure sits under the copy ---------------------------------------------------- */
+@media(max-width:860px){
+.utility-grid{grid-template-columns:1fr}
+.util-card.fee{grid-template-columns:1fr;row-gap:14px;padding:18px 18px}
+.util-card.fee>.lxu-figure{grid-column:1;grid-row:auto;justify-self:start;
+  flex-direction:row;align-items:center;gap:12px}
+.lxu-rate{font-size:30px;letter-spacing:-1px}
+.lxu-from{font-size:19px}
+.util-card.fee>p{max-width:none}
+}
 </style></head>
 <body>
 <div class="app">
@@ -2482,8 +2530,8 @@ html[data-theme="light"] .search-popup { box-shadow: 0 24px 48px rgba(15,15,20,0
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="14.31" y1="8" x2="20.05" y2="17.94"/><line x1="9.69" y1="8" x2="21.17" y2="8"/><line x1="7.38" y1="12" x2="13.12" y2="2.06"/><line x1="9.69" y1="16" x2="3.95" y2="6.06"/><line x1="14.31" y1="16" x2="2.83" y2="16"/><line x1="16.62" y1="12" x2="10.88" y2="21.94"/></svg>
           </div>
           <h4>Trading fee waivers <span class="threshold">Hold 250K+</span></h4>
-          <p>Hold 250,000 LUMOS or more in a single wallet and trade fee-free across all LumosCore products — DEX and AMM.</p>
-          <a class="u-link" href="#">Learn how it works →</a>
+          <p>Hold <strong>250,000 LUMOS</strong> or more in a single wallet and pay <strong>0.1%</strong> instead of 0.2% on every trade — half the platform fee, across the DEX and the AMM.</p>
+          <div class="lxu-figure" aria-hidden="true"><span class="lxu-rate"><span class="lxu-from">0.2%</span><span class="lxu-arrow">→</span><span class="lxu-to">0.1%</span></span><span class="lxu-off">50% off</span></div><a class="u-link" href="#">Learn how it works →</a>
         </div>
 
         <div class="util-card native">
