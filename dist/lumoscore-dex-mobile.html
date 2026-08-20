@@ -2055,6 +2055,17 @@ html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,htm
    card, which is the point -- the eye goes to the action. */
 .lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
 html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
+</style><style id="lx-sidecard-css">
+/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
+   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
+   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
+   parks New Mints and Market Overview between the hero and the thing people came to read. */
+.dex-overview,.amm-overview{grid-template-columns:1fr!important}
+/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
+   side card is beside it -- the same number both pages already stacked on. */
+@media(min-width:1445px){
+.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
+}
 </style></head>
 <body>
 
@@ -6136,5 +6147,46 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
     if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
   },true);
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });
+})();</script><script id="lx-sidecard">(function(){
+  function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
+  function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
+  // What the card should sit after once it drops below. Ordered most specific first: the pairs
+  // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
+  // either build.
+  function anchor(){
+    return document.querySelector('.dex-markets')
+        || document.querySelector('.mdx-mk-list')
+        || document.querySelector('.lx-netpag-host')
+        || document.querySelector('.lx-netpag')
+        || null;
+  }
+  function twoCol(el){
+    try{ var c=getComputedStyle(el).gridTemplateColumns;
+      return !!c && c.indexOf('none')<0 && c.trim().split(/\s+/).length>1; }catch(_){ return false; }
+  }
+  function place(){
+    var s=side(); if(!s)return;
+    var o=ov();
+    if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
+    var a=anchor(); if(!a||a===s||a.contains(s))return;
+    if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
+    a.parentNode.insertBefore(s,a.nextSibling);
+  }
+  function boot(){
+    place();
+    // The rail toggles, the window resizes, and both pages re-render their own lists. Re-assert on
+    // all three rather than assuming the first pass is the last; place() is a no-op once settled.
+    try{ window.addEventListener('resize',place,{passive:true}); }catch(_){}
+    try{
+      var rail=document.querySelector('.nx-side');
+      if(rail) new MutationObserver(place).observe(rail,{attributes:true,attributeFilter:['class']});
+    }catch(_){}
+    try{
+      var host=document.querySelector('main.page')||document.querySelector('.lcmu-in')||document.body;
+      new MutationObserver(function(){ place(); }).observe(host,{childList:true,subtree:true});
+    }catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
+  else boot();
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>
