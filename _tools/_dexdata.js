@@ -959,7 +959,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // frozen top-4 PER category: each tab keeps its OWN stable order (no re-sort glitch), but switching tabs
   // now yields the correct set (previously a single global freeze made all 3 tabs show the same 4 assets).
   var _moverFrozen={};
-  function moverCat(){ var t=q(".dex-mover-tab.active"); return (t&&t.getAttribute)?(t.getAttribute("data-cat")||"gainers"):"gainers"; }
+  function moverCat(){ var t=q(".dex-mover-tab.active")||q(".mdx-mover-tab.active");
+    return (t&&t.getAttribute)?(t.getAttribute("data-cat")||(t.textContent||"").trim().toLowerCase()||"gainers"):"gainers"; }
   // Takes an optional category so the mobile renderer can ask for a specific tab. Without it, the
   // category comes from ".dex-mover-tab.active" — a selector the mobile markup does not have, so a
   // mobile caller silently got "gainers" for all three tabs.
@@ -1004,7 +1005,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(map.volume&&map.gainers&&map.losers)want.forEach(function(c){ bar.appendChild(map[c]); });
     tabs.forEach(function(t){ t.classList.toggle("active",t===vol); });
   }
-  function renderMovers(){ var grid=q("#dexMoverGrid"); if(!grid)return;
+  function renderMovers(){ var grid=q("#dexMoverGrid")||q("#mdxMoverList"); if(!grid)return;
     try{ moverDefault(); }catch(_){}
     var data=moverData(); var sig=data.map(function(a){return a.code;}).join(",");
     // An empty category is now possible and is a real answer: Gainers and Losers are quality-gated, so on
@@ -1345,10 +1346,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // doesn't change #dexMoverGrid's children, so the childList observer wouldn't fire). Delegated so it
     // survives node replacement; a short + backup tick lets the design toggle .active first.
     if(!window.__lxDEXtab){ window.__lxDEXtab=1;
-      document.addEventListener("click",function(e){ var t=e.target&&e.target.closest?e.target.closest(".dex-mover-tab,.dex-mk-filter"):null; if(t){ setTimeout(guardApply,30); setTimeout(guardApply,160); } });
+      document.addEventListener("click",function(e){ var t=e.target&&e.target.closest?e.target.closest(".dex-mover-tab,.mdx-mover-tab,.dex-mk-filter,.mdx-mk-filter"):null; if(t){ setTimeout(guardApply,30); setTimeout(guardApply,160); } });
     }
     guardEl("#dexMintsList",renderMints);
     guardEl("#dexMoverGrid",renderMovers);
+    guardEl("#mdxMoverList",renderMovers);
     guardEl("#dexMkTbody",renderTable);
     loadData();
     var ticks=0, iv=setInterval(function(){ guardApply(); if(++ticks>30)clearInterval(iv); },700);

@@ -1544,14 +1544,18 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
 </style><style id="lx-tabs-css">
-.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:1px}
-.lx-tabic svg{display:block;width:13px;height:13px}
-.mdx-mk-filter .lx-tabic svg,#poolTabs .lx-tabic svg{width:12px;height:12px}
-/* An icon on a tab that is not the active one should read as part of the label, not as a second
-   thing competing with it. Full colour is the active tab's reward. */
-.lx-tabic{opacity:.72;transition:opacity .15s ease}
-.dex-mk-filter:hover .lx-tabic,.mdx-mk-filter:hover .lx-tabic,#poolTabs button:hover .lx-tabic{opacity:.9}
-.dex-mk-filter.active .lx-tabic,.mdx-mk-filter.active .lx-tabic,#poolTabs button.active .lx-tabic{opacity:1}
+.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:2px}
+/* Sized UP. At 13px these read as punctuation beside the label rather than as marks in their own
+   right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
+   afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
+.lx-tabic svg{display:block;width:17px;height:17px}
+.mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
+#poolTabs .lx-tabic svg{width:18px;height:18px}
+@media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}
+/* Full colour on every tab. Dimming the inactive ones to .72 was what made a set of otherwise
+   saturated marks look washed out and cheap; the active tab is already carried by its filled
+   background, so the icons do not need to fade to say which one is on. */
+.lx-tabic{opacity:1}
 /* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
    many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
 .lx-tabic+.lx-mk-star{display:none!important}
