@@ -70,17 +70,17 @@ html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"]
   box-shadow:0 0 0 1px rgba(16,16,22,.14),0 10px 24px -14px rgba(16,16,22,.45)!important}
 
 /* ---- the stats strip -------------------------------------------------------------------------- */
-.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip{
+.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
   background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
   border-top:1px solid rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip{
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
   background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
   border-top:1px solid rgba(16,16,22,.10)!important}
-.lumos-promo.lm-on .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
-.lumos-promo.lm-on .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
+.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
+.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
 .lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
 html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
 
 /* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */

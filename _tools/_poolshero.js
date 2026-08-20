@@ -60,8 +60,24 @@ html .lumos-promo.lm-on.lm-pools{overflow:hidden!important}
    the stats sat beside the copy in a tall chip. With the strip along the bottom the content decides the
    height, exactly as it does on Trade -- and 366 was the difference between a 370px card here and a
    302px one there. */
+/* Desktop only. Trade's phone card sets no floor and sizes to its content -- about 140px -- so
+   carrying the desktop 300 onto mobile was doubling the height of a card with the same rows in it. */
+@media(min-width:881px){
 html .lumos-promo.lm-on.lm-pools{min-height:300px!important}
 .lm-pools .lm{min-height:300px!important}
+}
+/* _ammdata hides the chip below 1100px -- correct while it was a floating 2x2 box beside the copy,
+   wrong now that it IS the stats strip along the bottom edge. */
+@media(max-width:1100px){.lm-pools .lm-chip{display:block!important}}
+/* the rotating carousel the built card replaces */
+.lm-pools .lumos-promo-slides,.lm-pools .lumos-promo-dots{display:none!important}
+/* The phone card is one column: mark and headline, then the CTAs, then the strip. */
+@media(max-width:880px){
+.lm-pools .lm-c-pool,.lm-pools .lm-c{flex-wrap:wrap;align-items:center;gap:14px;padding:18px 18px 16px!important}
+.lm-pools .lm-h{font-size:27px!important;line-height:1.12!important;max-width:none;flex:1 1 180px}
+.lm-pools .lm-sub{display:none!important}
+.lm-pools .lx-dctas{flex:1 1 100%;margin:2px 0 0!important}
+}
 /* The plain page heading says what the card says. Hidden to the eye, kept in the outline. */
 .lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
 .dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
@@ -152,10 +168,37 @@ html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#33333d!i
 .lm-pools .lx-dctas{position:static!important;order:9;margin:14px 0 0!important;align-self:flex-start}
 }
 @media(max-width:560px){
+/* Trade fits all four across on the phone rather than stacking 2x2, which is what keeps its card
+   about 140px tall instead of 300. Same grid here. */
+.lm-pools .lm-chip .lx-hstats{grid-template-columns:repeat(4,auto)!important;justify-content:space-between;gap:0!important}
+.lm-pools .lm-chip{padding:9px 14px 10px!important}
+.lm-pools .lx-hstat{padding-left:0;border-left:0}
 .lm-pools .lx-hstat .v{font-size:16px;gap:6px}
 .lm-pools .lx-hstat .l{font-size:8px;letter-spacing:.03em}
 .lm-pools .lx-hstat[data-k=top] .v{font-size:10.5px}
 .lm-pools .lx-heroico{width:38px;height:38px}
+}
+/* PHONE, and deliberately last in this sheet: the desktop rules above use !important too, so an
+   earlier media block loses the tie to them on document order alone. Everything here exists to
+   match Trade's phone card, which is a mark, a headline and the strip -- nothing else. */
+@media(max-width:880px){
+/* _ammdata floors the card at 366px, which is a desktop number; Trade's phone card has no floor
+   and sizes to its three rows. It declares the floor TWICE -- on the card and on the inner .lm --
+   so releasing one alone still leaves a 366px card wrapped round a 147px one. */
+.lm-pools .lm{min-height:0!important}
+html .lumos-promo.lm-on.lm-pools{min-height:0!important}
+/* the Top Pool pair marks are sized for the desktop strip and are what make this row taller
+   than Trade's otherwise identical one */
+/* Same selector shape as the desktop rule above on purpose: [data-k=top] gives that one four
+   classes to this one's three, so a shorter selector here loses the cascade however late it sits. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons{width:30px!important;height:17px!important;flex:0 0 30px!important}
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{width:17px!important;height:17px!important}
+.lm-pools .lm-c,.lm-pools .lm-c-pool{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;padding:14px 14px!important}
+/* 18px is Trade's phone headline. 27px was a desktop size on a 375px screen. */
+.lm-pools .lm-h{font-size:18px!important;line-height:1.22!important;max-width:none!important;flex:1 1 auto}
+.lm-pools .lm-sub{display:none!important}
+/* the CTA row now sits under the card, in the page's own flow */
+.lumos-promo.lx-mobhero + .mdx-hero-ctas{margin:12px 0 18px!important}
 }
 </style>`;
 
@@ -164,7 +207,33 @@ const SCRIPT = `<script id="lx-poolshero">(function(){
   // Every step is a MOVE or a class flag on something that already exists, and every step is guarded, so
   // a second pass over an arranged card does nothing. The stats are deliberately NOT touched here -- the
   // Pools layer writes into them through .lm-chip, and taking them out of it blanks every value.
+  // Only ever runs where the page did not ship a .lm -- i.e. the phone build. Idempotent: once the
+  // card exists this returns on the first line.
+  function buildMobile(){
+    var promo=q('.lumos-promo'); if(!promo)return;
+    if(q('.lm',promo))return;
+    var slide=q('.lumos-promo-slide',promo);
+    var title=slide?q('.lumos-promo-title',slide):null;
+    var sub=slide?q('.lumos-promo-sub',slide):null;
+    if(!title)return;                       // no copy to build from; leave the page as it is
+    var lm=document.createElement('div'); lm.className='lm';
+    var c=document.createElement('div'); c.className='lm-c lm-c-pool';
+    var ic=document.createElement('span'); ic.className='lx-heroico'; ic.setAttribute('aria-hidden','true');
+    var h=document.createElement('h2'); h.className='lm-h';
+    h.innerHTML=title.innerHTML;            // keeps the line break and the accent span
+    var pEl=document.createElement('p'); pEl.className='lm-sub';
+    if(sub)pEl.innerHTML=sub.innerHTML;
+    c.appendChild(ic); c.appendChild(h); c.appendChild(pEl);
+    // the chip is what _ammdata.js looks for before it will build and fill the four stats
+    var chip=document.createElement('div'); chip.className='lm-chip';
+    lm.appendChild(c); lm.appendChild(chip);
+    promo.appendChild(lm);
+    promo.className+=' lm-pools lm-on lx-mobhero';
+  }
   function apply(){
+    // The phone page ships the carousel and no .lm. Build the card first; every step below then
+    // treats mobile and desktop identically.
+    buildMobile();
     var card=q('.lumos-promo.lm-pools'); if(!card)return;
     var lm=q('.lm',card); if(!lm)return;
     var copy=q('.lm-c-pool',lm)||q('.lm-c',lm); if(!copy)return;
@@ -178,8 +247,16 @@ const SCRIPT = `<script id="lx-poolshero">(function(){
 
     // 2. the page's two CTAs, lifted into the card. MOVED, not rebuilt -- #ammHiwBtn already carries its
     //    listener, and a clone would render correctly and then do nothing when pressed.
-    var src=q('.dex-hero-r');
-    if(src&&src.parentNode!==copy){
+    //    On the phone they go BELOW the card instead. Trade's phone card carries no buttons at all,
+    //    and folding this row in was the whole reason the Pools card ran to twice Trade's height.
+    //    Moved rather than dropped: Create Pool stays on the page, one row further down than the
+    //    page originally put it, and keeps .mdx-hero-ctas -- NOT lx-dctas, which positions absolute
+    //    against the card it would no longer be inside.
+    var phone=(' '+card.className+' ').indexOf(' lx-mobhero ')>=0;
+    var src=q('.dex-hero-r')||q('.mdx-hero-ctas');
+    if(src&&phone){
+      if(card.nextElementSibling!==src)card.parentNode.insertBefore(src,card.nextSibling);
+    }else if(src&&src.parentNode!==copy){
       if((' '+src.className+' ').indexOf(' lx-dctas ')<0)src.className+=' lx-dctas';
       copy.appendChild(src);
     }
@@ -196,8 +273,9 @@ const SCRIPT = `<script id="lx-poolshero">(function(){
     }
 
     // 3. the plain page heading above the card now duplicates the card. Hidden visually only.
-    var h=q('.dex-hero-l');
-    if(h&&(' '+h.className+' ').indexOf(' lx-sronly ')<0)h.className+=' lx-sronly';
+    var heads=[q('.dex-hero-l'),q('.page-title'),q('.page-subtitle')];
+    for(var hi=0;hi<heads.length;hi++){ var hd=heads[hi];
+      if(hd&&(' '+hd.className+' ').indexOf(' lx-sronly ')<0)hd.className+=' lx-sronly'; }
   }
   function boot(){
     apply();
