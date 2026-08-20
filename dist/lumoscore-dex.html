@@ -986,7 +986,9 @@
     font-family: 'JetBrains Mono', monospace;
   }
 
-  @media (max-width: 1180px) {
+  @media (max-width: 1350px) { .dex-overview { grid-template-columns: 1fr; } }
+@media (min-width: 1181px) and (max-width: 1350px) { .nx-side.nx-collapsed ~ .main .dex-overview { grid-template-columns: 1.4fr 1fr; } }
+@media (max-width: 1180px) {
     .dex-overview { grid-template-columns: 1fr; }
     .dex-trading-body { grid-template-columns: 1fr; }
     .dex-trading-stats {
@@ -4122,10 +4124,14 @@ function lxPostConnectHome(){try{var _p=location.pathname||'';
     if(_was&&_now&&_was===_now)return;
   }
   if(/dashboard|lumoscore-home|wallet/.test(_p))return;
-  setTimeout(function(){
+  var _go=function(){
     try{ if(window.__lxNav){window.__lxNav('lumoscore-home.html');return;} }catch(_){}
     try{ location.href='/dashboard'; }catch(_){}
-  },1100);}catch(_){}}
+  };
+  var _btns=document.querySelectorAll('.lxw-screen[data-screen=connected] .lxw-done');
+  if(_btns.length){ [].forEach.call(_btns,function(b){ if(b.__lxgo)return; b.__lxgo=1;
+    b.addEventListener('click',function(){ setTimeout(_go,0); }); }); }
+  else { setTimeout(_go,1100); }}catch(_){}}
 lxPostConnectHome();
 }
 function showErr(row,err){
