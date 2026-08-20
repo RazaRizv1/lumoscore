@@ -2601,17 +2601,8 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
     modal.querySelector('.lxw-acct-copy').addEventListener('click', function(){
       var a='';try{a=localStorage.getItem('lumos.address')||'';}catch(_){}
       if(!a)a=(modal.querySelector('.lxw-acct-addr').textContent||'').trim();
-      function say(){
-        try{ if(typeof window.lxToast==='function'){window.lxToast('Wallet address copied');return;} }catch(_){}
-        try{ if(typeof window.showToast==='function'){window.showToast('Wallet address copied');return;} }catch(_){}
-        try{ var t=document.createElement('div'); t.textContent='Wallet address copied';
-          t.style.cssText='position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1c1f27;color:#fff;border:1px solid rgba(255,255,255,.16);padding:10px 16px;border-radius:10px;font-size:13px;z-index:100002;box-shadow:0 10px 34px rgba(0,0,0,.45);max-width:82vw;text-align:center';
-          document.body.appendChild(t);
-          setTimeout(function(){t.style.transition='opacity .4s';t.style.opacity='0';setTimeout(function(){t.remove();},420);},2600);
-        }catch(_){}
-      }
-      try{ navigator.clipboard.writeText(a).then(say,function(){window.prompt('Wallet address',a);}); }
-      catch(_){ window.prompt('Wallet address',a); }
+      if(!window.__lxCopyTo){window.__lxCopyTo=function(text){function toast(){try{var st=document.querySelector('.toast-stack');if(!st){st=document.createElement('div');st.className='toast-stack';document.body.appendChild(st);}var fixed=false;try{fixed=(getComputedStyle(st).position==='fixed');}catch(_){}if(!fixed&&!document.getElementById('lx-copytoast-css')){var cs=document.createElement('style');cs.id='lx-copytoast-css';cs.textContent='.toast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:100002;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}'+'.toast{background:#1b1e24;color:#fff;padding:11px 18px 11px 14px;border-radius:10px;font-size:15px;font-weight:600;display:inline-flex;align-items:center;gap:9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);max-width:90vw}'+'.toast .check-ic{width:18px;height:18px;border-radius:50%;background:#35c07f;color:#fff;font-size:11px;font-weight:700;line-height:1;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}';document.head.appendChild(cs);}try{st.style.zIndex='100002';}catch(_){}var t=document.createElement('div');t.className='toast';var ic=document.createElement('span');ic.className='check-ic';ic.textContent='✓';var tx=document.createElement('span');tx.textContent='Copied to clipboard';t.appendChild(ic);t.appendChild(tx);st.appendChild(t);setTimeout(function(){t.remove();},2200);}catch(_){}}function legacy(){try{var ta=document.createElement('textarea');ta.value=String(text);ta.setAttribute('readonly','');ta.style.cssText='position:fixed;left:-9999px;top:0;opacity:0';document.body.appendChild(ta);ta.select();try{ta.setSelectionRange(0,String(text).length);}catch(_){}var ok=document.execCommand('copy');ta.remove();return !!ok;}catch(_){return false;}}try{ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(toast,function(){ if(legacy())toast(); else window.prompt('Address',text); });return; } }catch(_){}if(legacy())toast(); else window.prompt('Address',text);};}
+      window.__lxCopyTo(a);
     });
     modal.querySelector('.lxw-searchin').addEventListener('input', function(e){ filter(e.target.value); });
     document.addEventListener('keydown', function(e){ if(e.key==='Escape' && !modal.hasAttribute('hidden')) close(); });
