@@ -1543,17 +1543,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
-</style><style id="lx-sidecard-css">
-/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
-   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
-   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
-   parks New Mints and Market Overview between the hero and the thing people came to read. */
-.dex-overview,.amm-overview{grid-template-columns:1fr!important}
-/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
-   side card is beside it -- the same number both pages already stacked on. */
-@media(min-width:1445px){
-.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
-}
 </style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
@@ -1629,6 +1618,62 @@ html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,htm
    card, which is the point -- the eye goes to the action. */
 .lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
 html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
+</style><style id="lx-sidecard-css">
+/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
+   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
+   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
+   parks New Mints and Market Overview between the hero and the thing people came to read. */
+.dex-overview,.amm-overview{grid-template-columns:1fr!important}
+/* The Market Overview card is AUTHORED inside .amm-overview, beside the hero. On the phone the
+   overview is always one column, so the card always ends up below the list -- and it was being
+   painted in its authored slot first and moved a beat later, which shifted the list heading 258px
+   up the page on every refresh. Measured: in .amm-overview at 598ms, in .container at 919ms.
+   Hidden while it is STILL in the overview at phone widths. The selector stops matching the moment
+   place() moves it, so nothing has to toggle a class and there is no timing to get right. display,
+   not visibility, so it does not hold the 258px open either. Gated on html.lx-sc, which the script
+   below sets as its first act -- a page where the script never runs still shows the card. */
+@media(max-width:880px){html.lx-sc .amm-overview>.amm-snapshot-card{display:none}}
+/* 1445 is where the hero still keeps the ~830px its mark, headline and CTAs need once the 570px
+   side card is beside it -- the same number both pages already stacked on. */
+@media(min-width:1445px){
+.nx-side.nx-collapsed ~ .main .dex-overview,.nx-side.nx-collapsed ~ .main .amm-overview{grid-template-columns:1.4fr 1fr!important}
+}
+</style><style id="lx-tabs-css">
+.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:1px}
+.lx-tabic svg{display:block;width:13px;height:13px}
+.mdx-mk-filter .lx-tabic svg,#poolTabs .lx-tabic svg{width:12px;height:12px}
+/* An icon on a tab that is not the active one should read as part of the label, not as a second
+   thing competing with it. */
+.lx-tabic{opacity:.75}
+.dex-mk-filter.active .lx-tabic,.mdx-mk-filter.active .lx-tabic,#poolTabs button.active .lx-tabic{opacity:1}
+/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
+   pushes the list down and reads as two groups. */
+.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mdx-mk-filters::-webkit-scrollbar{display:none}
+.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
+</style><style id="lx-tabs-phone-css">
+/* .filter-tabs on Pools is a pair of full-width pills with the active one filled accent -- the
+   loudest control on the page. Trade uses a small segmented chip group instead, and these are the
+   same numbers off .mdx-mk-filters / .mdx-mk-filter. Scoped to #poolTabs so the Pools DESKTOP tabs,
+   which share the class and were not part of this, keep their own look. */
+#poolTabs{display:flex!important;gap:4px!important;background:var(--surface-2)!important;border:0!important;
+  padding:3px!important;border-radius:8px!important;margin:0 0 10px!important;
+  max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+#poolTabs::-webkit-scrollbar{display:none}
+#poolTabs button{flex:0 0 auto!important;height:auto!important;padding:5px 11px!important;
+  border-radius:5px!important;font-size:11.5px!important;font-weight:700!important;gap:4px!important;
+  white-space:nowrap;background:transparent!important;color:var(--text-muted)!important}
+#poolTabs button.active{background:var(--surface)!important;color:var(--text)!important}
+/* the count rode on the filled accent pill; on a chip it needs its own quiet ground */
+#poolTabs .count{font-size:9px!important;font-weight:800!important;padding:1px 5px!important;
+  border-radius:999px!important;background:var(--surface-2)!important;color:var(--text-soft)!important}
+#poolTabs button.active .count{background:var(--surface-2)!important;color:var(--text-muted)!important}
+/* the search row, off .mdx-mk-search: 36px on a recessed ground, not 42px on a raised one */
+.search-box.inline-filter{height:36px!important;padding:0 12px!important;gap:8px!important;
+  background:var(--surface-2)!important;border-radius:10px!important;margin-bottom:10px!important}
+.search-box.inline-filter:focus-within{border-color:var(--accent)!important}
+.search-box.inline-filter input{font-size:12.5px!important}
+.search-box.inline-filter svg{width:13px!important;height:13px!important}
 </style></head>
 <body><!--lx-menu--><div class="menu-overlay" id="menuOverlay"></div>
   <aside class="slide-menu" id="slideMenu">
@@ -1940,8 +1985,8 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] 
 
     <!-- Tabs -->
     <div class="filter-tabs" id="poolTabs">
-      <button class="active" data-tab="all">All Pools <span class="count">100</span></button>
-      <button data-tab="mine">My Positions <span class="count">2</span></button>
+      <button class="active" data-tab="all"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.6 2.8 7 12 11.4 21.2 7 12 2.6z"/><path d="M2.8 16.8 12 21.2l9.2-4.4"/><path d="M2.8 11.9 12 16.3l9.2-4.4"/></svg></span>All Pools <span class="count">100</span></button>
+      <button data-tab="mine"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 20.4v-1.7a4.2 4.2 0 0 0-4.2-4.2H8.2A4.2 4.2 0 0 0 4 18.7v1.7"/><circle cx="12" cy="7.6" r="3.9"/></svg></span>My Positions <span class="count">2</span></button>
     </div>
 
     <!-- Search -->
@@ -7248,47 +7293,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
     launchPopup(seed);
   }, true);
-})();</script><script id="lx-sidecard">(function(){
-  function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
-  function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
-  // What the card should sit after once it drops below. Ordered most specific first: the pairs
-  // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
-  // either build.
-  function anchor(){
-    return document.querySelector('.dex-markets')
-        || document.querySelector('.mdx-mk-list')
-        || document.querySelector('.lx-netpag-host')
-        || document.querySelector('.lx-netpag')
-        || null;
-  }
-  function twoCol(el){
-    try{ var c=getComputedStyle(el).gridTemplateColumns;
-      return !!c && c.indexOf('none')<0 && c.trim().split(/\s+/).length>1; }catch(_){ return false; }
-  }
-  function place(){
-    var s=side(); if(!s)return;
-    var o=ov();
-    if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
-    var a=anchor(); if(!a||a===s||a.contains(s))return;
-    if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
-    a.parentNode.insertBefore(s,a.nextSibling);
-  }
-  function boot(){
-    place();
-    // The rail toggles, the window resizes, and both pages re-render their own lists. Re-assert on
-    // all three rather than assuming the first pass is the last; place() is a no-op once settled.
-    try{ window.addEventListener('resize',place,{passive:true}); }catch(_){}
-    try{
-      var rail=document.querySelector('.nx-side');
-      if(rail) new MutationObserver(place).observe(rail,{attributes:true,attributeFilter:['class']});
-    }catch(_){}
-    try{
-      var host=document.querySelector('main.page')||document.querySelector('.lcmu-in')||document.body;
-      new MutationObserver(function(){ place(); }).observe(host,{childList:true,subtree:true});
-    }catch(_){}
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
-  else boot();
 })();</script><style id="lx-poolshero-css">
 /* The card's ground is set once, for BOTH heroes, in _heromono.js. Declaring it here as well is how
    the two drifted apart before. Only overflow stays -- the strip's bottom corners need it. */
@@ -7443,7 +7447,11 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lm-pools .lx-hstat[data-k=top] .pair-icons>*,
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{
   position:static!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;
-  width:17px!important;height:17px!important;flex:0 0 17px}
+  width:17px!important;height:17px!important;flex:0 0 17px;
+  /* The phone page rounds .a/.b -- the pool-card marks -- but the hero chip's children are .pa/.pb,
+     which no rule here rounds. So each round logo was sitting in a SQUARE bordered box with a slate
+     fill showing at the corners: the prominent edges. */
+  border-radius:50%!important;overflow:hidden}
 .lm-pools .lx-hstat[data-k=top] .pair-icons>*+*,
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico+.lx-ico{margin-left:-6px!important}
 .lm-pools .lm-c,.lm-pools .lm-c-pool{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;padding:14px 14px!important}
@@ -7570,6 +7578,55 @@ html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!importan
     try{
       var host=document.querySelector('.page')||document.body;
       new MutationObserver(function(){ apply(); }).observe(host,{childList:true,subtree:true});
+    }catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();</script><script id="lx-sidecard">(function(){
+  // Set before anything else and synchronously: it is what arms the phone rule above, so a failure
+  // to load this file leaves the card visible where it was authored rather than hidden forever.
+  try{ document.documentElement.className+=' lx-sc'; }catch(_){}
+  function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
+  function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
+  // What the card should sit after once it drops below. Ordered most specific first: the pairs
+  // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
+  // either build.
+  function anchor(){
+    return document.querySelector('.dex-markets')
+        || document.querySelector('.mdx-mk-list')
+        || document.querySelector('.lx-netpag-host')
+        || document.querySelector('.lx-netpag')
+        || null;
+  }
+  function twoCol(el){
+    try{ var c=getComputedStyle(el).gridTemplateColumns;
+      return !!c && c.indexOf('none')<0 && c.trim().split(/\s+/).length>1; }catch(_){ return false; }
+  }
+  function place(){
+    var s=side(); if(!s)return;
+    var o=ov();
+    if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
+    var a=anchor();
+    // Nothing to sit after yet -- the pools pager is built at runtime. Move it to the end of the page
+    // anyway: at phone widths the rule above hides it while it is still in the overview, so leaving
+    // it there on a page whose anchor never appears would hide it for good.
+    if(!a){ var host=o&&o.parentNode; if(host&&s.parentNode===o)host.appendChild(s); return; }
+    if(a===s||a.contains(s))return;
+    if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
+    a.parentNode.insertBefore(s,a.nextSibling);
+  }
+  function boot(){
+    place();
+    // The rail toggles, the window resizes, and both pages re-render their own lists. Re-assert on
+    // all three rather than assuming the first pass is the last; place() is a no-op once settled.
+    try{ window.addEventListener('resize',place,{passive:true}); }catch(_){}
+    try{
+      var rail=document.querySelector('.nx-side');
+      if(rail) new MutationObserver(place).observe(rail,{attributes:true,attributeFilter:['class']});
+    }catch(_){}
+    try{
+      var host=document.querySelector('main.page')||document.querySelector('.lcmu-in')||document.body;
+      new MutationObserver(function(){ place(); }).observe(host,{childList:true,subtree:true});
     }catch(_){}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);

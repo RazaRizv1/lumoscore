@@ -201,7 +201,11 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lm-pools .lx-hstat[data-k=top] .pair-icons>*,
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{
   position:static!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;
-  width:17px!important;height:17px!important;flex:0 0 17px}
+  width:17px!important;height:17px!important;flex:0 0 17px;
+  /* The phone page rounds .a/.b -- the pool-card marks -- but the hero chip's children are .pa/.pb,
+     which no rule here rounds. So each round logo was sitting in a SQUARE bordered box with a slate
+     fill showing at the corners: the prominent edges. */
+  border-radius:50%!important;overflow:hidden}
 .lm-pools .lx-hstat[data-k=top] .pair-icons>*+*,
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico+.lx-ico{margin-left:-6px!important}
 .lm-pools .lm-c,.lm-pools .lm-c-pool{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:12px!important;padding:14px 14px!important}
