@@ -87,6 +87,28 @@ if (ADMIN) {
   if (strays.length) warn.push(`${strays.length} non-admin page(s) in the admin build: ${strays.slice(0, 3).map(rel).join(', ')}`);
 }
 
+// ---- injected scripts must actually parse ---------------------------------------------------------------
+// Every lx-* script is assembled by string concatenation in _tools/, so a stray character produces a
+// page that looks fine and silently does nothing -- the tag is in the DOM, the browser throws
+// "Unexpected end of input" into a console nobody is watching, and the section falls back to whatever
+// the design mocked. Caught here by parsing each one instead.
+{
+  const vm = require('vm');
+  const seen = new Set();
+  for (const f of files.filter(f => f.endsWith('.html'))) {
+    const s = fs.readFileSync(f, 'utf8');
+    const re = /<script id="(lx-[a-z0-9-]+)">([\s\S]*?)<\/script>/g;
+    let m;
+    while ((m = re.exec(s))) {
+      const key = rel(f) + '#' + m[1];
+      if (seen.has(key)) continue;
+      seen.add(key);
+      try { new vm.Script(m[2], { filename: key }); }
+      catch (err) { fail.push(`${rel(f)}: <script id="${m[1]}"> does not parse — ${String(err.message).slice(0, 120)}`); }
+    }
+  }
+}
+
 // ---- hero style order ----------------------------------------------------------------------------------
 // _heromono.js holds the shared monochrome look for both heroes and beats the per-page hero CSS on
 // document order, not specificity. Every one of these tools re-appends its block at the end of <head>,
