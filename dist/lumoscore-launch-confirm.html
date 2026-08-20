@@ -3410,6 +3410,12 @@ function wcClient(){
   function warm(){ if(warmed)return; warmed=true; try{ wcClient().catch(function(){}); }catch(_){} }
   try{ ["pointerdown","touchstart","keydown"].forEach(function(ev){
     window.addEventListener(ev, warm, {once:true, passive:true}); }); }catch(_){}
+  try{ document.addEventListener('visibilitychange',function(){
+    if(document.visibilityState!=='visible'||!_wcClient)return;
+    _wcClient.then(function(c){ try{
+      var r=c&&c.core&&c.core.relayer;
+      if(r&&r.connected===false&&typeof r.restartTransport==='function')r.restartTransport().catch(function(){});
+    }catch(_){} },function(){}); },false); }catch(_){}
 })();
 function wcAddr(s){var a=s&&s.namespaces&&s.namespaces.stellar&&s.namespaces.stellar.accounts&&s.namespaces.stellar.accounts[0];
   if(!a)throw new Error('WalletConnect returned no Stellar account');return String(a).split(':').pop();}
@@ -3839,9 +3845,10 @@ window.addEventListener('click',function(e){
     if(!addr)throw new Error('No address returned');
     clearTimeout(awaitT);setStep(1);
     var el=Date.now()-t0;
-    return wait(Math.max(0,900-el))                            // let "Awaiting signature" breathe
-      .then(function(){setStep(2);return wait(760);})           // Finalizing
-      .then(function(){setStep(3);return wait(200);})           // all done
+    var quick=(el<700);
+    return wait(quick?Math.max(0,520-el):0)                    // only pad when nothing was waited for
+      .then(function(){setStep(2);return wait(quick?420:90);})  // Finalizing
+      .then(function(){setStep(3);return wait(quick?160:60);})  // all done
       .then(function(){setConnected(net,row,addr,tr);});
   }).catch(function(err){clearTimeout(awaitT);showErr(row,err);});
 },true);
