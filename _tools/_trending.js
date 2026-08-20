@@ -191,11 +191,13 @@ var p7=(x.price7d||[]).map(function(p){return +p[1];}).filter(function(v){return
 out.push({code:code,iss:iss,price:+x.price,p7:p7,vol7d:(+x.volume7d||0)/1e7,name:nm,logo:logo,created:+x.created||0});});if(!out.length)throw new Error("empty");
 _roster=out.slice(0,25);
 wireTabs();wireMetric();render();
-// The daily buckets are NOT fetched here. They cost one Horizon request per asset -- 23-25 of them --
-// and Horizon allows 100 per five minutes per IP, answering a breach with a 429 that carries no CORS
-// header, so the browser reports only "Failed to fetch" and the numbers silently never arrive. Loading
-// the dashboard should not spend a quarter of that budget on a tab the reader may never open, so the
-// pass runs when Most Traded (or the 30d period) is actually selected.}).catch(function(){var t=tList();if(t&&!t.classList.contains("lx-tready"))setTimeout(load,8000);});}
+/* The daily buckets are NOT fetched here. They cost one Horizon request per asset -- 23-25 of them --
+   and Horizon allows 100 per five minutes per IP, answering a breach with a 429 that carries no CORS
+   header, so the browser reports only "Failed to fetch" and the numbers silently never arrive. Loading
+   the dashboard should not spend a quarter of that budget on a tab the reader may never open, so the
+   pass runs when Most Traded (or the 30d period) is actually selected.
+   A BLOCK comment on purpose: load() is one very long single line, so a // comment here swallows the
+   rest of that line -- which is exactly how this shipped broken a moment ago. */}).catch(function(){var t=tList();if(t&&!t.classList.contains("lx-tready"))setTimeout(load,8000);});}
 (function(){if(window.__lxTrendNav)return;window.__lxTrendNav=1;window.addEventListener("click",function(e){var row=e.target&&e.target.closest?e.target.closest(".trending-row[data-lxasset]"):null;if(!row)return;e.preventDefault();e.stopImmediatePropagation();location.href="lumoscore-dex-asset.html?asset="+encodeURIComponent(row.getAttribute("data-lxasset"));},true);})();
 if(document.readyState!=="loading")load();else document.addEventListener("DOMContentLoaded",load);
 setInterval(function(){if(_tf!=="30d")load();},120000);
