@@ -1,4 +1,8 @@
-// Dashboard "Live Platform Activity" -> "Live Network Activity".
+// Dashboard "Live Network Activity" -> "Live Platform Activity".
+//
+// This ran the other way round for as long as the panel streamed horizon /trades: the feed was the
+// whole Stellar network, so calling it "platform" activity was a claim the data did not support.
+// The feed reads LumosCore's own fee collector now (see _realdata.js), so the honest name is back.
 //
 // It is a feed of Stellar ledger operations — payments, trades, trustlines — not activity on LumosCore, so
 // "platform" claimed the wrong thing. Requested for both layouts.
@@ -24,12 +28,12 @@ function entry(key, ko, de, fr, es){
   return Q+key+Q+':{'+Q+'ko'+Q+':'+Q+ko+Q+','+Q+'de'+Q+':'+Q+de+Q+','
         +Q+'fr'+Q+':'+Q+fr+Q+','+Q+'es'+Q+':'+Q+es+Q+'}';
 }
-const LONG = entry('Live Network Activity — Stellar',
-  '실시간 네트워크 활동 — Stellar', 'Live-Netzwerkaktivität — Stellar',
-  'Activité réseau en direct — Stellar', 'Actividad de red en vivo — Stellar');
-const SHORT = entry('Live Network Activity',
-  '실시간 네트워크 활동', 'Live-Netzwerkaktivität',
-  'Activité réseau en direct', 'Actividad de red en vivo');
+const LONG = entry('Live Platform Activity — Stellar',
+  '실시간 플랫폼 활동 — Stellar', 'Live-Plattformaktivität — Stellar',
+  'Activité de la plateforme en direct — Stellar', 'Actividad de la plataforma en vivo — Stellar');
+const SHORT = entry('Live Platform Activity',
+  '실시간 플랫폼 활동', 'Live-Plattformaktivität',
+  'Activité de la plateforme en direct', 'Actividad de la plataforma en vivo');
 
 let files = 0, headings = 0, dicts = 0;
 for (const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']) {
@@ -40,15 +44,16 @@ for (const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','x
 
     // Dictionary entries first: rewrite the whole object so the key AND its translations move together.
     // Values hold no "}", so the non-greedy class is a safe boundary.
-    s = s.replace(/\\"Live Platform Activity — Aptos\\":\{[^}]*\}/g, () => { dicts++; return LONG; });
-    s = s.replace(/\\"Live Platform Activity\\":\{[^}]*\}/g,        () => { dicts++; return SHORT; });
+    s = s.replace(/\\"Live (?:Network|Platform) Activity — (?:Aptos|Stellar)\\":\{[^}]*\}/g, () => { dicts++; return LONG; });
+    s = s.replace(/\\"Live (?:Network|Platform) Activity\\":\{[^}]*\}/g,        () => { dicts++; return SHORT; });
 
     // Then the visible headings. Longest form first, so the suffixed one is not half-matched.
-    if (s.indexOf('Live Platform Activity — Aptos') >= 0) {
-      s = s.split('Live Platform Activity — Aptos').join('Live Network Activity — Stellar'); headings++;
+    for (const from of ['Live Platform Activity — Aptos', 'Live Network Activity — Stellar']) {
+      if (s.indexOf(from) >= 0) { s = s.split(from).join('Live Platform Activity — Stellar'); headings++; }
     }
-    if (s.indexOf('Live Platform Activity') >= 0) {
-      s = s.split('Live Platform Activity').join('Live Network Activity'); headings++;
+    // Longest form first above, so this cannot half-match the suffixed one.
+    if (s.indexOf('Live Network Activity') >= 0) {
+      s = s.split('Live Network Activity').join('Live Platform Activity'); headings++;
     }
 
     if (s !== before) { fs.writeFileSync(file, s, 'utf8'); files++; }
