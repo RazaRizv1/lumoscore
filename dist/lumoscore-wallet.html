@@ -7823,7 +7823,8 @@ var qrcode = function() {
       .catch(function(){ delete P[addr]; return false; });
     return P[addr];
   };
-  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Unsafe</span>';
+  var WARN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert">'+WARN_SVG+'Unsafe</span>';
 
   // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
   // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
@@ -7844,6 +7845,17 @@ var qrcode = function() {
   // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
   // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
   var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
+  // The codes that mean exactly one issuer -- see CANONICAL in lib.js for why this is NOT derived
+  // from VFD, and why it is the only check that catches a fake which owns its own domain.
+  var CANON={"USDC":{"issuer":"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN","by":"Circle"},"EURC":{"issuer":"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2","by":"Circle"},"yXLM":{"issuer":"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55","by":"Ultra Capital"},"yUSDC":{"issuer":"GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF","by":"Ultra Capital"},"SHX":{"issuer":"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH","by":"Stronghold"},"AQUA":{"issuer":"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA","by":"Aquarius"},"LUMOS":{"issuer":"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S","by":"LumosCore"}};
+  // A ticker wearing someone else’s name. Local, so it is on the row from the first paint: no
+  // round trip, nothing to wait for, and nothing an unreachable server can suppress.
+  function fakeTag(code,issuer){
+    var c=CANON[code]; if(!c||!issuer||c.issuer===issuer)return "";
+    return '<span class="lx-unsafetag" title="The real '+esc(code)+' is issued by '+esc(c.by)
+      +' ('+esc(short(c.issuer))+'). This one has the same ticker and a different issuer.">'
+      +WARN_SVG+'Not the real '+esc(code)+'</span>';
+  }
 
   // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
   // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
@@ -7861,7 +7873,7 @@ var qrcode = function() {
     // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" data-lxiss="'+esc(t.issuer)+'" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
       ico+
-      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+fakeTag(t.code,t.issuer)+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
       '<div class="sp-sub">'+esc(t.code)+' · '+esc(sub)+'</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
   }

@@ -23,7 +23,7 @@ const DXA_SUPINFO_CSS = (function(){
   if (rules.length < 200) throw new Error('_dexassetdata: .lx-supinfo CSS not found in _lumostoken.js');
   return rules; })();
 const DXA_SUPPLY_NOTE = '90% (9B LUMOS) supply is locked forever. The circulating supply is 1B LUMOS.';
-const { read, getContents, VERIFIED, VTICK_SVG, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, CANONICAL, VTICK_SVG, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-dex-asset.html', 'lumoscore-dex-asset-dark.html', 'lumoscore-dex-asset-mobile.html'];
@@ -319,6 +319,9 @@ ${DXA_SUPINFO_CSS}
 const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("input",function(e){var t=e.target;if(t&&t.tagName==="INPUT"&&t.closest&&t.closest(".dxa-pane-limit")){try{setLimitTotalUsd();}catch(_){}try{setOrderCtx();}catch(_){}}},true);setInterval(function(){try{setLimitTotalUsd();}catch(_){}try{setOrderCtx();}catch(_){}},1000);var DXA_SUPPLY_NOTE_S="${DXA_SUPPLY_NOTE}";
   // shared verified set, same as the wallet, Trade main and search
   var VFD=${JSON.stringify(VERIFIED)};
+  // See CANONICAL in lib.js. The codes that mean exactly one issuer, so an asset wearing one under a
+  // different issuer can be named for what it is instead of vaguely warned about.
+  var CANON=${JSON.stringify(CANONICAL)};
 
   // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
   // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
@@ -413,16 +416,22 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       .catch(function(){ delete P[addr]; return false; });
     return P[addr];
   };
-  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Unsafe</span>';
+  var WARN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert">'+WARN_SVG+'Unsafe</span>';
   // Re-asserted on every header pass: the design re-renders this row, and a tag inserted once would be
   // wiped by the next re-render.
+  var LXFLAG=null;      // {txt,tip} -- whichever warning applies, or none
   function lxPaintUnsafe(){
-    if(!window.__lxUnsafeIs)return;
+    if(!LXFLAG)return;
     var nm=document.querySelector(".asset-name"); if(!nm||!nm.parentNode)return;
-    if(nm.parentNode.querySelector(".lx-unsafetag"))return;
+    // The impersonation check is local and lands first; the stellar.expert answer arrives later and
+    // must not stack a second tag beside it. Keyed on the text, so a real change still repaints.
+    var ex=nm.parentNode.querySelector(".lx-unsafetag");
+    if(ex){ if(ex.getAttribute("data-lxk")===LXFLAG.txt)return;
+      if(ex.parentNode)ex.parentNode.removeChild(ex); }
     var t=document.createElement("span");
-    t.className="lx-unsafetag"; t.setAttribute("title","Flagged as malicious on stellar.expert");
-    t.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Unsafe';
+    t.className="lx-unsafetag"; t.setAttribute("title",LXFLAG.tip); t.setAttribute("data-lxk",LXFLAG.txt);
+    t.innerHTML=WARN_SVG+LXFLAG.txt;
     nm.parentNode.insertBefore(t,nm.nextSibling);
   }
   var homeDomain=null, tomlDesc=null, tomlImg=null;
@@ -601,8 +610,17 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       } }catch(_){}
     // #5: and the same flag on the page the search leads to -- a warning that only appears in the popup
     // is a warning you can walk straight past. Asked once; the tag is inserted when the answer lands.
+    // Impersonation is checked FIRST and wins. It needs no network, it is true by construction, and
+    // "Not the real USDC" tells someone what to do about it in a way "Unsafe" never does.
+    try{ var _cn=CANON[CODE];
+      if(_cn&&ISSUER&&_cn.issuer!==ISSUER&&!LXFLAG)
+        LXFLAG={txt:"Not the real "+CODE,
+          tip:"The real "+CODE+" is issued by "+_cn.by+" ("+shortG(_cn.issuer)
+            +"). This one has the same ticker and a different issuer."};
+    }catch(_){}
     try{ if(ISSUER&&!window.__lxUnsafeAsked){ window.__lxUnsafeAsked=1;
-      window.__lxSEUnsafe(ISSUER).then(function(bad){ if(!bad)return; window.__lxUnsafeIs=1;
+      window.__lxSEUnsafe(ISSUER).then(function(bad){ if(!bad||LXFLAG)return;
+        LXFLAG={txt:"Unsafe",tip:"Flagged as malicious on stellar.expert"};
         try{ lxPaintUnsafe(); }catch(_){} }); } }catch(_){}
     try{ lxPaintUnsafe(); }catch(_){}
     setText(q(".asset-ticker"), CODE);

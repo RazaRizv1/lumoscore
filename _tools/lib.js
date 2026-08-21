@@ -71,6 +71,40 @@ const VERIFIED={
   // lumoscore.com and the issuer account was created by the LumosCore funding wallet.
   "WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"
 };
+// ---- canonical tickers: the ONE issuer each of these codes is allowed to mean --------------------
+//
+// The single highest-signal fraud check available to us, and it costs nothing: if an asset's CODE is
+// one of these and its ISSUER is not the one named here, the asset is not the thing its ticker says it
+// is. That is true by construction -- we have already asserted, above, which issuer USDC means -- so
+// the rule cannot false-positive the way a heuristic can.
+//
+// It is the only check that caught the real case. Measured across 30 assets a user actually meets:
+// USDC-GCBYVQ... on mirrasets.com passes every technical test -- it declares a home_domain, and that
+// domain's stellar.toml lists it back -- because the scammer owns the domain. A SEP-1 handshake proves
+// that SOME domain vouches for an asset, never that the RIGHT one does. This comparison is what
+// distinguishes them.
+//
+// DELIBERATELY NOT auto-derived from VERIFIED. That map also holds the LumosCore meme mints (PEPE,
+// BEAR, FOX, PUMP...), and someone else's PEPE is not impersonating ours -- ours is not the canonical
+// PEPE, and flagging it would be us claiming a ticker we do not own. A code belongs here only when it
+// has one true issuer that everyone would recognise. Adding one is a decision, not a side effect.
+const CANONICAL={
+  "USDC":  {issuer:"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN", by:"Circle"},
+  "EURC":  {issuer:"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2", by:"Circle"},
+  "yXLM":  {issuer:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55", by:"Ultra Capital"},
+  "yUSDC": {issuer:"GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF", by:"Ultra Capital"},
+  "SHX":   {issuer:"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH", by:"Stronghold"},
+  "AQUA":  {issuer:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA", by:"Aquarius"},
+  "LUMOS": {issuer:"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S", by:"LumosCore"},
+};
+// Every entry must also be in VERIFIED under the same issuer -- otherwise the site would be warning
+// about impostors of an asset it does not itself vouch for. Checked at build time so the two lists
+// cannot drift apart in a way nobody notices.
+for(const c of Object.keys(CANONICAL)){
+  if(VERIFIED[c+"|"+CANONICAL[c].issuer]===undefined)
+    throw new Error('lib.js: CANONICAL["'+c+'"] names an issuer that is not in VERIFIED — fix one or the other');
+}
+
 // the tick itself, so every page draws the same mark
 const VTICK_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
 
@@ -90,4 +124,4 @@ const DOMAIN_DISPLAY={
   "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"
 };
 
-module.exports={read,getContents,writeContents,VERIFIED,VTICK_SVG,DOMAIN_DISPLAY};
+module.exports={read,getContents,writeContents,VERIFIED,CANONICAL,VTICK_SVG,DOMAIN_DISPLAY};

@@ -4,7 +4,7 @@
 // real mainnet assets show, and rows are <a href=dex-asset?asset=CODE-ISSUER> (the nav
 // resolver respects a[href], so clicking opens the asset page rather than the Trade page).
 const fs = require('fs');
-const { read, getContents, VERIFIED, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, CANONICAL, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const STYLE = `<style id="lx-searchassets-css">
@@ -62,7 +62,8 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
       .catch(function(){ delete P[addr]; return false; });
     return P[addr];
   };
-  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Unsafe</span>';
+  var WARN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert">'+WARN_SVG+'Unsafe</span>';
 
   // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
   // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
@@ -83,6 +84,17 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
   // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
   // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
   var VFD=${JSON.stringify(VERIFIED)};
+  // The codes that mean exactly one issuer -- see CANONICAL in lib.js for why this is NOT derived
+  // from VFD, and why it is the only check that catches a fake which owns its own domain.
+  var CANON=${JSON.stringify(CANONICAL)};
+  // A ticker wearing someone else\u2019s name. Local, so it is on the row from the first paint: no
+  // round trip, nothing to wait for, and nothing an unreachable server can suppress.
+  function fakeTag(code,issuer){
+    var c=CANON[code]; if(!c||!issuer||c.issuer===issuer)return "";
+    return '<span class="lx-unsafetag" title="The real '+esc(code)+' is issued by '+esc(c.by)
+      +' ('+esc(short(c.issuer))+'). This one has the same ticker and a different issuer.">'
+      +WARN_SVG+'Not the real '+esc(code)+'</span>';
+  }
 
   // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
   // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
@@ -100,7 +112,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" data-lxiss="'+esc(t.issuer)+'" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
       ico+
-      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+fakeTag(t.code,t.issuer)+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
       '<div class="sp-sub">'+esc(t.code)+' \u00b7 '+esc(sub)+'</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
   }
