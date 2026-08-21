@@ -1443,6 +1443,46 @@
 .lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
+</style><style id="lx-backlink-css">
+/* The MCP page styles its own crumb at 13px with no arrow slot; matched to .crumb so the link reads
+   the same size and weight as it does on every other page. */
+.mcp-crumb{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--text-soft);margin:0 0 14px}
+.mcp-crumb a{display:inline-flex;align-items:center;gap:4px;color:var(--text-muted);text-decoration:none}
+.mcp-crumb a:hover{color:var(--accent)}
+/* One size everywhere. Measured across the builds these were 13px (MCP), 15px (Trade, Pools, Bridge),
+   16.5px (Wallet, Rewards, Launchpad) and 17px (LUMOS Token) -- the same control in four sizes. 15px
+   is Trade's, which is the one that was called correct. Colour likewise: some inherited --text-soft
+   and some --text-muted. Weight is deliberately left to each page, so nothing else shifts. */
+/* !important because .back-link ties a bare attribute selector on specificity, which left Wallet,
+   Rewards and Launchpad at 16.5px while the rest moved to 15. */
+html [data-lxback]{font-size:15px!important;color:var(--text-muted);display:inline-flex;
+  align-items:center;gap:4px;text-decoration:none}
+[data-lxback]:hover{color:var(--accent)}
+[data-lxback] svg{width:13px;height:13px;flex:0 0 auto}
+/* No wallet, no dashboard link. Hidden by a rule rather than by script so it never paints first. */
+html.lx-noconn [data-lxdash]{display:none!important}
+</style><script id="lx-backlink-guard">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))document.documentElement.className+=" lx-noconn";}catch(_){ }})();</script><style id="lx-pairicons-css">
+/* The wrapper: a fixed 46px box holding two absolutely-placed logos becomes a flow row.
+   [data-paired] is the marker the runtime pair builders stamp on every pair they draw; .pair-cell is
+   the table/list cell the static ones sit in. Between them they cover Pools main, the pool page,
+   Wallet and public-address liquidity rows, search and the LUMOS token page. */
+/* .ph-icons is the pool page's own header pair -- same overlapping treatment, different class. */
+.pair-icons[data-paired],.pair-cell .pair-icons,.pool-header-row .ph-icons{
+  position:static!important;display:inline-flex!important;align-items:center;gap:6px;
+  width:auto!important;height:auto!important;flex:0 0 auto;overflow:visible}
+/* The children have to be named to win. The design pins them with three-class selectors
+   (.pool-card .pair-icons .b { left:12px }), so a child selector at two classes loses and they stay stacked --
+   which is exactly what the first attempt at this did. Three classes here beats that, and stays BELOW
+   the four-class hero rules in _poolshero.js, so the Trade and Pools hero marks keep overlapping. */
+html body .pair-icons[data-paired]>.pa,html body .pair-icons[data-paired]>.pb,
+html body .pair-icons[data-paired]>.a,html body .pair-icons[data-paired]>.b,
+html body .pair-cell .pair-icons>.pa,html body .pair-cell .pair-icons>.pb,
+html body .pair-cell .pair-icons>.a,html body .pair-cell .pair-icons>.b,
+html body .pool-header-row .ph-icons>*{
+  position:relative!important;left:auto!important;right:auto!important;top:auto!important;
+  bottom:auto!important;margin:0!important;flex:0 0 auto;
+  /* the ring existed to separate two overlapping coins; there is nothing to separate now */
+  box-shadow:none!important}
 </style><style id="lx-acc-css">
 /* We INJECT this crumb, so it carries its own styling. The design defines .crumb in the desktop file
    only -- the mobile build has no .crumb rule at all, just .crumb-bar (the separate "Back to Pools"
@@ -1583,7 +1623,15 @@
   display:flex;align-items:center;justify-content:center;font:800 9px/1 'Hanken Grotesk',sans-serif;
   color:var(--text-muted)}
 @media(max-width:760px){
-#accActs .activity-row{padding:12px 14px;gap:11px}
+/* Two rows instead of one line: the type keeps the full width it needs and the amount sits under it,
+   so a long swap description can no longer run into the figure on its right. */
+#accActs .activity-row{padding:12px 14px;gap:0 11px;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+  grid-template-areas:"ic info link" "ic amt link";align-items:center;row-gap:3px}
+#accActs .activity-icon{grid-area:ic}
+#accActs .activity-info{grid-area:info;min-width:0}
+#accActs .activity-amt{grid-area:amt;text-align:left}
+#accActs .lx-txlink{grid-area:link;margin-left:8px}
 #accActs .activity-info .type{font-size:15px}
 #accActs .activity-info .meta{font-size:12.5px}
 #accActs .activity-amt .a1{font-size:15px}
@@ -1614,28 +1662,6 @@
   .acc-tbl th,.acc-tbl td{padding-left:14px;padding-right:14px}
   .acc-act{padding-left:14px;padding-right:14px}
 }
-</style><style id="lx-pairicons-css">
-/* The wrapper: a fixed 46px box holding two absolutely-placed logos becomes a flow row.
-   [data-paired] is the marker the runtime pair builders stamp on every pair they draw; .pair-cell is
-   the table/list cell the static ones sit in. Between them they cover Pools main, the pool page,
-   Wallet and public-address liquidity rows, search and the LUMOS token page. */
-/* .ph-icons is the pool page's own header pair -- same overlapping treatment, different class. */
-.pair-icons[data-paired],.pair-cell .pair-icons,.pool-header-row .ph-icons{
-  position:static!important;display:inline-flex!important;align-items:center;gap:6px;
-  width:auto!important;height:auto!important;flex:0 0 auto;overflow:visible}
-/* The children have to be named to win. The design pins them with three-class selectors
-   (.pool-card .pair-icons .b { left:12px }), so a child selector at two classes loses and they stay stacked --
-   which is exactly what the first attempt at this did. Three classes here beats that, and stays BELOW
-   the four-class hero rules in _poolshero.js, so the Trade and Pools hero marks keep overlapping. */
-html body .pair-icons[data-paired]>.pa,html body .pair-icons[data-paired]>.pb,
-html body .pair-icons[data-paired]>.a,html body .pair-icons[data-paired]>.b,
-html body .pair-cell .pair-icons>.pa,html body .pair-cell .pair-icons>.pb,
-html body .pair-cell .pair-icons>.a,html body .pair-cell .pair-icons>.b,
-html body .pool-header-row .ph-icons>*{
-  position:static!important;left:auto!important;right:auto!important;top:auto!important;
-  bottom:auto!important;margin:0!important;flex:0 0 auto;
-  /* the ring existed to separate two overlapping coins; there is nothing to separate now */
-  box-shadow:none!important}
 </style></head>
 <body>
 <div class="app">

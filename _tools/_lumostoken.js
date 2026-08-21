@@ -311,6 +311,15 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       // custom CSS one reading data-tooltip (not title) — set that, and drop our native title so only ONE shows.
       var link=row.querySelector("a.addr-btn");
       if(link&&link.getAttribute("data-lxex")!=="1"){ link.setAttribute("data-lxex","1"); link.setAttribute("href",EXPLORER); link.setAttribute("target","_blank"); link.setAttribute("rel","noopener"); link.setAttribute("data-tooltip","View on Stellar Explorer"); link.removeAttribute("title"); }
+      // The PHONE build ships the copy button with an Aptos-era hex address baked into data-copy, so it
+      // showed GB5T...5B6S and copied 0x0364a66f... Point every copy control on this row at the issuer
+      // the row is actually displaying. Written from ISSUER rather than from the visible text, which is
+      // truncated.
+      // row.querySelectorAll, NOT this file's qa() -- qa takes one argument and always searches the whole
+      // document, so scoping it by passing the row would have silently rewritten every data-copy on
+      // the page, pool ids included.
+      [].slice.call(row.querySelectorAll("[data-copy]")).forEach(function(b){
+        if(b.getAttribute("data-copy")!==ISSUER)b.setAttribute("data-copy",ISSUER); });
       row.classList.add("lxlt");
     });
     // Verified tick on the token name, driven by the shared list rather than asserted here, so removing

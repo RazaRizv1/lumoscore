@@ -22,7 +22,12 @@ const STYLE = `<style id="lx-amm-css">
 .ph-stat .s{font-size:12px;margin-top:3px;min-height:15px;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;color:var(--text-soft)}
 @media(max-width:880px){
-.ph-stat .v{font-size:16px}
+/* Three across does not fit a phone once the values stop wrapping -- measured 374px of cards in a
+   323px column, which is what made the page pan sideways. Two columns, and nothing that refuses to
+   shrink inside them. */
+.ph-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.ph-stats .ph-stat{min-width:0}
+.ph-stat .v{font-size:16px;white-space:normal}
 .ph-stat .s{font-size:11.5px}
 }
 /* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */

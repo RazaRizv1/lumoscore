@@ -128,7 +128,10 @@ html[data-theme="light"] .lm-pools .lx-heroico{box-shadow:0 6px 18px -10px rgba(
    leaning on the design's absolute offsets -- _pairicons.js unpins those everywhere else, and the
    hero was collateral the first time. Five classes here; that file stays at three. */
 .lm-pools .lx-hstat[data-k=top] .pair-icons{display:inline-flex!important;align-items:center;gap:0!important;width:auto!important}
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{position:static!important;left:auto!important}
+/* relative, not static: a mark with no logo prints its initial through .lx-ico[data-l]::after,
+   which is absolutely positioned inset:0. With the mark static that letter has no containing block
+   and escapes to sit beside the pair name -- the stray character. relative keeps it inside. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{position:relative!important;left:auto!important}
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico+.lx-ico{margin-left:-10px!important}
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{width:28px!important;height:28px!important}
 /* Stat colours -- both themes -- belong to _heromono.js, so Trade and Pools cannot disagree about
@@ -214,7 +217,7 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
    the strip by 5px. Equal specificity now, and this sheet is later. */
 .lm-pools .lx-hstat[data-k=top] .pair-icons>*,
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{
-  position:static!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;
+  position:relative!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;
   width:17px!important;height:17px!important;flex:0 0 17px;
   /* The phone page rounds .a/.b -- the pool-card marks -- but the hero chip's children are .pa/.pb,
      which no rule here rounds. So each round logo was sitting in a SQUARE bordered box with a slate
