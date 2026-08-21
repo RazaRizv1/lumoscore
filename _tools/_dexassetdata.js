@@ -330,7 +330,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
   if(window.__lxDXA)return;window.__lxDXA=true;
   var H="https://horizon.stellar.org";                       // MAINNET
-  var CG="https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd";
+  var CG="https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_change=true";
   var DEFAULT_CODE="LUMOS", DEFAULT_ISSUER="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
   var LUMOS_LOGO="/assets/tokens/lumos.png";
   // hardcoded real logos so common assets never fall back to the initials-avatar placeholder (toml image is CORS-flaky/slow)
@@ -382,6 +382,30 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   var xlmUsd=(function(){try{var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0;}catch(e){return (window.__lxXlmUsd||0);}})();   // XLM/USD (CoinGecko, cached)
   var assetXlm=NATIVE?1:0;                                    // asset price in XLM
   var chg24=null, vol24Xlm=null, volChg=null;                // 24h change / volume / vol change
+  // #19: SCOP read +2.82% on the dashboard and -0.97% here, and BOTH were right. The dashboard prices
+  // it in dollars (stellar.expert price7d); this page priced it in XLM (Horizon trade_aggregations
+  // against native). XLM itself moved +10.33% that day, so an asset can rise in dollars and fall
+  // against XLM at the same moment. Nothing on either screen said which unit it meant, so the same
+  // asset appeared to contradict itself -- one green, one red.
+  //
+  // Dollars win, because every other surface already speaks them: the dashboard, search, movers, this
+  // page's own volume and market cap. The XLM figure stays on the page as the PAIR price, where it
+  // belongs, and is labelled as such.
+  var chgSe=null;        // stellar.expert price7d -- the dashboard's own source, so preferring it makes
+                         // the two screens agree by construction rather than by coincidence
+  var chgCg=null;        // CoinGecko usd_24h_change (XLM native)
+  var chgXlm24=null;     // Horizon daily buckets, priced in XLM
+  var xlmChg24=(function(){ try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
+    return (c&&c.chg!=null&&(Date.now()-c.ts<216e5))?+c.chg:null; }catch(e){ return null; } })();
+  function recomputeChg(){
+    if(chgSe!=null){ chg24=chgSe; return; }
+    if(chgCg!=null){ chg24=chgCg; return; }
+    // The XLM-denominated move converted into dollars: the asset against XLM, times XLM against USD.
+    if(chgXlm24!=null&&xlmChg24!=null){ chg24=((1+chgXlm24/100)*(1+xlmChg24/100)-1)*100; return; }
+    // Deliberately NOT the bare XLM figure. Showing that here is exactly what contradicted the
+    // dashboard; a dash says "not known yet", which is true and does not mislead.
+    chg24=null;
+  }
   var supply=null, holders=null, poolCount=null, activePools=null, liqXlm=null, assetInPools=null, liqNat=null, liqPoolPair=null;
   var seUsd=0;                                               // stellar.expert USD price — real fallback for assets with no XLM orderbook (e.g. PYUSD)
   var chg7d=null;                                            // 7d change from stellar.expert price7d (for the performance grid)
@@ -657,7 +681,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       fixTextNode(sp,want);                                    // re-assert on every pass (beats in-place reverts)
       // #4: hide the padlock unless this issuer really is locked. Re-asserted on every pass, because the
       // design re-renders this row; and hidden outright for XLM, which has no issuer to lock.
+      // The DESKTOP markup gives the padlock class="lock-i"; the PHONE markup gives it no class at
+      // all, so a class selector found nothing there and every asset kept its padlock on mobile --
+      // which is where this was reported. Fall back to the shape: the shackle path is unique to the
+      // lock, and the copy icon beside it draws something else entirely.
       var _lk=sp.querySelector(".lock-i");
+      if(!_lk){ var _svgs=sp.querySelectorAll("svg");
+        for(var _i=0;_i<_svgs.length;_i++){
+          if((_svgs[_i].innerHTML||"").indexOf("M7 11V7")>=0){ _lk=_svgs[_i]; break; } } }
       if(_lk){ var _on=(!NATIVE&&issLocked===true);
         if(_lk.style.display!==(_on?"":"none"))_lk.style.display=_on?"":"none";
         if(_on&&_lk.getAttribute("data-tooltip")!=="Supply locked — no key can sign for this issuer")
@@ -748,8 +779,26 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     // cells: dash the baked price + HIDE the baked "▲ 2.66% (24h)" pill until the real change is known.
     var _pill=q(".price-display .change-pill");
     if(NATIVE){ setText(q(".price-display .big"), xlmUsd>0?(usd(xlmUsd)+" USD"):"—"); }   /* was "1 USD" (assetXlm=1) */
-    else if(assetXlm>0){ setText(q(".price-display .big"), xlmAmt(assetXlm)+" XLM"); }
-    else { setText(q(".price-display .big"),"—"); }
+    else {
+      // #19: dollars are the headline, so the number beside the change pill is in the same unit the
+      // pill is. seUsd covers assets with no XLM orderbook at all, which have no assetXlm to convert.
+      var _pu=(assetXlm>0&&xlmUsd>0)?(assetXlm*xlmUsd):(seUsd>0?seUsd:0);
+      if(_pu>0)setText(q(".price-display .big"), usd(_pu));
+      else if(assetXlm>0)setText(q(".price-display .big"), xlmAmt(assetXlm)+" XLM");
+      else setText(q(".price-display .big"),"—");
+      // ...and the pair price keeps its place, named. This is a CODE/XLM market and the order book,
+      // trades and 1D range below are all quoted in XLM, so dropping it would be worse than useless.
+      // A span, NOT a b.mono: applyOhlc addresses High and Low by index among .meta b.mono, and
+      // inserting one in front of them would silently shift both.
+      try{ var _mt=q(".price-display .meta");
+        if(_mt&&assetXlm>0&&_pu>0){
+          var _pp=_mt.querySelector(".lx-pairpx");
+          if(!_pp){ _pp=document.createElement("span"); _pp.className="lx-pairpx";
+            _mt.insertBefore(_pp,_mt.firstChild); }
+          var _t=xlmAmt(assetXlm)+" XLM per "+CODE+" \u00b7 ";
+          if(_pp.textContent!==_t)_pp.textContent=_t;
+        } }catch(_){}
+    }
     // NB: use classList, never className= — a wholesale class assignment on a later pass wipes the .lxp
     // reveal flag, and because setText skips a same-value write no mutation fires to put it back, so the
     // pill stays masked forever.
@@ -2569,7 +2618,9 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
 
   function loadData(){
     // XLM/USD
-    j(CG).then(function(d){ var u=(d&&d.stellar&&+d.stellar.usd)||0; if(u>0){ xlmUsd=u; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } if(xlmUsd>0){ applyAll(); try{ loadChart(chartTF); }catch(_){} } }).catch(function(){});
+    j(CG).then(function(d){ var u=(d&&d.stellar&&+d.stellar.usd)||0; var uc=(d&&d.stellar&&d.stellar.usd_24h_change);
+      if(uc!=null&&isFinite(+uc)){ xlmChg24=+uc; recomputeChg(); }
+      if(u>0){ xlmUsd=u; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,chg:xlmChg24,ts:Date.now()})); }catch(_e){} } if(xlmUsd>0){ applyAll(); try{ loadChart(chartTF); }catch(_){} } }).catch(function(){});
     // XLM returns here, before the issuer block below, so none of the settle paths there can ever run for
     // it. Without this the native page would hold the neutral tile for ever and never draw its mark.
     if(NATIVE){ assetXlm=1; logoDone(); loadNativeStats(); return; }
@@ -2578,7 +2629,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     j(ta).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
       if(r[0]){ assetXlm=+r[0].close||+r[0].avg||assetXlm; vol24Xlm=+r[0].counter_volume||0;
         dayOHLC={o:+r[0].open||0,h:+r[0].high||0,l:+r[0].low||0,c:+r[0].close||0,v:+r[0].counter_volume||0}; }
-      if(r[0]&&r[1]&&+r[1].close>0)chg24=((+r[0].close-+r[1].close)/+r[1].close)*100;
+      if(r[0]&&r[1]&&+r[1].close>0){ chgXlm24=((+r[0].close-+r[1].close)/+r[1].close)*100; recomputeChg(); }
       if(r[0]&&r[1]&&+r[1].counter_volume>0)volChg=((+r[0].counter_volume-+r[1].counter_volume)/+r[1].counter_volume)*100;
       applyAll(); try{ loadChart(chartTF); }catch(_){}
     }).catch(function(){});
@@ -2641,7 +2692,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         .then(function(){ poolsDone(0); },function(){ poolsDone(1); });
     })();
     // issuer home_domain (-> website + stellar.toml for logo/description)
-    if(ISSUER){ loadOwnDesc(); loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false);
+    if(ISSUER){ loadOwnDesc(); loadSeLogo(); loadSeChange(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false);
       try{ var _mw=0; (a.signers||[]).forEach(function(sg){ var w=+sg.weight||0; if(w>_mw)_mw=w; }); issLocked=(_mw===0); }catch(_){ issLocked=false; } guardApply(); if(a.home_domain)loadToml(a.home_domain); else { tomlDone(); logoDone(); } }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); logoDone(); guardApply(); });
       // Safety net: an unresponsive host must never hold the description back for good.
       setTimeout(tomlDone, 3000);
@@ -2681,8 +2732,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     assetXlm=1; homeDomain="stellar.org"; applyAll();
     j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true").then(function(d){
       var s=d&&d.stellar; if(!s)return;
-      if(+s.usd>0){ xlmUsd=+s.usd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} }
-      if(s.usd_24h_change!=null&&isFinite(+s.usd_24h_change))chg24=+s.usd_24h_change;
+      if(+s.usd>0){ xlmUsd=+s.usd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,chg:xlmChg24,ts:Date.now()})); }catch(_e){} }
+      if(s.usd_24h_change!=null&&isFinite(+s.usd_24h_change)){ chgCg=+s.usd_24h_change; xlmChg24=+s.usd_24h_change; recomputeChg(); }
       if(+s.usd_market_cap>0){ natMcap=+s.usd_market_cap; if(xlmUsd>0)supply=natMcap/xlmUsd; }
       if(+s.usd_24h_vol>0)natVol=+s.usd_24h_vol;
       guardApply();
@@ -2690,6 +2741,25 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   }
   // reliable logo source for ANY asset (new trending tokens like PYUSD had only a letter avatar): stellar.expert
   // returns the toml-parsed image, CORS-open, no dependency on the issuer's own domain being reachable.
+  // #19: the assets loadSeLogo SKIPS (it skips anything whose logo we already ship) are exactly the
+  // ones that were left with the converted figure -- and that conversion multiplies two different
+  // windows, Horizon's UTC-day bucket against CoinGecko's rolling 24h. On USDC that error is the
+  // whole reading: a dollar stablecoin showed +0.59%. This fetches the SAME field the dashboard uses,
+  // for those assets only, so both screens quote one number. Harvests the change and nothing else --
+  // the logo precedence in loadSeLogo is delicate and is deliberately not touched.
+  function loadSeChange(){
+    if(NATIVE||!LOGOS[CODE]||!ISSUER)return;
+    j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(CODE)+"&limit=20").then(function(d){
+      var recs=(d&&d._embedded&&d._embedded.records)||[];
+      var mx=recs.filter(function(r){return (r.asset||"").indexOf(CODE+"-"+ISSUER)===0;})[0];
+      if(!mx)return;
+      var p7=mx.price7d;
+      if(p7&&p7.length>=2){ var a=+p7[p7.length-2][1], b=+p7[p7.length-1][1];
+        if(a>0&&b>0){ chgSe=(b/a-1)*100; recomputeChg(); }
+        var f=+p7[0][1]; if(f>0&&b>0)chg7d=(b/f-1)*100; }
+      guardApply();
+    }).catch(function(){});
+  }
   function loadSeLogo(){ if(NATIVE||CODE==="LUMOS"||LOGOS[CODE])return;
     j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(CODE)+"&limit=20").then(function(d){
       var recs=(d&&d._embedded&&d._embedded.records)||[]; var mx=recs.filter(function(r){return (r.asset||"").indexOf(CODE+"-"+ISSUER)===0;})[0]; var m=mx||recs[0];
@@ -2697,7 +2767,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       // USD price (-> price/market-cap cells for assets with no XLM orderbook), 24h change from price7d, and
       // the toml home domain (-> website link when the Horizon issuer fetch fails or has no home_domain).
       if(mx){ if(+mx.price>0)seUsd=+mx.price;
-        var p7=mx.price7d; if(p7&&p7.length>=2){ var _a=+p7[p7.length-2][1],_b=+p7[p7.length-1][1]; if(chg24==null&&_a>0&&_b>0)chg24=(_b/_a-1)*100;
+        var p7=mx.price7d; if(p7&&p7.length>=2){ var _a=+p7[p7.length-2][1],_b=+p7[p7.length-1][1]; if(_a>0&&_b>0){ chgSe=(_b/_a-1)*100; recomputeChg(); }
           var _f=+p7[0][1]; if(_f>0&&_b>0)chg7d=(_b/_f-1)*100; }
         var dm=(mx.domain||"").trim(); if(dm&&homeDomain==null)homeDomain=dm; }
       // Harvest only. This used to paint the header directly, which is what put stellar.expert's icon on

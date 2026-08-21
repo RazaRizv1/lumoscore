@@ -1756,13 +1756,6 @@ html body .pool-header-row .ph-icons>*{
   bottom:auto!important;margin:0!important;flex:0 0 auto;
   /* the ring existed to separate two overlapping coins; there is nothing to separate now */
   box-shadow:none!important}
-</style><style id="lx-walletlogo-css">
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
 </style><style id="lx-searchassets-css">
 .sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
 .lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
@@ -1786,6 +1779,20 @@ html body .pool-header-row .ph-icons>*{
   font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
 </style></head>
 <body>
 <div class="app">
@@ -5332,38 +5339,6 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
   if(tb){ lxBrTableCols(); lxBrRestoreTxs(); lxBrTxApply(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); }
   lxBrRenderPending(); lxBrResumePending(); lxBrAutoClear(); return true; }
  if(!pass()){ var n=0,iv=setInterval(function(){ n++; if(pass()||n>40) clearInterval(iv); },120); } })();
-})();</script><script id="lx-walletlogo">(function(){
-  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
-  function logo(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    if(!id)return "";
-    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-    // walletconnect stores a few different spellings; they all mean the same sheet entry
-    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
-    return MAP[id]||"";
-  }
-  function paint(){
-    var url=logo(); if(!url)return;
-    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
-    for(var i=0;i<els.length;i++){
-      var e=els[i];
-      if(e.getAttribute("data-lxwl")===url)continue;
-      e.setAttribute("data-lxwl",url);
-      e.classList.add("lx-haswl");
-      e.style.setProperty("background-image","url('"+url+"')","important");
-    }
-  }
-  function boot(){
-    paint();
-    // The chip and the menu card are both built after connect, and the menu is rendered on open --
-    // so this watches rather than running once.
-    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-    try{ window.addEventListener("storage",paint); }catch(_){}
-    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
 })();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
@@ -5784,6 +5759,38 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
+})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  function paint(){
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){
