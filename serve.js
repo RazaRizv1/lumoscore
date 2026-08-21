@@ -743,6 +743,48 @@ function cleanUrl(p) {
   return null;
 }
 
+// Local mirror of functions/lxapi/netstats — the last complete UTC day of Stellar network activity.
+// Kept in step with functions/lxapi/netstats.js; see that file for why the tail is sliced out of the raw
+// text instead of being parsed, and for what the caller must not overclaim about a UTC-day bucket.
+const NETSTATS_URL = 'https://api.stellar.expert/explorer/public/ledger/ledger-stats';
+let NETSTATS_CACHE = null;   // {at, body} — the local server has no edge cache to lean on
+function netStatsTail(txt, n) {
+  const out = [];
+  let i = txt.lastIndexOf(']');
+  if (i < 0) i = txt.length;
+  while (out.length < n) {
+    const open = txt.lastIndexOf('{', i - 1);
+    if (open < 0) break;
+    const close = txt.indexOf('}', open);
+    if (close < 0) break;
+    try { out.unshift(JSON.parse(txt.slice(open, close + 1))); } catch (e) { }
+    i = open;
+  }
+  return out;
+}
+async function netStats(req, res) {
+  const send = (obj, code) => {
+    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=900' });
+    res.end(JSON.stringify(obj));
+  };
+  if (NETSTATS_CACHE && Date.now() - NETSTATS_CACHE.at < 1800e3) return send(NETSTATS_CACHE.body);
+  try {
+    const r = await fetch(NETSTATS_URL);
+    if (!r.ok) return send({ error: 'upstream ' + r.status }, 502);
+    const recs = netStatsTail(await r.text(), 2);
+    const today = recs[recs.length - 1] || null;
+    const full = recs.length > 1 ? recs[recs.length - 2] : null;
+    if (!full) return send({ error: 'no complete day' }, 502);
+    const body = {
+      trades: +full.trades || 0, operations: +full.operations || 0,
+      transactions: +full.transactions || 0, ts: +full.ts || 0,
+      partial: today ? { trades: +today.trades || 0, ts: +today.ts || 0 } : null,
+    };
+    NETSTATS_CACHE = { at: Date.now(), body };
+    send(body);
+  } catch (e) { send({ error: String((e && e.message) || e) }, 502); }
+}
+
 http.createServer((req, res) => {
   let p = decodeURIComponent((req.url || '/').split('?')[0]);
   if (p === '/lxapi/holders') return holdersProxy(req, res, new URL(req.url, 'http://x').searchParams);
@@ -752,6 +794,7 @@ http.createServer((req, res) => {
   if (p === '/lxapi/poolstats') return poolStats(req, res);
   if (p === '/lxapi/pools') return poolList(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/movers') return moversRoute(req, res);
+  if (p === '/lxapi/netstats') return netStats(req, res);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
   }

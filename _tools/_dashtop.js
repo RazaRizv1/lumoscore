@@ -40,10 +40,58 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xt-chart svg{display:block;width:100%;height:100%}
 .lx-xt-chart.lx-empty::after{content:"";position:absolute;inset:0;border-radius:10px;
   background:linear-gradient(to top,rgba(127,127,140,.07),rgba(127,127,140,0))}
+
+/* ---- the stats strip, now INSIDE the card ------------------------------------------------------ */
+/* #1: TVL, market cap, volume and the ledger were a separate rail of bordered pills under the chart --
+   two boxes saying one thing, and the numbers read as chrome rather than as the network's state. They
+   move into the panel and become a strip across its foot: the same anatomy the Trade and Pools heroes
+   use (headline block, hairline, figures), so all three tops of the app now read the same way.
+   The pills are NOT rebuilt here -- _realdata.js still owns them and repaints them atomically. Only
+   the row's placement and its dress change, which is why a repaint cannot undo any of this. */
+.lx-xlmpanel{padding-bottom:0}
+.lx-xlmpanel>.status-row{grid-column:1/-1;margin:14px -18px 0;padding:13px 18px 14px;
+  border-top:1px solid var(--border);border-radius:0 0 15px 15px;
+  background:linear-gradient(180deg,rgba(127,127,140,.03),rgba(127,127,140,.07));
+  display:grid!important;grid-template-columns:auto repeat(5,minmax(0,1fr))!important;
+  gap:0!important;width:auto!important;align-items:center}
+/* strip the pill costume: no ground, no border, a hairline divider between cells instead */
+.lx-xlmpanel>.status-row>.status-pill{background:none!important;border:0!important;box-shadow:none!important;
+  border-radius:0!important;padding:0 0 0 16px!important;margin:0!important;min-width:0!important;
+  width:auto!important;display:flex!important;flex-direction:column;align-items:flex-start!important;
+  gap:3px;border-left:1px solid var(--border)!important;min-height:34px;justify-content:center}
+.lx-xlmpanel>.status-row>.status-pill:first-child{padding-left:0!important;border-left:0!important}
+.lx-xlmpanel>.status-row .lbl{font:800 9.5px/1 'JetBrains Mono',monospace!important;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--text-soft)!important;order:2}
+.lx-xlmpanel>.status-row .val{font:700 15px/1.1 'JetBrains Mono',monospace!important;
+  letter-spacing:-.3px;color:var(--text)!important;order:1;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;max-width:100%}
+/* the network cell keeps its logo, so it lays out sideways while the rest stack */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard{flex-direction:row!important;align-items:center!important;gap:9px}
+.lx-xlmpanel>.status-row .lx-netmeta{display:flex;flex-direction:column;gap:3px;min-width:0}
+.lx-xlmpanel>.status-row .lx-netpill{width:26px;height:26px;flex:0 0 26px;border-radius:50%;overflow:hidden}
+/* the ledger height is the "this chain is alive" signal, so it gets a pulse rather than another number */
+.lx-xlmpanel>.status-row .lx-ledgerpill .val{display:inline-flex;align-items:center;gap:6px}
+.lx-xlmpanel>.status-row .lx-ledgerpill .val::before{content:"";width:6px;height:6px;border-radius:50%;
+  background:var(--green,#35c07f);flex:0 0 6px;animation:lxLedgerPulse 2.2s ease-in-out infinite}
+@keyframes lxLedgerPulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+
+@media(max-width:1180px){
+.lx-xlmpanel>.status-row{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px 0!important}
+.lx-xlmpanel>.status-row>.status-pill:nth-child(3n+1){padding-left:0!important;border-left:0!important}
+}
 @media(max-width:860px){
-.lx-xlmpanel{grid-template-columns:1fr;gap:12px;padding:14px}
+.lx-xlmpanel{grid-template-columns:1fr;gap:12px;padding:14px 14px 0}
 .lx-xt-chart{width:100%;min-width:0;height:92px}
 .lx-xt-price{font-size:25px}
+.lx-xlmpanel>.status-row{margin:12px -14px 0;padding:12px 14px 13px;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:13px 0!important}
+.lx-xlmpanel>.status-row>.status-pill{padding-left:14px!important}
+.lx-xlmpanel>.status-row>.status-pill:nth-child(2n+1){padding-left:0!important;border-left:0!important}
+/* the network cell spans the row, so the five figures below it pair up cleanly two by two */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard{grid-column:1/-1;padding-left:0!important;border-left:0!important}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n){padding-left:0!important;border-left:0!important}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1){padding-left:14px!important;border-left:1px solid var(--border)!important}
+.lx-xlmpanel>.status-row .val{font-size:14px!important}
 }
 </style>`;
 
@@ -56,9 +104,13 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
   function money(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}
   function build(){
     var row=document.querySelector(".status-row"); if(!row)return null;
-    var host=row.parentNode; if(!host)return null;
-    var p=host.querySelector(".lx-xlmpanel");
+    // Document-wide, NOT host.querySelector. Once the strip has moved inside the panel, row.parentNode
+    // IS the panel -- and an element is not its own descendant, so the host lookup found nothing and
+    // this built a SECOND panel inside the first one. Everything then painted into the copy: the price
+    // stayed a dash and the chart stayed empty on the panel you could actually see.
+    var p=document.querySelector(".lx-xlmpanel");
     if(p)return p;
+    var host=row.parentNode; if(!host)return null;
     p=document.createElement("div"); p.className="lx-xlmpanel"; p.setAttribute("data-lx-noswap","1");
     p.innerHTML='<div class="lx-xt-l">'
       +'<span class="lx-xt-lbl">Stellar (XLM)</span>'
@@ -71,6 +123,7 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
       +'</div></div>'
       +'<div class="lx-xt-chart lx-empty"></div>';
     host.insertBefore(p,row);
+    p.appendChild(row);            // #1: the strip lives inside the card -- see place()
     // The dashboard maps clicked label text to a destination, so a control inside it needs the
     // design's own opt-out or "1M" and friends navigate the page away.
     [].slice.call(p.querySelectorAll(".lx-xt-tfs button")).forEach(function(b){
@@ -160,12 +213,25 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
       if(v&&v.textContent!==t)v.textContent=t;
     }).catch(function(){});
   }
+  // #1: keep the strip inside the card. _realdata.js rebuilds the value pills in place on every stats()
+  // pass -- it does not move the row -- but the dashboard's own re-skin can re-parent it, and build()
+  // only runs once. Re-asserting costs an identity check and is a no-op the rest of the time.
+  function place(){
+    var p=document.querySelector(".lx-xlmpanel"), row=document.querySelector(".status-row");
+    if(!p||!row)return;
+    if(row.parentNode!==p||p.lastElementChild!==row)p.appendChild(row);
+  }
   // _realdata.js rebuilds the four pills on every stats() pass, which drops ours -- so it is
   // re-added on the same beat rather than once.
-  function run(){ build(); load(); price(); ledger(); }
+  function run(){ build(); place(); load(); price(); ledger(); }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
   else run();
-  setInterval(function(){ price(); ledger(); },45000);
+  setInterval(function(){ place(); price(); ledger(); },45000);
+  // The strip is re-parented the moment it exists rather than on the 45s beat: _realdata.js paints its
+  // warm-cache values before this file's first run in some orders, and a strip that appears outside the
+  // card and then jumps into it is a flash.
+  try{ new MutationObserver(function(){ place(); })
+    .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script>`;
 
 let containers = 0, pages = 0, heads = 0;
