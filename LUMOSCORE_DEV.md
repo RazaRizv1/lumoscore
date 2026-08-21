@@ -31,7 +31,10 @@ Static multi-page HTML showcase (no framework, no bundler). One "source of truth
 ```
 # after editing any _tools/*.js transform:
 node _tools/<transform>.js
+node _tools/_nofollow.js                      # ALWAYS after any transform that emits <a> tags
+node _tools/_heromono.js                      # ALWAYS LAST of the style transforms
 node _tools/extract_site.js aptos --root      # builds to dist/ ROOT (the --root flag matters)
+node _tools/predeploy_check.js                # blocks on both of the above being out of order
 
 # serve locally (wallets need http://, not file://):
 node serve.js            # -> http://localhost:8080   (or double-click "Start LumosCore.bat")
