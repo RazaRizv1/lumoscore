@@ -232,7 +232,15 @@ const STYLE = `<style id="lx-acc-css">
   display:flex;align-items:center;justify-content:center;font:800 9px/1 'Hanken Grotesk',sans-serif;
   color:var(--text-muted)}
 @media(max-width:760px){
-#accActs .activity-row{padding:12px 14px;gap:11px}
+/* Two rows instead of one line: the type keeps the full width it needs and the amount sits under it,
+   so a long swap description can no longer run into the figure on its right. */
+#accActs .activity-row{padding:12px 14px;gap:0 11px;
+  display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+  grid-template-areas:"ic info link" "ic amt link";align-items:center;row-gap:3px}
+#accActs .activity-icon{grid-area:ic}
+#accActs .activity-info{grid-area:info;min-width:0}
+#accActs .activity-amt{grid-area:amt;text-align:left}
+#accActs .lx-txlink{grid-area:link;margin-left:8px}
 #accActs .activity-info .type{font-size:15px}
 #accActs .activity-info .meta{font-size:12.5px}
 #accActs .activity-amt .a1{font-size:15px}
