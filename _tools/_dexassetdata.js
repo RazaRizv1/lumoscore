@@ -44,6 +44,13 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
 
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 
 /* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
 .asset-header:not(.lxda) .asset-name,.asset-header:not(.lxda) .asset-ticker,.asset-header:not(.lxda) .asset-description,.asset-header:not(.lxda) .addr,.asset-header:not(.lxda) .website{visibility:hidden}
@@ -377,7 +384,55 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   var chg7d=null;                                            // 7d change from stellar.expert price7d (for the performance grid)
   var chg1h=null, chg1m=null, chg3m=null, chg6m=null;        // the rest of the performance grid, computed from real candles
   var natMcap=0, natVol=0;                                   // XLM native: real market cap + 24h volume (USD, CoinGecko)
+  // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
+  // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
+  // A 404 (not listed) is a clean "no", and a network failure is NOT a "yes": it resolves false and is
+  // not cached, so the question is asked again rather than answered wrongly.
+  window.__lxSEUnsafe = window.__lxSEUnsafe || function(addr){
+    if(!addr)return Promise.resolve(false);
+    var P=window.__lxSEUnsafeP=(window.__lxSEUnsafeP||{});
+    if(P[addr])return P[addr];
+    var c=null; try{ c=sessionStorage.getItem("lxsed:"+addr); }catch(_){}
+    if(c!=null){ P[addr]=Promise.resolve(c==="1"); return P[addr]; }
+    // Only a CONCLUSIVE answer is cached. 404 means "not in the directory", which is a real no; a 429
+    // or a 5xx means we were not told, and caching that as a no would mark a genuinely flagged asset
+    // safe for the rest of the session. stellar.expert does rate-limit -- this is not hypothetical.
+    P[addr]=fetch("https://api.stellar.expert/explorer/directory/"+addr)
+      .then(function(r){
+        if(r.status===404)return {tags:[]};
+        if(!r.ok)throw new Error("se "+r.status);
+        return r.json();
+      })
+      .then(function(j){
+        var tg=(j&&j.tags)||[], bad=false;
+        for(var i=0;i<tg.length;i++){ var t=String(tg[i]).toLowerCase();
+          if(t==="malicious"||t==="unsafe"||t==="fraud"){ bad=true; break; } }
+        try{ sessionStorage.setItem("lxsed:"+addr,bad?"1":"0"); }catch(_){}
+        return bad;
+      })
+      .catch(function(){ delete P[addr]; return false; });
+    return P[addr];
+  };
+  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Unsafe</span>';
+  // Re-asserted on every header pass: the design re-renders this row, and a tag inserted once would be
+  // wiped by the next re-render.
+  function lxPaintUnsafe(){
+    if(!window.__lxUnsafeIs)return;
+    var nm=document.querySelector(".asset-name"); if(!nm||!nm.parentNode)return;
+    if(nm.parentNode.querySelector(".lx-unsafetag"))return;
+    var t=document.createElement("span");
+    t.className="lx-unsafetag"; t.setAttribute("title","Flagged as malicious on stellar.expert");
+    t.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Unsafe';
+    nm.parentNode.insertBefore(t,nm.nextSibling);
+  }
   var homeDomain=null, tomlDesc=null, tomlImg=null;
+  // #4: the green padlock beside the issuer is a claim, not decoration -- it says this asset cannot be
+  // minted any further -- and the design ships it baked into the markup, so it was shown for EVERY
+  // asset. USDC is not locked: Circle holds five signers on that issuer. An asset is locked only when
+  // NO key can sign for the issuing account any more, which is exactly max(signer weight) === 0.
+  // Verified against Horizon: USDC 5 signers/max weight 1 -> not locked; SHX 1 signer/weight 0 -> locked.
+  // null = we have not been told yet, and an unanswered question is not a yes.
+  var issLocked=null;
   // Has the stellar.toml attempt CONCLUDED, either way? The description used to be written the moment the
   // header had a code, which meant the generic sentence was painted and then swapped for the real one a
   // moment later -- a visible flash of the wrong copy on every asset that has a description. The line is
@@ -544,6 +599,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
           _s.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'; _nm.parentNode.insertBefore(_s,_nm.nextSibling); }
         else if(!_ok&&_b&&_b.parentNode){ _b.parentNode.removeChild(_b); }
       } }catch(_){}
+    // #5: and the same flag on the page the search leads to -- a warning that only appears in the popup
+    // is a warning you can walk straight past. Asked once; the tag is inserted when the answer lands.
+    try{ if(ISSUER&&!window.__lxUnsafeAsked){ window.__lxUnsafeAsked=1;
+      window.__lxSEUnsafe(ISSUER).then(function(bad){ if(!bad)return; window.__lxUnsafeIs=1;
+        try{ lxPaintUnsafe(); }catch(_){} }); } }catch(_){}
+    try{ lxPaintUnsafe(); }catch(_){}
     setText(q(".asset-ticker"), CODE);
     // logo mark — painted ONCE, and only when the sources have settled.
     //
@@ -576,6 +637,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       }
       if(sp.getAttribute("data-copy")!==(NATIVE?"native":ISSUER))sp.setAttribute("data-copy", NATIVE?"native":ISSUER);
       fixTextNode(sp,want);                                    // re-assert on every pass (beats in-place reverts)
+      // #4: hide the padlock unless this issuer really is locked. Re-asserted on every pass, because the
+      // design re-renders this row; and hidden outright for XLM, which has no issuer to lock.
+      var _lk=sp.querySelector(".lock-i");
+      if(_lk){ var _on=(!NATIVE&&issLocked===true);
+        if(_lk.style.display!==(_on?"":"none"))_lk.style.display=_on?"":"none";
+        if(_on&&_lk.getAttribute("data-tooltip")!=="Supply locked — no key can sign for this issuer")
+          _lk.setAttribute("data-tooltip","Supply locked — no key can sign for this issuer"); }
     });
     // website / home domain (same engine-revert issue -> clone-replace once, then re-assert)
     // While the domain is UNKNOWN (fetch pending/failed) hide the link entirely — the baked mock reads
@@ -2555,7 +2623,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         .then(function(){ poolsDone(0); },function(){ poolsDone(1); });
     })();
     // issuer home_domain (-> website + stellar.toml for logo/description)
-    if(ISSUER){ loadOwnDesc(); loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false); guardApply(); if(a.home_domain)loadToml(a.home_domain); else { tomlDone(); logoDone(); } }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); logoDone(); guardApply(); });
+    if(ISSUER){ loadOwnDesc(); loadSeLogo(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false);
+      try{ var _mw=0; (a.signers||[]).forEach(function(sg){ var w=+sg.weight||0; if(w>_mw)_mw=w; }); issLocked=(_mw===0); }catch(_){ issLocked=false; } guardApply(); if(a.home_domain)loadToml(a.home_domain); else { tomlDone(); logoDone(); } }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); logoDone(); guardApply(); });
       // Safety net: an unresponsive host must never hold the description back for good.
       setTimeout(tomlDone, 3000);
       // The logo waits longer than the text on purpose. Its fallback is a quiet neutral tile, which costs

@@ -23,9 +23,47 @@ const STYLE = `<style id="lx-searchassets-css">
 .lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 </style>`;
 
 const SCRIPT = `<script id="lx-searchassets">(function(){
+  // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
+  // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
+  // A 404 (not listed) is a clean "no", and a network failure is NOT a "yes": it resolves false and is
+  // not cached, so the question is asked again rather than answered wrongly.
+  window.__lxSEUnsafe = window.__lxSEUnsafe || function(addr){
+    if(!addr)return Promise.resolve(false);
+    var P=window.__lxSEUnsafeP=(window.__lxSEUnsafeP||{});
+    if(P[addr])return P[addr];
+    var c=null; try{ c=sessionStorage.getItem("lxsed:"+addr); }catch(_){}
+    if(c!=null){ P[addr]=Promise.resolve(c==="1"); return P[addr]; }
+    // Only a CONCLUSIVE answer is cached. 404 means "not in the directory", which is a real no; a 429
+    // or a 5xx means we were not told, and caching that as a no would mark a genuinely flagged asset
+    // safe for the rest of the session. stellar.expert does rate-limit -- this is not hypothetical.
+    P[addr]=fetch("https://api.stellar.expert/explorer/directory/"+addr)
+      .then(function(r){
+        if(r.status===404)return {tags:[]};
+        if(!r.ok)throw new Error("se "+r.status);
+        return r.json();
+      })
+      .then(function(j){
+        var tg=(j&&j.tags)||[], bad=false;
+        for(var i=0;i<tg.length;i++){ var t=String(tg[i]).toLowerCase();
+          if(t==="malicious"||t==="unsafe"||t==="fraud"){ bad=true; break; } }
+        try{ sessionStorage.setItem("lxsed:"+addr,bad?"1":"0"); }catch(_){}
+        return bad;
+      })
+      .catch(function(){ delete P[addr]; return false; });
+    return P[addr];
+  };
+  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Unsafe</span>';
+
   // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
   // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
   //
@@ -60,7 +98,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     var sub = t.tl!=null ? (nfmt(t.tl)+" trustlines") : "Launchpad token";
     // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
     // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
-    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
+    return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" data-lxiss="'+esc(t.issuer)+'" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
       ico+
       '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
       '<div class="sp-sub">'+esc(t.code)+' \u00b7 '+esc(sub)+'</div></div>'+
@@ -386,6 +424,22 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
     launchPopup(seed);
   }, true);
+  // #5: rows are built synchronously from the search response and the flag is an extra round trip, so
+  // it is applied after the fact -- on every batch of rows the popup renders, however it renders them.
+  function lxMarkUnsafe(){
+    var rows=document.querySelectorAll(".lx-searow[data-lxiss]");
+    for(var i=0;i<rows.length;i++){ (function(a){
+      if(a.getAttribute("data-lxflag"))return; a.setAttribute("data-lxflag","1");
+      window.__lxSEUnsafe(a.getAttribute("data-lxiss")).then(function(bad){
+        if(!bad||!a.parentNode)return;
+        var host=a.querySelector(".sp-name-row"); if(!host||host.querySelector(".lx-unsafetag"))return;
+        host.insertAdjacentHTML("beforeend"," "+UNSAFE_TAG);
+      });
+    })(rows[i]); }
+  }
+  try{ new MutationObserver(function(){ lxMarkUnsafe(); })
+    .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
+  try{ lxMarkUnsafe(); }catch(_){}
 })();</script>`;
 
 const files = fs.readdirSync('.').filter(f => /^lumoscore-.*-(desktop|mobile)\.html$/.test(f));

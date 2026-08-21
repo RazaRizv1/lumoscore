@@ -56,11 +56,19 @@ const SCRIPT = `<script id="lx-sidecard">(function(){
   // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
   // either build.
   function anchor(){
-    return document.querySelector('.dex-markets')
+    var a = document.querySelector('.dex-markets')
         || document.querySelector('.mdx-mk-list')
         || document.querySelector('.lx-netpag-host')
         || document.querySelector('.lx-netpag')
         || null;
+    // #17: on Pools the My Pools panel is a sibling AFTER the pager, so anchoring on the pager alone
+    // dropped Market Overview BETWEEN the two lists. Under All Pools that is invisible -- the list
+    // above it is thousands of rows -- but the moment My Pools is selected the list above collapses
+    // and the card is sitting on top of the user's own positions. Sit after the LAST list on the
+    // page instead, so it is below whichever one is showing.
+    var m=document.querySelector('#panelMine,#panelMyPositions');
+    try{ if(m&&(!a||(a.compareDocumentPosition(m)&Node.DOCUMENT_POSITION_FOLLOWING)))a=m; }catch(_){}
+    return a;
   }
   function twoCol(el){
     try{ var c=getComputedStyle(el).gridTemplateColumns;

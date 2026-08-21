@@ -1133,6 +1133,19 @@ for (const file of files) {
     // corrected to Stellar at runtime — a visible wrong-chain flash on our own token page. Fix the source
     // text so there is nothing to correct. Idempotent: after one pass the Aptos wording is gone.
     p = p.split('fixed supply on Aptos.').join('fixed supply on Stellar.');
+    // #11: what the Market Reserve is FOR. The shipped sentence led with a 150M public sell order, which
+    // is the one detail a reader of a token page is primed to read as an overhang -- and it left out the
+    // thing the reserve actually does, which is deepen the pools LUMOS trades in. Liquidity leads; the
+    // order book is named once, in passing. No split is claimed, because the split is not a fact this
+    // page can show. Idempotent: after one pass neither original sentence is present.
+    const RESV_OLD = 'Of the 300M <strong>Market Reserve</strong>, 150M is committed to a public sell '
+      + 'order on CHAIN for price discovery. The remaining 150M serves as a working treasury.';
+    const RESV_NEW = 'The 300M <strong>Market Reserve</strong> is put to work gradually: it is added, a '
+      + 'little at a time, to LUMOS liquidity on Stellar — the LUMOS/XLM pool and the other LUMOS '
+      + 'pairs — with a portion resting on the order book for price discovery.';
+    for (const chain of ['Aptos', 'Stellar']) {
+      p = p.split(RESV_OLD.replace('CHAIN', chain)).join(RESV_NEW);
+    }
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');

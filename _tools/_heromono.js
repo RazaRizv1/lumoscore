@@ -62,12 +62,27 @@ html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
   color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
 
 /* ---- the chain mark -------------------------------------------------------------------------- */
-/* It is a dark disc with a white glyph: prominent on a light card, nearly lost on a dark one. A
-   hairline ring gives it an edge to sit against without recolouring the artwork. */
+/* #2: the hairline ring here was written for a dark disc with a white glyph, which would have been
+   lost against a dark card. The mark that actually ships is the blue Stellar disc -- it carries its
+   own edge -- so the ring was not giving it one, it was drawing a white outline around it. Depth
+   only; nothing traces the artwork. */
 .lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 0 0 1px rgba(255,255,255,.18),0 10px 24px -12px rgba(0,0,0,.8)!important}
+  box-shadow:0 10px 24px -12px rgba(0,0,0,.8)!important}
 html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 0 0 1px rgba(16,16,22,.14),0 10px 24px -14px rgba(16,16,22,.45)!important}
+  box-shadow:0 10px 26px -14px rgba(16,16,22,.5)!important}
+/* #8/#9: the mark is the first thing on the page and it was smaller than the headline beside it --
+   and the two heroes were not even the same size as each other (56 on Trade, 64 on Pools). One size,
+   large enough to lead, on both. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:76px!important;height:76px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:52px!important;height:52px!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:46px!important;height:46px!important}
+}
 
 /* ---- the stats strip -------------------------------------------------------------------------- */
 .lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
