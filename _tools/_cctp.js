@@ -19,6 +19,20 @@ const NEW_SUB='Bridge USDC natively across chains with Circle CCTP — burn on S
 const BUGGY_SUB='Bridge USDC natively across chains with Circle CCTP \\u2014 burn on Stellar, mint on the destination.';
 
 const CSS='<style id="lx-cctp-css">'
++'.brm-txc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;transition:border-color .15s ease,box-shadow .15s ease}'
++'.brm-txc:hover{border-color:var(--border-strong,#34343c);box-shadow:0 10px 26px -20px rgba(0,0,0,.7)}'
++'.brm-txc+.brm-txc{margin-top:10px}'
+/* the timestamp is context, not content */
++'.brm-tr1 .brm-tm{font:600 10.5px/1 "JetBrains Mono",monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}'
+/* the amount is the thing being read */
++'.brm-txc .br-asschip .am{font:800 15px/1.15 "JetBrains Mono",monospace;color:var(--text);letter-spacing:-.2px;display:block}'
++'.brm-txc .br-asschip .nt{font:700 9.5px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft);text-transform:uppercase;letter-spacing:.06em;display:block;margin-top:2px}'
++'.brm-txc .brm-flow{gap:9px;align-items:center}'
++'.brm-txc .brm-flow .br-ar{color:var(--text-muted);font-size:14px;flex:0 0 auto}'
+/* the destination line closes the card rather than floating under it */
++'.brm-txc .brm-recv{border-top:1px solid var(--border);padding-top:9px;margin-top:11px;font-size:11.5px;color:var(--text-soft)}'
++'.brm-txc .br-xplink{color:var(--text-muted);transition:color .12s}'
++'.brm-txc .br-xplink:hover{color:var(--accent)}'
 +HIDE.map(function(n){return '.brd-opt[data-net="'+n+'"]{display:none!important}';}).join('')
 // real network logos (replace the letter-mark badges) — logos only, no layout change
 +'.brd-opt .brd-ic img.lx-netimg,.br-netchip .br-ic img.lx-netimg{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}'
