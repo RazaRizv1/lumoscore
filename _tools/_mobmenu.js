@@ -20,6 +20,14 @@ const B = String.fromCharCode(92);
 
 const STYLE = `<style id="lx-mobmenu-css">
 /* ---- the panel ------------------------------------------------------------------------------- */
+/* #15: the panel could be dragged up past its own content, leaving a band of nothing under the theme
+   row. It scrolls, so the browser rubber-bands it; overscroll-behavior none stops the bounce as well
+   as the chaining to the page behind. The height cap makes it scroll to its end, not past it. */
+.slide-menu{overscroll-behavior:none;max-height:100dvh;overflow-y:auto}
+/* #20: the wallet card is markup that is always present -- when nobody is connected it has no name and
+   no address, so the card this file gives a ground and a border to rendered as an empty rounded box
+   under the heading. Nothing to say, nothing to draw. */
+.slide-menu .menu-user:not(:has(.mu-name:not(:empty))){display:none!important}
 .slide-menu .menu-head{padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:6px}
 .slide-menu .menu-head .lbl{font:800 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;
   text-transform:uppercase;color:var(--text-soft)}
@@ -74,6 +82,27 @@ const STYLE = `<style id="lx-mobmenu-css">
 // Inserted BEFORE "Discover", so the products come first and the account section stays where it is.
 const ICO = (d) => '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
   + 'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+
+// #16: use the app's OWN nav icons, not lookalikes. The first version drew its own Pools drop, Bridge
+// connector and Launchpad rocket, which is why those three read as a different set from the rail and
+// the bottom bar. These are lifted from the desktop rail at build time and keyed by the link's label,
+// so they cannot drift from it -- and if a label is ever missing, the local drawing below is used.
+let RAIL = {};
+try {
+  const deskJson = getContents(read('lumoscore-aptos-desktop.html')).json['lumoscore-dex.html'] || '';
+  const re = /<a\b[^>]*>([\s\S]{0,900}?)<\/a>/g;
+  let m;
+  while ((m = re.exec(deskJson))) {
+    const inner = m[1];
+    const svg = (inner.match(/<svg[\s\S]*?<\/svg>/) || [''])[0];
+    if (!svg) continue;
+    const label = inner.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+    if (!/^(Dashboard|Trade|Pools|Bridge|Launchpad)$/.test(label)) continue;
+    if (RAIL[label]) continue;
+    // the rail draws at its own size; the menu wants 18px
+    RAIL[label] = svg.replace(/<svg\b/, '<svg width="18" height="18"');
+  }
+} catch (e) { }
 const NAV = [
   ['lumoscore-home-mobile.html', 'Dashboard',
     ICO('<rect x="3" y="3" width="7" height="9" rx="1.6"/><rect x="14" y="3" width="7" height="5" rx="1.6"/><rect x="14" y="12" width="7" height="9" rx="1.6"/><rect x="3" y="16" width="7" height="5" rx="1.6"/>')],
@@ -87,7 +116,9 @@ const NAV = [
     ICO('<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>')],
 ];
 const NAVBLOCK = '<div class="menu-group" data-lxnav="1">Products</div>'
-  + NAV.map(([href, label, ico]) => '<a href="' + href + '" data-lxnav="1">' + ico + label + '</a>').join('');
+  + NAV.map(([href, label, ico]) =>
+      '<a href="' + href + '" data-lxnav="1">' + (RAIL[label] || ico) + label + '</a>').join('');
+console.log('  nav icons taken from the rail: ' + (Object.keys(RAIL).join(', ') || 'none — using local drawings'));
 
 let containers = 0, pages = 0;
 for (const dev of ['desktop', 'mobile']) {
