@@ -1687,13 +1687,6 @@ html body .pool-header-row .ph-icons>*{
   bottom:auto!important;margin:0!important;flex:0 0 auto;
   /* the ring existed to separate two overlapping coins; there is nothing to separate now */
   box-shadow:none!important}
-</style><style id="lx-walletlogo-css">
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
 </style><style id="lx-mobmenu-css">
 /* ---- the panel ------------------------------------------------------------------------------- */
 /* #15: the panel could be dragged up past its own content, leaving a band of nothing under the theme
@@ -1772,6 +1765,32 @@ html body .pool-header-row .ph-icons>*{
   font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-mobsearch-css">
+/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
+   primary and an afterthought. */
+.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
+  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
+.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
+.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
+/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
+   leave it about 120px, and it already truncates. Nothing else may shrink. */
+.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
 </style></head>
 <body>
 
@@ -5056,38 +5075,6 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
   if(tb){ lxBrTableCols(); lxBrRestoreTxs(); lxBrTxApply(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); }
   lxBrRenderPending(); lxBrResumePending(); lxBrAutoClear(); return true; }
  if(!pass()){ var n=0,iv=setInterval(function(){ n++; if(pass()||n>40) clearInterval(iv); },120); } })();
-})();</script><script id="lx-walletlogo">(function(){
-  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
-  function logo(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    if(!id)return "";
-    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-    // walletconnect stores a few different spellings; they all mean the same sheet entry
-    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
-    return MAP[id]||"";
-  }
-  function paint(){
-    var url=logo(); if(!url)return;
-    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
-    for(var i=0;i<els.length;i++){
-      var e=els[i];
-      if(e.getAttribute("data-lxwl")===url)continue;
-      e.setAttribute("data-lxwl",url);
-      e.classList.add("lx-haswl");
-      e.style.setProperty("background-image","url('"+url+"')","important");
-    }
-  }
-  function boot(){
-    paint();
-    // The chip and the menu card are both built after connect, and the menu is rendered on open --
-    // so this watches rather than running once.
-    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-    try{ window.addEventListener("storage",paint); }catch(_){}
-    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
 })();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
@@ -5508,6 +5495,74 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
+})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  function paint(){
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();</script><script id="lx-mobsearch">(function(){
+  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
+  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
+  function open(){
+    // The page's own opener, so this button and the menu row open the same thing in the same state.
+    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
+    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
+    // itself. A header button that silently does nothing is worse than no header button.
+    var row=document.querySelector("[data-open-search]");
+    if(row){ row.click(); return; }
+    var ov=document.getElementById("searchPopup");
+    if(ov){ ov.classList.add("open");
+      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
+  }
+  function place(){
+    var bar=document.querySelector("header.appbar"); if(!bar)return;
+    // Only where there is something to open. On a page without the popup this would be a dead control.
+    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
+    if(bar.querySelector(".lx-hsearch"))return;
+    var b=document.createElement("button");
+    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
+    b.innerHTML=ICON;
+    b.addEventListener("click",function(e){
+      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
+      open();
+    });
+    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
+    // stays the last thing on the right, where a thumb expects it.
+    var menu=document.getElementById("menuBtn");
+    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
+    else bar.appendChild(b);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",place);
+  else place();
+  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button.
+  try{ new MutationObserver(place).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

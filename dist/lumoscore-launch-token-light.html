@@ -1163,13 +1163,6 @@ html body .pool-header-row .ph-icons>*{
   bottom:auto!important;margin:0!important;flex:0 0 auto;
   /* the ring existed to separate two overlapping coins; there is nothing to separate now */
   box-shadow:none!important}
-</style><style id="lx-walletlogo-css">
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
 </style><style id="lx-searchassets-css">
 .sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
 .lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
@@ -1193,6 +1186,20 @@ html body .pool-header-row .ph-icons>*{
   font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
 </style></head>
 <body>
 <div class="app">
@@ -4121,39 +4128,7 @@ window.addEventListener('click',function(e){
 .lx-faq-q{font-size:16px;font-weight:700;color:var(--text);margin:0 0 7px}
 .lx-faq-a{font-size:14.5px;line-height:1.7;color:var(--text-muted);margin:0}
 @media(max-width:640px){.lx-faq{padding:28px 16px 34px}.lx-faq h2{font-size:21px}}
-</style><style id="lx-gate-css">[data-lxgate="1"]{font-size:0!important;color:transparent!important}[data-lxgate="1"]::after{content:"Connect wallet";font-size:15px;font-weight:800;letter-spacing:0;color:#fff;display:inline-block}</style><script id="lx-gate">(function(){var NET="aptos",SEL=".summary-cta";function conn(){try{return !!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"));}catch(_){return false;}}function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}function apply(){var on=conn();var els=document.querySelectorAll(SEL);for(var i=0;i<els.length;i++){var b=els[i];if(on){if(b.getAttribute("data-lxgate")){if(b.getAttribute("data-lxorig")!=null)b.textContent=b.getAttribute("data-lxorig");if(b.getAttribute("data-lxdis")==="1"){try{b.disabled=true;}catch(_){}b.setAttribute("disabled","");}b.style.removeProperty("opacity");b.style.removeProperty("cursor");b.removeAttribute("data-lxdis");b.removeAttribute("aria-label");b.removeAttribute("data-lxgate");}}else{if(b.getAttribute("data-lxorig")==null)b.setAttribute("data-lxorig",(b.textContent||"").trim());if(b.getAttribute("data-lxdis")==null)b.setAttribute("data-lxdis",(b.disabled||b.hasAttribute("disabled"))?"1":"0");if(b.textContent.trim()!=="Connect wallet")b.textContent="Connect wallet";try{b.disabled=false;}catch(_){}b.removeAttribute("disabled");b.removeAttribute("aria-disabled");b.classList.remove("disabled","is-disabled","btn-disabled");b.style.removeProperty("pointer-events");b.style.setProperty("opacity","1","important");b.style.setProperty("cursor","pointer","important");b.setAttribute("aria-label","Connect wallet");b.setAttribute("data-lxgate","1");}}}window.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-lxgate=\"1\"]"):null;if(b){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","stay:"+actNet());}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork(location.href);else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet(),location.href);return;}setTimeout(apply,60);},true);if(document.readyState!=="loading")apply();else document.addEventListener("DOMContentLoaded",apply);setTimeout(apply,350);setTimeout(apply,1000);try{var mo=new MutationObserver(function(){if(mo.__b)return;mo.__b=1;setTimeout(function(){mo.__b=0;apply();},40);});var host=document.querySelector(SEL);host=host&&host.parentNode?host.parentNode:document.body;if(host)mo.observe(host,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["disabled","class"]});}catch(_){}})();</script><style id="lx-searchfix">#searchPopup #spFilters,.sp-body #spFilters{display:none !important}</style><script id="lx-searchctl">(function(){function head(){var c=document.getElementById("spAssetCount");return c&&c.closest?c.closest(".sp-section-head"):null;}function ctl(){var inp=document.getElementById("spSearchInput");if(!inp)return;var list=document.getElementById("spAssetList");var empty=!(inp.value&&inp.value.trim());if(empty&&list&&list.children.length&&!list.querySelector(".lx-recrow"))list.innerHTML="";var h=head();if(h)h.style.display=(empty||!list||!list.children.length)?"none":"";}document.addEventListener("input",function(e){if(e.target&&e.target.id==="spSearchInput"){ctl();if(window.requestAnimationFrame)requestAnimationFrame(ctl);}},true);document.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"){setTimeout(ctl,30);}},true);var mo=null;function attach(){var list=document.getElementById("spAssetList");if(list&&!mo&&window.MutationObserver){mo=new MutationObserver(ctl);mo.observe(list,{childList:true});}ctl();}if(document.readyState!=="loading")attach();else document.addEventListener("DOMContentLoaded",attach);})();</script><script id="lx-walletlogo">(function(){
-  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
-  function logo(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    if(!id)return "";
-    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-    // walletconnect stores a few different spellings; they all mean the same sheet entry
-    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
-    return MAP[id]||"";
-  }
-  function paint(){
-    var url=logo(); if(!url)return;
-    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
-    for(var i=0;i<els.length;i++){
-      var e=els[i];
-      if(e.getAttribute("data-lxwl")===url)continue;
-      e.setAttribute("data-lxwl",url);
-      e.classList.add("lx-haswl");
-      e.style.setProperty("background-image","url('"+url+"')","important");
-    }
-  }
-  function boot(){
-    paint();
-    // The chip and the menu card are both built after connect, and the menu is rendered on open --
-    // so this watches rather than running once.
-    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-    try{ window.addEventListener("storage",paint); }catch(_){}
-    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
-})();</script><script id="lx-searchassets">(function(){
+</style><style id="lx-gate-css">[data-lxgate="1"]{font-size:0!important;color:transparent!important}[data-lxgate="1"]::after{content:"Connect wallet";font-size:15px;font-weight:800;letter-spacing:0;color:#fff;display:inline-block}</style><script id="lx-gate">(function(){var NET="aptos",SEL=".summary-cta";function conn(){try{return !!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"));}catch(_){return false;}}function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}function apply(){var on=conn();var els=document.querySelectorAll(SEL);for(var i=0;i<els.length;i++){var b=els[i];if(on){if(b.getAttribute("data-lxgate")){if(b.getAttribute("data-lxorig")!=null)b.textContent=b.getAttribute("data-lxorig");if(b.getAttribute("data-lxdis")==="1"){try{b.disabled=true;}catch(_){}b.setAttribute("disabled","");}b.style.removeProperty("opacity");b.style.removeProperty("cursor");b.removeAttribute("data-lxdis");b.removeAttribute("aria-label");b.removeAttribute("data-lxgate");}}else{if(b.getAttribute("data-lxorig")==null)b.setAttribute("data-lxorig",(b.textContent||"").trim());if(b.getAttribute("data-lxdis")==null)b.setAttribute("data-lxdis",(b.disabled||b.hasAttribute("disabled"))?"1":"0");if(b.textContent.trim()!=="Connect wallet")b.textContent="Connect wallet";try{b.disabled=false;}catch(_){}b.removeAttribute("disabled");b.removeAttribute("aria-disabled");b.classList.remove("disabled","is-disabled","btn-disabled");b.style.removeProperty("pointer-events");b.style.setProperty("opacity","1","important");b.style.setProperty("cursor","pointer","important");b.setAttribute("aria-label","Connect wallet");b.setAttribute("data-lxgate","1");}}}window.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-lxgate=\"1\"]"):null;if(b){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","stay:"+actNet());}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork(location.href);else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet(),location.href);return;}setTimeout(apply,60);},true);if(document.readyState!=="loading")apply();else document.addEventListener("DOMContentLoaded",apply);setTimeout(apply,350);setTimeout(apply,1000);try{var mo=new MutationObserver(function(){if(mo.__b)return;mo.__b=1;setTimeout(function(){mo.__b=0;apply();},40);});var host=document.querySelector(SEL);host=host&&host.parentNode?host.parentNode:document.body;if(host)mo.observe(host,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["disabled","class"]});}catch(_){}})();</script><style id="lx-searchfix">#searchPopup #spFilters,.sp-body #spFilters{display:none !important}</style><script id="lx-searchctl">(function(){function head(){var c=document.getElementById("spAssetCount");return c&&c.closest?c.closest(".sp-section-head"):null;}function ctl(){var inp=document.getElementById("spSearchInput");if(!inp)return;var list=document.getElementById("spAssetList");var empty=!(inp.value&&inp.value.trim());if(empty&&list&&list.children.length&&!list.querySelector(".lx-recrow"))list.innerHTML="";var h=head();if(h)h.style.display=(empty||!list||!list.children.length)?"none":"";}document.addEventListener("input",function(e){if(e.target&&e.target.id==="spSearchInput"){ctl();if(window.requestAnimationFrame)requestAnimationFrame(ctl);}},true);document.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"){setTimeout(ctl,30);}},true);var mo=null;function attach(){var list=document.getElementById("spAssetList");if(list&&!mo&&window.MutationObserver){mo=new MutationObserver(ctl);mo.observe(list,{childList:true});}ctl();}if(document.readyState!=="loading")attach();else document.addEventListener("DOMContentLoaded",attach);})();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
   // A 404 (not listed) is a clean "no", and a network failure is NOT a "yes": it resolves false and is
@@ -4573,6 +4548,38 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
+})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  function paint(){
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){
