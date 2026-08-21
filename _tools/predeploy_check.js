@@ -87,6 +87,28 @@ if (ADMIN) {
   if (strays.length) warn.push(`${strays.length} non-admin page(s) in the admin build: ${strays.slice(0, 3).map(rel).join(', ')}`);
 }
 
+// ---- did a page suddenly lose a chunk? ------------------------------------------------------------------
+// Twice now a strip regex written to remove one injected block has instead run forward to the next place
+// its closing sequence happened to occur and deleted everything in between -- 238KB the first time, 37KB
+// the second. Both were invisible until a section was noticed missing. dist is tracked, so the previous
+// build is right there to compare against. A WARNING, not a failure: sections do get removed on purpose.
+if (!ADMIN) {
+  const { execSync } = require('child_process');
+  for (const f of files.filter(f => /\.html$/.test(rel(f)))) {
+    let prev;
+    try { prev = execSync('git show HEAD:dist/' + rel(f), { maxBuffer: 1 << 28, stdio: ['pipe', 'pipe', 'ignore'] }).length; }
+    catch (e) { continue; }                     // new file, nothing to compare
+    const now = fs.statSync(f).size;
+    const drop = prev - now;
+    // Absolute, not a percentage: these pages are ~1MB, so the desktop half of the second incident
+    // (3.8KB, four whole cards) was only 0.34% and a percentage gate slept straight through it.
+    if (drop >= 2048) {
+      warn.push(`${rel(f)} shrank ${(drop / 1024).toFixed(1)}KB (${(drop / prev * 100).toFixed(2)}%) vs HEAD `
+        + `— intended, or did a strip regex overrun?`);
+    }
+  }
+}
+
 // ---- injected scripts must actually parse ---------------------------------------------------------------
 // Every lx-* script is assembled by string concatenation in _tools/, so a stray character produces a
 // page that looks fine and silently does nothing -- the tag is in the DOM, the browser throws
