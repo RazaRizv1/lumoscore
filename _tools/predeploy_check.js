@@ -148,6 +148,31 @@ if (!ADMIN) {
   }
 }
 
+// ---- outgoing links keep their nofollow ----------------------------------------------------------------
+// _nofollow.js folds rel="nofollow" into every external <a> in the container, and it has to run AFTER the
+// transforms that inject those anchors. Re-running any of them (_ammdata, _dexassetdata, _accountpage...)
+// re-emits its script block WITHOUT the mark, so the static HTML silently loses it again -- the same
+// build-order trap as the hero styles. The runtime guard would still stamp the DOM, but a crawler reading
+// the raw HTML would see followed links, which is the whole point of the change. Re-run _nofollow.js.
+if (!ADMIN) {
+  const OURS = (h) => h === 'lumoscore.com' || h.endsWith('.lumoscore.com');
+  for (const f of files) {
+    const s = fs.readFileSync(f, 'utf8');
+    let n = 0, sample = '';
+    for (const tag of (s.match(/<a\b[^>]*>/gi) || [])) {
+      const h = /href=("|')(https?:\/\/[^"']*)\1/i.exec(tag);
+      if (!h) continue;
+      const host = h[2].replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase().replace(/:\d+$/, '');
+      if (OURS(host)) continue;
+      if (/\bnofollow\b/.test(tag)) continue;
+      if (!n) sample = host;
+      n++;
+    }
+    if (n) fail.push(`${rel(f)}: ${n} outgoing <a> tag(s) without rel="nofollow" (e.g. ${sample}) — `
+      + `a transform re-ran after _nofollow.js. Re-run node _tools/_nofollow.js and rebuild.`);
+  }
+}
+
 // ---- report -------------------------------------------------------------------------------------------
 const size = (files.reduce((s, f) => s + fs.statSync(f).size, 0) / 1048576).toFixed(1);
 console.log(`\n  Pre-deploy check — ${LABEL} build (${files.length} files, ${size} MB)\n`);
