@@ -195,7 +195,29 @@ html[data-theme="light"] .lorb .disc{background:radial-gradient(circle at 50% 62
 /* light-mode elevation: cards read as raised surfaces on light bg */
 [data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
 [data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
-</style><script id="lx-route">(function(){var out={network:"",asset:"",poolA:"",poolB:"",poolId:""};try{  var seg=location.pathname.replace(/^\/+|\/+$/g,"").split("/").map(decodeURIComponent);  var head=(seg[0]||"").toLowerCase();  var ASSET=/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;  if(head==="trade"||head==="asset"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]&&(ASSET.test(seg[2])||seg[2].toUpperCase()==="XLM"))out.asset=seg[2]; }  else if(head==="pools"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]==="id"){ out.poolId=seg[3]||""; }    else { if(seg[2])out.poolA=seg[2]; if(seg[3])out.poolB=seg[3]; } }}catch(e){}window.__lxRoute=out;})();</script><script id="lx-langen">try{localStorage.setItem("lumos.locale.lang","en");localStorage.setItem("lumos.lang","en");}catch(e){}try{if(window.top)window.top.__lumosLang="en";}catch(e){}</script><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script></head>
+</style><script id="lx-route">(function(){var out={network:"",asset:"",poolA:"",poolB:"",poolId:""};try{  var seg=location.pathname.replace(/^\/+|\/+$/g,"").split("/").map(decodeURIComponent);  var head=(seg[0]||"").toLowerCase();  var ASSET=/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;  if(head==="trade"||head==="asset"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]&&(ASSET.test(seg[2])||seg[2].toUpperCase()==="XLM"))out.asset=seg[2]; }  else if(head==="pools"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]==="id"){ out.poolId=seg[3]||""; }    else { if(seg[2])out.poolA=seg[2]; if(seg[3])out.poolB=seg[3]; } }}catch(e){}window.__lxRoute=out;})();</script><script id="lx-langen">try{localStorage.setItem("lumos.locale.lang","en");localStorage.setItem("lumos.lang","en");}catch(e){}try{if(window.top)window.top.__lumosLang="en";}catch(e){}</script><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-pairicons-css">
+/* The wrapper: a fixed 46px box holding two absolutely-placed logos becomes a flow row.
+   [data-paired] is the marker the runtime pair builders stamp on every pair they draw; .pair-cell is
+   the table/list cell the static ones sit in. Between them they cover Pools main, the pool page,
+   Wallet and public-address liquidity rows, search and the LUMOS token page. */
+/* .ph-icons is the pool page's own header pair -- same overlapping treatment, different class. */
+.pair-icons[data-paired],.pair-cell .pair-icons,.pool-header-row .ph-icons{
+  position:static!important;display:inline-flex!important;align-items:center;gap:6px;
+  width:auto!important;height:auto!important;flex:0 0 auto;overflow:visible}
+/* The children have to be named to win. The design pins them with three-class selectors
+   (.pool-card .pair-icons .b { left:12px }), so a child selector at two classes loses and they stay stacked --
+   which is exactly what the first attempt at this did. Three classes here beats that, and stays BELOW
+   the four-class hero rules in _poolshero.js, so the Trade and Pools hero marks keep overlapping. */
+html body .pair-icons[data-paired]>.pa,html body .pair-icons[data-paired]>.pb,
+html body .pair-icons[data-paired]>.a,html body .pair-icons[data-paired]>.b,
+html body .pair-cell .pair-icons>.pa,html body .pair-cell .pair-icons>.pb,
+html body .pair-cell .pair-icons>.a,html body .pair-cell .pair-icons>.b,
+html body .pool-header-row .ph-icons>*{
+  position:static!important;left:auto!important;right:auto!important;top:auto!important;
+  bottom:auto!important;margin:0!important;flex:0 0 auto;
+  /* the ring existed to separate two overlapping coins; there is nothing to separate now */
+  box-shadow:none!important}
+</style></head>
 <body>
 <div class="backdrop">
   <div class="grid"></div>

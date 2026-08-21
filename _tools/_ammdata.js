@@ -11,6 +11,20 @@ const DETAIL_KEYS = ['lumoscore-amm-pool.html', 'lumoscore-amm-pool-dark.html', 
 const KEYS = LIST_KEYS.concat(DETAIL_KEYS);
 
 const STYLE = `<style id="lx-amm-css">
+/* ---- the three pool stat cards, as one set ---------------------------------------------------- */
+/* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
+   onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
+   to the 18px value to compete with it -- carrying a run-on of three facts. So: the value shrinks to
+   fit rather than wrapping, the sub-line steps back to a quiet single line, and every card reserves
+   the same sub-line height so three cards line up even when one has nothing to say there. */
+.ph-stats .ph-stat{display:flex;flex-direction:column}
+.ph-stat .v{white-space:nowrap;font-size:clamp(15px,1.35vw,18px);font-weight:800;letter-spacing:-.2px}
+.ph-stat .s{font-size:12px;margin-top:3px;min-height:15px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;color:var(--text-soft)}
+@media(max-width:880px){
+.ph-stat .v{font-size:16px}
+.ph-stat .s{font-size:11.5px}
+}
 /* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
 #createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
 /* AUDIT (user-reported): the Create Pool MAX control is a bare <span> — it fires, but the design gives it no
@@ -1667,8 +1681,8 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
           if(sub)setText(sub, d.volPartial ? "still counting the last 24h\\u2026"
             : (d.nonXlm?(d.vol24Usd>0?"\\u2248 "+usd(d.vol24Usd):"24h volume"):"\\u2248 "+usd(d.vol24Usd))); } }
       else if(/fee/.test(cn)){
-        if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,d.fee+"% fee tier"); }
-        else { if(v)setText(v,(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\\u2248 "+usd(d.fees24Usd)+" \\u00b7 ")+d.fee+"% fee tier"); } }
+        if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,""); }
+        else { if(v)setText(v,(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\\u2248 "+usd(d.fees24Usd))); } }
     });
   }
   // ---- REAL-DATA chart engine: takes over the design's synthetic candlestick/line/volume renderer ----
