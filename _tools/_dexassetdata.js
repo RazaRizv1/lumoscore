@@ -106,6 +106,31 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
   font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:var(--text-muted,#8a8fa3)}
 .lxda-cprices{position:absolute;right:4px;width:64px;pointer-events:none}
 .lxda-cprices span{position:absolute;right:0;transform:translateY(-50%);font:600 10.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);white-space:nowrap}
+/* ---- #2: the change pill sits BESIDE the price ------------------------------------------------- */
+/* The design stacked .big over .row2, so the headline number had a pill hanging under it and the
+   card carried two short lines where one wide one would do. Two columns instead: the price, then the
+   pill and the high/low meta on the same baseline to its right. They wrap inside their own column, so
+   a long meta line never pushes the price around. */
+.price-display{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:14px}
+.price-display .big{grid-column:1;grid-row:1}
+.price-display .row2{grid-column:2;grid-row:1;margin-top:0!important}
+/* No phone override: beside was asked for on BOTH builds, and it fits -- measured at 393px the
+   price is 138px and the pill 87px inside a 331px column. The second track is minmax(0,1fr) and
+   .row2 already wraps, so a longer price squeezes the meta onto its own line instead of overflowing. */
+
+/* ---- #11: the unit label and the top axis number were in the same corner ----------------------- */
+/* Both were pinned right-aligned at the top of the right-hand gutter, so "XLM" printed straight
+   through the topmost price. The gutter's BOTTOM right is empty -- the x-axis date row stops short of
+   it (right:70px) and the price band ends above the volume bars -- so the unit moves there. */
+.lxda-cunit{top:auto!important;bottom:5px!important;right:4px!important}
+
+/* ---- #3: one hover readout, not two ------------------------------------------------------------ */
+/* The phone build still ships the design own OHLC tooltip (.chart-tip, #mdxaTipO/H/L/C/V) and it is
+   fed by the template MOCK -- it was reading "O 4.5031 XLM ... V 678K USDC" against a chart whose own
+   axis was around 0.00018, which is why the numbers looked unrelated to the asset. Ours (.lxda-chtip)
+   is built on this page too and carries the real series, the same fields desktop shows. Hide the
+   design one, and its crosshair with it, since we draw our own. */
+.chart-tip,.chart-hover-line,.chart-hover-dot{display:none!important}
 /* chart hover readout */
 .lxda-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
 .lxda-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:2px}
