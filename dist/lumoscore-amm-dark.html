@@ -1820,6 +1820,26 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
+</style><style id="lx-sidecard-css">
+/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
+   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
+   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
+   parks New Mints and Market Overview between the hero and the thing people came to read. */
+.dex-overview,.amm-overview{grid-template-columns:1fr!important}
+/* The Market Overview card is AUTHORED inside .amm-overview, beside the hero. On the phone the
+   overview is always one column, so the card always ends up below the list -- and it was being
+   painted in its authored slot first and moved a beat later, which shifted the list heading 258px
+   up the page on every refresh. Measured: in .amm-overview at 598ms, in .container at 919ms.
+   Hidden while it is STILL in the overview at phone widths. The selector stops matching the moment
+   place() moves it, so nothing has to toggle a class and there is no timing to get right. display,
+   not visibility, so it does not hold the 258px open either. Gated on html.lx-sc, which the script
+   below sets as its first act -- a page where the script never runs still shows the card. */
+@media(max-width:880px){html.lx-sc .amm-overview>.amm-snapshot-card{display:none}}
+/* The rail no longer changes this. Collapsing it used to put New Mints / Market Overview back
+   beside the hero, which meant the hero had two different shapes depending on a control that has
+   nothing to do with it -- and the full-width one is the one worth keeping: the headline gets its
+   own line, and the four stats sit across the bottom instead of being squeezed into half the width.
+   One column at every rail state, so the card below the list is where that panel always lives. */
 </style><style id="lx-searchassets-css">
 .sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
 .lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
@@ -1843,26 +1863,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
   font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
-</style><style id="lx-sidecard-css">
-/* The RAIL decides this, not the window. Expanded, the overview is one column and the side card
-   drops below the list; collapsed, the rail hands back 170px and the two sit across. Keyed to the
-   window alone, a wide screen stayed two-column with the rail open -- which is the arrangement that
-   parks New Mints and Market Overview between the hero and the thing people came to read. */
-.dex-overview,.amm-overview{grid-template-columns:1fr!important}
-/* The Market Overview card is AUTHORED inside .amm-overview, beside the hero. On the phone the
-   overview is always one column, so the card always ends up below the list -- and it was being
-   painted in its authored slot first and moved a beat later, which shifted the list heading 258px
-   up the page on every refresh. Measured: in .amm-overview at 598ms, in .container at 919ms.
-   Hidden while it is STILL in the overview at phone widths. The selector stops matching the moment
-   place() moves it, so nothing has to toggle a class and there is no timing to get right. display,
-   not visibility, so it does not hold the 258px open either. Gated on html.lx-sc, which the script
-   below sets as its first act -- a page where the script never runs still shows the card. */
-@media(max-width:880px){html.lx-sc .amm-overview>.amm-snapshot-card{display:none}}
-/* The rail no longer changes this. Collapsing it used to put New Mints / Market Overview back
-   beside the hero, which meant the hero had two different shapes depending on a control that has
-   nothing to do with it -- and the full-width one is the one worth keeping: the headline gets its
-   own line, and the four stats sit across the bottom instead of being squeezed into half the width.
-   One column at every rail state, so the card below the list is where that panel always lives. */
 </style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
@@ -7456,6 +7456,63 @@ window.addEventListener('click',function(e){
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
+})();</script><script id="lx-sidecard">(function(){
+  // Set before anything else and synchronously: it is what arms the phone rule above, so a failure
+  // to load this file leaves the card visible where it was authored rather than hidden forever.
+  try{ document.documentElement.className+=' lx-sc'; }catch(_){}
+  function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
+  function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
+  // What the card should sit after once it drops below. Ordered most specific first: the pairs
+  // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
+  // either build.
+  function anchor(){
+    var a = document.querySelector('.dex-markets')
+        || document.querySelector('.mdx-mk-list')
+        || document.querySelector('.lx-netpag-host')
+        || document.querySelector('.lx-netpag')
+        || null;
+    // #17: on Pools the My Pools panel is a sibling AFTER the pager, so anchoring on the pager alone
+    // dropped Market Overview BETWEEN the two lists. Under All Pools that is invisible -- the list
+    // above it is thousands of rows -- but the moment My Pools is selected the list above collapses
+    // and the card is sitting on top of the user's own positions. Sit after the LAST list on the
+    // page instead, so it is below whichever one is showing.
+    var m=document.querySelector('#panelMine,#panelMyPositions');
+    try{ if(m&&(!a||(a.compareDocumentPosition(m)&Node.DOCUMENT_POSITION_FOLLOWING)))a=m; }catch(_){}
+    return a;
+  }
+  function twoCol(el){
+    try{ var c=getComputedStyle(el).gridTemplateColumns;
+      return !!c && c.indexOf('none')<0 && c.trim().split(/\s+/).length>1; }catch(_){ return false; }
+  }
+  function place(){
+    var s=side(); if(!s)return;
+    var o=ov();
+    if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
+    var a=anchor();
+    // Nothing to sit after yet -- the pools pager is built at runtime. Move it to the end of the page
+    // anyway: at phone widths the rule above hides it while it is still in the overview, so leaving
+    // it there on a page whose anchor never appears would hide it for good.
+    if(!a){ var host=o&&o.parentNode; if(host&&s.parentNode===o)host.appendChild(s); return; }
+    if(a===s||a.contains(s))return;
+    if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
+    a.parentNode.insertBefore(s,a.nextSibling);
+  }
+  function boot(){
+    place();
+    // The rail toggles, the window resizes, and both pages re-render their own lists. Re-assert on
+    // all three rather than assuming the first pass is the last; place() is a no-op once settled.
+    try{ window.addEventListener('resize',place,{passive:true}); }catch(_){}
+    try{
+      var rail=document.querySelector('.nx-side');
+      if(rail) new MutationObserver(place).observe(rail,{attributes:true,attributeFilter:['class']});
+    }catch(_){}
+    try{
+      var host=document.querySelector('main.page')||document.querySelector('.lcmu-in')||document.body;
+      new MutationObserver(function(){ place(); }).observe(host,{childList:true,subtree:true});
+    }catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
+  else boot();
 })();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
@@ -7486,7 +7543,8 @@ window.addEventListener('click',function(e){
       .catch(function(){ delete P[addr]; return false; });
     return P[addr];
   };
-  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Unsafe</span>';
+  var WARN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert">'+WARN_SVG+'Unsafe</span>';
 
   // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
   // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
@@ -7507,6 +7565,17 @@ window.addEventListener('click',function(e){
   // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
   // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
   var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
+  // The codes that mean exactly one issuer -- see CANONICAL in lib.js for why this is NOT derived
+  // from VFD, and why it is the only check that catches a fake which owns its own domain.
+  var CANON={"USDC":{"issuer":"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN","by":"Circle"},"EURC":{"issuer":"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2","by":"Circle"},"yXLM":{"issuer":"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55","by":"Ultra Capital"},"yUSDC":{"issuer":"GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF","by":"Ultra Capital"},"SHX":{"issuer":"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH","by":"Stronghold"},"AQUA":{"issuer":"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA","by":"Aquarius"},"LUMOS":{"issuer":"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S","by":"LumosCore"}};
+  // A ticker wearing someone else’s name. Local, so it is on the row from the first paint: no
+  // round trip, nothing to wait for, and nothing an unreachable server can suppress.
+  function fakeTag(code,issuer){
+    var c=CANON[code]; if(!c||!issuer||c.issuer===issuer)return "";
+    return '<span class="lx-unsafetag" title="The real '+esc(code)+' is issued by '+esc(c.by)
+      +' ('+esc(short(c.issuer))+'). This one has the same ticker and a different issuer.">'
+      +WARN_SVG+'Not the real '+esc(code)+'</span>';
+  }
 
   // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
   // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
@@ -7524,7 +7593,7 @@ window.addEventListener('click',function(e){
     // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" data-lxiss="'+esc(t.issuer)+'" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
       ico+
-      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+fakeTag(t.code,t.issuer)+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
       '<div class="sp-sub">'+esc(t.code)+' · '+esc(sub)+'</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
   }
@@ -7864,62 +7933,5 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
-})();</script><script id="lx-sidecard">(function(){
-  // Set before anything else and synchronously: it is what arms the phone rule above, so a failure
-  // to load this file leaves the card visible where it was authored rather than hidden forever.
-  try{ document.documentElement.className+=' lx-sc'; }catch(_){}
-  function ov(){ return document.querySelector('.dex-overview,.amm-overview'); }
-  function side(){ return document.querySelector('.dex-mints-card,.mdx-mints-card,.amm-snapshot-card'); }
-  // What the card should sit after once it drops below. Ordered most specific first: the pairs
-  // section on Trade desktop, its mobile list, then the pagination that closes the Pools list on
-  // either build.
-  function anchor(){
-    var a = document.querySelector('.dex-markets')
-        || document.querySelector('.mdx-mk-list')
-        || document.querySelector('.lx-netpag-host')
-        || document.querySelector('.lx-netpag')
-        || null;
-    // #17: on Pools the My Pools panel is a sibling AFTER the pager, so anchoring on the pager alone
-    // dropped Market Overview BETWEEN the two lists. Under All Pools that is invisible -- the list
-    // above it is thousands of rows -- but the moment My Pools is selected the list above collapses
-    // and the card is sitting on top of the user's own positions. Sit after the LAST list on the
-    // page instead, so it is below whichever one is showing.
-    var m=document.querySelector('#panelMine,#panelMyPositions');
-    try{ if(m&&(!a||(a.compareDocumentPosition(m)&Node.DOCUMENT_POSITION_FOLLOWING)))a=m; }catch(_){}
-    return a;
-  }
-  function twoCol(el){
-    try{ var c=getComputedStyle(el).gridTemplateColumns;
-      return !!c && c.indexOf('none')<0 && c.trim().split(/\s+/).length>1; }catch(_){ return false; }
-  }
-  function place(){
-    var s=side(); if(!s)return;
-    var o=ov();
-    if(o&&twoCol(o)){ if(s.parentNode!==o)o.appendChild(s); return; }   // beside the hero
-    var a=anchor();
-    // Nothing to sit after yet -- the pools pager is built at runtime. Move it to the end of the page
-    // anyway: at phone widths the rule above hides it while it is still in the overview, so leaving
-    // it there on a page whose anchor never appears would hide it for good.
-    if(!a){ var host=o&&o.parentNode; if(host&&s.parentNode===o)host.appendChild(s); return; }
-    if(a===s||a.contains(s))return;
-    if(s.parentNode===a.parentNode&&a.nextElementSibling===s)return;     // already in place
-    a.parentNode.insertBefore(s,a.nextSibling);
-  }
-  function boot(){
-    place();
-    // The rail toggles, the window resizes, and both pages re-render their own lists. Re-assert on
-    // all three rather than assuming the first pass is the last; place() is a no-op once settled.
-    try{ window.addEventListener('resize',place,{passive:true}); }catch(_){}
-    try{
-      var rail=document.querySelector('.nx-side');
-      if(rail) new MutationObserver(place).observe(rail,{attributes:true,attributeFilter:['class']});
-    }catch(_){}
-    try{
-      var host=document.querySelector('main.page')||document.querySelector('.lcmu-in')||document.body;
-      new MutationObserver(function(){ place(); }).observe(host,{childList:true,subtree:true});
-    }catch(_){}
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
-  else boot();
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>

@@ -1622,29 +1622,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-searchassets-css">
-.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
-.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
-.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
-.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
-.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
-.sp-row--asset.lx-searow .sp-ico img{display:block}
-.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
-/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
-.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
-  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
-.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
-  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
-.lx-rechead .lx-recclear:hover{color:var(--accent)}
-.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
-.lx-seavfd svg{width:9px;height:9px;display:block}
-/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
-   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
-.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
-  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
-  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
-  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
-.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 </style><style id="lx-realdata-css">.greeting-row>.greeting{flex:1 1 auto!important;min-width:0!important}.status-row{display:grid!important;grid-template-columns:auto 1fr 1fr 1fr 1fr!important;gap:10px!important;width:100%!important}/* lx-nstats-mobile: the five-column row above is a DESKTOP layout. On a phone it overflows - auto sizes to its content and every 1fr floors at min-content, so the last card runs off screen. Two columns fit, and min-width:0 lets the cards actually shrink into them. */@media (max-width:760px){.status-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}.status-row>.status-pill{min-width:0!important;width:auto!important}.status-row>.status-pill.lx-netcard{grid-column:1 / -1}}.status-row .status-pill{width:auto!important}/* #6: the transaction link at the end of each platform-activity row. Icon only -- the row already says what happened, and a word here would compete with it. */.activity-feed-row .lx-actlink{margin-left:12px;flex:0 0 auto;display:inline-flex;align-items:center;color:var(--text-muted);text-decoration:none;transition:color .12s}.activity-feed-row .lx-actlink:hover{color:var(--accent)}.status-row .status-pill:not(.lx-netcard){opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready .status-pill:not(.lx-netcard){opacity:1!important;animation:none;transition:opacity .3s ease}</style><style id="lx-dashtop-css">
 .lx-xlmpanel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:stretch;
   background:var(--surface);border:1px solid var(--border);border-radius:16px;
@@ -1722,6 +1699,29 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1){padding-left:14px!important;border-left:1px solid var(--border)!important}
 .lx-xlmpanel>.status-row .val{font-size:14px!important}
 }
+</style><style id="lx-searchassets-css">
+.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
+.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
+.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
+.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
+.sp-row--asset.lx-searow .sp-ico img{display:block}
+.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
+/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
+.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
+  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
+.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
+  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
+.lx-rechead .lx-recclear:hover{color:var(--accent)}
+.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
+.lx-seavfd svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 </style></head>
 <body>
 <div class="app">
@@ -7663,6 +7663,143 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
+})();</script><script id="lx-realdata">(function(){if(window.__lxRealData)return;window.__lxRealData=1;function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}if(net()!=="stellar")return;var SWAP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M4 13h11"/><path d="M17 14l3-3-3-3"/><path d="M20 11H9"/></svg>',DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}function usd(n){return "$"+abbr(n);}function amt(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";if(a>=1)return (Math.round(n*100)/100).toString();if(a>0){var s=n.toFixed(7).replace(/0+$/,"").replace(/\.$/,"");return s&&s!=="0"?s:"<0.0000001";}return "0";}function price(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}function ago(t){var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);if(s<60)return Math.floor(s)+"s";if(s<3600)return Math.floor(s/60)+"m";if(s<86400)return Math.floor(s/3600)+"h";return Math.floor(s/86400)+"d";}function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}function vpill(lbl,val,tip){return '<span class="status-pill" data-lx-noswap=""'+(tip?' title="'+tip+'"':"")+'><span class="lbl">'+lbl+'</span><span class="val">'+val+'</span></span>';}function rebuildStats(tvl,mc,vol,pr,trd,trdTip){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");[].slice.call(row.querySelectorAll(".status-pill")).forEach(function(p){if(p!==net)p.parentNode.removeChild(p);});var frag=document.createElement("div");frag.innerHTML=vpill("TVL",tvl)+vpill("Market cap",mc)+vpill("24h Volume",vol)+vpill("Trades",trd||"\u2014",trdTip||"");while(frag.firstChild)row.appendChild(frag.firstChild);row.classList.add("lx-ready");}function stats(){Promise.all([j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_vol=true&include_market_cap=true&include_24hr_change=true"),j("https://api.llama.fi/v2/chains").catch(function(){return null;}),j("/lxapi/netstats").catch(function(){return null;})]).then(function(res){var cg=(res[0]&&res[0].stellar)||{};var chains=res[1];var ns=res[2];try{window.__lxCG=cg;window.dispatchEvent(new CustomEvent("lx:cg"));}catch(_){}var pr=cg.usd,vol=cg.usd_24h_vol,mc=cg.usd_market_cap,tvl=null;if(chains&&chains.length){var s=chains.filter(function(c){return c.gecko_id==="stellar"||/^stellar$/i.test(c.name||"");})[0];if(s)tvl=s.tvl;}var _t="",_tt="";if(ns&&ns.trades>0){_t=(+ns.trades).toLocaleString("en-US");try{_tt="Trades settled on Stellar on "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC)";}catch(_){}}var _v=[tvl!=null?usd(tvl):"\u2014",mc!=null?usd(mc):"\u2014",(vol!=null&&pr)?abbr(vol/pr)+" XLM":"\u2014",pr!=null?price(pr):"\u2014",_t,_tt];rebuildStats(_v[0],_v[1],_v[2],_v[3],_v[4],_v[5]);try{localStorage.setItem("lumos.netstats",JSON.stringify(_v));}catch(_){}}).catch(function(){});}var LX_FEEACCT="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";var XPI='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';function acode(o,p){return (o[p+"_asset_type"]==="native"||!o[p+"_asset_code"])?"XLM":o[p+"_asset_code"];}function describeOp(o){if(!o)return null;if(o.type&&o.type.indexOf("path_payment")===0)return {ic:SWAP,cls:"swap",type:"Swap <b>"+amt(+o.source_amount)+" "+esc(acode(o,"source"))+"</b> \u2192 "+amt(+o.amount)+" "+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code),via:"via LumosCore"};if(o.type==="payment")return {ic:SWAP,cls:"swap",type:"Transfer <b>"+amt(+o.amount)+" "+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",via:"via LumosCore"};if(o.type&&o.type.indexOf("offer")>=0)return {ic:DROP,cls:"lp",type:"Order <b>"+amt(+o.amount)+" "+esc(acode(o,"selling"))+"</b> / "+esc(acode(o,"buying")),via:"via LumosCore"};if(o.type&&o.type.indexOf("liquidity_pool")===0)return {ic:DROP,cls:"lp",type:(o.type.indexOf("deposit")>=0?"Added liquidity":"Removed liquidity"),via:"via LumosCore"};return {ic:SWAP,cls:"swap",type:esc(String(o.type||"Activity").split("_").join(" ")),via:"via LumosCore"};}function feedRow(r){return '<div class="activity-feed-row" data-lx-noswap="1"><div class="act-ic '+r.cls+'">'+r.ic+'</div>'+'<div class="info"><div class="type">'+r.type+'</div><div class="meta">'+r.via+'</div></div>'+'<div class="time">'+r.when+'</div>'+'<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/'+esc(r.hash)+'" target="_blank" rel="noopener" title="View transaction">'+XPI+'</a>'+'</div>';}function feed(){var list=document.getElementById("activityList");if(!list)return;j("https://horizon.stellar.org/accounts/"+LX_FEEACCT+"/payments?order=desc&limit=40").then(function(d){var recs=((d._embedded&&d._embedded.records)||[]).filter(function(o){return o.to===LX_FEEACCT&&o.from&&o.from!==LX_FEEACCT;});if(!recs.length){list.innerHTML='<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>';return;}var use=recs.slice(0,8);var rows=use.map(function(o){return {ic:SWAP,cls:"swap",type:"Platform activity",via:"via LumosCore",when:ago(o.created_at),hash:o.transaction_hash};});list.innerHTML=rows.map(feedRow).join("");use.forEach(function(o,i){j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20").then(function(t){var ops=((t._embedded&&t._embedded.records)||[]).filter(function(x){return !(x.type==="payment"&&x.to===LX_FEEACCT);});var pick=ops.filter(function(x){return x.type&&x.type.indexOf("path_payment")===0;})[0]||ops.filter(function(x){return x.type&&(x.type.indexOf("offer")>=0||x.type.indexOf("liquidity_pool")===0);})[0]||ops[0];var de=describeOp(pick); if(!de)return;rows[i].ic=de.ic;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].via=de.via;list.innerHTML=rows.map(feedRow).join("");}).catch(function(){});});}).catch(function(){});}function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}if(c&&c.length===6)rebuildStats(c[0],c[1],c[2],c[3],c[4],c[5]);else rebuildStats("\u2026","\u2026","\u2026","\u2026","\u2026","");}function run(){prep();stats();feed();}if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);setInterval(feed,60000);setInterval(stats,45000);})();</script><script id="lx-dashtop">(function(){
+  if(window.__lxDashTop)return;window.__lxDashTop=1;
+  function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}
+  if(net()!=="stellar")return;
+  var DAYS={"24H":1,"7D":7,"1M":30,"1Y":365}, tf="24H", cache={}, series=null;
+  function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
+  function money(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}
+  function build(){
+    var row=document.querySelector(".status-row"); if(!row)return null;
+    // Document-wide, NOT host.querySelector. Once the strip has moved inside the panel, row.parentNode
+    // IS the panel -- and an element is not its own descendant, so the host lookup found nothing and
+    // this built a SECOND panel inside the first one. Everything then painted into the copy: the price
+    // stayed a dash and the chart stayed empty on the panel you could actually see.
+    var p=document.querySelector(".lx-xlmpanel");
+    if(p)return p;
+    var host=row.parentNode; if(!host)return null;
+    p=document.createElement("div"); p.className="lx-xlmpanel"; p.setAttribute("data-lx-noswap","1");
+    p.innerHTML='<div class="lx-xt-l">'
+      +'<span class="lx-xt-lbl">Stellar (XLM)</span>'
+      +'<div class="lx-xt-row"><span class="lx-xt-price">\u2014</span><span class="lx-xt-chg"></span></div>'
+      +'<div class="lx-xt-tfs">'
+        +'<button type="button" data-lxnonav="1" data-tf="24H" class="active">24H</button>'
+        +'<button type="button" data-lxnonav="1" data-tf="7D">7D</button>'
+        +'<button type="button" data-lxnonav="1" data-tf="1M">1M</button>'
+        +'<button type="button" data-lxnonav="1" data-tf="1Y">1Y</button>'
+      +'</div></div>'
+      +'<div class="lx-xt-chart lx-empty"></div>';
+    host.insertBefore(p,row);
+    p.appendChild(row);            // #1: the strip lives inside the card -- see place()
+    // The dashboard maps clicked label text to a destination, so a control inside it needs the
+    // design's own opt-out or "1M" and friends navigate the page away.
+    [].slice.call(p.querySelectorAll(".lx-xt-tfs button")).forEach(function(b){
+      b.addEventListener("click",function(e){
+        try{e.preventDefault();e.stopPropagation();}catch(_){}
+        var t=b.getAttribute("data-tf"); if(t===tf)return; tf=t;
+        [].slice.call(p.querySelectorAll(".lx-xt-tfs button")).forEach(function(x){x.classList.toggle("active",x===b);});
+        load();
+      });
+    });
+    return p;
+  }
+  function draw(pts){
+    var p=build(); if(!p)return;
+    var box=p.querySelector(".lx-xt-chart"); if(!box)return;
+    if(!pts||pts.length<2){ box.classList.add("lx-empty"); box.innerHTML=""; return; }
+    box.classList.remove("lx-empty");
+    var W=420,H=104,PAD=6,n=pts.length;
+    var mn=Math.min.apply(null,pts),mx=Math.max.apply(null,pts),rg=(mx-mn)||Math.abs(mx)||1;
+    var up=pts[n-1]>=pts[0], col=up?"#35c07f":"#ff5b5b";
+    var d="";
+    for(var i=0;i<n;i++){
+      var x=(i/(n-1))*W, y=H-PAD-((pts[i]-mn)/rg)*(H-PAD*2);
+      d+=(i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1);
+    }
+    var gid="lxxt"+(up?"u":"d");
+    box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'
+      +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0" stop-color="'+col+'" stop-opacity=".26"/>'
+      +'<stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
+      +'<path d="'+d+' L'+W+' '+H+' L0 '+H+' Z" fill="url(#'+gid+')" stroke="none"></path>'
+      +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path>'
+      +'</svg>';
+  }
+  function load(){
+    if(cache[tf]){ draw(cache[tf]); return; }
+    var days=DAYS[tf]||1;
+    j("https://api.coingecko.com/api/v3/coins/stellar/market_chart?vs_currency=usd&days="+days)
+      .then(function(d){
+        var pr=(d&&d.prices)||[];
+        var v=pr.map(function(x){return +x[1];}).filter(function(x){return x>0;});
+        // 1Y comes back daily and 24H five-minutely; thin the long ranges so the line stays readable
+        if(v.length>180){ var step=Math.ceil(v.length/180),out=[];
+          for(var i=0;i<v.length;i+=step)out.push(v[i]);
+          if(out[out.length-1]!==v[v.length-1])out.push(v[v.length-1]);
+          v=out; }
+        cache[tf]=v; draw(v);
+      }).catch(function(){ draw(null); });
+  }
+  function paintPrice(c){
+    if(!c)return; var p=build(); if(!p)return;
+    var el=p.querySelector(".lx-xt-price"), ch=p.querySelector(".lx-xt-chg");
+    if(el&&c.usd!=null)el.textContent=money(c.usd);
+    if(ch&&c.usd_24h_change!=null){
+      var u=c.usd_24h_change>=0;
+      ch.className="lx-xt-chg "+(u?"up":"down");
+      ch.textContent=Math.abs(c.usd_24h_change).toFixed(2)+"% (24h)";
+    }
+  }
+  // _realdata.js already asks CoinGecko for exactly this object on the same page. CoinGecko's free
+  // tier is a handful of calls a minute, so this waits for that one rather than making a second --
+  // and only falls back to its own request if that never arrives.
+  function price(){
+    if(window.__lxCG){ paintPrice(window.__lxCG); return; }
+    var done=false;
+    try{ window.addEventListener("lx:cg",function(){ done=true; paintPrice(window.__lxCG); }); }catch(_){}
+    setTimeout(function(){
+      if(done||window.__lxCG){ paintPrice(window.__lxCG); return; }
+      j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_change=true")
+        .then(function(d){ paintPrice((d&&d.stellar)||null); }).catch(function(){});
+    },6000);
+  }
+  // The ledger height, as the "network is alive" signal. One Horizon call, on a slow beat.
+  function ledger(){
+    j("https://horizon.stellar.org/ledgers?order=desc&limit=1").then(function(d){
+      var r=((d._embedded&&d._embedded.records)||[])[0]; if(!r)return;
+      var row=document.querySelector(".status-row"); if(!row)return;
+      var pill=row.querySelector(".lx-ledgerpill");
+      if(!pill){
+        pill=document.createElement("span");
+        pill.className="status-pill lx-ledgerpill"; pill.setAttribute("data-lx-noswap","");
+        pill.innerHTML='<span class="lbl">Ledger</span><span class="val"></span>';
+        row.appendChild(pill);
+      }
+      var v=pill.querySelector(".val");
+      var t=String(r.sequence).replace(/\B(?=(\d{3})+(?!\d))/g,",");
+      if(v&&v.textContent!==t)v.textContent=t;
+    }).catch(function(){});
+  }
+  // #1: keep the strip inside the card. _realdata.js rebuilds the value pills in place on every stats()
+  // pass -- it does not move the row -- but the dashboard's own re-skin can re-parent it, and build()
+  // only runs once. Re-asserting costs an identity check and is a no-op the rest of the time.
+  function place(){
+    var p=document.querySelector(".lx-xlmpanel"), row=document.querySelector(".status-row");
+    if(!p||!row)return;
+    if(row.parentNode!==p||p.lastElementChild!==row)p.appendChild(row);
+  }
+  // _realdata.js rebuilds the four pills on every stats() pass, which drops ours -- so it is
+  // re-added on the same beat rather than once.
+  function run(){ build(); place(); load(); price(); ledger(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+  setInterval(function(){ place(); price(); ledger(); },45000);
+  // The strip is re-parented the moment it exists rather than on the 45s beat: _realdata.js paints its
+  // warm-cache values before this file's first run in some orders, and a strip that appears outside the
+  // card and then jumps into it is a flash.
+  try{ new MutationObserver(function(){ place(); })
+    .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
@@ -7693,7 +7830,8 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       .catch(function(){ delete P[addr]; return false; });
     return P[addr];
   };
-  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>Unsafe</span>';
+  var WARN_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>';
+  var UNSAFE_TAG='<span class="lx-unsafetag" title="Flagged as malicious on stellar.expert">'+WARN_SVG+'Unsafe</span>';
 
   // Live mainnet asset search. The old build filtered a hardcoded five-token array, so every real asset
   // ("SHX", "yBTC", anything a user actually looks for) came back "no match".
@@ -7714,6 +7852,17 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
   // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
   var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
+  // The codes that mean exactly one issuer -- see CANONICAL in lib.js for why this is NOT derived
+  // from VFD, and why it is the only check that catches a fake which owns its own domain.
+  var CANON={"USDC":{"issuer":"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN","by":"Circle"},"EURC":{"issuer":"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2","by":"Circle"},"yXLM":{"issuer":"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55","by":"Ultra Capital"},"yUSDC":{"issuer":"GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF","by":"Ultra Capital"},"SHX":{"issuer":"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH","by":"Stronghold"},"AQUA":{"issuer":"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA","by":"Aquarius"},"LUMOS":{"issuer":"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S","by":"LumosCore"}};
+  // A ticker wearing someone else’s name. Local, so it is on the row from the first paint: no
+  // round trip, nothing to wait for, and nothing an unreachable server can suppress.
+  function fakeTag(code,issuer){
+    var c=CANON[code]; if(!c||!issuer||c.issuer===issuer)return "";
+    return '<span class="lx-unsafetag" title="The real '+esc(code)+' is issued by '+esc(c.by)
+      +' ('+esc(short(c.issuer))+'). This one has the same ticker and a different issuer.">'
+      +WARN_SVG+'Not the real '+esc(code)+'</span>';
+  }
 
   // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
   // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
@@ -7731,7 +7880,7 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
     // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" data-lxiss="'+esc(t.issuer)+'" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
       ico+
-      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+fakeTag(t.code,t.issuer)+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
       '<div class="sp-sub">'+esc(t.code)+' · '+esc(sub)+'</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
   }
@@ -8071,142 +8220,5 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
-})();</script><script id="lx-realdata">(function(){if(window.__lxRealData)return;window.__lxRealData=1;function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}if(net()!=="stellar")return;var SWAP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M4 13h11"/><path d="M17 14l3-3-3-3"/><path d="M20 11H9"/></svg>',DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}function usd(n){return "$"+abbr(n);}function amt(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";if(a>=1)return (Math.round(n*100)/100).toString();if(a>0){var s=n.toFixed(7).replace(/0+$/,"").replace(/\.$/,"");return s&&s!=="0"?s:"<0.0000001";}return "0";}function price(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}function ago(t){var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);if(s<60)return Math.floor(s)+"s";if(s<3600)return Math.floor(s/60)+"m";if(s<86400)return Math.floor(s/3600)+"h";return Math.floor(s/86400)+"d";}function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}function vpill(lbl,val,tip){return '<span class="status-pill" data-lx-noswap=""'+(tip?' title="'+tip+'"':"")+'><span class="lbl">'+lbl+'</span><span class="val">'+val+'</span></span>';}function rebuildStats(tvl,mc,vol,pr,trd,trdTip){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");[].slice.call(row.querySelectorAll(".status-pill")).forEach(function(p){if(p!==net)p.parentNode.removeChild(p);});var frag=document.createElement("div");frag.innerHTML=vpill("TVL",tvl)+vpill("Market cap",mc)+vpill("24h Volume",vol)+vpill("Trades",trd||"\u2014",trdTip||"");while(frag.firstChild)row.appendChild(frag.firstChild);row.classList.add("lx-ready");}function stats(){Promise.all([j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_vol=true&include_market_cap=true&include_24hr_change=true"),j("https://api.llama.fi/v2/chains").catch(function(){return null;}),j("/lxapi/netstats").catch(function(){return null;})]).then(function(res){var cg=(res[0]&&res[0].stellar)||{};var chains=res[1];var ns=res[2];try{window.__lxCG=cg;window.dispatchEvent(new CustomEvent("lx:cg"));}catch(_){}var pr=cg.usd,vol=cg.usd_24h_vol,mc=cg.usd_market_cap,tvl=null;if(chains&&chains.length){var s=chains.filter(function(c){return c.gecko_id==="stellar"||/^stellar$/i.test(c.name||"");})[0];if(s)tvl=s.tvl;}var _t="",_tt="";if(ns&&ns.trades>0){_t=(+ns.trades).toLocaleString("en-US");try{_tt="Trades settled on Stellar on "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC)";}catch(_){}}var _v=[tvl!=null?usd(tvl):"\u2014",mc!=null?usd(mc):"\u2014",(vol!=null&&pr)?abbr(vol/pr)+" XLM":"\u2014",pr!=null?price(pr):"\u2014",_t,_tt];rebuildStats(_v[0],_v[1],_v[2],_v[3],_v[4],_v[5]);try{localStorage.setItem("lumos.netstats",JSON.stringify(_v));}catch(_){}}).catch(function(){});}var LX_FEEACCT="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";var XPI='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';function acode(o,p){return (o[p+"_asset_type"]==="native"||!o[p+"_asset_code"])?"XLM":o[p+"_asset_code"];}function describeOp(o){if(!o)return null;if(o.type&&o.type.indexOf("path_payment")===0)return {ic:SWAP,cls:"swap",type:"Swap <b>"+amt(+o.source_amount)+" "+esc(acode(o,"source"))+"</b> \u2192 "+amt(+o.amount)+" "+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code),via:"via LumosCore"};if(o.type==="payment")return {ic:SWAP,cls:"swap",type:"Transfer <b>"+amt(+o.amount)+" "+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",via:"via LumosCore"};if(o.type&&o.type.indexOf("offer")>=0)return {ic:DROP,cls:"lp",type:"Order <b>"+amt(+o.amount)+" "+esc(acode(o,"selling"))+"</b> / "+esc(acode(o,"buying")),via:"via LumosCore"};if(o.type&&o.type.indexOf("liquidity_pool")===0)return {ic:DROP,cls:"lp",type:(o.type.indexOf("deposit")>=0?"Added liquidity":"Removed liquidity"),via:"via LumosCore"};return {ic:SWAP,cls:"swap",type:esc(String(o.type||"Activity").split("_").join(" ")),via:"via LumosCore"};}function feedRow(r){return '<div class="activity-feed-row" data-lx-noswap="1"><div class="act-ic '+r.cls+'">'+r.ic+'</div>'+'<div class="info"><div class="type">'+r.type+'</div><div class="meta">'+r.via+'</div></div>'+'<div class="time">'+r.when+'</div>'+'<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/'+esc(r.hash)+'" target="_blank" rel="noopener" title="View transaction">'+XPI+'</a>'+'</div>';}function feed(){var list=document.getElementById("activityList");if(!list)return;j("https://horizon.stellar.org/accounts/"+LX_FEEACCT+"/payments?order=desc&limit=40").then(function(d){var recs=((d._embedded&&d._embedded.records)||[]).filter(function(o){return o.to===LX_FEEACCT&&o.from&&o.from!==LX_FEEACCT;});if(!recs.length){list.innerHTML='<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>';return;}var use=recs.slice(0,8);var rows=use.map(function(o){return {ic:SWAP,cls:"swap",type:"Platform activity",via:"via LumosCore",when:ago(o.created_at),hash:o.transaction_hash};});list.innerHTML=rows.map(feedRow).join("");use.forEach(function(o,i){j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20").then(function(t){var ops=((t._embedded&&t._embedded.records)||[]).filter(function(x){return !(x.type==="payment"&&x.to===LX_FEEACCT);});var pick=ops.filter(function(x){return x.type&&x.type.indexOf("path_payment")===0;})[0]||ops.filter(function(x){return x.type&&(x.type.indexOf("offer")>=0||x.type.indexOf("liquidity_pool")===0);})[0]||ops[0];var de=describeOp(pick); if(!de)return;rows[i].ic=de.ic;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].via=de.via;list.innerHTML=rows.map(feedRow).join("");}).catch(function(){});});}).catch(function(){});}function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}if(c&&c.length===6)rebuildStats(c[0],c[1],c[2],c[3],c[4],c[5]);else rebuildStats("\u2026","\u2026","\u2026","\u2026","\u2026","");}function run(){prep();stats();feed();}if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);setInterval(feed,60000);setInterval(stats,45000);})();</script><script id="lx-dashtop">(function(){
-  if(window.__lxDashTop)return;window.__lxDashTop=1;
-  function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}
-  if(net()!=="stellar")return;
-  var DAYS={"24H":1,"7D":7,"1M":30,"1Y":365}, tf="24H", cache={}, series=null;
-  function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
-  function money(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}
-  function build(){
-    var row=document.querySelector(".status-row"); if(!row)return null;
-    // Document-wide, NOT host.querySelector. Once the strip has moved inside the panel, row.parentNode
-    // IS the panel -- and an element is not its own descendant, so the host lookup found nothing and
-    // this built a SECOND panel inside the first one. Everything then painted into the copy: the price
-    // stayed a dash and the chart stayed empty on the panel you could actually see.
-    var p=document.querySelector(".lx-xlmpanel");
-    if(p)return p;
-    var host=row.parentNode; if(!host)return null;
-    p=document.createElement("div"); p.className="lx-xlmpanel"; p.setAttribute("data-lx-noswap","1");
-    p.innerHTML='<div class="lx-xt-l">'
-      +'<span class="lx-xt-lbl">Stellar (XLM)</span>'
-      +'<div class="lx-xt-row"><span class="lx-xt-price">\u2014</span><span class="lx-xt-chg"></span></div>'
-      +'<div class="lx-xt-tfs">'
-        +'<button type="button" data-lxnonav="1" data-tf="24H" class="active">24H</button>'
-        +'<button type="button" data-lxnonav="1" data-tf="7D">7D</button>'
-        +'<button type="button" data-lxnonav="1" data-tf="1M">1M</button>'
-        +'<button type="button" data-lxnonav="1" data-tf="1Y">1Y</button>'
-      +'</div></div>'
-      +'<div class="lx-xt-chart lx-empty"></div>';
-    host.insertBefore(p,row);
-    p.appendChild(row);            // #1: the strip lives inside the card -- see place()
-    // The dashboard maps clicked label text to a destination, so a control inside it needs the
-    // design's own opt-out or "1M" and friends navigate the page away.
-    [].slice.call(p.querySelectorAll(".lx-xt-tfs button")).forEach(function(b){
-      b.addEventListener("click",function(e){
-        try{e.preventDefault();e.stopPropagation();}catch(_){}
-        var t=b.getAttribute("data-tf"); if(t===tf)return; tf=t;
-        [].slice.call(p.querySelectorAll(".lx-xt-tfs button")).forEach(function(x){x.classList.toggle("active",x===b);});
-        load();
-      });
-    });
-    return p;
-  }
-  function draw(pts){
-    var p=build(); if(!p)return;
-    var box=p.querySelector(".lx-xt-chart"); if(!box)return;
-    if(!pts||pts.length<2){ box.classList.add("lx-empty"); box.innerHTML=""; return; }
-    box.classList.remove("lx-empty");
-    var W=420,H=104,PAD=6,n=pts.length;
-    var mn=Math.min.apply(null,pts),mx=Math.max.apply(null,pts),rg=(mx-mn)||Math.abs(mx)||1;
-    var up=pts[n-1]>=pts[0], col=up?"#35c07f":"#ff5b5b";
-    var d="";
-    for(var i=0;i<n;i++){
-      var x=(i/(n-1))*W, y=H-PAD-((pts[i]-mn)/rg)*(H-PAD*2);
-      d+=(i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1);
-    }
-    var gid="lxxt"+(up?"u":"d");
-    box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'
-      +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
-      +'<stop offset="0" stop-color="'+col+'" stop-opacity=".26"/>'
-      +'<stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
-      +'<path d="'+d+' L'+W+' '+H+' L0 '+H+' Z" fill="url(#'+gid+')" stroke="none"></path>'
-      +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path>'
-      +'</svg>';
-  }
-  function load(){
-    if(cache[tf]){ draw(cache[tf]); return; }
-    var days=DAYS[tf]||1;
-    j("https://api.coingecko.com/api/v3/coins/stellar/market_chart?vs_currency=usd&days="+days)
-      .then(function(d){
-        var pr=(d&&d.prices)||[];
-        var v=pr.map(function(x){return +x[1];}).filter(function(x){return x>0;});
-        // 1Y comes back daily and 24H five-minutely; thin the long ranges so the line stays readable
-        if(v.length>180){ var step=Math.ceil(v.length/180),out=[];
-          for(var i=0;i<v.length;i+=step)out.push(v[i]);
-          if(out[out.length-1]!==v[v.length-1])out.push(v[v.length-1]);
-          v=out; }
-        cache[tf]=v; draw(v);
-      }).catch(function(){ draw(null); });
-  }
-  function paintPrice(c){
-    if(!c)return; var p=build(); if(!p)return;
-    var el=p.querySelector(".lx-xt-price"), ch=p.querySelector(".lx-xt-chg");
-    if(el&&c.usd!=null)el.textContent=money(c.usd);
-    if(ch&&c.usd_24h_change!=null){
-      var u=c.usd_24h_change>=0;
-      ch.className="lx-xt-chg "+(u?"up":"down");
-      ch.textContent=Math.abs(c.usd_24h_change).toFixed(2)+"% (24h)";
-    }
-  }
-  // _realdata.js already asks CoinGecko for exactly this object on the same page. CoinGecko's free
-  // tier is a handful of calls a minute, so this waits for that one rather than making a second --
-  // and only falls back to its own request if that never arrives.
-  function price(){
-    if(window.__lxCG){ paintPrice(window.__lxCG); return; }
-    var done=false;
-    try{ window.addEventListener("lx:cg",function(){ done=true; paintPrice(window.__lxCG); }); }catch(_){}
-    setTimeout(function(){
-      if(done||window.__lxCG){ paintPrice(window.__lxCG); return; }
-      j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_change=true")
-        .then(function(d){ paintPrice((d&&d.stellar)||null); }).catch(function(){});
-    },6000);
-  }
-  // The ledger height, as the "network is alive" signal. One Horizon call, on a slow beat.
-  function ledger(){
-    j("https://horizon.stellar.org/ledgers?order=desc&limit=1").then(function(d){
-      var r=((d._embedded&&d._embedded.records)||[])[0]; if(!r)return;
-      var row=document.querySelector(".status-row"); if(!row)return;
-      var pill=row.querySelector(".lx-ledgerpill");
-      if(!pill){
-        pill=document.createElement("span");
-        pill.className="status-pill lx-ledgerpill"; pill.setAttribute("data-lx-noswap","");
-        pill.innerHTML='<span class="lbl">Ledger</span><span class="val"></span>';
-        row.appendChild(pill);
-      }
-      var v=pill.querySelector(".val");
-      var t=String(r.sequence).replace(/\B(?=(\d{3})+(?!\d))/g,",");
-      if(v&&v.textContent!==t)v.textContent=t;
-    }).catch(function(){});
-  }
-  // #1: keep the strip inside the card. _realdata.js rebuilds the value pills in place on every stats()
-  // pass -- it does not move the row -- but the dashboard's own re-skin can re-parent it, and build()
-  // only runs once. Re-asserting costs an identity check and is a no-op the rest of the time.
-  function place(){
-    var p=document.querySelector(".lx-xlmpanel"), row=document.querySelector(".status-row");
-    if(!p||!row)return;
-    if(row.parentNode!==p||p.lastElementChild!==row)p.appendChild(row);
-  }
-  // _realdata.js rebuilds the four pills on every stats() pass, which drops ours -- so it is
-  // re-added on the same beat rather than once.
-  function run(){ build(); place(); load(); price(); ledger(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
-  else run();
-  setInterval(function(){ place(); price(); ledger(); },45000);
-  // The strip is re-parented the moment it exists rather than on the 45s beat: _realdata.js paints its
-  // warm-cache values before this file's first run in some orders, and a strip that appears outside the
-  // card and then jumps into it is a flash.
-  try{ new MutationObserver(function(){ place(); })
-    .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>
