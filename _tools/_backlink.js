@@ -126,6 +126,10 @@ for (const dev of ['desktop', 'mobile']) {
       });
     }
     if (!did) continue;
+    // A page can ship more than one back affordance -- LUMOS mobile had "Back to Home" as a
+    // .back-link AND a .crumb, and normalising one left the other stacked above it. Drop any
+    // .back-link that is not the one just written.
+    p = p.replace(/<a class="back-link"(?![^>]*data-lxback)[^>]*>[\s\S]{0,600}?<\/a>/g, '');
 
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + GUARD + '</head>');
     if (p !== before) { json[k] = p; changed = true; fixed++; }

@@ -48,7 +48,14 @@ const STYLE = `<style id="lx-lumosutil-css">
 .util-card.fee>.u-ico,.util-card.fee>h4,.util-card.fee>p,.util-card.fee>.u-link{grid-column:1;margin-right:0}
 .util-card.fee>p{max-width:62ch}
 .util-card.fee>.u-link{justify-self:start}
-.util-card.fee>.lxu-figure{grid-column:2;grid-row:1/-1;align-self:center;justify-self:end}
+/* Row 2 onwards, not row 1. .u-tag ("Live") is positioned absolutely at top:14px/right:14px, which
+   is the same corner the figure was spanning into -- so the badge landed on top of the 0.1%. Starting
+   the figure below the icon row clears it without moving the badge every other card shares. */
+/* "2 / span 3", NOT "2 / -1". This grid declares no grid-template-rows, so every row is implicit and
+   -1 resolves against the EXPLICIT grid -- which has one line. The span collapsed back onto row 1,
+   which is the row the Live badge floats over, which is why the badge kept landing on the 0.1%. */
+.util-card.fee>.lxu-figure{grid-column:2;grid-row:2/span 3;align-self:end;justify-self:end;
+  padding-left:8px;padding-bottom:4px}
 
 /* the rate, as a figure */
 .lxu-figure{display:flex;flex-direction:column;align-items:flex-end;gap:9px;flex:0 0 auto}
@@ -96,7 +103,10 @@ for (const dev of ['desktop', 'mobile']) {
     let p = json[k];
     const before = p;
     p = p.replace(/<style id="lx-lumosutil-css">[\s\S]*?<\/style>/, '')
-         .replace(/<div class="lxu-figure"[\s\S]*?<\/div><\/div>/, '');   // strip a previous figure
+         // The figure ends "</span></div>" -- it contains ONE </div>, not two. Ending this match at
+         // </div></div> meant it never matched the figure at all: it ran forward to the next place in
+         // the page where two divs happen to close together and deleted everything in between.
+         .replace(/<div class="lxu-figure"[\s\S]*?<\/span><\/div>/, '');   // strip a previous figure
 
     for (const [from, to] of COPY) if (p.indexOf(from) >= 0) { p = p.split(from).join(to); copyFixed++; }
 
