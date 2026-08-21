@@ -2182,7 +2182,25 @@ html .mdx-mover-list .dex-mover-card:has(.dex-mover-pct.down){
    nothing to do with it -- and the full-width one is the one worth keeping: the headline gets its
    own line, and the four stats sit across the bottom instead of being squeezed into half the width.
    One column at every rail state, so the card below the list is where that panel always lives. */
-</style><style id="lx-heromono-css">
+</style><style id="lx-backlink-css">
+/* The MCP page styles its own crumb at 13px with no arrow slot; matched to .crumb so the link reads
+   the same size and weight as it does on every other page. */
+.mcp-crumb{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--text-soft);margin:0 0 14px}
+.mcp-crumb a{display:inline-flex;align-items:center;gap:4px;color:var(--text-muted);text-decoration:none}
+.mcp-crumb a:hover{color:var(--accent)}
+/* One size everywhere. Measured across the builds these were 13px (MCP), 15px (Trade, Pools, Bridge),
+   16.5px (Wallet, Rewards, Launchpad) and 17px (LUMOS Token) -- the same control in four sizes. 15px
+   is Trade's, which is the one that was called correct. Colour likewise: some inherited --text-soft
+   and some --text-muted. Weight is deliberately left to each page, so nothing else shifts. */
+/* !important because .back-link ties a bare attribute selector on specificity, which left Wallet,
+   Rewards and Launchpad at 16.5px while the rest moved to 15. */
+html [data-lxback]{font-size:15px!important;color:var(--text-muted);display:inline-flex;
+  align-items:center;gap:4px;text-decoration:none}
+[data-lxback]:hover{color:var(--accent)}
+[data-lxback] svg{width:13px;height:13px;flex:0 0 auto}
+/* No wallet, no dashboard link. Hidden by a rule rather than by script so it never paints first. */
+html.lx-noconn [data-lxdash]{display:none!important}
+</style><script id="lx-backlink-guard">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))document.documentElement.className+=" lx-noconn";}catch(_){ }})();</script><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
    ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
@@ -2293,12 +2311,7 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] 
     <main class="page">
 
   <!-- Crumb -->
-  <div class="crumb">
-    <a href="/dashboard">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>
-      Back to dashboard
-    </a>
-  </div>
+  <div class="crumb"><a href="/dashboard" data-lxback="1" data-lxdash="1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg> Back to dashboard</a></div>
 
   <!-- ===== DEX hero (launchpad-style) ===== -->
   <section class="dex-hero">

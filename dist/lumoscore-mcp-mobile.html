@@ -1606,7 +1606,25 @@ html[data-theme="light"] .dropdown-menu { box-shadow: 0 12px 28px rgba(15,15,20,
 .lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
-</style></head>
+</style><style id="lx-backlink-css">
+/* The MCP page styles its own crumb at 13px with no arrow slot; matched to .crumb so the link reads
+   the same size and weight as it does on every other page. */
+.mcp-crumb{display:flex;align-items:center;gap:8px;font-size:15px;color:var(--text-soft);margin:0 0 14px}
+.mcp-crumb a{display:inline-flex;align-items:center;gap:4px;color:var(--text-muted);text-decoration:none}
+.mcp-crumb a:hover{color:var(--accent)}
+/* One size everywhere. Measured across the builds these were 13px (MCP), 15px (Trade, Pools, Bridge),
+   16.5px (Wallet, Rewards, Launchpad) and 17px (LUMOS Token) -- the same control in four sizes. 15px
+   is Trade's, which is the one that was called correct. Colour likewise: some inherited --text-soft
+   and some --text-muted. Weight is deliberately left to each page, so nothing else shifts. */
+/* !important because .back-link ties a bare attribute selector on specificity, which left Wallet,
+   Rewards and Launchpad at 16.5px while the rest moved to 15. */
+html [data-lxback]{font-size:15px!important;color:var(--text-muted);display:inline-flex;
+  align-items:center;gap:4px;text-decoration:none}
+[data-lxback]:hover{color:var(--accent)}
+[data-lxback] svg{width:13px;height:13px;flex:0 0 auto}
+/* No wallet, no dashboard link. Hidden by a rule rather than by script so it never paints first. */
+html.lx-noconn [data-lxdash]{display:none!important}
+</style><script id="lx-backlink-guard">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))document.documentElement.className+=" lx-noconn";}catch(_){ }})();</script></head>
 <body>
 
   <!-- App bar -->
@@ -1622,7 +1640,7 @@ html[data-theme="light"] .dropdown-menu { box-shadow: 0 12px 28px rgba(15,15,20,
 </header>
 
   <main class="page"><div class="mcp-wrap">
-<div class="mcp-crumb"><a href="/dashboard">Home</a> <span>/</span> MCP CLI</div>
+<div class="mcp-crumb"><a href="/dashboard" data-lxback="1" data-lxdash="1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg> Back to dashboard</a></div>
 
 <section class="lxh">
   <div class="lxh-grid"></div>
