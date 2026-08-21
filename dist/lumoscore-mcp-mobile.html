@@ -1624,7 +1624,36 @@ html [data-lxback]{font-size:15px!important;color:var(--text-muted);display:inli
 [data-lxback] svg{width:13px;height:13px;flex:0 0 auto}
 /* No wallet, no dashboard link. Hidden by a rule rather than by script so it never paints first. */
 html.lx-noconn [data-lxdash]{display:none!important}
-</style><script id="lx-backlink-guard">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))document.documentElement.className+=" lx-noconn";}catch(_){ }})();</script><style id="lx-mobmenu-css">
+</style><script id="lx-backlink-guard">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))document.documentElement.className+=" lx-noconn";}catch(_){ }})();</script><style id="lx-pairicons-css">
+/* The wrapper: a fixed 46px box holding two absolutely-placed logos becomes a flow row.
+   [data-paired] is the marker the runtime pair builders stamp on every pair they draw; .pair-cell is
+   the table/list cell the static ones sit in. Between them they cover Pools main, the pool page,
+   Wallet and public-address liquidity rows, search and the LUMOS token page. */
+/* .ph-icons is the pool page's own header pair -- same overlapping treatment, different class. */
+.pair-icons[data-paired],.pair-cell .pair-icons,.pool-header-row .ph-icons{
+  position:static!important;display:inline-flex!important;align-items:center;gap:6px;
+  width:auto!important;height:auto!important;flex:0 0 auto;overflow:visible}
+/* The children have to be named to win. The design pins them with three-class selectors
+   (.pool-card .pair-icons .b { left:12px }), so a child selector at two classes loses and they stay stacked --
+   which is exactly what the first attempt at this did. Three classes here beats that, and stays BELOW
+   the four-class hero rules in _poolshero.js, so the Trade and Pools hero marks keep overlapping. */
+html body .pair-icons[data-paired]>.pa,html body .pair-icons[data-paired]>.pb,
+html body .pair-icons[data-paired]>.a,html body .pair-icons[data-paired]>.b,
+html body .pair-cell .pair-icons>.pa,html body .pair-cell .pair-icons>.pb,
+html body .pair-cell .pair-icons>.a,html body .pair-cell .pair-icons>.b,
+html body .pool-header-row .ph-icons>*{
+  position:relative!important;left:auto!important;right:auto!important;top:auto!important;
+  bottom:auto!important;margin:0!important;flex:0 0 auto;
+  /* the ring existed to separate two overlapping coins; there is nothing to separate now */
+  box-shadow:none!important}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+</style><style id="lx-mobmenu-css">
 /* ---- the panel ------------------------------------------------------------------------------- */
 .slide-menu .menu-head{padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:6px}
 .slide-menu .menu-head .lbl{font:800 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;
@@ -1671,28 +1700,6 @@ html.lx-noconn [data-lxdash]{display:none!important}
 /* the wallet card is not a nav row -- it must not grow a chevron or a tile */
 .slide-menu .menu-user a::after{content:none}
 .slide-menu .menu-user a>svg{padding:0;background:none;border-radius:0}
-</style><style id="lx-pairicons-css">
-/* The wrapper: a fixed 46px box holding two absolutely-placed logos becomes a flow row.
-   [data-paired] is the marker the runtime pair builders stamp on every pair they draw; .pair-cell is
-   the table/list cell the static ones sit in. Between them they cover Pools main, the pool page,
-   Wallet and public-address liquidity rows, search and the LUMOS token page. */
-/* .ph-icons is the pool page's own header pair -- same overlapping treatment, different class. */
-.pair-icons[data-paired],.pair-cell .pair-icons,.pool-header-row .ph-icons{
-  position:static!important;display:inline-flex!important;align-items:center;gap:6px;
-  width:auto!important;height:auto!important;flex:0 0 auto;overflow:visible}
-/* The children have to be named to win. The design pins them with three-class selectors
-   (.pool-card .pair-icons .b { left:12px }), so a child selector at two classes loses and they stay stacked --
-   which is exactly what the first attempt at this did. Three classes here beats that, and stays BELOW
-   the four-class hero rules in _poolshero.js, so the Trade and Pools hero marks keep overlapping. */
-html body .pair-icons[data-paired]>.pa,html body .pair-icons[data-paired]>.pb,
-html body .pair-icons[data-paired]>.a,html body .pair-icons[data-paired]>.b,
-html body .pair-cell .pair-icons>.pa,html body .pair-cell .pair-icons>.pb,
-html body .pair-cell .pair-icons>.a,html body .pair-cell .pair-icons>.b,
-html body .pool-header-row .ph-icons>*{
-  position:relative!important;left:auto!important;right:auto!important;top:auto!important;
-  bottom:auto!important;margin:0!important;flex:0 0 auto;
-  /* the ring existed to separate two overlapping coins; there is nothing to separate now */
-  box-shadow:none!important}
 </style></head>
 <body>
 
@@ -2236,7 +2243,7 @@ if(document.readyState!=='loading')boot();else window.addEventListener('load',bo
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <nav class="menu-links"><div class="menu-user"><div class="mu-link"><span class="mu-av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 7l2-3h12l2 3"/><circle cx="17" cy="13" r="1.3"/></svg></span><span class="mu-meta"><span class="mu-name">0x068d…1e1c</span><span class="mu-sub">Connected · Aptos</span></span></div><button class="mu-gear" type="button" aria-label="Disconnect"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button></div><div class="menu-group">Discover</div><a href="#" data-open-search><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search</a><div class="menu-group">Account</div><a href="/wallet"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2.5"/><path d="M17 12.5h.01M2 10h20"/></svg>Wallet</a><a href="/rewards"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M12 8S10.5 3 8 3a2.5 2.5 0 0 0 0 5M12 8s1.5-5 4-5a2.5 2.5 0 0 1 0 5"/></svg>Rewards</a><a href="/mcp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.9 4.9l2.8 2.8"/><path d="M16.3 16.3l2.8 2.8"/><path d="M2 12h4"/><path d="M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>MCP</a><a href="/lumos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.75 1.75 0 0 1 0 3.5h-3a1.75 1.75 0 0 0 0 3.5h4"/></svg>LUMOS Token</a></nav>
+    <nav class="menu-links"><div class="menu-user"><div class="mu-link"><span class="mu-av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h18v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 7l2-3h12l2 3"/><circle cx="17" cy="13" r="1.3"/></svg></span><span class="mu-meta"><span class="mu-name">0x068d…1e1c</span><span class="mu-sub">Connected · Aptos</span></span></div><button class="mu-gear" type="button" aria-label="Disconnect"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button></div><div class="menu-group" data-lxnav="1">Products</div><a href="/dashboard" data-lxnav="1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.6"/><rect x="14" y="3" width="7" height="5" rx="1.6"/><rect x="14" y="12" width="7" height="9" rx="1.6"/><rect x="3" y="16" width="7" height="5" rx="1.6"/></svg>Dashboard</a><a href="/trade/stellar" data-lxnav="1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 6v3"/><rect x="6" y="9" width="4" height="6" rx="1"/><path d="M8 15v3"/><path d="M16 4v2"/><rect x="14" y="6" width="4" height="9" rx="1"/><path d="M16 15v3"/></svg>Trade</a><a href="/pools/stellar" data-lxnav="1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>Pools</a><a href="/bridge" data-lxnav="1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="12" r="2.4"/><circle cx="19" cy="12" r="2.4"/><line x1="7.4" y1="12" x2="16.6" y2="12"/><polyline points="14 9.6 16.6 12 14 14.4"/></svg>Bridge</a><a href="/launchpad" data-lxnav="1"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/></svg>Launchpad</a><div class="menu-group">Discover</div><a href="#" data-open-search><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>Search</a><div class="menu-group">Account</div><a href="/wallet"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="13" rx="2.5"/><path d="M17 12.5h.01M2 10h20"/></svg>Wallet</a><a href="/rewards"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M5 12v9h14v-9"/><path d="M12 8S10.5 3 8 3a2.5 2.5 0 0 0 0 5M12 8s1.5-5 4-5a2.5 2.5 0 0 1 0 5"/></svg>Rewards</a><a href="/mcp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.9 4.9l2.8 2.8"/><path d="M16.3 16.3l2.8 2.8"/><path d="M2 12h4"/><path d="M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>MCP</a><a href="/lumos"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9.5 9.5h4a1.75 1.75 0 0 1 0 3.5h-3a1.75 1.75 0 0 0 0 3.5h4"/></svg>LUMOS Token</a></nav>
   
     <div class="menu-foot">
       <div class="menu-theme-row">
@@ -4164,5 +4171,37 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var seed=(t.value||"").trim(); try{ t.blur(); }catch(_){ } t.value="";
     launchPopup(seed);
   }, true);
+})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  function paint(){
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>

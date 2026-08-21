@@ -49,6 +49,15 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
 .asset-header:not(.lxda) .asset-name,.asset-header:not(.lxda) .asset-ticker,.asset-header:not(.lxda) .asset-description,.asset-header:not(.lxda) .addr,.asset-header:not(.lxda) .website{visibility:hidden}
 .asset-top:not(.lxda) .asset-name,.asset-top:not(.lxda) .asset-ticker,.asset-top:not(.lxda) .asset-description,.asset-top:not(.lxda) .addr,.asset-top:not(.lxda) .website{visibility:hidden}
 .stat-row:not(.lxda) .val,.stat-row:not(.lxda) .sub{visibility:hidden}
+/* #13: four stats on one line. Two big cells became four, so the type steps down rather than the row
+   becoming two rows of cards -- which is what was asked against. minmax(0,1fr) lets a long value
+   shrink its own cell instead of pushing the row wider than the screen. */
+html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important}
+.stat-row .stat-cell{min-width:0}
+.stat-row .stat-cell .lbl{font-size:8.5px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-row .stat-cell .val{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-row .stat-cell .val .u{font-size:9px;margin-left:2px}
+.stat-row .stat-cell .sub{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* AUDIT (flash sweep): the .lxda gates above only covered the header + stat cells. A static-vs-settled diff
    showed 9 more groups still painting the design's Aptos mock (4.2271 APT, 2.66%, 18 holders, 189.93K vol)
    before our data lands. Mask them until they are actually written — .lxp is added by the observer in
@@ -131,6 +140,9 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
    is built on this page too and carries the real series, the same fields desktop shows. Hide the
    design one, and its crosshair with it, since we draw our own. */
 .chart-tip,.chart-hover-line,.chart-hover-dot{display:none!important}
+/* #8: the browser keeps vertical scrolling over the chart; a horizontal drag stops being a scroll
+   gesture and reaches touchmove, which is what lets the readout track a finger. */
+.lxda-cwrap,.chart-body,.chart-area,#dxaChart,#mdxaChart{touch-action:pan-y}
 /* chart hover readout */
 .lxda-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
 .lxda-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:2px}
@@ -898,6 +910,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     }
     function leave(){ ["lxda-chtip","lxda-chdot","lxda-chvl"].forEach(function(c){ var el=pc.querySelector("."+c); if(el)el.style.opacity=0; }); }
     pc.addEventListener("mousemove",move); pc.addEventListener("mouseleave",leave);
+    // follow a finger, not just a tap
+    function tmove(ev){ var t=ev.touches&&ev.touches[0]; if(!t)return;
+      move({clientX:t.clientX,clientY:t.clientY,target:ev.target}); }
+    pc.addEventListener("touchstart",tmove,{passive:true});
+    pc.addEventListener("touchmove",tmove,{passive:true});
+    pc.addEventListener("touchend",leave); pc.addEventListener("touchcancel",leave);
   }
   // Build a price series straight from executed trades. Used when trade_aggregations is empty, which is
   // ALWAYS the case for AMM-only assets (Horizon aggregates order-book trades only). Real executions, in
@@ -2712,6 +2730,18 @@ for (const file of files) {
     // the exact literals at build time — display strings only, never identifiers, so a runtime script that
     // looks tokens up by "APT" can never be broken by this. Idempotent: literals are gone after one pass.
     if (k.indexOf('mobile') >= 0) {
+      // #13: Market Cap and Supply, which the phone stat row never carried. Four cells across ONE row
+      // rather than a second row of cards -- see the stat-row rules in the stylesheet for the sizing
+      // that makes four fit a 331px column.
+      if (p.indexOf('>Market Cap<') < 0) {
+        p = p.replace(/(<div class="stat-row">[\s\S]*?)(<\/div>\s*<!-- Chart inside same card -->)/,
+          function (all, body, tail) {
+            return body
+              + '<div class="stat-cell"><div class="lbl">Market Cap</div><div class="val mono">\u2014</div><div class="sub"></div></div>'
+              + '<div class="stat-cell"><div class="lbl">Supply</div><div class="val mono">\u2014</div><div class="sub"></div></div>'
+              + tail;
+          });
+      }
       [['Bal: 1,250 APT', 'Bal: 1,250 XLM'],
        ['Avail: 1,250 APT', 'Avail: 1,250 XLM'],
        ['1 APT = 0.23659 USDC', '1 XLM = 0.23659 USDC'],
