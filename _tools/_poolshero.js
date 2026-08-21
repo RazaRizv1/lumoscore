@@ -124,6 +124,12 @@ html[data-theme="light"] .lm-pools .lx-heroico{box-shadow:0 6px 18px -10px rgba(
 .lm-pools .lx-hstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
 .lm-pools .lx-hstat[data-k=top] .v{font-size:18px}
 .lm-pools .lx-hstat[data-k=top] .pair-icons{width:46px;height:28px;flex:0 0 46px;overflow:visible}
+/* The hero keeps its overlapping marks (asked for explicitly), so it states that itself instead of
+   leaning on the design's absolute offsets -- _pairicons.js unpins those everywhere else, and the
+   hero was collateral the first time. Five classes here; that file stays at three. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons{display:inline-flex!important;align-items:center;gap:0!important;width:auto!important}
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{position:static!important;left:auto!important}
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico+.lx-ico{margin-left:-10px!important}
 .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{width:28px!important;height:28px!important}
 /* Stat colours -- both themes -- belong to _heromono.js, so Trade and Pools cannot disagree about
    them. They were declared here too, and with _heromono now in <head> this later copy would win. */
