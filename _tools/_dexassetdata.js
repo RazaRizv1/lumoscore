@@ -2723,7 +2723,7 @@ for (const file of files) {
        ['>10+ APT<', '>10+ XLM<'],
        ['>100+ APT<', '>100+ XLM<'],
        ['>1K+ APT<', '>1K+ XLM<'],
-       ['>10K+ APT<', '>10K+ XLM<'],
+       // #15: the 10K+ chip is removed outright below, so there is no label left to rename.
        ["+ ' APT');", "+ ' XLM');"]                     // design chart-tooltip unit (display concat only)
       ].forEach(function (r) { p = p.split(r[0]).join(r[1]); });
     }
@@ -2732,6 +2732,11 @@ for (const file of files) {
     // to relabel. Idempotent: after one pass no APT remains inside the filters block.
     p = p.replace(/(<div class="filters" id="dxaPanelFilters">[\s\S]*?<\/div>)/,
                   function (blk) { return blk.replace(/\bAPT\b/g, 'XLM'); });
+    // #15: drop the 10K+ chip. Recent Exchanges crawls back a bounded number of operations, so on most
+    // assets this filter returns nothing at all -- a control that reads as broken more often than it
+    // reads as useful. Matched on data-min-xlm rather than on the label, so it goes whether the markup
+    // still says APT or has already been relabelled to XLM.
+    p = p.replace(/<button class="chip" data-min-xlm="10000">[^<]*<\/button>\s*/g, '');
     // The "$" the design bakes into the logo tile. With the blue gradient behind it (see the CSS above)
     // it reads as USDC on every asset page until our script runs. Removed in the markup so there is
     // nothing to clear at runtime. Idempotent: after one pass the tile is empty and no match remains.

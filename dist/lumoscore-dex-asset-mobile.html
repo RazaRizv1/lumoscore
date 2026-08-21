@@ -2205,6 +2205,75 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
 .lx-rechead .lx-recclear:hover{color:var(--accent)}
 .lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
 .lx-seavfd svg{width:9px;height:9px;display:block}
+</style><style id="lx-pairicons-css">
+/* The wrapper: a fixed 46px box holding two absolutely-placed logos becomes a flow row.
+   [data-paired] is the marker the runtime pair builders stamp on every pair they draw; .pair-cell is
+   the table/list cell the static ones sit in. Between them they cover Pools main, the pool page,
+   Wallet and public-address liquidity rows, search and the LUMOS token page. */
+/* .ph-icons is the pool page's own header pair -- same overlapping treatment, different class. */
+.pair-icons[data-paired],.pair-cell .pair-icons,.pool-header-row .ph-icons{
+  position:static!important;display:inline-flex!important;align-items:center;gap:6px;
+  width:auto!important;height:auto!important;flex:0 0 auto;overflow:visible}
+/* The children have to be named to win. The design pins them with three-class selectors
+   (.pool-card .pair-icons .b { left:12px }), so a child selector at two classes loses and they stay stacked --
+   which is exactly what the first attempt at this did. Three classes here beats that, and stays BELOW
+   the four-class hero rules in _poolshero.js, so the Trade and Pools hero marks keep overlapping. */
+html body .pair-icons[data-paired]>.pa,html body .pair-icons[data-paired]>.pb,
+html body .pair-icons[data-paired]>.a,html body .pair-icons[data-paired]>.b,
+html body .pair-cell .pair-icons>.pa,html body .pair-cell .pair-icons>.pb,
+html body .pair-cell .pair-icons>.a,html body .pair-cell .pair-icons>.b,
+html body .pool-header-row .ph-icons>*{
+  position:static!important;left:auto!important;right:auto!important;top:auto!important;
+  bottom:auto!important;margin:0!important;flex:0 0 auto;
+  /* the ring existed to separate two overlapping coins; there is nothing to separate now */
+  box-shadow:none!important}
+</style><style id="lx-mobmenu-css">
+/* ---- the panel ------------------------------------------------------------------------------- */
+.slide-menu .menu-head{padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:6px}
+.slide-menu .menu-head .lbl{font:800 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--text-soft)}
+.slide-menu .menu-close{border-radius:10px;transition:background .15s ease,color .15s ease}
+.slide-menu .menu-close:hover,.slide-menu .menu-close:active{background:var(--surface-2);color:var(--text)}
+
+/* ---- the connected wallet ---------------------------------------------------------------------- */
+/* It was one more row in the stack. It is the single most important thing in this panel -- who you
+   are and what you are connected to -- so it gets a ground of its own. */
+.slide-menu .menu-user{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;
+  padding:12px 12px!important;margin-bottom:4px}
+.slide-menu .menu-user .mu-name{font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:-.2px}
+/* a live dot in front of the status, so "Connected" is shown as well as said */
+.slide-menu .menu-user .mu-sub{display:inline-flex;align-items:center;gap:6px;color:var(--text-soft)}
+.slide-menu .menu-user .mu-sub::before{content:"";width:6px;height:6px;border-radius:50%;
+  background:var(--green,#35c07f);box-shadow:0 0 0 3px rgba(53,192,127,.18);flex:0 0 6px}
+.slide-menu .menu-user .mu-gear{border-radius:10px;transition:background .15s ease,color .15s ease}
+.slide-menu .menu-user .mu-gear:hover,.slide-menu .menu-user .mu-gear:active{
+  background:var(--surface);color:var(--red,#ff5b5b)}
+
+/* ---- group headings ---------------------------------------------------------------------------- */
+.slide-menu .menu-group{font:800 9.5px/1 'JetBrains Mono',monospace!important;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--text-soft);padding:18px 12px 6px!important}
+
+/* ---- the rows ---------------------------------------------------------------------------------- */
+.slide-menu .menu-links a{position:relative;display:flex;align-items:center;gap:12px;
+  padding:8px 12px!important;min-height:52px;border-radius:12px;font-size:15px;font-weight:600;
+  transition:background .15s ease}
+.slide-menu .menu-links a:hover,.slide-menu .menu-links a:active{background:var(--surface-2)}
+/* The icon gets a tile. content-box so the 18px glyph keeps its size and the padding becomes the
+   tile, which means no wrapper element and nothing for the menu's own script to trip over. */
+.slide-menu .menu-links a>svg{width:18px;height:18px;box-sizing:content-box;padding:8px;
+  border-radius:11px;background:var(--surface-2);color:var(--text-muted);flex:0 0 auto;
+  transition:background .15s ease,color .15s ease}
+.slide-menu .menu-links a:hover>svg,.slide-menu .menu-links a:active>svg{
+  background:var(--accent-pale,rgba(234,106,44,.12));color:var(--accent,#ea6a2c)}
+/* a chevron, so a row reads as somewhere to go */
+.slide-menu .menu-links a::after{content:"";position:absolute;right:14px;top:50%;
+  width:6px;height:6px;margin-top:-3px;border-right:2px solid var(--text-soft);
+  border-bottom:2px solid var(--text-soft);transform:rotate(-45deg);opacity:.45;
+  transition:opacity .15s ease,transform .15s ease}
+.slide-menu .menu-links a:hover::after{opacity:.9;transform:rotate(-45deg) translate(1px,1px)}
+/* the wallet card is not a nav row -- it must not grow a chevron or a tile */
+.slide-menu .menu-user a::after{content:none}
+.slide-menu .menu-user a>svg{padding:0;background:none;border-radius:0}
 </style><style id="lx-dxa-css">
 .lx-sortag{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;font-size:10.5px;
   font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--accent);
@@ -2472,76 +2541,7 @@ margin-top:16px;border-top:1px solid var(--border)}
 .dxa-pl-icos .dxa-pl-ico{position:relative}
 .dxa-pl-icos .dxa-pl-ico:first-child{z-index:2}
 .mdxa-pl-l .dxa-pl-ico{width:30px;height:30px;font-size:13px}
-.stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style><style id="lx-pairicons-css">
-/* The wrapper: a fixed 46px box holding two absolutely-placed logos becomes a flow row.
-   [data-paired] is the marker the runtime pair builders stamp on every pair they draw; .pair-cell is
-   the table/list cell the static ones sit in. Between them they cover Pools main, the pool page,
-   Wallet and public-address liquidity rows, search and the LUMOS token page. */
-/* .ph-icons is the pool page's own header pair -- same overlapping treatment, different class. */
-.pair-icons[data-paired],.pair-cell .pair-icons,.pool-header-row .ph-icons{
-  position:static!important;display:inline-flex!important;align-items:center;gap:6px;
-  width:auto!important;height:auto!important;flex:0 0 auto;overflow:visible}
-/* The children have to be named to win. The design pins them with three-class selectors
-   (.pool-card .pair-icons .b { left:12px }), so a child selector at two classes loses and they stay stacked --
-   which is exactly what the first attempt at this did. Three classes here beats that, and stays BELOW
-   the four-class hero rules in _poolshero.js, so the Trade and Pools hero marks keep overlapping. */
-html body .pair-icons[data-paired]>.pa,html body .pair-icons[data-paired]>.pb,
-html body .pair-icons[data-paired]>.a,html body .pair-icons[data-paired]>.b,
-html body .pair-cell .pair-icons>.pa,html body .pair-cell .pair-icons>.pb,
-html body .pair-cell .pair-icons>.a,html body .pair-cell .pair-icons>.b,
-html body .pool-header-row .ph-icons>*{
-  position:static!important;left:auto!important;right:auto!important;top:auto!important;
-  bottom:auto!important;margin:0!important;flex:0 0 auto;
-  /* the ring existed to separate two overlapping coins; there is nothing to separate now */
-  box-shadow:none!important}
-</style><style id="lx-mobmenu-css">
-/* ---- the panel ------------------------------------------------------------------------------- */
-.slide-menu .menu-head{padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:6px}
-.slide-menu .menu-head .lbl{font:800 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--text-soft)}
-.slide-menu .menu-close{border-radius:10px;transition:background .15s ease,color .15s ease}
-.slide-menu .menu-close:hover,.slide-menu .menu-close:active{background:var(--surface-2);color:var(--text)}
-
-/* ---- the connected wallet ---------------------------------------------------------------------- */
-/* It was one more row in the stack. It is the single most important thing in this panel -- who you
-   are and what you are connected to -- so it gets a ground of its own. */
-.slide-menu .menu-user{background:var(--surface-2);border:1px solid var(--border);border-radius:14px;
-  padding:12px 12px!important;margin-bottom:4px}
-.slide-menu .menu-user .mu-name{font-family:'JetBrains Mono',monospace;font-weight:700;letter-spacing:-.2px}
-/* a live dot in front of the status, so "Connected" is shown as well as said */
-.slide-menu .menu-user .mu-sub{display:inline-flex;align-items:center;gap:6px;color:var(--text-soft)}
-.slide-menu .menu-user .mu-sub::before{content:"";width:6px;height:6px;border-radius:50%;
-  background:var(--green,#35c07f);box-shadow:0 0 0 3px rgba(53,192,127,.18);flex:0 0 6px}
-.slide-menu .menu-user .mu-gear{border-radius:10px;transition:background .15s ease,color .15s ease}
-.slide-menu .menu-user .mu-gear:hover,.slide-menu .menu-user .mu-gear:active{
-  background:var(--surface);color:var(--red,#ff5b5b)}
-
-/* ---- group headings ---------------------------------------------------------------------------- */
-.slide-menu .menu-group{font:800 9.5px/1 'JetBrains Mono',monospace!important;letter-spacing:.16em;
-  text-transform:uppercase;color:var(--text-soft);padding:18px 12px 6px!important}
-
-/* ---- the rows ---------------------------------------------------------------------------------- */
-.slide-menu .menu-links a{position:relative;display:flex;align-items:center;gap:12px;
-  padding:8px 12px!important;min-height:52px;border-radius:12px;font-size:15px;font-weight:600;
-  transition:background .15s ease}
-.slide-menu .menu-links a:hover,.slide-menu .menu-links a:active{background:var(--surface-2)}
-/* The icon gets a tile. content-box so the 18px glyph keeps its size and the padding becomes the
-   tile, which means no wrapper element and nothing for the menu's own script to trip over. */
-.slide-menu .menu-links a>svg{width:18px;height:18px;box-sizing:content-box;padding:8px;
-  border-radius:11px;background:var(--surface-2);color:var(--text-muted);flex:0 0 auto;
-  transition:background .15s ease,color .15s ease}
-.slide-menu .menu-links a:hover>svg,.slide-menu .menu-links a:active>svg{
-  background:var(--accent-pale,rgba(234,106,44,.12));color:var(--accent,#ea6a2c)}
-/* a chevron, so a row reads as somewhere to go */
-.slide-menu .menu-links a::after{content:"";position:absolute;right:14px;top:50%;
-  width:6px;height:6px;margin-top:-3px;border-right:2px solid var(--text-soft);
-  border-bottom:2px solid var(--text-soft);transform:rotate(-45deg);opacity:.45;
-  transition:opacity .15s ease,transform .15s ease}
-.slide-menu .menu-links a:hover::after{opacity:.9;transform:rotate(-45deg) translate(1px,1px)}
-/* the wallet card is not a nav row -- it must not grow a chevron or a tile */
-.slide-menu .menu-user a::after{content:none}
-.slide-menu .menu-user a>svg{padding:0;background:none;border-radius:0}
-</style></head>
+.stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style></head>
 <body>
 
   <!-- App bar -->
@@ -2832,8 +2832,7 @@ html body .pool-header-row .ph-icons>*{
         <button class="chip" data-min-xlm="10">10+ XLM</button>
         <button class="chip" data-min-xlm="100">100+ XLM</button>
         <button class="chip" data-min-xlm="1000">1K+ XLM</button>
-        <button class="chip" data-min-xlm="10000">10K+ XLM</button>
-      </div>
+        </div>
     </div>
     <div class="ex-list" id="mdxaExList"></div>
   </div>
