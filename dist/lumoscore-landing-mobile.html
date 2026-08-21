@@ -1002,6 +1002,14 @@ html body .pool-header-row .ph-icons>*{
 .mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
 </style><style id="lx-mobmenu-css">
 /* ---- the panel ------------------------------------------------------------------------------- */
+/* #15: the panel could be dragged up past its own content, leaving a band of nothing under the theme
+   row. It scrolls, so the browser rubber-bands it; overscroll-behavior none stops the bounce as well
+   as the chaining to the page behind. The height cap makes it scroll to its end, not past it. */
+.slide-menu{overscroll-behavior:none;max-height:100dvh;overflow-y:auto}
+/* #20: the wallet card is markup that is always present -- when nobody is connected it has no name and
+   no address, so the card this file gives a ground and a border to rendered as an empty rounded box
+   under the heading. Nothing to say, nothing to draw. */
+.slide-menu .menu-user:not(:has(.mu-name:not(:empty))){display:none!important}
 .slide-menu .menu-head{padding-bottom:14px;border-bottom:1px solid var(--border);margin-bottom:6px}
 .slide-menu .menu-head .lbl{font:800 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.16em;
   text-transform:uppercase;color:var(--text-soft)}

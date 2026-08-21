@@ -576,7 +576,11 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   function accIlogo(code,native){
     var lg=native?STELLAR_URI:((window.__lxLogos||{})[code]||"");
     var bg=lg?("url('"+String(lg).replace(/'/g,"%27")+"')"):"none";
-    return '<span class="lx-act-ilogo" style="--al:'+bg+'" data-l="'+esc(lg?"":(code||"?").slice(0,1).toUpperCase())+'"></span>';
+    // No logo, no mark. The initial-letter fallback put a stray "Y"/"E"/"A" in front of every asset on
+    // every row -- on a page where most assets have no published logo, that is a column of loose
+    // letters rather than a set of marks. The ticker is right next to it and already says which asset.
+    if(!lg)return "";
+    return '<span class="lx-act-ilogo" style="--al:'+bg+'"></span>';
   }
   var AIC={
     payment:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',

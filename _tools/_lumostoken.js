@@ -20,6 +20,14 @@ const STYLE = `<style id="lx-lt-css">
 .lx-vtick svg{width:14px;height:14px;display:block}
 .lx-lt-dom{display:inline-flex;align-items:center;gap:6px;margin-left:12px;color:var(--accent,#ea6a2c);font-weight:700;text-decoration:none;font-size:15px;vertical-align:middle}
 .lx-lt-dom:hover{text-decoration:underline}
+/* the copy confirmation: the control tells you it worked instead of doing it in silence */
+.addr-row [data-copy]{position:relative;transition:color .12s,background .12s}
+.addr-row [data-copy].lx-copied{color:var(--green,#35c07f)!important;background:var(--green-soft,rgba(53,192,127,.14))!important}
+.addr-row [data-copy].lx-copied::after{content:"Copied";position:absolute;bottom:calc(100% + 7px);left:50%;
+  transform:translateX(-50%);background:var(--surface,#fff);color:var(--text,#0e0e10);
+  border:1px solid var(--border,#ececef);border-radius:8px;padding:4px 9px;
+  font:700 11px/1 'Hanken Grotesk',system-ui,sans-serif;white-space:nowrap;z-index:40;
+  box-shadow:0 8px 20px rgba(0,0,0,.22);pointer-events:none}
 /* The phone row is narrower than the address + badges + domain it carries, and the domain was the
    thing that ran off the edge. Let the row wrap and let the domain give way rather than overflow. */
 @media(max-width:760px){
@@ -319,7 +327,31 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       // document, so scoping it by passing the row would have silently rewritten every data-copy on
       // the page, pool ids included.
       [].slice.call(row.querySelectorAll("[data-copy]")).forEach(function(b){
-        if(b.getAttribute("data-copy")!==ISSUER)b.setAttribute("data-copy",ISSUER); });
+        if(b.getAttribute("data-copy")!==ISSUER)b.setAttribute("data-copy",ISSUER);
+        // It copies, and always did once data-copy was right -- but it says NOTHING when it does, and
+        // a control that gives no answer reads as a broken one. Own the click so the confirmation is
+        // ours: write the address, then show it happened.
+        if(b.__lxcp)return; b.__lxcp=1;
+        b.addEventListener("click",function(ev){
+          var txt=b.getAttribute("data-copy")||ISSUER;
+          try{ev.preventDefault();ev.stopPropagation();}catch(_){}
+          function ok(){ b.classList.add("lx-copied");
+            setTimeout(function(){b.classList.remove("lx-copied");},1400); }
+          try{
+            if(navigator.clipboard&&navigator.clipboard.writeText){
+              navigator.clipboard.writeText(txt).then(ok,fallback);
+            } else fallback();
+          }catch(_){ fallback(); }
+          function fallback(){
+            // Safari on iOS refuses the async API outside some gestures; the textarea route still works.
+            try{ var ta=document.createElement("textarea"); ta.value=txt;
+              ta.setAttribute("readonly",""); ta.style.cssText="position:fixed;top:0;left:0;opacity:0";
+              document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,txt.length);
+              document.execCommand("copy"); document.body.removeChild(ta); ok();
+            }catch(_){}
+          }
+        });
+      });
       row.classList.add("lxlt");
     });
     // Verified tick on the token name, driven by the shared list rather than asserted here, so removing
