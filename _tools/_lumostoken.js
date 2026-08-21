@@ -20,6 +20,13 @@ const STYLE = `<style id="lx-lt-css">
 .lx-vtick svg{width:14px;height:14px;display:block}
 .lx-lt-dom{display:inline-flex;align-items:center;gap:6px;margin-left:12px;color:var(--accent,#ea6a2c);font-weight:700;text-decoration:none;font-size:15px;vertical-align:middle}
 .lx-lt-dom:hover{text-decoration:underline}
+/* The phone row is narrower than the address + badges + domain it carries, and the domain was the
+   thing that ran off the edge. Let the row wrap and let the domain give way rather than overflow. */
+@media(max-width:760px){
+.addr-row{flex-wrap:wrap!important;row-gap:6px}
+.lx-lt-dom{margin-left:0!important;font-size:13px;min-width:0;max-width:100%;overflow:hidden}
+.lx-lt-dom span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
 .lx-lt-dom svg{width:15px;height:15px;flex:none}
 
 .hero-price-block:not(.lxlt) .price,.hero-price-block:not(.lxlt) .change,.hero-price-block:not(.lxlt) .sub-volume{visibility:hidden}
@@ -355,7 +362,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       if(!v)return; var done=false;
       if(/^price/i.test(l)){ if(priceUsd>0){ setText(v, usd(priceUsd)+(chg24!=null?("  "+(chg24>=0?"+":"−")+Math.abs(chg24).toFixed(1)+"%"):"")); done=true; } }
       else if(/24h volume/i.test(l)){ if(vol24Usd!=null&&poolCount!=null){ setText(v, abbrUsd(vol24Usd)+" across "+poolCount+" pools"); done=true; } }
-      else if(/circulating/i.test(l)){ if(supply!=null){ var cs=circSupply(); var want=num(cs!=null?cs:supply)+" LUMOS"; var ns=v.querySelector(".lx-supnum"); if(!ns){ v.innerHTML='<span class="lx-supnum"></span><span class="lx-supinfo" data-tip="'+SUPPLY_NOTE+'">i</span>'; ns=v.querySelector(".lx-supnum"); } if(ns&&ns.textContent!==want)ns.textContent=want; done=true; } }
+      else if(/circulating/i.test(l)){ if(supply!=null){ var cs=circSupply(); var want=num(cs!=null?cs:supply)+" LUMOS"; var ns=v.querySelector(".lx-supnum"); if(!ns){ v.innerHTML='<span class="lx-supnum"></span>'; ns=v.querySelector(".lx-supnum"); } var _si=v.querySelector(".lx-supinfo"); if(_si)_si.parentNode.removeChild(_si); if(ns&&ns.textContent!==want)ns.textContent=want; done=true; } }
       else if(/holders/i.test(l)&&!/pool/i.test(l)){
         // show BOTH: holders (balance>0) · trustlines (all accounts trusting LUMOS = /assets authorized count)
         var lab=r.querySelector(".lt-cmp-l"); if(lab)setText(lab,"Holders · Trustlines");
@@ -892,7 +899,16 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   function tfCfg(tf){ var m={"1H":{res:60000,span:3600000},"24H":{res:900000,span:86400000},"7D":{res:3600000,span:604800000},"30D":{res:86400000,span:2592000000},"1Y":{res:604800000,span:31536000000},"All":{res:604800000,span:157680000000}}; return m[tf]||m["7D"]; }
   function axisLbl(t,tf){ var d=new Date(t),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; if(tf==="1H"||tf==="24H")return (d.getHours()<10?"0":"")+d.getHours()+":00"; if(tf==="1Y"||tf==="All")return mo[d.getMonth()]+" '"+String(d.getFullYear()).slice(2); return mo[d.getMonth()]+" "+d.getDate(); }
   function drawChart(pts){
-    var pc=q("#priceChart"); if(!pc)return; var svg=pc.querySelector("svg"); if(!svg)return;
+    var pc=q("#priceChart"); if(!pc)return; var svg=pc.querySelector("svg");
+    if(!svg){
+      // The phone build ships this container empty -- there is no design chart here to replace, so
+      // make the canvas rather than giving up on it. Same viewBox the draw code below assumes.
+      svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+      svg.setAttribute("viewBox","0 0 1000 320");
+      svg.setAttribute("preserveAspectRatio","none");
+      svg.style.width="100%"; svg.style.height="100%"; svg.style.display="block";
+      pc.appendChild(svg);
+    }
     if(!pts||pts.length<2){ return; }
     var W=1000,H=320,PAD=26,n=pts.length;
     // winsorize to the 5th–95th percentile — LUMOS/XLM is thin, so a couple of bad-fill trades otherwise
