@@ -67,6 +67,28 @@ const STYLE = `<style id="lx-mobmenu-css">
 .slide-menu .menu-user a>svg{padding:0;background:none;border-radius:0}
 </style>`;
 
+// ---- #5: the pages the menu skipped -------------------------------------------------------------
+// Dashboard, Trade, Pools, Bridge and Launchpad were left out because the bottom bar carries most of
+// them. But the bottom bar is five icons with no room for Launchpad at all, and a menu that lists
+// Rewards and MCP while omitting Trade and Pools reads as incomplete rather than as deliberate.
+// Inserted BEFORE "Discover", so the products come first and the account section stays where it is.
+const ICO = (d) => '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+  + 'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">' + d + '</svg>';
+const NAV = [
+  ['lumoscore-home-mobile.html', 'Dashboard',
+    ICO('<rect x="3" y="3" width="7" height="9" rx="1.6"/><rect x="14" y="3" width="7" height="5" rx="1.6"/><rect x="14" y="12" width="7" height="9" rx="1.6"/><rect x="3" y="16" width="7" height="5" rx="1.6"/>')],
+  ['lumoscore-dex-mobile.html', 'Trade',
+    ICO('<path d="M3 3v18h18"/><path d="M8 6v3"/><rect x="6" y="9" width="4" height="6" rx="1"/><path d="M8 15v3"/><path d="M16 4v2"/><rect x="14" y="6" width="4" height="9" rx="1"/><path d="M16 15v3"/>')],
+  ['lumoscore-amm-mobile.html', 'Pools',
+    ICO('<path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/>')],
+  ['lumoscore-bridge-mobile.html', 'Bridge',
+    ICO('<circle cx="5" cy="12" r="2.4"/><circle cx="19" cy="12" r="2.4"/><line x1="7.4" y1="12" x2="16.6" y2="12"/><polyline points="14 9.6 16.6 12 14 14.4"/>')],
+  ['lumoscore-launch-token-mobile.html', 'Launchpad',
+    ICO('<path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/>')],
+];
+const NAVBLOCK = '<div class="menu-group" data-lxnav="1">Products</div>'
+  + NAV.map(([href, label, ico]) => '<a href="' + href + '" data-lxnav="1">' + ico + label + '</a>').join('');
+
 let containers = 0, pages = 0;
 for (const dev of ['desktop', 'mobile']) {
   const file = `lumoscore-aptos-${dev}.html`;
@@ -78,8 +100,14 @@ for (const dev of ['desktop', 'mobile']) {
     let p = json[k];
     const before = p;
     p = p.replace(/<style id="lx-mobmenu-css">[\s\S]*?<\/style>/, '');
+    // strip a previous Products block: bounded to the tagged nodes, never a run to the next </div>
+    p = p.replace(/<div class="menu-group" data-lxnav="1">[\s\S]*?<\/div>/, '')
+         .replace(/<a href="[^"]*" data-lxnav="1">[\s\S]*?<\/a>/g, '');
     // only pages that actually carry the slide-out
     if (p.indexOf('slide-menu') < 0) { if (p !== before) { json[k] = p; changed = true; } continue; }
+    // the products group goes above Discover
+    const disc = p.indexOf('<div class="menu-group">Discover</div>');
+    if (disc >= 0) p = p.slice(0, disc) + NAVBLOCK + p.slice(disc);
     if (p.indexOf('</head>') < 0) continue;
     p = p.replace('</head>', STYLE + '</head>');
     if (p !== before) { json[k] = p; changed = true; pages++; }

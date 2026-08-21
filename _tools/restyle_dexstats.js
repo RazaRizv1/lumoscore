@@ -95,7 +95,10 @@ const STYLE = '<style id="lx-assetstats">'
   // the viewport IS the container, so this is both correct and free of containment side effects.
   // Placed LAST so cascade position cannot defeat it — media queries add no specificity.
   + '@media (max-width:760px){'
-  + '.stat-row{grid-template-columns:repeat(2,minmax(0,1fr)) !important;gap:10px}'
+  // The phone row carried two cells and two columns suited it. It carries FOUR now -- Price,
+  // Volume, Market Cap and Supply -- and two columns would make that two rows of cards, which is
+  // exactly what was asked against. Four across, and the type in _dexassetdata.js steps down to fit.
+  + '.stat-row{grid-template-columns:repeat(4,minmax(0,1fr)) !important;gap:8px}'
   // Three cards on a phone now that 24h Change is gone, so the last one would sit alone in a half-width
   // slot. Let it span instead. (Container queries cannot do this here: the mobile build has no
   // .asset-header, so no container is ever established -- hence the plain media query.)
