@@ -339,6 +339,13 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
    phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
    inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
    placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
+/* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
+   across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
+   (24h)", so it folds to 2x2 there instead. */
+.ph-stats{grid-template-columns:repeat(4,1fr)!important}
+.ph-stat .ic.part{background:var(--purple-soft,rgba(139,92,246,.13));color:var(--purple,#8b5cf6)}
+@media(max-width:900px){.ph-stats{grid-template-columns:repeat(2,1fr)!important}}
+
 .mp-asset-ico img,.mpm-asset-ico img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
 .mpm-asset-ico{overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
 
@@ -691,12 +698,18 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var l1,v1,vs1,l2,v2;
     if(nonX){ l1=esc(p.a0.code); v1=qty(p.a0.amount*f); vs1=""; l2=esc(p.a1.code); v2=qty(p.a1.amount*f); }
     else { l1="Your liquidity"; v1=qty(p.xlm*f)+" XLM"; vs1=usd(p.tvlUsd*f); l2=esc(p.code); v2=qty((p.tok||0)*f); }
-    // the detail page is X/XLM only, so a non-XLM position opens on the explorer instead (same as desktop)
-    var href=nonX?("https://stellar.expert/explorer/public/liquidity-pool/"+p.id):detailUrl(p.id,null,pairVal(p));
-    return '<a class="pool-card my-pos lx-ammcard lx-mycard" data-pool="'+p.id+'"'+pairAttr(p)+(nonX?' data-nonxlm="1" target="_blank" rel="noopener"':'')+' href="'+href+'">'
+    // #19: this sent a non-XLM position off to stellar.expert, on a rule that was already retired for the
+    // ranked list above -- the detail page loads by pool ID and reads the pool's OWN reserves, so a pool
+    // with no XLM leg renders there fine. Sending someone off-site to read their own position in a pool
+    // we render ourselves was the bug. Every position opens on our page now.
+    var href=detailUrl(p.id,null,pairVal(p));
+    return '<a class="pool-card my-pos lx-ammcard lx-mycard" data-pool="'+p.id+'"'+pairAttr(p)+' href="'+href+'">'
       +'<div class="pc-head">'+ico
-      +'<div class="pc-info"><div class="pc-name">'+name+'</div>'
-      +'<div class="pc-sub">'+p.fee+'% fee \\u00b7 Stellar AMM</div></div></div>'
+      // #18: no fee-tier line. Every Stellar AMM pool is 0.3% and every pool in this list is one, so it
+      // said nothing -- and it invited the question it could not answer: someone reading "0.3% fee" on
+      // their OWN position reasonably asks what they are being charged, when it is the fee the pool
+      // collects and pays to them. Stated on the pool page, where there is room to say whose fee it is.
+      +'<div class="pc-info"><div class="pc-name">'+name+'</div></div></div>'
       +'<div class="pc-stats">'
       +'<div class="pc-stat"><div class="l">'+l1+'</div><div class="v">'+v1+'</div>'+(vs1?'<div class="vs">'+vs1+'</div>':'')+'</div>'
       +'<div class="pc-stat"><div class="l">Pool share</div><div class="v">'+pct+'</div></div>'
@@ -733,10 +746,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var liqMain,liqSub;
     if(nonX){ liqMain=qty(p.a0.amount*p.mineFrac)+' '+esc(p.a0.code); liqSub=qty(p.a1.amount*p.mineFrac)+' '+esc(p.a1.code); }
     else { liqMain=qty(p.xlm*p.mineFrac)+' XLM'; liqSub=usd(p.tvlUsd*p.mineFrac); }
-    // non-XLM pools break the X/XLM detail page -> View opens the pool on the explorer instead; also mark the row so its click-nav skips the detail page.
-    var view=nonX?('<a class="lx-ammview" href="https://stellar.expert/explorer/public/liquidity-pool/'+p.id+'" target="_blank" rel="noopener">View position \\u2192</a>'):('<a class="lx-ammview" href="lumoscore-amm-pool.html?pool='+p.id+'">View position \\u2192</a>');
-    return '<tr class="lx-ammrow" data-pool="'+p.id+'"'+pairAttr(p)+''+(nonX?' data-nonxlm="1"':'')+' style="cursor:pointer"><td class="idx">'+idx+'</td>'+
-      '<td><div class="pair-cell">'+pairIco+'<div><div class="pair-name">'+pairName+'</div><div class="pair-sub">'+p.fee+'% fee</div></div></div></td>'+
+    // #19: both the row and its View link stay on our own pool page -- see myCard for why the explorer
+    // detour was wrong. #18: and no fee-tier sub line under the pair, for the reason given there.
+    var view='<a class="lx-ammview" href="'+detailUrl(p.id,null,pairVal(p))+'">View position \\u2192</a>';
+    return '<tr class="lx-ammrow" data-pool="'+p.id+'"'+pairAttr(p)+' style="cursor:pointer"><td class="idx">'+idx+'</td>'+
+      '<td><div class="pair-cell">'+pairIco+'<div><div class="pair-name">'+pairName+'</div></div></div></td>'+
       '<td><div>'+liqMain+'</div><div class="pair-sub">'+liqSub+'</div></td>'+
       '<td>'+(p.mineFrac*100>=0.01?(p.mineFrac*100).toFixed(2):"<0.01")+'%</td>'+
       '<td class="lx-viewcell">'+view+'</td></tr>';
@@ -1519,8 +1533,15 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var myFrac=totShares>0?myShares/totShares:0;
       var _det={hex:hex,code:code,issuer:issuer,xlm:xlm,tok:tok,fee:fee,priceXlm:priceXlm,priceUsd:priceUsd,xlmUsd:xlmUsd,
         tvlXlm:tvlXlm,tvlUsd:tvlUsd,vol24Xlm:vol24Xlm,vol24Usd:vol24Usd,fees24Xlm:fees24Xlm,fees24Usd:fees24Usd,
-        volNext:volNext,volPartial:!!volNext,__xlmUsd:xlmUsd,
+        // #12: true from the first paint until the day's walk finishes, so the two cells derived from it
+        // print "Counting…" once instead of a running floor. See pdStats.
+        volNext:volNext,volPartial:!!volNext,volCounting:!!volNext,__xlmUsd:xlmUsd,
         txs:txs,txFail:(trFail||opFail),parts:parts,totShares:totShares,myShares:myShares,myFrac:myFrac,balTok:balTok,balXlm:balXlm,balXlmRaw:balXlmRaw,subs:subs,
+        // #13: the true provider count. /accounts?liquidity_pool= caps at 100 rows and each page is ~3.8MB,
+        // so parts.length is the size of the SAMPLE we fetched, not the number of providers -- which is why
+        // this page said 100 while the pools list, reading the pool record's own total_trustlines, said 234.
+        // Same field, on both screens.
+        trustlines:+(p.total_trustlines||0),
         pairName:pairName,nonXlm:nonXlm,a0:a0,a1:a1,pxA0perA1:pxA0perA1,balA0:balA0};
       // MUTATE the existing DET in place on refresh (don't replace it) so wireDW's captured d (===DET)
       // stays valid with fresh numbers — this lets add/withdraw re-fetch+repaint with NO page reload.
@@ -1665,8 +1686,34 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var pp=q(".ph-price"); if(!pp||pp.__lxg)return; pp.__lxg=1;
     try{ new MutationObserver(function(){ if(!DET)return; var ps=q(".ph-price .s"); if(!ps)return; [].slice.call(ps.childNodes).forEach(function(nd){ if(nd.nodeType===3&&/per /.test(nd.textContent)&&nd.textContent.indexOf(DET.code)<0)nd.textContent=" per "+DET.code; }); }).observe(pp,{childList:true,subtree:true,characterData:true}); }catch(e){}
   }
+  // #14: a fourth box, for the number of wallets providing liquidity here. The page already knew the
+  // figure -- it was buried in a pill above a list further down -- and the header is where the pool's
+  // headline facts are read. Cloned from an existing box so it inherits whatever the page's own
+  // stylesheet says a .ph-stat looks like on this device; only the icon, label and value are ours.
+  var PART_ICO='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    +'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+    +'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
+    +'<path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+  function pdPartStat(){
+    var row=q(".ph-stats"); if(!row)return null;
+    var have=row.querySelector(".lx-partstat"); if(have)return have;
+    var src=row.querySelector(".ph-stat"); if(!src)return null;
+    var box=src.cloneNode(true); box.className=(src.className||"ph-stat")+" lx-partstat";
+    var ic=box.querySelector(".ic");
+    if(ic){ ic.className="ic part"; ic.innerHTML=PART_ICO; }
+    var l=box.querySelector(".l"); if(l)l.textContent="Providers";
+    var v=box.querySelector(".v"); if(v)v.textContent="\\u2014";
+    var sb=box.querySelector(".s"); if(sb)sb.textContent="";
+    row.appendChild(box);
+    return box;
+  }
   function pdStats(){
     var d=DET;
+    var pbox=pdPartStat();
+    if(pbox){ var n0=d.trustlines||(d.parts&&d.parts.length)||0;
+      var pv=pbox.querySelector(".v"), ps=pbox.querySelector(".s");
+      if(pv)setText(pv,n0?num(n0):"\\u2014");
+      if(ps)setText(ps,n0?(n0===1?"wallet in this pool":"wallets in this pool"):""); }
     qa(".ph-stat").forEach(function(s){
       var ic=s.querySelector(".ic"); var cn=ic?((ic.className&&ic.className.baseVal!==undefined)?ic.className.baseVal:ic.className):"";
       var v=s.querySelector(".v"), sub=s.querySelector(".s");
@@ -1678,16 +1725,23 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+num(d.tok)+" "+d.code+" \\u00b7 \\u2248 "+usd(d.tvlUsd)); } }
       // null = the trades fetch never answered. Print a dash: a confident "0 XLM" on a pool that traded all
       // day is worse than admitting we do not know.
+      // #12: this used to print the running sum while volDeepen walked the day, labelled ">= N, still
+      // counting". Honest, but on a busy pool the first page of trades is a meaningless floor: XLM/USDC
+      // showed 138,877 XLM and then jumped to 2,385,968 -- 17x -- about fifty seconds later, taking the
+      // fee figure derived from it along for the ride. Two cells silently rewriting themselves by an
+      // order of magnitude is what reads as broken. Say it is counting, then write the answer ONCE.
       else if(/vol/.test(cn)){
-        if(d.vol24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
-        // While volDeepen is still walking the day, this is a FLOOR, not the figure. Say so, rather than
-        // printing a partial sum that looks final -- that was the whole defect.
+        if(d.volCounting){ if(v)setText(v,"Counting\\u2026"); if(sub)setText(sub,"totalling the last 24h"); }
+        else if(d.vol24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
+        // volPartial can still be true at the end: a pool busy enough to exceed the page budget leaves a
+        // floor as the best answer available, and it stays marked as one.
         else { if(v)setText(v,(d.volPartial?"\\u2265 ":"")+num(d.vol24Xlm)+" "+U0);
-          if(sub)setText(sub, d.volPartial ? "still counting the last 24h\\u2026"
+          if(sub)setText(sub, d.volPartial ? "at least, over the last 24h"
             : (d.nonXlm?(d.vol24Usd>0?"\\u2248 "+usd(d.vol24Usd):"24h volume"):"\\u2248 "+usd(d.vol24Usd))); } }
       else if(/fee/.test(cn)){
-        if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,""); }
-        else { if(v)setText(v,(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\\u2248 "+usd(d.fees24Usd))); } }
+        if(d.volCounting){ if(v)setText(v,"Counting\\u2026"); if(sub)setText(sub,""); }
+        else if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,""); }
+        else { if(v)setText(v,(d.volPartial?"\\u2265 ":"")+(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\\u2248 "+usd(d.fees24Usd))); } }
     });
   }
   // ---- REAL-DATA chart engine: takes over the design's synthetic candlestick/line/volume renderer ----
@@ -1751,7 +1805,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var d=DET; if(!d||!d.volNext||d.__volBusy)return; d.__volBusy=1;
     var cut=Date.now()-864e5, url=d.volNext, pages=0;
     function step(){
-      if(!url||pages>=VOLMAXP){ d.volPartial=(!!url); d.volNext=null; d.__volBusy=0; try{ paintDetail(); }catch(_){} return; }
+      if(!url||pages>=VOLMAXP){ d.volPartial=(!!url); d.volNext=null; d.__volBusy=0; d.volCounting=false; try{ paintDetail(); }catch(_){} return; }
       pages++;
       getJSON(url).then(function(j){
         var rs=(j&&j._embedded&&j._embedded.records)||[];
@@ -1778,9 +1832,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         // from the browser; the same walk from node takes seconds). Worth knowing before anyone tries to
         // speed this up by touching the rendering. The card reads ">= N, still counting" throughout,
         // which is true the whole time.
-        if(!url){ d.volPartial=false; d.volNext=null; try{ paintDetail(); }catch(_){} }
+        if(!url){ d.volPartial=false; d.volNext=null; d.volCounting=false; try{ paintDetail(); }catch(_){} }
         step();
-      }).catch(function(){ url=null; d.__volBusy=0; try{ paintDetail(); }catch(_){} });
+      }).catch(function(){ url=null; d.__volBusy=0; d.volCounting=false; try{ paintDetail(); }catch(_){} });
     }
     step();
   }
@@ -2648,9 +2702,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       list.innerHTML=s.rows.length?s.rows.map(function(_p){return partRow(_p,mob);}).join(""):'<div class="part-row lx-partrow" style="justify-content:center;color:var(--text-muted)">No liquidity providers yet</div>';
     }
     var pg=q("#lx-partpage"); if(pg)pg.style.display="none";
-    qa(".part-count, .participants-count, [data-partcount]").forEach(function(e){ setText(e,String(d.parts.length)); });
+    var ptot=d.trustlines||d.parts.length;    // #13: the pool's own count, not the size of our sample
+    qa(".part-count, .participants-count, [data-partcount]").forEach(function(e){ setText(e,num(ptot)); });
     // the design mocks the participant count ("847") in the "Participants" side-head pill — set the real count.
-    qa(".count-pill").forEach(function(e){ var sh=e.closest&&e.closest(".side-head"); if(sh&&/participant/i.test(sh.textContent||""))setText(e,String(d.parts.length)); });
+    qa(".count-pill").forEach(function(e){ var sh=e.closest&&e.closest(".side-head"); if(sh&&/participant/i.test(sh.textContent||""))setText(e,num(ptot)); });
     partFoot(list,s);
   }
   // The footer the design ships for this list is .part-foot (an info line + a .nav of Prev/Next). Reuse it
@@ -2665,7 +2720,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     if(card.lastElementChild!==foot)card.appendChild(foot);
     var info=foot.querySelector("div"), nav=foot.querySelector(".nav");
     var from=s.all.length?(partPage*PARTPP+1):0, to=partPage*PARTPP+s.rows.length;
-    if(info)setText(info, s.all.length?("Viewing "+from+" \\u2013 "+to+" of "+num(s.all.length)):"No liquidity providers yet");
+    // Say which set is being paged. The pool can have more providers than Horizon will hand over in one
+    // page, and printing the pool's total here would promise pages that do not exist -- so the count the
+    // pager is counting stays the count the pager can reach, and the pool's own total is named beside it.
+    var _tot=(DET&&DET.trustlines)||0, _extra=(_tot>s.all.length)?(" \\u00b7 of "+num(_tot)+" in this pool"):"";
+    if(info)setText(info, s.all.length?("Viewing "+from+" \\u2013 "+to+" of "+num(s.all.length)+_extra):"No liquidity providers yet");
     if(!nav)return;
     if(!nav.__lxw){ nav.__lxw=1;
       nav.innerHTML='<button type="button" data-pp="prev">\\u2039</button><span class="lx-pppg"></span><button type="button" data-pp="next">\\u203a</button>';

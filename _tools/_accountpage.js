@@ -425,6 +425,16 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0; }catch(e){ return 0; } })();
   var ASSETS=[], POOLS=[], ACTS=[], XLM=0, ACCT=null, DONE={};
   var PER=25, aShown=PER, pShown=PER, PRICE_CAP=75;
+  // #6: the portfolio total is a SUM over lookups that land one at a time, and every one of them used
+  // to repaint it -- so the figure climbed while you watched, and where it stopped depended on which
+  // requests happened to come back. Refresh, and Horizon throttles a different two, and the "value" of
+  // the same wallet is a different number. A total assembled in public is not a total.
+  //
+  // PXWAVE: have we even reached the point of asking? PXPEND: how many answers are still out. The
+  // figure is written once, when both say the counting is over.
+  var PXWAVE=0, PXPEND=0;
+  function pxStart(){ PXPEND++; }
+  function pxEnd(){ if(PXPEND>0)PXPEND--; if(PXPEND===0){ try{ renderStats(); }catch(_){} } }
   var PIN={XLM:0, USDC:1, LUMOS:2};
   // Pinned three first, then by value. An unpriced row sorts after every priced one: we do not know
   // what it is worth, and ranking it as zero would be a claim we cannot make.
@@ -460,10 +470,19 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   function renderStats(){
     var tv=totalValue();
     var pc=priced();
-    var note = xlmUsd<=0 ? "waiting for XLM price"
-      : (pc.n<pc.m ? (amt(tv/xlmUsd)+" XLM "+MID+" priced "+pc.n+" of "+pc.m+" holdings")
-                   : (amt(tv/xlmUsd)+" XLM"));
-    setStat("total", xlmUsd>0?usd(tv):DASH, note);
+    // Counting = we have not asked yet, or answers are still out. Either way the sum on hand is a
+    // partial one and must not be shown as the account's value.
+    var counting=(!PXWAVE||PXPEND>0);
+    if(counting){ setStat("total", "Counting"+String.fromCharCode(8230), "valuing this account"); }
+    else if(xlmUsd<=0){ setStat("total", DASH, "waiting for XLM price"); }
+    else {
+      // Some holdings have no market to price them against, and no amount of waiting fixes that. The
+      // total is then a floor and says so, rather than passing itself off as the whole account.
+      var miss=pc.m-pc.n;
+      setStat("total", (miss>0?(String.fromCharCode(8805)+" "):"")+usd(tv),
+        miss>0 ? (amt(tv/xlmUsd)+" XLM "+MID+" "+miss+" holding"+(miss===1?"":"s")+" could not be priced")
+               : (amt(tv/xlmUsd)+" XLM"));
+    }
     setStat("xlm", amt(XLM)+" XLM", xlmUsd>0?usd(XLM*xlmUsd):"");
     // count what the Assets table shows -- XLM plus every funded trustline -- so the two agree
     setStat("assets", String(ASSETS.length+1), ASSETS.length===1?"1 trustline held":(ASSETS.length+" trustlines held"));
@@ -676,14 +695,16 @@ const SCRIPT = `<script id="lx-accdata">(function(){
 
   // last trade close against XLM -- the same price the Trade pages quote, so a holding is worth the same
   // number on both screens
-  function loadAssetPx(a){
+  function loadAssetPx(a){ pxStart(); return loadAssetPx_(a).then(pxEnd,pxEnd); }
+  function loadAssetPx_(a){
     var t=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
     return j(H+"/trade_aggregations?base_asset_type="+t+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer
       +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1").then(function(d){
       var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||0; a.usd=a.bal*a.px*xlmUsd; }
       renderStats(); renderAssets(); }).catch(function(){}); }
 
-  function loadPool(p){
+  function loadPool(p){ pxStart(); return loadPool_(p).then(pxEnd,pxEnd); }
+  function loadPool_(p){
     return j(H+"/liquidity_pools/"+p.id).then(function(d){
       var tot=+d.total_shares||0; p.share=tot>0?(p.shares/tot*100):0; p.tl=+d.total_trustlines||null;
       // Keep BOTH reserves, in order. An asset/asset pool has no native side, and collapsing the two
@@ -728,13 +749,18 @@ const SCRIPT = `<script id="lx-accdata">(function(){
         ASSETS.push({code:b.asset_code,issuer:b.asset_issuer,dom:"",bal:+b.balance,px:0,usd:null});
       });
       DONE.pools=1;
-      paintHeader(); renderStats(); renderAssets(); wireTabs(); renderPools();
+      // From here on we are valuing the account -- see PXWAVE. renderStats() is deliberately LAST:
+      // renderPools() and the wave below claim their pending count synchronously, so calling it first
+      // would read PXPEND as 0 and print a total built from nothing but the XLM balance.
+      PXWAVE=1;
+      paintHeader(); renderAssets(); wireTabs(); renderPools();
       // Price beyond the first batch so the ORDER is real rather than just Horizon's order, but stop at
       // PRICE_CAP: an account with 400 trustlines must not turn one page view into 400 requests.
       (function wave(i,list){ if(i>=list.length)return;
         Promise.all(list.slice(i,i+5).map(function(a){ if(a.__px)return null; a.__px=1; return loadAssetPx(a); }))
           .then(function(){ wave(i+5,list); },function(){ wave(i+5,list); });
       })(0,ASSETS.slice(0,PRICE_CAP));
+      renderStats();          // now that everything in flight has been counted
       // "active since" comes from the oldest operation we can see, not from the account record --
       // Horizon does not carry a creation timestamp on /accounts.
       j(H+"/accounts/"+ADDR+"/operations?order=asc&limit=1").then(function(d){

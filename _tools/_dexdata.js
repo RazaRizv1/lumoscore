@@ -849,7 +849,17 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // count -- which then climbed as the mints landed. It read as a wrong figure being corrected. Hold at
     // the dash until discovery has finished (2) or given up (0); a failed load resets to 0, so this can
     // never latch on permanently.
-    if(nativeState===1)return;
+    // #10: the gate held only while discovery was RUNNING (state 1). On a cold load the strip is built
+    // and filled before loadNative() has been reached at all -- state 0 -- so it wrote the curated
+    // eight, and "8 Markets" then jumped to the real roster a moment later. Wait for FINISHED (2), and
+    // start discovery here rather than relying on another section having run first. The timer is the
+    // release valve: if Horizon never answers, the strip fills with what is known instead of sitting
+    // on a dash for good.
+    try{ loadNative(); }catch(_){}
+    if(!window.__lxMktsTimer){ window.__lxMktsTimer=setTimeout(function(){
+      window.__lxMktsGiveUp=1; try{ touch(); }catch(_){}
+    },7000); }
+    if(nativeState!==2&&!window.__lxMktsGiveUp)return;
     // Sum what the page actually lists. Leaving these on the curated 8 while the table says 39 pairs
     // would put two different definitions of "this exchange" on one screen.
     var _agg=allAssets();
