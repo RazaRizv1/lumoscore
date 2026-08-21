@@ -29,25 +29,30 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'
 // Rebuild the whole stats row atomically (keeps the network logo card, replaces the 4 value cards).
 // This sidesteps the logo-painter (which mangles individual pills) and the re-skin entirely.
-+'function vpill(lbl,val){return \'<span class="status-pill" data-lx-noswap=""><span class="lbl">\'+lbl+\'</span><span class="val">\'+val+\'</span></span>\';}'
-+'function rebuildStats(tvl,mc,vol,pr){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");'
++'function vpill(lbl,val,tip){return \'<span class="status-pill" data-lx-noswap=""\'+(tip?\' title="\'+tip+\'"\':"")+\'><span class="lbl">\'+lbl+\'</span><span class="val">\'+val+\'</span></span>\';}'
++'function rebuildStats(tvl,mc,vol,pr,trd,trdTip){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");'
 // keep the LIVE netcard node (do NOT snapshot its HTML or mark the row noswap) so mc-engine can still
 // rebrand it aptos->stellar; only the value pills are rebuilt (each is its own data-lx-noswap pill).
 +'[].slice.call(row.querySelectorAll(".status-pill")).forEach(function(p){if(p!==net)p.parentNode.removeChild(p);});'
-+'var frag=document.createElement("div");frag.innerHTML=vpill("TVL",tvl)+vpill("Market cap",mc)+vpill("Volume",vol);while(frag.firstChild)row.appendChild(frag.firstChild);'
++'var frag=document.createElement("div");frag.innerHTML=vpill("TVL",tvl)+vpill("Market cap",mc)+vpill("24h Volume",vol)'
++'+vpill("Trades",trd||"\\u2014",trdTip||"");while(frag.firstChild)row.appendChild(frag.firstChild);'
 +'row.classList.add("lx-ready");}'
 // ---- stat cards ----
 +'function stats(){Promise.all(['
 +'j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_vol=true&include_market_cap=true&include_24hr_change=true"),'
-+'j("https://api.llama.fi/v2/chains").catch(function(){return null;})'
-+']).then(function(res){var cg=(res[0]&&res[0].stellar)||{};var chains=res[1];'
++'j("https://api.llama.fi/v2/chains").catch(function(){return null;}),'
++'j("/lxapi/netstats").catch(function(){return null;})'
++']).then(function(res){var cg=(res[0]&&res[0].stellar)||{};var chains=res[1];var ns=res[2];'
 // Publish it: _dashtop.js needs the same price and 24h change, and CoinGecko's free tier is a few
 // calls a minute -- two components each fetching the same object is how that budget gets spent.
 +'try{window.__lxCG=cg;window.dispatchEvent(new CustomEvent("lx:cg"));}catch(_){}'
 +'var pr=cg.usd,vol=cg.usd_24h_vol,mc=cg.usd_market_cap,tvl=null;'
 +'if(chains&&chains.length){var s=chains.filter(function(c){return c.gecko_id==="stellar"||/^stellar$/i.test(c.name||"");})[0];if(s)tvl=s.tvl;}'
-+'var _v=[tvl!=null?usd(tvl):"\\u2014",mc!=null?usd(mc):"\\u2014",(vol!=null&&pr)?abbr(vol/pr)+" XLM":"\\u2014",pr!=null?price(pr):"\\u2014"];'
-+'rebuildStats(_v[0],_v[1],_v[2],_v[3]);'
++'var _t="",_tt="";'
++'if(ns&&ns.trades>0){_t=(+ns.trades).toLocaleString("en-US");'
++'try{_tt="Trades settled on Stellar on "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC)";}catch(_){}}'
++'var _v=[tvl!=null?usd(tvl):"\\u2014",mc!=null?usd(mc):"\\u2014",(vol!=null&&pr)?abbr(vol/pr)+" XLM":"\\u2014",pr!=null?price(pr):"\\u2014",_t,_tt];'
++'rebuildStats(_v[0],_v[1],_v[2],_v[3],_v[4],_v[5]);'
 +'try{localStorage.setItem("lumos.netstats",JSON.stringify(_v));}catch(_){}'   // cache last real values so the next load shows them instantly (no blank/loading flash)
 +'}).catch(function(){});}'
 // ---- live activity feed (real swaps) ----
@@ -100,7 +105,9 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'list.innerHTML=rows.map(feedRow).join("");'
 +'}).catch(function(){});});'
 +'}).catch(function(){});}'
-+'function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}if(c&&c.length===4)rebuildStats(c[0],c[1],c[2],c[3]);else rebuildStats("\\u2026","\\u2026","\\u2026","\\u2026");}'
+// A cache written by the previous build holds FOUR entries and no trade count, so the length check is
+// what stops a warm start restoring a strip with an empty cell in it.
++'function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}if(c&&c.length===6)rebuildStats(c[0],c[1],c[2],c[3],c[4],c[5]);else rebuildStats("\\u2026","\\u2026","\\u2026","\\u2026","\\u2026","");}'
 +'function run(){prep();stats();feed();}'
 +'if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);'
 +'setInterval(feed,60000);setInterval(stats,45000);'
