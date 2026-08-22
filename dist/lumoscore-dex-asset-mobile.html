@@ -7829,8 +7829,17 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         var route=(jj.routePlan||[]).map(function(x){ return {p:(x.swapInfo&&x.swapInfo.protocol)||"",pct:x.percent}; });
         var usesSoroban=route.some(function(x){ return x.p==="aqua"||x.p==="soroswap"||x.p==="phoenix"; });
         return {out:+jj.amountOut/1e7, impact:parseFloat(jj.priceImpactPct||"0"), quote:jj, route:route, usesSoroban:usesSoroban, usesAqua:route.some(function(x){return x.p==="aqua";})}; }).catch(function(){ return null; }); }); }
-  function soroBuild(quote,from){ return fetch(LX_SORO+"/quote/build?network=mainnet",{method:"POST",headers:soroHeaders(),body:JSON.stringify({quote:quote,from:from,to:from})}).then(function(r){ return r.json(); }).then(function(jj){ if(jj&&jj.xdr)return jj.xdr; var m=(jj&&(jj.message||jj.error))||"Could not build swap"; if(/poolHash/i.test(m))m="Aquarius routing is view-only for now (router build pending) \u2014 this rate is not yet executable"; throw new Error(m); }); }
-  function soroSend(signedXdr){ return fetch(LX_SORO+"/send?network=mainnet",{method:"POST",headers:soroHeaders(),body:JSON.stringify({xdr:signedXdr})}).then(function(r){ return r.json(); }).then(function(jj){ if(jj&&(jj.success||jj.txHash))return jj; var x=jj&&(jj.message||jj.error||(jj.result&&jj.result.error)); throw new Error(x||"Swap submit failed"); }); }
+  // #5: "Swap failed — Load failed" told the user nothing. "Load failed" is Safari's wording for a
+  // fetch that never completed at all -- not an error the server returned -- so it can only come from one
+  // of the two calls below, and the toast gave no way to tell which. Naming the stage turns an unusable
+  // report into a diagnosable one, and says plainly that the order was NOT placed, which is the thing
+  // someone staring at a failed swap most needs to know.
+  function soroNet(stage){ return function(e){ var m=(e&&e.message)||String(e||"");
+    throw new Error("could not reach the swap router ("+stage+": "+m+"). Nothing was signed or sent — try again in a moment."); }; }
+  function soroBuild(quote,from){ return fetch(LX_SORO+"/quote/build?network=mainnet",{method:"POST",headers:soroHeaders(),body:JSON.stringify({quote:quote,from:from,to:from})}).catch(soroNet("build")).then(function(r){ return r.json(); }).then(function(jj){ if(jj&&jj.xdr)return jj.xdr; var m=(jj&&(jj.message||jj.error))||"Could not build swap"; if(/poolHash/i.test(m))m="Aquarius routing is view-only for now (router build pending) \u2014 this rate is not yet executable"; throw new Error(m); }); }
+  // A failure HERE is different: the transaction is signed, and may or may not have reached the network.
+  // The wording must not claim it did not happen.
+  function soroSend(signedXdr){ return fetch(LX_SORO+"/send?network=mainnet",{method:"POST",headers:soroHeaders(),body:JSON.stringify({xdr:signedXdr})}).catch(function(e){ throw new Error("could not reach the swap router while submitting ("+((e&&e.message)||e)+"). Check your wallet history before retrying."); }).then(function(r){ return r.json(); }).then(function(jj){ if(jj&&(jj.success||jj.txHash))return jj; var x=jj&&(jj.message||jj.error||(jj.result&&jj.result.error)); throw new Error(x||"Swap submit failed"); }); }
   function protLabel(soro){ var ps=(soro.route||[]).map(function(x){return x.p;}).filter(function(v,i,a){return v&&a.indexOf(v)===i;}); var nice={aqua:"Aquarius",soroswap:"Soroswap",phoenix:"Phoenix",sdex:"Stellar DEX"}; return ps.map(function(p){return nice[p]||p;}).join(" + ")||"Aquarius"; }
   // Soroswap's build assumes the destination trustline already exists -> add it (own signature) first if missing
   function dxEnsureTrust(ra){ if(ra.native||window.__lxDXAhasTrust)return Promise.resolve(false); var addr=lxAddr(); if(!addr)return Promise.reject(new Error("No wallet connected"));
