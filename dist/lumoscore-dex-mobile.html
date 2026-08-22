@@ -1916,20 +1916,6 @@ html body .pool-header-row .ph-icons>*{
   font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
-</style><style id="lx-walletlogo-css">
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
-/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
-   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
-   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
-   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
-   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
-   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
-.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
 </style><style id="lx-mobsearch-css">
 /* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
    primary and an afterthought. */
@@ -2241,6 +2227,58 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
 /* Price carries the longest string in the row, so it gets room; the counts stay narrow */
 .dex-mint-stat:first-child{min-width:104px}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-bhiw-css">
+.lx-bhiw{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
+.lx-bhiw[hidden]{display:none}
+.lx-bhiw-bd{position:absolute;inset:0;background:rgba(8,8,12,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
+.lx-bhiw-card{position:relative;z-index:1;width:100%;max-width:560px;max-height:86vh;max-height:86dvh;
+  overflow:auto;-webkit-overflow-scrolling:touch;background:var(--surface,#fff);
+  border:1px solid var(--border);border-radius:18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55)}
+.lx-bhiw-head{position:sticky;top:0;display:flex;align-items:center;gap:12px;padding:17px 20px;
+  background:var(--surface,#fff);border-bottom:1px solid var(--border);z-index:1}
+.lx-bhiw-head h3{flex:1;margin:0;font-size:16.5px;font-weight:800;color:var(--text)}
+.lx-bhiw-x{width:30px;height:30px;flex:0 0 30px;border-radius:9px;border:1px solid var(--border);
+  background:transparent;color:var(--text-soft);cursor:pointer;display:grid;place-items:center}
+.lx-bhiw-x:hover{color:var(--text);border-color:var(--border-strong)}
+.lx-bhiw-body{padding:18px 20px 22px}
+.lx-bhiw-lede{margin:0 0 18px;font-size:14px;line-height:1.6;color:var(--text-soft)}
+.lx-bhiw-lede b{color:var(--text);font-weight:700}
+/* the steps: a numbered rail, because this IS a sequence and the order is the explanation */
+.lx-bhiw-steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:0}
+.lx-bhiw-steps li{position:relative;padding:0 0 20px 40px}
+.lx-bhiw-steps li:last-child{padding-bottom:4px}
+.lx-bhiw-steps li::before{content:attr(data-n);position:absolute;left:0;top:0;width:26px;height:26px;
+  border-radius:50%;display:grid;place-items:center;font:800 12px/1 'JetBrains Mono',monospace;
+  background:var(--accent-pale,rgba(234,106,44,.13));color:var(--accent,#ea6a2c)}
+/* the connecting line, so the rail reads as one journey rather than four notes */
+.lx-bhiw-steps li:not(:last-child)::after{content:"";position:absolute;left:13px;top:30px;bottom:6px;
+  width:1px;background:var(--border)}
+.lx-bhiw-steps h4{margin:3px 0 4px;font-size:14px;font-weight:800;color:var(--text)}
+.lx-bhiw-steps p{margin:0;font-size:13.5px;line-height:1.55;color:var(--text-soft)}
+.lx-bhiw-note{margin-top:18px;padding:12px 14px;border-radius:12px;
+  border:1px solid var(--border);background:var(--surface-2);
+  font-size:13px;line-height:1.55;color:var(--text-soft)}
+.lx-bhiw-note b{color:var(--text)}
+.lx-bhiw-chains{margin-top:14px;font-size:12.5px;line-height:1.7;color:var(--text-soft)}
+.lx-bhiw-chains b{color:var(--text);font-weight:700}
+@media(max-width:560px){
+.lx-bhiw{padding:12px;align-items:flex-start}
+.lx-bhiw-body{padding:16px 16px 20px}
+}
 </style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
@@ -5476,38 +5514,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
-})();</script><script id="lx-walletlogo">(function(){
-  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
-  function logo(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    if(!id)return "";
-    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-    // walletconnect stores a few different spellings; they all mean the same sheet entry
-    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
-    return MAP[id]||"";
-  }
-  function paint(){
-    var url=logo(); if(!url)return;
-    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
-    for(var i=0;i<els.length;i++){
-      var e=els[i];
-      if(e.getAttribute("data-lxwl")===url)continue;
-      e.setAttribute("data-lxwl",url);
-      e.classList.add("lx-haswl");
-      e.style.setProperty("background-image","url('"+url+"')","important");
-    }
-  }
-  function boot(){
-    paint();
-    // The chip and the menu card are both built after connect, and the menu is rendered on open --
-    // so this watches rather than running once.
-    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-    try{ window.addEventListener("storage",paint); }catch(_){}
-    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
 })();</script><script id="lx-mobsearch">(function(){
   if(window.__lxMobSearch)return; window.__lxMobSearch=1;
   var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
@@ -6711,6 +6717,124 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
     var t=e.target; if(!t||!t.closest)return;
     if(t.closest("[data-lxhiw-close]")){ e.preventDefault(); e.stopImmediatePropagation(); close(); return; }
     var hit=t.closest("#dexHiwBtn,.lx-dctas .dex-hero-btn.ghost,.lx-ctas .mdx-hero-btn.ghost");
+    if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
+  },true);
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });
+})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
+  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
+  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
+  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
+  // this map has not been taught, which is still better than saying nothing.
+  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
+    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
+    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
+  function walletId(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+  }
+  function nameIt(){
+    var id=walletId(); if(!id)return;
+    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
+    var els=document.querySelectorAll(".mu-sub");
+    for(var i=0;i<els.length;i++){
+      var e=els[i], t=(e.textContent||"").trim();
+      if(!t||t.indexOf(nm)===0)continue;
+      // Keep whatever the card said after the separator -- that is the network, and it is still true.
+      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
+      var want=nm+(tail?(" "+tail):"");
+      if(e.textContent!==want)e.textContent=want;
+    }
+  }
+  function paint(){
+    try{ nameIt(); }catch(_){}
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();</script><script id="lx-bhiw">(function(){
+  if(window.__lxBhiw)return; window.__lxBhiw=1;
+  var STEPS=[["You choose where it goes","Your connected network is the source. Pick the destination chain and the amount of USDC to move."],["You sign once, on the source chain","That signature burns your USDC. It is genuinely destroyed rather than parked in a contract, which is what lets the same amount be issued as real USDC on the other side."],["Circle attests to the burn","Circle observes the burn and issues a signed attestation for it. This is Circle’s step, not LumosCore’s — nobody here can speed it up, and it has to finish before anything can be minted."],["You claim it on the destination","With the attestation in hand, a second signature mints native USDC to your address on the destination chain. Until you take that step the funds are attested but not yet issued — they are not lost, and the claim can be made later."]];
+  var el=null, trigger=null;
+  function build(){
+    if(el)return el;
+    el=document.createElement("div");
+    el.className="lx-bhiw"; el.setAttribute("hidden","");
+    el.setAttribute("role","dialog"); el.setAttribute("aria-modal","true");
+    el.setAttribute("aria-label","How the cross-chain bridge works");
+    var steps="";
+    for(var i=0;i<STEPS.length;i++){
+      steps+='<li data-n="'+(i+1)+'"><h4>'+STEPS[i][0]+'</h4><p>'+STEPS[i][1]+'</p></li>';
+    }
+    el.innerHTML='<div class="lx-bhiw-bd" data-lxbhiw-close></div>'
+      +'<div class="lx-bhiw-card">'
+      +'<div class="lx-bhiw-head"><h3>How the bridge works</h3>'
+      +'<button class="lx-bhiw-x" type="button" aria-label="Close" data-lxbhiw-close><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
+      +'<div class="lx-bhiw-body">'
+      +'<p class="lx-bhiw-lede">This is not a wrapped-token bridge. It uses <b>Circle CCTP</b>, Circle\u2019s '
+      +'own mechanism for moving USDC between chains: your USDC is <b>burned</b> on the chain it leaves and '
+      +'<b>native USDC is minted</b> on the chain it arrives on. What lands is genuine Circle-issued USDC, '
+      +'not a synthetic claim on a pool somewhere.</p>'
+      +'<ol class="lx-bhiw-steps">'+steps+'</ol>'
+      +'<div class="lx-bhiw-note"><b>Two signatures, not one.</b> One to burn and one to claim. That is '
+      +'inherent to CCTP rather than a choice made here \u2014 the second cannot be prepared until Circle '
+      +'has attested to the first.</div>'
+      +'<div class="lx-bhiw-chains"><b>Where it goes:</b> USDC can move between Stellar and Ethereum, Base, '
+      +'Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain.</div>'
+      +'</div></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+  function open(){
+    build(); el.removeAttribute("hidden");
+    try{ el.querySelector(".lx-bhiw-card").scrollTop=0; }catch(_){}
+    try{ el.__lxOvf=document.body.style.overflow; document.body.style.overflow="hidden"; }catch(_){}
+    try{ el.querySelector(".lx-bhiw-x").focus(); }catch(_){}
+  }
+  function close(){
+    if(!el)return;
+    el.setAttribute("hidden","");
+    try{ document.body.style.overflow=el.__lxOvf||""; }catch(_){}
+    try{ if(trigger&&trigger.focus)trigger.focus(); }catch(_){}
+  }
+  // Delegated, and capturing: the button lives inside a step card the page re-renders, so a listener
+  // bound to the node itself would be orphaned the first time that happened.
+  window.addEventListener("click",function(e){
+    var t=e.target; if(!t||!t.closest)return;
+    if(t.closest("[data-lxbhiw-close]")){ e.preventDefault(); e.stopImmediatePropagation(); close(); return; }
+    var hit=t.closest("#mdxHiwBtn,#brHiwBtn");
+    if(!hit){
+      // the desktop build labels the same control differently; match on what it SAYS as a fallback
+      var b=t.closest("button,a");
+      if(b&&/how it works/i.test((b.textContent||""))&&b.closest(".br-step,.mdx-hero-ctas,.crumb-bar,header,main"))hit=b;
+    }
     if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
   },true);
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });

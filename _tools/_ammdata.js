@@ -343,6 +343,15 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
    across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
    (24h)", so it folds to 2x2 there instead. */
 .ph-stats{grid-template-columns:repeat(4,1fr)!important}
+/* #20: the + between the two Create Pool assets sits ON the seam between the cards, so it depends on
+   having a solid ground of its own and on being above them -- without either it reads as a glyph
+   caught half under an edge. Given both, plus a glyph that is centred by geometry rather than by line
+   box (an svg with display:block cannot inherit a stray baseline). Could not reproduce the exact
+   breakage reported, so this changes only what could plausibly cause it and nothing else. */
+#createPoolModal .plus{position:relative;z-index:2;flex:0 0 30px;width:30px;height:30px;
+  background:var(--surface,#fff)!important;line-height:0;
+  display:flex!important;align-items:center!important;justify-content:center!important}
+#createPoolModal .plus svg{display:block;width:14px;height:14px;flex:0 0 14px}
 .ph-stat .ic.part{background:var(--purple-soft,rgba(139,92,246,.13));color:var(--purple,#8b5cf6)}
 @media(max-width:900px){.ph-stats{grid-template-columns:repeat(2,1fr)!important}}
 
@@ -2781,8 +2790,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     // Say which set is being paged. The pool can have more providers than Horizon will hand over in one
     // page, and printing the pool's total here would promise pages that do not exist -- so the count the
     // pager is counting stays the count the pager can reach, and the pool's own total is named beside it.
-    var _tot=(DET&&DET.trustlines)||0, _extra=(_tot>s.all.length)?(" \\u00b7 of "+num(_tot)+" in this pool"):"";
-    if(info)setText(info, s.all.length?("Viewing "+from+" \\u2013 "+to+" of "+num(s.all.length)+_extra):"No liquidity providers yet");
+    // #15: this read "Viewing 1 – 20 of 100 · of 835 in this pool" -- two "of"s and no grammar, which
+    // is what "the pagination is breaking" was. The pager counts what it can page; the pool's own total
+    // is a separate fact and now reads as one.
+    var _tot=(DET&&DET.trustlines)||0, _extra=(_tot>s.all.length)?(" \\u00b7 "+num(_tot)+" in this pool"):"";
+    if(info)setText(info, s.all.length?("Viewing "+from+"\\u2013"+to+" of "+num(s.all.length)+" shown"+_extra):"No liquidity providers yet");
     if(!nav)return;
     if(!nav.__lxw){ nav.__lxw=1;
       nav.innerHTML='<button type="button" data-pp="prev">\\u2039</button><span class="lx-pppg"></span><button type="button" data-pp="next">\\u203a</button>';
