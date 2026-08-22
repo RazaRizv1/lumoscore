@@ -743,9 +743,14 @@ function cleanUrl(p) {
   return null;
 }
 
-// Local mirror of functions/lxapi/xlm — XLM price and series, asked once and cached, instead of once
-// per visitor against a free tier that answers a few requests a minute. See that file.
+// Local mirror of functions/lxapi/xlm — XLM price, 24h move and series, from HORIZON first.
+// Kept in step with functions/lxapi/xlm.js; see that file for why CoinGecko cannot be the primary
+// source (it refuses datacenter egress, which is where the Worker runs, so it emptied the change
+// column in production while working perfectly from a laptop).
 const XLM_CACHE = new Map();   // key -> {at, body, ttl}
+const XLM_USDC = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
+const XLM_PAIR = 'base_asset_type=native&counter_asset_type=credit_alphanum4&counter_asset_code=USDC&counter_asset_issuer=' + XLM_USDC;
+const XLM_SERIES = { 1:{res:900000,limit:100}, 7:{res:3600000,limit:180}, 30:{res:3600000,limit:200}, 365:{res:86400000,limit:200} };
 function xlmThin(points, max) {
   if (points.length <= max) return points;
   const step = Math.ceil(points.length / max);
@@ -755,45 +760,70 @@ function xlmThin(points, max) {
   if (out[out.length - 1] !== last) out.push(last);
   return out;
 }
+async function xlmHz(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return (((j || {})._embedded || {}).records) || null;
+  } catch (e) { return null; }
+}
 async function xlmProxy(req, res, q) {
   const send = (obj, code, ttl) => {
-    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + (ttl || 120) });
+    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + (ttl || 180) });
     res.end(JSON.stringify(obj));
   };
   const chart = q.get('chart');
   const key = chart == null ? 'price' : ('chart' + chart);
   const hit = XLM_CACHE.get(key);
   if (hit && Date.now() - hit.at < hit.ttl * 1000) return send(hit.body, 200, hit.ttl);
-  const DAYS = { 1: 1, 7: 7, 30: 30, 365: 365 };
-  try {
-    if (chart != null) {
-      const d = DAYS[String(chart)];
-      if (!d) return send({ error: 'bad period' }, 400, 60);
-      const r = await fetch('https://api.coingecko.com/api/v3/coins/stellar/market_chart?vs_currency=usd&days=' + d);
-      if (!r.ok) return send({ error: 'upstream ' + r.status }, 502, 30);
-      const j = await r.json();
-      const prices = (j.prices || []).filter((p) => Array.isArray(p) && +p[1] > 0).map((p) => [+p[0], +p[1]]);
-      if (!prices.length) return send({ error: 'no series' }, 502, 30);
-      const body = { days: d, prices: xlmThin(prices, 180) };
-      XLM_CACHE.set(key, { at: Date.now(), body, ttl: 900 });
-      return send(body, 200, 900);
+
+  if (chart != null) {
+    const spec = XLM_SERIES[String(chart)];
+    if (!spec) return send({ error: 'bad period' }, 400, 60);
+    const recs = await xlmHz('https://horizon.stellar.org/trade_aggregations?' + XLM_PAIR
+      + '&resolution=' + spec.res + '&order=desc&limit=' + spec.limit);
+    let prices = (recs || []).map((x) => [+x.timestamp, +x.close])
+      .filter((p) => p[0] > 0 && p[1] > 0).sort((a2, b2) => a2[0] - b2[0]);
+    if (prices.length < 2) {
+      try {
+        const r = await fetch('https://api.coingecko.com/api/v3/coins/stellar/market_chart?vs_currency=usd&days=' + (+chart));
+        if (r.ok) {
+          const j = await r.json();
+          prices = (j.prices || []).filter((p) => Array.isArray(p) && +p[1] > 0).map((p) => [+p[0], +p[1]]);
+        }
+      } catch (e) { }
     }
+    if (prices.length < 2) return send({ error: 'no series' }, 502, 30);
+    const body = { days: +chart, prices: xlmThin(prices, 180) };
+    XLM_CACHE.set(key, { at: Date.now(), body, ttl: 900 });
+    return send(body, 200, 900);
+  }
+
+  let usd = 0, chg24 = null;
+  const d = await xlmHz('https://horizon.stellar.org/trade_aggregations?' + XLM_PAIR + '&resolution=86400000&order=desc&limit=2');
+  if (d && d.length) {
+    usd = +d[0].close || 0;
+    if (d.length > 1 && +d[1].close > 0 && usd > 0) chg24 = ((usd - +d[1].close) / +d[1].close) * 100;
+  }
+  let mcap = null, vol24 = null;
+  try {
     const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd'
       + '&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true');
-    if (!r.ok) return send({ error: 'upstream ' + r.status }, 502, 30);
-    const s = ((await r.json()) || {}).stellar || {};
-    if (!(+s.usd > 0)) return send({ error: 'no price' }, 502, 30);
-    const body = {
-      usd: +s.usd,
-      chg24: (s.usd_24h_change != null && isFinite(+s.usd_24h_change)) ? +s.usd_24h_change : null,
-      mcap: +s.usd_market_cap || null,
-      vol24: +s.usd_24h_vol || null,
-    };
-    XLM_CACHE.set(key, { at: Date.now(), body, ttl: 120 });
-    return send(body, 200, 120);
-  } catch (e) {
-    send({ error: String((e && e.message) || e) }, 502, 30);
-  }
+    if (r.ok) {
+      const s2 = ((await r.json()) || {}).stellar || {};
+      mcap = +s2.usd_market_cap || null;
+      vol24 = +s2.usd_24h_vol || null;
+      if (!(usd > 0) && +s2.usd > 0) {
+        usd = +s2.usd;
+        chg24 = (s2.usd_24h_change != null && isFinite(+s2.usd_24h_change)) ? +s2.usd_24h_change : null;
+      }
+    }
+  } catch (e) { }
+  if (!(usd > 0)) return send({ error: 'no price' }, 502, 30);
+  const body = { usd, chg24, mcap, vol24 };
+  XLM_CACHE.set(key, { at: Date.now(), body, ttl: 180 });
+  send(body, 200, 180);
 }
 
 // Local mirror of functions/lxapi/poolvol — a pool's real rolling-24h volume, walked from Horizon.

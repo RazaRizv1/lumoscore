@@ -245,6 +245,17 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lx-poolhead{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 10px}
 .lx-poolhead h2{margin:0;font-size:17px;font-weight:800;color:var(--text);letter-spacing:-.3px}
 .lx-poolhead .mdx-hero-ctas{display:flex!important;align-items:center;gap:7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
+/* #9, the half of the flash that was left. Making the heading sr-only stopped the words appearing, but
+   the two CTA buttons under it are still MOVED by the script -- so they paint where the design put them
+   for a frame or two, then jump. Held invisible until the hero (or the section head we build for the
+   phone) has them; the position is reserved either way, so nothing shifts when they arrive.
+   The animation is a failsafe, not decoration: if the script never runs, the buttons reveal themselves
+   after three seconds rather than staying hidden for good. A CSS gate whose only key is a script is how
+   a page ends up permanently blank -- that has happened here before. */
+.mdx-hero-ctas{opacity:0;animation:lxPhRev 0s linear 3s forwards}
+@keyframes lxPhRev{to{opacity:1}}
+.lumos-promo .mdx-hero-ctas,.lx-poolhead .mdx-hero-ctas,
+.lumos-promo .dex-hero-r,.lx-poolhead .dex-hero-r{opacity:1!important;animation:none!important}
 /* primary first, ghost second -- the order Trade reads in */
 .lx-poolhead .mdx-hero-btn.primary{order:1}
 .lx-poolhead .mdx-hero-btn.ghost{order:2}
