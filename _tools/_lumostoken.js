@@ -1160,6 +1160,17 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     // prime the cached trustline result BEFORE the first paint so the Add-Trustline button shows instantly
     try{ var _a=ltAddr(); if(_a){ var _c=JSON.parse(localStorage.getItem("lumos.lt.trust."+_a)||"null"); if(_c&&(Date.now()-_c.ts<6e5))window.__lxHasTrust=_c.has; } }catch(_){}
     guardApply();                                        // paint whatever we have (fast)
+    // The chart's own fetch, started HERE and not inside loadData's price handler.
+    //
+    // My previous pass replaced the old loadChart(chartTF) in that handler with a redraw, to stop it
+    // re-fetching records it already had -- but that call was also the only thing that ever STARTED the
+    // chart. Nothing else calls loadChart except a timeframe button, so a page nobody tapped drew
+    // nothing at all: an empty card with 7D highlighted, for ever. That is the "still taking forever".
+    //
+    // Starting it here is also strictly faster than where it used to live: the Horizon aggregation and
+    // the XLM price now go out together instead of the chart queueing behind the price, and whichever
+    // lands second calls drawFromRecs.
+    try{ loadChart(chartTF); }catch(_){}
     loadData();
     try{ obs=new MutationObserver(schedule); reobserve(); }catch(_){}
     // Bounded re-assert: fetch + design-render timing varies, so re-apply every 700ms for ~21s. Values

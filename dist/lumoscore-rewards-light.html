@@ -4744,6 +4744,14 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   function wcCol(s){ try{ if(window.__lxColFor)return window.__lxColFor(s); }catch(_){}
     var h=0; s=String(s||""); for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0; return WCCOL[h%WCCOL.length]; }
   function xlmLogo(a){ return a.native?"/assets/tokens/xlm.png":""; }
+  // Borrowed from _walletdata.js when it is on the page, so the two lists cannot diverge; the local
+  // copy is the same markup and is only reached if that script is absent.
+  function meta(a){
+    if(a.native||!a.code||!a.issuer)return "";
+    try{ if(window.__lxAssetMeta)return window.__lxAssetMeta(a.code,a.issuer,false); }catch(_){}
+    return '<span class="lx-ameta"><span class="lx-hd" data-hd="'+esc(a.issuer)+'"></span>'
+      +'<a class="lx-vasset" href="/trade/stellar/'+encodeURIComponent(a.code)+'-'+encodeURIComponent(a.issuer)+'">View asset</a></span>';
+  }
 
   function rows(){
     var addr=me();
@@ -4772,7 +4780,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         +' data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer)+'" data-nat="'+(a.native?"1":"0")+'">'
         +_ic
         +'<div class="lx-wcmain"><div class="lx-wcamt">'+amt(r.amount)+' '+esc(a.code)+'</div>'
-        +'<div class="lx-wcsub">'+esc(sub||"claimable balance")+'</div></div>'
+        +'<div class="lx-wcsub">'+esc(sub||"claimable balance")+'</div>'
+        // #3: same provenance line as the open orders -- the issuer's home domain, resolved after the
+        // row is on screen by the shared lxFillHd, plus a way through to the asset's own page. A code
+        // on its own says nothing about who issued it.
+        +meta(a)
+        +'</div>'
         +(ok?'<button class="lx-wcbtn" type="button">Claim</button>'
             :'<button class="lx-wcbtn" type="button" disabled title="This balance is not claimable yet">Locked</button>')
         +'</div>';
@@ -4787,6 +4800,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // These rows arrive after their own Horizon fetch, which normally lands after _walletdata.js has
     // finished its timed heal passes -- so ask for one now rather than hoping to be in time for theirs.
     try{ if(panel&&window.__lxHealLogos)window.__lxHealLogos(panel); }catch(_){}
+    try{ if(panel&&window.__lxFillHd)window.__lxFillHd(panel); }catch(_){}
   }
 
   function claim(btn){

@@ -3468,6 +3468,41 @@ const files = fs.readdirSync('.').filter(f => /^lumoscore-.*-(desktop|mobile)\.h
 //
 // The end of .ph-stats is found by BALANCING <div> tags rather than by counting closing tags: each
 // stat box is itself nested two deep, and a guessed closing marker lands in the wrong place.
+// #4: the Pools hero "shows the previous design for a split second".
+//
+// Measured in an iframe from first paint: at 90ms the .lm-chip is an EMPTY 44px bar -- its own p1/p2/p3
+// are display:none and the stats strip does not exist yet -- with the hero copy at y=285. At ~1070ms the
+// runtime builder appends the strip, the chip grows to 95px and everything above it jumps. A blank bar
+// that becomes a four-column strip and moves the headline is not a loading state, it is a second layout.
+//
+// So ship the strip in the markup. It is the identical HTML buildHeroStats() would have written, skeleton
+// values and all, and that function already returns early when it finds one -- so the runtime path is
+// unchanged and simply has less to do. Same fix, and same reasoning, as the fourth .ph-stat above.
+const HERO_STATS_BOX = '<div class="lx-hstats">'
+  + '<div class="lx-hstat" data-k="fees"><span class="v"><span class="lx-hskel"></span></span><span class="l">24h Fees</span></div>'
+  + '<div class="lx-hstat" data-k="trades"><span class="v"><span class="lx-hskel"></span></span><span class="l">24h Trades</span></div>'
+  + '<div class="lx-hstat" data-k="tokens"><span class="v"><span class="lx-hskel"></span></span><span class="l">Tokens</span></div>'
+  + '<div class="lx-hstat" data-k="top"><span class="v"><span class="lx-hpairskel"><span class="pa"></span><span class="pb"></span></span>'
+  + '<span class="lx-toptxt lx-hskel"></span></span><span class="l">Top Pool</span></div></div>';
+function addHeroStats(p) {
+  const open = p.indexOf('<div class="lm-chip">');
+  if (open < 0) return p;
+  // Balance the <div>s rather than counting closers: p3 nests a <span> and the chip's own children are
+  // divs, so a guessed end lands inside the chip's last row.
+  const re = /<\/?div\b/gi;
+  re.lastIndex = open;
+  let depth = 0, m, end = -1;
+  while ((m = re.exec(p))) {
+    if (m[0][1] === '/') { depth--; if (depth === 0) { end = m.index; break; } }
+    else depth++;
+  }
+  if (end < 0) return p;
+  // Scoped to THIS chip, not the page: the runtime builder's own source contains the string lx-hstats,
+  // which is exactly the trap the participants box fell into.
+  if (p.slice(open, end).indexOf('lx-hstats') >= 0) return p;
+  return p.slice(0, end) + HERO_STATS_BOX + p.slice(end);
+}
+
 function addPartStat(p) {
   const open = p.indexOf('<div class="ph-stats">');
   if (open < 0) return p;
@@ -3514,6 +3549,7 @@ for (const file of files) {
                 .replace(/<button>1M<\/button>/, '<button class="active">1M</button>');
     });
     p = addPartStat(p);
+    p = addHeroStats(p);
     p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }

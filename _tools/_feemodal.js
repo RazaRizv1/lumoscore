@@ -97,8 +97,13 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'modal.querySelector(".lx-fm-confirm").onclick=function(){close();if(lastCta){proceeding=true;lastCta.click();}};'
 +'}'
 +'function populate(pane){if(!pane)return;var fields=pane.querySelectorAll(".dxa-trade-field");'
-+'var payIn=fields[0]&&fields[0].querySelector("input");var payTok=tick(fields[0]&&fields[0].querySelector(".dxa-trade-ir"));'
-+'var recTok=tick(fields[1]&&fields[1].querySelector(".dxa-trade-ir"));'
+// The ticker is not always TEXT. On a phone the receive chip renders as a logo swatch with no label --
+// its code lives in data-lxmt-code -- so reading the field's text gave "" and the review said
+// "You receive 0.022317" with no asset named at all. Text first, attribute second.
++'function tok(f){if(!f)return "";var t=tick(f.querySelector(".dxa-trade-ir"));if(t)return t;'
++'var c=f.querySelector("[data-lxmt-code]");return c?((c.getAttribute("data-lxmt-code")||"").trim()):"";}'
++'var payIn=fields[0]&&fields[0].querySelector("input");var payTok=tok(fields[0]);'
++'var recTok=tok(fields[1]);'
 +'var payNum=parseFloat(((payIn&&payIn.value)||"").replace(/,/g,""))||0;'
 // AUDIT (numeric): the modal derived receive as pay x rate — but the pane's "Rate" row is the GROSS market
 // rate while the pane's receive field is already NET of the platform fee. So the confirmation screen showed
@@ -119,15 +124,37 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 // beside 0.01 XLM. The pane does not paint its token on the ELEMENT: the mark is a ::before whose
 // background-image comes from the --lxtic custom property. Ask for it the way it is actually stored,
 // and only then fall back through the other two shapes.
-+'function legIco(field){var el=field&&field.querySelector(".dxa-trade-ic,.dxa-trade-ir .ico,.dxa-trade-ir img,.dxa-trade-ir [class*=ico]");'
-+'if(!el)return "";var st="";'
+// #2 (batch 7), the mobile half. Two separate faults, neither visible on desktop.
+//
+// FIRST: the markup was invalid. This built the span as a string with style="..." in DOUBLE quotes and
+// then dropped a CSS url into it -- and both sources of that url produce DOUBLE quotes of their own:
+// JSON.stringify(img.src) by definition, and getComputedStyle().backgroundImage because the browser
+// normalises to url("..."). The attribute therefore ended at the first inner quote and the rest of the
+// data URI was parsed as a series of junk attributes. Desktop escaped this only by luck: it takes the
+// --lxtic path, whose inline value happens to be unquoted.
+// So the URL is extracted RAW now and re-emitted single-quoted, which cannot collide with the attribute.
+//
+// SECOND: the two legs are not the same shape on a phone. "You pay" has an <img> inside .mdxa-trade-ic,
+// but "You receive" has no icon element at all -- its logo is a background-image on the
+// .mdxa-trade-asset chip itself. The old selector knew about neither, so the receive leg found nothing
+// and rendered with no mark. Both are in the list below, chip last so a real icon always wins.
++'function rawUrl(v){v=String(v||"").trim();if(!v||v==="none")return "";'
++'var m=/url\\((.*)\\)/i.exec(v);if(!m)return "";'
++'var u=m[1].trim().replace(/^[\"\\x27]|[\"\\x27]$/g,"");'
++'return u&&u!=="none"?u:"";}'
++'function legIco(field){if(!field)return "";'
++'var el=field.querySelector(".dxa-trade-ic,.mdxa-trade-ic,.dxa-trade-ir .ico,.dxa-trade-ir img,.dxa-trade-ir [class*=ico]")'
++'||field.querySelector(".mdxa-trade-asset,.dxa-trade-asset");'
++'if(!el)return "";var u="";'
 +'try{var v=(el.style&&el.style.getPropertyValue("--lxtic"))||"";'
 +'if(!v){var c0=getComputedStyle(el);v=c0.getPropertyValue("--lxtic")||c0.getPropertyValue("--lxmlogo")||"";}'
-+'v=String(v).trim(); if(v&&v!=="none")st="background-image:"+v;}catch(_){}'
-+'if(!st){try{var cb=getComputedStyle(el,"::before");if(cb.backgroundImage&&cb.backgroundImage!=="none")st="background-image:"+cb.backgroundImage;}catch(_){}}'
-+'if(!st){try{var cs=getComputedStyle(el);if(cs.backgroundImage&&cs.backgroundImage!=="none")st="background-image:"+cs.backgroundImage;}catch(_){}}'
-+'if(!st){var im=el.tagName==="IMG"?el:el.querySelector("img");if(im&&im.src)st="background-image:url("+JSON.stringify(im.src)+")";}'
-+'return st?(\'<span class="lx-rv-mk" data-logoed="1" data-lxc="1" style="\'+st+\'"></span>\'):"";}'
++'u=rawUrl(v);}catch(_){}'
++'if(!u){try{u=rawUrl(getComputedStyle(el,"::before").backgroundImage);}catch(_){}}'
++'if(!u){try{u=rawUrl(getComputedStyle(el).backgroundImage);}catch(_){}}'
++'if(!u){var im=el.tagName==="IMG"?el:el.querySelector("img");if(im&&im.src)u=im.src;}'
++'if(!u)return "";'
++'var esc=String(u).replace(/\\x27/g,"%27").replace(/\\s+/g,"");'
++'return \'<span class="lx-rv-mk" data-logoed="1" data-lxc="1" style="background-image:url(\\x27\'+esc+\'\\x27)"></span>\';}'
 +'var payIco=legIco(fields[0]),recIco=legIco(fields[1]);'
 +'modal.querySelector("[data-pay]").innerHTML=payIco+\'<span>\'+fnum(payNum)+" "+payTok+\'</span>\';'
 +'modal.querySelector("[data-receive]").innerHTML=recIco+\'<span>\'+fnum(recNum)+" "+recTok+\'</span>\';'
