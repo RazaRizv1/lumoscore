@@ -122,6 +122,25 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     if(x>0)return smallNum(x,4);return "0";}
   function priceOf(a){return (a&&a.px!=null&&isFinite(+a.px))?+a.px:null;}
   function assets(){return window.__lxDEXassets||null;}
+  // #3/#7: a.chg is the move against XLM -- that is what trade_aggregations measure. On a day when XLM
+  // itself rose 11%, an asset that merely held its DOLLAR value printed as a red -11%, which is what the
+  // whole list was doing: USDC -10.26%, EURC -7.26%, a dollar stablecoin and a euro one apparently
+  // collapsing on the same afternoon. The desktop table has converted to dollars for a while; this
+  // renderer never did, so the same asset disagreed with itself depending on the device.
+  //
+  // _dexdata.js owns the conversion and publishes it; the fallback recomputes from the same cached
+  // figure it writes, for the window before it has run. Null -- not the raw XLM number -- when XLM's own
+  // move is unknown, because printing an XLM change under a dollar heading is precisely the bug.
+  function cu(a){
+    try{ if(window.__lxChgU)return window.__lxChgU(a); }catch(_){}
+    if(!a||a.chg==null)return null;
+    var xc=null;
+    try{ if(window.__lxXlmChg!=null)xc=+window.__lxXlmChg;
+      else{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
+        if(c&&c.chg!=null&&(Date.now()-c.ts<216e5))xc=+c.chg; } }catch(_){}
+    if(xc==null)return null;
+    return ((1+a.chg/100)*(1+xc/100)-1)*100;
+  }
   // Defer to the layer's own resolver so both layouts show one logo per asset. It prefers the hardcoded
   // brand logo, falls back to the stellar.toml-resolved image (a.img — which the earlier mobile code
   // ignored, so toml-only assets never got their real logo), and finally to a lettered avatar. A flat
@@ -207,21 +226,23 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     // put arbitrary assets under a heading that claims they moved. Volume is never empty in practice.
     if(!d)d=[];
     if(!d.length&&!window.__lxDEXloaded)d=A.slice(0,4);        // still loading: keep the placeholder rows
-    var sig="v|"+cat+"|"+d.map(function(a){return a.code+":"+(a.chg==null?"":a.chg);}).join("|");
+    // The signature has to include the CONVERTED figure. Keyed on a.chg alone, the list would not repaint
+// when XLM's own 24h move arrived a moment later -- every row would keep whatever it first rendered.
+    var sig="v|"+cat+"|"+d.map(function(a){var c=cu(a);return a.code+":"+(c==null?"":c.toFixed(4));}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     if(!d.length){
       list.innerHTML='<div class="lxmd-empty">No '+(cat==="losers"?"losers":"gainers")
         +' right now among assets with real liquidity and holders.</div>';
       return;
     }
-    list.innerHTML=d.map(function(a){var up=(a.chg||0)>=0;
+    list.innerHTML=d.map(function(a){var _cu=cu(a),up=(_cu||0)>=0;
       return '<div class="mdx-mover-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +ico("mdx-mover-ic",a)
         +'<div class="mdx-mover-main"><div class="mdx-mover-pair">'+esc(a.code)+vtick(a)+'</div>'
         +'<div class="mdx-mover-sub">'+esc(dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</div></div>'
         +'<div class="mdx-mover-right">'
         +'<div class="mdx-mover-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
-        +'<div class="mdx-mover-pct '+(up?"up":"down")+'">'+esc(pct(n(a.chg)))+'</div>'
+        +'<div class="mdx-mover-pct '+(_cu==null?"":(up?"up":"down"))+'">'+esc(_cu==null?DASH:pct(n(_cu)))+'</div>'
         +'</div></div>';
     }).join("");
   }
@@ -239,7 +260,9 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   // ascending sort with a wall of blanks.
   var MK_SORTS=[["px","Last price"],["chg","24H change"],["vol","Volume (24H)"],["trades","Trades (24H)"],["tvlUsd","Liquidity"]];
   var mkSort={key:"vol",dir:-1};                              // default: 24h volume, high to low
-  function mkCmp(k,dir){ return function(a,b){ var x=a[k],y=b[k];
+  // "24H change" has to sort on the figure the rows actually SHOW. Sorting the raw XLM move while
+  // displaying the dollar move puts the list in an order the reader cannot see any reason for.
+  function mkCmp(k,dir){ return function(a,b){ var x=(k==="chg"?cu(a):a[k]),y=(k==="chg"?cu(b):b[k]);
     var xn=(x==null||x!==x), yn=(y==null||y!==y);
     if(xn&&yn)return 0; if(xn)return 1; if(yn)return -1;
     return dir<0?(y-x):(x-y); }; }
@@ -343,7 +366,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       +'<span class="lxmd-pg-info">Page '+mkPage+' of '+pages+'</span>'
       +'<button class="lxmd-pg" data-pg="'+(mkPage+1)+'"'+(mkPage>=pages?" disabled":"")+'>Next</button>'
       +'</div>');
-    list.innerHTML=d.map(function(a){var up=(a.chg||0)>=0;
+    list.innerHTML=d.map(function(a){var _cu=cu(a),up=(_cu||0)>=0;
       return '<div class="mdx-mk-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +'<div class="mdx-mk-top">'+ico("mdx-mk-ic",a)
         +'<div class="mdx-mk-meta"><div class="mdx-mk-name-row">'
@@ -352,7 +375,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         +'<div class="mdx-mk-vol">Vol '+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</div></div>'
         +'<div class="mdx-mk-right">'
         +'<div class="mdx-mk-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
-        +'<div class="mdx-mk-pct '+(up?"up":"down")+'">'+esc(pct(n(a.chg)))+'</div>'
+        +'<div class="mdx-mk-pct '+(_cu==null?"":(up?"up":"down"))+'">'+esc(_cu==null?DASH:pct(n(_cu)))+'</div>'
         +'</div></div></div>';
     }).join("")+pgh;
   }

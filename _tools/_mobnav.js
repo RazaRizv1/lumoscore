@@ -26,6 +26,15 @@
 // Usage: node _tools/_mobnav.js
 const fs = require('fs');
 
+// #12: on a phone the whole page could be dragged out of place -- pulled down into a refresh spinner and
+// rubber-banded sideways -- because nothing ever told the browser not to. overscroll-behavior:none on the
+// viewport element is the documented way to decline both: the pull-to-refresh gesture and the bounce past
+// the scroll limits. Deliberately NOT adding overflow-x:hidden -- the document already measures exactly
+// the viewport width (checked: scrollWidth 375 at 375), and putting that on <html> is what breaks
+// position:sticky. This transform is the one that visits every key of every mobile container, which is
+// why the rule lives here rather than in a page-specific one.
+const STYLE = `<style id="lx-mobfix">html,body{overscroll-behavior:none}<\/style>`;
+
 const SCRIPT = `<script id="lx-mobnav">(function(){
   if(window.__lxNavWired)return; window.__lxNavWired=1;
   var t0=null;
@@ -79,8 +88,9 @@ for (const c of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'stella
     if (p.indexOf('</body>') < 0) continue;
     const before = p;
     p = p.replace(/<script id="lx-mobnav">[\s\S]*?<\/script>/, '');          // re-runnable: drop the old copy
+    p = p.replace(/<style id="lx-mobfix">[\s\S]*?<\/style>/, '');
     const bi = p.lastIndexOf('</body>'); if (bi < 0) continue;
-    p = p.slice(0, bi) + SCRIPT + p.slice(bi);
+    p = p.slice(0, bi) + STYLE + SCRIPT + p.slice(bi);
     if (p !== before) { json[k] = p; changed = true; keys++; }
   }
   if (changed) {

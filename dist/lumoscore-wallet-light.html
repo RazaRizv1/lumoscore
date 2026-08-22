@@ -1758,23 +1758,30 @@ html body .pool-header-row .ph-icons>*{
 
 .lx-wclist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;
   margin-bottom:32px}
-.lx-wcrow{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border)}
+.lx-wcrow{display:flex;align-items:center;gap:11px;padding:13px 18px;border-bottom:1px solid var(--border)}
 .lx-wcrow:last-child{border-bottom:0}
 /* #6: the asset disc. --lxlogo is set inline -- a real logo when we have one, otherwise a flat colour
    derived from the code, with the initial drawn over it by ::after. data-lxc/data-lxi opt this element
    INTO the shared resolver in _walletdata.js, which replaces --lxlogo in place once a toml logo turns up,
    so a row never has to be rebuilt to gain its picture. */
-.lx-wcico{width:30px;height:30px;flex:0 0 30px;border-radius:50%;position:relative;overflow:hidden;
+.lx-wcico{width:32px;height:32px;flex:0 0 32px;border-radius:50%;position:relative;overflow:hidden;
   background-image:var(--lxlogo,none);background-size:cover;background-position:center;
   background-repeat:no-repeat;background-color:var(--surface-2)}
 .lx-wcico::after{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;
-  justify-content:center;color:#fff;font:800 12.5px/1 inherit;pointer-events:none}
+  justify-content:center;color:#fff;font:800 13px/1 inherit;pointer-events:none}
 /* Once a real picture is in, the initial would sit on top of it. The resolver blanks data-l when it
    paints, so this only ever hides a letter that has been deliberately cleared. */
 .lx-wcico[data-l=""]::after{content:none}
 .lx-wcmain{flex:1 1 auto;min-width:0}
-.lx-wcamt{font:800 15px/1.2 'JetBrains Mono',monospace;color:var(--text)}
-.lx-wcsub{margin-top:3px;font-size:12.5px;color:var(--text-soft);
+/* #1: measured against this page's own holdings rows (.lxmw-row) and matched to them, rather than
+   picked by eye. Those rows set the quantity in JetBrains Mono 14/800 at text colour, the unit beside
+   it in the body face at 11.5/600 soft, and every secondary line at 11.5/600 soft. This list was mono
+   15/800 for the whole string -- code included -- over a 12.5px sub, so it read as a heavier, wider,
+   slightly larger version of a row sitting directly above it. Same numbers, same faces, same sizes. */
+.lx-wcamt{display:flex;align-items:baseline;gap:6px;min-width:0}
+.lx-wcamt .a{font:800 14px/1.25 'JetBrains Mono',monospace;color:var(--text)}
+.lx-wcamt .u{font:600 11.5px/1.25 inherit;color:var(--text-soft)}
+.lx-wcsub{margin-top:2px;font:600 11.5px/1.35 inherit;color:var(--text-soft);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lx-wcbtn{flex:0 0 auto;height:34px;padding:0 15px;border-radius:10px;border:0;color:#fff;cursor:pointer;
   font:800 12.5px/1 inherit;background:linear-gradient(135deg,var(--accent,#ea6a2c),#c1440a);
@@ -6096,7 +6103,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       return '<div class="lx-wcrow'+(ok?"":" locked")+'" data-cb="'+esc(r.id)+'"'
         +' data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer)+'" data-nat="'+(a.native?"1":"0")+'">'
         +_ic
-        +'<div class="lx-wcmain"><div class="lx-wcamt">'+amt(r.amount)+' '+esc(a.code)+'</div>'
+        +'<div class="lx-wcmain"><div class="lx-wcamt"><span class="a">'+amt(r.amount)+'</span><span class="u">'+esc(a.code)+'</span></div>'
         +'<div class="lx-wcsub">'+esc(sub||"claimable balance")+'</div>'
         // #3: same provenance line as the open orders -- the issuer's home domain, resolved after the
         // row is on screen by the shared lxFillHd, plus a way through to the asset's own page. A code

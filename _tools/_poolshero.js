@@ -92,6 +92,13 @@ html .lumos-promo.lm-pools .lm{min-height:300px!important}
 /* The plain page heading says what the card says. Hidden to the eye, kept in the outline. */
 .lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
 .dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
+/* Collapsing the box is not enough while its CTAs are still inside it: with the heading hidden the
+   buttons alone still measured 46px at first paint, and the page still jumped when they left. They are
+   MOVED into the hero card (copy.appendChild(src)), never cloned, so hiding them HERE only ever hides
+   the pair that has not been relocated yet -- the moment they land in .lm-c-pool this stops matching
+   and the moved copy is styled by the .lumos-promo rule further down. */
+.dex-hero:has(> .dex-hero-l.lx-sronly)>.dex-hero-r,
+.dex-hero:has(> .dex-hero-l.lx-sronly)>.mdx-hero-ctas{display:none!important}
 /* the card is a column: copy on top, stats strip pinned along the bottom edge */
 .lm-pools .lm{display:flex!important;flex-direction:column;position:relative}
 .lm-pools .lm-c-pool,.lm-pools .lm-c{position:relative;z-index:4;display:flex;align-items:center;gap:24px;flex:1 1 auto;padding:26px 30px!important}
@@ -392,6 +399,17 @@ for (const dev of ['desktop', 'mobile']) {
          .join("Provide liquidity and earn fees on Stellar's on-chain AMM pools.");
     p = p.replace(/<h1 class="page-title">/g, '<h1 class="page-title lx-sronly">')
          .replace(/<p class="page-subtitle">/g, '<p class="page-subtitle lx-sronly">');
+    // ...and the DESKTOP heading, which is a different element entirely and was therefore never baked.
+    //
+    // This is the flash that survived three attempts, and the reason each fix missed is that I kept
+    // looking inside the hero card. Measured from first paint in an iframe: at 122ms a .dex-hero block
+    // 69px tall sits ABOVE the card -- "Automated Market Maker / Provide liquidity and earn fees..." --
+    // and at 281ms it collapses to nothing and everything below it jumps up by 93px. The collapse rule
+    // is .dex-hero:has(> .dex-hero-l.lx-sronly), so it only applies once that class is on the element,
+    // and on this page only the runtime script put it there. The two replacements above never matched
+    // because the desktop hero is <div class="dex-hero-l"><h1>, not <h1 class="page-title">.
+    // Baked now, so the block is collapsed by the stylesheet in <head> before anything is painted.
+    p = p.replace(/<div class="dex-hero-l">/g, '<div class="dex-hero-l lx-sronly">');
     // STYLE into <head>, SCRIPT before </body>. Same split, and for the same reason, as
     // _heromono.js: a style block that only lands at the end of the document is parsed after the
     // first paint, which is precisely how the orange carousel got a frame on screen.
