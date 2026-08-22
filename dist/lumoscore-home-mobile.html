@@ -6605,6 +6605,15 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
   // pool page would read as the pool's, and it would disagree with the 24h Volume card directly above it,
   // which IS pool-only. Pool-specific volume per bucket across 30 days is not reachable -- it would be a
   // paged trades crawl per bucket -- so the honest move is to name the number for what it measures.
+  // The same bucket lookup as chHovVol, returning the NUMBER so the tooltip can format it itself.
+  // Null when the chart has no volume series for this point, which is how the caller knows to omit
+  // the line entirely rather than print a zero it cannot stand behind.
+  function chHovVolVal(st,t){
+    var vi=st&&st.vol; if(!vi||!vi.buck||!vi.buck.length)return null;
+    var i=Math.floor((t-vi.t0)/vi.bw);
+    if(i<0)i=0; if(i>vi.buck.length-1)i=vi.buck.length-1;
+    return +vi.buck[i]||0;
+  }
   function chHovVol(st,t){
     var vi=st&&st.vol; if(!vi||!vi.buck||!vi.buck.length)return "";
     var i=Math.floor((t-vi.t0)/vi.bw);
@@ -6662,12 +6671,31 @@ setInterval(function(){if(_tf!=="30d")load();},120000);
       dot.style.opacity=st.bars?"0":"1";
       var sig=key+"|"+st.metric+"|"+st.unit+"|"+(st.usdPerUnit>0?1:0);
       if(box.__lxSig!==sig){ box.__lxSig=sig;
-        var usdTxt=(st.usdPerUnit>0)?usd(p.v*st.usdPerUnit):"";
-        box.innerHTML='<div style="font-size:12.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">'+(st.metric==="vol"?"Volume":"TVL")+'</div>'
-          +'<div style="font-weight:700;font-size:15px;color:var(--text);margin-top:3px">'+esc(famt(p.v)+" "+st.unit)+'</div>'
-          +(usdTxt?('<div style="font-size:13.5px;color:var(--text-muted);margin-top:1px">'+esc(usdTxt)+'</div>'):'')
-          +chHovVol(st,p.t)
-          +'<div style="font-size:13px;color:var(--text-soft);margin-top:5px">'+esc(chHovDate(p.t,st.span))+'</div>';
+        // #18: three lines -- TVL in dollars, volume in dollars, participants -- as requested.
+        //
+        // The pool-unit figures are gone: "3,686,751 JOHN" above "$7.85" gave the eye a seven-digit
+        // number to land on and a tiny one to actually read, and the big one is only meaningful to
+        // someone already holding that token.
+        //
+        // The dollar figure is not always available: a credit/credit pool has no USD price for either
+        // reserve, and usdPerUnit is 0. Falling back to units there rather than printing nothing --
+        // an empty tooltip would be a worse answer than an honest one in the pool's own denomination.
+        var _lbl=(st.metric==="vol"?"Volume":"TVL");
+        var _val=(st.usdPerUnit>0)?usd(p.v*st.usdPerUnit):(famt(p.v)+" "+st.unit);
+        function _row(l,v,strong){
+          return '<div style="font-size:11.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">'+esc(l)+'</div>'
+            +'<div style="font-weight:700;font-size:'+(strong?15:14)+'px;color:var(--text);margin-top:2px">'+esc(v)+'</div>';
+        }
+        // The volume line for the SAME point, in dollars, from the bars the chart already drew.
+        var _vp=chHovVolVal(st,p.t);
+        var _volTxt=(_vp==null)?null:((st.usdPerUnit>0)?usd(_vp*st.usdPerUnit):(famt(_vp)+" "+st.unit));
+        // Participants is a CURRENT figure, not a per-point one -- it is read straight off the stat card
+        // above so the two can never disagree, and it does not change as the pointer moves.
+        var _pv=document.querySelector(".lx-partstat .v");
+        var _pt=_pv?(_pv.textContent||"").trim():"";
+        box.innerHTML=_row(_lbl,_val,true)
+          +(_volTxt?('<div style="margin-top:8px">'+_row("Volume",_volTxt,false)+'</div>'):'')
+          +((_pt&&_pt!=="—")?('<div style="margin-top:8px">'+_row("Participants",_pt,false)+'</div>'):'');
       }
       box.style.opacity="1";
       var bw=box.offsetWidth||160, bh=box.offsetHeight||74;
