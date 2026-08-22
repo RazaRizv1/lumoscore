@@ -1576,6 +1576,32 @@ html body .pool-header-row .ph-icons>*{
 /* the wallet card is not a nav row -- it must not grow a chevron or a tile */
 .slide-menu .menu-user a::after{content:none}
 .slide-menu .menu-user a>svg{padding:0;background:none;border-radius:0}
+</style><style id="lx-mobsearch-css">
+/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
+   primary and an afterthought. */
+.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
+  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
+.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
+.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
+/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
+   leave it about 120px, and it already truncates. Nothing else may shrink. */
+.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
 </style><style id="lx-searchassets-css">
 .sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
 .lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
@@ -1599,18 +1625,6 @@ html body .pool-header-row .ph-icons>*{
   font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
-</style><style id="lx-mobsearch-css">
-/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
-   primary and an afterthought. */
-.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
-  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
-  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
-  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
-.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
-.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
-/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
-   leave it about 120px, and it already truncates. Nothing else may shrink. */
-.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
 </style><style id="lx-amm-css">
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
@@ -1940,6 +1954,12 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
    phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
    inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
    placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
+/* #6 (batch 5): the participants footer ships baked as "Viewing 1 - 17 of 847" -- the design's mock --
+   and on a desktop refresh that sat there for the whole time the pool was loading, which is a specific
+   wrong number rather than an obviously empty one. Hidden until our own pager writes it (.lx-partfoot
+   is added by partFoot), with the usual failsafe so a stalled load leaves it blank rather than gone. */
+.part-foot:not(.lx-partfoot){visibility:hidden}
+
 /* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
    across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
    (24h)", so it folds to 2x2 there instead. */
@@ -1967,20 +1987,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-walletlogo-css">
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
-/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
-   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
-   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
-   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
-   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
-   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
-.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
 </style></head>
 <body><!--lx-menu--><div class="menu-overlay" id="menuOverlay"></div>
   <aside class="slide-menu" id="slideMenu">
@@ -4335,7 +4341,128 @@ window.addEventListener('click',function(e){
 .lx-faq-q{font-size:16px;font-weight:700;color:var(--text);margin:0 0 7px}
 .lx-faq-a{font-size:14.5px;line-height:1.7;color:var(--text-muted);margin:0}
 @media(max-width:640px){.lx-faq{padding:28px 16px 34px}.lx-faq h2{font-size:21px}}
-</style><style id="lx-gate-css">[data-lxgate="1"]{font-size:0!important;color:transparent!important}[data-lxgate="1"]::after{content:"Connect wallet";font-size:15px;font-weight:800;letter-spacing:0;color:#fff;display:inline-block}</style><script id="lx-gate">(function(){var NET="aptos",SEL=".dw-cta";function conn(){try{return !!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"));}catch(_){return false;}}function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}function apply(){var on=conn();var els=document.querySelectorAll(SEL);for(var i=0;i<els.length;i++){var b=els[i];if(on){if(b.getAttribute("data-lxgate")){if(b.getAttribute("data-lxorig")!=null)b.textContent=b.getAttribute("data-lxorig");if(b.getAttribute("data-lxdis")==="1"){try{b.disabled=true;}catch(_){}b.setAttribute("disabled","");}b.style.removeProperty("opacity");b.style.removeProperty("cursor");b.removeAttribute("data-lxdis");b.removeAttribute("aria-label");b.removeAttribute("data-lxgate");}}else{if(b.getAttribute("data-lxorig")==null)b.setAttribute("data-lxorig",(b.textContent||"").trim());if(b.getAttribute("data-lxdis")==null)b.setAttribute("data-lxdis",(b.disabled||b.hasAttribute("disabled"))?"1":"0");if(b.textContent.trim()!=="Connect wallet")b.textContent="Connect wallet";try{b.disabled=false;}catch(_){}b.removeAttribute("disabled");b.removeAttribute("aria-disabled");b.classList.remove("disabled","is-disabled","btn-disabled");b.style.removeProperty("pointer-events");b.style.setProperty("opacity","1","important");b.style.setProperty("cursor","pointer","important");b.setAttribute("aria-label","Connect wallet");b.setAttribute("data-lxgate","1");}}}window.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-lxgate=\"1\"]"):null;if(b){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","stay:"+actNet());}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork(location.href);else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet(),location.href);return;}setTimeout(apply,60);},true);if(document.readyState!=="loading")apply();else document.addEventListener("DOMContentLoaded",apply);setTimeout(apply,350);setTimeout(apply,1000);try{var mo=new MutationObserver(function(){if(mo.__b)return;mo.__b=1;setTimeout(function(){mo.__b=0;apply();},40);});var host=document.querySelector(SEL);host=host&&host.parentNode?host.parentNode:document.body;if(host)mo.observe(host,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["disabled","class"]});}catch(_){}})();</script><style id="lx-searchfix">#searchPopup #spFilters,.sp-body #spFilters{display:none !important}</style><script id="lx-searchctl">(function(){function head(){var c=document.getElementById("spAssetCount");return c&&c.closest?c.closest(".sp-section-head"):null;}function ctl(){var inp=document.getElementById("spSearchInput");if(!inp)return;var list=document.getElementById("spAssetList");var empty=!(inp.value&&inp.value.trim());if(empty&&list&&list.children.length&&!list.querySelector(".lx-recrow"))list.innerHTML="";var h=head();if(h)h.style.display=(empty||!list||!list.children.length)?"none":"";}document.addEventListener("input",function(e){if(e.target&&e.target.id==="spSearchInput"){ctl();if(window.requestAnimationFrame)requestAnimationFrame(ctl);}},true);document.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"){setTimeout(ctl,30);}},true);var mo=null;function attach(){var list=document.getElementById("spAssetList");if(list&&!mo&&window.MutationObserver){mo=new MutationObserver(ctl);mo.observe(list,{childList:true});}ctl();}if(document.readyState!=="loading")attach();else document.addEventListener("DOMContentLoaded",attach);})();</script><script id="lx-searchassets">(function(){
+</style><style id="lx-gate-css">[data-lxgate="1"]{font-size:0!important;color:transparent!important}[data-lxgate="1"]::after{content:"Connect wallet";font-size:15px;font-weight:800;letter-spacing:0;color:#fff;display:inline-block}</style><script id="lx-gate">(function(){var NET="aptos",SEL=".dw-cta";function conn(){try{return !!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"));}catch(_){return false;}}function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}function apply(){var on=conn();var els=document.querySelectorAll(SEL);for(var i=0;i<els.length;i++){var b=els[i];if(on){if(b.getAttribute("data-lxgate")){if(b.getAttribute("data-lxorig")!=null)b.textContent=b.getAttribute("data-lxorig");if(b.getAttribute("data-lxdis")==="1"){try{b.disabled=true;}catch(_){}b.setAttribute("disabled","");}b.style.removeProperty("opacity");b.style.removeProperty("cursor");b.removeAttribute("data-lxdis");b.removeAttribute("aria-label");b.removeAttribute("data-lxgate");}}else{if(b.getAttribute("data-lxorig")==null)b.setAttribute("data-lxorig",(b.textContent||"").trim());if(b.getAttribute("data-lxdis")==null)b.setAttribute("data-lxdis",(b.disabled||b.hasAttribute("disabled"))?"1":"0");if(b.textContent.trim()!=="Connect wallet")b.textContent="Connect wallet";try{b.disabled=false;}catch(_){}b.removeAttribute("disabled");b.removeAttribute("aria-disabled");b.classList.remove("disabled","is-disabled","btn-disabled");b.style.removeProperty("pointer-events");b.style.setProperty("opacity","1","important");b.style.setProperty("cursor","pointer","important");b.setAttribute("aria-label","Connect wallet");b.setAttribute("data-lxgate","1");}}}window.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-lxgate=\"1\"]"):null;if(b){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","stay:"+actNet());}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork(location.href);else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet(),location.href);return;}setTimeout(apply,60);},true);if(document.readyState!=="loading")apply();else document.addEventListener("DOMContentLoaded",apply);setTimeout(apply,350);setTimeout(apply,1000);try{var mo=new MutationObserver(function(){if(mo.__b)return;mo.__b=1;setTimeout(function(){mo.__b=0;apply();},40);});var host=document.querySelector(SEL);host=host&&host.parentNode?host.parentNode:document.body;if(host)mo.observe(host,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["disabled","class"]});}catch(_){}})();</script><style id="lx-searchfix">#searchPopup #spFilters,.sp-body #spFilters{display:none !important}</style><script id="lx-searchctl">(function(){function head(){var c=document.getElementById("spAssetCount");return c&&c.closest?c.closest(".sp-section-head"):null;}function ctl(){var inp=document.getElementById("spSearchInput");if(!inp)return;var list=document.getElementById("spAssetList");var empty=!(inp.value&&inp.value.trim());if(empty&&list&&list.children.length&&!list.querySelector(".lx-recrow"))list.innerHTML="";var h=head();if(h)h.style.display=(empty||!list||!list.children.length)?"none":"";}document.addEventListener("input",function(e){if(e.target&&e.target.id==="spSearchInput"){ctl();if(window.requestAnimationFrame)requestAnimationFrame(ctl);}},true);document.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"){setTimeout(ctl,30);}},true);var mo=null;function attach(){var list=document.getElementById("spAssetList");if(list&&!mo&&window.MutationObserver){mo=new MutationObserver(ctl);mo.observe(list,{childList:true});}ctl();}if(document.readyState!=="loading")attach();else document.addEventListener("DOMContentLoaded",attach);})();</script><script id="lx-mobsearch">(function(){
+  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
+  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
+  function open(){
+    // The page's own opener, so this button and the menu row open the same thing in the same state.
+    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
+    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
+    // itself. A header button that silently does nothing is worse than no header button.
+    var row=document.querySelector("[data-open-search]");
+    if(row){ row.click(); return; }
+    var ov=document.getElementById("searchPopup");
+    if(ov){ ov.classList.add("open");
+      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
+  }
+  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
+  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
+  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
+  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
+  function tidyMenu(){
+    var menu=document.querySelector(".slide-menu"); if(!menu)return;
+    var row=menu.querySelector("[data-open-search]");
+    if(row&&row.style.display!=="none")row.style.display="none";
+    var links=menu.querySelector(".menu-links")||menu;
+    var kids=[].slice.call(links.children);
+    for(var i=0;i<kids.length;i++){
+      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
+      var anyVisible=false;
+      for(var j=i+1;j<kids.length;j++){
+        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
+        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
+      }
+      var want=anyVisible?"":"none";
+      if(kids[i].style.display!==want)kids[i].style.display=want;
+    }
+  }
+  function place(){
+    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
+    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
+    // those two.
+    var bar=document.querySelector(".appbar"); if(!bar)return;
+    // Only where there is something to open. On a page without the popup this would be a dead control.
+    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
+    if(bar.querySelector(".lx-hsearch"))return;
+    var b=document.createElement("button");
+    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
+    b.innerHTML=ICON;
+    b.addEventListener("click",function(e){
+      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
+      open();
+    });
+    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
+    // stays the last thing on the right, where a thumb expects it.
+    var menu=document.getElementById("menuBtn");
+    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
+    else bar.appendChild(b);
+  }
+  function run(){ place(); tidyMenu(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
+  // menu is built when it is first opened, so the row to hide does not exist until then.
+  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
+})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
+  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
+  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
+  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
+  // this map has not been taught, which is still better than saying nothing.
+  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
+    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
+    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
+  function walletId(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+  }
+  function nameIt(){
+    var id=walletId(); if(!id)return;
+    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
+    var els=document.querySelectorAll(".mu-sub");
+    for(var i=0;i<els.length;i++){
+      var e=els[i], t=(e.textContent||"").trim();
+      if(!t||t.indexOf(nm)===0)continue;
+      // Keep whatever the card said after the separator -- that is the network, and it is still true.
+      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
+      var want=nm+(tail?(" "+tail):"");
+      if(e.textContent!==want)e.textContent=want;
+    }
+  }
+  function paint(){
+    try{ nameIt(); }catch(_){}
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
   // A 404 (not listed) is a clean "no", and a network failure is NOT a "yes": it resolves false and is
@@ -4386,7 +4513,7 @@ window.addEventListener('click',function(e){
   function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
   // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
   // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
-  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
+  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
   // The codes that mean exactly one issuer -- see CANONICAL in lib.js for why this is NOT derived
   // from VFD, and why it is the only check that catches a fake which owns its own domain.
   var CANON={"USDC":{"issuer":"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN","by":"Circle"},"EURC":{"issuer":"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2","by":"Circle"},"yXLM":{"issuer":"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55","by":"Ultra Capital"},"yUSDC":{"issuer":"GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF","by":"Ultra Capital"},"SHX":{"issuer":"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH","by":"Stronghold"},"AQUA":{"issuer":"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA","by":"Aquarius"},"LUMOS":{"issuer":"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S","by":"LumosCore"}};
@@ -4755,68 +4882,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
-})();</script><script id="lx-mobsearch">(function(){
-  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
-  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
-  function open(){
-    // The page's own opener, so this button and the menu row open the same thing in the same state.
-    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
-    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
-    // itself. A header button that silently does nothing is worse than no header button.
-    var row=document.querySelector("[data-open-search]");
-    if(row){ row.click(); return; }
-    var ov=document.getElementById("searchPopup");
-    if(ov){ ov.classList.add("open");
-      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
-  }
-  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
-  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
-  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
-  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
-  function tidyMenu(){
-    var menu=document.querySelector(".slide-menu"); if(!menu)return;
-    var row=menu.querySelector("[data-open-search]");
-    if(row&&row.style.display!=="none")row.style.display="none";
-    var links=menu.querySelector(".menu-links")||menu;
-    var kids=[].slice.call(links.children);
-    for(var i=0;i<kids.length;i++){
-      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
-      var anyVisible=false;
-      for(var j=i+1;j<kids.length;j++){
-        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
-        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
-      }
-      var want=anyVisible?"":"none";
-      if(kids[i].style.display!==want)kids[i].style.display=want;
-    }
-  }
-  function place(){
-    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
-    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
-    // those two.
-    var bar=document.querySelector(".appbar"); if(!bar)return;
-    // Only where there is something to open. On a page without the popup this would be a dead control.
-    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
-    if(bar.querySelector(".lx-hsearch"))return;
-    var b=document.createElement("button");
-    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
-    b.innerHTML=ICON;
-    b.addEventListener("click",function(e){
-      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
-      open();
-    });
-    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
-    // stays the last thing on the right, where a thumb expects it.
-    var menu=document.getElementById("menuBtn");
-    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
-    else bar.appendChild(b);
-  }
-  function run(){ place(); tidyMenu(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
-  else run();
-  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
-  // menu is built when it is first opened, so the row to hide does not exist until then.
-  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
@@ -6211,11 +6276,16 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         else if(d.vol24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
         // volPartial can still be true at the end: a pool busy enough to exceed the page budget leaves a
         // floor as the best answer available, and it stays marked as one.
-        // #13: the sub-line under a volume should be that volume in dollars, which is what the other
+        // #16: the sub-line under a volume should be that volume in dollars, which is what the other
         // three boxes do. It was a sentence explaining the ">=" instead -- and one that did not fit,
-        // so it read "at least, over the la…". The ">=" already says that much on its own.
+        // so it read "at least, over the la…". The ">=" already says as much on its own.
+        //
+        // vol24Usd is only non-zero when a leg can be priced in dollars directly. On an XLM pair it is
+        // derived from the XLM rate, which is why the fallback multiplies rather than giving up: the
+        // point of the line is the dollar figure, and the page knows the rate.
         else { if(v)setText(v,(d.volPartial?"\u2265 ":"")+num(d.vol24Xlm)+" "+U0);
-          if(sub)setText(sub, (d.vol24Usd>0)?("\u2248 "+usd(d.vol24Usd)):"24h volume"); } }
+          var _vu=(d.vol24Usd>0)?d.vol24Usd:((d.__xlmUsd>0&&!d.nonXlm)?(d.vol24Xlm*d.__xlmUsd):0);
+          if(sub)setText(sub, (_vu>0)?("\u2248 "+usd(_vu)):"24h volume"); } }
       else if(/fee/.test(cn)){
         if(d.volCounting){ if(v)setText(v,"Counting\u2026"); if(sub)setText(sub,""); }
         else if(d.fees24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,""); }
@@ -7234,6 +7304,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     if(!foot){ foot=document.createElement("div"); foot.className="part-foot lx-partfoot";
       foot.innerHTML='<div></div><div class="nav"></div>'; card.appendChild(foot); }
     if(card.lastElementChild!==foot)card.appendChild(foot);
+    // The mock-hiding rule keys on .lx-partfoot, and that class was only set on a footer we BUILD --
+    // when the design already ships one we reuse it, so it never got the class and stayed hidden for
+    // good. Claim it here instead, at the point we take ownership of what it says.
+    if(!foot.classList.contains("lx-partfoot"))foot.classList.add("lx-partfoot");
     var info=foot.querySelector("div"), nav=foot.querySelector(".nav");
     var from=s.all.length?(partPage*PARTPP+1):0, to=partPage*PARTPP+s.rows.length;
     // Say which set is being paged. The pool can have more providers than Horizon will hand over in one
@@ -7632,7 +7706,24 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
 
   // ---- LIST: Create Pool (populate the finalized modal's pickers with real assets, then create+deposit) ----
+  // #9: "Trading fee 0.3%" in the Create Pool sheet. Every Stellar AMM pool is 0.3% -- fixed by the
+  // protocol, nothing to choose -- so on a form whose whole job is the decisions you ARE making, it is
+  // a row that looks like a setting and is not one. It also invites the question it cannot answer:
+  // that is the fee the pool collects and pays to its own providers, not a charge to whoever creates
+  // it. Matched on its label rather than its position, because the summary rows are not ours.
+  function hideCpFee(){
+    var m=q("#createPoolModal"); if(!m)return;
+    var rows=m.querySelectorAll(".row,.cp-row,li,div");
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i]; if(r.children.length>3)continue;
+      var t=(r.textContent||"").replace(/\s+/g," ").trim();
+      if(!/^trading fee\b/i.test(t))continue;
+      if(r.style.display!=="none")r.style.display="none";
+      break;
+    }
+  }
   function wireCreatePool(){
+    try{ hideCpFee(); }catch(_){}
     // Only the BALANCES are needed here — waiting for the whole pools payload (DATA) left the asset dropdown
     // visibly empty for seconds (the CSS hides the design's mock items). _cpBals is filled by an early,
     // standalone /accounts fetch so the picker is ready almost immediately.
@@ -7833,65 +7924,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-walletlogo">(function(){
-  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
-  function logo(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    if(!id)return "";
-    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-    // walletconnect stores a few different spellings; they all mean the same sheet entry
-    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
-    return MAP[id]||"";
-  }
-  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
-  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
-  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
-  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
-  // this map has not been taught, which is still better than saying nothing.
-  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
-    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
-    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
-  function walletId(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-  }
-  function nameIt(){
-    var id=walletId(); if(!id)return;
-    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
-    var els=document.querySelectorAll(".mu-sub");
-    for(var i=0;i<els.length;i++){
-      var e=els[i], t=(e.textContent||"").trim();
-      if(!t||t.indexOf(nm)===0)continue;
-      // Keep whatever the card said after the separator -- that is the network, and it is still true.
-      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
-      var want=nm+(tail?(" "+tail):"");
-      if(e.textContent!==want)e.textContent=want;
-    }
-  }
-  function paint(){
-    try{ nameIt(); }catch(_){}
-    var url=logo(); if(!url)return;
-    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
-    for(var i=0;i<els.length;i++){
-      var e=els[i];
-      if(e.getAttribute("data-lxwl")===url)continue;
-      e.setAttribute("data-lxwl",url);
-      e.classList.add("lx-haswl");
-      e.style.setProperty("background-image","url('"+url+"')","important");
-    }
-  }
-  function boot(){
-    paint();
-    // The chip and the menu card are both built after connect, and the menu is rendered on open --
-    // so this watches rather than running once.
-    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-    try{ window.addEventListener("storage",paint); }catch(_){}
-    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

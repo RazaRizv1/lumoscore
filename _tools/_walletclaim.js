@@ -207,7 +207,9 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
   }
 
   function build(){
-    var stack=document.querySelector(".insights-stack");
+    // #8 (batch 5): the phone wraps these cards in .insights-stack and the DESKTOP wraps the same
+    // three in .insights-rail. Keying on the phone name meant the tabs only ever appeared on a phone.
+    var stack=document.querySelector(".insights-stack,.insights-rail");
     if(!stack||document.querySelector(".lx-wctabs"))return false;
     // The two cards this replaces, found by what they SAY rather than by position -- the stack is
     // rebuilt by the page and the order is not ours to rely on.
@@ -286,7 +288,9 @@ for (const dev of ['desktop', 'mobile']) {
     p = p.replace(/<style id="lx-wclaim-css">[\s\S]*?<\/style>/, '')
          .replace(/<script id="lx-wclaim">[\s\S]*?<\/script>/, '');
     // the wallet page only, identified by its own insights stack
-    if (p.indexOf('insights-stack') >= 0 && p.indexOf('hero-id-row') >= 0) {
+    // Same reason as the runtime lookup above: the two layouts name the wrapper differently, and the
+    // desktop page was therefore never injected at all.
+    if ((p.indexOf('insights-stack') >= 0 || p.indexOf('insights-rail') >= 0) && p.indexOf('hero-id-row') >= 0) {
       if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
       const bi = p.lastIndexOf('</body>');
       if (bi >= 0) { p = p.slice(0, bi) + SCRIPT + p.slice(bi); pages++; }

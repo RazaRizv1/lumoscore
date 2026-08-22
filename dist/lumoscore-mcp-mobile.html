@@ -1685,29 +1685,6 @@ html body .pool-header-row .ph-icons>*{
 /* the wallet card is not a nav row -- it must not grow a chevron or a tile */
 .slide-menu .menu-user a::after{content:none}
 .slide-menu .menu-user a>svg{padding:0;background:none;border-radius:0}
-</style><style id="lx-searchassets-css">
-.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
-.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
-.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
-.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
-.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
-.sp-row--asset.lx-searow .sp-ico img{display:block}
-.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
-/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
-.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
-  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
-.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
-  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
-.lx-rechead .lx-recclear:hover{color:var(--accent)}
-.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
-.lx-seavfd svg{width:9px;height:9px;display:block}
-/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
-   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
-.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
-  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
-  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
-  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
-.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 </style><style id="lx-mobsearch-css">
 /* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
    primary and an afterthought. */
@@ -1768,6 +1745,29 @@ html body .pool-header-row .ph-icons>*{
 .lx-wcrow{padding:13px 14px;gap:10px}
 .lx-wcbtn{height:32px;padding:0 12px}
 }
+</style><style id="lx-searchassets-css">
+.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
+.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
+.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
+.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
+.sp-row--asset.lx-searow .sp-ico img{display:block}
+.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
+/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
+.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
+  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
+.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
+  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
+.lx-rechead .lx-recclear:hover{color:var(--accent)}
+.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
+.lx-seavfd svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 </style></head>
 <body>
 
@@ -3878,7 +3878,345 @@ window.addEventListener('click',function(e){
 .lx-faq-q{font-size:16px;font-weight:700;color:var(--text);margin:0 0 7px}
 .lx-faq-a{font-size:14.5px;line-height:1.7;color:var(--text-muted);margin:0}
 @media(max-width:640px){.lx-faq{padding:28px 16px 34px}.lx-faq h2{font-size:21px}}
-</style><style id="lx-searchfix">#searchPopup #spFilters,.sp-body #spFilters{display:none !important}</style><script id="lx-searchctl">(function(){function head(){var c=document.getElementById("spAssetCount");return c&&c.closest?c.closest(".sp-section-head"):null;}function ctl(){var inp=document.getElementById("spSearchInput");if(!inp)return;var list=document.getElementById("spAssetList");var empty=!(inp.value&&inp.value.trim());if(empty&&list&&list.children.length&&!list.querySelector(".lx-recrow"))list.innerHTML="";var h=head();if(h)h.style.display=(empty||!list||!list.children.length)?"none":"";}document.addEventListener("input",function(e){if(e.target&&e.target.id==="spSearchInput"){ctl();if(window.requestAnimationFrame)requestAnimationFrame(ctl);}},true);document.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"){setTimeout(ctl,30);}},true);var mo=null;function attach(){var list=document.getElementById("spAssetList");if(list&&!mo&&window.MutationObserver){mo=new MutationObserver(ctl);mo.observe(list,{childList:true});}ctl();}if(document.readyState!=="loading")attach();else document.addEventListener("DOMContentLoaded",attach);})();</script><script id="lx-searchassets">(function(){
+</style><style id="lx-searchfix">#searchPopup #spFilters,.sp-body #spFilters{display:none !important}</style><script id="lx-searchctl">(function(){function head(){var c=document.getElementById("spAssetCount");return c&&c.closest?c.closest(".sp-section-head"):null;}function ctl(){var inp=document.getElementById("spSearchInput");if(!inp)return;var list=document.getElementById("spAssetList");var empty=!(inp.value&&inp.value.trim());if(empty&&list&&list.children.length&&!list.querySelector(".lx-recrow"))list.innerHTML="";var h=head();if(h)h.style.display=(empty||!list||!list.children.length)?"none":"";}document.addEventListener("input",function(e){if(e.target&&e.target.id==="spSearchInput"){ctl();if(window.requestAnimationFrame)requestAnimationFrame(ctl);}},true);document.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"){setTimeout(ctl,30);}},true);var mo=null;function attach(){var list=document.getElementById("spAssetList");if(list&&!mo&&window.MutationObserver){mo=new MutationObserver(ctl);mo.observe(list,{childList:true});}ctl();}if(document.readyState!=="loading")attach();else document.addEventListener("DOMContentLoaded",attach);})();</script><script id="lx-mobsearch">(function(){
+  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
+  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
+  function open(){
+    // The page's own opener, so this button and the menu row open the same thing in the same state.
+    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
+    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
+    // itself. A header button that silently does nothing is worse than no header button.
+    var row=document.querySelector("[data-open-search]");
+    if(row){ row.click(); return; }
+    var ov=document.getElementById("searchPopup");
+    if(ov){ ov.classList.add("open");
+      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
+  }
+  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
+  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
+  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
+  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
+  function tidyMenu(){
+    var menu=document.querySelector(".slide-menu"); if(!menu)return;
+    var row=menu.querySelector("[data-open-search]");
+    if(row&&row.style.display!=="none")row.style.display="none";
+    var links=menu.querySelector(".menu-links")||menu;
+    var kids=[].slice.call(links.children);
+    for(var i=0;i<kids.length;i++){
+      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
+      var anyVisible=false;
+      for(var j=i+1;j<kids.length;j++){
+        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
+        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
+      }
+      var want=anyVisible?"":"none";
+      if(kids[i].style.display!==want)kids[i].style.display=want;
+    }
+  }
+  function place(){
+    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
+    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
+    // those two.
+    var bar=document.querySelector(".appbar"); if(!bar)return;
+    // Only where there is something to open. On a page without the popup this would be a dead control.
+    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
+    if(bar.querySelector(".lx-hsearch"))return;
+    var b=document.createElement("button");
+    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
+    b.innerHTML=ICON;
+    b.addEventListener("click",function(e){
+      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
+      open();
+    });
+    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
+    // stays the last thing on the right, where a thumb expects it.
+    var menu=document.getElementById("menuBtn");
+    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
+    else bar.appendChild(b);
+  }
+  function run(){ place(); tidyMenu(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
+  // menu is built when it is first opened, so the row to hide does not exist until then.
+  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
+})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
+  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
+  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
+  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
+  // this map has not been taught, which is still better than saying nothing.
+  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
+    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
+    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
+  function walletId(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+  }
+  function nameIt(){
+    var id=walletId(); if(!id)return;
+    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
+    var els=document.querySelectorAll(".mu-sub");
+    for(var i=0;i<els.length;i++){
+      var e=els[i], t=(e.textContent||"").trim();
+      if(!t||t.indexOf(nm)===0)continue;
+      // Keep whatever the card said after the separator -- that is the network, and it is still true.
+      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
+      var want=nm+(tail?(" "+tail):"");
+      if(e.textContent!==want)e.textContent=want;
+    }
+  }
+  function paint(){
+    try{ nameIt(); }catch(_){}
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();</script><script id="lx-wclaim">(function(){
+  if(window.__lxWClaim)return; window.__lxWClaim=1;
+  var H="https://horizon.stellar.org";
+  function me(){ try{ return localStorage.getItem("lumos.address")||""; }catch(_){ return ""; } }
+  function j(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
+  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){
+    return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;"; }); }
+  function amt(n){ n=+n||0; if(n>=1000)return n.toLocaleString("en-US",{maximumFractionDigits:2});
+    if(n>=1)return String(+n.toFixed(4)); return String(+n.toFixed(7)); }
+  function shortG(a){ a=String(a||""); return a.length>12?(a.slice(0,4)+"\u2026"+a.slice(-4)):a; }
+  function ago(t){ var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);
+    if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago";
+    return Math.floor(s/86400)+"d ago"; }
+  function say(m){ try{ if(window.lxToast)window.lxToast(m); }catch(_){} }
+
+  // Horizon writes an asset as "native" or "CODE:ISSUER".
+  function parseAsset(a){
+    if(!a||a==="native")return {code:"XLM",issuer:"",native:true};
+    var p=String(a).split(":"); return {code:p[0],issuer:p[1]||"",native:false};
+  }
+
+  // Is this predicate open RIGHT NOW? Stellar predicates nest, so this walks them. Anything it does
+  // not recognise is treated as claimable and left to the network to refuse -- the ledger is the
+  // authority here, and refusing to offer a claim we could have made is the worse error.
+  function open(p){
+    if(!p)return true;
+    if(p.unconditional)return true;
+    var now=Date.now();
+    if(p.abs_before)return now < new Date(p.abs_before).getTime();
+    if(p.abs_before_epoch)return now < (+p.abs_before_epoch*1000);
+    if(p.rel_before)return true;                       // relative to close time; not knowable here
+    if(p.not)return !open(p.not);
+    if(p.and&&p.and.length)return p.and.every(open);
+    if(p.or&&p.or.length)return p.or.some(open);
+    return true;
+  }
+  function mine(rec,addr){
+    var cs=(rec&&rec.claimants)||[];
+    for(var i=0;i<cs.length;i++)if(cs[i].destination===addr)return cs[i];
+    return null;
+  }
+
+  // NEVER claimable is not the same as NOT YET, and only the second is worth a row. Checked against
+  // real data: the dICE airdrops list thousands of accounts as claimants with the predicate
+  // {"not":{"unconditional":true}} -- the senders reclaim clause, which can never be true for the
+  // recipient. Listing fifty of those as "Locked" would bury a real pending payment under noise, and
+  // offering a Claim button on one would be worse: it can only ever fail.
+  function never(p){
+    if(!p)return false;
+    if(p.not)return !!p.not.unconditional;
+    if(p.and&&p.and.length)return p.and.some(never);
+    if(p.or&&p.or.length)return p.or.every(never);
+    return false;
+  }
+  var CB=[], loaded=false;
+  function load(){
+    var addr=me(); if(!addr)return Promise.resolve([]);
+    return j(H+"/claimable_balances?claimant="+addr+"&limit=50&order=desc")
+      .then(function(d){ var all=((d&&d._embedded&&d._embedded.records)||[]);
+        CB=all.filter(function(r){ var c2=mine(r,addr); return c2&&!never(c2.predicate); });
+        loaded=true; return CB; })
+      .catch(function(){ loaded=true; CB=[]; return CB; });
+  }
+
+  function rows(){
+    var addr=me();
+    if(!CB.length){
+      return '<div class="lx-wcnote">'+(loaded
+        ? "Nothing is waiting to be claimed. Payments sent to you as a claimable balance will appear here."
+        : "Looking for claimable payments\u2026")+'</div>';
+    }
+    return CB.map(function(r){
+      var a=parseAsset(r.asset), c=mine(r,addr), ok=open(c&&c.predicate);
+      var who=r.sponsor?("from "+shortG(r.sponsor)):"";
+      var when=r.last_modified_time?ago(r.last_modified_time):"";
+      var sub=[who,when].filter(Boolean).join(" \u00b7 ");
+      return '<div class="lx-wcrow'+(ok?"":" locked")+'" data-cb="'+esc(r.id)+'"'
+        +' data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer)+'" data-nat="'+(a.native?"1":"0")+'">'
+        +'<div class="lx-wcmain"><div class="lx-wcamt">'+amt(r.amount)+' '+esc(a.code)+'</div>'
+        +'<div class="lx-wcsub">'+esc(sub||"claimable balance")+'</div></div>'
+        +(ok?'<button class="lx-wcbtn" type="button">Claim</button>'
+            :'<button class="lx-wcbtn" type="button" disabled title="This balance is not claimable yet">Locked</button>')
+        +'</div>';
+    }).join("");
+  }
+
+  function paint(){
+    var panel=document.querySelector(".lx-wcpanel-claim");
+    if(panel)panel.innerHTML='<div class="lx-wclist">'+rows()+'</div>';
+    var tab=document.querySelector('.lx-wctab[data-t="claim"] .n');
+    if(tab)tab.textContent=String(CB.length);
+  }
+
+  function claim(btn){
+    var row=btn.closest(".lx-wcrow"); if(!row)return;
+    var id=row.getAttribute("data-cb"), code=row.getAttribute("data-code"),
+        iss=row.getAttribute("data-iss"), nat=row.getAttribute("data-nat")==="1";
+    if(!window.lxStellar||!window.lxSign){ say("Wallet not ready \u2014 reload and try again"); return; }
+    btn.disabled=true; var lbl=btn.textContent; btn.textContent="Confirm in wallet\u2026";
+    var addr=me();
+    window.lxStellar().then(function(S){
+      return j(H+"/accounts/"+addr).then(function(acc){
+        var PP=S.Networks.PUBLIC;
+        var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:PP});
+        // A claim of a non-native asset needs a trustline for it, and someone receiving an asset for
+        // the first time does not have one. Same transaction, so it is still one signature.
+        if(!nat){
+          var has=(acc.balances||[]).some(function(b){
+            return b.asset_code===code&&b.asset_issuer===iss; });
+          if(!has)tb.addOperation(S.Operation.changeTrust({asset:new S.Asset(code,iss)}));
+        }
+        tb.addOperation(S.Operation.claimClaimableBalance({balanceId:id}));
+        var tx=tb.setTimeout(180).build();
+        var p=window.lxSign(tx.toXDR(),S);
+        if(window.lxTimeout)p=window.lxTimeout(p,150000,"Signing timed out \u2014 open your wallet and try again");
+        return p.then(function(signed){
+          if(!signed)throw new Error("Signing cancelled");
+          btn.textContent="Submitting\u2026";
+          return fetch(H+"/transactions",{method:"POST",
+            headers:{"Content-Type":"application/x-www-form-urlencoded"},
+            body:"tx="+encodeURIComponent(signed)}).then(function(r){ return r.json(); });
+        });
+      });
+    }).then(function(res){
+      if(res&&(res.successful||res.hash)){
+        btn.textContent="Claimed \u2713";
+        say("Claimed "+row.querySelector(".lx-wcamt").textContent);
+        // Gone from the ledger, so gone from the list -- and the balances above are now wrong.
+        CB=CB.filter(function(x){ return x.id!==id; });
+        setTimeout(function(){ paint(); },900);
+        setTimeout(function(){ try{ location.reload(); }catch(_){} },1600);
+        return;
+      }
+      var x=res&&res.extras&&res.extras.result_codes;
+      throw new Error(x?JSON.stringify(x):"Claim failed");
+    }).catch(function(e){
+      btn.disabled=false; btn.textContent=lbl;
+      say("Claim failed \u2014 "+((e&&e.message)||e));
+    });
+  }
+
+  function select(which){
+    var tabs=document.querySelectorAll(".lx-wctab");
+    for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle("on",tabs[i].getAttribute("data-t")===which);
+    var o=document.querySelector(".lx-wcpanel-orders"), c=document.querySelector(".lx-wcpanel-claim");
+    if(o){ if(which==="orders")o.removeAttribute("hidden"); else o.setAttribute("hidden",""); }
+    if(c){ if(which==="claim")c.removeAttribute("hidden"); else c.setAttribute("hidden",""); }
+    try{ localStorage.setItem("lumos.wcTab",which); }catch(_){}
+  }
+
+  function build(){
+    // #8 (batch 5): the phone wraps these cards in .insights-stack and the DESKTOP wraps the same
+    // three in .insights-rail. Keying on the phone name meant the tabs only ever appeared on a phone.
+    var stack=document.querySelector(".insights-stack,.insights-rail");
+    if(!stack||document.querySelector(".lx-wctabs"))return false;
+    // The two cards this replaces, found by what they SAY rather than by position -- the stack is
+    // rebuilt by the page and the order is not ours to rely on.
+    var cards=[].slice.call(stack.querySelectorAll(".insight-card"));
+    var ordersCard=null, poolsCard=null;
+    cards.forEach(function(c){
+      var t=((c.querySelector(".ttl")||{}).textContent||"").trim();
+      if(/open orders/i.test(t))ordersCard=c;
+      if(/liquidity pools/i.test(t))poolsCard=c;
+    });
+    if(!ordersCard&&!poolsCard)return false;
+    var nOrders="0";
+    if(ordersCard){
+      var hl=((ordersCard.querySelector(".headline")||{}).textContent||"").match(/\d+/);
+      if(hl)nOrders=hl[0];
+    }
+    if(ordersCard)ordersCard.style.display="none";
+    if(poolsCard)poolsCard.style.display="none";
+
+    var bar=document.createElement("div");
+    bar.className="lx-wctabs";
+    bar.innerHTML='<button class="lx-wctab on" type="button" data-t="orders">Open orders'
+      +'<span class="n">'+nOrders+'</span></button>'
+      +'<button class="lx-wctab" type="button" data-t="claim">Claimable payments'
+      +'<span class="n">0</span></button>';
+
+    // The orders list the page already builds becomes the first panel; the second is ours.
+    var orders=document.querySelector(".orders-block");
+    var host=orders?orders.parentNode:stack.parentNode;
+    var anchor=orders||stack.nextSibling;
+
+    var pOrders=document.createElement("div"); pOrders.className="lx-wcpanel lx-wcpanel-orders";
+    var pClaim=document.createElement("div"); pClaim.className="lx-wcpanel lx-wcpanel-claim";
+    pClaim.setAttribute("hidden","");
+
+    host.insertBefore(bar,anchor);
+    host.insertBefore(pOrders,anchor);
+    if(orders)pOrders.appendChild(orders);
+    else pOrders.innerHTML='<div class="lx-wclist"><div class="lx-wcnote">No open orders.</div></div>';
+    host.insertBefore(pClaim,pOrders.nextSibling);
+
+    paint();
+    try{ var last=localStorage.getItem("lumos.wcTab"); if(last==="claim")select("claim"); }catch(_){}
+    return true;
+  }
+
+  document.addEventListener("click",function(e){
+    var t=e.target; if(!t||!t.closest)return;
+    var tab=t.closest(".lx-wctab");
+    if(tab){ e.preventDefault(); select(tab.getAttribute("data-t")); return; }
+    var b=t.closest(".lx-wcbtn");
+    if(b&&!b.disabled){ e.preventDefault(); e.stopPropagation(); claim(b); }
+  },true);
+
+  function boot(){
+    if(!me())return;
+    // The insights stack and the orders block are both built by the page's own data layer, so this
+    // waits for them rather than assuming they exist yet.
+    var n=0,iv=setInterval(function(){ if(build()||++n>40)clearInterval(iv); },250);
+    load().then(paint);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
   // A 404 (not listed) is a clean "no", and a network failure is NOT a "yes": it resolves false and is
@@ -3929,7 +4267,7 @@ window.addEventListener('click',function(e){
   function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
   // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
   // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
-  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
+  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
   // The codes that mean exactly one issuer -- see CANONICAL in lib.js for why this is NOT derived
   // from VFD, and why it is the only check that catches a fake which owns its own domain.
   var CANON={"USDC":{"issuer":"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN","by":"Circle"},"EURC":{"issuer":"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2","by":"Circle"},"yXLM":{"issuer":"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55","by":"Ultra Capital"},"yUSDC":{"issuer":"GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF","by":"Ultra Capital"},"SHX":{"issuer":"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH","by":"Stronghold"},"AQUA":{"issuer":"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA","by":"Aquarius"},"LUMOS":{"issuer":"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S","by":"LumosCore"}};
@@ -4298,342 +4636,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
-})();</script><script id="lx-mobsearch">(function(){
-  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
-  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
-  function open(){
-    // The page's own opener, so this button and the menu row open the same thing in the same state.
-    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
-    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
-    // itself. A header button that silently does nothing is worse than no header button.
-    var row=document.querySelector("[data-open-search]");
-    if(row){ row.click(); return; }
-    var ov=document.getElementById("searchPopup");
-    if(ov){ ov.classList.add("open");
-      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
-  }
-  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
-  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
-  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
-  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
-  function tidyMenu(){
-    var menu=document.querySelector(".slide-menu"); if(!menu)return;
-    var row=menu.querySelector("[data-open-search]");
-    if(row&&row.style.display!=="none")row.style.display="none";
-    var links=menu.querySelector(".menu-links")||menu;
-    var kids=[].slice.call(links.children);
-    for(var i=0;i<kids.length;i++){
-      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
-      var anyVisible=false;
-      for(var j=i+1;j<kids.length;j++){
-        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
-        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
-      }
-      var want=anyVisible?"":"none";
-      if(kids[i].style.display!==want)kids[i].style.display=want;
-    }
-  }
-  function place(){
-    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
-    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
-    // those two.
-    var bar=document.querySelector(".appbar"); if(!bar)return;
-    // Only where there is something to open. On a page without the popup this would be a dead control.
-    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
-    if(bar.querySelector(".lx-hsearch"))return;
-    var b=document.createElement("button");
-    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
-    b.innerHTML=ICON;
-    b.addEventListener("click",function(e){
-      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
-      open();
-    });
-    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
-    // stays the last thing on the right, where a thumb expects it.
-    var menu=document.getElementById("menuBtn");
-    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
-    else bar.appendChild(b);
-  }
-  function run(){ place(); tidyMenu(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
-  else run();
-  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
-  // menu is built when it is first opened, so the row to hide does not exist until then.
-  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
-})();</script><script id="lx-walletlogo">(function(){
-  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
-  function logo(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    if(!id)return "";
-    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-    // walletconnect stores a few different spellings; they all mean the same sheet entry
-    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
-    return MAP[id]||"";
-  }
-  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
-  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
-  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
-  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
-  // this map has not been taught, which is still better than saying nothing.
-  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
-    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
-    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
-  function walletId(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-  }
-  function nameIt(){
-    var id=walletId(); if(!id)return;
-    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
-    var els=document.querySelectorAll(".mu-sub");
-    for(var i=0;i<els.length;i++){
-      var e=els[i], t=(e.textContent||"").trim();
-      if(!t||t.indexOf(nm)===0)continue;
-      // Keep whatever the card said after the separator -- that is the network, and it is still true.
-      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
-      var want=nm+(tail?(" "+tail):"");
-      if(e.textContent!==want)e.textContent=want;
-    }
-  }
-  function paint(){
-    try{ nameIt(); }catch(_){}
-    var url=logo(); if(!url)return;
-    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
-    for(var i=0;i<els.length;i++){
-      var e=els[i];
-      if(e.getAttribute("data-lxwl")===url)continue;
-      e.setAttribute("data-lxwl",url);
-      e.classList.add("lx-haswl");
-      e.style.setProperty("background-image","url('"+url+"')","important");
-    }
-  }
-  function boot(){
-    paint();
-    // The chip and the menu card are both built after connect, and the menu is rendered on open --
-    // so this watches rather than running once.
-    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-    try{ window.addEventListener("storage",paint); }catch(_){}
-    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
-})();</script><script id="lx-wclaim">(function(){
-  if(window.__lxWClaim)return; window.__lxWClaim=1;
-  var H="https://horizon.stellar.org";
-  function me(){ try{ return localStorage.getItem("lumos.address")||""; }catch(_){ return ""; } }
-  function j(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
-  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){
-    return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;"; }); }
-  function amt(n){ n=+n||0; if(n>=1000)return n.toLocaleString("en-US",{maximumFractionDigits:2});
-    if(n>=1)return String(+n.toFixed(4)); return String(+n.toFixed(7)); }
-  function shortG(a){ a=String(a||""); return a.length>12?(a.slice(0,4)+"\u2026"+a.slice(-4)):a; }
-  function ago(t){ var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);
-    if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago";
-    return Math.floor(s/86400)+"d ago"; }
-  function say(m){ try{ if(window.lxToast)window.lxToast(m); }catch(_){} }
-
-  // Horizon writes an asset as "native" or "CODE:ISSUER".
-  function parseAsset(a){
-    if(!a||a==="native")return {code:"XLM",issuer:"",native:true};
-    var p=String(a).split(":"); return {code:p[0],issuer:p[1]||"",native:false};
-  }
-
-  // Is this predicate open RIGHT NOW? Stellar predicates nest, so this walks them. Anything it does
-  // not recognise is treated as claimable and left to the network to refuse -- the ledger is the
-  // authority here, and refusing to offer a claim we could have made is the worse error.
-  function open(p){
-    if(!p)return true;
-    if(p.unconditional)return true;
-    var now=Date.now();
-    if(p.abs_before)return now < new Date(p.abs_before).getTime();
-    if(p.abs_before_epoch)return now < (+p.abs_before_epoch*1000);
-    if(p.rel_before)return true;                       // relative to close time; not knowable here
-    if(p.not)return !open(p.not);
-    if(p.and&&p.and.length)return p.and.every(open);
-    if(p.or&&p.or.length)return p.or.some(open);
-    return true;
-  }
-  function mine(rec,addr){
-    var cs=(rec&&rec.claimants)||[];
-    for(var i=0;i<cs.length;i++)if(cs[i].destination===addr)return cs[i];
-    return null;
-  }
-
-  // NEVER claimable is not the same as NOT YET, and only the second is worth a row. Checked against
-  // real data: the dICE airdrops list thousands of accounts as claimants with the predicate
-  // {"not":{"unconditional":true}} -- the senders reclaim clause, which can never be true for the
-  // recipient. Listing fifty of those as "Locked" would bury a real pending payment under noise, and
-  // offering a Claim button on one would be worse: it can only ever fail.
-  function never(p){
-    if(!p)return false;
-    if(p.not)return !!p.not.unconditional;
-    if(p.and&&p.and.length)return p.and.some(never);
-    if(p.or&&p.or.length)return p.or.every(never);
-    return false;
-  }
-  var CB=[], loaded=false;
-  function load(){
-    var addr=me(); if(!addr)return Promise.resolve([]);
-    return j(H+"/claimable_balances?claimant="+addr+"&limit=50&order=desc")
-      .then(function(d){ var all=((d&&d._embedded&&d._embedded.records)||[]);
-        CB=all.filter(function(r){ var c2=mine(r,addr); return c2&&!never(c2.predicate); });
-        loaded=true; return CB; })
-      .catch(function(){ loaded=true; CB=[]; return CB; });
-  }
-
-  function rows(){
-    var addr=me();
-    if(!CB.length){
-      return '<div class="lx-wcnote">'+(loaded
-        ? "Nothing is waiting to be claimed. Payments sent to you as a claimable balance will appear here."
-        : "Looking for claimable payments\u2026")+'</div>';
-    }
-    return CB.map(function(r){
-      var a=parseAsset(r.asset), c=mine(r,addr), ok=open(c&&c.predicate);
-      var who=r.sponsor?("from "+shortG(r.sponsor)):"";
-      var when=r.last_modified_time?ago(r.last_modified_time):"";
-      var sub=[who,when].filter(Boolean).join(" \u00b7 ");
-      return '<div class="lx-wcrow'+(ok?"":" locked")+'" data-cb="'+esc(r.id)+'"'
-        +' data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer)+'" data-nat="'+(a.native?"1":"0")+'">'
-        +'<div class="lx-wcmain"><div class="lx-wcamt">'+amt(r.amount)+' '+esc(a.code)+'</div>'
-        +'<div class="lx-wcsub">'+esc(sub||"claimable balance")+'</div></div>'
-        +(ok?'<button class="lx-wcbtn" type="button">Claim</button>'
-            :'<button class="lx-wcbtn" type="button" disabled title="This balance is not claimable yet">Locked</button>')
-        +'</div>';
-    }).join("");
-  }
-
-  function paint(){
-    var panel=document.querySelector(".lx-wcpanel-claim");
-    if(panel)panel.innerHTML='<div class="lx-wclist">'+rows()+'</div>';
-    var tab=document.querySelector('.lx-wctab[data-t="claim"] .n');
-    if(tab)tab.textContent=String(CB.length);
-  }
-
-  function claim(btn){
-    var row=btn.closest(".lx-wcrow"); if(!row)return;
-    var id=row.getAttribute("data-cb"), code=row.getAttribute("data-code"),
-        iss=row.getAttribute("data-iss"), nat=row.getAttribute("data-nat")==="1";
-    if(!window.lxStellar||!window.lxSign){ say("Wallet not ready \u2014 reload and try again"); return; }
-    btn.disabled=true; var lbl=btn.textContent; btn.textContent="Confirm in wallet\u2026";
-    var addr=me();
-    window.lxStellar().then(function(S){
-      return j(H+"/accounts/"+addr).then(function(acc){
-        var PP=S.Networks.PUBLIC;
-        var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:PP});
-        // A claim of a non-native asset needs a trustline for it, and someone receiving an asset for
-        // the first time does not have one. Same transaction, so it is still one signature.
-        if(!nat){
-          var has=(acc.balances||[]).some(function(b){
-            return b.asset_code===code&&b.asset_issuer===iss; });
-          if(!has)tb.addOperation(S.Operation.changeTrust({asset:new S.Asset(code,iss)}));
-        }
-        tb.addOperation(S.Operation.claimClaimableBalance({balanceId:id}));
-        var tx=tb.setTimeout(180).build();
-        var p=window.lxSign(tx.toXDR(),S);
-        if(window.lxTimeout)p=window.lxTimeout(p,150000,"Signing timed out \u2014 open your wallet and try again");
-        return p.then(function(signed){
-          if(!signed)throw new Error("Signing cancelled");
-          btn.textContent="Submitting\u2026";
-          return fetch(H+"/transactions",{method:"POST",
-            headers:{"Content-Type":"application/x-www-form-urlencoded"},
-            body:"tx="+encodeURIComponent(signed)}).then(function(r){ return r.json(); });
-        });
-      });
-    }).then(function(res){
-      if(res&&(res.successful||res.hash)){
-        btn.textContent="Claimed \u2713";
-        say("Claimed "+row.querySelector(".lx-wcamt").textContent);
-        // Gone from the ledger, so gone from the list -- and the balances above are now wrong.
-        CB=CB.filter(function(x){ return x.id!==id; });
-        setTimeout(function(){ paint(); },900);
-        setTimeout(function(){ try{ location.reload(); }catch(_){} },1600);
-        return;
-      }
-      var x=res&&res.extras&&res.extras.result_codes;
-      throw new Error(x?JSON.stringify(x):"Claim failed");
-    }).catch(function(e){
-      btn.disabled=false; btn.textContent=lbl;
-      say("Claim failed \u2014 "+((e&&e.message)||e));
-    });
-  }
-
-  function select(which){
-    var tabs=document.querySelectorAll(".lx-wctab");
-    for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle("on",tabs[i].getAttribute("data-t")===which);
-    var o=document.querySelector(".lx-wcpanel-orders"), c=document.querySelector(".lx-wcpanel-claim");
-    if(o){ if(which==="orders")o.removeAttribute("hidden"); else o.setAttribute("hidden",""); }
-    if(c){ if(which==="claim")c.removeAttribute("hidden"); else c.setAttribute("hidden",""); }
-    try{ localStorage.setItem("lumos.wcTab",which); }catch(_){}
-  }
-
-  function build(){
-    var stack=document.querySelector(".insights-stack");
-    if(!stack||document.querySelector(".lx-wctabs"))return false;
-    // The two cards this replaces, found by what they SAY rather than by position -- the stack is
-    // rebuilt by the page and the order is not ours to rely on.
-    var cards=[].slice.call(stack.querySelectorAll(".insight-card"));
-    var ordersCard=null, poolsCard=null;
-    cards.forEach(function(c){
-      var t=((c.querySelector(".ttl")||{}).textContent||"").trim();
-      if(/open orders/i.test(t))ordersCard=c;
-      if(/liquidity pools/i.test(t))poolsCard=c;
-    });
-    if(!ordersCard&&!poolsCard)return false;
-    var nOrders="0";
-    if(ordersCard){
-      var hl=((ordersCard.querySelector(".headline")||{}).textContent||"").match(/\d+/);
-      if(hl)nOrders=hl[0];
-    }
-    if(ordersCard)ordersCard.style.display="none";
-    if(poolsCard)poolsCard.style.display="none";
-
-    var bar=document.createElement("div");
-    bar.className="lx-wctabs";
-    bar.innerHTML='<button class="lx-wctab on" type="button" data-t="orders">Open orders'
-      +'<span class="n">'+nOrders+'</span></button>'
-      +'<button class="lx-wctab" type="button" data-t="claim">Claimable payments'
-      +'<span class="n">0</span></button>';
-
-    // The orders list the page already builds becomes the first panel; the second is ours.
-    var orders=document.querySelector(".orders-block");
-    var host=orders?orders.parentNode:stack.parentNode;
-    var anchor=orders||stack.nextSibling;
-
-    var pOrders=document.createElement("div"); pOrders.className="lx-wcpanel lx-wcpanel-orders";
-    var pClaim=document.createElement("div"); pClaim.className="lx-wcpanel lx-wcpanel-claim";
-    pClaim.setAttribute("hidden","");
-
-    host.insertBefore(bar,anchor);
-    host.insertBefore(pOrders,anchor);
-    if(orders)pOrders.appendChild(orders);
-    else pOrders.innerHTML='<div class="lx-wclist"><div class="lx-wcnote">No open orders.</div></div>';
-    host.insertBefore(pClaim,pOrders.nextSibling);
-
-    paint();
-    try{ var last=localStorage.getItem("lumos.wcTab"); if(last==="claim")select("claim"); }catch(_){}
-    return true;
-  }
-
-  document.addEventListener("click",function(e){
-    var t=e.target; if(!t||!t.closest)return;
-    var tab=t.closest(".lx-wctab");
-    if(tab){ e.preventDefault(); select(tab.getAttribute("data-t")); return; }
-    var b=t.closest(".lx-wcbtn");
-    if(b&&!b.disabled){ e.preventDefault(); e.stopPropagation(); claim(b); }
-  },true);
-
-  function boot(){
-    if(!me())return;
-    // The insights stack and the orders block are both built by the page's own data layer, so this
-    // waits for them rather than assuming they exist yet.
-    var n=0,iv=setInterval(function(){ if(build()||++n>40)clearInterval(iv); },250);
-    load().then(paint);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

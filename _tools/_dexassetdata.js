@@ -61,9 +61,19 @@ a.mdxa-hl-row{display:flex;align-items:center;gap:10px}
    shrink its own cell instead of pushing the row wider than the screen. */
 html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important}
 .stat-row .stat-cell{min-width:0}
-.stat-row .stat-cell .lbl{font-size:8.5px;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.stat-row .stat-cell .val{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* #15: 8.5px labels over 13.5px figures. Those sizes were chosen to survive a PHONE, where four cells
+   share 375px -- but on a desktop card the same four have three times the room and were still
+   whispering. The phone keeps its sizes, below; the desktop gets figures worth reading. */
+.stat-row .stat-cell .lbl{font-size:10px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-row .stat-cell .val{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-row .stat-cell .val .u{font-size:11px;margin-left:3px}
+.stat-row .stat-cell .sub{font-size:12px}
+@media(max-width:760px){
+.stat-row .stat-cell .lbl{font-size:8.5px;letter-spacing:.04em}
+.stat-row .stat-cell .val{font-size:13.5px}
 .stat-row .stat-cell .val .u{font-size:9px;margin-left:2px}
+.stat-row .stat-cell .sub{font-size:10.5px}
+}
 .stat-row .stat-cell .sub{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* AUDIT (flash sweep): the .lxda gates above only covered the header + stat cells. A static-vs-settled diff
    showed 9 more groups still painting the design's Aptos mock (4.2271 APT, 2.66%, 18 holders, 189.93K vol)
@@ -1616,11 +1626,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var MOB=isMobPanel(wrap);
     try{ loadHolders(); }catch(_){}                                              // lazy: page the top-holders list only once the tab is actually opened
     // header stat count (accurate trustline count from /assets)
-    if(holders!=null){ var st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val"); if(st[0]){st[0].textContent=num(holders);lxMark(st[0]);} }
+    if(holders!=null){ var st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val"); if(st[0]){var _h=num(holders);if(st[0].textContent!==_h)st[0].textContent=_h;lxMark(st[0]);} }
     // Only the rare fallback (no ranked source) leaves these unknown; dash them then, with no prose.
     if(holders!=null&&!canRankHolders()){
       var _st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val");
-      [1,2].forEach(function(i){ if(_st[i]){ _st[i].textContent="\u2014"; lxMark(_st[i]); } });
+      [1,2].forEach(function(i){ if(_st[i]){ if(_st[i].textContent!=="\u2014")_st[i].textContent="\u2014"; lxMark(_st[i]); } });
     }
     var _n0=wrap.querySelector(".lxda-hl-note"); if(_n0&&_n0.parentNode)_n0.parentNode.removeChild(_n0);
     // Until the real rows land, the design's mock holders sit there — Ethereum-style "0x00…c3a1" wallets
@@ -1651,8 +1661,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var t10=0,t50=0; hold.slice(0,10).forEach(function(h){t10+=h.bal;}); hold.slice(0,50).forEach(function(h){t50+=h.bal;});
     var st2=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val");
     if(canRankHolders()){   // hold is a TRUE ranking -> the top-10/top-50 sums are the real thing
-      if(st2[1]){st2[1].textContent=(Math.min(100,t10/sup*100)).toFixed(1)+"%";st2[1].removeAttribute("title");lxMark(st2[1]);}
-      if(st2[2]){st2[2].textContent=(Math.min(100,t50/sup*100)).toFixed(1)+"%";st2[2].removeAttribute("title");lxMark(st2[2]);}
+      if(st2[1]){var _t10=(Math.min(100,t10/sup*100)).toFixed(1)+"%";if(st2[1].textContent!==_t10)st2[1].textContent=_t10;if(st2[1].hasAttribute("title"))st2[1].removeAttribute("title");lxMark(st2[1]);}
+      if(st2[2]){var _t50=(Math.min(100,t50/sup*100)).toFixed(1)+"%";if(st2[2].textContent!==_t50)st2[2].textContent=_t50;if(st2[2].hasAttribute("title"))st2[2].removeAttribute("title");lxMark(st2[2]);}
     }
     var EXPL='https://stellar.expert/explorer/public/account/';
     var html=top.map(function(h,i){ var pct=h.bal/sup*100;

@@ -35,41 +35,18 @@ const VERIFIED={
   "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io",
   "AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network",
 
-  // LumosCore-minted assets. Pinned by code|issuer, NOT matched on home_domain: home_domain is
-  // self-declared and nothing checks it, so any issuer on Stellar can point at lumoscore.com. A
-  // domain-matched tick would therefore be forgeable by anyone -- an exact pair cannot be.
+  // WHY THERE ARE NO LUMOSCORE MINTS IN THIS LIST ANY MORE.
   //
-  // The tick here asserts "minted on LumosCore", which is not the same claim as Circle standing behind
-  // USDC. Keeping the list explicit is what makes that a decision rather than an accident: a new mint
-  // gets no tick until it is added here on purpose.
-  "FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com",
-  "RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com",
-  "WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com",
-  "XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com",
-  "BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com",
-  "PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com",
-  "PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com",
-  "ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com",
-  "FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com",
-  "NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com",
-  "PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com",
-  "GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com",
-  "LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com",
-  "BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com",
-  "BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com",
-  "HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com",
-  "BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com",
-  "REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com",
-  "ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com",
-  "GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com",
-  "TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com",
-  "POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com",
-  "MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com",
-  "JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com",
-  // Absent until now only because stellar.expert reports domain:(none) for it, so it never surfaced
-  // in the discovery query this list was built from. The ledger is unambiguous: home_domain is
-  // lumoscore.com and the issuer account was created by the LumosCore funding wallet.
-  "WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"
+  // There were twenty-five, added automatically because the launchpad minted them. That made the tick
+  // mean "issued here", and nobody reads it that way -- beside a token called LIBERATOR or ZBS a green
+  // check reads as "this one is safe", which is a claim the platform cannot make about a memecoin it
+  // merely provided the button for. The tick was doing the opposite of its job: it was loudest exactly
+  // where a reader most needed to be careful, and it made the same mark on USDC worth less.
+  //
+  // What it means now is what CANONICAL means below: this ticker has one true issuer and this is it.
+  // Adding an asset is a deliberate act, not a side effect of minting. LumosCore assets can and should
+  // be added when they earn it -- one line each -- and LUMOS is here on that basis rather than because
+  // of where it came from.
 };
 // ---- canonical tickers: the ONE issuer each of these codes is allowed to mean --------------------
 //
