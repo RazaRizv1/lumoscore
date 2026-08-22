@@ -164,6 +164,67 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 /* #8: the browser keeps vertical scrolling over the chart; a horizontal drag stops being a scroll
    gesture and reaches touchmove, which is what lets the readout track a finger. */
 .lxda-cwrap,.chart-body,.chart-area,#dxaChart,#mdxaChart{touch-action:pan-y}
+/* #17/#20: the two new pill groups. .chart-tools buttons are 26px icon squares, so these override the
+   width for text labels while inheriting everything else -- the tray, the radius, the active treatment. */
+/* #8, PHONE ONLY. Four stat cards across 375px gave each one about 80px, which is why Price rendered as
+   "0.0002..." with the digits that matter truncated. Supply is the one of the four that is not a market
+   figure -- it does not move, and nobody checks it between glances -- so it moves into a sheet behind a
+   link and the other three get a third of the row each.
+   Scoped to a media query and to nothing else: the desktop grid is untouched, as asked. */
+/* The link is BUILT on every layout -- one code path, nothing to rebuild when the window is resized --
+   so it needs an explicit default of none. A bare <div> is display:block, which is why it showed on
+   desktop, where all four cards are on screen and a "More info" pointing at one of them is just noise. */
+.lxda-moreline{display:none}
+@media(max-width:760px){
+.stat-row .stat-cell.lxda-more{display:none!important}
+html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.lxda-moreline{grid-column:1/-1;display:flex;justify-content:center;margin-top:2px}
+.lxda-morebtn{border:0;background:transparent;padding:6px 4px;cursor:pointer;
+  font:800 12px/1 inherit;color:var(--accent,#ea6a2c);letter-spacing:.01em}
+/* The backslash is doubled on purpose: this block is a template literal, where a CSS unicode escape
+   would be read as an octal escape and fail the build, and the backslash still has to reach the CSS. */
+.lxda-morebtn::after{content:"\\203a";margin-left:5px;font-weight:700}
+}
+/* The sheet itself. Bottom-anchored on a phone because that is where a thumb is, and it is a reference
+   panel rather than a decision -- it closes by tapping anywhere off it. */
+.lxda-sheet{position:fixed;inset:0;z-index:10001;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(8,10,14,.55);backdrop-filter:blur(3px)}
+.lxda-sheet.open{display:flex}
+.lxda-sheet-card{width:100%;max-width:520px;max-height:80vh;max-height:80dvh;overflow:auto;
+  overscroll-behavior:contain;background:var(--surface,#fff);border:1px solid var(--border);
+  border-radius:18px 18px 0 0;padding:16px 18px 22px;animation:lxdaSheetIn .2s ease}
+@keyframes lxdaSheetIn{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.lxda-sheet-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.lxda-sheet-head h3{flex:1;margin:0;font-size:15px;font-weight:800;color:var(--text)}
+.lxda-sheet-x{width:30px;height:30px;flex:0 0 30px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--text-soft);cursor:pointer;font:700 15px/1 inherit}
+.lxda-srow{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:9px 0;
+  border-bottom:1px solid var(--border)}
+.lxda-srow:last-child{border-bottom:0}
+.lxda-srow .k{font:600 12.5px/1.3 inherit;color:var(--text-soft)}
+.lxda-srow .v{font:800 13.5px/1.3 'JetBrains Mono',monospace;color:var(--text);text-align:right;
+  overflow-wrap:anywhere}
+/* Desktop: pinned inside the plot, top-left. z-index above the svg, and a solid tray so the labels stay
+   legible if the series runs behind them. */
+#dxaChart .lxda-metric,#mdxaChart .lxda-metric,#dxaChart .lxda-denom,#mdxaChart .lxda-denom{
+  position:absolute;top:8px;z-index:4;background:var(--surface,#fff);border:1px solid var(--border);
+  box-shadow:0 2px 8px -4px rgba(0,0,0,.35)}
+#dxaChart .lxda-metric,#mdxaChart .lxda-metric{left:8px}
+#dxaChart .lxda-denom,#mdxaChart .lxda-denom{left:8px;top:40px}
+.chart-controls .lxda-metric{margin-left:auto}
+/* At 375px the four groups cannot share one line (measured 367px of controls in a 313px row), so the row
+   wraps -- and without this the denomination landed alone at the far LEFT of the second line, reading as
+   an orphan rather than as the pair of the group above it. Right-aligned, the two new controls stack
+   against the same edge and the design own two keep the left. */
+.chart-controls .lxda-denom{margin-left:auto}
+.chart-controls .lxda-metric button,.chart-controls .lxda-denom button{
+  width:auto;min-width:0;padding:0 9px;font:800 11px/1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.02em}
+.chart-controls .lxda-metric button[disabled]{opacity:.4;cursor:default}
+/* On a narrow phone the row wraps; keep the two new groups together on whichever line they land on so
+   they never split "Price | MCap" from "$ | XLM". */
+@media(max-width:420px){
+.chart-controls .lxda-metric button,.chart-controls .lxda-denom button{padding:0 7px;font-size:10.5px}
+}
 /* chart hover readout */
 .lxda-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
 .lxda-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:2px}
@@ -893,6 +954,38 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
 
   // ================= PRICE CHART (#dxaChart) =================
   var chartTF="1D", chartPts=null, chartWired=false, chartMode="area", chartTypeWired=false;
+  // #17/#20. Two independent choices about what the chart MEANS, kept apart from how it is drawn.
+  //
+  // The series in chartPts is stored in DOLLARS per unit and always has been -- the axis divided by the
+  // XLM rate on the way out. That is the whole reason both of these are cheap: the plotted shape does not
+  // change under either choice (multiplying every point by a constant moves the min and the max with it),
+  // so drawLine and drawCandles are untouched. Only the numbers written beside the curve change.
+  //
+  //   metric "mcap"  -> multiply by circulating supply
+  //   denom  "xlm"   -> divide by the XLM/USD rate
+  //
+  // The denomination shares localStorage with the Trade pair list, so the two pages cannot disagree
+  // about what a percentage or a price means.
+  var chartMetric="price", chartUiWired=false;
+  function cDenom(){ try{ if(window.__lxDenom)return window.__lxDenom;
+    var v=localStorage.getItem("lumos.dexDenom"); if(v==="xlm"||v==="usd")return v; }catch(_){}
+    return "usd"; }
+  function setCDenom(v){ try{ if(window.__lxDenomSet){window.__lxDenomSet(v);return;} }catch(_){}
+    window.__lxDenom=v; try{ localStorage.setItem("lumos.dexDenom",v); }catch(_){} }
+  // Null when the choice cannot be honoured -- no XLM rate, or no supply for a market cap -- and every
+  // caller then falls back to plain dollars rather than printing a number scaled by a guess.
+  function chartScale(){
+    var sc=1;
+    if(chartMetric==="mcap"){ if(!(supply>0))return null; sc*=supply; }
+    if(cDenom()==="xlm"){ if(!(xlmUsd>0))return null; sc/=xlmUsd; }
+    return sc;
+  }
+  function chartUnit(){ return cDenom()==="xlm"?"XLM":"$"; }
+  // Market caps are large and read better abbreviated; a unit price needs its digits.
+  function chartFmt(v){
+    if(chartMetric==="mcap")return (cDenom()==="xlm")?(abbrNum(v)+" XLM"):abbrUsd(v);
+    return (cDenom()==="xlm")?(axisNum(v)+" XLM"):("$"+axisNum(v));
+  }
   function tfCfg(tf){ var m={
     "1D":{res:900000,span:86400000},
     "1W":{res:3600000,span:604800000},
@@ -939,9 +1032,20 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     if(!pr){ pr=document.createElement("div"); pr.className="lxda-cprices"; pc.appendChild(pr); }
     if(topPct!=null){ pr.style.top=topPct.toFixed(3)+"%"; pr.style.bottom=botPct.toFixed(3)+"%"; }
     if(!(mx>mn)){ pr.innerHTML=""; return; }
-    var rate=+xlmUsd, xlm=(rate>0), a=xlm?(mn/rate):mn, b=xlm?(mx/rate):mx, pre=xlm?"":"$";
+    // #17/#20: one scale, chosen above, instead of "divide by the rate if we have one". When the chosen
+    // combination cannot be expressed (no rate, or a market cap with no supply) this falls back to the
+    // dollars the series is already in, which is always available and never a guess.
+    var sc=chartScale(), ok=(sc!=null);
+    var a=ok?(mn*sc):mn, b=ok?(mx*sc):mx;
+    var pre=(ok&&cDenom()==="xlm")?"":"$";
     var N=5,h="";
-    for(var i=0;i<N;i++){ var f=i/(N-1); h+='<span style="top:'+(f*100).toFixed(3)+'%">'+pre+axisNum(b-f*(b-a))+'</span>'; }
+    // A market cap is eight or nine digits, and axisNum spells every one of them:  987946.5463 down
+    // the side of a chart is not a label, it is an obstruction. Abbreviate that scale and leave the price
+    // scale alone, where the digits are the whole point.
+    function _al(v){ return (chartMetric==="mcap")
+      ? ((cDenom()==="xlm")?abbrNum(v):abbrUsd(v))
+      : (pre+axisNum(v)); }
+    for(var i=0;i<N;i++){ var f=i/(N-1); h+='<span style="top:'+(f*100).toFixed(3)+'%">'+_al(b-f*(b-a))+'</span>'; }
     pr.innerHTML=h;
     // NAME THE UNIT. Priced in XLM the axis carries no symbol at all -- just bare numbers like 0.002039 --
     // so nothing on the chart said whether that was lumens or dollars, and for a sub-cent asset the two
@@ -949,7 +1053,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     // it labels the scale without sitting on the data.
     var un=pc.querySelector(".lxda-cunit");
     if(!un){ un=document.createElement("div"); un.className="lxda-cunit"; pc.appendChild(un); }
-    var uw=xlm?"XLM":"USD";
+    // This read a variable that no longer exists after the scale rewrite above, which threw a
+    // ReferenceError right here and left the label blank -- silently, because the caller is wrapped.
+    // It also has to name the METRIC now: "USD" alone does not distinguish a unit price from a market
+    // cap, and on this axis the two differ by nine orders of magnitude.
+    var uw=((chartScale()!=null&&cDenom()==="xlm")?"XLM":"USD");
+    if(chartMetric==="mcap")uw="MCAP · "+uw;
     if(un.textContent!==uw)un.textContent=uw; }
   // How the plot is divided between price and volume. One function so the line chart, the candles and the
   // price axis cannot drift apart -- the axis has to span the PRICE band only, and hard-coding that split
@@ -1109,9 +1218,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       vl.style.left=sx+"px"; vl.style.opacity=1;
       // Same unit as the axis it sits on, and the same order as the Price stat card: XLM first, dollars
       // underneath. It read dollars-only while every other price on the page read XLM.
-      var _r=+xlmUsd, _x=(_r>0)?(p.v/_r):null;
-      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div><div class="p">'+(_x!=null?(axisNum(_x)+' XLM'):usd(p.v))+'</div>'
-        +(_x!=null?('<div class="v">'+usd(p.v)+'</div>'):'')
+      // The headline follows the chart: whatever the axis is counting, the tooltip says the same thing.
+      // The dollar line underneath is kept only when the headline is NOT already in dollars, so the
+      // reader never gets the same figure twice.
+      var _sc=chartScale(), _ok=(_sc!=null);
+      var _head=_ok?chartFmt(p.v*_sc):usd(p.v);
+      var _sub=(_ok&&cDenom()==="xlm")?((chartMetric==="mcap")?abbrUsd(p.v*supply):usd(p.v)):"";
+      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div><div class="p">'+_head+'</div>'
+        +(_sub?('<div class="v">'+_sub+'</div>'):'')
         // #17: volume alone does not say whether a bar was one whale or four hundred people. Horizon
         // returns trade_count on the same aggregation, so it costs nothing to say which.
         +'<div class="v">Vol '+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")
@@ -1199,6 +1313,151 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   function guardChart(){ var pc=q("#dxaChart,#mdxaChart"); if(!pc||pc.__lxcg)return; pc.__lxcg=1;
     try{ var mo=new MutationObserver(function(){ if(pc.__lxcgBusy)return; if(chartPts&&!pc.querySelector(".lxda-line,.lxda-candle")){ pc.__lxcgBusy=1; mo.disconnect(); try{ drawChart(chartPts); }catch(_){} try{ mo.observe(pc,{childList:true,subtree:true}); }catch(_){} pc.__lxcgBusy=0; } });
       mo.observe(pc,{childList:true,subtree:true}); }catch(_){}
+  }
+  // #17/#20: Price|MCap and $|XLM, built into the row that already holds the chart type and the
+  // timeframes. Both are reused DESIGN classes (.chart-tools, the same pill group the area/candle icons
+  // sit in) so they inherit that row's look instead of introducing a third button style on one line.
+  //
+  // Placement: after the timeframes, pushed right with margin-left:auto -- which is "to the right of 1Y,
+  // after some space" on a phone, and on a desktop fills the empty right half of a row that already
+  // exists. Nothing gains height on either.
+  //
+  // data-logo is not optional here. The container ships a logo engine that claims ANY element whose text
+  // is 1-5 characters inside a rounded, filled box and replaces its contents with a token image -- and
+  // "$", "XLM" and "MCap" are all in range. It emptied the identical switch on the Trade page.
+  function chartUi(){
+    // WHERE these live depends on the width, because on a desktop there is nowhere in the header to put
+    // them without costing height -- which was the one constraint given. Measured at 1280px: the controls
+    // row is 920px and already holds the OHLC strip (625, and it needs ~600 for its six figures), the
+    // chart-type tray (72) and the timeframes (188). That leaves 35px. Adding 175px of controls wrapped
+    // the row onto a second line and grew the header by ~55px, and every neighbouring row -- the price
+    // line, its meta line -- is full to the pixel as well.
+    //
+    // So on a desktop they go INSIDE the plot, pinned to its top-left corner, which is empty space the
+    // chart already owns (the unit label uses the opposite corner the same way). Nothing moves, nothing
+    // is clipped, and the controls sit on the thing they control. On a phone the row has room to wrap
+    // and that is the better place, so the host is re-picked on every apply and the group is moved if
+    // the window has crossed the breakpoint since.
+    var narrow=(window.innerWidth||0)<=760;
+    var row=narrow?q(".chart-controls"):(q("#dxaChart,#mdxaChart")||q(".chart-controls"));
+    if(!row)return;
+    var mv=q(".lxda-metric"), dv=q(".lxda-denom");
+    if(mv&&mv.parentNode!==row)row.appendChild(mv);
+    if(dv&&dv.parentNode!==row)row.appendChild(dv);
+    if(!row.querySelector(".lxda-metric")){
+      var g=document.createElement("div");
+      g.className="chart-tools lxda-metric"; g.setAttribute("data-logo","");
+      g.innerHTML='<button type="button" data-metric="price">Price</button>'
+        +'<button type="button" data-metric="mcap">MCap</button>';
+      row.appendChild(g);
+    }
+    if(!row.querySelector(".lxda-denom")){
+      var d=document.createElement("div");
+      d.className="chart-tools lxda-denom"; d.setAttribute("data-logo","");
+      d.innerHTML='<button type="button" data-cdn="usd">$</button>'
+        +'<button type="button" data-cdn="xlm">XLM</button>';
+      row.appendChild(d);
+    }
+    qa(".lxda-metric button,.lxda-denom button").forEach(function(b){ b.setAttribute("data-logo",""); });
+    chartUiSync();
+    if(chartUiWired)return; chartUiWired=true;
+    // Bound to the DOCUMENT, not to the host: the host changes when the window crosses the breakpoint,
+    // and a listener on the old one would go with it. Capture phase, like every other control here --
+    // the design has delegated handlers on the controls row and would otherwise read a click on a new
+    // button as a timeframe change.
+    document.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      var m=t.closest("[data-metric]");
+      if(m){ e.preventDefault(); e.stopImmediatePropagation();
+        chartMetric=(m.getAttribute("data-metric")==="mcap")?"mcap":"price";
+        chartUiSync(); if(chartPts)drawChart(chartPts); return; }
+      var d2=t.closest("[data-cdn]");
+      if(d2){ e.preventDefault(); e.stopImmediatePropagation();
+        setCDenom(d2.getAttribute("data-cdn")==="xlm"?"xlm":"usd");
+        chartUiSync(); if(chartPts)drawChart(chartPts); try{ applyOhlc(); }catch(_){} return; }
+    },true);
+  }
+  function chartUiSync(){
+    // A market cap needs a supply. Until one is known the tab would draw a chart it cannot label, so it
+    // is disabled rather than allowed to produce an empty axis.
+    var okM=(supply>0);
+    qa(".lxda-metric button[data-metric]").forEach(function(b){
+      var on=b.getAttribute("data-metric")===chartMetric;
+      b.classList.toggle("active",on);
+      if(b.getAttribute("data-metric")==="mcap"){ b.disabled=!okM;
+        b.title=okM?"Market cap = price x circulating supply":"Supply not known yet"; }
+    });
+    var dn=cDenom();
+    qa(".lxda-denom button[data-cdn]").forEach(function(b){ b.classList.toggle("active",b.getAttribute("data-cdn")===dn); });
+  }
+  // #8: Supply out of the row, into a sheet, on phones only.
+  //
+  // The card is marked rather than removed, and the CSS hides it at the same breakpoint that drops the
+  // grid to three columns -- so a phone held sideways, or a desktop window dragged narrow, gets the same
+  // treatment, and nothing has to be rebuilt when the viewport changes. The card keeps being painted by
+  // applyStats either way, which is where the sheet reads its value from.
+  function moreInfoUi(){
+    var row=q(".stat-row"); if(!row)return;
+    var cells=row.querySelectorAll(".stat-cell");
+    if(cells.length<4)return;
+    for(var i=0;i<cells.length;i++){
+      var l=cells[i].querySelector(".lbl");
+      if(l&&/^\s*supply\s*$/i.test(l.textContent||""))cells[i].classList.add("lxda-more");
+    }
+    if(!row.querySelector(".lxda-moreline")){
+      var line=document.createElement("div"); line.className="lxda-moreline";
+      var b=document.createElement("button"); b.type="button"; b.className="lxda-morebtn";
+      b.setAttribute("data-logo",""); b.textContent="More info";
+      line.appendChild(b); row.appendChild(line);
+      b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation(); openMore(); },true);
+    }
+  }
+  function moreRows(){
+    // Read from the cards the page has already painted rather than recomputing: whatever is in the sheet
+    // then matches what the row said, including its formatting, and cannot drift from it.
+    function cell(name){
+      var cs=qa(".stat-cell");
+      for(var i=0;i<cs.length;i++){ var l=cs[i].querySelector(".lbl");
+        if(l&&new RegExp("^\\s*"+name+"\\s*$","i").test(l.textContent||"")){
+          var v=cs[i].querySelector(".val"), sub=cs[i].querySelector(".sub");
+          return {v:v?(v.textContent||"").trim():"", s:sub?(sub.textContent||"").trim():""}; } }
+      return null;
+    }
+    var out=[];
+    var sup=cell("Supply");
+    if(sup)out.push(["Circulating supply",sup.v+(sup.s?(" "+sup.s):"")]);
+    var mc=cell("Market Cap");
+    if(mc&&mc.s)out.push(["Fully diluted",mc.s.replace(/^FDV\s*/i,"")]);
+    if(holders!=null)out.push(["Holders",num(holders)]);
+    if(poolCount!=null)out.push(["Pools",num(poolCount)]);
+    if(liqXlm!=null&&xlmUsd>0)out.push(["Pool liquidity",abbrUsd(liqXlm*xlmUsd)]);
+    out.push(["Issuer",ISSUER]);
+    if(homeDomain)out.push(["Home domain",String(homeDomain)]);
+    out.push(["Asset code",CODE]);
+    return out;
+  }
+  function openMore(){
+    var sh=q(".lxda-sheet");
+    if(!sh){
+      sh=document.createElement("div"); sh.className="lxda-sheet";
+      sh.innerHTML='<div class="lxda-sheet-card"><div class="lxda-sheet-head">'
+        +'<h3></h3><button type="button" class="lxda-sheet-x" aria-label="Close">&times;</button></div>'
+        +'<div class="lxda-sbody"></div></div>';
+      document.body.appendChild(sh);
+      sh.addEventListener("click",function(e){
+        if(e.target===sh||(e.target.closest&&e.target.closest(".lxda-sheet-x"))){
+          e.preventDefault(); sh.classList.remove("open");
+          try{ document.body.style.overflow=sh.__ovf||""; }catch(_){}
+        }
+      });
+    }
+    var h=sh.querySelector("h3"); if(h)h.textContent="About "+CODE;
+    var body=sh.querySelector(".lxda-sbody");
+    if(body)body.innerHTML=moreRows().map(function(r){
+      return '<div class="lxda-srow"><span class="k">'+escapeHtml(r[0])+'</span><span class="v">'+escapeHtml(String(r[1]))+'</span></div>';
+    }).join("");
+    try{ sh.__ovf=document.body.style.overflow; document.body.style.overflow="hidden"; }catch(_){}
+    sh.classList.add("open");
   }
   // Area/Candle toggle: [data-chart="area"|"candle"] buttons. Switch mode + redraw from the cached OHLC pts (no re-fetch).
   function wireChartType(){
@@ -2086,10 +2345,15 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       if(v){ if(v.textContent!==txt)v.textContent=txt; v.classList.add("lxp"); }   // strict now: reveal only on OUR write
       if(cls!=null){ p.classList.remove("up","down"); if(cls)p.classList.add(cls); } }
     var o=dayOHLC.o,h=dayOHLC.h,l=dayOHLC.l,c=dayOHLC.c;
-    set(0,xlmAmt(o)+" XLM",null);
-    set(1,xlmAmt(h)+" XLM","up");
-    set(2,xlmAmt(l)+" XLM","down");
-    set(3,xlmAmt(c)+" XLM", c>=o?"up":"down");
+    // #20: this strip is the chart's own four numbers, so it has to move with it -- leaving it in XLM
+    // beside a dollar axis is exactly the mismatch the switch exists to remove. dayOHLC is in XLM per
+    // unit (Horizon's quote asset), so the dollar reading multiplies by the rate rather than dividing.
+    var _od=(cDenom()==="usd"&&xlmUsd>0);
+    function _op(v){ return _od?("$"+axisNum(v*xlmUsd)):(xlmAmt(v)+" XLM"); }
+    set(0,_op(o),null);
+    set(1,_op(h),"up");
+    set(2,_op(l),"down");
+    set(3,_op(c), c>=o?"up":"down");
     var dp=o>0?((c-o)/o*100):0; set(4,(dp>=0?"+":"")+dp.toFixed(2)+"%", dp>=0?"up":"down");
     set(5,abbrNum(dayOHLC.v),null);
   }
@@ -2720,6 +2984,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
 
   // ================= apply / observe / boot =================
   function applyAll(){
+    // The MCap tab is gated on a supply figure that arrives from a separate fetch, so a single sync at
+    // boot left it permanently disabled on an asset whose supply landed a second later. chartUi() is
+    // idempotent -- it only builds what is missing -- so re-running it here also restores the controls
+    // if the design re-renders the row out from under them.
+    try{ chartUi(); }catch(_){}
+    try{ moreInfoUi(); }catch(_){}
     try{ computeLiquidity(); }catch(_){}
     try{ applyHeader(); }catch(_){}
     try{ applyStats(); }catch(_){}
@@ -3007,6 +3277,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     try{ guardChart(); }catch(_){}
     try{ guardSwap(); }catch(_){}
     try{ watchLimitModal(); }catch(_){}
+    try{ chartUi(); }catch(_){}
     // clear the design's prefilled mock ("100" -> 23.659 USDC) so the widget starts clean; our quote runs on input
     try{ var _pin=payInput(); if(_pin&&!NATIVE){ _pin.value=""; _dxLastPay=""; } dxQuote(); }catch(_){}
     loadData();
