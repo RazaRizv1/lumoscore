@@ -260,6 +260,38 @@ const CSS='<style id="lx-walletdata-css">'
 +'</style>';
 
 const SCRIPT='<script id="lx-walletdata">(function(){'
+// #10: /wallet?to=<G…> opens Send with the recipient already filled in -- that is how the account
+// page hands off. Everything that makes a payment lives here (the keys, the balances, the asset
+// picker, the signing), so the handoff is a url rather than a second send form to keep correct.
+//
+// The address is checked against the same shape the rest of the app uses before anything is filled
+// in: a recipient field populated from a query string is exactly the sort of thing that must not
+// accept whatever it is handed. The parameter is then removed from the url, so a refresh does not
+// reopen a payment form and the address does not sit in the address bar to be shared or logged.
+//
+// The recipient input is found by its LABEL, not by position, so re-ordering the form cannot
+// silently start filling the memo instead.
++'(function(){'
++'var m=null; try{ m=(new URLSearchParams(location.search)).get("to")||""; }catch(_){ m=""; }'
++'if(!m||!/^G[A-Z2-7]{55}$/.test(m))return;'
++'function fill(){'
++'var ov=document.getElementById("modalSend"); if(!ov)return false;'
++'var lab=null, labs=ov.querySelectorAll(".field-label");'
++'for(var i=0;i<labs.length;i++){ if(/recipient/i.test(labs[i].textContent||"")){ lab=labs[i]; break; } }'
++'var fld=lab?lab.parentNode:null;'
++'var inp=fld?fld.querySelector("input"):null;'
++'if(!inp)return false;'
++'inp.value=m;'
++'try{ inp.dispatchEvent(new Event("input",{bubbles:true})); }catch(_){}'
++'try{ inp.dispatchEvent(new Event("change",{bubbles:true})); }catch(_){}'
++'try{ if(typeof window.openModalById==="function"){ window.openModalById("modalSend"); }'
++'else if(typeof window.openModal==="function"){ window.openModal("modalSend"); }'
++'else { ov.classList.add("open"); ov.style.display="flex"; } }catch(_){}'
++'try{ history.replaceState(null,"",location.pathname+location.hash); }catch(_){}'
++'return true;'
++'}'
++'if(!fill()){ var n=0,iv=setInterval(function(){ if(fill()||++n>40)clearInterval(iv); },150); }'
++'})();'
 // AUDIT (flash sweep) — reveal each masked mock the moment it is overwritten (see the mask rules in CSS).
 // An observer beats patching every writer in this file and keeps working as new ones are added.
 +'var LXWM=".hero-id-row .wallet-chip .text,.hero-body .value-side .value span,.activity-block .day-divider,.activity-block .activity-row .activity-info .meta,.activity-block .activity-row .activity-amt .a1";'

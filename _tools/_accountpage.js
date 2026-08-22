@@ -33,6 +33,7 @@ const SHELLS = [
 const ICO = {
   copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
   out: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>',
+  send: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
   back: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
 };
 
@@ -48,6 +49,10 @@ const MAIN_INNER = `
           <div class="acc-title-row">
             <h1 class="acc-addr" id="accAddr" title="">&#8212;</h1>
             <button class="acc-copy" id="accCopy" type="button" aria-label="Copy address">${ICO.copy}</button>
+            <!-- #10: the page tells you everything about an account and gave you nothing to DO with it.
+                 The label says "to this wallet" on purpose: this is somebody else's address, and a bare
+                 "Send" on a page showing another person's balances could be read as sending THEIRS. -->
+            <a class="acc-send" id="accSend" href="#">${ICO.send}<span>Send to this wallet</span></a>
           </div>
           <div class="acc-sub" id="accSub"></div>
         </div>
@@ -128,6 +133,12 @@ const STYLE = `<style id="lx-acc-css">
 .acc-tag{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
   background:var(--surface-2);border:1px solid var(--border);font-size:12.5px;font-weight:700;color:var(--text)}
 
+.acc-send{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px;border-radius:10px;
+  border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;text-decoration:none;
+  font:800 12.5px/1 inherit;white-space:nowrap;flex:0 0 auto;transition:filter .14s ease}
+.acc-send:hover{filter:brightness(1.06)}
+.acc-send svg{flex:0 0 auto}
+@media(max-width:620px){.acc-send span{display:none}.acc-send{padding:0 10px}}
 .acc-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
 .acc-stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;min-width:0}
 .acc-stat .l{display:block;font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
@@ -770,6 +781,17 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       fail("This account does not exist on Stellar mainnet, or Horizon is unreachable.");
     });
     loadActs();
+    // #10: the wallet page owns Send -- the keys, the balances, the signing and the asset picker all
+    // live there. Handing it the recipient in the url is the whole integration; building a second send
+    // form here would be a second thing to keep correct about moving real money.
+    var sb=q("#accSend");
+    if(sb)sb.addEventListener("click",function(e){
+      try{ e.preventDefault(); }catch(_){}
+      if(!ADDR)return;
+      var u="lumoscore-wallet.html?to="+encodeURIComponent(ADDR);
+      try{ if(window.__lxNav){ window.__lxNav(u); return; } }catch(_){}
+      location.href=u;
+    });
     var cp=q("#accCopy");
     // The site owns a bottom-centre toast (window.showToast) that every other copy action uses. Reuse it
     // rather than inventing a second confirmation style on one page.
