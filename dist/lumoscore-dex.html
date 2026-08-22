@@ -2239,7 +2239,7 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .lx-dnsw{display:inline-flex;flex:0 0 auto;align-items:center;gap:2px;padding:3px;border-radius:10px;
   background:var(--surface-2);border:1px solid var(--border)}
 .lx-dnsw button{padding:5px 11px;border:0;border-radius:7px;background:transparent;color:var(--text-soft);
-  font:800 12px/1 inherit;letter-spacing:.02em;cursor:pointer;transition:color .14s ease,background .14s ease}
+  font-weight:800;font-size:12px;line-height:1;letter-spacing:.02em;cursor:pointer;transition:color .14s ease,background .14s ease}
 .lx-dnsw button:hover{color:var(--text)}
 .lx-dnsw button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.18)}
 /* the row holding the search input is a flex line; the switch must not stretch with the input */
@@ -5147,6 +5147,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
 })();</script>
 
 
+
+
 <script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -5397,6 +5399,27 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     for(var i=0;i<ASSETS.length;i++)put(ASSETS[i]);
     for(var j=0;j<NATIVE.length;j++)put(NATIVE[j]);
     return out; }
+  // #7: the three chips we no longer offer, and the rename of All. Done here rather than in the build
+  // because the design re-renders this row -- a build-time edit would be undone the first time it did.
+  // Idempotent: a removed chip is not found again, and the rename checks before writing.
+  function trimFilters(){
+    var kill={stables:1,memes:1,utility:1};
+    qa(".dex-mk-filter,.mdx-mk-filter").forEach(function(b){
+      var f=(b.getAttribute("data-filter")||"").toLowerCase();
+      if(kill[f]){ if(b.parentNode)b.parentNode.removeChild(b); return; }
+      if(f==="all"||f===""){
+        // Only the label changes; data-filter stays "all" so every reader of it keeps working.
+        var tn=null, ns=b.childNodes;
+        for(var i=ns.length-1;i>=0;i--){ if(ns[i].nodeType===3&&(ns[i].nodeValue||"").trim()){ tn=ns[i]; break; } }
+        if(tn&&tn.nodeValue.trim()!=="Curated")tn.nodeValue="Curated";
+      }
+    });
+    // If the active chip was one of the three just removed, nothing is selected and the table would read
+    // an empty filter. Fall back to Curated.
+    var act=q(".dex-mk-filter.active,.mdx-mk-filter.active");
+    if(!act){ var first=q('.dex-mk-filter[data-filter="all"],.mdx-mk-filter[data-filter="all"]');
+      if(first)first.classList.add("active"); }
+  }
   function curFilter(){ var el=q(".dex-mk-filter.active"); return (el&&el.getAttribute)?(el.getAttribute("data-filter")||"all"):"all"; }
   // Newest first. Assets we have no created stamp for sort last rather than jumping to the top on a 0.
   function mintList(){
@@ -5964,10 +5987,20 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var qs=""; var si=q("#dexMkSearch"); if(si)qs=(si.value||"").trim().toLowerCase();
     // Kicked off here rather than on the native tab alone: All lists them too, so they load with the page.
     loadNative();
-    var d=(f==="native")?NATIVE.slice():allAssets();
-    if(f==="utility")d=d.filter(function(a){return a.cat==="utility";});
-    else if(f==="stables")d=d.filter(function(a){return a.cat==="stable";});
+    // #7: two lists now, not five. "Curated" is the vetted roster only -- LumosCore mints have their own
+    // tab and no longer appear here, so the first list a visitor sees is one somebody stands behind
+    // rather than everything that has ever been issued through the launchpad.
+    //
+    // Stables / Memes / Utility are gone. Memes filtered to an empty list by construction (nothing ever
+    // set that category), and the other two split a roster of eight into subsets of two and three, which
+    // is not a filter anyone needs. The data-filter values are still honoured if an old chip survives
+    // somewhere, so nothing breaks if one is missed.
+    var d;
+    if(f==="native")d=NATIVE.slice();
+    else if(f==="utility")d=allAssets().filter(function(a){return a.cat==="utility";});
+    else if(f==="stables")d=allAssets().filter(function(a){return a.cat==="stable";});
     else if(f==="memes")d=[];
+    else d=ASSETS.slice();
     if(qs)d=d.filter(function(a){ return a.code.toLowerCase().indexOf(qs)>=0 || (a.issuer||"").toLowerCase().indexOf(qs)>=0 || (a.domain||"").toLowerCase().indexOf(qs)>=0; });
     return mkSortRows(d);                                     // sorted here, so pagination pages the SORTED set
   }
@@ -6080,6 +6113,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     try{ applyCosmic(); }catch(_){}             // same nebula/stars/constellation animation as the Pools hero
     try{ applyPromoConstel(); }catch(_){}       // keeps the original .lm-svg zigzag hidden (rebuilt as hidden .lx-dxc)
     try{ applyHeroStats(); }catch(_){}
+    try{ trimFilters(); }catch(_){}
     try{ denomUi(); denomUiSync(); }catch(_){}
     try{ renderMints(); }catch(_){}
     try{ renderMovers(); }catch(_){}
@@ -6111,7 +6145,13 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var base="base_asset_type="+atype+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer+"&counter_asset_type=native";
     return Promise.all([
       j(H+"/trade_aggregations?"+base+"&resolution=86400000&order=desc&limit=1").then(function(d){
-        var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||subPx(r)||a.px; } }).catch(function(){}),
+        // #3: this is the SAME daily bar the full loader reads, and it already carries counter_volume and
+        // trade_count -- the lite path simply threw them away. That is why the two 24h columns I added to
+        // the mint rows last batch showed a dash on every row: the data was in the response and discarded
+        // one line before it was needed. No extra request.
+        var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||subPx(r)||a.px;
+          a.vol=+r.counter_volume||0; a.trades=+r.trade_count||0;
+          a.high=+r.high||0; a.low=+r.low||0; } }).catch(function(){}),
       j(H+"/assets?asset_code="+a.code+"&asset_issuer="+a.issuer).then(function(d){
         var rec=recs(d)[0]; if(!rec)return;
         if(rec.accounts)a.holders=(+rec.accounts.authorized||0)+(+rec.accounts.authorized_to_maintain_liabilities||0);

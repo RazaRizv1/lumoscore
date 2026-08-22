@@ -25,7 +25,7 @@ const STYLE = '<style id="lx-mobwallet-css">'
   // handler brought the width along with it, so the button ate the whole row and pushed the order text
   // to zero. Scoped to .orders-stack so the desktop rule is untouched.
   + '.orders-stack .lxmw-ocx{flex:0 0 auto;width:auto;height:28px;padding:0 11px;border-radius:8px;cursor:pointer;'
-  + 'font:800 11.5px/1 inherit;color:var(--text-soft);background:transparent;'
+  + 'font-weight:800;font-size:11.5px;line-height:1;color:var(--text-soft);background:transparent;'
   + 'border:1px solid var(--border);transition:color .14s ease,border-color .14s ease}'
   + '.orders-stack .lxmw-ocx:hover:not(:disabled){color:#e5484d;border-color:#e5484d}'
   + '.orders-stack .lxmw-ocx:disabled{opacity:.6;cursor:default}'

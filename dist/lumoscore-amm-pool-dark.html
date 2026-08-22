@@ -1778,9 +1778,16 @@ table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
 .lx-hstat .l{font:600 13px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)}
 /* Top Pool stat: show the pair logos beside the "CODE / XLM" text */
 .lx-hstat[data-k=top] .v{display:flex;align-items:center;gap:12px}
-.lx-hstat[data-k=top] .pair-icons{width:57px;height:33px;flex:0 0 57px}
+/* #2: the top-pool code was hidden behind its own second logo.
+   Six rules from four stylesheets size this element, and one of them -- added later, for the pair marks
+   elsewhere -- sets gap:6px on [data-paired]. The nudge below (.pb{left:23px}) was written for a
+   container with no gap, so the second mark ended up 33+6+23 = 62px in, inside a box declared 57px wide,
+   and jutted far enough past it to sit on the U of "USDC / XLM".
+   Overlap the two by geometry instead of by a nudge that assumes a particular flow: no gap, a negative
+   margin, and no offset. The box is then exactly as wide as what is in it, and the text starts after it. */
+.lx-hstat[data-k=top] .pair-icons{width:auto!important;flex:0 0 auto!important;gap:0!important;height:33px}
 .lx-hstat[data-k=top] .pair-icons .pa.lx-ico,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{width:33px!important;height:33px!important;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box;box-shadow:0 3px 8px rgba(0,0,0,.4)}
-.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:23px!important}
+.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:0!important;margin-left:-10px!important}
 .lx-hstat[data-k=top] .pair-icons .pa.lx-ico[data-mono]::after,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico[data-mono]::after{font-size:13px}
 .lx-hstat[data-k=top] .lx-toptxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:20px}
 /* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
