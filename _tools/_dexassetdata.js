@@ -1484,7 +1484,12 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
           ? (shortG(r.addr)+'<span class="lx-sortag">Soroban</span>')
           : ('<a class="lx-acct" href="/account/stellar/'+r.addr+'">'+shortG(r.addr)+'</a>'))+'</div>'
         +'<div class="ex-sub"><span class="type-badge '+r.side+'">'+(r.side==="buy"?"▲ Buy":"▼ Sell")+'</span></div></div>'
-        +'<div class="ex-num">'+r.px.toFixed(decs(r.px))+' XLM<span class="sub">'+xlmAmt(r.amount)+' '+CODE+' for '+xlmAmt(r.px*r.amount)+' XLM</span></div>'
+        // #11: this line was as long as the row and mostly padding -- '310,319 ZBS for 0.025281 XLM' beside a
+// price already spelled out in full. qtyTxt is the site's own quantity formatter: it abbreviates above a
+// thousand (200,000 -> 200K) and switches to subscript below one, which COMPRESSES the leading zeros
+// without dropping a digit -- 0.0000253 becomes 0.0(4)253, still the exact number. The price itself keeps
+// smallNum for the same reason. 'for' becomes an arrow: it is a trade, and the row is narrow.
++'<div class="ex-num">'+smallNum(r.px,4)+' XLM<span class="sub">'+qtyTxt(r.amount)+' '+CODE+' → '+qtyTxt(r.px*r.amount)+' XLM</span></div>'
         +'<div class="ex-time">'+r.time+'</div>'
         +'<a class="row-link lxda-exlink" href="'+tradeHref(r)+'" target="_blank" rel="noopener" aria-label="View this trade on stellar.expert">'
         +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
@@ -2571,10 +2576,28 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     setLimIcon(fields[0],assetXLM()); setLimIcon(fields[1],assetTok()); if(fields[2])setLimIcon(fields[2],assetXLM());
     // "Market:" (current price) on the price field; "Available:" on amount; "Balance:" + MAX on the total field
     var mkt=fields[0].querySelector(".dxa-trade-frow .mono"); if(mkt&&mkt.textContent!=="")mkt.textContent="";   // no "Market:" label (per design)
-    var tf2=fields[2]; if(tf2){ var frow2=tf2.querySelector(".dxa-trade-frow"); if(frow2){ var bm=frow2.querySelector(".mono"); if(bm){ var _xb=(window.__lxDXAxlmSpend!=null?window.__lxDXAxlmSpend:window.__lxDXAxlm); var bt=(_xb==null)?"Avail: \\u2014":"Avail: "+(Math.floor(_xb*100)/100).toFixed(2)+" XLM"; if(bm.textContent!==bt){bm.textContent=bt; bm.setAttribute("data-lxbal","1");} }   // placeable-in-a-new-order = free minus the 0.5 XLM a new offer itself reserves
+    // #13: the balance and MAX belong on the asset being SPENT, and which one that is depends on the side.
+    //
+    // They were pinned to the Total field, which is always XLM. That is right when BUYING -- XLM is what
+    // leaves the account -- but on a SELL the asset leaving is the token, and the row for it carried
+    // neither its balance nor a MAX. Selling 920 xLMNR, the only figure on screen was how much XLM was
+    // available, which is not the constraint at all. limMax() already picked the correct side; only the
+    // controls were in a fixed place.
+    var _sell=(limSide()==="sell");
+    var _spendF=_sell?fields[1]:fields[2];
+    var _otherF=_sell?fields[2]:fields[1];
+    if(_spendF){ var frow2=_spendF.querySelector(".dxa-trade-frow"); if(frow2){ var bm=frow2.querySelector(".mono");
+      if(bm){
+        var bt;
+        if(_sell){ var _tb=window.__lxDXAassetBal; bt=(_tb==null)?"Avail: \\u2014":("Avail: "+xlmAmt(_tb)+" "+CODE); }
+        else { var _xb=(window.__lxDXAxlmSpend!=null?window.__lxDXAxlmSpend:window.__lxDXAxlm); bt=(_xb==null)?"Avail: \\u2014":("Avail: "+(Math.floor(_xb*100)/100).toFixed(2)+" XLM"); }
+        if(bm.textContent!==bt){bm.textContent=bt; bm.setAttribute("data-lxbal","1");}
+      }
       if(!frow2.querySelector(".lxlim-max")){ var mxb=document.createElement("button"); mxb.type="button"; mxb.className="lxlim-max"; mxb.textContent="MAX"; frow2.appendChild(mxb); mxb.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation(); limMax(); }); } } }
-    var avail=fields[1].querySelector(".dxa-trade-frow .mono");
-    if(avail&&avail.textContent!=="")avail.textContent="";   // no "Balance: AQUA" label on the amount row (per design)
+    // and strip both from the row that is now the RECEIVING side, so only one row claims to be the limit.
+    if(_otherF){ var frowO=_otherF.querySelector(".dxa-trade-frow");
+      if(frowO){ var bmo=frowO.querySelector(".mono"); if(bmo&&bmo.textContent!==""){bmo.textContent=""; bmo.removeAttribute("data-lxbal");}
+        var mxo=frowO.querySelector(".lxlim-max"); if(mxo&&mxo.parentNode)mxo.parentNode.removeChild(mxo); } }
     // prefill the price with the current market once per side (design ships a mock value)
     var pin=limPriceInput(); if(pin&&assetXlm>0&&pane.__lxlprefill!==side){ pin.value=(+assetXlm.toPrecision(6)).toString(); pane.__lxlprefill=side; }
     var _tie=limTotInput(); if(_tie){ _tie.removeAttribute("readonly"); _tie.removeAttribute("disabled"); }   // Total is editable -> back-computes Amount

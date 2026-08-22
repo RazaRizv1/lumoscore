@@ -324,7 +324,7 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 /* the avatar-painter sometimes injects a stray <svg> initials-avatar INTO our painter-proof icons (it broke the
    LUMOS logo in All Trading Pairs). Our real logo lives in ::before -> hide any injected svg child so it can't cover it. */
 .dex-mint-ic[data-lxic]>svg,.dex-mover-ico[data-lxic]>svg,.dex-mk-pair-ic[data-lxic]>svg{display:none!important}
-/* New Mints: 3 symmetric stat columns (Volume / Trades / Holders), right-aligned */
+/* New Mints: 4 symmetric stat columns (Price / Market cap / 24h Volume / 24h Trades), right-aligned */
 .dex-mint-stats{display:flex;gap:22px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
 .dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
 .dex-mint-stat .l{font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft,#6f6f79);margin-bottom:6px}
@@ -960,7 +960,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
           +'<div class="dex-mint-stats">'
             +'<div class="dex-mint-stat"><span class="l">Price</span><span class="v" data-k="px">\\u2014</span></div>'
             +'<div class="dex-mint-stat"><span class="l">Market cap</span><span class="v" data-k="mcap">\\u2014</span></div>'
-            +'<div class="dex-mint-stat"><span class="l">Holders</span><span class="v" data-k="holders">\\u2014</span></div>'
+            +'<div class="dex-mint-stat"><span class="l">24h Volume</span><span class="v" data-k="vol">\\u2014</span></div>'
+            +'<div class="dex-mint-stat"><span class="l">24h Trades</span><span class="v" data-k="trades">\\u2014</span></div>'
           +'</div>'
         +'</div>'; }).join("");
       paintIcons(list);
@@ -979,7 +980,10 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       // supply x price: both already fetched by loadAsset, so this costs nothing extra
       var mc=(a.supply!=null&&a.px>0&&xlmUsd>0)?(a.supply*a.px*xlmUsd):null;
       setTxt(row.querySelector('[data-k="mcap"]'),mc!=null?abbrUsd(mc):"\\u2014");
-      setTxt(row.querySelector('[data-k="holders"]'),a.holders!=null?num(a.holders):"\\u2014");
+      var vu=(a.vol!=null&&xlmUsd>0)?(a.vol*xlmUsd):null;
+      setHTML(row.querySelector('[data-k="vol"]'), a.vol!=null
+        ? (abbrNum(a.vol)+' XLM<span class="sub">'+(vu!=null?abbrUsd(vu):"")+'</span>') : "\\u2014");
+      setTxt(row.querySelector('[data-k="trades"]'),a.trades!=null?num(a.trades):"\\u2014");
     });
   }
 
