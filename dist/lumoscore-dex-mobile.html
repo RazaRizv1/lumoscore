@@ -2270,6 +2270,15 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 /* the avatar-painter sometimes injects a stray <svg> initials-avatar INTO our painter-proof icons (it broke the
    LUMOS logo in All Trading Pairs). Our real logo lives in ::before -> hide any injected svg child so it can't cover it. */
 .dex-mint-ic[data-lxic]>svg,.dex-mover-ico[data-lxic]>svg,.dex-mk-pair-ic[data-lxic]>svg{display:none!important}
+/* #19 denomination switch. Sized off the search field it sits beside so the row keeps one baseline. */
+.lx-dnsw{display:inline-flex;flex:0 0 auto;align-items:center;gap:2px;padding:3px;border-radius:10px;
+  background:var(--surface-2);border:1px solid var(--border)}
+.lx-dnsw button{padding:5px 11px;border:0;border-radius:7px;background:transparent;color:var(--text-soft);
+  font:800 12px/1 inherit;letter-spacing:.02em;cursor:pointer;transition:color .14s ease,background .14s ease}
+.lx-dnsw button:hover{color:var(--text)}
+.lx-dnsw button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+/* the row holding the search input is a flex line; the switch must not stretch with the input */
+.dex-mk-search{flex:1 1 auto;min-width:0}
 /* New Mints: 4 symmetric stat columns (Price / Market cap / 24h Volume / 24h Trades), right-aligned */
 .dex-mint-stats{display:flex;gap:22px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
 .dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
@@ -2279,7 +2288,7 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
 /* Price carries the longest string in the row, so it gets room; the counts stay narrow */
 .dex-mint-stat:first-child{min-width:104px}
-</style><style id="lx-mobdex-css">.mdx-mk-search.lx-mkq{position:relative}.lx-msort{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-right:-6px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--text-soft);cursor:pointer}.lx-msort:hover,.lx-msort.on{background:var(--surface);color:var(--text)}.lx-msort.act{color:var(--accent)}.lx-msheet{display:none;position:absolute;z-index:40;top:calc(100% + 6px);right:0;min-width:184px;padding:5px;background:var(--surface);border:1px solid var(--border);border-radius:11px;box-shadow:0 18px 40px -18px rgba(0,0,0,.55)}.lx-msheet.open{display:block}.lx-msheet button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:8px 9px;border:0;border-radius:8px;background:transparent;color:var(--text);font:inherit;font-size:12.5px;font-weight:600;text-align:left;cursor:pointer}.lx-msheet button:hover{background:var(--surface-2)}.lx-msheet button.on{color:var(--accent)}.lx-msheet button i{font-style:normal;font-size:9px;line-height:1;opacity:.9}.lx-msheet .lx-mreset{margin-top:3px;border-top:1px solid var(--border);border-radius:0 0 8px 8px;color:var(--text-soft);font-weight:500}.mdx-mover-pair .lx-vtick,.mdx-mk-name-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 13px}.mdx-mover-pair .lx-vtick svg,.mdx-mk-name-row .lx-vtick svg{width:8px;height:8px;display:block}.mdx-mints-title{font-size:0!important}.mdx-mints-title::after{content:"New mints on LumosCore";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}body:not(.lxmd-ready) .mdx-mints-list,body:not(.lxmd-ready) .mdx-mover-list,body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}.lxmd-empty{padding:16px 4px;text-align:center;color:var(--text-soft,#8a8fa3);font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}.mdx-mint-ic[data-lxic],.mdx-mover-ic[data-lxic],.mdx-mk-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important}.mdx-mint-ic[data-lxic]::before,.mdx-mover-ic[data-lxic]::before,.mdx-mk-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}.mdx-mint-ic[data-lxic]>*,.mdx-mover-ic[data-lxic]>*,.mdx-mk-ic[data-lxic]>*{display:none!important}.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;padding:8px 2px 14px;border-bottom:1px solid var(--border)}.mdx-mk-list{margin-bottom:34px}.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}.lxmd-pg[disabled]{opacity:.4;cursor:default}.lxmd-pg-info{font-size:13px;color:var(--text-soft);font-weight:600;white-space:nowrap}.mdx-mint-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;min-width:0}.mdx-mint-fig{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25;min-width:0}.mdx-mint-fig .v{font:800 13px/1.25 "JetBrains Mono",monospace;color:var(--text)}.mdx-mint-fig .v2{font:700 12.5px/1.25 "JetBrains Mono",monospace;color:var(--text-soft)}.mdx-mint-fig .k{font:600 10.5px/1.3 inherit;color:var(--text-soft);white-space:nowrap}</style><style id="lx-heromono-css">
+</style><style id="lx-mobdex-css">.mdx-mk-search.lx-mkq{position:relative}.lx-msort{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;margin-right:-6px;padding:0;border:0;border-radius:7px;background:transparent;color:var(--text-soft);cursor:pointer}.lx-msort:hover,.lx-msort.on{background:var(--surface);color:var(--text)}.lx-msort.act{color:var(--accent)}.lx-msheet{display:none;position:absolute;z-index:40;top:calc(100% + 6px);right:0;min-width:184px;padding:5px;background:var(--surface);border:1px solid var(--border);border-radius:11px;box-shadow:0 18px 40px -18px rgba(0,0,0,.55)}.lx-msheet.open{display:block}.lx-msheet button{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:8px 9px;border:0;border-radius:8px;background:transparent;color:var(--text);font:inherit;font-size:12.5px;font-weight:600;text-align:left;cursor:pointer}.lx-msheet button:hover{background:var(--surface-2)}.lx-msheet button.on{color:var(--accent)}.lx-msheet button i{font-style:normal;font-size:9px;line-height:1;opacity:.9}.lx-msheet .lx-mreset{margin-top:3px;border-top:1px solid var(--border);border-radius:0 0 8px 8px;color:var(--text-soft);font-weight:500}.lx-msheet .lx-mdsec{margin:6px 0 2px;padding:7px 9px 3px;border-top:1px solid var(--border);font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}.mdx-mover-pair .lx-vtick,.mdx-mk-name-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 13px}.mdx-mover-pair .lx-vtick svg,.mdx-mk-name-row .lx-vtick svg{width:8px;height:8px;display:block}.mdx-mints-title{font-size:0!important}.mdx-mints-title::after{content:"New mints on LumosCore";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}body:not(.lxmd-ready) .mdx-mints-list,body:not(.lxmd-ready) .mdx-mover-list,body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}.lxmd-empty{padding:16px 4px;text-align:center;color:var(--text-soft,#8a8fa3);font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}.mdx-mint-ic[data-lxic],.mdx-mover-ic[data-lxic],.mdx-mk-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important}.mdx-mint-ic[data-lxic]::before,.mdx-mover-ic[data-lxic]::before,.mdx-mk-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}.mdx-mint-ic[data-lxic]>*,.mdx-mover-ic[data-lxic]>*,.mdx-mk-ic[data-lxic]>*{display:none!important}.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:2px;padding:8px 2px 14px;border-bottom:1px solid var(--border)}.mdx-mk-list{margin-bottom:34px}.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}.lxmd-pg[disabled]{opacity:.4;cursor:default}.lxmd-pg-info{font-size:13px;color:var(--text-soft);font-weight:600;white-space:nowrap}.mdx-mint-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;min-width:0}.mdx-mint-fig{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25;min-width:0}.mdx-mint-fig .v{font:800 13px/1.25 "JetBrains Mono",monospace;color:var(--text)}.mdx-mint-fig .v2{font:700 12.5px/1.25 "JetBrains Mono",monospace;color:var(--text-soft)}.mdx-mint-fig .k{font:600 10.5px/1.3 inherit;color:var(--text-soft);white-space:nowrap}</style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
    ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
@@ -5324,6 +5333,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     t.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));
   },true);
 })();</script>
+
+
 <script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -5375,6 +5386,20 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // figure -- the desktop table was converted here and the mobile one was not, so the same asset read
   // -10.26% on one and its true dollar move on the other. One implementation, both renderers.
   try{ window.__lxChgU=chgU; }catch(_){}
+  // #19: the reader chooses the denomination. Dollars stay the default -- that is the honest reading of
+  // "is this up or down" for anyone not already thinking in XLM -- but a trader pricing against XLM wants
+  // the raw pair move, and until now the page simply asserted one of the two.
+  //
+  // The choice is shared with _mobdex.js through window + localStorage, so switching on a phone and
+  // reopening on a desktop shows the same thing rather than two pages disagreeing about the same asset.
+  function denom(){ try{ if(window.__lxDenom)return window.__lxDenom;
+    var v=localStorage.getItem("lumos.dexDenom"); if(v==="xlm"||v==="usd"){window.__lxDenom=v;return v;} }catch(_){}
+    return "usd"; }
+  function setDenom(v){ window.__lxDenom=v; try{ localStorage.setItem("lumos.dexDenom",v); }catch(_){}
+    try{ window.dispatchEvent(new CustomEvent("lx-denom",{detail:v})); }catch(_){} }
+  // XLM is the raw pair move Horizon reports; USD folds in what XLM itself did.
+  function chgShown(a){ return denom()==="xlm" ? (a&&a.chg!=null?a.chg:null) : chgU(a); }
+  try{ window.__lxDenomGet=denom; window.__lxDenomSet=setDenom; window.__lxChgShown=chgShown; }catch(_){}
   var byCode={}; ASSETS.forEach(function(a){ byCode[a.code]=a; byId[a.code+"|"+a.issuer]=a; a.px=0; a.chg=null; a.vol=null; a.high=null; a.low=null;
     a.tvlUsd=null; a.holders=null; a.supply=null; a.spark=null; a.domain=null; a.img=null; a.trades=null; });
   // ---- LumosCore-native assets: issuer home_domain = lumoscore.com (minted through our Launchpad) ----
@@ -6064,7 +6089,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     }
     qa(".dex-mover-card[data-tkr]",grid).forEach(function(card){ var a=byCode[card.getAttribute("data-tkr")]; if(!a)return; paintIcons(card);
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
-      var _cu=chgU(a); var up=(_cu||0)>=0;
+      var _cu=chgShown(a); var up=(_cu||0)>=0;
       setTxt(card.querySelector(".dex-mover-pair .sub"),dispDom(a.code,a.issuer,a.domain)||shortG(a.issuer));
       var pct=card.querySelector(".dex-mover-pct"); if(pct){ pct.className="dex-mover-pct"+(_cu!=null?(up?" up":" down"):""); setTxt(pct,_cu!=null?(up?"+":"")+_cu.toFixed(2)+"%":"\u2014"); }
       setHTML(card.querySelector(".dex-mover-price"),fmtPrice(a.px)+' <span style="font-size:14px;color:var(--text-soft);font-weight:600">XLM</span>');
@@ -6223,7 +6248,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // fill values in place (no innerHTML churn -> no glitch); gated so ALL rows' details reveal together
     qa("tr[data-tkr]",tb).forEach(function(tr){ var a=byCode[tr.getAttribute("data-tkr")]; if(!a)return; paintIcons(tr);
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
-      var _cu=chgU(a); var up=(_cu||0)>=0;
+      var _cu=chgShown(a); var up=(_cu||0)>=0;
       var pu=priceUsd(a), vu=a.vol!=null?a.vol*xlmUsd:null, hi=a.high!=null?a.high:a.px, lo=a.low!=null?a.low:a.px;
       setHTML(q(".dex-mk-price",tr),fmtPrice(a.px)+' XLM<span class="sub">'+(pu>0?lcmExact(pu):"\u2014")+'</span>');
       var chg=q(".dex-mk-change",tr); if(chg){ chg.className="dex-mk-change"+(_cu!=null?(up?" up":" down"):""); setTxt(chg,_cu!=null?(up?"+":"")+_cu.toFixed(2)+"%":"\u2014"); }
@@ -6243,6 +6268,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     try{ applyCosmic(); }catch(_){}             // same nebula/stars/constellation animation as the Pools hero
     try{ applyPromoConstel(); }catch(_){}       // keeps the original .lm-svg zigzag hidden (rebuilt as hidden .lx-dxc)
     try{ applyHeroStats(); }catch(_){}
+    try{ denomUi(); denomUiSync(); }catch(_){}
     try{ renderMints(); }catch(_){}
     try{ renderMovers(); }catch(_){}
     try{ renderTable(); }catch(_){}
@@ -6359,7 +6385,40 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   window.__lxDEXnativeList=function(){ return {list:NATIVE,state:nativeState}; };
   window.__lxDEXdbg=function(){ return {xlmUsd:xlmUsd,xlmChg:xlmChg,assets:ASSETS.map(function(a){return {code:a.code,px:a.px,chg:a.chg,vol:a.vol,tvlUsd:a.tvlUsd,holders:a.holders,supply:a.supply,domain:a.domain,img:a.img};})}; };
 
+  // #19: a two-state switch to the LEFT of the filter input, which is where the row has room and where
+  // it reads as a property of the list rather than of the search. Segmented rather than a dropdown: two
+  // options, both worth showing, and the current one should be readable without opening anything.
+  function denomUi(){
+    var box=document.querySelector(".dex-mk-search"); if(!box||box.__lxdn)return; box.__lxdn=1;
+    var wrap=document.createElement("div"); wrap.className="lx-dnsw"; wrap.setAttribute("role","group");
+    wrap.setAttribute("aria-label","Show price change in");
+    // data-logo is the skip flag for the logo engine baked into the container. Without it this switch was
+    // silently emptied on every load: that engine claims ANY element whose text is 1-5 characters and
+    // which "looks like an icon" (a border-radius of 4px or more, or a gradient), then replaces its
+    // contents with a token image. The wrapper reads "$XLM" -- four characters in a rounded, filled box --
+    // so it was a perfect match, and the two buttons went with it. Set on the buttons too, since either
+    // one alone would qualify on its own.
+    wrap.innerHTML='<button type="button" data-dn="usd">$</button><button type="button" data-dn="xlm">XLM</button>';
+    wrap.setAttribute("data-logo","");
+    [].slice.call(wrap.querySelectorAll("button")).forEach(function(b){ b.setAttribute("data-logo",""); });
+    box.parentNode.insertBefore(wrap,box);
+    wrap.addEventListener("click",function(e){
+      var b=e.target&&e.target.closest?e.target.closest("button[data-dn]"):null; if(!b)return;
+      e.preventDefault(); e.stopPropagation();
+      setDenom(b.getAttribute("data-dn")); denomUiSync(); touch();
+    });
+    denomUiSync();
+  }
+  function denomUiSync(){
+    var d=denom();
+    qa(".lx-dnsw button[data-dn]").forEach(function(b){
+      var on=b.getAttribute("data-dn")===d;
+      if(b.classList.contains("on")!==on)b.classList.toggle("on",on);
+      b.setAttribute("aria-pressed",on?"true":"false");
+    });
+  }
   function boot(){
+    try{ denomUi(); }catch(_){}
     loadManifest();                                            // our own hosted token icons; independent of the toml
     guardApply();                                              // synchronous skeleton (real tickers/icons, "\u2014" values, .lxd) -> no mock flash, no blank
     // The design has its own row/Trade click handler that opens the asset page WITHOUT the ?asset= param
@@ -6536,7 +6595,14 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
   // _dexdata.js owns the conversion and publishes it; the fallback recomputes from the same cached
   // figure it writes, for the window before it has run. Null -- not the raw XLM number -- when XLM's own
   // move is unknown, because printing an XLM change under a dollar heading is precisely the bug.
+  // #19: follows the shared denomination choice. _dexdata.js owns it; this is the fallback for the
+  // window before that script has run, and it reads the same stored key so the two cannot disagree.
+  function denom(){ try{ if(window.__lxDenom)return window.__lxDenom;
+    var v=localStorage.getItem("lumos.dexDenom"); if(v==="xlm"||v==="usd")return v; }catch(_){}
+    return "usd"; }
   function cu(a){
+    if(denom()==="xlm")return (a&&a.chg!=null)?a.chg:null;
+    try{ if(window.__lxChgShown&&window.__lxDenom!=="xlm")return window.__lxChgShown(a); }catch(_){}
     try{ if(window.__lxChgU)return window.__lxChgU(a); }catch(_){}
     if(!a||a.chg==null)return null;
     var xc=null;
@@ -6687,13 +6753,23 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
       var sh=document.createElement("div"); sh.className="lx-msheet";
       sh.innerHTML=MK_SORTS.map(function(s){
         return '<button type="button" data-sk="'+s[0]+'"><span>'+s[1]+'</span><i></i></button>'; }).join("")
-        + '<button type="button" data-sk="" class="lx-mreset"><span>Default order</span><i></i></button>';
+        + '<button type="button" data-sk="" class="lx-mreset"><span>Default order</span><i></i></button>'
+        // #19: the denomination lives in this sheet because it is the only control surface the pair list
+        // has on a phone, and it is the same kind of choice as the sort -- how the list is expressed.
+        + '<div class="lx-mdsec">Change shown in</div>'
+        + '<button type="button" data-dn="usd"><span>US dollars</span><i></i></button>'
+        + '<button type="button" data-dn="xlm"><span>XLM</span><i></i></button>';
       box.appendChild(sh);
     }
     // keep the sheet and the button in step with the state on every render
     var bt=q(".lx-msort"); if(bt)bt.classList.toggle("act",!!mkSort.key);
     var sh2=q(".lx-msheet"); if(!sh2)return;
-    [].slice.call(sh2.querySelectorAll("button")).forEach(function(o){
+    [].slice.call(sh2.querySelectorAll("button[data-dn]")).forEach(function(o){
+      var on=(o.getAttribute("data-dn")===denom());
+      if(o.classList.contains("on")!==on)o.classList.toggle("on",on);
+      var ic=o.querySelector("i"); if(ic){ var w=on?String.fromCharCode(10003):""; if(ic.textContent!==w)ic.textContent=w; }
+    });
+    [].slice.call(sh2.querySelectorAll("button[data-sk]")).forEach(function(o){
       var k=o.getAttribute("data-sk"), on=(k===mkSort.key)&&(k!=="");
       if(o.classList.contains("on")!==on)o.classList.toggle("on",on);
       // fromCharCode, not a "\\uXXXX" escape: this file's browser code is not emitted through a template
@@ -6710,6 +6786,18 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
       var bt=t.closest(".lx-msort");
       if(bt){ e.preventDefault(); e.stopImmediatePropagation();
         var s=q(".lx-msheet"); if(s){ var open=!s.classList.contains("open"); s.classList.toggle("open",open); bt.classList.toggle("on",open); }
+        return; }
+      // #19: the denomination options share the sheet with the sort options, so they are matched first
+      // and separately -- a [data-sk] lookup would not see them, and letting them fall through to the
+      // tap-outside branch below would close the sheet without changing anything.
+      var dn=t.closest(".lx-msheet button[data-dn]");
+      if(dn){ e.preventDefault(); e.stopImmediatePropagation();
+        var dv=dn.getAttribute("data-dn");
+        try{ if(window.__lxDenomSet)window.__lxDenomSet(dv); else { window.__lxDenom=dv; localStorage.setItem("lumos.dexDenom",dv); } }catch(_){}
+        // force a repaint: the row signature is built from the CONVERTED figure, so changing what that
+        // figure means has to invalidate it or every row keeps the number it already had.
+        try{ [".mdx-mk-list",".mdx-mover-list"].forEach(function(sel){var el=q(sel); if(el)el.removeAttribute("data-lxmd");}); }catch(_){}
+        closeSheet(); try{ pass(); }catch(_){}
         return; }
       var op=t.closest(".lx-msheet button[data-sk]");
       if(op){ e.preventDefault(); e.stopImmediatePropagation();
@@ -6767,7 +6855,7 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
     // LIBERATOR, BLA and TDT had each traded within the hour. It was a missing request, not a dead market.
     // priceVisible dedupes and caches, so calling it per render is cheap and repaint-safe.
     try{ if(window.__lxDEXpriceRows)window.__lxDEXpriceRows(d); }catch(_){}
-    var sig="p|"+cat+"|"+qy+"|"+mkPage+"/"+pages+"|"+d.map(function(a){return a.code+":"+(priceOf(a)==null?"":a.px);}).join("|");
+    var sig="p|"+denom()+"|"+cat+"|"+qy+"|"+mkPage+"/"+pages+"|"+d.map(function(a){return a.code+":"+(priceOf(a)==null?"":a.px);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     if(!d.length){list.innerHTML='<div class="lxmd-empty">No pairs match</div>';return;}
     var pgh=pages<2?"":('<div class="lxmd-pager">'

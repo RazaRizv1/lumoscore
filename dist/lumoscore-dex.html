@@ -2235,6 +2235,15 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 /* the avatar-painter sometimes injects a stray <svg> initials-avatar INTO our painter-proof icons (it broke the
    LUMOS logo in All Trading Pairs). Our real logo lives in ::before -> hide any injected svg child so it can't cover it. */
 .dex-mint-ic[data-lxic]>svg,.dex-mover-ico[data-lxic]>svg,.dex-mk-pair-ic[data-lxic]>svg{display:none!important}
+/* #19 denomination switch. Sized off the search field it sits beside so the row keeps one baseline. */
+.lx-dnsw{display:inline-flex;flex:0 0 auto;align-items:center;gap:2px;padding:3px;border-radius:10px;
+  background:var(--surface-2);border:1px solid var(--border)}
+.lx-dnsw button{padding:5px 11px;border:0;border-radius:7px;background:transparent;color:var(--text-soft);
+  font:800 12px/1 inherit;letter-spacing:.02em;cursor:pointer;transition:color .14s ease,background .14s ease}
+.lx-dnsw button:hover{color:var(--text)}
+.lx-dnsw button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+/* the row holding the search input is a flex line; the switch must not stretch with the input */
+.dex-mk-search{flex:1 1 auto;min-width:0}
 /* New Mints: 4 symmetric stat columns (Price / Market cap / 24h Volume / 24h Trades), right-aligned */
 .dex-mint-stats{display:flex;gap:22px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
 .dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
@@ -5136,6 +5145,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
 })();</script>
+
+
 <script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -5187,6 +5198,20 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // figure -- the desktop table was converted here and the mobile one was not, so the same asset read
   // -10.26% on one and its true dollar move on the other. One implementation, both renderers.
   try{ window.__lxChgU=chgU; }catch(_){}
+  // #19: the reader chooses the denomination. Dollars stay the default -- that is the honest reading of
+  // "is this up or down" for anyone not already thinking in XLM -- but a trader pricing against XLM wants
+  // the raw pair move, and until now the page simply asserted one of the two.
+  //
+  // The choice is shared with _mobdex.js through window + localStorage, so switching on a phone and
+  // reopening on a desktop shows the same thing rather than two pages disagreeing about the same asset.
+  function denom(){ try{ if(window.__lxDenom)return window.__lxDenom;
+    var v=localStorage.getItem("lumos.dexDenom"); if(v==="xlm"||v==="usd"){window.__lxDenom=v;return v;} }catch(_){}
+    return "usd"; }
+  function setDenom(v){ window.__lxDenom=v; try{ localStorage.setItem("lumos.dexDenom",v); }catch(_){}
+    try{ window.dispatchEvent(new CustomEvent("lx-denom",{detail:v})); }catch(_){} }
+  // XLM is the raw pair move Horizon reports; USD folds in what XLM itself did.
+  function chgShown(a){ return denom()==="xlm" ? (a&&a.chg!=null?a.chg:null) : chgU(a); }
+  try{ window.__lxDenomGet=denom; window.__lxDenomSet=setDenom; window.__lxChgShown=chgShown; }catch(_){}
   var byCode={}; ASSETS.forEach(function(a){ byCode[a.code]=a; byId[a.code+"|"+a.issuer]=a; a.px=0; a.chg=null; a.vol=null; a.high=null; a.low=null;
     a.tvlUsd=null; a.holders=null; a.supply=null; a.spark=null; a.domain=null; a.img=null; a.trades=null; });
   // ---- LumosCore-native assets: issuer home_domain = lumoscore.com (minted through our Launchpad) ----
@@ -5876,7 +5901,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     }
     qa(".dex-mover-card[data-tkr]",grid).forEach(function(card){ var a=byCode[card.getAttribute("data-tkr")]; if(!a)return; paintIcons(card);
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
-      var _cu=chgU(a); var up=(_cu||0)>=0;
+      var _cu=chgShown(a); var up=(_cu||0)>=0;
       setTxt(card.querySelector(".dex-mover-pair .sub"),dispDom(a.code,a.issuer,a.domain)||shortG(a.issuer));
       var pct=card.querySelector(".dex-mover-pct"); if(pct){ pct.className="dex-mover-pct"+(_cu!=null?(up?" up":" down"):""); setTxt(pct,_cu!=null?(up?"+":"")+_cu.toFixed(2)+"%":"\u2014"); }
       setHTML(card.querySelector(".dex-mover-price"),fmtPrice(a.px)+' <span style="font-size:14px;color:var(--text-soft);font-weight:600">XLM</span>');
@@ -6035,7 +6060,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // fill values in place (no innerHTML churn -> no glitch); gated so ALL rows' details reveal together
     qa("tr[data-tkr]",tb).forEach(function(tr){ var a=byCode[tr.getAttribute("data-tkr")]; if(!a)return; paintIcons(tr);
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
-      var _cu=chgU(a); var up=(_cu||0)>=0;
+      var _cu=chgShown(a); var up=(_cu||0)>=0;
       var pu=priceUsd(a), vu=a.vol!=null?a.vol*xlmUsd:null, hi=a.high!=null?a.high:a.px, lo=a.low!=null?a.low:a.px;
       setHTML(q(".dex-mk-price",tr),fmtPrice(a.px)+' XLM<span class="sub">'+(pu>0?lcmExact(pu):"\u2014")+'</span>');
       var chg=q(".dex-mk-change",tr); if(chg){ chg.className="dex-mk-change"+(_cu!=null?(up?" up":" down"):""); setTxt(chg,_cu!=null?(up?"+":"")+_cu.toFixed(2)+"%":"\u2014"); }
@@ -6055,6 +6080,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     try{ applyCosmic(); }catch(_){}             // same nebula/stars/constellation animation as the Pools hero
     try{ applyPromoConstel(); }catch(_){}       // keeps the original .lm-svg zigzag hidden (rebuilt as hidden .lx-dxc)
     try{ applyHeroStats(); }catch(_){}
+    try{ denomUi(); denomUiSync(); }catch(_){}
     try{ renderMints(); }catch(_){}
     try{ renderMovers(); }catch(_){}
     try{ renderTable(); }catch(_){}
@@ -6171,7 +6197,40 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   window.__lxDEXnativeList=function(){ return {list:NATIVE,state:nativeState}; };
   window.__lxDEXdbg=function(){ return {xlmUsd:xlmUsd,xlmChg:xlmChg,assets:ASSETS.map(function(a){return {code:a.code,px:a.px,chg:a.chg,vol:a.vol,tvlUsd:a.tvlUsd,holders:a.holders,supply:a.supply,domain:a.domain,img:a.img};})}; };
 
+  // #19: a two-state switch to the LEFT of the filter input, which is where the row has room and where
+  // it reads as a property of the list rather than of the search. Segmented rather than a dropdown: two
+  // options, both worth showing, and the current one should be readable without opening anything.
+  function denomUi(){
+    var box=document.querySelector(".dex-mk-search"); if(!box||box.__lxdn)return; box.__lxdn=1;
+    var wrap=document.createElement("div"); wrap.className="lx-dnsw"; wrap.setAttribute("role","group");
+    wrap.setAttribute("aria-label","Show price change in");
+    // data-logo is the skip flag for the logo engine baked into the container. Without it this switch was
+    // silently emptied on every load: that engine claims ANY element whose text is 1-5 characters and
+    // which "looks like an icon" (a border-radius of 4px or more, or a gradient), then replaces its
+    // contents with a token image. The wrapper reads "$XLM" -- four characters in a rounded, filled box --
+    // so it was a perfect match, and the two buttons went with it. Set on the buttons too, since either
+    // one alone would qualify on its own.
+    wrap.innerHTML='<button type="button" data-dn="usd">$</button><button type="button" data-dn="xlm">XLM</button>';
+    wrap.setAttribute("data-logo","");
+    [].slice.call(wrap.querySelectorAll("button")).forEach(function(b){ b.setAttribute("data-logo",""); });
+    box.parentNode.insertBefore(wrap,box);
+    wrap.addEventListener("click",function(e){
+      var b=e.target&&e.target.closest?e.target.closest("button[data-dn]"):null; if(!b)return;
+      e.preventDefault(); e.stopPropagation();
+      setDenom(b.getAttribute("data-dn")); denomUiSync(); touch();
+    });
+    denomUiSync();
+  }
+  function denomUiSync(){
+    var d=denom();
+    qa(".lx-dnsw button[data-dn]").forEach(function(b){
+      var on=b.getAttribute("data-dn")===d;
+      if(b.classList.contains("on")!==on)b.classList.toggle("on",on);
+      b.setAttribute("aria-pressed",on?"true":"false");
+    });
+  }
   function boot(){
+    try{ denomUi(); }catch(_){}
     loadManifest();                                            // our own hosted token icons; independent of the toml
     guardApply();                                              // synchronous skeleton (real tickers/icons, "\u2014" values, .lxd) -> no mock flash, no blank
     // The design has its own row/Trade click handler that opens the asset page WITHOUT the ?asset= param

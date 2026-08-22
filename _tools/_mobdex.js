@@ -34,6 +34,10 @@ const STYLE = '<style id="lx-mobdex-css">'
 +'.lx-msheet button.on{color:var(--accent)}'
 +'.lx-msheet button i{font-style:normal;font-size:9px;line-height:1;opacity:.9}'
 +'.lx-msheet .lx-mreset{margin-top:3px;border-top:1px solid var(--border);border-radius:0 0 8px 8px;color:var(--text-soft);font-weight:500}'
+// Section label inside the sort sheet. The sheet now carries two unrelated kinds of choice -- how the
+// list is ORDERED and what the change column MEANS -- and without a divider the second pair reads as two
+// more sort options.
++'.lx-msheet .lx-mdsec{margin:6px 0 2px;padding:7px 9px 3px;border-top:1px solid var(--border);font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}'
 // Verified-issuer tick, same disc/check as desktop Trade and Wallet so the mark reads identically
 // on both layouts. flex:0 0 so a long code can never squeeze it out of the row.
 +'.mdx-mover-pair .lx-vtick,.mdx-mk-name-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 13px}'
@@ -150,7 +154,14 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   // _dexdata.js owns the conversion and publishes it; the fallback recomputes from the same cached
   // figure it writes, for the window before it has run. Null -- not the raw XLM number -- when XLM's own
   // move is unknown, because printing an XLM change under a dollar heading is precisely the bug.
+  // #19: follows the shared denomination choice. _dexdata.js owns it; this is the fallback for the
+  // window before that script has run, and it reads the same stored key so the two cannot disagree.
+  function denom(){ try{ if(window.__lxDenom)return window.__lxDenom;
+    var v=localStorage.getItem("lumos.dexDenom"); if(v==="xlm"||v==="usd")return v; }catch(_){}
+    return "usd"; }
   function cu(a){
+    if(denom()==="xlm")return (a&&a.chg!=null)?a.chg:null;
+    try{ if(window.__lxChgShown&&window.__lxDenom!=="xlm")return window.__lxChgShown(a); }catch(_){}
     try{ if(window.__lxChgU)return window.__lxChgU(a); }catch(_){}
     if(!a||a.chg==null)return null;
     var xc=null;
@@ -301,13 +312,23 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       var sh=document.createElement("div"); sh.className="lx-msheet";
       sh.innerHTML=MK_SORTS.map(function(s){
         return '<button type="button" data-sk="'+s[0]+'"><span>'+s[1]+'</span><i></i></button>'; }).join("")
-        + '<button type="button" data-sk="" class="lx-mreset"><span>Default order</span><i></i></button>';
+        + '<button type="button" data-sk="" class="lx-mreset"><span>Default order</span><i></i></button>'
+        // #19: the denomination lives in this sheet because it is the only control surface the pair list
+        // has on a phone, and it is the same kind of choice as the sort -- how the list is expressed.
+        + '<div class="lx-mdsec">Change shown in</div>'
+        + '<button type="button" data-dn="usd"><span>US dollars</span><i></i></button>'
+        + '<button type="button" data-dn="xlm"><span>XLM</span><i></i></button>';
       box.appendChild(sh);
     }
     // keep the sheet and the button in step with the state on every render
     var bt=q(".lx-msort"); if(bt)bt.classList.toggle("act",!!mkSort.key);
     var sh2=q(".lx-msheet"); if(!sh2)return;
-    [].slice.call(sh2.querySelectorAll("button")).forEach(function(o){
+    [].slice.call(sh2.querySelectorAll("button[data-dn]")).forEach(function(o){
+      var on=(o.getAttribute("data-dn")===denom());
+      if(o.classList.contains("on")!==on)o.classList.toggle("on",on);
+      var ic=o.querySelector("i"); if(ic){ var w=on?String.fromCharCode(10003):""; if(ic.textContent!==w)ic.textContent=w; }
+    });
+    [].slice.call(sh2.querySelectorAll("button[data-sk]")).forEach(function(o){
       var k=o.getAttribute("data-sk"), on=(k===mkSort.key)&&(k!=="");
       if(o.classList.contains("on")!==on)o.classList.toggle("on",on);
       // fromCharCode, not a "\\uXXXX" escape: this file's browser code is not emitted through a template
@@ -324,6 +345,18 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       var bt=t.closest(".lx-msort");
       if(bt){ e.preventDefault(); e.stopImmediatePropagation();
         var s=q(".lx-msheet"); if(s){ var open=!s.classList.contains("open"); s.classList.toggle("open",open); bt.classList.toggle("on",open); }
+        return; }
+      // #19: the denomination options share the sheet with the sort options, so they are matched first
+      // and separately -- a [data-sk] lookup would not see them, and letting them fall through to the
+      // tap-outside branch below would close the sheet without changing anything.
+      var dn=t.closest(".lx-msheet button[data-dn]");
+      if(dn){ e.preventDefault(); e.stopImmediatePropagation();
+        var dv=dn.getAttribute("data-dn");
+        try{ if(window.__lxDenomSet)window.__lxDenomSet(dv); else { window.__lxDenom=dv; localStorage.setItem("lumos.dexDenom",dv); } }catch(_){}
+        // force a repaint: the row signature is built from the CONVERTED figure, so changing what that
+        // figure means has to invalidate it or every row keeps the number it already had.
+        try{ [".mdx-mk-list",".mdx-mover-list"].forEach(function(sel){var el=q(sel); if(el)el.removeAttribute("data-lxmd");}); }catch(_){}
+        closeSheet(); try{ pass(); }catch(_){}
         return; }
       var op=t.closest(".lx-msheet button[data-sk]");
       if(op){ e.preventDefault(); e.stopImmediatePropagation();
@@ -381,7 +414,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     // LIBERATOR, BLA and TDT had each traded within the hour. It was a missing request, not a dead market.
     // priceVisible dedupes and caches, so calling it per render is cheap and repaint-safe.
     try{ if(window.__lxDEXpriceRows)window.__lxDEXpriceRows(d); }catch(_){}
-    var sig="p|"+cat+"|"+qy+"|"+mkPage+"/"+pages+"|"+d.map(function(a){return a.code+":"+(priceOf(a)==null?"":a.px);}).join("|");
+    var sig="p|"+denom()+"|"+cat+"|"+qy+"|"+mkPage+"/"+pages+"|"+d.map(function(a){return a.code+":"+(priceOf(a)==null?"":a.px);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     if(!d.length){list.innerHTML='<div class="lxmd-empty">No pairs match</div>';return;}
     var pgh=pages<2?"":('<div class="lxmd-pager">'
