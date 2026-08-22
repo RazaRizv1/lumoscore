@@ -200,10 +200,13 @@ html:not(.lx-detpr) .side-head .count-pill{visibility:hidden!important}
    paragraph gone the button's own appearance IS the whole message, so it has to be right on both. */
 .dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
 .dw-card .lx-dwhint{margin-top:9px;font-size:12px;line-height:1.45;color:var(--text-muted);text-align:center}
-/* AUDIT: the hero's absolutely-positioned stats chip (.lm-chip) collides with the "Provide liquidity, earn
-   swap fees" headline once the promo card narrows (≤1100px) — unreadable jumble. The same numbers live in
-   the Market Overview panel, so just hide the decorative chip at narrow widths. */
-@media (max-width:1100px){ .lm-pools .lm-chip{display:none!important} }
+/* #6, mobile half. This rule and the display:block one below are both leftovers from when .lm-chip was
+   an ABSOLUTELY POSITIONED decoration floating over the headline -- hiding it below 1100px was the right
+   call for that design. _poolshero.js has since rebuilt the hero as a flex column where the chip is a
+   real strip pinned along the bottom edge, and it sets display:block for exactly this width. But
+   lx-amm-css is emitted AFTER lx-poolshero-css in the head, so with both marked !important this stale
+   one has been winning ever since -- which is why the numbers vanished entirely on a phone.
+   The layout belongs to _poolshero.js now, so this defers to it. */
 /* the design paints a synthetic mock chart on load; hide its data (line/area/bars) until our real engine takes
    over (lx-chartready), keeping the axis/grid so the plot frame stays visible */
 html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready) #tvlChart svg rect:not(.lx-ch){opacity:0!important}
@@ -325,8 +328,11 @@ radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
 .lx-constel line{stroke:rgba(150,120,240,.26);stroke-width:1}
 .lx-constel circle{fill:#cbbaff;filter:drop-shadow(0 0 5px rgba(168,128,255,.9));animation:lxNode 4.5s ease-in-out infinite}
 @keyframes lxNode{0%,100%{opacity:.5}50%{opacity:1}}
-/* top-align the hero text with the TVL chip (chip sits ~21px from top) */
-.lm-pools .lm{display:block!important}
+/* #6/#2, desktop half. Same story as the mobile rule above: this forced the hero back to block so the
+   copy would top-align with the floating chip. _poolshero.js now lays the hero out as a flex column and
+   puts the strip last with order:9 -- but order does nothing in a block container, so the strip rendered
+   in DOM order, i.e. ABOVE the headline, and the Pools hero stopped matching the Trade hero it is meant
+   to mirror. Removing it lets that flex layout actually apply. */
 .lx-part{position:absolute;border-radius:50%;background:rgba(214,196,255,.85);box-shadow:0 0 9px rgba(172,132,255,.9);animation:lxDrift linear infinite}
 .lx-part.p1{width:5px;height:5px;left:57%;bottom:14%;animation-duration:15s}
 .lx-part.p2{width:4px;height:4px;left:74%;bottom:8%;animation-duration:19s;animation-delay:-4s}

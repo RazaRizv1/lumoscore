@@ -382,6 +382,10 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(!a||a.chg==null||xlmChg==null)return null;
     return ((1+a.chg/100)*(1+xlmChg/100)-1)*100;
   }
+  // Shared with _mobdex.js, which renders the same pair list on a phone and was printing the raw XLM
+  // figure -- the desktop table was converted here and the mobile one was not, so the same asset read
+  // -10.26% on one and its true dollar move on the other. One implementation, both renderers.
+  try{ window.__lxChgU=chgU; }catch(_){}
   var byCode={}; ASSETS.forEach(function(a){ byCode[a.code]=a; byId[a.code+"|"+a.issuer]=a; a.px=0; a.chg=null; a.vol=null; a.high=null; a.low=null;
     a.tvlUsd=null; a.holders=null; a.supply=null; a.spark=null; a.domain=null; a.img=null; a.trades=null; });
   // ---- LumosCore-native assets: issuer home_domain = lumoscore.com (minted through our Launchpad) ----
@@ -1324,7 +1328,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // every percentage in the pair list is derived from it -- so it has to actually arrive.
     j("/lxapi/xlm").then(function(d){
       if(d&&+d.usd>0){ xlmUsd=+d.usd;
-        if(d.chg24!=null)xlmChg=+d.chg24;
+        if(d.chg24!=null){xlmChg=+d.chg24;try{window.__lxXlmChg=xlmChg;}catch(_e2){}}
         try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,chg:xlmChg,ts:Date.now()})); }catch(_e){} }
       recomputeAllTvl(); touch();
     }).catch(function(){});
