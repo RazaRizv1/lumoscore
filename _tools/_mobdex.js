@@ -91,7 +91,7 @@ const STYLE = '<style id="lx-mobdex-css">'
   + '.mdx-mint-fig{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25;min-width:0}'
   + '.mdx-mint-fig .v{font:800 13px/1.25 "JetBrains Mono",monospace;color:var(--text)}'
   + '.mdx-mint-fig .v2{font:700 12.5px/1.25 "JetBrains Mono",monospace;color:var(--text-soft)}'
-  + '.mdx-mint-fig .k{font:600 10.5px/1.3 inherit;color:var(--text-soft);white-space:nowrap}'
+  + '.mdx-mint-fig .k{font-weight:600;font-size:10.5px;line-height:1.3;color:var(--text-soft);white-space:nowrap}'
   + '</style>';
 
 const SCRIPT = '<script id="lx-mobdex">' + String.raw`

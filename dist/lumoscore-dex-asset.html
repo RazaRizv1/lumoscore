@@ -2335,7 +2335,7 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .lxda-moreline{grid-column:1/-1;display:flex;justify-content:center;margin-top:2px}
 .lxda-morebtn{border:0;background:transparent;padding:6px 4px;cursor:pointer;
-  font:800 12px/1 inherit;color:var(--accent,#ea6a2c);letter-spacing:.01em}
+  font-weight:800;font-size:12px;line-height:1;color:var(--accent,#ea6a2c);letter-spacing:.01em}
 /* The backslash is doubled on purpose: this block is a template literal, where a CSS unicode escape
    would be read as an octal escape and fail the build, and the backslash still has to reach the CSS. */
 .lxda-morebtn::after{content:"\203a";margin-left:5px;font-weight:700}
@@ -2352,11 +2352,11 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .lxda-sheet-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .lxda-sheet-head h3{flex:1;margin:0;font-size:15px;font-weight:800;color:var(--text)}
 .lxda-sheet-x{width:30px;height:30px;flex:0 0 30px;border-radius:8px;border:1px solid var(--border);
-  background:transparent;color:var(--text-soft);cursor:pointer;font:700 15px/1 inherit}
+  background:transparent;color:var(--text-soft);cursor:pointer;font-weight:700;font-size:15px;line-height:1}
 .lxda-srow{display:flex;align-items:baseline;justify-content:space-between;gap:14px;padding:9px 0;
   border-bottom:1px solid var(--border)}
 .lxda-srow:last-child{border-bottom:0}
-.lxda-srow .k{font:600 12.5px/1.3 inherit;color:var(--text-soft)}
+.lxda-srow .k{font-weight:600;font-size:12.5px;line-height:1.3;color:var(--text-soft)}
 .lxda-srow .v{font:800 13.5px/1.3 'JetBrains Mono',monospace;color:var(--text);text-align:right;
   overflow-wrap:anywhere}
 /* Desktop: pinned inside the plot, top-left. z-index above the svg, and a solid tray so the labels stay
@@ -2534,7 +2534,7 @@ margin-top:16px;border-top:1px solid var(--border)}
    desktop it sits under the quantity, in the same cell, because a new column would push the table
    wider than the card. */
 .lx-extot{display:block;margin-top:2px;font:600 11.5px/1.3 'JetBrains Mono',monospace;color:var(--text-soft)}
-.lx-exmore{margin-left:10px;padding:3px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:700 12px/1.4 inherit;cursor:pointer;vertical-align:middle}
+.lx-exmore{margin-left:10px;padding:3px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-weight:700;font-size:12px;line-height:1.4;cursor:pointer;vertical-align:middle}
 .lx-exmore:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .lx-exmore:disabled{opacity:.6;cursor:default}
 .dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}

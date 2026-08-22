@@ -310,6 +310,32 @@ function lxLpWireToken(){
   }
   // Project Type: no default selection. Clear the design's baked "meme" preselect on fresh load (keep it
   // if a saved draft has a projectType — lxLpPopulateForm re-applies that). Keep the .selected ring in sync on click.
+  // #8: Project Type is gone from the form. It was a required choice between Meme and Utility that
+  // nothing downstream acts on -- it is not written to the asset, not in the toml, not used to filter
+  // anything (the Trade chips that read it have just been removed too). Asking for it made the launch
+  // one step longer for a value with no consumer.
+  //
+  // Hidden rather than deleted: the review screen still walks these rows by label, and the draft format
+  // still round-trips a projectType from an older saved draft. The field simply stops being asked for.
+  (function(){
+    var g=document.querySelector(".type-grid");
+    if(g){
+      var lbl=g.previousElementSibling;
+      if(lbl&&/project type/i.test(lbl.textContent||""))lbl.style.display="none";
+      var fld=g.closest(".form-field,.field,.form-group");
+      if(fld&&/project type/i.test(fld.textContent||""))fld.style.display="none"; else g.style.display="none";
+    }
+    // The design marks this field required, and its Continue handler is not ours -- so rather than risk
+    // a hidden field blocking the form, satisfy it. "meme" is what the code already defaults to when
+    // nothing is checked (see pt above), so this changes no recorded value, only whether a validator
+    // can see a selection.
+    try{ var _r=document.querySelector('input[name="ptype"][value="meme"]')||document.querySelector('input[name="ptype"]');
+      if(_r&&!document.querySelector('input[name="ptype"]:checked'))_r.checked=true; }catch(_){}
+    // ...and the row on the review screen, which would otherwise print a type nobody chose.
+    [].forEach.call(document.querySelectorAll(".review-row,.rv-row,.lp-row"),function(r){
+      if(/^s*project type/i.test((r.textContent||"")))r.style.display="none";
+    });
+  })();
   var _tg=document.querySelector(".type-grid");
   if(_tg && !_tg.__lxNoDef){ _tg.__lxNoDef=true;
     var _dft=null; try{ _dft=lxLpReadDraft(); }catch(_){}
