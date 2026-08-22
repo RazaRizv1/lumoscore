@@ -369,6 +369,18 @@ for (const dev of ['desktop', 'mobile']) {
     // idempotent: strip any previous copy before re-inserting
     p = p.replace(/<style id="lx-poolshero-css">[\s\S]*?<\/style>/, '')
          .replace(/<script id="lx-poolshero">[\s\S]*?<\/script>/, '');
+    // #17: the design's own heading block flashed before the hero replaced it -- "Automated Market
+    // Maker / Provide liquidity and earn fees on APTOS's on-chain AMM pools", the wrong chain, for a
+    // frame, on every load. The Trade page never did this because its build bakes lx-sronly into the
+    // same two elements; Pools waited for the script to add it. Bake it here too, so there is nothing
+    // to flash rather than something raced against.
+    //
+    // The wording is corrected as well, and not only as a belt-and-braces: this text is still READ, by
+    // screen readers and by crawlers, and it named the wrong chain in both.
+    p = p.split("Provide liquidity and earn fees on Aptos's on-chain AMM pools.")
+         .join("Provide liquidity and earn fees on Stellar's on-chain AMM pools.");
+    p = p.replace(/<h1 class="page-title">/g, '<h1 class="page-title lx-sronly">')
+         .replace(/<p class="page-subtitle">/g, '<p class="page-subtitle lx-sronly">');
     // STYLE into <head>, SCRIPT before </body>. Same split, and for the same reason, as
     // _heromono.js: a style block that only lands at the end of the document is parsed after the
     // first paint, which is precisely how the orange carousel got a frame on screen.

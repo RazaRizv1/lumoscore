@@ -2282,6 +2282,23 @@ html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .l
 html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
   color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
 
+/* ---- the headline, ONE size for both heroes ---------------------------------------------------- */
+/* #14: Pools drifted to 38px inside a 340px column (lx-amm-css) while Trade sat at 36px inside 420px,
+   so the same sentence broke onto a different number of lines and the two tops of the app stopped
+   looking like the same design. Trade's numbers are the ones both use now. This lives HERE, in the
+   sheet that already runs last and already owns the shared hero look, because that is what stops the
+   two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:36px!important;line-height:1.08!important;max-width:420px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:23px!important;line-height:1.14!important;max-width:100%!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:18px!important;line-height:1.18!important;max-width:100%!important}
+}
+
 /* ---- the chain mark -------------------------------------------------------------------------- */
 /* #2: the hairline ring here was written for a dark disc with a white glyph, which would have been
    lost against a dark card. The mark that actually ships is the blue Stellar disc -- it carries its
