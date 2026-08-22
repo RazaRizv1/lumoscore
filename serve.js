@@ -880,6 +880,26 @@ async function poolVol(req, res, q) {
 // text instead of being parsed, and for what the caller must not overclaim about a UTC-day bucket.
 const NETSTATS_URL = 'https://api.stellar.expert/explorer/public/ledger/ledger-stats';
 let NETSTATS_CACHE = null;   // {at, body} — the local server has no edge cache to lean on
+let ASSETCOUNT_CACHE = null; // {at, n}
+// Mirrors assetCount() in functions/lxapi/netstats.js — there is no endpoint that reports how many
+// assets exist, but the explorer's list cursor is a plain offset, so the end can be bracketed and
+// bisected. See that file.
+async function netAssetCount() {
+  if (ASSETCOUNT_CACHE && Date.now() - ASSETCOUNT_CACHE.at < 216e5) return ASSETCOUNT_CACHE.n;
+  const has = async (off) => {
+    const r = await fetch('https://api.stellar.expert/explorer/public/asset?limit=1&cursor=' + off);
+    if (!r.ok) throw new Error('upstream ' + r.status);
+    const d = await r.json();
+    return ((((d || {})._embedded || {}).records) || []).length > 0;
+  };
+  try {
+    let lo = 0, hi = 1024;
+    while (await has(hi)) { lo = hi; hi *= 2; if (hi > (1 << 22)) return null; }
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (await has(mid)) lo = mid; else hi = mid; }
+    ASSETCOUNT_CACHE = { at: Date.now(), n: lo + 1 };
+    return lo + 1;
+  } catch (e) { return null; }
+}
 function netStatsTail(txt, n) {
   const out = [];
   let i = txt.lastIndexOf(']');
@@ -907,9 +927,17 @@ async function netStats(req, res) {
     const today = recs[recs.length - 1] || null;
     const full = recs.length > 1 ? recs[recs.length - 2] : null;
     if (!full) return send({ error: 'no complete day' }, 502);
+    // Bounded like the Pages Function: five seconds, then go without it. See that file.
+    const assets = await Promise.race([
+      netAssetCount(),
+      new Promise((r) => setTimeout(() => r(null), 5000)),
+    ]);
     const body = {
       trades: +full.trades || 0, operations: +full.operations || 0,
-      transactions: +full.transactions || 0, ts: +full.ts || 0,
+      transactions: +full.transactions || 0, payments: +full.payments || 0,
+      activeWallets: +full.active_accounts || 0, accounts: +full.accounts || 0,
+      newAssets: +full.new_assets || 0, assets: assets,
+      avgLedgerTime: +full.avg_ledger_time || 0, ts: +full.ts || 0,
       partial: today ? { trades: +today.trades || 0, ts: +today.ts || 0 } : null,
     };
     NETSTATS_CACHE = { at: Date.now(), body };
