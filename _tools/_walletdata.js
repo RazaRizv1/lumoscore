@@ -291,10 +291,22 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // entry point does on the way in, which is why the asset chip had no XLM mark.
 //
 // The page's Send BUTTON is that entry point, it carries the page's own handler, and it is on screen.
+// #3 (batch 6): clicking is not the same as having opened. The poll starts as soon as #modalSend and
+// its input exist, which on a phone is comfortably before the page's own script has bound a handler to
+// the Send button -- so the click landed on a button that did nothing yet. fill() then returned true
+// anyway (it only checked that a button was FOUND), cleaned the ?to= off the URL and stopped polling,
+// leaving the wallet page open with no sheet. Desktop got away with it purely on timing.
+//
+// Verified by hand in the live page: the same click opens the sheet perfectly once the handler exists.
+// So click, then CHECK, and report failure if it did not take -- the 150ms poll comes straight back and
+// tries again, and the pass that finally opens it is the one that fills the recipient and tidies the URL.
++'if(!ov.classList.contains("open")){'
 +'var _btn=null,_bs=document.querySelectorAll(".qa-btn,.qa-row-btn,button");'
 +'for(var _i=0;_i<_bs.length;_i++){ if(/^send$/i.test((_bs[_i].textContent||"").trim())){ _btn=_bs[_i]; break; } }'
 +'if(!_btn)return false;'
 +'try{ _btn.click(); }catch(_){ return false; }'
++'if(!ov.classList.contains("open"))return false;'
++'}'
 // AFTER the open, not before: the opener resets its own fields, so a value written first is cleared.
 +'setTimeout(function(){ try{ inp.value=m;'
 +'  inp.dispatchEvent(new Event("input",{bubbles:true}));'
@@ -586,6 +598,10 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // from stellar.expert for assets not in the seed (EURC, custom tokens) so no placeholder circle ever persists.
 +'function lxPaintIco(el,url){if(!el||!url)return;var v="url(\\x27"+String(url).replace(/\\x27/g,"%27")+"\\x27)";el.style.setProperty("--ic",v);el.style.setProperty("--lxlogo",v);el.style.setProperty("--al",v);if(el.getAttribute("data-l")!==null)el.setAttribute("data-l","");}'
 +'function lxHealAllLogos(root){root=root||document;try{var els=[].slice.call(root.querySelectorAll("[data-lxc][data-lxi]"));var need={};els.forEach(function(el){var code=el.getAttribute("data-lxc"),iss=el.getAttribute("data-lxi");if(!code||code==="XLM")return;var cached=(window.__lxLogos||{})[code];if(cached){lxPaintIco(el,cached);return;}if(!iss)return;(need[code+"|"+iss]=need[code+"|"+iss]||[]).push(el);});Object.keys(need).forEach(function(key){var parts=key.split("|"),code=parts[0],iss=parts[1];j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){var recs=(d._embedded&&d._embedded.records)||[];var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+iss)===0;})[0];var ti=(m&&(m.tomlInfo||m.toml_info))||{};var img=ti.image||ti.orgLogo||"";if(!img)return;(window.__lxLogos=window.__lxLogos||{})[code]=img;[].slice.call(document.querySelectorAll("[data-lxc=\\x27"+code+"\\x27][data-lxi=\\x27"+iss+"\\x27]")).forEach(function(x){lxPaintIco(x,img);});}).catch(function(){});});}catch(_){}}'
+// Exposed so the claimable-payments list can reuse it: those rows are built by _walletclaim.js after
+// its own Horizon fetch, which routinely lands after the timed heal passes above have all run. Sharing
+// the one resolver keeps the cache, the stellar.expert lookup and the fallback identical everywhere.
++'try{window.__lxHealLogos=lxHealAllLogos;window.__lxColFor=colFor;}catch(_){}'
 +'function selectSendAsset(m,h){var ap=m.querySelector(".lx-asset-pick");if(ap){var ico=ap.querySelector(".lx-ap-ico"),cd=ap.querySelector(".lx-ap-code");if(cd)cd.textContent=h.code;if(ico){ico.setAttribute("data-lxc",h.native?"":(h.code||""));ico.setAttribute("data-lxi",h.native?"":(h.iss||(window.__lxAssets||{})[h.code]||""));var lg=h.native?("/assets/tokens/xlm.png"||STELLAR_URI):(h.logo||(window.__lxLogos||{})[h.code]||"");if(lg){ico.style.setProperty("--lxlogo","url("+JSON.stringify(lg)+")");ico.setAttribute("data-l","");}else{ico.style.setProperty("--lxlogo","linear-gradient("+colFor(h.code)+","+colFor(h.code)+")");ico.setAttribute("data-l",h.code.slice(0,1).toUpperCase());lxHarvest(ico,h.code);try{lxHealAllLogos(m);}catch(_){}}ico.innerHTML="";}}var sp=m.querySelectorAll("span");for(var k=0;k<sp.length;k++){if(/^Balance:/.test((sp[k].textContent||"").trim())){var st=sp[k].querySelector("strong");if(st)st.textContent=num(h.bal,7)+" "+h.code;break;}}m.__lxsym=h.code;validateSend(m);}'
 +'function openAssetMenu(m,pick){var ex=document.querySelector(".lx-asset-menu");if(ex){ex.remove();return;}var hs=window.__lxHoldings||[];if(!hs.length)return;var menu=document.createElement("div");menu.className="lx-asset-menu lx-hassearch";'
 +'var sw=document.createElement("div");sw.className="lx-am-searchwrap";sw.innerHTML=\'<svg class="lx-am-searchic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>\';var si=document.createElement("input");si.className="lx-am-search";si.placeholder="Search your assets\\u2026";sw.appendChild(si);menu.appendChild(sw);'

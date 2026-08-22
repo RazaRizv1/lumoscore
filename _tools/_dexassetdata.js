@@ -67,14 +67,18 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 .stat-row .stat-cell .lbl{font-size:10px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stat-row .stat-cell .val{font-size:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stat-row .stat-cell .val .u{font-size:11px;margin-left:3px}
-.stat-row .stat-cell .sub{font-size:12px}
+.stat-row .stat-cell .sub{font-size:12.5px}
 @media(max-width:760px){
 .stat-row .stat-cell .lbl{font-size:8.5px;letter-spacing:.04em}
 .stat-row .stat-cell .val{font-size:13.5px}
 .stat-row .stat-cell .val .u{font-size:9px;margin-left:2px}
 .stat-row .stat-cell .sub{font-size:10.5px}
 }
-.stat-row .stat-cell .sub{font-size:9.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* #10: this line carried font-size:9.5px and sits AFTER the media query above, outside it -- so it beat
+   both the 12px desktop size and the 10.5px phone size on every screen, and the sub-lines stayed at 9.5px
+   no matter what the rules above said. That is the "tiny grey text". Only the clipping behaviour belongs
+   here; the sizes are set once, above, where they can be read. */
+.stat-row .stat-cell .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* AUDIT (flash sweep): the .lxda gates above only covered the header + stat cells. A static-vs-settled diff
    showed 9 more groups still painting the design's Aptos mock (4.2271 APT, 2.66%, 18 holders, 189.93K vol)
    before our data lands. Mask them until they are actually written — .lxp is added by the observer in
@@ -1647,13 +1651,23 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       return;
     }
     var pu=priceUsd();
-    var tbody=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody"); if(!tbody||tbody.getAttribute("data-lxbuilt")===("p"+_hp))return;
+    var tbody=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody"); if(!tbody)return;
     // Which page is on screen. Deliberately NOT gated on canRankHolders(): gating it there meant the
     // rows could render page 0 while the pager still drew controls for page 2, and the two disagreed
     // on screen. The pager below is the thing that is gated, so an unranked sample simply gets no
     // controls while the rows stay page 0.
     var _hp=holdPage();
     if(_hp*HPP>=hold.length){ _hp=Math.max(0,Math.ceil(hold.length/HPP)-1); window.__lxDXAhpage=_hp; }
+    // #9, the holders section "blinking light grey to dark grey non stop".
+    //
+    // This test used to sit on the line above, BEFORE _hp was assigned. var hoists the declaration but
+    // not the value, so _hp was undefined there and the guard compared data-lxbuilt against the string
+    // "pundefined" -- which never equals "p0". It therefore never returned early, and the table rebuilt
+    // its fifty rows on every single call: measured 26 rebuilds in 6 seconds, forever, which is the
+    // flicker. (The 1,300 rel= writes/6s from the nofollow guard were it dutifully re-marking 1,300
+    // brand-new anchors -- a symptom, not the cause.) Nothing to do with hover; hovering is just when
+    // you look closely enough to notice.
+    if(tbody.getAttribute("data-lxbuilt")===("p"+_hp))return;
     var top=hold.slice(_hp*HPP,_hp*HPP+HPP), tot=holders!=null?holders:hold.length;
     // top-10 / top-50 concentration (of paged supply — approximate for capped assets)
     var pagedTot=0; hold.forEach(function(h){pagedTot+=h.bal;});
