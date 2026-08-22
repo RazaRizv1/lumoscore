@@ -8582,7 +8582,34 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   function schedule(){ if(sched)return; sched=true; setTimeout(function(){ sched=false; guardApply(); },200); }
   window.__lxDXAapply=guardApply;
   window.__lxDXAdbg=function(){return {code:CODE,issuer:ISSUER,xlmUsd:xlmUsd,assetXlm:assetXlm,chg24:chg24,vol24Xlm:vol24Xlm,supply:supply,holders:holders,poolCount:poolCount,liqXlm:liqXlm};};
+  // #14: coming back from the wallet app with the keyboard still up.
+  //
+  // Signing leaves the page while an amount field still holds focus. iOS restores that focus when Safari
+  // is fronted again, so the keyboard springs back over a screen the user has finished with -- the order
+  // is already placed. Nothing on the page asked for the keyboard at that moment; it is simply the state
+  // the tab was suspended in.
+  //
+  // Blur on the way back, and only if the focused thing is a text field: never touch focus the user has
+  // deliberately moved somewhere else. Both events are needed -- visibilitychange covers an app switch,
+  // pageshow covers a back-forward-cache restore, and iOS does not reliably fire both.
+  function lxDropKeyboard(){
+    try{
+      var a=document.activeElement;
+      if(!a||!a.tagName)return;
+      var t=a.tagName.toLowerCase();
+      if(t!=="input"&&t!=="textarea"&&!a.isContentEditable)return;
+      a.blur();
+    }catch(_){}
+  }
+  function lxWireBlurOnReturn(){
+    if(window.__lxBlurOnReturn)return; window.__lxBlurOnReturn=1;
+    try{
+      document.addEventListener("visibilitychange",function(){ if(!document.hidden)setTimeout(lxDropKeyboard,0); });
+      window.addEventListener("pageshow",function(){ setTimeout(lxDropKeyboard,0); });
+    }catch(_){}
+  }
   function boot(){
+    try{ lxWireBlurOnReturn(); }catch(_){}
     guardApply();
     try{ wireCopy(); }catch(_){}
     try{ guardHeader(); }catch(_){}
