@@ -23,7 +23,7 @@ const STYLE='<style id="lx-feemodal-css">'
 +'.lx-feechip:hover{transform:translateY(-1px);background:linear-gradient(135deg,rgba(31,169,104,.26),rgba(31,169,104,.12));box-shadow:0 5px 14px -6px rgba(31,169,104,.65)}.lx-feechip:active{transform:translateY(0)}'
 +'.lx-feechip svg{width:12px;height:12px;flex:0 0 auto}.lx-fmsep{width:1px;height:11px;background:currentColor;opacity:.32;margin:0 1px;flex:0 0 auto}.lx-fmore{display:inline-flex;align-items:center;gap:2px;font-weight:700;opacity:.92}.lx-fmore svg{width:9px;height:9px}'
 +'[data-theme="dark"] .lx-feechip{color:#6ef0b4;background:linear-gradient(135deg,rgba(53,192,127,.24),rgba(53,192,127,.09));border-color:rgba(110,240,180,.38);box-shadow:0 2px 10px -5px rgba(53,192,127,.6)}[data-theme="dark"] .lx-feechip:hover{background:linear-gradient(135deg,rgba(53,192,127,.34),rgba(53,192,127,.14))}'
-+'.lx-feemodal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,10,14,.55);backdrop-filter:blur(3px);overflow:auto;-webkit-overflow-scrolling:touch}'
++'.lx-feemodal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,10,14,.55);backdrop-filter:blur(3px);overflow:hidden}'
 +'@media(max-width:760px){.lx-feemodal{align-items:flex-start;padding:14px 12px}.lx-fm-card{margin:0 auto}}'
 +'.lx-fm-card{width:min(420px,94vw);max-height:92vh;max-height:92dvh;overflow:auto;overscroll-behavior:contain;background:var(--surface,#fff);border:1px solid var(--border);border-radius:18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55);animation:lxfmin .22s ease}'
 +'@keyframes lxfmin{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}'
@@ -36,7 +36,8 @@ const STYLE='<style id="lx-feemodal-css">'
 +'.lx-rv-leg{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0}'
 +'.lx-rv-leg+.lx-rv-leg{border-top:1px solid var(--border)}'
 +'.lx-rv-lbl{font-size:12.5px;color:var(--text-soft)}'
-+'.lx-rv-amt{font-size:17px;font-weight:800;color:var(--text);font-family:\'JetBrains Mono\',monospace}'
++'.lx-rv-amt{font-size:17px;font-weight:800;color:var(--text);font-family:\'JetBrains Mono\',monospace;display:inline-flex;align-items:center;gap:8px}'
++'.lx-rv-ico{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:var(--surface-2);box-shadow:0 0 0 1px var(--border)}'
 +'.lx-rv-ar{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:var(--surface,#fff);border:1px solid var(--border);display:grid;place-items:center;color:var(--text-soft)}'
 +'.lx-rv-ar svg{width:14px;height:14px}'
 +'.lx-rv-details{margin-top:14px}'
@@ -102,11 +103,29 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'if(k==="Min received"&&!(parseFloat(v.replace(/[^0-9.]/g,""))>0)){v=fnum((recNum||payNum*rate*(1-fr()))*(1-slip/100))+" "+recTok;}'   // only synthesize when the pane has nothing
 +'if(k)det+=\'<div class="lx-rv-drow"><span>\'+k+\'</span><span class="v">\'+v+\'</span></div>\';});'
 +'if(!(recNum>0))recNum=rate?payNum*rate*(1-fr()):0;'
-+'modal.querySelector("[data-pay]").textContent=fnum(payNum)+" "+payTok;'
-+'modal.querySelector("[data-receive]").textContent=fnum(recNum)+" "+recTok;'
++'function legIco(field){var el=field&&field.querySelector(".dxa-trade-ir .ico,.dxa-trade-ir img,.dxa-trade-ir [class*=ico]");'
++'if(!el)return "";var st="";'
++'try{var cs=getComputedStyle(el);if(cs.backgroundImage&&cs.backgroundImage!=="none")st="background-image:"+cs.backgroundImage;}catch(_){}'
++'if(!st){var im=el.tagName==="IMG"?el:el.querySelector("img");if(im&&im.src)st="background-image:url("+JSON.stringify(im.src)+")";}'
++'return st?(\'<span class="lx-rv-ico" style="\'+st+\'"></span>\'):"";}'
++'var payIco=legIco(fields[0]),recIco=legIco(fields[1]);'
++'modal.querySelector("[data-pay]").innerHTML=payIco+\'<span>\'+fnum(payNum)+" "+payTok+\'</span>\';'
++'modal.querySelector("[data-receive]").innerHTML=recIco+\'<span>\'+fnum(recNum)+" "+recTok+\'</span>\';'
 +'modal.querySelector("[data-details]").innerHTML=det;}'
 +'function open(cta){build();lastCta=cta;var pane=(cta&&cta.closest(".dxa-pane"))||document.querySelector(".dxa-pane-swap.active,.dxa-pane-limit.active")||document.querySelector(".dxa-pane-swap");populate(pane);modal.style.display="flex";'
+// #8 (second attempt). The harness could not reproduce this -- in an iframe the sheet opens with its
+// header at the top of the viewport every time -- so the cause has to be something only a real phone
+// does. Two candidates, both addressed here.
+//
+// The KEYBOARD is the likely one: the amount field still has focus when Swap is tapped, so the
+// on-screen keyboard is up, the VISUAL viewport is half the height of the layout viewport, and the
+// browser scrolls to keep the focused input in view -- which moves a fixed overlay's contents out of
+// sight from underneath. Blurring first dismisses the keyboard and stops that scroll happening at all.
++'try{var _ae=document.activeElement;if(_ae&&_ae.blur)_ae.blur();}catch(_){}'
+// The second is a sheet left mid-scroll: reset BOTH layers, and the overlay no longer scrolls at all.
 +'try{modal.scrollTop=0;var _c=modal.querySelector(".lx-fm-card");if(_c)_c.scrollTop=0;}catch(_){}'
++'try{requestAnimationFrame(function(){var c2=modal.querySelector(".lx-fm-card");if(c2)c2.scrollTop=0;modal.scrollTop=0;});}catch(_){}'
++'try{setTimeout(function(){var c3=modal.querySelector(".lx-fm-card");if(c3)c3.scrollTop=0;modal.scrollTop=0;},220);}catch(_){}'
 +'try{modal.__lxPrevOvf=document.body.style.overflow;document.body.style.overflow="hidden";}catch(_){}}'
 +'function close(){if(!modal)return;modal.style.display="none";try{document.body.style.overflow=modal.__lxPrevOvf||"";}catch(_){}}'
 +'document.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;'

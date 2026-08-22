@@ -987,6 +987,26 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var lows=pts.map(function(p){return p.l||p.v;}).slice().sort(function(a,b){return a-b;});
     var highs=pts.map(function(p){return p.h||p.v;}).slice().sort(function(a,b){return a-b;});
     var lo=lows[Math.floor(lows.length*0.03)]||lows[0], hi=highs[Math.ceil(highs.length*0.97)-1]||highs[highs.length-1];
+    // #18: a 3rd/97th percentile fence sounds robust and is not, on the number of buckets a month
+    // actually has. Thirty daily candles means the 97th percentile IS the second-highest wick -- so on
+    // a thin token where one trade printed at 2.8x the going rate, the scale stretched to that wick and
+    // every real candle collapsed into a flat line at the bottom. That is what "the chart appears
+    // broken" was: an honest chart of one outlier.
+    //
+    // Tukey fence on the CLOSES instead -- the textbook outlier rule, and closes are the series the
+    // chart is really about; wicks are excursions from it. Anything past the fence is not hidden: Y()
+    // already clamps, so the wick still runs to the edge of the plot and says an excursion happened.
+    // Only ever TIGHTENS the band, never widens it, and any degenerate case falls straight back to the
+    // percentiles above.
+    (function(){
+      var cl=pts.map(function(p){return p.c||p.v;}).filter(function(x){return x>0;}).sort(function(a,b){return a-b;});
+      if(cl.length<8)return;
+      var q1=cl[Math.floor(cl.length*0.25)], q3=cl[Math.floor(cl.length*0.75)];
+      var iqr=q3-q1; if(!(iqr>0))return;
+      var fl=q1-1.5*iqr, fh=q3+1.5*iqr;
+      var nlo=Math.max(lo,fl), nhi=Math.min(hi,fh);
+      if(nhi>nlo){ lo=nlo; hi=nhi; }
+    })();
     var rg=(hi-lo)||(hi||1), iw=W-PADL-PADR, ih=HT-PADT-PADB;
     var vol=volGeom(ih);
     function Y(v){ v=Math.max(lo,Math.min(hi,v)); return PADT+vol.priceH-((v-lo)/rg)*vol.priceH; }
@@ -1078,7 +1098,10 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       var _r=+xlmUsd, _x=(_r>0)?(p.v/_r):null;
       tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div><div class="p">'+(_x!=null?(axisNum(_x)+' XLM'):usd(p.v))+'</div>'
         +(_x!=null?('<div class="v">'+usd(p.v)+'</div>'):'')
-        +'<div class="v">Vol '+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")+'</div>';
+        // #17: volume alone does not say whether a bar was one whale or four hundred people. Horizon
+        // returns trade_count on the same aggregation, so it costs nothing to say which.
+        +'<div class="v">Vol '+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")
+          +(p.n>0?(' \\u00b7 '+p.n.toLocaleString('en-US')+' trade'+(p.n===1?'':'s')):'')+'</div>';
       tip.style.opacity=1;
       var tw=tip.offsetWidth,th=tip.offsetHeight,tx=sx+14; if(tx+tw>pr.width)tx=sx-tw-14; if(tx<2)tx=2;
       tip.style.left=tx+"px"; tip.style.top=Math.max(2,sy-th-12)+"px";
@@ -1144,7 +1167,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     var url=H+"/trade_aggregations?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+cfg.res+"&start_time="+start+"&end_time="+now+"&order=asc&limit=200";
     j(url).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
-      var pts=r.map(function(x){return {t:+x.timestamp, v:(+x.avg||+x.close||0)*xlmUsd, vol:(+x.counter_volume||0)*xlmUsd,
+      var pts=r.map(function(x){return {t:+x.timestamp, v:(+x.avg||+x.close||0)*xlmUsd, vol:(+x.counter_volume||0)*xlmUsd, n:(+x.trade_count||0),
         o:(+x.open||0)*xlmUsd, h:(+x.high||0)*xlmUsd, l:(+x.low||0)*xlmUsd, c:(+x.close||0)*xlmUsd};}).filter(function(p){return p.v>0;});
       if(pts.length>=2){ clear(); drawChart(pts); return; }
       if(!attempt){ again(); return; }

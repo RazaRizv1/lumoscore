@@ -1806,20 +1806,6 @@ html body .pool-header-row .ph-icons>*{
   font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
-</style><style id="lx-walletlogo-css">
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
-/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
-   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
-   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
-   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
-   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
-   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
-.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
 </style><style id="lx-lt-css">
 /* verified mark and home domain: the same badge and link treatment the rest of the site uses */
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:10px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:middle;flex:0 0 22px}
@@ -1976,6 +1962,20 @@ html body .pool-header-row .ph-icons>*{
 .lx-cpmenu .lx-cpm-ic{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;overflow:hidden}
 .lx-cpmenu .lx-cpm-bal{margin-left:auto;font-size:12px;color:var(--text-soft,#8a8fa3);font-weight:600}
 #createPoolModal .asset-picker .ap-ico{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
 </style></head>
 <body>
 <div class="app">
@@ -5181,38 +5181,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
-})();</script><script id="lx-walletlogo">(function(){
-  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
-  function logo(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    if(!id)return "";
-    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-    // walletconnect stores a few different spellings; they all mean the same sheet entry
-    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
-    return MAP[id]||"";
-  }
-  function paint(){
-    var url=logo(); if(!url)return;
-    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
-    for(var i=0;i<els.length;i++){
-      var e=els[i];
-      if(e.getAttribute("data-lxwl")===url)continue;
-      e.setAttribute("data-lxwl",url);
-      e.classList.add("lx-haswl");
-      e.style.setProperty("background-image","url('"+url+"')","important");
-    }
-  }
-  function boot(){
-    paint();
-    // The chip and the menu card are both built after connect, and the menu is rendered on open --
-    // so this watches rather than running once.
-    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-    try{ window.addEventListener("storage",paint); }catch(_){}
-    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
 })();</script><script id="lx-ltdata">(function(){
   if(window.__lxLT)return;window.__lxLT=true;
   // AUDIT (flash sweep): every .lxlt gate below hides content until our data claims it. If any single fetch
@@ -6186,6 +6154,65 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState!=="loading")boot();
   else document.addEventListener("DOMContentLoaded",boot);
+})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
+  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
+  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
+  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
+  // this map has not been taught, which is still better than saying nothing.
+  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
+    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
+    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
+  function walletId(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+  }
+  function nameIt(){
+    var id=walletId(); if(!id)return;
+    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
+    var els=document.querySelectorAll(".mu-sub");
+    for(var i=0;i<els.length;i++){
+      var e=els[i], t=(e.textContent||"").trim();
+      if(!t||t.indexOf(nm)===0)continue;
+      // Keep whatever the card said after the separator -- that is the network, and it is still true.
+      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
+      var want=nm+(tail?(" "+tail):"");
+      if(e.textContent!==want)e.textContent=want;
+    }
+  }
+  function paint(){
+    try{ nameIt(); }catch(_){}
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

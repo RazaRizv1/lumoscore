@@ -497,7 +497,34 @@ if(document.readyState!=="loading")boot();else document.addEventListener("DOMCon
     if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
     return MAP[id]||"";
   }
+  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
+  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
+  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
+  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
+  // this map has not been taught, which is still better than saying nothing.
+  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
+    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
+    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
+  function walletId(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+  }
+  function nameIt(){
+    var id=walletId(); if(!id)return;
+    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
+    var els=document.querySelectorAll(".mu-sub");
+    for(var i=0;i<els.length;i++){
+      var e=els[i], t=(e.textContent||"").trim();
+      if(!t||t.indexOf(nm)===0)continue;
+      // Keep whatever the card said after the separator -- that is the network, and it is still true.
+      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
+      var want=nm+(tail?(" "+tail):"");
+      if(e.textContent!==want)e.textContent=want;
+    }
+  }
   function paint(){
+    try{ nameIt(); }catch(_){}
     var url=logo(); if(!url)return;
     var els=document.querySelectorAll(".mu-av,.lx-tw-av");
     for(var i=0;i<els.length;i++){
