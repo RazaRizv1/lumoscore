@@ -64,6 +64,17 @@ const CSS='<style id="lx-walletdata-css">'
 +'.lx-vfd svg{width:9px;height:9px;display:block}'
 +'.lx-hd:empty{display:none}'
 +'.lx-hd{color:var(--text-soft,#6b6b76)}'
+// #3: the provenance line under an order / claimable row. The separator is a ::before on the link
+// rather than a character in the markup, so a row whose issuer declares no domain shows the link alone
+// with no orphaned dot in front of it.
++'.lx-ameta{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:3px;font-size:11.5px;line-height:1.3;color:var(--text-soft,#6b6b76)}'
++'.lx-ameta .lx-hd{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:16ch}'
++'.lx-ameta .lx-hd:empty{display:none}'
++'.lx-vasset{color:var(--accent,#ea6a2c);font-weight:700;text-decoration:none;white-space:nowrap}'
++'.lx-vasset:hover{text-decoration:underline}'
+// CSS escapes are \00b7, not · -- the JS-style form makes CSS read it as an escaped letter u and
+// the dot rendered as the literal text "u00b7".
++'.lx-ameta .lx-hd:not(:empty)+.lx-vasset::before{content:"\\00b7";margin-right:7px;color:var(--text-soft,#6b6b76);font-weight:400}'
 +'.lx-iss{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.4px;opacity:.85}'
 +'.lx-isscopy{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;padding:0;border:0;border-radius:6px;background:transparent;color:var(--text-soft,#6b6b76);cursor:pointer;transition:.15s;vertical-align:middle}'
 +'.lx-isscopy:hover{background:var(--surface-2,#f6f6f8);color:var(--accent,#ea6a2c)}'
@@ -434,6 +445,12 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'function lxFillHd(root){try{[].slice.call((root||document).querySelectorAll(".lx-hd[data-hd]")).forEach(function(el){'
 +'if(el.textContent)return;var iss=el.getAttribute("data-hd");el.removeAttribute("data-hd");'
 +'lxHdFor(iss,function(d){if(d)el.textContent=d;});});}catch(_){}}'
++'function lxAssetMeta(code,iss,native){'
++'if(native||!code||!iss)return "";'
++'var href="/trade/stellar/"+encodeURIComponent(code)+"-"+encodeURIComponent(iss);'
++'return \'<span class="lx-ameta"><span class="lx-hd" data-hd="\'+esc(iss)+\'"></span>'
++'<a class="lx-vasset" href="\'+href+\'">View asset</a></span>\';}'
++'window.__lxAssetMeta=lxAssetMeta;'
 +'window.__lxIssLine=lxIssLine;window.__lxFillHd=lxFillHd;window.__lxVfd=lxVfd;'
 +'if(!window.__lxIssCopyWired){window.__lxIssCopyWired=1;document.addEventListener("click",function(e){'
 +'var b=e.target&&e.target.closest?e.target.closest(".lx-isscopy"):null;if(!b)return;'
@@ -652,9 +669,9 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'h+=\'<div class="order-row" data-oid="\'+esc(o.id)+\'" data-price="\'+esc(o.price)+\'" data-amt="\'+esc(o.amount)+\'" data-snt="\'+(sNat?"1":"")+\'" data-sc="\'+esc((o.selling&&o.selling.asset_code)||"")+\'" data-si="\'+esc((o.selling&&o.selling.asset_issuer)||"")+\'" data-bnt="\'+((o.buying&&o.buying.asset_type==="native")?"1":"")+\'" data-bc="\'+esc((o.buying&&o.buying.asset_code)||"")+\'" data-bi="\'+esc((o.buying&&o.buying.asset_issuer)||"")+\'"><div class="order-pair"><div class="pair-ico"><div class="b lx-pico" style="--ic:\'+daIc+\'" data-lxc="\'+esc(da)+\'" data-lxi="\'+esc(daIss)+\'" data-l="\'+(daLg?"":esc(da.slice(0,1)))+\'"></div></div>\''
 // zero-size svg guard: the data-logo painter hijacks rounded 1-5-char elements ("Sell" chips became EURC
 // logo slots and were emptied) — isCandidate() skips any element containing an svg/img child.
-+'+\'<div class="pair-text"><div class="name">\'+esc(da)+\'</div><span class="side \'+(sNat?"buy":"sell")+\'">\'+(sNat?"Buy":"Sell")+\'<svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0"></svg></span></div></div>\''
++'+\'<div class="pair-text"><div class="name">\'+esc(da)+\'</div><span class="side \'+(sNat?"buy":"sell")+\'">\'+(sNat?"Buy":"Sell")+\'<svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0"></svg></span>\'+lxAssetMeta(da,daIss,!daIss)+\'</div></div>\''
 +'+\'<div class="order-details"><div class="col"><div class="k">Price</div><div class="v">\'+amt(pxXlm)+\' \'+esc(quote)+\'</div></div><div class="col"><div class="k">Amount</div><div class="v">\'+amt(tokAmt)+\' \'+esc(da)+\'</div></div><div class="col"><div class="k">Total</div><div class="v">\'+amt(xlmTotal)+\' \'+esc(quote)+\'</div></div></div>\''
-+'+\'<button class="order-cancel">Cancel</button></div>\';});block.innerHTML=h;try{lxHealAllLogos(block);}catch(_){}'
++'+\'<button class="order-cancel">Cancel</button></div>\';});block.innerHTML=h;try{lxHealAllLogos(block);}catch(_){}try{lxFillHd(block);}catch(_){}'
 // finalized wires cancel per-row at load, so our rebuilt buttons lose it -> delegated handler (survives rebuilds)
 +'function orderCount(){var left=block.querySelectorAll(".order-row").length;var oh=findH2("Open Orders");if(oh){var m=oh.querySelector(".meta");if(m)m.textContent=left+" active";}if(!left){block.innerHTML=\'<div style="padding:26px 22px;text-align:center;color:var(--text-muted);font-size:14px">No open orders on the DEX</div>\';var cah0=findCancelAll();if(cah0)cah0.style.display="none";}return left;}'
 +'if(!block.__lxCancel){block.__lxCancel=1;block.addEventListener("click",function(e){var b=e.target.closest&&e.target.closest(".order-cancel");if(!b)return;e.preventDefault();e.stopPropagation();var row=b.closest(".order-row");if(!row||b.disabled)return;var ot=b.textContent;b.disabled=true;b.textContent="Signing\\u2026";lxCancel(row).then(function(){b.textContent="Cancelled";row.style.transition="opacity .25s,transform .25s";row.style.opacity="0";row.style.transform="translateX(-8px)";setTimeout(function(){row.remove();orderCount();},260);}).catch(function(err){b.disabled=false;b.textContent=ot;lxToast((err&&err.message)||"Cancel failed");});});}'
