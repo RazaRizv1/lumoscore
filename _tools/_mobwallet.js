@@ -18,6 +18,13 @@ const B = String.fromCharCode(92);
 const STYLE = '<style id="lx-mobwallet-css">'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
   + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block{visibility:hidden}'
+  + 'html:not(.lx-pvdone) .portfolio-value,html:not(.lx-pvdone) .portfolio-sub,html:not(.lx-pvdone) .portfolio-usd{color:transparent!important;position:relative}'
+  + 'html:not(.lx-pvdone) .portfolio-value>*,html:not(.lx-pvdone) .portfolio-sub>*,html:not(.lx-pvdone) .portfolio-usd>*{visibility:hidden}'
+  + 'html:not(.lx-pvdone) .portfolio-value::after,html:not(.lx-pvdone) .portfolio-sub::after,html:not(.lx-pvdone) .portfolio-usd::after{content:"";position:absolute;left:0;top:14%;width:min(62%,190px);height:72%;'
+  + 'border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,.05) 25%,rgba(255,255,255,.11) 37%,rgba(255,255,255,.05) 63%);'
+  + 'background-size:400% 100%;animation:lxPvSk 1.3s ease infinite}'
+  + '@keyframes lxPvSk{0%{background-position:100% 50%}100%{background-position:0 50%}}'
+  + '@media(prefers-reduced-motion:reduce){html:not(.lx-pvdone) .portfolio-value::after,html:not(.lx-pvdone) .portfolio-sub::after{animation:none}}'
   + '.orders-stack .lxmw-row{align-items:center;gap:10px}'
   + '.lxmw-omain{flex:1 1 auto;min-width:0}'
   // width:auto is not redundant. The container's own stylesheet carries .order-cancel{width:100%} for the
@@ -207,15 +214,32 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'function fixHeader(){var a=addr();'
 + 'var t=q(".wallet-chip .text")||q(".chip .text")||q(".wallet-address .text");'
 + 'if(t)t.textContent=a?trunc(a):DASH;'
+// #12: the second icon in the address chip is a bare <button> -- no class, no aria-label, no href and
+// no handler. It draws an external-link glyph and does nothing when tapped. Wire it to the account on
+// stellar.expert, which is what the same icon does everywhere else on the site.
+// Identified by elimination rather than by position: the copy control is the one carrying data-copy or
+// a copy class, so whatever else is in the chip is the link.
++ 'var _chip=q(".wallet-chip")||q(".chip");'
++ 'if(_chip&&a){[].slice.call(_chip.parentNode?_chip.parentNode.querySelectorAll(".wallet-chip button,.chip button"):[]).forEach(function(b){'
++ 'if(b.hasAttribute("data-copy")||/copy/i.test(b.className||""))return;'
++ 'b.setAttribute("aria-label","View this account on stellar.expert");'
++ 'b.setAttribute("title","View on Explorer");'
++ 'if(b.__lxexp)return; b.__lxexp=1;'
++ 'b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();'
++ 'try{window.open("https://stellar.expert/explorer/public/account/"+encodeURIComponent(a),"_blank","noopener");}catch(_){}'
++ '});});}'
 + 'qa(".copy-addr-btn,[data-copy]").forEach(function(b){var v=b.getAttribute("data-copy")||"";'
 + 'if(/^0x[0-9a-fA-F]{8,}$/.test(v)||(a&&b.className.indexOf("copy-addr")>=0))b.setAttribute("data-copy",a||"");});'
 // portfolio total, in XLM with a USD line — the mock said "31,108.45 APT"
 + 'var pv=q(".portfolio-value");'
 + 'if(pv){var tot=n(window.__lxTotalXLM),u=rate();'
-+ 'if(tot!=null){pv.innerHTML=esc(fmt(tot,2))+\'<span class="unit">XLM</span>\';'
 + 'var sub=q(".portfolio-sub")||q(".portfolio-usd");'
-+ 'if(sub&&u)sub.textContent=usd(tot*u);}'
-+ 'else if(!window.__lxWalletReady)pv.innerHTML=DASH+\'<span class="unit">XLM</span>\';}}'
+
++ 'if(tot!=null){pv.innerHTML=esc(fmt(tot,2))+\'<span class="unit">XLM</span>\';'
++ 'try{document.documentElement.classList.add("lx-pvdone");}catch(_){}'
+// Four closers, not three: if(sub&&u), if(tot!=null), if(pv), and fixHeader itself. The old tail carried
+// the same count across two lines; collapsing them lost one and the whole script stopped parsing.
++ 'if(sub&&u){sub.textContent=usd(tot*u);}}}}'
 // ---- open orders ----------------------------------------------------------------------------------
 + 'function fixOrders(){var stack=q(".orders-stack");if(!stack)return;'
 + 'var offs=window.__lxOffers;if(!offs)return;'
