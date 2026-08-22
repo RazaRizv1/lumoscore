@@ -7565,7 +7565,16 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var ptot=d.trustlines||d.parts.length;    // #13: the pool's own count, not the size of our sample
     qa(".part-count, .participants-count, [data-partcount]").forEach(function(e){ setText(e,num(ptot)); });
     // the design mocks the participant count ("847") in the "Participants" side-head pill — set the real count.
-    qa(".count-pill").forEach(function(e){ var sh=e.closest&&e.closest(".side-head"); if(sh&&/participant/i.test(sh.textContent||""))setText(e,num(ptot)); });
+    // #18: the phone puts this pill in .card-head, not .side-head, so the selector missed it and the
+    // design mock (847) stayed on a pool with 2,429 providers -- disagreeing with the stat card above it
+    // and the footer below it on the same screen. Match either container, and keep the pill's own
+    // wording: it reads "847 total", and writing the bare number would have dropped the word.
+    qa(".count-pill").forEach(function(e){
+      var sh=e.closest&&(e.closest(".side-head")||e.closest(".card-head"));
+      if(!sh||!/participant/i.test(sh.textContent||""))return;
+      var had=/total/i.test(e.textContent||"");
+      setText(e, num(ptot)+(had?" total":""));
+    });
     partFoot(list,s);
   }
   // The footer the design ships for this list is .part-foot (an info line + a .nav of Prev/Next). Reuse it

@@ -1689,6 +1689,13 @@ html body .pool-header-row .ph-icons>*{
 /* #7: the address as a QR, so a phone camera can take it off the screen. Hover on a pointer, tap on a
    touchscreen -- the button toggles .on, and the hover rule is behind a media query so a tap does not
    leave a sticky hover state on a phone. */
+/* #20: a quiet block that holds a cell's height while its value is still being fetched. Deliberately
+   not a dash and never a number -- a placeholder that looks like data is the bug being fixed. */
+.acc-sk{display:inline-block;height:11px;vertical-align:-1px;border-radius:4px;
+  background:linear-gradient(90deg,rgba(128,128,140,.13) 25%,rgba(128,128,140,.22) 37%,rgba(128,128,140,.13) 63%);
+  background-size:400% 100%;animation:accSk 1.3s ease infinite}
+@keyframes accSk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+@media(prefers-reduced-motion:reduce){.acc-sk{animation:none}}
 .acc-qr{position:relative}
 .acc-qrpop{position:absolute;top:calc(100% + 10px);right:0;z-index:60;padding:12px;border-radius:14px;
   background:var(--surface,#fff);border:1px solid var(--border);box-shadow:0 16px 40px -12px rgba(0,0,0,.55);
@@ -7071,13 +7078,23 @@ var qrcode = function() {
     var plist=psorted.slice(0,Math.min(pShown,psorted.length));
     plist.forEach(function(p){ if(!p.__ld){ p.__ld=1; loadPool(p); } });
     tb.innerHTML=plist.map(function(p){
+      // #20: a row is only worth drawing once its pair is known.
+      //
+      // Every position is rendered the moment the list arrives, but the pair codes and the share come
+      // from a per-pool fetch that lands later -- and each one that lands re-renders the whole table. On
+      // an account with 141 positions that is 141 repaints, so the visible rows read "? / ?" at
+      // "<0.01%" and then churn for several seconds. The percentage was the worst of it: 0 formatted as
+      // "<0.01%" is a real-looking number for a position that might be 67% of the pool.
+      //
+      // Unknown rows now hold a placeholder of the same height, so nothing moves as they fill in.
+      var known=!!(p.a&&p.a!=="?"&&p.b&&p.b!=="?");
       return '<tr class="acc-row" data-pool="'+esc(p.id)+'">'
         +'<td><span class="acc-pair"><span class="acc-icos">'
           +'<span class="acc-ico" data-lxc="'+esc(p.a)+'" data-lxi="'+esc(p.ai||"")+'"></span>'
           +'<span class="acc-ico" data-lxc="'+esc(p.b)+'" data-lxi="'+esc(p.bi||"")+'"></span></span>'
-          +'<span><span class="acc-code">'+esc(p.a)+" / "+esc(p.b)+'</span>'
+          +'<span><span class="acc-code">'+(known?(esc(p.a)+" / "+esc(p.b)):'<i class="acc-sk" style="width:86px"></i>')+'</span>'
           +'<span class="acc-dom">'+(p.tl!=null?(p.tl+(p.tl===1?" LP holder":" LP holders")):"")+'</span></span></span></td>'
-        +'<td class="num">'+(p.share>=0.01?p.share.toFixed(2):"<0.01")+'%</td>'
+        +'<td class="num">'+(known?((p.share>=0.01?p.share.toFixed(2):"<0.01")+'%'):'<i class="acc-sk" style="width:42px"></i>')+'</td>'
         +'<td class="num">'+(p.usd!=null&&xlmUsd>0?usd(p.usd):DASH)+'</td>'
         +'<td class="num acc-hide-sm">'+(p.tvl!=null&&xlmUsd>0?usd(p.tvl):DASH)+'</td>'
         +'<td style="text-align:right"><a class="acc-view" href="/pools/stellar/id/'+esc(p.id)+'">View pool</a></td>'
