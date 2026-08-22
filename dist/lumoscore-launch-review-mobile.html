@@ -3758,8 +3758,32 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     if(ov){ ov.classList.add("open");
       var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
   }
+  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
+  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
+  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
+  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
+  function tidyMenu(){
+    var menu=document.querySelector(".slide-menu"); if(!menu)return;
+    var row=menu.querySelector("[data-open-search]");
+    if(row&&row.style.display!=="none")row.style.display="none";
+    var links=menu.querySelector(".menu-links")||menu;
+    var kids=[].slice.call(links.children);
+    for(var i=0;i<kids.length;i++){
+      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
+      var anyVisible=false;
+      for(var j=i+1;j<kids.length;j++){
+        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
+        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
+      }
+      var want=anyVisible?"":"none";
+      if(kids[i].style.display!==want)kids[i].style.display=want;
+    }
+  }
   function place(){
-    var bar=document.querySelector("header.appbar"); if(!bar)return;
+    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
+    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
+    // those two.
+    var bar=document.querySelector(".appbar"); if(!bar)return;
     // Only where there is something to open. On a page without the popup this would be a dead control.
     if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
     if(bar.querySelector(".lx-hsearch"))return;
@@ -3776,10 +3800,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
     else bar.appendChild(b);
   }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",place);
-  else place();
-  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button.
-  try{ new MutationObserver(place).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
+  function run(){ place(); tidyMenu(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
+  // menu is built when it is first opened, so the row to hide does not exist until then.
+  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

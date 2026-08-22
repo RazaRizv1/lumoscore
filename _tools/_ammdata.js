@@ -1547,7 +1547,8 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       // stays valid with fresh numbers — this lets add/withdraw re-fetch+repaint with NO page reload.
       if(DET){for(var _k in _det)DET[_k]=_det[_k];}else{DET=_det;}
       // Finish counting the day's volume behind the already-rendered page (see volDeepen).
-      try{ volDeepen(); }catch(_){}
+      // The edge answers in one request; volDeepen is what it falls back to if that fails.
+      try{ if(!volFast())volDeepen(); }catch(_){ try{ volDeepen(); }catch(_e){} }
       // The two heavy feeds land here, after the page is already on screen. Each repaints only its own
       // list. Both are guarded: a failure leaves the page exactly as it is rather than blanking a tab.
       if(opsLate){ var _ol=opsLate; opsLate=null;
@@ -1801,6 +1802,39 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // running the figure is marked partial rather than shown as final -- the old bug was not that the number
   // was small, it was that a floor was presented as a fact.
   var VOLMAXP=14;                      // 14 x 200 = 2,800 trades/day before we admit to a cap
+  // #2: "Counting…" sat on screen for about a minute, and it was not idling -- 24h volume is a sum
+  // over the day's trades, Horizon pages them 200 at a time, and a busy pool runs thousands. Measured
+  // on XLM/USDC: 3,438 trades = 18 pages, ~4.75s per page from a browser. Roughly 85 seconds.
+  //
+  // The same walk from the edge is fast and, once cached, free for everyone after the first visitor.
+  // See functions/lxapi/poolvol.js -- including the measurement showing why the cheap stellar.expert
+  // figure cannot be substituted: it is the current UTC DAY SO FAR, which at 00:05 UTC reported 28
+  // trades and 24,374 XLM against a true 3,438 and 2,980,994.
+  function volFast(){
+    // Same guard volDeepen uses: if page one already reached back past 24h then page one IS the
+    // whole day, and there is nothing to go and count.
+    var d=DET; if(!d||!d.volNext||d.__volFast)return false; d.__volFast=1;
+    var hex=d.hex;
+    getJSON("/lxapi/poolvol?id="+encodeURIComponent(hex)).then(function(r){
+      // No answer, or an answer with nothing in it: leave the slow walk to it rather than writing a zero.
+      if(!r||r.failed||!r.vol){ try{ volDeepen(); }catch(_){} return; }
+      // Which leg the page quotes: XLM when the pool has one, otherwise the a0 side, exactly as the
+      // rest of this file denominates a pair.
+      var key=d.nonXlm?((d.a0&&d.a0.code)+"-"+(d.a0&&d.a0.issuer)):"native";
+      var v=r.vol[key];
+      if(v==null&&d.nonXlm&&d.a0&&d.a0.native)v=r.vol["native"];
+      if(v==null){ try{ volDeepen(); }catch(_){} return; }
+      d.vol24Xlm=+v||0;
+      d.fees24Xlm=d.vol24Xlm*d.fee/100;
+      var px=d.__xlmUsd||0;
+      if(d.nonXlm){ var a0usd=(d.a0&&d.a0.code==="USDC"); d.vol24Usd=a0usd?d.vol24Xlm:0; d.fees24Usd=a0usd?d.fees24Xlm:0; }
+      else { d.vol24Usd=d.vol24Xlm*px; d.fees24Usd=d.fees24Xlm*px; }
+      d.volPartial=!!r.partial;      // hit the page budget: this is a floor, and the page says ">="
+      d.volNext=null; d.volCounting=false;
+      try{ paintDetail(); }catch(_){}
+    }).catch(function(){ try{ volDeepen(); }catch(_){} });
+    return true;
+  }
   function volDeepen(){
     var d=DET; if(!d||!d.volNext||d.__volBusy)return; d.__volBusy=1;
     var cut=Date.now()-864e5, url=d.volNext, pages=0;

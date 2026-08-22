@@ -2303,18 +2303,6 @@ html body .pool-header-row .ph-icons>*{
    through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
    Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
 .mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
-</style><style id="lx-mobsearch-css">
-/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
-   primary and an afterthought. */
-.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
-  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
-  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
-  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
-.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
-.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
-/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
-   leave it about 120px, and it already truncates. Nothing else may shrink. */
-.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
 </style><style id="lx-dxa-css">
 .lx-sortag{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;font-size:10.5px;
   font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--accent);
@@ -2601,7 +2589,19 @@ margin-top:16px;border-top:1px solid var(--border)}
 .dxa-pl-icos .dxa-pl-ico{position:relative}
 .dxa-pl-icos .dxa-pl-ico:first-child{z-index:2}
 .mdxa-pl-l .dxa-pl-ico{width:30px;height:30px;font-size:13px}
-.stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style></head>
+.stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 10px/16px Georgia,serif!important;margin-left:7px!important;vertical-align:middle}</style><style id="lx-mobsearch-css">
+/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
+   primary and an afterthought. */
+.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
+  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
+.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
+.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
+/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
+   leave it about 120px, and it already truncates. Nothing else may shrink. */
+.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
+</style></head>
 <body>
 
   <!-- App bar -->
@@ -5845,42 +5845,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
-})();</script><script id="lx-mobsearch">(function(){
-  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
-  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
-  function open(){
-    // The page's own opener, so this button and the menu row open the same thing in the same state.
-    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
-    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
-    // itself. A header button that silently does nothing is worse than no header button.
-    var row=document.querySelector("[data-open-search]");
-    if(row){ row.click(); return; }
-    var ov=document.getElementById("searchPopup");
-    if(ov){ ov.classList.add("open");
-      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
-  }
-  function place(){
-    var bar=document.querySelector("header.appbar"); if(!bar)return;
-    // Only where there is something to open. On a page without the popup this would be a dead control.
-    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
-    if(bar.querySelector(".lx-hsearch"))return;
-    var b=document.createElement("button");
-    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
-    b.innerHTML=ICON;
-    b.addEventListener("click",function(e){
-      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
-      open();
-    });
-    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
-    // stays the last thing on the right, where a thumb expects it.
-    var menu=document.getElementById("menuBtn");
-    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
-    else bar.appendChild(b);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",place);
-  else place();
-  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button.
-  try{ new MutationObserver(place).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-dxadata">(function(){document.addEventListener("input",function(e){var t=e.target;if(t&&t.tagName==="INPUT"&&t.closest&&t.closest(".dxa-pane-limit")){try{setLimitTotalUsd();}catch(_){}try{setOrderCtx();}catch(_){}}},true);setInterval(function(){try{setLimitTotalUsd();}catch(_){}try{setOrderCtx();}catch(_){}},1000);var DXA_SUPPLY_NOTE_S="90% (9B LUMOS) supply is locked forever. The circulating supply is 1B LUMOS.";
   // shared verified set, same as the wallet, Trade main and search
   var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
@@ -8432,6 +8396,68 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     },60000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
+})();</script><script id="lx-mobsearch">(function(){
+  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
+  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
+  function open(){
+    // The page's own opener, so this button and the menu row open the same thing in the same state.
+    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
+    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
+    // itself. A header button that silently does nothing is worse than no header button.
+    var row=document.querySelector("[data-open-search]");
+    if(row){ row.click(); return; }
+    var ov=document.getElementById("searchPopup");
+    if(ov){ ov.classList.add("open");
+      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
+  }
+  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
+  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
+  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
+  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
+  function tidyMenu(){
+    var menu=document.querySelector(".slide-menu"); if(!menu)return;
+    var row=menu.querySelector("[data-open-search]");
+    if(row&&row.style.display!=="none")row.style.display="none";
+    var links=menu.querySelector(".menu-links")||menu;
+    var kids=[].slice.call(links.children);
+    for(var i=0;i<kids.length;i++){
+      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
+      var anyVisible=false;
+      for(var j=i+1;j<kids.length;j++){
+        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
+        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
+      }
+      var want=anyVisible?"":"none";
+      if(kids[i].style.display!==want)kids[i].style.display=want;
+    }
+  }
+  function place(){
+    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
+    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
+    // those two.
+    var bar=document.querySelector(".appbar"); if(!bar)return;
+    // Only where there is something to open. On a page without the popup this would be a dead control.
+    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
+    if(bar.querySelector(".lx-hsearch"))return;
+    var b=document.createElement("button");
+    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
+    b.innerHTML=ICON;
+    b.addEventListener("click",function(e){
+      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
+      open();
+    });
+    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
+    // stays the last thing on the right, where a thumb expects it.
+    var menu=document.getElementById("menuBtn");
+    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
+    else bar.appendChild(b);
+  }
+  function run(){ place(); tidyMenu(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
+  // menu is built when it is first opened, so the row to hide does not exist until then.
+  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

@@ -23,11 +23,8 @@ const STYLE = `<style id="lx-lt-css">
 /* the copy confirmation: the control tells you it worked instead of doing it in silence */
 .addr-row [data-copy]{position:relative;transition:color .12s,background .12s}
 .addr-row [data-copy].lx-copied{color:var(--green,#35c07f)!important;background:var(--green-soft,rgba(53,192,127,.14))!important}
-.addr-row [data-copy].lx-copied::after{content:"Copied";position:absolute;bottom:calc(100% + 7px);left:50%;
-  transform:translateX(-50%);background:var(--surface,#fff);color:var(--text,#0e0e10);
-  border:1px solid var(--border,#ececef);border-radius:8px;padding:4px 9px;
-  font:700 11px/1 'Hanken Grotesk',system-ui,sans-serif;white-space:nowrap;z-index:40;
-  box-shadow:0 8px 20px rgba(0,0,0,.22);pointer-events:none}
+/* The bubble that used to sit above the button is gone -- the toast says it now. The button keeps its
+   own colour flash, which is the immediate "yes, that one" the toast cannot give at a glance. */
 /* The phone row is narrower than the address + badges + domain it carries, and the domain was the
    thing that ran off the edge. Let the row wrap and let the domain give way rather than overflow. */
 @media(max-width:760px){
@@ -335,7 +332,10 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         b.addEventListener("click",function(ev){
           var txt=b.getAttribute("data-copy")||ISSUER;
           try{ev.preventDefault();ev.stopPropagation();}catch(_){}
-          function ok(){ b.classList.add("lx-copied");
+          // #6: this drew a bubble of its own above the button. Every other copy on the site answers
+          // with the bottom-centre toast, and two different confirmations for one action is one too many.
+          function ok(){ ltToast("Issuer address copied");
+            b.classList.add("lx-copied");
             setTimeout(function(){b.classList.remove("lx-copied");},1400); }
           try{
             if(navigator.clipboard&&navigator.clipboard.writeText){
@@ -652,7 +652,27 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   var _ltsdk=null;
   function ltAddr(){ try{ return localStorage.getItem("lumos.address")||""; }catch(e){ return ""; } }
   // reuse the site's bottom-center toast (same one "Copy" uses) instead of a browser alert()
-  function ltToast(msg){ try{ if(typeof window.showToast==="function"){ window.showToast(msg); return; } }catch(e){} try{ alert(msg); }catch(e2){} }
+  // The phone build of this page ships the .toast CSS and the .check-ic mark but NOT the showToast
+  // function that uses them -- that lives in the wallet page's own script. So the fallback here was
+  // alert(), and the copy control ended up drawing its own little bubble instead. Build the design's
+  // toast out of the classes the page already styles, so it is the same object either way: bottom
+  // centre, green check, gone in two seconds.
+  function ltToast(msg){
+    try{ if(typeof window.showToast==="function"){ window.showToast(msg); return; } }catch(e){}
+    try{
+      var st=document.querySelector(".toast-stack");
+      if(!st){ st=document.createElement("div"); st.className="toast-stack"; document.body.appendChild(st); }
+      var t=document.createElement("div"); t.className="toast";
+      t.innerHTML='<span class="check-ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"'
+        +' stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">'
+        +'<polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+      t.appendChild(document.createTextNode(msg));
+      st.appendChild(t);
+      setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },2200);
+      return;
+    }catch(e2){}
+    try{ alert(msg); }catch(e3){}
+  }
   function ltLoadSdk(){ if(window.StellarSdk)return Promise.resolve(window.StellarSdk); if(_ltsdk)return _ltsdk;
     _ltsdk=new Promise(function(res,rej){ var s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/dist/stellar-sdk.min.js"; s.onload=function(){res(window.StellarSdk);}; s.onerror=function(){rej(new Error("SDK load failed"));}; document.head.appendChild(s); }); return _ltsdk; }
   // AUDIT (user-reported): this signed via Freighter unconditionally, so a Rabet user clicking Swap or
@@ -1138,14 +1158,29 @@ for (const file of files) {
     // thing the reserve actually does, which is deepen the pools LUMOS trades in. Liquidity leads; the
     // order book is named once, in passing. No split is claimed, because the split is not a fact this
     // page can show. Idempotent: after one pass neither original sentence is present.
-    const RESV_OLD = 'Of the 300M <strong>Market Reserve</strong>, 150M is committed to a public sell '
-      + 'order on CHAIN for price discovery. The remaining 150M serves as a working treasury.';
     const RESV_NEW = 'The 300M <strong>Market Reserve</strong> is put to work gradually: it is added, a '
       + 'little at a time, to LUMOS liquidity on Stellar — the LUMOS/XLM pool and the other LUMOS '
       + 'pairs — with a portion resting on the order book for price discovery.';
+    // The phone ships a SHORTER version of the same sentence -- no "working treasury" clause -- so a
+    // single replacement fixed the desktop and left the phone quoting the sell order it was written to
+    // stop leading with. Both forms, both chain spellings.
+    const RESV_OLD = [
+      'Of the 300M <strong>Market Reserve</strong>, 150M is committed to a public sell order on CHAIN '
+        + 'for price discovery. The remaining 150M serves as a working treasury.',
+      'Of the 300M <strong>Market Reserve</strong>, 150M is committed to a public sell order on CHAIN '
+        + 'for price discovery.',
+    ];
     for (const chain of ['Aptos', 'Stellar']) {
-      p = p.split(RESV_OLD.replace('CHAIN', chain)).join(RESV_NEW);
+      for (const old of RESV_OLD) p = p.split(old.replace('CHAIN', chain)).join(RESV_NEW);
     }
+    // ...and the rest of the section, which the phone also words differently. #1 asked for one wording
+    // across both devices, and the desktop one is the reference.
+    p = p.split('<strong>Whale Holder rewards</strong> over 2 years.')
+         .join('<strong>Whale Holder rewards</strong> distribute over 2 years.');
+    p = p.split('<span class="name">Ecosystem LP</span>')
+         .join('<span class="name">Ecosystem LP Rewards</span>');
+    p = p.split('<span class="name">Native LP</span>')
+         .join('<span class="name">Native LP Rewards</span>');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');

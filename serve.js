@@ -743,6 +743,55 @@ function cleanUrl(p) {
   return null;
 }
 
+// Local mirror of functions/lxapi/poolvol — a pool's real rolling-24h volume, walked from Horizon.
+// Kept in step with functions/lxapi/poolvol.js; see that file for the measurement showing why the
+// cheap stellar.expert figure cannot be used (it is the current UTC day so far, not 24 hours).
+const POOLVOL_CACHE = new Map();   // id -> {at, body}
+function pvAsset(type, code, issuer) {
+  return (type === 'native' || !code) ? 'native' : (code + '-' + issuer);
+}
+async function poolVol(req, res, q) {
+  const send = (obj, code) => {
+    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' });
+    res.end(JSON.stringify(obj));
+  };
+  const id = q.get('id') || '';
+  if (!/^[0-9a-f]{64}$/i.test(id)) return send({ error: 'bad pool id' }, 400);
+  const hit = POOLVOL_CACHE.get(id);
+  if (hit && Date.now() - hit.at < 300e3) return send(hit.body);
+  const cut = Date.now() - 864e5;
+  let url = 'https://horizon.stellar.org/liquidity_pools/' + id + '/trades?order=desc&limit=200';
+  const vol = Object.create(null);
+  let trades = 0, pages = 0, done = false, failed = false;
+  const started = Date.now();   // wall-clock budget, same as the Pages Function
+  while (url && pages < 20 && Date.now() - started < 9000) {
+    let j = null;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) { failed = true; break; }
+      j = await r.json();
+    } catch (e) { failed = true; break; }
+    const recs = (((j || {})._embedded || {}).records) || [];
+    pages++;
+    for (const x of recs) {
+      const ts = Date.parse(x.ledger_close_time || x.created_at || '');
+      if (!(ts >= cut)) { done = true; break; }
+      trades++;
+      const b = pvAsset(x.base_asset_type, x.base_asset_code, x.base_asset_issuer);
+      const c = pvAsset(x.counter_asset_type, x.counter_asset_code, x.counter_asset_issuer);
+      vol[b] = (vol[b] || 0) + (+x.base_amount || 0);
+      vol[c] = (vol[c] || 0) + (+x.counter_amount || 0);
+    }
+    if (done || recs.length < 200) { done = true; break; }
+    url = (j._links && j._links.next && j._links.next.href) || null;
+    if (!url) done = true;
+  }
+  const body = { trades, vol, partial: !done, failed: failed && !trades, pages };
+  // a partial answer gets a short life so it can finish next time, not stand for five minutes
+  POOLVOL_CACHE.set(id, { at: done ? Date.now() : Date.now() - 240e3, body });
+  send(body);
+}
+
 // Local mirror of functions/lxapi/netstats — the last complete UTC day of Stellar network activity.
 // Kept in step with functions/lxapi/netstats.js; see that file for why the tail is sliced out of the raw
 // text instead of being parsed, and for what the caller must not overclaim about a UTC-day bucket.
@@ -795,6 +844,7 @@ http.createServer((req, res) => {
   if (p === '/lxapi/pools') return poolList(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/movers') return moversRoute(req, res);
   if (p === '/lxapi/netstats') return netStats(req, res);
+  if (p === '/lxapi/poolvol') return poolVol(req, res, new URL(req.url, 'http://x').searchParams);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
   }
