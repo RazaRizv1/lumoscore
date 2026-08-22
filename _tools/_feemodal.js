@@ -26,6 +26,11 @@ const STYLE='<style id="lx-feemodal-css">'
 +'.lx-feemodal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,10,14,.55);backdrop-filter:blur(3px);overflow:hidden}'
 +'@media(max-width:760px){.lx-feemodal{align-items:flex-start;padding:14px 12px}.lx-fm-card{margin:0 auto}}'
 +'.lx-fm-card{width:min(420px,94vw);max-height:92vh;max-height:92dvh;overflow:auto;overscroll-behavior:contain;background:var(--surface,#fff);border:1px solid var(--border);border-radius:18px;box-shadow:0 30px 70px -20px rgba(0,0,0,.55);animation:lxfmin .22s ease}'
+// The card's cap was in vh, which is the LAYOUT viewport -- so with the keyboard up it could be taller
+// than the strip of screen left to show it in, even once the overlay itself is pinned correctly (see
+// fitVV below). A percentage of the overlay is right in both states: with no keyboard the overlay is
+// the full viewport and this is the same 92% it always was.
++'.lx-feemodal .lx-fm-card{max-height:92%}'
 +'@keyframes lxfmin{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}'
 +'.lx-fm-head{display:flex;align-items:center;gap:12px;padding:16px 18px;border-bottom:1px solid var(--border)}'
 +'.lx-fm-head h3{flex:1;font-size:16px;font-weight:800;color:var(--text)}'
@@ -121,6 +126,24 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'modal.querySelector("[data-pay]").innerHTML=payIco+\'<span>\'+fnum(payNum)+" "+payTok+\'</span>\';'
 +'modal.querySelector("[data-receive]").innerHTML=recIco+\'<span>\'+fnum(recNum)+" "+recTok+\'</span>\';'
 +'modal.querySelector("[data-details]").innerHTML=det;}'
+// #4, third report -- and the first two attempts were treating the symptom.
+//
+// .lx-feemodal is position:fixed;inset:0, and `fixed` resolves against the LAYOUT viewport. A phone
+// with the keyboard up has a VISUAL viewport roughly half that height, scrolled down inside it so the
+// focused amount field stays visible. The overlay therefore paints from the top of the layout viewport
+// -- above the strip of screen the user can actually see -- which is precisely "I have to scroll up to
+// the confirm box". Blurring the field (below) only helps if the keyboard actually goes away and the
+// offset animates back to zero, which is why it kept half-working.
+//
+// So stop assuming the two viewports coincide and ask for the real one. visualViewport reports the
+// visible rectangle in layout coordinates; pinning the overlay to it is correct with the keyboard up,
+// with it down, and mid-animation, because the listeners re-run on every change. With no keyboard the
+// numbers are exactly inset:0, so nothing changes on desktop.
++'function fitVV(){var vv=window.visualViewport;if(!vv||!modal)return;'
++'var st=modal.style;st.top=vv.offsetTop+"px";st.left=vv.offsetLeft+"px";'
++'st.width=vv.width+"px";st.height=vv.height+"px";st.right="auto";st.bottom="auto";}'
++'function unfitVV(){if(!modal)return;var st=modal.style;'
++'st.top=st.left=st.width=st.height=st.right=st.bottom="";}'
 +'function open(cta){build();lastCta=cta;var pane=(cta&&cta.closest(".dxa-pane"))||document.querySelector(".dxa-pane-swap.active,.dxa-pane-limit.active")||document.querySelector(".dxa-pane-swap");populate(pane);modal.style.display="flex";'
 // #8 (second attempt). The harness could not reproduce this -- in an iframe the sheet opens with its
 // header at the top of the viewport every time -- so the cause has to be something only a real phone
@@ -135,8 +158,14 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'try{modal.scrollTop=0;var _c=modal.querySelector(".lx-fm-card");if(_c)_c.scrollTop=0;}catch(_){}'
 +'try{requestAnimationFrame(function(){var c2=modal.querySelector(".lx-fm-card");if(c2)c2.scrollTop=0;modal.scrollTop=0;});}catch(_){}'
 +'try{setTimeout(function(){var c3=modal.querySelector(".lx-fm-card");if(c3)c3.scrollTop=0;modal.scrollTop=0;},220);}catch(_){}'
-+'try{modal.__lxPrevOvf=document.body.style.overflow;document.body.style.overflow="hidden";}catch(_){}}'
-+'function close(){if(!modal)return;modal.style.display="none";try{document.body.style.overflow=modal.__lxPrevOvf||"";}catch(_){}}'
++'try{modal.__lxPrevOvf=document.body.style.overflow;document.body.style.overflow="hidden";}catch(_){}'
++'try{fitVV();requestAnimationFrame(fitVV);setTimeout(fitVV,220);setTimeout(fitVV,450);'
++'var vv=window.visualViewport;if(vv&&!modal.__lxVV){modal.__lxVV=1;'
++'vv.addEventListener("resize",fitVV);vv.addEventListener("scroll",fitVV);}}catch(_){}}'
++'function close(){if(!modal)return;modal.style.display="none";try{unfitVV();}catch(_){}'
++'try{var vv2=window.visualViewport;if(vv2&&modal.__lxVV){modal.__lxVV=0;'
++'vv2.removeEventListener("resize",fitVV);vv2.removeEventListener("scroll",fitVV);}}catch(_){}'
++'try{document.body.style.overflow=modal.__lxPrevOvf||"";}catch(_){}}'
 +'document.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;'
 +'var cta=t.closest(".dxa-trade-cta");if(cta){if(cta.closest(".dxa-pane-limit"))return;if(proceeding){proceeding=false;return;}e.preventDefault();e.stopImmediatePropagation();open(cta);return;}'
 +'var chip=t.closest(".lx-feechip");if(chip){e.preventDefault();e.stopPropagation();if(window.__lxNav)__lxNav(URL);else location.href=URL;}'

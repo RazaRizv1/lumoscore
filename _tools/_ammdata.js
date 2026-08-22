@@ -3455,7 +3455,7 @@ const files = fs.readdirSync('.').filter(f => /^lumoscore-.*-(desktop|mobile)\.h
 // stat box is itself nested two deep, and a guessed closing marker lands in the wrong place.
 function addPartStat(p) {
   const open = p.indexOf('<div class="ph-stats">');
-  if (open < 0 || p.indexOf('lx-partstat') >= 0) return p;
+  if (open < 0) return p;
   const re = /<\/?div\b/gi;
   re.lastIndex = open;
   let depth = 0, m, end = -1;
@@ -3464,6 +3464,13 @@ function addPartStat(p) {
     else depth++;
   }
   if (end < 0) return p;
+  // The idempotence check has to look at THIS ROW, not the page. It used to be a whole-page search for
+  // "lx-partstat", and the runtime builder injected by this same transform contains that string in its
+  // own querySelector — so from the second run onwards the function found its own source code, concluded
+  // the box was already there, and returned the page untouched. The markup never got a fourth card;
+  // pdPartStat() built one at runtime, which is exactly the three-boxes-while-loading this was written
+  // to remove. Scope the search to the row and it can no longer be fooled by a script somewhere below.
+  if (p.slice(open, end).indexOf('lx-partstat') >= 0) return p;
   return p.slice(0, end) + PART_STAT_BOX + p.slice(end);
 }
 const PART_STAT_BOX = "<div class=\"ph-stat lx-partstat\"><div class=\"head\"><div class=\"ic part\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path></svg></div><div class=\"l\">Participants</div></div><div class=\"v\">&#8212;</div><div class=\"s\"></div></div>";
