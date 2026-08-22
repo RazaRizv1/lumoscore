@@ -547,11 +547,21 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   function zsub(n){ var s=String(n),o=""; for(var i=0;i<s.length;i++)o+=SUBD.charAt(+s.charAt(i)); return o; }
   function trimZ(t){ while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);
     if(t.charAt(t.length-1)===".")t=t.slice(0,-1); return t; }
+  // #12: subscript kicked in only below 1e-8, so a token at 0.0000324 XLM rendered the full eight
+  // decimals -- and the stat cell it lives in is narrower than that, so it showed "0.0000…". Half a
+  // price is worse than a compressed one: nobody can tell 0.0000324 from 0.0000009 by its first four
+  // characters. From five leading zeros the zero-run is written as a subscript count, which is the
+  // convention every exchange uses for this, and 0.0000324 becomes 0.0\u2084324 -- seven characters
+  // instead of nine, and complete.
+  //
+  // The threshold is FIVE, not four: 0.000324 is eight characters and perfectly readable spelled out,
+  // and compressing something that already fits only makes it harder to read.
   function smallNum(x,sig){ x=+x||0; if(!(x>0))return "0";
-    if(x>=1e-8)return trimZ(x.toFixed(8));
     var e=x.toExponential((sig||4)-1), i=e.indexOf("e");
     if(i<0)return String(x);
     var mant=trimZ(e.slice(0,i)).split(".").join(""), exp=-parseInt(e.slice(i+1),10);
+    if(exp>=5)return "0.0"+zsub(exp-1)+mant;
+    if(x>=1e-8)return trimZ(x.toFixed(8));
     if(!(exp>1))return trimZ(x.toFixed(8));
     return "0.0"+zsub(exp-1)+mant; }
   function usd(x){x=+x||0;if(x>=1)return "$"+x.toLocaleString("en-US",{maximumFractionDigits:2});if(x>=0.01)return "$"+x.toFixed(4);if(x>0)return "$"+smallNum(x,4);return "$0";}
@@ -861,7 +871,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // Four significant figures reads correctly across that whole range; trailing zeros are trimmed so the
   // column does not turn into a wall of noughts. No regex anywhere in here on purpose (DEV landmine 8):
   // a /.$/ written in this file arrives in the browser as /.$/ and would eat the last digit instead.
+  // #13: axis labels are the width of the gutter they sit in, and "0.00003225" is wider than it.
+  // Same compression as the price cells, so the axis and the headline agree on how a small number is
+  // written -- two notations for one price on one screen would be worse than either.
   function axisNum(v){ if(!(v>0))return "0";
+    if(v<1e-4)return smallNum(v,4);
     var s=(v>=1)?v.toFixed(4):v.toPrecision(4);
     if(s.indexOf("e")>=0)return s;
     if(s.indexOf(".")>=0){ while(s.length&&s.charAt(s.length-1)==="0")s=s.slice(0,-1);

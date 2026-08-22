@@ -36,6 +36,15 @@ const QA_REMOVE = QA_ACTIONS.replace(
 const LP_ACTIONS='<div class="row-quick-actions"><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add</button><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Remove</button><button class="qa-row-btn icon-only"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>';
 // Painter-proof icon + hide-until-ready (no flash of mock) styles.
 const CSS='<style id="lx-walletdata-css">'
+// #5: the Send asset picker is built HERE, but its stylesheet lived only in _swapcalc.js, which is
+// not injected on the wallet page. So the search magnifier arrived as a bare <svg viewBox="0 0 24 24">
+// with no width, no height and no position -- and an SVG with no intrinsic size fills whatever box it
+// is given. On the phone that was most of the popup. The picker ships its own dress now, so it cannot
+// depend on a file that is not there.
++'.lx-am-searchwrap{position:relative;margin-bottom:6px}'
++'.lx-am-searchic{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;flex:0 0 15px;color:var(--text-muted);pointer-events:none}'
++'.lx-am-search{width:100%;box-sizing:border-box;height:36px;padding:0 11px 0 32px;border-radius:9px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:600 13px/1 inherit;outline:none}'
++'.lx-am-search:focus{border-color:var(--accent)}'
 +'.activity-info .meta:empty{display:none!important}'
 +'.activity-info .meta:empty::before{content:none!important;margin:0!important}'
 // AUDIT (flash sweep): a static-vs-settled diff showed the hero chip, the hero unit and the whole Recent
