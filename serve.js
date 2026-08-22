@@ -743,6 +743,59 @@ function cleanUrl(p) {
   return null;
 }
 
+// Local mirror of functions/lxapi/xlm — XLM price and series, asked once and cached, instead of once
+// per visitor against a free tier that answers a few requests a minute. See that file.
+const XLM_CACHE = new Map();   // key -> {at, body, ttl}
+function xlmThin(points, max) {
+  if (points.length <= max) return points;
+  const step = Math.ceil(points.length / max);
+  const out = [];
+  for (let i = 0; i < points.length; i += step) out.push(points[i]);
+  const last = points[points.length - 1];
+  if (out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+async function xlmProxy(req, res, q) {
+  const send = (obj, code, ttl) => {
+    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + (ttl || 120) });
+    res.end(JSON.stringify(obj));
+  };
+  const chart = q.get('chart');
+  const key = chart == null ? 'price' : ('chart' + chart);
+  const hit = XLM_CACHE.get(key);
+  if (hit && Date.now() - hit.at < hit.ttl * 1000) return send(hit.body, 200, hit.ttl);
+  const DAYS = { 1: 1, 7: 7, 30: 30, 365: 365 };
+  try {
+    if (chart != null) {
+      const d = DAYS[String(chart)];
+      if (!d) return send({ error: 'bad period' }, 400, 60);
+      const r = await fetch('https://api.coingecko.com/api/v3/coins/stellar/market_chart?vs_currency=usd&days=' + d);
+      if (!r.ok) return send({ error: 'upstream ' + r.status }, 502, 30);
+      const j = await r.json();
+      const prices = (j.prices || []).filter((p) => Array.isArray(p) && +p[1] > 0).map((p) => [+p[0], +p[1]]);
+      if (!prices.length) return send({ error: 'no series' }, 502, 30);
+      const body = { days: d, prices: xlmThin(prices, 180) };
+      XLM_CACHE.set(key, { at: Date.now(), body, ttl: 900 });
+      return send(body, 200, 900);
+    }
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd'
+      + '&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true');
+    if (!r.ok) return send({ error: 'upstream ' + r.status }, 502, 30);
+    const s = ((await r.json()) || {}).stellar || {};
+    if (!(+s.usd > 0)) return send({ error: 'no price' }, 502, 30);
+    const body = {
+      usd: +s.usd,
+      chg24: (s.usd_24h_change != null && isFinite(+s.usd_24h_change)) ? +s.usd_24h_change : null,
+      mcap: +s.usd_market_cap || null,
+      vol24: +s.usd_24h_vol || null,
+    };
+    XLM_CACHE.set(key, { at: Date.now(), body, ttl: 120 });
+    return send(body, 200, 120);
+  } catch (e) {
+    send({ error: String((e && e.message) || e) }, 502, 30);
+  }
+}
+
 // Local mirror of functions/lxapi/poolvol — a pool's real rolling-24h volume, walked from Horizon.
 // Kept in step with functions/lxapi/poolvol.js; see that file for the measurement showing why the
 // cheap stellar.expert figure cannot be used (it is the current UTC day so far, not 24 hours).
@@ -845,6 +898,7 @@ http.createServer((req, res) => {
   if (p === '/lxapi/movers') return moversRoute(req, res);
   if (p === '/lxapi/netstats') return netStats(req, res);
   if (p === '/lxapi/poolvol') return poolVol(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/xlm') return xlmProxy(req, res, new URL(req.url, 'http://x').searchParams);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
   }

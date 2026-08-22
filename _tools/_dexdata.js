@@ -370,6 +370,18 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // taken, mint a "collision" key (TDT -> TDT~GBIN) and create a SECOND object for the very same asset.
   // That is why TDT appeared twice in All Trading Pairs.
   var byId={};
+  // #7: a.chg is the move against XLM -- that is what Horizon trade_aggregations measure and what
+  // /lxapi/dexassets returns. On a day when XLM itself rose 10%, every asset that merely held its
+  // DOLLAR value showed as a red -10%, which is exactly what the pair list was doing: USDC -10.26%,
+  // EURC -7.26% -- a dollar stablecoin and a euro one apparently collapsing on the same afternoon.
+  //
+  // In dollars now, like the asset page and the dashboard: the asset against XLM, times XLM against
+  // USD. Null when XLM's own move is unknown, because printing the raw XLM figure under a dollar
+  // heading is the bug itself and a dash is the honest alternative.
+  function chgU(a){
+    if(!a||a.chg==null||xlmChg==null)return null;
+    return ((1+a.chg/100)*(1+xlmChg/100)-1)*100;
+  }
   var byCode={}; ASSETS.forEach(function(a){ byCode[a.code]=a; byId[a.code+"|"+a.issuer]=a; a.px=0; a.chg=null; a.vol=null; a.high=null; a.low=null;
     a.tvlUsd=null; a.holders=null; a.supply=null; a.spark=null; a.domain=null; a.img=null; a.trades=null; });
   // ---- LumosCore-native assets: issuer home_domain = lumoscore.com (minted through our Launchpad) ----
@@ -567,7 +579,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
 
   // seed XLM/USD from a shared localStorage cache so a CoinGecko 429 never blanks the USD values (falls back
   // to the last-known price, <=6h old; the shared "lumos.xlmUsd" key is written by every page on success).
-  var xlmUsd=(function(){try{var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0;}catch(e){return (window.__lxXlmUsd||0);}})(), xlmChg=null;
+  var xlmUsd=(function(){try{var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0;}catch(e){return (window.__lxXlmUsd||0);}})();
+  // Warm from the same cache entry. Without it the whole change column is dashes until the network
+  // answers, which is a worse first paint than a figure a few minutes old.
+  var xlmChg=(function(){try{var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
+    return (c&&c.chg!=null&&(Date.now()-c.ts<216e5))?+c.chg:null;}catch(e){return null;}})();
   var DV=0;                                                   // data version — bumped only when real data lands
 
   // ---- helpers (mirrors _dexassetdata) ----
@@ -990,9 +1006,9 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // Volume is deliberately NOT gated -- it is already self-limiting, since faking a top-volume slot
     // costs the volume it claims.
     function worthy(a){ return (+a.tvlUsd||0)>=500 && (+a.holders||0)>=250; }
-    if(cat==="losers")d=d.filter(function(a){return worthy(a)&&a.chg!=null&&a.chg<0;}).sort(function(a,b){return a.chg-b.chg;});
+    if(cat==="losers")d=d.filter(function(a){return worthy(a)&&chgU(a)!=null&&chgU(a)<0;}).sort(function(a,b){return chgU(a)-chgU(b);});
     else if(cat==="volume")d=d.sort(function(a,b){return (b.vol||0)-(a.vol||0);});
-    else d=d.filter(function(a){return worthy(a)&&a.chg!=null&&a.chg>=0;}).sort(function(a,b){return b.chg-a.chg;});
+    else d=d.filter(function(a){return worthy(a)&&chgU(a)!=null&&chgU(a)>=0;}).sort(function(a,b){return chgU(b)-chgU(a);});
     // NO top-up for gainers/losers. This used to backfill by |chg| whenever a category held fewer than
     // four, which meant that on a red day -- every asset down -- "Gainers" filled itself with the four
     // biggest LOSERS and the two tabs showed an identical list of decliners under opposite headings.
@@ -1051,9 +1067,9 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     }
     qa(".dex-mover-card[data-tkr]",grid).forEach(function(card){ var a=byCode[card.getAttribute("data-tkr")]; if(!a)return; paintIcons(card);
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
-      var up=(a.chg||0)>=0;
+      var _cu=chgU(a); var up=(_cu||0)>=0;
       setTxt(card.querySelector(".dex-mover-pair .sub"),dispDom(a.code,a.issuer,a.domain)||shortG(a.issuer));
-      var pct=card.querySelector(".dex-mover-pct"); if(pct){ pct.className="dex-mover-pct"+(a.chg!=null?(up?" up":" down"):""); setTxt(pct,a.chg!=null?(up?"+":"")+a.chg.toFixed(2)+"%":"\\u2014"); }
+      var pct=card.querySelector(".dex-mover-pct"); if(pct){ pct.className="dex-mover-pct"+(_cu!=null?(up?" up":" down"):""); setTxt(pct,_cu!=null?(up?"+":"")+_cu.toFixed(2)+"%":"\\u2014"); }
       setHTML(card.querySelector(".dex-mover-price"),fmtPrice(a.px)+' <span style="font-size:14px;color:var(--text-soft);font-weight:600">XLM</span>');
       var vu=a.vol!=null?a.vol*xlmUsd:null;
       setHTML(card.querySelector(".dex-mover-vol"),'<span class="lxk">Vol</span><span class="lxv">'+(vu!=null?lcm(vu):"\\u2014")+'</span><span class="lxk">TVL</span><span class="lxv">'+(a.tvlUsd!=null?lcm(a.tvlUsd):"\\u2014")+'</span>');
@@ -1210,10 +1226,10 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // fill values in place (no innerHTML churn -> no glitch); gated so ALL rows' details reveal together
     qa("tr[data-tkr]",tb).forEach(function(tr){ var a=byCode[tr.getAttribute("data-tkr")]; if(!a)return; paintIcons(tr);
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
-      var up=(a.chg||0)>=0;
+      var _cu=chgU(a); var up=(_cu||0)>=0;
       var pu=priceUsd(a), vu=a.vol!=null?a.vol*xlmUsd:null, hi=a.high!=null?a.high:a.px, lo=a.low!=null?a.low:a.px;
       setHTML(q(".dex-mk-price",tr),fmtPrice(a.px)+' XLM<span class="sub">'+(pu>0?lcmExact(pu):"\\u2014")+'</span>');
-      var chg=q(".dex-mk-change",tr); if(chg){ chg.className="dex-mk-change"+(a.chg!=null?(up?" up":" down"):""); setTxt(chg,a.chg!=null?(up?"+":"")+a.chg.toFixed(2)+"%":"\\u2014"); }
+      var chg=q(".dex-mk-change",tr); if(chg){ chg.className="dex-mk-change"+(_cu!=null?(up?" up":" down"):""); setTxt(chg,_cu!=null?(up?"+":"")+_cu.toFixed(2)+"%":"\\u2014"); }
       setHTML(q(".dex-mk-vol",tr),(a.vol!=null?fmtAmt(a.vol)+" XLM":"\\u2014")+'<span class="sub">'+(vu!=null?lcm(vu):"")+'</span>');
       setTxt(q(".dex-mk-trades",tr),a.trades!=null?num(a.trades):"\\u2014");
       setHTML(q(".dex-mk-tvl",tr),a.tvlUsd!=null?lcm(a.tvlUsd):"\\u2014");
@@ -1303,7 +1319,15 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   }
 
   function loadData(){
-    j(CG).then(function(d){ if(d&&d.stellar){ if(+d.stellar.usd){ xlmUsd=+d.stellar.usd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } if(d.stellar.usd_24h_change!=null)xlmChg=+d.stellar.usd_24h_change; } recomputeAllTvl(); touch(); }).catch(function(){});
+    // Our own edge, cached: CoinGecko's free tier answers a handful of requests a minute per IP and
+    // every visitor was spending that budget on the same public number. xlmChg is load-bearing now --
+    // every percentage in the pair list is derived from it -- so it has to actually arrive.
+    j("/lxapi/xlm").then(function(d){
+      if(d&&+d.usd>0){ xlmUsd=+d.usd;
+        if(d.chg24!=null)xlmChg=+d.chg24;
+        try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,chg:xlmChg,ts:Date.now()})); }catch(_e){} }
+      recomputeAllTvl(); touch();
+    }).catch(function(){});
     // load ALL assets in PARALLEL so values + logos land together (no "loading one by one" cascade). When
     // every asset is in, flag loaded -> the movers compute their final top-4 order ONCE (no re-sort glitch).
     // the curated set the same way as everything else: numbers in one batched request, extras after

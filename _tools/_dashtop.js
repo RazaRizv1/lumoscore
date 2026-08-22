@@ -38,8 +38,44 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xt-tfs button.active{background:var(--accent);color:#fff}
 .lx-xt-chart{position:relative;width:min(420px,42vw);min-width:220px;height:104px;align-self:center}
 .lx-xt-chart svg{display:block;width:100%;height:100%}
+/* ---- the loading state ------------------------------------------------------------------------- */
+/* #3: while the price and the series were in flight this drew a label, a bare em dash, a live-looking
+   timeframe control and a large empty rectangle -- which reads as broken rather than as loading. It is
+   a skeleton now: the same shapes the real content will occupy, shimmering, so the panel does not
+   change size when the data lands and nothing on screen claims to be a value it is not.
+   Keyed on .lx-loading, which is set at build and removed on the first real paint -- never the other
+   way round, so a failed fetch leaves the skeleton rather than a set of empty boxes. */
+/* The shimmer is painted on a PSEUDO-element, never on the element itself, and this is not a style
+   preference -- it is the only version that survives.
+   A logo engine baked into the container (no _tools file emits it any more, so it cannot be fixed at
+   source) sweeps every span/div/i/b holding 1-5 characters and, if the element "looks like an icon",
+   replaces its text with a token image. Its test for icon-ness is a border-radius of 4px or more, or a
+   background that is a gradient. A shimmer skeleton is exactly both -- so the first pass caught the
+   price while it still read as a single em dash, stamped data-logo on it, and from then on blanked the
+   element on EVERY pass regardless of what we wrote into it. The price went "$0.2021" and then empty,
+   for good.
+   On ::after, getComputedStyle(el) reports no radius and no background image, the element fails the
+   test, and it is left alone. */
+.lx-xlmpanel.lx-loading .lx-xt-price{color:transparent!important;position:relative;min-width:170px;
+  display:inline-block}
+.lx-xlmpanel.lx-loading .lx-xt-price::after,
+.lx-xlmpanel.lx-loading .lx-xt-chg::after{content:"";position:absolute;inset:0;border-radius:7px;
+  background:linear-gradient(90deg,rgba(127,127,140,.10) 25%,rgba(127,127,140,.22) 37%,rgba(127,127,140,.10) 63%);
+  background-size:400% 100%;animation:lxDtShim 1.3s ease-in-out infinite;pointer-events:none}
+.lx-xlmpanel.lx-loading .lx-xt-chg{color:transparent!important;position:relative;min-width:88px;
+  background:none!important}
+.lx-xlmpanel.lx-loading .lx-xt-chg::after{border-radius:999px}
+.lx-xlmpanel.lx-loading .lx-xt-chg::before{content:none!important}
+.lx-xlmpanel.lx-loading .lx-xt-tfs{opacity:.45;pointer-events:none}
+@keyframes lxDtShim{0%{background-position:100% 50%}100%{background-position:0 50%}}
+/* The empty chart box: a shimmering band with the rough profile of a line, so the space reads as a
+   chart that has not arrived rather than as a hole in the card. */
 .lx-xt-chart.lx-empty::after{content:"";position:absolute;inset:0;border-radius:10px;
-  background:linear-gradient(to top,rgba(127,127,140,.07),rgba(127,127,140,0))}
+  background:linear-gradient(to top,rgba(127,127,140,.09),rgba(127,127,140,0))}
+.lx-xt-chart.lx-empty::before{content:"";position:absolute;left:0;right:0;bottom:26%;height:2px;
+  border-radius:2px;opacity:.5;
+  background:linear-gradient(90deg,rgba(127,127,140,.10) 25%,rgba(127,127,140,.30) 37%,rgba(127,127,140,.10) 63%);
+  background-size:400% 100%;animation:lxDtShim 1.3s ease-in-out infinite}
 
 /* ---- the stats strip, now INSIDE the card ------------------------------------------------------ */
 /* #1: TVL, market cap, volume and the ledger were a separate rail of bordered pills under the chart --
@@ -111,7 +147,7 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
     var p=document.querySelector(".lx-xlmpanel");
     if(p)return p;
     var host=row.parentNode; if(!host)return null;
-    p=document.createElement("div"); p.className="lx-xlmpanel"; p.setAttribute("data-lx-noswap","1");
+    p=document.createElement("div"); p.className="lx-xlmpanel lx-loading"; p.setAttribute("data-lx-noswap","1");
     p.innerHTML='<div class="lx-xt-l">'
       +'<span class="lx-xt-lbl">Stellar (XLM)</span>'
       +'<div class="lx-xt-row"><span class="lx-xt-price">\\u2014</span><span class="lx-xt-chg"></span></div>'
@@ -160,8 +196,16 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
   }
   function load(){
     if(cache[tf]){ draw(cache[tf]); return; }
+    // A series from an earlier visit, drawn immediately and replaced when the live one lands. Six hours,
+    // because a stale SHAPE is worth far more than an empty box and the headline price is live anyway.
+    try{ var w=JSON.parse(localStorage.getItem("lumos.xlmSeries."+tf)||"null");
+      if(w&&w.v&&w.v.length>1&&(Date.now()-w.ts<216e5)){ cache[tf]=w.v; draw(w.v); } }catch(_){}
     var days=DAYS[tf]||1;
-    j("https://api.coingecko.com/api/v3/coins/stellar/market_chart?vs_currency=usd&days="+days)
+    // #18: was CoinGecko, called by every visitor against a tier that allows a handful of requests a
+    // minute per IP -- so the chart frequently never arrived at all. Our own edge asks once and caches,
+    // and thins the series there, so this gets at most 180 points at edge speed. Warm from localStorage
+    // first, so a return visit draws instantly instead of drawing nothing until the network answers.
+    j("/lxapi/xlm?chart="+days)
       .then(function(d){
         var pr=(d&&d.prices)||[];
         var v=pr.map(function(x){return +x[1];}).filter(function(x){return x>0;});
@@ -170,13 +214,14 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
           for(var i=0;i<v.length;i+=step)out.push(v[i]);
           if(out[out.length-1]!==v[v.length-1])out.push(v[v.length-1]);
           v=out; }
-        cache[tf]=v; draw(v);
+        cache[tf]=v; try{ localStorage.setItem("lumos.xlmSeries."+tf,JSON.stringify({v:v,ts:Date.now()})); }catch(_){}
+        draw(v);
       }).catch(function(){ draw(null); });
   }
   function paintPrice(c){
     if(!c)return; var p=build(); if(!p)return;
     var el=p.querySelector(".lx-xt-price"), ch=p.querySelector(".lx-xt-chg");
-    if(el&&c.usd!=null)el.textContent=money(c.usd);
+    if(el&&c.usd!=null){ el.textContent=money(c.usd); p.classList.remove("lx-loading"); }
     if(ch&&c.usd_24h_change!=null){
       var u=c.usd_24h_change>=0;
       ch.className="lx-xt-chg "+(u?"up":"down");
@@ -186,15 +231,18 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
   // _realdata.js already asks CoinGecko for exactly this object on the same page. CoinGecko's free
   // tier is a handful of calls a minute, so this waits for that one rather than making a second --
   // and only falls back to its own request if that never arrives.
+  // #18: this used to sit on its hands for SIX SECONDS waiting for _realdata.js to publish the same
+  // object before it would ask for itself -- measured, that was the whole delay before a price showed.
+  // The edge answer is cached and cheap, so there is no longer any reason to wait for anyone: ask
+  // immediately, and take __lxCG too if it happens to arrive first.
   function price(){
     if(window.__lxCG){ paintPrice(window.__lxCG); return; }
-    var done=false;
-    try{ window.addEventListener("lx:cg",function(){ done=true; paintPrice(window.__lxCG); }); }catch(_){}
-    setTimeout(function(){
-      if(done||window.__lxCG){ paintPrice(window.__lxCG); return; }
-      j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_change=true")
-        .then(function(d){ paintPrice((d&&d.stellar)||null); }).catch(function(){});
-    },6000);
+    try{ window.addEventListener("lx:cg",function(){ paintPrice(window.__lxCG); }); }catch(_){}
+    j("/lxapi/xlm").then(function(d){
+      if(!d||!(+d.usd>0))return;
+      paintPrice({usd:+d.usd,usd_24h_change:d.chg24});
+      try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:+d.usd,chg:d.chg24,ts:Date.now()})); }catch(_){}
+    }).catch(function(){});
   }
   // The ledger height, as the "network is alive" signal. One Horizon call, on a slow beat.
   function ledger(){
