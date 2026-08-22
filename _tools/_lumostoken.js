@@ -1051,13 +1051,34 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     setText(q("#ctPriceXrpl"),""); setText(q("#ctMcXrpl"),"");
     qa(".ct-net, .cc-legend .nm, .ct-name").forEach(function(e){ var t=(e.textContent||""); if(/Xrpl|XRPL/i.test(t)||/Stellar/.test(t)){} });
   }
+  // #2: this drew nothing until the XLM price landed, and then never tried again -- which is what
+  // "the chart takes forever" was. Every point is multiplied by xlmUsd to put it in dollars, so with
+  // xlmUsd still 0 every value came out 0, the filter below dropped all of them, pts.length fell under
+  // 2 and the function returned having drawn nothing. Nothing re-ran it except a manual timeframe tap.
+  //
+  // The records are kept now, so the redraw costs no request, and the draw is retried until there is a
+  // rate to draw with.
+  var _chartRecs=null, _chartWait=0;
+  function drawFromRecs(){
+    if(!_chartRecs||!_chartRecs.length)return false;
+    if(!(xlmUsd>0))return false;
+    var pts=_chartRecs.map(function(x){return {t:+x.timestamp, v:(+x.avg||+x.close||0)*xlmUsd,
+      vol:(+x.counter_volume||0)*xlmUsd, tr:(+x.trade_count||0)};}).filter(function(p){return p.v>0;});
+    if(pts.length<2)return false;
+    drawChart(pts); return true;
+  }
   function loadChart(tf){
     chartTF=tf; var cfg=tfCfg(tf), now=Date.now(), start=now-cfg.span;
     var url=H+"/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+cfg.res+"&start_time="+start+"&end_time="+now+"&order=asc&limit=200";
     j(url).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
-      var pts=r.map(function(x){return {t:+x.timestamp, v:(+x.avg||+x.close||0)*xlmUsd, vol:(+x.counter_volume||0)*xlmUsd, tr:(+x.trade_count||0)};}).filter(function(p){return p.v>0;});
-      if(pts.length>=2)drawChart(pts);
+      _chartRecs=r;
+      // If the rate is not in yet, wait for it rather than silently giving up. Bounded, so a page that
+      // never gets a price stops asking instead of spinning for the whole session.
+      if(!drawFromRecs()&&r.length>=2&&!_chartWait){
+        _chartWait=1;
+        var n=0,iv=setInterval(function(){ if(drawFromRecs()||++n>60){ clearInterval(iv); _chartWait=0; } },200);
+      }
     }).catch(function(){});
   }
   function wireChartTabs(){
@@ -1084,8 +1105,11 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
 
   function loadData(){
     // XLM price (USD)
-    j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd").then(function(d){
-      xlmUsd=(d&&d.stellar&&+d.stellar.usd)||xlmUsd; if(xlmUsd>0){ window.__lxXlmUsd=xlmUsd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } applyAll(); try{ loadChart(chartTF); }catch(_){}   // chart needs xlmUsd for USD pricing
+    // Our own edge, Horizon-backed and cached, for the reason recorded in functions/lxapi/xlm.js:
+    // CoinGecko refuses datacenter egress and rate-limits everyone else, and this page cannot draw its
+    // chart at all until the XLM price arrives.
+    j("/lxapi/xlm").then(function(d){
+      xlmUsd=(d&&+d.usd)||xlmUsd; if(xlmUsd>0){ window.__lxXlmUsd=xlmUsd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } applyAll(); try{ drawFromRecs(); }catch(_){}   // redraw, not refetch: the records are already in hand
     }).catch(function(){});
     // LUMOS/XLM daily closes (spot price + 24h change + 24h volume) via trade aggregations
     var ta="https://horizon.stellar.org/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution=86400000&order=desc&limit=2";

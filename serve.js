@@ -928,6 +928,10 @@ async function netStats(req, res) {
     const full = recs.length > 1 ? recs[recs.length - 2] : null;
     if (!full) return send({ error: 'no complete day' }, 502);
     // Bounded like the Pages Function: five seconds, then go without it. See that file.
+    // NOTE this mirror flatters production: Node keeps the losing promise alive after the response, so
+    // ASSETCOUNT_CACHE fills on its own and the second request here always has the count. A Worker
+    // cancels it instead, which is why the deployed version needed waitUntil. Do not judge that path
+    // from this one.
     const assets = await Promise.race([
       netAssetCount(),
       new Promise((r) => setTimeout(() => r(null), 5000)),

@@ -69,8 +69,11 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'txs:(ns&&ns.transactions)?_n(ns.transactions):"\\u2014",'
 +'wallets:(ns&&ns.activeWallets)?_n(ns.activeWallets):"\\u2014",'
 +'dayTip:_day};'
++'var _old=null;try{_old=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}'
++'if(_old&&!_old.length){for(var _k in _v){if(_v[_k]==="\\u2014"&&_old[_k]&&_old[_k]!=="\\u2014")_v[_k]=_old[_k];}}'
 +'rebuildStats(_v);'
-+'try{localStorage.setItem("lumos.netstats",JSON.stringify(_v));}catch(_){}'   // cache last real values so the next load shows them instantly (no blank/loading flash)
++'var _keep={};for(var _k2 in _v){if(_v[_k2]&&_v[_k2]!=="\\u2014")_keep[_k2]=_v[_k2];}'
++'try{localStorage.setItem("lumos.netstats",JSON.stringify(_keep));}catch(_){}'   // cache last real values so the next load shows them instantly (no blank/loading flash)
 +'}).catch(function(){});}'
 // ---- live activity feed (real swaps) ----
 +'var LX_FEEACCT="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";'
@@ -127,8 +130,9 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // A cache written by a previous build is an ARRAY, not this object, so the shape check is what stops a
 // warm start restoring a strip of undefineds.
 +'function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}'
-+'if(c&&!c.length&&c.assets)rebuildStats(c);'
-+'else rebuildStats({assets:"\\u2026",pools:"\\u2026",tvl:"\\u2026",trades:"\\u2026",txs:"\\u2026",wallets:"\\u2026",dayTip:""});}'
++'var _d={assets:"\\u2026",pools:"\\u2026",tvl:"\\u2026",trades:"\\u2026",txs:"\\u2026",wallets:"\\u2026",dayTip:""};'
++'if(c&&!c.length&&typeof c==="object"){for(var k in _d){if(c[k]&&c[k]!=="\\u2014")_d[k]=c[k];}}'
++'rebuildStats(_d);}'
 +'function run(){prep();stats();feed();}'
 +'if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);'
 +'setInterval(feed,60000);setInterval(stats,45000);'
