@@ -5365,6 +5365,16 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       // document, so scoping it by passing the row would have silently rewritten every data-copy on
       // the page, pool ids included.
       [].slice.call(row.querySelectorAll("[data-copy]")).forEach(function(b){
+        // #3 (batch 4): the DESKTOP page ships its own [data-copy] handler with its own toast, so a
+        // single tap produced two: "Address copied to clipboard" and ours. stopPropagation cannot
+        // prevent that -- both listeners are on the SAME element, and the page bound its one first, so
+        // it has already fired by the time ours runs. Replace the node with a clone: a clone carries
+        // the markup but none of the listeners, which orphans the page's handler and leaves exactly
+        // one confirmation. Same trick the header fields in _dexassetdata use, and for the same reason.
+        if(!b.__lxcpc&&b.parentNode){
+          var _c=b.cloneNode(true); _c.__lxcpc=1;
+          b.parentNode.replaceChild(_c,b); b=_c;
+        }
         if(b.getAttribute("data-copy")!==ISSUER)b.setAttribute("data-copy",ISSUER);
         // It copies, and always did once data-copy was right -- but it says NOTHING when it does, and
         // a control that gives no answer reads as a broken one. Own the click so the confirmation is

@@ -1549,6 +1549,20 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       // Finish counting the day's volume behind the already-rendered page (see volDeepen).
       // The edge answers in one request; volDeepen is what it falls back to if that fails.
       try{ if(!volFast())volDeepen(); }catch(_){ try{ volDeepen(); }catch(_e){} }
+      // #12: and a deadline on the WORD. Whatever happens upstream -- the edge slow, the edge down,
+      // the fallback walking pages one at a time -- "Counting…" stops after twelve seconds and the
+      // floor we already have is shown, marked ">=". The figure can still improve afterwards; what it
+      // can no longer do is sit on a participle indefinitely, which is what was actually complained
+      // about. Cleared by whichever source finishes first, so a fast answer never sees this fire.
+      try{ if(DET&&DET.volCounting&&!DET.__volTimer){
+        DET.__volTimer=setTimeout(function(){
+          if(!DET||!DET.volCounting)return;
+          DET.volCounting=false;
+          if(DET.vol24Xlm==null){ DET.vol24Xlm=0; DET.fees24Xlm=0; }
+          DET.volPartial=true;
+          try{ paintDetail(); }catch(_e){}
+        },12000);
+      } }catch(_){}
       // The two heavy feeds land here, after the page is already on screen. Each repaints only its own
       // list. Both are guarded: a failure leaves the page exactly as it is rather than blanking a tab.
       if(opsLate){ var _ol=opsLate; opsLate=null;
@@ -1702,7 +1716,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var box=src.cloneNode(true); box.className=(src.className||"ph-stat")+" lx-partstat";
     var ic=box.querySelector(".ic");
     if(ic){ ic.className="ic part"; ic.innerHTML=PART_ICO; }
-    var l=box.querySelector(".l"); if(l)l.textContent="Providers";
+    var l=box.querySelector(".l"); if(l)l.textContent="Participants";
     var v=box.querySelector(".v"); if(v)v.textContent="\\u2014";
     var sb=box.querySelector(".s"); if(sb)sb.textContent="";
     row.appendChild(box);
@@ -1721,9 +1735,12 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var U0=d.nonXlm?d.a0.code:"XLM";
       // When no USD figure exists, drop the whole "· ≈ …" clause. It used to print "· ≈ —", which reads as a
       // broken field rather than an unpriced pair — and is what made the Liquidity box look wrong.
+      // #13: these sub-lines were written long and then clipped by the cell they live in, so the one
+      // figure worth reading -- the dollar value -- was the part that got cut ("+ 2,317,207 USDC ·
+      // ≈ …"). Abbreviated amounts, so the money always fits.
       if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,num(d.a0.amt)+" "+U0);
-          if(sub)setText(sub,"+ "+num(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \\u00b7 \\u2248 "+usd(d.tvlUsd)):"")); }
-        else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+num(d.tok)+" "+d.code+" \\u00b7 \\u2248 "+usd(d.tvlUsd)); } }
+          if(sub)setText(sub,"+ "+qty(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \\u00b7 "+usd(d.tvlUsd)):"")); }
+        else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+qty(d.tok)+" "+d.code+(d.tvlUsd>0?(" \\u00b7 "+usd(d.tvlUsd)):"")); } }
       // null = the trades fetch never answered. Print a dash: a confident "0 XLM" on a pool that traded all
       // day is worse than admitting we do not know.
       // #12: this used to print the running sum while volDeepen walked the day, labelled ">= N, still
@@ -1736,9 +1753,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         else if(d.vol24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
         // volPartial can still be true at the end: a pool busy enough to exceed the page budget leaves a
         // floor as the best answer available, and it stays marked as one.
+        // #13: the sub-line under a volume should be that volume in dollars, which is what the other
+        // three boxes do. It was a sentence explaining the ">=" instead -- and one that did not fit,
+        // so it read "at least, over the la…". The ">=" already says that much on its own.
         else { if(v)setText(v,(d.volPartial?"\\u2265 ":"")+num(d.vol24Xlm)+" "+U0);
-          if(sub)setText(sub, d.volPartial ? "at least, over the last 24h"
-            : (d.nonXlm?(d.vol24Usd>0?"\\u2248 "+usd(d.vol24Usd):"24h volume"):"\\u2248 "+usd(d.vol24Usd))); } }
+          if(sub)setText(sub, (d.vol24Usd>0)?("\\u2248 "+usd(d.vol24Usd)):"24h volume"); } }
       else if(/fee/.test(cn)){
         if(d.volCounting){ if(v)setText(v,"Counting\\u2026"); if(sub)setText(sub,""); }
         else if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,""); }
@@ -3382,6 +3401,28 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
 }
 
 const files = fs.readdirSync('.').filter(f => /^lumoscore-.*-(desktop|mobile)\.html$/.test(f));
+// #10: the design ships THREE stat boxes on the pool header and the fourth -- Participants -- was
+// added at runtime. So every load painted a three-box grid into a four-column rule: two on top, one
+// below, and a hole where the fourth would land, for as long as the data took. Ship all four in the
+// markup and there is no in-between state. The runtime builder still exists and simply finds one
+// already there, so nothing depends on this having worked.
+//
+// The end of .ph-stats is found by BALANCING <div> tags rather than by counting closing tags: each
+// stat box is itself nested two deep, and a guessed closing marker lands in the wrong place.
+function addPartStat(p) {
+  const open = p.indexOf('<div class="ph-stats">');
+  if (open < 0 || p.indexOf('lx-partstat') >= 0) return p;
+  const re = /<\/?div\b/gi;
+  re.lastIndex = open;
+  let depth = 0, m, end = -1;
+  while ((m = re.exec(p))) {
+    if (m[0][1] === '/') { depth--; if (depth === 0) { end = m.index; break; } }
+    else depth++;
+  }
+  if (end < 0) return p;
+  return p.slice(0, end) + PART_STAT_BOX + p.slice(end);
+}
+const PART_STAT_BOX = "<div class=\"ph-stat lx-partstat\"><div class=\"head\"><div class=\"ic part\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path></svg></div><div class=\"l\">Participants</div></div><div class=\"v\">&#8212;</div><div class=\"s\"></div></div>";
 let n = 0, containers = 0;
 for (const file of files) {
   let data; try { data = read(file); } catch (e) { continue; }
@@ -3406,6 +3447,7 @@ for (const file of files) {
       return blk.replace(/<button class="active">1Y<\/button>/, '<button>1Y</button>')
                 .replace(/<button>1M<\/button>/, '<button class="active">1M</button>');
     });
+    p = addPartStat(p);
     p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }

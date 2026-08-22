@@ -1747,6 +1747,18 @@ html body .pool-header-row .ph-icons>*{
    through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
    Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
 .mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-mobsearch-css">
+/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
+   primary and an afterthought. */
+.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
+  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
+.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
+.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
+/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
+   leave it about 120px, and it already truncates. Nothing else may shrink. */
+.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
 </style><style id="lx-lt-css">
 /* verified mark and home domain: the same badge and link treatment the rest of the site uses */
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:10px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:middle;flex:0 0 22px}
@@ -1903,18 +1915,6 @@ html body .pool-header-row .ph-icons>*{
 .lx-cpmenu .lx-cpm-ic{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;overflow:hidden}
 .lx-cpmenu .lx-cpm-bal{margin-left:auto;font-size:12px;color:var(--text-soft,#8a8fa3);font-weight:600}
 #createPoolModal .asset-picker .ap-ico{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
-</style><style id="lx-mobsearch-css">
-/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
-   primary and an afterthought. */
-.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
-  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
-  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
-  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
-.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
-.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
-/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
-   leave it about 120px, and it already truncates. Nothing else may shrink. */
-.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
 </style></head>
 <body><!--lx-menu--><div class="menu-overlay" id="menuOverlay"></div>
   <aside class="slide-menu" id="slideMenu">
@@ -5069,6 +5069,68 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
+})();</script><script id="lx-mobsearch">(function(){
+  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
+  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
+  function open(){
+    // The page's own opener, so this button and the menu row open the same thing in the same state.
+    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
+    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
+    // itself. A header button that silently does nothing is worse than no header button.
+    var row=document.querySelector("[data-open-search]");
+    if(row){ row.click(); return; }
+    var ov=document.getElementById("searchPopup");
+    if(ov){ ov.classList.add("open");
+      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
+  }
+  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
+  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
+  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
+  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
+  function tidyMenu(){
+    var menu=document.querySelector(".slide-menu"); if(!menu)return;
+    var row=menu.querySelector("[data-open-search]");
+    if(row&&row.style.display!=="none")row.style.display="none";
+    var links=menu.querySelector(".menu-links")||menu;
+    var kids=[].slice.call(links.children);
+    for(var i=0;i<kids.length;i++){
+      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
+      var anyVisible=false;
+      for(var j=i+1;j<kids.length;j++){
+        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
+        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
+      }
+      var want=anyVisible?"":"none";
+      if(kids[i].style.display!==want)kids[i].style.display=want;
+    }
+  }
+  function place(){
+    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
+    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
+    // those two.
+    var bar=document.querySelector(".appbar"); if(!bar)return;
+    // Only where there is something to open. On a page without the popup this would be a dead control.
+    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
+    if(bar.querySelector(".lx-hsearch"))return;
+    var b=document.createElement("button");
+    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
+    b.innerHTML=ICON;
+    b.addEventListener("click",function(e){
+      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
+      open();
+    });
+    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
+    // stays the last thing on the right, where a thumb expects it.
+    var menu=document.getElementById("menuBtn");
+    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
+    else bar.appendChild(b);
+  }
+  function run(){ place(); tidyMenu(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
+  // menu is built when it is first opened, so the row to hide does not exist until then.
+  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-ltdata">(function(){
   if(window.__lxLT)return;window.__lxLT=true;
   // AUDIT (flash sweep): every .lxlt gate below hides content until our data claims it. If any single fetch
@@ -5221,6 +5283,16 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       // document, so scoping it by passing the row would have silently rewritten every data-copy on
       // the page, pool ids included.
       [].slice.call(row.querySelectorAll("[data-copy]")).forEach(function(b){
+        // #3 (batch 4): the DESKTOP page ships its own [data-copy] handler with its own toast, so a
+        // single tap produced two: "Address copied to clipboard" and ours. stopPropagation cannot
+        // prevent that -- both listeners are on the SAME element, and the page bound its one first, so
+        // it has already fired by the time ours runs. Replace the node with a clone: a clone carries
+        // the markup but none of the listeners, which orphans the page's handler and leaves exactly
+        // one confirmation. Same trick the header fields in _dexassetdata use, and for the same reason.
+        if(!b.__lxcpc&&b.parentNode){
+          var _c=b.cloneNode(true); _c.__lxcpc=1;
+          b.parentNode.replaceChild(_c,b); b=_c;
+        }
         if(b.getAttribute("data-copy")!==ISSUER)b.setAttribute("data-copy",ISSUER);
         // It copies, and always did once data-copy was right -- but it says NOTHING when it does, and
         // a control that gives no answer reads as a broken one. Own the click so the confirmation is
@@ -6032,68 +6104,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState!=="loading")boot();
   else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-mobsearch">(function(){
-  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
-  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
-  function open(){
-    // The page's own opener, so this button and the menu row open the same thing in the same state.
-    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
-    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
-    // itself. A header button that silently does nothing is worse than no header button.
-    var row=document.querySelector("[data-open-search]");
-    if(row){ row.click(); return; }
-    var ov=document.getElementById("searchPopup");
-    if(ov){ ov.classList.add("open");
-      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
-  }
-  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
-  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
-  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
-  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
-  function tidyMenu(){
-    var menu=document.querySelector(".slide-menu"); if(!menu)return;
-    var row=menu.querySelector("[data-open-search]");
-    if(row&&row.style.display!=="none")row.style.display="none";
-    var links=menu.querySelector(".menu-links")||menu;
-    var kids=[].slice.call(links.children);
-    for(var i=0;i<kids.length;i++){
-      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
-      var anyVisible=false;
-      for(var j=i+1;j<kids.length;j++){
-        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
-        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
-      }
-      var want=anyVisible?"":"none";
-      if(kids[i].style.display!==want)kids[i].style.display=want;
-    }
-  }
-  function place(){
-    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
-    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
-    // those two.
-    var bar=document.querySelector(".appbar"); if(!bar)return;
-    // Only where there is something to open. On a page without the popup this would be a dead control.
-    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
-    if(bar.querySelector(".lx-hsearch"))return;
-    var b=document.createElement("button");
-    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
-    b.innerHTML=ICON;
-    b.addEventListener("click",function(e){
-      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
-      open();
-    });
-    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
-    // stays the last thing on the right, where a thumb expects it.
-    var menu=document.getElementById("menuBtn");
-    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
-    else bar.appendChild(b);
-  }
-  function run(){ place(); tidyMenu(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
-  else run();
-  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
-  // menu is built when it is first opened, so the row to hide does not exist until then.
-  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

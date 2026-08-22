@@ -6148,6 +6148,20 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       // Finish counting the day's volume behind the already-rendered page (see volDeepen).
       // The edge answers in one request; volDeepen is what it falls back to if that fails.
       try{ if(!volFast())volDeepen(); }catch(_){ try{ volDeepen(); }catch(_e){} }
+      // #12: and a deadline on the WORD. Whatever happens upstream -- the edge slow, the edge down,
+      // the fallback walking pages one at a time -- "Counting…" stops after twelve seconds and the
+      // floor we already have is shown, marked ">=". The figure can still improve afterwards; what it
+      // can no longer do is sit on a participle indefinitely, which is what was actually complained
+      // about. Cleared by whichever source finishes first, so a fast answer never sees this fire.
+      try{ if(DET&&DET.volCounting&&!DET.__volTimer){
+        DET.__volTimer=setTimeout(function(){
+          if(!DET||!DET.volCounting)return;
+          DET.volCounting=false;
+          if(DET.vol24Xlm==null){ DET.vol24Xlm=0; DET.fees24Xlm=0; }
+          DET.volPartial=true;
+          try{ paintDetail(); }catch(_e){}
+        },12000);
+      } }catch(_){}
       // The two heavy feeds land here, after the page is already on screen. Each repaints only its own
       // list. Both are guarded: a failure leaves the page exactly as it is rather than blanking a tab.
       if(opsLate){ var _ol=opsLate; opsLate=null;
@@ -6301,7 +6315,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var box=src.cloneNode(true); box.className=(src.className||"ph-stat")+" lx-partstat";
     var ic=box.querySelector(".ic");
     if(ic){ ic.className="ic part"; ic.innerHTML=PART_ICO; }
-    var l=box.querySelector(".l"); if(l)l.textContent="Providers";
+    var l=box.querySelector(".l"); if(l)l.textContent="Participants";
     var v=box.querySelector(".v"); if(v)v.textContent="\u2014";
     var sb=box.querySelector(".s"); if(sb)sb.textContent="";
     row.appendChild(box);
@@ -6320,9 +6334,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       var U0=d.nonXlm?d.a0.code:"XLM";
       // When no USD figure exists, drop the whole "· ≈ …" clause. It used to print "· ≈ —", which reads as a
       // broken field rather than an unpriced pair — and is what made the Liquidity box look wrong.
+      // #13: these sub-lines were written long and then clipped by the cell they live in, so the one
+      // figure worth reading -- the dollar value -- was the part that got cut ("+ 2,317,207 USDC ·
+      // ≈ …"). Abbreviated amounts, so the money always fits.
       if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,num(d.a0.amt)+" "+U0);
-          if(sub)setText(sub,"+ "+num(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \u00b7 \u2248 "+usd(d.tvlUsd)):"")); }
-        else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+num(d.tok)+" "+d.code+" \u00b7 \u2248 "+usd(d.tvlUsd)); } }
+          if(sub)setText(sub,"+ "+qty(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \u00b7 "+usd(d.tvlUsd)):"")); }
+        else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+qty(d.tok)+" "+d.code+(d.tvlUsd>0?(" \u00b7 "+usd(d.tvlUsd)):"")); } }
       // null = the trades fetch never answered. Print a dash: a confident "0 XLM" on a pool that traded all
       // day is worse than admitting we do not know.
       // #12: this used to print the running sum while volDeepen walked the day, labelled ">= N, still
@@ -6335,9 +6352,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         else if(d.vol24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
         // volPartial can still be true at the end: a pool busy enough to exceed the page budget leaves a
         // floor as the best answer available, and it stays marked as one.
+        // #13: the sub-line under a volume should be that volume in dollars, which is what the other
+        // three boxes do. It was a sentence explaining the ">=" instead -- and one that did not fit,
+        // so it read "at least, over the la…". The ">=" already says that much on its own.
         else { if(v)setText(v,(d.volPartial?"\u2265 ":"")+num(d.vol24Xlm)+" "+U0);
-          if(sub)setText(sub, d.volPartial ? "at least, over the last 24h"
-            : (d.nonXlm?(d.vol24Usd>0?"\u2248 "+usd(d.vol24Usd):"24h volume"):"\u2248 "+usd(d.vol24Usd))); } }
+          if(sub)setText(sub, (d.vol24Usd>0)?("\u2248 "+usd(d.vol24Usd)):"24h volume"); } }
       else if(/fee/.test(cn)){
         if(d.volCounting){ if(v)setText(v,"Counting\u2026"); if(sub)setText(sub,""); }
         else if(d.fees24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,""); }

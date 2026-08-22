@@ -1384,6 +1384,18 @@ html body .pool-header-row .ph-icons>*{
    through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
    Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
 .mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-mobsearch-css">
+/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
+   primary and an afterthought. */
+.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
+  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
+.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
+.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
+/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
+   leave it about 120px, and it already truncates. Nothing else may shrink. */
+.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
 </style><style id="lx-poolshero-css">
 /* The card's ground is set once, for BOTH heroes, in _heromono.js. Declaring it here as well is how
    the two drifted apart before. Only overflow stays -- the strip's bottom corners need it. */
@@ -1582,6 +1594,17 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lx-poolhead{display:flex;justify-content:space-between;align-items:baseline;margin:22px 0 10px}
 .lx-poolhead h2{margin:0;font-size:17px;font-weight:800;color:var(--text);letter-spacing:-.3px}
 .lx-poolhead .mdx-hero-ctas{display:flex!important;align-items:center;gap:7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
+/* #9, the half of the flash that was left. Making the heading sr-only stopped the words appearing, but
+   the two CTA buttons under it are still MOVED by the script -- so they paint where the design put them
+   for a frame or two, then jump. Held invisible until the hero (or the section head we build for the
+   phone) has them; the position is reserved either way, so nothing shifts when they arrive.
+   The animation is a failsafe, not decoration: if the script never runs, the buttons reveal themselves
+   after three seconds rather than staying hidden for good. A CSS gate whose only key is a script is how
+   a page ends up permanently blank -- that has happened here before. */
+.mdx-hero-ctas{opacity:0;animation:lxPhRev 0s linear 3s forwards}
+@keyframes lxPhRev{to{opacity:1}}
+.lumos-promo .mdx-hero-ctas,.lx-poolhead .mdx-hero-ctas,
+.lumos-promo .dex-hero-r,.lx-poolhead .dex-hero-r{opacity:1!important;animation:none!important}
 /* primary first, ghost second -- the order Trade reads in */
 .lx-poolhead .mdx-hero-btn.primary{order:1}
 .lx-poolhead .mdx-hero-btn.ghost{order:2}
@@ -1591,18 +1614,6 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 .lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
-</style><style id="lx-mobsearch-css">
-/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
-   primary and an afterthought. */
-.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
-  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
-  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
-  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
-.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
-.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
-/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
-   leave it about 120px, and it already truncates. Nothing else may shrink. */
-.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
 </style><style id="lx-amm-css">
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
@@ -4941,6 +4952,68 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
+})();</script><script id="lx-mobsearch">(function(){
+  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
+  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
+  function open(){
+    // The page's own opener, so this button and the menu row open the same thing in the same state.
+    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
+    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
+    // itself. A header button that silently does nothing is worse than no header button.
+    var row=document.querySelector("[data-open-search]");
+    if(row){ row.click(); return; }
+    var ov=document.getElementById("searchPopup");
+    if(ov){ ov.classList.add("open");
+      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
+  }
+  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
+  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
+  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
+  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
+  function tidyMenu(){
+    var menu=document.querySelector(".slide-menu"); if(!menu)return;
+    var row=menu.querySelector("[data-open-search]");
+    if(row&&row.style.display!=="none")row.style.display="none";
+    var links=menu.querySelector(".menu-links")||menu;
+    var kids=[].slice.call(links.children);
+    for(var i=0;i<kids.length;i++){
+      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
+      var anyVisible=false;
+      for(var j=i+1;j<kids.length;j++){
+        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
+        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
+      }
+      var want=anyVisible?"":"none";
+      if(kids[i].style.display!==want)kids[i].style.display=want;
+    }
+  }
+  function place(){
+    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
+    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
+    // those two.
+    var bar=document.querySelector(".appbar"); if(!bar)return;
+    // Only where there is something to open. On a page without the popup this would be a dead control.
+    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
+    if(bar.querySelector(".lx-hsearch"))return;
+    var b=document.createElement("button");
+    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
+    b.innerHTML=ICON;
+    b.addEventListener("click",function(e){
+      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
+      open();
+    });
+    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
+    // stays the last thing on the right, where a thumb expects it.
+    var menu=document.getElementById("menuBtn");
+    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
+    else bar.appendChild(b);
+  }
+  function run(){ place(); tidyMenu(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
+  // menu is built when it is first opened, so the row to hide does not exist until then.
+  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-poolshero">(function(){
   function q(s,r){return (r||document).querySelector(s);}
   // Every step is a MOVE or a class flag on something that already exists, and every step is guarded, so
@@ -5040,68 +5113,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
   else boot();
-})();</script><script id="lx-mobsearch">(function(){
-  if(window.__lxMobSearch)return; window.__lxMobSearch=1;
-  var ICON="<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.1\" stroke-linecap=\"round\" stroke-linejoin=\"round\" aria-hidden=\"true\"><circle cx=\"11\" cy=\"11\" r=\"7\"></circle><line x1=\"21\" y1=\"21\" x2=\"16.65\" y2=\"16.65\"></line></svg>";
-  function open(){
-    // The page's own opener, so this button and the menu row open the same thing in the same state.
-    try{ if(typeof window._openSearchPopup==="function"){ window._openSearchPopup(); return; } }catch(_){}
-    // Fallbacks, in the order the rest of the app already uses: the menu's own row, then the overlay
-    // itself. A header button that silently does nothing is worse than no header button.
-    var row=document.querySelector("[data-open-search]");
-    if(row){ row.click(); return; }
-    var ov=document.getElementById("searchPopup");
-    if(ov){ ov.classList.add("open");
-      var i=ov.querySelector("input"); if(i)setTimeout(function(){ try{ i.focus(); }catch(_){} },60); }
-  }
-  // #9: search is in the header now, so the menu row is a second door to the same room. Hidden rather
-  // than stripped from the markup, because _mobilemenu.js copies this menu between pages and a runtime
-  // rule cannot get out of step with a copy. The group heading goes with it when nothing is left under
-  // it -- computed, not assumed, so adding a row to Discover later brings the heading back on its own.
-  function tidyMenu(){
-    var menu=document.querySelector(".slide-menu"); if(!menu)return;
-    var row=menu.querySelector("[data-open-search]");
-    if(row&&row.style.display!=="none")row.style.display="none";
-    var links=menu.querySelector(".menu-links")||menu;
-    var kids=[].slice.call(links.children);
-    for(var i=0;i<kids.length;i++){
-      if(!kids[i].classList||!kids[i].classList.contains("menu-group"))continue;
-      var anyVisible=false;
-      for(var j=i+1;j<kids.length;j++){
-        if(kids[j].classList&&kids[j].classList.contains("menu-group"))break;
-        if(kids[j].style.display!=="none"){ anyVisible=true; break; }
-      }
-      var want=anyVisible?"":"none";
-      if(kids[i].style.display!==want)kids[i].style.display=want;
-    }
-  }
-  function place(){
-    // .appbar, not header.appbar: Trade and the dashboard ship it as a <header>, Pools and the pool
-    // page ship the same bar as a <div>. Keying on the tag is why the button was missing on exactly
-    // those two.
-    var bar=document.querySelector(".appbar"); if(!bar)return;
-    // Only where there is something to open. On a page without the popup this would be a dead control.
-    if(!document.getElementById("searchPopup")&&!document.querySelector("[data-open-search]"))return;
-    if(bar.querySelector(".lx-hsearch"))return;
-    var b=document.createElement("button");
-    b.type="button"; b.className="lx-hsearch"; b.setAttribute("aria-label","Search");
-    b.innerHTML=ICON;
-    b.addEventListener("click",function(e){
-      try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
-      open();
-    });
-    // Immediately before the menu button, so the reading order is wallet, search, menu -- and the menu
-    // stays the last thing on the right, where a thumb expects it.
-    var menu=document.getElementById("menuBtn");
-    if(menu&&menu.parentNode===bar)bar.insertBefore(b,menu);
-    else bar.appendChild(b);
-  }
-  function run(){ place(); tidyMenu(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
-  else run();
-  // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
-  // menu is built when it is first opened, so the row to hide does not exist until then.
-  try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
 })();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
@@ -6292,6 +6303,20 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       // Finish counting the day's volume behind the already-rendered page (see volDeepen).
       // The edge answers in one request; volDeepen is what it falls back to if that fails.
       try{ if(!volFast())volDeepen(); }catch(_){ try{ volDeepen(); }catch(_e){} }
+      // #12: and a deadline on the WORD. Whatever happens upstream -- the edge slow, the edge down,
+      // the fallback walking pages one at a time -- "Counting…" stops after twelve seconds and the
+      // floor we already have is shown, marked ">=". The figure can still improve afterwards; what it
+      // can no longer do is sit on a participle indefinitely, which is what was actually complained
+      // about. Cleared by whichever source finishes first, so a fast answer never sees this fire.
+      try{ if(DET&&DET.volCounting&&!DET.__volTimer){
+        DET.__volTimer=setTimeout(function(){
+          if(!DET||!DET.volCounting)return;
+          DET.volCounting=false;
+          if(DET.vol24Xlm==null){ DET.vol24Xlm=0; DET.fees24Xlm=0; }
+          DET.volPartial=true;
+          try{ paintDetail(); }catch(_e){}
+        },12000);
+      } }catch(_){}
       // The two heavy feeds land here, after the page is already on screen. Each repaints only its own
       // list. Both are guarded: a failure leaves the page exactly as it is rather than blanking a tab.
       if(opsLate){ var _ol=opsLate; opsLate=null;
@@ -6445,7 +6470,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var box=src.cloneNode(true); box.className=(src.className||"ph-stat")+" lx-partstat";
     var ic=box.querySelector(".ic");
     if(ic){ ic.className="ic part"; ic.innerHTML=PART_ICO; }
-    var l=box.querySelector(".l"); if(l)l.textContent="Providers";
+    var l=box.querySelector(".l"); if(l)l.textContent="Participants";
     var v=box.querySelector(".v"); if(v)v.textContent="\u2014";
     var sb=box.querySelector(".s"); if(sb)sb.textContent="";
     row.appendChild(box);
@@ -6464,9 +6489,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       var U0=d.nonXlm?d.a0.code:"XLM";
       // When no USD figure exists, drop the whole "· ≈ …" clause. It used to print "· ≈ —", which reads as a
       // broken field rather than an unpriced pair — and is what made the Liquidity box look wrong.
+      // #13: these sub-lines were written long and then clipped by the cell they live in, so the one
+      // figure worth reading -- the dollar value -- was the part that got cut ("+ 2,317,207 USDC ·
+      // ≈ …"). Abbreviated amounts, so the money always fits.
       if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,num(d.a0.amt)+" "+U0);
-          if(sub)setText(sub,"+ "+num(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \u00b7 \u2248 "+usd(d.tvlUsd)):"")); }
-        else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+num(d.tok)+" "+d.code+" \u00b7 \u2248 "+usd(d.tvlUsd)); } }
+          if(sub)setText(sub,"+ "+qty(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \u00b7 "+usd(d.tvlUsd)):"")); }
+        else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+qty(d.tok)+" "+d.code+(d.tvlUsd>0?(" \u00b7 "+usd(d.tvlUsd)):"")); } }
       // null = the trades fetch never answered. Print a dash: a confident "0 XLM" on a pool that traded all
       // day is worse than admitting we do not know.
       // #12: this used to print the running sum while volDeepen walked the day, labelled ">= N, still
@@ -6479,9 +6507,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         else if(d.vol24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
         // volPartial can still be true at the end: a pool busy enough to exceed the page budget leaves a
         // floor as the best answer available, and it stays marked as one.
+        // #13: the sub-line under a volume should be that volume in dollars, which is what the other
+        // three boxes do. It was a sentence explaining the ">=" instead -- and one that did not fit,
+        // so it read "at least, over the la…". The ">=" already says that much on its own.
         else { if(v)setText(v,(d.volPartial?"\u2265 ":"")+num(d.vol24Xlm)+" "+U0);
-          if(sub)setText(sub, d.volPartial ? "at least, over the last 24h"
-            : (d.nonXlm?(d.vol24Usd>0?"\u2248 "+usd(d.vol24Usd):"24h volume"):"\u2248 "+usd(d.vol24Usd))); } }
+          if(sub)setText(sub, (d.vol24Usd>0)?("\u2248 "+usd(d.vol24Usd)):"24h volume"); } }
       else if(/fee/.test(cn)){
         if(d.volCounting){ if(v)setText(v,"Counting\u2026"); if(sub)setText(sub,""); }
         else if(d.fees24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,""); }

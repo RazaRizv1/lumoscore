@@ -30,9 +30,15 @@ const SHELLS = [
 // ---------------------------------------------------------------------------------------------------
 // CONTENT
 // ---------------------------------------------------------------------------------------------------
+// #7: the same generator the wallet's Receive modal uses. Read from disk and inlined, so the QR is
+// produced on the device and the address is never handed to a third-party image service -- which is
+// what most "QR for this string" endpoints are, and not a thing to do with a wallet address.
+const QRLIB = '<script id="lx-qrlib">' + fs.readFileSync(__dirname + '/_qrlib.js', 'utf8') + '<\/script>';
+
 const ICO = {
   copy: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
   out: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><path d="M15 3h6v6"/><path d="M10 14L21 3"/></svg>',
+  qr: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><line x1="14" y1="14" x2="14" y2="14.01"/><line x1="21" y1="14" x2="21" y2="14.01"/><line x1="14" y1="21" x2="14" y2="21.01"/><line x1="21" y1="21" x2="21" y2="21.01"/><line x1="17.5" y1="17.5" x2="17.5" y2="17.51"/></svg>',
   send: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
   back: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>'
 };
@@ -48,11 +54,17 @@ const MAIN_INNER = `
         <div class="acc-head-body">
           <div class="acc-title-row">
             <h1 class="acc-addr" id="accAddr" title="">&#8212;</h1>
-            <button class="acc-copy" id="accCopy" type="button" aria-label="Copy address">${ICO.copy}</button>
-            <!-- #10: the page tells you everything about an account and gave you nothing to DO with it.
-                 The label says "to this wallet" on purpose: this is somebody else's address, and a bare
-                 "Send" on a page showing another person's balances could be read as sending THEIRS. -->
-            <a class="acc-send" id="accSend" href="#">${ICO.send}<span>Send to this wallet</span></a>
+            <!-- #6: copy, QR and Send were three loose siblings of a wrapping address, on a row set to
+                 flex-start, so nothing lined up with anything. They are one group now, pinned to the
+                 right, and the row centres on a shared axis.
+                 #10: the label says "to this wallet" on purpose -- this is somebody else's address on a
+                 page listing somebody else's balances, and a bare "Send" could be read as sending
+                 THEIRS. -->
+            <span class="acc-actions">
+              <button class="acc-copy" id="accCopy" type="button" aria-label="Copy address">${ICO.copy}</button>
+              <button class="acc-copy acc-qr" id="accQr" type="button" aria-label="Show address QR code">${ICO.qr}</button>
+              <a class="acc-send" id="accSend" href="#">${ICO.send}<span>Send to this wallet</span></a>
+            </span>
           </div>
           <div class="acc-sub" id="accSub"></div>
         </div>
@@ -116,7 +128,10 @@ const STYLE = `<style id="lx-acc-css">
 .acc-avatar{display:block;width:64px;height:64px;border-radius:50%;flex:0 0 auto;background:var(--surface-2);
   background-size:cover;background-position:center;border:2px solid var(--border);box-shadow:0 2px 8px rgba(0,0,0,.28)}
 .acc-head-body{min-width:0;flex:1 1 auto}
-.acc-title-row{display:flex;align-items:flex-start;gap:8px;min-width:0}
+/* #6: centred on one axis, and the address is the only thing allowed to take the slack. */
+.acc-title-row{display:flex;align-items:center;gap:10px;min-width:0;flex-wrap:wrap}
+.acc-title-row .acc-addr{flex:1 1 auto;min-width:0}
+.acc-actions{display:inline-flex;align-items:center;gap:8px;flex:0 0 auto;margin-left:auto}
 
 .acc-addr{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:17px;font-weight:800;margin:0;
   letter-spacing:-.2px;line-height:1.3;word-break:break-all;overflow-wrap:anywhere}
@@ -133,12 +148,34 @@ const STYLE = `<style id="lx-acc-css">
 .acc-tag{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
   background:var(--surface-2);border:1px solid var(--border);font-size:12.5px;font-weight:700;color:var(--text)}
 
-.acc-send{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px;border-radius:10px;
-  border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;text-decoration:none;
-  font:800 12.5px/1 inherit;white-space:nowrap;flex:0 0 auto;transition:filter .14s ease}
-.acc-send:hover{filter:brightness(1.06)}
+/* Sized to the controls it sits beside -- 34px against the 30px icon buttons -- with the accent given
+   some depth so it reads as the one action on the row rather than a third chip. */
+.acc-send{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:34px;padding:0 15px;
+  border-radius:10px;border:0;color:#fff;text-decoration:none;white-space:nowrap;flex:0 0 auto;
+  font:800 12.5px/1 inherit;letter-spacing:.1px;
+  background:linear-gradient(135deg,var(--accent,#ea6a2c),#c1440a);
+  box-shadow:0 4px 14px -6px rgba(234,106,44,.85);
+  transition:transform .14s ease,box-shadow .14s ease,filter .14s ease}
+.acc-send:hover{filter:brightness(1.05);transform:translateY(-1px);box-shadow:0 7px 18px -7px rgba(234,106,44,.95)}
+.acc-send:active{transform:translateY(0)}
 .acc-send svg{flex:0 0 auto}
-@media(max-width:620px){.acc-send span{display:none}.acc-send{padding:0 10px}}
+.acc-copy{width:30px;height:30px;margin-top:0}
+@media(max-width:620px){
+.acc-send span{display:none}.acc-send{padding:0 12px}
+.acc-actions{margin-left:0}
+}
+/* #7: the address as a QR, so a phone camera can take it off the screen. Hover on a pointer, tap on a
+   touchscreen -- the button toggles .on, and the hover rule is behind a media query so a tap does not
+   leave a sticky hover state on a phone. */
+.acc-qr{position:relative}
+.acc-qrpop{position:absolute;top:calc(100% + 10px);right:0;z-index:60;padding:12px;border-radius:14px;
+  background:var(--surface,#fff);border:1px solid var(--border);box-shadow:0 16px 40px -12px rgba(0,0,0,.55);
+  display:none}
+.acc-qr.on .acc-qrpop{display:block}
+@media(hover:hover){.acc-qr:hover .acc-qrpop{display:block}}
+.acc-qrpop svg{display:block;width:150px;height:150px;shape-rendering:crispEdges}
+.acc-qrpop .cap{margin-top:8px;text-align:center;font:700 10.5px/1.3 'JetBrains Mono',monospace;
+  color:var(--text-soft);max-width:150px;word-break:break-all}
 .acc-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
 .acc-stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;min-width:0}
 .acc-stat .l{display:block;font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
@@ -784,6 +821,42 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     // #10: the wallet page owns Send -- the keys, the balances, the signing and the asset picker all
     // live there. Handing it the recipient in the url is the whole integration; building a second send
     // form here would be a second thing to keep correct about moving real money.
+    // #7: drawn once, the first time it is asked for. A QR of a 56-character address is a 37x37 grid;
+    // an <svg> of that many rects stays crisp at any size and costs nothing to keep around.
+    var qb=q("#accQr");
+    if(qb)(function(){
+      function build(){
+        if(!ADDR||qb.querySelector(".acc-qrpop"))return;
+        if(!window.qrcode)return;
+        var q2=null;
+        var lv=[[0,"H"],[0,"Q"],[8,"H"],[10,"H"],[0,"M"],[4,"M"]];
+        for(var i=0;i<lv.length;i++){ try{ var t=window.qrcode(lv[i][0],lv[i][1]); t.addData(ADDR); t.make(); q2=t; break; }catch(_){} }
+        if(!q2)return;
+        var n=q2.getModuleCount(), pad=2, size=n+pad*2, sq="";
+        for(var y=0;y<n;y++)for(var x=0;x<n;x++){
+          if(!q2.isDark(y,x))continue;
+          sq+='<rect x="'+(x+pad)+'" y="'+(y+pad)+'" width="1" height="1"></rect>';
+        }
+        var pop=document.createElement("div");
+        pop.className="acc-qrpop";
+        pop.innerHTML='<svg viewBox="0 0 '+size+' '+size+'" xmlns="http://www.w3.org/2000/svg">'
+          +'<rect width="'+size+'" height="'+size+'" fill="#fff"></rect>'
+          +'<g fill="#000">'+sq+'</g></svg>'
+          +'<div class="cap">'+shortG(ADDR)+'</div>';
+        qb.appendChild(pop);
+      }
+      qb.addEventListener("click",function(e){
+        try{ e.preventDefault(); e.stopPropagation(); }catch(_){}
+        build();
+        qb.classList.toggle("on");
+      });
+      qb.addEventListener("mouseenter",build);
+      // tapping anywhere else puts it away
+      document.addEventListener("click",function(ev){
+        if(qb.contains(ev.target))return;
+        qb.classList.remove("on");
+      },true);
+    })();
     var sb=q("#accSend");
     if(sb)sb.addEventListener("click",function(e){
       try{ e.preventDefault(); }catch(_){}
@@ -880,7 +953,9 @@ function buildPage(shell) {
   p = p.replace('</head>', STYLE + '</head>');
   const bi = p.lastIndexOf('</body>');
   if (bi < 0) return null;
-  return p.slice(0, bi) + SCRIPT + p.slice(bi);
+  // #7: the QR generator goes in BEFORE the page script, so window.qrcode exists by the time the
+  // button is wired. Only once -- a rebuild strips the previous copy in the caller.
+  return p.slice(0, bi) + QRLIB + SCRIPT + p.slice(bi);
 }
 
 let made = 0, containers = 0, skipped = [];
