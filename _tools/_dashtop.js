@@ -21,8 +21,11 @@ const STYLE = `<style id="lx-dashtop-css">
   background:var(--surface);border:1px solid var(--border);border-radius:16px;
   padding:16px 18px;margin:0 0 14px}
 .lx-xt-l{min-width:0;display:flex;flex-direction:column;gap:2px}
-.lx-xt-lbl{font:800 10px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--text-soft)}
+.lx-xt-lbl{font-weight:800;font-size:13px;line-height:1.15;font-family:'JetBrains Mono',monospace;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
+/* The XLM mark, sized to the label it sits beside. */
+.lx-xt-mark{width:20px;height:20px;flex:0 0 20px;border-radius:50%;margin-right:8px;
+  background:url('/assets/tokens/xlm.png') center/cover no-repeat,var(--surface-2)}
 /* The ledger height, beside the eyebrow rather than in the figures below. It is a liveness signal --
    "this chain is moving" -- not a statistic, and the strip has six of those already. */
 .lx-xt-ledger{font:700 10px/1 'JetBrains Mono',monospace;color:var(--text-muted);letter-spacing:.04em;
@@ -31,6 +34,20 @@ const STYLE = `<style id="lx-dashtop-css">
   flex:0 0 5px;animation:lxLedgerPulse 2.2s ease-in-out infinite}
 .lx-xt-l>.lx-xt-lbl{display:inline-flex;align-items:center}
 .lx-xt-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+/* #13: the readout. Pinned inside the plot rather than following the pointer, because on a phone the
+   finger IS the pointer and a tooltip under it is a tooltip you cannot see. Top-left, where the series
+   has headroom on every timeframe this chart offers. */
+.lx-xt-tip{position:absolute;left:10px;top:8px;z-index:5;display:none;pointer-events:none;
+  padding:8px 10px;border-radius:10px;background:var(--surface);border:1px solid var(--border);
+  box-shadow:0 10px 26px -12px rgba(0,0,0,.5);min-width:132px}
+.lx-xt-tip.on{display:block}
+.lx-xt-tip .d{font-weight:700;font-size:10.5px;line-height:1.3;color:var(--text-muted);margin-bottom:4px}
+.lx-xt-tr{display:flex;align-items:baseline;justify-content:space-between;gap:12px;line-height:1.45}
+.lx-xt-tr .k{font-weight:600;font-size:10.5px;color:var(--text-soft)}
+.lx-xt-tr .v{font-weight:800;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text)}
+/* the vertical guide */
+.lx-xt-vl{position:absolute;top:0;bottom:0;width:1px;background:var(--border-strong,#d5d5dd);
+  opacity:0;pointer-events:none;z-index:4}
 .lx-xt-price{font:800 30px/1.05 'JetBrains Mono',monospace;letter-spacing:-1px;color:var(--text)}
 .lx-xt-chg{font:800 12.5px/1 'JetBrains Mono',monospace;padding:5px 9px;border-radius:999px;
   display:inline-flex;align-items:center;gap:4px}
@@ -156,6 +173,10 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
     var host=row.parentNode; if(!host)return null;
     p=document.createElement("div"); p.className="lx-xlmpanel lx-loading"; p.setAttribute("data-lx-noswap","1");
     p.innerHTML='<div class="lx-xt-l">'
+      // #15: the asset this panel is about was named in 10px uppercase mono -- smaller than any figure
+      // under it, and with no mark at all, so the panel opened without saying whose price it was.
+      // The logo is the one already served for XLM everywhere else on the site, not a new asset.
+      +'<span class="lx-xt-mark" aria-hidden="true"></span>'
       +'<span class="lx-xt-lbl">Stellar (XLM)</span>'
       +'<div class="lx-xt-row"><span class="lx-xt-price">\\u2014</span><span class="lx-xt-chg"></span></div>'
       +'<div class="lx-xt-tfs">'
@@ -200,7 +221,85 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
       +'<path d="'+d+' L'+W+' '+H+' L0 '+H+' Z" fill="url(#'+gid+')" stroke="none"></path>'
       +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path>'
       +'</svg>';
+    box.__lxpts=pts;
+    wireHover(box);
   }
+  // #13: read the chart by pointing at it.
+  //
+  // The panel shows one price -- the latest -- and a shape. Anyone who wants to know what the price was
+  // in the middle of that shape has no way to ask. Three figures on hover: the price at that point,
+  // which varies along the series, and the two network facts the panel is already fetching for the strip
+  // below (pool TVL and the asset count), which do not.
+  //
+  // The two constants are labelled plainly and shown as 'now', because presenting a current figure
+  // beside a historical price without saying so would imply we have its history, which we do not.
+  function wireHover(box){
+    box.style.position=box.style.position||"relative";
+    // The ELEMENTS are re-created on every draw, the LISTENERS only once. draw() rebuilds the box with
+    // innerHTML, which removes anything appended here -- and guarding both together meant the readout
+    // existed after the first render and was silently wiped by the second.
+    var tip=box.querySelector(".lx-xt-tip");
+    if(!tip){ tip=document.createElement("div"); tip.className="lx-xt-tip"; box.appendChild(tip); }
+    var vl=box.querySelector(".lx-xt-vl");
+    if(!vl){ vl=document.createElement("div"); vl.className="lx-xt-vl"; box.appendChild(vl); }
+    if(box.__lxhov)return; box.__lxhov=1;
+    function net(){
+      // Read from the strip the page has already painted, so the two can never disagree and this costs
+      // no request of its own.
+      var out={};
+      try{ [].slice.call(document.querySelectorAll(".status-row .lx-vpill")).forEach(function(p){
+        var k=((p.querySelector(".lbl")||{}).textContent||"").trim().toLowerCase();
+        var v=((p.querySelector(".val")||{}).textContent||"").trim();
+        if(k&&v)out[k]=v; }); }catch(_){}
+      return out;
+    }
+    function at(clientX){
+      // Resolved per call, not captured: the pair above is replaced on every redraw, and a listener
+      // holding the old pair would write into elements no longer in the document.
+      var tip=box.querySelector(".lx-xt-tip"), vl=box.querySelector(".lx-xt-vl");
+      if(!tip||!vl)return;
+      var pts=box.__lxpts; if(!pts||pts.length<2)return;
+      var r=box.getBoundingClientRect(); if(!r.width)return;
+      var f=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
+      var i=Math.round(f*(pts.length-1));
+      var v=pts[i];
+      var n=net();
+      var when=labelFor(i,pts.length);
+      tip.innerHTML=(when?('<div class="d">'+when+'</div>'):'')
+        +'<div class="lx-xt-tr"><span class="k">Price</span><span class="v">'+fmtUsd(v)+'</span></div>'
+        +(n["pool tvl"]?('<div class="lx-xt-tr"><span class="k">Pool TVL now</span><span class="v">'+n["pool tvl"]+'</span></div>'):'')
+        +(n["assets"]?('<div class="lx-xt-tr"><span class="k">Assets now</span><span class="v">'+n["assets"]+'</span></div>'):'');
+      tip.classList.add("on");
+      vl.style.left=Math.round(f*r.width)+"px"; vl.style.opacity="1";
+    }
+    function off(){ var t=box.querySelector(".lx-xt-tip"),v=box.querySelector(".lx-xt-vl");
+      if(t)t.classList.remove("on"); if(v)v.style.opacity="0"; }
+    box.addEventListener("mousemove",function(e){ at(e.clientX); });
+    box.addEventListener("mouseleave",off);
+    // Touch: read on tap and follow a drag. Deliberately NOT cleared on touchend -- on a phone the finger
+    // is the pointer, so lifting it would erase the value the tap was for. A tap elsewhere clears it.
+    box.addEventListener("touchstart",function(e){ if(e.touches&&e.touches[0])at(e.touches[0].clientX); },{passive:true});
+    box.addEventListener("touchmove",function(e){ if(e.touches&&e.touches[0])at(e.touches[0].clientX); },{passive:true});
+    document.addEventListener("touchstart",function(e){
+      var t=e.target; if(t&&t.closest&&t.closest(".lx-xt-chart"))return; off();
+    },{passive:true});
+  }
+  // The series carries values only, not timestamps, so the label is derived from the position within
+  // the selected timeframe rather than invented. Whole days for the long ranges, hours for 24H.
+  function labelFor(i,n){
+    var back=(n-1-i); if(back===0)return "Now";
+    // tf is the BUTTON label -- 24H / 7D / 1M / 1Y -- and DAYS maps it to a span. Deriving the label
+    // from the position within that span is the only honest option: the series carries values, not
+    // timestamps, so an exact date would be invented.
+    var days=DAYS[tf]||1;
+    if(days<=1){ var h=Math.round(back*24/(n-1)); return h===0?"Now":(h+"h ago"); }
+    if(days>=365){ var mo=Math.round(back*12/(n-1)); return mo===0?"This month":(mo+(mo===1?" month ago":" months ago")); }
+    var d=Math.round(back*days/(n-1));
+    return d===0?"Today":(d+(d===1?" day ago":" days ago"));
+  }
+  function fmtUsd(v){ v=+v||0;
+    if(v>=1)return "$"+v.toLocaleString("en-US",{maximumFractionDigits:4});
+    return "$"+(+v.toFixed(6)).toString(); }
   function load(){
     if(cache[tf]){ draw(cache[tf]); return; }
     // A series from an earlier visit, drawn immediately and replaced when the live one lands. Six hours,
