@@ -23,6 +23,13 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xt-l{min-width:0;display:flex;flex-direction:column;gap:2px}
 .lx-xt-lbl{font:800 10px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase;
   color:var(--text-soft)}
+/* The ledger height, beside the eyebrow rather than in the figures below. It is a liveness signal --
+   "this chain is moving" -- not a statistic, and the strip has six of those already. */
+.lx-xt-ledger{font:700 10px/1 'JetBrains Mono',monospace;color:var(--text-muted);letter-spacing:.04em;
+  display:inline-flex;align-items:center;gap:5px;margin-left:10px}
+.lx-xt-ledger::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--green,#35c07f);
+  flex:0 0 5px;animation:lxLedgerPulse 2.2s ease-in-out infinite}
+.lx-xt-l>.lx-xt-lbl{display:inline-flex;align-items:center}
 .lx-xt-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .lx-xt-price{font:800 30px/1.05 'JetBrains Mono',monospace;letter-spacing:-1px;color:var(--text)}
 .lx-xt-chg{font:800 12.5px/1 'JetBrains Mono',monospace;padding:5px 9px;border-radius:999px;
@@ -88,7 +95,7 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xlmpanel>.status-row{grid-column:1/-1;margin:14px -18px 0;padding:13px 18px 14px;
   border-top:1px solid var(--border);border-radius:0 0 15px 15px;
   background:linear-gradient(180deg,rgba(127,127,140,.03),rgba(127,127,140,.07));
-  display:grid!important;grid-template-columns:auto repeat(5,minmax(0,1fr))!important;
+  display:grid!important;grid-template-columns:auto repeat(6,minmax(0,1fr))!important;
   gap:0!important;width:auto!important;align-items:center}
 /* strip the pill costume: no ground, no border, a hairline divider between cells instead */
 .lx-xlmpanel>.status-row>.status-pill{background:none!important;border:0!important;box-shadow:none!important;
@@ -248,17 +255,20 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
   function ledger(){
     j("https://horizon.stellar.org/ledgers?order=desc&limit=1").then(function(d){
       var r=((d._embedded&&d._embedded.records)||[])[0]; if(!r)return;
-      var row=document.querySelector(".status-row"); if(!row)return;
-      var pill=row.querySelector(".lx-ledgerpill");
-      if(!pill){
-        pill=document.createElement("span");
-        pill.className="status-pill lx-ledgerpill"; pill.setAttribute("data-lx-noswap","");
-        pill.innerHTML='<span class="lbl">Ledger</span><span class="val"></span>';
-        row.appendChild(pill);
+      var p=build(); if(!p)return;
+      var lbl=p.querySelector(".lx-xt-lbl"); if(!lbl||!lbl.parentNode)return;
+      var el=p.querySelector(".lx-xt-ledger");
+      if(!el){
+        el=document.createElement("span");
+        el.className="lx-xt-ledger"; el.setAttribute("data-lx-noswap","");
+        el.setAttribute("title","Current ledger — Stellar closes one about every five seconds");
+        lbl.parentNode.insertBefore(el,lbl.nextSibling);
       }
-      var v=pill.querySelector(".val");
       var t=String(r.sequence).replace(/\\B(?=(\\d{3})+(?!\\d))/g,",");
-      if(v&&v.textContent!==t)v.textContent=t;
+      if(el.textContent!==t)el.textContent=t;
+      // A stale pill from a previous build would otherwise sit in the strip as a seventh cell.
+      var old=document.querySelector(".status-row .lx-ledgerpill");
+      if(old&&old.parentNode)old.parentNode.removeChild(old);
     }).catch(function(){});
   }
   // #1: keep the strip inside the card. _realdata.js rebuilds the value pills in place on every stats()

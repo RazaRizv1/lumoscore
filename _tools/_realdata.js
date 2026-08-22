@@ -12,7 +12,7 @@ const DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="
 
 // CSS goes in <head> so the "hide value pills until the script paints them" rule applies BEFORE first
 // paint. When it was bundled with the script at body-end it loaded too late and the mock pills flashed.
-const CSS='<style id="lx-realdata-css">.greeting-row>.greeting{flex:1 1 auto!important;min-width:0!important}.status-row{display:grid!important;grid-template-columns:auto 1fr 1fr 1fr 1fr!important;gap:10px!important;width:100%!important}/* lx-nstats-mobile: the five-column row above is a DESKTOP layout. On a phone it overflows - auto sizes to its content and every 1fr floors at min-content, so the last card runs off screen. Two columns fit, and min-width:0 lets the cards actually shrink into them. */@media (max-width:760px){.status-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}.status-row>.status-pill{min-width:0!important;width:auto!important}.status-row>.status-pill.lx-netcard{grid-column:1 / -1}}.status-row .status-pill{width:auto!important}/* #6: the transaction link at the end of each platform-activity row. Icon only -- the row already says what happened, and a word here would compete with it. */.activity-feed-row .lx-actlink{margin-left:12px;flex:0 0 auto;display:inline-flex;align-items:center;color:var(--text-muted);text-decoration:none;transition:color .12s}.activity-feed-row .lx-actlink:hover{color:var(--accent)}'
+const CSS='<style id="lx-realdata-css">.greeting-row>.greeting{flex:1 1 auto!important;min-width:0!important}.status-row{display:grid!important;grid-template-columns:auto repeat(6,minmax(0,1fr))!important;gap:10px!important;width:100%!important}/* lx-nstats-mobile: the five-column row above is a DESKTOP layout. On a phone it overflows - auto sizes to its content and every 1fr floors at min-content, so the last card runs off screen. Two columns fit, and min-width:0 lets the cards actually shrink into them. */@media (max-width:760px){.status-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}.status-row>.status-pill{min-width:0!important;width:auto!important}.status-row>.status-pill.lx-netcard{grid-column:1 / -1}}.status-row .status-pill{width:auto!important}/* #6: the transaction link at the end of each platform-activity row. Icon only -- the row already says what happened, and a word here would compete with it. */.activity-feed-row .lx-actlink{margin-left:12px;flex:0 0 auto;display:inline-flex;align-items:center;color:var(--text-muted);text-decoration:none;transition:color .12s}.activity-feed-row .lx-actlink:hover{color:var(--accent)}'
 +'.status-row .status-pill:not(.lx-netcard){opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready .status-pill:not(.lx-netcard){opacity:1!important;animation:none;transition:opacity .3s ease}'
 +'</style>';
 const SCRIPT='<script id="lx-realdata">(function(){'
@@ -30,29 +30,46 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // Rebuild the whole stats row atomically (keeps the network logo card, replaces the 4 value cards).
 // This sidesteps the logo-painter (which mangles individual pills) and the re-skin entirely.
 +'function vpill(lbl,val,tip){return \'<span class="status-pill" data-lx-noswap=""\'+(tip?\' title="\'+tip+\'"\':"")+\'><span class="lbl">\'+lbl+\'</span><span class="val">\'+val+\'</span></span>\';}'
-+'function rebuildStats(tvl,mc,vol,pr,trd,trdTip){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");'
++'function rebuildStats(v){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");'
 // keep the LIVE netcard node (do NOT snapshot its HTML or mark the row noswap) so mc-engine can still
 // rebrand it aptos->stellar; only the value pills are rebuilt (each is its own data-lx-noswap pill).
 +'[].slice.call(row.querySelectorAll(".status-pill")).forEach(function(p){if(p!==net)p.parentNode.removeChild(p);});'
-+'var frag=document.createElement("div");frag.innerHTML=vpill("TVL",tvl)+vpill("Market cap",mc)+vpill("24h Volume",vol)'
-+'+vpill("Trades",trd||"\\u2014",trdTip||"");while(frag.firstChild)row.appendChild(frag.firstChild);'
++'var frag=document.createElement("div");frag.innerHTML='
++'vpill("Assets",v.assets,"Every asset ever issued on Stellar")'
++'+vpill("Pools",v.pools,"Liquidity pools on the Stellar AMM")'
++'+vpill("Pool TVL",v.tvl,"Value locked across every Stellar liquidity pool")'
++'+vpill("Trades",v.trades,v.dayTip)'
++'+vpill("Transactions",v.txs,v.dayTip)'
++'+vpill("Active wallets",v.wallets,v.dayTip);while(frag.firstChild)row.appendChild(frag.firstChild);'
 +'row.classList.add("lx-ready");}'
 // ---- stat cards ----
 +'function stats(){Promise.all(['
-+'j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_vol=true&include_market_cap=true&include_24hr_change=true"),'
-+'j("https://api.llama.fi/v2/chains").catch(function(){return null;}),'
-+'j("/lxapi/netstats").catch(function(){return null;})'
-+']).then(function(res){var cg=(res[0]&&res[0].stellar)||{};var chains=res[1];var ns=res[2];'
++'j("/lxapi/xlm").catch(function(){return null;}),'
++'j("/lxapi/netstats").catch(function(){return null;}),'
++'j("/lxapi/poolstats").catch(function(){return null;})'
++']).then(function(res){var x=res[0]||{};var ns=res[1];var ps=res[2];'
++'var cg={usd:x.usd,usd_24h_change:x.chg24,usd_market_cap:x.mcap,usd_24h_vol:x.vol24};'
 // Publish it: _dashtop.js needs the same price and 24h change, and CoinGecko's free tier is a few
 // calls a minute -- two components each fetching the same object is how that budget gets spent.
 +'try{window.__lxCG=cg;window.dispatchEvent(new CustomEvent("lx:cg"));}catch(_){}'
-+'var pr=cg.usd,vol=cg.usd_24h_vol,mc=cg.usd_market_cap,tvl=null;'
-+'if(chains&&chains.length){var s=chains.filter(function(c){return c.gecko_id==="stellar"||/^stellar$/i.test(c.name||"");})[0];if(s)tvl=s.tvl;}'
-+'var _t="",_tt="";'
-+'if(ns&&ns.trades>0){_t=(+ns.trades).toLocaleString("en-US");'
-+'try{_tt="Trades settled on Stellar on "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC)";}catch(_){}}'
-+'var _v=[tvl!=null?usd(tvl):"\\u2014",mc!=null?usd(mc):"\\u2014",(vol!=null&&pr)?abbr(vol/pr)+" XLM":"\\u2014",pr!=null?price(pr):"\\u2014",_t,_tt];'
-+'rebuildStats(_v[0],_v[1],_v[2],_v[3],_v[4],_v[5]);'
+// #2: the strip used to be TVL, market cap and 24h volume -- three prices, none of which say anything
+// about the chain a trader is about to trade on. These six do: how much there is to trade, where, how
+// deep it is, and how busy the place was yesterday. All of them are ledger facts.
++'var _n=function(x){return (x==null||!isFinite(x))?"\\u2014":Math.round(x).toLocaleString("en-US");};'
++'var _day="";try{if(ns&&ns.ts)_day="On "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC), the last full day";}catch(_){}'
++'var _tvlx=(ps&&ps.tvlXlm>0)?ps.tvlXlm:0;'
+// XLM/USD, only to put the pool TVL in dollars. Still published on window.__lxCG for _dashtop.js,
+// which is why this call stays even though no pill shows a price any more.
++'var pr=+cg.usd||0;'
+
++'var _v={assets:(ns&&ns.assets)?_n(ns.assets):"\\u2014",'
++'pools:(ps&&ps.pools)?_n(ps.pools):"\\u2014",'
++'tvl:(_tvlx>0&&pr>0)?usd(_tvlx*pr):(_tvlx>0?abbr(_tvlx)+" XLM":"\\u2014"),'
++'trades:(ns&&ns.trades)?_n(ns.trades):"\\u2014",'
++'txs:(ns&&ns.transactions)?_n(ns.transactions):"\\u2014",'
++'wallets:(ns&&ns.activeWallets)?_n(ns.activeWallets):"\\u2014",'
++'dayTip:_day};'
++'rebuildStats(_v);'
 +'try{localStorage.setItem("lumos.netstats",JSON.stringify(_v));}catch(_){}'   // cache last real values so the next load shows them instantly (no blank/loading flash)
 +'}).catch(function(){});}'
 // ---- live activity feed (real swaps) ----
@@ -107,7 +124,11 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'}).catch(function(){});}'
 // A cache written by the previous build holds FOUR entries and no trade count, so the length check is
 // what stops a warm start restoring a strip with an empty cell in it.
-+'function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}if(c&&c.length===6)rebuildStats(c[0],c[1],c[2],c[3],c[4],c[5]);else rebuildStats("\\u2026","\\u2026","\\u2026","\\u2026","\\u2026","");}'
+// A cache written by a previous build is an ARRAY, not this object, so the shape check is what stops a
+// warm start restoring a strip of undefineds.
++'function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}'
++'if(c&&!c.length&&c.assets)rebuildStats(c);'
++'else rebuildStats({assets:"\\u2026",pools:"\\u2026",tvl:"\\u2026",trades:"\\u2026",txs:"\\u2026",wallets:"\\u2026",dayTip:""});}'
 +'function run(){prep();stats();feed();}'
 +'if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);'
 +'setInterval(feed,60000);setInterval(stats,45000);'

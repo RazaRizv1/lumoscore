@@ -22,6 +22,29 @@
 // Deliberately narrow: GET only, no parameters, one fixed upstream URL. Reads no secret, touches no funds.
 const UPSTREAM = 'https://api.stellar.expert/explorer/public/ledger/ledger-stats';
 const TTL = 1800;   // 30 min at the edge — this is a daily figure; it does not move
+const ASSET_TTL = 21600;   // 6 h — the asset count barely moves, and this is the expensive part
+
+// How many assets exist on Stellar. There is no endpoint that says so: ledger-stats carries
+// new_assets per day, not a running total, and neither Horizon nor the explorer publishes a count.
+// The explorer's list cursor IS a plain offset though, so the end of the list can be found by
+// bracketing and then bisecting it -- about sixteen one-row requests, cached for six hours, which is
+// the same trick poolstats.js uses to count pools. Returns null rather than a guess if the upstream
+// rate-limits mid-search: a wrong total on a dashboard is worse than an absent one.
+async function assetCount() {
+  const has = async (off) => {
+    const r = await fetch('https://api.stellar.expert/explorer/public/asset?limit=1&cursor=' + off,
+      { cf: { cacheTtl: ASSET_TTL, cacheEverything: true } });
+    if (!r.ok) throw new Error('upstream ' + r.status);
+    const d = await r.json();
+    return ((((d || {})._embedded || {}).records) || []).length > 0;
+  };
+  try {
+    let lo = 0, hi = 1024;
+    while (await has(hi)) { lo = hi; hi *= 2; if (hi > (1 << 22)) return null; }
+    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (await has(mid)) lo = mid; else hi = mid; }
+    return lo + 1;
+  } catch (e) { return null; }
+}
 
 // The last n records, without parsing everything before them.
 function tailRecords(txt, n) {
@@ -67,11 +90,27 @@ export async function onRequestGet() {
   const full = recs.length > 1 ? recs[recs.length - 2] : null;
   if (!full) return json({ error: 'no complete day' }, 502, 60);
 
+  // Everything the dashboard strip needs about the NETWORK, from one record. These are all facts
+  // about the last complete UTC day except `accounts`, which is a running total.
+  // Bounded, because the bisection is ~16 requests and a cold cache made the whole strip wait twelve
+  // seconds on it. If it is not ready in five, the day figures go out without it and the response is
+  // cached briefly rather than for half an hour -- by the retry the individual list requests are warm
+  // in the edge cache, so it resolves in milliseconds.
+  const assets = await Promise.race([
+    assetCount(),
+    new Promise((r) => setTimeout(() => r(null), 5000)),
+  ]);
   return json({
     trades: +full.trades || 0,
     operations: +full.operations || 0,
     transactions: +full.transactions || 0,
-    ts: +full.ts || 0,                                  // start of that UTC day, seconds
+    payments: +full.payments || 0,
+    activeWallets: +full.active_accounts || 0,        // wallets that did something that day
+    accounts: +full.accounts || 0,                    // every account ever funded — a running total
+    newAssets: +full.new_assets || 0,
+    assets: assets,                                   // null when the count could not be established
+    avgLedgerTime: +full.avg_ledger_time || 0,
+    ts: +full.ts || 0,                                // start of that UTC day, seconds
     partial: today ? { trades: +today.trades || 0, ts: +today.ts || 0 } : null,
-  });
+  }, 200, assets == null ? 60 : 900);
 }
