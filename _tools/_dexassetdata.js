@@ -298,12 +298,38 @@ ${DXA_SUPINFO_CSS}
 .lx-pchg{display:inline-block;font-size:11px;font-weight:800;letter-spacing:-.01em;padding:1px 6px;border-radius:5px;line-height:1.4}
 .lx-pchg.up{color:var(--green,#35c07f);background:rgba(53,192,127,.14)}
 .lx-pchg.down{color:var(--red,#ff5b5b);background:rgba(255,91,91,.14)}
+/* #11: what the trade actually cost. Every row named a UNIT price and a quantity and left the reader
+   to multiply a seven-decimal number by a six-figure one -- so the one thing a trade record is for,
+   how much changed hands, was the one thing it did not say. On the phone it joins the sub line; on
+   desktop it sits under the quantity, in the same cell, because a new column would push the table
+   wider than the card. */
+.lx-extot{display:block;margin-top:2px;font:600 11.5px/1.3 'JetBrains Mono',monospace;color:var(--text-soft)}
 .lx-exmore{margin-left:10px;padding:3px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font:700 12px/1.4 inherit;cursor:pointer;vertical-align:middle}
 .lx-exmore:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
 .lx-exmore:disabled{opacity:.6;cursor:default}
 .dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}
 .stat-cell .lx-supinfo::before{content:"i";display:block;font:italic 700 10px/16px Georgia,serif;color:inherit}
+/* #8: the tooltip is 240px wide and anchored to the LEFT edge of the icon that opens it. The icon for
+   Market Cap sits at x=259 in a 372px phone viewport, so the note ran 127px past the screen -- and
+   .asset-card is overflow:hidden, so it was clipped rather than merely off-screen. Unreadable either
+   way: "90% (9B LUMOS) sup…".
+   Two anchors, by how much room is left. On a desktop card the last two cells open their note to the
+   RIGHT edge instead of the left, which is deterministic (four cells, a fixed grid) and needs no
+   measuring. */
 .stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
+.stat-row .stat-cell:nth-child(n+3) .lx-supinfo:hover::after{left:auto!important;right:0!important}
+/* On a phone there is no "other side" to open towards -- 240px does not fit beside anything in 372px.
+   The note anchors to the ROW instead of the icon (hence position:static on the icon: a ::after seeks
+   the nearest POSITIONED ancestor) and spans it, inset from both edges, so it cannot leave the card in
+   either direction. Above the row rather than below it, because below is where the card ends. */
+@media(max-width:760px){
+.stat-row{position:relative}
+.stat-cell .lx-supinfo{position:static!important}
+.stat-cell .lx-supinfo:hover::after,
+.stat-row .stat-cell:nth-child(n+3) .lx-supinfo:hover::after{
+  left:10px!important;right:10px!important;width:auto!important;max-width:none!important;
+  transform:none!important;bottom:calc(100% + 8px)!important}
+}
 /* Pool pair icons. 22px sat below the 15px pair label beside them, so a row read as text with two specks
    of colour rather than a pair of tokens. 30px gives a logo enough room to be recognised at a glance and
    balances the line; the ring is the row background, so overlapping discs stay separated on any surface. */
@@ -1421,7 +1447,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
           ? (shortG(r.addr)+'<span class="lx-sortag">Soroban</span>')
           : ('<a class="lx-acct" href="/account/stellar/'+r.addr+'">'+shortG(r.addr)+'</a>'))+'</div>'
         +'<div class="ex-sub"><span class="type-badge '+r.side+'">'+(r.side==="buy"?"▲ Buy":"▼ Sell")+'</span></div></div>'
-        +'<div class="ex-num">'+r.px.toFixed(decs(r.px))+' XLM<span class="sub">'+xlmAmt(r.amount)+' '+CODE+'</span></div>'
+        +'<div class="ex-num">'+r.px.toFixed(decs(r.px))+' XLM<span class="sub">'+xlmAmt(r.amount)+' '+CODE+' for '+xlmAmt(r.px*r.amount)+' XLM</span></div>'
         +'<div class="ex-time">'+r.time+'</div>'
         +'<a class="row-link lxda-exlink" href="'+tradeHref(r)+'" target="_blank" rel="noopener" aria-label="View this trade on stellar.expert">'
         +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
@@ -1436,7 +1462,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
           : ('<a class="lx-acct wallet-cell" href="/account/stellar/'+r.addr+'">'+identicon(r.addr,26)+'<span class="mono wa">'+shortG(r.addr)+'</span></a>'))+'</td>'
         +'<td><span class="type-badge '+r.side+'">'+(r.side==="buy"?"▲ Buy":"▼ Sell")+'</span></td>'
         +'<td><span class="mono">'+r.px.toFixed(decs(r.px))+' XLM</span></td>'
-        +'<td><span class="mono">'+xlmAmt(r.amount)+' '+CODE+'</span></td>'
+        +'<td><span class="mono">'+xlmAmt(r.amount)+' '+CODE+'</span><span class="lx-extot">'+xlmAmt(r.px*r.amount)+' XLM</span></td>'
         +'<td><span class="time">'+r.time+'</span></td>'
         +'<td style="text-align:right"><a class="row-link" href="'+tradeHref(r)+'" target="_blank" rel="noopener" aria-label="View this trade on stellar.expert"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></td>'
         +'</tr>'; }).join("");

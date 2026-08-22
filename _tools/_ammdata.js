@@ -2010,6 +2010,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var bpx=Math.max(2,DW/vals.length*0.6);
       vals.forEach(function(p){ var x=X(p.t), h=(H-padT-padB)*(mx>0?p.v/mx:0); svg.appendChild(chS("rect",{x:(x-bpx/2).toFixed(1),y:(H-padB-h).toFixed(1),width:bpx.toFixed(1),height:Math.max(0,h).toFixed(1),rx:"1",fill:accent,"fill-opacity":"0.85"})); });
     } else if(isBar){
+      // #19: the hover's "Pair volume" row comes from _volInfo, and _volInfo was only ever built in the
+      // LINE branch below -- so switching to candlesticks silently dropped volume out of the tooltip.
+      // Same call, same buckets, appended before the candles so they paint over it: the two views now
+      // report the same numbers, which is the point of having both.
+      _volInfo=chVolBars(svg,ser,t0,t1,X,DW,H,padT,padB,CH_RES[s.range]);
       var NB2=46, bw2=(t1-t0)/NB2, cpx=Math.max(2,DW/NB2*0.6);
       for(var j=0;j<NB2;j++){ var bs=t0+j*bw2, be=bs+bw2, o=rezAt(bs)*2, c=rezAt(be)*2, hi=Math.max(o,c), lo=Math.min(o,c);
         ser.pts.forEach(function(p){ if(p.t>=bs&&p.t<=be){ var q2=p.r*2; if(q2>hi)hi=q2; if(q2<lo)lo=q2; } });
