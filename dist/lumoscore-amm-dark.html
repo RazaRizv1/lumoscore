@@ -1279,29 +1279,6 @@ html body .pool-header-row .ph-icons>*{
    nothing to do with it -- and the full-width one is the one worth keeping: the headline gets its
    own line, and the four stats sit across the bottom instead of being squeezed into half the width.
    One column at every rail state, so the card below the list is where that panel always lives. */
-</style><style id="lx-searchassets-css">
-.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
-.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
-.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
-.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
-.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
-.sp-row--asset.lx-searow .sp-ico img{display:block}
-.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
-/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
-.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
-  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
-.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
-  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
-.lx-rechead .lx-recclear:hover{color:var(--accent)}
-.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
-.lx-seavfd svg{width:9px;height:9px;display:block}
-/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
-   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
-.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
-  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
-  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
-  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
-.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 </style><style id="lx-poolshero-css">
 /* The card's ground is set once, for BOTH heroes, in _heromono.js. Declaring it here as well is how
    the two drifted apart before. Only overflow stays -- the strip's bottom corners need it. */
@@ -1520,6 +1497,43 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 .lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-searchassets-css">
+.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
+.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
+.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
+.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
+.sp-row--asset.lx-searow .sp-ico img{display:block}
+.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
+/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
+.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
+  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
+.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
+  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
+.lx-rechead .lx-recclear:hover{color:var(--accent)}
+.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
+.lx-seavfd svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 </style><style id="lx-amm-css">
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
@@ -1849,6 +1863,12 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
    phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
    inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
    placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
+/* #6 (batch 5): the participants footer ships baked as "Viewing 1 - 17 of 847" -- the design's mock --
+   and on a desktop refresh that sat there for the whole time the pool was loading, which is a specific
+   wrong number rather than an obviously empty one. Hidden until our own pager writes it (.lx-partfoot
+   is added by partFoot), with the usual failsafe so a stalled load leaves it blank rather than gone. */
+.part-foot:not(.lx-partfoot){visibility:hidden}
+
 /* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
    across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
    (24h)", so it folds to 2x2 there instead. */
@@ -1876,20 +1896,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-walletlogo-css">
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
-/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
-   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
-   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
-   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
-   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
-   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
-.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
 </style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
@@ -4481,6 +4487,164 @@ window.addEventListener('click',function(e){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
   else boot();
+})();</script><script id="lx-poolshero">(function(){
+  function q(s,r){return (r||document).querySelector(s);}
+  // Every step is a MOVE or a class flag on something that already exists, and every step is guarded, so
+  // a second pass over an arranged card does nothing. The stats are deliberately NOT touched here -- the
+  // Pools layer writes into them through .lm-chip, and taking them out of it blanks every value.
+  // Only ever runs where the page did not ship a .lm -- i.e. the phone build. Idempotent: once the
+  // card exists this returns on the first line.
+  function buildMobile(){
+    var promo=q('.lumos-promo'); if(!promo)return;
+    if(q('.lm',promo))return;
+    var slide=q('.lumos-promo-slide',promo);
+    var title=slide?q('.lumos-promo-title',slide):null;
+    var sub=slide?q('.lumos-promo-sub',slide):null;
+    if(!title)return;                       // no copy to build from; leave the page as it is
+    var lm=document.createElement('div'); lm.className='lm';
+    var c=document.createElement('div'); c.className='lm-c lm-c-pool';
+    var ic=document.createElement('span'); ic.className='lx-heroico'; ic.setAttribute('aria-hidden','true');
+    var h=document.createElement('h2'); h.className='lm-h';
+    h.innerHTML=title.innerHTML;            // keeps the line break and the accent span
+    var pEl=document.createElement('p'); pEl.className='lm-sub';
+    if(sub)pEl.innerHTML=sub.innerHTML;
+    c.appendChild(ic); c.appendChild(h); c.appendChild(pEl);
+    // the chip is what _ammdata.js looks for before it will build and fill the four stats
+    var chip=document.createElement('div'); chip.className='lm-chip';
+    lm.appendChild(c); lm.appendChild(chip);
+    promo.appendChild(lm);
+    promo.className+=' lm-pools lm-on lx-mobhero';
+  }
+  function apply(){
+    // The phone page ships the carousel and no .lm. Build the card first; every step below then
+    // treats mobile and desktop identically.
+    buildMobile();
+    var card=q('.lumos-promo.lm-pools'); if(!card)return;
+    var lm=q('.lm',card); if(!lm)return;
+    var copy=q('.lm-c-pool',lm)||q('.lm-c',lm); if(!copy)return;
+
+    // 1. the chain mark, first thing in the copy column
+    if(!q('.lx-heroico',copy)){
+      var ic=document.createElement('span');
+      ic.className='lx-heroico'; ic.setAttribute('aria-hidden','true');
+      copy.insertBefore(ic,copy.firstChild);
+    }
+
+    // 2. the page's two CTAs, lifted into the card. MOVED, not rebuilt -- #ammHiwBtn already carries its
+    //    listener, and a clone would render correctly and then do nothing when pressed.
+    //    On the phone they go BELOW the card instead. Trade's phone card carries no buttons at all,
+    //    and folding this row in was the whole reason the Pools card ran to twice Trade's height.
+    //    Moved rather than dropped: Create Pool stays on the page, one row further down than the
+    //    page originally put it, and keeps .mdx-hero-ctas -- NOT lx-dctas, which positions absolute
+    //    against the card it would no longer be inside.
+    var phone=(' '+card.className+' ').indexOf(' lx-mobhero ')>=0;
+    var src=q('.dex-hero-r')||q('.mdx-hero-ctas');
+    if(src&&phone){
+      // Trade's two actions live in the list's section head, not in a bar under the hero -- and the
+      // Pools phone page ships no section head at all, so build the one it is missing and move them
+      // into it. Inserted before the All Pools / My Positions tabs, which is where Trade's head sits
+      // relative to its own filter row.
+      var tabs=q('#poolTabs')||q('.filter-tabs');
+      var head=q('.lx-poolhead');
+      if(tabs&&!head){
+        head=document.createElement('div');
+        head.className='mdx-section-head lx-poolhead';
+        var h2=document.createElement('h2'); h2.textContent='Liquidity Pools';
+        head.appendChild(h2);
+        tabs.parentNode.insertBefore(head,tabs);
+      }
+      if(head&&src.parentNode!==head)head.appendChild(src);
+    }else if(src&&src.parentNode!==copy){
+      if((' '+src.className+' ').indexOf(' lx-dctas ')<0)src.className+=' lx-dctas';
+      copy.appendChild(src);
+    }
+
+    // 3. Market Overview carries five rows to Trade's New Mints three, so the column beside the hero
+    //    runs taller than the hero itself. Participants and 24h Fees go -- matched on their label rather
+    //    than their position, so a reordered list cannot take the wrong two.
+    var drop={'participants':1,'24h fees':1};
+    var rows=document.querySelectorAll('.amm-snapshot-row');
+    for(var r=0;r<rows.length;r++){
+      var lbl=rows[r].querySelector('.amm-snapshot-label');
+      if(!lbl)continue;
+      if(drop[(lbl.textContent||'').trim().toLowerCase()])rows[r].style.display='none';
+    }
+
+    // 3. the plain page heading above the card now duplicates the card. Hidden visually only.
+    var heads=[q('.dex-hero-l'),q('.page-title'),q('.page-subtitle')];
+    for(var hi=0;hi<heads.length;hi++){ var hd=heads[hi];
+      if(hd&&(' '+hd.className+' ').indexOf(' lx-sronly ')<0)hd.className+=' lx-sronly'; }
+  }
+  function boot(){
+    apply();
+    // The Pools layer rebuilds this card when its data lands and again on each refresh, so re-assert
+    // rather than assuming one pass is enough. Cheap: every branch above is a no-op once arranged.
+    try{
+      var host=document.querySelector('.page')||document.body;
+      new MutationObserver(function(){ apply(); }).observe(host,{childList:true,subtree:true});
+    }catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
+  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
+  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
+  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
+  // this map has not been taught, which is still better than saying nothing.
+  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
+    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
+    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
+  function walletId(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+  }
+  function nameIt(){
+    var id=walletId(); if(!id)return;
+    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
+    var els=document.querySelectorAll(".mu-sub");
+    for(var i=0;i<els.length;i++){
+      var e=els[i], t=(e.textContent||"").trim();
+      if(!t||t.indexOf(nm)===0)continue;
+      // Keep whatever the card said after the separator -- that is the network, and it is still true.
+      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
+      var want=nm+(tail?(" "+tail):"");
+      if(e.textContent!==want)e.textContent=want;
+    }
+  }
+  function paint(){
+    try{ nameIt(); }catch(_){}
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
 })();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
@@ -4532,7 +4696,7 @@ window.addEventListener('click',function(e){
   function nfmt(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(1)+"M":n>=1e3?(n/1e3).toFixed(1)+"K":String(n); }
   // Verified issuers — the identical set the wallet uses, keyed on code+ISSUER. A ticker is not an
   // identity on Stellar, and search is exactly where a fake "USDC" gets found, so the tick is the point.
-  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
+  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network"};
   // The codes that mean exactly one issuer -- see CANONICAL in lib.js for why this is NOT derived
   // from VFD, and why it is the only check that catches a fake which owns its own domain.
   var CANON={"USDC":{"issuer":"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN","by":"Circle"},"EURC":{"issuer":"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2","by":"Circle"},"yXLM":{"issuer":"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55","by":"Ultra Capital"},"yUSDC":{"issuer":"GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF","by":"Ultra Capital"},"SHX":{"issuer":"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH","by":"Stronghold"},"AQUA":{"issuer":"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA","by":"Aquarius"},"LUMOS":{"issuer":"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S","by":"LumosCore"}};
@@ -4901,105 +5065,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
-})();</script><script id="lx-poolshero">(function(){
-  function q(s,r){return (r||document).querySelector(s);}
-  // Every step is a MOVE or a class flag on something that already exists, and every step is guarded, so
-  // a second pass over an arranged card does nothing. The stats are deliberately NOT touched here -- the
-  // Pools layer writes into them through .lm-chip, and taking them out of it blanks every value.
-  // Only ever runs where the page did not ship a .lm -- i.e. the phone build. Idempotent: once the
-  // card exists this returns on the first line.
-  function buildMobile(){
-    var promo=q('.lumos-promo'); if(!promo)return;
-    if(q('.lm',promo))return;
-    var slide=q('.lumos-promo-slide',promo);
-    var title=slide?q('.lumos-promo-title',slide):null;
-    var sub=slide?q('.lumos-promo-sub',slide):null;
-    if(!title)return;                       // no copy to build from; leave the page as it is
-    var lm=document.createElement('div'); lm.className='lm';
-    var c=document.createElement('div'); c.className='lm-c lm-c-pool';
-    var ic=document.createElement('span'); ic.className='lx-heroico'; ic.setAttribute('aria-hidden','true');
-    var h=document.createElement('h2'); h.className='lm-h';
-    h.innerHTML=title.innerHTML;            // keeps the line break and the accent span
-    var pEl=document.createElement('p'); pEl.className='lm-sub';
-    if(sub)pEl.innerHTML=sub.innerHTML;
-    c.appendChild(ic); c.appendChild(h); c.appendChild(pEl);
-    // the chip is what _ammdata.js looks for before it will build and fill the four stats
-    var chip=document.createElement('div'); chip.className='lm-chip';
-    lm.appendChild(c); lm.appendChild(chip);
-    promo.appendChild(lm);
-    promo.className+=' lm-pools lm-on lx-mobhero';
-  }
-  function apply(){
-    // The phone page ships the carousel and no .lm. Build the card first; every step below then
-    // treats mobile and desktop identically.
-    buildMobile();
-    var card=q('.lumos-promo.lm-pools'); if(!card)return;
-    var lm=q('.lm',card); if(!lm)return;
-    var copy=q('.lm-c-pool',lm)||q('.lm-c',lm); if(!copy)return;
-
-    // 1. the chain mark, first thing in the copy column
-    if(!q('.lx-heroico',copy)){
-      var ic=document.createElement('span');
-      ic.className='lx-heroico'; ic.setAttribute('aria-hidden','true');
-      copy.insertBefore(ic,copy.firstChild);
-    }
-
-    // 2. the page's two CTAs, lifted into the card. MOVED, not rebuilt -- #ammHiwBtn already carries its
-    //    listener, and a clone would render correctly and then do nothing when pressed.
-    //    On the phone they go BELOW the card instead. Trade's phone card carries no buttons at all,
-    //    and folding this row in was the whole reason the Pools card ran to twice Trade's height.
-    //    Moved rather than dropped: Create Pool stays on the page, one row further down than the
-    //    page originally put it, and keeps .mdx-hero-ctas -- NOT lx-dctas, which positions absolute
-    //    against the card it would no longer be inside.
-    var phone=(' '+card.className+' ').indexOf(' lx-mobhero ')>=0;
-    var src=q('.dex-hero-r')||q('.mdx-hero-ctas');
-    if(src&&phone){
-      // Trade's two actions live in the list's section head, not in a bar under the hero -- and the
-      // Pools phone page ships no section head at all, so build the one it is missing and move them
-      // into it. Inserted before the All Pools / My Positions tabs, which is where Trade's head sits
-      // relative to its own filter row.
-      var tabs=q('#poolTabs')||q('.filter-tabs');
-      var head=q('.lx-poolhead');
-      if(tabs&&!head){
-        head=document.createElement('div');
-        head.className='mdx-section-head lx-poolhead';
-        var h2=document.createElement('h2'); h2.textContent='Liquidity Pools';
-        head.appendChild(h2);
-        tabs.parentNode.insertBefore(head,tabs);
-      }
-      if(head&&src.parentNode!==head)head.appendChild(src);
-    }else if(src&&src.parentNode!==copy){
-      if((' '+src.className+' ').indexOf(' lx-dctas ')<0)src.className+=' lx-dctas';
-      copy.appendChild(src);
-    }
-
-    // 3. Market Overview carries five rows to Trade's New Mints three, so the column beside the hero
-    //    runs taller than the hero itself. Participants and 24h Fees go -- matched on their label rather
-    //    than their position, so a reordered list cannot take the wrong two.
-    var drop={'participants':1,'24h fees':1};
-    var rows=document.querySelectorAll('.amm-snapshot-row');
-    for(var r=0;r<rows.length;r++){
-      var lbl=rows[r].querySelector('.amm-snapshot-label');
-      if(!lbl)continue;
-      if(drop[(lbl.textContent||'').trim().toLowerCase()])rows[r].style.display='none';
-    }
-
-    // 3. the plain page heading above the card now duplicates the card. Hidden visually only.
-    var heads=[q('.dex-hero-l'),q('.page-title'),q('.page-subtitle')];
-    for(var hi=0;hi<heads.length;hi++){ var hd=heads[hi];
-      if(hd&&(' '+hd.className+' ').indexOf(' lx-sronly ')<0)hd.className+=' lx-sronly'; }
-  }
-  function boot(){
-    apply();
-    // The Pools layer rebuilds this card when its data lands and again on each refresh, so re-assert
-    // rather than assuming one pass is enough. Cheap: every branch above is a no-op once arranged.
-    try{
-      var host=document.querySelector('.page')||document.body;
-      new MutationObserver(function(){ apply(); }).observe(host,{childList:true,subtree:true});
-    }catch(_){}
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
-  else boot();
 })();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
@@ -6394,11 +6459,16 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         else if(d.vol24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
         // volPartial can still be true at the end: a pool busy enough to exceed the page budget leaves a
         // floor as the best answer available, and it stays marked as one.
-        // #13: the sub-line under a volume should be that volume in dollars, which is what the other
+        // #16: the sub-line under a volume should be that volume in dollars, which is what the other
         // three boxes do. It was a sentence explaining the ">=" instead -- and one that did not fit,
-        // so it read "at least, over the la…". The ">=" already says that much on its own.
+        // so it read "at least, over the la…". The ">=" already says as much on its own.
+        //
+        // vol24Usd is only non-zero when a leg can be priced in dollars directly. On an XLM pair it is
+        // derived from the XLM rate, which is why the fallback multiplies rather than giving up: the
+        // point of the line is the dollar figure, and the page knows the rate.
         else { if(v)setText(v,(d.volPartial?"\u2265 ":"")+num(d.vol24Xlm)+" "+U0);
-          if(sub)setText(sub, (d.vol24Usd>0)?("\u2248 "+usd(d.vol24Usd)):"24h volume"); } }
+          var _vu=(d.vol24Usd>0)?d.vol24Usd:((d.__xlmUsd>0&&!d.nonXlm)?(d.vol24Xlm*d.__xlmUsd):0);
+          if(sub)setText(sub, (_vu>0)?("\u2248 "+usd(_vu)):"24h volume"); } }
       else if(/fee/.test(cn)){
         if(d.volCounting){ if(v)setText(v,"Counting\u2026"); if(sub)setText(sub,""); }
         else if(d.fees24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,""); }
@@ -7417,6 +7487,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     if(!foot){ foot=document.createElement("div"); foot.className="part-foot lx-partfoot";
       foot.innerHTML='<div></div><div class="nav"></div>'; card.appendChild(foot); }
     if(card.lastElementChild!==foot)card.appendChild(foot);
+    // The mock-hiding rule keys on .lx-partfoot, and that class was only set on a footer we BUILD --
+    // when the design already ships one we reuse it, so it never got the class and stayed hidden for
+    // good. Claim it here instead, at the point we take ownership of what it says.
+    if(!foot.classList.contains("lx-partfoot"))foot.classList.add("lx-partfoot");
     var info=foot.querySelector("div"), nav=foot.querySelector(".nav");
     var from=s.all.length?(partPage*PARTPP+1):0, to=partPage*PARTPP+s.rows.length;
     // Say which set is being paged. The pool can have more providers than Horizon will hand over in one
@@ -7815,7 +7889,24 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
 
   // ---- LIST: Create Pool (populate the finalized modal's pickers with real assets, then create+deposit) ----
+  // #9: "Trading fee 0.3%" in the Create Pool sheet. Every Stellar AMM pool is 0.3% -- fixed by the
+  // protocol, nothing to choose -- so on a form whose whole job is the decisions you ARE making, it is
+  // a row that looks like a setting and is not one. It also invites the question it cannot answer:
+  // that is the fee the pool collects and pays to its own providers, not a charge to whoever creates
+  // it. Matched on its label rather than its position, because the summary rows are not ours.
+  function hideCpFee(){
+    var m=q("#createPoolModal"); if(!m)return;
+    var rows=m.querySelectorAll(".row,.cp-row,li,div");
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i]; if(r.children.length>3)continue;
+      var t=(r.textContent||"").replace(/\s+/g," ").trim();
+      if(!/^trading fee\b/i.test(t))continue;
+      if(r.style.display!=="none")r.style.display="none";
+      break;
+    }
+  }
   function wireCreatePool(){
+    try{ hideCpFee(); }catch(_){}
     // Only the BALANCES are needed here — waiting for the whole pools payload (DATA) left the asset dropdown
     // visibly empty for seconds (the CSS hides the design's mock items). _cpBals is filled by an early,
     // standalone /accounts fetch so the picker is ready almost immediately.
@@ -8016,65 +8107,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-walletlogo">(function(){
-  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
-  function logo(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    if(!id)return "";
-    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-    // walletconnect stores a few different spellings; they all mean the same sheet entry
-    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
-    return MAP[id]||"";
-  }
-  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
-  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
-  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
-  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
-  // this map has not been taught, which is still better than saying nothing.
-  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
-    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
-    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
-  function walletId(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-  }
-  function nameIt(){
-    var id=walletId(); if(!id)return;
-    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
-    var els=document.querySelectorAll(".mu-sub");
-    for(var i=0;i<els.length;i++){
-      var e=els[i], t=(e.textContent||"").trim();
-      if(!t||t.indexOf(nm)===0)continue;
-      // Keep whatever the card said after the separator -- that is the network, and it is still true.
-      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
-      var want=nm+(tail?(" "+tail):"");
-      if(e.textContent!==want)e.textContent=want;
-    }
-  }
-  function paint(){
-    try{ nameIt(); }catch(_){}
-    var url=logo(); if(!url)return;
-    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
-    for(var i=0;i<els.length;i++){
-      var e=els[i];
-      if(e.getAttribute("data-lxwl")===url)continue;
-      e.setAttribute("data-lxwl",url);
-      e.classList.add("lx-haswl");
-      e.style.setProperty("background-image","url('"+url+"')","important");
-    }
-  }
-  function boot(){
-    paint();
-    // The chip and the menu card are both built after connect, and the menu is rendered on open --
-    // so this watches rather than running once.
-    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-    try{ window.addEventListener("storage",paint); }catch(_){}
-    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

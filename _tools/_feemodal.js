@@ -103,9 +103,18 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'if(k==="Min received"&&!(parseFloat(v.replace(/[^0-9.]/g,""))>0)){v=fnum((recNum||payNum*rate*(1-fr()))*(1-slip/100))+" "+recTok;}'   // only synthesize when the pane has nothing
 +'if(k)det+=\'<div class="lx-rv-drow"><span>\'+k+\'</span><span class="v">\'+v+\'</span></div>\';});'
 +'if(!(recNum>0))recNum=rate?payNum*rate*(1-fr()):0;'
-+'function legIco(field){var el=field&&field.querySelector(".dxa-trade-ir .ico,.dxa-trade-ir img,.dxa-trade-ir [class*=ico]");'
+// #7: the first version read getComputedStyle(el).backgroundImage and got "none", so it fell through
+// to an <img> that is not there either, and the modal drew the letter-avatar fallback -- an orange L
+// beside 0.01 XLM. The pane does not paint its token on the ELEMENT: the mark is a ::before whose
+// background-image comes from the --lxtic custom property. Ask for it the way it is actually stored,
+// and only then fall back through the other two shapes.
++'function legIco(field){var el=field&&field.querySelector(".dxa-trade-ic,.dxa-trade-ir .ico,.dxa-trade-ir img,.dxa-trade-ir [class*=ico]");'
 +'if(!el)return "";var st="";'
-+'try{var cs=getComputedStyle(el);if(cs.backgroundImage&&cs.backgroundImage!=="none")st="background-image:"+cs.backgroundImage;}catch(_){}'
++'try{var v=(el.style&&el.style.getPropertyValue("--lxtic"))||"";'
++'if(!v){var c0=getComputedStyle(el);v=c0.getPropertyValue("--lxtic")||c0.getPropertyValue("--lxmlogo")||"";}'
++'v=String(v).trim(); if(v&&v!=="none")st="background-image:"+v;}catch(_){}'
++'if(!st){try{var cb=getComputedStyle(el,"::before");if(cb.backgroundImage&&cb.backgroundImage!=="none")st="background-image:"+cb.backgroundImage;}catch(_){}}'
++'if(!st){try{var cs=getComputedStyle(el);if(cs.backgroundImage&&cs.backgroundImage!=="none")st="background-image:"+cs.backgroundImage;}catch(_){}}'
 +'if(!st){var im=el.tagName==="IMG"?el:el.querySelector("img");if(im&&im.src)st="background-image:url("+JSON.stringify(im.src)+")";}'
 +'return st?(\'<span class="lx-rv-ico" style="\'+st+\'"></span>\'):"";}'
 +'var payIco=legIco(fields[0]),recIco=legIco(fields[1]);'

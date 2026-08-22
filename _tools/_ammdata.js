@@ -339,6 +339,12 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
    phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
    inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
    placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
+/* #6 (batch 5): the participants footer ships baked as "Viewing 1 - 17 of 847" -- the design's mock --
+   and on a desktop refresh that sat there for the whole time the pool was loading, which is a specific
+   wrong number rather than an obviously empty one. Hidden until our own pager writes it (.lx-partfoot
+   is added by partFoot), with the usual failsafe so a stalled load leaves it blank rather than gone. */
+.part-foot:not(.lx-partfoot){visibility:hidden}
+
 /* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
    across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
    (24h)", so it folds to 2x2 there instead. */
@@ -1762,11 +1768,16 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         else if(d.vol24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
         // volPartial can still be true at the end: a pool busy enough to exceed the page budget leaves a
         // floor as the best answer available, and it stays marked as one.
-        // #13: the sub-line under a volume should be that volume in dollars, which is what the other
+        // #16: the sub-line under a volume should be that volume in dollars, which is what the other
         // three boxes do. It was a sentence explaining the ">=" instead -- and one that did not fit,
-        // so it read "at least, over the la…". The ">=" already says that much on its own.
+        // so it read "at least, over the la…". The ">=" already says as much on its own.
+        //
+        // vol24Usd is only non-zero when a leg can be priced in dollars directly. On an XLM pair it is
+        // derived from the XLM rate, which is why the fallback multiplies rather than giving up: the
+        // point of the line is the dollar figure, and the page knows the rate.
         else { if(v)setText(v,(d.volPartial?"\\u2265 ":"")+num(d.vol24Xlm)+" "+U0);
-          if(sub)setText(sub, (d.vol24Usd>0)?("\\u2248 "+usd(d.vol24Usd)):"24h volume"); } }
+          var _vu=(d.vol24Usd>0)?d.vol24Usd:((d.__xlmUsd>0&&!d.nonXlm)?(d.vol24Xlm*d.__xlmUsd):0);
+          if(sub)setText(sub, (_vu>0)?("\\u2248 "+usd(_vu)):"24h volume"); } }
       else if(/fee/.test(cn)){
         if(d.volCounting){ if(v)setText(v,"Counting\\u2026"); if(sub)setText(sub,""); }
         else if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,""); }
@@ -2785,6 +2796,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     if(!foot){ foot=document.createElement("div"); foot.className="part-foot lx-partfoot";
       foot.innerHTML='<div></div><div class="nav"></div>'; card.appendChild(foot); }
     if(card.lastElementChild!==foot)card.appendChild(foot);
+    // The mock-hiding rule keys on .lx-partfoot, and that class was only set on a footer we BUILD --
+    // when the design already ships one we reuse it, so it never got the class and stayed hidden for
+    // good. Claim it here instead, at the point we take ownership of what it says.
+    if(!foot.classList.contains("lx-partfoot"))foot.classList.add("lx-partfoot");
     var info=foot.querySelector("div"), nav=foot.querySelector(".nav");
     var from=s.all.length?(partPage*PARTPP+1):0, to=partPage*PARTPP+s.rows.length;
     // Say which set is being paged. The pool can have more providers than Horizon will hand over in one
@@ -3183,7 +3198,24 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
 
   // ---- LIST: Create Pool (populate the finalized modal's pickers with real assets, then create+deposit) ----
+  // #9: "Trading fee 0.3%" in the Create Pool sheet. Every Stellar AMM pool is 0.3% -- fixed by the
+  // protocol, nothing to choose -- so on a form whose whole job is the decisions you ARE making, it is
+  // a row that looks like a setting and is not one. It also invites the question it cannot answer:
+  // that is the fee the pool collects and pays to its own providers, not a charge to whoever creates
+  // it. Matched on its label rather than its position, because the summary rows are not ours.
+  function hideCpFee(){
+    var m=q("#createPoolModal"); if(!m)return;
+    var rows=m.querySelectorAll(".row,.cp-row,li,div");
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i]; if(r.children.length>3)continue;
+      var t=(r.textContent||"").replace(/\\s+/g," ").trim();
+      if(!/^trading fee\\b/i.test(t))continue;
+      if(r.style.display!=="none")r.style.display="none";
+      break;
+    }
+  }
   function wireCreatePool(){
+    try{ hideCpFee(); }catch(_){}
     // Only the BALANCES are needed here — waiting for the whole pools payload (DATA) left the asset dropdown
     // visibly empty for seconds (the CSS hides the design's mock items). _cpBals is filled by an early,
     // standalone /accounts fetch so the picker is ready almost immediately.
