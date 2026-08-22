@@ -1576,6 +1576,55 @@ html body .pool-header-row .ph-icons>*{
 /* the wallet card is not a nav row -- it must not grow a chevron or a tile */
 .slide-menu .menu-user a::after{content:none}
 .slide-menu .menu-user a>svg{padding:0;background:none;border-radius:0}
+</style><style id="lx-searchassets-css">
+.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
+.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
+.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
+.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
+.sp-row--asset.lx-searow .sp-ico img{display:block}
+.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
+/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
+.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
+  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
+.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
+  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
+.lx-rechead .lx-recclear:hover{color:var(--accent)}
+.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
+.lx-seavfd svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-mobsearch-css">
+/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
+   primary and an afterthought. */
+.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
+  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
+  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
+  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
+.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
+.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
+/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
+   leave it about 120px, and it already truncates. Nothing else may shrink. */
+.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
 </style><style id="lx-acc-css">
 /* We INJECT this crumb, so it carries its own styling. The design defines .crumb in the desktop file
    only -- the mobile build has no .crumb rule at all, just .crumb-bar (the separate "Back to Pools"
@@ -1612,6 +1661,12 @@ html body .pool-header-row .ph-icons>*{
 .acc-tag{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:999px;
   background:var(--surface-2);border:1px solid var(--border);font-size:12.5px;font-weight:700;color:var(--text)}
 
+.acc-send{display:inline-flex;align-items:center;gap:7px;height:32px;padding:0 13px;border-radius:10px;
+  border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;text-decoration:none;
+  font:800 12.5px/1 inherit;white-space:nowrap;flex:0 0 auto;transition:filter .14s ease}
+.acc-send:hover{filter:brightness(1.06)}
+.acc-send svg{flex:0 0 auto}
+@media(max-width:620px){.acc-send span{display:none}.acc-send{padding:0 10px}}
 .acc-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:22px}
 .acc-stat{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;min-width:0}
 .acc-stat .l{display:block;font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
@@ -1755,55 +1810,6 @@ html body .pool-header-row .ph-icons>*{
   .acc-tbl th,.acc-tbl td{padding-left:14px;padding-right:14px}
   .acc-act{padding-left:14px;padding-right:14px}
 }
-</style><style id="lx-searchassets-css">
-.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
-.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
-.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
-.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
-.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
-.sp-row--asset.lx-searow .sp-ico img{display:block}
-.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
-/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
-.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
-  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
-.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
-  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
-.lx-rechead .lx-recclear:hover{color:var(--accent)}
-.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
-.lx-seavfd svg{width:9px;height:9px;display:block}
-/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
-   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
-.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
-  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
-  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
-  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
-.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
-</style><style id="lx-walletlogo-css">
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
-/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
-   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
-   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
-   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
-   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
-   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
-.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
-</style><style id="lx-mobsearch-css">
-/* Sized and shaped like the menu button beside it, because they are peers -- two header actions, not a
-   primary and an afterthought. */
-.appbar .lx-hsearch{display:inline-flex;align-items:center;justify-content:center;
-  width:38px;height:38px;flex:0 0 38px;margin-right:8px;padding:0;border-radius:11px;
-  border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);
-  cursor:pointer;transition:color .15s ease,border-color .15s ease,background .15s ease}
-.appbar .lx-hsearch:active{background:var(--surface);color:var(--accent);border-color:var(--accent)}
-.appbar .lx-hsearch svg{width:18px;height:18px;display:block}
-/* The wallet chip is the flexible one: at 375px the address, this button and the menu button together
-   leave it about 120px, and it already truncates. Nothing else may shrink. */
-.appbar .lx-hsearch,.appbar #menuBtn{flex-shrink:0}
 </style></head>
 <body><!--lx-menu--><div class="menu-overlay" id="menuOverlay"></div>
   <aside class="slide-menu" id="slideMenu">
@@ -1878,6 +1884,10 @@ html body .pool-header-row .ph-icons>*{
           <div class="acc-title-row">
             <h1 class="acc-addr" id="accAddr" title="">&#8212;</h1>
             <button class="acc-copy" id="accCopy" type="button" aria-label="Copy address"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg></button>
+            <!-- #10: the page tells you everything about an account and gave you nothing to DO with it.
+                 The label says "to this wallet" on purpose: this is somebody else's address, and a bare
+                 "Send" on a page showing another person's balances could be read as sending THEIRS. -->
+            <a class="acc-send" id="accSend" href="#"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg><span>Send to this wallet</span></a>
           </div>
           <div class="acc-sub" id="accSub"></div>
         </div>
@@ -3897,513 +3907,7 @@ window.addEventListener('click',function(e){
       .then(function(){setConnected(net,row,addr,tr);});
   }).catch(function(err){clearTimeout(awaitT);showErr(row,err);});
 },true);
-})();</script><script id="lx-feerate">(function(){if(window.__lxFrBooted)return;window.__lxFrBooted=1;var ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S",THRESH=250000,H="https://horizon.stellar.org";if(typeof window.__lxFeeRate!=="number")window.__lxFeeRate=0.002;if(!("__lxLumosBal" in window))window.__lxLumosBal=null;window.__lxLumosThresh=THRESH;window.__lxLumosIssuer=ISS;function pub(bal){window.__lxLumosBal=bal;window.__lxFeeRate=(bal>=THRESH)?0.001:0.002;try{window.dispatchEvent(new CustomEvent("lx:feetier",{detail:{bal:bal,rate:window.__lxFeeRate,thresh:THRESH}}));}catch(_){}}window.__lxFeeTier=function(){return{bal:window.__lxLumosBal,rate:window.__lxFeeRate,thresh:THRESH};};window.__lxFeeTierSet=pub;window.__lxAcctP=window.__lxAcctP||{};window.__lxAcct=function(addr){if(!addr)return Promise.resolve(null);if(!window.__lxAcctP[addr])window.__lxAcctP[addr]=fetch(H+"/accounts/"+addr).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxAcctP[addr];};window.__lxPoolP=window.__lxPoolP||{};function poolRec(id){if(!window.__lxPoolP[id])window.__lxPoolP[id]=fetch(H+"/liquidity_pools/"+id).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxPoolP[id];}function poolLumos(bals,cb){var sh=bals.filter(function(b){return b.asset_type==="liquidity_pool_shares"&&(+b.balance||0)>0;}).slice(0,25);if(!sh.length){cb(0);return;}var want="LUMOS:"+ISS,left=sh.length,tot=0;sh.forEach(function(s){poolRec(s.liquidity_pool_id).then(function(p){try{if(p&&p.reserves){var r=p.reserves.filter(function(x){return x.asset===want;})[0];var ts=+p.total_shares||0;if(r&&ts>0)tot+=(+r.amount||0)*((+s.balance||0)/ts);}}catch(_){}if(--left===0)cb(tot);});});}function resolve(force){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(!ME){if(window.__lxLumosBal!==null)pub(null);else{window.__lxLumosBal=null;window.__lxFeeRate=0.002;}return;}if(!force&&window.__lxFrFor===ME)return;window.__lxFrFor=ME;if(force){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxAcct(ME).then(function(acc){if(!acc||!acc.balances){window.__lxFrFor="";return;}var lum=acc.balances.filter(function(b){return b.asset_code==="LUMOS"&&b.asset_issuer===ISS;}).reduce(function(s,b){return s+(+b.balance||0);},0);pub(lum);if(lum>=THRESH)return;poolLumos(acc.balances,function(extra){if(extra>0&&window.__lxFrFor===ME)pub(lum+extra);});}).catch(function(){window.__lxFrFor="";});}window.__lxFeeTierRefresh=function(){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(ME){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxFrFor="";resolve(true);};resolve();window.addEventListener("storage",function(e){if(e&&e.key==="lumos.address"){window.__lxFrFor="";resolve();}});setTimeout(resolve,1200);setTimeout(resolve,4000);})();</script><style id="lx-gate-css">[data-lxgate="1"]{font-size:0!important;color:transparent!important}[data-lxgate="1"]::after{content:"Connect wallet";font-size:15px;font-weight:800;letter-spacing:0;color:#fff;display:inline-block}</style><script id="lx-gate">(function(){var NET="aptos",SEL=".dw-cta";function conn(){try{return !!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"));}catch(_){return false;}}function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}function apply(){var on=conn();var els=document.querySelectorAll(SEL);for(var i=0;i<els.length;i++){var b=els[i];if(on){if(b.getAttribute("data-lxgate")){if(b.getAttribute("data-lxorig")!=null)b.textContent=b.getAttribute("data-lxorig");if(b.getAttribute("data-lxdis")==="1"){try{b.disabled=true;}catch(_){}b.setAttribute("disabled","");}b.style.removeProperty("opacity");b.style.removeProperty("cursor");b.removeAttribute("data-lxdis");b.removeAttribute("aria-label");b.removeAttribute("data-lxgate");}}else{if(b.getAttribute("data-lxorig")==null)b.setAttribute("data-lxorig",(b.textContent||"").trim());if(b.getAttribute("data-lxdis")==null)b.setAttribute("data-lxdis",(b.disabled||b.hasAttribute("disabled"))?"1":"0");if(b.textContent.trim()!=="Connect wallet")b.textContent="Connect wallet";try{b.disabled=false;}catch(_){}b.removeAttribute("disabled");b.removeAttribute("aria-disabled");b.classList.remove("disabled","is-disabled","btn-disabled");b.style.removeProperty("pointer-events");b.style.setProperty("opacity","1","important");b.style.setProperty("cursor","pointer","important");b.setAttribute("aria-label","Connect wallet");b.setAttribute("data-lxgate","1");}}}window.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-lxgate=\"1\"]"):null;if(b){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","stay:"+actNet());}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork(location.href);else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet(),location.href);return;}setTimeout(apply,60);},true);if(document.readyState!=="loading")apply();else document.addEventListener("DOMContentLoaded",apply);setTimeout(apply,350);setTimeout(apply,1000);try{var mo=new MutationObserver(function(){if(mo.__b)return;mo.__b=1;setTimeout(function(){mo.__b=0;apply();},40);});var host=document.querySelector(SEL);host=host&&host.parentNode?host.parentNode:document.body;if(host)mo.observe(host,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["disabled","class"]});}catch(_){}})();</script><style id="lx-searchfix">#searchPopup #spFilters,.sp-body #spFilters{display:none !important}</style><script id="lx-searchctl">(function(){function head(){var c=document.getElementById("spAssetCount");return c&&c.closest?c.closest(".sp-section-head"):null;}function ctl(){var inp=document.getElementById("spSearchInput");if(!inp)return;var list=document.getElementById("spAssetList");var empty=!(inp.value&&inp.value.trim());if(empty&&list&&list.children.length&&!list.querySelector(".lx-recrow"))list.innerHTML="";var h=head();if(h)h.style.display=(empty||!list||!list.children.length)?"none":"";}document.addEventListener("input",function(e){if(e.target&&e.target.id==="spSearchInput"){ctl();if(window.requestAnimationFrame)requestAnimationFrame(ctl);}},true);document.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"){setTimeout(ctl,30);}},true);var mo=null;function attach(){var list=document.getElementById("spAssetList");if(list&&!mo&&window.MutationObserver){mo=new MutationObserver(ctl);mo.observe(list,{childList:true});}ctl();}if(document.readyState!=="loading")attach();else document.addEventListener("DOMContentLoaded",attach);})();</script><script id="lx-accdata">(function(){
-  var H="https://horizon.stellar.org";
-  var CG="https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd";
-  var DASH=String.fromCharCode(8212), MID=String.fromCharCode(183), ARROW=String.fromCharCode(8594);
-  function q(s,r){ return (r||document).querySelector(s); }
-  function qa(s,r){ return [].slice.call((r||document).querySelectorAll(s)); }
-  function recs(d){ return (d&&d._embedded&&d._embedded.records)||[]; }
-  function fetchJ(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
-  function j(u){ return fetchJ(u).catch(function(e){
-    if(u.indexOf("horizon.stellar.org")>=0)return fetchJ(u.replace("horizon.stellar.org","horizon.stellar.lobstr.co"));
-    throw e; }); }
-  function esc(s){ return String(s==null?"":s).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;"); }
-
-  // ---- address: /account/stellar/<G...> or ?address= ------------------------------------------------
-  function readAddr(){
-    var a="";
-    try{ a=new URLSearchParams(location.search).get("address")||new URLSearchParams(location.search).get("addr")||""; }catch(_){}
-    if(!a){ var parts=location.pathname.split("/"); var last=parts[parts.length-1]||parts[parts.length-2]||"";
-      if(last.length===56&&last.charAt(0)==="G")a=last; }
-    a=(a||"").trim();
-    // G only. A C id is a Soroban contract: Horizon serves it no balances, trustlines or history,
-    // so there is no page to build -- see the message below rather than an empty shell.
-    return (a.length===56&&a.charAt(0)==="G")?a:"";
-  }
-  var ADDR=readAddr();
-  // not a page, just an explanation: readAddr rejects C ids, so ADDR is empty for one
-  var PASTED_CONTRACT=(function(){ var raw="";
-    try{ raw=new URLSearchParams(location.search).get("address")||""; }catch(_){}
-    if(!raw){ var pp=location.pathname.split("/"); raw=pp[pp.length-1]||""; }
-    raw=(raw||"").trim(); return raw.length===56&&raw.charAt(0)==="C"; })();
-
-  // ---- formatting ---------------------------------------------------------------------------------
-  var SUBD=String.fromCharCode(8320,8321,8322,8323,8324,8325,8326,8327,8328,8329);
-  function zsub(n){ var s=String(n),o=""; for(var i=0;i<s.length;i++)o+=SUBD.charAt(+s.charAt(i)); return o; }
-  function trimZ(t){ while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);
-    if(t.charAt(t.length-1)===".")t=t.slice(0,-1); return t; }
-  // Same rule as the Trade pages: plain decimal to 1e-8, then the zeros collapse into a subscript count.
-  function smallNum(x,sig){ x=+x||0; if(!(x>0))return "0";
-    if(x>=1e-8)return trimZ(x.toFixed(8));
-    var e=x.toExponential((sig||4)-1), i=e.indexOf("e");
-    if(i<0)return String(x);
-    var mant=trimZ(e.slice(0,i)).split(".").join(""), ex=-parseInt(e.slice(i+1),10);
-    if(!(ex>1))return trimZ(x.toFixed(8));
-    return "0.0"+zsub(ex-1)+mant; }
-  function amt(n){ n=+n||0; if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M";
-    if(n>=1000)return Math.round(n).toLocaleString("en-US"); if(n>=1)return trimZ(n.toFixed(4)); if(n>0)return smallNum(n,4); return "0"; }
-  function usd(n){ n=+n||0; var a=Math.abs(n);
-    if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B"; if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M";
-    if(a>=1000)return "$"+n.toLocaleString("en-US",{maximumFractionDigits:0});
-    if(a>=1)return "$"+n.toFixed(2);
-    if(a>=0.01)return "$"+n.toFixed(4);          // cents matter; hundred-millionths of a cent do not
-    if(a>0)return "$"+smallNum(n,4); return "$0"; }
-  function shortG(a){ a=String(a||""); return a.length>12?(a.slice(0,4)+DASH+a.slice(-4)):a; }
-  function ago(t){ var s=Math.max(0,(Date.now()-t)/1000);
-    if(s<60)return Math.floor(s)+"s ago"; if(s<3600)return Math.floor(s/60)+"m ago";
-    if(s<86400)return Math.floor(s/3600)+"h ago"; if(s<2592000)return Math.floor(s/86400)+"d ago";
-    return new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); }
-
-  // ---- identicon: deterministic from the address, so the same wallet always wears the same face ----
-  function hashOf(s){ var h=2166136261; for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
-  function identicon(addr){
-    var h=hashOf(addr), hue=h%360, hue2=(hue+52)%360, cells="";
-    for(var x=0;x<3;x++)for(var y=0;y<5;y++){
-      var bit=(hashOf(addr+":"+x+":"+y)>>>3)&1; if(!bit)continue;
-      cells+='<rect x="'+(x*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
-      if(x<2)cells+='<rect x="'+((4-x)*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
-    }
-    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">'
-      +'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
-      +'<stop offset="0%" stop-color="hsl('+hue+',62%,52%)"/><stop offset="100%" stop-color="hsl('+hue2+',60%,38%)"/>'
-      +'</linearGradient></defs><rect width="40" height="40" fill="url(#g)"/>'
-      +'<g fill="rgba(255,255,255,.92)">'+cells+'</g></svg>';
-    return "data:image/svg+xml;base64,"+btoa(svg);
-  }
-
-  // ---- logos: brand map, then the asset toml, then an initials disc ---------------------------------
-  var STELLAR_URI="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L3N2Zz4=";
-  var LOGOS={USDC:"https://assets.coingecko.com/coins/images/6319/small/usdc.png",
-    EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",
-    AQUA:"https://aqua.network/assets/img/aqua-logo.png",
-    yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",
-    BTC:"https://assets.coingecko.com/coins/images/1/small/bitcoin.png"};
-  var LOGO_ISS={USDC:"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
-    EURC:"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
-    AQUA:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
-    yXLM:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
-    BTC:"GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF"};
-  var LUMOS_ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
-  var LUMOS_LOGO="/assets/tokens/lumos.png";
-  var IMG={}, DOM={}, TRIED={};
-  // the same verified pairs the rest of the site vouches for -- code|issuer, never code alone
-  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
-
-  // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
-  // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
-  var DDOM={"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"};
-  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
-  var VTICK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-  function vtick(c,i){ return VFD[c+"|"+i]?('<span class="lx-vtick" title="Verified issuer">'+VTICK+'</span>'):""; }
-  function key(c,i){ return c+"-"+(i||""); }
-  function brand(c,i){ if(c==="LUMOS"&&i===LUMOS_ISS)return LUMOS_LOGO;
-    var u=LOGOS[c]; if(!u)return ""; return (LOGO_ISS[c]&&i===LOGO_ISS[c])?u:""; }
-  function initials(c){ var s=String(c||"?"), hue=hashOf(s)%360;
-    var t=s.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
-    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+hue+',55%,45%)"/>'
-      +'<text x="20" y="'+(t.length>1?26:27)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="'+(t.length>1?15:20)+'" fill="#fff">'+t+'</text></svg>';
-    return "data:image/svg+xml;base64,"+btoa(svg); }
-  function logoOf(c,i){ if(c==="XLM")return STELLAR_URI;
-    return brand(c,i)||IMG[key(c,i)]||initials(c); }
-  function paintLogos(){ qa(".acc-ico[data-lxc]").forEach(function(el){
-    var c=el.getAttribute("data-lxc"), i=el.getAttribute("data-lxi")||"";
-    el.style.backgroundImage="url("+logoOf(c,i)+")"; }); }
-  // Same two-source chain the pools tab uses: the issuer-scoped index, then the issuer's own toml.
-  function tomlField(block,k){ var lines=block.split(String.fromCharCode(10));
-    for(var i=0;i<lines.length;i++){ var ln=lines[i].trim(), eq=ln.indexOf("=");
-      if(eq<0)continue; if(ln.slice(0,eq).trim()!==k)continue;
-      var v=ln.slice(eq+1).trim();
-      if(v.charAt(0)==='"'){ var e=v.indexOf('"',1); v=e>0?v.slice(1,e):v.slice(1); }
-      return v; }
-    return ""; }
-  function fetchLogo(c,i){ if(!c||c==="XLM"||!i)return;
-    if((brand(c,i)||IMG[key(c,i)])&&DOM[key(c,i)])return;   // logo AND domain known -> nothing to fetch
-    if(TRIED[key(c,i)])return; TRIED[key(c,i)]=1;
-    fetchJ("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(i)+"&limit=50").then(function(d){
-      var m=recs(d).filter(function(r){ return (r.asset||"").indexOf(c+"-"+i)===0; })[0];
-      var ti=(m&&(m.tomlInfo||m.toml_info))||{};
-      if(m&&m.domain){ DOM[key(c,i)]=m.domain; try{ renderAssets(); }catch(_){} }
-      if(ti.image){ IMG[key(c,i)]=ti.image; paintLogos(); return; }
-      return j(H+"/accounts/"+i).then(function(acc){
-        var dom=(acc&&acc.home_domain)||""; if(!dom)return;
-        for(var k2=0;k2<dom.length;k2++){ var ch=dom.charAt(k2);
-          if(!((ch>="a"&&ch<="z")||(ch>="A"&&ch<="Z")||(ch>="0"&&ch<="9")||ch==="."||ch==="-"))return; }
-        return fetch("https://"+dom+"/.well-known/stellar.toml").then(function(r){ return r.text(); }).then(function(txt){
-          var bl=txt.split("[[CURRENCIES]]");
-          for(var b=1;b<bl.length;b++){ if(tomlField(bl[b],"code")!==c)continue;
-            var bi=tomlField(bl[b],"issuer"); if(bi&&bi!==i)continue;
-            var im=tomlField(bl[b],"image"); if(im){ IMG[key(c,i)]=im; paintLogos(); } return; } }); });
-    }).catch(function(){}); }
-
-  // ---- state --------------------------------------------------------------------------------------
-  var xlmUsd=(function(){ try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
-    return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0; }catch(e){ return 0; } })();
-  var ASSETS=[], POOLS=[], ACTS=[], XLM=0, ACCT=null, DONE={};
-  var PER=25, aShown=PER, pShown=PER, PRICE_CAP=75;
-  // #6: the portfolio total is a SUM over lookups that land one at a time, and every one of them used
-  // to repaint it -- so the figure climbed while you watched, and where it stopped depended on which
-  // requests happened to come back. Refresh, and Horizon throttles a different two, and the "value" of
-  // the same wallet is a different number. A total assembled in public is not a total.
-  //
-  // PXWAVE: have we even reached the point of asking? PXPEND: how many answers are still out. The
-  // figure is written once, when both say the counting is over.
-  var PXWAVE=0, PXPEND=0;
-  function pxStart(){ PXPEND++; }
-  function pxEnd(){ if(PXPEND>0)PXPEND--; if(PXPEND===0){ try{ renderStats(); }catch(_){} } }
-  var PIN={XLM:0, USDC:1, LUMOS:2};
-  // Pinned three first, then by value. An unpriced row sorts after every priced one: we do not know
-  // what it is worth, and ranking it as zero would be a claim we cannot make.
-  function sortAssets(list){
-    return list.slice().sort(function(x,y){
-      var px=(PIN[x.code]!=null&&(x.native||x.code!=="XLM"))?PIN[x.code]:99;
-      var py=(PIN[y.code]!=null&&(y.native||y.code!=="XLM"))?PIN[y.code]:99;
-      if(px!==py)return px-py;
-      var vx=(x.usd==null)?-1:x.usd, vy=(y.usd==null)?-1:y.usd;
-      if(vx!==vy)return vy-vx;
-      return String(x.code).localeCompare(String(y.code));
-    });
-  }
-  function moreHTML(kind,shown,total){ if(total<=shown)return "";
-    var next=Math.min(PER,total-shown);
-    return '<div class="acc-more"><button class="acc-more-b" data-more="'+kind+'">Load '+next
-      +' more<span class="acc-more-n">'+shown+' of '+total+' shown</span></button></div>'; }
-  // A pager only earns its space when there is more than one page.
-
-  function setStat(k,v,s){ var el=q('.acc-stat .v[data-k="'+k+'"]'); if(el&&el.textContent!==v)el.textContent=v;
-    var sl=q('.acc-stat .s[data-s="'+k+'"]'); if(sl&&s!=null&&sl.textContent!==s)sl.textContent=s; }
-
-  function totalValue(){ var t=XLM*xlmUsd;
-    ASSETS.forEach(function(a){ if(a.usd)t+=a.usd; });
-    POOLS.forEach(function(p){ if(p.usd)t+=p.usd; });
-    return t; }
-  // how much of the account this total actually covers
-  function priced(){ var n=1, m=1+ASSETS.length+POOLS.length;
-    ASSETS.forEach(function(a){ if(a.usd!=null)n++; });
-    POOLS.forEach(function(p){ if(p.usd!=null)n++; });
-    return {n:n,m:m}; }
-
-  function renderStats(){
-    var tv=totalValue();
-    var pc=priced();
-    // Counting = we have not asked yet, or answers are still out. Either way the sum on hand is a
-    // partial one and must not be shown as the account's value.
-    var counting=(!PXWAVE||PXPEND>0);
-    if(counting){ setStat("total", "Counting"+String.fromCharCode(8230), "valuing this account"); }
-    else if(xlmUsd<=0){ setStat("total", DASH, "waiting for XLM price"); }
-    else {
-      // Some holdings have no market to price them against, and no amount of waiting fixes that. The
-      // total is then a floor and says so, rather than passing itself off as the whole account.
-      var miss=pc.m-pc.n;
-      setStat("total", (miss>0?(String.fromCharCode(8805)+" "):"")+usd(tv),
-        miss>0 ? (amt(tv/xlmUsd)+" XLM "+MID+" "+miss+" holding"+(miss===1?"":"s")+" could not be priced")
-               : (amt(tv/xlmUsd)+" XLM"));
-    }
-    setStat("xlm", amt(XLM)+" XLM", xlmUsd>0?usd(XLM*xlmUsd):"");
-    // count what the Assets table shows -- XLM plus every funded trustline -- so the two agree
-    setStat("assets", String(ASSETS.length+1), ASSETS.length===1?"1 trustline held":(ASSETS.length+" trustlines held"));
-    setStat("pools", String(POOLS.length), POOLS.length?"providing liquidity":"none");
-  }
-
-  // ---- assets -------------------------------------------------------------------------------------
-  // The button lives after the table inside the same card, so re-rendering the table never destroys it.
-  function setMore(tblSel,kind,shown,total){
-    var tbl=q(tblSel); if(!tbl)return;
-    var card=tbl.closest(".acc-pane")||tbl.closest(".acc-card"); if(!card)return;
-    var host=card.querySelector(".acc-more-host");
-    if(!host){ host=document.createElement("div"); host.className="acc-more-host"; card.appendChild(host); }
-    var html=moreHTML(kind,shown,total);
-    if(host.__h!==html){ host.innerHTML=html; host.__h=html; }
-    if(!host.__w){ host.__w=1;
-      host.addEventListener("click",function(e){
-        var b=e.target&&e.target.closest?e.target.closest("[data-more]"):null; if(!b)return;
-        e.preventDefault(); e.stopPropagation();
-        if(kind==="assets"){ aShown+=PER; renderAssets(); } else { pShown+=PER; renderPools(); }
-      },true); }
-  }
-  function renderAssets(){
-    var tb=q("#accAssetsTbl tbody"); if(!tb)return;
-    var n=q("#accAssetsN"); if(n)n.textContent=String(ASSETS.length+1);
-    var all=sortAssets([{code:"XLM",issuer:"",dom:"Stellar",bal:XLM,px:1,usd:XLM*xlmUsd,native:true}].concat(ASSETS));
-    var rows=all.slice(0,Math.min(aShown,all.length));
-    var tot=totalValue();
-    // whatever is on screen gets priced and gets a logo, cap or no cap
-    // Two jobs, two guards. __px used to gate BOTH pricing and logo/domain lookup, and the boot pricing
-    // wave claims __px without ever calling fetchLogo -- so whichever ran first decided whether the asset
-    // ever got a logo. That race is why some wallets showed initials and a bare issuer and others did not.
-    // fetchLogo carries its own TRIED guard, so calling it on every visible row costs nothing extra.
-    rows.forEach(function(a){ if(a.native)return;
-      fetchLogo(a.code,a.issuer);
-      if(!a.__px){ a.__px=1; loadAssetPx(a); } });
-    tb.innerHTML=rows.map(function(a){
-      var sub = a.native ? "Native asset"
-        : (function(){ var _d=dispDom(a.code,a.issuer,DOM[key(a.code,a.issuer)]||"");
-            return _d ? (_d+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer); })();
-      return '<tr class="acc-row" data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer||"")+'">'
-        +'<td><span class="acc-pair"><span class="acc-ico" data-lxc="'+esc(a.code)+'" data-lxi="'+esc(a.issuer||"")+'"></span>'
-          +'<span><span class="acc-code">'+esc(a.code)+'</span>'+vtick(a.code,a.issuer||"")
-          +'<span class="acc-iss">'+esc(sub)+'</span></span></span></td>'
-        +'<td class="num">'+amt(a.bal)+'</td>'
-        +'<td class="num">'+(a.usd!=null&&xlmUsd>0?usd(a.usd):DASH)+'</td>'
-        +'<td style="text-align:right">'+(a.native?"":'<a class="acc-view" href="/trade/stellar/'+esc(a.code)+'-'+esc(a.issuer)+'">View asset</a>')+'</td>'
-        +'</tr>'; }).join("");
-    setMore("#accAssetsTbl","assets",rows.length,all.length);
-    paintLogos();
-    qa("#accAssetsTbl tbody tr.acc-row").forEach(function(tr){ tr.addEventListener("click",function(){
-      var c=tr.getAttribute("data-code"), i=tr.getAttribute("data-iss");
-      if(c&&c!=="XLM"&&i)location.href="/trade/stellar/"+c+"-"+i; }); });
-  }
-
-  // ---- pools --------------------------------------------------------------------------------------
-  var poolsOpened=false;
-  function wireTabs(){
-    var bar=q("#accTabs"); if(!bar||bar.__w)return; bar.__w=1;
-    bar.addEventListener("click",function(e){
-      var b=e.target&&e.target.closest?e.target.closest(".acc-tab[data-t]"):null; if(!b)return;
-      var t=b.getAttribute("data-t");
-      qa(".acc-tab",bar).forEach(function(x){ x.classList.toggle("active",x===b); });
-      qa(".acc-pane").forEach(function(pn){ pn.hidden=(pn.getAttribute("data-p")!==t); });
-      if(t==="pools"&&!poolsOpened){ poolsOpened=true; renderPools(); }
-    });
-  }
-  function renderPools(){
-    var tb=q("#accPoolsTbl tbody"); if(!tb)return;
-    var n0=q("#accPoolsN"); if(n0)n0.textContent=String(POOLS.length);
-    if(!poolsOpened)return;                       // deferred until the tab is actually opened
-    var n=q("#accPoolsN"); if(n)n.textContent=String(POOLS.length);
-    if(!POOLS.length){ tb.innerHTML='<tr class="acc-empty-row"><td colspan="5"><div class="acc-empty">'
-      +(DONE.pools?"This account provides no pool liquidity.":"Loading pools"+String.fromCharCode(8230))+'</div></td></tr>'; return; }
-    // biggest position first, unvalued last -- same rule as the assets table
-    var psorted=POOLS.slice().sort(function(x,y){ var vx=(x.usd==null)?-1:x.usd, vy=(y.usd==null)?-1:y.usd; return vy-vx; });
-    var plist=psorted.slice(0,Math.min(pShown,psorted.length));
-    plist.forEach(function(p){ if(!p.__ld){ p.__ld=1; loadPool(p); } });
-    tb.innerHTML=plist.map(function(p){
-      return '<tr class="acc-row" data-pool="'+esc(p.id)+'">'
-        +'<td><span class="acc-pair"><span class="acc-icos">'
-          +'<span class="acc-ico" data-lxc="'+esc(p.a)+'" data-lxi="'+esc(p.ai||"")+'"></span>'
-          +'<span class="acc-ico" data-lxc="'+esc(p.b)+'" data-lxi="'+esc(p.bi||"")+'"></span></span>'
-          +'<span><span class="acc-code">'+esc(p.a)+" / "+esc(p.b)+'</span>'
-          +'<span class="acc-dom">'+(p.tl!=null?(p.tl+(p.tl===1?" LP holder":" LP holders")):"")+'</span></span></span></td>'
-        +'<td class="num">'+(p.share>=0.01?p.share.toFixed(2):"<0.01")+'%</td>'
-        +'<td class="num">'+(p.usd!=null&&xlmUsd>0?usd(p.usd):DASH)+'</td>'
-        +'<td class="num acc-hide-sm">'+(p.tvl!=null&&xlmUsd>0?usd(p.tvl):DASH)+'</td>'
-        +'<td style="text-align:right"><a class="acc-view" href="/pools/stellar/id/'+esc(p.id)+'">View pool</a></td>'
-        +'</tr>'; }).join("");
-    setMore("#accPoolsTbl","pools",plist.length,psorted.length);
-    paintLogos();
-    qa("#accPoolsTbl tbody tr.acc-row").forEach(function(tr){ tr.addEventListener("click",function(){
-      var id=tr.getAttribute("data-pool"); if(id)location.href="/pools/stellar/id/"+id; }); });
-  }
-
-  // ---- activity -----------------------------------------------------------------------------------
-  // The wallet's own activity icons, so the two pages draw the same marks.
-  var WIC={
-    received:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>',
-    sent:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
-    swap:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3M4 13h11M17 14l3-3-3-3M20 11H9"/></svg>',
-    lp:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',
-    order:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
-    claim:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
-    settings:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
-    other:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>'
-  };
-  // The asset's own mark, inline in the title -- the wallet's .lx-act-ilogo, same construction.
-  function accIlogo(code,native){
-    var lg=native?STELLAR_URI:((window.__lxLogos||{})[code]||"");
-    var bg=lg?("url('"+String(lg).replace(/'/g,"%27")+"')"):"none";
-    // No logo, no mark. The initial-letter fallback put a stray "Y"/"E"/"A" in front of every asset on
-    // every row -- on a page where most assets have no published logo, that is a column of loose
-    // letters rather than a set of marks. The ticker is right next to it and already says which asset.
-    if(!lg)return "";
-    return '<span class="lx-act-ilogo" style="--al:'+bg+'"></span>';
-  }
-  var AIC={
-    payment:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
-    swap:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>',
-    trust:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
-    pool:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s6 7 6 11a6 6 0 01-12 0c0-4 6-11 6-11z"/></svg>',
-    offer:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
-    other:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>'
-  };
-  function opCode(o){ return o.asset_type==="native"?"XLM":(o.asset_code||""); }
-  function describe(o){
-    var t=o.type||"", me=ADDR;
-    if(t==="payment"){
-      var out=(o.from===me), pc=opCode(o), pn=(o.asset_type==="native");
-      return {ic:"payment", kind:out?"sent":"received",
-        titleHtml:(out?"Sent":"Received")+accIlogo(pc,pn)+esc(pc),
-        title:(out?"Sent ":"Received ")+pc,
-        sub:(out?("to "+shortG(o.to)):("from "+shortG(o.from))), cls:out?"acc-dn":"acc-up",
-        right:(out?"-":"+")+amt(o.amount)+" "+pc}; }
-    if(t.indexOf("path_payment")===0){
-      var sc=o.source_asset_type==="native"?"XLM":(o.source_asset_code||"");
-      var dc=opCode(o), dn=(o.asset_type==="native"), sn=(o.source_asset_type==="native");
-      return {ic:"swap", kind:"swap",
-        titleHtml:"Swap"+accIlogo(sc,sn)+esc(sc)+" "+ARROW+accIlogo(dc,dn)+esc(dc),
-        title:"Swap "+sc+" "+ARROW+" "+dc,
-        sub:"via Stellar DEX",
-        right:"+"+amt(o.amount)+" "+dc, rightSub:"-"+amt(o.source_amount)+" "+sc}; }
-    if(t==="change_trust"){
-      var add=(+o.limit)>0;
-      var tc=(o.asset_code||opCode(o));
-      return {ic:"trust", kind:"settings",
-        titleHtml:(add?"Added trustline":"Removed trustline")+accIlogo(tc,false)+esc(tc),
-        title:(add?"Added trustline ":"Removed trustline ")+tc,
-        sub:o.asset_issuer?shortG(o.asset_issuer):"", right:""}; }
-    if(t==="liquidity_pool_deposit")  return {ic:"pool", kind:"lp", title:"Deposited into a pool", sub:shortG(o.liquidity_pool_id||""), right:""};
-    if(t==="liquidity_pool_withdraw") return {ic:"pool", kind:"lp", title:"Withdrew from a pool", sub:shortG(o.liquidity_pool_id||""), right:""};
-    if(t.indexOf("offer")>=0){
-      var amount=+o.amount||0;
-      var sc2=(o.selling_asset_code||(o.selling_asset_type==="native"?"XLM":"")),
-          bc2=(o.buying_asset_code||(o.buying_asset_type==="native"?"XLM":""));
-      return {ic:"offer", kind:"order",
-        titleHtml:(amount>0?"Placed an order":"Cancelled an order")
-          +accIlogo(sc2,o.selling_asset_type==="native")+esc(sc2)+" /"+accIlogo(bc2,o.buying_asset_type==="native")+esc(bc2),
-        title:(amount>0?"Placed an order":"Cancelled an order"), sub:"", right:""}; }
-    if(t==="create_account") return {ic:"payment", kind:"received", title:"Account created", sub:"", cls:"acc-up", right:"+"+amt(o.starting_balance)+" XLM"};
-    if(t==="account_merge")  return {ic:"other", kind:"other", title:"Account merged", sub:shortG(o.into||""), right:""};
-    if(t==="claim_claimable_balance") return {ic:"payment", kind:"claim", title:"Claimed claimable balance", sub:"", right:""};
-    if(t==="create_claimable_balance") return {ic:"payment", kind:"claim", title:"Created claimable balance", sub:"", right:"-"+amt(o.amount)+" "+opCode(o)};
-    // Anything else: say what it was rather than inventing a story for it.
-    return {ic:"other", kind:"other", title:t.split("_").join(" ").replace(/^./,function(m){return m.toUpperCase();}), sub:"", right:""};
-  }
-  function renderActs(){
-    var box=q("#accActs"); if(!box)return;
-    var n=q("#accActN"); if(n)n.textContent=String(ACTS.length);
-    if(!ACTS.length){ box.innerHTML='<div class="acc-empty">'
-      +(DONE.acts?"No activity on this account yet.":"Loading activity"+String.fromCharCode(8230))+'</div>'; return; }
-    box.innerHTML=ACTS.map(function(o){
-      var d=describe(o), ts=Date.parse(o.created_at||"")||0;
-      // .acc-act -> .activity-row: same element names as the wallet, so the same rules style both.
-      var kind=d.kind||"other";
-      var ac=(kind==="received")?"up":(kind==="sent")?"down":(kind==="swap")?"swap":"";
-      var title=d.titleHtml||esc(d.title);
-      var meta=[esc(d.sub||""),(ts?ago(ts):"")].filter(Boolean).join(" "+MID+" ");
-      return '<div class="activity-row"><div class="activity-icon '+kind+'">'+(WIC[kind]||WIC.other)+'</div>'
-        +'<div class="activity-info"><div class="type">'+title+'</div>'
-        +'<div class="meta">'+meta+'</div></div>'
-        +'<div class="activity-amt"><div class="a1 '+ac+'">'+esc(d.right||"")+'</div>'
-        +'<div class="a2">'+esc(d.rightSub||"")+'</div></div>'
-        +'<a class="lx-txlink" href="https://stellar.expert/explorer/public/tx/'+esc(o.transaction_hash||"")+'" target="_blank" rel="noopener" title="View on Stellar.Expert"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></div>'; }).join("");
-  }
-
-  // ---- load ---------------------------------------------------------------------------------------
-  function paintHeader(){
-    var el=q("#accAddr"); if(el){ el.textContent=ADDR||"No account"; el.title=ADDR; }
-    var av=q("#accAvatar"); if(av&&ADDR)av.style.backgroundImage="url("+identicon(ADDR)+")";
-    var nt=q("#accNet"); if(nt&&!nt.style.backgroundImage)nt.style.backgroundImage="url("+STELLAR_URI+")";
-    var sub=q("#accSub"); if(!sub)return;
-    var bits=[];
-
-    if(ACCT&&ACCT.__created)bits.push("Active since "+esc(ACCT.__created));
-    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>');
-    sub.innerHTML=bits.join("");
-  }
-  function fail(msg){
-    qa(".acc-empty").forEach(function(e){ e.textContent=msg; });
-    var el=q("#accAddr"); if(el)el.textContent=ADDR||"No account";
-  }
-
-  function loadPrice(){ return fetchJ(CG).then(function(d){
-    if(d&&d.stellar&&+d.stellar.usd){ xlmUsd=+d.stellar.usd;
-      try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_){} }
-  }).catch(function(){}); }
-
-  // last trade close against XLM -- the same price the Trade pages quote, so a holding is worth the same
-  // number on both screens
-  function loadAssetPx(a){ pxStart(); return loadAssetPx_(a).then(pxEnd,pxEnd); }
-  function loadAssetPx_(a){
-    var t=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
-    return j(H+"/trade_aggregations?base_asset_type="+t+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer
-      +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1").then(function(d){
-      var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||0; a.usd=a.bal*a.px*xlmUsd; }
-      renderStats(); renderAssets(); }).catch(function(){}); }
-
-  function loadPool(p){ pxStart(); return loadPool_(p).then(pxEnd,pxEnd); }
-  function loadPool_(p){
-    return j(H+"/liquidity_pools/"+p.id).then(function(d){
-      var tot=+d.total_shares||0; p.share=tot>0?(p.shares/tot*100):0; p.tl=+d.total_trustlines||null;
-      // Keep BOTH reserves, in order. An asset/asset pool has no native side, and collapsing the two
-      // into one variable is what dropped the second ticker.
-      var sides=(d.reserves||[]).map(function(rv){
-        if(rv.asset==="native")return {code:"XLM",iss:"",amount:+rv.amount};
-        var parts=rv.asset.split(":"); return {code:parts[0],iss:parts[1]||"",amount:+rv.amount}; });
-      if(sides[0]){ p.a=sides[0].code; p.ai=sides[0].iss; fetchLogo(p.a,p.ai); }
-      if(sides[1]){ p.b=sides[1].code; p.bi=sides[1].iss; fetchLogo(p.b,p.bi); }
-      // A constant-product pool holds equal value on both sides, so one side doubled IS the TVL.
-      function settle(sideXlm){ p.tvl=sideXlm*2*xlmUsd; p.usd=p.tvl*(p.share/100); renderStats(); renderPools(); }
-      var nat=null; for(var i=0;i<sides.length;i++)if(sides[i].code==="XLM")nat=sides[i];
-      if(nat){ settle(nat.amount); return; }
-      // no XLM side: price one side in XLM, then double that
-      var s0=sides[0]; if(!s0||!s0.iss){ renderPools(); return; }
-      var t0=s0.code.length<=4?"credit_alphanum4":"credit_alphanum12";
-      return j(H+"/trade_aggregations?base_asset_type="+t0+"&base_asset_code="+s0.code+"&base_asset_issuer="+s0.iss
-        +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1").then(function(pd){
-        var r=recs(pd)[0], px=r?(+r.close||+r.avg||0):0;
-        if(px>0)settle(s0.amount*px); else renderPools();
-      }).catch(function(){ renderPools(); });
-      }).catch(function(){}); }
-
-  function loadActs(){
-    return j(H+"/accounts/"+ADDR+"/operations?order=desc&limit=50").then(function(d){
-      ACTS=recs(d); DONE.acts=1; renderActs(); }).catch(function(){ DONE.acts=1; renderActs(); }); }
-
-  function boot(){
-    if(!ADDR){ fail(PASTED_CONTRACT
-      ? ("That is a Soroban contract, not a wallet " + String.fromCharCode(8212) + " it holds no balances or history we can show. Open it on stellar.expert to see its state.")
-      : "No Stellar address in this link."); return; }
-    paintHeader();
-    loadPrice().then(function(){ renderStats(); renderAssets(); });
-    j(H+"/accounts/"+ADDR).then(function(acc){
-      ACCT=acc;
-      (acc.balances||[]).forEach(function(b){
-        if(b.asset_type==="native"){ XLM=+b.balance||0; return; }
-        if(b.asset_type==="liquidity_pool_shares"){
-          if((+b.balance||0)>0)POOLS.push({id:b.liquidity_pool_id,shares:+b.balance,a:"",b:"",ai:"",bi:"",share:0,usd:null,tvl:null});
-          return; }
-        if(!(+b.balance>0))return;                       // an empty trustline is not a holding
-        ASSETS.push({code:b.asset_code,issuer:b.asset_issuer,dom:"",bal:+b.balance,px:0,usd:null});
-      });
-      DONE.pools=1;
-      // From here on we are valuing the account -- see PXWAVE. renderStats() is deliberately LAST:
-      // renderPools() and the wave below claim their pending count synchronously, so calling it first
-      // would read PXPEND as 0 and print a total built from nothing but the XLM balance.
-      PXWAVE=1;
-      paintHeader(); renderAssets(); wireTabs(); renderPools();
-      // Price beyond the first batch so the ORDER is real rather than just Horizon's order, but stop at
-      // PRICE_CAP: an account with 400 trustlines must not turn one page view into 400 requests.
-      (function wave(i,list){ if(i>=list.length)return;
-        Promise.all(list.slice(i,i+5).map(function(a){ if(a.__px)return null; a.__px=1; return loadAssetPx(a); }))
-          .then(function(){ wave(i+5,list); },function(){ wave(i+5,list); });
-      })(0,ASSETS.slice(0,PRICE_CAP));
-      renderStats();          // now that everything in flight has been counted
-      // "active since" comes from the oldest operation we can see, not from the account record --
-      // Horizon does not carry a creation timestamp on /accounts.
-      j(H+"/accounts/"+ADDR+"/operations?order=asc&limit=1").then(function(d){
-        var r=recs(d)[0]; if(r&&r.created_at){ ACCT.__created=new Date(r.created_at).toLocaleDateString("en-US",{month:"short",year:"numeric"}); paintHeader(); }
-      }).catch(function(){});
-    }).catch(function(){
-      fail("This account does not exist on Stellar mainnet, or Horizon is unreachable.");
-    });
-    loadActs();
-    var cp=q("#accCopy");
-    // The site owns a bottom-centre toast (window.showToast) that every other copy action uses. Reuse it
-    // rather than inventing a second confirmation style on one page.
-    function accToast(m){ try{ if(typeof window.showToast==="function"){ window.showToast(m); return; } }catch(_){}
-      try{ var t=document.createElement("div"); t.textContent=m;
-        t.style.cssText="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99999;"
-          +"padding:11px 18px;border-radius:12px;background:#1a1a1f;color:#fff;font-size:14px;font-weight:700;"
-          +"box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none";
-        document.body.appendChild(t); setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },1800);
-      }catch(_){} }
-    if(cp)cp.addEventListener("click",function(){
-      if(!ADDR)return;
-      try{ navigator.clipboard.writeText(ADDR); }catch(_){}
-      accToast("Wallet address copied");
-    });
-  }
-  if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-searchassets">(function(){
+})();</script><script id="lx-feerate">(function(){if(window.__lxFrBooted)return;window.__lxFrBooted=1;var ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S",THRESH=250000,H="https://horizon.stellar.org";if(typeof window.__lxFeeRate!=="number")window.__lxFeeRate=0.002;if(!("__lxLumosBal" in window))window.__lxLumosBal=null;window.__lxLumosThresh=THRESH;window.__lxLumosIssuer=ISS;function pub(bal){window.__lxLumosBal=bal;window.__lxFeeRate=(bal>=THRESH)?0.001:0.002;try{window.dispatchEvent(new CustomEvent("lx:feetier",{detail:{bal:bal,rate:window.__lxFeeRate,thresh:THRESH}}));}catch(_){}}window.__lxFeeTier=function(){return{bal:window.__lxLumosBal,rate:window.__lxFeeRate,thresh:THRESH};};window.__lxFeeTierSet=pub;window.__lxAcctP=window.__lxAcctP||{};window.__lxAcct=function(addr){if(!addr)return Promise.resolve(null);if(!window.__lxAcctP[addr])window.__lxAcctP[addr]=fetch(H+"/accounts/"+addr).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxAcctP[addr];};window.__lxPoolP=window.__lxPoolP||{};function poolRec(id){if(!window.__lxPoolP[id])window.__lxPoolP[id]=fetch(H+"/liquidity_pools/"+id).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxPoolP[id];}function poolLumos(bals,cb){var sh=bals.filter(function(b){return b.asset_type==="liquidity_pool_shares"&&(+b.balance||0)>0;}).slice(0,25);if(!sh.length){cb(0);return;}var want="LUMOS:"+ISS,left=sh.length,tot=0;sh.forEach(function(s){poolRec(s.liquidity_pool_id).then(function(p){try{if(p&&p.reserves){var r=p.reserves.filter(function(x){return x.asset===want;})[0];var ts=+p.total_shares||0;if(r&&ts>0)tot+=(+r.amount||0)*((+s.balance||0)/ts);}}catch(_){}if(--left===0)cb(tot);});});}function resolve(force){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(!ME){if(window.__lxLumosBal!==null)pub(null);else{window.__lxLumosBal=null;window.__lxFeeRate=0.002;}return;}if(!force&&window.__lxFrFor===ME)return;window.__lxFrFor=ME;if(force){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxAcct(ME).then(function(acc){if(!acc||!acc.balances){window.__lxFrFor="";return;}var lum=acc.balances.filter(function(b){return b.asset_code==="LUMOS"&&b.asset_issuer===ISS;}).reduce(function(s,b){return s+(+b.balance||0);},0);pub(lum);if(lum>=THRESH)return;poolLumos(acc.balances,function(extra){if(extra>0&&window.__lxFrFor===ME)pub(lum+extra);});}).catch(function(){window.__lxFrFor="";});}window.__lxFeeTierRefresh=function(){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(ME){try{delete window.__lxAcctP[ME];}catch(_){}}window.__lxFrFor="";resolve(true);};resolve();window.addEventListener("storage",function(e){if(e&&e.key==="lumos.address"){window.__lxFrFor="";resolve();}});setTimeout(resolve,1200);setTimeout(resolve,4000);})();</script><style id="lx-gate-css">[data-lxgate="1"]{font-size:0!important;color:transparent!important}[data-lxgate="1"]::after{content:"Connect wallet";font-size:15px;font-weight:800;letter-spacing:0;color:#fff;display:inline-block}</style><script id="lx-gate">(function(){var NET="aptos",SEL=".dw-cta";function conn(){try{return !!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"));}catch(_){return false;}}function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}function apply(){var on=conn();var els=document.querySelectorAll(SEL);for(var i=0;i<els.length;i++){var b=els[i];if(on){if(b.getAttribute("data-lxgate")){if(b.getAttribute("data-lxorig")!=null)b.textContent=b.getAttribute("data-lxorig");if(b.getAttribute("data-lxdis")==="1"){try{b.disabled=true;}catch(_){}b.setAttribute("disabled","");}b.style.removeProperty("opacity");b.style.removeProperty("cursor");b.removeAttribute("data-lxdis");b.removeAttribute("aria-label");b.removeAttribute("data-lxgate");}}else{if(b.getAttribute("data-lxorig")==null)b.setAttribute("data-lxorig",(b.textContent||"").trim());if(b.getAttribute("data-lxdis")==null)b.setAttribute("data-lxdis",(b.disabled||b.hasAttribute("disabled"))?"1":"0");if(b.textContent.trim()!=="Connect wallet")b.textContent="Connect wallet";try{b.disabled=false;}catch(_){}b.removeAttribute("disabled");b.removeAttribute("aria-disabled");b.classList.remove("disabled","is-disabled","btn-disabled");b.style.removeProperty("pointer-events");b.style.setProperty("opacity","1","important");b.style.setProperty("cursor","pointer","important");b.setAttribute("aria-label","Connect wallet");b.setAttribute("data-lxgate","1");}}}window.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-lxgate=\"1\"]"):null;if(b){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","stay:"+actNet());}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork(location.href);else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet(),location.href);return;}setTimeout(apply,60);},true);if(document.readyState!=="loading")apply();else document.addEventListener("DOMContentLoaded",apply);setTimeout(apply,350);setTimeout(apply,1000);try{var mo=new MutationObserver(function(){if(mo.__b)return;mo.__b=1;setTimeout(function(){mo.__b=0;apply();},40);});var host=document.querySelector(SEL);host=host&&host.parentNode?host.parentNode:document.body;if(host)mo.observe(host,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:["disabled","class"]});}catch(_){}})();</script><style id="lx-searchfix">#searchPopup #spFilters,.sp-body #spFilters{display:none !important}</style><script id="lx-searchctl">(function(){function head(){var c=document.getElementById("spAssetCount");return c&&c.closest?c.closest(".sp-section-head"):null;}function ctl(){var inp=document.getElementById("spSearchInput");if(!inp)return;var list=document.getElementById("spAssetList");var empty=!(inp.value&&inp.value.trim());if(empty&&list&&list.children.length&&!list.querySelector(".lx-recrow"))list.innerHTML="";var h=head();if(h)h.style.display=(empty||!list||!list.children.length)?"none":"";}document.addEventListener("input",function(e){if(e.target&&e.target.id==="spSearchInput"){ctl();if(window.requestAnimationFrame)requestAnimationFrame(ctl);}},true);document.addEventListener("focusin",function(e){if(e.target&&e.target.id==="spSearchInput"){setTimeout(ctl,30);}},true);var mo=null;function attach(){var list=document.getElementById("spAssetList");if(list&&!mo&&window.MutationObserver){mo=new MutationObserver(ctl);mo.observe(list,{childList:true});}ctl();}if(document.readyState!=="loading")attach();else document.addEventListener("DOMContentLoaded",attach);})();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
   // A 404 (not listed) is a clean "no", and a network failure is NOT a "yes": it resolves false and is
@@ -4917,6 +4421,523 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // The header is re-rendered on connect (the wallet chip is swapped in), which drops the button; the
   // menu is built when it is first opened, so the row to hide does not exist until then.
   try{ new MutationObserver(run).observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
+})();</script><script id="lx-accdata">(function(){
+  var H="https://horizon.stellar.org";
+  var CG="https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd";
+  var DASH=String.fromCharCode(8212), MID=String.fromCharCode(183), ARROW=String.fromCharCode(8594);
+  function q(s,r){ return (r||document).querySelector(s); }
+  function qa(s,r){ return [].slice.call((r||document).querySelectorAll(s)); }
+  function recs(d){ return (d&&d._embedded&&d._embedded.records)||[]; }
+  function fetchJ(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
+  function j(u){ return fetchJ(u).catch(function(e){
+    if(u.indexOf("horizon.stellar.org")>=0)return fetchJ(u.replace("horizon.stellar.org","horizon.stellar.lobstr.co"));
+    throw e; }); }
+  function esc(s){ return String(s==null?"":s).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;"); }
+
+  // ---- address: /account/stellar/<G...> or ?address= ------------------------------------------------
+  function readAddr(){
+    var a="";
+    try{ a=new URLSearchParams(location.search).get("address")||new URLSearchParams(location.search).get("addr")||""; }catch(_){}
+    if(!a){ var parts=location.pathname.split("/"); var last=parts[parts.length-1]||parts[parts.length-2]||"";
+      if(last.length===56&&last.charAt(0)==="G")a=last; }
+    a=(a||"").trim();
+    // G only. A C id is a Soroban contract: Horizon serves it no balances, trustlines or history,
+    // so there is no page to build -- see the message below rather than an empty shell.
+    return (a.length===56&&a.charAt(0)==="G")?a:"";
+  }
+  var ADDR=readAddr();
+  // not a page, just an explanation: readAddr rejects C ids, so ADDR is empty for one
+  var PASTED_CONTRACT=(function(){ var raw="";
+    try{ raw=new URLSearchParams(location.search).get("address")||""; }catch(_){}
+    if(!raw){ var pp=location.pathname.split("/"); raw=pp[pp.length-1]||""; }
+    raw=(raw||"").trim(); return raw.length===56&&raw.charAt(0)==="C"; })();
+
+  // ---- formatting ---------------------------------------------------------------------------------
+  var SUBD=String.fromCharCode(8320,8321,8322,8323,8324,8325,8326,8327,8328,8329);
+  function zsub(n){ var s=String(n),o=""; for(var i=0;i<s.length;i++)o+=SUBD.charAt(+s.charAt(i)); return o; }
+  function trimZ(t){ while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);
+    if(t.charAt(t.length-1)===".")t=t.slice(0,-1); return t; }
+  // Same rule as the Trade pages: plain decimal to 1e-8, then the zeros collapse into a subscript count.
+  function smallNum(x,sig){ x=+x||0; if(!(x>0))return "0";
+    if(x>=1e-8)return trimZ(x.toFixed(8));
+    var e=x.toExponential((sig||4)-1), i=e.indexOf("e");
+    if(i<0)return String(x);
+    var mant=trimZ(e.slice(0,i)).split(".").join(""), ex=-parseInt(e.slice(i+1),10);
+    if(!(ex>1))return trimZ(x.toFixed(8));
+    return "0.0"+zsub(ex-1)+mant; }
+  function amt(n){ n=+n||0; if(n>=1e9)return (n/1e9).toFixed(2)+"B"; if(n>=1e6)return (n/1e6).toFixed(2)+"M";
+    if(n>=1000)return Math.round(n).toLocaleString("en-US"); if(n>=1)return trimZ(n.toFixed(4)); if(n>0)return smallNum(n,4); return "0"; }
+  function usd(n){ n=+n||0; var a=Math.abs(n);
+    if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B"; if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M";
+    if(a>=1000)return "$"+n.toLocaleString("en-US",{maximumFractionDigits:0});
+    if(a>=1)return "$"+n.toFixed(2);
+    if(a>=0.01)return "$"+n.toFixed(4);          // cents matter; hundred-millionths of a cent do not
+    if(a>0)return "$"+smallNum(n,4); return "$0"; }
+  function shortG(a){ a=String(a||""); return a.length>12?(a.slice(0,4)+DASH+a.slice(-4)):a; }
+  function ago(t){ var s=Math.max(0,(Date.now()-t)/1000);
+    if(s<60)return Math.floor(s)+"s ago"; if(s<3600)return Math.floor(s/60)+"m ago";
+    if(s<86400)return Math.floor(s/3600)+"h ago"; if(s<2592000)return Math.floor(s/86400)+"d ago";
+    return new Date(t).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); }
+
+  // ---- identicon: deterministic from the address, so the same wallet always wears the same face ----
+  function hashOf(s){ var h=2166136261; for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=(h*16777619)>>>0; } return h>>>0; }
+  function identicon(addr){
+    var h=hashOf(addr), hue=h%360, hue2=(hue+52)%360, cells="";
+    for(var x=0;x<3;x++)for(var y=0;y<5;y++){
+      var bit=(hashOf(addr+":"+x+":"+y)>>>3)&1; if(!bit)continue;
+      cells+='<rect x="'+(x*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
+      if(x<2)cells+='<rect x="'+((4-x)*8)+'" y="'+(y*8)+'" width="8" height="8"/>';
+    }
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">'
+      +'<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">'
+      +'<stop offset="0%" stop-color="hsl('+hue+',62%,52%)"/><stop offset="100%" stop-color="hsl('+hue2+',60%,38%)"/>'
+      +'</linearGradient></defs><rect width="40" height="40" fill="url(#g)"/>'
+      +'<g fill="rgba(255,255,255,.92)">'+cells+'</g></svg>';
+    return "data:image/svg+xml;base64,"+btoa(svg);
+  }
+
+  // ---- logos: brand map, then the asset toml, then an initials disc ---------------------------------
+  var STELLAR_URI="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMiIgaGVpZ2h0PSIzMiIgdmlld0JveD0iMCAwIDMyIDMyIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L3N2Zz4=";
+  var LOGOS={USDC:"https://assets.coingecko.com/coins/images/6319/small/usdc.png",
+    EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",
+    AQUA:"https://aqua.network/assets/img/aqua-logo.png",
+    yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",
+    BTC:"https://assets.coingecko.com/coins/images/1/small/bitcoin.png"};
+  var LOGO_ISS={USDC:"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",
+    EURC:"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",
+    AQUA:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA",
+    yXLM:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55",
+    BTC:"GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF"};
+  var LUMOS_ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
+  var LUMOS_LOGO="/assets/tokens/lumos.png";
+  var IMG={}, DOM={}, TRIED={};
+  // the same verified pairs the rest of the site vouches for -- code|issuer, never code alone
+  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","FOX|GCVCLOBTVUZGMFP6P7KKYQQNCEFJBFCRYKKU5ER5GDI6AGALBCYTADUT":"lumoscore.com","RICHARD|GAH5ZTQUJRJALC6CIY5PZLVEWHPEGL6QBHKLIQK2DZQX7QK46KGC3VDM":"lumoscore.com","WHALEUM|GD5TUISLVQSNU7ELX4CXG52YOPTP53SIHMWKPN4M3KU6O6AMK2K73DOZ":"lumoscore.com","XLIQM|GCYD6UCJZQ6GBACACKJLBMEYP7LNTPLCIRT6WN5GAZ754PHWRADGL2MT":"lumoscore.com","BEAR|GACMOLVJSPD6U2LJXAMA5N5BDOXO7JZTEFMZBMQSGR7TZIIOVBLJENQI":"lumoscore.com","PUMP|GCKMG35B6ZN3QZ6WXRKTYFQ6LD5MN2QWNITQQSVAQUKGT4YZBGMQDNAZ":"lumoscore.com","PEPE|GDIZKTYAHXZEGGGHRO43PH3GQ4GPSJRAYJDRJRLBBP6F5754D4IGTHPI":"lumoscore.com","ZBS|GCCNOK2CKSVOGKOQO646LSFZQ3YDIIBVHDAKUNX4RANCQMKOG4BUF622":"lumoscore.com","FED|GA7OS5RZAVW2Q4RQJTP5IR63CGSTQASIIYLF4JHPJEPZKIJJ6N7LDQ3X":"lumoscore.com","NEIRO|GDI3PYAWVDV3G6OVAFCYVD3WTYXBOXDHJB7HW4GCNO3K522P5HN3GL3D":"lumoscore.com","PENGULUMENS|GCV4SUWKHDKW5FARQ7OOYIGYD3UN2V5L5IMVSVT5Z2HUA6BND4WOAA2A":"lumoscore.com","GROK|GA4EKP4J7NY2N33HQUGJFAHG6KLTHHQWBFDLRIUKCDZHLC53R5ALXSYZ":"lumoscore.com","LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F":"lumoscore.com","BLA|GB3EGACGDTQX53JSGGFEJDXGNHSCPQMIZ2YZHILVPVGDUO3HXW4TA3KP":"lumoscore.com","BRIDGE|GBEM54SCE7Z7SKNT3OUS23BS3BY3WOAPA4B2JALT3XFJOKHZKQFYQYKF":"lumoscore.com","HULK|GDZYOYFSBE72DHLUSQWT6KY3KIL3GNDDZF6LC4KF6LQZM2XZAYCXZANR":"lumoscore.com","BROT|GA6FEQQ3KJE7JDTCYSXOWQRLZVM4CLDI3K626GWFOMNIIUYQC5GIFSZ2":"lumoscore.com","REKT|GBWSN4TN2RL6CLZXXBJ24EYYFTVYKSXFRZ44GC4HQENHTY4JRX5MTTBG":"lumoscore.com","ZOMBIE|GCH5HQ4J4W3H7OSGQ4YMRTYAPIR6V5IB2RSYO7JENQU5OUCZZQFBFHGM":"lumoscore.com","GLTCH|GARFKDT7OS5FK2W2ZGLEQWXGUSRHWGZUXT4LMCFLEA6JPLR75ZXMDPCJ":"lumoscore.com","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","POTATO|GC3T4CLTJGDUDJHRDW7USQZ2OWSUWT7MCKHTZAPWGHK7SCCWRKCQKQSM":"lumoscore.com","MILL|GBGIFSMT3BR3BSRPYXRM7WCOZYVJETZ5QUUXHRP4ENBE34JDCLBQXSHE":"lumoscore.com","JROLL|GDFUI5WI3I3XAU2OI63KE4QNIG3BILK7BVBZTJUJSDNJMATOSPPX4XUI":"lumoscore.com","WAZAAA|GDRY3U75Z5VJ3SY4VXFZUDPZEBWPLJBGWQF2XZMB4DFTWAWYDVTGJ57A":"lumoscore.com"};
+
+  // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
+  // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
+  var DDOM={"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"};
+  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
+  var VTICK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+  function vtick(c,i){ return VFD[c+"|"+i]?('<span class="lx-vtick" title="Verified issuer">'+VTICK+'</span>'):""; }
+  function key(c,i){ return c+"-"+(i||""); }
+  function brand(c,i){ if(c==="LUMOS"&&i===LUMOS_ISS)return LUMOS_LOGO;
+    var u=LOGOS[c]; if(!u)return ""; return (LOGO_ISS[c]&&i===LOGO_ISS[c])?u:""; }
+  function initials(c){ var s=String(c||"?"), hue=hashOf(s)%360;
+    var t=s.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
+    var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+hue+',55%,45%)"/>'
+      +'<text x="20" y="'+(t.length>1?26:27)+'" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="'+(t.length>1?15:20)+'" fill="#fff">'+t+'</text></svg>';
+    return "data:image/svg+xml;base64,"+btoa(svg); }
+  function logoOf(c,i){ if(c==="XLM")return STELLAR_URI;
+    return brand(c,i)||IMG[key(c,i)]||initials(c); }
+  function paintLogos(){ qa(".acc-ico[data-lxc]").forEach(function(el){
+    var c=el.getAttribute("data-lxc"), i=el.getAttribute("data-lxi")||"";
+    el.style.backgroundImage="url("+logoOf(c,i)+")"; }); }
+  // Same two-source chain the pools tab uses: the issuer-scoped index, then the issuer's own toml.
+  function tomlField(block,k){ var lines=block.split(String.fromCharCode(10));
+    for(var i=0;i<lines.length;i++){ var ln=lines[i].trim(), eq=ln.indexOf("=");
+      if(eq<0)continue; if(ln.slice(0,eq).trim()!==k)continue;
+      var v=ln.slice(eq+1).trim();
+      if(v.charAt(0)==='"'){ var e=v.indexOf('"',1); v=e>0?v.slice(1,e):v.slice(1); }
+      return v; }
+    return ""; }
+  function fetchLogo(c,i){ if(!c||c==="XLM"||!i)return;
+    if((brand(c,i)||IMG[key(c,i)])&&DOM[key(c,i)])return;   // logo AND domain known -> nothing to fetch
+    if(TRIED[key(c,i)])return; TRIED[key(c,i)]=1;
+    fetchJ("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(i)+"&limit=50").then(function(d){
+      var m=recs(d).filter(function(r){ return (r.asset||"").indexOf(c+"-"+i)===0; })[0];
+      var ti=(m&&(m.tomlInfo||m.toml_info))||{};
+      if(m&&m.domain){ DOM[key(c,i)]=m.domain; try{ renderAssets(); }catch(_){} }
+      if(ti.image){ IMG[key(c,i)]=ti.image; paintLogos(); return; }
+      return j(H+"/accounts/"+i).then(function(acc){
+        var dom=(acc&&acc.home_domain)||""; if(!dom)return;
+        for(var k2=0;k2<dom.length;k2++){ var ch=dom.charAt(k2);
+          if(!((ch>="a"&&ch<="z")||(ch>="A"&&ch<="Z")||(ch>="0"&&ch<="9")||ch==="."||ch==="-"))return; }
+        return fetch("https://"+dom+"/.well-known/stellar.toml").then(function(r){ return r.text(); }).then(function(txt){
+          var bl=txt.split("[[CURRENCIES]]");
+          for(var b=1;b<bl.length;b++){ if(tomlField(bl[b],"code")!==c)continue;
+            var bi=tomlField(bl[b],"issuer"); if(bi&&bi!==i)continue;
+            var im=tomlField(bl[b],"image"); if(im){ IMG[key(c,i)]=im; paintLogos(); } return; } }); });
+    }).catch(function(){}); }
+
+  // ---- state --------------------------------------------------------------------------------------
+  var xlmUsd=(function(){ try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
+    return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0; }catch(e){ return 0; } })();
+  var ASSETS=[], POOLS=[], ACTS=[], XLM=0, ACCT=null, DONE={};
+  var PER=25, aShown=PER, pShown=PER, PRICE_CAP=75;
+  // #6: the portfolio total is a SUM over lookups that land one at a time, and every one of them used
+  // to repaint it -- so the figure climbed while you watched, and where it stopped depended on which
+  // requests happened to come back. Refresh, and Horizon throttles a different two, and the "value" of
+  // the same wallet is a different number. A total assembled in public is not a total.
+  //
+  // PXWAVE: have we even reached the point of asking? PXPEND: how many answers are still out. The
+  // figure is written once, when both say the counting is over.
+  var PXWAVE=0, PXPEND=0;
+  function pxStart(){ PXPEND++; }
+  function pxEnd(){ if(PXPEND>0)PXPEND--; if(PXPEND===0){ try{ renderStats(); }catch(_){} } }
+  var PIN={XLM:0, USDC:1, LUMOS:2};
+  // Pinned three first, then by value. An unpriced row sorts after every priced one: we do not know
+  // what it is worth, and ranking it as zero would be a claim we cannot make.
+  function sortAssets(list){
+    return list.slice().sort(function(x,y){
+      var px=(PIN[x.code]!=null&&(x.native||x.code!=="XLM"))?PIN[x.code]:99;
+      var py=(PIN[y.code]!=null&&(y.native||y.code!=="XLM"))?PIN[y.code]:99;
+      if(px!==py)return px-py;
+      var vx=(x.usd==null)?-1:x.usd, vy=(y.usd==null)?-1:y.usd;
+      if(vx!==vy)return vy-vx;
+      return String(x.code).localeCompare(String(y.code));
+    });
+  }
+  function moreHTML(kind,shown,total){ if(total<=shown)return "";
+    var next=Math.min(PER,total-shown);
+    return '<div class="acc-more"><button class="acc-more-b" data-more="'+kind+'">Load '+next
+      +' more<span class="acc-more-n">'+shown+' of '+total+' shown</span></button></div>'; }
+  // A pager only earns its space when there is more than one page.
+
+  function setStat(k,v,s){ var el=q('.acc-stat .v[data-k="'+k+'"]'); if(el&&el.textContent!==v)el.textContent=v;
+    var sl=q('.acc-stat .s[data-s="'+k+'"]'); if(sl&&s!=null&&sl.textContent!==s)sl.textContent=s; }
+
+  function totalValue(){ var t=XLM*xlmUsd;
+    ASSETS.forEach(function(a){ if(a.usd)t+=a.usd; });
+    POOLS.forEach(function(p){ if(p.usd)t+=p.usd; });
+    return t; }
+  // how much of the account this total actually covers
+  function priced(){ var n=1, m=1+ASSETS.length+POOLS.length;
+    ASSETS.forEach(function(a){ if(a.usd!=null)n++; });
+    POOLS.forEach(function(p){ if(p.usd!=null)n++; });
+    return {n:n,m:m}; }
+
+  function renderStats(){
+    var tv=totalValue();
+    var pc=priced();
+    // Counting = we have not asked yet, or answers are still out. Either way the sum on hand is a
+    // partial one and must not be shown as the account's value.
+    var counting=(!PXWAVE||PXPEND>0);
+    if(counting){ setStat("total", "Counting"+String.fromCharCode(8230), "valuing this account"); }
+    else if(xlmUsd<=0){ setStat("total", DASH, "waiting for XLM price"); }
+    else {
+      // Some holdings have no market to price them against, and no amount of waiting fixes that. The
+      // total is then a floor and says so, rather than passing itself off as the whole account.
+      var miss=pc.m-pc.n;
+      setStat("total", (miss>0?(String.fromCharCode(8805)+" "):"")+usd(tv),
+        miss>0 ? (amt(tv/xlmUsd)+" XLM "+MID+" "+miss+" holding"+(miss===1?"":"s")+" could not be priced")
+               : (amt(tv/xlmUsd)+" XLM"));
+    }
+    setStat("xlm", amt(XLM)+" XLM", xlmUsd>0?usd(XLM*xlmUsd):"");
+    // count what the Assets table shows -- XLM plus every funded trustline -- so the two agree
+    setStat("assets", String(ASSETS.length+1), ASSETS.length===1?"1 trustline held":(ASSETS.length+" trustlines held"));
+    setStat("pools", String(POOLS.length), POOLS.length?"providing liquidity":"none");
+  }
+
+  // ---- assets -------------------------------------------------------------------------------------
+  // The button lives after the table inside the same card, so re-rendering the table never destroys it.
+  function setMore(tblSel,kind,shown,total){
+    var tbl=q(tblSel); if(!tbl)return;
+    var card=tbl.closest(".acc-pane")||tbl.closest(".acc-card"); if(!card)return;
+    var host=card.querySelector(".acc-more-host");
+    if(!host){ host=document.createElement("div"); host.className="acc-more-host"; card.appendChild(host); }
+    var html=moreHTML(kind,shown,total);
+    if(host.__h!==html){ host.innerHTML=html; host.__h=html; }
+    if(!host.__w){ host.__w=1;
+      host.addEventListener("click",function(e){
+        var b=e.target&&e.target.closest?e.target.closest("[data-more]"):null; if(!b)return;
+        e.preventDefault(); e.stopPropagation();
+        if(kind==="assets"){ aShown+=PER; renderAssets(); } else { pShown+=PER; renderPools(); }
+      },true); }
+  }
+  function renderAssets(){
+    var tb=q("#accAssetsTbl tbody"); if(!tb)return;
+    var n=q("#accAssetsN"); if(n)n.textContent=String(ASSETS.length+1);
+    var all=sortAssets([{code:"XLM",issuer:"",dom:"Stellar",bal:XLM,px:1,usd:XLM*xlmUsd,native:true}].concat(ASSETS));
+    var rows=all.slice(0,Math.min(aShown,all.length));
+    var tot=totalValue();
+    // whatever is on screen gets priced and gets a logo, cap or no cap
+    // Two jobs, two guards. __px used to gate BOTH pricing and logo/domain lookup, and the boot pricing
+    // wave claims __px without ever calling fetchLogo -- so whichever ran first decided whether the asset
+    // ever got a logo. That race is why some wallets showed initials and a bare issuer and others did not.
+    // fetchLogo carries its own TRIED guard, so calling it on every visible row costs nothing extra.
+    rows.forEach(function(a){ if(a.native)return;
+      fetchLogo(a.code,a.issuer);
+      if(!a.__px){ a.__px=1; loadAssetPx(a); } });
+    tb.innerHTML=rows.map(function(a){
+      var sub = a.native ? "Native asset"
+        : (function(){ var _d=dispDom(a.code,a.issuer,DOM[key(a.code,a.issuer)]||"");
+            return _d ? (_d+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer); })();
+      return '<tr class="acc-row" data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer||"")+'">'
+        +'<td><span class="acc-pair"><span class="acc-ico" data-lxc="'+esc(a.code)+'" data-lxi="'+esc(a.issuer||"")+'"></span>'
+          +'<span><span class="acc-code">'+esc(a.code)+'</span>'+vtick(a.code,a.issuer||"")
+          +'<span class="acc-iss">'+esc(sub)+'</span></span></span></td>'
+        +'<td class="num">'+amt(a.bal)+'</td>'
+        +'<td class="num">'+(a.usd!=null&&xlmUsd>0?usd(a.usd):DASH)+'</td>'
+        +'<td style="text-align:right">'+(a.native?"":'<a class="acc-view" href="/trade/stellar/'+esc(a.code)+'-'+esc(a.issuer)+'">View asset</a>')+'</td>'
+        +'</tr>'; }).join("");
+    setMore("#accAssetsTbl","assets",rows.length,all.length);
+    paintLogos();
+    qa("#accAssetsTbl tbody tr.acc-row").forEach(function(tr){ tr.addEventListener("click",function(){
+      var c=tr.getAttribute("data-code"), i=tr.getAttribute("data-iss");
+      if(c&&c!=="XLM"&&i)location.href="/trade/stellar/"+c+"-"+i; }); });
+  }
+
+  // ---- pools --------------------------------------------------------------------------------------
+  var poolsOpened=false;
+  function wireTabs(){
+    var bar=q("#accTabs"); if(!bar||bar.__w)return; bar.__w=1;
+    bar.addEventListener("click",function(e){
+      var b=e.target&&e.target.closest?e.target.closest(".acc-tab[data-t]"):null; if(!b)return;
+      var t=b.getAttribute("data-t");
+      qa(".acc-tab",bar).forEach(function(x){ x.classList.toggle("active",x===b); });
+      qa(".acc-pane").forEach(function(pn){ pn.hidden=(pn.getAttribute("data-p")!==t); });
+      if(t==="pools"&&!poolsOpened){ poolsOpened=true; renderPools(); }
+    });
+  }
+  function renderPools(){
+    var tb=q("#accPoolsTbl tbody"); if(!tb)return;
+    var n0=q("#accPoolsN"); if(n0)n0.textContent=String(POOLS.length);
+    if(!poolsOpened)return;                       // deferred until the tab is actually opened
+    var n=q("#accPoolsN"); if(n)n.textContent=String(POOLS.length);
+    if(!POOLS.length){ tb.innerHTML='<tr class="acc-empty-row"><td colspan="5"><div class="acc-empty">'
+      +(DONE.pools?"This account provides no pool liquidity.":"Loading pools"+String.fromCharCode(8230))+'</div></td></tr>'; return; }
+    // biggest position first, unvalued last -- same rule as the assets table
+    var psorted=POOLS.slice().sort(function(x,y){ var vx=(x.usd==null)?-1:x.usd, vy=(y.usd==null)?-1:y.usd; return vy-vx; });
+    var plist=psorted.slice(0,Math.min(pShown,psorted.length));
+    plist.forEach(function(p){ if(!p.__ld){ p.__ld=1; loadPool(p); } });
+    tb.innerHTML=plist.map(function(p){
+      return '<tr class="acc-row" data-pool="'+esc(p.id)+'">'
+        +'<td><span class="acc-pair"><span class="acc-icos">'
+          +'<span class="acc-ico" data-lxc="'+esc(p.a)+'" data-lxi="'+esc(p.ai||"")+'"></span>'
+          +'<span class="acc-ico" data-lxc="'+esc(p.b)+'" data-lxi="'+esc(p.bi||"")+'"></span></span>'
+          +'<span><span class="acc-code">'+esc(p.a)+" / "+esc(p.b)+'</span>'
+          +'<span class="acc-dom">'+(p.tl!=null?(p.tl+(p.tl===1?" LP holder":" LP holders")):"")+'</span></span></span></td>'
+        +'<td class="num">'+(p.share>=0.01?p.share.toFixed(2):"<0.01")+'%</td>'
+        +'<td class="num">'+(p.usd!=null&&xlmUsd>0?usd(p.usd):DASH)+'</td>'
+        +'<td class="num acc-hide-sm">'+(p.tvl!=null&&xlmUsd>0?usd(p.tvl):DASH)+'</td>'
+        +'<td style="text-align:right"><a class="acc-view" href="/pools/stellar/id/'+esc(p.id)+'">View pool</a></td>'
+        +'</tr>'; }).join("");
+    setMore("#accPoolsTbl","pools",plist.length,psorted.length);
+    paintLogos();
+    qa("#accPoolsTbl tbody tr.acc-row").forEach(function(tr){ tr.addEventListener("click",function(){
+      var id=tr.getAttribute("data-pool"); if(id)location.href="/pools/stellar/id/"+id; }); });
+  }
+
+  // ---- activity -----------------------------------------------------------------------------------
+  // The wallet's own activity icons, so the two pages draw the same marks.
+  var WIC={
+    received:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>',
+    sent:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>',
+    swap:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3M4 13h11M17 14l3-3-3-3M20 11H9"/></svg>',
+    lp:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>',
+    order:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    claim:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>',
+    settings:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    other:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>'
+  };
+  // The asset's own mark, inline in the title -- the wallet's .lx-act-ilogo, same construction.
+  function accIlogo(code,native){
+    var lg=native?STELLAR_URI:((window.__lxLogos||{})[code]||"");
+    var bg=lg?("url('"+String(lg).replace(/'/g,"%27")+"')"):"none";
+    // No logo, no mark. The initial-letter fallback put a stray "Y"/"E"/"A" in front of every asset on
+    // every row -- on a page where most assets have no published logo, that is a column of loose
+    // letters rather than a set of marks. The ticker is right next to it and already says which asset.
+    if(!lg)return "";
+    return '<span class="lx-act-ilogo" style="--al:'+bg+'"></span>';
+  }
+  var AIC={
+    payment:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
+    swap:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>',
+    trust:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>',
+    pool:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2s6 7 6 11a6 6 0 01-12 0c0-4 6-11 6-11z"/></svg>',
+    offer:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>',
+    other:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>'
+  };
+  function opCode(o){ return o.asset_type==="native"?"XLM":(o.asset_code||""); }
+  function describe(o){
+    var t=o.type||"", me=ADDR;
+    if(t==="payment"){
+      var out=(o.from===me), pc=opCode(o), pn=(o.asset_type==="native");
+      return {ic:"payment", kind:out?"sent":"received",
+        titleHtml:(out?"Sent":"Received")+accIlogo(pc,pn)+esc(pc),
+        title:(out?"Sent ":"Received ")+pc,
+        sub:(out?("to "+shortG(o.to)):("from "+shortG(o.from))), cls:out?"acc-dn":"acc-up",
+        right:(out?"-":"+")+amt(o.amount)+" "+pc}; }
+    if(t.indexOf("path_payment")===0){
+      var sc=o.source_asset_type==="native"?"XLM":(o.source_asset_code||"");
+      var dc=opCode(o), dn=(o.asset_type==="native"), sn=(o.source_asset_type==="native");
+      return {ic:"swap", kind:"swap",
+        titleHtml:"Swap"+accIlogo(sc,sn)+esc(sc)+" "+ARROW+accIlogo(dc,dn)+esc(dc),
+        title:"Swap "+sc+" "+ARROW+" "+dc,
+        sub:"via Stellar DEX",
+        right:"+"+amt(o.amount)+" "+dc, rightSub:"-"+amt(o.source_amount)+" "+sc}; }
+    if(t==="change_trust"){
+      var add=(+o.limit)>0;
+      var tc=(o.asset_code||opCode(o));
+      return {ic:"trust", kind:"settings",
+        titleHtml:(add?"Added trustline":"Removed trustline")+accIlogo(tc,false)+esc(tc),
+        title:(add?"Added trustline ":"Removed trustline ")+tc,
+        sub:o.asset_issuer?shortG(o.asset_issuer):"", right:""}; }
+    if(t==="liquidity_pool_deposit")  return {ic:"pool", kind:"lp", title:"Deposited into a pool", sub:shortG(o.liquidity_pool_id||""), right:""};
+    if(t==="liquidity_pool_withdraw") return {ic:"pool", kind:"lp", title:"Withdrew from a pool", sub:shortG(o.liquidity_pool_id||""), right:""};
+    if(t.indexOf("offer")>=0){
+      var amount=+o.amount||0;
+      var sc2=(o.selling_asset_code||(o.selling_asset_type==="native"?"XLM":"")),
+          bc2=(o.buying_asset_code||(o.buying_asset_type==="native"?"XLM":""));
+      return {ic:"offer", kind:"order",
+        titleHtml:(amount>0?"Placed an order":"Cancelled an order")
+          +accIlogo(sc2,o.selling_asset_type==="native")+esc(sc2)+" /"+accIlogo(bc2,o.buying_asset_type==="native")+esc(bc2),
+        title:(amount>0?"Placed an order":"Cancelled an order"), sub:"", right:""}; }
+    if(t==="create_account") return {ic:"payment", kind:"received", title:"Account created", sub:"", cls:"acc-up", right:"+"+amt(o.starting_balance)+" XLM"};
+    if(t==="account_merge")  return {ic:"other", kind:"other", title:"Account merged", sub:shortG(o.into||""), right:""};
+    if(t==="claim_claimable_balance") return {ic:"payment", kind:"claim", title:"Claimed claimable balance", sub:"", right:""};
+    if(t==="create_claimable_balance") return {ic:"payment", kind:"claim", title:"Created claimable balance", sub:"", right:"-"+amt(o.amount)+" "+opCode(o)};
+    // Anything else: say what it was rather than inventing a story for it.
+    return {ic:"other", kind:"other", title:t.split("_").join(" ").replace(/^./,function(m){return m.toUpperCase();}), sub:"", right:""};
+  }
+  function renderActs(){
+    var box=q("#accActs"); if(!box)return;
+    var n=q("#accActN"); if(n)n.textContent=String(ACTS.length);
+    if(!ACTS.length){ box.innerHTML='<div class="acc-empty">'
+      +(DONE.acts?"No activity on this account yet.":"Loading activity"+String.fromCharCode(8230))+'</div>'; return; }
+    box.innerHTML=ACTS.map(function(o){
+      var d=describe(o), ts=Date.parse(o.created_at||"")||0;
+      // .acc-act -> .activity-row: same element names as the wallet, so the same rules style both.
+      var kind=d.kind||"other";
+      var ac=(kind==="received")?"up":(kind==="sent")?"down":(kind==="swap")?"swap":"";
+      var title=d.titleHtml||esc(d.title);
+      var meta=[esc(d.sub||""),(ts?ago(ts):"")].filter(Boolean).join(" "+MID+" ");
+      return '<div class="activity-row"><div class="activity-icon '+kind+'">'+(WIC[kind]||WIC.other)+'</div>'
+        +'<div class="activity-info"><div class="type">'+title+'</div>'
+        +'<div class="meta">'+meta+'</div></div>'
+        +'<div class="activity-amt"><div class="a1 '+ac+'">'+esc(d.right||"")+'</div>'
+        +'<div class="a2">'+esc(d.rightSub||"")+'</div></div>'
+        +'<a class="lx-txlink" href="https://stellar.expert/explorer/public/tx/'+esc(o.transaction_hash||"")+'" target="_blank" rel="noopener" title="View on Stellar.Expert"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></div>'; }).join("");
+  }
+
+  // ---- load ---------------------------------------------------------------------------------------
+  function paintHeader(){
+    var el=q("#accAddr"); if(el){ el.textContent=ADDR||"No account"; el.title=ADDR; }
+    var av=q("#accAvatar"); if(av&&ADDR)av.style.backgroundImage="url("+identicon(ADDR)+")";
+    var nt=q("#accNet"); if(nt&&!nt.style.backgroundImage)nt.style.backgroundImage="url("+STELLAR_URI+")";
+    var sub=q("#accSub"); if(!sub)return;
+    var bits=[];
+
+    if(ACCT&&ACCT.__created)bits.push("Active since "+esc(ACCT.__created));
+    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>');
+    sub.innerHTML=bits.join("");
+  }
+  function fail(msg){
+    qa(".acc-empty").forEach(function(e){ e.textContent=msg; });
+    var el=q("#accAddr"); if(el)el.textContent=ADDR||"No account";
+  }
+
+  function loadPrice(){ return fetchJ(CG).then(function(d){
+    if(d&&d.stellar&&+d.stellar.usd){ xlmUsd=+d.stellar.usd;
+      try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_){} }
+  }).catch(function(){}); }
+
+  // last trade close against XLM -- the same price the Trade pages quote, so a holding is worth the same
+  // number on both screens
+  function loadAssetPx(a){ pxStart(); return loadAssetPx_(a).then(pxEnd,pxEnd); }
+  function loadAssetPx_(a){
+    var t=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
+    return j(H+"/trade_aggregations?base_asset_type="+t+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer
+      +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1").then(function(d){
+      var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||0; a.usd=a.bal*a.px*xlmUsd; }
+      renderStats(); renderAssets(); }).catch(function(){}); }
+
+  function loadPool(p){ pxStart(); return loadPool_(p).then(pxEnd,pxEnd); }
+  function loadPool_(p){
+    return j(H+"/liquidity_pools/"+p.id).then(function(d){
+      var tot=+d.total_shares||0; p.share=tot>0?(p.shares/tot*100):0; p.tl=+d.total_trustlines||null;
+      // Keep BOTH reserves, in order. An asset/asset pool has no native side, and collapsing the two
+      // into one variable is what dropped the second ticker.
+      var sides=(d.reserves||[]).map(function(rv){
+        if(rv.asset==="native")return {code:"XLM",iss:"",amount:+rv.amount};
+        var parts=rv.asset.split(":"); return {code:parts[0],iss:parts[1]||"",amount:+rv.amount}; });
+      if(sides[0]){ p.a=sides[0].code; p.ai=sides[0].iss; fetchLogo(p.a,p.ai); }
+      if(sides[1]){ p.b=sides[1].code; p.bi=sides[1].iss; fetchLogo(p.b,p.bi); }
+      // A constant-product pool holds equal value on both sides, so one side doubled IS the TVL.
+      function settle(sideXlm){ p.tvl=sideXlm*2*xlmUsd; p.usd=p.tvl*(p.share/100); renderStats(); renderPools(); }
+      var nat=null; for(var i=0;i<sides.length;i++)if(sides[i].code==="XLM")nat=sides[i];
+      if(nat){ settle(nat.amount); return; }
+      // no XLM side: price one side in XLM, then double that
+      var s0=sides[0]; if(!s0||!s0.iss){ renderPools(); return; }
+      var t0=s0.code.length<=4?"credit_alphanum4":"credit_alphanum12";
+      return j(H+"/trade_aggregations?base_asset_type="+t0+"&base_asset_code="+s0.code+"&base_asset_issuer="+s0.iss
+        +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1").then(function(pd){
+        var r=recs(pd)[0], px=r?(+r.close||+r.avg||0):0;
+        if(px>0)settle(s0.amount*px); else renderPools();
+      }).catch(function(){ renderPools(); });
+      }).catch(function(){}); }
+
+  function loadActs(){
+    return j(H+"/accounts/"+ADDR+"/operations?order=desc&limit=50").then(function(d){
+      ACTS=recs(d); DONE.acts=1; renderActs(); }).catch(function(){ DONE.acts=1; renderActs(); }); }
+
+  function boot(){
+    if(!ADDR){ fail(PASTED_CONTRACT
+      ? ("That is a Soroban contract, not a wallet " + String.fromCharCode(8212) + " it holds no balances or history we can show. Open it on stellar.expert to see its state.")
+      : "No Stellar address in this link."); return; }
+    paintHeader();
+    loadPrice().then(function(){ renderStats(); renderAssets(); });
+    j(H+"/accounts/"+ADDR).then(function(acc){
+      ACCT=acc;
+      (acc.balances||[]).forEach(function(b){
+        if(b.asset_type==="native"){ XLM=+b.balance||0; return; }
+        if(b.asset_type==="liquidity_pool_shares"){
+          if((+b.balance||0)>0)POOLS.push({id:b.liquidity_pool_id,shares:+b.balance,a:"",b:"",ai:"",bi:"",share:0,usd:null,tvl:null});
+          return; }
+        if(!(+b.balance>0))return;                       // an empty trustline is not a holding
+        ASSETS.push({code:b.asset_code,issuer:b.asset_issuer,dom:"",bal:+b.balance,px:0,usd:null});
+      });
+      DONE.pools=1;
+      // From here on we are valuing the account -- see PXWAVE. renderStats() is deliberately LAST:
+      // renderPools() and the wave below claim their pending count synchronously, so calling it first
+      // would read PXPEND as 0 and print a total built from nothing but the XLM balance.
+      PXWAVE=1;
+      paintHeader(); renderAssets(); wireTabs(); renderPools();
+      // Price beyond the first batch so the ORDER is real rather than just Horizon's order, but stop at
+      // PRICE_CAP: an account with 400 trustlines must not turn one page view into 400 requests.
+      (function wave(i,list){ if(i>=list.length)return;
+        Promise.all(list.slice(i,i+5).map(function(a){ if(a.__px)return null; a.__px=1; return loadAssetPx(a); }))
+          .then(function(){ wave(i+5,list); },function(){ wave(i+5,list); });
+      })(0,ASSETS.slice(0,PRICE_CAP));
+      renderStats();          // now that everything in flight has been counted
+      // "active since" comes from the oldest operation we can see, not from the account record --
+      // Horizon does not carry a creation timestamp on /accounts.
+      j(H+"/accounts/"+ADDR+"/operations?order=asc&limit=1").then(function(d){
+        var r=recs(d)[0]; if(r&&r.created_at){ ACCT.__created=new Date(r.created_at).toLocaleDateString("en-US",{month:"short",year:"numeric"}); paintHeader(); }
+      }).catch(function(){});
+    }).catch(function(){
+      fail("This account does not exist on Stellar mainnet, or Horizon is unreachable.");
+    });
+    loadActs();
+    // #10: the wallet page owns Send -- the keys, the balances, the signing and the asset picker all
+    // live there. Handing it the recipient in the url is the whole integration; building a second send
+    // form here would be a second thing to keep correct about moving real money.
+    var sb=q("#accSend");
+    if(sb)sb.addEventListener("click",function(e){
+      try{ e.preventDefault(); }catch(_){}
+      if(!ADDR)return;
+      var u="lumoscore-wallet.html?to="+encodeURIComponent(ADDR);
+      try{ if(window.__lxNav){ window.__lxNav(u); return; } }catch(_){}
+      location.href=u;
+    });
+    var cp=q("#accCopy");
+    // The site owns a bottom-centre toast (window.showToast) that every other copy action uses. Reuse it
+    // rather than inventing a second confirmation style on one page.
+    function accToast(m){ try{ if(typeof window.showToast==="function"){ window.showToast(m); return; } }catch(_){}
+      try{ var t=document.createElement("div"); t.textContent=m;
+        t.style.cssText="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:99999;"
+          +"padding:11px 18px;border-radius:12px;background:#1a1a1f;color:#fff;font-size:14px;font-weight:700;"
+          +"box-shadow:0 6px 24px rgba(0,0,0,.45);pointer-events:none";
+        document.body.appendChild(t); setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },1800);
+      }catch(_){} }
+    if(cp)cp.addEventListener("click",function(){
+      if(!ADDR)return;
+      try{ navigator.clipboard.writeText(ADDR); }catch(_){}
+      accToast("Wallet address copied");
+    });
+  }
+  if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

@@ -2862,7 +2862,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // real balance), with trailing zeros trimmed.
   function fmtIn(v){ v=+v; if(!(v>0))return ""; var dp=v>=1?4:7,f=Math.pow(10,dp); var n=Math.floor(v*f)/f; if(!(n>0))return ""; return trimZ(n.toFixed(dp)); }
   // build → sign → submit; buildOps(S, acctJson) -> [operations]
-  function wSend(addr, buildOps){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(180).build(); return wSign(tx.toXDR(),addr); }).then(function(signed){ return wSubmit(signed); }); }
+  // #16: onSigned fires the moment the wallet hands the signature back, BEFORE the network submit.
+  // Those are two different waits and the button used to show one label across both -- see wRun.
+  function wSend(addr, buildOps, onSigned){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(180).build(); return wSign(tx.toXDR(),addr); }).then(function(signed){ try{ if(onSigned)onSigned(); }catch(_){} return wSubmit(signed); }); }
   // inline status message under a CTA (no new modals — a small line the existing card already has room for)
   // bottom-center toast, identical to the site's "Copied to clipboard" toast (self-contained CSS above)
   function ammToast(msg,isErr,hash){ var CK='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
@@ -2885,7 +2887,15 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     btn.__lxBusy=true;
     var orig=btn.innerHTML; btn.disabled=true; btn.style.opacity="0.7"; btn.style.cursor="wait"; btn.classList.add("lx-btnload"); btn.textContent=labels.wait||"Confirm in wallet\\u2026"; wMsg(btn,"",false);
     function restore(){ btn.__lxBusy=false; btn.classList.remove("lx-btnload"); btn.disabled=false; btn.style.opacity="1"; btn.style.cursor=""; btn.innerHTML=orig; }
-    wSend(addr,buildOps).then(function(res){ btn.classList.remove("lx-btnload"); btn.textContent=labels.ok||"\\u2713 Done"; btn.style.opacity="1"; wMsg(btn,labels.okMsg||"Success.",false,res&&res.hash); if(onDone)onDone(res);
+    // #16: "Confirm in wallet…" used to stay on the button through the network submit as well, so
+    // after signing in LOBSTR the screen still read as though the signature had not been noticed. It
+    // had -- what follows is Horizon's SYNCHRONOUS submit, which does not answer until the
+    // transaction is in a closed ledger, and a Stellar ledger closes about every five seconds. That
+    // wait is the network's and cannot be shortened; what can be fixed is the screen calling it the
+    // wrong thing.
+    wSend(addr,buildOps,function(){
+      try{ btn.textContent=labels.submitting||"Submitting\\u2026"; }catch(_){}
+    }).then(function(res){ btn.classList.remove("lx-btnload"); btn.textContent=labels.ok||"\\u2713 Done"; btn.style.opacity="1"; wMsg(btn,labels.okMsg||"Success.",false,res&&res.hash); if(onDone)onDone(res);
         // adding or withdrawing liquidity moves LUMOS between wallet and pool, and the fee tier now counts
         // both — tell the resolver to re-read rather than leave it on the figure it took at page load
         try{ if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh(); }catch(_){}

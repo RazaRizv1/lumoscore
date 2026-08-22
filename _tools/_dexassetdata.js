@@ -2426,6 +2426,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         });
       });
     }).then(function(signed){
+      // #16: the signature is in. Everything from here is the NETWORK -- Horizon's submit endpoint
+      // holds the request open until the transaction is in a closed ledger, roughly five seconds and
+      // longer when it is busy. Keeping "Confirm in wallet…" up through that told the user their tap
+      // in LOBSTR had not registered, when it was the only thing that had.
+      try{ cta.textContent="Submitting\\u2026"; }catch(_){}
       return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();});
     }).then(function(resp){
       cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload");
@@ -2578,6 +2583,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         return dxTimeout(dxSign(tb.setTimeout(180).build().toXDR(),addr),150000,"Signing timed out \\u2014 open your wallet and try again");
       });
     }).then(function(signed){
+      // #16: the signature is in. Everything from here is the NETWORK -- Horizon's submit endpoint
+      // holds the request open until the transaction is in a closed ledger, roughly five seconds and
+      // longer when it is busy. Keeping "Confirm in wallet…" up through that told the user their tap
+      // in LOBSTR had not registered, when it was the only thing that had.
+      try{ cta.textContent="Submitting\\u2026"; }catch(_){}
       return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();});
     }).then(function(resp){
       cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload");
