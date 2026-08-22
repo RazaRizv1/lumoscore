@@ -7073,12 +7073,22 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   function renderOrderbook(){
     var d=window.__lxDXAob; if(!d)return;
-    var asksEl=q("#dxaObAsks"), bidsEl=q("#dxaObBids"); if(!asksEl||!bidsEl)return;
+    // #14: the orderbook on a phone was the design's MOCK, start to finish. This renderer only ever
+    // looked for the DESKTOP containers -- #dxaObAsks / #dxaObBids -- and the phone ships #mdxaObAsks /
+    // #mdxaObBids, so it returned on the first line and nothing was ever painted. Checked against
+    // Horizon at the time: the live best ask was 5.0271 x 91.21 while the pane read 4.2406 x 16,974.
+    //
+    // The ROW markup needs no branch. Both stylesheets style the same three children (.px/.am/.sm) plus
+    // the depth bar, and differ only in the wrapper class -- so the rows are emitted with both, and each
+    // layout styles the one it knows.
+    var MOB=!q("#dxaObAsks");
+    var asksEl=q("#dxaObAsks")||q("#mdxaObAsks"), bidsEl=q("#dxaObBids")||q("#mdxaObBids");
+    if(!asksEl||!bidsEl)return;
     if(asksEl.__lxobd===d && asksEl.classList.contains("lxda"))return; asksEl.__lxobd=d;   // same book already rendered -> skip
     try{window.__lxDXAbook=d;}catch(_){} var asks=(d.asks||[]).slice(0,16), bids=(d.bids||[]).slice(0,16);
     if(!asks.length&&!bids.length)return;
     // header labels: Price (XLM) / Amount (CODE) / Depth
-    var head=q(".dxa-ob-head"); if(head){ var hs=head.querySelectorAll("span"); if(hs[0])hs[0].textContent="Price (XLM)"; if(hs[1])hs[1].textContent="Amount ("+CODE+")"; if(hs[2])hs[2].textContent="Depth (XLM)"; }
+    var head=q(".dxa-ob-head")||q(".mdxa-ob-head"); if(head){ var hs=head.querySelectorAll("span"); if(hs[0])hs[0].textContent="Price (XLM)"; if(hs[1])hs[1].textContent="Amount ("+CODE+")"; if(hs[2])hs[2].textContent="Depth (XLM)"; }
     function fmtN(n){ n=+n||0; return n.toLocaleString("en-US",{maximumFractionDigits:2}); }
     function px(o){ return +o.price; }
     var cumA=0,cumB=0,aList=[],bList=[];
@@ -7092,11 +7102,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var maxA=cumA||1, maxB=cumB||1;
     function decs(p){ return p>=1?4:(p>=0.01?5:7); }
     asksEl.innerHTML=aList.slice().reverse().map(function(r){ var w=(r.sum/maxA*100).toFixed(1);
-      return '<div class="dxa-ob-row ask"><span class="px">'+r.px.toFixed(decs(r.px))+'</span><span class="am">'+fmtN(r.am)+'</span><span class="sm">'+fmtN(r.sum)+'</span><span class="bar" style="width:'+w+'%"></span></div>'; }).join("");
+      return '<div class="dxa-ob-row mdxa-ob-row ask"><span class="px">'+r.px.toFixed(decs(r.px))+'</span><span class="am">'+fmtN(r.am)+'</span><span class="sm">'+fmtN(r.sum)+'</span><span class="bar" style="width:'+w+'%"></span></div>'; }).join("");
     bidsEl.innerHTML=bList.map(function(r){ var w=(r.sum/maxB*100).toFixed(1);
-      return '<div class="dxa-ob-row bid"><span class="px">'+r.px.toFixed(decs(r.px))+'</span><span class="am">'+fmtN(r.am)+'</span><span class="sm">'+fmtN(r.sum)+'</span><span class="bar" style="width:'+w+'%"></span></div>'; }).join("");
+      return '<div class="dxa-ob-row mdxa-ob-row bid"><span class="px">'+r.px.toFixed(decs(r.px))+'</span><span class="am">'+fmtN(r.am)+'</span><span class="sm">'+fmtN(r.sum)+'</span><span class="bar" style="width:'+w+'%"></span></div>'; }).join("");
     // spread
-    var sp=q(".dxa-ob-spread"); if(sp&&aList.length&&bList.length){ var spread=aList[0].px-bList[0].px, mid=(aList[0].px+bList[0].px)/2; var mons=sp.querySelectorAll(".mono"); if(mons[0])mons[0].textContent=(spread>0?spread.toFixed(Math.max(4,decs(mid))):"0")+" XLM"; if(mons[1])mons[1].textContent="("+(mid>0?(spread/mid*100).toFixed(2):"0")+"%)"; }
+    var sp=q(".dxa-ob-spread")||q(".mdxa-ob-spread"); if(sp&&aList.length&&bList.length){ var spread=aList[0].px-bList[0].px, mid=(aList[0].px+bList[0].px)/2; var mons=sp.querySelectorAll(".mono"); if(mons[0])mons[0].textContent=(spread>0?spread.toFixed(Math.max(4,decs(mid))):"0")+" XLM"; if(mons[1])mons[1].textContent="("+(mid>0?(spread/mid*100).toFixed(2):"0")+"%)"; }
     asksEl.classList.add("lxda"); bidsEl.classList.add("lxda");
   }
 
