@@ -526,10 +526,12 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     else {
       // Some holdings have no market to price them against, and no amount of waiting fixes that. The
       // total is then a floor and says so, rather than passing itself off as the whole account.
-      var miss=pc.m-pc.n;
-      setStat("total", (miss>0?(String.fromCharCode(8805)+" "):"")+usd(tv),
-        miss>0 ? (amt(tv/xlmUsd)+" XLM "+MID+" "+miss+" holding"+(miss===1?"":"s")+" could not be priced")
-               : (amt(tv/xlmUsd)+" XLM"));
+      // #9: this card used to carry the same figure three ways -- a >= sign, the dollar total, the XLM
+      // equivalent, and a sentence about how many holdings had no market. Accurate, and far too much
+      // for a summary tile: two lines of small print under a number the reader wanted at a glance.
+      // "Estimated value" says the one thing that qualification was for. The exact XLM amount and the
+      // per-asset detail are both a scroll away in the holdings table below.
+      setStat("total", usd(tv), "Estimated value");
     }
     setStat("xlm", amt(XLM)+" XLM", xlmUsd>0?usd(XLM*xlmUsd):"");
     // count what the Assets table shows -- XLM plus every funded trustline -- so the two agree

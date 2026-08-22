@@ -18,6 +18,17 @@ const B = String.fromCharCode(92);
 const STYLE = '<style id="lx-mobwallet-css">'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
   + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block{visibility:hidden}'
+  + '.orders-stack .lxmw-row{align-items:center;gap:10px}'
+  + '.lxmw-omain{flex:1 1 auto;min-width:0}'
+  // width:auto is not redundant. The container's own stylesheet carries .order-cancel{width:100%} for the
+  // DESKTOP list, where the button sits on its own line -- and reusing that class to share the cancel
+  // handler brought the width along with it, so the button ate the whole row and pushed the order text
+  // to zero. Scoped to .orders-stack so the desktop rule is untouched.
+  + '.orders-stack .lxmw-ocx{flex:0 0 auto;width:auto;height:28px;padding:0 11px;border-radius:8px;cursor:pointer;'
+  + 'font:800 11.5px/1 inherit;color:var(--text-soft);background:transparent;'
+  + 'border:1px solid var(--border);transition:color .14s ease,border-color .14s ease}'
+  + '.orders-stack .lxmw-ocx:hover:not(:disabled){color:#e5484d;border-color:#e5484d}'
+  + '.orders-stack .lxmw-ocx:disabled{opacity:.6;cursor:default}'
   // The shared activity renderer emits DESKTOP row markup, and at 375px .activity-info collapsed to
   // ~92px so the 'From G…' line wrapped and spilled out of the card. Let the middle column take the
   // slack and truncate, and stop the amount and the explorer link from being squeezed.
@@ -219,10 +230,14 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'var sc=s.asset_type==="native"?"XLM":(s.asset_code||"?");'
 + 'var bc=b.asset_type==="native"?"XLM":(b.asset_code||"?");'
 + 'var amt=+o.amount||0,pr=+o.price||0;'
-+ 'html+=\'<div class="lxmw-row"><div><div class="lxmw-nm">Sell \'+esc(sc)+\' \\u2192 \'+esc(bc)+\'</div>\''
++ 'html+=\'<div class="lxmw-row" data-oid="\'+esc(o.id)+\'" data-price="\'+esc(o.price)+\'"\''
++ '+\' data-snt="\'+(s.asset_type==="native"?"1":"")+\'" data-sc="\'+esc(s.asset_code||"")+\'" data-si="\'+esc(s.asset_issuer||"")+\'"\''
++ '+\' data-bnt="\'+(b.asset_type==="native"?"1":"")+\'" data-bc="\'+esc(b.asset_code||"")+\'" data-bi="\'+esc(b.asset_issuer||"")+\'">\''
++ '+\'<div class="lxmw-omain"><div class="lxmw-nm">Sell \'+esc(sc)+\' \\u2192 \'+esc(bc)+\'</div>\''
 + '+\'<div class="lxmw-sub">Price \'+esc(fmt(pr,7))+\' \'+esc(bc)+\' per \'+esc(sc)+\'</div></div>\''
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(fmt(amt))+\' \'+esc(sc)+\'</div>\''
-+ '+\'<div class="u">\'+esc(fmt(amt*pr))+\' \'+esc(bc)+\'</div></div></div>\';});'
++ '+\'<div class="u">\'+esc(fmt(amt*pr))+\' \'+esc(bc)+\'</div></div>\''
++ '+\'<button type="button" class="order-cancel lxmw-ocx">Cancel</button></div>\';});'
 + 'stack.innerHTML=html;}'
 // ---- my assets -------------------------------------------------------------------------------------
 + 'function fixAssets(){var list=q("#assetList");if(!list||activeTab()!==0)return;'

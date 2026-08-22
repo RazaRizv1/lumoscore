@@ -81,6 +81,13 @@ const STYLE = '<style id="lx-mobdex-css">'
   + 'border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}'
   + '.lxmd-pg[disabled]{opacity:.4;cursor:default}'
   + '.lxmd-pg-info{font-size:13px;color:var(--text-soft);font-weight:600;white-space:nowrap}'
+  // #4: two figures per line, the smaller one under it -- the same shape the pair rows already use, so
+  // four numbers fit the row without it becoming a table.
+  + '.mdx-mint-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;text-align:right;min-width:0}'
+  + '.mdx-mint-fig{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25;min-width:0}'
+  + '.mdx-mint-fig .v{font:800 13px/1.25 "JetBrains Mono",monospace;color:var(--text)}'
+  + '.mdx-mint-fig .v2{font:700 12.5px/1.25 "JetBrains Mono",monospace;color:var(--text-soft)}'
+  + '.mdx-mint-fig .k{font:600 10.5px/1.3 inherit;color:var(--text-soft);white-space:nowrap}'
   + '</style>';
 
 const SCRIPT = '<script id="lx-mobdex">' + String.raw`
@@ -122,6 +129,18 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     if(x>0)return smallNum(x,4);return "0";}
   function priceOf(a){return (a&&a.px!=null&&isFinite(+a.px))?+a.px:null;}
   function assets(){return window.__lxDEXassets||null;}
+  // Same arithmetic the desktop mint rows use: supply x price x the XLM rate. Null unless all three are
+  // in, so a partial figure is never presented as a market cap.
+  function mcapOf(a){
+    var xu=null;
+    try{ xu=window.__lxXlmUsd||null; if(!xu){var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null"); if(c&&+c.v>0)xu=+c.v;} }catch(_){}
+    if(!a||a.supply==null||!(a.px>0)||!(xu>0))return null;
+    var m=a.supply*a.px*xu, s=Math.abs(m);
+    if(s>=1e9)return "$"+(m/1e9).toFixed(2)+"B";
+    if(s>=1e6)return "$"+(m/1e6).toFixed(2)+"M";
+    if(s>=1e3)return "$"+(m/1e3).toFixed(1)+"K";
+    return "$"+m.toFixed(2);
+  }
   // #3/#7: a.chg is the move against XLM -- that is what trade_aggregations measure. On a day when XLM
   // itself rose 11%, an asset that merely held its DOLLAR value printed as a red -11%, which is what the
   // whole list was doing: USDC -10.26%, EURC -7.26%, a dollar stablecoin and a euro one apparently
@@ -202,8 +221,12 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         +ico("mdx-mint-ic",a)
         +'<div><div class="mdx-mint-name">'+esc(a.code)+'</div>'
         +'<div class="mdx-mint-sub">'+esc(dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</div></div>'
-        +'<div class="mdx-mint-right"><div>'+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</div>'
-        +'<div class="mdx-mint-sub">'+esc(a.trades==null?DASH:num(a.trades,0)+" trades")+'</div></div></div>';
+        +'<div class="mdx-mint-right">'
+          +'<div class="mdx-mint-fig"><span class="v">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</span>'
+          +'<span class="k">'+esc(mcapOf(a)==null?"":("MC "+mcapOf(a)))+'</span></div>'
+          +'<div class="mdx-mint-fig"><span class="v2">'+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</span>'
+          +'<span class="k">'+esc(a.trades==null?"":(num(a.trades,0)+(a.trades===1?" trade":" trades")))+'</span></div>'
+        +'</div></div>';
     }).join("");
   }
 
