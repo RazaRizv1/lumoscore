@@ -1585,6 +1585,11 @@ html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visib
    from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
    until they landed. Same treatment as the desktop body. */
 html:not(.lx-ammready) #panelAll{visibility:hidden}
+/* #10: remote pool results, kept visually distinct from the page's own ranked list so it is obvious
+   these came from a search rather than from the top-25 ranking. */
+.lx-psresult{margin-top:14px}
+.lx-pshead{margin:0 0 8px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}
+.lx-psnote{padding:16px 4px;text-align:center;font-size:13px;color:var(--text-soft)}
 /* POOL-DETAIL TAB STRIPS ON A PHONE.
    #ptabs measures 432px of tabs inside a 345px box, so "Participants" sits past the right edge and is
    simply unreachable — on a narrower handset "Transactions" and "My Position" go with it. The strip is
@@ -5361,6 +5366,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     });
     buildFeesRow();
     paintHeroStats();
+    try{ wirePoolSearch(); }catch(_){}
+    // The list re-renders on a timer and rebuilds every card with display cleared, which wiped the
+    // filter a second after it was typed -- all 25 cards back for a query none of them matched. Re-apply
+    // the standing query after each render. The remote half is cached per query, so this repaints from
+    // memory rather than re-fetching.
+    try{ if(LXPS_Q)lxPoolSearch(LXPS_Q); }catch(_){}
   }
   // Replace the hero's "TOTAL VALUE LOCKED" chip (redundant with the right-side Pool Snapshot) with 4 stats we DON'T show elsewhere.
   // Build the chip structure (labels + skeleton values) IMMEDIATELY at boot so it doesn't pop in ~2s after data.
@@ -5399,6 +5410,102 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // resolves to /pools/lumoscore-amm-pool-mobile.html — which routes straight back to the list. That is
   // why tapping a pool "refreshed" the page. detailUrl() builds the real per-pool url the desktop rows
   // navigate to, so the card is a plain working link.
+  // #10: the pool search only ever filtered the cards ALREADY on the page.
+  //
+  // The list renders the top 25 pools, and the design's handler hides the cards whose text does not
+  // contain the query. So "x" appeared to work -- most pairs contain XLM -- and a full asset code that
+  // is not in the top 25 matched nothing, which reads as the search breaking the more you type. It was
+  // never searching; it was narrowing.
+  //
+  // When the local pass leaves nothing, ask the network: resolve the code to its issuers through the
+  // asset index, then ask Horizon for the pools holding that reserve. Debounced, sequence-guarded so a
+  // slower earlier query cannot overwrite a newer one, and cached per query.
+  var LXPS_SEQ=0, LXPS_CACHE={}, LXPS_T=null, LXPS_Q="";
+  function lxPoolSearch(qRaw){
+    var panel=q("#panelAll"); if(!panel)return;
+    var qq=String(qRaw||"").trim();
+    var host=panel.querySelector(".lx-psresult");
+    if(!host){ host=document.createElement("div"); host.className="lx-psresult"; panel.appendChild(host); }
+    // The local narrowing is done HERE rather than left to the design's own handler. That handler exists
+    // but does not run on this page -- measured: all 25 cards stayed visible for a query none of them
+    // matched -- so the box did nothing at all before falling through to the network. Doing both makes
+    // the control work end to end and removes the dependency on somebody else's listener.
+    var cards=[].slice.call(panel.querySelectorAll(".pool-card:not(.lx-pscard)"));
+    var lc=qq.toLowerCase(), hits=0;
+    cards.forEach(function(c){
+      if(!qq){ c.style.display=""; return; }
+      var t=((c.querySelector(".pc-name")||{}).textContent||"")+" "+((c.querySelector(".pc-sub")||{}).textContent||"");
+      var on=t.toLowerCase().indexOf(lc)>=0;
+      c.style.display=on?"":"none";
+      if(on)hits++;
+    });
+    if(qq.length<2){ host.innerHTML=""; host.style.display="none"; return; }
+    // Only go to the network when the page itself has nothing to show for it.
+    if(hits){ host.innerHTML=""; host.style.display="none"; return; }
+    var seq=++LXPS_SEQ;
+    host.style.display="";
+    if(LXPS_CACHE[qq]!==undefined){ lxPsPaint(host,LXPS_CACHE[qq],qq); return; }
+    host.innerHTML='<div class="lx-psnote">Searching Stellar for pools with “'+esc(qq)+'”…</div>';
+    clearTimeout(LXPS_T);
+    LXPS_T=setTimeout(function(){
+      fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(qq)+"&limit=12")
+        .then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); })
+        .then(function(d){
+          var recs=(d&&d._embedded&&d._embedded.records)||[];
+          // Exact code match only. A substring match would return pools for a different asset that
+          // merely contains the letters, which on a money page is worse than no result.
+          var ids=[];
+          recs.forEach(function(r){
+            var a=String(r.asset||"").split("-");
+            if(a.length>=2&&a[0].toLowerCase()===qq.toLowerCase()&&/^G[A-Z2-7]{55}$/.test(a[1]))ids.push(a[0]+":"+a[1]);
+          });
+          if(!ids.length)return [];
+          return Promise.all(ids.slice(0,3).map(function(res){
+            return fetch(H+"/liquidity_pools?reserves="+encodeURIComponent(res)+"&limit=12")
+              .then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); })
+              .then(function(pd){ return ((pd&&pd._embedded&&pd._embedded.records)||[]); })
+              .catch(function(){ return []; });
+          })).then(function(sets){ var out=[]; sets.forEach(function(x){ out=out.concat(x); }); return out; });
+        })
+        .then(function(pools){
+          if(seq!==LXPS_SEQ)return;
+          LXPS_CACHE[qq]=pools||[];
+          lxPsPaint(host,LXPS_CACHE[qq],qq);
+        })
+        .catch(function(){
+          if(seq!==LXPS_SEQ)return;
+          host.innerHTML='<div class="lx-psnote">Could not reach the pool index just now.</div>';
+        });
+    },260);
+  }
+  function lxPsPaint(host,pools,qq){
+    if(!pools||!pools.length){
+      host.innerHTML='<div class="lx-psnote">No pool on Stellar holds “'+esc(qq)+'”.</div>';
+      return;
+    }
+    var _xu=(DATA&&DATA.xlmUsd)||0;
+    host.innerHTML='<div class="lx-pshead">Found on Stellar</div>'+pools.map(function(p){
+      var rs=p.reserves||[];
+      function nm(r){ var a=String((r&&r.asset)||""); return a==="native"?"XLM":(a.split(":")[0]||"?"); }
+      var a0=nm(rs[0]), a1=nm(rs[1]);
+      var natAmt=0; rs.forEach(function(r){ if(String(r.asset)==="native")natAmt=+r.amount||0; });
+      var tvl=natAmt>0?usd(natAmt*2*_xu):"—";
+      return '<a class="pool-card lx-ammcard lx-pscard" data-pool="'+esc(p.id)+'" href="'+detailUrl(p.id,null,"")+'">'
+        +'<div class="pc-head"><div class="pc-info"><div class="pc-name">'+esc(a0)+' / '+esc(a1)+'</div>'
+        +'<div class="pc-sub">'+((+p.fee_bp||30)/100)+'% fee · Stellar AMM</div></div></div>'
+        +'<div class="pc-stats">'
+        +'<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+tvl+'</div></div>'
+        +'<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(+p.total_trustlines||0)+'</div></div>'
+        +'</div></a>';
+    }).join("");
+  }
+  // The design owns the input and its handler; this listens alongside rather than replacing it, so the
+  // local narrowing keeps working exactly as before and this only fills the gap it leaves.
+  function wirePoolSearch(){
+    var inp=document.getElementById("poolSearch");
+    if(!inp||inp.__lxps)return; inp.__lxps=1;
+    inp.addEventListener("input",function(){ LXPS_Q=inp.value; try{ lxPoolSearch(LXPS_Q); }catch(_){} });
+  }
   function allCard(p,i){
     var idx=(i+1<10?"0":"")+(i+1);
     var _xu=(DATA&&DATA.xlmUsd)||0;
