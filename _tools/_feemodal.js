@@ -42,7 +42,13 @@ const STYLE='<style id="lx-feemodal-css">'
 +'.lx-rv-leg+.lx-rv-leg{border-top:1px solid var(--border)}'
 +'.lx-rv-lbl{font-size:12.5px;color:var(--text-soft)}'
 +'.lx-rv-amt{font-size:17px;font-weight:800;color:var(--text);font-family:\'JetBrains Mono\',monospace;display:inline-flex;align-items:center;gap:8px}'
-+'.lx-rv-ico{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:var(--surface-2);box-shadow:0 0 0 1px var(--border)}'
+// The class must NOT contain the substring "ico". A logo engine baked into the container selects on
+// [class*="ico"], walks UP the DOM looking for something that reads as a ticker, and repaints whatever
+// it finds -- and inside this modal the nearest match is the word LUMOS in the "Hold 250,000 LUMOS to
+// lower your fee" line. That is why both legs drew the same orange L: not a fallback, but the engine
+// confidently painting the wrong token over our correct one, wiping our background-image on the way.
+// Renamed out of its selector, and data-logoed (its own skip flag) set as a second line of defence.
++'.lx-rv-mk{width:22px;height:22px;flex:0 0 22px;border-radius:50%;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:var(--surface-2);box-shadow:0 0 0 1px var(--border)}'
 +'.lx-rv-ar{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:26px;height:26px;border-radius:50%;background:var(--surface,#fff);border:1px solid var(--border);display:grid;place-items:center;color:var(--text-soft)}'
 +'.lx-rv-ar svg{width:14px;height:14px}'
 +'.lx-rv-details{margin-top:14px}'
@@ -121,7 +127,7 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'if(!st){try{var cb=getComputedStyle(el,"::before");if(cb.backgroundImage&&cb.backgroundImage!=="none")st="background-image:"+cb.backgroundImage;}catch(_){}}'
 +'if(!st){try{var cs=getComputedStyle(el);if(cs.backgroundImage&&cs.backgroundImage!=="none")st="background-image:"+cs.backgroundImage;}catch(_){}}'
 +'if(!st){var im=el.tagName==="IMG"?el:el.querySelector("img");if(im&&im.src)st="background-image:url("+JSON.stringify(im.src)+")";}'
-+'return st?(\'<span class="lx-rv-ico" style="\'+st+\'"></span>\'):"";}'
++'return st?(\'<span class="lx-rv-mk" data-logoed="1" data-lxc="1" style="\'+st+\'"></span>\'):"";}'
 +'var payIco=legIco(fields[0]),recIco=legIco(fields[1]);'
 +'modal.querySelector("[data-pay]").innerHTML=payIco+\'<span>\'+fnum(payNum)+" "+payTok+\'</span>\';'
 +'modal.querySelector("[data-receive]").innerHTML=recIco+\'<span>\'+fnum(recNum)+" "+recTok+\'</span>\';'

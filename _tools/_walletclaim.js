@@ -21,22 +21,32 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const STYLE = `<style id="lx-wclaim-css">
-.lx-wctabs{display:flex;gap:8px;margin:0 0 14px;flex-wrap:wrap}
-.lx-wctab{display:inline-flex;align-items:center;gap:9px;padding:11px 15px;border-radius:13px;
-  border:1px solid var(--border);background:var(--surface);color:var(--text-soft);cursor:pointer;
-  font:800 13px/1 inherit;transition:border-color .14s ease,color .14s ease,background .14s ease}
-.lx-wctab:hover{color:var(--text);border-color:var(--border-strong)}
-.lx-wctab.on{color:var(--text);border-color:var(--accent);background:var(--accent-pale,rgba(234,106,44,.10))}
-.lx-wctab .n{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:20px;
-  padding:0 7px;border-radius:999px;background:var(--surface-2);color:var(--text-soft);
-  font:800 11.5px/1 'JetBrains Mono',monospace}
-.lx-wctab.on .n{background:var(--accent,#ea6a2c);color:#fff}
+/* #5: these tabs used to carry their own look -- pill buttons with a rounded count badge -- and sat
+   directly above the design's Assets / Liq Pools tabs, which are a different shape, a different badge
+   and a different active treatment. Two tab bars, one screen, two visual languages.
+   So they are not styled here at all any more. The markup below reuses the design's own .asset-tabs
+   wrapper, its plain <button>, its .active state and its .cnt badge, which makes them the same control
+   by construction rather than by a copy of its numbers that would drift the next time the design moves.
+   Only the spacing below the bar is ours. */
+.lx-wctabs{margin:0 0 14px}
 .lx-wcpanel[hidden]{display:none}
 
 .lx-wclist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;
   margin-bottom:32px}
 .lx-wcrow{display:flex;align-items:center;gap:14px;padding:14px 18px;border-bottom:1px solid var(--border)}
 .lx-wcrow:last-child{border-bottom:0}
+/* #6: the asset disc. --lxlogo is set inline -- a real logo when we have one, otherwise a flat colour
+   derived from the code, with the initial drawn over it by ::after. data-lxc/data-lxi opt this element
+   INTO the shared resolver in _walletdata.js, which replaces --lxlogo in place once a toml logo turns up,
+   so a row never has to be rebuilt to gain its picture. */
+.lx-wcico{width:30px;height:30px;flex:0 0 30px;border-radius:50%;position:relative;overflow:hidden;
+  background-image:var(--lxlogo,none);background-size:cover;background-position:center;
+  background-repeat:no-repeat;background-color:var(--surface-2)}
+.lx-wcico::after{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;color:#fff;font:800 12.5px/1 inherit;pointer-events:none}
+/* Once a real picture is in, the initial would sit on top of it. The resolver blanks data-l when it
+   paints, so this only ever hides a letter that has been deliberately cleared. */
+.lx-wcico[data-l=""]::after{content:none}
 .lx-wcmain{flex:1 1 auto;min-width:0}
 .lx-wcamt{font:800 15px/1.2 'JetBrains Mono',monospace;color:var(--text)}
 .lx-wcsub{margin-top:3px;font-size:12.5px;color:var(--text-soft);
@@ -120,6 +130,13 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
       .catch(function(){ loaded=true; CB=[]; return CB; });
   }
 
+  // Same palette and same hash as the wallet's own fallback discs, borrowed from _walletdata.js when it
+  // is on the page so the two can never drift, with a local copy for the case where it is not.
+  var WCCOL=["#6366f1","#8b5cf6","#ec4899","#f59e0b","#10b981","#06b6d4","#ef4444","#84cc16"];
+  function wcCol(s){ try{ if(window.__lxColFor)return window.__lxColFor(s); }catch(_){}
+    var h=0; s=String(s||""); for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0; return WCCOL[h%WCCOL.length]; }
+  function xlmLogo(a){ return a.native?"/assets/tokens/xlm.png":""; }
+
   function rows(){
     var addr=me();
     if(!CB.length){
@@ -132,8 +149,20 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
       var who=r.sponsor?("from "+shortG(r.sponsor)):"";
       var when=r.last_modified_time?ago(r.last_modified_time):"";
       var sub=[who,when].filter(Boolean).join(" \\u00b7 ");
+      // #6: the same disc every other list on this page uses. data-lxc/data-lxi are what the shared
+      // resolver in _walletdata.js reads -- it checks its cache, then looks the issuer up on
+      // stellar.expert for a toml logo, then paints --lxlogo. Until (or unless) that answers, the disc
+      // is a deterministic colour from the code with its initial on it, which is the site's existing
+      // fallback rather than a second invention. XLM is local and needs no lookup.
+      var _lg=xlmLogo(a);
+      var _ic='<span class="lx-wcico"'
+        +(a.native?'':(' data-lxc="'+esc(a.code)+'" data-lxi="'+esc(a.issuer)+'"'))
+        +' data-l="'+esc(a.code.slice(0,1).toUpperCase())+'"'
+        +' style="'+(_lg?('--lxlogo:url('+_lg+')')
+                        :('--lxlogo:linear-gradient('+wcCol(a.code+a.issuer)+','+wcCol(a.code+a.issuer)+')'))+'"></span>';
       return '<div class="lx-wcrow'+(ok?"":" locked")+'" data-cb="'+esc(r.id)+'"'
         +' data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer)+'" data-nat="'+(a.native?"1":"0")+'">'
+        +_ic
         +'<div class="lx-wcmain"><div class="lx-wcamt">'+amt(r.amount)+' '+esc(a.code)+'</div>'
         +'<div class="lx-wcsub">'+esc(sub||"claimable balance")+'</div></div>'
         +(ok?'<button class="lx-wcbtn" type="button">Claim</button>'
@@ -145,8 +174,11 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
   function paint(){
     var panel=document.querySelector(".lx-wcpanel-claim");
     if(panel)panel.innerHTML='<div class="lx-wclist">'+rows()+'</div>';
-    var tab=document.querySelector('.lx-wctab[data-t="claim"] .n');
+    var tab=document.querySelector('.lx-wctab[data-t="claim"] .cnt');
     if(tab)tab.textContent=String(CB.length);
+    // These rows arrive after their own Horizon fetch, which normally lands after _walletdata.js has
+    // finished its timed heal passes -- so ask for one now rather than hoping to be in time for theirs.
+    try{ if(panel&&window.__lxHealLogos)window.__lxHealLogos(panel); }catch(_){}
   }
 
   function claim(btn){
@@ -199,7 +231,7 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
 
   function select(which){
     var tabs=document.querySelectorAll(".lx-wctab");
-    for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle("on",tabs[i].getAttribute("data-t")===which);
+    for(var i=0;i<tabs.length;i++)tabs[i].classList.toggle("active",tabs[i].getAttribute("data-t")===which);
     var o=document.querySelector(".lx-wcpanel-orders"), c=document.querySelector(".lx-wcpanel-claim");
     if(o){ if(which==="orders")o.removeAttribute("hidden"); else o.setAttribute("hidden",""); }
     if(c){ if(which==="claim")c.removeAttribute("hidden"); else c.setAttribute("hidden",""); }
@@ -230,11 +262,13 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
     if(poolsCard)poolsCard.style.display="none";
 
     var bar=document.createElement("div");
-    bar.className="lx-wctabs";
-    bar.innerHTML='<button class="lx-wctab on" type="button" data-t="orders">Open orders'
-      +'<span class="n">'+nOrders+'</span></button>'
+    bar.className="asset-tabs-row lx-wctabs";
+    bar.innerHTML='<div class="asset-tabs">'
+      +'<button class="lx-wctab active" type="button" data-t="orders">Open orders'
+      +' <span class="cnt">'+nOrders+'</span></button>'
       +'<button class="lx-wctab" type="button" data-t="claim">Claimable payments'
-      +'<span class="n">0</span></button>';
+      +' <span class="cnt">0</span></button>'
+      +'</div>';
 
     // The orders list the page already builds becomes the first panel; the second is ours.
     var orders=document.querySelector(".orders-block");

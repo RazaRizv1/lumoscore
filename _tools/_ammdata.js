@@ -207,6 +207,14 @@ html:not(.lx-detpr) .side-head .count-pill{visibility:hidden!important}
 /* the design paints a synthetic mock chart on load; hide its data (line/area/bars) until our real engine takes
    over (lx-chartready), keeping the axis/grid so the plot frame stays visible */
 html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready) #tvlChart svg rect:not(.lx-ch){opacity:0!important}
+/* #11: the gate above covered the line and the bars but not the axis LABELS, which are <text> nodes the
+   engine rewrites in place once it has real data. So while "Loading pool history…" was on screen the
+   scale beside it still read the design's mock numbers -- 5.99M / 3.38M / 2.78M XLM for a pool that
+   holds nothing of the sort -- and they snapped to the real figures when the chart finally drew. That
+   momentary wrong scale is the flash. Hide the numbers with the plot and reveal them together.
+   The loading message is itself an SVG <text> (.lx-chload), and anything we drew carries .lx-ch, so
+   both are excluded: this only ever hides labels that are still showing mock values. */
+html:not(.lx-chartready) #tvlChart svg text:not(.lx-ch):not(.lx-chload){opacity:0!important}
 .ph-icons .pa,.ph-icons .pb,.mp-asset-ico,#dwDeposit .dw-field .asset .ico,#dwWithdraw .asset .ico{background-image:none!important;overflow:hidden}
 .ph-icons .pa img,.ph-icons .pb img,.mp-asset-ico img,.dw-field .asset .ico img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 .type-pill.deposit{background:rgba(34,197,94,.14)!important;color:#16a34a!important}
@@ -3209,7 +3217,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     for(var i=0;i<rows.length;i++){
       var r=rows[i]; if(r.children.length>3)continue;
       var t=(r.textContent||"").replace(/\\s+/g," ").trim();
-      if(!/^trading fee\\b/i.test(t))continue;
+      // No \b after "fee". The label and the value are adjacent elements with no whitespace between
+      // them, so this row's textContent is literally "Trading fee0.5%" -- and \b demands a boundary
+      // between "fee" and "0", which is two word characters and therefore no boundary at all. The test
+      // failed on every row, every time, which is why the line kept surviving.
+      if(!/^trading fee/i.test(t))continue;
       if(r.style.display!=="none")r.style.display="none";
       break;
     }
@@ -3305,7 +3317,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var amts=[].slice.call(modal.querySelectorAll(".asset-amt"));
     [].slice.call(modal.querySelectorAll(".asset-field")).forEach(function(f,i){ var mx=f.querySelector(".max-btn"); if(mx)mx.addEventListener("click",function(){ if(sel[i]&&amts[i]){ var b=sel[i].bal-(sel[i].native?1.6:0); amts[i].value=fmtIn(b>0?b:0); autofillOther(i); } }); });
     amts.forEach(function(a,idx){ a.addEventListener("input",function(){ autofillOther(idx); }); });
-    qa("#createPoolModal .pool-summary .row strong").forEach(function(s){ var lab=((s.previousElementSibling||{}).textContent||""); if(/trading fee/i.test(lab))s.textContent="0.3%"; else if(/network fee/i.test(lab))s.textContent="\\u2248 0.00001 XLM"; });
+    qa("#createPoolModal .pool-summary .row strong").forEach(function(s){ var lab=((s.previousElementSibling||{}).textContent||""); if(/network fee/i.test(lab))s.textContent="\\u2248 0.00001 XLM"; });
+    // and hide the fee row again here: the design repopulates the summary when the sheet opens, so a
+    // single hide at wire time is not enough on a second open.
+    try{ hideCpFee(); }catch(_){}
     function summary(){ var a0=parseFloat(amts[0]&&amts[0].value)||0,a1=parseFloat(amts[1]&&amts[1].value)||0; var pr=q("#createPoolModal .pool-summary .row strong"); if(pr){ if(sel[0]&&sel[1]&&a0>0&&a1>0)pr.textContent=(+((a1/a0).toFixed(6)))+" "+sel[1].code+"/"+sel[0].code; else pr.textContent="\\u2014"; }
       // AUDIT: autofillOther() derives the paired amount from the market rate, so MAX on one side routinely
       // proposes more of the OTHER asset than the wallet holds (MAX 8.13 XLM -> 4,078 AQUA against a 0.0000001
