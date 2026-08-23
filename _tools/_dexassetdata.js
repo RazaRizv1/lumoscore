@@ -128,6 +128,10 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
    same page, so the label is pure repetition. Hidden rather than unpicked from two separate string
    builders, because the anchor also carries the href the row's own handler reads. */
 .mdxa-hl-explorer,.dxa-hl-explorer{display:none!important}
+/* #13: the asset's mark inside the About heading -- sized to the text, not to a card. */
+.lxda-sheet-ico{display:inline-block!important;width:20px!important;height:20px!important;min-width:0!important;flex:none!important;border-radius:50%;overflow:hidden;background-size:cover;background-position:center;background-repeat:no-repeat;
+  vertical-align:-4px;margin:0 6px 0 2px}
+.lxda-sheet-ico img,.lxda-sheet-ico .lx-tokimg{width:100%;height:100%;object-fit:cover;border-radius:50%}
 #dxaExTable tr>td:nth-child(6){width:1%;white-space:nowrap;padding-left:10px}
 /* Remove the duplicate price line on DESKTOP. ".price-display .meta" reads
    "<price> XLM per LUMOS - 1D High <x> - Low <y>", and the OHLC strip directly beneath it already
@@ -265,6 +269,19 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
    an orphan rather than as the pair of the group above it. Right-aligned, the two new controls stack
    against the same edge and the design own two keep the left. */
 .chart-controls .lxda-denom{margin-left:auto}
+/* #3: on the phone these two ended up on different lines -- Price/MCap tucked after the timeframes on
+   the first, $/XLM alone on the second -- so the pair that belongs together read as two unrelated
+   controls and the row wasted a line. Put them on their OWN line, $/XLM against the left edge and
+   Price/MCap against the right, which is the arrangement asked for and also the tidier one: two
+   opposing ends instead of three ragged groups.
+   The break is a pseudo-element flex item at 100% basis; explicit order values are what keep the
+   design's own two groups ahead of it. */
+@media (max-width:760px){
+  .chart-controls{align-items:center}
+  .chart-controls::after{content:"";flex:0 0 100%;height:0;order:2}
+  .chart-controls .lxda-denom{order:3;margin-left:0!important}
+  .chart-controls .lxda-metric{order:4;margin-left:auto!important}
+}
 .chart-controls .lxda-metric button,.chart-controls .lxda-denom button{
   width:auto;min-width:0;padding:0 9px;font:800 11px/1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.02em}
 .chart-controls .lxda-metric button[disabled]{opacity:.4;cursor:default}
@@ -425,7 +442,12 @@ ${DXA_SUPINFO_CSS}
    The sub line carries "$0.00032045" at ~75px in the same measure, so the pair fits with room, and .sub is
    allowed two lines, so a longer price wraps instead of truncating anything. It also groups the two
    secondary figures -- what it is worth, and how it moved -- on one line under the headline. */
-.stat-cell .sub .lx-pchg{margin-left:7px}
+/* #30: the 24h move is stated twice within one screen -- once as this chip inside the PRICE stat and
+   again as the pill beside the headline price directly below it, where it is bigger and denominated to
+   match the headline. Two figures for one number invite the reader to look for the difference. The
+   chip goes; the pill stays. Hidden rather than unbuilt, because the same builder writes the USD
+   sub-line next to it and that is still wanted. */
+.stat-cell .sub .lx-pchg{display:none!important}
 .lx-pchg{display:inline-block;font-size:11px;font-weight:800;letter-spacing:-.01em;padding:1px 6px;border-radius:5px;line-height:1.4}
 .lx-pchg.up{color:var(--green,#35c07f);background:rgba(53,192,127,.14)}
 .lx-pchg.down{color:var(--red,#ff5b5b);background:rgba(255,91,91,.14)}
@@ -1072,11 +1094,15 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // down", and quoted against XLM every asset that merely held its dollar value read as a double-digit
   // loss on a day XLM rose. That was a reported bug and sharing one key would bring it straight back.
   var chartMetric="price", chartUiWired=false;
-  function cDenom(){ try{ if(window.__lxAsDenom)return window.__lxAsDenom;
-    var v=localStorage.getItem("lumos.assetDenom"); if(v==="xlm"||v==="usd"){window.__lxAsDenom=v;return v;} }catch(_){}
-    return "xlm"; }
+  // #27: the choice lasts for the page you made it on, and no longer.
+//
+// This used to persist to localStorage, so switching one asset to $ silently changed the default for
+// every asset you opened afterwards -- including days later, with no memory of having set it. The
+// asset pages are a browsing surface, and a browsing surface should open the same way every time.
+// Window-scoped only: switching still holds while you are on the page, and a reload starts at XLM.
+// (The Price/MCap metric already resets, since chartMetric is a plain module variable.)
+function cDenom(){ return window.__lxAsDenom || "xlm"; }
   function setCDenom(v){ window.__lxAsDenom=v;
-    try{ localStorage.setItem("lumos.assetDenom",v); }catch(_){}
     try{ window.dispatchEvent(new CustomEvent("lx-asdenom",{detail:v})); }catch(_){} }
   // Null when the choice cannot be honoured -- no XLM rate, or no supply for a market cap -- and every
   // caller then falls back to plain dollars rather than printing a number scaled by a guess.
@@ -1570,6 +1596,16 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation(); openMore(); },true);
     }
   }
+  // Identity, not ticker: "LUMOS" is a code anyone may issue, so the locked-supply treatment is keyed
+  // to OUR issuer. Falls back to the home domain we already resolved when the issuer is not baked in.
+  function isLumos(){
+    try{
+      if(CODE!=="LUMOS")return false;
+      var mine=(window.__lxLumosIssuer||"");
+      if(mine)return ISSUER===mine;
+      return /(^|\\.)lumoscore\\.com$|(^|\\.)lumosdao\\.io$/.test(String(homeDomain||""));
+    }catch(_){ return false; }
+  }
   function moreRows(){
     // Read from the cards the page has already painted rather than recomputing: whatever is in the sheet
     // then matches what the row said, including its formatting, and cannot drift from it.
@@ -1583,7 +1619,18 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     }
     var out=[];
     var sup=cell("Supply");
-    if(sup)out.push(["Circulating supply",sup.v+(sup.s?(" "+sup.s):"")]);
+    // #4: for LUMOS the issued figure is NOT the circulating one. 90% of it is locked, so the sheet was
+    // labelling 9.97B as "circulating" while the token page states 1B two clicks away -- the same number
+    // described two different ways by the same site. The lock is stated in DXA_SUPPLY_NOTE and is the
+    // reason the market cap here is computed on 1B; this row now agrees with both, and the issued total
+    // keeps its own line so nothing is hidden.
+    if(sup){
+      if(isLumos()){
+        out.push(["Circulating supply","1B LUMOS"]);
+        out.push(["Issued supply",sup.v+(sup.s?(" "+sup.s):"")]);
+        out.push(["Locked","9B LUMOS \\u2014 locked forever"]);
+      } else out.push(["Circulating supply",sup.v+(sup.s?(" "+sup.s):"")]);
+    }
     var mc=cell("Market Cap");
     if(mc&&mc.s)out.push(["Fully diluted",mc.s.replace(/^FDV\s*/i,"")]);
     if(holders!=null)out.push(["Holders",num(holders)]);
@@ -1609,7 +1656,10 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         }
       });
     }
-    var h=sh.querySelector("h3"); if(h)h.textContent="About "+CODE;
+    // #13: "About xLMNR" tells you the ticker you already clicked. When the issuer's toml names the
+    // asset, use that -- "About [logo] X Lumenaire" -- and keep the code when it does not. The logo is
+    // the same mark the header draws, so the sheet opens on something recognisable rather than a code.
+    dxaSheetTitle(sh.querySelector("h3"));
     var body=sh.querySelector(".lxda-sbody");
     if(body)body.innerHTML=moreRows().map(function(r){
       return '<div class="lxda-srow"><span class="k">'+escapeHtml(r[0])+'</span><span class="v">'+escapeHtml(String(r[1]))+'</span></div>';
@@ -2214,6 +2264,80 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       return v; }
     return ""; }
   // SEP-1: issuer -> home_domain -> /.well-known/stellar.toml -> the [[CURRENCIES]] block for this asset.
+  // #13: the asset's own name, from the same two sources the logo comes from. Recorded only for the
+  // asset THIS page is about, so a stray record for another asset can never retitle the sheet.
+  function dxaSheetTitle(h){
+    if(!h)return;
+    var nm=String(window.__lxAssetName||"").trim();
+    if(!nm||nm===CODE){ h.textContent="About "+CODE; return; }
+    var url="";
+    // The mark the page header is ALREADY showing comes first, and the resolvers are the fallback --
+    // not the other way round. brandLogo/cachedLogo only know assets they fetched themselves, and for
+    // this one they returned a URL that does not load: the img's onerror dutifully removed the mark and
+    // the heading came out with no logo at all. Whatever the header has on screen is by definition
+    // loading, and by definition the right asset.
+    try{
+      var _hl=document.querySelector(".asset-logo,.dxa-asset-logo");
+      var _bg=_hl?getComputedStyle(_hl).backgroundImage:"";
+      // Take everything inside url(...) and strip the quotes afterwards. The character-class version of
+      // this excluded the quote characters and ended up capturing them instead -- the mark rendered as a
+      // 20px box pointing at url("(%22") -- which is the same url(") trap this codebase has hit before.
+      var _m=/url\((.*?)\)/.exec(_bg||"");
+      if(_m)url=String(_m[1]).replace(/^\s*["']|["']\s*$/g,"");
+    }catch(_){}
+    if(!url){ try{ url=(brandLogo(CODE,ISSUER)||cachedLogo(CODE,ISSUER)||""); }catch(_){ url=""; } }
+    // The header's mark is fetched, so on a fast click the sheet can open before it has landed and the
+    // heading would keep the name without it for as long as the sheet stayed open. Two bounded retries,
+    // flagged so they can never become a loop.
+    if(!url&&!h.__lxIcoRetry){ h.__lxIcoRetry=1;
+      setTimeout(function(){ try{ dxaSheetTitle(h); }catch(_){} },500);
+      setTimeout(function(){ try{ dxaSheetTitle(h); }catch(_){} },1600); }
+    h.textContent="";
+    h.appendChild(document.createTextNode("About "));
+    // CLONE the header's mark rather than rebuilding one from a URL.
+    //
+    // Two attempts at rebuilding it failed for two different reasons: an <img> with the same URL never
+    // loaded, and re-extracting the URL out of a computed background-image walked straight into the
+    // url(") quoting trap this codebase already has scars from. The header is displaying the right mark,
+    // by whatever route -- inline style, CSS variable, a class -- so copy the element and let it carry
+    // its own mechanism with it. Nothing to parse, nothing to re-resolve, and it cannot disagree with
+    // the header because it IS the header's.
+    try{
+      var _hl=document.querySelector(".asset-logo,.dxa-asset-logo");
+      if(_hl){
+        var sp=_hl.cloneNode(true);
+        sp.removeAttribute("id");
+        sp.className=(sp.className||"")+" lxda-sheet-ico";
+        h.appendChild(sp);
+      }
+    }catch(_){}
+    h.appendChild(document.createTextNode(nm));
+  }
+  function dxaPutName(code,iss,nm){
+    nm=String(nm||"").trim();
+    if(!nm||nm===code)return;                       // a name identical to the ticker adds nothing
+    if(code!==CODE||iss!==ISSUER)return;
+    if(window.__lxAssetName===nm)return;
+    window.__lxAssetName=nm;
+    // if the sheet happens to be open, retitle it in place rather than waiting for the next open
+    try{ dxaSheetTitle(document.querySelector(".lxda-sheet h3")); }catch(_){}
+  }
+  // ...and a lookup of its own, because the one above is short-circuited by
+  //     if(brandLogo(code,iss)||cachedLogo(code,iss))return;
+  // An asset whose logo we already know never reaches that fetch, so it never got a name either -- which
+  // is every well-known asset, i.e. exactly the ones with a name worth showing. One request, fired late
+  // so it never competes with the price and chart work, and only on a real credit asset.
+  var dxaNameTried=false;
+  function dxaFetchName(){
+    if(dxaNameTried||NATIVE||!ISSUER||!CODE)return; dxaNameTried=true;
+    j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(ISSUER)+"&limit=50").then(function(d){
+      var recs=(d&&d._embedded&&d._embedded.records)||[];
+      var m=recs.filter(function(r){ return (r.asset||"").indexOf(CODE+"-"+ISSUER)===0; })[0];
+      var ti=(m&&(m.tomlInfo||m.toml_info))||{};
+      dxaPutName(CODE,ISSUER,ti.name);
+    }).catch(function(){});
+  }
+  try{ setTimeout(dxaFetchName,900); }catch(_){}
   function dxaTomlLogo(code,iss){ if(!iss)return;
     j(H+"/accounts/"+iss).then(function(acc){
       var dom=(acc&&acc.home_domain)||""; if(!dom)return;
@@ -2225,6 +2349,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         for(var b=1;b<blocks.length;b++){
           if(tomlField(blocks[b],"code")!==code)continue;
           var bi=tomlField(blocks[b],"issuer"); if(bi&&bi!==iss)continue;
+          dxaPutName(code,iss,tomlField(blocks[b],"name"));
           dxaPutLogo(code,iss,tomlField(blocks[b],"image")); return; } });
     }).catch(function(){});   // no CORS on the toml host -> not reachable -> keep the placeholder
   }
@@ -2237,6 +2362,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var recs=(d&&d._embedded&&d._embedded.records)||[];
       var m=recs.filter(function(r){ return (r.asset||"").indexOf(code+"-"+iss)===0; })[0];   // exact code+issuer ONLY
       var ti=(m&&(m.tomlInfo||m.toml_info))||{};
+      dxaPutName(code,iss,ti.name);
       if(ti.image){ dxaPutLogo(code,iss,ti.image); return; }
       dxaTomlLogo(code,iss);                        // indexed but no image -> ask the issuer directly
     }).catch(function(){ dxaTomlLogo(code,iss); }); }
