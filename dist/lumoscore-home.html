@@ -1894,7 +1894,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .lx-metric{margin:0 0 8px}
 .lx-metric button{padding:6px 9px;font-size:11.5px}
 }
-</style></head>
+</style><style id="lx-dashnews-css">.lx-news{display:flex;flex-direction:row;flex-wrap:nowrap;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:6px;margin-bottom:26px}.lx-news::-webkit-scrollbar{height:6px}.lx-news::-webkit-scrollbar-thumb{background:var(--border,#ececef);border-radius:99px}.lx-news::-webkit-scrollbar-track{background:transparent}.lx-newscard{flex:0 0 236px;scroll-snap-align:start;display:flex;flex-direction:column;gap:9px;text-decoration:none;color:inherit;min-width:0}.lx-newsimg{width:100%;aspect-ratio:16/9;border-radius:11px;overflow:hidden;background:var(--surface-2,#f4f5f7);background-size:cover;background-position:center;flex:0 0 auto}.lx-newstitle{font:700 13.5px/1.35 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.lx-newsmeta{font:600 11px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text-soft,#8a8fa3);letter-spacing:.02em;display:flex;align-items:center;gap:6px}.lx-newsdot{width:3px;height:3px;border-radius:50%;background:currentColor;flex:0 0 3px;opacity:.65}.lx-newscard:hover .lx-newstitle{color:var(--accent,#ea6a2c)}@media(max-width:760px){.lx-newscard{flex:0 0 76%;max-width:280px}}</style></head>
 <body>
 <div class="app">
 
@@ -1959,7 +1959,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
       </div>
 
       <!-- ===== QUICK ACTIONS ===== -->
-      <div class="section-heading">
+      <div class="section-heading lx-newshead"><h2>XLM News</h2></div><div class="lx-news" aria-label="Crypto headlines"></div><div class="section-heading">
         <h2>Quick actions</h2>
       </div>
       <div class="quick-actions">
@@ -9042,7 +9042,7 @@ wireTabs();wireMetric();render();
 (function(){if(window.__lxTrendNav)return;window.__lxTrendNav=1;window.addEventListener("click",function(e){var row=e.target&&e.target.closest?e.target.closest(".trending-row[data-lxasset]"):null;if(!row)return;e.preventDefault();e.stopImmediatePropagation();location.href="lumoscore-dex-asset.html?asset="+encodeURIComponent(row.getAttribute("data-lxasset"));},true);})();
 if(document.readyState!=="loading")load();else document.addEventListener("DOMContentLoaded",load);
 setInterval(function(){if(_tf!=="30d")load();},120000);
-})();</script><script id="lx-nofollow">(function(){
+})();</script><script id="lx-dashnews">(function(){var rail=document.querySelector(".lx-news"); if(!rail)return;function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}function ago(ts){var s=Math.max(0,(Date.now()-ts)/1000);if(s<3600)return Math.max(1,Math.floor(s/60))+"m";if(s<86400)return Math.floor(s/3600)+"h";return Math.floor(s/86400)+"d";}function drop(){ try{ var h=rail.previousElementSibling;if(h&&h.classList&&h.classList.contains("lx-newshead"))h.parentNode.removeChild(h);rail.parentNode.removeChild(rail); }catch(_){} }fetch("/lxapi/news?limit=12").then(function(r){return r.ok?r.json():null;}).then(function(d){var items=(d&&d.items)||[]; if(!items.length){drop();return;}rail.innerHTML=items.map(function(n){var img=n.img?(' style="background-image:url(&quot;'+esc(n.img)+'&quot;)"'):"";return '<a class="lx-newscard" href="'+esc(n.link)+'" target="_blank" rel="noopener">'+'<div class="lx-newsimg"'+img+'></div>'+'<div class="lx-newstitle">'+esc(n.title)+'</div>'+'<div class="lx-newsmeta"><span>'+esc(n.source)+'</span>'+(n.ts?('<span class="lx-newsdot"></span><span>'+esc(ago(n.ts))+'</span>'):"")+'</div></a>';}).join("");}).catch(function(){drop();});})();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){
     if(!h)return true;

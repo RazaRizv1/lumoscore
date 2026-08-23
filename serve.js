@@ -914,6 +914,81 @@ function netStatsTail(txt, n) {
   }
   return out;
 }
+// Local mirror of functions/lxapi/news — crypto headlines with Stellar items ranked first.
+// Kept in step with that file: same feeds, same dedupe, same two-tier ranking. See it for why this
+// cannot be done in the browser (no CORS headers on any of these feeds).
+const NEWS_FEEDS = [
+  ['CoinDesk', 'https://www.coindesk.com/arc/outboundfeeds/rss/'],
+  ['Cointelegraph', 'https://cointelegraph.com/rss'],
+  ['Bitcoin.com', 'https://news.bitcoin.com/feed/'],
+  ['CryptoSlate', 'https://cryptoslate.com/feed/'],
+  ['U.Today', 'https://u.today/rss'],
+];
+const NEWS_STELLAR = /\b(xlm|stellar lumens|stellar network|stellar development foundation|sdf|soroban|lumens)\b/i;
+const NEWS_WORD = /\bstellar\b/i;
+let NEWS_CACHE = null;
+function newsTag(b, n) {
+  const m = new RegExp('<' + n + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/' + n + '>', 'i').exec(b);
+  return m ? m[1] : '';
+}
+function newsUnwrap(x) {
+  return String(x || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+function newsImg(b) {
+  const m = /<media:content[^>]+url=["']([^"']+)["']/i.exec(b)
+    || /<media:thumbnail[^>]+url=["']([^"']+)["']/i.exec(b)
+    || /<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image/i.exec(b)
+    || /<img[^>]+src=["']([^"']+)["']/i.exec(b);
+  const u = m ? m[1] : '';
+  return /^https:\/\//.test(u) ? u : '';
+}
+function newsParse(xml, source) {
+  const out = [];
+  const atom = /<entry[\s>]/i.test(xml) && !/<item[\s>]/i.test(xml);
+  const blocks = xml.split(atom ? /<entry[\s>]/i : /<item[\s>]/i).slice(1);
+  for (const raw of blocks) {
+    const b = raw.split(atom ? /<\/entry>/i : /<\/item>/i)[0];
+    const title = newsUnwrap(newsTag(b, 'title'));
+    let link = newsUnwrap(newsTag(b, 'link'));
+    if (!link) { const m = /<link[^>]+href=["']([^"']+)["']/i.exec(b); link = m ? m[1] : ''; }
+    if (!title || !/^https?:\/\//.test(link)) continue;
+    const when = newsTag(b, 'pubDate') || newsTag(b, 'published') || newsTag(b, 'updated') || newsTag(b, 'dc:date');
+    out.push({ title, link, source, ts: Date.parse(newsUnwrap(when)) || 0, img: newsImg(b) });
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+async function newsRoute(req, res, q) {
+  const send = (obj, code) => {
+    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=900' });
+    res.end(JSON.stringify(obj));
+  };
+  let n = parseInt((q && q.get('limit')) || '', 10); if (!(n > 0)) n = 12; if (n > 24) n = 24;
+  if (NEWS_CACHE && Date.now() - NEWS_CACHE.at < 900e3) return send(NEWS_CACHE.body);
+  const lists = await Promise.all(NEWS_FEEDS.map(async ([name, url]) => {
+    try {
+      const r = await fetch(url, { headers: { 'user-agent': 'LumosCore/1.0 (+https://lumoscore.com)' } });
+      if (!r.ok) return [];
+      return newsParse(await r.text(), name);
+    } catch (_) { return []; }
+  }));
+  let items = [].concat.apply([], lists);
+  const seen = Object.create(null);
+  items = items.filter((it) => {
+    const k = it.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 70);
+    if (!k || seen[k]) return false; seen[k] = 1; return true;
+  });
+  const rank = (it) => (NEWS_STELLAR.test(it.title) ? 2 : (NEWS_WORD.test(it.title) ? 1 : 0));
+  items.sort((a, b) => (rank(b) - rank(a)) || (b.ts - a.ts));
+  const used = {}; for (const it of items.slice(0, n)) used[it.source] = 1;
+  const body = { items: items.slice(0, n), stellar: items.slice(0, n).filter((i) => rank(i) > 0).length,
+    sources: Object.keys(used), ts: Date.now() };
+  NEWS_CACHE = { at: Date.now(), body };
+  send(body);
+}
 async function netStats(req, res) {
   const send = (obj, code) => {
     res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=900' });
@@ -959,6 +1034,7 @@ http.createServer((req, res) => {
   if (p === '/lxapi/pools') return poolList(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/movers') return moversRoute(req, res);
   if (p === '/lxapi/netstats') return netStats(req, res);
+  if (p === '/lxapi/news') return newsRoute(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/poolvol') return poolVol(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/xlm') return xlmProxy(req, res, new URL(req.url, 'http://x').searchParams);
   if (p.startsWith('/lxapi/soroswap/')) {
