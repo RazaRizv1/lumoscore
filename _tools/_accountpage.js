@@ -626,8 +626,26 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     var n=q("#accPoolsN"); if(n)n.textContent=String(POOLS.length);
     if(!POOLS.length){ tb.innerHTML='<tr class="acc-empty-row"><td colspan="5"><div class="acc-empty">'
       +(DONE.pools?"This account provides no pool liquidity.":"Loading pools"+String.fromCharCode(8230))+'</div></td></tr>'; return; }
+    // #4: ONE reorder, at the end -- not one per pool that finishes loading.
+    //
+    // Every position is valued by its own fetch, and this sorted on value every time the table was
+    // repainted. With 392 positions that is hundreds of repaints, each putting the rows in a different
+    // order as more values arrived, so the list visibly reshuffled for several seconds before settling.
+    // Measured: the top three rows were completely different at 0.9s, 1.9s, 2.9s and 3.9s.
+    //
+    // So the order is held in ARRIVAL order -- which is what the reader is already looking at -- until
+    // every row on screen has a value, and only then sorted, once. The deadline is there because a pool
+    // whose fetch never returns must not freeze the order for ever; after it, we sort with what we have.
+    if(!POOLS.__lxOrdered){
+      var _vis=POOLS.slice(0,Math.min(pShown,POOLS.length));
+      if(POOLS.__lxT0==null)POOLS.__lxT0=Date.now();
+      var _ready=_vis.length>0&&_vis.every(function(p){ return p.usd!=null||p.__ldDone; });
+      if(_ready||(Date.now()-POOLS.__lxT0)>8000)POOLS.__lxOrdered=1;
+    }
     // biggest position first, unvalued last -- same rule as the assets table
-    var psorted=POOLS.slice().sort(function(x,y){ var vx=(x.usd==null)?-1:x.usd, vy=(y.usd==null)?-1:y.usd; return vy-vx; });
+    var psorted=POOLS.__lxOrdered
+      ? POOLS.slice().sort(function(x,y){ var vx=(x.usd==null)?-1:x.usd, vy=(y.usd==null)?-1:y.usd; return vy-vx; })
+      : POOLS.slice();
     var plist=psorted.slice(0,Math.min(pShown,psorted.length));
     plist.forEach(function(p){ if(!p.__ld){ p.__ld=1; loadPool(p); } });
     tb.innerHTML=plist.map(function(p){
@@ -782,7 +800,10 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||0; a.usd=a.bal*a.px*xlmUsd; }
       renderStats(); renderAssets(); }).catch(function(){}); }
 
-  function loadPool(p){ pxStart(); return loadPool_(p).then(pxEnd,pxEnd); }
+  // __ldDone marks "this one has finished, whatever it found". Without it a pool that resolves with no
+  // USD value -- a credit/credit pair with no priced side -- would look permanently unloaded and hold
+  // the whole table in arrival order until the deadline expired.
+  function loadPool(p){ pxStart(); return loadPool_(p).then(function(r){ p.__ldDone=1; pxEnd(r); },function(e){ p.__ldDone=1; pxEnd(e); }); }
   function loadPool_(p){
     return j(H+"/liquidity_pools/"+p.id).then(function(d){
       var tot=+d.total_shares||0; p.share=tot>0?(p.shares/tot*100):0; p.tl=+d.total_trustlines||null;
