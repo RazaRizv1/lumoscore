@@ -35,6 +35,25 @@ const VERIFIED={
   "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io",
   "AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network",
 
+  // Added deliberately, each one checked by its own SEP-1 handshake rather than taken on an index's
+  // word: the issuer's on-chain home_domain read from Horizon, that domain's stellar.toml fetched, and
+  // its [[CURRENCIES]] block naming the same code AND the same issuer back. An aggregator's tomlInfo
+  // proves only that SOME domain vouches, which is the exact hole the comment above this map is about.
+  //
+  // PYUSD (Paxos) was a candidate and is deliberately absent: its toml host answered 403, so the
+  // handshake could not be completed here. It may well be genuine -- but a tick has to mean checked.
+  "XRP|GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5":"fchain.io",
+  "SCOP|GC6OYQJIZF3HFXCYPFCBXYXNGIBQ4TNSFUBUXQJOZWIP6F3YZK4QH3VQ":"scopuly.com",
+  "MTL|GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V":"mtl.montelibero.org",
+  "EURMTL|GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V":"mtl.montelibero.org",
+  "ZARZ|GAROH4EV3WVVTRQKEY43GZK3XSRBEYETRVZ7SVG5LHWOAANSMCTJBB3U":"zeam.money",
+  "USDZ|GAKTLPC4ZV37SSCITQ5IS5AQ4WPF4CF4VZJQPPAROSGXMYOATF5U6XPR":"zeam.money",
+  "CLPX|GDYSPBVZHPQTYMGSYNOHRZQNLB3ZWFVQ2F7EP7YBOLRGD42XIC3QUX5G":"clpx.finance",
+  "yBTC|GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW":"ultracapital.xyz",
+  "yETH|GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD":"ultracapital.xyz",
+  "ARS|GCYE7C77EB5AWAA25R5XMWNI2EDOKTTFTTPZKM2SR5DI4B4WFD52DARS":"api.anclap.com",
+  "PEN|GA4TDPNUCZPTOHB3TKUYMDCRVATXKEADH7ZEYEBWJKQKE2UBFCYNBPEN":"api.anclap.com",
+
   // WHY THERE ARE NO LUMOSCORE MINTS IN THIS LIST ANY MORE.
   //
   // There were twenty-five, added automatically because the launchpad minted them. That made the tick
@@ -73,6 +92,19 @@ const CANONICAL={
   "SHX":   {issuer:"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH", by:"Stronghold"},
   "AQUA":  {issuer:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA", by:"Aquarius"},
   "LUMOS": {issuer:"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S", by:"LumosCore"},
+
+  // Brand tickers: another issuer using these codes is claiming to be someone. ARS and PEN are
+  // deliberately NOT here -- they are ISO currency codes, several anchors legitimately issue them, and
+  // asserting ours is the only true ARS would flag honest issuers as impostors.
+  "XRP": {issuer:"GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5", by:"Fchain"},
+  "SCOP": {issuer:"GC6OYQJIZF3HFXCYPFCBXYXNGIBQ4TNSFUBUXQJOZWIP6F3YZK4QH3VQ", by:"Scopuly"},
+  "MTL": {issuer:"GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V", by:"Montelibero"},
+  "EURMTL": {issuer:"GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V", by:"Montelibero"},
+  "ZARZ": {issuer:"GAROH4EV3WVVTRQKEY43GZK3XSRBEYETRVZ7SVG5LHWOAANSMCTJBB3U", by:"Zeam"},
+  "USDZ": {issuer:"GAKTLPC4ZV37SSCITQ5IS5AQ4WPF4CF4VZJQPPAROSGXMYOATF5U6XPR", by:"Zeam"},
+  "CLPX": {issuer:"GDYSPBVZHPQTYMGSYNOHRZQNLB3ZWFVQ2F7EP7YBOLRGD42XIC3QUX5G", by:"CLPX"},
+  "yBTC": {issuer:"GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW", by:"Ultra Capital"},
+  "yETH": {issuer:"GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD", by:"Ultra Capital"},
 };
 // Every entry must also be in VERIFIED under the same issuer -- otherwise the site would be warning
 // about impostors of an asset it does not itself vouch for. Checked at build time so the two lists
