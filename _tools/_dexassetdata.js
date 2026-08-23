@@ -118,8 +118,18 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 /* #38: Time sat left-aligned in its own column with the explorer link right-aligned in the next one,
    so a short value like "just now" ended ~79px short of the icon it belongs beside and read as
    floating in dead space. Right-aligning the column closes that gap without moving any column.
-   The header lives in the table thead, OUTSIDE this tbody, so it is squared up in renderExchanges. */
+   The header lives in the table thead, OUTSIDE this tbody, so it is squared up in renderExchanges.
+   Round two: right-aligning closed the gap from 79px to 24px, but the link column was still 74px wide
+   with its icon pinned to the far end of it. Shrink that column to its content so Time finishes beside
+   the icon rather than a third of a column short of it. */
 #dxaExTable tr>td:nth-child(5){text-align:right}
+#dxaExTable tr>td:nth-child(6){width:1%;white-space:nowrap;padding-left:10px}
+/* Remove the duplicate price line on DESKTOP. ".price-display .meta" reads
+   "<price> XLM per LUMOS - 1D High <x> - Low <y>", and the OHLC strip directly beneath it already
+   states O/H/L/C, the change and the volume for the same window. Two rows, one fact.
+   Hidden rather than removed: applyOhlc addresses High and Low by INDEX among .meta b.mono, so taking
+   the nodes out would silently shift both. The phone keeps it -- it has no OHLC strip to duplicate. */
+@media (min-width:761px){.price-display .meta{display:none!important}}
 #mdxaExList:not(.lxda) .ex-row{visibility:hidden}
 /* the design .ex-row grid is "24px 1fr 70px auto"; our rows add a 5th cell for the explorer link */
 #mdxaExList .ex-row[data-lxda]{grid-template-columns:24px 1fr auto auto 16px}
