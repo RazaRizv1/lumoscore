@@ -333,6 +333,19 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .lx-dnsw button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.18)}
 /* the row holding the search input is a flex line; the switch must not stretch with the input */
 .dex-mk-search{flex:1 1 auto;min-width:0}
+/* #34: Market Movers scrolls sideways instead of wrapping into rows.
+   Ten cards in a wrapping grid is four rows of tall cards -- the section stops being a glance and
+   becomes a page of its own. One row that scrolls keeps the whole section the height of a single card,
+   and the cut-off card at the right edge is what tells the reader there is more without a label saying
+   so. Scroll snapping so it comes to rest on a card rather than mid-way through one. */
+.dex-mover-grid{display:flex!important;flex-wrap:nowrap!important;gap:12px;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:6px;scrollbar-width:thin}
+.dex-mover-grid>.dex-mover-card{flex:0 0 272px;scroll-snap-align:start;min-width:0}
+.dex-mover-grid::-webkit-scrollbar{height:6px}
+.dex-mover-grid::-webkit-scrollbar-thumb{background:var(--border,#ececef);border-radius:99px}
+.dex-mover-grid::-webkit-scrollbar-track{background:transparent}
+@media (max-width:760px){.dex-mover-grid>.dex-mover-card{flex:0 0 232px}}
+@media (prefers-reduced-motion:reduce){.dex-mover-grid{scroll-behavior:auto}}
 /* New Mints: 4 symmetric stat columns (Price / Market cap / 24h Volume / 24h Trades), right-aligned */
 .dex-mint-stats{display:flex;gap:22px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
 .dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
@@ -1182,8 +1195,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // Takes an optional category so the mobile renderer can ask for a specific tab. Without it, the
   // category comes from ".dex-mover-tab.active" — a selector the mobile markup does not have, so a
   // mobile caller silently got "gainers" for all three tabs.
+  // #34: ten, not four. A ceiling rather than a quota -- see the padding note below, which still holds:
+  // a category that can only field three honest entries shows three.
+  var MOVER_N=10;
   function moverData(forceCat){
-    if(!window.__lxDEXloaded)return ASSETS.slice(0,4);           // stable placeholder order during load
+    if(!window.__lxDEXloaded)return ASSETS.slice(0,MOVER_N);     // stable placeholder order during load
     var cat=forceCat||moverCat();
     if(_moverFrozen[cat])return _moverFrozen[cat].map(function(c){return byCode[c];}).filter(Boolean);
     var d=ASSETS.slice();
@@ -1206,8 +1222,8 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // biggest LOSERS and the two tabs showed an identical list of decliners under opposite headings.
     // A short list is a fact about the market; a padded one is a false claim. Volume keeps its top-up,
     // since ordering by volume cannot misrepresent direction.
-    if(cat==="volume"&&d.length<4)d=ASSETS.slice().sort(function(a,b){return (b.vol||0)-(a.vol||0);});
-    d=d.slice(0,4); _moverFrozen[cat]=d.map(function(a){return a.code;}); return d;
+    if(cat==="volume"&&d.length<MOVER_N)d=ASSETS.slice().sort(function(a,b){return (b.vol||0)-(a.vol||0);});
+    d=d.slice(0,MOVER_N); _moverFrozen[cat]=d.map(function(a){return a.code;}); return d;
   }
   // Volume is the default tab: it answers "what is actually trading", and unlike a percentage it cannot
   // be manufactured on a dead asset. Claimed once, so it never drags the reader back mid-browse.

@@ -19,6 +19,16 @@ const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-dex-mobile.html'];
 
 const STYLE = '<style id="lx-mobdex-css">'
+// #34: the movers become one sideways row here too, rather than ten stacked cards the reader has to
+// scroll the PAGE through. Same idea as desktop: the section stays the height of a single card and the
+// card clipped at the right edge is what says there is more.
++ '.mdx-mover-list{display:flex!important;flex-direction:row!important;flex-wrap:nowrap!important;gap:10px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:6px}'
+// BOTH child shapes. renderMovers here stands down when the desktop layer is present, and that layer
+// paints .dex-mover-card into this container -- so a rule written only for .mdx-mover-row sized nothing
+// at all. Measured: ten .dex-mover-card children inside .mdx-mover-list, and a 1610px tall section.
++ '.mdx-mover-list>.mdx-mover-row,.mdx-mover-list>.dex-mover-card{flex:0 0 78%;max-width:290px;scroll-snap-align:start;min-width:0}'
++ '.mdx-mover-list::-webkit-scrollbar{height:5px}'
++ '.mdx-mover-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:99px}'
 + '.mdx-mk-row{position:relative;padding-left:26px}'
 + '.mdx-mk-rank{position:absolute;left:2px;top:14px;font-family:\'JetBrains Mono\',monospace;font-size:10px;font-weight:600;color:var(--text-soft,#6f6f79);letter-spacing:-.02em}'
 // #27: the mint sub-line was the only small-print line on this page NOT set in the mono face -- its
@@ -270,7 +280,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     // now, and on a day when nothing qualifies the honest answer is that nothing qualifies -- padding it
     // put arbitrary assets under a heading that claims they moved. Volume is never empty in practice.
     if(!d)d=[];
-    if(!d.length&&!window.__lxDEXloaded)d=A.slice(0,4);        // still loading: keep the placeholder rows
+    if(!d.length&&!window.__lxDEXloaded)d=A.slice(0,10);       // still loading: keep the placeholder rows
     // The signature has to include the CONVERTED figure. Keyed on a.chg alone, the list would not repaint
 // when XLM's own 24h move arrived a moment later -- every row would keep whatever it first rendered.
     var sig="v|"+cat+"|"+d.map(function(a){var c=cu(a);return a.code+":"+(c==null?"":c.toFixed(4));}).join("|");
