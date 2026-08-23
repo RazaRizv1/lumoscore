@@ -3038,6 +3038,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     });
   }
   function paintDetail(){ if(!DET)return;
+    try{ hidePoolFeeRow(); }catch(_){}   // the deposit panel's fixed-rate line; see hidePoolFeeRow
     try{ ensureUsd(); }catch(_){}
     [pdHeader,pdStats,pdChart,pdTx,pdPosition,pdDW,pdParts,pdCopy,wireDW,healLogos].forEach(function(fn){ try{ fn(); }catch(_){} }); }
   var schedD=false;
@@ -3368,7 +3369,31 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // a row that looks like a setting and is not one. It also invites the question it cannot answer:
   // that is the fee the pool collects and pays to its own providers, not a charge to whoever creates
   // it. Matched on its label rather than its position, because the summary rows are not ours.
+  // #16: the same row, in the other place it appears -- the pool page's Deposit / Withdraw panel.
+  //
+   // Every Stellar AMM pool charges 0.3%; it is fixed by the protocol and identical for every pool on
+  // the network, so a line stating it on a deposit form is not a setting, not a choice, and not news.
+  // It also invites the question it cannot answer: that is the fee the pool COLLECTS and pays to its
+  // providers, not a charge to the person depositing.
+  //
+  // Matched on the label rather than a position, because these rows are the design's, and scoped to the
+  // deposit panel so the identical row inside Create Pool keeps being handled by hideCpFee below.
+  function hidePoolFeeRow(){
+    var rows=qa(".dw-summary .r,.pool-dw .r,.ptab-panel .r,.r");
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i];
+      if(r.children.length>3)continue;
+      if(r.closest&&r.closest("#createPoolModal"))continue;
+      // Doubled on purpose: this file emits its browser code inside a template literal, so a single
+      // backslash is stripped on the way out and the regex would arrive as /s+/. The transform's own
+      // escape guard catches this, which is how it was found.
+      var t=(r.textContent||"").replace(/\\s+/g," ").trim();
+      if(!/^trading fee tier/i.test(t))continue;
+      if(r.style.display!=="none")r.style.display="none";
+    }
+  }
   function hideCpFee(){
+    try{ hidePoolFeeRow(); }catch(_){}
     var m=q("#createPoolModal"); if(!m)return;
     var rows=m.querySelectorAll(".row,.cp-row,li,div");
     for(var i=0;i<rows.length;i++){
