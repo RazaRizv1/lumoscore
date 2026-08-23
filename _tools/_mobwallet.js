@@ -16,6 +16,10 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const STYLE = '<style id="lx-mobwallet-css">'
+// #18: the three controls sat hard against the right edge, as far from the asset they act on as the
+// row allows. Left-aligned, they read as belonging to the row above them.
++ '.lxmw-astacts{justify-content:flex-start!important}'
++ '.lxmw-astbtn.icon{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
   + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block,body:not(.lxmw-ready) #assetList{visibility:hidden}'
   // N13: the identicon beside the address is a baked SVG -- a deterministic avatar OF THE MOCK ADDRESS,
@@ -314,8 +318,14 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>Trustline</button>\')'
 + ':(\'<button type="button" class="lxmw-astbtn" data-astsend="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'">\''
 + '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>Send</button>\'))'
-+ '+\'<button type="button" class="lxmw-astbtn icon" data-astmore="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'" aria-label="More actions" title="More actions">\''
-+ '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>\''
+// #17/#18: the overflow menu is gone; this is a direct Explorer link.
+//
+// The menu held two items. One was "Copy issuer address", which duplicated the copy control already
+// sitting beside the issuer on the same row; with that dropped the menu had a single item left, and a
+// menu with one item is two taps to do what a button does in one. data-lxnonav keeps the page's
+// label-based nav bridge from claiming the click.
++ '+\'<a class="lxmw-astbtn icon" data-lxnonav href="\'+esc(h.iss?("https://stellar.expert/explorer/public/asset/"+encodeURIComponent(code+"-"+h.iss)):"https://stellar.expert/explorer/public/asset/XLM")+\'" target="_blank" rel="noopener" aria-label="View on Stellar.Expert" title="Explorer">\''
++ '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg></a>\''
 + '+\'</div></div>\';});'
 + 'list.innerHTML=html;try{window.__lxFillHd&&window.__lxFillHd(list);}catch(_){}}'
 // ---- liquidity pools -------------------------------------------------------------------------------
