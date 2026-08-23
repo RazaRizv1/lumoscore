@@ -4360,7 +4360,9 @@ function lxLpWireToken(){
   // Hidden rather than deleted: the review screen still walks these rows by label, and the draft format
   // still round-trips a projectType from an older saved draft. The field simply stops being asked for.
   (function(){
-    var g=document.querySelector(".type-grid");
+    // The phone ships this control as .type-stack and the desktop as .type-grid. Looking only for the
+    // grid meant the field was hidden on one layout and left in place on the other.
+    var g=document.querySelector(".type-grid, .type-stack");
     if(g){
       var lbl=g.previousElementSibling;
       if(lbl&&/project type/i.test(lbl.textContent||""))lbl.style.display="none";
@@ -4378,7 +4380,7 @@ function lxLpWireToken(){
       if(/^s*project type/i.test((r.textContent||"")))r.style.display="none";
     });
   })();
-  var _tg=document.querySelector(".type-grid");
+  var _tg=document.querySelector(".type-grid, .type-stack");
   if(_tg && !_tg.__lxNoDef){ _tg.__lxNoDef=true;
     var _dft=null; try{ _dft=lxLpReadDraft(); }catch(_){}
     if(!(_dft && _dft.projectType)){
@@ -4624,10 +4626,21 @@ function lxLpWireConfirm(){
 }
 
 (function(){
-  function run(){ var p=location.pathname||location.href;
-    if(/launch-token/.test(p)) lxLpWireToken();
-    else if(/launch-review/.test(p)) lxLpWireReview();
-    else if(/launch-confirm/.test(p)) lxLpWireConfirm();
+  // The gate matched the FILE names -- lumoscore-launch-token and friends -- but those are what Pages
+  // rewrites TO. _redirects maps /launchpad, /launchpad/review and /launchpad/confirm with a 200, so the
+  // address bar keeps the clean URL and location.pathname never contains "launch-token". The result was
+  // that none of this file ran on the hosted site: measured on /launchpad, the icon input still carried
+  // the design's own accept list and #extraLiquidity had no __lxNum marker, i.e. lxLpWireToken() had not
+  // executed at all. Both spellings are accepted so opening a dist file directly still works.
+  //
+  // Review and confirm are tested first: their clean URLs start with /launchpad, so a token-page test
+  // that merely looked for "launchpad" would swallow them.
+  function run(){
+    var p=(location.pathname||location.href).toLowerCase().split("?")[0].split("#")[0];
+    if(p.length>1&&p.charAt(p.length-1)==="/") p=p.slice(0,-1);
+    if(p.indexOf("launch-review")>=0||p.indexOf("/launchpad/review")>=0) lxLpWireReview();
+    else if(p.indexOf("launch-confirm")>=0||p.indexOf("/launchpad/confirm")>=0) lxLpWireConfirm();
+    else if(p.indexOf("launch-token")>=0||p.slice(-9)==="launchpad") lxLpWireToken();
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",run); else run();
   var nn=0,iv=setInterval(function(){ nn++; run(); if(nn>20) clearInterval(iv); },300);
