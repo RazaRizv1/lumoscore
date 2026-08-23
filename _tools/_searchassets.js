@@ -16,6 +16,10 @@ const STYLE = `<style id="lx-searchassets-css">
 .sp-row--asset.lx-searow .sp-ico img{display:block}
 .sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
 /* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
+/* #11: the per-kind section label. Quieter than the "Recent" head above it -- these divide a list,
+   they do not introduce a new one. */
+.lx-recgrp{padding:9px 14px 4px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft,#8a8fa3)}
 .lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
   font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
 .lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
@@ -237,10 +241,37 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
   // innerHTML on every future visit; re-deriving would mean refetching an asset index, a pool record or
   // an account just to draw five lines. Reading the rendered row gives the same thing for free, and it is
   // already escaped output.
+  // #11: five of EACH kind, grouped, rather than five things in total.
+  //
+  // One shared list meant that looking at six assets pushed every pool, wallet and transaction you had
+  // opened out of the history -- the kinds you visit least are exactly the ones whose addresses are
+  // hardest to retype, so they were the first to go. Each kind now keeps its own five.
+  //
+  // The kind is read off the href, which is the one thing every stored entry has and the one thing that
+  // cannot drift from what the row actually points at.
   var RKEY="lumos.search.recent", RMAX=5;
+  var RKINDS=[["asset","Assets"],["pool","Pools"],["wallet","Wallets"],["tx","Transactions"]];
+  function recKind(h){
+    h=String(h||"");
+    // indexOf, not a regex: this file emits its browser code inside a template literal, where a lone
+    // backslash is stripped on the way out -- the regex form of this shipped as /\/pools/[^/]+/id//
+    // and took the whole script down with it.
+    if(h.indexOf("/pools/")>=0&&h.indexOf("/id/")>=0)return "pool";
+    if(h.indexOf("liquidity_pool")>=0)return "pool";
+    if(h.indexOf("/tx/")>=0||h.indexOf("/op/")>=0)return "tx";
+    if(h.indexOf("/account/")>=0)return "wallet";
+    return "asset";
+  }
+  // Capping happens on the way OUT as well as in, so a history saved before this change -- one flat list
+  // of five -- still reads correctly instead of being thrown away.
+  function recCap(a){
+    var seen={}, out=[];
+    for(var i=0;i<a.length;i++){ var k=recKind(a[i].href); seen[k]=(seen[k]||0)+1; if(seen[k]<=RMAX)out.push(a[i]); }
+    return out;
+  }
   function recGet(){ try{ var a=JSON.parse(localStorage.getItem(RKEY)||"[]");
-    return Array.isArray(a)?a.filter(function(x){return x&&x.href;}).slice(0,RMAX):[]; }catch(_){ return []; } }
-  function recSave(a){ try{ localStorage.setItem(RKEY,JSON.stringify(a.slice(0,RMAX))); }catch(_){ } }
+    return Array.isArray(a)?recCap(a.filter(function(x){return x&&x.href;})):[]; }catch(_){ return []; } }
+  function recSave(a){ try{ localStorage.setItem(RKEY,JSON.stringify(recCap(a))); }catch(_){ } }
   // Dedupe on href, then unshift: reopening something already in the list MOVES it to the top rather than
   // adding a second copy, which is what "most recent first" has to mean.
   function recAdd(t){ if(!t||!t.href)return;
@@ -302,8 +333,16 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // there is no history yet rather than replacing it with a blank "Recent" heading.
   function recPaint(list){
     var a=recGet(); if(!a.length) return false;
-    paint(list,'<div class="lx-rechead"><span>Recent</span><button type="button" class="lx-recclear">Clear</button></div>'
-      +a.map(recRow).join(""));
+    // Fixed order, not "whichever kind was used most recently": a list whose SECTIONS move around is
+    // harder to scan than one whose rows do. Empty kinds are skipped rather than shown as bare headings.
+    var html='<div class="lx-rechead"><span>Recent</span><button type="button" class="lx-recclear">Clear</button></div>';
+    for(var g=0;g<RKINDS.length;g++){
+      var kind=RKINDS[g][0];
+      var rows=a.filter(function(x){ return recKind(x.href)===kind; });
+      if(!rows.length)continue;
+      html+='<div class="lx-recgrp">'+esc(RKINDS[g][1])+'</div>'+rows.map(recRow).join("");
+    }
+    paint(list,html);
     return true;
   }
   if(!window.__lxRecWired){ window.__lxRecWired=1;
