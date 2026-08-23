@@ -92,6 +92,11 @@ html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visib
    from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
    until they landed. Same treatment as the desktop body. */
 html:not(.lx-ammready) #panelAll{visibility:hidden}
+/* #39: the Top Pool slot showed "( )" for a beat on the phone. That is its own skeleton -- two ringed
+   circles overlapping at phone scale read as a pair of brackets, which looks like a rendering fault
+   rather than a placeholder. The slot stays blank until there is a real pair to put in it; the label
+   under it already says what is coming. */
+html:not(.lx-ammready) .lx-hstat[data-k=top] .v{visibility:hidden}
 /* #10: remote pool results, kept visually distinct from the page's own ranked list so it is obvious
    these came from a search rather than from the top-25 ranking. */
 .lx-psresult{margin-top:14px}

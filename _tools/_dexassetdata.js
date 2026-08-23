@@ -1227,7 +1227,11 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     }
     return out;
   }
-  function drawChart(pts){ pts=pts||chartPts; if(!pts)return; if(chartMode==="candle"){ try{ drawCandles(pts); return; }catch(_){} } drawLine(pts); }
+  function drawChart(pts){ pts=pts||chartPts; if(!pts)return;
+    // #23: whichever range actually drew is the one to light, and EVERY path ends here -- the
+    // aggregations path, the trades fallback and a user click alike. The step-out case has already
+    // called tfActive with the wider range it chose, and the ready flag stops this overwriting it.
+    if(!document.documentElement.classList.contains("lxda-tfready"))tfActive(chartTF); if(chartMode==="candle"){ try{ drawCandles(pts); return; }catch(_){} } drawLine(pts); }
   // ---- candlesticks (real OHLC from the trade aggregations) ----
   function drawCandles(pts){
     var pc=q("#dxaChart,#mdxaChart"); if(!pc||!pts||pts.length<2)return;
@@ -1402,15 +1406,37 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
       if(!_w&&src.length>=2){ _w=src; _wtf="1Y"; }
       if(!_w){ chartEmpty(src.length?1:0); return; }
       use=_w;
-      try{ qa("[data-period],[data-tf],.timeframes button").forEach(function(b){
-        var v=b.getAttribute("data-period")||b.getAttribute("data-tf")||(b.textContent||"").trim();
-        if(v===_wtf)b.classList.add("active"); else if(_ORD.indexOf(v)>=0)b.classList.remove("active"); }); }catch(_){}
+      tfActive(_wtf);
     }
+    // the requested window drew fine, so it is the one to light
+    if(!document.documentElement.classList.contains("lxda-tfready"))tfActive(tf);
     var pts=use.slice().sort(function(a,b){ return (a.ts||0)-(b.ts||0); }).map(function(r){
       var v=r.px*xlmUsd; return {t:r.ts||0, v:v, vol:(r.xlm||0)*xlmUsd, o:v, h:v, l:v, c:v}; });
     drawChart(pts);
   }
+  // #23: the strip ships with 1D highlighted, but 1D is only the window we ASK for -- when an asset has
+  // not traded inside it we step out to the first range that has a line, and the highlight jumped from
+  // 1D to 1W a second after load. That reads as the page changing its mind.
+  //
+  // So nothing is highlighted until we know which window is actually being drawn. The build strips the
+  // baked active class, and this sets it once, for whichever range won -- one state change instead of a
+  // wrong one followed by a correction.
+  function tfActive(tf){
+    try{
+      var ORD=["1D","1W","1M","1Y"];
+      qa("[data-period],[data-tf],.timeframes button").forEach(function(b){
+        var v=b.getAttribute("data-period")||b.getAttribute("data-tf")||(b.textContent||"").trim();
+        if(ORD.indexOf(v)<0)return;
+        b.classList.toggle("active", v===tf);
+      });
+      document.documentElement.classList.add("lxda-tfready");
+    }catch(_){}
+  }
   function chartEmpty(hasOlder){
+    // An asset with nothing to draw never reaches drawChart, and the strip would sit with no range
+    // highlighted at all. Light the one that was asked for: there is no data in any window, so the
+    // request is the honest answer.
+    if(!document.documentElement.classList.contains("lxda-tfready"))tfActive(chartTF);
     try{ var host=q("#dxaChart,#mdxaChart"); if(!host)return;
       var d=host.querySelector(".lx-dxa-nochart");
       if(!d){ d=document.createElement("div"); d.className="lx-dxa-nochart"; host.appendChild(d); }
@@ -3651,7 +3677,13 @@ for (const file of files) {
           function (all, body, tail) {
             return body
               + '<div class="stat-cell"><div class="lbl">Market Cap</div><div class="val mono">\u2014</div><div class="sub"></div></div>'
-              + '<div class="stat-cell"><div class="lbl">Supply</div><div class="val mono">\u2014</div><div class="sub"></div></div>'
+              // #40: ships hidden. Supply is not one of the three figures this strip shows -- it lives in
+              // the More info sheet -- but the cell has to EXIST, because moreRows() reads its value back
+              // out of the DOM. It used to be hidden at runtime by adding .lxda-more, so the strip painted
+              // four cells and dropped to three a moment later. The class is applied here instead, and the
+              // inline style with it: a class depends on a stylesheet that may be parsed after this markup,
+              // and an inline style cannot lose that race.
+              + '<div class="stat-cell lxda-more" style="display:none"><div class="lbl">Supply</div><div class="val mono">\u2014</div><div class="sub"></div></div>'
               + tail;
           });
       }
@@ -3691,6 +3723,17 @@ for (const file of files) {
     // anything the data layer owns -- the marker is a data-lxc attribute -- but this element never carried
     // one, so it was fair game on every asset page. Empty value is enough: the check is != null.
     p = p.split('<div class="asset-logo"></div>').join('<div class="asset-logo" data-lxc=""></div>');
+
+    // #23: drop the baked active state from the timeframe strip.
+    //
+    // 1D is only the window we ASK for. When an asset has not traded inside it the chart steps out to
+    // the first range that has a line, and the highlight jumped from 1D to 1W a second after load --
+    // the page appearing to change its mind. With nothing pre-selected, tfActive() lights whichever
+    // range actually drew, once. Done in the markup rather than with CSS because the stylesheet is
+    // not guaranteed to be parsed before this element paints.
+    p = p.replace(/<div class="timeframes">[\s\S]{0,500}?<\/div>/, function (all) {
+      return all.replace(/\s*class="active"/g, '');
+    });
     // The desktop crumb carried a back link AND a "· DEX / CODE" trail: the same destination twice, plus
     // a segment repeating the asset the page is already titled after. The mobile build ships the back
     // link alone and reads better for it, so match it. Markup, not runtime, so there is nothing to
@@ -3698,6 +3741,8 @@ for (const file of files) {
     // ".crumb span" lookup is already null-guarded, so it simply finds nothing to write.
     if (/<div class="crumb">[\s\S]*?class="sep"/.test(p)) {
       p = p.replace(/(<div class="crumb">[\s\S]*?<\/a>)[\s\S]*?<\/div>/, '$1\n  </div>');
+
+
     }
     // Discussions was removed: no backend ever existed, so the tab only led to the design's mock thread
     // plus browser-local posts nobody else could see. Idempotent -- after one pass there is no match.
