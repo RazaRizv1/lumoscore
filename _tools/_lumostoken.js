@@ -35,6 +35,7 @@ const STYLE = `<style id="lx-lt-css">
 .lx-lt-dom svg{width:15px;height:15px;flex:none}
 
 .hero-price-block:not(.lxlt) .price,.hero-price-block:not(.lxlt) .change,.hero-price-block:not(.lxlt) .sub-volume{visibility:hidden}
+.hero-price:not(.lxlt) .price,.hero-price:not(.lxlt) .change{visibility:hidden}
 .addr-row:not(.lxlt) .addr-value{visibility:hidden}
 .cstat:not(.lxlt) .lc-money,.cstat:not(.lxlt) .val,.cstat:not(.lxlt) .sub{visibility:hidden}
 /* AUDIT (flash sweep): .sub was left out of the gate above, so "+184 past 7 days" flashed before the real
@@ -267,7 +268,10 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
           bi.setAttribute("data-lxlogo","1"); bi.innerHTML="";
           bi.style.setProperty("background",'url("/assets/favicon.png") center/cover no-repeat',"important");
           bi.style.setProperty("border-radius","50%","important"); } } }catch(_){}
-    var hp=q(".hero-price-block");
+ // The phone names this block .hero-price, not .hero-price-block, so the hero was never written on
+       // mobile at all: it showed the design's $0.00320 while the pool it trades in prices LUMOS at
+       // $0.0000577 -- a figure 55x out, on the same page whose holder column reads the real one.
+       var hp=q(".hero-price-block")||q(".hero-price");
     if(hp&&lumosXlm>0){
       var priceUsd=lumosXlm*xlmUsd;
       setText(hp.querySelector(".price"), usd(priceUsd));
@@ -281,6 +285,14 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         setText(ch, (up?"+":"−")+Math.abs(chg24).toFixed(1)+"% (24h)");
         ch.classList.toggle("down", !up);
       }
+      // "Combined 24h volume · $7.2K · 4,570 trades" -- a mock, and one the desktop hero does not carry.
+      // Real 24h volume would cost a trades page per pool across 59 pools, which Horizon rate-limits well
+      // before it finishes, so there is no honest number to put here; the line goes rather than stays
+      // wrong. Matched on its own wording so nothing else in the hero can be caught by it.
+      qa(".hero-price *").forEach(function(e){ if(e.children.length)return;
+        var t=e.textContent||""; if(t.indexOf("Combined")>=0&&t.indexOf("24h volume")>=0&&t.indexOf("trades")>=0){
+          var host=(e.parentNode&&e.parentNode!==hp&&e.parentNode.children.length===1)?e.parentNode:e;
+          if(host.parentNode)host.parentNode.removeChild(host); } });
       hp.classList.add("lxlt");
     }
     // group "≈ X XLM" + the 24h change badge onto ONE right-aligned meta row (symmetry). Idempotent.
@@ -519,6 +531,64 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     qa(".alloc-legend").forEach(function(l){ l.classList.add("lxlt"); });   // reveal the legend once the numbers are ours
     qa(".alloc-seg").forEach(function(s){ if((s.getAttribute("style")||"").indexOf("--alloc-7)")>=0&&s.style.width!=="7%")s.style.width="7%"; });
   }
+  // #14: the same 59 real pools, rendered into the PHONE's markup.
+  //
+  // buildPoolsTable gates on #poolsBody, which is a desktop table -- the phone lists pools as
+  // .pool-list > a.pool-item instead, so the builder bailed on its first line and the design's mock
+  // stayed: LUMOS paired with aBTC, CELL, AMI, GUI and MESO, every one of them an Aptos asset on a
+  // Stellar token page. The data was never the problem; window.__lxLTpools already held all 59.
+  //
+  // Sorted by TVL like the desktop table, and capped at 12: this is a summary on a token page, not the
+  // pools browser, and the phone has no scroll box to put fifty-nine rows in.
+  function buildPoolsListMobile(){
+    var list=q(".pool-list"); if(!list)return;
+    if(q("#poolsBody"))return;                       // desktop build: its own table handles this
+    var pools=window.__lxLTpools; if(!pools||!pools.length)return;
+    var priceUsd=lumosXlm*xlmUsd; if(!(priceUsd>0))return;
+    if(list.querySelector("a[data-lxbuilt]"))return;  // already ours
+    var tpl=list.querySelector("a.pool-item"); if(!tpl)return;
+    var arr=pools.map(function(p){
+      var lum=0,other=0,code="XLM";
+      (p.reserves||[]).forEach(function(rv){
+        if(rv.asset.indexOf(RESV)===0)lum=+rv.amount;
+        else if(rv.asset==="native"){other=+rv.amount;code="XLM";}
+        else {other=+rv.amount;code=String(rv.asset).split(":")[0];}
+      });
+      return {hex:p.id, code:code, tvl:lum*priceUsd*2};
+    }).sort(function(a,b){return b.tvl-a.tvl;}).slice(0,12);
+    var frag=document.createDocumentFragment();
+    arr.forEach(function(pool){
+      var row=tpl.cloneNode(true);
+      row.setAttribute("data-lxbuilt","1"); row.setAttribute("data-hex",pool.hex); row.setAttribute("data-code",pool.code);
+      row.setAttribute("href","/pools/stellar/id/"+pool.hex);
+      var nm=row.querySelector(".pair-name"); if(nm)nm.textContent="LUMOS / "+pool.code;
+      try{ setPoolIcons(row,pool.code); }catch(_){}
+      // XLM is the one pair whose mark arrives as an <img> rather than a background, and the .b disc has
+      // a border: an image fills the 22px CONTENT box while every sibling background paints the full 26px
+      // border box, so the Stellar mark sat visibly smaller than the eleven logos beside it. Moving it to
+      // a background makes the row identical to the others instead of special-casing a size. data-lxc
+      // stops the logo painter treating this disc as unpainted and putting the <img> back.
+      try{
+        var bd=row.querySelector(".pair-icons .b"), bim=bd&&bd.querySelector("img");
+        if(bim&&bim.src){ bd.style.background='url("'+bim.src+'") center center / cover no-repeat';
+          bd.setAttribute("data-lxc",pool.code); bim.parentNode.removeChild(bim); }
+      }catch(_){}
+      // The chain pill said Stellar while carrying an APT mark, and on a Stellar-only page it says
+      // nothing anyway -- the desktop table drops its Network column for the same reason.
+      var pill=row.querySelector(".chain-pill"); if(pill&&pill.parentNode)pill.parentNode.removeChild(pill);
+      // The phone keeps its figures in .stats-row as label/value pairs. There is no .lc-money in this
+      // markup at all, so the two lines copied from the desktop builder wrote nothing and every cloned
+      // row kept the template pool's $182K -- real pairs with one pool's numbers under all of them,
+      // which is worse than the mock it replaced. data-usd is still stamped so the currency toggle can
+      // find these.
+      var vs=row.querySelectorAll(".stats-row .v");
+      if(vs[0]){ vs[0].textContent=abbrUsd(pool.tvl); vs[0].setAttribute("data-orig",abbrUsd(pool.tvl)); vs[0].setAttribute("data-usd",pool.tvl); }
+      if(vs[1]){ vs[1].textContent="$0"; vs[1].setAttribute("data-orig","$0"); vs[1].setAttribute("data-usd","0"); }
+      frag.appendChild(row);
+    });
+    list.innerHTML=""; list.appendChild(frag); list.classList.add("lxlt");
+    try{ fetchPoolVolumes(arr); }catch(_){}
+  }
   function buildPoolsTable(){
     var pb=q("#poolsBody"); if(!pb)return; var pools=window.__lxLTpools; if(!pools||!pools.length)return;
     var priceUsd=lumosXlm*xlmUsd; if(!(priceUsd>0))return;
@@ -558,7 +628,11 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       j(H+"/liquidity_pools/"+pool.hex+"/trades?order=desc&limit=100").then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[]; var now=Date.now(), volXlm=0;
         recs.forEach(function(x){ var xa=x.base_asset_type==="native"?+x.base_amount:(x.counter_asset_type==="native"?+x.counter_amount:0); var ts=Date.parse(x.ledger_close_time||""); if(now-ts<=864e5)volXlm+=xa; });
-        var r=q('#poolsBody tr[data-hex="'+pool.hex+'"]'); var cell=r?r.querySelectorAll(".lc-money")[1]:null;
+        // Both layouts. The desktop row keeps its .lc-money cell; the phone card has no such class and
+        // holds its figures in .stats-row instead, so writing only to the first target left every phone
+        // card reading $0 however much the pool had traded.
+        var r=q('#poolsBody tr[data-hex="'+pool.hex+'"]')||q('.pool-list a[data-hex="'+pool.hex+'"]');
+        var cell=r?(r.querySelectorAll(".lc-money")[1]||r.querySelectorAll(".stats-row .v")[1]):null;
         if(cell){ var s=abbrUsd(volXlm*xlmUsd); cell.textContent=s; cell.setAttribute("data-orig",s); cell.setAttribute("data-usd",volXlm*xlmUsd); }
       }).catch(function(){});
     });
@@ -578,6 +652,8 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       if(lab)setText(lab,labels[i]); if(cnt)setText(cnt,num(b[i])); if(fill)fill.style.width=Math.max(1,Math.round(b[i]/mx*100))+"%"; r.classList.add("lxlt"); });
     // "N total" next to the breakdown title
     qa(".hbreak-total, .holders-total").forEach(function(e){ setText(e, num(tot)+" total"); });
+    qa(".h-head").forEach(function(hd){ var h=hd.querySelector("h3"), m=hd.querySelector(".meta");
+      if(h&&m&&(h.textContent||"").indexOf("breakdown")>=0) setText(m, num(tot)+" total"); });
     // Top holders
     var hr=qa(".holder-row"), top=hold.filter(function(h){return !EXCLUDE[h.addr];}).slice(0,hr.length);
     // clone → edit → replaceChild (once per row): orphans the design engine's node reference so it can't
@@ -594,7 +670,8 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       // real holdings (the design's mock $ used the old $0.0032 price → wrong). Set amount + USD.
       var pUsd=lumosXlm*xlmUsd;
       var vv=c.querySelector(".holdings .v"); if(vv)vv.textContent=abbrNum(h.bal)+" LUMOS";
-      var mm=c.querySelector(".holdings .lc-money"); if(mm&&pUsd>0){ var uu=abbrUsd(h.bal*pUsd); mm.textContent=uu; mm.setAttribute("data-orig",uu); mm.setAttribute("data-usd",h.bal*pUsd); }
+      var mm=c.querySelector(".holdings .lc-money")||c.querySelector(".holdings .pct");
+      if(mm&&pUsd>0){ var uu=abbrUsd(h.bal*pUsd); mm.textContent=uu; mm.setAttribute("data-orig",uu); mm.setAttribute("data-usd",h.bal*pUsd); mm.classList.add("lc-money"); }
       // link the row to the holder's Stellar.expert account page
       c.style.cursor="pointer"; c.setAttribute("title","View "+shortG(h.addr)+" on Stellar Explorer");
       (function(ad){ c.addEventListener("click",function(ev){ if(ev.target&&ev.target.closest&&ev.target.closest("a"))return; window.open("https://stellar.expert/explorer/public/account/"+ad,"_blank","noopener"); }); })(h.addr);
@@ -602,6 +679,11 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       if(row.parentNode)row.parentNode.replaceChild(c,row);
     });
     // "Combined · both chains" subtitle -> "Ranked by balance" (network is obvious; drop it)
+    // Same claim, phone markup: <div class="h-head"><h3>Top LUMOS holders</h3><div class="meta">both
+    // chains</div></div>. Matched on the heading beside it rather than on the string, so it reads the
+    // same on both layouts.
+    qa(".h-head").forEach(function(hd){ var m=hd.querySelector(".meta"); if(!m)return;
+      if((m.textContent||"").indexOf("both chains")>=0) setText(m,"Ranked by balance"); });
     qa("*").forEach(function(e){ if(e.children.length)return; var t=e.textContent||""; if(t.indexOf("Combined")>=0&&t.indexOf("both chains")>=0)e.textContent=t.replace(/Combined[^]*?both chains/,"Ranked by balance"); });
     // "View full holder list →" -> the LUMOS asset (holders) on stellar.expert
     var vfl=qa("a,button").filter(function(e){return /holder list/i.test((e.textContent||""));})[0];
@@ -1110,7 +1192,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   function updateHolderUsd(){ var p=lumosXlm*xlmUsd; if(!(p>0))return; qa(".holder-row[data-lxbal]").forEach(function(r){ var bal=+r.getAttribute("data-lxbal"); var mm=r.querySelector(".holdings .lc-money"); if(mm){ var u=abbrUsd(bal*p); if(mm.getAttribute("data-orig")!==u){ mm.textContent=u; mm.setAttribute("data-orig",u); mm.setAttribute("data-usd",bal*p); } } }); }
   // Create-Pool modal: drop the "Trading fee 0.5%" row (per request). Idempotent.
   function polishModals(){ qa("#createPoolModal .row").forEach(function(r){ if(r.getAttribute("data-lxhid")!=="1"&&/Trading fee/i.test(r.textContent||"")){ r.setAttribute("data-lxhid","1"); r.style.display="none"; } }); }
-  function applyAll(){ if(vol24Xlm!=null&&xlmUsd)vol24Usd=vol24Xlm*xlmUsd; try{ applyHero(); }catch(_){} try{ applyStats(); }catch(_){} try{ applyOverview(); }catch(_){} try{ applyTabs(); }catch(_){} try{ buildPoolsTable(); }catch(_){} try{ repaintPoolIcons(); }catch(_){} try{ fixAllocation(); }catch(_){} try{ setModalLogos(); }catch(_){} try{ applyHolders(); }catch(_){} try{ updateHolderUsd(); }catch(_){} try{ polishModals(); }catch(_){} try{ wireChartTabs(); }catch(_){} try{ var pc=q("#priceChart"); if(pc&&chartPts&&!pc.querySelector(".lx-cline"))drawChart(chartPts); }catch(_){} try{ fixAbout(); }catch(_){} try{ installSwapGlobals(); }catch(_){} try{ wireSwapPreselect(); }catch(_){} try{ var cpm=q("#createPoolModal"); if(cpm){ wireCreatePool(); cpRefresh(cpm); } }catch(_){} try{ wireTrustGates(); }catch(_){} }
+  function applyAll(){ if(vol24Xlm!=null&&xlmUsd)vol24Usd=vol24Xlm*xlmUsd; try{ applyHero(); }catch(_){} try{ applyStats(); }catch(_){} try{ applyOverview(); }catch(_){} try{ applyTabs(); }catch(_){} try{ buildPoolsTable(); try{ buildPoolsListMobile(); }catch(_){} }catch(_){} try{ repaintPoolIcons(); }catch(_){} try{ fixAllocation(); }catch(_){} try{ setModalLogos(); }catch(_){} try{ applyHolders(); }catch(_){} try{ updateHolderUsd(); }catch(_){} try{ polishModals(); }catch(_){} try{ wireChartTabs(); }catch(_){} try{ var pc=q("#priceChart"); if(pc&&chartPts&&!pc.querySelector(".lx-cline"))drawChart(chartPts); }catch(_){} try{ fixAbout(); }catch(_){} try{ installSwapGlobals(); }catch(_){} try{ wireSwapPreselect(); }catch(_){} try{ var cpm=q("#createPoolModal"); if(cpm){ wireCreatePool(); cpRefresh(cpm); } }catch(_){} try{ wireTrustGates(); }catch(_){} }
 
   function loadData(){
     // XLM price (USD)
