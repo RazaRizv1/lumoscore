@@ -457,6 +457,13 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     return "data:image/svg+xml;base64,"+btoa(svg); }
   function logoOf(c,i){ if(c==="XLM")return STELLAR_URI;
     return brand(c,i)||IMG[key(c,i)]||initials(c); }
+  function paintDoms(){ qa("#accAssetsTbl tbody tr.acc-row").forEach(function(tr){
+    var c=tr.getAttribute("data-code"), i=tr.getAttribute("data-iss")||"";
+    if(!c||c==="XLM"||!i)return;
+    var el=tr.querySelector(".acc-iss"); if(!el)return;
+    var _d=dispDom(c,i,DOM[key(c,i)]||"");
+    var t=_d?(_d+" "+MID+" "+shortG(i)):shortG(i);
+    if(el.textContent!==t)el.textContent=t; }); }
   function paintLogos(){ qa(".acc-ico[data-lxc]").forEach(function(el){
     var c=el.getAttribute("data-lxc"), i=el.getAttribute("data-lxi")||"";
     el.style.backgroundImage="url("+logoOf(c,i)+")"; }); }
@@ -474,7 +481,15 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     fetchJ("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(i)+"&limit=50").then(function(d){
       var m=recs(d).filter(function(r){ return (r.asset||"").indexOf(c+"-"+i)===0; })[0];
       var ti=(m&&(m.tomlInfo||m.toml_info))||{};
-      if(m&&m.domain){ DOM[key(c,i)]=m.domain; try{ renderAssets(); }catch(_){} }
+      // N2: repaint the ONE line that changed, not the table.
+      //
+      // This called renderAssets(), which rewrites the tbody wholesale -- so every icon in the table was
+      // destroyed and rebuilt. With eight assets each resolving its domain at a different moment that
+      // happened eight times over a few seconds, and the logos visibly churned before settling. Nothing
+      // about a domain arriving changes the ORDER (assets sort by value), so there is nothing to
+      // re-render: the issuer line is the only thing that differs. paintLogos already worked this way
+      // for images; this is the same treatment for domains.
+      if(m&&m.domain){ DOM[key(c,i)]=m.domain; try{ paintDoms(); }catch(_){} }
       if(ti.image){ IMG[key(c,i)]=ti.image; paintLogos(); return; }
       return j(H+"/accounts/"+i).then(function(acc){
         var dom=(acc&&acc.home_domain)||""; if(!dom)return;
@@ -689,8 +704,24 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     other:'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>'
   };
   // The asset's own mark, inline in the title -- the wallet's .lx-act-ilogo, same construction.
+  // N12: the activity rows read "SwapyXLM" and "Added trustlineUSDC", because this returns an EMPTY
+  // STRING when it has no logo and the callers put the space INSIDE that string. Whenever the mark was
+  // missing -- which on a public account page is most rows -- the space went with it. accAsset below
+  // owns the spacing so it is there either way.
+  //
+  // And it looked in one place, window.__lxLogos, which is populated by the POOLS layer and is close to
+  // empty here. The assets table on this very page resolves logos through brand()/IMG, so the activity
+  // rows now read the same two sources -- which is why they were showing XLM's mark and nothing else.
   function accIlogo(code,native){
-    var lg=native?STELLAR_URI:((window.__lxLogos||{})[code]||"");
+    var lg=native?STELLAR_URI:(brand(code,"")||"");
+    if(!lg&&!native){
+      var kk=null;
+      // IMG is keyed by key(code,issuer) = code+"-"+issuer, and an activity row knows the code but not
+      // always the issuer, so match on the code segment. Safe against prefixes: "USDC-G..." does not
+      // start with "USD-".
+      try{ for(var k2 in IMG){ if(k2.indexOf(code+"-")===0){ kk=IMG[k2]; break; } } }catch(_){}
+      lg=kk||((window.__lxLogos||{})[code]||"");
+    }
     var bg=lg?("url('"+String(lg).replace(/'/g,"%27")+"')"):"none";
     // No logo, no mark. The initial-letter fallback put a stray "Y"/"E"/"A" in front of every asset on
     // every row -- on a page where most assets have no published logo, that is a column of loose
@@ -698,6 +729,9 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     if(!lg)return "";
     return '<span class="lx-act-ilogo" style="--al:'+bg+'"></span>';
   }
+  // One space in front of the mark, always -- present whether or not there is a mark to show. The mark
+  // carries its own trailing gap in CSS.
+  function accAsset(code,native){ return " "+accIlogo(code,native)+esc(code); }
   var AIC={
     payment:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>',
     swap:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>',
@@ -712,7 +746,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     if(t==="payment"){
       var out=(o.from===me), pc=opCode(o), pn=(o.asset_type==="native");
       return {ic:"payment", kind:out?"sent":"received",
-        titleHtml:(out?"Sent":"Received")+" "+accIlogo(pc,pn)+" "+esc(pc),
+        titleHtml:(out?"Sent":"Received")+accAsset(pc,pn),
         title:(out?"Sent ":"Received ")+pc,
         sub:(out?("to "+shortG(o.to)):("from "+shortG(o.from))), cls:out?"acc-dn":"acc-up",
         right:(out?"-":"+")+amt(o.amount)+" "+pc}; }
@@ -720,7 +754,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       var sc=o.source_asset_type==="native"?"XLM":(o.source_asset_code||"");
       var dc=opCode(o), dn=(o.asset_type==="native"), sn=(o.source_asset_type==="native");
       return {ic:"swap", kind:"swap",
-        titleHtml:"Swap"+accIlogo(sc,sn)+esc(sc)+" "+ARROW+accIlogo(dc,dn)+esc(dc),
+        titleHtml:"Swap"+accAsset(sc,sn)+" "+ARROW+accAsset(dc,dn),
         title:"Swap "+sc+" "+ARROW+" "+dc,
         sub:"via Stellar DEX",
         right:"+"+amt(o.amount)+" "+dc, rightSub:"-"+amt(o.source_amount)+" "+sc}; }
@@ -728,7 +762,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       var add=(+o.limit)>0;
       var tc=(o.asset_code||opCode(o));
       return {ic:"trust", kind:"settings",
-        titleHtml:(add?"Added trustline":"Removed trustline")+accIlogo(tc,false)+esc(tc),
+        titleHtml:(add?"Added trustline":"Removed trustline")+accAsset(tc,false),
         title:(add?"Added trustline ":"Removed trustline ")+tc,
         sub:o.asset_issuer?shortG(o.asset_issuer):"", right:""}; }
     if(t==="liquidity_pool_deposit")  return {ic:"pool", kind:"lp", title:"Deposited into a pool", sub:shortG(o.liquidity_pool_id||""), right:""};
@@ -739,7 +773,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
           bc2=(o.buying_asset_code||(o.buying_asset_type==="native"?"XLM":""));
       return {ic:"offer", kind:"order",
         titleHtml:(amount>0?"Placed an order":"Cancelled an order")
-          +accIlogo(sc2,o.selling_asset_type==="native")+esc(sc2)+" /"+accIlogo(bc2,o.buying_asset_type==="native")+esc(bc2),
+          +accAsset(sc2,o.selling_asset_type==="native")+" /"+accAsset(bc2,o.buying_asset_type==="native"),
         title:(amount>0?"Placed an order":"Cancelled an order"), sub:"", right:""}; }
     if(t==="create_account") return {ic:"payment", kind:"received", title:"Account created", sub:"", cls:"acc-up", right:"+"+amt(o.starting_balance)+" XLM"};
     if(t==="account_merge")  return {ic:"other", kind:"other", title:"Account merged", sub:shortG(o.into||""), right:""};
