@@ -5106,63 +5106,7 @@ window.lxLpTest=function(draft){
     }).then(function(result){ console.log("[lxLpTest] RESULT", result); return {distributor:dist.publicKey(), result:result}; });
   });
 };
-})();</script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-nofollow">(function(){
-  var KEEP=[];
-  function own(h){
-    if(!h)return true;
-    if(h===location.host)return true;                       // covers localhost and the staging host
-    h=h.toLowerCase();
-    if(h==="lumoscore.com"||h.slice(-14)===".lumoscore.com")return true;
-    for(var i=0;i<KEEP.length;i++)if(h===KEEP[i])return true;
-    return false;
-  }
-  function stamp(a){
-    var raw=a.getAttribute("href");
-    if(!raw)return;
-    var c=raw.charAt(0);
-    if(c==="#"||c==="/"||c==="?")return;                    // relative: ours by definition
-    var u;
-    try{ u=new URL(a.href,location.href); }catch(_){ return; }
-    // mailto:, tel:, javascript: -- not links a crawler follows, and not ours to annotate
-    if(u.protocol!=="http:"&&u.protocol!=="https:")return;
-    if(own(u.host))return;
-    var rel=(a.getAttribute("rel")||"").split(" ");
-    var out=[],seen={};
-    for(var i=0;i<rel.length;i++){ var t=rel[i]; if(!t||seen[t])continue; seen[t]=1; out.push(t); }
-    if(seen.nofollow)return;                                // already done: no write, no mutation
-    out.push("nofollow");
-    if(!seen.noopener)out.push("noopener");
-    a.setAttribute("rel",out.join(" "));
-  }
-  function sweep(root){
-    var n=(root&&root.querySelectorAll)?root:document;
-    var list=n.querySelectorAll("a[href]");
-    for(var i=0;i<list.length;i++)stamp(list[i]);
-    // the root itself can BE the anchor when one is inserted on its own
-    if(root&&root.tagName==="A")stamp(root);
-  }
-  function boot(){
-    sweep(document);
-    try{
-      // childList for anchors that appear with their data; href for an anchor that is re-pointed
-      // later. NOT rel -- stamp() is idempotent so a rel mutation would be a wasted pass, and this
-      // observer must never react to its own write.
-      new MutationObserver(function(muts){
-        for(var i=0;i<muts.length;i++){
-          var m=muts[i];
-          if(m.type==="attributes"){ if(m.target)stamp(m.target); continue; }
-          for(var j=0;j<m.addedNodes.length;j++){
-            var nd=m.addedNodes[j];
-            if(nd.nodeType===1)sweep(nd);
-          }
-        }
-      }).observe(document.documentElement,
-        {childList:true,subtree:true,attributes:true,attributeFilter:["href"]});
-    }catch(_){}
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
-})();</script><script id="lx-dashqa">(function(){function go(u){try{location.href=u;}catch(_){}}function target(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t==="my wallet")return "/wallet";if(t==="add liquidity"&&!document.querySelector("#createPoolModal"))return "/pools/stellar";return "";}document.addEventListener("click",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var u=target(c); if(!u)return;e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);document.addEventListener("touchend",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var u=target(c); if(!u)return;e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);})();</script><script id="lx-ammdata">(function(){
+})();</script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-dashqa">(function(){function go(u){try{location.href=u;}catch(_){}}function target(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t==="my wallet")return "/wallet";if(t==="add liquidity"&&!document.querySelector("#createPoolModal"))return "/pools/stellar";return "";}document.addEventListener("click",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var u=target(c); if(!u)return;e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);document.addEventListener("touchend",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var u=target(c); if(!u)return;e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);})();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
   var KNOWN=[
@@ -7148,7 +7092,7 @@ window.lxLpTest=function(draft){
       host.appendChild(el); return el; }
     var vline=mk("lx-chov-v","top:0;bottom:0;width:1px;background:rgba(180,180,200,.55);z-index:4"),
         dot=mk("lx-chov-dot","width:11px;height:11px;border-radius:50%;border:2px solid var(--surface);transform:translate(-50%,-50%);z-index:6"),
-        box=mk("lx-chov-box","background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;box-shadow:0 8px 22px rgba(0,0,0,.25);min-width:140px;z-index:8;color:var(--text)");
+        box=mk("lx-chov-box","background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-size:14px;font-family:'Hanken Grotesk',system-ui,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.22);min-width:140px;z-index:8;color:var(--text)");
     function hide(){ vline.style.opacity="0"; dot.style.opacity="0"; box.style.opacity="0"; }
     function at(cx,cy){
       var svg=q("#tvlChart svg"), st=DET&&DET.__chH;
@@ -7197,9 +7141,11 @@ window.lxLpTest=function(draft){
         // an empty tooltip would be a worse answer than an honest one in the pool's own denomination.
         var _lbl=(st.metric==="vol"?"Volume":"TVL");
         var _val=(st.usdPerUnit>0)?usd(p.v*st.usdPerUnit):(famt(p.v)+" "+st.unit);
+        // Same two-line shape as Trade-Asset: a quiet label over a tabular figure. No uppercase, no
+        // letter-spacing, and one size for every value rather than a bigger one for the first.
         function _row(l,v,strong){
-          return '<div style="font-size:11.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">'+esc(l)+'</div>'
-            +'<div style="font-weight:700;font-size:'+(strong?15:14)+'px;color:var(--text);margin-top:2px">'+esc(v)+'</div>';
+          return '<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600">'+esc(l)+'</div>'
+            +'<div style="color:var(--text,#0e0e10);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:1px">'+esc(v)+'</div>';
         }
         // The volume line for the SAME point, in dollars, from the bars the chart already drew.
         var _vp=chHovVolVal(st,p.t);
@@ -7208,7 +7154,13 @@ window.lxLpTest=function(draft){
         // above so the two can never disagree, and it does not change as the pointer moves.
         var _pv=document.querySelector(".lx-partstat .v");
         var _pt=_pv?(_pv.textContent||"").trim():"";
-        box.innerHTML=_row(_lbl,_val,true)
+        // The date leads, as it does on Trade-Asset -- the reader is pointing at a moment, and the
+        // figures below it only mean anything once they know which one. The span comes from the points
+        // themselves, so an intraday range shows a time and a long one shows a date.
+        var _sp=(P&&P.length>1)?((P[P.length-1].t||0)-(P[0].t||0)):0;
+        var _dt=(p&&p.t)?chHovDate(p.t,_sp):"";
+        box.innerHTML=(_dt?('<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:4px">'+esc(_dt)+'</div>'):'')
+          +_row(_lbl,_val,true)
           +(_volTxt?('<div style="margin-top:8px">'+_row("Volume",_volTxt,false)+'</div>'):'')
           +((_pt&&_pt!=="—")?('<div style="margin-top:8px">'+_row("Participants",_pt,false)+'</div>'):'');
       }
@@ -8542,5 +8494,61 @@ window.lxLpTest=function(draft){
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
+})();</script><script id="lx-poolwarm">(function(){try{if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-nofollow">(function(){
+  var KEEP=[];
+  function own(h){
+    if(!h)return true;
+    if(h===location.host)return true;                       // covers localhost and the staging host
+    h=h.toLowerCase();
+    if(h==="lumoscore.com"||h.slice(-14)===".lumoscore.com")return true;
+    for(var i=0;i<KEEP.length;i++)if(h===KEEP[i])return true;
+    return false;
+  }
+  function stamp(a){
+    var raw=a.getAttribute("href");
+    if(!raw)return;
+    var c=raw.charAt(0);
+    if(c==="#"||c==="/"||c==="?")return;                    // relative: ours by definition
+    var u;
+    try{ u=new URL(a.href,location.href); }catch(_){ return; }
+    // mailto:, tel:, javascript: -- not links a crawler follows, and not ours to annotate
+    if(u.protocol!=="http:"&&u.protocol!=="https:")return;
+    if(own(u.host))return;
+    var rel=(a.getAttribute("rel")||"").split(" ");
+    var out=[],seen={};
+    for(var i=0;i<rel.length;i++){ var t=rel[i]; if(!t||seen[t])continue; seen[t]=1; out.push(t); }
+    if(seen.nofollow)return;                                // already done: no write, no mutation
+    out.push("nofollow");
+    if(!seen.noopener)out.push("noopener");
+    a.setAttribute("rel",out.join(" "));
+  }
+  function sweep(root){
+    var n=(root&&root.querySelectorAll)?root:document;
+    var list=n.querySelectorAll("a[href]");
+    for(var i=0;i<list.length;i++)stamp(list[i]);
+    // the root itself can BE the anchor when one is inserted on its own
+    if(root&&root.tagName==="A")stamp(root);
+  }
+  function boot(){
+    sweep(document);
+    try{
+      // childList for anchors that appear with their data; href for an anchor that is re-pointed
+      // later. NOT rel -- stamp() is idempotent so a rel mutation would be a wasted pass, and this
+      // observer must never react to its own write.
+      new MutationObserver(function(muts){
+        for(var i=0;i<muts.length;i++){
+          var m=muts[i];
+          if(m.type==="attributes"){ if(m.target)stamp(m.target); continue; }
+          for(var j=0;j<m.addedNodes.length;j++){
+            var nd=m.addedNodes[j];
+            if(nd.nodeType===1)sweep(nd);
+          }
+        }
+      }).observe(document.documentElement,
+        {childList:true,subtree:true,attributes:true,attributeFilter:["href"]});
+    }catch(_){}
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>

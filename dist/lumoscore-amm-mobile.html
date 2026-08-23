@@ -1621,123 +1621,6 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 .lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
-</style><style id="lx-heromono-css">
-/* ---- the card ------------------------------------------------------------------------------- */
-/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
-   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
-   per-page background rules on both pages. */
-html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
-             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
-  border:1px solid rgba(255,255,255,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
-html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
-             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
-  border:1px solid rgba(16,16,22,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
-/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
-   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
-.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
-
-/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
-/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
-   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
-   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
-   itself is untouched everywhere else it is used. */
-.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
-
-/* ---- type: the loudest thing on the card ----------------------------------------------------- */
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
-/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
-   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
-   and colour alone leaves it transparent. */
-.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
-.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
-  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
-html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
-  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
-
-/* ---- the headline, ONE size for both heroes ---------------------------------------------------- */
-/* #14: Pools drifted to 38px inside a 340px column (lx-amm-css) while Trade sat at 36px inside 420px,
-   so the same sentence broke onto a different number of lines and the two tops of the app stopped
-   looking like the same design. Trade's numbers are the ones both use now. This lives HERE, in the
-   sheet that already runs last and already owns the shared hero look, because that is what stops the
-   two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:36px!important;line-height:1.08!important;max-width:420px!important}
-@media(max-width:880px){
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:23px!important;line-height:1.14!important;max-width:100%!important}
-}
-@media(max-width:560px){
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:18px!important;line-height:1.18!important;max-width:100%!important}
-}
-
-/* ---- the chain mark -------------------------------------------------------------------------- */
-/* #2: the hairline ring here was written for a dark disc with a white glyph, which would have been
-   lost against a dark card. The mark that actually ships is the blue Stellar disc -- it carries its
-   own edge -- so the ring was not giving it one, it was drawing a white outline around it. Depth
-   only; nothing traces the artwork. */
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 10px 24px -12px rgba(0,0,0,.8)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 10px 26px -14px rgba(16,16,22,.5)!important}
-/* #8/#9: the mark is the first thing on the page and it was smaller than the headline beside it --
-   and the two heroes were not even the same size as each other (56 on Trade, 64 on Pools). One size,
-   large enough to lead, on both. */
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
-  width:76px!important;height:76px!important}
-@media(max-width:880px){
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
-  width:52px!important;height:52px!important}
-}
-@media(max-width:560px){
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
-  width:46px!important;height:46px!important}
-}
-
-/* ---- the stats strip -------------------------------------------------------------------------- */
-.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
-  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
-  border-top:1px solid rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
-  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
-  border-top:1px solid rgba(16,16,22,.10)!important}
-.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
-.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
-.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
-html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
-
-/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
-/* These two coins OVERLAP by 10px, and the ring is what keeps them reading as two coins.
-   The design drew it in near-black, which read as an outline drawn around each coin. A 0.8px
-   hairline fixed that and broke the other half: against a black XLM mark on a near-white card it is
-   invisible, so the pair merged into one blob wherever they overlap -- the broken edge.
-   The answer is the ring every overlapping-avatar stack uses: keep the design's 2px, but paint it in
-   the card's OWN ground, so it reads as a gap between the coins rather than a line around them.
-   The drop shadow goes with it -- on a light card it was just a grey smudge under each coin. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
-  border:2px solid #17171d!important;box-shadow:none!important}
-html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border:2px solid #ebebee!important;box-shadow:none!important}
-/* 2px of ring on a 16-17px phone mark is most of the coin; the design already steps this down. */
-@media(max-width:560px){
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span,
-html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border-width:1.5px!important}
-}
-
-/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
-/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
-   card, which is the point -- the eye goes to the action. */
-.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
-html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
 </style><style id="lx-amm-css">
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
@@ -2186,6 +2069,123 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
+</style><style id="lx-heromono-css">
+/* ---- the card ------------------------------------------------------------------------------- */
+/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
+   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
+   per-page background rules on both pages. */
+html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
+             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
+html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
+             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
+  border:1px solid rgba(16,16,22,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
+/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
+   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
+.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
+
+/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
+/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
+   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
+   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
+   itself is untouched everywhere else it is used. */
+.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
+
+/* ---- type: the loudest thing on the card ----------------------------------------------------- */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
+/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
+   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
+   and colour alone leaves it transparent. */
+.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
+.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
+  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
+html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
+  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
+
+/* ---- the headline, ONE size for both heroes ---------------------------------------------------- */
+/* #14: Pools drifted to 38px inside a 340px column (lx-amm-css) while Trade sat at 36px inside 420px,
+   so the same sentence broke onto a different number of lines and the two tops of the app stopped
+   looking like the same design. Trade's numbers are the ones both use now. This lives HERE, in the
+   sheet that already runs last and already owns the shared hero look, because that is what stops the
+   two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:36px!important;line-height:1.08!important;max-width:420px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:23px!important;line-height:1.14!important;max-width:100%!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:18px!important;line-height:1.18!important;max-width:100%!important}
+}
+
+/* ---- the chain mark -------------------------------------------------------------------------- */
+/* #2: the hairline ring here was written for a dark disc with a white glyph, which would have been
+   lost against a dark card. The mark that actually ships is the blue Stellar disc -- it carries its
+   own edge -- so the ring was not giving it one, it was drawing a white outline around it. Depth
+   only; nothing traces the artwork. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 10px 24px -12px rgba(0,0,0,.8)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 10px 26px -14px rgba(16,16,22,.5)!important}
+/* #8/#9: the mark is the first thing on the page and it was smaller than the headline beside it --
+   and the two heroes were not even the same size as each other (56 on Trade, 64 on Pools). One size,
+   large enough to lead, on both. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:76px!important;height:76px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:52px!important;height:52px!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:46px!important;height:46px!important}
+}
+
+/* ---- the stats strip -------------------------------------------------------------------------- */
+.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
+  border-top:1px solid rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
+  border-top:1px solid rgba(16,16,22,.10)!important}
+.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
+.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
+.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
+html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
+
+/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
+/* These two coins OVERLAP by 10px, and the ring is what keeps them reading as two coins.
+   The design drew it in near-black, which read as an outline drawn around each coin. A 0.8px
+   hairline fixed that and broke the other half: against a black XLM mark on a near-white card it is
+   invisible, so the pair merged into one blob wherever they overlap -- the broken edge.
+   The answer is the ring every overlapping-avatar stack uses: keep the design's 2px, but paint it in
+   the card's OWN ground, so it reads as a gap between the coins rather than a line around them.
+   The drop shadow goes with it -- on a light card it was just a grey smudge under each coin. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
+  border:2px solid #17171d!important;box-shadow:none!important}
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border:2px solid #ebebee!important;box-shadow:none!important}
+/* 2px of ring on a 16-17px phone mark is most of the coin; the design already steps this down. */
+@media(max-width:560px){
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span,
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border-width:1.5px!important}
+}
+
+/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
+/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
+   card, which is the point -- the eye goes to the action. */
+.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
+html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
 </style></head>
 <body><!--lx-menu--><div class="menu-overlay" id="menuOverlay"></div>
   <aside class="slide-menu" id="slideMenu">
@@ -5248,63 +5248,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
   else boot();
-})();</script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-nofollow">(function(){
-  var KEEP=[];
-  function own(h){
-    if(!h)return true;
-    if(h===location.host)return true;                       // covers localhost and the staging host
-    h=h.toLowerCase();
-    if(h==="lumoscore.com"||h.slice(-14)===".lumoscore.com")return true;
-    for(var i=0;i<KEEP.length;i++)if(h===KEEP[i])return true;
-    return false;
-  }
-  function stamp(a){
-    var raw=a.getAttribute("href");
-    if(!raw)return;
-    var c=raw.charAt(0);
-    if(c==="#"||c==="/"||c==="?")return;                    // relative: ours by definition
-    var u;
-    try{ u=new URL(a.href,location.href); }catch(_){ return; }
-    // mailto:, tel:, javascript: -- not links a crawler follows, and not ours to annotate
-    if(u.protocol!=="http:"&&u.protocol!=="https:")return;
-    if(own(u.host))return;
-    var rel=(a.getAttribute("rel")||"").split(" ");
-    var out=[],seen={};
-    for(var i=0;i<rel.length;i++){ var t=rel[i]; if(!t||seen[t])continue; seen[t]=1; out.push(t); }
-    if(seen.nofollow)return;                                // already done: no write, no mutation
-    out.push("nofollow");
-    if(!seen.noopener)out.push("noopener");
-    a.setAttribute("rel",out.join(" "));
-  }
-  function sweep(root){
-    var n=(root&&root.querySelectorAll)?root:document;
-    var list=n.querySelectorAll("a[href]");
-    for(var i=0;i<list.length;i++)stamp(list[i]);
-    // the root itself can BE the anchor when one is inserted on its own
-    if(root&&root.tagName==="A")stamp(root);
-  }
-  function boot(){
-    sweep(document);
-    try{
-      // childList for anchors that appear with their data; href for an anchor that is re-pointed
-      // later. NOT rel -- stamp() is idempotent so a rel mutation would be a wasted pass, and this
-      // observer must never react to its own write.
-      new MutationObserver(function(muts){
-        for(var i=0;i<muts.length;i++){
-          var m=muts[i];
-          if(m.type==="attributes"){ if(m.target)stamp(m.target); continue; }
-          for(var j=0;j<m.addedNodes.length;j++){
-            var nd=m.addedNodes[j];
-            if(nd.nodeType===1)sweep(nd);
-          }
-        }
-      }).observe(document.documentElement,
-        {childList:true,subtree:true,attributes:true,attributeFilter:["href"]});
-    }catch(_){}
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
-})();</script><script id="lx-dashqa">(function(){function go(u){try{location.href=u;}catch(_){}}function target(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t==="my wallet")return "/wallet";if(t==="add liquidity"&&!document.querySelector("#createPoolModal"))return "/pools/stellar";return "";}document.addEventListener("click",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var u=target(c); if(!u)return;e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);document.addEventListener("touchend",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var u=target(c); if(!u)return;e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);})();</script><script id="lx-ammdata">(function(){
+})();</script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-dashqa">(function(){function go(u){try{location.href=u;}catch(_){}}function target(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t==="my wallet")return "/wallet";if(t==="add liquidity"&&!document.querySelector("#createPoolModal"))return "/pools/stellar";return "";}document.addEventListener("click",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var u=target(c); if(!u)return;e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);document.addEventListener("touchend",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var u=target(c); if(!u)return;e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);})();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
   var KNOWN=[
@@ -7290,7 +7234,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       host.appendChild(el); return el; }
     var vline=mk("lx-chov-v","top:0;bottom:0;width:1px;background:rgba(180,180,200,.55);z-index:4"),
         dot=mk("lx-chov-dot","width:11px;height:11px;border-radius:50%;border:2px solid var(--surface);transform:translate(-50%,-50%);z-index:6"),
-        box=mk("lx-chov-box","background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;box-shadow:0 8px 22px rgba(0,0,0,.25);min-width:140px;z-index:8;color:var(--text)");
+        box=mk("lx-chov-box","background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-size:14px;font-family:'Hanken Grotesk',system-ui,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.22);min-width:140px;z-index:8;color:var(--text)");
     function hide(){ vline.style.opacity="0"; dot.style.opacity="0"; box.style.opacity="0"; }
     function at(cx,cy){
       var svg=q("#tvlChart svg"), st=DET&&DET.__chH;
@@ -7339,9 +7283,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         // an empty tooltip would be a worse answer than an honest one in the pool's own denomination.
         var _lbl=(st.metric==="vol"?"Volume":"TVL");
         var _val=(st.usdPerUnit>0)?usd(p.v*st.usdPerUnit):(famt(p.v)+" "+st.unit);
+        // Same two-line shape as Trade-Asset: a quiet label over a tabular figure. No uppercase, no
+        // letter-spacing, and one size for every value rather than a bigger one for the first.
         function _row(l,v,strong){
-          return '<div style="font-size:11.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">'+esc(l)+'</div>'
-            +'<div style="font-weight:700;font-size:'+(strong?15:14)+'px;color:var(--text);margin-top:2px">'+esc(v)+'</div>';
+          return '<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600">'+esc(l)+'</div>'
+            +'<div style="color:var(--text,#0e0e10);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:1px">'+esc(v)+'</div>';
         }
         // The volume line for the SAME point, in dollars, from the bars the chart already drew.
         var _vp=chHovVolVal(st,p.t);
@@ -7350,7 +7296,13 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         // above so the two can never disagree, and it does not change as the pointer moves.
         var _pv=document.querySelector(".lx-partstat .v");
         var _pt=_pv?(_pv.textContent||"").trim():"";
-        box.innerHTML=_row(_lbl,_val,true)
+        // The date leads, as it does on Trade-Asset -- the reader is pointing at a moment, and the
+        // figures below it only mean anything once they know which one. The span comes from the points
+        // themselves, so an intraday range shows a time and a long one shows a date.
+        var _sp=(P&&P.length>1)?((P[P.length-1].t||0)-(P[0].t||0)):0;
+        var _dt=(p&&p.t)?chHovDate(p.t,_sp):"";
+        box.innerHTML=(_dt?('<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:4px">'+esc(_dt)+'</div>'):'')
+          +_row(_lbl,_val,true)
           +(_volTxt?('<div style="margin-top:8px">'+_row("Volume",_volTxt,false)+'</div>'):'')
           +((_pt&&_pt!=="—")?('<div style="margin-top:8px">'+_row("Participants",_pt,false)+'</div>'):'');
       }
@@ -8684,5 +8636,61 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
+})();</script><script id="lx-poolwarm">(function(){try{if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-nofollow">(function(){
+  var KEEP=[];
+  function own(h){
+    if(!h)return true;
+    if(h===location.host)return true;                       // covers localhost and the staging host
+    h=h.toLowerCase();
+    if(h==="lumoscore.com"||h.slice(-14)===".lumoscore.com")return true;
+    for(var i=0;i<KEEP.length;i++)if(h===KEEP[i])return true;
+    return false;
+  }
+  function stamp(a){
+    var raw=a.getAttribute("href");
+    if(!raw)return;
+    var c=raw.charAt(0);
+    if(c==="#"||c==="/"||c==="?")return;                    // relative: ours by definition
+    var u;
+    try{ u=new URL(a.href,location.href); }catch(_){ return; }
+    // mailto:, tel:, javascript: -- not links a crawler follows, and not ours to annotate
+    if(u.protocol!=="http:"&&u.protocol!=="https:")return;
+    if(own(u.host))return;
+    var rel=(a.getAttribute("rel")||"").split(" ");
+    var out=[],seen={};
+    for(var i=0;i<rel.length;i++){ var t=rel[i]; if(!t||seen[t])continue; seen[t]=1; out.push(t); }
+    if(seen.nofollow)return;                                // already done: no write, no mutation
+    out.push("nofollow");
+    if(!seen.noopener)out.push("noopener");
+    a.setAttribute("rel",out.join(" "));
+  }
+  function sweep(root){
+    var n=(root&&root.querySelectorAll)?root:document;
+    var list=n.querySelectorAll("a[href]");
+    for(var i=0;i<list.length;i++)stamp(list[i]);
+    // the root itself can BE the anchor when one is inserted on its own
+    if(root&&root.tagName==="A")stamp(root);
+  }
+  function boot(){
+    sweep(document);
+    try{
+      // childList for anchors that appear with their data; href for an anchor that is re-pointed
+      // later. NOT rel -- stamp() is idempotent so a rel mutation would be a wasted pass, and this
+      // observer must never react to its own write.
+      new MutationObserver(function(muts){
+        for(var i=0;i<muts.length;i++){
+          var m=muts[i];
+          if(m.type==="attributes"){ if(m.target)stamp(m.target); continue; }
+          for(var j=0;j<m.addedNodes.length;j++){
+            var nd=m.addedNodes[j];
+            if(nd.nodeType===1)sweep(nd);
+          }
+        }
+      }).observe(document.documentElement,
+        {childList:true,subtree:true,attributes:true,attributeFilter:["href"]});
+    }catch(_){}
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>
