@@ -374,7 +374,10 @@ bar.innerHTML='<div class="asset-tabs lx-wcgroup">'
     host.insertBefore(pClaim,pOrders.nextSibling);
 
     paint();
-    try{ var last=localStorage.getItem("lumos.wcTab"); if(last==="claim")select("claim"); }catch(_){}
+    // #17: the wallet always opens on Open orders now. It used to restore whichever tab was last used,
+    // so anyone who had looked at a claimable payment once landed there on every later visit -- and
+    // open orders are the list with money at stake and an action attached, so that is the wrong one to
+    // hide behind a remembered preference. The choice is still stored; it just no longer decides this.
     return true;
   }
 
