@@ -2402,6 +2402,11 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 #dxaChart svg path:not(.lxda-line):not(.lxda-area),#dxaChart svg rect:not(.lxda-candle):not(.lxda-vol),#dxaChart svg line:not(.lxda-candle),#dxaChart svg polyline,#dxaChart svg polygon:not(.lxda-area),#mdxaChart svg path:not(.lxda-line):not(.lxda-area),#mdxaChart svg rect:not(.lxda-candle):not(.lxda-vol),#mdxaChart svg line:not(.lxda-candle),#mdxaChart svg polyline,#mdxaChart svg polygon:not(.lxda-area){display:none!important}
 #dxaObAsks:not(.lxda) .dxa-ob-row,#dxaObBids:not(.lxda) .dxa-ob-row{visibility:hidden}
 #dxaExTable:not(.lxda) tr{visibility:hidden}
+/* #38: Time sat left-aligned in its own column with the explorer link right-aligned in the next one,
+   so a short value like "just now" ended ~79px short of the icon it belongs beside and read as
+   floating in dead space. Right-aligning the column closes that gap without moving any column.
+   The header lives in the table thead, OUTSIDE this tbody, so it is squared up in renderExchanges. */
+#dxaExTable tr>td:nth-child(5){text-align:right}
 #mdxaExList:not(.lxda) .ex-row{visibility:hidden}
 /* the design .ex-row grid is "24px 1fr 70px auto"; our rows add a 5th cell for the explorer link */
 #mdxaExList .ex-row[data-lxda]{grid-template-columns:24px 1fr auto auto 16px}
@@ -7447,6 +7452,13 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         ? '<div class="lxda-ex-empty" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">'+emptyTxt+'</div>'
         : '<tr class="lxda-ex-empty"><td colspan="6" style="text-align:center;padding:26px 12px;color:var(--text-soft,#8a8fa3);font-size:13.5px">'+emptyTxt+'</td></tr>';
       tb.classList.add("lxda"); return; }
+    // #30: an arrow states a direction, so it has to follow the side of the trade. Every row read
+    // "<asset> -> XLM" whatever the badge beside it said, which puts the Buy rows backwards: someone
+    // buying SHX paid lumens and received SHX, and the line described the opposite trade.
+    function exFlow(r){
+      var a=qtyTxt(r.amount)+" "+CODE, x=qtyTxt(r.px*r.amount)+" XLM";
+      return r.side==="buy" ? (x+" \u2192 "+a) : (a+" \u2192 "+x);
+    }
     // Mobile row: the design's own .ex-row shape, plus the explorer link desktop has and the mock omits.
     if(MOB){ tb.innerHTML=f.map(function(r){
       return '<div class="ex-row" data-lxda="1">'
@@ -7460,7 +7472,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
 // thousand (200,000 -> 200K) and switches to subscript below one, which COMPRESSES the leading zeros
 // without dropping a digit -- 0.0000253 becomes 0.0(4)253, still the exact number. The price itself keeps
 // smallNum for the same reason. 'for' becomes an arrow: it is a trade, and the row is narrow.
-+'<div class="ex-num">'+smallNum(r.px,4)+' XLM<span class="sub">'+qtyTxt(r.amount)+' '+CODE+' → '+qtyTxt(r.px*r.amount)+' XLM</span></div>'
++'<div class="ex-num">'+smallNum(r.px,4)+' XLM<span class="sub">'+exFlow(r)+'</span></div>'
         +'<div class="ex-time">'+r.time+'</div>'
         +'<a class="row-link lxda-exlink" href="'+tradeHref(r)+'" target="_blank" rel="noopener" aria-label="View this trade on stellar.expert">'
         +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
@@ -7480,6 +7492,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         +'<td style="text-align:right"><a class="row-link" href="'+tradeHref(r)+'" target="_blank" rel="noopener" aria-label="View this trade on stellar.expert"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a></td>'
         +'</tr>'; }).join("");
     tb.classList.add("lxda");
+    // #38: the Time header, which sits in the thead and so is out of reach of the tbody-scoped rule.
+    try{ var _tbl=tb.closest&&tb.closest("table");
+      var _th=_tbl&&_tbl.querySelectorAll("thead th")[4];
+      if(_th&&_th.style.textAlign!=="right")_th.style.textAlign="right"; }catch(_){}
     // bottom Exchanges tab: remove the count badge (per request)
     var etab=qa(".tabs-bar .tab").filter(function(t){return /exchanges/i.test(t.getAttribute("data-tab")||"");})[0];
     if(etab){ var c=etab.querySelector(".count"); if(c&&c.style.display!=="none")c.style.display="none"; }
