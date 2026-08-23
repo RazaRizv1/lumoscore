@@ -5227,6 +5227,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   var DATA=null;
   var _cpBals=null;                       // wallet balances fetched EARLY just for the Create Pool asset picker
+  var _cpSubs=null;                       // ...and its subentry count, which is what sets the XLM reserve
   function load(){
     var xlmP=getJSON("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd");
     var acctP=myAddr()?(window.__lxAcct?window.__lxAcct(myAddr()):getJSON(H+"/accounts/"+myAddr())):Promise.resolve(null);
@@ -7780,7 +7781,51 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   function wWallet(){ try{ return (localStorage.getItem("lumos.wallet")||"").toLowerCase().replace(/[^a-z]/g,""); }catch(e){ return ""; } }
   function wXhr(method,url,body){ return new Promise(function(resolve,reject){ var r=new XMLHttpRequest(); r.open(method,url,true); if(body!=null)r.setRequestHeader("Content-Type","application/x-www-form-urlencoded"); r.onload=function(){ var j=null; try{j=JSON.parse(r.responseText);}catch(e){} resolve({status:r.status,ok:r.status>=200&&r.status<300,json:j}); }; r.onerror=function(){reject(new Error("Network error contacting Horizon"));}; r.timeout=45000; r.ontimeout=function(){reject(new Error("Horizon request timed out"));}; r.send(body==null?null:body); }); }
   function wAcct(pk){ return wXhr("GET",H+"/accounts/"+pk).then(function(r){ if(!r.ok||!r.json)throw new Error("Your account isn't activated on mainnet yet."); return r.json; }); }
-  function wSubmit(xdr){ return wXhr("POST",H+"/transactions","tx="+encodeURIComponent(xdr)).then(function(r){ var res=r.json||{}; if(res.successful)return res; var rc=res.extras&&res.extras.result_codes; throw new Error(rc?("Rejected \u00b7 "+JSON.stringify(rc)):(res.detail||("HTTP "+r.status))); }); }
+  // #18/#28: say what went wrong, in words.
+  //
+  // This used to throw the raw payload -- Rejected {"transaction":"tx_failed","operations":["op_low_reserve"]}
+  // -- at someone who has just tried to create a pool with their own money. The codes below are the
+  // ones this page can actually produce, and each is stated as the condition it describes.
+  //
+  // op_under_dest_min is called out deliberately: it is SLIPPAGE, not a shortfall. The price moved
+  // between quoting and signing, so the route would have delivered less than the minimum the
+  // transaction itself specified. Reporting that as "not enough funds" sends the reader off to top up
+  // an account that was never short.
+  //
+  // The raw code is kept on the end in brackets: it is the only searchable thing when someone has to
+  // ask for help, and dropping it entirely would trade one kind of unhelpfulness for another.
+  var TXERR={
+    op_low_reserve:"Not enough XLM left for the account reserve. Every trustline or pool position your account holds locks up a little XLM, so some has to stay behind.",
+    op_underfunded:"Not enough of that asset in your wallet for this amount.",
+    op_no_trust:"Your wallet does not hold this asset yet. Add it first, then try again.",
+    op_no_issuer:"That asset's issuer no longer exists on the network.",
+    op_line_full:"That would take the balance past the limit set on your trustline.",
+    op_under_dest_min:"The price moved while you were signing, so the swap would have delivered less than its minimum. Nothing was sent \u2014 try again.",
+    op_over_source_max:"The price moved while you were signing, so it would have cost more than the maximum set. Nothing was sent \u2014 try again.",
+    op_cross_self:"That would have traded against your own open order.",
+    op_bad_auth:"Your wallet did not sign this transaction.",
+    op_no_destination:"That destination account does not exist yet.",
+    op_malformed:"The transaction was built incorrectly \u2014 please report this.",
+    tx_insufficient_fee:"The network is busy and the fee offered was too low. Try again.",
+    tx_bad_seq:"Your wallet was out of step with the network. Try again.",
+    tx_too_late:"The transaction sat unsigned too long and expired. Try again.",
+    tx_insufficient_balance:"Not enough XLM to cover the fee and the account reserve.",
+    tx_no_source_account:"This account is not activated on the network yet."
+  };
+  function txErr(rc,detail,status){
+    var codes=[];
+    if(rc){
+      if(rc.transaction)codes.push(rc.transaction);
+      var ops=rc.operations||[];
+      for(var i=0;i<ops.length;i++)if(ops[i]&&ops[i]!=="op_success")codes.push(ops[i]);
+    }
+    // An operation code says more than tx_failed, which only means "one of the operations did".
+    for(var j=codes.length-1;j>=0;j--){ if(TXERR[codes[j]])return TXERR[codes[j]]+" ["+codes[j]+"]"; }
+    if(codes.length)return "The network rejected this transaction ["+codes.join(", ")+"]";
+    return detail||("The network rejected this transaction (HTTP "+status+")");
+  }
+  try{ window.__lxTxErr=txErr; }catch(_){}
+  function wSubmit(xdr){ return wXhr("POST",H+"/transactions","tx="+encodeURIComponent(xdr)).then(function(r){ var res=r.json||{}; if(res.successful)return res; var rc=res.extras&&res.extras.result_codes; throw new Error(txErr(rc,res.detail,r.status)); }); }
   function wSign(xdr,addr){ var w=wWallet();
     if(w==="albedo")return wMod("https://esm.sh/@albedo-link/intent@0.12.0").then(function(m){var al=m.default||m.albedo||m; if(!al||!al.tx)throw new Error("Albedo SDK failed to load"); return al.tx({xdr:xdr,network:"public",pubkey:addr,submit:false});}).then(function(r){var s=r&&(r.signed_envelope_xdr||r.xdr); if(!s)throw new Error("Albedo did not return a signed transaction"); return s;});
     if(w==="rabet"){ if(!window.rabet||!window.rabet.sign)return Promise.reject(new Error("Rabet not found. Unlock the extension and retry.")); return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error)throw new Error((r.error&&r.error.message)||r.error); var s=r&&(r.xdr||r.signedXDR); if(!s)throw new Error("Rabet did not return a signed transaction"); return s;}); }
@@ -8147,6 +8192,18 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var modal=q("#createPoolModal"); if(!modal)return; window.__lxCPwired=1;
     var cpCta=null;
     var balMap={XLM:0}; (_bals||[]).forEach(function(b){ if(b.asset_type==="native")balMap.XLM=+b.balance; else if(b.asset_code)balMap[b.asset_code+":"+b.asset_issuer]=+b.balance; });
+    // XLM this account cannot spend: the base reserve for the account and everything it already holds,
+    // plus the subentry the pool about to be created will add, plus room for the fee. Mirrors the pool
+    // page's own xlmKeep so the two surfaces cannot disagree.
+    //
+    // subentry_count is authoritative and comes from the same /accounts fetch as the balances; the
+    // trustline count is the fallback for when it does not, and is a floor rather than a guess -- every
+    // trustline IS a subentry, so it can only ever under-count, and under-counting here shows MORE
+    // spendable rather than less, which the op_low_reserve message then explains if it bites.
+    function cpXlmKeep(){
+      var subs=(_cpSubs!=null)?_cpSubs:(_bals||[]).filter(function(b){ return b.asset_type!=="native"; }).length;
+      return (2+subs)*0.5 + 0.5 + 0.6;
+    }
     // only assets the connected wallet actually holds (XLM + every credit asset with a positive balance)
     function assets(){ var arr=[]; if((balMap.XLM||0)>0)arr.push({code:"XLM",issuer:"",bal:balMap.XLM,native:true}); (_bals||[]).forEach(function(b){   /* _bals, NOT DATA.balances — DATA is still null on the early (fast) wire path and this threw */ if(b.asset_type&&b.asset_type!=="native"&&b.asset_type!=="liquidity_pool_shares"&&b.asset_code&&+b.balance>0)arr.push({code:b.asset_code,issuer:b.asset_issuer,bal:+b.balance,native:false}); }); return arr; }
     // real asset logos: local PNGs where they exist, known CDN URLs otherwise, and a colored-letter fallback
@@ -8178,7 +8235,26 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         if(ico){ico.innerHTML=logo(sel[idx]);ico.style.cssText="width:24px;height:24px;overflow:hidden;border-radius:50%;display:inline-flex;background:transparent";}
         if(nm)nm.textContent=sel[idx].code; }
       var bal=field&&(field.querySelector(".field-foot .balance strong")||field.querySelector(".field-foot .balance"));
-      if(bal)bal.textContent=famt(sel[idx].bal);
+      // #28: for XLM this printed the RAW balance, so Create Pool offered an amount the account cannot
+      // actually part with. An account must retain (2 + subentries) x 0.5 XLM, and creating a pool adds
+      // another subentry of its own (the pool trustline), plus a margin for the fee. Showing the full
+      // balance here is how someone gets to a signed transaction that comes back op_low_reserve --
+      // which is the other half of this same report.
+      //
+      // Same rule the Deposit panel already applies, and stated the same way: the figure is what is
+      // spendable, and hovering says where the rest went.
+      if(bal){
+        var _sv=sel[idx].bal;
+        if(sel[idx].native||sel[idx].code==="XLM"){
+          var _keep=cpXlmKeep(), _sp=Math.max(0,_sv-_keep);
+          bal.textContent=famt(_sp);
+          var _host=bal.parentNode||bal;
+          try{ _host.title=famt(_sp)+" XLM spendable — "+famt(_sv)+" total, "+famt(Math.min(_sv,_keep))+" held back for the account reserve, the new pool trustline and the network fee."; }catch(_){}
+        } else {
+          bal.textContent=famt(_sv);
+          try{ var _h2=bal.parentNode||bal; if(_h2.title)_h2.removeAttribute("title"); }catch(_){}
+        }
+      }
     }
     function selectItem(idx, it){ if(idx<0)return; var code=it.getAttribute("data-code"),iss=it.getAttribute("data-issuer");
       var picked={code:code,issuer:iss,native:!iss,bal:balMap[code==="XLM"?"XLM":(code+":"+iss)]||0};
@@ -8301,7 +8377,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       [200,700,1600].forEach(function(ms){ setTimeout(function(){ try{ netWireSearch(); paintNet(); }catch(_){} },ms); });
       // fetch just the balances up-front so Create Pool's asset dropdown is populated immediately
       // (it used to wait on the full pools load and showed an empty list for seconds)
-      try{ var _cpa=myAddr(); if(_cpa)(window.__lxAcct?window.__lxAcct(_cpa):getJSON(H+"/accounts/"+_cpa)).then(function(acc){ _cpBals=(acc&&acc.balances)||[]; try{ wireCreatePool(); }catch(_e){} }).catch(function(){}); }catch(_){}
+      try{ var _cpa=myAddr(); if(_cpa)(window.__lxAcct?window.__lxAcct(_cpa):getJSON(H+"/accounts/"+_cpa)).then(function(acc){ _cpBals=(acc&&acc.balances)||[]; if(acc&&acc.subentry_count!=null)_cpSubs=+acc.subentry_count; try{ wireCreatePool(); }catch(_e){} }).catch(function(){}); }catch(_){}
       wireHeroCover(); [0,40,120,300].forEach(function(ms){ setTimeout(wireHeroCover,ms); }); load(); wireNav(); try{ new MutationObserver(function(){ try{ renameMineTab(); }catch(_){} schedule(); }).observe(root,{childList:true,subtree:true}); }catch(e){} [300,900,2000].forEach(function(ms){ setTimeout(paint,ms); }); }
     else if(q("#tvlChart")){ loadDetail(); try{ new MutationObserver(scheduleDetail).observe(root,{childList:true,subtree:true}); }catch(e){} [0,250,600,1100].forEach(function(ms){ setTimeout(function(){ if(!DET){ var g=q("#tvlChart svg"); if(g){ try{ chLoading(g); }catch(_){} } } },ms); }); [400,1200,2500].forEach(function(ms){ setTimeout(function(){ if(DET)paintDetail(); },ms); }); }
     else if(q("#createPoolModal")){ loadCPOnly(); return; }
