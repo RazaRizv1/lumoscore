@@ -369,6 +369,20 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // logo = hardcoded real logo URL so it renders IMMEDIATELY (no placeholder-avatar flash); toml image is a
   // best-effort upgrade only for assets without a hardcoded one.
   var ASSETS=[
+    // Eleven added so the curated list is deep enough to fill Gainers, Losers and Volume without
+    // padding them -- see #34. Every one carries a verified tick, and every tick was earned by the
+    // handshake described in lib.js rather than by appearing in an index.
+    {code:"XRP", issuer:"GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5", cat:"utility", b:"#23292f", logo:"https://meta.stellar.expert/nucngezl7i5tkm234qvcaoh2bj3vjwplvpay6yi7tqnih6puiyha"},
+    {code:"SCOP", issuer:"GC6OYQJIZF3HFXCYPFCBXYXNGIBQ4TNSFUBUXQJOZWIP6F3YZK4QH3VQ", cat:"utility", b:"#2f6fed", logo:"https://meta.stellar.expert/6mixn2ch4cd46jgellalrjnzfhgtuavwoylx3dzx4e7hbx57mnlq"},
+    {code:"MTL", issuer:"GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V", cat:"utility", b:"#c0392b", logo:"https://meta.stellar.expert/2lwcjvyaiye2plbkkhesvwammffe7nr4edi7tw55jj3gm2yrhovq"},
+    {code:"EURMTL", issuer:"GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V", cat:"stable", b:"#1a4fb4", logo:"https://meta.stellar.expert/i3xpydw6q4ruxrn5tguyj2ee77ghjq2poq27bqt5iu54amq7xezq"},
+    {code:"ZARZ", issuer:"GAROH4EV3WVVTRQKEY43GZK3XSRBEYETRVZ7SVG5LHWOAANSMCTJBB3U", cat:"stable", b:"#0f9d58", logo:"https://meta.stellar.expert/wvpr5ldqyxaoh2fpkaamfgoigeyinbyf5fju3kkb6onn2eoclzma"},
+    {code:"USDZ", issuer:"GAKTLPC4ZV37SSCITQ5IS5AQ4WPF4CF4VZJQPPAROSGXMYOATF5U6XPR", cat:"stable", b:"#137a4b", logo:"https://meta.stellar.expert/wvpr5ldqyxaoh2fpkaamfgoigeyinbyf5fju3kkb6onn2eoclzma"},
+    {code:"CLPX", issuer:"GDYSPBVZHPQTYMGSYNOHRZQNLB3ZWFVQ2F7EP7YBOLRGD42XIC3QUX5G", cat:"stable", b:"#d64545", logo:"https://meta.stellar.expert/i2yuqfjqb2hdtfjdue7v4y4c5mdsnonclqnmhyqie5rrbim4i3xq"},
+    {code:"yBTC", issuer:"GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW", cat:"utility", b:"#f7931a", logo:"https://meta.stellar.expert/rrln3zdn66zxs5pod24zdgkrkruvt5df22nezwu7jm4pz7voteaa"},
+    {code:"yETH", issuer:"GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD", cat:"utility", b:"#627eea", logo:"https://meta.stellar.expert/bd4mdtcoiu3wdfhqk344elj5xzsaosown44sjwihepapcg6nilra"},
+    {code:"ARS", issuer:"GCYE7C77EB5AWAA25R5XMWNI2EDOKTTFTTPZKM2SR5DI4B4WFD52DARS", cat:"stable", b:"#74acdf", logo:"https://meta.stellar.expert/6osba22g5idn6odtow3fr26gwtuvzjx7bjvoue7br6n7ockjd6qa"},
+    {code:"PEN", issuer:"GA4TDPNUCZPTOHB3TKUYMDCRVATXKEADH7ZEYEBWJKQKE2UBFCYNBPEN", cat:"stable", b:"#d91023", logo:"https://meta.stellar.expert/wbjfnkcaiv4dld6eqz57rr2i4cglpigr7yhhusszahk7jenxvvlq"},
     {code:"USDC", issuer:"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN", cat:"stable",  b:"#2775ca", logo:"https://assets.coingecko.com/coins/images/6319/small/usdc.png"},
     {code:"EURC", issuer:"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2", cat:"stable",  b:"#1a4fb4", logo:"https://assets.coingecko.com/coins/images/26045/small/euro.png"},
     {code:"ARST", issuer:"GCSAZVWXZKWS4XS223M5F54H2B6XPIIXZZGP7KEAIU6YSL5HDRGCI3DG", cat:"stable",  b:"#5b9bd5"},
