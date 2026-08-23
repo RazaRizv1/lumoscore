@@ -1949,7 +1949,7 @@ html body .pool-header-row .ph-icons>*{
 .lx-vtick svg{width:9px;height:9px;display:block}
 
 /* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
-#dexMintsList:not(.lxd) .dex-mint-row{visibility:hidden}
+#dexMintsList:not(.lxd) .dex-mint-row{visibility:hidden}.lx-tboot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);opacity:1;transition:opacity .28s ease}.lx-tboot.lx-tboot-out{opacity:0;pointer-events:none}.lx-tboot-mark{width:64px;height:64px;background-size:contain;background-repeat:no-repeat;background-position:center;animation:lx-tboot-pulse 1.6s ease-in-out infinite}@keyframes lx-tboot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.88);opacity:.55}}@media (prefers-reduced-motion:reduce){.lx-tboot-mark{animation:none}.lx-tboot{transition:none}}
 #dexMoverGrid:not(.lxd) .dex-mover-card{visibility:hidden}
 #dexMkTbody:not(.lxd) tr{visibility:hidden}
 /* sortable column headers. Only the five numeric columns take a click -- Asset, Day High/Low and 7d Trend
@@ -5153,6 +5153,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
 
 
 
+
+
 <script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -5337,6 +5339,30 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // The rows stay hidden until the order they are in is the REAL one. With a volume default, revealing
   // earlier means painting roster order and then re-sorting in front of the reader.
   var sortReady=false;
+  // #23: cold-start overlay for the Trade landing page. The mark and nothing else -- no percentage,
+  // because unlike the pools ranking there is no staged process here to report honestly: the page waits
+  // on a handful of parallel requests, and a bar over that would be a timer dressed up as progress.
+  //
+  // Armed on a 400ms delay so a warm load never flashes it, and capped hard at 15s so a slow or failed
+  // request can never leave the page sealed behind it.
+  var tboot=null, tbootArmed=false;
+  function tbootShow(){
+    if(tboot||!tbootArmed)return;
+    if(sortReady)return;
+    if(!q(".dex-markets")&&!q("#dexMintsList"))return;      // Trade landing only
+    var el=document.createElement("div"); el.className="lx-tboot";
+    var mk=""; try{ var lm=q(".logo-mark"); if(lm)mk=getComputedStyle(lm).backgroundImage; }catch(_){}
+    el.innerHTML='<div class="lx-tboot-mark" data-logo="" data-logoed="1"'+((mk&&mk!=="none")?(' style="background-image:'+mk+'"'):'')+'></div>';
+    (document.body||document.documentElement).appendChild(el);
+    tboot=el;
+    setTimeout(tbootHide,15000);
+  }
+  function tbootHide(){
+    if(!tboot)return; var el=tboot; tboot=null; tbootArmed=false;
+    el.classList.add("lx-tboot-out");
+    setTimeout(function(){ if(el.parentNode)el.parentNode.removeChild(el); },320);
+  }
+  (function(){ tbootArmed=true; setTimeout(function(){ try{ tbootShow(); }catch(_){} },400); })();
   function markSortReady(){
     if(sortReady)return;
     if(mkSort.key && (!window.__lxDEXloaded || !rosterPriced))return;   // both halves of the data, or nothing
@@ -5344,6 +5370,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // The phone list is rendered by the mobile layer but priced by this one, so it gates on this flag
     // too -- otherwise it would reveal as soon as the majors landed and re-sort when the roster arrived.
     try{ window.__lxDEXsortReady=1; }catch(_){}
+    // #23: the pairs table is about to reveal, so the overlay has nothing left to cover.
+    try{ tbootHide(); }catch(_){}
     try{ guardApply(); }catch(_){}
   }
   function priceVisible(list){
