@@ -19,6 +19,10 @@ const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-dex-mobile.html'];
 
 const STYLE = '<style id="lx-mobdex-css">'
+// #27: the mint sub-line was the only small-print line on this page NOT set in the mono face -- its
+// sibling .mdx-mover-sub, directly below it and doing the same job, already is. Matched to that rule
+// exactly rather than to some new size, so the two cards line up.
++ '.mdx-mint-sub{font-family:\'JetBrains Mono\',monospace;font-size:10.5px}'
 // Sort control in the search row, plus the sheet it opens. The row is already a flex line with the
 // magnifier and the input, so the button lands at its right end without touching the design's rules.
 // The sheet is anchored to the row (position:relative on the row) rather than to the page, so it cannot

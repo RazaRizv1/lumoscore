@@ -89,7 +89,16 @@ const STYLE = `<style id="lx-lt-css">
 /* supply info (i) */
 .lx-supinfo{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:7px;border-radius:50%;border:1.4px solid var(--text-soft,#8a8fa3);color:var(--text-soft,#8a8fa3);font:italic 700 10px/16px Georgia,serif;cursor:default;vertical-align:middle;text-align:center}
 /* instant custom tooltip (native title has a ~1s delay + shows a ? cursor). Text comes from data-tip. */
-.lx-supinfo:hover::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);width:220px;background:var(--surface,#fff);color:var(--text,#0e0e10);border:1px solid var(--border,#ececef);border-radius:9px;padding:9px 11px;font:500 12px/1.45 'Hanken Grotesk',system-ui,sans-serif;font-style:normal;letter-spacing:0;text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.22);z-index:60;pointer-events:none;white-space:normal}
+/* #6: it was drawn on var(--surface) with var(--text) on it -- the same pair the cards BEHIND it use,
+   so on the dark theme it read as a faintly outlined patch of the page and looked like it had failed to
+   appear. A tooltip is a thing floating above the page, so it takes the opposite ground: dark bubble on
+   the light theme, light bubble on the dark one.
+   Three states, not two: an explicit choice stamps data-theme, and the default "system" setting stamps
+   nothing at all -- so the media query is guarded against an explicit light choice rather than assuming
+   the attribute is always there. */
+.lx-supinfo:hover::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);width:220px;background:#17171c;color:#f6f6f8;border:1px solid rgba(255,255,255,.16);border-radius:9px;padding:9px 11px;font:500 12px/1.45 'Hanken Grotesk',system-ui,sans-serif;font-style:normal;letter-spacing:0;text-align:left;box-shadow:0 10px 26px rgba(0,0,0,.34);z-index:60;pointer-events:none;white-space:normal}
+html[data-theme="dark"] .lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}
+@media (prefers-color-scheme:dark){html:not([data-theme="light"]) .lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}}
 /* top-holder rank medals: 1 gold (design default), 2 silver, 3 bronze */
 .holder-row .rk.silver{color:#6b7280!important;background:rgba(156,163,175,.16)!important;border-color:rgba(156,163,175,.42)!important}
 .holder-row .rk.bronze{color:#a55a24!important;background:rgba(176,106,52,.16)!important;border-color:rgba(176,106,52,.42)!important}
