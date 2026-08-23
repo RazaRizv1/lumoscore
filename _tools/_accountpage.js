@@ -292,6 +292,13 @@ const STYLE = `<style id="lx-acc-css">
   flex-shrink:0;transition:color .12s}
 #accActs .lx-txlink:hover{color:var(--accent)}
 /* the asset's own mark, inline in the type line */
+/* #35: the total's stand-in while pricing is still in flight. A shimmer occupies the slot without
+   putting a word where a number goes -- "Counting…" in a numeric field reads as an error state. */
+.acc-stat .v.lx-counting{display:inline-block;min-width:132px;height:1em;border-radius:7px;color:transparent!important;
+  background:linear-gradient(90deg,rgba(128,128,140,.10) 25%,rgba(128,128,140,.20) 37%,rgba(128,128,140,.10) 63%);
+  background-size:400% 100%;animation:lxAccSk 1.3s ease infinite;vertical-align:-2px}
+@keyframes lxAccSk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+@media(prefers-reduced-motion:reduce){.acc-stat .v.lx-counting{animation:none}}
 #accActs .lx-act-ilogo{width:18px;height:18px;border-radius:50%;flex:0 0 auto;display:inline-block;
   background:var(--al) center/cover no-repeat,var(--surface-2);vertical-align:-4px;margin:0 2px;
   position:relative}
@@ -549,20 +556,26 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     POOLS.forEach(function(p){ if(p.usd!=null)n++; });
     return {n:n,m:m}; }
 
+  // The shimmer that stands in for the total while it is being worked out. A class on the element
+  // rather than text, so nothing has to be cleared out of the number slot afterwards.
+  function markCounting(on){
+    try{ var el=q('.acc-stat .v[data-k="total"]'); if(el)el.classList.toggle("lx-counting",!!on); }catch(_){}
+  }
   function renderStats(){
     var tv=totalValue();
     var pc=priced();
     // Counting = we have not asked yet, or answers are still out. Either way the sum on hand is a
     // partial one and must not be shown as the account's value.
     var counting=(!PXWAVE||PXPEND>0);
-    if(counting){ setStat("total", "Counting"+String.fromCharCode(8230), "valuing this account"); }
-    else if(xlmUsd<=0){ setStat("total", DASH, "waiting for XLM price"); }
+    if(counting){ setStat("total", "", "valuing this account"); markCounting(true); }
+    else if(xlmUsd<=0){ markCounting(false); setStat("total", DASH, "waiting for XLM price"); }
     else {
       // Some holdings have no market to price them against, and no amount of waiting fixes that. The
       // total is then a floor and says so, rather than passing itself off as the whole account.
       // #9: this card used to carry the same figure three ways -- a >= sign, the dollar total, the XLM
       // equivalent, and a sentence about how many holdings had no market. Accurate, and far too much
       // for a summary tile: two lines of small print under a number the reader wanted at a glance.
+      markCounting(false);
       // "Estimated value" says the one thing that qualification was for. The exact XLM amount and the
       // per-asset detail are both a scroll away in the holdings table below.
       setStat("total", usd(tv), "Estimated value");
