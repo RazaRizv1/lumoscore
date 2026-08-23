@@ -33,6 +33,26 @@ const STYLE='<style id="lx-whead-css">'
 +'.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}'
 // The slide-menu account row leads with a generic wallet glyph; on a Stellar-only app the network mark
 // is the more useful thing to show, and it matches the app bar.
+// #9: the header search field visibly changed size a beat after load.
+//
+// It is a webfont swap, and the metric-matched fallback that exists to hide it is calibrated wrong.
+// Measured on the dashboard placeholder string at 18.5px: Hanken Grotesk renders 265x25, plain
+// sans-serif 266x22 -- near enough -- and 'HG Metric Fallback' 226x18, because its size-adjust (85.4%
+// for the Arial branch) shrinks a face that was already the right width. So the field paints 15% narrow
+// and short, then snaps out to full size when the webfont arrives.
+//
+// Two changes, both scoped to this field rather than to the page's typography: drop the mis-calibrated
+// fallback from ITS chain so the pre-swap paint uses plain sans-serif, which is within a pixel of the
+// webfont; and give it an explicit line-height so the box height stops depending on font metrics at all.
+// The wider calibration problem is left alone deliberately -- it is site-wide typography and not what
+// was reported.
++'.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}'
+// #22: the app bar ships <div class="avatar-sm">RR</div> -- baked demo initials belonging to nobody.
+// They paint with the document and are only cleared once sync() has run, so every mobile page opened
+// with a flash of someone else's monogram in the corner. .lx-mav hides the text (font-size:0), but that
+// class arrives too late to prevent the paint, so the disc is held back until the header has been
+// synced once. Markup would be the better fix, but the design re-renders this bar.
++'html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}'
 +'.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}'
 +'.mu-av.lx-mav-net>svg{display:none!important}'
 +'</style>';
@@ -107,6 +127,8 @@ function scriptFor(net){
   +'if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);'
   +'sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}'
   +'else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}}'
+  // #22: the disc has now been given its real identity (or correctly left alone), so it may paint.
+  +'try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}'
   +'}catch(_){}}'
   // Absolute, not relative: these pages answer on nested clean URLs like /trade/stellar/<ASSET>, where a
   // relative "assets/…" would resolve against that path and 404.
@@ -147,6 +169,11 @@ function scriptFor(net){
   // signed-in page does not sit in history for the back button to restore.
   +'var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);'
   +'if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);'
+  // #22 safety net. The gate above is a CSS rule waiting on a class this script sets; if anything ever
+  // stops it reaching that line, the class lands here anyway and the avatar appears as the design drew
+  // it. A hidden element whose un-hider can be removed is how a small bug becomes an invisible header --
+  // this file is not going to be that.
+  +'setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");}catch(_){}},2500);'
   +'setTimeout(sync,300);'
   +'})();</script>';
 }
