@@ -80,15 +80,63 @@ function vol(a,tf){if(tf==="30d")return (a.vol30!=null?a.vol30:a.vol7d*4.3);if(t
 function sdata(a,tf){return (tf==="30d"&&a.p30&&a.p30.length>1)?a.p30:a.p7;}
 // The row's sub-line names the figure the list is ORDERED by, so the ranking is legible instead of
 // being something the reader has to take on trust.
+// #34: TVL per asset, from a single cached edge call rather than a request per row.
+//
+// /lxapi/pools already returns the ranked pools with each leg and a TVL, so summing the pools an asset
+// appears in costs one request for the whole list. Fetching it per asset would have meant seven or more
+// Horizon calls on a page that has run into the 100-per-5-minutes limit before.
+//
+// The endpoint reports TVL in DOLLARS (native side x the XLM price, or the USDC side directly), and the
+// row is asked for lumens -- so it is converted here, and simply omitted when no rate is known rather
+// than printed against the wrong unit.
+// The Binance series this file fetches lives inside a closure further down and is per-DAY history, not
+// a spot rate. The spot rate the rest of the site shares is what is wanted here, so read that: the
+// global if a sibling module has published it, otherwise the cache they all write.
+function xlmUsdNow(){
+  try{ if(window.__lxXlmUsd>0)return +window.__lxXlmUsd; }catch(_){}
+  try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
+    if(c&&+c.v>0&&(Date.now()-c.ts<216e5))return +c.v; }catch(_){}
+  return 0;
+}
+var _tvlUsd=null,_tvlRate=0;
+function loadTvl(){
+  if(_tvlUsd)return;
+  // The endpoint answers with an OBJECT -- rows plus the paging figures -- and carries the XLM rate it
+  // used, which is exactly the rate this conversion needs. Taking it from the same response means the
+  // TVL shown can never be converted at a different rate from the one it was computed with.
+  fetch("/lxapi/pools").then(function(r){return r.ok?r.json():null;}).then(function(d){
+    var rows=(d&&d.rows)||null; if(!rows||!rows.length)return;
+    if(d.xlmUsd>0)_tvlRate=+d.xlmUsd;
+    var m={};
+    rows.forEach(function(p){
+      var t=+p.tvl; if(!(t>0))return;
+      [p.a,p.b].forEach(function(leg){
+        var c=leg&&leg.code; if(!c||c==="XLM")return;
+        m[c]=(m[c]||0)+t;
+      });
+    });
+    _tvlUsd=m; try{ render(); }catch(_){}
+  }).catch(function(){});
+}
+function tvlLabel(a){
+  if(!_tvlUsd)return "";
+  var u=_tvlUsd[a.code]; if(!(u>0))return "";
+  var x=_tvlRate>0?_tvlRate:xlmUsdNow(); if(!(x>0))return "";
+  return "TVL "+abbr(u/x)+" XLM";
+}
 function metricLabel(a,tf){
   if(_metric==="trades"){var n=trOf(a,tf);return (n==null)?"Trades \\u2026":(abbr(n)+" trades");}
   var v=volOf(a,tf);return "Vol $"+abbr(v||0);
 }
 function skeleton(){var t=tList();if(!t)return;var s="";for(var i=0;i<8;i++){s+='<div class="lx-tskel-row"><div class="lx-sk" style="width:20px;height:16px"></div><div class="lx-sk" style="width:40px;height:40px;border-radius:50%"></div><div style="flex:1"><div class="lx-sk" style="width:120px;height:15px"></div><div class="lx-sk" style="width:180px;height:12px;margin-top:7px"></div></div><div class="lx-sk" style="width:90px;height:28px"></div><div style="text-align:right"><div class="lx-sk" style="width:70px;height:16px;margin-left:auto"></div><div class="lx-sk" style="width:54px;height:20px;margin:6px 0 0 auto"></div></div><div class="lx-sk" style="width:64px;height:34px;border-radius:9px"></div></div>';}t.innerHTML=s;t.classList.remove("lx-tready");}
-function render(){var t=tList();if(!t||!_roster)return;var tf=_tf,html="";ranked().forEach(function(a,i){var c=chg(a,tf),up=c>=0,rank=i+1;var isNew=a.created>0&&(Date.now()/1000-a.created)<21*86400;var ico=a.logo?('<div class="lx-tico" style="--lxtic:url(\\x27'+eu(a.logo)+'\\x27)"></div>'):('<div class="lx-tico" style="--lxtic:'+grad(a.code)+'" data-l="'+esc(a.code.slice(0,1).toUpperCase())+'"></div>');
+function render(){var t=tList();if(!t||!_roster)return;loadTvl();var tf=_tf,html="";ranked().forEach(function(a,i){var c=chg(a,tf),up=c>=0,rank=i+1;var isNew=a.created>0&&(Date.now()/1000-a.created)<21*86400;var ico=a.logo?('<div class="lx-tico" style="--lxtic:url(\\x27'+eu(a.logo)+'\\x27)"></div>'):('<div class="lx-tico" style="--lxtic:'+grad(a.code)+'" data-l="'+esc(a.code.slice(0,1).toUpperCase())+'"></div>');
 html+='<div class="trending-row" data-lxasset="'+esc(a.code+(a.iss?("-"+a.iss):""))+'">'
 +'<div class="rank '+(rank<=3?"top":"")+'">#'+rank+'</div>'+ico
-+'<div class="info"><div class="nm-row"><span class="nm">'+esc(a.code)+'</span>'+vtick(a.code,a.iss)+(isNew?'<span class="new-badge">NEW</span>':'')+'</div><div class="sub">'+esc(isNew?"Just launched":a.name)+' \\u00b7 Stellar \\u00b7 '+metricLabel(a,tf)+'</div></div>'
++'<div class="info"><div class="nm-row"><span class="nm">'+esc(a.code)+'</span>'+vtick(a.code,a.iss)+(isNew?'<span class="new-badge">NEW</span>':'')// "Stellar" said nothing -- every asset in this list is a Stellar asset and the page is titled
+// "Trending on Stellar". Replaced with the asset's own pool liquidity, which is the thing a reader
+// weighing a trending token actually wants beside its volume. Dropped entirely when unknown, so the
+// line never carries an empty separator.
++'</div><div class="sub">'+esc(isNew?"Just launched":a.name)+(function(){var t=tvlLabel(a);return t?(' \\u00b7 '+t):'';})()+' \\u00b7 '+metricLabel(a,tf)+'</div></div>'
 +'<div class="spark">'+spark(sdata(a,tf),up)+'</div>'
 +'<div class="price"><div class="p1">'+fmtP(a.price)+'</div><div class="p2"><span class="change-pill '+(up?"up":"down")+'">'+(up?"\\u25b2":"\\u25bc")+' '+pct(c)+'%</span></div></div>'
 +'<button class="trade-btn">Trade</button></div>';});
@@ -160,8 +208,8 @@ function wireMetric(){
   // lxNavigate([...dex-asset...]) and left the page instead of switching the ranking. The opt-out is
   // on the buttons as well as the box, because the handler reads from the element actually clicked.
   box.setAttribute("data-lxnonav","1");
-  box.innerHTML='<button type="button" data-lxnonav="1" data-m="trades">Most Traded</button>'
-              +'<button type="button" data-lxnonav="1" data-m="vol" class="active">Highest Volume</button>';
+  box.innerHTML='<button type="button" data-lxnonav="1" data-m="vol" class="active">Highest Volume</button>'
+              +'<button type="button" data-lxnonav="1" data-m="trades">Most Traded</button>';
   mini.parentNode.insertBefore(box,mini);
   [].forEach.call(box.querySelectorAll("button"),function(b){
     b.addEventListener("click",function(e){

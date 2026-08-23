@@ -712,7 +712,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     if(t==="payment"){
       var out=(o.from===me), pc=opCode(o), pn=(o.asset_type==="native");
       return {ic:"payment", kind:out?"sent":"received",
-        titleHtml:(out?"Sent":"Received")+accIlogo(pc,pn)+esc(pc),
+        titleHtml:(out?"Sent":"Received")+" "+accIlogo(pc,pn)+" "+esc(pc),
         title:(out?"Sent ":"Received ")+pc,
         sub:(out?("to "+shortG(o.to)):("from "+shortG(o.from))), cls:out?"acc-dn":"acc-up",
         right:(out?"-":"+")+amt(o.amount)+" "+pc}; }
