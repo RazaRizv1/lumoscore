@@ -667,7 +667,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // because the design re-renders this row -- a build-time edit would be undone the first time it did.
   // Idempotent: a removed chip is not found again, and the rename checks before writing.
   function trimFilters(){
-    var kill={stables:1,memes:1,utility:1};
+    // #7: "LumosCore native" joins the three chips already removed. With Curated the only list this row
+    // can show, a chip bar with one chip in it is a control that cannot do anything -- and the row it
+    // occupies is better spent on the filter field (see below). Launchpad tokens stay reachable through
+    // New Mints and their own pages.
+    var kill={stables:1,memes:1,utility:1,native:1};
     qa(".dex-mk-filter,.mdx-mk-filter").forEach(function(b){
       var f=(b.getAttribute("data-filter")||"").toLowerCase();
       if(kill[f]){ if(b.parentNode)b.parentNode.removeChild(b); return; }
@@ -683,6 +687,14 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var act=q(".dex-mk-filter.active,.mdx-mk-filter.active");
     if(!act){ var first=q('.dex-mk-filter[data-filter="all"],.mdx-mk-filter[data-filter="all"]');
       if(first)first.classList.add("active"); }
+  }
+  // #10: the field only ever searched the curated list, and the placeholder implied the whole network.
+  // Say so, rather than leaving someone to conclude their asset is missing when it was never in scope.
+  function labelFilterInput(){
+    var want="Filter curated pairs \\u00b7 ticker or address";
+    qa(".mdx-mk-search input,.dex-mk-search input,.search-box.inline-filter input,input.lx-mkq,.lx-mkq input").forEach(function(i){
+      if(i.getAttribute("placeholder")!==want)i.setAttribute("placeholder",want);
+    });
   }
   function curFilter(){ var el=q(".dex-mk-filter.active"); return (el&&el.getAttribute)?(el.getAttribute("data-filter")||"all"):"all"; }
   // Newest first. Assets we have no created stamp for sort last rather than jumping to the top on a 0.
@@ -1441,6 +1453,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     try{ applyPromoConstel(); }catch(_){}       // keeps the original .lm-svg zigzag hidden (rebuilt as hidden .lx-dxc)
     try{ applyHeroStats(); }catch(_){}
     try{ trimFilters(); }catch(_){}
+    try{ labelFilterInput(); }catch(_){}
     try{ orderSections(); }catch(_){}
     try{ denomUi(); denomUiSync(); }catch(_){}
     try{ renderMints(); }catch(_){}
