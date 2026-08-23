@@ -123,6 +123,11 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
    with its icon pinned to the far end of it. Shrink that column to its content so Time finishes beside
    the icon rather than a third of a column short of it. */
 #dxaExTable tr>td:nth-child(5){text-align:right}
+/* #5: every holder row carried its own "View on Explorer" under the address -- 184 rows, 184 copies of
+   the same four words, and it doubled the height of each one. The address above it already opens the
+   same page, so the label is pure repetition. Hidden rather than unpicked from two separate string
+   builders, because the anchor also carries the href the row's own handler reads. */
+.mdxa-hl-explorer,.dxa-hl-explorer{display:none!important}
 #dxaExTable tr>td:nth-child(6){width:1%;white-space:nowrap;padding-left:10px}
 /* Remove the duplicate price line on DESKTOP. ".price-display .meta" reads
    "<price> XLM per LUMOS - 1D High <x> - Low <y>", and the OHLC strip directly beneath it already
@@ -740,6 +745,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     if(a>=1000)return abbrNum(n);
     if(a>=1)return n.toLocaleString("en-US",{maximumFractionDigits:2});
     if(a===0)return "0";
+    // #21: "0.4397775 XLM" spends nine characters on precision nobody reads in a trade feed, and it is
+    // the widest thing in a narrow row. Cut it at three decimals and say so with two dots, so the reader
+    // knows the figure continues rather than believing it ended there. The dots only appear when
+    // something was actually dropped -- an exact 0.5 stays "0.5".
+    //
+    // Only above a thousandth: below that, three decimals would round the whole number away, and
+    // smallNum's leading-zero compression is the right tool (0.0000009 -> 0.0(5)9, every digit kept).
+    if(a>=0.001){ var _t=n.toFixed(3); return (Math.abs((+_t)-n)<1e-12) ? String(+_t) : (_t+".."); }
     return (n<0?"-":"")+smallNum(Math.abs(n),4); }
   function abbrNum(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}
   function abbrUsd(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(n/1e3).toFixed(1)+"K";if(a>=1)return "$"+n.toFixed(2);return usd(n);}
@@ -1660,7 +1673,10 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // ================= RECENT EXCHANGES (#dxaExTable) =================
   var TRADE_FILTER=0;
   var EX_PAGE=1, EX_PER_PAGE=50;
-  function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)return "just now"; if(s<3600)return Math.floor(s/60)+"m ago"; if(s<86400)return Math.floor(s/3600)+"h ago"; return Math.floor(s/86400)+"d ago"; }
+  // #20/#22: this is one narrow cell in a dense table and every row of it repeated the same word. "ago"
+// is the only thing a time in a Recent Trades list can mean, and "just now" says in two words what
+// "now" says in one. Dropping both buys the width back for the figures beside them.
+function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)return "now"; if(s<3600)return Math.floor(s/60)+"m"; if(s<86400)return Math.floor(s/3600)+"h"; return Math.floor(s/86400)+"d"; }
   // deterministic identicon (matches the design's look; pure ASCII SVG)
   var _icoCache={};
   function identicon(addr,size){ size=size||26; var ck=addr+"@"+size; if(_icoCache[ck])return _icoCache[ck];

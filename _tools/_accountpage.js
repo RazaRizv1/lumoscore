@@ -756,7 +756,10 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       return {ic:"swap", kind:"swap",
         titleHtml:"Swap"+accAsset(sc,sn)+" "+ARROW+accAsset(dc,dn),
         title:"Swap "+sc+" "+ARROW+" "+dc,
-        sub:"via Stellar DEX",
+        // #37: every row on a Stellar-only app is "via Stellar DEX" -- it is a column of the same five
+        // words. The slot stays (other op kinds put a real counterparty in it); the swap rows just have
+        // nothing to add there.
+        sub:"",
         right:"+"+amt(o.amount)+" "+dc, rightSub:"-"+amt(o.source_amount)+" "+sc}; }
     if(t==="change_trust"){
       var add=(+o.limit)>0;
@@ -811,7 +814,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     var bits=[];
 
     if(ACCT&&ACCT.__created)bits.push("Active since "+esc(ACCT.__created));
-    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">View on Explorer <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>');
+    if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">Explorer <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>');
     sub.innerHTML=bits.join("");
   }
   function fail(msg){

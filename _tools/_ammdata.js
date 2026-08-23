@@ -3255,14 +3255,16 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // inline status message under a CTA (no new modals — a small line the existing card already has room for)
   // bottom-center toast, identical to the site's "Copied to clipboard" toast (self-contained CSS above)
   function ammToast(msg,isErr,hash){ var CK='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-    var view=hash?(' \\u00b7 <a href="https://stellar.expert/explorer/public/tx/'+hash+'" target="_blank" rel="noopener">View on Explorer</a>'):'';
+    // #26: a confirmation toast is not the place to send someone off-site mid-flow.
+    var view='';
     var stack=document.querySelector(".lx-ctoast-stack"); if(!stack){ stack=document.createElement("div"); stack.className="lx-ctoast-stack"; document.body.appendChild(stack); }
     var t=document.createElement("div"); t.className="lx-ctoast"+(isErr?" lxa-terr":""); t.innerHTML='<span class="ci">'+CK+'</span><span>'+esc(msg||"")+view+'</span>'; stack.appendChild(t);
     // A toast carrying a link has to outlive the reflex to reach for it — 3.2s was not enough to notice
     // the link, move to it and tap, which is its own way of "leading nowhere". Give linked toasts 9s.
     setTimeout(function(){ t.style.transition="opacity .22s,transform .22s"; t.style.opacity="0"; t.style.transform="translateY(8px)"; setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },240); }, isErr?4000:(hash?9000:3200)); }
   function wMsg(btn, text, isErr, hash){ var el=btn.parentNode.querySelector(":scope > .lx-dwmsg"); if(!text){ if(el)el.style.display="none"; return; }
-    var view=(hash?' \\u00b7 <a href="https://stellar.expert/explorer/public/tx/'+hash+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">View on Explorer</a>':'');
+    // #26: a confirmation toast is not the place to send someone off-site mid-flow.
+    var view='';
     // SUCCESS -> bottom-center toast (same as the site's copy-address toast), not an inline line under the button
     if(!isErr){ if(el)el.style.display="none"; try{ ammToast(text,false,hash); return; }catch(_){} }
     if(!el){ el=document.createElement("div"); el.className="lx-dwmsg"; el.style.cssText="margin-top:10px;font-size:12.5px;line-height:1.45;text-align:center;font-weight:600"; btn.parentNode.insertBefore(el,btn.nextSibling); } el.style.display="block"; el.style.color=isErr?"#ef4444":"#16a34a"; el.innerHTML=esc(text)+view; }
