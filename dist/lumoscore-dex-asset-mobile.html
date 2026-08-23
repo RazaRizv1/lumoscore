@@ -2506,6 +2506,31 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
   box-shadow:0 2px 8px -4px rgba(0,0,0,.35)}
 #dxaChart .lxda-metric,#mdxaChart .lxda-metric{left:8px}
 #dxaChart .lxda-denom,#mdxaChart .lxda-denom{left:8px;top:40px}
+/* #39: inside the plot these two trays were styled but their BUTTONS were not -- browser default,
+   13.3px at weight 400 with no padding -- so a finished-looking tray held unfinished-looking labels.
+   Worse, the selected button's background was the same white as the tray behind it, which meant the
+   control never showed which of the two was active. Same segmented treatment as the timeframe buttons
+   right above it: accent fill on the selected one, muted label on the other. (The pair is also put
+   side by side on one line, in chartUi -- the offset needs the measured width of the first tray.) */
+#dxaChart .lxda-metric button,#mdxaChart .lxda-metric button,
+#dxaChart .lxda-denom button,#mdxaChart .lxda-denom button{
+  border:0;background:transparent;cursor:pointer;border-radius:6px;padding:4px 9px;
+  font-family:'Hanken Grotesk',sans-serif;font-size:11.5px;font-weight:700;line-height:1;
+  color:var(--text-soft,#6f6f79);transition:none!important}
+/* transition:none is not a style preference, it is what makes the selected state paint at all.
+   These buttons inherit the site-wide control transition (background-color/color/box-shadow .16s), and
+   something re-asserts their style on every apply tick, which restarted those transitions before they
+   could finish -- leaving three CSSTransitions permanently in "running". A running transition sits ABOVE
+   !important author styles in the cascade, so nothing could colour the active button: measured, an inline
+   background:#0f0 on it computed to transparent, while a clone of the same node in the same parent
+   painted correctly. With no transition to restart, the cascade resolves normally. */
+#dxaChart .lxda-metric button:hover:not(.active),#mdxaChart .lxda-metric button:hover:not(.active),
+#dxaChart .lxda-denom button:hover:not(.active),#mdxaChart .lxda-denom button:hover:not(.active){
+  color:var(--text,#0e0e10)}
+#dxaChart .lxda-metric button.active,#mdxaChart .lxda-metric button.active,
+#dxaChart .lxda-denom button.active,#mdxaChart .lxda-denom button.active{
+  background:var(--accent,#ea6a2c);color:#fff}
+#dxaChart .lxda-metric button[disabled],#mdxaChart .lxda-metric button[disabled]{opacity:.4;cursor:default}
 .chart-controls .lxda-metric{margin-left:auto}
 /* At 375px the four groups cannot share one line (measured 367px of controls in a 313px row), so the row
    wraps -- and without this the denomination landed alone at the far LEFT of the second line, reading as
@@ -2519,6 +2544,14 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
    they never split "Price | MCap" from "$ | XLM". */
 @media(max-width:420px){
 .chart-controls .lxda-metric button,.chart-controls .lxda-denom button{padding:0 7px;font-size:10.5px}
+/* #39 on the phone, where these groups live in the controls row rather than inside the plot. Same
+   defect and same cure: the selected button was white on a white tray, and the inherited control
+   transition kept restarting and outranking whatever set the colour. Sizes stay as they are above --
+   only the selected/unselected treatment changes. */
+.chart-controls .lxda-metric button,.chart-controls .lxda-denom button{
+  background:transparent;color:var(--text-soft,#6f6f79);font-weight:700;transition:none!important}
+.chart-controls .lxda-metric button.active,.chart-controls .lxda-denom button.active{
+  background:var(--accent,#ea6a2c);color:#fff;box-shadow:none}
 }
 /* chart hover readout */
 .lxda-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
@@ -7066,6 +7099,19 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       row.appendChild(d);
     }
     qa(".lxda-metric button,.lxda-denom button").forEach(function(b){ b.setAttribute("data-logo",""); });
+    // #39: side by side rather than one above the other. Stacked, the two trays occupied 68px of the
+    // plot's top-left corner and read as two unrelated widgets; they are one control strip. The offset
+    // has to be measured because the first tray's width follows its labels, and it is re-asserted on
+    // every apply so crossing the breakpoint (which re-hosts both groups) cannot leave it stale.
+    // (re-queried, not the mv/dv above: on the first pass those were looked up before the groups existed)
+    try{
+      var _mv=q(".lxda-metric"), _dv=q(".lxda-denom");
+      if(!narrow && _mv && _dv && _mv.parentNode===_dv.parentNode){
+        var _dl=(8+_mv.offsetWidth+6)+"px";
+        if(_dv.style.left!==_dl)_dv.style.left=_dl;
+        if(_dv.style.top!=="8px")_dv.style.top="8px";
+      } else if(_dv && (_dv.style.left||_dv.style.top)){ _dv.style.left=""; _dv.style.top=""; }
+    }catch(_){}
     chartUiSync();
     if(chartUiWired)return; chartUiWired=true;
     // Bound to the DOCUMENT, not to the host: the host changes when the window crosses the breakpoint,
