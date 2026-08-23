@@ -337,6 +337,11 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .dex-mint-stats{display:flex;gap:22px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
 .dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
 .dex-mint-stat .l{font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft,#6f6f79);margin-bottom:6px}
+/* #27: the sub-line under a mint was set in Hanken Grotesk 13/400 while the identical line in All
+   Trading Pairs -- same position, same colour, same job -- is JetBrains Mono 12.5/500. Side by side the
+   two cards read as belonging to different products. The pairs table is the one to match, since it is
+   the larger surface and the rest of this card's small print is already monospace. */
+.dex-mint-sub{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:500}
 .dex-mint-stat .v{font-weight:700;font-size:14px;color:var(--text,#0e0e10);white-space:nowrap;line-height:1.25;text-align:right}
 /* the dollar figure is a second line under the XLM price, not a continuation of it */
 .dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
