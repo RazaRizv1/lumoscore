@@ -1912,6 +1912,13 @@ table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
 .lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:0!important;margin-left:-10px!important}
 .lx-hstat[data-k=top] .pair-icons .pa.lx-ico[data-mono]::after,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico[data-mono]::after{font-size:13px}
 .lx-hstat[data-k=top] .lx-toptxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:20px}
+/* #29: the pool page's own header pair -- two 44px logos with a 6px gap between them, reading as two
+   unrelated tokens rather than one pair. Everywhere else a pair is drawn overlapping, so this was the
+   odd one out. Both already carry a 3px ring, which is what makes the overlap legible; the base asset
+   stays on top so the pair reads left to right in the same order as the name beside it. */
+.pool-header .ph-icons{gap:0!important}
+.pool-header .ph-icons .pa{position:relative;z-index:2}
+.pool-header .ph-icons .pb{position:relative;z-index:1;margin-left:-14px!important}
 /* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
 .lx-ammview{display:inline-flex;align-items:center;gap:5px;padding:7px 15px;border-radius:9px;font:700 12.5px/1 'Hanken Grotesk',sans-serif;text-decoration:none!important;white-space:nowrap;border:1px solid rgba(234,106,44,.38);color:var(--accent,#ea6a2c)!important;background:rgba(234,106,44,.10);transition:background .15s ease,color .15s ease,border-color .15s ease}
 .lx-ammview:hover{background:var(--accent,#ea6a2c);color:#fff!important;border-color:var(--accent,#ea6a2c)}
@@ -5749,6 +5756,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         mAll.style.display=mineActive?"none":"";
         mMine.style.display=mineActive?"":"none";
         var srch=q(".search-box.inline-filter"); if(srch)srch.style.display=mineActive?"none":"";
+        // #8: the footer belongs to the all-pools list, and it stayed under My Pools on the phone --
+        // two positions listed above "Showing 1-25 of 10,966 pools / Page 1 of 439", which are counts
+        // of the whole network. The paint-side guard reads #panelAllPools to decide whether the all-pools
+        // list is the one showing, and the phone has no such element, so it fell through to "showing".
+        var mpag=q(".lx-netpag-host")||q("#paginationAll");
+        if(mpag)mpag.style.display=mineActive?"none":((NET.total>NETPP)?"flex":"none");
         return;
       }
       var lp=q("#lx-mypanel"), ap=q("#panelAllPools"), mp=q("#panelMyPositions");
@@ -6059,8 +6072,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       if(pag.getAttribute("data-lxpsig")!==fsig){ pag.innerHTML=netFootHtml(); pag.setAttribute("data-lxpsig",fsig); }
       // Only ever un-hide the pager while the All Pools panel is the one showing. A repaint that landed
       // while My Pools was open would otherwise drag the All Pools footer back under the positions list.
+      // ...and the same guard has to consult the click flag directly, because on the phone #panelAllPools
+      // does not exist and "no panel" was being read as "the all-pools panel is showing".
       var allPanel=q("#panelAllPools");
-      var allShown=!allPanel||getComputedStyle(allPanel).display!=="none";
+      var allShown=(!allPanel||getComputedStyle(allPanel).display!=="none")&&!window.__lxMine;
       if(allShown) pag.style.display=(NET.total>NETPP)?"flex":"none";
     }
     // Mobile cards are rebuilt on every page change, so the label has to be reapplied here.
