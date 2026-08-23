@@ -2366,6 +2366,9 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
    no matter what the rules above said. That is the "tiny grey text". Only the clipping behaviour belongs
    here; the sizes are set once, above, where they can be read. */
 .stat-row .stat-cell .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* #11/#21: a change of zero because nothing traded is not the same thing as a day that ended flat, and
+   it must not be dressed in either colour. Grey, no arrow, and the reason on hover. */
+.change-pill.lx-flat{background:var(--surface-2,#f1f1f4)!important;color:var(--text-soft,#8a8fa3)!important}
 /* AUDIT (flash sweep): the .lxda gates above only covered the header + stat cells. A static-vs-settled diff
    showed 9 more groups still painting the design's Aptos mock (4.2271 APT, 2.66%, 18 holders, 189.93K vol)
    before our data lands. Mask them until they are actually written — .lxp is added by the observer in
@@ -6114,9 +6117,23 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
                          // the two screens agree by construction rather than by coincidence
   var chgCg=null;        // CoinGecko usd_24h_change (XLM native)
   var chgXlm24=null;     // Horizon daily buckets, priced in XLM
+  // #11/#21: TRUE when the newest daily bucket is recent enough for "24h" to mean 24h.
+  //
+  // trade_aggregations is asked for the two most recent buckets THAT EXIST, not the last two days. For
+  // an asset whose last trade was months ago those are two ancient buckets, and the difference between
+  // them was being printed as a 24h move: WAZAAA read +1020.82% on a token that had not traded in 113
+  // days, and LUMOS read +90.76%. The figure was real; the label was a lie.
+  var chg24Fresh=false;
+  var chg24X=null;       // the change the XLM view shows, unconverted
   var xlmChg24=(function(){ try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
     return (c&&c.chg!=null&&(Date.now()-c.ts<216e5))?+c.chg:null; }catch(e){ return null; } })();
   function recomputeChg(){
+    // Nothing traded inside the window, so nothing moved inside the window. Both figures are zero and
+    // the pill renders them grey, which is how the reader tells a real flat day from a silent one.
+    if(!chg24Fresh){ chg24=0; chg24X=0; return; }
+    // The XLM view shows the pair move as Horizon reports it -- no conversion, because that IS the
+    // number this page is denominated in.
+    chg24X=(chgXlm24!=null)?chgXlm24:null;
     if(chgSe!=null){ chg24=chgSe; return; }
     if(chgCg!=null){ chg24=chgCg; return; }
     // The XLM-denominated move converted into dollars: the asset against XLM, times XLM against USD.
@@ -6511,8 +6528,15 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     else {
       // #19: dollars are the headline, so the number beside the change pill is in the same unit the
       // pill is. seUsd covers assets with no XLM orderbook at all, which have no assetXlm to convert.
+      // #40: the headline follows the page toggle, which now starts on XLM. This is the pair price --
+      // the thing the order book, the trades and the 1D range below are all quoted in -- so on the
+      // default view it is the lumens figure, and the dollar figure only when the reader asks for it.
+      // seUsd covers assets with no XLM order book at all; those have no XLM price to show and fall back
+      // to dollars rather than to nothing.
       var _pu=(assetXlm>0&&xlmUsd>0)?(assetXlm*xlmUsd):(seUsd>0?seUsd:0);
-      if(_pu>0)setText(q(".price-display .big"), usd(_pu));
+      var _wantX=(cDenom()==="xlm"&&assetXlm>0);
+      if(_wantX)setText(q(".price-display .big"), xlmAmt(assetXlm)+" XLM");
+      else if(_pu>0)setText(q(".price-display .big"), usd(_pu));
       else if(assetXlm>0)setText(q(".price-display .big"), xlmAmt(assetXlm)+" XLM");
       else setText(q(".price-display .big"),"—");
       // ...and the pair price keeps its place, named. This is a CODE/XLM market and the order book,
@@ -6531,7 +6555,19 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // NB: use classList, never className= — a wholesale class assignment on a later pass wipes the .lxp
     // reveal flag, and because setText skips a same-value write no mutation fires to put it back, so the
     // pill stays masked forever.
-    if(_pill){ if(chg24!=null){ var _u=chg24>=0; _pill.classList.add("change-pill"); _pill.classList.toggle("down",!_u); setText(_pill,(_u?"▲ ":"▼ ")+Math.abs(chg24).toFixed(2)+"% (24h)"); _pill.classList.add("lxp"); if(_pill.style.display==="none")_pill.style.display=""; }
+    // #40: the pill is denominated like the headline beside it -- the pair move on the XLM view, the
+    // dollar move on the $ view. #33: "up" is removed explicitly, not just "down" toggled. The design
+    // ships that class on the element and leaving it meant ZBS rendered a GREEN pill with a down arrow
+    // reading -64.42%, contradicting itself inside one badge. #11/#21: a stale window is a grey zero.
+    var _cv=(cDenom()==="xlm")?((chg24X!=null)?chg24X:chg24):chg24;
+    if(_pill){ if(_cv!=null){ var _u=_cv>=0;
+      _pill.classList.add("change-pill");
+      _pill.classList.remove("up","down","lx-flat");
+      if(!chg24Fresh)_pill.classList.add("lx-flat");
+      else if(_u)_pill.classList.add("up"); else _pill.classList.add("down");
+      _pill.title=chg24Fresh?"":"No trades in the last 24 hours";
+      setText(_pill,(chg24Fresh?(_u?"▲ ":"▼ "):"")+Math.abs(_cv).toFixed(2)+"% (24h)");
+      _pill.classList.add("lxp"); if(_pill.style.display==="none")_pill.style.display=""; }
       else if(_pill.style.display!=="none")_pill.style.display="none"; }
   }
 
@@ -6582,14 +6618,23 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   //   metric "mcap"  -> multiply by circulating supply
   //   denom  "xlm"   -> divide by the XLM/USD rate
   //
-  // The denomination shares localStorage with the Trade pair list, so the two pages cannot disagree
-  // about what a percentage or a price means.
+  // #5/#40: this page is denominated in XLM by default, and it keeps its OWN setting.
+  //
+  // It used to share lumos.dexDenom with the Trade pair list. That has to stop, because the two pages
+  // now want opposite defaults for good reasons. This page is a PAIR view -- the asset against XLM is
+  // what actually trades, and the order book, the OHLC strip and the rate line are all quoted that way,
+  // so a dollar headline sat on top of a screen that was otherwise in lumens.
+  //
+  // The pair LIST is the opposite case and must stay in dollars: its whole job is "is this thing up or
+  // down", and quoted against XLM every asset that merely held its dollar value read as a double-digit
+  // loss on a day XLM rose. That was a reported bug and sharing one key would bring it straight back.
   var chartMetric="price", chartUiWired=false;
-  function cDenom(){ try{ if(window.__lxDenom)return window.__lxDenom;
-    var v=localStorage.getItem("lumos.dexDenom"); if(v==="xlm"||v==="usd")return v; }catch(_){}
-    return "usd"; }
-  function setCDenom(v){ try{ if(window.__lxDenomSet){window.__lxDenomSet(v);return;} }catch(_){}
-    window.__lxDenom=v; try{ localStorage.setItem("lumos.dexDenom",v); }catch(_){} }
+  function cDenom(){ try{ if(window.__lxAsDenom)return window.__lxAsDenom;
+    var v=localStorage.getItem("lumos.assetDenom"); if(v==="xlm"||v==="usd"){window.__lxAsDenom=v;return v;} }catch(_){}
+    return "xlm"; }
+  function setCDenom(v){ window.__lxAsDenom=v;
+    try{ localStorage.setItem("lumos.assetDenom",v); }catch(_){}
+    try{ window.dispatchEvent(new CustomEvent("lx-asdenom",{detail:v})); }catch(_){} }
   // Null when the choice cannot be honoured -- no XLM rate, or no supply for a market cap -- and every
   // caller then falls back to plain dollars rather than printing a number scaled by a guess.
   function chartScale(){
@@ -6864,7 +6909,14 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // Build a price series straight from executed trades. Used when trade_aggregations is empty, which is
   // ALWAYS the case for AMM-only assets (Horizon aggregates order-book trades only). Real executions, in
   // chronological order — no interpolation, no invention. Needs >=2 points to be a line worth drawing.
+  // #15, second half. Both paths that can draw the chart now refuse to draw a series the reader has
+  // moved on from.
+  //
+  // Without this, tapping 1M and then 1Y produced the 1M chart: the 1Y fetch succeeded and drew its 51
+  // weekly points, and then 1M's SLOW trades fallback finished and painted its 29 daily points over the
+  // top. The year of data was fetched, drawn, and then quietly replaced by the previous timeframe.
   function chartFromTrades(tf){
+    if(chartTF!==tf)return;   // the reader moved on while this was being assembled
     var rows=window.__lxDXAtrades;
     if(!rows||rows.length<2){ chartEmpty(); return; }
     var cfg=tfCfg(tf), cut=Date.now()-cfg.span;
@@ -6905,17 +6957,49 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // an empty answer fell straight through to chartFromTrades, drawing the last few HOURS of trades as the
   // "1Y" chart. So: mark the host while a fetch is in flight, and retry once before accepting "no data".
   function loadChart(tf,attempt){
-    if(NATIVE)return; if(loadChart._pending===tf)return; loadChart._pending=tf;   // dedupe concurrent fetches for the same timeframe
+    if(NATIVE)return;
+    // #15: a SEQUENCE TOKEN, not a "currently fetching this timeframe" flag.
+    //
+    // The old dedupe stored the timeframe in loadChart._pending and refused any call matching it. That
+    // has two failure modes and both were live. If any path returned without calling clear(), the flag
+    // stayed set and every later tap on that same timeframe was silently ignored -- the request was
+    // never even made. And it did nothing about the opposite race: a slow response for an ABANDONED
+    // timeframe still drew itself over the one the reader had moved to, which is how tapping 1M then 1Y
+    // left a month of data under a chart labelled 1Y.
+    //
+    // One counter fixes both. Every call takes the next token; a response is only allowed to draw while
+    // its token is still the newest. Nothing to leak, and the newest tap always wins. Same pattern the
+    // asset search in this codebase already uses.
+    var myTok=(loadChart._tok=(loadChart._tok||0)+1);
+    var live=function(){ return loadChart._tok===myTok; };
     chartTF=tf; var cfg=tfCfg(tf), now=Date.now(), start=now-cfg.span;
     var host=q("#dxaChart,#mdxaChart"); if(host)host.classList.add("lxda-loading");
-    var clear=function(){ loadChart._pending=null; if(host)host.classList.remove("lxda-loading"); };
-    var again=function(){ loadChart._pending=null; loadChart(tf,1); };   // keep the marker on across the retry
+    var clear=function(){ if(live()&&host)host.classList.remove("lxda-loading"); };
+    var again=function(){ loadChart._tok=myTok-1; loadChart(tf,1); };   // hand the token on to the retry
     var url=H+"/trade_aggregations?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+cfg.res+"&start_time="+start+"&end_time="+now+"&order=asc&limit=200";
     j(url).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
+      // #15: the 1Y chart was drawing about a month.
+      //
+      // Every point is multiplied by the XLM/USD rate to store the series in dollars, and the filter
+      // below drops anything that comes out at zero. Before the rate lands that is EVERY point -- so a
+      // perfectly good 51-week response (checked: Horizon returns all 51) was thrown away wholesale, the
+      // code fell through to the raw-trades fallback, and that only reaches back as far as the recent
+      // trade pages. 1M and 1Y ended up drawing the identical series.
+      //
+      // The records are fine; the rate simply is not there yet. Wait for it and re-run rather than
+      // discarding a year of data. Bounded, so a page that never gets a rate stops asking.
+      if(!live())return;
+      if(!(xlmUsd>0)&&r.length>=2&&(attempt||0)<8){
+        loadChart._tok=myTok-1;
+        setTimeout(function(){ loadChart(tf,(attempt||0)+1); },300);
+        return;
+      }
       var pts=r.map(function(x){return {t:+x.timestamp, v:(+x.avg||+x.close||0)*xlmUsd, vol:(+x.counter_volume||0)*xlmUsd, n:(+x.trade_count||0),
         o:(+x.open||0)*xlmUsd, h:(+x.high||0)*xlmUsd, l:(+x.low||0)*xlmUsd, c:(+x.close||0)*xlmUsd};}).filter(function(p){return p.v>0;});
-      if(pts.length>=2){ clear(); drawChart(pts); return; }
+      // #7: the delta cell reads the drawn series, so it has to be repainted whenever a new timeframe
+      // lands -- otherwise switching to 1Y left yesterday's figure sitting under a year of chart.
+      if(pts.length>=2){ clear(); drawChart(pts); try{ applyOhlc(); }catch(_){} return; }
       if(!attempt){ again(); return; }
       clear(); chartFromTrades(tf);
     }).catch(function(){ if(!attempt){ again(); return; } clear(); chartFromTrades(tf); });
@@ -7982,7 +8066,22 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     set(1,_op(h),"up");
     set(2,_op(l),"down");
     set(3,_op(c), c>=o?"up":"down");
-    var dp=o>0?((c-o)/o*100):0; set(4,(dp>=0?"+":"")+dp.toFixed(2)+"%", dp>=0?"up":"down");
+    // #7: the change over the SELECTED window, not always the day.
+    //
+    // dayOHLC is one 24h bucket, so on the 1W / 1M / 1Y tabs this cell was answering a question nobody
+    // had asked -- the chart showed a year and the delta beside it showed yesterday. The drawn series is
+    // the right source: first point to last point IS the move over whatever window is on screen, and it
+    // needs no extra request because the chart has already fetched it.
+    //
+    // Scale-invariant, so it does not matter whether the series is in dollars or lumens: a ratio of two
+    // points cancels the conversion. Falls back to the day bucket if the series has not landed yet.
+    var dp, dlab="";
+    if(chartTF!=="1D"&&chartPts&&chartPts.length>1){
+      var _a=+chartPts[0].v, _b=+chartPts[chartPts.length-1].v;
+      dp=(_a>0)?(((_b-_a)/_a)*100):0;
+      dlab=" "+chartTF;
+    } else { dp=o>0?((c-o)/o*100):0; }
+    set(4,(dp>=0?"+":"")+dp.toFixed(2)+"%"+dlab, dp>=0?"up":"down");
     set(5,abbrNum(dayOHLC.v),null);
   }
 
@@ -8656,7 +8755,13 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     j(ta).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
       if(r[0]){ assetXlm=+r[0].close||+r[0].avg||assetXlm; vol24Xlm=+r[0].counter_volume||0;
         dayOHLC={o:+r[0].open||0,h:+r[0].high||0,l:+r[0].low||0,c:+r[0].close||0,v:+r[0].counter_volume||0}; }
-      if(r[0]&&r[1]&&+r[1].close>0){ chgXlm24=((+r[0].close-+r[1].close)/+r[1].close)*100; recomputeChg(); }
+      // A daily bucket is stamped with the start of its UTC day, so the newest one is "today" or, just
+      // after midnight with no trades yet, "yesterday". Anything older means the asset did not trade in
+      // the last 24 hours and there is no 24h move to report. Two days of slack covers the midnight
+      // case without letting a months-old bucket through.
+      if(r[0]&&r[0].timestamp){ chg24Fresh=((Date.now()-(+r[0].timestamp))<=2*864e5); }
+      if(r[0]&&r[1]&&+r[1].close>0){ chgXlm24=((+r[0].close-+r[1].close)/+r[1].close)*100; }
+      recomputeChg();
       if(r[0]&&r[1]&&+r[1].counter_volume>0)volChg=((+r[0].counter_volume-+r[1].counter_volume)/+r[1].counter_volume)*100;
       applyAll(); try{ loadChart(chartTF); }catch(_){}
     }).catch(function(){});
