@@ -75,7 +75,10 @@ function blankChipAddr(h){
 // load in. The gate stays as a second line of defence for the empty circle itself. Only ever strips a
 // short run of plain text -- if the design ever puts real markup in there, this leaves it alone.
 function blankAvatar(h){
-  return h.replace(/(<div class="avatar-sm"[^>]*>)([^<]{0,12})(<\/div>)/g,'$1$3');
+  return h.replace(/<div class="avatar-sm"([^>]*)>([^<]{0,12})<\/div>/g,function(all,attrs){
+    if(/style="/.test(attrs))return '<div class="avatar-sm"'+attrs.replace(/style="/,'style="visibility:hidden;')+'></div>';
+    return '<div class="avatar-sm"'+attrs+' style="visibility:hidden"></div>';
+  });
 }
 
 function scriptFor(net){
@@ -112,7 +115,7 @@ function scriptFor(net){
   +'var av=document.querySelector(".avatar-sm");if(!av)return;'
   +'var btn=document.querySelector(".lx-launch");'
   // connected: drop the button, give the avatar back
-  +'if(on){if(btn)btn.remove();av.style.display="";return;}'
+  +'if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}'
   // disconnected: hide the empty circle, put the button where it was
   +'av.style.display="none";'
   +'if(btn)return;'
@@ -141,7 +144,9 @@ function scriptFor(net){
   +'var sm=document.querySelector(".avatar-sm");'
   +'if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);'
   +'sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}'
-  +'else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}}'
+  +'else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}'
+  // #36: it has an identity now (or is correctly staying blank), so it may be seen.
+  +'try{sm.style.visibility="";}catch(_e2){}}'
   // #22: the disc has now been given its real identity (or correctly left alone), so it may paint.
   +'try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}'
   +'}catch(_){}}'
@@ -188,7 +193,10 @@ function scriptFor(net){
   // stops it reaching that line, the class lands here anyway and the avatar appears as the design drew
   // it. A hidden element whose un-hider can be removed is how a small bug becomes an invisible header --
   // this file is not going to be that.
-  +'setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");}catch(_){}},2500);'
+  +'setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");'
+  // and clear the inline hide, so a failure upstream shows the design's disc rather than nothing at all
+  +'var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";'
+  +'}catch(_){}},2500);'
   +'setTimeout(sync,300);'
   +'})();</script>';
 }
