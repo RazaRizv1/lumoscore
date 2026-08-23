@@ -1235,7 +1235,25 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
       var _cu=chgShown(a); var up=(_cu||0)>=0;
       setTxt(card.querySelector(".dex-mover-pair .sub"),dispDom(a.code,a.issuer,a.domain)||shortG(a.issuer));
-      var pct=card.querySelector(".dex-mover-pct"); if(pct){ pct.className="dex-mover-pct"+(_cu!=null?(up?" up":" down"):""); setTxt(pct,_cu!=null?(up?"+":"")+_cu.toFixed(2)+"%":"\\u2014"); }
+      // N6: repaint only when the DISPLAYED string changes, and never leave the pill empty.
+      //
+      // On the $ view the change is not a stored figure -- it is derived from the asset's XLM move and
+      // the live XLM/USD rate, so the underlying number moves fractionally every time that rate
+      // refreshes even though the market has not moved at all. Writing it on every applyAll tick made
+      // the percentage flicker continuously. Comparing the rendered string means a change too small to
+      // survive rounding never reaches the DOM, and the pill stops twitching.
+      //
+      // Cards were also being left with a coloured up/down pill and NO text in it -- a bare green or red
+      // stub beside a price. The value and the class are now written together or not at all, so the two
+      // cannot disagree again.
+      var pct=card.querySelector(".dex-mover-pct");
+      if(pct){
+        var _ptxt=(_cu!=null)?((up?"+":"")+_cu.toFixed(2)+"%"):"\\u2014";
+        var _pcls="dex-mover-pct"+(_cu!=null?(up?" up":" down"):"");
+        if(pct.__lxPct!==_ptxt||pct.className!==_pcls){
+          pct.__lxPct=_ptxt; pct.className=_pcls; pct.textContent=_ptxt;
+        }
+      }
       setHTML(card.querySelector(".dex-mover-price"),fmtPrice(a.px)+' <span style="font-size:14px;color:var(--text-soft);font-weight:600">XLM</span>');
       var vu=a.vol!=null?a.vol*xlmUsd:null;
       setHTML(card.querySelector(".dex-mover-vol"),'<span class="lxk">Vol</span><span class="lxv">'+(vu!=null?lcm(vu):"\\u2014")+'</span><span class="lxk">TVL</span><span class="lxv">'+(a.tvlUsd!=null?lcm(a.tvlUsd):"\\u2014")+'</span>');
