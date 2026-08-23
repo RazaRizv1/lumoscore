@@ -354,7 +354,11 @@ table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
    unrelated tokens rather than one pair. Everywhere else a pair is drawn overlapping, so this was the
    odd one out. Both already carry a 3px ring, which is what makes the overlap legible; the base asset
    stays on top so the pair reads left to right in the same order as the name beside it. */
-.pool-header .ph-icons{gap:0!important}
+/* #9: and the box has to BE a row. On the phone the design lays .ph-icons out as display:block, so the
+   two 44px marks stacked -- the second one landing 44px below the first, on top of the text under it.
+   The overlap rule below is a no-op in block layout, which is why it read as a broken logo rather than
+   a pair. Measured before: pa at y141, pb at y185, inside a 60px-wide box. */
+.pool-header .ph-icons{display:flex!important;align-items:center;flex-wrap:nowrap;width:auto!important;gap:0!important}
 .pool-header .ph-icons .pa{position:relative;z-index:2}
 .pool-header .ph-icons .pb{position:relative;z-index:1;margin-left:-14px!important}
 /* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
