@@ -2446,7 +2446,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       host.appendChild(el); return el; }
     var vline=mk("lx-chov-v","top:0;bottom:0;width:1px;background:rgba(180,180,200,.55);z-index:4"),
         dot=mk("lx-chov-dot","width:11px;height:11px;border-radius:50%;border:2px solid var(--surface);transform:translate(-50%,-50%);z-index:6"),
-        box=mk("lx-chov-box","background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;box-shadow:0 8px 22px rgba(0,0,0,.25);min-width:140px;z-index:8;color:var(--text)");
+        box=mk("lx-chov-box","background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-size:14px;font-family:'Hanken Grotesk',system-ui,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.22);min-width:140px;z-index:8;color:var(--text)");
     function hide(){ vline.style.opacity="0"; dot.style.opacity="0"; box.style.opacity="0"; }
     function at(cx,cy){
       var svg=q("#tvlChart svg"), st=DET&&DET.__chH;
@@ -2495,9 +2495,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         // an empty tooltip would be a worse answer than an honest one in the pool's own denomination.
         var _lbl=(st.metric==="vol"?"Volume":"TVL");
         var _val=(st.usdPerUnit>0)?usd(p.v*st.usdPerUnit):(famt(p.v)+" "+st.unit);
+        // Same two-line shape as Trade-Asset: a quiet label over a tabular figure. No uppercase, no
+        // letter-spacing, and one size for every value rather than a bigger one for the first.
         function _row(l,v,strong){
-          return '<div style="font-size:11.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">'+esc(l)+'</div>'
-            +'<div style="font-weight:700;font-size:'+(strong?15:14)+'px;color:var(--text);margin-top:2px">'+esc(v)+'</div>';
+          return '<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600">'+esc(l)+'</div>'
+            +'<div style="color:var(--text,#0e0e10);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:1px">'+esc(v)+'</div>';
         }
         // The volume line for the SAME point, in dollars, from the bars the chart already drew.
         var _vp=chHovVolVal(st,p.t);
@@ -2506,7 +2508,13 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         // above so the two can never disagree, and it does not change as the pointer moves.
         var _pv=document.querySelector(".lx-partstat .v");
         var _pt=_pv?(_pv.textContent||"").trim():"";
-        box.innerHTML=_row(_lbl,_val,true)
+        // The date leads, as it does on Trade-Asset -- the reader is pointing at a moment, and the
+        // figures below it only mean anything once they know which one. The span comes from the points
+        // themselves, so an intraday range shows a time and a long one shows a date.
+        var _sp=(P&&P.length>1)?((P[P.length-1].t||0)-(P[0].t||0)):0;
+        var _dt=(p&&p.t)?chHovDate(p.t,_sp):"";
+        box.innerHTML=(_dt?('<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:4px">'+esc(_dt)+'</div>'):'')
+          +_row(_lbl,_val,true)
           +(_volTxt?('<div style="margin-top:8px">'+_row("Volume",_volTxt,false)+'</div>'):'')
           +((_pt&&_pt!=="\u2014")?('<div style="margin-top:8px">'+_row("Participants",_pt,false)+'</div>'):'');
       }
