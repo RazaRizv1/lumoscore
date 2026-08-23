@@ -225,13 +225,18 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     try{ if(window.__lxDEXloadNative)window.__lxDEXloadNative();
          d=window.__lxDEXmints?window.__lxDEXmints():null; }catch(_){ d=null; }
     if(!d||!d.length)d=A.slice(0,3);              // roster not in yet: keep the placeholder rows (same count the card shows)
-    var sig="m|"+d.map(function(a){return a.code+":"+(a.trades==null?"":a.trades);}).join("|");
+    // created is in the signature too: it arrives after the first paint, and without it the card kept
+    // the rows it had built when the mint date was still unknown.
+    var sig="m|"+d.map(function(a){return a.code+":"+(a.trades==null?"":a.trades)+":"+(a.created||0);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     list.innerHTML=d.map(function(a){
       return '<div class="mdx-mint-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +ico("mdx-mint-ic",a)
         +'<div><div class="mdx-mint-name">'+esc(a.code)+'</div>'
-        +'<div class="mdx-mint-sub">'+esc(dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</div></div>'
+        // #27: this printed "lumoscore.com" under every row -- the same word three times on a card
+        // already headed "New mints on LumosCore". Same line the desktop card now shows: how new it is.
+        +'<div class="mdx-mint-sub">'+esc((function(){ try{ return (window.__lxDEXmintAge&&window.__lxDEXmintAge(a))||""; }catch(_){ return ""; } })()
+            ||dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</div></div>'
         +'<div class="mdx-mint-right">'
           +'<div class="mdx-mint-fig"><span class="v">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</span>'
           +'<span class="k">'+esc(mcapOf(a)==null?"":("MC "+mcapOf(a)))+'</span></div>'
