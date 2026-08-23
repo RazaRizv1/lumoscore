@@ -3022,7 +3022,15 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var pa=payAsset(), ra=recvAsset();
     var amt=dxNum(raw);
     if(!(amt>0)){ _dxView=null; _dxQuoteOut=0; window.__lxDXASoro=null; dxErr(""); if(cta)cta.setAttribute("data-lxdis","1"); reAssertView(); return; }
-    var bal=balOf(pa);
+    // #24: the SPENDABLE figure, not the raw one.
+    //
+    // This guard read balOf -- the account total -- while the balance printed directly above it comes
+    // from spendOf, which subtracts the account reserve and selling liabilities. So the panel could say
+    // "Balance: 0.759945 XLM" and the error underneath say "you have 33.2609": two numbers for one
+    // thing, and the larger one unspendable. Worse than the wording, the CHECK was wrong too -- it would
+    // pass any amount up to the raw total and let someone sign a transaction the reserve makes
+    // impossible, which comes back as op_underfunded after they have already approved it.
+    var bal=spendOf(pa);
     if(bal!=null&&amt>bal+1e-9){ dxErr("Insufficient "+(pa.native?"XLM":pa.code)+" balance \\u2014 you have "+xlmAmt(bal)); if(cta)cta.setAttribute("data-lxdis","1"); }
     else { dxErr(""); if(cta)cta.removeAttribute("data-lxdis"); }
     var fee=amt*FEE_RATE(), net=amt-fee, spot=pa.native?(assetXlm>0?1/assetXlm:0):assetXlm; // receive per pay
