@@ -18,6 +18,10 @@ const B = String.fromCharCode(92);
 const STYLE = '<style id="lx-mobwallet-css">'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
   + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block{visibility:hidden}'
+  + 'html:not(.lx-adrdone) .wallet-chip .text,html:not(.lx-adrdone) .chip .text{color:transparent!important;position:relative}'
+  + 'html:not(.lx-adrdone) .wallet-chip .text::after,html:not(.lx-adrdone) .chip .text::after{content:"";position:absolute;left:0;top:20%;width:100%;height:60%;'
+  + 'border-radius:6px;background:linear-gradient(90deg,rgba(128,128,140,.12) 25%,rgba(128,128,140,.2) 37%,rgba(128,128,140,.12) 63%);'
+  + 'background-size:400% 100%;animation:lxPvSk 1.3s ease infinite}'
   + 'html:not(.lx-pvdone) .portfolio-value,html:not(.lx-pvdone) .portfolio-sub,html:not(.lx-pvdone) .portfolio-usd{color:transparent!important;position:relative}'
   + 'html:not(.lx-pvdone) .portfolio-value>*,html:not(.lx-pvdone) .portfolio-sub>*,html:not(.lx-pvdone) .portfolio-usd>*{visibility:hidden}'
   + 'html:not(.lx-pvdone) .portfolio-value::after,html:not(.lx-pvdone) .portfolio-sub::after,html:not(.lx-pvdone) .portfolio-usd::after{content:"";position:absolute;left:0;top:14%;width:min(62%,190px);height:72%;'
@@ -214,6 +218,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'function fixHeader(){var a=addr();'
 + 'var t=q(".wallet-chip .text")||q(".chip .text")||q(".wallet-address .text");'
 + 'if(t)t.textContent=a?trunc(a):DASH;'
++ 'try{ if(a&&/^G[A-Z2-7]{55}$/.test(a))document.documentElement.classList.add("lx-adrdone"); }catch(_){}'
 // #12: the second icon in the address chip is a bare <button> -- no class, no aria-label, no href and
 // no handler. It draws an external-link glyph and does nothing when tapped. Wire it to the account on
 // stellar.expert, which is what the same icon does everywhere else on the site.
