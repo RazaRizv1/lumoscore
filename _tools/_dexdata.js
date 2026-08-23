@@ -608,6 +608,26 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     for(var i=0;i<ASSETS.length;i++)put(ASSETS[i]);
     for(var j=0;j<NATIVE.length;j++)put(NATIVE[j]);
     return out; }
+  // #13: Market Movers goes below All Trading Pairs.
+  //
+  // Movers is a short, opinionated read on four assets; the pairs table is the page's actual index and
+  // is what someone arriving at "Trade" is looking for. Putting the editorial ahead of the index pushed
+  // the table 760px down the page.
+  //
+  // Done at runtime rather than in the build for the same reason trimFilters is: the design re-renders
+  // this region, and a build-time reorder is undone the first time it does. Guarded on document order,
+  // so once Movers follows the table this is a no-op on every later tick.
+  function orderSections(){
+    var mv=q(".dex-movers"), mk=q(".dex-markets");
+    if(!mv||!mk||mv.parentNode!==mk.parentNode)return;
+    // _sidecard.js owns the slot DIRECTLY after the pairs table -- it parks the New Mints card there and
+    // re-asserts on resize and on every re-render. Taking that slot would have been a tug of war between
+    // two files re-asserting against each other every tick, so Movers anchors below that card instead.
+    var sc=q(".dex-mints-card");
+    var after=(sc&&sc.parentNode===mk.parentNode&&(mk.compareDocumentPosition(sc)&4))?sc:mk;
+    if(mv.previousElementSibling===after)return;              // already in place
+    after.parentNode.insertBefore(mv,after.nextSibling);
+  }
   // #7: the three chips we no longer offer, and the rename of All. Done here rather than in the build
   // because the design re-renders this row -- a build-time edit would be undone the first time it did.
   // Idempotent: a removed chip is not found again, and the rename checks before writing.
@@ -1368,6 +1388,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     try{ applyPromoConstel(); }catch(_){}       // keeps the original .lm-svg zigzag hidden (rebuilt as hidden .lx-dxc)
     try{ applyHeroStats(); }catch(_){}
     try{ trimFilters(); }catch(_){}
+    try{ orderSections(); }catch(_){}
     try{ denomUi(); denomUiSync(); }catch(_){}
     try{ renderMints(); }catch(_){}
     try{ renderMovers(); }catch(_){}
