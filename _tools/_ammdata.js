@@ -1125,9 +1125,13 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function netActive(){ return !!(q("#poolsBody")||q("#panelAll")); }
   // #24: cold-start overlay for the pools list. Shown once per browser session, and only on the list --
   // a pool's own page loads from its id and does not wait on the ranking.
-  var BOOTKEY="lumos.poolsboot", boot=null, bootPct=0, bootArmed=false;
+  // lxBootEl, NOT boot: this file already has a top-level function boot(), and a var of the same name
+  // silently overwrites the hoisted declaration the moment this line runs. The result was "boot is not
+  // a function" at the bottom of the script -- the entire pools layer dead, the page left showing the
+  // design's mock. Nothing logged it usefully, because the throw is at top level.
+  var BOOTKEY="lumos.poolsboot", lxBootEl=null, bootPct=0, bootArmed=false;
   function bootShow(){
-    if(boot||bootArmed===false)return;
+    if(lxBootEl||bootArmed===false)return;
     if(document.documentElement.classList.contains("lx-ammready"))return;
     if(!netActive())return;
     var el=document.createElement("div"); el.className="lx-boot";
@@ -1139,7 +1143,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       +'<div class="lx-boot-bar"><div class="lx-boot-fill"></div></div>'
       +'<div class="lx-boot-sub">Starting</div></div>';
     (document.body||document.documentElement).appendChild(el);
-    boot=el;
+    lxBootEl=el;
     // A hard ceiling, deliberately generous. Whatever goes wrong upstream, the overlay comes off and the
     // page underneath is reachable -- it must never be able to seal the site shut.
     setTimeout(bootHide,30000);
@@ -1149,22 +1153,22 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // the bar only moves when real work has finished. The live scanned count carries the in-between
   // progress, because it is a true number and an eased bar would not be.
   function bootProgress(){
-    if(!boot)return;
+    if(!lxBootEl)return;
     var ph=NET.phase||"native";
     var pct=(ph==="done")?100:(ph==="overlay")?67:(ph==="usdc")?34:6;
     var n=+NET.warm||0;
     bootSet(pct, n>0 ? (num(n)+" pools scanned") : "Reading the network");
   }
   function bootSet(pct,txt){
-    if(!boot)return;
+    if(!lxBootEl)return;
     pct=Math.max(bootPct,Math.min(100,pct));            // a progress bar that goes backwards is worse than none
     bootPct=pct;
-    var f=boot.querySelector(".lx-boot-fill"); if(f)f.style.width=pct+"%";
-    var b=boot.querySelector(".lx-boot-sub");
+    var f=lxBootEl.querySelector(".lx-boot-fill"); if(f)f.style.width=pct+"%";
+    var b=lxBootEl.querySelector(".lx-boot-sub");
     if(b&&txt!=null)b.textContent=txt+"  \u00b7  "+Math.round(pct)+"%";
   }
   function bootHide(){
-    if(!boot)return; var el=boot; boot=null; bootArmed=false;
+    if(!lxBootEl)return; var el=lxBootEl; lxBootEl=null; bootArmed=false;
     try{ sessionStorage.setItem(BOOTKEY,"1"); }catch(_){}
     el.classList.add("lx-boot-out");
     setTimeout(function(){ if(el.parentNode)el.parentNode.removeChild(el); },320);
