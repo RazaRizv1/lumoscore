@@ -18,6 +18,11 @@ const B = String.fromCharCode(92);
 const STYLE = '<style id="lx-mobwallet-css">'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
   + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block{visibility:hidden}'
+  // N13: the identicon beside the address is a baked SVG -- a deterministic avatar OF THE MOCK ADDRESS,
+  // a grid of orange squares belonging to 0x0a72...3c9d. The address text next to it was already held
+  // back by this gate, but the picture of it was not, so the wrong avatar still flashed on every
+  // refresh. Same marker, same moment: it appears when there is a real Stellar address to draw it from.
+  + 'html:not(.lx-adrdone) .wallet-chip .av>*,html:not(.lx-adrdone) .chip .av>*{visibility:hidden!important}'
   + 'html:not(.lx-adrdone) .wallet-chip .text,html:not(.lx-adrdone) .chip .text{color:transparent!important;position:relative}'
   + 'html:not(.lx-adrdone) .wallet-chip .text::after,html:not(.lx-adrdone) .chip .text::after{content:"";position:absolute;left:0;top:20%;width:100%;height:60%;'
   + 'border-radius:6px;background:linear-gradient(90deg,rgba(128,128,140,.12) 25%,rgba(128,128,140,.2) 37%,rgba(128,128,140,.12) 63%);'

@@ -63,6 +63,21 @@ function blankChipAddr(h){
           .replace(/(<button class="lx-tw-copy"[^>]*?)data-copy="0x[0-9a-fA-F]{16,}"/g,'$1data-copy=""');
 }
 
+// #22, round two: take the baked initials OUT OF THE MARKUP.
+//
+// The CSS gate added last time cannot win this race and never could. STYLE and the script are appended
+// before </body>, so on the bridge page the rule lands at byte ~902,000 while the avatar markup sits at
+// ~43,800 -- the browser has painted "RR" long before it parses the rule that was supposed to hide it.
+// Moving the whole stylesheet into <head> would fix the ordering but reshuffles the cascade for every
+// other rule in it, which is not a trade worth making for one disc.
+//
+// So remove the content instead: with no text there is nothing wrong to paint, whatever order things
+// load in. The gate stays as a second line of defence for the empty circle itself. Only ever strips a
+// short run of plain text -- if the design ever puts real markup in there, this leaves it alone.
+function blankAvatar(h){
+  return h.replace(/(<div class="avatar-sm"[^>]*>)([^<]{0,12})(<\/div>)/g,'$1$3');
+}
+
 function scriptFor(net){
   return '<script id="lx-whead">(function(){'
   +'var NET="'+net+'";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}'
@@ -189,6 +204,7 @@ for(const chain of ['aptos','hedera','starknet','vechain','worldchain','stellar'
       if(h.indexOf('lx-topwallet')<0) continue;              // no header chip on this page
       h=h.replace(/<style id="lx-whead-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-whead">[\s\S]*?<\/script>/g,'');
       h=blankChipAddr(h);
+      h=blankAvatar(h);
       const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
       json[k]=h.slice(0,bi)+STYLE+scriptFor(chain)+h.slice(bi); n++;
     }
