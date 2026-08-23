@@ -5337,6 +5337,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
 
 
 
+
+
 <script id="lx-mobdex">
 (function(){
   if(window.__lxMobDex)return;window.__lxMobDex=1;
@@ -5468,13 +5470,18 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     try{ if(window.__lxDEXloadNative)window.__lxDEXloadNative();
          d=window.__lxDEXmints?window.__lxDEXmints():null; }catch(_){ d=null; }
     if(!d||!d.length)d=A.slice(0,3);              // roster not in yet: keep the placeholder rows (same count the card shows)
-    var sig="m|"+d.map(function(a){return a.code+":"+(a.trades==null?"":a.trades);}).join("|");
+    // created is in the signature too: it arrives after the first paint, and without it the card kept
+    // the rows it had built when the mint date was still unknown.
+    var sig="m|"+d.map(function(a){return a.code+":"+(a.trades==null?"":a.trades)+":"+(a.created||0);}).join("|");
     if(!stale(list,sig))return;list.setAttribute("data-lxmd",sig);
     list.innerHTML=d.map(function(a){
       return '<div class="mdx-mint-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
         +ico("mdx-mint-ic",a)
         +'<div><div class="mdx-mint-name">'+esc(a.code)+'</div>'
-        +'<div class="mdx-mint-sub">'+esc(dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</div></div>'
+        // #27: this printed "lumoscore.com" under every row -- the same word three times on a card
+        // already headed "New mints on LumosCore". Same line the desktop card now shows: how new it is.
+        +'<div class="mdx-mint-sub">'+esc((function(){ try{ return (window.__lxDEXmintAge&&window.__lxDEXmintAge(a))||""; }catch(_){ return ""; } })()
+            ||dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</div></div>'
         +'<div class="mdx-mint-right">'
           +'<div class="mdx-mint-fig"><span class="v">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</span>'
           +'<span class="k">'+esc(mcapOf(a)==null?"":("MC "+mcapOf(a)))+'</span></div>'
@@ -5850,7 +5857,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   var SX="https://api.stellar.expert/explorer/public/asset?search=lumoscore&limit=200";
   // v2: the saved roster is a list of WHICH assets exist, so a copy written before an asset was
   // registered hides it for six hours. Bumping the key retires those, once.
-  var NKEY="lumos.native.v2", NTTL=216e5;                       // 6h: identity changes slowly, prices do not
+  // v3, not v2: every warm v2 roster was written with t=0 on our own mints (see the created fix in the
+  // fetch below), and a warm cache returns before the fetch that would repair it -- so the mint dates
+  // would have stayed missing for six hours per visitor, and for ever for anyone who reloads inside that
+  // window. A new key retires those rosters once.
+  var NKEY="lumos.native.v3", NTTL=216e5;                       // 6h: identity changes slowly, prices do not
   function nativeCached(){
     try{ var c=JSON.parse(localStorage.getItem(NKEY)||"null");
       return (c&&c.ts&&(Date.now()-c.ts<NTTL)&&c.a&&c.a.length)?c.a:null; }catch(e){ return null; }
@@ -6008,6 +6019,16 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         // one creation point, one guard: this used to inline a second copy of the ticker-only check
         var a=nativeMake(code,iss,(x.tomlInfo&&x.tomlInfo.image)||"",x.domain||"",+x.created||0);
         if(a)add.push(a);
+        // #27: ...and when it is already held, keep what this record knows that the other path did not.
+        // addManifestNatives registers our own mints with created=0 (the manifest has no timestamp), and
+        // it runs first -- so nativeMake returned null here and the REAL mint time was thrown away on
+        // every load. Measured: GLTCH, JROLL and REKT all carried created=0 in the page while the index
+        // had 1752868441, 1751285635 and 1753389693 for them. That is also why "newest first" listed
+        // them in discovery order: every key it sorted on was zero.
+        else { var _e=byId[code+"|"+iss];
+          if(_e){ if(!(_e.created>0)&&+x.created>0)_e.created=+x.created;
+                  if(!_e.domain&&x.domain)_e.domain=x.domain;
+                  if(!_e.logo&&x.tomlInfo&&x.tomlInfo.image)_e.logo=x.tomlInfo.image; } }
       });
       addManifestNatives(add);
       touch();
@@ -6057,6 +6078,24 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       .sort(function(x,y){ return (y.created||0)-(x.created||0); })
       .slice(0,MINTS_SHOWN);
   }
+  // The rows the mints card is showing, keyed exactly as the row is stamped. Built from mintList() so
+  // the key on the element and the key in the map can never disagree.
+  function mintByKey(){ var m={}; mintList().forEach(function(a){ m[a.tkr||a.code]=a; }); return m; }
+  // How long ago it was minted. Empty string when we have no timestamp, so the caller can fall back
+  // rather than print "today" for an asset whose age is simply unknown.
+  function mintAge(a){
+    var t=+(a&&a.created)||0; if(!(t>0))return "";
+    var d=Math.floor((Date.now()/1000-t)/86400);
+    if(d<0)return "";
+    if(d===0)return "Minted today";
+    if(d===1)return "Minted yesterday";
+    if(d<30)return "Minted "+d+" days ago";
+    var mo=Math.floor(d/30);
+    if(mo<12)return "Minted "+mo+(mo===1?" month":" months")+" ago";
+    var y=Math.floor(d/365);
+    return "Minted "+y+(y===1?" year":" years")+" ago";
+  }
+  window.__lxDEXmintAge=mintAge;                              // the phone's card renders its own rows
   var MINTS=["LUMOS","AQUA","EURC","ARST","SHX"];             // "new mints" subset (LUMOS = the project token, tagged NEW)
 
   // seed XLM/USD from a shared localStorage cache so a CoinGecko 429 never blanks the USD values (falls back
@@ -6115,6 +6154,22 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   function usdSmall(x){ x=+x||0; if(x>=1)return "$"+x.toLocaleString("en-US",{maximumFractionDigits:2}); if(x>=0.01)return "$"+x.toFixed(4); if(x>0)return "$"+smallNum(x,4); return "$0"; }
   function abbrUsd(n){ n=+n||0; var a=Math.abs(n); if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B"; if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M"; if(a>=1e3)return "$"+(n/1e3).toFixed(1)+"K"; if(a>=1)return "$"+n.toFixed(2); return usdSmall(n); }
   function fmtAmt(n){ n=+n||0; if(n>=1e6)return (n/1e6).toFixed(2)+"M"; if(n>=1e3)return (n/1e3).toFixed(1)+"K"; return n.toFixed(0); }
+  // #1: this is the function the mint rows have been calling all along, and it did not exist.
+  //
+  // One ReferenceError on the FIRST row aborted the entire forEach, and renderMints is called inside a
+  // try/catch that swallows it -- so the card showed row one with whatever had been painted before the
+  // throwing line (price, market cap) and every row below it completely blank, sub-line included. It
+  // read as missing data; the data was on the objects the whole time.
+  //
+  // Not fmtAmt: these volumes are fractions of a lumen (0.0998 XLM on a real trade), and its toFixed(0)
+  // would report that as "0 XLM".
+  function abbrNum(n){ n=+n||0; var a=Math.abs(n);
+    if(a>=1e9)return (n/1e9).toFixed(2)+"B";
+    if(a>=1e6)return (n/1e6).toFixed(2)+"M";
+    if(a>=1e3)return (n/1e3).toFixed(1)+"K";
+    if(a>=1)return n.toFixed(2);
+    return n.toFixed(4);
+  }
   function fmtPrice(n){ n=+n||0; if(n>=1000)return n.toFixed(2); if(n>=1)return n.toFixed(4); if(n>=0.01)return n.toFixed(5); if(n>=0.0001)return n.toFixed(7); if(n>0)return smallNum(n,4); return "0"; }
   function shortG(a){ a=String(a||""); return a.length>12?a.slice(0,4)+"\u2026"+a.slice(-4):a; }
   // circular initial-avatar as an SVG data-URI (fallback logo for arbitrary Stellar tokens)
@@ -6444,12 +6499,23 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         +'</div>'; }).join("");
       paintIcons(list);
       qa(".dex-mint-row",list).forEach(function(row){ row.addEventListener("click",function(){
-        var a=byCode[row.getAttribute("data-tkr")]; if(a)navTo(a); }); });
+        var a=mintByKey()[row.getAttribute("data-tkr")]; if(a)navTo(a); }); });
       list.classList.add("lxd");
     }
+    // #1: paint from the objects mintList() just handed us, NOT from a second byCode lookup.
+    //
+    // Two of the three rows resolved to nothing there and were skipped whole -- no price, no market cap,
+    // no volume, no trade count, and not even the sub-line -- while the objects themselves held all of
+    // it (JROLL: px 3e-7, vol 0.727, 103 trades). The row is keyed by a.tkr, which nativeMake sets to a
+    // COLLISION key when the code is already taken, so the key on the row and the key in the map are not
+    // reliably the same string. Nothing needs to be looked up: rows IS the answer.
+    var _bk=mintByKey();
     qa(".dex-mint-row[data-tkr]",list).forEach(function(row){
-      var a=byCode[row.getAttribute("data-tkr")]; if(!a)return; paintIcons(row);
-      setTxt(row.querySelector(".dex-mint-sub"),shortG(a.issuer));
+      var a=_bk[row.getAttribute("data-tkr")]; if(!a)return; paintIcons(row);
+      // #27: the issuer address said nothing a reader could use, and the phone printed "lumoscore.com"
+      // on every row -- the same word under each of three tokens on a card headed "New mints on
+      // LumosCore". How new is the one thing this card is claiming, so that is what it says now.
+      setTxt(row.querySelector(".dex-mint-sub"),mintAge(a)||shortG(a.issuer));
       if(!window.__lxDEXloaded)return;
       // price in XLM with the dollar underneath -- the asset trades in XLM, the reader thinks in dollars
       var pxEl=row.querySelector('[data-k="px"]');
