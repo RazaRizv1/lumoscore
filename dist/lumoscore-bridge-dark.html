@@ -1770,6 +1770,29 @@ html body .pool-header-row .ph-icons>*{
    through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
    Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
 .mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-searchassets-css">
+.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
+.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
+.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
+.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
+.sp-row--asset.lx-searow .sp-ico img{display:block}
+.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
+/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
+.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
+  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
+.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
+  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
+.lx-rechead .lx-recclear:hover{color:var(--accent)}
+.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
+.lx-seavfd svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 </style><style id="lx-bhiw-css">
 .lx-bhiw{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
 .lx-bhiw[hidden]{display:none}
@@ -1808,29 +1831,6 @@ html body .pool-header-row .ph-icons>*{
 .lx-bhiw{padding:12px;align-items:flex-start}
 .lx-bhiw-body{padding:16px 16px 20px}
 }
-</style><style id="lx-searchassets-css">
-.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
-.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
-.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
-.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
-.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
-.sp-row--asset.lx-searow .sp-ico img{display:block}
-.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
-/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
-.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
-  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
-.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
-  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
-.lx-rechead .lx-recclear:hover{color:var(--accent)}
-.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
-.lx-seavfd svg{width:9px;height:9px;display:block}
-/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
-   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
-.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
-  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
-  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
-  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
-.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
 </style></head>
 <body>
 <div class="app">
@@ -5436,65 +5436,6 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
-})();</script><script id="lx-bhiw">(function(){
-  if(window.__lxBhiw)return; window.__lxBhiw=1;
-  var STEPS=[["You choose where it goes","Your connected network is the source. Pick the destination chain and the amount of USDC to move."],["You sign once, on the source chain","That signature burns your USDC. It is genuinely destroyed rather than parked in a contract, which is what lets the same amount be issued as real USDC on the other side."],["Circle attests to the burn","Circle observes the burn and issues a signed attestation for it. This is Circle’s step, not LumosCore’s — nobody here can speed it up, and it has to finish before anything can be minted."],["You claim it on the destination","With the attestation in hand, a second signature mints native USDC to your address on the destination chain. Until you take that step the funds are attested but not yet issued — they are not lost, and the claim can be made later."]];
-  var el=null, trigger=null;
-  function build(){
-    if(el)return el;
-    el=document.createElement("div");
-    el.className="lx-bhiw"; el.setAttribute("hidden","");
-    el.setAttribute("role","dialog"); el.setAttribute("aria-modal","true");
-    el.setAttribute("aria-label","How the cross-chain bridge works");
-    var steps="";
-    for(var i=0;i<STEPS.length;i++){
-      steps+='<li data-n="'+(i+1)+'"><h4>'+STEPS[i][0]+'</h4><p>'+STEPS[i][1]+'</p></li>';
-    }
-    el.innerHTML='<div class="lx-bhiw-bd" data-lxbhiw-close></div>'
-      +'<div class="lx-bhiw-card">'
-      +'<div class="lx-bhiw-head"><h3>How the bridge works</h3>'
-      +'<button class="lx-bhiw-x" type="button" aria-label="Close" data-lxbhiw-close><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
-      +'<div class="lx-bhiw-body">'
-      +'<p class="lx-bhiw-lede">This is not a wrapped-token bridge. It uses <b>Circle CCTP</b>, Circle\u2019s '
-      +'own mechanism for moving USDC between chains: your USDC is <b>burned</b> on the chain it leaves and '
-      +'<b>native USDC is minted</b> on the chain it arrives on. What lands is genuine Circle-issued USDC, '
-      +'not a synthetic claim on a pool somewhere.</p>'
-      +'<ol class="lx-bhiw-steps">'+steps+'</ol>'
-      +'<div class="lx-bhiw-note"><b>Two signatures, not one.</b> One to burn and one to claim. That is '
-      +'inherent to CCTP rather than a choice made here \u2014 the second cannot be prepared until Circle '
-      +'has attested to the first.</div>'
-      +'<div class="lx-bhiw-chains"><b>Where it goes:</b> USDC can move between Stellar and Ethereum, Base, '
-      +'Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain.</div>'
-      +'</div></div>';
-    document.body.appendChild(el);
-    return el;
-  }
-  function open(){
-    build(); el.removeAttribute("hidden");
-    try{ el.querySelector(".lx-bhiw-card").scrollTop=0; }catch(_){}
-    try{ el.__lxOvf=document.body.style.overflow; document.body.style.overflow="hidden"; }catch(_){}
-    try{ el.querySelector(".lx-bhiw-x").focus(); }catch(_){}
-  }
-  function close(){
-    if(!el)return;
-    el.setAttribute("hidden","");
-    try{ document.body.style.overflow=el.__lxOvf||""; }catch(_){}
-    try{ if(trigger&&trigger.focus)trigger.focus(); }catch(_){}
-  }
-  // Delegated, and capturing: the button lives inside a step card the page re-renders, so a listener
-  // bound to the node itself would be orphaned the first time that happened.
-  window.addEventListener("click",function(e){
-    var t=e.target; if(!t||!t.closest)return;
-    if(t.closest("[data-lxbhiw-close]")){ e.preventDefault(); e.stopImmediatePropagation(); close(); return; }
-    var hit=t.closest("#mdxHiwBtn,#brHiwBtn");
-    if(!hit){
-      // the desktop build labels the same control differently; match on what it SAYS as a fallback
-      var b=t.closest("button,a");
-      if(b&&/how it works/i.test((b.textContent||""))&&b.closest(".br-step,.mdx-hero-ctas,.crumb-bar,header,main"))hit=b;
-    }
-    if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
-  },true);
-  document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });
 })();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
@@ -5971,5 +5912,64 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
+})();</script><script id="lx-bhiw">(function(){
+  if(window.__lxBhiw)return; window.__lxBhiw=1;
+  var STEPS=[["You choose where it goes","Your connected network is the source. Pick the destination chain and the amount of USDC to move."],["You sign once, on the source chain","That signature burns your USDC. It is genuinely destroyed rather than parked in a contract, which is what lets the same amount be issued as real USDC on the other side."],["Circle attests to the burn","Circle observes the burn and issues a signed attestation for it. This is Circle’s step, not LumosCore’s — nobody here can speed it up, and it has to finish before anything can be minted."],["You claim it on the destination","With the attestation in hand, a second signature mints native USDC to your address on the destination chain. Until you take that step the funds are attested but not yet issued — they are not lost, and the claim can be made later."]];
+  var el=null, trigger=null;
+  function build(){
+    if(el)return el;
+    el=document.createElement("div");
+    el.className="lx-bhiw"; el.setAttribute("hidden","");
+    el.setAttribute("role","dialog"); el.setAttribute("aria-modal","true");
+    el.setAttribute("aria-label","How the cross-chain bridge works");
+    var steps="";
+    for(var i=0;i<STEPS.length;i++){
+      steps+='<li data-n="'+(i+1)+'"><h4>'+STEPS[i][0]+'</h4><p>'+STEPS[i][1]+'</p></li>';
+    }
+    el.innerHTML='<div class="lx-bhiw-bd" data-lxbhiw-close></div>'
+      +'<div class="lx-bhiw-card">'
+      +'<div class="lx-bhiw-head"><h3>How the bridge works</h3>'
+      +'<button class="lx-bhiw-x" type="button" aria-label="Close" data-lxbhiw-close><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>'
+      +'<div class="lx-bhiw-body">'
+      +'<p class="lx-bhiw-lede">This is not a wrapped-token bridge. It uses <b>Circle CCTP</b>, Circle\u2019s '
+      +'own mechanism for moving USDC between chains: your USDC is <b>burned</b> on the chain it leaves and '
+      +'<b>native USDC is minted</b> on the chain it arrives on. What lands is genuine Circle-issued USDC, '
+      +'not a synthetic claim on a pool somewhere.</p>'
+      +'<ol class="lx-bhiw-steps">'+steps+'</ol>'
+      +'<div class="lx-bhiw-note"><b>Two signatures, not one.</b> One to burn and one to claim. That is '
+      +'inherent to CCTP rather than a choice made here \u2014 the second cannot be prepared until Circle '
+      +'has attested to the first.</div>'
+      +'<div class="lx-bhiw-chains"><b>Where it goes:</b> USDC can move between Stellar and Ethereum, Base, '
+      +'Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain.</div>'
+      +'</div></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+  function open(){
+    build(); el.removeAttribute("hidden");
+    try{ el.querySelector(".lx-bhiw-card").scrollTop=0; }catch(_){}
+    try{ el.__lxOvf=document.body.style.overflow; document.body.style.overflow="hidden"; }catch(_){}
+    try{ el.querySelector(".lx-bhiw-x").focus(); }catch(_){}
+  }
+  function close(){
+    if(!el)return;
+    el.setAttribute("hidden","");
+    try{ document.body.style.overflow=el.__lxOvf||""; }catch(_){}
+    try{ if(trigger&&trigger.focus)trigger.focus(); }catch(_){}
+  }
+  // Delegated, and capturing: the button lives inside a step card the page re-renders, so a listener
+  // bound to the node itself would be orphaned the first time that happened.
+  window.addEventListener("click",function(e){
+    var t=e.target; if(!t||!t.closest)return;
+    if(t.closest("[data-lxbhiw-close]")){ e.preventDefault(); e.stopImmediatePropagation(); close(); return; }
+    var hit=t.closest("#mdxHiwBtn,#brHiwBtn");
+    if(!hit){
+      // the desktop build labels the same control differently; match on what it SAYS as a fallback
+      var b=t.closest("button,a");
+      if(b&&/how it works/i.test((b.textContent||""))&&b.closest(".br-step,.mdx-hero-ctas,.crumb-bar,header,main"))hit=b;
+    }
+    if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
+  },true);
+  document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>

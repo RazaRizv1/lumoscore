@@ -152,7 +152,11 @@ for (const dev of ['desktop', 'mobile']) {
     p = p.replace(/<style id="lx-bhiw-css">[\s\S]*?<\/style>/, '')
          .replace(/<script id="lx-bhiw">[\s\S]*?<\/script>/, '');
     // the bridge page only — identified by its own step rail, not by a filename
-    if (p.indexOf('br-steps') >= 0 || p.indexOf('mdxHiwBtn') >= 0) {
+    // #1: br-steps ONLY. mdxHiwBtn is not a bridge marker -- the mobile TRADE page carries the same id
+    // for its own How-it-works button, so this injected the CCTP explainer there and it won over the
+    // Trade page own .lx-hiw dialog. Someone opening How it works on Trade was told how the bridge
+    // burns and mints USDC. The step rail is the thing only the bridge has.
+    if (p.indexOf('br-steps') >= 0) {
       if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
       const bi = p.lastIndexOf('</body>');
       if (bi >= 0) { p = p.slice(0, bi) + SCRIPT + p.slice(bi); pages++; }

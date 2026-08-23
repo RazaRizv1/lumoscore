@@ -19,6 +19,8 @@ const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-dex-mobile.html'];
 
 const STYLE = '<style id="lx-mobdex-css">'
++ '.mdx-mk-row{position:relative;padding-left:26px}'
++ '.mdx-mk-rank{position:absolute;left:2px;top:14px;font-family:\'JetBrains Mono\',monospace;font-size:10px;font-weight:600;color:var(--text-soft,#6f6f79);letter-spacing:-.02em}'
 // #27: the mint sub-line was the only small-print line on this page NOT set in the mono face -- its
 // sibling .mdx-mover-sub, directly below it and doing the same job, already is. Matched to that rule
 // exactly rather than to some new size, so the two cards line up.
@@ -431,8 +433,12 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       +'<span class="lxmd-pg-info">Page '+mkPage+' of '+pages+'</span>'
       +'<button class="lxmd-pg" data-pg="'+(mkPage+1)+'"'+(mkPage>=pages?" disabled":"")+'>Next</button>'
       +'</div>');
-    list.innerHTML=d.map(function(a){var _cu=cu(a),up=(_cu||0)>=0;
+    // #25: rank the curated list. The order is meaningful -- it is the sort the reader picked -- but
+    // nothing on the row said so, and a list that looks unordered invites the question of why USDC
+    // is first. The number is the row's position in the list as displayed, so it follows the sort.
+    list.innerHTML=d.map(function(a,_i){var _cu=cu(a),up=(_cu||0)>=0;
       return '<div class="mdx-mk-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
+        +'<span class="mdx-mk-rank">#'+(_i+1)+'</span>'
         +'<div class="mdx-mk-top">'+ico("mdx-mk-ic",a)
         +'<div class="mdx-mk-meta"><div class="mdx-mk-name-row">'
         +'<span class="mdx-mk-name">'+esc(a.code)+vtick(a)+'</span>'
