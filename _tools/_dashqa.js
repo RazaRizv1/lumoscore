@@ -34,20 +34,33 @@ const SCRIPT = '<script id="lx-dashqa">(function(){'
   + 'function go(u){try{location.href=u;}catch(_){}}'
   // Title text, not position: the tiles are reordered by the design between builds, and an index would
   // silently start routing the wrong card.
+  // Some tiles open a dialog that is already on the page rather than going anywhere. Opening it here
+  // matters for the same reason the routing does: on the phone a plain tap on these cards is claimed by
+  // the label-based nav bridge and opens the slide menu instead. #2 was reported as "You receive does
+  // not calculate" -- it always did; the modal simply was not opening from this card on the phone.
+  + 'function modalFor(card){'
+  + 'var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();'
+  + 'if(t.indexOf("custom swap")===0)return document.querySelector("#modalSwap");'
+  + 'if(t==="add liquidity")return document.querySelector("#createPoolModal");'
+  + 'return null;}'
+  + 'function openModal(m){try{m.classList.add("open");if(getComputedStyle(m).display==="none")m.style.display="flex";return true;}catch(_){return false;}}'
   + 'function target(card){'
   + 'var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();'
   + 'if(t==="my wallet")return "/wallet";'
   // Only when there is genuinely no modal to open -- so this can never pre-empt the desktop popup.
   + 'if(t==="add liquidity"&&!document.querySelector("#createPoolModal"))return "/pools/stellar";'
+  + 'if(t.indexOf("custom swap")===0&&!document.querySelector("#modalSwap"))return "/trade/stellar";'
   + 'return "";}'
   + 'document.addEventListener("click",function(e){'
   + 'var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;'
+  + 'var m=modalFor(c); if(m&&openModal(m)){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return;}'
   + 'var u=target(c); if(!u)return;'
   + 'e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();'
   + 'go(u);},true);'
   // A handset can withhold the synthesised click, the way it does elsewhere on these pages.
   + 'document.addEventListener("touchend",function(e){'
   + 'var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;'
+  + 'var m=modalFor(c); if(m&&openModal(m)){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return;}'
   + 'var u=target(c); if(!u)return;'
   + 'e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();'
   + 'go(u);},true);'
