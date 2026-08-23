@@ -8806,6 +8806,16 @@ bar.innerHTML='<div class="asset-tabs lx-wcgroup">'
       if(!sel[0]||!sel[1]){ wMsg(cta,"Select both assets.",true); return; }
       if(sel[0].code===sel[1].code&&sel[0].issuer===sel[1].issuer){ wMsg(cta,"Choose two different assets.",true); return; }
       var a0=parseFloat(amts[0]&&amts[0].value)||0,a1=parseFloat(amts[1]&&amts[1].value)||0; if(!(a0>0)||!(a1>0)){ wMsg(cta,"Enter both amounts.",true); return; }
+      // #28: refuse to BUILD a transaction that cannot succeed.
+      //
+      // Both balance guards below compare against sel[n].bal, and when a selection did not come through
+      // selectItem that property is undefined -- so "a0 > undefined" is false, both guards pass, and the
+      // page builds a deposit against an asset the wallet may not even trust. That is the op_no_trust
+      // that arrives after signing, with "Balance: -" sitting under both fields the whole time. The
+      // undefined slips through because a comparison against it is false rather than an error, which is
+      // exactly the sort of guard that looks like it is working.
+      function cpOk(x){ return !!(x && x.code && (x.native || /^G[A-Z2-7]{55}$/.test(String(x.issuer||""))) && isFinite(+x.bal)); }
+      if(!cpOk(sel[0])||!cpOk(sel[1])){ wMsg(cta,"Pick both assets from the list.",true); return; }
       if(a0>sel[0].bal+1e-7){ wMsg(cta,"Not enough "+sel[0].code+" \u00b7 balance "+fmtIn(sel[0].bal),true); return; }
       if(a1>sel[1].bal+1e-7){ wMsg(cta,"Not enough "+sel[1].code+" \u00b7 balance "+fmtIn(sel[1].bal),true); return; }
       wRun(cta,addr,function(S,a){ function mk(x){ return x.native?S.Asset.native():new S.Asset(x.code,x.issuer); }
