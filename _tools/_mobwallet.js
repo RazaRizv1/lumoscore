@@ -17,7 +17,7 @@ const B = String.fromCharCode(92);
 
 const STYLE = '<style id="lx-mobwallet-css">'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
-  + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block{visibility:hidden}'
+  + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block,body:not(.lxmw-ready) #assetList{visibility:hidden}'
   // N13: the identicon beside the address is a baked SVG -- a deterministic avatar OF THE MOCK ADDRESS,
   // a grid of orange squares belonging to 0x0a72...3c9d. The address text next to it was already held
   // back by this gate, but the picture of it was not, so the wrong avatar still flashed on every

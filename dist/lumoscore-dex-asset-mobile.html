@@ -2862,7 +2862,7 @@ margin-top:16px;border-top:1px solid var(--border)}
             </button>
           </div>
           <div class="timeframes">
-            <button class="active" data-period="1D">1D</button>
+            <button data-period="1D">1D</button>
             <button data-period="1W">1W</button>
             <button data-period="1M">1M</button>
             <button data-period="1Y">1Y</button>
@@ -6901,7 +6901,11 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     }
     return out;
   }
-  function drawChart(pts){ pts=pts||chartPts; if(!pts)return; if(chartMode==="candle"){ try{ drawCandles(pts); return; }catch(_){} } drawLine(pts); }
+  function drawChart(pts){ pts=pts||chartPts; if(!pts)return;
+    // #23: whichever range actually drew is the one to light, and EVERY path ends here -- the
+    // aggregations path, the trades fallback and a user click alike. The step-out case has already
+    // called tfActive with the wider range it chose, and the ready flag stops this overwriting it.
+    if(!document.documentElement.classList.contains("lxda-tfready"))tfActive(chartTF); if(chartMode==="candle"){ try{ drawCandles(pts); return; }catch(_){} } drawLine(pts); }
   // ---- candlesticks (real OHLC from the trade aggregations) ----
   function drawCandles(pts){
     var pc=q("#dxaChart,#mdxaChart"); if(!pc||!pts||pts.length<2)return;
@@ -7076,15 +7080,37 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
       if(!_w&&src.length>=2){ _w=src; _wtf="1Y"; }
       if(!_w){ chartEmpty(src.length?1:0); return; }
       use=_w;
-      try{ qa("[data-period],[data-tf],.timeframes button").forEach(function(b){
-        var v=b.getAttribute("data-period")||b.getAttribute("data-tf")||(b.textContent||"").trim();
-        if(v===_wtf)b.classList.add("active"); else if(_ORD.indexOf(v)>=0)b.classList.remove("active"); }); }catch(_){}
+      tfActive(_wtf);
     }
+    // the requested window drew fine, so it is the one to light
+    if(!document.documentElement.classList.contains("lxda-tfready"))tfActive(tf);
     var pts=use.slice().sort(function(a,b){ return (a.ts||0)-(b.ts||0); }).map(function(r){
       var v=r.px*xlmUsd; return {t:r.ts||0, v:v, vol:(r.xlm||0)*xlmUsd, o:v, h:v, l:v, c:v}; });
     drawChart(pts);
   }
+  // #23: the strip ships with 1D highlighted, but 1D is only the window we ASK for -- when an asset has
+  // not traded inside it we step out to the first range that has a line, and the highlight jumped from
+  // 1D to 1W a second after load. That reads as the page changing its mind.
+  //
+  // So nothing is highlighted until we know which window is actually being drawn. The build strips the
+  // baked active class, and this sets it once, for whichever range won -- one state change instead of a
+  // wrong one followed by a correction.
+  function tfActive(tf){
+    try{
+      var ORD=["1D","1W","1M","1Y"];
+      qa("[data-period],[data-tf],.timeframes button").forEach(function(b){
+        var v=b.getAttribute("data-period")||b.getAttribute("data-tf")||(b.textContent||"").trim();
+        if(ORD.indexOf(v)<0)return;
+        b.classList.toggle("active", v===tf);
+      });
+      document.documentElement.classList.add("lxda-tfready");
+    }catch(_){}
+  }
   function chartEmpty(hasOlder){
+    // An asset with nothing to draw never reaches drawChart, and the strip would sit with no range
+    // highlighted at all. Light the one that was asked for: there is no data in any window, so the
+    // request is the honest answer.
+    if(!document.documentElement.classList.contains("lxda-tfready"))tfActive(chartTF);
     try{ var host=q("#dxaChart,#mdxaChart"); if(!host)return;
       var d=host.querySelector(".lx-dxa-nochart");
       if(!d){ d=document.createElement("div"); d.className="lx-dxa-nochart"; host.appendChild(d); }
