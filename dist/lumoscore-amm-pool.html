@@ -1543,6 +1543,26 @@ html body .pool-header-row .ph-icons>*{
 .lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
 @keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
+/* #24: the cold-start overlay.
+   The ranking is built by an endpoint that walks the whole network in resumable steps and answers
+   {warming, scanned, phase} until it is done -- on a cold cache that is roughly twenty-five seconds.
+   For that whole time the page sat masked and empty, which reads as broken rather than as working.
+   Reduced motion drops the pulse and the fades; it does NOT gate the dismissal, which is a class and a
+   removal, so the overlay can never be left on screen by a motion preference. */
+.lx-boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);
+  opacity:1;transition:opacity .28s ease}
+.lx-boot.lx-boot-out{opacity:0;pointer-events:none}
+.lx-boot-in{display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;text-align:center}
+.lx-boot-mark{width:60px;height:60px;background-size:contain;background-repeat:no-repeat;
+  background-position:center;animation:lx-boot-pulse 1.6s ease-in-out infinite}
+.lx-boot-ttl{font-family:'Hanken Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--text,#0e0e10)}
+.lx-boot-bar{width:216px;height:4px;border-radius:99px;background:var(--border,#ececef);overflow:hidden}
+.lx-boot-fill{height:100%;width:0;background:var(--accent,#ea6a2c);border-radius:99px;transition:width .45s ease}
+.lx-boot-sub{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;
+  color:var(--text-soft,#6f6f79);font-variant-numeric:tabular-nums}
+@keyframes lx-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.6}}
+@media (prefers-reduced-motion:reduce){.lx-boot-mark{animation:none}
+  .lx-boot,.lx-boot-fill{transition:none}}
 /* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
    written paintTables filled both and revealed after. The network list changed that: the rows now arrive
    from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
@@ -5727,8 +5747,62 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // pools is THIS wallet in), it is already correct, and routing it through a network ranking would only
   // put it at risk.
   var NETPP=25;
-  var NET={page:1,q:"",rows:null,total:0,pages:1,busy:0,err:"",ranked:0,unpriceable:0,seq:0,warm:0};
+  var NET={page:1,q:"",rows:null,total:0,pages:1,busy:0,err:"",ranked:0,unpriceable:0,seq:0,warm:0,phase:""};
   function netActive(){ return !!(q("#poolsBody")||q("#panelAll")); }
+  // #24: cold-start overlay for the pools list. Shown once per browser session, and only on the list --
+  // a pool's own page loads from its id and does not wait on the ranking.
+  var BOOTKEY="lumos.poolsboot", boot=null, bootPct=0, bootArmed=false;
+  function bootShow(){
+    if(boot||bootArmed===false)return;
+    if(document.documentElement.classList.contains("lx-ammready"))return;
+    if(!netActive())return;
+    var el=document.createElement("div"); el.className="lx-boot";
+    // the site's own mark, read off the sidebar rather than copied into this file as a second base64 blob
+    var mk=""; try{ var lm=q(".logo-mark"); if(lm)mk=getComputedStyle(lm).backgroundImage; }catch(_){}
+    el.innerHTML='<div class="lx-boot-in">'
+      +'<div class="lx-boot-mark" data-logo="" data-logoed="1"'+((mk&&mk!=="none")?(' style="background-image:'+mk+'"'):'')+'></div>'
+      +'<div class="lx-boot-ttl">Synchronising Stellar pools</div>'
+      +'<div class="lx-boot-bar"><div class="lx-boot-fill"></div></div>'
+      +'<div class="lx-boot-sub">Starting</div></div>';
+    (document.body||document.documentElement).appendChild(el);
+    boot=el;
+    // A hard ceiling, deliberately generous. Whatever goes wrong upstream, the overlay comes off and the
+    // page underneath is reachable -- it must never be able to seal the site shut.
+    setTimeout(bootHide,30000);
+  }
+  // The percentage is the endpoint's OWN phases, not a timer: it walks native pairs, then USDC pairs,
+  // then the overlay pass, and names the one it is on. Each completed phase is a third of the work, so
+  // the bar only moves when real work has finished. The live scanned count carries the in-between
+  // progress, because it is a true number and an eased bar would not be.
+  function bootProgress(){
+    if(!boot)return;
+    var ph=NET.phase||"native";
+    var pct=(ph==="done")?100:(ph==="overlay")?67:(ph==="usdc")?34:6;
+    var n=+NET.warm||0;
+    bootSet(pct, n>0 ? (num(n)+" pools scanned") : "Reading the network");
+  }
+  function bootSet(pct,txt){
+    if(!boot)return;
+    pct=Math.max(bootPct,Math.min(100,pct));            // a progress bar that goes backwards is worse than none
+    bootPct=pct;
+    var f=boot.querySelector(".lx-boot-fill"); if(f)f.style.width=pct+"%";
+    var b=boot.querySelector(".lx-boot-sub");
+    if(b&&txt!=null)b.textContent=txt+"  ·  "+Math.round(pct)+"%";
+  }
+  function bootHide(){
+    if(!boot)return; var el=boot; boot=null; bootArmed=false;
+    try{ sessionStorage.setItem(BOOTKEY,"1"); }catch(_){}
+    el.classList.add("lx-boot-out");
+    setTimeout(function(){ if(el.parentNode)el.parentNode.removeChild(el); },320);
+  }
+  // Armed, not shown, on a short delay. A warm ranking paints in well under a second, and an overlay
+  // that appears and leaves again in that time is a flash -- the very thing the masks on this page
+  // exist to prevent. So it only appears if the list is still not ready after 400ms.
+  (function(){
+    try{ if(sessionStorage.getItem(BOOTKEY))return; }catch(_){}
+    bootArmed=true;
+    setTimeout(function(){ try{ bootShow(); bootProgress(); }catch(_){} },400);
+  })();
   function netFetch(){
     if(NET.busy)return; NET.busy=1;
     var mySeq=++NET.seq;                       // a later request always wins; see the flapping note below
@@ -5741,12 +5815,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       // Until it is complete it reports warming rather than serving half a ranking -- half an
       // enumeration sorted by TVL is not a shorter list, it is one with real pools missing from the
       // middle. Show progress and come back for it.
-      if(d.warming){ NET.warm=+d.scanned||0; NET.busy=0; paintNet();
+      if(d.warming){ NET.warm=+d.scanned||0; NET.phase=d.phase||"native"; try{ bootProgress(); }catch(_){} NET.busy=0; paintNet();
         setTimeout(function(){ if(mySeq===NET.seq)netFetch(); },1500); return; }
       NET.warm=0;
       NET.rows=d.rows||[]; NET.total=+d.total||0; NET.pages=Math.max(1,+d.pages||1);
       NET.page=Math.max(1,+d.page||1); NET.ranked=+d.ranked||0; NET.unpriceable=+d.unpriceable||0;
-      NET.err=""; NET.busy=0; paintNet();
+      NET.err=""; NET.busy=0; NET.phase="done"; try{ bootProgress(); }catch(_){} paintNet();
     }).catch(function(e){
       if(mySeq!==NET.seq){ NET.busy=0; return; }
       // Keep whatever is already on screen. The pools SEARCH bug was exactly this: an error branch that
@@ -5925,6 +5999,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     try{ deadSort(); netRelabelVol(); }catch(_){}
     // The list is on screen now (rows, warming notice, or error) -- safe to lift the mask.
     try{ reveal(); }catch(_){}
+    // #24: and an exit for the overlay that does not depend on reveal's own guard. Real rows exist, so
+    // there is nothing left for it to cover. Three independent ways off the screen -- this, reveal, and
+    // the hard cap -- because a full-screen overlay that cannot be dismissed is the worst thing this
+    // could turn into.
+    try{ if(NET.rows&&NET.rows.length){ bootSet(100,"Ready"); bootHide(); } }catch(_){}
   }
   function netGo(p){
     p=Math.max(1,Math.min(NET.pages,p));
@@ -6022,6 +6101,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   function reveal(){
     if(typeof netActive==="function"&&netActive()&&!NET.rows&&!NET.err&&!NET.warm)return;
     document.documentElement.classList.add("lx-ammready");
+    // #24: the list is on screen, so the overlay has nothing left to cover.
+    try{ bootSet(100,"Ready"); bootHide(); }catch(_){}
   }
   // poolFromRec normalises Horizon's reserves into a0/a1 ({code,issuer,native}) — there is no
   // .reserves on the record by the time a row is built.
