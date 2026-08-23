@@ -206,7 +206,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'function initials(code){return String(code||"?").replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase();}'
 + 'function hueOf(code){var h=0,c=String(code||"");for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;return h;}'
 
-+ 'function activeTab(){var b=qa(".asset-tabs button");for(var i=0;i<b.length;i++)if(b[i].classList.contains("active"))return i;return 0;}'
++ 'function activeTab(){var b=qa(".asset-tabs:not(.lx-wcgroup) button");for(var i=0;i<b.length;i++)if(b[i].classList.contains("active"))return i;return 0;}'
 
 // ---- header: address + portfolio -----------------------------------------------------------------
 // AUDIT (funds): the design baked an Ethereum address into both the visible chip and its copy button.
@@ -326,7 +326,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'return \'<div class="lxmw-ico\'+(u?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(u?(\'background-image:url(\\\'\'+esc(u)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\';}'
 + 'function fixPools(){var list=q("#assetList");if(!list||activeTab()!==1)return;'
 + 'var lps=window.__lxLps;if(!lps)return;'
-+ 'var cnts=qa(".asset-tabs button .cnt");if(cnts[1])cnts[1].textContent=lps.length;'
++ 'var cnts=qa(".asset-tabs:not(.lx-wcgroup) button .cnt");if(cnts[1])cnts[1].textContent=lps.length;'
 + 'if(!lps.length){if(list.getAttribute("data-lxmw")!=="p|0"){list.setAttribute("data-lxmw","p|0");'
 + 'list.innerHTML=\'<div class="lxmw-empty">No liquidity positions</div>\';}return;}'
 + 'var ready=lps.every(function(b){return POOLS[b.liquidity_pool_id]!==undefined;});'
@@ -431,7 +431,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'var id=b.getAttribute("data-lpcopy")||"";var ok=lpCopy(id);'
 + 'try{if(window.lxToast)window.lxToast(ok?"Pool address copied":"Could not copy");}catch(_){}'
 + '},true);}'
-+ 'function wireTabs(){var b=qa(".asset-tabs button");if(!b.length||window.__lxmwTabs)return;window.__lxmwTabs=1;'
++ 'function wireTabs(){var b=qa(".asset-tabs:not(.lx-wcgroup) button");if(!b.length||window.__lxmwTabs)return;window.__lxmwTabs=1;'
 + 'b.forEach(function(btn){btn.addEventListener("click",function(){setTimeout(pass,30);setTimeout(pass,260);});});}'
 
 // ---- recent activity --------------------------------------------------------------------------------

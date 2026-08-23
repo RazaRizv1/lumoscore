@@ -211,11 +211,29 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
     }).join("");
   }
 
+  // The Open orders tab was stamped with whatever count existed when the bar was built -- before the
+  // offers had loaded -- and nothing moved it afterwards, so it read 3 beside a heading saying 10
+  // active. The offers list is published by _walletdata.js; this follows it. Bounded poll, because the
+  // tab can be built before that fetch returns.
+  function syncOrders(){
+    try{ var offs=window.__lxOffers; if(!offs||offs.length==null)return;
+      var tb=document.querySelectorAll(".lx-wctab");
+      for(var i=0;i<tb.length;i++){ if(tb[i].getAttribute("data-t")==="orders"){
+        var c=tb[i].querySelector(".cnt");
+        if(c&&c.textContent!==String(offs.length))c.textContent=String(offs.length);
+        break; } }
+    }catch(_){}
+  }
+  function startOrdersSync(){
+    if(window.__lxWcOS)return; window.__lxWcOS=1;
+    var n=0, iv=setInterval(function(){ syncOrders(); if(++n>40)clearInterval(iv); },500);
+  }
   function paint(){
     var panel=document.querySelector(".lx-wcpanel-claim");
     if(panel)panel.innerHTML='<div class="lx-wclist">'+rows()+'</div>';
     var tab=document.querySelector('.lx-wctab[data-t="claim"] .cnt');
     if(tab)tab.textContent=String(CB.length);
+    syncOrders();
     // These rows arrive after their own Horizon fetch, which normally lands after _walletdata.js has
     // finished its timed heal passes -- so ask for one now rather than hoping to be in time for theirs.
     try{ if(panel&&window.__lxHealLogos)window.__lxHealLogos(panel); }catch(_){}
@@ -304,7 +322,17 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
 
     var bar=document.createElement("div");
     bar.className="asset-tabs-row lx-wctabs";
-    bar.innerHTML='<div class="asset-tabs">'
+    // lx-wcgroup is load-bearing, not decoration.
+//
+// Reusing the design's .asset-tabs class was right for the LOOK -- it is why these tabs match the
+// Assets / Liq Pools pair exactly -- but it put a SECOND .asset-tabs group on the page, and two
+// separate count-writers address that class by INDEX: [0] gets the holdings count, [1] the pool
+// count. Those indexes silently became my two tabs. The result was an account with 43 assets and 392
+// pool positions rendering as "Open orders 31 / Claimable payments 392", while the design's real
+// tabs kept their mock 5 and 2 because nothing wrote to them any more.
+//
+// The marker lets those writers exclude this group by name instead of hoping about ordering.
+bar.innerHTML='<div class="asset-tabs lx-wcgroup">'
       +'<button class="lx-wctab active" type="button" data-t="orders">Open orders'
       +' <span class="cnt">'+nOrders+'</span></button>'
       +'<button class="lx-wctab" type="button" data-t="claim">Claimable payments'
@@ -321,6 +349,7 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
     pClaim.setAttribute("hidden","");
 
     host.insertBefore(bar,anchor);
+    startOrdersSync();
     host.insertBefore(pOrders,anchor);
     if(orders)pOrders.appendChild(orders);
     // #16: the PHONE renders its open orders through a different element -- .orders-stack, built by
