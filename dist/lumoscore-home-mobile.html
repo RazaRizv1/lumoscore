@@ -1570,7 +1570,42 @@ html body .pool-header-row .ph-icons>*{
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1){padding-left:14px!important;border-left:1px solid var(--border)!important}
 .lx-xlmpanel>.status-row .val{font-size:14px!important}
 }
-</style><style id="lx-realdata-css">/* #15: the per-figure mark. flex:0 0 so a long value can never squeeze it out, and the pill becomes a   two-part row -- icon, then label over value -- rather than a single text column. */.lx-vpill{display:flex!important;align-items:center;gap:9px;min-width:0}.lx-vpt{display:flex;flex-direction:column;gap:2px;min-width:0}.lx-pico{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;  border-radius:8px;background:currentColor}.lx-pico svg{width:15px;height:15px;display:block;color:#fff;filter:drop-shadow(0 0 0 transparent)}/* The tinted square is the icon colour at low alpha, with the glyph itself full strength on top. */.lx-pico{background:color-mix(in srgb, currentColor 16%, transparent)}.lx-pico svg{color:currentColor}@media(max-width:900px){.lx-pico{width:22px;height:22px}.lx-pico svg{width:13px;height:13px}}.greeting-row>.greeting{flex:1 1 auto!important;min-width:0!important}.status-row{display:grid!important;grid-template-columns:auto repeat(6,minmax(0,1fr))!important;gap:10px!important;width:100%!important}.status-row .lx-netcard .lx-netmeta{padding-right:18px}.status-row .lx-vpill .val{font-size:18px!important;font-weight:800!important;letter-spacing:-.2px}.status-row .lx-vpill .lbl{font-size:10.5px!important;letter-spacing:.07em}@media(max-width:1100px){.status-row .lx-vpill .val{font-size:16px!important}}@media(max-width:900px){.status-row .lx-vpill .val{font-size:15px!important}.status-row .lx-vpill .lbl{font-size:9.5px!important}}.page>.market-grid:last-child{margin-bottom:0}.page:has(>.market-grid:last-child){padding-bottom:48px}/* lx-nstats-mobile: the five-column row above is a DESKTOP layout. On a phone it overflows - auto sizes to its content and every 1fr floors at min-content, so the last card runs off screen. Two columns fit, and min-width:0 lets the cards actually shrink into them. */@media (max-width:760px){.status-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}.status-row>.status-pill{min-width:0!important;width:auto!important}.status-row>.status-pill.lx-netcard{grid-column:1 / -1}}.status-row .status-pill{width:auto!important}/* #6: the transaction link at the end of each platform-activity row. Icon only -- the row already says what happened, and a word here would compete with it. */.activity-feed-row .lx-actlink{margin-left:12px;flex:0 0 auto;display:inline-flex;align-items:center;color:var(--text-muted);text-decoration:none;transition:color .12s}.activity-feed-row .lx-actlink:hover{color:var(--accent)}.status-row .status-pill:not(.lx-netcard){opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready .status-pill:not(.lx-netcard){opacity:1!important;animation:none;transition:opacity .3s ease}</style><style id="lx-amm-css">
+</style><style id="lx-realdata-css">/* #15: the per-figure mark. flex:0 0 so a long value can never squeeze it out, and the pill becomes a   two-part row -- icon, then label over value -- rather than a single text column. */.lx-vpill{display:flex!important;align-items:center;gap:9px;min-width:0}.lx-vpt{display:flex;flex-direction:column;gap:2px;min-width:0}.lx-pico{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;  border-radius:8px;background:currentColor}.lx-pico svg{width:15px;height:15px;display:block;color:#fff;filter:drop-shadow(0 0 0 transparent)}/* The tinted square is the icon colour at low alpha, with the glyph itself full strength on top. */.lx-pico{background:color-mix(in srgb, currentColor 16%, transparent)}.lx-pico svg{color:currentColor}@media(max-width:900px){.lx-pico{width:22px;height:22px}.lx-pico svg{width:13px;height:13px}}.greeting-row>.greeting{flex:1 1 auto!important;min-width:0!important}.status-row{display:grid!important;grid-template-columns:auto repeat(6,minmax(0,1fr))!important;gap:10px!important;width:100%!important}.status-row .lx-netcard .lx-netmeta{padding-right:18px}.status-row .lx-vpill .val{font-size:18px!important;font-weight:800!important;letter-spacing:-.2px}.status-row .lx-vpill .lbl{font-size:10.5px!important;letter-spacing:.07em}@media(max-width:1100px){.status-row .lx-vpill .val{font-size:16px!important}}@media(max-width:900px){.status-row .lx-vpill .val{font-size:15px!important}.status-row .lx-vpill .lbl{font-size:9.5px!important}}.page>.market-grid:last-child{margin-bottom:0}.page:has(>.market-grid:last-child){padding-bottom:48px}/* lx-nstats-mobile: the five-column row above is a DESKTOP layout. On a phone it overflows - auto sizes to its content and every 1fr floors at min-content, so the last card runs off screen. Two columns fit, and min-width:0 lets the cards actually shrink into them. */@media (max-width:760px){.status-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}.status-row>.status-pill{min-width:0!important;width:auto!important}.status-row>.status-pill.lx-netcard{grid-column:1 / -1}}.status-row .status-pill{width:auto!important}/* #6: the transaction link at the end of each platform-activity row. Icon only -- the row already says what happened, and a word here would compete with it. */.activity-feed-row .lx-actlink{margin-left:12px;flex:0 0 auto;display:inline-flex;align-items:center;color:var(--text-muted);text-decoration:none;transition:color .12s}.activity-feed-row .lx-actlink:hover{color:var(--accent)}.status-row .status-pill:not(.lx-netcard){opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready .status-pill:not(.lx-netcard){opacity:1!important;animation:none;transition:opacity .3s ease}</style><style id="lx-trending-css">
+#trendingList:not(.lx-tready) .trending-row{display:none!important}
+/* Verified-issuer tick, identical to the one on Trade and Wallet — same 14px green disc, same 9px check,
+   so the mark means one thing everywhere. Sits inside .nm-row, which is already a flex row, and is
+   flex:0 0 so a long asset name can never squeeze it. */
+.trending-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
+.trending-row .lx-vtick svg{width:9px;height:9px;display:block}
+/* the site's global logo-painter clears an icon's background + inserts its own <img>; it can't touch a ::before
+   pseudo-element, so we paint the real logo there via the --lxtic custom property (painter-proof, as on Pools/Trade) */
+.trending-row .lx-tico{position:relative;width:40px;height:40px;border-radius:50%;flex-shrink:0;overflow:hidden;background:transparent}
+.trending-row .lx-tico::before{content:"";position:absolute;inset:0;background:var(--lxtic,#20222c) center/cover no-repeat;border-radius:50%;z-index:2}
+.trending-row .lx-tico[data-l]::after{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;z-index:3}
+.trending-row .lx-tico img{display:none!important}
+/* The design styles .trade-btn on the desktop page only, so on a phone this row ended with a raw browser
+   button — grey, square, 1.6px outset border. Restate the desktop rule (it is a no-op there) and step the
+   type down on a narrow row, where a 16.5px/72px control crowds out the price. */
+.trending-row .trade-btn{padding:8px 14px;border-radius:9px;border:1px solid var(--border,#26262c);background:transparent;color:var(--text,#f6f5f3);font-family:inherit;font-size:16.5px;font-weight:700;line-height:1.2;cursor:pointer;flex-shrink:0}
+.trending-row .trade-btn:active{border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}
+@media (max-width:560px){.trending-row .trade-btn{font-size:13.5px;padding:7px 11px;border-radius:8px}}
+.lx-tskel-row{padding:14px 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
+.lx-tskel-row:last-child{border-bottom:none}
+.lx-sk{background:linear-gradient(90deg,rgba(140,142,165,.10) 25%,rgba(140,142,165,.22) 37%,rgba(140,142,165,.10) 63%);background-size:400% 100%;animation:lxtsh 1.25s ease infinite;border-radius:6px}
+@keyframes lxtsh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+.trending-row .trade-btn:hover{border-color:var(--accent,#ea6a2c)!important;color:var(--accent,#ea6a2c)!important}
+/* The metric control, built to match the design's own period control (.tf-mini) rather than
+   introducing a second visual language for the same kind of switch. */
+.lx-metric{display:inline-flex;gap:3px;background:var(--surface-2);padding:3px;border-radius:9px;margin-right:8px}
+.lx-metric button{padding:6px 11px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);
+  font:700 12.5px/1 inherit;font-family:inherit;cursor:pointer;white-space:nowrap}
+.lx-metric button.active{background:var(--accent);color:#fff}
+.lx-metric button:not(.active):hover{color:var(--text)}
+@media(max-width:640px){
+.lx-metric{margin:0 0 8px}
+.lx-metric button{padding:6px 9px;font-size:11.5px}
+}
+</style><style id="lx-amm-css">
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
    onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
@@ -1615,11 +1650,29 @@ html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visib
    For that whole time the page sat masked and empty, which reads as broken rather than as working.
    Reduced motion drops the pulse and the fades; it does NOT gate the dismissal, which is a class and a
    removal, so the overlay can never be left on screen by a motion preference. */
+/* Pool Activity chart: the SVG takes no pointer input, so every mouse and touch lands on #tvlChart.
+   The hover listeners are on that host, and a touch TARGET is sticky for the life of the gesture --
+   whichever node touchstart hit keeps receiving touchmove. Starting a drag on the filled area therefore
+   bound the gesture to the gradient <path>, and that path is REPLACED on the next chart repaint, which
+   orphaned the drag and killed the readout mid-swipe. Starting on the empty part above the line bound it
+   to the host instead, which is never replaced -- which is exactly why it worked there and nowhere else.
+   With the SVG transparent to input the target is always the host, so it cannot happen at all. The
+   overlay divs already carry pointer-events:none for the same reason. */
+#tvlChart svg,#tvlChart svg *{pointer-events:none}
 .lx-boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);
   opacity:1;transition:opacity .28s ease}
 .lx-boot.lx-boot-out{opacity:0;pointer-events:none}
 .lx-boot-in{display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;text-align:center}
-.lx-boot-mark{width:60px;height:60px;background-size:contain;background-repeat:no-repeat;
+.lx-boot-badge{position:relative;width:96px;height:96px;display:grid;place-items:center}
+.lx-boot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  animation:lx-boot-spin 1.15s linear infinite;opacity:.9}
+.lx-boot-badge::after{content:"";position:absolute;inset:8px;border-radius:50%;
+  background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-boot-pulse 1.8s ease-in-out infinite}
+@keyframes lx-boot-spin{to{transform:rotate(360deg)}}
+.lx-boot-mark{position:relative;z-index:1;width:52px;height:52px;background-size:contain;background-repeat:no-repeat;
   background-position:center;animation:lx-boot-pulse 1.6s ease-in-out infinite}
 .lx-boot-ttl{font-family:'Hanken Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--text,#0e0e10)}
 .lx-boot-bar{width:216px;height:4px;border-radius:99px;background:var(--border,#ececef);overflow:hidden}
@@ -1627,7 +1680,7 @@ html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visib
 .lx-boot-sub{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;
   color:var(--text-soft,#6f6f79);font-variant-numeric:tabular-nums}
 @keyframes lx-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.6}}
-@media (prefers-reduced-motion:reduce){.lx-boot-mark{animation:none}
+@media (prefers-reduced-motion:reduce){.lx-boot-mark,.lx-boot-badge::before,.lx-boot-badge::after{animation:none}
   .lx-boot,.lx-boot-fill{transition:none}}
 /* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
    written paintTables filled both and revealed after. The network list changed that: the rows now arrive
@@ -1738,6 +1791,12 @@ html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapsh
 .lx-amm-empty{padding:22px 12px;text-align:center;color:var(--text-muted);font-size:13.5px}
 .lx-amm-empty b{color:var(--text);display:block;margin-bottom:4px}
 html:not(.lx-ammready) .pool-header, html:not(.lx-ammready) .pool-layout{visibility:hidden}
+/* The Deposit / Withdraw box has its OWN gate, because .lx-ammready lifts when the pool's own figures
+   land and the wallet-side balances arrive later. In that window the design's baked "Balance: 25,420.18"
+   was on screen -- a number belonging to nobody, beside a MAX button that would have used it. Only the
+   balance line is held, not the panel: the form is usable, it just does not state a balance it does not
+   yet know. paintDetail lifts this the moment it has written the real ones. */
+html:not(.lx-dwready) #dwDeposit .dw-field .balance,html:not(.lx-dwready) #dwWithdraw .balance{visibility:hidden}
 /* the breadcrumb pair (last span in .crumb) is a baked "LUMOS / XLM" mock that pdCopy corrects to the
    real pair before reveal — hide it until then so it doesn't flash the wrong pair */
 html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
@@ -1985,41 +2044,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-trending-css">
-#trendingList:not(.lx-tready) .trending-row{display:none!important}
-/* Verified-issuer tick, identical to the one on Trade and Wallet — same 14px green disc, same 9px check,
-   so the mark means one thing everywhere. Sits inside .nm-row, which is already a flex row, and is
-   flex:0 0 so a long asset name can never squeeze it. */
-.trending-row .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
-.trending-row .lx-vtick svg{width:9px;height:9px;display:block}
-/* the site's global logo-painter clears an icon's background + inserts its own <img>; it can't touch a ::before
-   pseudo-element, so we paint the real logo there via the --lxtic custom property (painter-proof, as on Pools/Trade) */
-.trending-row .lx-tico{position:relative;width:40px;height:40px;border-radius:50%;flex-shrink:0;overflow:hidden;background:transparent}
-.trending-row .lx-tico::before{content:"";position:absolute;inset:0;background:var(--lxtic,#20222c) center/cover no-repeat;border-radius:50%;z-index:2}
-.trending-row .lx-tico[data-l]::after{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:16px;z-index:3}
-.trending-row .lx-tico img{display:none!important}
-/* The design styles .trade-btn on the desktop page only, so on a phone this row ended with a raw browser
-   button — grey, square, 1.6px outset border. Restate the desktop rule (it is a no-op there) and step the
-   type down on a narrow row, where a 16.5px/72px control crowds out the price. */
-.trending-row .trade-btn{padding:8px 14px;border-radius:9px;border:1px solid var(--border,#26262c);background:transparent;color:var(--text,#f6f5f3);font-family:inherit;font-size:16.5px;font-weight:700;line-height:1.2;cursor:pointer;flex-shrink:0}
-.trending-row .trade-btn:active{border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}
-@media (max-width:560px){.trending-row .trade-btn{font-size:13.5px;padding:7px 11px;border-radius:8px}}
-.lx-tskel-row{padding:14px 24px;display:flex;align-items:center;gap:16px;border-bottom:1px solid var(--border)}
-.lx-tskel-row:last-child{border-bottom:none}
-.lx-sk{background:linear-gradient(90deg,rgba(140,142,165,.10) 25%,rgba(140,142,165,.22) 37%,rgba(140,142,165,.10) 63%);background-size:400% 100%;animation:lxtsh 1.25s ease infinite;border-radius:6px}
-@keyframes lxtsh{0%{background-position:100% 0}100%{background-position:-100% 0}}
-.trending-row .trade-btn:hover{border-color:var(--accent,#ea6a2c)!important;color:var(--accent,#ea6a2c)!important}
-/* The metric control, built to match the design's own period control (.tf-mini) rather than
-   introducing a second visual language for the same kind of switch. */
-.lx-metric{display:inline-flex;gap:3px;background:var(--surface-2);padding:3px;border-radius:9px;margin-right:8px}
-.lx-metric button{padding:6px 11px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);
-  font:700 12.5px/1 inherit;font-family:inherit;cursor:pointer;white-space:nowrap}
-.lx-metric button.active{background:var(--accent);color:#fff}
-.lx-metric button:not(.active):hover{color:var(--text)}
-@media(max-width:640px){
-.lx-metric{margin:0 0 8px}
-.lx-metric button{padding:6px 9px;font-size:11.5px}
-}
 </style></head>
 <body>
 
@@ -4806,7 +4830,214 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // card and then jumps into it is a flash.
   try{ new MutationObserver(function(){ place(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
-})();</script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-realdata">(function(){if(window.__lxRealData)return;window.__lxRealData=1;function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}if(net()!=="stellar")return;var SWAP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M4 13h11"/><path d="M17 14l3-3-3-3"/><path d="M20 11H9"/></svg>',DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}function usd(n){return "$"+abbr(n);}function amt(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";if(a>=1)return (Math.round(n*100)/100).toString();if(a>0){var s=n.toFixed(7).replace(/0+$/,"").replace(/\.$/,"");return s&&s!=="0"?s:"<0.0000001";}return "0";}function price(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}function ago(t){var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);if(s<60)return Math.floor(s)+"s";if(s<3600)return Math.floor(s/60)+"m";if(s<86400)return Math.floor(s/3600)+"h";return Math.floor(s/86400)+"d";}function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}var PICO={"Assets":["#f7b733",'<circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.2h5M9.5 13.8h5"/>'],"Pools":["#38bdf8",'<path d="M12 3.2l5.2 5.6a7.2 7.2 0 1 1-10.4 0z"/>'],"Pool TVL":["#22c55e",'<rect x="5" y="10.5" width="14" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>'],"Trades":["#a855f7",'<path d="M7 9h11l-2.6-2.6M17 15H6l2.6 2.6"/>'],"Transactions":["#fb7185",'<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 9h6M9 12.5h6M9 16h3.5"/>'],"Active wallets":["#2dd4bf",'<circle cx="12" cy="9" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/>']};function pico(lbl){var e=PICO[lbl];if(!e)return "";return '<span class="lx-pico" style="color:'+e[0]+'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+e[1]+'</svg></span>';}function vpill(lbl,val,tip){return '<span class="status-pill lx-vpill" data-lx-noswap=""'+(tip?' title="'+tip+'"':"")+'>'+pico(lbl)+'<span class="lx-vpt"><span class="lbl">'+lbl+'</span><span class="val">'+val+'</span></span></span>';}function rebuildStats(v){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");[].slice.call(row.querySelectorAll(".status-pill")).forEach(function(p){if(p!==net)p.parentNode.removeChild(p);});var frag=document.createElement("div");frag.innerHTML=vpill("Assets",v.assets,"Every asset ever issued on Stellar")+vpill("Pools",v.pools,"Liquidity pools on the Stellar AMM")+vpill("Pool TVL",v.tvl,"Value locked across every Stellar liquidity pool")+vpill("Trades",v.trades,v.dayTip)+vpill("Transactions",v.txs,v.dayTip)+vpill("Active wallets",v.wallets,v.dayTip);while(frag.firstChild)row.appendChild(frag.firstChild);row.classList.add("lx-ready");}function stats(){Promise.all([j("/lxapi/xlm").catch(function(){return null;}),j("/lxapi/netstats").catch(function(){return null;}),j("/lxapi/poolstats").catch(function(){return null;})]).then(function(res){var x=res[0]||{};var ns=res[1];var ps=res[2];var cg={usd:x.usd,usd_24h_change:x.chg24,usd_market_cap:x.mcap,usd_24h_vol:x.vol24};try{window.__lxCG=cg;window.dispatchEvent(new CustomEvent("lx:cg"));}catch(_){}var _n=function(x){return (x==null||!isFinite(x))?"\u2014":Math.round(x).toLocaleString("en-US");};var _day="";try{if(ns&&ns.ts)_day="On "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC), the last full day";}catch(_){}var _tvlx=(ps&&ps.tvlXlm>0)?ps.tvlXlm:0;var pr=+cg.usd||0;var _v={assets:(ns&&ns.assets)?_n(ns.assets):"\u2014",pools:(ps&&ps.pools)?_n(ps.pools):"\u2014",tvl:(_tvlx>0&&pr>0)?usd(_tvlx*pr):(_tvlx>0?abbr(_tvlx)+" XLM":"\u2014"),trades:(ns&&ns.trades)?_n(ns.trades):"\u2014",txs:(ns&&ns.transactions)?_n(ns.transactions):"\u2014",wallets:(ns&&ns.activeWallets)?_n(ns.activeWallets):"\u2014",dayTip:_day};var _old=null;try{_old=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}if(_old&&!_old.length){for(var _k in _v){if(_v[_k]==="\u2014"&&_old[_k]&&_old[_k]!=="\u2014")_v[_k]=_old[_k];}}rebuildStats(_v);var _keep={};for(var _k2 in _v){if(_v[_k2]&&_v[_k2]!=="\u2014")_keep[_k2]=_v[_k2];}try{localStorage.setItem("lumos.netstats",JSON.stringify(_keep));}catch(_){}}).catch(function(){});}var LX_FEEACCT="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";var XPI='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';function acode(o,p){return (o[p+"_asset_type"]==="native"||!o[p+"_asset_code"])?"XLM":o[p+"_asset_code"];}function describeOp(o){if(!o)return null;if(o.type&&o.type.indexOf("path_payment")===0)return {ic:SWAP,cls:"swap",type:"Swap <b>"+amt(+o.source_amount)+" "+esc(acode(o,"source"))+"</b> \u2192 "+amt(+o.amount)+" "+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code),via:"via LumosCore"};if(o.type==="payment")return {ic:SWAP,cls:"swap",type:"Transfer <b>"+amt(+o.amount)+" "+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",via:"via LumosCore"};if(o.type&&o.type.indexOf("offer")>=0)return {ic:DROP,cls:"lp",type:"Order <b>"+amt(+o.amount)+" "+esc(acode(o,"selling"))+"</b> / "+esc(acode(o,"buying")),via:"via LumosCore"};if(o.type&&o.type.indexOf("liquidity_pool")===0)return {ic:DROP,cls:"lp",type:(o.type.indexOf("deposit")>=0?"Added liquidity":"Removed liquidity"),via:"via LumosCore"};return {ic:SWAP,cls:"swap",type:esc(String(o.type||"Activity").split("_").join(" ")),via:"via LumosCore"};}function feedRow(r){return '<div class="activity-feed-row" data-lx-noswap="1"><div class="act-ic '+r.cls+'">'+r.ic+'</div>'+'<div class="info"><div class="type">'+r.type+'</div><div class="meta">'+r.via+'</div></div>'+'<div class="time">'+r.when+'</div>'+'<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/'+esc(r.hash)+'" target="_blank" rel="noopener" title="View transaction">'+XPI+'</a>'+'</div>';}function feed(){var list=document.getElementById("activityList");if(!list)return;j("https://horizon.stellar.org/accounts/"+LX_FEEACCT+"/payments?order=desc&limit=40").then(function(d){var recs=((d._embedded&&d._embedded.records)||[]).filter(function(o){return o.to===LX_FEEACCT&&o.from&&o.from!==LX_FEEACCT;});if(!recs.length){list.innerHTML='<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>';return;}var use=recs.slice(0,8);var rows=use.map(function(o){return {ic:SWAP,cls:"swap",type:"Platform activity",via:"via LumosCore",when:ago(o.created_at),hash:o.transaction_hash};});list.innerHTML=rows.map(feedRow).join("");use.forEach(function(o,i){j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20").then(function(t){var ops=((t._embedded&&t._embedded.records)||[]).filter(function(x){return !(x.type==="payment"&&x.to===LX_FEEACCT);});var pick=ops.filter(function(x){return x.type&&x.type.indexOf("path_payment")===0;})[0]||ops.filter(function(x){return x.type&&(x.type.indexOf("offer")>=0||x.type.indexOf("liquidity_pool")===0);})[0]||ops[0];var de=describeOp(pick); if(!de)return;rows[i].ic=de.ic;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].via=de.via;list.innerHTML=rows.map(feedRow).join("");}).catch(function(){});});}).catch(function(){});}function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}var _d={assets:"\u2026",pools:"\u2026",tvl:"\u2026",trades:"\u2026",txs:"\u2026",wallets:"\u2026",dayTip:""};if(c&&!c.length&&typeof c==="object"){for(var k in _d){if(c[k]&&c[k]!=="\u2014")_d[k]=c[k];}}rebuildStats(_d);}function run(){prep();stats();feed();}if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);setInterval(feed,60000);setInterval(stats,45000);})();</script><script id="lx-ammdata">(function(){
+})();</script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-realdata">(function(){if(window.__lxRealData)return;window.__lxRealData=1;function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}if(net()!=="stellar")return;var SWAP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M4 13h11"/><path d="M17 14l3-3-3-3"/><path d="M20 11H9"/></svg>',DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}function usd(n){return "$"+abbr(n);}function amt(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";if(a>=1)return (Math.round(n*100)/100).toString();if(a>0){var s=n.toFixed(7).replace(/0+$/,"").replace(/\.$/,"");return s&&s!=="0"?s:"<0.0000001";}return "0";}function price(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}function ago(t){var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);if(s<60)return Math.floor(s)+"s";if(s<3600)return Math.floor(s/60)+"m";if(s<86400)return Math.floor(s/3600)+"h";return Math.floor(s/86400)+"d";}function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}var PICO={"Assets":["#f7b733",'<circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.2h5M9.5 13.8h5"/>'],"Pools":["#38bdf8",'<path d="M12 3.2l5.2 5.6a7.2 7.2 0 1 1-10.4 0z"/>'],"Pool TVL":["#22c55e",'<rect x="5" y="10.5" width="14" height="9" rx="2"/><path d="M8.5 10.5V8a3.5 3.5 0 0 1 7 0v2.5"/>'],"Trades":["#a855f7",'<path d="M7 9h11l-2.6-2.6M17 15H6l2.6 2.6"/>'],"Transactions":["#fb7185",'<rect x="6" y="4" width="12" height="16" rx="2"/><path d="M9 9h6M9 12.5h6M9 16h3.5"/>'],"Active wallets":["#2dd4bf",'<circle cx="12" cy="9" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/>']};function pico(lbl){var e=PICO[lbl];if(!e)return "";return '<span class="lx-pico" style="color:'+e[0]+'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+e[1]+'</svg></span>';}function vpill(lbl,val,tip){return '<span class="status-pill lx-vpill" data-lx-noswap=""'+(tip?' title="'+tip+'"':"")+'>'+pico(lbl)+'<span class="lx-vpt"><span class="lbl">'+lbl+'</span><span class="val">'+val+'</span></span></span>';}function rebuildStats(v){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");[].slice.call(row.querySelectorAll(".status-pill")).forEach(function(p){if(p!==net)p.parentNode.removeChild(p);});var frag=document.createElement("div");frag.innerHTML=vpill("Assets",v.assets,"Every asset ever issued on Stellar")+vpill("Pools",v.pools,"Liquidity pools on the Stellar AMM")+vpill("Pool TVL",v.tvl,"Value locked across every Stellar liquidity pool")+vpill("Trades",v.trades,v.dayTip)+vpill("Transactions",v.txs,v.dayTip)+vpill("Active wallets",v.wallets,v.dayTip);while(frag.firstChild)row.appendChild(frag.firstChild);row.classList.add("lx-ready");}function stats(){Promise.all([j("/lxapi/xlm").catch(function(){return null;}),j("/lxapi/netstats").catch(function(){return null;}),j("/lxapi/poolstats").catch(function(){return null;})]).then(function(res){var x=res[0]||{};var ns=res[1];var ps=res[2];var cg={usd:x.usd,usd_24h_change:x.chg24,usd_market_cap:x.mcap,usd_24h_vol:x.vol24};try{window.__lxCG=cg;window.dispatchEvent(new CustomEvent("lx:cg"));}catch(_){}var _n=function(x){return (x==null||!isFinite(x))?"\u2014":Math.round(x).toLocaleString("en-US");};var _day="";try{if(ns&&ns.ts)_day="On "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC), the last full day";}catch(_){}var _tvlx=(ps&&ps.tvlXlm>0)?ps.tvlXlm:0;var pr=+cg.usd||0;var _v={assets:(ns&&ns.assets)?_n(ns.assets):"\u2014",pools:(ps&&ps.pools)?_n(ps.pools):"\u2014",tvl:(_tvlx>0&&pr>0)?usd(_tvlx*pr):(_tvlx>0?abbr(_tvlx)+" XLM":"\u2014"),trades:(ns&&ns.trades)?_n(ns.trades):"\u2014",txs:(ns&&ns.transactions)?_n(ns.transactions):"\u2014",wallets:(ns&&ns.activeWallets)?_n(ns.activeWallets):"\u2014",dayTip:_day};var _old=null;try{_old=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}if(_old&&!_old.length){for(var _k in _v){if(_v[_k]==="\u2014"&&_old[_k]&&_old[_k]!=="\u2014")_v[_k]=_old[_k];}}rebuildStats(_v);var _keep={};for(var _k2 in _v){if(_v[_k2]&&_v[_k2]!=="\u2014")_keep[_k2]=_v[_k2];}try{localStorage.setItem("lumos.netstats",JSON.stringify(_keep));}catch(_){}}).catch(function(){});}var LX_FEEACCT="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";var XPI='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';function acode(o,p){return (o[p+"_asset_type"]==="native"||!o[p+"_asset_code"])?"XLM":o[p+"_asset_code"];}function describeOp(o){if(!o)return null;if(o.type&&o.type.indexOf("path_payment")===0)return {ic:SWAP,cls:"swap",type:"Swap <b>"+amt(+o.source_amount)+" "+esc(acode(o,"source"))+"</b> \u2192 "+amt(+o.amount)+" "+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code),via:"via LumosCore"};if(o.type==="payment")return {ic:SWAP,cls:"swap",type:"Transfer <b>"+amt(+o.amount)+" "+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",via:"via LumosCore"};if(o.type&&o.type.indexOf("offer")>=0)return {ic:DROP,cls:"lp",type:"Order <b>"+amt(+o.amount)+" "+esc(acode(o,"selling"))+"</b> / "+esc(acode(o,"buying")),via:"via LumosCore"};if(o.type&&o.type.indexOf("liquidity_pool")===0)return {ic:DROP,cls:"lp",type:(o.type.indexOf("deposit")>=0?"Added liquidity":"Removed liquidity"),via:"via LumosCore"};return {ic:SWAP,cls:"swap",type:esc(String(o.type||"Activity").split("_").join(" ")),via:"via LumosCore"};}function feedRow(r){return '<div class="activity-feed-row" data-lx-noswap="1"><div class="act-ic '+r.cls+'">'+r.ic+'</div>'+'<div class="info"><div class="type">'+r.type+'</div><div class="meta">'+r.via+'</div></div>'+'<div class="time">'+r.when+'</div>'+'<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/'+esc(r.hash)+'" target="_blank" rel="noopener" title="View transaction">'+XPI+'</a>'+'</div>';}function feed(){var list=document.getElementById("activityList");if(!list)return;j("https://horizon.stellar.org/accounts/"+LX_FEEACCT+"/payments?order=desc&limit=40").then(function(d){var recs=((d._embedded&&d._embedded.records)||[]).filter(function(o){return o.to===LX_FEEACCT&&o.from&&o.from!==LX_FEEACCT;});if(!recs.length){list.innerHTML='<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>';return;}var use=recs.slice(0,8);var rows=use.map(function(o){return {ic:SWAP,cls:"swap",type:"Platform activity",via:"via LumosCore",when:ago(o.created_at),hash:o.transaction_hash};});list.innerHTML=rows.map(feedRow).join("");use.forEach(function(o,i){j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20").then(function(t){var ops=((t._embedded&&t._embedded.records)||[]).filter(function(x){return !(x.type==="payment"&&x.to===LX_FEEACCT);});var pick=ops.filter(function(x){return x.type&&x.type.indexOf("path_payment")===0;})[0]||ops.filter(function(x){return x.type&&(x.type.indexOf("offer")>=0||x.type.indexOf("liquidity_pool")===0);})[0]||ops[0];var de=describeOp(pick); if(!de)return;rows[i].ic=de.ic;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].via=de.via;list.innerHTML=rows.map(feedRow).join("");}).catch(function(){});});}).catch(function(){});}function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}var _d={assets:"\u2026",pools:"\u2026",tvl:"\u2026",trades:"\u2026",txs:"\u2026",wallets:"\u2026",dayTip:""};if(c&&!c.length&&typeof c==="object"){for(var k in _d){if(c[k]&&c[k]!=="\u2014")_d[k]=c[k];}}rebuildStats(_d);}function run(){prep();stats();feed();}if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);setInterval(feed,60000);setInterval(stats,45000);})();</script><script id="lx-trending">(function(){
+if(window.__lxTrending)return;window.__lxTrending=1;
+function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}
+var nw=net();if(nw&&nw!=="stellar")return;
+var SE="https://api.stellar.expert/explorer/public/asset";
+var H="https://horizon.stellar.org";
+// Verified issuers come from the one shared list in lib.js, keyed CODE|ISSUER — never on the ticker
+// alone, because a ticker is not an identity on Stellar (there are hundreds of "USDC" issuers and only
+// one of them is Circle's). Stamped in at build time so the row needs no extra request to draw it.
+var VFD={"XLM|":1,"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":1,"EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":1,"yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":1,"yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":1,"SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":1,"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":1,"AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":1};
+var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+function vtick(c,i){ return (c&&i&&VFD[c+"|"+i])?VTICK:""; }
+var LOGOS={XLM:"assets/tokens/xlm.png",USDC:"assets/tokens/usdc.png",AQUA:"assets/tokens/aqua.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",yUSDC:"assets/tokens/usdc.png",SHX:"assets/tokens/shx.png",BLND:"assets/tokens/blnd.svg",SSLX:"assets/tokens/sslx.png",LUMOS:"assets/favicon.png"};
+var GRAD=["linear-gradient(135deg,#22d3ee,#0891b2)","linear-gradient(135deg,#35c07f,#16a34a)","linear-gradient(135deg,#ea6a2c,#ff9a3d)","linear-gradient(135deg,#a855f7,#6d28d9)","linear-gradient(135deg,#3aa0ff,#1d4ed8)","linear-gradient(135deg,#f5b301,#d97706)","linear-gradient(135deg,#e0447b,#be185d)","linear-gradient(135deg,#2dd4bf,#0d9488)"];
+function grad(s){s=s||"?";var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return GRAD[h%GRAD.length];}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;";});}
+function eu(s){return String(s==null?"":s).replace(/[\x27()]/g,"");}
+function fmtP(n){n=+n||0;if(n>=1)return "$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});if(n>=0.01)return "$"+n.toFixed(4);if(n>0){var d=Math.min(8,Math.max(4,2-Math.floor(Math.log(n)/Math.LN10)));return "$"+n.toFixed(d).replace(/0+$/,"").replace(/\.$/,"");}return "$0";}
+function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}
+function pct(c){var a=Math.abs(c);return a>=100?String(Math.round(a)):a.toFixed(1);}
+function tList(){return document.getElementById("trendingList");}
+function spark(vals,up){var W=90,HH=32;if(!vals||vals.length<2)vals=[1,1.01];var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),rg=(mx-mn)||Math.abs(mx)||1,n=vals.length,p=[];for(var i=0;i<n;i++){var x=(i/(n-1))*(W-4)+2,y=HH-3-((vals[i]-mn)/rg)*(HH-6);p.push(x.toFixed(1)+","+y.toFixed(1));}return '<svg width="90" height="32" viewBox="0 0 90 32" fill="none" preserveAspectRatio="none"><polyline points="'+p.join(" ")+'" stroke="'+(up?"#35c07f":"#ff5b5b")+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';}
+var _roster=null,_tf="24h",_r30=0;
+// "trades" = Most Traded, "vol" = Highest Volume. Volume leads because stellar.expert hands it to us
+// with the roster, so the first paint is instant; the trade counts need Horizon and arrive a moment
+// later, at which point switching tabs is instant too.
+var _metric="vol",_aggState=0;   // 0 none, 1 in flight, 2 done
+function trOf(a,tf){var v=(tf==="30d")?a.tr30:(tf==="7d")?a.tr7:a.tr24;return v==null?null:v;}
+// Once the daily buckets are in, the volume is measured rather than divided out of a 7d figure.
+function volOf(a,tf){if(a.v24!=null){return (tf==="30d")?a.v30:(tf==="7d")?a.v7:a.v24;}return vol(a,tf);}
+function mval(a){var v=(_metric==="trades")?trOf(a,_tf):volOf(a,_tf);return (v==null||v!==v)?-1:v;}
+function ranked(){if(!_roster)return [];var r=_roster.slice();
+  r.sort(function(x,y){return mval(y)-mval(x);});return r;}
+function chg(a,tf){var p=(tf==="30d"&&a.p30&&a.p30.length>1)?a.p30:a.p7;if(!p||p.length<2)return 0;var last=p[p.length-1],ref=(tf==="24h")?p[p.length-2]:p[0];if(!(ref>0))return 0;return (last-ref)/ref*100;}
+function vol(a,tf){if(tf==="30d")return (a.vol30!=null?a.vol30:a.vol7d*4.3);if(tf==="7d")return a.vol7d;return a.vol7d/7;}
+function sdata(a,tf){return (tf==="30d"&&a.p30&&a.p30.length>1)?a.p30:a.p7;}
+// The row's sub-line names the figure the list is ORDERED by, so the ranking is legible instead of
+// being something the reader has to take on trust.
+// #34: TVL per asset, from a single cached edge call rather than a request per row.
+//
+// /lxapi/pools already returns the ranked pools with each leg and a TVL, so summing the pools an asset
+// appears in costs one request for the whole list. Fetching it per asset would have meant seven or more
+// Horizon calls on a page that has run into the 100-per-5-minutes limit before.
+//
+// The endpoint reports TVL in DOLLARS (native side x the XLM price, or the USDC side directly), and the
+// row is asked for lumens -- so it is converted here, and simply omitted when no rate is known rather
+// than printed against the wrong unit.
+// The Binance series this file fetches lives inside a closure further down and is per-DAY history, not
+// a spot rate. The spot rate the rest of the site shares is what is wanted here, so read that: the
+// global if a sibling module has published it, otherwise the cache they all write.
+function xlmUsdNow(){
+  try{ if(window.__lxXlmUsd>0)return +window.__lxXlmUsd; }catch(_){}
+  try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
+    if(c&&+c.v>0&&(Date.now()-c.ts<216e5))return +c.v; }catch(_){}
+  return 0;
+}
+var _tvlUsd=null,_tvlRate=0;
+function loadTvl(){
+  if(_tvlUsd)return;
+  // The endpoint answers with an OBJECT -- rows plus the paging figures -- and carries the XLM rate it
+  // used, which is exactly the rate this conversion needs. Taking it from the same response means the
+  // TVL shown can never be converted at a different rate from the one it was computed with.
+  fetch("/lxapi/pools").then(function(r){return r.ok?r.json():null;}).then(function(d){
+    var rows=(d&&d.rows)||null; if(!rows||!rows.length)return;
+    if(d.xlmUsd>0)_tvlRate=+d.xlmUsd;
+    var m={};
+    rows.forEach(function(p){
+      var t=+p.tvl; if(!(t>0))return;
+      [p.a,p.b].forEach(function(leg){
+        var c=leg&&leg.code; if(!c||c==="XLM")return;
+        m[c]=(m[c]||0)+t;
+      });
+    });
+    _tvlUsd=m; try{ render(); }catch(_){}
+  }).catch(function(){});
+}
+function tvlLabel(a){
+  if(!_tvlUsd)return "";
+  var u=_tvlUsd[a.code]; if(!(u>0))return "";
+  var x=_tvlRate>0?_tvlRate:xlmUsdNow(); if(!(x>0))return "";
+  return "TVL "+abbr(u/x)+" XLM";
+}
+function metricLabel(a,tf){
+  if(_metric==="trades"){var n=trOf(a,tf);return (n==null)?"Trades \u2026":(abbr(n)+" trades");}
+  var v=volOf(a,tf);return "Vol $"+abbr(v||0);
+}
+function skeleton(){var t=tList();if(!t)return;var s="";for(var i=0;i<8;i++){s+='<div class="lx-tskel-row"><div class="lx-sk" style="width:20px;height:16px"></div><div class="lx-sk" style="width:40px;height:40px;border-radius:50%"></div><div style="flex:1"><div class="lx-sk" style="width:120px;height:15px"></div><div class="lx-sk" style="width:180px;height:12px;margin-top:7px"></div></div><div class="lx-sk" style="width:90px;height:28px"></div><div style="text-align:right"><div class="lx-sk" style="width:70px;height:16px;margin-left:auto"></div><div class="lx-sk" style="width:54px;height:20px;margin:6px 0 0 auto"></div></div><div class="lx-sk" style="width:64px;height:34px;border-radius:9px"></div></div>';}t.innerHTML=s;t.classList.remove("lx-tready");}
+function render(){var t=tList();if(!t||!_roster)return;loadTvl();var tf=_tf,html="";ranked().forEach(function(a,i){var c=chg(a,tf),up=c>=0,rank=i+1;var isNew=a.created>0&&(Date.now()/1000-a.created)<21*86400;var ico=a.logo?('<div class="lx-tico" style="--lxtic:url(\x27'+eu(a.logo)+'\x27)"></div>'):('<div class="lx-tico" style="--lxtic:'+grad(a.code)+'" data-l="'+esc(a.code.slice(0,1).toUpperCase())+'"></div>');
+html+='<div class="trending-row" data-lxasset="'+esc(a.code+(a.iss?("-"+a.iss):""))+'">'
++'<div class="rank '+(rank<=3?"top":"")+'">#'+rank+'</div>'+ico
++'<div class="info"><div class="nm-row"><span class="nm">'+esc(a.code)+'</span>'+vtick(a.code,a.iss)+(isNew?'<span class="new-badge">NEW</span>':'')// "Stellar" said nothing -- every asset in this list is a Stellar asset and the page is titled
+// "Trending on Stellar". Replaced with the asset's own pool liquidity, which is the thing a reader
+// weighing a trending token actually wants beside its volume. Dropped entirely when unknown, so the
+// line never carries an empty separator.
++'</div><div class="sub">'+esc(isNew?"Just launched":a.name)+(function(){var t=tvlLabel(a);return t?(' \u00b7 '+t):'';})()+' \u00b7 '+metricLabel(a,tf)+'</div></div>'
++'<div class="spark">'+spark(sdata(a,tf),up)+'</div>'
++'<div class="price"><div class="p1">'+fmtP(a.price)+'</div><div class="p2"><span class="change-pill '+(up?"up":"down")+'">'+(up?"\u25b2":"\u25bc")+' '+pct(c)+'%</span></div></div>'
++'<button class="trade-btn">Trade</button></div>';});
+t.innerHTML=html;t.classList.add("lx-tready");}
+// Daily buckets for every asset: trade_count and counter_volume per day, 30 days back. Everything the
+// two tabs need for all three periods comes out of this one pass.
+function ensureAgg(cb){
+  if(_aggState===2){cb&&cb();return;}
+  if(_aggState===1){return;}                        // already in flight; its own completion re-renders
+  _aggState=1;
+  fetch("https://api.binance.com/api/v3/klines?symbol=XLMUSDT&interval=1d&limit=32")
+    .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
+    .then(function(k){
+      var hist=(k||[]).map(function(c){return {t:+c[0],usd:+c[4]};});
+      function xlmAt(t){if(!hist.length)return 0.17;var best=hist[0];for(var i=0;i<hist.length;i++){if(hist[i].t<=t)best=hist[i];else break;}return best.usd||0.17;}
+      var res=86400000,end=Math.ceil(Date.now()/res)*res,start=end-31*res;
+      function one(a){
+        if(!a.iss)return Promise.resolve();
+        var url=H+"/trade_aggregations?base_asset_type=credit_alphanum"+(a.code.length>4?"12":"4")
+          +"&base_asset_code="+encodeURIComponent(a.code)+"&base_asset_issuer="+a.iss
+          +"&counter_asset_type=native&resolution="+res+"&start_time="+start+"&end_time="+end+"&order=asc&limit=40";
+        return fetch(url).then(function(r){return r.ok?r.json():null;}).then(function(j){
+          var recs=(j&&j._embedded&&j._embedded.records)||[];
+          if(!recs.length)return;
+          // price history, converted at each day's own XLM/USD rather than today's
+          var pr=recs.map(function(x){return (+x.avg||+x.close||0)*xlmAt(+x.timestamp);}).filter(function(v){return v>0;});
+          if(pr.length>1)a.p30=pr;
+          var n=recs.length;
+          function sumT(from){var t=0;for(var i=Math.max(0,from);i<n;i++)t+=+recs[i].trade_count||0;return t;}
+          function sumV(from){var t=0;for(var i=Math.max(0,from);i<n;i++)t+=(+recs[i].counter_volume||0)*xlmAt(+recs[i].timestamp);return t;}
+          a.tr24=+recs[n-1].trade_count||0; a.tr7=sumT(n-7); a.tr30=sumT(0);
+          a.v24=(+recs[n-1].counter_volume||0)*xlmAt(+recs[n-1].timestamp); a.v7=sumV(n-7); a.v30=sumV(0);
+          a.vol30=a.v30;
+        }).catch(function(){});
+      }
+      // waves of five: 25 assets is a quarter of Horizon's five-minute budget for this IP, and firing
+      // them all at once is what turns that budget into a burst it refuses.
+      var list=(_roster||[]).slice(),i=0;
+      function wave(){
+        if(i>=list.length)return Promise.resolve();
+        var batch=list.slice(i,i+5);i+=5;
+        return Promise.all(batch.map(one)).then(function(){ try{render();}catch(_){ } return wave(); });
+      }
+      return wave();
+    })
+    .then(function(){_aggState=2;_r30=1;cb&&cb();},function(){_aggState=2;_r30=1;cb&&cb();});
+}
+function ensure30d(cb){if(_r30){cb();return;}
+// Horizon prices are in XLM; converting them with the CURRENT XLM/USD distorts history (e.g. a stablecoin would
+// show a fake move). Fetch the daily XLM/USD 30d curve and convert each bucket at ITS OWN day's rate.
+fetch("https://api.binance.com/api/v3/klines?symbol=XLMUSDT&interval=1d&limit=32").then(function(r){return r.ok?r.json():[];}).then(function(k){
+var hist=(k||[]).map(function(c){return {t:+c[0],usd:+c[4]};});
+function xlmAt(t){if(!hist.length)return 0.17;var best=hist[0];for(var i=0;i<hist.length;i++){if(hist[i].t<=t)best=hist[i];else break;}return best.usd||0.17;}
+var res=86400000,end=Math.ceil(Date.now()/res)*res,start=end-31*res;
+return Promise.all(_roster.map(function(a){if(a.code==="XLM"){a.p30=hist.map(function(h){return h.usd;});a.vol30=a.vol7d*4.3;return Promise.resolve();}if(!a.iss)return Promise.resolve();var url=H+"/trade_aggregations?base_asset_type=credit_alphanum"+(a.code.length>4?"12":"4")+"&base_asset_code="+encodeURIComponent(a.code)+"&base_asset_issuer="+a.iss+"&counter_asset_type=native&resolution="+res+"&start_time="+start+"&end_time="+end+"&order=asc&limit=40";
+return fetch(url).then(function(r){return r.ok?r.json():null;}).then(function(j){var recs=(j&&j._embedded&&j._embedded.records)||[];if(recs.length<2)return;var pr=recs.map(function(x){return (+x.avg||+x.close||0)*xlmAt(+x.timestamp);}).filter(function(v){return v>0;});if(pr.length>1)a.p30=pr;a.vol30=recs.reduce(function(s,x){return s+(+x.counter_volume||0)*xlmAt(+x.timestamp);},0);}).catch(function(){});
+}));
+}).then(function(){_r30=1;cb();},function(){_r30=1;cb();});}
+function setTab(tf){_tf=tf;var t=tList(),card=t?t.closest(".market-card"):null;if(card){var badge=card.querySelector(".market-head .badge");if(badge)badge.textContent="Past "+tf;}if(tf==="30d"&&!_r30){skeleton();ensure30d(function(){if(_tf==="30d")render();});}else{render();}}
+// Two controls now: the metric (what the list is ranked by) and the period it is measured over. The
+// period control is the design's own .tf-mini; the metric one is built to match it.
+function wireMetric(){
+  var t=tList();if(!t)return;var card=t.closest(".market-card");if(!card)return;
+  if(card.querySelector(".lx-metric"))return;
+  var mini=card.querySelector(".tf-mini");if(!mini)return;
+  var box=document.createElement("div");box.className="lx-metric";
+  // data-lxnonav is the design's own opt-out, and this control needs it: the dashboard maps clicked
+  // LABEL TEXT to a destination, and "Most Traded" contains "Trade" -- so pressing it fired
+  // lxNavigate([...dex-asset...]) and left the page instead of switching the ranking. The opt-out is
+  // on the buttons as well as the box, because the handler reads from the element actually clicked.
+  box.setAttribute("data-lxnonav","1");
+  box.innerHTML='<button type="button" data-lxnonav="1" data-m="vol" class="active">Highest Volume</button>'
+              +'<button type="button" data-lxnonav="1" data-m="trades">Most Traded</button>';
+  mini.parentNode.insertBefore(box,mini);
+  [].forEach.call(box.querySelectorAll("button"),function(b){
+    b.addEventListener("click",function(e){
+      // This card carries no data-lxnonav, so a click inside it reaches the dashboard's
+      // card-navigation handler and leaves the page. A control is not a link to its own container.
+      try{e.preventDefault();e.stopPropagation();}catch(_){ }
+      var m=b.getAttribute("data-m");if(m===_metric)return;
+      _metric=m;
+      [].forEach.call(box.querySelectorAll("button"),function(x){x.classList.toggle("active",x===b);});
+      // Most Traded cannot be answered from the roster alone -- the counts come from Horizon.
+      if(_metric==="trades"&&_aggState!==2){skeleton();ensureAgg(function(){render();});}
+      else render();
+    });
+  });
+}
+function wireTabs(){var t=tList();if(!t)return;var card=t.closest(".market-card");if(!card)return;var tabs=card.querySelectorAll(".tf-mini button");if(!tabs.length)return;var arr=[];[].forEach.call(tabs,function(b){var nb=b.cloneNode(true);b.parentNode.replaceChild(nb,b);arr.push(nb);});arr.forEach(function(nb){nb.addEventListener("click",function(){var lbl=(nb.textContent||"").trim();arr.forEach(function(x){x.classList.toggle("active",x===nb);});setTab(lbl.toLowerCase());});});}
+function load(){skeleton();fetch(SE+"?sort=volume7d&order=desc&limit=80").then(function(r){return r.json();}).then(function(j){var recs=(j._embedded&&j._embedded.records)||[];var seen={},out=[];recs.forEach(function(x){var parts=(x.asset||"").split("-"),code=parts[0],iss=parts[1]||"";if(!code||seen[code])return;var toml=x.tomlInfo||x.toml_info||{};var logo=LOGOS[code]||toml.image||"";var rating=(x.rating&&x.rating.average)||0;
+// quality gate: must have a real logo AND be a known/decently-rated asset AND a non-dust price -> drops spam like USDCAllow / $0 mint tokens
+if(!logo||!(LOGOS[code]||rating>=6)||!(+x.price>=1e-7))return;
+// XLM is the quote currency for every row here (prices and volume are denominated in it) and every
+// row's Trade button opens a pair against it, so a native XLM row would mean swapping XLM for XLM.
+// Any NON-native asset calling itself XLM is an impostor, so the code alone is enough to drop it.
+if(code==="XLM")return;
+seen[code]=1;
+var nm=x.domain||toml.name||toml.orgName||code;if(nm.length>22)nm=nm.slice(0,21)+"\u2026";
+var p7=(x.price7d||[]).map(function(p){return +p[1];}).filter(function(v){return v>0;});
+out.push({code:code,iss:iss,price:+x.price,p7:p7,vol7d:(+x.volume7d||0)/1e7,name:nm,logo:logo,created:+x.created||0});});if(!out.length)throw new Error("empty");
+_roster=out.slice(0,25);
+wireTabs();wireMetric();render();
+/* The daily buckets are NOT fetched here. They cost one Horizon request per asset -- 23-25 of them --
+   and Horizon allows 100 per five minutes per IP, answering a breach with a 429 that carries no CORS
+   header, so the browser reports only "Failed to fetch" and the numbers silently never arrive. Loading
+   the dashboard should not spend a quarter of that budget on a tab the reader may never open, so the
+   pass runs when Most Traded (or the 30d period) is actually selected.
+   A BLOCK comment on purpose: load() is one very long single line, so a // comment here swallows the
+   rest of that line -- which is exactly how this shipped broken a moment ago. */}).catch(function(){var t=tList();if(t&&!t.classList.contains("lx-tready"))setTimeout(load,8000);});}
+(function(){if(window.__lxTrendNav)return;window.__lxTrendNav=1;window.addEventListener("click",function(e){var row=e.target&&e.target.closest?e.target.closest(".trending-row[data-lxasset]"):null;if(!row)return;e.preventDefault();e.stopImmediatePropagation();location.href="lumoscore-dex-asset.html?asset="+encodeURIComponent(row.getAttribute("data-lxasset"));},true);})();
+if(document.readyState!=="loading")load();else document.addEventListener("DOMContentLoaded",load);
+setInterval(function(){if(_tf!=="30d")load();},120000);
+})();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
   var KNOWN=[
@@ -5518,7 +5749,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // the site's own mark, read off the sidebar rather than copied into this file as a second base64 blob
     var mk=""; try{ var lm=q(".logo-mark"); if(lm)mk=getComputedStyle(lm).backgroundImage; }catch(_){}
     el.innerHTML='<div class="lx-boot-in">'
-      +'<div class="lx-boot-mark" data-logo="" data-logoed="1"'+((mk&&mk!=="none")?(' style="background-image:'+mk+'"'):'')+'></div>'
+      +'<div class="lx-boot-badge"><div class="lx-boot-mark" data-logo="" data-logoed="1"'+((mk&&mk!=="none")?(' style="background-image:'+mk+'"'):'')+'></div></div>'
       +'<div class="lx-boot-ttl">Synchronising Stellar pools</div>'
       +'<div class="lx-boot-bar"><div class="lx-boot-fill"></div></div>'
       +'<div class="lx-boot-sub">Starting</div></div>';
@@ -5559,7 +5790,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   (function(){
     try{ if(sessionStorage.getItem(BOOTKEY))return; }catch(_){}
     bootArmed=true;
-    setTimeout(function(){ try{ bootShow(); bootProgress(); }catch(_){} },400);
+    // A POLL, not one shot. This fired once at 400ms and gave up: if the list container was not in the
+    // DOM yet -- which on a cold load is exactly when it is not -- bootShow() found no netActive() host,
+    // returned, and the overlay never appeared for the whole 25s wait it exists to cover. Each call is a
+    // no-op once the overlay is up, once the page is ready, or once it has been dismissed.
+    [300,600,1000,1600,2400].forEach(function(ms){ setTimeout(function(){ try{ bootShow(); bootProgress(); }catch(_){} },ms); });
   })();
   function netFetch(){
     if(NET.busy)return; NET.busy=1;
@@ -7379,6 +7614,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var fields=qa("#dwDeposit .dw-field");
     if(d.nonXlm){ setField(fields[0],d.a0.code,genLogo(d.a0),d.balA0); setField(fields[1],d.a1.code,genLogo(d.a1),d.balTok); }
     else { setField(fields[0],d.code,tokLogo(),d.balTok); setField(fields[1],"XLM",xlmLogo(),d.balXlm); }
+    // the balances on screen are ours now, so the gate above can lift
+    try{ document.documentElement.classList.add("lx-dwready"); }catch(_){}
     var lp=q("#dwWithdraw .balance"); if(lp)setText(lp,"Your LP: "+famt(d.myShares));
     qa(".dw-summary .r").forEach(function(rw){ var lab=(rw.querySelector("span")||{}).textContent||""; var st=rw.querySelector("strong"); if(!st)return; if(/fee tier/i.test(lab))setText(st,d.fee+"%"); else if(/network fee/i.test(lab))setText(st,"\u2248 0.00001 XLM"); });
   }
@@ -8168,213 +8405,6 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-trending">(function(){
-if(window.__lxTrending)return;window.__lxTrending=1;
-function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}
-var nw=net();if(nw&&nw!=="stellar")return;
-var SE="https://api.stellar.expert/explorer/public/asset";
-var H="https://horizon.stellar.org";
-// Verified issuers come from the one shared list in lib.js, keyed CODE|ISSUER — never on the ticker
-// alone, because a ticker is not an identity on Stellar (there are hundreds of "USDC" issuers and only
-// one of them is Circle's). Stamped in at build time so the row needs no extra request to draw it.
-var VFD={"XLM|":1,"USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":1,"EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":1,"yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":1,"yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":1,"SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":1,"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":1,"AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":1};
-var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
-function vtick(c,i){ return (c&&i&&VFD[c+"|"+i])?VTICK:""; }
-var LOGOS={XLM:"assets/tokens/xlm.png",USDC:"assets/tokens/usdc.png",AQUA:"assets/tokens/aqua.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",yUSDC:"assets/tokens/usdc.png",SHX:"assets/tokens/shx.png",BLND:"assets/tokens/blnd.svg",SSLX:"assets/tokens/sslx.png",LUMOS:"assets/favicon.png"};
-var GRAD=["linear-gradient(135deg,#22d3ee,#0891b2)","linear-gradient(135deg,#35c07f,#16a34a)","linear-gradient(135deg,#ea6a2c,#ff9a3d)","linear-gradient(135deg,#a855f7,#6d28d9)","linear-gradient(135deg,#3aa0ff,#1d4ed8)","linear-gradient(135deg,#f5b301,#d97706)","linear-gradient(135deg,#e0447b,#be185d)","linear-gradient(135deg,#2dd4bf,#0d9488)"];
-function grad(s){s=s||"?";var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return GRAD[h%GRAD.length];}
-function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;";});}
-function eu(s){return String(s==null?"":s).replace(/[\x27()]/g,"");}
-function fmtP(n){n=+n||0;if(n>=1)return "$"+n.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});if(n>=0.01)return "$"+n.toFixed(4);if(n>0){var d=Math.min(8,Math.max(4,2-Math.floor(Math.log(n)/Math.LN10)));return "$"+n.toFixed(d).replace(/0+$/,"").replace(/\.$/,"");}return "$0";}
-function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}
-function pct(c){var a=Math.abs(c);return a>=100?String(Math.round(a)):a.toFixed(1);}
-function tList(){return document.getElementById("trendingList");}
-function spark(vals,up){var W=90,HH=32;if(!vals||vals.length<2)vals=[1,1.01];var mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals),rg=(mx-mn)||Math.abs(mx)||1,n=vals.length,p=[];for(var i=0;i<n;i++){var x=(i/(n-1))*(W-4)+2,y=HH-3-((vals[i]-mn)/rg)*(HH-6);p.push(x.toFixed(1)+","+y.toFixed(1));}return '<svg width="90" height="32" viewBox="0 0 90 32" fill="none" preserveAspectRatio="none"><polyline points="'+p.join(" ")+'" stroke="'+(up?"#35c07f":"#ff5b5b")+'" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';}
-var _roster=null,_tf="24h",_r30=0;
-// "trades" = Most Traded, "vol" = Highest Volume. Volume leads because stellar.expert hands it to us
-// with the roster, so the first paint is instant; the trade counts need Horizon and arrive a moment
-// later, at which point switching tabs is instant too.
-var _metric="vol",_aggState=0;   // 0 none, 1 in flight, 2 done
-function trOf(a,tf){var v=(tf==="30d")?a.tr30:(tf==="7d")?a.tr7:a.tr24;return v==null?null:v;}
-// Once the daily buckets are in, the volume is measured rather than divided out of a 7d figure.
-function volOf(a,tf){if(a.v24!=null){return (tf==="30d")?a.v30:(tf==="7d")?a.v7:a.v24;}return vol(a,tf);}
-function mval(a){var v=(_metric==="trades")?trOf(a,_tf):volOf(a,_tf);return (v==null||v!==v)?-1:v;}
-function ranked(){if(!_roster)return [];var r=_roster.slice();
-  r.sort(function(x,y){return mval(y)-mval(x);});return r;}
-function chg(a,tf){var p=(tf==="30d"&&a.p30&&a.p30.length>1)?a.p30:a.p7;if(!p||p.length<2)return 0;var last=p[p.length-1],ref=(tf==="24h")?p[p.length-2]:p[0];if(!(ref>0))return 0;return (last-ref)/ref*100;}
-function vol(a,tf){if(tf==="30d")return (a.vol30!=null?a.vol30:a.vol7d*4.3);if(tf==="7d")return a.vol7d;return a.vol7d/7;}
-function sdata(a,tf){return (tf==="30d"&&a.p30&&a.p30.length>1)?a.p30:a.p7;}
-// The row's sub-line names the figure the list is ORDERED by, so the ranking is legible instead of
-// being something the reader has to take on trust.
-// #34: TVL per asset, from a single cached edge call rather than a request per row.
-//
-// /lxapi/pools already returns the ranked pools with each leg and a TVL, so summing the pools an asset
-// appears in costs one request for the whole list. Fetching it per asset would have meant seven or more
-// Horizon calls on a page that has run into the 100-per-5-minutes limit before.
-//
-// The endpoint reports TVL in DOLLARS (native side x the XLM price, or the USDC side directly), and the
-// row is asked for lumens -- so it is converted here, and simply omitted when no rate is known rather
-// than printed against the wrong unit.
-// The Binance series this file fetches lives inside a closure further down and is per-DAY history, not
-// a spot rate. The spot rate the rest of the site shares is what is wanted here, so read that: the
-// global if a sibling module has published it, otherwise the cache they all write.
-function xlmUsdNow(){
-  try{ if(window.__lxXlmUsd>0)return +window.__lxXlmUsd; }catch(_){}
-  try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
-    if(c&&+c.v>0&&(Date.now()-c.ts<216e5))return +c.v; }catch(_){}
-  return 0;
-}
-var _tvlUsd=null,_tvlRate=0;
-function loadTvl(){
-  if(_tvlUsd)return;
-  // The endpoint answers with an OBJECT -- rows plus the paging figures -- and carries the XLM rate it
-  // used, which is exactly the rate this conversion needs. Taking it from the same response means the
-  // TVL shown can never be converted at a different rate from the one it was computed with.
-  fetch("/lxapi/pools").then(function(r){return r.ok?r.json():null;}).then(function(d){
-    var rows=(d&&d.rows)||null; if(!rows||!rows.length)return;
-    if(d.xlmUsd>0)_tvlRate=+d.xlmUsd;
-    var m={};
-    rows.forEach(function(p){
-      var t=+p.tvl; if(!(t>0))return;
-      [p.a,p.b].forEach(function(leg){
-        var c=leg&&leg.code; if(!c||c==="XLM")return;
-        m[c]=(m[c]||0)+t;
-      });
-    });
-    _tvlUsd=m; try{ render(); }catch(_){}
-  }).catch(function(){});
-}
-function tvlLabel(a){
-  if(!_tvlUsd)return "";
-  var u=_tvlUsd[a.code]; if(!(u>0))return "";
-  var x=_tvlRate>0?_tvlRate:xlmUsdNow(); if(!(x>0))return "";
-  return "TVL "+abbr(u/x)+" XLM";
-}
-function metricLabel(a,tf){
-  if(_metric==="trades"){var n=trOf(a,tf);return (n==null)?"Trades \u2026":(abbr(n)+" trades");}
-  var v=volOf(a,tf);return "Vol $"+abbr(v||0);
-}
-function skeleton(){var t=tList();if(!t)return;var s="";for(var i=0;i<8;i++){s+='<div class="lx-tskel-row"><div class="lx-sk" style="width:20px;height:16px"></div><div class="lx-sk" style="width:40px;height:40px;border-radius:50%"></div><div style="flex:1"><div class="lx-sk" style="width:120px;height:15px"></div><div class="lx-sk" style="width:180px;height:12px;margin-top:7px"></div></div><div class="lx-sk" style="width:90px;height:28px"></div><div style="text-align:right"><div class="lx-sk" style="width:70px;height:16px;margin-left:auto"></div><div class="lx-sk" style="width:54px;height:20px;margin:6px 0 0 auto"></div></div><div class="lx-sk" style="width:64px;height:34px;border-radius:9px"></div></div>';}t.innerHTML=s;t.classList.remove("lx-tready");}
-function render(){var t=tList();if(!t||!_roster)return;loadTvl();var tf=_tf,html="";ranked().forEach(function(a,i){var c=chg(a,tf),up=c>=0,rank=i+1;var isNew=a.created>0&&(Date.now()/1000-a.created)<21*86400;var ico=a.logo?('<div class="lx-tico" style="--lxtic:url(\x27'+eu(a.logo)+'\x27)"></div>'):('<div class="lx-tico" style="--lxtic:'+grad(a.code)+'" data-l="'+esc(a.code.slice(0,1).toUpperCase())+'"></div>');
-html+='<div class="trending-row" data-lxasset="'+esc(a.code+(a.iss?("-"+a.iss):""))+'">'
-+'<div class="rank '+(rank<=3?"top":"")+'">#'+rank+'</div>'+ico
-+'<div class="info"><div class="nm-row"><span class="nm">'+esc(a.code)+'</span>'+vtick(a.code,a.iss)+(isNew?'<span class="new-badge">NEW</span>':'')// "Stellar" said nothing -- every asset in this list is a Stellar asset and the page is titled
-// "Trending on Stellar". Replaced with the asset's own pool liquidity, which is the thing a reader
-// weighing a trending token actually wants beside its volume. Dropped entirely when unknown, so the
-// line never carries an empty separator.
-+'</div><div class="sub">'+esc(isNew?"Just launched":a.name)+(function(){var t=tvlLabel(a);return t?(' \u00b7 '+t):'';})()+' \u00b7 '+metricLabel(a,tf)+'</div></div>'
-+'<div class="spark">'+spark(sdata(a,tf),up)+'</div>'
-+'<div class="price"><div class="p1">'+fmtP(a.price)+'</div><div class="p2"><span class="change-pill '+(up?"up":"down")+'">'+(up?"\u25b2":"\u25bc")+' '+pct(c)+'%</span></div></div>'
-+'<button class="trade-btn">Trade</button></div>';});
-t.innerHTML=html;t.classList.add("lx-tready");}
-// Daily buckets for every asset: trade_count and counter_volume per day, 30 days back. Everything the
-// two tabs need for all three periods comes out of this one pass.
-function ensureAgg(cb){
-  if(_aggState===2){cb&&cb();return;}
-  if(_aggState===1){return;}                        // already in flight; its own completion re-renders
-  _aggState=1;
-  fetch("https://api.binance.com/api/v3/klines?symbol=XLMUSDT&interval=1d&limit=32")
-    .then(function(r){return r.ok?r.json():[];}).catch(function(){return [];})
-    .then(function(k){
-      var hist=(k||[]).map(function(c){return {t:+c[0],usd:+c[4]};});
-      function xlmAt(t){if(!hist.length)return 0.17;var best=hist[0];for(var i=0;i<hist.length;i++){if(hist[i].t<=t)best=hist[i];else break;}return best.usd||0.17;}
-      var res=86400000,end=Math.ceil(Date.now()/res)*res,start=end-31*res;
-      function one(a){
-        if(!a.iss)return Promise.resolve();
-        var url=H+"/trade_aggregations?base_asset_type=credit_alphanum"+(a.code.length>4?"12":"4")
-          +"&base_asset_code="+encodeURIComponent(a.code)+"&base_asset_issuer="+a.iss
-          +"&counter_asset_type=native&resolution="+res+"&start_time="+start+"&end_time="+end+"&order=asc&limit=40";
-        return fetch(url).then(function(r){return r.ok?r.json():null;}).then(function(j){
-          var recs=(j&&j._embedded&&j._embedded.records)||[];
-          if(!recs.length)return;
-          // price history, converted at each day's own XLM/USD rather than today's
-          var pr=recs.map(function(x){return (+x.avg||+x.close||0)*xlmAt(+x.timestamp);}).filter(function(v){return v>0;});
-          if(pr.length>1)a.p30=pr;
-          var n=recs.length;
-          function sumT(from){var t=0;for(var i=Math.max(0,from);i<n;i++)t+=+recs[i].trade_count||0;return t;}
-          function sumV(from){var t=0;for(var i=Math.max(0,from);i<n;i++)t+=(+recs[i].counter_volume||0)*xlmAt(+recs[i].timestamp);return t;}
-          a.tr24=+recs[n-1].trade_count||0; a.tr7=sumT(n-7); a.tr30=sumT(0);
-          a.v24=(+recs[n-1].counter_volume||0)*xlmAt(+recs[n-1].timestamp); a.v7=sumV(n-7); a.v30=sumV(0);
-          a.vol30=a.v30;
-        }).catch(function(){});
-      }
-      // waves of five: 25 assets is a quarter of Horizon's five-minute budget for this IP, and firing
-      // them all at once is what turns that budget into a burst it refuses.
-      var list=(_roster||[]).slice(),i=0;
-      function wave(){
-        if(i>=list.length)return Promise.resolve();
-        var batch=list.slice(i,i+5);i+=5;
-        return Promise.all(batch.map(one)).then(function(){ try{render();}catch(_){ } return wave(); });
-      }
-      return wave();
-    })
-    .then(function(){_aggState=2;_r30=1;cb&&cb();},function(){_aggState=2;_r30=1;cb&&cb();});
-}
-function ensure30d(cb){if(_r30){cb();return;}
-// Horizon prices are in XLM; converting them with the CURRENT XLM/USD distorts history (e.g. a stablecoin would
-// show a fake move). Fetch the daily XLM/USD 30d curve and convert each bucket at ITS OWN day's rate.
-fetch("https://api.binance.com/api/v3/klines?symbol=XLMUSDT&interval=1d&limit=32").then(function(r){return r.ok?r.json():[];}).then(function(k){
-var hist=(k||[]).map(function(c){return {t:+c[0],usd:+c[4]};});
-function xlmAt(t){if(!hist.length)return 0.17;var best=hist[0];for(var i=0;i<hist.length;i++){if(hist[i].t<=t)best=hist[i];else break;}return best.usd||0.17;}
-var res=86400000,end=Math.ceil(Date.now()/res)*res,start=end-31*res;
-return Promise.all(_roster.map(function(a){if(a.code==="XLM"){a.p30=hist.map(function(h){return h.usd;});a.vol30=a.vol7d*4.3;return Promise.resolve();}if(!a.iss)return Promise.resolve();var url=H+"/trade_aggregations?base_asset_type=credit_alphanum"+(a.code.length>4?"12":"4")+"&base_asset_code="+encodeURIComponent(a.code)+"&base_asset_issuer="+a.iss+"&counter_asset_type=native&resolution="+res+"&start_time="+start+"&end_time="+end+"&order=asc&limit=40";
-return fetch(url).then(function(r){return r.ok?r.json():null;}).then(function(j){var recs=(j&&j._embedded&&j._embedded.records)||[];if(recs.length<2)return;var pr=recs.map(function(x){return (+x.avg||+x.close||0)*xlmAt(+x.timestamp);}).filter(function(v){return v>0;});if(pr.length>1)a.p30=pr;a.vol30=recs.reduce(function(s,x){return s+(+x.counter_volume||0)*xlmAt(+x.timestamp);},0);}).catch(function(){});
-}));
-}).then(function(){_r30=1;cb();},function(){_r30=1;cb();});}
-function setTab(tf){_tf=tf;var t=tList(),card=t?t.closest(".market-card"):null;if(card){var badge=card.querySelector(".market-head .badge");if(badge)badge.textContent="Past "+tf;}if(tf==="30d"&&!_r30){skeleton();ensure30d(function(){if(_tf==="30d")render();});}else{render();}}
-// Two controls now: the metric (what the list is ranked by) and the period it is measured over. The
-// period control is the design's own .tf-mini; the metric one is built to match it.
-function wireMetric(){
-  var t=tList();if(!t)return;var card=t.closest(".market-card");if(!card)return;
-  if(card.querySelector(".lx-metric"))return;
-  var mini=card.querySelector(".tf-mini");if(!mini)return;
-  var box=document.createElement("div");box.className="lx-metric";
-  // data-lxnonav is the design's own opt-out, and this control needs it: the dashboard maps clicked
-  // LABEL TEXT to a destination, and "Most Traded" contains "Trade" -- so pressing it fired
-  // lxNavigate([...dex-asset...]) and left the page instead of switching the ranking. The opt-out is
-  // on the buttons as well as the box, because the handler reads from the element actually clicked.
-  box.setAttribute("data-lxnonav","1");
-  box.innerHTML='<button type="button" data-lxnonav="1" data-m="vol" class="active">Highest Volume</button>'
-              +'<button type="button" data-lxnonav="1" data-m="trades">Most Traded</button>';
-  mini.parentNode.insertBefore(box,mini);
-  [].forEach.call(box.querySelectorAll("button"),function(b){
-    b.addEventListener("click",function(e){
-      // This card carries no data-lxnonav, so a click inside it reaches the dashboard's
-      // card-navigation handler and leaves the page. A control is not a link to its own container.
-      try{e.preventDefault();e.stopPropagation();}catch(_){ }
-      var m=b.getAttribute("data-m");if(m===_metric)return;
-      _metric=m;
-      [].forEach.call(box.querySelectorAll("button"),function(x){x.classList.toggle("active",x===b);});
-      // Most Traded cannot be answered from the roster alone -- the counts come from Horizon.
-      if(_metric==="trades"&&_aggState!==2){skeleton();ensureAgg(function(){render();});}
-      else render();
-    });
-  });
-}
-function wireTabs(){var t=tList();if(!t)return;var card=t.closest(".market-card");if(!card)return;var tabs=card.querySelectorAll(".tf-mini button");if(!tabs.length)return;var arr=[];[].forEach.call(tabs,function(b){var nb=b.cloneNode(true);b.parentNode.replaceChild(nb,b);arr.push(nb);});arr.forEach(function(nb){nb.addEventListener("click",function(){var lbl=(nb.textContent||"").trim();arr.forEach(function(x){x.classList.toggle("active",x===nb);});setTab(lbl.toLowerCase());});});}
-function load(){skeleton();fetch(SE+"?sort=volume7d&order=desc&limit=80").then(function(r){return r.json();}).then(function(j){var recs=(j._embedded&&j._embedded.records)||[];var seen={},out=[];recs.forEach(function(x){var parts=(x.asset||"").split("-"),code=parts[0],iss=parts[1]||"";if(!code||seen[code])return;var toml=x.tomlInfo||x.toml_info||{};var logo=LOGOS[code]||toml.image||"";var rating=(x.rating&&x.rating.average)||0;
-// quality gate: must have a real logo AND be a known/decently-rated asset AND a non-dust price -> drops spam like USDCAllow / $0 mint tokens
-if(!logo||!(LOGOS[code]||rating>=6)||!(+x.price>=1e-7))return;
-// XLM is the quote currency for every row here (prices and volume are denominated in it) and every
-// row's Trade button opens a pair against it, so a native XLM row would mean swapping XLM for XLM.
-// Any NON-native asset calling itself XLM is an impostor, so the code alone is enough to drop it.
-if(code==="XLM")return;
-seen[code]=1;
-var nm=x.domain||toml.name||toml.orgName||code;if(nm.length>22)nm=nm.slice(0,21)+"\u2026";
-var p7=(x.price7d||[]).map(function(p){return +p[1];}).filter(function(v){return v>0;});
-out.push({code:code,iss:iss,price:+x.price,p7:p7,vol7d:(+x.volume7d||0)/1e7,name:nm,logo:logo,created:+x.created||0});});if(!out.length)throw new Error("empty");
-_roster=out.slice(0,25);
-wireTabs();wireMetric();render();
-/* The daily buckets are NOT fetched here. They cost one Horizon request per asset -- 23-25 of them --
-   and Horizon allows 100 per five minutes per IP, answering a breach with a 429 that carries no CORS
-   header, so the browser reports only "Failed to fetch" and the numbers silently never arrive. Loading
-   the dashboard should not spend a quarter of that budget on a tab the reader may never open, so the
-   pass runs when Most Traded (or the 30d period) is actually selected.
-   A BLOCK comment on purpose: load() is one very long single line, so a // comment here swallows the
-   rest of that line -- which is exactly how this shipped broken a moment ago. */}).catch(function(){var t=tList();if(t&&!t.classList.contains("lx-tready"))setTimeout(load,8000);});}
-(function(){if(window.__lxTrendNav)return;window.__lxTrendNav=1;window.addEventListener("click",function(e){var row=e.target&&e.target.closest?e.target.closest(".trending-row[data-lxasset]"):null;if(!row)return;e.preventDefault();e.stopImmediatePropagation();location.href="lumoscore-dex-asset.html?asset="+encodeURIComponent(row.getAttribute("data-lxasset"));},true);})();
-if(document.readyState!=="loading")load();else document.addEventListener("DOMContentLoaded",load);
-setInterval(function(){if(_tf!=="30d")load();},120000);
 })();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){

@@ -1670,11 +1670,29 @@ html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visib
    For that whole time the page sat masked and empty, which reads as broken rather than as working.
    Reduced motion drops the pulse and the fades; it does NOT gate the dismissal, which is a class and a
    removal, so the overlay can never be left on screen by a motion preference. */
+/* Pool Activity chart: the SVG takes no pointer input, so every mouse and touch lands on #tvlChart.
+   The hover listeners are on that host, and a touch TARGET is sticky for the life of the gesture --
+   whichever node touchstart hit keeps receiving touchmove. Starting a drag on the filled area therefore
+   bound the gesture to the gradient <path>, and that path is REPLACED on the next chart repaint, which
+   orphaned the drag and killed the readout mid-swipe. Starting on the empty part above the line bound it
+   to the host instead, which is never replaced -- which is exactly why it worked there and nowhere else.
+   With the SVG transparent to input the target is always the host, so it cannot happen at all. The
+   overlay divs already carry pointer-events:none for the same reason. */
+#tvlChart svg,#tvlChart svg *{pointer-events:none}
 .lx-boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);
   opacity:1;transition:opacity .28s ease}
 .lx-boot.lx-boot-out{opacity:0;pointer-events:none}
 .lx-boot-in{display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;text-align:center}
-.lx-boot-mark{width:60px;height:60px;background-size:contain;background-repeat:no-repeat;
+.lx-boot-badge{position:relative;width:96px;height:96px;display:grid;place-items:center}
+.lx-boot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  animation:lx-boot-spin 1.15s linear infinite;opacity:.9}
+.lx-boot-badge::after{content:"";position:absolute;inset:8px;border-radius:50%;
+  background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-boot-pulse 1.8s ease-in-out infinite}
+@keyframes lx-boot-spin{to{transform:rotate(360deg)}}
+.lx-boot-mark{position:relative;z-index:1;width:52px;height:52px;background-size:contain;background-repeat:no-repeat;
   background-position:center;animation:lx-boot-pulse 1.6s ease-in-out infinite}
 .lx-boot-ttl{font-family:'Hanken Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--text,#0e0e10)}
 .lx-boot-bar{width:216px;height:4px;border-radius:99px;background:var(--border,#ececef);overflow:hidden}
@@ -1682,7 +1700,7 @@ html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visib
 .lx-boot-sub{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;
   color:var(--text-soft,#6f6f79);font-variant-numeric:tabular-nums}
 @keyframes lx-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.6}}
-@media (prefers-reduced-motion:reduce){.lx-boot-mark{animation:none}
+@media (prefers-reduced-motion:reduce){.lx-boot-mark,.lx-boot-badge::before,.lx-boot-badge::after{animation:none}
   .lx-boot,.lx-boot-fill{transition:none}}
 /* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
    written paintTables filled both and revealed after. The network list changed that: the rows now arrive
@@ -1793,6 +1811,12 @@ html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapsh
 .lx-amm-empty{padding:22px 12px;text-align:center;color:var(--text-muted);font-size:13.5px}
 .lx-amm-empty b{color:var(--text);display:block;margin-bottom:4px}
 html:not(.lx-ammready) .pool-header, html:not(.lx-ammready) .pool-layout{visibility:hidden}
+/* The Deposit / Withdraw box has its OWN gate, because .lx-ammready lifts when the pool's own figures
+   land and the wallet-side balances arrive later. In that window the design's baked "Balance: 25,420.18"
+   was on screen -- a number belonging to nobody, beside a MAX button that would have used it. Only the
+   balance line is held, not the panel: the form is usable, it just does not state a balance it does not
+   yet know. paintDetail lifts this the moment it has written the real ones. */
+html:not(.lx-dwready) #dwDeposit .dw-field .balance,html:not(.lx-dwready) #dwWithdraw .balance{visibility:hidden}
 /* the breadcrumb pair (last span in .crumb) is a baked "LUMOS / XLM" mock that pdCopy corrects to the
    real pair before reveal — hide it until then so it doesn't flash the wrong pair */
 html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
@@ -5647,7 +5671,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // the site's own mark, read off the sidebar rather than copied into this file as a second base64 blob
     var mk=""; try{ var lm=q(".logo-mark"); if(lm)mk=getComputedStyle(lm).backgroundImage; }catch(_){}
     el.innerHTML='<div class="lx-boot-in">'
-      +'<div class="lx-boot-mark" data-logo="" data-logoed="1"'+((mk&&mk!=="none")?(' style="background-image:'+mk+'"'):'')+'></div>'
+      +'<div class="lx-boot-badge"><div class="lx-boot-mark" data-logo="" data-logoed="1"'+((mk&&mk!=="none")?(' style="background-image:'+mk+'"'):'')+'></div></div>'
       +'<div class="lx-boot-ttl">Synchronising Stellar pools</div>'
       +'<div class="lx-boot-bar"><div class="lx-boot-fill"></div></div>'
       +'<div class="lx-boot-sub">Starting</div></div>';
@@ -5688,7 +5712,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   (function(){
     try{ if(sessionStorage.getItem(BOOTKEY))return; }catch(_){}
     bootArmed=true;
-    setTimeout(function(){ try{ bootShow(); bootProgress(); }catch(_){} },400);
+    // A POLL, not one shot. This fired once at 400ms and gave up: if the list container was not in the
+    // DOM yet -- which on a cold load is exactly when it is not -- bootShow() found no netActive() host,
+    // returned, and the overlay never appeared for the whole 25s wait it exists to cover. Each call is a
+    // no-op once the overlay is up, once the page is ready, or once it has been dismissed.
+    [300,600,1000,1600,2400].forEach(function(ms){ setTimeout(function(){ try{ bootShow(); bootProgress(); }catch(_){} },ms); });
   })();
   function netFetch(){
     if(NET.busy)return; NET.busy=1;
@@ -7508,6 +7536,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var fields=qa("#dwDeposit .dw-field");
     if(d.nonXlm){ setField(fields[0],d.a0.code,genLogo(d.a0),d.balA0); setField(fields[1],d.a1.code,genLogo(d.a1),d.balTok); }
     else { setField(fields[0],d.code,tokLogo(),d.balTok); setField(fields[1],"XLM",xlmLogo(),d.balXlm); }
+    // the balances on screen are ours now, so the gate above can lift
+    try{ document.documentElement.classList.add("lx-dwready"); }catch(_){}
     var lp=q("#dwWithdraw .balance"); if(lp)setText(lp,"Your LP: "+famt(d.myShares));
     qa(".dw-summary .r").forEach(function(rw){ var lab=(rw.querySelector("span")||{}).textContent||""; var st=rw.querySelector("strong"); if(!st)return; if(/fee tier/i.test(lab))setText(st,d.fee+"%"); else if(/network fee/i.test(lab))setText(st,"\u2248 0.00001 XLM"); });
   }

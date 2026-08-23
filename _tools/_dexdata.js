@@ -39,7 +39,7 @@ const STYLE = `<style id="lx-dexmain-css">
 .lx-vtick svg{width:9px;height:9px;display:block}
 
 /* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
-#dexMintsList:not(.lxd) .dex-mint-row{visibility:hidden}.lx-tboot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);opacity:1;transition:opacity .28s ease}.lx-tboot.lx-tboot-out{opacity:0;pointer-events:none}.lx-tboot-mark{width:64px;height:64px;background-size:contain;background-repeat:no-repeat;background-position:center;animation:lx-tboot-pulse 1.6s ease-in-out infinite}@keyframes lx-tboot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.88);opacity:.55}}@media (prefers-reduced-motion:reduce){.lx-tboot-mark{animation:none}.lx-tboot{transition:none}}
+#dexMintsList:not(.lxd) .dex-mint-row{visibility:hidden}.lx-tboot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);opacity:1;transition:opacity .28s ease}.lx-tboot.lx-tboot-out{opacity:0;pointer-events:none}.lx-tboot-badge{position:relative;width:104px;height:104px;display:grid;place-items:center}.lx-tboot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));animation:lx-tboot-spin 1.15s linear infinite;opacity:.9}.lx-tboot-badge::after{content:"";position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-tboot-pulse 1.8s ease-in-out infinite}@keyframes lx-tboot-spin{to{transform:rotate(360deg)}}.lx-tboot-mark{position:relative;z-index:1;width:56px;height:56px;background-size:contain;background-repeat:no-repeat;background-position:center;animation:lx-tboot-pulse 1.6s ease-in-out infinite}@keyframes lx-tboot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.88);opacity:.55}}@media (prefers-reduced-motion:reduce){.lx-tboot-mark,.lx-tboot-badge::before,.lx-tboot-badge::after{animation:none}.lx-tboot{transition:none}}
 #dexMoverGrid:not(.lxd) .dex-mover-card{visibility:hidden}
 #dexMkTbody:not(.lxd) tr{visibility:hidden}
 /* sortable column headers. Only the five numeric columns take a click -- Asset, Day High/Low and 7d Trend
@@ -546,7 +546,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(!q(".dex-markets")&&!q("#dexMintsList"))return;      // Trade landing only
     var el=document.createElement("div"); el.className="lx-tboot";
     var mk=""; try{ var lm=q(".logo-mark"); if(lm)mk=getComputedStyle(lm).backgroundImage; }catch(_){}
-    el.innerHTML='<div class="lx-tboot-mark" data-logo="" data-logoed="1"'+((mk&&mk!=="none")?(' style="background-image:'+mk+'"'):'')+'></div>';
+    el.innerHTML='<div class="lx-tboot-badge"><div class="lx-tboot-mark" data-logo="" data-logoed="1"'+((mk&&mk!=="none")?(' style="background-image:'+mk+'"'):'')+'></div></div>';
     (document.body||document.documentElement).appendChild(el);
     tboot=el;
     setTimeout(tbootHide,15000);
@@ -556,7 +556,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     el.classList.add("lx-tboot-out");
     setTimeout(function(){ if(el.parentNode)el.parentNode.removeChild(el); },320);
   }
-  (function(){ tbootArmed=true; setTimeout(function(){ try{ tbootShow(); }catch(_){} },400); })();
+  // A poll rather than one shot, for the same reason as the pools loader: a single attempt at 400ms
+  // gives up if the markets section has not rendered yet, which on a cold load is precisely when it has
+  // not -- and the overlay then never appears for the whole blank stretch it exists to cover.
+  // tbootShow() is a no-op once shown, once sortReady, or once dismissed.
+  (function(){ tbootArmed=true; [300,600,1000,1600,2400].forEach(function(ms){ setTimeout(function(){ try{ tbootShow(); }catch(_){} },ms); }); })();
   function markSortReady(){
     if(sortReady)return;
     if(mkSort.key && (!window.__lxDEXloaded || !rosterPriced))return;   // both halves of the data, or nothing
