@@ -57,7 +57,7 @@ const SCRIPT = '<script id="lx-dexhero">(function(){'
 + 'hiw.setAttribute("title","How it works");hiw.setAttribute("aria-label","How it works");'
   + '}'
   // Only now is it safe to hide the hero: on desktop the CTA row was inside it.
-  + '[".dex-overview",".lumos-promo.lx-mobhero",".dex-hero"].forEach(function(sel){'
+  + '[".dex-overview",".lumos-promo.lx-mobhero",".dex-hero",".amm-overview"].forEach(function(sel){'
   + 'var el=q(sel); if(el&&!el.classList.contains("lx-dexhero-off"))el.classList.add("lx-dexhero-off");'
   + '});'
   + '}'
@@ -87,7 +87,9 @@ for (const dev of ['desktop', 'mobile']) {
     // The Trade landing, identified by its markets section rather than by filename.
     const isTrade = p.indexOf('class="dex-markets"') >= 0
                  || p.indexOf('mdx-mk-list') >= 0;
-    if (!isTrade) { if (p !== before) { json[k] = p; changed = true; } continue; }
+    const isPools = p.indexOf('id="poolsBody"') >= 0
+                 || p.indexOf('class="amm-overview"') >= 0;
+    if (!isTrade && !isPools) { if (p !== before) { json[k] = p; changed = true; } continue; }
 
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     const bi = p.lastIndexOf('</body>');
