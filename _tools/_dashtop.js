@@ -46,6 +46,9 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xt-tr .k{font-weight:600;font-size:10.5px;color:var(--text-soft)}
 .lx-xt-tr .v{font-weight:800;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--text)}
 /* the vertical guide */
+.lx-xt-dot{position:absolute;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;
+  background:currentColor;border:2px solid var(--surface,#fff);pointer-events:none;opacity:0;
+  transition:opacity .1s;z-index:6}
 .lx-xt-vl{position:absolute;top:0;bottom:0;width:1px;background:var(--border-strong,#d5d5dd);
   opacity:0;pointer-events:none;z-index:4}
 .lx-xt-price{font:800 30px/1.05 'JetBrains Mono',monospace;letter-spacing:-1px;color:var(--text)}
@@ -222,6 +225,7 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
       +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path>'
       +'</svg>';
     box.__lxpts=pts;
+    box.__lxcol=col;                       // so the dot can match the line it marks
     wireHover(box);
   }
   // #13: read the chart by pointing at it.
@@ -242,6 +246,8 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
     if(!tip){ tip=document.createElement("div"); tip.className="lx-xt-tip"; box.appendChild(tip); }
     var vl=box.querySelector(".lx-xt-vl");
     if(!vl){ vl=document.createElement("div"); vl.className="lx-xt-vl"; box.appendChild(vl); }
+    var dot=box.querySelector(".lx-xt-dot");
+    if(!dot){ dot=document.createElement("div"); dot.className="lx-xt-dot"; box.appendChild(dot); }
     if(box.__lxhov)return; box.__lxhov=1;
     function net(){
       // Read from the strip the page has already painted, so the two can never disagree and this costs
@@ -271,9 +277,22 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
         +(n["assets"]?('<div class="lx-xt-tr"><span class="k">Assets now</span><span class="v">'+n["assets"]+'</span></div>'):'');
       tip.classList.add("on");
       vl.style.left=Math.round(f*r.width)+"px"; vl.style.opacity="1";
+      // Snapped to the point the tooltip is quoting, not to the raw pointer position -- a dot a few
+      // pixels off the value it names is worse than no dot. Mirrors draw()'s geometry exactly: same
+      // W/H/PAD, same min/max over the same array, so the marker cannot drift from the path.
+      var _dot=box.querySelector(".lx-xt-dot");
+      if(_dot){
+        var _H=104,_PAD=6;
+        var _mn=Math.min.apply(null,pts),_mx=Math.max.apply(null,pts),_rg=(_mx-_mn)||Math.abs(_mx)||1;
+        var _yv=_H-_PAD-((pts[i]-_mn)/_rg)*(_H-_PAD*2);
+        _dot.style.left=Math.round((i/(pts.length-1))*r.width)+"px";
+        _dot.style.top=(_yv/_H*r.height).toFixed(1)+"px";
+        _dot.style.color=box.__lxcol||"var(--accent,#ea6a2c)";
+        _dot.style.opacity="1";
+      }
     }
-    function off(){ var t=box.querySelector(".lx-xt-tip"),v=box.querySelector(".lx-xt-vl");
-      if(t)t.classList.remove("on"); if(v)v.style.opacity="0"; }
+    function off(){ var t=box.querySelector(".lx-xt-tip"),v=box.querySelector(".lx-xt-vl"),d=box.querySelector(".lx-xt-dot");
+      if(t)t.classList.remove("on"); if(v)v.style.opacity="0"; if(d)d.style.opacity="0"; }
     box.addEventListener("mousemove",function(e){ at(e.clientX); });
     box.addEventListener("mouseleave",off);
     // Touch: read on tap and follow a drag. Deliberately NOT cleared on touchend -- on a phone the finger
