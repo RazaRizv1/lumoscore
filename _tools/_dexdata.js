@@ -568,6 +568,12 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // request can never leave the page sealed behind it.
   var tboot=null, tbootArmed=false;
   function tbootShow(){
+    // Withdrawn: this was read as a whole-page loading animation, which is not what a subtle in-box
+    // cue was meant to be. The function stays so its five timers, the 15s failsafe and tbootHide all
+    // keep resolving -- removing the declaration outright is how a top-level ReferenceError takes the
+    // rest of the emitted script down with it. Nothing is inserted, so nothing paints.
+    return;
+    /* eslint-disable no-unreachable */
     if(tboot||!tbootArmed)return;
     if(sortReady)return;
     if(!q(".dex-markets")&&!q("#dexMintsList"))return;      // Trade landing only

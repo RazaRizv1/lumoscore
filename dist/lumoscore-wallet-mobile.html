@@ -1940,6 +1940,14 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 /* And the desktop container's empty-state, when the phone renderer is the one with the rows. Both live
    in the panel now, so a bare "No open orders." under a list of three would be a flat contradiction. */
 .lx-wcpanel-orders:has(.orders-stack .lxmw-row) .orders-block{display:none}
+/* The design bakes two sample orders into .orders-block -- APT/USDT and APT/USDC, complete with working
+   Cancel buttons -- and they are what the browser paints while the real offers are still in flight. On a
+   wallet page that is not a cosmetic flicker: it is a stranger's positions, on someone else's chain,
+   offering to cancel something. 
+   Gated on the real offer id rather than on a timing class, so there is no window where it can be wrong:
+   every row we build carries data-oid, and nothing the design shipped ever will. The empty state and the
+   real rows both replace the block outright, so this only ever hides the mock. */
+.orders-block .order-row:not([data-oid]){display:none!important}
 
 .lx-wclist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;
   margin-bottom:32px}

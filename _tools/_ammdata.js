@@ -1171,6 +1171,13 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // design's mock. Nothing logged it usefully, because the throw is at top level.
   var BOOTKEY="lumos.poolsboot", lxBootEl=null, bootPct=0, bootArmed=false;
   function bootShow(){
+    // Withdrawn on request -- "Synchronising Stellar pools" was covering the page without conveying
+    // enough to be worth it. Kept as a live function rather than deleted: bootSet() is called from the
+    // paging loop and bootDone() from several exits, and dropping the declaration is exactly how a
+    // top-level ReferenceError silently kills the whole layer (see the var/function shadowing note).
+    // It inserts nothing now, so the page renders as it fills instead of behind a curtain.
+    return;
+    /* eslint-disable no-unreachable */
     if(lxBootEl||bootArmed===false)return;
     if(document.documentElement.classList.contains("lx-ammready"))return;
     if(!netActive())return;
