@@ -90,6 +90,9 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 .price-display .big:not(.lxp),
 .price-display .change-pill:not(.lxp),
 .price-display .meta b.mono:not(.lxp),
+/* #26: drop the change and volume cells. Positional because these six have no distinguishing class;
+   the markup ships exactly O, H, L, C, delta, volume in that order. */
+.ohlc-strip .pair:nth-of-type(n+5){display:none!important}
 .ohlc-strip .pair .v:not(.lxp),
 .dxa-perf-grid .dxa-perf-cell .ch:not(.lxp),
 .mdxa-perf-grid .mdxa-perf-cell .ch:not(.lxp),
@@ -254,6 +257,23 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
   overflow-wrap:anywhere}
 /* Desktop: pinned inside the plot, top-left. z-index above the svg, and a solid tray so the labels stay
    legible if the series runs behind them. */
+/* #25: on the control row now, not floating over the plot -- static, no tray, no shadow. The rule is
+   kept scoped to the chart hosts so that if either group is ever re-parented back inside one it still
+   has somewhere sensible to sit. */
+/* #27: the right column ended above the left, leaving a blank strip beside the performance boxes.
+   Measured on this page: left 968px, right 916px -- 52px short. The gap is not fixed either: the trade
+   card changes height between Swap, Orderbook and Limit, so any hard-coded height would only be right
+   on one tab. Stretching the column and letting the ad absorb whatever is left over is correct on all
+   three, and on any asset whose chart is a different height.
+   Desktop only: the columns stack on a phone, where there is no second column to align to. */
+@media(min-width:900px){
+  .dxa-grid{align-items:stretch}
+  .dxa-trade-col{min-height:100%}
+  .dxa-trade-col .lxad-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  .dxa-trade-col .lxad-wrap > *{flex:1 1 auto}
+}
+.chart-controls .lxda-metric,.chart-controls .lxda-denom{position:static;top:auto;left:auto;
+  box-shadow:none;background:transparent;border:0}
 #dxaChart .lxda-metric,#mdxaChart .lxda-metric,#dxaChart .lxda-denom,#mdxaChart .lxda-denom{
   position:absolute;top:8px;z-index:4;background:var(--surface,#fff);border:1px solid var(--border);
   box-shadow:0 2px 8px -4px rgba(0,0,0,.35)}
@@ -324,6 +344,9 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .lxda-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:6px}
 /* Row labels, same as the pool chart's: 11px soft over a 14px/800 figure. */
 .lxda-chtip .l{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600}
+/* #24: one labelled group per figure, 8px apart -- the pool tooltip's rhythm, measured off it. */
+.lxda-chtip .lxrow{margin-top:8px}
+.lxda-chtip .lxrow .p{margin-top:1px}
 .lxda-chtip .v{margin-top:6px}
 .lxda-chtip .p{color:var(--text,#0e0e10);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
 .lxda-chtip .v{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-top:1px}
@@ -1432,9 +1455,12 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
         +'<div class="p">'+_head+'</div>'
         +(_sub?('<div class="v">'+_sub+'</div>'):'')
         // #17: volume alone does not say whether a bar was one whale or four hundred people. Horizon
-        // returns trade_count on the same aggregation, so it costs nothing to say which.
-        +'<div class="v">Vol '+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")
-          +(p.n>0?(' \\u00b7 '+p.n.toLocaleString('en-US')+' trade'+(p.n===1?'':'s')):'')+'</div>';
+        // returns trade_count on the same aggregation, so it costs nothing to say which -- and #24, it
+        // gets its own row rather than being appended to the volume as small print.
+        +'<div class="lxrow"><div class="l">Volume</div>'
+          +'<div class="p">'+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")+'</div></div>'
+        +(p.n>0?('<div class="lxrow"><div class="l">Trades</div>'
+          +'<div class="p">'+p.n.toLocaleString('en-US')+'</div></div>'):'');
       tip.style.opacity=1;
       var tw=tip.offsetWidth,th=tip.offsetHeight,tx=sx+14; if(tx+tw>pr.width)tx=sx-tw-14; if(tx<2)tx=2;
       tip.style.left=tx+"px"; tip.style.top=Math.max(2,sy-th-12)+"px";
@@ -1624,25 +1650,28 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     // is clipped, and the controls sit on the thing they control. On a phone the row has room to wrap
     // and that is the better place, so the host is re-picked on every apply and the group is moved if
     // the window has crossed the breakpoint since.
-    var narrow=(window.innerWidth||0)<=760;
-    var row=narrow?q(".chart-controls"):(q("#dxaChart,#mdxaChart")||q(".chart-controls"));
+    var row=q(".chart-controls")||q("#dxaChart,#mdxaChart");
     if(!row)return;
+    // Ahead of the line/candle toggle, so the row reads: figures, what is plotted, how it is drawn,
+    // over what period. The candle toggle is the .chart-tools that is neither of ours.
+    var beforeEl=row.querySelector(".chart-tools:not(.lxda-metric):not(.lxda-denom)")||null;
+    function host(el){ if(!el)return; if(el.parentNode===row&&(!beforeEl||el.nextSibling===beforeEl||el.compareDocumentPosition(beforeEl)&Node.DOCUMENT_POSITION_FOLLOWING))return;
+      if(beforeEl)row.insertBefore(el,beforeEl); else row.appendChild(el); }
     var mv=q(".lxda-metric"), dv=q(".lxda-denom");
-    if(mv&&mv.parentNode!==row)row.appendChild(mv);
-    if(dv&&dv.parentNode!==row)row.appendChild(dv);
+    host(mv); host(dv);
     if(!row.querySelector(".lxda-metric")){
       var g=document.createElement("div");
       g.className="chart-tools lxda-metric"; g.setAttribute("data-logo","");
       g.innerHTML='<button type="button" data-metric="price">Price</button>'
         +'<button type="button" data-metric="mcap">MCap</button>';
-      row.appendChild(g);
+      if(beforeEl)row.insertBefore(g,beforeEl); else row.appendChild(g);
     }
     if(!row.querySelector(".lxda-denom")){
       var d=document.createElement("div");
       d.className="chart-tools lxda-denom"; d.setAttribute("data-logo","");
       d.innerHTML='<button type="button" data-cdn="usd">$</button>'
         +'<button type="button" data-cdn="xlm">XLM</button>';
-      row.appendChild(d);
+      if(beforeEl)row.insertBefore(d,beforeEl); else row.appendChild(d);
     }
     qa(".lxda-metric button,.lxda-denom button").forEach(function(b){ b.setAttribute("data-logo",""); });
     // #39: side by side rather than one above the other. Stacked, the two trays occupied 68px of the
