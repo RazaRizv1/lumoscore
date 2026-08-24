@@ -906,7 +906,8 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       paintHeader(); renderAssets(); wireTabs(); renderPools();
       // Price beyond the first batch so the ORDER is real rather than just Horizon's order, but stop at
       // PRICE_CAP: an account with 400 trustlines must not turn one page view into 400 requests.
-      (function wave(i,list){ if(i>=list.length)return;
+      pxStart();                       // held for the whole wave, not per batch
+      (function wave(i,list){ if(i>=list.length){ pxEnd(); return; }
         Promise.all(list.slice(i,i+5).map(function(a){ if(a.__px)return null; a.__px=1; return loadAssetPx(a); }))
           .then(function(){ wave(i+5,list); },function(){ wave(i+5,list); });
       })(0,ASSETS.slice(0,PRICE_CAP));
