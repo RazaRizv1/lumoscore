@@ -69,6 +69,7 @@ const STYLE = `<style id="lx-wclaim-css">
    That is why none of the typography set on the previous pass ever applied. */
 .lx-wcamt .a{font-weight:600;font-size:17.5px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text)}
 .lx-wcamt .u{font-weight:700;font-size:13px;line-height:1.25;color:var(--text-soft)}
+.lx-wcaddr{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:600;letter-spacing:-.01em}
 .lx-wcsub{margin-top:3px;font-weight:600;font-size:12.5px;line-height:1.35;color:var(--text-soft);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* #19: flat accent, not a gradient. .btn-primary on this page is a solid rgb(234,106,44) with a 9px
@@ -181,9 +182,9 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
     }
     return CB.map(function(r){
       var a=parseAsset(r.asset), c=mine(r,addr), ok=open(c&&c.predicate);
-      var who=r.sponsor?("from "+shortG(r.sponsor)):"";
+      var who=r.sponsor?('from <span class="lx-wcaddr">'+esc(shortG(r.sponsor))+'</span>'):"";
       var when=r.last_modified_time?ago(r.last_modified_time):"";
-      var sub=[who,when].filter(Boolean).join(" \\u00b7 ");
+      var sub=[who,esc(when)].filter(Boolean).join(" \\u00b7 ");
       // #6: the same disc every other list on this page uses. data-lxc/data-lxi are what the shared
       // resolver in _walletdata.js reads -- it checks its cache, then looks the issuer up on
       // stellar.expert for a toml logo, then paints --lxlogo. Until (or unless) that answers, the disc
@@ -199,7 +200,7 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
         +' data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer)+'" data-nat="'+(a.native?"1":"0")+'">'
         +_ic
         +'<div class="lx-wcmain"><div class="lx-wcamt"><span class="a">'+amt(r.amount)+'</span><span class="u">'+esc(a.code)+'</span></div>'
-        +'<div class="lx-wcsub">'+esc(sub||"claimable balance")+'</div>'
+        +'<div class="lx-wcsub">'+(sub||"claimable balance")+'</div>'
         // #3: same provenance line as the open orders -- the issuer's home domain, resolved after the
         // row is on screen by the shared lxFillHd, plus a way through to the asset's own page. A code
         // on its own says nothing about who issued it.
@@ -370,7 +371,13 @@ bar.innerHTML='<div class="asset-tabs lx-wcgroup">'
       }
       pOrders.appendChild(mstack);
     }
-    else pOrders.innerHTML='<div class="lx-wclist"><div class="lx-wcnote">No open orders.</div></div>';
+    // NOT an else on the phone branch. ".orders-stack" ships as a CSS RULE on desktop but never as an
+    // element, so mstack was null there, the else fired, and innerHTML destroyed the .orders-block that
+    // had just been moved in one line above -- leaving "No open orders." beside a tab correctly badged
+    // 2. The account had two live offers the whole time; only the container holding them was erased.
+    //
+    // The note belongs to one condition only: nothing was placed in the panel by either branch.
+    if(!pOrders.children.length)pOrders.innerHTML='<div class="lx-wclist"><div class="lx-wcnote">No open orders.</div></div>';
     host.insertBefore(pClaim,pOrders.nextSibling);
 
     paint();
