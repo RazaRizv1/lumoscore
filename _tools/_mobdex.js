@@ -67,7 +67,22 @@ const STYLE = '<style id="lx-mobdex-css">'
   + '.mdx-mints-title::after{content:"New mints on LumosCore";font-size:13px;font-weight:800;letter-spacing:-.01em;color:var(--text);-webkit-font-smoothing:auto}'
   // Hide the mock rows until ours land, so nobody sees Aptos tokens on a Stellar exchange even briefly.
   + 'body:not(.lxmd-ready) .mdx-mints-list,body:not(.lxmd-ready) .mdx-mover-list,'
-  + 'body:not(.lxmd-ready) .mdx-mk-list{visibility:hidden}'
+  + 'body:not(.lxmd-ready) .mdx-mk-list{display:none!important}'
+  // The skeleton only exists while the real list is out. Both halves are driven by the same body class,
+  // so they can never both be on screen.
+  + '.lxmd-skel{display:none}'
+  + 'body:not(.lxmd-ready) .lxmd-skel{display:block}'
+  + '.lxmd-skel-row{height:44px;border-radius:10px;margin-bottom:8px;'
+  + 'background-image:linear-gradient(90deg,rgba(140,140,150,.07),rgba(140,140,150,.17),rgba(140,140,150,.07));'
+  + 'background-size:200% 100%;animation:lxmdshim 1.25s ease-in-out infinite}'
+  // Staggered, so it reads as a list settling rather than one block pulsing.
+  + '.lxmd-skel-row:nth-child(2){animation-delay:.10s}'
+  + '.lxmd-skel-row:nth-child(3){animation-delay:.20s}'
+  + '.lxmd-skel-row:nth-child(4){animation-delay:.30s}'
+  + '.lxmd-skel-row:nth-child(5){animation-delay:.40s}'
+  + '@keyframes lxmdshim{0%{background-position:200% 0}100%{background-position:-200% 0}}'
+  // Anyone who has asked not to see motion gets the same bars, holding still.
+  + '@media(prefers-reduced-motion:reduce){.lxmd-skel-row{animation:none}}'
   + '.lxmd-empty{padding:16px 4px;text-align:center;color:var(--text-soft,#8a8fa3);'
   + 'font:600 13px/1.5 "Hanken Grotesk",system-ui,sans-serif}'
   // PAINTER-PROOF ICONS, same construction as the desktop layer.
@@ -113,6 +128,24 @@ const STYLE = '<style id="lx-mobdex-css">'
 const SCRIPT = '<script id="lx-mobdex">' + String.raw`
 (function(){
   if(window.__lxMobDex)return;window.__lxMobDex=1;
+  // Put a skeleton beside each list that is waiting on data. Runs before anything else so the boxes are
+  // never empty, even on the slowest first paint, and it is inserted ONCE per list -- the marker is the
+  // element itself, so a re-run finds it and does nothing.
+  (function skel(){
+    try{
+      var lists=[".mdx-mints-list",".mdx-mover-list",".mdx-mk-list"];
+      for(var i=0;i<lists.length;i++){
+        var el=document.querySelector(lists[i]); if(!el||!el.parentNode)continue;
+        if(el.previousElementSibling&&el.previousElementSibling.className==="lxmd-skel")continue;
+        var sk=document.createElement("div"); sk.className="lxmd-skel"; sk.setAttribute("aria-hidden","true");
+        // Movers is a short strip; the other two are lists. Enough bars to read as content, not a block.
+        var rows=(lists[i]===".mdx-mover-list")?3:5, h="";
+        for(var r=0;r<rows;r++)h+='<div class="lxmd-skel-row"></div>';
+        sk.innerHTML=h;
+        el.parentNode.insertBefore(sk,el);
+      }
+    }catch(_){}
+  })();
   var DASH="—";
   function q(s,r){return (r||document).querySelector(s);}
   function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,function(c){
