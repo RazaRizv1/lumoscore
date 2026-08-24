@@ -24,6 +24,16 @@ const STYLE = '<style id="lx-dexhero-css">'
   // Hidden rather than deleted from the markup. The design re-renders these containers, and a removed
   // node comes back on the next pass while a CSS rule does not.
   + '.lx-dexhero-off{display:none!important}'
+  // #40: static, so the hero never gets a frame to paint in.
+  //
+  // .dex-hero is deliberately NOT in this list, though the script above still names it. It is not a
+  // visible hero any more -- an earlier SEO pass emptied it to zero height and left the page's <h1>
+  // inside as screen-reader-only text, held open by
+  //     .dex-hero:has(> .dex-hero-l.lx-sronly){display:block!important}
+  // Adding display:none here would have taken that <h1> out of the crawl and the accessibility tree,
+  // on a site whose SEO problem is already thin content. That :has() rule outranks a plain class, so
+  // this was a no-op rather than a regression -- but only by luck, and it is not a rule to lean on.
+  + '.dex-overview,.lumos-promo.lx-mobhero,.amm-overview{display:none!important}'
   // In the mints card the pair reads as a small toolbar, not as page furniture.
   + '.dex-mints-card .lx-dctas,.mdx-mints-card .lx-dctas,'
   + '.dex-mints-card .mdx-hero-ctas,.mdx-mints-card .mdx-hero-ctas{position:static!important;'

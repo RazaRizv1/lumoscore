@@ -411,8 +411,22 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     {code:"AQUA", issuer:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA", cat:"utility", b:"#7b3ff2", logo:"https://aqua.network/assets/img/aqua-logo.png"},
     {code:"yXLM", issuer:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55", cat:"utility", b:"#08b5e5", logo:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg"},
     {code:"SHX",  issuer:"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH", cat:"utility", b:"#3fb89a"},
-    {code:"BTC",  issuer:"GAUTUYY2THLF7SGITDFMXJVYH3LHDSMGEAKSBU267M2K7A3W543CKUEF", cat:"utility", b:"#f7931a", logo:"https://assets.coingecko.com/coins/images/1/small/bitcoin.png"},
-    {code:"LUMOS",issuer:"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S", cat:"utility", b:"#ea6a2c", logo:"/assets/tokens/lumos.png"}
+    {code:"LUMOS",issuer:"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S", cat:"utility", b:"#ea6a2c", logo:"/assets/tokens/lumos.png"},
+
+    // #35: ten more, every one handshake-verified in lib.js under the same issuer. Logos are the
+    // issuer's OWN image from its stellar.toml -- the most authoritative source there is for what an
+    // asset looks like -- and each URL was fetched and confirmed to return a real image before being
+    // hardcoded here, since the whole point of hardcoding is that it renders with no placeholder flash.
+    {code:"ETH", issuer:"GBFXOHVAS43OIWNIO7XLRJAHT3BICFEIKOJLZVXNT572MISM4CMGSOCC", cat:"utility", b:"#627eea", logo:"https://ultracapital.xyz/static/images/icons/ETH.png"},
+    {code:"BTCLN", issuer:"GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT", cat:"utility", b:"#f7931a", logo:"https://kbtrading.org/static/Bitcoin_lightning_logo.png"},
+    {code:"USDM", issuer:"GDHDC4GBNPMENZAOBB4NCQ25TGZPDRK6ZGWUGSI22TVFATOLRPSUUSDM", cat:"stable", b:"#1e8e5a", logo:"https://mtl.montelibero.org/images/USDM100.png"},
+    {code:"CETES", issuer:"GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC", cat:"stable", b:"#006847", logo:"https://stablebonds.s3.us-west-2.amazonaws.com/stablebond/spl-cetes.png"},
+    {code:"USTRY", issuer:"GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC", cat:"stable", b:"#1f4e79", logo:"https://stablebonds.s3.us-west-2.amazonaws.com/stablebond/spl-ustry.png"},
+    {code:"USDY", issuer:"GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6", cat:"stable", b:"#2a5bd7", logo:"https://cdn.ondo.finance/tokens/logos/usdy_160x160.png"},
+    {code:"GOLD", issuer:"GBC5ZGK6MQU3XG5Y72SXPA7P5R5NHYT2475SNEJB2U3EQ6J56QLVGOLD", cat:"utility", b:"#d4af37", logo:"https://www.mintx.co/images/logo100.png"},
+    {code:"SSLX", issuer:"GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR", cat:"utility", b:"#4a6cf7", logo:"https://sl8.online/assets/sslx-icon-e36e8c6134f6d93e6af1cd4d084a053c.png"},
+    {code:"AFR", issuer:"GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W", cat:"utility", b:"#e8a33d", logo:"https://afreum.com/stellar/ST_Afreum.png"},
+    {code:"TFT", issuer:"GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47", cat:"utility", b:"#2d9cdb", logo:"https://threefoldfoundation.github.io/tft/tft_icon.png"}
   ];
   // byCode is a TICKER index -- two different issuers can share one. byId is the IDENTITY index, and it
   // is what decides whether we already hold an asset. Ticker alone could not: the cached roster and the
