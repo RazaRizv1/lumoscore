@@ -203,6 +203,14 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
    desktop, where all four cards are on screen and a "More info" pointing at one of them is just noise. */
 .lxda-moreline{display:none}
 @media(max-width:760px){
+/* The class above is applied by JS once it has read the labels, so on a phone the Supply card painted,
+   the row laid out as four, and then it vanished and the row reflowed to three -- the "4 boxes for a
+   split second" on refresh. This hides it from the FIRST paint instead.
+   Positional, because at first paint there is nothing to match on yet: the markup ships exactly four
+   .stat-cells in a fixed order (Price / 24h Volume / Market Cap / Supply) from a single template shared
+   by every asset page, and the grid beneath is already pinned to three columns here. n+4 rather than 4
+   so a fifth card, if one is ever added, is covered by the same rule instead of reintroducing this. */
+.stat-row .stat-cell:nth-of-type(n+4){display:none!important}
 .stat-row .stat-cell.lxda-more{display:none!important}
 html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .lxda-moreline{grid-column:1/-1;display:flex;justify-content:center;margin-top:2px}
