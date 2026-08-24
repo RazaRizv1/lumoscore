@@ -202,6 +202,19 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
    so it needs an explicit default of none. A bare <div> is display:block, which is why it showed on
    desktop, where all four cards are on screen and a "More info" pointing at one of them is just noise. */
 .lxda-moreline{display:none}
+/* Centred rather than left-aligned, on BOTH layouts -- the Supply tile only exists on desktop, so a
+   mobile-scoped rule would have left the very card that was named out of it. These are small tiles of
+   one figure each, not a table scanned down a shared left edge, and label / figure / sub-line are all
+   different lengths. align-items governs the flex children (the cell is a column flexbox) and
+   text-align governs wrapping inside each; either alone leaves one axis untouched. */
+.stat-row .stat-cell{align-items:center;text-align:center}
+/* Same accent as the website link they sit beside -- these are three ways to reach the same issuer, so
+   they read as one row rather than three unrelated controls. currentColor on the svg means the single
+   colour rule below drives both marks. */
+.lx-soc{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  margin-left:8px;color:var(--accent,#ea6a2c);text-decoration:none;vertical-align:middle;opacity:.9}
+.lx-soc:hover{opacity:1}
+.lx-soc svg{width:14px;height:14px;display:block}
 @media(max-width:760px){
 /* The class above is applied by JS once it has read the labels, so on a phone the Supply card painted,
    the row laid out as four, and then it vanished and the row reflowed to three -- the "4 boxes for a
@@ -659,7 +672,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     t.innerHTML=WARN_SVG+LXFLAG.txt;
     nm.parentNode.insertBefore(t,nm.nextSibling);
   }
-  var homeDomain=null, tomlDesc=null, tomlImg=null;
+  var homeDomain=null, tomlDesc=null, tomlImg=null, tomlX=null, tomlTg=null;
   // #4: the green padlock beside the issuer is a claim, not decoration -- it says this asset cannot be
   // minted any further -- and the design ships it baked into the markup, so it was shown for EVERY
   // asset. USDC is not locked: Circle holds five signers on that issuer. An asset is locked only when
@@ -928,6 +941,28 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         if(!fixTextNode(web,_hd))web.appendChild(document.createTextNode(" "+_hd));
       } else if(web.style.display!=="none"){ web.style.display="none"; }
     }
+    // The social marks sit with the website link because they answer the same question -- where else
+    // does this issuer exist. Rebuilt only when the set changes, so the header guard's re-asserts do not
+    // churn them, and each is added only if the toml actually carried it.
+    try{
+      var _srow=web&&web.parentNode;
+      if(_srow){
+        var _want=(tomlX||"")+"|"+(tomlTg||"");
+        if(_srow.getAttribute("data-lxsoc")!==_want){
+          _srow.setAttribute("data-lxsoc",_want);
+          qa(".lx-soc",_srow).forEach(function(n){ if(n.parentNode)n.parentNode.removeChild(n); });
+          [[tomlX,X_SVG,"X"],[tomlTg,TG_SVG,"Telegram"]].forEach(function(p){
+            if(!p[0])return;
+            var a=document.createElement("a");
+            a.className="lx-soc"; a.href=p[0]; a.target="_blank"; a.rel="noopener";
+            a.setAttribute("title",p[2]); a.setAttribute("aria-label",p[2]);
+            a.setAttribute("data-lxc",""); a.setAttribute("data-lx-noswap","");
+            a.innerHTML=p[1];
+            _srow.appendChild(a);
+          });
+        }
+      }
+    }catch(_){}
     // breadcrumb current-asset segment + document title
     var cs=qa(".crumb span").filter(function(s){return s.children.length===0&&(s.textContent||"").trim();}).pop();
     if(cs)setText(cs, CODE);
@@ -3592,6 +3627,24 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       try{ guardApply(); }catch(_){}         // tomlDone only applies on the first call; this covers the rest
     }).catch(function(){});                  // a missing manifest is not an error -- the toml still answers
   }
+  var X_SVG='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+    +'<path d="M18.9 2H22l-7.1 8.1L23.2 22h-6.5l-5.1-6.7L5.8 22H2.7l7.6-8.7L1.2 2h6.7l4.6 6.1L18.9 2Zm-1.1 18h1.7L7.4 3.8H5.6L17.8 20Z"/></svg>';
+  var TG_SVG='<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">'
+    +'<path d="M21.9 4.3 18.9 19c-.2 1-.8 1.2-1.7.8l-4.6-3.4-2.2 2.1c-.2.2-.5.5-1 .5l.3-4.7 8.5-7.7c.4-.3-.1-.5-.6-.2L6.2 13.1 1.7 11.7c-1-.3-1-1 .2-1.5l19-7.3c.8-.3 1.5.2 1.2 1.4Z"/></svg>';
+  // A handle, an @handle or a full url -- issuers publish all three. Anything already absolute is left
+  // alone; otherwise the leading @ is dropped and the handle is hung off the right host.
+  function socialUrl(v,host){
+    v=String(v||"").trim(); if(!v)return "";
+    // No regex: this region is a template literal, so a backslash is eaten on the way to the browser.
+    // Written as / it arrived as a bare / and made /^https?:///i -- a line comment, not a regex --
+    // which threw a SyntaxError and took the whole asset layer down with it. indexOf and charAt cannot
+    // be mangled by an escape pass.
+    var lc=v.toLowerCase();
+    if(lc.indexOf("http://")===0||lc.indexOf("https://")===0)return v;
+    while(v&&(v.charAt(0)==="@"||v.charAt(0)==="/"))v=v.slice(1);
+    if(!v)return "";
+    return "https://"+host+"/"+v;
+  }
   // stellar.toml (best-effort; many issuers' domains are CORS-OK). Pull [[CURRENCIES]].image + desc.
   function loadToml(domain){
     fetch("https://"+domain+"/.well-known/stellar.toml").then(function(r){ if(!r.ok)throw 0; return r.text(); }).then(function(txt){
@@ -3605,6 +3658,13 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var img=(blk.match(/image\\s*=\\s*["']([^"']+)["']/i)||[])[1];
       var desc=(blk.match(/desc\\s*=\\s*["']([^"']+)["']/i)||[])[1];
       if(img&&!ownLogo)tomlImg=img; if(desc&&!ownDesc)tomlDesc=desc;
+      // Currency block first (more specific), then the org-level [DOCUMENTATION] keys.
+      var _tw=(blk.match(/^\\s*twitter\\s*=\\s*["']([^"']+)["']/im)||[])[1]
+             ||(txt.match(/ORG_TWITTER\\s*=\\s*["']([^"']+)["']/i)||[])[1];
+      var _tg=(blk.match(/^\\s*telegram\\s*=\\s*["']([^"']+)["']/im)||[])[1]
+             ||(txt.match(/ORG_TELEGRAM\\s*=\\s*["']([^"']+)["']/i)||[])[1];
+      if(_tw)tomlX=socialUrl(_tw,"x.com");
+      if(_tg)tomlTg=socialUrl(_tg,"t.me");
       // No direct paint any more. applyHeader draws the logo once logoDone flips the flag below, which is
       // safe now because that flip also changes the stamp it compares against -- the old blocker (it had
       // already stamped CODE by the time this resolved, so the real logo was never drawn) is gone.
