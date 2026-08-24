@@ -2683,7 +2683,11 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // beside a dollar axis is exactly the mismatch the switch exists to remove. dayOHLC is in XLM per
     // unit (Horizon's quote asset), so the dollar reading multiplies by the rate rather than dividing.
     var _od=(cDenom()==="usd"&&xlmUsd>0);
-    function _op(v){ return _od?("$"+axisNum(v*xlmUsd)):(xlmAmt(v)+" XLM"); }
+    // The denomination is stated three times over on this strip -- the user picked XLM on the toggle, the
+    // chart corner is labelled XLM, and then every one of O/H/L/C repeated it, which is what pushed the
+    // four values onto two lines. The dollar form keeps its $ because a leading symbol costs one glyph
+    // and reads as part of the number; a trailing ticker repeated four times does not.
+    function _op(v){ return _od?("$"+axisNum(v*xlmUsd)):xlmAmt(v); }
     set(0,_op(o),null);
     set(1,_op(h),"up");
     set(2,_op(l),"down");

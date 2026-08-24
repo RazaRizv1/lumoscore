@@ -7456,7 +7456,7 @@ window.lxLpTest=function(draft){
     // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
     // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
     var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
-    var sub = t.tl!=null ? (nfmt(t.tl)+" trustlines") : "Launchpad token";
+    var sub = t.hl!=null ? (nfmt(t.hl)+" holders") : (t.tl!=null ? (nfmt(t.tl)+" holders") : "Launchpad token");
     // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
     // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" data-lxiss="'+esc(t.issuer)+'" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
@@ -7720,6 +7720,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
           // whose toml carries an older mark. Keyed by CODE|ISSUER, never by ticker alone.
           return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
                   tl:(x.trustlines&&x.trustlines[0])||0,
+                  hl:(x.trustlines&&x.trustlines[2]!=null)?x.trustlines[2]:null,
                   img:LXBRAND[(p[0]||"")+"|"+(p[1]||"")]||ti.image||ti.orgLogo||lxSeaReg(p[0],p[1])||""};
         }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
         out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
