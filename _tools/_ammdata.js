@@ -360,7 +360,7 @@ table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
    a pair. Measured before: pa at y141, pb at y185, inside a 60px-wide box. */
 .pool-header .ph-icons{display:flex!important;align-items:center;flex-wrap:nowrap;width:auto!important;gap:0!important}
 .pool-header .ph-icons .pa{position:relative;z-index:2}
-.pool-header .ph-icons .pb{position:relative;z-index:1;margin-left:-14px!important}
+.pool-header .ph-icons .pb{position:relative;z-index:1;left:0!important;margin-left:4px!important}
 /* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
 .lx-ammview{display:inline-flex;align-items:center;gap:5px;padding:7px 15px;border-radius:9px;font:700 12.5px/1 'Hanken Grotesk',sans-serif;text-decoration:none!important;white-space:nowrap;border:1px solid rgba(234,106,44,.38);color:var(--accent,#ea6a2c)!important;background:rgba(234,106,44,.10);transition:background .15s ease,color .15s ease,border-color .15s ease}
 .lx-ammview:hover{background:var(--accent,#ea6a2c);color:#fff!important;border-color:var(--accent,#ea6a2c)}
@@ -481,6 +481,12 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     return (+window.__lxXlmUsd>0)?+window.__lxXlmUsd:0.11; }
   function xuSave(v){ if(+v>0){ try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:+v,ts:Date.now()})); }catch(_){} } return +v||0; }
   // adaptive quantity: big -> commas/M, small -> enough decimals so a tiny LP share never rounds to "0"
+  // Headline amounts: abbreviate at a million and up, three decimals (6,648,584 -> 6.648M). Below that
+  // the grouped integer is short enough already and rounding would drop real precision.
+  function big(n){ n=+n||0; var a=Math.abs(n);
+    if(a>=1e9)return (n/1e9).toFixed(3)+"B";
+    if(a>=1e6)return (n/1e6).toFixed(3)+"M";
+    return num(n); }
   function qty(n){ n=+n||0; var a=Math.abs(n); if(a>=1e6)return (n/1e6).toFixed(2)+"M"; if(a>=1e3)return Math.round(n).toLocaleString("en-US"); if(a>=1)return (Math.round(n*100)/100).toLocaleString("en-US"); if(a>0){ var d=Math.min(7,Math.max(2,2-Math.floor(Math.log(a)/Math.LN10))); var s=n.toFixed(d); if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\\.$/,""); return s; } return "0"; }
   function usd(x){x=+x;if(!x)return "$0";var a=Math.abs(x);if(a>=1e9)return "$"+(x/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(x/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(x/1e3).toFixed(1)+"K";if(a>=1)return "$"+x.toFixed(2);return "$"+x.toFixed(x>=0.01?4:6);}
   function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
@@ -2003,13 +2009,21 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     row.appendChild(box);
     return box;
   }
+  // USD per unit of the box's own denomination (U0 = the first reserve on a non-XLM pair, else XLM).
+  // Returns 0 rather than guessing when the pool has no dollar value at all.
+  function unitUsd(d){
+    if(!d)return 0;
+    if(!d.nonXlm)return (d.__xlmUsd>0?d.__xlmUsd:0);
+    var amt=d.a0&&d.a0.amt;
+    return (d.tvlUsd>0&&amt>0)?(d.tvlUsd/(2*amt)):0;
+  }
   function pdStats(){
     var d=DET;
     var pbox=pdPartStat();
     if(pbox){ var n0=d.trustlines||(d.parts&&d.parts.length)||0;
       var pv=pbox.querySelector(".v"), ps=pbox.querySelector(".s");
       if(pv)setText(pv,n0?num(n0):"\\u2014");
-      if(ps)setText(ps,n0?(n0===1?"wallet in this pool":"wallets in this pool"):""); }
+      if(ps)setText(ps,n0?(n0===1?"liquidity provider":"liquidity providers"):""); }
     qa(".ph-stat").forEach(function(s){
       var ic=s.querySelector(".ic"); var cn=ic?((ic.className&&ic.className.baseVal!==undefined)?ic.className.baseVal:ic.className):"";
       var v=s.querySelector(".v"), sub=s.querySelector(".s");
@@ -2019,9 +2033,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       // #13: these sub-lines were written long and then clipped by the cell they live in, so the one
       // figure worth reading -- the dollar value -- was the part that got cut ("+ 2,317,207 USDC ·
       // ≈ …"). Abbreviated amounts, so the money always fits.
-      if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,num(d.a0.amt)+" "+U0);
+      if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,big(d.a0.amt)+" "+U0);
           if(sub)setText(sub,"+ "+qty(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \\u00b7 "+usd(d.tvlUsd)):"")); }
-        else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+qty(d.tok)+" "+d.code+(d.tvlUsd>0?(" \\u00b7 "+usd(d.tvlUsd)):"")); } }
+        else { if(v)setText(v,big(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+qty(d.tok)+" "+d.code+(d.tvlUsd>0?(" \\u00b7 "+usd(d.tvlUsd)):"")); } }
       // null = the trades fetch never answered. Print a dash: a confident "0 XLM" on a pool that traded all
       // day is worse than admitting we do not know.
       // #12: this used to print the running sum while volDeepen walked the day, labelled ">= N, still
@@ -2041,13 +2055,15 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         // vol24Usd is only non-zero when a leg can be priced in dollars directly. On an XLM pair it is
         // derived from the XLM rate, which is why the fallback multiplies rather than giving up: the
         // point of the line is the dollar figure, and the page knows the rate.
-        else { if(v)setText(v,(d.volPartial?"\\u2265 ":"")+num(d.vol24Xlm)+" "+U0);
-          var _vu=(d.vol24Usd>0)?d.vol24Usd:((d.__xlmUsd>0&&!d.nonXlm)?(d.vol24Xlm*d.__xlmUsd):0);
+        else { if(v)setText(v,(d.volPartial?"\\u2265 ":"")+big(d.vol24Xlm)+" "+U0);
+          var _vu=(d.vol24Usd>0)?d.vol24Usd:(d.vol24Xlm*unitUsd(d));
           if(sub)setText(sub, (_vu>0)?("\\u2248 "+usd(_vu)):"24h volume"); } }
       else if(/fee/.test(cn)){
         if(d.volCounting){ if(v)setText(v,"Counting\\u2026"); if(sub)setText(sub,""); }
         else if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,""); }
-        else { if(v)setText(v,(d.volPartial?"\\u2265 ":"")+(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\\u2248 "+usd(d.fees24Usd))); } }
+        else { if(v)setText(v,(d.volPartial?"\\u2265 ":"")+(d.fees24Xlm>=1e6?big(d.fees24Xlm):(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0"))+" "+U0);
+          var _fu=(d.fees24Usd>0)?d.fees24Usd:(d.fees24Xlm*unitUsd(d));
+          if(sub)setText(sub,(_fu>0)?("\\u2248 "+usd(_fu)):""); } }
     });
   }
   // ---- REAL-DATA chart engine: takes over the design's synthetic candlestick/line/volume renderer ----
