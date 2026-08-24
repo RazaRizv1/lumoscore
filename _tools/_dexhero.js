@@ -37,7 +37,40 @@ const STYLE = '<style id="lx-dexhero-css">'
   // In the mints card the pair reads as a small toolbar, not as page furniture.
   + '.dex-mints-card .lx-dctas,.mdx-mints-card .lx-dctas,'
   + '.dex-mints-card .mdx-hero-ctas,.mdx-mints-card .mdx-hero-ctas{position:static!important;'
-  + 'margin:0 0 0 auto!important;display:flex!important;align-items:center;gap:12px;order:9}'
+  + 'margin:0 0 0 12px!important;display:flex!important;align-items:center;gap:12px;'
+  // #32: order 2 puts it directly after the title (order 0); flex:1 lets it span so the ghost's own
+  // auto margin can carry it to the far edge.
+  + 'order:2;flex:1 1 auto!important}'
+  + '.dex-mints-card .lx-dctas .dex-hero-btn.primary,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.primary{order:1}'
+  + '.dex-mints-card .lx-dctas .dex-hero-btn.ghost,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}'
+  + '.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}'
+
+  // #32b: the four figures were laid out with flex and content-sized cells, so each row placed its
+  // columns wherever its own text happened to end -- measured, PRICE started at x=854 on one row and
+  // x=845 on the next, and MARKET CAP at 980 against 971. Nothing lined up vertically. A fixed track
+  // list fixes the columns for every row at once. The outer row template is pinned too: its last column
+  // was auto, so the whole stats block shifted with the length of the token name beside it.
+  //
+  // Track widths are not equal because the contents are not: PRICE carries two lines ("0.0000765 XLM"
+  // over its dollar value) while 24H TRADES is a small integer. Equal quarters would wrap the first and
+  // strand the last.
+  + '.dex-mint-row{grid-template-columns:32px 1fr 400px!important}'
+  + '.dex-mint-stats{display:grid!important;grid-template-columns:1.35fr 1fr 1.15fr .6fr;'
+  + 'gap:0 16px!important;align-items:center}'
+  // Right-aligned as a block AND inside each cell: the label sat left over a right-aligned value, so
+  // even a single cell read as ragged.
+  + '.dex-mint-stat{align-items:flex-end!important;text-align:right}'
+  + '.dex-mint-stat .l,.dex-mint-stat .v{width:100%;text-align:right!important}'
+  // Digits in a column only line up if they are the same width.
+  + '.dex-mint-stat .v{font-variant-numeric:tabular-nums}'
+  // #32c: a hairline between rows. Four columns of figures are read ACROSS, and desktop gave the eye
+  // nothing to travel along -- measured, the rows had no separator at all (border-top: 0px none) and
+  // were held apart by padding alone. This is not a new flourish: the mobile list already separates its
+  // rows with exactly this border, so desktop was the layout departing from the design's own convention.
+  // Padding evens up at the same time, since 4px above and 10px below only looked deliberate while there
+  // was no line to sit between.
+  + '.dex-mint-row + .dex-mint-row{border-top:1px solid var(--border)}'
+  + '.dex-mint-row{padding:10px 8px!important}'
   // Launch Token: an orange text link, not a filled button competing with the Trade control in every row.
   + '.mdx-hero-ctas .mdx-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;'
   + 'box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}'
@@ -61,6 +94,12 @@ const SCRIPT = '<script id="lx-dexhero">(function(){'
   + 'if(host===head&&head.appendChild){head.appendChild(ctas);}else{mints.insertBefore(ctas,mints.firstChild);}'
   
 + '}'
+  // #32: the rocket becomes the plus used by Create Pool on Pools -- same .dex-hero-btn.primary class
+  // there, so this is the identical control drawn two different ways, and now it is drawn one way.
+  + 'var prim=q(".lx-dctas .dex-hero-btn.primary")||q(".mdx-hero-ctas .mdx-hero-btn.primary");'
+  + 'if(prim){var psvg=prim.querySelector("svg");'
+  + 'if(psvg&&!psvg.querySelector("line")){psvg.setAttribute("stroke-width","2.4");'
+  + 'psvg.innerHTML=\'<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>\';}}'
 + 'var hiw=q("#mdxHiwBtn")||q("#dexHiwBtn");'
 + 'if(hiw&&hiw.getAttribute("data-lxhiw")!=="1"){'
 + 'hiw.setAttribute("data-lxhiw","1");'
