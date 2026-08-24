@@ -212,6 +212,25 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   function denom(){ try{ if(window.__lxDenom)return window.__lxDenom;
     var v=localStorage.getItem("lumos.dexDenom"); if(v==="xlm"||v==="usd")return v; }catch(_){}
     return "usd"; }
+  // XLM/USD from the shared cache -- the same key and the same 6h freshness window cu() uses below, so
+  // the two cannot disagree about the rate within one render.
+  function xu(){
+    try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
+      if(c&&+c.v>0&&(Date.now()-c.ts<216e5))return +c.v; }catch(_){}
+    return 0;
+  }
+  // Both fall back to lumens when the rate is unknown rather than printing a dollar sign in front of an
+  // unconverted number, which would be a wrong figure rather than a missing one.
+  function priceTxt(a){
+    var p=priceOf(a); if(p==null)return DASH;
+    if(denom()==="usd"){ var r=xu(); if(r>0)return "$"+fmtPrice(p*r); }
+    return fmtPrice(p)+" XLM";
+  }
+  function volTxt(a){
+    if(a.vol==null)return DASH;
+    if(denom()==="usd"){ var r=xu(); if(r>0)return "$"+abbr(a.vol*r); }
+    return abbr(a.vol)+" XLM";
+  }
   function cu(a){
     if(denom()==="xlm")return (a&&a.chg!=null)?a.chg:null;
     try{ if(window.__lxChgShown&&window.__lxDenom!=="xlm")return window.__lxChgShown(a); }catch(_){}
@@ -498,11 +517,11 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         // so this is a field that was fetched and then not shown, not a new request. Omitted rather than
         // dashed when it is null: an unpriced pair already shows one dash on this line and a second
         // would read as two broken figures instead of one missing one.
-        +'<div class="mdx-mk-vol">Vol '+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")
+        +'<div class="mdx-mk-vol">Vol '+esc(volTxt(a))
           +(a.trades!=null?('<span class="mdx-mk-trades">'+esc(num(a.trades,0))+' trades</span>'):'')
           +'</div></div>'
         +'<div class="mdx-mk-right">'
-        +'<div class="mdx-mk-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
+        +'<div class="mdx-mk-price">'+esc(priceTxt(a))+'</div>'
         +'<div class="mdx-mk-pct '+(_cu==null?"":(up?"up":"down"))+'">'+esc(_cu==null?DASH:pct(n(_cu)))+'</div>'
         +'</div></div></div>';
     }).join("")+pgh;

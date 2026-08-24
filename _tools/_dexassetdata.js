@@ -2300,10 +2300,23 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // SEP-1: issuer -> home_domain -> /.well-known/stellar.toml -> the [[CURRENCIES]] block for this asset.
   // #13: the asset's own name, from the same two sources the logo comes from. Recorded only for the
   // asset THIS page is about, so a stray record for another asset can never retitle the sheet.
+  // The header's own mark, copied. Returns quietly when the page has none to give.
+  function dxaSheetIco(h){
+    try{
+      var src=document.querySelector(".asset-logo,.dxa-asset-logo");
+      if(!src)return;
+      var sp=src.cloneNode(true);
+      sp.removeAttribute("id");
+      sp.className=(sp.className||"")+" lxda-sheet-ico";
+      h.appendChild(sp);
+    }catch(_){}
+  }
   function dxaSheetTitle(h){
     if(!h)return;
     var nm=String(window.__lxAssetName||"").trim();
-    if(!nm||nm===CODE){ h.textContent="About "+CODE; return; }
+    // Same treatment whether or not a name exists -- only the words differ. Clearing first, because
+    // assigning textContent later would discard the icon appended before it.
+    if(!nm||nm===CODE){ h.textContent=""; dxaSheetIco(h); h.appendChild(document.createTextNode("About "+CODE)); return; }
     var url="";
     // The mark the page header is ALREADY showing comes first, and the resolvers are the fallback --
     // not the other way round. brandLogo/cachedLogo only know assets they fetched themselves, and for
