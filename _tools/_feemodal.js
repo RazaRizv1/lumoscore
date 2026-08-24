@@ -102,8 +102,24 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 // "You receive 0.022317" with no asset named at all. Text first, attribute second.
 +'function tok(f){if(!f)return "";var t=tick(f.querySelector(".dxa-trade-ir"));if(t)return t;'
 +'var c=f.querySelector("[data-lxmt-code]");return c?((c.getAttribute("data-lxmt-code")||"").trim()):"";}'
+// Reads the pair out of the pane's own Rate row. Returns null unless BOTH sides parse and differ, so a
+// half-rendered or placeholder row ("Rate —") can never overrule the fields.
++'function pairFromRate(pane){try{var out=null;'
++'[].forEach.call(pane.querySelectorAll(".dxa-trade-summary .dxa-tsum-row"),function(r){'
++'var sp=r.querySelectorAll("span");if(!sp.length)return;'
++'if(((sp[0]||{}).textContent||"").trim()!=="Rate")return;'
++'var v=((sp[sp.length-1]||{}).textContent||"").trim();var eq=v.indexOf("=");if(eq<0)return;'
++'var a=v.slice(0,eq).match(/[A-Za-z][A-Za-z0-9]{1,11}/);'
++'var b=v.slice(eq+1).match(/[A-Za-z][A-Za-z0-9]{1,11}/);'
++'if(a&&b&&a[0]!==b[0])out=[a[0],b[0]];});'
++'return out;}catch(_){return null;}}'
 +'var payIn=fields[0]&&fields[0].querySelector("input");var payTok=tok(fields[0]);'
 +'var recTok=tok(fields[1]);'
+// Rate row wins where it parses; it is the one place the pane names both sides in one string.
++'var rp=pairFromRate(pane);if(rp){payTok=rp[0];recTok=rp[1];}'
+// Nobody swaps an asset for itself. If the two legs still agree, the read failed -- say so instead of
+// showing a confident, wrong confirmation and letting it be signed.
++'if(payTok&&payTok===recTok){payTok="";recTok="";}'
 +'var payNum=parseFloat(((payIn&&payIn.value)||"").replace(/,/g,""))||0;'
 // AUDIT (numeric): the modal derived receive as pay x rate — but the pane's "Rate" row is the GROSS market
 // rate while the pane's receive field is already NET of the platform fee. So the confirmation screen showed
@@ -155,10 +171,15 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'if(!u)return "";'
 +'var esc=String(u).replace(/\\x27/g,"%27").replace(/\\s+/g,"");'
 +'return \'<span class="lx-rv-mk" data-logoed="1" data-lxc="1" style="background-image:url(\\x27\'+esc+\'\\x27)"></span>\';}'
-+'var payIco=legIco(fields[0]),recIco=legIco(fields[1]);'
++'var payIco=payTok?legIco(fields[0]):"",recIco=recTok?legIco(fields[1]):"";'
 +'modal.querySelector("[data-pay]").innerHTML=payIco+\'<span>\'+fnum(payNum)+" "+payTok+\'</span>\';'
 +'modal.querySelector("[data-receive]").innerHTML=recIco+\'<span>\'+fnum(recNum)+" "+recTok+\'</span>\';'
-+'modal.querySelector("[data-details]").innerHTML=det;}'
++'modal.querySelector("[data-details]").innerHTML=det;'
++'var ok=!!(payTok&&recTok&&payTok!==recTok);'
++'var cf=modal.querySelector(".lx-fm-confirm");'
++'if(cf){cf.disabled=!ok;cf.style.opacity=ok?"":"0.5";cf.style.cursor=ok?"":"not-allowed";'
++'cf.textContent=ok?"Confirm order":"Could not read this order";}'
++'}'
 // #4, third report -- and the first two attempts were treating the symptom.
 //
 // .lx-feemodal is position:fixed;inset:0, and `fixed` resolves against the LAYOUT viewport. A phone
