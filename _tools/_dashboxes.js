@@ -32,8 +32,9 @@ const CURATED = Object.keys(VERIFIED)
 const STYLE = '<style id="lx-dashboxes-css">'
   // Three across on a desktop, stacked on a phone. Small gap, as asked -- these read as one instrument
   // panel rather than three separate cards.
-  + '.lx-dbx{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:22px}'
-  + '@media(max-width:900px){.lx-dbx{grid-template-columns:1fr}}'
+  + '.lx-dbx{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:22px}'
+  + '@media(max-width:1200px){.lx-dbx{grid-template-columns:repeat(2,minmax(0,1fr))}}'
+  + '@media(max-width:640px){.lx-dbx{grid-template-columns:1fr}}'
   + '.lx-dbx-card{background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:14px;'
   + 'padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:10px}'
   + '.lx-dbx-head{display:flex;align-items:center;gap:8px;min-width:0}'
@@ -68,6 +69,7 @@ const STYLE = '<style id="lx-dashboxes-css">'
 const IC_TRADE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg>';
 const IC_POOLS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.4 6 10a6 6 0 0 1-12 0c0-3.6 6-10 6-10z"/></svg>';
 const IC_CHAIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"/><path d="M7 10.5L5.5 12a3.5 3.5 0 0 0 5 5l1.5-1.5"/><path d="M17 13.5L18.5 12a3.5 3.5 0 0 0-5-5L12 8.5"/></svg>';
+const IC_LAUNCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/></svg>';
 const IC_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
 function card(href, ic, title, stats) {
@@ -85,6 +87,7 @@ const ROW = '<div class="lx-dbx">'
   + card('/trade/stellar', IC_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']])
   + card('/pools/stellar', IC_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']])
   + card('/bridge', IC_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['24h Transfers', 'ctx'], ['24h Volume', 'cvol']])
+  + card('/launchpad', IC_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']])
   + '</div>';
 
 const SCRIPT = '<script id="lx-dashboxes">(function(){'
@@ -139,6 +142,25 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   + 'if(t>0){ tot+=t; hit++; } }); });'
   + 'set("tliq", hit?usd(tot):"\\u2014");'
   + '}).catch(function(){ set("tliq","\\u2014"); });'
+  // ---- Launchpad: assets issued through this deployment.
+  + 'j("https://api.stellar.expert/explorer/public/asset?search=lumoscore&limit=200").then(function(d){'
+  + 'var r=(d&&d._embedded&&d._embedded.records)||[];'
+  // home_domain is the claim that binds an asset to this launchpad, so filter on it rather than trusting
+  // a search term to have matched only ours.
+  + 'r=r.filter(function(a){ return (a.domain||"")==="lumoscore.com"; });'
+  + 'set("ltok",num(r.length));'
+  + 'var now=Math.floor(Date.now()/1000);'
+  + 'var newest=0; r.forEach(function(a){ if(a.created>newest)newest=a.created; });'
+  + 'set("lmint",num(r.filter(function(a){ return a.created&&(now-a.created)<86400; }).length));'
+  // Relative, because an absolute date means nothing at a glance and the question this answers is
+  // whether the launchpad is still being used.
+  + 'if(newest>0){ var sec=now-newest, t;'
+  + 'if(sec<3600)t=Math.max(1,Math.round(sec/60))+"m";'
+  + 'else if(sec<86400)t=Math.round(sec/3600)+"h";'
+  + 'else if(sec<2592000)t=Math.round(sec/86400)+"d";'
+  + 'else t=Math.round(sec/2592000)+"mo";'
+  + 'set("lnew",t); } else set("lnew","\u2014");'
+  + '}).catch(function(){ ["ltok","lnew","lmint"].forEach(function(k){ set(k,"\u2014"); }); });'
   // ---- Cross-chain: this deployment's own bridge, not the network's.
   // The count of destinations is a property of what is wired up here, so it is stated rather than
   // fetched. The activity figures come from the bridge's own log; absent one, they are an honest 0.
@@ -200,10 +222,27 @@ for (const dev of ['desktop', 'mobile']) {
     }
 
     // The row goes ABOVE the grid the trending card used to sit in.
-    // Exactly where Trending was, so the page keeps its running order. Falls back to above the market
-    // grid on any layout that has one but no Trending card.
-    if (p.indexOf('class="lx-dbx"') < 0) {
-      const at = (insertAt >= 0) ? insertAt : p.indexOf('<div class="market-grid">');
+    // Remove any row from a previous run FIRST, so the template is what ships rather than whatever was
+    // built last time. Its position is remembered, so the row goes back exactly where it was.
+    let existing = p.indexOf('<div class="lx-dbx">');
+    if (existing >= 0) {
+      let depth = 0, i = existing, end = -1;
+      const tag = /<(\/?)div\b[^>]*>/g; tag.lastIndex = existing;
+      let m;
+      while ((m = tag.exec(p))) {
+        depth += m[1] ? -1 : 1;
+        if (depth === 0) { end = m.index + m[0].length; break; }
+        if (m.index > existing + 200000) break;
+      }
+      if (end > existing) { p = p.slice(0, existing) + p.slice(end); if (insertAt < 0) insertAt = existing; }
+      else existing = -1;
+    }
+
+    // Exactly where Trending was, so the page keeps its running order. Falls back to the old row's own
+    // position, then to above the market grid.
+    {
+      const at = (insertAt >= 0) ? insertAt
+               : (existing >= 0 ? existing : p.indexOf('<div class="market-grid">'));
       if (at >= 0) { p = p.slice(0, at) + ROW + p.slice(at); rows++; }
     }
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
