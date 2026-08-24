@@ -19,6 +19,11 @@ const NEW_SUB='Bridge USDC natively across chains with Circle CCTP — burn on S
 const BUGGY_SUB='Bridge USDC natively across chains with Circle CCTP \\u2014 burn on Stellar, mint on the destination.';
 
 const CSS='<style id="lx-cctp-css">'
+// The transfer table's headers were a paler grey than every other table on the site: --text-soft at
+// 0.3px tracking, measured rgb(154,154,163), against the pools table's rgb(117,117,127) at 0.5px. Same
+// family, size and weight, so it read as the same table style rendered faintly -- which is what makes a
+// page look like it belongs to a different build rather than a different section.
++'.br-table th{color:var(--text-muted,#75757f)!important;letter-spacing:.5px!important}'
 +'.brm-txc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;transition:border-color .15s ease,box-shadow .15s ease}'
 +'.brm-txc:hover{border-color:var(--border-strong,#34343c);box-shadow:0 10px 26px -20px rgba(0,0,0,.7)}'
 +'.brm-txc+.brm-txc{margin-top:10px}'

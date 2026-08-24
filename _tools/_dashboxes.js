@@ -144,10 +144,10 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   // fetched. The activity figures come from the bridge's own log; absent one, they are an honest 0.
   + 'set("cnet","10");'
   + 'try{'
-  + 'var hist=JSON.parse(localStorage.getItem("lumos.cctp.history")||"[]");'
+  + 'var hist=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]");'
   + 'if(!Array.isArray(hist))hist=[];'
   + 'var since=Date.now()-864e5, n=0, v=0;'
-  + 'hist.forEach(function(h){ var t=+(h.ts||h.time||0); if(!(t>=since))return; n++; v+=+(h.usd||h.amount||0)||0; });'
+  + 'hist.forEach(function(h){ var t=+(h.ts||0); if(!(t>=since))return; n++; v+=+(h.amount||h.srcAmount||0)||0; });'
   + 'set("ctx",num(n)); set("cvol",v>0?usd(v):"$0");'
   + '}catch(_){ set("ctx","0"); set("cvol","$0"); }'
   + '})();</script>';
