@@ -321,7 +321,10 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 }
 /* chart hover readout */
 .lxda-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
-.lxda-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:2px}
+.lxda-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:6px}
+/* Row labels, same as the pool chart's: 11px soft over a 14px/800 figure. */
+.lxda-chtip .l{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600}
+.lxda-chtip .v{margin-top:6px}
 .lxda-chtip .p{color:var(--text,#0e0e10);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
 .lxda-chtip .v{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-top:1px}
 .lxda-chdot{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:var(--accent,#ea6a2c);border:2px solid var(--surface,#fff);box-shadow:0 0 0 2px rgba(234,106,44,.35);pointer-events:none;opacity:0;transition:opacity .1s;z-index:5}
@@ -1424,7 +1427,9 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
       var _sc=chartScale(), _ok=(_sc!=null);
       var _head=_ok?chartFmt(p.v*_sc):usd(p.v);
       var _sub=(_ok&&cDenom()==="xlm")?((chartMetric==="mcap")?abbrUsd(p.v*supply):usd(p.v)):"";
-      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div><div class="p">'+_head+'</div>'
+      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div>'
+        +'<div class="l">'+((chartMetric==="mcap")?"Market cap":"Price")+'</div>'
+        +'<div class="p">'+_head+'</div>'
         +(_sub?('<div class="v">'+_sub+'</div>'):'')
         // #17: volume alone does not say whether a bar was one whale or four hundred people. Horizon
         // returns trade_count on the same aggregation, so it costs nothing to say which.
@@ -1435,13 +1440,33 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
       tip.style.left=tx+"px"; tip.style.top=Math.max(2,sy-th-12)+"px";
     }
     function leave(){ ["lxda-chtip","lxda-chdot","lxda-chvl"].forEach(function(c){ var el=pc.querySelector("."+c); if(el)el.style.opacity=0; }); }
-    pc.addEventListener("mousemove",move); pc.addEventListener("mouseleave",leave);
+    // Removing the touchend handler was not enough on its own: a browser synthesises a mouse sequence
+    // from a touch, so the mouseleave that follows the finger lifting erased the reading anyway --
+    // the same symptom, arriving through the mouse path instead of the touch one. Measured: the tip
+    // still went to opacity 0 with no touchend listener anywhere in the build.
+    var _touchAt=0;
+    pc.addEventListener("touchstart",function(){_touchAt=Date.now();},{passive:true});
+    pc.addEventListener("touchmove",function(){_touchAt=Date.now();},{passive:true});
+    pc.addEventListener("mousemove",move);
+    pc.addEventListener("mouseleave",function(){ if(Date.now()-_touchAt<1500)return; leave(); });
     // follow a finger, not just a tap
+    var _tp0=null;
     function tmove(ev){ var t=ev.touches&&ev.touches[0]; if(!t)return;
+      if(_tp0&&ev.type==="touchmove"&&Math.abs(t.clientX-_tp0.x)>Math.abs(t.clientY-_tp0.y)){
+        try{ ev.preventDefault(); }catch(_){}
+      }
       move({clientX:t.clientX,clientY:t.clientY,target:ev.target}); }
-    pc.addEventListener("touchstart",tmove,{passive:true});
-    pc.addEventListener("touchmove",tmove,{passive:true});
-    pc.addEventListener("touchend",leave); pc.addEventListener("touchcancel",leave);
+    pc.addEventListener("touchstart",function(ev){
+      var t=ev.touches&&ev.touches[0]; if(t)_tp0={x:t.clientX,y:t.clientY};
+      tmove(ev); },{passive:true});
+    pc.addEventListener("touchmove",tmove,{passive:false});
+    // Deliberately NOT touchend/touchcancel. See above: the reading has to outlive the gesture.
+    // A tap outside the chart is what dismisses it, matching the pool chart exactly.
+    document.addEventListener("touchstart",function(ev){
+      var t=ev.target;
+      if(t&&t.closest&&(t.closest("#dxaChart")||t.closest(".chart-area")))return;
+      leave();
+    },true);
   }
   // Build a price series straight from executed trades. Used when trade_aggregations is empty, which is
   // ALWAYS the case for AMM-only assets (Horizon aggregates order-book trades only). Real executions, in
