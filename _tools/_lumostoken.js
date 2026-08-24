@@ -15,6 +15,13 @@ const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-lumos-token.html', 'lumoscore-lumos-token-dark.html', 'lumoscore-lumos-token-mobile.html'];
 
 const STYLE = `<style id="lx-lt-css">
+/* #21: the pair marks on the PHONE pools list were 26px -- small enough that a real logo reads as a
+   smudge rather than a mark. 32px, overlap kept proportional.
+   TOP LEVEL on purpose: most of this stylesheet is inside @media(min-width:760px), and .pool-list is
+   the phone layout, so a rule placed in that block could never apply to the list it describes. */
+.pool-list .pair-icons{width:auto!important;height:32px!important}
+.pool-list .pair-icons .a,.pool-list .pair-icons .b{width:32px!important;height:32px!important}
+.pool-list .pair-icons .b{margin-left:5px!important;left:0!important}
 /* verified mark and home domain: the same badge and link treatment the rest of the site uses */
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:10px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:middle;flex:0 0 22px}
 .lx-vtick svg{width:14px;height:14px;display:block}
@@ -540,6 +547,23 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   //
   // Sorted by TVL like the desktop table, and capped at 12: this is a summary on a token page, not the
   // pools browser, and the phone has no scroll box to put fifty-nine rows in.
+  var LTLOGO={};
+  function ltAssetLogo(code,iss,cb){
+    if(!code||!iss)return;                       // XLM has no issuer; it keeps the design's own mark
+    var k=code+"-"+iss;
+    if(LTLOGO[k]!==undefined){ if(LTLOGO[k])cb(LTLOGO[k]); return; }
+    LTLOGO[k]=null;                              // in flight: stops a repaint firing a second request
+    fetch("/lxapi/assetlogo?asset="+encodeURIComponent(k))
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){ var u=d&&d.image;
+        // Only a SUCCESS is remembered. yXLM came back {reason:"timeout"} on one call -- its toml host
+        // was briefly slow, not missing a logo -- and caching that would have kept the initials disc for
+        // the rest of the session with no way back. Clearing the key lets the next render try again;
+        // a genuine absence ("issuer not found") simply fails the same way each time, which costs one
+        // cheap cached request per render rather than a permanently wrong mark.
+        if(u){ LTLOGO[k]=u; cb(u); } else { delete LTLOGO[k]; } })
+      .catch(function(){ delete LTLOGO[k]; });
+  }
   function buildPoolsListMobile(){
     var list=q(".pool-list"); if(!list)return;
     if(q("#poolsBody"))return;                       // desktop build: its own table handles this
@@ -548,13 +572,13 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     if(list.querySelector("a[data-lxbuilt]"))return;  // already ours
     var tpl=list.querySelector("a.pool-item"); if(!tpl)return;
     var arr=pools.map(function(p){
-      var lum=0,other=0,code="XLM";
+      var lum=0,other=0,code="XLM",iss="";
       (p.reserves||[]).forEach(function(rv){
         if(rv.asset.indexOf(RESV)===0)lum=+rv.amount;
         else if(rv.asset==="native"){other=+rv.amount;code="XLM";}
-        else {other=+rv.amount;code=String(rv.asset).split(":")[0];}
+        else {other=+rv.amount;code=String(rv.asset).split(":")[0];iss=String(rv.asset).split(":")[1]||"";}
       });
-      return {hex:p.id, code:code, tvl:lum*priceUsd*2};
+      return {hex:p.id, code:code, iss:iss, tvl:lum*priceUsd*2};
     }).sort(function(a,b){return b.tvl-a.tvl;}).slice(0,12);
     var frag=document.createDocumentFragment();
     arr.forEach(function(pool){
@@ -563,6 +587,15 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       row.setAttribute("href","/pools/stellar/id/"+pool.hex);
       var nm=row.querySelector(".pair-name"); if(nm)nm.textContent="LUMOS / "+pool.code;
       try{ setPoolIcons(row,pool.code); }catch(_){}
+      // The real logo replaces the initials disc when the toml publishes one; the disc stays as the
+      // fallback otherwise. data-lxc stops the site's logo painter overwriting it with a generic mark --
+      // the same opt-out the hero icon uses.
+      try{ (function(rw,p){ ltAssetLogo(p.code,p.iss,function(url){
+        var b=rw.querySelector(".pair-icons .b"); if(!b)return;
+        b.setAttribute("data-lxc",p.code);
+        b.style.setProperty("background",'url("'+url+'") center center / cover no-repeat',"important");
+        b.textContent="";
+      }); })(row,pool); }catch(_){}
       // XLM is the one pair whose mark arrives as an <img> rather than a background, and the .b disc has
       // a border: an image fills the 22px CONTENT box while every sibling background paints the full 26px
       // border box, so the Stellar mark sat visibly smaller than the eleven logos beside it. Moving it to
