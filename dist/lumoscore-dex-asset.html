@@ -10744,7 +10744,24 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     }
     return out;
   }
+  var _lastCW=0, _cwT=null;
+  function chartWidthWatch(){
+    if(window.__lxDXAcw)return; window.__lxDXAcw=1;
+    try{
+      window.addEventListener("resize",function(){
+        clearTimeout(_cwT);
+        _cwT=setTimeout(function(){
+          var pc=q("#dxaChart")||q(".dxa-chart"); if(!pc||!chartPts)return;
+          var w=Math.round(pc.getBoundingClientRect().width||0);
+          if(!w||w===_lastCW)return;
+          _lastCW=w;
+          try{ drawChart(chartPts); }catch(_){}
+        },180);
+      },{passive:true});
+    }catch(_){}
+  }
   function drawChart(pts){ pts=pts||chartPts; if(!pts)return;
+    try{ chartWidthWatch(); var _pcw=q("#dxaChart")||q(".dxa-chart"); if(_pcw)_lastCW=Math.round(_pcw.getBoundingClientRect().width||0); }catch(_){}
     // #23: whichever range actually drew is the one to light, and EVERY path ends here -- the
     // aggregations path, the trades fallback and a user click alike. The step-out case has already
     // called tfActive with the wider range it chose, and the ready flag stops this overwriting it.
@@ -10755,6 +10772,8 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     var svg=pc.querySelector("svg"); if(!svg){ svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); pc.insertBefore(svg,pc.firstChild); }
     var W=900,HT=380,PADL=14,PADT=16,PADB=28,n=pts.length;
     // The gutter is sized in PIXELS, not viewBox units, and that is the whole point. viewBox units scale
+    // 70 is NOT arbitrary: .lxda-cprices is a fixed 64px wide at right:4px, so the axis occupies 68 of
+    // this gutter. Trying 58 to reclaim "wasted" space put the plot 12px underneath the price labels.
     // with the chart, so one fixed PADR gives 69px of gutter on a desktop and 35px on a phone -- while the
     // price label it has to hold is the same ~56px on both. A fixed 100 put every label 19px on top of the
     // line on a 375px handset. Deriving PADR from the measured width keeps the gutter constant instead,
@@ -10812,6 +10831,8 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     if(!svg){ svg=document.createElementNS("http://www.w3.org/2000/svg","svg"); pc.insertBefore(svg,pc.firstChild); }
     var W=900,HT=380,PADL=14,PADT=16,PADB=28,n=pts.length;
     // The gutter is sized in PIXELS, not viewBox units, and that is the whole point. viewBox units scale
+    // 70 is NOT arbitrary: .lxda-cprices is a fixed 64px wide at right:4px, so the axis occupies 68 of
+    // this gutter. Trying 58 to reclaim "wasted" space put the plot 12px underneath the price labels.
     // with the chart, so one fixed PADR gives 69px of gutter on a desktop and 35px on a phone -- while the
     // price label it has to hold is the same ~56px on both. A fixed 100 put every label 19px on top of the
     // line on a 375px handset. Deriving PADR from the measured width keeps the gutter constant instead,
