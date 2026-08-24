@@ -728,7 +728,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // #10: the field only ever searched the curated list, and the placeholder implied the whole network.
   // Say so, rather than leaving someone to conclude their asset is missing when it was never in scope.
   function labelFilterInput(){
-    var want="Filter curated pairs \\u00b7 ticker or address";
+    var want="Filter curated pairs \\u00b7 ticker";
     qa(".mdx-mk-search input,.dex-mk-search input,.search-box.inline-filter input,input.lx-mkq,.lx-mkq input").forEach(function(i){
       if(i.getAttribute("placeholder")!==want)i.setAttribute("placeholder",want);
     });
@@ -1380,7 +1380,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     else if(f==="stables")d=allAssets().filter(function(a){return a.cat==="stable";});
     else if(f==="memes")d=[];
     else d=ASSETS.slice();
-    if(qs)d=d.filter(function(a){ return a.code.toLowerCase().indexOf(qs)>=0 || (a.issuer||"").toLowerCase().indexOf(qs)>=0 || (a.domain||"").toLowerCase().indexOf(qs)>=0; });
+    if(qs)d=d.filter(function(a){ return a.code.toLowerCase().indexOf(qs)>=0; });
     return mkSortRows(d);                                     // sorted here, so pagination pages the SORTED set
   }
   function tableSig(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all"; var qs=(q("#dexMkSearch")||{}).value||""; return f+"|"+qs.trim().toLowerCase()+"|"+NATIVE.length+"|"+nativeState+"|"+mkSort.key+mkSort.dir; }

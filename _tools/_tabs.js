@@ -44,7 +44,8 @@ function ic(body) {
 }
 const IC = {
   // everything: the app's four accents, laid out
-  all: ic('<rect x="3" y="3" width="8" height="8" rx="2.2" fill="#ea6a2c"/>'
+  all: '<span class="lx-tabic lx-tabic-img" aria-hidden="true"><img src="/assets/tokens/xlm.png" alt=""></span>',
+  _allOld: ic('<rect x="3" y="3" width="8" height="8" rx="2.2" fill="#ea6a2c"/>'
         + '<rect x="13" y="3" width="8" height="8" rx="2.2" fill="#3b82f6"/>'
         + '<rect x="3" y="13" width="8" height="8" rx="2.2" fill="#22c55e"/>'
         + '<rect x="13" y="13" width="8" height="8" rx="2.2" fill="#a855f7"/>'),
@@ -78,6 +79,8 @@ const STYLE_ICONS = `<style id="lx-tabs-css">
    right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
    afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
 .lx-tabic svg{display:block;width:17px;height:17px}
+.lx-tabic-img img{display:block;width:17px;height:17px;border-radius:50%;object-fit:cover}
+.mdx-mk-filter .lx-tabic-img img{width:15px;height:15px}
 .mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
 #poolTabs .lx-tabic svg{width:18px;height:18px}
 @media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}
