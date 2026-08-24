@@ -100,6 +100,19 @@ html:not(.lx-ammready) .lx-hstat[data-k=top] .v{visibility:hidden}
 /* #10: remote pool results, kept visually distinct from the page's own ranked list so it is obvious
    these came from a search rather than from the top-25 ranking. */
 .lx-psresult{margin-top:14px}
+/* #41: self-contained appearance for a network result, so it never depends on .pool-card existing.
+   :where() = zero specificity, so the phone's own .pool-card rules still win there. */
+:where(.lx-psresult .lx-pscard){display:block;margin:0 0 8px;padding:12px 14px;text-decoration:none;
+  color:inherit;border:1px solid var(--border,#e6e6ea);border-radius:12px;background:var(--surface,#fff)}
+:where(.lx-psresult .lx-pscard:hover){border-color:var(--accent,#ea6a2c)}
+:where(.lx-psresult .lx-pscard .pc-head){display:flex;align-items:center;gap:10px;margin-bottom:9px}
+:where(.lx-psresult .lx-pscard .pc-name){font-size:14.5px;font-weight:700;color:var(--text,#0e0e10)}
+:where(.lx-psresult .lx-pscard .pc-sub){margin-top:2px;font-size:12px;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stats){display:flex;gap:26px}
+:where(.lx-psresult .lx-pscard .pc-stat .l){font-size:10px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stat .v){margin-top:2px;font-size:13.5px;font-weight:700;
+  color:var(--text,#0e0e10);font-variant-numeric:tabular-nums}
 .lx-pshead{margin:0 0 8px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}
 .lx-psnote{padding:16px 4px;text-align:center;font-size:13px;color:var(--text-soft)}
 /* POOL-DETAIL TAB STRIPS ON A PHONE.
@@ -897,7 +910,31 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   // The design owns the input and its handler; this listens alongside rather than replacing it, so the
   // local narrowing keeps working exactly as before and this only fills the gap it leaves.
+  // #ICONS: see note above -- stroked currentColor, so an active tab colours its own icon.
+  var LXI_ALL='<polyline points="12 2.6 2.4 7.3 12 12 21.6 7.3 12 2.6"/>'
+    +'<polyline points="2.4 16.7 12 21.4 21.6 16.7"/><polyline points="2.4 12 12 16.7 21.6 12"/>';
+  var LXI_MINE='<rect x="2.6" y="5.8" width="18.8" height="12.9" rx="2.6"/>'
+    +'<path d="M2.6 9.9h18.8"/><path d="M17 14.4h2.2"/>';
+  function poolTabIcons(){
+    var tabs=document.querySelectorAll(".filter-tabs button");
+    for(var i=0;i<tabs.length;i++){
+      var b=tabs[i], t=(b.textContent||"").toLowerCase(), sv=b.querySelector("svg");
+      if(!sv)continue;
+      var want=(t.indexOf("my")>=0)?LXI_MINE:(t.indexOf("all")>=0?LXI_ALL:null);
+      if(!want)continue;
+      // Already ours? The old glyphs are filled, ours are stroked -- so this asks the SVG itself.
+      if(sv.getAttribute("stroke")==="currentColor"&&sv.getAttribute("data-lxti")===(t.indexOf("my")>=0?"m":"a"))continue;
+      sv.setAttribute("fill","none");
+      sv.setAttribute("stroke","currentColor");
+      sv.setAttribute("stroke-width","1.9");
+      sv.setAttribute("stroke-linecap","round");
+      sv.setAttribute("stroke-linejoin","round");
+      sv.setAttribute("data-lxti",(t.indexOf("my")>=0?"m":"a"));
+      sv.innerHTML=want;
+    }
+  }
   function wirePoolSearch(){
+    try{ poolTabIcons(); }catch(_){}
     var inp=document.getElementById("poolSearch");
     if(!inp||inp.__lxps)return; inp.__lxps=1;
     inp.addEventListener("input",function(){ LXPS_Q=inp.value; try{ lxPoolSearch(LXPS_Q); }catch(_){} });
