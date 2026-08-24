@@ -314,6 +314,7 @@ const ROUTES = [
   ['/bridge',                          'lumoscore-bridge.html'],
   ['/wallet',                          'lumoscore-wallet.html'],
   ['/rewards',                         'lumoscore-rewards-dark.html'],   // only variant that exists
+  ['/lumos/stellar',                   'lumoscore-lumos-token.html'],
   ['/lumos',                           'lumoscore-lumos-token.html'],
   ['/signin',                          'lumoscore-signin.html'],
   ['/mcp',                             'lumoscore-mcp.html'],

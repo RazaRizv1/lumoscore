@@ -418,13 +418,15 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     var priceUsd=lumosXlm*xlmUsd;
     qa(".lh-stats .cstat").forEach(function(card){
       var t=(card.textContent||"").toUpperCase();
-      var val=card.querySelector(".val"), sub=card.querySelector(".sub"); var money=card.querySelector(".lc-money")||val;
+      var val=card.querySelector(".val"), sub=card.querySelector(".sub")||card.querySelector(".small-sub"); var money=card.querySelector(".lc-money")||val;
       var done=false;
       // check DILUTED before MARKET CAP: the FDV card's own sub contains the words "market cap"
-      if(/DILUTED/.test(t)){ if(priceUsd>0&&supply>0){ setMoney(money,abbrUsd(supply*priceUsd)); if(sub)setText(sub,"on "+abbrNum(supply)+" total supply"); done=true; } }
+      if(/DILUTED|FDV/.test(t)){ if(priceUsd>0&&supply>0){ var ts=chainSupply();
+        setMoney(money,abbrUsd(ts*priceUsd)); if(sub)setText(sub,"on "+abbrNum(ts)+" total supply"); done=true; } }
       else if(/MARKET CAP/.test(t)){ if(priceUsd>0&&supply>0){ var circ=circSupply(); var mc=(circ!=null?circ:supply)*priceUsd; setMoney(money,abbrUsd(mc)); if(sub){ var wc="on "+abbrNum(circ!=null?circ:supply)+" circulating"; var ns=sub.querySelector(".lx-supnum"); if(!ns){ sub.innerHTML='<span class="lx-supnum"></span><span class="lx-supinfo" data-tip="'+SUPPLY_NOTE+'">i</span>'; ns=sub.querySelector(".lx-supnum"); } if(ns&&ns.textContent!==wc)ns.textContent=wc; } done=true; } }
       else if(/HOLDERS/.test(t)){ if(holders!=null){ if(val)setText(val,num(holders)); if(sub)setText(sub,"unique addresses"); done=true; } }
       else if(/POOLS/.test(t)){ if(poolCount!=null){ if(val)setText(val,String(poolCount)); done=true; }
+        if(sub&&/both chains/i.test(sub.textContent||""))setText(sub,"on Stellar");
         // the POOLS card ships with no sub-line → the desktop 5-card row loses its vertical rhythm.
         // Add one ONLY on the desktop layout (the mobile card already has its own sub text).
         var wide=!(window.matchMedia)||window.matchMedia("(min-width:760px)").matches;
@@ -774,6 +776,13 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   }
   // circulating supply = 10% of total (90% is locked forever — see SUPPLY_NOTE). Market cap uses THIS
   // (~1B), so it reads exactly 10x below the fully-diluted value (which uses the ~9.97B total).
+  // The chain's own allocation: 1B per chain. On Stellar that is 10B minted historically less the 9B
+  // locked forever; on every later chain it is simply what gets issued. Used for FDV and the "total
+  // supply" line, so neither counts tokens that can never enter circulation.
+  function chainSupply(){
+    if(ISSUER === "GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S")return 1e9;
+    return (supply==null?1e9:supply);
+  }
   function circSupply(){ if(supply==null)return null;
     // HISTORY: 10B was minted when this was LumosDAO. Going multi-chain, 1B per chain is the clean
     // number, so 9B was locked on Stellar rather than reissued -- leaving 1B circulating of a 10B
