@@ -32,9 +32,10 @@ const CURATED = Object.keys(VERIFIED)
 const STYLE = '<style id="lx-dashboxes-css">'
   // Three across on a desktop, stacked on a phone. Small gap, as asked -- these read as one instrument
   // panel rather than three separate cards.
-  + '.lx-dbx{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:22px}'
-  + '@media(max-width:1200px){.lx-dbx{grid-template-columns:repeat(2,minmax(0,1fr))}}'
-  + '@media(max-width:640px){.lx-dbx{grid-template-columns:1fr}}'
+  // One column: these are a stack beside the activity feed, not a strip across the page.
+  + '.lx-dbx{display:grid;grid-template-columns:1fr;gap:10px;align-content:start;min-width:0}'
+  // The grid it now lives in collapses to one column on a phone, and the stack comes with it.
+  + '@media(max-width:900px){.lx-dbx{margin-bottom:16px}}'
   + '.lx-dbx-card{background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:14px;'
   + 'padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:10px}'
   + '.lx-dbx-head{display:flex;align-items:center;gap:8px;min-width:0}'
@@ -52,8 +53,17 @@ const STYLE = '<style id="lx-dashboxes-css">'
   + '.lx-dbx-s{min-width:0}'
   + '.lx-dbx-l{font:600 10px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);'
   + 'text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-  + '.lx-dbx-v{margin-top:3px;font:800 15px/1.15 "JetBrains Mono",ui-monospace,monospace;'
-  + 'color:var(--text,#0e0e10);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  + '.lx-dbx-v{margin-top:4px;font:800 19px/1.1 "JetBrains Mono",ui-monospace,monospace;'
+  + 'color:var(--text,#0e0e10);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
+  + 'letter-spacing:-.02em}'
+  // The way out. Named for the page it opens rather than a generic "more", so the card says where it
+  // goes before you commit to it -- which is the whole point of putting it on a dashboard.
+  + '.lx-dbx-link{margin-top:2px;display:inline-flex;align-items:center;gap:5px;'
+  + 'font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--accent,#ea6a2c)}'
+  + '.lx-dbx-link svg{width:12px;height:12px;transition:transform .15s}'
+  + '.lx-dbx-card:hover .lx-dbx-link svg{transform:translateX(2px)}'
+  // A hairline above the link separates the figures from the action without adding a heavy divider.
+  + '.lx-dbx-foot{margin-top:2px;padding-top:9px;border-top:1px solid var(--border,#ececef)}'
   // The waiting state is the shape of the number, not a spinner and not a zero -- a zero here would be
   // a claim, and on the cross-chain card it is a claim that happens to be true, so the two must not
   // look alike before the data lands.
@@ -62,8 +72,15 @@ const STYLE = '<style id="lx-dashboxes-css">'
   + 'background-size:200% 100%;animation:lxdbxshim 1.2s ease-in-out infinite}'
   + '@keyframes lxdbxshim{0%{background-position:200% 0}100%{background-position:-200% 0}}'
   + '@media(prefers-reduced-motion:reduce){.lx-dbx-v.wait{animation:none}}'
-  + 'a.lx-dbx-card{text-decoration:none;color:inherit;transition:border-color .15s,transform .15s}'
-  + 'a.lx-dbx-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-1px)}'
+  + 'a.lx-dbx-card{text-decoration:none;color:inherit;position:relative;overflow:hidden;'
+  + 'transition:border-color .15s,transform .15s,box-shadow .15s}'
+  + 'a.lx-dbx-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-1px);'
+  + 'box-shadow:0 8px 20px -14px rgba(234,106,44,.85)}'
+  // A 3px accent edge that grows in on hover. Cheap, and it makes the whole card read as one control.
+  + 'a.lx-dbx-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;'
+  + 'background:var(--accent,#ea6a2c);transform:scaleY(0);transform-origin:top;transition:transform .18s}'
+  + 'a.lx-dbx-card:hover::before{transform:scaleY(1)}'
+  + '@media(prefers-reduced-motion:reduce){a.lx-dbx-card,a.lx-dbx-card::before,.lx-dbx-link svg{transition:none}}'
   + '</style>';
 
 const IC_TRADE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg>';
@@ -72,7 +89,7 @@ const IC_CHAIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" str
 const IC_LAUNCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/></svg>';
 const IC_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
-function card(href, ic, title, stats) {
+function card(href, ic, title, stats, cta) {
   return '<a class="lx-dbx-card" href="' + href + '">'
     + '<div class="lx-dbx-head"><span class="lx-dbx-ic">' + ic + '</span>'
     + '<span class="lx-dbx-t">' + title + '</span>'
@@ -80,14 +97,16 @@ function card(href, ic, title, stats) {
     + '<div class="lx-dbx-stats">'
     + stats.map((s) => '<div class="lx-dbx-s"><div class="lx-dbx-l">' + s[0] + '</div>'
       + '<div class="lx-dbx-v wait" data-k="' + s[1] + '">0000</div></div>').join('')
-    + '</div></a>';
+    + '</div>'
+    + '<div class="lx-dbx-foot"><span class="lx-dbx-link">' + cta + IC_GO + '</span></div>'
+    + '</a>';
 }
 
 const ROW = '<div class="lx-dbx">'
-  + card('/trade/stellar', IC_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']])
-  + card('/pools/stellar', IC_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']])
-  + card('/bridge', IC_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['24h Transfers', 'ctx'], ['24h Volume', 'cvol']])
-  + card('/launchpad', IC_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']])
+  + card('/trade/stellar', IC_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets')
+  + card('/pools/stellar', IC_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools')
+  + card('/bridge', IC_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['24h Transfers', 'ctx'], ['24h Volume', 'cvol']], 'Bridge USDC')
+  + card('/launchpad', IC_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']], 'Launch a token')
   + '</div>';
 
 const SCRIPT = '<script id="lx-dashboxes">(function(){'
@@ -195,6 +214,11 @@ for (const dev of ['desktop', 'mobile']) {
     p = p.replace(/<style id="lx-trending-css">[\s\S]*?<\/style>/, '')
          .replace(/<script id="lx-trending">[\s\S]*?<\/script>/, '');
 
+    p = p.replace(/<style id="lx-dashnews-css">[\s\S]*?<\/style>/, '')
+         .replace(/<script id="lx-dashnews">[\s\S]*?<\/script>/, '')
+         .replace(/<div class="section-heading lx-newshead">[\s\S]*?<\/div>/, '')
+         .replace(/<div class="lx-news"[^>]*><\/div>/, '');
+
     // The dashboard, identified by the Trending card it carries or by its market grid -- NOT by the
     // grid alone. The phone dashboard has no market-grid around this card: Trending sits directly after
     // the quick actions, so gating on the grid skipped the phone entirely on the first run.
@@ -207,7 +231,8 @@ for (const dev of ['desktop', 'mobile']) {
       if (/Trending on Stellar/.test(p.slice(at, at + 4000))) { tc = at; break; }
     }
     const done = p.indexOf('class="lx-dbx"') >= 0;
-    if (tc < 0 && mg < 0 && !done) { if (p !== before) { json[k] = p; changed = true; } continue; }
+    const isDash = done || tc >= 0 || mg >= 0 || p.indexOf('<h2>Quick actions</h2>') >= 0;
+    if (!isDash) { if (p !== before) { json[k] = p; changed = true; } continue; }
     let insertAt = -1;
     if (tc >= 0) {
       let depth = 0, i = tc, end = -1;
@@ -223,7 +248,7 @@ for (const dev of ['desktop', 'mobile']) {
 
     // The row goes ABOVE the grid the trending card used to sit in.
     // Remove any row from a previous run FIRST, so the template is what ships rather than whatever was
-    // built last time. Its position is remembered, so the row goes back exactly where it was.
+    // built last time.
     let existing = p.indexOf('<div class="lx-dbx">');
     if (existing >= 0) {
       let depth = 0, i = existing, end = -1;
@@ -235,15 +260,26 @@ for (const dev of ['desktop', 'mobile']) {
         if (m.index > existing + 200000) break;
       }
       if (end > existing) { p = p.slice(0, existing) + p.slice(end); if (insertAt < 0) insertAt = existing; }
-      else existing = -1;
     }
 
-    // Exactly where Trending was, so the page keeps its running order. Falls back to the old row's own
-    // position, then to above the market grid.
+    // INSIDE the market grid, as its first child. That grid is two columns and used to hold Trending
+    // plus the activity card; with Trending gone the activity card was alone in it and stretched across
+    // column one. The boxes take that column back, so the activity feed returns to the right at its
+    // original width -- the arrangement restored rather than a width patched on.
     {
-      const at = (insertAt >= 0) ? insertAt
-               : (existing >= 0 ? existing : p.indexOf('<div class="market-grid">'));
-      if (at >= 0) { p = p.slice(0, at) + ROW + p.slice(at); rows++; }
+      const mgAt = p.indexOf('<div class="market-grid">');
+      if (mgAt >= 0) {
+        const at = p.indexOf('>', mgAt) + 1;
+        p = p.slice(0, at) + ROW + p.slice(at); rows++;
+      } else if (insertAt >= 0) {
+        // No grid on this layout (the phone): put it back where it was, or where Trending stood.
+        p = p.slice(0, insertAt) + ROW + p.slice(insertAt); rows++;
+      } else {
+        // First run on a layout with neither: above the quick actions, which every dashboard has.
+        const qa = p.search(/<div class="section-heading">\s*<h2>Quick actions<\/h2>/);
+        if (qa >= 0) { p = p.slice(0, qa) + ROW + p.slice(qa); rows++; }
+        else console.log('  ! nowhere to put the row on ' + k);
+      }
     }
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     const bi = p.lastIndexOf('</body>');
