@@ -791,7 +791,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'})();</script>';
 
 const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI+'",SWLL="'+SW_LUMOS_LOGO+'";'+''
-+'function fmt(x){if(!isFinite(x))return "0";return x.toLocaleString("en-US",{maximumFractionDigits:6});}'
++'function fmt(x){if(!isFinite(x))return "0";return x.toLocaleString("en-US",{maximumFractionDigits:7});}'
 +'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'
 +'function swAbbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e12)return (n/1e12).toFixed(2)+"T";if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3&&a<1e5)return fmt(n);if(a>=1e5)return (n/1e3).toFixed(1)+"K";return fmt(n);}'
 +'function lastNum(t){var m=(t||"").match(/[0-9.]+/g);return m&&m.length?parseFloat(m[m.length-1]):NaN;}'
@@ -861,8 +861,14 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 // ---- #swapModal (dashboard quick-action Swap): real held-asset picker + balances + live best-rate quote + execute ----
 // The dashboard has no _walletdata, so bootstrap the swap globals (holdings, sign, SDK) it lacks, guarded so we
 // never clobber the wallet page's own. Reuses the shared soroQuote/soroExecute/ensureTrust/lxSwap/calc helpers above.
-+'function dashHeld(code){var h=(window.__lxHoldings||[]).filter(function(x){return x.code===code&&!x.native;})[0];return h?(h.bal||0):0;}'
-+'function dashBalOf(a){if(!a)return 0;if(a.native||a.code==="XLM")return (window.__lxMaxXLM!=null?window.__lxMaxXLM:(window.__lxNative||0));return (a.bal!=null?a.bal:dashHeld(a.code));}'
++'function dashHeld(code,iss){var H=(window.__lxHoldings||[]);var h;'
++'if(iss){h=H.filter(function(x){return !x.native&&x.iss===iss&&x.code===code;})[0];if(h)return h.bal||0;}'
++'h=H.filter(function(x){return !x.native&&x.code===code;})[0];if(h)return h.bal||0;'
++'var lc=String(code||"").toLowerCase();'
++'h=H.filter(function(x){return !x.native&&String(x.code||"").toLowerCase()===lc;})[0];return h?(h.bal||0):0;}'
++'function dashBalOf(a){if(!a)return 0;if(a.native||a.code==="XLM")return (window.__lxMaxXLM!=null?window.__lxMaxXLM:(window.__lxNative||0));'
++'if(a.bal>0)return a.bal;'
++'return dashHeld(a.code,a.iss||a.issuer||"");}'
 +'function dashLogo(a){if(!a)return "";if(a.native||a.code==="XLM")return window.__lxStellarUri||window.__lxDSTU||"";return a.logo||(window.__lxLogos||{})[a.code]||"";}'
 +'var DSWCOL=["#6f5ded","#ff894c","#2bb673","#e0447b","#3aa0ff","#f5b301","#9b5de5","#00bbf9"];function dashCol(s){s=s||"?";var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return DSWCOL[h%DSWCOL.length];}'
 +'function dashSetChip(logoEl,codeEl,a){if(codeEl)codeEl.textContent=a.code;if(!logoEl)return;var lg=dashLogo(a);logoEl.setAttribute("data-logo",a.code);logoEl.textContent="";logoEl.style.backgroundSize="contain";logoEl.style.backgroundPosition="center";logoEl.style.backgroundRepeat="no-repeat";if(lg){logoEl.style.setProperty("background-image","url("+JSON.stringify(lg)+")","important");logoEl.style.setProperty("background-color","transparent","important");}else{logoEl.style.setProperty("background-image","none","important");logoEl.style.setProperty("background-color",a.native?"#8b5cf6":dashCol(a.code),"important");logoEl.textContent=a.native?"\\u2726":(a.code||"?").slice(0,1).toUpperCase();}}'
