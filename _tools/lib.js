@@ -54,6 +54,20 @@ const VERIFIED={
   "ARS|GCYE7C77EB5AWAA25R5XMWNI2EDOKTTFTTPZKM2SR5DI4B4WFD52DARS":"api.anclap.com",
   "PEN|GA4TDPNUCZPTOHB3TKUYMDCRVATXKEADH7ZEYEBWJKQKE2UBFCYNBPEN":"api.anclap.com",
 
+  // #35: ten more, same handshake, run 2026-08-24. Chosen for real seven-day volume and a live issuer,
+  // not for name recognition -- and spread across what they actually represent (crypto, fiat, and
+  // real-world assets) rather than ten more dollar stablecoins on a list that already has nine.
+  "ETH|GBFXOHVAS43OIWNIO7XLRJAHT3BICFEIKOJLZVXNT572MISM4CMGSOCC":"ultracapital.xyz",
+  "BTCLN|GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT":"kbtrading.org",
+  "USDM|GDHDC4GBNPMENZAOBB4NCQ25TGZPDRK6ZGWUGSI22TVFATOLRPSUUSDM":"mtl.montelibero.org",
+  "CETES|GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC":"etherfuse.com",
+  "USTRY|GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC":"etherfuse.com",
+  "SSLX|GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR":"sslx.sl8.online",
+  "AFR|GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W":"afreum.com",
+  "TFT|GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47":"threefold.io",
+  "GOLD|GBC5ZGK6MQU3XG5Y72SXPA7P5R5NHYT2475SNEJB2U3EQ6J56QLVGOLD":"mintx.co",
+  "USDY|GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6":"ondo.finance",
+
   // WHY THERE ARE NO LUMOSCORE MINTS IN THIS LIST ANY MORE.
   //
   // There were twenty-five, added automatically because the launchpad minted them. That made the tick
@@ -105,6 +119,18 @@ const CANONICAL={
   "CLPX": {issuer:"GDYSPBVZHPQTYMGSYNOHRZQNLB3ZWFVQ2F7EP7YBOLRGD42XIC3QUX5G", by:"CLPX"},
   "yBTC": {issuer:"GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW", by:"Ultra Capital"},
   "yETH": {issuer:"GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD", by:"Ultra Capital"},
+
+  // #35. ETH and GOLD from the same batch are deliberately absent, for the ARS/PEN reason directly
+  // above: Stellarport issues its own honest ETH, and more than one anchor can legitimately mint a
+  // token called GOLD. Claiming those codes would flag honest issuers as impostors.
+  "BTCLN": {issuer:"GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT", by:"KB Trading"},
+  "USDM": {issuer:"GDHDC4GBNPMENZAOBB4NCQ25TGZPDRK6ZGWUGSI22TVFATOLRPSUUSDM", by:"Montelibero"},
+  "CETES": {issuer:"GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC", by:"Etherfuse"},
+  "USTRY": {issuer:"GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC", by:"Etherfuse"},
+  "SSLX": {issuer:"GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR", by:"Sl8"},
+  "AFR": {issuer:"GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W", by:"Afreum"},
+  "TFT": {issuer:"GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47", by:"ThreeFold"},
+  "USDY": {issuer:"GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6", by:"Ondo Finance"},
 };
 // Every entry must also be in VERIFIED under the same issuer -- otherwise the site would be warning
 // about impostors of an asset it does not itself vouch for. Checked at build time so the two lists
