@@ -112,6 +112,10 @@ const STYLE = '<style id="lx-mobdex-css">'
   + '.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;'
   + 'margin-top:2px;padding:8px 2px 14px;border-bottom:1px solid var(--border)}'
   + '.mdx-mk-list{margin-bottom:34px}'
+  // The one-line filter row. The chip keeps its width, the box takes what is left.
+  + '.lx-mkrow{display:flex;align-items:center;gap:10px;margin:0 0 12px}'
+  + '.lx-mkrow .mdx-mk-filters{flex:0 0 auto;width:auto!important;margin:0!important}'
+  + '.lx-mkrow .mdx-mk-search{flex:1 1 auto;min-width:0;margin:0!important}'
   // Separated by a middot in the pseudo-element rather than a space in the string, so the gap cannot be
   // collapsed by the whitespace handling and the two figures never touch ('XLM71,946 trades').
   + '.mdx-mk-trades{color:var(--text-soft,#8a8fa3)}'
@@ -448,7 +452,16 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       if(!t.closest(".lx-msheet"))closeSheet();     // a tap anywhere else puts the sheet away
     },true);
   }
+  // One line: [Curated] [filter .......]. See note above -- needs a real wrapper, not CSS.
+  function mkOneLine(){
+    var f=q(".mdx-mk-filters"), s=q(".mdx-mk-search");
+    if(!f||!s||!f.parentNode)return;
+    if(f.parentNode.className&&String(f.parentNode.className).indexOf("lx-mkrow")>=0)return;
+    var w=document.createElement("div"); w.className="lx-mkrow";
+    f.parentNode.insertBefore(w,f); w.appendChild(f); w.appendChild(s);
+  }
   function renderPairs(){
+    try{ mkOneLine(); }catch(_){}
     var list=q(".mdx-mk-list");if(!list)return;var A=assets();if(!A)return;
     var cat=mkFilter(),qy=mkQuery();
     // The native roster is not part of __lxDEXassets -- it is discovered on demand by the desktop data
@@ -469,7 +482,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     function zPut(dst,a){ if(!a)return; var id=a.code+"|"+a.issuer; if(zSeen[id])return; zSeen[id]=1; dst.push(a); }
     src=[];
     if(cat==="native"){ for(var zi=0;zi<NL.length;zi++)zPut(src,NL[zi]); }
-    else { for(var zj=0;zj<A.length;zj++)zPut(src,A[zj]); for(var zk=0;zk<NL.length;zk++)zPut(src,NL[zk]); }
+    else { for(var zj=0;zj<A.length;zj++)zPut(src,A[zj]); }
     var d=src.filter(function(a){
       if(cat&&cat!=="all"&&cat!=="native"){var c=String(a.cat||"").toLowerCase();
         if(c!==cat&&c+"s"!==cat)return false;}
