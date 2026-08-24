@@ -624,6 +624,14 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     list.innerHTML=""; list.appendChild(frag); list.classList.add("lxlt");
     try{ fetchPoolVolumes(arr); }catch(_){}
   }
+  // Money cells differ by page: the Pools page uses .lc-money, the phone cards use .stats-row .v, and
+  // this page's table ships plain <span class="num">. Ask for each in turn rather than assuming one --
+  // a wrong guess here does not throw, it silently leaves the design's placeholder numbers in place.
+  function moneyCells(row){
+    var m=row.querySelectorAll(".lc-money"); if(m.length)return m;
+    m=row.querySelectorAll(".stats-row .v"); if(m.length)return m;
+    return row.querySelectorAll(".num");
+  }
   function buildPoolsTable(){
     var pb=q("#poolsBody"); if(!pb)return; var pools=window.__lxLTpools; if(!pools||!pools.length)return;
     var priceUsd=lumosXlm*xlmUsd; if(!(priceUsd>0))return;
@@ -639,7 +647,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var row=tpl.cloneNode(true); row.setAttribute("data-lxbuilt","1"); row.setAttribute("data-hex",pool.hex); row.setAttribute("data-code",pool.code);
       var nm=row.querySelector(".pair-name"); if(nm)nm.textContent="LUMOS / "+pool.code;
       setPoolIcons(row, pool.code);   // .a = LUMOS logo, .b = the paired asset (XLM keeps the Stellar logo; others get a per-asset avatar)
-      var monies=row.querySelectorAll(".lc-money");
+      var monies=moneyCells(row);
       if(monies[0]){ monies[0].textContent=abbrUsd(pool.tvl); monies[0].setAttribute("data-orig",abbrUsd(pool.tvl)); monies[0].setAttribute("data-usd",pool.tvl); }
       if(monies[1]){ monies[1].textContent="$0"; monies[1].setAttribute("data-orig","$0"); monies[1].setAttribute("data-usd","0"); }
       var inc=row.querySelector(".incent-pill"); if(inc){ var lab=REWARD_HEX[pool.hex]; if(lab){ inc.textContent=lab; inc.className="incent-pill "+(lab==="Native LP"?"native":"eco"); } else { inc.style.display="none"; } }
@@ -667,7 +675,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         // holds its figures in .stats-row instead, so writing only to the first target left every phone
         // card reading $0 however much the pool had traded.
         var r=q('#poolsBody tr[data-hex="'+pool.hex+'"]')||q('.pool-list a[data-hex="'+pool.hex+'"]');
-        var cell=r?(r.querySelectorAll(".lc-money")[1]||r.querySelectorAll(".stats-row .v")[1]):null;
+        var cell=r?moneyCells(r)[1]:null;
         if(cell){ var s=abbrUsd(volXlm*xlmUsd); cell.textContent=s; cell.setAttribute("data-orig",s); cell.setAttribute("data-usd",volXlm*xlmUsd); }
       }).catch(function(){});
     });
