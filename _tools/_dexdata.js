@@ -42,6 +42,10 @@ const STYLE = `<style id="lx-dexmain-css">
 #dexMintsList:not(.lxd) .dex-mint-row{visibility:hidden}.lx-tboot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);opacity:1;transition:opacity .28s ease}.lx-tboot.lx-tboot-out{opacity:0;pointer-events:none}.lx-tboot-badge{position:relative;width:104px;height:104px;display:grid;place-items:center}.lx-tboot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));animation:lx-tboot-spin 1.15s linear infinite;opacity:.9}.lx-tboot-badge::after{content:"";position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-tboot-pulse 1.8s ease-in-out infinite}@keyframes lx-tboot-spin{to{transform:rotate(360deg)}}.lx-tboot-mark{position:relative;z-index:1;width:56px;height:56px;background-size:contain;background-repeat:no-repeat;background-position:center;animation:lx-tboot-pulse 1.6s ease-in-out infinite}@keyframes lx-tboot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.88);opacity:.55}}@media (prefers-reduced-motion:reduce){.lx-tboot-mark,.lx-tboot-badge::before,.lx-tboot-badge::after{animation:none}.lx-tboot{transition:none}}
 #dexMoverGrid:not(.lxd) .dex-mover-card{visibility:hidden}
 #dexMkTbody:not(.lxd) tr{visibility:hidden}
+/* Tabular figures so #9 and #10 line up their digits instead of shuffling the icon beside them. */
+.dex-mk-rank{flex:0 0 auto;min-width:22px;margin-right:2px;text-align:right;
+  font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text-muted,#8a8fa3);
+  font-variant-numeric:tabular-nums}
 /* sortable column headers. Only the five numeric columns take a click -- Asset, Day High/Low and 7d Trend
    are not single values to order by, and a header that looks clickable but is not is worse than a plain
    one. The arrow is always present on a sortable column so the affordance does not depend on hover. */
@@ -1439,9 +1443,10 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // rebuild the skeleton ONLY when the filter/search changes (user action) or our rows were clobbered
     if(tb.__lxsig!==sig || (!tb.querySelector("tr[data-tkr]")&&!tb.querySelector("tr.lx-dex-empty-row"))){
       if(!data.length){ tb.innerHTML='<tr class="lx-dex-empty-row"><td colspan="9"><div class="lx-dex-empty">No matching markets on Stellar right now.</div></td></tr>'; }
-      else tb.innerHTML=data.map(function(a){
+      else tb.innerHTML=data.map(function(a,_i){
         return '<tr data-tkr="'+(a.tkr||a.code)+'" data-iss="'+a.issuer+'" data-cat="'+a.cat+'">'
           +'<td><div class="dex-mk-pair-cell">'
+            +'<span class="dex-mk-rank">#'+(start+_i+1)+'</span>'
             +'<span class="dex-mk-pair-ic" data-lxic="'+a.code+'" style="background:linear-gradient(135deg,'+a.b+','+a.b+'aa)">'+initials(a.code)+'</span>'
             +'<div class="dex-mk-pair-name"><div class="dex-mk-pair-head">'+a.code+vtick(a.code,a.issuer)+'</div><span class="sub">'+(dispDom(a.code,a.issuer,a.domain)||shortG(a.issuer))+'</span></div>'
           +'</div></td>'

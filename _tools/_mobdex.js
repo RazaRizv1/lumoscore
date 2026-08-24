@@ -112,6 +112,10 @@ const STYLE = '<style id="lx-mobdex-css">'
   + '.lxmd-pager{display:flex;align-items:center;justify-content:space-between;gap:10px;'
   + 'margin-top:2px;padding:8px 2px 14px;border-bottom:1px solid var(--border)}'
   + '.mdx-mk-list{margin-bottom:34px}'
+  // Separated by a middot in the pseudo-element rather than a space in the string, so the gap cannot be
+  // collapsed by the whitespace handling and the two figures never touch ('XLM71,946 trades').
+  + '.mdx-mk-trades{color:var(--text-soft,#8a8fa3)}'
+  + '.mdx-mk-trades::before{content:"·";margin:0 5px;opacity:.7}'
   + '.lxmd-pg{flex:0 0 auto;min-width:78px;padding:9px 14px;border-radius:9px;background:var(--surface-2);'
   + 'border:1px solid var(--border);color:var(--text);font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}'
   + '.lxmd-pg[disabled]{opacity:.4;cursor:default}'
@@ -481,12 +485,22 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
     // is first. The number is the row's position in the list as displayed, so it follows the sort.
     list.innerHTML=d.map(function(a,_i){var _cu=cu(a),up=(_cu||0)>=0;
       return '<div class="mdx-mk-row" data-lxmd-row="1" data-href="'+esc(href(a))+'">'
-        +'<span class="mdx-mk-rank">#'+(_i+1)+'</span>'
+        // Position in the WHOLE sorted list, not in this page of it. _i restarts at 0 on every page, so
+        // page 2 opened at #1 again and the ranking silently became a per-page row number -- two rows
+        // called #1 in one list, and no way to tell 26th from 1st. start is the offset of this page.
+        +'<span class="mdx-mk-rank">#'+(start+_i+1)+'</span>'
         +'<div class="mdx-mk-top">'+ico("mdx-mk-ic",a)
         +'<div class="mdx-mk-meta"><div class="mdx-mk-name-row">'
         +'<span class="mdx-mk-name">'+esc(a.code)+vtick(a)+'</span>'
         +'<span class="mdx-mk-domain">'+esc(dispDom(a.code,a.issuer,a.domain)||"Stellar")+'</span></div>'
-        +'<div class="mdx-mk-vol">Vol '+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")+'</div></div>'
+        // Trades beside volume. The desktop table has carried a TRADES (24H) column for a while and the
+        // field is already on the asset -- a.trades, the same trade_count the aggregate is built from --
+        // so this is a field that was fetched and then not shown, not a new request. Omitted rather than
+        // dashed when it is null: an unpriced pair already shows one dash on this line and a second
+        // would read as two broken figures instead of one missing one.
+        +'<div class="mdx-mk-vol">Vol '+esc(a.vol==null?DASH:abbr(a.vol)+" XLM")
+          +(a.trades!=null?('<span class="mdx-mk-trades">'+esc(num(a.trades,0))+' trades</span>'):'')
+          +'</div></div>'
         +'<div class="mdx-mk-right">'
         +'<div class="mdx-mk-price">'+esc(priceOf(a)==null?DASH:fmtPrice(priceOf(a))+" XLM")+'</div>'
         +'<div class="mdx-mk-pct '+(_cu==null?"":(up?"up":"down"))+'">'+esc(_cu==null?DASH:pct(n(_cu)))+'</div>'
