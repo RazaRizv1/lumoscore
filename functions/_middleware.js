@@ -74,6 +74,11 @@ const ROUTES = [
     null
   ],
   [
+    "/lumos/stellar",
+    "lumoscore-lumos-token",
+    null
+  ],
+  [
     "/lumos",
     "lumoscore-lumos-token",
     null
