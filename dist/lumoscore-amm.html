@@ -1669,6 +1669,12 @@ html:not(.lx-ammready) .lx-hstat[data-k=top] .v{visibility:hidden}
 /* white-space:nowrap + overflow:hidden are ESSENTIAL: during load these cells still hold the design's
    MOCK text (e.g. "51,250 XLM swapped") which wraps to 2 lines in the narrow column and makes the whole
    top section ~40px taller until real (short) data lands. One-lining the skeleton keeps height stable. */
+/* Market Overview began at exactly the pixel the pools card ended -- 1378 to 1378, no gap at all -- so
+   the two read as one broken block. The separation was never its own: it came from the pagination row
+   between them, which is display:none on the My Pools tab, so the collision appeared there and nowhere
+   else. 22px is the gap this page already uses between its other cards, and it belongs to the card
+   rather than to whatever happens to precede it. */
+.amm-snapshot-card{margin-top:22px}
 html:not(.lx-ammready) .amm-snapshot-value, html:not(.lx-ammready) .amm-snapshot-vsub, html:not(.lx-ammready) .amm-snapshot-sub{color:transparent!important;border-radius:6px;white-space:nowrap!important;overflow:hidden!important;background:linear-gradient(90deg,rgba(148,140,200,.10) 25%,rgba(148,140,200,.22) 37%,rgba(148,140,200,.10) 63%)!important;background-size:400% 100%!important;animation:lxShim 1.3s ease-in-out infinite}
 /* width-only constraints — do NOT add margin/display here or the skeleton rows grow taller than the
    ready rows and the whole top section visibly shrinks ~40px when data lands */
@@ -5528,8 +5534,30 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // asset index, then ask Horizon for the pools holding that reserve. Debounced, sequence-guarded so a
   // slower earlier query cannot overwrite a newer one, and cached per query.
   var LXPS_SEQ=0, LXPS_CACHE={}, LXPS_T=null, LXPS_Q="";
+  // The list to narrow and the place to hang network results, per layout.
+  //   phone   : #panelAll        -> .pool-card
+  //   desktop : #poolsBody       -> tr.lx-ammrow, results appended after the table's card
+  function lxPsTargets(){
+    var panel=q("#panelAll");
+    if(panel)return {host:panel, items:[].slice.call(panel.querySelectorAll(".pool-card:not(.lx-pscard)"))};
+    var tb=q("#poolsBody");
+    if(tb){
+      var card=(tb.closest&&tb.closest(".pools-card"))||tb.parentNode;
+      return {host:card, items:[].slice.call(tb.querySelectorAll("tr"))};
+    }
+    return null;
+  }
+  // A row and a card keep the same two fields under different names, so the query is compared against
+  // the pair and its reserves either way -- which is what makes "LMNR" find the XLM / xLMNR pool rather
+  // than only matching a pair whose NAME starts with it.
+  function lxPsText(el){
+    var n=el.querySelector(".pc-name")||el.querySelector(".pair-name");
+    var sub=el.querySelector(".pc-sub")||el.querySelector(".pair-sub");
+    return ((n&&n.textContent)||"")+" "+((sub&&sub.textContent)||"");
+  }
   function lxPoolSearch(qRaw){
-    var panel=q("#panelAll"); if(!panel)return;
+    var T=lxPsTargets(); if(!T)return;
+    var panel=T.host;
     var qq=String(qRaw||"").trim();
     var host=panel.querySelector(".lx-psresult");
     if(!host){ host=document.createElement("div"); host.className="lx-psresult"; panel.appendChild(host); }
@@ -5537,12 +5565,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // but does not run on this page -- measured: all 25 cards stayed visible for a query none of them
     // matched -- so the box did nothing at all before falling through to the network. Doing both makes
     // the control work end to end and removes the dependency on somebody else's listener.
-    var cards=[].slice.call(panel.querySelectorAll(".pool-card:not(.lx-pscard)"));
+    var cards=T.items;
     var lc=qq.toLowerCase(), hits=0;
     cards.forEach(function(c){
       if(!qq){ c.style.display=""; return; }
-      var t=((c.querySelector(".pc-name")||{}).textContent||"")+" "+((c.querySelector(".pc-sub")||{}).textContent||"");
-      var on=t.toLowerCase().indexOf(lc)>=0;
+      var on=lxPsText(c).toLowerCase().indexOf(lc)>=0;
       c.style.display=on?"":"none";
       if(on)hits++;
     });
@@ -6137,6 +6164,12 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         try{ healLogos(); }catch(_){}
       }
     }
+    // paintNet rebuilds every row with display cleared, so a standing search was silently dropped on the
+    // next data tick -- the reader types an asset, gets a narrowed list, and a second later the whole
+    // network is back. The card renderer already re-applies the query after each render; the table
+    // renderer did not, which is why this only showed up on desktop. Cached per query, so it repaints
+    // from memory rather than re-fetching.
+    try{ if(LXPS_Q)lxPoolSearch(LXPS_Q); }catch(_){}
     // The All Pools tab count is the whole ranked network, not the 25 on screen.
     var allc=q("#poolTabs button[data-tab=all] .count")||q("#poolTabs .count");
     if(allc){ setText(allc,num(NET.total)); snapDone(allc); }
