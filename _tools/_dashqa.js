@@ -38,9 +38,15 @@ const SCRIPT = '<script id="lx-dashqa">(function(){'
   // matters for the same reason the routing does: on the phone a plain tap on these cards is claimed by
   // the label-based nav bridge and opens the slide menu instead. #2 was reported as "You receive does
   // not calculate" -- it always did; the modal simply was not opening from this card on the phone.
+  // #swapModal and #modalSwap are two different elements whose ids are near-anagrams. #swapModal is the
+  // tabbed "Custom Swap / Orders" dialog _swapcalc builds; #modalSwap is the design's own plain FROM/TO
+  // box. This opened the design one -- the unfamiliar Swap dialog that started appearing on the
+  // dashboard -- while the dialog the card is named after sat unopened beside it. The phone made the
+  // same mistake look like a different bug: it ships #swapModal but not #modalSwap, so the lookup found
+  // nothing, fell through to the routing below and navigated to Trade instead of opening anything.
   + 'function modalFor(card){'
   + 'var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();'
-  + 'if(t.indexOf("custom swap")===0)return document.querySelector("#modalSwap");'
+  + 'if(t.indexOf("custom swap")===0)return document.querySelector("#swapModal");'
   + 'if(t==="add liquidity")return document.querySelector("#createPoolModal");'
   + 'return null;}'
   + 'function openModal(m){try{m.classList.add("open");if(getComputedStyle(m).display==="none")m.style.display="flex";return true;}catch(_){return false;}}'
@@ -49,7 +55,7 @@ const SCRIPT = '<script id="lx-dashqa">(function(){'
   + 'if(t==="my wallet")return "/wallet";'
   // Only when there is genuinely no modal to open -- so this can never pre-empt the desktop popup.
   + 'if(t==="add liquidity"&&!document.querySelector("#createPoolModal"))return "/pools/stellar";'
-  + 'if(t.indexOf("custom swap")===0&&!document.querySelector("#modalSwap"))return "/trade/stellar";'
+  + 'if(t.indexOf("custom swap")===0&&!document.querySelector("#swapModal"))return "/trade/stellar";'
   + 'return "";}'
   + 'document.addEventListener("click",function(e){'
   + 'var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;'
