@@ -914,6 +914,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 +'function applyChips(){dashSetChip(payLogo,swapFrom,fromA);dashSetChip(recLogo,swapTo,toA);refreshBal();}'
 +'function dxAP(role,a){if(!a.code||a.code==="XLM")return role+"_asset_type=native";return role+"_asset_type=credit_alphanum"+(a.code.length>4?"12":"4")+"&"+role+"_asset_code="+a.code+"&"+role+"_asset_issuer="+(a.iss||lxIssuer(a.code));}'
 +'function dxDest(a){return "destination_assets="+encodeURIComponent((!a.code||a.code==="XLM")?"native":(a.code+":"+(a.iss||lxIssuer(a.code))));}'
++'function dxSrc(a){return "source_assets="+encodeURIComponent((!a.code||a.code==="XLM")?"native":(a.code+":"+(a.iss||lxIssuer(a.code))));}'
 // Two assets can share a code (there are dozens of "USDC"s), so the picker has to say WHICH one: the
 // home domain when the issuer publishes one, and always the shortened issuer key as the tiebreaker.
 +'function swAbbrK(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(2)+"K";return fmt(n);}'
@@ -932,6 +933,51 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 +'var seq=++qseq;clearTimeout(qtmr);qtmr=setTimeout(function(){var netStroops=Math.round(net*1e7);Promise.all([fetch("https://horizon.stellar.org/paths/strict-send?"+dxAP("source",fa)+"&source_amount="+net.toFixed(7)+"&"+dxDest(ta)).then(function(r){return r.json();}).then(function(pd){var recs=(pd._embedded&&pd._embedded.records)||[];return recs.length?parseFloat(recs[0].destination_amount):NaN;}).catch(function(){return NaN;}),soroQuote(fa,ta,netStroops).catch(function(){return null;})]).then(function(res){if(seq!==qseq)return;var cout=res[0],soro=res[1];var classicOut=(isFinite(cout)&&cout>0)?cout:0;var pickSoro=soro&&soro.usesSoroban&&soro.out>0&&soro.out>classicOut*1.005&&(soro.impact||0)<10;if(pickSoro){useSoro={quote:soro.quote,out:soro.out,fa:fa,ta:ta};if(out)out.textContent=fmt(soro.out);calc(set,panel,amt,soro.out/net,fa.code,ta.code);}else{useSoro=null;if(classicOut>0){if(out)out.textContent=fmt(classicOut);calc(set,panel,amt,classicOut/net,fa.code,ta.code);}}}).catch(function(){});},280);}'
 +'function dashRecord(resp,fa,ta,fromAmt,toAmt){var hash=(resp&&(resp.txHash||resp.hash))||"";if(!hash)return;var arr=[];try{arr=JSON.parse(localStorage.getItem("lumos.swaps")||"[]");}catch(_){}arr.unshift({hash:hash,from:fa.code,fromIss:fa.native?"":(fa.iss||lxIssuer(fa.code)),to:ta.code,toIss:ta.native?"":(ta.iss||lxIssuer(ta.code)),fromAmt:fromAmt,toAmt:toAmt,ts:new Date().toISOString()});try{localStorage.setItem("lumos.swaps",JSON.stringify(arr.slice(0,40)));}catch(_){}}'
 +'inp.addEventListener("input",function(){run(false);});'
+// The engine recomputes and rewrites this field constantly. While it has focus that would fight the
+// person typing in it, so writes are dropped for exactly that window and resume on blur -- at which
+// point the true figure from the executed path replaces the requested one.
++'if(out&&!out.__lxrev){out.__lxrev=1;'
++'out.setAttribute("contenteditable","true");out.setAttribute("inputmode","decimal");'
++'out.setAttribute("spellcheck","false");out.setAttribute("title","Type an amount to work backwards");'
++'try{var _tc=Object.getOwnPropertyDescriptor(Node.prototype,"textContent");'
++'Object.defineProperty(out,"textContent",{configurable:true,'
++'get:function(){return _tc.get.call(this);},'
++'set:function(v){ if(document.activeElement===this)return; _tc.set.call(this,v); }});}catch(_){}'
+// Debounced: every keystroke would otherwise be a path query.
++'var _rvT=null;'
++'out.addEventListener("input",function(){'
++'clearTimeout(_rvT);'
++'_rvT=setTimeout(function(){ try{ revQuote(); }catch(_){} },380);'
++'});'
+// Enter should commit rather than insert a newline into a number.
++'out.addEventListener("keydown",function(e){ if(e.key==="Enter"){ e.preventDefault(); out.blur(); } });'
++'}'
++'function revQuote(){'
++'var want=parseFloat(String(out.textContent||"").replace(/[^0-9.]/g,""));'
++'if(!(want>0))return;'
++'var fa=fromA,ta=toA;'
++'var seq=++qseq;'
+// strict-receive: what must be SENT to land exactly this much.
++'fetch("https://horizon.stellar.org/paths/strict-receive?"+dxAP("destination",ta)'
++'+"&destination_amount="+want+"&"+dxSrc(fa))'
++'.then(function(r){ return r.ok?r.json():null; })'
++'.then(function(d){'
++'if(seq!==qseq)return;'                       // a newer edit has already superseded this one
++'var recs=(d&&d._embedded&&d._embedded.records)||[];'
++'if(!recs.length){ showErr("No path to that amount right now"); return; }'
++'var best=null;'
++'recs.forEach(function(p){ var v=parseFloat(p.source_amount); if(v>0&&(best===null||v<best))best=v; });'
++'if(!(best>0))return;'
+// The platform fee comes off the input, so the gross has to be larger than the path cost by exactly
+// that share. __lxFeeRate is 0.002, or 0.001 while the account holds 250,000 LUMOS.
++'var fr=(typeof window.__lxFeeRate==="number"&&window.__lxFeeRate>0&&window.__lxFeeRate<=0.002)?window.__lxFeeRate:0.002;'
++'var gross=best/(1-fr);'
++'showErr("");'
++'inp.value=String(Math.ceil(gross*1e7)/1e7);'   // round UP: rounding down could under-deliver
++'try{ inp.dispatchEvent(new Event("input",{bubbles:true})); }catch(_){ run(false); }'
++'})'
++'.catch(function(){});'
++'}'
 +'if(flip&&!flip.__lxf){flip.__lxf=1;flip.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var t=fromA;fromA=toA;toA=t;applyChips();inp.value="";if(out)out.textContent="0.00";spotRate=null;panel.style.display="none";useSoro=null;showErr("");dis(true);quoteRate();},true);}'
 +'if(go&&!go.__lxswap){go.__lxswap=1;go.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();if(typeof e.stopImmediatePropagation==="function")e.stopImmediatePropagation();if(go.getAttribute("data-lxdis")==="1")return;var toast=window.lxToast||function(){};var amt=parseFloat((inp.value||"").replace(/,/g,""))||0;var fSym=fromA.code,tSym=toA.code;if(!(amt>0)){toast("Enter an amount to swap");return;}if(fSym===tSym){toast("Pick two different assets");return;}if(!window.lxStellar||!window.lxSign){toast("Still loading balances \\u2014 try again in a moment");return;}var minOut=parseFloat(((panel.querySelector(\'[data-k="min"]\')||{}).textContent||"").replace(/[^0-9.]/g,""))||0;var ot=go.textContent;go.setAttribute("data-lxdis","1");go.style.opacity="0.7";var needT=(useSoro&&tSym!=="XLM"&&!(window.__lxAssets||{})[tSym]);go.textContent=needT?("Adding "+tSym+" trustline\\u2026"):"Signing\\u2026";(needT?ensureTrust(tSym):Promise.resolve()).then(function(){go.textContent="Signing\\u2026";return useSoro?soroExecute(useSoro):lxSwap(fSym,tSym,amt,minOut,fromA.iss,toA.iss);}).then(function(resp){try{dashRecord(resp,fromA,toA,amt,parseFloat((out&&out.textContent||"").replace(/,/g,""))||0);}catch(_){}try{if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh();}catch(_){}useSoro=null;go.textContent="Swapped \\u2713";toast("Swapped "+amt+" "+fSym+" \\u2192 "+tSym);try{if(window.__lxQORefresh)window.__lxQORefresh();}catch(_){}setTimeout(function(){go.textContent=ot;go.style.opacity="";go.removeAttribute("data-lxdis");inp.value="";if(out)out.textContent="0.00";panel.style.display="none";var cl=modal.querySelector("[data-swapclose],.modal-close,[data-close],.close");if(cl){cl.click();}else{modal.classList.remove("open","show");modal.setAttribute("hidden","");}modal.style.display="none";document.body.style.overflow="";},1300);}).catch(function(err){go.textContent=ot;go.style.opacity="";go.removeAttribute("data-lxdis");toast((err&&err.message)||"Swap failed");});},true);}'
 // re-apply once holdings arrive (dashBoot is async) + reset fields each time the modal opens
