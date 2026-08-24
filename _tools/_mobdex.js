@@ -475,7 +475,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
         if(c!==cat&&c+"s"!==cat)return false;}
       // code + issuer + domain. The box says "ticker or address" but the issuer was not in the haystack,
       // so pasting an address matched nothing. Desktop already searched all three.
-      if(qy&&(a.code+" "+(a.issuer||"")+" "+(a.domain||"")).toLowerCase().indexOf(qy)<0)return false;
+      if(qy&&String(a.code||"").toLowerCase().indexOf(qy)<0)return false;
       return true;});
     // Sorted before paging, so page 1 holds the top of the SORTED list rather than the top of the
     // unsorted one re-ordered within itself.
