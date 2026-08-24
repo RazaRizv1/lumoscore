@@ -2546,8 +2546,13 @@ html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l{color:rgba(52,52,64,.7
 .lx-dctas .dex-hero-btn.ghost{order:2}
 .lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 15px!important;border-radius:10px;font-weight:700;font-size:13px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
 .lx-dctas .dex-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
-.lx-dctas .dex-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
-.lx-dctas .dex-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:13px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+.lx-dctas .dex-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}
+.lx-dctas .dex-hero-btn.primary:hover{text-decoration:underline}
+/* superseded by the rule above; kept so the original declaration is still visible in context */
+.lx-dctas .dex-hero-btn.lx-was-primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
+.lx-dctas .dex-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-size:0!important;gap:0!important;color:var(--text-muted,#75757f)!important}
+.lx-dctas .dex-hero-btn.ghost svg{width:17px!important;height:17px!important}
+.lx-dctas .dex-hero-btn.lx-was-ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:13px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
 /* the header row is empty once the heading is hidden and the buttons have moved out */
 .dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
@@ -9064,6 +9069,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ lxMarkUnsafe(); }catch(_){}
 })();</script><script id="lx-dashqa">(function(){function go(u){try{location.href=u;}catch(_){}}function modalFor(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t.indexOf("custom swap")===0)return document.querySelector("#swapModal");if(t==="add liquidity")return document.querySelector("#createPoolModal");return null;}function openModal(m){try{m.classList.add("open");if(getComputedStyle(m).display==="none")m.style.display="flex";return true;}catch(_){return false;}}function target(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t==="my wallet")return "/wallet";if(t==="add liquidity"&&!document.querySelector("#createPoolModal"))return "/pools/stellar";if(t.indexOf("custom swap")===0&&!document.querySelector("#swapModal"))return "/trade/stellar";return "";}document.addEventListener("click",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var m=modalFor(c); if(m&&openModal(m)){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return;}var u=target(c); if(!u)return;e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);document.addEventListener("touchend",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var m=modalFor(c); if(m&&openModal(m)){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return;}var u=target(c); if(!u)return;e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);})();</script>
 
+
+
 <script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
@@ -9401,6 +9408,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // #7: the three chips we no longer offer, and the rename of All. Done here rather than in the build
   // because the design re-renders this row -- a build-time edit would be undone the first time it did.
   // Idempotent: a removed chip is not found again, and the rename checks before writing.
+  // #19: the (i) keeps its meaning even with the label hidden -- title for the pointer, aria-label for
+  // anything reading the page aloud. Set once; the design does not rewrite these attributes.
+  function labelHiw(){ try{ var b=q("#dexHiwBtn"); if(!b||b.getAttribute("data-lxhiw")==="1")return;
+    b.setAttribute("data-lxhiw","1"); b.setAttribute("title","How it works"); b.setAttribute("aria-label","How it works"); }catch(_){} }
   function trimFilters(){
     // #7: "LumosCore native" joins the three chips already removed. With Curated the only list this row
     // can show, a chip bar with one chip in it is a control that cannot do anything -- and the row it
@@ -10191,7 +10202,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     try{ applyCosmic(); }catch(_){}             // same nebula/stars/constellation animation as the Pools hero
     try{ applyPromoConstel(); }catch(_){}       // keeps the original .lm-svg zigzag hidden (rebuilt as hidden .lx-dxc)
     try{ applyHeroStats(); }catch(_){}
-    try{ trimFilters(); }catch(_){}
+    try{ trimFilters(); try{ labelHiw(); }catch(_){} }catch(_){}
     try{ labelFilterInput(); }catch(_){}
     try{ orderSections(); }catch(_){}
     try{ denomUi(); denomUiSync(); }catch(_){}
