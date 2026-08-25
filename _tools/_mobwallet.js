@@ -19,12 +19,19 @@ const STYLE = '<style id="lx-mobwallet-css">'
 // #18: the three controls sat hard against the right edge, as far from the asset they act on as the
 // row allows. Left-aligned, they read as belonging to the row above them.
 + '.lxmw-astacts{justify-content:flex-start!important}'
+  // A6: the mark is the selection now. Pinned keeps the star, which is the mark that says pinned.
+  + '.lxmw-row.lxmw-sel{box-shadow:inset 3px 0 0 var(--accent,#ea6a2c)}'
+  // A7: clearance for that 3px rule -- at 2px the logo and the Trade button were touching it.
+  + '.lxmw-row.lxmw-ast{padding-left:12px}'
+  // A14: the claimable amount joins every other figure on the page.
+  + '.lx-wcrow .lx-wcamt,.lx-wcrow .lx-wcamount{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:800}'
   // The dots go to the end of the row; Trade and Send keep their own spacing.
   + '.lxmw-astacts .lxmw-astbtn.icon{margin-left:auto!important}'
   // #38: pinned rows say so. Star and colour match the desktop badge exactly.
   + '.lxmw-pinbadge{display:inline-flex;vertical-align:middle;margin-left:6px;color:#f5b301}'
   + '.lxmw-pinbadge svg{width:13px;height:13px;display:block}'
-  + '.lxmw-row.lxmw-pinned{box-shadow:inset 3px 0 0 var(--accent,#ea6a2c)}'
+  // (The pinned row no longer takes the edge -- that is the selection mark now. The gold star beside
+  // the code is what says pinned, the same mark desktop uses.)
 + '.lxmw-astbtn.icon{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
   + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block,body:not(.lxmw-ready) #assetList{visibility:hidden}'
@@ -280,6 +287,9 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'html+=\'<div class="lxmw-row" data-oid="\'+esc(o.id)+\'" data-price="\'+esc(o.price)+\'"\''
 + '+\' data-snt="\'+(s.asset_type==="native"?"1":"")+\'" data-sc="\'+esc(s.asset_code||"")+\'" data-si="\'+esc(s.asset_issuer||"")+\'"\''
 + '+\' data-bnt="\'+(b.asset_type==="native"?"1":"")+\'" data-bc="\'+esc(b.asset_code||"")+\'" data-bi="\'+esc(b.asset_issuer||"")+\'">\''
++ '+(function(){var _si=(s.asset_type==="native"?"":(s.asset_issuer||""));'
++ 'var _ic=resolveLogo(sc,_si,s.asset_type==="native");'
++ 'return \'<div class="lxmw-ico\'+(_ic?" lxmw-hasico":"")+\'" data-lxc="\'+esc(sc)+\'" data-c="\'+esc(sc)+\'" data-i="\'+esc(_si)+\'" data-l="\'+esc(initials(sc))+\'" style="\'+(_ic?(\'background-image:url(\\\'\'+esc(_ic)+\'\\\')\'):\'\')+\'"></div>\';})()'
 + '+\'<div class="lxmw-omain"><div class="lxmw-nm">Sell \'+esc(sc)+\' \\u2192 \'+esc(bc)+\'</div>\''
 + '+\'<div class="lxmw-sub">Price \'+esc(fmt(pr,7))+\' \'+esc(bc)+\' per \'+esc(sc)+\'</div></div>\''
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(fmt(amt))+\' \'+esc(sc)+\'</div>\''
@@ -296,6 +306,8 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'hold.forEach(function(h){if(h.native&&!seen["XLM"]){seen["XLM"]=1;pr.unshift(h);}});'
 + 'if(pr.length)hold=pr;}'
 + 'var PIN=(function(){try{var p=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");return Array.isArray(p)?p:[];}catch(_){return [];}})();'
+// A6: survives the re-render because it is keyed on the asset code, not on a node.
++ 'var SEL=(window.__lxmwSel||"");'
 // Stable: only the pinned move, and only ahead of the rest. Sorting by index keeps a pinned XLM above a
 // pinned USDC in the order they were pinned, which is what the desktop list does.
 + 'if(PIN.length){hold=hold.slice().sort(function(a,b){'
@@ -314,7 +326,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
   // value, so the USD line stays blank rather than inventing one.
 + 'var v=(xlm!=null&&u)?xlm*u:null;'
 + 'var ico=h.logo||h.ico||resolveLogo(code,h.iss,h.native);'
-+ 'html+=\'<div class="lxmw-row lxmw-ast\'+(PIN.indexOf(code)>=0?" lxmw-pinned":"")+\'"><div class="lxmw-ico\'+(ico?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(h.iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(ico?(\'background-image:url(\\\'\'+esc(ico)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\''
++ 'html+=\'<div class="lxmw-row lxmw-ast\'+(PIN.indexOf(code)>=0?" lxmw-pinned":"")+((window.__lxmwSel||"")===code?" lxmw-sel":"")+\'" data-lxsel="\'+esc(code)+\'"><div class="lxmw-ico\'+(ico?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(h.iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(ico?(\'background-image:url(\\\'\'+esc(ico)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\''
 + '+\'<div><div class="lxmw-nm">\'+esc(code)+(PIN.indexOf(code)>=0?\'<span class="lxmw-pinbadge" title="Pinned"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg></span>\':"")+\'</div>\''
 + '+\'<div class="lxmw-sub">\'+((window.__lxIssLine)?window.__lxIssLine(code,h.iss||"",!!h.native):esc(h.name||h.domain||""))+\'</div></div>\''
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(fmt(bal))+\'</div>\''
@@ -519,6 +531,14 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 
 // ---- asset row overflow menu (kebab) ----------------------------------------------------------
 + 'function rmShut(){var m=document.querySelector(".lxmw-astmenu");if(m&&m.parentNode)m.parentNode.removeChild(m);}'
++ 'if(!window.__lxmwSelWired){window.__lxmwSelWired=1;'
++ 'document.addEventListener("click",function(e){'
++ 'var r=e.target&&e.target.closest?e.target.closest(".lxmw-row.lxmw-ast[data-lxsel]"):null; if(!r)return;'
++ 'var c=r.getAttribute("data-lxsel")||""; window.__lxmwSel=c;'
++ 'var all=document.querySelectorAll(".lxmw-row.lxmw-ast[data-lxsel]");'
++ 'for(var i=0;i<all.length;i++){var on=all[i].getAttribute("data-lxsel")===c;'
++ 'if(all[i].classList.contains("lxmw-sel")!==on)all[i].classList.toggle("lxmw-sel",on);}'
++ '},true);}'
 + 'function rmPinned(){try{var p=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");return Array.isArray(p)?p:[];}catch(_){return [];}}'
 + 'function rmTogglePin(code){var p=rmPinned(),i=p.indexOf(code);'
 + 'if(i>=0)p.splice(i,1); else p.unshift(code);'
