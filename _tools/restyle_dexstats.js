@@ -44,7 +44,10 @@ const STYLE = '<style id="lx-assetstats">'
   // min-content width, and every line in here is white-space:nowrap — so the cells refused to shrink
   // and the row overflowed its container instead of adapting. With 0 they shrink and the .sub line
   // ellipsises as it was already styled to.
-  + '.stat-cell{min-width:0;padding:11px 14px !important;border:1px solid var(--border) !important;border-radius:13px;background:var(--surface);display:flex;flex-direction:column;justify-content:flex-start;min-height:0;transition:border-color .15s ease,box-shadow .15s ease}'
+  + '.stat-cell{min-width:0;padding:11px 14px !important;border:1px solid var(--border) !important;border-radius:13px;background:var(--surface);display:flex;flex-direction:column;justify-content:flex-start;min-height:0;transition:box-shadow .15s ease}'
+  // Only where a pointer can actually hover. On a touch device there is no hover state to ease into, so
+  // animating border-color buys nothing and costs the load flash described above.
+  + '@media (hover:hover){.stat-cell{transition:border-color .15s ease,box-shadow .15s ease}}'
   + '.stat-cell:hover{border-color:var(--accent-soft,rgba(234,106,44,.32)) !important;box-shadow:0 10px 24px -18px rgba(234,106,44,.5)}'
   + '.stat-cell .lbl{font-size:11.5px;letter-spacing:.08em;font-weight:700;margin-bottom:4px;white-space:nowrap;'
   + 'overflow:hidden;text-overflow:ellipsis}'
