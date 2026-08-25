@@ -273,8 +273,7 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
       var when=labelFor(i,pts.length);
       tip.innerHTML=(when?('<div class="d">'+when+'</div>'):'')
         +'<div class="lx-xt-tr"><span class="k">Price</span><span class="v">'+fmtUsd(v)+'</span></div>'
-        +(n["pool tvl"]?('<div class="lx-xt-tr"><span class="k">Pool TVL now</span><span class="v">'+n["pool tvl"]+'</span></div>'):'')
-        +(n["assets"]?('<div class="lx-xt-tr"><span class="k">Assets now</span><span class="v">'+n["assets"]+'</span></div>'):'');
+        ;
       tip.classList.add("on");
       vl.style.left=Math.round(f*r.width)+"px"; vl.style.opacity="1";
       // Snapped to the point the tooltip is quoting, not to the raw pointer position -- a dot a few
@@ -375,15 +374,10 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
       var r=((d._embedded&&d._embedded.records)||[])[0]; if(!r)return;
       var p=build(); if(!p)return;
       var lbl=p.querySelector(".lx-xt-lbl"); if(!lbl||!lbl.parentNode)return;
+      // Removed: the ledger height is no longer shown. Any element left over from a previous build is
+      // cleared here so it cannot survive a cached page.
       var el=p.querySelector(".lx-xt-ledger");
-      if(!el){
-        el=document.createElement("span");
-        el.className="lx-xt-ledger"; el.setAttribute("data-lx-noswap","");
-        el.setAttribute("title","Current ledger — Stellar closes one about every five seconds");
-        lbl.parentNode.insertBefore(el,lbl.nextSibling);
-      }
-      var t=String(r.sequence).replace(/\\B(?=(\\d{3})+(?!\\d))/g,",");
-      if(el.textContent!==t)el.textContent=t;
+      if(el&&el.parentNode)el.parentNode.removeChild(el);
       // A stale pill from a previous build would otherwise sit in the strip as a seventh cell.
       var old=document.querySelector(".status-row .lx-ledgerpill");
       if(old&&old.parentNode)old.parentNode.removeChild(old);
