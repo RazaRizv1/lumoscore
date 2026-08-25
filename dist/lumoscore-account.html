@@ -1662,6 +1662,12 @@ html body .pool-header-row .ph-icons>*{
 .acc-tbl tbody tr.acc-row{cursor:pointer}
 .acc-tbl tbody tr.acc-row:hover{background:var(--surface-2)}
 .acc-tbl .num{text-align:right;font-family:'JetBrains Mono',ui-monospace,monospace}
+/* item 15: fixed geometry so the columns do not move when the rows land. */
+#accAssetsTbl{table-layout:fixed}
+#accAssetsTbl th:nth-child(2),#accAssetsTbl td:nth-child(2),
+#accAssetsTbl th:nth-child(3),#accAssetsTbl td:nth-child(3){width:19%}
+#accAssetsTbl th:nth-child(4),#accAssetsTbl td:nth-child(4){width:88px}
+#accAssetsTbl td:first-child{overflow:hidden;text-overflow:ellipsis}
 .acc-pair{display:inline-flex;align-items:center;gap:12.1px;min-width:0}
 .acc-ico{width:32px;height:32px;border-radius:50%;flex:0 0 auto;background:var(--surface-2);
   background-size:cover;background-position:center;background-repeat:no-repeat;border:2px solid var(--surface);
