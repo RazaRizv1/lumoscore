@@ -442,7 +442,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var l=((r.querySelector(".lt-cmp-l")||{}).textContent||"").trim(), v=r.querySelector(".lt-cmp-v");
       if(!v)return; var done=false;
       if(/^price/i.test(l)){ if(priceUsd>0){ setText(v, usd(priceUsd)+(chg24!=null?("  "+(chg24>=0?"+":"−")+Math.abs(chg24).toFixed(1)+"%"):"")); done=true; } }
-      else if(/24h volume/i.test(l)){ if(vol24Usd!=null&&poolCount!=null){ setText(v, abbrUsd(vol24Usd)+" across "+poolCount+" pools"); done=true; } }
+      else if(/24h volume/i.test(l)){ if(vol24Usd!=null){ setText(v, abbrUsd(vol24Usd)+" \u00b7 LUMOS/XLM market"); done=true; } }
       else if(/circulating/i.test(l)){ if(supply!=null){ var cs=circSupply(); var want=num(cs!=null?cs:supply)+" LUMOS"; var ns=v.querySelector(".lx-supnum"); if(!ns){ v.innerHTML='<span class="lx-supnum"></span>'; ns=v.querySelector(".lx-supnum"); } var _si=v.querySelector(".lx-supinfo"); if(_si)_si.parentNode.removeChild(_si); if(ns&&ns.textContent!==want)ns.textContent=want; done=true; } }
       else if(/holders/i.test(l)&&!/pool/i.test(l)){
         // show BOTH: holders (balance>0) · trustlines (all accounts trusting LUMOS = /assets authorized count)
@@ -707,7 +707,10 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var rk=c.querySelector(".rk"); if(rk){ if(i<3){ rk.className="rk medal"; rk.innerHTML=medalSVG(i); } else { rk.className="rk"; rk.textContent=String(i+1); } }   // 1/2/3 SVG medals, rest numbered
       var addr=c.querySelector(".addr"); if(addr){ addr.textContent=shortG(h.addr); addr.setAttribute("title",h.addr); }
       var chain=c.querySelector(".chain"); if(chain){ var bic=chain.querySelector(".b-ico"); if(bic&&bic.parentNode)bic.parentNode.removeChild(bic);   // drop the little Stellar icon + "Stellar ·" prefix
-        var pct=h.bal/supply*100, want=(pct>=0.01?pct.toFixed(2):"<0.01")+"% of supply";
+        // Against CIRCULATING, not the on-chain total -- see the note in the transform. The same basis
+        // as the market cap card, so a reader cannot get two different answers on one page.
+        var _den=circSupply()||supply;
+        var pct=h.bal/_den*100, want=(pct>=0.01?pct.toFixed(2):"<0.01")+"% of supply";
         var tn=[].slice.call(chain.childNodes).filter(function(n){return n.nodeType===3&&(n.nodeValue||"").replace(/\\s/g,"");})[0];
         if(tn)tn.nodeValue=want; else chain.appendChild(document.createTextNode(want)); }
       // real holdings (the design's mock $ used the old $0.0032 price → wrong). Set amount + USD.
@@ -1361,6 +1364,12 @@ for (const file of files) {
     }
     // ...and the rest of the section, which the phone also words differently. #1 asked for one wording
     // across both devices, and the desktop one is the reference.
+    // A5: the threshold was stated as 1M in two places on this page, and the Rewards page actually
+    // implements 5M -- WHALE_UNIT=5000000 in _rewardsdata.js, which is what decides who is paid. So the
+    // page was promising a reward at a balance that does not qualify for it. Corrected to match the rule
+    // that runs, not the other way round.
+    p = p.split('<span class="threshold">Hold 1M+</span>').join('<span class="threshold">Hold 5M+</span>');
+    p = p.split('Wallets holding 1M+ LUMOS earn').join('Wallets holding 5M+ LUMOS earn');
     p = p.split('<strong>Whale Holder rewards</strong> over 2 years.')
          .join('<strong>Whale Holder rewards</strong> distribute over 2 years.');
     p = p.split('<span class="name">Ecosystem LP</span>')
