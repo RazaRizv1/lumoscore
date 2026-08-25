@@ -134,7 +134,17 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
    the same four words, and it doubled the height of each one. The address above it already opens the
    same page, so the label is pure repetition. Hidden rather than unpicked from two separate string
    builders, because the anchor also carries the href the row's own handler reads. */
-.mdxa-hl-explorer,.dxa-hl-explorer{display:none!important}
+/* N9: the mark alone. Hiding it entirely left the EXPLORER heading standing over an empty column,
+   which reads as broken rather than as deliberate. The label is what competed with the row's own
+   click target, not the icon. */
+.mdxa-hl-explorer,.dxa-hl-explorer{display:inline-flex!important;align-items:center;justify-content:center;
+  width:26px;height:26px;border-radius:7px;color:var(--text-soft,#8a8fa3);text-decoration:none}
+.mdxa-hl-explorer:hover,.dxa-hl-explorer:hover{color:var(--accent,#ea6a2c);background:var(--surface-2,rgba(140,140,150,.12))}
+.dxa-hl-explorer svg,.mdxa-hl-explorer svg{width:14px;height:14px;display:block}
+/* N9b: the Burned tag sat on the text baseline while the address beside it is centred in a taller row,
+   so it hung low. The cell becomes a row and both are centred on the same line. */
+.dxa-hl-wallet,.dxa-hl-rowcell{display:inline-flex;align-items:center;gap:8px}
+.lx-burntag{position:relative;top:0;align-self:center}
 /* #13: the asset's mark inside the About heading -- sized to the text, not to a card. */
 .lxda-sheet-ico{display:inline-block!important;width:20px!important;height:20px!important;min-width:0!important;flex:none!important;border-radius:50%;overflow:hidden;background-size:cover;background-position:center;background-repeat:no-repeat;
   vertical-align:-4px;margin:0 6px 0 2px}
@@ -876,6 +886,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   function abbrNum(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}
   function abbrUsd(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(n/1e3).toFixed(1)+"K";if(a>=1)return "$"+n.toFixed(2);return usd(n);}
   function shortG(a){a=String(a||"");return a.length>12?a.slice(0,4)+"…"+a.slice(-4):a;}
+  // N9: arrow out of a box -- the same mark the trade rows already use for "opens elsewhere".
+  var XPO='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-8.5 8.5"></path><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"></path></svg>';
   // The LumosDAO burn wallet -- 9B locked forever. See the note in the transform for why it is tagged
   // rather than removed from the list.
   var LX_BURN_ADDR="GBIU5NISX5IP6VXZK7DEKLZC4ZVPWNCDEYQLQGXG33Y3J2LHPKPCHUOK";
@@ -2452,14 +2464,14 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       return '<div class="mdxa-hl-row'+(_c?' lx-nolink':'')+'"><span class="mdxa-hl-rank">#'+(_hp*HPP+i+1)+'</span>'
         +'<span class="mdxa-hl-ident">'+identicon(h.addr,28)+'</span>'
         +'<div class="mdxa-hl-meta">'+_addr
-        +'<a class="mdxa-hl-explorer" href="'+EXPL+h.addr+'" target="_blank" rel="noopener">View on Explorer \\u2197</a></div>'
+        +'<a class="mdxa-hl-explorer" href="'+EXPL+h.addr+'" target="_blank" rel="noopener" aria-label="View on Explorer" title="View on Explorer">'+XPO+'</a></div>'
         +'<div class="mdxa-hl-vals"><div class="mdxa-hl-bal mono">'+abbrNum(h.bal)+'</div>'
         +'<div class="mdxa-hl-pct mono">'+pctTxt+'</div></div></div>'; }
       return '<tr><td class="dxa-hl-rank">'+(_hp*HPP+i+1)+'</td>'
         +'<td>'+(h.addr.charAt(0)==="C"? ('<span class="wallet-cell lx-nolink">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span><span class="lx-sortag">Soroban contract</span></span>'): ('<a class="lx-acct wallet-cell" href="/account/stellar/'+h.addr+'">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span></a>'))+burnTag(h.addr)+'</td>'
         +'<td class="mono">'+abbrNum(h.bal)+'</td>'
         +'<td class="mono">'+(pct>=0.001?pct.toFixed(3):"<0.001")+'%</td>'
-        +'<td style="text-align:right"><a class="dxa-hl-explorer" href="https://stellar.expert/explorer/public/'+(h.addr.charAt(0)==="C"?"contract":"account")+'/'+h.addr+'" target="_blank" rel="noopener">View on Explorer <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a></td></tr>'; }).join("");
+        +'<td style="text-align:right"><a class="dxa-hl-explorer" href="https://stellar.expert/explorer/public/'+(h.addr.charAt(0)==="C"?"contract":"account")+'/'+h.addr+'" target="_blank" rel="noopener">'+XPO+'</a></td></tr>'; }).join("");
     tbody.innerHTML=html; tbody.setAttribute("data-lxbuilt","p"+_hp);
     // pagination info line
     var _from=_hp*HPP+1, _to=_hp*HPP+top.length;

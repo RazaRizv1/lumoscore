@@ -1692,6 +1692,18 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   }
   function denomUiSync(){
     var d=denom();
+    // N10: name the basis. An asset can be up against XLM and down against the dollar on the same day,
+    // so "24H CHANGE" alone does not say what is being reported.
+    try{
+      var _th=document.querySelector(".dex-mk-table thead th.th-change");
+      if(_th){
+        var _want="24H CHANGE ("+(d==="xlm"?"XLM":"$")+")";
+        var _tn=null,_ns=_th.childNodes;
+        for(var _i=0;_i<_ns.length;_i++){ if(_ns[_i].nodeType===3&&(_ns[_i].nodeValue||"").trim()){ _tn=_ns[_i]; break; } }
+        if(_tn){ if(_tn.nodeValue.trim()!==_want)_tn.nodeValue=_want; }
+        else if(_th.textContent.trim()!==_want)_th.textContent=_want;
+      }
+    }catch(_){}
     qa(".lx-dnsw button[data-dn]").forEach(function(b){
       var on=b.getAttribute("data-dn")===d;
       if(b.classList.contains("on")!==on)b.classList.toggle("on",on);

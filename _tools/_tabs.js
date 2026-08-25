@@ -65,11 +65,22 @@ const IC = {
   utility: ic('<path d="M12 1.9l2.2 1.5 2.6-.5 1.2 2.4 2.4 1.2-.5 2.6 1.5 2.2-1.5 2.2.5 2.6-2.4 1.2-1.2 2.4-2.6-.5-2.2 1.5-2.2-1.5-2.6.5-1.2-2.4-2.4-1.2.5-2.6L1.9 12l1.5-2.2-.5-2.6 2.4-1.2 1.2-2.4 2.6.5z" fill="#14b8a6"/>'
             + '<circle cx="12" cy="12" r="3.5" fill="#0b3b38"/>'),
   // stacked pools
-  pools: ic('<path d="M12 2.3 2.5 6.9 12 11.5l9.5-4.6z" fill="#60a5fa"/>'
+  // Stroked, so the tab's own colour drives it. Matches poolTabIcons() in _ammdata.js exactly -- if one
+  // is ever changed the other has to change with it, or the flash comes back.
+  pools: '<span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+    + '<polyline points="12 2.6 2.4 7.3 12 12 21.6 7.3 12 2.6"/>'
+    + '<polyline points="2.4 16.7 12 21.4 21.6 16.7"/><polyline points="2.4 12 12 16.7 21.6 12"/>'
+    + '</svg></span>',
+  _poolsOld: ic('<path d="M12 2.3 2.5 6.9 12 11.5l9.5-4.6z" fill="#60a5fa"/>'
           + '<path d="M2.5 12 12 16.6l9.5-4.6-3-1.45L12 13.7l-6.5-3.15z" fill="#3b82f6"/>'
           + '<path d="M2.5 17.1 12 21.7l9.5-4.6-3-1.45L12 18.8l-6.5-3.15z" fill="#1d4ed8"/>'),
   // mine
-  mine: ic('<circle cx="12" cy="7.4" r="4.1" fill="#a855f7"/>'
+  // A wallet, not a person: this tab is not "you", it is the pools your liquidity is in.
+  mine: '<span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'
+    + '<rect x="2.6" y="5.8" width="18.8" height="12.9" rx="2.6"/>'
+    + '<path d="M2.6 9.9h18.8"/><path d="M17 14.4h2.2"/>'
+    + '</svg></span>',
+  _mineOld: ic('<circle cx="12" cy="7.4" r="4.1" fill="#a855f7"/>'
          + '<path d="M3.9 20.9v-1.5a5 5 0 0 1 5-5h6.2a5 5 0 0 1 5 5v1.5z" fill="#7e22ce"/>'),
 };
 
