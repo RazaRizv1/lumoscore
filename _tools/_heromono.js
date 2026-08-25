@@ -150,7 +150,10 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-heromono-css">[\s\S]*?<\/style>/, '');
+    // GLOBAL. Non-global removed one copy and re-added one, so any duplicates already present could
+    // never clear -- and duplicates were present, because the type scale used to stamp an attribute onto
+    // the <style> tag, which stopped this pattern matching at all for several builds.
+    p = p.replace(/<style id="lx-heromono-css">[\s\S]*?<\/style>/g, '');
     // INTO <head>, not before </body>. The per-page hero CSS is declared in <head>, so a block that
     // only lands at the end of the document is parsed AFTER first paint -- which is the orange
     // flashing on Trade for an instant on every refresh. Last thing in <head> puts it ahead of paint

@@ -32,7 +32,11 @@ const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 
 const FACTOR = 1.10;
-const MARK = 'data-lxts';
+// The marker lives INSIDE the block, as a CSS comment. It used to be an attribute on the <style> tag,
+// which silently broke every transform's "strip my own stylesheet" regex -- those match
+// <style id="x"> with the ">" immediately after the id, and an extra attribute stops them matching. The
+// blocks then accumulated on every build. A comment cannot interfere with anything that reads tags.
+const MARK = '/*lxts:';
 
 // Long forms listed explicitly rather than matched by prefix: `padding` must not also catch a property
 // that merely starts with those letters, and an explicit list is auditable.
@@ -89,12 +93,12 @@ function scaleCss(css) {
 function scalePage(html) {
   let hits = 0, blocks = 0, already = 0;
   const out = html.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (m, open, body, close) => {
-    if (open.indexOf(MARK) >= 0) { already++; return m; }   // this block is already at scale
+    if (body.indexOf(MARK) >= 0) { already++; return m; }   // this block is already at scale
     const r = scaleCss(body);
     hits += r.hits; blocks++;
     // The mark records the factor, so a future change of FACTOR is visible in the container rather than
     // silently compounding on top of the old one.
-    return open.replace(/>$/, ' ' + MARK + '="' + FACTOR + '">') + r.css + close;
+    return open + MARK + FACTOR + '*/' + r.css + close;
   });
   return { html: out, hits, blocks, already };
 }

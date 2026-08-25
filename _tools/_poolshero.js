@@ -385,8 +385,11 @@ for (const dev of ['desktop', 'mobile']) {
     if (!json[k]) continue;
     let p = json[k];
     // idempotent: strip any previous copy before re-inserting
-    p = p.replace(/<style id="lx-poolshero-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-poolshero">[\s\S]*?<\/script>/, '');
+    // GLOBAL, both of them. Non-global removed one copy and re-added one, so duplicates already present
+    // could never clear -- and they were present, because the type scale used to stamp an attribute onto
+    // the <style> tag, which stopped these patterns matching for several builds.
+    p = p.replace(/<style id="lx-poolshero-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-poolshero">[\s\S]*?<\/script>/g, '');
     // #17: the design's own heading block flashed before the hero replaced it -- "Automated Market
     // Maker / Provide liquidity and earn fees on APTOS's on-chain AMM pools", the wrong chain, for a
     // frame, on every load. The Trade page never did this because its build bakes lx-sronly into the
