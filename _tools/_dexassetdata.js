@@ -802,6 +802,34 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
         return fetch(H2+u.slice(H.length)).then(function(r){ if(!r.ok)throw new Error("HTTP"+r.status); return r.json(); });
       });
   }
+  // /trade_aggregations is the ONLY metered Horizon endpoint. Measured 2026-08-25, same IP, same second:
+  // /assets, /liquidity_pools, /order_book and /trades all answered 200 and sent no X-RateLimit headers at
+  // all, while /trade_aggregations answered 429 with x-ratelimit-remaining:0 -- and stayed exhausted through
+  // a 17-minute silence. It is a separate 100-per-5-minutes allowance.
+  //
+  // This page fires FOUR of them per view (24h, 1h, the 200-bar daily, and the chart), so roughly 25 asset
+  // views exhaust the budget for everyone behind that IP -- and an office or a phone network is one IP. Past
+  // that, Horizon 429s, and because its 429 carries no Access-Control-Allow-Origin header the browser cannot
+  // read the status: it surfaces as an opaque "Failed to fetch" and the .catch() below swallows it. One
+  // cause, two reported symptoms: 3M/6M dashed on most assets, and the chart sometimes never drew.
+  //
+  // So go through our own edge cache first -- a server has neither the rate limit nor the CORS problem, and
+  // the cached response collapses many visitors into one upstream hit. Fall back to Horizon directly when
+  // that is not there, so localhost (where Pages Functions do not run) behaves exactly as before.
+  function jAgg(o){
+    var ord=o.order||"desc", lim=o.limit||200;
+    var qs="a="+encodeURIComponent(CODE+"-"+ISSUER)+"&res="+o.res+"&order="+ord+"&limit="+lim;
+    if(o.start)qs+="&start="+o.start;
+    if(o.end)qs+="&end="+o.end;
+    var direct=H+"/trade_aggregations?base_asset_type="+ATYPE+"&base_asset_code="+CODE
+      +"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+o.res
+      +"&order="+ord+"&limit="+lim
+      +(o.start?("&start_time="+o.start):"")+(o.end?("&end_time="+o.end):"");
+    return fetch("/lxapi/candles?"+qs)
+      .then(function(r){ if(!r.ok)throw new Error("HTTP"+r.status); return r.json(); })
+      .then(function(d){ if(d&&d.error)throw new Error(String(d.error)); return d; })
+      .catch(function(){ return j(direct); });
+  }
   function q(s){return document.querySelector(s);}
   function qa(s){return [].slice.call(document.querySelectorAll(s));}
   function setText(el,t){if(el&&t!=null&&el.textContent!==t)el.textContent=t;}
@@ -1660,8 +1688,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     var host=q("#dxaChart,#mdxaChart"); if(host)host.classList.add("lxda-loading");
     var clear=function(){ if(live()&&host)host.classList.remove("lxda-loading"); };
     var again=function(){ loadChart._tok=myTok-1; loadChart(tf,1); };   // hand the token on to the retry
-    var url=H+"/trade_aggregations?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+cfg.res+"&start_time="+start+"&end_time="+now+"&order=asc&limit=200";
-    j(url).then(function(d){
+    jAgg({res:cfg.res,order:"asc",limit:200,start:start,end:now}).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
       // #15: the 1Y chart was drawing about a month.
       //
@@ -3674,8 +3701,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // it. Without this the native page would hold the neutral tile for ever and never draw its mark.
     if(NATIVE){ assetXlm=1; logoDone(); loadNativeStats(); return; }
     // price + 24h change + 24h volume via daily trade aggregations
-    var ta=H+"/trade_aggregations?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution=86400000&order=desc&limit=2";
-    j(ta).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
+    jAgg({res:86400000,order:"desc",limit:2}).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
       if(r[0]){ assetXlm=+r[0].close||+r[0].avg||assetXlm; vol24Xlm=+r[0].counter_volume||0;
         dayOHLC={o:+r[0].open||0,h:+r[0].high||0,l:+r[0].low||0,c:+r[0].close||0,v:+r[0].counter_volume||0}; }
       // A daily bucket is stamped with the start of its UTC day, so the newest one is "today" or, just
@@ -3692,11 +3718,9 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // never fetched them — the dash was honest but useless. Compute them from real candles instead of
     // inventing a flat 0.00%: an hourly pair for 1h, and ~200 daily candles for 1m/3m/6m. A dash now means
     // the asset genuinely had no trade in that window, and 0.00% means it genuinely did not move.
-    var tah=H+"/trade_aggregations?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution=3600000&order=desc&limit=2";
-    j(tah).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
+    jAgg({res:3600000,order:"desc",limit:2}).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
       if(r[0]&&r[1]&&+r[1].close>0)chg1h=((+r[0].close-+r[1].close)/+r[1].close)*100; applyAll(); }).catch(function(){});
-    var tad=H+"/trade_aggregations?base_asset_type="+ATYPE+"&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution=86400000&order=desc&limit=200";
-    j(tad).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
+    jAgg({res:86400000,order:"desc",limit:200}).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
       if(!r.length)return; var latest=+r[0].close; if(!(latest>0))return;
       var now=Date.now();
       function back(days){ var target=now-days*86400000, best=null, bestDt=Infinity;
