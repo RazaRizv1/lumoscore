@@ -493,6 +493,9 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         if(tl!=null){ setText(v, (hc!=null?num(hc):"…")+"  ·  "+num(tl)); done=true; }
       }
       else if(/active pools/i.test(l)){ if(activePools!=null){ setText(v, String(activePools)); done=true; } }
+      if(poolCount!=null)qa(".lt-cmp-foot button,.lt-cmp-foot a").forEach(function(b){
+        var want="View all "+poolCount+" pools \u2192";
+        if(b.textContent!==want)b.textContent=want; });
       if(!done&&pxFailed&&(/^price/i.test(l)||/24h volume/i.test(l))){ setText(v,"—"); done=true; }
       if(done)r.classList.add("lxlt");
     });
