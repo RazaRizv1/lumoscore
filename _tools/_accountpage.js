@@ -141,6 +141,12 @@ const STYLE = `<style id="lx-acc-css">
 .acc-sub{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:6px;font-size:13.5px;color:var(--text-soft)}
 .acc-sub a{color:var(--accent);text-decoration:none;display:inline-flex;align-items:center;gap:4px}
 .acc-sub a:hover{text-decoration:underline}
+/* item 7: shown only when every signer has weight 0 -- see acctLocked(). */
+.lx-acclock{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:6px;
+  font-size:11.5px;font-weight:700;letter-spacing:.02em;line-height:1.5;
+  color:var(--text-soft,#8a8fa3);border:1px solid var(--border,rgba(127,127,140,.28));
+  background:rgba(127,127,140,.10)}
+.lx-acclock svg{flex:0 0 auto;opacity:.9}
 .acc-ctag{display:inline-block;padding:2px 10px;border-radius:999px;font-size:11.5px;font-weight:800;
   letter-spacing:.3px;text-transform:uppercase;color:var(--accent);
   background:color-mix(in srgb,var(--accent) 14%,transparent);
@@ -819,6 +825,19 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   }
 
   // ---- load ---------------------------------------------------------------------------------------
+  // Every signer at weight 0, master included: nothing can authorise a transaction for this account ever
+  // again. Returns null when the record is not in yet, so the tag appears only once we actually know.
+  function acctLocked(){
+    if(!ACCT||!ACCT.signers)return null;
+    var sg=ACCT.signers; if(!sg.length)return null;
+    var total=0;
+    for(var i=0;i<sg.length;i++){ var w=+sg[i].weight; if(!isFinite(w))return null; total+=w; }
+    return total===0;
+  }
+  var LOCKSVG='<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" '
+    +'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    +'<rect x="4" y="11" width="16" height="10" rx="2"></rect>'
+    +'<path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>';
   function paintHeader(){
     var el=q("#accAddr"); if(el){ el.textContent=ADDR||"No account"; el.title=ADDR; }
     var av=q("#accAvatar"); if(av&&ADDR)av.style.backgroundImage="url("+identicon(ADDR)+")";
@@ -826,6 +845,8 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     var sub=q("#accSub"); if(!sub)return;
     var bits=[];
 
+    if(acctLocked()===true)bits.push('<span class="lx-acclock" title="Every signer has weight 0 \u2014 '
+      +'no key can authorise a transaction for this account">'+LOCKSVG+'<span>Locked</span></span>');
     if(ACCT&&ACCT.__created)bits.push("Active since "+esc(ACCT.__created));
     if(ADDR)bits.push('<a href="https://stellar.expert/explorer/public/account/'+esc(ADDR)+'" target="_blank" rel="noopener">Explorer <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>');
     sub.innerHTML=bits.join("");
