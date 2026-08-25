@@ -66,6 +66,10 @@ const STYLE = `<style id="lx-lt-css">
 .chart-card .chart-head .chart-legend{display:none!important}
 /* price-chart hover readout */
 #priceChart{position:relative}
+/* A18: the plot area explains itself when there is nothing to draw. Sits over the (hidden) svg rather
+   than replacing it, so a later successful draw needs no cleanup beyond removing this node. */
+.lx-chmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:0 26px;font-size:13px;line-height:1.5;color:var(--text-soft,#8a8fa3)}
 #priceChart svg{cursor:crosshair}
 .lx-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
 .lx-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:2px}
@@ -1153,6 +1157,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Today":axisLbl(pts[idx].t,chartTF))+'</span>'; }
     dr.innerHTML=h;
     pc.classList.add("lxlt"); chartPts=pts;
+    try{ chartMsg(""); }catch(_){}          // a real chart replaces whatever the last attempt said
     pc.__lxpts=pts; pc.__lxco=co;   // current series for the hover readout
     setupChartHover(pc, svg);
     updateChartLegend();
@@ -1203,6 +1208,14 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   // The records are kept now, so the redraw costs no request, and the draw is retried until there is a
   // rate to draw with.
   var _chartRecs=null, _chartWait=0;
+  // One place to say why the plot is empty. Removed the moment a real chart is drawn.
+  function chartMsg(t){
+    var pc=q("#priceChart"); if(!pc)return;
+    var m=pc.querySelector(".lx-chmsg");
+    if(!t){ if(m&&m.parentNode)m.parentNode.removeChild(m); return; }
+    if(!m){ m=document.createElement("div"); m.className="lx-chmsg"; pc.appendChild(m); }
+    if(m.textContent!==t)m.textContent=t;
+  }
   function drawFromRecs(){
     if(!_chartRecs||!_chartRecs.length)return false;
     if(!(xlmUsd>0))return false;
@@ -1211,7 +1224,9 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     if(pts.length<2)return false;
     drawChart(pts); return true;
   }
-  function loadChart(tf){
+  var CH_BACKOFF=[1500,4000,12000];
+  function loadChart(tf,attempt){
+    attempt=attempt||0;
     chartTF=tf; var cfg=tfCfg(tf), now=Date.now(), start=now-cfg.span;
     var url=H+"/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+cfg.res+"&start_time="+start+"&end_time="+now+"&order=asc&limit=200";
     j(url).then(function(d){
@@ -1219,16 +1234,34 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       _chartRecs=r;
       // If the rate is not in yet, wait for it rather than silently giving up. Bounded, so a page that
       // never gets a price stops asking instead of spinning for the whole session.
-      if(!drawFromRecs()&&r.length>=2&&!_chartWait){
+      // Fewer than two points is not a failure, it is an empty period -- say so rather than showing a
+      // blank box that looks broken.
+      if(r.length<2){ chartMsg("No trades in this period."); return; }
+      if(!drawFromRecs()&&!_chartWait){
+        // Waiting on the XLM/USD rate, which the price in USD depends on. Bounded, and it now reports
+        // when it gives up instead of expiring in silence.
         _chartWait=1;
-        var n=0,iv=setInterval(function(){ if(drawFromRecs()||++n>60){ clearInterval(iv); _chartWait=0; } },200);
+        var n=0,iv=setInterval(function(){
+          if(drawFromRecs()){ clearInterval(iv); _chartWait=0; return; }
+          if(++n>60){ clearInterval(iv); _chartWait=0; chartMsg("Waiting on the XLM price \u2014 tap a timeframe to retry."); }
+        },200);
       }
-    }).catch(function(){});
+    }).catch(function(){
+      // Horizon rejected or the request never completed. A 429 from Horizon has no CORS header, so this
+      // is all the detail the browser will ever give us -- which is precisely why it has to be retried
+      // and reported rather than swallowed.
+      if(attempt<CH_BACKOFF.length){
+        chartMsg("Loading price history\u2026");
+        setTimeout(function(){ loadChart(tf,attempt+1); },CH_BACKOFF[attempt]);
+      } else {
+        chartMsg("Price history is unavailable right now. Stellar's API is limiting requests from this network \u2014 tap a timeframe to try again.");
+      }
+    });
   }
   function wireChartTabs(){
     if(chartWired)return; var btns=qa("button").filter(function(b){return /^(1H|24H|7D|30D|1Y|All)$/.test((b.textContent||"").trim());});
     if(btns.length<3)return; chartWired=true;
-    btns.forEach(function(b){ b.addEventListener("click",function(){ btns.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); loadChart((b.textContent||"").trim()); }); });
+    btns.forEach(function(b){ b.addEventListener("click",function(){ btns.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); try{ chartMsg(""); }catch(_){} loadChart((b.textContent||"").trim()); }); });
   }
 
   // tab-button counts e.g. "Pools (58)" / "Holders (1,441)" — set a data-count attr (CSS ::after renders
