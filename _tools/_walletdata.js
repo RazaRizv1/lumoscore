@@ -63,7 +63,7 @@ const CSS='<style id="lx-walletdata-css">'
 +'.lx-vfd{width:14px;height:14px;flex:0 0 14px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center}'
 +'.lx-vfd svg{width:9px;height:9px;display:block}'
 +'.lx-hd:empty{display:none}'
-+'.lx-hd{color:var(--text-soft,#6b6b76)}'
++'.lx-hd{color:var(--text-soft,#6b6b76);font-family:"JetBrains Mono",ui-monospace,monospace}'
 // #3: the provenance line under an order / claimable row. The separator is a ::before on the link
 // rather than a character in the markup, so a row whose issuer declares no domain shows the link alone
 // with no orphaned dot in front of it.
