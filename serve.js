@@ -152,7 +152,8 @@ function tomlCurrency(text, code, issuer) {
     };
     if (get("code") !== code) continue;
     const iss = get("issuer"); if (iss && iss !== issuer) continue;
-    return { image: get("image") || "", name: get("name") || "" };
+    return { image: get("image") || "", name: get("name") || "",
+           desc: get("desc") || "", twitter: get("twitter") || "", telegram: get("telegram") || "" };
   }
   return null;
 }
@@ -339,10 +340,21 @@ async function assetLogo(req, res, q) {
         const tr = await fetchTimeout("https://" + domain + "/.well-known/stellar.toml", 4000);
         if (!tr.ok) out = { image: "", domain, reason: "toml " + tr.status };
         else {
-          const cur = tomlCurrency(await tr.text(), code, issuer);
+          const _txt = await tr.text();
+          const cur = tomlCurrency(_txt, code, issuer);
           if (!cur) out = { image: "", domain, reason: "asset not in toml" };
-          else if (!cur.image) out = { image: "", domain, name: cur.name, reason: "no image key" };
-          else out = { image: cur.image, domain, name: cur.name };
+          else {
+            // Org-level socials as a fallback: many issuers declare them once rather than per asset.
+            const org = (k) => {
+              const m = _txt.match(new RegExp('^\\s*' + k + '\\s*=\\s*["\']([^"\']+)["\']', 'im'));
+              return (m && m[1]) || "";
+            };
+            out = { image: cur.image, domain, name: cur.name, desc: cur.desc,
+                    twitter: cur.twitter || org('ORG_TWITTER'),
+                    telegram: cur.telegram || org('ORG_TELEGRAM') };
+            // Copy without artwork is still a useful answer, so it is no longer a miss.
+            if (!cur.image) out.reason = "no image key";
+          }
         }
       }
     }

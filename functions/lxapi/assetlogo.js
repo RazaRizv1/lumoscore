@@ -72,7 +72,15 @@ function findCurrency(text, code, issuer) {
     // an asset it does not issue.
     const iss = get('issuer');
     if (iss && iss !== issuer) continue;
-    return { image: get('image') || '', name: get('name') || '', domainOnly: false };
+    return {
+      image: get('image') || '',
+      name: get('name') || '',
+      // The page needs these for the same reason it needs the image, and they are already in hand.
+      desc: get('desc') || '',
+      twitter: get('twitter') || '',
+      telegram: get('telegram') || '',
+      domainOnly: false,
+    };
   }
   return null;
 }
@@ -105,9 +113,23 @@ export async function onRequestGet({ request }) {
 
     const cur = findCurrency(text, code, issuer);
     if (!cur) return json({ image: '', domain: domain, reason: 'asset not in toml' }, 200, TTL_MISS);
-    if (!cur.image) return json({ image: '', domain: domain, name: cur.name, reason: 'no image key' }, 200, TTL_MISS);
 
-    return json({ image: cur.image, domain: domain, name: cur.name }, 200, TTL_HIT);
+    // Org-level socials as a fallback: many issuers declare them once for the org rather than per asset.
+    const org = (key) => {
+      const m = String(text || '').match(new RegExp('^\\s*' + key + '\\s*=\\s*["\']([^"\']+)["\']', 'im'));
+      return (m && m[1]) || '';
+    };
+    const body = {
+      image: cur.image,
+      domain: domain,
+      name: cur.name,
+      desc: cur.desc,
+      twitter: cur.twitter || org('ORG_TWITTER'),
+      telegram: cur.telegram || org('ORG_TELEGRAM'),
+    };
+    // A block with copy but no artwork is still a useful answer, so it is no longer treated as a miss.
+    if (!cur.image) { body.reason = 'no image key'; return json(body, 200, cur.desc ? TTL_HIT : TTL_MISS); }
+    return json(body, 200, TTL_HIT);
   } catch (e) {
     const msg = String((e && e.message) || e);
     // an abort is a slow or dead host, not a bug -- cache it briefly so one bad domain cannot be retried

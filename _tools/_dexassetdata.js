@@ -3857,7 +3857,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         .then(function(){ poolsDone(0); },function(){ poolsDone(1); });
     })();
     // issuer home_domain (-> website + stellar.toml for logo/description)
-    if(ISSUER){ loadOwnDesc(); loadSeLogo(); loadSeChange(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false);
+    if(ISSUER){ loadOwnDesc(); loadTomlEdge(); loadSeLogo(); loadSeChange(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false);
       try{ var _mw=0; (a.signers||[]).forEach(function(sg){ var w=+sg.weight||0; if(w>_mw)_mw=w; }); issLocked=(_mw===0); }catch(_){ issLocked=false; } guardApply(); if(a.home_domain)loadToml(a.home_domain); else { tomlDone(); logoDone(); } }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); logoDone(); guardApply(); });
       // Safety net: an unresponsive host must never hold the description back for good.
       setTimeout(tomlDone, 3000);
@@ -3992,6 +3992,24 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     return "https://"+host+"/"+v;
   }
   // stellar.toml (best-effort; many issuers' domains are CORS-OK). Pull [[CURRENCIES]].image + desc.
+  // Same information as loadToml, by a route that a redirecting host cannot break.
+  function loadTomlEdge(){
+    if(NATIVE||!CODE||!ISSUER)return;
+    fetch("/lxapi/assetlogo?asset="+encodeURIComponent(CODE+"-"+ISSUER))
+      .then(function(r){ if(!r.ok)throw 0; return r.json(); })
+      .then(function(d){
+        if(!d)return;
+        var got=false;
+        if(d.domain&&homeDomain==null){ homeDomain=d.domain; got=true; }
+        if(d.desc&&!ownDesc&&!tomlDesc){ tomlDesc=d.desc; got=true; }
+        if(d.image&&!ownLogo&&!tomlImg){ tomlImg=d.image; got=true; }
+        if(d.twitter&&!tomlX){ tomlX=socialUrl(d.twitter,"x.com"); got=true; }
+        if(d.telegram&&!tomlTg){ tomlTg=socialUrl(d.telegram,"t.me"); got=true; }
+        tomlDone(); logoDone();
+        if(got){ try{ guardApply(); }catch(_){} }
+      })
+      .catch(function(){});                 // the direct path may still answer; it settles on its own
+  }
   function loadToml(domain){
     fetch("https://"+domain+"/.well-known/stellar.toml").then(function(r){ if(!r.ok)throw 0; return r.text(); }).then(function(txt){
       // find the [[CURRENCIES]] block for our code, then image= and desc=
