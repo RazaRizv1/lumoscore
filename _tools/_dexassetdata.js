@@ -93,6 +93,10 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 /* #26: drop the change and volume cells. Positional because these six have no distinguishing class;
    the markup ships exactly O, H, L, C, delta, volume in that order. */
 .ohlc-strip .pair:nth-of-type(n+5){display:none!important}
+/* N4: Open and Close go too. Close is the headline price shown above at twice the size, and Open is the
+   previous close, which the 24h change already states -- leaving High and Low, the only two the
+   headline does not give you. Same positional basis as the rule above: the markup ships O H L C. */
+.ohlc-strip .pair:nth-of-type(1),.ohlc-strip .pair:nth-of-type(4){display:none!important}
 .ohlc-strip .pair .v:not(.lxp),
 .dxa-perf-grid .dxa-perf-cell .ch:not(.lxp),
 .mdxa-perf-grid .mdxa-perf-cell .ch:not(.lxp),
@@ -691,6 +695,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     chg24=null;
   }
   var supply=null, holders=null, poolCount=null, activePools=null, liqXlm=null, assetInPools=null, liqNat=null, liqPoolPair=null;
+  // N3: holders is NOT the trustline count -- see the note in the transform. Null until the record lands.
+  var holdersFunded=null;
   var seUsd=0;                                               // stellar.expert USD price — real fallback for assets with no XLM orderbook (e.g. PYUSD)
   var chg7d=null;                                            // 7d change from stellar.expert price7d (for the performance grid)
   var chg1h=null, chg1m=null, chg3m=null, chg6m=null;        // the rest of the performance grid, computed from real candles
@@ -1833,7 +1839,11 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     }
     var mc=cell("Market Cap");
     if(mc&&mc.s)out.push(["Fully diluted",mc.s.replace(/^FDV\s*/i,"")]);
-    if(holders!=null)out.push(["Holders",num(holders)]);
+    // N3: both numbers, because they answer different questions and only one of them was being shown.
+    // See the note in the transform: a trustline is permission to hold, not evidence of holding.
+    if(holdersFunded!=null&&holders!=null&&holdersFunded!==holders)out.push(["Trustlines | Holders",num(holders)+" | "+num(holdersFunded)]);
+    else if(holdersFunded!=null)out.push(["Holders",num(holdersFunded)]);
+    else if(holders!=null)out.push(["Trustlines",num(holders)]);
     if(poolCount!=null)out.push(["Pools",num(poolCount)]);
     if(liqXlm!=null&&xlmUsd>0)out.push(["Pool liquidity",abbrUsd(liqXlm*xlmUsd)]);
     out.push(["Issuer",ISSUER]);
@@ -1896,7 +1906,7 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
       }catch(_){}
       if(_socs.length){
         var _r=document.createElement("div"); _r.className="lxda-srow";
-        var _k=document.createElement("span"); _k.className="k"; _k.textContent="Links"; _r.appendChild(_k);
+        var _k=document.createElement("span"); _k.className="k"; _k.textContent="Socials"; _r.appendChild(_k);
         var _v=document.createElement("span"); _v.className="v lxda-slinks";
         _socs.forEach(function(p){
           var a=document.createElement("a");
@@ -2370,7 +2380,8 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var MOB=isMobPanel(wrap);
     try{ loadHolders(); }catch(_){}                                              // lazy: page the top-holders list only once the tab is actually opened
     // header stat count (accurate trustline count from /assets)
-    if(holders!=null){ var st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val"); if(st[0]){var _h=num(holders);if(st[0].textContent!==_h)st[0].textContent=_h;lxMark(st[0]);} }
+    var _hn=(holdersFunded!=null?holdersFunded:holders);
+    if(_hn!=null){ var st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val"); if(st[0]){var _h=num(_hn);if(st[0].textContent!==_h)st[0].textContent=_h;lxMark(st[0]);} }
     // Only the rare fallback (no ranked source) leaves these unknown; dash them then, with no prose.
     if(holders!=null&&!canRankHolders()){
       var _st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val");
@@ -2550,7 +2561,6 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       setTimeout(function(){ try{ dxaSheetTitle(h); }catch(_){} },500);
       setTimeout(function(){ try{ dxaSheetTitle(h); }catch(_){} },1600); }
     h.textContent="";
-    h.appendChild(document.createTextNode("About "));
     // CLONE the header's mark rather than rebuilding one from a URL.
     //
     // Two attempts at rebuilding it failed for two different reasons: an <img> with the same URL never
@@ -2568,7 +2578,9 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         h.appendChild(sp);
       }
     }catch(_){}
-    h.appendChild(document.createTextNode(nm));
+    // The mark leads, then the phrase -- "[logo] About TokenGlade". Appended after the icon rather than
+    // before it, which is the whole of this change.
+    h.appendChild(document.createTextNode("About "+nm));
   }
   function dxaPutName(code,iss,nm){
     nm=String(nm||"").trim();
@@ -3637,7 +3649,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // Holders bottom-tab count — written HERE (eagerly, from the /assets fetch) rather than at the end
     // of applyHolders(), which returns early unless the Holders panel is already in the DOM. That made the
     // badge sit on "—" until the user opened the tab, while Pools (written eagerly) showed its count.
-    try{ if(holders!=null){ var ht=qa(".tabs-bar .tab").filter(function(t){return /holders/i.test(t.getAttribute("data-tab")||"");})[0]; if(ht){ var hc=ht.querySelector(".count"); if(hc){ hc.textContent=q("#mdxaPanel")?abbrNum(holders):num(holders); lxMark(hc);} } } }catch(_){}
+    try{ var _tabN=(holdersFunded!=null?holdersFunded:holders); if(_tabN!=null){ var ht=qa(".tabs-bar .tab").filter(function(t){return /holders/i.test(t.getAttribute("data-tab")||"");})[0]; if(ht){ var hc=ht.querySelector(".count"); if(hc){ hc.textContent=q("#mdxaPanel")?abbrNum(_tabN):num(_tabN); lxMark(hc);} } } }catch(_){}
     try{ applyPools(); }catch(_){}
   }
 
@@ -3784,6 +3796,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var recs=(d&&d._embedded&&d._embedded.records)||[];
       var mx=recs.filter(function(r){return (r.asset||"").indexOf(CODE+"-"+ISSUER)===0;})[0];
       if(!mx)return;
+      // N3: the funded count -- accounts actually holding a balance, as opposed to those merely
+      // permitted to. Same record, no extra request.
+      try{ var _tl=mx.trustlines||{};
+        if(_tl.funded!=null&&+_tl.funded>=0&&holdersFunded!==+_tl.funded){ holdersFunded=+_tl.funded; } }catch(_){}
       var p7=mx.price7d;
       if(p7&&p7.length>=2){ var a=+p7[p7.length-2][1], b=+p7[p7.length-1][1];
         if(a>0&&b>0){ chgSe=(b/a-1)*100; recomputeChg(); }
