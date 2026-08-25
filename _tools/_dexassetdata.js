@@ -217,6 +217,8 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 .lx-soc{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
   margin-left:8px;color:var(--accent,#ea6a2c);text-decoration:none;vertical-align:middle;opacity:.9}
 .lx-soc:hover{opacity:1}
+.lxda-slinks{display:inline-flex;align-items:center;gap:10px}
+.lxda-slinks .lx-soc{margin-left:0}
 .lx-soc svg{width:14px;height:14px;display:block}
 @media(max-width:760px){
 /* The class above is applied by JS once it has read the labels, so on a phone the Supply card painted,
@@ -228,6 +230,9 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
    so a fifth card, if one is ever added, is covered by the same rule instead of reintroducing this. */
 .stat-row .stat-cell:nth-of-type(n+4){display:none!important}
 .stat-row .stat-cell.lxda-more{display:none!important}
+/* #40: the social marks live in the More info sheet on a phone, so they do not also sit in a header
+   that is already carrying the code, the issuer address and the domain in one narrow column. */
+.asset-meta .lx-soc,.asset-meta-row .lx-soc{display:none!important}
 html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .lxda-moreline{grid-column:1/-1;display:flex;justify-content:center;margin-top:2px}
 .lxda-morebtn{border:0;background:transparent;padding:6px 4px;cursor:pointer;
@@ -1808,6 +1813,24 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     if(body)body.innerHTML=moreRows().map(function(r){
       return '<div class="lxda-srow"><span class="k">'+escapeHtml(r[0])+'</span><span class="v">'+escapeHtml(String(r[1]))+'</span></div>';
     }).join("");
+    // #40: the issuer's own links, built as real anchors. Only what the toml actually carried, so an
+    // asset with neither gets no row rather than an empty one.
+    if(body){
+      var _socs=[[tomlX,X_SVG,"X"],[tomlTg,TG_SVG,"Telegram"]].filter(function(p){return !!p[0];});
+      if(_socs.length){
+        var _r=document.createElement("div"); _r.className="lxda-srow";
+        var _k=document.createElement("span"); _k.className="k"; _k.textContent="Links"; _r.appendChild(_k);
+        var _v=document.createElement("span"); _v.className="v lxda-slinks";
+        _socs.forEach(function(p){
+          var a=document.createElement("a");
+          a.className="lx-soc"; a.href=p[0]; a.target="_blank"; a.rel="noopener";
+          a.setAttribute("title",p[2]); a.setAttribute("aria-label",p[2]);
+          a.setAttribute("data-lxc",""); a.setAttribute("data-lx-noswap","");
+          a.innerHTML=p[1]; _v.appendChild(a);
+        });
+        _r.appendChild(_v); body.appendChild(_r);
+      }
+    }
     try{ sh.__ovf=document.body.style.overflow; document.body.style.overflow="hidden"; }catch(_){}
     sh.classList.add("open");
   }

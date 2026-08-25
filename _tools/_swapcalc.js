@@ -554,7 +554,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // qPick throw on anchor.offsetTop, which silently killed every picker click.
 +'if(p){e.preventDefault();e.stopImmediatePropagation();qPick(p.getAttribute("data-side"),p.closest(".lxq-fld"));return;}'
 +'if(t.closest&&t.closest(".lxq-max")){e.preventDefault();e.stopImmediatePropagation();'
-+'if(qS){var b=qBal(qS);if(qS.native)b=Math.max(0,b-1.5);var i=qEl(".lxq-amt");if(i){i.value=String(Math.floor(b*1e7)/1e7);qSync();}}return;}'
++'if(qS){var b=qBal(qS);if(qS.native)b=Math.max(0,b-1.5);var i=qEl(".lxq-amt");if(i){i.value=plain7(Math.floor(b*1e7)/1e7);qSync();}}return;}'
 +'if(t.closest&&t.closest(".lxq-mkt")){e.preventDefault();e.stopImmediatePropagation();'
 // MARKET hands the field back to the live quote after a manual edit -- qAuto is what the typing
 // listener turns off, so turning it on and refetching is the whole gesture.
@@ -791,7 +791,21 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'})();</script>';
 
 const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI+'",SWLL="'+SW_LUMOS_LOGO+'";'+''
-+'function fmt(x){if(!isFinite(x))return "0";return x.toLocaleString("en-US",{maximumFractionDigits:7});}'
++'function fmt(x){if(!isFinite(x))return "0";'
+// #39: below 1e-5 spell the zero-run as a subscript count, the convention every exchange uses -- the
+// same treatment and the same threshold as the asset page's smallNum, so a price reads identically in
+// both places. Display only; see plain7 below for what goes into the field.
++'x=+x||0;'
++'if(x>0&&x<1e-4){var e=x.toExponential(3),i=e.indexOf("e");'
++'if(i>0){var mant=e.slice(0,i).replace(/0+$/,"").replace(/\\.$/,"").split(".").join("");'
++'var exp=-parseInt(e.slice(i+1),10);'
++'if(exp>=5){var sub="",d=String(exp-1);'
++'for(var z=0;z<d.length;z++)sub+=String.fromCharCode(8320+ +d.charAt(z));'
++'return "0.0"+sub+mant;}}}'
++'return x.toLocaleString("en-US",{maximumFractionDigits:7});}'
+// A number the amount FIELD can hold: fixed precision, never exponential, padding trimmed.
++'function plain7(n){n=+n||0;if(!isFinite(n)||n<=0)return "0";'
++'var t=n.toFixed(7).replace(/0+$/,"").replace(/\\.$/,"");return t||"0";}'
 +'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'
 +'function swAbbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e12)return (n/1e12).toFixed(2)+"T";if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3&&a<1e5)return fmt(n);if(a>=1e5)return (n/1e3).toFixed(1)+"K";return fmt(n);}'
 +'function lastNum(t){var m=(t||"").match(/[0-9.]+/g);return m&&m.length?parseFloat(m[m.length-1]):NaN;}'
@@ -907,7 +921,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 // so "swap everything" meant typing a 7-decimal number by hand. Same button, same class, same rule: XLM uses
 // the SPENDABLE figure (__lxMaxXLM keeps the account reserve back) so Max can never build an underfunded tx.
 +'if(payBal&&!payBal.__lxmax){payBal.__lxmax=1;var dmx=document.createElement("button");dmx.type="button";dmx.className="lx-swapmax";dmx.textContent="Max";payBal.parentNode.appendChild(dmx);'
-+'dmx.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var bal=dashBalOf(fromA);if(!(bal>0))return;inp.value=String(Math.floor(bal*1e7)/1e7);'
++'dmx.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var bal=dashBalOf(fromA);if(!(bal>0))return;inp.value=plain7(Math.floor(bal*1e7)/1e7);'
 +'try{inp.dispatchEvent(new Event("input",{bubbles:true}));}catch(_){run(false);}});}'
 +'function refreshBal(){if(payBal)payBal.textContent="Balance: "+swAbbr(dashBalOf(fromA))+" "+fromA.code;if(recBal){var has=toA.native||toA.bal!=null||dashHeld(toA.code)>0;recBal.textContent=has?("Balance: "+swAbbr(dashBalOf(toA))+" "+toA.code):"";}}'
 +'[[payChip,"from"],[recChip,"to"]].forEach(function(pr){var c=pr[0];c.classList.add("lx-dchip");c.setAttribute("data-lx-noswap","");if(!c.querySelector(".lx-dcaret")){var cv=document.createElement("span");cv.className="lx-dcaret";cv.innerHTML=\'<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>\';c.appendChild(cv);}c.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();openMenu(pr[1]);},true);});'
@@ -973,7 +987,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 +'var fr=(typeof window.__lxFeeRate==="number"&&window.__lxFeeRate>0&&window.__lxFeeRate<=0.002)?window.__lxFeeRate:0.002;'
 +'var gross=best/(1-fr);'
 +'showErr("");'
-+'inp.value=String(Math.ceil(gross*1e7)/1e7);'   // round UP: rounding down could under-deliver
++'inp.value=plain7(Math.ceil(gross*1e7)/1e7);'   // round UP: rounding down could under-deliver
 +'try{ inp.dispatchEvent(new Event("input",{bubbles:true})); }catch(_){ run(false); }'
 +'})'
 +'.catch(function(){});'
@@ -1008,7 +1022,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 +'var raw=h.native?(window.__lxNative||0):(h.bal!=null?h.bal:heldBal(h.code));'
 +'var v=h.native?((window.__lxMaxXLM!=null)?window.__lxMaxXLM:raw):raw;'
 +'if(!(v>0))return;'
-+'fromInput.value=String(Math.floor(v*1e7)/1e7);'
++'fromInput.value=plain7(Math.floor(v*1e7)/1e7);'
 +'try{fromInput.dispatchEvent(new Event("input",{bubbles:true}));}catch(_){}'
 +'});})();'
 +'function symOf(f){if(f.__lxsym)return f.__lxsym;var b=f.querySelector(".asset-pick");if(!b)return "TKN";for(var i=0;i<b.childNodes.length;i++){var nd=b.childNodes[i];if(nd.nodeType===3){var t=nd.textContent.trim();if(t)return t;}}return "TKN";}'
