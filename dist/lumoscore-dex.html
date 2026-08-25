@@ -2349,29 +2349,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-tabs-css">
-.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:2px}
-/* Sized UP. At 13px these read as punctuation beside the label rather than as marks in their own
-   right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
-   afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
-.lx-tabic svg{display:block;width:17px;height:17px}
-.lx-tabic-img img{display:block;width:17px;height:17px;border-radius:50%;object-fit:cover}
-.mdx-mk-filter .lx-tabic-img img{width:15px;height:15px}
-.mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
-#poolTabs .lx-tabic svg{width:18px;height:18px}
-@media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}
-/* Full colour on every tab. Dimming the inactive ones to .72 was what made a set of otherwise
-   saturated marks look washed out and cheap; the active tab is already carried by its filled
-   background, so the icons do not need to fade to say which one is on. */
-.lx-tabic{opacity:1}
-/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
-   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
-.lx-tabic+.lx-mk-star{display:none!important}
-/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
-   pushes the list down and reads as two groups. */
-.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.mdx-mk-filters::-webkit-scrollbar{display:none}
-.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
 </style><style id="lx-dexmain-css">
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
@@ -2734,7 +2711,36 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
   font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
-</style><style id="lx-dexhero-css">.lx-dexhero-off{display:none!important}.dex-overview,.lumos-promo.lx-mobhero,.amm-overview{display:none!important}.dex-mints-card .lx-dctas,.mdx-mints-card .lx-dctas,.dex-mints-card .mdx-hero-ctas,.mdx-mints-card .mdx-hero-ctas{position:static!important;margin:0 0 0 12px!important;display:flex!important;align-items:center;gap:12px;order:2;flex:1 1 auto!important}.dex-mints-card .lx-dctas .dex-hero-btn.primary,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.primary{order:1}.dex-mints-card .lx-dctas .dex-hero-btn.ghost,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}.dex-mint-row{grid-template-columns:32px 1fr 400px!important}.dex-mint-stats{display:grid!important;grid-template-columns:1.35fr 1fr 1.15fr .6fr;gap:0 16px!important;align-items:center}.dex-mint-stat{align-items:flex-end!important;text-align:right}.dex-mint-stat .l,.dex-mint-stat .v{width:100%;text-align:right!important}.dex-mint-stat .v{font-variant-numeric:tabular-nums}.dex-mint-row + .dex-mint-row{border-top:1px solid var(--border)}.dex-mint-row{padding:10px 8px!important}.mdx-hero-ctas .mdx-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}.mdx-hero-ctas .mdx-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-size:0!important;gap:0!important}.mdx-hero-ctas .mdx-hero-btn.ghost svg{width:17px!important;height:17px!important}</style><style id="lx-heromono-css">
+</style><style id="lx-dexhero-css">.lx-dexhero-off{display:none!important}.dex-overview,.lumos-promo.lx-mobhero,.amm-overview{display:none!important}.dex-mints-card .lx-dctas,.mdx-mints-card .lx-dctas,.dex-mints-card .mdx-hero-ctas,.mdx-mints-card .mdx-hero-ctas{position:static!important;margin:0 0 0 12px!important;display:flex!important;align-items:center;gap:12px;order:2;flex:1 1 auto!important}.dex-mints-card .lx-dctas .dex-hero-btn.primary,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.primary{order:1}.dex-mints-card .lx-dctas .dex-hero-btn.ghost,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}.dex-mint-row{grid-template-columns:32px 1fr 400px!important}.dex-mint-stats{display:grid!important;grid-template-columns:1.35fr 1fr 1.15fr .6fr;gap:0 16px!important;align-items:center}.dex-mint-stat{align-items:flex-end!important;text-align:right}.dex-mint-stat .l,.dex-mint-stat .v{width:100%;text-align:right!important}.dex-mint-stat .v{font-variant-numeric:tabular-nums}.dex-mint-row + .dex-mint-row{border-top:1px solid var(--border)}.dex-mint-row{padding:10px 8px!important}.mdx-hero-ctas .mdx-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}.mdx-hero-ctas .mdx-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-size:0!important;gap:0!important}.mdx-hero-ctas .mdx-hero-btn.ghost svg{width:17px!important;height:17px!important}</style><style id="lx-tabs-css">
+.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:2px}
+/* Sized UP. At 13px these read as punctuation beside the label rather than as marks in their own
+   right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
+   afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
+.lx-tabic svg{display:block;width:17px;height:17px}
+/* The chain mark reads as identity, not decoration: it is the one element on the chip that says WHICH
+   network these pairs are on, and at 17px inside a 31px chip it was the smallest thing in the row.
+   22px still clears the chip with room either side, and matches the weight of the asset marks in the
+   list beneath it. The svg icons on the other chips stay at 17 -- they are glyphs, not logos, and
+   growing an outline icon just makes it look heavy. */
+.lx-tabic-img img{display:block;width:22px;height:22px;border-radius:50%;object-fit:cover}
+/* Same on the phone, scaled to that chip: 15 -> 19. */
+.mdx-mk-filter .lx-tabic-img img{width:19px;height:19px}
+.mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
+#poolTabs .lx-tabic svg{width:18px;height:18px}
+@media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}
+/* Full colour on every tab. Dimming the inactive ones to .72 was what made a set of otherwise
+   saturated marks look washed out and cheap; the active tab is already carried by its filled
+   background, so the icons do not need to fade to say which one is on. */
+.lx-tabic{opacity:1}
+/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
+   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
+.lx-tabic+.lx-mk-star{display:none!important}
+/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
+   pushes the list down and reads as two groups. */
+.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mdx-mk-filters::-webkit-scrollbar{display:none}
+.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
+</style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
    ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
@@ -3019,7 +3025,7 @@ html[data-theme="light"] .lm-bg{opacity:.09}
       </div>
       <div class="dex-mk-controls">
         <div class="dex-mk-filters" id="dexMkFilters">
-          <button class="dex-mk-filter active" data-filter="all" data-cat="all"><span class="lx-tabic lx-tabic-img" aria-hidden="true"><img src="/assets/tokens/xlm.png" alt=""></span>All</button>
+          <button class="dex-mk-filter active" data-filter="all" data-cat="all"><span class="lx-tabic lx-tabic-img" aria-hidden="true"><img src="/assets/tokens/xlm.png" alt=""></span><span class="lx-tabic lx-tabic-img" aria-hidden="true"><img src="/assets/tokens/xlm.png" alt=""></span>All</button>
           <button class="dex-mk-filter lx-mk-native" data-filter="native" data-cat="native"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.4l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5-5.8-3.06-5.8 3.06 1.1-6.5-4.7-4.6 6.5-.95z" fill="#f7b733"/><path d="M12 2.4l2.9 5.9 6.5.95-4.7 4.6 1.1 6.5-5.8-3.06z" fill="#eb9b1f"/></svg></span><span class="lx-mk-star" aria-hidden="true">&#9733;</span>LumosCore native</button>
           <button class="dex-mk-filter" data-filter="stables" data-cat="stables"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.2" fill="#2775ca"/><path d="M12 6.1v11.8" stroke="#fff" stroke-width="1.7" stroke-linecap="round"/><path d="M14.7 9.2a2.7 2.7 0 0 0-2.6-1.7h-.7a2.35 2.35 0 0 0 0 4.7h1a2.35 2.35 0 0 1 0 4.7h-.7a2.7 2.7 0 0 1-2.6-1.7" stroke="#fff" stroke-width="1.7" stroke-linecap="round" fill="none"/></svg></span>Stables</button>
           <button class="dex-mk-filter" data-filter="memes" data-cat="memes"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9.2" fill="#fbbf24"/><path d="M7.8 13.6a4.9 4.9 0 0 0 8.4 0z" fill="#7c3f00"/><ellipse cx="9.1" cy="9.5" rx="1.25" ry="1.5" fill="#7c3f00"/><ellipse cx="14.9" cy="9.5" rx="1.25" ry="1.5" fill="#7c3f00"/></svg></span>Memes</button><button class="dex-mk-filter" data-filter="utility" data-cat="utility"><span class="lx-tabic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 1.9l2.2 1.5 2.6-.5 1.2 2.4 2.4 1.2-.5 2.6 1.5 2.2-1.5 2.2.5 2.6-2.4 1.2-1.2 2.4-2.6-.5-2.2 1.5-2.2-1.5-2.6.5-1.2-2.4-2.4-1.2.5-2.6L1.9 12l1.5-2.2-.5-2.6 2.4-1.2 1.2-2.4 2.6.5z" fill="#14b8a6"/><circle cx="12" cy="12" r="3.5" fill="#0b3b38"/></svg></span>Utility</button>

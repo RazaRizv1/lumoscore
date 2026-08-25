@@ -1497,29 +1497,6 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 .lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
-</style><style id="lx-tabs-css">
-.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:2px}
-/* Sized UP. At 13px these read as punctuation beside the label rather than as marks in their own
-   right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
-   afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
-.lx-tabic svg{display:block;width:17px;height:17px}
-.lx-tabic-img img{display:block;width:17px;height:17px;border-radius:50%;object-fit:cover}
-.mdx-mk-filter .lx-tabic-img img{width:15px;height:15px}
-.mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
-#poolTabs .lx-tabic svg{width:18px;height:18px}
-@media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}
-/* Full colour on every tab. Dimming the inactive ones to .72 was what made a set of otherwise
-   saturated marks look washed out and cheap; the active tab is already carried by its filled
-   background, so the icons do not need to fade to say which one is on. */
-.lx-tabic{opacity:1}
-/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
-   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
-.lx-tabic+.lx-mk-star{display:none!important}
-/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
-   pushes the list down and reads as two groups. */
-.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.mdx-mk-filters::-webkit-scrollbar{display:none}
-.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
 </style><style id="lx-searchassets-css">
 .sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
 .lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
@@ -2014,6 +1991,35 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
+</style><style id="lx-tabs-css">
+.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:2px}
+/* Sized UP. At 13px these read as punctuation beside the label rather than as marks in their own
+   right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
+   afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
+.lx-tabic svg{display:block;width:17px;height:17px}
+/* The chain mark reads as identity, not decoration: it is the one element on the chip that says WHICH
+   network these pairs are on, and at 17px inside a 31px chip it was the smallest thing in the row.
+   22px still clears the chip with room either side, and matches the weight of the asset marks in the
+   list beneath it. The svg icons on the other chips stay at 17 -- they are glyphs, not logos, and
+   growing an outline icon just makes it look heavy. */
+.lx-tabic-img img{display:block;width:22px;height:22px;border-radius:50%;object-fit:cover}
+/* Same on the phone, scaled to that chip: 15 -> 19. */
+.mdx-mk-filter .lx-tabic-img img{width:19px;height:19px}
+.mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
+#poolTabs .lx-tabic svg{width:18px;height:18px}
+@media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}
+/* Full colour on every tab. Dimming the inactive ones to .72 was what made a set of otherwise
+   saturated marks look washed out and cheap; the active tab is already carried by its filled
+   background, so the icons do not need to fade to say which one is on. */
+.lx-tabic{opacity:1}
+/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
+   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
+.lx-tabic+.lx-mk-star{display:none!important}
+/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
+   pushes the list down and reads as two groups. */
+.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mdx-mk-filters::-webkit-scrollbar{display:none}
+.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
 </style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal

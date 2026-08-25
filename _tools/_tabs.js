@@ -79,8 +79,14 @@ const STYLE_ICONS = `<style id="lx-tabs-css">
    right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
    afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
 .lx-tabic svg{display:block;width:17px;height:17px}
-.lx-tabic-img img{display:block;width:17px;height:17px;border-radius:50%;object-fit:cover}
-.mdx-mk-filter .lx-tabic-img img{width:15px;height:15px}
+/* The chain mark reads as identity, not decoration: it is the one element on the chip that says WHICH
+   network these pairs are on, and at 17px inside a 31px chip it was the smallest thing in the row.
+   22px still clears the chip with room either side, and matches the weight of the asset marks in the
+   list beneath it. The svg icons on the other chips stay at 17 -- they are glyphs, not logos, and
+   growing an outline icon just makes it look heavy. */
+.lx-tabic-img img{display:block;width:22px;height:22px;border-radius:50%;object-fit:cover}
+/* Same on the phone, scaled to that chip: 15 -> 19. */
+.mdx-mk-filter .lx-tabic-img img{width:19px;height:19px}
 .mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
 #poolTabs .lx-tabic svg{width:18px;height:18px}
 @media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}

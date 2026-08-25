@@ -1017,6 +1017,12 @@ function lxBrListPending(){ try{ return JSON.parse(localStorage.getItem("lumos.c
 function lxBrClearPending(hash){ try{ var a=lxBrListPending().filter(function(x){return x.burnHash!==hash;}); localStorage.setItem("lumos.cctp.pending",JSON.stringify(a)); }catch(_){} }
 window.lxBrSavePending=lxBrSavePending; window.lxBrListPending=lxBrListPending; window.lxBrClearPending=lxBrClearPending;
 function lxBrRestoreTxs(){ try{ var tbody=document.querySelector('.br-table tbody'); if(!tbody||tbody.__lxRestored)return; tbody.__lxRestored=true; var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]");
+  // Same source the phone paints from. lxBrRenderMobileTxs prepends LX_PUBTX to the local store; this
+  // read only the local store, so a transfer that exists on chain but was never recorded in THIS
+  // browser appeared on mobile and not on desktop -- the same account, the same origin, two different
+  // answers. Merged by hash, public first, exactly as the mobile path does it.
+  var _pseen={}; LX_PUBTX.forEach(function(o){ _pseen[o.hash]=1; });
+  a=LX_PUBTX.concat(a.filter(function(o){ return o&&!_pseen[o.hash]; }));
   // a store written before the cap existed can hold more than 100 — render only what is reachable, rather
   // than building rows the pager will hide forever
   if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
