@@ -64,6 +64,19 @@ const CSS='<style id="lx-walletdata-css">'
 +'.lx-vfd svg{width:9px;height:9px;display:block}'
 +'.lx-hd:empty{display:none}'
 +'.lx-hd{color:var(--text-soft,#6b6b76);font-family:"JetBrains Mono",ui-monospace,monospace}'
+// item 5: dollars lead, the XLM amount becomes the secondary line.
++'.value-side{display:flex;flex-direction:column}'
++'.value-side .lbl{order:0}'
++'.value-side .sub-value{order:1;font-size:50.6px;line-height:1.06;font-weight:800;letter-spacing:-2px;'
++'color:var(--text);margin-top:2px}'
++'.value-side .value{order:2;font-weight:600;letter-spacing:-.4px;'
++'color:var(--text-muted);margin-top:6px}'
+// the design sets this span's size inline, so only !important reaches it
++'.value-side .value span{font-size:16px!important;letter-spacing:-.2px!important}'
++'.value-side .delta-row{order:3}'
+// item 5 (second half): the same subtle gridlines the Trade-Asset chart got.
++'.mini-chart svg{background-image:repeating-linear-gradient(to bottom,'
++'rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}'
 // #3: the provenance line under an order / claimable row. The separator is a ::before on the link
 // rather than a character in the markup, so a row whose issuer declares no domain shows the link alone
 // with no orphaned dot in front of it.
@@ -113,7 +126,7 @@ const CSS='<style id="lx-walletdata-css">'
 +'.activity-info{display:flex!important;flex-flow:row wrap;align-items:baseline;gap:2px 0;min-width:0}'
 +'.activity-info .meta::before{content:"\\00b7";margin:0 8px;opacity:.5}'
 +'.search-box.inline-filter svg{flex:0 0 auto;width:14px;height:14px}'
-+'.value-side .value{font-size:46px!important;line-height:1.06}'
++'.value-side .value{font-size:22px!important;line-height:1.2!important}'  // item 5: now the secondary line
 +'.activity-row{position:relative}.lx-txlink{margin-left:14px;color:var(--text-muted);display:inline-flex;align-items:center;flex-shrink:0;transition:color .12s}.lx-txlink:hover{color:var(--accent)}'
 +'.activity-icon.lx-hasico{background-color:transparent!important;background-image:var(--lxlogo)!important;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;position:relative;overflow:hidden}'
 +'.activity-icon.lx-hasico>svg{display:none!important}'

@@ -1849,6 +1849,8 @@ html body .pool-header-row .ph-icons>*{
 .lx-chmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   text-align:center;padding:0 28.6px;font-size:14.3px;line-height:1.5;color:var(--text-soft,#8a8fa3)}
 #priceChart svg{cursor:crosshair}
+/* item 8: let a horizontal drag reach touchmove while vertical scrolling still works over the chart. */
+#priceChart{touch-action:pan-y}
 .lx-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7.7px 11px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
 .lx-chtip .d{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600;margin-bottom:6.6px}
 .lx-chtip .l{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600}
@@ -6299,7 +6301,30 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       tip.style.left=tx+"px"; tip.style.top=Math.max(2,sy-th-12)+"px";
     }
     function leave(){ ["lx-chtip","lx-chdot","lx-chvl"].forEach(function(c){ var el=pc.querySelector("."+c); if(el)el.style.opacity=0; }); }
-    pc.addEventListener("mousemove",move); pc.addEventListener("mouseleave",leave);
+    // Ignore the mouseleave a browser synthesises after a touch; a real mouse leaving still clears.
+    var _touchAt=0;
+    pc.addEventListener("touchstart",function(){_touchAt=Date.now();},{passive:true});
+    pc.addEventListener("touchmove",function(){_touchAt=Date.now();},{passive:true});
+    pc.addEventListener("mousemove",move);
+    pc.addEventListener("mouseleave",function(){ if(Date.now()-_touchAt<1500)return; leave(); });
+    // Follow a finger, not just a tap.
+    var _tp0=null;
+    function tmove(ev){ var t=ev.touches&&ev.touches[0]; if(!t)return;
+      // Horizontal drag = reading the chart, so take the gesture. Vertical = scrolling, so leave it.
+      if(_tp0&&ev.type==="touchmove"&&Math.abs(t.clientX-_tp0.x)>Math.abs(t.clientY-_tp0.y)){
+        try{ ev.preventDefault(); }catch(_){}
+      }
+      move({clientX:t.clientX,clientY:t.clientY,target:ev.target}); }
+    pc.addEventListener("touchstart",function(ev){
+      var t=ev.touches&&ev.touches[0]; if(t)_tp0={x:t.clientX,y:t.clientY};
+      tmove(ev); },{passive:true});
+    pc.addEventListener("touchmove",tmove,{passive:false});
+    // Deliberately NOT touchend/touchcancel -- the reading outlives the gesture. A tap elsewhere clears it.
+    document.addEventListener("touchstart",function(ev){
+      var t=ev.target;
+      if(t&&t.closest&&t.closest("#priceChart"))return;
+      leave();
+    },{passive:true});
   }
   function updateChartLegend(){
     var priceUsd=lumosXlm*xlmUsd; if(!(priceUsd>0))return; var mc=supply*priceUsd;
