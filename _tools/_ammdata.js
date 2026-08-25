@@ -238,6 +238,12 @@ html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
    spans (the green "+$32.18" PnL) and uses <img> logos, neither of which a text-colour rule can hide. Layout
    is preserved. The deposit/withdraw asset chips are re-created on tab switch, so they're gated per-element on
    data-lxpair (set by setField / fixWithdrawPair) instead of the global class. */
+/* N13: each side of the pair opens its own asset page. Inherits the heading's own type -- this is the
+   title, not a control added to it -- and only underlines on hover so it does not read as two links
+   sitting in a heading at rest. */
+.ph-name .lx-phlink{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+.ph-name .lx-phlink:hover{border-bottom-color:currentColor}
+.ph-name .lx-phsep{opacity:.55}
 html:not(.lx-detpr) .ph-name,
 html:not(.lx-detpr) .crumb span:last-child,
 html:not(.lx-detpr) .ph-icons .pa, html:not(.lx-detpr) .ph-icons .pb,
@@ -1994,9 +2000,42 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     });
   }
 
+  // Capture-phase so it beats the SPA router to the click; registered once per document.
+  (function(){
+    if(window.__lxPhNav)return; window.__lxPhNav=1;
+    window.addEventListener("click",function(e){
+      var a=e.target&&e.target.closest?e.target.closest("a.lx-phlink[data-lxasset]"):null;
+      if(!a)return;
+      // Leave the browser's own gestures (new tab / new window / download) alone.
+      if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button!==0)return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      location.href="lumoscore-dex-asset.html?asset="+encodeURIComponent(a.getAttribute("data-lxasset"));
+    },true);
+  })();
+
   function pdHeader(){
     var d=DET;
-    var name=q(".ph-name"); if(name)setText(name,d.pairName||(d.code+" / XLM"));
+    var name=q(".ph-name");
+    if(name){
+      // Rebuilt only when the pair changes, so the header guard's re-asserts cannot churn the links.
+      var _want=d.pairName||(d.code+" / XLM");
+      if(name.getAttribute("data-lxpair")!==_want){
+        name.setAttribute("data-lxpair",_want);
+        // One side of the pair: a link when we hold its issuer, plain text otherwise.
+        function side(a,fallbackCode){
+          var c=(a&&a.code)||fallbackCode||"";
+          var i=(a&&a.issuer)||"";
+          if(!c)return "";
+          if(c==="XLM"||!i)return '<span>'+esc(c)+'</span>';
+          return '<a class="lx-phlink" data-lxasset="'+esc(c)+'-'+esc(i)+'" '
+            +'href="lumoscore-dex-asset.html?asset='+esc(c)+'-'+esc(i)+'">'+esc(c)+'</a>';
+        }
+        var _l,_r;
+        if(d.nonXlm&&d.a0&&d.a1){ _l=side(d.a0); _r=side(d.a1); }
+        else { _l=side({code:d.code,issuer:d.issuer},d.code); _r='<span>XLM</span>'; }
+        name.innerHTML=_l+'<span class="lx-phsep"> / </span>'+_r;
+      }
+    }
     // Desktop writes "Pool ID: <short>"; the phone header writes just "ID: <short>", so matching on the
     // desktop wording alone left the design's fabricated a468d4…0088 sitting on the page — and the copy
     // button was still handing out that fake id. Match either wording, and re-point data-copy at the real one.

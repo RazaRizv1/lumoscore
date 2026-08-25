@@ -1629,940 +1629,6 @@ html body .pool-header-row .ph-icons>*{
   font:800 11.6px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
-</style><style id="lx-amm-css">/*lxts:1.1*/
-/* ---- the three pool stat cards, as one set ---------------------------------------------------- */
-/* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
-   onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
-   to the 18px value to compete with it -- carrying a run-on of three facts. So: the value shrinks to
-   fit rather than wrapping, the sub-line steps back to a quiet single line, and every card reserves
-   the same sub-line height so three cards line up even when one has nothing to say there. */
-.ph-stats .ph-stat{display:flex;flex-direction:column}
-.ph-stat .v{white-space:nowrap;font-size:clamp(16.5px,1.35vw,19.8px);font-weight:800;letter-spacing:-.2px}
-.ph-stat .s{font-size:13.2px;margin-top:3.3px;min-height:15px;white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;color:var(--text-soft)}
-@media(max-width:880px){
-/* Three across does not fit a phone once the values stop wrapping -- measured 374px of cards in a
-   323px column, which is what made the page pan sideways. Two columns, and nothing that refuses to
-   shrink inside them. */
-.ph-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
-.ph-stats .ph-stat{min-width:0}
-.ph-stat .v{font-size:17.6px;white-space:normal}
-.ph-stat .s{font-size:12.7px}
-}
-/* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
-#createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
-/* AUDIT (user-reported): the Create Pool MAX control is a bare <span> — it fires, but the design gives it no
-   cursor, hover or hit padding, so it reads as decoration and people assume it is broken. */
-#createPoolModal .field-foot .max-btn{cursor:pointer;user-select:none;padding:2.2px 7.7px;margin:-2.2px -7.7px;border-radius:6px;transition:background .14s,color .14s}
-#createPoolModal .field-foot .max-btn:hover{background:rgba(234,106,44,.14);color:var(--accent,#ea6a2c)}
-#createPoolModal .field-foot .max-btn:active{background:rgba(234,106,44,.24)}
-#createPoolModal .lx-cpwarn{margin:8.8px 2.2px 0;font-size:13.8px;line-height:1.45;color:#c9791f}
-/* success toast — same look as the site's "Copied to clipboard" toast (self-contained) */
-.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8.8px;align-items:center;pointer-events:none}
-.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:12.1px 19.8px 12.1px 15.4px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:17.6px;font-weight:600;display:inline-flex;align-items:center;gap:9.9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
-.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-.lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}
-/* The stack is pointer-events:none so a toast never blocks the page underneath — but that also made the
-   explorer link inside it unclickable, which is why "view" appeared to lead nowhere. Re-enable pointer
-   events on the LINK only, so the rest of the toast stays click-through. */
-.lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
-@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
-/* #24: the cold-start overlay.
-   The ranking is built by an endpoint that walks the whole network in resumable steps and answers
-   {warming, scanned, phase} until it is done -- on a cold cache that is roughly twenty-five seconds.
-   For that whole time the page sat masked and empty, which reads as broken rather than as working.
-   Reduced motion drops the pulse and the fades; it does NOT gate the dismissal, which is a class and a
-   removal, so the overlay can never be left on screen by a motion preference. */
-/* Pool Activity chart: the SVG takes no pointer input, so every mouse and touch lands on #tvlChart.
-   The hover listeners are on that host, and a touch TARGET is sticky for the life of the gesture --
-   whichever node touchstart hit keeps receiving touchmove. Starting a drag on the filled area therefore
-   bound the gesture to the gradient <path>, and that path is REPLACED on the next chart repaint, which
-   orphaned the drag and killed the readout mid-swipe. Starting on the empty part above the line bound it
-   to the host instead, which is never replaced -- which is exactly why it worked there and nowhere else.
-   With the SVG transparent to input the target is always the host, so it cannot happen at all. The
-   overlay divs already carry pointer-events:none for the same reason. */
-#tvlChart svg,#tvlChart svg *{pointer-events:none}
-.lx-boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);
-  opacity:1;transition:opacity .28s ease}
-.lx-boot.lx-boot-out{opacity:0;pointer-events:none}
-.lx-boot-in{display:flex;flex-direction:column;align-items:center;gap:17.6px;padding:26.4px;text-align:center}
-.lx-boot-badge{position:relative;width:96px;height:96px;display:grid;place-items:center}
-.lx-boot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;
-  background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
-  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
-  animation:lx-boot-spin 1.15s linear infinite;opacity:.9}
-.lx-boot-badge::after{content:"";position:absolute;inset:8px;border-radius:50%;
-  background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-boot-pulse 1.8s ease-in-out infinite}
-@keyframes lx-boot-spin{to{transform:rotate(360deg)}}
-.lx-boot-mark{position:relative;z-index:1;width:52px;height:52px;background-size:contain;background-repeat:no-repeat;
-  background-position:center;animation:lx-boot-pulse 1.6s ease-in-out infinite}
-.lx-boot-ttl{font-family:'Hanken Grotesk',sans-serif;font-size:16.5px;font-weight:700;color:var(--text,#0e0e10)}
-.lx-boot-bar{width:216px;height:4px;border-radius:99px;background:var(--border,#ececef);overflow:hidden}
-.lx-boot-fill{height:100%;width:0;background:var(--accent,#ea6a2c);border-radius:99px;transition:width .45s ease}
-.lx-boot-sub{font-family:'JetBrains Mono',monospace;font-size:12.1px;letter-spacing:.04em;
-  color:var(--text-soft,#6f6f79);font-variant-numeric:tabular-nums}
-@keyframes lx-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.6}}
-@media (prefers-reduced-motion:reduce){.lx-boot-mark,.lx-boot-badge::before,.lx-boot-badge::after{animation:none}
-  .lx-boot,.lx-boot-fill{transition:none}}
-/* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
-   written paintTables filled both and revealed after. The network list changed that: the rows now arrive
-   from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
-   until they landed. Same treatment as the desktop body. */
-html:not(.lx-ammready) #panelAll{visibility:hidden}
-/* #39: the Top Pool slot showed "( )" for a beat on the phone. That is its own skeleton -- two ringed
-   circles overlapping at phone scale read as a pair of brackets, which looks like a rendering fault
-   rather than a placeholder. The slot stays blank until there is a real pair to put in it; the label
-   under it already says what is coming. */
-html:not(.lx-ammready) .lx-hstat[data-k=top] .v{visibility:hidden}
-/* #10: remote pool results, kept visually distinct from the page's own ranked list so it is obvious
-   these came from a search rather than from the top-25 ranking. */
-.lx-psresult{margin-top:15.4px}
-/* #41: self-contained appearance for a network result, so it never depends on .pool-card existing.
-   :where() = zero specificity, so the phone's own .pool-card rules still win there. */
-:where(.lx-psresult .lx-pscard){display:block;margin:0 0 8.8px;padding:13.2px 15.4px;text-decoration:none;
-  color:inherit;border:1px solid var(--border,#e6e6ea);border-radius:12px;background:var(--surface,#fff)}
-:where(.lx-psresult .lx-pscard:hover){border-color:var(--accent,#ea6a2c)}
-:where(.lx-psresult .lx-pscard .pc-head){display:flex;align-items:center;gap:11px;margin-bottom:9.9px}
-:where(.lx-psresult .lx-pscard .pc-name){font-size:16px;font-weight:700;color:var(--text,#0e0e10)}
-:where(.lx-psresult .lx-pscard .pc-sub){margin-top:2.2px;font-size:13.2px;color:var(--text-soft,#9a9aa3)}
-:where(.lx-psresult .lx-pscard .pc-stats){display:flex;gap:28.6px}
-:where(.lx-psresult .lx-pscard .pc-stat .l){font-size:11px;font-weight:600;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--text-soft,#9a9aa3)}
-:where(.lx-psresult .lx-pscard .pc-stat .v){margin-top:2.2px;font-size:14.9px;font-weight:700;
-  color:var(--text,#0e0e10);font-variant-numeric:tabular-nums}
-.lx-pshead{margin:0 0 8.8px;font-size:11.6px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}
-.lx-psnote{padding:17.6px 4.4px;text-align:center;font-size:14.3px;color:var(--text-soft)}
-/* POOL-DETAIL TAB STRIPS ON A PHONE.
-   #ptabs measures 432px of tabs inside a 345px box, so "Participants" sits past the right edge and is
-   simply unreachable — on a narrower handset "Transactions" and "My Position" go with it. The strip is
-   overflow:auto on BOTH axes too, so instead of doing nothing a tap drags the row (the same defect the
-   Trade-asset tab strip had). Deposit/Withdraw is the same shape: two fixed 152px buttons, 304px of
-   content that stops fitting below ~330px of viewport.
-   Fix both the way the Trade strip was fixed: the tabs SHARE the width and the row cannot scroll at all.
-   overflow must be set on both axes — one non-visible axis forces the other to auto, which is what made
-   it draggable vertically. */
-@media (max-width:760px){
-  #ptabs.panel-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important;gap:0!important;padding-bottom:2.2px}
-  /* size to content, share what is left: equal quarters clipped "Deposit / Withdraw", which is much longer
-     than the other three. The four together measure ~333px inside 345px, so they all fit unclipped; the
-     min-width:0 + ellipsis below is the safety net for a narrower handset. */
-  #ptabs.panel-tabs>*{flex:1 1 auto!important;min-width:0!important;padding-left:3.3px!important;padding-right:3.3px!important;
-    font-size:12.1px!important;letter-spacing:-.1px;white-space:nowrap;text-align:center;justify-content:center!important;overflow:hidden;text-overflow:ellipsis}
-  .dw-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important}
-  .dw-tabs>*{flex:1 1 0!important;min-width:0!important;white-space:nowrap}
-}
-/* Small handsets (iPhone SE and friends): at 11px the four labels want ~302px inside a 290px strip, so
-   every one of them ellipsised by a few pixels. A step down to 10px needs ~269px and they read in full. */
-@media (max-width:359px){
-  #ptabs.panel-tabs>*{font-size:11px!important;padding-left:2.2px!important;padding-right:2.2px!important}
-}
-/* Market Overview box: show its structure (title/labels) instantly; only the value+sub cells shimmer as a
-   skeleton until real data lands — so the box never sits blank for ~2s and never flashes mock numbers. */
-/* Skeleton the RIGHT-side dynamic cells (value + vsub). The left label/sub are static design text.
-   The vsub holds the mock $ (and an .lc-money the site re-stamps) — earlier it wasn't covered, so the
-   24H-Volume figure flashed a mock value before real data. */
-/* white-space:nowrap + overflow:hidden are ESSENTIAL: during load these cells still hold the design's
-   MOCK text (e.g. "51,250 XLM swapped") which wraps to 2 lines in the narrow column and makes the whole
-   top section ~40px taller until real (short) data lands. One-lining the skeleton keeps height stable. */
-/* Market Overview began at exactly the pixel the pools card ended -- 1378 to 1378, no gap at all -- so
-   the two read as one broken block. The separation was never its own: it came from the pagination row
-   between them, which is display:none on the My Pools tab, so the collision appeared there and nowhere
-   else. 22px is the gap this page already uses between its other cards, and it belongs to the card
-   rather than to whatever happens to precede it. */
-.amm-snapshot-card{margin-top:24.2px}
-html:not(.lx-ammready) .amm-snapshot-value, html:not(.lx-ammready) .amm-snapshot-vsub, html:not(.lx-ammready) .amm-snapshot-sub{color:transparent!important;border-radius:6px;white-space:nowrap!important;overflow:hidden!important;background:linear-gradient(90deg,rgba(148,140,200,.10) 25%,rgba(148,140,200,.22) 37%,rgba(148,140,200,.10) 63%)!important;background-size:400% 100%!important;animation:lxShim 1.3s ease-in-out infinite}
-/* width-only constraints — do NOT add margin/display here or the skeleton rows grow taller than the
-   ready rows and the whole top section visibly shrinks ~40px when data lands */
-html:not(.lx-ammready) .amm-snapshot-value{max-width:96px}
-html:not(.lx-ammready) .amm-snapshot-vsub{max-width:120px}
-html:not(.lx-ammready) .amm-snapshot-sub{max-width:120px}
-/* also hide EVERY child of the value/vsub/sub cells (unit span, .lc-money with its re-stamped data-orig mock,
-   the mock caption text) so nothing bleeds through the shimmer while loading — this was the residual flash */
-html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapshot-vsub *, html:not(.lx-ammready) .amm-snapshot-sub *{color:transparent!important;background:transparent!important;text-shadow:none!important}
-@keyframes lxShim{0%{background-position:100% 0}100%{background-position:0 0}}
-.lx-hstat .v .lx-hskel{display:inline-block;width:44px;height:24px;border-radius:6px;color:transparent!important;vertical-align:middle;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
-.lx-hstat[data-k=top] .lx-toptxt.lx-hskel{width:92px;height:22px}
-.lx-hstat[data-k=top] .lx-hpairskel{display:inline-flex;flex:0 0 auto}
-.lx-hstat[data-k=top] .lx-hpairskel .pa,.lx-hstat[data-k=top] .lx-hpairskel .pb{width:33px;height:33px;border-radius:50%;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
-.lx-hstat[data-k=top] .lx-hpairskel .pb{margin-left:-12.1px;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box}
-/* Market Overview: match the "New Mints on Stellar" (Trade page) typography scale so the two cards feel
-   the same — label like .dex-mint-name (15.5/700), value like .dex-mint-mc (15/700), subs 13/12.5 soft. */
-.amm-snapshot-label{font-size:17.1px!important;font-weight:700!important;line-height:1.2!important;letter-spacing:.2px!important;text-transform:none!important;color:var(--text)!important}
-.amm-snapshot-value{font-size:16.5px!important;font-weight:700!important;letter-spacing:normal!important;line-height:1.2!important}
-.amm-snapshot-sub{font-size:14.3px!important;margin-top:2.2px!important}
-.amm-snapshot-vsub{font-size:13.8px!important;margin-top:2.2px!important}
-.amm-snapshot-row{padding:11px 8.8px!important}
-.amm-snapshot-ic.fees{background:rgba(245,158,11,.15)!important;color:#f59e0b!important}
-/* token/pair icons rendered ENTIRELY via CSS custom-props + ::after so the site logo-painter (which clears innerHTML & stamps an inline bg on an interval) can't wipe them; stylesheet !important beats the painter's inline background */
-.pair-icons .pa.lx-ico,.pair-icons .pb.lx-ico{position:absolute!important;top:0;overflow:hidden;padding:0;background-color:var(--mc,#2a2f42)!important;background-image:var(--mi,none)!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important}
-.pair-icons .pa.lx-ico[data-mono]::after,.pair-icons .pb.lx-ico[data-mono]::after{content:attr(data-mono);position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px}
-.pair-icons .pa,.pair-icons .pb{background-image:none!important;overflow:hidden;padding:0}
-.pair-icons .pa img,.pair-icons .pb img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
-/* Typography parity with the rest of the site (e.g. Wallet › My Assets): numeric/value cells + tab counts
-   use JetBrains Mono (tabular), the pair NAME stays Hanken Grotesk. Fixes "Pools text looks different". */
-/* network pool-list pager. #paginationAll ships from the design with a static "1-10 of 100"; its
-   contents are replaced wholesale, so these rules describe the whole footer rather than tweaking it. */
-/* display is deliberately NOT !important. The design's tab handler hides the footer by writing
-   pag.style.display="none" when My Pools is selected, and an !important rule in the stylesheet beats an
-   inline style -- so the pager stayed on screen under the My Pools list. Specificity here is the bug. */
-.lx-netpag{display:flex;align-items:center;justify-content:space-between;gap:13.2px;flex-wrap:wrap;
-  padding:15.4px 4.4px 2.2px;margin-top:6.6px;border-top:1px solid var(--border);
-  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:14.9px;color:var(--text-soft)}
-.lx-netpag .lx-netpag-c{display:flex;align-items:center;gap:6.6px;flex-wrap:wrap}
-.lx-netpag button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
-  padding:6.6px 13.2px;font:inherit;font-weight:600;color:var(--text);cursor:pointer;transition:.16s}
-.lx-netpag button:hover:not(:disabled){border-color:var(--accent-soft)}
-.lx-netpag button:disabled{opacity:.4;cursor:default}
-.lx-netpag .lx-netpag-m{margin:0 8.8px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.lx-netpag .lx-netpag-i{font-variant-numeric:tabular-nums}
-.lx-netpag-host{margin-top:11px}
-@media (max-width:700px){ .lx-netpag{justify-content:center;text-align:center}
-  .lx-netpag .lx-netpag-i{width:100%;text-align:center} }
-#poolsBody td, #lx-mypanel td, #poolTabs .count{font-family:'JetBrains Mono',monospace!important}
-#poolsBody .pair-name, #lx-mypanel .pair-name{font-family:'Hanken Grotesk','Hanken Grotesk',sans-serif!important;font-size:17.1px!important;font-weight:700!important}
-#poolsBody .pair-sub, #lx-mypanel .pair-sub{font-size:13.8px!important}
-/* value cells 19px -> 15px to match Trade "All Trading Pairs" (pair-name 15.5 / sub 12.5 keep their own sizes) */
-#poolsBody td, #lx-mypanel td{font-size:16.5px!important}
-#poolsBody td div:not(.pair-name):not(.pair-sub), #lx-mypanel td div:not(.pair-name):not(.pair-sub){font-size:16.5px!important}
-/* My Positions: after dropping the Fees Earned + Deposited columns, pull "View position" left — fix the data
-   columns to content/size so the View cell (last) absorbs all leftover width and its button sits, left-aligned,
-   right after Pool Share (leftover blank space collapses to the far right of the row, not between the cells) */
-#lx-mypanel table.pools th:nth-child(2),#lx-mypanel table.pools td:nth-child(2){white-space:nowrap;width:1px}
-#lx-mypanel table.pools th:nth-child(3),#lx-mypanel table.pools td:nth-child(3){width:200px}
-#lx-mypanel table.pools th:nth-child(4),#lx-mypanel table.pools td:nth-child(4){width:130px}
-/* The view-position cell is the last column and the table is full-width, so the preceding columns are
-   width-capped above and this one absorbs the slack — left-aligning the button left it stranded mid-row
-   with a wide empty gutter to its right. Pin it to the right edge instead. */
-#lx-mypanel table.pools .lx-viewcell{text-align:right!important;padding-left:11px;padding-right:17.6px;white-space:nowrap}
-.lx-amm-empty{padding:24.2px 13.2px;text-align:center;color:var(--text-muted);font-size:14.9px}
-.lx-amm-empty b{color:var(--text);display:block;margin-bottom:4.4px}
-html:not(.lx-ammready) .pool-header, html:not(.lx-ammready) .pool-layout{visibility:hidden}
-/* The Deposit / Withdraw box has its OWN gate, because .lx-ammready lifts when the pool's own figures
-   land and the wallet-side balances arrive later. In that window the design's baked "Balance: 25,420.18"
-   was on screen -- a number belonging to nobody, beside a MAX button that would have used it. Only the
-   balance line is held, not the panel: the form is usable, it just does not state a balance it does not
-   yet know. paintDetail lifts this the moment it has written the real ones. */
-html:not(.lx-dwready) #dwDeposit .dw-field .balance,html:not(.lx-dwready) #dwWithdraw .balance{visibility:hidden}
-/* the breadcrumb pair (last span in .crumb) is a baked "LUMOS / XLM" mock that pdCopy corrects to the
-   real pair before reveal — hide it until then so it doesn't flash the wrong pair */
-html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
-/* PAIR labels carry a baked "LUMOS / XLM" mock. reveal() fires at 700ms (before the pool fetch resolves) so the
-   mock would flash. Gate the pair TEXT on lx-detpr (added only once paintDetail paints the real pair) — the ico
-   stays visible, only the wrong text is masked. The withdraw "from position" row is re-created on tab switch, so
-   gate it per-element on data-lxpair (set by fixWithdrawPair) instead of the global class. */
-/* Mask EVERY baked LUMOS/XLM mock (text, values, logos) on the detail page until the real paint (lx-detpr).
-   Use visibility:hidden — NOT color:transparent — because the mock hides values inside inline-coloured child
-   spans (the green "+$32.18" PnL) and uses <img> logos, neither of which a text-colour rule can hide. Layout
-   is preserved. The deposit/withdraw asset chips are re-created on tab switch, so they're gated per-element on
-   data-lxpair (set by setField / fixWithdrawPair) instead of the global class. */
-html:not(.lx-detpr) .ph-name,
-html:not(.lx-detpr) .crumb span:last-child,
-html:not(.lx-detpr) .ph-icons .pa, html:not(.lx-detpr) .ph-icons .pb,
-html:not(.lx-detpr) .my-position .mp-amount, html:not(.lx-detpr) .my-position .mp-pnl,
-html:not(.lx-detpr) .my-position .mp-asset-name, html:not(.lx-detpr) .my-position .mp-asset-amt,
-html:not(.lx-detpr) .my-position .mp-asset-ico, html:not(.lx-detpr) .my-position .mp-fee-val,
-html:not(.lx-detpr) .position-share-pill{visibility:hidden!important}
-#dwDeposit .dw-field .row .asset:not([data-lxpair]), #dwWithdraw .dw-field .row .asset:not([data-lxpair]){visibility:hidden!important}
-/* Remaining mock-flash surfaces on the detail page (audit #9/#10/#11): the STAT values (3,420,180 XLM /
-   8,420 / 42.10 mock), the Pool Transactions MOCK rows (0x wallets + 5/26/2026 dates) and the mock
-   Participants (847). Real rows carry .lx-txrow/.lx-partrow — mock rows never do, so hide non-lx rows
-   outright (no timing dependency); stat values reveal with the real paint (lx-detpr). */
-html:not(.lx-detpr) .ph-stat .v, html:not(.lx-detpr) .ph-stat .s{visibility:hidden!important}
-/* AUDIT (user-reported): the header PRICE block was never in this list, so on every pool the top-right
-   showed the baked "0.000713 XLM / $0.000108 per LUMOS" until the real paint — i.e. a yXLM/XLM pool
-   announced a LUMOS price for a few seconds. Same gate as everything else in the header. */
-html:not(.lx-detpr) .ph-price .v,
-html:not(.lx-detpr) .ph-price .s,
-html:not(.lx-detpr) .ph-price .lc-money{visibility:hidden!important}
-.lx-detfail{display:flex;align-items:center;gap:15.4px;flex-wrap:wrap;margin:17.6px 0 0;padding:14.3px 17.6px;border:1px solid rgba(209,84,47,.35);border-left:3px solid #d1542f;border-radius:12px;background:rgba(209,84,47,.07);font-size:14.5px;line-height:1.5;color:var(--text,#0e0e10)}
-.lx-detfail span{flex:1 1 300px}
-.lx-detretry{padding:7.7px 16.5px;border-radius:9px;border:1px solid var(--border-strong,#d5d5dd);background:var(--surface-2,#f6f6f8);color:var(--text,#0e0e10);font:650 13.8px/1 inherit;cursor:pointer}
-.lx-detretry:hover{border-color:#d1542f;color:#d1542f}
-table.tx tbody tr:not(.lx-txrow){display:none!important}
-#partList > *:not(.lx-partrow){display:none!important}
-html:not(.lx-detpr) .side-head .count-pill{visibility:hidden!important}
-/* AUDIT (user-reported, DWARF/SBB): the deposit CTA looked live even when the deposit could not possibly
-   succeed — an AMM deposit needs BOTH sides of the pair, and the user held none of one of them. Grey it out
-   and make it inert so the state is legible BEFORE filling in amounts, instead of erroring only on submit. */
-/* NOT scoped to .dw-card. The phone puts this button in .card > .card-body, so the old
-   ".dw-card .dw-cta.lx-dwoff" never matched there: the CTA was aria-disabled and inert to our handler
-   while still looking and feeling fully enabled. The hint paragraph underneath hid that -- with the
-   paragraph gone the button's own appearance IS the whole message, so it has to be right on both. */
-.dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
-.dw-card .lx-dwhint{margin-top:9.9px;font-size:13.2px;line-height:1.45;color:var(--text-muted);text-align:center}
-/* #6, mobile half. This rule and the display:block one below are both leftovers from when .lm-chip was
-   an ABSOLUTELY POSITIONED decoration floating over the headline -- hiding it below 1100px was the right
-   call for that design. _poolshero.js has since rebuilt the hero as a flex column where the chip is a
-   real strip pinned along the bottom edge, and it sets display:block for exactly this width. But
-   lx-amm-css is emitted AFTER lx-poolshero-css in the head, so with both marked !important this stale
-   one has been winning ever since -- which is why the numbers vanished entirely on a phone.
-   The layout belongs to _poolshero.js now, so this defers to it. */
-/* the design paints a synthetic mock chart on load; hide its data (line/area/bars) until our real engine takes
-   over (lx-chartready), keeping the axis/grid so the plot frame stays visible */
-html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready) #tvlChart svg rect:not(.lx-ch){opacity:0!important}
-/* #11: the gate above covered the line and the bars but not the axis LABELS, which are <text> nodes the
-   engine rewrites in place once it has real data. So while "Loading pool history…" was on screen the
-   scale beside it still read the design's mock numbers -- 5.99M / 3.38M / 2.78M XLM for a pool that
-   holds nothing of the sort -- and they snapped to the real figures when the chart finally drew. That
-   momentary wrong scale is the flash. Hide the numbers with the plot and reveal them together.
-   The loading message is itself an SVG <text> (.lx-chload), and anything we drew carries .lx-ch, so
-   both are excluded: this only ever hides labels that are still showing mock values. */
-html:not(.lx-chartready) #tvlChart svg text:not(.lx-ch):not(.lx-chload){opacity:0!important}
-.ph-icons .pa,.ph-icons .pb,.mp-asset-ico,#dwDeposit .dw-field .asset .ico,#dwWithdraw .asset .ico{background-image:none!important;overflow:hidden}
-.ph-icons .pa img,.ph-icons .pb img,.mp-asset-ico img,.dw-field .asset .ico img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
-.type-pill.deposit{background:rgba(34,197,94,.14)!important;color:#16a34a!important}
-.type-pill.withdraw{background:rgba(239,68,68,.14)!important;color:#ef4444!important}
-.lx-partrow{display:flex;align-items:center;gap:11px}
-.lx-acct:hover{color:var(--accent)!important}
-.lx-partrow .part-addr{flex:1;font-family:'JetBrains Mono',monospace;font-size:14.3px}
-.lx-partrow .part-share{font-weight:700;font-size:15.4px!important}
-/* pool detail: remove the design's green endpoint dot on the TVL chart */
-#tvlChart circle{display:none!important}
-/* Participants pager. We APPEND this footer ourselves, and the design only ships .part-foot styling in the
-   desktop file -- the phone build has no .part-foot rule at all, so on mobile it rendered as two stacked
-   unstyled divs with bare chevrons overflowing the card. Styled on our own class so it stands up wherever
-   it is inserted; the values mirror the desktop rules so both look the same. */
-.lx-partfoot{display:flex!important;justify-content:space-between;align-items:center;gap:11px;flex-wrap:wrap;
-  padding:11px 15.4px;border-top:1px solid var(--border);font-size:14.3px;color:var(--text-soft);
-  font-family:'Hanken Grotesk',system-ui,sans-serif}
-.lx-partfoot > div:first-child{font-variant-numeric:tabular-nums}
-.lx-partfoot .nav{display:inline-flex;align-items:center;gap:6.6px}
-.lx-partfoot .nav button{width:26px;height:26px;min-width:26px;padding:0;border-radius:6px;
-  border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;
-  display:inline-flex;align-items:center;justify-content:center;font-size:16.5px;line-height:1}
-.lx-partfoot .nav button:hover:not(:disabled){color:var(--accent);border-color:var(--accent)}
-.lx-partfoot .nav button:disabled{opacity:.4;cursor:default}
-.lx-partfoot .lx-pppg{font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 2.2px}
-/* The "Pool TVL / Volume" dropdown chose which of the two series to show, so they were never on screen
-   together. They now share one chart -- TVL line with volume bars beneath it, same as Trade-asset -- which
-   leaves this control with nothing to switch between. Hidden rather than deleted from the markup: the
-   design ships its own open/close handler and label rewriting for it, and removing the node it expects is
-   how you get a handler throwing on every click.
-
-   NOT scoped to .chart-card. That is where the desktop puts it; the phone puts it in
-   .card > .chart-controls, so a ".chart-card ..." rule hid it on desktop only and left it sitting on
-   mobile. This is the SECOND selector in this file written against the desktop's wrapper and silently
-   missing the phone's (the disabled-CTA rule was the first) -- on this page, scope to the element.
-
-   #chartMetricMenu / .chart-mode-menu is the menu the design's own script builds and appends; with the
-   trigger gone nothing should open it, but a stale "open" class would otherwise leave it on screen. */
-.chart-mode-select,#chartMetricMenu,.chart-mode-menu{display:none!important}
-/* pool-tx wallet address links to OUR account page — subtle hover underline */
-.lx-sortag{display:inline-block;margin-left:7.7px;padding:1.1px 7.7px;border-radius:999px;font-size:11.6px;
-font-weight:700;letter-spacing:.02em;background:var(--surface);border:1px solid var(--border);color:var(--text-soft);vertical-align:middle}
-.lx-nolink{cursor:default}
-.lx-nolink:hover .lx-waddr{text-decoration:none}
-table.tx .wallet-cell{cursor:pointer}
-table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
-/* pagination row: vertically center "Page X of Y" with the Prev/Next buttons */
-.controls{align-items:center!important}
-/* Pools hero: animated dark cosmic cover (both themes) — replaces inject_livemarket's orange streams */
-.lumos-promo.lm-on.lm-pools{min-height:366px!important;overflow:hidden;background:radial-gradient(58% 84% at 70% 30%,rgba(140,96,246,.26),transparent 60%),radial-gradient(46% 64% at 92% 78%,rgba(198,86,232,.14),transparent 62%),radial-gradient(52% 68% at 24% 90%,rgba(74,110,224,.12),transparent 62%),linear-gradient(140deg,#0f1120 0%,#0a0a15 55%,#070610 100%)!important}
-.lm-pools .lm{min-height:366px!important}
-.lm-pools .lm-streams,.lm-pools .lm-svg,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
-.lm-pools .lm::after{background:linear-gradient(100deg,rgba(9,9,18,.66) 12%,rgba(9,9,18,.16) 46%,transparent 72%)!important;z-index:2!important}
-/* bigger text, forced light so it stays readable on the dark card in LIGHT theme too */
-.lm-pools .lm-c-pool{position:relative;z-index:4;padding-top:23.1px}
-.lm-pools .lm-h{font-size:41.8px!important;line-height:1.08!important;color:#fff!important;margin-bottom:14.3px!important;letter-spacing:-.01em}
-.lm-pools .lm-sub{font-size:17.1px!important;line-height:1.55!important;max-width:380px!important;color:rgba(228,230,245,.76)!important;margin-bottom:24.2px!important}
-.lm-pools .lm-cta{font-size:16px!important;padding:14.3px 24.2px!important}
-.lm-pools .lm-chip{z-index:4!important;background:rgba(16,15,32,.62)!important;border:1px solid rgba(255,255,255,.12)!important;backdrop-filter:blur(6px);padding:23.1px 29.7px!important;min-width:0;width:max-content;max-width:360px}
-.lm-pools .lm-chip .p1,.lm-pools .lm-chip .p2,.lm-pools .lm-chip .p3{display:none!important}
-.lx-hstats{display:grid;grid-template-columns:auto auto;gap:22px 26.4px}
-.lx-hstat{display:flex;flex-direction:column;gap:4.4px;min-width:0}
-.lx-hstat .v{font:800 31.9px/1.05 'Hanken Grotesk',sans-serif;color:#fff;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lx-hstat .l{font:600 14.3px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)}
-/* Top Pool stat: show the pair logos beside the "CODE / XLM" text */
-.lx-hstat[data-k=top] .v{display:flex;align-items:center;gap:13.2px}
-/* #2: the top-pool code was hidden behind its own second logo.
-   Six rules from four stylesheets size this element, and one of them -- added later, for the pair marks
-   elsewhere -- sets gap:6.6px on [data-paired]. The nudge below (.pb{left:23px}) was written for a
-   container with no gap, so the second mark ended up 33+6+23 = 62px in, inside a box declared 57px wide,
-   and jutted far enough past it to sit on the U of "USDC / XLM".
-   Overlap the two by geometry instead of by a nudge that assumes a particular flow: no gap, a negative
-   margin, and no offset. The box is then exactly as wide as what is in it, and the text starts after it. */
-.lx-hstat[data-k=top] .pair-icons{width:auto!important;flex:0 0 auto!important;gap:0!important;height:33px}
-.lx-hstat[data-k=top] .pair-icons .pa.lx-ico,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{width:33px!important;height:33px!important;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box;box-shadow:0 3px 8px rgba(0,0,0,.4)}
-.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:0!important;margin-left:-11px!important}
-.lx-hstat[data-k=top] .pair-icons .pa.lx-ico[data-mono]::after,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico[data-mono]::after{font-size:14.3px}
-.lx-hstat[data-k=top] .lx-toptxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:22px}
-/* #29: the pool page's own header pair -- two 44px logos with a 6px gap between them, reading as two
-   unrelated tokens rather than one pair. Everywhere else a pair is drawn overlapping, so this was the
-   odd one out. Both already carry a 3px ring, which is what makes the overlap legible; the base asset
-   stays on top so the pair reads left to right in the same order as the name beside it. */
-/* #9: and the box has to BE a row. On the phone the design lays .ph-icons out as display:block, so the
-   two 44px marks stacked -- the second one landing 44px below the first, on top of the text under it.
-   The overlap rule below is a no-op in block layout, which is why it read as a broken logo rather than
-   a pair. Measured before: pa at y141, pb at y185, inside a 60px-wide box. */
-.pool-header .ph-icons{display:flex!important;align-items:center;flex-wrap:nowrap;width:auto!important;gap:0!important}
-.pool-header .ph-icons .pa{position:relative;z-index:2}
-.pool-header .ph-icons .pb{position:relative;z-index:1;left:0!important;margin-left:4.4px!important}
-/* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
-.lx-ammview{display:inline-flex;align-items:center;gap:5.5px;padding:7.7px 16.5px;border-radius:9px;font:700 13.8px/1 'Hanken Grotesk',sans-serif;text-decoration:none!important;white-space:nowrap;border:1px solid rgba(234,106,44,.38);color:var(--accent,#ea6a2c)!important;background:rgba(234,106,44,.10);transition:background .15s ease,color .15s ease,border-color .15s ease}
-.lx-ammview:hover{background:var(--accent,#ea6a2c);color:#fff!important;border-color:var(--accent,#ea6a2c)}
-.pair-icons .pa .lx-mono{display:grid;place-items:center;width:100%;height:100%;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px;border-radius:50%}
-/* Pool Transactions pager, phone. The design ships a .tx-foot on desktop and nothing here, so this is
-   built to match it: same wording, same Prev / Page N of M / Next, sized for a thumb (44px targets). */
-.lx-txfoot-m{display:flex;align-items:center;justify-content:space-between;gap:11px;padding:13.2px 15.4px;border-top:1px solid var(--border);font-size:13.2px;color:var(--text-muted)}
-.lx-txfoot-m .controls{display:inline-flex;align-items:center;gap:4.4px;flex:0 0 auto}
-.lx-txfoot-m button{min-height:34px;padding:8.8px 12.1px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text);font:600 13.2px/1 'Hanken Grotesk',sans-serif;-webkit-tap-highlight-color:transparent}
-.lx-txfoot-m button:disabled{opacity:.4}
-.lx-txfoot-m .lx-txpg{margin:0 7.7px;white-space:nowrap;font-size:13.2px;color:var(--text-muted)}
-.lx-txfoot-m .lx-txinfo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* injected cosmic decor (nebulae drift, orb floats, particles rise, stars twinkle) */
-.lx-cosmic{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-.lx-neb{position:absolute;border-radius:50%;filter:blur(50px);mix-blend-mode:screen;will-change:transform}
-.lx-neb.n1{width:600px;height:470px;right:-70px;top:-130px;background:radial-gradient(circle,rgba(140,96,246,.62),transparent 66%);animation:lxNeb1 30s ease-in-out infinite alternate}
-.lx-neb.n2{width:480px;height:430px;right:150px;bottom:-180px;background:radial-gradient(circle,rgba(206,88,236,.44),transparent 66%);animation:lxNeb2 36s ease-in-out infinite alternate}
-.lx-neb.n3{width:410px;height:340px;left:32%;top:4%;background:radial-gradient(circle,rgba(72,120,232,.34),transparent 66%);animation:lxNeb1 33s ease-in-out infinite alternate-reverse}
-@keyframes lxNeb1{from{transform:translate(0,0) scale(1)}to{transform:translate(-48px,36px) scale(1.18)}}
-@keyframes lxNeb2{from{transform:translate(0,0) scale(1)}to{transform:translate(54px,-32px) scale(1.12)}}
-.lx-stars{position:absolute;inset:0;animation:lxTw 7s ease-in-out infinite;background-repeat:no-repeat;background-image:
-radial-gradient(1.6px 1.6px at 17% 24%,rgba(255,255,255,.9),transparent 60%),
-radial-gradient(1.3px 1.3px at 61% 16%,rgba(255,255,255,.62),transparent 60%),
-radial-gradient(1.7px 1.7px at 83% 52%,rgba(255,255,255,.74),transparent 60%),
-radial-gradient(1.1px 1.1px at 45% 66%,rgba(255,255,255,.5),transparent 60%),
-radial-gradient(1.4px 1.4px at 93% 30%,rgba(255,255,255,.64),transparent 60%),
-radial-gradient(1.2px 1.2px at 34% 44%,rgba(255,255,255,.5),transparent 60%),
-radial-gradient(1.5px 1.5px at 73% 80%,rgba(255,255,255,.58),transparent 60%),
-radial-gradient(1px 1px at 55% 90%,rgba(255,255,255,.42),transparent 60%),
-radial-gradient(1.3px 1.3px at 12% 66%,rgba(255,255,255,.52),transparent 60%),
-radial-gradient(1.6px 1.6px at 70% 40%,rgba(255,255,255,.66),transparent 60%),
-radial-gradient(1.1px 1.1px at 88% 66%,rgba(255,255,255,.46),transparent 60%),
-radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
-@keyframes lxTw{0%,100%{opacity:.6}50%{opacity:1}}
-.lx-constel{position:absolute;right:3%;top:50%;transform:translateY(-50%);width:330px;height:330px;opacity:.95;pointer-events:none;animation:lxConFloat 12s ease-in-out infinite}
-@keyframes lxConFloat{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 12px))}}
-.lx-constel line{stroke:rgba(150,120,240,.26);stroke-width:1}
-.lx-constel circle{fill:#cbbaff;filter:drop-shadow(0 0 5px rgba(168,128,255,.9));animation:lxNode 4.5s ease-in-out infinite}
-@keyframes lxNode{0%,100%{opacity:.5}50%{opacity:1}}
-/* #6/#2, desktop half. Same story as the mobile rule above: this forced the hero back to block so the
-   copy would top-align with the floating chip. _poolshero.js now lays the hero out as a flex column and
-   puts the strip last with order:9 -- but order does nothing in a block container, so the strip rendered
-   in DOM order, i.e. ABOVE the headline, and the Pools hero stopped matching the Trade hero it is meant
-   to mirror. Removing it lets that flex layout actually apply. */
-.lx-part{position:absolute;border-radius:50%;background:rgba(214,196,255,.85);box-shadow:0 0 9px rgba(172,132,255,.9);animation:lxDrift linear infinite}
-.lx-part.p1{width:5px;height:5px;left:57%;bottom:14%;animation-duration:15s}
-.lx-part.p2{width:4px;height:4px;left:74%;bottom:8%;animation-duration:19s;animation-delay:-4s}
-.lx-part.p3{width:6px;height:6px;left:66%;bottom:22%;animation-duration:23s;animation-delay:-9s}
-.lx-part.p4{width:3px;height:3px;left:85%;bottom:12%;animation-duration:17s;animation-delay:-2s}
-@keyframes lxDrift{0%{transform:translateY(20px);opacity:0}12%{opacity:1}86%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
-#poolsBody tr td:last-child,#panelAllPools thead th:last-child{text-align:center!important}
-#lx-mypanel{opacity:1!important;visibility:visible!important;animation:none!important}
-/* lx-poolsweight: match the Trade tables. Pools body numbers computed to font-weight 400 while the
-   Trade tables render theirs at 700 (both JetBrains Mono), so the two sections read as different
-   typefaces. Only the PRIMARY numeric line is bolded — the $ sub-line under it stays lighter, which
-   is how Trade does it too. Columns 1-2 (# and PAIR) are left alone; :last-child covers Participants,
-   which is bare text in the td with no inner div. */
-table.pools tbody tr.lx-ammrow td:nth-child(n+3)>div:first-child,
-table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
-
-/* My Position asset logos. We insert a real <img> into the design's 24px .mpm-asset-ico bubble, but the
-   phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
-   inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
-   placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
-/* #6 (batch 5): the participants footer ships baked as "Viewing 1 - 17 of 847" -- the design's mock --
-   and on a desktop refresh that sat there for the whole time the pool was loading, which is a specific
-   wrong number rather than an obviously empty one. Hidden until our own pager writes it (.lx-partfoot
-   is added by partFoot), with the usual failsafe so a stalled load leaves it blank rather than gone. */
-.part-foot:not(.lx-partfoot){visibility:hidden}
-
-/* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
-   across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
-   (24h)", so it folds to 2x2 there instead. */
-.ph-stats{grid-template-columns:repeat(4,1fr)!important}
-/* #20: the + between the two Create Pool assets sits ON the seam between the cards, so it depends on
-   having a solid ground of its own and on being above them -- without either it reads as a glyph
-   caught half under an edge. Given both, plus a glyph that is centred by geometry rather than by line
-   box (an svg with display:block cannot inherit a stray baseline). Could not reproduce the exact
-   breakage reported, so this changes only what could plausibly cause it and nothing else. */
-#createPoolModal .plus{position:relative;z-index:2;flex:0 0 30px;width:30px;height:30px;
-  background:var(--surface,#fff)!important;line-height:0;
-  display:flex!important;align-items:center!important;justify-content:center!important}
-#createPoolModal .plus svg{display:block;width:14px;height:14px;flex:0 0 14px}
-.ph-stat .ic.part{background:var(--purple-soft,rgba(139,92,246,.13));color:var(--purple,#8b5cf6)}
-@media(max-width:900px){.ph-stats{grid-template-columns:repeat(2,1fr)!important}}
-
-.mp-asset-ico img,.mpm-asset-ico img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
-.mpm-asset-ico{overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
-
-/* Trailing explorer arrow on a phone transaction row (desktop has one per table row). */
-.tx-item .lx-txext{flex-shrink:0;margin-left:8.8px;align-self:center;color:var(--text-muted);display:inline-flex;
-  align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;text-decoration:none}
-/* identicon fills the icon slot edge to edge; the design tints that slot per type, which would show
-   through the identicon's transparent corners */
-.tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
-.tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
-.tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-amm-css">/*lxts:1.1*/
-/* ---- the three pool stat cards, as one set ---------------------------------------------------- */
-/* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
-   onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
-   to the 18px value to compete with it -- carrying a run-on of three facts. So: the value shrinks to
-   fit rather than wrapping, the sub-line steps back to a quiet single line, and every card reserves
-   the same sub-line height so three cards line up even when one has nothing to say there. */
-.ph-stats .ph-stat{display:flex;flex-direction:column}
-.ph-stat .v{white-space:nowrap;font-size:clamp(16.5px,1.35vw,19.8px);font-weight:800;letter-spacing:-.2px}
-.ph-stat .s{font-size:13.2px;margin-top:3.3px;min-height:15px;white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;color:var(--text-soft)}
-@media(max-width:880px){
-/* Three across does not fit a phone once the values stop wrapping -- measured 374px of cards in a
-   323px column, which is what made the page pan sideways. Two columns, and nothing that refuses to
-   shrink inside them. */
-.ph-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
-.ph-stats .ph-stat{min-width:0}
-.ph-stat .v{font-size:17.6px;white-space:normal}
-.ph-stat .s{font-size:12.7px}
-}
-/* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
-#createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
-/* AUDIT (user-reported): the Create Pool MAX control is a bare <span> — it fires, but the design gives it no
-   cursor, hover or hit padding, so it reads as decoration and people assume it is broken. */
-#createPoolModal .field-foot .max-btn{cursor:pointer;user-select:none;padding:2.2px 7.7px;margin:-2.2px -7.7px;border-radius:6px;transition:background .14s,color .14s}
-#createPoolModal .field-foot .max-btn:hover{background:rgba(234,106,44,.14);color:var(--accent,#ea6a2c)}
-#createPoolModal .field-foot .max-btn:active{background:rgba(234,106,44,.24)}
-#createPoolModal .lx-cpwarn{margin:8.8px 2.2px 0;font-size:13.8px;line-height:1.45;color:#c9791f}
-/* success toast — same look as the site's "Copied to clipboard" toast (self-contained) */
-.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8.8px;align-items:center;pointer-events:none}
-.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:12.1px 19.8px 12.1px 15.4px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:17.6px;font-weight:600;display:inline-flex;align-items:center;gap:9.9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
-.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
-.lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}
-/* The stack is pointer-events:none so a toast never blocks the page underneath — but that also made the
-   explorer link inside it unclickable, which is why "view" appeared to lead nowhere. Re-enable pointer
-   events on the LINK only, so the rest of the toast stays click-through. */
-.lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
-@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
-html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
-/* #24: the cold-start overlay.
-   The ranking is built by an endpoint that walks the whole network in resumable steps and answers
-   {warming, scanned, phase} until it is done -- on a cold cache that is roughly twenty-five seconds.
-   For that whole time the page sat masked and empty, which reads as broken rather than as working.
-   Reduced motion drops the pulse and the fades; it does NOT gate the dismissal, which is a class and a
-   removal, so the overlay can never be left on screen by a motion preference. */
-/* Pool Activity chart: the SVG takes no pointer input, so every mouse and touch lands on #tvlChart.
-   The hover listeners are on that host, and a touch TARGET is sticky for the life of the gesture --
-   whichever node touchstart hit keeps receiving touchmove. Starting a drag on the filled area therefore
-   bound the gesture to the gradient <path>, and that path is REPLACED on the next chart repaint, which
-   orphaned the drag and killed the readout mid-swipe. Starting on the empty part above the line bound it
-   to the host instead, which is never replaced -- which is exactly why it worked there and nowhere else.
-   With the SVG transparent to input the target is always the host, so it cannot happen at all. The
-   overlay divs already carry pointer-events:none for the same reason. */
-#tvlChart svg,#tvlChart svg *{pointer-events:none}
-.lx-boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);
-  opacity:1;transition:opacity .28s ease}
-.lx-boot.lx-boot-out{opacity:0;pointer-events:none}
-.lx-boot-in{display:flex;flex-direction:column;align-items:center;gap:17.6px;padding:26.4px;text-align:center}
-.lx-boot-badge{position:relative;width:96px;height:96px;display:grid;place-items:center}
-.lx-boot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;
-  background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);
-  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
-  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
-  animation:lx-boot-spin 1.15s linear infinite;opacity:.9}
-.lx-boot-badge::after{content:"";position:absolute;inset:8px;border-radius:50%;
-  background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-boot-pulse 1.8s ease-in-out infinite}
-@keyframes lx-boot-spin{to{transform:rotate(360deg)}}
-.lx-boot-mark{position:relative;z-index:1;width:52px;height:52px;background-size:contain;background-repeat:no-repeat;
-  background-position:center;animation:lx-boot-pulse 1.6s ease-in-out infinite}
-.lx-boot-ttl{font-family:'Hanken Grotesk',sans-serif;font-size:16.5px;font-weight:700;color:var(--text,#0e0e10)}
-.lx-boot-bar{width:216px;height:4px;border-radius:99px;background:var(--border,#ececef);overflow:hidden}
-.lx-boot-fill{height:100%;width:0;background:var(--accent,#ea6a2c);border-radius:99px;transition:width .45s ease}
-.lx-boot-sub{font-family:'JetBrains Mono',monospace;font-size:12.1px;letter-spacing:.04em;
-  color:var(--text-soft,#6f6f79);font-variant-numeric:tabular-nums}
-@keyframes lx-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.6}}
-@media (prefers-reduced-motion:reduce){.lx-boot-mark,.lx-boot-badge::before,.lx-boot-badge::after{animation:none}
-  .lx-boot,.lx-boot-fill{transition:none}}
-/* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
-   written paintTables filled both and revealed after. The network list changed that: the rows now arrive
-   from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
-   until they landed. Same treatment as the desktop body. */
-html:not(.lx-ammready) #panelAll{visibility:hidden}
-/* #39: the Top Pool slot showed "( )" for a beat on the phone. That is its own skeleton -- two ringed
-   circles overlapping at phone scale read as a pair of brackets, which looks like a rendering fault
-   rather than a placeholder. The slot stays blank until there is a real pair to put in it; the label
-   under it already says what is coming. */
-html:not(.lx-ammready) .lx-hstat[data-k=top] .v{visibility:hidden}
-/* #10: remote pool results, kept visually distinct from the page's own ranked list so it is obvious
-   these came from a search rather than from the top-25 ranking. */
-.lx-psresult{margin-top:15.4px}
-/* #41: self-contained appearance for a network result, so it never depends on .pool-card existing.
-   :where() = zero specificity, so the phone's own .pool-card rules still win there. */
-:where(.lx-psresult .lx-pscard){display:block;margin:0 0 8.8px;padding:13.2px 15.4px;text-decoration:none;
-  color:inherit;border:1px solid var(--border,#e6e6ea);border-radius:12px;background:var(--surface,#fff)}
-:where(.lx-psresult .lx-pscard:hover){border-color:var(--accent,#ea6a2c)}
-:where(.lx-psresult .lx-pscard .pc-head){display:flex;align-items:center;gap:11px;margin-bottom:9.9px}
-:where(.lx-psresult .lx-pscard .pc-name){font-size:16px;font-weight:700;color:var(--text,#0e0e10)}
-:where(.lx-psresult .lx-pscard .pc-sub){margin-top:2.2px;font-size:13.2px;color:var(--text-soft,#9a9aa3)}
-:where(.lx-psresult .lx-pscard .pc-stats){display:flex;gap:28.6px}
-:where(.lx-psresult .lx-pscard .pc-stat .l){font-size:11px;font-weight:600;letter-spacing:.05em;
-  text-transform:uppercase;color:var(--text-soft,#9a9aa3)}
-:where(.lx-psresult .lx-pscard .pc-stat .v){margin-top:2.2px;font-size:14.9px;font-weight:700;
-  color:var(--text,#0e0e10);font-variant-numeric:tabular-nums}
-.lx-pshead{margin:0 0 8.8px;font-size:11.6px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}
-.lx-psnote{padding:17.6px 4.4px;text-align:center;font-size:14.3px;color:var(--text-soft)}
-/* POOL-DETAIL TAB STRIPS ON A PHONE.
-   #ptabs measures 432px of tabs inside a 345px box, so "Participants" sits past the right edge and is
-   simply unreachable — on a narrower handset "Transactions" and "My Position" go with it. The strip is
-   overflow:auto on BOTH axes too, so instead of doing nothing a tap drags the row (the same defect the
-   Trade-asset tab strip had). Deposit/Withdraw is the same shape: two fixed 152px buttons, 304px of
-   content that stops fitting below ~330px of viewport.
-   Fix both the way the Trade strip was fixed: the tabs SHARE the width and the row cannot scroll at all.
-   overflow must be set on both axes — one non-visible axis forces the other to auto, which is what made
-   it draggable vertically. */
-@media (max-width:760px){
-  #ptabs.panel-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important;gap:0!important;padding-bottom:2.2px}
-  /* size to content, share what is left: equal quarters clipped "Deposit / Withdraw", which is much longer
-     than the other three. The four together measure ~333px inside 345px, so they all fit unclipped; the
-     min-width:0 + ellipsis below is the safety net for a narrower handset. */
-  #ptabs.panel-tabs>*{flex:1 1 auto!important;min-width:0!important;padding-left:3.3px!important;padding-right:3.3px!important;
-    font-size:12.1px!important;letter-spacing:-.1px;white-space:nowrap;text-align:center;justify-content:center!important;overflow:hidden;text-overflow:ellipsis}
-  .dw-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important}
-  .dw-tabs>*{flex:1 1 0!important;min-width:0!important;white-space:nowrap}
-}
-/* Small handsets (iPhone SE and friends): at 11px the four labels want ~302px inside a 290px strip, so
-   every one of them ellipsised by a few pixels. A step down to 10px needs ~269px and they read in full. */
-@media (max-width:359px){
-  #ptabs.panel-tabs>*{font-size:11px!important;padding-left:2.2px!important;padding-right:2.2px!important}
-}
-/* Market Overview box: show its structure (title/labels) instantly; only the value+sub cells shimmer as a
-   skeleton until real data lands — so the box never sits blank for ~2s and never flashes mock numbers. */
-/* Skeleton the RIGHT-side dynamic cells (value + vsub). The left label/sub are static design text.
-   The vsub holds the mock $ (and an .lc-money the site re-stamps) — earlier it wasn't covered, so the
-   24H-Volume figure flashed a mock value before real data. */
-/* white-space:nowrap + overflow:hidden are ESSENTIAL: during load these cells still hold the design's
-   MOCK text (e.g. "51,250 XLM swapped") which wraps to 2 lines in the narrow column and makes the whole
-   top section ~40px taller until real (short) data lands. One-lining the skeleton keeps height stable. */
-/* Market Overview began at exactly the pixel the pools card ended -- 1378 to 1378, no gap at all -- so
-   the two read as one broken block. The separation was never its own: it came from the pagination row
-   between them, which is display:none on the My Pools tab, so the collision appeared there and nowhere
-   else. 22px is the gap this page already uses between its other cards, and it belongs to the card
-   rather than to whatever happens to precede it. */
-.amm-snapshot-card{margin-top:24.2px}
-html:not(.lx-ammready) .amm-snapshot-value, html:not(.lx-ammready) .amm-snapshot-vsub, html:not(.lx-ammready) .amm-snapshot-sub{color:transparent!important;border-radius:6px;white-space:nowrap!important;overflow:hidden!important;background:linear-gradient(90deg,rgba(148,140,200,.10) 25%,rgba(148,140,200,.22) 37%,rgba(148,140,200,.10) 63%)!important;background-size:400% 100%!important;animation:lxShim 1.3s ease-in-out infinite}
-/* width-only constraints — do NOT add margin/display here or the skeleton rows grow taller than the
-   ready rows and the whole top section visibly shrinks ~40px when data lands */
-html:not(.lx-ammready) .amm-snapshot-value{max-width:96px}
-html:not(.lx-ammready) .amm-snapshot-vsub{max-width:120px}
-html:not(.lx-ammready) .amm-snapshot-sub{max-width:120px}
-/* also hide EVERY child of the value/vsub/sub cells (unit span, .lc-money with its re-stamped data-orig mock,
-   the mock caption text) so nothing bleeds through the shimmer while loading — this was the residual flash */
-html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapshot-vsub *, html:not(.lx-ammready) .amm-snapshot-sub *{color:transparent!important;background:transparent!important;text-shadow:none!important}
-@keyframes lxShim{0%{background-position:100% 0}100%{background-position:0 0}}
-.lx-hstat .v .lx-hskel{display:inline-block;width:44px;height:24px;border-radius:6px;color:transparent!important;vertical-align:middle;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
-.lx-hstat[data-k=top] .lx-toptxt.lx-hskel{width:92px;height:22px}
-.lx-hstat[data-k=top] .lx-hpairskel{display:inline-flex;flex:0 0 auto}
-.lx-hstat[data-k=top] .lx-hpairskel .pa,.lx-hstat[data-k=top] .lx-hpairskel .pb{width:33px;height:33px;border-radius:50%;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
-.lx-hstat[data-k=top] .lx-hpairskel .pb{margin-left:-12.1px;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box}
-/* Market Overview: match the "New Mints on Stellar" (Trade page) typography scale so the two cards feel
-   the same — label like .dex-mint-name (15.5/700), value like .dex-mint-mc (15/700), subs 13/12.5 soft. */
-.amm-snapshot-label{font-size:17.1px!important;font-weight:700!important;line-height:1.2!important;letter-spacing:.2px!important;text-transform:none!important;color:var(--text)!important}
-.amm-snapshot-value{font-size:16.5px!important;font-weight:700!important;letter-spacing:normal!important;line-height:1.2!important}
-.amm-snapshot-sub{font-size:14.3px!important;margin-top:2.2px!important}
-.amm-snapshot-vsub{font-size:13.8px!important;margin-top:2.2px!important}
-.amm-snapshot-row{padding:11px 8.8px!important}
-.amm-snapshot-ic.fees{background:rgba(245,158,11,.15)!important;color:#f59e0b!important}
-/* token/pair icons rendered ENTIRELY via CSS custom-props + ::after so the site logo-painter (which clears innerHTML & stamps an inline bg on an interval) can't wipe them; stylesheet !important beats the painter's inline background */
-.pair-icons .pa.lx-ico,.pair-icons .pb.lx-ico{position:absolute!important;top:0;overflow:hidden;padding:0;background-color:var(--mc,#2a2f42)!important;background-image:var(--mi,none)!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important}
-.pair-icons .pa.lx-ico[data-mono]::after,.pair-icons .pb.lx-ico[data-mono]::after{content:attr(data-mono);position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px}
-.pair-icons .pa,.pair-icons .pb{background-image:none!important;overflow:hidden;padding:0}
-.pair-icons .pa img,.pair-icons .pb img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
-/* Typography parity with the rest of the site (e.g. Wallet › My Assets): numeric/value cells + tab counts
-   use JetBrains Mono (tabular), the pair NAME stays Hanken Grotesk. Fixes "Pools text looks different". */
-/* network pool-list pager. #paginationAll ships from the design with a static "1-10 of 100"; its
-   contents are replaced wholesale, so these rules describe the whole footer rather than tweaking it. */
-/* display is deliberately NOT !important. The design's tab handler hides the footer by writing
-   pag.style.display="none" when My Pools is selected, and an !important rule in the stylesheet beats an
-   inline style -- so the pager stayed on screen under the My Pools list. Specificity here is the bug. */
-.lx-netpag{display:flex;align-items:center;justify-content:space-between;gap:13.2px;flex-wrap:wrap;
-  padding:15.4px 4.4px 2.2px;margin-top:6.6px;border-top:1px solid var(--border);
-  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:14.9px;color:var(--text-soft)}
-.lx-netpag .lx-netpag-c{display:flex;align-items:center;gap:6.6px;flex-wrap:wrap}
-.lx-netpag button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
-  padding:6.6px 13.2px;font:inherit;font-weight:600;color:var(--text);cursor:pointer;transition:.16s}
-.lx-netpag button:hover:not(:disabled){border-color:var(--accent-soft)}
-.lx-netpag button:disabled{opacity:.4;cursor:default}
-.lx-netpag .lx-netpag-m{margin:0 8.8px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.lx-netpag .lx-netpag-i{font-variant-numeric:tabular-nums}
-.lx-netpag-host{margin-top:11px}
-@media (max-width:700px){ .lx-netpag{justify-content:center;text-align:center}
-  .lx-netpag .lx-netpag-i{width:100%;text-align:center} }
-#poolsBody td, #lx-mypanel td, #poolTabs .count{font-family:'JetBrains Mono',monospace!important}
-#poolsBody .pair-name, #lx-mypanel .pair-name{font-family:'Hanken Grotesk','Hanken Grotesk',sans-serif!important;font-size:17.1px!important;font-weight:700!important}
-#poolsBody .pair-sub, #lx-mypanel .pair-sub{font-size:13.8px!important}
-/* value cells 19px -> 15px to match Trade "All Trading Pairs" (pair-name 15.5 / sub 12.5 keep their own sizes) */
-#poolsBody td, #lx-mypanel td{font-size:16.5px!important}
-#poolsBody td div:not(.pair-name):not(.pair-sub), #lx-mypanel td div:not(.pair-name):not(.pair-sub){font-size:16.5px!important}
-/* My Positions: after dropping the Fees Earned + Deposited columns, pull "View position" left — fix the data
-   columns to content/size so the View cell (last) absorbs all leftover width and its button sits, left-aligned,
-   right after Pool Share (leftover blank space collapses to the far right of the row, not between the cells) */
-#lx-mypanel table.pools th:nth-child(2),#lx-mypanel table.pools td:nth-child(2){white-space:nowrap;width:1px}
-#lx-mypanel table.pools th:nth-child(3),#lx-mypanel table.pools td:nth-child(3){width:200px}
-#lx-mypanel table.pools th:nth-child(4),#lx-mypanel table.pools td:nth-child(4){width:130px}
-/* The view-position cell is the last column and the table is full-width, so the preceding columns are
-   width-capped above and this one absorbs the slack — left-aligning the button left it stranded mid-row
-   with a wide empty gutter to its right. Pin it to the right edge instead. */
-#lx-mypanel table.pools .lx-viewcell{text-align:right!important;padding-left:11px;padding-right:17.6px;white-space:nowrap}
-.lx-amm-empty{padding:24.2px 13.2px;text-align:center;color:var(--text-muted);font-size:14.9px}
-.lx-amm-empty b{color:var(--text);display:block;margin-bottom:4.4px}
-html:not(.lx-ammready) .pool-header, html:not(.lx-ammready) .pool-layout{visibility:hidden}
-/* The Deposit / Withdraw box has its OWN gate, because .lx-ammready lifts when the pool's own figures
-   land and the wallet-side balances arrive later. In that window the design's baked "Balance: 25,420.18"
-   was on screen -- a number belonging to nobody, beside a MAX button that would have used it. Only the
-   balance line is held, not the panel: the form is usable, it just does not state a balance it does not
-   yet know. paintDetail lifts this the moment it has written the real ones. */
-html:not(.lx-dwready) #dwDeposit .dw-field .balance,html:not(.lx-dwready) #dwWithdraw .balance{visibility:hidden}
-/* the breadcrumb pair (last span in .crumb) is a baked "LUMOS / XLM" mock that pdCopy corrects to the
-   real pair before reveal — hide it until then so it doesn't flash the wrong pair */
-html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
-/* PAIR labels carry a baked "LUMOS / XLM" mock. reveal() fires at 700ms (before the pool fetch resolves) so the
-   mock would flash. Gate the pair TEXT on lx-detpr (added only once paintDetail paints the real pair) — the ico
-   stays visible, only the wrong text is masked. The withdraw "from position" row is re-created on tab switch, so
-   gate it per-element on data-lxpair (set by fixWithdrawPair) instead of the global class. */
-/* Mask EVERY baked LUMOS/XLM mock (text, values, logos) on the detail page until the real paint (lx-detpr).
-   Use visibility:hidden — NOT color:transparent — because the mock hides values inside inline-coloured child
-   spans (the green "+$32.18" PnL) and uses <img> logos, neither of which a text-colour rule can hide. Layout
-   is preserved. The deposit/withdraw asset chips are re-created on tab switch, so they're gated per-element on
-   data-lxpair (set by setField / fixWithdrawPair) instead of the global class. */
-html:not(.lx-detpr) .ph-name,
-html:not(.lx-detpr) .crumb span:last-child,
-html:not(.lx-detpr) .ph-icons .pa, html:not(.lx-detpr) .ph-icons .pb,
-html:not(.lx-detpr) .my-position .mp-amount, html:not(.lx-detpr) .my-position .mp-pnl,
-html:not(.lx-detpr) .my-position .mp-asset-name, html:not(.lx-detpr) .my-position .mp-asset-amt,
-html:not(.lx-detpr) .my-position .mp-asset-ico, html:not(.lx-detpr) .my-position .mp-fee-val,
-html:not(.lx-detpr) .position-share-pill{visibility:hidden!important}
-#dwDeposit .dw-field .row .asset:not([data-lxpair]), #dwWithdraw .dw-field .row .asset:not([data-lxpair]){visibility:hidden!important}
-/* Remaining mock-flash surfaces on the detail page (audit #9/#10/#11): the STAT values (3,420,180 XLM /
-   8,420 / 42.10 mock), the Pool Transactions MOCK rows (0x wallets + 5/26/2026 dates) and the mock
-   Participants (847). Real rows carry .lx-txrow/.lx-partrow — mock rows never do, so hide non-lx rows
-   outright (no timing dependency); stat values reveal with the real paint (lx-detpr). */
-html:not(.lx-detpr) .ph-stat .v, html:not(.lx-detpr) .ph-stat .s{visibility:hidden!important}
-/* AUDIT (user-reported): the header PRICE block was never in this list, so on every pool the top-right
-   showed the baked "0.000713 XLM / $0.000108 per LUMOS" until the real paint — i.e. a yXLM/XLM pool
-   announced a LUMOS price for a few seconds. Same gate as everything else in the header. */
-html:not(.lx-detpr) .ph-price .v,
-html:not(.lx-detpr) .ph-price .s,
-html:not(.lx-detpr) .ph-price .lc-money{visibility:hidden!important}
-.lx-detfail{display:flex;align-items:center;gap:15.4px;flex-wrap:wrap;margin:17.6px 0 0;padding:14.3px 17.6px;border:1px solid rgba(209,84,47,.35);border-left:3px solid #d1542f;border-radius:12px;background:rgba(209,84,47,.07);font-size:14.5px;line-height:1.5;color:var(--text,#0e0e10)}
-.lx-detfail span{flex:1 1 300px}
-.lx-detretry{padding:7.7px 16.5px;border-radius:9px;border:1px solid var(--border-strong,#d5d5dd);background:var(--surface-2,#f6f6f8);color:var(--text,#0e0e10);font:650 13.8px/1 inherit;cursor:pointer}
-.lx-detretry:hover{border-color:#d1542f;color:#d1542f}
-table.tx tbody tr:not(.lx-txrow){display:none!important}
-#partList > *:not(.lx-partrow){display:none!important}
-html:not(.lx-detpr) .side-head .count-pill{visibility:hidden!important}
-/* AUDIT (user-reported, DWARF/SBB): the deposit CTA looked live even when the deposit could not possibly
-   succeed — an AMM deposit needs BOTH sides of the pair, and the user held none of one of them. Grey it out
-   and make it inert so the state is legible BEFORE filling in amounts, instead of erroring only on submit. */
-/* NOT scoped to .dw-card. The phone puts this button in .card > .card-body, so the old
-   ".dw-card .dw-cta.lx-dwoff" never matched there: the CTA was aria-disabled and inert to our handler
-   while still looking and feeling fully enabled. The hint paragraph underneath hid that -- with the
-   paragraph gone the button's own appearance IS the whole message, so it has to be right on both. */
-.dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
-.dw-card .lx-dwhint{margin-top:9.9px;font-size:13.2px;line-height:1.45;color:var(--text-muted);text-align:center}
-/* #6, mobile half. This rule and the display:block one below are both leftovers from when .lm-chip was
-   an ABSOLUTELY POSITIONED decoration floating over the headline -- hiding it below 1100px was the right
-   call for that design. _poolshero.js has since rebuilt the hero as a flex column where the chip is a
-   real strip pinned along the bottom edge, and it sets display:block for exactly this width. But
-   lx-amm-css is emitted AFTER lx-poolshero-css in the head, so with both marked !important this stale
-   one has been winning ever since -- which is why the numbers vanished entirely on a phone.
-   The layout belongs to _poolshero.js now, so this defers to it. */
-/* the design paints a synthetic mock chart on load; hide its data (line/area/bars) until our real engine takes
-   over (lx-chartready), keeping the axis/grid so the plot frame stays visible */
-html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready) #tvlChart svg rect:not(.lx-ch){opacity:0!important}
-/* #11: the gate above covered the line and the bars but not the axis LABELS, which are <text> nodes the
-   engine rewrites in place once it has real data. So while "Loading pool history…" was on screen the
-   scale beside it still read the design's mock numbers -- 5.99M / 3.38M / 2.78M XLM for a pool that
-   holds nothing of the sort -- and they snapped to the real figures when the chart finally drew. That
-   momentary wrong scale is the flash. Hide the numbers with the plot and reveal them together.
-   The loading message is itself an SVG <text> (.lx-chload), and anything we drew carries .lx-ch, so
-   both are excluded: this only ever hides labels that are still showing mock values. */
-html:not(.lx-chartready) #tvlChart svg text:not(.lx-ch):not(.lx-chload){opacity:0!important}
-.ph-icons .pa,.ph-icons .pb,.mp-asset-ico,#dwDeposit .dw-field .asset .ico,#dwWithdraw .asset .ico{background-image:none!important;overflow:hidden}
-.ph-icons .pa img,.ph-icons .pb img,.mp-asset-ico img,.dw-field .asset .ico img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
-.type-pill.deposit{background:rgba(34,197,94,.14)!important;color:#16a34a!important}
-.type-pill.withdraw{background:rgba(239,68,68,.14)!important;color:#ef4444!important}
-.lx-partrow{display:flex;align-items:center;gap:11px}
-.lx-acct:hover{color:var(--accent)!important}
-.lx-partrow .part-addr{flex:1;font-family:'JetBrains Mono',monospace;font-size:14.3px}
-.lx-partrow .part-share{font-weight:700;font-size:15.4px!important}
-/* pool detail: remove the design's green endpoint dot on the TVL chart */
-#tvlChart circle{display:none!important}
-/* Participants pager. We APPEND this footer ourselves, and the design only ships .part-foot styling in the
-   desktop file -- the phone build has no .part-foot rule at all, so on mobile it rendered as two stacked
-   unstyled divs with bare chevrons overflowing the card. Styled on our own class so it stands up wherever
-   it is inserted; the values mirror the desktop rules so both look the same. */
-.lx-partfoot{display:flex!important;justify-content:space-between;align-items:center;gap:11px;flex-wrap:wrap;
-  padding:11px 15.4px;border-top:1px solid var(--border);font-size:14.3px;color:var(--text-soft);
-  font-family:'Hanken Grotesk',system-ui,sans-serif}
-.lx-partfoot > div:first-child{font-variant-numeric:tabular-nums}
-.lx-partfoot .nav{display:inline-flex;align-items:center;gap:6.6px}
-.lx-partfoot .nav button{width:26px;height:26px;min-width:26px;padding:0;border-radius:6px;
-  border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;
-  display:inline-flex;align-items:center;justify-content:center;font-size:16.5px;line-height:1}
-.lx-partfoot .nav button:hover:not(:disabled){color:var(--accent);border-color:var(--accent)}
-.lx-partfoot .nav button:disabled{opacity:.4;cursor:default}
-.lx-partfoot .lx-pppg{font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 2.2px}
-/* The "Pool TVL / Volume" dropdown chose which of the two series to show, so they were never on screen
-   together. They now share one chart -- TVL line with volume bars beneath it, same as Trade-asset -- which
-   leaves this control with nothing to switch between. Hidden rather than deleted from the markup: the
-   design ships its own open/close handler and label rewriting for it, and removing the node it expects is
-   how you get a handler throwing on every click.
-
-   NOT scoped to .chart-card. That is where the desktop puts it; the phone puts it in
-   .card > .chart-controls, so a ".chart-card ..." rule hid it on desktop only and left it sitting on
-   mobile. This is the SECOND selector in this file written against the desktop's wrapper and silently
-   missing the phone's (the disabled-CTA rule was the first) -- on this page, scope to the element.
-
-   #chartMetricMenu / .chart-mode-menu is the menu the design's own script builds and appends; with the
-   trigger gone nothing should open it, but a stale "open" class would otherwise leave it on screen. */
-.chart-mode-select,#chartMetricMenu,.chart-mode-menu{display:none!important}
-/* pool-tx wallet address links to OUR account page — subtle hover underline */
-.lx-sortag{display:inline-block;margin-left:7.7px;padding:1.1px 7.7px;border-radius:999px;font-size:11.6px;
-font-weight:700;letter-spacing:.02em;background:var(--surface);border:1px solid var(--border);color:var(--text-soft);vertical-align:middle}
-.lx-nolink{cursor:default}
-.lx-nolink:hover .lx-waddr{text-decoration:none}
-table.tx .wallet-cell{cursor:pointer}
-table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
-/* pagination row: vertically center "Page X of Y" with the Prev/Next buttons */
-.controls{align-items:center!important}
-/* Pools hero: animated dark cosmic cover (both themes) — replaces inject_livemarket's orange streams */
-.lumos-promo.lm-on.lm-pools{min-height:366px!important;overflow:hidden;background:radial-gradient(58% 84% at 70% 30%,rgba(140,96,246,.26),transparent 60%),radial-gradient(46% 64% at 92% 78%,rgba(198,86,232,.14),transparent 62%),radial-gradient(52% 68% at 24% 90%,rgba(74,110,224,.12),transparent 62%),linear-gradient(140deg,#0f1120 0%,#0a0a15 55%,#070610 100%)!important}
-.lm-pools .lm{min-height:366px!important}
-.lm-pools .lm-streams,.lm-pools .lm-svg,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
-.lm-pools .lm::after{background:linear-gradient(100deg,rgba(9,9,18,.66) 12%,rgba(9,9,18,.16) 46%,transparent 72%)!important;z-index:2!important}
-/* bigger text, forced light so it stays readable on the dark card in LIGHT theme too */
-.lm-pools .lm-c-pool{position:relative;z-index:4;padding-top:23.1px}
-.lm-pools .lm-h{font-size:41.8px!important;line-height:1.08!important;color:#fff!important;margin-bottom:14.3px!important;letter-spacing:-.01em}
-.lm-pools .lm-sub{font-size:17.1px!important;line-height:1.55!important;max-width:380px!important;color:rgba(228,230,245,.76)!important;margin-bottom:24.2px!important}
-.lm-pools .lm-cta{font-size:16px!important;padding:14.3px 24.2px!important}
-.lm-pools .lm-chip{z-index:4!important;background:rgba(16,15,32,.62)!important;border:1px solid rgba(255,255,255,.12)!important;backdrop-filter:blur(6px);padding:23.1px 29.7px!important;min-width:0;width:max-content;max-width:360px}
-.lm-pools .lm-chip .p1,.lm-pools .lm-chip .p2,.lm-pools .lm-chip .p3{display:none!important}
-.lx-hstats{display:grid;grid-template-columns:auto auto;gap:22px 26.4px}
-.lx-hstat{display:flex;flex-direction:column;gap:4.4px;min-width:0}
-.lx-hstat .v{font:800 31.9px/1.05 'Hanken Grotesk',sans-serif;color:#fff;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lx-hstat .l{font:600 14.3px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)}
-/* Top Pool stat: show the pair logos beside the "CODE / XLM" text */
-.lx-hstat[data-k=top] .v{display:flex;align-items:center;gap:13.2px}
-/* #2: the top-pool code was hidden behind its own second logo.
-   Six rules from four stylesheets size this element, and one of them -- added later, for the pair marks
-   elsewhere -- sets gap:6.6px on [data-paired]. The nudge below (.pb{left:23px}) was written for a
-   container with no gap, so the second mark ended up 33+6+23 = 62px in, inside a box declared 57px wide,
-   and jutted far enough past it to sit on the U of "USDC / XLM".
-   Overlap the two by geometry instead of by a nudge that assumes a particular flow: no gap, a negative
-   margin, and no offset. The box is then exactly as wide as what is in it, and the text starts after it. */
-.lx-hstat[data-k=top] .pair-icons{width:auto!important;flex:0 0 auto!important;gap:0!important;height:33px}
-.lx-hstat[data-k=top] .pair-icons .pa.lx-ico,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{width:33px!important;height:33px!important;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box;box-shadow:0 3px 8px rgba(0,0,0,.4)}
-.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:0!important;margin-left:-11px!important}
-.lx-hstat[data-k=top] .pair-icons .pa.lx-ico[data-mono]::after,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico[data-mono]::after{font-size:14.3px}
-.lx-hstat[data-k=top] .lx-toptxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:22px}
-/* #29: the pool page's own header pair -- two 44px logos with a 6px gap between them, reading as two
-   unrelated tokens rather than one pair. Everywhere else a pair is drawn overlapping, so this was the
-   odd one out. Both already carry a 3px ring, which is what makes the overlap legible; the base asset
-   stays on top so the pair reads left to right in the same order as the name beside it. */
-/* #9: and the box has to BE a row. On the phone the design lays .ph-icons out as display:block, so the
-   two 44px marks stacked -- the second one landing 44px below the first, on top of the text under it.
-   The overlap rule below is a no-op in block layout, which is why it read as a broken logo rather than
-   a pair. Measured before: pa at y141, pb at y185, inside a 60px-wide box. */
-.pool-header .ph-icons{display:flex!important;align-items:center;flex-wrap:nowrap;width:auto!important;gap:0!important}
-.pool-header .ph-icons .pa{position:relative;z-index:2}
-.pool-header .ph-icons .pb{position:relative;z-index:1;left:0!important;margin-left:4.4px!important}
-/* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
-.lx-ammview{display:inline-flex;align-items:center;gap:5.5px;padding:7.7px 16.5px;border-radius:9px;font:700 13.8px/1 'Hanken Grotesk',sans-serif;text-decoration:none!important;white-space:nowrap;border:1px solid rgba(234,106,44,.38);color:var(--accent,#ea6a2c)!important;background:rgba(234,106,44,.10);transition:background .15s ease,color .15s ease,border-color .15s ease}
-.lx-ammview:hover{background:var(--accent,#ea6a2c);color:#fff!important;border-color:var(--accent,#ea6a2c)}
-.pair-icons .pa .lx-mono{display:grid;place-items:center;width:100%;height:100%;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px;border-radius:50%}
-/* Pool Transactions pager, phone. The design ships a .tx-foot on desktop and nothing here, so this is
-   built to match it: same wording, same Prev / Page N of M / Next, sized for a thumb (44px targets). */
-.lx-txfoot-m{display:flex;align-items:center;justify-content:space-between;gap:11px;padding:13.2px 15.4px;border-top:1px solid var(--border);font-size:13.2px;color:var(--text-muted)}
-.lx-txfoot-m .controls{display:inline-flex;align-items:center;gap:4.4px;flex:0 0 auto}
-.lx-txfoot-m button{min-height:34px;padding:8.8px 12.1px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text);font:600 13.2px/1 'Hanken Grotesk',sans-serif;-webkit-tap-highlight-color:transparent}
-.lx-txfoot-m button:disabled{opacity:.4}
-.lx-txfoot-m .lx-txpg{margin:0 7.7px;white-space:nowrap;font-size:13.2px;color:var(--text-muted)}
-.lx-txfoot-m .lx-txinfo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* injected cosmic decor (nebulae drift, orb floats, particles rise, stars twinkle) */
-.lx-cosmic{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-.lx-neb{position:absolute;border-radius:50%;filter:blur(50px);mix-blend-mode:screen;will-change:transform}
-.lx-neb.n1{width:600px;height:470px;right:-70px;top:-130px;background:radial-gradient(circle,rgba(140,96,246,.62),transparent 66%);animation:lxNeb1 30s ease-in-out infinite alternate}
-.lx-neb.n2{width:480px;height:430px;right:150px;bottom:-180px;background:radial-gradient(circle,rgba(206,88,236,.44),transparent 66%);animation:lxNeb2 36s ease-in-out infinite alternate}
-.lx-neb.n3{width:410px;height:340px;left:32%;top:4%;background:radial-gradient(circle,rgba(72,120,232,.34),transparent 66%);animation:lxNeb1 33s ease-in-out infinite alternate-reverse}
-@keyframes lxNeb1{from{transform:translate(0,0) scale(1)}to{transform:translate(-48px,36px) scale(1.18)}}
-@keyframes lxNeb2{from{transform:translate(0,0) scale(1)}to{transform:translate(54px,-32px) scale(1.12)}}
-.lx-stars{position:absolute;inset:0;animation:lxTw 7s ease-in-out infinite;background-repeat:no-repeat;background-image:
-radial-gradient(1.6px 1.6px at 17% 24%,rgba(255,255,255,.9),transparent 60%),
-radial-gradient(1.3px 1.3px at 61% 16%,rgba(255,255,255,.62),transparent 60%),
-radial-gradient(1.7px 1.7px at 83% 52%,rgba(255,255,255,.74),transparent 60%),
-radial-gradient(1.1px 1.1px at 45% 66%,rgba(255,255,255,.5),transparent 60%),
-radial-gradient(1.4px 1.4px at 93% 30%,rgba(255,255,255,.64),transparent 60%),
-radial-gradient(1.2px 1.2px at 34% 44%,rgba(255,255,255,.5),transparent 60%),
-radial-gradient(1.5px 1.5px at 73% 80%,rgba(255,255,255,.58),transparent 60%),
-radial-gradient(1px 1px at 55% 90%,rgba(255,255,255,.42),transparent 60%),
-radial-gradient(1.3px 1.3px at 12% 66%,rgba(255,255,255,.52),transparent 60%),
-radial-gradient(1.6px 1.6px at 70% 40%,rgba(255,255,255,.66),transparent 60%),
-radial-gradient(1.1px 1.1px at 88% 66%,rgba(255,255,255,.46),transparent 60%),
-radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
-@keyframes lxTw{0%,100%{opacity:.6}50%{opacity:1}}
-.lx-constel{position:absolute;right:3%;top:50%;transform:translateY(-50%);width:330px;height:330px;opacity:.95;pointer-events:none;animation:lxConFloat 12s ease-in-out infinite}
-@keyframes lxConFloat{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 12px))}}
-.lx-constel line{stroke:rgba(150,120,240,.26);stroke-width:1}
-.lx-constel circle{fill:#cbbaff;filter:drop-shadow(0 0 5px rgba(168,128,255,.9));animation:lxNode 4.5s ease-in-out infinite}
-@keyframes lxNode{0%,100%{opacity:.5}50%{opacity:1}}
-/* #6/#2, desktop half. Same story as the mobile rule above: this forced the hero back to block so the
-   copy would top-align with the floating chip. _poolshero.js now lays the hero out as a flex column and
-   puts the strip last with order:9 -- but order does nothing in a block container, so the strip rendered
-   in DOM order, i.e. ABOVE the headline, and the Pools hero stopped matching the Trade hero it is meant
-   to mirror. Removing it lets that flex layout actually apply. */
-.lx-part{position:absolute;border-radius:50%;background:rgba(214,196,255,.85);box-shadow:0 0 9px rgba(172,132,255,.9);animation:lxDrift linear infinite}
-.lx-part.p1{width:5px;height:5px;left:57%;bottom:14%;animation-duration:15s}
-.lx-part.p2{width:4px;height:4px;left:74%;bottom:8%;animation-duration:19s;animation-delay:-4s}
-.lx-part.p3{width:6px;height:6px;left:66%;bottom:22%;animation-duration:23s;animation-delay:-9s}
-.lx-part.p4{width:3px;height:3px;left:85%;bottom:12%;animation-duration:17s;animation-delay:-2s}
-@keyframes lxDrift{0%{transform:translateY(20px);opacity:0}12%{opacity:1}86%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
-#poolsBody tr td:last-child,#panelAllPools thead th:last-child{text-align:center!important}
-#lx-mypanel{opacity:1!important;visibility:visible!important;animation:none!important}
-/* lx-poolsweight: match the Trade tables. Pools body numbers computed to font-weight 400 while the
-   Trade tables render theirs at 700 (both JetBrains Mono), so the two sections read as different
-   typefaces. Only the PRIMARY numeric line is bolded — the $ sub-line under it stays lighter, which
-   is how Trade does it too. Columns 1-2 (# and PAIR) are left alone; :last-child covers Participants,
-   which is bare text in the td with no inner div. */
-table.pools tbody tr.lx-ammrow td:nth-child(n+3)>div:first-child,
-table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
-
-/* My Position asset logos. We insert a real <img> into the design's 24px .mpm-asset-ico bubble, but the
-   phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
-   inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
-   placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
-/* #6 (batch 5): the participants footer ships baked as "Viewing 1 - 17 of 847" -- the design's mock --
-   and on a desktop refresh that sat there for the whole time the pool was loading, which is a specific
-   wrong number rather than an obviously empty one. Hidden until our own pager writes it (.lx-partfoot
-   is added by partFoot), with the usual failsafe so a stalled load leaves it blank rather than gone. */
-.part-foot:not(.lx-partfoot){visibility:hidden}
-
-/* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
-   across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
-   (24h)", so it folds to 2x2 there instead. */
-.ph-stats{grid-template-columns:repeat(4,1fr)!important}
-/* #20: the + between the two Create Pool assets sits ON the seam between the cards, so it depends on
-   having a solid ground of its own and on being above them -- without either it reads as a glyph
-   caught half under an edge. Given both, plus a glyph that is centred by geometry rather than by line
-   box (an svg with display:block cannot inherit a stray baseline). Could not reproduce the exact
-   breakage reported, so this changes only what could plausibly cause it and nothing else. */
-#createPoolModal .plus{position:relative;z-index:2;flex:0 0 30px;width:30px;height:30px;
-  background:var(--surface,#fff)!important;line-height:0;
-  display:flex!important;align-items:center!important;justify-content:center!important}
-#createPoolModal .plus svg{display:block;width:14px;height:14px;flex:0 0 14px}
-.ph-stat .ic.part{background:var(--purple-soft,rgba(139,92,246,.13));color:var(--purple,#8b5cf6)}
-@media(max-width:900px){.ph-stats{grid-template-columns:repeat(2,1fr)!important}}
-
-.mp-asset-ico img,.mpm-asset-ico img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
-.mpm-asset-ico{overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
-
-/* Trailing explorer arrow on a phone transaction row (desktop has one per table row). */
-.tx-item .lx-txext{flex-shrink:0;margin-left:8.8px;align-self:center;color:var(--text-muted);display:inline-flex;
-  align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;text-decoration:none}
-/* identicon fills the icon slot edge to edge; the design tints that slot per type, which would show
-   through the identicon's transparent corners */
-.tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
-.tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
-.tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
 </style><style id="lx-searchassets-css">/*lxts:1.1*/
 .sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5.5px;overflow:visible;background:none;flex-shrink:0}
 .lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
@@ -2818,6 +1884,952 @@ html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
    spans (the green "+$32.18" PnL) and uses <img> logos, neither of which a text-colour rule can hide. Layout
    is preserved. The deposit/withdraw asset chips are re-created on tab switch, so they're gated per-element on
    data-lxpair (set by setField / fixWithdrawPair) instead of the global class. */
+html:not(.lx-detpr) .ph-name,
+html:not(.lx-detpr) .crumb span:last-child,
+html:not(.lx-detpr) .ph-icons .pa, html:not(.lx-detpr) .ph-icons .pb,
+html:not(.lx-detpr) .my-position .mp-amount, html:not(.lx-detpr) .my-position .mp-pnl,
+html:not(.lx-detpr) .my-position .mp-asset-name, html:not(.lx-detpr) .my-position .mp-asset-amt,
+html:not(.lx-detpr) .my-position .mp-asset-ico, html:not(.lx-detpr) .my-position .mp-fee-val,
+html:not(.lx-detpr) .position-share-pill{visibility:hidden!important}
+#dwDeposit .dw-field .row .asset:not([data-lxpair]), #dwWithdraw .dw-field .row .asset:not([data-lxpair]){visibility:hidden!important}
+/* Remaining mock-flash surfaces on the detail page (audit #9/#10/#11): the STAT values (3,420,180 XLM /
+   8,420 / 42.10 mock), the Pool Transactions MOCK rows (0x wallets + 5/26/2026 dates) and the mock
+   Participants (847). Real rows carry .lx-txrow/.lx-partrow — mock rows never do, so hide non-lx rows
+   outright (no timing dependency); stat values reveal with the real paint (lx-detpr). */
+html:not(.lx-detpr) .ph-stat .v, html:not(.lx-detpr) .ph-stat .s{visibility:hidden!important}
+/* AUDIT (user-reported): the header PRICE block was never in this list, so on every pool the top-right
+   showed the baked "0.000713 XLM / $0.000108 per LUMOS" until the real paint — i.e. a yXLM/XLM pool
+   announced a LUMOS price for a few seconds. Same gate as everything else in the header. */
+html:not(.lx-detpr) .ph-price .v,
+html:not(.lx-detpr) .ph-price .s,
+html:not(.lx-detpr) .ph-price .lc-money{visibility:hidden!important}
+.lx-detfail{display:flex;align-items:center;gap:15.4px;flex-wrap:wrap;margin:17.6px 0 0;padding:14.3px 17.6px;border:1px solid rgba(209,84,47,.35);border-left:3px solid #d1542f;border-radius:12px;background:rgba(209,84,47,.07);font-size:14.5px;line-height:1.5;color:var(--text,#0e0e10)}
+.lx-detfail span{flex:1 1 300px}
+.lx-detretry{padding:7.7px 16.5px;border-radius:9px;border:1px solid var(--border-strong,#d5d5dd);background:var(--surface-2,#f6f6f8);color:var(--text,#0e0e10);font:650 13.8px/1 inherit;cursor:pointer}
+.lx-detretry:hover{border-color:#d1542f;color:#d1542f}
+table.tx tbody tr:not(.lx-txrow){display:none!important}
+#partList > *:not(.lx-partrow){display:none!important}
+html:not(.lx-detpr) .side-head .count-pill{visibility:hidden!important}
+/* AUDIT (user-reported, DWARF/SBB): the deposit CTA looked live even when the deposit could not possibly
+   succeed — an AMM deposit needs BOTH sides of the pair, and the user held none of one of them. Grey it out
+   and make it inert so the state is legible BEFORE filling in amounts, instead of erroring only on submit. */
+/* NOT scoped to .dw-card. The phone puts this button in .card > .card-body, so the old
+   ".dw-card .dw-cta.lx-dwoff" never matched there: the CTA was aria-disabled and inert to our handler
+   while still looking and feeling fully enabled. The hint paragraph underneath hid that -- with the
+   paragraph gone the button's own appearance IS the whole message, so it has to be right on both. */
+.dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
+.dw-card .lx-dwhint{margin-top:9.9px;font-size:13.2px;line-height:1.45;color:var(--text-muted);text-align:center}
+/* #6, mobile half. This rule and the display:block one below are both leftovers from when .lm-chip was
+   an ABSOLUTELY POSITIONED decoration floating over the headline -- hiding it below 1100px was the right
+   call for that design. _poolshero.js has since rebuilt the hero as a flex column where the chip is a
+   real strip pinned along the bottom edge, and it sets display:block for exactly this width. But
+   lx-amm-css is emitted AFTER lx-poolshero-css in the head, so with both marked !important this stale
+   one has been winning ever since -- which is why the numbers vanished entirely on a phone.
+   The layout belongs to _poolshero.js now, so this defers to it. */
+/* the design paints a synthetic mock chart on load; hide its data (line/area/bars) until our real engine takes
+   over (lx-chartready), keeping the axis/grid so the plot frame stays visible */
+html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready) #tvlChart svg rect:not(.lx-ch){opacity:0!important}
+/* #11: the gate above covered the line and the bars but not the axis LABELS, which are <text> nodes the
+   engine rewrites in place once it has real data. So while "Loading pool history…" was on screen the
+   scale beside it still read the design's mock numbers -- 5.99M / 3.38M / 2.78M XLM for a pool that
+   holds nothing of the sort -- and they snapped to the real figures when the chart finally drew. That
+   momentary wrong scale is the flash. Hide the numbers with the plot and reveal them together.
+   The loading message is itself an SVG <text> (.lx-chload), and anything we drew carries .lx-ch, so
+   both are excluded: this only ever hides labels that are still showing mock values. */
+html:not(.lx-chartready) #tvlChart svg text:not(.lx-ch):not(.lx-chload){opacity:0!important}
+.ph-icons .pa,.ph-icons .pb,.mp-asset-ico,#dwDeposit .dw-field .asset .ico,#dwWithdraw .asset .ico{background-image:none!important;overflow:hidden}
+.ph-icons .pa img,.ph-icons .pb img,.mp-asset-ico img,.dw-field .asset .ico img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.type-pill.deposit{background:rgba(34,197,94,.14)!important;color:#16a34a!important}
+.type-pill.withdraw{background:rgba(239,68,68,.14)!important;color:#ef4444!important}
+.lx-partrow{display:flex;align-items:center;gap:11px}
+.lx-acct:hover{color:var(--accent)!important}
+.lx-partrow .part-addr{flex:1;font-family:'JetBrains Mono',monospace;font-size:14.3px}
+.lx-partrow .part-share{font-weight:700;font-size:15.4px!important}
+/* pool detail: remove the design's green endpoint dot on the TVL chart */
+#tvlChart circle{display:none!important}
+/* Participants pager. We APPEND this footer ourselves, and the design only ships .part-foot styling in the
+   desktop file -- the phone build has no .part-foot rule at all, so on mobile it rendered as two stacked
+   unstyled divs with bare chevrons overflowing the card. Styled on our own class so it stands up wherever
+   it is inserted; the values mirror the desktop rules so both look the same. */
+.lx-partfoot{display:flex!important;justify-content:space-between;align-items:center;gap:11px;flex-wrap:wrap;
+  padding:11px 15.4px;border-top:1px solid var(--border);font-size:14.3px;color:var(--text-soft);
+  font-family:'Hanken Grotesk',system-ui,sans-serif}
+.lx-partfoot > div:first-child{font-variant-numeric:tabular-nums}
+.lx-partfoot .nav{display:inline-flex;align-items:center;gap:6.6px}
+.lx-partfoot .nav button{width:26px;height:26px;min-width:26px;padding:0;border-radius:6px;
+  border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;font-size:16.5px;line-height:1}
+.lx-partfoot .nav button:hover:not(:disabled){color:var(--accent);border-color:var(--accent)}
+.lx-partfoot .nav button:disabled{opacity:.4;cursor:default}
+.lx-partfoot .lx-pppg{font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 2.2px}
+/* The "Pool TVL / Volume" dropdown chose which of the two series to show, so they were never on screen
+   together. They now share one chart -- TVL line with volume bars beneath it, same as Trade-asset -- which
+   leaves this control with nothing to switch between. Hidden rather than deleted from the markup: the
+   design ships its own open/close handler and label rewriting for it, and removing the node it expects is
+   how you get a handler throwing on every click.
+
+   NOT scoped to .chart-card. That is where the desktop puts it; the phone puts it in
+   .card > .chart-controls, so a ".chart-card ..." rule hid it on desktop only and left it sitting on
+   mobile. This is the SECOND selector in this file written against the desktop's wrapper and silently
+   missing the phone's (the disabled-CTA rule was the first) -- on this page, scope to the element.
+
+   #chartMetricMenu / .chart-mode-menu is the menu the design's own script builds and appends; with the
+   trigger gone nothing should open it, but a stale "open" class would otherwise leave it on screen. */
+.chart-mode-select,#chartMetricMenu,.chart-mode-menu{display:none!important}
+/* pool-tx wallet address links to OUR account page — subtle hover underline */
+.lx-sortag{display:inline-block;margin-left:7.7px;padding:1.1px 7.7px;border-radius:999px;font-size:11.6px;
+font-weight:700;letter-spacing:.02em;background:var(--surface);border:1px solid var(--border);color:var(--text-soft);vertical-align:middle}
+.lx-nolink{cursor:default}
+.lx-nolink:hover .lx-waddr{text-decoration:none}
+table.tx .wallet-cell{cursor:pointer}
+table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
+/* pagination row: vertically center "Page X of Y" with the Prev/Next buttons */
+.controls{align-items:center!important}
+/* Pools hero: animated dark cosmic cover (both themes) — replaces inject_livemarket's orange streams */
+.lumos-promo.lm-on.lm-pools{min-height:366px!important;overflow:hidden;background:radial-gradient(58% 84% at 70% 30%,rgba(140,96,246,.26),transparent 60%),radial-gradient(46% 64% at 92% 78%,rgba(198,86,232,.14),transparent 62%),radial-gradient(52% 68% at 24% 90%,rgba(74,110,224,.12),transparent 62%),linear-gradient(140deg,#0f1120 0%,#0a0a15 55%,#070610 100%)!important}
+.lm-pools .lm{min-height:366px!important}
+.lm-pools .lm-streams,.lm-pools .lm-svg,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
+.lm-pools .lm::after{background:linear-gradient(100deg,rgba(9,9,18,.66) 12%,rgba(9,9,18,.16) 46%,transparent 72%)!important;z-index:2!important}
+/* bigger text, forced light so it stays readable on the dark card in LIGHT theme too */
+.lm-pools .lm-c-pool{position:relative;z-index:4;padding-top:23.1px}
+.lm-pools .lm-h{font-size:41.8px!important;line-height:1.08!important;color:#fff!important;margin-bottom:14.3px!important;letter-spacing:-.01em}
+.lm-pools .lm-sub{font-size:17.1px!important;line-height:1.55!important;max-width:380px!important;color:rgba(228,230,245,.76)!important;margin-bottom:24.2px!important}
+.lm-pools .lm-cta{font-size:16px!important;padding:14.3px 24.2px!important}
+.lm-pools .lm-chip{z-index:4!important;background:rgba(16,15,32,.62)!important;border:1px solid rgba(255,255,255,.12)!important;backdrop-filter:blur(6px);padding:23.1px 29.7px!important;min-width:0;width:max-content;max-width:360px}
+.lm-pools .lm-chip .p1,.lm-pools .lm-chip .p2,.lm-pools .lm-chip .p3{display:none!important}
+.lx-hstats{display:grid;grid-template-columns:auto auto;gap:22px 26.4px}
+.lx-hstat{display:flex;flex-direction:column;gap:4.4px;min-width:0}
+.lx-hstat .v{font:800 31.9px/1.05 'Hanken Grotesk',sans-serif;color:#fff;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lx-hstat .l{font:600 14.3px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)}
+/* Top Pool stat: show the pair logos beside the "CODE / XLM" text */
+.lx-hstat[data-k=top] .v{display:flex;align-items:center;gap:13.2px}
+/* #2: the top-pool code was hidden behind its own second logo.
+   Six rules from four stylesheets size this element, and one of them -- added later, for the pair marks
+   elsewhere -- sets gap:6.6px on [data-paired]. The nudge below (.pb{left:23px}) was written for a
+   container with no gap, so the second mark ended up 33+6+23 = 62px in, inside a box declared 57px wide,
+   and jutted far enough past it to sit on the U of "USDC / XLM".
+   Overlap the two by geometry instead of by a nudge that assumes a particular flow: no gap, a negative
+   margin, and no offset. The box is then exactly as wide as what is in it, and the text starts after it. */
+.lx-hstat[data-k=top] .pair-icons{width:auto!important;flex:0 0 auto!important;gap:0!important;height:33px}
+.lx-hstat[data-k=top] .pair-icons .pa.lx-ico,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{width:33px!important;height:33px!important;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:0!important;margin-left:-11px!important}
+.lx-hstat[data-k=top] .pair-icons .pa.lx-ico[data-mono]::after,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico[data-mono]::after{font-size:14.3px}
+.lx-hstat[data-k=top] .lx-toptxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:22px}
+/* #29: the pool page's own header pair -- two 44px logos with a 6px gap between them, reading as two
+   unrelated tokens rather than one pair. Everywhere else a pair is drawn overlapping, so this was the
+   odd one out. Both already carry a 3px ring, which is what makes the overlap legible; the base asset
+   stays on top so the pair reads left to right in the same order as the name beside it. */
+/* #9: and the box has to BE a row. On the phone the design lays .ph-icons out as display:block, so the
+   two 44px marks stacked -- the second one landing 44px below the first, on top of the text under it.
+   The overlap rule below is a no-op in block layout, which is why it read as a broken logo rather than
+   a pair. Measured before: pa at y141, pb at y185, inside a 60px-wide box. */
+.pool-header .ph-icons{display:flex!important;align-items:center;flex-wrap:nowrap;width:auto!important;gap:0!important}
+.pool-header .ph-icons .pa{position:relative;z-index:2}
+.pool-header .ph-icons .pb{position:relative;z-index:1;left:0!important;margin-left:4.4px!important}
+/* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
+.lx-ammview{display:inline-flex;align-items:center;gap:5.5px;padding:7.7px 16.5px;border-radius:9px;font:700 13.8px/1 'Hanken Grotesk',sans-serif;text-decoration:none!important;white-space:nowrap;border:1px solid rgba(234,106,44,.38);color:var(--accent,#ea6a2c)!important;background:rgba(234,106,44,.10);transition:background .15s ease,color .15s ease,border-color .15s ease}
+.lx-ammview:hover{background:var(--accent,#ea6a2c);color:#fff!important;border-color:var(--accent,#ea6a2c)}
+.pair-icons .pa .lx-mono{display:grid;place-items:center;width:100%;height:100%;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px;border-radius:50%}
+/* Pool Transactions pager, phone. The design ships a .tx-foot on desktop and nothing here, so this is
+   built to match it: same wording, same Prev / Page N of M / Next, sized for a thumb (44px targets). */
+.lx-txfoot-m{display:flex;align-items:center;justify-content:space-between;gap:11px;padding:13.2px 15.4px;border-top:1px solid var(--border);font-size:13.2px;color:var(--text-muted)}
+.lx-txfoot-m .controls{display:inline-flex;align-items:center;gap:4.4px;flex:0 0 auto}
+.lx-txfoot-m button{min-height:34px;padding:8.8px 12.1px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text);font:600 13.2px/1 'Hanken Grotesk',sans-serif;-webkit-tap-highlight-color:transparent}
+.lx-txfoot-m button:disabled{opacity:.4}
+.lx-txfoot-m .lx-txpg{margin:0 7.7px;white-space:nowrap;font-size:13.2px;color:var(--text-muted)}
+.lx-txfoot-m .lx-txinfo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* injected cosmic decor (nebulae drift, orb floats, particles rise, stars twinkle) */
+.lx-cosmic{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.lx-neb{position:absolute;border-radius:50%;filter:blur(50px);mix-blend-mode:screen;will-change:transform}
+.lx-neb.n1{width:600px;height:470px;right:-70px;top:-130px;background:radial-gradient(circle,rgba(140,96,246,.62),transparent 66%);animation:lxNeb1 30s ease-in-out infinite alternate}
+.lx-neb.n2{width:480px;height:430px;right:150px;bottom:-180px;background:radial-gradient(circle,rgba(206,88,236,.44),transparent 66%);animation:lxNeb2 36s ease-in-out infinite alternate}
+.lx-neb.n3{width:410px;height:340px;left:32%;top:4%;background:radial-gradient(circle,rgba(72,120,232,.34),transparent 66%);animation:lxNeb1 33s ease-in-out infinite alternate-reverse}
+@keyframes lxNeb1{from{transform:translate(0,0) scale(1)}to{transform:translate(-48px,36px) scale(1.18)}}
+@keyframes lxNeb2{from{transform:translate(0,0) scale(1)}to{transform:translate(54px,-32px) scale(1.12)}}
+.lx-stars{position:absolute;inset:0;animation:lxTw 7s ease-in-out infinite;background-repeat:no-repeat;background-image:
+radial-gradient(1.6px 1.6px at 17% 24%,rgba(255,255,255,.9),transparent 60%),
+radial-gradient(1.3px 1.3px at 61% 16%,rgba(255,255,255,.62),transparent 60%),
+radial-gradient(1.7px 1.7px at 83% 52%,rgba(255,255,255,.74),transparent 60%),
+radial-gradient(1.1px 1.1px at 45% 66%,rgba(255,255,255,.5),transparent 60%),
+radial-gradient(1.4px 1.4px at 93% 30%,rgba(255,255,255,.64),transparent 60%),
+radial-gradient(1.2px 1.2px at 34% 44%,rgba(255,255,255,.5),transparent 60%),
+radial-gradient(1.5px 1.5px at 73% 80%,rgba(255,255,255,.58),transparent 60%),
+radial-gradient(1px 1px at 55% 90%,rgba(255,255,255,.42),transparent 60%),
+radial-gradient(1.3px 1.3px at 12% 66%,rgba(255,255,255,.52),transparent 60%),
+radial-gradient(1.6px 1.6px at 70% 40%,rgba(255,255,255,.66),transparent 60%),
+radial-gradient(1.1px 1.1px at 88% 66%,rgba(255,255,255,.46),transparent 60%),
+radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
+@keyframes lxTw{0%,100%{opacity:.6}50%{opacity:1}}
+.lx-constel{position:absolute;right:3%;top:50%;transform:translateY(-50%);width:330px;height:330px;opacity:.95;pointer-events:none;animation:lxConFloat 12s ease-in-out infinite}
+@keyframes lxConFloat{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 12px))}}
+.lx-constel line{stroke:rgba(150,120,240,.26);stroke-width:1}
+.lx-constel circle{fill:#cbbaff;filter:drop-shadow(0 0 5px rgba(168,128,255,.9));animation:lxNode 4.5s ease-in-out infinite}
+@keyframes lxNode{0%,100%{opacity:.5}50%{opacity:1}}
+/* #6/#2, desktop half. Same story as the mobile rule above: this forced the hero back to block so the
+   copy would top-align with the floating chip. _poolshero.js now lays the hero out as a flex column and
+   puts the strip last with order:9 -- but order does nothing in a block container, so the strip rendered
+   in DOM order, i.e. ABOVE the headline, and the Pools hero stopped matching the Trade hero it is meant
+   to mirror. Removing it lets that flex layout actually apply. */
+.lx-part{position:absolute;border-radius:50%;background:rgba(214,196,255,.85);box-shadow:0 0 9px rgba(172,132,255,.9);animation:lxDrift linear infinite}
+.lx-part.p1{width:5px;height:5px;left:57%;bottom:14%;animation-duration:15s}
+.lx-part.p2{width:4px;height:4px;left:74%;bottom:8%;animation-duration:19s;animation-delay:-4s}
+.lx-part.p3{width:6px;height:6px;left:66%;bottom:22%;animation-duration:23s;animation-delay:-9s}
+.lx-part.p4{width:3px;height:3px;left:85%;bottom:12%;animation-duration:17s;animation-delay:-2s}
+@keyframes lxDrift{0%{transform:translateY(20px);opacity:0}12%{opacity:1}86%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
+#poolsBody tr td:last-child,#panelAllPools thead th:last-child{text-align:center!important}
+#lx-mypanel{opacity:1!important;visibility:visible!important;animation:none!important}
+/* lx-poolsweight: match the Trade tables. Pools body numbers computed to font-weight 400 while the
+   Trade tables render theirs at 700 (both JetBrains Mono), so the two sections read as different
+   typefaces. Only the PRIMARY numeric line is bolded — the $ sub-line under it stays lighter, which
+   is how Trade does it too. Columns 1-2 (# and PAIR) are left alone; :last-child covers Participants,
+   which is bare text in the td with no inner div. */
+table.pools tbody tr.lx-ammrow td:nth-child(n+3)>div:first-child,
+table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
+
+/* My Position asset logos. We insert a real <img> into the design's 24px .mpm-asset-ico bubble, but the
+   phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
+   inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
+   placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
+/* #6 (batch 5): the participants footer ships baked as "Viewing 1 - 17 of 847" -- the design's mock --
+   and on a desktop refresh that sat there for the whole time the pool was loading, which is a specific
+   wrong number rather than an obviously empty one. Hidden until our own pager writes it (.lx-partfoot
+   is added by partFoot), with the usual failsafe so a stalled load leaves it blank rather than gone. */
+.part-foot:not(.lx-partfoot){visibility:hidden}
+
+/* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
+   across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
+   (24h)", so it folds to 2x2 there instead. */
+.ph-stats{grid-template-columns:repeat(4,1fr)!important}
+/* #20: the + between the two Create Pool assets sits ON the seam between the cards, so it depends on
+   having a solid ground of its own and on being above them -- without either it reads as a glyph
+   caught half under an edge. Given both, plus a glyph that is centred by geometry rather than by line
+   box (an svg with display:block cannot inherit a stray baseline). Could not reproduce the exact
+   breakage reported, so this changes only what could plausibly cause it and nothing else. */
+#createPoolModal .plus{position:relative;z-index:2;flex:0 0 30px;width:30px;height:30px;
+  background:var(--surface,#fff)!important;line-height:0;
+  display:flex!important;align-items:center!important;justify-content:center!important}
+#createPoolModal .plus svg{display:block;width:14px;height:14px;flex:0 0 14px}
+.ph-stat .ic.part{background:var(--purple-soft,rgba(139,92,246,.13));color:var(--purple,#8b5cf6)}
+@media(max-width:900px){.ph-stats{grid-template-columns:repeat(2,1fr)!important}}
+
+.mp-asset-ico img,.mpm-asset-ico img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.mpm-asset-ico{overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
+
+/* Trailing explorer arrow on a phone transaction row (desktop has one per table row). */
+.tx-item .lx-txext{flex-shrink:0;margin-left:8.8px;align-self:center;color:var(--text-muted);display:inline-flex;
+  align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;text-decoration:none}
+/* identicon fills the icon slot edge to edge; the design tints that slot per type, which would show
+   through the identicon's transparent corners */
+.tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
+.tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
+.tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
+</style><style id="lx-amm-css">/*lxts:1.1*/
+/* ---- the three pool stat cards, as one set ---------------------------------------------------- */
+/* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
+   onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
+   to the 18px value to compete with it -- carrying a run-on of three facts. So: the value shrinks to
+   fit rather than wrapping, the sub-line steps back to a quiet single line, and every card reserves
+   the same sub-line height so three cards line up even when one has nothing to say there. */
+.ph-stats .ph-stat{display:flex;flex-direction:column}
+.ph-stat .v{white-space:nowrap;font-size:clamp(16.5px,1.35vw,19.8px);font-weight:800;letter-spacing:-.2px}
+.ph-stat .s{font-size:13.2px;margin-top:3.3px;min-height:15px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;color:var(--text-soft)}
+@media(max-width:880px){
+/* Three across does not fit a phone once the values stop wrapping -- measured 374px of cards in a
+   323px column, which is what made the page pan sideways. Two columns, and nothing that refuses to
+   shrink inside them. */
+.ph-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.ph-stats .ph-stat{min-width:0}
+.ph-stat .v{font-size:17.6px;white-space:normal}
+.ph-stat .s{font-size:12.7px}
+}
+/* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
+#createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
+/* AUDIT (user-reported): the Create Pool MAX control is a bare <span> — it fires, but the design gives it no
+   cursor, hover or hit padding, so it reads as decoration and people assume it is broken. */
+#createPoolModal .field-foot .max-btn{cursor:pointer;user-select:none;padding:2.2px 7.7px;margin:-2.2px -7.7px;border-radius:6px;transition:background .14s,color .14s}
+#createPoolModal .field-foot .max-btn:hover{background:rgba(234,106,44,.14);color:var(--accent,#ea6a2c)}
+#createPoolModal .field-foot .max-btn:active{background:rgba(234,106,44,.24)}
+#createPoolModal .lx-cpwarn{margin:8.8px 2.2px 0;font-size:13.8px;line-height:1.45;color:#c9791f}
+/* success toast — same look as the site's "Copied to clipboard" toast (self-contained) */
+.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8.8px;align-items:center;pointer-events:none}
+.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:12.1px 19.8px 12.1px 15.4px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:17.6px;font-weight:600;display:inline-flex;align-items:center;gap:9.9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
+.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}
+/* The stack is pointer-events:none so a toast never blocks the page underneath — but that also made the
+   explorer link inside it unclickable, which is why "view" appeared to lead nowhere. Re-enable pointer
+   events on the LINK only, so the rest of the toast stays click-through. */
+.lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
+@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
+/* #24: the cold-start overlay.
+   The ranking is built by an endpoint that walks the whole network in resumable steps and answers
+   {warming, scanned, phase} until it is done -- on a cold cache that is roughly twenty-five seconds.
+   For that whole time the page sat masked and empty, which reads as broken rather than as working.
+   Reduced motion drops the pulse and the fades; it does NOT gate the dismissal, which is a class and a
+   removal, so the overlay can never be left on screen by a motion preference. */
+/* Pool Activity chart: the SVG takes no pointer input, so every mouse and touch lands on #tvlChart.
+   The hover listeners are on that host, and a touch TARGET is sticky for the life of the gesture --
+   whichever node touchstart hit keeps receiving touchmove. Starting a drag on the filled area therefore
+   bound the gesture to the gradient <path>, and that path is REPLACED on the next chart repaint, which
+   orphaned the drag and killed the readout mid-swipe. Starting on the empty part above the line bound it
+   to the host instead, which is never replaced -- which is exactly why it worked there and nowhere else.
+   With the SVG transparent to input the target is always the host, so it cannot happen at all. The
+   overlay divs already carry pointer-events:none for the same reason. */
+#tvlChart svg,#tvlChart svg *{pointer-events:none}
+.lx-boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);
+  opacity:1;transition:opacity .28s ease}
+.lx-boot.lx-boot-out{opacity:0;pointer-events:none}
+.lx-boot-in{display:flex;flex-direction:column;align-items:center;gap:17.6px;padding:26.4px;text-align:center}
+.lx-boot-badge{position:relative;width:96px;height:96px;display:grid;place-items:center}
+.lx-boot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  animation:lx-boot-spin 1.15s linear infinite;opacity:.9}
+.lx-boot-badge::after{content:"";position:absolute;inset:8px;border-radius:50%;
+  background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-boot-pulse 1.8s ease-in-out infinite}
+@keyframes lx-boot-spin{to{transform:rotate(360deg)}}
+.lx-boot-mark{position:relative;z-index:1;width:52px;height:52px;background-size:contain;background-repeat:no-repeat;
+  background-position:center;animation:lx-boot-pulse 1.6s ease-in-out infinite}
+.lx-boot-ttl{font-family:'Hanken Grotesk',sans-serif;font-size:16.5px;font-weight:700;color:var(--text,#0e0e10)}
+.lx-boot-bar{width:216px;height:4px;border-radius:99px;background:var(--border,#ececef);overflow:hidden}
+.lx-boot-fill{height:100%;width:0;background:var(--accent,#ea6a2c);border-radius:99px;transition:width .45s ease}
+.lx-boot-sub{font-family:'JetBrains Mono',monospace;font-size:12.1px;letter-spacing:.04em;
+  color:var(--text-soft,#6f6f79);font-variant-numeric:tabular-nums}
+@keyframes lx-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.6}}
+@media (prefers-reduced-motion:reduce){.lx-boot-mark,.lx-boot-badge::before,.lx-boot-badge::after{animation:none}
+  .lx-boot,.lx-boot-fill{transition:none}}
+/* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
+   written paintTables filled both and revealed after. The network list changed that: the rows now arrive
+   from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
+   until they landed. Same treatment as the desktop body. */
+html:not(.lx-ammready) #panelAll{visibility:hidden}
+/* #39: the Top Pool slot showed "( )" for a beat on the phone. That is its own skeleton -- two ringed
+   circles overlapping at phone scale read as a pair of brackets, which looks like a rendering fault
+   rather than a placeholder. The slot stays blank until there is a real pair to put in it; the label
+   under it already says what is coming. */
+html:not(.lx-ammready) .lx-hstat[data-k=top] .v{visibility:hidden}
+/* #10: remote pool results, kept visually distinct from the page's own ranked list so it is obvious
+   these came from a search rather than from the top-25 ranking. */
+.lx-psresult{margin-top:15.4px}
+/* #41: self-contained appearance for a network result, so it never depends on .pool-card existing.
+   :where() = zero specificity, so the phone's own .pool-card rules still win there. */
+:where(.lx-psresult .lx-pscard){display:block;margin:0 0 8.8px;padding:13.2px 15.4px;text-decoration:none;
+  color:inherit;border:1px solid var(--border,#e6e6ea);border-radius:12px;background:var(--surface,#fff)}
+:where(.lx-psresult .lx-pscard:hover){border-color:var(--accent,#ea6a2c)}
+:where(.lx-psresult .lx-pscard .pc-head){display:flex;align-items:center;gap:11px;margin-bottom:9.9px}
+:where(.lx-psresult .lx-pscard .pc-name){font-size:16px;font-weight:700;color:var(--text,#0e0e10)}
+:where(.lx-psresult .lx-pscard .pc-sub){margin-top:2.2px;font-size:13.2px;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stats){display:flex;gap:28.6px}
+:where(.lx-psresult .lx-pscard .pc-stat .l){font-size:11px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stat .v){margin-top:2.2px;font-size:14.9px;font-weight:700;
+  color:var(--text,#0e0e10);font-variant-numeric:tabular-nums}
+.lx-pshead{margin:0 0 8.8px;font-size:11.6px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}
+.lx-psnote{padding:17.6px 4.4px;text-align:center;font-size:14.3px;color:var(--text-soft)}
+/* POOL-DETAIL TAB STRIPS ON A PHONE.
+   #ptabs measures 432px of tabs inside a 345px box, so "Participants" sits past the right edge and is
+   simply unreachable — on a narrower handset "Transactions" and "My Position" go with it. The strip is
+   overflow:auto on BOTH axes too, so instead of doing nothing a tap drags the row (the same defect the
+   Trade-asset tab strip had). Deposit/Withdraw is the same shape: two fixed 152px buttons, 304px of
+   content that stops fitting below ~330px of viewport.
+   Fix both the way the Trade strip was fixed: the tabs SHARE the width and the row cannot scroll at all.
+   overflow must be set on both axes — one non-visible axis forces the other to auto, which is what made
+   it draggable vertically. */
+@media (max-width:760px){
+  #ptabs.panel-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important;gap:0!important;padding-bottom:2.2px}
+  /* size to content, share what is left: equal quarters clipped "Deposit / Withdraw", which is much longer
+     than the other three. The four together measure ~333px inside 345px, so they all fit unclipped; the
+     min-width:0 + ellipsis below is the safety net for a narrower handset. */
+  #ptabs.panel-tabs>*{flex:1 1 auto!important;min-width:0!important;padding-left:3.3px!important;padding-right:3.3px!important;
+    font-size:12.1px!important;letter-spacing:-.1px;white-space:nowrap;text-align:center;justify-content:center!important;overflow:hidden;text-overflow:ellipsis}
+  .dw-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important}
+  .dw-tabs>*{flex:1 1 0!important;min-width:0!important;white-space:nowrap}
+}
+/* Small handsets (iPhone SE and friends): at 11px the four labels want ~302px inside a 290px strip, so
+   every one of them ellipsised by a few pixels. A step down to 10px needs ~269px and they read in full. */
+@media (max-width:359px){
+  #ptabs.panel-tabs>*{font-size:11px!important;padding-left:2.2px!important;padding-right:2.2px!important}
+}
+/* Market Overview box: show its structure (title/labels) instantly; only the value+sub cells shimmer as a
+   skeleton until real data lands — so the box never sits blank for ~2s and never flashes mock numbers. */
+/* Skeleton the RIGHT-side dynamic cells (value + vsub). The left label/sub are static design text.
+   The vsub holds the mock $ (and an .lc-money the site re-stamps) — earlier it wasn't covered, so the
+   24H-Volume figure flashed a mock value before real data. */
+/* white-space:nowrap + overflow:hidden are ESSENTIAL: during load these cells still hold the design's
+   MOCK text (e.g. "51,250 XLM swapped") which wraps to 2 lines in the narrow column and makes the whole
+   top section ~40px taller until real (short) data lands. One-lining the skeleton keeps height stable. */
+/* Market Overview began at exactly the pixel the pools card ended -- 1378 to 1378, no gap at all -- so
+   the two read as one broken block. The separation was never its own: it came from the pagination row
+   between them, which is display:none on the My Pools tab, so the collision appeared there and nowhere
+   else. 22px is the gap this page already uses between its other cards, and it belongs to the card
+   rather than to whatever happens to precede it. */
+.amm-snapshot-card{margin-top:24.2px}
+html:not(.lx-ammready) .amm-snapshot-value, html:not(.lx-ammready) .amm-snapshot-vsub, html:not(.lx-ammready) .amm-snapshot-sub{color:transparent!important;border-radius:6px;white-space:nowrap!important;overflow:hidden!important;background:linear-gradient(90deg,rgba(148,140,200,.10) 25%,rgba(148,140,200,.22) 37%,rgba(148,140,200,.10) 63%)!important;background-size:400% 100%!important;animation:lxShim 1.3s ease-in-out infinite}
+/* width-only constraints — do NOT add margin/display here or the skeleton rows grow taller than the
+   ready rows and the whole top section visibly shrinks ~40px when data lands */
+html:not(.lx-ammready) .amm-snapshot-value{max-width:96px}
+html:not(.lx-ammready) .amm-snapshot-vsub{max-width:120px}
+html:not(.lx-ammready) .amm-snapshot-sub{max-width:120px}
+/* also hide EVERY child of the value/vsub/sub cells (unit span, .lc-money with its re-stamped data-orig mock,
+   the mock caption text) so nothing bleeds through the shimmer while loading — this was the residual flash */
+html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapshot-vsub *, html:not(.lx-ammready) .amm-snapshot-sub *{color:transparent!important;background:transparent!important;text-shadow:none!important}
+@keyframes lxShim{0%{background-position:100% 0}100%{background-position:0 0}}
+.lx-hstat .v .lx-hskel{display:inline-block;width:44px;height:24px;border-radius:6px;color:transparent!important;vertical-align:middle;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
+.lx-hstat[data-k=top] .lx-toptxt.lx-hskel{width:92px;height:22px}
+.lx-hstat[data-k=top] .lx-hpairskel{display:inline-flex;flex:0 0 auto}
+.lx-hstat[data-k=top] .lx-hpairskel .pa,.lx-hstat[data-k=top] .lx-hpairskel .pb{width:33px;height:33px;border-radius:50%;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
+.lx-hstat[data-k=top] .lx-hpairskel .pb{margin-left:-12.1px;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box}
+/* Market Overview: match the "New Mints on Stellar" (Trade page) typography scale so the two cards feel
+   the same — label like .dex-mint-name (15.5/700), value like .dex-mint-mc (15/700), subs 13/12.5 soft. */
+.amm-snapshot-label{font-size:17.1px!important;font-weight:700!important;line-height:1.2!important;letter-spacing:.2px!important;text-transform:none!important;color:var(--text)!important}
+.amm-snapshot-value{font-size:16.5px!important;font-weight:700!important;letter-spacing:normal!important;line-height:1.2!important}
+.amm-snapshot-sub{font-size:14.3px!important;margin-top:2.2px!important}
+.amm-snapshot-vsub{font-size:13.8px!important;margin-top:2.2px!important}
+.amm-snapshot-row{padding:11px 8.8px!important}
+.amm-snapshot-ic.fees{background:rgba(245,158,11,.15)!important;color:#f59e0b!important}
+/* token/pair icons rendered ENTIRELY via CSS custom-props + ::after so the site logo-painter (which clears innerHTML & stamps an inline bg on an interval) can't wipe them; stylesheet !important beats the painter's inline background */
+.pair-icons .pa.lx-ico,.pair-icons .pb.lx-ico{position:absolute!important;top:0;overflow:hidden;padding:0;background-color:var(--mc,#2a2f42)!important;background-image:var(--mi,none)!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important}
+.pair-icons .pa.lx-ico[data-mono]::after,.pair-icons .pb.lx-ico[data-mono]::after{content:attr(data-mono);position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px}
+.pair-icons .pa,.pair-icons .pb{background-image:none!important;overflow:hidden;padding:0}
+.pair-icons .pa img,.pair-icons .pb img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+/* Typography parity with the rest of the site (e.g. Wallet › My Assets): numeric/value cells + tab counts
+   use JetBrains Mono (tabular), the pair NAME stays Hanken Grotesk. Fixes "Pools text looks different". */
+/* network pool-list pager. #paginationAll ships from the design with a static "1-10 of 100"; its
+   contents are replaced wholesale, so these rules describe the whole footer rather than tweaking it. */
+/* display is deliberately NOT !important. The design's tab handler hides the footer by writing
+   pag.style.display="none" when My Pools is selected, and an !important rule in the stylesheet beats an
+   inline style -- so the pager stayed on screen under the My Pools list. Specificity here is the bug. */
+.lx-netpag{display:flex;align-items:center;justify-content:space-between;gap:13.2px;flex-wrap:wrap;
+  padding:15.4px 4.4px 2.2px;margin-top:6.6px;border-top:1px solid var(--border);
+  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:14.9px;color:var(--text-soft)}
+.lx-netpag .lx-netpag-c{display:flex;align-items:center;gap:6.6px;flex-wrap:wrap}
+.lx-netpag button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  padding:6.6px 13.2px;font:inherit;font-weight:600;color:var(--text);cursor:pointer;transition:.16s}
+.lx-netpag button:hover:not(:disabled){border-color:var(--accent-soft)}
+.lx-netpag button:disabled{opacity:.4;cursor:default}
+.lx-netpag .lx-netpag-m{margin:0 8.8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lx-netpag .lx-netpag-i{font-variant-numeric:tabular-nums}
+.lx-netpag-host{margin-top:11px}
+@media (max-width:700px){ .lx-netpag{justify-content:center;text-align:center}
+  .lx-netpag .lx-netpag-i{width:100%;text-align:center} }
+#poolsBody td, #lx-mypanel td, #poolTabs .count{font-family:'JetBrains Mono',monospace!important}
+#poolsBody .pair-name, #lx-mypanel .pair-name{font-family:'Hanken Grotesk','Hanken Grotesk',sans-serif!important;font-size:17.1px!important;font-weight:700!important}
+#poolsBody .pair-sub, #lx-mypanel .pair-sub{font-size:13.8px!important}
+/* value cells 19px -> 15px to match Trade "All Trading Pairs" (pair-name 15.5 / sub 12.5 keep their own sizes) */
+#poolsBody td, #lx-mypanel td{font-size:16.5px!important}
+#poolsBody td div:not(.pair-name):not(.pair-sub), #lx-mypanel td div:not(.pair-name):not(.pair-sub){font-size:16.5px!important}
+/* My Positions: after dropping the Fees Earned + Deposited columns, pull "View position" left — fix the data
+   columns to content/size so the View cell (last) absorbs all leftover width and its button sits, left-aligned,
+   right after Pool Share (leftover blank space collapses to the far right of the row, not between the cells) */
+#lx-mypanel table.pools th:nth-child(2),#lx-mypanel table.pools td:nth-child(2){white-space:nowrap;width:1px}
+#lx-mypanel table.pools th:nth-child(3),#lx-mypanel table.pools td:nth-child(3){width:200px}
+#lx-mypanel table.pools th:nth-child(4),#lx-mypanel table.pools td:nth-child(4){width:130px}
+/* The view-position cell is the last column and the table is full-width, so the preceding columns are
+   width-capped above and this one absorbs the slack — left-aligning the button left it stranded mid-row
+   with a wide empty gutter to its right. Pin it to the right edge instead. */
+#lx-mypanel table.pools .lx-viewcell{text-align:right!important;padding-left:11px;padding-right:17.6px;white-space:nowrap}
+.lx-amm-empty{padding:24.2px 13.2px;text-align:center;color:var(--text-muted);font-size:14.9px}
+.lx-amm-empty b{color:var(--text);display:block;margin-bottom:4.4px}
+html:not(.lx-ammready) .pool-header, html:not(.lx-ammready) .pool-layout{visibility:hidden}
+/* The Deposit / Withdraw box has its OWN gate, because .lx-ammready lifts when the pool's own figures
+   land and the wallet-side balances arrive later. In that window the design's baked "Balance: 25,420.18"
+   was on screen -- a number belonging to nobody, beside a MAX button that would have used it. Only the
+   balance line is held, not the panel: the form is usable, it just does not state a balance it does not
+   yet know. paintDetail lifts this the moment it has written the real ones. */
+html:not(.lx-dwready) #dwDeposit .dw-field .balance,html:not(.lx-dwready) #dwWithdraw .balance{visibility:hidden}
+/* the breadcrumb pair (last span in .crumb) is a baked "LUMOS / XLM" mock that pdCopy corrects to the
+   real pair before reveal — hide it until then so it doesn't flash the wrong pair */
+html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
+/* PAIR labels carry a baked "LUMOS / XLM" mock. reveal() fires at 700ms (before the pool fetch resolves) so the
+   mock would flash. Gate the pair TEXT on lx-detpr (added only once paintDetail paints the real pair) — the ico
+   stays visible, only the wrong text is masked. The withdraw "from position" row is re-created on tab switch, so
+   gate it per-element on data-lxpair (set by fixWithdrawPair) instead of the global class. */
+/* Mask EVERY baked LUMOS/XLM mock (text, values, logos) on the detail page until the real paint (lx-detpr).
+   Use visibility:hidden — NOT color:transparent — because the mock hides values inside inline-coloured child
+   spans (the green "+$32.18" PnL) and uses <img> logos, neither of which a text-colour rule can hide. Layout
+   is preserved. The deposit/withdraw asset chips are re-created on tab switch, so they're gated per-element on
+   data-lxpair (set by setField / fixWithdrawPair) instead of the global class. */
+/* N13: each side of the pair opens its own asset page. Inherits the heading's own type -- this is the
+   title, not a control added to it -- and only underlines on hover so it does not read as two links
+   sitting in a heading at rest. */
+.ph-name .lx-phlink{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+.ph-name .lx-phlink:hover{border-bottom-color:currentColor}
+.ph-name .lx-phsep{opacity:.55}
+html:not(.lx-detpr) .ph-name,
+html:not(.lx-detpr) .crumb span:last-child,
+html:not(.lx-detpr) .ph-icons .pa, html:not(.lx-detpr) .ph-icons .pb,
+html:not(.lx-detpr) .my-position .mp-amount, html:not(.lx-detpr) .my-position .mp-pnl,
+html:not(.lx-detpr) .my-position .mp-asset-name, html:not(.lx-detpr) .my-position .mp-asset-amt,
+html:not(.lx-detpr) .my-position .mp-asset-ico, html:not(.lx-detpr) .my-position .mp-fee-val,
+html:not(.lx-detpr) .position-share-pill{visibility:hidden!important}
+#dwDeposit .dw-field .row .asset:not([data-lxpair]), #dwWithdraw .dw-field .row .asset:not([data-lxpair]){visibility:hidden!important}
+/* Remaining mock-flash surfaces on the detail page (audit #9/#10/#11): the STAT values (3,420,180 XLM /
+   8,420 / 42.10 mock), the Pool Transactions MOCK rows (0x wallets + 5/26/2026 dates) and the mock
+   Participants (847). Real rows carry .lx-txrow/.lx-partrow — mock rows never do, so hide non-lx rows
+   outright (no timing dependency); stat values reveal with the real paint (lx-detpr). */
+html:not(.lx-detpr) .ph-stat .v, html:not(.lx-detpr) .ph-stat .s{visibility:hidden!important}
+/* AUDIT (user-reported): the header PRICE block was never in this list, so on every pool the top-right
+   showed the baked "0.000713 XLM / $0.000108 per LUMOS" until the real paint — i.e. a yXLM/XLM pool
+   announced a LUMOS price for a few seconds. Same gate as everything else in the header. */
+html:not(.lx-detpr) .ph-price .v,
+html:not(.lx-detpr) .ph-price .s,
+html:not(.lx-detpr) .ph-price .lc-money{visibility:hidden!important}
+.lx-detfail{display:flex;align-items:center;gap:15.4px;flex-wrap:wrap;margin:17.6px 0 0;padding:14.3px 17.6px;border:1px solid rgba(209,84,47,.35);border-left:3px solid #d1542f;border-radius:12px;background:rgba(209,84,47,.07);font-size:14.5px;line-height:1.5;color:var(--text,#0e0e10)}
+.lx-detfail span{flex:1 1 300px}
+.lx-detretry{padding:7.7px 16.5px;border-radius:9px;border:1px solid var(--border-strong,#d5d5dd);background:var(--surface-2,#f6f6f8);color:var(--text,#0e0e10);font:650 13.8px/1 inherit;cursor:pointer}
+.lx-detretry:hover{border-color:#d1542f;color:#d1542f}
+table.tx tbody tr:not(.lx-txrow){display:none!important}
+#partList > *:not(.lx-partrow){display:none!important}
+html:not(.lx-detpr) .side-head .count-pill{visibility:hidden!important}
+/* AUDIT (user-reported, DWARF/SBB): the deposit CTA looked live even when the deposit could not possibly
+   succeed — an AMM deposit needs BOTH sides of the pair, and the user held none of one of them. Grey it out
+   and make it inert so the state is legible BEFORE filling in amounts, instead of erroring only on submit. */
+/* NOT scoped to .dw-card. The phone puts this button in .card > .card-body, so the old
+   ".dw-card .dw-cta.lx-dwoff" never matched there: the CTA was aria-disabled and inert to our handler
+   while still looking and feeling fully enabled. The hint paragraph underneath hid that -- with the
+   paragraph gone the button's own appearance IS the whole message, so it has to be right on both. */
+.dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
+.dw-card .lx-dwhint{margin-top:9.9px;font-size:13.2px;line-height:1.45;color:var(--text-muted);text-align:center}
+/* #6, mobile half. This rule and the display:block one below are both leftovers from when .lm-chip was
+   an ABSOLUTELY POSITIONED decoration floating over the headline -- hiding it below 1100px was the right
+   call for that design. _poolshero.js has since rebuilt the hero as a flex column where the chip is a
+   real strip pinned along the bottom edge, and it sets display:block for exactly this width. But
+   lx-amm-css is emitted AFTER lx-poolshero-css in the head, so with both marked !important this stale
+   one has been winning ever since -- which is why the numbers vanished entirely on a phone.
+   The layout belongs to _poolshero.js now, so this defers to it. */
+/* the design paints a synthetic mock chart on load; hide its data (line/area/bars) until our real engine takes
+   over (lx-chartready), keeping the axis/grid so the plot frame stays visible */
+html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready) #tvlChart svg rect:not(.lx-ch){opacity:0!important}
+/* #11: the gate above covered the line and the bars but not the axis LABELS, which are <text> nodes the
+   engine rewrites in place once it has real data. So while "Loading pool history…" was on screen the
+   scale beside it still read the design's mock numbers -- 5.99M / 3.38M / 2.78M XLM for a pool that
+   holds nothing of the sort -- and they snapped to the real figures when the chart finally drew. That
+   momentary wrong scale is the flash. Hide the numbers with the plot and reveal them together.
+   The loading message is itself an SVG <text> (.lx-chload), and anything we drew carries .lx-ch, so
+   both are excluded: this only ever hides labels that are still showing mock values. */
+html:not(.lx-chartready) #tvlChart svg text:not(.lx-ch):not(.lx-chload){opacity:0!important}
+.ph-icons .pa,.ph-icons .pb,.mp-asset-ico,#dwDeposit .dw-field .asset .ico,#dwWithdraw .asset .ico{background-image:none!important;overflow:hidden}
+.ph-icons .pa img,.ph-icons .pb img,.mp-asset-ico img,.dw-field .asset .ico img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.type-pill.deposit{background:rgba(34,197,94,.14)!important;color:#16a34a!important}
+.type-pill.withdraw{background:rgba(239,68,68,.14)!important;color:#ef4444!important}
+.lx-partrow{display:flex;align-items:center;gap:11px}
+.lx-acct:hover{color:var(--accent)!important}
+.lx-partrow .part-addr{flex:1;font-family:'JetBrains Mono',monospace;font-size:14.3px}
+.lx-partrow .part-share{font-weight:700;font-size:15.4px!important}
+/* pool detail: remove the design's green endpoint dot on the TVL chart */
+#tvlChart circle{display:none!important}
+/* Participants pager. We APPEND this footer ourselves, and the design only ships .part-foot styling in the
+   desktop file -- the phone build has no .part-foot rule at all, so on mobile it rendered as two stacked
+   unstyled divs with bare chevrons overflowing the card. Styled on our own class so it stands up wherever
+   it is inserted; the values mirror the desktop rules so both look the same. */
+.lx-partfoot{display:flex!important;justify-content:space-between;align-items:center;gap:11px;flex-wrap:wrap;
+  padding:11px 15.4px;border-top:1px solid var(--border);font-size:14.3px;color:var(--text-soft);
+  font-family:'Hanken Grotesk',system-ui,sans-serif}
+.lx-partfoot > div:first-child{font-variant-numeric:tabular-nums}
+.lx-partfoot .nav{display:inline-flex;align-items:center;gap:6.6px}
+.lx-partfoot .nav button{width:26px;height:26px;min-width:26px;padding:0;border-radius:6px;
+  border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;font-size:16.5px;line-height:1}
+.lx-partfoot .nav button:hover:not(:disabled){color:var(--accent);border-color:var(--accent)}
+.lx-partfoot .nav button:disabled{opacity:.4;cursor:default}
+.lx-partfoot .lx-pppg{font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 2.2px}
+/* The "Pool TVL / Volume" dropdown chose which of the two series to show, so they were never on screen
+   together. They now share one chart -- TVL line with volume bars beneath it, same as Trade-asset -- which
+   leaves this control with nothing to switch between. Hidden rather than deleted from the markup: the
+   design ships its own open/close handler and label rewriting for it, and removing the node it expects is
+   how you get a handler throwing on every click.
+
+   NOT scoped to .chart-card. That is where the desktop puts it; the phone puts it in
+   .card > .chart-controls, so a ".chart-card ..." rule hid it on desktop only and left it sitting on
+   mobile. This is the SECOND selector in this file written against the desktop's wrapper and silently
+   missing the phone's (the disabled-CTA rule was the first) -- on this page, scope to the element.
+
+   #chartMetricMenu / .chart-mode-menu is the menu the design's own script builds and appends; with the
+   trigger gone nothing should open it, but a stale "open" class would otherwise leave it on screen. */
+.chart-mode-select,#chartMetricMenu,.chart-mode-menu{display:none!important}
+/* pool-tx wallet address links to OUR account page — subtle hover underline */
+.lx-sortag{display:inline-block;margin-left:7.7px;padding:1.1px 7.7px;border-radius:999px;font-size:11.6px;
+font-weight:700;letter-spacing:.02em;background:var(--surface);border:1px solid var(--border);color:var(--text-soft);vertical-align:middle}
+.lx-nolink{cursor:default}
+.lx-nolink:hover .lx-waddr{text-decoration:none}
+table.tx .wallet-cell{cursor:pointer}
+table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
+/* pagination row: vertically center "Page X of Y" with the Prev/Next buttons */
+.controls{align-items:center!important}
+/* Pools hero: animated dark cosmic cover (both themes) — replaces inject_livemarket's orange streams */
+.lumos-promo.lm-on.lm-pools{min-height:366px!important;overflow:hidden;background:radial-gradient(58% 84% at 70% 30%,rgba(140,96,246,.26),transparent 60%),radial-gradient(46% 64% at 92% 78%,rgba(198,86,232,.14),transparent 62%),radial-gradient(52% 68% at 24% 90%,rgba(74,110,224,.12),transparent 62%),linear-gradient(140deg,#0f1120 0%,#0a0a15 55%,#070610 100%)!important}
+.lm-pools .lm{min-height:366px!important}
+.lm-pools .lm-streams,.lm-pools .lm-svg,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
+.lm-pools .lm::after{background:linear-gradient(100deg,rgba(9,9,18,.66) 12%,rgba(9,9,18,.16) 46%,transparent 72%)!important;z-index:2!important}
+/* bigger text, forced light so it stays readable on the dark card in LIGHT theme too */
+.lm-pools .lm-c-pool{position:relative;z-index:4;padding-top:23.1px}
+.lm-pools .lm-h{font-size:41.8px!important;line-height:1.08!important;color:#fff!important;margin-bottom:14.3px!important;letter-spacing:-.01em}
+.lm-pools .lm-sub{font-size:17.1px!important;line-height:1.55!important;max-width:380px!important;color:rgba(228,230,245,.76)!important;margin-bottom:24.2px!important}
+.lm-pools .lm-cta{font-size:16px!important;padding:14.3px 24.2px!important}
+.lm-pools .lm-chip{z-index:4!important;background:rgba(16,15,32,.62)!important;border:1px solid rgba(255,255,255,.12)!important;backdrop-filter:blur(6px);padding:23.1px 29.7px!important;min-width:0;width:max-content;max-width:360px}
+.lm-pools .lm-chip .p1,.lm-pools .lm-chip .p2,.lm-pools .lm-chip .p3{display:none!important}
+.lx-hstats{display:grid;grid-template-columns:auto auto;gap:22px 26.4px}
+.lx-hstat{display:flex;flex-direction:column;gap:4.4px;min-width:0}
+.lx-hstat .v{font:800 31.9px/1.05 'Hanken Grotesk',sans-serif;color:#fff;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lx-hstat .l{font:600 14.3px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)}
+/* Top Pool stat: show the pair logos beside the "CODE / XLM" text */
+.lx-hstat[data-k=top] .v{display:flex;align-items:center;gap:13.2px}
+/* #2: the top-pool code was hidden behind its own second logo.
+   Six rules from four stylesheets size this element, and one of them -- added later, for the pair marks
+   elsewhere -- sets gap:6.6px on [data-paired]. The nudge below (.pb{left:23px}) was written for a
+   container with no gap, so the second mark ended up 33+6+23 = 62px in, inside a box declared 57px wide,
+   and jutted far enough past it to sit on the U of "USDC / XLM".
+   Overlap the two by geometry instead of by a nudge that assumes a particular flow: no gap, a negative
+   margin, and no offset. The box is then exactly as wide as what is in it, and the text starts after it. */
+.lx-hstat[data-k=top] .pair-icons{width:auto!important;flex:0 0 auto!important;gap:0!important;height:33px}
+.lx-hstat[data-k=top] .pair-icons .pa.lx-ico,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{width:33px!important;height:33px!important;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:0!important;margin-left:-11px!important}
+.lx-hstat[data-k=top] .pair-icons .pa.lx-ico[data-mono]::after,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico[data-mono]::after{font-size:14.3px}
+.lx-hstat[data-k=top] .lx-toptxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:22px}
+/* #29: the pool page's own header pair -- two 44px logos with a 6px gap between them, reading as two
+   unrelated tokens rather than one pair. Everywhere else a pair is drawn overlapping, so this was the
+   odd one out. Both already carry a 3px ring, which is what makes the overlap legible; the base asset
+   stays on top so the pair reads left to right in the same order as the name beside it. */
+/* #9: and the box has to BE a row. On the phone the design lays .ph-icons out as display:block, so the
+   two 44px marks stacked -- the second one landing 44px below the first, on top of the text under it.
+   The overlap rule below is a no-op in block layout, which is why it read as a broken logo rather than
+   a pair. Measured before: pa at y141, pb at y185, inside a 60px-wide box. */
+.pool-header .ph-icons{display:flex!important;align-items:center;flex-wrap:nowrap;width:auto!important;gap:0!important}
+.pool-header .ph-icons .pa{position:relative;z-index:2}
+.pool-header .ph-icons .pb{position:relative;z-index:1;left:0!important;margin-left:4.4px!important}
+/* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
+.lx-ammview{display:inline-flex;align-items:center;gap:5.5px;padding:7.7px 16.5px;border-radius:9px;font:700 13.8px/1 'Hanken Grotesk',sans-serif;text-decoration:none!important;white-space:nowrap;border:1px solid rgba(234,106,44,.38);color:var(--accent,#ea6a2c)!important;background:rgba(234,106,44,.10);transition:background .15s ease,color .15s ease,border-color .15s ease}
+.lx-ammview:hover{background:var(--accent,#ea6a2c);color:#fff!important;border-color:var(--accent,#ea6a2c)}
+.pair-icons .pa .lx-mono{display:grid;place-items:center;width:100%;height:100%;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px;border-radius:50%}
+/* Pool Transactions pager, phone. The design ships a .tx-foot on desktop and nothing here, so this is
+   built to match it: same wording, same Prev / Page N of M / Next, sized for a thumb (44px targets). */
+.lx-txfoot-m{display:flex;align-items:center;justify-content:space-between;gap:11px;padding:13.2px 15.4px;border-top:1px solid var(--border);font-size:13.2px;color:var(--text-muted)}
+.lx-txfoot-m .controls{display:inline-flex;align-items:center;gap:4.4px;flex:0 0 auto}
+.lx-txfoot-m button{min-height:34px;padding:8.8px 12.1px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text);font:600 13.2px/1 'Hanken Grotesk',sans-serif;-webkit-tap-highlight-color:transparent}
+.lx-txfoot-m button:disabled{opacity:.4}
+.lx-txfoot-m .lx-txpg{margin:0 7.7px;white-space:nowrap;font-size:13.2px;color:var(--text-muted)}
+.lx-txfoot-m .lx-txinfo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* injected cosmic decor (nebulae drift, orb floats, particles rise, stars twinkle) */
+.lx-cosmic{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.lx-neb{position:absolute;border-radius:50%;filter:blur(50px);mix-blend-mode:screen;will-change:transform}
+.lx-neb.n1{width:600px;height:470px;right:-70px;top:-130px;background:radial-gradient(circle,rgba(140,96,246,.62),transparent 66%);animation:lxNeb1 30s ease-in-out infinite alternate}
+.lx-neb.n2{width:480px;height:430px;right:150px;bottom:-180px;background:radial-gradient(circle,rgba(206,88,236,.44),transparent 66%);animation:lxNeb2 36s ease-in-out infinite alternate}
+.lx-neb.n3{width:410px;height:340px;left:32%;top:4%;background:radial-gradient(circle,rgba(72,120,232,.34),transparent 66%);animation:lxNeb1 33s ease-in-out infinite alternate-reverse}
+@keyframes lxNeb1{from{transform:translate(0,0) scale(1)}to{transform:translate(-48px,36px) scale(1.18)}}
+@keyframes lxNeb2{from{transform:translate(0,0) scale(1)}to{transform:translate(54px,-32px) scale(1.12)}}
+.lx-stars{position:absolute;inset:0;animation:lxTw 7s ease-in-out infinite;background-repeat:no-repeat;background-image:
+radial-gradient(1.6px 1.6px at 17% 24%,rgba(255,255,255,.9),transparent 60%),
+radial-gradient(1.3px 1.3px at 61% 16%,rgba(255,255,255,.62),transparent 60%),
+radial-gradient(1.7px 1.7px at 83% 52%,rgba(255,255,255,.74),transparent 60%),
+radial-gradient(1.1px 1.1px at 45% 66%,rgba(255,255,255,.5),transparent 60%),
+radial-gradient(1.4px 1.4px at 93% 30%,rgba(255,255,255,.64),transparent 60%),
+radial-gradient(1.2px 1.2px at 34% 44%,rgba(255,255,255,.5),transparent 60%),
+radial-gradient(1.5px 1.5px at 73% 80%,rgba(255,255,255,.58),transparent 60%),
+radial-gradient(1px 1px at 55% 90%,rgba(255,255,255,.42),transparent 60%),
+radial-gradient(1.3px 1.3px at 12% 66%,rgba(255,255,255,.52),transparent 60%),
+radial-gradient(1.6px 1.6px at 70% 40%,rgba(255,255,255,.66),transparent 60%),
+radial-gradient(1.1px 1.1px at 88% 66%,rgba(255,255,255,.46),transparent 60%),
+radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
+@keyframes lxTw{0%,100%{opacity:.6}50%{opacity:1}}
+.lx-constel{position:absolute;right:3%;top:50%;transform:translateY(-50%);width:330px;height:330px;opacity:.95;pointer-events:none;animation:lxConFloat 12s ease-in-out infinite}
+@keyframes lxConFloat{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 12px))}}
+.lx-constel line{stroke:rgba(150,120,240,.26);stroke-width:1}
+.lx-constel circle{fill:#cbbaff;filter:drop-shadow(0 0 5px rgba(168,128,255,.9));animation:lxNode 4.5s ease-in-out infinite}
+@keyframes lxNode{0%,100%{opacity:.5}50%{opacity:1}}
+/* #6/#2, desktop half. Same story as the mobile rule above: this forced the hero back to block so the
+   copy would top-align with the floating chip. _poolshero.js now lays the hero out as a flex column and
+   puts the strip last with order:9 -- but order does nothing in a block container, so the strip rendered
+   in DOM order, i.e. ABOVE the headline, and the Pools hero stopped matching the Trade hero it is meant
+   to mirror. Removing it lets that flex layout actually apply. */
+.lx-part{position:absolute;border-radius:50%;background:rgba(214,196,255,.85);box-shadow:0 0 9px rgba(172,132,255,.9);animation:lxDrift linear infinite}
+.lx-part.p1{width:5px;height:5px;left:57%;bottom:14%;animation-duration:15s}
+.lx-part.p2{width:4px;height:4px;left:74%;bottom:8%;animation-duration:19s;animation-delay:-4s}
+.lx-part.p3{width:6px;height:6px;left:66%;bottom:22%;animation-duration:23s;animation-delay:-9s}
+.lx-part.p4{width:3px;height:3px;left:85%;bottom:12%;animation-duration:17s;animation-delay:-2s}
+@keyframes lxDrift{0%{transform:translateY(20px);opacity:0}12%{opacity:1}86%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
+#poolsBody tr td:last-child,#panelAllPools thead th:last-child{text-align:center!important}
+#lx-mypanel{opacity:1!important;visibility:visible!important;animation:none!important}
+/* lx-poolsweight: match the Trade tables. Pools body numbers computed to font-weight 400 while the
+   Trade tables render theirs at 700 (both JetBrains Mono), so the two sections read as different
+   typefaces. Only the PRIMARY numeric line is bolded — the $ sub-line under it stays lighter, which
+   is how Trade does it too. Columns 1-2 (# and PAIR) are left alone; :last-child covers Participants,
+   which is bare text in the td with no inner div. */
+table.pools tbody tr.lx-ammrow td:nth-child(n+3)>div:first-child,
+table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
+
+/* My Position asset logos. We insert a real <img> into the design's 24px .mpm-asset-ico bubble, but the
+   phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
+   inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
+   placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
+/* #6 (batch 5): the participants footer ships baked as "Viewing 1 - 17 of 847" -- the design's mock --
+   and on a desktop refresh that sat there for the whole time the pool was loading, which is a specific
+   wrong number rather than an obviously empty one. Hidden until our own pager writes it (.lx-partfoot
+   is added by partFoot), with the usual failsafe so a stalled load leaves it blank rather than gone. */
+.part-foot:not(.lx-partfoot){visibility:hidden}
+
+/* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
+   across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
+   (24h)", so it folds to 2x2 there instead. */
+.ph-stats{grid-template-columns:repeat(4,1fr)!important}
+/* #20: the + between the two Create Pool assets sits ON the seam between the cards, so it depends on
+   having a solid ground of its own and on being above them -- without either it reads as a glyph
+   caught half under an edge. Given both, plus a glyph that is centred by geometry rather than by line
+   box (an svg with display:block cannot inherit a stray baseline). Could not reproduce the exact
+   breakage reported, so this changes only what could plausibly cause it and nothing else. */
+#createPoolModal .plus{position:relative;z-index:2;flex:0 0 30px;width:30px;height:30px;
+  background:var(--surface,#fff)!important;line-height:0;
+  display:flex!important;align-items:center!important;justify-content:center!important}
+#createPoolModal .plus svg{display:block;width:14px;height:14px;flex:0 0 14px}
+.ph-stat .ic.part{background:var(--purple-soft,rgba(139,92,246,.13));color:var(--purple,#8b5cf6)}
+@media(max-width:900px){.ph-stats{grid-template-columns:repeat(2,1fr)!important}}
+
+.mp-asset-ico img,.mpm-asset-ico img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.mpm-asset-ico{overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
+
+/* Trailing explorer arrow on a phone transaction row (desktop has one per table row). */
+.tx-item .lx-txext{flex-shrink:0;margin-left:8.8px;align-self:center;color:var(--text-muted);display:inline-flex;
+  align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;text-decoration:none}
+/* identicon fills the icon slot edge to edge; the design tints that slot per type, which would show
+   through the identicon's transparent corners */
+.tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
+.tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
+.tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
+</style><style id="lx-amm-css">/*lxts:1.1*/
+/* ---- the three pool stat cards, as one set ---------------------------------------------------- */
+/* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
+   onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
+   to the 18px value to compete with it -- carrying a run-on of three facts. So: the value shrinks to
+   fit rather than wrapping, the sub-line steps back to a quiet single line, and every card reserves
+   the same sub-line height so three cards line up even when one has nothing to say there. */
+.ph-stats .ph-stat{display:flex;flex-direction:column}
+.ph-stat .v{white-space:nowrap;font-size:clamp(16.5px,1.35vw,19.8px);font-weight:800;letter-spacing:-.2px}
+.ph-stat .s{font-size:13.2px;margin-top:3.3px;min-height:15px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;color:var(--text-soft)}
+@media(max-width:880px){
+/* Three across does not fit a phone once the values stop wrapping -- measured 374px of cards in a
+   323px column, which is what made the page pan sideways. Two columns, and nothing that refuses to
+   shrink inside them. */
+.ph-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.ph-stats .ph-stat{min-width:0}
+.ph-stat .v{font-size:17.6px;white-space:normal}
+.ph-stat .s{font-size:12.7px}
+}
+/* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
+#createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
+/* AUDIT (user-reported): the Create Pool MAX control is a bare <span> — it fires, but the design gives it no
+   cursor, hover or hit padding, so it reads as decoration and people assume it is broken. */
+#createPoolModal .field-foot .max-btn{cursor:pointer;user-select:none;padding:2.2px 7.7px;margin:-2.2px -7.7px;border-radius:6px;transition:background .14s,color .14s}
+#createPoolModal .field-foot .max-btn:hover{background:rgba(234,106,44,.14);color:var(--accent,#ea6a2c)}
+#createPoolModal .field-foot .max-btn:active{background:rgba(234,106,44,.24)}
+#createPoolModal .lx-cpwarn{margin:8.8px 2.2px 0;font-size:13.8px;line-height:1.45;color:#c9791f}
+/* success toast — same look as the site's "Copied to clipboard" toast (self-contained) */
+.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8.8px;align-items:center;pointer-events:none}
+.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:12.1px 19.8px 12.1px 15.4px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:17.6px;font-weight:600;display:inline-flex;align-items:center;gap:9.9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
+.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}
+/* The stack is pointer-events:none so a toast never blocks the page underneath — but that also made the
+   explorer link inside it unclickable, which is why "view" appeared to lead nowhere. Re-enable pointer
+   events on the LINK only, so the rest of the toast stays click-through. */
+.lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
+@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
+/* #24: the cold-start overlay.
+   The ranking is built by an endpoint that walks the whole network in resumable steps and answers
+   {warming, scanned, phase} until it is done -- on a cold cache that is roughly twenty-five seconds.
+   For that whole time the page sat masked and empty, which reads as broken rather than as working.
+   Reduced motion drops the pulse and the fades; it does NOT gate the dismissal, which is a class and a
+   removal, so the overlay can never be left on screen by a motion preference. */
+/* Pool Activity chart: the SVG takes no pointer input, so every mouse and touch lands on #tvlChart.
+   The hover listeners are on that host, and a touch TARGET is sticky for the life of the gesture --
+   whichever node touchstart hit keeps receiving touchmove. Starting a drag on the filled area therefore
+   bound the gesture to the gradient <path>, and that path is REPLACED on the next chart repaint, which
+   orphaned the drag and killed the readout mid-swipe. Starting on the empty part above the line bound it
+   to the host instead, which is never replaced -- which is exactly why it worked there and nowhere else.
+   With the SVG transparent to input the target is always the host, so it cannot happen at all. The
+   overlay divs already carry pointer-events:none for the same reason. */
+#tvlChart svg,#tvlChart svg *{pointer-events:none}
+.lx-boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);
+  opacity:1;transition:opacity .28s ease}
+.lx-boot.lx-boot-out{opacity:0;pointer-events:none}
+.lx-boot-in{display:flex;flex-direction:column;align-items:center;gap:17.6px;padding:26.4px;text-align:center}
+.lx-boot-badge{position:relative;width:96px;height:96px;display:grid;place-items:center}
+.lx-boot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  animation:lx-boot-spin 1.15s linear infinite;opacity:.9}
+.lx-boot-badge::after{content:"";position:absolute;inset:8px;border-radius:50%;
+  background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-boot-pulse 1.8s ease-in-out infinite}
+@keyframes lx-boot-spin{to{transform:rotate(360deg)}}
+.lx-boot-mark{position:relative;z-index:1;width:52px;height:52px;background-size:contain;background-repeat:no-repeat;
+  background-position:center;animation:lx-boot-pulse 1.6s ease-in-out infinite}
+.lx-boot-ttl{font-family:'Hanken Grotesk',sans-serif;font-size:16.5px;font-weight:700;color:var(--text,#0e0e10)}
+.lx-boot-bar{width:216px;height:4px;border-radius:99px;background:var(--border,#ececef);overflow:hidden}
+.lx-boot-fill{height:100%;width:0;background:var(--accent,#ea6a2c);border-radius:99px;transition:width .45s ease}
+.lx-boot-sub{font-family:'JetBrains Mono',monospace;font-size:12.1px;letter-spacing:.04em;
+  color:var(--text-soft,#6f6f79);font-variant-numeric:tabular-nums}
+@keyframes lx-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.6}}
+@media (prefers-reduced-motion:reduce){.lx-boot-mark,.lx-boot-badge::before,.lx-boot-badge::after{animation:none}
+  .lx-boot,.lx-boot-fill{transition:none}}
+/* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
+   written paintTables filled both and revealed after. The network list changed that: the rows now arrive
+   from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
+   until they landed. Same treatment as the desktop body. */
+html:not(.lx-ammready) #panelAll{visibility:hidden}
+/* #39: the Top Pool slot showed "( )" for a beat on the phone. That is its own skeleton -- two ringed
+   circles overlapping at phone scale read as a pair of brackets, which looks like a rendering fault
+   rather than a placeholder. The slot stays blank until there is a real pair to put in it; the label
+   under it already says what is coming. */
+html:not(.lx-ammready) .lx-hstat[data-k=top] .v{visibility:hidden}
+/* #10: remote pool results, kept visually distinct from the page's own ranked list so it is obvious
+   these came from a search rather than from the top-25 ranking. */
+.lx-psresult{margin-top:15.4px}
+/* #41: self-contained appearance for a network result, so it never depends on .pool-card existing.
+   :where() = zero specificity, so the phone's own .pool-card rules still win there. */
+:where(.lx-psresult .lx-pscard){display:block;margin:0 0 8.8px;padding:13.2px 15.4px;text-decoration:none;
+  color:inherit;border:1px solid var(--border,#e6e6ea);border-radius:12px;background:var(--surface,#fff)}
+:where(.lx-psresult .lx-pscard:hover){border-color:var(--accent,#ea6a2c)}
+:where(.lx-psresult .lx-pscard .pc-head){display:flex;align-items:center;gap:11px;margin-bottom:9.9px}
+:where(.lx-psresult .lx-pscard .pc-name){font-size:16px;font-weight:700;color:var(--text,#0e0e10)}
+:where(.lx-psresult .lx-pscard .pc-sub){margin-top:2.2px;font-size:13.2px;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stats){display:flex;gap:28.6px}
+:where(.lx-psresult .lx-pscard .pc-stat .l){font-size:11px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stat .v){margin-top:2.2px;font-size:14.9px;font-weight:700;
+  color:var(--text,#0e0e10);font-variant-numeric:tabular-nums}
+.lx-pshead{margin:0 0 8.8px;font-size:11.6px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}
+.lx-psnote{padding:17.6px 4.4px;text-align:center;font-size:14.3px;color:var(--text-soft)}
+/* POOL-DETAIL TAB STRIPS ON A PHONE.
+   #ptabs measures 432px of tabs inside a 345px box, so "Participants" sits past the right edge and is
+   simply unreachable — on a narrower handset "Transactions" and "My Position" go with it. The strip is
+   overflow:auto on BOTH axes too, so instead of doing nothing a tap drags the row (the same defect the
+   Trade-asset tab strip had). Deposit/Withdraw is the same shape: two fixed 152px buttons, 304px of
+   content that stops fitting below ~330px of viewport.
+   Fix both the way the Trade strip was fixed: the tabs SHARE the width and the row cannot scroll at all.
+   overflow must be set on both axes — one non-visible axis forces the other to auto, which is what made
+   it draggable vertically. */
+@media (max-width:760px){
+  #ptabs.panel-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important;gap:0!important;padding-bottom:2.2px}
+  /* size to content, share what is left: equal quarters clipped "Deposit / Withdraw", which is much longer
+     than the other three. The four together measure ~333px inside 345px, so they all fit unclipped; the
+     min-width:0 + ellipsis below is the safety net for a narrower handset. */
+  #ptabs.panel-tabs>*{flex:1 1 auto!important;min-width:0!important;padding-left:3.3px!important;padding-right:3.3px!important;
+    font-size:12.1px!important;letter-spacing:-.1px;white-space:nowrap;text-align:center;justify-content:center!important;overflow:hidden;text-overflow:ellipsis}
+  .dw-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important}
+  .dw-tabs>*{flex:1 1 0!important;min-width:0!important;white-space:nowrap}
+}
+/* Small handsets (iPhone SE and friends): at 11px the four labels want ~302px inside a 290px strip, so
+   every one of them ellipsised by a few pixels. A step down to 10px needs ~269px and they read in full. */
+@media (max-width:359px){
+  #ptabs.panel-tabs>*{font-size:11px!important;padding-left:2.2px!important;padding-right:2.2px!important}
+}
+/* Market Overview box: show its structure (title/labels) instantly; only the value+sub cells shimmer as a
+   skeleton until real data lands — so the box never sits blank for ~2s and never flashes mock numbers. */
+/* Skeleton the RIGHT-side dynamic cells (value + vsub). The left label/sub are static design text.
+   The vsub holds the mock $ (and an .lc-money the site re-stamps) — earlier it wasn't covered, so the
+   24H-Volume figure flashed a mock value before real data. */
+/* white-space:nowrap + overflow:hidden are ESSENTIAL: during load these cells still hold the design's
+   MOCK text (e.g. "51,250 XLM swapped") which wraps to 2 lines in the narrow column and makes the whole
+   top section ~40px taller until real (short) data lands. One-lining the skeleton keeps height stable. */
+/* Market Overview began at exactly the pixel the pools card ended -- 1378 to 1378, no gap at all -- so
+   the two read as one broken block. The separation was never its own: it came from the pagination row
+   between them, which is display:none on the My Pools tab, so the collision appeared there and nowhere
+   else. 22px is the gap this page already uses between its other cards, and it belongs to the card
+   rather than to whatever happens to precede it. */
+.amm-snapshot-card{margin-top:24.2px}
+html:not(.lx-ammready) .amm-snapshot-value, html:not(.lx-ammready) .amm-snapshot-vsub, html:not(.lx-ammready) .amm-snapshot-sub{color:transparent!important;border-radius:6px;white-space:nowrap!important;overflow:hidden!important;background:linear-gradient(90deg,rgba(148,140,200,.10) 25%,rgba(148,140,200,.22) 37%,rgba(148,140,200,.10) 63%)!important;background-size:400% 100%!important;animation:lxShim 1.3s ease-in-out infinite}
+/* width-only constraints — do NOT add margin/display here or the skeleton rows grow taller than the
+   ready rows and the whole top section visibly shrinks ~40px when data lands */
+html:not(.lx-ammready) .amm-snapshot-value{max-width:96px}
+html:not(.lx-ammready) .amm-snapshot-vsub{max-width:120px}
+html:not(.lx-ammready) .amm-snapshot-sub{max-width:120px}
+/* also hide EVERY child of the value/vsub/sub cells (unit span, .lc-money with its re-stamped data-orig mock,
+   the mock caption text) so nothing bleeds through the shimmer while loading — this was the residual flash */
+html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapshot-vsub *, html:not(.lx-ammready) .amm-snapshot-sub *{color:transparent!important;background:transparent!important;text-shadow:none!important}
+@keyframes lxShim{0%{background-position:100% 0}100%{background-position:0 0}}
+.lx-hstat .v .lx-hskel{display:inline-block;width:44px;height:24px;border-radius:6px;color:transparent!important;vertical-align:middle;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
+.lx-hstat[data-k=top] .lx-toptxt.lx-hskel{width:92px;height:22px}
+.lx-hstat[data-k=top] .lx-hpairskel{display:inline-flex;flex:0 0 auto}
+.lx-hstat[data-k=top] .lx-hpairskel .pa,.lx-hstat[data-k=top] .lx-hpairskel .pb{width:33px;height:33px;border-radius:50%;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
+.lx-hstat[data-k=top] .lx-hpairskel .pb{margin-left:-12.1px;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box}
+/* Market Overview: match the "New Mints on Stellar" (Trade page) typography scale so the two cards feel
+   the same — label like .dex-mint-name (15.5/700), value like .dex-mint-mc (15/700), subs 13/12.5 soft. */
+.amm-snapshot-label{font-size:17.1px!important;font-weight:700!important;line-height:1.2!important;letter-spacing:.2px!important;text-transform:none!important;color:var(--text)!important}
+.amm-snapshot-value{font-size:16.5px!important;font-weight:700!important;letter-spacing:normal!important;line-height:1.2!important}
+.amm-snapshot-sub{font-size:14.3px!important;margin-top:2.2px!important}
+.amm-snapshot-vsub{font-size:13.8px!important;margin-top:2.2px!important}
+.amm-snapshot-row{padding:11px 8.8px!important}
+.amm-snapshot-ic.fees{background:rgba(245,158,11,.15)!important;color:#f59e0b!important}
+/* token/pair icons rendered ENTIRELY via CSS custom-props + ::after so the site logo-painter (which clears innerHTML & stamps an inline bg on an interval) can't wipe them; stylesheet !important beats the painter's inline background */
+.pair-icons .pa.lx-ico,.pair-icons .pb.lx-ico{position:absolute!important;top:0;overflow:hidden;padding:0;background-color:var(--mc,#2a2f42)!important;background-image:var(--mi,none)!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important}
+.pair-icons .pa.lx-ico[data-mono]::after,.pair-icons .pb.lx-ico[data-mono]::after{content:attr(data-mono);position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px}
+.pair-icons .pa,.pair-icons .pb{background-image:none!important;overflow:hidden;padding:0}
+.pair-icons .pa img,.pair-icons .pb img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+/* Typography parity with the rest of the site (e.g. Wallet › My Assets): numeric/value cells + tab counts
+   use JetBrains Mono (tabular), the pair NAME stays Hanken Grotesk. Fixes "Pools text looks different". */
+/* network pool-list pager. #paginationAll ships from the design with a static "1-10 of 100"; its
+   contents are replaced wholesale, so these rules describe the whole footer rather than tweaking it. */
+/* display is deliberately NOT !important. The design's tab handler hides the footer by writing
+   pag.style.display="none" when My Pools is selected, and an !important rule in the stylesheet beats an
+   inline style -- so the pager stayed on screen under the My Pools list. Specificity here is the bug. */
+.lx-netpag{display:flex;align-items:center;justify-content:space-between;gap:13.2px;flex-wrap:wrap;
+  padding:15.4px 4.4px 2.2px;margin-top:6.6px;border-top:1px solid var(--border);
+  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:14.9px;color:var(--text-soft)}
+.lx-netpag .lx-netpag-c{display:flex;align-items:center;gap:6.6px;flex-wrap:wrap}
+.lx-netpag button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  padding:6.6px 13.2px;font:inherit;font-weight:600;color:var(--text);cursor:pointer;transition:.16s}
+.lx-netpag button:hover:not(:disabled){border-color:var(--accent-soft)}
+.lx-netpag button:disabled{opacity:.4;cursor:default}
+.lx-netpag .lx-netpag-m{margin:0 8.8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lx-netpag .lx-netpag-i{font-variant-numeric:tabular-nums}
+.lx-netpag-host{margin-top:11px}
+@media (max-width:700px){ .lx-netpag{justify-content:center;text-align:center}
+  .lx-netpag .lx-netpag-i{width:100%;text-align:center} }
+#poolsBody td, #lx-mypanel td, #poolTabs .count{font-family:'JetBrains Mono',monospace!important}
+#poolsBody .pair-name, #lx-mypanel .pair-name{font-family:'Hanken Grotesk','Hanken Grotesk',sans-serif!important;font-size:17.1px!important;font-weight:700!important}
+#poolsBody .pair-sub, #lx-mypanel .pair-sub{font-size:13.8px!important}
+/* value cells 19px -> 15px to match Trade "All Trading Pairs" (pair-name 15.5 / sub 12.5 keep their own sizes) */
+#poolsBody td, #lx-mypanel td{font-size:16.5px!important}
+#poolsBody td div:not(.pair-name):not(.pair-sub), #lx-mypanel td div:not(.pair-name):not(.pair-sub){font-size:16.5px!important}
+/* My Positions: after dropping the Fees Earned + Deposited columns, pull "View position" left — fix the data
+   columns to content/size so the View cell (last) absorbs all leftover width and its button sits, left-aligned,
+   right after Pool Share (leftover blank space collapses to the far right of the row, not between the cells) */
+#lx-mypanel table.pools th:nth-child(2),#lx-mypanel table.pools td:nth-child(2){white-space:nowrap;width:1px}
+#lx-mypanel table.pools th:nth-child(3),#lx-mypanel table.pools td:nth-child(3){width:200px}
+#lx-mypanel table.pools th:nth-child(4),#lx-mypanel table.pools td:nth-child(4){width:130px}
+/* The view-position cell is the last column and the table is full-width, so the preceding columns are
+   width-capped above and this one absorbs the slack — left-aligning the button left it stranded mid-row
+   with a wide empty gutter to its right. Pin it to the right edge instead. */
+#lx-mypanel table.pools .lx-viewcell{text-align:right!important;padding-left:11px;padding-right:17.6px;white-space:nowrap}
+.lx-amm-empty{padding:24.2px 13.2px;text-align:center;color:var(--text-muted);font-size:14.9px}
+.lx-amm-empty b{color:var(--text);display:block;margin-bottom:4.4px}
+html:not(.lx-ammready) .pool-header, html:not(.lx-ammready) .pool-layout{visibility:hidden}
+/* The Deposit / Withdraw box has its OWN gate, because .lx-ammready lifts when the pool's own figures
+   land and the wallet-side balances arrive later. In that window the design's baked "Balance: 25,420.18"
+   was on screen -- a number belonging to nobody, beside a MAX button that would have used it. Only the
+   balance line is held, not the panel: the form is usable, it just does not state a balance it does not
+   yet know. paintDetail lifts this the moment it has written the real ones. */
+html:not(.lx-dwready) #dwDeposit .dw-field .balance,html:not(.lx-dwready) #dwWithdraw .balance{visibility:hidden}
+/* the breadcrumb pair (last span in .crumb) is a baked "LUMOS / XLM" mock that pdCopy corrects to the
+   real pair before reveal — hide it until then so it doesn't flash the wrong pair */
+html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
+/* PAIR labels carry a baked "LUMOS / XLM" mock. reveal() fires at 700ms (before the pool fetch resolves) so the
+   mock would flash. Gate the pair TEXT on lx-detpr (added only once paintDetail paints the real pair) — the ico
+   stays visible, only the wrong text is masked. The withdraw "from position" row is re-created on tab switch, so
+   gate it per-element on data-lxpair (set by fixWithdrawPair) instead of the global class. */
+/* Mask EVERY baked LUMOS/XLM mock (text, values, logos) on the detail page until the real paint (lx-detpr).
+   Use visibility:hidden — NOT color:transparent — because the mock hides values inside inline-coloured child
+   spans (the green "+$32.18" PnL) and uses <img> logos, neither of which a text-colour rule can hide. Layout
+   is preserved. The deposit/withdraw asset chips are re-created on tab switch, so they're gated per-element on
+   data-lxpair (set by setField / fixWithdrawPair) instead of the global class. */
+/* N13: each side of the pair opens its own asset page. Inherits the heading's own type -- this is the
+   title, not a control added to it -- and only underlines on hover so it does not read as two links
+   sitting in a heading at rest. */
+.ph-name .lx-phlink{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+.ph-name .lx-phlink:hover{border-bottom-color:currentColor}
+.ph-name .lx-phsep{opacity:.55}
 html:not(.lx-detpr) .ph-name,
 html:not(.lx-detpr) .crumb span:last-child,
 html:not(.lx-detpr) .ph-icons .pa, html:not(.lx-detpr) .ph-icons .pb,
@@ -7507,9 +7519,42 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     });
   }
 
+  // Capture-phase so it beats the SPA router to the click; registered once per document.
+  (function(){
+    if(window.__lxPhNav)return; window.__lxPhNav=1;
+    window.addEventListener("click",function(e){
+      var a=e.target&&e.target.closest?e.target.closest("a.lx-phlink[data-lxasset]"):null;
+      if(!a)return;
+      // Leave the browser's own gestures (new tab / new window / download) alone.
+      if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button!==0)return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      location.href="lumoscore-dex-asset.html?asset="+encodeURIComponent(a.getAttribute("data-lxasset"));
+    },true);
+  })();
+
   function pdHeader(){
     var d=DET;
-    var name=q(".ph-name"); if(name)setText(name,d.pairName||(d.code+" / XLM"));
+    var name=q(".ph-name");
+    if(name){
+      // Rebuilt only when the pair changes, so the header guard's re-asserts cannot churn the links.
+      var _want=d.pairName||(d.code+" / XLM");
+      if(name.getAttribute("data-lxpair")!==_want){
+        name.setAttribute("data-lxpair",_want);
+        // One side of the pair: a link when we hold its issuer, plain text otherwise.
+        function side(a,fallbackCode){
+          var c=(a&&a.code)||fallbackCode||"";
+          var i=(a&&a.issuer)||"";
+          if(!c)return "";
+          if(c==="XLM"||!i)return '<span>'+esc(c)+'</span>';
+          return '<a class="lx-phlink" data-lxasset="'+esc(c)+'-'+esc(i)+'" '
+            +'href="lumoscore-dex-asset.html?asset='+esc(c)+'-'+esc(i)+'">'+esc(c)+'</a>';
+        }
+        var _l,_r;
+        if(d.nonXlm&&d.a0&&d.a1){ _l=side(d.a0); _r=side(d.a1); }
+        else { _l=side({code:d.code,issuer:d.issuer},d.code); _r='<span>XLM</span>'; }
+        name.innerHTML=_l+'<span class="lx-phsep"> / </span>'+_r;
+      }
+    }
     // Desktop writes "Pool ID: <short>"; the phone header writes just "ID: <short>", so matching on the
     // desktop wording alone left the design's fabricated a468d4…0088 sitting on the page — and the copy
     // button was still handing out that fake id. Match either wording, and re-point data-copy at the real one.
