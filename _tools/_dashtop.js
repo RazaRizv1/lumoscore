@@ -171,6 +171,30 @@ const STYLE = `<style id="lx-dashtop-css">
 const SCRIPT = `<script id="lx-dashtop">(function(){
   if(window.__lxDashTop)return;window.__lxDashTop=1;
   function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}
+  // item 16 -- see the note in the transform. Only touches cards that are on screen right now.
+  function lcmShowAbove(){
+    try{
+      var root=document.documentElement;
+      if(!root.classList.contains('lcm-ready'))return;      // motion layer not in play; nothing hidden
+      var els=document.querySelectorAll('.kpi-card,.quick-card,.product-card,.market-card,.activity-card');
+      var vh=window.innerHeight||root.clientHeight||0;
+      for(var i=0;i<els.length;i++){
+        var el=els[i];
+        if(el.hasAttribute('data-lcm-done'))continue;
+        var r=el.getBoundingClientRect();
+        if(r.top<vh&&r.bottom>0)el.setAttribute('data-lcm-done','1');
+      }
+    }catch(_){}
+  }
+  // Now, next frame, and once more after the design's own driver has had its turn -- cards that are
+  // rendered late (the activity card waits on data) would otherwise miss the first pass.
+  try{
+    lcmShowAbove();
+    if(window.requestAnimationFrame)requestAnimationFrame(lcmShowAbove);
+    document.addEventListener('DOMContentLoaded',lcmShowAbove);
+    setTimeout(lcmShowAbove,600);
+    setTimeout(lcmShowAbove,1600);
+  }catch(_){}
   if(net()!=="stellar")return;
   var DAYS={"24H":1,"7D":7,"1M":30,"1Y":365}, tf="24H", cache={}, series=null;
   function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
