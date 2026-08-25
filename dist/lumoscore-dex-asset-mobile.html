@@ -2972,6 +2972,11 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 /* #40: the social marks live in the More info sheet on a phone, so they do not also sit in a header
    that is already carrying the code, the issuer address and the domain in one narrow column. */
 .asset-meta .lx-soc,.asset-meta-row .lx-soc{display:none!important}
+/* Reserve the meta row so it cannot grow under the boxes. It ships one short placeholder line
+   ("Issuer 0x0b59...1756 circle.com") and settles at two, because the real issuer key, its verified
+   tick and the domain wrap -- measured 20px -> 44px, which pushed everything below it down after load.
+   Expressed in em, not px, so it still reserves the right space if the type scale changes. */
+.asset-meta{min-height:3.8em}
 html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .lxda-moreline{grid-column:1/-1;display:flex;justify-content:center;margin-top:2px}
 .lxda-morebtn{border:0;background:transparent;padding:6px 4px;cursor:pointer;
@@ -3182,6 +3187,22 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 .asset-description.lx-descwait{visibility:hidden}
 .asset-description.lx-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
 overflow:hidden;margin-bottom:0}
+/* The same two-line clamp, applied BEFORE any script runs. The description ships in full and was only
+   clamped once clampSetup added .lx-clamp, so the first paint drew it at its natural height and every
+   pixel of the difference was taken out of the page below it -- measured on LUMOS, 98px collapsing to
+   39px, which shifted the stat boxes up. A long toml description moves them further still, which is
+   why the boxes appeared to land nowhere near where they first painted.
+   Keyed on the ABSENCE of the ready marker, so this governs only the pre-script moment: once
+   clampSetup has run, .lx-clamp is in charge again and Show more / Show less behave exactly as before. */
+.asset-description:not(.lx-descready){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+overflow:hidden;
+/* Reserve the Show more control too. It is created by clampSetup, so at first paint it does not exist
+   and everything below sat 24px high -- its 20px box plus its 4px margin. Reserving it here means the
+   boxes land where they painted for any description long enough to need the control, which is the case
+   that moved them furthest. A description too short to clamp gets no button and settles up by this
+   much instead; that is the smaller error of the two and it is bounded, where the old behaviour scaled
+   with the length of the text. */
+margin-bottom:24px}
 .lx-descmore{display:none;margin-top:4px;background:none;border:0;padding:0;cursor:pointer;
 color:var(--accent,#ea6a2c);font:700 14px/1.4 "Hanken Grotesk",system-ui,sans-serif}
 .lx-descmore.on{display:inline-block}
@@ -10348,7 +10369,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // ================= HEADER =================
   function clampSetup(desc){
     if(!desc||desc.__lxclamp)return; desc.__lxclamp=1;
+    // Hands the clamp over from the static pre-paint rule to .lx-clamp. Added FIRST so there is no
+    // frame in which neither is clamping.
     desc.classList.add("lx-clamp");
+    desc.classList.add("lx-descready");
     var b=document.createElement("button");
     b.type="button"; b.className="lx-descmore"; b.textContent="Show more";
     b.addEventListener("click",function(){
