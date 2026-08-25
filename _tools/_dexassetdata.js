@@ -184,7 +184,14 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 /* Unit of the price axis. Sits above the topmost number, right-aligned with them. */
 .lxda-cunit{position:absolute;top:2px;right:4px;z-index:2;pointer-events:none;
   font:700 10px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:var(--text-muted,#8a8fa3)}
-.lxda-cprices{position:absolute;right:4px;width:64px;pointer-events:none}
+.lxda-cprices{position:absolute;right:4px;width:64px;pointer-events:none;z-index:2}
+/* item 20: gridlines, aligned to the price labels by construction (same top/bottom). */
+.lxda-cgrid{position:absolute;left:0;right:0;pointer-events:none;z-index:0;
+  background-image:repeating-linear-gradient(to bottom,
+    rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%);
+  box-shadow:inset 0 -1px 0 rgba(127,127,140,.17)}
+/* the plot itself has to sit ABOVE the grid: a positioned sibling would otherwise paint over a static svg */
+.chart-area svg,.mdxa-chart svg{position:relative;z-index:1}
 .lxda-cprices span{position:absolute;right:0;transform:translateY(-50%);font:600 10.5px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);white-space:nowrap}
 /* ---- #2: the change pill sits BESIDE the price ------------------------------------------------- */
 /* The design stacked .big over .row2, so the headline number had a pill hanging under it and the
@@ -1347,6 +1354,11 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     var pr=pc.querySelector(".lxda-cprices");
     if(!pr){ pr=document.createElement("div"); pr.className="lxda-cprices"; pc.appendChild(pr); }
     if(topPct!=null){ pr.style.top=topPct.toFixed(3)+"%"; pr.style.bottom=botPct.toFixed(3)+"%"; }
+    // item 20: the gridlines share the label band exactly, so they cannot drift apart.
+    var gr=pc.querySelector(".lxda-cgrid");
+    if(!gr){ gr=document.createElement("div"); gr.className="lxda-cgrid"; pc.insertBefore(gr,pc.firstChild); }
+    if(topPct!=null){ gr.style.top=topPct.toFixed(3)+"%"; gr.style.bottom=botPct.toFixed(3)+"%"; }
+    gr.style.display=(mx>mn)?"":"none";      // no scale, no grid
     if(!(mx>mn)){ pr.innerHTML=""; return; }
     // #17/#20: one scale, chosen above, instead of "divide by the rate if we have one". When the chosen
     // combination cannot be expressed (no rate, or a market cap with no supply) this falls back to the
