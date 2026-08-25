@@ -373,7 +373,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
           // LXBRAND first. It already existed but only pool icons consulted it, so an asset result took
           // whatever the issuer's toml published -- and LUMOS still declares home_domain=lumosdao.io,
           // whose toml carries an older mark. Keyed by CODE|ISSUER, never by ticker alone.
-          return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
+          // B11: our own asset, by identity. See the note in the transform -- the toml at lumosdao.io
+          // says "Lumos Core"; until that is corrected this is what the search shows for it.
+          var _nm=ti.name||"";
+          if((p[0]||"")==="LUMOS"&&(p[1]||"")==="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S")_nm="LumosCore";
+          return {code:p[0]||"", issuer:p[1]||"", name:_nm, domain:x.domain||"",
                   tl:(x.trustlines&&x.trustlines[0])||0,
                   hl:(x.trustlines&&x.trustlines[2]!=null)?x.trustlines[2]:null,
                   img:LXBRAND[(p[0]||"")+"|"+(p[1]||"")]||ti.image||ti.orgLogo||lxSeaReg(p[0],p[1])||""};

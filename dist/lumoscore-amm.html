@@ -4622,6 +4622,617 @@ html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,htm
    card, which is the point -- the eye goes to the action. */
 .lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
 html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
+</style><style id="lx-searchassets-css" data-lxts="1.1">
+.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5.5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
+.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
+.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
+.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
+.sp-row--asset.lx-searow .sp-ico img{display:block}
+.sp-seaempty{padding:22px 15.4px;text-align:center;color:var(--text-muted);font-size:14.3px}
+/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
+/* #11: the per-kind section label. Quieter than the "Recent" head above it -- these divide a list,
+   they do not introduce a new one. */
+.lx-recgrp{padding:9.9px 15.4px 4.4px;font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft,#8a8fa3)}
+.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:11px;padding:11px 15.4px 6.6px;
+  font-size:12.7px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
+.lx-rechead .lx-recclear{background:none;border:0;padding:2.2px 4.4px;margin:0;cursor:pointer;font:inherit;
+  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
+.lx-rechead .lx-recclear:hover{color:var(--accent)}
+.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5.5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
+.lx-seavfd svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4.4px;margin-left:6.6px;padding:1.7px 7.7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 11.6px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
+</style><style id="lx-amm-css" data-lxts="1.1">
+/* ---- the three pool stat cards, as one set ---------------------------------------------------- */
+/* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
+   onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
+   to the 18px value to compete with it -- carrying a run-on of three facts. So: the value shrinks to
+   fit rather than wrapping, the sub-line steps back to a quiet single line, and every card reserves
+   the same sub-line height so three cards line up even when one has nothing to say there. */
+.ph-stats .ph-stat{display:flex;flex-direction:column}
+.ph-stat .v{white-space:nowrap;font-size:clamp(16.5px,1.35vw,19.8px);font-weight:800;letter-spacing:-.2px}
+.ph-stat .s{font-size:13.2px;margin-top:3.3px;min-height:15px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;color:var(--text-soft)}
+@media(max-width:880px){
+/* Three across does not fit a phone once the values stop wrapping -- measured 374px of cards in a
+   323px column, which is what made the page pan sideways. Two columns, and nothing that refuses to
+   shrink inside them. */
+.ph-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.ph-stats .ph-stat{min-width:0}
+.ph-stat .v{font-size:17.6px;white-space:normal}
+.ph-stat .s{font-size:12.7px}
+}
+/* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
+#createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
+/* AUDIT (user-reported): the Create Pool MAX control is a bare <span> — it fires, but the design gives it no
+   cursor, hover or hit padding, so it reads as decoration and people assume it is broken. */
+#createPoolModal .field-foot .max-btn{cursor:pointer;user-select:none;padding:2.2px 7.7px;margin:-2.2px -7.7px;border-radius:6px;transition:background .14s,color .14s}
+#createPoolModal .field-foot .max-btn:hover{background:rgba(234,106,44,.14);color:var(--accent,#ea6a2c)}
+#createPoolModal .field-foot .max-btn:active{background:rgba(234,106,44,.24)}
+#createPoolModal .lx-cpwarn{margin:8.8px 2.2px 0;font-size:13.8px;line-height:1.45;color:#c9791f}
+/* success toast — same look as the site's "Copied to clipboard" toast (self-contained) */
+.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8.8px;align-items:center;pointer-events:none}
+.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:12.1px 19.8px 12.1px 15.4px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:17.6px;font-weight:600;display:inline-flex;align-items:center;gap:9.9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
+.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}
+/* The stack is pointer-events:none so a toast never blocks the page underneath — but that also made the
+   explorer link inside it unclickable, which is why "view" appeared to lead nowhere. Re-enable pointer
+   events on the LINK only, so the rest of the toast stays click-through. */
+.lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
+@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
+/* #24: the cold-start overlay.
+   The ranking is built by an endpoint that walks the whole network in resumable steps and answers
+   {warming, scanned, phase} until it is done -- on a cold cache that is roughly twenty-five seconds.
+   For that whole time the page sat masked and empty, which reads as broken rather than as working.
+   Reduced motion drops the pulse and the fades; it does NOT gate the dismissal, which is a class and a
+   removal, so the overlay can never be left on screen by a motion preference. */
+/* Pool Activity chart: the SVG takes no pointer input, so every mouse and touch lands on #tvlChart.
+   The hover listeners are on that host, and a touch TARGET is sticky for the life of the gesture --
+   whichever node touchstart hit keeps receiving touchmove. Starting a drag on the filled area therefore
+   bound the gesture to the gradient <path>, and that path is REPLACED on the next chart repaint, which
+   orphaned the drag and killed the readout mid-swipe. Starting on the empty part above the line bound it
+   to the host instead, which is never replaced -- which is exactly why it worked there and nowhere else.
+   With the SVG transparent to input the target is always the host, so it cannot happen at all. The
+   overlay divs already carry pointer-events:none for the same reason. */
+#tvlChart svg,#tvlChart svg *{pointer-events:none}
+.lx-boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);
+  opacity:1;transition:opacity .28s ease}
+.lx-boot.lx-boot-out{opacity:0;pointer-events:none}
+.lx-boot-in{display:flex;flex-direction:column;align-items:center;gap:17.6px;padding:26.4px;text-align:center}
+.lx-boot-badge{position:relative;width:96px;height:96px;display:grid;place-items:center}
+.lx-boot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  animation:lx-boot-spin 1.15s linear infinite;opacity:.9}
+.lx-boot-badge::after{content:"";position:absolute;inset:8px;border-radius:50%;
+  background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-boot-pulse 1.8s ease-in-out infinite}
+@keyframes lx-boot-spin{to{transform:rotate(360deg)}}
+.lx-boot-mark{position:relative;z-index:1;width:52px;height:52px;background-size:contain;background-repeat:no-repeat;
+  background-position:center;animation:lx-boot-pulse 1.6s ease-in-out infinite}
+.lx-boot-ttl{font-family:'Hanken Grotesk',sans-serif;font-size:16.5px;font-weight:700;color:var(--text,#0e0e10)}
+.lx-boot-bar{width:216px;height:4px;border-radius:99px;background:var(--border,#ececef);overflow:hidden}
+.lx-boot-fill{height:100%;width:0;background:var(--accent,#ea6a2c);border-radius:99px;transition:width .45s ease}
+.lx-boot-sub{font-family:'JetBrains Mono',monospace;font-size:12.1px;letter-spacing:.04em;
+  color:var(--text-soft,#6f6f79);font-variant-numeric:tabular-nums}
+@keyframes lx-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.6}}
+@media (prefers-reduced-motion:reduce){.lx-boot-mark,.lx-boot-badge::before,.lx-boot-badge::after{animation:none}
+  .lx-boot,.lx-boot-fill{transition:none}}
+/* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
+   written paintTables filled both and revealed after. The network list changed that: the rows now arrive
+   from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
+   until they landed. Same treatment as the desktop body. */
+html:not(.lx-ammready) #panelAll{visibility:hidden}
+/* #39: the Top Pool slot showed "( )" for a beat on the phone. That is its own skeleton -- two ringed
+   circles overlapping at phone scale read as a pair of brackets, which looks like a rendering fault
+   rather than a placeholder. The slot stays blank until there is a real pair to put in it; the label
+   under it already says what is coming. */
+html:not(.lx-ammready) .lx-hstat[data-k=top] .v{visibility:hidden}
+/* #10: remote pool results, kept visually distinct from the page's own ranked list so it is obvious
+   these came from a search rather than from the top-25 ranking. */
+.lx-psresult{margin-top:15.4px}
+/* #41: self-contained appearance for a network result, so it never depends on .pool-card existing.
+   :where() = zero specificity, so the phone's own .pool-card rules still win there. */
+:where(.lx-psresult .lx-pscard){display:block;margin:0 0 8.8px;padding:13.2px 15.4px;text-decoration:none;
+  color:inherit;border:1px solid var(--border,#e6e6ea);border-radius:12px;background:var(--surface,#fff)}
+:where(.lx-psresult .lx-pscard:hover){border-color:var(--accent,#ea6a2c)}
+:where(.lx-psresult .lx-pscard .pc-head){display:flex;align-items:center;gap:11px;margin-bottom:9.9px}
+:where(.lx-psresult .lx-pscard .pc-name){font-size:16px;font-weight:700;color:var(--text,#0e0e10)}
+:where(.lx-psresult .lx-pscard .pc-sub){margin-top:2.2px;font-size:13.2px;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stats){display:flex;gap:28.6px}
+:where(.lx-psresult .lx-pscard .pc-stat .l){font-size:11px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stat .v){margin-top:2.2px;font-size:14.9px;font-weight:700;
+  color:var(--text,#0e0e10);font-variant-numeric:tabular-nums}
+.lx-pshead{margin:0 0 8.8px;font-size:11.6px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}
+.lx-psnote{padding:17.6px 4.4px;text-align:center;font-size:14.3px;color:var(--text-soft)}
+/* POOL-DETAIL TAB STRIPS ON A PHONE.
+   #ptabs measures 432px of tabs inside a 345px box, so "Participants" sits past the right edge and is
+   simply unreachable — on a narrower handset "Transactions" and "My Position" go with it. The strip is
+   overflow:auto on BOTH axes too, so instead of doing nothing a tap drags the row (the same defect the
+   Trade-asset tab strip had). Deposit/Withdraw is the same shape: two fixed 152px buttons, 304px of
+   content that stops fitting below ~330px of viewport.
+   Fix both the way the Trade strip was fixed: the tabs SHARE the width and the row cannot scroll at all.
+   overflow must be set on both axes — one non-visible axis forces the other to auto, which is what made
+   it draggable vertically. */
+@media (max-width:760px){
+  #ptabs.panel-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important;gap:0!important;padding-bottom:2.2px}
+  /* size to content, share what is left: equal quarters clipped "Deposit / Withdraw", which is much longer
+     than the other three. The four together measure ~333px inside 345px, so they all fit unclipped; the
+     min-width:0 + ellipsis below is the safety net for a narrower handset. */
+  #ptabs.panel-tabs>*{flex:1 1 auto!important;min-width:0!important;padding-left:3.3px!important;padding-right:3.3px!important;
+    font-size:12.1px!important;letter-spacing:-.1px;white-space:nowrap;text-align:center;justify-content:center!important;overflow:hidden;text-overflow:ellipsis}
+  .dw-tabs{display:flex!important;flex-wrap:nowrap!important;overflow:hidden!important}
+  .dw-tabs>*{flex:1 1 0!important;min-width:0!important;white-space:nowrap}
+}
+/* Small handsets (iPhone SE and friends): at 11px the four labels want ~302px inside a 290px strip, so
+   every one of them ellipsised by a few pixels. A step down to 10px needs ~269px and they read in full. */
+@media (max-width:359px){
+  #ptabs.panel-tabs>*{font-size:11px!important;padding-left:2.2px!important;padding-right:2.2px!important}
+}
+/* Market Overview box: show its structure (title/labels) instantly; only the value+sub cells shimmer as a
+   skeleton until real data lands — so the box never sits blank for ~2s and never flashes mock numbers. */
+/* Skeleton the RIGHT-side dynamic cells (value + vsub). The left label/sub are static design text.
+   The vsub holds the mock $ (and an .lc-money the site re-stamps) — earlier it wasn't covered, so the
+   24H-Volume figure flashed a mock value before real data. */
+/* white-space:nowrap + overflow:hidden are ESSENTIAL: during load these cells still hold the design's
+   MOCK text (e.g. "51,250 XLM swapped") which wraps to 2 lines in the narrow column and makes the whole
+   top section ~40px taller until real (short) data lands. One-lining the skeleton keeps height stable. */
+/* Market Overview began at exactly the pixel the pools card ended -- 1378 to 1378, no gap at all -- so
+   the two read as one broken block. The separation was never its own: it came from the pagination row
+   between them, which is display:none on the My Pools tab, so the collision appeared there and nowhere
+   else. 22px is the gap this page already uses between its other cards, and it belongs to the card
+   rather than to whatever happens to precede it. */
+.amm-snapshot-card{margin-top:24.2px}
+html:not(.lx-ammready) .amm-snapshot-value, html:not(.lx-ammready) .amm-snapshot-vsub, html:not(.lx-ammready) .amm-snapshot-sub{color:transparent!important;border-radius:6px;white-space:nowrap!important;overflow:hidden!important;background:linear-gradient(90deg,rgba(148,140,200,.10) 25%,rgba(148,140,200,.22) 37%,rgba(148,140,200,.10) 63%)!important;background-size:400% 100%!important;animation:lxShim 1.3s ease-in-out infinite}
+/* width-only constraints — do NOT add margin/display here or the skeleton rows grow taller than the
+   ready rows and the whole top section visibly shrinks ~40px when data lands */
+html:not(.lx-ammready) .amm-snapshot-value{max-width:96px}
+html:not(.lx-ammready) .amm-snapshot-vsub{max-width:120px}
+html:not(.lx-ammready) .amm-snapshot-sub{max-width:120px}
+/* also hide EVERY child of the value/vsub/sub cells (unit span, .lc-money with its re-stamped data-orig mock,
+   the mock caption text) so nothing bleeds through the shimmer while loading — this was the residual flash */
+html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapshot-vsub *, html:not(.lx-ammready) .amm-snapshot-sub *{color:transparent!important;background:transparent!important;text-shadow:none!important}
+@keyframes lxShim{0%{background-position:100% 0}100%{background-position:0 0}}
+.lx-hstat .v .lx-hskel{display:inline-block;width:44px;height:24px;border-radius:6px;color:transparent!important;vertical-align:middle;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
+.lx-hstat[data-k=top] .lx-toptxt.lx-hskel{width:92px;height:22px}
+.lx-hstat[data-k=top] .lx-hpairskel{display:inline-flex;flex:0 0 auto}
+.lx-hstat[data-k=top] .lx-hpairskel .pa,.lx-hstat[data-k=top] .lx-hpairskel .pb{width:33px;height:33px;border-radius:50%;background:linear-gradient(90deg,rgba(255,255,255,.07) 25%,rgba(255,255,255,.16) 37%,rgba(255,255,255,.07) 63%);background-size:400% 100%;animation:lxShim 1.3s ease-in-out infinite}
+.lx-hstat[data-k=top] .lx-hpairskel .pb{margin-left:-12.1px;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box}
+/* Market Overview: match the "New Mints on Stellar" (Trade page) typography scale so the two cards feel
+   the same — label like .dex-mint-name (15.5/700), value like .dex-mint-mc (15/700), subs 13/12.5 soft. */
+.amm-snapshot-label{font-size:17.1px!important;font-weight:700!important;line-height:1.2!important;letter-spacing:.2px!important;text-transform:none!important;color:var(--text)!important}
+.amm-snapshot-value{font-size:16.5px!important;font-weight:700!important;letter-spacing:normal!important;line-height:1.2!important}
+.amm-snapshot-sub{font-size:14.3px!important;margin-top:2.2px!important}
+.amm-snapshot-vsub{font-size:13.8px!important;margin-top:2.2px!important}
+.amm-snapshot-row{padding:11px 8.8px!important}
+.amm-snapshot-ic.fees{background:rgba(245,158,11,.15)!important;color:#f59e0b!important}
+/* token/pair icons rendered ENTIRELY via CSS custom-props + ::after so the site logo-painter (which clears innerHTML & stamps an inline bg on an interval) can't wipe them; stylesheet !important beats the painter's inline background */
+.pair-icons .pa.lx-ico,.pair-icons .pb.lx-ico{position:absolute!important;top:0;overflow:hidden;padding:0;background-color:var(--mc,#2a2f42)!important;background-image:var(--mi,none)!important;background-size:contain!important;background-position:center!important;background-repeat:no-repeat!important}
+.pair-icons .pa.lx-ico[data-mono]::after,.pair-icons .pb.lx-ico[data-mono]::after{content:attr(data-mono);position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px}
+.pair-icons .pa,.pair-icons .pb{background-image:none!important;overflow:hidden;padding:0}
+.pair-icons .pa img,.pair-icons .pb img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+/* Typography parity with the rest of the site (e.g. Wallet › My Assets): numeric/value cells + tab counts
+   use JetBrains Mono (tabular), the pair NAME stays Hanken Grotesk. Fixes "Pools text looks different". */
+/* network pool-list pager. #paginationAll ships from the design with a static "1-10 of 100"; its
+   contents are replaced wholesale, so these rules describe the whole footer rather than tweaking it. */
+/* display is deliberately NOT !important. The design's tab handler hides the footer by writing
+   pag.style.display="none" when My Pools is selected, and an !important rule in the stylesheet beats an
+   inline style -- so the pager stayed on screen under the My Pools list. Specificity here is the bug. */
+.lx-netpag{display:flex;align-items:center;justify-content:space-between;gap:13.2px;flex-wrap:wrap;
+  padding:15.4px 4.4px 2.2px;margin-top:6.6px;border-top:1px solid var(--border);
+  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:14.9px;color:var(--text-soft)}
+.lx-netpag .lx-netpag-c{display:flex;align-items:center;gap:6.6px;flex-wrap:wrap}
+.lx-netpag button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  padding:6.6px 13.2px;font:inherit;font-weight:600;color:var(--text);cursor:pointer;transition:.16s}
+.lx-netpag button:hover:not(:disabled){border-color:var(--accent-soft)}
+.lx-netpag button:disabled{opacity:.4;cursor:default}
+.lx-netpag .lx-netpag-m{margin:0 8.8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lx-netpag .lx-netpag-i{font-variant-numeric:tabular-nums}
+.lx-netpag-host{margin-top:11px}
+@media (max-width:700px){ .lx-netpag{justify-content:center;text-align:center}
+  .lx-netpag .lx-netpag-i{width:100%;text-align:center} }
+#poolsBody td, #lx-mypanel td, #poolTabs .count{font-family:'JetBrains Mono',monospace!important}
+#poolsBody .pair-name, #lx-mypanel .pair-name{font-family:'Hanken Grotesk','Hanken Grotesk',sans-serif!important;font-size:17.1px!important;font-weight:700!important}
+#poolsBody .pair-sub, #lx-mypanel .pair-sub{font-size:13.8px!important}
+/* value cells 19px -> 15px to match Trade "All Trading Pairs" (pair-name 15.5 / sub 12.5 keep their own sizes) */
+#poolsBody td, #lx-mypanel td{font-size:16.5px!important}
+#poolsBody td div:not(.pair-name):not(.pair-sub), #lx-mypanel td div:not(.pair-name):not(.pair-sub){font-size:16.5px!important}
+/* My Positions: after dropping the Fees Earned + Deposited columns, pull "View position" left — fix the data
+   columns to content/size so the View cell (last) absorbs all leftover width and its button sits, left-aligned,
+   right after Pool Share (leftover blank space collapses to the far right of the row, not between the cells) */
+#lx-mypanel table.pools th:nth-child(2),#lx-mypanel table.pools td:nth-child(2){white-space:nowrap;width:1px}
+#lx-mypanel table.pools th:nth-child(3),#lx-mypanel table.pools td:nth-child(3){width:200px}
+#lx-mypanel table.pools th:nth-child(4),#lx-mypanel table.pools td:nth-child(4){width:130px}
+/* The view-position cell is the last column and the table is full-width, so the preceding columns are
+   width-capped above and this one absorbs the slack — left-aligning the button left it stranded mid-row
+   with a wide empty gutter to its right. Pin it to the right edge instead. */
+#lx-mypanel table.pools .lx-viewcell{text-align:right!important;padding-left:11px;padding-right:17.6px;white-space:nowrap}
+.lx-amm-empty{padding:24.2px 13.2px;text-align:center;color:var(--text-muted);font-size:14.9px}
+.lx-amm-empty b{color:var(--text);display:block;margin-bottom:4.4px}
+html:not(.lx-ammready) .pool-header, html:not(.lx-ammready) .pool-layout{visibility:hidden}
+/* The Deposit / Withdraw box has its OWN gate, because .lx-ammready lifts when the pool's own figures
+   land and the wallet-side balances arrive later. In that window the design's baked "Balance: 25,420.18"
+   was on screen -- a number belonging to nobody, beside a MAX button that would have used it. Only the
+   balance line is held, not the panel: the form is usable, it just does not state a balance it does not
+   yet know. paintDetail lifts this the moment it has written the real ones. */
+html:not(.lx-dwready) #dwDeposit .dw-field .balance,html:not(.lx-dwready) #dwWithdraw .balance{visibility:hidden}
+/* the breadcrumb pair (last span in .crumb) is a baked "LUMOS / XLM" mock that pdCopy corrects to the
+   real pair before reveal — hide it until then so it doesn't flash the wrong pair */
+html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
+/* PAIR labels carry a baked "LUMOS / XLM" mock. reveal() fires at 700ms (before the pool fetch resolves) so the
+   mock would flash. Gate the pair TEXT on lx-detpr (added only once paintDetail paints the real pair) — the ico
+   stays visible, only the wrong text is masked. The withdraw "from position" row is re-created on tab switch, so
+   gate it per-element on data-lxpair (set by fixWithdrawPair) instead of the global class. */
+/* Mask EVERY baked LUMOS/XLM mock (text, values, logos) on the detail page until the real paint (lx-detpr).
+   Use visibility:hidden — NOT color:transparent — because the mock hides values inside inline-coloured child
+   spans (the green "+$32.18" PnL) and uses <img> logos, neither of which a text-colour rule can hide. Layout
+   is preserved. The deposit/withdraw asset chips are re-created on tab switch, so they're gated per-element on
+   data-lxpair (set by setField / fixWithdrawPair) instead of the global class. */
+html:not(.lx-detpr) .ph-name,
+html:not(.lx-detpr) .crumb span:last-child,
+html:not(.lx-detpr) .ph-icons .pa, html:not(.lx-detpr) .ph-icons .pb,
+html:not(.lx-detpr) .my-position .mp-amount, html:not(.lx-detpr) .my-position .mp-pnl,
+html:not(.lx-detpr) .my-position .mp-asset-name, html:not(.lx-detpr) .my-position .mp-asset-amt,
+html:not(.lx-detpr) .my-position .mp-asset-ico, html:not(.lx-detpr) .my-position .mp-fee-val,
+html:not(.lx-detpr) .position-share-pill{visibility:hidden!important}
+#dwDeposit .dw-field .row .asset:not([data-lxpair]), #dwWithdraw .dw-field .row .asset:not([data-lxpair]){visibility:hidden!important}
+/* Remaining mock-flash surfaces on the detail page (audit #9/#10/#11): the STAT values (3,420,180 XLM /
+   8,420 / 42.10 mock), the Pool Transactions MOCK rows (0x wallets + 5/26/2026 dates) and the mock
+   Participants (847). Real rows carry .lx-txrow/.lx-partrow — mock rows never do, so hide non-lx rows
+   outright (no timing dependency); stat values reveal with the real paint (lx-detpr). */
+html:not(.lx-detpr) .ph-stat .v, html:not(.lx-detpr) .ph-stat .s{visibility:hidden!important}
+/* AUDIT (user-reported): the header PRICE block was never in this list, so on every pool the top-right
+   showed the baked "0.000713 XLM / $0.000108 per LUMOS" until the real paint — i.e. a yXLM/XLM pool
+   announced a LUMOS price for a few seconds. Same gate as everything else in the header. */
+html:not(.lx-detpr) .ph-price .v,
+html:not(.lx-detpr) .ph-price .s,
+html:not(.lx-detpr) .ph-price .lc-money{visibility:hidden!important}
+.lx-detfail{display:flex;align-items:center;gap:15.4px;flex-wrap:wrap;margin:17.6px 0 0;padding:14.3px 17.6px;border:1px solid rgba(209,84,47,.35);border-left:3px solid #d1542f;border-radius:12px;background:rgba(209,84,47,.07);font-size:14.5px;line-height:1.5;color:var(--text,#0e0e10)}
+.lx-detfail span{flex:1 1 300px}
+.lx-detretry{padding:7.7px 16.5px;border-radius:9px;border:1px solid var(--border-strong,#d5d5dd);background:var(--surface-2,#f6f6f8);color:var(--text,#0e0e10);font:650 13.8px/1 inherit;cursor:pointer}
+.lx-detretry:hover{border-color:#d1542f;color:#d1542f}
+table.tx tbody tr:not(.lx-txrow){display:none!important}
+#partList > *:not(.lx-partrow){display:none!important}
+html:not(.lx-detpr) .side-head .count-pill{visibility:hidden!important}
+/* AUDIT (user-reported, DWARF/SBB): the deposit CTA looked live even when the deposit could not possibly
+   succeed — an AMM deposit needs BOTH sides of the pair, and the user held none of one of them. Grey it out
+   and make it inert so the state is legible BEFORE filling in amounts, instead of erroring only on submit. */
+/* NOT scoped to .dw-card. The phone puts this button in .card > .card-body, so the old
+   ".dw-card .dw-cta.lx-dwoff" never matched there: the CTA was aria-disabled and inert to our handler
+   while still looking and feeling fully enabled. The hint paragraph underneath hid that -- with the
+   paragraph gone the button's own appearance IS the whole message, so it has to be right on both. */
+.dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
+.dw-card .lx-dwhint{margin-top:9.9px;font-size:13.2px;line-height:1.45;color:var(--text-muted);text-align:center}
+/* #6, mobile half. This rule and the display:block one below are both leftovers from when .lm-chip was
+   an ABSOLUTELY POSITIONED decoration floating over the headline -- hiding it below 1100px was the right
+   call for that design. _poolshero.js has since rebuilt the hero as a flex column where the chip is a
+   real strip pinned along the bottom edge, and it sets display:block for exactly this width. But
+   lx-amm-css is emitted AFTER lx-poolshero-css in the head, so with both marked !important this stale
+   one has been winning ever since -- which is why the numbers vanished entirely on a phone.
+   The layout belongs to _poolshero.js now, so this defers to it. */
+/* the design paints a synthetic mock chart on load; hide its data (line/area/bars) until our real engine takes
+   over (lx-chartready), keeping the axis/grid so the plot frame stays visible */
+html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready) #tvlChart svg rect:not(.lx-ch){opacity:0!important}
+/* #11: the gate above covered the line and the bars but not the axis LABELS, which are <text> nodes the
+   engine rewrites in place once it has real data. So while "Loading pool history…" was on screen the
+   scale beside it still read the design's mock numbers -- 5.99M / 3.38M / 2.78M XLM for a pool that
+   holds nothing of the sort -- and they snapped to the real figures when the chart finally drew. That
+   momentary wrong scale is the flash. Hide the numbers with the plot and reveal them together.
+   The loading message is itself an SVG <text> (.lx-chload), and anything we drew carries .lx-ch, so
+   both are excluded: this only ever hides labels that are still showing mock values. */
+html:not(.lx-chartready) #tvlChart svg text:not(.lx-ch):not(.lx-chload){opacity:0!important}
+.ph-icons .pa,.ph-icons .pb,.mp-asset-ico,#dwDeposit .dw-field .asset .ico,#dwWithdraw .asset .ico{background-image:none!important;overflow:hidden}
+.ph-icons .pa img,.ph-icons .pb img,.mp-asset-ico img,.dw-field .asset .ico img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.type-pill.deposit{background:rgba(34,197,94,.14)!important;color:#16a34a!important}
+.type-pill.withdraw{background:rgba(239,68,68,.14)!important;color:#ef4444!important}
+.lx-partrow{display:flex;align-items:center;gap:11px}
+.lx-acct:hover{color:var(--accent)!important}
+.lx-partrow .part-addr{flex:1;font-family:'JetBrains Mono',monospace;font-size:14.3px}
+.lx-partrow .part-share{font-weight:700;font-size:15.4px!important}
+/* pool detail: remove the design's green endpoint dot on the TVL chart */
+#tvlChart circle{display:none!important}
+/* Participants pager. We APPEND this footer ourselves, and the design only ships .part-foot styling in the
+   desktop file -- the phone build has no .part-foot rule at all, so on mobile it rendered as two stacked
+   unstyled divs with bare chevrons overflowing the card. Styled on our own class so it stands up wherever
+   it is inserted; the values mirror the desktop rules so both look the same. */
+.lx-partfoot{display:flex!important;justify-content:space-between;align-items:center;gap:11px;flex-wrap:wrap;
+  padding:11px 15.4px;border-top:1px solid var(--border);font-size:14.3px;color:var(--text-soft);
+  font-family:'Hanken Grotesk',system-ui,sans-serif}
+.lx-partfoot > div:first-child{font-variant-numeric:tabular-nums}
+.lx-partfoot .nav{display:inline-flex;align-items:center;gap:6.6px}
+.lx-partfoot .nav button{width:26px;height:26px;min-width:26px;padding:0;border-radius:6px;
+  border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;font-size:16.5px;line-height:1}
+.lx-partfoot .nav button:hover:not(:disabled){color:var(--accent);border-color:var(--accent)}
+.lx-partfoot .nav button:disabled{opacity:.4;cursor:default}
+.lx-partfoot .lx-pppg{font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 2.2px}
+/* The "Pool TVL / Volume" dropdown chose which of the two series to show, so they were never on screen
+   together. They now share one chart -- TVL line with volume bars beneath it, same as Trade-asset -- which
+   leaves this control with nothing to switch between. Hidden rather than deleted from the markup: the
+   design ships its own open/close handler and label rewriting for it, and removing the node it expects is
+   how you get a handler throwing on every click.
+
+   NOT scoped to .chart-card. That is where the desktop puts it; the phone puts it in
+   .card > .chart-controls, so a ".chart-card ..." rule hid it on desktop only and left it sitting on
+   mobile. This is the SECOND selector in this file written against the desktop's wrapper and silently
+   missing the phone's (the disabled-CTA rule was the first) -- on this page, scope to the element.
+
+   #chartMetricMenu / .chart-mode-menu is the menu the design's own script builds and appends; with the
+   trigger gone nothing should open it, but a stale "open" class would otherwise leave it on screen. */
+.chart-mode-select,#chartMetricMenu,.chart-mode-menu{display:none!important}
+/* pool-tx wallet address links to OUR account page — subtle hover underline */
+.lx-sortag{display:inline-block;margin-left:7.7px;padding:1.1px 7.7px;border-radius:999px;font-size:11.6px;
+font-weight:700;letter-spacing:.02em;background:var(--surface);border:1px solid var(--border);color:var(--text-soft);vertical-align:middle}
+.lx-nolink{cursor:default}
+.lx-nolink:hover .lx-waddr{text-decoration:none}
+table.tx .wallet-cell{cursor:pointer}
+table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
+/* pagination row: vertically center "Page X of Y" with the Prev/Next buttons */
+.controls{align-items:center!important}
+/* Pools hero: animated dark cosmic cover (both themes) — replaces inject_livemarket's orange streams */
+.lumos-promo.lm-on.lm-pools{min-height:366px!important;overflow:hidden;background:radial-gradient(58% 84% at 70% 30%,rgba(140,96,246,.26),transparent 60%),radial-gradient(46% 64% at 92% 78%,rgba(198,86,232,.14),transparent 62%),radial-gradient(52% 68% at 24% 90%,rgba(74,110,224,.12),transparent 62%),linear-gradient(140deg,#0f1120 0%,#0a0a15 55%,#070610 100%)!important}
+.lm-pools .lm{min-height:366px!important}
+.lm-pools .lm-streams,.lm-pools .lm-svg,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
+.lm-pools .lm::after{background:linear-gradient(100deg,rgba(9,9,18,.66) 12%,rgba(9,9,18,.16) 46%,transparent 72%)!important;z-index:2!important}
+/* bigger text, forced light so it stays readable on the dark card in LIGHT theme too */
+.lm-pools .lm-c-pool{position:relative;z-index:4;padding-top:23.1px}
+.lm-pools .lm-h{font-size:41.8px!important;line-height:1.08!important;color:#fff!important;margin-bottom:14.3px!important;letter-spacing:-.01em}
+.lm-pools .lm-sub{font-size:17.1px!important;line-height:1.55!important;max-width:380px!important;color:rgba(228,230,245,.76)!important;margin-bottom:24.2px!important}
+.lm-pools .lm-cta{font-size:16px!important;padding:14.3px 24.2px!important}
+.lm-pools .lm-chip{z-index:4!important;background:rgba(16,15,32,.62)!important;border:1px solid rgba(255,255,255,.12)!important;backdrop-filter:blur(6px);padding:23.1px 29.7px!important;min-width:0;width:max-content;max-width:360px}
+.lm-pools .lm-chip .p1,.lm-pools .lm-chip .p2,.lm-pools .lm-chip .p3{display:none!important}
+.lx-hstats{display:grid;grid-template-columns:auto auto;gap:22px 26.4px}
+.lx-hstat{display:flex;flex-direction:column;gap:4.4px;min-width:0}
+.lx-hstat .v{font:800 31.9px/1.05 'Hanken Grotesk',sans-serif;color:#fff;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lx-hstat .l{font:600 14.3px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)}
+/* Top Pool stat: show the pair logos beside the "CODE / XLM" text */
+.lx-hstat[data-k=top] .v{display:flex;align-items:center;gap:13.2px}
+/* #2: the top-pool code was hidden behind its own second logo.
+   Six rules from four stylesheets size this element, and one of them -- added later, for the pair marks
+   elsewhere -- sets gap:6.6px on [data-paired]. The nudge below (.pb{left:23px}) was written for a
+   container with no gap, so the second mark ended up 33+6+23 = 62px in, inside a box declared 57px wide,
+   and jutted far enough past it to sit on the U of "USDC / XLM".
+   Overlap the two by geometry instead of by a nudge that assumes a particular flow: no gap, a negative
+   margin, and no offset. The box is then exactly as wide as what is in it, and the text starts after it. */
+.lx-hstat[data-k=top] .pair-icons{width:auto!important;flex:0 0 auto!important;gap:0!important;height:33px}
+.lx-hstat[data-k=top] .pair-icons .pa.lx-ico,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{width:33px!important;height:33px!important;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box;box-shadow:0 3px 8px rgba(0,0,0,.4)}
+.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:0!important;margin-left:-11px!important}
+.lx-hstat[data-k=top] .pair-icons .pa.lx-ico[data-mono]::after,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico[data-mono]::after{font-size:14.3px}
+.lx-hstat[data-k=top] .lx-toptxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:22px}
+/* #29: the pool page's own header pair -- two 44px logos with a 6px gap between them, reading as two
+   unrelated tokens rather than one pair. Everywhere else a pair is drawn overlapping, so this was the
+   odd one out. Both already carry a 3px ring, which is what makes the overlap legible; the base asset
+   stays on top so the pair reads left to right in the same order as the name beside it. */
+/* #9: and the box has to BE a row. On the phone the design lays .ph-icons out as display:block, so the
+   two 44px marks stacked -- the second one landing 44px below the first, on top of the text under it.
+   The overlap rule below is a no-op in block layout, which is why it read as a broken logo rather than
+   a pair. Measured before: pa at y141, pb at y185, inside a 60px-wide box. */
+.pool-header .ph-icons{display:flex!important;align-items:center;flex-wrap:nowrap;width:auto!important;gap:0!important}
+.pool-header .ph-icons .pa{position:relative;z-index:2}
+.pool-header .ph-icons .pb{position:relative;z-index:1;left:0!important;margin-left:4.4px!important}
+/* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
+.lx-ammview{display:inline-flex;align-items:center;gap:5.5px;padding:7.7px 16.5px;border-radius:9px;font:700 13.8px/1 'Hanken Grotesk',sans-serif;text-decoration:none!important;white-space:nowrap;border:1px solid rgba(234,106,44,.38);color:var(--accent,#ea6a2c)!important;background:rgba(234,106,44,.10);transition:background .15s ease,color .15s ease,border-color .15s ease}
+.lx-ammview:hover{background:var(--accent,#ea6a2c);color:#fff!important;border-color:var(--accent,#ea6a2c)}
+.pair-icons .pa .lx-mono{display:grid;place-items:center;width:100%;height:100%;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;font-size:13.2px;border-radius:50%}
+/* Pool Transactions pager, phone. The design ships a .tx-foot on desktop and nothing here, so this is
+   built to match it: same wording, same Prev / Page N of M / Next, sized for a thumb (44px targets). */
+.lx-txfoot-m{display:flex;align-items:center;justify-content:space-between;gap:11px;padding:13.2px 15.4px;border-top:1px solid var(--border);font-size:13.2px;color:var(--text-muted)}
+.lx-txfoot-m .controls{display:inline-flex;align-items:center;gap:4.4px;flex:0 0 auto}
+.lx-txfoot-m button{min-height:34px;padding:8.8px 12.1px;border:1px solid var(--border);border-radius:9px;background:transparent;color:var(--text);font:600 13.2px/1 'Hanken Grotesk',sans-serif;-webkit-tap-highlight-color:transparent}
+.lx-txfoot-m button:disabled{opacity:.4}
+.lx-txfoot-m .lx-txpg{margin:0 7.7px;white-space:nowrap;font-size:13.2px;color:var(--text-muted)}
+.lx-txfoot-m .lx-txinfo{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* injected cosmic decor (nebulae drift, orb floats, particles rise, stars twinkle) */
+.lx-cosmic{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.lx-neb{position:absolute;border-radius:50%;filter:blur(50px);mix-blend-mode:screen;will-change:transform}
+.lx-neb.n1{width:600px;height:470px;right:-70px;top:-130px;background:radial-gradient(circle,rgba(140,96,246,.62),transparent 66%);animation:lxNeb1 30s ease-in-out infinite alternate}
+.lx-neb.n2{width:480px;height:430px;right:150px;bottom:-180px;background:radial-gradient(circle,rgba(206,88,236,.44),transparent 66%);animation:lxNeb2 36s ease-in-out infinite alternate}
+.lx-neb.n3{width:410px;height:340px;left:32%;top:4%;background:radial-gradient(circle,rgba(72,120,232,.34),transparent 66%);animation:lxNeb1 33s ease-in-out infinite alternate-reverse}
+@keyframes lxNeb1{from{transform:translate(0,0) scale(1)}to{transform:translate(-48px,36px) scale(1.18)}}
+@keyframes lxNeb2{from{transform:translate(0,0) scale(1)}to{transform:translate(54px,-32px) scale(1.12)}}
+.lx-stars{position:absolute;inset:0;animation:lxTw 7s ease-in-out infinite;background-repeat:no-repeat;background-image:
+radial-gradient(1.6px 1.6px at 17% 24%,rgba(255,255,255,.9),transparent 60%),
+radial-gradient(1.3px 1.3px at 61% 16%,rgba(255,255,255,.62),transparent 60%),
+radial-gradient(1.7px 1.7px at 83% 52%,rgba(255,255,255,.74),transparent 60%),
+radial-gradient(1.1px 1.1px at 45% 66%,rgba(255,255,255,.5),transparent 60%),
+radial-gradient(1.4px 1.4px at 93% 30%,rgba(255,255,255,.64),transparent 60%),
+radial-gradient(1.2px 1.2px at 34% 44%,rgba(255,255,255,.5),transparent 60%),
+radial-gradient(1.5px 1.5px at 73% 80%,rgba(255,255,255,.58),transparent 60%),
+radial-gradient(1px 1px at 55% 90%,rgba(255,255,255,.42),transparent 60%),
+radial-gradient(1.3px 1.3px at 12% 66%,rgba(255,255,255,.52),transparent 60%),
+radial-gradient(1.6px 1.6px at 70% 40%,rgba(255,255,255,.66),transparent 60%),
+radial-gradient(1.1px 1.1px at 88% 66%,rgba(255,255,255,.46),transparent 60%),
+radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
+@keyframes lxTw{0%,100%{opacity:.6}50%{opacity:1}}
+.lx-constel{position:absolute;right:3%;top:50%;transform:translateY(-50%);width:330px;height:330px;opacity:.95;pointer-events:none;animation:lxConFloat 12s ease-in-out infinite}
+@keyframes lxConFloat{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 12px))}}
+.lx-constel line{stroke:rgba(150,120,240,.26);stroke-width:1}
+.lx-constel circle{fill:#cbbaff;filter:drop-shadow(0 0 5px rgba(168,128,255,.9));animation:lxNode 4.5s ease-in-out infinite}
+@keyframes lxNode{0%,100%{opacity:.5}50%{opacity:1}}
+/* #6/#2, desktop half. Same story as the mobile rule above: this forced the hero back to block so the
+   copy would top-align with the floating chip. _poolshero.js now lays the hero out as a flex column and
+   puts the strip last with order:9 -- but order does nothing in a block container, so the strip rendered
+   in DOM order, i.e. ABOVE the headline, and the Pools hero stopped matching the Trade hero it is meant
+   to mirror. Removing it lets that flex layout actually apply. */
+.lx-part{position:absolute;border-radius:50%;background:rgba(214,196,255,.85);box-shadow:0 0 9px rgba(172,132,255,.9);animation:lxDrift linear infinite}
+.lx-part.p1{width:5px;height:5px;left:57%;bottom:14%;animation-duration:15s}
+.lx-part.p2{width:4px;height:4px;left:74%;bottom:8%;animation-duration:19s;animation-delay:-4s}
+.lx-part.p3{width:6px;height:6px;left:66%;bottom:22%;animation-duration:23s;animation-delay:-9s}
+.lx-part.p4{width:3px;height:3px;left:85%;bottom:12%;animation-duration:17s;animation-delay:-2s}
+@keyframes lxDrift{0%{transform:translateY(20px);opacity:0}12%{opacity:1}86%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
+#poolsBody tr td:last-child,#panelAllPools thead th:last-child{text-align:center!important}
+#lx-mypanel{opacity:1!important;visibility:visible!important;animation:none!important}
+/* lx-poolsweight: match the Trade tables. Pools body numbers computed to font-weight 400 while the
+   Trade tables render theirs at 700 (both JetBrains Mono), so the two sections read as different
+   typefaces. Only the PRIMARY numeric line is bolded — the $ sub-line under it stays lighter, which
+   is how Trade does it too. Columns 1-2 (# and PAIR) are left alone; :last-child covers Participants,
+   which is bare text in the td with no inner div. */
+table.pools tbody tr.lx-ammrow td:nth-child(n+3)>div:first-child,
+table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
+
+/* My Position asset logos. We insert a real <img> into the design's 24px .mpm-asset-ico bubble, but the
+   phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
+   inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
+   placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
+/* #6 (batch 5): the participants footer ships baked as "Viewing 1 - 17 of 847" -- the design's mock --
+   and on a desktop refresh that sat there for the whole time the pool was loading, which is a specific
+   wrong number rather than an obviously empty one. Hidden until our own pager writes it (.lx-partfoot
+   is added by partFoot), with the usual failsafe so a stalled load leaves it blank rather than gone. */
+.part-foot:not(.lx-partfoot){visibility:hidden}
+
+/* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
+   across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
+   (24h)", so it folds to 2x2 there instead. */
+.ph-stats{grid-template-columns:repeat(4,1fr)!important}
+/* #20: the + between the two Create Pool assets sits ON the seam between the cards, so it depends on
+   having a solid ground of its own and on being above them -- without either it reads as a glyph
+   caught half under an edge. Given both, plus a glyph that is centred by geometry rather than by line
+   box (an svg with display:block cannot inherit a stray baseline). Could not reproduce the exact
+   breakage reported, so this changes only what could plausibly cause it and nothing else. */
+#createPoolModal .plus{position:relative;z-index:2;flex:0 0 30px;width:30px;height:30px;
+  background:var(--surface,#fff)!important;line-height:0;
+  display:flex!important;align-items:center!important;justify-content:center!important}
+#createPoolModal .plus svg{display:block;width:14px;height:14px;flex:0 0 14px}
+.ph-stat .ic.part{background:var(--purple-soft,rgba(139,92,246,.13));color:var(--purple,#8b5cf6)}
+@media(max-width:900px){.ph-stats{grid-template-columns:repeat(2,1fr)!important}}
+
+.mp-asset-ico img,.mpm-asset-ico img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.mpm-asset-ico{overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
+
+/* Trailing explorer arrow on a phone transaction row (desktop has one per table row). */
+.tx-item .lx-txext{flex-shrink:0;margin-left:8.8px;align-self:center;color:var(--text-muted);display:inline-flex;
+  align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;text-decoration:none}
+/* identicon fills the icon slot edge to edge; the design tints that slot per type, which would show
+   through the identicon's transparent corners */
+.tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
+.tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
+.tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
+</style><style id="lx-heromono-css" data-lxts="1.1">
+/* ---- the card ------------------------------------------------------------------------------- */
+/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
+   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
+   per-page background rules on both pages. */
+html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
+             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
+html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
+             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
+  border:1px solid rgba(16,16,22,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
+/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
+   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
+.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
+
+/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
+/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
+   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
+   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
+   itself is untouched everywhere else it is used. */
+.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
+
+/* ---- type: the loudest thing on the card ----------------------------------------------------- */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
+/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
+   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
+   and colour alone leaves it transparent. */
+.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
+.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
+  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
+html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
+  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
+
+/* ---- the headline, ONE size for both heroes ---------------------------------------------------- */
+/* #14: Pools drifted to 38px inside a 340px column (lx-amm-css) while Trade sat at 36px inside 420px,
+   so the same sentence broke onto a different number of lines and the two tops of the app stopped
+   looking like the same design. Trade's numbers are the ones both use now. This lives HERE, in the
+   sheet that already runs last and already owns the shared hero look, because that is what stops the
+   two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:39.6px!important;line-height:1.08!important;max-width:420px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:25.3px!important;line-height:1.14!important;max-width:100%!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:19.8px!important;line-height:1.18!important;max-width:100%!important}
+}
+
+/* ---- the chain mark -------------------------------------------------------------------------- */
+/* #2: the hairline ring here was written for a dark disc with a white glyph, which would have been
+   lost against a dark card. The mark that actually ships is the blue Stellar disc -- it carries its
+   own edge -- so the ring was not giving it one, it was drawing a white outline around it. Depth
+   only; nothing traces the artwork. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 10px 24px -12px rgba(0,0,0,.8)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 10px 26px -14px rgba(16,16,22,.5)!important}
+/* #8/#9: the mark is the first thing on the page and it was smaller than the headline beside it --
+   and the two heroes were not even the same size as each other (56 on Trade, 64 on Pools). One size,
+   large enough to lead, on both. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:76px!important;height:76px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:52px!important;height:52px!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:46px!important;height:46px!important}
+}
+
+/* ---- the stats strip -------------------------------------------------------------------------- */
+.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
+  border-top:1px solid rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
+  border-top:1px solid rgba(16,16,22,.10)!important}
+.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
+.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
+.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
+html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
+
+/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
+/* These two coins OVERLAP by 10px, and the ring is what keeps them reading as two coins.
+   The design drew it in near-black, which read as an outline drawn around each coin. A 0.8px
+   hairline fixed that and broke the other half: against a black XLM mark on a near-white card it is
+   invisible, so the pair merged into one blob wherever they overlap -- the broken edge.
+   The answer is the ring every overlapping-avatar stack uses: keep the design's 2px, but paint it in
+   the card's OWN ground, so it reads as a gap between the coins rather than a line around them.
+   The drop shadow goes with it -- on a light card it was just a grey smudge under each coin. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
+  border:2px solid #17171d!important;box-shadow:none!important}
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border:2px solid #ebebee!important;box-shadow:none!important}
+/* 2px of ring on a 16-17px phone mark is most of the coin; the design already steps this down. */
+@media(max-width:560px){
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span,
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border-width:1.5px!important}
+}
+
+/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
+/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
+   card, which is the point -- the eye goes to the action. */
+.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
+html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
 </style></head>
 <body>
 <div class="app">
@@ -7254,7 +7865,7 @@ window.addEventListener('click',function(e){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
   else boot();
-})();</script><style id="lx-whead-css" data-lxts="1.1">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 22px;gap:8.8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8.8px;font:700 14.9px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 15.4px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 14.3px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7.7px;padding:5.5px 11px 5.5px 6.6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 12.7px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:26.4px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-poolwarm">(function(){try{if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-searchassets">(function(){
+})();</script><style id="lx-whead-css" data-lxts="1.1">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 22px;gap:8.8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8.8px;font:700 14.9px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 15.4px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 14.3px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7.7px;padding:5.5px 11px 5.5px 6.6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 12.7px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:26.4px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-poolwarm">(function(){try{if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-dashqa">(function(){function go(u){try{location.href=u;}catch(_){}}function modalFor(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t.indexOf("custom swap")===0)return document.querySelector("#swapModal");if(t==="add liquidity")return document.querySelector("#createPoolModal");return null;}function openModal(m){try{m.classList.add("open");if(getComputedStyle(m).display==="none")m.style.display="flex";return true;}catch(_){return false;}}function target(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t==="my wallet")return "/wallet";if(t==="add liquidity"&&!document.querySelector("#createPoolModal"))return "/pools/stellar";if(t.indexOf("custom swap")===0&&!document.querySelector("#swapModal"))return "/trade/stellar";return "";}document.addEventListener("click",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var m=modalFor(c); if(m&&openModal(m)){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return;}var u=target(c); if(!u)return;e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);var _qsx=0,_qsy=0,_qmoved=false;document.addEventListener("touchstart",function(e){if(!(e.target&&e.target.closest&&e.target.closest(".quick-card")))return;var t=e.touches&&e.touches[0]; if(!t)return;_qsx=t.clientX;_qsy=t.clientY;_qmoved=false;},{passive:true,capture:true});document.addEventListener("touchmove",function(e){var t=e.touches&&e.touches[0]; if(!t)return;if(Math.abs(t.clientX-_qsx)>10||Math.abs(t.clientY-_qsy)>10)_qmoved=true;},{passive:true,capture:true});document.addEventListener("touchend",function(e){if(_qmoved)return;var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var m=modalFor(c); if(m&&openModal(m)){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return;}var u=target(c); if(!u)return;e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);})();</script><script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;var ROUTE={"home":"lumoscore-home.html"};function fix(){var scope=document.querySelectorAll("footer a[href=\u0022#\u0022], .footer a[href=\u0022#\u0022], [class*=footer] a[href=\u0022#\u0022]");[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}a.style.cursor="default";a.addEventListener("click",function(e){e.preventDefault();});});}if(document.readyState!=="loading")fix();else document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1200);})();</script><script id="lx-dexhero">(function(){function q(s){return document.querySelector(s);}function go(){var mints=q(".dex-mints-card")||q(".mdx-mints-card");var ctas=q(".lx-dctas")||q(".mdx-hero-ctas");if(mints&&ctas&&!mints.contains(ctas)){var head=mints.querySelector(".dex-mints-head,.mdx-mints-head,.card-head,h3");var host=(head&&head.parentNode===mints)?head:mints;if(host===head&&head.appendChild){head.appendChild(ctas);}else{mints.insertBefore(ctas,mints.firstChild);}}var prim=q(".lx-dctas .dex-hero-btn.primary")||q(".mdx-hero-ctas .mdx-hero-btn.primary");if(prim){var psvg=prim.querySelector("svg");if(psvg&&!psvg.querySelector("line")){psvg.setAttribute("stroke-width","2.4");psvg.innerHTML='<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';}}var hiw=q("#mdxHiwBtn")||q("#dexHiwBtn");if(hiw&&hiw.getAttribute("data-lxhiw")!=="1"){hiw.setAttribute("data-lxhiw","1");hiw.setAttribute("title","How it works");hiw.setAttribute("aria-label","How it works");}[".dex-overview",".lumos-promo.lx-mobhero",".dex-hero",".amm-overview"].forEach(function(sel){var el=q(sel); if(el&&!el.classList.contains("lx-dexhero-off"))el.classList.add("lx-dexhero-off");});}function run(){ try{ go(); }catch(_){} }if(document.readyState!=="loading")run(); else document.addEventListener("DOMContentLoaded",run);[120,400,900,1800,3200].forEach(function(ms){ setTimeout(run,ms); });try{ new MutationObserver(function(){ run(); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}})();</script><script id="lx-searchassets">(function(){
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
   // the malicious/unsafe directory is 2,400+ entries and growing, so it cannot be pulled down whole.
   // A 404 (not listed) is a clean "no", and a network failure is NOT a "yes": it resolves false and is
@@ -7591,7 +8202,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
           // LXBRAND first. It already existed but only pool icons consulted it, so an asset result took
           // whatever the issuer's toml published -- and LUMOS still declares home_domain=lumosdao.io,
           // whose toml carries an older mark. Keyed by CODE|ISSUER, never by ticker alone.
-          return {code:p[0]||"", issuer:p[1]||"", name:ti.name||"", domain:x.domain||"",
+          // B11: our own asset, by identity. See the note in the transform -- the toml at lumosdao.io
+          // says "Lumos Core"; until that is corrected this is what the search shows for it.
+          var _nm=ti.name||"";
+          if((p[0]||"")==="LUMOS"&&(p[1]||"")==="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S")_nm="LumosCore";
+          return {code:p[0]||"", issuer:p[1]||"", name:_nm, domain:x.domain||"",
                   tl:(x.trustlines&&x.trustlines[0])||0,
                   hl:(x.trustlines&&x.trustlines[2]!=null)?x.trustlines[2]:null,
                   img:LXBRAND[(p[0]||"")+"|"+(p[1]||"")]||ti.image||ti.orgLogo||lxSeaReg(p[0],p[1])||""};
@@ -7710,7 +8325,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
-})();</script><script id="lx-dashqa">(function(){function go(u){try{location.href=u;}catch(_){}}function modalFor(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t.indexOf("custom swap")===0)return document.querySelector("#swapModal");if(t==="add liquidity")return document.querySelector("#createPoolModal");return null;}function openModal(m){try{m.classList.add("open");if(getComputedStyle(m).display==="none")m.style.display="flex";return true;}catch(_){return false;}}function target(card){var t=((card.querySelector(".ttl")||{}).textContent||"").trim().toLowerCase();if(t==="my wallet")return "/wallet";if(t==="add liquidity"&&!document.querySelector("#createPoolModal"))return "/pools/stellar";if(t.indexOf("custom swap")===0&&!document.querySelector("#swapModal"))return "/trade/stellar";return "";}document.addEventListener("click",function(e){var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var m=modalFor(c); if(m&&openModal(m)){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return;}var u=target(c); if(!u)return;e.preventDefault(); e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);var _qsx=0,_qsy=0,_qmoved=false;document.addEventListener("touchstart",function(e){if(!(e.target&&e.target.closest&&e.target.closest(".quick-card")))return;var t=e.touches&&e.touches[0]; if(!t)return;_qsx=t.clientX;_qsy=t.clientY;_qmoved=false;},{passive:true,capture:true});document.addEventListener("touchmove",function(e){var t=e.touches&&e.touches[0]; if(!t)return;if(Math.abs(t.clientX-_qsx)>10||Math.abs(t.clientY-_qsy)>10)_qmoved=true;},{passive:true,capture:true});document.addEventListener("touchend",function(e){if(_qmoved)return;var c=e.target&&e.target.closest?e.target.closest(".quick-card"):null; if(!c)return;var m=modalFor(c); if(m&&openModal(m)){e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();return;}var u=target(c); if(!u)return;e.preventDefault(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();go(u);},true);})();</script><script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;var ROUTE={"home":"lumoscore-home.html"};function fix(){var scope=document.querySelectorAll("footer a[href=\u0022#\u0022], .footer a[href=\u0022#\u0022], [class*=footer] a[href=\u0022#\u0022]");[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}a.style.cursor="default";a.addEventListener("click",function(e){e.preventDefault();});});}if(document.readyState!=="loading")fix();else document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1200);})();</script><script id="lx-ammdata">(function(){
+})();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
   var KNOWN=[
@@ -9851,10 +10466,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         // The volume line for the SAME point, in dollars, from the bars the chart already drew.
         var _vp=chHovVolVal(st,p.t);
         var _volTxt=(_vp==null)?null:((st.usdPerUnit>0)?usd(_vp*st.usdPerUnit):(famt(_vp)+" "+st.unit));
-        // Participants is a CURRENT figure, not a per-point one -- it is read straight off the stat card
-        // above so the two can never disagree, and it does not change as the pointer moves.
-        var _pv=document.querySelector(".lx-partstat .v");
-        var _pt=_pv?(_pv.textContent||"").trim():"";
+        // Participants is deliberately NOT in this tooltip. See the note in the transform: Horizon only
+        // exposes the pool's CURRENT trustline count, so the figure was identical at every point and
+        // described the present while the rest of the tooltip described the hovered moment. It keeps its
+        // own stat card above the chart, where it is true.
         // The date leads, as it does on Trade-Asset -- the reader is pointing at a moment, and the
         // figures below it only mean anything once they know which one. The span comes from the points
         // themselves, so an intraday range shows a time and a long one shows a date.
@@ -9862,8 +10477,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         var _dt=(p&&p.t)?chHovDate(p.t,_sp):"";
         box.innerHTML=(_dt?('<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:4px">'+esc(_dt)+'</div>'):'')
           +_row(_lbl,_val,true)
-          +(_volTxt?('<div style="margin-top:8px">'+_row("Volume",_volTxt,false)+'</div>'):'')
-          +((_pt&&_pt!=="—")?('<div style="margin-top:8px">'+_row("Participants",_pt,false)+'</div>'):'');
+          +(_volTxt?('<div style="margin-top:8px">'+_row("Volume",_volTxt,false)+'</div>'):'');
       }
       box.style.opacity="1";
       var bw=box.offsetWidth||160, bh=box.offsetHeight||74;
@@ -11195,7 +11809,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-dexhero">(function(){function q(s){return document.querySelector(s);}function go(){var mints=q(".dex-mints-card")||q(".mdx-mints-card");var ctas=q(".lx-dctas")||q(".mdx-hero-ctas");if(mints&&ctas&&!mints.contains(ctas)){var head=mints.querySelector(".dex-mints-head,.mdx-mints-head,.card-head,h3");var host=(head&&head.parentNode===mints)?head:mints;if(host===head&&head.appendChild){head.appendChild(ctas);}else{mints.insertBefore(ctas,mints.firstChild);}}var prim=q(".lx-dctas .dex-hero-btn.primary")||q(".mdx-hero-ctas .mdx-hero-btn.primary");if(prim){var psvg=prim.querySelector("svg");if(psvg&&!psvg.querySelector("line")){psvg.setAttribute("stroke-width","2.4");psvg.innerHTML='<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';}}var hiw=q("#mdxHiwBtn")||q("#dexHiwBtn");if(hiw&&hiw.getAttribute("data-lxhiw")!=="1"){hiw.setAttribute("data-lxhiw","1");hiw.setAttribute("title","How it works");hiw.setAttribute("aria-label","How it works");}[".dex-overview",".lumos-promo.lx-mobhero",".dex-hero",".amm-overview"].forEach(function(sel){var el=q(sel); if(el&&!el.classList.contains("lx-dexhero-off"))el.classList.add("lx-dexhero-off");});}function run(){ try{ go(); }catch(_){} }if(document.readyState!=="loading")run(); else document.addEventListener("DOMContentLoaded",run);[120,400,900,1800,3200].forEach(function(ms){ setTimeout(run,ms); });try{ new MutationObserver(function(){ run(); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}})();</script><script id="lx-nofollow">(function(){
+})();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){
     if(!h)return true;

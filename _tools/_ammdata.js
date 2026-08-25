@@ -2620,10 +2620,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         // The volume line for the SAME point, in dollars, from the bars the chart already drew.
         var _vp=chHovVolVal(st,p.t);
         var _volTxt=(_vp==null)?null:((st.usdPerUnit>0)?usd(_vp*st.usdPerUnit):(famt(_vp)+" "+st.unit));
-        // Participants is a CURRENT figure, not a per-point one -- it is read straight off the stat card
-        // above so the two can never disagree, and it does not change as the pointer moves.
-        var _pv=document.querySelector(".lx-partstat .v");
-        var _pt=_pv?(_pv.textContent||"").trim():"";
+        // Participants is deliberately NOT in this tooltip. See the note in the transform: Horizon only
+        // exposes the pool's CURRENT trustline count, so the figure was identical at every point and
+        // described the present while the rest of the tooltip described the hovered moment. It keeps its
+        // own stat card above the chart, where it is true.
         // The date leads, as it does on Trade-Asset -- the reader is pointing at a moment, and the
         // figures below it only mean anything once they know which one. The span comes from the points
         // themselves, so an intraday range shows a time and a long one shows a date.
@@ -2631,8 +2631,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         var _dt=(p&&p.t)?chHovDate(p.t,_sp):"";
         box.innerHTML=(_dt?('<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:4px">'+esc(_dt)+'</div>'):'')
           +_row(_lbl,_val,true)
-          +(_volTxt?('<div style="margin-top:8px">'+_row("Volume",_volTxt,false)+'</div>'):'')
-          +((_pt&&_pt!=="\u2014")?('<div style="margin-top:8px">'+_row("Participants",_pt,false)+'</div>'):'');
+          +(_volTxt?('<div style="margin-top:8px">'+_row("Volume",_volTxt,false)+'</div>'):'');
       }
       box.style.opacity="1";
       var bw=box.offsetWidth||160, bh=box.offsetHeight||74;
