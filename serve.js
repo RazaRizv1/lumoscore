@@ -88,6 +88,42 @@ function holdersProxy(req, res, q) {
   })).catch(e => { res.writeHead(502, {'content-type':'application/json'}); res.end(JSON.stringify({error:String(e&&e.message||e)})); });
 }
 
+// Local mirror of functions/lxapi/candles — serve Horizon trade_aggregations from this origin.
+// See that file for why it exists: /trade_aggregations is the ONLY metered Horizon endpoint, and its 429
+// carries no CORS header, so in the browser it surfaces as an opaque "Failed to fetch".
+//
+// Same validation as the Function, and the same pass-through shape: the upstream body is handed straight
+// back. Without this route the dev server 404s the path and the page falls back to Horizon directly, which
+// is a different code path from production — the one place a local check would not match the deployed site.
+const CANDLE_ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
+const CANDLE_RES = ['60000', '300000', '900000', '3600000', '86400000', '604800000'];
+function candlesProxy(req, res, q) {
+  const bad = (m) => { res.writeHead(400, {'content-type':'application/json'}); res.end(JSON.stringify({error:m})); };
+  const a = (q.get('a') || '').trim();
+  if (!CANDLE_ASSET_RE.test(a)) return bad('bad asset');
+  const dash = a.lastIndexOf('-'), code = a.slice(0, dash), issuer = a.slice(dash + 1);
+  const resn = (q.get('res') || '86400000').trim();
+  if (CANDLE_RES.indexOf(resn) < 0) return bad('bad resolution');
+  const limit = q.get('limit') || '200';
+  if (!/^[0-9]{1,3}$/.test(limit) || +limit < 1 || +limit > 200) return bad('bad limit');
+  const order = (q.get('order') || 'desc').trim();
+  if (order !== 'asc' && order !== 'desc') return bad('bad order');
+  const start = q.get('start'), end = q.get('end');
+  if ((start && !/^[0-9]{1,16}$/.test(start)) || (end && !/^[0-9]{1,16}$/.test(end))) return bad('bad time');
+
+  const type = code.length <= 4 ? 'credit_alphanum4' : 'credit_alphanum12';
+  const up = 'https://horizon.stellar.org/trade_aggregations?base_asset_type=' + type
+    + '&base_asset_code=' + encodeURIComponent(code) + '&base_asset_issuer=' + issuer
+    + '&counter_asset_type=native&resolution=' + resn + '&order=' + order + '&limit=' + limit
+    + (start ? '&start_time=' + start : '') + (end ? '&end_time=' + end : '');
+  fetch(up).then(r => r.text().then(body => {
+    res.writeHead(r.ok ? 200 : 200, {'content-type':'application/json',
+      'cache-control':'public, max-age=' + (r.ok ? 300 : 15), 'access-control-allow-origin':'*'});
+    res.end(r.ok ? body : JSON.stringify({error:'upstream ' + r.status}));
+  })).catch(e => { res.writeHead(200, {'content-type':'application/json','cache-control':'public, max-age=15'});
+    res.end(JSON.stringify({error:String(e && e.message || e)})); });
+}
+
 // Local mirror of functions/lxapi/assetlogo — resolve an asset logo from the issuer's stellar.toml.
 // Server-side, so the CORS wall that blocks this in the browser does not apply.
 const LOGO_ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
@@ -1028,6 +1064,7 @@ http.createServer((req, res) => {
   let p = decodeURIComponent((req.url || '/').split('?')[0]);
   if (p === '/lxapi/holders') return holdersProxy(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/assetlogo') return assetLogo(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/candles') return candlesProxy(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/dexassets') return dexAssets(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/.well-known/stellar.toml') return stellarToml(req, res);
   if (p === '/lxapi/poolstats') return poolStats(req, res);
