@@ -35,6 +35,16 @@ const HERO_DARK = '/assets/hero/trade-hero-dark.svg?v=' + heroV('trade-hero-dark
 const HERO_LIGHT = '/assets/hero/trade-hero-light.svg?v=' + heroV('trade-hero-light.svg');
 
 const STYLE = `<style id="lx-dexmain-css">
+/* A20: the four chips the script removes, hidden from the FIRST paint. Keyed on the same data-filter
+   values the removal uses, so the two cannot drift apart. */
+.dex-mk-filter[data-filter="stables"],.mdx-mk-filter[data-filter="stables"],
+.dex-mk-filter[data-filter="memes"],.mdx-mk-filter[data-filter="memes"],
+.dex-mk-filter[data-filter="utility"],.mdx-mk-filter[data-filter="utility"],
+.dex-mk-filter[data-filter="native"],.mdx-mk-filter[data-filter="native"]{display:none!important}
+/* B12: the FAQ is static copy, so it painted while every data-backed block above it was still collapsed
+   -- alone at the top of an empty page, which is what made it look oversized. It now waits for the rest.
+   visibility, not display, so it holds its space and nothing below it jumps. */
+html:not(.lx-dexlate) .lx-faq{visibility:hidden}
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
 
@@ -1313,6 +1323,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       grid.__lxsig=sig; paintIcons(grid);
       qa(".dex-mover-card",grid).forEach(function(card){ card.addEventListener("click",function(){ var a=byCode[card.getAttribute("data-tkr")]; if(a)navTo(a); }); });
       grid.classList.add("lxd");
+      faqRelease();                                          // B12: content is on screen, the FAQ may follow
     }
     qa(".dex-mover-card[data-tkr]",grid).forEach(function(card){ var a=byCode[card.getAttribute("data-tkr")]; if(!a)return; paintIcons(card);
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
@@ -1682,8 +1693,12 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       b.setAttribute("aria-pressed",on?"true":"false");
     });
   }
+  // B12: let the FAQ in once the rest of the page exists -- or after two seconds regardless, so a page
+  // whose data never arrives still shows it. Idempotent; the class is only ever added.
+  function faqRelease(){ try{ document.documentElement.classList.add("lx-dexlate"); }catch(_){} }
   function boot(){
     try{ denomUi(); }catch(_){}
+    setTimeout(faqRelease,2000);
     loadManifest();                                            // our own hosted token icons; independent of the toml
     guardApply();                                              // synchronous skeleton (real tickers/icons, "\\u2014" values, .lxd) -> no mock flash, no blank
     // The design has its own row/Trade click handler that opens the asset page WITHOUT the ?asset= param
