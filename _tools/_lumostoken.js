@@ -1151,7 +1151,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       // the path payment), so announcing it here read as a prerequisite the user had to clear before he
       // was allowed to trade -- a barrier in front of a door that is already open. Hidden in the swap
       // modal only; other modals keep it, because they have no such step and do need it first.
-      if(g.closest&&g.closest("#swapModal,#modalSwap")){ g.style.display="none"; return; }
+      if(g.closest&&g.closest("#swapModal,#modalSwap,#createPoolModal")){ g.style.display="none"; return; }
       if(window.__lxHasTrust===true)g.style.display="none"; else if(window.__lxHasTrust===false)g.style.display="";
       var b=g.querySelector("[data-tl-add]"); if(b&&!b.__lxtg){ b.__lxtg=1; b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation(); ltAddTrust(b,function(){ g.style.display="none"; }); }); }
     }); }

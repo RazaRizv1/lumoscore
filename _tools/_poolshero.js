@@ -283,6 +283,18 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
   font-weight:700;font-size:11.5px;gap:5px}
 .lx-poolhead .mdx-hero-btn.primary svg{width:11px;height:11px;color:var(--accent,#ea6a2c)!important}
 .lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+/* item 9: Create Pool sits beside the heading; How it works goes to the far right, labelled, in the
+   accent -- the same arrangement Trade's New Mints header uses. */
+.lx-poolhead{display:flex!important;align-items:center;gap:10px}
+.lx-poolhead h2{flex:0 0 auto;margin:0}
+.lx-poolhead .mdx-hero-ctas{display:flex!important;align-items:center;gap:10px;
+  flex:1 1 auto!important;margin-left:0!important;justify-content:flex-start}
+.lx-poolhead .mdx-hero-btn.primary{order:1;margin-left:0!important;margin-right:0!important}
+.lx-poolhead .mdx-hero-btn.ghost{order:2;margin-left:auto!important;
+  flex-direction:row!important;gap:5px!important;font-size:11.5px!important;font-weight:700!important;
+  color:var(--accent,#ea6a2c)!important;text-decoration:none!important;width:auto!important}
+.lx-poolhead .mdx-hero-btn.ghost svg{order:-1;width:11px;height:11px;opacity:1;
+  color:var(--accent,#ea6a2c)!important}
 .lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
 </style>`;
