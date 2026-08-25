@@ -234,7 +234,27 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   // values (market cap / FDV / volume / chart) — falls back to the last-known price (<=6h old).
   var xlmUsd=(function(){try{var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0;}catch(e){return (window.__lxXlmUsd||0);}})(), lumosXlm=0, chg24=null;                // price fetches
   var supply=null, holders=null, poolCount=null, activePools=null, vol24Usd=null, vol24Xlm=null, volChg=null;   // stat fetches
+  // Set once the price request has settled WITHOUT a usable price -- distinct from "not back yet", which
+  // must keep rendering nothing rather than a dash.
+  var pxFailed=false;
   function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
+  // Go through our own edge cache first -- a server has neither the rate limit nor the CORS problem, and
+  // the cached response collapses many visitors into one upstream hit. Fall back to Horizon directly so
+  // localhost (where Pages Functions do not run) behaves exactly as before.
+  function jAgg(o){
+    var ord=o.order||"desc", lim=o.limit||200;
+    var qs="a="+encodeURIComponent(CODE+"-"+ISSUER)+"&res="+o.res+"&order="+ord+"&limit="+lim;
+    if(o.start)qs+="&start="+o.start;
+    if(o.end)qs+="&end="+o.end;
+    var direct=H+"/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE
+      +"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+o.res
+      +"&order="+ord+"&limit="+lim
+      +(o.start?("&start_time="+o.start):"")+(o.end?("&end_time="+o.end):"");
+    return fetch("/lxapi/candles?"+qs)
+      .then(function(r){ if(!r.ok)throw new Error("HTTP"+r.status); return r.json(); })
+      .then(function(d){ if(d&&d.error)throw new Error(String(d.error)); return d; })
+      .catch(function(){ return j(direct); });
+  }
   var VFD=${JSON.stringify(VERIFIED)};
   var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
   var VTICKSVG='${VTICK_SVG}';
@@ -304,6 +324,14 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         var t=e.textContent||""; if(t.indexOf("Combined")>=0&&t.indexOf("24h volume")>=0&&t.indexOf("trades")>=0){
           var host=(e.parentNode&&e.parentNode!==hp&&e.parentNode.children.length===1)?e.parentNode:e;
           if(host.parentNode)host.parentNode.removeChild(host); } });
+      hp.classList.add("lxlt");
+    }
+    // Price settled unusable: dash it rather than leave the design's baked $0.00320 standing.
+    if(hp&&!(lumosXlm>0)&&pxFailed){
+      setText(hp.querySelector(".price"), "—");
+      var _xs=hp.querySelector(".sub-volume")||qa(".hero-price-block *").filter(function(e){return e.children.length===0&&/XLM/.test(e.textContent||"");})[0];
+      if(_xs)setText(_xs, "—");
+      var _ch=hp.querySelector(".change"); if(_ch)setText(_ch, "");
       hp.classList.add("lxlt");
     }
     // group "≈ X XLM" + the 24h change badge onto ONE right-aligned meta row (symmetry). Idempotent.
@@ -428,7 +456,9 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       if(/DILUTED|FDV/.test(t)){ if(priceUsd>0&&supply>0){ var ts=chainSupply();
         setMoney(money,abbrUsd(ts*priceUsd)); if(sub)setText(sub,"on "+abbrNum(ts)+" total supply"); done=true; } }
       else if(/MARKET CAP/.test(t)){ if(priceUsd>0&&supply>0){ var circ=circSupply(); var mc=(circ!=null?circ:supply)*priceUsd; setMoney(money,abbrUsd(mc)); if(sub){ var wc="on "+abbrNum(circ!=null?circ:supply)+" circulating"; var ns=sub.querySelector(".lx-supnum"); if(!ns){ sub.innerHTML='<span class="lx-supnum"></span><span class="lx-supinfo" data-tip="'+SUPPLY_NOTE+'">i</span>'; ns=sub.querySelector(".lx-supnum"); } if(ns&&ns.textContent!==wc)ns.textContent=wc; } done=true; } }
-      else if(/HOLDERS/.test(t)){ if(holders!=null){ if(val)setText(val,num(holders)); if(sub)setText(sub,"unique addresses"); done=true; } }
+      else if(/HOLDERS/.test(t)){ var _hc=holderCount();
+        if(_hc!=null){ if(val)setText(val,num(_hc)); if(sub)setText(sub,"holding a balance"); done=true; }
+        else if(holders!=null){ if(val)setText(val,num(holders)); if(sub)setText(sub,"trustlines"); done=true; } }
       else if(/POOLS/.test(t)){ if(poolCount!=null){ if(val)setText(val,String(poolCount)); done=true; }
         if(sub&&/both chains/i.test(sub.textContent||""))setText(sub,"on Stellar");
         // the POOLS card ships with no sub-line → the desktop 5-card row loses its vertical rhythm.
@@ -436,6 +466,11 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         var wide=!(window.matchMedia)||window.matchMedia("(min-width:760px)").matches;
         if(wide&&!sub){ var ps=document.createElement("div"); ps.className="sub"; ps.textContent="LUMOS pairs"; card.appendChild(ps); } }
       else if(/VOLUME/.test(t)){ if(vol24Usd!=null){ setMoney(money,abbrUsd(vol24Usd)); if(sub&&volChg!=null){ setText(sub,(volChg>=0?"+":"−")+Math.abs(volChg).toFixed(1)+"% past 24h"); sub.classList.toggle("up",volChg>=0); } done=true; } }
+      // Same rule for the cards derived from it. Holders and Pools are NOT price-derived, so they keep
+      // rendering their own real values.
+      if(!done&&pxFailed&&/DILUTED|FDV|MARKET CAP|VOLUME/.test(t)){
+        setMoney(money,"—"); if(sub)setText(sub,""); done=true;
+      }
       if(done)card.classList.add("lxlt");
     });
   }
@@ -458,6 +493,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         if(tl!=null){ setText(v, (hc!=null?num(hc):"…")+"  ·  "+num(tl)); done=true; }
       }
       else if(/active pools/i.test(l)){ if(activePools!=null){ setText(v, String(activePools)); done=true; } }
+      if(!done&&pxFailed&&(/^price/i.test(l)||/24h volume/i.test(l))){ setText(v,"—"); done=true; }
       if(done)r.classList.add("lxlt");
     });
   }
@@ -1228,8 +1264,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   function loadChart(tf,attempt){
     attempt=attempt||0;
     chartTF=tf; var cfg=tfCfg(tf), now=Date.now(), start=now-cfg.span;
-    var url=H+"/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+cfg.res+"&start_time="+start+"&end_time="+now+"&order=asc&limit=200";
-    j(url).then(function(d){
+    jAgg({res:cfg.res,order:"asc",limit:200,start:start,end:now}).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
       _chartRecs=r;
       // If the rate is not in yet, wait for it rather than silently giving up. Bounded, so a page that
@@ -1289,15 +1324,15 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       xlmUsd=(d&&+d.usd)||xlmUsd; if(xlmUsd>0){ window.__lxXlmUsd=xlmUsd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } applyAll(); try{ drawFromRecs(); }catch(_){}   // redraw, not refetch: the records are already in hand
     }).catch(function(){});
     // LUMOS/XLM daily closes (spot price + 24h change + 24h volume) via trade aggregations
-    var ta="https://horizon.stellar.org/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution=86400000&order=desc&limit=2";
-    j(ta).then(function(d){
+    jAgg({res:86400000,order:"desc",limit:2}).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
       if(r[0])lumosXlm=+r[0].close||+r[0].avg||lumosXlm;
       if(r[0])vol24Xlm=+r[0].counter_volume||0;                              // XLM traded in the LUMOS/XLM market (24h)
       if(r[0]&&r[1]&&+r[1].close>0)chg24=((+r[0].close-+r[1].close)/+r[1].close)*100;
       if(r[0]&&r[1]&&+r[1].counter_volume>0)volChg=((+r[0].counter_volume-+r[1].counter_volume)/+r[1].counter_volume)*100;
+      if(!(lumosXlm>0))pxFailed=true;
       applyAll();
-    }).catch(function(){});
+    }).catch(function(){ pxFailed=true; try{ applyAll(); }catch(_){} });
     // Asset record: circulating supply (balances.authorized) + holder count (accounts.authorized)
     j("https://horizon.stellar.org/assets?asset_code="+CODE+"&asset_issuer="+ISSUER).then(function(d){
       var rec=(d&&d._embedded&&d._embedded.records&&d._embedded.records[0])||null; if(!rec)return;
