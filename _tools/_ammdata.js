@@ -809,6 +809,17 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // asset index, then ask Horizon for the pools holding that reserve. Debounced, sequence-guarded so a
   // slower earlier query cannot overwrite a newer one, and cached per query.
   var LXPS_SEQ=0, LXPS_CACHE={}, LXPS_T=null, LXPS_Q="";
+  // A search that cannot finish in this long is queued behind the page's own Horizon traffic, not
+  // working. Say so rather than spinning: the answer is still cached if it lands later.
+  var LXPS_TIMEOUT=12000;
+  function lxPsRace(p,ms){
+    return new Promise(function(res,rej){
+      var done=false;
+      var t=setTimeout(function(){ if(!done){ done=true; rej(new Error("lx-timeout")); } },ms);
+      p.then(function(v){ if(!done){ done=true; clearTimeout(t); res(v); } },
+             function(e){ if(!done){ done=true; clearTimeout(t); rej(e); } });
+    });
+  }
   // The list to narrow and the place to hang network results, per layout.
   //   phone   : #panelAll        -> .pool-card
   //   desktop : #poolsBody       -> tr.lx-ammrow, results appended after the table's card
@@ -857,7 +868,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     host.innerHTML='<div class="lx-psnote">Searching Stellar for pools with \u201c'+esc(qq)+'\u201d\u2026</div>';
     clearTimeout(LXPS_T);
     LXPS_T=setTimeout(function(){
-      fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(qq)+"&limit=12")
+      lxPsRace(fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(qq)+"&limit=12")
         .then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); })
         .then(function(d){
           var recs=(d&&d._embedded&&d._embedded.records)||[];
@@ -876,14 +887,18 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
               .catch(function(){ return []; });
           })).then(function(sets){ var out=[]; sets.forEach(function(x){ out=out.concat(x); }); return out; });
         })
+        ,LXPS_TIMEOUT)
         .then(function(pools){
           if(seq!==LXPS_SEQ)return;
           LXPS_CACHE[qq]=pools||[];
           lxPsPaint(host,LXPS_CACHE[qq],qq);
         })
-        .catch(function(){
+        .catch(function(err){
           if(seq!==LXPS_SEQ)return;
-          host.innerHTML='<div class="lx-psnote">Could not reach the pool index just now.</div>';
+          // The two cases read very differently to somebody waiting, so they are not merged.
+          host.innerHTML=(err&&err.message==="lx-timeout")
+            ? '<div class="lx-psnote">Still waiting on Stellar for \u201c'+esc(qq)+'\u201d \u2014 the network is busy. Press Enter to try again.</div>'
+            : '<div class="lx-psnote">Could not reach the pool index just now.</div>';
         });
     },260);
   }
@@ -938,6 +953,14 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var inp=document.getElementById("poolSearch");
     if(!inp||inp.__lxps)return; inp.__lxps=1;
     inp.addEventListener("input",function(){ LXPS_Q=inp.value; try{ lxPoolSearch(LXPS_Q); }catch(_){} });
+    inp.addEventListener("keydown",function(e){
+      if(e.key!=="Enter")return;
+      e.preventDefault();
+      var v=(inp.value||"").trim();
+      if(v.length<2)return;
+      try{ delete LXPS_CACHE[v]; }catch(_){}      // a retry must not be answered from the failed attempt
+      try{ lxPoolSearch(v); }catch(_){}
+    });
   }
   function allCard(p,i){
     var idx=(i+1<10?"0":"")+(i+1);
