@@ -53,7 +53,7 @@ for (const file of files) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-dexnative-css">[\s\S]*?<\/style>/, '');
+    p = p.replace(/<style id="lx-dexnative-css">[\s\S]*?<\/style>/g, '');
     const m = RE.exec(p);
     if (m) { p = p.replace(RE, pills(m[1])); }
     else if (p.indexOf('data-filter="native"') < 0) { missed.push(file + ':' + k); continue; }

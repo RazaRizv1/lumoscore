@@ -512,8 +512,8 @@ for (const file of files) {
     // is not the code, the container is, and a skipped key is one this transform can never clean. Removing
     // it unconditionally means "not eligible" now also means "left with nothing of ours".
     const had = h.indexOf('<script id="lx-searchassets">') >= 0;
-    h = h.replace(/<style id="lx-searchassets-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-searchassets">[\s\S]*?<\/script>/, '');
+    h = h.replace(/<style id="lx-searchassets-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-searchassets">[\s\S]*?<\/script>/g, '');
     if (h.indexOf('id="spSearchInput"') < 0) {                   // only pages with the search popup
       if (had) { json[k] = h; changed = true; stripped++; }      // but do persist the removal
       continue;

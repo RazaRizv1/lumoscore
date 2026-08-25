@@ -114,8 +114,8 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<script id="lx-sidecard">[\s\S]*?<\/script>/, '')
-         .replace(/<style id="lx-sidecard-css">[\s\S]*?<\/style>/, '');
+    p = p.replace(/<script id="lx-sidecard">[\s\S]*?<\/script>/g, '')
+         .replace(/<style id="lx-sidecard-css">[\s\S]*?<\/style>/g, '');
     // the column rule goes in <head>, so the page never paints the other arrangement first
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     if (p.indexOf('</body>') < 0) continue;

@@ -171,8 +171,8 @@ for (const dev of ['desktop', 'mobile']) {
     if (!json[k]) continue;
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-tabs-css">[\s\S]*?<\/style>/, '')
-         .replace(/<style id="lx-tabs-phone-css">[\s\S]*?<\/style>/, '');
+    p = p.replace(/<style id="lx-tabs-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<style id="lx-tabs-phone-css">[\s\S]*?<\/style>/g, '');
     p = stripIcons(p);
     p = stripUtility(p);
 

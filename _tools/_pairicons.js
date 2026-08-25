@@ -52,7 +52,7 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-pairicons-css">[\s\S]*?<\/style>/, '');
+    p = p.replace(/<style id="lx-pairicons-css">[\s\S]*?<\/style>/g, '');
     // only pages that actually draw a pair
     if (p.indexOf('pair-icons') < 0) { if (p !== before) { json[k] = p; changed = true; } continue; }
     if (p.indexOf('</head>') < 0) continue;

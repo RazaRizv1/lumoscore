@@ -104,8 +104,8 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-mobsearch-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-mobsearch">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-mobsearch-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-mobsearch">[\s\S]*?<\/script>/g, '');
     // the phone header only: header.appbar does not exist on the desktop layout
     if (p.indexOf('class="appbar"') >= 0) {
       if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');

@@ -425,8 +425,8 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-wclaim-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-wclaim">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-wclaim-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-wclaim">[\s\S]*?<\/script>/g, '');
     // the wallet page only, identified by its own insights stack
     // Same reason as the runtime lookup above: the two layouts name the wrapper differently, and the
     // desktop page was therefore never injected at all.

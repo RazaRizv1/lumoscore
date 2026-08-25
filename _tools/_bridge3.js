@@ -63,7 +63,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
         h=h.replace(/(<tr>(?:(?!<\/tr>)[\s\S])*?br-asschip(?:(?!<\/tr>)[\s\S])*?)<\/tr>/g, '$1'+XPLINK+'</tr>');
       }
       // (C)+styles+script: strip prior, re-inject (idempotent)
-      h=h.replace(/<style id="lx-bridge3css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-bridge3js">[\s\S]*?<\/script>/,'');
+      h=h.replace(/<style id="lx-bridge3css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-bridge3js">[\s\S]*?<\/script>/g,'');
       const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+STYLE+SCRIPT+h.slice(bi);
       if(h!==before){ json[k]=h; n++; }
     }

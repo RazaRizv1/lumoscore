@@ -102,7 +102,7 @@ for (const dev of ['desktop', 'mobile']) {
     if (!json[k]) continue;
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-lumosutil-css">[\s\S]*?<\/style>/, '')
+    p = p.replace(/<style id="lx-lumosutil-css">[\s\S]*?<\/style>/g, '')
          // The figure ends "</span></div>" -- it contains ONE </div>, not two. Ending this match at
          // </div></div> meant it never matched the figure at all: it ran forward to the next place in
          // the page where two divs happen to close together and deleted everything in between.

@@ -77,8 +77,8 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-dashnews-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-dashnews">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-dashnews-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-dashnews">[\s\S]*?<\/script>/g, '');
 
     // The dashboard, identified by its own Quick actions heading rather than by a filename.
     const qa = p.indexOf('<div class="section-heading">\n        <h2>Quick actions</h2>');

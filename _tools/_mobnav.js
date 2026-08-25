@@ -87,8 +87,8 @@ for (const c of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'stella
     if (typeof p !== 'string') continue;
     if (p.indexOf('</body>') < 0) continue;
     const before = p;
-    p = p.replace(/<script id="lx-mobnav">[\s\S]*?<\/script>/, '');          // re-runnable: drop the old copy
-    p = p.replace(/<style id="lx-mobfix">[\s\S]*?<\/style>/, '');
+    p = p.replace(/<script id="lx-mobnav">[\s\S]*?<\/script>/g, '');          // re-runnable: drop the old copy
+    p = p.replace(/<style id="lx-mobfix">[\s\S]*?<\/style>/g, '');
     const bi = p.lastIndexOf('</body>'); if (bi < 0) continue;
     p = p.slice(0, bi) + STYLE + SCRIPT + p.slice(bi);
     if (p !== before) { json[k] = p; changed = true; keys++; }

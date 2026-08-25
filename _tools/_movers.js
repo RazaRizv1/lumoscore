@@ -150,7 +150,7 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-movers-css">[\s\S]*?<\/style>/, '');
+    p = p.replace(/<style id="lx-movers-css">[\s\S]*?<\/style>/g, '');
     if (p.indexOf('</head>') < 0) continue;
     p = p.replace('</head>', STYLE + '</head>');
     if (p !== json[k]) { json[k] = p; changed = true; pages++; }

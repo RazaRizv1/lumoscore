@@ -105,8 +105,8 @@ for (const dev of ['desktop', 'mobile']) {
     let p = json[k];
     const before = p;
 
-    p = p.replace(/<style id="lx-lumosparent-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-lumosparent">[\s\S]*?<\/script>/, '')
+    p = p.replace(/<style id="lx-lumosparent-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-lumosparent">[\s\S]*?<\/script>/g, '')
          .replace(/<section class="lx-lp"[\s\S]*?<\/section>/, '');
 
     // The view goes at the top of the page's own content wrapper, so the breadcrumb above it still

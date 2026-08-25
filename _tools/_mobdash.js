@@ -51,7 +51,7 @@ for (const k of Object.keys(json)) {
     return open + lab + close;
   });
 
-  h = h.replace(/<style id="lx-mobdash-css">[\s\S]*?<\/style>/, '');
+  h = h.replace(/<style id="lx-mobdash-css">[\s\S]*?<\/style>/g, '');
   if (h.indexOf('</head>') >= 0) h = h.replace('</head>', CSS + '</head>');
 
   if (h !== before) { json[k] = h; changed = true; pages++; }

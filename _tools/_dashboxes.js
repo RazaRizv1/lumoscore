@@ -221,19 +221,19 @@ for (const dev of ['desktop', 'mobile']) {
     let p = json[k];
     const before = p;
 
-    p = p.replace(/<style id="lx-dashboxes-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-dashboxes">[\s\S]*?<\/script>/, '')
-         .replace(/<script id="lx-dashqafirst">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-dashboxes-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-dashboxes">[\s\S]*?<\/script>/g, '')
+         .replace(/<script id="lx-dashqafirst">[\s\S]*?<\/script>/g, '');
 
     // Trending is RETIRED, not merely un-rendered: _trending.js injects a style and a script that
     // rebuild the section at runtime, so deleting the markup alone let it come straight back on the
     // next tick. Both blocks go with it -- this transform is the only place that knows the section is
     // gone, so it owns the cleanup instead of leaving a dead builder running on every dashboard load.
-    p = p.replace(/<style id="lx-trending-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-trending">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-trending-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-trending">[\s\S]*?<\/script>/g, '');
 
-    p = p.replace(/<style id="lx-dashnews-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-dashnews">[\s\S]*?<\/script>/, '')
+    p = p.replace(/<style id="lx-dashnews-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-dashnews">[\s\S]*?<\/script>/g, '')
          .replace(/<div class="section-heading lx-newshead">[\s\S]*?<\/div>/, '')
          .replace(/<div class="lx-news"[^>]*><\/div>/, '');
 

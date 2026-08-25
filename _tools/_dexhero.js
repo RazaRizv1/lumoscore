@@ -169,8 +169,8 @@ for (const dev of ['desktop', 'mobile']) {
     let p = json[k];
     const before = p;
 
-    p = p.replace(/<style id="lx-dexhero-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-dexhero">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-dexhero-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-dexhero">[\s\S]*?<\/script>/g, '');
 
     // The Trade landing, identified by its markets section rather than by filename.
     const isTrade = p.indexOf('class="dex-markets"') >= 0

@@ -1369,8 +1369,8 @@ for (const file of files) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-lt-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-ltdata">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-lt-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-ltdata">[\s\S]*?<\/script>/g, '');
     // AUDIT (flash sweep): the supply-distribution subheading ships as "...fixed supply on Aptos." and is
     // corrected to Stellar at runtime — a visible wrong-chain flash on our own token page. Fix the source
     // text so there is nothing to correct. Idempotent: after one pass the Aptos wording is gone.

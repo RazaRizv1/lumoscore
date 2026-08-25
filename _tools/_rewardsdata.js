@@ -209,8 +209,8 @@ for (const file of files) {
     if (!json[k]) continue;
     let p = json[k];
     // idempotent: strip any prior injection first
-    p = p.replace(/<style id="lx-rewards-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-rewardsdata">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-rewards-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-rewardsdata">[\s\S]*?<\/script>/g, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');

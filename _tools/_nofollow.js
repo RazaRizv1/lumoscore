@@ -131,7 +131,7 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<script id="lx-nofollow">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<script id="lx-nofollow">[\s\S]*?<\/script>/g, '');
     let n = 0;
     p = p.replace(/<a\b[^>]*>/gi, (tag) => {
       const out = markTag(tag);

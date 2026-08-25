@@ -95,7 +95,7 @@ for (const dev of ['desktop', 'mobile']) {
     let p = json[k];
     const before = p;
 
-    p = p.replace(/<script id="lx-dashqa">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<script id="lx-dashqa">[\s\S]*?<\/script>/g, '');
     if (p.indexOf('quick-card') < 0) { if (p !== before) { json[k] = p; changed = true; } continue; }
 
     // #33 -- relabel the tile and give it a wallet mark. The icon swapped is the one inside the SAME

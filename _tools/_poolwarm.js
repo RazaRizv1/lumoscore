@@ -54,7 +54,7 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<script id="lx-poolwarm">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<script id="lx-poolwarm">[\s\S]*?<\/script>/g, '');
     const bi = p.lastIndexOf('</body>');
     if (bi >= 0) { p = p.slice(0, bi) + SCRIPT + p.slice(bi); keys++; }
     if (p !== before) { json[k] = p; changed = true; }

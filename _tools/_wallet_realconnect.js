@@ -510,7 +510,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
     for(const k of Object.keys(json)){
       let h=json[k];
       if(h.indexOf('window.lxwOpenWallet=')<0) continue;
-      h=h.replace(/<style id="lx-realconnect-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-realconnect">[\s\S]*?<\/script>/,'');
+      h=h.replace(/<style id="lx-realconnect-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-realconnect">[\s\S]*?<\/script>/g,'');
       const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
       json[k]=h.slice(0,bi)+SCRIPT+h.slice(bi); n++;
     }

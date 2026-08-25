@@ -629,7 +629,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
     for(const k of Object.keys(json)){
       if(!/launch-(token|review|confirm)/.test(k)) continue;
       let h=json[k]; const before=h;
-      h=h.replace(/<style id="lx-lp-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-lp-js">[\s\S]*?<\/script>/,'');
+      h=h.replace(/<style id="lx-lp-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-lp-js">[\s\S]*?<\/script>/g,'');
       // AUDIT FIX: the crumb bakes TWO consecutive "/" separators ("Home / / Create Token") — a middle
       // segment was removed upstream but its separator stayed. Collapse doubled seps (idempotent).
       h=h.replace(/(<span class="sep">\/<\/span>)\s*<span class="sep">\/<\/span>/g,'$1');

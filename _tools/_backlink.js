@@ -91,8 +91,8 @@ for (const dev of ['desktop', 'mobile']) {
     let p = json[k];
     const before = p;
 
-    p = p.replace(/<style id="lx-backlink-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-backlink-guard">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-backlink-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-backlink-guard">[\s\S]*?<\/script>/g, '');
 
     let did = false;
     // 1) a .crumb block -- replace everything inside it

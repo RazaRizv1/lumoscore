@@ -263,7 +263,7 @@ for(const dev of ['desktop','mobile']){
     // running with whatever VERIFIED list was current then. A skipped key is one this transform can
     // otherwise never clean, so removal happens first and unconditionally.
     const hadT=h.indexOf('<script id="lx-trending">')>=0;
-    h=h.replace(/<style id="lx-trending-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-trending">[\s\S]*?<\/script>/,'');
+    h=h.replace(/<style id="lx-trending-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-trending">[\s\S]*?<\/script>/g,'');
     if(h.indexOf('trendingList')<0){            // dashboard page only
       if(hadT)json[k]=h;                        // but do persist the removal (the container is always written)
       continue;
@@ -272,7 +272,7 @@ for(const dev of ['desktop','mobile']){
     // that is Stellar-only — on both layouts, and live. The rows underneath have always been Stellar
     // assets, which made it worse, not better.
     if(h.indexOf('Trending on Aptos')>=0) h=h.split('Trending on Aptos').join('Trending on Stellar');
-    h=h.replace(/<style id="lx-trending-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-trending">[\s\S]*?<\/script>/,'');  // idempotent
+    h=h.replace(/<style id="lx-trending-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-trending">[\s\S]*?<\/script>/g,'');  // idempotent
     if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');
     const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
     json[k]=h.slice(0,bi)+SCRIPT+h.slice(bi); n++;

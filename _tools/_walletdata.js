@@ -872,7 +872,7 @@ for(const dev of ['desktop','mobile']){
     // and its desktop-only DOM writes simply find nothing on mobile. _mobwallet.js renders those globals
     // into the mobile markup.
     if(h.indexOf('assetsTable')<0 && h.indexOf('id="assetList"')<0) continue;
-    h=h.replace(/<style id="lx-walletdata-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-qrlib">[\s\S]*?<\/script>/,'').replace(/<script id="lx-walletdata">[\s\S]*?<\/script>/,'');
+    h=h.replace(/<style id="lx-walletdata-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-qrlib">[\s\S]*?<\/script>/g,'').replace(/<script id="lx-walletdata">[\s\S]*?<\/script>/g,'');
     // CSS into <head> so hide-until-ready applies before first paint (no flash of mock)
     if(h.indexOf('</head>')>=0){ h=h.replace('</head>', CSS+'</head>'); }
     else { const hi=h.indexOf('>',h.indexOf('<head'))+1; if(hi>0) h=h.slice(0,hi)+CSS+h.slice(hi); }

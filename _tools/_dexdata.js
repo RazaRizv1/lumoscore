@@ -1851,10 +1851,10 @@ for (const file of files) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-dexmain-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-dexmain">[\s\S]*?<\/script>/, '')
-         .replace(/<style id="lx-hiw-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-hiw">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-dexmain-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-dexmain">[\s\S]*?<\/script>/g, '')
+         .replace(/<style id="lx-hiw-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-hiw">[\s\S]*?<\/script>/g, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     // ---- FLASH: put the marker classes in the MARKUP, not on the JS ----

@@ -47,7 +47,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
         optc++;
       }
       if(h!==before){
-        if(h.indexOf('id="lx-wl-css"')<0){ const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+STYLE+h.slice(bi); } else { h = h.replace(/<style id="lx-wl-css">[\s\S]*?<\/style>/, function(){ return STYLE; }); }
+        if(h.indexOf('id="lx-wl-css"')<0){ const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+STYLE+h.slice(bi); } else { h = h.replace(/<style id="lx-wl-css">[\s\S]*?<\/style>/g, function(){ return STYLE; }); }
         json[k]=h;
       }
     }
