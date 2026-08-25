@@ -136,7 +136,7 @@ const STYLE_PHONE = `<style id="lx-tabs-phone-css">
 // next one anywhere in the document and deleted everything in between: ~70KB out of each Trade page.
 // End on </svg></span>, which is the icon's own tail and appears nowhere else in these buttons.
 function stripIcons(p) {
-  return p.replace(/<span class="lx-tabic"[^>]*>[\s\S]*?<\/svg><\/span>/g, '');
+  return p.replace(/<span class="lx-tabic[^"]*"[^>]*>[\s\S]*?<\/span>/g, '');
 }
 function stripUtility(p) {
   return p.replace(/<button class="(?:dex|mdx)-mk-filter"[^>]*data-cat="utility"[^>]*>[\s\S]*?<\/button>/g, '');
@@ -201,6 +201,15 @@ for (const dev of ['desktop', 'mobile']) {
     containers++;
     const serialized = JSON.stringify(json).split('</').join('<' + B + '/');
     fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
+  }
+}
+// Guard against the failure above ever returning quietly: no button may carry two icons.
+for (const dev2 of ['desktop', 'mobile']) {
+  let d2; try { d2 = read(`lumoscore-aptos-${dev2}.html`); } catch (e) { continue; }
+  const { json: j2 } = getContents(d2);
+  for (const k2 of Object.keys(j2)) {
+    const dupes = (j2[k2].match(/<span class="lx-tabic[^"]*"[^>]*>[\s\S]*?<\/span>\s*<span class="lx-tabic/g) || []).length;
+    if (dupes) throw new Error('tabs: ' + dupes + ' duplicated icon(s) on ' + k2 + ' in ' + dev2 + ' — stripIcons is not matching a form it should');
   }
 }
 console.log('tabs: ' + added + ' Utility buttons, ' + icons + ' icons, '

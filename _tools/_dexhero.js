@@ -42,7 +42,9 @@ const STYLE = '<style id="lx-dexhero-css">'
   // auto margin can carry it to the far edge.
   + 'order:2;flex:1 1 auto!important}'
   + '.dex-mints-card .lx-dctas .dex-hero-btn.primary,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.primary{order:1}'
-  + '.dex-mints-card .lx-dctas .dex-hero-btn.ghost,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}'
+  + '.dex-mints-card .lx-dctas .dex-hero-btn.ghost,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:0!important}'
+  + '.dex-mints-card .lx-dctas{flex:0 0 auto!important}'
+  + '.dex-mints-card .lx-dctas .dex-hero-btn.ghost svg,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost svg{width:14px!important;height:14px!important}'
   + '.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}'
 
   // #32b: the four figures were laid out with flex and content-sized cells, so each row placed its
@@ -63,10 +65,10 @@ const STYLE = '<style id="lx-dexhero-css">'
   + '.dex-mk-table-wrap{overflow-x:auto!important}'
   + '.dex-mk-table-wrap::-webkit-scrollbar{height:9px}'
   + '.dex-mk-table-wrap::-webkit-scrollbar-thumb{background:rgba(140,140,150,.4);border-radius:5px}'
-  + '.dex-mint-row{grid-template-columns:32px 1fr 440px!important}'
+  + '.dex-mint-row{grid-template-columns:32px 1fr 520px!important}'
   + '.dex-mint-stats{display:grid!important;'
   + 'grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,.6fr);'
-  + 'gap:0 16px!important;align-items:center;'
+  + 'gap:0 20px!important;align-items:center;'
   // Fill the track. The block was narrower than the 440px column holding it (measured 376px on one row,
   // 369px on the next) and sat against the right edge, so its LEFT edge moved with its own content and
   // the columns drifted apart again even though the row template was identical on every row. A grid item
