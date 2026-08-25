@@ -98,6 +98,9 @@ function lxLpPaintCost(extra){
   lxLpSetRow(/Initial liquidity/i, liqX.toFixed(2)+" XLM "+dim+"≈ $"+d2(lU)+"</span>");
   lxLpSetRow(/pool.{0,3}network/i, poolX.toFixed(2)+" XLM "+dim+"≈ $"+d2(pU)+"</span>");
   var tc=document.querySelector(".cost-total .v"); if(tc) tc.innerHTML=totX.toFixed(2)+" XLM "+dim+"≈ $"+d2(tU)+"</span>";
+  // The phone's sticky summary bar -- same numbers, the design's own markup.
+  var sc=document.getElementById("costTotal");
+  if(sc) sc.innerHTML=totX.toFixed(2)+' XLM <span class="usd">\u2248 $'+d2(tU)+'</span>';
 }
 (function(){
   function adopt(p){
