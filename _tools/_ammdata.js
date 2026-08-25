@@ -4121,7 +4121,7 @@ for (const file of files) {
     });
     p = addPartStat(p);
     p = addHeroStats(p);
-    p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/g, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/g, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');
@@ -4136,7 +4136,7 @@ for (const file of files) {
     if (p.indexOf('createPoolModal') < 0) continue;
     // Strip any PRIOR injection FIRST, then test the ORIGINAL design markers. (The injected SCRIPT itself contains
     // "#tvlChart", so testing before stripping made every rebuild after the first skip this key -> stale script.)
-    p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/g, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/g, '');
     if (p.indexOf('poolsBody') >= 0 || p.indexOf('tvlChart') >= 0) continue;   // a real pools list/detail page — already handled by the KEYS loop
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     const bi = p.lastIndexOf('</body>'); if (bi < 0) continue;
