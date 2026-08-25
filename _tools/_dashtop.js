@@ -168,6 +168,9 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1){padding-left:14px!important;border-left:1px solid var(--border)!important}
 .lx-xlmpanel>.status-row .val{font-size:14px!important}
 }
+
+/* item 13: the dashboard's top cards are present from the first paint rather than fading in. Their entrance animation showed as an empty page on every refresh. The reveal script still runs and still handles every other card type. */
+html.lcm-ready .quick-card,html.lcm-ready .activity-card{opacity:1!important;transform:none!important}
 </style>`;
 
 const SCRIPT = `<script id="lx-dashtop">(function(){
@@ -194,8 +197,11 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
     lcmShowAbove();
     if(window.requestAnimationFrame)requestAnimationFrame(lcmShowAbove);
     document.addEventListener('DOMContentLoaded',lcmShowAbove);
-    setTimeout(lcmShowAbove,600);
-    setTimeout(lcmShowAbove,1600);
+    // Catch cards that are laid out a frame or two after the hooks above.
+    var _lcmT=0, _lcmIv=setInterval(function(){
+      lcmShowAbove();
+      if((_lcmT+=60)>=1500){ clearInterval(_lcmIv); }
+    },60);
   }catch(_){}
   if(net()!=="stellar")return;
   var DAYS={"24H":1,"7D":7,"1M":30,"1Y":365}, tf="24H", cache={}, series=null;
