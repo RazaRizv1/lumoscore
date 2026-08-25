@@ -45,6 +45,11 @@ const STYLE = `<style id="lx-dexmain-css">
    -- alone at the top of an empty page, which is what made it look oversized. It now waits for the rest.
    visibility, not display, so it holds its space and nothing below it jumps. */
 html:not(.lx-dexlate) .lx-faq{visibility:hidden}
+/* B15: the row itself opens the asset page, so the Trade column is a second control for the same
+   action -- and this table is already wider than its container. Header and cell together, by class:
+   a column was inserted here once before, and :last-child would hide whatever ends up last next time. */
+.dex-mk-table th.th-action,.dex-mk-table td.td-action{display:none!important}
+
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
 
@@ -1502,7 +1507,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
             +'<div class="row"><span class="lab">L</span><span class="v-l">\\u2014</span></div>'
           +'</div></td>'
           +'<td style="text-align:right">'+sparkSvg(null,true)+'</td>'
-          +'<td style="text-align:right"><button class="dex-mk-action-btn" data-tkr="'+(a.tkr||a.code)+'">Trade</button></td>'
+          +'<td class="td-action" style="text-align:right"><button class="dex-mk-action-btn" data-tkr="'+(a.tkr||a.code)+'">Trade</button></td>'
         +'</tr>'; }).join("");
       tb.__lxsig=sig; paintIcons(tb);
       qa("tr[data-tkr]",tb).forEach(function(tr){ tr.addEventListener("click",function(){ var a=byCode[tr.getAttribute("data-tkr")]; if(a)navTo(a); }); });
