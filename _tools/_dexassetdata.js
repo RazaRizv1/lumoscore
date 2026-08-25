@@ -224,6 +224,14 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
   color:var(--text-soft,#8a8fa3);border:1px solid var(--border,#e6e6ea)}
 .lxda-slinks{display:inline-flex;align-items:center;gap:10px}
 .lxda-slinks .lx-soc{margin-left:0}
+/* A19: the marks were already the real X and Telegram glyphs -- what made them look wrong is that
+   .lx-soc paints them with the site accent, so X rendered as an orange X, which is not a logo anyone
+   recognises. Each now carries its own brand colour, keyed off the aria-label both builders already
+   set (the header row and the More-info sheet), so neither builder had to change.
+   X is deliberately var(--text): the brand mark is black on light and white on dark, which is exactly
+   what that token resolves to, so it stays correct in both themes rather than being pinned to one. */
+.lx-soc[aria-label="X"] svg{fill:var(--text,#0e0e10)}
+.lx-soc[aria-label="Telegram"] svg{fill:#229ED9}
 .lx-soc svg{width:14px;height:14px;display:block}
 @media(max-width:760px){
 /* The class above is applied by JS once it has read the labels, so on a phone the Supply card painted,
