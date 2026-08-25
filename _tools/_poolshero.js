@@ -150,6 +150,14 @@ html[data-theme="light"] .lm-pools .lx-heroico{box-shadow:0 6px 18px -10px rgba(
 .lm-pools .lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 15px!important;border-radius:10px;font-weight:700;font-size:13px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
 .lm-pools .lx-dctas .dex-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
 .lm-pools .lx-dctas .dex-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
+/* item 18: the desktop Create Pool link, added to the table-controls row. margin-left:auto puts it hard
+   right of the search box without depending on the row's own justification. */
+.table-controls .lx-cplink{margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+  background:none;border:0;padding:0;cursor:pointer;white-space:nowrap;
+  color:var(--accent,#ea6a2c);font-weight:700;font-size:13px;line-height:1;
+  font-family:inherit;opacity:.95;transition:opacity .15s ease}
+.table-controls .lx-cplink:hover{opacity:1;text-decoration:underline;text-underline-offset:3px}
+.table-controls .lx-cplink svg{width:14px;height:14px;flex:0 0 auto}
 .lm-pools .lx-dctas .dex-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:13px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
 /* DESKTOP: the CTAs share the headline's row rather than floating in a corner -- the Trade arrangement.
@@ -268,7 +276,12 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lx-poolhead .mdx-hero-btn.ghost{order:2}
 .lx-poolhead .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5px;height:31px;padding:0 8px!important;border-radius:9px;font-weight:700;font-size:10.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
 .lx-poolhead .mdx-hero-btn svg{width:11px;height:11px;flex:0 0 auto}
-.lx-poolhead .mdx-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 8px 18px -11px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
+/* item 8: was a filled pill that collided with the heading beside it. Same treatment as Launch Token
+   on Trade -- accent text, leading plus, no box. */
+.lx-poolhead .mdx-hero-btn.primary{background:none!important;border:0!important;box-shadow:none!important;
+  height:auto!important;padding:0!important;color:var(--accent,#ea6a2c)!important;
+  font-weight:700;font-size:11.5px;gap:5px}
+.lx-poolhead .mdx-hero-btn.primary svg{width:11px;height:11px;color:var(--accent,#ea6a2c)!important}
 .lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 .lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
@@ -276,6 +289,23 @@ html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!importan
 
 const SCRIPT = `<script id="lx-poolshero">(function(){
   function q(s,r){return (r||document).querySelector(s);}
+  // item 18: desktop ships #openCreatePool inside the dropped hero, so it measures 0x0 and the page has
+  // no way to create a pool at all. Put a link in the controls row and let it click the original button,
+  // so the design's own open/close wiring stays the single path into the modal.
+  function createPoolLink(){
+    var row=q('.table-controls'); if(!row)return;
+    if(q('.lx-cplink',row))return;                       // idempotent
+    var src=q('#openCreatePool'); if(!src)return;        // nothing to delegate to; add no dead control
+    var b=document.createElement('button');
+    b.type='button'; b.className='lx-cplink';
+    b.setAttribute('aria-label','Create Pool');
+    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" '
+      +'stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line>'
+      +'<line x1="5" y1="12" x2="19" y2="12"></line></svg><span>Create Pool</span>';
+    b.addEventListener('click',function(e){ e.preventDefault();
+      var t=q('#openCreatePool'); if(t)t.click(); });
+    row.appendChild(b);
+  }
   // Every step is a MOVE or a class flag on something that already exists, and every step is guarded, so
   // a second pass over an arranged card does nothing. The stats are deliberately NOT touched here -- the
   // Pools layer writes into them through .lm-chip, and taking them out of it blanks every value.
@@ -364,11 +394,12 @@ const SCRIPT = `<script id="lx-poolshero">(function(){
   }
   function boot(){
     apply();
+    try{ createPoolLink(); }catch(_){}
     // The Pools layer rebuilds this card when its data lands and again on each refresh, so re-assert
     // rather than assuming one pass is enough. Cheap: every branch above is a no-op once arranged.
     try{
       var host=document.querySelector('.page')||document.body;
-      new MutationObserver(function(){ apply(); }).observe(host,{childList:true,subtree:true});
+      new MutationObserver(function(){ apply(); try{ createPoolLink(); }catch(_){} }).observe(host,{childList:true,subtree:true});
     }catch(_){}
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
