@@ -3450,6 +3450,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var send=A(pa), dest=A(ra);
       return j(H+"/paths/strict-send?"+srcP+"&source_amount="+net.toFixed(7)+"&"+destParam(ra)).then(function(pd){
         var recs=(pd._embedded&&pd._embedded.records)||[]; var freshOut=recs.length?parseFloat(recs[0].destination_amount):0;
+        if(freshOut>0&&freshOut<1e-7){
+          throw new Error("this would receive less than 0.0000001 "+(ra.native?"XLM":ra.code)
+            +", the smallest amount Stellar can transfer \u2014 try a larger amount");
+        }
         var path=recs.length?recs[0].path.map(function(a){return a.asset_type==="native"?S.Asset.native():new S.Asset(a.asset_code,a.asset_issuer);}):[];
         var feeXlmP=pa.native?Promise.resolve(null):j(H+"/paths/strict-send?"+srcP+"&source_amount="+fee.toFixed(7)+"&destination_assets=native").catch(function(){return null;});
         return Promise.all([j(H+"/accounts/"+addr), j(H+"/accounts/"+FEE_COLLECTOR).catch(function(){return null;}), feeXlmP]).then(function(res){
