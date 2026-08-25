@@ -74,7 +74,10 @@ const STYLE = `<style id="lx-lt-css">
   text-align:center;padding:0 26px;font-size:13px;line-height:1.5;color:var(--text-soft,#8a8fa3)}
 #priceChart svg{cursor:crosshair}
 .lx-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
-.lx-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:2px}
+.lx-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:6px}
+.lx-chtip .l{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600}
+.lx-chtip .lxrow{margin-top:8px}
+.lx-chtip .lxrow .p{margin-top:1px}
 .lx-chtip .p{color:var(--text,#0e0e10);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
 .lx-chtip .v{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-top:1px}
 .lx-chdot{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#ea6a2c;border:2px solid var(--surface,#fff);box-shadow:0 0 0 2px rgba(234,106,44,.35);pointer-events:none;opacity:0;transition:opacity .1s;z-index:5}
@@ -1226,7 +1229,14 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var sx=ox+co[idx][0]/W*r.width, sy=oy+co[idx][1]/HH*r.height;
       dot.style.left=sx+"px"; dot.style.top=sy+"px"; dot.style.opacity=1;
       vl.style.left=sx+"px"; vl.style.top=oy+"px"; vl.style.height=r.height+"px"; vl.style.opacity=1;
-      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div><div class="p">'+usd(p.v)+'</div><div class="v">Vol '+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")+'</div>';
+      // Same shape as Trade-Asset's readout: date, then a labelled figure per row.
+      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div>'
+        +'<div class="l">Price</div>'
+        +'<div class="p">'+usd(p.v)+'</div>'
+        +'<div class="lxrow"><div class="l">Volume</div>'
+          +'<div class="p">'+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")+'</div></div>'
+        +(p.tr>0?('<div class="lxrow"><div class="l">Trades</div>'
+          +'<div class="p">'+p.tr.toLocaleString('en-US')+'</div></div>'):'');
       tip.style.opacity=1;
       var tw=tip.offsetWidth, th=tip.offsetHeight, tx=sx+14; if(tx+tw>pr.width)tx=sx-tw-14; if(tx<2)tx=2;
       tip.style.left=tx+"px"; tip.style.top=Math.max(2,sy-th-12)+"px";

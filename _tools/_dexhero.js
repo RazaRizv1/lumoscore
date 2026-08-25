@@ -64,6 +64,28 @@ const STYLE = '<style id="lx-dexhero-css">'
   + '.dex-mints-card .lx-dctas .dex-hero-btn.primary{gap:6px!important}'
   + '.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}'
 
+  // ---- item 10, phone only ----
+  // One track list for every row, so the figures line up down the card instead of being placed by the
+  // width of their own contents. minmax(0,1fr) rather than 1fr: an fr track floors at min-content, which
+  // is what let a long ticker push the numbers off the edge (the same trap the desktop card hit).
+  + '.mdx-mints-card .mdx-mint-row{grid-template-columns:28px minmax(0,1fr) 128px!important}'
+  + '.mdx-mints-card .mdx-mint-right{justify-content:flex-end;text-align:right;min-width:0}'
+  // Tabular figures so the digits sit in columns rather than drifting row to row.
+  + '.mdx-mints-card .mdx-mint-right,.mdx-mints-card .mdx-mint-right *{font-variant-numeric:tabular-nums}'
+  // The middle column has to be allowed to shrink, or it defeats the track list above.
+  + '.mdx-mints-card .mdx-mint-name,.mdx-mints-card .mdx-mint-sub{min-width:0;overflow:hidden;'
+  + 'text-overflow:ellipsis;white-space:nowrap}'
+  // Give the two actions their own line: at 322px they cannot share one with the title AND carry labels.
+  + '.mdx-mints-card .mdx-mints-head{flex-wrap:wrap!important;row-gap:10px}'
+  + '.mdx-mints-card .mdx-hero-ctas{flex:1 0 100%!important;justify-content:flex-start!important;gap:18px!important}'
+  // ...and now that there is room, "How it works" gets its label back, in the accent, mark to the LEFT --
+  // the same treatment desktop has.
+  + '.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:0!important;'
+  + 'flex-direction:row!important;gap:5px!important;font-size:11.5px!important;font-weight:700!important;'
+  + 'color:var(--accent,#ea6a2c)!important;width:auto!important;padding:0!important}'
+  + '.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost svg{order:-1;width:11px;height:11px;'
+  + 'color:var(--accent,#ea6a2c)!important;opacity:1}'
+
   // #32b: the four figures were laid out with flex and content-sized cells, so each row placed its
   // columns wherever its own text happened to end -- measured, PRICE started at x=854 on one row and
   // x=845 on the next, and MARKET CAP at 980 against 971. Nothing lined up vertically. A fixed track
