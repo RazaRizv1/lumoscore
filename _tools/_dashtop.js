@@ -21,10 +21,12 @@ const STYLE = `<style id="lx-dashtop-css">
   background:var(--surface);border:1px solid var(--border);border-radius:16px;
   padding:16px 18px;margin:0 0 14px}
 .lx-xt-l{min-width:0;display:flex;flex-direction:column;gap:2px}
-.lx-xt-lbl{font-weight:800;font-size:13px;line-height:1.15;font-family:'JetBrains Mono',monospace;
+.lx-xt-lbl{font-weight:800;font-size:17px;line-height:1.15;font-family:'JetBrains Mono',monospace;
   letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
 /* The XLM mark, sized to the label it sits beside. */
-.lx-xt-mark{width:20px;height:20px;flex:0 0 20px;border-radius:50%;margin-right:8px;
+/* A11: the row the mark and the name now share. */
+.lx-xt-head{display:flex;align-items:center;gap:0;min-width:0}
+.lx-xt-mark{width:28px;height:28px;flex:0 0 28px;border-radius:50%;margin-right:10px;
   background:url('/assets/tokens/xlm.png') center/cover no-repeat,var(--surface-2)}
 /* The ledger height, beside the eyebrow rather than in the figures below. It is a liveness signal --
    "this chain is moving" -- not a statistic, and the strip has six of those already. */
@@ -130,6 +132,14 @@ const STYLE = `<style id="lx-dashtop-css">
   text-overflow:ellipsis;max-width:100%}
 /* the network cell keeps its logo, so it lays out sideways while the rest stack */
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard{flex-direction:row!important;align-items:center!important;gap:9px}
+/* A11: a heading for the figures below, not a third statement of which chain this is. The logo and the
+   NETWORK/Stellar pair are hidden and the heading is drawn in their place -- CSS, because this node is
+   kept live for the chain engine to rebrand and anything written into it would be overwritten. */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard img,
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard .lx-netpill,
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard .lx-netmeta{display:none!important}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard::before{content:"Network Stats";
+  font:800 15px/1.2 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.01em;color:var(--text)}
 .lx-xlmpanel>.status-row .lx-netmeta{display:flex;flex-direction:column;gap:3px;min-width:0}
 .lx-xlmpanel>.status-row .lx-netpill{width:26px;height:26px;flex:0 0 26px;border-radius:50%;overflow:hidden}
 /* the ledger height is the "this chain is alive" signal, so it gets a pulse rather than another number */
@@ -179,8 +189,10 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
       // #15: the asset this panel is about was named in 10px uppercase mono -- smaller than any figure
       // under it, and with no mark at all, so the panel opened without saying whose price it was.
       // The logo is the one already served for XLM everywhere else on the site, not a new asset.
+      +'<span class="lx-xt-head">'
       +'<span class="lx-xt-mark" aria-hidden="true"></span>'
       +'<span class="lx-xt-lbl">Stellar (XLM)</span>'
+      +'</span>'
       +'<div class="lx-xt-row"><span class="lx-xt-price">\\u2014</span><span class="lx-xt-chg"></span></div>'
       +'<div class="lx-xt-tfs">'
         +'<button type="button" data-lxnonav="1" data-tf="24H" class="active">24H</button>'
