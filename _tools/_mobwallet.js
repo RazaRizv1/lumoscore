@@ -19,6 +19,12 @@ const STYLE = '<style id="lx-mobwallet-css">'
 // #18: the three controls sat hard against the right edge, as far from the asset they act on as the
 // row allows. Left-aligned, they read as belonging to the row above them.
 + '.lxmw-astacts{justify-content:flex-start!important}'
+  // The dots go to the end of the row; Trade and Send keep their own spacing.
+  + '.lxmw-astacts .lxmw-astbtn.icon{margin-left:auto!important}'
+  // #38: pinned rows say so. Star and colour match the desktop badge exactly.
+  + '.lxmw-pinbadge{display:inline-flex;vertical-align:middle;margin-left:6px;color:#f5b301}'
+  + '.lxmw-pinbadge svg{width:13px;height:13px;display:block}'
+  + '.lxmw-row.lxmw-pinned{box-shadow:inset 3px 0 0 var(--accent,#ea6a2c)}'
 + '.lxmw-astbtn.icon{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
   + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block,body:not(.lxmw-ready) #assetList{visibility:hidden}'
@@ -31,6 +37,9 @@ const STYLE = '<style id="lx-mobwallet-css">'
   + 'html:not(.lx-adrdone) .wallet-chip .text::after,html:not(.lx-adrdone) .chip .text::after{content:"";position:absolute;left:0;top:20%;width:100%;height:60%;'
   + 'border-radius:6px;background:linear-gradient(90deg,rgba(128,128,140,.12) 25%,rgba(128,128,140,.2) 37%,rgba(128,128,140,.12) 63%);'
   + 'background-size:400% 100%;animation:lxPvSk 1.3s ease infinite}'
+  // The unit and the delta were left out of this list, so "APT" and "+3,114.20 APT" painted for a frame
+  // on a Stellar wallet -- see the note in the transform above this block.
+  + 'html:not(.lx-pvdone) .unit,html:not(.lx-pvdone) .delta-secondary{visibility:hidden!important}'
   + 'html:not(.lx-pvdone) .portfolio-value,html:not(.lx-pvdone) .portfolio-sub,html:not(.lx-pvdone) .portfolio-usd{color:transparent!important;position:relative}'
   + 'html:not(.lx-pvdone) .portfolio-value>*,html:not(.lx-pvdone) .portfolio-sub>*,html:not(.lx-pvdone) .portfolio-usd>*{visibility:hidden}'
   + 'html:not(.lx-pvdone) .portfolio-value::after,html:not(.lx-pvdone) .portfolio-sub::after,html:not(.lx-pvdone) .portfolio-usd::after{content:"";position:absolute;left:0;top:14%;width:min(62%,190px);height:72%;'
@@ -305,8 +314,8 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
   // value, so the USD line stays blank rather than inventing one.
 + 'var v=(xlm!=null&&u)?xlm*u:null;'
 + 'var ico=h.logo||h.ico||resolveLogo(code,h.iss,h.native);'
-+ 'html+=\'<div class="lxmw-row lxmw-ast"><div class="lxmw-ico\'+(ico?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(h.iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(ico?(\'background-image:url(\\\'\'+esc(ico)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\''
-+ '+\'<div><div class="lxmw-nm">\'+esc(code)+\'</div>\''
++ 'html+=\'<div class="lxmw-row lxmw-ast\'+(PIN.indexOf(code)>=0?" lxmw-pinned":"")+\'"><div class="lxmw-ico\'+(ico?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(h.iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(ico?(\'background-image:url(\\\'\'+esc(ico)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\''
++ '+\'<div><div class="lxmw-nm">\'+esc(code)+(PIN.indexOf(code)>=0?\'<span class="lxmw-pinbadge" title="Pinned"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg></span>\':"")+\'</div>\''
 + '+\'<div class="lxmw-sub">\'+((window.__lxIssLine)?window.__lxIssLine(code,h.iss||"",!!h.native):esc(h.name||h.domain||""))+\'</div></div>\''
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(fmt(bal))+\'</div>\''
 + '+\'<div class="u">\'+(v==null?"":esc(usd(v)))+\'</div></div>\''
