@@ -2171,6 +2171,183 @@ html[data-theme="dark"] .lx-supinfo:hover::after{background:#f7f7f9!important;co
 .lx-cpmenu .lx-cpm-ic{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:flex;align-items:center;justify-content:center;font-size:13.2px;font-weight:800;color:#fff;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;overflow:hidden}
 .lx-cpmenu .lx-cpm-bal{margin-left:auto;font-size:13.2px;color:var(--text-soft,#8a8fa3);font-weight:600}
 #createPoolModal .asset-picker .ap-ico{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
+</style><style id="lx-lt-css" data-lxts="1.1">
+/* #21: the pair marks on the PHONE pools list were 26px -- small enough that a real logo reads as a
+   smudge rather than a mark. 32px, overlap kept proportional.
+   TOP LEVEL on purpose: most of this stylesheet is inside @media(min-width:760px), and .pool-list is
+   the phone layout, so a rule placed in that block could never apply to the list it describes. */
+.pool-list .pair-icons{width:auto!important;height:32px!important}
+.pool-list .pair-icons .a,.pool-list .pair-icons .b{width:32px!important;height:32px!important}
+.pool-list .pair-icons .b{margin-left:5.5px!important;left:0!important}
+/* verified mark and home domain: the same badge and link treatment the rest of the site uses */
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:11px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:middle;flex:0 0 22px}
+.lx-vtick svg{width:14px;height:14px;display:block}
+.lx-lt-dom{display:inline-flex;align-items:center;gap:6.6px;margin-left:13.2px;color:var(--accent,#ea6a2c);font-weight:700;text-decoration:none;font-size:16.5px;vertical-align:middle}
+.lx-lt-dom:hover{text-decoration:underline}
+/* the copy confirmation: the control tells you it worked instead of doing it in silence */
+.addr-row [data-copy]{position:relative;transition:color .12s,background .12s}
+.addr-row [data-copy].lx-copied{color:var(--green,#35c07f)!important;background:var(--green-soft,rgba(53,192,127,.14))!important}
+/* The bubble that used to sit above the button is gone -- the toast says it now. The button keeps its
+   own colour flash, which is the immediate "yes, that one" the toast cannot give at a glance. */
+/* The phone row is narrower than the address + badges + domain it carries, and the domain was the
+   thing that ran off the edge. Let the row wrap and let the domain give way rather than overflow. */
+@media(max-width:760px){
+.addr-row{flex-wrap:wrap!important;row-gap:6.6px}
+.lx-lt-dom{margin-left:0!important;font-size:14.3px;min-width:0;max-width:100%;overflow:hidden}
+.lx-lt-dom span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+.lx-lt-dom svg{width:15px;height:15px;flex:none}
+
+.hero-price-block:not(.lxlt) .price,.hero-price-block:not(.lxlt) .change,.hero-price-block:not(.lxlt) .sub-volume{visibility:hidden}
+.hero-price:not(.lxlt) .price,.hero-price:not(.lxlt) .change{visibility:hidden}
+.addr-row:not(.lxlt) .addr-value{visibility:hidden}
+.cstat:not(.lxlt) .lc-money,.cstat:not(.lxlt) .val,.cstat:not(.lxlt) .sub{visibility:hidden}
+/* AUDIT (flash sweep): .sub was left out of the gate above, so "+184 past 7 days" flashed before the real
+   "unique addresses" label landed. Same for the allocation legend, which the engine rewrites 50M/5% -> 70M/7%. */
+.alloc-legend:not(.lxlt) .amount,.alloc-legend:not(.lxlt) .pct{visibility:hidden}
+.lt-cmp-row:not(.lxlt) .lt-cmp-v{visibility:hidden}
+#poolsBody:not(.lxlt) tr{visibility:hidden}
+#priceChart:not(.lxlt) svg{visibility:hidden}
+/* also hide the design's OWN chart marks at all times (it draws a line for a frame on load before */
+/* ours replaces it → a flash). Only our lx-cline/lx-carea paths are ever visible. */
+#priceChart svg path:not(.lx-cline):not(.lx-carea),#priceChart svg polyline,#priceChart svg polygon:not(.lx-carea),#priceChart svg line,#priceChart svg rect{display:none!important}
+.lx-cdates{display:flex;justify-content:space-between;gap:8.8px;padding:8.8px 2.2px 0;font:600 13.8px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3)}
+/* The date row is appended AFTER the svg inside #priceChart, but .chart-body is a fixed 240px and
+   .chart-card is overflow:hidden — so the row overflowed by ~5px and the labels were sliced in half
+   along the bottom edge. Let the body size to its contents and keep the plot itself at its old height,
+   so the chart is unchanged and the labels simply have somewhere to sit. */
+.chart-card .chart-body{height:auto!important;padding-bottom:13.2px}
+.chart-card .chart-body>svg{height:214px!important}
+/* Two legend swatches, both reading "Stellar", on a chart with ONE series — a leftover from the
+   multi-chain design. Nothing to distinguish, so nothing to label. */
+.chart-card .chart-head .chart-legend{display:none!important}
+/* price-chart hover readout */
+#priceChart{position:relative}
+/* A18: the plot area explains itself when there is nothing to draw. Sits over the (hidden) svg rather
+   than replacing it, so a later successful draw needs no cleanup beyond removing this node. */
+.lx-chmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:0 28.6px;font-size:14.3px;line-height:1.5;color:var(--text-soft,#8a8fa3)}
+#priceChart svg{cursor:crosshair}
+.lx-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7.7px 11px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
+.lx-chtip .d{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600;margin-bottom:2.2px}
+.lx-chtip .p{color:var(--text,#0e0e10);font-size:15.4px;font-weight:800;font-variant-numeric:tabular-nums}
+.lx-chtip .v{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600;margin-top:1.1px}
+.lx-chdot{position:absolute;width:10px;height:10px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:#ea6a2c;border:2px solid var(--surface,#fff);box-shadow:0 0 0 2px rgba(234,106,44,.35);pointer-events:none;opacity:0;transition:opacity .1s;z-index:5}
+.lx-chvl{position:absolute;width:1px;background:rgba(234,106,44,.45);pointer-events:none;opacity:0;transition:opacity .1s;z-index:4}
+/* swap/pool asset-code chips ship with a hardcoded white bg -> broken on the dark theme. Theme it. */
+.lx-asset-pick.lx-swap-pick,.lx-swap-pick{background:var(--surface,#fff)!important;color:var(--text,#0e0e10)!important;border:1px solid var(--border,#ececef)!important}
+/* asset logo in the swap chips + create-pool pickers, rendered via a ::before driven by --lxmlogo (set in */
+/* JS) so the site's logo-painter can't wipe it. color:transparent hides the painter's fallback initial. */
+#modalSwap .lx-swap-pick{display:inline-flex!important;align-items:center!important;gap:6.6px!important}
+#modalSwap .lx-swap-pick .lx-ap-ico[data-lxbg],#createPoolModal .asset-picker .ap-ico[data-lxbg]{position:relative!important;color:transparent!important;overflow:hidden!important}
+#modalSwap .lx-swap-pick .lx-ap-ico{width:18px!important;height:18px!important;min-width:18px!important;border-radius:50%!important}
+#modalSwap .lx-swap-pick .lx-ap-ico[data-lxbg]::before,#createPoolModal .asset-picker .ap-ico[data-lxbg]::before{content:"";position:absolute;inset:0;background:var(--lxmlogo) center/cover no-repeat;border-radius:50%;z-index:1}
+#modalSwap .lx-swap-pick .lx-ap-ico[data-lxbg]::after{display:none!important}
+/* overview "Per network" header: right cell shipped a grey highlight (data rows are transparent) → */
+/* inconsistent. Normalize it and add one clean vertical divider between the two columns. */
+.lt-cmp-head .lt-cmp-chain{background:transparent!important}
+.lt-cmp-row .lt-cmp-chain,.lt-cmp-row .lt-cmp-v{border-left:1px solid var(--border,#ececef)!important}
+/* Liquidity Pairing "SOON" card removed (no longer relevant) */
+.util-card.pairing{display:none!important}
+/* hero address network logo: the 26px .b-ico wraps a tiny 7px inner span+img — make them fill */
+.addr-row .b-ico>span,.addr-row .b-ico img{width:26px!important;height:26px!important}
+/* pools "Network" column logo -> 26px (design ships an 8px inline one) */
+.pools .chain-pill{display:inline-flex;align-items:center;gap:8.8px}
+.pools .chain-pill>span{width:26px!important;height:26px!important;flex:0 0 26px!important}
+.pools .chain-pill img{width:100%!important;height:100%!important;object-fit:cover}
+/* supply info (i) */
+.lx-supinfo{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:7.7px;border-radius:50%;border:1.4px solid var(--text-soft,#8a8fa3);color:var(--text-soft,#8a8fa3);font:italic 700 11px/17.6px Georgia,serif;cursor:default;vertical-align:middle;text-align:center}
+/* instant custom tooltip (native title has a ~1s delay + shows a ? cursor). Text comes from data-tip. */
+/* #6: it was drawn on var(--surface) with var(--text) on it -- the same pair the cards BEHIND it use,
+   so on the dark theme it read as a faintly outlined patch of the page and looked like it had failed to
+   appear. A tooltip is a thing floating above the page, so it takes the opposite ground: dark bubble on
+   the light theme, light bubble on the dark one.
+   Three states, not two: an explicit choice stamps data-theme, and the default "system" setting stamps
+   nothing at all -- so the media query is guarded against an explicit light choice rather than assuming
+   the attribute is always there. */
+.lx-supinfo:hover::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);width:220px;background:#17171c;color:#f6f6f8;border:1px solid rgba(255,255,255,.16);border-radius:9px;padding:9.9px 12.1px;font:500 13.2px/1.45 'Hanken Grotesk',system-ui,sans-serif;font-style:normal;letter-spacing:0;text-align:left;box-shadow:0 10px 26px rgba(0,0,0,.34);z-index:60;pointer-events:none;white-space:normal}
+html[data-theme="dark"] .lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}
+@media (prefers-color-scheme:dark){html:not([data-theme="light"]) .lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}}
+/* top-holder rank medals: 1 gold (design default), 2 silver, 3 bronze */
+.holder-row .rk.silver{color:#6b7280!important;background:rgba(156,163,175,.16)!important;border-color:rgba(156,163,175,.42)!important}
+.holder-row .rk.bronze{color:#a55a24!important;background:rgba(176,106,52,.16)!important;border-color:rgba(176,106,52,.42)!important}
+/* ranks 1/2/3 as an inline SVG medal — no circle, just the medal */
+.holder-row .rk.medal{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;width:30px!important;height:30px!important;min-width:30px!important;display:flex!important;align-items:center!important;justify-content:center!important;overflow:visible!important}
+.holder-row .rk.medal svg{display:block}
+/* remove the little Stellar/orange icon inside holder rows (covers mock rows too) */
+.holder-row .chain .b-ico{display:none!important}
+/* loading skeleton: while the holder list pages in (~5s cold), show shimmer bars instead of the */
+/* design's mock rows (wrong EVM/XRP addrs, "Stellar ·", stale $). Repeat visits are instant (cached). */
+.holder-row:not([data-lxbuilt]) .rk{visibility:hidden!important}
+.holder-row:not([data-lxbuilt]) .addr,
+.holder-row:not([data-lxbuilt]) .chain,
+.holder-row:not([data-lxbuilt]) .holdings .v,
+.holder-row:not([data-lxbuilt]) .holdings .lc-money{color:transparent!important;border-radius:5px;background-image:linear-gradient(90deg,rgba(140,140,150,.10),rgba(140,140,150,.24),rgba(140,140,150,.10))!important;background-size:200% 100%!important;animation:lxshim 1.15s ease-in-out infinite}
+@keyframes lxshim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* scrollable full pool list with a sticky header */
+.lx-poolscroll{max-height:440px;overflow-y:auto}
+.lx-poolscroll::-webkit-scrollbar{width:9px}
+.lx-poolscroll::-webkit-scrollbar-thumb{background:rgba(140,140,150,.4);border-radius:5px}
+.lx-poolscroll table thead th{position:sticky;top:0;z-index:3;background:var(--surface,#fff)}
+/* ===== hero polish: symmetric right cluster + card-style stat tiles (DESKTOP ONLY — */
+/* the mobile page shares these class names but has its own stacked/scroll layout) ===== */
+@media (min-width:760px){
+.lh-card .hero-right{gap:19.8px!important;width:300px!important;align-items:stretch!important}
+.lh-card .hero-price-block{display:flex!important;flex-direction:column!important;align-items:flex-end!important;gap:5.5px!important;text-align:right!important}
+.lh-card .hero-price-block .lbl{font-size:12.1px!important;letter-spacing:1.4px!important;text-transform:uppercase!important;color:var(--text-soft,#6f6f79)!important;margin:0 0 1.1px!important;font-weight:700!important}
+.lh-card .hero-price-block .price{font-size:45.1px!important;line-height:1.02!important;font-weight:800!important;font-variant-numeric:tabular-nums!important;letter-spacing:-.6px!important;margin:0!important}
+.lh-card .lx-pricemeta{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:9.9px!important;margin-top:1.1px!important}
+.lh-card .hero-price-block .price-native{font-size:15.4px!important;color:var(--text-soft,#6f6f79)!important;margin:0!important}
+.lh-card .hero-price-block .change{font-size:14.3px!important;padding:3.3px 9.9px!important;margin:0!important}
+.lh-card .hero-actions{display:flex!important;gap:11px!important;width:100%!important}
+.lh-card .hero-actions>button{flex:1 1 0!important;min-width:0!important;justify-content:center!important;height:44px!important;white-space:nowrap!important;font-size:17.6px!important;padding:0 15.4px!important;gap:6.6px!important}
+.lh-card .lh-stats{display:grid!important;grid-template-columns:repeat(5,1fr)!important;gap:13.2px!important}
+.lh-card .lh-stats .cstat{background:var(--surface,#fff)!important;border:1px solid var(--border,#ececef)!important;border-radius:14px!important;padding:16.5px 17.6px!important;display:flex!important;flex-direction:column!important;gap:9.9px!important;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+.lh-card .lh-stats .cstat:hover{transform:translateY(-2px)!important;box-shadow:0 8px 20px rgba(15,16,20,.06)!important;border-color:rgba(234,106,44,.35)!important}
+.lh-card .lh-stats .cstat .lbl{font-size:12.1px!important;letter-spacing:.6px!important;text-transform:uppercase!important;color:var(--text-soft,#6f6f79)!important;font-weight:700!important;gap:8.8px!important;align-items:center!important}
+.lh-card .lh-stats .cstat .lbl .ic{width:24px!important;height:24px!important;border-radius:8px!important;background:rgba(234,106,44,.1)!important;color:var(--accent,#ea6a2c)!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 24px!important}
+.lh-card .lh-stats .cstat .val{font-size:26.4px!important;font-weight:800!important;line-height:1.05!important;letter-spacing:-.4px!important;margin:0!important}
+.lh-card .lh-stats .cstat .sub{font-size:13.8px!important;color:var(--text-soft,#6f6f79)!important;margin:0!important}
+.lh-card .lh-stats .cstat .sub.up{color:#16a34a!important}
+.lh-card .lh-stats .cstat .sub.down{color:#ef4444!important}
+/* LEFT identity: bigger logo aligned to the token name (was centered on the whole */
+/* block incl. the address pill → looked low), even vertical rhythm */
+.lh-card .lumos-hero-row{align-items:center!important;gap:24.2px!important}
+.lh-card .lumos-icon{width:72px!important;height:72px!important;align-self:flex-start!important;margin-top:3.3px!important}
+.lh-card .lumos-id{display:flex!important;flex-direction:column!important;gap:9.9px!important}
+.lh-card .lumos-id h1{margin:0!important}
+.lh-card .lh-desc{margin:0!important}
+.lh-card .token-addresses{margin:0!important}
+/* RIGHT: center the whole price stack over the button bar → one clean centered column */
+.lh-card .hero-price-block{align-items:center!important;text-align:center!important}
+.lh-card .lx-pricemeta{justify-content:center!important}
+/* address row: drop the left inset so the network logo lines up under the description */
+.lh-card .token-addresses .addr-row{padding-left:0!important}
+/* smaller hero buttons; allow a 3rd (Add trustline) to wrap to a full-width row below */
+.lh-card .hero-actions{flex-wrap:wrap!important;justify-content:center!important;gap:8.8px!important}
+.lh-card .hero-actions>button{flex:1 1 40%!important;height:38px!important;font-size:15.4px!important;padding:0 13.2px!important}
+.lh-card .hero-actions>.lx-trustbtn{flex:1 1 100%!important;order:3!important}
+/* overview circulating-supply LUMOS logo: 26px, no outline (the site painter fills .lx-supinfo */
+/* with the LUMOS logo; here it should read as a clean token mark, not a bordered (i)) */
+.lh-card + * .lt-cmp-v .lx-supinfo,.lt-cmp-v .lx-supinfo{width:26px!important;height:26px!important;border:0!important;border-radius:50%!important;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;flex:0 0 26px!important;font-size:0!important;margin-left:8.8px!important}
+/* overview per-network row: Stellar logo -> 26px (design ships a 14px inner span) */
+.lt-cmp-chain .lt-cmp-ico{width:26px!important;height:26px!important}
+.lt-cmp-chain .lt-cmp-ico>span{width:26px!important;height:26px!important}
+.lt-cmp-chain .lt-cmp-ico img{width:100%!important;height:100%!important}
+}
+/* tab counts e.g. "Pools (58)" — via ::after so the tab's own text node stays "Pools" */
+/* (the design's tab-switch handler keys off it); global so it works at any width */
+.lt-tab[data-count]::after{content:" " attr(data-count);margin-left:5.5px;opacity:.55;font-weight:600}
+/* Add-trustline button visual (global so mobile matches desktop; layout stays desktop-scoped above) */
+.lh-card .hero-actions>.lx-trustbtn{background:transparent!important;border:1.4px dashed var(--accent,#ea6a2c)!important;color:var(--accent,#ea6a2c)!important}
+.lh-card .hero-actions>.lx-trustbtn:hover{background:rgba(234,106,44,.08)!important}
+/* Create-Pool: Asset-2 picker dropdown menu (design ships an inert picker; we build the menu) */
+.lx-cpmenu{position:fixed;z-index:100001;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:12px;box-shadow:0 18px 50px rgba(0,0,0,.28);padding:6.6px;min-width:210px;max-height:288px;overflow-y:auto}
+.lx-cpmenu button{display:flex;align-items:center;gap:11px;width:100%;background:none;border:0;padding:9.9px 11px;border-radius:9px;cursor:pointer;color:var(--text,#0e0e10);font-size:15.4px;font-weight:600;text-align:left}
+.lx-cpmenu button:hover{background:var(--bg,rgba(0,0,0,.05))}
+.lx-cpmenu .lx-cpm-ic{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:flex;align-items:center;justify-content:center;font-size:13.2px;font-weight:800;color:#fff;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;overflow:hidden}
+.lx-cpmenu .lx-cpm-bal{margin-left:auto;font-size:13.2px;color:var(--text-soft,#8a8fa3);font-weight:600}
+#createPoolModal .asset-picker .ap-ico{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
 </style></head>
 <body>
 <div class="app">
@@ -6464,6 +6641,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Today":axisLbl(pts[idx].t,chartTF))+'</span>'; }
     dr.innerHTML=h;
     pc.classList.add("lxlt"); chartPts=pts;
+    try{ chartMsg(""); }catch(_){}          // a real chart replaces whatever the last attempt said
     pc.__lxpts=pts; pc.__lxco=co;   // current series for the hover readout
     setupChartHover(pc, svg);
     updateChartLegend();
@@ -6514,6 +6692,14 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // The records are kept now, so the redraw costs no request, and the draw is retried until there is a
   // rate to draw with.
   var _chartRecs=null, _chartWait=0;
+  // One place to say why the plot is empty. Removed the moment a real chart is drawn.
+  function chartMsg(t){
+    var pc=q("#priceChart"); if(!pc)return;
+    var m=pc.querySelector(".lx-chmsg");
+    if(!t){ if(m&&m.parentNode)m.parentNode.removeChild(m); return; }
+    if(!m){ m=document.createElement("div"); m.className="lx-chmsg"; pc.appendChild(m); }
+    if(m.textContent!==t)m.textContent=t;
+  }
   function drawFromRecs(){
     if(!_chartRecs||!_chartRecs.length)return false;
     if(!(xlmUsd>0))return false;
@@ -6522,7 +6708,9 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     if(pts.length<2)return false;
     drawChart(pts); return true;
   }
-  function loadChart(tf){
+  var CH_BACKOFF=[1500,4000,12000];
+  function loadChart(tf,attempt){
+    attempt=attempt||0;
     chartTF=tf; var cfg=tfCfg(tf), now=Date.now(), start=now-cfg.span;
     var url=H+"/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+cfg.res+"&start_time="+start+"&end_time="+now+"&order=asc&limit=200";
     j(url).then(function(d){
@@ -6530,16 +6718,34 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       _chartRecs=r;
       // If the rate is not in yet, wait for it rather than silently giving up. Bounded, so a page that
       // never gets a price stops asking instead of spinning for the whole session.
-      if(!drawFromRecs()&&r.length>=2&&!_chartWait){
+      // Fewer than two points is not a failure, it is an empty period -- say so rather than showing a
+      // blank box that looks broken.
+      if(r.length<2){ chartMsg("No trades in this period."); return; }
+      if(!drawFromRecs()&&!_chartWait){
+        // Waiting on the XLM/USD rate, which the price in USD depends on. Bounded, and it now reports
+        // when it gives up instead of expiring in silence.
         _chartWait=1;
-        var n=0,iv=setInterval(function(){ if(drawFromRecs()||++n>60){ clearInterval(iv); _chartWait=0; } },200);
+        var n=0,iv=setInterval(function(){
+          if(drawFromRecs()){ clearInterval(iv); _chartWait=0; return; }
+          if(++n>60){ clearInterval(iv); _chartWait=0; chartMsg("Waiting on the XLM price — tap a timeframe to retry."); }
+        },200);
       }
-    }).catch(function(){});
+    }).catch(function(){
+      // Horizon rejected or the request never completed. A 429 from Horizon has no CORS header, so this
+      // is all the detail the browser will ever give us -- which is precisely why it has to be retried
+      // and reported rather than swallowed.
+      if(attempt<CH_BACKOFF.length){
+        chartMsg("Loading price history…");
+        setTimeout(function(){ loadChart(tf,attempt+1); },CH_BACKOFF[attempt]);
+      } else {
+        chartMsg("Price history is unavailable right now. Stellar's API is limiting requests from this network — tap a timeframe to try again.");
+      }
+    });
   }
   function wireChartTabs(){
     if(chartWired)return; var btns=qa("button").filter(function(b){return /^(1H|24H|7D|30D|1Y|All)$/.test((b.textContent||"").trim());});
     if(btns.length<3)return; chartWired=true;
-    btns.forEach(function(b){ b.addEventListener("click",function(){ btns.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); loadChart((b.textContent||"").trim()); }); });
+    btns.forEach(function(b){ b.addEventListener("click",function(){ btns.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); try{ chartMsg(""); }catch(_){} loadChart((b.textContent||"").trim()); }); });
   }
 
   // tab-button counts e.g. "Pools (58)" / "Holders (1,441)" — set a data-count attr (CSS ::after renders
