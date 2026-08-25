@@ -3333,7 +3333,11 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         // only prefer Soroswap when a Soroban AMM route beats the classic path by >0.5% and impact stays sane
         var useSoro=soro&&soro.usesSoroban&&soro.out>0&&soro.out>out*1.005&&(soro.impact||0)<10;
         window.__lxDXASoro=useSoro?{quote:soro.quote,out:soro.out,pa:pa,ra:ra}:null;
-        var best=useSoro?soro.out:out; if(!(best>0)){ dxSmartBadge(null); return; }
+        var best=useSoro?soro.out:out;
+        if(!(best>0)){ dxSmartBadge(null);
+          dxErr("No route for "+pcode+" \u2192 "+rcode+" \u2014 this pair has no liquidity right now.");
+          if(cta)cta.setAttribute("data-lxdis","1");
+          return; }
         _dxQuoteOut=best; var minR=best*(1-SLIP/100); _dxMinRecv=minR; var effRate=best/net;
         _dxView={payUsd:amt*(pa.native?xlmUsd:priceUsd()), recv:xlmAmt(best), usd:best*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+effRate.toPrecision(6))+" "+rcode, impact:useSoro?dxImpTxt(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):"<0.01%", impUp:useSoro?dxImpUp(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):true, minR:xlmAmt(minR)+" "+rcode, soro:useSoro?soro:null};
         reAssertView();
