@@ -31,6 +31,13 @@ const STYLE='<style id="lx-whead-css">'
 +'.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;'
 +'background:var(--lx-netlogo) center/cover no-repeat}'
 +'.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}'
+// item 12: give the wordmark priority over the address chip on a narrow header.
++'@media (max-width:560px){'
++'.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}'
++'.appbar .logo .logo-text{overflow:visible!important}'
++'.appbar .avatar-sm.lx-mav{flex:0 1 auto!important;min-width:0;overflow:hidden}'
++'.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%}'
++'}'
 // The slide-menu account row leads with a generic wallet glyph; on a Stellar-only app the network mark
 // is the more useful thing to show, and it matches the app bar.
 // #9: the header search field visibly changed size a beat after load.
