@@ -45,6 +45,23 @@ const STYLE = '<style id="lx-dexhero-css">'
   + '.dex-mints-card .lx-dctas .dex-hero-btn.ghost,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:0!important}'
   + '.dex-mints-card .lx-dctas{flex:0 0 auto!important}'
   + '.dex-mints-card .lx-dctas .dex-hero-btn.ghost svg,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost svg{width:14px!important;height:14px!important}'
+  // N12: the mark leads the label it belongs to, and takes the same accent as the label.
+  // The theme rules that own this button are written as html[data-theme=...] .lx-dctas ... !important,
+  // which is specificity (0,3,1) -- higher than a plain three-class selector, so my first attempt lost
+  // silently. Matching their shape with the extra card class puts this at (0,4,1) and it wins in both
+  // themes and in the un-stamped default.
+  + 'html .dex-mints-card .lx-dctas .dex-hero-btn.ghost,'
+  + 'html[data-theme="light"] .dex-mints-card .lx-dctas .dex-hero-btn.ghost,'
+  + 'html[data-theme="dark"] .dex-mints-card .lx-dctas .dex-hero-btn.ghost,'
+  + 'html .dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{'
+  // The LABEL comes back. An earlier pass hid it with font-size:0 and left the mark alone, which made
+  // this an unlabelled icon; the ask is the opposite -- "How it works" readable, in the accent, with its
+  // mark to the LEFT of it.
+  + 'flex-direction:row!important;gap:6px!important;font-size:13px!important;font-weight:700!important;'
+  + 'color:var(--accent,#ea6a2c)!important;width:auto!important;padding:0!important}'
+  + '.dex-mints-card .lx-dctas .dex-hero-btn.ghost svg{order:-1;color:var(--accent,#ea6a2c)!important}'
+  // The plus belongs to Launch Token, so it sits against it rather than floating between the two.
+  + '.dex-mints-card .lx-dctas .dex-hero-btn.primary{gap:6px!important}'
   + '.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}'
 
   // #32b: the four figures were laid out with flex and content-sized cells, so each row placed its
@@ -117,6 +134,11 @@ const SCRIPT = '<script id="lx-dexhero">(function(){'
   + 'if(prim){var psvg=prim.querySelector("svg");'
   + 'if(psvg&&!psvg.querySelector("line")){psvg.setAttribute("stroke-width","2.4");'
   + 'psvg.innerHTML=\'<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>\';}}'
+  // N11: the card is on LumosCore, so the heading does not need to say so.
+  + 'var _mt=q(".dex-mints-title,.mdx-mints-title");'
+  + 'if(_mt){var _tn=null,_ns=_mt.childNodes;'
+  + 'for(var _i=0;_i<_ns.length;_i++){if(_ns[_i].nodeType===3&&(_ns[_i].nodeValue||"").trim()){_tn=_ns[_i];break;}}'
+  + 'if(_tn&&_tn.nodeValue.trim()!=="New Mints")_tn.nodeValue="New Mints";}'
 + 'var hiw=q("#mdxHiwBtn")||q("#dexHiwBtn");'
 + 'if(hiw&&hiw.getAttribute("data-lxhiw")!=="1"){'
 + 'hiw.setAttribute("data-lxhiw","1");'
