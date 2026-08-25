@@ -54,9 +54,24 @@ const STYLE = '<style id="lx-dexhero-css">'
   // Track widths are not equal because the contents are not: PRICE carries two lines ("0.0000765 XLM"
   // over its dollar value) while 24H TRADES is a small integer. Equal quarters would wrap the first and
   // strand the last.
-  + '.dex-mint-row{grid-template-columns:32px 1fr 400px!important}'
-  + '.dex-mint-stats{display:grid!important;grid-template-columns:1.35fr 1fr 1.15fr .6fr;'
-  + 'gap:0 16px!important;align-items:center}'
+  // The curated table has been wider than the box holding it all along: measured 1175px of table
+  // inside a 968px wrap at a 1280px viewport, with overflow-x:hidden, so the rightmost columns -- Trade
+  // among them -- were simply unreachable on any window narrower than about 1500px. The 10% type scale
+  // widened it to 1277 and made that worse rather than causing it. Letting the wrap scroll makes the
+  // whole table reachable at any width, without hiding a column or dropping one. Horizontal only, so
+  // the sticky header is unaffected.
+  + '.dex-mk-table-wrap{overflow-x:auto!important}'
+  + '.dex-mk-table-wrap::-webkit-scrollbar{height:9px}'
+  + '.dex-mk-table-wrap::-webkit-scrollbar-thumb{background:rgba(140,140,150,.4);border-radius:5px}'
+  + '.dex-mint-row{grid-template-columns:32px 1fr 440px!important}'
+  + '.dex-mint-stats{display:grid!important;'
+  + 'grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,.6fr);'
+  + 'gap:0 16px!important;align-items:center;'
+  // Fill the track. The block was narrower than the 440px column holding it (measured 376px on one row,
+  // 369px on the next) and sat against the right edge, so its LEFT edge moved with its own content and
+  // the columns drifted apart again even though the row template was identical on every row. A grid item
+  // only stretches if nothing else sizes it; an auto margin from the design was overriding that.
+  + 'width:100%!important;margin:0!important}'
   // Right-aligned as a block AND inside each cell: the label sat left over a right-aligned value, so
   // even a single cell read as ragged.
   + '.dex-mint-stat{align-items:flex-end!important;text-align:right}'

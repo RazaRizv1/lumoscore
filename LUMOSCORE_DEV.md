@@ -79,12 +79,30 @@ Two transforms inject `<script>`s that fill finalized elements with live data. *
 6. **Headless screenshots race async fetches.** `--virtual-time-budget` captures before `fetch()` resolves → looks like mock. Verify with the **browser pane + a real `setTimeout` wait + DOM read**, or a real-time screenshot.
 7. **Testing address.** Set a real active `G…` account in `localStorage.lumos.address` to test; the whale account `GAFB7IYPCYZCODQBB5BR5JO45JC4PPVLARUAXQSFHWTLH2KMHPWJ36GD` is handy but its numbers are NOT the user's.
 8. **Backslashes are eaten on the way to the browser.** Every `_tools/*.js` transform holds its browser code inside a JS template literal, so `\s` / `\d` / `\.` arrive with the backslash *stripped*: `/[\s,]+/` ships as `/[s,]+/` and silently matches nothing. No error, no crash — the feature just quietly does nothing. **Write every escape doubled (`\\s`), or avoid the regex** (`svg.viewBox.baseVal` instead of parsing the attribute; `parseFloat` instead of `/^\d+$/`). `node --check` CANNOT catch this: it validates the transform, where the escape is still intact. `_ammdata.js` now aborts the build if its emitted region contains a single-backslash escape — copy that guard into any transform you extend. Shipped four separate times before the guard existed.
+11. **`_typescale.js` runs LAST of the style transforms, and is the only one that rewrites the
+    design's own CSS in place.** It multiplies font-size, px line-heights and the spacing
+    properties (padding / margin / gap) by 1.10, and deliberately leaves the skeleton alone:
+    width, height, min/max sizes, flex-basis, grid-template-*, border widths and radii, shadows,
+    transforms. Media query CONDITIONS are untouched by construction, so breakpoints do not move.
+
+    Run it AFTER `_heromono.js`, so heromono's own stylesheet is scaled too. That does not break the
+    "heromono last" rule: this edits numbers inside existing blocks and never reorders them, so the
+    cascade is unchanged.
+
+    Every `<style>` block it touches is stamped `data-lxts="1.1"` and skipped afterwards, so it is
+    safe to re-run after ANY transform -- only newly injected CSS gets scaled. That per-block stamp
+    is the whole safety mechanism: a page-level flag would have frozen every later layer at its
+    authored size, and NO flag compounds to 1.21x on the second run, 1.33x on the third, with
+    nothing looking obviously wrong until it is far too big. Never strip the stamp.
+
+    Containers as they were before the first scale: `_TYPESCALE_BACKUP_20260825_070031/`.
+
 10. **Seven transforms do NOTHING without `--write`.** They default to a DRY RUN and still
     print a success-looking line -- `injected=7 keys across 7 containers` -- with
     `(dry run — pass --write)` at the end. Miss that suffix and the build looks clean, `dist/`
     rebuilds, the predeploy gate passes, and the change is simply absent. The seven are:
     `_accountpage.js`, `_dexnative.js`, `_launchicons.js`, `_mobdex.js`, `_mobnetswitch.js`,
-    `_mobtrade.js`, `_mobwallet.js` -- five of the seven are the MOBILE layers, so the usual
+    `_mobtrade.js`, `_mobwallet.js`, `_typescale.js` -- five of the eight are the MOBILE layers, so the usual
     symptom is "my fix works on desktop but not on the phone". Verify by grepping the built
     file for a string only the new code contains, never by re-reading the transform.
 
