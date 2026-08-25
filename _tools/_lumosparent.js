@@ -19,6 +19,9 @@
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
+// The same registry the bridge and network switcher draw from, so a chain looks identical everywhere.
+const CHAINS = JSON.parse(fs.readFileSync(__dirname + '/_chains.json', 'utf8'));
+const chainLogo = (id) => (CHAINS[id] && CHAINS[id].logo) || '';
 
 const STYLE = '<style id="lx-lumosparent-css">'
   + '.lx-lp{max-width:760px;margin:0 auto;padding:8px 0 40px}'
@@ -31,10 +34,18 @@ const STYLE = '<style id="lx-lumosparent-css">'
   + 'border:1px solid var(--border,#ececef);background:var(--surface,#fff);text-decoration:none;color:inherit;'
   + 'transition:border-color .15s,transform .15s}'
   + '.lx-lp-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-1px)}'
-  + '.lx-lp-ico{width:40px;height:40px;flex:0 0 40px;border-radius:50%;background-size:cover;background-position:center}'
-  + '.lx-lp-main{min-width:0;flex:1 1 auto}'
+  + '.lx-lp-ico{width:40px;height:40px;flex:0 0 40px;border-radius:50%;background-size:cover;'
+  + 'background-position:center;background-repeat:no-repeat;position:relative;'
+  // a hairline ring so a dark mark still reads as a disc on a dark card
+  + 'box-shadow:0 0 0 1px rgba(127,127,140,.22)}'
+  // Refuse the healer's letter tile outright if it still lands on this element.
+  + '.lx-lp-ico{font-size:0!important;color:transparent!important}'
+  + '.lx-lp-ico>svg{width:0!important;height:0!important;position:absolute!important}'
+  // A column, because these are two lines: as inline spans they ran together and the meta's margin-top
+  // was inert.
+  + '.lx-lp-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:3px}'
   + '.lx-lp-net{font:800 15px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10)}'
-  + '.lx-lp-meta{margin-top:3px;font:600 12.5px/1.35 "JetBrains Mono",ui-monospace,monospace;'
+  + '.lx-lp-meta{font:600 12.5px/1.35 "JetBrains Mono",ui-monospace,monospace;'
   + 'color:var(--text-muted,#8a8fa3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
   + '.lx-lp-go{flex:0 0 auto;color:var(--text-muted,#8a8fa3);display:flex}'
   + '.lx-lp-go svg{width:15px;height:15px}'
@@ -43,7 +54,10 @@ const STYLE = '<style id="lx-lumosparent-css">'
   + '.lx-lp-card.soon{opacity:.55;pointer-events:none}'
   + '.lx-lp-soon{margin-left:auto;flex:0 0 auto;padding:3px 8px;border-radius:99px;'
   + 'background:var(--surface-2,#f4f5f7);color:var(--text-muted,#8a8fa3);'
-  + 'font:700 10px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em}'
+  + 'font:700 10px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;'
+  + 'white-space:nowrap}'
+  // and the tag itself is short enough for the healer to mistake for a ticker, so it opts out too
+  + '.lx-lp-soon>svg{width:0!important;height:0!important;position:absolute!important}'
   // While the chooser is up, the token page's own sections stay out of the flow entirely.
   + 'body.lx-lp-on .page > *:not(.lx-lp):not(.crumb),'
   + 'body.lx-lp-on .container > *:not(.lx-lp):not(.crumb){display:none!important}'
@@ -52,18 +66,23 @@ const STYLE = '<style id="lx-lumosparent-css">'
 // One entry per chain. `live:false` renders as an announced-but-not-yet row rather than a dead link.
 const NETWORKS = [
   { id: 'stellar', name: 'Stellar', href: '/lumos/stellar', live: true,
-    icon: '/assets/tokens/xlm.png', meta: 'LUMOS · 1B supply' },
+    icon: chainLogo('stellar'), meta: 'LUMOS · 1B supply' },
   { id: 'xrpl', name: 'XRP Ledger', href: '', live: false,
-    icon: '', meta: 'Planned' },
+    icon: chainLogo('xrpl'), meta: 'Planned' },
 ];
 
 const GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
 function cardHTML(n) {
-  const inner = '<span class="lx-lp-ico"' + (n.icon ? (' style="background-image:url(' + JSON.stringify(n.icon) + ')"') : '') + '></span>'
+  // data-lxc / data-logoed / a zero-size svg child: three independent ways to tell the container's logo
+  // healer to leave this element alone. Without them it paints a letter-"L" over the chain's mark.
+  const SKIP = ' data-lxc="" data-logoed="1"';
+  const GUARD = '<svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg>';
+  const inner = '<span class="lx-lp-ico"' + SKIP + (n.icon ? (' style="background-image:url(' + JSON.stringify(n.icon) + ')"') : '') + '>' + GUARD + '</span>'
     + '<span class="lx-lp-main"><span class="lx-lp-net">' + n.name + '</span>'
     + '<span class="lx-lp-meta">' + n.meta + '</span></span>'
-    + (n.live ? ('<span class="lx-lp-go">' + GO + '</span>') : '<span class="lx-lp-soon">Soon</span>');
+    + (n.live ? ('<span class="lx-lp-go">' + GO + '</span>')
+              : ('<span class="lx-lp-soon"' + SKIP + '>' + GUARD + 'Upcoming</span>'));
   return n.live
     ? '<a class="lx-lp-card" href="' + n.href + '" data-lxnet="' + n.id + '">' + inner + '</a>'
     : '<div class="lx-lp-card soon" data-lxnet="' + n.id + '">' + inner + '</div>';
