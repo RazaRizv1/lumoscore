@@ -102,6 +102,23 @@ function card(href, ic, title, stats, cta) {
     + '</a>';
 }
 
+const QAFIRST = '<script id="lx-dashqafirst">(function(){'
+  + 'function go(){'
+  + 'var box=document.querySelector(".lx-dbx"); if(!box||!box.parentNode)return;'
+  + 'var qa=document.querySelector(".quick-actions"); if(!qa||qa.parentNode!==box.parentNode)return;'
+  // Already ahead of the cards? Nothing to do -- this is the gate, not a flag.
+  + 'if(box.compareDocumentPosition(qa)&Node.DOCUMENT_POSITION_PRECEDING)return;'
+  + 'var head=qa.previousElementSibling;'
+  + 'if(head&&!/quick actions/i.test(head.textContent||""))head=null;'
+  + 'if(head)box.parentNode.insertBefore(head,box);'
+  + 'box.parentNode.insertBefore(qa,box);'
+  + '}'
+  + 'function run(){ try{ go(); }catch(_){} }'
+  + 'if(document.readyState!=="loading")run(); else document.addEventListener("DOMContentLoaded",run);'
+  + '[120,400,900,1800,3200].forEach(function(ms){ setTimeout(run,ms); });'
+  + 'try{ new MutationObserver(run).observe(document.body,{childList:true,subtree:true}); }catch(_){}'
+  + '})();<' + '/script>';
+
 const ROW = '<div class="lx-dbx">'
   + card('/trade/stellar', IC_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets')
   + card('/pools/stellar', IC_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools')
@@ -205,7 +222,8 @@ for (const dev of ['desktop', 'mobile']) {
     const before = p;
 
     p = p.replace(/<style id="lx-dashboxes-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-dashboxes">[\s\S]*?<\/script>/, '');
+         .replace(/<script id="lx-dashboxes">[\s\S]*?<\/script>/, '')
+         .replace(/<script id="lx-dashqafirst">[\s\S]*?<\/script>/, '');
 
     // Trending is RETIRED, not merely un-rendered: _trending.js injects a style and a script that
     // rebuild the section at runtime, so deleting the markup alone let it come straight back on the
@@ -283,7 +301,9 @@ for (const dev of ['desktop', 'mobile']) {
     }
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     const bi = p.lastIndexOf('</body>');
-    if (bi >= 0) p = p.slice(0, bi) + SCRIPT + p.slice(bi);
+    // Phone only: the desktop dashboard keeps its own order. Decided by WHICH CONTAINER this is, not by
+    // anything measured in the browser -- see the note above QAFIRST.
+    if (bi >= 0) p = p.slice(0, bi) + SCRIPT + (dev === 'mobile' ? QAFIRST : '') + p.slice(bi);
     keys++;
 
     if (p !== before) { json[k] = p; changed = true; }
