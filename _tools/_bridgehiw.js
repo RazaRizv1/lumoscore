@@ -149,8 +149,8 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-bhiw-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-bhiw">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-bhiw-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-bhiw">[\s\S]*?<\/script>/g, '');
     // the bridge page only — identified by its own step rail, not by a filename
     // #1: br-steps ONLY. mdxHiwBtn is not a bridge marker -- the mobile TRADE page carries the same id
     // for its own How-it-works button, so this injected the CCTP explainer there and it won over the

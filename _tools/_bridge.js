@@ -96,7 +96,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       h=h.replace(/if\(ic\)ic\.innerHTML=o\.querySelector\("\.brd-ic"\)\.innerHTML;/,
         'if(ic)ic.innerHTML=(function(_c){if(!_c)return"";if(_c.querySelector("img,svg"))return \'<span class="lx-netlm2">\'+_c.innerHTML+\'</span>\';return \'<span class="lx-netlm2" style="background:\'+_c.style.background+\'">\'+_c.textContent+\'</span>\';})(o.querySelector(".brd-ic"));');
       // style + dropdown search script (strip prior, re-inject fresh → idempotent)
-      h=h.replace(/<style id="lx-brdnet">[\s\S]*?<\/style>/,'').replace(/<script id="lx-brdnetjs">[\s\S]*?<\/script>/,'');
+      h=h.replace(/<style id="lx-brdnet">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-brdnetjs">[\s\S]*?<\/script>/g,'');
       { const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+STYLE+DROPJS+h.slice(bi); }
       if(h!==before){ json[k]=h; n++; }
     }

@@ -130,7 +130,7 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-mobmenu-css">[\s\S]*?<\/style>/, '');
+    p = p.replace(/<style id="lx-mobmenu-css">[\s\S]*?<\/style>/g, '');
     // strip a previous Products block: bounded to the tagged nodes, never a run to the next </div>
     p = p.replace(/<div class="menu-group" data-lxnav="1">[\s\S]*?<\/div>/, '')
          .replace(/<a href="[^"]*" data-lxnav="1">[\s\S]*?<\/a>/g, '');

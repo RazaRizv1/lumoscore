@@ -205,7 +205,7 @@ function transform(h){
   // of bailing out. Returning early meant any later edit to STYLE silently never reached the
   // containers — the transform reported success while changing nothing.
   if (h.indexOf('id="lx-assetstats"') >= 0){
-    const out = h.replace(/<style id="lx-assetstats">[\s\S]*?<\/style>/, () => STYLE);
+    const out = h.replace(/<style id="lx-assetstats">[\s\S]*?<\/style>/g, () => STYLE);
     return { h: out, changed: changed || out !== h };
   }
   const si = h.indexOf('<div class="stat-row">');

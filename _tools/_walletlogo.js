@@ -111,8 +111,8 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-walletlogo-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-walletlogo">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-walletlogo-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-walletlogo">[\s\S]*?<\/script>/g, '');
     // only pages that carry one of the two avatars
     if (p.indexOf('mu-av') < 0 && p.indexOf('lx-tw-av') < 0) {
       if (p !== before) { json[k] = p; changed = true; }

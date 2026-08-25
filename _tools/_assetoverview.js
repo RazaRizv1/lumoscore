@@ -433,8 +433,8 @@ for (const file of files) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-ao-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-aodata">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-ao-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-aodata">[\s\S]*?<\/script>/g, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');

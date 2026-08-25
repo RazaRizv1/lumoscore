@@ -1641,7 +1641,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       { const ti=h.indexOf('<table class="br-table">');
         if(ti>=0){ const tb=h.indexOf('<tbody>',ti), te=h.indexOf('</tbody>',tb);
           if(tb>=0&&te>tb) h=h.slice(0,tb+'<tbody>'.length)+h.slice(te); } }
-      h=h.replace(/<style id="lx-cctp-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-cctp-js">[\s\S]*?<\/script>/,'');
+      h=h.replace(/<style id="lx-cctp-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-cctp-js">[\s\S]*?<\/script>/g,'');
       if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');
       const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+SCRIPT+h.slice(bi);
       if(h!==before){ json[k]=h; n++; }

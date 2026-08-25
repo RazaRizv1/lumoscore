@@ -193,7 +193,7 @@ for(const dev of ['desktop','mobile']){
   for(const k of Object.keys(json)){
     let h=json[k];
     if(h.indexOf('activityList')<0 || h.indexOf('status-row')<0) continue;   // dashboard only
-    h=h.replace(/<style id="lx-realdata-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-realdata">[\s\S]*?<\/script>/,'');  // idempotent
+    h=h.replace(/<style id="lx-realdata-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-realdata">[\s\S]*?<\/script>/g,'');  // idempotent
     if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');   // CSS in head -> applies before first paint (no flash)
     const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
     json[k]=h.slice(0,bi)+SCRIPT+h.slice(bi); n++;

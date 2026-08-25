@@ -426,8 +426,8 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     const before = p;
-    p = p.replace(/<style id="lx-dashtop-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-dashtop">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-dashtop-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-dashtop">[\s\S]*?<\/script>/g, '');
     if (p.indexOf('status-row') < 0 || p.indexOf('activityList') < 0) {   // dashboard only
       if (p !== before) { json[k] = p; changed = true; }
       continue;

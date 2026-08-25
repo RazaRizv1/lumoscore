@@ -31,7 +31,7 @@ for (const dev of ['mobile']) {
     for (const k of Object.keys(json)) {
       let h = json[k];
       if (h.indexOf('.slide-menu') < 0) continue;          // page has no slide menu
-      h = h.replace(/<style id="lx-mobmenufix">[\s\S]*?<\/style>/, '');   // idempotent
+      h = h.replace(/<style id="lx-mobmenufix">[\s\S]*?<\/style>/g, '');   // idempotent
       if (h.indexOf('</head>') < 0) continue;
       json[k] = h.replace('</head>', CSS + '</head>');
       touched = true; n++;

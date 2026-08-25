@@ -3991,8 +3991,8 @@ for (const file of files) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-dxa-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-dxadata">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-dxa-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-dxadata">[\s\S]*?<\/script>/g, '');
     // AUDIT #3 bug 15/52 (mobile residuals): the MOBILE page uses an mdxa- prefix none of the desktop
     // selectors match, so its mock trade panel ("Bal: 1,250 APT", "1 APT = …") and its filter chips
     // ("10+ APT" … "10K+ APT") shipped unrelabeled and flashed until a runtime pass caught them. Relabel

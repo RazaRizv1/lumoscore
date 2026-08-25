@@ -650,8 +650,8 @@ for (const file of files) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-mobdex-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-mobdex">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-mobdex-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-mobdex">[\s\S]*?<\/script>/g, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     const bi = p.lastIndexOf('</body>'); if (bi < 0) continue;
     json[k] = p.slice(0, bi) + SCRIPT + p.slice(bi);
