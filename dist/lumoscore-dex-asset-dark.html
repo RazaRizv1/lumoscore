@@ -4267,6 +4267,1118 @@ margin-top:17.6px;border-top:1px solid var(--border)}
 .dxa-pl-icos .dxa-pl-ico{position:relative}
 .dxa-pl-icos .dxa-pl-ico:first-child{z-index:2}
 .mdxa-pl-l .dxa-pl-ico{width:30px;height:30px;font-size:14.3px}
+.stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 11px/17.6px Georgia,serif!important;margin-left:7.7px!important;vertical-align:middle}</style><style id="lx-dxa-css" data-lxts="1.1">
+.lx-sortag{display:inline-block;margin-left:7.7px;padding:1.1px 7.7px;border-radius:999px;font-size:11.6px;
+  font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);
+  vertical-align:1px;white-space:nowrap}
+.mdxa-hl-addr .lx-sortag{margin-left:6.6px;font-size:10.5px}
+
+.lx-acct{color:inherit;text-decoration:none;cursor:pointer}
+.lx-nolink{cursor:default;display:inline-flex;align-items:center;gap:11px}
+.lx-nolink:hover .wa,.lx-nolink:hover .mdxa-hl-addr{color:inherit}
+
+.lx-acct:hover .wa,.lx-acct:hover .mdxa-hl-addr{color:var(--accent)}
+a.mdxa-hl-row{display:flex;align-items:center;gap:11px}
+
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5.5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
+.lx-vtick svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4.4px;margin-left:6.6px;padding:1.7px 7.7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 11.6px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
+
+/* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
+.asset-header:not(.lxda) .asset-name,.asset-header:not(.lxda) .asset-ticker,.asset-header:not(.lxda) .asset-description,.asset-header:not(.lxda) .addr,.asset-header:not(.lxda) .website{visibility:hidden}
+.asset-top:not(.lxda) .asset-name,.asset-top:not(.lxda) .asset-ticker,.asset-top:not(.lxda) .asset-description,.asset-top:not(.lxda) .addr,.asset-top:not(.lxda) .website{visibility:hidden}
+.stat-row:not(.lxda) .val,.stat-row:not(.lxda) .sub{visibility:hidden}
+/* #13: four stats on one line. Two big cells became four, so the type steps down rather than the row
+   becoming two rows of cards -- which is what was asked against. minmax(0,1fr) lets a long value
+   shrink its own cell instead of pushing the row wider than the screen. */
+html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8.8px!important}
+.stat-row .stat-cell{min-width:0}
+/* #15: 8.5px labels over 13.5px figures. Those sizes were chosen to survive a PHONE, where four cells
+   share 375px -- but on a desktop card the same four have three times the room and were still
+   whispering. The phone keeps its sizes, below; the desktop gets figures worth reading. */
+.stat-row .stat-cell .lbl{font-size:11px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-row .stat-cell .val{font-size:19.8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-row .stat-cell .val .u{font-size:12.1px;margin-left:3.3px}
+.stat-row .stat-cell .sub{font-size:13.8px}
+@media(max-width:760px){
+.stat-row .stat-cell .lbl{font-size:9.4px;letter-spacing:.04em}
+.stat-row .stat-cell .val{font-size:14.9px}
+.stat-row .stat-cell .val .u{font-size:9.9px;margin-left:2.2px}
+.stat-row .stat-cell .sub{font-size:11.6px}
+}
+/* #10: this line carried font-size:10.5px and sits AFTER the media query above, outside it -- so it beat
+   both the 13.2px desktop size and the 11.6px phone size on every screen, and the sub-lines stayed at 10.5px
+   no matter what the rules above said. That is the "tiny grey text". Only the clipping behaviour belongs
+   here; the sizes are set once, above, where they can be read. */
+.stat-row .stat-cell .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* #11/#21: a change of zero because nothing traded is not the same thing as a day that ended flat, and
+   it must not be dressed in either colour. Grey, no arrow, and the reason on hover. */
+.change-pill.lx-flat{background:var(--surface-2,#f1f1f4)!important;color:var(--text-soft,#8a8fa3)!important}
+/* AUDIT (flash sweep): the .lxda gates above only covered the header + stat cells. A static-vs-settled diff
+   showed 9 more groups still painting the design's Aptos mock (4.2271 APT, 2.66%, 18 holders, 189.93K vol)
+   before our data lands. Mask them until they are actually written — .lxp is added by the observer in
+   lxUnmask(), so each element reveals the instant its own real value arrives, not on a global timer. */
+.crumb span:last-child:not(.lxp),
+.price-display .big:not(.lxp),
+.price-display .change-pill:not(.lxp),
+.price-display .meta b.mono:not(.lxp),
+/* #26: drop the change and volume cells. Positional because these six have no distinguishing class;
+   the markup ships exactly O, H, L, C, delta, volume in that order. */
+.ohlc-strip .pair:nth-of-type(n+5){display:none!important}
+.ohlc-strip .pair .v:not(.lxp),
+.dxa-perf-grid .dxa-perf-cell .ch:not(.lxp),
+.mdxa-perf-grid .mdxa-perf-cell .ch:not(.lxp),
+.dxa-hl-stat .val:not(.lxp),
+.tabs-bar .tab .count:not(.lxp),
+.dxa-trade-frow .mono:not(.lxp),
+.dxa-trade-summary .dxa-tsum-row .mono:not(.lxp){visibility:hidden!important}
+/* AUDIT REGRESSION (audit #3, bug 10): the two rules below were once inserted into the MIDDLE of the
+   selector list above, which invalidated the whole rule and silently killed every one of these masks on
+   all three dex-asset variants. Complete rules must stay OUTSIDE the selector list. The Holders/.count
+   selectors above cover the panel the design re-renders on tab-switch (baked 12,408 / 38.4% / 67.2%). */
+.lx-dxa-nochart{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14.3px;color:var(--text-soft,#8a8fa3);pointer-events:none}
+#dxaChart,#mdxaChart{position:relative}
+#dxaChart:not(.lxda) svg,#mdxaChart:not(.lxda) svg{visibility:hidden}
+/* also hide the design's OWN chart marks at all times (it renders a mock svg on load + on every */
+/* tool/timeframe click before ours replaces it -> a flash). Only our lxda marks ever render.    */
+/*                                                                                                */
+/* THIS RULE IS AN ALLOW-LIST AND EVERY NEW MARK HAS TO BE ADDED TO IT. It denies by shape --      */
+/* "any rect that is not a candle" -- so the volume bars, which are rects, were hidden by it the   */
+/* moment they were added: present in the DOM, correct geometry, correct colour, display:none.     */
+/* Three rounds of "the bars are there" measurements missed it because they read attributes and    */
+/* SVG units; getBoundingClientRect() reported 0x0 the first time it was asked.                    */
+#dxaChart svg path:not(.lxda-line):not(.lxda-area),#dxaChart svg rect:not(.lxda-candle):not(.lxda-vol),#dxaChart svg line:not(.lxda-candle),#dxaChart svg polyline,#dxaChart svg polygon:not(.lxda-area),#mdxaChart svg path:not(.lxda-line):not(.lxda-area),#mdxaChart svg rect:not(.lxda-candle):not(.lxda-vol),#mdxaChart svg line:not(.lxda-candle),#mdxaChart svg polyline,#mdxaChart svg polygon:not(.lxda-area){display:none!important}
+#dxaObAsks:not(.lxda) .dxa-ob-row,#dxaObBids:not(.lxda) .dxa-ob-row{visibility:hidden}
+#dxaExTable:not(.lxda) tr{visibility:hidden}
+/* #38: Time sat left-aligned in its own column with the explorer link right-aligned in the next one,
+   so a short value like "just now" ended ~79px short of the icon it belongs beside and read as
+   floating in dead space. Right-aligning the column closes that gap without moving any column.
+   The header lives in the table thead, OUTSIDE this tbody, so it is squared up in renderExchanges.
+   Round two: right-aligning closed the gap from 79px to 24px, but the link column was still 74px wide
+   with its icon pinned to the far end of it. Shrink that column to its content so Time finishes beside
+   the icon rather than a third of a column short of it. */
+#dxaExTable tr>td:nth-child(5){text-align:right}
+/* #5: every holder row carried its own "View on Explorer" under the address -- 184 rows, 184 copies of
+   the same four words, and it doubled the height of each one. The address above it already opens the
+   same page, so the label is pure repetition. Hidden rather than unpicked from two separate string
+   builders, because the anchor also carries the href the row's own handler reads. */
+.mdxa-hl-explorer,.dxa-hl-explorer{display:none!important}
+/* #13: the asset's mark inside the About heading -- sized to the text, not to a card. */
+.lxda-sheet-ico{display:inline-block!important;width:20px!important;height:20px!important;min-width:0!important;flex:none!important;border-radius:50%;overflow:hidden;background-size:cover;background-position:center;background-repeat:no-repeat;
+  vertical-align:-4px;margin:0 6.6px 0 2.2px}
+.lxda-sheet-ico img,.lxda-sheet-ico .lx-tokimg{width:100%;height:100%;object-fit:cover;border-radius:50%}
+#dxaExTable tr>td:nth-child(6){width:1%;white-space:nowrap;padding-left:11px}
+/* Remove the duplicate price line on DESKTOP. ".price-display .meta" reads
+   "<price> XLM per LUMOS - 1D High <x> - Low <y>", and the OHLC strip directly beneath it already
+   states O/H/L/C, the change and the volume for the same window. Two rows, one fact.
+   Hidden rather than removed: applyOhlc addresses High and Low by INDEX among .meta b.mono, so taking
+   the nodes out would silently shift both. The phone keeps it -- it has no OHLC strip to duplicate. */
+@media (min-width:761px){.price-display .meta{display:none!important}}
+#mdxaExList:not(.lxda) .ex-row{visibility:hidden}
+/* the design .ex-row grid is "24px 1fr 70px auto"; our rows add a 5th cell for the explorer link */
+#mdxaExList .ex-row[data-lxda]{grid-template-columns:24px 1fr auto auto 16px}
+/* real amounts run longer than the mock 18 USDC; the design fixed 70px column wrapped them onto a
+   second line and left rows at uneven heights. Size to content and never wrap. */
+#mdxaExList .ex-row[data-lxda] .ex-num{white-space:nowrap;text-align:right}
+#mdxaExList .ex-row[data-lxda] .ex-num .sub{display:block}
+.lxda-exlink{display:inline-flex;align-items:center;justify-content:center;color:var(--text-soft,#8a8fa3)}
+.lxda-exlink:hover{color:var(--accent)}
+/* chart x-axis dates as an absolute HTML row (SVG text is squished by preserveAspectRatio=none) */
+.lxda-cdates{position:absolute;left:14px;right:70px;bottom:5px;display:flex;justify-content:space-between;gap:8.8px;font:600 12.7px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);pointer-events:none}
+/* The price axis. The plot has always reserved a right gutter (PADR) and never drawn anything in it, so
+   the chart could be read for shape but not for value -- there was no way to check a figure against the
+   line. Positioned as absolute HTML rather than <text> inside the svg because that svg is
+   preserveAspectRatio="none": glyphs in it would be stretched by the width/height ratio, differently at
+   every window size. Percentages below mirror PADT/PADB against the 380-unit viewBox. */
+/* top/bottom are set from JS, not here: they have to track the PRICE band, and the price band moved
+   when the volume band was added. A percentage frozen in the stylesheet would have gone on describing the
+   old split and quietly labelled the bars. */
+/* Unit of the price axis. Sits above the topmost number, right-aligned with them. */
+.lxda-cunit{position:absolute;top:2px;right:4px;z-index:2;pointer-events:none;
+  font:700 11px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:var(--text-muted,#8a8fa3)}
+.lxda-cprices{position:absolute;right:4px;width:64px;pointer-events:none}
+.lxda-cprices span{position:absolute;right:0;transform:translateY(-50%);font:600 11.6px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);white-space:nowrap}
+/* ---- #2: the change pill sits BESIDE the price ------------------------------------------------- */
+/* The design stacked .big over .row2, so the headline number had a pill hanging under it and the
+   card carried two short lines where one wide one would do. Two columns instead: the price, then the
+   pill and the high/low meta on the same baseline to its right. They wrap inside their own column, so
+   a long meta line never pushes the price around. */
+.price-display{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:15.4px}
+.price-display .big{grid-column:1;grid-row:1}
+.price-display .row2{grid-column:2;grid-row:1;margin-top:0!important}
+/* No phone override: beside was asked for on BOTH builds, and it fits -- measured at 393px the
+   price is 138px and the pill 87px inside a 331px column. The second track is minmax(0,1fr) and
+   .row2 already wraps, so a longer price squeezes the meta onto its own line instead of overflowing. */
+
+/* ---- #11: the unit label and the top axis number were in the same corner ----------------------- */
+/* Both were pinned right-aligned at the top of the right-hand gutter, so "XLM" printed straight
+   through the topmost price. The gutter's BOTTOM right is empty -- the x-axis date row stops short of
+   it (right:70px) and the price band ends above the volume bars -- so the unit moves there. */
+.lxda-cunit{top:auto!important;bottom:5px!important;right:4px!important}
+
+/* ---- #3: one hover readout, not two ------------------------------------------------------------ */
+/* The phone build still ships the design own OHLC tooltip (.chart-tip, #mdxaTipO/H/L/C/V) and it is
+   fed by the template MOCK -- it was reading "O 4.5031 XLM ... V 678K USDC" against a chart whose own
+   axis was around 0.00018, which is why the numbers looked unrelated to the asset. Ours (.lxda-chtip)
+   is built on this page too and carries the real series, the same fields desktop shows. Hide the
+   design one, and its crosshair with it, since we draw our own. */
+.chart-tip,.chart-hover-line,.chart-hover-dot{display:none!important}
+/* #8: the browser keeps vertical scrolling over the chart; a horizontal drag stops being a scroll
+   gesture and reaches touchmove, which is what lets the readout track a finger. */
+.lxda-cwrap,.chart-body,.chart-area,#dxaChart,#mdxaChart{touch-action:pan-y}
+/* #17/#20: the two new pill groups. .chart-tools buttons are 26px icon squares, so these override the
+   width for text labels while inheriting everything else -- the tray, the radius, the active treatment. */
+/* #8, PHONE ONLY. Four stat cards across 375px gave each one about 80px, which is why Price rendered as
+   "0.0002..." with the digits that matter truncated. Supply is the one of the four that is not a market
+   figure -- it does not move, and nobody checks it between glances -- so it moves into a sheet behind a
+   link and the other three get a third of the row each.
+   Scoped to a media query and to nothing else: the desktop grid is untouched, as asked. */
+/* The link is BUILT on every layout -- one code path, nothing to rebuild when the window is resized --
+   so it needs an explicit default of none. A bare <div> is display:block, which is why it showed on
+   desktop, where all four cards are on screen and a "More info" pointing at one of them is just noise. */
+.lxda-moreline{display:none}
+/* Centred rather than left-aligned, on BOTH layouts -- the Supply tile only exists on desktop, so a
+   mobile-scoped rule would have left the very card that was named out of it. These are small tiles of
+   one figure each, not a table scanned down a shared left edge, and label / figure / sub-line are all
+   different lengths. align-items governs the flex children (the cell is a column flexbox) and
+   text-align governs wrapping inside each; either alone leaves one axis untouched. */
+.stat-row .stat-cell{align-items:center;text-align:center}
+/* Same accent as the website link they sit beside -- these are three ways to reach the same issuer, so
+   they read as one row rather than three unrelated controls. currentColor on the svg means the single
+   colour rule below drives both marks. */
+.lx-soc{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  margin-left:8.8px;color:var(--accent,#ea6a2c);text-decoration:none;vertical-align:middle;opacity:.9}
+.lx-soc:hover{opacity:1}
+/* B16: marks a balance that is locked forever. Deliberately quiet -- it is a fact about the row, not a
+   warning, and it sits beside the Soroban tag so the two annotations read as one family. */
+.lx-burntag{display:inline-block;margin-left:7.7px;padding:1.1px 6.6px;border-radius:5px;font-size:11px;
+  font-weight:700;letter-spacing:.03em;vertical-align:middle;
+  color:var(--text-soft,#8a8fa3);border:1px solid var(--border,#e6e6ea)}
+.lxda-slinks{display:inline-flex;align-items:center;gap:11px}
+.lxda-slinks .lx-soc{margin-left:0}
+/* A2: the issuer on one line -- shortened, with the full key on the copy control beside it. */
+.lxda-srow .lxda-issh{white-space:nowrap}
+.lxda-isscp{margin-left:8.8px;padding:0;border:0;background:none;cursor:pointer;vertical-align:middle;
+  color:var(--text-soft,#8a8fa3);display:inline-flex;align-items:center}
+.lxda-isscp:hover{color:var(--accent,#ea6a2c)}
+/* A19: the marks were already the real X and Telegram glyphs -- what made them look wrong is that
+   .lx-soc paints them with the site accent, so X rendered as an orange X, which is not a logo anyone
+   recognises. Each now carries its own brand colour, keyed off the aria-label both builders already
+   set (the header row and the More-info sheet), so neither builder had to change.
+   X is deliberately var(--text): the brand mark is black on light and white on dark, which is exactly
+   what that token resolves to, so it stays correct in both themes rather than being pinned to one. */
+.lx-soc[aria-label="X"] svg{fill:var(--text,#0e0e10)}
+.lx-soc[aria-label="Telegram"] svg{fill:#229ED9}
+.lx-soc svg{width:14px;height:14px;display:block}
+@media(max-width:760px){
+/* The class above is applied by JS once it has read the labels, so on a phone the Supply card painted,
+   the row laid out as four, and then it vanished and the row reflowed to three -- the "4 boxes for a
+   split second" on refresh. This hides it from the FIRST paint instead.
+   Positional, because at first paint there is nothing to match on yet: the markup ships exactly four
+   .stat-cells in a fixed order (Price / 24h Volume / Market Cap / Supply) from a single template shared
+   by every asset page, and the grid beneath is already pinned to three columns here. n+4 rather than 4
+   so a fifth card, if one is ever added, is covered by the same rule instead of reintroducing this. */
+.stat-row .stat-cell:nth-of-type(n+4){display:none!important}
+.stat-row .stat-cell.lxda-more{display:none!important}
+/* #40: the social marks live in the More info sheet on a phone, so they do not also sit in a header
+   that is already carrying the code, the issuer address and the domain in one narrow column. */
+.asset-meta .lx-soc,.asset-meta-row .lx-soc{display:none!important}
+/* Reserve the meta row so it cannot grow under the boxes. It ships one short placeholder line
+   ("Issuer 0x0b59...1756 circle.com") and settles at two, because the real issuer key, its verified
+   tick and the domain wrap -- measured 20px -> 44px, which pushed everything below it down after load.
+   Expressed in em, not px, so it still reserves the right space if the type scale changes. */
+.asset-meta{min-height:3.8em}
+html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.lxda-moreline{grid-column:1/-1;display:flex;justify-content:center;margin-top:2.2px}
+.lxda-morebtn{border:0;background:transparent;padding:6.6px 4.4px;cursor:pointer;
+  font-weight:800;font-size:13.2px;line-height:1;color:var(--accent,#ea6a2c);letter-spacing:.01em}
+/* The backslash is doubled on purpose: this block is a template literal, where a CSS unicode escape
+   would be read as an octal escape and fail the build, and the backslash still has to reach the CSS. */
+.lxda-morebtn::after{content:"\203a";margin-left:5.5px;font-weight:700}
+}
+/* The sheet itself. Bottom-anchored on a phone because that is where a thumb is, and it is a reference
+   panel rather than a decision -- it closes by tapping anywhere off it. */
+.lxda-sheet{position:fixed;inset:0;z-index:10001;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(8,10,14,.55);backdrop-filter:blur(3px)}
+.lxda-sheet.open{display:flex}
+.lxda-sheet-card{width:100%;max-width:520px;max-height:80vh;max-height:80dvh;overflow:auto;
+  overscroll-behavior:contain;background:var(--surface,#fff);border:1px solid var(--border);
+  border-radius:18px 18px 0 0;padding:17.6px 19.8px 24.2px;animation:lxdaSheetIn .2s ease}
+@keyframes lxdaSheetIn{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.lxda-sheet-head{display:flex;align-items:center;gap:13.2px;margin-bottom:11px}
+.lxda-sheet-head h3{flex:1;margin:0;font-size:16.5px;font-weight:800;color:var(--text)}
+.lxda-sheet-x{width:30px;height:30px;flex:0 0 30px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--text-soft);cursor:pointer;font-weight:700;font-size:16.5px;line-height:1}
+.lxda-srow{display:flex;align-items:baseline;justify-content:space-between;gap:15.4px;padding:9.9px 0;
+  border-bottom:1px solid var(--border)}
+.lxda-srow:last-child{border-bottom:0}
+.lxda-srow .k{font-weight:600;font-size:13.8px;line-height:1.3;color:var(--text-soft)}
+.lxda-srow .v{font:800 14.9px/1.3 'JetBrains Mono',monospace;color:var(--text);text-align:right;
+  overflow-wrap:anywhere}
+/* Desktop: pinned inside the plot, top-left. z-index above the svg, and a solid tray so the labels stay
+   legible if the series runs behind them. */
+/* #25: on the control row now, not floating over the plot -- static, no tray, no shadow. The rule is
+   kept scoped to the chart hosts so that if either group is ever re-parented back inside one it still
+   has somewhere sensible to sit. */
+/* #27: the right column ended above the left, leaving a blank strip beside the performance boxes.
+   Measured on this page: left 968px, right 916px -- 52px short. The gap is not fixed either: the trade
+   card changes height between Swap, Orderbook and Limit, so any hard-coded height would only be right
+   on one tab. Stretching the column and letting the ad absorb whatever is left over is correct on all
+   three, and on any asset whose chart is a different height.
+   Desktop only: the columns stack on a phone, where there is no second column to align to. */
+@media(min-width:900px){
+  .dxa-grid{align-items:stretch}
+  .dxa-trade-col{min-height:100%}
+  .dxa-trade-col .lxad-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  .dxa-trade-col .lxad-wrap > *{flex:1 1 auto}
+}
+.chart-controls .lxda-metric,.chart-controls .lxda-denom{position:static;top:auto;left:auto;
+  box-shadow:none;background:transparent;border:0}
+#dxaChart .lxda-metric,#mdxaChart .lxda-metric,#dxaChart .lxda-denom,#mdxaChart .lxda-denom{
+  position:absolute;top:8px;z-index:4;background:var(--surface,#fff);border:1px solid var(--border);
+  box-shadow:0 2px 8px -4px rgba(0,0,0,.35)}
+#dxaChart .lxda-metric,#mdxaChart .lxda-metric{left:8px}
+#dxaChart .lxda-denom,#mdxaChart .lxda-denom{left:8px;top:40px}
+/* #39: inside the plot these two trays were styled but their BUTTONS were not -- browser default,
+   13.3px at weight 400 with no padding -- so a finished-looking tray held unfinished-looking labels.
+   Worse, the selected button's background was the same white as the tray behind it, which meant the
+   control never showed which of the two was active. Same segmented treatment as the timeframe buttons
+   right above it: accent fill on the selected one, muted label on the other. (The pair is also put
+   side by side on one line, in chartUi -- the offset needs the measured width of the first tray.) */
+#dxaChart .lxda-metric button,#mdxaChart .lxda-metric button,
+#dxaChart .lxda-denom button,#mdxaChart .lxda-denom button{
+  border:0;background:transparent;cursor:pointer;border-radius:6px;padding:4.4px 9.9px;
+  font-family:'Hanken Grotesk',sans-serif;font-size:12.7px;font-weight:700;line-height:1;
+  color:var(--text-soft,#6f6f79);transition:none!important}
+/* transition:none is not a style preference, it is what makes the selected state paint at all.
+   These buttons inherit the site-wide control transition (background-color/color/box-shadow .16s), and
+   something re-asserts their style on every apply tick, which restarted those transitions before they
+   could finish -- leaving three CSSTransitions permanently in "running". A running transition sits ABOVE
+   !important author styles in the cascade, so nothing could colour the active button: measured, an inline
+   background:#0f0 on it computed to transparent, while a clone of the same node in the same parent
+   painted correctly. With no transition to restart, the cascade resolves normally. */
+#dxaChart .lxda-metric button:hover:not(.active),#mdxaChart .lxda-metric button:hover:not(.active),
+#dxaChart .lxda-denom button:hover:not(.active),#mdxaChart .lxda-denom button:hover:not(.active){
+  color:var(--text,#0e0e10)}
+#dxaChart .lxda-metric button.active,#mdxaChart .lxda-metric button.active,
+#dxaChart .lxda-denom button.active,#mdxaChart .lxda-denom button.active{
+  background:var(--accent,#ea6a2c);color:#fff}
+#dxaChart .lxda-metric button[disabled],#mdxaChart .lxda-metric button[disabled]{opacity:.4;cursor:default}
+.chart-controls .lxda-metric{margin-left:auto}
+/* At 375px the four groups cannot share one line (measured 367px of controls in a 313px row), so the row
+   wraps -- and without this the denomination landed alone at the far LEFT of the second line, reading as
+   an orphan rather than as the pair of the group above it. Right-aligned, the two new controls stack
+   against the same edge and the design own two keep the left. */
+.chart-controls .lxda-denom{margin-left:auto}
+/* #3: on the phone these two ended up on different lines -- Price/MCap tucked after the timeframes on
+   the first, $/XLM alone on the second -- so the pair that belongs together read as two unrelated
+   controls and the row wasted a line. Put them on their OWN line, $/XLM against the left edge and
+   Price/MCap against the right, which is the arrangement asked for and also the tidier one: two
+   opposing ends instead of three ragged groups.
+   The break is a pseudo-element flex item at 100% basis; explicit order values are what keep the
+   design's own two groups ahead of it. */
+@media (max-width:760px){
+  .chart-controls{align-items:center}
+  .chart-controls::after{content:"";flex:0 0 100%;height:0;order:2}
+  .chart-controls .lxda-denom{order:3;margin-left:0!important}
+  .chart-controls .lxda-metric{order:4;margin-left:auto!important}
+}
+.chart-controls .lxda-metric button,.chart-controls .lxda-denom button{
+  width:auto;min-width:0;padding:0 9.9px;font:800 12.1px/1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.02em}
+.chart-controls .lxda-metric button[disabled]{opacity:.4;cursor:default}
+/* On a narrow phone the row wraps; keep the two new groups together on whichever line they land on so
+   they never split "Price | MCap" from "$ | XLM". */
+@media(max-width:420px){
+.chart-controls .lxda-metric button,.chart-controls .lxda-denom button{padding:0 7.7px;font-size:11.6px}
+/* #39 on the phone, where these groups live in the controls row rather than inside the plot. Same
+   defect and same cure: the selected button was white on a white tray, and the inherited control
+   transition kept restarting and outranking whatever set the colour. Sizes stay as they are above --
+   only the selected/unselected treatment changes. */
+.chart-controls .lxda-metric button,.chart-controls .lxda-denom button{
+  background:transparent;color:var(--text-soft,#6f6f79);font-weight:700;transition:none!important}
+.chart-controls .lxda-metric button.active,.chart-controls .lxda-denom button.active{
+  background:var(--accent,#ea6a2c);color:#fff;box-shadow:none}
+}
+/* chart hover readout */
+.lxda-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7.7px 11px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
+.lxda-chtip .d{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600;margin-bottom:6.6px}
+/* Row labels, same as the pool chart's: 11px soft over a 14px/800 figure. */
+.lxda-chtip .l{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600}
+/* #24: one labelled group per figure, 8px apart -- the pool tooltip's rhythm, measured off it. */
+.lxda-chtip .lxrow{margin-top:8.8px}
+.lxda-chtip .lxrow .p{margin-top:1.1px}
+.lxda-chtip .v{margin-top:6.6px}
+.lxda-chtip .p{color:var(--text,#0e0e10);font-size:15.4px;font-weight:800;font-variant-numeric:tabular-nums}
+.lxda-chtip .v{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600;margin-top:1.1px}
+.lxda-chdot{position:absolute;width:10px;height:10px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:var(--accent,#ea6a2c);border:2px solid var(--surface,#fff);box-shadow:0 0 0 2px rgba(234,106,44,.35);pointer-events:none;opacity:0;transition:opacity .1s;z-index:5}
+.lxda-chvl{position:absolute;width:1px;background:rgba(234,106,44,.45);pointer-events:none;opacity:0;transition:opacity .1s;z-index:4;top:16px;bottom:28px}
+#dxaChart svg,#mdxaChart svg{cursor:crosshair}
+/* a wide range can take 6-8s on Horizon; say so rather than leaving the previous range looking final */
+#dxaChart.lxda-loading::after,#mdxaChart.lxda-loading::after{content:"Loading…";position:absolute;top:8px;right:12px;font:600 11.6px/1 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.04em;color:var(--text-soft,#8a8fa3);opacity:.9;z-index:6;pointer-events:none;animation:lxdaPulse 1.1s ease-in-out infinite}
+@keyframes lxdaPulse{0%,100%{opacity:.35}50%{opacity:.95}}
+/* header logo: paint via background so the site logo-painter can't clear the token mark */
+.asset-logo[data-lxlogo]{background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;overflow:hidden;color:transparent!important;font-size:0!important}
+/* The tile BEFORE any logo is known. The design ships this element as a blue "$" chip -- USDC's mark, the
+   asset the mock page was drawn around -- so every token began life looking like USDC for as long as it
+   took our script to run. Neutral instead: one quiet surface-coloured tile in both themes, which the real
+   logo then replaces in a single step. Paired with the markup edit that drops the "$" glyph itself. */
+.asset-logo:not([data-lxlogo]){background-image:none!important;background-color:rgba(127,127,127,.18)!important;color:transparent!important;font-size:0!important}
+/* trade-widget: inline error + disabled CTA while amount is invalid/over balance */
+.lxda-swaperr{color:var(--red,#ff5b5b);font-size:13.8px;font-weight:600;line-height:1.4;margin:0 0 9.9px}
+.dxa-trade-cta[data-lxdis="1"]{opacity:.55;cursor:not-allowed;filter:grayscale(.25)}
+/* trade-widget asset icons: paint via ::before (painter-proof) driven by --lxtic */
+.dxa-pane-swap .dxa-trade-ic[data-lxic]{position:relative}
+.dxa-pane-swap .dxa-trade-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxtic) center/cover no-repeat;border-radius:inherit;z-index:2}
+/* limit-pane chips are icon-only (.dxa-trade-asset painted directly) — overlay the correct logo painter-proof */
+.dxa-pane-limit .dxa-trade-asset[data-lxic]{position:relative;overflow:hidden;color:transparent!important}
+.dxa-pane-limit .dxa-trade-asset[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxtic) center/cover no-repeat;border-radius:50%;z-index:2}
+/* our ::before owns the icon -> kill any base64 mock the element itself carries so it can't peek through */
+.dxa-pane-swap .dxa-trade-ic[data-lxic],.dxa-pane-limit .dxa-trade-asset[data-lxic]{background-image:none!important}
+/* You Pay quick %/MAX buttons: orange active state on click */
+.dxa-pane-swap .dxa-trade-quick button.lxq-active{box-shadow:inset 0 0 0 3em #ea6a2c!important;color:#fff!important;border-color:#ea6a2c!important}
+/* the page inherits -webkit-user-modify:read-only, which blocks TYPING into the swap/limit amount inputs (only %/MAX, which set .value programmatically, worked). Force the editable inputs back to read-write. */
+.dxa-pane-swap .dxa-trade-ir input:not([readonly]),.dxa-pane-limit .dxa-trade-ir input:not([readonly]){-webkit-user-modify:read-write!important;user-modify:read-write!important}
+/* Limit tab: MAX button on the Total row */
+.dxa-pane-limit .dxa-trade-field .dxa-trade-frow .mono[data-lxbal]{margin-left:auto}
+.dxa-pane-limit .dxa-trade-field .dxa-trade-frow .lxlim-max{margin-left:8.8px;padding:2.2px 8.8px;font:800 11px/1.4 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;color:#ea6a2c;background:rgba(234,106,44,.12);border:1px solid rgba(234,106,44,.42);border-radius:6px;cursor:pointer;transition:background .15s}
+.dxa-pane-limit .dxa-trade-field .dxa-trade-frow .lxlim-max:hover{background:rgba(234,106,44,.24)}
+/* bottom-center copy toast */
+#lxCenterToast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(12px);background:var(--text,#14151a);color:var(--surface,#fff);font:600 14.9px/1 'Hanken Grotesk',system-ui,sans-serif;padding:13.2px 22px;border-radius:11px;box-shadow:0 12px 34px rgba(0,0,0,.35);opacity:0;pointer-events:none;z-index:99999;transition:opacity .18s,transform .18s}
+#lxCenterToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* swap success/error toast — matches the design's "Copied to clipboard" toast exactly (self-contained copy of its CSS so it works before any copy has run) */
+.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8.8px;align-items:center;pointer-events:none}
+.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:12.1px 19.8px 12.1px 15.4px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:17.6px;font-weight:600;display:inline-flex;align-items:center;gap:9.9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
+.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.lx-ctoast.lxda-terr .ci{background:var(--red,#ff5b5b)}
+@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+/* Discussions: hide the design's mock comment rows INSTANTLY (no flash); JS removes them + renders real posts (.lxda-mine) */
+.dxa-disc-list .dxa-disc-row:not(.lxda-mine),.mdxa-disc-list .mdxa-disc-row:not(.lxda-mine){display:none!important}
+/* The row is an <a> where the design shipped a <div>. With no anchor rule it took the browser default
+   link styling -- blue and underlined, inherited by every child. Neutralise the ANCHOR only; the children
+   keep whatever the design gives them. */
+.mdxa-pl-list a.mdxa-pl-row{color:var(--text);text-decoration:none}
+.mdxa-pl-list a.mdxa-pl-row .mdxa-pl-lp{font-size:11.6px;color:var(--text-soft)}
+/* Layout guard for the swap panel, independent of the input cap above. A long number should shorten
+   itself, never rearrange the card around it: the label row must stay one line with the label at its
+   natural width, and the numbers ellipsis inside whatever space is left. Without this a big enough value
+   wrapped "You pay" onto two lines and pushed the dollar figure outside the panel. */
+.dxa-trade-frow{flex-wrap:nowrap;gap:11px;align-items:baseline}
+.dxa-trade-frow>span:first-child{flex:0 0 auto;white-space:nowrap}
+.dxa-trade-frow .mono{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dxa-trade-field input{min-width:0;max-width:100%}
+/* Pay-side dollar value. The row is space-between with "You pay" on the left and the balance on the
+   right; margin-left:auto pulls this into the right-hand group so the two sit together and the balance
+   keeps its place. Allowed to shrink and ellipsis rather than push the balance off a narrow phone. */
+.lx-oc{margin:11px 0 0;padding:12.1px 14.3px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.lx-oc-t{font-size:11.6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft);margin-bottom:8.8px}
+.lx-oc-r{display:flex;align-items:baseline;justify-content:space-between;gap:11px;font-size:13.2px;line-height:1.5}
+.lx-oc-r span:first-child{color:var(--text-soft);white-space:nowrap}
+.lx-oc-r b{font-weight:700;font-family:"JetBrains Mono",monospace;font-size:13.2px;white-space:nowrap}
+.lx-oc-hi{color:var(--accent,#ea6a2c)}
+.lx-oc-ok{color:var(--green,#35c07f)}
+.dxa-trade-frow .lx-ltusd{margin-left:auto;margin-right:11px;white-space:nowrap;color:var(--text-soft)}
+.dxa-trade-frow .lx-ltusd:empty{display:none}
+.dxa-trade-frow .lx-payusd{margin-left:auto;margin-right:11px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dxa-trade-frow .lx-payusd:empty{display:none}
+/* Pools tab pagination. An asset can sit in hundreds of pools (AQUA: 1,301), so the list is paged at
+   25 rather than truncated -- the header count and the rows on screen have to agree. */
+.lx-pl-foot{display:flex;align-items:center;justify-content:space-between;gap:11px;flex-wrap:wrap;padding:14.3px 4.4px 2.2px;margin-top:6.6px;border-top:1px solid var(--border);font-size:14.3px;color:var(--text-soft)}
+.lx-pl-foot .pc{display:flex;align-items:center;gap:0}
+.lx-pl-foot button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6.6px 14.3px;font:600 14.3px/1 'Hanken Grotesk',system-ui,sans-serif;color:var(--text);cursor:pointer}
+.lx-pl-foot button:hover:not(:disabled){border-color:var(--accent-soft)}
+.lx-pl-foot button:disabled{opacity:.4;cursor:default}
+.lx-pl-foot .pmid{margin:0 13.2px;white-space:nowrap}
+/* Phones: the info line stacks above the controls, and the controls stretch to a comfortable tap size. */
+.mdxa-pools .lx-pl-foot{flex-direction:column;align-items:stretch;gap:8.8px;text-align:center;font-size:13.8px}
+.mdxa-pools .lx-pl-foot .pc{justify-content:space-between}
+.mdxa-pools .lx-pl-foot button{padding:9.9px 17.6px;font-size:14.3px}
+/* description: two lines until asked otherwise. line-clamp keeps the cut on a line boundary rather
+   than mid-glyph, and collapses back cleanly when expanded. */
+/* held until the stellar.toml attempt concludes, so the generic line is never painted then replaced */
+.asset-description.lx-descwait{visibility:hidden}
+.asset-description.lx-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+overflow:hidden;margin-bottom:0}
+/* The same two-line clamp, applied BEFORE any script runs. The description ships in full and was only
+   clamped once clampSetup added .lx-clamp, so the first paint drew it at its natural height and every
+   pixel of the difference was taken out of the page below it -- measured on LUMOS, 98px collapsing to
+   39px, which shifted the stat boxes up. A long toml description moves them further still, which is
+   why the boxes appeared to land nowhere near where they first painted.
+   Keyed on the ABSENCE of the ready marker, so this governs only the pre-script moment: once
+   clampSetup has run, .lx-clamp is in charge again and Show more / Show less behave exactly as before. */
+.asset-description:not(.lx-descready){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+overflow:hidden;
+/* Reserve the Show more control too. It is created by clampSetup, so at first paint it does not exist
+   and everything below sat 24px high -- its 20px box plus its 4px margin. Reserving it here means the
+   boxes land where they painted for any description long enough to need the control, which is the case
+   that moved them furthest. A description too short to clamp gets no button and settles up by this
+   much instead; that is the smaller error of the two and it is bounded, where the old behaviour scaled
+   with the length of the text. */
+margin-bottom:26.4px}
+.lx-descmore{display:none;margin-top:4.4px;background:none;border:0;padding:0;cursor:pointer;
+color:var(--accent,#ea6a2c);font:700 15.4px/1.4 "Hanken Grotesk",system-ui,sans-serif}
+.lx-descmore.on{display:inline-block}
+.lx-descmore:hover{text-decoration:underline}
+/* Price change, relocated under the chart: a row of six inside the chart card rather than a card of
+   its own. Card chrome comes off because it now sits on the chart card surface, and a hairline rule
+   separates it from the plot. */
+.chart-section .dxa-perf-card{background:none;border:0;border-radius:0;padding:15.4px 0 0;
+margin-top:17.6px;border-top:1px solid var(--border)}
+/* the six cells say 1h/24h/7d themselves, so the "Price change" caption is redundant here */
+.chart-section .dxa-perf-lbl{display:none}
+.chart-section .dxa-perf-grid{grid-template-columns:repeat(6,1fr);gap:8.8px}
+/* Six across needs about 110px each. Below that it falls back to the 3x2 it always had, which is a
+   real arrangement rather than six squeezed cells. */
+@media (max-width:1180px){.chart-section .dxa-perf-grid{grid-template-columns:repeat(3,1fr)}}
+.lxda-disc-empty{text-align:center;padding:33px 13.2px;color:var(--text-soft,#8a8fa3);font:600 15.4px/1.5 'Hanken Grotesk',system-ui,sans-serif}
+.dxa-disc-text{margin-top:4.4px;line-height:1.5;word-break:break-word}
+/* Exchanges tab: hide its count badge INSTANTLY (JS was hiding it after data load -> a visible count->hidden flash) */
+.tabs-bar .tab[data-tab="exchanges"] .count,.tab[data-tab="exchanges"] .count{display:none!important}
+/* restyle_dexstats hides EVERY tab count under 760px because the badges overflowed the 342px strip and
+   made it draggable. Bring all three back, but abbreviated on mobile (2.32M, not 2,322,349) so the width
+   they cost is bounded -- a seven-digit holder count is what caused the overflow, not the badge itself.
+   Exchanges stays hidden: that badge was removed deliberately. */
+@media (max-width:760px){
+.tabs-bar .tab[data-tab="discussions"] .count,
+.tabs-bar .tab[data-tab="holders"] .count,
+.tabs-bar .tab[data-tab="pools"] .count{display:inline-block!important}
+.tabs-bar .tab[data-tab="discussions"] .count,.tabs-bar .tab[data-tab="holders"] .count{margin-left:3.3px}
+.tabs-bar .tab{font-size:12.1px!important;letter-spacing:-0.1px}
+.tabs-bar .tab .count{font-size:9.9px!important;padding:1.1px 4.4px!important;margin-left:3.3px!important}}
+/* Limit-tab chips: force a real 26px circle (they were rendering as ovals) */
+.dxa-pane-limit .dxa-trade-asset[data-lxic]{width:26px!important;height:26px!important;min-width:26px!important;max-width:26px!important;flex:0 0 26px!important;border-radius:50%!important;padding:0!important;box-sizing:border-box}
+/* Smart Swap badge — shown in the swap pane when a Soroban AMM (Soroswap/Phoenix/Aquarius) beats the classic Horizon path */
+.lx-dxsmart{display:flex;align-items:center;gap:11px;margin:0 0 11px;padding:9.9px 12.1px;border-radius:11px;background:linear-gradient(100deg,rgba(234,106,44,.10),rgba(234,106,44,.03));border:1px solid rgba(234,106,44,.34)}
+.lx-dxsmart .lx-sb-ic{flex:0 0 26px;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:#ea6a2c;color:#fff}
+.lx-dxsmart .lx-sb-ic svg{width:15px;height:15px;fill:currentColor}
+.lx-dxsmart .lx-sb-mid{flex:1;min-width:0}
+.lx-dxsmart .lx-sb-ttl{font:800 13.8px/1.2 'Hanken Grotesk',system-ui,sans-serif;color:var(--text,#14151a)}
+.lx-dxsmart .lx-sb-sub{font:600 12.7px/1.3 'Hanken Grotesk',system-ui,sans-serif;color:var(--text-soft,#8a8fa3);margin-top:1.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lx-dxsmart .lx-sb-sub b{color:#ea6a2c}
+.lx-dxsmart .lx-sb-best{flex:0 0 auto;font:800 11.6px/1 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#ea6a2c;background:rgba(234,106,44,.14);border:1px solid rgba(234,106,44,.4);border-radius:7px;padding:5.5px 8.8px}
+.lx-supinfo{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:7.7px;border-radius:50%;border:1.4px solid var(--text-soft,#8a8fa3);color:var(--text-soft,#8a8fa3);font:italic 700 11px/17.6px Georgia,serif;cursor:default;vertical-align:middle;text-align:center}.lx-supinfo:hover::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);width:220px;background:#17171c;color:#f6f6f8;border:1px solid rgba(255,255,255,.16);border-radius:9px;padding:9.9px 12.1px;font:500 13.2px/1.45 'Hanken Grotesk',system-ui,sans-serif;font-style:normal;letter-spacing:0;text-align:left;box-shadow:0 10px 26px rgba(0,0,0,.34);z-index:60;pointer-events:none;white-space:normal}.lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}.lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}.lx-supinfo{width:26px!important;height:26px!important;border:0!important;border-radius:50%!important;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;flex:0 0 26px!important;font-size:0!important;margin-left:8.8px!important}
+.stat-cell .val.lx-hasinfo{overflow:visible!important}
+/* The 24h change, small, inside the Price card -- it used to have a whole card to itself.
+   It rides on the SUB line, immediately after the dollar price, and the placement is measured rather than
+   picked. Beside the big number is the obvious reading of "next to the price", and it does not survive the
+   widths people actually use: the value line has 181px at a 1600px window and 141px at 1440, against 126px
+   of price plus a ~50px chip, so the PRICE -- the one number the page exists for -- is what ellipsises.
+   The sub line carries "$0.00032045" at ~75px in the same measure, so the pair fits with room, and .sub is
+   allowed two lines, so a longer price wraps instead of truncating anything. It also groups the two
+   secondary figures -- what it is worth, and how it moved -- on one line under the headline. */
+/* #30: the 24h move is stated twice within one screen -- once as this chip inside the PRICE stat and
+   again as the pill beside the headline price directly below it, where it is bigger and denominated to
+   match the headline. Two figures for one number invite the reader to look for the difference. The
+   chip goes; the pill stays. Hidden rather than unbuilt, because the same builder writes the USD
+   sub-line next to it and that is still wanted. */
+.stat-cell .sub .lx-pchg{display:none!important}
+.lx-pchg{display:inline-block;font-size:12.1px;font-weight:800;letter-spacing:-.01em;padding:1.1px 6.6px;border-radius:5px;line-height:1.4}
+.lx-pchg.up{color:var(--green,#35c07f);background:rgba(53,192,127,.14)}
+.lx-pchg.down{color:var(--red,#ff5b5b);background:rgba(255,91,91,.14)}
+/* #11: what the trade actually cost. Every row named a UNIT price and a quantity and left the reader
+   to multiply a seven-decimal number by a six-figure one -- so the one thing a trade record is for,
+   how much changed hands, was the one thing it did not say. On the phone it joins the sub line; on
+   desktop it sits under the quantity, in the same cell, because a new column would push the table
+   wider than the card. */
+.lx-extot{display:block;margin-top:2.2px;font:600 12.7px/1.3 'JetBrains Mono',monospace;color:var(--text-soft)}
+.lx-exmore{margin-left:11px;padding:3.3px 11px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-weight:700;font-size:13.2px;line-height:1.4;cursor:pointer;vertical-align:middle}
+.lx-exmore:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.lx-exmore:disabled{opacity:.6;cursor:default}
+.dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}
+.stat-cell .lx-supinfo::before{content:"i";display:block;font:italic 700 11px/17.6px Georgia,serif;color:inherit}
+/* #8: the tooltip is 240px wide and anchored to the LEFT edge of the icon that opens it. The icon for
+   Market Cap sits at x=259 in a 372px phone viewport, so the note ran 127px past the screen -- and
+   .asset-card is overflow:hidden, so it was clipped rather than merely off-screen. Unreadable either
+   way: "90% (9B LUMOS) sup…".
+   Two anchors, by how much room is left. On a desktop card the last two cells open their note to the
+   RIGHT edge instead of the left, which is deterministic (four cells, a fixed grid) and needs no
+   measuring. */
+.stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
+.stat-row .stat-cell:nth-child(n+3) .lx-supinfo:hover::after{left:auto!important;right:0!important}
+/* On a phone there is no "other side" to open towards -- 240px does not fit beside anything in 372px.
+   The note anchors to the ROW instead of the icon (hence position:static on the icon: a ::after seeks
+   the nearest POSITIONED ancestor) and spans it, inset from both edges, so it cannot leave the card in
+   either direction. Above the row rather than below it, because below is where the card ends. */
+@media(max-width:760px){
+.stat-row{position:relative}
+.stat-cell .lx-supinfo{position:static!important}
+.stat-cell .lx-supinfo:hover::after,
+.stat-row .stat-cell:nth-child(n+3) .lx-supinfo:hover::after{
+  left:10px!important;right:10px!important;width:auto!important;max-width:none!important;
+  transform:none!important;bottom:calc(100% + 8px)!important}
+}
+/* Pool pair icons. 22px sat below the 15px pair label beside them, so a row read as text with two specks
+   of colour rather than a pair of tokens. 30px gives a logo enough room to be recognised at a glance and
+   balances the line; the ring is the row background, so overlapping discs stay separated on any surface. */
+.dxa-pl-pair{gap:13.2px}
+.dxa-pl-ico{width:34px;height:34px;font-size:15.4px;border-width:3px;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.dxa-pl-ico + .dxa-pl-ico{margin-left:-12.1px}
+/* the page asset leads the pair, so it sits in front rather than behind the counterpart */
+.dxa-pl-icos .dxa-pl-ico{position:relative}
+.dxa-pl-icos .dxa-pl-ico:first-child{z-index:2}
+.mdxa-pl-l .dxa-pl-ico{width:30px;height:30px;font-size:14.3px}
+.stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 11px/17.6px Georgia,serif!important;margin-left:7.7px!important;vertical-align:middle}</style><style id="lx-dxa-css" data-lxts="1.1">
+.lx-sortag{display:inline-block;margin-left:7.7px;padding:1.1px 7.7px;border-radius:999px;font-size:11.6px;
+  font-weight:800;letter-spacing:.3px;text-transform:uppercase;color:var(--accent);
+  background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 34%,transparent);
+  vertical-align:1px;white-space:nowrap}
+.mdxa-hl-addr .lx-sortag{margin-left:6.6px;font-size:10.5px}
+
+.lx-acct{color:inherit;text-decoration:none;cursor:pointer}
+.lx-nolink{cursor:default;display:inline-flex;align-items:center;gap:11px}
+.lx-nolink:hover .wa,.lx-nolink:hover .mdxa-hl-addr{color:inherit}
+
+.lx-acct:hover .wa,.lx-acct:hover .mdxa-hl-addr{color:var(--accent)}
+a.mdxa-hl-row{display:flex;align-items:center;gap:11px}
+
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5.5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
+.lx-vtick svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4.4px;margin-left:6.6px;padding:1.7px 7.7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 11.6px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
+
+/* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
+.asset-header:not(.lxda) .asset-name,.asset-header:not(.lxda) .asset-ticker,.asset-header:not(.lxda) .asset-description,.asset-header:not(.lxda) .addr,.asset-header:not(.lxda) .website{visibility:hidden}
+.asset-top:not(.lxda) .asset-name,.asset-top:not(.lxda) .asset-ticker,.asset-top:not(.lxda) .asset-description,.asset-top:not(.lxda) .addr,.asset-top:not(.lxda) .website{visibility:hidden}
+.stat-row:not(.lxda) .val,.stat-row:not(.lxda) .sub{visibility:hidden}
+/* #13: four stats on one line. Two big cells became four, so the type steps down rather than the row
+   becoming two rows of cards -- which is what was asked against. minmax(0,1fr) lets a long value
+   shrink its own cell instead of pushing the row wider than the screen. */
+html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8.8px!important}
+.stat-row .stat-cell{min-width:0}
+/* #15: 8.5px labels over 13.5px figures. Those sizes were chosen to survive a PHONE, where four cells
+   share 375px -- but on a desktop card the same four have three times the room and were still
+   whispering. The phone keeps its sizes, below; the desktop gets figures worth reading. */
+.stat-row .stat-cell .lbl{font-size:11px;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-row .stat-cell .val{font-size:19.8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat-row .stat-cell .val .u{font-size:12.1px;margin-left:3.3px}
+.stat-row .stat-cell .sub{font-size:13.8px}
+@media(max-width:760px){
+.stat-row .stat-cell .lbl{font-size:9.4px;letter-spacing:.04em}
+.stat-row .stat-cell .val{font-size:14.9px}
+.stat-row .stat-cell .val .u{font-size:9.9px;margin-left:2.2px}
+.stat-row .stat-cell .sub{font-size:11.6px}
+}
+/* #10: this line carried font-size:10.5px and sits AFTER the media query above, outside it -- so it beat
+   both the 13.2px desktop size and the 11.6px phone size on every screen, and the sub-lines stayed at 10.5px
+   no matter what the rules above said. That is the "tiny grey text". Only the clipping behaviour belongs
+   here; the sizes are set once, above, where they can be read. */
+.stat-row .stat-cell .sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* #11/#21: a change of zero because nothing traded is not the same thing as a day that ended flat, and
+   it must not be dressed in either colour. Grey, no arrow, and the reason on hover. */
+.change-pill.lx-flat{background:var(--surface-2,#f1f1f4)!important;color:var(--text-soft,#8a8fa3)!important}
+/* AUDIT (flash sweep): the .lxda gates above only covered the header + stat cells. A static-vs-settled diff
+   showed 9 more groups still painting the design's Aptos mock (4.2271 APT, 2.66%, 18 holders, 189.93K vol)
+   before our data lands. Mask them until they are actually written — .lxp is added by the observer in
+   lxUnmask(), so each element reveals the instant its own real value arrives, not on a global timer. */
+.crumb span:last-child:not(.lxp),
+.price-display .big:not(.lxp),
+.price-display .change-pill:not(.lxp),
+.price-display .meta b.mono:not(.lxp),
+/* #26: drop the change and volume cells. Positional because these six have no distinguishing class;
+   the markup ships exactly O, H, L, C, delta, volume in that order. */
+.ohlc-strip .pair:nth-of-type(n+5){display:none!important}
+.ohlc-strip .pair .v:not(.lxp),
+.dxa-perf-grid .dxa-perf-cell .ch:not(.lxp),
+.mdxa-perf-grid .mdxa-perf-cell .ch:not(.lxp),
+.dxa-hl-stat .val:not(.lxp),
+.tabs-bar .tab .count:not(.lxp),
+.dxa-trade-frow .mono:not(.lxp),
+.dxa-trade-summary .dxa-tsum-row .mono:not(.lxp){visibility:hidden!important}
+/* AUDIT REGRESSION (audit #3, bug 10): the two rules below were once inserted into the MIDDLE of the
+   selector list above, which invalidated the whole rule and silently killed every one of these masks on
+   all three dex-asset variants. Complete rules must stay OUTSIDE the selector list. The Holders/.count
+   selectors above cover the panel the design re-renders on tab-switch (baked 12,408 / 38.4% / 67.2%). */
+.lx-dxa-nochart{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14.3px;color:var(--text-soft,#8a8fa3);pointer-events:none}
+#dxaChart,#mdxaChart{position:relative}
+#dxaChart:not(.lxda) svg,#mdxaChart:not(.lxda) svg{visibility:hidden}
+/* also hide the design's OWN chart marks at all times (it renders a mock svg on load + on every */
+/* tool/timeframe click before ours replaces it -> a flash). Only our lxda marks ever render.    */
+/*                                                                                                */
+/* THIS RULE IS AN ALLOW-LIST AND EVERY NEW MARK HAS TO BE ADDED TO IT. It denies by shape --      */
+/* "any rect that is not a candle" -- so the volume bars, which are rects, were hidden by it the   */
+/* moment they were added: present in the DOM, correct geometry, correct colour, display:none.     */
+/* Three rounds of "the bars are there" measurements missed it because they read attributes and    */
+/* SVG units; getBoundingClientRect() reported 0x0 the first time it was asked.                    */
+#dxaChart svg path:not(.lxda-line):not(.lxda-area),#dxaChart svg rect:not(.lxda-candle):not(.lxda-vol),#dxaChart svg line:not(.lxda-candle),#dxaChart svg polyline,#dxaChart svg polygon:not(.lxda-area),#mdxaChart svg path:not(.lxda-line):not(.lxda-area),#mdxaChart svg rect:not(.lxda-candle):not(.lxda-vol),#mdxaChart svg line:not(.lxda-candle),#mdxaChart svg polyline,#mdxaChart svg polygon:not(.lxda-area){display:none!important}
+#dxaObAsks:not(.lxda) .dxa-ob-row,#dxaObBids:not(.lxda) .dxa-ob-row{visibility:hidden}
+#dxaExTable:not(.lxda) tr{visibility:hidden}
+/* #38: Time sat left-aligned in its own column with the explorer link right-aligned in the next one,
+   so a short value like "just now" ended ~79px short of the icon it belongs beside and read as
+   floating in dead space. Right-aligning the column closes that gap without moving any column.
+   The header lives in the table thead, OUTSIDE this tbody, so it is squared up in renderExchanges.
+   Round two: right-aligning closed the gap from 79px to 24px, but the link column was still 74px wide
+   with its icon pinned to the far end of it. Shrink that column to its content so Time finishes beside
+   the icon rather than a third of a column short of it. */
+#dxaExTable tr>td:nth-child(5){text-align:right}
+/* #5: every holder row carried its own "View on Explorer" under the address -- 184 rows, 184 copies of
+   the same four words, and it doubled the height of each one. The address above it already opens the
+   same page, so the label is pure repetition. Hidden rather than unpicked from two separate string
+   builders, because the anchor also carries the href the row's own handler reads. */
+.mdxa-hl-explorer,.dxa-hl-explorer{display:none!important}
+/* #13: the asset's mark inside the About heading -- sized to the text, not to a card. */
+.lxda-sheet-ico{display:inline-block!important;width:20px!important;height:20px!important;min-width:0!important;flex:none!important;border-radius:50%;overflow:hidden;background-size:cover;background-position:center;background-repeat:no-repeat;
+  vertical-align:-4px;margin:0 6.6px 0 2.2px}
+.lxda-sheet-ico img,.lxda-sheet-ico .lx-tokimg{width:100%;height:100%;object-fit:cover;border-radius:50%}
+#dxaExTable tr>td:nth-child(6){width:1%;white-space:nowrap;padding-left:11px}
+/* Remove the duplicate price line on DESKTOP. ".price-display .meta" reads
+   "<price> XLM per LUMOS - 1D High <x> - Low <y>", and the OHLC strip directly beneath it already
+   states O/H/L/C, the change and the volume for the same window. Two rows, one fact.
+   Hidden rather than removed: applyOhlc addresses High and Low by INDEX among .meta b.mono, so taking
+   the nodes out would silently shift both. The phone keeps it -- it has no OHLC strip to duplicate. */
+@media (min-width:761px){.price-display .meta{display:none!important}}
+#mdxaExList:not(.lxda) .ex-row{visibility:hidden}
+/* the design .ex-row grid is "24px 1fr 70px auto"; our rows add a 5th cell for the explorer link */
+#mdxaExList .ex-row[data-lxda]{grid-template-columns:24px 1fr auto auto 16px}
+/* real amounts run longer than the mock 18 USDC; the design fixed 70px column wrapped them onto a
+   second line and left rows at uneven heights. Size to content and never wrap. */
+#mdxaExList .ex-row[data-lxda] .ex-num{white-space:nowrap;text-align:right}
+#mdxaExList .ex-row[data-lxda] .ex-num .sub{display:block}
+.lxda-exlink{display:inline-flex;align-items:center;justify-content:center;color:var(--text-soft,#8a8fa3)}
+.lxda-exlink:hover{color:var(--accent)}
+/* chart x-axis dates as an absolute HTML row (SVG text is squished by preserveAspectRatio=none) */
+.lxda-cdates{position:absolute;left:14px;right:70px;bottom:5px;display:flex;justify-content:space-between;gap:8.8px;font:600 12.7px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);pointer-events:none}
+/* The price axis. The plot has always reserved a right gutter (PADR) and never drawn anything in it, so
+   the chart could be read for shape but not for value -- there was no way to check a figure against the
+   line. Positioned as absolute HTML rather than <text> inside the svg because that svg is
+   preserveAspectRatio="none": glyphs in it would be stretched by the width/height ratio, differently at
+   every window size. Percentages below mirror PADT/PADB against the 380-unit viewBox. */
+/* top/bottom are set from JS, not here: they have to track the PRICE band, and the price band moved
+   when the volume band was added. A percentage frozen in the stylesheet would have gone on describing the
+   old split and quietly labelled the bars. */
+/* Unit of the price axis. Sits above the topmost number, right-aligned with them. */
+.lxda-cunit{position:absolute;top:2px;right:4px;z-index:2;pointer-events:none;
+  font:700 11px/1 'JetBrains Mono',monospace;letter-spacing:.06em;color:var(--text-muted,#8a8fa3)}
+.lxda-cprices{position:absolute;right:4px;width:64px;pointer-events:none}
+.lxda-cprices span{position:absolute;right:0;transform:translateY(-50%);font:600 11.6px/1 'JetBrains Mono',monospace;color:var(--text-soft,#8a8fa3);white-space:nowrap}
+/* ---- #2: the change pill sits BESIDE the price ------------------------------------------------- */
+/* The design stacked .big over .row2, so the headline number had a pill hanging under it and the
+   card carried two short lines where one wide one would do. Two columns instead: the price, then the
+   pill and the high/low meta on the same baseline to its right. They wrap inside their own column, so
+   a long meta line never pushes the price around. */
+.price-display{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:baseline;column-gap:15.4px}
+.price-display .big{grid-column:1;grid-row:1}
+.price-display .row2{grid-column:2;grid-row:1;margin-top:0!important}
+/* No phone override: beside was asked for on BOTH builds, and it fits -- measured at 393px the
+   price is 138px and the pill 87px inside a 331px column. The second track is minmax(0,1fr) and
+   .row2 already wraps, so a longer price squeezes the meta onto its own line instead of overflowing. */
+
+/* ---- #11: the unit label and the top axis number were in the same corner ----------------------- */
+/* Both were pinned right-aligned at the top of the right-hand gutter, so "XLM" printed straight
+   through the topmost price. The gutter's BOTTOM right is empty -- the x-axis date row stops short of
+   it (right:70px) and the price band ends above the volume bars -- so the unit moves there. */
+.lxda-cunit{top:auto!important;bottom:5px!important;right:4px!important}
+
+/* ---- #3: one hover readout, not two ------------------------------------------------------------ */
+/* The phone build still ships the design own OHLC tooltip (.chart-tip, #mdxaTipO/H/L/C/V) and it is
+   fed by the template MOCK -- it was reading "O 4.5031 XLM ... V 678K USDC" against a chart whose own
+   axis was around 0.00018, which is why the numbers looked unrelated to the asset. Ours (.lxda-chtip)
+   is built on this page too and carries the real series, the same fields desktop shows. Hide the
+   design one, and its crosshair with it, since we draw our own. */
+.chart-tip,.chart-hover-line,.chart-hover-dot{display:none!important}
+/* #8: the browser keeps vertical scrolling over the chart; a horizontal drag stops being a scroll
+   gesture and reaches touchmove, which is what lets the readout track a finger. */
+.lxda-cwrap,.chart-body,.chart-area,#dxaChart,#mdxaChart{touch-action:pan-y}
+/* #17/#20: the two new pill groups. .chart-tools buttons are 26px icon squares, so these override the
+   width for text labels while inheriting everything else -- the tray, the radius, the active treatment. */
+/* #8, PHONE ONLY. Four stat cards across 375px gave each one about 80px, which is why Price rendered as
+   "0.0002..." with the digits that matter truncated. Supply is the one of the four that is not a market
+   figure -- it does not move, and nobody checks it between glances -- so it moves into a sheet behind a
+   link and the other three get a third of the row each.
+   Scoped to a media query and to nothing else: the desktop grid is untouched, as asked. */
+/* The link is BUILT on every layout -- one code path, nothing to rebuild when the window is resized --
+   so it needs an explicit default of none. A bare <div> is display:block, which is why it showed on
+   desktop, where all four cards are on screen and a "More info" pointing at one of them is just noise. */
+.lxda-moreline{display:none}
+/* Centred rather than left-aligned, on BOTH layouts -- the Supply tile only exists on desktop, so a
+   mobile-scoped rule would have left the very card that was named out of it. These are small tiles of
+   one figure each, not a table scanned down a shared left edge, and label / figure / sub-line are all
+   different lengths. align-items governs the flex children (the cell is a column flexbox) and
+   text-align governs wrapping inside each; either alone leaves one axis untouched. */
+.stat-row .stat-cell{align-items:center;text-align:center}
+/* Same accent as the website link they sit beside -- these are three ways to reach the same issuer, so
+   they read as one row rather than three unrelated controls. currentColor on the svg means the single
+   colour rule below drives both marks. */
+.lx-soc{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
+  margin-left:8.8px;color:var(--accent,#ea6a2c);text-decoration:none;vertical-align:middle;opacity:.9}
+.lx-soc:hover{opacity:1}
+/* B16: marks a balance that is locked forever. Deliberately quiet -- it is a fact about the row, not a
+   warning, and it sits beside the Soroban tag so the two annotations read as one family. */
+.lx-burntag{display:inline-block;margin-left:7.7px;padding:1.1px 6.6px;border-radius:5px;font-size:11px;
+  font-weight:700;letter-spacing:.03em;vertical-align:middle;
+  color:var(--text-soft,#8a8fa3);border:1px solid var(--border,#e6e6ea)}
+.lxda-slinks{display:inline-flex;align-items:center;gap:11px}
+.lxda-slinks .lx-soc{margin-left:0}
+/* A2: the issuer on one line -- shortened, with the full key on the copy control beside it. */
+.lxda-srow .lxda-issh{white-space:nowrap}
+.lxda-isscp{margin-left:8.8px;padding:0;border:0;background:none;cursor:pointer;vertical-align:middle;
+  color:var(--text-soft,#8a8fa3);display:inline-flex;align-items:center}
+.lxda-isscp:hover{color:var(--accent,#ea6a2c)}
+/* A19: the marks were already the real X and Telegram glyphs -- what made them look wrong is that
+   .lx-soc paints them with the site accent, so X rendered as an orange X, which is not a logo anyone
+   recognises. Each now carries its own brand colour, keyed off the aria-label both builders already
+   set (the header row and the More-info sheet), so neither builder had to change.
+   X is deliberately var(--text): the brand mark is black on light and white on dark, which is exactly
+   what that token resolves to, so it stays correct in both themes rather than being pinned to one. */
+.lx-soc[aria-label="X"] svg{fill:var(--text,#0e0e10)}
+.lx-soc[aria-label="Telegram"] svg{fill:#229ED9}
+.lx-soc svg{width:14px;height:14px;display:block}
+@media(max-width:760px){
+/* The class above is applied by JS once it has read the labels, so on a phone the Supply card painted,
+   the row laid out as four, and then it vanished and the row reflowed to three -- the "4 boxes for a
+   split second" on refresh. This hides it from the FIRST paint instead.
+   Positional, because at first paint there is nothing to match on yet: the markup ships exactly four
+   .stat-cells in a fixed order (Price / 24h Volume / Market Cap / Supply) from a single template shared
+   by every asset page, and the grid beneath is already pinned to three columns here. n+4 rather than 4
+   so a fifth card, if one is ever added, is covered by the same rule instead of reintroducing this. */
+.stat-row .stat-cell:nth-of-type(n+4){display:none!important}
+.stat-row .stat-cell.lxda-more{display:none!important}
+/* #40: the social marks live in the More info sheet on a phone, so they do not also sit in a header
+   that is already carrying the code, the issuer address and the domain in one narrow column. */
+.asset-meta .lx-soc,.asset-meta-row .lx-soc{display:none!important}
+/* Reserve the meta row so it cannot grow under the boxes. It ships one short placeholder line
+   ("Issuer 0x0b59...1756 circle.com") and settles at two, because the real issuer key, its verified
+   tick and the domain wrap -- measured 20px -> 44px, which pushed everything below it down after load.
+   Expressed in em, not px, so it still reserves the right space if the type scale changes. */
+.asset-meta{min-height:3.8em}
+html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+.lxda-moreline{grid-column:1/-1;display:flex;justify-content:center;margin-top:2.2px}
+.lxda-morebtn{border:0;background:transparent;padding:6.6px 4.4px;cursor:pointer;
+  font-weight:800;font-size:13.2px;line-height:1;color:var(--accent,#ea6a2c);letter-spacing:.01em}
+/* The backslash is doubled on purpose: this block is a template literal, where a CSS unicode escape
+   would be read as an octal escape and fail the build, and the backslash still has to reach the CSS. */
+.lxda-morebtn::after{content:"\203a";margin-left:5.5px;font-weight:700}
+}
+/* The sheet itself. Bottom-anchored on a phone because that is where a thumb is, and it is a reference
+   panel rather than a decision -- it closes by tapping anywhere off it. */
+.lxda-sheet{position:fixed;inset:0;z-index:10001;display:none;align-items:flex-end;justify-content:center;
+  background:rgba(8,10,14,.55);backdrop-filter:blur(3px)}
+.lxda-sheet.open{display:flex}
+.lxda-sheet-card{width:100%;max-width:520px;max-height:80vh;max-height:80dvh;overflow:auto;
+  overscroll-behavior:contain;background:var(--surface,#fff);border:1px solid var(--border);
+  border-radius:18px 18px 0 0;padding:17.6px 19.8px 24.2px;animation:lxdaSheetIn .2s ease}
+@keyframes lxdaSheetIn{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.lxda-sheet-head{display:flex;align-items:center;gap:13.2px;margin-bottom:11px}
+.lxda-sheet-head h3{flex:1;margin:0;font-size:16.5px;font-weight:800;color:var(--text)}
+.lxda-sheet-x{width:30px;height:30px;flex:0 0 30px;border-radius:8px;border:1px solid var(--border);
+  background:transparent;color:var(--text-soft);cursor:pointer;font-weight:700;font-size:16.5px;line-height:1}
+.lxda-srow{display:flex;align-items:baseline;justify-content:space-between;gap:15.4px;padding:9.9px 0;
+  border-bottom:1px solid var(--border)}
+.lxda-srow:last-child{border-bottom:0}
+.lxda-srow .k{font-weight:600;font-size:13.8px;line-height:1.3;color:var(--text-soft)}
+.lxda-srow .v{font:800 14.9px/1.3 'JetBrains Mono',monospace;color:var(--text);text-align:right;
+  overflow-wrap:anywhere}
+/* Desktop: pinned inside the plot, top-left. z-index above the svg, and a solid tray so the labels stay
+   legible if the series runs behind them. */
+/* #25: on the control row now, not floating over the plot -- static, no tray, no shadow. The rule is
+   kept scoped to the chart hosts so that if either group is ever re-parented back inside one it still
+   has somewhere sensible to sit. */
+/* #27: the right column ended above the left, leaving a blank strip beside the performance boxes.
+   Measured on this page: left 968px, right 916px -- 52px short. The gap is not fixed either: the trade
+   card changes height between Swap, Orderbook and Limit, so any hard-coded height would only be right
+   on one tab. Stretching the column and letting the ad absorb whatever is left over is correct on all
+   three, and on any asset whose chart is a different height.
+   Desktop only: the columns stack on a phone, where there is no second column to align to. */
+@media(min-width:900px){
+  .dxa-grid{align-items:stretch}
+  .dxa-trade-col{min-height:100%}
+  .dxa-trade-col .lxad-wrap{flex:1 1 auto;display:flex;flex-direction:column;min-height:0}
+  .dxa-trade-col .lxad-wrap > *{flex:1 1 auto}
+}
+.chart-controls .lxda-metric,.chart-controls .lxda-denom{position:static;top:auto;left:auto;
+  box-shadow:none;background:transparent;border:0}
+#dxaChart .lxda-metric,#mdxaChart .lxda-metric,#dxaChart .lxda-denom,#mdxaChart .lxda-denom{
+  position:absolute;top:8px;z-index:4;background:var(--surface,#fff);border:1px solid var(--border);
+  box-shadow:0 2px 8px -4px rgba(0,0,0,.35)}
+#dxaChart .lxda-metric,#mdxaChart .lxda-metric{left:8px}
+#dxaChart .lxda-denom,#mdxaChart .lxda-denom{left:8px;top:40px}
+/* #39: inside the plot these two trays were styled but their BUTTONS were not -- browser default,
+   13.3px at weight 400 with no padding -- so a finished-looking tray held unfinished-looking labels.
+   Worse, the selected button's background was the same white as the tray behind it, which meant the
+   control never showed which of the two was active. Same segmented treatment as the timeframe buttons
+   right above it: accent fill on the selected one, muted label on the other. (The pair is also put
+   side by side on one line, in chartUi -- the offset needs the measured width of the first tray.) */
+#dxaChart .lxda-metric button,#mdxaChart .lxda-metric button,
+#dxaChart .lxda-denom button,#mdxaChart .lxda-denom button{
+  border:0;background:transparent;cursor:pointer;border-radius:6px;padding:4.4px 9.9px;
+  font-family:'Hanken Grotesk',sans-serif;font-size:12.7px;font-weight:700;line-height:1;
+  color:var(--text-soft,#6f6f79);transition:none!important}
+/* transition:none is not a style preference, it is what makes the selected state paint at all.
+   These buttons inherit the site-wide control transition (background-color/color/box-shadow .16s), and
+   something re-asserts their style on every apply tick, which restarted those transitions before they
+   could finish -- leaving three CSSTransitions permanently in "running". A running transition sits ABOVE
+   !important author styles in the cascade, so nothing could colour the active button: measured, an inline
+   background:#0f0 on it computed to transparent, while a clone of the same node in the same parent
+   painted correctly. With no transition to restart, the cascade resolves normally. */
+#dxaChart .lxda-metric button:hover:not(.active),#mdxaChart .lxda-metric button:hover:not(.active),
+#dxaChart .lxda-denom button:hover:not(.active),#mdxaChart .lxda-denom button:hover:not(.active){
+  color:var(--text,#0e0e10)}
+#dxaChart .lxda-metric button.active,#mdxaChart .lxda-metric button.active,
+#dxaChart .lxda-denom button.active,#mdxaChart .lxda-denom button.active{
+  background:var(--accent,#ea6a2c);color:#fff}
+#dxaChart .lxda-metric button[disabled],#mdxaChart .lxda-metric button[disabled]{opacity:.4;cursor:default}
+.chart-controls .lxda-metric{margin-left:auto}
+/* At 375px the four groups cannot share one line (measured 367px of controls in a 313px row), so the row
+   wraps -- and without this the denomination landed alone at the far LEFT of the second line, reading as
+   an orphan rather than as the pair of the group above it. Right-aligned, the two new controls stack
+   against the same edge and the design own two keep the left. */
+.chart-controls .lxda-denom{margin-left:auto}
+/* #3: on the phone these two ended up on different lines -- Price/MCap tucked after the timeframes on
+   the first, $/XLM alone on the second -- so the pair that belongs together read as two unrelated
+   controls and the row wasted a line. Put them on their OWN line, $/XLM against the left edge and
+   Price/MCap against the right, which is the arrangement asked for and also the tidier one: two
+   opposing ends instead of three ragged groups.
+   The break is a pseudo-element flex item at 100% basis; explicit order values are what keep the
+   design's own two groups ahead of it. */
+@media (max-width:760px){
+  .chart-controls{align-items:center}
+  .chart-controls::after{content:"";flex:0 0 100%;height:0;order:2}
+  .chart-controls .lxda-denom{order:3;margin-left:0!important}
+  .chart-controls .lxda-metric{order:4;margin-left:auto!important}
+}
+.chart-controls .lxda-metric button,.chart-controls .lxda-denom button{
+  width:auto;min-width:0;padding:0 9.9px;font:800 12.1px/1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.02em}
+.chart-controls .lxda-metric button[disabled]{opacity:.4;cursor:default}
+/* On a narrow phone the row wraps; keep the two new groups together on whichever line they land on so
+   they never split "Price | MCap" from "$ | XLM". */
+@media(max-width:420px){
+.chart-controls .lxda-metric button,.chart-controls .lxda-denom button{padding:0 7.7px;font-size:11.6px}
+/* #39 on the phone, where these groups live in the controls row rather than inside the plot. Same
+   defect and same cure: the selected button was white on a white tray, and the inherited control
+   transition kept restarting and outranking whatever set the colour. Sizes stay as they are above --
+   only the selected/unselected treatment changes. */
+.chart-controls .lxda-metric button,.chart-controls .lxda-denom button{
+  background:transparent;color:var(--text-soft,#6f6f79);font-weight:700;transition:none!important}
+.chart-controls .lxda-metric button.active,.chart-controls .lxda-denom button.active{
+  background:var(--accent,#ea6a2c);color:#fff;box-shadow:none}
+}
+/* chart hover readout */
+.lxda-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7.7px 11px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
+.lxda-chtip .d{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600;margin-bottom:6.6px}
+/* Row labels, same as the pool chart's: 11px soft over a 14px/800 figure. */
+.lxda-chtip .l{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600}
+/* #24: one labelled group per figure, 8px apart -- the pool tooltip's rhythm, measured off it. */
+.lxda-chtip .lxrow{margin-top:8.8px}
+.lxda-chtip .lxrow .p{margin-top:1.1px}
+.lxda-chtip .v{margin-top:6.6px}
+.lxda-chtip .p{color:var(--text,#0e0e10);font-size:15.4px;font-weight:800;font-variant-numeric:tabular-nums}
+.lxda-chtip .v{color:var(--text-soft,#8a8fa3);font-size:12.1px;font-weight:600;margin-top:1.1px}
+.lxda-chdot{position:absolute;width:10px;height:10px;margin:-5.5px 0 0 -5.5px;border-radius:50%;background:var(--accent,#ea6a2c);border:2px solid var(--surface,#fff);box-shadow:0 0 0 2px rgba(234,106,44,.35);pointer-events:none;opacity:0;transition:opacity .1s;z-index:5}
+.lxda-chvl{position:absolute;width:1px;background:rgba(234,106,44,.45);pointer-events:none;opacity:0;transition:opacity .1s;z-index:4;top:16px;bottom:28px}
+#dxaChart svg,#mdxaChart svg{cursor:crosshair}
+/* a wide range can take 6-8s on Horizon; say so rather than leaving the previous range looking final */
+#dxaChart.lxda-loading::after,#mdxaChart.lxda-loading::after{content:"Loading…";position:absolute;top:8px;right:12px;font:600 11.6px/1 "JetBrains Mono",ui-monospace,monospace;letter-spacing:.04em;color:var(--text-soft,#8a8fa3);opacity:.9;z-index:6;pointer-events:none;animation:lxdaPulse 1.1s ease-in-out infinite}
+@keyframes lxdaPulse{0%,100%{opacity:.35}50%{opacity:.95}}
+/* header logo: paint via background so the site logo-painter can't clear the token mark */
+.asset-logo[data-lxlogo]{background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;overflow:hidden;color:transparent!important;font-size:0!important}
+/* The tile BEFORE any logo is known. The design ships this element as a blue "$" chip -- USDC's mark, the
+   asset the mock page was drawn around -- so every token began life looking like USDC for as long as it
+   took our script to run. Neutral instead: one quiet surface-coloured tile in both themes, which the real
+   logo then replaces in a single step. Paired with the markup edit that drops the "$" glyph itself. */
+.asset-logo:not([data-lxlogo]){background-image:none!important;background-color:rgba(127,127,127,.18)!important;color:transparent!important;font-size:0!important}
+/* trade-widget: inline error + disabled CTA while amount is invalid/over balance */
+.lxda-swaperr{color:var(--red,#ff5b5b);font-size:13.8px;font-weight:600;line-height:1.4;margin:0 0 9.9px}
+.dxa-trade-cta[data-lxdis="1"]{opacity:.55;cursor:not-allowed;filter:grayscale(.25)}
+/* trade-widget asset icons: paint via ::before (painter-proof) driven by --lxtic */
+.dxa-pane-swap .dxa-trade-ic[data-lxic]{position:relative}
+.dxa-pane-swap .dxa-trade-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxtic) center/cover no-repeat;border-radius:inherit;z-index:2}
+/* limit-pane chips are icon-only (.dxa-trade-asset painted directly) — overlay the correct logo painter-proof */
+.dxa-pane-limit .dxa-trade-asset[data-lxic]{position:relative;overflow:hidden;color:transparent!important}
+.dxa-pane-limit .dxa-trade-asset[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxtic) center/cover no-repeat;border-radius:50%;z-index:2}
+/* our ::before owns the icon -> kill any base64 mock the element itself carries so it can't peek through */
+.dxa-pane-swap .dxa-trade-ic[data-lxic],.dxa-pane-limit .dxa-trade-asset[data-lxic]{background-image:none!important}
+/* You Pay quick %/MAX buttons: orange active state on click */
+.dxa-pane-swap .dxa-trade-quick button.lxq-active{box-shadow:inset 0 0 0 3em #ea6a2c!important;color:#fff!important;border-color:#ea6a2c!important}
+/* the page inherits -webkit-user-modify:read-only, which blocks TYPING into the swap/limit amount inputs (only %/MAX, which set .value programmatically, worked). Force the editable inputs back to read-write. */
+.dxa-pane-swap .dxa-trade-ir input:not([readonly]),.dxa-pane-limit .dxa-trade-ir input:not([readonly]){-webkit-user-modify:read-write!important;user-modify:read-write!important}
+/* Limit tab: MAX button on the Total row */
+.dxa-pane-limit .dxa-trade-field .dxa-trade-frow .mono[data-lxbal]{margin-left:auto}
+.dxa-pane-limit .dxa-trade-field .dxa-trade-frow .lxlim-max{margin-left:8.8px;padding:2.2px 8.8px;font:800 11px/1.4 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;color:#ea6a2c;background:rgba(234,106,44,.12);border:1px solid rgba(234,106,44,.42);border-radius:6px;cursor:pointer;transition:background .15s}
+.dxa-pane-limit .dxa-trade-field .dxa-trade-frow .lxlim-max:hover{background:rgba(234,106,44,.24)}
+/* bottom-center copy toast */
+#lxCenterToast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(12px);background:var(--text,#14151a);color:var(--surface,#fff);font:600 14.9px/1 'Hanken Grotesk',system-ui,sans-serif;padding:13.2px 22px;border-radius:11px;box-shadow:0 12px 34px rgba(0,0,0,.35);opacity:0;pointer-events:none;z-index:99999;transition:opacity .18s,transform .18s}
+#lxCenterToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+/* swap success/error toast — matches the design's "Copied to clipboard" toast exactly (self-contained copy of its CSS so it works before any copy has run) */
+.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8.8px;align-items:center;pointer-events:none}
+.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:12.1px 19.8px 12.1px 15.4px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:17.6px;font-weight:600;display:inline-flex;align-items:center;gap:9.9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
+.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.lx-ctoast.lxda-terr .ci{background:var(--red,#ff5b5b)}
+@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+/* Discussions: hide the design's mock comment rows INSTANTLY (no flash); JS removes them + renders real posts (.lxda-mine) */
+.dxa-disc-list .dxa-disc-row:not(.lxda-mine),.mdxa-disc-list .mdxa-disc-row:not(.lxda-mine){display:none!important}
+/* The row is an <a> where the design shipped a <div>. With no anchor rule it took the browser default
+   link styling -- blue and underlined, inherited by every child. Neutralise the ANCHOR only; the children
+   keep whatever the design gives them. */
+.mdxa-pl-list a.mdxa-pl-row{color:var(--text);text-decoration:none}
+.mdxa-pl-list a.mdxa-pl-row .mdxa-pl-lp{font-size:11.6px;color:var(--text-soft)}
+/* Layout guard for the swap panel, independent of the input cap above. A long number should shorten
+   itself, never rearrange the card around it: the label row must stay one line with the label at its
+   natural width, and the numbers ellipsis inside whatever space is left. Without this a big enough value
+   wrapped "You pay" onto two lines and pushed the dollar figure outside the panel. */
+.dxa-trade-frow{flex-wrap:nowrap;gap:11px;align-items:baseline}
+.dxa-trade-frow>span:first-child{flex:0 0 auto;white-space:nowrap}
+.dxa-trade-frow .mono{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dxa-trade-field input{min-width:0;max-width:100%}
+/* Pay-side dollar value. The row is space-between with "You pay" on the left and the balance on the
+   right; margin-left:auto pulls this into the right-hand group so the two sit together and the balance
+   keeps its place. Allowed to shrink and ellipsis rather than push the balance off a narrow phone. */
+.lx-oc{margin:11px 0 0;padding:12.1px 14.3px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2)}
+.lx-oc-t{font-size:11.6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft);margin-bottom:8.8px}
+.lx-oc-r{display:flex;align-items:baseline;justify-content:space-between;gap:11px;font-size:13.2px;line-height:1.5}
+.lx-oc-r span:first-child{color:var(--text-soft);white-space:nowrap}
+.lx-oc-r b{font-weight:700;font-family:"JetBrains Mono",monospace;font-size:13.2px;white-space:nowrap}
+.lx-oc-hi{color:var(--accent,#ea6a2c)}
+.lx-oc-ok{color:var(--green,#35c07f)}
+.dxa-trade-frow .lx-ltusd{margin-left:auto;margin-right:11px;white-space:nowrap;color:var(--text-soft)}
+.dxa-trade-frow .lx-ltusd:empty{display:none}
+.dxa-trade-frow .lx-payusd{margin-left:auto;margin-right:11px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dxa-trade-frow .lx-payusd:empty{display:none}
+/* Pools tab pagination. An asset can sit in hundreds of pools (AQUA: 1,301), so the list is paged at
+   25 rather than truncated -- the header count and the rows on screen have to agree. */
+.lx-pl-foot{display:flex;align-items:center;justify-content:space-between;gap:11px;flex-wrap:wrap;padding:14.3px 4.4px 2.2px;margin-top:6.6px;border-top:1px solid var(--border);font-size:14.3px;color:var(--text-soft)}
+.lx-pl-foot .pc{display:flex;align-items:center;gap:0}
+.lx-pl-foot button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:6.6px 14.3px;font:600 14.3px/1 'Hanken Grotesk',system-ui,sans-serif;color:var(--text);cursor:pointer}
+.lx-pl-foot button:hover:not(:disabled){border-color:var(--accent-soft)}
+.lx-pl-foot button:disabled{opacity:.4;cursor:default}
+.lx-pl-foot .pmid{margin:0 13.2px;white-space:nowrap}
+/* Phones: the info line stacks above the controls, and the controls stretch to a comfortable tap size. */
+.mdxa-pools .lx-pl-foot{flex-direction:column;align-items:stretch;gap:8.8px;text-align:center;font-size:13.8px}
+.mdxa-pools .lx-pl-foot .pc{justify-content:space-between}
+.mdxa-pools .lx-pl-foot button{padding:9.9px 17.6px;font-size:14.3px}
+/* description: two lines until asked otherwise. line-clamp keeps the cut on a line boundary rather
+   than mid-glyph, and collapses back cleanly when expanded. */
+/* held until the stellar.toml attempt concludes, so the generic line is never painted then replaced */
+.asset-description.lx-descwait{visibility:hidden}
+.asset-description.lx-clamp{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+overflow:hidden;margin-bottom:0}
+/* The same two-line clamp, applied BEFORE any script runs. The description ships in full and was only
+   clamped once clampSetup added .lx-clamp, so the first paint drew it at its natural height and every
+   pixel of the difference was taken out of the page below it -- measured on LUMOS, 98px collapsing to
+   39px, which shifted the stat boxes up. A long toml description moves them further still, which is
+   why the boxes appeared to land nowhere near where they first painted.
+   Keyed on the ABSENCE of the ready marker, so this governs only the pre-script moment: once
+   clampSetup has run, .lx-clamp is in charge again and Show more / Show less behave exactly as before. */
+.asset-description:not(.lx-descready){display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+overflow:hidden;
+/* Reserve the Show more control too. It is created by clampSetup, so at first paint it does not exist
+   and everything below sat 24px high -- its 20px box plus its 4px margin. Reserving it here means the
+   boxes land where they painted for any description long enough to need the control, which is the case
+   that moved them furthest. A description too short to clamp gets no button and settles up by this
+   much instead; that is the smaller error of the two and it is bounded, where the old behaviour scaled
+   with the length of the text. */
+margin-bottom:26.4px}
+.lx-descmore{display:none;margin-top:4.4px;background:none;border:0;padding:0;cursor:pointer;
+color:var(--accent,#ea6a2c);font:700 15.4px/1.4 "Hanken Grotesk",system-ui,sans-serif}
+.lx-descmore.on{display:inline-block}
+.lx-descmore:hover{text-decoration:underline}
+/* Price change, relocated under the chart: a row of six inside the chart card rather than a card of
+   its own. Card chrome comes off because it now sits on the chart card surface, and a hairline rule
+   separates it from the plot. */
+.chart-section .dxa-perf-card{background:none;border:0;border-radius:0;padding:15.4px 0 0;
+margin-top:17.6px;border-top:1px solid var(--border)}
+/* the six cells say 1h/24h/7d themselves, so the "Price change" caption is redundant here */
+.chart-section .dxa-perf-lbl{display:none}
+.chart-section .dxa-perf-grid{grid-template-columns:repeat(6,1fr);gap:8.8px}
+/* Six across needs about 110px each. Below that it falls back to the 3x2 it always had, which is a
+   real arrangement rather than six squeezed cells. */
+@media (max-width:1180px){.chart-section .dxa-perf-grid{grid-template-columns:repeat(3,1fr)}}
+.lxda-disc-empty{text-align:center;padding:33px 13.2px;color:var(--text-soft,#8a8fa3);font:600 15.4px/1.5 'Hanken Grotesk',system-ui,sans-serif}
+.dxa-disc-text{margin-top:4.4px;line-height:1.5;word-break:break-word}
+/* Exchanges tab: hide its count badge INSTANTLY (JS was hiding it after data load -> a visible count->hidden flash) */
+.tabs-bar .tab[data-tab="exchanges"] .count,.tab[data-tab="exchanges"] .count{display:none!important}
+/* restyle_dexstats hides EVERY tab count under 760px because the badges overflowed the 342px strip and
+   made it draggable. Bring all three back, but abbreviated on mobile (2.32M, not 2,322,349) so the width
+   they cost is bounded -- a seven-digit holder count is what caused the overflow, not the badge itself.
+   Exchanges stays hidden: that badge was removed deliberately. */
+@media (max-width:760px){
+.tabs-bar .tab[data-tab="discussions"] .count,
+.tabs-bar .tab[data-tab="holders"] .count,
+.tabs-bar .tab[data-tab="pools"] .count{display:inline-block!important}
+.tabs-bar .tab[data-tab="discussions"] .count,.tabs-bar .tab[data-tab="holders"] .count{margin-left:3.3px}
+.tabs-bar .tab{font-size:12.1px!important;letter-spacing:-0.1px}
+.tabs-bar .tab .count{font-size:9.9px!important;padding:1.1px 4.4px!important;margin-left:3.3px!important}}
+/* Limit-tab chips: force a real 26px circle (they were rendering as ovals) */
+.dxa-pane-limit .dxa-trade-asset[data-lxic]{width:26px!important;height:26px!important;min-width:26px!important;max-width:26px!important;flex:0 0 26px!important;border-radius:50%!important;padding:0!important;box-sizing:border-box}
+/* Smart Swap badge — shown in the swap pane when a Soroban AMM (Soroswap/Phoenix/Aquarius) beats the classic Horizon path */
+.lx-dxsmart{display:flex;align-items:center;gap:11px;margin:0 0 11px;padding:9.9px 12.1px;border-radius:11px;background:linear-gradient(100deg,rgba(234,106,44,.10),rgba(234,106,44,.03));border:1px solid rgba(234,106,44,.34)}
+.lx-dxsmart .lx-sb-ic{flex:0 0 26px;width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:#ea6a2c;color:#fff}
+.lx-dxsmart .lx-sb-ic svg{width:15px;height:15px;fill:currentColor}
+.lx-dxsmart .lx-sb-mid{flex:1;min-width:0}
+.lx-dxsmart .lx-sb-ttl{font:800 13.8px/1.2 'Hanken Grotesk',system-ui,sans-serif;color:var(--text,#14151a)}
+.lx-dxsmart .lx-sb-sub{font:600 12.7px/1.3 'Hanken Grotesk',system-ui,sans-serif;color:var(--text-soft,#8a8fa3);margin-top:1.1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lx-dxsmart .lx-sb-sub b{color:#ea6a2c}
+.lx-dxsmart .lx-sb-best{flex:0 0 auto;font:800 11.6px/1 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.03em;text-transform:uppercase;color:#ea6a2c;background:rgba(234,106,44,.14);border:1px solid rgba(234,106,44,.4);border-radius:7px;padding:5.5px 8.8px}
+.lx-supinfo{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:7.7px;border-radius:50%;border:1.4px solid var(--text-soft,#8a8fa3);color:var(--text-soft,#8a8fa3);font:italic 700 11px/17.6px Georgia,serif;cursor:default;vertical-align:middle;text-align:center}.lx-supinfo:hover::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);width:220px;background:#17171c;color:#f6f6f8;border:1px solid rgba(255,255,255,.16);border-radius:9px;padding:9.9px 12.1px;font:500 13.2px/1.45 'Hanken Grotesk',system-ui,sans-serif;font-style:normal;letter-spacing:0;text-align:left;box-shadow:0 10px 26px rgba(0,0,0,.34);z-index:60;pointer-events:none;white-space:normal}.lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}.lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}.lx-supinfo{width:26px!important;height:26px!important;border:0!important;border-radius:50%!important;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;flex:0 0 26px!important;font-size:0!important;margin-left:8.8px!important}
+.stat-cell .val.lx-hasinfo{overflow:visible!important}
+/* The 24h change, small, inside the Price card -- it used to have a whole card to itself.
+   It rides on the SUB line, immediately after the dollar price, and the placement is measured rather than
+   picked. Beside the big number is the obvious reading of "next to the price", and it does not survive the
+   widths people actually use: the value line has 181px at a 1600px window and 141px at 1440, against 126px
+   of price plus a ~50px chip, so the PRICE -- the one number the page exists for -- is what ellipsises.
+   The sub line carries "$0.00032045" at ~75px in the same measure, so the pair fits with room, and .sub is
+   allowed two lines, so a longer price wraps instead of truncating anything. It also groups the two
+   secondary figures -- what it is worth, and how it moved -- on one line under the headline. */
+/* #30: the 24h move is stated twice within one screen -- once as this chip inside the PRICE stat and
+   again as the pill beside the headline price directly below it, where it is bigger and denominated to
+   match the headline. Two figures for one number invite the reader to look for the difference. The
+   chip goes; the pill stays. Hidden rather than unbuilt, because the same builder writes the USD
+   sub-line next to it and that is still wanted. */
+.stat-cell .sub .lx-pchg{display:none!important}
+.lx-pchg{display:inline-block;font-size:12.1px;font-weight:800;letter-spacing:-.01em;padding:1.1px 6.6px;border-radius:5px;line-height:1.4}
+.lx-pchg.up{color:var(--green,#35c07f);background:rgba(53,192,127,.14)}
+.lx-pchg.down{color:var(--red,#ff5b5b);background:rgba(255,91,91,.14)}
+/* #11: what the trade actually cost. Every row named a UNIT price and a quantity and left the reader
+   to multiply a seven-decimal number by a six-figure one -- so the one thing a trade record is for,
+   how much changed hands, was the one thing it did not say. On the phone it joins the sub line; on
+   desktop it sits under the quantity, in the same cell, because a new column would push the table
+   wider than the card. */
+.lx-extot{display:block;margin-top:2.2px;font:600 12.7px/1.3 'JetBrains Mono',monospace;color:var(--text-soft)}
+.lx-exmore{margin-left:11px;padding:3.3px 11px;border-radius:7px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-weight:700;font-size:13.2px;line-height:1.4;cursor:pointer;vertical-align:middle}
+.lx-exmore:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.lx-exmore:disabled{opacity:.6;cursor:default}
+.dxa-ob-asks,.dxa-ob-bids{height:323px!important;max-height:323px!important}
+.stat-cell .lx-supinfo::before{content:"i";display:block;font:italic 700 11px/17.6px Georgia,serif;color:inherit}
+/* #8: the tooltip is 240px wide and anchored to the LEFT edge of the icon that opens it. The icon for
+   Market Cap sits at x=259 in a 372px phone viewport, so the note ran 127px past the screen -- and
+   .asset-card is overflow:hidden, so it was clipped rather than merely off-screen. Unreadable either
+   way: "90% (9B LUMOS) sup…".
+   Two anchors, by how much room is left. On a desktop card the last two cells open their note to the
+   RIGHT edge instead of the left, which is deterministic (four cells, a fixed grid) and needs no
+   measuring. */
+.stat-cell .lx-supinfo:hover::after{left:0!important;transform:none!important;width:min(240px,70vw)!important}
+.stat-row .stat-cell:nth-child(n+3) .lx-supinfo:hover::after{left:auto!important;right:0!important}
+/* On a phone there is no "other side" to open towards -- 240px does not fit beside anything in 372px.
+   The note anchors to the ROW instead of the icon (hence position:static on the icon: a ::after seeks
+   the nearest POSITIONED ancestor) and spans it, inset from both edges, so it cannot leave the card in
+   either direction. Above the row rather than below it, because below is where the card ends. */
+@media(max-width:760px){
+.stat-row{position:relative}
+.stat-cell .lx-supinfo{position:static!important}
+.stat-cell .lx-supinfo:hover::after,
+.stat-row .stat-cell:nth-child(n+3) .lx-supinfo:hover::after{
+  left:10px!important;right:10px!important;width:auto!important;max-width:none!important;
+  transform:none!important;bottom:calc(100% + 8px)!important}
+}
+/* Pool pair icons. 22px sat below the 15px pair label beside them, so a row read as text with two specks
+   of colour rather than a pair of tokens. 30px gives a logo enough room to be recognised at a glance and
+   balances the line; the ring is the row background, so overlapping discs stay separated on any surface. */
+.dxa-pl-pair{gap:13.2px}
+.dxa-pl-ico{width:34px;height:34px;font-size:15.4px;border-width:3px;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.dxa-pl-ico + .dxa-pl-ico{margin-left:-12.1px}
+/* the page asset leads the pair, so it sits in front rather than behind the counterpart */
+.dxa-pl-icos .dxa-pl-ico{position:relative}
+.dxa-pl-icos .dxa-pl-ico:first-child{z-index:2}
+.mdxa-pl-l .dxa-pl-ico{width:30px;height:30px;font-size:14.3px}
 .stat-cell .lx-supinfo{width:16px!important;height:16px!important;flex:0 0 16px!important;border:1.4px solid var(--text-soft,#8a8fa3)!important;border-radius:50%!important;background:none!important;font:italic 700 11px/17.6px Georgia,serif!important;margin-left:7.7px!important;vertical-align:middle}</style></head>
 <body>
 <div class="app">
@@ -12399,6 +13511,14 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
         +'<h3></h3><button type="button" class="lxda-sheet-x" aria-label="Close">&times;</button></div>'
         +'<div class="lxda-sbody"></div></div>';
       document.body.appendChild(sh);
+      // The sheet lives outside the region the page's own copy delegation covers, so it carries its own.
+      sh.addEventListener("click",function(e){
+        var b=e.target&&e.target.closest?e.target.closest("[data-copy]"):null; if(!b)return;
+        e.preventDefault(); e.stopPropagation();
+        var v=b.getAttribute("data-copy")||"";
+        try{ navigator.clipboard.writeText(v); }catch(_){}
+        try{ if(window.lxToast)window.lxToast("Issuer address copied"); }catch(_){}
+      });
       sh.addEventListener("click",function(e){
         if(e.target===sh||(e.target.closest&&e.target.closest(".lxda-sheet-x"))){
           e.preventDefault(); sh.classList.remove("open");
@@ -12418,6 +13538,24 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     // asset with neither gets no row rather than an empty one.
     if(body){
       var _socs=[[tomlX,X_SVG,"X"],[tomlTg,TG_SVG,"Telegram"]].filter(function(p){return !!p[0];});
+      // A2: the issuer row -- one line, with the full key on a copy control beside it.
+      try{
+        var _rows=body.querySelectorAll(".lxda-srow");
+        for(var _i=0;_i<_rows.length;_i++){
+          var _k=_rows[_i].querySelector(".k");
+          if(!_k||!/^Issuer$/i.test((_k.textContent||"").trim()))continue;
+          var _v=_rows[_i].querySelector(".v"); if(!_v)break;
+          _v.textContent="";
+          var _sp=document.createElement("span");
+          _sp.className="mono lxda-issh"; _sp.textContent=shortG(ISSUER); _sp.title=ISSUER;
+          var _cp=document.createElement("button");
+          _cp.type="button"; _cp.className="lxda-isscp"; _cp.setAttribute("aria-label","Copy issuer address");
+          _cp.title="Copy issuer address"; _cp.setAttribute("data-copy",ISSUER);
+          _cp.innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>';
+          _v.appendChild(_sp); _v.appendChild(_cp);
+          break;
+        }
+      }catch(_){}
       if(_socs.length){
         var _r=document.createElement("div"); _r.className="lxda-srow";
         var _k=document.createElement("span"); _k.className="k"; _k.textContent="Links"; _r.appendChild(_k);
@@ -13953,6 +15091,39 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   function limPane(){ return q(".dxa-pane-limit"); }
   function limFields(){ return qa(".dxa-pane-limit .dxa-trade-field"); }
   function limPriceInput(){ var f=limFields()[0]; return f?f.querySelector(".dxa-trade-ir input"):null; }
+  // A9: a price is a number. Digits and ONE separator; everything else is dropped as it arrives, so a
+  // mis-aimed paste is cleaned instead of silently accepted. Delegated and gated on the input itself, so
+  // it survives the pane being re-rendered.
+  // Take the LEADING number and stop at the first character that is not part of one, rather than
+  // deleting invalid characters wherever they appear. Deleting them salvaged digits out of the middle of
+  // a pasted key: "0.001 GBNZILSTVQZ4R7IKQDGHY" became 0.00147, a wrong price that looks like a real
+  // one. Stopping at the first stray character leaves 0.001 -- what was actually typed before the paste.
+  function numOnly(v){
+    v=String(v||"").split(",").join(".");
+    var out="",dot=false;
+    for(var i=0;i<v.length;i++){
+      var c=v.charAt(i);
+      if(c>="0"&&c<="9"){ out+=c; continue; }
+      if(c==="."&&!dot){ dot=true; out+=c; continue; }
+      if(out===""&&(c===" "||c==="\t"))continue;   // leading blanks are not an error
+      break;                                        // anything else ends the number
+    }
+    return out;
+  }
+  function wireNumericLimit(){
+    if(window.__lxDXAnum)return; window.__lxDXAnum=1;
+    document.addEventListener("input",function(e){
+      var t=e.target; if(!t||t.tagName!=="INPUT")return;
+      var f=t.closest?t.closest(".dxa-pane-limit .dxa-trade-field"):null; if(!f)return;
+      var clean=numOnly(t.value);
+      if(clean===t.value)return;
+      // Keep the caret where the user is typing rather than throwing it to the end.
+      var pos=(t.selectionStart||0)-(t.value.length-clean.length);
+      t.value=clean;
+      try{ t.setSelectionRange(Math.max(0,pos),Math.max(0,pos)); }catch(_){}
+      try{ t.dispatchEvent(new Event("change",{bubbles:true})); }catch(_){}
+    },true);
+  }
   function limAmtInput(){ var f=limFields()[1]; return f?f.querySelector(".dxa-trade-ir input"):null; }
   function limTotInput(){ var f=limFields()[2]; return f?f.querySelector(".dxa-trade-ir input"):null; }
   function applyLimit(){
@@ -14119,6 +15290,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     try{ renderExchanges(); }catch(_){}
     try{ wireExchangeFilters(); }catch(_){}
     try{ wireChartTabs(); }catch(_){}
+    try{ wireNumericLimit(); }catch(_){}   // A9: keep non-numeric text out of the limit price
     try{ wireChartType(); }catch(_){}
     try{ var pc=q("#dxaChart,#mdxaChart"); if(pc&&chartPts&&!pc.querySelector(".lxda-line,.lxda-candle"))drawChart(chartPts); }catch(_){}
     try{ applyHolders(); }catch(_){}
