@@ -61,6 +61,8 @@ const STYLE = `<style id="lx-lt-css">
    so the chart is unchanged and the labels simply have somewhere to sit. */
 .chart-card .chart-body{height:auto!important;padding-bottom:12px}
 .chart-card .chart-body>svg{height:214px!important}
+/* item 20: subtle horizontal gridlines behind the plot. */
+.chart-body svg{background-image:repeating-linear-gradient(to bottom,rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}
 /* Two legend swatches, both reading "Stellar", on a chart with ONE series — a leftover from the
    multi-chain design. Nothing to distinguish, so nothing to label. */
 .chart-card .chart-head .chart-legend{display:none!important}

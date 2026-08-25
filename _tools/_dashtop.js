@@ -66,6 +66,8 @@ const STYLE = `<style id="lx-dashtop-css">
   font:700 11.5px/1 inherit;font-family:inherit;cursor:pointer}
 .lx-xt-tfs button.active{background:var(--accent);color:#fff}
 .lx-xt-chart{position:relative;width:min(420px,42vw);min-width:220px;height:104px;align-self:center}
+/* item 20: subtle horizontal gridlines behind the plot. */
+.lx-xt-chart svg{background-image:repeating-linear-gradient(to bottom,rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}
 .lx-xt-chart svg{display:block;width:100%;height:100%}
 /* ---- the loading state ------------------------------------------------------------------------- */
 /* #3: while the price and the series were in flight this drew a label, a bare em dash, a live-looking

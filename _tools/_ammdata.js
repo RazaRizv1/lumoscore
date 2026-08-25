@@ -336,6 +336,8 @@ html:not(.lx-chartready) #tvlChart svg text:not(.lx-ch):not(.lx-chload){opacity:
    #chartMetricMenu / .chart-mode-menu is the menu the design's own script builds and appends; with the
    trigger gone nothing should open it, but a stale "open" class would otherwise leave it on screen. */
 .chart-mode-select,#chartMetricMenu,.chart-mode-menu{display:none!important}
+/* item 20: subtle horizontal gridlines behind the plot. */
+.chart-body svg{background-image:repeating-linear-gradient(to bottom,rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}
 /* pool-tx wallet address links to OUR account page — subtle hover underline */
 .lx-sortag{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;font-size:10.5px;
 font-weight:700;letter-spacing:.02em;background:var(--surface);border:1px solid var(--border);color:var(--text-soft);vertical-align:middle}
