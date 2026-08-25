@@ -463,6 +463,14 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     try{ window.dispatchEvent(new CustomEvent("lx-denom",{detail:v})); }catch(_){} }
   // XLM is the raw pair move Horizon reports; USD folds in what XLM itself did.
   function chgShown(a){ return denom()==="xlm" ? (a&&a.chg!=null?a.chg:null) : chgU(a); }
+  // Which figure leads. On "$" the dollar price is the headline and the XLM price becomes the sub-line;
+  // on "XLM" it is the other way round, which is how it has always rendered. Nothing is hidden either
+  // way -- both numbers are always present, only their order changes.
+  function pxPair(px,pu,fmtUsd){
+    if(!(px>0))return "\u2014";
+    if(denom()==="usd"&&pu>0)return fmtUsd(pu)+'<span class="sub">'+fmtPrice(px)+' XLM</span>';
+    return fmtPrice(px)+' XLM<span class="sub">'+(pu>0?fmtUsd(pu):"\u2014")+'</span>';
+  }
   try{ window.__lxDenomGet=denom; window.__lxDenomSet=setDenom; window.__lxChgShown=chgShown; }catch(_){}
   var byCode={}; ASSETS.forEach(function(a){ byCode[a.code]=a; byId[a.code+"|"+a.issuer]=a; a.px=0; a.chg=null; a.vol=null; a.high=null; a.low=null;
     a.tvlUsd=null; a.holders=null; a.supply=null; a.spark=null; a.domain=null; a.img=null; a.trades=null; });
@@ -1206,7 +1214,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       // price in XLM with the dollar underneath -- the asset trades in XLM, the reader thinks in dollars
       var pxEl=row.querySelector('[data-k="px"]');
       if(pxEl){ var pu=priceUsd(a);
-        setHTML(pxEl, a.px>0 ? (fmtPrice(a.px)+' XLM<span class="sub">'+(pu>0?usdSmall(pu):"")+'</span>') : "\\u2014"); }
+        setHTML(pxEl, pxPair(a.px,pu,usdSmall)); }
       // supply x price: both already fetched by loadAsset, so this costs nothing extra
       var mc=(a.supply!=null&&a.px>0&&xlmUsd>0)?(a.supply*a.px*xlmUsd):null;
       setTxt(row.querySelector('[data-k="mcap"]'),mc!=null?abbrUsd(mc):"\\u2014");
@@ -1498,7 +1506,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       if(!window.__lxDEXloaded)return;                          // reveal all detail values together, not one by one
       var _cu=chgShown(a); var up=(_cu||0)>=0;
       var pu=priceUsd(a), vu=a.vol!=null?a.vol*xlmUsd:null, hi=a.high!=null?a.high:a.px, lo=a.low!=null?a.low:a.px;
-      setHTML(q(".dex-mk-price",tr),fmtPrice(a.px)+' XLM<span class="sub">'+(pu>0?lcmExact(pu):"\\u2014")+'</span>');
+      setHTML(q(".dex-mk-price",tr),pxPair(a.px,pu,lcmExact));
       var chg=q(".dex-mk-change",tr); if(chg){ chg.className="dex-mk-change"+(_cu!=null?(up?" up":" down"):""); setTxt(chg,_cu!=null?(up?"+":"")+_cu.toFixed(2)+"%":"\\u2014"); }
       setHTML(q(".dex-mk-vol",tr),(a.vol!=null?fmtAmt(a.vol)+" XLM":"\\u2014")+'<span class="sub">'+(vu!=null?lcm(vu):"")+'</span>');
       setTxt(q(".dex-mk-trades",tr),a.trades!=null?num(a.trades):"\\u2014");
