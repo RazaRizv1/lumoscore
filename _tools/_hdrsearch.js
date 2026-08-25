@@ -107,7 +107,12 @@ for (const chain of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'st
     let h = json[k];
 
     // Pages that never had the icon are not inner pages (the Dashboard has neither icon nor spacer).
-    const wasInner = h.indexOf('id="headerSearchBtn"') >= 0 || h.indexOf(BOX) >= 0;
+    // The LUMOS token page is an inner page but never carried id="headerSearchBtn" -- its search control
+    // is a plain icon-btn -- so this gate skipped it and it kept the icon-and-popup pattern while every
+    // other inner page got the bar. Named explicitly rather than loosening the gate: a broader test would
+    // start catching the dashboard and the admin pages, which are meant to be excluded.
+    const wasInner = h.indexOf('id="headerSearchBtn"') >= 0 || h.indexOf(BOX) >= 0
+      || /lumoscore-lumos-token/.test(k);
     if (!wasInner) continue;
 
     h = h.replace(/<style id="lx-hdrsearch-css">[\s\S]*?<\/style>/g, '');
