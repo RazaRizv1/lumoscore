@@ -224,6 +224,11 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
   color:var(--text-soft,#8a8fa3);border:1px solid var(--border,#e6e6ea)}
 .lxda-slinks{display:inline-flex;align-items:center;gap:10px}
 .lxda-slinks .lx-soc{margin-left:0}
+/* A2: the issuer on one line -- shortened, with the full key on the copy control beside it. */
+.lxda-srow .lxda-issh{white-space:nowrap}
+.lxda-isscp{margin-left:8px;padding:0;border:0;background:none;cursor:pointer;vertical-align:middle;
+  color:var(--text-soft,#8a8fa3);display:inline-flex;align-items:center}
+.lxda-isscp:hover{color:var(--accent,#ea6a2c)}
 /* A19: the marks were already the real X and Telegram glyphs -- what made them look wrong is that
    .lx-soc paints them with the site accent, so X rendered as an orange X, which is not a logo anyone
    recognises. Each now carries its own brand colour, keyed off the aria-label both builders already
@@ -1844,6 +1849,14 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
         +'<h3></h3><button type="button" class="lxda-sheet-x" aria-label="Close">&times;</button></div>'
         +'<div class="lxda-sbody"></div></div>';
       document.body.appendChild(sh);
+      // The sheet lives outside the region the page's own copy delegation covers, so it carries its own.
+      sh.addEventListener("click",function(e){
+        var b=e.target&&e.target.closest?e.target.closest("[data-copy]"):null; if(!b)return;
+        e.preventDefault(); e.stopPropagation();
+        var v=b.getAttribute("data-copy")||"";
+        try{ navigator.clipboard.writeText(v); }catch(_){}
+        try{ if(window.lxToast)window.lxToast("Issuer address copied"); }catch(_){}
+      });
       sh.addEventListener("click",function(e){
         if(e.target===sh||(e.target.closest&&e.target.closest(".lxda-sheet-x"))){
           e.preventDefault(); sh.classList.remove("open");
@@ -1863,6 +1876,24 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     // asset with neither gets no row rather than an empty one.
     if(body){
       var _socs=[[tomlX,X_SVG,"X"],[tomlTg,TG_SVG,"Telegram"]].filter(function(p){return !!p[0];});
+      // A2: the issuer row -- one line, with the full key on a copy control beside it.
+      try{
+        var _rows=body.querySelectorAll(".lxda-srow");
+        for(var _i=0;_i<_rows.length;_i++){
+          var _k=_rows[_i].querySelector(".k");
+          if(!_k||!/^Issuer$/i.test((_k.textContent||"").trim()))continue;
+          var _v=_rows[_i].querySelector(".v"); if(!_v)break;
+          _v.textContent="";
+          var _sp=document.createElement("span");
+          _sp.className="mono lxda-issh"; _sp.textContent=shortG(ISSUER); _sp.title=ISSUER;
+          var _cp=document.createElement("button");
+          _cp.type="button"; _cp.className="lxda-isscp"; _cp.setAttribute("aria-label","Copy issuer address");
+          _cp.title="Copy issuer address"; _cp.setAttribute("data-copy",ISSUER);
+          _cp.innerHTML='<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>';
+          _v.appendChild(_sp); _v.appendChild(_cp);
+          break;
+        }
+      }catch(_){}
       if(_socs.length){
         var _r=document.createElement("div"); _r.className="lxda-srow";
         var _k=document.createElement("span"); _k.className="k"; _k.textContent="Links"; _r.appendChild(_k);
@@ -3398,6 +3429,39 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   function limPane(){ return q(".dxa-pane-limit"); }
   function limFields(){ return qa(".dxa-pane-limit .dxa-trade-field"); }
   function limPriceInput(){ var f=limFields()[0]; return f?f.querySelector(".dxa-trade-ir input"):null; }
+  // A9: a price is a number. Digits and ONE separator; everything else is dropped as it arrives, so a
+  // mis-aimed paste is cleaned instead of silently accepted. Delegated and gated on the input itself, so
+  // it survives the pane being re-rendered.
+  // Take the LEADING number and stop at the first character that is not part of one, rather than
+  // deleting invalid characters wherever they appear. Deleting them salvaged digits out of the middle of
+  // a pasted key: "0.001 GBNZILSTVQZ4R7IKQDGHY" became 0.00147, a wrong price that looks like a real
+  // one. Stopping at the first stray character leaves 0.001 -- what was actually typed before the paste.
+  function numOnly(v){
+    v=String(v||"").split(",").join(".");
+    var out="",dot=false;
+    for(var i=0;i<v.length;i++){
+      var c=v.charAt(i);
+      if(c>="0"&&c<="9"){ out+=c; continue; }
+      if(c==="."&&!dot){ dot=true; out+=c; continue; }
+      if(out===""&&(c===" "||c==="\\t"))continue;   // leading blanks are not an error
+      break;                                        // anything else ends the number
+    }
+    return out;
+  }
+  function wireNumericLimit(){
+    if(window.__lxDXAnum)return; window.__lxDXAnum=1;
+    document.addEventListener("input",function(e){
+      var t=e.target; if(!t||t.tagName!=="INPUT")return;
+      var f=t.closest?t.closest(".dxa-pane-limit .dxa-trade-field"):null; if(!f)return;
+      var clean=numOnly(t.value);
+      if(clean===t.value)return;
+      // Keep the caret where the user is typing rather than throwing it to the end.
+      var pos=(t.selectionStart||0)-(t.value.length-clean.length);
+      t.value=clean;
+      try{ t.setSelectionRange(Math.max(0,pos),Math.max(0,pos)); }catch(_){}
+      try{ t.dispatchEvent(new Event("change",{bubbles:true})); }catch(_){}
+    },true);
+  }
   function limAmtInput(){ var f=limFields()[1]; return f?f.querySelector(".dxa-trade-ir input"):null; }
   function limTotInput(){ var f=limFields()[2]; return f?f.querySelector(".dxa-trade-ir input"):null; }
   function applyLimit(){
@@ -3564,6 +3628,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     try{ renderExchanges(); }catch(_){}
     try{ wireExchangeFilters(); }catch(_){}
     try{ wireChartTabs(); }catch(_){}
+    try{ wireNumericLimit(); }catch(_){}   // A9: keep non-numeric text out of the limit price
     try{ wireChartType(); }catch(_){}
     try{ var pc=q("#dxaChart,#mdxaChart"); if(pc&&chartPts&&!pc.querySelector(".lxda-line,.lxda-candle"))drawChart(chartPts); }catch(_){}
     try{ applyHolders(); }catch(_){}
