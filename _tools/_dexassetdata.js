@@ -217,6 +217,11 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 .lx-soc{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;
   margin-left:8px;color:var(--accent,#ea6a2c);text-decoration:none;vertical-align:middle;opacity:.9}
 .lx-soc:hover{opacity:1}
+/* B16: marks a balance that is locked forever. Deliberately quiet -- it is a fact about the row, not a
+   warning, and it sits beside the Soroban tag so the two annotations read as one family. */
+.lx-burntag{display:inline-block;margin-left:7px;padding:1px 6px;border-radius:5px;font-size:10px;
+  font-weight:700;letter-spacing:.03em;vertical-align:middle;
+  color:var(--text-soft,#8a8fa3);border:1px solid var(--border,#e6e6ea)}
 .lxda-slinks{display:inline-flex;align-items:center;gap:10px}
 .lxda-slinks .lx-soc{margin-left:0}
 .lx-soc svg{width:14px;height:14px;display:block}
@@ -852,6 +857,15 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   function abbrNum(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}
   function abbrUsd(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return "$"+(n/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(n/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(n/1e3).toFixed(1)+"K";if(a>=1)return "$"+n.toFixed(2);return usd(n);}
   function shortG(a){a=String(a||"");return a.length>12?a.slice(0,4)+"…"+a.slice(-4):a;}
+  // The LumosDAO burn wallet -- 9B locked forever. See the note in the transform for why it is tagged
+  // rather than removed from the list.
+  var LX_BURN_ADDR="GBIU5NISX5IP6VXZK7DEKLZC4ZVPWNCDEYQLQGXG33Y3J2LHPKPCHUOK";
+  var LX_LUMOS_ISS="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
+  function burnTag(addr){
+    if(addr!==LX_BURN_ADDR)return "";
+    if(!(CODE==="LUMOS"&&ISSUER===LX_LUMOS_ISS))return "";
+    return '<span class="lx-burntag" title="Locked forever \u2014 not in circulation">Burned</span>';
+  }
   function priceUsd(){return assetXlm*xlmUsd;}
   // circular initial-avatar as an SVG data-URI background (fallback logo for arbitrary Stellar tokens)
   function avatarBg(code){ var c=String(code||"?"); var hue=0; for(var i=0;i<c.length;i++)hue=(hue*31+c.charCodeAt(i))%360;
@@ -2384,7 +2398,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       if(MOB){ var _c=(h.addr.charAt(0)==="C");
       var _addr='<div class="mdxa-hl-addr mono">'
         +(_c ? (shortG(h.addr)+'<span class="lx-sortag">Soroban</span>')
-             : ('<a class="lx-acct" href="/account/stellar/'+h.addr+'">'+shortG(h.addr)+'</a>'))+'</div>';
+             : ('<a class="lx-acct" href="/account/stellar/'+h.addr+'">'+shortG(h.addr)+'</a>'))+burnTag(h.addr)+'</div>';
       return '<div class="mdxa-hl-row'+(_c?' lx-nolink':'')+'"><span class="mdxa-hl-rank">#'+(_hp*HPP+i+1)+'</span>'
         +'<span class="mdxa-hl-ident">'+identicon(h.addr,28)+'</span>'
         +'<div class="mdxa-hl-meta">'+_addr
@@ -2392,7 +2406,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         +'<div class="mdxa-hl-vals"><div class="mdxa-hl-bal mono">'+abbrNum(h.bal)+'</div>'
         +'<div class="mdxa-hl-pct mono">'+pctTxt+'</div></div></div>'; }
       return '<tr><td class="dxa-hl-rank">'+(_hp*HPP+i+1)+'</td>'
-        +'<td>'+(h.addr.charAt(0)==="C"? ('<span class="wallet-cell lx-nolink">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span><span class="lx-sortag">Soroban contract</span></span>'): ('<a class="lx-acct wallet-cell" href="/account/stellar/'+h.addr+'">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span></a>'))+'</td>'
+        +'<td>'+(h.addr.charAt(0)==="C"? ('<span class="wallet-cell lx-nolink">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span><span class="lx-sortag">Soroban contract</span></span>'): ('<a class="lx-acct wallet-cell" href="/account/stellar/'+h.addr+'">'+identicon(h.addr,24)+'<span class="mono wa">'+shortG(h.addr)+'</span></a>'))+burnTag(h.addr)+'</td>'
         +'<td class="mono">'+abbrNum(h.bal)+'</td>'
         +'<td class="mono">'+(pct>=0.001?pct.toFixed(3):"<0.001")+'%</td>'
         +'<td style="text-align:right"><a class="dxa-hl-explorer" href="https://stellar.expert/explorer/public/'+(h.addr.charAt(0)==="C"?"contract":"account")+'/'+h.addr+'" target="_blank" rel="noopener">View on Explorer <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><path d="M7 17L17 7"/><path d="M7 7h10v10"/></svg></a></td></tr>'; }).join("");
