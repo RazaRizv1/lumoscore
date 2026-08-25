@@ -13,7 +13,9 @@ const LI_PATH='M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853
 const LI_A='<a href="'+SOC.LinkedIn+'" target="_blank" rel="noopener" aria-label="LinkedIn"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="'+LI_PATH+'"/></svg></a>';
 function fixSocials(h){
   // 1) point the existing icons at the real profiles (idempotent: href="#" is gone after the first pass)
-  h=h.replace(/<a href="#" aria-label="X">/g, '<a href="'+SOC.X+'" target="_blank" rel="noopener" aria-label="X">');
+  // Both labels: desktop ships "X", the phone ships "X / Twitter". The captured label is put back
+  // unchanged so each layout keeps the wording it had.
+  h=h.replace(/<a href="#" aria-label="(X(?: \/ Twitter)?)">/g, '<a href="'+SOC.X+'" target="_blank" rel="noopener" aria-label="$1">');
   h=h.replace(/<a href="#" aria-label="Telegram">/g, '<a href="'+SOC.Telegram+'" target="_blank" rel="noopener" aria-label="Telegram">');
   // 2) append LinkedIn right after the Telegram icon (only once per page key)
   if(h.indexOf('aria-label="LinkedIn"')<0){
