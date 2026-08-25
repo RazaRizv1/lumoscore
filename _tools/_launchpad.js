@@ -64,7 +64,22 @@ try{ window.__lxLP={
 }; }catch(_){}
 
 // Live XLM→USD so the cost card shows a real dollar figure instead of a hardcoded rate.
-try{ var _xu=parseFloat(localStorage.getItem("lumos.xlmusd")); if(_xu>0) window.__lxXlmUsd=_xu; }catch(_){}
+// Cache is {v,ts} and only trusted for 6h. The old format was a bare number with no timestamp, so a rate
+// written weeks earlier was believed indefinitely -- which is how a $25 product came to read 173.50 XLM.
+var LXLP_MAXAGE=216e5;   // 6 hours
+try{
+  var _raw=localStorage.getItem("lumos.xlmusd"), _c=null;
+  if(_raw&&_raw.charAt(0)==="{"){ _c=JSON.parse(_raw); }
+  if(_c&&+_c.v>0&&(Date.now()-(+_c.ts||0))<LXLP_MAXAGE) window.__lxXlmUsd=+_c.v;
+  // The wallet/dex pages keep the same figure under a different key; borrow it rather than guessing.
+  if(!(window.__lxXlmUsd>0)){
+    var _r2=localStorage.getItem("lumos.xlmUsd");
+    if(_r2&&_r2.charAt(0)==="{"){ var _c2=JSON.parse(_r2);
+      if(_c2&&+_c2.v>0&&(Date.now()-(+_c2.ts||0))<LXLP_MAXAGE) window.__lxXlmUsd=+_c2.v; }
+  }
+}catch(_){}
+// Last resort only, and deliberately not presented as live: lxLpOnPrice fires again the moment a real
+// rate lands, and every cost row repaints then.
 if(!(window.__lxXlmUsd>0)) window.__lxXlmUsd=0.11;
 window.__lxLpPriceCbs=window.__lxLpPriceCbs||[];
 function lxLpOnPrice(cb){ try{ window.__lxLpPriceCbs.push(cb); if(window.__lxXlmUsdLive) cb(window.__lxXlmUsd); }catch(_){} }
@@ -84,11 +99,26 @@ function lxLpPaintCost(extra){
   lxLpSetRow(/pool.{0,3}network/i, poolX.toFixed(2)+" XLM "+dim+"≈ $"+d2(pU)+"</span>");
   var tc=document.querySelector(".cost-total .v"); if(tc) tc.innerHTML=totX.toFixed(2)+" XLM "+dim+"≈ $"+d2(tU)+"</span>";
 }
-(function(){ try{
-  fetch("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd").then(function(r){return r.json();}).then(function(j){
-    var p=j&&j.stellar&&j.stellar.usd; if(p>0){ window.__lxXlmUsd=p; window.__lxXlmUsdLive=1; try{localStorage.setItem("lumos.xlmusd",String(p));}catch(_){} (window.__lxLpPriceCbs||[]).forEach(function(f){ try{f(p);}catch(_){} }); }
-  }).catch(function(){});
-}catch(_){} })();
+(function(){
+  function adopt(p){
+    if(!(p>0))return false;
+    window.__lxXlmUsd=p; window.__lxXlmUsdLive=1;
+    try{ localStorage.setItem("lumos.xlmusd",JSON.stringify({v:p,ts:Date.now()})); }catch(_){}
+    (window.__lxLpPriceCbs||[]).forEach(function(f){ try{ f(p); }catch(_){} });
+    return true;
+  }
+  // Our own endpoint first: server-side, edge-cached, and not subject to CoinGecko's egress rules.
+  function viaEdge(){
+    return fetch("/lxapi/xlm").then(function(r){ if(!r.ok)throw 0; return r.json(); })
+      .then(function(d){ if(!adopt(d&&+d.usd))throw 0; });
+  }
+  function viaGecko(){
+    return fetch("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd")
+      .then(function(r){ return r.json(); })
+      .then(function(j){ adopt(j&&j.stellar&&+j.stellar.usd); });
+  }
+  try{ viaEdge().catch(function(){ return viaGecko(); }).catch(function(){}); }catch(_){}
+})();
 
 var _lpSdkP=null;
 function lxLpSdk(){
