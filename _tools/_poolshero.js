@@ -290,7 +290,8 @@ html .lumos-promo.lm-on.lm-pools{min-height:0!important}
 .lx-poolhead .mdx-hero-ctas{display:flex!important;align-items:center;gap:10px;
   flex:1 1 auto!important;margin-left:0!important;justify-content:flex-start}
 .lx-poolhead .mdx-hero-btn.primary{order:1;margin-left:0!important;margin-right:0!important}
-.lx-poolhead .mdx-hero-btn.ghost{order:2;margin-left:auto!important;
+.lx-poolhead .mdx-hero-btn.ghost{display:none!important}
+.lx-poolhead .mdx-hero-btn.ghost.lx-unused{order:2;margin-left:auto!important;
   flex-direction:row!important;gap:5px!important;font-size:11.5px!important;font-weight:700!important;
   color:var(--accent,#ea6a2c)!important;text-decoration:none!important;width:auto!important}
 .lx-poolhead .mdx-hero-btn.ghost svg{order:-1;width:11px;height:11px;opacity:1;

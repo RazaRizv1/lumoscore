@@ -247,6 +247,9 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
   transition:background-color .15s ease,border-color .15s ease,opacity .15s ease}
 .lx-soc svg{width:14px;height:14px}
 .lx-soc:hover{opacity:1;background:var(--surface-2,rgba(127,127,140,.10));border-color:var(--accent,#ea6a2c)}
+/* item 1: the marks sit in a flex row that already has a gap -- only the first needs a margin of its own,
+   or every pair ends up separated twice. */
+.lx-soc + .lx-soc{margin-left:0}
 /* B16: marks a balance that is locked forever. Deliberately quiet -- it is a fact about the row, not a
    warning, and it sits beside the Soroban tag so the two annotations read as one family. */
 /* item 13: centre the address and its tag against each other rather than on a shared baseline that the
