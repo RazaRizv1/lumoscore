@@ -36,34 +36,37 @@ const STYLE = '<style id="lx-dashboxes-css">'
   + '.lx-dbx{display:grid;grid-template-columns:1fr;gap:10px;align-content:start;min-width:0}'
   // The grid it now lives in collapses to one column on a phone, and the stack comes with it.
   + '@media(max-width:900px){.lx-dbx{margin-bottom:16px}}'
+  // A row now: the product's graphic on the left, everything else stacked beside it.
   + '.lx-dbx-card{background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:14px;'
-  + 'padding:14px 16px;min-width:0;display:flex;flex-direction:column;gap:10px}'
+  + 'padding:15px 16px;min-width:0;display:flex;flex-direction:row;align-items:flex-start;gap:14px}'
+  // The graphic. currentColor is set from --pc on the card, so one SVG serves every product and both
+  // themes; the tile behind the motif is the same colour at low alpha rather than a second value.
+  + '.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;color:var(--pc,var(--accent,#ea6a2c))}'
+  + '@media(max-width:520px){.lx-dbx-art{width:46px;height:46px;flex:0 0 46px}}'
+  + '.lx-dbx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:9px}'
   + '.lx-dbx-head{display:flex;align-items:center;gap:8px;min-width:0}'
-  + '.lx-dbx-ic{width:26px;height:26px;flex:0 0 26px;border-radius:8px;display:grid;place-items:center;'
-  + 'background:var(--accent-soft,rgba(234,106,44,.12));color:var(--accent,#ea6a2c)}'
-  + '.lx-dbx-ic svg{width:14px;height:14px;display:block}'
-  + '.lx-dbx-t{font:800 13px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
-  + 'letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-  + '.lx-dbx-go{margin-left:auto;flex:0 0 auto;color:var(--text-muted,#8a8fa3);display:flex}'
-  + '.lx-dbx-go svg{width:13px;height:13px;display:block}'
-  + '.lx-dbx-card:hover .lx-dbx-go{color:var(--accent,#ea6a2c)}'
+  + '.lx-dbx-t{font:800 15px/1.1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
+  + 'letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  + '.lx-dbx-go{margin-left:auto;flex:0 0 auto;color:var(--text-muted,#8a8fa3);display:flex;transition:transform .15s,color .15s}'
+  + '.lx-dbx-go svg{width:14px;height:14px;display:block}'
+  + 'a.lx-dbx-card:hover .lx-dbx-go{color:var(--pc,var(--accent,#ea6a2c));transform:translateX(2px)}'
   // Three figures on one line. minmax(0,1fr) so a long number shrinks its own column instead of
   // pushing the other two off the card.
-  + '.lx-dbx-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}'
+  + '.lx-dbx-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}'
   + '.lx-dbx-s{min-width:0}'
   + '.lx-dbx-l{font:600 10px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);'
-  + 'text-transform:uppercase;letter-spacing:.04em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-  + '.lx-dbx-v{margin-top:4px;font:800 19px/1.1 "JetBrains Mono",ui-monospace,monospace;'
+  + 'text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  + '.lx-dbx-v{margin-top:4px;font:800 20px/1.1 "JetBrains Mono",ui-monospace,monospace;'
   + 'color:var(--text,#0e0e10);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
   + 'letter-spacing:-.02em}'
-  // The way out. Named for the page it opens rather than a generic "more", so the card says where it
-  // goes before you commit to it -- which is the whole point of putting it on a dashboard.
-  + '.lx-dbx-link{margin-top:2px;display:inline-flex;align-items:center;gap:5px;'
-  + 'font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--accent,#ea6a2c)}'
+  // The way out, in the product's own colour so the card reads as one control rather than a grey box
+  // with an orange link in it. Named for the page it opens, not a generic "more".
+  + '.lx-dbx-link{display:inline-flex;align-items:center;gap:5px;'
+  + 'font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--pc,var(--accent,#ea6a2c))}'
   + '.lx-dbx-link svg{width:12px;height:12px;transition:transform .15s}'
-  + '.lx-dbx-card:hover .lx-dbx-link svg{transform:translateX(2px)}'
-  // A hairline above the link separates the figures from the action without adding a heavy divider.
-  + '.lx-dbx-foot{margin-top:2px;padding-top:9px;border-top:1px solid var(--border,#ececef)}'
+  + 'a.lx-dbx-card:hover .lx-dbx-link svg{transform:translateX(2px)}'
+  // A hairline above the link separates the figures from the action without a heavy divider.
+  + '.lx-dbx-foot{padding-top:9px;border-top:1px solid var(--border,#ececef)}'
   // The waiting state is the shape of the number, not a spinner and not a zero -- a zero here would be
   // a claim, and on the cross-chain card it is a claim that happens to be true, so the two must not
   // look alike before the data lands.
@@ -74,32 +77,59 @@ const STYLE = '<style id="lx-dashboxes-css">'
   + '@media(prefers-reduced-motion:reduce){.lx-dbx-v.wait{animation:none}}'
   + 'a.lx-dbx-card{text-decoration:none;color:inherit;position:relative;overflow:hidden;'
   + 'transition:border-color .15s,transform .15s,box-shadow .15s}'
-  + 'a.lx-dbx-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-1px);'
-  + 'box-shadow:0 8px 20px -14px rgba(234,106,44,.85)}'
-  // A 3px accent edge that grows in on hover. Cheap, and it makes the whole card read as one control.
+  // Hover borrows the product colour rather than the brand orange, so four cards do not all light up
+  // the same way. color-mix keeps the shadow honest against either theme.
+  + 'a.lx-dbx-card:hover{border-color:var(--pc,var(--accent,#ea6a2c));transform:translateY(-1px);'
+  + 'box-shadow:0 10px 24px -16px var(--pc,rgba(234,106,44,.85))}'
   + 'a.lx-dbx-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;'
-  + 'background:var(--accent,#ea6a2c);transform:scaleY(0);transform-origin:top;transition:transform .18s}'
+  + 'background:var(--pc,var(--accent,#ea6a2c));transform:scaleY(0);transform-origin:top;transition:transform .18s}'
   + 'a.lx-dbx-card:hover::before{transform:scaleY(1)}'
-  + '@media(prefers-reduced-motion:reduce){a.lx-dbx-card,a.lx-dbx-card::before,.lx-dbx-link svg{transition:none}}'
+  + '@media(prefers-reduced-motion:reduce){a.lx-dbx-card,a.lx-dbx-card::before,.lx-dbx-link svg,.lx-dbx-go{transition:none}}'
   + '</style>';
 
-const IC_TRADE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17l6-6 4 4 8-8"/><path d="M21 7v5h-5"/></svg>';
-const IC_POOLS = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3s6 6.4 6 10a6 6 0 0 1-12 0c0-3.6 6-10 6-10z"/></svg>';
-const IC_CHAIN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 14.5l5-5"/><path d="M7 10.5L5.5 12a3.5 3.5 0 0 0 5 5l1.5-1.5"/><path d="M17 13.5L18.5 12a3.5 3.5 0 0 0-5-5L12 8.5"/></svg>';
-const IC_LAUNCH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/></svg>';
 const IC_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
-function card(href, ic, title, stats, cta) {
-  return '<a class="lx-dbx-card" href="' + href + '">'
-    + '<div class="lx-dbx-head"><span class="lx-dbx-ic">' + ic + '</span>'
-    + '<span class="lx-dbx-t">' + title + '</span>'
+// Each tile is one inline SVG: a rounded plate of the product colour at low alpha, a motif that says
+// what the product does, and nothing that needs a file or a second palette. currentColor throughout,
+// so the card sets the colour once via --pc and both themes follow.
+function tile(inner) {
+  return '<svg class="lx-dbx-art" viewBox="0 0 56 56" fill="none" aria-hidden="true">'
+    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="currentColor" opacity=".13"/>'
+    + inner + '</svg>';
+}
+// Trade: a market going up, over its own volume bars.
+const ART_TRADE = tile('<g opacity=".30"><rect x="15" y="33" width="5" height="9" rx="2" fill="currentColor"/>'
+  + '<rect x="25" y="29" width="5" height="13" rx="2" fill="currentColor"/>'
+  + '<rect x="35" y="24" width="5" height="18" rx="2" fill="currentColor"/></g>'
+  + '<path d="M15 30 L24 22 L31 27 L42 15" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
+  + '<path d="M35 15 L42 15 L42 22" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>');
+// Pools: two reserves overlapping, which is what an AMM pair is, inside the ripple of the pool.
+const ART_POOLS = tile('<circle cx="28" cy="28" r="16" stroke="currentColor" stroke-width="1.6" opacity=".30"/>'
+  + '<circle cx="23" cy="28" r="9" fill="currentColor" opacity=".38"/>'
+  + '<circle cx="33" cy="28" r="9" fill="currentColor" opacity=".72"/>');
+// Cross-chain: two networks, and the hop between them.
+const ART_CHAIN = tile('<path d="M17 33 C17 19, 39 19, 39 33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>'
+  + '<circle cx="17" cy="35" r="5.5" fill="currentColor"/>'
+  + '<circle cx="39" cy="35" r="5.5" fill="currentColor"/>'
+  + '<circle cx="28" cy="20" r="2.6" fill="currentColor" opacity=".55"/>');
+// Launchpad: a launch, with the trail it leaves.
+const ART_LAUNCH = tile('<path d="M19 37 L36 20" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>'
+  + '<path d="M29 20 L36 20 L36 27" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>'
+  + '<g opacity=".45" fill="currentColor"><circle cx="19" cy="41" r="2.2"/><circle cx="25" cy="43" r="1.5"/><circle cx="14" cy="44" r="1.2"/></g>');
+
+// pc = the product colour, applied once and inherited by the tile, the hover edge and the link.
+function card(href, art, title, stats, cta, pc) {
+  return '<a class="lx-dbx-card" href="' + href + '" style="--pc:' + pc + '">'
+    + art
+    + '<div class="lx-dbx-body">'
+    + '<div class="lx-dbx-head"><span class="lx-dbx-t">' + title + '</span>'
     + '<span class="lx-dbx-go">' + IC_GO + '</span></div>'
     + '<div class="lx-dbx-stats">'
     + stats.map((s) => '<div class="lx-dbx-s"><div class="lx-dbx-l">' + s[0] + '</div>'
       + '<div class="lx-dbx-v wait" data-k="' + s[1] + '">0000</div></div>').join('')
     + '</div>'
     + '<div class="lx-dbx-foot"><span class="lx-dbx-link">' + cta + IC_GO + '</span></div>'
-    + '</a>';
+    + '</div></a>';
 }
 
 const QAFIRST = '<script id="lx-dashqafirst">(function(){'
@@ -120,10 +150,10 @@ const QAFIRST = '<script id="lx-dashqafirst">(function(){'
   + '})();<' + '/script>';
 
 const ROW = '<div class="lx-dbx">'
-  + card('/trade/stellar', IC_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets')
-  + card('/pools/stellar', IC_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools')
-  + card('/bridge', IC_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['24h Transfers', 'ctx'], ['24h Volume', 'cvol']], 'Bridge USDC')
-  + card('/launchpad', IC_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']], 'Launch a token')
+  + card('/trade/stellar', ART_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets', '#a855f7')
+  + card('/pools/stellar', ART_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools', '#38bdf8')
+  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['24h Transfers', 'ctx'], ['24h Volume', 'cvol']], 'Bridge USDC', '#2dd4bf')
+  + card('/launchpad', ART_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']], 'Launch a token', '#f7b733')
   + '</div>';
 
 const SCRIPT = '<script id="lx-dashboxes">(function(){'
