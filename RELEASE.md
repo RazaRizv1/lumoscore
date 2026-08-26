@@ -41,6 +41,27 @@ real users handling real funds. The gates were not the problem. The verification
 
 ---
 
+## Deploying to staging
+
+**Pushing to the private repo does NOT deploy anything.** Both Pages projects are Direct Upload, so a
+deploy only happens when someone runs wrangler.
+
+This was missed for an entire batch of work: every fix was committed and built, every push succeeded,
+and the staging site kept serving an older upload the whole time. The flow below reads as though
+pushing is enough. It is not.
+
+```
+npm run build            # dist/ from the containers
+node _tools/predeploy_check.js    # UNPIPED -- a pipe hides the exit code
+npm run deploy:staging   # uploads dist/ -> lumoscore-staging.pages.dev
+```
+
+`npm run deploy` is the PRODUCTION project (lumoscore.com). Do not reach for it by reflex.
+
+If the staging Pages project is ever reconnected to this repo so pushes deploy on their own, delete
+this section — until then, a push that is not followed by the command above changes nothing anyone
+can see.
+
 ## The flow
 
 1. Work on `testing-lumoscore`.
