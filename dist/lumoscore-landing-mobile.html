@@ -1158,6 +1158,12 @@ html body .pool-header-row .ph-icons>*{
 .lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
 @keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
+/* item 32: the My Positions count comes from the wallet-side load(), which finishes AFTER reveal()
+   lifts on the network list -- so it briefly showed the template number. .lx-snapd is the marker that
+   a figure is real (set by snapDone), so this count stays hidden until it is rather than guessing. The
+   tab reads "My Pools" with no number for that moment, which is honest; the 7s give-up dashes it AND
+   marks it real, so it can never stay hidden. */
+html.lx-ammready #poolTabs button[data-tab=mine] .count:not(.lx-snapd){visibility:hidden}
 /* #24: the cold-start overlay.
    The ranking is built by an endpoint that walks the whole network in resumable steps and answers
    {warming, scanned, phase} until it is done -- on a cold cache that is roughly twenty-five seconds.
@@ -7574,7 +7580,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       qa(".amm-snapshot-value").forEach(function(v){ if(!v.classList.contains("lx-snapd"))setText(v,"\u2014"); });
       // the tab counts are masked by the SAME gate — dash the design's baked "100" too, or lifting
       // the mask presents it as a real pool count until the data lands a moment later.
-      qa("#poolTabs .count").forEach(function(c){ if(!c.classList.contains("lx-snapd"))setText(c,"\u2014"); });
+      qa("#poolTabs .count").forEach(function(c){ if(!c.classList.contains("lx-snapd")){setText(c,"\u2014");snapDone(c);} });
       qa(".amm-snapshot-vsub, .amm-snapshot-sub").forEach(function(s){ var r=s.closest?s.closest(".amm-snapshot-row"):null;
         var v=r&&r.querySelector(".amm-snapshot-value"); if(v&&!v.classList.contains("lx-snapd"))setText(s,""); });
       reveal(); } },7000);
