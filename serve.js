@@ -929,23 +929,20 @@ async function poolVol(req, res, q) {
 const NETSTATS_URL = 'https://api.stellar.expert/explorer/public/ledger/ledger-stats';
 let NETSTATS_CACHE = null;   // {at, body} — the local server has no edge cache to lean on
 let ASSETCOUNT_CACHE = null; // {at, n}
-// Mirrors assetCount() in functions/lxapi/netstats.js — there is no endpoint that reports how many
-// assets exist, but the explorer's list cursor is a plain offset, so the end can be bracketed and
-// bisected. See that file.
+// Mirrors assetCount() in functions/lxapi/netstats.js — the explorer states the total outright in
+// /asset-stats/overall, which is the same figure its own front page prints as "Unique assets". This
+// used to bracket-and-bisect the /asset list cursor instead, which cost ~20 requests, got rate-limited
+// often, and counted a filtered list (21.5k) rather than the real total (46.5k). See that file.
 async function netAssetCount() {
   if (ASSETCOUNT_CACHE && Date.now() - ASSETCOUNT_CACHE.at < 216e5) return ASSETCOUNT_CACHE.n;
-  const has = async (off) => {
-    const r = await fetch('https://api.stellar.expert/explorer/public/asset?limit=1&cursor=' + off);
-    if (!r.ok) throw new Error('upstream ' + r.status);
-    const d = await r.json();
-    return ((((d || {})._embedded || {}).records) || []).length > 0;
-  };
   try {
-    let lo = 0, hi = 1024;
-    while (await has(hi)) { lo = hi; hi *= 2; if (hi > (1 << 22)) return null; }
-    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (await has(mid)) lo = mid; else hi = mid; }
-    ASSETCOUNT_CACHE = { at: Date.now(), n: lo + 1 };
-    return lo + 1;
+    const r = await fetch('https://api.stellar.expert/explorer/public/asset-stats/overall');
+    if (!r.ok) return null;
+    const d = await r.json();
+    const n = +d.total_assets;
+    if (!(n > 0)) return null;
+    ASSETCOUNT_CACHE = { at: Date.now(), n: n };
+    return n;
   } catch (e) { return null; }
 }
 function netStatsTail(txt, n) {
@@ -1050,15 +1047,9 @@ async function netStats(req, res) {
     const today = recs[recs.length - 1] || null;
     const full = recs.length > 1 ? recs[recs.length - 2] : null;
     if (!full) return send({ error: 'no complete day' }, 502);
-    // Bounded like the Pages Function: five seconds, then go without it. See that file.
-    // NOTE this mirror flatters production: Node keeps the losing promise alive after the response, so
-    // ASSETCOUNT_CACHE fills on its own and the second request here always has the count. A Worker
-    // cancels it instead, which is why the deployed version needed waitUntil. Do not judge that path
-    // from this one.
-    const assets = await Promise.race([
-      netAssetCount(),
-      new Promise((r) => setTimeout(() => r(null), 5000)),
-    ]);
+    // One 63-byte call now, so there is nothing left to bound. The five-second race and the waitUntil
+    // it needed in the Worker both existed only because the old bisection took ~20 sequential requests.
+    const assets = await netAssetCount();
     const body = {
       trades: +full.trades || 0, operations: +full.operations || 0,
       transactions: +full.transactions || 0, payments: +full.payments || 0,
