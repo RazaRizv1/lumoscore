@@ -1883,6 +1883,9 @@ html body .pool-header-row .ph-icons>*{
    the same sub-line height so three cards line up even when one has nothing to say there. */
 .ph-stats .ph-stat{display:flex;flex-direction:column}
 .ph-stat .v{white-space:nowrap;font-size:clamp(16.5px,1.35vw,19.8px);font-weight:800;letter-spacing:-.2px}
+/* item 34: the ticker is not part of the number. Pools whose asset is tickered "1" (or "0", "550",
+   "818" -- there are several on Stellar) made the value read as a decimal that had lost its point. */
+.ph-stat .v .lx-unit{font-size:.7em;font-weight:700;opacity:.6;margin-left:3.3px;letter-spacing:0}
 .ph-stat .s{font-size:13.2px;margin-top:3.3px;min-height:15px;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;color:var(--text-soft)}
 @media(max-width:880px){
@@ -5829,6 +5832,13 @@ bar.innerHTML='<div class="asset-tabs lx-wcgroup">'
   }
 
   function setText(el,t){ if(el&&el.textContent!==t)el.textContent=t; }
+  // item 34: a figure and its ticker as two elements, so the ticker can be styled down. Same
+  // no-op-if-unchanged behaviour as setText, so it is safe on the re-assert ticks.
+  function setAmt(el,txt,unit){
+    if(!el)return;
+    var html=esc(String(txt))+(unit?(' <span class="lx-unit">'+esc(String(unit))+'</span>'):"");
+    if(el.innerHTML!==html)el.innerHTML=html;
+  }
   function q(s){return document.querySelector(s);} function qa(s){return [].slice.call(document.querySelectorAll(s));}
 
   // AUDIT (user-reported: Market Overview shows wrong numbers for a few seconds on refresh). The shimmer
@@ -7292,9 +7302,9 @@ bar.innerHTML='<div class="asset-tabs lx-wcgroup">'
       // #13: these sub-lines were written long and then clipped by the cell they live in, so the one
       // figure worth reading -- the dollar value -- was the part that got cut ("+ 2,317,207 USDC ·
       // ≈ …"). Abbreviated amounts, so the money always fits.
-      if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,big(d.a0.amt)+" "+U0);
+      if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setAmt(v,big(d.a0.amt),U0);
           if(sub)setText(sub,"+ "+qty(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \u00b7 "+usd(d.tvlUsd)):"")); }
-        else { if(v)setText(v,big(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+qty(d.tok)+" "+d.code+(d.tvlUsd>0?(" \u00b7 "+usd(d.tvlUsd)):"")); } }
+        else { if(v)setAmt(v,big(d.xlm),"XLM"); if(sub)setText(sub,"+ "+qty(d.tok)+" "+d.code+(d.tvlUsd>0?(" \u00b7 "+usd(d.tvlUsd)):"")); } }
       // null = the trades fetch never answered. Print a dash: a confident "0 XLM" on a pool that traded all
       // day is worse than admitting we do not know.
       // #12: this used to print the running sum while volDeepen walked the day, labelled ">= N, still
@@ -7314,13 +7324,13 @@ bar.innerHTML='<div class="asset-tabs lx-wcgroup">'
         // vol24Usd is only non-zero when a leg can be priced in dollars directly. On an XLM pair it is
         // derived from the XLM rate, which is why the fallback multiplies rather than giving up: the
         // point of the line is the dollar figure, and the page knows the rate.
-        else { if(v)setText(v,(d.volPartial?"\u2265 ":"")+big(d.vol24Xlm)+" "+U0);
+        else { if(v)setAmt(v,(d.volPartial?"\u2265 ":"")+big(d.vol24Xlm),U0);
           var _vu=(d.vol24Usd>0)?d.vol24Usd:(d.vol24Xlm*unitUsd(d));
           if(sub)setText(sub, (_vu>0)?("\u2248 "+usd(_vu)):"24h volume"); } }
       else if(/fee/.test(cn)){
         if(d.volCounting){ if(v)setText(v,"Counting\u2026"); if(sub)setText(sub,""); }
         else if(d.fees24Xlm==null){ if(v)setText(v,"\u2014"); if(sub)setText(sub,""); }
-        else { if(v)setText(v,(d.volPartial?"\u2265 ":"")+(d.fees24Xlm>=1e6?big(d.fees24Xlm):(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0"))+" "+U0);
+        else { if(v)setAmt(v,(d.volPartial?"\u2265 ":"")+(d.fees24Xlm>=1e6?big(d.fees24Xlm):(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")),U0);
           var _fu=(d.fees24Usd>0)?d.fees24Usd:(d.fees24Xlm*unitUsd(d));
           if(sub)setText(sub,(_fu>0)?("\u2248 "+usd(_fu)):""); } }
     });
