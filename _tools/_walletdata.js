@@ -496,7 +496,21 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'if(!(bal>0))return one();'
 +'return j(H+"/paths/strict-send?"+src+"&source_amount="+bal.toFixed(7)+"&destination_assets=native").then(function(d){var recs=(d&&d._embedded&&d._embedded.records)||[];var out=recs.length?parseFloat(recs[0].destination_amount):0;if(out>0)return out/bal;return one();}).catch(function(){return one();});}'
 // 24h price change % per asset (asset/XLM trade-aggregations; native uses XLM/USDC). Non-blocking, top rows only.
-+'function chg24(b){var now=Date.now(),start=now-26*36e5,base,ctr;if(b.asset_type==="native"){base="base_asset_type=native";ctr="counter_asset_type=credit_alphanum4&counter_asset_code=USDC&counter_asset_issuer=GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";}else{base="base_asset_type="+b.asset_type+"&base_asset_code="+encodeURIComponent(b.asset_code)+"&base_asset_issuer="+b.asset_issuer;ctr="counter_asset_type=native";}return j(H+"/trade_aggregations?"+base+"&"+ctr+"&resolution=3600000&start_time="+start+"&end_time="+now+"&order=asc&limit=100").then(function(d){var r=(d&&d._embedded&&d._embedded.records)||[];if(r.length<2)return null;var f=+r[0].avg,l=+r[r.length-1].avg;if(!(f>0)||!(l>0))return null;return (l-f)/f*100;}).catch(function(){return null;});}'
++'var _eQ=[],_eA=0;function _ePump(){while(_eA<8&&_eQ.length){_eA++;(_eQ.shift())();}}'
++'function eGet(u){return new Promise(function(done){function fin(v){_eA--;_ePump();done(v);}'
+// try/catch matters here: a synchronous throw from fetch() would leave _eA incremented with nothing left
+// to decrement it, the 8 slots would fill, and every remaining change cell would silently stay blank.
++'_eQ.push(function(){try{fetch(u).then(function(r){return r.ok?r.json():null;}).then(function(d){fin(d&&d.error?null:d);},function(){fin(null);});}catch(_){fin(null);}});_ePump();});}'
+// Shared reader for Horizon's trade_aggregations shape: first vs last hourly average over ~26h.
++'function _chgOf(d){var r=(d&&d._embedded&&d._embedded.records)||[];if(r.length<2)return null;var f=+r[0].avg,l=+r[r.length-1].avg;if(!(f>0)||!(l>0))return null;return (l-f)/f*100;}'
++'function chg24(b){var now=Date.now(),start=now-26*36e5;'
++'if(b.asset_type==="native"){return eGet("/lxapi/xlm").then(function(d){var c=d&&d.chg24;return isFinite(c)?+c:null;}).catch(function(){return null;});}'
++'var code=b.asset_code||"",iss=b.asset_issuer||"";'
++'function direct(){var base="base_asset_type="+b.asset_type+"&base_asset_code="+encodeURIComponent(code)+"&base_asset_issuer="+iss;return j(H+"/trade_aggregations?"+base+"&counter_asset_type=native&resolution=3600000&start_time="+start+"&end_time="+now+"&order=asc&limit=100").then(_chgOf).catch(function(){return null;});}'
++'var ok=code.length>0&&code.length<13&&iss.length===56&&iss.charAt(0)==="G";'
++'for(var _k=0;ok&&_k<code.length;_k++){var _c=code.charAt(_k);if(!((_c>="A"&&_c<="Z")||(_c>="a"&&_c<="z")||(_c>="0"&&_c<="9")))ok=false;}'
++'if(!ok)return direct();'
++'return eGet("/lxapi/candles?a="+encodeURIComponent(code+"-"+iss)+"&res=3600000&start="+start+"&end="+now+"&order=asc&limit=100").then(function(d){if(!d)return direct();var v=_chgOf(d);return v===null?direct():v;}).catch(function(){return direct();});}'
 +'function lxFillChg(ri,ch){if(ch==null)return;var el=document.querySelector(\'#assetsTable .lx-chg[data-ci="\'+ri+\'"]\');if(!el)return;var flat=Math.abs(ch)<0.005,up=ch>=0;el.className="lx-chg "+(flat?"flat":(up?"up":"down"));el.textContent=(flat?"":(up?"+":"-"))+Math.abs(ch).toFixed(2)+"%";}'
 // 24h change: computed for EVERY asset straight from Horizon trade-aggregations (chg24); the throttled+retried j() keeps it reliable
 +'function lxLoadChanges(rows){rows.forEach(function(r,ri){chg24(r.b).then(function(ch){lxFillChg(ri,ch);}).catch(function(){});});}'
