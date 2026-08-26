@@ -26,8 +26,12 @@ const SCRIPT = '<script id="lx-poolwarm">(function(){'
   // The XLM rate first, and on EVERY page including Pools -- see the note in the transform. Default cache
   // mode, unlike the pools warm below: here we want the browser cache to answer, not to be bypassed.
   + 'function warmRate(){ try{ fetch("/lxapi/xlm").catch(function(){}); }catch(_){} }'
-  + 'if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(warmRate,1200);},{timeout:5000});'
-  + 'else setTimeout(warmRate,2000);'
+  // item 36: the dashboard's Pools card waits on this one, and it measured 18.6s cold (it samples 800
+  // pools). Warmed at idle from every other page so the next visitor finds it already computed.
+  + 'function warmPoolStats(){ try{ fetch("/lxapi/poolstats").catch(function(){}); }catch(_){} }'
+  + 'function warmAll(){ warmRate(); setTimeout(warmPoolStats,600); }'
+  + 'if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(warmAll,1200);},{timeout:5000});'
+  + 'else setTimeout(warmAll,2000);'
   // The pools pages own this properly -- netFetch drives it with a progress overlay. Anywhere else is
   // fair game. Checked at RUNTIME rather than at build time because these keys share containers.
   + 'if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;'
