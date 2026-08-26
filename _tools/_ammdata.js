@@ -32,6 +32,12 @@ const STYLE = `<style id="lx-amm-css">
 }
 /* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
 #createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
+/* item 2: the Line/Bar tooltips were cut in half. The site tooltip renders ABOVE its trigger
+   (bottom:calc(100% + 6px)), the toggle sits in .chart-head at the very top of .chart-card, and
+   .chart-card is overflow:hidden -- so the tooltip opened straight into the clip. Flipping it BELOW puts
+   it over the chart area, which is inside the card and has room to spare. Scoped to this head, so every
+   other tooltip on the site keeps opening upward. */
+.chart-card .chart-head [data-tooltip]:hover::after{bottom:auto!important;top:calc(100% + 6px)!important}
 /* item 7: the amount input sat 48px outside its own row (row 369px, input ending at +48). It is a flex
    item, and a text input's intrinsic min-content width is its size attribute -- about 20 characters --
    which min-width:auto then refuses to shrink below. min-width:0 is the fix; without it flex:1 cannot

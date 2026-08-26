@@ -1304,7 +1304,187 @@ html body .pool-header-row .ph-icons>*{
    through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
    Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
 .mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
-</style><style id="lx-amm-css">/*lxts:1.1*/
+</style><style id="lx-dashtop-css">/*lxts:1.1*/
+.lx-xlmpanel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:19.8px;align-items:stretch;
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  padding:17.6px 19.8px;margin:0 0 15.4px}
+.lx-xt-l{min-width:0;display:flex;flex-direction:column;gap:2.2px}
+.lx-xt-lbl{font-weight:800;font-size:18.7px;line-height:1.15;font-family:'JetBrains Mono',monospace;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
+/* The XLM mark, sized to the label it sits beside. */
+/* A11: the row the mark and the name now share. */
+.lx-xt-head{display:flex;align-items:center;gap:0;min-width:0}
+.lx-xt-mark{width:28px;height:28px;flex:0 0 28px;border-radius:50%;margin-right:11px;
+  background:url('/assets/tokens/xlm.png') center/cover no-repeat,var(--surface-2)}
+/* The ledger height, beside the eyebrow rather than in the figures below. It is a liveness signal --
+   "this chain is moving" -- not a statistic, and the strip has six of those already. */
+.lx-xt-ledger{font:700 11px/1 'JetBrains Mono',monospace;color:var(--text-muted);letter-spacing:.04em;
+  display:inline-flex;align-items:center;gap:5.5px;margin-left:11px}
+.lx-xt-ledger::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--green,#35c07f);
+  flex:0 0 5px;animation:lxLedgerPulse 2.2s ease-in-out infinite}
+.lx-xt-l>.lx-xt-lbl{display:inline-flex;align-items:center}
+.lx-xt-row{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
+/* #13: the readout. Pinned inside the plot rather than following the pointer, because on a phone the
+   finger IS the pointer and a tooltip under it is a tooltip you cannot see. Top-left, where the series
+   has headroom on every timeframe this chart offers. */
+.lx-xt-tip{position:absolute;left:10px;top:8px;z-index:5;display:none;pointer-events:none;
+  padding:8.8px 11px;border-radius:10px;background:var(--surface);border:1px solid var(--border);
+  box-shadow:0 10px 26px -12px rgba(0,0,0,.5);min-width:132px}
+.lx-xt-tip.on{display:block}
+.lx-xt-tip .d{font-weight:700;font-size:11.6px;line-height:1.3;color:var(--text-muted);margin-bottom:4.4px}
+.lx-xt-tr{display:flex;align-items:baseline;justify-content:space-between;gap:13.2px;line-height:1.45}
+.lx-xt-tr .k{font-weight:600;font-size:11.6px;color:var(--text-soft)}
+.lx-xt-tr .v{font-weight:800;font-size:13.2px;font-family:'JetBrains Mono',monospace;color:var(--text)}
+/* the vertical guide */
+.lx-xt-dot{position:absolute;width:9px;height:9px;margin:-4.9px 0 0 -4.9px;border-radius:50%;
+  background:currentColor;border:2px solid var(--surface,#fff);pointer-events:none;opacity:0;
+  transition:opacity .1s;z-index:6}
+.lx-xt-vl{position:absolute;top:0;bottom:0;width:1px;background:var(--border-strong,#d5d5dd);
+  opacity:0;pointer-events:none;z-index:4}
+.lx-xt-price{font:800 33px/1.05 'JetBrains Mono',monospace;letter-spacing:-1px;color:var(--text)}
+.lx-xt-chg{font:800 13.8px/1 'JetBrains Mono',monospace;padding:5.5px 9.9px;border-radius:999px;
+  display:inline-flex;align-items:center;gap:4.4px}
+.lx-xt-chg.up{background:var(--green-soft);color:var(--green)}
+.lx-xt-chg.down{background:var(--red-soft);color:var(--red)}
+.lx-xt-chg.up::before{content:"\25B2";font-size:8.3px}
+.lx-xt-chg.down::before{content:"\25BC";font-size:8.3px}
+/* the timeframe control, matching the one on the trending card */
+.lx-xt-tfs{display:inline-flex;gap:3.3px;background:var(--surface-2);padding:3.3px;border-radius:9px;margin-top:8.8px;align-self:flex-start}
+.lx-xt-tfs button{padding:5.5px 12.1px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);
+  font:700 12.7px/1 inherit;font-family:inherit;cursor:pointer}
+.lx-xt-tfs button.active{background:var(--accent);color:#fff}
+.lx-xt-chart{position:relative;width:min(420px,42vw);min-width:220px;height:104px;align-self:center}
+/* item 20: subtle horizontal gridlines behind the plot. */
+.lx-xt-chart svg{background-image:repeating-linear-gradient(to bottom,rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}
+.lx-xt-chart svg{display:block;width:100%;height:100%}
+/* ---- the loading state ------------------------------------------------------------------------- */
+/* #3: while the price and the series were in flight this drew a label, a bare em dash, a live-looking
+   timeframe control and a large empty rectangle -- which reads as broken rather than as loading. It is
+   a skeleton now: the same shapes the real content will occupy, shimmering, so the panel does not
+   change size when the data lands and nothing on screen claims to be a value it is not.
+   Keyed on .lx-loading, which is set at build and removed on the first real paint -- never the other
+   way round, so a failed fetch leaves the skeleton rather than a set of empty boxes. */
+/* The shimmer is painted on a PSEUDO-element, never on the element itself, and this is not a style
+   preference -- it is the only version that survives.
+   A logo engine baked into the container (no _tools file emits it any more, so it cannot be fixed at
+   source) sweeps every span/div/i/b holding 1-5 characters and, if the element "looks like an icon",
+   replaces its text with a token image. Its test for icon-ness is a border-radius of 4px or more, or a
+   background that is a gradient. A shimmer skeleton is exactly both -- so the first pass caught the
+   price while it still read as a single em dash, stamped data-logo on it, and from then on blanked the
+   element on EVERY pass regardless of what we wrote into it. The price went "$0.2021" and then empty,
+   for good.
+   On ::after, getComputedStyle(el) reports no radius and no background image, the element fails the
+   test, and it is left alone. */
+.lx-xlmpanel.lx-loading .lx-xt-price{color:transparent!important;position:relative;min-width:170px;
+  display:inline-block}
+.lx-xlmpanel.lx-loading .lx-xt-price::after,
+.lx-xlmpanel.lx-loading .lx-xt-chg::after{content:"";position:absolute;inset:0;border-radius:7px;
+  background:linear-gradient(90deg,rgba(127,127,140,.10) 25%,rgba(127,127,140,.22) 37%,rgba(127,127,140,.10) 63%);
+  background-size:400% 100%;animation:lxDtShim 1.3s ease-in-out infinite;pointer-events:none}
+.lx-xlmpanel.lx-loading .lx-xt-chg{color:transparent!important;position:relative;min-width:88px;
+  background:none!important}
+.lx-xlmpanel.lx-loading .lx-xt-chg::after{border-radius:999px}
+.lx-xlmpanel.lx-loading .lx-xt-chg::before{content:none!important}
+.lx-xlmpanel.lx-loading .lx-xt-tfs{opacity:.45;pointer-events:none}
+@keyframes lxDtShim{0%{background-position:100% 50%}100%{background-position:0 50%}}
+/* The empty chart box: a shimmering band with the rough profile of a line, so the space reads as a
+   chart that has not arrived rather than as a hole in the card. */
+.lx-xt-chart.lx-empty::after{content:"";position:absolute;inset:0;border-radius:10px;
+  background:linear-gradient(to top,rgba(127,127,140,.09),rgba(127,127,140,0))}
+.lx-xt-chart.lx-empty::before{content:"";position:absolute;left:0;right:0;bottom:26%;height:2px;
+  border-radius:2px;opacity:.5;
+  background:linear-gradient(90deg,rgba(127,127,140,.10) 25%,rgba(127,127,140,.30) 37%,rgba(127,127,140,.10) 63%);
+  background-size:400% 100%;animation:lxDtShim 1.3s ease-in-out infinite}
+
+/* ---- the stats strip, now INSIDE the card ------------------------------------------------------ */
+/* #1: TVL, market cap, volume and the ledger were a separate rail of bordered pills under the chart --
+   two boxes saying one thing, and the numbers read as chrome rather than as the network's state. They
+   move into the panel and become a strip across its foot: the same anatomy the Trade and Pools heroes
+   use (headline block, hairline, figures), so all three tops of the app now read the same way.
+   The pills are NOT rebuilt here -- _realdata.js still owns them and repaints them atomically. Only
+   the row's placement and its dress change, which is why a repaint cannot undo any of this. */
+.lx-xlmpanel{padding-bottom:0}
+.lx-xlmpanel>.status-row{grid-column:1/-1;margin:15.4px -19.8px 0;padding:14.3px 19.8px 15.4px;
+  border-top:1px solid var(--border);border-radius:0 0 15px 15px;
+  background:linear-gradient(180deg,rgba(127,127,140,.03),rgba(127,127,140,.07));
+  display:grid!important;grid-template-columns:auto repeat(4,minmax(0,1fr))!important;
+  gap:0!important;width:auto!important;align-items:center}
+/* strip the pill costume: no ground, no border, a faded hairline between figures instead */
+.lx-xlmpanel>.status-row>.status-pill{background:none!important;border:0!important;box-shadow:none!important;
+  border-radius:0!important;padding:0!important;margin:0!important;min-width:0!important;
+  width:auto!important;display:flex!important;flex-direction:row!important;align-items:center!important;
+  justify-content:center!important;gap:14.3px;position:relative;min-height:46px}
+/* A rule BETWEEN figures: centred, short, and fading at both ends, so it separates without drawing a
+   gridline down the band. First child never gets one, which is why this is an adjacent-sibling rule
+   rather than a border plus a :first-child reset. */
+.lx-xlmpanel>.status-row>.status-pill+.status-pill::before{content:"";position:absolute;left:0;top:50%;
+  transform:translateY(-50%);width:1px;height:40px;
+  background:linear-gradient(180deg,transparent,var(--border) 20%,var(--border) 80%,transparent)}
+/* value over label, both flush left of each other, the pair centred as a block beside the mark */
+.lx-xlmpanel>.status-row .lx-vpt{align-items:flex-start!important;gap:4.4px!important}
+.lx-xlmpanel>.status-row .lbl{font:800 10.5px/1 'JetBrains Mono',monospace!important;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--text-soft)!important;order:2}
+.lx-xlmpanel>.status-row .val{font:700 20.9px/1.1 'JetBrains Mono',monospace!important;
+  letter-spacing:-.4px;color:var(--text)!important;order:1;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font-variant-numeric:tabular-nums!important}
+/* the marks anchor the figures rather than decorating them, so they grow with the numbers */
+.lx-xlmpanel>.status-row .lx-pico{width:34px!important;height:34px!important;border-radius:11px}
+.lx-xlmpanel>.status-row .lx-pico svg{width:18px!important;height:18px!important}
+/* the heading is a label, not a figure: it keeps its own left edge and its trailing gutter */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard{flex-direction:row!important;align-items:center!important;gap:9.9px;
+  justify-content:flex-start!important;padding-right:24.2px!important}
+/* A11: a heading for the figures below, not a third statement of which chain this is. The logo and the
+   NETWORK/Stellar pair are hidden and the heading is drawn in their place -- CSS, because this node is
+   kept live for the chain engine to rebrand and anything written into it would be overwritten. */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard img,
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard .lx-netpill,
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard .lx-netmeta{display:none!important}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard::before{content:"Network Stats";
+  font:800 16.5px/1.2 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.01em;color:var(--text)}
+.lx-xlmpanel>.status-row .lx-netmeta{display:flex;flex-direction:column;gap:3.3px;min-width:0}
+.lx-xlmpanel>.status-row .lx-netpill{width:26px;height:26px;flex:0 0 26px;border-radius:50%;overflow:hidden}
+/* the ledger height is the "this chain is alive" signal, so it gets a pulse rather than another number */
+.lx-xlmpanel>.status-row .lx-ledgerpill .val{display:inline-flex;align-items:center;gap:6.6px}
+.lx-xlmpanel>.status-row .lx-ledgerpill .val::before{content:"";width:6px;height:6px;border-radius:50%;
+  background:var(--green,#35c07f);flex:0 0 6px;animation:lxLedgerPulse 2.2s ease-in-out infinite}
+@keyframes lxLedgerPulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+
+@media(max-width:1180px){
+.lx-xlmpanel>.status-row{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14.3px 0!important}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard{grid-column:1/-1;padding-right:0!important}
+/* Spanning the row leaves the heading alone in a wide empty band, which is the very thing this strip
+   was reported for. A hairline that flexes into the leftover width turns that gap into a section rule. */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard::after{content:"";flex:1 1 auto;height:1px;margin-left:15.4px;
+  background:linear-gradient(90deg,var(--border),transparent)}
+/* the heading owns its own row now, so the first figure starts a row and takes no rule */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard+.status-pill::before{display:none}
+}
+@media(max-width:860px){
+.lx-xlmpanel{grid-template-columns:1fr;gap:13.2px;padding:15.4px 15.4px 0}
+.lx-xt-chart{width:100%;min-width:0;height:92px}
+.lx-xt-price{font-size:27.5px}
+.lx-xlmpanel>.status-row{margin:13.2px -15.4px 0;padding:15.4px 15.4px 16.5px;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:19.8px 0!important}
+/* the network cell spans the row, so the four figures below it pair up cleanly two by two */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard{grid-column:1/-1;padding-right:0!important}
+/* children 2 and 4 open a row (no rule); 3 and 5 sit in the right column and take one */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n)::before{display:none}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1)::before{display:block}
+/* item 13: in a 2x2 block the eye reads down the columns, so the marks share a left edge rather than
+   being centred per cell -- centred figures of different widths put each mark at its own x. */
+.lx-xlmpanel>.status-row>.status-pill{justify-content:flex-start!important;padding-left:15.4px!important}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n){padding-left:0!important}
+.lx-xlmpanel>.status-row .val{font-size:18.7px!important}
+.lx-xlmpanel>.status-row .lx-pico{width:32px!important;height:32px!important}
+.lx-xlmpanel>.status-row .lx-pico svg{width:17px!important;height:17px!important}
+}
+
+/* item 26: an empty .kpi-grid was contributing 44px of margin between the stats panel and Quick
+   actions, on top of the greeting row's own 30.8px. Hidden only while it holds no cards. */
+.kpi-grid:not(:has(> *)){display:none!important}
+/* item 13: the dashboard's top cards are present from the first paint rather than fading in. Their entrance animation showed as an empty page on every refresh. The reveal script still runs and still handles every other card type. */
+html.lcm-ready .quick-card,html.lcm-ready .activity-card{opacity:1!important;transform:none!important}
+</style><style id="lx-realdata-css">/*lxts:1.1*//* B14: the wallet that performed the action, where "via LumosCore" used to repeat the section title.   Mono and muted, the same treatment every other address on the site gets. */.lx-actwho{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13.2px;color:var(--text-soft,#8a8fa3);text-decoration:none;display:inline-block}.lx-actwho{display:inline-flex;align-items:center;gap:6.6px}.lx-actwho:hover{color:var(--accent,#ea6a2c)}.lx-actdot{width:13px;height:13px;border-radius:50%;flex:0 0 13px;display:inline-block}.act-ic.lx-actasset{background-size:cover;background-position:center;background-repeat:no-repeat;display:flex;align-items:center;justify-content:center;font-size:9.9px;font-weight:800;color:var(--text-soft,#8a8fa3);overflow:hidden}/* #15: the per-figure mark. flex:0 0 so a long value can never squeeze it out, and the pill becomes a   two-part row -- icon, then label over value -- rather than a single text column. */.lx-vpill{display:flex!important;align-items:center;gap:9.9px;min-width:0}.lx-vpt{display:flex;flex-direction:column;gap:2.2px;min-width:0}.lx-pico{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;  border-radius:8px;background:currentColor}.lx-pico svg{width:15px;height:15px;display:block;color:#fff;filter:drop-shadow(0 0 0 transparent)}/* The tinted square is the icon colour at low alpha, with the glyph itself full strength on top. */.lx-pico{background:color-mix(in srgb, currentColor 16%, transparent)}.lx-pico svg{color:currentColor}@media(max-width:900px){.lx-pico{width:22px;height:22px}.lx-pico svg{width:13px;height:13px}}.greeting-row>.greeting{flex:1 1 auto!important;min-width:0!important}.status-row{display:grid!important;grid-template-columns:auto repeat(4,minmax(0,1fr))!important;gap:11px!important;width:100%!important}.status-row .lx-netcard .lx-netmeta{padding-right:19.8px}.status-row .lx-vpill .val{font-size:19.8px!important;font-weight:800!important;letter-spacing:-.2px}.status-row .lx-vpill .lbl{font-size:11.6px!important;letter-spacing:.07em}@media(max-width:1100px){.status-row .lx-vpill .val{font-size:17.6px!important}}@media(max-width:900px){.status-row .lx-vpill .val{font-size:16.5px!important}.status-row .lx-vpill .lbl{font-size:10.5px!important}}.page>.market-grid:last-child{margin-bottom:0}.page:has(>.market-grid:last-child){padding-bottom:52.8px}/* lx-nstats-mobile: the five-column row above is a DESKTOP layout. On a phone it overflows - auto sizes to its content and every 1fr floors at min-content, so the last card runs off screen. Two columns fit, and min-width:0 lets the cards actually shrink into them. */@media (max-width:760px){.status-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}.status-row>.status-pill{min-width:0!important;width:auto!important}.status-row>.status-pill.lx-netcard{grid-column:1 / -1}}.status-row .status-pill{width:auto!important}/* #6: the transaction link at the end of each platform-activity row. Icon only -- the row already says what happened, and a word here would compete with it. */.activity-feed-row .lx-actlink{margin-left:13.2px;flex:0 0 auto;display:inline-flex;align-items:center;color:var(--text-muted);text-decoration:none;transition:color .12s}.activity-feed-row .lx-actlink:hover{color:var(--accent)}/* item 7: the per-asset mark, inline with the code it names, sized to the text. */.live-pulse{display:none!important}.lx-actident{flex:0 0 auto;vertical-align:-6px;margin-right:7.7px;box-shadow:0 0 0 1px rgba(127,127,140,.22)}.activity-feed-row .act-inl{width:20px!important;height:20px!important;vertical-align:-5px}.activity-feed-row .act-ic{width:34px!important;height:34px!important;border-radius:11px}.activity-feed-row{padding-top:12.1px!important;padding-bottom:12.1px!important;transition:background .16s ease}.activity-feed-row:hover{background:rgba(127,127,140,.06)}.activity-feed-row .lx-actwho{display:inline-flex;align-items:center;font-variant-numeric:tabular-nums}.activity-feed-row .lx-actwho:hover{color:var(--accent,#ea6a2c)}/* item 7: a row whose codes carry their own marks does not also need one at its left edge. */.activity-feed-row:has(.act-inl) .act-ic{display:none!important}.act-inl{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:5.5px;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:rgba(127,127,140,.18);flex:0 0 auto}.activity-feed-row .info .type{overflow-wrap:anywhere}.status-row{opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready{opacity:1!important;animation:none;transition:opacity .3s ease}</style><style id="lx-dashboxes-css">/*lxts:1.1*/.lx-dbx{display:grid;grid-template-columns:1fr;gap:11px;align-content:start;min-width:0}@media(max-width:900px){.lx-dbx{margin-bottom:17.6px}}.lx-dbx-card{background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:14px;padding:16.5px 17.6px;min-width:0;display:flex;flex-direction:row;align-items:flex-start;gap:15.4px}.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;color:var(--pc,var(--accent,#ea6a2c))}@media(max-width:520px){.lx-dbx-art{width:46px;height:46px;flex:0 0 46px}}.lx-dbx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:9.9px}.lx-dbx-head{display:flex;align-items:center;gap:8.8px;min-width:0}.lx-dbx-t{font:800 16.5px/1.1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lx-dbx-go{margin-left:auto;flex:0 0 auto;color:var(--text-muted,#8a8fa3);display:flex;transition:transform .15s,color .15s}.lx-dbx-go svg{width:14px;height:14px;display:block}a.lx-dbx-card:hover .lx-dbx-go{color:var(--pc,var(--accent,#ea6a2c));transform:translateX(2px)}.lx-dbx-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.lx-dbx-s{min-width:0}.lx-dbx-l{font:600 11px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lx-dbx-v{margin-top:4.4px;font:800 22px/1.1 "JetBrains Mono",ui-monospace,monospace;color:var(--text,#0e0e10);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em}.lx-dbx-link{display:inline-flex;align-items:center;gap:5.5px;font:700 13.2px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--pc,var(--accent,#ea6a2c))}.lx-dbx-link svg{width:12px;height:12px;transition:transform .15s}a.lx-dbx-card:hover .lx-dbx-link svg{transform:translateX(2px)}.lx-dbx-foot{padding-top:9.9px;border-top:1px solid var(--border,#ececef)}.lx-dbx-v.wait{color:transparent;border-radius:5px;background-image:linear-gradient(90deg,rgba(140,140,150,.10),rgba(140,140,150,.20),rgba(140,140,150,.10));background-size:200% 100%;animation:lxdbxshim 1.2s ease-in-out infinite}@keyframes lxdbxshim{0%{background-position:200% 0}100%{background-position:-200% 0}}@media(prefers-reduced-motion:reduce){.lx-dbx-v.wait{animation:none}}a.lx-dbx-card{text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:border-color .15s,transform .15s,box-shadow .15s}a.lx-dbx-card:hover{border-color:var(--pc,var(--accent,#ea6a2c));transform:translateY(-1px);box-shadow:0 10px 24px -16px var(--pc,rgba(234,106,44,.85))}a.lx-dbx-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--pc,var(--accent,#ea6a2c));transform:scaleY(0);transform-origin:top;transition:transform .18s}a.lx-dbx-card:hover::before{transform:scaleY(1)}@media(prefers-reduced-motion:reduce){a.lx-dbx-card,a.lx-dbx-card::before,.lx-dbx-link svg,.lx-dbx-go{transition:none}}</style><style id="lx-amm-css">/*lxts:1.1*/
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
    onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
@@ -1326,6 +1506,12 @@ html body .pool-header-row .ph-icons>*{
 }
 /* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
 #createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
+/* item 2: the Line/Bar tooltips were cut in half. The site tooltip renders ABOVE its trigger
+   (bottom:calc(100% + 6px)), the toggle sits in .chart-head at the very top of .chart-card, and
+   .chart-card is overflow:hidden -- so the tooltip opened straight into the clip. Flipping it BELOW puts
+   it over the chart area, which is inside the card and has room to spare. Scoped to this head, so every
+   other tooltip on the site keeps opening upward. */
+.chart-card .chart-head [data-tooltip]:hover::after{bottom:auto!important;top:calc(100% + 6px)!important}
 /* item 7: the amount input sat 48px outside its own row (row 369px, input ending at +48). It is a flex
    item, and a text input's intrinsic min-content width is its size attribute -- about 20 characters --
    which min-width:auto then refuses to shrink below. min-width:0 is the fix; without it flex:1 cannot
@@ -1789,187 +1975,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-dashtop-css">/*lxts:1.1*/
-.lx-xlmpanel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:19.8px;align-items:stretch;
-  background:var(--surface);border:1px solid var(--border);border-radius:16px;
-  padding:17.6px 19.8px;margin:0 0 15.4px}
-.lx-xt-l{min-width:0;display:flex;flex-direction:column;gap:2.2px}
-.lx-xt-lbl{font-weight:800;font-size:18.7px;line-height:1.15;font-family:'JetBrains Mono',monospace;
-  letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
-/* The XLM mark, sized to the label it sits beside. */
-/* A11: the row the mark and the name now share. */
-.lx-xt-head{display:flex;align-items:center;gap:0;min-width:0}
-.lx-xt-mark{width:28px;height:28px;flex:0 0 28px;border-radius:50%;margin-right:11px;
-  background:url('/assets/tokens/xlm.png') center/cover no-repeat,var(--surface-2)}
-/* The ledger height, beside the eyebrow rather than in the figures below. It is a liveness signal --
-   "this chain is moving" -- not a statistic, and the strip has six of those already. */
-.lx-xt-ledger{font:700 11px/1 'JetBrains Mono',monospace;color:var(--text-muted);letter-spacing:.04em;
-  display:inline-flex;align-items:center;gap:5.5px;margin-left:11px}
-.lx-xt-ledger::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--green,#35c07f);
-  flex:0 0 5px;animation:lxLedgerPulse 2.2s ease-in-out infinite}
-.lx-xt-l>.lx-xt-lbl{display:inline-flex;align-items:center}
-.lx-xt-row{display:flex;align-items:baseline;gap:11px;flex-wrap:wrap}
-/* #13: the readout. Pinned inside the plot rather than following the pointer, because on a phone the
-   finger IS the pointer and a tooltip under it is a tooltip you cannot see. Top-left, where the series
-   has headroom on every timeframe this chart offers. */
-.lx-xt-tip{position:absolute;left:10px;top:8px;z-index:5;display:none;pointer-events:none;
-  padding:8.8px 11px;border-radius:10px;background:var(--surface);border:1px solid var(--border);
-  box-shadow:0 10px 26px -12px rgba(0,0,0,.5);min-width:132px}
-.lx-xt-tip.on{display:block}
-.lx-xt-tip .d{font-weight:700;font-size:11.6px;line-height:1.3;color:var(--text-muted);margin-bottom:4.4px}
-.lx-xt-tr{display:flex;align-items:baseline;justify-content:space-between;gap:13.2px;line-height:1.45}
-.lx-xt-tr .k{font-weight:600;font-size:11.6px;color:var(--text-soft)}
-.lx-xt-tr .v{font-weight:800;font-size:13.2px;font-family:'JetBrains Mono',monospace;color:var(--text)}
-/* the vertical guide */
-.lx-xt-dot{position:absolute;width:9px;height:9px;margin:-4.9px 0 0 -4.9px;border-radius:50%;
-  background:currentColor;border:2px solid var(--surface,#fff);pointer-events:none;opacity:0;
-  transition:opacity .1s;z-index:6}
-.lx-xt-vl{position:absolute;top:0;bottom:0;width:1px;background:var(--border-strong,#d5d5dd);
-  opacity:0;pointer-events:none;z-index:4}
-.lx-xt-price{font:800 33px/1.05 'JetBrains Mono',monospace;letter-spacing:-1px;color:var(--text)}
-.lx-xt-chg{font:800 13.8px/1 'JetBrains Mono',monospace;padding:5.5px 9.9px;border-radius:999px;
-  display:inline-flex;align-items:center;gap:4.4px}
-.lx-xt-chg.up{background:var(--green-soft);color:var(--green)}
-.lx-xt-chg.down{background:var(--red-soft);color:var(--red)}
-.lx-xt-chg.up::before{content:"\25B2";font-size:8.3px}
-.lx-xt-chg.down::before{content:"\25BC";font-size:8.3px}
-/* the timeframe control, matching the one on the trending card */
-.lx-xt-tfs{display:inline-flex;gap:3.3px;background:var(--surface-2);padding:3.3px;border-radius:9px;margin-top:8.8px;align-self:flex-start}
-.lx-xt-tfs button{padding:5.5px 12.1px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);
-  font:700 12.7px/1 inherit;font-family:inherit;cursor:pointer}
-.lx-xt-tfs button.active{background:var(--accent);color:#fff}
-.lx-xt-chart{position:relative;width:min(420px,42vw);min-width:220px;height:104px;align-self:center}
-/* item 20: subtle horizontal gridlines behind the plot. */
-.lx-xt-chart svg{background-image:repeating-linear-gradient(to bottom,rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}
-.lx-xt-chart svg{display:block;width:100%;height:100%}
-/* ---- the loading state ------------------------------------------------------------------------- */
-/* #3: while the price and the series were in flight this drew a label, a bare em dash, a live-looking
-   timeframe control and a large empty rectangle -- which reads as broken rather than as loading. It is
-   a skeleton now: the same shapes the real content will occupy, shimmering, so the panel does not
-   change size when the data lands and nothing on screen claims to be a value it is not.
-   Keyed on .lx-loading, which is set at build and removed on the first real paint -- never the other
-   way round, so a failed fetch leaves the skeleton rather than a set of empty boxes. */
-/* The shimmer is painted on a PSEUDO-element, never on the element itself, and this is not a style
-   preference -- it is the only version that survives.
-   A logo engine baked into the container (no _tools file emits it any more, so it cannot be fixed at
-   source) sweeps every span/div/i/b holding 1-5 characters and, if the element "looks like an icon",
-   replaces its text with a token image. Its test for icon-ness is a border-radius of 4px or more, or a
-   background that is a gradient. A shimmer skeleton is exactly both -- so the first pass caught the
-   price while it still read as a single em dash, stamped data-logo on it, and from then on blanked the
-   element on EVERY pass regardless of what we wrote into it. The price went "$0.2021" and then empty,
-   for good.
-   On ::after, getComputedStyle(el) reports no radius and no background image, the element fails the
-   test, and it is left alone. */
-.lx-xlmpanel.lx-loading .lx-xt-price{color:transparent!important;position:relative;min-width:170px;
-  display:inline-block}
-.lx-xlmpanel.lx-loading .lx-xt-price::after,
-.lx-xlmpanel.lx-loading .lx-xt-chg::after{content:"";position:absolute;inset:0;border-radius:7px;
-  background:linear-gradient(90deg,rgba(127,127,140,.10) 25%,rgba(127,127,140,.22) 37%,rgba(127,127,140,.10) 63%);
-  background-size:400% 100%;animation:lxDtShim 1.3s ease-in-out infinite;pointer-events:none}
-.lx-xlmpanel.lx-loading .lx-xt-chg{color:transparent!important;position:relative;min-width:88px;
-  background:none!important}
-.lx-xlmpanel.lx-loading .lx-xt-chg::after{border-radius:999px}
-.lx-xlmpanel.lx-loading .lx-xt-chg::before{content:none!important}
-.lx-xlmpanel.lx-loading .lx-xt-tfs{opacity:.45;pointer-events:none}
-@keyframes lxDtShim{0%{background-position:100% 50%}100%{background-position:0 50%}}
-/* The empty chart box: a shimmering band with the rough profile of a line, so the space reads as a
-   chart that has not arrived rather than as a hole in the card. */
-.lx-xt-chart.lx-empty::after{content:"";position:absolute;inset:0;border-radius:10px;
-  background:linear-gradient(to top,rgba(127,127,140,.09),rgba(127,127,140,0))}
-.lx-xt-chart.lx-empty::before{content:"";position:absolute;left:0;right:0;bottom:26%;height:2px;
-  border-radius:2px;opacity:.5;
-  background:linear-gradient(90deg,rgba(127,127,140,.10) 25%,rgba(127,127,140,.30) 37%,rgba(127,127,140,.10) 63%);
-  background-size:400% 100%;animation:lxDtShim 1.3s ease-in-out infinite}
-
-/* ---- the stats strip, now INSIDE the card ------------------------------------------------------ */
-/* #1: TVL, market cap, volume and the ledger were a separate rail of bordered pills under the chart --
-   two boxes saying one thing, and the numbers read as chrome rather than as the network's state. They
-   move into the panel and become a strip across its foot: the same anatomy the Trade and Pools heroes
-   use (headline block, hairline, figures), so all three tops of the app now read the same way.
-   The pills are NOT rebuilt here -- _realdata.js still owns them and repaints them atomically. Only
-   the row's placement and its dress change, which is why a repaint cannot undo any of this. */
-.lx-xlmpanel{padding-bottom:0}
-.lx-xlmpanel>.status-row{grid-column:1/-1;margin:15.4px -19.8px 0;padding:14.3px 19.8px 15.4px;
-  border-top:1px solid var(--border);border-radius:0 0 15px 15px;
-  background:linear-gradient(180deg,rgba(127,127,140,.03),rgba(127,127,140,.07));
-  display:grid!important;grid-template-columns:auto repeat(4,minmax(0,1fr))!important;
-  gap:0!important;width:auto!important;align-items:center}
-/* strip the pill costume: no ground, no border, a faded hairline between figures instead */
-.lx-xlmpanel>.status-row>.status-pill{background:none!important;border:0!important;box-shadow:none!important;
-  border-radius:0!important;padding:0!important;margin:0!important;min-width:0!important;
-  width:auto!important;display:flex!important;flex-direction:row!important;align-items:center!important;
-  justify-content:center!important;gap:14.3px;position:relative;min-height:46px}
-/* A rule BETWEEN figures: centred, short, and fading at both ends, so it separates without drawing a
-   gridline down the band. First child never gets one, which is why this is an adjacent-sibling rule
-   rather than a border plus a :first-child reset. */
-.lx-xlmpanel>.status-row>.status-pill+.status-pill::before{content:"";position:absolute;left:0;top:50%;
-  transform:translateY(-50%);width:1px;height:40px;
-  background:linear-gradient(180deg,transparent,var(--border) 20%,var(--border) 80%,transparent)}
-/* value over label, both flush left of each other, the pair centred as a block beside the mark */
-.lx-xlmpanel>.status-row .lx-vpt{align-items:flex-start!important;gap:4.4px!important}
-.lx-xlmpanel>.status-row .lbl{font:800 10.5px/1 'JetBrains Mono',monospace!important;letter-spacing:.13em;
-  text-transform:uppercase;color:var(--text-soft)!important;order:2}
-.lx-xlmpanel>.status-row .val{font:700 20.9px/1.1 'JetBrains Mono',monospace!important;
-  letter-spacing:-.4px;color:var(--text)!important;order:1;white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;font-variant-numeric:tabular-nums!important}
-/* the marks anchor the figures rather than decorating them, so they grow with the numbers */
-.lx-xlmpanel>.status-row .lx-pico{width:34px!important;height:34px!important;border-radius:11px}
-.lx-xlmpanel>.status-row .lx-pico svg{width:18px!important;height:18px!important}
-/* the heading is a label, not a figure: it keeps its own left edge and its trailing gutter */
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard{flex-direction:row!important;align-items:center!important;gap:9.9px;
-  justify-content:flex-start!important;padding-right:24.2px!important}
-/* A11: a heading for the figures below, not a third statement of which chain this is. The logo and the
-   NETWORK/Stellar pair are hidden and the heading is drawn in their place -- CSS, because this node is
-   kept live for the chain engine to rebrand and anything written into it would be overwritten. */
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard img,
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard .lx-netpill,
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard .lx-netmeta{display:none!important}
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard::before{content:"Network Stats";
-  font:800 16.5px/1.2 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.01em;color:var(--text)}
-.lx-xlmpanel>.status-row .lx-netmeta{display:flex;flex-direction:column;gap:3.3px;min-width:0}
-.lx-xlmpanel>.status-row .lx-netpill{width:26px;height:26px;flex:0 0 26px;border-radius:50%;overflow:hidden}
-/* the ledger height is the "this chain is alive" signal, so it gets a pulse rather than another number */
-.lx-xlmpanel>.status-row .lx-ledgerpill .val{display:inline-flex;align-items:center;gap:6.6px}
-.lx-xlmpanel>.status-row .lx-ledgerpill .val::before{content:"";width:6px;height:6px;border-radius:50%;
-  background:var(--green,#35c07f);flex:0 0 6px;animation:lxLedgerPulse 2.2s ease-in-out infinite}
-@keyframes lxLedgerPulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
-
-@media(max-width:1180px){
-.lx-xlmpanel>.status-row{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:14.3px 0!important}
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard{grid-column:1/-1;padding-right:0!important}
-/* Spanning the row leaves the heading alone in a wide empty band, which is the very thing this strip
-   was reported for. A hairline that flexes into the leftover width turns that gap into a section rule. */
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard::after{content:"";flex:1 1 auto;height:1px;margin-left:15.4px;
-  background:linear-gradient(90deg,var(--border),transparent)}
-/* the heading owns its own row now, so the first figure starts a row and takes no rule */
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard+.status-pill::before{display:none}
-}
-@media(max-width:860px){
-.lx-xlmpanel{grid-template-columns:1fr;gap:13.2px;padding:15.4px 15.4px 0}
-.lx-xt-chart{width:100%;min-width:0;height:92px}
-.lx-xt-price{font-size:27.5px}
-.lx-xlmpanel>.status-row{margin:13.2px -15.4px 0;padding:15.4px 15.4px 16.5px;
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:19.8px 0!important}
-/* the network cell spans the row, so the four figures below it pair up cleanly two by two */
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard{grid-column:1/-1;padding-right:0!important}
-/* children 2 and 4 open a row (no rule); 3 and 5 sit in the right column and take one */
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n)::before{display:none}
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1)::before{display:block}
-/* item 13: in a 2x2 block the eye reads down the columns, so the marks share a left edge rather than
-   being centred per cell -- centred figures of different widths put each mark at its own x. */
-.lx-xlmpanel>.status-row>.status-pill{justify-content:flex-start!important;padding-left:15.4px!important}
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n){padding-left:0!important}
-.lx-xlmpanel>.status-row .val{font-size:18.7px!important}
-.lx-xlmpanel>.status-row .lx-pico{width:32px!important;height:32px!important}
-.lx-xlmpanel>.status-row .lx-pico svg{width:17px!important;height:17px!important}
-}
-
-/* item 26: an empty .kpi-grid was contributing 44px of margin between the stats panel and Quick
-   actions, on top of the greeting row's own 30.8px. Hidden only while it holds no cards. */
-.kpi-grid:not(:has(> *)){display:none!important}
-/* item 13: the dashboard's top cards are present from the first paint rather than fading in. Their entrance animation showed as an empty page on every refresh. The reveal script still runs and still handles every other card type. */
-html.lcm-ready .quick-card,html.lcm-ready .activity-card{opacity:1!important;transform:none!important}
-</style><style id="lx-realdata-css">/*lxts:1.1*//* B14: the wallet that performed the action, where "via LumosCore" used to repeat the section title.   Mono and muted, the same treatment every other address on the site gets. */.lx-actwho{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13.2px;color:var(--text-soft,#8a8fa3);text-decoration:none;display:inline-block}.lx-actwho{display:inline-flex;align-items:center;gap:6.6px}.lx-actwho:hover{color:var(--accent,#ea6a2c)}.lx-actdot{width:13px;height:13px;border-radius:50%;flex:0 0 13px;display:inline-block}.act-ic.lx-actasset{background-size:cover;background-position:center;background-repeat:no-repeat;display:flex;align-items:center;justify-content:center;font-size:9.9px;font-weight:800;color:var(--text-soft,#8a8fa3);overflow:hidden}/* #15: the per-figure mark. flex:0 0 so a long value can never squeeze it out, and the pill becomes a   two-part row -- icon, then label over value -- rather than a single text column. */.lx-vpill{display:flex!important;align-items:center;gap:9.9px;min-width:0}.lx-vpt{display:flex;flex-direction:column;gap:2.2px;min-width:0}.lx-pico{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;  border-radius:8px;background:currentColor}.lx-pico svg{width:15px;height:15px;display:block;color:#fff;filter:drop-shadow(0 0 0 transparent)}/* The tinted square is the icon colour at low alpha, with the glyph itself full strength on top. */.lx-pico{background:color-mix(in srgb, currentColor 16%, transparent)}.lx-pico svg{color:currentColor}@media(max-width:900px){.lx-pico{width:22px;height:22px}.lx-pico svg{width:13px;height:13px}}.greeting-row>.greeting{flex:1 1 auto!important;min-width:0!important}.status-row{display:grid!important;grid-template-columns:auto repeat(4,minmax(0,1fr))!important;gap:11px!important;width:100%!important}.status-row .lx-netcard .lx-netmeta{padding-right:19.8px}.status-row .lx-vpill .val{font-size:19.8px!important;font-weight:800!important;letter-spacing:-.2px}.status-row .lx-vpill .lbl{font-size:11.6px!important;letter-spacing:.07em}@media(max-width:1100px){.status-row .lx-vpill .val{font-size:17.6px!important}}@media(max-width:900px){.status-row .lx-vpill .val{font-size:16.5px!important}.status-row .lx-vpill .lbl{font-size:10.5px!important}}.page>.market-grid:last-child{margin-bottom:0}.page:has(>.market-grid:last-child){padding-bottom:52.8px}/* lx-nstats-mobile: the five-column row above is a DESKTOP layout. On a phone it overflows - auto sizes to its content and every 1fr floors at min-content, so the last card runs off screen. Two columns fit, and min-width:0 lets the cards actually shrink into them. */@media (max-width:760px){.status-row{grid-template-columns:repeat(2,minmax(0,1fr))!important}.status-row>.status-pill{min-width:0!important;width:auto!important}.status-row>.status-pill.lx-netcard{grid-column:1 / -1}}.status-row .status-pill{width:auto!important}/* #6: the transaction link at the end of each platform-activity row. Icon only -- the row already says what happened, and a word here would compete with it. */.activity-feed-row .lx-actlink{margin-left:13.2px;flex:0 0 auto;display:inline-flex;align-items:center;color:var(--text-muted);text-decoration:none;transition:color .12s}.activity-feed-row .lx-actlink:hover{color:var(--accent)}/* item 7: the per-asset mark, inline with the code it names, sized to the text. */.live-pulse{display:none!important}.lx-actident{flex:0 0 auto;vertical-align:-6px;margin-right:7.7px;box-shadow:0 0 0 1px rgba(127,127,140,.22)}.activity-feed-row .act-inl{width:20px!important;height:20px!important;vertical-align:-5px}.activity-feed-row .act-ic{width:34px!important;height:34px!important;border-radius:11px}.activity-feed-row{padding-top:12.1px!important;padding-bottom:12.1px!important;transition:background .16s ease}.activity-feed-row:hover{background:rgba(127,127,140,.06)}.activity-feed-row .lx-actwho{display:inline-flex;align-items:center;font-variant-numeric:tabular-nums}.activity-feed-row .lx-actwho:hover{color:var(--accent,#ea6a2c)}/* item 7: a row whose codes carry their own marks does not also need one at its left edge. */.activity-feed-row:has(.act-inl) .act-ic{display:none!important}.act-inl{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:5.5px;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:rgba(127,127,140,.18);flex:0 0 auto}.activity-feed-row .info .type{overflow-wrap:anywhere}.status-row{opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready{opacity:1!important;animation:none;transition:opacity .3s ease}</style><style id="lx-dashboxes-css">/*lxts:1.1*/.lx-dbx{display:grid;grid-template-columns:1fr;gap:11px;align-content:start;min-width:0}@media(max-width:900px){.lx-dbx{margin-bottom:17.6px}}.lx-dbx-card{background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:14px;padding:16.5px 17.6px;min-width:0;display:flex;flex-direction:row;align-items:flex-start;gap:15.4px}.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;color:var(--pc,var(--accent,#ea6a2c))}@media(max-width:520px){.lx-dbx-art{width:46px;height:46px;flex:0 0 46px}}.lx-dbx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:9.9px}.lx-dbx-head{display:flex;align-items:center;gap:8.8px;min-width:0}.lx-dbx-t{font:800 16.5px/1.1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.015em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lx-dbx-go{margin-left:auto;flex:0 0 auto;color:var(--text-muted,#8a8fa3);display:flex;transition:transform .15s,color .15s}.lx-dbx-go svg{width:14px;height:14px;display:block}a.lx-dbx-card:hover .lx-dbx-go{color:var(--pc,var(--accent,#ea6a2c));transform:translateX(2px)}.lx-dbx-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}.lx-dbx-s{min-width:0}.lx-dbx-l{font:600 11px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lx-dbx-v{margin-top:4.4px;font:800 22px/1.1 "JetBrains Mono",ui-monospace,monospace;color:var(--text,#0e0e10);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.02em}.lx-dbx-link{display:inline-flex;align-items:center;gap:5.5px;font:700 13.2px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--pc,var(--accent,#ea6a2c))}.lx-dbx-link svg{width:12px;height:12px;transition:transform .15s}a.lx-dbx-card:hover .lx-dbx-link svg{transform:translateX(2px)}.lx-dbx-foot{padding-top:9.9px;border-top:1px solid var(--border,#ececef)}.lx-dbx-v.wait{color:transparent;border-radius:5px;background-image:linear-gradient(90deg,rgba(140,140,150,.10),rgba(140,140,150,.20),rgba(140,140,150,.10));background-size:200% 100%;animation:lxdbxshim 1.2s ease-in-out infinite}@keyframes lxdbxshim{0%{background-position:200% 0}100%{background-position:-200% 0}}@media(prefers-reduced-motion:reduce){.lx-dbx-v.wait{animation:none}}a.lx-dbx-card{text-decoration:none;color:inherit;position:relative;overflow:hidden;transition:border-color .15s,transform .15s,box-shadow .15s}a.lx-dbx-card:hover{border-color:var(--pc,var(--accent,#ea6a2c));transform:translateY(-1px);box-shadow:0 10px 24px -16px var(--pc,rgba(234,106,44,.85))}a.lx-dbx-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--pc,var(--accent,#ea6a2c));transform:scaleY(0);transform-origin:top;transition:transform .18s}a.lx-dbx-card:hover::before{transform:scaleY(1)}@media(prefers-reduced-motion:reduce){a.lx-dbx-card,a.lx-dbx-card::before,.lx-dbx-link svg,.lx-dbx-go{transition:none}}</style></head>
+</style></head>
 <body>
 <div class="app">
 
@@ -5287,7 +5293,280 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
-})();</script><script id="lx-poolwarm">(function(){try{function warmRate(){ try{ fetch("/lxapi/xlm").catch(function(){}); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(warmRate,1200);},{timeout:5000});else setTimeout(warmRate,2000);if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-ammdata">(function(){
+})();</script><script id="lx-poolwarm">(function(){try{function warmRate(){ try{ fetch("/lxapi/xlm").catch(function(){}); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(warmRate,1200);},{timeout:5000});else setTimeout(warmRate,2000);if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-dashtop">(function(){
+  if(window.__lxDashTop)return;window.__lxDashTop=1;
+  function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}
+  // item 16 -- see the note in the transform. Only touches cards that are on screen right now.
+  function lcmShowAbove(){
+    try{
+      var root=document.documentElement;
+      if(!root.classList.contains('lcm-ready'))return;      // motion layer not in play; nothing hidden
+      var els=document.querySelectorAll('.kpi-card,.quick-card,.product-card,.market-card,.activity-card');
+      var vh=window.innerHeight||root.clientHeight||0;
+      for(var i=0;i<els.length;i++){
+        var el=els[i];
+        if(el.hasAttribute('data-lcm-done'))continue;
+        var r=el.getBoundingClientRect();
+        if(r.top<vh&&r.bottom>0)el.setAttribute('data-lcm-done','1');
+      }
+    }catch(_){}
+  }
+  // Now, next frame, and once more after the design's own driver has had its turn -- cards that are
+  // rendered late (the activity card waits on data) would otherwise miss the first pass.
+  try{
+    lcmShowAbove();
+    if(window.requestAnimationFrame)requestAnimationFrame(lcmShowAbove);
+    document.addEventListener('DOMContentLoaded',lcmShowAbove);
+    // Catch cards that are laid out a frame or two after the hooks above.
+    var _lcmT=0, _lcmIv=setInterval(function(){
+      lcmShowAbove();
+      if((_lcmT+=60)>=1500){ clearInterval(_lcmIv); }
+    },60);
+  }catch(_){}
+  if(net()!=="stellar")return;
+  var DAYS={"24H":1,"7D":7,"1M":30,"1Y":365}, tf="24H", cache={}, series=null;
+  function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
+  function money(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}
+  function build(){
+    var row=document.querySelector(".status-row"); if(!row)return null;
+    // Document-wide, NOT host.querySelector. Once the strip has moved inside the panel, row.parentNode
+    // IS the panel -- and an element is not its own descendant, so the host lookup found nothing and
+    // this built a SECOND panel inside the first one. Everything then painted into the copy: the price
+    // stayed a dash and the chart stayed empty on the panel you could actually see.
+    var p=document.querySelector(".lx-xlmpanel");
+    if(p)return p;
+    var host=row.parentNode; if(!host)return null;
+    p=document.createElement("div"); p.className="lx-xlmpanel lx-loading"; p.setAttribute("data-lx-noswap","1");
+    p.innerHTML='<div class="lx-xt-l">'
+      // #15: the asset this panel is about was named in 10px uppercase mono -- smaller than any figure
+      // under it, and with no mark at all, so the panel opened without saying whose price it was.
+      // The logo is the one already served for XLM everywhere else on the site, not a new asset.
+      +'<span class="lx-xt-head">'
+      +'<span class="lx-xt-mark" aria-hidden="true"></span>'
+      +'<span class="lx-xt-lbl">Stellar (XLM)</span>'
+      +'</span>'
+      +'<div class="lx-xt-row"><span class="lx-xt-price">\u2014</span><span class="lx-xt-chg"></span></div>'
+      +'<div class="lx-xt-tfs">'
+        +'<button type="button" data-lxnonav="1" data-tf="24H" class="active">24H</button>'
+        +'<button type="button" data-lxnonav="1" data-tf="7D">7D</button>'
+        +'<button type="button" data-lxnonav="1" data-tf="1M">1M</button>'
+        +'<button type="button" data-lxnonav="1" data-tf="1Y">1Y</button>'
+      +'</div></div>'
+      +'<div class="lx-xt-chart lx-empty"></div>';
+    host.insertBefore(p,row);
+    p.appendChild(row);            // #1: the strip lives inside the card -- see place()
+    // The dashboard maps clicked label text to a destination, so a control inside it needs the
+    // design's own opt-out or "1M" and friends navigate the page away.
+    [].slice.call(p.querySelectorAll(".lx-xt-tfs button")).forEach(function(b){
+      b.addEventListener("click",function(e){
+        try{e.preventDefault();e.stopPropagation();}catch(_){}
+        var t=b.getAttribute("data-tf"); if(t===tf)return; tf=t;
+        [].slice.call(p.querySelectorAll(".lx-xt-tfs button")).forEach(function(x){x.classList.toggle("active",x===b);});
+        load();
+      });
+    });
+    return p;
+  }
+  function draw(pts){
+    var p=build(); if(!p)return;
+    var box=p.querySelector(".lx-xt-chart"); if(!box)return;
+    if(!pts||pts.length<2){ box.classList.add("lx-empty"); box.innerHTML=""; return; }
+    box.classList.remove("lx-empty");
+    var W=420,H=104,PAD=6,n=pts.length;
+    var mn=Math.min.apply(null,pts),mx=Math.max.apply(null,pts),rg=(mx-mn)||Math.abs(mx)||1;
+    var up=pts[n-1]>=pts[0], col=up?"#35c07f":"#ff5b5b";
+    var d="";
+    for(var i=0;i<n;i++){
+      var x=(i/(n-1))*W, y=H-PAD-((pts[i]-mn)/rg)*(H-PAD*2);
+      d+=(i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1);
+    }
+    var gid="lxxt"+(up?"u":"d");
+    box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'
+      +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
+      +'<stop offset="0" stop-color="'+col+'" stop-opacity=".26"/>'
+      +'<stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
+      +'<path d="'+d+' L'+W+' '+H+' L0 '+H+' Z" fill="url(#'+gid+')" stroke="none"></path>'
+      +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path>'
+      +'</svg>';
+    box.__lxpts=pts;
+    box.__lxcol=col;                       // so the dot can match the line it marks
+    wireHover(box);
+  }
+  // #13: read the chart by pointing at it.
+  //
+  // The panel shows one price -- the latest -- and a shape. Anyone who wants to know what the price was
+  // in the middle of that shape has no way to ask. Three figures on hover: the price at that point,
+  // which varies along the series, and the two network facts the panel is already fetching for the strip
+  // below (pool TVL and the asset count), which do not.
+  //
+  // The two constants are labelled plainly and shown as 'now', because presenting a current figure
+  // beside a historical price without saying so would imply we have its history, which we do not.
+  function wireHover(box){
+    box.style.position=box.style.position||"relative";
+    // The ELEMENTS are re-created on every draw, the LISTENERS only once. draw() rebuilds the box with
+    // innerHTML, which removes anything appended here -- and guarding both together meant the readout
+    // existed after the first render and was silently wiped by the second.
+    var tip=box.querySelector(".lx-xt-tip");
+    if(!tip){ tip=document.createElement("div"); tip.className="lx-xt-tip"; box.appendChild(tip); }
+    var vl=box.querySelector(".lx-xt-vl");
+    if(!vl){ vl=document.createElement("div"); vl.className="lx-xt-vl"; box.appendChild(vl); }
+    var dot=box.querySelector(".lx-xt-dot");
+    if(!dot){ dot=document.createElement("div"); dot.className="lx-xt-dot"; box.appendChild(dot); }
+    if(box.__lxhov)return; box.__lxhov=1;
+    function net(){
+      // Read from the strip the page has already painted, so the two can never disagree and this costs
+      // no request of its own.
+      var out={};
+      try{ [].slice.call(document.querySelectorAll(".status-row .lx-vpill")).forEach(function(p){
+        var k=((p.querySelector(".lbl")||{}).textContent||"").trim().toLowerCase();
+        var v=((p.querySelector(".val")||{}).textContent||"").trim();
+        if(k&&v)out[k]=v; }); }catch(_){}
+      return out;
+    }
+    function at(clientX){
+      // Resolved per call, not captured: the pair above is replaced on every redraw, and a listener
+      // holding the old pair would write into elements no longer in the document.
+      var tip=box.querySelector(".lx-xt-tip"), vl=box.querySelector(".lx-xt-vl");
+      if(!tip||!vl)return;
+      var pts=box.__lxpts; if(!pts||pts.length<2)return;
+      var r=box.getBoundingClientRect(); if(!r.width)return;
+      var f=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
+      var i=Math.round(f*(pts.length-1));
+      var v=pts[i];
+      var n=net();
+      var when=labelFor(i,pts.length);
+      tip.innerHTML=(when?('<div class="d">'+when+'</div>'):'')
+        +'<div class="lx-xt-tr"><span class="k">Price</span><span class="v">'+fmtUsd(v)+'</span></div>'
+        ;
+      tip.classList.add("on");
+      vl.style.left=Math.round(f*r.width)+"px"; vl.style.opacity="1";
+      // Snapped to the point the tooltip is quoting, not to the raw pointer position -- a dot a few
+      // pixels off the value it names is worse than no dot. Mirrors draw()'s geometry exactly: same
+      // W/H/PAD, same min/max over the same array, so the marker cannot drift from the path.
+      var _dot=box.querySelector(".lx-xt-dot");
+      if(_dot){
+        var _H=104,_PAD=6;
+        var _mn=Math.min.apply(null,pts),_mx=Math.max.apply(null,pts),_rg=(_mx-_mn)||Math.abs(_mx)||1;
+        var _yv=_H-_PAD-((pts[i]-_mn)/_rg)*(_H-_PAD*2);
+        _dot.style.left=Math.round((i/(pts.length-1))*r.width)+"px";
+        _dot.style.top=(_yv/_H*r.height).toFixed(1)+"px";
+        _dot.style.color=box.__lxcol||"var(--accent,#ea6a2c)";
+        _dot.style.opacity="1";
+      }
+    }
+    function off(){ var t=box.querySelector(".lx-xt-tip"),v=box.querySelector(".lx-xt-vl"),d=box.querySelector(".lx-xt-dot");
+      if(t)t.classList.remove("on"); if(v)v.style.opacity="0"; if(d)d.style.opacity="0"; }
+    box.addEventListener("mousemove",function(e){ at(e.clientX); });
+    box.addEventListener("mouseleave",off);
+    // Touch: read on tap and follow a drag. Deliberately NOT cleared on touchend -- on a phone the finger
+    // is the pointer, so lifting it would erase the value the tap was for. A tap elsewhere clears it.
+    box.addEventListener("touchstart",function(e){ if(e.touches&&e.touches[0])at(e.touches[0].clientX); },{passive:true});
+    box.addEventListener("touchmove",function(e){ if(e.touches&&e.touches[0])at(e.touches[0].clientX); },{passive:true});
+    document.addEventListener("touchstart",function(e){
+      var t=e.target; if(t&&t.closest&&t.closest(".lx-xt-chart"))return; off();
+    },{passive:true});
+  }
+  // The series carries values only, not timestamps, so the label is derived from the position within
+  // the selected timeframe rather than invented. Whole days for the long ranges, hours for 24H.
+  function labelFor(i,n){
+    var back=(n-1-i); if(back===0)return "Now";
+    // tf is the BUTTON label -- 24H / 7D / 1M / 1Y -- and DAYS maps it to a span. Deriving the label
+    // from the position within that span is the only honest option: the series carries values, not
+    // timestamps, so an exact date would be invented.
+    var days=DAYS[tf]||1;
+    if(days<=1){ var h=Math.round(back*24/(n-1)); return h===0?"Now":(h+"h ago"); }
+    if(days>=365){ var mo=Math.round(back*12/(n-1)); return mo===0?"This month":(mo+(mo===1?" month ago":" months ago")); }
+    var d=Math.round(back*days/(n-1));
+    return d===0?"Today":(d+(d===1?" day ago":" days ago"));
+  }
+  function fmtUsd(v){ v=+v||0;
+    if(v>=1)return "$"+v.toLocaleString("en-US",{maximumFractionDigits:4});
+    return "$"+(+v.toFixed(6)).toString(); }
+  function load(){
+    if(cache[tf]){ draw(cache[tf]); return; }
+    // A series from an earlier visit, drawn immediately and replaced when the live one lands. Six hours,
+    // because a stale SHAPE is worth far more than an empty box and the headline price is live anyway.
+    try{ var w=JSON.parse(localStorage.getItem("lumos.xlmSeries."+tf)||"null");
+      if(w&&w.v&&w.v.length>1&&(Date.now()-w.ts<216e5)){ cache[tf]=w.v; draw(w.v); } }catch(_){}
+    var days=DAYS[tf]||1;
+    // #18: was CoinGecko, called by every visitor against a tier that allows a handful of requests a
+    // minute per IP -- so the chart frequently never arrived at all. Our own edge asks once and caches,
+    // and thins the series there, so this gets at most 180 points at edge speed. Warm from localStorage
+    // first, so a return visit draws instantly instead of drawing nothing until the network answers.
+    j("/lxapi/xlm?chart="+days)
+      .then(function(d){
+        var pr=(d&&d.prices)||[];
+        var v=pr.map(function(x){return +x[1];}).filter(function(x){return x>0;});
+        // 1Y comes back daily and 24H five-minutely; thin the long ranges so the line stays readable
+        if(v.length>180){ var step=Math.ceil(v.length/180),out=[];
+          for(var i=0;i<v.length;i+=step)out.push(v[i]);
+          if(out[out.length-1]!==v[v.length-1])out.push(v[v.length-1]);
+          v=out; }
+        cache[tf]=v; try{ localStorage.setItem("lumos.xlmSeries."+tf,JSON.stringify({v:v,ts:Date.now()})); }catch(_){}
+        draw(v);
+      }).catch(function(){ draw(null); });
+  }
+  function paintPrice(c){
+    if(!c)return; var p=build(); if(!p)return;
+    var el=p.querySelector(".lx-xt-price"), ch=p.querySelector(".lx-xt-chg");
+    if(el&&c.usd!=null){ el.textContent=money(c.usd); p.classList.remove("lx-loading"); }
+    if(ch&&c.usd_24h_change!=null){
+      var u=c.usd_24h_change>=0;
+      ch.className="lx-xt-chg "+(u?"up":"down");
+      ch.textContent=Math.abs(c.usd_24h_change).toFixed(2)+"% (24h)";
+    }
+  }
+  // _realdata.js already asks CoinGecko for exactly this object on the same page. CoinGecko's free
+  // tier is a handful of calls a minute, so this waits for that one rather than making a second --
+  // and only falls back to its own request if that never arrives.
+  // #18: this used to sit on its hands for SIX SECONDS waiting for _realdata.js to publish the same
+  // object before it would ask for itself -- measured, that was the whole delay before a price showed.
+  // The edge answer is cached and cheap, so there is no longer any reason to wait for anyone: ask
+  // immediately, and take __lxCG too if it happens to arrive first.
+  function price(){
+    if(window.__lxCG){ paintPrice(window.__lxCG); return; }
+    try{ window.addEventListener("lx:cg",function(){ paintPrice(window.__lxCG); }); }catch(_){}
+    j("/lxapi/xlm").then(function(d){
+      if(!d||!(+d.usd>0))return;
+      paintPrice({usd:+d.usd,usd_24h_change:d.chg24});
+      try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:+d.usd,chg:d.chg24,ts:Date.now()})); }catch(_){}
+    }).catch(function(){});
+  }
+  // The ledger height, as the "network is alive" signal. One Horizon call, on a slow beat.
+  function ledger(){
+    j("https://horizon.stellar.org/ledgers?order=desc&limit=1").then(function(d){
+      var r=((d._embedded&&d._embedded.records)||[])[0]; if(!r)return;
+      var p=build(); if(!p)return;
+      var lbl=p.querySelector(".lx-xt-lbl"); if(!lbl||!lbl.parentNode)return;
+      // Removed: the ledger height is no longer shown. Any element left over from a previous build is
+      // cleared here so it cannot survive a cached page.
+      var el=p.querySelector(".lx-xt-ledger");
+      if(el&&el.parentNode)el.parentNode.removeChild(el);
+      // A stale pill from a previous build would otherwise sit in the strip as a seventh cell.
+      var old=document.querySelector(".status-row .lx-ledgerpill");
+      if(old&&old.parentNode)old.parentNode.removeChild(old);
+    }).catch(function(){});
+  }
+  // #1: keep the strip inside the card. _realdata.js rebuilds the value pills in place on every stats()
+  // pass -- it does not move the row -- but the dashboard's own re-skin can re-parent it, and build()
+  // only runs once. Re-asserting costs an identity check and is a no-op the rest of the time.
+  function place(){
+    var p=document.querySelector(".lx-xlmpanel"), row=document.querySelector(".status-row");
+    if(!p||!row)return;
+    if(row.parentNode!==p||p.lastElementChild!==row)p.appendChild(row);
+  }
+  // _realdata.js rebuilds the four pills on every stats() pass, which drops ours -- so it is
+  // re-added on the same beat rather than once.
+  function run(){ build(); place(); load(); price(); ledger(); }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
+  else run();
+  setInterval(function(){ place(); price(); ledger(); },45000);
+  // The strip is re-parented the moment it exists rather than on the 45s beat: _realdata.js paints its
+  // warm-cache values before this file's first run in some orders, and a strip that appears outside the
+  // card and then jumps into it is a flash.
+  try{ new MutationObserver(function(){ place(); })
+    .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
+})();</script><script id="lx-realdata">(function(){if(window.__lxRealData)return;window.__lxRealData=1;function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}if(net()!=="stellar")return;var SWAP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M4 13h11"/><path d="M17 14l3-3-3-3"/><path d="M20 11H9"/></svg>',DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}function usd(n){return "$"+abbr(n);}function amt(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";if(a>=1)return (Math.round(n*100)/100).toString();if(a>0){var s=n.toFixed(7).replace(/0+$/,"").replace(/\.$/,"");return s&&s!=="0"?s:"<0.0000001";}return "0";}function price(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}function ago(t){var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);if(s<60)return Math.floor(s)+"s";if(s<3600)return Math.floor(s/60)+"m";if(s<86400)return Math.floor(s/3600)+"h";return Math.floor(s/86400)+"d";}function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}var PICO={"Assets":["#f7b733",'<circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.2h5M9.5 13.8h5"/>'],"Pools":["#38bdf8",'<path d="M12 3.2l5.2 5.6a7.2 7.2 0 1 1-10.4 0z"/>'],"Trades":["#a855f7",'<path d="M7 9h11l-2.6-2.6M17 15H6l2.6 2.6"/>'],"Accounts":["#2dd4bf",'<circle cx="12" cy="9" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/>']};function pico(lbl){var e=PICO[lbl];if(!e)return "";return '<span class="lx-pico" style="color:'+e[0]+'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+e[1]+'</svg></span>';}function vpill(lbl,val,tip){return '<span class="status-pill lx-vpill" data-lx-noswap=""'+(tip?' title="'+tip+'"':"")+'>'+pico(lbl)+'<span class="lx-vpt"><span class="lbl">'+lbl+'</span><span class="val">'+val+'</span></span></span>';}function rebuildStats(v){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");[].slice.call(row.querySelectorAll(".status-pill")).forEach(function(p){if(p!==net)p.parentNode.removeChild(p);});var frag=document.createElement("div");frag.innerHTML=vpill("Assets",v.assets,"Every asset ever issued on Stellar")+vpill("Pools",v.pools,"Liquidity pools on the Stellar AMM")+vpill("Trades",v.trades,v.dayTip)+vpill("Accounts",v.accounts,(v.accountsExact?v.accountsExact+" \u2014 e":"E")+"very account ever funded on Stellar, a running total rather than a daily figure");while(frag.firstChild)row.appendChild(frag.firstChild);row.classList.add("lx-ready");}function stats(){Promise.all([j("/lxapi/xlm").catch(function(){return null;}),j("/lxapi/netstats").catch(function(){return null;}),j("/lxapi/poolstats").catch(function(){return null;})]).then(function(res){var x=res[0]||{};var ns=res[1];var ps=res[2];var cg={usd:x.usd,usd_24h_change:x.chg24,usd_market_cap:x.mcap,usd_24h_vol:x.vol24};try{window.__lxCG=cg;window.dispatchEvent(new CustomEvent("lx:cg"));}catch(_){}var _n=function(x){return (x==null||!isFinite(x))?"\u2014":Math.round(x).toLocaleString("en-US");};var _na=function(x){if(x==null||!isFinite(x))return "\u2014";var a=Math.abs(x);if(a>=1e9)return (x/1e9).toFixed(2)+"B";if(a>=1e6)return (x/1e6).toFixed(2)+"M";return _n(x);};var _day="";try{if(ns&&ns.ts)_day="On "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC), the last full day";}catch(_){}var _v={assets:(ns&&ns.assets)?_n(ns.assets):"\u2014",pools:(ps&&ps.pools)?_n(ps.pools):"\u2014",trades:(ns&&ns.trades)?_n(ns.trades):"\u2014",accounts:(ns&&ns.accounts)?_na(ns.accounts):"\u2014",accountsExact:(ns&&ns.accounts)?_n(ns.accounts):"",dayTip:_day};var _old=null;try{_old=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}if(_old&&!_old.length){for(var _k in _v){if(_v[_k]==="\u2014"&&_old[_k]&&_old[_k]!=="\u2014")_v[_k]=_old[_k];}}rebuildStats(_v);var _keep={};for(var _k2 in _v){if(_v[_k2]&&_v[_k2]!=="\u2014")_keep[_k2]=_v[_k2];}try{localStorage.setItem("lumos.netstats",JSON.stringify(_keep));}catch(_){}}).catch(function(){});}var LX_FEEACCT="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";var XPI='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';function acode(o,p){return (o[p+"_asset_type"]==="native"||!o[p+"_asset_code"])?"XLM":o[p+"_asset_code"];}function describeOp(o){if(!o)return null;if(o.type&&o.type.indexOf("path_payment")===0)return {ic:SWAP,cls:"swap",type:"Swap <b>"+amt(+o.source_amount)+" "+aic(acode(o,"source"),o.source_asset_issuer||"")+esc(acode(o,"source"))+"</b> \u2192 "+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code),acode:acode(o,"source"),aiss:(o.source_asset_issuer||""),inl:1};if(o.type==="payment")return {ic:SWAP,cls:"swap",type:"Transfer <b>"+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",inl:1};if(o.type&&o.type.indexOf("offer")>=0)return {ic:DROP,cls:"lp",type:"Order <b>"+amt(+o.amount)+" "+aic(acode(o,"selling"),o.selling_asset_issuer||"")+esc(acode(o,"selling"))+"</b> / "+aic(acode(o,"buying"),o.buying_asset_issuer||"")+esc(acode(o,"buying")),inl:1};if(o.type&&o.type.indexOf("liquidity_pool")===0)return {ic:DROP,cls:"lp",type:(o.type.indexOf("deposit")>=0?"Added liquidity":"Removed liquidity")};return {ic:SWAP,cls:"swap",type:esc(String(o.type||"Activity").split("_").join(" "))};}function iavatar(a,size){a=String(a||"");size=size||22;var palette=["#6f5ded","#ef4444","#22c55e","#a855f7","#06b6d4","#f59e0b","#ec4899","#84cc16","#ff894c","#0ea5e9","#14b8a6","#facc15"];var h=0;for(var i=0;i<a.length;i++){h=((h<<5)-h)+a.charCodeAt(i);h|=0;}function pick(i){return palette[Math.abs((h>>(i*3))%palette.length)];}var c1=pick(0),c2=pick(2),c3=pick(4),c4=pick(6),cell=size/5;var svg='<svg class="lx-actident" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="border-radius:50%;background:'+c1+'" xmlns="http://www.w3.org/2000/svg">';for(var y=0;y<5;y++){for(var x=0;x<3;x++){var bit=(h>>((y*3+x)%30))&1;if(bit){var col=(x+y)%2===0?c2:c3;svg+='<rect x="'+(x*cell).toFixed(2)+'" y="'+(y*cell).toFixed(2)+'" width="'+cell.toFixed(2)+'" height="'+cell.toFixed(2)+'" fill="'+col+'"/>';if(x<2)svg+='<rect x="'+((4-x)*cell).toFixed(2)+'" y="'+(y*cell).toFixed(2)+'" width="'+cell.toFixed(2)+'" height="'+cell.toFixed(2)+'" fill="'+col+'"/>';}}}svg+='<circle cx="'+(size/2)+'" cy="'+(size/2)+'" r="'+(cell*0.42).toFixed(2)+'" fill="'+c4+'"/></svg>';return svg;}function idot(a){a=String(a||"");var h=0;for(var i=0;i<a.length;i++){h=(h*31+a.charCodeAt(i))>>>0;}var h1=h%360,h2=(h1+120)%360;return '<span class="lx-actdot" style="background:linear-gradient(135deg,hsl('+h1+',62%,55%),hsl('+h2+',62%,45%))"></span>';}function shortAddr(a){a=String(a||"");return a.length>12?(a.slice(0,4)+"\u2026"+a.slice(-4)):a;}function feedLogo(code,iss){try{var L=window.__lxLogos||{};if(iss&&L[code+"-"+iss])return L[code+"-"+iss];if(code==="XLM")return (L.XLM||"/assets/tokens/xlm.png");var ks=Object.keys(L);for(var i=0;i<ks.length;i++){if(ks[i].indexOf(code+"-")===0)return L[ks[i]];}}catch(_){}return "";}var _fQ=[],_fA=0,_fAsked={};function _fPump(){while(_fA<4&&_fQ.length){_fA++;(_fQ.shift())();}}try{(window.__lxLogos=window.__lxLogos||{});var _LK="LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";if(!window.__lxLogos[_LK])window.__lxLogos[_LK]="assets/favicon.png";paintFeedIcons();}catch(_){}function feedFillLogos(){try{var els=[].slice.call(document.querySelectorAll("#activityList .lx-actasset"));var want={};els.forEach(function(e){var c=e.getAttribute("data-c")||e.getAttribute("data-lxc")||"";var i=e.getAttribute("data-i")||"";if(c&&i&&!_fAsked[c]&&!((window.__lxLogos||{})[c+"-"+i]))want[c]=i;});var codes=Object.keys(want); if(!codes.length)return;codes.forEach(function(c){_fAsked[c]=1;_fQ.push(function(){fetch("/lxapi/assetlogo?asset="+encodeURIComponent(c+"-"+want[c])).then(function(r){return r.ok?r.json():null;}).then(function(d){var u=d&&d.image;if(u&&!/^assets\//.test(((window.__lxLogos||{})[c+"-"+want[c]])||"")){(window.__lxLogos=window.__lxLogos||{})[c+"-"+want[c]]=u;try{paintFeedIcons();}catch(_){}}},function(){}).then(function(){_fA--;_fPump();});});});_fPump();}catch(_){}}function paintFeedIcons(){try{var els=document.querySelectorAll(".lx-actasset");for(var i=0;i<els.length;i++){var e=els[i];if(e.getAttribute("data-lxpainted")==="1")continue;var u=feedLogo(e.getAttribute("data-c")||"",e.getAttribute("data-i")||"");if(u){e.style.backgroundImage="url('"+u+"')";e.textContent="";e.setAttribute("data-lxpainted","1");}else if(!e.textContent){e.textContent=(e.getAttribute("data-l")||"");}}}catch(_){}}function aic(code,iss){ code=String(code||""); if(!code)return "";return '<span class="act-inl lx-actasset" data-lxc="'+esc(code)+'" data-c="'+esc(code)+'" data-i="'+esc(iss||"")+'" data-l=""></span>'; }function feedRow(r){return '<div class="activity-feed-row" data-lx-noswap="1">'+(r.inl?"":(r.acode?('<div class="act-ic lx-actasset" data-lxc="'+esc(r.acode)+'" data-c="'+esc(r.acode)+'" data-i="'+esc(r.aiss||"")+'" data-l="'+esc(String(r.acode).slice(0,2))+'"></div>'):('<div class="act-ic '+r.cls+'">'+r.ic+'</div>')))+'<div class="info"><div class="type">'+r.type+'</div>'+(r.who?('<a class="meta lx-actwho" href="/account/stellar/'+esc(r.who)+'" title="'+esc(r.who)+'">'+iavatar(r.who,22)+esc(shortAddr(r.who))+'</a>'):'<div class="meta"></div>')+'</div>'+'<div class="time">'+r.when+'</div>'+'<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/'+esc(r.hash)+'" target="_blank" rel="noopener" title="View transaction">'+XPI+'</a>'+'</div>';}function feed(){var list=document.getElementById("activityList");if(!list)return;j("https://horizon.stellar.org/accounts/"+LX_FEEACCT+"/payments?order=desc&limit=40").then(function(d){var recs=((d._embedded&&d._embedded.records)||[]).filter(function(o){return o.to===LX_FEEACCT&&o.from&&o.from!==LX_FEEACCT;});if(!recs.length){list.innerHTML='<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>';return;}var use=recs.slice(0,8);var rows=use.map(function(o){return {ic:SWAP,cls:"swap",type:"Platform activity",who:o.from,when:ago(o.created_at),hash:o.transaction_hash};});list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});use.forEach(function(o,i){j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20").then(function(t){var ops=((t._embedded&&t._embedded.records)||[]).filter(function(x){return !(x.type==="payment"&&x.to===LX_FEEACCT);});var pick=ops.filter(function(x){return x.type&&x.type.indexOf("path_payment")===0;})[0]||ops.filter(function(x){return x.type&&(x.type.indexOf("offer")>=0||x.type.indexOf("liquidity_pool")===0);})[0]||ops[0];var de=describeOp(pick); if(!de)return;rows[i].ic=de.ic;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].acode=de.acode||"";rows[i].aiss=de.aiss||"";list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});}).catch(function(){});});}).catch(function(){});}var NSKEYS=["assets","pools","trades","accounts"];function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}var _d={dayTip:"",accountsExact:""};for(var i=0;i<NSKEYS.length;i++)_d[NSKEYS[i]]="\u2026";if(c&&!c.length&&typeof c==="object"){for(var k in _d){if(c[k]&&c[k]!=="\u2014")_d[k]=c[k];}}rebuildStats(_d);}function run(){prep();stats();feed();}if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);setInterval(feed,60000);setInterval(stats,45000);})();</script><script id="lx-dashboxes">(function(){var row=document.querySelector(".lx-dbx"); if(!row)return;var CUR=["USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN","EURC-GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2","yXLM-GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55","yUSDC-GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF","SHX-GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH","LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S","AQUA-GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA","XRP-GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5","SCOP-GC6OYQJIZF3HFXCYPFCBXYXNGIBQ4TNSFUBUXQJOZWIP6F3YZK4QH3VQ","MTL-GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V","EURMTL-GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V","ZARZ-GAROH4EV3WVVTRQKEY43GZK3XSRBEYETRVZ7SVG5LHWOAANSMCTJBB3U","USDZ-GAKTLPC4ZV37SSCITQ5IS5AQ4WPF4CF4VZJQPPAROSGXMYOATF5U6XPR","CLPX-GDYSPBVZHPQTYMGSYNOHRZQNLB3ZWFVQ2F7EP7YBOLRGD42XIC3QUX5G","yBTC-GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW","yETH-GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD","ARS-GCYE7C77EB5AWAA25R5XMWNI2EDOKTTFTTPZKM2SR5DI4B4WFD52DARS","PEN-GA4TDPNUCZPTOHB3TKUYMDCRVATXKEADH7ZEYEBWJKQKE2UBFCYNBPEN","ETH-GBFXOHVAS43OIWNIO7XLRJAHT3BICFEIKOJLZVXNT572MISM4CMGSOCC","BTCLN-GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT","USDM-GDHDC4GBNPMENZAOBB4NCQ25TGZPDRK6ZGWUGSI22TVFATOLRPSUUSDM","CETES-GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC","USTRY-GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC","SSLX-GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR","AFR-GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W","TFT-GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47","GOLD-GBC5ZGK6MQU3XG5Y72SXPA7P5R5NHYT2475SNEJB2U3EQ6J56QLVGOLD","USDY-GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6"];function set(k,v){ var el=row.querySelector('[data-k="'+k+'"]'); if(!el)return;el.textContent=v; el.classList.remove("wait"); }function j(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }function num(n){ return Math.round(+n||0).toLocaleString("en-US"); }function usd(x){ x=+x||0; var a=Math.abs(x);if(a>=1e9)return "$"+(x/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(x/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(x/1e3).toFixed(1)+"K";return "$"+x.toFixed(2); }function xu(){ try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");if(c&&+c.v>0&&(Date.now()-c.ts<216e5))return +c.v; }catch(_){} return 0; }j("/lxapi/poolstats").then(function(d){var r=xu();set("ppool",num(d.pools));set("ptvl", (d.tvlXlm>0&&r>0)?usd(d.tvlXlm*r):"\u2014");set("pvol", d.vol24Usd!=null?usd(d.vol24Usd):"\u2014");}).catch(function(){ ["ppool","ptvl","pvol"].forEach(function(k){ set(k,"\u2014"); }); });set("tmkt",num(CUR.length));var B=16, jobs=[];for(var i=0;i<CUR.length;i+=B)jobs.push(CUR.slice(i,i+B));Promise.all(jobs.map(function(g){return j("/lxapi/dexassets?a="+encodeURIComponent(g.join(","))).catch(function(){return null;});})).then(function(rs){var r=xu(), volX=0, seen=0;rs.forEach(function(d){ if(!d||!d.a)return;for(var k in d.a){ var v=d.a[k]; if(v&&v.vol!=null){ volX+=+v.vol||0; seen++; } } });set("tvol", (seen&&r>0)?usd(volX*r):"\u2014");}).catch(function(){ set("tvol","\u2014"); });var CODES={}; CUR.forEach(function(s){ CODES[s.split("-")[0]]=1; });Promise.all([1,2,3,4].map(function(p){return j("/lxapi/pools?page="+p).catch(function(){return null;});})).then(function(ps){var tot=0, hit=0;ps.forEach(function(d){ if(!d||!d.rows)return;d.rows.forEach(function(row){var a=row.a||{}, b=row.b||{};if(!(CODES[a.code]||CODES[b.code]))return;var t=+row.tvl||0;if(t>0){ tot+=t; hit++; } }); });set("tliq", hit?usd(tot):"\u2014");}).catch(function(){ set("tliq","\u2014"); });j("https://api.stellar.expert/explorer/public/asset?search=lumoscore&limit=200").then(function(d){var r=(d&&d._embedded&&d._embedded.records)||[];r=r.filter(function(a){ return (a.domain||"")==="lumoscore.com"; });set("ltok",num(r.length));var now=Math.floor(Date.now()/1000);var newest=0; r.forEach(function(a){ if(a.created>newest)newest=a.created; });set("lmint",num(r.filter(function(a){ return a.created&&(now-a.created)<86400; }).length));if(newest>0){ var sec=now-newest, t;if(sec<3600)t=Math.max(1,Math.round(sec/60))+"m";else if(sec<86400)t=Math.round(sec/3600)+"h";else if(sec<2592000)t=Math.round(sec/86400)+"d";else t=Math.round(sec/2592000)+"mo";set("lnew",t); } else set("lnew","—");}).catch(function(){ ["ltok","lnew","lmint"].forEach(function(k){ set(k,"—"); }); });set("cnet","10");try{var hist=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]");if(!Array.isArray(hist))hist=[];var since=Date.now()-864e5, n=0, v=0;hist.forEach(function(h){ var t=+(h.ts||0); if(!(t>=since))return; n++; v+=+(h.amount||h.srcAmount||0)||0; });set("ctx",num(n)); set("cvol",v>0?usd(v):"$0");}catch(_){ set("ctx","0"); set("cvol","$0"); }})();</script><style id="lx-whead-css">/*lxts:1.1*/.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 22px;gap:8.8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8.8px;font:700 14.9px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 15.4px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 14.3px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7.7px;padding:5.5px 11px 5.5px 6.6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 12.7px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}@media (max-width:560px){.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}.appbar .logo .logo-text{overflow:visible!important}.appbar .avatar-sm.lx-mav{flex:0 0 auto!important;min-width:0;overflow:visible}.appbar .logo{min-width:0;flex:0 1 auto;overflow:hidden}@media(max-width:430px){.appbar{padding-left:11px!important;padding-right:11px!important;gap:6.6px!important}.appbar .avatar-sm.lx-mav{gap:6.6px!important;padding-left:5.5px!important;padding-right:9.9px!important}.appbar .avatar-sm.lx-mav::after{font-size:13.2px!important}.appbar .avatar-sm.lx-mav::before{width:18px!important;height:18px!important}@media(max-width:390px){.appbar .logo-text{display:none!important}}}.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}.appbar .avatar-sm.lx-mav{white-space:nowrap}}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:26.4px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
   var KNOWN=[
@@ -8842,280 +9121,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-dashtop">(function(){
-  if(window.__lxDashTop)return;window.__lxDashTop=1;
-  function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}
-  // item 16 -- see the note in the transform. Only touches cards that are on screen right now.
-  function lcmShowAbove(){
-    try{
-      var root=document.documentElement;
-      if(!root.classList.contains('lcm-ready'))return;      // motion layer not in play; nothing hidden
-      var els=document.querySelectorAll('.kpi-card,.quick-card,.product-card,.market-card,.activity-card');
-      var vh=window.innerHeight||root.clientHeight||0;
-      for(var i=0;i<els.length;i++){
-        var el=els[i];
-        if(el.hasAttribute('data-lcm-done'))continue;
-        var r=el.getBoundingClientRect();
-        if(r.top<vh&&r.bottom>0)el.setAttribute('data-lcm-done','1');
-      }
-    }catch(_){}
-  }
-  // Now, next frame, and once more after the design's own driver has had its turn -- cards that are
-  // rendered late (the activity card waits on data) would otherwise miss the first pass.
-  try{
-    lcmShowAbove();
-    if(window.requestAnimationFrame)requestAnimationFrame(lcmShowAbove);
-    document.addEventListener('DOMContentLoaded',lcmShowAbove);
-    // Catch cards that are laid out a frame or two after the hooks above.
-    var _lcmT=0, _lcmIv=setInterval(function(){
-      lcmShowAbove();
-      if((_lcmT+=60)>=1500){ clearInterval(_lcmIv); }
-    },60);
-  }catch(_){}
-  if(net()!=="stellar")return;
-  var DAYS={"24H":1,"7D":7,"1M":30,"1Y":365}, tf="24H", cache={}, series=null;
-  function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
-  function money(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}
-  function build(){
-    var row=document.querySelector(".status-row"); if(!row)return null;
-    // Document-wide, NOT host.querySelector. Once the strip has moved inside the panel, row.parentNode
-    // IS the panel -- and an element is not its own descendant, so the host lookup found nothing and
-    // this built a SECOND panel inside the first one. Everything then painted into the copy: the price
-    // stayed a dash and the chart stayed empty on the panel you could actually see.
-    var p=document.querySelector(".lx-xlmpanel");
-    if(p)return p;
-    var host=row.parentNode; if(!host)return null;
-    p=document.createElement("div"); p.className="lx-xlmpanel lx-loading"; p.setAttribute("data-lx-noswap","1");
-    p.innerHTML='<div class="lx-xt-l">'
-      // #15: the asset this panel is about was named in 10px uppercase mono -- smaller than any figure
-      // under it, and with no mark at all, so the panel opened without saying whose price it was.
-      // The logo is the one already served for XLM everywhere else on the site, not a new asset.
-      +'<span class="lx-xt-head">'
-      +'<span class="lx-xt-mark" aria-hidden="true"></span>'
-      +'<span class="lx-xt-lbl">Stellar (XLM)</span>'
-      +'</span>'
-      +'<div class="lx-xt-row"><span class="lx-xt-price">\u2014</span><span class="lx-xt-chg"></span></div>'
-      +'<div class="lx-xt-tfs">'
-        +'<button type="button" data-lxnonav="1" data-tf="24H" class="active">24H</button>'
-        +'<button type="button" data-lxnonav="1" data-tf="7D">7D</button>'
-        +'<button type="button" data-lxnonav="1" data-tf="1M">1M</button>'
-        +'<button type="button" data-lxnonav="1" data-tf="1Y">1Y</button>'
-      +'</div></div>'
-      +'<div class="lx-xt-chart lx-empty"></div>';
-    host.insertBefore(p,row);
-    p.appendChild(row);            // #1: the strip lives inside the card -- see place()
-    // The dashboard maps clicked label text to a destination, so a control inside it needs the
-    // design's own opt-out or "1M" and friends navigate the page away.
-    [].slice.call(p.querySelectorAll(".lx-xt-tfs button")).forEach(function(b){
-      b.addEventListener("click",function(e){
-        try{e.preventDefault();e.stopPropagation();}catch(_){}
-        var t=b.getAttribute("data-tf"); if(t===tf)return; tf=t;
-        [].slice.call(p.querySelectorAll(".lx-xt-tfs button")).forEach(function(x){x.classList.toggle("active",x===b);});
-        load();
-      });
-    });
-    return p;
-  }
-  function draw(pts){
-    var p=build(); if(!p)return;
-    var box=p.querySelector(".lx-xt-chart"); if(!box)return;
-    if(!pts||pts.length<2){ box.classList.add("lx-empty"); box.innerHTML=""; return; }
-    box.classList.remove("lx-empty");
-    var W=420,H=104,PAD=6,n=pts.length;
-    var mn=Math.min.apply(null,pts),mx=Math.max.apply(null,pts),rg=(mx-mn)||Math.abs(mx)||1;
-    var up=pts[n-1]>=pts[0], col=up?"#35c07f":"#ff5b5b";
-    var d="";
-    for(var i=0;i<n;i++){
-      var x=(i/(n-1))*W, y=H-PAD-((pts[i]-mn)/rg)*(H-PAD*2);
-      d+=(i?"L":"M")+x.toFixed(1)+" "+y.toFixed(1);
-    }
-    var gid="lxxt"+(up?"u":"d");
-    box.innerHTML='<svg viewBox="0 0 '+W+' '+H+'" preserveAspectRatio="none">'
-      +'<defs><linearGradient id="'+gid+'" x1="0" y1="0" x2="0" y2="1">'
-      +'<stop offset="0" stop-color="'+col+'" stop-opacity=".26"/>'
-      +'<stop offset="1" stop-color="'+col+'" stop-opacity="0"/></linearGradient></defs>'
-      +'<path d="'+d+' L'+W+' '+H+' L0 '+H+' Z" fill="url(#'+gid+')" stroke="none"></path>'
-      +'<path d="'+d+'" fill="none" stroke="'+col+'" stroke-width="1.6" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"></path>'
-      +'</svg>';
-    box.__lxpts=pts;
-    box.__lxcol=col;                       // so the dot can match the line it marks
-    wireHover(box);
-  }
-  // #13: read the chart by pointing at it.
-  //
-  // The panel shows one price -- the latest -- and a shape. Anyone who wants to know what the price was
-  // in the middle of that shape has no way to ask. Three figures on hover: the price at that point,
-  // which varies along the series, and the two network facts the panel is already fetching for the strip
-  // below (pool TVL and the asset count), which do not.
-  //
-  // The two constants are labelled plainly and shown as 'now', because presenting a current figure
-  // beside a historical price without saying so would imply we have its history, which we do not.
-  function wireHover(box){
-    box.style.position=box.style.position||"relative";
-    // The ELEMENTS are re-created on every draw, the LISTENERS only once. draw() rebuilds the box with
-    // innerHTML, which removes anything appended here -- and guarding both together meant the readout
-    // existed after the first render and was silently wiped by the second.
-    var tip=box.querySelector(".lx-xt-tip");
-    if(!tip){ tip=document.createElement("div"); tip.className="lx-xt-tip"; box.appendChild(tip); }
-    var vl=box.querySelector(".lx-xt-vl");
-    if(!vl){ vl=document.createElement("div"); vl.className="lx-xt-vl"; box.appendChild(vl); }
-    var dot=box.querySelector(".lx-xt-dot");
-    if(!dot){ dot=document.createElement("div"); dot.className="lx-xt-dot"; box.appendChild(dot); }
-    if(box.__lxhov)return; box.__lxhov=1;
-    function net(){
-      // Read from the strip the page has already painted, so the two can never disagree and this costs
-      // no request of its own.
-      var out={};
-      try{ [].slice.call(document.querySelectorAll(".status-row .lx-vpill")).forEach(function(p){
-        var k=((p.querySelector(".lbl")||{}).textContent||"").trim().toLowerCase();
-        var v=((p.querySelector(".val")||{}).textContent||"").trim();
-        if(k&&v)out[k]=v; }); }catch(_){}
-      return out;
-    }
-    function at(clientX){
-      // Resolved per call, not captured: the pair above is replaced on every redraw, and a listener
-      // holding the old pair would write into elements no longer in the document.
-      var tip=box.querySelector(".lx-xt-tip"), vl=box.querySelector(".lx-xt-vl");
-      if(!tip||!vl)return;
-      var pts=box.__lxpts; if(!pts||pts.length<2)return;
-      var r=box.getBoundingClientRect(); if(!r.width)return;
-      var f=Math.max(0,Math.min(1,(clientX-r.left)/r.width));
-      var i=Math.round(f*(pts.length-1));
-      var v=pts[i];
-      var n=net();
-      var when=labelFor(i,pts.length);
-      tip.innerHTML=(when?('<div class="d">'+when+'</div>'):'')
-        +'<div class="lx-xt-tr"><span class="k">Price</span><span class="v">'+fmtUsd(v)+'</span></div>'
-        ;
-      tip.classList.add("on");
-      vl.style.left=Math.round(f*r.width)+"px"; vl.style.opacity="1";
-      // Snapped to the point the tooltip is quoting, not to the raw pointer position -- a dot a few
-      // pixels off the value it names is worse than no dot. Mirrors draw()'s geometry exactly: same
-      // W/H/PAD, same min/max over the same array, so the marker cannot drift from the path.
-      var _dot=box.querySelector(".lx-xt-dot");
-      if(_dot){
-        var _H=104,_PAD=6;
-        var _mn=Math.min.apply(null,pts),_mx=Math.max.apply(null,pts),_rg=(_mx-_mn)||Math.abs(_mx)||1;
-        var _yv=_H-_PAD-((pts[i]-_mn)/_rg)*(_H-_PAD*2);
-        _dot.style.left=Math.round((i/(pts.length-1))*r.width)+"px";
-        _dot.style.top=(_yv/_H*r.height).toFixed(1)+"px";
-        _dot.style.color=box.__lxcol||"var(--accent,#ea6a2c)";
-        _dot.style.opacity="1";
-      }
-    }
-    function off(){ var t=box.querySelector(".lx-xt-tip"),v=box.querySelector(".lx-xt-vl"),d=box.querySelector(".lx-xt-dot");
-      if(t)t.classList.remove("on"); if(v)v.style.opacity="0"; if(d)d.style.opacity="0"; }
-    box.addEventListener("mousemove",function(e){ at(e.clientX); });
-    box.addEventListener("mouseleave",off);
-    // Touch: read on tap and follow a drag. Deliberately NOT cleared on touchend -- on a phone the finger
-    // is the pointer, so lifting it would erase the value the tap was for. A tap elsewhere clears it.
-    box.addEventListener("touchstart",function(e){ if(e.touches&&e.touches[0])at(e.touches[0].clientX); },{passive:true});
-    box.addEventListener("touchmove",function(e){ if(e.touches&&e.touches[0])at(e.touches[0].clientX); },{passive:true});
-    document.addEventListener("touchstart",function(e){
-      var t=e.target; if(t&&t.closest&&t.closest(".lx-xt-chart"))return; off();
-    },{passive:true});
-  }
-  // The series carries values only, not timestamps, so the label is derived from the position within
-  // the selected timeframe rather than invented. Whole days for the long ranges, hours for 24H.
-  function labelFor(i,n){
-    var back=(n-1-i); if(back===0)return "Now";
-    // tf is the BUTTON label -- 24H / 7D / 1M / 1Y -- and DAYS maps it to a span. Deriving the label
-    // from the position within that span is the only honest option: the series carries values, not
-    // timestamps, so an exact date would be invented.
-    var days=DAYS[tf]||1;
-    if(days<=1){ var h=Math.round(back*24/(n-1)); return h===0?"Now":(h+"h ago"); }
-    if(days>=365){ var mo=Math.round(back*12/(n-1)); return mo===0?"This month":(mo+(mo===1?" month ago":" months ago")); }
-    var d=Math.round(back*days/(n-1));
-    return d===0?"Today":(d+(d===1?" day ago":" days ago"));
-  }
-  function fmtUsd(v){ v=+v||0;
-    if(v>=1)return "$"+v.toLocaleString("en-US",{maximumFractionDigits:4});
-    return "$"+(+v.toFixed(6)).toString(); }
-  function load(){
-    if(cache[tf]){ draw(cache[tf]); return; }
-    // A series from an earlier visit, drawn immediately and replaced when the live one lands. Six hours,
-    // because a stale SHAPE is worth far more than an empty box and the headline price is live anyway.
-    try{ var w=JSON.parse(localStorage.getItem("lumos.xlmSeries."+tf)||"null");
-      if(w&&w.v&&w.v.length>1&&(Date.now()-w.ts<216e5)){ cache[tf]=w.v; draw(w.v); } }catch(_){}
-    var days=DAYS[tf]||1;
-    // #18: was CoinGecko, called by every visitor against a tier that allows a handful of requests a
-    // minute per IP -- so the chart frequently never arrived at all. Our own edge asks once and caches,
-    // and thins the series there, so this gets at most 180 points at edge speed. Warm from localStorage
-    // first, so a return visit draws instantly instead of drawing nothing until the network answers.
-    j("/lxapi/xlm?chart="+days)
-      .then(function(d){
-        var pr=(d&&d.prices)||[];
-        var v=pr.map(function(x){return +x[1];}).filter(function(x){return x>0;});
-        // 1Y comes back daily and 24H five-minutely; thin the long ranges so the line stays readable
-        if(v.length>180){ var step=Math.ceil(v.length/180),out=[];
-          for(var i=0;i<v.length;i+=step)out.push(v[i]);
-          if(out[out.length-1]!==v[v.length-1])out.push(v[v.length-1]);
-          v=out; }
-        cache[tf]=v; try{ localStorage.setItem("lumos.xlmSeries."+tf,JSON.stringify({v:v,ts:Date.now()})); }catch(_){}
-        draw(v);
-      }).catch(function(){ draw(null); });
-  }
-  function paintPrice(c){
-    if(!c)return; var p=build(); if(!p)return;
-    var el=p.querySelector(".lx-xt-price"), ch=p.querySelector(".lx-xt-chg");
-    if(el&&c.usd!=null){ el.textContent=money(c.usd); p.classList.remove("lx-loading"); }
-    if(ch&&c.usd_24h_change!=null){
-      var u=c.usd_24h_change>=0;
-      ch.className="lx-xt-chg "+(u?"up":"down");
-      ch.textContent=Math.abs(c.usd_24h_change).toFixed(2)+"% (24h)";
-    }
-  }
-  // _realdata.js already asks CoinGecko for exactly this object on the same page. CoinGecko's free
-  // tier is a handful of calls a minute, so this waits for that one rather than making a second --
-  // and only falls back to its own request if that never arrives.
-  // #18: this used to sit on its hands for SIX SECONDS waiting for _realdata.js to publish the same
-  // object before it would ask for itself -- measured, that was the whole delay before a price showed.
-  // The edge answer is cached and cheap, so there is no longer any reason to wait for anyone: ask
-  // immediately, and take __lxCG too if it happens to arrive first.
-  function price(){
-    if(window.__lxCG){ paintPrice(window.__lxCG); return; }
-    try{ window.addEventListener("lx:cg",function(){ paintPrice(window.__lxCG); }); }catch(_){}
-    j("/lxapi/xlm").then(function(d){
-      if(!d||!(+d.usd>0))return;
-      paintPrice({usd:+d.usd,usd_24h_change:d.chg24});
-      try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:+d.usd,chg:d.chg24,ts:Date.now()})); }catch(_){}
-    }).catch(function(){});
-  }
-  // The ledger height, as the "network is alive" signal. One Horizon call, on a slow beat.
-  function ledger(){
-    j("https://horizon.stellar.org/ledgers?order=desc&limit=1").then(function(d){
-      var r=((d._embedded&&d._embedded.records)||[])[0]; if(!r)return;
-      var p=build(); if(!p)return;
-      var lbl=p.querySelector(".lx-xt-lbl"); if(!lbl||!lbl.parentNode)return;
-      // Removed: the ledger height is no longer shown. Any element left over from a previous build is
-      // cleared here so it cannot survive a cached page.
-      var el=p.querySelector(".lx-xt-ledger");
-      if(el&&el.parentNode)el.parentNode.removeChild(el);
-      // A stale pill from a previous build would otherwise sit in the strip as a seventh cell.
-      var old=document.querySelector(".status-row .lx-ledgerpill");
-      if(old&&old.parentNode)old.parentNode.removeChild(old);
-    }).catch(function(){});
-  }
-  // #1: keep the strip inside the card. _realdata.js rebuilds the value pills in place on every stats()
-  // pass -- it does not move the row -- but the dashboard's own re-skin can re-parent it, and build()
-  // only runs once. Re-asserting costs an identity check and is a no-op the rest of the time.
-  function place(){
-    var p=document.querySelector(".lx-xlmpanel"), row=document.querySelector(".status-row");
-    if(!p||!row)return;
-    if(row.parentNode!==p||p.lastElementChild!==row)p.appendChild(row);
-  }
-  // _realdata.js rebuilds the four pills on every stats() pass, which drops ours -- so it is
-  // re-added on the same beat rather than once.
-  function run(){ build(); place(); load(); price(); ledger(); }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);
-  else run();
-  setInterval(function(){ place(); price(); ledger(); },45000);
-  // The strip is re-parented the moment it exists rather than on the 45s beat: _realdata.js paints its
-  // warm-cache values before this file's first run in some orders, and a strip that appears outside the
-  // card and then jumps into it is a flash.
-  try{ new MutationObserver(function(){ place(); })
-    .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
-})();</script><script id="lx-realdata">(function(){if(window.__lxRealData)return;window.__lxRealData=1;function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}if(net()!=="stellar")return;var SWAP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M4 13h11"/><path d="M17 14l3-3-3-3"/><path d="M20 11H9"/></svg>',DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}function usd(n){return "$"+abbr(n);}function amt(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";if(a>=1)return (Math.round(n*100)/100).toString();if(a>0){var s=n.toFixed(7).replace(/0+$/,"").replace(/\.$/,"");return s&&s!=="0"?s:"<0.0000001";}return "0";}function price(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}function ago(t){var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);if(s<60)return Math.floor(s)+"s";if(s<3600)return Math.floor(s/60)+"m";if(s<86400)return Math.floor(s/3600)+"h";return Math.floor(s/86400)+"d";}function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}var PICO={"Assets":["#f7b733",'<circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.2h5M9.5 13.8h5"/>'],"Pools":["#38bdf8",'<path d="M12 3.2l5.2 5.6a7.2 7.2 0 1 1-10.4 0z"/>'],"Trades":["#a855f7",'<path d="M7 9h11l-2.6-2.6M17 15H6l2.6 2.6"/>'],"Accounts":["#2dd4bf",'<circle cx="12" cy="9" r="3.2"/><path d="M5.5 19a6.5 6.5 0 0 1 13 0"/>']};function pico(lbl){var e=PICO[lbl];if(!e)return "";return '<span class="lx-pico" style="color:'+e[0]+'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">'+e[1]+'</svg></span>';}function vpill(lbl,val,tip){return '<span class="status-pill lx-vpill" data-lx-noswap=""'+(tip?' title="'+tip+'"':"")+'>'+pico(lbl)+'<span class="lx-vpt"><span class="lbl">'+lbl+'</span><span class="val">'+val+'</span></span></span>';}function rebuildStats(v){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");[].slice.call(row.querySelectorAll(".status-pill")).forEach(function(p){if(p!==net)p.parentNode.removeChild(p);});var frag=document.createElement("div");frag.innerHTML=vpill("Assets",v.assets,"Every asset ever issued on Stellar")+vpill("Pools",v.pools,"Liquidity pools on the Stellar AMM")+vpill("Trades",v.trades,v.dayTip)+vpill("Accounts",v.accounts,(v.accountsExact?v.accountsExact+" \u2014 e":"E")+"very account ever funded on Stellar, a running total rather than a daily figure");while(frag.firstChild)row.appendChild(frag.firstChild);row.classList.add("lx-ready");}function stats(){Promise.all([j("/lxapi/xlm").catch(function(){return null;}),j("/lxapi/netstats").catch(function(){return null;}),j("/lxapi/poolstats").catch(function(){return null;})]).then(function(res){var x=res[0]||{};var ns=res[1];var ps=res[2];var cg={usd:x.usd,usd_24h_change:x.chg24,usd_market_cap:x.mcap,usd_24h_vol:x.vol24};try{window.__lxCG=cg;window.dispatchEvent(new CustomEvent("lx:cg"));}catch(_){}var _n=function(x){return (x==null||!isFinite(x))?"\u2014":Math.round(x).toLocaleString("en-US");};var _na=function(x){if(x==null||!isFinite(x))return "\u2014";var a=Math.abs(x);if(a>=1e9)return (x/1e9).toFixed(2)+"B";if(a>=1e6)return (x/1e6).toFixed(2)+"M";return _n(x);};var _day="";try{if(ns&&ns.ts)_day="On "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC), the last full day";}catch(_){}var _v={assets:(ns&&ns.assets)?_n(ns.assets):"\u2014",pools:(ps&&ps.pools)?_n(ps.pools):"\u2014",trades:(ns&&ns.trades)?_n(ns.trades):"\u2014",accounts:(ns&&ns.accounts)?_na(ns.accounts):"\u2014",accountsExact:(ns&&ns.accounts)?_n(ns.accounts):"",dayTip:_day};var _old=null;try{_old=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}if(_old&&!_old.length){for(var _k in _v){if(_v[_k]==="\u2014"&&_old[_k]&&_old[_k]!=="\u2014")_v[_k]=_old[_k];}}rebuildStats(_v);var _keep={};for(var _k2 in _v){if(_v[_k2]&&_v[_k2]!=="\u2014")_keep[_k2]=_v[_k2];}try{localStorage.setItem("lumos.netstats",JSON.stringify(_keep));}catch(_){}}).catch(function(){});}var LX_FEEACCT="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";var XPI='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';function acode(o,p){return (o[p+"_asset_type"]==="native"||!o[p+"_asset_code"])?"XLM":o[p+"_asset_code"];}function describeOp(o){if(!o)return null;if(o.type&&o.type.indexOf("path_payment")===0)return {ic:SWAP,cls:"swap",type:"Swap <b>"+amt(+o.source_amount)+" "+aic(acode(o,"source"),o.source_asset_issuer||"")+esc(acode(o,"source"))+"</b> \u2192 "+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code),acode:acode(o,"source"),aiss:(o.source_asset_issuer||""),inl:1};if(o.type==="payment")return {ic:SWAP,cls:"swap",type:"Transfer <b>"+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",inl:1};if(o.type&&o.type.indexOf("offer")>=0)return {ic:DROP,cls:"lp",type:"Order <b>"+amt(+o.amount)+" "+aic(acode(o,"selling"),o.selling_asset_issuer||"")+esc(acode(o,"selling"))+"</b> / "+aic(acode(o,"buying"),o.buying_asset_issuer||"")+esc(acode(o,"buying")),inl:1};if(o.type&&o.type.indexOf("liquidity_pool")===0)return {ic:DROP,cls:"lp",type:(o.type.indexOf("deposit")>=0?"Added liquidity":"Removed liquidity")};return {ic:SWAP,cls:"swap",type:esc(String(o.type||"Activity").split("_").join(" "))};}function iavatar(a,size){a=String(a||"");size=size||22;var palette=["#6f5ded","#ef4444","#22c55e","#a855f7","#06b6d4","#f59e0b","#ec4899","#84cc16","#ff894c","#0ea5e9","#14b8a6","#facc15"];var h=0;for(var i=0;i<a.length;i++){h=((h<<5)-h)+a.charCodeAt(i);h|=0;}function pick(i){return palette[Math.abs((h>>(i*3))%palette.length)];}var c1=pick(0),c2=pick(2),c3=pick(4),c4=pick(6),cell=size/5;var svg='<svg class="lx-actident" width="'+size+'" height="'+size+'" viewBox="0 0 '+size+' '+size+'" style="border-radius:50%;background:'+c1+'" xmlns="http://www.w3.org/2000/svg">';for(var y=0;y<5;y++){for(var x=0;x<3;x++){var bit=(h>>((y*3+x)%30))&1;if(bit){var col=(x+y)%2===0?c2:c3;svg+='<rect x="'+(x*cell).toFixed(2)+'" y="'+(y*cell).toFixed(2)+'" width="'+cell.toFixed(2)+'" height="'+cell.toFixed(2)+'" fill="'+col+'"/>';if(x<2)svg+='<rect x="'+((4-x)*cell).toFixed(2)+'" y="'+(y*cell).toFixed(2)+'" width="'+cell.toFixed(2)+'" height="'+cell.toFixed(2)+'" fill="'+col+'"/>';}}}svg+='<circle cx="'+(size/2)+'" cy="'+(size/2)+'" r="'+(cell*0.42).toFixed(2)+'" fill="'+c4+'"/></svg>';return svg;}function idot(a){a=String(a||"");var h=0;for(var i=0;i<a.length;i++){h=(h*31+a.charCodeAt(i))>>>0;}var h1=h%360,h2=(h1+120)%360;return '<span class="lx-actdot" style="background:linear-gradient(135deg,hsl('+h1+',62%,55%),hsl('+h2+',62%,45%))"></span>';}function shortAddr(a){a=String(a||"");return a.length>12?(a.slice(0,4)+"\u2026"+a.slice(-4)):a;}function feedLogo(code,iss){try{var L=window.__lxLogos||{};if(iss&&L[code+"-"+iss])return L[code+"-"+iss];if(code==="XLM")return (L.XLM||"/assets/tokens/xlm.png");var ks=Object.keys(L);for(var i=0;i<ks.length;i++){if(ks[i].indexOf(code+"-")===0)return L[ks[i]];}}catch(_){}return "";}var _fQ=[],_fA=0,_fAsked={};function _fPump(){while(_fA<4&&_fQ.length){_fA++;(_fQ.shift())();}}try{(window.__lxLogos=window.__lxLogos||{});var _LK="LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";if(!window.__lxLogos[_LK])window.__lxLogos[_LK]="assets/favicon.png";paintFeedIcons();}catch(_){}function feedFillLogos(){try{var els=[].slice.call(document.querySelectorAll("#activityList .lx-actasset"));var want={};els.forEach(function(e){var c=e.getAttribute("data-c")||e.getAttribute("data-lxc")||"";var i=e.getAttribute("data-i")||"";if(c&&i&&!_fAsked[c]&&!((window.__lxLogos||{})[c+"-"+i]))want[c]=i;});var codes=Object.keys(want); if(!codes.length)return;codes.forEach(function(c){_fAsked[c]=1;_fQ.push(function(){fetch("/lxapi/assetlogo?asset="+encodeURIComponent(c+"-"+want[c])).then(function(r){return r.ok?r.json():null;}).then(function(d){var u=d&&d.image;if(u&&!/^assets\//.test(((window.__lxLogos||{})[c+"-"+want[c]])||"")){(window.__lxLogos=window.__lxLogos||{})[c+"-"+want[c]]=u;try{paintFeedIcons();}catch(_){}}},function(){}).then(function(){_fA--;_fPump();});});});_fPump();}catch(_){}}function paintFeedIcons(){try{var els=document.querySelectorAll(".lx-actasset");for(var i=0;i<els.length;i++){var e=els[i];if(e.getAttribute("data-lxpainted")==="1")continue;var u=feedLogo(e.getAttribute("data-c")||"",e.getAttribute("data-i")||"");if(u){e.style.backgroundImage="url('"+u+"')";e.textContent="";e.setAttribute("data-lxpainted","1");}else if(!e.textContent){e.textContent=(e.getAttribute("data-l")||"");}}}catch(_){}}function aic(code,iss){ code=String(code||""); if(!code)return "";return '<span class="act-inl lx-actasset" data-lxc="'+esc(code)+'" data-c="'+esc(code)+'" data-i="'+esc(iss||"")+'" data-l=""></span>'; }function feedRow(r){return '<div class="activity-feed-row" data-lx-noswap="1">'+(r.inl?"":(r.acode?('<div class="act-ic lx-actasset" data-lxc="'+esc(r.acode)+'" data-c="'+esc(r.acode)+'" data-i="'+esc(r.aiss||"")+'" data-l="'+esc(String(r.acode).slice(0,2))+'"></div>'):('<div class="act-ic '+r.cls+'">'+r.ic+'</div>')))+'<div class="info"><div class="type">'+r.type+'</div>'+(r.who?('<a class="meta lx-actwho" href="/account/stellar/'+esc(r.who)+'" title="'+esc(r.who)+'">'+iavatar(r.who,22)+esc(shortAddr(r.who))+'</a>'):'<div class="meta"></div>')+'</div>'+'<div class="time">'+r.when+'</div>'+'<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/'+esc(r.hash)+'" target="_blank" rel="noopener" title="View transaction">'+XPI+'</a>'+'</div>';}function feed(){var list=document.getElementById("activityList");if(!list)return;j("https://horizon.stellar.org/accounts/"+LX_FEEACCT+"/payments?order=desc&limit=40").then(function(d){var recs=((d._embedded&&d._embedded.records)||[]).filter(function(o){return o.to===LX_FEEACCT&&o.from&&o.from!==LX_FEEACCT;});if(!recs.length){list.innerHTML='<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>';return;}var use=recs.slice(0,8);var rows=use.map(function(o){return {ic:SWAP,cls:"swap",type:"Platform activity",who:o.from,when:ago(o.created_at),hash:o.transaction_hash};});list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});use.forEach(function(o,i){j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20").then(function(t){var ops=((t._embedded&&t._embedded.records)||[]).filter(function(x){return !(x.type==="payment"&&x.to===LX_FEEACCT);});var pick=ops.filter(function(x){return x.type&&x.type.indexOf("path_payment")===0;})[0]||ops.filter(function(x){return x.type&&(x.type.indexOf("offer")>=0||x.type.indexOf("liquidity_pool")===0);})[0]||ops[0];var de=describeOp(pick); if(!de)return;rows[i].ic=de.ic;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].acode=de.acode||"";rows[i].aiss=de.aiss||"";list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});}).catch(function(){});});}).catch(function(){});}var NSKEYS=["assets","pools","trades","accounts"];function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}var _d={dayTip:"",accountsExact:""};for(var i=0;i<NSKEYS.length;i++)_d[NSKEYS[i]]="\u2026";if(c&&!c.length&&typeof c==="object"){for(var k in _d){if(c[k]&&c[k]!=="\u2014")_d[k]=c[k];}}rebuildStats(_d);}function run(){prep();stats();feed();}if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);setInterval(feed,60000);setInterval(stats,45000);})();</script><script id="lx-dashboxes">(function(){var row=document.querySelector(".lx-dbx"); if(!row)return;var CUR=["USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN","EURC-GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2","yXLM-GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55","yUSDC-GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF","SHX-GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH","LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S","AQUA-GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA","XRP-GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5","SCOP-GC6OYQJIZF3HFXCYPFCBXYXNGIBQ4TNSFUBUXQJOZWIP6F3YZK4QH3VQ","MTL-GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V","EURMTL-GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V","ZARZ-GAROH4EV3WVVTRQKEY43GZK3XSRBEYETRVZ7SVG5LHWOAANSMCTJBB3U","USDZ-GAKTLPC4ZV37SSCITQ5IS5AQ4WPF4CF4VZJQPPAROSGXMYOATF5U6XPR","CLPX-GDYSPBVZHPQTYMGSYNOHRZQNLB3ZWFVQ2F7EP7YBOLRGD42XIC3QUX5G","yBTC-GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW","yETH-GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD","ARS-GCYE7C77EB5AWAA25R5XMWNI2EDOKTTFTTPZKM2SR5DI4B4WFD52DARS","PEN-GA4TDPNUCZPTOHB3TKUYMDCRVATXKEADH7ZEYEBWJKQKE2UBFCYNBPEN","ETH-GBFXOHVAS43OIWNIO7XLRJAHT3BICFEIKOJLZVXNT572MISM4CMGSOCC","BTCLN-GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT","USDM-GDHDC4GBNPMENZAOBB4NCQ25TGZPDRK6ZGWUGSI22TVFATOLRPSUUSDM","CETES-GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC","USTRY-GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC","SSLX-GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR","AFR-GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W","TFT-GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47","GOLD-GBC5ZGK6MQU3XG5Y72SXPA7P5R5NHYT2475SNEJB2U3EQ6J56QLVGOLD","USDY-GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6"];function set(k,v){ var el=row.querySelector('[data-k="'+k+'"]'); if(!el)return;el.textContent=v; el.classList.remove("wait"); }function j(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }function num(n){ return Math.round(+n||0).toLocaleString("en-US"); }function usd(x){ x=+x||0; var a=Math.abs(x);if(a>=1e9)return "$"+(x/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(x/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(x/1e3).toFixed(1)+"K";return "$"+x.toFixed(2); }function xu(){ try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");if(c&&+c.v>0&&(Date.now()-c.ts<216e5))return +c.v; }catch(_){} return 0; }j("/lxapi/poolstats").then(function(d){var r=xu();set("ppool",num(d.pools));set("ptvl", (d.tvlXlm>0&&r>0)?usd(d.tvlXlm*r):"\u2014");set("pvol", d.vol24Usd!=null?usd(d.vol24Usd):"\u2014");}).catch(function(){ ["ppool","ptvl","pvol"].forEach(function(k){ set(k,"\u2014"); }); });set("tmkt",num(CUR.length));var B=16, jobs=[];for(var i=0;i<CUR.length;i+=B)jobs.push(CUR.slice(i,i+B));Promise.all(jobs.map(function(g){return j("/lxapi/dexassets?a="+encodeURIComponent(g.join(","))).catch(function(){return null;});})).then(function(rs){var r=xu(), volX=0, seen=0;rs.forEach(function(d){ if(!d||!d.a)return;for(var k in d.a){ var v=d.a[k]; if(v&&v.vol!=null){ volX+=+v.vol||0; seen++; } } });set("tvol", (seen&&r>0)?usd(volX*r):"\u2014");}).catch(function(){ set("tvol","\u2014"); });var CODES={}; CUR.forEach(function(s){ CODES[s.split("-")[0]]=1; });Promise.all([1,2,3,4].map(function(p){return j("/lxapi/pools?page="+p).catch(function(){return null;});})).then(function(ps){var tot=0, hit=0;ps.forEach(function(d){ if(!d||!d.rows)return;d.rows.forEach(function(row){var a=row.a||{}, b=row.b||{};if(!(CODES[a.code]||CODES[b.code]))return;var t=+row.tvl||0;if(t>0){ tot+=t; hit++; } }); });set("tliq", hit?usd(tot):"\u2014");}).catch(function(){ set("tliq","\u2014"); });j("https://api.stellar.expert/explorer/public/asset?search=lumoscore&limit=200").then(function(d){var r=(d&&d._embedded&&d._embedded.records)||[];r=r.filter(function(a){ return (a.domain||"")==="lumoscore.com"; });set("ltok",num(r.length));var now=Math.floor(Date.now()/1000);var newest=0; r.forEach(function(a){ if(a.created>newest)newest=a.created; });set("lmint",num(r.filter(function(a){ return a.created&&(now-a.created)<86400; }).length));if(newest>0){ var sec=now-newest, t;if(sec<3600)t=Math.max(1,Math.round(sec/60))+"m";else if(sec<86400)t=Math.round(sec/3600)+"h";else if(sec<2592000)t=Math.round(sec/86400)+"d";else t=Math.round(sec/2592000)+"mo";set("lnew",t); } else set("lnew","—");}).catch(function(){ ["ltok","lnew","lmint"].forEach(function(k){ set(k,"—"); }); });set("cnet","10");try{var hist=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]");if(!Array.isArray(hist))hist=[];var since=Date.now()-864e5, n=0, v=0;hist.forEach(function(h){ var t=+(h.ts||0); if(!(t>=since))return; n++; v+=+(h.amount||h.srcAmount||0)||0; });set("ctx",num(n)); set("cvol",v>0?usd(v):"$0");}catch(_){ set("ctx","0"); set("cvol","$0"); }})();</script><style id="lx-whead-css">/*lxts:1.1*/.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 22px;gap:8.8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8.8px;font:700 14.9px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 15.4px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 14.3px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7.7px;padding:5.5px 11px 5.5px 6.6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 12.7px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}@media (max-width:560px){.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}.appbar .logo .logo-text{overflow:visible!important}.appbar .avatar-sm.lx-mav{flex:0 0 auto!important;min-width:0;overflow:visible}.appbar .logo{min-width:0;flex:0 1 auto;overflow:hidden}@media(max-width:430px){.appbar{padding-left:11px!important;padding-right:11px!important;gap:6.6px!important}.appbar .avatar-sm.lx-mav{gap:6.6px!important;padding-left:5.5px!important;padding-right:9.9px!important}.appbar .avatar-sm.lx-mav::after{font-size:13.2px!important}.appbar .avatar-sm.lx-mav::before{width:18px!important;height:18px!important}@media(max-width:390px){.appbar .logo-text{display:none!important}}}.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}.appbar .avatar-sm.lx-mav{white-space:nowrap}}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:26.4px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-nofollow">(function(){
+})();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){
     if(!h)return true;
