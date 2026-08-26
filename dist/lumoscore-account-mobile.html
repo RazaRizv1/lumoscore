@@ -1629,6 +1629,36 @@ html body .pool-header-row .ph-icons>*{
    through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
    Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
 .mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-polish">/*lxts:1.1*/
+/* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */
+@media (prefers-reduced-motion: no-preference){
+  :where(a,button,input,select,textarea,.chip){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .2s ease,transform .16s ease,opacity .16s ease;}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):hover{transform:translateY(-1px);}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):active{transform:translateY(0) scale(.985);}
+  :where(.btn.primary,.btn-primary,.dex-hero-btn.primary,.trade-btn):hover{box-shadow:0 10px 26px -12px var(--accent,#ea6a2c);}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease,background-color .2s ease;}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{transform:translateY(-2px);border-color:var(--border-strong,#34343c);}
+  html:not([data-theme="light"]) :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 14px 34px -22px rgba(0,0,0,.85);}
+  body{transition:background-color .3s ease,color .3s ease;}
+}
+/* keyboard focus */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;}
+/* branded selection */
+::selection{background:rgba(234,106,44,.26);}
+/* headline balance */
+:where(h1,h2,h3){text-wrap:balance;}
+/* clickable market/pool rows: accent affordance */
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr){cursor:pointer;}
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr):hover td:first-child{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c);}
+/* themed thin scrollbars */
+*{scrollbar-width:thin;scrollbar-color:var(--border-strong,#34343c) transparent;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-strong,#34343c);border-radius:8px;border:3px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-soft,#6e6d78);border:3px solid transparent;background-clip:padding-box;}
+/* light-mode elevation: cards read as raised surfaces on light bg */
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
 </style><style id="lx-acc-css">/*lxts:1.1*/
 /* We INJECT this crumb, so it carries its own styling. The design defines .crumb in the desktop file
    only -- the mobile build has no .crumb rule at all, just .crumb-bar (the separate "Back to Pools"
@@ -1882,36 +1912,6 @@ html body .pool-header-row .ph-icons>*{
   .acc-tbl th,.acc-tbl td{padding-left:15.4px;padding-right:15.4px}
   .acc-act{padding-left:15.4px;padding-right:15.4px}
 }
-</style><style id="lx-polish">
-/* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */
-@media (prefers-reduced-motion: no-preference){
-  :where(a,button,input,select,textarea,.chip){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .2s ease,transform .16s ease,opacity .16s ease;}
-  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):hover{transform:translateY(-1px);}
-  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):active{transform:translateY(0) scale(.985);}
-  :where(.btn.primary,.btn-primary,.dex-hero-btn.primary,.trade-btn):hover{box-shadow:0 10px 26px -12px var(--accent,#ea6a2c);}
-  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease,background-color .2s ease;}
-  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{transform:translateY(-2px);border-color:var(--border-strong,#34343c);}
-  html:not([data-theme="light"]) :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 14px 34px -22px rgba(0,0,0,.85);}
-  body{transition:background-color .3s ease,color .3s ease;}
-}
-/* keyboard focus */
-:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;}
-/* branded selection */
-::selection{background:rgba(234,106,44,.26);}
-/* headline balance */
-:where(h1,h2,h3){text-wrap:balance;}
-/* clickable market/pool rows: accent affordance */
-:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr){cursor:pointer;}
-:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr):hover td:first-child{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c);}
-/* themed thin scrollbars */
-*{scrollbar-width:thin;scrollbar-color:var(--border-strong,#34343c) transparent;}
-::-webkit-scrollbar{width:10px;height:10px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--border-strong,#34343c);border-radius:8px;border:3px solid transparent;background-clip:padding-box;}
-::-webkit-scrollbar-thumb:hover{background:var(--text-soft,#6e6d78);border:3px solid transparent;background-clip:padding-box;}
-/* light-mode elevation: cards read as raised surfaces on light bg */
-[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
-[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
 </style></head>
 <body><!--lx-menu--><div class="menu-overlay" id="menuOverlay"></div>
   <aside class="slide-menu" id="slideMenu">
@@ -7067,7 +7067,26 @@ var qrcode = function() {
   // figure is written once, when both say the counting is over.
   var PXWAVE=0, PXPEND=0;
   function pxStart(){ PXPEND++; }
-  function pxEnd(){ if(PXPEND>0)PXPEND--; if(PXPEND===0){ try{ renderStats(); }catch(_){} } }
+  // Write a single row's Value cell without touching the tbody's order. The row is found by the
+  // code+issuer it was stamped with, so this cannot land on the wrong asset when two share a ticker.
+  function fillAssetValue(a){
+    try{
+      var tb=q("#accAssetsTbl"); if(!tb||!a)return;
+      var rows=tb.querySelectorAll("tbody tr.acc-row");
+      for(var i=0;i<rows.length;i++){
+        var r=rows[i];
+        if(r.getAttribute("data-code")!==a.code)continue;
+        if((r.getAttribute("data-iss")||"")!==(a.issuer||""))continue;
+        var td=r.children[2]; if(!td)return;
+        var v=(a.usd!=null&&xlmUsd>0)?usd(a.usd):DASH;
+        if(td.textContent!==v)td.textContent=v;
+        return;
+      }
+    }catch(_){}
+  }
+  // The sorted rebuild happens HERE, once, when nothing is still in flight -- so the reader sees the list
+  // settle exactly once instead of watching it reshuffle on every arrival.
+  function pxEnd(){ if(PXPEND>0)PXPEND--; if(PXPEND===0){ try{ renderStats(); renderAssets(); }catch(_){} } }
   var PIN={XLM:0, USDC:1, LUMOS:2};
   // Pinned three first, then by value. An unpriced row sorts after every priced one: we do not know
   // what it is worth, and ranking it as zero would be a claim we cannot make.
@@ -7402,12 +7421,33 @@ var qrcode = function() {
   // last trade close against XLM -- the same price the Trade pages quote, so a holding is worth the same
   // number on both screens
   function loadAssetPx(a){ pxStart(); return loadAssetPx_(a).then(pxEnd,pxEnd); }
-  function loadAssetPx_(a){
+  // /lxapi/candles answers this at the edge, cached 300s and shared, so a 72-asset wallet costs the
+  // network one request per ASSET-EVER rather than 72 per page view. Direct Horizon stays as the
+  // fallback, so localhost and any static host still work.
+  function pxDirect(a){
     var t=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
     return j(H+"/trade_aggregations?base_asset_type="+t+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer
-      +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1").then(function(d){
+      +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1");
+  }
+  function pxAgg(a){
+    var code=a.code||"", iss=a.issuer||"";
+    // Only hand the edge what its validator accepts (code 1-12 alphanumeric, issuer G + 55).
+    var ok=code.length>0&&code.length<13&&iss.length===56&&iss.charAt(0)==="G";
+    for(var i=0;ok&&i<code.length;i++){ var ch=code.charAt(i);
+      if(!((ch>="A"&&ch<="Z")||(ch>="a"&&ch<="z")||(ch>="0"&&ch<="9")))ok=false; }
+    if(!ok)return pxDirect(a);
+    return fetch("/lxapi/candles?a="+encodeURIComponent(code+"-"+iss)+"&res=86400000&order=desc&limit=1")
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){ return (!d||d.error)?pxDirect(a):d; })
+      .catch(function(){ return pxDirect(a); });
+  }
+  function loadAssetPx_(a){
+    return pxAgg(a).then(function(d){
       var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||0; a.usd=a.bal*a.px*xlmUsd; }
-      renderStats(); renderAssets(); }).catch(function(){}); }
+      // NOT renderAssets(): rebuilding here is what makes the list jump. Write this one value into the
+      // row it belongs to and leave the order alone -- the sorted rebuild happens once, in pxEnd, when
+      // every price has landed.
+      renderStats(); fillAssetValue(a); }).catch(function(){}); }
 
   // __ldDone marks "this one has finished, whatever it found". Without it a pool that resolves with no
   // USD value -- a credit/credit pair with no priced side -- would look permanently unloaded and hold
@@ -7430,8 +7470,7 @@ var qrcode = function() {
       // no XLM side: price one side in XLM, then double that
       var s0=sides[0]; if(!s0||!s0.iss){ renderPools(); return; }
       var t0=s0.code.length<=4?"credit_alphanum4":"credit_alphanum12";
-      return j(H+"/trade_aggregations?base_asset_type="+t0+"&base_asset_code="+s0.code+"&base_asset_issuer="+s0.iss
-        +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1").then(function(pd){
+        return pxAgg({code:s0.code,issuer:s0.iss}).then(function(pd){
         var r=recs(pd)[0], px=r?(+r.close||+r.avg||0):0;
         if(px>0)settle(s0.amount*px); else renderPools();
       }).catch(function(){ renderPools(); });
