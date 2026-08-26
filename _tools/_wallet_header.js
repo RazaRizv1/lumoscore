@@ -35,7 +35,27 @@ const STYLE='<style id="lx-whead-css">'
 +'@media (max-width:560px){'
 +'.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}'
 +'.appbar .logo .logo-text{overflow:visible!important}'
-+'.appbar .avatar-sm.lx-mav{flex:0 1 auto!important;min-width:0;overflow:hidden}'
+// item 4: this let the chip SHRINK and then clipped it, so on the wallet page -- whose logo is 11px
+// wider and whose .grow spacer collapses -- the pill lost 24px and the address lost its last character
+// ("...4X2" instead of "...4X2J"). An address missing a character is worse than a tight header: it
+// reads as a different address. The chip now holds its content and the LOGO gives way instead.
++'.appbar .avatar-sm.lx-mav{flex:0 0 auto!important;min-width:0;overflow:visible}'
++'.appbar .logo{min-width:0;flex:0 1 auto;overflow:hidden}'
+// Measured at 375px: logo 149 + chip 130 + two 38px buttons + four 8.8px gaps = 390 in a 340 content
+// box. The chip is the one thing here that must not be trimmed -- a truncated address reads as a
+// DIFFERENT address -- so the row reclaims the 50px from its own padding and gaps instead, and the chip
+// gives back a little of its own. The wordmark stays, which is what it looked like before the clip.
++'@media(max-width:430px){'
++'.appbar{padding-left:10px!important;padding-right:10px!important;gap:6px!important}'
++'.appbar .avatar-sm.lx-mav{gap:6px!important;padding-left:5px!important;padding-right:9px!important}'
++'.appbar .avatar-sm.lx-mav::after{font-size:12px!important}'
++'.appbar .avatar-sm.lx-mav::before{width:18px!important;height:18px!important}'
+// Still 24px over at 375px after the tightening above, and the only remaining slack is the wordmark.
+// Below 390px it goes and the flame stays -- the ordinary phone-header pattern. A 390px+ phone (which
+// is what the report came from) keeps LUMOSCORE, so this only bites where the row genuinely cannot
+// hold both. Applied to .appbar, so every page behaves the same way at the same width.
++'@media(max-width:390px){.appbar .logo-text{display:none!important}}'
++'}'
 +'.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}'
 +'.appbar .avatar-sm.lx-mav{white-space:nowrap}'
 +'}'
