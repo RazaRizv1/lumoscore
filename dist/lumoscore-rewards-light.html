@@ -8101,7 +8101,7 @@ window.addEventListener('click',function(e){
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-poolwarm">(function(){try{if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-wclaim">(function(){
+})();</script><script id="lx-wclaim">(function(){
   if(window.__lxWClaim)return; window.__lxWClaim=1;
   var H="https://horizon.stellar.org";
   function me(){ try{ return localStorage.getItem("lumos.address")||""; }catch(_){ return ""; } }
@@ -8937,7 +8937,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
   else boot();
-})();</script><script id="lx-nofollow">(function(){
+})();</script><script id="lx-poolwarm">(function(){try{function warmRate(){ try{ fetch("/lxapi/xlm").catch(function(){}); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(warmRate,1200);},{timeout:5000});else setTimeout(warmRate,2000);if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){
     if(!h)return true;
