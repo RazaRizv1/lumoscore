@@ -140,16 +140,11 @@ const STYLE = '<style id="lx-dexhero-css">'
 const SCRIPT = '<script id="lx-dexhero">(function(){'
   + 'function q(s){return document.querySelector(s);}'
   + 'function go(){'
-  // The mints card, either layout.
-  + 'var mints=q(".dex-mints-card")||q(".mdx-mints-card");'
-  + 'var ctas=q(".lx-dctas")||q(".mdx-hero-ctas");'
-  // The card's own heading row, so the links sit beside the title rather than on top of the list.
-  + 'if(mints&&ctas&&!mints.contains(ctas)){'
-  + 'var head=mints.querySelector(".dex-mints-head,.mdx-mints-head,.card-head,h3");'
-  + 'var host=(head&&head.parentNode===mints)?head:mints;'
-  + 'if(host===head&&head.appendChild){head.appendChild(ctas);}else{mints.insertBefore(ctas,mints.firstChild);}'
-  
-+ '}'
+  // items 16 + 17: this used to move the page CTAs INTO the New Mints head on every tick. New Mints is
+  // hidden now, so that move was parking the launch link inside a hidden card -- and it fought
+  // _dexdata.js dropSections(), which seats the same node in the pairs controls, with whichever ran last
+  // winning. Removed at the source rather than raced against. Mobile is covered too: applyMobileCtas()
+  // in _dexdata.js already seats .mdx-hero-ctas in the pairs heading.
   // #32: the rocket becomes the plus used by Create Pool on Pools -- same .dex-hero-btn.primary class
   // there, so this is the identical control drawn two different ways, and now it is drawn one way.
   + 'var prim=q(".lx-dctas .dex-hero-btn.primary")||q(".mdx-hero-ctas .mdx-hero-btn.primary");'

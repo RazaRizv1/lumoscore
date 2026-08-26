@@ -19,6 +19,9 @@ const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-dex-mobile.html'];
 
 const STYLE = '<style id="lx-mobdex-css">'
+// items 16 + 18: New Mints and Market Movers are off this page too. Class rather than an element rule,
+// because a section here is a run of siblings and not one wrapper.
++ '.lx-mdgone.lx-mdgone{display:none!important}'
 // #34: the movers become one sideways row here too, rather than ten stacked cards the reader has to
 // scroll the PAGE through. Same idea as desktop: the section stays the height of a single card and the
 // card clipped at the right edge is what says there is more.
@@ -625,8 +628,28 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
       want.forEach(function(c){ have[c].classList.toggle("active",c==="volume"); });
     }
   }
+  // items 16 + 18: hide a whole section -- its head plus every sibling up to the next head.
+  function hideRun(re){
+    var page=q(".page"); if(!page)return;
+    var kids=[].slice.call(page.children), head=null;
+    for(var i=0;i<kids.length;i++){
+      var k=kids[i];
+      if(k.className&&String(k.className).indexOf("mdx-section-head")>=0&&re.test(k.textContent||"")){ head=k; break; }
+    }
+    if(!head)return;
+    head.classList.add("lx-mdgone");
+    for(var n=head.nextElementSibling;n&&!(n.className&&String(n.className).indexOf("mdx-section-head")>=0);n=n.nextElementSibling)
+      n.classList.add("lx-mdgone");
+  }
+  function hideDropped(){
+    try{ hideRun(/new mints/i); }catch(_){}
+    try{ hideRun(/market movers/i); }catch(_){}
+    // The mints card is its own node on this layout and can sit outside the run.
+    try{ var mc=q(".mdx-mints-card"); if(mc)mc.classList.add("lx-mdgone"); }catch(_){}
+  }
   function pass(){try{
     orderSections();orderMoverTabs();
+    hideDropped();
     wire();renderMints();renderMovers();renderPairs();repaintIcons();
     // Hold the reveal until the ORDER is real, not merely until assets exist. The list defaults to 24h
     // volume, and __lxDEXassets appears as soon as the eight majors are priced -- the launchpad roster
