@@ -540,7 +540,26 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   // figure is written once, when both say the counting is over.
   var PXWAVE=0, PXPEND=0;
   function pxStart(){ PXPEND++; }
-  function pxEnd(){ if(PXPEND>0)PXPEND--; if(PXPEND===0){ try{ renderStats(); }catch(_){} } }
+  // Write a single row's Value cell without touching the tbody's order. The row is found by the
+  // code+issuer it was stamped with, so this cannot land on the wrong asset when two share a ticker.
+  function fillAssetValue(a){
+    try{
+      var tb=q("#accAssetsTbl"); if(!tb||!a)return;
+      var rows=tb.querySelectorAll("tbody tr.acc-row");
+      for(var i=0;i<rows.length;i++){
+        var r=rows[i];
+        if(r.getAttribute("data-code")!==a.code)continue;
+        if((r.getAttribute("data-iss")||"")!==(a.issuer||""))continue;
+        var td=r.children[2]; if(!td)return;
+        var v=(a.usd!=null&&xlmUsd>0)?usd(a.usd):DASH;
+        if(td.textContent!==v)td.textContent=v;
+        return;
+      }
+    }catch(_){}
+  }
+  // The sorted rebuild happens HERE, once, when nothing is still in flight -- so the reader sees the list
+  // settle exactly once instead of watching it reshuffle on every arrival.
+  function pxEnd(){ if(PXPEND>0)PXPEND--; if(PXPEND===0){ try{ renderStats(); renderAssets(); }catch(_){} } }
   var PIN={XLM:0, USDC:1, LUMOS:2};
   // Pinned three first, then by value. An unpriced row sorts after every priced one: we do not know
   // what it is worth, and ranking it as zero would be a claim we cannot make.
@@ -875,12 +894,33 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   // last trade close against XLM -- the same price the Trade pages quote, so a holding is worth the same
   // number on both screens
   function loadAssetPx(a){ pxStart(); return loadAssetPx_(a).then(pxEnd,pxEnd); }
-  function loadAssetPx_(a){
+  // /lxapi/candles answers this at the edge, cached 300s and shared, so a 72-asset wallet costs the
+  // network one request per ASSET-EVER rather than 72 per page view. Direct Horizon stays as the
+  // fallback, so localhost and any static host still work.
+  function pxDirect(a){
     var t=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
     return j(H+"/trade_aggregations?base_asset_type="+t+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer
-      +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1").then(function(d){
+      +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1");
+  }
+  function pxAgg(a){
+    var code=a.code||"", iss=a.issuer||"";
+    // Only hand the edge what its validator accepts (code 1-12 alphanumeric, issuer G + 55).
+    var ok=code.length>0&&code.length<13&&iss.length===56&&iss.charAt(0)==="G";
+    for(var i=0;ok&&i<code.length;i++){ var ch=code.charAt(i);
+      if(!((ch>="A"&&ch<="Z")||(ch>="a"&&ch<="z")||(ch>="0"&&ch<="9")))ok=false; }
+    if(!ok)return pxDirect(a);
+    return fetch("/lxapi/candles?a="+encodeURIComponent(code+"-"+iss)+"&res=86400000&order=desc&limit=1")
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){ return (!d||d.error)?pxDirect(a):d; })
+      .catch(function(){ return pxDirect(a); });
+  }
+  function loadAssetPx_(a){
+    return pxAgg(a).then(function(d){
       var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||0; a.usd=a.bal*a.px*xlmUsd; }
-      renderStats(); renderAssets(); }).catch(function(){}); }
+      // NOT renderAssets(): rebuilding here is what makes the list jump. Write this one value into the
+      // row it belongs to and leave the order alone -- the sorted rebuild happens once, in pxEnd, when
+      // every price has landed.
+      renderStats(); fillAssetValue(a); }).catch(function(){}); }
 
   // __ldDone marks "this one has finished, whatever it found". Without it a pool that resolves with no
   // USD value -- a credit/credit pair with no priced side -- would look permanently unloaded and hold
@@ -903,8 +943,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       // no XLM side: price one side in XLM, then double that
       var s0=sides[0]; if(!s0||!s0.iss){ renderPools(); return; }
       var t0=s0.code.length<=4?"credit_alphanum4":"credit_alphanum12";
-      return j(H+"/trade_aggregations?base_asset_type="+t0+"&base_asset_code="+s0.code+"&base_asset_issuer="+s0.iss
-        +"&counter_asset_type=native&resolution=86400000&order=desc&limit=1").then(function(pd){
+        return pxAgg({code:s0.code,issuer:s0.iss}).then(function(pd){
         var r=recs(pd)[0], px=r?(+r.close||+r.avg||0):0;
         if(px>0)settle(s0.amount*px); else renderPools();
       }).catch(function(){ renderPools(); });
