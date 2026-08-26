@@ -615,6 +615,9 @@ ${DXA_SUPINFO_CSS}
    of colour rather than a pair of tokens. 30px gives a logo enough room to be recognised at a glance and
    balances the line; the ring is the row background, so overlapping discs stay separated on any surface. */
 .dxa-pl-pair{gap:12px}
+/* item 3: the row is the control now, so it has to look like one. */
+tr.dxa-pl-row{cursor:pointer;transition:background .14s ease}
+tr.dxa-pl-row:hover{background:rgba(127,127,140,.07)}
 .dxa-pl-ico{width:34px;height:34px;font-size:14px;border-width:3px;box-shadow:0 1px 4px rgba(0,0,0,.4)}
 .dxa-pl-ico + .dxa-pl-ico{margin-left:-11px}
 /* the page asset leads the pair, so it sits in front rather than behind the counterpart */
@@ -2780,12 +2783,12 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     setTxt(vals[2],abbrNum(v.lps));
     for(var i=0;i<3;i++)lxMark(vals[i]); }
   function poolsRowsHTML(top,combined){ return top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
-      return '<tr><td><div class="dxa-pl-pair"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
+      return '<tr class="dxa-pl-row" data-pool="'+poolHref(p.id)+'"><td><div class="dxa-pl-pair"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
         +'<span class="dxa-pl-name">'+CODE+' / '+p.other+'</span></div></td>'
         +'<td class="mono">'+(xlmUsd>0?abbrUsd(p.tvlXlm*xlmUsd):abbrNum(p.tvlXlm)+" XLM")+'</td>'
         +'<td class="mono">'+num(p.tl)+'</td>'
         +'<td class="mono">'+(share>=0.1?share.toFixed(1):"<0.1")+'%</td>'
-        +'<td style="text-align:right"><a class="dxa-pl-cta" href="'+poolHref(p.id)+'">View pool \\u2192</a></td></tr>'; }).join(""); }
+        +'</tr>'; }).join(""); }
   function poolsMRowsHTML(top,combined){ return top.map(function(p){ var share=combined>0?(p.tvlXlm/combined*100):0;
       return '<a class="mdxa-pl-row" href="'+poolHref(p.id)+'">'
         +'<div class="mdxa-pl-l"><span class="dxa-pl-icos">'+poolIco(CODE,ISSUER)+poolIco(p.other,p.otherIss)+'</span>'
@@ -2874,7 +2877,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         +'</div>';
       wrap.innerHTML=mhead+'<div class="mdxa-pl-list"></div><div class="lx-pl-foot"></div>';
     }
-    else wrap.innerHTML=head+'<table class="ex-table"><thead><tr><th>Pool</th><th>TVL</th><th>LP holders</th><th>Pool share</th><th></th></tr></thead><tbody></tbody></table><div class="lx-pl-foot"></div>';
+    else wrap.innerHTML=head+'<table class="ex-table"><thead><tr><th>Pool</th><th>TVL</th><th>LP holders</th><th>Pool share</th></tr></thead><tbody></tbody></table><div class="lx-pl-foot"></div>';
     // Delegated, and bound to the freshly-built wrap, so it cannot double-fire across rebuilds.
     wrap.addEventListener("click",function(e){ var t=e.target&&e.target.closest?e.target.closest(".lx-pl-prev,.lx-pl-next"):null; if(!t)return;
       e.preventDefault(); poolsPage+=t.className.indexOf("lx-pl-next")>=0?1:-1; poolsPaint(); });
@@ -2945,6 +2948,17 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // The MOBILE issuer chip has no .copy-i — its icons are bare <svg> inside the .addr[data-copy] span
     // — so this handler never fired on a phone and the button looked dead. Accept a tap anywhere on the
     // issuer chip as well, which is also the better touch target.
+    // item 3: tapping anywhere on a pools row opens that pool. A real link inside the row still wins,
+    // so the pair icons/name keep whatever behaviour they already had.
+    document.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      if(t.closest("a[href]"))return;
+      var r=t.closest("tr.dxa-pl-row[data-pool]"); if(!r)return;
+      var h=r.getAttribute("data-pool"); if(!h)return;
+      e.preventDefault(); e.stopPropagation();
+      if(e.stopImmediatePropagation)e.stopImmediatePropagation();
+      location.href=h;
+    },true);
     document.addEventListener("click",function(e){ var t=e.target; if(!t||!t.closest)return;
       var ci=t.closest(".copy-i")||t.closest(".asset-meta .addr[data-copy],.asset-meta-row .addr[data-copy]"); if(!ci)return;
       var host=ci.closest("[data-copy]"); var val=host?host.getAttribute("data-copy"):null; if(!val||val==="native")return;
