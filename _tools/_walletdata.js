@@ -120,6 +120,9 @@ const CSS='<style id="lx-walletdata-css">'
 +'#lpPanel .lp-ico.lx-lpico::after{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px}'
 +'#lpPanel .lp-ico.lx-lpico img{display:none!important}'
 +'#lpPanel thead th:nth-child(3),#lpPanel tbody td:nth-child(3){display:none!important}'
+// item 14: Rewards was a dash on every row -- these pools pay through the pool itself, not a separate
+// stream. APR (7d) at nth-child(3) was dropped the same way earlier, which is why Rewards is 5th.
++'#lpPanel thead th:nth-child(5),#lpPanel tbody td:nth-child(5){display:none!important}'
 +'#assetsTable .spark-cell{display:none!important}'
 +'#assetsTable .price-cell .lx-pxlm{font-size:11px;color:var(--text-muted);margin-top:3px;font-family:\'JetBrains Mono\',monospace;letter-spacing:.01em}'
 +'#assetsTable .price-cell .lx-p1{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}'
