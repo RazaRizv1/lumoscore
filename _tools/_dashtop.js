@@ -182,6 +182,10 @@ const STYLE = `<style id="lx-dashtop-css">
 /* children 2 and 4 open a row (no rule); 3 and 5 sit in the right column and take one */
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n)::before{display:none}
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1)::before{display:block}
+/* item 13: in a 2x2 block the eye reads down the columns, so the marks share a left edge rather than
+   being centred per cell -- centred figures of different widths put each mark at its own x. */
+.lx-xlmpanel>.status-row>.status-pill{justify-content:flex-start!important;padding-left:14px!important}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n){padding-left:0!important}
 .lx-xlmpanel>.status-row .val{font-size:17px!important}
 .lx-xlmpanel>.status-row .lx-pico{width:32px!important;height:32px!important}
 .lx-xlmpanel>.status-row .lx-pico svg{width:17px!important;height:17px!important}
