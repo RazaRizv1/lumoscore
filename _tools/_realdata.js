@@ -177,12 +177,15 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});'
 +'}).catch(function(){});});'
 +'}).catch(function(){});}'
-// A cache written by the previous build holds FOUR entries and no trade count, so the length check is
-// what stops a warm start restoring a strip with an empty cell in it.
 // A cache written by a previous build is an ARRAY, not this object, so the shape check is what stops a
 // warm start restoring a strip of undefineds.
+// The other way to get a strip of undefineds is for THIS list to fall behind the pills: prep() renders
+// before the fetch lands, so any key rebuildStats reads that is missing here paints the literal string
+// "undefined" until the network answers. That is why the key list lives in NSKEYS and is used both to
+// build the placeholders and to restore them -- rename a pill, change it in one place.
++'var NSKEYS=["assets","pools","trades","accounts"];'
 +'function prep(){var c=null;try{c=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}'
-+'var _d={assets:"\\u2026",pools:"\\u2026",tvl:"\\u2026",trades:"\\u2026",txs:"\\u2026",wallets:"\\u2026",dayTip:""};'
++'var _d={dayTip:"",accountsExact:""};for(var i=0;i<NSKEYS.length;i++)_d[NSKEYS[i]]="\\u2026";'
 +'if(c&&!c.length&&typeof c==="object"){for(var k in _d){if(c[k]&&c[k]!=="\\u2014")_d[k]=c[k];}}'
 +'rebuildStats(_d);}'
 +'function run(){prep();stats();feed();}'
