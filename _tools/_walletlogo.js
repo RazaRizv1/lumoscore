@@ -29,6 +29,9 @@ const STYLE = `<style id="lx-walletlogo-css">
    and ring stay whatever each surface already sets. */
 .mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
   background-repeat:no-repeat!important}
+/* A mark on a white ground would otherwise read as a hole punched in the header. The ring gives it an
+   edge; it is translucent so it works on either theme. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{box-shadow:inset 0 0 0 1px rgba(127,127,140,.30)}
 /* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
 .mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
 /* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
@@ -77,6 +80,8 @@ const SCRIPT = `<script id="lx-walletlogo">(function(){
       if(e.textContent!==want)e.textContent=want;
     }
   }
+  // Measured ink-bounding-box crops. 1 = the mark already fills its canvas, so leave it alone.
+  var ZOOM={rabet:141,ready:160,albedo:122};
   function paint(){
     try{ nameIt(); }catch(_){}
     var url=logo(); if(!url)return;
@@ -87,6 +92,10 @@ const SCRIPT = `<script id="lx-walletlogo">(function(){
       e.setAttribute("data-lxwl",url);
       e.classList.add("lx-haswl");
       e.style.setProperty("background-image","url('"+url+"')","important");
+      // Crop the dead margin on the marks that have one; the rest keep plain cover.
+      var _z=ZOOM[walletId()];
+      if(_z)e.style.setProperty("background-size",_z+"%","important");
+      else e.style.removeProperty("background-size");
     }
   }
   function boot(){
