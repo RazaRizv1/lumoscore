@@ -75,7 +75,7 @@ const STYLE = `<style id="lx-wclaim-css">
    NOTE the longhands. Writing this as a font shorthand ending in "inherit" is invalid CSS -- inherit is
    not a legal family there -- and the browser drops the WHOLE declaration, weight and size with it.
    That is why none of the typography set on the previous pass ever applied. */
-.lx-wcamt .a{font-weight:600;font-size:17.5px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text)}
+.lx-wcamt .a{font-weight:800;font-size:17.5px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text);font-variant-numeric:tabular-nums}
 .lx-wcamt .u{font-weight:700;font-size:13px;line-height:1.25;color:var(--text-soft)}
 .lx-wcaddr{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:600;letter-spacing:-.01em}
 .lx-wcsub{margin-top:3px;font-weight:600;font-size:12.5px;line-height:1.35;color:var(--text-soft);
@@ -83,8 +83,9 @@ const STYLE = `<style id="lx-wclaim-css">
 /* #19: flat accent, not a gradient. .btn-primary on this page is a solid rgb(234,106,44) with a 9px
    radius and a soft accent shadow; this ran a gradient down to #c1440a, which reads as a darker, redder
    orange sitting right beside the real one. Measured off that button rather than approximated. */
-.lx-wcbtn{flex:0 0 auto;height:34px;padding:0 16px;border-radius:9px;border:0;color:#fff;cursor:pointer;
-  font-weight:700;font-size:13px;line-height:1;background:var(--accent,#ea6a2c);
+.lx-wcbtn{flex:0 0 auto;height:38px;padding:0 17px;border-radius:8px;border:0;color:#fff;cursor:pointer;
+  font-weight:600;font-size:16px;line-height:1;background:var(--accent,#ea6a2c);
+  font-family:"Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.01em;
   box-shadow:0 5px 14px 0 rgba(234,106,44,.28);transition:filter .14s ease,transform .14s ease}
 .lx-wcbtn:hover:not(:disabled){filter:brightness(1.05);transform:translateY(-1px)}
 .lx-wcbtn:disabled{opacity:.6;cursor:default;box-shadow:none;transform:none}
