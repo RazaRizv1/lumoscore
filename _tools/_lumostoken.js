@@ -15,6 +15,16 @@ const B = String.fromCharCode(92);
 const KEYS = ['lumoscore-lumos-token.html', 'lumoscore-lumos-token-dark.html', 'lumoscore-lumos-token-mobile.html'];
 
 const STYLE = `<style id="lx-lt-css">
+/* item 20: a tapped timeframe used to leave the PREVIOUS timeframe's line on screen for a few seconds,
+   looking like the answer. While the new one is loading the old line dims and stops taking pointer
+   events, so it reads as being replaced. Cleared by drawChart and by every path that ends the load. */
+#priceChart.lx-ch-busy svg{opacity:.26}
+#priceChart.lx-ch-busy{pointer-events:none}
+/* NO transition on this svg. Adding one left a running opacity animation on the element that
+   pinned it at .26 even after the class came off -- measured getAnimations() reporting
+   "opacity:running" with no class and no inline style, and the cascade unable to touch it. A stuck
+   transition outranking everything is a failure mode already on record here; the toggle is instant
+   instead, which is also the honest signal for "this is being replaced". */
 /* #21: the pair marks on the PHONE pools list were 26px -- small enough that a real logo reads as a
    smudge rather than a mark. 32px, overlap kept proportional.
    TOP LEVEL on purpose: most of this stylesheet is inside @media(min-width:760px), and .pool-list is
@@ -1163,8 +1173,13 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   var chartTF="7D", chartPts=null, chartWired=false;
   function tfCfg(tf){ var m={"1H":{res:60000,span:3600000},"24H":{res:900000,span:86400000},"7D":{res:3600000,span:604800000},"30D":{res:86400000,span:2592000000},"1Y":{res:604800000,span:31536000000},"All":{res:604800000,span:157680000000}}; return m[tf]||m["7D"]; }
   function axisLbl(t,tf){ var d=new Date(t),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; if(tf==="1H"||tf==="24H")return (d.getHours()<10?"0":"")+d.getHours()+":00"; if(tf==="1Y"||tf==="All")return mo[d.getMonth()]+" '"+String(d.getFullYear()).slice(2); return mo[d.getMonth()]+" "+d.getDate(); }
+  // item 20: mark the canvas stale while a timeframe is loading. Called by loadChart, cleared by
+  // drawChart and by chartMsg (which is itself a conclusion -- empty period, or an error).
+  function chartBusy(on){
+    try{ var pc=q("#priceChart"); if(pc)pc.classList.toggle("lx-ch-busy",!!on); }catch(_){}
+  }
   function drawChart(pts){
-    var pc=q("#priceChart"); if(!pc)return; var svg=pc.querySelector("svg");
+    var pc=q("#priceChart"); if(!pc)return; chartBusy(false); var svg=pc.querySelector("svg");
     if(!svg){
       // The phone build ships this container empty -- there is no design chart here to replace, so
       // make the canvas rather than giving up on it. Same viewBox the draw code below assumes.
@@ -1303,6 +1318,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   var CH_BACKOFF=[1500,4000,12000];
   function loadChart(tf,attempt){
     attempt=attempt||0;
+    chartBusy(true);
     chartTF=tf; var cfg=tfCfg(tf), now=Date.now(), start=now-cfg.span;
     jAgg({res:cfg.res,order:"asc",limit:200,start:start,end:now}).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
@@ -1311,14 +1327,14 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       // never gets a price stops asking instead of spinning for the whole session.
       // Fewer than two points is not a failure, it is an empty period -- say so rather than showing a
       // blank box that looks broken.
-      if(r.length<2){ chartMsg("No trades in this period."); return; }
+      if(r.length<2){ chartBusy(false); chartMsg("No trades in this period."); return; }
       if(!drawFromRecs()&&!_chartWait){
         // Waiting on the XLM/USD rate, which the price in USD depends on. Bounded, and it now reports
         // when it gives up instead of expiring in silence.
         _chartWait=1;
         var n=0,iv=setInterval(function(){
           if(drawFromRecs()){ clearInterval(iv); _chartWait=0; return; }
-          if(++n>60){ clearInterval(iv); _chartWait=0; chartMsg("Waiting on the XLM price \u2014 tap a timeframe to retry."); }
+          if(++n>60){ clearInterval(iv); _chartWait=0; chartBusy(false); chartMsg("Waiting on the XLM price \u2014 tap a timeframe to retry."); }
         },200);
       }
     }).catch(function(){
@@ -1329,8 +1345,9 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         chartMsg("Loading price history\u2026");
         setTimeout(function(){ loadChart(tf,attempt+1); },CH_BACKOFF[attempt]);
       } else {
+        chartBusy(false);
         chartMsg("Price history is unavailable right now. Stellar's API is limiting requests from this network \u2014 tap a timeframe to try again.");
-      }
+        }
     });
   }
   function wireChartTabs(){
@@ -1353,7 +1370,25 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   function updateHolderUsd(){ var p=lumosXlm*xlmUsd; if(!(p>0))return; qa(".holder-row[data-lxbal]").forEach(function(r){ var bal=+r.getAttribute("data-lxbal"); var mm=r.querySelector(".holdings .lc-money"); if(mm){ var u=abbrUsd(bal*p); if(mm.getAttribute("data-orig")!==u){ mm.textContent=u; mm.setAttribute("data-orig",u); mm.setAttribute("data-usd",bal*p); } } }); }
   // Create-Pool modal: drop the "Trading fee 0.5%" row (per request). Idempotent.
   function polishModals(){ qa("#createPoolModal .row").forEach(function(r){ if(r.getAttribute("data-lxhid")!=="1"&&/Trading fee/i.test(r.textContent||"")){ r.setAttribute("data-lxhid","1"); r.style.display="none"; } }); }
-  function applyAll(){ if(vol24Xlm!=null&&xlmUsd)vol24Usd=vol24Xlm*xlmUsd; try{ applyHero(); }catch(_){} try{ applyStats(); }catch(_){} try{ applyOverview(); }catch(_){} try{ applyTabs(); }catch(_){} try{ buildPoolsTable(); try{ buildPoolsListMobile(); }catch(_){} }catch(_){} try{ repaintPoolIcons(); }catch(_){} try{ fixAllocation(); }catch(_){} try{ setModalLogos(); }catch(_){} try{ applyHolders(); }catch(_){} try{ updateHolderUsd(); }catch(_){} try{ polishModals(); }catch(_){} try{ wireChartTabs(); }catch(_){} try{ var pc=q("#priceChart"); if(pc&&chartPts&&!pc.querySelector(".lx-cline"))drawChart(chartPts); }catch(_){} try{ fixAbout(); }catch(_){} try{ installSwapGlobals(); }catch(_){} try{ wireSwapPreselect(); }catch(_){} try{ var cpm=q("#createPoolModal"); if(cpm){ wireCreatePool(); cpRefresh(cpm); } }catch(_){} try{ wireTrustGates(); }catch(_){} }
+  // item 19: "What you can do with LUMOS" belongs above "Supply distribution" -- what the token DOES is
+  // the reason to care how it is split, not the other way round.
+  function orderSections(){
+    var page=q("main.page")||q("main")||q(".page"); if(!page)return;
+    var kids=[].slice.call(page.children);
+    function headBy(re){
+      for(var i=0;i<kids.length;i++){ var k=kids[i];
+        if(k.className&&String(k.className).indexOf("section-head")>=0&&re.test(k.textContent||""))return k; }
+      return null;
+    }
+    var util=headBy(/what you can do with lumos/i), sup=headBy(/supply distribution/i);
+    if(!util||!sup||util.parentNode!==sup.parentNode)return;
+    // Already ahead of it? Then this is a no-op on every later tick.
+    if(util.compareDocumentPosition(sup)&Node.DOCUMENT_POSITION_FOLLOWING)return;
+    var run=[util];
+    for(var n=util.nextElementSibling;n&&!(n.className&&String(n.className).indexOf("section-head")>=0);n=n.nextElementSibling)run.push(n);
+    for(var r=0;r<run.length;r++)sup.parentNode.insertBefore(run[r],sup);
+  }
+  function applyAll(){ try{ orderSections(); }catch(_){} if(vol24Xlm!=null&&xlmUsd)vol24Usd=vol24Xlm*xlmUsd; try{ applyHero(); }catch(_){} try{ applyStats(); }catch(_){} try{ applyOverview(); }catch(_){} try{ applyTabs(); }catch(_){} try{ buildPoolsTable(); try{ buildPoolsListMobile(); }catch(_){} }catch(_){} try{ repaintPoolIcons(); }catch(_){} try{ fixAllocation(); }catch(_){} try{ setModalLogos(); }catch(_){} try{ applyHolders(); }catch(_){} try{ updateHolderUsd(); }catch(_){} try{ polishModals(); }catch(_){} try{ wireChartTabs(); }catch(_){} try{ var pc=q("#priceChart"); if(pc&&chartPts&&!pc.querySelector(".lx-cline"))drawChart(chartPts); }catch(_){} try{ fixAbout(); }catch(_){} try{ installSwapGlobals(); }catch(_){} try{ wireSwapPreselect(); }catch(_){} try{ var cpm=q("#createPoolModal"); if(cpm){ wireCreatePool(); cpRefresh(cpm); } }catch(_){} try{ wireTrustGates(); }catch(_){} }
 
   function loadData(){
     // XLM price (USD)
