@@ -254,7 +254,13 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
    rather than overflow -- that is what the flex-wrap on the head is for. */
 .lx-ctas .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5px;height:31px;padding:0 8px!important;border-radius:9px;font-weight:700;font-size:10.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
 .lx-ctas .mdx-hero-btn svg{width:11px;height:11px;flex:0 0 auto}
-.lx-ctas .mdx-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 8px 18px -11px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
+/* Launch Token is a TEXT LINK, the same as desktop -- it was the only place on the site where this
+   control rendered as a filled button, and only on the phone. */
+.lx-ctas .mdx-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;
+  box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}
+/* and the ghost half goes here too, for the reason it went on desktop: it explains the launchpad, which
+   is a page away from a table of trading pairs. */
+.lx-ctas .mdx-hero-btn.ghost{display:none!important}
 /* the design ships these as flex children that grow; a link must be its own width, not half the row */
 .lx-ctas .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 .lx-ctas .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
