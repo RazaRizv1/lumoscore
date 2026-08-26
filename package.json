@@ -16,6 +16,6 @@
     "predeploy:admin": "node _tools/predeploy_check.js --admin"
   },
   "devDependencies": {
-    "wrangler": "^4.19.0"
+    "wrangler": "^4.126.0"
   }
 }
