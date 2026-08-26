@@ -99,7 +99,7 @@ var _tileSeq = 0;
 function tile(inner) {
   // Unique per call: four of these live in one document and a repeated id makes every later tile paint
   // with the first one's gradient.
-  var n = ++_tileSeq, gp = 'lxgw' + n, gl = 'lxgl' + n;
+  var n = ++_tileSeq, gp = 'lxgw' + n, gl = 'lxgl' + n, gd = 'lxgd' + n;
   return '<svg class="lx-dbx-art" viewBox="0 0 56 56" fill="none" aria-hidden="true">'
     + '<defs>'
     + '<linearGradient id="' + gp + '" x1="0" y1="0" x2=".85" y2="1">'
@@ -108,9 +108,18 @@ function tile(inner) {
     + '<radialGradient id="' + gl + '" cx=".5" cy=".42" r=".62">'
     + '<stop offset="0" stop-color="#fff" stop-opacity=".26"/>'
     + '<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
+    // Depth: light lands on the top face and the bottom falls away. Without this the chip is a flat
+    // swatch — the colour was the fix, this is what makes it read as an object.
+    + '<linearGradient id="' + gd + '" x1="0" y1="0" x2="0" y2="1">'
+    + '<stop offset="0" stop-color="#fff" stop-opacity=".20"/>'
+    + '<stop offset=".46" stop-color="#fff" stop-opacity="0"/>'
+    + '<stop offset=".62" stop-color="#000" stop-opacity="0"/>'
+    + '<stop offset="1" stop-color="#000" stop-opacity=".16"/></linearGradient>'
     + '</defs>'
     + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gp + ')"/>'
-    + '<rect x="6" y="6" width="44" height="44" rx="14" fill="url(#' + gl + ')"/>'
+    // full-bleed, not inset 6px: an inset glow reads as a second smaller square sitting on the first
+    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gl + ')"/>'
+    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gd + ')"/>'
     + '<rect x=".8" y=".8" width="54.4" height="54.4" rx="15.4" fill="none" stroke="#fff" stroke-opacity=".22"/>'
     // A brighter arc along the top edge. White at 14% rather than the product colour, because a highlight
     // is light falling ON the tile, not more of the tile.
