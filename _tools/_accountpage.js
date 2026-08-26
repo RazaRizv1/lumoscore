@@ -85,7 +85,7 @@ const MAIN_INNER = `
         <div class="acc-pane" data-p="assets">
           <div class="acc-scroll">
             <table class="acc-tbl" id="accAssetsTbl">
-              <thead><tr><th>Asset</th><th class="num">Balance</th><th class="num">Value</th><th></th></tr></thead>
+              <thead><tr><th>Asset</th><th class="num">Balance</th><th class="num">Value</th></tr></thead>
               <tbody><tr class="acc-empty-row"><td colspan="4"><div class="acc-empty">Loading assets&#8230;</div></td></tr></tbody>
             </table>
           </div>
@@ -93,7 +93,7 @@ const MAIN_INNER = `
         <div class="acc-pane" data-p="pools" hidden>
           <div class="acc-scroll">
             <table class="acc-tbl" id="accPoolsTbl">
-              <thead><tr><th>Pool</th><th class="num">Pool share</th><th class="num">Position value</th><th class="num acc-hide-sm">Pool TVL</th><th></th></tr></thead>
+              <thead><tr><th>Pool</th><th class="num">Pool share</th><th class="num">Position value</th><th class="num acc-hide-sm">Pool TVL</th></tr></thead>
               <tbody><tr class="acc-empty-row"><td colspan="5"><div class="acc-empty">Loading pools&#8230;</div></td></tr></tbody>
             </table>
           </div>
@@ -218,6 +218,11 @@ const STYLE = `<style id="lx-acc-css">
 .acc-tab.active{color:var(--text);border-bottom-color:var(--accent)}
 .acc-pane[hidden]{display:none}
 .acc-view{color:var(--accent);text-decoration:none;font-size:13.5px;font-weight:700;white-space:nowrap}
+/* item 12: Balance and Value are both right-aligned numbers; with no column after them they ran together */
+#accAssetsTbl th:nth-child(3),#accAssetsTbl td:nth-child(3){padding-left:30px}
+/* item 21: a pool whose assets have not resolved yet shows a skeleton disc, not a red "?" */
+.acc-ico.acc-ico-wait{background:rgba(127,127,140,.16)!important;box-shadow:none!important}
+.acc-ico.acc-ico-wait::after{content:""!important}
 .acc-view:hover{text-decoration:underline}
 .acc-iss{display:block;font-size:12px;color:var(--text-soft);font-weight:600}
 .lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
@@ -638,7 +643,6 @@ const SCRIPT = `<script id="lx-accdata">(function(){
           +'<span class="acc-iss">'+esc(sub)+'</span></span></span></td>'
         +'<td class="num">'+amt(a.bal)+'</td>'
         +'<td class="num">'+(a.usd!=null&&xlmUsd>0?usd(a.usd):DASH)+'</td>'
-        +'<td style="text-align:right">'+(a.native?"":'<a class="acc-view" href="/trade/stellar/'+esc(a.code)+'-'+esc(a.issuer)+'">View asset</a>')+'</td>'
         +'</tr>'; }).join("");
     setMore("#accAssetsTbl","assets",rows.length,all.length);
     paintLogos();
@@ -699,16 +703,16 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       //
       // Unknown rows now hold a placeholder of the same height, so nothing moves as they fill in.
       var known=!!(p.a&&p.a!=="?"&&p.b&&p.b!=="?");
-      return '<tr class="acc-row" data-pool="'+esc(p.id)+'">'
+      var _w=known?"":" acc-ico-wait";
+        return '<tr class="acc-row" data-pool="'+esc(p.id)+'">'
         +'<td><span class="acc-pair"><span class="acc-icos">'
-          +'<span class="acc-ico" data-lxc="'+esc(p.a)+'" data-lxi="'+esc(p.ai||"")+'"></span>'
-          +'<span class="acc-ico" data-lxc="'+esc(p.b)+'" data-lxi="'+esc(p.bi||"")+'"></span></span>'
+          +'<span class="acc-ico'+_w+'" data-lxc="'+(known?esc(p.a):"")+'" data-lxi="'+esc(p.ai||"")+'"></span>'
+          +'<span class="acc-ico'+_w+'" data-lxc="'+(known?esc(p.b):"")+'" data-lxi="'+esc(p.bi||"")+'"></span></span>'
           +'<span><span class="acc-code">'+(known?(esc(p.a)+" / "+esc(p.b)):'<i class="acc-sk" style="width:86px"></i>')+'</span>'
           +'<span class="acc-dom">'+(p.tl!=null?(p.tl+(p.tl===1?" LP holder":" LP holders")):"")+'</span></span></span></td>'
         +'<td class="num">'+(known?((p.share>=0.01?p.share.toFixed(2):"<0.01")+'%'):'<i class="acc-sk" style="width:42px"></i>')+'</td>'
         +'<td class="num">'+(p.usd!=null&&xlmUsd>0?usd(p.usd):DASH)+'</td>'
         +'<td class="num acc-hide-sm">'+(p.tvl!=null&&xlmUsd>0?usd(p.tvl):DASH)+'</td>'
-        +'<td style="text-align:right"><a class="acc-view" href="/pools/stellar/id/'+esc(p.id)+'">View pool</a></td>'
         +'</tr>'; }).join("");
     setMore("#accPoolsTbl","pools",plist.length,psorted.length);
     paintLogos();

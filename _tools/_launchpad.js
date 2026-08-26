@@ -13,6 +13,10 @@
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
 const CSS='<style id="lx-lp-css">'
+/* item 31: the '?' markers in Launch Cost. Each row already states exactly what it is and what it
+   costs, so the marker added a question the row had already answered -- and its tooltip still said
+   'Aptos asset issuance fee', which is wrong on a Stellar launch. */
++'.summary-card .cost-row .info-i{display:none!important}'
 +'.lx-lp-invalid{border-color:#e5484d!important;box-shadow:0 0 0 3px rgba(229,72,77,.13)!important}'
 // Project Type: compact chip buttons instead of big cards — icon + title only, no description, auto width,
 // sit inline. No default selection (see the uncheck in run()); .selected gets the accent ring on click.
