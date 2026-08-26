@@ -329,6 +329,17 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 }
 /* Empty Gainers/Losers. Spans the grid so the message sits in the panel rather than in one cell. */
 .dex-mover-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--text-muted);font-size:13.5px}
+/* items 16 + 18: New Mints and Market Movers are off the page. Movers restated the pairs table's own
+   sort over four of its rows; New Mints put three launchpad tokens above the index. The launch entry
+   point they carried is re-seated in the pairs heading by dropSections() -- see item 17. */
+.dex-mints-card,.dex-movers{display:none!important}
+/* item 17: the CTA pair, once re-seated, sits inline at the end of the pairs controls rather than being
+   absolutely placed in a card corner as it was inside the mints head. */
+.dex-mk-controls>.lx-dctas{position:static!important;top:auto!important;right:auto!important;
+  order:-1;margin:0 4px 0 0!important;align-self:center}
+/* item 15: the placeholder was 191px of text in a 182px field with no padding, so it was clipped and
+   touched both edges. Shortened below; this gives what is left room to breathe. */
+.dex-mk-search input,input.lx-mkq{padding-left:10px!important;padding-right:10px!important}
 /* ---- Market Movers: symmetric body — price/vol (left) + Trades 24h (right), spark spans below ---- */
 .dex-mover-body{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
 .dex-mover-l{min-width:0}
@@ -742,6 +753,16 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(mv.previousElementSibling===after)return;              // already in place
     after.parentNode.insertBefore(mv,after.nextSibling);
   }
+  // item 17: the page's launch CTA lived inside the New Mints head, which is now hidden -- so it has to
+  // be re-seated or it goes with the card. The pairs controls row is where it belongs anyway: it is the
+  // only row on the page that is always visible. Moved, not rebuilt, so the listener bound to it (see
+  // the #dexHiwBtn/.lx-dctas delegate) survives.
+  function dropSections(){
+    var ct=q(".lx-dctas"); if(!ct)return;
+    var ctl=q(".dex-mk-controls"); if(!ctl)return;
+    if(ct.parentNode===ctl)return;                          // already re-seated
+    ctl.insertBefore(ct,ctl.firstChild);
+  }
   // #7: the three chips we no longer offer, and the rename of All. Done here rather than in the build
   // because the design re-renders this row -- a build-time edit would be undone the first time it did.
   // Idempotent: a removed chip is not found again, and the rename checks before writing.
@@ -774,7 +795,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // #10: the field only ever searched the curated list, and the placeholder implied the whole network.
   // Say so, rather than leaving someone to conclude their asset is missing when it was never in scope.
   function labelFilterInput(){
-    var want="Filter curated pairs \\u00b7 ticker";
+    var want="Filter curated pairs";
     qa(".mdx-mk-search input,.dex-mk-search input,.search-box.inline-filter input,input.lx-mkq,.lx-mkq input").forEach(function(i){
       if(i.getAttribute("placeholder")!==want)i.setAttribute("placeholder",want);
     });
@@ -1543,6 +1564,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     try{ trimFilters(); try{ labelHiw(); }catch(_){} }catch(_){}
     try{ labelFilterInput(); }catch(_){}
     try{ orderSections(); }catch(_){}
+    try{ dropSections(); }catch(_){}
     try{ denomUi(); denomUiSync(); }catch(_){}
     try{ renderMints(); }catch(_){}
     try{ renderMovers(); }catch(_){}
