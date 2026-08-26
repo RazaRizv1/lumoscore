@@ -344,6 +344,10 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .dex-mints-card,.dex-movers{display:none!important}
 /* item 17: the CTA pair, once re-seated, sits inline at the end of the pairs controls rather than being
    absolutely placed in a card corner as it was inside the mints head. */
+/* The block that moved here carries both CTAs, and only the launch one belongs in this row -- the
+   "How it works?" ghost explains the launchpad, which is a page away from a table of trading pairs.
+   Hidden rather than removed: it is one node with the primary, and the delegate is bound to the pair. */
+.dex-mk-controls>.lx-dctas .dex-hero-btn.ghost{display:none!important}
 .dex-mk-controls>.lx-dctas{position:static!important;top:auto!important;right:auto!important;
   order:-1;margin:0 4px 0 0!important;align-self:center}
 /* item 15: the placeholder was 191px of text in a 182px field with no padding, so it was clipped and
@@ -581,13 +585,30 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     })(0); }, EXTRA_HOLD);
   }
   // Decorative extras, fetched only after the numbers are showing: the 7d sparkline and pool TVL.
+  // See the note above: every trade_aggregations call on this page goes through here.
+  function lxAgg(a,res,limit,order){
+    var code=(a&&a.code)||"", iss=(a&&a.issuer)||"";
+    var base="base_asset_type="+(code.length<=4?"credit_alphanum4":"credit_alphanum12")
+      +"&base_asset_code="+encodeURIComponent(code)+"&base_asset_issuer="+iss+"&counter_asset_type=native";
+    function direct(){ return j(H+"/trade_aggregations?"+base+"&resolution="+res+"&order="+order+"&limit="+limit); }
+    // Only hand the edge what its validator accepts (code 1-12 alphanumeric, issuer G + 55). Checked with
+    // plain string tests rather than a regex, because these files eat backslashes.
+    var ok=code.length>0&&code.length<13&&iss.length===56&&iss.charAt(0)==="G";
+    for(var i=0;ok&&i<code.length;i++){ var c=code.charAt(i);
+      if(!((c>="A"&&c<="Z")||(c>="a"&&c<="z")||(c>="0"&&c<="9")))ok=false; }
+    if(!ok)return direct();
+    return fetch("/lxapi/candles?a="+encodeURIComponent(code+"-"+iss)+"&res="+res+"&order="+order+"&limit="+limit)
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){ return (!d||d.error)?direct():d; })
+      .catch(function(){ return direct(); });
+  }
   function rowExtras(a){
     if(a.__extra)return Promise.resolve(); a.__extra=1;
     var atype=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
     var base="base_asset_type="+atype+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer+"&counter_asset_type=native";
     if(a.domain)loadToml(a,a.domain);
     return Promise.all([
-      j(H+"/trade_aggregations?"+base+"&resolution=3600000&order=desc&limit=168").then(function(d){
+      lxAgg(a,"3600000",168,"desc").then(function(d){
         var r=recs(d).slice().reverse();
         var pts=r.map(function(x){ return +x.avg||+x.close||0; }).filter(function(v){ return v>0; });
         if(pts.length>=2)a.spark=pts; touch(); }).catch(function(){}),
@@ -1604,7 +1625,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var atype=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
     var base="base_asset_type="+atype+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer+"&counter_asset_type=native";
     return Promise.all([
-      j(H+"/trade_aggregations?"+base+"&resolution=86400000&order=desc&limit=1").then(function(d){
+      lxAgg(a,"86400000",1,"desc").then(function(d){
         // #3: this is the SAME daily bar the full loader reads, and it already carries counter_volume and
         // trade_count -- the lite path simply threw them away. That is why the two 24h columns I added to
         // the mint rows last batch showed a dash on every row: the data was in the response and discarded
@@ -1629,13 +1650,13 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     var base="base_asset_type="+atype+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer+"&counter_asset_type=native";
     var calls=[];
     // price + 24h change + high/low + 24h volume (daily aggregations)
-    calls.push(j(H+"/trade_aggregations?"+base+"&resolution=86400000&order=desc&limit=2").then(function(d){ var r=recs(d);
+    calls.push(lxAgg(a,"86400000",2,"desc").then(function(d){ var r=recs(d);
       if(r[0]){ a.px=+r[0].close||+r[0].avg||subPx(r[0])||a.px; a.vol=+r[0].counter_volume||0; a.high=+r[0].high||0; a.low=+r[0].low||0; a.trades=+r[0].trade_count||0; }
       if(r[0]&&r[1]&&+r[1].close>0)a.chg=((+r[0].close-+r[1].close)/+r[1].close)*100;
       computeTvl(a); touch(); }).catch(function(){}));
     // 7D trend sparkline: the MOST RECENT 168 hourly buckets (=7 days), desc then reversed to chronological.
     // (was resolution=3600000 order=asc limit=24 -> the 24 OLDEST buckets = wrong window under a "7D" label.)
-    calls.push(j(H+"/trade_aggregations?"+base+"&resolution=3600000&order=desc&limit=168").then(function(d){ var r=recs(d).slice().reverse();
+    calls.push(lxAgg(a,"3600000",168,"desc").then(function(d){ var r=recs(d).slice().reverse();
       var pts=r.map(function(x){ return +x.avg||+x.close||0; }).filter(function(v){ return v>0; }); if(pts.length>=2)a.spark=pts; touch(); }).catch(function(){}));
     // pool TVL
     calls.push(j(H+"/liquidity_pools?reserves="+a.code+":"+a.issuer+"&limit=200").then(function(d){ var r=recs(d);
