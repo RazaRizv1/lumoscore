@@ -21,6 +21,14 @@ const STYLE = '<style id="lx-mobwallet-css">'
 + '.lxmw-astacts{justify-content:flex-start!important}'
   // A6: the mark is the selection now. Pinned keeps the star, which is the mark that says pinned.
   + '.lxmw-row.lxmw-sel{box-shadow:inset 3px 0 0 var(--accent,#ea6a2c)}'
+  // item 5: the rows were already being STAMPED lxmw-pinned (see the renderer) but nothing ever styled
+  // it, so a pinned asset looked identical to an unpinned one -- the orange bar the desktop table gives
+  // pinned rows simply had no mobile counterpart. Same treatment as #assetsTable tr.lx-pinned, so the
+  // two layouts agree about what pinned looks like.
+  + '.lxmw-row.lxmw-ast.lxmw-pinned{background:linear-gradient(90deg,rgba(234,106,44,.10),transparent 60%);'
+  + 'box-shadow:inset 3px 0 0 var(--accent,#ea6a2c)}'
+  // A row that is both pinned and selected gets ONE bar, not a doubled one.
+  + '.lxmw-row.lxmw-ast.lxmw-pinned.lxmw-sel{box-shadow:inset 3px 0 0 var(--accent,#ea6a2c)}'
   // A7: clearance for that 3px rule -- at 2px the logo and the Trade button were touching it.
   + '.lxmw-row.lxmw-ast{padding-left:12px}'
   // A14: the claimable amount joins every other figure on the page.
