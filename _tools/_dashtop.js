@@ -191,6 +191,9 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xlmpanel>.status-row .lx-pico svg{width:17px!important;height:17px!important}
 }
 
+/* item 26: an empty .kpi-grid was contributing 44px of margin between the stats panel and Quick
+   actions, on top of the greeting row's own 30.8px. Hidden only while it holds no cards. */
+.kpi-grid:not(:has(> *)){display:none!important}
 /* item 13: the dashboard's top cards are present from the first paint rather than fading in. Their entrance animation showed as an empty page on every refresh. The reveal script still runs and still handles every other card type. */
 html.lcm-ready .quick-card,html.lcm-ready .activity-card{opacity:1!important;transform:none!important}
 </style>`;
