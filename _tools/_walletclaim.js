@@ -78,17 +78,18 @@ const STYLE = `<style id="lx-wclaim-css">
 .lx-wcamt .a{font-weight:700;font-size:18.55px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text);font-variant-numeric:tabular-nums}
 .lx-wcamt .u{font-size:14.55px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text-soft)}
 .lx-wcaddr{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:600;letter-spacing:-.01em}
-.lx-wcsub{margin-top:3px;font-weight:600;font-size:12.5px;line-height:1.35;color:var(--text-soft);
+.lx-wcsub{margin-top:3px;font-weight:400;font-size:14.55px;font-family:'JetBrains Mono',monospace;line-height:1.35;color:var(--text-soft);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* #19: flat accent, not a gradient. .btn-primary on this page is a solid rgb(234,106,44) with a 9px
    radius and a soft accent shadow; this ran a gradient down to #c1440a, which reads as a darker, redder
    orange sitting right beside the real one. Measured off that button rather than approximated. */
-.lx-wcbtn{flex:0 0 auto;height:38px;padding:0 17px;border-radius:8px;border:0;color:#fff;cursor:pointer;
-  font-weight:600;font-size:16px;line-height:1;background:var(--accent,#ea6a2c);
+.lx-wcbtn{flex:0 0 auto;height:38px;padding:6px 11px;border-radius:8px;border:1px solid transparent;
+  color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  font-weight:600;font-size:16px;line-height:1;background:transparent;
   font-family:"Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.01em;
-  box-shadow:0 5px 14px 0 rgba(234,106,44,.28);transition:filter .14s ease,transform .14s ease}
-.lx-wcbtn:hover:not(:disabled){filter:brightness(1.05);transform:translateY(-1px)}
-.lx-wcbtn:disabled{opacity:.6;cursor:default;box-shadow:none;transform:none}
+  transition:background .14s ease,border-color .14s ease}
+.lx-wcbtn:hover:not(:disabled){background:rgba(127,127,140,.12);border-color:var(--border)}
+.lx-wcbtn:disabled{opacity:.55;cursor:default}
 /* A balance whose predicate has not opened yet is shown, not hidden -- knowing it is coming is the
    point -- but it cannot be claimed, and the row says why rather than failing at the wallet. */
 .lx-wcrow.locked .lx-wcamt{color:var(--text-soft)}
@@ -215,7 +216,7 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
         // on its own says nothing about who issued it.
         +meta(a)
         +'</div>'
-        +(ok?'<button class="lx-wcbtn" type="button">Claim</button>'
+        +(ok?'<button class="lx-wcbtn" type="button"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 21h16"></path></svg>Claim</button>'
             :'<button class="lx-wcbtn" type="button" disabled title="This balance is not claimable yet">Locked</button>')
         +'</div>';
     }).join("");

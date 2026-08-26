@@ -2263,6 +2263,36 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
+</style><style id="lx-polish">/*lxts:1.1*/
+/* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */
+@media (prefers-reduced-motion: no-preference){
+  :where(a,button,input,select,textarea,.chip){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .2s ease,transform .16s ease,opacity .16s ease;}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):hover{transform:translateY(-1px);}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):active{transform:translateY(0) scale(.985);}
+  :where(.btn.primary,.btn-primary,.dex-hero-btn.primary,.trade-btn):hover{box-shadow:0 10px 26px -12px var(--accent,#ea6a2c);}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease,background-color .2s ease;}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{transform:translateY(-2px);border-color:var(--border-strong,#34343c);}
+  html:not([data-theme="light"]) :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 14px 34px -22px rgba(0,0,0,.85);}
+  body{transition:background-color .3s ease,color .3s ease;}
+}
+/* keyboard focus */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;}
+/* branded selection */
+::selection{background:rgba(234,106,44,.26);}
+/* headline balance */
+:where(h1,h2,h3){text-wrap:balance;}
+/* clickable market/pool rows: accent affordance */
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr){cursor:pointer;}
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr):hover td:first-child{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c);}
+/* themed thin scrollbars */
+*{scrollbar-width:thin;scrollbar-color:var(--border-strong,#34343c) transparent;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-strong,#34343c);border-radius:8px;border:3px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-soft,#6e6d78);border:3px solid transparent;background-clip:padding-box;}
+/* light-mode elevation: cards read as raised surfaces on light bg */
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
 </style><style id="lx-wclaim-css">/*lxts:1.1*/
 /* #5: these tabs used to carry their own look -- pill buttons with a rounded count badge -- and sat
    directly above the design's Assets / Liq Pools tabs, which are a different shape, a different badge
@@ -2321,17 +2351,18 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .lx-wcamt .a{font-weight:700;font-size:20.4px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text);font-variant-numeric:tabular-nums}
 .lx-wcamt .u{font-size:16px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text-soft)}
 .lx-wcaddr{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:600;letter-spacing:-.01em}
-.lx-wcsub{margin-top:3.3px;font-weight:600;font-size:13.8px;line-height:1.35;color:var(--text-soft);
+.lx-wcsub{margin-top:3.3px;font-weight:400;font-size:16px;font-family:'JetBrains Mono',monospace;line-height:1.35;color:var(--text-soft);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* #19: flat accent, not a gradient. .btn-primary on this page is a solid rgb(234,106,44) with a 9px
    radius and a soft accent shadow; this ran a gradient down to #c1440a, which reads as a darker, redder
    orange sitting right beside the real one. Measured off that button rather than approximated. */
-.lx-wcbtn{flex:0 0 auto;height:38px;padding:0 18.7px;border-radius:8px;border:0;color:#fff;cursor:pointer;
-  font-weight:600;font-size:17.6px;line-height:1;background:var(--accent,#ea6a2c);
+.lx-wcbtn{flex:0 0 auto;height:38px;padding:6.6px 12.1px;border-radius:8px;border:1px solid transparent;
+  color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6.6px;
+  font-weight:600;font-size:17.6px;line-height:1;background:transparent;
   font-family:"Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.01em;
-  box-shadow:0 5px 14px 0 rgba(234,106,44,.28);transition:filter .14s ease,transform .14s ease}
-.lx-wcbtn:hover:not(:disabled){filter:brightness(1.05);transform:translateY(-1px)}
-.lx-wcbtn:disabled{opacity:.6;cursor:default;box-shadow:none;transform:none}
+  transition:background .14s ease,border-color .14s ease}
+.lx-wcbtn:hover:not(:disabled){background:rgba(127,127,140,.12);border-color:var(--border)}
+.lx-wcbtn:disabled{opacity:.55;cursor:default}
 /* A balance whose predicate has not opened yet is shown, not hidden -- knowing it is coming is the
    point -- but it cannot be claimed, and the row says why rather than failing at the wallet. */
 .lx-wcrow.locked .lx-wcamt{color:var(--text-soft)}
@@ -2344,36 +2375,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .lx-wcamt .u{font-weight:600;font-size:12.7px}
 .lx-wcsub{font-size:12.7px;margin-top:2.2px}
 }
-</style><style id="lx-polish">/*lxts:1.1*/
-/* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */
-@media (prefers-reduced-motion: no-preference){
-  :where(a,button,input,select,textarea,.chip){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .2s ease,transform .16s ease,opacity .16s ease;}
-  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):hover{transform:translateY(-1px);}
-  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):active{transform:translateY(0) scale(.985);}
-  :where(.btn.primary,.btn-primary,.dex-hero-btn.primary,.trade-btn):hover{box-shadow:0 10px 26px -12px var(--accent,#ea6a2c);}
-  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease,background-color .2s ease;}
-  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{transform:translateY(-2px);border-color:var(--border-strong,#34343c);}
-  html:not([data-theme="light"]) :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 14px 34px -22px rgba(0,0,0,.85);}
-  body{transition:background-color .3s ease,color .3s ease;}
-}
-/* keyboard focus */
-:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;}
-/* branded selection */
-::selection{background:rgba(234,106,44,.26);}
-/* headline balance */
-:where(h1,h2,h3){text-wrap:balance;}
-/* clickable market/pool rows: accent affordance */
-:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr){cursor:pointer;}
-:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr):hover td:first-child{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c);}
-/* themed thin scrollbars */
-*{scrollbar-width:thin;scrollbar-color:var(--border-strong,#34343c) transparent;}
-::-webkit-scrollbar{width:10px;height:10px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--border-strong,#34343c);border-radius:8px;border:3px solid transparent;background-clip:padding-box;}
-::-webkit-scrollbar-thumb:hover{background:var(--text-soft,#6e6d78);border:3px solid transparent;background-clip:padding-box;}
-/* light-mode elevation: cards read as raised surfaces on light bg */
-[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
-[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
 </style></head>
 <body>
 <div class="app">
@@ -9024,7 +9025,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         // on its own says nothing about who issued it.
         +meta(a)
         +'</div>'
-        +(ok?'<button class="lx-wcbtn" type="button">Claim</button>'
+        +(ok?'<button class="lx-wcbtn" type="button"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 21h16"></path></svg>Claim</button>'
             :'<button class="lx-wcbtn" type="button" disabled title="This balance is not claimable yet">Locked</button>')
         +'</div>';
     }).join("");
