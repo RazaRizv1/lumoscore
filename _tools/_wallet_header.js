@@ -36,7 +36,8 @@ const STYLE='<style id="lx-whead-css">'
 +'.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}'
 +'.appbar .logo .logo-text{overflow:visible!important}'
 +'.appbar .avatar-sm.lx-mav{flex:0 1 auto!important;min-width:0;overflow:hidden}'
-+'.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%}'
++'.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}'
++'.appbar .avatar-sm.lx-mav{white-space:nowrap}'
 +'}'
 // The slide-menu account row leads with a generic wallet glyph; on a Stellar-only app the network mark
 // is the more useful thing to show, and it matches the app bar.

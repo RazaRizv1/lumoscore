@@ -74,6 +74,19 @@ const CSS='<style id="lx-walletdata-css">'
 // the design sets this span's size inline, so only !important reaches it
 +'.value-side .value span{font-size:16px!important;letter-spacing:-.2px!important}'
 +'.value-side .delta-row{order:3}'
+// item 4: the same swap for the phone, whose markup is entirely different.
++'.hero:has(> .portfolio-value){display:flex;flex-direction:column}'
+// Every child needs an explicit order once the section becomes a flex column, or the chart wrap (which
+// defaults to 0) jumps above the figures it belongs under.
++'.hero:has(> .portfolio-value)>.hero-top{order:0}'
++'.hero:has(> .portfolio-value)>.hero-chart-wrap{order:5}'
++'.portfolio-label{order:1}'
++'.portfolio-sub{order:2;font-size:39.6px!important;line-height:1;font-weight:800;letter-spacing:-1.2px;'
++'color:var(--text)!important;margin-top:2px!important}'
++'.portfolio-value{order:3;font-size:19px!important;line-height:1.2;font-weight:600;'
++'letter-spacing:-.4px;color:var(--text-muted)!important;margin-top:6px}'
++'.portfolio-value .unit{font-size:14px!important}'
++'.delta-row{order:4}'
 // item 5 (second half): the same subtle gridlines the Trade-Asset chart got.
 +'.mini-chart svg{background-image:repeating-linear-gradient(to bottom,'
 +'rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}'
