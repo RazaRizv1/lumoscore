@@ -121,20 +121,30 @@ const STYLE = `<style id="lx-dashtop-css">
   background:linear-gradient(180deg,rgba(127,127,140,.03),rgba(127,127,140,.07));
   display:grid!important;grid-template-columns:auto repeat(4,minmax(0,1fr))!important;
   gap:0!important;width:auto!important;align-items:center}
-/* strip the pill costume: no ground, no border, a hairline divider between cells instead */
+/* strip the pill costume: no ground, no border, a faded hairline between figures instead */
 .lx-xlmpanel>.status-row>.status-pill{background:none!important;border:0!important;box-shadow:none!important;
-  border-radius:0!important;padding:0 0 0 16px!important;margin:0!important;min-width:0!important;
-  width:auto!important;display:flex!important;flex-direction:column;align-items:flex-start!important;
-  gap:3px;border-left:1px solid var(--border)!important;min-height:34px;justify-content:center}
-.lx-xlmpanel>.status-row>.status-pill:first-child{padding-left:0!important;border-left:0!important}
+  border-radius:0!important;padding:0!important;margin:0!important;min-width:0!important;
+  width:auto!important;display:flex!important;flex-direction:row!important;align-items:center!important;
+  justify-content:center!important;gap:13px;position:relative;min-height:46px}
+/* A rule BETWEEN figures: centred, short, and fading at both ends, so it separates without drawing a
+   gridline down the band. First child never gets one, which is why this is an adjacent-sibling rule
+   rather than a border plus a :first-child reset. */
+.lx-xlmpanel>.status-row>.status-pill+.status-pill::before{content:"";position:absolute;left:0;top:50%;
+  transform:translateY(-50%);width:1px;height:40px;
+  background:linear-gradient(180deg,transparent,var(--border) 20%,var(--border) 80%,transparent)}
+/* value over label, both flush left of each other, the pair centred as a block beside the mark */
+.lx-xlmpanel>.status-row .lx-vpt{align-items:flex-start!important;gap:4px!important}
 .lx-xlmpanel>.status-row .lbl{font:800 9.5px/1 'JetBrains Mono',monospace!important;letter-spacing:.13em;
   text-transform:uppercase;color:var(--text-soft)!important;order:2}
-.lx-xlmpanel>.status-row .val{font:700 15px/1.1 'JetBrains Mono',monospace!important;
-  letter-spacing:-.3px;color:var(--text)!important;order:1;white-space:nowrap;overflow:hidden;
-  text-overflow:ellipsis;max-width:100%}
-/* the network cell keeps its logo, so it lays out sideways while the rest stack */
+.lx-xlmpanel>.status-row .val{font:700 19px/1.1 'JetBrains Mono',monospace!important;
+  letter-spacing:-.4px;color:var(--text)!important;order:1;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font-variant-numeric:tabular-nums!important}
+/* the marks anchor the figures rather than decorating them, so they grow with the numbers */
+.lx-xlmpanel>.status-row .lx-pico{width:34px!important;height:34px!important;border-radius:11px}
+.lx-xlmpanel>.status-row .lx-pico svg{width:18px!important;height:18px!important}
+/* the heading is a label, not a figure: it keeps its own left edge and its trailing gutter */
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard{flex-direction:row!important;align-items:center!important;gap:9px;
-  padding-right:20px!important}
+  justify-content:flex-start!important;padding-right:22px!important}
 /* A11: a heading for the figures below, not a third statement of which chain this is. The logo and the
    NETWORK/Stellar pair are hidden and the heading is drawn in their place -- CSS, because this node is
    kept live for the chain engine to rebrand and anything written into it would be overwritten. */
@@ -152,22 +162,29 @@ const STYLE = `<style id="lx-dashtop-css">
 @keyframes lxLedgerPulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
 
 @media(max-width:1180px){
-.lx-xlmpanel>.status-row{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px 0!important}
-.lx-xlmpanel>.status-row>.status-pill:nth-child(3n+1){padding-left:0!important;border-left:0!important}
+.lx-xlmpanel>.status-row{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:13px 0!important}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard{grid-column:1/-1;padding-right:0!important}
+/* Spanning the row leaves the heading alone in a wide empty band, which is the very thing this strip
+   was reported for. A hairline that flexes into the leftover width turns that gap into a section rule. */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard::after{content:"";flex:1 1 auto;height:1px;margin-left:14px;
+  background:linear-gradient(90deg,var(--border),transparent)}
+/* the heading owns its own row now, so the first figure starts a row and takes no rule */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard+.status-pill::before{display:none}
 }
 @media(max-width:860px){
 .lx-xlmpanel{grid-template-columns:1fr;gap:12px;padding:14px 14px 0}
 .lx-xt-chart{width:100%;min-width:0;height:92px}
 .lx-xt-price{font-size:25px}
-.lx-xlmpanel>.status-row{margin:12px -14px 0;padding:12px 14px 13px;
-  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:13px 0!important}
-.lx-xlmpanel>.status-row>.status-pill{padding-left:14px!important}
-.lx-xlmpanel>.status-row>.status-pill:nth-child(2n+1){padding-left:0!important;border-left:0!important}
+.lx-xlmpanel>.status-row{margin:12px -14px 0;padding:14px 14px 15px;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px 0!important}
 /* the network cell spans the row, so the four figures below it pair up cleanly two by two */
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard{grid-column:1/-1;padding-left:0!important;border-left:0!important}
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n){padding-left:0!important;border-left:0!important}
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1){padding-left:14px!important;border-left:1px solid var(--border)!important}
-.lx-xlmpanel>.status-row .val{font-size:14px!important}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard{grid-column:1/-1;padding-right:0!important}
+/* children 2 and 4 open a row (no rule); 3 and 5 sit in the right column and take one */
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n)::before{display:none}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1)::before{display:block}
+.lx-xlmpanel>.status-row .val{font-size:17px!important}
+.lx-xlmpanel>.status-row .lx-pico{width:32px!important;height:32px!important}
+.lx-xlmpanel>.status-row .lx-pico svg{width:17px!important;height:17px!important}
 }
 
 /* item 13: the dashboard's top cards are present from the first paint rather than fading in. Their entrance animation showed as an empty page on every refresh. The reveal script still runs and still handles every other card type. */
