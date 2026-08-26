@@ -24,25 +24,16 @@ const UPSTREAM = 'https://api.stellar.expert/explorer/public/ledger/ledger-stats
 const TTL = 1800;   // 30 min at the edge — this is a daily figure; it does not move
 const ASSET_TTL = 21600;   // 6 h — the asset count barely moves, and this is the expensive part
 
-// How many assets exist on Stellar. There is no endpoint that says so: ledger-stats carries
-// new_assets per day, not a running total, and neither Horizon nor the explorer publishes a count.
-// The explorer's list cursor IS a plain offset though, so the end of the list can be found by
-// bracketing and then bisecting it -- about sixteen one-row requests, cached for six hours, which is
-// the same trick poolstats.js uses to count pools. Returns null rather than a guess if the upstream
-// rate-limits mid-search: a wrong total on a dashboard is worse than an absent one.
+// How many assets exist on Stellar. /asset-stats/overall is what the explorer's own front page reads
+// this from -- 63 bytes, one request, and it states total_assets outright. Returns null rather than a
+// guess if the upstream is unreachable: a wrong total on a dashboard is worse than an absent one.
+const ASSET_STATS = 'https://api.stellar.expert/explorer/public/asset-stats/overall';
 async function assetCount() {
-  const has = async (off) => {
-    const r = await fetch('https://api.stellar.expert/explorer/public/asset?limit=1&cursor=' + off,
-      { cf: { cacheTtl: ASSET_TTL, cacheEverything: true } });
-    if (!r.ok) throw new Error('upstream ' + r.status);
-    const d = await r.json();
-    return ((((d || {})._embedded || {}).records) || []).length > 0;
-  };
   try {
-    let lo = 0, hi = 1024;
-    while (await has(hi)) { lo = hi; hi *= 2; if (hi > (1 << 22)) return null; }
-    while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (await has(mid)) lo = mid; else hi = mid; }
-    return lo + 1;
+    const r = await fetch(ASSET_STATS, { cf: { cacheTtl: ASSET_TTL, cacheEverything: true } });
+    if (!r.ok) return null;
+    const d = await r.json();
+    return +d.total_assets > 0 ? +d.total_assets : null;
   } catch (e) { return null; }
 }
 
@@ -73,29 +64,7 @@ function json(body, status, ttl) {
   });
 }
 
-// The finished count, kept whole rather than re-bisected. The individual one-row lookups are already
-// edge-cached, but sixteen sequential round trips still cost seconds; this makes a warm hit one read.
-// Per-colo, like every Cache API entry — each colo warms itself once and then serves instantly.
-const COUNT_KEY = 'https://lumoscore.internal/assetcount';
-async function cachedCount() {
-  try {
-    const hit = await caches.default.match(COUNT_KEY);
-    if (hit) { const d = await hit.json(); if (d && d.n > 0) return d.n; }
-  } catch (e) { /* no cache here, fall through to counting */ }
-  return null;
-}
-async function countAndStore() {
-  const n = await assetCount();
-  if (!(n > 0)) return null;
-  try {
-    await caches.default.put(COUNT_KEY, new Response(JSON.stringify({ n: n }), {
-      headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + ASSET_TTL },
-    }));
-  } catch (e) { /* the figure is still good even if it could not be stored */ }
-  return n;
-}
-
-export async function onRequestGet(context) {
+export async function onRequestGet() {
   let txt = '';
   try {
     const r = await fetch(UPSTREAM, { cf: { cacheTtl: TTL, cacheEverything: true } });
@@ -114,23 +83,7 @@ export async function onRequestGet(context) {
 
   // Everything the dashboard strip needs about the NETWORK, from one record. These are all facts
   // about the last complete UTC day except `accounts`, which is a running total.
-  // Bounded, because the bisection is ~16 requests and a cold cache made the whole strip wait twelve
-  // seconds on it. If it is not ready in five, the day figures go out without it and the response is
-  // cached briefly rather than for half an hour -- by the retry the individual list requests are warm
-  // in the edge cache, so it resolves in milliseconds.
-  // A pending fetch is CANCELLED the moment the response is returned unless something holds it open,
-  // so the losing side of this race was being killed part-way through the bisection every time. Nothing
-  // was ever left warm for "the retry" the comment above counted on, the count never completed, and the
-  // dashboard's Assets cell stayed a dash on every visit. waitUntil is what keeps it running to the end.
-  let assets = await cachedCount();
-  if (assets == null) {
-    const counting = countAndStore();
-    try { context.waitUntil(counting); } catch (e) { /* no context (local mirror): just await the race */ }
-    assets = await Promise.race([
-      counting,
-      new Promise((r) => setTimeout(() => r(null), 5000)),
-    ]);
-  }
+  const assets = await assetCount();
   return json({
     trades: +full.trades || 0,
     operations: +full.operations || 0,

@@ -119,7 +119,7 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xlmpanel>.status-row{grid-column:1/-1;margin:14px -18px 0;padding:13px 18px 14px;
   border-top:1px solid var(--border);border-radius:0 0 15px 15px;
   background:linear-gradient(180deg,rgba(127,127,140,.03),rgba(127,127,140,.07));
-  display:grid!important;grid-template-columns:auto repeat(6,minmax(0,1fr))!important;
+  display:grid!important;grid-template-columns:auto repeat(4,minmax(0,1fr))!important;
   gap:0!important;width:auto!important;align-items:center}
 /* strip the pill costume: no ground, no border, a hairline divider between cells instead */
 .lx-xlmpanel>.status-row>.status-pill{background:none!important;border:0!important;box-shadow:none!important;
@@ -133,7 +133,8 @@ const STYLE = `<style id="lx-dashtop-css">
   letter-spacing:-.3px;color:var(--text)!important;order:1;white-space:nowrap;overflow:hidden;
   text-overflow:ellipsis;max-width:100%}
 /* the network cell keeps its logo, so it lays out sideways while the rest stack */
-.lx-xlmpanel>.status-row>.status-pill.lx-netcard{flex-direction:row!important;align-items:center!important;gap:9px}
+.lx-xlmpanel>.status-row>.status-pill.lx-netcard{flex-direction:row!important;align-items:center!important;gap:9px;
+  padding-right:20px!important}
 /* A11: a heading for the figures below, not a third statement of which chain this is. The logo and the
    NETWORK/Stellar pair are hidden and the heading is drawn in their place -- CSS, because this node is
    kept live for the chain engine to rebrand and anything written into it would be overwritten. */
@@ -162,7 +163,7 @@ const STYLE = `<style id="lx-dashtop-css">
   grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:13px 0!important}
 .lx-xlmpanel>.status-row>.status-pill{padding-left:14px!important}
 .lx-xlmpanel>.status-row>.status-pill:nth-child(2n+1){padding-left:0!important;border-left:0!important}
-/* the network cell spans the row, so the five figures below it pair up cleanly two by two */
+/* the network cell spans the row, so the four figures below it pair up cleanly two by two */
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard{grid-column:1/-1;padding-left:0!important;border-left:0!important}
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n){padding-left:0!important;border-left:0!important}
 .lx-xlmpanel>.status-row>.status-pill.lx-netcard~.status-pill:nth-child(2n+1){padding-left:14px!important;border-left:1px solid var(--border)!important}
