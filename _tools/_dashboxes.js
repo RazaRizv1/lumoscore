@@ -56,6 +56,9 @@ const STYLE = '<style id="lx-dashboxes-css">'
   + '.lx-dbx-s{min-width:0}'
   + '.lx-dbx-l{font:600 10px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);'
   + 'text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
+  // A value that is a NAME rather than a figure reads wrong in the tabular face -- it is set in the text
+  // face at a size that fits the row it shares.
+  + '.lx-dbx-v[data-k="cvia"]{font:800 15px/1.35 "Hanken Grotesk",system-ui,sans-serif!important;letter-spacing:-.01em}'
   + '.lx-dbx-v{margin-top:4px;font:800 20px/1.1 "JetBrains Mono",ui-monospace,monospace;'
   + 'color:var(--text,#0e0e10);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
   + 'letter-spacing:-.02em}'
@@ -94,7 +97,8 @@ const IC_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 // so the card sets the colour once via --pc and both themes follow.
 function tile(inner) {
   return '<svg class="lx-dbx-art" viewBox="0 0 56 56" fill="none" aria-hidden="true">'
-    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="currentColor" opacity=".13"/>'
+    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="currentColor" opacity=".16"/>'
+    + '<rect x=".8" y=".8" width="54.4" height="54.4" rx="15.4" fill="none" stroke="currentColor" stroke-opacity=".26"/>'
     + inner + '</svg>';
 }
 // Trade: a market going up, over its own volume bars.
@@ -152,15 +156,23 @@ const QAFIRST = '<script id="lx-dashqafirst">(function(){'
 const ROW = '<div class="lx-dbx">'
   + card('/trade/stellar', ART_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets', '#a855f7')
   + card('/pools/stellar', ART_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools', '#38bdf8')
-  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['24h Transfers', 'ctx'], ['24h Volume', 'cvol']], 'Bridge USDC', '#2dd4bf')
+  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['Asset', 'casset'], ['Via', 'cvia']], 'Bridge USDC', '#2dd4bf')
   + card('/launchpad', ART_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']], 'Launch a token', '#f7b733')
   + '</div>';
 
 const SCRIPT = '<script id="lx-dashboxes">(function(){'
   + 'var row=document.querySelector(".lx-dbx"); if(!row)return;'
   + 'var CUR=' + JSON.stringify(CURATED) + ';'
+  + 'var CK="lumos.dbx", CACHE={}; try{ CACHE=JSON.parse(localStorage.getItem(CK)||"{}")||{}; }catch(_){ CACHE={}; }'
   + 'function set(k,v){ var el=row.querySelector(\'[data-k="\'+k+\'"]\'); if(!el)return;'
-  + 'el.textContent=v; el.classList.remove("wait"); }'
+  + 'el.textContent=v; el.classList.remove("wait");'
+  // Remember it, but never remember an unknown -- a dash restored on the next visit would present a
+  // failure as though it were the answer.
+  + 'if(v&&v!=="\\u2014"){ CACHE[k]=v; try{ localStorage.setItem(CK,JSON.stringify(CACHE)); }catch(_){} } }'
+  // Paint the last known values before any request goes out. They are replaced in place the moment the
+  // live figure lands, so the worst case is a number that is one visit old for a second or two.
+  + 'try{ for(var _ck in CACHE){ var _ce=row.querySelector(\'[data-k="\'+_ck+\'"]\');'
+  + 'if(_ce&&CACHE[_ck]){ _ce.textContent=CACHE[_ck]; _ce.classList.remove("wait"); } } }catch(_){}'
   + 'function j(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }'
   + 'function num(n){ return Math.round(+n||0).toLocaleString("en-US"); }'
   + 'function usd(x){ x=+x||0; var a=Math.abs(x);'
@@ -230,14 +242,7 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   // ---- Cross-chain: this deployment's own bridge, not the network's.
   // The count of destinations is a property of what is wired up here, so it is stated rather than
   // fetched. The activity figures come from the bridge's own log; absent one, they are an honest 0.
-  + 'set("cnet","10");'
-  + 'try{'
-  + 'var hist=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]");'
-  + 'if(!Array.isArray(hist))hist=[];'
-  + 'var since=Date.now()-864e5, n=0, v=0;'
-  + 'hist.forEach(function(h){ var t=+(h.ts||0); if(!(t>=since))return; n++; v+=+(h.amount||h.srcAmount||0)||0; });'
-  + 'set("ctx",num(n)); set("cvol",v>0?usd(v):"$0");'
-  + '}catch(_){ set("ctx","0"); set("cvol","$0"); }'
+  + 'set("cnet","10"); set("casset","USDC"); set("cvia","Circle CCTP");'
   + '})();</script>';
 
 let removed = 0, rows = 0, keys = 0;
