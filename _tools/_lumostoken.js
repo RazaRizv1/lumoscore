@@ -18,8 +18,16 @@ const STYLE = `<style id="lx-lt-css">
 /* item 20: a tapped timeframe used to leave the PREVIOUS timeframe's line on screen for a few seconds,
    looking like the answer. While the new one is loading the old line dims and stops taking pointer
    events, so it reads as being replaced. Cleared by drawChart and by every path that ends the load. */
-#priceChart.lx-ch-busy svg{opacity:.26}
-#priceChart.lx-ch-busy{pointer-events:none}
+#priceChart.lx-ch-busy svg{opacity:0}
+#priceChart.lx-ch-busy{pointer-events:none;position:relative}
+/* Dimming to .26 still SHOWED the previous timeframe's line for the whole ~1s fetch, which is exactly
+   the "flashes the old chart" complaint. Hide the stale series outright and put a neutral shimmer in
+   its place, so nothing on screen is ever wrong data. */
+#priceChart.lx-ch-busy::after{content:"";position:absolute;inset:0;border-radius:10px;
+background:linear-gradient(90deg,rgba(127,127,140,.05) 25%,rgba(127,127,140,.12) 37%,rgba(127,127,140,.05) 63%);
+background-size:400% 100%;animation:lxchsh 1.3s ease-in-out infinite}
+@keyframes lxchsh{0%{background-position:100% 0}100%{background-position:0 0}}
+@media (prefers-reduced-motion:reduce){#priceChart.lx-ch-busy::after{animation:none}}
 /* NO transition on this svg. Adding one left a running opacity animation on the element that
    pinned it at .26 even after the class came off -- measured getAnimations() reporting
    "opacity:running" with no class and no inline style, and the cascade unable to touch it. A stuck
@@ -1373,20 +1381,38 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   // item 19: "What you can do with LUMOS" belongs above "Supply distribution" -- what the token DOES is
   // the reason to care how it is split, not the other way round.
   function orderSections(){
-    var page=q("main.page")||q("main")||q(".page"); if(!page)return;
-    var kids=[].slice.call(page.children);
-    function headBy(re){
-      for(var i=0;i<kids.length;i++){ var k=kids[i];
-        if(k.className&&String(k.className).indexOf("section-head")>=0&&re.test(k.textContent||""))return k; }
-      return null;
-    }
-    var util=headBy(/what you can do with lumos/i), sup=headBy(/supply distribution/i);
-    if(!util||!sup||util.parentNode!==sup.parentNode)return;
-    // Already ahead of it? Then this is a no-op on every later tick.
-    if(util.compareDocumentPosition(sup)&Node.DOCUMENT_POSITION_FOLLOWING)return;
-    var run=[util];
-    for(var n=util.nextElementSibling;n&&!(n.className&&String(n.className).indexOf("section-head")>=0);n=n.nextElementSibling)run.push(n);
-    for(var r=0;r<run.length;r++)sup.parentNode.insertBefore(run[r],sup);
+    // Measured in the browser: on mobile these blocks are NOT <section>s under a page root -- they are
+    // flat "sect-head" + content siblings inside .container. The old version guessed a root (main.page)
+    // and matched class "section-head", so it selected nothing and silently did nothing on every tick.
+    // Find the two headings, then climb until they are siblings, whatever the wrapper happens to be.
+    var uh=null, sh=null, all=qa("h1,h2,h3,h4");
+    for(var i=0;i<all.length;i++){ var t=all[i].textContent||"";
+      if(!uh&&/what you can do with lumos/i.test(t))uh=all[i];
+      if(!sh&&/supply distribution/i.test(t))sh=all[i]; }
+    if(!uh||!sh)return;
+    var ub=null, sb=null, par=null;
+    for(var a=uh;a&&!par;a=a.parentElement){
+      for(var b=sh;b;b=b.parentElement){
+        if(a.parentElement&&a.parentElement===b.parentElement&&a!==b){ par=a.parentElement; ub=a; sb=b; break; } } }
+    if(!par)return;
+    // The content block, found independently of the sibling walk. Observed on the phone build: the
+    // head ended up above supply with its grid still at the bottom, and a guard that only asked "is the
+    // head above?" then declared the job done and left the head orphaned. So the guard below asks for
+    // BOTH -- head above supply AND its grid directly behind it -- which also repairs that state.
+    var grid=null, kk=par.children;
+    for(var g=0;g<kk.length;g++){ if(kk[g].classList&&kk[g].classList.contains("util-grid")){ grid=kk[g]; break; } }
+    if((ub.compareDocumentPosition(sb)&Node.DOCUMENT_POSITION_FOLLOWING)&&(!grid||ub.nextElementSibling===grid))return;
+    // The utility block is its heading wrapper plus the siblings after it, up to the next heading
+    // wrapper. Do NOT stop at "contains a heading": the utility cards carry their own h3s, so that
+    // test broke on the very first sibling and moved the head alone, orphaning its grid below supply.
+    // Stop on the next sibling sharing this wrapper's own class ("sect-head" / "section-head").
+    var tok=String(ub.className||"").split(/\s+/)[0]||"";
+    var run=[ub];
+    for(var n=ub.nextElementSibling;n;n=n.nextElementSibling){
+      if(tok?(n.classList&&n.classList.contains(tok)):(n.querySelector&&n.querySelector("h1,h2,h3,h4")))break;
+      run.push(n); }
+    if(grid&&run.indexOf(grid)<0)run.push(grid);
+    for(var r=0;r<run.length;r++)par.insertBefore(run[r],sb);
   }
   function applyAll(){ try{ orderSections(); }catch(_){} if(vol24Xlm!=null&&xlmUsd)vol24Usd=vol24Xlm*xlmUsd; try{ applyHero(); }catch(_){} try{ applyStats(); }catch(_){} try{ applyOverview(); }catch(_){} try{ applyTabs(); }catch(_){} try{ buildPoolsTable(); try{ buildPoolsListMobile(); }catch(_){} }catch(_){} try{ repaintPoolIcons(); }catch(_){} try{ fixAllocation(); }catch(_){} try{ setModalLogos(); }catch(_){} try{ applyHolders(); }catch(_){} try{ updateHolderUsd(); }catch(_){} try{ polishModals(); }catch(_){} try{ wireChartTabs(); }catch(_){} try{ var pc=q("#priceChart"); if(pc&&chartPts&&!pc.querySelector(".lx-cline"))drawChart(chartPts); }catch(_){} try{ fixAbout(); }catch(_){} try{ installSwapGlobals(); }catch(_){} try{ wireSwapPreselect(); }catch(_){} try{ var cpm=q("#createPoolModal"); if(cpm){ wireCreatePool(); cpRefresh(cpm); } }catch(_){} try{ wireTrustGates(); }catch(_){} }
 

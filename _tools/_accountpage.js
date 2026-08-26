@@ -486,7 +486,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     if(!c||c==="XLM"||!i)return;
     var el=tr.querySelector(".acc-iss"); if(!el)return;
     var _d=dispDom(c,i,DOM[key(c,i)]||"");
-    var t=_d?(_d+" "+MID+" "+shortG(i)):shortG(i);
+    var t=shortG(i);
     if(el.textContent!==t)el.textContent=t; }); }
   function paintLogos(){ qa(".acc-ico[data-lxc]").forEach(function(el){
     var c=el.getAttribute("data-lxc"), i=el.getAttribute("data-lxi")||"";
