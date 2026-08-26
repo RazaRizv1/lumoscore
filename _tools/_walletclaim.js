@@ -75,8 +75,8 @@ const STYLE = `<style id="lx-wclaim-css">
    NOTE the longhands. Writing this as a font shorthand ending in "inherit" is invalid CSS -- inherit is
    not a legal family there -- and the browser drops the WHOLE declaration, weight and size with it.
    That is why none of the typography set on the previous pass ever applied. */
-.lx-wcamt .a{font-weight:800;font-size:17.5px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text);font-variant-numeric:tabular-nums}
-.lx-wcamt .u{font-weight:700;font-size:13px;line-height:1.25;color:var(--text-soft)}
+.lx-wcamt .a{font-weight:700;font-size:18.55px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text);font-variant-numeric:tabular-nums}
+.lx-wcamt .u{font-size:14.55px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text-soft)}
 .lx-wcaddr{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:600;letter-spacing:-.01em}
 .lx-wcsub{margin-top:3px;font-weight:600;font-size:12.5px;line-height:1.35;color:var(--text-soft);
   overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

@@ -103,19 +103,19 @@ function tile(inner) {
   return '<svg class="lx-dbx-art" viewBox="0 0 56 56" fill="none" aria-hidden="true">'
     + '<defs>'
     + '<linearGradient id="' + gp + '" x1="0" y1="0" x2=".85" y2="1">'
-    + '<stop offset="0" stop-color="currentColor" stop-opacity=".30"/>'
-    + '<stop offset="1" stop-color="currentColor" stop-opacity=".08"/></linearGradient>'
+    + '<stop offset="0" stop-color="currentColor" stop-opacity="1"/>'
+    + '<stop offset="1" stop-color="currentColor" stop-opacity=".82"/></linearGradient>'
     + '<radialGradient id="' + gl + '" cx=".5" cy=".42" r=".62">'
-    + '<stop offset="0" stop-color="currentColor" stop-opacity=".34"/>'
-    + '<stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient>'
+    + '<stop offset="0" stop-color="#fff" stop-opacity=".26"/>'
+    + '<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
     + '</defs>'
     + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gp + ')"/>'
     + '<rect x="6" y="6" width="44" height="44" rx="14" fill="url(#' + gl + ')"/>'
-    + '<rect x=".8" y=".8" width="54.4" height="54.4" rx="15.4" fill="none" stroke="currentColor" stroke-opacity=".30"/>'
+    + '<rect x=".8" y=".8" width="54.4" height="54.4" rx="15.4" fill="none" stroke="#fff" stroke-opacity=".22"/>'
     // A brighter arc along the top edge. White at 14% rather than the product colour, because a highlight
     // is light falling ON the tile, not more of the tile.
-    + '<path d="M4 16 A12 12 0 0 1 16 4 L40 4 A12 12 0 0 1 52 16" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="1.2"/>'
-    + inner + '</svg>';
+    + '<path d="M4 16 A12 12 0 0 1 16 4 L40 4 A12 12 0 0 1 52 16" fill="none" stroke="#fff" stroke-opacity=".34" stroke-width="1.2"/>'
+    + '<g style="color:#fff">' + inner + '</g></svg>';
 }
 // Trade: a market going up, over its own volume bars.
 const ART_TRADE = tile('<g opacity=".30"><rect x="15" y="33" width="5" height="9" rx="2" fill="currentColor"/>'
