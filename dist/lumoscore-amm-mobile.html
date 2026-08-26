@@ -1525,7 +1525,275 @@ html body .pool-header-row .ph-icons>*{
 .search-box.inline-filter:focus-within{border-color:var(--accent)!important}
 .search-box.inline-filter input{font-size:13.8px!important}
 .search-box.inline-filter svg{width:13px!important;height:13px!important}
-</style><style id="lx-amm-css">/*lxts:1.1*/
+</style><style id="lx-poolshero-css">/*lxts:1.1*/
+/* The card's ground is set once, for BOTH heroes, in _heromono.js. Declaring it here as well is how
+   the two drifted apart before. Only overflow stays -- the strip's bottom corners need it. */
+html .lumos-promo.lm-on.lm-pools{overflow:hidden!important}
+/* NOTHING MOVES ON THIS CARD. The Pools hero shipped a drifting constellation, three nebula blooms and a
+   twinkling starfield; the Trade hero has none -- its own constellation layer is display:none, and the
+   warm art is a still image. These are the animated layers, switched off rather than left running under
+   an opaque background where they would still burn a repaint every frame. */
+.lm-pools .lx-cosmic,.lm-pools .lx-constel,.lm-pools .lx-neb,.lm-pools .lx-stars,.lm-pools .lx-part,.lm-pools .lm-svg,.lm-pools .lm-streams,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
+/* THE SAME HEIGHT AS TRADE. The Pools card carried min-height:366 on itself and 330 on .lm, from when
+   the stats sat beside the copy in a tall chip. With the strip along the bottom the content decides the
+   height, exactly as it does on Trade -- and 366 was the difference between a 370px card here and a
+   302px one there. */
+/* Desktop only. Trade's phone card sets no floor and sizes to its content -- about 140px -- so
+   carrying the desktop 300 onto mobile was doubling the height of a card with the same rows in it. */
+@media(min-width:881px){
+html .lumos-promo.lm-on.lm-pools{min-height:300px!important}
+html .lumos-promo.lm-pools .lm{min-height:300px!important}
+}
+/* _ammdata hides the chip below 1100px -- correct while it was a floating 2x2 box beside the copy,
+   wrong now that it IS the stats strip along the bottom edge. */
+@media(max-width:1100px){.lm-pools .lm-chip{display:block!important}}
+/* the rotating carousel the built card replaces */
+.lm-pools .lumos-promo-slides,.lm-pools .lumos-promo-dots{display:none!important}
+/* FIRST PAINT. The rule above needs .lm-pools, which the script adds -- so between the first paint
+   and the script running, the phone showed the authored carousel: an accent CTA, an accent headline
+   highlight and the dots. That is the orange flash. This one is keyed on nothing, so it applies to
+   the very first frame. Bounded to phone widths, where the carousel is always replaced by the built
+   card, so the desktop hero is not touched by it. The min-height reserves what the built card
+   occupies; without it the box collapses to nothing and the whole page jumps down when the card
+   lands. */
+@media(max-width:880px){
+.lumos-promo-slides,.lumos-promo-dots{display:none!important}
+.lumos-promo{min-height:123px}
+}
+/* The phone card is one column: mark and headline, then the CTAs, then the strip. */
+@media(max-width:880px){
+.lm-pools .lm-c-pool,.lm-pools .lm-c{flex-wrap:wrap;align-items:center;gap:15.4px;padding:19.8px 19.8px 17.6px!important}
+.lm-pools .lm-h{font-size:29.7px!important;line-height:1.12!important;max-width:none;flex:1 1 180px}
+.lm-pools .lm-sub{display:none!important}
+.lm-pools .lx-dctas{flex:1 1 100%;margin:2.2px 0 0!important}
+}
+/* The plain page heading says what the card says. Hidden to the eye, kept in the outline. */
+.lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1.1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+.dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
+/* Collapsing the box is not enough while its CTAs are still inside it: with the heading hidden the
+   buttons alone still measured 46px at first paint, and the page still jumped when they left. They are
+   MOVED into the hero card (copy.appendChild(src)), never cloned, so hiding them HERE only ever hides
+   the pair that has not been relocated yet -- the moment they land in .lm-c-pool this stops matching
+   and the moved copy is styled by the .lumos-promo rule further down. */
+.dex-hero:has(> .dex-hero-l.lx-sronly)>.dex-hero-r,
+.dex-hero:has(> .dex-hero-l.lx-sronly)>.mdx-hero-ctas{display:none!important}
+/* the card is a column: copy on top, stats strip pinned along the bottom edge */
+.lm-pools .lm{display:flex!important;flex-direction:column;position:relative}
+.lm-pools .lm-c-pool,.lm-pools .lm-c{position:relative;z-index:4;display:flex;align-items:center;gap:26.4px;flex:1 1 auto;padding:28.6px 33px!important}
+/* 340, not the Trade hero's 420. Same intent, different sentence: "The most advanced DEX on Stellar."
+   wraps of its own accord and renders 311px wide, so 420 never binds there. "Provide liquidity, earn
+   swap fees." runs to the full 420 and then the row needs 774px in a 744px card, which is what pushed
+   the CTAs onto their own line. At 340 it breaks after the comma -- two lines, same shape as Trade -- and
+   the row fits with room to spare. */
+.lm-pools .lm-h{max-width:340px}
+/* the chain mark, beside the headline. A pseudo-element because the site's logo painter rewrites the
+   contents of anything icon-shaped -- the same guard the Trade hero and the token icons use. */
+.lm-pools .lx-heroico{flex:0 0 auto;position:relative;width:56px;height:56px;border-radius:50%;overflow:hidden;box-shadow:0 6px 18px -8px rgba(0,0,0,.55)}
+.lm-pools .lx-heroico::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+") center/contain no-repeat}
+html[data-theme="light"] .lm-pools .lx-heroico{box-shadow:0 6px 18px -10px rgba(16,16,22,.35)}
+/* THE CHIP BECOMES THE STRIP. Same element the Pools layer fills; it just spans the bottom edge now
+   instead of floating in the top-right corner. z-index 4 clears .lm::after, which is 3. */
+.lm-pools .lm-chip{position:relative!important;order:9;margin-top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;top:auto!important;
+  width:auto!important;max-width:none!important;min-width:0!important;z-index:4!important;
+  display:block!important;box-sizing:border-box;
+  padding:14.3px 28.6px 16.5px!important;
+  border:0!important;border-radius:0!important;
+  /* colour (background + top border) belongs to _heromono.js, which styles this strip and Trade's
+     together. Declaring it here too is what would let the two drift, and once _heromono moved into
+     <head> to stop the first-paint flash, this later copy would have won. */
+  backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
+.lm-pools .lm-chip .lx-hstats{display:grid!important;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0!important}
+.lm-pools .lx-hstat{display:flex;flex-direction:column;gap:4.4px;min-width:0;overflow:hidden;padding-left:18.7px;border-left:1px solid rgba(255,255,255,.10)}
+.lm-pools .lx-hstat:first-child{padding-left:0;border-left:0}
+.lm-pools .lx-hstat .v{font:800 30.8px/1.05 'Hanken Grotesk',sans-serif;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:11px}
+.lm-pools .lx-hstat .l{font:600 13.2px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
+.lm-pools .lx-hstat[data-k=top] .v{font-size:19.8px}
+.lm-pools .lx-hstat[data-k=top] .pair-icons{width:46px;height:28px;flex:0 0 46px;overflow:visible}
+/* The hero keeps its overlapping marks (asked for explicitly), so it states that itself instead of
+   leaning on the design's absolute offsets -- _pairicons.js unpins those everywhere else, and the
+   hero was collateral the first time. Five classes here; that file stays at three. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons{display:inline-flex!important;align-items:center;gap:0!important;width:auto!important}
+/* relative, not static: a mark with no logo prints its initial through .lx-ico[data-l]::after,
+   which is absolutely positioned inset:0. With the mark static that letter has no containing block
+   and escapes to sit beside the pair name -- the stray character. relative keeps it inside. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{position:relative!important;left:auto!important}
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico+.lx-ico{margin-left:-11px!important}
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{width:28px!important;height:28px!important}
+/* Stat colours -- both themes -- belong to _heromono.js, so Trade and Pools cannot disagree about
+   them. They were declared here too, and with _heromono now in <head> this later copy would win. */
+/* the page CTAs, lifted into the hero's top-right corner */
+.lm-pools .lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:15.4px;margin:0!important;padding:0!important}
+.lm-pools .lx-dctas .dex-hero-btn.primary{order:1}
+.lm-pools .lx-dctas .dex-hero-btn.ghost{order:2}
+.lm-pools .lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7.7px;height:38px;padding:0 16.5px!important;border-radius:10px;font-weight:700;font-size:14.3px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
+.lm-pools .lx-dctas .dex-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
+.lm-pools .lx-dctas .dex-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
+/* item 18: the desktop Create Pool link, added to the table-controls row. margin-left:auto puts it hard
+   right of the search box without depending on the row's own justification. */
+.table-controls .lx-cplink{margin-left:auto;display:inline-flex;align-items:center;gap:6.6px;
+  background:none;border:0;padding:0;cursor:pointer;white-space:nowrap;
+  color:var(--accent,#ea6a2c);font-weight:700;font-size:14.3px;line-height:1;
+  font-family:inherit;opacity:.95;transition:opacity .15s ease}
+.table-controls .lx-cplink:hover{opacity:1;text-decoration:underline;text-underline-offset:3px}
+.table-controls .lx-cplink svg{width:14px;height:14px;flex:0 0 auto}
+.lm-pools .lx-dctas .dex-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:14.3px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
+/* DESKTOP: the CTAs share the headline's row rather than floating in a corner -- the Trade arrangement.
+   The card is one of two columns here, so it only has the room for that once the overview stops splitting
+   (see the stacking rule below); the wrap is the fallback, not the intent. */
+@media(min-width:881px){
+.lm-pools .lm-c-pool,.lm-pools .lm-c{flex-wrap:wrap;column-gap:26.4px;row-gap:13.2px;align-content:center}
+.lm-pools .lm-h{flex:0 0 auto}
+/* The Trade hero drops its subtitle on desktop -- mark, headline, CTAs, strip, nothing else -- and that
+   is what leaves the CTAs room to sit on the headline's line rather than wrapping under it. Kept on the
+   phone, where the Trade hero keeps its own. */
+.lm-pools .lm-sub{display:none!important}
+/* The copy column is capped at 58% by the design, which was right when the stats floated beside it in a
+   chip. The strip is along the bottom now, so the row has the whole card to lay out in. */
+.lm-pools .lm-c-pool,.lm-pools .lm-c{max-width:none!important;width:100%!important}
+/* The card's own "Provide Liquidity" link, hidden for the same reason the Trade hero hides its "Start
+   Trading": the page's two CTAs have moved into the card and a third button in the row is what pushes
+   them onto their own line. The action still exists on the page; only this copy of it goes. */
+.lm-pools .lm-cta{display:none!important}
+.lm-pools .lx-dctas{position:static!important;top:auto;right:auto;order:9;margin-left:auto!important;align-self:flex-start}
+.lm-pools .lx-heroico{width:64px;height:64px}
+}
+/* Stacking point: the SAME number the Trade overview uses, so the two pages change shape together
+   instead of one splitting while the other has already stacked. Measured identical at 1696px -- both
+   rows resolve to 798px + 570px -- so the threshold is the only thing that could put them out of step. */
+@media(max-width:1615px){
+.amm-overview{grid-template-columns:1fr!important}
+}
+/* The collapsed rail used to bring the second column back here, mirroring the Trade overview. It no
+   longer does on either page: the hero keeps ONE shape regardless of a control that has nothing to do
+   with it, and Market Overview stays below the list. The matching rule in _sidecard.js went with it. */
+/* TABLET / PHONE: four columns will not fit, so the strip becomes 2x2 and the mark steps down. */
+@media(max-width:880px){
+.lm-pools .lm-chip .lx-hstats{grid-template-columns:1fr 1fr;gap:12.1px 0!important}
+.lm-pools .lm-chip{padding:12.1px 19.8px 13.2px!important}
+.lm-pools .lx-hstat{padding-left:15.4px}
+.lm-pools .lx-hstat:nth-child(2n+1){padding-left:0;border-left:0}
+.lm-pools .lx-hstat .v{font-size:23.1px}
+.lm-pools .lx-heroico{width:44px;height:44px}
+.lm-pools .lx-dctas{position:static!important;order:9;margin:15.4px 0 0!important;align-self:flex-start}
+}
+@media(max-width:560px){
+/* Trade fits all four across on the phone rather than stacking 2x2, which is what keeps its card
+   about 140px tall instead of 300. Same grid here. */
+.lm-pools .lm-chip .lx-hstats{grid-template-columns:repeat(4,auto)!important;justify-content:space-between;gap:0!important}
+.lm-pools .lm-chip{padding:9.9px 15.4px 11px!important}
+.lm-pools .lx-hstat{padding-left:0;border-left:0}
+.lm-pools .lx-hstat .v{font-size:17.6px;gap:6.6px}
+.lm-pools .lx-hstat .l{font-size:8.8px;letter-spacing:.03em}
+.lm-pools .lx-hstat[data-k=top] .v{font-size:11.6px}
+.lm-pools .lx-heroico{width:38px;height:38px}
+}
+/* PHONE, and deliberately last in this sheet: the desktop rules above use !important too, so an
+   earlier media block loses the tie to them on document order alone. Everything here exists to
+   match Trade's phone card, which is a mark, a headline and the strip -- nothing else. */
+@media(max-width:880px){
+/* _ammdata floors the card at 366px, which is a desktop number; Trade's phone card has no floor
+   and sizes to its three rows. It declares the floor TWICE -- on the card and on the inner .lm --
+   so releasing one alone still leaves a 366px card wrapped round a 147px one. */
+html .lumos-promo.lm-pools .lm{min-height:0!important}
+html .lumos-promo.lm-on.lm-pools{min-height:0!important}
+/* the Top Pool pair marks are sized for the desktop strip and are what make this row taller
+   than Trade's otherwise identical one */
+/* Same selector shape as the desktop rule above on purpose: [data-k=top] gives that one four
+   classes to this one's three, so a shorter selector here loses the cascade however late it sits. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons{
+  position:relative!important;display:inline-flex!important;align-items:center;
+  width:auto!important;height:17px!important;flex:0 0 auto!important;overflow:visible}
+/* .lx-ico is named explicitly: the desktop rule above is .lm-pools .lx-hstat[data-k=top]
+   .pair-icons .lx-ico -- five classes to a child selector's four, so it kept winning on height
+   (28px) while flex-basis quietly set the width to 17, which is what left the marks overflowing
+   the strip by 5px. Equal specificity now, and this sheet is later. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons>*,
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{
+  position:relative!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;
+  width:17px!important;height:17px!important;flex:0 0 17px;
+  /* The phone page rounds .a/.b -- the pool-card marks -- but the hero chip's children are .pa/.pb,
+     which no rule here rounds. So each round logo was sitting in a SQUARE bordered box with a slate
+     fill showing at the corners: the prominent edges. */
+  border-radius:50%!important;overflow:hidden}
+.lm-pools .lx-hstat[data-k=top] .pair-icons>*+*,
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico+.lx-ico{margin-left:-6.6px!important}
+.lm-pools .lm-c,.lm-pools .lm-c-pool{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:13.2px!important;padding:15.4px 15.4px!important}
+/* 18px is Trade's phone headline. 27px was a desktop size on a 375px screen. The margin goes
+   too: the headline box measures 44px inside an 85px column, and that 13px of leftover is the
+   last of the height difference against Trade, whose own headline carries none. */
+.lm-pools .lm-h{font-size:19.8px!important;line-height:1.22!important;max-width:none!important;flex:1 1 auto;margin:0!important}
+.lm-pools .lm-sub{display:none!important}
+/* The strip cells: Trade sets 3px between value and label, and its Top Pair value box is exactly
+   as tall as the marks inside it. Pools ran 4px and a 21px value box against 17px marks, which is
+   the whole of the 54px-vs-49px difference between the two strips. */
+.lm-pools .lx-hstat{gap:3.3px!important}
+.lm-pools .lx-hstat[data-k=top] .v{height:17px!important}
+.lm-pools .lx-hstat[data-k=top] .pair-icons{margin:0!important}
+}
+/* ---- the list section head, matching Trade's -------------------------------------------------- */
+/* Trade heads its list with a title and tucks the two actions in on the right; Pools had them as a
+   full-width bar under the hero, which is the loudest thing on the screen and not what Trade does.
+   Values are copied from the Trade phone build rather than re-picked, so the two cannot drift. */
+.lx-poolhead{display:flex;justify-content:space-between;align-items:baseline;margin:24.2px 0 11px}
+.lx-poolhead h2{margin:0;font-size:18.7px;font-weight:800;color:var(--text);letter-spacing:-.3px}
+.lx-poolhead .mdx-hero-ctas{display:flex!important;align-items:center;gap:7.7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
+/* #9, the half of the flash that was left. Making the heading sr-only stopped the words appearing, but
+   the two CTA buttons under it are still MOVED by the script -- so they paint where the design put them
+   for a frame or two, then jump. Held invisible until the hero (or the section head we build for the
+   phone) has them; the position is reserved either way, so nothing shifts when they arrive.
+   The animation is a failsafe, not decoration: if the script never runs, the buttons reveal themselves
+   after three seconds rather than staying hidden for good. A CSS gate whose only key is a script is how
+   a page ends up permanently blank -- that has happened here before. */
+.mdx-hero-ctas{opacity:0;animation:lxPhRev 0s linear 3s forwards}
+@keyframes lxPhRev{to{opacity:1}}
+.lumos-promo .mdx-hero-ctas,.lx-poolhead .mdx-hero-ctas,
+.lumos-promo .dex-hero-r,.lx-poolhead .dex-hero-r{opacity:1!important;animation:none!important}
+/* primary first, ghost second -- the order Trade reads in */
+.lx-poolhead .mdx-hero-btn.primary{order:1}
+.lx-poolhead .mdx-hero-btn.ghost{order:2}
+.lx-poolhead .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5.5px;height:31px;padding:0 8.8px!important;border-radius:9px;font-weight:700;font-size:11.6px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
+.lx-poolhead .mdx-hero-btn svg{width:11px;height:11px;flex:0 0 auto}
+/* item 8: was a filled pill that collided with the heading beside it. Same treatment as Launch Token
+   on Trade -- accent text, leading plus, no box. */
+.lx-poolhead .mdx-hero-btn.primary{background:none!important;border:0!important;box-shadow:none!important;
+  height:auto!important;padding:0!important;color:var(--accent,#ea6a2c)!important;
+  font-weight:700;font-size:12.7px;gap:5.5px}
+.lx-poolhead .mdx-hero-btn.primary svg{width:11px;height:11px;color:var(--accent,#ea6a2c)!important}
+.lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:11.6px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+/* item 9: Create Pool sits beside the heading; How it works goes to the far right, labelled, in the
+   accent -- the same arrangement Trade's New Mints header uses. */
+.lx-poolhead{display:flex!important;align-items:center;gap:11px}
+.lx-poolhead h2{flex:0 0 auto;margin:0}
+.lx-poolhead .mdx-hero-ctas{display:flex!important;align-items:center;gap:11px;
+  flex:1 1 auto!important;margin-left:0!important;justify-content:flex-start}
+.lx-poolhead .mdx-hero-btn.primary{order:1;margin-left:0!important;margin-right:0!important}
+.lx-poolhead .mdx-hero-btn.ghost{display:none!important}
+.lx-poolhead .mdx-hero-btn.ghost.lx-unused{order:2;margin-left:auto!important;
+  flex-direction:row!important;gap:5.5px!important;font-size:12.7px!important;font-weight:700!important;
+  color:var(--accent,#ea6a2c)!important;text-decoration:none!important;width:auto!important}
+.lx-poolhead .mdx-hero-btn.ghost svg{order:-1;width:11px;height:11px;opacity:1;
+  color:var(--accent,#ea6a2c)!important}
+.lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
+html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
+</style><style id="lx-walletlogo-css">/*lxts:1.1*/
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* A mark on a white ground would otherwise read as a hole punched in the header. The ring gives it an
+   edge; it is translucent so it works on either theme. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{box-shadow:inset 0 0 0 1px rgba(127,127,140,.30)}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-dexhero-css">/*lxts:1.1*/.lx-dexhero-off{display:none!important}.dex-overview,.lumos-promo.lx-mobhero,.amm-overview{display:none!important}.dex-mints-card .lx-dctas,.mdx-mints-card .lx-dctas,.dex-mints-card .mdx-hero-ctas,.mdx-mints-card .mdx-hero-ctas{position:static!important;margin:0 0 0 13.2px!important;display:flex!important;align-items:center;gap:13.2px;order:2;flex:1 1 auto!important}.dex-mints-card .lx-dctas .dex-hero-btn.primary,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.primary{order:1}.dex-mints-card .lx-dctas .dex-hero-btn.ghost,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:0!important}.dex-mints-card .lx-dctas{flex:0 0 auto!important}.dex-mints-card .lx-dctas .dex-hero-btn.ghost svg,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost svg{width:14px!important;height:14px!important}html .dex-mints-card .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .dex-mints-card .lx-dctas .dex-hero-btn.ghost,html[data-theme="dark"] .dex-mints-card .lx-dctas .dex-hero-btn.ghost,html .dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{flex-direction:row!important;gap:6.6px!important;font-size:14.3px!important;font-weight:700!important;color:var(--accent,#ea6a2c)!important;width:auto!important;padding:0!important}.dex-mints-card .lx-dctas .dex-hero-btn.ghost svg{order:-1;color:var(--accent,#ea6a2c)!important}.dex-mints-card .lx-dctas .dex-hero-btn.primary{gap:6.6px!important}.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}.mdx-mints-card .mdx-mint-row{grid-template-columns:28px minmax(0,1fr) 128px!important}.mdx-mints-card .mdx-mint-right{justify-content:flex-end;text-align:right;min-width:0}.mdx-mints-card .mdx-mint-right,.mdx-mints-card .mdx-mint-right *{font-variant-numeric:tabular-nums}.mdx-mints-card .mdx-mint-name,.mdx-mints-card .mdx-mint-sub{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mdx-mints-card .mdx-mints-head{flex-wrap:wrap!important;row-gap:11px}.mdx-mints-card .mdx-hero-ctas{flex:1 0 100%!important;justify-content:flex-start!important;gap:19.8px!important}.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:0!important;flex-direction:row!important;gap:5.5px!important;font-size:12.7px!important;font-weight:700!important;color:var(--accent,#ea6a2c)!important;width:auto!important;padding:0!important}.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost svg{order:-1;width:11px;height:11px;color:var(--accent,#ea6a2c)!important;opacity:1}.dex-mk-table-wrap{overflow-x:auto!important}.dex-mk-table-wrap::-webkit-scrollbar{height:9px}.dex-mk-table-wrap::-webkit-scrollbar-thumb{background:rgba(140,140,150,.4);border-radius:5px}.dex-mint-row{grid-template-columns:32px 1fr 520px!important}.dex-mint-stats{display:grid!important;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,.6fr);gap:0 22px!important;align-items:center;width:100%!important;margin:0!important}.dex-mint-stat{align-items:flex-end!important;text-align:right}.dex-mint-stat .l,.dex-mint-stat .v{width:100%;text-align:right!important}.dex-mint-stat .v{font-variant-numeric:tabular-nums}.dex-mint-row + .dex-mint-row{border-top:1px solid var(--border)}.dex-mint-row{padding:11px 8.8px!important}.mdx-hero-ctas .mdx-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}.mdx-hero-ctas .mdx-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-size:0!important;gap:0!important}.mdx-hero-ctas .mdx-hero-btn.ghost svg{width:17px!important;height:17px!important}</style><style id="lx-amm-css">/*lxts:1.1*/
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
    onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
@@ -1547,6 +1815,16 @@ html body .pool-header-row .ph-icons>*{
 }
 /* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
 #createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
+/* item 7: the amount input sat 48px outside its own row (row 369px, input ending at +48). It is a flex
+   item, and a text input's intrinsic min-content width is its size attribute -- about 20 characters --
+   which min-width:auto then refuses to shrink below. min-width:0 is the fix; without it flex:1 cannot
+   actually flex. */
+#createPoolModal .asset-field .row{min-width:0}
+#createPoolModal .asset-field .row .asset-amt{min-width:0!important;width:auto!important}
+/* item 8: the list already had overflow-y:auto, but max-height was none -- so there was never anything
+   to scroll and 44 assets simply ran past the bottom of the modal. */
+#createPoolModal .asset-dropdown .ad-list{max-height:248px!important;overflow-y:auto!important;
+  overscroll-behavior:contain}
 /* AUDIT (user-reported): the Create Pool MAX control is a bare <span> — it fires, but the design gives it no
    cursor, hover or hit padding, so it reads as decoration and people assume it is broken. */
 #createPoolModal .field-foot .max-btn{cursor:pointer;user-select:none;padding:2.2px 7.7px;margin:-2.2px -7.7px;border-radius:6px;transition:background .14s,color .14s}
@@ -2000,275 +2278,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-poolshero-css">/*lxts:1.1*/
-/* The card's ground is set once, for BOTH heroes, in _heromono.js. Declaring it here as well is how
-   the two drifted apart before. Only overflow stays -- the strip's bottom corners need it. */
-html .lumos-promo.lm-on.lm-pools{overflow:hidden!important}
-/* NOTHING MOVES ON THIS CARD. The Pools hero shipped a drifting constellation, three nebula blooms and a
-   twinkling starfield; the Trade hero has none -- its own constellation layer is display:none, and the
-   warm art is a still image. These are the animated layers, switched off rather than left running under
-   an opaque background where they would still burn a repaint every frame. */
-.lm-pools .lx-cosmic,.lm-pools .lx-constel,.lm-pools .lx-neb,.lm-pools .lx-stars,.lm-pools .lx-part,.lm-pools .lm-svg,.lm-pools .lm-streams,.lm-pools .lm-bars,.lm-pools .lm-pool{display:none!important}
-/* THE SAME HEIGHT AS TRADE. The Pools card carried min-height:366 on itself and 330 on .lm, from when
-   the stats sat beside the copy in a tall chip. With the strip along the bottom the content decides the
-   height, exactly as it does on Trade -- and 366 was the difference between a 370px card here and a
-   302px one there. */
-/* Desktop only. Trade's phone card sets no floor and sizes to its content -- about 140px -- so
-   carrying the desktop 300 onto mobile was doubling the height of a card with the same rows in it. */
-@media(min-width:881px){
-html .lumos-promo.lm-on.lm-pools{min-height:300px!important}
-html .lumos-promo.lm-pools .lm{min-height:300px!important}
-}
-/* _ammdata hides the chip below 1100px -- correct while it was a floating 2x2 box beside the copy,
-   wrong now that it IS the stats strip along the bottom edge. */
-@media(max-width:1100px){.lm-pools .lm-chip{display:block!important}}
-/* the rotating carousel the built card replaces */
-.lm-pools .lumos-promo-slides,.lm-pools .lumos-promo-dots{display:none!important}
-/* FIRST PAINT. The rule above needs .lm-pools, which the script adds -- so between the first paint
-   and the script running, the phone showed the authored carousel: an accent CTA, an accent headline
-   highlight and the dots. That is the orange flash. This one is keyed on nothing, so it applies to
-   the very first frame. Bounded to phone widths, where the carousel is always replaced by the built
-   card, so the desktop hero is not touched by it. The min-height reserves what the built card
-   occupies; without it the box collapses to nothing and the whole page jumps down when the card
-   lands. */
-@media(max-width:880px){
-.lumos-promo-slides,.lumos-promo-dots{display:none!important}
-.lumos-promo{min-height:123px}
-}
-/* The phone card is one column: mark and headline, then the CTAs, then the strip. */
-@media(max-width:880px){
-.lm-pools .lm-c-pool,.lm-pools .lm-c{flex-wrap:wrap;align-items:center;gap:15.4px;padding:19.8px 19.8px 17.6px!important}
-.lm-pools .lm-h{font-size:29.7px!important;line-height:1.12!important;max-width:none;flex:1 1 180px}
-.lm-pools .lm-sub{display:none!important}
-.lm-pools .lx-dctas{flex:1 1 100%;margin:2.2px 0 0!important}
-}
-/* The plain page heading says what the card says. Hidden to the eye, kept in the outline. */
-.lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1.1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
-.dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
-/* Collapsing the box is not enough while its CTAs are still inside it: with the heading hidden the
-   buttons alone still measured 46px at first paint, and the page still jumped when they left. They are
-   MOVED into the hero card (copy.appendChild(src)), never cloned, so hiding them HERE only ever hides
-   the pair that has not been relocated yet -- the moment they land in .lm-c-pool this stops matching
-   and the moved copy is styled by the .lumos-promo rule further down. */
-.dex-hero:has(> .dex-hero-l.lx-sronly)>.dex-hero-r,
-.dex-hero:has(> .dex-hero-l.lx-sronly)>.mdx-hero-ctas{display:none!important}
-/* the card is a column: copy on top, stats strip pinned along the bottom edge */
-.lm-pools .lm{display:flex!important;flex-direction:column;position:relative}
-.lm-pools .lm-c-pool,.lm-pools .lm-c{position:relative;z-index:4;display:flex;align-items:center;gap:26.4px;flex:1 1 auto;padding:28.6px 33px!important}
-/* 340, not the Trade hero's 420. Same intent, different sentence: "The most advanced DEX on Stellar."
-   wraps of its own accord and renders 311px wide, so 420 never binds there. "Provide liquidity, earn
-   swap fees." runs to the full 420 and then the row needs 774px in a 744px card, which is what pushed
-   the CTAs onto their own line. At 340 it breaks after the comma -- two lines, same shape as Trade -- and
-   the row fits with room to spare. */
-.lm-pools .lm-h{max-width:340px}
-/* the chain mark, beside the headline. A pseudo-element because the site's logo painter rewrites the
-   contents of anything icon-shaped -- the same guard the Trade hero and the token icons use. */
-.lm-pools .lx-heroico{flex:0 0 auto;position:relative;width:56px;height:56px;border-radius:50%;overflow:hidden;box-shadow:0 6px 18px -8px rgba(0,0,0,.55)}
-.lm-pools .lx-heroico::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+") center/contain no-repeat}
-html[data-theme="light"] .lm-pools .lx-heroico{box-shadow:0 6px 18px -10px rgba(16,16,22,.35)}
-/* THE CHIP BECOMES THE STRIP. Same element the Pools layer fills; it just spans the bottom edge now
-   instead of floating in the top-right corner. z-index 4 clears .lm::after, which is 3. */
-.lm-pools .lm-chip{position:relative!important;order:9;margin-top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;top:auto!important;
-  width:auto!important;max-width:none!important;min-width:0!important;z-index:4!important;
-  display:block!important;box-sizing:border-box;
-  padding:14.3px 28.6px 16.5px!important;
-  border:0!important;border-radius:0!important;
-  /* colour (background + top border) belongs to _heromono.js, which styles this strip and Trade's
-     together. Declaring it here too is what would let the two drift, and once _heromono moved into
-     <head> to stop the first-paint flash, this later copy would have won. */
-  backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
-.lm-pools .lm-chip .lx-hstats{display:grid!important;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0!important}
-.lm-pools .lx-hstat{display:flex;flex-direction:column;gap:4.4px;min-width:0;overflow:hidden;padding-left:18.7px;border-left:1px solid rgba(255,255,255,.10)}
-.lm-pools .lx-hstat:first-child{padding-left:0;border-left:0}
-.lm-pools .lx-hstat .v{font:800 30.8px/1.05 'Hanken Grotesk',sans-serif;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:11px}
-.lm-pools .lx-hstat .l{font:600 13.2px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap}
-.lm-pools .lx-hstat[data-k=top] .v{font-size:19.8px}
-.lm-pools .lx-hstat[data-k=top] .pair-icons{width:46px;height:28px;flex:0 0 46px;overflow:visible}
-/* The hero keeps its overlapping marks (asked for explicitly), so it states that itself instead of
-   leaning on the design's absolute offsets -- _pairicons.js unpins those everywhere else, and the
-   hero was collateral the first time. Five classes here; that file stays at three. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons{display:inline-flex!important;align-items:center;gap:0!important;width:auto!important}
-/* relative, not static: a mark with no logo prints its initial through .lx-ico[data-l]::after,
-   which is absolutely positioned inset:0. With the mark static that letter has no containing block
-   and escapes to sit beside the pair name -- the stray character. relative keeps it inside. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{position:relative!important;left:auto!important}
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico+.lx-ico{margin-left:-11px!important}
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{width:28px!important;height:28px!important}
-/* Stat colours -- both themes -- belong to _heromono.js, so Trade and Pools cannot disagree about
-   them. They were declared here too, and with _heromono now in <head> this later copy would win. */
-/* the page CTAs, lifted into the hero's top-right corner */
-.lm-pools .lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:15.4px;margin:0!important;padding:0!important}
-.lm-pools .lx-dctas .dex-hero-btn.primary{order:1}
-.lm-pools .lx-dctas .dex-hero-btn.ghost{order:2}
-.lm-pools .lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7.7px;height:38px;padding:0 16.5px!important;border-radius:10px;font-weight:700;font-size:14.3px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
-.lm-pools .lx-dctas .dex-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
-.lm-pools .lx-dctas .dex-hero-btn.primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
-/* item 18: the desktop Create Pool link, added to the table-controls row. margin-left:auto puts it hard
-   right of the search box without depending on the row's own justification. */
-.table-controls .lx-cplink{margin-left:auto;display:inline-flex;align-items:center;gap:6.6px;
-  background:none;border:0;padding:0;cursor:pointer;white-space:nowrap;
-  color:var(--accent,#ea6a2c);font-weight:700;font-size:14.3px;line-height:1;
-  font-family:inherit;opacity:.95;transition:opacity .15s ease}
-.table-controls .lx-cplink:hover{opacity:1;text-decoration:underline;text-underline-offset:3px}
-.table-controls .lx-cplink svg{width:14px;height:14px;flex:0 0 auto}
-.lm-pools .lx-dctas .dex-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:14.3px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
-html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
-/* DESKTOP: the CTAs share the headline's row rather than floating in a corner -- the Trade arrangement.
-   The card is one of two columns here, so it only has the room for that once the overview stops splitting
-   (see the stacking rule below); the wrap is the fallback, not the intent. */
-@media(min-width:881px){
-.lm-pools .lm-c-pool,.lm-pools .lm-c{flex-wrap:wrap;column-gap:26.4px;row-gap:13.2px;align-content:center}
-.lm-pools .lm-h{flex:0 0 auto}
-/* The Trade hero drops its subtitle on desktop -- mark, headline, CTAs, strip, nothing else -- and that
-   is what leaves the CTAs room to sit on the headline's line rather than wrapping under it. Kept on the
-   phone, where the Trade hero keeps its own. */
-.lm-pools .lm-sub{display:none!important}
-/* The copy column is capped at 58% by the design, which was right when the stats floated beside it in a
-   chip. The strip is along the bottom now, so the row has the whole card to lay out in. */
-.lm-pools .lm-c-pool,.lm-pools .lm-c{max-width:none!important;width:100%!important}
-/* The card's own "Provide Liquidity" link, hidden for the same reason the Trade hero hides its "Start
-   Trading": the page's two CTAs have moved into the card and a third button in the row is what pushes
-   them onto their own line. The action still exists on the page; only this copy of it goes. */
-.lm-pools .lm-cta{display:none!important}
-.lm-pools .lx-dctas{position:static!important;top:auto;right:auto;order:9;margin-left:auto!important;align-self:flex-start}
-.lm-pools .lx-heroico{width:64px;height:64px}
-}
-/* Stacking point: the SAME number the Trade overview uses, so the two pages change shape together
-   instead of one splitting while the other has already stacked. Measured identical at 1696px -- both
-   rows resolve to 798px + 570px -- so the threshold is the only thing that could put them out of step. */
-@media(max-width:1615px){
-.amm-overview{grid-template-columns:1fr!important}
-}
-/* The collapsed rail used to bring the second column back here, mirroring the Trade overview. It no
-   longer does on either page: the hero keeps ONE shape regardless of a control that has nothing to do
-   with it, and Market Overview stays below the list. The matching rule in _sidecard.js went with it. */
-/* TABLET / PHONE: four columns will not fit, so the strip becomes 2x2 and the mark steps down. */
-@media(max-width:880px){
-.lm-pools .lm-chip .lx-hstats{grid-template-columns:1fr 1fr;gap:12.1px 0!important}
-.lm-pools .lm-chip{padding:12.1px 19.8px 13.2px!important}
-.lm-pools .lx-hstat{padding-left:15.4px}
-.lm-pools .lx-hstat:nth-child(2n+1){padding-left:0;border-left:0}
-.lm-pools .lx-hstat .v{font-size:23.1px}
-.lm-pools .lx-heroico{width:44px;height:44px}
-.lm-pools .lx-dctas{position:static!important;order:9;margin:15.4px 0 0!important;align-self:flex-start}
-}
-@media(max-width:560px){
-/* Trade fits all four across on the phone rather than stacking 2x2, which is what keeps its card
-   about 140px tall instead of 300. Same grid here. */
-.lm-pools .lm-chip .lx-hstats{grid-template-columns:repeat(4,auto)!important;justify-content:space-between;gap:0!important}
-.lm-pools .lm-chip{padding:9.9px 15.4px 11px!important}
-.lm-pools .lx-hstat{padding-left:0;border-left:0}
-.lm-pools .lx-hstat .v{font-size:17.6px;gap:6.6px}
-.lm-pools .lx-hstat .l{font-size:8.8px;letter-spacing:.03em}
-.lm-pools .lx-hstat[data-k=top] .v{font-size:11.6px}
-.lm-pools .lx-heroico{width:38px;height:38px}
-}
-/* PHONE, and deliberately last in this sheet: the desktop rules above use !important too, so an
-   earlier media block loses the tie to them on document order alone. Everything here exists to
-   match Trade's phone card, which is a mark, a headline and the strip -- nothing else. */
-@media(max-width:880px){
-/* _ammdata floors the card at 366px, which is a desktop number; Trade's phone card has no floor
-   and sizes to its three rows. It declares the floor TWICE -- on the card and on the inner .lm --
-   so releasing one alone still leaves a 366px card wrapped round a 147px one. */
-html .lumos-promo.lm-pools .lm{min-height:0!important}
-html .lumos-promo.lm-on.lm-pools{min-height:0!important}
-/* the Top Pool pair marks are sized for the desktop strip and are what make this row taller
-   than Trade's otherwise identical one */
-/* Same selector shape as the desktop rule above on purpose: [data-k=top] gives that one four
-   classes to this one's three, so a shorter selector here loses the cascade however late it sits. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons{
-  position:relative!important;display:inline-flex!important;align-items:center;
-  width:auto!important;height:17px!important;flex:0 0 auto!important;overflow:visible}
-/* .lx-ico is named explicitly: the desktop rule above is .lm-pools .lx-hstat[data-k=top]
-   .pair-icons .lx-ico -- five classes to a child selector's four, so it kept winning on height
-   (28px) while flex-basis quietly set the width to 17, which is what left the marks overflowing
-   the strip by 5px. Equal specificity now, and this sheet is later. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons>*,
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico{
-  position:relative!important;left:auto!important;top:auto!important;right:auto!important;bottom:auto!important;
-  width:17px!important;height:17px!important;flex:0 0 17px;
-  /* The phone page rounds .a/.b -- the pool-card marks -- but the hero chip's children are .pa/.pb,
-     which no rule here rounds. So each round logo was sitting in a SQUARE bordered box with a slate
-     fill showing at the corners: the prominent edges. */
-  border-radius:50%!important;overflow:hidden}
-.lm-pools .lx-hstat[data-k=top] .pair-icons>*+*,
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico+.lx-ico{margin-left:-6.6px!important}
-.lm-pools .lm-c,.lm-pools .lm-c-pool{flex-direction:row!important;flex-wrap:nowrap!important;align-items:center!important;gap:13.2px!important;padding:15.4px 15.4px!important}
-/* 18px is Trade's phone headline. 27px was a desktop size on a 375px screen. The margin goes
-   too: the headline box measures 44px inside an 85px column, and that 13px of leftover is the
-   last of the height difference against Trade, whose own headline carries none. */
-.lm-pools .lm-h{font-size:19.8px!important;line-height:1.22!important;max-width:none!important;flex:1 1 auto;margin:0!important}
-.lm-pools .lm-sub{display:none!important}
-/* The strip cells: Trade sets 3px between value and label, and its Top Pair value box is exactly
-   as tall as the marks inside it. Pools ran 4px and a 21px value box against 17px marks, which is
-   the whole of the 54px-vs-49px difference between the two strips. */
-.lm-pools .lx-hstat{gap:3.3px!important}
-.lm-pools .lx-hstat[data-k=top] .v{height:17px!important}
-.lm-pools .lx-hstat[data-k=top] .pair-icons{margin:0!important}
-}
-/* ---- the list section head, matching Trade's -------------------------------------------------- */
-/* Trade heads its list with a title and tucks the two actions in on the right; Pools had them as a
-   full-width bar under the hero, which is the loudest thing on the screen and not what Trade does.
-   Values are copied from the Trade phone build rather than re-picked, so the two cannot drift. */
-.lx-poolhead{display:flex;justify-content:space-between;align-items:baseline;margin:24.2px 0 11px}
-.lx-poolhead h2{margin:0;font-size:18.7px;font-weight:800;color:var(--text);letter-spacing:-.3px}
-.lx-poolhead .mdx-hero-ctas{display:flex!important;align-items:center;gap:7.7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
-/* #9, the half of the flash that was left. Making the heading sr-only stopped the words appearing, but
-   the two CTA buttons under it are still MOVED by the script -- so they paint where the design put them
-   for a frame or two, then jump. Held invisible until the hero (or the section head we build for the
-   phone) has them; the position is reserved either way, so nothing shifts when they arrive.
-   The animation is a failsafe, not decoration: if the script never runs, the buttons reveal themselves
-   after three seconds rather than staying hidden for good. A CSS gate whose only key is a script is how
-   a page ends up permanently blank -- that has happened here before. */
-.mdx-hero-ctas{opacity:0;animation:lxPhRev 0s linear 3s forwards}
-@keyframes lxPhRev{to{opacity:1}}
-.lumos-promo .mdx-hero-ctas,.lx-poolhead .mdx-hero-ctas,
-.lumos-promo .dex-hero-r,.lx-poolhead .dex-hero-r{opacity:1!important;animation:none!important}
-/* primary first, ghost second -- the order Trade reads in */
-.lx-poolhead .mdx-hero-btn.primary{order:1}
-.lx-poolhead .mdx-hero-btn.ghost{order:2}
-.lx-poolhead .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5.5px;height:31px;padding:0 8.8px!important;border-radius:9px;font-weight:700;font-size:11.6px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
-.lx-poolhead .mdx-hero-btn svg{width:11px;height:11px;flex:0 0 auto}
-/* item 8: was a filled pill that collided with the heading beside it. Same treatment as Launch Token
-   on Trade -- accent text, leading plus, no box. */
-.lx-poolhead .mdx-hero-btn.primary{background:none!important;border:0!important;box-shadow:none!important;
-  height:auto!important;padding:0!important;color:var(--accent,#ea6a2c)!important;
-  font-weight:700;font-size:12.7px;gap:5.5px}
-.lx-poolhead .mdx-hero-btn.primary svg{width:11px;height:11px;color:var(--accent,#ea6a2c)!important}
-.lx-poolhead .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:11.6px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
-/* item 9: Create Pool sits beside the heading; How it works goes to the far right, labelled, in the
-   accent -- the same arrangement Trade's New Mints header uses. */
-.lx-poolhead{display:flex!important;align-items:center;gap:11px}
-.lx-poolhead h2{flex:0 0 auto;margin:0}
-.lx-poolhead .mdx-hero-ctas{display:flex!important;align-items:center;gap:11px;
-  flex:1 1 auto!important;margin-left:0!important;justify-content:flex-start}
-.lx-poolhead .mdx-hero-btn.primary{order:1;margin-left:0!important;margin-right:0!important}
-.lx-poolhead .mdx-hero-btn.ghost{display:none!important}
-.lx-poolhead .mdx-hero-btn.ghost.lx-unused{order:2;margin-left:auto!important;
-  flex-direction:row!important;gap:5.5px!important;font-size:12.7px!important;font-weight:700!important;
-  color:var(--accent,#ea6a2c)!important;text-decoration:none!important;width:auto!important}
-.lx-poolhead .mdx-hero-btn.ghost svg{order:-1;width:11px;height:11px;opacity:1;
-  color:var(--accent,#ea6a2c)!important}
-.lx-poolhead .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
-html[data-theme="light"] .lx-poolhead .mdx-hero-btn.ghost{color:#33333d!important}
-</style><style id="lx-walletlogo-css">/*lxts:1.1*/
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* A mark on a white ground would otherwise read as a hole punched in the header. The ring gives it an
-   edge; it is translucent so it works on either theme. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{box-shadow:inset 0 0 0 1px rgba(127,127,140,.30)}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
-/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
-   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
-   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
-   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
-   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
-   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
-.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
-</style><style id="lx-dexhero-css">/*lxts:1.1*/.lx-dexhero-off{display:none!important}.dex-overview,.lumos-promo.lx-mobhero,.amm-overview{display:none!important}.dex-mints-card .lx-dctas,.mdx-mints-card .lx-dctas,.dex-mints-card .mdx-hero-ctas,.mdx-mints-card .mdx-hero-ctas{position:static!important;margin:0 0 0 13.2px!important;display:flex!important;align-items:center;gap:13.2px;order:2;flex:1 1 auto!important}.dex-mints-card .lx-dctas .dex-hero-btn.primary,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.primary{order:1}.dex-mints-card .lx-dctas .dex-hero-btn.ghost,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:0!important}.dex-mints-card .lx-dctas{flex:0 0 auto!important}.dex-mints-card .lx-dctas .dex-hero-btn.ghost svg,.dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost svg{width:14px!important;height:14px!important}html .dex-mints-card .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .dex-mints-card .lx-dctas .dex-hero-btn.ghost,html[data-theme="dark"] .dex-mints-card .lx-dctas .dex-hero-btn.ghost,html .dex-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{flex-direction:row!important;gap:6.6px!important;font-size:14.3px!important;font-weight:700!important;color:var(--accent,#ea6a2c)!important;width:auto!important;padding:0!important}.dex-mints-card .lx-dctas .dex-hero-btn.ghost svg{order:-1;color:var(--accent,#ea6a2c)!important}.dex-mints-card .lx-dctas .dex-hero-btn.primary{gap:6.6px!important}.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:auto!important}.mdx-mints-card .mdx-mint-row{grid-template-columns:28px minmax(0,1fr) 128px!important}.mdx-mints-card .mdx-mint-right{justify-content:flex-end;text-align:right;min-width:0}.mdx-mints-card .mdx-mint-right,.mdx-mints-card .mdx-mint-right *{font-variant-numeric:tabular-nums}.mdx-mints-card .mdx-mint-name,.mdx-mints-card .mdx-mint-sub{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mdx-mints-card .mdx-mints-head{flex-wrap:wrap!important;row-gap:11px}.mdx-mints-card .mdx-hero-ctas{flex:1 0 100%!important;justify-content:flex-start!important;gap:19.8px!important}.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost{order:2;margin-left:0!important;flex-direction:row!important;gap:5.5px!important;font-size:12.7px!important;font-weight:700!important;color:var(--accent,#ea6a2c)!important;width:auto!important;padding:0!important}.mdx-mints-card .mdx-hero-ctas .mdx-hero-btn.ghost svg{order:-1;width:11px;height:11px;color:var(--accent,#ea6a2c)!important;opacity:1}.dex-mk-table-wrap{overflow-x:auto!important}.dex-mk-table-wrap::-webkit-scrollbar{height:9px}.dex-mk-table-wrap::-webkit-scrollbar-thumb{background:rgba(140,140,150,.4);border-radius:5px}.dex-mint-row{grid-template-columns:32px 1fr 520px!important}.dex-mint-stats{display:grid!important;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr) minmax(0,1.15fr) minmax(0,.6fr);gap:0 22px!important;align-items:center;width:100%!important;margin:0!important}.dex-mint-stat{align-items:flex-end!important;text-align:right}.dex-mint-stat .l,.dex-mint-stat .v{width:100%;text-align:right!important}.dex-mint-stat .v{font-variant-numeric:tabular-nums}.dex-mint-row + .dex-mint-row{border-top:1px solid var(--border)}.dex-mint-row{padding:11px 8.8px!important}.mdx-hero-ctas .mdx-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}.mdx-hero-ctas .mdx-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-size:0!important;gap:0!important}.mdx-hero-ctas .mdx-hero-btn.ghost svg{width:17px!important;height:17px!important}</style><style id="lx-heromono-css">/*lxts:1.1*/
+</style><style id="lx-heromono-css">/*lxts:1.1*/
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
    ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
@@ -5329,7 +5339,189 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   try{ new MutationObserver(function(){ lxMarkUnsafe(); })
     .observe(document.documentElement,{childList:true,subtree:true}); }catch(_){}
   try{ lxMarkUnsafe(); }catch(_){}
-})();</script><script id="lx-ammdata">(function(){
+})();</script><script id="lx-poolshero">(function(){
+  function q(s,r){return (r||document).querySelector(s);}
+  // item 18: desktop ships #openCreatePool inside the dropped hero, so it measures 0x0 and the page has
+  // no way to create a pool at all. Put a link in the controls row and let it click the original button,
+  // so the design's own open/close wiring stays the single path into the modal.
+  function createPoolLink(){
+    var row=q('.table-controls'); if(!row)return;
+    if(q('.lx-cplink',row))return;                       // idempotent
+    var src=q('#openCreatePool'); if(!src)return;        // nothing to delegate to; add no dead control
+    var b=document.createElement('button');
+    b.type='button'; b.className='lx-cplink';
+    b.setAttribute('aria-label','Create Pool');
+    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" '
+      +'stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line>'
+      +'<line x1="5" y1="12" x2="19" y2="12"></line></svg><span>Create Pool</span>';
+    b.addEventListener('click',function(e){ e.preventDefault();
+      var t=q('#openCreatePool'); if(t)t.click(); });
+    row.appendChild(b);
+  }
+  // Every step is a MOVE or a class flag on something that already exists, and every step is guarded, so
+  // a second pass over an arranged card does nothing. The stats are deliberately NOT touched here -- the
+  // Pools layer writes into them through .lm-chip, and taking them out of it blanks every value.
+  // Only ever runs where the page did not ship a .lm -- i.e. the phone build. Idempotent: once the
+  // card exists this returns on the first line.
+  function buildMobile(){
+    var promo=q('.lumos-promo'); if(!promo)return;
+    if(q('.lm',promo))return;
+    var slide=q('.lumos-promo-slide',promo);
+    var title=slide?q('.lumos-promo-title',slide):null;
+    var sub=slide?q('.lumos-promo-sub',slide):null;
+    if(!title)return;                       // no copy to build from; leave the page as it is
+    var lm=document.createElement('div'); lm.className='lm';
+    var c=document.createElement('div'); c.className='lm-c lm-c-pool';
+    var ic=document.createElement('span'); ic.className='lx-heroico'; ic.setAttribute('aria-hidden','true');
+    var h=document.createElement('h2'); h.className='lm-h';
+    h.innerHTML=title.innerHTML;            // keeps the line break and the accent span
+    var pEl=document.createElement('p'); pEl.className='lm-sub';
+    if(sub)pEl.innerHTML=sub.innerHTML;
+    c.appendChild(ic); c.appendChild(h); c.appendChild(pEl);
+    // the chip is what _ammdata.js looks for before it will build and fill the four stats
+    var chip=document.createElement('div'); chip.className='lm-chip';
+    lm.appendChild(c); lm.appendChild(chip);
+    promo.appendChild(lm);
+    promo.className+=' lm-pools lm-on lx-mobhero';
+  }
+  function apply(){
+    // The phone page ships the carousel and no .lm. Build the card first; every step below then
+    // treats mobile and desktop identically.
+    buildMobile();
+    var card=q('.lumos-promo.lm-pools'); if(!card)return;
+    var lm=q('.lm',card); if(!lm)return;
+    var copy=q('.lm-c-pool',lm)||q('.lm-c',lm); if(!copy)return;
+
+    // 1. the chain mark, first thing in the copy column
+    if(!q('.lx-heroico',copy)){
+      var ic=document.createElement('span');
+      ic.className='lx-heroico'; ic.setAttribute('aria-hidden','true');
+      copy.insertBefore(ic,copy.firstChild);
+    }
+
+    // 2. the page's two CTAs, lifted into the card. MOVED, not rebuilt -- #ammHiwBtn already carries its
+    //    listener, and a clone would render correctly and then do nothing when pressed.
+    //    On the phone they go BELOW the card instead. Trade's phone card carries no buttons at all,
+    //    and folding this row in was the whole reason the Pools card ran to twice Trade's height.
+    //    Moved rather than dropped: Create Pool stays on the page, one row further down than the
+    //    page originally put it, and keeps .mdx-hero-ctas -- NOT lx-dctas, which positions absolute
+    //    against the card it would no longer be inside.
+    var phone=(' '+card.className+' ').indexOf(' lx-mobhero ')>=0;
+    var src=q('.dex-hero-r')||q('.mdx-hero-ctas');
+    if(src&&phone){
+      // Trade's two actions live in the list's section head, not in a bar under the hero -- and the
+      // Pools phone page ships no section head at all, so build the one it is missing and move them
+      // into it. Inserted before the All Pools / My Positions tabs, which is where Trade's head sits
+      // relative to its own filter row.
+      var tabs=q('#poolTabs')||q('.filter-tabs');
+      var head=q('.lx-poolhead');
+      if(tabs&&!head){
+        head=document.createElement('div');
+        head.className='mdx-section-head lx-poolhead';
+        var h2=document.createElement('h2'); h2.textContent='Liquidity Pools';
+        head.appendChild(h2);
+        tabs.parentNode.insertBefore(head,tabs);
+      }
+      if(head&&src.parentNode!==head)head.appendChild(src);
+    }else if(src&&src.parentNode!==copy){
+      if((' '+src.className+' ').indexOf(' lx-dctas ')<0)src.className+=' lx-dctas';
+      copy.appendChild(src);
+    }
+
+    // 3. Market Overview carries five rows to Trade's New Mints three, so the column beside the hero
+    //    runs taller than the hero itself. Participants and 24h Fees go -- matched on their label rather
+    //    than their position, so a reordered list cannot take the wrong two.
+    var drop={'participants':1,'24h fees':1};
+    var rows=document.querySelectorAll('.amm-snapshot-row');
+    for(var r=0;r<rows.length;r++){
+      var lbl=rows[r].querySelector('.amm-snapshot-label');
+      if(!lbl)continue;
+      if(drop[(lbl.textContent||'').trim().toLowerCase()])rows[r].style.display='none';
+    }
+
+    // 3. the plain page heading above the card now duplicates the card. Hidden visually only.
+    var heads=[q('.dex-hero-l'),q('.page-title'),q('.page-subtitle')];
+    for(var hi=0;hi<heads.length;hi++){ var hd=heads[hi];
+      if(hd&&(' '+hd.className+' ').indexOf(' lx-sronly ')<0)hd.className+=' lx-sronly'; }
+  }
+  function boot(){
+    apply();
+    try{ createPoolLink(); }catch(_){}
+    // The Pools layer rebuilds this card when its data lands and again on each refresh, so re-assert
+    // rather than assuming one pass is enough. Cheap: every branch above is a no-op once arranged.
+    try{
+      var host=document.querySelector('.page')||document.body;
+      new MutationObserver(function(){ apply(); try{ createPoolLink(); }catch(_){} }).observe(host,{childList:true,subtree:true});
+    }catch(_){}
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();</script><style id="lx-whead-css">/*lxts:1.1*/.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 22px;gap:8.8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8.8px;font:700 14.9px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 15.4px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 14.3px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7.7px;padding:5.5px 11px 5.5px 6.6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 12.7px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}@media (max-width:560px){.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}.appbar .logo .logo-text{overflow:visible!important}.appbar .avatar-sm.lx-mav{flex:0 1 auto!important;min-width:0;overflow:hidden}.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}.appbar .avatar-sm.lx-mav{white-space:nowrap}}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:26.4px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-walletlogo">(function(){
+  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
+  function logo(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    if(!id)return "";
+    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+    // walletconnect stores a few different spellings; they all mean the same sheet entry
+    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
+    return MAP[id]||"";
+  }
+  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
+  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
+  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
+  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
+  // this map has not been taught, which is still better than saying nothing.
+  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
+    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
+    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
+  function walletId(){
+    var id="";
+    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
+    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
+  }
+  function nameIt(){
+    var id=walletId(); if(!id)return;
+    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
+    var els=document.querySelectorAll(".mu-sub");
+    for(var i=0;i<els.length;i++){
+      var e=els[i], t=(e.textContent||"").trim();
+      if(!t||t.indexOf(nm)===0)continue;
+      // Keep whatever the card said after the separator -- that is the network, and it is still true.
+      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
+      var want=nm+(tail?(" "+tail):"");
+      if(e.textContent!==want)e.textContent=want;
+    }
+  }
+  // Measured ink-bounding-box crops. 1 = the mark already fills its canvas, so leave it alone.
+  var ZOOM={rabet:141,ready:160,albedo:122};
+  function paint(){
+    try{ nameIt(); }catch(_){}
+    var url=logo(); if(!url)return;
+    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
+    for(var i=0;i<els.length;i++){
+      var e=els[i];
+      if(e.getAttribute("data-lxwl")===url)continue;
+      e.setAttribute("data-lxwl",url);
+      e.classList.add("lx-haswl");
+      e.style.setProperty("background-image","url('"+url+"')","important");
+      // Crop the dead margin on the marks that have one; the rest keep plain cover.
+      var _z=ZOOM[walletId()];
+      if(_z)e.style.setProperty("background-size",_z+"%","important");
+      else e.style.removeProperty("background-size");
+    }
+  }
+  function boot(){
+    paint();
+    // The chip and the menu card are both built after connect, and the menu is rendered on open --
+    // so this watches rather than running once.
+    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
+    try{ window.addEventListener("storage",paint); }catch(_){}
+    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();</script><script id="lx-poolwarm">(function(){try{function warmRate(){ try{ fetch("/lxapi/xlm").catch(function(){}); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(warmRate,1200);},{timeout:5000});else setTimeout(warmRate,2000);if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-dexhero">(function(){function q(s){return document.querySelector(s);}function go(){var prim=q(".lx-dctas .dex-hero-btn.primary")||q(".mdx-hero-ctas .mdx-hero-btn.primary");if(prim){var psvg=prim.querySelector("svg");if(psvg&&!psvg.querySelector("line")){psvg.setAttribute("stroke-width","2.4");psvg.innerHTML='<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';}}var _mt=q(".dex-mints-title,.mdx-mints-title");if(_mt){var _tn=null,_ns=_mt.childNodes;for(var _i=0;_i<_ns.length;_i++){if(_ns[_i].nodeType===3&&(_ns[_i].nodeValue||"").trim()){_tn=_ns[_i];break;}}if(_tn&&_tn.nodeValue.trim()!=="New Mints")_tn.nodeValue="New Mints";}var hiw=q("#mdxHiwBtn")||q("#dexHiwBtn");if(hiw&&hiw.getAttribute("data-lxhiw")!=="1"){hiw.setAttribute("data-lxhiw","1");hiw.setAttribute("title","How it works");hiw.setAttribute("aria-label","How it works");}[".dex-overview",".lumos-promo.lx-mobhero",".dex-hero",".amm-overview"].forEach(function(sel){var el=q(sel); if(el&&!el.classList.contains("lx-dexhero-off"))el.classList.add("lx-dexhero-off");});}function run(){ try{ go(); }catch(_){} }if(document.readyState!=="loading")run(); else document.addEventListener("DOMContentLoaded",run);[120,400,900,1800,3200].forEach(function(ms){ setTimeout(run,ms); });try{ new MutationObserver(function(){ run(); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}})();</script><script id="lx-ammdata">(function(){
   var H="https://horizon.stellar.org";                 // MAINNET
   // Real Stellar MAINNET assets with live XLM pools (canonical issuers, matching the swap engine).
   var KNOWN=[
@@ -6504,6 +6696,9 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       try{ var t=window.event&&window.event.target;
         var cpItem=t&&t.closest&&t.closest("#createPoolModal .ad-item"); if(cpItem){ if(window.__lxCpSel)window.__lxCpSel(cpItem); return; }
         var cpPick=t&&t.closest&&t.closest("#createPoolModal .asset-picker"); if(cpPick){ var _fld=cpPick.closest(".asset-field"); var _dd=_fld&&_fld.querySelector(".asset-dropdown"); if(_dd){ var _wo=_dd.classList.contains("open"); [].slice.call(document.querySelectorAll("#createPoolModal .asset-dropdown")).forEach(function(x){x.classList.remove("open");x.style.display="";}); if(!_wo){ _dd.classList.add("open"); _dd.style.display="block"; } } return; }   // toggle the asset dropdown open/closed
+        // item 9: the dropdown's own search row is not "elsewhere" -- closing on it is what made the
+        // search look broken. Same for the list body, so a click on a gap between items does not dismiss.
+        if(t&&t.closest&&(t.closest("#createPoolModal .ad-search")||t.closest("#createPoolModal .ad-list")))return;
         if(t&&t.closest&&t.closest("#createPoolModal")){ [].slice.call(document.querySelectorAll("#createPoolModal .asset-dropdown.open")).forEach(function(x){x.classList.remove("open");x.style.display="";}); return; }   // click elsewhere in the modal -> close any open dropdown, block mock nav
         var row=t&&t.closest&&t.closest(".lx-ammrow[data-pool]"); if(row){ location.href=detailUrl(row.getAttribute("data-pool"),cands&&cands[0],row.getAttribute("data-pair")); return; } }catch(e){}
       return _nav?_nav.apply(this,arguments):(cands&&cands[0]&&(location.href=cands[0]));
@@ -8611,6 +8806,41 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var _bals=(DATA&&DATA.balances&&DATA.balances.length)?DATA.balances:((_cpBals&&_cpBals.length)?_cpBals:null);
     if(!_bals)return;
     var modal=q("#createPoolModal"); if(!modal)return; window.__lxCPwired=1;
+    // item 9: the search box was markup only -- nothing ever filtered the list. Matches on the asset
+    // code (the attribute, not the rendered text, which also carries the balance and would let "1"
+    // match every asset that happens to hold 1-point-something).
+    [].slice.call(modal.querySelectorAll(".ad-search-input")).forEach(function(inp){
+      if(inp.__lxCPs)return; inp.__lxCPs=1;
+      function run(){
+        var qy=(inp.value||"").trim().toLowerCase();
+        var dd=inp.closest?inp.closest(".asset-dropdown"):null; if(!dd)return;
+        var items=[].slice.call(dd.querySelectorAll(".ad-item.lx-cpitem")), hit=0;
+        items.forEach(function(it){
+          var code=(it.getAttribute("data-code")||"").toLowerCase();
+          var on=!qy||code.indexOf(qy)>=0;
+          it.style.display=on?"":"none"; if(on)hit++;
+        });
+        // Say so rather than showing an empty box that reads as a broken list.
+        var em=dd.querySelector(".lx-cpnone");
+        if(!hit){ if(!em){ em=document.createElement("div"); em.className="lx-cpnone"; em.textContent="No asset matches that ticker";
+            em.style.cssText="padding:14px 12px;font-size:12.5px;color:var(--text-muted,#8b8b97)";
+            var lst=dd.querySelector(".ad-list"); if(lst)lst.appendChild(em); } }
+        else if(em&&em.parentNode)em.parentNode.removeChild(em);
+      }
+      inp.addEventListener("input",run);
+      // Reopening the picker should not present the previous query's filtered list.
+      inp.addEventListener("focus",function(){ if(!inp.value)run(); });
+    });
+    // item 33: the button wrapped to three lines on a phone and named two steps for one action -- the
+    // liquidity IS the pool at creation, since the ratio you deposit is what sets the opening price.
+    // Only the text node is rewritten, so the icon beside it survives.
+    try{
+      var _cb=modal.querySelector(".modal-foot .btn-primary,.btn-primary");
+      if(_cb){ var _tn=null,_ns=_cb.childNodes;
+        for(var _i=0;_i<_ns.length;_i++){ if(_ns[_i].nodeType===3&&(_ns[_i].nodeValue||"").trim()){ _tn=_ns[_i]; break; } }
+        if(_tn&&_tn.nodeValue.trim()!=="Create pool")_tn.nodeValue="Create pool";
+      }
+    }catch(_){}
     var cpCta=null;
     var balMap={XLM:0}; (_bals||[]).forEach(function(b){ if(b.asset_type==="native")balMap.XLM=+b.balance; else if(b.asset_code)balMap[b.asset_code+":"+b.asset_issuer]=+b.balance; });
     // XLM this account cannot spend: the base reserve for the account and everything it already holds,
@@ -8846,189 +9076,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-poolshero">(function(){
-  function q(s,r){return (r||document).querySelector(s);}
-  // item 18: desktop ships #openCreatePool inside the dropped hero, so it measures 0x0 and the page has
-  // no way to create a pool at all. Put a link in the controls row and let it click the original button,
-  // so the design's own open/close wiring stays the single path into the modal.
-  function createPoolLink(){
-    var row=q('.table-controls'); if(!row)return;
-    if(q('.lx-cplink',row))return;                       // idempotent
-    var src=q('#openCreatePool'); if(!src)return;        // nothing to delegate to; add no dead control
-    var b=document.createElement('button');
-    b.type='button'; b.className='lx-cplink';
-    b.setAttribute('aria-label','Create Pool');
-    b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" '
-      +'stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line>'
-      +'<line x1="5" y1="12" x2="19" y2="12"></line></svg><span>Create Pool</span>';
-    b.addEventListener('click',function(e){ e.preventDefault();
-      var t=q('#openCreatePool'); if(t)t.click(); });
-    row.appendChild(b);
-  }
-  // Every step is a MOVE or a class flag on something that already exists, and every step is guarded, so
-  // a second pass over an arranged card does nothing. The stats are deliberately NOT touched here -- the
-  // Pools layer writes into them through .lm-chip, and taking them out of it blanks every value.
-  // Only ever runs where the page did not ship a .lm -- i.e. the phone build. Idempotent: once the
-  // card exists this returns on the first line.
-  function buildMobile(){
-    var promo=q('.lumos-promo'); if(!promo)return;
-    if(q('.lm',promo))return;
-    var slide=q('.lumos-promo-slide',promo);
-    var title=slide?q('.lumos-promo-title',slide):null;
-    var sub=slide?q('.lumos-promo-sub',slide):null;
-    if(!title)return;                       // no copy to build from; leave the page as it is
-    var lm=document.createElement('div'); lm.className='lm';
-    var c=document.createElement('div'); c.className='lm-c lm-c-pool';
-    var ic=document.createElement('span'); ic.className='lx-heroico'; ic.setAttribute('aria-hidden','true');
-    var h=document.createElement('h2'); h.className='lm-h';
-    h.innerHTML=title.innerHTML;            // keeps the line break and the accent span
-    var pEl=document.createElement('p'); pEl.className='lm-sub';
-    if(sub)pEl.innerHTML=sub.innerHTML;
-    c.appendChild(ic); c.appendChild(h); c.appendChild(pEl);
-    // the chip is what _ammdata.js looks for before it will build and fill the four stats
-    var chip=document.createElement('div'); chip.className='lm-chip';
-    lm.appendChild(c); lm.appendChild(chip);
-    promo.appendChild(lm);
-    promo.className+=' lm-pools lm-on lx-mobhero';
-  }
-  function apply(){
-    // The phone page ships the carousel and no .lm. Build the card first; every step below then
-    // treats mobile and desktop identically.
-    buildMobile();
-    var card=q('.lumos-promo.lm-pools'); if(!card)return;
-    var lm=q('.lm',card); if(!lm)return;
-    var copy=q('.lm-c-pool',lm)||q('.lm-c',lm); if(!copy)return;
-
-    // 1. the chain mark, first thing in the copy column
-    if(!q('.lx-heroico',copy)){
-      var ic=document.createElement('span');
-      ic.className='lx-heroico'; ic.setAttribute('aria-hidden','true');
-      copy.insertBefore(ic,copy.firstChild);
-    }
-
-    // 2. the page's two CTAs, lifted into the card. MOVED, not rebuilt -- #ammHiwBtn already carries its
-    //    listener, and a clone would render correctly and then do nothing when pressed.
-    //    On the phone they go BELOW the card instead. Trade's phone card carries no buttons at all,
-    //    and folding this row in was the whole reason the Pools card ran to twice Trade's height.
-    //    Moved rather than dropped: Create Pool stays on the page, one row further down than the
-    //    page originally put it, and keeps .mdx-hero-ctas -- NOT lx-dctas, which positions absolute
-    //    against the card it would no longer be inside.
-    var phone=(' '+card.className+' ').indexOf(' lx-mobhero ')>=0;
-    var src=q('.dex-hero-r')||q('.mdx-hero-ctas');
-    if(src&&phone){
-      // Trade's two actions live in the list's section head, not in a bar under the hero -- and the
-      // Pools phone page ships no section head at all, so build the one it is missing and move them
-      // into it. Inserted before the All Pools / My Positions tabs, which is where Trade's head sits
-      // relative to its own filter row.
-      var tabs=q('#poolTabs')||q('.filter-tabs');
-      var head=q('.lx-poolhead');
-      if(tabs&&!head){
-        head=document.createElement('div');
-        head.className='mdx-section-head lx-poolhead';
-        var h2=document.createElement('h2'); h2.textContent='Liquidity Pools';
-        head.appendChild(h2);
-        tabs.parentNode.insertBefore(head,tabs);
-      }
-      if(head&&src.parentNode!==head)head.appendChild(src);
-    }else if(src&&src.parentNode!==copy){
-      if((' '+src.className+' ').indexOf(' lx-dctas ')<0)src.className+=' lx-dctas';
-      copy.appendChild(src);
-    }
-
-    // 3. Market Overview carries five rows to Trade's New Mints three, so the column beside the hero
-    //    runs taller than the hero itself. Participants and 24h Fees go -- matched on their label rather
-    //    than their position, so a reordered list cannot take the wrong two.
-    var drop={'participants':1,'24h fees':1};
-    var rows=document.querySelectorAll('.amm-snapshot-row');
-    for(var r=0;r<rows.length;r++){
-      var lbl=rows[r].querySelector('.amm-snapshot-label');
-      if(!lbl)continue;
-      if(drop[(lbl.textContent||'').trim().toLowerCase()])rows[r].style.display='none';
-    }
-
-    // 3. the plain page heading above the card now duplicates the card. Hidden visually only.
-    var heads=[q('.dex-hero-l'),q('.page-title'),q('.page-subtitle')];
-    for(var hi=0;hi<heads.length;hi++){ var hd=heads[hi];
-      if(hd&&(' '+hd.className+' ').indexOf(' lx-sronly ')<0)hd.className+=' lx-sronly'; }
-  }
-  function boot(){
-    apply();
-    try{ createPoolLink(); }catch(_){}
-    // The Pools layer rebuilds this card when its data lands and again on each refresh, so re-assert
-    // rather than assuming one pass is enough. Cheap: every branch above is a no-op once arranged.
-    try{
-      var host=document.querySelector('.page')||document.body;
-      new MutationObserver(function(){ apply(); try{ createPoolLink(); }catch(_){} }).observe(host,{childList:true,subtree:true});
-    }catch(_){}
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot);
-  else boot();
-})();</script><style id="lx-whead-css">/*lxts:1.1*/.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 22px;gap:8.8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8.8px;font:700 14.9px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 15.4px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 14.3px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7.7px;padding:5.5px 11px 5.5px 6.6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 12.7px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}@media (max-width:560px){.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}.appbar .logo .logo-text{overflow:visible!important}.appbar .avatar-sm.lx-mav{flex:0 1 auto!important;min-width:0;overflow:hidden}.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}.appbar .avatar-sm.lx-mav{white-space:nowrap}}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:26.4px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead">(function(){var NET="aptos";function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}var PLUG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 2v6M15 2v6M7 8h10v3a5 5 0 0 1-10 0z"/><path d="M12 16v6"/></svg>';var ARROW='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';function ls(k){try{return localStorage.getItem(k);}catch(_){return null;}}function trunc(a){a=String(a||"");return a.length>14?a.slice(0,6)+"\u2026"+a.slice(-4):a;}function sync(){var wallet=ls("lumos.wallet"),addr=ls("lumos.address");var on=!!(wallet||addr);mobileMenu(on,addr);var chip=document.querySelector(".lx-topwallet");if(!chip){mobileLaunch(on);if(addr)fixOwnAddrCopies(addr);return;}if(on){if(chip.getAttribute("data-lxdisc")){if(chip.getAttribute("data-lxorig")!=null)chip.innerHTML=chip.getAttribute("data-lxorig");chip.removeAttribute("data-lxdisc");chip.classList.remove("lx-tw-disc");chip.style.removeProperty("background");chip.style.removeProperty("border-color");chip.style.removeProperty("color");}if(addr){var ae=chip.querySelector(".lx-tw-addr");if(ae)ae.textContent=trunc(addr);var cps=chip.querySelectorAll("[data-copy]");for(var ci=0;ci<cps.length;ci++){if(cps[ci].getAttribute("data-copy")!==addr)cps[ci].setAttribute("data-copy",addr);}if(chip.hasAttribute("data-copy")&&chip.getAttribute("data-copy")!==addr)chip.setAttribute("data-copy",addr);fixOwnAddrCopies(addr);}}else{if(chip.getAttribute("data-lxorig")==null)chip.setAttribute("data-lxorig",chip.innerHTML);chip.setAttribute("data-lxdisc","1");chip.classList.add("lx-tw-disc");chip.setAttribute("title","Launch the app");chip.style.setProperty("background","#ea6a2c","important");chip.style.setProperty("border-color","#ea6a2c","important");chip.style.setProperty("color","#fff","important");chip.innerHTML='<span class="lx-tw-cbtn">Launch App'+ARROW+'</span>';}}function mobileLaunch(on){try{var av=document.querySelector(".avatar-sm");if(!av)return;var btn=document.querySelector(".lx-launch");if(on){if(btn)btn.remove();av.style.display="";try{av.style.visibility="";}catch(_e3){}return;}av.style.display="none";if(btn)return;btn=document.createElement("button");btn.type="button";btn.className="lx-launch";btn.setAttribute("data-lxdisc","1");btn.setAttribute("title","Launch the app");btn.innerHTML="Launch App"+ARROW;if(av.parentNode)av.parentNode.insertBefore(btn,av);}catch(_){}}function mobileMenu(on,addr){try{var los=document.querySelectorAll(".nx-logout,.mu-gear[aria-label=Disconnect]");for(var i=0;i<los.length;i++)los[i].style.display=on?"":"none";var mn=document.querySelector(".mu-name"),ms=document.querySelector(".mu-sub");if(mn)mn.textContent=on&&addr?trunc(addr):(on?"":"Not connected");if(ms)ms.textContent=on?("Connected \u00b7 "+netLabel()):"Tap to connect a wallet";var row=(mn||ms);row=row&&row.closest?(row.closest(".mu-acct")||row.closest(".menu-acct")||row.closest(".mu-row")||(row.parentElement&&row.parentElement.parentElement)):null;if(row&&row.style)row.style.display=on?"":"none";var av=document.querySelector(".mu-av");if(av){av.style.setProperty("--lx-netlogo",NETLOGO);av.classList.add("lx-mav-net");}var sm=document.querySelector(".avatar-sm");if(sm){if(on&&addr){sm.style.setProperty("--lx-netlogo",NETLOGO);sm.setAttribute("data-addr",trunc(addr));sm.classList.add("lx-mav");}else{sm.classList.remove("lx-mav");sm.removeAttribute("data-addr");}try{sm.style.visibility="";}catch(_e2){}}try{document.documentElement.classList.add("lx-hdrdone");}catch(_e){}}catch(_){}}var NETLOGO='url("/assets/tokens/xlm.png")';function netLabel(){var n=actNet();return n?n.charAt(0).toUpperCase()+n.slice(1):"Stellar";}function fixOwnAddrCopies(addr){if(!addr)return;try{var all=document.querySelectorAll("[data-copy]");for(var i=0;i<all.length;i++){var el=all[i],v=el.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))continue;var ownAddr=(el.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(el.closest&&(el.closest(".lx-topwallet")||el.closest(".wallet-chip")||el.closest(".hero-id-row")||el.closest("#modalReceive")));if(ownAddr)el.setAttribute("data-copy",addr);}}catch(_){}}window.addEventListener("click",function(e){try{var t=e.target&&e.target.closest?e.target.closest("[data-copy]"):null;if(!t)return;var a=ls("lumos.address");if(!a)return;var v=t.getAttribute("data-copy")||"";if(!/^0x[0-9a-fA-F]{32,}$/.test(v))return;var own=(t.getAttribute("data-copy-label")||"").toLowerCase().indexOf("wallet address")>=0||!!(t.closest(".lx-topwallet")||t.closest(".wallet-chip")||t.closest(".hero-id-row")||t.closest("#modalReceive"));if(own)t.setAttribute("data-copy",a);}catch(_){}},true);[700,1500,3000].forEach(function(ms){setTimeout(function(){try{fixOwnAddrCopies(ls("lumos.address"));}catch(_){}},ms);});window.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var dc=t.closest(".lx-topwallet[data-lxdisc=\"1\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);setTimeout(function(){try{document.documentElement.classList.add("lx-hdrdone");var _sm=document.querySelector(".avatar-sm");if(_sm)_sm.style.visibility="";}catch(_){}},2500);setTimeout(sync,300);})();</script><script id="lx-walletlogo">(function(){
-  var MAP={"albedo":"/assets/wallets/albedo.png","crossmark":"/assets/wallets/crossmark.webp","freighter":"/assets/wallets/freighter.png","gem":"/assets/wallets/gem.png","hashpack":"/assets/wallets/hashpack.png","kabila":"/assets/wallets/kabila.png","lobstr":"/assets/wallets/lobstr.png","rabet":"/assets/wallets/rabet.jpg","ready":"/assets/wallets/ready.png","xaman":"/assets/wallets/xaman.png"};
-  function logo(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    if(!id)return "";
-    id=String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-    // walletconnect stores a few different spellings; they all mean the same sheet entry
-    if(id.indexOf("walletconnect")===0||id==="wc")id="wc";
-    return MAP[id]||"";
-  }
-  // #11: the menu card said "Connected · Stellar" -- which wallet you are connected WITH was the one
-  // thing it did not say. The logo covers that when we ship one, but a generic WalletConnect session
-  // has no wallet-specific asset to show and drawing a brand mark from memory is not the answer.
-  // Naming it is: the sub-line reads "LOBSTR · Stellar", and falls back to the id itself for a wallet
-  // this map has not been taught, which is still better than saying nothing.
-  var NAMES={lobstr:"LOBSTR",freighter:"Freighter",rabet:"Rabet",albedo:"Albedo",xbull:"xBull",
-    walletconnect:"WalletConnect",wc:"WalletConnect",hana:"Hana",xaman:"Xaman",gem:"Gem",
-    hashpack:"HashPack",kabila:"Kabila",crossmark:"Crossmark",ready:"Ready"};
-  function walletId(){
-    var id="";
-    try{ id=(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.lastWallet")||""); }catch(_){}
-    return String(id).toLowerCase().replace(/[^a-z0-9]/g,"");
-  }
-  function nameIt(){
-    var id=walletId(); if(!id)return;
-    var nm=NAMES[id]||(id.charAt(0).toUpperCase()+id.slice(1));
-    var els=document.querySelectorAll(".mu-sub");
-    for(var i=0;i<els.length;i++){
-      var e=els[i], t=(e.textContent||"").trim();
-      if(!t||t.indexOf(nm)===0)continue;
-      // Keep whatever the card said after the separator -- that is the network, and it is still true.
-      var tail=t.indexOf("·")>=0?t.slice(t.indexOf("·")):"";
-      var want=nm+(tail?(" "+tail):"");
-      if(e.textContent!==want)e.textContent=want;
-    }
-  }
-  // Measured ink-bounding-box crops. 1 = the mark already fills its canvas, so leave it alone.
-  var ZOOM={rabet:141,ready:160,albedo:122};
-  function paint(){
-    try{ nameIt(); }catch(_){}
-    var url=logo(); if(!url)return;
-    var els=document.querySelectorAll(".mu-av,.lx-tw-av");
-    for(var i=0;i<els.length;i++){
-      var e=els[i];
-      if(e.getAttribute("data-lxwl")===url)continue;
-      e.setAttribute("data-lxwl",url);
-      e.classList.add("lx-haswl");
-      e.style.setProperty("background-image","url('"+url+"')","important");
-      // Crop the dead margin on the marks that have one; the rest keep plain cover.
-      var _z=ZOOM[walletId()];
-      if(_z)e.style.setProperty("background-size",_z+"%","important");
-      else e.style.removeProperty("background-size");
-    }
-  }
-  function boot(){
-    paint();
-    // The chip and the menu card are both built after connect, and the menu is rendered on open --
-    // so this watches rather than running once.
-    try{ new MutationObserver(paint).observe(document.body,{childList:true,subtree:true}); }catch(_){}
-    try{ window.addEventListener("storage",paint); }catch(_){}
-    var n=0,iv=setInterval(function(){ paint(); if(++n>20)clearInterval(iv); },400);
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
-})();</script><script id="lx-poolwarm">(function(){try{function warmRate(){ try{ fetch("/lxapi/xlm").catch(function(){}); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(warmRate,1200);},{timeout:5000});else setTimeout(warmRate,2000);if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script><script id="lx-dexhero">(function(){function q(s){return document.querySelector(s);}function go(){var prim=q(".lx-dctas .dex-hero-btn.primary")||q(".mdx-hero-ctas .mdx-hero-btn.primary");if(prim){var psvg=prim.querySelector("svg");if(psvg&&!psvg.querySelector("line")){psvg.setAttribute("stroke-width","2.4");psvg.innerHTML='<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';}}var _mt=q(".dex-mints-title,.mdx-mints-title");if(_mt){var _tn=null,_ns=_mt.childNodes;for(var _i=0;_i<_ns.length;_i++){if(_ns[_i].nodeType===3&&(_ns[_i].nodeValue||"").trim()){_tn=_ns[_i];break;}}if(_tn&&_tn.nodeValue.trim()!=="New Mints")_tn.nodeValue="New Mints";}var hiw=q("#mdxHiwBtn")||q("#dexHiwBtn");if(hiw&&hiw.getAttribute("data-lxhiw")!=="1"){hiw.setAttribute("data-lxhiw","1");hiw.setAttribute("title","How it works");hiw.setAttribute("aria-label","How it works");}[".dex-overview",".lumos-promo.lx-mobhero",".dex-hero",".amm-overview"].forEach(function(sel){var el=q(sel); if(el&&!el.classList.contains("lx-dexhero-off"))el.classList.add("lx-dexhero-off");});}function run(){ try{ go(); }catch(_){} }if(document.readyState!=="loading")run(); else document.addEventListener("DOMContentLoaded",run);[120,400,900,1800,3200].forEach(function(ms){ setTimeout(run,ms); });try{ new MutationObserver(function(){ run(); }).observe(document.body,{childList:true,subtree:true}); }catch(_){}})();</script><script id="lx-nofollow">(function(){
+})();</script><script id="lx-nofollow">(function(){
   var KEEP=[];
   function own(h){
     if(!h)return true;

@@ -32,6 +32,16 @@ const STYLE = `<style id="lx-amm-css">
 }
 /* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
 #createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
+/* item 7: the amount input sat 48px outside its own row (row 369px, input ending at +48). It is a flex
+   item, and a text input's intrinsic min-content width is its size attribute -- about 20 characters --
+   which min-width:auto then refuses to shrink below. min-width:0 is the fix; without it flex:1 cannot
+   actually flex. */
+#createPoolModal .asset-field .row{min-width:0}
+#createPoolModal .asset-field .row .asset-amt{min-width:0!important;width:auto!important}
+/* item 8: the list already had overflow-y:auto, but max-height was none -- so there was never anything
+   to scroll and 44 assets simply ran past the bottom of the modal. */
+#createPoolModal .asset-dropdown .ad-list{max-height:248px!important;overflow-y:auto!important;
+  overscroll-behavior:contain}
 /* AUDIT (user-reported): the Create Pool MAX control is a bare <span> — it fires, but the design gives it no
    cursor, hover or hit padding, so it reads as decoration and people assume it is broken. */
 #createPoolModal .field-foot .max-btn{cursor:pointer;user-select:none;padding:2px 7px;margin:-2px -7px;border-radius:6px;transition:background .14s,color .14s}
@@ -1662,6 +1672,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       try{ var t=window.event&&window.event.target;
         var cpItem=t&&t.closest&&t.closest("#createPoolModal .ad-item"); if(cpItem){ if(window.__lxCpSel)window.__lxCpSel(cpItem); return; }
         var cpPick=t&&t.closest&&t.closest("#createPoolModal .asset-picker"); if(cpPick){ var _fld=cpPick.closest(".asset-field"); var _dd=_fld&&_fld.querySelector(".asset-dropdown"); if(_dd){ var _wo=_dd.classList.contains("open"); [].slice.call(document.querySelectorAll("#createPoolModal .asset-dropdown")).forEach(function(x){x.classList.remove("open");x.style.display="";}); if(!_wo){ _dd.classList.add("open"); _dd.style.display="block"; } } return; }   // toggle the asset dropdown open/closed
+        // item 9: the dropdown's own search row is not "elsewhere" -- closing on it is what made the
+        // search look broken. Same for the list body, so a click on a gap between items does not dismiss.
+        if(t&&t.closest&&(t.closest("#createPoolModal .ad-search")||t.closest("#createPoolModal .ad-list")))return;
         if(t&&t.closest&&t.closest("#createPoolModal")){ [].slice.call(document.querySelectorAll("#createPoolModal .asset-dropdown.open")).forEach(function(x){x.classList.remove("open");x.style.display="";}); return; }   // click elsewhere in the modal -> close any open dropdown, block mock nav
         var row=t&&t.closest&&t.closest(".lx-ammrow[data-pool]"); if(row){ location.href=detailUrl(row.getAttribute("data-pool"),cands&&cands[0],row.getAttribute("data-pair")); return; } }catch(e){}
       return _nav?_nav.apply(this,arguments):(cands&&cands[0]&&(location.href=cands[0]));
@@ -3769,6 +3782,41 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var _bals=(DATA&&DATA.balances&&DATA.balances.length)?DATA.balances:((_cpBals&&_cpBals.length)?_cpBals:null);
     if(!_bals)return;
     var modal=q("#createPoolModal"); if(!modal)return; window.__lxCPwired=1;
+    // item 9: the search box was markup only -- nothing ever filtered the list. Matches on the asset
+    // code (the attribute, not the rendered text, which also carries the balance and would let "1"
+    // match every asset that happens to hold 1-point-something).
+    [].slice.call(modal.querySelectorAll(".ad-search-input")).forEach(function(inp){
+      if(inp.__lxCPs)return; inp.__lxCPs=1;
+      function run(){
+        var qy=(inp.value||"").trim().toLowerCase();
+        var dd=inp.closest?inp.closest(".asset-dropdown"):null; if(!dd)return;
+        var items=[].slice.call(dd.querySelectorAll(".ad-item.lx-cpitem")), hit=0;
+        items.forEach(function(it){
+          var code=(it.getAttribute("data-code")||"").toLowerCase();
+          var on=!qy||code.indexOf(qy)>=0;
+          it.style.display=on?"":"none"; if(on)hit++;
+        });
+        // Say so rather than showing an empty box that reads as a broken list.
+        var em=dd.querySelector(".lx-cpnone");
+        if(!hit){ if(!em){ em=document.createElement("div"); em.className="lx-cpnone"; em.textContent="No asset matches that ticker";
+            em.style.cssText="padding:14px 12px;font-size:12.5px;color:var(--text-muted,#8b8b97)";
+            var lst=dd.querySelector(".ad-list"); if(lst)lst.appendChild(em); } }
+        else if(em&&em.parentNode)em.parentNode.removeChild(em);
+      }
+      inp.addEventListener("input",run);
+      // Reopening the picker should not present the previous query's filtered list.
+      inp.addEventListener("focus",function(){ if(!inp.value)run(); });
+    });
+    // item 33: the button wrapped to three lines on a phone and named two steps for one action -- the
+    // liquidity IS the pool at creation, since the ratio you deposit is what sets the opening price.
+    // Only the text node is rewritten, so the icon beside it survives.
+    try{
+      var _cb=modal.querySelector(".modal-foot .btn-primary,.btn-primary");
+      if(_cb){ var _tn=null,_ns=_cb.childNodes;
+        for(var _i=0;_i<_ns.length;_i++){ if(_ns[_i].nodeType===3&&(_ns[_i].nodeValue||"").trim()){ _tn=_ns[_i]; break; } }
+        if(_tn&&_tn.nodeValue.trim()!=="Create pool")_tn.nodeValue="Create pool";
+      }
+    }catch(_){}
     var cpCta=null;
     var balMap={XLM:0}; (_bals||[]).forEach(function(b){ if(b.asset_type==="native")balMap.XLM=+b.balance; else if(b.asset_code)balMap[b.asset_code+":"+b.asset_issuer]=+b.balance; });
     // XLM this account cannot spend: the base reserve for the account and everything it already holds,
@@ -4139,7 +4187,13 @@ for (const file of files) {
     // Strip any PRIOR injection FIRST, then test the ORIGINAL design markers. (The injected SCRIPT itself contains
     // "#tvlChart", so testing before stripping made every rebuild after the first skip this key -> stale script.)
     p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/g, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/g, '');
-    if (p.indexOf('poolsBody') >= 0 || p.indexOf('tvlChart') >= 0) continue;   // a real pools list/detail page — already handled by the KEYS loop
+    // Test the DESIGN markup, in attribute form. A bare substring test matched text that OTHER injected
+    // scripts contribute -- _poolwarm.js carries the literal "#poolsBody" in its guard, and it is injected
+    // on every page -- so the dashboard looked like a pools page and was skipped here. The strip above is
+    // local to p, so skipping discarded it and left the PREVIOUS injection in json[k]: the dashboard has
+    // been running a stale _ammdata ever since, which is why fixes to the Create Pool modal never reached
+    // it. Measured: 18 bare matches on the dashboard, 0 in attribute form.
+    if (p.indexOf('id="poolsBody"') >= 0 || p.indexOf('id="tvlChart"') >= 0) continue;   // a real pools list/detail page — already handled by the KEYS loop
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     const bi = p.lastIndexOf('</body>'); if (bi < 0) continue;
     p = p.slice(0, bi) + SCRIPT + p.slice(bi);
