@@ -80,7 +80,7 @@ html:not(.lx-dexlate) .lx-faq{visibility:hidden}
 .dex-mk-table thead th.lx-son .lx-sarrow{opacity:1}
 .lm-chip:not(.lxd) .p2,.lm-chip:not(.lxd) .p3{visibility:hidden}
 /* ---- painter-proof token icons: the site logo-painter can't touch a ::before pseudo-element ---- */
-.dex-mint-ic[data-lxic],.dex-mover-ico[data-lxic],.dex-mk-pair-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important}
+.dex-mint-ic[data-lxic],.dex-mover-ico[data-lxic],.dex-mk-pair-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important;background-image:none!important;background-color:transparent!important}
 .dex-mint-ic[data-lxic]::before,.dex-mover-ico[data-lxic]::before,.dex-mk-pair-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}
 .lx-dex-empty{text-align:center;padding:34px 12px;color:var(--text-soft);font-size:14px}
 /* ---- hero "advanced DEX" card: orange constellation (mirrors the Pools lx-constel, orange theme) with 5 data points ---- */
@@ -606,7 +606,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(a.__extra)return Promise.resolve(); a.__extra=1;
     var atype=a.code.length<=4?"credit_alphanum4":"credit_alphanum12";
     var base="base_asset_type="+atype+"&base_asset_code="+a.code+"&base_asset_issuer="+a.issuer+"&counter_asset_type=native";
-    if(a.domain)loadToml(a,a.domain);
+    if(a.domain)loadToml(a,a.domain); else a.__logoDone=1;
     return Promise.all([
       lxAgg(a,"3600000",168,"desc").then(function(d){
         var r=recs(d).slice().reverse();
@@ -1012,7 +1012,14 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       return (typeof u==="string"&&u.indexOf("data:image/")===0&&u.indexOf('"')<0&&u.indexOf("'")<0)?u:"";
     }catch(e){ return ""; }
   }
-  function logoCss(a){ var u=a.logo||a.img||manifestIcon(a.code,a.issuer)||launchIcon(a.code,a.issuer); return u?"url("+u+")":avatarBg(a.code); }
+  // A plain disc: no colour, no initial, nothing that has to be taken back.
+  var LOGO_WAIT="linear-gradient(rgba(127,127,140,.18),rgba(127,127,140,.18))";
+  function logoCss(a){
+    var u=a.logo||a.img||manifestIcon(a.code,a.issuer)||launchIcon(a.code,a.issuer);
+    if(u)return "url("+u+")";
+    // Nothing yet AND nobody has looked -> say nothing rather than guess a colour and an initial.
+    return a.__logoDone?avatarBg(a.code):LOGO_WAIT;
+  }
   // money value wrapped as a .lc-money span (the site money-formatter keys off data-usd/data-orig -> no revert)
   function lcm(v){ v=+v||0; var s=abbrUsd(v); return '<span class="lc-money" data-usd="'+v+'" data-orig="'+s+'">'+s+'</span>'; }
   function lcmExact(v){ v=+v||0; var s=usdSmall(v); return '<span class="lc-money" data-usd="'+v+'" data-orig="'+s+'">'+s+'</span>'; }
@@ -1613,10 +1620,10 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       // FIRST image= in the file -- LUMOS's -- so every unlisted mint rendered with the LUMOS flame.
       // Invisible while lumoscore.com served no toml; wrong the moment it started serving one.
       var blk=(txt.match(re)||[""])[0];
-      if(!blk)return;
+      if(!blk){ a.__logoDone=1; touch(); return; }
       var img=(blk.match(/image\\s*=\\s*["']([^"']+)["']/i)||[])[1];
-      if(img){ a.img=img; touch(); }
-    }).catch(function(){});
+      if(img)a.img=img; a.__logoDone=1; touch();
+    }).catch(function(){ a.__logoDone=1; touch(); });   // an unreachable toml is a conclusion too
   }
 
   // Just enough for a mints row: the latest daily bar (price) and /assets (supply + holders). Two
