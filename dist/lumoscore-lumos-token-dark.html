@@ -6417,8 +6417,17 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   function axisLbl(t,tf){ var d=new Date(t),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; if(tf==="1H"||tf==="24H")return (d.getHours()<10?"0":"")+d.getHours()+":00"; if(tf==="1Y"||tf==="All")return mo[d.getMonth()]+" '"+String(d.getFullYear()).slice(2); return mo[d.getMonth()]+" "+d.getDate(); }
   // item 20: mark the canvas stale while a timeframe is loading. Called by loadChart, cleared by
   // drawChart and by chartMsg (which is itself a conclusion -- empty period, or an error).
+  var _busyWd=null;
   function chartBusy(on){
     try{ var pc=q("#priceChart"); if(pc)pc.classList.toggle("lx-ch-busy",!!on); }catch(_){}
+    // Busy now HIDES the old series rather than dimming it, so a path that forgets to clear leaves an
+    // invisible chart -- a worse failure than the flash this replaced. Anything still armed after 20s is
+    // a bug in a load path, and the right answer on screen is the last good series, not an empty box.
+    try{ if(_busyWd){ clearTimeout(_busyWd); _busyWd=null; }
+      if(on)_busyWd=setTimeout(function(){ _busyWd=null;
+        var p=q("#priceChart"); if(p&&p.classList.contains("lx-ch-busy"))p.classList.remove("lx-ch-busy");
+      },20000);
+    }catch(_){}
   }
   function drawChart(pts){
     var pc=q("#priceChart"); if(!pc)return; chartBusy(false); var svg=pc.querySelector("svg");
@@ -6558,36 +6567,44 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     drawChart(pts); return true;
   }
   var CH_BACKOFF=[1500,4000,12000];
-  function loadChart(tf,attempt){
+  var _chartSeq=0, _chartLoading=0;
+  function loadChart(tf,attempt,seq){
     attempt=attempt||0;
+    if(!attempt)seq=++_chartSeq;
+    if(seq!==_chartSeq)return;            // this job (or its retry chain) has been superseded
+    var myq=seq; _chartLoading=1;
     chartBusy(true);
     chartTF=tf; var cfg=tfCfg(tf), now=Date.now(), start=now-cfg.span;
     jAgg({res:cfg.res,order:"asc",limit:200,start:start,end:now}).then(function(d){
+      if(myq!==_chartSeq)return;            // a newer timeframe was clicked while this was in flight
       var r=(d&&d._embedded&&d._embedded.records)||[];
       _chartRecs=r;
       // If the rate is not in yet, wait for it rather than silently giving up. Bounded, so a page that
       // never gets a price stops asking instead of spinning for the whole session.
       // Fewer than two points is not a failure, it is an empty period -- say so rather than showing a
       // blank box that looks broken.
-      if(r.length<2){ chartBusy(false); chartMsg("No trades in this period."); return; }
-      if(!drawFromRecs()&&!_chartWait){
+      if(r.length<2){ _chartLoading=0; chartBusy(false); chartMsg("No trades in this period."); return; }
+      if(drawFromRecs()){ _chartLoading=0; }
+      else if(!_chartWait){
         // Waiting on the XLM/USD rate, which the price in USD depends on. Bounded, and it now reports
         // when it gives up instead of expiring in silence.
         _chartWait=1;
         var n=0,iv=setInterval(function(){
-          if(drawFromRecs()){ clearInterval(iv); _chartWait=0; return; }
-          if(++n>60){ clearInterval(iv); _chartWait=0; chartBusy(false); chartMsg("Waiting on the XLM price — tap a timeframe to retry."); }
+          if(myq!==_chartSeq){ clearInterval(iv); _chartWait=0; return; }
+          if(drawFromRecs()){ clearInterval(iv); _chartWait=0; _chartLoading=0; return; }
+          if(++n>60){ clearInterval(iv); _chartWait=0; _chartLoading=0; chartBusy(false); chartMsg("Waiting on the XLM price — tap a timeframe to retry."); }
         },200);
       }
     }).catch(function(){
+      if(myq!==_chartSeq)return;
       // Horizon rejected or the request never completed. A 429 from Horizon has no CORS header, so this
       // is all the detail the browser will ever give us -- which is precisely why it has to be retried
       // and reported rather than swallowed.
       if(attempt<CH_BACKOFF.length){
         chartMsg("Loading price history…");
-        setTimeout(function(){ loadChart(tf,attempt+1); },CH_BACKOFF[attempt]);
+        setTimeout(function(){ loadChart(tf,attempt+1,seq); },CH_BACKOFF[attempt]);
       } else {
-        chartBusy(false);
+        _chartLoading=0; chartBusy(false);
         chartMsg("Price history is unavailable right now. Stellar's API is limiting requests from this network — tap a timeframe to try again.");
         }
     });
@@ -6648,7 +6665,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     if(grid&&run.indexOf(grid)<0)run.push(grid);
     for(var r=0;r<run.length;r++)par.insertBefore(run[r],sb);
   }
-  function applyAll(){ try{ orderSections(); }catch(_){} if(vol24Xlm!=null&&xlmUsd)vol24Usd=vol24Xlm*xlmUsd; try{ applyHero(); }catch(_){} try{ applyStats(); }catch(_){} try{ applyOverview(); }catch(_){} try{ applyTabs(); }catch(_){} try{ buildPoolsTable(); try{ buildPoolsListMobile(); }catch(_){} }catch(_){} try{ repaintPoolIcons(); }catch(_){} try{ fixAllocation(); }catch(_){} try{ setModalLogos(); }catch(_){} try{ applyHolders(); }catch(_){} try{ updateHolderUsd(); }catch(_){} try{ polishModals(); }catch(_){} try{ wireChartTabs(); }catch(_){} try{ var pc=q("#priceChart"); if(pc&&chartPts&&!pc.querySelector(".lx-cline"))drawChart(chartPts); }catch(_){} try{ fixAbout(); }catch(_){} try{ installSwapGlobals(); }catch(_){} try{ wireSwapPreselect(); }catch(_){} try{ var cpm=q("#createPoolModal"); if(cpm){ wireCreatePool(); cpRefresh(cpm); } }catch(_){} try{ wireTrustGates(); }catch(_){} }
+  function applyAll(){ try{ orderSections(); }catch(_){} if(vol24Xlm!=null&&xlmUsd)vol24Usd=vol24Xlm*xlmUsd; try{ applyHero(); }catch(_){} try{ applyStats(); }catch(_){} try{ applyOverview(); }catch(_){} try{ applyTabs(); }catch(_){} try{ buildPoolsTable(); try{ buildPoolsListMobile(); }catch(_){} }catch(_){} try{ repaintPoolIcons(); }catch(_){} try{ fixAllocation(); }catch(_){} try{ setModalLogos(); }catch(_){} try{ applyHolders(); }catch(_){} try{ updateHolderUsd(); }catch(_){} try{ polishModals(); }catch(_){} try{ wireChartTabs(); }catch(_){} try{ var pc=q("#priceChart"); if(pc&&chartPts&&!_chartLoading&&!pc.querySelector(".lx-cline"))drawChart(chartPts); }catch(_){} try{ fixAbout(); }catch(_){} try{ installSwapGlobals(); }catch(_){} try{ wireSwapPreselect(); }catch(_){} try{ var cpm=q("#createPoolModal"); if(cpm){ wireCreatePool(); cpRefresh(cpm); } }catch(_){} try{ wireTrustGates(); }catch(_){} }
 
   function loadData(){
     // XLM price (USD)
