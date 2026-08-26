@@ -166,7 +166,9 @@ const CSS='<style id="lx-cctp-css">'
 // tabs live inside the design's own .br-txhead, so they inherit its spacing and only add their own row
 // the design's .br-txhead is space-between (it held a lone h2); tabs have to sit next to each other
 +'.br-txhead.lx-brtabs{display:flex!important;justify-content:flex-start!important;align-items:center;gap:24px;flex-wrap:wrap}'
-+'.lx-brtab{position:relative;padding:0 0 10px;border:0;background:none;cursor:pointer;font:650 17px/1.3 inherit;color:var(--text-soft,#6b6b76);transition:color .15s}'
++'.lx-brtab{position:relative;padding:0 0 10px;border:0;background:none;cursor:pointer;'
++'font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:600;font-size:11px;line-height:1.3;'
++'letter-spacing:-.1px;color:var(--text-soft,#6b6b76);transition:color .15s}'
 +'.lx-brtab:hover{color:var(--text,#0e0e10)}'
 +'.lx-brtab.active{color:var(--text,#0e0e10)}'
 +'.lx-brtab.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:2px;background:var(--accent,#ea6a2c)}'

@@ -95,10 +95,26 @@ const IC_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 // Each tile is one inline SVG: a rounded plate of the product colour at low alpha, a motif that says
 // what the product does, and nothing that needs a file or a second palette. currentColor throughout,
 // so the card sets the colour once via --pc and both themes follow.
+var _tileSeq = 0;
 function tile(inner) {
+  // Unique per call: four of these live in one document and a repeated id makes every later tile paint
+  // with the first one's gradient.
+  var n = ++_tileSeq, gp = 'lxgw' + n, gl = 'lxgl' + n;
   return '<svg class="lx-dbx-art" viewBox="0 0 56 56" fill="none" aria-hidden="true">'
-    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="currentColor" opacity=".16"/>'
-    + '<rect x=".8" y=".8" width="54.4" height="54.4" rx="15.4" fill="none" stroke="currentColor" stroke-opacity=".26"/>'
+    + '<defs>'
+    + '<linearGradient id="' + gp + '" x1="0" y1="0" x2=".85" y2="1">'
+    + '<stop offset="0" stop-color="currentColor" stop-opacity=".30"/>'
+    + '<stop offset="1" stop-color="currentColor" stop-opacity=".08"/></linearGradient>'
+    + '<radialGradient id="' + gl + '" cx=".5" cy=".42" r=".62">'
+    + '<stop offset="0" stop-color="currentColor" stop-opacity=".34"/>'
+    + '<stop offset="1" stop-color="currentColor" stop-opacity="0"/></radialGradient>'
+    + '</defs>'
+    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gp + ')"/>'
+    + '<rect x="6" y="6" width="44" height="44" rx="14" fill="url(#' + gl + ')"/>'
+    + '<rect x=".8" y=".8" width="54.4" height="54.4" rx="15.4" fill="none" stroke="currentColor" stroke-opacity=".30"/>'
+    // A brighter arc along the top edge. White at 14% rather than the product colour, because a highlight
+    // is light falling ON the tile, not more of the tile.
+    + '<path d="M4 16 A12 12 0 0 1 16 4 L40 4 A12 12 0 0 1 52 16" fill="none" stroke="#fff" stroke-opacity=".14" stroke-width="1.2"/>'
     + inner + '</svg>';
 }
 // Trade: a market going up, over its own volume bars.
