@@ -43,25 +43,38 @@ real users handling real funds. The gates were not the problem. The verification
 
 ## Deploying to staging
 
-**Pushing to the private repo does NOT deploy anything.** Both Pages projects are Direct Upload, so a
-deploy only happens when someone runs wrangler.
+The Pages project **is git-connected**, and `testing-lumoscore` is its **production** branch. Pushing
+builds and deploys automatically — confirmed against `wrangler pages deployment list`, which shows one
+Production deployment per pushed commit.
 
-This was missed for an entire batch of work: every fix was committed and built, every push succeeded,
-and the staging site kept serving an older upload the whole time. The flow below reads as though
-pushing is enough. It is not.
+So the normal path is just:
 
 ```
-npm run build            # dist/ from the containers
-node _tools/predeploy_check.js    # UNPIPED -- a pipe hides the exit code
-npm run deploy:staging   # uploads dist/ -> lumoscore-staging.pages.dev
+git push staging testing-lumoscore
 ```
+
+### Checking a deploy actually landed
+
+`lumoscore-staging.pages.dev` is behind Cloudflare Access, so fetching it returns the LOGIN page — a
+grep there reports every change as missing, whether it shipped or not. Never judge a deploy that way.
+
+The per-deployment hash URL is NOT gated, so read that instead:
+
+```
+npx wrangler pages deployment list --project-name=lumoscore-staging
+# take the newest Production row, open its https://<hash>.lumoscore-staging.pages.dev
+```
+
+### Manual upload (fallback only)
+
+```
+npm run deploy:staging
+```
+
+Do NOT add `--branch`: wrangler takes the branch from git, and `testing-lumoscore` is the production
+branch. Passing `--branch=main` publishes a PREVIEW that the main URL never serves.
 
 `npm run deploy` is the PRODUCTION project (lumoscore.com). Do not reach for it by reflex.
-
-If the staging Pages project is ever reconnected to this repo so pushes deploy on their own, delete
-this section — until then, a push that is not followed by the command above changes nothing anyone
-can see.
-
 ## The flow
 
 1. Work on `testing-lumoscore`.
