@@ -634,9 +634,10 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       fetchLogo(a.code,a.issuer);
       if(!a.__px){ a.__px=1; loadAssetPx(a); } });
     tb.innerHTML=rows.map(function(a){
-      var sub = a.native ? "Native asset"
-        : (function(){ var _d=dispDom(a.code,a.issuer,DOM[key(a.code,a.issuer)]||"");
-            return _d ? (_d+" "+MID+" "+shortG(a.issuer)) : shortG(a.issuer); })();
+      // The home domain is dropped here: it and the issuer were competing for one narrow cell, and the
+      // row opens Trade-Asset, which states the domain properly. The issuer is the thing that actually
+      // identifies the asset -- a ticker plus a domain is not unique, a ticker plus an issuer is.
+      var sub = a.native ? "Native asset" : shortG(a.issuer);
       return '<tr class="acc-row" data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer||"")+'">'
         +'<td><span class="acc-pair"><span class="acc-ico" data-lxc="'+esc(a.code)+'" data-lxi="'+esc(a.issuer||"")+'"></span>'
           +'<span><span class="acc-code">'+esc(a.code)+'</span>'+vtick(a.code,a.issuer||"")

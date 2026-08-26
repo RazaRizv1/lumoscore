@@ -65,7 +65,7 @@
     --pink: #db2777;
     --grid-line: rgba(0,0,0,0.04);
     --shadow-card: 0 8px 24px rgba(15,15,20,0.06);
-    --shadow-hero: 0 30px 80px rgba(255,106,26,0.15);
+    --shadow-hero: 0 30px 80px rgba(234,106,44,0.15);
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1626,6 +1626,36 @@ html body .pool-header-row .ph-icons>*{
    through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
    Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
 .mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-polish">
+/* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */
+@media (prefers-reduced-motion: no-preference){
+  :where(a,button,input,select,textarea,.chip){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .2s ease,transform .16s ease,opacity .16s ease;}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):hover{transform:translateY(-1px);}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):active{transform:translateY(0) scale(.985);}
+  :where(.btn.primary,.btn-primary,.dex-hero-btn.primary,.trade-btn):hover{box-shadow:0 10px 26px -12px var(--accent,#ea6a2c);}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease,background-color .2s ease;}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{transform:translateY(-2px);border-color:var(--border-strong,#34343c);}
+  html:not([data-theme="light"]) :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 14px 34px -22px rgba(0,0,0,.85);}
+  body{transition:background-color .3s ease,color .3s ease;}
+}
+/* keyboard focus */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;}
+/* branded selection */
+::selection{background:rgba(234,106,44,.26);}
+/* headline balance */
+:where(h1,h2,h3){text-wrap:balance;}
+/* clickable market/pool rows: accent affordance */
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr){cursor:pointer;}
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr):hover td:first-child{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c);}
+/* themed thin scrollbars */
+*{scrollbar-width:thin;scrollbar-color:var(--border-strong,#34343c) transparent;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-strong,#34343c);border-radius:8px;border:3px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-soft,#6e6d78);border:3px solid transparent;background-clip:padding-box;}
+/* light-mode elevation: cards read as raised surfaces on light bg */
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
 </style></head>
 <body>
 
@@ -2201,7 +2231,7 @@ html body .pool-header-row .ph-icons>*{
     // Sample dataset for the popup (decoupled from other page data)
     const allAssets = [
       { chain:'stellar', tk:'LUMOS',  nm:'LUMOS',  domain:'lumosdao.io', ic:'L', col:'#ea6a2c', price:'0.000713 APT', priceUsd:'$0.000108725', mc:'$1.09M', c24:'-7.12', addr:'0x00bf…3f5f' },
-      { chain:'stellar', tk:'CELL',   nm:'Cellana', domain:null, ic:'A', col:'#3b82f6', price:'0.0042 APT',     priceUsd:'$0.00173', mc:'$48.2M', c24:'+24.8', addr:'0x0b85…967f' },
+      { chain:'stellar', tk:'CELL',   nm:'Cellana', domain:null, ic:'A', col:'#6f5ded', price:'0.0042 APT',     priceUsd:'$0.00173', mc:'$48.2M', c24:'+24.8', addr:'0x0b85…967f' },
       { chain:'stellar', tk:'USDC',   nm:'USD Coin', domain:'circle.com', ic:'U', col:'#2775ca', price:'0.7449 APT', priceUsd:'$1.00', mc:'$5.1M', c24:'+0.01', addr:'0x0532…f3ab' },
       { chain:'stellar', tk:'GUI',   nm:'Gui Inu', domain:null, ic:'K', col:'#f5a623', price:'0.018 APT', priceUsd:'$0.0074', mc:'$2.4M', c24:'+12.4', addr:'0x03cc…2d0b' },
       { chain:'stellar', tk:'MOD',   nm:'Move Dollar', domain:null, ic:'N', col:'#6b4ff2', price:'0.0₄17 APT', priceUsd:'$0.0₅22', mc:'$298K', c24:'+184', addr:'0x0698…d5c7', isNew:true },
@@ -2430,7 +2460,7 @@ html body .pool-header-row .ph-icons>*{
 
       var allAssets = [
         { chain:'stellar', tk:'LUMOS',  nm:'LUMOS',  domain:'lumosdao.io', ic:'L', col:'#ea6a2c', price:'0.000713 APT', priceUsd:'$0.000108725', mc:'$1.09M', c24:'-7.12', addr:'0x0449…9d86' },
-        { chain:'stellar', tk:'CELL',   nm:'Cellana', domain:null, ic:'A', col:'#3b82f6', price:'0.0042 APT',     priceUsd:'$0.00173', mc:'$48.2M', c24:'+24.8', addr:'0x0338…6ce1' },
+        { chain:'stellar', tk:'CELL',   nm:'Cellana', domain:null, ic:'A', col:'#6f5ded', price:'0.0042 APT',     priceUsd:'$0.00173', mc:'$48.2M', c24:'+24.8', addr:'0x0338…6ce1' },
         { chain:'stellar', tk:'USDC',   nm:'USD Coin', domain:'circle.com', ic:'U', col:'#2775ca', price:'0.7449 APT', priceUsd:'$1.00', mc:'$5.1M', c24:'+0.01', addr:'0x00cd…79e0' },
         { chain:'stellar', tk:'GUI',   nm:'Gui Inu', domain:null, ic:'K', col:'#f5a623', price:'0.018 APT', priceUsd:'$0.0074', mc:'$2.4M', c24:'+12.4', addr:'0x048c…07dd' },
         { chain:'stellar', tk:'MOD',   nm:'Move Dollar', domain:null, ic:'N', col:'#6b4ff2', price:'0.0₄17 APT', priceUsd:'$0.0₅22', mc:'$298K', c24:'+184', addr:'0x0775…3eda', isNew:true },
@@ -2954,7 +2984,7 @@ html body .pool-header-row .ph-icons>*{
     var css='.lxns-trigger{display:inline-flex;align-items:center;gap:9px;padding:6px 11px 6px 8px;border-radius:12px;border:1px solid var(--lxns-bd);background:var(--lxns-tbg);cursor:pointer;transition:border-color .15s,background .15s;line-height:1;box-sizing:border-box;}'
       +'.lxns-trigger:hover{border-color:var(--lxns-bdh);background:var(--lxns-hv);}'
       +'.lxns-tico{width:26px;height:26px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-weight:800;font-size:15px;}'
-      +'.lxns-tico.stellar{background:linear-gradient(135deg,#3b82f6,#2563eb);}'
+      +'.lxns-tico.stellar{background:linear-gradient(135deg,#6f5ded,#2563eb);}'
       +'.lxns-tico.xrpl{background:linear-gradient(135deg,#f7991f,#e8740e);}'+'.lxns-tico.hedera{background:transparent;overflow:hidden;}'
       +'.lxns-tmeta{display:flex;flex-direction:column;gap:2px;min-width:0;text-align:left;}'
       +'.lxns-tname{font-size:15px;font-weight:700;color:var(--lxns-tx);line-height:1.1;white-space:nowrap;}'
@@ -3977,7 +4007,7 @@ for(var j=0;j<cards.length&&j<order.length;j++){
   // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
   var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
   function launchTokens(){ try{ var e=JSON.parse(localStorage.getItem("lumos.launches")||"[]"); return (e&&e.length)?e:[]; }catch(_){ return []; } }
-  var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#3b82f6"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
+  var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#6f5ded"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
   function short(a){return a?a.slice(0,4)+"…"+a.slice(-4):"";}
   function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
   function avatarUri(code){ var c=String(code||"?"),h=0; for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;
