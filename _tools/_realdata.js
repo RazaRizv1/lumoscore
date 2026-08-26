@@ -61,7 +61,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'vpill("Assets",v.assets,"Every asset ever issued on Stellar")'
 +'+vpill("Pools",v.pools,"Liquidity pools on the Stellar AMM")'
 +'+vpill("Trades",v.trades,v.dayTip)'
-+'+vpill("Accounts",v.accounts,"Every account ever funded on Stellar \\u2014 a running total, not a daily figure");while(frag.firstChild)row.appendChild(frag.firstChild);'
++'+vpill("Accounts",v.accounts,(v.accountsExact?v.accountsExact+" \\u2014 e":"E")+"very account ever funded on Stellar, a running total rather than a daily figure");while(frag.firstChild)row.appendChild(frag.firstChild);'
 +'row.classList.add("lx-ready");}'
 // ---- stat cards ----
 +'function stats(){Promise.all(['
@@ -77,12 +77,18 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // about the chain a trader is about to trade on. These four do: how much there is to trade, where, how
 // busy the place was yesterday, and how many accounts exist. All of them are ledger facts.
 +'var _n=function(x){return (x==null||!isFinite(x))?"\\u2014":Math.round(x).toLocaleString("en-US");};'
+// Past a million the digits stop being readable at a glance and start being counted; 2dp keeps it
+// honest to ~0.05%. Below that, exact -- these are the figures people cross-check.
++'var _na=function(x){if(x==null||!isFinite(x))return "\\u2014";var a=Math.abs(x);'
++'if(a>=1e9)return (x/1e9).toFixed(2)+"B";if(a>=1e6)return (x/1e6).toFixed(2)+"M";return _n(x);};'
 +'var _day="";try{if(ns&&ns.ts)_day="On "+new Date(ns.ts*1000).toLocaleDateString("en-US",{timeZone:"UTC",month:"short",day:"numeric"})+" (UTC), the last full day";}catch(_){}'
 
 +'var _v={assets:(ns&&ns.assets)?_n(ns.assets):"\\u2014",'
 +'pools:(ps&&ps.pools)?_n(ps.pools):"\\u2014",'
 +'trades:(ns&&ns.trades)?_n(ns.trades):"\\u2014",'
-+'accounts:(ns&&ns.accounts)?_n(ns.accounts):"\\u2014",'
++'accounts:(ns&&ns.accounts)?_na(ns.accounts):"\\u2014",'
+// the exact total, for the tooltip
++'accountsExact:(ns&&ns.accounts)?_n(ns.accounts):"",'
 +'dayTip:_day};'
 +'var _old=null;try{_old=JSON.parse(localStorage.getItem("lumos.netstats")||"null");}catch(_){}'
 +'if(_old&&!_old.length){for(var _k in _v){if(_v[_k]==="\\u2014"&&_old[_k]&&_old[_k]!=="\\u2014")_v[_k]=_old[_k];}}'
