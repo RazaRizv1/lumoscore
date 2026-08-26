@@ -4010,8 +4010,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   }
   // stellar.toml (best-effort; many issuers' domains are CORS-OK). Pull [[CURRENCIES]].image + desc.
   // Same information as loadToml, by a route that a redirecting host cannot break.
+  var edgePending=false;
   function loadTomlEdge(){
     if(NATIVE||!CODE||!ISSUER)return;
+    edgePending=true;
     fetch("/lxapi/assetlogo?asset="+encodeURIComponent(CODE+"-"+ISSUER))
       .then(function(r){ if(!r.ok)throw 0; return r.json(); })
       .then(function(d){
@@ -4022,10 +4024,13 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         if(d.image&&!ownLogo&&!tomlImg){ tomlImg=d.image; got=true; }
         if(d.twitter&&!tomlX){ tomlX=socialUrl(d.twitter,"x.com"); got=true; }
         if(d.telegram&&!tomlTg){ tomlTg=socialUrl(d.telegram,"t.me"); got=true; }
+        edgePending=false;
         tomlDone(); logoDone();
         if(got){ try{ guardApply(); }catch(_){} }
       })
-      .catch(function(){});                 // the direct path may still answer; it settles on its own
+      // The edge giving up IS the end of the road for the picture, so release the latch the direct path
+      // is holding off on -- otherwise a page whose issuer is CORS-blocked would never settle at all.
+      .catch(function(){ edgePending=false; tomlDone(); logoDone(); });
   }
   function loadToml(domain){
     fetch("https://"+domain+"/.well-known/stellar.toml").then(function(r){ if(!r.ok)throw 0; return r.text(); }).then(function(txt){
@@ -4035,7 +4040,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // FIRST image= in the file -- LUMOS's -- so every unlisted mint rendered with the LUMOS flame.
       // Invisible while lumoscore.com served no toml; wrong the moment it started serving one.
       var blk=(txt.match(re)||[""])[0];
-      if(!blk){ tomlDone(); logoDone(); return; }   // toml served, asset simply not listed in it
+      if(!blk){ tomlDone(); if(!edgePending)logoDone(); return; }   // toml served, asset simply not listed in it
       var img=(blk.match(/image\\s*=\\s*["']([^"']+)["']/i)||[])[1];
       var desc=(blk.match(/desc\\s*=\\s*["']([^"']+)["']/i)||[])[1];
       if(img&&!ownLogo)tomlImg=img; if(desc&&!ownDesc)tomlDesc=desc;
@@ -4052,7 +4057,9 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       tomlDone();                            // parsed: whatever we found is what we have
       logoDone();                            // and the picture is settled, image or not
       if(img||desc)guardApply();
-    }).catch(function(){ tomlDone(); logoDone(); });   // an unreachable toml is a conclusion too
+      // An unreachable toml is a conclusion for THIS route only -- see item 1 above. If the edge is still
+      // looking, let it finish; it is the route that actually works for a cross-origin issuer.
+    }).catch(function(){ tomlDone(); if(!edgePending)logoDone(); });
   }
 
   // Dedicated SYNCHRONOUS header guardian: if any engine reverts the issuer address / website / name in
