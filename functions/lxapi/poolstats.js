@@ -43,7 +43,11 @@ async function j(url, ttl = SAMPLE_TTL) {
 // ~16 tiny requests, cached for 6h so almost nobody pays for it.
 async function poolCount() {
   const has = async (off) => {
-    const d = await j(API + '?limit=1&cursor=' + off, COUNT_TTL);
+    let d = await j(API + '?limit=1&cursor=' + off, COUNT_TTL);
+    if (!d) {
+      await new Promise((r) => setTimeout(r, 250));
+      d = await j(API + '?limit=1&cursor=' + off, COUNT_TTL);
+    }
     if (!d) throw new Error('rate limited');
     return (((d._embedded || {}).records) || []).length > 0;
   };
@@ -77,7 +81,17 @@ export async function onRequestGet(ctx) {
     // The count is ~20 sequential probes. It is the expensive part, it is cached for 6h, and it is
     // optional: if upstream throttles it we still return the aggregate and the caller keeps its own
     // pool count rather than showing nothing.
-    const pools = await poolCount().catch(() => null);
+    let pools = await poolCount().catch(() => null);
+    const COUNT_KEY = new Request('https://lumoscore.internal/lxapi/poolcount', { method: 'GET' });
+    if (pools == null) {
+      const prev = await cache.match(COUNT_KEY).catch(() => null);
+      if (prev) { const p = await prev.json().catch(() => null); if (p && p.pools) pools = p.pools; }
+    } else {
+      const body = JSON.stringify({ pools, ts: Date.now() });
+      ctx.waitUntil(cache.put(COUNT_KEY, new Response(body, {
+        headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=604800' },
+      })));
+    }
 
     const seen = new Set();
     let tvlXlm = 0, vol24Usd = 0, fees24Usd = 0, lpAccounts = 0, trades24 = 0, sampled = 0;

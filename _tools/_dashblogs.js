@@ -63,7 +63,7 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   // stack, and the scroll area then takes whatever is left -- so both columns end level.
   + '@media(min-width:1000px){'
   + '.market-grid>.activity-card{display:flex;flex-direction:column;min-height:0}'
-  + '.market-grid>.activity-card .activity-scroll{flex:1 1 auto;min-height:0;max-height:none}'
+  + '.market-grid>.activity-card .activity-scroll{flex:1 1 0;min-height:0;max-height:none;overflow-y:auto}'
   + '}'
   + '.lx-blogs-head h3{margin:0;font:800 15px/1.1 "Hanken Grotesk",system-ui,sans-serif;'
   + 'color:var(--text,#0e0e10);letter-spacing:-.015em}'
