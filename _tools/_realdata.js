@@ -32,6 +32,7 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 // different word -- which is what made the list look unsettled rather than merely tall. 16px fits the
 // common lines, the padding hands back another 16px, and <b> keeps each value welded to its ticker so
 // a line that still has to break falls between clauses instead of inside a number.
++'.activity-feed-row .act-ic{display:none!important}'
 +'.activity-feed-row{padding:14px 16px!important;gap:12px;align-items:center;'
 +'transition:background .14s ease}'
 +'.activity-feed-row .info{display:flex;flex-direction:column;gap:7px;min-width:0}'
