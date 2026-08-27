@@ -9,13 +9,58 @@
 // design's own JS at runtime, so we use an idempotent applyAll() re-asserted via a MutationObserver
 // (one-shot writes get overwritten), plus CSS no-flash gates so the design's sample never shows.
 const fs = require('fs');
-const { read, getContents } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, VTICK_SVG, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-lumos-token.html', 'lumoscore-lumos-token-dark.html', 'lumoscore-lumos-token-mobile.html'];
 
 const STYLE = `<style id="lx-lt-css">
+/* item 20: a tapped timeframe used to leave the PREVIOUS timeframe's line on screen for a few seconds,
+   looking like the answer. While the new one is loading the old line dims and stops taking pointer
+   events, so it reads as being replaced. Cleared by drawChart and by every path that ends the load. */
+#priceChart.lx-ch-busy svg{opacity:0}
+#priceChart.lx-ch-busy{pointer-events:none;position:relative}
+/* Dimming to .26 still SHOWED the previous timeframe's line for the whole ~1s fetch, which is exactly
+   the "flashes the old chart" complaint. Hide the stale series outright and put a neutral shimmer in
+   its place, so nothing on screen is ever wrong data. */
+#priceChart.lx-ch-busy::after{content:"";position:absolute;inset:0;border-radius:10px;
+background:linear-gradient(90deg,rgba(127,127,140,.05) 25%,rgba(127,127,140,.12) 37%,rgba(127,127,140,.05) 63%);
+background-size:400% 100%;animation:lxchsh 1.3s ease-in-out infinite}
+@keyframes lxchsh{0%{background-position:100% 0}100%{background-position:0 0}}
+@media (prefers-reduced-motion:reduce){#priceChart.lx-ch-busy::after{animation:none}}
+/* NO transition on this svg. Adding one left a running opacity animation on the element that
+   pinned it at .26 even after the class came off -- measured getAnimations() reporting
+   "opacity:running" with no class and no inline style, and the cascade unable to touch it. A stuck
+   transition outranking everything is a failure mode already on record here; the toggle is instant
+   instead, which is also the honest signal for "this is being replaced". */
+/* #21: the pair marks on the PHONE pools list were 26px -- small enough that a real logo reads as a
+   smudge rather than a mark. 32px, overlap kept proportional.
+   TOP LEVEL on purpose: most of this stylesheet is inside @media(min-width:760px), and .pool-list is
+   the phone layout, so a rule placed in that block could never apply to the list it describes. */
+.pool-list .pair-icons{width:auto!important;height:32px!important}
+.pool-list .pair-icons .a,.pool-list .pair-icons .b{width:32px!important;height:32px!important}
+.pool-list .pair-icons .b{margin-left:5px!important;left:0!important}
+/* verified mark and home domain: the same badge and link treatment the rest of the site uses */
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;margin-left:10px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:middle;flex:0 0 22px}
+.lx-vtick svg{width:14px;height:14px;display:block}
+.lx-lt-dom{display:inline-flex;align-items:center;gap:6px;margin-left:12px;color:var(--accent,#ea6a2c);font-weight:700;text-decoration:none;font-size:15px;vertical-align:middle}
+.lx-lt-dom:hover{text-decoration:underline}
+/* the copy confirmation: the control tells you it worked instead of doing it in silence */
+.addr-row [data-copy]{position:relative;transition:color .12s,background .12s}
+.addr-row [data-copy].lx-copied{color:var(--green,#35c07f)!important;background:var(--green-soft,rgba(53,192,127,.14))!important}
+/* The bubble that used to sit above the button is gone -- the toast says it now. The button keeps its
+   own colour flash, which is the immediate "yes, that one" the toast cannot give at a glance. */
+/* The phone row is narrower than the address + badges + domain it carries, and the domain was the
+   thing that ran off the edge. Let the row wrap and let the domain give way rather than overflow. */
+@media(max-width:760px){
+.addr-row{flex-wrap:wrap!important;row-gap:6px}
+.lx-lt-dom{margin-left:0!important;font-size:13px;min-width:0;max-width:100%;overflow:hidden}
+.lx-lt-dom span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+}
+.lx-lt-dom svg{width:15px;height:15px;flex:none}
+
 .hero-price-block:not(.lxlt) .price,.hero-price-block:not(.lxlt) .change,.hero-price-block:not(.lxlt) .sub-volume{visibility:hidden}
+.hero-price:not(.lxlt) .price,.hero-price:not(.lxlt) .change{visibility:hidden}
 .addr-row:not(.lxlt) .addr-value{visibility:hidden}
 .cstat:not(.lxlt) .lc-money,.cstat:not(.lxlt) .val,.cstat:not(.lxlt) .sub{visibility:hidden}
 /* AUDIT (flash sweep): .sub was left out of the gate above, so "+184 past 7 days" flashed before the real
@@ -34,14 +79,25 @@ const STYLE = `<style id="lx-lt-css">
    so the chart is unchanged and the labels simply have somewhere to sit. */
 .chart-card .chart-body{height:auto!important;padding-bottom:12px}
 .chart-card .chart-body>svg{height:214px!important}
+/* item 20: subtle horizontal gridlines behind the plot. */
+.chart-body svg{background-image:repeating-linear-gradient(to bottom,rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}
 /* Two legend swatches, both reading "Stellar", on a chart with ONE series — a leftover from the
    multi-chain design. Nothing to distinguish, so nothing to label. */
 .chart-card .chart-head .chart-legend{display:none!important}
 /* price-chart hover readout */
 #priceChart{position:relative}
+/* A18: the plot area explains itself when there is nothing to draw. Sits over the (hidden) svg rather
+   than replacing it, so a later successful draw needs no cleanup beyond removing this node. */
+.lx-chmsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  text-align:center;padding:0 26px;font-size:13px;line-height:1.5;color:var(--text-soft,#8a8fa3)}
 #priceChart svg{cursor:crosshair}
+/* item 8: let a horizontal drag reach touchmove while vertical scrolling still works over the chart. */
+#priceChart{touch-action:pan-y}
 .lx-chtip{position:absolute;pointer-events:none;background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:9px;padding:7px 10px;box-shadow:0 8px 22px rgba(0,0,0,.22);opacity:0;transition:opacity .1s;z-index:6;white-space:nowrap;font-family:'Hanken Grotesk',system-ui,sans-serif}
-.lx-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:2px}
+.lx-chtip .d{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:6px}
+.lx-chtip .l{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600}
+.lx-chtip .lxrow{margin-top:8px}
+.lx-chtip .lxrow .p{margin-top:1px}
 .lx-chtip .p{color:var(--text,#0e0e10);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums}
 .lx-chtip .v{color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-top:1px}
 .lx-chdot{position:absolute;width:10px;height:10px;margin:-5px 0 0 -5px;border-radius:50%;background:#ea6a2c;border:2px solid var(--surface,#fff);box-shadow:0 0 0 2px rgba(234,106,44,.35);pointer-events:none;opacity:0;transition:opacity .1s;z-index:5}
@@ -70,7 +126,16 @@ const STYLE = `<style id="lx-lt-css">
 /* supply info (i) */
 .lx-supinfo{position:relative;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;margin-left:7px;border-radius:50%;border:1.4px solid var(--text-soft,#8a8fa3);color:var(--text-soft,#8a8fa3);font:italic 700 10px/16px Georgia,serif;cursor:default;vertical-align:middle;text-align:center}
 /* instant custom tooltip (native title has a ~1s delay + shows a ? cursor). Text comes from data-tip. */
-.lx-supinfo:hover::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);width:220px;background:var(--surface,#fff);color:var(--text,#0e0e10);border:1px solid var(--border,#ececef);border-radius:9px;padding:9px 11px;font:500 12px/1.45 'Hanken Grotesk',system-ui,sans-serif;font-style:normal;letter-spacing:0;text-align:left;box-shadow:0 8px 22px rgba(0,0,0,.22);z-index:60;pointer-events:none;white-space:normal}
+/* #6: it was drawn on var(--surface) with var(--text) on it -- the same pair the cards BEHIND it use,
+   so on the dark theme it read as a faintly outlined patch of the page and looked like it had failed to
+   appear. A tooltip is a thing floating above the page, so it takes the opposite ground: dark bubble on
+   the light theme, light bubble on the dark one.
+   Three states, not two: an explicit choice stamps data-theme, and the default "system" setting stamps
+   nothing at all -- so the media query is guarded against an explicit light choice rather than assuming
+   the attribute is always there. */
+.lx-supinfo:hover::after{content:attr(data-tip);position:absolute;bottom:150%;left:50%;transform:translateX(-50%);width:220px;background:#17171c;color:#f6f6f8;border:1px solid rgba(255,255,255,.16);border-radius:9px;padding:9px 11px;font:500 12px/1.45 'Hanken Grotesk',system-ui,sans-serif;font-style:normal;letter-spacing:0;text-align:left;box-shadow:0 10px 26px rgba(0,0,0,.34);z-index:60;pointer-events:none;white-space:normal}
+html[data-theme="dark"] .lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}
+@media (prefers-color-scheme:dark){html:not([data-theme="light"]) .lx-supinfo:hover::after{background:#f7f7f9!important;color:#141418!important;border-color:rgba(0,0,0,.14)!important;box-shadow:0 10px 26px rgba(0,0,0,.5)!important}}
 /* top-holder rank medals: 1 gold (design default), 2 silver, 3 bronze */
 .holder-row .rk.silver{color:#6b7280!important;background:rgba(156,163,175,.16)!important;border-color:rgba(156,163,175,.42)!important}
 .holder-row .rk.bronze{color:#a55a24!important;background:rgba(176,106,52,.16)!important;border-color:rgba(176,106,52,.42)!important}
@@ -164,7 +229,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   var CODE="LUMOS";
   var ISSUER="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
   var RESV="LUMOS:GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
-  var LOGO="https://stellar.myfilebase.com/ipfs/QmTrohhpDADXPw9fkLT2J8aip7SxZEoqcvpZ7jBgW9HYSp";
+  var LOGO="/assets/tokens/lumos.png";
   var EXPLORER="https://stellar.expert/explorer/public/asset/LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";
   var SUPPLY_NOTE="90% (9B LUMOS) supply is locked forever. The circulating supply is 1B LUMOS.";
   var DESC="LumosCore's native utility token — powers platform fees and rewards";   // own words, from the About LUMOS copy
@@ -194,7 +259,31 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   // values (market cap / FDV / volume / chart) — falls back to the last-known price (<=6h old).
   var xlmUsd=(function(){try{var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0;}catch(e){return (window.__lxXlmUsd||0);}})(), lumosXlm=0, chg24=null;                // price fetches
   var supply=null, holders=null, poolCount=null, activePools=null, vol24Usd=null, vol24Xlm=null, volChg=null;   // stat fetches
+  // Set once the price request has settled WITHOUT a usable price -- distinct from "not back yet", which
+  // must keep rendering nothing rather than a dash.
+  var pxFailed=false;
   function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
+  // Go through our own edge cache first -- a server has neither the rate limit nor the CORS problem, and
+  // the cached response collapses many visitors into one upstream hit. Fall back to Horizon directly so
+  // localhost (where Pages Functions do not run) behaves exactly as before.
+  function jAgg(o){
+    var ord=o.order||"desc", lim=o.limit||200;
+    var qs="a="+encodeURIComponent(CODE+"-"+ISSUER)+"&res="+o.res+"&order="+ord+"&limit="+lim;
+    if(o.start)qs+="&start="+o.start;
+    if(o.end)qs+="&end="+o.end;
+    var direct=H+"/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE
+      +"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+o.res
+      +"&order="+ord+"&limit="+lim
+      +(o.start?("&start_time="+o.start):"")+(o.end?("&end_time="+o.end):"");
+    return fetch("/lxapi/candles?"+qs)
+      .then(function(r){ if(!r.ok)throw new Error("HTTP"+r.status); return r.json(); })
+      .then(function(d){ if(d&&d.error)throw new Error(String(d.error)); return d; })
+      .catch(function(){ return j(direct); });
+  }
+  var VFD=${JSON.stringify(VERIFIED)};
+  var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
+  var VTICKSVG='${VTICK_SVG}';
+  var GLOBE='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>';
   function q(s){return document.querySelector(s);}
   function qa(s){return [].slice.call(document.querySelectorAll(s));}
   function setText(el,t){if(el&&t!=null&&el.textContent!==t)el.textContent=t;}
@@ -235,7 +324,10 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
           bi.setAttribute("data-lxlogo","1"); bi.innerHTML="";
           bi.style.setProperty("background",'url("/assets/favicon.png") center/cover no-repeat',"important");
           bi.style.setProperty("border-radius","50%","important"); } } }catch(_){}
-    var hp=q(".hero-price-block");
+ // The phone names this block .hero-price, not .hero-price-block, so the hero was never written on
+       // mobile at all: it showed the design's $0.00320 while the pool it trades in prices LUMOS at
+       // $0.0000577 -- a figure 55x out, on the same page whose holder column reads the real one.
+       var hp=q(".hero-price-block")||q(".hero-price");
     if(hp&&lumosXlm>0){
       var priceUsd=lumosXlm*xlmUsd;
       setText(hp.querySelector(".price"), usd(priceUsd));
@@ -249,6 +341,22 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         setText(ch, (up?"+":"−")+Math.abs(chg24).toFixed(1)+"% (24h)");
         ch.classList.toggle("down", !up);
       }
+      // "Combined 24h volume · $7.2K · 4,570 trades" -- a mock, and one the desktop hero does not carry.
+      // Real 24h volume would cost a trades page per pool across 59 pools, which Horizon rate-limits well
+      // before it finishes, so there is no honest number to put here; the line goes rather than stays
+      // wrong. Matched on its own wording so nothing else in the hero can be caught by it.
+      qa(".hero-price *").forEach(function(e){ if(e.children.length)return;
+        var t=e.textContent||""; if(t.indexOf("Combined")>=0&&t.indexOf("24h volume")>=0&&t.indexOf("trades")>=0){
+          var host=(e.parentNode&&e.parentNode!==hp&&e.parentNode.children.length===1)?e.parentNode:e;
+          if(host.parentNode)host.parentNode.removeChild(host); } });
+      hp.classList.add("lxlt");
+    }
+    // Price settled unusable: dash it rather than leave the design's baked $0.00320 standing.
+    if(hp&&!(lumosXlm>0)&&pxFailed){
+      setText(hp.querySelector(".price"), "—");
+      var _xs=hp.querySelector(".sub-volume")||qa(".hero-price-block *").filter(function(e){return e.children.length===0&&/XLM/.test(e.textContent||"");})[0];
+      if(_xs)setText(_xs, "—");
+      var _ch=hp.querySelector(".change"); if(_ch)setText(_ch, "");
       hp.classList.add("lxlt");
     }
     // group "≈ X XLM" + the 24h change badge onto ONE right-aligned meta row (symmetry). Idempotent.
@@ -293,7 +401,70 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       // custom CSS one reading data-tooltip (not title) — set that, and drop our native title so only ONE shows.
       var link=row.querySelector("a.addr-btn");
       if(link&&link.getAttribute("data-lxex")!=="1"){ link.setAttribute("data-lxex","1"); link.setAttribute("href",EXPLORER); link.setAttribute("target","_blank"); link.setAttribute("rel","noopener"); link.setAttribute("data-tooltip","View on Stellar Explorer"); link.removeAttribute("title"); }
+      // The PHONE build ships the copy button with an Aptos-era hex address baked into data-copy, so it
+      // showed GB5T...5B6S and copied 0x0364a66f... Point every copy control on this row at the issuer
+      // the row is actually displaying. Written from ISSUER rather than from the visible text, which is
+      // truncated.
+      // row.querySelectorAll, NOT this file's qa() -- qa takes one argument and always searches the whole
+      // document, so scoping it by passing the row would have silently rewritten every data-copy on
+      // the page, pool ids included.
+      [].slice.call(row.querySelectorAll("[data-copy]")).forEach(function(b){
+        // #3 (batch 4): the DESKTOP page ships its own [data-copy] handler with its own toast, so a
+        // single tap produced two: "Address copied to clipboard" and ours. stopPropagation cannot
+        // prevent that -- both listeners are on the SAME element, and the page bound its one first, so
+        // it has already fired by the time ours runs. Replace the node with a clone: a clone carries
+        // the markup but none of the listeners, which orphans the page's handler and leaves exactly
+        // one confirmation. Same trick the header fields in _dexassetdata use, and for the same reason.
+        if(!b.__lxcpc&&b.parentNode){
+          var _c=b.cloneNode(true); _c.__lxcpc=1;
+          b.parentNode.replaceChild(_c,b); b=_c;
+        }
+        if(b.getAttribute("data-copy")!==ISSUER)b.setAttribute("data-copy",ISSUER);
+        // It copies, and always did once data-copy was right -- but it says NOTHING when it does, and
+        // a control that gives no answer reads as a broken one. Own the click so the confirmation is
+        // ours: write the address, then show it happened.
+        if(b.__lxcp)return; b.__lxcp=1;
+        b.addEventListener("click",function(ev){
+          var txt=b.getAttribute("data-copy")||ISSUER;
+          try{ev.preventDefault();ev.stopPropagation();}catch(_){}
+          // #6: this drew a bubble of its own above the button. Every other copy on the site answers
+          // with the bottom-centre toast, and two different confirmations for one action is one too many.
+          function ok(){ ltToast("Issuer address copied");
+            b.classList.add("lx-copied");
+            setTimeout(function(){b.classList.remove("lx-copied");},1400); }
+          try{
+            if(navigator.clipboard&&navigator.clipboard.writeText){
+              navigator.clipboard.writeText(txt).then(ok,fallback);
+            } else fallback();
+          }catch(_){ fallback(); }
+          function fallback(){
+            // Safari on iOS refuses the async API outside some gestures; the textarea route still works.
+            try{ var ta=document.createElement("textarea"); ta.value=txt;
+              ta.setAttribute("readonly",""); ta.style.cssText="position:fixed;top:0;left:0;opacity:0";
+              document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0,txt.length);
+              document.execCommand("copy"); document.body.removeChild(ta); ok();
+            }catch(_){}
+          }
+        });
+      });
       row.classList.add("lxlt");
+    });
+    // Verified tick on the token name, driven by the shared list rather than asserted here, so removing
+    // LUMOS from VERIFIED removes the badge instead of leaving a stale claim on its own page.
+    var _h1=q("h1");
+    if(_h1 && VFD["LUMOS|"+ISSUER] && !_h1.querySelector(".lx-vtick")){
+      var _tk=document.createElement("span");
+      _tk.className="lx-vtick"; _tk.setAttribute("title","Verified issuer");
+      _tk.innerHTML=VTICKSVG; _h1.appendChild(_tk);
+    }
+    // Home domain: lumoscore.com, matching Trade-Asset and search. The chain still says lumosdao.io.
+    var _dom=DDOM["LUMOS|"+ISSUER]||"";
+    if(_dom)qa(".addr-row").forEach(function(row){
+      var a=row.querySelector(".lx-lt-dom");
+      if(!a){ a=document.createElement("a"); a.className="lx-lt-dom"; a.target="_blank"; a.rel="noopener";
+        a.innerHTML=GLOBE+"<span></span>"; row.appendChild(a); }
+      if(a.getAttribute("href")!=="https://"+_dom)a.setAttribute("href","https://"+_dom);
+      var t=a.querySelector("span"); if(t&&t.textContent!==_dom)t.textContent=_dom;
     });
     // any stray "View on <chain> Explorer" tooltips (title OR data-tooltip) -> Stellar
     qa("[data-tooltip],[title]").forEach(function(e){ ["title","data-tooltip"].forEach(function(a){ var t=e.getAttribute(a)||""; if(/View on .* Explorer/.test(t)&&t.indexOf("Stellar")<0)e.setAttribute(a,"View on Stellar Explorer"); }); });
@@ -304,18 +475,27 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     var priceUsd=lumosXlm*xlmUsd;
     qa(".lh-stats .cstat").forEach(function(card){
       var t=(card.textContent||"").toUpperCase();
-      var money=card.querySelector(".lc-money"), val=card.querySelector(".val"), sub=card.querySelector(".sub");
+      var val=card.querySelector(".val"), sub=card.querySelector(".sub")||card.querySelector(".small-sub"); var money=card.querySelector(".lc-money")||val;
       var done=false;
       // check DILUTED before MARKET CAP: the FDV card's own sub contains the words "market cap"
-      if(/DILUTED/.test(t)){ if(priceUsd>0&&supply>0){ setMoney(money,abbrUsd(supply*priceUsd)); if(sub)setText(sub,"on "+abbrNum(supply)+" total supply"); done=true; } }
+      if(/DILUTED|FDV/.test(t)){ if(priceUsd>0&&supply>0){ var ts=chainSupply();
+        setMoney(money,abbrUsd(ts*priceUsd)); if(sub)setText(sub,"on "+abbrNum(ts)+" total supply"); done=true; } }
       else if(/MARKET CAP/.test(t)){ if(priceUsd>0&&supply>0){ var circ=circSupply(); var mc=(circ!=null?circ:supply)*priceUsd; setMoney(money,abbrUsd(mc)); if(sub){ var wc="on "+abbrNum(circ!=null?circ:supply)+" circulating"; var ns=sub.querySelector(".lx-supnum"); if(!ns){ sub.innerHTML='<span class="lx-supnum"></span><span class="lx-supinfo" data-tip="'+SUPPLY_NOTE+'">i</span>'; ns=sub.querySelector(".lx-supnum"); } if(ns&&ns.textContent!==wc)ns.textContent=wc; } done=true; } }
-      else if(/HOLDERS/.test(t)){ if(holders!=null){ if(val)setText(val,num(holders)); if(sub)setText(sub,"unique addresses"); done=true; } }
+      else if(/HOLDERS/.test(t)){ var _hc=holderCount();
+        if(_hc!=null){ if(val)setText(val,num(_hc)); if(sub)setText(sub,"holding a balance"); done=true; }
+        else if(holders!=null){ if(val)setText(val,num(holders)); if(sub)setText(sub,"trustlines"); done=true; } }
       else if(/POOLS/.test(t)){ if(poolCount!=null){ if(val)setText(val,String(poolCount)); done=true; }
+        if(sub&&/both chains/i.test(sub.textContent||""))setText(sub,"on Stellar");
         // the POOLS card ships with no sub-line → the desktop 5-card row loses its vertical rhythm.
         // Add one ONLY on the desktop layout (the mobile card already has its own sub text).
         var wide=!(window.matchMedia)||window.matchMedia("(min-width:760px)").matches;
         if(wide&&!sub){ var ps=document.createElement("div"); ps.className="sub"; ps.textContent="LUMOS pairs"; card.appendChild(ps); } }
       else if(/VOLUME/.test(t)){ if(vol24Usd!=null){ setMoney(money,abbrUsd(vol24Usd)); if(sub&&volChg!=null){ setText(sub,(volChg>=0?"+":"−")+Math.abs(volChg).toFixed(1)+"% past 24h"); sub.classList.toggle("up",volChg>=0); } done=true; } }
+      // Same rule for the cards derived from it. Holders and Pools are NOT price-derived, so they keep
+      // rendering their own real values.
+      if(!done&&pxFailed&&/DILUTED|FDV|MARKET CAP|VOLUME/.test(t)){
+        setMoney(money,"—"); if(sub)setText(sub,""); done=true;
+      }
       if(done)card.classList.add("lxlt");
     });
   }
@@ -326,8 +506,8 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var l=((r.querySelector(".lt-cmp-l")||{}).textContent||"").trim(), v=r.querySelector(".lt-cmp-v");
       if(!v)return; var done=false;
       if(/^price/i.test(l)){ if(priceUsd>0){ setText(v, usd(priceUsd)+(chg24!=null?("  "+(chg24>=0?"+":"−")+Math.abs(chg24).toFixed(1)+"%"):"")); done=true; } }
-      else if(/24h volume/i.test(l)){ if(vol24Usd!=null&&poolCount!=null){ setText(v, abbrUsd(vol24Usd)+" across "+poolCount+" pools"); done=true; } }
-      else if(/circulating/i.test(l)){ if(supply!=null){ var cs=circSupply(); var want=num(cs!=null?cs:supply)+" LUMOS"; var ns=v.querySelector(".lx-supnum"); if(!ns){ v.innerHTML='<span class="lx-supnum"></span><span class="lx-supinfo" data-tip="'+SUPPLY_NOTE+'">i</span>'; ns=v.querySelector(".lx-supnum"); } if(ns&&ns.textContent!==want)ns.textContent=want; done=true; } }
+      else if(/24h volume/i.test(l)){ if(vol24Usd!=null){ setText(v, abbrUsd(vol24Usd)+" \u00b7 LUMOS/XLM market"); done=true; } }
+      else if(/circulating/i.test(l)){ if(supply!=null){ var cs=circSupply(); var want=num(cs!=null?cs:supply)+" LUMOS"; var ns=v.querySelector(".lx-supnum"); if(!ns){ v.innerHTML='<span class="lx-supnum"></span>'; ns=v.querySelector(".lx-supnum"); } var _si=v.querySelector(".lx-supinfo"); if(_si)_si.parentNode.removeChild(_si); if(ns&&ns.textContent!==want)ns.textContent=want; done=true; } }
       else if(/holders/i.test(l)&&!/pool/i.test(l)){
         // show BOTH: holders (balance>0) · trustlines (all accounts trusting LUMOS = /assets authorized count)
         var lab=r.querySelector(".lt-cmp-l"); if(lab)setText(lab,"Holders · Trustlines");
@@ -338,6 +518,10 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         if(tl!=null){ setText(v, (hc!=null?num(hc):"…")+"  ·  "+num(tl)); done=true; }
       }
       else if(/active pools/i.test(l)){ if(activePools!=null){ setText(v, String(activePools)); done=true; } }
+      if(poolCount!=null)qa(".lt-cmp-foot button,.lt-cmp-foot a").forEach(function(b){
+        var want="View all "+poolCount+" pools \u2192";
+        if(b.textContent!==want)b.textContent=want; });
+      if(!done&&pxFailed&&(/^price/i.test(l)||/24h volume/i.test(l))){ setText(v,"—"); done=true; }
       if(done)r.classList.add("lxlt");
     });
   }
@@ -424,6 +608,98 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     qa(".alloc-legend").forEach(function(l){ l.classList.add("lxlt"); });   // reveal the legend once the numbers are ours
     qa(".alloc-seg").forEach(function(s){ if((s.getAttribute("style")||"").indexOf("--alloc-7)")>=0&&s.style.width!=="7%")s.style.width="7%"; });
   }
+  // #14: the same 59 real pools, rendered into the PHONE's markup.
+  //
+  // buildPoolsTable gates on #poolsBody, which is a desktop table -- the phone lists pools as
+  // .pool-list > a.pool-item instead, so the builder bailed on its first line and the design's mock
+  // stayed: LUMOS paired with aBTC, CELL, AMI, GUI and MESO, every one of them an Aptos asset on a
+  // Stellar token page. The data was never the problem; window.__lxLTpools already held all 59.
+  //
+  // Sorted by TVL like the desktop table, and capped at 12: this is a summary on a token page, not the
+  // pools browser, and the phone has no scroll box to put fifty-nine rows in.
+  var LTLOGO={};
+  function ltAssetLogo(code,iss,cb){
+    if(!code||!iss)return;                       // XLM has no issuer; it keeps the design's own mark
+    var k=code+"-"+iss;
+    if(LTLOGO[k]!==undefined){ if(LTLOGO[k])cb(LTLOGO[k]); return; }
+    LTLOGO[k]=null;                              // in flight: stops a repaint firing a second request
+    fetch("/lxapi/assetlogo?asset="+encodeURIComponent(k))
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){ var u=d&&d.image;
+        // Only a SUCCESS is remembered. yXLM came back {reason:"timeout"} on one call -- its toml host
+        // was briefly slow, not missing a logo -- and caching that would have kept the initials disc for
+        // the rest of the session with no way back. Clearing the key lets the next render try again;
+        // a genuine absence ("issuer not found") simply fails the same way each time, which costs one
+        // cheap cached request per render rather than a permanently wrong mark.
+        if(u){ LTLOGO[k]=u; cb(u); } else { delete LTLOGO[k]; } })
+      .catch(function(){ delete LTLOGO[k]; });
+  }
+  function buildPoolsListMobile(){
+    var list=q(".pool-list"); if(!list)return;
+    if(q("#poolsBody"))return;                       // desktop build: its own table handles this
+    var pools=window.__lxLTpools; if(!pools||!pools.length)return;
+    var priceUsd=lumosXlm*xlmUsd; if(!(priceUsd>0))return;
+    if(list.querySelector("a[data-lxbuilt]"))return;  // already ours
+    var tpl=list.querySelector("a.pool-item"); if(!tpl)return;
+    var arr=pools.map(function(p){
+      var lum=0,other=0,code="XLM",iss="";
+      (p.reserves||[]).forEach(function(rv){
+        if(rv.asset.indexOf(RESV)===0)lum=+rv.amount;
+        else if(rv.asset==="native"){other=+rv.amount;code="XLM";}
+        else {other=+rv.amount;code=String(rv.asset).split(":")[0];iss=String(rv.asset).split(":")[1]||"";}
+      });
+      return {hex:p.id, code:code, iss:iss, tvl:lum*priceUsd*2};
+    }).sort(function(a,b){return b.tvl-a.tvl;}).slice(0,12);
+    var frag=document.createDocumentFragment();
+    arr.forEach(function(pool){
+      var row=tpl.cloneNode(true);
+      row.setAttribute("data-lxbuilt","1"); row.setAttribute("data-hex",pool.hex); row.setAttribute("data-code",pool.code);
+      row.setAttribute("href","/pools/stellar/id/"+pool.hex);
+      var nm=row.querySelector(".pair-name"); if(nm)nm.textContent="LUMOS / "+pool.code;
+      try{ setPoolIcons(row,pool.code); }catch(_){}
+      // The real logo replaces the initials disc when the toml publishes one; the disc stays as the
+      // fallback otherwise. data-lxc stops the site's logo painter overwriting it with a generic mark --
+      // the same opt-out the hero icon uses.
+      try{ (function(rw,p){ ltAssetLogo(p.code,p.iss,function(url){
+        var b=rw.querySelector(".pair-icons .b"); if(!b)return;
+        b.setAttribute("data-lxc",p.code);
+        b.style.setProperty("background",'url("'+url+'") center center / cover no-repeat',"important");
+        b.textContent="";
+      }); })(row,pool); }catch(_){}
+      // XLM is the one pair whose mark arrives as an <img> rather than a background, and the .b disc has
+      // a border: an image fills the 22px CONTENT box while every sibling background paints the full 26px
+      // border box, so the Stellar mark sat visibly smaller than the eleven logos beside it. Moving it to
+      // a background makes the row identical to the others instead of special-casing a size. data-lxc
+      // stops the logo painter treating this disc as unpainted and putting the <img> back.
+      try{
+        var bd=row.querySelector(".pair-icons .b"), bim=bd&&bd.querySelector("img");
+        if(bim&&bim.src){ bd.style.background='url("'+bim.src+'") center center / cover no-repeat';
+          bd.setAttribute("data-lxc",pool.code); bim.parentNode.removeChild(bim); }
+      }catch(_){}
+      // The chain pill said Stellar while carrying an APT mark, and on a Stellar-only page it says
+      // nothing anyway -- the desktop table drops its Network column for the same reason.
+      var pill=row.querySelector(".chain-pill"); if(pill&&pill.parentNode)pill.parentNode.removeChild(pill);
+      // The phone keeps its figures in .stats-row as label/value pairs. There is no .lc-money in this
+      // markup at all, so the two lines copied from the desktop builder wrote nothing and every cloned
+      // row kept the template pool's $182K -- real pairs with one pool's numbers under all of them,
+      // which is worse than the mock it replaced. data-usd is still stamped so the currency toggle can
+      // find these.
+      var vs=row.querySelectorAll(".stats-row .v");
+      if(vs[0]){ vs[0].textContent=abbrUsd(pool.tvl); vs[0].setAttribute("data-orig",abbrUsd(pool.tvl)); vs[0].setAttribute("data-usd",pool.tvl); }
+      if(vs[1]){ vs[1].textContent="$0"; vs[1].setAttribute("data-orig","$0"); vs[1].setAttribute("data-usd","0"); }
+      frag.appendChild(row);
+    });
+    list.innerHTML=""; list.appendChild(frag); list.classList.add("lxlt");
+    try{ fetchPoolVolumes(arr); }catch(_){}
+  }
+  // Money cells differ by page: the Pools page uses .lc-money, the phone cards use .stats-row .v, and
+  // this page's table ships plain <span class="num">. Ask for each in turn rather than assuming one --
+  // a wrong guess here does not throw, it silently leaves the design's placeholder numbers in place.
+  function moneyCells(row){
+    var m=row.querySelectorAll(".lc-money"); if(m.length)return m;
+    m=row.querySelectorAll(".stats-row .v"); if(m.length)return m;
+    return row.querySelectorAll(".num");
+  }
   function buildPoolsTable(){
     var pb=q("#poolsBody"); if(!pb)return; var pools=window.__lxLTpools; if(!pools||!pools.length)return;
     var priceUsd=lumosXlm*xlmUsd; if(!(priceUsd>0))return;
@@ -439,7 +715,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var row=tpl.cloneNode(true); row.setAttribute("data-lxbuilt","1"); row.setAttribute("data-hex",pool.hex); row.setAttribute("data-code",pool.code);
       var nm=row.querySelector(".pair-name"); if(nm)nm.textContent="LUMOS / "+pool.code;
       setPoolIcons(row, pool.code);   // .a = LUMOS logo, .b = the paired asset (XLM keeps the Stellar logo; others get a per-asset avatar)
-      var monies=row.querySelectorAll(".lc-money");
+      var monies=moneyCells(row);
       if(monies[0]){ monies[0].textContent=abbrUsd(pool.tvl); monies[0].setAttribute("data-orig",abbrUsd(pool.tvl)); monies[0].setAttribute("data-usd",pool.tvl); }
       if(monies[1]){ monies[1].textContent="$0"; monies[1].setAttribute("data-orig","$0"); monies[1].setAttribute("data-usd","0"); }
       var inc=row.querySelector(".incent-pill"); if(inc){ var lab=REWARD_HEX[pool.hex]; if(lab){ inc.textContent=lab; inc.className="incent-pill "+(lab==="Native LP"?"native":"eco"); } else { inc.style.display="none"; } }
@@ -463,7 +739,11 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       j(H+"/liquidity_pools/"+pool.hex+"/trades?order=desc&limit=100").then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[]; var now=Date.now(), volXlm=0;
         recs.forEach(function(x){ var xa=x.base_asset_type==="native"?+x.base_amount:(x.counter_asset_type==="native"?+x.counter_amount:0); var ts=Date.parse(x.ledger_close_time||""); if(now-ts<=864e5)volXlm+=xa; });
-        var r=q('#poolsBody tr[data-hex="'+pool.hex+'"]'); var cell=r?r.querySelectorAll(".lc-money")[1]:null;
+        // Both layouts. The desktop row keeps its .lc-money cell; the phone card has no such class and
+        // holds its figures in .stats-row instead, so writing only to the first target left every phone
+        // card reading $0 however much the pool had traded.
+        var r=q('#poolsBody tr[data-hex="'+pool.hex+'"]')||q('.pool-list a[data-hex="'+pool.hex+'"]');
+        var cell=r?moneyCells(r)[1]:null;
         if(cell){ var s=abbrUsd(volXlm*xlmUsd); cell.textContent=s; cell.setAttribute("data-orig",s); cell.setAttribute("data-usd",volXlm*xlmUsd); }
       }).catch(function(){});
     });
@@ -483,6 +763,8 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       if(lab)setText(lab,labels[i]); if(cnt)setText(cnt,num(b[i])); if(fill)fill.style.width=Math.max(1,Math.round(b[i]/mx*100))+"%"; r.classList.add("lxlt"); });
     // "N total" next to the breakdown title
     qa(".hbreak-total, .holders-total").forEach(function(e){ setText(e, num(tot)+" total"); });
+    qa(".h-head").forEach(function(hd){ var h=hd.querySelector("h3"), m=hd.querySelector(".meta");
+      if(h&&m&&(h.textContent||"").indexOf("breakdown")>=0) setText(m, num(tot)+" total"); });
     // Top holders
     var hr=qa(".holder-row"), top=hold.filter(function(h){return !EXCLUDE[h.addr];}).slice(0,hr.length);
     // clone → edit → replaceChild (once per row): orphans the design engine's node reference so it can't
@@ -493,13 +775,17 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var rk=c.querySelector(".rk"); if(rk){ if(i<3){ rk.className="rk medal"; rk.innerHTML=medalSVG(i); } else { rk.className="rk"; rk.textContent=String(i+1); } }   // 1/2/3 SVG medals, rest numbered
       var addr=c.querySelector(".addr"); if(addr){ addr.textContent=shortG(h.addr); addr.setAttribute("title",h.addr); }
       var chain=c.querySelector(".chain"); if(chain){ var bic=chain.querySelector(".b-ico"); if(bic&&bic.parentNode)bic.parentNode.removeChild(bic);   // drop the little Stellar icon + "Stellar ·" prefix
-        var pct=h.bal/supply*100, want=(pct>=0.01?pct.toFixed(2):"<0.01")+"% of supply";
+        // Against CIRCULATING, not the on-chain total -- see the note in the transform. The same basis
+        // as the market cap card, so a reader cannot get two different answers on one page.
+        var _den=circSupply()||supply;
+        var pct=h.bal/_den*100, want=(pct>=0.01?pct.toFixed(2):"<0.01")+"% of supply";
         var tn=[].slice.call(chain.childNodes).filter(function(n){return n.nodeType===3&&(n.nodeValue||"").replace(/\\s/g,"");})[0];
         if(tn)tn.nodeValue=want; else chain.appendChild(document.createTextNode(want)); }
       // real holdings (the design's mock $ used the old $0.0032 price → wrong). Set amount + USD.
       var pUsd=lumosXlm*xlmUsd;
       var vv=c.querySelector(".holdings .v"); if(vv)vv.textContent=abbrNum(h.bal)+" LUMOS";
-      var mm=c.querySelector(".holdings .lc-money"); if(mm&&pUsd>0){ var uu=abbrUsd(h.bal*pUsd); mm.textContent=uu; mm.setAttribute("data-orig",uu); mm.setAttribute("data-usd",h.bal*pUsd); }
+      var mm=c.querySelector(".holdings .lc-money")||c.querySelector(".holdings .pct");
+      if(mm&&pUsd>0){ var uu=abbrUsd(h.bal*pUsd); mm.textContent=uu; mm.setAttribute("data-orig",uu); mm.setAttribute("data-usd",h.bal*pUsd); mm.classList.add("lc-money"); }
       // link the row to the holder's Stellar.expert account page
       c.style.cursor="pointer"; c.setAttribute("title","View "+shortG(h.addr)+" on Stellar Explorer");
       (function(ad){ c.addEventListener("click",function(ev){ if(ev.target&&ev.target.closest&&ev.target.closest("a"))return; window.open("https://stellar.expert/explorer/public/account/"+ad,"_blank","noopener"); }); })(h.addr);
@@ -507,6 +793,11 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       if(row.parentNode)row.parentNode.replaceChild(c,row);
     });
     // "Combined · both chains" subtitle -> "Ranked by balance" (network is obvious; drop it)
+    // Same claim, phone markup: <div class="h-head"><h3>Top LUMOS holders</h3><div class="meta">both
+    // chains</div></div>. Matched on the heading beside it rather than on the string, so it reads the
+    // same on both layouts.
+    qa(".h-head").forEach(function(hd){ var m=hd.querySelector(".meta"); if(!m)return;
+      if((m.textContent||"").indexOf("both chains")>=0) setText(m,"Ranked by balance"); });
     qa("*").forEach(function(e){ if(e.children.length)return; var t=e.textContent||""; if(t.indexOf("Combined")>=0&&t.indexOf("both chains")>=0)e.textContent=t.replace(/Combined[^]*?both chains/,"Ranked by balance"); });
     // "View full holder list →" -> the LUMOS asset (holders) on stellar.expert
     var vfl=qa("a,button").filter(function(e){return /holder list/i.test((e.textContent||""));})[0];
@@ -564,14 +855,46 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   }
   // circulating supply = 10% of total (90% is locked forever — see SUPPLY_NOTE). Market cap uses THIS
   // (~1B), so it reads exactly 10x below the fully-diluted value (which uses the ~9.97B total).
-  function circSupply(){ return supply==null?null:supply*0.1; }
+  // The chain's own allocation: 1B per chain. On Stellar that is 10B minted historically less the 9B
+  // locked forever; on every later chain it is simply what gets issued. Used for FDV and the "total
+  // supply" line, so neither counts tokens that can never enter circulation.
+  function chainSupply(){
+    if(ISSUER === "GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S")return 1e9;
+    return (supply==null?1e9:supply);
+  }
+  function circSupply(){ if(supply==null)return null;
+    // HISTORY: 10B was minted when this was LumosDAO. Going multi-chain, 1B per chain is the clean
+    // number, so 9B was locked on Stellar rather than reissued -- leaving 1B circulating of a 10B
+    // total. That is a STELLAR fact. Every later chain issues 1B from day one, where circulating IS
+    // the supply, so this multiplier must never follow the code to another issuer.
+    return (ISSUER === "GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S") ? supply * 0.1 : supply; }
 
   // ---- Add-trustline: real MAINNET changeTrust via the connected wallet (mirrors the AMM signer) ----
   var WPASS_PUB="Public Global Stellar Network ; September 2015";
   var _ltsdk=null;
   function ltAddr(){ try{ return localStorage.getItem("lumos.address")||""; }catch(e){ return ""; } }
   // reuse the site's bottom-center toast (same one "Copy" uses) instead of a browser alert()
-  function ltToast(msg){ try{ if(typeof window.showToast==="function"){ window.showToast(msg); return; } }catch(e){} try{ alert(msg); }catch(e2){} }
+  // The phone build of this page ships the .toast CSS and the .check-ic mark but NOT the showToast
+  // function that uses them -- that lives in the wallet page's own script. So the fallback here was
+  // alert(), and the copy control ended up drawing its own little bubble instead. Build the design's
+  // toast out of the classes the page already styles, so it is the same object either way: bottom
+  // centre, green check, gone in two seconds.
+  function ltToast(msg){
+    try{ if(typeof window.showToast==="function"){ window.showToast(msg); return; } }catch(e){}
+    try{
+      var st=document.querySelector(".toast-stack");
+      if(!st){ st=document.createElement("div"); st.className="toast-stack"; document.body.appendChild(st); }
+      var t=document.createElement("div"); t.className="toast";
+      t.innerHTML='<span class="check-ic"><svg width="10" height="10" viewBox="0 0 24 24" fill="none"'
+        +' stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">'
+        +'<polyline points="20 6 9 17 4 12"></polyline></svg></span>';
+      t.appendChild(document.createTextNode(msg));
+      st.appendChild(t);
+      setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },2200);
+      return;
+    }catch(e2){}
+    try{ alert(msg); }catch(e3){}
+  }
   function ltLoadSdk(){ if(window.StellarSdk)return Promise.resolve(window.StellarSdk); if(_ltsdk)return _ltsdk;
     _ltsdk=new Promise(function(res,rej){ var s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/dist/stellar-sdk.min.js"; s.onload=function(){res(window.StellarSdk);}; s.onerror=function(){rej(new Error("SDK load failed"));}; document.head.appendChild(s); }); return _ltsdk; }
   // AUDIT (user-reported): this signed via Freighter unconditionally, so a Rabet user clicking Swap or
@@ -844,6 +1167,11 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   }
   // ---- Trustline gate ("LUMOS trustline required" banner in both modals): wire its button + toggle it ----
   function wireTrustGates(){ qa(".trustline-gate").forEach(function(g){
+      // The swap adds the trustline itself as its first step (_swapcalc signs a changeTrust before
+      // the path payment), so announcing it here read as a prerequisite the user had to clear before he
+      // was allowed to trade -- a barrier in front of a door that is already open. Hidden in the swap
+      // modal only; other modals keep it, because they have no such step and do need it first.
+      if(g.closest&&g.closest("#swapModal,#modalSwap,#createPoolModal")){ g.style.display="none"; return; }
       if(window.__lxHasTrust===true)g.style.display="none"; else if(window.__lxHasTrust===false)g.style.display="";
       var b=g.querySelector("[data-tl-add]"); if(b&&!b.__lxtg){ b.__lxtg=1; b.addEventListener("click",function(e){ e.preventDefault(); e.stopPropagation(); ltAddTrust(b,function(){ g.style.display="none"; }); }); }
     }); }
@@ -853,8 +1181,31 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   var chartTF="7D", chartPts=null, chartWired=false;
   function tfCfg(tf){ var m={"1H":{res:60000,span:3600000},"24H":{res:900000,span:86400000},"7D":{res:3600000,span:604800000},"30D":{res:86400000,span:2592000000},"1Y":{res:604800000,span:31536000000},"All":{res:604800000,span:157680000000}}; return m[tf]||m["7D"]; }
   function axisLbl(t,tf){ var d=new Date(t),mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]; if(tf==="1H"||tf==="24H")return (d.getHours()<10?"0":"")+d.getHours()+":00"; if(tf==="1Y"||tf==="All")return mo[d.getMonth()]+" '"+String(d.getFullYear()).slice(2); return mo[d.getMonth()]+" "+d.getDate(); }
+  // item 20: mark the canvas stale while a timeframe is loading. Called by loadChart, cleared by
+  // drawChart and by chartMsg (which is itself a conclusion -- empty period, or an error).
+  var _busyWd=null;
+  function chartBusy(on){
+    try{ var pc=q("#priceChart"); if(pc)pc.classList.toggle("lx-ch-busy",!!on); }catch(_){}
+    // Busy now HIDES the old series rather than dimming it, so a path that forgets to clear leaves an
+    // invisible chart -- a worse failure than the flash this replaced. Anything still armed after 20s is
+    // a bug in a load path, and the right answer on screen is the last good series, not an empty box.
+    try{ if(_busyWd){ clearTimeout(_busyWd); _busyWd=null; }
+      if(on)_busyWd=setTimeout(function(){ _busyWd=null;
+        var p=q("#priceChart"); if(p&&p.classList.contains("lx-ch-busy"))p.classList.remove("lx-ch-busy");
+      },20000);
+    }catch(_){}
+  }
   function drawChart(pts){
-    var pc=q("#priceChart"); if(!pc)return; var svg=pc.querySelector("svg"); if(!svg)return;
+    var pc=q("#priceChart"); if(!pc)return; chartBusy(false); var svg=pc.querySelector("svg");
+    if(!svg){
+      // The phone build ships this container empty -- there is no design chart here to replace, so
+      // make the canvas rather than giving up on it. Same viewBox the draw code below assumes.
+      svg=document.createElementNS("http://www.w3.org/2000/svg","svg");
+      svg.setAttribute("viewBox","0 0 1000 320");
+      svg.setAttribute("preserveAspectRatio","none");
+      svg.style.width="100%"; svg.style.height="100%"; svg.style.display="block";
+      pc.appendChild(svg);
+    }
     if(!pts||pts.length<2){ return; }
     var W=1000,H=320,PAD=26,n=pts.length;
     // winsorize to the 5th–95th percentile — LUMOS/XLM is thin, so a couple of bad-fill trades otherwise
@@ -884,6 +1235,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     for(var qi=0;qi<NL;qi++){ var idx=Math.round(qi/(NL-1)*(n-1)); h+='<span>'+(qi===NL-1?"Today":axisLbl(pts[idx].t,chartTF))+'</span>'; }
     dr.innerHTML=h;
     pc.classList.add("lxlt"); chartPts=pts;
+    try{ chartMsg(""); }catch(_){}          // a real chart replaces whatever the last attempt said
     pc.__lxpts=pts; pc.__lxco=co;   // current series for the hover readout
     setupChartHover(pc, svg);
     updateChartLegend();
@@ -911,13 +1263,43 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var sx=ox+co[idx][0]/W*r.width, sy=oy+co[idx][1]/HH*r.height;
       dot.style.left=sx+"px"; dot.style.top=sy+"px"; dot.style.opacity=1;
       vl.style.left=sx+"px"; vl.style.top=oy+"px"; vl.style.height=r.height+"px"; vl.style.opacity=1;
-      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div><div class="p">'+usd(p.v)+'</div><div class="v">Vol '+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")+'</div>';
+      // Same shape as Trade-Asset's readout: date, then a labelled figure per row.
+      tip.innerHTML='<div class="d">'+fullDate(p.t)+'</div>'
+        +'<div class="l">Price</div>'
+        +'<div class="p">'+usd(p.v)+'</div>'
+        +'<div class="lxrow"><div class="l">Volume</div>'
+          +'<div class="p">'+(p.vol>=0.01?abbrUsd(p.vol):"&lt;$0.01")+'</div></div>'
+        +(p.tr>0?('<div class="lxrow"><div class="l">Trades</div>'
+          +'<div class="p">'+p.tr.toLocaleString('en-US')+'</div></div>'):'');
       tip.style.opacity=1;
       var tw=tip.offsetWidth, th=tip.offsetHeight, tx=sx+14; if(tx+tw>pr.width)tx=sx-tw-14; if(tx<2)tx=2;
       tip.style.left=tx+"px"; tip.style.top=Math.max(2,sy-th-12)+"px";
     }
     function leave(){ ["lx-chtip","lx-chdot","lx-chvl"].forEach(function(c){ var el=pc.querySelector("."+c); if(el)el.style.opacity=0; }); }
-    pc.addEventListener("mousemove",move); pc.addEventListener("mouseleave",leave);
+    // Ignore the mouseleave a browser synthesises after a touch; a real mouse leaving still clears.
+    var _touchAt=0;
+    pc.addEventListener("touchstart",function(){_touchAt=Date.now();},{passive:true});
+    pc.addEventListener("touchmove",function(){_touchAt=Date.now();},{passive:true});
+    pc.addEventListener("mousemove",move);
+    pc.addEventListener("mouseleave",function(){ if(Date.now()-_touchAt<1500)return; leave(); });
+    // Follow a finger, not just a tap.
+    var _tp0=null;
+    function tmove(ev){ var t=ev.touches&&ev.touches[0]; if(!t)return;
+      // Horizontal drag = reading the chart, so take the gesture. Vertical = scrolling, so leave it.
+      if(_tp0&&ev.type==="touchmove"&&Math.abs(t.clientX-_tp0.x)>Math.abs(t.clientY-_tp0.y)){
+        try{ ev.preventDefault(); }catch(_){}
+      }
+      move({clientX:t.clientX,clientY:t.clientY,target:ev.target}); }
+    pc.addEventListener("touchstart",function(ev){
+      var t=ev.touches&&ev.touches[0]; if(t)_tp0={x:t.clientX,y:t.clientY};
+      tmove(ev); },{passive:true});
+    pc.addEventListener("touchmove",tmove,{passive:false});
+    // Deliberately NOT touchend/touchcancel -- the reading outlives the gesture. A tap elsewhere clears it.
+    document.addEventListener("touchstart",function(ev){
+      var t=ev.target;
+      if(t&&t.closest&&t.closest("#priceChart"))return;
+      leave();
+    },{passive:true});
   }
   function updateChartLegend(){
     var priceUsd=lumosXlm*xlmUsd; if(!(priceUsd>0))return; var mc=supply*priceUsd;
@@ -926,19 +1308,77 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     setText(q("#ctPriceXrpl"),""); setText(q("#ctMcXrpl"),"");
     qa(".ct-net, .cc-legend .nm, .ct-name").forEach(function(e){ var t=(e.textContent||""); if(/Xrpl|XRPL/i.test(t)||/Stellar/.test(t)){} });
   }
-  function loadChart(tf){
+  // #2: this drew nothing until the XLM price landed, and then never tried again -- which is what
+  // "the chart takes forever" was. Every point is multiplied by xlmUsd to put it in dollars, so with
+  // xlmUsd still 0 every value came out 0, the filter below dropped all of them, pts.length fell under
+  // 2 and the function returned having drawn nothing. Nothing re-ran it except a manual timeframe tap.
+  //
+  // The records are kept now, so the redraw costs no request, and the draw is retried until there is a
+  // rate to draw with.
+  var _chartRecs=null, _chartWait=0;
+  // One place to say why the plot is empty. Removed the moment a real chart is drawn.
+  function chartMsg(t){
+    var pc=q("#priceChart"); if(!pc)return;
+    var m=pc.querySelector(".lx-chmsg");
+    if(!t){ if(m&&m.parentNode)m.parentNode.removeChild(m); return; }
+    if(!m){ m=document.createElement("div"); m.className="lx-chmsg"; pc.appendChild(m); }
+    if(m.textContent!==t)m.textContent=t;
+  }
+  function drawFromRecs(){
+    if(!_chartRecs||!_chartRecs.length)return false;
+    if(!(xlmUsd>0))return false;
+    var pts=_chartRecs.map(function(x){return {t:+x.timestamp, v:(+x.avg||+x.close||0)*xlmUsd,
+      vol:(+x.counter_volume||0)*xlmUsd, tr:(+x.trade_count||0)};}).filter(function(p){return p.v>0;});
+    if(pts.length<2)return false;
+    drawChart(pts); return true;
+  }
+  var CH_BACKOFF=[1500,4000,12000];
+  var _chartSeq=0, _chartLoading=0;
+  function loadChart(tf,attempt,seq){
+    attempt=attempt||0;
+    if(!attempt)seq=++_chartSeq;
+    if(seq!==_chartSeq)return;            // this job (or its retry chain) has been superseded
+    var myq=seq; _chartLoading=1;
+    chartBusy(true);
     chartTF=tf; var cfg=tfCfg(tf), now=Date.now(), start=now-cfg.span;
-    var url=H+"/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution="+cfg.res+"&start_time="+start+"&end_time="+now+"&order=asc&limit=200";
-    j(url).then(function(d){
+    jAgg({res:cfg.res,order:"asc",limit:200,start:start,end:now}).then(function(d){
+      if(myq!==_chartSeq)return;            // a newer timeframe was clicked while this was in flight
       var r=(d&&d._embedded&&d._embedded.records)||[];
-      var pts=r.map(function(x){return {t:+x.timestamp, v:(+x.avg||+x.close||0)*xlmUsd, vol:(+x.counter_volume||0)*xlmUsd, tr:(+x.trade_count||0)};}).filter(function(p){return p.v>0;});
-      if(pts.length>=2)drawChart(pts);
-    }).catch(function(){});
+      _chartRecs=r;
+      // If the rate is not in yet, wait for it rather than silently giving up. Bounded, so a page that
+      // never gets a price stops asking instead of spinning for the whole session.
+      // Fewer than two points is not a failure, it is an empty period -- say so rather than showing a
+      // blank box that looks broken.
+      if(r.length<2){ _chartLoading=0; chartBusy(false); chartMsg("No trades in this period."); return; }
+      if(drawFromRecs()){ _chartLoading=0; }
+      else if(!_chartWait){
+        // Waiting on the XLM/USD rate, which the price in USD depends on. Bounded, and it now reports
+        // when it gives up instead of expiring in silence.
+        _chartWait=1;
+        var n=0,iv=setInterval(function(){
+          if(myq!==_chartSeq){ clearInterval(iv); _chartWait=0; return; }
+          if(drawFromRecs()){ clearInterval(iv); _chartWait=0; _chartLoading=0; return; }
+          if(++n>60){ clearInterval(iv); _chartWait=0; _chartLoading=0; chartBusy(false); chartMsg("Waiting on the XLM price \u2014 tap a timeframe to retry."); }
+        },200);
+      }
+    }).catch(function(){
+      if(myq!==_chartSeq)return;
+      // Horizon rejected or the request never completed. A 429 from Horizon has no CORS header, so this
+      // is all the detail the browser will ever give us -- which is precisely why it has to be retried
+      // and reported rather than swallowed.
+      if(attempt<CH_BACKOFF.length){
+        chartMsg("Loading price history\u2026");
+        setTimeout(function(){ loadChart(tf,attempt+1,seq); },CH_BACKOFF[attempt]);
+      } else {
+        _chartLoading=0; chartBusy(false);
+        chartMsg("Price history is unavailable right now. Stellar's API is limiting requests from this network \u2014 tap a timeframe to try again.");
+        }
+    });
   }
   function wireChartTabs(){
     if(chartWired)return; var btns=qa("button").filter(function(b){return /^(1H|24H|7D|30D|1Y|All)$/.test((b.textContent||"").trim());});
     if(btns.length<3)return; chartWired=true;
-    btns.forEach(function(b){ b.addEventListener("click",function(){ btns.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); loadChart((b.textContent||"").trim()); }); });
+    btns.forEach(function(b){ b.addEventListener("click",function(){ btns.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); try{ chartMsg(""); }catch(_){} loadChart((b.textContent||"").trim()); }); });
   }
 
   // tab-button counts e.g. "Pools (58)" / "Holders (1,441)" — set a data-count attr (CSS ::after renders
@@ -955,23 +1395,62 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   function updateHolderUsd(){ var p=lumosXlm*xlmUsd; if(!(p>0))return; qa(".holder-row[data-lxbal]").forEach(function(r){ var bal=+r.getAttribute("data-lxbal"); var mm=r.querySelector(".holdings .lc-money"); if(mm){ var u=abbrUsd(bal*p); if(mm.getAttribute("data-orig")!==u){ mm.textContent=u; mm.setAttribute("data-orig",u); mm.setAttribute("data-usd",bal*p); } } }); }
   // Create-Pool modal: drop the "Trading fee 0.5%" row (per request). Idempotent.
   function polishModals(){ qa("#createPoolModal .row").forEach(function(r){ if(r.getAttribute("data-lxhid")!=="1"&&/Trading fee/i.test(r.textContent||"")){ r.setAttribute("data-lxhid","1"); r.style.display="none"; } }); }
-  function applyAll(){ if(vol24Xlm!=null&&xlmUsd)vol24Usd=vol24Xlm*xlmUsd; try{ applyHero(); }catch(_){} try{ applyStats(); }catch(_){} try{ applyOverview(); }catch(_){} try{ applyTabs(); }catch(_){} try{ buildPoolsTable(); }catch(_){} try{ repaintPoolIcons(); }catch(_){} try{ fixAllocation(); }catch(_){} try{ setModalLogos(); }catch(_){} try{ applyHolders(); }catch(_){} try{ updateHolderUsd(); }catch(_){} try{ polishModals(); }catch(_){} try{ wireChartTabs(); }catch(_){} try{ var pc=q("#priceChart"); if(pc&&chartPts&&!pc.querySelector(".lx-cline"))drawChart(chartPts); }catch(_){} try{ fixAbout(); }catch(_){} try{ installSwapGlobals(); }catch(_){} try{ wireSwapPreselect(); }catch(_){} try{ var cpm=q("#createPoolModal"); if(cpm){ wireCreatePool(); cpRefresh(cpm); } }catch(_){} try{ wireTrustGates(); }catch(_){} }
+  // item 19: "What you can do with LUMOS" belongs above "Supply distribution" -- what the token DOES is
+  // the reason to care how it is split, not the other way round.
+  function orderSections(){
+    // Measured in the browser: on mobile these blocks are NOT <section>s under a page root -- they are
+    // flat "sect-head" + content siblings inside .container. The old version guessed a root (main.page)
+    // and matched class "section-head", so it selected nothing and silently did nothing on every tick.
+    // Find the two headings, then climb until they are siblings, whatever the wrapper happens to be.
+    var uh=null, sh=null, all=qa("h1,h2,h3,h4");
+    for(var i=0;i<all.length;i++){ var t=all[i].textContent||"";
+      if(!uh&&/what you can do with lumos/i.test(t))uh=all[i];
+      if(!sh&&/supply distribution/i.test(t))sh=all[i]; }
+    if(!uh||!sh)return;
+    var ub=null, sb=null, par=null;
+    for(var a=uh;a&&!par;a=a.parentElement){
+      for(var b=sh;b;b=b.parentElement){
+        if(a.parentElement&&a.parentElement===b.parentElement&&a!==b){ par=a.parentElement; ub=a; sb=b; break; } } }
+    if(!par)return;
+    // The content block, found independently of the sibling walk. Observed on the phone build: the
+    // head ended up above supply with its grid still at the bottom, and a guard that only asked "is the
+    // head above?" then declared the job done and left the head orphaned. So the guard below asks for
+    // BOTH -- head above supply AND its grid directly behind it -- which also repairs that state.
+    var grid=null, kk=par.children;
+    for(var g=0;g<kk.length;g++){ if(kk[g].classList&&kk[g].classList.contains("util-grid")){ grid=kk[g]; break; } }
+    if((ub.compareDocumentPosition(sb)&Node.DOCUMENT_POSITION_FOLLOWING)&&(!grid||ub.nextElementSibling===grid))return;
+    // The utility block is its heading wrapper plus the siblings after it, up to the next heading
+    // wrapper. Do NOT stop at "contains a heading": the utility cards carry their own h3s, so that
+    // test broke on the very first sibling and moved the head alone, orphaning its grid below supply.
+    // Stop on the next sibling sharing this wrapper's own class ("sect-head" / "section-head").
+    var tok=String(ub.className||"").split(/\s+/)[0]||"";
+    var run=[ub];
+    for(var n=ub.nextElementSibling;n;n=n.nextElementSibling){
+      if(tok?(n.classList&&n.classList.contains(tok)):(n.querySelector&&n.querySelector("h1,h2,h3,h4")))break;
+      run.push(n); }
+    if(grid&&run.indexOf(grid)<0)run.push(grid);
+    for(var r=0;r<run.length;r++)par.insertBefore(run[r],sb);
+  }
+  function applyAll(){ try{ orderSections(); }catch(_){} if(vol24Xlm!=null&&xlmUsd)vol24Usd=vol24Xlm*xlmUsd; try{ applyHero(); }catch(_){} try{ applyStats(); }catch(_){} try{ applyOverview(); }catch(_){} try{ applyTabs(); }catch(_){} try{ buildPoolsTable(); try{ buildPoolsListMobile(); }catch(_){} }catch(_){} try{ repaintPoolIcons(); }catch(_){} try{ fixAllocation(); }catch(_){} try{ setModalLogos(); }catch(_){} try{ applyHolders(); }catch(_){} try{ updateHolderUsd(); }catch(_){} try{ polishModals(); }catch(_){} try{ wireChartTabs(); }catch(_){} try{ var pc=q("#priceChart"); if(pc&&chartPts&&!_chartLoading&&!pc.querySelector(".lx-cline"))drawChart(chartPts); }catch(_){} try{ fixAbout(); }catch(_){} try{ installSwapGlobals(); }catch(_){} try{ wireSwapPreselect(); }catch(_){} try{ var cpm=q("#createPoolModal"); if(cpm){ wireCreatePool(); cpRefresh(cpm); } }catch(_){} try{ wireTrustGates(); }catch(_){} }
 
   function loadData(){
     // XLM price (USD)
-    j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd").then(function(d){
-      xlmUsd=(d&&d.stellar&&+d.stellar.usd)||xlmUsd; if(xlmUsd>0){ window.__lxXlmUsd=xlmUsd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } applyAll(); try{ loadChart(chartTF); }catch(_){}   // chart needs xlmUsd for USD pricing
+    // Our own edge, Horizon-backed and cached, for the reason recorded in functions/lxapi/xlm.js:
+    // CoinGecko refuses datacenter egress and rate-limits everyone else, and this page cannot draw its
+    // chart at all until the XLM price arrives.
+    j("/lxapi/xlm").then(function(d){
+      xlmUsd=(d&&+d.usd)||xlmUsd; if(xlmUsd>0){ window.__lxXlmUsd=xlmUsd; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} } applyAll(); try{ drawFromRecs(); }catch(_){}   // redraw, not refetch: the records are already in hand
     }).catch(function(){});
     // LUMOS/XLM daily closes (spot price + 24h change + 24h volume) via trade aggregations
-    var ta="https://horizon.stellar.org/trade_aggregations?base_asset_type=credit_alphanum12&base_asset_code="+CODE+"&base_asset_issuer="+ISSUER+"&counter_asset_type=native&resolution=86400000&order=desc&limit=2";
-    j(ta).then(function(d){
+    jAgg({res:86400000,order:"desc",limit:2}).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
       if(r[0])lumosXlm=+r[0].close||+r[0].avg||lumosXlm;
       if(r[0])vol24Xlm=+r[0].counter_volume||0;                              // XLM traded in the LUMOS/XLM market (24h)
       if(r[0]&&r[1]&&+r[1].close>0)chg24=((+r[0].close-+r[1].close)/+r[1].close)*100;
       if(r[0]&&r[1]&&+r[1].counter_volume>0)volChg=((+r[0].counter_volume-+r[1].counter_volume)/+r[1].counter_volume)*100;
+      if(!(lumosXlm>0))pxFailed=true;
       applyAll();
-    }).catch(function(){});
+    }).catch(function(){ pxFailed=true; try{ applyAll(); }catch(_){} });
     // Asset record: circulating supply (balances.authorized) + holder count (accounts.authorized)
     j("https://horizon.stellar.org/assets?asset_code="+CODE+"&asset_issuer="+ISSUER).then(function(d){
       var rec=(d&&d._embedded&&d._embedded.records&&d._embedded.records[0])||null; if(!rec)return;
@@ -1011,6 +1490,17 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     // prime the cached trustline result BEFORE the first paint so the Add-Trustline button shows instantly
     try{ var _a=ltAddr(); if(_a){ var _c=JSON.parse(localStorage.getItem("lumos.lt.trust."+_a)||"null"); if(_c&&(Date.now()-_c.ts<6e5))window.__lxHasTrust=_c.has; } }catch(_){}
     guardApply();                                        // paint whatever we have (fast)
+    // The chart's own fetch, started HERE and not inside loadData's price handler.
+    //
+    // My previous pass replaced the old loadChart(chartTF) in that handler with a redraw, to stop it
+    // re-fetching records it already had -- but that call was also the only thing that ever STARTED the
+    // chart. Nothing else calls loadChart except a timeframe button, so a page nobody tapped drew
+    // nothing at all: an empty card with 7D highlighted, for ever. That is the "still taking forever".
+    //
+    // Starting it here is also strictly faster than where it used to live: the Horizon aggregation and
+    // the XLM price now go out together instead of the chart queueing behind the price, and whichever
+    // lands second calls drawFromRecs.
+    try{ loadChart(chartTF); }catch(_){}
     loadData();
     try{ obs=new MutationObserver(schedule); reobserve(); }catch(_){}
     // Bounded re-assert: fetch + design-render timing varies, so re-apply every 700ms for ~21s. Values
@@ -1032,12 +1522,46 @@ for (const file of files) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-lt-css">[\s\S]*?<\/style>/, '')
-         .replace(/<script id="lx-ltdata">[\s\S]*?<\/script>/, '');
+    p = p.replace(/<style id="lx-lt-css">[\s\S]*?<\/style>/g, '')
+         .replace(/<script id="lx-ltdata">[\s\S]*?<\/script>/g, '');
     // AUDIT (flash sweep): the supply-distribution subheading ships as "...fixed supply on Aptos." and is
     // corrected to Stellar at runtime — a visible wrong-chain flash on our own token page. Fix the source
     // text so there is nothing to correct. Idempotent: after one pass the Aptos wording is gone.
     p = p.split('fixed supply on Aptos.').join('fixed supply on Stellar.');
+    // #11: what the Market Reserve is FOR. The shipped sentence led with a 150M public sell order, which
+    // is the one detail a reader of a token page is primed to read as an overhang -- and it left out the
+    // thing the reserve actually does, which is deepen the pools LUMOS trades in. Liquidity leads; the
+    // order book is named once, in passing. No split is claimed, because the split is not a fact this
+    // page can show. Idempotent: after one pass neither original sentence is present.
+    const RESV_NEW = 'The 300M <strong>Market Reserve</strong> is put to work gradually: it is added, a '
+      + 'little at a time, to LUMOS liquidity on Stellar — the LUMOS/XLM pool and the other LUMOS '
+      + 'pairs — with a portion resting on the order book for price discovery.';
+    // The phone ships a SHORTER version of the same sentence -- no "working treasury" clause -- so a
+    // single replacement fixed the desktop and left the phone quoting the sell order it was written to
+    // stop leading with. Both forms, both chain spellings.
+    const RESV_OLD = [
+      'Of the 300M <strong>Market Reserve</strong>, 150M is committed to a public sell order on CHAIN '
+        + 'for price discovery. The remaining 150M serves as a working treasury.',
+      'Of the 300M <strong>Market Reserve</strong>, 150M is committed to a public sell order on CHAIN '
+        + 'for price discovery.',
+    ];
+    for (const chain of ['Aptos', 'Stellar']) {
+      for (const old of RESV_OLD) p = p.split(old.replace('CHAIN', chain)).join(RESV_NEW);
+    }
+    // ...and the rest of the section, which the phone also words differently. #1 asked for one wording
+    // across both devices, and the desktop one is the reference.
+    // A5: the threshold was stated as 1M in two places on this page, and the Rewards page actually
+    // implements 5M -- WHALE_UNIT=5000000 in _rewardsdata.js, which is what decides who is paid. So the
+    // page was promising a reward at a balance that does not qualify for it. Corrected to match the rule
+    // that runs, not the other way round.
+    p = p.split('<span class="threshold">Hold 1M+</span>').join('<span class="threshold">Hold 5M+</span>');
+    p = p.split('Wallets holding 1M+ LUMOS earn').join('Wallets holding 5M+ LUMOS earn');
+    p = p.split('<strong>Whale Holder rewards</strong> over 2 years.')
+         .join('<strong>Whale Holder rewards</strong> distribute over 2 years.');
+    p = p.split('<span class="name">Ecosystem LP</span>')
+         .join('<span class="name">Ecosystem LP Rewards</span>');
+    p = p.split('<span class="name">Native LP</span>')
+         .join('<span class="name">Native LP Rewards</span>');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');

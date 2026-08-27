@@ -16,8 +16,66 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const STYLE = '<style id="lx-mobwallet-css">'
+// #18: the three controls sat hard against the right edge, as far from the asset they act on as the
+// row allows. Left-aligned, they read as belonging to the row above them.
++ '.lxmw-astacts{justify-content:flex-start!important}'
+  // A6: the mark is the selection now. Pinned keeps the star, which is the mark that says pinned.
+  + '.lxmw-row.lxmw-sel{box-shadow:inset 3px 0 0 var(--accent,#ea6a2c)}'
+  // The same affordance polish.js gives every other row list on the site (ROWS:hover td:first-child),
+  // written for a list built from divs rather than a table. :active is the one a phone actually fires.
+  + '.lxmw-row.lxmw-ast:hover,.lxmw-row.lxmw-ast:active{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c)}'
+  // Selection stays stronger than the transient press, so the two cannot be confused.
+  + '.lxmw-row.lxmw-ast.lxmw-sel:hover,.lxmw-row.lxmw-ast.lxmw-sel:active{box-shadow:inset 3px 0 0 var(--accent,#ea6a2c)}'
+  // item 5, corrected: the rows were already being STAMPED lxmw-pinned (see the renderer) but nothing styled
+  // it. I gave it a permanent orange bar, which was the wrong answer: the request was for the HOVER line,
+  // and a permanent bar on pinned rows is what made the list read as arbitrary (two pinned rows and one
+  // selected row all wearing a mark that is meant to follow the pointer). The star already says pinned,
+  // so the tint stays and the bar goes.
+  + '.lxmw-row.lxmw-ast.lxmw-pinned{background:linear-gradient(90deg,rgba(234,106,44,.07),transparent 60%)}'
+  // A7: clearance for that 3px rule -- at 2px the logo and the Trade button were touching it.
+  + '.lxmw-row.lxmw-ast{padding-left:12px}'
+  // A14: the claimable amount joins every other figure on the page.
+  + '.lx-wcrow .lx-wcamt,.lx-wcrow .lx-wcamount{font-family:"JetBrains Mono",ui-monospace,monospace;font-weight:800}'
+  // The dots go to the end of the row; Trade and Send keep their own spacing.
+  + '.lxmw-astacts .lxmw-astbtn.icon{margin-left:auto!important}'
+  // #38: pinned rows say so. Star and colour match the desktop badge exactly.
+  + '.lxmw-pinbadge{display:inline-flex;vertical-align:middle;margin-left:6px;color:#f5b301}'
+  + '.lxmw-pinbadge svg{width:13px;height:13px;display:block}'
+  // (The pinned row no longer takes the edge -- that is the selection mark now. The gold star beside
+  // the code is what says pinned, the same mark desktop uses.)
++ '.lxmw-astbtn.icon{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}'
   // Hide the mock until real data lands, so no one ever sees a foreign address or an invented order.
-  + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block{visibility:hidden}'
+  + 'body:not(.lxmw-ready) .orders-stack,body:not(.lxmw-ready) .activity-block,body:not(.lxmw-ready) #assetList{visibility:hidden}'
+  // N13: the identicon beside the address is a baked SVG -- a deterministic avatar OF THE MOCK ADDRESS,
+  // a grid of orange squares belonging to 0x0a72...3c9d. The address text next to it was already held
+  // back by this gate, but the picture of it was not, so the wrong avatar still flashed on every
+  // refresh. Same marker, same moment: it appears when there is a real Stellar address to draw it from.
+  + 'html:not(.lx-adrdone) .wallet-chip .av>*,html:not(.lx-adrdone) .chip .av>*{visibility:hidden!important}'
+  + 'html:not(.lx-adrdone) .wallet-chip .text,html:not(.lx-adrdone) .chip .text{color:transparent!important;position:relative}'
+  + 'html:not(.lx-adrdone) .wallet-chip .text::after,html:not(.lx-adrdone) .chip .text::after{content:"";position:absolute;left:0;top:20%;width:100%;height:60%;'
+  + 'border-radius:6px;background:linear-gradient(90deg,rgba(128,128,140,.12) 25%,rgba(128,128,140,.2) 37%,rgba(128,128,140,.12) 63%);'
+  + 'background-size:400% 100%;animation:lxPvSk 1.3s ease infinite}'
+  // The unit and the delta were left out of this list, so "APT" and "+3,114.20 APT" painted for a frame
+  // on a Stellar wallet -- see the note in the transform above this block.
+  + 'html:not(.lx-pvdone) .unit,html:not(.lx-pvdone) .delta-secondary{visibility:hidden!important}'
+  + 'html:not(.lx-pvdone) .portfolio-value,html:not(.lx-pvdone) .portfolio-sub,html:not(.lx-pvdone) .portfolio-usd{color:transparent!important;position:relative}'
+  + 'html:not(.lx-pvdone) .portfolio-value>*,html:not(.lx-pvdone) .portfolio-sub>*,html:not(.lx-pvdone) .portfolio-usd>*{visibility:hidden}'
+  + 'html:not(.lx-pvdone) .portfolio-value::after,html:not(.lx-pvdone) .portfolio-sub::after,html:not(.lx-pvdone) .portfolio-usd::after{content:"";position:absolute;left:0;top:14%;width:min(62%,190px);height:72%;'
+  + 'border-radius:8px;background:linear-gradient(90deg,rgba(255,255,255,.05) 25%,rgba(255,255,255,.11) 37%,rgba(255,255,255,.05) 63%);'
+  + 'background-size:400% 100%;animation:lxPvSk 1.3s ease infinite}'
+  + '@keyframes lxPvSk{0%{background-position:100% 50%}100%{background-position:0 50%}}'
+  + '@media(prefers-reduced-motion:reduce){html:not(.lx-pvdone) .portfolio-value::after,html:not(.lx-pvdone) .portfolio-sub::after{animation:none}}'
+  + '.orders-stack .lxmw-row{align-items:center;gap:10px}'
+  + '.lxmw-omain{flex:1 1 auto;min-width:0}'
+  // width:auto is not redundant. The container's own stylesheet carries .order-cancel{width:100%} for the
+  // DESKTOP list, where the button sits on its own line -- and reusing that class to share the cancel
+  // handler brought the width along with it, so the button ate the whole row and pushed the order text
+  // to zero. Scoped to .orders-stack so the desktop rule is untouched.
+  + '.orders-stack .lxmw-ocx{flex:0 0 auto;width:auto;height:28px;padding:0 11px;border-radius:8px;cursor:pointer;'
+  + 'font-weight:800;font-size:11.5px;line-height:1;color:var(--text-soft);background:transparent;'
+  + 'border:1px solid var(--border);transition:color .14s ease,border-color .14s ease}'
+  + '.orders-stack .lxmw-ocx:hover:not(:disabled){color:#e5484d;border-color:#e5484d}'
+  + '.orders-stack .lxmw-ocx:disabled{opacity:.6;cursor:default}'
   // The shared activity renderer emits DESKTOP row markup, and at 375px .activity-info collapsed to
   // ~92px so the 'From G…' line wrapped and spilled out of the card. Let the middle column take the
   // slack and truncate, and stop the amount and the explorer link from being squeezed.
@@ -188,7 +246,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'function initials(code){return String(code||"?").replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase();}'
 + 'function hueOf(code){var h=0,c=String(code||"");for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;return h;}'
 
-+ 'function activeTab(){var b=qa(".asset-tabs button");for(var i=0;i<b.length;i++)if(b[i].classList.contains("active"))return i;return 0;}'
++ 'function activeTab(){var b=qa(".asset-tabs:not(.lx-wcgroup) button");for(var i=0;i<b.length;i++)if(b[i].classList.contains("active"))return i;return 0;}'
 
 // ---- header: address + portfolio -----------------------------------------------------------------
 // AUDIT (funds): the design baked an Ethereum address into both the visible chip and its copy button.
@@ -196,15 +254,33 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'function fixHeader(){var a=addr();'
 + 'var t=q(".wallet-chip .text")||q(".chip .text")||q(".wallet-address .text");'
 + 'if(t)t.textContent=a?trunc(a):DASH;'
++ 'try{ if(a&&/^G[A-Z2-7]{55}$/.test(a))document.documentElement.classList.add("lx-adrdone"); }catch(_){}'
+// #12: the second icon in the address chip is a bare <button> -- no class, no aria-label, no href and
+// no handler. It draws an external-link glyph and does nothing when tapped. Wire it to the account on
+// stellar.expert, which is what the same icon does everywhere else on the site.
+// Identified by elimination rather than by position: the copy control is the one carrying data-copy or
+// a copy class, so whatever else is in the chip is the link.
++ 'var _chip=q(".wallet-chip")||q(".chip");'
++ 'if(_chip&&a){[].slice.call(_chip.parentNode?_chip.parentNode.querySelectorAll(".wallet-chip button,.chip button"):[]).forEach(function(b){'
++ 'if(b.hasAttribute("data-copy")||/copy/i.test(b.className||""))return;'
++ 'b.setAttribute("aria-label","View this account on stellar.expert");'
++ 'b.setAttribute("title","View on Explorer");'
++ 'if(b.__lxexp)return; b.__lxexp=1;'
++ 'b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();'
++ 'try{window.open("https://stellar.expert/explorer/public/account/"+encodeURIComponent(a),"_blank","noopener");}catch(_){}'
++ '});});}'
 + 'qa(".copy-addr-btn,[data-copy]").forEach(function(b){var v=b.getAttribute("data-copy")||"";'
 + 'if(/^0x[0-9a-fA-F]{8,}$/.test(v)||(a&&b.className.indexOf("copy-addr")>=0))b.setAttribute("data-copy",a||"");});'
 // portfolio total, in XLM with a USD line — the mock said "31,108.45 APT"
 + 'var pv=q(".portfolio-value");'
 + 'if(pv){var tot=n(window.__lxTotalXLM),u=rate();'
-+ 'if(tot!=null){pv.innerHTML=esc(fmt(tot,2))+\'<span class="unit">XLM</span>\';'
 + 'var sub=q(".portfolio-sub")||q(".portfolio-usd");'
-+ 'if(sub&&u)sub.textContent=usd(tot*u);}'
-+ 'else if(!window.__lxWalletReady)pv.innerHTML=DASH+\'<span class="unit">XLM</span>\';}}'
+
++ 'if(tot!=null){pv.innerHTML=esc(fmt(tot,2))+\'<span class="unit">XLM</span>\';'
++ 'try{document.documentElement.classList.add("lx-pvdone");}catch(_){}'
+// Four closers, not three: if(sub&&u), if(tot!=null), if(pv), and fixHeader itself. The old tail carried
+// the same count across two lines; collapsing them lost one and the whole script stopped parsing.
++ 'if(sub&&u){sub.textContent=usd(tot*u);}}}}'
 // ---- open orders ----------------------------------------------------------------------------------
 + 'function fixOrders(){var stack=q(".orders-stack");if(!stack)return;'
 + 'var offs=window.__lxOffers;if(!offs)return;'
@@ -219,10 +295,17 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'var sc=s.asset_type==="native"?"XLM":(s.asset_code||"?");'
 + 'var bc=b.asset_type==="native"?"XLM":(b.asset_code||"?");'
 + 'var amt=+o.amount||0,pr=+o.price||0;'
-+ 'html+=\'<div class="lxmw-row"><div><div class="lxmw-nm">Sell \'+esc(sc)+\' \\u2192 \'+esc(bc)+\'</div>\''
++ 'html+=\'<div class="lxmw-row" data-oid="\'+esc(o.id)+\'" data-price="\'+esc(o.price)+\'"\''
++ '+\' data-snt="\'+(s.asset_type==="native"?"1":"")+\'" data-sc="\'+esc(s.asset_code||"")+\'" data-si="\'+esc(s.asset_issuer||"")+\'"\''
++ '+\' data-bnt="\'+(b.asset_type==="native"?"1":"")+\'" data-bc="\'+esc(b.asset_code||"")+\'" data-bi="\'+esc(b.asset_issuer||"")+\'">\''
++ '+(function(){var _si=(s.asset_type==="native"?"":(s.asset_issuer||""));'
++ 'var _ic=resolveLogo(sc,_si,s.asset_type==="native");'
++ 'return \'<div class="lxmw-ico\'+(_ic?" lxmw-hasico":"")+\'" data-lxc="\'+esc(sc)+\'" data-c="\'+esc(sc)+\'" data-i="\'+esc(_si)+\'" data-l="\'+esc(initials(sc))+\'" style="\'+(_ic?(\'background-image:url(\\\'\'+esc(_ic)+\'\\\')\'):\'\')+\'"></div>\';})()'
++ '+\'<div class="lxmw-omain"><div class="lxmw-nm">Sell \'+esc(sc)+\' \\u2192 \'+esc(bc)+\'</div>\''
 + '+\'<div class="lxmw-sub">Price \'+esc(fmt(pr,7))+\' \'+esc(bc)+\' per \'+esc(sc)+\'</div></div>\''
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(fmt(amt))+\' \'+esc(sc)+\'</div>\''
-+ '+\'<div class="u">\'+esc(fmt(amt*pr))+\' \'+esc(bc)+\'</div></div></div>\';});'
++ '+\'<div class="u">\'+esc(fmt(amt*pr))+\' \'+esc(bc)+\'</div></div>\''
++ '+\'<button type="button" class="order-cancel lxmw-ocx">Cancel</button></div>\';});'
 + 'stack.innerHTML=html;}'
 // ---- my assets -------------------------------------------------------------------------------------
 + 'function fixAssets(){var list=q("#assetList");if(!list||activeTab()!==0)return;'
@@ -233,8 +316,16 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'pr.push({code:c,iss:i,bal:+b.balance,native:nat});});'
 + 'hold.forEach(function(h){if(h.native&&!seen["XLM"]){seen["XLM"]=1;pr.unshift(h);}});'
 + 'if(pr.length)hold=pr;}'
++ 'var PIN=(function(){try{var p=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");return Array.isArray(p)?p:[];}catch(_){return [];}})();'
+// A6: survives the re-render because it is keyed on the asset code, not on a node.
++ 'var SEL=(window.__lxmwSel||"");'
+// Stable: only the pinned move, and only ahead of the rest. Sorting by index keeps a pinned XLM above a
+// pinned USDC in the order they were pinned, which is what the desktop list does.
++ 'if(PIN.length){hold=hold.slice().sort(function(a,b){'
++ 'var ia=PIN.indexOf(a.code||(a.native?"XLM":"")),ib=PIN.indexOf(b.code||(b.native?"XLM":""));'
++ 'if(ia<0&&ib<0)return 0; if(ia<0)return 1; if(ib<0)return -1; return ia-ib;});}'
 + 'var u=rate();'
-+ 'var sig="a|"+(window.__lxRows?"v":"n")+"|"+hold.map(function(h){'
++ 'var sig="a|"+PIN.join(",")+"|"+(window.__lxRows?"v":"n")+"|"+hold.map(function(h){'
 + 'return (h.code||"")+":"+(h.bal||h.balance||0)+":"+(resolveLogo(h.code,h.iss,h.native)?1:0);}).join("|");'
 + 'if(list.getAttribute("data-lxmw")===sig)return;list.setAttribute("data-lxmw",sig);'
 + 'var html="";'
@@ -246,8 +337,8 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
   // value, so the USD line stays blank rather than inventing one.
 + 'var v=(xlm!=null&&u)?xlm*u:null;'
 + 'var ico=h.logo||h.ico||resolveLogo(code,h.iss,h.native);'
-+ 'html+=\'<div class="lxmw-row lxmw-ast"><div class="lxmw-ico\'+(ico?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(h.iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(ico?(\'background-image:url(\\\'\'+esc(ico)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\''
-+ '+\'<div><div class="lxmw-nm">\'+esc(code)+\'</div>\''
++ 'html+=\'<div class="lxmw-row lxmw-ast\'+(PIN.indexOf(code)>=0?" lxmw-pinned":"")+((window.__lxmwSel||"")===code?" lxmw-sel":"")+\'" data-lxsel="\'+esc(code)+\'"><div class="lxmw-ico\'+(ico?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(h.iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(ico?(\'background-image:url(\\\'\'+esc(ico)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\''
++ '+\'<div><div class="lxmw-nm">\'+esc(code)+(PIN.indexOf(code)>=0?\'<span class="lxmw-pinbadge" title="Pinned"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg></span>\':"")+\'</div>\''
 + '+\'<div class="lxmw-sub">\'+((window.__lxIssLine)?window.__lxIssLine(code,h.iss||"",!!h.native):esc(h.name||h.domain||""))+\'</div></div>\''
 + '+\'<div class="lxmw-amt"><div class="a">\'+esc(fmt(bal))+\'</div>\''
 + '+\'<div class="u">\'+(v==null?"":esc(usd(v)))+\'</div></div>\''
@@ -265,8 +356,14 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>Trustline</button>\')'
 + ':(\'<button type="button" class="lxmw-astbtn" data-astsend="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'">\''
 + '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>Send</button>\'))'
-+ '+\'<button type="button" class="lxmw-astbtn icon" data-astmore="\'+esc(code)+\'" data-astiss="\'+esc(h.iss||"")+\'" aria-label="More actions" title="More actions">\''
-+ '+\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg></button>\''
+// #17/#18: the overflow menu is gone; this is a direct Explorer link.
+//
+// The menu held two items. One was "Copy issuer address", which duplicated the copy control already
+// sitting beside the issuer on the same row; with that dropped the menu had a single item left, and a
+// menu with one item is two taps to do what a button does in one. data-lxnonav keeps the page's
+// label-based nav bridge from claiming the click.
++ '+\'<button type="button" class="lxmw-astbtn icon" data-lxnonav data-astmenu="\'+esc(code)+\'" data-astmi="\'+esc(h.iss||"")+\'" aria-label="More" title="More">\''
++ '+\'<svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="5" r="1.9"></circle><circle cx="12" cy="12" r="1.9"></circle><circle cx="12" cy="19" r="1.9"></circle></svg></button>\''
 + '+\'</div></div>\';});'
 + 'list.innerHTML=html;try{window.__lxFillHd&&window.__lxFillHd(list);}catch(_){}}'
 // ---- liquidity pools -------------------------------------------------------------------------------
@@ -287,7 +384,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'return \'<div class="lxmw-ico\'+(u?" lxmw-hasico":"")+\'" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'" data-i="\'+esc(iss||"")+\'" data-l="\'+esc(initials(code))+\'" style="\'+(u?(\'background-image:url(\\\'\'+esc(u)+\'\\\')\'):(\'background-color:hsl(\'+hueOf(code)+\',52%,38%)\'))+\'"></div>\';}'
 + 'function fixPools(){var list=q("#assetList");if(!list||activeTab()!==1)return;'
 + 'var lps=window.__lxLps;if(!lps)return;'
-+ 'var cnts=qa(".asset-tabs button .cnt");if(cnts[1])cnts[1].textContent=lps.length;'
++ 'var cnts=qa(".asset-tabs:not(.lx-wcgroup) button .cnt");if(cnts[1])cnts[1].textContent=lps.length;'
 + 'if(!lps.length){if(list.getAttribute("data-lxmw")!=="p|0"){list.setAttribute("data-lxmw","p|0");'
 + 'list.innerHTML=\'<div class="lxmw-empty">No liquidity positions</div>\';}return;}'
 + 'var ready=lps.every(function(b){return POOLS[b.liquidity_pool_id]!==undefined;});'
@@ -392,7 +489,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'var id=b.getAttribute("data-lpcopy")||"";var ok=lpCopy(id);'
 + 'try{if(window.lxToast)window.lxToast(ok?"Pool address copied":"Could not copy");}catch(_){}'
 + '},true);}'
-+ 'function wireTabs(){var b=qa(".asset-tabs button");if(!b.length||window.__lxmwTabs)return;window.__lxmwTabs=1;'
++ 'function wireTabs(){var b=qa(".asset-tabs:not(.lx-wcgroup) button");if(!b.length||window.__lxmwTabs)return;window.__lxmwTabs=1;'
 + 'b.forEach(function(btn){btn.addEventListener("click",function(){setTimeout(pass,30);setTimeout(pass,260);});});}'
 
 // ---- recent activity --------------------------------------------------------------------------------
@@ -442,6 +539,52 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + '}catch(_){}}'
 + 'if(document.readyState!=="loading")pass();else document.addEventListener("DOMContentLoaded",pass);'
 + 'setInterval(pass,900);'
+
+// ---- asset row overflow menu (kebab) ----------------------------------------------------------
++ 'function rmShut(){var m=document.querySelector(".lxmw-astmenu");if(m&&m.parentNode)m.parentNode.removeChild(m);}'
++ 'if(!window.__lxmwSelWired){window.__lxmwSelWired=1;'
++ 'document.addEventListener("click",function(e){'
++ 'var r=e.target&&e.target.closest?e.target.closest(".lxmw-row.lxmw-ast[data-lxsel]"):null; if(!r)return;'
++ 'var c=r.getAttribute("data-lxsel")||""; window.__lxmwSel=c;'
++ 'var all=document.querySelectorAll(".lxmw-row.lxmw-ast[data-lxsel]");'
++ 'for(var i=0;i<all.length;i++){var on=all[i].getAttribute("data-lxsel")===c;'
++ 'if(all[i].classList.contains("lxmw-sel")!==on)all[i].classList.toggle("lxmw-sel",on);}'
++ '},true);}'
++ 'function rmPinned(){try{var p=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");return Array.isArray(p)?p:[];}catch(_){return [];}}'
++ 'function rmTogglePin(code){var p=rmPinned(),i=p.indexOf(code);'
++ 'if(i>=0)p.splice(i,1); else p.unshift(code);'
++ 'try{localStorage.setItem("lumos.pinned",JSON.stringify(p));}catch(_){}'
++ 'try{var l=document.getElementById("assetList");if(l)l.removeAttribute("data-lxmw");}catch(_){}'
++ 'try{if(window.__lxMWassets)window.__lxMWassets();}catch(_){}}'
++ 'document.addEventListener("click",function(e){'
++ 'var t=e.target&&e.target.closest?e.target.closest("[data-astmenu]"):null;'
++ 'if(!t){ if(!(e.target.closest&&e.target.closest(".lxmw-astmenu")))rmShut(); return; }'
++ 'e.preventDefault();e.stopPropagation();if(e.stopImmediatePropagation)e.stopImmediatePropagation();'
++ 'var open=!!document.querySelector(".lxmw-astmenu"); rmShut(); if(open)return;'
++ 'var code=t.getAttribute("data-astmenu")||"",iss=t.getAttribute("data-astmi")||"";'
++ 'var pinned=rmPinned().indexOf(code)>=0;'
++ 'var m=document.createElement("div");m.className="lxmw-astmenu";'
++ 'm.innerHTML=\'<button type="button" data-rm="view">View asset</button>\''
++ '+\'<button type="button" data-rm="pin"\'+(pinned?\' class="on"\':"")+\'>\'+(pinned?"Unpin":"Pin to top")+\'</button>\''
++ '+(iss?\'<button type="button" data-rm="copy">Copy issuer address</button>\':"")'
++ '+\'<button type="button" data-rm="exp">View on Stellar Explorer</button>\';'
++ 'document.body.appendChild(m);'
++ 'var vw=document.documentElement.clientWidth||window.innerWidth||360;'
++ 'var vh=document.documentElement.clientHeight||window.innerHeight||640;'
++ 'var r=t.getBoundingClientRect(),mw=m.offsetWidth||196,mh=m.offsetHeight||160;'
++ 'var L=Math.max(8,Math.min(r.right-mw,vw-mw-8));'
++ 'var T=(r.bottom+6+mh>vh-8)?Math.max(8,r.top-mh-6):(r.bottom+6);'
++ 'm.style.left=L+"px";m.style.top=T+"px";'
++ 'm.addEventListener("click",function(ev){'
++ 'var b=ev.target&&ev.target.closest?ev.target.closest("[data-rm]"):null; if(!b)return;'
++ 'ev.preventDefault();ev.stopPropagation();if(ev.stopImmediatePropagation)ev.stopImmediatePropagation();'
++ 'var k=b.getAttribute("data-rm");'
++ 'if(k==="view"){ rmShut(); location.href="/trade/stellar/"+encodeURIComponent(code+(iss?("-"+iss):"")); return; }'
++ 'if(k==="pin"){ rmShut(); rmTogglePin(code); return; }'
++ 'if(k==="copy"){ try{navigator.clipboard.writeText(iss);}catch(_){} b.textContent="Copied \u2713"; setTimeout(rmShut,700); return; }'
++ 'if(k==="exp"){ rmShut(); window.open(iss?("https://stellar.expert/explorer/public/asset/"+encodeURIComponent(code+"-"+iss)):"https://stellar.expert/explorer/public/asset/XLM","_blank","noopener"); return; }'
++ '},true);'
++ '},true);'
 + '})();</scr'+'ipt>';
 
 let n = 0;

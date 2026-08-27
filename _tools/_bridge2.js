@@ -51,7 +51,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       let h=json[k]; const before=h;
       h=h.replace(/Balance: 12,500 /g,'Balance: 12.5K '); // shorten to save space (was wrapping)
       h=stripFootNote(h);
-      h=h.replace(/<style id="lx-bridge2css">[\s\S]*?<\/style>/,''); // re-inject fresh (idempotent)
+      h=h.replace(/<style id="lx-bridge2css">[\s\S]*?<\/style>/g,''); // re-inject fresh (idempotent)
       const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+STYLE+h.slice(bi);
       if(h!==before){ json[k]=h; n++; }
     }

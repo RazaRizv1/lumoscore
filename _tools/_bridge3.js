@@ -7,6 +7,13 @@ const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');cons
 const XPLINK='<td class="br-xp"><a class="br-xplink" href="#" aria-label="View on explorer" title="View on explorer"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"></path><path d="M10 14 21 3"></path><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h6"></path></svg></a></td>';
 
 const STYLE='<style id="lx-bridge3css">'
+/* #8: step 1 had ~89px of nothing between the destination box and Next. .br-errslot reserves room
+   for an error message so the button does not jump when one appears -- fair -- but it was doing so
+   with a 51px top margin AND a 38px reservation, on a panel that usually has no error at all. The
+   reservation goes; the slot sizes to its content and takes a normal gap, and Next carries its own. */
++'.br-errslot{margin-top:14px!important;min-height:0!important}'
++'.br-errslot:empty{display:none!important;margin:0!important}'
++'.br-step .br-actions{margin-top:20px!important}'
 // (A) review-leg network logo chip
 +'.br-rv-leg .v .lx-rvnet{width:26px;height:26px;flex:0 0 26px;min-width:26px;border-radius:50%;overflow:hidden;display:inline-flex;align-items:center;justify-content:center;background:var(--surface-3)}'
 +'.br-rv-leg .v .lx-rvnet:empty{display:none}'
@@ -56,7 +63,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
         h=h.replace(/(<tr>(?:(?!<\/tr>)[\s\S])*?br-asschip(?:(?!<\/tr>)[\s\S])*?)<\/tr>/g, '$1'+XPLINK+'</tr>');
       }
       // (C)+styles+script: strip prior, re-inject (idempotent)
-      h=h.replace(/<style id="lx-bridge3css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-bridge3js">[\s\S]*?<\/script>/,'');
+      h=h.replace(/<style id="lx-bridge3css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-bridge3js">[\s\S]*?<\/script>/g,'');
       const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+STYLE+SCRIPT+h.slice(bi);
       if(h!==before){ json[k]=h; n++; }
     }

@@ -19,7 +19,9 @@ const RGBA_MAP = [
 // ---------- B) interaction polish layer ----------
 const CTA = ':where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn)';
 const CARDS = ':where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard)';
-const ROWS = ':where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr)';
+// #assetsTable is the wallet's My Assets table -- it was the one row list on the site that never got
+// this affordance, which is the whole of "add it on desktop wallet > Assets".
+const ROWS = ':where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr)';
 
 const POLISH = `<style id="lx-polish">
 /* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */

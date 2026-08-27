@@ -28,6 +28,7 @@ function cleanMapJson(){
   m['lumoscore-landing'] = '/';
   // dynamic routes with no identifier in the link fall back to the list page
   m['lumoscore-dex-asset'] = '/trade/stellar';
+  m['lumoscore-account']   = '/account/stellar';
   // asset-overview was REMOVED — it duplicated Trade-asset without the ability to act on what it
   // showed. Anything still pointing at it resolves to the Trade page instead.
   m['lumoscore-asset-overview'] = '/trade/stellar';
@@ -47,6 +48,7 @@ function runtime(validArray){
     + '  var base=u.replace(/'+BS+'.html$/,"").replace(/-(dark|light|mobile)$/,"");'
     + '  var p=new URLSearchParams(q), a=p.get("asset");'
     // the two dynamic routes: an ?asset= becomes a path segment
+    + '  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);'
     + '  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);'
     + '  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);'
     // a pool is addressed by its two assets, which a ?pool=<id> link does not carry — leave it alone
@@ -116,6 +118,85 @@ function cleanLinks(html){
     const clean = map[key];
     return clean ? 'href="' + clean + '"' : full;
   });
+}
+
+// THE TOKEN REGISTRY, BAKED IN AT BUILD TIME.
+//
+// Every page resolved a LumosCore token's logo by FETCHING this same file at runtime, which meant the
+// first paint had no URL yet and drew the letter avatar, then swapped it for the real logo a moment
+// later. Two paints is one visible flash, on every page and every asset. Fetching earlier does not fix
+// that -- only knowing the answer synchronously does.
+//
+// So it is emitted into <head>, before any data layer runs, exactly like window.__lxRoute. The runtime
+// lookup becomes a property read and the avatar is never painted for a token we have.
+//
+// Read from assets/tokens/ (the source the build copies into dist/), so it is always whatever
+// _tools/_launchicons.js last wrote. A missing or unreadable file yields {} and every page falls back to
+// the behaviour it had before, rather than failing the build.
+function tokenRegistry(){
+  try{
+    const raw = fs.readFileSync(path.join(__dirname, '..', 'assets', 'tokens', 'launchpad-icons.json'), 'utf8');
+    const m = JSON.parse(raw);
+    if(!m || typeof m !== 'object' || Array.isArray(m)) return {};
+    const out = {};
+    for(const k of Object.keys(m)){
+      const v = m[k];
+      const img = (v && typeof v === 'object') ? v.image : v;
+      const name = (v && typeof v === 'object' && typeof v.name === 'string') ? v.name : '';
+      // same-origin absolute path only -- the page interpolates this into url(), so a value naming
+      // another host would let one bad write repoint every icon on the site
+      if(typeof img === 'string' && img.charAt(0) === '/' && img.indexOf('//') !== 0) out[k] = { image: img, name: name };
+      else if(name) out[k] = { image: '', name: name };
+    }
+    return out;
+  }catch(e){ return {}; }
+}
+const TOKEN_REG_JSON = JSON.stringify(tokenRegistry());
+
+function injectTokenRegistry(html){
+  // Guard on the ASSIGNMENT, not the bare name: the data layers mention __lxTokenRegistry in their
+  // comments, so a name test matched every page and silently skipped the injection entirely.
+  if(html.indexOf('window.__lxTokenRegistry=') >= 0) return html;
+  // Also seed window.__lxLogos, the shared cache every wallet icon path reads (lpIco, ilogo, actBg,
+  // selectSendAsset, the harvesters). It lives in ITS OWN head script, deliberately: the first attempt
+  // spliced this into _walletdata.js's own script string, and when the wallet then reported broken row
+  // clicks and a dead kebab menu I could not clear my own change -- the My Assets table only renders for
+  // a real account, so there was nothing local to click. Here it cannot interact with that script at all.
+  // Seeds only empty slots, so a harvested per-issuer result still wins, and the wallet's own
+  // "window.__lxLogos=window.__lxLogos||{}" preserves whatever is already here.
+  const tag = '<script>window.__lxTokenRegistry=' + TOKEN_REG_JSON + ';'
+    + '(function(){try{var R=window.__lxTokenRegistry,L=(window.__lxLogos=window.__lxLogos||{});'
+    + 'for(var k in R){if(!Object.prototype.hasOwnProperty.call(R,k))continue;'
+    + 'var d=k.indexOf("-");if(d<1)continue;var c=k.slice(0,d),u=R[k]&&R[k].image;'
+    + 'if(typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0&&!L[c])L[c]=u;}}catch(e){}})();'
+    // Wallet: clicking a My Assets row, or View asset in its row menu, opens Trade-Asset.
+    //
+    // This lives in <head> rather than in _walletdata.js for a reason found the hard way: that script
+    // returns early when no account is connected, so an IIFE placed inside it never executed and the
+    // handler was silently absent. Function declarations hoist past that; statements do not. From here
+    // it is attached before anything else runs and cannot be gated.
+    //
+    // Delegated, so it survives the table being re-rendered, and scoped to #assetsTable and .row-menu,
+    // which exist only on the wallet page -- so it is inert everywhere else.
+    + '(function(){if(document.__lxRowNav)return;document.__lxRowNav=1;'
+    + 'function go(c,i){if(!c)return;window.location.href=(c==="XLM")?"lumoscore-dex.html":("lumoscore-dex-asset.html?asset="+encodeURIComponent(c)+(i?("-"+i):""));}'
+    + 'document.addEventListener("click",function(e){'
+    + 'if(!e.target||!e.target.closest)return;'
+    + 'var mb=e.target.closest(".row-menu button");'
+    + 'if(mb&&/view/i.test(mb.textContent||"")){var a=window.__lxActiveAsset||{};if(a.code){e.preventDefault();e.stopPropagation();go(a.code,a.iss);}return;}'
+    // everything interactive keeps its own behaviour: Trade, Send, Trustline, the kebab, the issuer copy
+    + 'if(e.target.closest("button,a,input,select,[class*=copy],[data-copy]"))return;'
+    + 'var row=e.target.closest("#assetsTable tbody tr");if(!row)return;'
+    + 'var ico=row.querySelector(".lx-aico");if(!ico)return;'
+    + 'go(ico.getAttribute("data-lxc")||"",ico.getAttribute("data-lxi")||"");'
+    + '},true);})();'
+    + '</scr'+'ipt>'
+    + '<style>#assetsTable tbody tr{cursor:pointer}</style>';
+  const hi = html.indexOf('<head>');
+  if(hi >= 0) return html.slice(0, hi + 6) + tag + html.slice(hi + 6);
+  const he = html.indexOf('</head>');
+  if(he >= 0) return html.slice(0, he) + tag + html.slice(he);
+  return html;   // no head at all -> leave the page exactly as it was
 }
 
 function injectRuntime(html, validArray){
@@ -192,6 +273,13 @@ function headersFile(isAdmin){
   }
   return '/*\n' + common
     + '\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n'
+    // The token-icon manifest lives under /assets/ but is the one file there that CHANGES: every new
+    // launchpad logo rewrites it. Left immutable, a visitor who loaded it once keeps that copy for a
+    // YEAR and never sees a logo added afterwards -- which is exactly what happened: four logos went
+    // live, served 200, and still rendered as letter tiles because the browser never re-asked for the
+    // index naming them. Cloudflare applies every matching rule and the LAST one wins, so this must
+    // stay below /assets/*.
+    + '\n/assets/tokens/launchpad-icons.json\n  Cache-Control: public, max-age=60, must-revalidate\n'
     + '\n/*.html\n  Cache-Control: public, max-age=0, must-revalidate\n';
 }
 
@@ -210,6 +298,7 @@ const ROUTES = [
   // dynamic first: these carry an asset or pool identifier in the path
   ['/trade/stellar/:asset',            'lumoscore-dex-asset.html'],
   ['/trade/stellar',                   'lumoscore-dex.html'],
+  ['/account/stellar/:address',        'lumoscore-account.html'],
   ['/pools/stellar/id/:pool',          'lumoscore-amm-pool.html'],   // fallback: id-only links
   ['/pools/stellar/:a/:b',             'lumoscore-amm-pool.html'],
   ['/pools/stellar',                   'lumoscore-amm.html'],
@@ -225,6 +314,7 @@ const ROUTES = [
   ['/bridge',                          'lumoscore-bridge.html'],
   ['/wallet',                          'lumoscore-wallet.html'],
   ['/rewards',                         'lumoscore-rewards-dark.html'],   // only variant that exists
+  ['/lumos/stellar',                   'lumoscore-lumos-token.html'],
   ['/lumos',                           'lumoscore-lumos-token.html'],
   ['/signin',                          'lumoscore-signin.html'],
   ['/mcp',                             'lumoscore-mcp.html'],
@@ -610,7 +700,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
   let written = 0;
   for(const name of files){
     const src  = adminOnly ? stripAuthGate(all[name]) : all[name];
-    const html = cleanLinks(rootRelative(injectRuntime(src, validArray)));
+    const html = cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(src), validArray)));
     fs.writeFileSync(path.join(outDir, name), html, 'utf8');
     written++;
   }
@@ -620,7 +710,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
     const landing = all['lumoscore-landing.html'];
     if(!landing) throw new Error('lumoscore-landing.html missing — cannot build the site root');
     fs.writeFileSync(path.join(outDir, 'index.html'),
-      indexHtml(cleanLinks(rootRelative(injectRuntime(landing, validArray)))), 'utf8');
+      indexHtml(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(landing), validArray)))), 'utf8');
   }
   // The admin panel deploys as its OWN Cloudflare project, so it cannot borrow dist/assets the way
   // serve.js lets it locally — without this its favicon and wallet logos 404 in production.

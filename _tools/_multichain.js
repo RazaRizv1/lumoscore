@@ -54,10 +54,10 @@ for(const dev of ['desktop','mobile']){
   for(const k of Object.keys(json)){
     let h=json[k];
     if(h.indexOf('</body>')<0) continue;
-    h=h.replace(/<style id="lx-mc-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-mc">[\s\S]*?<\/script>/,'');
+    h=h.replace(/<style id="lx-mc-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-mc">[\s\S]*?<\/script>/g,'');
     // strip the OLD whole-body gate (blanked heavy pages) + our own chainready gate (idempotent re-inject)
-    h=h.replace(/<style id="lx-preskin-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-preskin-js">[\s\S]*?<\/script>/,'');
-    h=h.replace(/<style id="lx-chainready-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-chainready-js">[\s\S]*?<\/script>/,'');
+    h=h.replace(/<style id="lx-preskin-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-preskin-js">[\s\S]*?<\/script>/g,'');
+    h=h.replace(/<style id="lx-chainready-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-chainready-js">[\s\S]*?<\/script>/g,'');
     if(h.indexOf('</head>')>=0) h=h.replace('</head>',HEAD+'</head>');   // TARGETED per-element gate in <head>
     const bi=h.lastIndexOf('</body>');
     json[k]=h.slice(0,bi)+STYLE+SCRIPT+h.slice(bi); n++;

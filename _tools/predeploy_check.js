@@ -87,6 +87,92 @@ if (ADMIN) {
   if (strays.length) warn.push(`${strays.length} non-admin page(s) in the admin build: ${strays.slice(0, 3).map(rel).join(', ')}`);
 }
 
+// ---- did a page suddenly lose a chunk? ------------------------------------------------------------------
+// Twice now a strip regex written to remove one injected block has instead run forward to the next place
+// its closing sequence happened to occur and deleted everything in between -- 238KB the first time, 37KB
+// the second. Both were invisible until a section was noticed missing. dist is tracked, so the previous
+// build is right there to compare against. A WARNING, not a failure: sections do get removed on purpose.
+if (!ADMIN) {
+  const { execSync } = require('child_process');
+  for (const f of files.filter(f => /\.html$/.test(rel(f)))) {
+    let prev;
+    try { prev = execSync('git show HEAD:dist/' + rel(f), { maxBuffer: 1 << 28, stdio: ['pipe', 'pipe', 'ignore'] }).length; }
+    catch (e) { continue; }                     // new file, nothing to compare
+    const now = fs.statSync(f).size;
+    const drop = prev - now;
+    // Absolute, not a percentage: these pages are ~1MB, so the desktop half of the second incident
+    // (3.8KB, four whole cards) was only 0.34% and a percentage gate slept straight through it.
+    if (drop >= 2048) {
+      warn.push(`${rel(f)} shrank ${(drop / 1024).toFixed(1)}KB (${(drop / prev * 100).toFixed(2)}%) vs HEAD `
+        + `— intended, or did a strip regex overrun?`);
+    }
+  }
+}
+
+// ---- injected scripts must actually parse ---------------------------------------------------------------
+// Every lx-* script is assembled by string concatenation in _tools/, so a stray character produces a
+// page that looks fine and silently does nothing -- the tag is in the DOM, the browser throws
+// "Unexpected end of input" into a console nobody is watching, and the section falls back to whatever
+// the design mocked. Caught here by parsing each one instead.
+{
+  const vm = require('vm');
+  const seen = new Set();
+  for (const f of files.filter(f => f.endsWith('.html'))) {
+    const s = fs.readFileSync(f, 'utf8');
+    const re = /<script id="(lx-[a-z0-9-]+)">([\s\S]*?)<\/script>/g;
+    let m;
+    while ((m = re.exec(s))) {
+      const key = rel(f) + '#' + m[1];
+      if (seen.has(key)) continue;
+      seen.add(key);
+      try { new vm.Script(m[2], { filename: key }); }
+      catch (err) { fail.push(`${rel(f)}: <script id="${m[1]}"> does not parse — ${String(err.message).slice(0, 120)}`); }
+    }
+  }
+}
+
+// ---- hero style order ----------------------------------------------------------------------------------
+// _heromono.js holds the shared monochrome look for both heroes and beats the per-page hero CSS on
+// document order, not specificity. Every one of these tools re-appends its block at the end of <head>,
+// so running _dexdata.js or _poolshero.js AFTER _heromono.js silently puts the orange ground back --
+// which is exactly what shipped once. The build is only correct when lx-heromono-css is last.
+if (!ADMIN) {
+  for (const f of files.filter(f => /lumoscore-(dex|amm)(-dark|-mobile)?\.html$/.test(rel(f)))) {
+    const s = fs.readFileSync(f, 'utf8');
+    const mono = s.indexOf('<style id="lx-heromono-css"');
+    if (mono < 0) continue;
+    const after = ['lx-dexmain-css', 'lx-poolshero-css']
+      .filter(id => { const at = s.indexOf('<style id="' + id + '"'); return at >= 0 && at > mono; });
+    if (after.length) fail.push(`${rel(f)}: ${after.join(' and ')} sits AFTER lx-heromono-css — the hero will `
+      + `paint in its per-page colour, not the monochrome one. Re-run _tools/_heromono.js last and rebuild.`);
+  }
+}
+
+// ---- outgoing links keep their nofollow ----------------------------------------------------------------
+// _nofollow.js folds rel="nofollow" into every external <a> in the container, and it has to run AFTER the
+// transforms that inject those anchors. Re-running any of them (_ammdata, _dexassetdata, _accountpage...)
+// re-emits its script block WITHOUT the mark, so the static HTML silently loses it again -- the same
+// build-order trap as the hero styles. The runtime guard would still stamp the DOM, but a crawler reading
+// the raw HTML would see followed links, which is the whole point of the change. Re-run _nofollow.js.
+if (!ADMIN) {
+  const OURS = (h) => h === 'lumoscore.com' || h.endsWith('.lumoscore.com');
+  for (const f of files) {
+    const s = fs.readFileSync(f, 'utf8');
+    let n = 0, sample = '';
+    for (const tag of (s.match(/<a\b[^>]*>/gi) || [])) {
+      const h = /href=("|')(https?:\/\/[^"']*)\1/i.exec(tag);
+      if (!h) continue;
+      const host = h[2].replace(/^https?:\/\//i, '').split(/[/?#]/)[0].toLowerCase().replace(/:\d+$/, '');
+      if (OURS(host)) continue;
+      if (/\bnofollow\b/.test(tag)) continue;
+      if (!n) sample = host;
+      n++;
+    }
+    if (n) fail.push(`${rel(f)}: ${n} outgoing <a> tag(s) without rel="nofollow" (e.g. ${sample}) — `
+      + `a transform re-ran after _nofollow.js. Re-run node _tools/_nofollow.js and rebuild.`);
+  }
+}
+
 // ---- report -------------------------------------------------------------------------------------------
 const size = (files.reduce((s, f) => s + fs.statSync(f).size, 0) / 1048576).toFixed(1);
 console.log(`\n  Pre-deploy check — ${LABEL} build (${files.length} files, ${size} MB)\n`);
