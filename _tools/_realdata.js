@@ -28,6 +28,11 @@ const CSS='<style id="lx-realdata-css">'
 // item 28: the blinking dot. A heading that pulses is a permanent attention-grab for something that is
 // simply true -- the feed is live whether or not a dot blinks -- and it sat oddly against a static title.
 +'.live-pulse{display:none!important}'
++'.lx-vpill .val.lx-pending{color:transparent;border-radius:5px;min-width:56px;display:inline-block;'
++'background-image:linear-gradient(90deg,rgba(140,140,150,.10),rgba(140,140,150,.22),rgba(140,140,150,.10));'
++'background-size:200% 100%;animation:lxdbxshim 1.2s ease-in-out infinite}'
++'@keyframes lxdbxshim{0%{background-position:200% 0}100%{background-position:-200% 0}}'
++'@media(prefers-reduced-motion:reduce){.lx-vpill .val.lx-pending{animation:none}}'
 // item 28: the marks were small enough to read as decoration. The identicon and the asset marks now
 // share one size, so a row scans as [who or what] + [what happened] instead of two sizes of dot.
 +'.lx-actident{flex:0 0 auto;vertical-align:-6px;margin-right:7px;box-shadow:0 0 0 1px rgba(127,127,140,.22)}'
@@ -64,7 +69,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'"Accounts":["#2dd4bf",\'<circle cx="12" cy="8.7" r="3.5"/><path d="M5.5 19.4a6.5 6.5 0 0 1 13 0"/>\']};'
 +'function pico(lbl){var e=PICO[lbl];if(!e)return "";'
 +'return \'<span class="lx-pico" style="color:\'+e[0]+\'" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">\'+e[1]+\'</svg></span>\';}'
-+'function vpill(lbl,val,tip){return \'<span class="status-pill lx-vpill" data-lx-noswap=""\'+(tip?\' title="\'+tip+\'"\':"")+\'>\'+pico(lbl)+\'<span class="lx-vpt"><span class="lbl">\'+lbl+\'</span><span class="val">\'+val+\'</span></span></span>\';}'
++'function vpill(lbl,val,tip){var _p=(val==="\\u2014"||val==="\\u2026")?" lx-pending":"";return \'<span class="status-pill lx-vpill" data-lx-noswap=""\'+(tip?\' title="\'+tip+\'"\':"")+\'>\'+pico(lbl)+\'<span class="lx-vpt"><span class="lbl">\'+lbl+\'</span><span class="val\'+_p+\'">\'+val+\'</span></span></span>\';}'
 +'function rebuildStats(v){var row=document.querySelector(".status-row");if(!row)return;var net=row.querySelector(".lx-netcard");'
 // keep the LIVE netcard node (do NOT snapshot its HTML or mark the row noswap) so mc-engine can still
 // rebrand it aptos->stellar; only the value pills are rebuilt (each is its own data-lx-noswap pill).

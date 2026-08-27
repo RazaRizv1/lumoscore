@@ -39,12 +39,14 @@ const ACTIVITY = {
 // Where the card belongs, if it has to go back in: immediately after the design's own marker comment.
 const ANCHOR = { desktop: '<!-- Live activity -->', mobile: '<!-- ===== Live Activity ===== -->' };
 
+// [title, tag, gradient from, gradient to, posted]. The dates are placeholders like the rest of the row
+// and will come from the feed's own timestamps once there is one.
 const POSTS = [
-  ['How liquidity pools work on Stellar', 'Explainer', '#a855f7', '#6d28d9'],
-  ['Understanding trustlines and why assets need them', 'Guide', '#38bdf8', '#2563eb'],
-  ['Bridging USDC across chains with Circle CCTP', 'Explainer', '#2dd4bf', '#0d9488'],
-  ['Path payments, and how a swap actually settles', 'Guide', '#f7b733', '#ea6a2c'],
-  ['Issuing a token on Stellar, start to finish', 'Walkthrough', '#f472b6', '#be185d'],
+  ['How liquidity pools work on Stellar', 'Explainer', '#a855f7', '#6d28d9', '2 days ago'],
+  ['Understanding trustlines and why assets need them', 'Guide', '#38bdf8', '#2563eb', '5 days ago'],
+  ['Bridging USDC across chains with Circle CCTP', 'Explainer', '#2dd4bf', '#0d9488', '1w ago'],
+  ['Path payments, and how a swap actually settles', 'Guide', '#f7b733', '#ea6a2c', '3w ago'],
+  ['Issuing a token on Stellar, start to finish', 'Walkthrough', '#f472b6', '#be185d', '1mo ago'],
 ];
 
 const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
@@ -73,6 +75,7 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   // overflowing when the page is narrower, and each column can shrink to nothing before it wraps.
   + '.lx-blogs-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));'
   + 'gap:16px;min-width:0}'
+  + '@media(min-width:1000px){.lx-blogs-list{grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}}'
   // Not a link: no href, and the cursor does not promise one. It keeps a link's hover so the section
   // reads as the list of posts it will become.
   + '.lx-blog-row{display:flex;flex-direction:column;align-items:stretch;gap:10px;min-width:0;'
@@ -89,11 +92,19 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   + '.lx-blog-cover::after{content:"";position:absolute;inset:0;'
   + 'background:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0) 55%)}'
   + '.lx-blog-meta{min-width:0;display:flex;flex-direction:column;gap:5px}'
-  + '.lx-blog-title{font:600 14px/1.35 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
+  + '.lx-blog-title{font:700 15px/1.35 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
   + 'transition:color .15s ease;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;'
   + 'overflow:hidden}'
-  + '.lx-blog-tag{font:700 10px/1 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;'
-  + 'letter-spacing:.06em;color:var(--text-muted,#8a8fa3)}'
+  + '.lx-blog-sub{display:flex;align-items:center;gap:7px;min-width:0}'
+  + '.lx-blog-tag,.lx-blog-when{font:600 11px/1 "Hanken Grotesk",system-ui,sans-serif;'
+  + 'color:var(--text-muted,#8a8fa3);white-space:nowrap}'
+  + '.lx-blog-dot{width:3px;height:3px;border-radius:50%;background:var(--text-muted,#8a8fa3);'
+  + 'opacity:.6;flex:0 0 auto}'
+  // The tag rides on the cover, where it reads as part of the artwork rather than a third line of text.
+  + '.lx-blog-chip{position:absolute;left:8px;bottom:8px;z-index:1;'
+  + 'font:700 9.5px/1 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;'
+  + 'color:#fff;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.22);'
+  + 'border-radius:999px;padding:4px 7px;backdrop-filter:blur(3px)}'
   + '</style>';
 
 function esc(s) {
@@ -108,10 +119,11 @@ const CARD = '<div class="lx-blogs-card" data-lxnonav="1">'
   + '<div class="lx-blogs-list">'
   + POSTS.map(function (p) {
     return '<article class="lx-blog-row">'
-      + '<div class="lx-blog-cover" style="--c1:' + p[2] + ';--c2:' + p[3] + '"></div>'
+      + '<div class="lx-blog-cover" style="--c1:' + p[2] + ';--c2:' + p[3] + '">'
+      + '<span class="lx-blog-chip">' + esc(p[1]) + '</span></div>'
       + '<div class="lx-blog-meta">'
       + '<div class="lx-blog-title">' + esc(p[0]) + '</div>'
-      + '<div class="lx-blog-tag">' + esc(p[1]) + '</div>'
+      + '<div class="lx-blog-sub"><span class="lx-blog-when">' + esc(p[4]) + '</span></div>'
       + '</div></article>';
   }).join('')
   + '</div></div>';
