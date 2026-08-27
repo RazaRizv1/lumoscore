@@ -19,6 +19,7 @@
 // Idempotent: the style and script blocks are replaced wholesale and the row is only inserted where one
 // is not already present.
 const fs = require('fs');
+const crypto = require('crypto');
 const { read, getContents, VERIFIED } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
@@ -101,7 +102,12 @@ const IC_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 // opaque PNGs with square corners; the card clips them to its own radius (see .lx-dbx-art).
 // The build roots "assets/..." to "/assets/...", so the relative form here is correct.
 function art(name) {
-  return '<img class="lx-dbx-art" src="assets/products/' + name + '.png" alt="" aria-hidden="true" width="256" height="256" decoding="async">';
+  let v = '';
+  try {
+    const buf = fs.readFileSync(__dirname + '/../assets/products/' + name + '.png');
+    v = '?v=' + crypto.createHash('sha1').update(buf).digest('hex').slice(0, 8);
+  } catch (e) { /* no file yet: ship the bare path rather than fail the build */ }
+  return '<img class="lx-dbx-art" src="assets/products/' + name + '.png' + v + '" alt="" aria-hidden="true" width="256" height="256" decoding="async">';
 }
 const ART_TRADE  = art('trade');
 const ART_POOLS  = art('pools');
