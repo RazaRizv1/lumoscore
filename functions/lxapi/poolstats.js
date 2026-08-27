@@ -81,24 +81,6 @@ export async function onRequestGet(ctx) {
     let pools = null;
     const prev = await cache.match(COUNT_KEY).catch(() => null);
     if (prev) { const p = await prev.json().catch(() => null); if (p && p.pools) pools = p.pools; }
-    // Recount in the background: after the response, never in front of it. Kept for a week, so a spell
-    // of throttling costs freshness rather than the figure.
-    const stale = !prev || (Date.now() - (((prev && prev.headers.get('x-lx-ts')) | 0) || 0)) > COUNT_TTL * 1000;
-    if (stale) {
-      try {
-        ctx && ctx.waitUntil && ctx.waitUntil((async () => {
-          const c = await poolCount().catch(() => null);
-          if (!c) return;
-          await cache.put(COUNT_KEY, new Response(JSON.stringify({ pools: c, ts: Date.now() }), {
-            headers: {
-              'content-type': 'application/json',
-              'cache-control': 'public, max-age=604800',
-              'x-lx-ts': String(Date.now()),
-            },
-          }));
-        })());
-      } catch (_) {}
-    }
 
     const seen = new Set();
     let tvlXlm = 0, vol24Usd = 0, fees24Usd = 0, lpAccounts = 0, trades24 = 0, sampled = 0;
@@ -140,6 +122,17 @@ export async function onRequestGet(ctx) {
     });
     // Only a complete result is ever cached, so a throttled minute cannot be frozen in for 10 more.
     try { ctx && ctx.waitUntil && ctx.waitUntil(cache.put(key, res.clone())); } catch (_) {}
+    // AFTER the response: recount, and keep it for a week. Never in front of the sample -- doing that
+    // starved the sample's own fetches and turned this endpoint into a 502 on a cold colo.
+    try {
+      ctx && ctx.waitUntil && ctx.waitUntil((async () => {
+        const c = await poolCount().catch(() => null);
+        if (!c) return;
+        await cache.put(COUNT_KEY, new Response(JSON.stringify({ pools: c, ts: Date.now() }), {
+          headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=604800' },
+        })).catch(() => {});
+      })());
+    } catch (_) {}
     return res;
   } catch (e) {
     return new Response(JSON.stringify({ error: String((e && e.message) || e) }), {
