@@ -43,11 +43,7 @@ async function j(url, ttl = SAMPLE_TTL) {
 // ~16 tiny requests, cached for 6h so almost nobody pays for it.
 async function poolCount() {
   const has = async (off) => {
-    let d = await j(API + '?limit=1&cursor=' + off, COUNT_TTL);
-    if (!d) {
-      await new Promise((r) => setTimeout(r, 250));
-      d = await j(API + '?limit=1&cursor=' + off, COUNT_TTL);
-    }
+    const d = await j(API + '?limit=1&cursor=' + off, COUNT_TTL);
     if (!d) throw new Error('rate limited');
     return (((d._embedded || {}).records) || []).length > 0;
   };
@@ -81,16 +77,27 @@ export async function onRequestGet(ctx) {
     // The count is ~20 sequential probes. It is the expensive part, it is cached for 6h, and it is
     // optional: if upstream throttles it we still return the aggregate and the caller keeps its own
     // pool count rather than showing nothing.
-    let pools = await poolCount().catch(() => null);
     const COUNT_KEY = new Request('https://lumoscore.internal/lxapi/poolcount', { method: 'GET' });
-    if (pools == null) {
-      const prev = await cache.match(COUNT_KEY).catch(() => null);
-      if (prev) { const p = await prev.json().catch(() => null); if (p && p.pools) pools = p.pools; }
-    } else {
-      const body = JSON.stringify({ pools, ts: Date.now() });
-      ctx.waitUntil(cache.put(COUNT_KEY, new Response(body, {
-        headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=604800' },
-      })));
+    let pools = null;
+    const prev = await cache.match(COUNT_KEY).catch(() => null);
+    if (prev) { const p = await prev.json().catch(() => null); if (p && p.pools) pools = p.pools; }
+    // Recount in the background: after the response, never in front of it. Kept for a week, so a spell
+    // of throttling costs freshness rather than the figure.
+    const stale = !prev || (Date.now() - (((prev && prev.headers.get('x-lx-ts')) | 0) || 0)) > COUNT_TTL * 1000;
+    if (stale) {
+      try {
+        ctx && ctx.waitUntil && ctx.waitUntil((async () => {
+          const c = await poolCount().catch(() => null);
+          if (!c) return;
+          await cache.put(COUNT_KEY, new Response(JSON.stringify({ pools: c, ts: Date.now() }), {
+            headers: {
+              'content-type': 'application/json',
+              'cache-control': 'public, max-age=604800',
+              'x-lx-ts': String(Date.now()),
+            },
+          }));
+        })());
+      } catch (_) {}
     }
 
     const seen = new Set();
@@ -124,7 +131,12 @@ export async function onRequestGet(ctx) {
       ts: Date.now(),
     });
     const res = new Response(body, {
-      headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + SAMPLE_TTL },
+      headers: {
+        'content-type': 'application/json',
+        // A payload still missing its count is cached briefly, so the background recount shows up on the
+        // next request rather than ten minutes later.
+        'cache-control': 'public, max-age=' + (pools == null ? 30 : SAMPLE_TTL),
+      },
     });
     // Only a complete result is ever cached, so a throttled minute cannot be frozen in for 10 more.
     try { ctx && ctx.waitUntil && ctx.waitUntil(cache.put(key, res.clone())); } catch (_) {}
