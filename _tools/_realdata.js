@@ -76,11 +76,13 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'+vpill("Accounts",v.accounts,(v.accountsExact?v.accountsExact+" \\u2014 e":"E")+"very account ever funded on Stellar, a running total rather than a daily figure");while(frag.firstChild)row.appendChild(frag.firstChild);'
 +'row.classList.add("lx-ready");}'
 // ---- stat cards ----
-+'function stats(){Promise.all(['
-+'j("/lxapi/xlm").catch(function(){return null;}),'
-+'j("/lxapi/netstats").catch(function(){return null;}),'
-+'j("/lxapi/poolstats").catch(function(){return null;})'
-+']).then(function(res){var x=res[0]||{};var ns=res[1];var ps=res[2];'
++'var _lxX=null,_lxNS=null,_lxPS=null;'
++'function stats(){'
++'Promise.all([j("/lxapi/xlm").catch(function(){return null;}),j("/lxapi/netstats").catch(function(){return null;})])'
++'.then(function(res){if(res[0])_lxX=res[0];if(res[1])_lxNS=res[1];paintStats();}).catch(function(){});'
++'j("/lxapi/poolstats").catch(function(){return null;}).then(function(p){if(p){_lxPS=p;paintStats();}}).catch(function(){});'
++'}'
++'function paintStats(){var x=_lxX||{};var ns=_lxNS;var ps=_lxPS;'
 +'var cg={usd:x.usd,usd_24h_change:x.chg24,usd_market_cap:x.mcap,usd_24h_vol:x.vol24};'
 // Publish it: _dashtop.js needs the same price and 24h change, and CoinGecko's free tier is a few
 // calls a minute -- two components each fetching the same object is how that budget gets spent.
@@ -107,7 +109,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'rebuildStats(_v);'
 +'var _keep={};for(var _k2 in _v){if(_v[_k2]&&_v[_k2]!=="\\u2014")_keep[_k2]=_v[_k2];}'
 +'try{localStorage.setItem("lumos.netstats",JSON.stringify(_keep));}catch(_){}'   // cache last real values so the next load shows them instantly (no blank/loading flash)
-+'}).catch(function(){});}'
++'}'
 // ---- live activity feed (real swaps) ----
 +'var LX_FEEACCT="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";'
 +'var XPI=\'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>\';'
