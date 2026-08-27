@@ -95,11 +95,10 @@ async function iconManifest(origin) {
       const v = m[k];
       const img = (v && typeof v === 'object') ? v.image : v;
       const name = (v && typeof v === 'object' && typeof v.name === 'string') ? v.name.slice(0, 80) : '';
-      // desc rides along with name. Without this the field was read off the manifest and thrown away, so
-      // every asset we host fell through to the client's generic line and all of them read identically.
-      // Capped, single-line, and quote-stripped: it is written into a quoted TOML value.
-      // Split/join rather than a regex: this value is written into a double-quoted TOML string, and a
-      // stray quote or newline there would break the document for every wallet that parses it.
+      // desc rides along with name. Without this it is read off the manifest and thrown away, so every
+      // asset we host falls through to the client's generic line and they all read identically.
+      // Split/join rather than a regex: this is written into a double-quoted TOML string, and a stray
+      // quote or newline there would break the document for every wallet that parses it.
       const desc = (v && typeof v === 'object' && typeof v.desc === 'string')
         ? v.desc.split('"').join('').split("'").join('')
                 .split('\r').join(' ').split('\n').join(' ')
@@ -247,8 +246,8 @@ export async function onRequestGet(ctx) {
     const hit = list.find((a) => a.code === code && a.issuer === issuer);
     if (hit) {
       // Already discovered through stellar.expert. Its tomlInfo is a mirror of THIS document, so it can
-      // never be the source of a name or description we have not published yet -- the manifest is. Fill
-      // in only what the discovered record is missing, so a real upstream value is never overwritten.
+      // never be the source of a description we have not published yet -- the manifest is. Fill in only
+      // what the discovered record is missing, so a real upstream value is never overwritten.
       if (!hit.name && mi.name) hit.name = mi.name;
       if (!hit.desc && mi.desc) hit.desc = mi.desc;
       continue;

@@ -1088,7 +1088,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
   +'return fetch("https://"+d+"/.well-known/stellar.toml").then(function(r){return r.ok?r.text():null;});'
   +'}).then(function(txt){if(!txt)return;'
   +'var re=new RegExp("code\\\\s*=\\\\s*[\\x22\\x27]"+code+"[\\x22\\x27][^]*?(?=\\\\[\\\\[|$)","i");'
-  +'var blk=(txt.match(re)||[""])[0]||txt;'
+  +'var blk=(txt.match(re)||[""])[0];if(!blk)return;'
   +'var img=(blk.match(/image\\s*=\\s*["\x27]([^"\x27]+)["\x27]/i)||[])[1];'
   +'if(img)swPutLogo(k,img);}).catch(function(){});}'
     +'function ssIco(a){if(!a)return "";var _lk=(a.code||"")+"-"+(a.iss||a.issuer||"");var lg=(a.native||a.code==="XLM")?(window.__lxStellarUri||SWSU):(a.logo||(window.__lxLogos||{})[a.code]||(window.__lxLogosI||{})[_lk]||(a.code==="LUMOS"?SWLL:""));var bg=lg?("url(\\x27"+String(lg).replace(/\\x27/g,"%27")+"\\x27)"):swCol(a.code||"?");if(!lg)swQueueLogo(a.code||"",(a.iss||a.issuer||""));return \'<span class="lx-ss-ico" data-k="\'+esc(_lk)+\'" style="--al:\'+bg+\'" data-l="\'+(lg?"":esc((a.code||"?").slice(0,1).toUpperCase()))+\'"></span>\';}'
