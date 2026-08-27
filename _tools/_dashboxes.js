@@ -68,7 +68,7 @@ const STYLE = '<style id="lx-dashboxes-css">/*lxts:1.1*/'
   // The way out, in the product's own colour so the card reads as one control rather than a grey box
   // with an orange link in it. Named for the page it opens, not a generic "more".
   + '.lx-dbx-link{display:inline-flex;align-items:center;gap:5px;'
-  + 'font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--pc,var(--accent,#ea6a2c))}'
+  + 'font:700 18px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--pc,var(--accent,#ea6a2c))}'
   + '.lx-dbx-link svg{width:12px;height:12px;transition:transform .15s}'
   + 'a.lx-dbx-card:hover .lx-dbx-link svg{transform:translateX(2px)}'
   // A hairline above the link separates the figures from the action without a heavy divider.
@@ -146,7 +146,7 @@ const QAFIRST = '<script id="lx-dashqafirst">(function(){'
 const ROW = '<div class="lx-dbx">'
   + card('/trade/stellar', ART_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets', '#a855f7', '#6d28d9')
   + card('/pools/stellar', ART_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools', '#38bdf8', '#2563eb')
-  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['Asset', 'casset'], ['Via', 'cvia']], 'Bridge USDC', '#2dd4bf', '#0d9488')
+  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['Asset', 'casset'], ['Via', 'cvia']], 'Explore Bridge', '#2dd4bf', '#0d9488')
   + card('/launchpad', ART_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']], 'Launch a token', '#f7b733', '#ea6a2c')
   + '</div>';
 
