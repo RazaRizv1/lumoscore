@@ -7,9 +7,9 @@
 // keeping it in step for ever.
 //
 // THE POSTS ARE PLACEHOLDERS AND THE PAGE SAYS SO, for the same reason the dashboard card does: there is
-// no blog to read yet. Neutral subjects, no invented announcements, and nothing clickable -- a card that
-// opened nothing would be worse than one that plainly is not ready. When the real feed exists, replace
-// POSTS and drop the "Coming soon" tag; the markup and CSS do not change.
+// no blog to read yet. Neutral subjects, no invented announcements. The index cards DO open the article
+// page -- the dashboard card stays unclickable, where a placeholder beside live figures would read as
+// real. When the feed exists, replace POSTS and drop the "Coming soon" tag; the markup does not change.
 //
 // Idempotent: the page key is rebuilt from the donor on every run, so re-running cannot layer this on
 // top of a previous copy of itself.
@@ -44,7 +44,7 @@ const STYLE = '<style id="lx-blogpage-css">/*lxts:1.1*/'
   + '.lx-bp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:26px 22px}'
   // Not links: there is nowhere to go yet, so the cursor does not promise one. The hover stays, so the
   // page reads as the index it will become.
-  + '.lx-bp-card{display:flex;flex-direction:column;gap:12px;min-width:0;cursor:default}'
+  + '.lx-bp-card{display:flex;flex-direction:column;gap:12px;min-width:0;text-decoration:none;color:inherit}'
   + '.lx-bp-cover{width:100%;aspect-ratio:16/9;border-radius:14px;position:relative;overflow:hidden;'
   + 'background:linear-gradient(135deg,var(--c1) 0%,var(--c2) 100%);'
   + 'transition:transform .18s ease,box-shadow .18s ease}'
@@ -72,14 +72,24 @@ const MAIN = '<div class="container">'
   + 'Stellar. The first posts are being written — the cards below are placeholders for their layout.</p>'
   + '<div class="lx-bp-grid">'
   + POSTS.map(function (p) {
-    return '<article class="lx-bp-card">'
+    // The index cards ARE links now -- there is a page behind them. The dashboard card stays
+    // unclickable, as asked: that one sits next to live figures where a placeholder that opens
+    // something reads as real. Here the reader has already chosen to look at the blog.
+    return '<a class="lx-bp-card" href="/blog/' + slug(p[0]) + '">'
       + '<div class="lx-bp-cover" style="--c1:' + p[2] + ';--c2:' + p[3] + '">'
       + '<span class="lx-bp-chip">' + esc(p[1]) + '</span></div>'
       + '<div class="lx-bp-title">' + esc(p[0]) + '</div>'
       + '<div class="lx-bp-when">' + esc(p[4]) + '</div>'
-      + '</article>';
+      + '</a>';
   }).join('')
   + '</div></div>';
+
+// The donor marks its OWN nav item active. Left alone, the sidebar highlights MCP while the reader
+// is on the blog. There is no blog entry in that nav, so the right state is nothing highlighted.
+function clearNavActive(html) {
+  return html.replace(/(<a[^>]*class=")nx-item active(")/g, "$1nx-item$2")
+             .replace(/(<a[^>]*class=")nx-item active( [^"]*")/g, "$1nx-item$2");
+}
 
 // swap the contents of <main>, keeping the tag itself (its classes drive the page's own layout)
 function replaceMain(html, inner) {
@@ -102,6 +112,103 @@ function setHead(html) {
   return hi < 0 ? h : h.slice(0, hi) + STYLE + h.slice(hi);
 }
 
+// The url a post gets. Every post resolves to the same template today, because there is one article
+// page and no content behind it yet; when the feed exists this is the key it will be looked up by.
+function slug(title) {
+  return String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 60);
+}
+
+const POST = POSTS[0];   // the template renders one post; the first is the one it shows
+
+// The body is real, accurate, general information about how a constant-product pool works -- not lorem,
+// and not an announcement. It states nothing about LumosCore that could be read as a claim, and nothing
+// dated, so it is safe on a live site while the section is still marked Coming soon. It exists to show
+// the reading experience: heading, paragraph, list, callout, and the measure the type is set to.
+const BODY = '<p>A liquidity pool holds a reserve of two assets and lets anyone trade between them '
+  + 'without a counterparty on the other side. Instead of matching your order against someone else\'s, '
+  + 'the pool quotes a price from the balance of what it holds.</p>'
+  + '<h2>The constant product</h2>'
+  + '<p>Stellar\'s pools use the constant-product rule: multiply the two reserves together and that '
+  + 'product stays the same across a trade. Put one asset in, take the other out, and the amount you '
+  + 'receive is whatever keeps that product level after the fee is taken.</p>'
+  + '<p>Two things follow from it. The price moves as you trade, because you are changing the very '
+  + 'balance the price is read from. And the bigger the trade relative to the reserves, the further it '
+  + 'moves — which is what slippage measures.</p>'
+  + '<h2>What a depositor holds</h2>'
+  + '<p>Depositing means adding both assets in the ratio the pool already holds them, and receiving '
+  + 'pool shares in return. The shares are a claim on a fraction of the reserves, not on a fixed amount '
+  + 'of either asset:</p>'
+  + '<ul><li>Fees from every trade accrue to the reserves, so the shares grow into a slightly larger '
+  + 'slice over time.</li>'
+  + '<li>The mix changes with the market. As one asset is bought out of the pool, the shares come to '
+  + 'represent more of the other.</li>'
+  + '<li>Withdrawing returns both assets at whatever ratio holds at that moment.</li></ul>'
+  + '<blockquote>Holding pool shares is not the same as holding the two assets. If their prices move '
+  + 'apart, the shares are worth less than simply keeping both would have been — the difference is what '
+  + 'is meant by impermanent loss.</blockquote>'
+  + '<h2>Before depositing</h2>'
+  + '<p>Look at the depth of the reserves rather than the headline rate: a pool with little in it will '
+  + 'move a long way on a modest trade, in both directions. Check that both assets are ones you are '
+  + 'content to hold, since a withdrawal can return more of whichever the market has been selling.</p>';
+
+const POST_MAIN = '<div class="container lx-post">'
+  + '<a class="lx-post-back" href="/blog">'
+  + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>'
+  + 'All posts</a>'
+  + '<div class="lx-post-head">'
+  + '<span class="lx-bp-chip lx-post-chip">' + esc(POST[1]) + '</span>'
+  + '<h1>' + esc(POST[0]) + '</h1>'
+  + '<div class="lx-post-meta">' + esc(POST[4]) + '<span class="lx-post-dot"></span>4 min read</div>'
+  + '</div>'
+  + '<div class="lx-post-cover" style="--c1:' + POST[2] + ';--c2:' + POST[3] + '"></div>'
+  + '<article class="lx-post-body">' + BODY + '</article>'
+  + '<div class="lx-post-foot"><a class="lx-post-back" href="/blog">'
+  + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>'
+  + 'Back to all posts</a></div>'
+  + '</div>';
+
+const POST_STYLE = '<style id="lx-blogpost-css">/*lxts:1.1*/'
+  // A reading measure, not a full-width page: long lines are what makes an article tiring to read.
+  + '.lx-post{max-width:760px}'
+  + '.lx-post-back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;'
+  + 'font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);'
+  + 'transition:color .15s ease}'
+  + '.lx-post-back:hover{color:var(--accent,#ea6a2c)}'
+  + '.lx-post-back svg{width:13px;height:13px}'
+  + '.lx-post-head{margin:18px 0 20px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}'
+  + '.lx-post-chip{position:static;background:rgba(127,127,140,.16);border-color:transparent;'
+  + 'color:var(--text-muted,#8a8fa3);backdrop-filter:none}'
+  + '.lx-post-head h1{margin:0;font:800 36px/1.2 "Hanken Grotesk",system-ui,sans-serif;'
+  + 'color:var(--text,#0e0e10);letter-spacing:-.022em;text-wrap:balance}'
+  + '.lx-post-meta{display:flex;align-items:center;gap:9px;'
+  + 'font:600 13px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3)}'
+  + '.lx-post-dot{width:3px;height:3px;border-radius:50%;background:currentColor;opacity:.6}'
+  + '.lx-post-cover{width:100%;aspect-ratio:21/9;border-radius:16px;margin:0 0 30px;position:relative;'
+  + 'overflow:hidden;background:linear-gradient(135deg,var(--c1) 0%,var(--c2) 100%)}'
+  + '.lx-post-cover::after{content:"";position:absolute;inset:0;'
+  + 'background:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0) 55%)}'
+  + '.lx-post-body{font:400 17px/1.72 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}'
+  + '.lx-post-body p{margin:0 0 20px}'
+  + '.lx-post-body h2{margin:34px 0 12px;font:800 22px/1.3 "Hanken Grotesk",system-ui,sans-serif;'
+  + 'color:var(--text,#0e0e10);letter-spacing:-.015em}'
+  + '.lx-post-body ul{margin:0 0 20px;padding-left:20px}'
+  + '.lx-post-body li{margin:0 0 9px}'
+  + '.lx-post-body blockquote{margin:26px 0;padding:14px 18px;border-left:3px solid var(--accent,#ea6a2c);'
+  + 'background:var(--surface-2,rgba(127,127,140,.07));border-radius:0 10px 10px 0;color:var(--text,#0e0e10)}'
+  + '.lx-post-foot{margin-top:34px;padding-top:20px;border-top:1px solid var(--border,#ececef)}'
+  + '@media(max-width:620px){.lx-post-head h1{font-size:28px}.lx-post-cover{aspect-ratio:16/9}}'
+  + '</style>';
+
+function setPostHead(html) {
+  let h = html.replace(/<title>[\s\S]*?<\/title>/,
+    '<title>' + esc(POST[0]) + ' | LumosCore Blog</title>');
+  h = h.replace(/<meta name="description" content="[^"]*">/,
+    '<meta name="description" content="How a constant-product liquidity pool prices a trade on Stellar, '
+    + 'what pool shares represent, and what to look at before depositing.">');
+  const hi = h.indexOf('</head>');
+  return hi < 0 ? h : h.slice(0, hi) + STYLE + POST_STYLE + h.slice(hi);
+}
+
 let made = 0, linked = 0;
 for (const [dev, donor, target] of [
   ['desktop', 'lumoscore-mcp.html', 'lumoscore-blog.html'],
@@ -116,8 +223,12 @@ for (const [dev, donor, target] of [
 
   const body = replaceMain(src, MAIN);
   if (!body) { console.error('  ' + file + ': could not find <main> in the donor — skipped'); continue; }
-  json[target] = setHead(body);
+  json[target] = clearNavActive(setHead(body));
   made++;
+
+  const postBody = replaceMain(src, POST_MAIN);
+  if (postBody) { json[target.replace('-blog', '-blog-post')] = clearNavActive(setPostHead(postBody)); made++; }
+  else console.error('  ' + file + ': could not build the post page from the donor');
 
   // the footer's "Blogs" link, on every page in this container, now has somewhere to go
   for (const k of Object.keys(json)) {

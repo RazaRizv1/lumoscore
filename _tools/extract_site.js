@@ -318,6 +318,7 @@ const ROUTES = [
   ['/lumos',                           'lumoscore-lumos-token.html'],
   ['/signin',                          'lumoscore-signin.html'],
   ['/mcp',                             'lumoscore-mcp.html'],
+  ['/blog/:slug',                      'lumoscore-blog-post.html'],
   ['/blog',                            'lumoscore-blog.html'],
 ];
 
