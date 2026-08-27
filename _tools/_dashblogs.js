@@ -71,11 +71,18 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   + '.lx-blogs-soon{font:700 10px/1 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;'
   + 'letter-spacing:.06em;color:var(--text-muted,#8a8fa3);border:1px solid var(--border,#ececef);'
   + 'border-radius:999px;padding:4px 8px;white-space:nowrap}'
-  // Five across on a wide screen. auto-fit rather than a hard repeat(5) so the row reflows instead of
-  // overflowing when the page is narrower, and each column can shrink to nothing before it wraps.
-  + '.lx-blogs-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));'
-  + 'gap:16px;min-width:0}'
-  + '@media(min-width:1000px){.lx-blogs-list{grid-template-columns:repeat(5,minmax(0,1fr));gap:14px}}'
+  // Phone and tablet: one swipeable row. The cards bleed to the card's edges rather than stopping at its
+  // padding, so the row reads as continuing off-screen instead of ending in a margin.
+  + '.lx-blogs-list{display:grid;grid-auto-flow:column;grid-auto-columns:62%;gap:12px;min-width:0;'
+  + 'overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;'
+  + 'margin:0 -16px;padding:0 16px 2px;scrollbar-width:none;-ms-overflow-style:none}'
+  + '.lx-blogs-list::-webkit-scrollbar{display:none}'
+  + '.lx-blog-row{scroll-snap-align:start}'
+  // Desktop: back to five fixed columns, and every scroller property reset -- leaving grid-auto-flow or
+  // the negative margin behind would quietly reshape the row that works.
+  + '@media(min-width:1000px){.lx-blogs-list{grid-auto-flow:row;grid-auto-columns:auto;'
+  + 'grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;overflow-x:visible;'
+  + 'scroll-snap-type:none;margin:0;padding:0}}'
   // Not a link: no href, and the cursor does not promise one. It keeps a link's hover so the section
   // reads as the list of posts it will become.
   + '.lx-blog-row{display:flex;flex-direction:column;align-items:stretch;gap:10px;min-width:0;'
@@ -85,10 +92,11 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   + '.lx-blog-row:hover .lx-blog-title{color:var(--accent,#ea6a2c)}'
   + '@media(prefers-reduced-motion:reduce){.lx-blog-row{transition:none}}'
   // A real cover shape rather than a thumbnail: full width of its column, 16:10.
-  + '.lx-blog-cover{width:100%;aspect-ratio:16/10;border-radius:12px;'
+  + '.lx-blog-cover{width:100%;aspect-ratio:16/9;border-radius:12px;'
   + 'background:linear-gradient(135deg,var(--c1) 0%,var(--c2) 100%);position:relative;overflow:hidden;'
   + 'transition:transform .16s ease,box-shadow .16s ease}'
   + '@media(prefers-reduced-motion:reduce){.lx-blog-cover{transition:none}}'
+  + '@media(min-width:1000px){.lx-blog-cover{aspect-ratio:16/10}}'
   + '.lx-blog-cover::after{content:"";position:absolute;inset:0;'
   + 'background:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0) 55%)}'
   + '.lx-blog-meta{min-width:0;display:flex;flex-direction:column;gap:5px}'
