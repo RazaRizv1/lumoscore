@@ -1,40 +1,57 @@
-// Dashboard: replace "Live Platform Activity" with a Blog section.
+// Dashboard: a Blog section BELOW the Live Platform Activity feed. Both exist; neither replaces the other.
 //
-// The activity feed listed raw Horizon trades. That is the Trade page's job, and on a screen meant for
-// orientation it was a wall of other people's swaps. The slot goes to LumosCore's own writing instead.
+// An earlier version of this transform swapped the activity feed out for the blog. That was reverted on
+// request, and reverting it is why this file also RESTORES the activity card: the containers are
+// gitignored, so a git revert would have brought dist back without them and the next rebuild would have
+// dropped the feed again. The markup below is the original, recovered from the tracked dist/ at the
+// commit before the swap -- note the two devices genuinely differ (desktop carries "— Stellar", mobile
+// does not, and they sit at different depths).
 //
-// THE POSTS ARE PLACEHOLDERS, DELIBERATELY, AND THEY SAY SO. There is no blog to read yet -- the footer's
-// "Blogs" link is still href="#" and /blog 404s -- so the section ships with five rows of stand-in
-// content and a "Coming soon" tag beside the heading, and nothing in it is clickable.
+// THE POSTS ARE PLACEHOLDERS, AND THE SECTION SAYS SO. There is no blog to read yet -- the footer's
+// "Blogs" link is still href="#" and /blog 404s -- so it ships with stand-in rows, a "Coming soon" tag,
+// and nothing clickable. The rows keep a link's hover, as asked, but no href and no pointer cursor.
 //
-// The titles are neutral topic lines, not announcements. A placeholder that reads "LumosCore launches X"
-// would be read as fact by anyone who saw it, on a live product handling real funds; these name subjects
-// a blog might cover and claim nothing. There are no dates either, for the same reason -- a fabricated
-// timestamp is a fabricated fact. When the real feed exists, replace POSTS with what it returns and drop
-// the "Coming soon" tag; the markup and CSS do not need to change.
+// The titles are neutral subjects, not announcements, and there are no dates. A placeholder reading
+// "LumosCore launches X" would be taken as fact by anyone who saw it, on a live product handling real
+// funds, and an invented timestamp is an invented fact. When the real feed exists, replace POSTS with
+// what it returns and drop the tag; the markup and CSS do not need to change.
 //
-// The covers are inline gradients rather than image files: nothing to host, nothing to cache-bust, and
-// they follow the theme instead of carrying a baked background into light mode.
+// Covers are inline gradients rather than image files: nothing to host, nothing to cache-bust, and they
+// follow the theme instead of carrying a baked background into light mode.
 //
-// Idempotent: the style block and the card are both replaced wholesale on each run.
+// Idempotent: the style block and the blog card are stripped and re-added on every run, and the activity
+// card is only re-inserted when it is actually missing.
 //
 // Usage: node _tools/_dashblogs.js
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
-// Neutral subjects, no claims, no dates. Each pair is [title, tag] and the two gradient stops.
+// Recovered verbatim from dist/ at the commit before the swap, per device.
+const ACTIVITY = {
+  desktop: '<div class="activity-card" data-lxnonav="1">\n          <div class="market-head">\n'
+    + '            <h3><span class="live-pulse"></span>Live Platform Activity — Stellar</h3>\n'
+    + '          </div>\n          <div class="activity-scroll" id="activityList"></div>\n        </div>',
+  mobile: '<div class="activity-card" data-lxnonav="1">\n      <div class="market-head">\n'
+    + '        <h3><span class="live-pulse"></span>Live Platform Activity</h3>\n'
+    + '      </div>\n      <div class="activity-scroll" id="activityList"></div>\n    </div>',
+};
+// Where the card belongs, if it has to go back in: immediately after the design's own marker comment.
+const ANCHOR = { desktop: '<!-- Live activity -->', mobile: '<!-- ===== Live Activity ===== -->' };
+
 const POSTS = [
   ['How liquidity pools work on Stellar', 'Explainer', '#a855f7', '#6d28d9'],
   ['Understanding trustlines and why assets need them', 'Guide', '#38bdf8', '#2563eb'],
   ['Bridging USDC across chains with Circle CCTP', 'Explainer', '#2dd4bf', '#0d9488'],
   ['Path payments, and how a swap actually settles', 'Guide', '#f7b733', '#ea6a2c'],
   ['Issuing a token on Stellar, start to finish', 'Walkthrough', '#f472b6', '#be185d'],
+  ['Reading a pool: reserves, share and slippage', 'Explainer', '#60a5fa', '#4338ca'],
 ];
 
 const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   + '.lx-blogs-card{background:var(--surface,#fff);border:1px solid var(--border,#ececef);'
-  + 'border-radius:14px;padding:15px 16px;min-width:0;display:flex;flex-direction:column;gap:12px}'
+  + 'border-radius:14px;padding:15px 16px;min-width:0;display:flex;flex-direction:column;gap:12px;'
+  + 'margin-top:16px}'
   + '.lx-blogs-head{display:flex;align-items:center;gap:9px;min-width:0}'
   + '.lx-blogs-head h3{margin:0;font:800 15px/1.1 "Hanken Grotesk",system-ui,sans-serif;'
   + 'color:var(--text,#0e0e10);letter-spacing:-.015em}'
@@ -42,17 +59,19 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   + '.lx-blogs-soon{font:700 10px/1 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;'
   + 'letter-spacing:.06em;color:var(--text-muted,#8a8fa3);border:1px solid var(--border,#ececef);'
   + 'border-radius:999px;padding:4px 8px;white-space:nowrap}'
-  + '.lx-blogs-list{display:flex;flex-direction:column;gap:2px;min-width:0}'
+  // It runs the full width of the page now rather than sitting in a narrow column, so the posts flow
+  // into as many columns as fit instead of becoming one very long list.
+  + '.lx-blogs-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));'
+  + 'gap:2px 10px;min-width:0}'
   // Not a link: no href, and the cursor does not promise one. It keeps a link's hover so the section
   // reads as the list of posts it will become.
-  + '.lx-blog-row{display:flex;align-items:center;gap:12px;min-width:0;padding:9px 8px;margin:0 -8px;'
+  + '.lx-blog-row{display:flex;align-items:center;gap:12px;min-width:0;padding:9px 8px;'
   + 'border-radius:10px;cursor:default;transition:background .15s ease}'
   + '.lx-blog-row:hover{background:rgba(127,127,140,.08)}'
   + '.lx-blog-row:hover .lx-blog-title{color:var(--accent,#ea6a2c)}'
   + '@media(prefers-reduced-motion:reduce){.lx-blog-row{transition:none}}'
   + '.lx-blog-cover{flex:0 0 auto;width:56px;height:56px;border-radius:12px;'
   + 'background:linear-gradient(135deg,var(--c1) 0%,var(--c2) 100%);position:relative;overflow:hidden}'
-  // a soft top light, so the cover reads as a surface rather than a flat swatch
   + '.lx-blog-cover::after{content:"";position:absolute;inset:0;'
   + 'background:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0) 55%)}'
   + '.lx-blog-meta{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:4px}'
@@ -80,23 +99,21 @@ const CARD = '<div class="lx-blogs-card" data-lxnonav="1">'
   }).join('')
   + '</div></div>';
 
-// Pull out a balanced <div ...> ... </div> starting at `from`, so nested divs do not end it early.
+// End index of a balanced <div ...> ... </div> that starts at `from`, so nested divs do not end it early.
 function balancedDiv(html, from) {
   let i = html.indexOf('>', from);
   if (i < 0) return -1;
   let depth = 1;
   i++;
   while (i < html.length && depth > 0) {
-    const nextOpen = html.indexOf('<div', i);
-    const nextClose = html.indexOf('</div>', i);
-    if (nextClose < 0) return -1;
-    if (nextOpen >= 0 && nextOpen < nextClose) { depth++; i = nextOpen + 4; }
-    else { depth--; i = nextClose + 6; }
+    const o = html.indexOf('<div', i), c = html.indexOf('</div>', i);
+    if (c < 0) return -1;
+    if (o >= 0 && o < c) { depth++; i = o + 4; } else { depth--; i = c + 6; }
   }
   return depth === 0 ? i : -1;
 }
 
-let files = 0, keys = 0;
+let files = 0, keys = 0, restored = 0;
 for (const dev of ['desktop', 'mobile']) {
   const file = 'lumoscore-aptos-' + dev + '.html';
   let data; try { data = read(file); } catch (e) { continue; }
@@ -106,18 +123,39 @@ for (const dev of ['desktop', 'mobile']) {
   for (const k of Object.keys(json)) {
     let p = json[k];
     if (typeof p !== 'string') continue;
-    if (p.indexOf('status-row') < 0 || (p.indexOf('activityList') < 0 && p.indexOf('lx-blogs-card') < 0)) continue;
+    if (p.indexOf('status-row') < 0) continue;                       // dashboard only
+    if (p.indexOf(ANCHOR[dev]) < 0) continue;
 
     const before = p;
     p = p.replace(/<style id="lx-dashblogs-css">[\s\S]*?<\/style>/g, '');
 
-    // Replace whichever is there: the original activity card, or our own card from a previous run.
-    let at = p.indexOf('<div class="activity-card"');
-    if (at < 0) at = p.indexOf('<div class="lx-blogs-card"');
-    if (at < 0) continue;
-    const end = balancedDiv(p, at);
-    if (end < 0) { console.error('  ' + file + ' / ' + k + ': could not find the end of the card — skipped'); continue; }
-    p = p.slice(0, at) + CARD + p.slice(end);
+    // 1. drop our own card wherever it is, so a re-run cannot stack a second one
+    let b = p.indexOf('<div class="lx-blogs-card"');
+    while (b >= 0) {
+      const bEnd = balancedDiv(p, b);
+      if (bEnd < 0) break;
+      p = p.slice(0, b) + p.slice(bEnd);
+      b = p.indexOf('<div class="lx-blogs-card"');
+    }
+
+    // 2. put the activity feed back if it is missing
+    let a = p.indexOf('<div class="activity-card"');
+    if (a < 0) {
+      const an = p.indexOf(ANCHOR[dev]);
+      const ins = an + ANCHOR[dev].length;
+      p = p.slice(0, ins) + '\n        ' + ACTIVITY[dev] + p.slice(ins);
+      a = p.indexOf('<div class="activity-card"');
+      restored++;
+    }
+
+    // 3. blog goes BELOW it. On desktop the feed sits inside a grid, so step past that grid's close;
+    //    on mobile it is a direct child of <main> and the card follows it straight away.
+    let at = balancedDiv(p, a);
+    if (at < 0) { console.error('  ' + file + ' / ' + k + ': activity card not balanced — skipped'); continue; }
+    const after = p.slice(at, at + 40);
+    const m = after.match(/^\s*<\/div>/);
+    if (m) at += m[0].length;
+    p = p.slice(0, at) + '\n\n        ' + CARD + p.slice(at);
 
     const hi = p.indexOf('</head>');
     if (hi < 0) continue;
@@ -131,4 +169,5 @@ for (const dev of ['desktop', 'mobile']) {
     fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
   }
 }
-console.log('dashboard blog section on ' + keys + ' page key(s) across ' + files + ' container(s)');
+console.log('blog section below the activity feed on ' + keys + ' page key(s), ' + files
+  + ' container(s); activity card restored on ' + restored);
