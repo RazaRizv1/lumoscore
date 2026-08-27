@@ -32,8 +32,10 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 // different word -- which is what made the list look unsettled rather than merely tall. 16px fits the
 // common lines, the padding hands back another 16px, and <b> keeps each value welded to its ticker so
 // a line that still has to break falls between clauses instead of inside a number.
-+'.activity-feed-row{padding-left:16px!important;padding-right:16px!important;gap:12px;'
++'.activity-feed-row{padding:14px 16px!important;gap:12px;align-items:center;'
 +'transition:background .14s ease}'
++'.activity-feed-row .info{display:flex;flex-direction:column;gap:7px;min-width:0}'
++'.activity-feed-row .time{flex:0 0 auto;min-width:38px;text-align:right}'
 +'.activity-feed-row:hover{background:rgba(127,127,140,.055)}'
 +'@media(prefers-reduced-motion:reduce){.activity-feed-row{transition:none}}'
 +'.activity-feed-row .info .type{font-size:16px;line-height:1.45;letter-spacing:-.005em}'
@@ -62,7 +64,6 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 // share one size, so a row scans as [who or what] + [what happened] instead of two sizes of dot.
 +'.lx-actident{flex:0 0 auto;vertical-align:-6px;margin-right:7px;box-shadow:0 0 0 1px rgba(127,127,140,.22)}'
 +'.activity-feed-row .act-inl{width:20px!important;height:20px!important;vertical-align:-5px}'
-+'.activity-feed-row .act-ic{width:40px!important;height:40px!important;border-radius:13px}'
 // item 28: give the rows a little rhythm and a hover, so the list reads as a feed rather than a wall.
 +'.activity-feed-row{padding-top:11px!important;padding-bottom:11px!important;transition:background .16s ease}'
 +'.activity-feed-row:hover{background:rgba(127,127,140,.06)}'
@@ -223,7 +224,6 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +' data-i="\'+esc(iss||"")+\'" data-l=""></span>\'; }'
 +'function feedRow(r){'
 +'return \'<div class="activity-feed-row" data-lx-noswap="1">\''
-+'+(\'<div class="act-ic \'+r.cls+\'">\'+r.ic+\'</div>\')'
 +'+\'<div class="info"><div class="type">\'+r.type+\'</div>\''
 +'+(r.who?(\'<div class="meta lx-actmeta">\'+(r.act?(\'<span class="lx-actverb \'+r.cls+\'">\'+esc(r.act)+\'</span>\'):"")+\'<a class="lx-actwho" href="/account/stellar/\'+esc(r.who)+\'" title="\'+esc(r.who)+\'">\'+iavatar(r.who,18)+esc(shortAddr(r.who))+\'</a></div>\'):\'<div class="meta"></div>\')'
 +'+\'</div>\''
