@@ -19,6 +19,7 @@
 // Idempotent: the style and script blocks are replaced wholesale and the row is only inserted where one
 // is not already present.
 const fs = require('fs');
+const crypto = require('crypto');
 const { read, getContents, VERIFIED } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
@@ -29,7 +30,7 @@ const CURATED = Object.keys(VERIFIED)
   .filter((p) => p[0] && p[1] && /^G[A-Z2-7]{55}$/.test(p[1]))
   .map((p) => p[0] + '-' + p[1]);
 
-const STYLE = '<style id="lx-dashboxes-css">'
+const STYLE = '<style id="lx-dashboxes-css">/*lxts:1.1*/'
   // Three across on a desktop, stacked on a phone. Small gap, as asked -- these read as one instrument
   // panel rather than three separate cards.
   // One column: these are a stack beside the activity feed, not a strip across the page.
@@ -39,9 +40,11 @@ const STYLE = '<style id="lx-dashboxes-css">'
   // A row now: the product's graphic on the left, everything else stacked beside it.
   + '.lx-dbx-card{background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:14px;'
   + 'padding:15px 16px;min-width:0;display:flex;flex-direction:row;align-items:flex-start;gap:14px}'
-  // The graphic. currentColor is set from --pc on the card, so one SVG serves every product and both
-  // themes; the tile behind the motif is the same colour at low alpha rather than a second value.
-  + '.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;color:var(--pc,var(--accent,#ea6a2c));filter:drop-shadow(0 4px 10px rgba(0,0,0,.34))}'
+  // The graphic: supplied artwork, one opaque PNG per product, filling the card height and flush to
+  // its left edge. The card carries overflow:hidden, so its own border-radius clips the artwork -- no
+  // radius on the image itself, which keeps it right if the card radius ever changes.
+  + '.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;border-radius:20%;object-fit:cover;'
+  + 'box-shadow:0 4px 10px rgba(0,0,0,.28)}'
   + '@media(max-width:520px){.lx-dbx-art{width:46px;height:46px;flex:0 0 46px}}'
   + '.lx-dbx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:9px}'
   + '.lx-dbx-head{display:flex;align-items:center;gap:8px;min-width:0}'
@@ -59,13 +62,13 @@ const STYLE = '<style id="lx-dashboxes-css">'
   // A value that is a NAME rather than a figure reads wrong in the tabular face -- it is set in the text
   // face at a size that fits the row it shares.
   + '.lx-dbx-v[data-k="cvia"]{font:800 15px/1.35 "Hanken Grotesk",system-ui,sans-serif!important;letter-spacing:-.01em}'
-  + '.lx-dbx-v{margin-top:4px;font:800 20px/1.1 "JetBrains Mono",ui-monospace,monospace;'
+  + '.lx-dbx-v{margin-top:4px;font:800 15px/1.1 "JetBrains Mono",ui-monospace,monospace;'
   + 'color:var(--text,#0e0e10);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
   + 'letter-spacing:-.02em}'
   // The way out, in the product's own colour so the card reads as one control rather than a grey box
   // with an orange link in it. Named for the page it opens, not a generic "more".
   + '.lx-dbx-link{display:inline-flex;align-items:center;gap:5px;'
-  + 'font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--pc,var(--accent,#ea6a2c))}'
+  + 'font:700 18px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--pc,var(--accent,#ea6a2c))}'
   + '.lx-dbx-link svg{width:12px;height:12px;transition:transform .15s}'
   + 'a.lx-dbx-card:hover .lx-dbx-link svg{transform:translateX(2px)}'
   // A hairline above the link separates the figures from the action without a heavy divider.
@@ -92,59 +95,21 @@ const STYLE = '<style id="lx-dashboxes-css">'
 
 const IC_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
-// Each tile is one inline SVG: a rounded plate of the product colour at low alpha, a motif that says
-// what the product does, and nothing that needs a file or a second palette. currentColor throughout,
-// so the card sets the colour once via --pc and both themes follow.
-var _tileSeq = 0;
-function tile(inner) {
-  // Unique per call: four of these live in one document and a repeated id makes every later tile paint
-  // with the first one's gradient.
-  var n = ++_tileSeq, gp = 'lxgw' + n, gl = 'lxgl' + n, gd = 'lxgd' + n;
-  return '<svg class="lx-dbx-art" viewBox="0 0 56 56" fill="none" aria-hidden="true">'
-    + '<defs>'
-    + '<linearGradient id="' + gp + '" x1="0" y1="0" x2=".85" y2="1">'
-    + '<stop offset="0" stop-color="currentColor" stop-opacity="1"/>'
-    + '<stop offset="1" style="stop-color:var(--pc2,currentColor)" stop-opacity="1"/></linearGradient>'
-    + '<radialGradient id="' + gl + '" cx=".5" cy=".42" r=".62">'
-    + '<stop offset="0" stop-color="#fff" stop-opacity=".26"/>'
-    + '<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
-    // Depth: light lands on the top face and the bottom falls away. Without this the chip is a flat
-    // swatch — the colour was the fix, this is what makes it read as an object.
-    + '<linearGradient id="' + gd + '" x1="0" y1="0" x2="0" y2="1">'
-    + '<stop offset="0" stop-color="#fff" stop-opacity=".20"/>'
-    + '<stop offset=".46" stop-color="#fff" stop-opacity="0"/>'
-    + '<stop offset=".62" stop-color="#000" stop-opacity="0"/>'
-    + '<stop offset="1" stop-color="#000" stop-opacity=".16"/></linearGradient>'
-    + '</defs>'
-    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gp + ')"/>'
-    // full-bleed, not inset 6px: an inset glow reads as a second smaller square sitting on the first
-    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gl + ')"/>'
-    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gd + ')"/>'
-    + '<rect x=".8" y=".8" width="54.4" height="54.4" rx="15.4" fill="none" stroke="#fff" stroke-opacity=".22"/>'
-    // A brighter arc along the top edge. White at 14% rather than the product colour, because a highlight
-    // is light falling ON the tile, not more of the tile.
-    + '<path d="M4 16 A12 12 0 0 1 16 4 L40 4 A12 12 0 0 1 52 16" fill="none" stroke="#fff" stroke-opacity=".34" stroke-width="1.2"/>'
-    + '<g style="color:#fff">' + inner + '</g></svg>';
+// The four product marks are supplied artwork, cut from one sheet into assets/products/. They are
+// opaque PNGs with square corners; the card clips them to its own radius (see .lx-dbx-art).
+// The build roots "assets/..." to "/assets/...", so the relative form here is correct.
+function art(name) {
+  let v = '';
+  try {
+    const buf = fs.readFileSync(__dirname + '/../assets/products/' + name + '.png');
+    v = '?v=' + crypto.createHash('sha1').update(buf).digest('hex').slice(0, 8);
+  } catch (e) { /* no file yet: ship the bare path rather than fail the build */ }
+  return '<img class="lx-dbx-art" src="assets/products/' + name + '.png' + v + '" alt="" aria-hidden="true" width="256" height="256" decoding="async">';
 }
-// Trade: a market going up, over its own volume bars.
-const ART_TRADE = tile('<g opacity=".30"><rect x="15" y="33" width="5" height="9" rx="2" fill="currentColor"/>'
-  + '<rect x="25" y="29" width="5" height="13" rx="2" fill="currentColor"/>'
-  + '<rect x="35" y="24" width="5" height="18" rx="2" fill="currentColor"/></g>'
-  + '<path d="M15 30 L24 22 L31 27 L42 15" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
-  + '<path d="M35 15 L42 15 L42 22" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>');
-// Pools: two reserves overlapping, which is what an AMM pair is, inside the ripple of the pool.
-const ART_POOLS = tile('<circle cx="28" cy="28" r="16" stroke="currentColor" stroke-width="1.6" opacity=".30"/>'
-  + '<circle cx="23" cy="28" r="9" fill="currentColor" opacity=".38"/>'
-  + '<circle cx="33" cy="28" r="9" fill="currentColor" opacity=".72"/>');
-// Cross-chain: two networks, and the hop between them.
-const ART_CHAIN = tile('<path d="M17 33 C17 19, 39 19, 39 33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>'
-  + '<circle cx="17" cy="35" r="5.5" fill="currentColor"/>'
-  + '<circle cx="39" cy="35" r="5.5" fill="currentColor"/>'
-  + '<circle cx="28" cy="20" r="2.6" fill="currentColor" opacity=".55"/>');
-// Launchpad: a launch, with the trail it leaves.
-const ART_LAUNCH = tile('<path d="M19 37 L36 20" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>'
-  + '<path d="M29 20 L36 20 L36 27" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>'
-  + '<g opacity=".45" fill="currentColor"><circle cx="19" cy="41" r="2.2"/><circle cx="25" cy="43" r="1.5"/><circle cx="14" cy="44" r="1.2"/></g>');
+const ART_TRADE  = art('trade');
+const ART_POOLS  = art('pools');
+const ART_CHAIN  = art('crosschain');
+const ART_LAUNCH = art('launchpad');
 
 // pc = the product colour, applied once and inherited by the tile, the hover edge and the link.
 function card(href, art, title, stats, cta, pc, pc2) {
@@ -181,7 +146,7 @@ const QAFIRST = '<script id="lx-dashqafirst">(function(){'
 const ROW = '<div class="lx-dbx">'
   + card('/trade/stellar', ART_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets', '#a855f7', '#6d28d9')
   + card('/pools/stellar', ART_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools', '#38bdf8', '#2563eb')
-  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['Asset', 'casset'], ['Via', 'cvia']], 'Bridge USDC', '#2dd4bf', '#0d9488')
+  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['Asset', 'casset'], ['Via', 'cvia']], 'Explore Bridge', '#2dd4bf', '#0d9488')
   + card('/launchpad', ART_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']], 'Launch a token', '#f7b733', '#ea6a2c')
   + '</div>';
 
