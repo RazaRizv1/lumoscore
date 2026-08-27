@@ -47,7 +47,7 @@ const STYLE = '<style id="lx-dashboxes-css">/*lxts:1.1*/'
   + '@media(max-width:520px){.lx-dbx-art{width:46px;height:46px;flex:0 0 46px}}'
   // Bigger on a wide screen, where the card can spare it. Still a square in the padded layout: the
   // full-height version read as a panel rather than a mark, and it is the figures that carry the card.
-  + '@media(min-width:1000px){.lx-dbx-art{width:100px;height:100px;flex:0 0 100px;border-radius:18px}}'
+  + '@media(min-width:1000px){.lx-dbx-art{width:130px;height:130px;flex:0 0 130px;border-radius:22px}}'
   + '.lx-dbx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:9px}'
   + '.lx-dbx-head{display:flex;align-items:center;gap:8px;min-width:0}'
   + '.lx-dbx-t{font:800 15px/1.1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
