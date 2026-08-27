@@ -85,6 +85,21 @@ function findCurrency(text, code, issuer) {
   return null;
 }
 
+const EXPERT = 'https://api.stellar.expert/explorer/public/asset/';
+
+async function expertImage(asset) {
+  try {
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 3500);
+    const r = await fetch(EXPERT + asset, { signal: c.signal, cf: { cacheTtl: 86400, cacheEverything: true } });
+    clearTimeout(t);
+    if (!r.ok) return '';
+    const d = await r.json();
+    const ti = (d && d.toml_info) || {};
+    return ti.image || ti.orgLogo || '';
+  } catch (_) { return ''; }
+}
+
 export async function onRequestGet({ request }) {
   const q = new URL(request.url).searchParams;
   const asset = q.get('asset') || '';
@@ -97,22 +112,22 @@ export async function onRequestGet({ request }) {
   try {
     // 1) the issuer names its own domain; we never guess one
     const accRes = await withTimeout('https://horizon.stellar.org/accounts/' + issuer, TIMEOUT_MS);
-    if (!accRes.ok) return json({ image: '', domain: '', reason: 'issuer not found' }, 200, TTL_MISS);
+    if (!accRes.ok) return json({ image: (await expertImage(asset)), domain: '', reason: 'issuer not found' }, 200, TTL_MISS);
     const acc = await accRes.json();
     const domain = (acc && acc.home_domain) || '';
-    if (!domain) return json({ image: '', domain: '', reason: 'no home_domain' }, 200, TTL_MISS);
+    if (!domain) return json({ image: (await expertImage(asset)), domain: '', reason: 'no home_domain' }, 200, TTL_MISS);
     if (!HOST_RE.test(domain)) {
       // some issuers put a whole URL in home_domain; only a bare host can be joined to the well-known path
-      return json({ image: '', domain: domain, reason: 'home_domain is not a host' }, 200, TTL_MISS);
+      return json({ image: (await expertImage(asset)), domain: domain, reason: 'home_domain is not a host' }, 200, TTL_MISS);
     }
 
     // 2) the toml on that domain, and only the well-known path
     const tomlRes = await withTimeout('https://' + domain + '/.well-known/stellar.toml', TIMEOUT_MS);
-    if (!tomlRes.ok) return json({ image: '', domain: domain, reason: 'toml ' + tomlRes.status }, 200, TTL_MISS);
+    if (!tomlRes.ok) return json({ image: (await expertImage(asset)), domain: domain, reason: 'toml ' + tomlRes.status }, 200, TTL_MISS);
     const text = await tomlRes.text();
 
     const cur = findCurrency(text, code, issuer);
-    if (!cur) return json({ image: '', domain: domain, reason: 'asset not in toml' }, 200, TTL_MISS);
+    if (!cur) return json({ image: (await expertImage(asset)), domain: domain, reason: 'asset not in toml' }, 200, TTL_MISS);
 
     // Org-level socials as a fallback: many issuers declare them once for the org rather than per asset.
     const org = (key) => {
@@ -128,12 +143,16 @@ export async function onRequestGet({ request }) {
       telegram: cur.telegram || org('ORG_TELEGRAM'),
     };
     // A block with copy but no artwork is still a useful answer, so it is no longer treated as a miss.
-    if (!cur.image) { body.reason = 'no image key'; return json(body, 200, cur.desc ? TTL_HIT : TTL_MISS); }
+    if (!cur.image) {
+      body.image = await expertImage(asset);
+      body.reason = body.image ? 'toml has no image; stellar.expert' : 'no image key';
+      return json(body, 200, body.image || cur.desc ? TTL_HIT : TTL_MISS);
+    }
     return json(body, 200, TTL_HIT);
   } catch (e) {
     const msg = String((e && e.message) || e);
     // an abort is a slow or dead host, not a bug -- cache it briefly so one bad domain cannot be retried
     // on every render
-    return json({ image: '', domain: '', reason: /abort/i.test(msg) ? 'timeout' : msg }, 200, 300);
+    return json({ image: (await expertImage(asset)), domain: '', reason: /abort/i.test(msg) ? 'timeout' : msg }, 200, 300);
   }
 }
