@@ -62,7 +62,7 @@ const STYLE = '<style id="lx-dashboxes-css">/*lxts:1.1*/'
   // A value that is a NAME rather than a figure reads wrong in the tabular face -- it is set in the text
   // face at a size that fits the row it shares.
   + '.lx-dbx-v[data-k="cvia"]{font:800 15px/1.35 "Hanken Grotesk",system-ui,sans-serif!important;letter-spacing:-.01em}'
-  + '.lx-dbx-v{margin-top:4px;font:800 20px/1.1 "JetBrains Mono",ui-monospace,monospace;'
+  + '.lx-dbx-v{margin-top:4px;font:800 15px/1.1 "JetBrains Mono",ui-monospace,monospace;'
   + 'color:var(--text,#0e0e10);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
   + 'letter-spacing:-.02em}'
   // The way out, in the product's own colour so the card reads as one control rather than a grey box
