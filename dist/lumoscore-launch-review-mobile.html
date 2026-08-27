@@ -8115,6 +8115,13 @@ window.lxLpTest=function(draft){
   // we just bridged: by construction that click is the duplicate, never a second real tap.
   window.addEventListener("click",function(e){
     if(e.__lxBridged)return;                                                       // the one we dispatched
+    // Only the browser's own compatibility click may be swallowed, and that one is always TRUSTED.
+    // A script-dispatched click is not, and swallowing those broke the theme toggle on mobile: it
+    // suppresses the first click and re-fires el.click() inside startViewTransition, so the real
+    // handler runs on a click that is untrusted, lands on the same element, and arrives well inside
+    // the window below. This ate it, and the theme never changed. Any control that re-dispatches its
+    // own click would have hit the same wall.
+    if(!e.isTrusted)return;
     if(!lastTap)return;
     // Deliberately generous: the straggler's delay is the device's to choose, and guessing it wrong is
     // what leaves the bug in place on exactly the handsets that have it. Safe to be generous because a
