@@ -29,7 +29,7 @@ const CURATED = Object.keys(VERIFIED)
   .filter((p) => p[0] && p[1] && /^G[A-Z2-7]{55}$/.test(p[1]))
   .map((p) => p[0] + '-' + p[1]);
 
-const STYLE = '<style id="lx-dashboxes-css">'
+const STYLE = '<style id="lx-dashboxes-css">/*lxts:1.1*/'
   // Three across on a desktop, stacked on a phone. Small gap, as asked -- these read as one instrument
   // panel rather than three separate cards.
   // One column: these are a stack beside the activity feed, not a strip across the page.
@@ -39,12 +39,20 @@ const STYLE = '<style id="lx-dashboxes-css">'
   // A row now: the product's graphic on the left, everything else stacked beside it.
   + '.lx-dbx-card{background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:14px;'
   + 'padding:15px 16px;min-width:0;display:flex;flex-direction:row;align-items:flex-start;gap:14px}'
-  // The graphic: supplied artwork, one opaque PNG per product. The corners are rounded here rather
-  // than in the file so they track the card's own radius, and the lift is a box-shadow -- drop-shadow
-  // follows the alpha channel, and these have none, so it would draw a rectangle around the tile.
+  // The graphic: supplied artwork, one opaque PNG per product, filling the card height and flush to
+  // its left edge. The card carries overflow:hidden, so its own border-radius clips the artwork -- no
+  // radius on the image itself, which keeps it right if the card radius ever changes.
   + '.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;border-radius:14px;object-fit:cover;'
   + 'box-shadow:0 4px 10px rgba(0,0,0,.28)}'
   + '@media(max-width:520px){.lx-dbx-art{width:46px;height:46px;flex:0 0 46px}}'
+  // The large treatment is a WIDE-screen one: the mark fills the card height, flush to its left edge.
+  // Applied only where the card can spare the width -- below this the three figures start ellipsising,
+  // which is what a big mark costs on a narrow card, and the figures are the point of the card.
+  + '@media(min-width:1000px){'
+  + '.lx-dbx-card{padding:0;align-items:stretch;gap:0}'
+  + '.lx-dbx-art{width:172px;flex:0 0 172px;align-self:stretch;height:auto;border-radius:0;box-shadow:none}'
+  + '.lx-dbx-body{padding:14px 15px}'
+  + '}'
   + '.lx-dbx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:9px}'
   + '.lx-dbx-head{display:flex;align-items:center;gap:8px;min-width:0}'
   + '.lx-dbx-t{font:800 15px/1.1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
@@ -95,11 +103,10 @@ const STYLE = '<style id="lx-dashboxes-css">'
 const IC_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
 // The four product marks are supplied artwork, cut from one sheet into assets/products/. They are
-// opaque PNGs with square corners, so the rounding is done in CSS (see .lx-dbx-art) rather than in
-// the file -- that keeps the corner radius matching the cards it sits on.
+// opaque PNGs with square corners; the card clips them to its own radius (see .lx-dbx-art).
 // The build roots "assets/..." to "/assets/...", so the relative form here is correct.
 function art(name) {
-  return '<img class="lx-dbx-art" src="assets/products/' + name + '.png" alt="" aria-hidden="true" width="56" height="56" decoding="async">';
+  return '<img class="lx-dbx-art" src="assets/products/' + name + '.png" alt="" aria-hidden="true" width="256" height="256" decoding="async">';
 }
 const ART_TRADE  = art('trade');
 const ART_POOLS  = art('pools');
