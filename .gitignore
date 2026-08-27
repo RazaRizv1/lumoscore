@@ -40,7 +40,15 @@ npm-debug.log*
 # dist/assets already holds every image, video and logo the built site actually references, and it
 # is what Cloudflare serves. This root folder is the wider source library and is not needed to
 # deploy. Same caveat as above: keep your own backup of it.
-/assets/
+/assets/*
+# ...except the token logos. They are 264 KB against 138 MB for the rest, and unlike the wider library
+# they are NOT reproducible: each one is a token's X profile picture fetched once by _tools/_launchicons.js.
+# dist/ alone is not enough to keep them -- extract_site.js copies assets/ INTO dist/, so a rebuild on a
+# clone without this folder would quietly delete every logo from the deploy. That is the container-drift
+# failure this project has hit before, and tracking these few files is what closes it.
+!/assets/tokens/
+# ...and the Trade hero gradients, for the same reason: authored here, not downloadable again.
+!/assets/hero/
 
 # --- backups and scratch ---------------------------------------------------------------------
 # broad on purpose — several backup folders here do not share one prefix
@@ -55,3 +63,4 @@ dist/_scrap/
 Thumbs.db
 desktop.ini
 .DS_Store
+_TYPESCALE_BACKUP_*/

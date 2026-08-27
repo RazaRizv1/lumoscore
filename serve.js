@@ -76,11 +76,294 @@ function holdersProxy(req, res, q) {
   const asset = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/.test(q.get('asset') || '') ? q.get('asset') : null;
   if (!asset) { res.writeHead(400, {'content-type':'application/json'}); return res.end('{"error":"bad asset"}'); }
   const limit = Math.min(parseInt(q.get('limit'), 10) || 50, 200);
-  const up = 'https://api.stellar.expert/explorer/public/asset/' + asset + '/holders?order=desc&limit=' + limit;
+  // Opaque-cursor passthrough, same contract as functions/lxapi/holders.js — see that file for why this
+  // cannot be an offset, and for the alphabet/length restriction that keeps it from being an open proxy.
+  const cur = q.get('cursor') || '';
+  const okCur = !!cur && cur.length <= 256 && /^[A-Za-z0-9%+/=_-]+$/.test(cur);
+  const up = 'https://api.stellar.expert/explorer/public/asset/' + asset + '/holders?order=desc&limit=' + limit
+    + (okCur ? '&cursor=' + encodeURIComponent(decodeURIComponent(cur)) : '');
   fetch(up).then(r => r.text().then(body => {
     res.writeHead(r.status, {'content-type':'application/json','cache-control':'public, max-age=120'});
     res.end(body);
   })).catch(e => { res.writeHead(502, {'content-type':'application/json'}); res.end(JSON.stringify({error:String(e&&e.message||e)})); });
+}
+
+// Local mirror of functions/lxapi/candles — serve Horizon trade_aggregations from this origin.
+// See that file for why it exists: /trade_aggregations is the ONLY metered Horizon endpoint, and its 429
+// carries no CORS header, so in the browser it surfaces as an opaque "Failed to fetch".
+//
+// Same validation as the Function, and the same pass-through shape: the upstream body is handed straight
+// back. Without this route the dev server 404s the path and the page falls back to Horizon directly, which
+// is a different code path from production — the one place a local check would not match the deployed site.
+const CANDLE_ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
+const CANDLE_RES = ['60000', '300000', '900000', '3600000', '86400000', '604800000'];
+function candlesProxy(req, res, q) {
+  const bad = (m) => { res.writeHead(400, {'content-type':'application/json'}); res.end(JSON.stringify({error:m})); };
+  const a = (q.get('a') || '').trim();
+  if (!CANDLE_ASSET_RE.test(a)) return bad('bad asset');
+  const dash = a.lastIndexOf('-'), code = a.slice(0, dash), issuer = a.slice(dash + 1);
+  const resn = (q.get('res') || '86400000').trim();
+  if (CANDLE_RES.indexOf(resn) < 0) return bad('bad resolution');
+  const limit = q.get('limit') || '200';
+  if (!/^[0-9]{1,3}$/.test(limit) || +limit < 1 || +limit > 200) return bad('bad limit');
+  const order = (q.get('order') || 'desc').trim();
+  if (order !== 'asc' && order !== 'desc') return bad('bad order');
+  const start = q.get('start'), end = q.get('end');
+  if ((start && !/^[0-9]{1,16}$/.test(start)) || (end && !/^[0-9]{1,16}$/.test(end))) return bad('bad time');
+
+  const type = code.length <= 4 ? 'credit_alphanum4' : 'credit_alphanum12';
+  const up = 'https://horizon.stellar.org/trade_aggregations?base_asset_type=' + type
+    + '&base_asset_code=' + encodeURIComponent(code) + '&base_asset_issuer=' + issuer
+    + '&counter_asset_type=native&resolution=' + resn + '&order=' + order + '&limit=' + limit
+    + (start ? '&start_time=' + start : '') + (end ? '&end_time=' + end : '');
+  fetch(up).then(r => r.text().then(body => {
+    res.writeHead(r.ok ? 200 : 200, {'content-type':'application/json',
+      'cache-control':'public, max-age=' + (r.ok ? 300 : 15), 'access-control-allow-origin':'*'});
+    res.end(r.ok ? body : JSON.stringify({error:'upstream ' + r.status}));
+  })).catch(e => { res.writeHead(200, {'content-type':'application/json','cache-control':'public, max-age=15'});
+    res.end(JSON.stringify({error:String(e && e.message || e)})); });
+}
+
+// Local mirror of functions/lxapi/assetlogo — resolve an asset logo from the issuer's stellar.toml.
+// Server-side, so the CORS wall that blocks this in the browser does not apply.
+const LOGO_ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
+const LOGO_HOST_RE = /^[A-Za-z0-9.-]{1,253}$/;
+const LOGO_CACHE = new Map();
+function logoJson(res, body, ttl) {
+  res.writeHead(200, { "content-type": "application/json", "cache-control": "public, max-age=" + ttl,
+    "access-control-allow-origin": "*" });
+  res.end(JSON.stringify(body));
+}
+function tomlCurrency(text, code, issuer) {
+  const blocks = String(text || "").split("[[CURRENCIES]]");
+  for (let i = 1; i < blocks.length; i++) {
+    const b = blocks[i];
+    const get = (key) => {
+      const lines = b.split("\n");
+      for (let n = 0; n < lines.length; n++) {
+        const ln = lines[n].trim(); const eq = ln.indexOf("=");
+        if (eq < 0) continue;
+        if (ln.slice(0, eq).trim() !== key) continue;
+        let v = ln.slice(eq + 1).trim();
+        if (v.charAt(0) === '"') { const e = v.indexOf('"', 1); v = e > 0 ? v.slice(1, e) : v.slice(1); }
+        return v;
+      }
+      return "";
+    };
+    if (get("code") !== code) continue;
+    const iss = get("issuer"); if (iss && iss !== issuer) continue;
+    return { image: get("image") || "", name: get("name") || "",
+           desc: get("desc") || "", twitter: get("twitter") || "", telegram: get("telegram") || "" };
+  }
+  return null;
+}
+async function fetchTimeout(url, ms) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), ms);
+  try { return await fetch(url, { signal: ctl.signal }); } finally { clearTimeout(t); }
+}
+// Local mirror of functions/.well-known/stellar.toml — the SEP-1 file for lumoscore.com.
+// Keep in step with the Pages Function; a toml that differs between local and deployed is worse than none,
+// because this document is what other wallets treat as authoritative about our assets.
+const TOML_FUNDER = 'GA7VKQBOILVBDABEHRSVW72JM3OI54I2GSCCIHGNMECGUMKHLZG7JCDH';
+// LUMOS is named here rather than matched by the funder rule: it predates the launchpad and its issuer
+// was created by a different wallet, so the rule correctly does not recognise it. See the Pages Function.
+const TOML_PLATFORM = [{ code:'LUMOS', issuer:'GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S',
+  name:'Lumos Core', desc:'LumosCore native utility token — powers platform fees and rewards.',
+  image:'https://lumoscore.com/assets/tokens/lumos.png' }];
+function tq(v){ return '"' + String(v == null ? '' : v)
+  .replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').trim() + '"'; }
+async function tomlFundedByUs(issuer){
+  try{
+    const r = await fetchTimeout('https://horizon.stellar.org/accounts/' + issuer + '/operations?order=asc&limit=1', 6000);
+    if(!r.ok) return false;
+    const op = (((await r.json())._embedded || {}).records || [])[0] || {};
+    if(op.type !== 'create_account') return false;
+    return (op.funder || op.source_account) === TOML_FUNDER;
+  }catch(e){ return false; }
+}
+async function stellarToml(req, res){
+  const head = [
+    '# LumosCore — SEP-1 stellar.toml',
+    '#',
+    '# Lists the assets minted through the LumosCore launchpad on Stellar mainnet.',
+    '# An asset appears here only if its issuer account was created by the LumosCore funding wallet,',
+    '# which is recorded on the ledger and cannot be forged. Declaring home_domain=lumoscore.com is not',
+    '# sufficient on its own.',
+    '',
+    'VERSION="2.0.0"',
+    'NETWORK_PASSPHRASE="Public Global Stellar Network ; September 2015"',
+    '',
+    '[DOCUMENTATION]',
+    'ORG_NAME="LumosCore"',
+    'ORG_URL="https://lumoscore.com"',
+    'ORG_LOGO="https://lumoscore.com/assets/tokens/lumos.png"',
+    'ORG_DESCRIPTION="Multi-chain DeFi on Stellar — trade, pools, launchpad and cross-chain bridge."',
+    '',
+  ];
+  let list = [];
+  try{
+    const r = await fetchTimeout('https://api.stellar.expert/explorer/public/asset?search=lumoscore.com&limit=200', 6000);
+    const recs = r.ok ? (((await r.json())._embedded || {}).records || []) : [];
+    for(const rec of recs){
+      if(String(rec.domain || '').toLowerCase() !== 'lumoscore.com') continue;
+      const dash = String(rec.asset || '').indexOf('-');
+      if(dash < 1) continue;
+      const code = rec.asset.slice(0, dash);
+      const issuer = rec.asset.slice(dash + 1).split('-')[0];
+      if(!/^G[A-Z2-7]{55}$/.test(issuer)) continue;
+      const ti = rec.tomlInfo || rec.toml_info || {};
+      list.push({ code, issuer, name: ti.name || rec.name || '', image: ti.image || '', desc: ti.desc || '' });
+    }
+  }catch(e){}
+  const checked = list.slice(0, 45);
+  const verdicts = await Promise.all(checked.map(a => tomlFundedByUs(a.issuer)));
+  const seen = new Set(); const ours = [];
+  for(const a of TOML_PLATFORM.concat(checked.filter((_, i) => verdicts[i]))){
+    const k = a.code + '|' + a.issuer;
+    if(seen.has(k)) continue;
+    seen.add(k); ours.push(a);
+  }
+  const body = [head.join('\n')];
+  if(list.length > 45) body.push('# NOTE: ' + list.length + ' candidates found; only the first 45 verified this request.', '');
+  for(const a of ours){
+    const c = ['[[CURRENCIES]]', 'code=' + tq(a.code), 'issuer=' + tq(a.issuer), 'display_decimals=7'];
+    if(a.name) c.push('name=' + tq(a.name));
+    if(a.desc) c.push('desc=' + tq(a.desc));
+    if(a.image) c.push('image=' + tq(a.image));
+    c.push('is_asset_anchored=false');
+    body.push(c.join('\n'), '');
+  }
+  if(!ours.length) body.push('# no verified LumosCore assets found at this time', '');
+  res.writeHead(200, { 'content-type': 'text/plain; charset=utf-8',
+    'access-control-allow-origin': '*', 'cache-control': 'public, max-age=21600' });
+  res.end(body.join('\n'));
+}
+
+// Local mirror of functions/lxapi/dexassets — price a batch of assets in one request. Server-side, so
+// neither the browser's six-connection-per-host limit nor Horizon's CORS-less 429 applies. Keep this in
+// step with the Pages Function; the shapes must match or the page behaves differently once deployed.
+const DEX_CACHE = new Map();
+const DEX_MAX = 16;
+function dexPriceOf(bar) {
+  if (!bar) return 0;
+  const close = +bar.close || 0; if (close > 0) return close;
+  const avg = +bar.avg || 0; if (avg > 0) return avg;
+  // below 1e-7 Horizon reports "0.0000000"; the volumes carry more precision
+  const b = +bar.base_volume || 0, c = +bar.counter_volume || 0;
+  return b > 0 && c > 0 ? c / b : 0;
+}
+async function dexOneAsset(code, issuer) {
+  const type = code.length <= 4 ? "credit_alphanum4" : "credit_alphanum12";
+  const base = "base_asset_type=" + type + "&base_asset_code=" + encodeURIComponent(code) +
+    "&base_asset_issuer=" + issuer + "&counter_asset_type=native";
+  const H = "https://horizon.stellar.org";
+  const out = { px: 0, chg: null, vol: null, high: null, low: null, tr: null, ho: null, su: null, dom: null };
+  const recs = (d) => (d && d._embedded && d._embedded.records) || [];
+  // Horizon 429s under load and its 429 carries no CORS header, so upstream failure is common and cheap to
+  // ride out. Two backed-off retries here mean a throttled moment does not become a dash on the page.
+  const getJson = async (u) => {
+    let last;
+    for (const delay of [0, 400, 1200]) {
+      if (delay) await new Promise((r) => setTimeout(r, delay));
+      try {
+        const r = await fetchTimeout(u, 6000);
+        if (r.ok) return r.json();
+        last = new Error(String(r.status));
+      } catch (e) { last = e; }
+    }
+    throw last;
+  };
+  const agg = getJson(H + "/trade_aggregations?" + base + "&resolution=86400000&order=desc&limit=2")
+    .then((d) => { const r = recs(d); if (!r[0]) return;
+      out.px = dexPriceOf(r[0]); out.vol = +r[0].counter_volume || 0;
+      out.high = +r[0].high || 0; out.low = +r[0].low || 0; out.tr = +r[0].trade_count || 0;
+      const prev = dexPriceOf(r[1]); if (prev > 0 && out.px > 0) out.chg = ((out.px - prev) / prev) * 100;
+    }).catch(() => {});
+  const meta = getJson(H + "/assets?asset_code=" + encodeURIComponent(code) + "&asset_issuer=" + issuer)
+    .then((d) => { const rec = recs(d)[0]; if (!rec) return;
+      if (rec.accounts) out.ho = (+rec.accounts.authorized || 0) + (+rec.accounts.authorized_to_maintain_liabilities || 0);
+      if (rec.balances) out.su = +rec.balances.authorized || +rec.balances.authorized_to_maintain_liabilities || null;
+      else if (rec.amount != null) out.su = +rec.amount;
+      // mirrors functions/lxapi/dexassets.js: the issuer's home_domain comes free on this record as
+      // _links.toml -> https://<home_domain>/.well-known/stellar.toml
+      const toml = rec._links && rec._links.toml && rec._links.toml.href;
+      if (toml) { const after = String(toml).split("//")[1] || ""; out.dom = after.split("/")[0] || null; }
+    }).catch(() => {});
+  await Promise.all([agg, meta]);
+  return out;
+}
+async function dexAssets(req, res, q) {
+  const raw = (q.get("a") || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const bad = (m) => { res.writeHead(400, { "content-type": "application/json",
+    "access-control-allow-origin": "*" }); res.end(JSON.stringify({ error: m })); };
+  if (!raw.length) return bad("no assets");
+  if (raw.length > DEX_MAX) return bad("max " + DEX_MAX + " assets per call");
+  const wanted = [];
+  for (const r of raw) {
+    if (!LOGO_ASSET_RE.test(r)) return bad("bad asset: " + r.slice(0, 24));
+    const dash = r.lastIndexOf("-");
+    wanted.push({ key: r, code: r.slice(0, dash), issuer: r.slice(dash + 1) });
+  }
+  const now = Date.now(), a = {}, need = [];
+  for (const w of wanted) {
+    const c = DEX_CACHE.get(w.key);
+    if (c && now - c.ts < 300000) a[w.key] = c.v; else need.push(w);   // 5min: Horizon allows 100 req/5min per IP
+  }
+  const got = await Promise.all(need.map((w) => dexOneAsset(w.code, w.issuer).catch(() => null)));
+  need.forEach((w, i) => {
+    if (!got[i]) return;
+    a[w.key] = got[i];
+    // Never cache a throttled read. A px of 0 is indistinguishable from "we got rate limited", and caching
+    // it would pin a dash on the page for the next minute.
+    if (got[i].px > 0) DEX_CACHE.set(w.key, { ts: now, v: got[i] });
+  });
+  return logoJson(res, { ok: 1, a }, 300);
+}
+async function assetLogo(req, res, q) {
+  const asset = q.get("asset") || "";
+  if (!LOGO_ASSET_RE.test(asset)) { res.writeHead(400, { "content-type": "application/json" });
+    return res.end('{"error":"bad asset"}'); }
+  if (LOGO_CACHE.has(asset)) return logoJson(res, LOGO_CACHE.get(asset), 86400);
+  const dash = asset.lastIndexOf("-");
+  const code = asset.slice(0, dash), issuer = asset.slice(dash + 1);
+  let out;
+  try {
+    const accRes = await fetchTimeout("https://horizon.stellar.org/accounts/" + issuer, 4000);
+    if (!accRes.ok) out = { image: "", domain: "", reason: "issuer not found" };
+    else {
+      const acc = await accRes.json();
+      const domain = (acc && acc.home_domain) || "";
+      if (!domain) out = { image: "", domain: "", reason: "no home_domain" };
+      else if (!LOGO_HOST_RE.test(domain)) out = { image: "", domain, reason: "home_domain is not a host" };
+      else {
+        const tr = await fetchTimeout("https://" + domain + "/.well-known/stellar.toml", 4000);
+        if (!tr.ok) out = { image: "", domain, reason: "toml " + tr.status };
+        else {
+          const _txt = await tr.text();
+          const cur = tomlCurrency(_txt, code, issuer);
+          if (!cur) out = { image: "", domain, reason: "asset not in toml" };
+          else {
+            // Org-level socials as a fallback: many issuers declare them once rather than per asset.
+            const org = (k) => {
+              const m = _txt.match(new RegExp('^\\s*' + k + '\\s*=\\s*["\']([^"\']+)["\']', 'im'));
+              return (m && m[1]) || "";
+            };
+            out = { image: cur.image, domain, name: cur.name, desc: cur.desc,
+                    twitter: cur.twitter || org('ORG_TWITTER'),
+                    telegram: cur.telegram || org('ORG_TELEGRAM') };
+            // Copy without artwork is still a useful answer, so it is no longer a miss.
+            if (!cur.image) out.reason = "no image key";
+          }
+        }
+      }
+    }
+  } catch (e) {
+    const msg = String((e && e.message) || e);
+    out = { image: "", domain: "", reason: /abort/i.test(msg) ? "timeout" : msg };
+  }
+  LOGO_CACHE.set(asset, out);
+  return logoJson(res, out, out.image ? 86400 : 3600);
 }
 
 // Local mirror of functions/lxapi/poolstats — network-wide AMM aggregates for the Pools Market Overview.
@@ -141,6 +424,287 @@ function poolStats(req, res) {
       vol24Usd: Math.round(vol24Usd * 100) / 100, fees24Usd: Math.round(fees24Usd * 100) / 100,
       lpAccounts, trades24, ts: Date.now() });
     PS_CACHE = { ts: Date.now(), body };
+    res.writeHead(200, {'content-type':'application/json','cache-control':'public, max-age=600'});
+    res.end(body);
+  })().catch(e => {
+    res.writeHead(502, {'content-type':'application/json'});
+    res.end(JSON.stringify({ error: String((e && e.message) || e) }));
+  });
+}
+
+// Local mirror of functions/lxapi/pools — the network-wide pool list ranked by real USD TVL.
+// Kept in step with functions/lxapi/pools.js; see that file for why the ranking is computed from
+// Horizon reserves rather than read from stellar.expert's total_value_locked.
+const LP_HOSTS = ['https://horizon.stellar.org', 'https://horizon.stellar.lobstr.co'];
+const LP_USDC = 'USDC:GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
+const LP_XPERT = 'https://api.stellar.expert/explorer/public/liquidity-pool';
+let LP_CACHE = null, LP_STATE = null;
+const LP_QCACHE = new Map();          // search results per query (see the search branch below)
+function poolList(req, res, params) {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  const getJ = async (path, host0) => {
+    for (let a = 0; a < 4; a++) {
+      try {
+        const r = await fetch(LP_HOSTS[a % LP_HOSTS.length] + path);
+        if (r.status === 429) { await sleep(700 * (a + 1)); continue; }
+        if (!r.ok) { await sleep(200); continue; }
+        return r.json();
+      } catch (_) { await sleep(200); }
+    }
+    return null;
+  };
+  const enumerate = async (filter, cursor0, budget) => {
+    const out = []; let cursor = cursor0 || '';
+    for (let n = 0; n < budget; n++) {
+      const d = await getJ('/liquidity_pools?' + filter + '&limit=200&order=asc' + (cursor ? '&cursor=' + cursor : ''));
+      if (!d) throw new Error('enumeration page failed');
+      const recs = (d._embedded || {}).records || [];
+      for (const p of recs) out.push(p);
+      if (recs.length < 200) return { recs: out, cursor, done: true };
+      cursor = recs[recs.length - 1].paging_token;
+    }
+    return { recs: out, cursor, done: false };
+  };
+  const A32 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  const strkeyToHex = s => {
+    let bits = '';
+    for (const c of s) { const i = A32.indexOf(c); if (i < 0) return null; bits += i.toString(2).padStart(5, '0'); }
+    const by = [];
+    for (let i = 0; i + 8 <= bits.length; i += 8) by.push(parseInt(bits.slice(i, i + 8), 2));
+    return by.slice(1, 33).map(b => b.toString(16).padStart(2, '0')).join('');
+  };
+  const assetOut = a => a.asset === 'native'
+    ? { code: 'XLM', issuer: null, amount: +a.amount || 0 }
+    : { code: String(a.asset).split(':')[0], issuer: String(a.asset).split(':')[1] || null, amount: +a.amount || 0 };
+
+  (async () => {
+    // Serve a stale ranking rather than rebuilding in front of the caller -- the same rule as the Pages
+    // Function, where expiry was what made every 15th minute "take forever" (see pools.js).
+    //
+    // The production side ALSO revalidates in the background via waitUntil. This mirror deliberately does
+    // not: there is no equivalent here, and faking one by re-entering poolList with a stub response was
+    // fragile enough to be its own bug source. In dev the ranking simply stays until the process restarts,
+    // which is the right trade for a dev server and is stated rather than silently different.
+    let ranked = LP_CACHE ? LP_CACHE.data : null;
+    if (!ranked) {
+      // Same RESUMABLE build as the Pages Function, and chunked here too even though node has no
+      // subrequest cap -- otherwise the page's warming/retry path would never run in dev and would
+      // ship unexercised. That cap is what returned HTTP 502 in production from a build that worked
+      // perfectly locally.
+      const STEP = 40;
+      let state = LP_STATE;
+      let spent = 0;
+      if (!state) {
+        const rs = 900000, end = Math.ceil(Date.now() / rs) * rs;
+        const d = await getJ('/trade_aggregations?base_asset_type=credit_alphanum4&base_asset_code=USDC'
+          + '&base_asset_issuer=' + LP_USDC.split(':')[1] + '&counter_asset_type=native&resolution=' + rs
+          + '&start_time=' + (end - 12 * 3600000) + '&end_time=' + end + '&order=desc&limit=1');
+        const r0 = ((d || {})._embedded || {}).records || [];
+        // counter-per-base: XLM PER USDC, so the dollar price is its reciprocal (see the Pages Function)
+        const xlmPerUsdc = r0[0] ? (+r0[0].avg || +r0[0].close || 0) : 0;
+        const px = xlmPerUsdc > 0 ? 1 / xlmPerUsdc : 0;
+        if (!(px > 0.02 && px < 2)) throw new Error('no XLM price');
+        state = { phase: 'native', cursor: '', px, rows: [], seen: Object.create(null) };
+        spent++;
+      }
+      const grab = (recs, want, px) => {
+        for (const rec of recs) {
+          if (state.seen[rec.id]) continue;
+          const i = (rec.reserves || []).findIndex(x => x.asset === want);
+          if (i < 0) continue;
+          state.seen[rec.id] = 1;
+          const a = (rec.reserves || []).map(assetOut);
+          state.rows.push({ id: rec.id, a: a[0] || null, b: a[1] || null,
+            tvl: Math.round(2 * (+rec.reserves[i].amount || 0) * px * 100) / 100,
+            fee: (+rec.fee_bp || 0) / 100, members: +rec.total_trustlines || 0, vol24: null });
+        }
+      };
+      if (state.phase === 'native') {
+        const r = await enumerate('reserves=native', state.cursor, STEP - spent);
+        spent += Math.ceil(r.recs.length / 200) || 1;
+        grab(r.recs, 'native', state.px);
+        state.cursor = r.cursor;
+        if (r.done) { state.phase = 'usdc'; state.cursor = ''; }
+      }
+      if (state.phase === 'usdc' && spent < STEP - 6) {
+        const r = await enumerate('reserves=' + encodeURIComponent(LP_USDC), state.cursor, STEP - spent);
+        spent += Math.ceil(r.recs.length / 200) || 1;
+        grab(r.recs, LP_USDC, 1);
+        state.cursor = r.cursor;
+        if (r.done) state.phase = 'overlay';
+      }
+      if (state.phase === 'overlay') {
+        const vol = new Map(), img = new Map();
+        for (let p = 0; p < 6; p++) {
+          let d2 = null;
+          try { const r = await fetch(LP_XPERT + '?limit=200&cursor=' + p * 200, { headers: { accept: 'application/json' } }); if (r.ok) d2 = await r.json(); } catch (_) {}
+          const recs = ((d2 || {})._embedded || {}).records || [];
+          if (!recs.length) break;
+          for (const r of recs) {
+            const h = strkeyToHex(r.id); if (!h) continue;
+            vol.set(h, ((r.volume_value && +r.volume_value['1d']) || 0) / 1e7);
+            for (const a of (r.assets || [])) {                 // logos, keyed by CODE-ISSUER not code
+              // upstream writes "AQUA-GBNZ...-1" with a trailing asset-TYPE digit; drop it or nothing
+              // ever matches (see the Pages Function)
+              const k = String(a.asset || a.name || '').split('-').slice(0, 2).join('-');
+              const s = a.toml_info || a.tomlInfo || {};
+              const u = s.image || s.orgLogo || '';
+              if (k && u && !img.has(k)) img.set(k, u);
+            }
+          }
+        }
+        for (const r of state.rows) {
+          if (vol.has(r.id)) r.vol24 = Math.round(vol.get(r.id) * 100) / 100;
+          for (const leg of [r.a, r.b]) {
+            if (!leg) continue;
+            if (leg.code === 'XLM' && !leg.issuer) { leg.img = '/assets/tokens/xlm.png'; continue; }
+            const u = img.get(leg.code + '-' + leg.issuer) || img.get(leg.code);
+            if (u) leg.img = u;
+          }
+        }
+        state.rows.sort((x, y) => y.tvl - x.tvl);
+        state.phase = 'done';
+      }
+      if (state.phase !== 'done') {
+        LP_STATE = state;
+        res.writeHead(200, {'content-type':'application/json','cache-control':'no-store'});
+        return res.end(JSON.stringify({ warming: true, scanned: state.rows.length, phase: state.phase }));
+      }
+      LP_STATE = null;
+      ranked = { rows: state.rows, px: state.px, ranked: state.rows.length,
+        withVol: state.rows.filter(r => r.vol24 !== null).length, ts: Date.now() };
+      LP_CACHE = { ts: Date.now(), data: ranked };
+    }
+
+    const per = Math.min(100, Math.max(1, parseInt(params.get('per') || '25', 10) || 25));
+    const page = Math.max(1, parseInt(params.get('page') || '1', 10) || 1);
+    const q = (params.get('q') || '').trim().toUpperCase().slice(0, 24);
+    // Search is a LIVE Horizon query, not a filter over the ranking -- the ranking only holds pools we can
+    // price, so filtering it answered "priceable pools mentioning this asset" (LUMOS: 6) instead of "pools
+    // holding this asset" (LUMOS: 59). See functions/lxapi/pools.js for the full reasoning.
+    let rows = ranked.rows;
+    if (q) {
+      const cached = LP_QCACHE.get(q);
+      if (cached && Date.now() - cached.ts < 600000) rows = cached.rows;
+      else {
+        const rowsById = new Map(ranked.rows.map(r => [r.id, r]));
+        const assets = new Map(), imgByKey = new Map();
+        for (const r of ranked.rows) for (const leg of [r.a, r.b]) {
+          if (!leg || !leg.issuer) continue;
+          const k = leg.code + ':' + leg.issuer;
+          if (leg.img && !imgByKey.has(k)) imgByKey.set(k, leg.img);
+          if (String(leg.code).toUpperCase().indexOf(q) >= 0 && !assets.has(k)) assets.set(k, leg);
+        }
+        const keys = [...assets.keys()].sort((a, b) =>
+          (a.split(':')[0].toUpperCase() === q ? 0 : 1) - (b.split(':')[0].toUpperCase() === q ? 0 : 1));
+        const found = new Map();
+        for (const key of keys.slice(0, 6)) {
+          let cursor = '';
+          for (let p = 0; p < 4; p++) {
+            const d = await getJ('/liquidity_pools?reserves=' + encodeURIComponent(key) + '&limit=200&order=asc'
+              + (cursor ? '&cursor=' + cursor : ''));
+            const recs = ((d || {})._embedded || {}).records || [];
+            if (!recs.length) break;
+            for (const rec of recs) if (!found.has(rec.id)) found.set(rec.id, rec);
+            if (recs.length < 200) break;
+            cursor = recs[recs.length - 1].paging_token;
+          }
+        }
+        const out = [];
+        for (const [id, rec] of found) {
+          const known = rowsById.get(id);
+          if (known) { out.push(known); continue; }
+          const rs = (rec.reserves || []).map(assetOut);
+          const xi = (rec.reserves || []).findIndex(x => x.asset === 'native');
+          const ui = (rec.reserves || []).findIndex(x => x.asset === LP_USDC);
+          const tvl = xi >= 0 ? 2 * (+rec.reserves[xi].amount || 0) * ranked.px
+            : (ui >= 0 ? 2 * (+rec.reserves[ui].amount || 0) : null);
+          for (const leg of rs) {
+            if (leg.code === 'XLM' && !leg.issuer) { leg.img = '/assets/tokens/xlm.png'; continue; }
+            const u = imgByKey.get(leg.code + ':' + leg.issuer); if (u) leg.img = u;
+          }
+          out.push({ id, a: rs[0] || null, b: rs[1] || null,
+            tvl: tvl == null ? null : Math.round(tvl * 100) / 100,
+            fee: (+rec.fee_bp || 0) / 100, members: +rec.total_trustlines || 0, vol24: null });
+        }
+        out.sort((x, y) => {
+          const xn = x.tvl == null, yn = y.tvl == null;
+          if (xn !== yn) return xn ? 1 : -1;
+          if (xn) return (y.members || 0) - (x.members || 0);
+          return y.tvl - x.tvl;
+        });
+        rows = out;
+        LP_QCACHE.set(q, { ts: Date.now(), rows });
+      }
+    }
+    const total = rows.length, pages = Math.max(1, Math.ceil(total / per));
+    const start = Math.min((page - 1) * per, Math.max(0, (pages - 1) * per));
+    const body = JSON.stringify({ page: Math.floor(start / per) + 1, per, pages, total,
+      ranked: ranked.ranked, unpriceable: 28882, withVol: ranked.withVol,
+      xlmUsd: ranked.px, ts: ranked.ts, rows: rows.slice(start, start + per) });
+    res.writeHead(200, {'content-type':'application/json','cache-control':'public, max-age=120'});
+    res.end(body);
+  })().catch(e => {
+    res.writeHead(502, {'content-type':'application/json'});
+    res.end(JSON.stringify({ error: String((e && e.message) || e) }));
+  });
+}
+
+// Local mirror of functions/lxapi/movers — Market Movers across the whole Stellar DEX, gated on real
+// liquidity and holders. Kept in step with functions/lxapi/movers.js; see that file for the reasoning.
+let MV_CACHE = null;
+function moversRoute(req, res) {
+  if (MV_CACHE && Date.now() - MV_CACHE.ts < 600000) {
+    res.writeHead(200, {'content-type':'application/json'}); return res.end(MV_CACHE.body);
+  }
+  const origin = 'http://127.0.0.1:' + PORT;
+  const gj = async p => { try { const r = await fetch(origin + p); return r.ok ? r.json() : null; } catch (_) { return null; } };
+  (async () => {
+    const MIN_TVL = 500, MIN_HOLDERS = 250, MAX_CAND = 128;
+    const cand = new Map();
+    for (let p = 1; p <= 4; p++) {
+      const d = await gj('/lxapi/pools?per=100&page=' + p);
+      const rows = (d && d.rows) || [];
+      if (!rows.length) break;
+      let anyAbove = false;
+      for (const row of rows) {
+        if (row.tvl == null || row.tvl < MIN_TVL) continue;
+        anyAbove = true;
+        const legs = [row.a, row.b];
+        if (!legs.some(x => x && x.code === 'XLM' && !x.issuer)) continue;
+        for (const x of legs) {
+          if (!x || !x.issuer) continue;
+          const k = x.code + '-' + x.issuer;
+          if (!cand.has(k) && cand.size < MAX_CAND) cand.set(k, { code: x.code, issuer: x.issuer, tvl: row.tvl });
+        }
+      }
+      if (!anyAbove || cand.size >= MAX_CAND) break;
+    }
+    if (!cand.size) throw new Error('no candidates');
+    const keys = [...cand.keys()], out = [];
+    for (let i = 0; i < keys.length; i += 16) {
+      const grp = keys.slice(i, i + 16);
+      const d = await gj('/lxapi/dexassets?a=' + encodeURIComponent(grp.join(',')));
+      if (!d || !d.a) continue;
+      for (const k of grp) {
+        const v = d.a[k], c = cand.get(k);
+        if (!v || !c) continue;
+        const holders = v.ho == null ? null : +v.ho;
+        if (holders == null || holders < MIN_HOLDERS) continue;
+        out.push({ code: c.code, issuer: c.issuer, tvlUsd: c.tvl, holders,
+          px: v.px == null ? null : +v.px, chg: v.chg == null ? null : +v.chg,
+          vol: v.vol == null ? null : +v.vol });
+      }
+    }
+    const wc = out.filter(a => a.chg != null);
+    const body = JSON.stringify({
+      gainers: wc.filter(a => a.chg > 0).sort((a, b) => b.chg - a.chg).slice(0, 4),
+      losers:  wc.filter(a => a.chg < 0).sort((a, b) => a.chg - b.chg).slice(0, 4),
+      volume:  out.filter(a => a.vol != null).sort((a, b) => b.vol - a.vol).slice(0, 4),
+      candidates: cand.size, qualified: out.length,
+      minTvlUsd: MIN_TVL, minHolders: MIN_HOLDERS, ts: Date.now(),
+    });
+    MV_CACHE = { ts: Date.now(), body };
     res.writeHead(200, {'content-type':'application/json','cache-control':'public, max-age=600'});
     res.end(body);
   })().catch(e => {
@@ -227,10 +791,292 @@ function cleanUrl(p) {
   return null;
 }
 
+// Local mirror of functions/lxapi/xlm — XLM price, 24h move and series, from HORIZON first.
+// Kept in step with functions/lxapi/xlm.js; see that file for why CoinGecko cannot be the primary
+// source (it refuses datacenter egress, which is where the Worker runs, so it emptied the change
+// column in production while working perfectly from a laptop).
+const XLM_CACHE = new Map();   // key -> {at, body, ttl}
+const XLM_USDC = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
+const XLM_PAIR = 'base_asset_type=native&counter_asset_type=credit_alphanum4&counter_asset_code=USDC&counter_asset_issuer=' + XLM_USDC;
+const XLM_SERIES = { 1:{res:900000,limit:100}, 7:{res:3600000,limit:180}, 30:{res:3600000,limit:200}, 365:{res:86400000,limit:200} };
+function xlmThin(points, max) {
+  if (points.length <= max) return points;
+  const step = Math.ceil(points.length / max);
+  const out = [];
+  for (let i = 0; i < points.length; i += step) out.push(points[i]);
+  const last = points[points.length - 1];
+  if (out[out.length - 1] !== last) out.push(last);
+  return out;
+}
+async function xlmHz(url) {
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const j = await r.json();
+    return (((j || {})._embedded || {}).records) || null;
+  } catch (e) { return null; }
+}
+async function xlmProxy(req, res, q) {
+  const send = (obj, code, ttl) => {
+    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + (ttl || 180) });
+    res.end(JSON.stringify(obj));
+  };
+  const chart = q.get('chart');
+  const key = chart == null ? 'price' : ('chart' + chart);
+  const hit = XLM_CACHE.get(key);
+  if (hit && Date.now() - hit.at < hit.ttl * 1000) return send(hit.body, 200, hit.ttl);
+
+  if (chart != null) {
+    const spec = XLM_SERIES[String(chart)];
+    if (!spec) return send({ error: 'bad period' }, 400, 60);
+    const recs = await xlmHz('https://horizon.stellar.org/trade_aggregations?' + XLM_PAIR
+      + '&resolution=' + spec.res + '&order=desc&limit=' + spec.limit);
+    let prices = (recs || []).map((x) => [+x.timestamp, +x.close])
+      .filter((p) => p[0] > 0 && p[1] > 0).sort((a2, b2) => a2[0] - b2[0]);
+    if (prices.length < 2) {
+      try {
+        const r = await fetch('https://api.coingecko.com/api/v3/coins/stellar/market_chart?vs_currency=usd&days=' + (+chart));
+        if (r.ok) {
+          const j = await r.json();
+          prices = (j.prices || []).filter((p) => Array.isArray(p) && +p[1] > 0).map((p) => [+p[0], +p[1]]);
+        }
+      } catch (e) { }
+    }
+    if (prices.length < 2) return send({ error: 'no series' }, 502, 30);
+    const body = { days: +chart, prices: xlmThin(prices, 180) };
+    XLM_CACHE.set(key, { at: Date.now(), body, ttl: 900 });
+    return send(body, 200, 900);
+  }
+
+  let usd = 0, chg24 = null;
+  const d = await xlmHz('https://horizon.stellar.org/trade_aggregations?' + XLM_PAIR + '&resolution=86400000&order=desc&limit=2');
+  if (d && d.length) {
+    usd = +d[0].close || 0;
+    if (d.length > 1 && +d[1].close > 0 && usd > 0) chg24 = ((usd - +d[1].close) / +d[1].close) * 100;
+  }
+  let mcap = null, vol24 = null;
+  try {
+    const r = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd'
+      + '&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true');
+    if (r.ok) {
+      const s2 = ((await r.json()) || {}).stellar || {};
+      mcap = +s2.usd_market_cap || null;
+      vol24 = +s2.usd_24h_vol || null;
+      if (!(usd > 0) && +s2.usd > 0) {
+        usd = +s2.usd;
+        chg24 = (s2.usd_24h_change != null && isFinite(+s2.usd_24h_change)) ? +s2.usd_24h_change : null;
+      }
+    }
+  } catch (e) { }
+  if (!(usd > 0)) return send({ error: 'no price' }, 502, 30);
+  const body = { usd, chg24, mcap, vol24 };
+  XLM_CACHE.set(key, { at: Date.now(), body, ttl: 180 });
+  send(body, 200, 180);
+}
+
+// Local mirror of functions/lxapi/poolvol — a pool's real rolling-24h volume, walked from Horizon.
+// Kept in step with functions/lxapi/poolvol.js; see that file for the measurement showing why the
+// cheap stellar.expert figure cannot be used (it is the current UTC day so far, not 24 hours).
+const POOLVOL_CACHE = new Map();   // id -> {at, body}
+function pvAsset(type, code, issuer) {
+  return (type === 'native' || !code) ? 'native' : (code + '-' + issuer);
+}
+async function poolVol(req, res, q) {
+  const send = (obj, code) => {
+    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=300' });
+    res.end(JSON.stringify(obj));
+  };
+  const id = q.get('id') || '';
+  if (!/^[0-9a-f]{64}$/i.test(id)) return send({ error: 'bad pool id' }, 400);
+  const hit = POOLVOL_CACHE.get(id);
+  if (hit && Date.now() - hit.at < 300e3) return send(hit.body);
+  const cut = Date.now() - 864e5;
+  let url = 'https://horizon.stellar.org/liquidity_pools/' + id + '/trades?order=desc&limit=200';
+  const vol = Object.create(null);
+  let trades = 0, pages = 0, done = false, failed = false;
+  const started = Date.now();   // wall-clock budget, same as the Pages Function
+  while (url && pages < 20 && Date.now() - started < 9000) {
+    let j = null;
+    try {
+      const r = await fetch(url);
+      if (!r.ok) { failed = true; break; }
+      j = await r.json();
+    } catch (e) { failed = true; break; }
+    const recs = (((j || {})._embedded || {}).records) || [];
+    pages++;
+    for (const x of recs) {
+      const ts = Date.parse(x.ledger_close_time || x.created_at || '');
+      if (!(ts >= cut)) { done = true; break; }
+      trades++;
+      const b = pvAsset(x.base_asset_type, x.base_asset_code, x.base_asset_issuer);
+      const c = pvAsset(x.counter_asset_type, x.counter_asset_code, x.counter_asset_issuer);
+      vol[b] = (vol[b] || 0) + (+x.base_amount || 0);
+      vol[c] = (vol[c] || 0) + (+x.counter_amount || 0);
+    }
+    if (done || recs.length < 200) { done = true; break; }
+    url = (j._links && j._links.next && j._links.next.href) || null;
+    if (!url) done = true;
+  }
+  const body = { trades, vol, partial: !done, failed: failed && !trades, pages };
+  // a partial answer gets a short life so it can finish next time, not stand for five minutes
+  POOLVOL_CACHE.set(id, { at: done ? Date.now() : Date.now() - 240e3, body });
+  send(body);
+}
+
+// Local mirror of functions/lxapi/netstats — the last complete UTC day of Stellar network activity.
+// Kept in step with functions/lxapi/netstats.js; see that file for why the tail is sliced out of the raw
+// text instead of being parsed, and for what the caller must not overclaim about a UTC-day bucket.
+const NETSTATS_URL = 'https://api.stellar.expert/explorer/public/ledger/ledger-stats';
+let NETSTATS_CACHE = null;   // {at, body} — the local server has no edge cache to lean on
+let ASSETCOUNT_CACHE = null; // {at, n}
+// Mirrors assetCount() in functions/lxapi/netstats.js — the explorer states the total outright in
+// /asset-stats/overall, which is the same figure its own front page prints as "Unique assets". This
+// used to bracket-and-bisect the /asset list cursor instead, which cost ~20 requests, got rate-limited
+// often, and counted a filtered list (21.5k) rather than the real total (46.5k). See that file.
+async function netAssetCount() {
+  if (ASSETCOUNT_CACHE && Date.now() - ASSETCOUNT_CACHE.at < 216e5) return ASSETCOUNT_CACHE.n;
+  try {
+    const r = await fetch('https://api.stellar.expert/explorer/public/asset-stats/overall');
+    if (!r.ok) return null;
+    const d = await r.json();
+    const n = +d.total_assets;
+    if (!(n > 0)) return null;
+    ASSETCOUNT_CACHE = { at: Date.now(), n: n };
+    return n;
+  } catch (e) { return null; }
+}
+function netStatsTail(txt, n) {
+  const out = [];
+  let i = txt.lastIndexOf(']');
+  if (i < 0) i = txt.length;
+  while (out.length < n) {
+    const open = txt.lastIndexOf('{', i - 1);
+    if (open < 0) break;
+    const close = txt.indexOf('}', open);
+    if (close < 0) break;
+    try { out.unshift(JSON.parse(txt.slice(open, close + 1))); } catch (e) { }
+    i = open;
+  }
+  return out;
+}
+// Local mirror of functions/lxapi/news — crypto headlines with Stellar items ranked first.
+// Kept in step with that file: same feeds, same dedupe, same two-tier ranking. See it for why this
+// cannot be done in the browser (no CORS headers on any of these feeds).
+const NEWS_FEEDS = [
+  ['CoinDesk', 'https://www.coindesk.com/arc/outboundfeeds/rss/'],
+  ['Cointelegraph', 'https://cointelegraph.com/rss'],
+  ['Bitcoin.com', 'https://news.bitcoin.com/feed/'],
+  ['CryptoSlate', 'https://cryptoslate.com/feed/'],
+  ['U.Today', 'https://u.today/rss'],
+];
+const NEWS_STELLAR = /\b(xlm|stellar lumens|stellar network|stellar development foundation|sdf|soroban|lumens)\b/i;
+const NEWS_WORD = /\bstellar\b/i;
+let NEWS_CACHE = null;
+function newsTag(b, n) {
+  const m = new RegExp('<' + n + '(?:\\s[^>]*)?>([\\s\\S]*?)<\\/' + n + '>', 'i').exec(b);
+  return m ? m[1] : '';
+}
+function newsUnwrap(x) {
+  return String(x || '').replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1').replace(/<[^>]+>/g, ' ')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ').trim();
+}
+function newsImg(b) {
+  const m = /<media:content[^>]+url=["']([^"']+)["']/i.exec(b)
+    || /<media:thumbnail[^>]+url=["']([^"']+)["']/i.exec(b)
+    || /<enclosure[^>]+url=["']([^"']+)["'][^>]*type=["']image/i.exec(b)
+    || /<img[^>]+src=["']([^"']+)["']/i.exec(b);
+  const u = m ? m[1] : '';
+  return /^https:\/\//.test(u) ? u : '';
+}
+function newsParse(xml, source) {
+  const out = [];
+  const atom = /<entry[\s>]/i.test(xml) && !/<item[\s>]/i.test(xml);
+  const blocks = xml.split(atom ? /<entry[\s>]/i : /<item[\s>]/i).slice(1);
+  for (const raw of blocks) {
+    const b = raw.split(atom ? /<\/entry>/i : /<\/item>/i)[0];
+    const title = newsUnwrap(newsTag(b, 'title'));
+    let link = newsUnwrap(newsTag(b, 'link'));
+    if (!link) { const m = /<link[^>]+href=["']([^"']+)["']/i.exec(b); link = m ? m[1] : ''; }
+    if (!title || !/^https?:\/\//.test(link)) continue;
+    const when = newsTag(b, 'pubDate') || newsTag(b, 'published') || newsTag(b, 'updated') || newsTag(b, 'dc:date');
+    out.push({ title, link, source, ts: Date.parse(newsUnwrap(when)) || 0, img: newsImg(b) });
+    if (out.length >= 20) break;
+  }
+  return out;
+}
+async function newsRoute(req, res, q) {
+  const send = (obj, code) => {
+    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=900' });
+    res.end(JSON.stringify(obj));
+  };
+  let n = parseInt((q && q.get('limit')) || '', 10); if (!(n > 0)) n = 12; if (n > 24) n = 24;
+  if (NEWS_CACHE && Date.now() - NEWS_CACHE.at < 900e3) return send(NEWS_CACHE.body);
+  const lists = await Promise.all(NEWS_FEEDS.map(async ([name, url]) => {
+    try {
+      const r = await fetch(url, { headers: { 'user-agent': 'LumosCore/1.0 (+https://lumoscore.com)' } });
+      if (!r.ok) return [];
+      return newsParse(await r.text(), name);
+    } catch (_) { return []; }
+  }));
+  let items = [].concat.apply([], lists);
+  const seen = Object.create(null);
+  items = items.filter((it) => {
+    const k = it.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 70);
+    if (!k || seen[k]) return false; seen[k] = 1; return true;
+  });
+  const rank = (it) => (NEWS_STELLAR.test(it.title) ? 2 : (NEWS_WORD.test(it.title) ? 1 : 0));
+  items.sort((a, b) => (rank(b) - rank(a)) || (b.ts - a.ts));
+  const used = {}; for (const it of items.slice(0, n)) used[it.source] = 1;
+  const body = { items: items.slice(0, n), stellar: items.slice(0, n).filter((i) => rank(i) > 0).length,
+    sources: Object.keys(used), ts: Date.now() };
+  NEWS_CACHE = { at: Date.now(), body };
+  send(body);
+}
+async function netStats(req, res) {
+  const send = (obj, code) => {
+    res.writeHead(code || 200, { 'content-type': 'application/json', 'cache-control': 'public, max-age=900' });
+    res.end(JSON.stringify(obj));
+  };
+  if (NETSTATS_CACHE && Date.now() - NETSTATS_CACHE.at < 1800e3) return send(NETSTATS_CACHE.body);
+  try {
+    const r = await fetch(NETSTATS_URL);
+    if (!r.ok) return send({ error: 'upstream ' + r.status }, 502);
+    const recs = netStatsTail(await r.text(), 2);
+    const today = recs[recs.length - 1] || null;
+    const full = recs.length > 1 ? recs[recs.length - 2] : null;
+    if (!full) return send({ error: 'no complete day' }, 502);
+    // One 63-byte call now, so there is nothing left to bound. The five-second race and the waitUntil
+    // it needed in the Worker both existed only because the old bisection took ~20 sequential requests.
+    const assets = await netAssetCount();
+    const body = {
+      trades: +full.trades || 0, operations: +full.operations || 0,
+      transactions: +full.transactions || 0, payments: +full.payments || 0,
+      activeWallets: +full.active_accounts || 0, accounts: +full.accounts || 0,
+      newAssets: +full.new_assets || 0, assets: assets,
+      avgLedgerTime: +full.avg_ledger_time || 0, ts: +full.ts || 0,
+      partial: today ? { trades: +today.trades || 0, ts: +today.ts || 0 } : null,
+    };
+    NETSTATS_CACHE = { at: Date.now(), body };
+    send(body);
+  } catch (e) { send({ error: String((e && e.message) || e) }, 502); }
+}
+
 http.createServer((req, res) => {
   let p = decodeURIComponent((req.url || '/').split('?')[0]);
   if (p === '/lxapi/holders') return holdersProxy(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/assetlogo') return assetLogo(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/candles') return candlesProxy(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/dexassets') return dexAssets(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/.well-known/stellar.toml') return stellarToml(req, res);
   if (p === '/lxapi/poolstats') return poolStats(req, res);
+  if (p === '/lxapi/pools') return poolList(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/movers') return moversRoute(req, res);
+  if (p === '/lxapi/netstats') return netStats(req, res);
+  if (p === '/lxapi/news') return newsRoute(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/poolvol') return poolVol(req, res, new URL(req.url, 'http://x').searchParams);
+  if (p === '/lxapi/xlm') return xlmProxy(req, res, new URL(req.url, 'http://x').searchParams);
   if (p.startsWith('/lxapi/soroswap/')) {
     return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
   }

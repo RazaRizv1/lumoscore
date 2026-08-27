@@ -74,13 +74,13 @@ for(const dev of ['desktop','mobile']){
   const {json,s,e}=getContents(data);
   for(const k of Object.keys(json)){
     let h=json[k];
-    h=h.replace(/<script id="lx-authgate">[\s\S]*?<\/script>/,''); // idempotent
+    h=h.replace(/<script id="lx-authgate">[\s\S]*?<\/script>/g,''); // idempotent
     const isPublic=isPublicPage(k);
     if(isPublic){
       if(/landing/.test(k)){
         if(h.indexOf(OLD_LAUNCH)>=0){ h=h.split(OLD_LAUNCH).join(NEW_LAUNCH); rewired++; }
         if(h.indexOf(PREV_LAUNCH)>=0){ h=h.split(PREV_LAUNCH).join(NEW_LAUNCH); rewired++; }
-        h=h.replace(/<script id="lx-homegate">[\s\S]*?<\/script>/,'');   // idempotent
+        h=h.replace(/<script id="lx-homegate">[\s\S]*?<\/script>/g,'');   // idempotent
         if(h.indexOf('</head>')>=0){ h=h.replace('</head>', HOMEGATE+'</head>'); homed++; }
       }
     } else {

@@ -1,0 +1,11 @@
+name = "lumos-pool-warmer"
+main = "src/index.js"
+compatibility_date = "2026-08-17"
+
+# Every 15 minutes -- matches RANK_TTL in functions/lxapi/pools.js, so the ranking is refreshed the
+# moment it goes stale and a visitor never finds it cold.
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+SITE = "https://lumoscore.com"

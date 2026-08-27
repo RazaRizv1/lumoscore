@@ -11,8 +11,46 @@ const DETAIL_KEYS = ['lumoscore-amm-pool.html', 'lumoscore-amm-pool-dark.html', 
 const KEYS = LIST_KEYS.concat(DETAIL_KEYS);
 
 const STYLE = `<style id="lx-amm-css">
+/* ---- the three pool stat cards, as one set ---------------------------------------------------- */
+/* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
+   onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
+   to the 18px value to compete with it -- carrying a run-on of three facts. So: the value shrinks to
+   fit rather than wrapping, the sub-line steps back to a quiet single line, and every card reserves
+   the same sub-line height so three cards line up even when one has nothing to say there. */
+.ph-stats .ph-stat{display:flex;flex-direction:column}
+.ph-stat .v{white-space:nowrap;font-size:clamp(15px,1.35vw,18px);font-weight:800;letter-spacing:-.2px}
+/* item 34: the ticker is not part of the number. Pools whose asset is tickered "1" (or "0", "550",
+   "818" -- there are several on Stellar) made the value read as a decimal that had lost its point. */
+.ph-stat .v .lx-unit{font-size:.7em;font-weight:700;opacity:.6;margin-left:3px;letter-spacing:0}
+.ph-stat .s{font-size:12px;margin-top:3px;min-height:15px;white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;color:var(--text-soft)}
+@media(max-width:880px){
+/* Three across does not fit a phone once the values stop wrapping -- measured 374px of cards in a
+   323px column, which is what made the page pan sideways. Two columns, and nothing that refuses to
+   shrink inside them. */
+.ph-stats{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+.ph-stats .ph-stat{min-width:0}
+.ph-stat .v{font-size:16px;white-space:normal}
+.ph-stat .s{font-size:11.5px}
+}
 /* Create Pool asset dropdown: never flash the design's mock placeholder assets (USDC/LUMOS/GUI/AMI...) — only our real held-asset items (.lx-cpitem) ever render */
 #createPoolModal .asset-dropdown .ad-item:not(.lx-cpitem){display:none!important}
+/* item 2: the Line/Bar tooltips were cut in half. The site tooltip renders ABOVE its trigger
+   (bottom:calc(100% + 6px)), the toggle sits in .chart-head at the very top of .chart-card, and
+   .chart-card is overflow:hidden -- so the tooltip opened straight into the clip. Flipping it BELOW puts
+   it over the chart area, which is inside the card and has room to spare. Scoped to this head, so every
+   other tooltip on the site keeps opening upward. */
+.chart-card .chart-head [data-tooltip]:hover::after{bottom:auto!important;top:calc(100% + 6px)!important}
+/* item 7: the amount input sat 48px outside its own row (row 369px, input ending at +48). It is a flex
+   item, and a text input's intrinsic min-content width is its size attribute -- about 20 characters --
+   which min-width:auto then refuses to shrink below. min-width:0 is the fix; without it flex:1 cannot
+   actually flex. */
+#createPoolModal .asset-field .row{min-width:0}
+#createPoolModal .asset-field .row .asset-amt{min-width:0!important;width:auto!important}
+/* item 8: the list already had overflow-y:auto, but max-height was none -- so there was never anything
+   to scroll and 44 assets simply ran past the bottom of the modal. */
+#createPoolModal .asset-dropdown .ad-list{max-height:248px!important;overflow-y:auto!important;
+  overscroll-behavior:contain}
 /* AUDIT (user-reported): the Create Pool MAX control is a bare <span> — it fires, but the design gives it no
    cursor, hover or hit padding, so it reads as decoration and people assume it is broken. */
 #createPoolModal .field-foot .max-btn{cursor:pointer;user-select:none;padding:2px 7px;margin:-2px -7px;border-radius:6px;transition:background .14s,color .14s}
@@ -21,7 +59,7 @@ const STYLE = `<style id="lx-amm-css">
 #createPoolModal .lx-cpwarn{margin:8px 2px 0;font-size:12.5px;line-height:1.45;color:#c9791f}
 /* success toast — same look as the site's "Copied to clipboard" toast (self-contained) */
 .lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
-.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
+.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:nowrap;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
 .lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}
 /* The stack is pointer-events:none so a toast never blocks the page underneath — but that also made the
@@ -30,6 +68,78 @@ const STYLE = `<style id="lx-amm-css">
 .lx-ctoast a{color:inherit;text-decoration:underline;pointer-events:auto;white-space:nowrap}
 @keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visibility:hidden}
+/* item 32: the My Positions count comes from the wallet-side load(), which finishes AFTER reveal()
+   lifts on the network list -- so it briefly showed the template number. .lx-snapd is the marker that
+   a figure is real (set by snapDone), so this count stays hidden until it is rather than guessing. The
+   tab reads "My Pools" with no number for that moment, which is honest; the 7s give-up dashes it AND
+   marks it real, so it can never stay hidden. */
+html.lx-ammready #poolTabs button[data-tab=mine] .count:not(.lx-snapd){visibility:hidden}
+/* #24: the cold-start overlay.
+   The ranking is built by an endpoint that walks the whole network in resumable steps and answers
+   {warming, scanned, phase} until it is done -- on a cold cache that is roughly twenty-five seconds.
+   For that whole time the page sat masked and empty, which reads as broken rather than as working.
+   Reduced motion drops the pulse and the fades; it does NOT gate the dismissal, which is a class and a
+   removal, so the overlay can never be left on screen by a motion preference. */
+/* Pool Activity chart: the SVG takes no pointer input, so every mouse and touch lands on #tvlChart.
+   The hover listeners are on that host, and a touch TARGET is sticky for the life of the gesture --
+   whichever node touchstart hit keeps receiving touchmove. Starting a drag on the filled area therefore
+   bound the gesture to the gradient <path>, and that path is REPLACED on the next chart repaint, which
+   orphaned the drag and killed the readout mid-swipe. Starting on the empty part above the line bound it
+   to the host instead, which is never replaced -- which is exactly why it worked there and nowhere else.
+   With the SVG transparent to input the target is always the host, so it cannot happen at all. The
+   overlay divs already carry pointer-events:none for the same reason. */
+#tvlChart svg,#tvlChart svg *{pointer-events:none}
+.lx-boot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);
+  opacity:1;transition:opacity .28s ease}
+.lx-boot.lx-boot-out{opacity:0;pointer-events:none}
+.lx-boot-in{display:flex;flex-direction:column;align-items:center;gap:16px;padding:24px;text-align:center}
+.lx-boot-badge{position:relative;width:96px;height:96px;display:grid;place-items:center}
+.lx-boot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;
+  background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));
+  animation:lx-boot-spin 1.15s linear infinite;opacity:.9}
+.lx-boot-badge::after{content:"";position:absolute;inset:8px;border-radius:50%;
+  background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-boot-pulse 1.8s ease-in-out infinite}
+@keyframes lx-boot-spin{to{transform:rotate(360deg)}}
+.lx-boot-mark{position:relative;z-index:1;width:52px;height:52px;background-size:contain;background-repeat:no-repeat;
+  background-position:center;animation:lx-boot-pulse 1.6s ease-in-out infinite}
+.lx-boot-ttl{font-family:'Hanken Grotesk',sans-serif;font-size:15px;font-weight:700;color:var(--text,#0e0e10)}
+.lx-boot-bar{width:216px;height:4px;border-radius:99px;background:var(--border,#ececef);overflow:hidden}
+.lx-boot-fill{height:100%;width:0;background:var(--accent,#ea6a2c);border-radius:99px;transition:width .45s ease}
+.lx-boot-sub{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.04em;
+  color:var(--text-soft,#6f6f79);font-variant-numeric:tabular-nums}
+@keyframes lx-boot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.9);opacity:.6}}
+@media (prefers-reduced-motion:reduce){.lx-boot-mark,.lx-boot-badge::before,.lx-boot-badge::after{animation:none}
+  .lx-boot,.lx-boot-fill{transition:none}}
+/* #panelAll is the PHONE's all-pools list and was never in the gate above, because when that gate was
+   written paintTables filled both and revealed after. The network list changed that: the rows now arrive
+   from /lxapi/pools, so the design's baked mock (LUMOS/XLM $1,432,475, CELL/XLM, USDT/XLM) sat visible
+   until they landed. Same treatment as the desktop body. */
+html:not(.lx-ammready) #panelAll{visibility:hidden}
+/* #39: the Top Pool slot showed "( )" for a beat on the phone. That is its own skeleton -- two ringed
+   circles overlapping at phone scale read as a pair of brackets, which looks like a rendering fault
+   rather than a placeholder. The slot stays blank until there is a real pair to put in it; the label
+   under it already says what is coming. */
+html:not(.lx-ammready) .lx-hstat[data-k=top] .v{visibility:hidden}
+/* #10: remote pool results, kept visually distinct from the page's own ranked list so it is obvious
+   these came from a search rather than from the top-25 ranking. */
+.lx-psresult{margin-top:14px}
+/* #41: self-contained appearance for a network result, so it never depends on .pool-card existing.
+   :where() = zero specificity, so the phone's own .pool-card rules still win there. */
+:where(.lx-psresult .lx-pscard){display:block;margin:0 0 8px;padding:12px 14px;text-decoration:none;
+  color:inherit;border:1px solid var(--border,#e6e6ea);border-radius:12px;background:var(--surface,#fff)}
+:where(.lx-psresult .lx-pscard:hover){border-color:var(--accent,#ea6a2c)}
+:where(.lx-psresult .lx-pscard .pc-head){display:flex;align-items:center;gap:10px;margin-bottom:9px}
+:where(.lx-psresult .lx-pscard .pc-name){font-size:14.5px;font-weight:700;color:var(--text,#0e0e10)}
+:where(.lx-psresult .lx-pscard .pc-sub){margin-top:2px;font-size:12px;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stats){display:flex;gap:26px}
+:where(.lx-psresult .lx-pscard .pc-stat .l){font-size:10px;font-weight:600;letter-spacing:.05em;
+  text-transform:uppercase;color:var(--text-soft,#9a9aa3)}
+:where(.lx-psresult .lx-pscard .pc-stat .v){margin-top:2px;font-size:13.5px;font-weight:700;
+  color:var(--text,#0e0e10);font-variant-numeric:tabular-nums}
+.lx-pshead{margin:0 0 8px;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}
+.lx-psnote{padding:16px 4px;text-align:center;font-size:13px;color:var(--text-soft)}
 /* POOL-DETAIL TAB STRIPS ON A PHONE.
    #ptabs measures 432px of tabs inside a 345px box, so "Participants" sits past the right edge and is
    simply unreachable — on a narrower handset "Transactions" and "My Position" go with it. The strip is
@@ -62,6 +172,12 @@ html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visib
 /* white-space:nowrap + overflow:hidden are ESSENTIAL: during load these cells still hold the design's
    MOCK text (e.g. "51,250 XLM swapped") which wraps to 2 lines in the narrow column and makes the whole
    top section ~40px taller until real (short) data lands. One-lining the skeleton keeps height stable. */
+/* Market Overview began at exactly the pixel the pools card ended -- 1378 to 1378, no gap at all -- so
+   the two read as one broken block. The separation was never its own: it came from the pagination row
+   between them, which is display:none on the My Pools tab, so the collision appeared there and nowhere
+   else. 22px is the gap this page already uses between its other cards, and it belongs to the card
+   rather than to whatever happens to precede it. */
+.amm-snapshot-card{margin-top:22px}
 html:not(.lx-ammready) .amm-snapshot-value, html:not(.lx-ammready) .amm-snapshot-vsub, html:not(.lx-ammready) .amm-snapshot-sub{color:transparent!important;border-radius:6px;white-space:nowrap!important;overflow:hidden!important;background:linear-gradient(90deg,rgba(148,140,200,.10) 25%,rgba(148,140,200,.22) 37%,rgba(148,140,200,.10) 63%)!important;background-size:400% 100%!important;animation:lxShim 1.3s ease-in-out infinite}
 /* width-only constraints — do NOT add margin/display here or the skeleton rows grow taller than the
    ready rows and the whole top section visibly shrinks ~40px when data lands */
@@ -92,6 +208,24 @@ html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapsh
 .pair-icons .pa img,.pair-icons .pb img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 /* Typography parity with the rest of the site (e.g. Wallet › My Assets): numeric/value cells + tab counts
    use JetBrains Mono (tabular), the pair NAME stays Hanken Grotesk. Fixes "Pools text looks different". */
+/* network pool-list pager. #paginationAll ships from the design with a static "1-10 of 100"; its
+   contents are replaced wholesale, so these rules describe the whole footer rather than tweaking it. */
+/* display is deliberately NOT !important. The design's tab handler hides the footer by writing
+   pag.style.display="none" when My Pools is selected, and an !important rule in the stylesheet beats an
+   inline style -- so the pager stayed on screen under the My Pools list. Specificity here is the bug. */
+.lx-netpag{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  padding:14px 4px 2px;margin-top:6px;border-top:1px solid var(--border);
+  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:13.5px;color:var(--text-soft)}
+.lx-netpag .lx-netpag-c{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.lx-netpag button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
+  padding:6px 12px;font:inherit;font-weight:600;color:var(--text);cursor:pointer;transition:.16s}
+.lx-netpag button:hover:not(:disabled){border-color:var(--accent-soft)}
+.lx-netpag button:disabled{opacity:.4;cursor:default}
+.lx-netpag .lx-netpag-m{margin:0 8px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.lx-netpag .lx-netpag-i{font-variant-numeric:tabular-nums}
+.lx-netpag-host{margin-top:10px}
+@media (max-width:700px){ .lx-netpag{justify-content:center;text-align:center}
+  .lx-netpag .lx-netpag-i{width:100%;text-align:center} }
 #poolsBody td, #lx-mypanel td, #poolTabs .count{font-family:'JetBrains Mono',monospace!important}
 #poolsBody .pair-name, #lx-mypanel .pair-name{font-family:'Hanken Grotesk','Hanken Grotesk',sans-serif!important;font-size:15.5px!important;font-weight:700!important}
 #poolsBody .pair-sub, #lx-mypanel .pair-sub{font-size:12.5px!important}
@@ -111,6 +245,12 @@ html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapsh
 .lx-amm-empty{padding:22px 12px;text-align:center;color:var(--text-muted);font-size:13.5px}
 .lx-amm-empty b{color:var(--text);display:block;margin-bottom:4px}
 html:not(.lx-ammready) .pool-header, html:not(.lx-ammready) .pool-layout{visibility:hidden}
+/* The Deposit / Withdraw box has its OWN gate, because .lx-ammready lifts when the pool's own figures
+   land and the wallet-side balances arrive later. In that window the design's baked "Balance: 25,420.18"
+   was on screen -- a number belonging to nobody, beside a MAX button that would have used it. Only the
+   balance line is held, not the panel: the form is usable, it just does not state a balance it does not
+   yet know. paintDetail lifts this the moment it has written the real ones. */
+html:not(.lx-dwready) #dwDeposit .dw-field .balance,html:not(.lx-dwready) #dwWithdraw .balance{visibility:hidden}
 /* the breadcrumb pair (last span in .crumb) is a baked "LUMOS / XLM" mock that pdCopy corrects to the
    real pair before reveal — hide it until then so it doesn't flash the wrong pair */
 html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
@@ -123,6 +263,12 @@ html:not(.lx-ammready) .crumb span:last-child{visibility:hidden}
    spans (the green "+$32.18" PnL) and uses <img> logos, neither of which a text-colour rule can hide. Layout
    is preserved. The deposit/withdraw asset chips are re-created on tab switch, so they're gated per-element on
    data-lxpair (set by setField / fixWithdrawPair) instead of the global class. */
+/* N13: each side of the pair opens its own asset page. Inherits the heading's own type -- this is the
+   title, not a control added to it -- and only underlines on hover so it does not read as two links
+   sitting in a heading at rest. */
+.ph-name .lx-phlink{color:inherit;text-decoration:none;border-bottom:1px solid transparent}
+.ph-name .lx-phlink:hover{color:var(--accent,#ea6a2c);border-bottom-color:var(--accent,#ea6a2c)}
+.ph-name .lx-phsep{opacity:.55}
 html:not(.lx-detpr) .ph-name,
 html:not(.lx-detpr) .crumb span:last-child,
 html:not(.lx-detpr) .ph-icons .pa, html:not(.lx-detpr) .ph-icons .pb,
@@ -152,25 +298,76 @@ html:not(.lx-detpr) .side-head .count-pill{visibility:hidden!important}
 /* AUDIT (user-reported, DWARF/SBB): the deposit CTA looked live even when the deposit could not possibly
    succeed — an AMM deposit needs BOTH sides of the pair, and the user held none of one of them. Grey it out
    and make it inert so the state is legible BEFORE filling in amounts, instead of erroring only on submit. */
-.dw-card .dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
+/* NOT scoped to .dw-card. The phone puts this button in .card > .card-body, so the old
+   ".dw-card .dw-cta.lx-dwoff" never matched there: the CTA was aria-disabled and inert to our handler
+   while still looking and feeling fully enabled. The hint paragraph underneath hid that -- with the
+   paragraph gone the button's own appearance IS the whole message, so it has to be right on both. */
+.dw-cta.lx-dwoff{opacity:.45!important;cursor:not-allowed!important;pointer-events:none!important;filter:grayscale(.35)}
 .dw-card .lx-dwhint{margin-top:9px;font-size:12px;line-height:1.45;color:var(--text-muted);text-align:center}
-/* AUDIT: the hero's absolutely-positioned stats chip (.lm-chip) collides with the "Provide liquidity, earn
-   swap fees" headline once the promo card narrows (≤1100px) — unreadable jumble. The same numbers live in
-   the Market Overview panel, so just hide the decorative chip at narrow widths. */
-@media (max-width:1100px){ .lm-pools .lm-chip{display:none!important} }
+/* #6, mobile half. This rule and the display:block one below are both leftovers from when .lm-chip was
+   an ABSOLUTELY POSITIONED decoration floating over the headline -- hiding it below 1100px was the right
+   call for that design. _poolshero.js has since rebuilt the hero as a flex column where the chip is a
+   real strip pinned along the bottom edge, and it sets display:block for exactly this width. But
+   lx-amm-css is emitted AFTER lx-poolshero-css in the head, so with both marked !important this stale
+   one has been winning ever since -- which is why the numbers vanished entirely on a phone.
+   The layout belongs to _poolshero.js now, so this defers to it. */
 /* the design paints a synthetic mock chart on load; hide its data (line/area/bars) until our real engine takes
    over (lx-chartready), keeping the axis/grid so the plot frame stays visible */
 html:not(.lx-chartready) #tvlChart svg path:not(.lx-ch), html:not(.lx-chartready) #tvlChart svg rect:not(.lx-ch){opacity:0!important}
+/* #11: the gate above covered the line and the bars but not the axis LABELS, which are <text> nodes the
+   engine rewrites in place once it has real data. So while "Loading pool history…" was on screen the
+   scale beside it still read the design's mock numbers -- 5.99M / 3.38M / 2.78M XLM for a pool that
+   holds nothing of the sort -- and they snapped to the real figures when the chart finally drew. That
+   momentary wrong scale is the flash. Hide the numbers with the plot and reveal them together.
+   The loading message is itself an SVG <text> (.lx-chload), and anything we drew carries .lx-ch, so
+   both are excluded: this only ever hides labels that are still showing mock values. */
+html:not(.lx-chartready) #tvlChart svg text:not(.lx-ch):not(.lx-chload){opacity:0!important}
 .ph-icons .pa,.ph-icons .pb,.mp-asset-ico,#dwDeposit .dw-field .asset .ico,#dwWithdraw .asset .ico{background-image:none!important;overflow:hidden}
 .ph-icons .pa img,.ph-icons .pb img,.mp-asset-ico img,.dw-field .asset .ico img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
 .type-pill.deposit{background:rgba(34,197,94,.14)!important;color:#16a34a!important}
 .type-pill.withdraw{background:rgba(239,68,68,.14)!important;color:#ef4444!important}
 .lx-partrow{display:flex;align-items:center;gap:10px}
+.lx-acct:hover{color:var(--accent)!important}
 .lx-partrow .part-addr{flex:1;font-family:'JetBrains Mono',monospace;font-size:13px}
 .lx-partrow .part-share{font-weight:700;font-size:14px!important}
 /* pool detail: remove the design's green endpoint dot on the TVL chart */
 #tvlChart circle{display:none!important}
-/* pool-tx wallet address is a link to stellar.expert — subtle hover underline */
+/* Participants pager. We APPEND this footer ourselves, and the design only ships .part-foot styling in the
+   desktop file -- the phone build has no .part-foot rule at all, so on mobile it rendered as two stacked
+   unstyled divs with bare chevrons overflowing the card. Styled on our own class so it stands up wherever
+   it is inserted; the values mirror the desktop rules so both look the same. */
+.lx-partfoot{display:flex!important;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:10px 14px;border-top:1px solid var(--border);font-size:13px;color:var(--text-soft);
+  font-family:'Hanken Grotesk',system-ui,sans-serif}
+.lx-partfoot > div:first-child{font-variant-numeric:tabular-nums}
+.lx-partfoot .nav{display:inline-flex;align-items:center;gap:6px}
+.lx-partfoot .nav button{width:26px;height:26px;min-width:26px;padding:0;border-radius:6px;
+  border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;font-size:15px;line-height:1}
+.lx-partfoot .nav button:hover:not(:disabled){color:var(--accent);border-color:var(--accent)}
+.lx-partfoot .nav button:disabled{opacity:.4;cursor:default}
+.lx-partfoot .lx-pppg{font-variant-numeric:tabular-nums;white-space:nowrap;padding:0 2px}
+/* The "Pool TVL / Volume" dropdown chose which of the two series to show, so they were never on screen
+   together. They now share one chart -- TVL line with volume bars beneath it, same as Trade-asset -- which
+   leaves this control with nothing to switch between. Hidden rather than deleted from the markup: the
+   design ships its own open/close handler and label rewriting for it, and removing the node it expects is
+   how you get a handler throwing on every click.
+
+   NOT scoped to .chart-card. That is where the desktop puts it; the phone puts it in
+   .card > .chart-controls, so a ".chart-card ..." rule hid it on desktop only and left it sitting on
+   mobile. This is the SECOND selector in this file written against the desktop's wrapper and silently
+   missing the phone's (the disabled-CTA rule was the first) -- on this page, scope to the element.
+
+   #chartMetricMenu / .chart-mode-menu is the menu the design's own script builds and appends; with the
+   trigger gone nothing should open it, but a stale "open" class would otherwise leave it on screen. */
+.chart-mode-select,#chartMetricMenu,.chart-mode-menu{display:none!important}
+/* item 20: subtle horizontal gridlines behind the plot. */
+.chart-body svg{background-image:repeating-linear-gradient(to bottom,rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}
+/* pool-tx wallet address links to OUR account page — subtle hover underline */
+.lx-sortag{display:inline-block;margin-left:7px;padding:1px 7px;border-radius:999px;font-size:10.5px;
+font-weight:700;letter-spacing:.02em;background:var(--surface);border:1px solid var(--border);color:var(--text-soft);vertical-align:middle}
+.lx-nolink{cursor:default}
+.lx-nolink:hover .lx-waddr{text-decoration:none}
 table.tx .wallet-cell{cursor:pointer}
 table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
 /* pagination row: vertically center "Page X of Y" with the Prev/Next buttons */
@@ -193,11 +390,29 @@ table.tx a.wallet-cell:hover .lx-waddr{text-decoration:underline}
 .lx-hstat .l{font:600 13px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)}
 /* Top Pool stat: show the pair logos beside the "CODE / XLM" text */
 .lx-hstat[data-k=top] .v{display:flex;align-items:center;gap:12px}
-.lx-hstat[data-k=top] .pair-icons{width:57px;height:33px;flex:0 0 57px}
+/* #2: the top-pool code was hidden behind its own second logo.
+   Six rules from four stylesheets size this element, and one of them -- added later, for the pair marks
+   elsewhere -- sets gap:6px on [data-paired]. The nudge below (.pb{left:23px}) was written for a
+   container with no gap, so the second mark ended up 33+6+23 = 62px in, inside a box declared 57px wide,
+   and jutted far enough past it to sit on the U of "USDC / XLM".
+   Overlap the two by geometry instead of by a nudge that assumes a particular flow: no gap, a negative
+   margin, and no offset. The box is then exactly as wide as what is in it, and the text starts after it. */
+.lx-hstat[data-k=top] .pair-icons{width:auto!important;flex:0 0 auto!important;gap:0!important;height:33px}
 .lx-hstat[data-k=top] .pair-icons .pa.lx-ico,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{width:33px!important;height:33px!important;border:2.5px solid rgba(22,20,42,.95);box-sizing:border-box;box-shadow:0 3px 8px rgba(0,0,0,.4)}
-.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:23px!important}
+.lx-hstat[data-k=top] .pair-icons .pb.lx-ico{left:0!important;margin-left:-10px!important}
 .lx-hstat[data-k=top] .pair-icons .pa.lx-ico[data-mono]::after,.lx-hstat[data-k=top] .pair-icons .pb.lx-ico[data-mono]::after{font-size:13px}
 .lx-hstat[data-k=top] .lx-toptxt{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:20px}
+/* #29: the pool page's own header pair -- two 44px logos with a 6px gap between them, reading as two
+   unrelated tokens rather than one pair. Everywhere else a pair is drawn overlapping, so this was the
+   odd one out. Both already carry a 3px ring, which is what makes the overlap legible; the base asset
+   stays on top so the pair reads left to right in the same order as the name beside it. */
+/* #9: and the box has to BE a row. On the phone the design lays .ph-icons out as display:block, so the
+   two 44px marks stacked -- the second one landing 44px below the first, on top of the text under it.
+   The overlap rule below is a no-op in block layout, which is why it read as a broken logo rather than
+   a pair. Measured before: pa at y141, pb at y185, inside a 60px-wide box. */
+.pool-header .ph-icons{display:flex!important;align-items:center;flex-wrap:nowrap;width:auto!important;gap:0!important}
+.pool-header .ph-icons .pa{position:relative;z-index:2}
+.pool-header .ph-icons .pb{position:relative;z-index:1;left:0!important;margin-left:4px!important}
 /* My Positions "View position" — themed pill button (light + dark) instead of a raw link */
 .lx-ammview{display:inline-flex;align-items:center;gap:5px;padding:7px 15px;border-radius:9px;font:700 12.5px/1 'Hanken Grotesk',sans-serif;text-decoration:none!important;white-space:nowrap;border:1px solid rgba(234,106,44,.38);color:var(--accent,#ea6a2c)!important;background:rgba(234,106,44,.10);transition:background .15s ease,color .15s ease,border-color .15s ease}
 .lx-ammview:hover{background:var(--accent,#ea6a2c);color:#fff!important;border-color:var(--accent,#ea6a2c)}
@@ -237,8 +452,11 @@ radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
 .lx-constel line{stroke:rgba(150,120,240,.26);stroke-width:1}
 .lx-constel circle{fill:#cbbaff;filter:drop-shadow(0 0 5px rgba(168,128,255,.9));animation:lxNode 4.5s ease-in-out infinite}
 @keyframes lxNode{0%,100%{opacity:.5}50%{opacity:1}}
-/* top-align the hero text with the TVL chip (chip sits ~21px from top) */
-.lm-pools .lm{display:block!important}
+/* #6/#2, desktop half. Same story as the mobile rule above: this forced the hero back to block so the
+   copy would top-align with the floating chip. _poolshero.js now lays the hero out as a flex column and
+   puts the strip last with order:9 -- but order does nothing in a block container, so the strip rendered
+   in DOM order, i.e. ABOVE the headline, and the Pools hero stopped matching the Trade hero it is meant
+   to mirror. Removing it lets that flex layout actually apply. */
 .lx-part{position:absolute;border-radius:50%;background:rgba(214,196,255,.85);box-shadow:0 0 9px rgba(172,132,255,.9);animation:lxDrift linear infinite}
 .lx-part.p1{width:5px;height:5px;left:57%;bottom:14%;animation-duration:15s}
 .lx-part.p2{width:4px;height:4px;left:74%;bottom:8%;animation-duration:19s;animation-delay:-4s}
@@ -259,6 +477,28 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
    phone stylesheet only ever expected a LETTER in there, so it sizes nothing: a 181x181 USDC png landed
    inside a 24px clipped circle and you saw one magnified corner — which reads exactly like a broken
    placeholder. Desktop's .mp-asset-ico had the sizing; mobile did not. Cover both. */
+/* #6 (batch 5): the participants footer ships baked as "Viewing 1 - 17 of 847" -- the design's mock --
+   and on a desktop refresh that sat there for the whole time the pool was loading, which is a specific
+   wrong number rather than an obviously empty one. Hidden until our own pager writes it (.lx-partfoot
+   is added by partFoot), with the usual failsafe so a stalled load leaves it blank rather than gone. */
+.part-foot:not(.lx-partfoot){visibility:hidden}
+
+/* #14: the header stats row ships as three fixed columns. It now carries a fourth -- Providers. Four
+   across on a desktop card; on a phone four would leave ~85px per box for a label like "Fees Collected
+   (24h)", so it folds to 2x2 there instead. */
+.ph-stats{grid-template-columns:repeat(4,1fr)!important}
+/* #20: the + between the two Create Pool assets sits ON the seam between the cards, so it depends on
+   having a solid ground of its own and on being above them -- without either it reads as a glyph
+   caught half under an edge. Given both, plus a glyph that is centred by geometry rather than by line
+   box (an svg with display:block cannot inherit a stray baseline). Could not reproduce the exact
+   breakage reported, so this changes only what could plausibly cause it and nothing else. */
+#createPoolModal .plus{position:relative;z-index:2;flex:0 0 30px;width:30px;height:30px;
+  background:var(--surface,#fff)!important;line-height:0;
+  display:flex!important;align-items:center!important;justify-content:center!important}
+#createPoolModal .plus svg{display:block;width:14px;height:14px;flex:0 0 14px}
+.ph-stat .ic.part{background:var(--purple-soft,rgba(139,92,246,.13));color:var(--purple,#8b5cf6)}
+@media(max-width:900px){.ph-stats{grid-template-columns:repeat(2,1fr)!important}}
+
 .mp-asset-ico img,.mpm-asset-ico img{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
 .mpm-asset-ico{overflow:hidden;display:inline-flex;align-items:center;justify-content:center}
 
@@ -293,13 +533,60 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     return (+window.__lxXlmUsd>0)?+window.__lxXlmUsd:0.11; }
   function xuSave(v){ if(+v>0){ try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:+v,ts:Date.now()})); }catch(_){} } return +v||0; }
   // adaptive quantity: big -> commas/M, small -> enough decimals so a tiny LP share never rounds to "0"
+  // Headline amounts: abbreviate at a million and up, three decimals (6,648,584 -> 6.648M). Below that
+  // the grouped integer is short enough already and rounding would drop real precision.
+  function big(n){ n=+n||0; var a=Math.abs(n);
+    if(a>=1e9)return (n/1e9).toFixed(3)+"B";
+    if(a>=1e6)return (n/1e6).toFixed(3)+"M";
+    return num(n); }
   function qty(n){ n=+n||0; var a=Math.abs(n); if(a>=1e6)return (n/1e6).toFixed(2)+"M"; if(a>=1e3)return Math.round(n).toLocaleString("en-US"); if(a>=1)return (Math.round(n*100)/100).toLocaleString("en-US"); if(a>0){ var d=Math.min(7,Math.max(2,2-Math.floor(Math.log(a)/Math.LN10))); var s=n.toFixed(d); if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\\.$/,""); return s; } return "0"; }
   function usd(x){x=+x;if(!x)return "$0";var a=Math.abs(x);if(a>=1e9)return "$"+(x/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(x/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(x/1e3).toFixed(1)+"K";if(a>=1)return "$"+x.toFixed(2);return "$"+x.toFixed(x>=0.01?4:6);}
   function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
-  function getJSON(u){return fetch(u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
+  // HOST FALLBACK, per GUARDRAILS E12. Same gap the Trade-asset layer had, same symptom: Horizon allows
+  // 100 requests per 5 minutes PER IP, this page spends a large share of that on one load, and once the
+  // budget is gone every call fails. The page then shows "Couldn't load this pool from Horizon" and sits
+  // through its retry loop for ten seconds or more -- all of it self-inflicted, and all of it invisible as
+  // a rate limit because Horizon's 429 carries no CORS header, so the browser only ever reports a dead
+  // fetch. Reported from a real session, not a lab.
+  //
+  // The null-on-failure contract the rest of this file depends on is preserved exactly: callers still see
+  // null and their existing retries still key on it. A readable 4xx (no such pool) is a real answer and is
+  // NOT re-asked against the second host.
+  var H2="https://horizon.stellar.lobstr.co";
+  function getJSON(u){
+    function once(url){ return fetch(url).then(function(r){
+      if(r.ok)return r.json();
+      var e=new Error("HTTP"+r.status); e.__st=r.status; throw e; }); }
+    return once(u).catch(function(e){
+      var st=(e&&e.__st)||0;
+      if(st>=400&&st<500&&st!==429)return null;              // a real "no", not a busy network
+      if(u.indexOf(H)!==0)return null;                        // not a Horizon call: nothing to fall back to
+      return once(H2+u.slice(H.length)).catch(function(){ return null; });
+    });
+  }
   function myAddr(){try{var a=localStorage.getItem("lumos.address")||"";return /^G[A-Z2-7]{55}$/.test(a)?a:"";}catch(e){return "";}}
   function gcolor(s){return GRAD[ghash(s)%GRAD.length];}
-  function launchIcon(code,issuer){ try{ var m=JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}"); return m[code+"-"+issuer]||""; }catch(e){ return ""; } }
+  function launchIcon(code,issuer){ try{ var m=JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}"); var v=m[code+"-"+issuer]; return (v&&typeof v==="object")?(v.image||""):(v||""); }catch(e){ return ""; } }
+  // The token-icon registry we publish at /assets/tokens/launchpad-icons.json -- the same record the
+  // stellar.toml is built from, so a LumosCore asset shows the SAME logo here as it does in a wallet.
+  // Read from our own origin, so it needs neither the toml round trip nor any third party.
+  // window.__lxTokenRegistry is baked into <head> at build time, so this is known on the FIRST paint and the letter avatar is never drawn for a token we have. The fetch stays only as a refresh for a page left open across a deploy.
+  var _amMan=(function(){ try{ return window.__lxTokenRegistry||null; }catch(e){ return null; } })(), _amManGo=0;
+  function amManifest(){
+    if(_amManGo)return; _amManGo=1;
+    fetch("/assets/tokens/launchpad-icons.json").then(function(r){ return r.ok?r.json():null; }).then(function(m){
+      if(!m||typeof m!=="object"||m.constructor===Array)return;
+      _amMan=m;
+      try{ healLogos(); }catch(_e){}                            // rows already drawn -> repaint them
+    }).catch(function(){});
+  }
+  function manIcon(code,issuer){
+    if(!_amMan)return "";
+    var v=_amMan[code+"-"+issuer]; var u=(v&&typeof v==="object")?v.image:v;
+    // same-origin absolute path only, so one bad write cannot repoint every icon at another host
+    return (typeof u==="string"&&u.charAt(0)==="/"&&u.indexOf("//")!==0)?u:"";
+  }
+  amManifest();
   // token side = the token's own uploaded logo if we have it, else a DISTINCT colored monogram (per code); XLM side = xlm.png
   function ico1(cls,mi,mono,code,issuer){ var mo=mono?(' data-mono="'+esc(mono)+'"'):''; var idn=(code!=null&&code!=="")?(' data-lxc="'+esc(code)+'" data-lxi="'+esc(issuer||"")+'"'):''; return '<div class="'+cls+' lx-ico" data-lxfixed="1" data-logoed="1"'+mo+idn+' style="--mi:'+mi+'"></div>'; }
   // letter-avatar data-URI: a per-asset coloured monogram, so an unknown token NEVER renders the generic
@@ -405,6 +692,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   var DATA=null;
   var _cpBals=null;                       // wallet balances fetched EARLY just for the Create Pool asset picker
+  var _cpSubs=null;                       // ...and its subentry count, which is what sets the XLM reserve
   function load(){
     var xlmP=getJSON("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd");
     var acctP=myAddr()?(window.__lxAcct?window.__lxAcct(myAddr()):getJSON(H+"/accounts/"+myAddr())):Promise.resolve(null);
@@ -451,6 +739,13 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
 
   function setText(el,t){ if(el&&el.textContent!==t)el.textContent=t; }
+  // item 34: a figure and its ticker as two elements, so the ticker can be styled down. Same
+  // no-op-if-unchanged behaviour as setText, so it is safe on the re-assert ticks.
+  function setAmt(el,txt,unit){
+    if(!el)return;
+    var html=esc(String(txt))+(unit?(' <span class="lx-unit">'+esc(String(unit))+'</span>'):"");
+    if(el.innerHTML!==html)el.innerHTML=html;
+  }
   function q(s){return document.querySelector(s);} function qa(s){return [].slice.call(document.querySelectorAll(s));}
 
   // AUDIT (user-reported: Market Overview shows wrong numbers for a few seconds on refresh). The shimmer
@@ -499,6 +794,12 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     });
     buildFeesRow();
     paintHeroStats();
+    try{ wirePoolSearch(); }catch(_){}
+    // The list re-renders on a timer and rebuilds every card with display cleared, which wiped the
+    // filter a second after it was typed -- all 25 cards back for a query none of them matched. Re-apply
+    // the standing query after each render. The remote half is cached per query, so this repaints from
+    // memory rather than re-fetching.
+    try{ if(LXPS_Q)lxPoolSearch(LXPS_Q); }catch(_){}
   }
   // Replace the hero's "TOTAL VALUE LOCKED" chip (redundant with the right-side Pool Snapshot) with 4 stats we DON'T show elsewhere.
   // Build the chip structure (labels + skeleton values) IMMEDIATELY at boot so it doesn't pop in ~2s after data.
@@ -537,6 +838,170 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // resolves to /pools/lumoscore-amm-pool-mobile.html — which routes straight back to the list. That is
   // why tapping a pool "refreshed" the page. detailUrl() builds the real per-pool url the desktop rows
   // navigate to, so the card is a plain working link.
+  // #10: the pool search only ever filtered the cards ALREADY on the page.
+  //
+  // The list renders the top 25 pools, and the design's handler hides the cards whose text does not
+  // contain the query. So "x" appeared to work -- most pairs contain XLM -- and a full asset code that
+  // is not in the top 25 matched nothing, which reads as the search breaking the more you type. It was
+  // never searching; it was narrowing.
+  //
+  // When the local pass leaves nothing, ask the network: resolve the code to its issuers through the
+  // asset index, then ask Horizon for the pools holding that reserve. Debounced, sequence-guarded so a
+  // slower earlier query cannot overwrite a newer one, and cached per query.
+  var LXPS_SEQ=0, LXPS_CACHE={}, LXPS_T=null, LXPS_Q="";
+  // A search that cannot finish in this long is queued behind the page's own Horizon traffic, not
+  // working. Say so rather than spinning: the answer is still cached if it lands later.
+  var LXPS_TIMEOUT=12000;
+  function lxPsRace(p,ms){
+    return new Promise(function(res,rej){
+      var done=false;
+      var t=setTimeout(function(){ if(!done){ done=true; rej(new Error("lx-timeout")); } },ms);
+      p.then(function(v){ if(!done){ done=true; clearTimeout(t); res(v); } },
+             function(e){ if(!done){ done=true; clearTimeout(t); rej(e); } });
+    });
+  }
+  // The list to narrow and the place to hang network results, per layout.
+  //   phone   : #panelAll        -> .pool-card
+  //   desktop : #poolsBody       -> tr.lx-ammrow, results appended after the table's card
+  function lxPsTargets(){
+    var panel=q("#panelAll");
+    if(panel)return {host:panel, items:[].slice.call(panel.querySelectorAll(".pool-card:not(.lx-pscard)"))};
+    var tb=q("#poolsBody");
+    if(tb){
+      var card=(tb.closest&&tb.closest(".pools-card"))||tb.parentNode;
+      return {host:card, items:[].slice.call(tb.querySelectorAll("tr"))};
+    }
+    return null;
+  }
+  // A row and a card keep the same two fields under different names, so the query is compared against
+  // the pair and its reserves either way -- which is what makes "LMNR" find the XLM / xLMNR pool rather
+  // than only matching a pair whose NAME starts with it.
+  function lxPsText(el){
+    var n=el.querySelector(".pc-name")||el.querySelector(".pair-name");
+    var sub=el.querySelector(".pc-sub")||el.querySelector(".pair-sub");
+    return ((n&&n.textContent)||"")+" "+((sub&&sub.textContent)||"");
+  }
+  function lxPoolSearch(qRaw){
+    var T=lxPsTargets(); if(!T)return;
+    var panel=T.host;
+    var qq=String(qRaw||"").trim();
+    var host=panel.querySelector(".lx-psresult");
+    if(!host){ host=document.createElement("div"); host.className="lx-psresult"; panel.appendChild(host); }
+    // The local narrowing is done HERE rather than left to the design's own handler. That handler exists
+    // but does not run on this page -- measured: all 25 cards stayed visible for a query none of them
+    // matched -- so the box did nothing at all before falling through to the network. Doing both makes
+    // the control work end to end and removes the dependency on somebody else's listener.
+    var cards=T.items;
+    var lc=qq.toLowerCase(), hits=0;
+    cards.forEach(function(c){
+      if(!qq){ c.style.display=""; return; }
+      var on=lxPsText(c).toLowerCase().indexOf(lc)>=0;
+      c.style.display=on?"":"none";
+      if(on)hits++;
+    });
+    if(qq.length<2){ host.innerHTML=""; host.style.display="none"; return; }
+    // Only go to the network when the page itself has nothing to show for it.
+    if(hits){ host.innerHTML=""; host.style.display="none"; return; }
+    var seq=++LXPS_SEQ;
+    host.style.display="";
+    if(LXPS_CACHE[qq]!==undefined){ lxPsPaint(host,LXPS_CACHE[qq],qq); return; }
+    host.innerHTML='<div class="lx-psnote">Searching Stellar for pools with \u201c'+esc(qq)+'\u201d\u2026</div>';
+    clearTimeout(LXPS_T);
+    LXPS_T=setTimeout(function(){
+      lxPsRace(fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(qq)+"&limit=12")
+        .then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); })
+        .then(function(d){
+          var recs=(d&&d._embedded&&d._embedded.records)||[];
+          // Exact code match only. A substring match would return pools for a different asset that
+          // merely contains the letters, which on a money page is worse than no result.
+          var ids=[];
+          recs.forEach(function(r){
+            var a=String(r.asset||"").split("-");
+            if(a.length>=2&&a[0].toLowerCase()===qq.toLowerCase()&&/^G[A-Z2-7]{55}$/.test(a[1]))ids.push(a[0]+":"+a[1]);
+          });
+          if(!ids.length)return [];
+          return Promise.all(ids.slice(0,3).map(function(res){
+            return fetch(H+"/liquidity_pools?reserves="+encodeURIComponent(res)+"&limit=12")
+              .then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); })
+              .then(function(pd){ return ((pd&&pd._embedded&&pd._embedded.records)||[]); })
+              .catch(function(){ return []; });
+          })).then(function(sets){ var out=[]; sets.forEach(function(x){ out=out.concat(x); }); return out; });
+        })
+        ,LXPS_TIMEOUT)
+        .then(function(pools){
+          if(seq!==LXPS_SEQ)return;
+          LXPS_CACHE[qq]=pools||[];
+          lxPsPaint(host,LXPS_CACHE[qq],qq);
+        })
+        .catch(function(err){
+          if(seq!==LXPS_SEQ)return;
+          // The two cases read very differently to somebody waiting, so they are not merged.
+          host.innerHTML=(err&&err.message==="lx-timeout")
+            ? '<div class="lx-psnote">Still waiting on Stellar for \u201c'+esc(qq)+'\u201d \u2014 the network is busy. Press Enter to try again.</div>'
+            : '<div class="lx-psnote">Could not reach the pool index just now.</div>';
+        });
+    },260);
+  }
+  function lxPsPaint(host,pools,qq){
+    if(!pools||!pools.length){
+      host.innerHTML='<div class="lx-psnote">No pool on Stellar holds \u201c'+esc(qq)+'\u201d.</div>';
+      return;
+    }
+    var _xu=(DATA&&DATA.xlmUsd)||0;
+    host.innerHTML='<div class="lx-pshead">Found on Stellar</div>'+pools.map(function(p){
+      var rs=p.reserves||[];
+      function nm(r){ var a=String((r&&r.asset)||""); return a==="native"?"XLM":(a.split(":")[0]||"?"); }
+      var a0=nm(rs[0]), a1=nm(rs[1]);
+      var natAmt=0; rs.forEach(function(r){ if(String(r.asset)==="native")natAmt=+r.amount||0; });
+      var tvl=natAmt>0?usd(natAmt*2*_xu):"\u2014";
+      return '<a class="pool-card lx-ammcard lx-pscard" data-pool="'+esc(p.id)+'" href="'+detailUrl(p.id,null,"")+'">'
+        +'<div class="pc-head"><div class="pc-info"><div class="pc-name">'+esc(a0)+' / '+esc(a1)+'</div>'
+        +'<div class="pc-sub">'+((+p.fee_bp||30)/100)+'% fee \u00b7 Stellar AMM</div></div></div>'
+        +'<div class="pc-stats">'
+        +'<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+tvl+'</div></div>'
+        +'<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(+p.total_trustlines||0)+'</div></div>'
+        +'</div></a>';
+    }).join("");
+  }
+  // The design owns the input and its handler; this listens alongside rather than replacing it, so the
+  // local narrowing keeps working exactly as before and this only fills the gap it leaves.
+  // #ICONS: see note above -- stroked currentColor, so an active tab colours its own icon.
+  var LXI_ALL='<polyline points="12 2.6 2.4 7.3 12 12 21.6 7.3 12 2.6"/>'
+    +'<polyline points="2.4 16.7 12 21.4 21.6 16.7"/><polyline points="2.4 12 12 16.7 21.6 12"/>';
+  var LXI_MINE='<rect x="2.6" y="5.8" width="18.8" height="12.9" rx="2.6"/>'
+    +'<path d="M2.6 9.9h18.8"/><path d="M17 14.4h2.2"/>';
+  function poolTabIcons(){
+    var tabs=document.querySelectorAll(".filter-tabs button");
+    for(var i=0;i<tabs.length;i++){
+      var b=tabs[i], t=(b.textContent||"").toLowerCase(), sv=b.querySelector("svg");
+      if(!sv)continue;
+      var want=(t.indexOf("my")>=0)?LXI_MINE:(t.indexOf("all")>=0?LXI_ALL:null);
+      if(!want)continue;
+      // Already ours? The old glyphs are filled, ours are stroked -- so this asks the SVG itself.
+      if(sv.getAttribute("stroke")==="currentColor"&&sv.getAttribute("data-lxti")===(t.indexOf("my")>=0?"m":"a"))continue;
+      sv.setAttribute("fill","none");
+      sv.setAttribute("stroke","currentColor");
+      sv.setAttribute("stroke-width","1.9");
+      sv.setAttribute("stroke-linecap","round");
+      sv.setAttribute("stroke-linejoin","round");
+      sv.setAttribute("data-lxti",(t.indexOf("my")>=0?"m":"a"));
+      sv.innerHTML=want;
+    }
+  }
+  function wirePoolSearch(){
+    try{ poolTabIcons(); }catch(_){}
+    var inp=document.getElementById("poolSearch");
+    if(!inp||inp.__lxps)return; inp.__lxps=1;
+    inp.addEventListener("input",function(){ LXPS_Q=inp.value; try{ lxPoolSearch(LXPS_Q); }catch(_){} });
+    inp.addEventListener("keydown",function(e){
+      if(e.key!=="Enter")return;
+      e.preventDefault();
+      var v=(inp.value||"").trim();
+      if(v.length<2)return;
+      try{ delete LXPS_CACHE[v]; }catch(_){}      // a retry must not be answered from the failed attempt
+      try{ lxPoolSearch(v); }catch(_){}
+    });
+  }
   function allCard(p,i){
     var idx=(i+1<10?"0":"")+(i+1);
     var _xu=(DATA&&DATA.xlmUsd)||0;
@@ -570,12 +1035,18 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var l1,v1,vs1,l2,v2;
     if(nonX){ l1=esc(p.a0.code); v1=qty(p.a0.amount*f); vs1=""; l2=esc(p.a1.code); v2=qty(p.a1.amount*f); }
     else { l1="Your liquidity"; v1=qty(p.xlm*f)+" XLM"; vs1=usd(p.tvlUsd*f); l2=esc(p.code); v2=qty((p.tok||0)*f); }
-    // the detail page is X/XLM only, so a non-XLM position opens on the explorer instead (same as desktop)
-    var href=nonX?("https://stellar.expert/explorer/public/liquidity-pool/"+p.id):detailUrl(p.id,null,pairVal(p));
-    return '<a class="pool-card my-pos lx-ammcard lx-mycard" data-pool="'+p.id+'"'+pairAttr(p)+(nonX?' data-nonxlm="1" target="_blank" rel="noopener"':'')+' href="'+href+'">'
+    // #19: this sent a non-XLM position off to stellar.expert, on a rule that was already retired for the
+    // ranked list above -- the detail page loads by pool ID and reads the pool's OWN reserves, so a pool
+    // with no XLM leg renders there fine. Sending someone off-site to read their own position in a pool
+    // we render ourselves was the bug. Every position opens on our page now.
+    var href=detailUrl(p.id,null,pairVal(p));
+    return '<a class="pool-card my-pos lx-ammcard lx-mycard" data-pool="'+p.id+'"'+pairAttr(p)+' href="'+href+'">'
       +'<div class="pc-head">'+ico
-      +'<div class="pc-info"><div class="pc-name">'+name+'</div>'
-      +'<div class="pc-sub">'+p.fee+'% fee \\u00b7 Stellar AMM</div></div></div>'
+      // #18: no fee-tier line. Every Stellar AMM pool is 0.3% and every pool in this list is one, so it
+      // said nothing -- and it invited the question it could not answer: someone reading "0.3% fee" on
+      // their OWN position reasonably asks what they are being charged, when it is the fee the pool
+      // collects and pays to them. Stated on the pool page, where there is room to say whose fee it is.
+      +'<div class="pc-info"><div class="pc-name">'+name+'</div></div></div>'
       +'<div class="pc-stats">'
       +'<div class="pc-stat"><div class="l">'+l1+'</div><div class="v">'+v1+'</div>'+(vs1?'<div class="vs">'+vs1+'</div>':'')+'</div>'
       +'<div class="pc-stat"><div class="l">Pool share</div><div class="v">'+pct+'</div></div>'
@@ -612,10 +1083,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var liqMain,liqSub;
     if(nonX){ liqMain=qty(p.a0.amount*p.mineFrac)+' '+esc(p.a0.code); liqSub=qty(p.a1.amount*p.mineFrac)+' '+esc(p.a1.code); }
     else { liqMain=qty(p.xlm*p.mineFrac)+' XLM'; liqSub=usd(p.tvlUsd*p.mineFrac); }
-    // non-XLM pools break the X/XLM detail page -> View opens the pool on the explorer instead; also mark the row so its click-nav skips the detail page.
-    var view=nonX?('<a class="lx-ammview" href="https://stellar.expert/explorer/public/liquidity-pool/'+p.id+'" target="_blank" rel="noopener">View position \\u2192</a>'):('<a class="lx-ammview" href="lumoscore-amm-pool.html?pool='+p.id+'">View position \\u2192</a>');
-    return '<tr class="lx-ammrow" data-pool="'+p.id+'"'+pairAttr(p)+''+(nonX?' data-nonxlm="1"':'')+' style="cursor:pointer"><td class="idx">'+idx+'</td>'+
-      '<td><div class="pair-cell">'+pairIco+'<div><div class="pair-name">'+pairName+'</div><div class="pair-sub">'+p.fee+'% fee</div></div></div></td>'+
+    // #19: both the row and its View link stay on our own pool page -- see myCard for why the explorer
+    // detour was wrong. #18: and no fee-tier sub line under the pair, for the reason given there.
+    var view='<a class="lx-ammview" href="'+detailUrl(p.id,null,pairVal(p))+'">View position \\u2192</a>';
+    return '<tr class="lx-ammrow" data-pool="'+p.id+'"'+pairAttr(p)+' style="cursor:pointer"><td class="idx">'+idx+'</td>'+
+      '<td><div class="pair-cell">'+pairIco+'<div><div class="pair-name">'+pairName+'</div></div></div></td>'+
       '<td><div>'+liqMain+'</div><div class="pair-sub">'+liqSub+'</div></td>'+
       '<td>'+(p.mineFrac*100>=0.01?(p.mineFrac*100).toFixed(2):"<0.01")+'%</td>'+
       '<td class="lx-viewcell">'+view+'</td></tr>';
@@ -683,6 +1155,12 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         mAll.style.display=mineActive?"none":"";
         mMine.style.display=mineActive?"":"none";
         var srch=q(".search-box.inline-filter"); if(srch)srch.style.display=mineActive?"none":"";
+        // #8: the footer belongs to the all-pools list, and it stayed under My Pools on the phone --
+        // two positions listed above "Showing 1-25 of 10,966 pools / Page 1 of 439", which are counts
+        // of the whole network. The paint-side guard reads #panelAllPools to decide whether the all-pools
+        // list is the one showing, and the phone has no such element, so it fell through to "showing".
+        var mpag=q(".lx-netpag-host")||q("#paginationAll");
+        if(mpag)mpag.style.display=mineActive?"none":((NET.total>NETPP)?"flex":"none");
         return;
       }
       var lp=q("#lx-mypanel"), ap=q("#panelAllPools"), mp=q("#panelMyPositions");
@@ -737,6 +1215,49 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       th.style.cursor="pointer"; th.style.userSelect="none";
     });
   }
+  // Column sorting is OFF while the network list is up, and the headers say so rather than looking
+  // clickable and doing nothing. The old sort reordered DATA.pools, all five of them, in memory. Applied
+  // to the network list it could only reorder the 25 rows on screen out of 10,962 -- a "sort by members"
+  // that silently means "sort these 25 by members" is worse than no sort, because the top of the list
+  // would look authoritative and be wrong. Real column sorting needs the ranking rebuilt server-side per
+  // column; until then the list is ranked by TVL and the Liquidity header carries the arrow to show it.
+  function deadSort(){
+    var t=poolsTable(); if(!t)return;
+    [].slice.call(t.querySelectorAll("thead th")).forEach(function(th){
+      th.removeAttribute("data-lxsortable"); th.__lxsortf=null;
+      th.style.cursor="default";
+      setGlyph(th, /liquidity/i.test(th.textContent) ? "\\u2193" : "");
+    });
+    netRelabelVol();
+  }
+  // The list's volume is NOT 24 hours, so the header must not say it is.
+  //
+  // It comes from stellar.expert's volume_value["1d"], and that field is the CURRENT UTC DAY SO FAR, not
+  // a rolling window. Verified against the ledger on SSLX/XLM at 00:35Z: trades since UTC midnight summed
+  // to 267.34 XLM, upstream reported 266.31. So just after midnight the column reads near zero and only
+  // approaches a real day by 23:59Z -- which is exactly why a card said $82 while the pool's own page
+  // said $45, and both were under the true 24h figure of $1,290.
+  //
+  // A true rolling 24h per row is ~11 Horizon requests PER POOL (see volDeepen), which is affordable for
+  // one pool page and not for 25 rows of 10,962. Until that is precomputed server-side, the honest move
+  // is to label the number for the window it actually covers.
+  function netRelabelVol(){
+    var t=poolsTable();
+    if(t) [].slice.call(t.querySelectorAll("thead th")).forEach(function(th){
+      if(th.__lxvol)return;
+      // Fees carries the same window as the volume it is computed from (vol x fee%), so it is relabelled
+      // with it. Leaving it at "Fees (24h)" beside "Vol (today)" would just move the wrong claim one
+      // column across.
+      var vol=/24h\\s*vol/i.test(th.textContent), fee=/fees\\s*\\(24h\\)/i.test(th.textContent);
+      if(!vol&&!fee)return;
+      th.__lxvol=1;
+      var s=th.querySelector(".sort-i");
+      th.textContent=vol?"VOL (TODAY)":"FEES (TODAY)"; if(s)th.appendChild(s);
+    });
+    qa(".lx-netcard .pc-stat .l").forEach(function(l){
+      if(/24h\\s*vol/i.test(l.textContent))setText(l,"Vol (today)");
+    });
+  }
   // The click itself is handled at WINDOW capture. A listener on the th cannot win: the design ships a
   // document-level capture shim that maps label text to pages, and document capture runs before the target
   // phase — so clicking "Liquidity" NAVIGATED instead of sorting. Window capture fires first, and
@@ -755,6 +1276,339 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       doSort(th);
     },true);
   }
+  // ---- NETWORK POOL LIST -------------------------------------------------------------------------
+  // "All Pools" used to be the five curated KNOWN pools. This renders the whole network instead, 25 at a
+  // time, ranked by real USD TVL, off /lxapi/pools.
+  //
+  // The ranking is NOT computed here and must not be: it is 10,962 priceable pools out of 39,844, which
+  // is 57 Horizon requests and ~15s against a browser budget of 100 requests per 5 minutes per IP. The
+  // endpoint does it once and caches; the page asks for one page at a time and gets a few KB.
+  //
+  // My Positions is deliberately untouched and still comes from DATA. It is a different question (which
+  // pools is THIS wallet in), it is already correct, and routing it through a network ranking would only
+  // put it at risk.
+  var NETPP=25;
+  var NET={page:1,q:"",rows:null,total:0,pages:1,busy:0,err:"",ranked:0,unpriceable:0,seq:0,warm:0,phase:""};
+  function netActive(){ return !!(q("#poolsBody")||q("#panelAll")); }
+  // #24: cold-start overlay for the pools list. Shown once per browser session, and only on the list --
+  // a pool's own page loads from its id and does not wait on the ranking.
+  // lxBootEl, NOT boot: this file already has a top-level function boot(), and a var of the same name
+  // silently overwrites the hoisted declaration the moment this line runs. The result was "boot is not
+  // a function" at the bottom of the script -- the entire pools layer dead, the page left showing the
+  // design's mock. Nothing logged it usefully, because the throw is at top level.
+  var BOOTKEY="lumos.poolsboot", lxBootEl=null, bootPct=0, bootArmed=false;
+  function bootShow(){
+    // Withdrawn on request -- "Synchronising Stellar pools" was covering the page without conveying
+    // enough to be worth it. Kept as a live function rather than deleted: bootSet() is called from the
+    // paging loop and bootDone() from several exits, and dropping the declaration is exactly how a
+    // top-level ReferenceError silently kills the whole layer (see the var/function shadowing note).
+    // It inserts nothing now, so the page renders as it fills instead of behind a curtain.
+    return;
+    /* eslint-disable no-unreachable */
+    if(lxBootEl||bootArmed===false)return;
+    if(document.documentElement.classList.contains("lx-ammready"))return;
+    if(!netActive())return;
+    var el=document.createElement("div"); el.className="lx-boot";
+    // the site's own mark, read off the sidebar rather than copied into this file as a second base64 blob
+    var mk=""; try{ var lm=q(".logo-mark"); if(lm)mk=getComputedStyle(lm).backgroundImage; }catch(_){}
+    el.innerHTML='<div class="lx-boot-in">'
+      +'<div class="lx-boot-badge"><div class="lx-boot-mark" data-logo="" data-logoed="1"'+((mk&&mk!=="none")?(' style="background-image:'+mk+'"'):'')+'></div></div>'
+      +'<div class="lx-boot-ttl">Synchronising Stellar pools</div>'
+      +'<div class="lx-boot-bar"><div class="lx-boot-fill"></div></div>'
+      +'<div class="lx-boot-sub">Starting</div></div>';
+    (document.body||document.documentElement).appendChild(el);
+    lxBootEl=el;
+    // A hard ceiling, deliberately generous. Whatever goes wrong upstream, the overlay comes off and the
+    // page underneath is reachable -- it must never be able to seal the site shut.
+    setTimeout(bootHide,30000);
+  }
+  // The percentage is the endpoint's OWN phases, not a timer: it walks native pairs, then USDC pairs,
+  // then the overlay pass, and names the one it is on. Each completed phase is a third of the work, so
+  // the bar only moves when real work has finished. The live scanned count carries the in-between
+  // progress, because it is a true number and an eased bar would not be.
+  function bootProgress(){
+    if(!lxBootEl)return;
+    var ph=NET.phase||"native";
+    var pct=(ph==="done")?100:(ph==="overlay")?67:(ph==="usdc")?34:6;
+    var n=+NET.warm||0;
+    bootSet(pct, n>0 ? (num(n)+" pools scanned") : "Reading the network");
+  }
+  function bootSet(pct,txt){
+    if(!lxBootEl)return;
+    pct=Math.max(bootPct,Math.min(100,pct));            // a progress bar that goes backwards is worse than none
+    bootPct=pct;
+    var f=lxBootEl.querySelector(".lx-boot-fill"); if(f)f.style.width=pct+"%";
+    var b=lxBootEl.querySelector(".lx-boot-sub");
+    if(b&&txt!=null)b.textContent=txt+"  \u00b7  "+Math.round(pct)+"%";
+  }
+  function bootHide(){
+    if(!lxBootEl)return; var el=lxBootEl; lxBootEl=null; bootArmed=false;
+    try{ sessionStorage.setItem(BOOTKEY,"1"); }catch(_){}
+    el.classList.add("lx-boot-out");
+    setTimeout(function(){ if(el.parentNode)el.parentNode.removeChild(el); },320);
+  }
+  // Armed, not shown, on a short delay. A warm ranking paints in well under a second, and an overlay
+  // that appears and leaves again in that time is a flash -- the very thing the masks on this page
+  // exist to prevent. So it only appears if the list is still not ready after 400ms.
+  (function(){
+    try{ if(sessionStorage.getItem(BOOTKEY))return; }catch(_){}
+    bootArmed=true;
+    // A POLL, not one shot. This fired once at 400ms and gave up: if the list container was not in the
+    // DOM yet -- which on a cold load is exactly when it is not -- bootShow() found no netActive() host,
+    // returned, and the overlay never appeared for the whole 25s wait it exists to cover. Each call is a
+    // no-op once the overlay is up, once the page is ready, or once it has been dismissed.
+    [300,600,1000,1600,2400].forEach(function(ms){ setTimeout(function(){ try{ bootShow(); bootProgress(); }catch(_){} },ms); });
+  })();
+  function netFetch(){
+    if(NET.busy)return; NET.busy=1;
+    var mySeq=++NET.seq;                       // a later request always wins; see the flapping note below
+    var u="/lxapi/pools?per="+NETPP+"&page="+NET.page+(NET.q?("&q="+encodeURIComponent(NET.q)):"");
+    fetch(u).then(function(r){ if(!r.ok)throw new Error("HTTP "+r.status); return r.json(); })
+    .then(function(d){
+      if(mySeq!==NET.seq)return;               // a newer query already answered; discard this one
+      if(!d||d.error)throw new Error((d&&d.error)||"bad payload");
+      // The ranking is built across several requests (the endpoint has a per-invocation upstream budget).
+      // Until it is complete it reports warming rather than serving half a ranking -- half an
+      // enumeration sorted by TVL is not a shorter list, it is one with real pools missing from the
+      // middle. Show progress and come back for it.
+      if(d.warming){ NET.warm=+d.scanned||0; NET.phase=d.phase||"native"; try{ bootProgress(); }catch(_){} NET.busy=0; paintNet();
+        setTimeout(function(){ if(mySeq===NET.seq)netFetch(); },1500); return; }
+      NET.warm=0;
+      NET.rows=d.rows||[]; NET.total=+d.total||0; NET.pages=Math.max(1,+d.pages||1);
+      NET.page=Math.max(1,+d.page||1); NET.ranked=+d.ranked||0; NET.unpriceable=+d.unpriceable||0;
+      NET.err=""; NET.busy=0; NET.phase="done"; try{ bootProgress(); }catch(_){} paintNet();
+    }).catch(function(e){
+      if(mySeq!==NET.seq){ NET.busy=0; return; }
+      // Keep whatever is already on screen. The pools SEARCH bug was exactly this: an error branch that
+      // painted itself over rows that had already arrived, so results appeared and then vanished.
+      NET.err=String((e&&e.message)||e); NET.busy=0; paintNet();
+    });
+  }
+  // A pool of two arbitrary assets. The KNOWN list was always CODE/XLM so allRow could hardcode that;
+  // across the network most pairs are not, and 880 ranked pools have no XLM leg at all.
+  // img comes from the endpoint. The page cannot resolve these itself: amTokUrl() reads a static map
+  // keyed by asset CODE, which knows the curated handful and nothing else, so network pairs fell back to
+  // coloured letter tiles. It is carried per leg and keyed by CODE-ISSUER upstream, because a ticker is
+  // not an identity on Stellar.
+  function netLegs(p){
+    var a=p.a||{code:"?"},b=p.b||{code:"?"};
+    var la={code:a.code,issuer:a.issuer,native:a.code==="XLM"&&!a.issuer,amount:+a.amount||0,img:a.img||""};
+    var lb={code:b.code,issuer:b.issuer,native:b.code==="XLM"&&!b.issuer,amount:+b.amount||0,img:b.img||""};
+    return [la,lb];
+  }
+  // icoPairG resolves through amTokUrl, which does not know these assets. Seed what the endpoint sent
+  // into the same cache amTokUrl reads, so the shared logo path (and healLogos) sees a real URL.
+  function netSeedLogos(rows){
+    try{ var m=(window.__lxLogos=window.__lxLogos||{});
+      (rows||[]).forEach(function(p){ [p.a,p.b].forEach(function(a){
+        if(a&&a.img&&a.code&&!m[a.code])m[a.code]=a.img; }); });
+    }catch(_){}
+  }
+  // Same shape as icoPairG, but prefers the URL the endpoint sent for THIS leg over a code-keyed
+  // lookup. Falls back to icoPairG's path (and then a coloured letter tile) when there is no image.
+  function netIcoBg(a){
+    if(!a)return null;
+    if(a.native||a.code==="XLM")return "url(/assets/tokens/xlm.png)";
+    if(a.img)return "url("+a.img+")";
+    var u=amTokUrl(a.code,a.issuer); return u?("url("+u+")"):null;
+  }
+  function netIcoPair(a0,a1,mob){
+    var b0=netIcoBg(a0),b1=netIcoBg(a1);
+    var c0=mob?"a pa":"pa", c1=mob?"b pb":"pb";
+    var e0=b0?ico1(c0,b0,null,a0.code,a0.issuer):ico1(c0,gcolor(a0.code),(a0.code&&a0.code[0]?a0.code[0]:"?").toUpperCase(),a0.code,a0.issuer);
+    var e1=b1?ico1(c1,b1,null,a1.code,a1.issuer):ico1(c1,gcolor(a1.code),(a1.code&&a1.code[0]?a1.code[0]:"?").toUpperCase(),a1.code,a1.issuer);
+    return '<div class="pair-icons" data-paired="1">'+e0+e1+'</div>';
+  }
+  // BOTH reserves under the dollar figure, not one.
+  //
+  // It showed a single leg, which made the card look wrong rather than incomplete: the headline is the
+  // value of the WHOLE pool (both sides), while the line under it was half of it. "$4.24M" over
+  // "13.35M XLM" does not reconcile -- 13.35M XLM is about $2.09M -- so a reader checking the arithmetic
+  // concludes the number is broken. Showing both sides makes the headline add up in front of them.
+  function netLiq(p){
+    var L=netLegs(p);
+    var a=L[0], b=L[1];
+    if(!b||!b.code) return qty(a.amount)+" "+esc(a.code);
+    return qty(a.amount)+" "+esc(a.code)+" + "+qty(b.amount)+" "+esc(b.code);
+  }
+  // EVERY pool opens on our own detail page, including the 880 ranked pools with no XLM leg.
+  //
+  // This used to send those to stellar.expert, on the belief that the detail page was built around an
+  // X/XLM pair -- a rule copied from myRow/myCard without checking whether it was still true. It is not.
+  // The detail page is loaded by pool ID and reads the pool's OWN reserves; chPair() was taught to build
+  // its chart query from any base/counter precisely so two credit assets work.
+  //
+  // Verified on USDC/XTAR (e04397d3...), a pool with no XLM leg: title "USDC / XTAR liquidity pool on
+  // Stellar", liquidity "5,611 USDC + 1,190,438,276 XTAR = $11.2K", 24h volume and fees in USDC, chart
+  // drawn, "Showing 1-20 of 100 transactions", 20 participants. Nothing about it needed an XLM leg.
+  //
+  // Sending a user off-site to read a pool we render perfectly well was the bug.
+  function netHref(p){ return detailUrl(p.id,null,null); }
+  function netFees(p){ return (p.vol24==null)?null:(p.vol24*(+p.fee||0)/100); }
+  function netRow(p,i){
+    var L=netLegs(p), n=(NET.page-1)*NETPP+i+1, idx=(n<10?"0":"")+n;
+    var f=netFees(p);
+    var volCell=(p.vol24==null)?'<td><div>&mdash;</div></td><td><div>&mdash;</div></td>'
+      :('<td><div>'+usd(p.vol24)+'</div></td><td><div>'+usd(f)+'</div></td>');
+    // DOLLARS on top, the reserve underneath. The list is ranked by USD TVL, so the dollar figure has to
+    // be the one the eye follows down the column -- with the asset amount leading, the ranking looked
+    // wrong wherever the units changed (a USDC-leg pool's reserve is not comparable to an XLM one's).
+    return '<tr class="lx-ammrow lx-netrow" data-pool="'+p.id+'" data-href="'+netHref(p)+'" style="cursor:pointer">'+
+      '<td class="idx">'+idx+'</td>'+
+      // No fee-tier sub line. Every Stellar AMM pool is 0.3% and every pool in this list is a Stellar AMM
+      // pool, so it carried no information and invited the question it could not answer: a reader seeing
+      // "0.3% fee" beside a pool reasonably asks what THEY are being charged, when it is the pool's own
+      // swap fee paid to its own LPs. The fee tier is still stated on the pool page, where there is room
+      // to say whose fee it is.
+      '<td><div class="pair-cell">'+netIcoPair(L[0],L[1])+'<div><div class="pair-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
+      '</div></div></td>'+
+      // tvl null = we cannot VALUE this pool (neither leg is XLM or Circle USDC), which is not the same
+      // claim as "it holds nothing". usd(null) renders "$0" and would state the second. Dash, and the
+      // reserve underneath still says what is actually in there.
+      '<td><div>'+(p.tvl==null?'&mdash;':usd(p.tvl))+'</div><div class="pair-sub">'+netLiq(p)+'</div></td>'+
+      volCell+
+      '<td>'+num(p.members)+'</td></tr>';
+  }
+  function netCard(p,i){
+    var L=netLegs(p), n=(NET.page-1)*NETPP+i+1, idx=(n<10?"0":"")+n;
+    var volCell=(p.vol24==null)?'<div class="v">&mdash;</div>':('<div class="v">'+usd(p.vol24)+'</div>');
+    return '<a class="pool-card lx-ammcard lx-netcard" data-pool="'+p.id+'" href="'+netHref(p)+'">'+
+      '<div class="pc-head">'+netIcoPair(L[0],L[1],true)+
+      '<div class="pc-info"><div class="pc-name">'+esc(L[0].code)+' / '+esc(L[1].code)+'</div>'+
+      '</div>'+                                   // no fee-tier sub line -- see netRow for why
+      '<div class="pc-idx">#'+idx+'</div></div>'+
+      '<div class="pc-stats">'+
+      '<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+(p.tvl==null?'&mdash;':usd(p.tvl))+'</div><div class="vs">'+netLiq(p)+'</div></div>'+
+      '<div class="pc-stat"><div class="l">24h Vol</div>'+volCell+'</div>'+
+      '<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.members)+'</div></div>'+
+      '</div></a>';
+  }
+  function netFootHtml(){
+    var start=(NET.page-1)*NETPP+1, end=Math.min(NET.page*NETPP,NET.total);
+    var info=NET.total?("Showing "+num(start)+"\\u2013"+num(end)+" of "+num(NET.total)+" pools"):"No pools";
+    return '<div class="lx-netpag-i">'+info+'</div>'+
+      '<div class="lx-netpag-c">'+
+      '<button type="button" data-np="first"'+(NET.page<=1?" disabled":"")+'>\\u00ab First</button>'+
+      '<button type="button" data-np="prev"'+(NET.page<=1?" disabled":"")+'>\\u2039 Prev</button>'+
+      '<span class="lx-netpag-m">Page '+num(NET.page)+' of '+num(NET.pages)+'</span>'+
+      '<button type="button" data-np="next"'+(NET.page>=NET.pages?" disabled":"")+'>Next \\u203a</button>'+
+      '<button type="button" data-np="last"'+(NET.page>=NET.pages?" disabled":"")+'>Last \\u00bb</button>'+
+      '</div>';
+  }
+  function paintNet(){
+    if(!netActive())return;
+    var rows=NET.rows;
+    // Nothing has arrived yet AND nothing failed AND we are not warming: leave the page alone rather
+    // than flashing an empty table over the skeleton.
+    if(!rows&&!NET.err&&!NET.warm)return;
+    if(rows)netSeedLogos(rows);
+    var body=q("#poolsBody"), mob=body?null:q("#panelAll");
+    var empty=NET.err
+      ? '<b>Could not load pools</b>'+esc(NET.err)
+      : NET.warm
+        ? '<b>Ranking the network\\u2019s pools\\u2026</b>'+num(NET.warm)+' scanned so far. This runs once, then it is instant.'
+        : (NET.q?'<b>No pools match \\u201c'+esc(NET.q)+'\\u201d</b>Try an asset code, e.g. USDC.':'<b>No pools</b>');
+    if(body){
+      var sig="net|"+NET.page+"|"+NET.q+"|"+(rows?rows.length:-1)+"|"+NET.err+"|"+NET.warm;
+      if(body.getAttribute("data-lxsig")!==sig){
+        body.innerHTML=(rows&&rows.length)?rows.map(netRow).join("")
+          :'<tr class="lx-ammrow"><td colspan="6"><div class="lx-amm-empty">'+empty+'</div></td></tr>';
+        body.setAttribute("data-lxsig",sig);
+        try{ healLogos(); }catch(_){}
+      }
+    }
+    if(mob){
+      var msig="net|"+NET.page+"|"+NET.q+"|"+(rows?rows.length:-1)+"|"+NET.err+"|"+NET.warm;
+      if(mob.getAttribute("data-lxsig")!==msig){
+        mob.innerHTML=(rows&&rows.length)?rows.map(netCard).join("")
+          :'<div class="lx-amm-empty">'+empty+'</div>';
+        mob.setAttribute("data-lxsig",msig);
+        try{ healLogos(); }catch(_){}
+      }
+    }
+    // paintNet rebuilds every row with display cleared, so a standing search was silently dropped on the
+    // next data tick -- the reader types an asset, gets a narrowed list, and a second later the whole
+    // network is back. The card renderer already re-applies the query after each render; the table
+    // renderer did not, which is why this only showed up on desktop. Cached per query, so it repaints
+    // from memory rather than re-fetching.
+    try{ if(LXPS_Q)lxPoolSearch(LXPS_Q); }catch(_){}
+    // The All Pools tab count is the whole ranked network, not the 25 on screen.
+    var allc=q("#poolTabs button[data-tab=all] .count")||q("#poolTabs .count");
+    if(allc){ setText(allc,num(NET.total)); snapDone(allc); }
+    // Footer. The design ships #paginationAll with a static "1-10 of 100"; replace its contents wholesale
+    // so there is exactly one pager, rather than updating its strongs and leaving dead controls beside.
+    var pag=q("#paginationAll");
+    if(!pag&&mob){ pag=q(".lx-netpag-host");
+      if(!pag){ pag=document.createElement("div"); pag.className="lx-netpag-host"; mob.parentNode.insertBefore(pag,mob.nextSibling); } }
+    if(pag){
+      pag.classList.add("lx-netpag");
+      var fsig=NET.page+"|"+NET.pages+"|"+NET.total;
+      if(pag.getAttribute("data-lxpsig")!==fsig){ pag.innerHTML=netFootHtml(); pag.setAttribute("data-lxpsig",fsig); }
+      // Only ever un-hide the pager while the All Pools panel is the one showing. A repaint that landed
+      // while My Pools was open would otherwise drag the All Pools footer back under the positions list.
+      // ...and the same guard has to consult the click flag directly, because on the phone #panelAllPools
+      // does not exist and "no panel" was being read as "the all-pools panel is showing".
+      var allPanel=q("#panelAllPools");
+      var allShown=(!allPanel||getComputedStyle(allPanel).display!=="none")&&!window.__lxMine;
+      if(allShown) pag.style.display=(NET.total>NETPP)?"flex":"none";
+    }
+    // Mobile cards are rebuilt on every page change, so the label has to be reapplied here.
+    // deadSort runs from here too, NOT only from paintTables: paintTables returns early until DATA
+    // arrives (a wallet-side fetch this list does not depend on), so on a cold load the headers kept
+    // their sort arrows and their pointer cursor while nothing was listening for the click. My earlier
+    // check for that was worthless -- it counted th[data-lxsortable], which is the attribute wireSort
+    // ADDS, so "0 left" meant "never wired", not "successfully disabled".
+    try{ deadSort(); netRelabelVol(); }catch(_){}
+    // The list is on screen now (rows, warming notice, or error) -- safe to lift the mask.
+    try{ reveal(); }catch(_){}
+    // #24: and an exit for the overlay that does not depend on reveal's own guard. Real rows exist, so
+    // there is nothing left for it to cover. Three independent ways off the screen -- this, reveal, and
+    // the hard cap -- because a full-screen overlay that cannot be dismissed is the worst thing this
+    // could turn into.
+    try{ if(NET.rows&&NET.rows.length){ bootSet(100,"Ready"); bootHide(); } }catch(_){}
+  }
+  function netGo(p){
+    p=Math.max(1,Math.min(NET.pages,p));
+    if(p===NET.page&&NET.rows)return;
+    NET.page=p; NET.rows=null; NET.err="";
+    // Repaint the pager immediately so the click is acknowledged, then fetch.
+    var pag=q("#paginationAll")||q(".lx-netpag-host");
+    if(pag){ pag.innerHTML=netFootHtml(); pag.setAttribute("data-lxpsig",NET.page+"|"+NET.pages+"|"+NET.total); }
+    netFetch();
+    try{ var t=q("#poolsBody")||q("#panelAll"); if(t&&t.scrollIntoView)t.scrollIntoView({block:"start"}); }catch(_){}
+  }
+  if(!window.__lxNetWired){ window.__lxNetWired=1;
+    // Window capture, for the same reason doSort uses it: the design ships a document-level capture shim
+    // that maps label text to pages, and document capture beats the target phase. A plain button handler
+    // would be pre-empted and the click would navigate instead of paging.
+    window.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      var b=t.closest("[data-np]");
+      if(b){ e.preventDefault(); e.stopImmediatePropagation();
+        var k=b.getAttribute("data-np");
+        netGo(k==="first"?1:k==="last"?NET.pages:k==="prev"?NET.page-1:NET.page+1);
+        return; }
+      var row=t.closest(".lx-netrow");
+      if(row&&row.getAttribute("data-href")){ e.preventDefault(); e.stopImmediatePropagation();
+        location.href=row.getAttribute("data-href"); }
+    },true);
+  }
+  // Search runs SERVER-side over all 10,962 ranked pools. Filtering the 25 on screen would search one
+  // page of 439 and report "no pools" for anything not in the current slice.
+  function netWireSearch(){
+    var inp=null;
+    qa("input").forEach(function(x){ if(!inp&&/search pool/i.test(x.getAttribute("placeholder")||""))inp=x; });
+    if(!inp||inp.__lxnet)return; inp.__lxnet=1;
+    var tmr=null;
+    inp.addEventListener("input",function(){
+      clearTimeout(tmr);
+      tmr=setTimeout(function(){
+        var v=(inp.value||"").trim().toUpperCase();
+        if(v===NET.q)return;
+        NET.q=v; NET.page=1; NET.rows=null; NET.err=""; netFetch();
+      },260);
+    });
+  }
   function paintTables(){
     if(!DATA)return;
     wireHeroCover(); wireMyPosTab();
@@ -765,28 +1619,34 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     // + the active sort, so a repaint with nothing new produces byte-identical HTML and the
     // MutationObserver loop still settles on the first pass.
     var _tsig=DATA.pools.length+"|"+(volReady()?1:0)+"|"+String(SORTK)+"|"+SORTD;
-    if(allBody && (!allBody.querySelector(".lx-ammrow") || allBody.getAttribute("data-lxsig")!==_tsig)){
+    // The ALL POOLS list belongs to the network layer (paintNet) on this page. Both writing #poolsBody
+    // would be the two-painters bug: whichever ran last would win, and the MutationObserver that drives
+    // repaints would make them alternate. My Positions below is untouched and still comes from DATA.
+    var _netOwns=netActive();
+    if(!_netOwns && allBody && (!allBody.querySelector(".lx-ammrow") || allBody.getAttribute("data-lxsig")!==_tsig)){
       allBody.innerHTML=DATA.pools.length?sortedPools().map(allRow).join(""):'<tr class="lx-ammrow"><td colspan="6"><div class="lx-amm-empty"><b>No pools yet</b>Launch a token to create its first pool.</div></td></tr>';
       allBody.setAttribute("data-lxsig",_tsig);
       try{ healLogos(); }catch(_){}
     }
     // Mobile has no #poolsBody: its all-pools list is a stack of .pool-card anchors in #panelAll.
     var mobList=allBody?null:q("#panelAll");
-    if(mobList && (!mobList.querySelector(".lx-ammcard") || mobList.getAttribute("data-lxsig")!==_tsig)){
+    if(!_netOwns && mobList && (!mobList.querySelector(".lx-ammcard") || mobList.getAttribute("data-lxsig")!==_tsig)){
       mobList.innerHTML=DATA.pools.length?sortedPools().map(allCard).join("")
         :'<div class="lx-amm-empty"><b>No pools yet</b>Launch a token to create the first one.</div>';
       mobList.setAttribute("data-lxsig",_tsig);
       try{ healLogos(); }catch(_){}
     }
-    wireSort();
+    if(!_netOwns) wireSort();
+    else deadSort();
     // My Positions TAB panel (design's original tab layout, restored)
     fillMyPos();
-    // tab counts: All Pools | My Positions
-    var allc=q("#poolTabs button[data-tab=all] .count")||q("#poolTabs .count"); if(allc){setText(allc,String(DATA.pools.length));snapDone(allc);}
+    // tab counts: All Pools | My Positions. paintNet owns the All count when the network list is up --
+    // DATA.pools is the curated handful and would read "5" over a 10,962-row list.
+    if(!_netOwns){ var allc=q("#poolTabs button[data-tab=all] .count")||q("#poolTabs .count"); if(allc){setText(allc,String(DATA.pools.length));snapDone(allc);} }
     var minec=q("#poolTabs button[data-tab=mine] .count"); if(minec){setText(minec,String(DATA.mine.length));snapDone(minec);}
     renameMineTab();
     // pagination footer: real count, single page (design mock said "1-10 of 100")
-    var pag=q("#paginationAll"); if(pag){ var st=pag.querySelectorAll("strong"); if(st[0])setText(st[0],(DATA.pools.length?"1":"0")+"\\u2013"+DATA.pools.length); if(st[1])setText(st[1],String(DATA.pools.length)); var pc=pag.querySelector(".page-controls"); if(pc)pc.style.display=DATA.pools.length>10?"":"none"; }
+    if(!_netOwns){ var pag=q("#paginationAll"); if(pag){ var st=pag.querySelectorAll("strong"); if(st[0])setText(st[0],(DATA.pools.length?"1":"0")+"\\u2013"+DATA.pools.length); if(st[1])setText(st[1],String(DATA.pools.length)); var pc=pag.querySelector(".page-controls"); if(pc)pc.style.display=DATA.pools.length>10?"":"none"; } }
     wireCreatePool();
   }
   // header/subtitle testnet wording
@@ -795,7 +1655,17 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
 
   function paint(){ paintSnapshot(); paintTables(); paintCopy(); try{ healLogos(); }catch(_){} }
-  function reveal(){ document.documentElement.classList.add("lx-ammready"); }
+  // On the pools LIST page the rows no longer come from load()/DATA -- they come from /lxapi/pools. So
+  // revealing when DATA lands uncovers the design's baked mock rows and holds them on screen until the
+  // ranked page arrives. That is what "why does it show like this before loading" was: not a loading
+  // state, the template's fake pools. Hold the reveal until paintNet has actually written something,
+  // including its error and empty states, which are also real answers.
+  function reveal(){
+    if(typeof netActive==="function"&&netActive()&&!NET.rows&&!NET.err&&!NET.warm)return;
+    document.documentElement.classList.add("lx-ammready");
+    // #24: the list is on screen, so the overlay has nothing left to cover.
+    try{ bootSet(100,"Ready"); bootHide(); }catch(_){}
+  }
   // poolFromRec normalises Horizon's reserves into a0/a1 ({code,issuer,native}) — there is no
   // .reserves on the record by the time a row is built.
   function urlSeg(x){ return (!x||x.native||x.code==="XLM") ? "native" : (x.code+"-"+x.issuer); }
@@ -824,6 +1694,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       try{ var t=window.event&&window.event.target;
         var cpItem=t&&t.closest&&t.closest("#createPoolModal .ad-item"); if(cpItem){ if(window.__lxCpSel)window.__lxCpSel(cpItem); return; }
         var cpPick=t&&t.closest&&t.closest("#createPoolModal .asset-picker"); if(cpPick){ var _fld=cpPick.closest(".asset-field"); var _dd=_fld&&_fld.querySelector(".asset-dropdown"); if(_dd){ var _wo=_dd.classList.contains("open"); [].slice.call(document.querySelectorAll("#createPoolModal .asset-dropdown")).forEach(function(x){x.classList.remove("open");x.style.display="";}); if(!_wo){ _dd.classList.add("open"); _dd.style.display="block"; } } return; }   // toggle the asset dropdown open/closed
+        // item 9: the dropdown's own search row is not "elsewhere" -- closing on it is what made the
+        // search look broken. Same for the list body, so a click on a gap between items does not dismiss.
+        if(t&&t.closest&&(t.closest("#createPoolModal .ad-search")||t.closest("#createPoolModal .ad-list")))return;
         if(t&&t.closest&&t.closest("#createPoolModal")){ [].slice.call(document.querySelectorAll("#createPoolModal .asset-dropdown.open")).forEach(function(x){x.classList.remove("open");x.style.display="";}); return; }   // click elsewhere in the modal -> close any open dropdown, block mock nav
         var row=t&&t.closest&&t.closest(".lx-ammrow[data-pool]"); if(row){ location.href=detailUrl(row.getAttribute("data-pool"),cands&&cands[0],row.getAttribute("data-pair")); return; } }catch(e){}
       return _nav?_nav.apply(this,arguments):(cands&&cands[0]&&(location.href=cands[0]));
@@ -864,6 +1737,16 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   function hshort(h){ return h?h.slice(0,6)+"\\u2026"+h.slice(-4):""; }
   function ashort(a){ return a?a.slice(0,4)+"\\u2026"+a.slice(-4):"\\u2014"; }
+  // A Soroban contract id starts with C and is not an account -- Horizon 400s on /accounts/<C...>, so
+  // our account page would always be empty for one. Link G addresses, tag C addresses.
+  function isCtr(a){ return !!a && String(a).charAt(0)==="C"; }
+  function acctHref(a){ return "/account/stellar/"+encodeURIComponent(a||""); }
+  function walletCell(who,size,cls){
+    var av='<div class="wallet-avatar">'+ident(who,size)+'</div>';
+    var lbl='<span class="lx-waddr">'+ashort(who)+'</span>';
+    if(isCtr(who))return '<span class="'+cls+' lx-nolink">'+av+lbl+'<span class="lx-sortag">Soroban</span></span>';
+    return '<a class="'+cls+' lx-acct" href="'+acctHref(who)+'" style="color:inherit;text-decoration:none">'+av+lbl+'</a>';
+  }
   function fprice(x){ x=+x||0; if(x>=1)return x.toFixed(4); if(x>=0.0001)return x.toFixed(6); return x.toPrecision(3); }
   function pusd(x){ x=+x||0; if(!x)return "$0.00"; if(x>=1)return "$"+x.toFixed(2); return "$"+x.toFixed(x>=0.01?4:(x>=0.0001?6:8)); }
   // strip trailing zeros from a fixed-decimal string ("0.0000001000" -> "0.0000001")
@@ -878,7 +1761,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // real token logo for the pool's non-XLM asset (was a hardcoded placeholder). Known map + launch icons +
   // harvested cache, with a stellar.expert toml fallback that fills the header <img> async.
   var AMLOGOS={XLM:"/assets/tokens/xlm.png",AQUA:"/assets/tokens/aqua.png",USDC:"/assets/tokens/usdc.png",yUSDC:"/assets/tokens/usdc.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",BLND:"/assets/tokens/blnd.svg",SHX:"/assets/tokens/shx.png",SSLX:"/assets/tokens/sslx.png"};
-  function amTokUrl(code,issuer){ return AMLOGOS[code]||launchIcon(code,issuer)||((window.__lxLogos||{})[code])||""; }
+  // Registry first: it is keyed by CODE+ISSUER, where AMLOGOS and __lxLogos are keyed by CODE alone,
+  // and a ticker is not an identity on Stellar. Everything after it is the previous behaviour.
+  function amTokUrl(code,issuer){ return manIcon(code,issuer)||AMLOGOS[code]||launchIcon(code,issuer)||((window.__lxLogos||{})[code])||""; }
   function amFetchLogo(code,issuer,cb){ var u=amTokUrl(code,issuer); if(u){cb(u);return;} if(!code||!issuer){cb("");return;} getJSON("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){ var recs=(d&&d._embedded&&d._embedded.records)||[]; var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+issuer)===0;})[0]; var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||ti.orgLogo||""; if(img){AMLOGOS[code]=img;try{(window.__lxLogos=window.__lxLogos||{})[code]=img;}catch(_){}} cb(img||""); }).catch(function(){cb("");}); }
   function tokLogo(){ var c=(DET&&DET.code)||"", i=(DET&&DET.issuer)||""; var av=avatarUri(c); var u=amTokUrl(c,i)||av;
     return '<img class="lx-tokimg" data-lxc="'+esc(c)+'" data-lxi="'+esc(i)+'" src="'+u+'" alt="" onerror="this.onerror=null;this.src=\\x27'+av+'\\x27">'; }
@@ -946,7 +1831,15 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     function tryJSON(u,n){ return getJSON(u).then(function(r){
       if(r||n<=0)return r;
       return new Promise(function(rs){ setTimeout(rs,700); }).then(function(){ return tryJSON(u,n-1); }); }); }
-    var trP=tryJSON(H+"/liquidity_pools/"+hex+"/trades?order=desc&limit=100",2);
+    // 24h volume is a SUM over the day's trades, and a busy day does not fit in one page. This fetched
+    // limit=100 ONCE and summed whatever came back: on SSLX/XLM, which ran 2,114 trades in 24 hours, it
+    // summed the newest 100 and reported 293 XLM against a true 8,272 -- a 28x undercount, printed as a
+    // fact next to a fee figure derived from it.
+    //
+    // Still ONE request here, now 200 (Horizon's max), because this is on the critical path and the page
+    // must not get slower. The rest of the day is walked in the background by volDeepen and the two cards
+    // are corrected when it lands.
+    var trP=tryJSON(H+"/liquidity_pools/"+hex+"/trades?order=desc&limit=200",2);
     // Deposits/withdrawals are RARE next to swaps: this pool runs ~600 path-payments for every 5 LP
     // operations, so a 50-record window held 3 deposits and 0 withdrawals and the Withdrawals filter came
     // up empty on a pool that has had withdrawals. Horizon cannot filter operations by type, so widen the
@@ -961,6 +1854,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
           var recs=(r&&r._embedded&&r._embedded.records)||[];
           all=all.concat(recs); pages++;
           var nx=r&&r._links&&r._links.next&&r._links.next.href;
+          // Remember where this crawl stopped. The Deposits/Withdrawals filters can carry on from here on
+          // demand -- see LPQ below -- instead of every pool page paying for a deeper scan up front.
+          LPQ.cursor=nx||null; LPQ.scanned=all.length; LPQ.hex=hex;
           if(recs.length===200&&nx&&pages<3)return step(nx);
           return done();
         }).catch(function(){ failed=true; return done(); });
@@ -969,7 +1865,19 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     })();
     var partP=tryJSON(H+"/accounts?liquidity_pool="+hex+"&limit=100",2);
     var acctP=myAddr()?(window.__lxAcct?window.__lxAcct(myAddr()):getJSON(H+"/accounts/"+myAddr())):Promise.resolve(null);
-    Promise.all([xlmP,poolP,trP,opP,partP,acctP]).then(function(r){
+    // DO NOT BLOCK THE PAGE ON THE TWO BOTTOM TABS. All six calls used to be awaited together, so the
+    // headline cards, the chart and My Position waited for the slowest of them. Timed on the XLM/USDC pool:
+    //
+    //   pool record   960ms      1 KB        trades      3,851ms    137 KB
+    //   participants  2,025ms  3,795 KB      operations    840ms  1,094 KB
+    //
+    // Participants alone returns 3.8 MB, because /accounts returns every balance, signer and data entry of
+    // 100 accounts when all we want from each is one pool-share figure. Together those two are 4.9 MB of
+    // JSON to download and parse before anything could paint -- and neither feeds a single thing above the
+    // fold. They still start at the same moment, so nothing is slower; they just resolve into the page
+    // when they land instead of holding it up.
+    var opsLate=opP, partsLate=partP;
+    Promise.all([xlmP,poolP,trP,Promise.resolve(null),Promise.resolve(null),acctP]).then(function(r){
       window.__lxDetLoading=0;
       var xlmUsd=xuSave((r[0]&&r[0].stellar&&+r[0].stellar.usd)||0)||xuFallback();
       // AUDIT (user-reported "still not loading"): this used to reveal() and give up in silence, so a failed
@@ -1020,6 +1928,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       });
       var vol24Xlm=vol, vol24Usd=vol*xlmUsd, fees24Xlm=vol*fee/100, fees24Usd=fees24Xlm*xlmUsd;
       if(nonXlm){ var _a0usd=(a0.code==="USDC"&&a0.issuer===USDC_ISS); vol24Usd=_a0usd?vol:0; fees24Usd=_a0usd?fees24Xlm:0; }
+      // Did page 1 reach back past the 24h edge? If its OLDEST record is still inside the window there is
+      // more of the day to count, and this figure is a floor, not the answer. Hand volDeepen the cursor.
+      var _trOldest=trs.length?Date.parse(trs[trs.length-1].ledger_close_time||trs[trs.length-1].created_at||""):0;
+      var _trNext=(r[2]&&r[2]._links&&r[2]._links.next&&r[2]._links.next.href)||null;
+      var volNext=(trs.length>=200&&_trOldest>=(now-864e5)&&_trNext)?_trNext:null;
       // volume is derived ENTIRELY from the trades we fetched, so if that fetch failed the honest answer is
       // "unknown", not 0. null is already this file's word for unknown (see volLater on the list page).
       if(trFail){ vol24Xlm=null; vol24Usd=null; fees24Xlm=null; fees24Usd=null; }
@@ -1050,11 +1963,72 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var myFrac=totShares>0?myShares/totShares:0;
       var _det={hex:hex,code:code,issuer:issuer,xlm:xlm,tok:tok,fee:fee,priceXlm:priceXlm,priceUsd:priceUsd,xlmUsd:xlmUsd,
         tvlXlm:tvlXlm,tvlUsd:tvlUsd,vol24Xlm:vol24Xlm,vol24Usd:vol24Usd,fees24Xlm:fees24Xlm,fees24Usd:fees24Usd,
+        // #12: true from the first paint until the day's walk finishes, so the two cells derived from it
+        // print "Counting…" once instead of a running floor. See pdStats.
+        volNext:volNext,volPartial:!!volNext,volCounting:!!volNext,__xlmUsd:xlmUsd,
         txs:txs,txFail:(trFail||opFail),parts:parts,totShares:totShares,myShares:myShares,myFrac:myFrac,balTok:balTok,balXlm:balXlm,balXlmRaw:balXlmRaw,subs:subs,
+        // #13: the true provider count. /accounts?liquidity_pool= caps at 100 rows and each page is ~3.8MB,
+        // so parts.length is the size of the SAMPLE we fetched, not the number of providers -- which is why
+        // this page said 100 while the pools list, reading the pool record's own total_trustlines, said 234.
+        // Same field, on both screens.
+        trustlines:+(p.total_trustlines||0),
         pairName:pairName,nonXlm:nonXlm,a0:a0,a1:a1,pxA0perA1:pxA0perA1,balA0:balA0};
       // MUTATE the existing DET in place on refresh (don't replace it) so wireDW's captured d (===DET)
       // stays valid with fresh numbers — this lets add/withdraw re-fetch+repaint with NO page reload.
       if(DET){for(var _k in _det)DET[_k]=_det[_k];}else{DET=_det;}
+      // Finish counting the day's volume behind the already-rendered page (see volDeepen).
+      // The edge answers in one request; volDeepen is what it falls back to if that fails.
+      try{ if(!volFast())volDeepen(); }catch(_){ try{ volDeepen(); }catch(_e){} }
+      // #12: and a deadline on the WORD. Whatever happens upstream -- the edge slow, the edge down,
+      // the fallback walking pages one at a time -- "Counting…" stops after twelve seconds and the
+      // floor we already have is shown, marked ">=". The figure can still improve afterwards; what it
+      // can no longer do is sit on a participle indefinitely, which is what was actually complained
+      // about. Cleared by whichever source finishes first, so a fast answer never sees this fire.
+      try{ if(DET&&DET.volCounting&&!DET.__volTimer){
+        DET.__volTimer=setTimeout(function(){
+          if(!DET||!DET.volCounting)return;
+          DET.volCounting=false;
+          if(DET.vol24Xlm==null){ DET.vol24Xlm=0; DET.fees24Xlm=0; }
+          DET.volPartial=true;
+          try{ paintDetail(); }catch(_e){}
+        },12000);
+      } }catch(_){}
+      // The two heavy feeds land here, after the page is already on screen. Each repaints only its own
+      // list. Both are guarded: a failure leaves the page exactly as it is rather than blanking a tab.
+      if(opsLate){ var _ol=opsLate; opsLate=null;
+        _ol.then(function(o){
+          if(!DET) return;
+          var recs=(o&&o._embedded&&o._embedded.records)||[];
+          if(o&&o.__failed){ DET.txFail=true; try{ txFailNote(q(".tx-card")); }catch(_){} return; }
+          var add=[];
+          recs.forEach(function(op){
+            var ts=Date.parse(op.created_at||"")||0;
+            if(op.type==="liquidity_pool_deposit"){ var a=amt(op.reserves_deposited);
+              add.push({type:"deposit",xlm:a.x,tok:a.t,who:op.source_account,time:ts,op:String(op.id||"")}); }
+            else if(op.type==="liquidity_pool_withdraw"){ var b=amt(op.reserves_received||op.reserves_min);
+              add.push({type:"withdraw",xlm:b.x,tok:b.t,who:op.source_account,time:ts,op:String(op.id||"")}); }
+          });
+          if(!add.length) return;
+          DET.txs=DET.txs.concat(add); DET.txs.sort(function(x,y){ return y.time-x.time; });
+          try{ pdTx(); }catch(_){}
+        }).catch(function(){});
+      }
+      if(partsLate){ var _pl=partsLate; partsLate=null;
+        _pl.then(function(a){
+          if(!DET) return;
+          var accs=(a&&a._embedded&&a._embedded.records)||[]; if(!accs.length) return;
+          var ps=[], mine=0;
+          accs.forEach(function(ac){ var id=ac.account_id||ac.id;
+            (ac.balances||[]).forEach(function(b){
+              if(b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===DET.hex){
+                ps.push({addr:id,shares:+b.balance}); if(myAddr()&&id===myAddr())mine=+b.balance; } }); });
+          var tot=DET.totShares||ps.reduce(function(s,x){return s+x.shares;},0);
+          ps.forEach(function(x){ x.frac=tot>0?x.shares/tot:0; });
+          ps.sort(function(x,y){ return y.shares-x.shares; });
+          DET.parts=ps; if(mine&&!DET.myShares){ DET.myShares=mine; DET.myFrac=tot>0?mine/tot:0; }
+          try{ pdParts(); }catch(_){}
+        }).catch(function(){});
+      }
       try{ var _fb=q(".lx-detfail"); if(_fb)_fb.remove();                      // data arrived after all
         var _cs=q("#tvlChart svg");
         if(_cs){ [].slice.call(_cs.querySelectorAll(".lx-chload")).forEach(function(e){
@@ -1063,9 +2037,42 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     });
   }
 
+  // Capture-phase so it beats the SPA router to the click; registered once per document.
+  (function(){
+    if(window.__lxPhNav)return; window.__lxPhNav=1;
+    window.addEventListener("click",function(e){
+      var a=e.target&&e.target.closest?e.target.closest("a.lx-phlink[data-lxasset]"):null;
+      if(!a)return;
+      // Leave the browser's own gestures (new tab / new window / download) alone.
+      if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button!==0)return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      location.href="lumoscore-dex-asset.html?asset="+encodeURIComponent(a.getAttribute("data-lxasset"));
+    },true);
+  })();
+
   function pdHeader(){
     var d=DET;
-    var name=q(".ph-name"); if(name)setText(name,d.pairName||(d.code+" / XLM"));
+    var name=q(".ph-name");
+    if(name){
+      // Rebuilt only when the pair changes, so the header guard's re-asserts cannot churn the links.
+      var _want=d.pairName||(d.code+" / XLM");
+      if(name.getAttribute("data-lxpair")!==_want){
+        name.setAttribute("data-lxpair",_want);
+        // One side of the pair: a link when we hold its issuer, plain text otherwise.
+        function side(a,fallbackCode){
+          var c=(a&&a.code)||fallbackCode||"";
+          var i=(a&&a.issuer)||"";
+          if(!c)return "";
+          if(c==="XLM"||!i)return '<span>'+esc(c)+'</span>';
+          return '<a class="lx-phlink" data-lxasset="'+esc(c)+'-'+esc(i)+'" '
+            +'href="lumoscore-dex-asset.html?asset='+esc(c)+'-'+esc(i)+'">'+esc(c)+'</a>';
+        }
+        var _l,_r;
+        if(d.nonXlm&&d.a0&&d.a1){ _l=side(d.a0); _r=side(d.a1); }
+        else { _l=side({code:d.code,issuer:d.issuer},d.code); _r='<span>XLM</span>'; }
+        name.innerHTML=_l+'<span class="lx-phsep"> / </span>'+_r;
+      }
+    }
     // Desktop writes "Pool ID: <short>"; the phone header writes just "ID: <short>", so matching on the
     // desktop wording alone left the design's fabricated a468d4…0088 sitting on the page — and the copy
     // button was still handing out that fake id. Match either wording, and re-point data-copy at the real one.
@@ -1157,25 +2164,82 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var pp=q(".ph-price"); if(!pp||pp.__lxg)return; pp.__lxg=1;
     try{ new MutationObserver(function(){ if(!DET)return; var ps=q(".ph-price .s"); if(!ps)return; [].slice.call(ps.childNodes).forEach(function(nd){ if(nd.nodeType===3&&/per /.test(nd.textContent)&&nd.textContent.indexOf(DET.code)<0)nd.textContent=" per "+DET.code; }); }).observe(pp,{childList:true,subtree:true,characterData:true}); }catch(e){}
   }
+  // #14: a fourth box, for the number of wallets providing liquidity here. The page already knew the
+  // figure -- it was buried in a pill above a list further down -- and the header is where the pool's
+  // headline facts are read. Cloned from an existing box so it inherits whatever the page's own
+  // stylesheet says a .ph-stat looks like on this device; only the icon, label and value are ours.
+  var PART_ICO='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" '
+    +'stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'
+    +'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/>'
+    +'<path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>';
+  function pdPartStat(){
+    var row=q(".ph-stats"); if(!row)return null;
+    var have=row.querySelector(".lx-partstat"); if(have)return have;
+    var src=row.querySelector(".ph-stat"); if(!src)return null;
+    var box=src.cloneNode(true); box.className=(src.className||"ph-stat")+" lx-partstat";
+    var ic=box.querySelector(".ic");
+    if(ic){ ic.className="ic part"; ic.innerHTML=PART_ICO; }
+    var l=box.querySelector(".l"); if(l)l.textContent="Participants";
+    var v=box.querySelector(".v"); if(v)v.textContent="\\u2014";
+    var sb=box.querySelector(".s"); if(sb)sb.textContent="";
+    row.appendChild(box);
+    return box;
+  }
+  // USD per unit of the box's own denomination (U0 = the first reserve on a non-XLM pair, else XLM).
+  // Returns 0 rather than guessing when the pool has no dollar value at all.
+  function unitUsd(d){
+    if(!d)return 0;
+    if(!d.nonXlm)return (d.__xlmUsd>0?d.__xlmUsd:0);
+    var amt=d.a0&&d.a0.amt;
+    return (d.tvlUsd>0&&amt>0)?(d.tvlUsd/(2*amt)):0;
+  }
   function pdStats(){
     var d=DET;
+    var pbox=pdPartStat();
+    if(pbox){ var n0=d.trustlines||(d.parts&&d.parts.length)||0;
+      var pv=pbox.querySelector(".v"), ps=pbox.querySelector(".s");
+      if(pv)setText(pv,n0?num(n0):"\\u2014");
+      if(ps)setText(ps,n0?(n0===1?"liquidity provider":"liquidity providers"):""); }
     qa(".ph-stat").forEach(function(s){
       var ic=s.querySelector(".ic"); var cn=ic?((ic.className&&ic.className.baseVal!==undefined)?ic.className.baseVal:ic.className):"";
       var v=s.querySelector(".v"), sub=s.querySelector(".s");
       var U0=d.nonXlm?d.a0.code:"XLM";
       // When no USD figure exists, drop the whole "· ≈ …" clause. It used to print "· ≈ —", which reads as a
       // broken field rather than an unpriced pair — and is what made the Liquidity box look wrong.
-      if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setText(v,num(d.a0.amt)+" "+U0);
-          if(sub)setText(sub,"+ "+num(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \\u00b7 \\u2248 "+usd(d.tvlUsd)):"")); }
-        else { if(v)setText(v,num(d.xlm)+" XLM"); if(sub)setText(sub,"+ "+num(d.tok)+" "+d.code+" \\u00b7 \\u2248 "+usd(d.tvlUsd)); } }
+      // #13: these sub-lines were written long and then clipped by the cell they live in, so the one
+      // figure worth reading -- the dollar value -- was the part that got cut ("+ 2,317,207 USDC ·
+      // ≈ …"). Abbreviated amounts, so the money always fits.
+      if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setAmt(v,big(d.a0.amt),U0);
+          if(sub)setText(sub,"+ "+qty(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \\u00b7 "+usd(d.tvlUsd)):"")); }
+        else { if(v)setAmt(v,big(d.xlm),"XLM"); if(sub)setText(sub,"+ "+qty(d.tok)+" "+d.code+(d.tvlUsd>0?(" \\u00b7 "+usd(d.tvlUsd)):"")); } }
       // null = the trades fetch never answered. Print a dash: a confident "0 XLM" on a pool that traded all
       // day is worse than admitting we do not know.
+      // #12: this used to print the running sum while volDeepen walked the day, labelled ">= N, still
+      // counting". Honest, but on a busy pool the first page of trades is a meaningless floor: XLM/USDC
+      // showed 138,877 XLM and then jumped to 2,385,968 -- 17x -- about fifty seconds later, taking the
+      // fee figure derived from it along for the ride. Two cells silently rewriting themselves by an
+      // order of magnitude is what reads as broken. Say it is counting, then write the answer ONCE.
       else if(/vol/.test(cn)){
-        if(d.vol24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
-        else { if(v)setText(v,num(d.vol24Xlm)+" "+U0); if(sub)setText(sub,d.nonXlm?(d.vol24Usd>0?"\\u2248 "+usd(d.vol24Usd):"24h volume"):"\\u2248 "+usd(d.vol24Usd)); } }
+        if(d.volCounting){ if(v)setText(v,"Counting\\u2026"); if(sub)setText(sub,"totalling the last 24h"); }
+        else if(d.vol24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,"24h volume unavailable"); }
+        // volPartial can still be true at the end: a pool busy enough to exceed the page budget leaves a
+        // floor as the best answer available, and it stays marked as one.
+        // #16: the sub-line under a volume should be that volume in dollars, which is what the other
+        // three boxes do. It was a sentence explaining the ">=" instead -- and one that did not fit,
+        // so it read "at least, over the la…". The ">=" already says as much on its own.
+        //
+        // vol24Usd is only non-zero when a leg can be priced in dollars directly. On an XLM pair it is
+        // derived from the XLM rate, which is why the fallback multiplies rather than giving up: the
+        // point of the line is the dollar figure, and the page knows the rate.
+        else { if(v)setAmt(v,(d.volPartial?"\\u2265 ":"")+big(d.vol24Xlm),U0);
+          var _vu=(d.vol24Usd>0)?d.vol24Usd:(d.vol24Xlm*unitUsd(d));
+          if(sub)setText(sub, (_vu>0)?("\\u2248 "+usd(_vu)):"24h volume"); } }
       else if(/fee/.test(cn)){
-        if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,d.fee+"% fee tier"); }
-        else { if(v)setText(v,(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")+" "+U0); if(sub)setText(sub,(d.nonXlm&&!(d.fees24Usd>0)?"":"\\u2248 "+usd(d.fees24Usd)+" \\u00b7 ")+d.fee+"% fee tier"); } }
+        if(d.volCounting){ if(v)setText(v,"Counting\\u2026"); if(sub)setText(sub,""); }
+        else if(d.fees24Xlm==null){ if(v)setText(v,"\\u2014"); if(sub)setText(sub,""); }
+        else { if(v)setAmt(v,(d.volPartial?"\\u2265 ":"")+(d.fees24Xlm>=1e6?big(d.fees24Xlm):(d.fees24Xlm>=0.01?d.fees24Xlm.toFixed(2):"0")),U0);
+          var _fu=(d.fees24Usd>0)?d.fees24Usd:(d.fees24Xlm*unitUsd(d));
+          if(sub)setText(sub,(_fu>0)?("\\u2248 "+usd(_fu)):""); } }
     });
   }
   // ---- REAL-DATA chart engine: takes over the design's synthetic candlestick/line/volume renderer ----
@@ -1202,9 +2266,14 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // chDraw and chSync must both read THIS, not the raw design state. They didn't: chDraw stamped its
   // signature from the overridden values while chSync compared the raw ones, so once a range was chosen by
   // touch the two never agreed and the 500ms chSync redrew the chart forever.
+  // Metric is pinned to TVL. Volume is no longer a separate view -- it is drawn as bars inside the TVL
+  // chart (chVolBars), so there is nothing left to switch between and the dropdown is removed. Pinning it
+  // here rather than trusting the control matters because the DESIGN owns that control's state: it
+  // rewrites the trigger label from its own state, and if anything ever set it to volume again the chart
+  // would drop back to a volume-only view.
   function chState(){
     var s=(window.__tvlChartState&&window.__tvlChartState())||{type:"line",metric:"tvl",range:"1Y"};
-    return {type:s.type,metric:__lxMetricSel||s.metric,range:__lxRangeSel||s.range};
+    return {type:s.type,metric:"tvl",range:__lxRangeSel||s.range};
   }
   var CH_RES={"1D":900000,"1W":3600000,"1M":86400000,"3M":86400000,"1Y":604800000,"ALL":604800000};
   var CH_DAYS={"1D":1,"1W":7,"1M":30,"3M":90,"1Y":365,"ALL":730};
@@ -1222,6 +2291,84 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // y-axis still said XLM. trade_aggregations takes any base/counter, so build the query from the pool's
   // OWN reserves: base = the second asset, counter = the first, and the series is denominated in the
   // first asset exactly as the XLM pools are denominated in XLM.
+  // Finish the 24h volume the first page could only start. Walks older pages until one crosses the 24h
+  // edge, adding each in-window trade, then repaints the Volume and Fees cards.
+  //
+  // Off the critical path on purpose: the headline, chart and tables are already up, and a correction
+  // arriving a second later is much better than a page that waits eleven requests to render. While it is
+  // running the figure is marked partial rather than shown as final -- the old bug was not that the number
+  // was small, it was that a floor was presented as a fact.
+  var VOLMAXP=14;                      // 14 x 200 = 2,800 trades/day before we admit to a cap
+  // #2: "Counting…" sat on screen for about a minute, and it was not idling -- 24h volume is a sum
+  // over the day's trades, Horizon pages them 200 at a time, and a busy pool runs thousands. Measured
+  // on XLM/USDC: 3,438 trades = 18 pages, ~4.75s per page from a browser. Roughly 85 seconds.
+  //
+  // The same walk from the edge is fast and, once cached, free for everyone after the first visitor.
+  // See functions/lxapi/poolvol.js -- including the measurement showing why the cheap stellar.expert
+  // figure cannot be substituted: it is the current UTC DAY SO FAR, which at 00:05 UTC reported 28
+  // trades and 24,374 XLM against a true 3,438 and 2,980,994.
+  function volFast(){
+    // Same guard volDeepen uses: if page one already reached back past 24h then page one IS the
+    // whole day, and there is nothing to go and count.
+    var d=DET; if(!d||!d.volNext||d.__volFast)return false; d.__volFast=1;
+    var hex=d.hex;
+    getJSON("/lxapi/poolvol?id="+encodeURIComponent(hex)).then(function(r){
+      // No answer, or an answer with nothing in it: leave the slow walk to it rather than writing a zero.
+      if(!r||r.failed||!r.vol){ try{ volDeepen(); }catch(_){} return; }
+      // Which leg the page quotes: XLM when the pool has one, otherwise the a0 side, exactly as the
+      // rest of this file denominates a pair.
+      var key=d.nonXlm?((d.a0&&d.a0.code)+"-"+(d.a0&&d.a0.issuer)):"native";
+      var v=r.vol[key];
+      if(v==null&&d.nonXlm&&d.a0&&d.a0.native)v=r.vol["native"];
+      if(v==null){ try{ volDeepen(); }catch(_){} return; }
+      d.vol24Xlm=+v||0;
+      d.fees24Xlm=d.vol24Xlm*d.fee/100;
+      var px=d.__xlmUsd||0;
+      if(d.nonXlm){ var a0usd=(d.a0&&d.a0.code==="USDC"); d.vol24Usd=a0usd?d.vol24Xlm:0; d.fees24Usd=a0usd?d.fees24Xlm:0; }
+      else { d.vol24Usd=d.vol24Xlm*px; d.fees24Usd=d.fees24Xlm*px; }
+      d.volPartial=!!r.partial;      // hit the page budget: this is a floor, and the page says ">="
+      d.volNext=null; d.volCounting=false;
+      try{ paintDetail(); }catch(_){}
+    }).catch(function(){ try{ volDeepen(); }catch(_){} });
+    return true;
+  }
+  function volDeepen(){
+    var d=DET; if(!d||!d.volNext||d.__volBusy)return; d.__volBusy=1;
+    var cut=Date.now()-864e5, url=d.volNext, pages=0;
+    function step(){
+      if(!url||pages>=VOLMAXP){ d.volPartial=(!!url); d.volNext=null; d.__volBusy=0; d.volCounting=false; try{ paintDetail(); }catch(_){} return; }
+      pages++;
+      getJSON(url).then(function(j){
+        var rs=(j&&j._embedded&&j._embedded.records)||[];
+        if(!j||!j._embedded){ url=null; return step(); }   // a failed page: stop, stay marked partial
+        var add=0, done=false;
+        for(var i=0;i<rs.length;i++){
+          var x=rs[i], ts=Date.parse(x.ledger_close_time||x.created_at||"");
+          if(ts<cut){ done=true; break; }
+          var nb=x.base_asset_type==="native";
+          var xa=nb?+x.base_amount:+x.counter_amount;
+          if(d.nonXlm&&d.a0){ var _b=(x.base_asset_code===d.a0.code&&x.base_asset_issuer===d.a0.issuer); xa=_b?+x.base_amount:+x.counter_amount; }
+          add+=xa;
+        }
+        d.vol24Xlm=(d.vol24Xlm||0)+add;
+        d.fees24Xlm=d.vol24Xlm*d.fee/100;
+        var px=d.__xlmUsd||0;
+        if(d.nonXlm){ var a0usd=(d.a0&&d.a0.code==="USDC"); d.vol24Usd=a0usd?d.vol24Xlm:0; d.fees24Usd=a0usd?d.fees24Xlm:0; }
+        else { d.vol24Usd=d.vol24Xlm*px; d.fees24Usd=d.fees24Xlm*px; }
+        if(done||rs.length<200){ url=null; }
+        else { url=(j._links&&j._links.next&&j._links.next.href)||null; }
+        // Repaint ONLY when the count is final, so the page is not redrawn eleven times mid-walk.
+        // MEASURED, because I first assumed the repaints were the bottleneck and they are not: settle
+        // time went 65s -> 60s. The cost is the fetches themselves (~5s per paged Horizon trades request
+        // from the browser; the same walk from node takes seconds). Worth knowing before anyone tries to
+        // speed this up by touching the rendering. The card reads ">= N, still counting" throughout,
+        // which is true the whole time.
+        if(!url){ d.volPartial=false; d.volNext=null; d.volCounting=false; try{ paintDetail(); }catch(_){} }
+        step();
+      }).catch(function(){ url=null; d.__volBusy=0; d.volCounting=false; try{ paintDetail(); }catch(_){} });
+    }
+    step();
+  }
   function chPair(){
     var d=DET; if(!d)return null;
     function leg(a){ return (!a||a.native||a.code==="XLM")?{native:true,code:"XLM"}:{code:a.code,issuer:a.issuer}; }
@@ -1273,6 +2420,45 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     [].slice.call(svg.querySelectorAll(".lx-chload")).forEach(function(e){ if(e.parentNode)e.parentNode.removeChild(e); });
     [].slice.call(svg.querySelectorAll("path")).forEach(function(pp){ if((pp.getAttribute("class")||"").indexOf("lx-ch")<0)pp.setAttribute("d",""); });
     if(!svg.querySelector(".lx-chpair")){ var t=chS("text",{"class":"lx-chpair",x:String(chBox(svg).w/2),y:String(chBox(svg).h/2),"text-anchor":"middle","dominant-baseline":"middle",fill:"var(--text-muted,#8b90a0)","font-size":"13"}); t.textContent="No chart for this pair yet"; svg.appendChild(t); } }
+  // Volume bars drawn into the bottom band of the TVL chart, so both series are read at once instead of
+  // being hidden behind a dropdown that showed one or the other.
+  //
+  // They do NOT share the TVL axis and are not meant to: the axis labels belong to the line. The bars are
+  // a shape, showing when the pool was busy relative to its own quietest and busiest buckets.
+  //
+  // SQRT, not linear. Learned building the same thing on Trade-asset: pool volume per bucket spans orders
+  // of magnitude, so a linear scale put the median bar under about a pixel while one spike owned the band
+  // -- the row read as empty. Square root compresses that spread into something visible, and a floor
+  // keeps a real-but-tiny bucket from rounding away to nothing, which would show "no trades" where there
+  // were trades.
+  // Returns the buckets it drew so the hover can report the same numbers. The tooltip must never
+  // recompute them independently -- two bucketings of the same series drift apart and the box would then
+  // describe a bar that is not the one under the cursor.
+  function chVolBars(svg,ser,t0,t1,X,DW,H,padT,padB,res){
+    var vol=(ser&&ser.vol)||[]; if(!vol.length)return null;
+    // Bucket width follows the SERIES RESOLUTION, it is not a fixed count. With a fixed 46 buckets a 1M
+    // chart cut 30 days of DAILY records into 0.65-day slices, so a third of them could not receive a
+    // record and the hover reported "0 XLM" on days that plainly had trading. A bucket narrower than the
+    // data it holds manufactures gaps.
+    //
+    // At bucket == resolution a zero is a real zero: trade_aggregations only emits intervals that traded,
+    // so an empty bucket means nothing traded then, which is worth showing.
+    var NB=Math.max(6,Math.min(60,Math.round((t1-t0)/(res||86400000))));
+    var bw=(t1-t0)/NB, buck=[], i;
+    for(i=0;i<NB;i++)buck.push(0);
+    vol.forEach(function(e){ if(e.t<t0||e.t>t1)return;
+      var bi=Math.min(NB-1,Math.max(0,Math.floor((e.t-t0)/bw))); buck[bi]+=(+e.v||0); });
+    var mxv=Math.max.apply(null,buck); if(!(mxv>0))return null;
+    var band=(H-padT-padB)*0.22, bpx=Math.max(1.5,DW/NB*0.62);
+    for(i=0;i<NB;i++){
+      var v=buck[i]; if(!(v>0))continue;
+      var h=Math.max(1.5,band*Math.sqrt(v/mxv));
+      var x=X(t0+(i+0.5)*bw);
+      svg.appendChild(chS("rect",{"class":"lx-vol",x:(x-bpx/2).toFixed(1),y:(H-padB-h).toFixed(1),
+        width:bpx.toFixed(1),height:h.toFixed(1),rx:"1",fill:"#8b7bf0","fill-opacity":"0.45"}));
+    }
+    return {t0:t0,bw:bw,buck:buck};
+  }
   function chDraw(){
     var svg=q("#tvlChart svg"); if(!svg)return; document.documentElement.classList.add("lx-chartready"); if(!DET)return;
     // A pool of two credit assets now charts too — chAgg asks Horizon for that pair directly and
@@ -1316,10 +2502,16 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     }
     function Y(v){ return padT+(H-padT-padB)*(1-(mx>mn?(v-mn)/(mx-mn):0.5)); }
     var accent=isVol?"#8b7bf0":"#16a34a";
+    var _volInfo=null;                 // buckets chVolBars drew, handed to the hover so both agree
     if(isVol&&isBar){
       var bpx=Math.max(2,DW/vals.length*0.6);
       vals.forEach(function(p){ var x=X(p.t), h=(H-padT-padB)*(mx>0?p.v/mx:0); svg.appendChild(chS("rect",{x:(x-bpx/2).toFixed(1),y:(H-padB-h).toFixed(1),width:bpx.toFixed(1),height:Math.max(0,h).toFixed(1),rx:"1",fill:accent,"fill-opacity":"0.85"})); });
     } else if(isBar){
+      // #19: the hover's "Pair volume" row comes from _volInfo, and _volInfo was only ever built in the
+      // LINE branch below -- so switching to candlesticks silently dropped volume out of the tooltip.
+      // Same call, same buckets, appended before the candles so they paint over it: the two views now
+      // report the same numbers, which is the point of having both.
+      _volInfo=chVolBars(svg,ser,t0,t1,X,DW,H,padT,padB,CH_RES[s.range]);
       var NB2=46, bw2=(t1-t0)/NB2, cpx=Math.max(2,DW/NB2*0.6);
       for(var j=0;j<NB2;j++){ var bs=t0+j*bw2, be=bs+bw2, o=rezAt(bs)*2, c=rezAt(be)*2, hi=Math.max(o,c), lo=Math.min(o,c);
         ser.pts.forEach(function(p){ if(p.t>=bs&&p.t<=be){ var q2=p.r*2; if(q2>hi)hi=q2; if(q2<lo)lo=q2; } });
@@ -1328,6 +2520,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         var yo=Y(o),yc=Y(c); svg.appendChild(chS("rect",{x:(xc-cpx/2).toFixed(1),y:Math.min(yo,yc).toFixed(1),width:cpx.toFixed(1),height:Math.max(1,Math.abs(yc-yo)).toFixed(1),rx:"1",fill:col}));
       }
     } else {
+      // Volume bars UNDER the TVL line, in the same chart -- the Trade-asset treatment. Appended first so
+      // the area fill and the line paint over them.
+      _volInfo=chVolBars(svg,ser,t0,t1,X,DW,H,padT,padB,CH_RES[s.range]);
       var dd=""; vals.forEach(function(p,i){ dd+=(i?"L":"M")+X(p.t).toFixed(1)+" "+Y(p.v).toFixed(1)+" "; });
       var lastX=X(vals[vals.length-1].t).toFixed(1), firstX=X(vals[0].t).toFixed(1);
       svg.appendChild(chS("path",{d:dd+"L"+lastX+" "+(H-padB)+" L"+firstX+" "+(H-padB)+" Z",fill:accent,"fill-opacity":"0.10",stroke:"none"}));
@@ -1345,10 +2540,27 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     // Label the axis in the asset the series is actually denominated in. It said XLM unconditionally,
     // which was already wrong on a USDC/EURC pool before this pair could chart at all.
     var _u=" "+(((chPair()||{}).unit)||"XLM");
-    function yfmt(x){ x=+x||0; var a=Math.abs(x), sc=a>=1e6?1e6:(a>=1e3?1e3:1), sfx=sc===1e6?("M"+_u):(sc===1e3?("K"+_u):_u);
+    function yfmt(x,wu){ var u=wu?_u:"";
+      x=+x||0; var a=Math.abs(x), sc=a>=1e6?1e6:(a>=1e3?1e3:1), sfx=sc===1e6?("M"+u):(sc===1e3?("K"+u):u);
       var d=2; if(_step>0){ d=Math.max(2,Math.min(5,Math.ceil(-Math.log10(_step/sc))+1)); if(!isFinite(d))d=2; }
-      return sc===1?((a>=1?num(x):x.toFixed(Math.max(2,d)))+_u):((x/sc).toFixed(d)+sfx); }
-    yt.forEach(function(t,i){ var frac=yt.length<=1?1:(1-i/(yt.length-1)); setText(t,yfmt(mn+(mx-mn)*frac)); });
+      return sc===1?((a>=1?num(x):x.toFixed(Math.max(2,d)))+u):((x/sc).toFixed(d)+sfx); }
+    // THE UNIT ON EVERY GRIDLINE IS AXIS TEXT LYING ACROSS THE SERIES. These labels are text-anchor="end"
+    // pinned at x=396, so a longer one cannot leave the card -- it grows LEFT, over the plot. Measured on
+    // the phone box: "27.35M XLM" covers 14.1% of the plot width, "27.35M PENGULUMENS" 25.4%, and
+    // "0.0000001 PENGULUMENS" 29.6%, five times over. Print the unit once, on the top gridline, and leave
+    // the rest bare numbers; the reader still learns the unit and the chart gets its width back.
+    // (No backticks in this comment: it is emitted from inside a Node template literal — DEV landmine 8.)
+    //
+    // GATE ON RENDERED WIDTH, NOT THE viewBox. DEV landmine 12 says the chart box is 1000x280 on desktop
+    // and 400x220 on the phone -- true elsewhere, but NOT on this page: measured, the pool detail chart is
+    // 400x220 in BOTH builds. A viewBox test therefore fires on desktop too and would have quietly changed
+    // a layout nobody asked to change. The svg scales to its container, so the honest measure of crowding
+    // is the drawn width: 566px on desktop, ~345px on a 375px phone.
+    // Falls back to the previous behaviour when the box has not been laid out yet (width 0).
+    var _drawnW=0; try{ _drawnW=svg.getBoundingClientRect().width||0; }catch(_e){}
+    var _oneUnit=(_drawnW>0&&_drawnW<450);
+    // i===0 is the TOP gridline: frac below is 1-i/(n-1), so i=0 maps to mx.
+    yt.forEach(function(t,i){ var frac=yt.length<=1?1:(1-i/(yt.length-1)); setText(t,yfmt(mn+(mx-mn)*frac,!_oneUnit||i===0)); });
     var xt=_ax.filter(function(t){ return (+t.getAttribute("y")||0)>=H*0.9&&yt.indexOf(t)<0; }).sort(function(a,b){return (+a.getAttribute("x"))-(+b.getAttribute("x"));});
     var span=t1-t0, MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
     function fmt(t){ var dt=new Date(t); if(span<2*86400000){ var hh=dt.getHours(),mm=dt.getMinutes(); return (hh<10?"0":"")+hh+":"+(mm<10?"0":"")+mm; } if(span<120*86400000)return MO[dt.getMonth()]+" "+dt.getDate(); return MO[dt.getMonth()]; }
@@ -1362,6 +2574,8 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var _P=chPair(), _cur=_P?_P.reserve*2:0, _tu=+DET.tvlUsd||0;
     DET.__chH={ metric:isVol?"vol":"tvl", bars:isBar, color:accent, unit:_u.replace(" ",""), span:span,
       usdPerUnit:(_cur>0&&_tu>0)?(_tu/_cur):0,
+      vol:_volInfo,                    // null when the range has no traded volume -> the row is omitted
+
       pts:vals.map(function(p){ return {t:p.t,v:p.v,x:X(p.t),
         y:isVol?(H-padB-(H-padT-padB)*(mx>0?p.v/mx:0)):Y(p.v)}; }) };
     DET.__chSig=s.type+"|"+s.metric+"|"+s.range;
@@ -1377,6 +2591,44 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var o={month:"short",day:"numeric"}; if(span>=180*86400000)o.year="numeric";
     return dt.toLocaleDateString("en-US",o);
   }
+  // The Volume block in the hover box: the traded volume of the BUCKET the cursor is over, read straight
+  // out of the buckets chVolBars drew rather than recomputed, so the number always describes the bar you
+  // are looking at.
+  //
+  // Bars and line are sampled differently on purpose. The line is interpolated along the segment under the
+  // cursor (a pool's series is sparse, so snapping made whole stretches report the same day), but a bar IS
+  // its bucket -- there is no value "between" two of them. So the TVL figure slides and the volume figure
+  // steps, which is correct for what each one is.
+  //
+  // Returns "" when the chart has no volume series (chVolBars returned null): no row at all beats a row
+  // that says 0 on a chart that never had the data.
+  //
+  // LABELLED "PAIR VOLUME", and that word is load-bearing. The series comes from Horizon's
+  // trade_aggregations for the ASSET PAIR, which spans every DEX venue trading it -- the order book and
+  // all other pools -- not this pool alone. Measured on USDC/XLM: the pair did 2,725,945 XLM on Aug 16
+  // while this pool's own trades did 240,904 XLM in 24h, about 1.8x apart. Calling that "Volume" on a
+  // pool page would read as the pool's, and it would disagree with the 24h Volume card directly above it,
+  // which IS pool-only. Pool-specific volume per bucket across 30 days is not reachable -- it would be a
+  // paged trades crawl per bucket -- so the honest move is to name the number for what it measures.
+  // The same bucket lookup as chHovVol, returning the NUMBER so the tooltip can format it itself.
+  // Null when the chart has no volume series for this point, which is how the caller knows to omit
+  // the line entirely rather than print a zero it cannot stand behind.
+  function chHovVolVal(st,t){
+    var vi=st&&st.vol; if(!vi||!vi.buck||!vi.buck.length)return null;
+    var i=Math.floor((t-vi.t0)/vi.bw);
+    if(i<0)i=0; if(i>vi.buck.length-1)i=vi.buck.length-1;
+    return +vi.buck[i]||0;
+  }
+  function chHovVol(st,t){
+    var vi=st&&st.vol; if(!vi||!vi.buck||!vi.buck.length)return "";
+    var i=Math.floor((t-vi.t0)/vi.bw);
+    if(i<0)i=0; if(i>vi.buck.length-1)i=vi.buck.length-1;
+    var v=+vi.buck[i]||0;
+    var u=(st.usdPerUnit>0)?usd(v*st.usdPerUnit):"";
+    return '<div style="font-size:12.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700;margin-top:7px">Pair volume</div>'
+      +'<div style="font-weight:700;font-size:15px;color:#8b7bf0;margin-top:3px">'+esc(famt(v)+" "+st.unit)+'</div>'
+      +(u?('<div style="font-size:13.5px;color:var(--text-muted);margin-top:1px">'+esc(u)+'</div>'):'');
+  }
   function chHover(){
     var host=q("#tvlChart"); if(!host||host.__lxHov)return; host.__lxHov=1;
     try{ if(getComputedStyle(host).position==="static")host.style.position="relative"; }catch(_){}
@@ -1386,7 +2638,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       host.appendChild(el); return el; }
     var vline=mk("lx-chov-v","top:0;bottom:0;width:1px;background:rgba(180,180,200,.55);z-index:4"),
         dot=mk("lx-chov-dot","width:11px;height:11px;border-radius:50%;border:2px solid var(--surface);transform:translate(-50%,-50%);z-index:6"),
-        box=mk("lx-chov-box","background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:9px 12px;font-size:14px;box-shadow:0 8px 22px rgba(0,0,0,.25);min-width:140px;z-index:8;color:var(--text)");
+        box=mk("lx-chov-box","background:var(--surface);border:1px solid var(--border);border-radius:9px;padding:7px 10px;font-size:14px;font-family:'Hanken Grotesk',system-ui,sans-serif;box-shadow:0 8px 22px rgba(0,0,0,.22);min-width:140px;z-index:8;color:var(--text)");
     function hide(){ vline.style.opacity="0"; dot.style.opacity="0"; box.style.opacity="0"; }
     function at(cx,cy){
       var svg=q("#tvlChart svg"), st=DET&&DET.__chH;
@@ -1424,11 +2676,38 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       dot.style.opacity=st.bars?"0":"1";
       var sig=key+"|"+st.metric+"|"+st.unit+"|"+(st.usdPerUnit>0?1:0);
       if(box.__lxSig!==sig){ box.__lxSig=sig;
-        var usdTxt=(st.usdPerUnit>0)?usd(p.v*st.usdPerUnit):"";
-        box.innerHTML='<div style="font-size:12.5px;color:var(--text-soft);text-transform:uppercase;letter-spacing:.4px;font-weight:700">'+(st.metric==="vol"?"Volume":"TVL")+'</div>'
-          +'<div style="font-weight:700;font-size:15px;color:var(--text);margin-top:3px">'+esc(famt(p.v)+" "+st.unit)+'</div>'
-          +(usdTxt?('<div style="font-size:13.5px;color:var(--text-muted);margin-top:1px">'+esc(usdTxt)+'</div>'):'')
-          +'<div style="font-size:13px;color:var(--text-soft);margin-top:5px">'+esc(chHovDate(p.t,st.span))+'</div>';
+        // #18: three lines -- TVL in dollars, volume in dollars, participants -- as requested.
+        //
+        // The pool-unit figures are gone: "3,686,751 JOHN" above "$7.85" gave the eye a seven-digit
+        // number to land on and a tiny one to actually read, and the big one is only meaningful to
+        // someone already holding that token.
+        //
+        // The dollar figure is not always available: a credit/credit pool has no USD price for either
+        // reserve, and usdPerUnit is 0. Falling back to units there rather than printing nothing --
+        // an empty tooltip would be a worse answer than an honest one in the pool's own denomination.
+        var _lbl=(st.metric==="vol"?"Volume":"TVL");
+        var _val=(st.usdPerUnit>0)?usd(p.v*st.usdPerUnit):(famt(p.v)+" "+st.unit);
+        // Same two-line shape as Trade-Asset: a quiet label over a tabular figure. No uppercase, no
+        // letter-spacing, and one size for every value rather than a bigger one for the first.
+        function _row(l,v,strong){
+          return '<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600">'+esc(l)+'</div>'
+            +'<div style="color:var(--text,#0e0e10);font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:1px">'+esc(v)+'</div>';
+        }
+        // The volume line for the SAME point, in dollars, from the bars the chart already drew.
+        var _vp=chHovVolVal(st,p.t);
+        var _volTxt=(_vp==null)?null:((st.usdPerUnit>0)?usd(_vp*st.usdPerUnit):(famt(_vp)+" "+st.unit));
+        // Participants is deliberately NOT in this tooltip. See the note in the transform: Horizon only
+        // exposes the pool's CURRENT trustline count, so the figure was identical at every point and
+        // described the present while the rest of the tooltip described the hovered moment. It keeps its
+        // own stat card above the chart, where it is true.
+        // The date leads, as it does on Trade-Asset -- the reader is pointing at a moment, and the
+        // figures below it only mean anything once they know which one. The span comes from the points
+        // themselves, so an intraday range shows a time and a long one shows a date.
+        var _sp=(P&&P.length>1)?((P[P.length-1].t||0)-(P[0].t||0)):0;
+        var _dt=(p&&p.t)?chHovDate(p.t,_sp):"";
+        box.innerHTML=(_dt?('<div style="color:var(--text-soft,#8a8fa3);font-size:11px;font-weight:600;margin-bottom:4px">'+esc(_dt)+'</div>'):'')
+          +_row(_lbl,_val,true)
+          +(_volTxt?('<div style="margin-top:8px">'+_row("Volume",_volTxt,false)+'</div>'):'');
       }
       box.style.opacity="1";
       var bw=box.offsetWidth||160, bh=box.offsetHeight||74;
@@ -1505,6 +2784,89 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // Selecting a filter only owns the button state and the filter itself; which rows end up visible is
   // txApplyM's job, exactly as the desktop strip defers to txApply. keepPage is for the re-render path,
   // where the rows were rebuilt underneath a reader who is sitting on page 3 and should stay there.
+  // ---- Deposits / Withdrawals: reach back for them ------------------------------------------------
+  // LP actions are RARE next to swaps and the ratio is not close. Measured on the XLM/USDC pool: 600
+  // operations covered 5.5 hours and contained 344 + 253 path payments against ONE deposit and ONE
+  // withdrawal. So the load-time window can never be deep enough for these two filters -- it would have
+  // to hold ~7,500 operations to show 25 withdrawals, which is not something every pool page should pay
+  // for on the chance somebody clicks.
+  //
+  // Instead the crawl continues from where the initial one stopped, only when one of those filters is
+  // chosen and only while it is short, bounded by a scan ceiling. Swaps and All never trigger it: they
+  // are already saturated by the first 600.
+  // MIN and MAX are measured, not chosen. On the XLM/USDC pool, 3,000 operations -- 15 requests -- reach
+  // back 24.9 hours and contain 8 deposits and 2 withdrawals. Chasing 20 withdrawals would take roughly
+  // 150 requests, which is one and a half times the entire five-minute Horizon budget spent to add two
+  // rows, and would throttle everything else on the page. So the target is 8 (reachable for deposits,
+  // and it stops the crawl early when it is met) and the ceiling is 3,000 operations. Withdrawals will
+  // often still come up short -- which is the truth about the pool, and the note below says so plainly
+  // rather than leaving a number that looks like a bug.
+  var LPQ={cursor:null, scanned:0, hex:"", busy:0, done:0, MIN:8, MAX:3000};
+  // Which filter is live depends on the LAYOUT, and both variables always hold a string. txFiltM defaults
+  // to "all", which is truthy, so (txFiltM||txFilt) silently resolved to "all" on desktop and every
+  // crawl bailed on its first line -- the button changed to "Looking..." and nothing else ever happened.
+  // The table only exists in the desktop layout, so that is the honest test.
+  function lpKind(){ return q("table.tx tbody") ? txFilt : txFiltM; }
+  function lpCount(kind){ var t=(DET&&DET.txs)||[], n=0;
+    for(var i=0;i<t.length;i++) if(t[i].type===kind) n++; return n; }
+  function lpSpan(){ var t=(DET&&DET.txs)||[]; if(t.length<2) return "";
+    var a=t[t.length-1].time, b=t[0].time; if(!(a>0&&b>a)) return "";
+    var h=(b-a)/3600000;
+    return " (about "+(h<48?(Math.round(h)+" hour"+(Math.round(h)===1?"":"s")):(Math.round(h/24)+" days"))+")"; }
+  function lpDeepen(kind,after){
+    if(!DET||!LPQ.cursor||LPQ.busy||LPQ.done) return;
+    if(kind!=="deposit"&&kind!=="withdraw") return;
+    if(lpCount(kind)>=LPQ.MIN) return;
+    LPQ.busy=1; step();
+    function stop(fin){ LPQ.busy=0; if(fin)LPQ.done=1;
+      // repaint so the note stops saying "Looking" and reports the depth actually reached
+      try{ if(after)after(); }catch(_){}
+      try{ if(q("table.tx tbody"))txApply(); else txApplyM(); }catch(_){} }
+    function step(){
+      if(!LPQ.cursor||LPQ.scanned>=LPQ.MAX){ stop(1); return; }
+      getJSON(LPQ.cursor).then(function(r){
+        var recs=(r&&r._embedded&&r._embedded.records)||[];
+        if(!recs.length){ stop(1); return; }
+        LPQ.cursor=(r&&r._links&&r._links.next&&r._links.next.href)||null;
+        LPQ.scanned+=recs.length;
+        var added=0;
+        recs.forEach(function(o){
+          var ts=Date.parse(o.created_at||"")||0;
+          // same mapping as the initial pass -- amt() and DET.txs shape are shared
+          if(o.type==="liquidity_pool_deposit"){ var a=amt(o.reserves_deposited);
+            DET.txs.push({type:"deposit",xlm:a.x,tok:a.t,who:o.source_account,time:ts,op:String(o.id||"")}); added++; }
+          else if(o.type==="liquidity_pool_withdraw"){ var b=amt(o.reserves_received||o.reserves_min);
+            DET.txs.push({type:"withdraw",xlm:b.x,tok:b.t,who:o.source_account,time:ts,op:String(o.id||"")}); added++; }
+        });
+        if(added){ DET.txs.sort(function(x,y){ return y.time-x.time; }); try{ if(after)after(); }catch(_){} }
+        if(lpCount(kind)>=LPQ.MIN){ LPQ.busy=0; return; }
+        step();
+      }).catch(function(){ LPQ.busy=0; });
+    }
+  }
+  // REMOVER ONLY. This used to append "Searched the last 600 pool operations (about 185 days)." under the
+  // transactions card, on the reasoning that "2 withdrawals" reads like a fault until you know it means 2
+  // out of 600. That reasoning still holds, but the line as built did not: it had no stylesheet rule, so it
+  // inherited page body type and landed under the card as loose sentence-case prose rather than a footnote,
+  // reading as stray text. Removed on request.
+  //
+  // The same depth is still stated where it actually resolves an ambiguity -- the EMPTY state, which says
+  // "No withdraw in the last 600 pool operations (about 185 days)." There a zero is genuinely misleading
+  // without it. That one is inside the list and styled with it, and is deliberately kept.
+  //
+  // Kept as a function rather than deleted at the call sites so a node left over from a cached page still
+  // gets cleaned rather than sitting there forever.
+  //
+  // Also still true: there is no "keep looking" control here, unlike the Trade-asset one. A deeper crawl is
+  // written (lpDeepen) and it demonstrably runs -- it walks to the 3,000-operation ceiling -- but the rows
+  // it should append never reached DET.txs and I have not isolated why. Shipping a control that spends ten
+  // Horizon requests and then changes nothing on screen is worse than not offering it, so it stays
+  // unhooked until the append is understood and proven.
+  function lpDepthNote(host){
+    if(!host) return;
+    var n=host.querySelector(".lx-lpdepth");
+    if(n&&n.parentNode)n.parentNode.removeChild(n);
+  }
   function txFilterM(label,keepPage){
     var f=String(label||"").trim().toLowerCase();
     qa(".tx-filter-m button").forEach(function(b){ b.classList.toggle("active",(b.textContent||"").trim().toLowerCase()===f); });
@@ -1548,8 +2910,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       if(!none){ none=document.createElement("div"); none.className="tx-item lx-txrow lx-txnone";
         none.style.cssText="justify-content:center;color:var(--text-muted);text-align:center"; box.appendChild(none); }
       none.style.display="";
-      none.textContent=(txFiltM==="all")?"No transactions yet":("No "+txFiltLabelM+" in this pool's recent activity");
+      none.textContent=(txFiltM==="all")?"No transactions yet":("No "+txFiltLabelM+" in the last "+num(LPQ.scanned)+" pool operations"+lpSpan()+".");
     }
+    // Even when there ARE rows, say how deep the search went: "2 withdrawals" reads like a fault until
+    // you know it means 2 in the last 3,000 operations.
+    try{ lpDepthNote(box,total); }catch(_){}
     var foot=txFootM(box);
     // one page of results needs no pager — hide the whole strip rather than show two dead buttons
     foot.style.display=(total>TXPP)?"":"none";
@@ -1651,13 +3016,12 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function txRow(t){
     var pill=t.type==="deposit"?'<span class="type-pill deposit">Deposit</span>':(t.type==="withdraw"?'<span class="type-pill withdraw">Withdraw</span>':'<span class="type-pill swap">Swap</span>');
     var when=t.time?new Date(t.time).toLocaleString():"\\u2014";
-    var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(t.who||"");
     var op=txHref(t);
     return '<tr class="lx-txrow" data-txtype="'+t.type+'">'+
       '<td>'+pill+'</td>'+
       '<td><span class="num">'+famt(t.xlm)+' '+esc(txCodeA())+'</span></td>'+
       '<td><span class="num">'+famt(t.tok)+' '+esc(txCodeB())+'</span></td>'+
-      '<td><a class="wallet-cell" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none"><div class="wallet-avatar">'+ident(t.who,22)+'</div><span class="lx-waddr">'+ashort(t.who)+'</span></a></td>'+
+      '<td>'+walletCell(t.who,22,"wallet-cell")+'</td>'+
       '<td>'+when+'</td>'+
       '<td><a class="ext-link" href="'+op+'" target="_blank" rel="noopener"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7M17 7H8M17 7v9"></path></svg></a></td></tr>';
   }
@@ -1679,7 +3043,6 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var kind=(t.type==="deposit"||t.type==="withdraw")?t.type:"swap";
     var label=kind==="deposit"?"Deposit":(kind==="withdraw"?"Withdraw":"Swap");
     var when=t.time?new Date(t.time).toLocaleTimeString([], {hour:"numeric",minute:"2-digit"}):"—";
-    var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(t.who||"");
     var amounts=famt(t.xlm)+" "+esc(txCodeA())+" ↔ "+famt(t.tok)+" "+esc(txCodeB());
     // Desktop gives each transaction a wallet IDENTICON for the counterparty. The phone left this slot
     // empty, so the design's logo painter claimed it and every row showed the same orange disc — the row
@@ -1689,7 +3052,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       +'<div class="tx-icon '+kind+' lx-txident" data-lxfixed="1" data-logoed="1">'+ident(t.who||kind,32)+'</div>'
       +'<div class="tx-info"><div class="tx-type '+kind+'">'+label+'</div>'
       +'<div class="tx-amounts">'+amounts+'</div>'
-      +'<a class="tx-meta" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(t.who||"")+'</a></div>'
+      +(isCtr(t.who)
+        ? ('<span class="tx-meta lx-nolink">'+ashort(t.who||"")+'<span class="lx-sortag">Soroban</span></span>')
+        : ('<a class="tx-meta lx-acct" href="'+acctHref(t.who)+'" style="color:inherit;text-decoration:none">'+ashort(t.who||"")+'</a>'))+'</div>'
       +'<div class="tx-time">'+when+'</div>'
       // Desktop's table has a trailing explorer arrow per row; the phone card had none, so a tap could only
       // reach the trader's account via the address line. Same target, same icon, right edge of the row.
@@ -1744,16 +3109,23 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   var TXPP=20, txPage=0, txFilt="all";
   function txAll(){ return qa("table.tx tbody .lx-txrow").filter(function(rw){ return !rw.classList.contains("lx-txnone"); }); }
+  // pdTx() ends by calling txApply(), and txApply() now has to call pdTx() to re-render the page slice --
+  // so without this guard the two call each other forever. The guard makes the pairing safe in both
+  // directions: entering through either one runs the render once and the footer once.
+  var __txInApply=0;
   function txApply(){
-    var rows=txAll();
-    var vis=rows.filter(function(rw){ return txFilt==="all"||(rw.getAttribute("data-txtype")||"")===txFilt; });
+    if(__txInApply) return;
+    __txInApply=1;
+    // The rows in the DOM ARE the current page now, so there is nothing left to hide: re-render instead
+    // of walking 647 elements setting style.display, which was both the slow part and a forced reflow.
+    try{ pdTx(); }catch(_){}
+    __txInApply=0;
+    var s=txSlice();
     var foot=q(".tx-foot");
-    if(!foot){ rows.forEach(function(rw){ rw.style.display="none"; }); vis.forEach(function(rw){ rw.style.display=""; }); return; }  // no pager in this layout: list everything
-    var total=vis.length, pages=Math.max(1,Math.ceil(total/TXPP));
-    if(txPage>pages-1)txPage=pages-1; if(txPage<0)txPage=0;
-    var start=txPage*TXPP, end=start+TXPP;
-    rows.forEach(function(rw){ rw.style.display="none"; });
-    vis.forEach(function(rw,i){ if(i>=start&&i<end)rw.style.display=""; });
+    if(!foot) return;                                     // no pager in this layout
+    var total=s.all.length, pages=s.pages;
+    var start=txPage*TXPP, end=start+s.rows.length;
+    try{ lpDepthNote(q(".tx-card")||foot.parentNode); }catch(_){}
     var lbl=[].slice.call(foot.children).filter(function(c){ return !c.classList.contains("controls"); })[0];
     if(lbl)setText(lbl,total?("Showing "+(start+1)+"\\u2013"+Math.min(end,total)+" of "+num(total)+" transactions"):"No transactions");
     var btns=foot.querySelectorAll(".controls button");
@@ -1768,13 +3140,30 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     }
     if(ind)setText(ind,"Page "+(txPage+1)+" of "+pages);
   }
+  // RENDER ONE PAGE, NOT THE WHOLE LIST. This used to build every transaction as a row and then hide all
+  // but twenty with display:none. Measured on the SSLX/STARDUST pool: 647 rows rendered, 20 visible, and
+  // 18,535 of the document's 20,937 nodes sat inside that tbody -- 89% of the page -- carrying 7,285 SVG
+  // rects of identicon in rows nobody could see. Hidden nodes still cost style recalculation and memory on
+  // every scroll, which is what made the page drag.
+  //
+  // Slicing before rendering is also what makes the pager honest: it now describes the rows that exist
+  // rather than a hidden backlog.
+  function txSlice(){
+    var t=(DET&&DET.txs)||[];
+    var f=[]; for(var i=0;i<t.length;i++) if(txFilt==="all"||t[i].type===txFilt) f.push(t[i]);
+    var pages=Math.max(1,Math.ceil(f.length/TXPP));
+    if(txPage>pages-1)txPage=pages-1; if(txPage<0)txPage=0;
+    return {all:f,pages:pages,rows:f.slice(txPage*TXPP,(txPage+1)*TXPP)};
+  }
   function pdTx(){
     var d=DET; var tb=q("table.tx tbody"); if(!tb){ pdTxMobile(); return; }
     tb.__lxPP=1;
-    var wantTx=d.txs.length||1;
-    if(tb.querySelectorAll(".lx-txrow").length!==wantTx){
-      tb.innerHTML=d.txs.length?d.txs.map(txRow).join(""):('<tr class="lx-txrow"><td colspan="6" style="text-align:center;color:var(--text-muted);padding:22px">'+(d.txFail?"Couldn\\u2019t load this pool\\u2019s transactions":"No transactions yet")+'</td></tr>');
-      txPage=0;
+    var s=txSlice();
+    // identity of the slice, not just its length: paging between two equal-sized pages must still repaint
+    var sig=txFilt+"|"+txPage+"|"+s.all.length+"|"+((s.rows[0]&&s.rows[0].op)||"")+"|"+((s.rows[s.rows.length-1]&&s.rows[s.rows.length-1].op)||"");
+    if(tb.__lxtxsig!==sig || !tb.querySelector(".lx-txrow")){
+      tb.__lxtxsig=sig;
+      tb.innerHTML=s.rows.length?s.rows.map(txRow).join(""):('<tr class="lx-txrow"><td colspan="6" style="text-align:center;color:var(--text-muted);padding:22px">'+(d.txFail?"Couldn\\u2019t load this pool\\u2019s transactions":(d.txs.length?("No "+txFilt+"s in the last "+num(LPQ.scanned||0)+" pool operations"):"No transactions yet"))+'</td></tr>');
     }
     txFailNote(q(".tx-card")||tb.closest("table").parentNode);
     // Prev/Next, bound once. Capture + stopImmediatePropagation so the design's own pager (which walks
@@ -1792,7 +3181,8 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       fb.forEach(function(b){ b.addEventListener("click",function(e){ e.stopPropagation(); fb.forEach(function(x){x.classList.remove("active");}); b.classList.add("active"); var f=b.textContent.trim().toLowerCase();
         txFilt=(f.indexOf("swap")===0)?"swap":((f.indexOf("deposit")===0)?"deposit":((f.indexOf("withdraw")===0)?"withdraw":"all"));
         txPage=0;                       // a new filter starts at its first page, not wherever you were
-        txApply(); }); });
+        txApply();
+      }); });
     }
     txApply();
   }
@@ -1846,6 +3236,8 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var fields=qa("#dwDeposit .dw-field");
     if(d.nonXlm){ setField(fields[0],d.a0.code,genLogo(d.a0),d.balA0); setField(fields[1],d.a1.code,genLogo(d.a1),d.balTok); }
     else { setField(fields[0],d.code,tokLogo(),d.balTok); setField(fields[1],"XLM",xlmLogo(),d.balXlm); }
+    // the balances on screen are ours now, so the gate above can lift
+    try{ document.documentElement.classList.add("lx-dwready"); }catch(_){}
     var lp=q("#dwWithdraw .balance"); if(lp)setText(lp,"Your LP: "+famt(d.myShares));
     qa(".dw-summary .r").forEach(function(rw){ var lab=(rw.querySelector("span")||{}).textContent||""; var st=rw.querySelector("strong"); if(!st)return; if(/fee tier/i.test(lab))setText(st,d.fee+"%"); else if(/network fee/i.test(lab))setText(st,"\\u2248 0.00001 XLM"); });
   }
@@ -1855,26 +3247,88 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var ex="https://stellar.expert/explorer/public/account/"+encodeURIComponent(p.addr);
     var pct=(p.frac*100>=0.01?(p.frac*100).toFixed(2):"<0.01")+"%";
     if(mob) return '<div class="part-row lx-partrow"><div class="part-avatar">'+ident(p.addr,26)+'</div>'
-      +'<a class="wallet" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'
+      +'<a class="wallet lx-acct" href="/account/stellar/'+p.addr+'" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'
       +'<div class="share">'+pct+'</div>'
       +'<div class="share-bar"><div class="fill" style="width:'+Math.min(100,p.frac*100).toFixed(2)+'%"></div></div></div>';
     return '<div class="part-row lx-partrow"><div class="part-avatar">'+ident(p.addr,26)+'</div>'+
-      '<a class="part-addr" href="'+ex+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'+
+      '<a class="part-addr lx-acct" href="/account/stellar/'+p.addr+'" style="color:inherit;text-decoration:none">'+ashort(p.addr)+'</a>'+
       '<span class="part-share">'+(p.frac*100>=0.01?(p.frac*100).toFixed(2):"<0.01")+'%</span></div>';
+  }
+  // PARTICIPANTS PAGE IN STEP WITH TRANSACTIONS. The two lists sit side by side, so rendering 100 wallets
+  // beside 20 transactions left the right column running hundreds of pixels past the left and the page
+  // scrolling on into empty space. Same page size as the tx list, same slice-before-render rule, so the
+  // columns end together and the DOM stays small.
+  var PARTPP=TXPP, partPage=0;
+  function partSlice(){
+    var t=(DET&&DET.parts)||[];
+    var pages=Math.max(1,Math.ceil(t.length/PARTPP));
+    if(partPage>pages-1)partPage=pages-1; if(partPage<0)partPage=0;
+    return {all:t,pages:pages,rows:t.slice(partPage*PARTPP,(partPage+1)*PARTPP)};
   }
   function pdParts(){
     var d=DET; var list=q("#partList,#participantsList"); if(!list)return;
     list.__lxPP=1;  // block the design's participant paginator/cloner
-    var wantP=d.parts.length||1;
-    if(list.querySelectorAll(".lx-partrow").length!==wantP){
-      list.innerHTML=d.parts.length?d.parts.map(function(_p){return partRow(_p,list.id==="participantsList");}).join(""):'<div class="part-row lx-partrow" style="justify-content:center;color:var(--text-muted)">No liquidity providers yet</div>';
+    var s=partSlice(), mob=(list.id==="participantsList");
+    var sig=partPage+"|"+s.all.length+"|"+((s.rows[0]&&s.rows[0].addr)||"")+"|"+((s.rows[s.rows.length-1]&&s.rows[s.rows.length-1].addr)||"");
+    if(list.__lxpsig!==sig || !list.querySelector(".lx-partrow")){
+      list.__lxpsig=sig;
+      list.innerHTML=s.rows.length?s.rows.map(function(_p){return partRow(_p,mob);}).join(""):'<div class="part-row lx-partrow" style="justify-content:center;color:var(--text-muted)">No liquidity providers yet</div>';
     }
     var pg=q("#lx-partpage"); if(pg)pg.style.display="none";
-    qa(".part-count, .participants-count, [data-partcount]").forEach(function(e){ setText(e,String(d.parts.length)); });
+    var ptot=d.trustlines||d.parts.length;    // #13: the pool's own count, not the size of our sample
+    qa(".part-count, .participants-count, [data-partcount]").forEach(function(e){ setText(e,num(ptot)); });
     // the design mocks the participant count ("847") in the "Participants" side-head pill — set the real count.
-    qa(".count-pill").forEach(function(e){ var sh=e.closest&&e.closest(".side-head"); if(sh&&/participant/i.test(sh.textContent||""))setText(e,String(d.parts.length)); });
-    // "Viewing 1 - N of N" + hide the mock participant pager (single page for the real, small count)
-    qa("*").forEach(function(e){ if(e.children.length===0&&/Viewing .* of \\d/.test(e.textContent||"")){ setText(e,"Viewing 1 \\u2013 "+d.parts.length+" of "+d.parts.length); var pcard=(e.closest&&e.closest(".pools-card, .side-card"))||e.parentElement; if(pcard){ [].slice.call(pcard.querySelectorAll(".controls")).forEach(function(c){ if(/Page \\d+ of|Prev|Next/.test(c.textContent||""))c.style.display="none"; }); } } });
+    // #18: the phone puts this pill in .card-head, not .side-head, so the selector missed it and the
+    // design mock (847) stayed on a pool with 2,429 providers -- disagreeing with the stat card above it
+    // and the footer below it on the same screen. Match either container, and keep the pill's own
+    // wording: it reads "847 total", and writing the bare number would have dropped the word.
+    qa(".count-pill").forEach(function(e){
+      var sh=e.closest&&(e.closest(".side-head")||e.closest(".card-head"));
+      if(!sh||!/participant/i.test(sh.textContent||""))return;
+      var had=/total/i.test(e.textContent||"");
+      setText(e, num(ptot)+(had?" total":""));
+    });
+    partFoot(list,s);
+  }
+  // The footer the design ships for this list is .part-foot (an info line + a .nav of Prev/Next). Reuse it
+  // when it exists rather than building a second control beside it, and own its buttons outright -- the
+  // design's own handler pages a cloned mock list.
+  function partFoot(list,s){
+    var card=(list.closest&&(list.closest(".side-card")||list.closest(".pools-card")))||list.parentElement;
+    if(!card)return;
+    var foot=card.querySelector(".part-foot");
+    if(!foot){ foot=document.createElement("div"); foot.className="part-foot lx-partfoot";
+      foot.innerHTML='<div></div><div class="nav"></div>'; card.appendChild(foot); }
+    if(card.lastElementChild!==foot)card.appendChild(foot);
+    // The mock-hiding rule keys on .lx-partfoot, and that class was only set on a footer we BUILD --
+    // when the design already ships one we reuse it, so it never got the class and stayed hidden for
+    // good. Claim it here instead, at the point we take ownership of what it says.
+    if(!foot.classList.contains("lx-partfoot"))foot.classList.add("lx-partfoot");
+    var info=foot.querySelector("div"), nav=foot.querySelector(".nav");
+    var from=s.all.length?(partPage*PARTPP+1):0, to=partPage*PARTPP+s.rows.length;
+    // Say which set is being paged. The pool can have more providers than Horizon will hand over in one
+    // page, and printing the pool's total here would promise pages that do not exist -- so the count the
+    // pager is counting stays the count the pager can reach, and the pool's own total is named beside it.
+    // #15: this read "Viewing 1 – 20 of 100 · of 835 in this pool" -- two "of"s and no grammar, which
+    // is what "the pagination is breaking" was. The pager counts what it can page; the pool's own total
+    // is a separate fact and now reads as one.
+    var _tot=(DET&&DET.trustlines)||0, _extra=(_tot>s.all.length)?(" \\u00b7 "+num(_tot)+" in this pool"):"";
+    if(info)setText(info, s.all.length?("Viewing "+from+"\\u2013"+to+" of "+num(s.all.length)+" shown"+_extra):"No liquidity providers yet");
+    if(!nav)return;
+    if(!nav.__lxw){ nav.__lxw=1;
+      nav.innerHTML='<button type="button" data-pp="prev">\\u2039</button><span class="lx-pppg"></span><button type="button" data-pp="next">\\u203a</button>';
+      nav.addEventListener("click",function(e){
+        var b=e.target&&e.target.closest?e.target.closest("[data-pp]"):null; if(!b||b.disabled)return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        partPage+=(b.getAttribute("data-pp")==="next")?1:-1;
+        try{ pdParts(); }catch(_){}
+      },true);
+    }
+    var bs=nav.querySelectorAll("[data-pp]"), chip=nav.querySelector(".lx-pppg");
+    if(bs[0])bs[0].disabled=(partPage<=0);
+    if(bs[1])bs[1].disabled=(partPage>=s.pages-1);
+    if(chip)setText(chip,"Page "+(partPage+1)+" of "+s.pages);
+    foot.style.display=(s.pages>1)?"":"";
   }
   function pdCopy(){
     var d=DET;
@@ -1923,6 +3377,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     });
   }
   function paintDetail(){ if(!DET)return;
+    try{ hidePoolFeeRow(); }catch(_){}   // the deposit panel's fixed-rate line; see hidePoolFeeRow
     try{ ensureUsd(); }catch(_){}
     [pdHeader,pdStats,pdChart,pdTx,pdPosition,pdDW,pdParts,pdCopy,wireDW,healLogos].forEach(function(fn){ try{ fn(); }catch(_){} }); }
   var schedD=false;
@@ -1938,7 +3393,51 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function wWallet(){ try{ return (localStorage.getItem("lumos.wallet")||"").toLowerCase().replace(/[^a-z]/g,""); }catch(e){ return ""; } }
   function wXhr(method,url,body){ return new Promise(function(resolve,reject){ var r=new XMLHttpRequest(); r.open(method,url,true); if(body!=null)r.setRequestHeader("Content-Type","application/x-www-form-urlencoded"); r.onload=function(){ var j=null; try{j=JSON.parse(r.responseText);}catch(e){} resolve({status:r.status,ok:r.status>=200&&r.status<300,json:j}); }; r.onerror=function(){reject(new Error("Network error contacting Horizon"));}; r.timeout=45000; r.ontimeout=function(){reject(new Error("Horizon request timed out"));}; r.send(body==null?null:body); }); }
   function wAcct(pk){ return wXhr("GET",H+"/accounts/"+pk).then(function(r){ if(!r.ok||!r.json)throw new Error("Your account isn't activated on mainnet yet."); return r.json; }); }
-  function wSubmit(xdr){ return wXhr("POST",H+"/transactions","tx="+encodeURIComponent(xdr)).then(function(r){ var res=r.json||{}; if(res.successful)return res; var rc=res.extras&&res.extras.result_codes; throw new Error(rc?("Rejected \\u00b7 "+JSON.stringify(rc)):(res.detail||("HTTP "+r.status))); }); }
+  // #18/#28: say what went wrong, in words.
+  //
+  // This used to throw the raw payload -- Rejected {"transaction":"tx_failed","operations":["op_low_reserve"]}
+  // -- at someone who has just tried to create a pool with their own money. The codes below are the
+  // ones this page can actually produce, and each is stated as the condition it describes.
+  //
+  // op_under_dest_min is called out deliberately: it is SLIPPAGE, not a shortfall. The price moved
+  // between quoting and signing, so the route would have delivered less than the minimum the
+  // transaction itself specified. Reporting that as "not enough funds" sends the reader off to top up
+  // an account that was never short.
+  //
+  // The raw code is kept on the end in brackets: it is the only searchable thing when someone has to
+  // ask for help, and dropping it entirely would trade one kind of unhelpfulness for another.
+  var TXERR={
+    op_low_reserve:"Not enough XLM left for the account reserve. Every trustline or pool position your account holds locks up a little XLM, so some has to stay behind.",
+    op_underfunded:"Not enough of that asset in your wallet for this amount.",
+    op_no_trust:"Your wallet does not hold this asset yet. Add it first, then try again.",
+    op_no_issuer:"That asset's issuer no longer exists on the network.",
+    op_line_full:"That would take the balance past the limit set on your trustline.",
+    op_under_dest_min:"The price moved while you were signing, so the swap would have delivered less than its minimum. Nothing was sent \\u2014 try again.",
+    op_over_source_max:"The price moved while you were signing, so it would have cost more than the maximum set. Nothing was sent \\u2014 try again.",
+    op_cross_self:"That would have traded against your own open order.",
+    op_bad_auth:"Your wallet did not sign this transaction.",
+    op_no_destination:"That destination account does not exist yet.",
+    op_malformed:"The transaction was built incorrectly \\u2014 please report this.",
+    tx_insufficient_fee:"The network is busy and the fee offered was too low. Try again.",
+    tx_bad_seq:"Your wallet was out of step with the network. Try again.",
+    tx_too_late:"The transaction sat unsigned too long and expired. Try again.",
+    tx_insufficient_balance:"Not enough XLM to cover the fee and the account reserve.",
+    tx_no_source_account:"This account is not activated on the network yet."
+  };
+  function txErr(rc,detail,status){
+    var codes=[];
+    if(rc){
+      if(rc.transaction)codes.push(rc.transaction);
+      var ops=rc.operations||[];
+      for(var i=0;i<ops.length;i++)if(ops[i]&&ops[i]!=="op_success")codes.push(ops[i]);
+    }
+    // An operation code says more than tx_failed, which only means "one of the operations did".
+    for(var j=codes.length-1;j>=0;j--){ if(TXERR[codes[j]])return TXERR[codes[j]]+" ["+codes[j]+"]"; }
+    if(codes.length)return "The network rejected this transaction ["+codes.join(", ")+"]";
+    return detail||("The network rejected this transaction (HTTP "+status+")");
+  }
+  try{ window.__lxTxErr=txErr; }catch(_){}
+  function wSubmit(xdr){ return wXhr("POST",H+"/transactions","tx="+encodeURIComponent(xdr)).then(function(r){ var res=r.json||{}; if(res.successful)return res; var rc=res.extras&&res.extras.result_codes; throw new Error(txErr(rc,res.detail,r.status)); }); }
   function wSign(xdr,addr){ var w=wWallet();
     if(w==="albedo")return wMod("https://esm.sh/@albedo-link/intent@0.12.0").then(function(m){var al=m.default||m.albedo||m; if(!al||!al.tx)throw new Error("Albedo SDK failed to load"); return al.tx({xdr:xdr,network:"public",pubkey:addr,submit:false});}).then(function(r){var s=r&&(r.signed_envelope_xdr||r.xdr); if(!s)throw new Error("Albedo did not return a signed transaction"); return s;});
     if(w==="rabet"){ if(!window.rabet||!window.rabet.sign)return Promise.reject(new Error("Rabet not found. Unlock the extension and retry.")); return Promise.resolve(window.rabet.sign(xdr,"mainnet")).then(function(r){ if(r&&r.error)throw new Error((r.error&&r.error.message)||r.error); var s=r&&(r.xdr||r.signedXDR); if(!s)throw new Error("Rabet did not return a signed transaction"); return s;}); }
@@ -1958,18 +3457,22 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // real balance), with trailing zeros trimmed.
   function fmtIn(v){ v=+v; if(!(v>0))return ""; var dp=v>=1?4:7,f=Math.pow(10,dp); var n=Math.floor(v*f)/f; if(!(n>0))return ""; return trimZ(n.toFixed(dp)); }
   // build → sign → submit; buildOps(S, acctJson) -> [operations]
-  function wSend(addr, buildOps){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(180).build(); return wSign(tx.toXDR(),addr); }).then(function(signed){ return wSubmit(signed); }); }
+  // #16: onSigned fires the moment the wallet hands the signature back, BEFORE the network submit.
+  // Those are two different waits and the button used to show one label across both -- see wRun.
+  function wSend(addr, buildOps, onSigned){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(180).build(); return wSign(tx.toXDR(),addr); }).then(function(signed){ try{ if(onSigned)onSigned(); }catch(_){} return wSubmit(signed); }); }
   // inline status message under a CTA (no new modals — a small line the existing card already has room for)
   // bottom-center toast, identical to the site's "Copied to clipboard" toast (self-contained CSS above)
   function ammToast(msg,isErr,hash){ var CK='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-    var view=hash?(' \\u00b7 <a href="https://stellar.expert/explorer/public/tx/'+hash+'" target="_blank" rel="noopener">View on Explorer</a>'):'';
+    // #26: a confirmation toast is not the place to send someone off-site mid-flow.
+    var view='';
     var stack=document.querySelector(".lx-ctoast-stack"); if(!stack){ stack=document.createElement("div"); stack.className="lx-ctoast-stack"; document.body.appendChild(stack); }
     var t=document.createElement("div"); t.className="lx-ctoast"+(isErr?" lxa-terr":""); t.innerHTML='<span class="ci">'+CK+'</span><span>'+esc(msg||"")+view+'</span>'; stack.appendChild(t);
     // A toast carrying a link has to outlive the reflex to reach for it — 3.2s was not enough to notice
     // the link, move to it and tap, which is its own way of "leading nowhere". Give linked toasts 9s.
     setTimeout(function(){ t.style.transition="opacity .22s,transform .22s"; t.style.opacity="0"; t.style.transform="translateY(8px)"; setTimeout(function(){ if(t.parentNode)t.parentNode.removeChild(t); },240); }, isErr?4000:(hash?9000:3200)); }
   function wMsg(btn, text, isErr, hash){ var el=btn.parentNode.querySelector(":scope > .lx-dwmsg"); if(!text){ if(el)el.style.display="none"; return; }
-    var view=(hash?' \\u00b7 <a href="https://stellar.expert/explorer/public/tx/'+hash+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline">View on Explorer</a>':'');
+    // #26: a confirmation toast is not the place to send someone off-site mid-flow.
+    var view='';
     // SUCCESS -> bottom-center toast (same as the site's copy-address toast), not an inline line under the button
     if(!isErr){ if(el)el.style.display="none"; try{ ammToast(text,false,hash); return; }catch(_){} }
     if(!el){ el=document.createElement("div"); el.className="lx-dwmsg"; el.style.cssText="margin-top:10px;font-size:12.5px;line-height:1.45;text-align:center;font-weight:600"; btn.parentNode.insertBefore(el,btn.nextSibling); } el.style.display="block"; el.style.color=isErr?"#ef4444":"#16a34a"; el.innerHTML=esc(text)+view; }
@@ -1981,7 +3484,15 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     btn.__lxBusy=true;
     var orig=btn.innerHTML; btn.disabled=true; btn.style.opacity="0.7"; btn.style.cursor="wait"; btn.classList.add("lx-btnload"); btn.textContent=labels.wait||"Confirm in wallet\\u2026"; wMsg(btn,"",false);
     function restore(){ btn.__lxBusy=false; btn.classList.remove("lx-btnload"); btn.disabled=false; btn.style.opacity="1"; btn.style.cursor=""; btn.innerHTML=orig; }
-    wSend(addr,buildOps).then(function(res){ btn.classList.remove("lx-btnload"); btn.textContent=labels.ok||"\\u2713 Done"; btn.style.opacity="1"; wMsg(btn,labels.okMsg||"Success.",false,res&&res.hash); if(onDone)onDone(res);
+    // #16: "Confirm in wallet…" used to stay on the button through the network submit as well, so
+    // after signing in LOBSTR the screen still read as though the signature had not been noticed. It
+    // had -- what follows is Horizon's SYNCHRONOUS submit, which does not answer until the
+    // transaction is in a closed ledger, and a Stellar ledger closes about every five seconds. That
+    // wait is the network's and cannot be shortened; what can be fixed is the screen calling it the
+    // wrong thing.
+    wSend(addr,buildOps,function(){
+      try{ btn.textContent=labels.submitting||"Submitting\\u2026"; }catch(_){}
+    }).then(function(res){ btn.classList.remove("lx-btnload"); btn.textContent=labels.ok||"\\u2713 Done"; btn.style.opacity="1"; wMsg(btn,labels.okMsg||"Success.",false,res&&res.hash); if(onDone)onDone(res);
         // adding or withdrawing liquidity moves LUMOS between wallet and pool, and the fee tier now counts
         // both — tell the resolver to re-read rather than leave it on the figure it took at page load
         try{ if(window.__lxFeeTierRefresh)window.__lxFeeTierRefresh(); }catch(_){}
@@ -2004,7 +3515,22 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     if(window.__lxDWwired||!DET)return; var card=dwCard(); if(!card)return; window.__lxDWwired=1;
     // Publish the repaint entry point for dwShow (function declarations below are hoisted).
     __dwRefresh=function(){ try{ syncCta(); }catch(_){} try{ if(isWith())withRecv(); }catch(_){} };
-    var d=DET, r=d.tok>0?d.xlm/d.tok:0;               // XLM per 1 token
+    // Ratio of the SECOND deposit field to the FIRST, whatever those two assets are.
+    //
+    // It used to be d.xlm/d.tok unconditionally. On a pool with no XLM leg d.xlm is 0 by construction, so
+    // r was 0, and typing in the first field wrote 0 into the second -- one of the reasons deposits here
+    // were blocked rather than merely unwired.
+    //
+    // Field order matches paintDeposit: XLM pool -> [token, XLM]; otherwise -> [a0, a1].
+    var d=DET;
+    var r=d.nonXlm ? ((d.a0&&d.a0.amt>0)?(d.a1.amt/d.a0.amt):0)
+                   : (d.tok>0?d.xlm/d.tok:0);
+    // Balance behind each field. XLM is the only one with a reserve to hold back, so only it goes
+    // through usableXlm().
+    function bal0(){ return d.nonXlm ? (+d.balA0||0) : (+d.balTok||0); }
+    function bal1(){ return d.nonXlm ? (+d.balTok||0) : usableXlm(); }
+    function code0(){ return d.nonXlm ? d.a0.code : d.code; }
+    function code1(){ return d.nonXlm ? d.a1.code : "XLM"; }
     var depIn=qa("#dwDeposit .dw-field input");        // [0]=token, [1]=XLM
     function wInEl(){ return q("#dwWithdraw .dw-field input")||q("#dwWithdraw .row input")||q("#dwWithdraw input"); }   // re-query (design re-creates withdraw inputs on tab switch)
     // XLM the account must keep back: (2+subentries)*0.5 base reserve + 0.5 for the new pool trustline (if not
@@ -2067,7 +3593,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       wrSide(e.A,sideA,famt(amtA)); wrSide(e.B,sideB,famt(amtB));
       // "Pool share after" (remaining) in the withdraw summary
       var rem=(d.totShares-sh)>0?Math.max(0,(d.myShares-sh))/(d.totShares-sh):0; qa("#dwWithdraw .dw-summary .r, #dwWithdraw .summary .r, #dwWithdraw [class*=summary] > div").forEach(function(rw){ if(!/share/i.test(rw.textContent||""))return; var st=rw.querySelector("strong")||rw.querySelector("span:last-child"); if(st)st.textContent=(rem*100>=0.01?(rem*100).toFixed(2):(sh>0?"0.00":(d.myFrac*100).toFixed(2)))+"%"; }); }
-    function maxBal(){ var fromXlm=r>0?usableXlm()/r:0; var t=Math.min(d.balTok,fromXlm); return {tok:t,xlm:t*r}; }
+    // Largest deposit both balances can cover at the pool's ratio. Keys are {tok,xlm} for historical
+    // reasons -- they mean FIELD 1 and FIELD 2, which are only token/XLM on an XLM pool.
+    function maxBal(){ var from1=r>0?bal1()/r:0; var t=Math.min(bal0(),from1); return {tok:t,xlm:t*r}; }
     function dInputs(){ return qa("#dwDeposit .dw-field input"); }   // re-query each time (design may re-create them)
     function setDep(t,x){ var di=dInputs(); if(di[0])di[0].value=fmtIn(t); if(di[1])di[1].value=fmtIn(x); shareAfter(); }
     // Delegated on the deposit panel so it survives the design re-rendering its inputs: edit one -> compute the other.
@@ -2112,13 +3640,18 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     // Returns "" when the CTA should be live, otherwise the reason it is not.
     function ctaBlockReason(){
       if(tabIsWithdraw()) return (d.myShares>0)?"":"You have no LP shares in this pool to withdraw.";
-      if(d.nonXlm) return "Deposits for "+(d.pairName||"this pair")+" aren\u2019t supported here yet \u2014 withdrawing works normally.";
-      // Name WHICH side is missing. A flat "no XLM" contradicts the balance shown directly above the button
-      // when the wallet does hold XLM but all of it is pinned by the account reserve \u2014 call that case out.
-      var noTok=!(d.balTok>0), noXlm=!(usableXlm()>0);
-      if(noTok&&noXlm) return "Adding liquidity needs both "+d.code+" and XLM \u2014 you have neither available.";
-      if(noTok) return "Adding liquidity needs both "+d.code+" and XLM \u2014 you have no "+d.code+".";
-      if(noXlm) return "No spendable XLM \u2014 \u2248"+xlmKeep().toFixed(1)+" XLM must stay for the account reserve + fees.";
+      // The nonXlm branch used to stop here with "Deposits for X / Y aren't supported here yet". That was
+      // true of the BUILDER, not of the pool: it hardcoded Asset.native() as one leg, so on a pool with no
+      // XLM leg it would have funded a DIFFERENT pool than the page shows. Blocking was right; leaving it
+      // blocked was not. The builder now composes both real legs and refuses unless the pool id it derives
+      // matches the pool on screen, so this is an ordinary balance check for every pair.
+      var c0=code0(), c1=code1(), no0=!(bal0()>0), no1=!(bal1()>0);
+      if(no0&&no1) return "Adding liquidity needs both "+c0+" and "+c1+" \u2014 you have neither available.";
+      if(no0) return "Adding liquidity needs both "+c0+" and "+c1+" \u2014 you have no "+c0+".";
+      // A flat "no XLM" contradicts the balance shown right above the button when the wallet does hold XLM
+      // but all of it is pinned by the account reserve, so that case is named.
+      if(no1) return d.nonXlm ? ("Adding liquidity needs both "+c0+" and "+c1+" \u2014 you have no "+c1+".")
+        : ("No spendable XLM \u2014 \u2248"+xlmKeep().toFixed(1)+" XLM must stay for the account reserve + fees.");
       return "";
     }
     // EVERY write here is diff-guarded. applyCtaState runs from the .dw-card MutationObserver, so an
@@ -2129,12 +3662,16 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       if(b.classList.contains("lx-dwoff")!==off)b.classList.toggle("lx-dwoff",off);
       if((b.getAttribute("aria-disabled")==="true")!==off){ if(off)b.setAttribute("aria-disabled","true"); else b.removeAttribute("aria-disabled"); }
       if((b.getAttribute("title")||"")!==why){ if(why)b.setAttribute("title",why); else b.removeAttribute("title"); }
+      // NO visible reason under the button. An inactive Add Liquidity button already says everything a
+      // sentence could: you cannot deposit what you do not hold. The paragraph explaining it read as a
+      // fault on the page rather than a fact about the wallet.
+      //
+      // The reason still exists -- it drives the disabled state and stays on the title attribute for
+      // hover/screen readers -- and any hint left over from a cached page is removed rather than left
+      // stranded.
       var host=b.parentNode; if(!host)return;
       var h=host.querySelector(":scope > .lx-dwhint");
-      if(!off){ if(h&&h.style.display!=="none")h.style.display="none"; return; }
-      if(!h){ h=document.createElement("div"); h.className="lx-dwhint"; host.appendChild(h); }
-      if(h.textContent!==why)h.textContent=why;
-      if(h.style.display!=="")h.style.display="";
+      if(h&&h.parentNode)h.parentNode.removeChild(h);
     }
     // syncLabel ONLY touches the CTA text (guarded so it settles) — this is what the observer runs. It must
     // NOT call withRecv()/shareAfter(): those write textContent INSIDE .dw-card, which the childList observer
@@ -2167,25 +3704,97 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
           try{ withRecv(); }catch(_){}
           setTimeout(loadDetail,2600); });
       } else {
-        // AUDIT (FUNDS): for a nonXlm pool this builder would construct a native/token LiquidityPoolAsset —
-        // i.e. deposit into a DIFFERENT pool than the page shows. Block until arbitrary-pair deposits are
-        // wired (canonical asset ordering + price bounds). Withdraw is pair-agnostic and stays enabled.
-        if(d.nonXlm){ wMsg(cta,"Deposits for "+d.pairName+" aren\\u2019t supported here yet \\u2014 withdrawing works normally.",true); return; }
-        var di=dInputs(); var ta=parseFloat(String(di[0]&&di[0].value).replace(/,/g,""))||0, xa=parseFloat(String(di[1]&&di[1].value).replace(/,/g,""))||0;
-        if(!(ta>0)||!(xa>0)){ wMsg(cta,"Enter both "+d.code+" and XLM amounts.",true); return; }
-        if(ta>d.balTok+1e-7){ wMsg(cta,"Not enough "+d.code+" \\u00b7 balance "+fmtIn(d.balTok),true); return; }
-        if(xa>usableXlm()+1e-7){ wMsg(cta,"Not enough XLM \\u2014 keep \\u2248"+xlmKeep().toFixed(1)+" for account reserve + fees (usable "+fmtIn(usableXlm())+" of "+fmtIn(d.balXlm)+" XLM)",true); return; }
-        wRun(cta,addr,function(S,a){ var ops=[], asset=new S.Asset(d.code,d.issuer), poolAsset=new S.LiquidityPoolAsset(S.Asset.native(),asset,S.LiquidityPoolFeeV18);
+        // Deposits work for ANY pair now, not only X/XLM.
+        //
+        // This builder used to hardcode LiquidityPoolAsset(native, token). On a pool with no XLM leg that
+        // composes a DIFFERENT pool than the page shows, so depositing would have funded the wrong pool
+        // with the user's money -- which is why it was blocked outright rather than left to misfire. The
+        // block was correct; leaving it in place forever was not.
+        //
+        // Both legs are now taken from the pool's own assets, and there is a HARD GUARD below: the pool id
+        // is re-derived from the assets actually composed and the deposit is refused unless it equals the
+        // pool on screen. Getting the pair or the ordering wrong can no longer send funds anywhere.
+        var di=dInputs();
+        var v0=parseFloat(String(di[0]&&di[0].value).replace(/,/g,""))||0;
+        var v1=parseFloat(String(di[1]&&di[1].value).replace(/,/g,""))||0;
+        var c0=code0(), c1=code1();
+        if(!(v0>0)||!(v1>0)){ wMsg(cta,"Enter both "+c0+" and "+c1+" amounts.",true); return; }
+        if(v0>bal0()+1e-7){ wMsg(cta,"Not enough "+c0+" \\u00b7 balance "+fmtIn(bal0()),true); return; }
+        if(v1>bal1()+1e-7){ wMsg(cta, d.nonXlm
+          ? ("Not enough "+c1+" \\u00b7 balance "+fmtIn(bal1()))
+          : ("Not enough XLM \\u2014 keep \\u2248"+xlmKeep().toFixed(1)+" for account reserve + fees (usable "+fmtIn(usableXlm())+" of "+fmtIn(d.balXlm)+" XLM)"),true); return; }
+        wRun(cta,addr,function(S,a){
+          function mk(x){ return (!x||x.native||(x.code==="XLM"&&!x.issuer))?S.Asset.native():new S.Asset(x.code,x.issuer); }
+          var s0=d.nonXlm?d.a0:{code:d.code,issuer:d.issuer};
+          var s1=d.nonXlm?d.a1:{code:"XLM",native:true};
+          var A=mk(s0), B=mk(s1), amtA=v0, amtB=v1, poolAsset;
+          // The SDK REQUIRES assetA < assetB and throws otherwise, which is what makes this swap safe:
+          // A and B and their amounts move together, so maxAmountA always belongs to assetA.
+          try{ poolAsset=new S.LiquidityPoolAsset(A,B,S.LiquidityPoolFeeV18); }
+          catch(err){ var _t=A;A=B;B=_t; var _a=amtA;amtA=amtB;amtB=_a;
+            poolAsset=new S.LiquidityPoolAsset(A,B,S.LiquidityPoolFeeV18); }
+          // HARD GUARD. Derive the id of the pool these two assets actually make and refuse unless it is
+          // the pool being displayed. Independent of everything above: if the pair, the ordering or the
+          // fee tier were wrong, this catches it before anything is signed.
+          var pid="";
+          try{ pid=S.getLiquidityPoolId("constant_product",poolAsset.getLiquidityPoolParameters()).toString("hex"); }catch(_){}
+          if(!pid||pid!==d.hex) throw new Error("Stopped: this deposit would fund a different pool than the one shown.");
+          var ops=[];
           var hasTrust=(a.balances||[]).some(function(b){return b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===d.hex;});
           if(!hasTrust)ops.push(S.Operation.changeTrust({asset:poolAsset}));
-          ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:d.hex, maxAmountA:wAmt(xa), maxAmountB:wAmt(ta), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
+          ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:d.hex, maxAmountA:wAmt(amtA), maxAmountB:wAmt(amtB), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
           return ops; }, {ok:"\\u2713 Added",okMsg:"Liquidity is added"}, function(){ var di=dInputs(); if(di[0])di[0].value=""; if(di[1])di[1].value=""; setTimeout(loadDetail,2600); });
       }
     });
   }
 
   // ---- LIST: Create Pool (populate the finalized modal's pickers with real assets, then create+deposit) ----
+  // #9: "Trading fee 0.3%" in the Create Pool sheet. Every Stellar AMM pool is 0.3% -- fixed by the
+  // protocol, nothing to choose -- so on a form whose whole job is the decisions you ARE making, it is
+  // a row that looks like a setting and is not one. It also invites the question it cannot answer:
+  // that is the fee the pool collects and pays to its own providers, not a charge to whoever creates
+  // it. Matched on its label rather than its position, because the summary rows are not ours.
+  // #16: the same row, in the other place it appears -- the pool page's Deposit / Withdraw panel.
+  //
+   // Every Stellar AMM pool charges 0.3%; it is fixed by the protocol and identical for every pool on
+  // the network, so a line stating it on a deposit form is not a setting, not a choice, and not news.
+  // It also invites the question it cannot answer: that is the fee the pool COLLECTS and pays to its
+  // providers, not a charge to the person depositing.
+  //
+  // Matched on the label rather than a position, because these rows are the design's, and scoped to the
+  // deposit panel so the identical row inside Create Pool keeps being handled by hideCpFee below.
+  function hidePoolFeeRow(){
+    var rows=qa(".dw-summary .r,.pool-dw .r,.ptab-panel .r,.r");
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i];
+      if(r.children.length>3)continue;
+      if(r.closest&&r.closest("#createPoolModal"))continue;
+      // Doubled on purpose: this file emits its browser code inside a template literal, so a single
+      // backslash is stripped on the way out and the regex would arrive as /s+/. The transform's own
+      // escape guard catches this, which is how it was found.
+      var t=(r.textContent||"").replace(/\\s+/g," ").trim();
+      if(!/^trading fee tier/i.test(t))continue;
+      if(r.style.display!=="none")r.style.display="none";
+    }
+  }
+  function hideCpFee(){
+    try{ hidePoolFeeRow(); }catch(_){}
+    var m=q("#createPoolModal"); if(!m)return;
+    var rows=m.querySelectorAll(".row,.cp-row,li,div");
+    for(var i=0;i<rows.length;i++){
+      var r=rows[i]; if(r.children.length>3)continue;
+      var t=(r.textContent||"").replace(/\\s+/g," ").trim();
+      // No \b after "fee". The label and the value are adjacent elements with no whitespace between
+      // them, so this row's textContent is literally "Trading fee0.5%" -- and \b demands a boundary
+      // between "fee" and "0", which is two word characters and therefore no boundary at all. The test
+      // failed on every row, every time, which is why the line kept surviving.
+      if(!/^trading fee/i.test(t))continue;
+      if(r.style.display!=="none")r.style.display="none";
+      break;
+    }
+  }
   function wireCreatePool(){
+    try{ hideCpFee(); }catch(_){}
     // Only the BALANCES are needed here — waiting for the whole pools payload (DATA) left the asset dropdown
     // visibly empty for seconds (the CSS hides the design's mock items). _cpBals is filled by an early,
     // standalone /accounts fetch so the picker is ready almost immediately.
@@ -2195,8 +3804,55 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var _bals=(DATA&&DATA.balances&&DATA.balances.length)?DATA.balances:((_cpBals&&_cpBals.length)?_cpBals:null);
     if(!_bals)return;
     var modal=q("#createPoolModal"); if(!modal)return; window.__lxCPwired=1;
+    // item 9: the search box was markup only -- nothing ever filtered the list. Matches on the asset
+    // code (the attribute, not the rendered text, which also carries the balance and would let "1"
+    // match every asset that happens to hold 1-point-something).
+    [].slice.call(modal.querySelectorAll(".ad-search-input")).forEach(function(inp){
+      if(inp.__lxCPs)return; inp.__lxCPs=1;
+      function run(){
+        var qy=(inp.value||"").trim().toLowerCase();
+        var dd=inp.closest?inp.closest(".asset-dropdown"):null; if(!dd)return;
+        var items=[].slice.call(dd.querySelectorAll(".ad-item.lx-cpitem")), hit=0;
+        items.forEach(function(it){
+          var code=(it.getAttribute("data-code")||"").toLowerCase();
+          var on=!qy||code.indexOf(qy)>=0;
+          it.style.display=on?"":"none"; if(on)hit++;
+        });
+        // Say so rather than showing an empty box that reads as a broken list.
+        var em=dd.querySelector(".lx-cpnone");
+        if(!hit){ if(!em){ em=document.createElement("div"); em.className="lx-cpnone"; em.textContent="No asset matches that ticker";
+            em.style.cssText="padding:14px 12px;font-size:12.5px;color:var(--text-muted,#8b8b97)";
+            var lst=dd.querySelector(".ad-list"); if(lst)lst.appendChild(em); } }
+        else if(em&&em.parentNode)em.parentNode.removeChild(em);
+      }
+      inp.addEventListener("input",run);
+      // Reopening the picker should not present the previous query's filtered list.
+      inp.addEventListener("focus",function(){ if(!inp.value)run(); });
+    });
+    // item 33: the button wrapped to three lines on a phone and named two steps for one action -- the
+    // liquidity IS the pool at creation, since the ratio you deposit is what sets the opening price.
+    // Only the text node is rewritten, so the icon beside it survives.
+    try{
+      var _cb=modal.querySelector(".modal-foot .btn-primary,.btn-primary");
+      if(_cb){ var _tn=null,_ns=_cb.childNodes;
+        for(var _i=0;_i<_ns.length;_i++){ if(_ns[_i].nodeType===3&&(_ns[_i].nodeValue||"").trim()){ _tn=_ns[_i]; break; } }
+        if(_tn&&_tn.nodeValue.trim()!=="Create pool")_tn.nodeValue="Create pool";
+      }
+    }catch(_){}
     var cpCta=null;
     var balMap={XLM:0}; (_bals||[]).forEach(function(b){ if(b.asset_type==="native")balMap.XLM=+b.balance; else if(b.asset_code)balMap[b.asset_code+":"+b.asset_issuer]=+b.balance; });
+    // XLM this account cannot spend: the base reserve for the account and everything it already holds,
+    // plus the subentry the pool about to be created will add, plus room for the fee. Mirrors the pool
+    // page's own xlmKeep so the two surfaces cannot disagree.
+    //
+    // subentry_count is authoritative and comes from the same /accounts fetch as the balances; the
+    // trustline count is the fallback for when it does not, and is a floor rather than a guess -- every
+    // trustline IS a subentry, so it can only ever under-count, and under-counting here shows MORE
+    // spendable rather than less, which the op_low_reserve message then explains if it bites.
+    function cpXlmKeep(){
+      var subs=(_cpSubs!=null)?_cpSubs:(_bals||[]).filter(function(b){ return b.asset_type!=="native"; }).length;
+      return (2+subs)*0.5 + 0.5 + 0.6;
+    }
     // only assets the connected wallet actually holds (XLM + every credit asset with a positive balance)
     function assets(){ var arr=[]; if((balMap.XLM||0)>0)arr.push({code:"XLM",issuer:"",bal:balMap.XLM,native:true}); (_bals||[]).forEach(function(b){   /* _bals, NOT DATA.balances — DATA is still null on the early (fast) wire path and this threw */ if(b.asset_type&&b.asset_type!=="native"&&b.asset_type!=="liquidity_pool_shares"&&b.asset_code&&+b.balance>0)arr.push({code:b.asset_code,issuer:b.asset_issuer,bal:+b.balance,native:false}); }); return arr; }
     // real asset logos: local PNGs where they exist, known CDN URLs otherwise, and a colored-letter fallback
@@ -2228,7 +3884,26 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         if(ico){ico.innerHTML=logo(sel[idx]);ico.style.cssText="width:24px;height:24px;overflow:hidden;border-radius:50%;display:inline-flex;background:transparent";}
         if(nm)nm.textContent=sel[idx].code; }
       var bal=field&&(field.querySelector(".field-foot .balance strong")||field.querySelector(".field-foot .balance"));
-      if(bal)bal.textContent=famt(sel[idx].bal);
+      // #28: for XLM this printed the RAW balance, so Create Pool offered an amount the account cannot
+      // actually part with. An account must retain (2 + subentries) x 0.5 XLM, and creating a pool adds
+      // another subentry of its own (the pool trustline), plus a margin for the fee. Showing the full
+      // balance here is how someone gets to a signed transaction that comes back op_low_reserve --
+      // which is the other half of this same report.
+      //
+      // Same rule the Deposit panel already applies, and stated the same way: the figure is what is
+      // spendable, and hovering says where the rest went.
+      if(bal){
+        var _sv=sel[idx].bal;
+        if(sel[idx].native||sel[idx].code==="XLM"){
+          var _keep=cpXlmKeep(), _sp=Math.max(0,_sv-_keep);
+          bal.textContent=famt(_sp);
+          var _host=bal.parentNode||bal;
+          try{ _host.title=famt(_sp)+" XLM spendable \u2014 "+famt(_sv)+" total, "+famt(Math.min(_sv,_keep))+" held back for the account reserve, the new pool trustline and the network fee."; }catch(_){}
+        } else {
+          bal.textContent=famt(_sv);
+          try{ var _h2=bal.parentNode||bal; if(_h2.title)_h2.removeAttribute("title"); }catch(_){}
+        }
+      }
     }
     function selectItem(idx, it){ if(idx<0)return; var code=it.getAttribute("data-code"),iss=it.getAttribute("data-issuer");
       var picked={code:code,issuer:iss,native:!iss,bal:balMap[code==="XLM"?"XLM":(code+":"+iss)]||0};
@@ -2275,7 +3950,10 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var amts=[].slice.call(modal.querySelectorAll(".asset-amt"));
     [].slice.call(modal.querySelectorAll(".asset-field")).forEach(function(f,i){ var mx=f.querySelector(".max-btn"); if(mx)mx.addEventListener("click",function(){ if(sel[i]&&amts[i]){ var b=sel[i].bal-(sel[i].native?1.6:0); amts[i].value=fmtIn(b>0?b:0); autofillOther(i); } }); });
     amts.forEach(function(a,idx){ a.addEventListener("input",function(){ autofillOther(idx); }); });
-    qa("#createPoolModal .pool-summary .row strong").forEach(function(s){ var lab=((s.previousElementSibling||{}).textContent||""); if(/trading fee/i.test(lab))s.textContent="0.3%"; else if(/network fee/i.test(lab))s.textContent="\\u2248 0.00001 XLM"; });
+    qa("#createPoolModal .pool-summary .row strong").forEach(function(s){ var lab=((s.previousElementSibling||{}).textContent||""); if(/network fee/i.test(lab))s.textContent="\\u2248 0.00001 XLM"; });
+    // and hide the fee row again here: the design repopulates the summary when the sheet opens, so a
+    // single hide at wire time is not enough on a second open.
+    try{ hideCpFee(); }catch(_){}
     function summary(){ var a0=parseFloat(amts[0]&&amts[0].value)||0,a1=parseFloat(amts[1]&&amts[1].value)||0; var pr=q("#createPoolModal .pool-summary .row strong"); if(pr){ if(sel[0]&&sel[1]&&a0>0&&a1>0)pr.textContent=(+((a1/a0).toFixed(6)))+" "+sel[1].code+"/"+sel[0].code; else pr.textContent="\\u2014"; }
       // AUDIT: autofillOther() derives the paired amount from the market rate, so MAX on one side routinely
       // proposes more of the OTHER asset than the wallet holds (MAX 8.13 XLM -> 4,078 AQUA against a 0.0000001
@@ -2309,6 +3987,16 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       if(!sel[0]||!sel[1]){ wMsg(cta,"Select both assets.",true); return; }
       if(sel[0].code===sel[1].code&&sel[0].issuer===sel[1].issuer){ wMsg(cta,"Choose two different assets.",true); return; }
       var a0=parseFloat(amts[0]&&amts[0].value)||0,a1=parseFloat(amts[1]&&amts[1].value)||0; if(!(a0>0)||!(a1>0)){ wMsg(cta,"Enter both amounts.",true); return; }
+      // #28: refuse to BUILD a transaction that cannot succeed.
+      //
+      // Both balance guards below compare against sel[n].bal, and when a selection did not come through
+      // selectItem that property is undefined -- so "a0 > undefined" is false, both guards pass, and the
+      // page builds a deposit against an asset the wallet may not even trust. That is the op_no_trust
+      // that arrives after signing, with "Balance: -" sitting under both fields the whole time. The
+      // undefined slips through because a comparison against it is false rather than an error, which is
+      // exactly the sort of guard that looks like it is working.
+      function cpOk(x){ return !!(x && x.code && (x.native || /^G[A-Z2-7]{55}$/.test(String(x.issuer||""))) && isFinite(+x.bal)); }
+      if(!cpOk(sel[0])||!cpOk(sel[1])){ wMsg(cta,"Pick both assets from the list.",true); return; }
       if(a0>sel[0].bal+1e-7){ wMsg(cta,"Not enough "+sel[0].code+" \\u00b7 balance "+fmtIn(sel[0].bal),true); return; }
       if(a1>sel[1].bal+1e-7){ wMsg(cta,"Not enough "+sel[1].code+" \\u00b7 balance "+fmtIn(sel[1].bal),true); return; }
       wRun(cta,addr,function(S,a){ function mk(x){ return x.native?S.Asset.native():new S.Asset(x.code,x.issuer); }
@@ -2341,9 +4029,14 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       // Network-wide Market Overview figures. Hooked HERE, not to the hero decoration builder — that
       // builder is desktop-shaped and never runs on the phone, so loadNet() was never called there.
       try{ loadNet(); }catch(_){}
+      // The network pool list. Started HERE alongside loadNet for the same reason: this is the gate that
+      // fires on both desktop and phone. It does not wait on load() -- the ranked page comes from
+      // /lxapi/pools and has no dependency on DATA, so the list fills while the wallet-side work runs.
+      try{ netFetch(); netWireSearch(); }catch(_){}
+      [200,700,1600].forEach(function(ms){ setTimeout(function(){ try{ netWireSearch(); paintNet(); }catch(_){} },ms); });
       // fetch just the balances up-front so Create Pool's asset dropdown is populated immediately
       // (it used to wait on the full pools load and showed an empty list for seconds)
-      try{ var _cpa=myAddr(); if(_cpa)(window.__lxAcct?window.__lxAcct(_cpa):getJSON(H+"/accounts/"+_cpa)).then(function(acc){ _cpBals=(acc&&acc.balances)||[]; try{ wireCreatePool(); }catch(_e){} }).catch(function(){}); }catch(_){}
+      try{ var _cpa=myAddr(); if(_cpa)(window.__lxAcct?window.__lxAcct(_cpa):getJSON(H+"/accounts/"+_cpa)).then(function(acc){ _cpBals=(acc&&acc.balances)||[]; if(acc&&acc.subentry_count!=null)_cpSubs=+acc.subentry_count; try{ wireCreatePool(); }catch(_e){} }).catch(function(){}); }catch(_){}
       wireHeroCover(); [0,40,120,300].forEach(function(ms){ setTimeout(wireHeroCover,ms); }); load(); wireNav(); try{ new MutationObserver(function(){ try{ renameMineTab(); }catch(_){} schedule(); }).observe(root,{childList:true,subtree:true}); }catch(e){} [300,900,2000].forEach(function(ms){ setTimeout(paint,ms); }); }
     else if(q("#tvlChart")){ loadDetail(); try{ new MutationObserver(scheduleDetail).observe(root,{childList:true,subtree:true}); }catch(e){} [0,250,600,1100].forEach(function(ms){ setTimeout(function(){ if(!DET){ var g=q("#tvlChart svg"); if(g){ try{ chLoading(g); }catch(_){} } } },ms); }); [400,1200,2500].forEach(function(ms){ setTimeout(function(){ if(DET)paintDetail(); },ms); }); }
     else if(q("#createPoolModal")){ loadCPOnly(); return; }
@@ -2353,7 +4046,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       qa(".amm-snapshot-value").forEach(function(v){ if(!v.classList.contains("lx-snapd"))setText(v,"\\u2014"); });
       // the tab counts are masked by the SAME gate — dash the design's baked "100" too, or lifting
       // the mask presents it as a real pool count until the data lands a moment later.
-      qa("#poolTabs .count").forEach(function(c){ if(!c.classList.contains("lx-snapd"))setText(c,"\\u2014"); });
+      qa("#poolTabs .count").forEach(function(c){ if(!c.classList.contains("lx-snapd")){setText(c,"\\u2014");snapDone(c);} });
       qa(".amm-snapshot-vsub, .amm-snapshot-sub").forEach(function(s){ var r=s.closest?s.closest(".amm-snapshot-row"):null;
         var v=r&&r.querySelector(".amm-snapshot-value"); if(v&&!v.classList.contains("lx-snapd"))setText(s,""); });
       reveal(); } },7000);
@@ -2410,6 +4103,70 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
 }
 
 const files = fs.readdirSync('.').filter(f => /^lumoscore-.*-(desktop|mobile)\.html$/.test(f));
+// #10: the design ships THREE stat boxes on the pool header and the fourth -- Participants -- was
+// added at runtime. So every load painted a three-box grid into a four-column rule: two on top, one
+// below, and a hole where the fourth would land, for as long as the data took. Ship all four in the
+// markup and there is no in-between state. The runtime builder still exists and simply finds one
+// already there, so nothing depends on this having worked.
+//
+// The end of .ph-stats is found by BALANCING <div> tags rather than by counting closing tags: each
+// stat box is itself nested two deep, and a guessed closing marker lands in the wrong place.
+// #4: the Pools hero "shows the previous design for a split second".
+//
+// Measured in an iframe from first paint: at 90ms the .lm-chip is an EMPTY 44px bar -- its own p1/p2/p3
+// are display:none and the stats strip does not exist yet -- with the hero copy at y=285. At ~1070ms the
+// runtime builder appends the strip, the chip grows to 95px and everything above it jumps. A blank bar
+// that becomes a four-column strip and moves the headline is not a loading state, it is a second layout.
+//
+// So ship the strip in the markup. It is the identical HTML buildHeroStats() would have written, skeleton
+// values and all, and that function already returns early when it finds one -- so the runtime path is
+// unchanged and simply has less to do. Same fix, and same reasoning, as the fourth .ph-stat above.
+const HERO_STATS_BOX = '<div class="lx-hstats">'
+  + '<div class="lx-hstat" data-k="fees"><span class="v"><span class="lx-hskel"></span></span><span class="l">24h Fees</span></div>'
+  + '<div class="lx-hstat" data-k="trades"><span class="v"><span class="lx-hskel"></span></span><span class="l">24h Trades</span></div>'
+  + '<div class="lx-hstat" data-k="tokens"><span class="v"><span class="lx-hskel"></span></span><span class="l">Tokens</span></div>'
+  + '<div class="lx-hstat" data-k="top"><span class="v"><span class="lx-hpairskel"><span class="pa"></span><span class="pb"></span></span>'
+  + '<span class="lx-toptxt lx-hskel"></span></span><span class="l">Top Pool</span></div></div>';
+function addHeroStats(p) {
+  const open = p.indexOf('<div class="lm-chip">');
+  if (open < 0) return p;
+  // Balance the <div>s rather than counting closers: p3 nests a <span> and the chip's own children are
+  // divs, so a guessed end lands inside the chip's last row.
+  const re = /<\/?div\b/gi;
+  re.lastIndex = open;
+  let depth = 0, m, end = -1;
+  while ((m = re.exec(p))) {
+    if (m[0][1] === '/') { depth--; if (depth === 0) { end = m.index; break; } }
+    else depth++;
+  }
+  if (end < 0) return p;
+  // Scoped to THIS chip, not the page: the runtime builder's own source contains the string lx-hstats,
+  // which is exactly the trap the participants box fell into.
+  if (p.slice(open, end).indexOf('lx-hstats') >= 0) return p;
+  return p.slice(0, end) + HERO_STATS_BOX + p.slice(end);
+}
+
+function addPartStat(p) {
+  const open = p.indexOf('<div class="ph-stats">');
+  if (open < 0) return p;
+  const re = /<\/?div\b/gi;
+  re.lastIndex = open;
+  let depth = 0, m, end = -1;
+  while ((m = re.exec(p))) {
+    if (m[0][1] === '/') { depth--; if (depth === 0) { end = m.index; break; } }
+    else depth++;
+  }
+  if (end < 0) return p;
+  // The idempotence check has to look at THIS ROW, not the page. It used to be a whole-page search for
+  // "lx-partstat", and the runtime builder injected by this same transform contains that string in its
+  // own querySelector — so from the second run onwards the function found its own source code, concluded
+  // the box was already there, and returned the page untouched. The markup never got a fourth card;
+  // pdPartStat() built one at runtime, which is exactly the three-boxes-while-loading this was written
+  // to remove. Scope the search to the row and it can no longer be fooled by a script somewhere below.
+  if (p.slice(open, end).indexOf('lx-partstat') >= 0) return p;
+  return p.slice(0, end) + PART_STAT_BOX + p.slice(end);
+}
+const PART_STAT_BOX = "<div class=\"ph-stat lx-partstat\"><div class=\"head\"><div class=\"ic part\"><svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2\"></path><circle cx=\"9\" cy=\"7\" r=\"4\"></circle><path d=\"M22 21v-2a4 4 0 0 0-3-3.87\"></path><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"></path></svg></div><div class=\"l\">Participants</div></div><div class=\"v\">&#8212;</div><div class=\"s\"></div></div>";
 let n = 0, containers = 0;
 for (const file of files) {
   let data; try { data = read(file); } catch (e) { continue; }
@@ -2434,7 +4191,9 @@ for (const file of files) {
       return blk.replace(/<button class="active">1Y<\/button>/, '<button>1Y</button>')
                 .replace(/<button>1M<\/button>/, '<button class="active">1M</button>');
     });
-    p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/, '');
+    p = addPartStat(p);
+    p = addHeroStats(p);
+    p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/g, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/g, '');
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
     const bi = p.lastIndexOf('</body>');
@@ -2449,8 +4208,14 @@ for (const file of files) {
     if (p.indexOf('createPoolModal') < 0) continue;
     // Strip any PRIOR injection FIRST, then test the ORIGINAL design markers. (The injected SCRIPT itself contains
     // "#tvlChart", so testing before stripping made every rebuild after the first skip this key -> stale script.)
-    p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/, '');
-    if (p.indexOf('poolsBody') >= 0 || p.indexOf('tvlChart') >= 0) continue;   // a real pools list/detail page — already handled by the KEYS loop
+    p = p.replace(/<style id="lx-amm-css">[\s\S]*?<\/style>/g, '').replace(/<script id="lx-ammdata">[\s\S]*?<\/script>/g, '');
+    // Test the DESIGN markup, in attribute form. A bare substring test matched text that OTHER injected
+    // scripts contribute -- _poolwarm.js carries the literal "#poolsBody" in its guard, and it is injected
+    // on every page -- so the dashboard looked like a pools page and was skipped here. The strip above is
+    // local to p, so skipping discarded it and left the PREVIOUS injection in json[k]: the dashboard has
+    // been running a stale _ammdata ever since, which is why fixes to the Create Pool modal never reached
+    // it. Measured: 18 bare matches on the dashboard, 0 in attribute form.
+    if (p.indexOf('id="poolsBody"') >= 0 || p.indexOf('id="tvlChart"') >= 0) continue;   // a real pools list/detail page — already handled by the KEYS loop
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     const bi = p.lastIndexOf('</body>'); if (bi < 0) continue;
     p = p.slice(0, bi) + SCRIPT + p.slice(bi);

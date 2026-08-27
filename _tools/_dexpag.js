@@ -1,6 +1,24 @@
-// #2 Trade-asset page: 50-per-page pagination for the four tab lists (Exchanges/Discussions/
-// Holders/Pools). Big lists (Exchanges ~2k, Holders ~12k) get a materialized 137-row set from their
-// templates + Prev/Next; small lists (Discussions 18, Pools 7) stay as-is (already under 50).
+// THIS TRANSFORM NOW ONLY REMOVES ITSELF. Do not re-enable the injection.
+//
+// It used to paginate the Trade-asset tab lists by MATERIALISING a 137-row set: `MAT=137`, and the rows
+// were manufactured by cloning the design's template rows (`kids[j%kids.length].cloneNode(true)`). That
+// was a reasonable trick over a mock page and became a liability the moment the lists held real data.
+//
+// Every tab it targeted has since been taken over by a layer with real data and its own paginator:
+// Discussions was removed from the page, Holders and Pools were already excluded by its own guard, and
+// Exchanges is owned by _dexassetdata.js -- which paginates the REAL filtered set and renders its control
+// into .panel-foot .pgn. So nothing was left for this to do except be wrong.
+//
+// What the user actually saw (reported twice, and it survived two fixes aimed at the wrong element):
+// under a "10K+ XLM" filter holding two real trades, the page read "Showing 1-50 of 137" and
+// "Page 1 of 3". Those numbers were not a miscount -- 137 IS `MAT`, and 3 is ceil(137/50). This script
+// built its footer into `.lx-pag-foot`, a container the newer layer neither writes nor knows about, so
+// re-asserting `.panel-foot` on every render (the previous fix) could never displace it. It also hid the
+// real footer outright with `.panel-foot{display:none !important}`.
+//
+// This is DEV landmine 11 exactly: a dead transform keeps running from the gitignored container, and the
+// prescription there is what is applied here -- turn it into an idempotent stripper rather than trying to
+// out-run it, because hiding or out-ordering a script that has already executed does nothing.
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
 const STYLE='<style id="lx-dexpag-css">'
@@ -30,7 +48,11 @@ const SCRIPT='<script id="lx-dexpag">(function(){'
 +'function apply(){'
 +'var foots=document.querySelectorAll(".lx-pag-foot");for(var i=0;i<foots.length;i++)foots[i].remove();cur=null;'
 +'var t=activeTab();var total=t?num(t.textContent):0;'
-+'if(t&&(t.getAttribute("data-tab")||"").toLowerCase()==="holders")return;'  // Holders has its own native pagination (.dxa-hl-pgn) — leave it, no second paginator
++'if(t&&/^(holders|pools)$/.test((t.getAttribute("data-tab")||"").toLowerCase()))return;'
+// Holders has its own native pagination (.dxa-hl-pgn). Pools is now REAL data with a real paginator in
+// _dexassetdata.js, and this one must never touch it: MAT materialises rows by CLONING the template
+// (kids[j%kids.length]), which was harmless over a mock list but, once the tab count read 59 against 20
+// real rows, padded the table to 137 rows of duplicated pools — fabricated liquidity on a live page.
 +'if(total<=PER)return;'                       // small lists (Discussions 18, Pools 7): no pagination
 +'var list=activeList();if(!list)return;'
 +'var kids=Array.prototype.slice.call(list.children);if(kids.length<3)return;'
@@ -52,9 +74,10 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
     for(const k of Object.keys(json)){
       let h=json[k];
       if(h.indexOf('data-tab="exchanges"')<0 && h.indexOf('id="dxaExTable"')<0) continue;
+      const was=h;
       h=h.replace(/<style id="lx-dexpag-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-dexpag">[\s\S]*?<\/script>/g,'');
-      const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
-      json[k]=h.slice(0,bi)+STYLE+SCRIPT+h.slice(bi); n++;
+      // STRIP ONLY. Nothing is re-injected -- see the header for why this transform is now a remover.
+      if(h!==was){ json[k]=h; n++; }
     }
     const serialized=JSON.stringify(json).split('</').join('<'+B+'/');
     fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');

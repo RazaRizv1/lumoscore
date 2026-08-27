@@ -26,11 +26,21 @@
 // Usage: node _tools/_mobnav.js
 const fs = require('fs');
 
+// #12: on a phone the whole page could be dragged out of place -- pulled down into a refresh spinner and
+// rubber-banded sideways -- because nothing ever told the browser not to. overscroll-behavior:none on the
+// viewport element is the documented way to decline both: the pull-to-refresh gesture and the bounce past
+// the scroll limits. Deliberately NOT adding overflow-x:hidden -- the document already measures exactly
+// the viewport width (checked: scrollWidth 375 at 375), and putting that on <html> is what breaks
+// position:sticky. This transform is the one that visits every key of every mobile container, which is
+// why the rule lives here rather than in a page-specific one.
+const STYLE = `<style id="lx-mobfix">html,body{overscroll-behavior:none}<\/style>`;
+
 const SCRIPT = `<script id="lx-mobnav">(function(){
   if(window.__lxNavWired)return; window.__lxNavWired=1;
-  var t0=null;
+  var t0=null, lastTap=null;
   window.addEventListener("touchstart",function(e){
     var p=e.touches&&e.touches[0]; t0=p?{x:p.clientX,y:p.clientY,t:Date.now()}:null;
+    lastTap=null;               // a new finger-down starts a new gesture: never swallow a real second tap
   },true);
   window.addEventListener("touchend",function(e){
     if(e.defaultPrevented)return;                                                  // someone already handled it
@@ -45,7 +55,26 @@ const SCRIPT = `<script id="lx-mobnav">(function(){
     e.preventDefault();                                                            // also suppresses any native click
     // Re-dispatch as a real click so every existing handler — ours, the design's, the browser's default
     // link activation — behaves exactly as it does with a mouse.
-    t.dispatchEvent(new MouseEvent("click",{bubbles:true,cancelable:true,view:window}));
+    lastTap={el:t,t:Date.now()};
+    var ce=new MouseEvent("click",{bubbles:true,cancelable:true,view:window});
+    ce.__lxBridged=1;
+    t.dispatchEvent(ce);
+  },true);
+  // preventDefault on touchend SHOULD suppress the native compatibility click, and on most handsets it
+  // does. On some it still arrives, up to a few hundred ms later — and a control that toggles then gets
+  // activated twice from one finger: it opens on our click and closes on the straggler. That is the
+  // "dropdown closes on the first tap, works on the second" report, and it is mobile-only by definition,
+  // which is why the desktop fix did not touch it. Swallow a native click that lands on the SAME element
+  // we just bridged: by construction that click is the duplicate, never a second real tap.
+  window.addEventListener("click",function(e){
+    if(e.__lxBridged)return;                                                       // the one we dispatched
+    if(!lastTap)return;
+    // Deliberately generous: the straggler's delay is the device's to choose, and guessing it wrong is
+    // what leaves the bug in place on exactly the handsets that have it. Safe to be generous because a
+    // genuine second tap begins with a touchstart, which disarms this first.
+    if(Date.now()-lastTap.t>1500){ lastTap=null; return; }
+    var el=e.target&&e.target.closest?e.target.closest("a[href],button,[role=button]"):null;
+    if(el&&el===lastTap.el){ lastTap=null; e.preventDefault(); e.stopImmediatePropagation(); }
   },true);
 })();</script>`;
 
@@ -78,9 +107,10 @@ for (const c of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'stella
     if (typeof p !== 'string') continue;
     if (p.indexOf('</body>') < 0) continue;
     const before = p;
-    p = p.replace(/<script id="lx-mobnav">[\s\S]*?<\/script>/, '');          // re-runnable: drop the old copy
+    p = p.replace(/<script id="lx-mobnav">[\s\S]*?<\/script>/g, '');          // re-runnable: drop the old copy
+    p = p.replace(/<style id="lx-mobfix">[\s\S]*?<\/style>/g, '');
     const bi = p.lastIndexOf('</body>'); if (bi < 0) continue;
-    p = p.slice(0, bi) + SCRIPT + p.slice(bi);
+    p = p.slice(0, bi) + STYLE + SCRIPT + p.slice(bi);
     if (p !== before) { json[k] = p; changed = true; keys++; }
   }
   if (changed) {

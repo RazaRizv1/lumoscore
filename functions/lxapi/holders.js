@@ -22,8 +22,17 @@ export async function onRequestGet({ request }) {
     });
   }
   const limit = Math.min(parseInt(q.get('limit'), 10) || 50, 200);
+  // Paging is by an OPAQUE cursor, not an offset: upstream returns nothing for cursor=200, while the
+  // token from _links.next works and the pages stay correctly ranked with no overlap. So the token is
+  // passed through rather than translated into a number.
+  //
+  // Still not an open proxy: restricted to the base64url/percent alphabet those tokens use, and to a
+  // sane length, so nothing else can be appended to the upstream URL.
+  const cur = q.get('cursor') || '';
+  const okCur = !!cur && cur.length <= 256 && /^[A-Za-z0-9%+/=_-]+$/.test(cur);
   const upstream =
-    'https://api.stellar.expert/explorer/public/asset/' + asset + '/holders?order=desc&limit=' + limit;
+    'https://api.stellar.expert/explorer/public/asset/' + asset + '/holders?order=desc&limit=' + limit
+    + (okCur ? '&cursor=' + encodeURIComponent(decodeURIComponent(cur)) : '');
 
   try {
     const r = await fetch(upstream, { cf: { cacheTtl: 120, cacheEverything: true } });

@@ -31,7 +31,10 @@ Static multi-page HTML showcase (no framework, no bundler). One "source of truth
 ```
 # after editing any _tools/*.js transform:
 node _tools/<transform>.js
+node _tools/_nofollow.js                      # ALWAYS after any transform that emits <a> tags
+node _tools/_heromono.js                      # ALWAYS LAST of the style transforms
 node _tools/extract_site.js aptos --root      # builds to dist/ ROOT (the --root flag matters)
+node _tools/predeploy_check.js                # blocks on both of the above being out of order
 
 # serve locally (wallets need http://, not file://):
 node serve.js            # -> http://localhost:8080   (or double-click "Start LumosCore.bat")
@@ -76,9 +79,37 @@ Two transforms inject `<script>`s that fill finalized elements with live data. *
 6. **Headless screenshots race async fetches.** `--virtual-time-budget` captures before `fetch()` resolves → looks like mock. Verify with the **browser pane + a real `setTimeout` wait + DOM read**, or a real-time screenshot.
 7. **Testing address.** Set a real active `G…` account in `localStorage.lumos.address` to test; the whale account `GAFB7IYPCYZCODQBB5BR5JO45JC4PPVLARUAXQSFHWTLH2KMHPWJ36GD` is handy but its numbers are NOT the user's.
 8. **Backslashes are eaten on the way to the browser.** Every `_tools/*.js` transform holds its browser code inside a JS template literal, so `\s` / `\d` / `\.` arrive with the backslash *stripped*: `/[\s,]+/` ships as `/[s,]+/` and silently matches nothing. No error, no crash — the feature just quietly does nothing. **Write every escape doubled (`\\s`), or avoid the regex** (`svg.viewBox.baseVal` instead of parsing the attribute; `parseFloat` instead of `/^\d+$/`). `node --check` CANNOT catch this: it validates the transform, where the escape is still intact. `_ammdata.js` now aborts the build if its emitted region contains a single-backslash escape — copy that guard into any transform you extend. Shipped four separate times before the guard existed.
+11. **`_typescale.js` runs LAST of the style transforms, and is the only one that rewrites the
+    design's own CSS in place.** It multiplies font-size, px line-heights and the spacing
+    properties (padding / margin / gap) by 1.10, and deliberately leaves the skeleton alone:
+    width, height, min/max sizes, flex-basis, grid-template-*, border widths and radii, shadows,
+    transforms. Media query CONDITIONS are untouched by construction, so breakpoints do not move.
+
+    Run it AFTER `_heromono.js`, so heromono's own stylesheet is scaled too. That does not break the
+    "heromono last" rule: this edits numbers inside existing blocks and never reorders them, so the
+    cascade is unchanged.
+
+    Every `<style>` block it touches is stamped `data-lxts="1.1"` and skipped afterwards, so it is
+    safe to re-run after ANY transform -- only newly injected CSS gets scaled. That per-block stamp
+    is the whole safety mechanism: a page-level flag would have frozen every later layer at its
+    authored size, and NO flag compounds to 1.21x on the second run, 1.33x on the third, with
+    nothing looking obviously wrong until it is far too big. Never strip the stamp.
+
+    Containers as they were before the first scale: `_TYPESCALE_BACKUP_20260825_070031/`.
+
+10. **Seven transforms do NOTHING without `--write`.** They default to a DRY RUN and still
+    print a success-looking line -- `injected=7 keys across 7 containers` -- with
+    `(dry run — pass --write)` at the end. Miss that suffix and the build looks clean, `dist/`
+    rebuilds, the predeploy gate passes, and the change is simply absent. The seven are:
+    `_accountpage.js`, `_dexnative.js`, `_launchicons.js`, `_mobdex.js`, `_mobnetswitch.js`,
+    `_mobtrade.js`, `_mobwallet.js`, `_typescale.js` -- five of the eight are the MOBILE layers, so the usual
+    symptom is "my fix works on desktop but not on the phone". Verify by grepping the built
+    file for a string only the new code contains, never by re-reading the transform.
+
 9. **Writing a container back requires re-escaping `</` as `<\/`.** The page JSON sits inside a `<script id="designContents">` tag, so a plain `JSON.stringify(json)` writes a literal `</script>` into the middle of it and the container is truncated on the next read. The root `lumoscore-*.html` containers are **gitignored — there is no undo**. Always write `JSON.stringify(json).split('</').join('<'+String.fromCharCode(92)+'/')`, which is what `lib.writeContents` and every transform now do. (Recovery, if it happens: nothing is lost, the escaping is. Find the true end of the JSON by brace-scanning with string/escape awareness, re-parse, re-serialise with the escaping.)
 10. **A tap is not a click on a handset.** The phone does not deliver the click the design's handlers wait for, which is why controls that work in the browser pane do nothing on a real device — and why a pane check alone never catches it. Two remedies: if the design's own click logic is sound, `preventDefault()` the `touchend` and call `el.click()` so the design stays authoritative (needed for the Pool Activity metric menu — driving the chart ourselves left the design's stale state rewriting the button's label back). If the design's state is *already* stale, do the switching yourself from window capture. Either way, guard against scrolls: a `touchend` only counts as a tap if the finger stayed within ~12px for under 600ms, or a swipe ending over the bottom nav navigates.
 11. **A dead transform can still be running in the page.** Every `_tools/*.js` transform ever run left its `<script id="…">` baked into the gitignored containers, and it keeps running forever — the transform is not the code, the container is. `_pagination.js` injected an `lx-txpage` script that faked 137 transactions by cloning the design's mock rows; long after `_ammdata.js` started filling the same tbody with real Horizon data, that script was still wiping the tbody on every Prev/Next click, re-creating `.controls` from scratch (destroying our listeners) and writing its fake count over the real one. Symptom: **the fix verifies clean locally and fails on production**, because which of the two rival scripts wins is a timing race. Before building on top of a section, grep the container for other `<script id=` blocks that touch it; if one is obsolete, **turn its transform into an idempotent stripper** rather than trying to out-run it — hiding the `<script>` element does nothing, it has already executed.
+13. **A non-global self-strip lets stylesheets pile up for ever, and stale rules then win on source order.** Every transform strips its own block before re-adding it so the build stays idempotent -- `p.replace(/<style id="lx-NAME-css">[\s\S]*?<\/style>/, '')`. **Without `/g` that removes ONE copy and adds ONE back**, so a page that ever ended up with two blocks keeps two for ever and each stale copy goes on competing with the live one at equal specificity, decided purely by which sits later in the document. This is the honest answer to *"I changed the rule and the styling didn't follow"* -- the change landed, it just lost the cascade to its own older self. Measured in `dist` before the 2026-08-25 fix: **9** copies of `lx-dexhero-css`, 7 of `lx-dxa-css` and `lx-realdata-css`, 6 of `lx-dexmain-css`, and 2 of `lx-searchassets-css` across **43** pages. All 87 strips across 43 transforms are `/g` now, but **the containers still hold the old duplicates** -- each transform only cleans its own on its next run, so expect a page to shrink sharply the first time one does (`lumoscore-amm.html` lost 88.9KB going 3 -> 1, which the predeploy gate flags as a possible strip overrun). Confirm it was only duplicates by diffing the **selector set** of the old blocks against the new one; empty means nothing was lost. Do NOT "fix" this by re-running all 43 transforms -- there is no build-all, and several have order dependencies (`lx-amm-css` must land after `lx-poolshero-css`), so a mass re-run reshuffles the cascade site-wide. Same family as landmine 11 and the `_typescale.js` tag-marker bug.
 12. **Desktop coordinates don't exist on the phone.** The design injects its chart svg at runtime: `1000x280` with axis labels at `x="996"` / `y="278"` on desktop, `400x220` with labels at `x="396"` / `y="218"` on mobile. Anything selecting or positioning by literal coordinate works on one layout and silently no-ops on the other. Derive from `svg.viewBox.baseVal` and select by *relative* position (`x >= W*0.9`). Never `setAttribute("viewBox", …)` to normalise it — that rescales the design's own labels, which is a worse bug than the one you're fixing.
 
 ---

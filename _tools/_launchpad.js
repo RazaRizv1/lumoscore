@@ -13,6 +13,12 @@
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
 const CSS='<style id="lx-lp-css">'
+/* item 31: the '?' markers in Launch Cost. Each row already states exactly what it is and what it
+   costs, so the marker added a question the row had already answered -- and its tooltip still said
+   'Aptos asset issuance fee', which is wrong on a Stellar launch. */
++'.summary-card .cost-row .info-i{display:none!important}'
+// item 35: the terms line under the Next button.
++'.summary-card .summary-foot{display:none!important}'
 +'.lx-lp-invalid{border-color:#e5484d!important;box-shadow:0 0 0 3px rgba(229,72,77,.13)!important}'
 // Project Type: compact chip buttons instead of big cards — icon + title only, no description, auto width,
 // sit inline. No default selection (see the uncheck in run()); .selected gets the accent ring on click.
@@ -64,7 +70,22 @@ try{ window.__lxLP={
 }; }catch(_){}
 
 // Live XLM→USD so the cost card shows a real dollar figure instead of a hardcoded rate.
-try{ var _xu=parseFloat(localStorage.getItem("lumos.xlmusd")); if(_xu>0) window.__lxXlmUsd=_xu; }catch(_){}
+// Cache is {v,ts} and only trusted for 6h. The old format was a bare number with no timestamp, so a rate
+// written weeks earlier was believed indefinitely -- which is how a $25 product came to read 173.50 XLM.
+var LXLP_MAXAGE=216e5;   // 6 hours
+try{
+  var _raw=localStorage.getItem("lumos.xlmusd"), _c=null;
+  if(_raw&&_raw.charAt(0)==="{"){ _c=JSON.parse(_raw); }
+  if(_c&&+_c.v>0&&(Date.now()-(+_c.ts||0))<LXLP_MAXAGE) window.__lxXlmUsd=+_c.v;
+  // The wallet/dex pages keep the same figure under a different key; borrow it rather than guessing.
+  if(!(window.__lxXlmUsd>0)){
+    var _r2=localStorage.getItem("lumos.xlmUsd");
+    if(_r2&&_r2.charAt(0)==="{"){ var _c2=JSON.parse(_r2);
+      if(_c2&&+_c2.v>0&&(Date.now()-(+_c2.ts||0))<LXLP_MAXAGE) window.__lxXlmUsd=+_c2.v; }
+  }
+}catch(_){}
+// Last resort only, and deliberately not presented as live: lxLpOnPrice fires again the moment a real
+// rate lands, and every cost row repaints then.
 if(!(window.__lxXlmUsd>0)) window.__lxXlmUsd=0.11;
 window.__lxLpPriceCbs=window.__lxLpPriceCbs||[];
 function lxLpOnPrice(cb){ try{ window.__lxLpPriceCbs.push(cb); if(window.__lxXlmUsdLive) cb(window.__lxXlmUsd); }catch(_){} }
@@ -83,12 +104,30 @@ function lxLpPaintCost(extra){
   lxLpSetRow(/Initial liquidity/i, liqX.toFixed(2)+" XLM "+dim+"≈ $"+d2(lU)+"</span>");
   lxLpSetRow(/pool.{0,3}network/i, poolX.toFixed(2)+" XLM "+dim+"≈ $"+d2(pU)+"</span>");
   var tc=document.querySelector(".cost-total .v"); if(tc) tc.innerHTML=totX.toFixed(2)+" XLM "+dim+"≈ $"+d2(tU)+"</span>";
+  // The phone's sticky summary bar -- same numbers, the design's own markup.
+  var sc=document.getElementById("costTotal");
+  if(sc) sc.innerHTML=totX.toFixed(2)+' XLM <span class="usd">\u2248 $'+d2(tU)+'</span>';
 }
-(function(){ try{
-  fetch("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd").then(function(r){return r.json();}).then(function(j){
-    var p=j&&j.stellar&&j.stellar.usd; if(p>0){ window.__lxXlmUsd=p; window.__lxXlmUsdLive=1; try{localStorage.setItem("lumos.xlmusd",String(p));}catch(_){} (window.__lxLpPriceCbs||[]).forEach(function(f){ try{f(p);}catch(_){} }); }
-  }).catch(function(){});
-}catch(_){} })();
+(function(){
+  function adopt(p){
+    if(!(p>0))return false;
+    window.__lxXlmUsd=p; window.__lxXlmUsdLive=1;
+    try{ localStorage.setItem("lumos.xlmusd",JSON.stringify({v:p,ts:Date.now()})); }catch(_){}
+    (window.__lxLpPriceCbs||[]).forEach(function(f){ try{ f(p); }catch(_){} });
+    return true;
+  }
+  // Our own endpoint first: server-side, edge-cached, and not subject to CoinGecko's egress rules.
+  function viaEdge(){
+    return fetch("/lxapi/xlm").then(function(r){ if(!r.ok)throw 0; return r.json(); })
+      .then(function(d){ if(!adopt(d&&+d.usd))throw 0; });
+  }
+  function viaGecko(){
+    return fetch("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd")
+      .then(function(r){ return r.json(); })
+      .then(function(j){ adopt(j&&j.stellar&&+j.stellar.usd); });
+  }
+  try{ viaEdge().catch(function(){ return viaGecko(); }).catch(function(){}); }catch(_){}
+})();
 
 var _lpSdkP=null;
 function lxLpSdk(){
@@ -310,7 +349,35 @@ function lxLpWireToken(){
   }
   // Project Type: no default selection. Clear the design's baked "meme" preselect on fresh load (keep it
   // if a saved draft has a projectType — lxLpPopulateForm re-applies that). Keep the .selected ring in sync on click.
-  var _tg=document.querySelector(".type-grid");
+  // #8: Project Type is gone from the form. It was a required choice between Meme and Utility that
+  // nothing downstream acts on -- it is not written to the asset, not in the toml, not used to filter
+  // anything (the Trade chips that read it have just been removed too). Asking for it made the launch
+  // one step longer for a value with no consumer.
+  //
+  // Hidden rather than deleted: the review screen still walks these rows by label, and the draft format
+  // still round-trips a projectType from an older saved draft. The field simply stops being asked for.
+  (function(){
+    // The phone ships this control as .type-stack and the desktop as .type-grid. Looking only for the
+    // grid meant the field was hidden on one layout and left in place on the other.
+    var g=document.querySelector(".type-grid, .type-stack");
+    if(g){
+      var lbl=g.previousElementSibling;
+      if(lbl&&/project type/i.test(lbl.textContent||""))lbl.style.display="none";
+      var fld=g.closest(".form-field,.field,.form-group");
+      if(fld&&/project type/i.test(fld.textContent||""))fld.style.display="none"; else g.style.display="none";
+    }
+    // The design marks this field required, and its Continue handler is not ours -- so rather than risk
+    // a hidden field blocking the form, satisfy it. "meme" is what the code already defaults to when
+    // nothing is checked (see pt above), so this changes no recorded value, only whether a validator
+    // can see a selection.
+    try{ var _r=document.querySelector('input[name="ptype"][value="meme"]')||document.querySelector('input[name="ptype"]');
+      if(_r&&!document.querySelector('input[name="ptype"]:checked'))_r.checked=true; }catch(_){}
+    // ...and the row on the review screen, which would otherwise print a type nobody chose.
+    [].forEach.call(document.querySelectorAll(".review-row,.rv-row,.lp-row"),function(r){
+      if(/^s*project type/i.test((r.textContent||"")))r.style.display="none";
+    });
+  })();
+  var _tg=document.querySelector(".type-grid, .type-stack");
   if(_tg && !_tg.__lxNoDef){ _tg.__lxNoDef=true;
     var _dft=null; try{ _dft=lxLpReadDraft(); }catch(_){}
     if(!(_dft && _dft.projectType)){
@@ -556,10 +623,21 @@ function lxLpWireConfirm(){
 }
 
 (function(){
-  function run(){ var p=location.pathname||location.href;
-    if(/launch-token/.test(p)) lxLpWireToken();
-    else if(/launch-review/.test(p)) lxLpWireReview();
-    else if(/launch-confirm/.test(p)) lxLpWireConfirm();
+  // The gate matched the FILE names -- lumoscore-launch-token and friends -- but those are what Pages
+  // rewrites TO. _redirects maps /launchpad, /launchpad/review and /launchpad/confirm with a 200, so the
+  // address bar keeps the clean URL and location.pathname never contains "launch-token". The result was
+  // that none of this file ran on the hosted site: measured on /launchpad, the icon input still carried
+  // the design's own accept list and #extraLiquidity had no __lxNum marker, i.e. lxLpWireToken() had not
+  // executed at all. Both spellings are accepted so opening a dist file directly still works.
+  //
+  // Review and confirm are tested first: their clean URLs start with /launchpad, so a token-page test
+  // that merely looked for "launchpad" would swallow them.
+  function run(){
+    var p=(location.pathname||location.href).toLowerCase().split("?")[0].split("#")[0];
+    if(p.length>1&&p.charAt(p.length-1)==="/") p=p.slice(0,-1);
+    if(p.indexOf("launch-review")>=0||p.indexOf("/launchpad/review")>=0) lxLpWireReview();
+    else if(p.indexOf("launch-confirm")>=0||p.indexOf("/launchpad/confirm")>=0) lxLpWireConfirm();
+    else if(p.indexOf("launch-token")>=0||p.slice(-9)==="launchpad") lxLpWireToken();
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",run); else run();
   var nn=0,iv=setInterval(function(){ nn++; run(); if(nn>20) clearInterval(iv); },300);
@@ -590,7 +668,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
     for(const k of Object.keys(json)){
       if(!/launch-(token|review|confirm)/.test(k)) continue;
       let h=json[k]; const before=h;
-      h=h.replace(/<style id="lx-lp-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-lp-js">[\s\S]*?<\/script>/,'');
+      h=h.replace(/<style id="lx-lp-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-lp-js">[\s\S]*?<\/script>/g,'');
       // AUDIT FIX: the crumb bakes TWO consecutive "/" separators ("Home / / Create Token") — a middle
       // segment was removed upstream but its separator stayed. Collapse doubled seps (idempotent).
       h=h.replace(/(<span class="sep">\/<\/span>)\s*<span class="sep">\/<\/span>/g,'$1');

@@ -3,6 +3,7 @@
 
 /trade/stellar/:asset                     /lumoscore-dex-asset  200
 /trade/stellar                            /lumoscore-dex  200
+/account/stellar/:address                 /lumoscore-account  200
 /pools/stellar/id/:pool                   /lumoscore-amm-pool  200
 /pools/stellar/:a/:b                      /lumoscore-amm-pool  200
 /pools/stellar                            /lumoscore-amm  200
@@ -13,6 +14,7 @@
 /bridge                                   /lumoscore-bridge  200
 /wallet                                   /lumoscore-wallet  200
 /rewards                                  /lumoscore-rewards-dark  200
+/lumos/stellar                            /lumoscore-lumos-token  200
 /lumos                                    /lumoscore-lumos-token  200
 /signin                                   /lumoscore-signin  200
 /mcp                                      /lumoscore-mcp  200

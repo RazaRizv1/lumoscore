@@ -19,6 +19,25 @@ const NEW_SUB='Bridge USDC natively across chains with Circle CCTP — burn on S
 const BUGGY_SUB='Bridge USDC natively across chains with Circle CCTP \\u2014 burn on Stellar, mint on the destination.';
 
 const CSS='<style id="lx-cctp-css">'
+// The transfer table's headers were a paler grey than every other table on the site: --text-soft at
+// 0.3px tracking, measured rgb(154,154,163), against the pools table's rgb(117,117,127) at 0.5px. Same
+// family, size and weight, so it read as the same table style rendered faintly -- which is what makes a
+// page look like it belongs to a different build rather than a different section.
++'.br-table th{color:var(--text-muted,#75757f)!important;letter-spacing:.5px!important}'
++'.brm-txc{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:13px 14px;transition:border-color .15s ease,box-shadow .15s ease}'
++'.brm-txc:hover{border-color:var(--border-strong,#34343c);box-shadow:0 10px 26px -20px rgba(0,0,0,.7)}'
++'.brm-txc+.brm-txc{margin-top:10px}'
+/* the timestamp is context, not content */
++'.brm-tr1 .brm-tm{font:600 10.5px/1 "JetBrains Mono",monospace;letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}'
+/* the amount is the thing being read */
++'.brm-txc .br-asschip .am{font:800 15px/1.15 "JetBrains Mono",monospace;color:var(--text);letter-spacing:-.2px;display:block}'
++'.brm-txc .br-asschip .nt{font:700 9.5px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft);text-transform:uppercase;letter-spacing:.06em;display:block;margin-top:2px}'
++'.brm-txc .brm-flow{gap:9px;align-items:center}'
++'.brm-txc .brm-flow .br-ar{color:var(--text-muted);font-size:14px;flex:0 0 auto}'
+/* the destination line closes the card rather than floating under it */
++'.brm-txc .brm-recv{border-top:1px solid var(--border);padding-top:9px;margin-top:11px;font-size:11.5px;color:var(--text-soft)}'
++'.brm-txc .br-xplink{color:var(--text-muted);transition:color .12s}'
++'.brm-txc .br-xplink:hover{color:var(--accent)}'
 +HIDE.map(function(n){return '.brd-opt[data-net="'+n+'"]{display:none!important}';}).join('')
 // real network logos (replace the letter-mark badges) — logos only, no layout change
 +'.brd-opt .brd-ic img.lx-netimg,.br-netchip .br-ic img.lx-netimg{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}'
@@ -147,7 +166,9 @@ const CSS='<style id="lx-cctp-css">'
 // tabs live inside the design's own .br-txhead, so they inherit its spacing and only add their own row
 // the design's .br-txhead is space-between (it held a lone h2); tabs have to sit next to each other
 +'.br-txhead.lx-brtabs{display:flex!important;justify-content:flex-start!important;align-items:center;gap:24px;flex-wrap:wrap}'
-+'.lx-brtab{position:relative;padding:0 0 10px;border:0;background:none;cursor:pointer;font:650 17px/1.3 inherit;color:var(--text-soft,#6b6b76);transition:color .15s}'
++'.lx-brtab{position:relative;padding:0 0 10px;border:0;background:none;cursor:pointer;'
++'font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:600;font-size:16.55px;line-height:1.3;'
++'letter-spacing:normal;color:var(--text-soft,#6b6b76);transition:color .15s}'
 +'.lx-brtab:hover{color:var(--text,#0e0e10)}'
 +'.lx-brtab.active{color:var(--text,#0e0e10)}'
 +'.lx-brtab.active::after{content:"";position:absolute;left:0;right:0;bottom:0;height:2px;border-radius:2px;background:var(--accent,#ea6a2c)}'
@@ -164,7 +185,7 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brtxpg-p:hover{border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}'
 +'.lx-brtxpg-p.active{background:var(--accent,#ea6a2c);border-color:var(--accent,#ea6a2c);color:#fff}'
 +'.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}'
-+'.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}'
++'.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:nowrap;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}'
 +'.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}'
 +'.lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}'
 +'@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}'
@@ -219,7 +240,7 @@ try{ window.__lxCCTP={
   passphrase:"Public Global Stellar Network ; September 2015",
   decimals:7, iris:"https://iris-api.circle.com",
   horizon:"https://horizon.stellar.org",
-  feeCollector:"GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD", feeRate:0.005,
+  feeCollector:"GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD", feeRate:0.002,
   domains:${JSON.stringify(CCTP_DOMAINS)}, chains:${JSON.stringify(Object.keys(CCTP_DOMAINS))}
 }; }catch(_){}
 
@@ -426,7 +447,7 @@ function lxCctpBridge(destDomain, amountHuman, recipient, onStatus){
 }
 window.lxCctpBridge=lxCctpBridge;
 
-// ---- Fee (0.5%, to XLM) + optional source->USDC hop, then CCTP burn(net) + attest ----
+// ---- Fee (0.2%, to XLM) + optional source->USDC hop, then CCTP burn(net) + attest ----
 function lxSubmitClassic(C,xdr){
   return fetch(C.horizon+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(xdr)}).then(function(r){return r.json();}).then(function(res){
     if(res.successful||res.hash) return res;
@@ -458,7 +479,7 @@ function lxToAssets(S,arr){ return arr.map(function(a){ return a.asset_type==="n
 // sourceSpec: "USDC" | {native:true} | {code,issuer}. Returns {burnHash,netUsdc,feeRate,message,attestation,decodedMessage,...}
 function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, onStatus, netUsdcTarget){
   var C=window.__lxCCTP; onStatus=onStatus||function(){}; netUsdcTarget=parseFloat(netUsdcTarget)||0;
-  var feeRate=(window.__lxFeeRate||C.feeRate||0.005), UI=C.usdcIssuer;   // honor the 250K-LUMOS tier (0.25%) same as swap
+  var feeRate=(window.__lxFeeRate||C.feeRate||0.002), UI=C.usdcIssuer;   // honor the 250K-LUMOS tier (0.1%) same as swap
   var isUSDC=!sourceSpec||sourceSpec==="USDC"||sourceSpec.code==="USDC";
   var srcAmt=parseFloat(String(sourceAmountHuman).replace(/,/g,"")); if(!(srcAmt>0)) return Promise.reject(new Error("Enter a valid amount"));
   return lxCctpSdk().then(function(S){ return lxCctpSigner().then(function(f){
@@ -699,7 +720,7 @@ function lxBrCalc(){
   var amtIn=sides[0].querySelector('.br-amt .lx-amtin'); var amtEl=sides[0].querySelector('.br-amt .v'); var outEl=sides[1].querySelector('.br-amt .v'); if(!outEl)return;
   var raw=((amtIn?amtIn.value:(amtEl?amtEl.textContent:""))||"").split(",").join("").trim(); var amt=parseFloat(raw)||0; window.__lxBr.amount=raw;
   lxBrValidateStep2();
-  var k=window.__lxBr.srcKey, A=LX_ASSETS[k]||LX_ASSETS.USDC, C=window.__lxCCTP, feeRate=(window.__lxFeeRate||(C&&C.feeRate)||0.005);
+  var k=window.__lxBr.srcKey, A=LX_ASSETS[k]||LX_ASSETS.USDC, C=window.__lxCCTP, feeRate=(window.__lxFeeRate||(C&&C.feeRate)||0.002);
   // AUDIT #3 bug 1/2 (FUNDS): "You get" used the static px table — a TESTNET-era decision ("don't quote the
   // testnet pool") that was flat wrong on mainnet, where the pools ARE the market. LUMOS (not on CoinGecko)
   // kept its baked px:0.25 against a real ~$0.00005, quoting ~4,800x the deliverable amount; execution then
@@ -807,19 +828,19 @@ function lxBrReview(){
   var srcRow=s3.querySelector('[data-rv="src"]'); if(srcRow) srcRow.innerHTML='<span class="lx-rvaddric">'+lxBrStellarIcon()+'</span><span>'+lxBrShort(B.pk||LX_SRC_ADDR)+'</span>';
   var dstIn=s2?s2.querySelector('.br-addr-in'):null; var dst=dstIn?(dstIn.value||"").trim():""; var nkey=LX_NETMAP[net];
   var dstRow=s3.querySelector('[data-rv="dst"]'); if(dstRow){ if(dst){ dstRow.innerHTML=(nkey?'<span class="lx-rvaddric"><img class="lx-netimg" src="assets/networks/'+nkey+'.png" alt=""></span>':'')+'<span>'+lxBrShort(dst)+'</span>'; } else dstRow.textContent="—"; }
-  // Bridge fee row: show the actual amount, not just the rate. It always read "0.5%" and nothing else,
+  // Bridge fee row: show the actual amount, not just the rate. It always read "0.2%" and nothing else,
   // while "You send" showed the gross amount — so from the review alone there was no way to tell the fee
   // had been taken at all. It is deducted from the source asset, so name it in the source asset.
   var bf=s3.querySelector('.lx-bfee .v');
   if(bf){
-    var _fr=(window.__lxFeeRate||(window.__lxCCTP&&window.__lxCCTP.feeRate)||0.005);
+    var _fr=(window.__lxFeeRate||(window.__lxCCTP&&window.__lxCCTP.feeRate)||0.002);
     var _sa=parseFloat(String(amt).replace(/,/g,""))||0, _fa=_sa*_fr;
     var _amtTxt=_fa>0?(_fa<0.0001?_fa.toFixed(7):_fa.toLocaleString("en-US",{maximumFractionDigits:6})):"";
     var _pct=(_fr*100).toFixed(2).replace(/0$/,"").replace(/\\.$/,"")+"%";
     bf.innerHTML=_pct+(_amtTxt?' <span class="lx-bamt">\· '+_amtTxt+' '+lxBrEsc(k)+'</span>':'')
-      +(_fr>0.003?'<span class="lx-bchip">0.25% with LUMOS</span>':'<span class="lx-bchip">LUMOS holder rate</span>');
+      +(_fr>0.0015?'<span class="lx-bchip">0.1% with LUMOS</span>':'<span class="lx-bchip">LUMOS holder rate</span>');
   }
-  // Circle CCTP fee row — Standard transfer is free (only our 0.5%/0.25% applies). Structured so a Fast-transfer fee could slot in later.
+  // Circle CCTP fee row — Standard transfer is free (only our 0.2%/0.1% applies). Structured so a Fast-transfer fee could slot in later.
   var list=s3.querySelector('.br-rv-list');
   if(list && !list.querySelector('.lx-cfee')){ var feeRow=list.querySelector('.lx-bfee'); var r=document.createElement('div'); r.className='r lx-cfee'; r.innerHTML='<span class="k">Circle CCTP fee</span><span class="v">Free <span class="lx-cchip">Standard transfer</span></span>'; if(feeRow) feeRow.parentNode.insertBefore(r, feeRow.nextSibling); else list.appendChild(r); }
 }
@@ -998,6 +1019,12 @@ function lxBrListPending(){ try{ return JSON.parse(localStorage.getItem("lumos.c
 function lxBrClearPending(hash){ try{ var a=lxBrListPending().filter(function(x){return x.burnHash!==hash;}); localStorage.setItem("lumos.cctp.pending",JSON.stringify(a)); }catch(_){} }
 window.lxBrSavePending=lxBrSavePending; window.lxBrListPending=lxBrListPending; window.lxBrClearPending=lxBrClearPending;
 function lxBrRestoreTxs(){ try{ var tbody=document.querySelector('.br-table tbody'); if(!tbody||tbody.__lxRestored)return; tbody.__lxRestored=true; var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]");
+  // Same source the phone paints from. lxBrRenderMobileTxs prepends LX_PUBTX to the local store; this
+  // read only the local store, so a transfer that exists on chain but was never recorded in THIS
+  // browser appeared on mobile and not on desktop -- the same account, the same origin, two different
+  // answers. Merged by hash, public first, exactly as the mobile path does it.
+  var _pseen={}; LX_PUBTX.forEach(function(o){ _pseen[o.hash]=1; });
+  a=LX_PUBTX.concat(a.filter(function(o){ return o&&!_pseen[o.hash]; }));
   // a store written before the cap existed can hold more than 100 — render only what is reachable, rather
   // than building rows the pager will hide forever
   if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
@@ -1616,7 +1643,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       { const ti=h.indexOf('<table class="br-table">');
         if(ti>=0){ const tb=h.indexOf('<tbody>',ti), te=h.indexOf('</tbody>',tb);
           if(tb>=0&&te>tb) h=h.slice(0,tb+'<tbody>'.length)+h.slice(te); } }
-      h=h.replace(/<style id="lx-cctp-css">[\s\S]*?<\/style>/,'').replace(/<script id="lx-cctp-js">[\s\S]*?<\/script>/,'');
+      h=h.replace(/<style id="lx-cctp-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-cctp-js">[\s\S]*?<\/script>/g,'');
       if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');
       const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+SCRIPT+h.slice(bi);
       if(h!==before){ json[k]=h; n++; }

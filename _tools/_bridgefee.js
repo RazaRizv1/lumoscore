@@ -1,5 +1,5 @@
-// Bridge page — surface the LUMOS fee tier (0.5% regular, 0.25% if holding 250,000 LUMOS):
-//  1) a "Bridge fee" row (0.5% + "0.25% with LUMOS" chip) in the Review-swap step list,
+// Bridge page — surface the LUMOS fee tier (0.2% regular, 0.1% if holding 250,000 LUMOS):
+//  1) a "Bridge fee" row (0.2% + "0.1% with LUMOS" chip) in the Review-swap step list,
 //  2) a compact LUMOS note under the review with a Buy LUMOS button,
 //  3) an extra "How it works" step describing the fee tier.
 // Runtime + theme-aware (CSS vars). Works for every chain (incl. stellar/xrpl once built). Idempotent.
@@ -28,19 +28,19 @@ const SCRIPT='<script id="lx-bridgefee">(function(){'
 // 1) bridge fee row
 +'var list=document.querySelector(".br-rv-list");'
 +'if(list&&!list.querySelector(".lx-bfee")){var r=document.createElement("div");r.className="r lx-bfee";'
-+'r.innerHTML=\'<span class="k">Bridge fee</span><span class="v">0.5%<span class="lx-bchip">0.25% with LUMOS</span></span>\';list.appendChild(r);done=true;}'
++'r.innerHTML=\'<span class="k">Bridge fee</span><span class="v">0.2%<span class="lx-bchip">0.1% with LUMOS</span></span>\';list.appendChild(r);done=true;}'
 // 2) lumos note in review
 +'var rv=document.querySelector(\'.br-step[data-step="3"] .br-rv\')||document.querySelector(".br-rv");'
 +'if(rv&&!rv.querySelector(".lx-brlumos")){var n=document.createElement("div");n.className="lx-brlumos";'
 +'n.innerHTML=\'<span class="lx-brlumos-ic"><img src="assets/favicon.png" alt="LUMOS"></span>\''
-+'+\'<div class="lx-brlumos-main"><div class="lx-brlumos-t">Hold <b>250,000 LUMOS</b> to bridge at <b>0.25%</b> instead of 0.5%</div>\''
++'+\'<div class="lx-brlumos-main"><div class="lx-brlumos-t">Hold <b>250,000 LUMOS</b> to bridge at <b>0.1%</b> instead of 0.2%</div>\''
 +'+\'<div class="lx-brlumos-s">You hold <b>48,240</b> / 250,000 LUMOS</div></div>\''
 +'+\'<button class="lx-brlumos-buy" type="button">Buy LUMOS</button>\';rv.appendChild(n);done=true;}'
 // 3) HIW fee step
 +'var body=document.querySelector(".modal-hiw .modal-body");'
 +'if(body&&!body.querySelector(".lx-hiwfee")){var steps=body.querySelectorAll(".hiw-step");var num=steps.length+1;var ns=num<10?"0"+num:""+num;'
 +'var st=document.createElement("div");st.className="hiw-step lx-hiwfee";'
-+'st.innerHTML=\'<div class="hiw-num">\'+ns+\'</div><div class="hiw-text"><div class="hiw-h">Low, transparent fees</div><div class="hiw-d">Bridging costs <b>0.5%</b> per transfer \\u2014 or just <b>0.25%</b> if you hold <b>250,000 LUMOS</b>.</div></div>\';body.appendChild(st);done=true;}'
++'st.innerHTML=\'<div class="hiw-num">\'+ns+\'</div><div class="hiw-text"><div class="hiw-h">Low, transparent fees</div><div class="hiw-d">Bridging costs <b>0.2%</b> per transfer \\u2014 or just <b>0.1%</b> if you hold <b>250,000 LUMOS</b>.</div></div>\';body.appendChild(st);done=true;}'
 +'return done;}'
 +'document.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest(".lx-brlumos-buy"):null;if(!b)return;e.preventDefault();if(window.__lxNav)__lxNav(URL);else location.href=URL;},true);'
 +'function run(){var n=0,iv=setInterval(function(){boot();if(++n>30)clearInterval(iv);},220);}'   // keep trying (review step + HIW render lazily)
