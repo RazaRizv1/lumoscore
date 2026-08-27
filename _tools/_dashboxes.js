@@ -39,9 +39,11 @@ const STYLE = '<style id="lx-dashboxes-css">'
   // A row now: the product's graphic on the left, everything else stacked beside it.
   + '.lx-dbx-card{background:var(--surface,#fff);border:1px solid var(--border,#ececef);border-radius:14px;'
   + 'padding:15px 16px;min-width:0;display:flex;flex-direction:row;align-items:flex-start;gap:14px}'
-  // The graphic. currentColor is set from --pc on the card, so one SVG serves every product and both
-  // themes; the tile behind the motif is the same colour at low alpha rather than a second value.
-  + '.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;color:var(--pc,var(--accent,#ea6a2c));filter:drop-shadow(0 4px 10px rgba(0,0,0,.34))}'
+  // The graphic: supplied artwork, one opaque PNG per product. The corners are rounded here rather
+  // than in the file so they track the card's own radius, and the lift is a box-shadow -- drop-shadow
+  // follows the alpha channel, and these have none, so it would draw a rectangle around the tile.
+  + '.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;border-radius:14px;object-fit:cover;'
+  + 'box-shadow:0 4px 10px rgba(0,0,0,.28)}'
   + '@media(max-width:520px){.lx-dbx-art{width:46px;height:46px;flex:0 0 46px}}'
   + '.lx-dbx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:9px}'
   + '.lx-dbx-head{display:flex;align-items:center;gap:8px;min-width:0}'
@@ -92,59 +94,17 @@ const STYLE = '<style id="lx-dashboxes-css">'
 
 const IC_GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
-// Each tile is one inline SVG: a rounded plate of the product colour at low alpha, a motif that says
-// what the product does, and nothing that needs a file or a second palette. currentColor throughout,
-// so the card sets the colour once via --pc and both themes follow.
-var _tileSeq = 0;
-function tile(inner) {
-  // Unique per call: four of these live in one document and a repeated id makes every later tile paint
-  // with the first one's gradient.
-  var n = ++_tileSeq, gp = 'lxgw' + n, gl = 'lxgl' + n, gd = 'lxgd' + n;
-  return '<svg class="lx-dbx-art" viewBox="0 0 56 56" fill="none" aria-hidden="true">'
-    + '<defs>'
-    + '<linearGradient id="' + gp + '" x1="0" y1="0" x2=".85" y2="1">'
-    + '<stop offset="0" stop-color="currentColor" stop-opacity="1"/>'
-    + '<stop offset="1" style="stop-color:var(--pc2,currentColor)" stop-opacity="1"/></linearGradient>'
-    + '<radialGradient id="' + gl + '" cx=".5" cy=".42" r=".62">'
-    + '<stop offset="0" stop-color="#fff" stop-opacity=".26"/>'
-    + '<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
-    // Depth: light lands on the top face and the bottom falls away. Without this the chip is a flat
-    // swatch — the colour was the fix, this is what makes it read as an object.
-    + '<linearGradient id="' + gd + '" x1="0" y1="0" x2="0" y2="1">'
-    + '<stop offset="0" stop-color="#fff" stop-opacity=".20"/>'
-    + '<stop offset=".46" stop-color="#fff" stop-opacity="0"/>'
-    + '<stop offset=".62" stop-color="#000" stop-opacity="0"/>'
-    + '<stop offset="1" stop-color="#000" stop-opacity=".16"/></linearGradient>'
-    + '</defs>'
-    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gp + ')"/>'
-    // full-bleed, not inset 6px: an inset glow reads as a second smaller square sitting on the first
-    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gl + ')"/>'
-    + '<rect x="0" y="0" width="56" height="56" rx="16" fill="url(#' + gd + ')"/>'
-    + '<rect x=".8" y=".8" width="54.4" height="54.4" rx="15.4" fill="none" stroke="#fff" stroke-opacity=".22"/>'
-    // A brighter arc along the top edge. White at 14% rather than the product colour, because a highlight
-    // is light falling ON the tile, not more of the tile.
-    + '<path d="M4 16 A12 12 0 0 1 16 4 L40 4 A12 12 0 0 1 52 16" fill="none" stroke="#fff" stroke-opacity=".34" stroke-width="1.2"/>'
-    + '<g style="color:#fff">' + inner + '</g></svg>';
+// The four product marks are supplied artwork, cut from one sheet into assets/products/. They are
+// opaque PNGs with square corners, so the rounding is done in CSS (see .lx-dbx-art) rather than in
+// the file -- that keeps the corner radius matching the cards it sits on.
+// The build roots "assets/..." to "/assets/...", so the relative form here is correct.
+function art(name) {
+  return '<img class="lx-dbx-art" src="assets/products/' + name + '.png" alt="" aria-hidden="true" width="56" height="56" decoding="async">';
 }
-// Trade: a market going up, over its own volume bars.
-const ART_TRADE = tile('<g opacity=".30"><rect x="15" y="33" width="5" height="9" rx="2" fill="currentColor"/>'
-  + '<rect x="25" y="29" width="5" height="13" rx="2" fill="currentColor"/>'
-  + '<rect x="35" y="24" width="5" height="18" rx="2" fill="currentColor"/></g>'
-  + '<path d="M15 30 L24 22 L31 27 L42 15" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>'
-  + '<path d="M35 15 L42 15 L42 22" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>');
-// Pools: two reserves overlapping, which is what an AMM pair is, inside the ripple of the pool.
-const ART_POOLS = tile('<circle cx="28" cy="28" r="16" stroke="currentColor" stroke-width="1.6" opacity=".30"/>'
-  + '<circle cx="23" cy="28" r="9" fill="currentColor" opacity=".38"/>'
-  + '<circle cx="33" cy="28" r="9" fill="currentColor" opacity=".72"/>');
-// Cross-chain: two networks, and the hop between them.
-const ART_CHAIN = tile('<path d="M17 33 C17 19, 39 19, 39 33" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>'
-  + '<circle cx="17" cy="35" r="5.5" fill="currentColor"/>'
-  + '<circle cx="39" cy="35" r="5.5" fill="currentColor"/>'
-  + '<circle cx="28" cy="20" r="2.6" fill="currentColor" opacity=".55"/>');
-// Launchpad: a launch, with the trail it leaves.
-const ART_LAUNCH = tile('<path d="M19 37 L36 20" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>'
-  + '<path d="M29 20 L36 20 L36 27" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>'
-  + '<g opacity=".45" fill="currentColor"><circle cx="19" cy="41" r="2.2"/><circle cx="25" cy="43" r="1.5"/><circle cx="14" cy="44" r="1.2"/></g>');
+const ART_TRADE  = art('trade');
+const ART_POOLS  = art('pools');
+const ART_CHAIN  = art('crosschain');
+const ART_LAUNCH = art('launchpad');
 
 // pc = the product colour, applied once and inherited by the tile, the hover edge and the link.
 function card(href, art, title, stats, cta, pc, pc2) {
