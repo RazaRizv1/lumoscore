@@ -18,6 +18,7 @@
 /lumos                                    /lumoscore-lumos-token  200
 /signin                                   /lumoscore-signin  200
 /mcp                                      /lumoscore-mcp  200
+/blog/:slug                               /lumoscore-blog-post  200
 /blog                                     /lumoscore-blog  200
 
 # forgive capitalised entry points
