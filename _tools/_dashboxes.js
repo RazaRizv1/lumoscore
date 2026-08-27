@@ -41,7 +41,7 @@ const STYLE = '<style id="lx-dashboxes-css">'
   + 'padding:15px 16px;min-width:0;display:flex;flex-direction:row;align-items:flex-start;gap:14px}'
   // The graphic. currentColor is set from --pc on the card, so one SVG serves every product and both
   // themes; the tile behind the motif is the same colour at low alpha rather than a second value.
-  + '.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;color:var(--pc,var(--accent,#ea6a2c))}'
+  + '.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;color:var(--pc,var(--accent,#ea6a2c));filter:drop-shadow(0 4px 10px rgba(0,0,0,.34))}'
   + '@media(max-width:520px){.lx-dbx-art{width:46px;height:46px;flex:0 0 46px}}'
   + '.lx-dbx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:9px}'
   + '.lx-dbx-head{display:flex;align-items:center;gap:8px;min-width:0}'
@@ -104,7 +104,7 @@ function tile(inner) {
     + '<defs>'
     + '<linearGradient id="' + gp + '" x1="0" y1="0" x2=".85" y2="1">'
     + '<stop offset="0" stop-color="currentColor" stop-opacity="1"/>'
-    + '<stop offset="1" stop-color="currentColor" stop-opacity=".82"/></linearGradient>'
+    + '<stop offset="1" style="stop-color:var(--pc2,currentColor)" stop-opacity="1"/></linearGradient>'
     + '<radialGradient id="' + gl + '" cx=".5" cy=".42" r=".62">'
     + '<stop offset="0" stop-color="#fff" stop-opacity=".26"/>'
     + '<stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>'
@@ -147,8 +147,8 @@ const ART_LAUNCH = tile('<path d="M19 37 L36 20" stroke="currentColor" stroke-wi
   + '<g opacity=".45" fill="currentColor"><circle cx="19" cy="41" r="2.2"/><circle cx="25" cy="43" r="1.5"/><circle cx="14" cy="44" r="1.2"/></g>');
 
 // pc = the product colour, applied once and inherited by the tile, the hover edge and the link.
-function card(href, art, title, stats, cta, pc) {
-  return '<a class="lx-dbx-card" href="' + href + '" style="--pc:' + pc + '">'
+function card(href, art, title, stats, cta, pc, pc2) {
+  return '<a class="lx-dbx-card" href="' + href + '" style="--pc:' + pc + ';--pc2:' + (pc2 || pc) + '">'
     + art
     + '<div class="lx-dbx-body">'
     + '<div class="lx-dbx-head"><span class="lx-dbx-t">' + title + '</span>'
@@ -179,10 +179,10 @@ const QAFIRST = '<script id="lx-dashqafirst">(function(){'
   + '})();<' + '/script>';
 
 const ROW = '<div class="lx-dbx">'
-  + card('/trade/stellar', ART_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets', '#a855f7')
-  + card('/pools/stellar', ART_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools', '#38bdf8')
-  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['Asset', 'casset'], ['Via', 'cvia']], 'Bridge USDC', '#2dd4bf')
-  + card('/launchpad', ART_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']], 'Launch a token', '#f7b733')
+  + card('/trade/stellar', ART_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets', '#a855f7', '#6d28d9')
+  + card('/pools/stellar', ART_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools', '#38bdf8', '#2563eb')
+  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['Asset', 'casset'], ['Via', 'cvia']], 'Bridge USDC', '#2dd4bf', '#0d9488')
+  + card('/launchpad', ART_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']], 'Launch a token', '#f7b733', '#ea6a2c')
   + '</div>';
 
 const SCRIPT = '<script id="lx-dashboxes">(function(){'

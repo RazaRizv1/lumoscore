@@ -2335,12 +2335,15 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
    paints, so this only ever hides a letter that has been deliberately cleared. */
 .lx-wcico[data-l=""]::after{content:none}
 .lx-wcmain{flex:1 1 auto;min-width:0}
+.lx-wcname{font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:700;font-size:20.4px;line-height:1.25;
+  color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 /* #1: measured against this page's own holdings rows (.lxmw-row) and matched to them, rather than
    picked by eye. Those rows set the quantity in JetBrains Mono 14/800 at text colour, the unit beside
    it in the body face at 11.5/600 soft, and every secondary line at 11.5/600 soft. This list was mono
    15/800 for the whole string -- code included -- over a 12.5px sub, so it read as a heavier, wider,
    slightly larger version of a row sitting directly above it. Same numbers, same faces, same sizes. */
-.lx-wcamt{display:flex;align-items:baseline;gap:6.6px;min-width:0}
+.lx-wcamt{display:flex;align-items:baseline;gap:6.6px;min-width:0;margin-left:auto;
+  justify-content:flex-end;white-space:nowrap;flex:0 0 auto}
 /* Sizes taken off the My Assets table on this same page rather than chosen: its figures are JetBrains
    Mono 17.5px/600, its change chip 12px/800, its asset name the body face at 17.5px. The previous pass
    matched the PHONE list (14/800), which left this looking like a smaller, heavier version of the table
@@ -9018,13 +9021,14 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       return '<div class="lx-wcrow'+(ok?"":" locked")+'" data-cb="'+esc(r.id)+'"'
         +' data-code="'+esc(a.code)+'" data-iss="'+esc(a.issuer)+'" data-nat="'+(a.native?"1":"0")+'">'
         +_ic
-        +'<div class="lx-wcmain"><div class="lx-wcamt"><span class="a">'+amt(r.amount)+'</span><span class="u">'+esc(a.code)+'</span></div>'
+        +'<div class="lx-wcmain"><div class="lx-wcname">'+esc(a.code)+'</div>'
         +'<div class="lx-wcsub">'+(sub||"claimable balance")+'</div>'
         // #3: same provenance line as the open orders -- the issuer's home domain, resolved after the
         // row is on screen by the shared lxFillHd, plus a way through to the asset's own page. A code
         // on its own says nothing about who issued it.
         +meta(a)
         +'</div>'
+        +'<div class="lx-wcamt"><span class="a">'+amt(r.amount)+'</span><span class="u">'+esc(a.code)+'</span></div>'
         +(ok?'<button class="lx-wcbtn" type="button"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 10l5 5 5-5"></path><path d="M4 21h16"></path></svg>Claim</button>'
             :'<button class="lx-wcbtn" type="button" disabled title="This balance is not claimable yet">Locked</button>')
         +'</div>';
