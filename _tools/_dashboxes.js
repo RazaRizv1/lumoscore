@@ -45,14 +45,9 @@ const STYLE = '<style id="lx-dashboxes-css">/*lxts:1.1*/'
   + '.lx-dbx-art{width:56px;height:56px;flex:0 0 56px;display:block;border-radius:14px;object-fit:cover;'
   + 'box-shadow:0 4px 10px rgba(0,0,0,.28)}'
   + '@media(max-width:520px){.lx-dbx-art{width:46px;height:46px;flex:0 0 46px}}'
-  // The large treatment is a WIDE-screen one: the mark fills the card height, flush to its left edge.
-  // Applied only where the card can spare the width -- below this the three figures start ellipsising,
-  // which is what a big mark costs on a narrow card, and the figures are the point of the card.
-  + '@media(min-width:1000px){'
-  + '.lx-dbx-card{padding:0;align-items:stretch;gap:0}'
-  + '.lx-dbx-art{width:172px;flex:0 0 172px;align-self:stretch;height:auto;border-radius:0;box-shadow:none}'
-  + '.lx-dbx-body{padding:14px 15px}'
-  + '}'
+  // Bigger on a wide screen, where the card can spare it. Still a square in the padded layout: the
+  // full-height version read as a panel rather than a mark, and it is the figures that carry the card.
+  + '@media(min-width:1000px){.lx-dbx-art{width:100px;height:100px;flex:0 0 100px;border-radius:18px}}'
   + '.lx-dbx-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:9px}'
   + '.lx-dbx-head{display:flex;align-items:center;gap:8px;min-width:0}'
   + '.lx-dbx-t{font:800 15px/1.1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
