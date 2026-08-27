@@ -699,7 +699,22 @@ function lxBrRenderDest(){
   // note: do NOT touch the input placeholder — the finalized design animates/owns it; overriding here caused flicker.
 }
 
-function lxBrMoney(side, usd){ var el=side&&side.querySelector('.br-amt .usd .lc-money'); if(!el)return; var s="$"+lxBrFmt(usd,2); el.setAttribute('data-usd',String(Math.round(usd*100)/100)); el.setAttribute('data-orig',s); el.textContent=s; }
+// The .usd line has no .lc-money child in this markup -- measured: ".br-amt .usd .lc-money" matches
+// ZERO elements on the page. So this returned early on every call and BOTH dollar figures kept the
+// design's mock "~ $100.00" / "~ $92.00" for the life of the session, whatever was actually typed.
+// It reads as a USDC-only bug because the mock happens to look like a plausible USDC bridge; with XLM
+// selected it says $100.00 over 10 XLM, which is off by ~54x. On a screen that moves real money the
+// dollar figure is the number people sanity-check against, so this is the whole bug.
+// Write the money element when there is one, and the .usd line itself when there is not.
+function lxBrMoney(side, usd){
+  if(!side)return;
+  var s="$"+lxBrFmt(usd,2), v=String(Math.round(usd*100)/100);
+  var el=side.querySelector('.br-amt .usd .lc-money');
+  if(el){ el.setAttribute('data-usd',v); el.setAttribute('data-orig',s); el.textContent=s; return; }
+  var u=side.querySelector('.br-amt .usd')||side.querySelector('.usd');
+  if(!u)return;
+  u.setAttribute('data-usd',v); u.setAttribute('data-orig',"~ "+s); u.textContent="~ "+s;   // design format
+}
 // Load LIVE market prices (CoinGecko) into the px table so the $ / USDC estimates are real, not hardcoded.
 // Falls back silently to the built-in px values if the request fails.
 var __lxPxLoaded=false;
@@ -707,10 +722,19 @@ function lxCctpLoadPrices(){
   if(__lxPxLoaded)return; __lxPxLoaded=true;
   var CG={stellar:["XLM","yXLM"],"usd-coin":["USDC"],"stronghold-token":["SHX"],blend:["BLND"],aquarius:["AQUA"]};
   var ids=Object.keys(CG).join(",");
+  // XLM comes from our own cached, Horizon-backed edge route FIRST -- the same source the wallet and
+  // the Trade pages use. CoinGecko is one third-party request away from rate-limiting us, and when it
+  // fails this table falls back to a baked px of 0.12 against a real ~0.18: a third off, on the dollar
+  // figure beside a bridge amount. This route is ours and cached, so it does not have that failure mode.
+  fetch("/lxapi/xlm").then(function(r){return r.ok?r.json():null;}).then(function(x){
+    var u=x&&+x.usd; if(u>0){ window.__lxXlmUsd=u; if(LX_ASSETS.XLM)LX_ASSETS.XLM.px=u; try{ lxBrCalc(); }catch(_){} }
+  }).catch(function(){});
   fetch("https://api.coingecko.com/api/v3/simple/price?ids="+ids+"&vs_currencies=usd").then(function(r){return r.json();}).then(function(j){
     if(!j)throw new Error("no price data");
-    var xlm=j.stellar&&j.stellar.usd; if(xlm>0) window.__lxXlmUsd=xlm;
-    Object.keys(CG).forEach(function(id){ var p=j[id]&&j[id].usd; if(p>0){ CG[id].forEach(function(k){ if(LX_ASSETS[k]) LX_ASSETS[k].px=p; }); } });
+    var xlm=j.stellar&&j.stellar.usd; if(xlm>0&&!(window.__lxXlmUsd>0)) window.__lxXlmUsd=xlm;   // the edge route wins
+    Object.keys(CG).forEach(function(id){ var p=j[id]&&j[id].usd; if(p>0){ CG[id].forEach(function(k){
+      if(k==="XLM"&&window.__lxXlmUsd>0)return;                                                  // ditto
+      if(LX_ASSETS[k]) LX_ASSETS[k].px=p; }); } });
     try{ lxBrCalc(); }catch(_){}
   }).catch(function(){ __lxPxLoaded=false; });
 }
