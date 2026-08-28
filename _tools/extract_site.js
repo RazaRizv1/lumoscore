@@ -726,9 +726,16 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
       fs.mkdirSync(path.dirname(dst), { recursive: true });
       fs.cpSync(src, dst, { recursive: true });
     }
-    // no Functions needed on the admin origin; this keeps them from running on every request
+    // Functions run ONLY on /lxapi/*; every other path serves a static file and costs nothing.
+    //
+    // ⚠ NO "exclude" HERE. In Cloudflare Pages, exclude ALWAYS takes priority over include, so the
+    // previous {include:['/lxapi/*'], exclude:['/*']} cancelled itself out and no Function ever ran on
+    // the admin origin -- every /lxapi/ call 404'd. That is why the holder count and the connected-
+    // wallet figures came back empty on the deployed admin panel while working everywhere else.
+    // Paths outside `include` already fall through to static assets; excluding them as well is not
+    // "extra safety", it is the off switch.
     fs.writeFileSync(path.join(outDir, '_routes.json'),
-      JSON.stringify({ version: 1, include: ['/lxapi/*'], exclude: ['/*'] }, null, 2) + '\n', 'utf8');
+      JSON.stringify({ version: 1, include: ['/lxapi/*'], exclude: [] }, null, 2) + '\n', 'utf8');
   }
 
   fs.writeFileSync(path.join(outDir, '_headers'), headersFile(adminOnly), 'utf8');
