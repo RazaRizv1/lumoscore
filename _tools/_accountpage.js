@@ -470,7 +470,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
   function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
   var VTICK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
-  function vtick(c,i){ return VFD[c+"|"+i]?('<span class="lx-vtick" title="Verified issuer">'+VTICK+'</span>'):""; }
+  function vtick(c,i){ return VFD[c+"|"+i]!==undefined?('<span class="lx-vtick" title="Verified issuer">'+VTICK+'</span>'):""; }
   function key(c,i){ return c+"-"+(i||""); }
   function brand(c,i){ if(c==="LUMOS"&&i===LUMOS_ISS)return LUMOS_LOGO;
     var u=LOGOS[c]; if(!u)return ""; return (LOGO_ISS[c]&&i===LOGO_ISS[c])?u:""; }

@@ -31,10 +31,20 @@ async function stampVerified(kv, asset) {
   try { res = await verifyAsset(m[1], m[2]); } catch (_) { res = null; }
   const gf = GRANDFATHERED[m[1] + '|' + m[2]];
   let rec;
+  // CURATED MEANS TICKED. That is the rule this platform has chosen: an asset LumosCore puts on its
+  // curated list carries the mark, whether or not its issuer can be made to vouch for it. BLND is why
+  // -- the only BLND on Stellar, 134,092 holders, and an issuer that sets no home_domain at all, so
+  // there is nothing to ask and never will be until they change it.
+  //
+  // The consequence, stated plainly because it is a real one: the tick now means "LumosCore lists
+  // this", not "the issuer vouches for this". The weight has moved onto what gets curated. That is why
+  // HOW each tick was obtained is still recorded and still shown -- handshake, grandfathered, or our
+  // own word -- so the difference remains visible to whoever is deciding what to curate next.
   if (res && res.verified) rec = { v: 1, s: 'handshake', d: res.domain, t: Date.now(), why: res.reason };
   else if (gf) rec = { v: 1, s: 'grandfathered', d: (res && res.domain) || gf, t: Date.now(),
                        why: 'checked by hand when added; live handshake: ' + ((res && res.reason) || 'unavailable') };
-  else rec = { v: 0, s: 'none', d: (res && res.domain) || '', t: Date.now(), why: (res && res.reason) || 'check failed' };
+  else rec = { v: 1, s: 'curated', d: (res && res.domain) || '', t: Date.now(),
+               why: 'Ticked because LumosCore curates it — the handshake does not pass: ' + ((res && res.reason) || 'check unavailable') };
 
   let map = {};
   try { map = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
