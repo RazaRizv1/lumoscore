@@ -890,6 +890,7 @@ function editAsset(k){
   m.innerHTML="<div class='lxmodal-box' style='max-width:560px'><h3 class='lxmodal-t'>Edit "+esc(code)+"</h3>"
     +"<p class='lxmodal-s'>What the public asset page shows. Prefilled from the issuer's own stellar.toml where we have no override of our own — change a field and ours is used instead.</p>"
     +"<p class='lxmodal-s' id='lxeSrc' style='opacity:.75'>Checking the issuer’s domain…</p>"
+    +"<button class='adm-btn ghost' type='button' id='lxeVouch' style='display:none;margin:0 0 10px'></button>"
     +row("lxeName","Display name","optional")
     +row("lxeDesc","Description","shown under the asset name","area")
     +row("lxeImg","Logo","paste a URL, or upload a file")
@@ -977,7 +978,32 @@ function editAsset(k){
       else if(!t.name&&!t.description&&!t.image) src.textContent="No usable stellar.toml at "+vr.domain+" — nothing to prefill. Whatever you enter here is what the asset page will show.";
       else src.textContent=(vr.verified?"Verified · ":"Not verified · ")+"prefilled from "+vr.domain+"’s stellar.toml. Edited fields override it.";
     }
+    paintVouch(vr);
   });
+
+  // Granting a tick the handshake could not. Offered only where it is actually needed, and the wording
+  // is the point: the reader of the public site cannot tell an earned tick from a granted one, so the
+  // person granting it should be told exactly what they are asserting.
+  function paintVouch(vr){
+    var b=m.querySelector("#lxeVouch"); if(!b)return;
+    var VERx=window.__lxVER||{}; var rec=VERx[k]||null;
+    var granted=rec&&rec.v&&rec.s==="manual";
+    if(vr&&vr.verified&&!granted){ b.style.display="none"; return; }   // earned it; nothing to grant
+    b.style.display="";
+    b.textContent=granted?"Withdraw the tick":"Vouch for this asset";
+    b.onclick=function(){
+      if(!granted&&!confirm("Vouch for "+code+"?\\n\\nIts issuer does not vouch for it, so this tick is your word rather than a verified fact. It looks identical to an earned tick to everyone on the public site.\\n\\nOnly do this for an asset you have confirmed some other way."))return;
+      b.disabled=true; b.textContent=granted?"Withdrawing…":"Vouching…";
+      fetch("/lxapi/assetmeta",{method:"PUT",headers:{"content-type":"application/json"},
+        body:JSON.stringify({asset:k,override:!granted})})
+        .then(function(r){ return r.json().then(function(x){ return {ok:r.ok,b:x}; }); })
+        .then(function(z){ b.disabled=false;
+          if(!z.ok){ er.textContent=(z.b&&z.b.error)||"Could not change that."; paintVouch(vr); return; }
+          if(z.b&&z.b.verified)VERx[k]=z.b.verified; else delete VERx[k];
+          paintVouch(vr); if(window.__lxRefresh)window.__lxRefresh();
+        }).catch(function(e){ b.disabled=false; er.textContent=e.message; });
+    };
+  }
 
   // Upload goes to our own media store and comes back as a relative /lxapi/media URL, so the same
   // record works on staging and production.
@@ -1175,6 +1201,7 @@ function paintAssets(){
     else { CUR=aList(); ASRV=false; }
     MINTS=((d&&d.mints)||[]).map(parse);
     PAINTED=true; tabs(); render(); kpis(); rows().forEach(load);
+    window.__lxVER=VER; window.__lxRefresh=function(){ try{ render(); kpis(); }catch(_){} };
     loadLxVol();
   }).catch(function(){ CUR=aList(); first(); });
 

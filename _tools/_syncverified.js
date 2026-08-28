@@ -87,7 +87,8 @@ function colourFor(code) {
     // Re-run the handshake rather than trusting the stored stamp: this writes into the file that
     // decides who wears a tick on a live site, and the stamp could be months old.
     const live = await verifyAsset(code, issuer);
-    if (!live.verified && rec.s !== 'grandfathered') { skipped.push(code + ' (' + live.reason + ')'); continue; }
+    // A granted tick counts here too, or the override would work in the panel and nowhere else.
+    if (!live.verified && rec.s !== 'grandfathered' && rec.s !== 'manual') { skipped.push(code + ' (' + live.reason + ')'); continue; }
 
     verified[key] = live.domain || rec.d || '';
 
