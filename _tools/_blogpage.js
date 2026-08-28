@@ -9,7 +9,9 @@
 // THE POSTS ARE PLACEHOLDERS AND THE PAGE SAYS SO, for the same reason the dashboard card does: there is
 // no blog to read yet. Neutral subjects, no invented announcements. The index cards DO open the article
 // page -- the dashboard card stays unclickable, where a placeholder beside live figures would read as
-// real. When the feed exists, replace POSTS and drop the "Coming soon" tag; the markup does not change.
+// real. When the feed exists, replace POSTS and drop the lede's last sentence; the markup does not change.
+// (The "Coming soon" tag next to the heading was removed on request -- the lede still says the cards are
+// placeholders, which is what keeps the page honest while there is nothing behind them.)
 //
 // Idempotent: the page key is rebuilt from the donor on every run, so re-running cannot layer this on
 // top of a previous copy of itself.
@@ -34,10 +36,10 @@ const STYLE = '<style id="lx-blogpage-css">/*lxts:1.1*/'
   + '.lx-bp-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:0 0 10px}'
   + '.lx-bp-head h1{margin:0;font:800 32px/1.15 "Hanken Grotesk",system-ui,sans-serif;'
   + 'color:var(--text,#0e0e10);letter-spacing:-.02em}'
-  + '.lx-bp-soon{font:700 10px/1 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;'
-  + 'letter-spacing:.06em;color:var(--text-muted,#8a8fa3);border:1px solid var(--border,#ececef);'
-  + 'border-radius:999px;padding:5px 9px;white-space:nowrap}'
-  + '.lx-bp-lede{margin:0 0 26px;max-width:62ch;'
+  // No max-width: the lede runs the full width of the card grid below it rather than stopping at a
+  // reading measure halfway across. It is a two-sentence page intro, not body copy, so the long line
+  // costs nothing -- the same cap on the ARTICLE page is doing real work and stays.
+  + '.lx-bp-lede{margin:0 0 26px;'
   + 'font:400 16px/1.6 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}'
   // Three across with room to breathe, down to one on a phone. auto-fit so it reflows rather than
   // overflowing at any width in between.
@@ -67,7 +69,7 @@ function esc(s) {
 }
 
 const MAIN = '<div class="container">'
-  + '<div class="lx-bp-head"><h1>Blog</h1><span class="lx-bp-soon">Coming soon</span></div>'
+  + '<div class="lx-bp-head"><h1>Blog</h1></div>'
   + '<p class="lx-bp-lede">Guides and explainers on trading, pools, bridging and issuing assets on '
   + 'Stellar. The first posts are being written — the cards below are placeholders for their layout.</p>'
   + '<div class="lx-bp-grid">'
