@@ -852,7 +852,10 @@ function paintUsers(){
 +'  return ASEED.map(function(t){ return {code:t[0],iss:t[1]}; }); }'
 // The list lives in KV now, not in this browser, so it is the same list for everyone and the public
 // site can read it. localStorage is kept only as an instant-paint cache for the next page load.
++'var ASRV=false;'
 +'function aSave(l){ try{ localStorage.setItem(AKEY,JSON.stringify(l)); }catch(_){}'
++'  if(!ASRV){ return Promise.resolve(null); }'
+
 +'  var names=l.map(function(a){ return a.code+"-"+a.iss; });'
 +'  return fetch("/lxapi/assetmeta",{method:"PUT",headers:{"content-type":"application/json"},'
 +'    body:JSON.stringify({list:names})}).then(function(r){ return r.json(); })'
@@ -1138,8 +1141,8 @@ function paintAssets(){
   j("/lxapi/assetmeta").then(function(d){
     VER=(d&&d.verified)||{};
     var names=(d&&d.list)||[];
-    if(names.length){ CUR=names.map(parse); try{ localStorage.setItem(AKEY,JSON.stringify(CUR)); }catch(_){} }
-    else CUR=aList();
+    if(names.length){ CUR=names.map(parse); ASRV=true; try{ localStorage.setItem(AKEY,JSON.stringify(CUR)); }catch(_){} }
+    else { CUR=aList(); ASRV=false; }
     MINTS=((d&&d.mints)||[]).map(parse);
     PAINTED=true; tabs(); render(); kpis(); rows().forEach(load);
     loadLxVol();
@@ -1205,6 +1208,7 @@ function paintAssets(){
               if(!z.ok){ er.textContent=(z.b&&(z.b.error||z.b.message))||"Could not add."; return; }
               if(z.b&&z.b.verified)VER[kk]=z.b.verified;
               CUR.push({code:code,iss:iss}); DATA[kk]=undefined;
+              try{ localStorage.setItem(AKEY,JSON.stringify(CUR)); }catch(_){}
               MODE="curated"; close(); tabs(); render(); kpis(); load({code:code,iss:iss});
               editAsset(kk); })
             .catch(function(e){ ok.disabled=false; ok.textContent="Verify & add"; er.textContent=e.message; });

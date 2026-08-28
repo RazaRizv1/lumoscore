@@ -104,7 +104,13 @@ export async function onRequestGet({ request, env }) {
   let mints = [];
   try { mints = (await kv.get(MINTS, 'json')) || []; } catch (_) {}
   // `list` stays an array of plain ids so existing callers keep working; the rest rides alongside.
-  return json({ list, mints, verified }, 200, 60);
+  //
+  // NEVER CACHED, and this is the bug that ate an asset. The admin panel reads this list and can then
+  // write the whole thing back (reorder, remove). Cached for 60s, a reload straight after an addition
+  // returned the list WITHOUT it -- and the next save wrote that stale copy back, deleting the asset
+  // from KV for good. The verification record survived under its own key, which is how it was traced.
+  // A read that can be written back must never be stale.
+  return json({ list, mints, verified }, 200, 0);
 }
 
 export async function onRequestPut({ request, env }) {
