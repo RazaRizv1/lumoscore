@@ -65,6 +65,15 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-html{width:100%;min-height:280px;max-height:60vh;border:1px solid var(--border);border-radius:10px;background:#fff}
 .lxm-acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
 .lxm-note{margin-top:14px;font-size:12.5px;color:var(--text-muted)}
+.lxm-thread{margin-top:16px}
+.lxm-sent{margin-top:10px;padding:12px 14px;border-radius:10px;background:rgba(234,106,44,.07);border:1px solid rgba(234,106,44,.18)}
+.lxm-sent-h{font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--accent,#ea6a2c);margin-bottom:7px}
+.lxm-sent-b{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.65;color:var(--text-soft,#6b6b76)}
+.lxm-reply{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+.lxm-ta{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);color:var(--text);font:400 14.5px/1.65 "Hanken Grotesk",system-ui,sans-serif;resize:vertical}
+.lxm-ta:focus{outline:2px solid var(--accent,#ea6a2c);outline-offset:1px;border-color:transparent}
+.lxm-reply-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;flex-wrap:wrap}
+.lxm-reply-hint{font-size:12.5px;color:var(--text-muted)}
 </style>`;
 
 const SCRIPT = '<script id="lx-adminsupport">' + `(function(){
@@ -162,6 +171,34 @@ function open(id){
       +"<div class='lxm-read-meta'>From <b>"+esc(m.from_name||"")+"</b> &lt;<a href='mailto:"+esc(m.from_addr)+"'>"+esc(m.from_addr)+"</a>&gt;<br>"
       +"To "+esc(m.to_addr)+" \\u00b7 "+esc(new Date(m.ts).toLocaleString())+"</div></div>";
     pane.appendChild(body);
+    // Replies already sent, so the pane shows the whole thread and not just the inbound half.
+    var thread=document.createElement("div"); thread.className="lxm-thread"; pane.appendChild(thread);
+    fetch("/lxapi/reply?id="+encodeURIComponent(m.id)+"&t="+Date.now()).then(function(r){ return r.json(); })
+      .then(function(d){ var rs=(d&&d.replies)||[]; if(!rs.length)return;
+        thread.innerHTML=rs.map(function(x){
+          return "<div class='lxm-sent'><div class='lxm-sent-h'>You replied · "+esc(new Date(x.ts).toLocaleString())
+            +(x.err?" · <b>failed</b>":"")+"</div><div class='lxm-sent-b'></div></div>"; }).join("");
+        [].slice.call(thread.querySelectorAll(".lxm-sent-b")).forEach(function(el,i){ el.textContent=rs[i].body; });
+      });
+    // The reply box. It sends to the address on the STORED message, never to anything typed here.
+    var box=document.createElement("div"); box.className="lxm-reply";
+    box.innerHTML="<textarea class='lxm-ta' id='lxmReply' rows='5' placeholder='Write your reply…'></textarea>"
+      +"<div class='lxm-reply-bar'><span class='lxm-reply-hint' id='lxmReplyHint'>Sends to "+esc(m.from_addr)+" · replies come back to support@lumoscore.com</span>"
+      +"<button class='adm-btn primary' type='button' id='lxmSend'>Send reply</button></div>";
+    pane.appendChild(box);
+    box.querySelector("#lxmSend").addEventListener("click",function(){
+      var ta=box.querySelector("#lxmReply"), btn=box.querySelector("#lxmSend"), hint=box.querySelector("#lxmReplyHint");
+      var text=(ta.value||"").trim();
+      if(!text){ hint.textContent="Write something first."; return; }
+      btn.disabled=true; btn.textContent="Sending…";
+      fetch("/lxapi/reply",{method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({id:m.id,body:text})})
+        .then(function(r){ return r.json(); })
+        .then(function(d){ btn.disabled=false; btn.textContent="Send reply";
+          if(!d||d.error){ hint.textContent="Not sent: "+((d&&(d.message||d.error))||"unknown error"); return; }
+          ta.value=""; hint.textContent="Sent to "+d.to+"."; open(m.id); })
+        .catch(function(e){ btn.disabled=false; btn.textContent="Send reply"; hint.textContent="Not sent: "+e.message; });
+    });
     var acts=document.createElement("div"); acts.className="lxm-acts";
     acts.innerHTML="<a class='adm-btn primary' href='mailto:"+esc(m.from_addr)
       +"?subject="+encodeURIComponent("Re: "+(m.subject||""))+"'>Reply in mail client</a>"
