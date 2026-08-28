@@ -9,10 +9,38 @@
 // Writes go through requireAdmin() -- see the note in blog.js about functions/ being shared with the
 // PUBLIC projects, where there is no Access in front of anything.
 import { requireAdmin } from '../../_lib/adminauth.js';
+import { verifyAsset } from '../../_lib/stellartoml.js';
+import { GRANDFATHERED } from '../../_lib/verifiedseed.js';
 
 const LIST = 'assets:list';
 const META = 'asset:';
+// Verification state for the whole list in one key. It is DERIVED data -- re-running the handshake
+// rebuilds it -- so keeping it beside the list rather than inside each record costs one read to paint
+// the table instead of one per asset.
+const VMAP = 'assets:verified';
 const ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
+const SPLIT_RE = /^([A-Za-z0-9]{1,12})-(G[A-Z2-7]{55})$/;
+
+// The tick is stamped HERE, by the server, from the asset's own issuer and domain. A client can ask
+// for an asset to be listed; it cannot tell us the asset is verified.
+async function stampVerified(kv, asset) {
+  const m = SPLIT_RE.exec(asset);
+  if (!m) return null;
+  let res;
+  try { res = await verifyAsset(m[1], m[2]); } catch (_) { res = null; }
+  const gf = GRANDFATHERED[m[1] + '|' + m[2]];
+  let rec;
+  if (res && res.verified) rec = { v: 1, s: 'handshake', d: res.domain, t: Date.now(), why: res.reason };
+  else if (gf) rec = { v: 1, s: 'grandfathered', d: (res && res.domain) || gf, t: Date.now(),
+                       why: 'checked by hand when added; live handshake: ' + ((res && res.reason) || 'unavailable') };
+  else rec = { v: 0, s: 'none', d: (res && res.domain) || '', t: Date.now(), why: (res && res.reason) || 'check failed' };
+
+  let map = {};
+  try { map = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
+  map[asset] = rec;
+  try { await kv.put(VMAP, JSON.stringify(map)); } catch (_) {}
+  return { rec, toml: (res && res.toml) || null };
+}
 
 function json(body, status, ttl) {
   return new Response(JSON.stringify(body), {
@@ -28,10 +56,16 @@ function json(body, status, ttl) {
 function clean(s, max) { return String(s == null ? '' : s).trim().slice(0, max); }
 
 // Only http(s). A javascript: or data: URL stored here would end up in an href on the public asset page.
+//
+// Our own uploaded images are the one relative form allowed: an admin who uploads a logo gets back
+// "/lxapi/media?id=<hash>.png", which is deliberately relative so the same record works on staging and
+// production. Matched narrowly -- a fixed prefix and a hash-shaped id -- rather than by "starts with /",
+// which would let any same-origin path through.
 function safeUrl(s) {
   const v = clean(s, 400);
   if (!v) return '';
   const lc = v.toLowerCase();
+  if (/^\/lxapi\/media\?id=[0-9a-f]{32}\.(png|jpg|jpeg|webp|gif|avif)$/.test(lc)) return v;
   return (lc.indexOf('https://') === 0 || lc.indexOf('http://') === 0) ? v : '';
 }
 
@@ -61,7 +95,10 @@ export async function onRequestGet({ request, env }) {
   }
   let list = [];
   try { list = (await kv.get(LIST, 'json')) || []; } catch (_) {}
-  return json({ list }, 200, 60);
+  let verified = {};
+  try { verified = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
+  // `list` stays an array of plain ids so existing callers keep working; the tick state rides alongside.
+  return json({ list, verified }, 200, 60);
 }
 
 export async function onRequestPut({ request, env }) {
@@ -82,6 +119,19 @@ export async function onRequestPut({ request, env }) {
     return json({ ok: true, list }, 200, 0);
   }
 
+  // Bulk re-verification, deliberately CHUNKED. Each handshake costs a Horizon call plus a toml fetch
+  // plus a possible retry, against a 50-subrequest ceiling per request -- so 8 at a time, and the
+  // caller loops. Doing all 55 in one call would blow the limit and fail the whole batch.
+  if (Array.isArray(b && b.verify)) {
+    const want = b.verify.map((x) => clean(x, 80)).filter((x) => ASSET_RE.test(x)).slice(0, 8);
+    const out = {};
+    for (const a of want) {
+      const r = await stampVerified(kv, a);
+      if (r) out[a] = r.rec;
+    }
+    return json({ ok: true, verified: out, done: want.length }, 200, 0);
+  }
+
   const asset = clean(b && b.asset, 80);
   if (!ASSET_RE.test(asset)) {
     return json({ error: 'asset must be CODE-GISSUER, e.g. USDC-GA5ZSEJY…' }, 400, 0);
@@ -91,7 +141,13 @@ export async function onRequestPut({ request, env }) {
   // round trip and an edit can never land on an asset that is not listed.
   let list = [];
   try { list = (await kv.get(LIST, 'json')) || []; } catch (_) {}
-  if (list.indexOf(asset) < 0) list = [asset].concat(list);
+  const isNew = list.indexOf(asset) < 0;
+  if (isNew) list = [asset].concat(list);
+
+  // Listing an asset verifies it in the same call, so the tick is never a separate step the admin has
+  // to remember -- and never a claim the client got to make.
+  let stamp = null;
+  if (isNew || b.reverify) { stamp = await stampVerified(kv, asset); }
 
   const hasMeta = b.description != null || b.image != null || b.website != null
     || b.twitter != null || b.telegram != null || b.discord != null || b.name != null;
@@ -113,10 +169,10 @@ export async function onRequestPut({ request, env }) {
     };
     await kv.put(META + asset, JSON.stringify(meta));
     await kv.put(LIST, JSON.stringify(list));
-    return json({ ok: true, asset, meta }, 200, 0);
+    return json({ ok: true, asset, meta, verified: stamp && stamp.rec, toml: stamp && stamp.toml }, 200, 0);
   }
   await kv.put(LIST, JSON.stringify(list));
-  return json({ ok: true, asset, meta: null }, 200, 0);
+  return json({ ok: true, asset, meta: null, verified: stamp && stamp.rec, toml: stamp && stamp.toml }, 200, 0);
 }
 
 export async function onRequestDelete({ request, env }) {
