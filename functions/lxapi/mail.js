@@ -33,7 +33,8 @@ export async function onRequestGet({ request, env }) {
     // ship every one of them to render a list of subjects.
     const where = box === 'archived' ? 'archived = 1' : 'archived = 0';
     const rows = await db.prepare(
-      'SELECT id, ts, to_addr, from_addr, from_name, subject, size, read_at, archived '
+      'SELECT id, ts, to_addr, from_addr, from_name, subject, size, read_at, archived, '
+      + 'substr(body_text, 1, 140) AS snippet '
       + 'FROM mail WHERE ' + where + ' ORDER BY ts DESC LIMIT 200'
     ).all();
     const counts = await db.prepare(

@@ -57,6 +57,8 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-dot{width:7px;height:7px;border-radius:50%;background:var(--accent,#ea6a2c);flex:0 0 auto}
 .lxm-subj{margin-top:3px;font-size:13.5px;line-height:1.4;color:var(--text-soft,#6b6b76);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lxm-meta{margin-top:4px;font-size:12px;color:var(--text-muted)}
+.lxm-snip{margin-top:3px;font-size:12.5px;line-height:1.4;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lxm-raw{margin-top:12px;max-height:340px;overflow:auto;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);font:400 11.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--text-muted);white-space:pre-wrap;word-break:break-all}
 .lxm-read-head{border-bottom:1px solid var(--border);padding-bottom:14px;margin-bottom:14px}
 .lxm-read-subj{font:800 19px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text)}
 .lxm-read-meta{margin-top:7px;font-size:13px;color:var(--text-muted);line-height:1.7}
@@ -132,6 +134,7 @@ function render(){
       +"<div class='lxm-from'>"+(m.read_at?"":"<span class='lxm-dot'></span>")
       +esc(m.from_name||m.from_addr)+"</div>"
       +"<div class='lxm-subj'>"+esc(m.subject||"(no subject)")+"</div>"
+      +"<div class='lxm-snip'>"+esc((m.snippet||"").replace(/[ ]+/g," ").trim()||"(no message body)")+"</div>"
       +"<div class='lxm-meta'>"+esc(when(m.ts))+" \\u00b7 to "+esc(m.to_addr)+"</div></button>";
   }).join("");
 }
@@ -205,6 +208,15 @@ function open(id){
       +"<button class='adm-btn ghost' type='button' data-act='unread'>Mark unread</button>"
       +"<button class='adm-btn ghost' type='button' data-act='arch'>"+(m.archived?"Move to inbox":"Archive")+"</button>";
     pane.appendChild(acts);
+    // View original. The stored raw is the record; the parsed body is a convenience. Being able to see
+    // the source is what settles "is this empty or did the parser miss it?" without a round trip.
+    if(m.raw){
+      var tog=document.createElement("button"); tog.type="button"; tog.className="adm-btn ghost"; tog.style.marginTop="14px";
+      tog.textContent="View original";
+      var pre=document.createElement("pre"); pre.className="lxm-raw"; pre.hidden=true; pre.textContent=m.raw;
+      tog.addEventListener("click",function(){ pre.hidden=!pre.hidden; tog.textContent=pre.hidden?"View original":"Hide original"; });
+      pane.appendChild(tog); pane.appendChild(pre);
+    }
     var note=document.createElement("div"); note.className="lxm-note";
     note.textContent="This is a copy. The original was delivered to your mailbox as usual, and replies are sent from there.";
     pane.appendChild(note);
