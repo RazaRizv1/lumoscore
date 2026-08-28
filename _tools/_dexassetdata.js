@@ -1013,7 +1013,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     setText(q(".asset-name"), CODE);
     try{ var _nm=q(".asset-name");
       if(_nm&&_nm.parentNode){
-        var _ok=!!VFD[CODE+"|"+ISSUER], _b=_nm.parentNode.querySelector(".lx-vtick");
+        var _ok=VFD[CODE+"|"+ISSUER]!==undefined, _b=_nm.parentNode.querySelector(".lx-vtick");
         if(_ok&&!_b){ var _s=document.createElement("span"); _s.className="lx-vtick"; _s.title="Verified issuer";
           _s.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'; _nm.parentNode.insertBefore(_s,_nm.nextSibling); }
         else if(!_ok&&_b&&_b.parentNode){ _b.parentNode.removeChild(_b); }

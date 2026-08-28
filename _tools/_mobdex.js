@@ -273,7 +273,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
   function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
   var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
-  function vtick(a){ return (a && a.code && a.issuer && VFD[a.code+"|"+a.issuer]) ? VTICK : ""; }
+  function vtick(a){ return (a && a.code && a.issuer && VFD[a.code+"|"+a.issuer]!==undefined) ? VTICK : ""; }
   function ico(cls,a){
     return '<span class="'+cls+' lxmd-ic" data-lxic="'+esc(a.code)+'" data-lxc="'+esc(a.code)+'"'
       +' style="--lxvar:'+esc(logoCss(a))+'"></span>';}

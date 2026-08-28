@@ -53,7 +53,7 @@ var H="https://horizon.stellar.org";
 // one of them is Circle's). Stamped in at build time so the row needs no extra request to draw it.
 var VFD=${JSON.stringify(Object.keys(VERIFIED).reduce((m,k)=>(m[k]=1,m),{}))};
 var VTICK='<span class="lx-vtick" title="Verified issuer">${VTICK_SVG}</span>';
-function vtick(c,i){ return (c&&i&&VFD[c+"|"+i])?VTICK:""; }
+function vtick(c,i){ return (c&&i&&VFD[c+"|"+i]!==undefined)?VTICK:""; }
 var LOGOS={XLM:"assets/tokens/xlm.png",USDC:"assets/tokens/usdc.png",AQUA:"assets/tokens/aqua.png",EURC:"https://assets.coingecko.com/coins/images/26045/small/euro.png",yXLM:"https://assets.coingecko.com/coins/images/100/small/fmpFRHHQ_400x400.jpg",yUSDC:"assets/tokens/usdc.png",SHX:"assets/tokens/shx.png",BLND:"assets/tokens/blnd.svg",SSLX:"assets/tokens/sslx.png",LUMOS:"assets/favicon.png"};
 var GRAD=["linear-gradient(135deg,#22d3ee,#0891b2)","linear-gradient(135deg,#35c07f,#16a34a)","linear-gradient(135deg,#ea6a2c,#ff9a3d)","linear-gradient(135deg,#a855f7,#6d28d9)","linear-gradient(135deg,#3aa0ff,#1d4ed8)","linear-gradient(135deg,#f5b301,#d97706)","linear-gradient(135deg,#e0447b,#be185d)","linear-gradient(135deg,#2dd4bf,#0d9488)"];
 function grad(s){s=s||"?";var h=0;for(var i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return GRAD[h%GRAD.length];}

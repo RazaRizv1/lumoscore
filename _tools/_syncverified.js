@@ -88,7 +88,9 @@ function colourFor(code) {
     // decides who wears a tick on a live site, and the stamp could be months old.
     const live = await verifyAsset(code, issuer);
     // A granted tick counts here too, or the override would work in the panel and nowhere else.
-    if (!live.verified && rec.s !== 'grandfathered' && rec.s !== 'manual') { skipped.push(code + ' (' + live.reason + ')'); continue; }
+    // Curated means ticked, so every kind of tick carries through to the build. Only a record
+    // that says NOT verified is skipped, which now happens solely for the launchpad mints.
+    if (!rec.v) { skipped.push(code + ' (' + live.reason + ')'); continue; }
 
     verified[key] = live.domain || rec.d || '';
 

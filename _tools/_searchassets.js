@@ -116,7 +116,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" data-lxiss="'+esc(t.issuer)+'" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
       ico+
-      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]?VTICK:"")+fakeTag(t.code,t.issuer)+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||t.code)+(VFD[t.code+"|"+t.issuer]!==undefined?VTICK:"")+fakeTag(t.code,t.issuer)+' <span class="sp-domain">'+esc(dispDom(t.code,t.issuer,t.domain)||"Stellar mainnet")+'</span></div>'+
       '<div class="sp-sub">'+esc(t.code)+' \u00b7 '+esc(sub)+'</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini" data-copy="'+esc(t.issuer)+'" data-copy-label="'+esc(t.code)+' issuer">'+short(t.issuer)+'</div></div></a>';
   }

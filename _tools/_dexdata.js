@@ -426,7 +426,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
   function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
   var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
-  function vtick(c,i){ return VFD[c+"|"+i]?VTICK:""; }
+  function vtick(c,i){ return VFD[c+"|"+i]!==undefined?VTICK:""; }
   if(window.__lxDEX)return;window.__lxDEX=true;
   var H="https://horizon.stellar.org";                       // MAINNET (+ lobstr fallback in j())
   var CG="https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_change=true";
