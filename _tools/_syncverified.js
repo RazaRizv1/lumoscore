@@ -55,6 +55,18 @@ function colourFor(code) {
   const generatedKeys = new Set(Object.keys(prev.verified || {}));
   const hand = new Set(Object.keys(lib.VERIFIED).filter((k) => !generatedKeys.has(k)));
 
+  // The roster Trade already lists by hand, read from the source rather than assumed. Parsed from the
+  // literal ABOVE the .concat, so a previous run's own output is never mistaken for a hand entry.
+  const rosterHand = new Set();
+  {
+    const dex = fs.readFileSync(path.join(__dirname, '_dexdata.js'), 'utf8');
+    const a = dex.indexOf('var ASSETS=[');
+    const b = dex.indexOf('].concat(', a);
+    const body = a >= 0 ? dex.slice(a, b > a ? b : undefined) : '';
+    const re = /\{code:"([^"]+)",\s*issuer:"([^"]+)"/g;
+    let m; while ((m = re.exec(body))) rosterHand.add(m[1] + '|' + m[2]);
+  }
+
   const list = kv('assets:list');
   const vmap = kv('assets:verified') || {};
   if (!Array.isArray(list)) { console.error('could not read assets:list from KV — is wrangler logged in?'); process.exit(1); }
@@ -78,6 +90,12 @@ function colourFor(code) {
     if (!live.verified && rec.s !== 'grandfathered') { skipped.push(code + ' (' + live.reason + ')'); continue; }
 
     verified[key] = live.domain || rec.d || '';
+
+    // TICKED AND LISTED ARE NOT THE SAME LIST, which is the mistake that started this. ARST was in
+    // _dexdata's hand-written roster -- listed on Trade for ages -- but absent from VERIFIED, so it
+    // wore no tick and never appeared in the admin panel, whose curated list was seeded from VERIFIED.
+    // It needs the tick and must NOT be added to the roster a second time.
+    if (rosterHand.has(key)) continue;
 
     let logo = (live.toml && live.toml.image) || '';
     const meta = kv('asset:' + id);                   // an admin override beats the toml, as everywhere
