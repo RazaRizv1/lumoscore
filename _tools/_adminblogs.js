@@ -124,6 +124,8 @@ const CSS = `<style id="lx-adminblogs-css">
 .lxb-body p{margin:0 0 14px}
 .lxb-body ul,.lxb-body ol{margin:0 0 14px;padding-left:22px}
 .lxb-body blockquote{margin:16px 0;padding:10px 14px;border-left:3px solid var(--accent,#ea6a2c);background:rgba(127,127,140,.08);border-radius:0 8px 8px 0}
+.lxb-body a{color:var(--accent,#ea6a2c);text-decoration:underline;text-underline-offset:2px}
+.lxb-body a::after{content:" 97";font-size:.85em;opacity:.7}
 .lxb-count{margin-top:8px;font-size:12.5px;color:var(--text-muted)}
 .lxb-cover{margin-top:8px;width:100%;aspect-ratio:1200/630;border-radius:10px;border:1px dashed var(--border);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12.5px}
 .lxb-status{margin-top:14px;font-size:13px;color:var(--text-muted);min-height:20px}
