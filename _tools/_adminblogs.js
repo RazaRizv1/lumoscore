@@ -257,6 +257,7 @@ function renderList(){
   var mob=!!q(".mob-page-title");
   tb.innerHTML=POSTS.map(function(p){
     var pending=p.published&&p.publishAt&&p.publishAt>Date.now();
+    var live=p.published&&(!p.publishAt||p.publishAt<=Date.now());
     var cls=pending?" soon":(p.published?" live":"");
     var word=pending?("scheduled · "+new Date(p.publishAt).toLocaleDateString(undefined,{month:"short",day:"numeric"})):(p.published?"published":"draft");
     var badge="<span class='lxb-badge"+cls+"'>"+esc(word)+"</span>";
@@ -265,7 +266,9 @@ function renderList(){
       +"<td>"+esc(p.category||"")+"</td>"
       +"<td style='text-align:right'>"+badge+"</td>"
       +"<td style='text-align:right;color:var(--text-muted);font-size:13px'>"+esc(ago(p.updatedAt||p.createdAt||Date.now()))+"</td>"
-      +"<td style='text-align:right'><button class='adm-btn ghost lxb-edit' type='button' data-slug='"+esc(p.slug)+"'>Edit</button> "
+      +"<td style='text-align:right'>"
+      +(live?("<a class='adm-btn ghost' target='_blank' rel='noopener' title='Open the published post' href='https://lumoscore.com/blog/"+esc(p.slug)+"'>View</a> "):"")
+      +"<button class='adm-btn ghost lxb-edit' type='button' data-slug='"+esc(p.slug)+"'>Edit</button> "
       +"<button class='adm-btn ghost lxb-del' type='button' data-slug='"+esc(p.slug)+"'>Delete</button></td></tr>";
   }).join("");
 }
