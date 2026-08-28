@@ -149,6 +149,38 @@ export async function onRequestPut({ request, env }) {
     return json({ error: 'asset must be CODE-GISSUER, e.g. USDC-GA5ZSEJY…' }, 400, 0);
   }
 
+  // A tick that CANNOT be earned may be GRANTED -- deliberately, and visibly.
+  //
+  // Some legitimate assets can never pass: BLND is the only BLND on Stellar with 134,092 holders, and
+  // its issuer sets no home_domain at all, so there is nothing to ask. Refusing those forever makes the
+  // rule useless; granting silently makes the tick meaningless. So a granted tick is stored as its own
+  // kind and says so wherever it is shown.
+  //
+  // The KIND is decided here, never by the caller. A client can ask for an override; it cannot ask for
+  // its asset to be recorded as having passed a handshake it did not pass.
+  if (b && b.override !== undefined) {
+    let map = {};
+    try { map = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
+    if (!b.override) {
+      delete map[asset];
+      await kv.put(VMAP, JSON.stringify(map));
+      return json({ ok: true, asset, verified: null }, 200, 0);
+    }
+    const sp = SPLIT_RE.exec(asset);
+    let live = null;
+    try { live = await verifyAsset(sp[1], sp[2]); } catch (_) {}
+    // Re-checked first: an asset that passes on its own keeps an EARNED tick. Pressing the button
+    // must never downgrade a real handshake to a vouched-for one.
+    if (live && live.verified) {
+      map[asset] = { v: 1, s: 'handshake', d: live.domain, t: Date.now(), why: live.reason };
+    } else {
+      map[asset] = { v: 1, s: 'manual', d: (live && live.domain) || '', t: Date.now(),
+        why: 'Vouched for by an admin — the handshake does not pass: ' + ((live && live.reason) || 'check unavailable') };
+    }
+    await kv.put(VMAP, JSON.stringify(map));
+    return json({ ok: true, asset, verified: map[asset] }, 200, 0);
+  }
+
   // Adding to the list and editing the copy are the same call, so listing an asset never needs a second
   // round trip and an edit can never land on an asset that is not listed.
   let list = [];
