@@ -1,0 +1,16 @@
+# Standalone Worker that receives mail for team@ and raza@lumoscore.com.
+#
+# It lives in its own directory with its own wrangler.toml on purpose: a wrangler config at the repo
+# root would be picked up by the three `wrangler pages deploy` commands and try to apply this Worker's
+# name and bindings to them.
+#
+# Deploy from THIS directory:  npx wrangler deploy
+name = "lumoscore-mail"
+main = "src/index.js"
+compatibility_date = "2026-08-07"
+
+# Same database the admin panel reads. The mail table is defined in ../_data/admin-schema.sql.
+[[d1_databases]]
+binding = "ADMIN_DB"
+database_name = "lumoscore-admin-db"
+database_id = "8e657659-ac90-4c1f-995d-3180bf209f2b"
