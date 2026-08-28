@@ -91,6 +91,9 @@ const MAIN = `
             <textarea class="lxb-i" id="lxbMeta" rows="3" placeholder="What a search result should say about this post."></textarea>
             <label class="lxb-l">Tags <span class="lxb-h">comma separated</span></label>
             <input class="lxb-i" id="lxbTags" type="text" placeholder="liquidity, amm, stellar">
+            <label class="lxb-l">Publish at <span class="lxb-h">leave empty to go live immediately</span></label>
+            <input class="lxb-i" id="lxbWhen" type="datetime-local">
+            <div class="lxb-h" id="lxbWhenHint"></div>
             <label class="lxb-l">Read time</label>
             <input class="lxb-i" id="lxbRead" type="number" min="1" max="60" placeholder="auto">
             <div class="lxb-status" id="lxbStatus"></div>
@@ -145,6 +148,7 @@ const CSS = `<style id="lx-adminblogs-css">
 .lxb-status.err{color:#ef4444}
 .lxb-badge{display:inline-block;font:700 11px/1 "Hanken Grotesk",system-ui,sans-serif;padding:4px 8px;border-radius:999px;background:rgba(127,127,140,.14);color:var(--text-muted)}
 .lxb-badge.live{background:rgba(34,197,94,.16);color:#22c55e}
+.lxb-badge.soon{background:rgba(245,179,1,.16);color:#b8860b}
 </style>`;
 
 const SCRIPT = '<script id="lx-adminblogs">' + `(function(){
@@ -200,10 +204,23 @@ function clean(root){
       }
       if(tag==="A"){
         var href=c.getAttribute("href")||"";
-        // Only http(s) and site-relative links. javascript: and data: in a stored post would be
-        // executable content on the public site.
-        if(!(href.indexOf("https://")===0||href.indexOf("http://")===0||href.indexOf("/")===0)){ c.removeAttribute("href"); }
-        else { c.setAttribute("rel","noopener"); if(href.indexOf("/")!==0)c.setAttribute("target","_blank"); }
+        // Only http(s), site-relative links, anchors and mailto. javascript: and data: in a stored
+        // post would be executable content on the public site.
+        var lc=href.toLowerCase();
+        var okScheme=(lc.indexOf("https://")===0||lc.indexOf("http://")===0||lc.indexOf("mailto:")===0
+          ||href.charAt(0)==="/"||href.charAt(0)==="#");
+        if(!okScheme){ c.removeAttribute("href"); }
+        else {
+          // INTERNAL vs EXTERNAL. Site-relative paths and absolute links back to lumoscore.com are our
+          // own pages: they stay follow, so link equity moves around the site as it should. Everything
+          // pointing off-site gets nofollow, plus noopener/noreferrer and a new tab.
+          var internal=(href.charAt(0)==="/"||href.charAt(0)==="#"
+            ||lc.indexOf("https://lumoscore.com")===0||lc.indexOf("http://lumoscore.com")===0
+            ||lc.indexOf("https://www.lumoscore.com")===0||lc.indexOf("http://www.lumoscore.com")===0);
+          if(internal){ c.removeAttribute("rel"); c.removeAttribute("target"); }
+          else if(lc.indexOf("mailto:")===0){ c.removeAttribute("rel"); c.removeAttribute("target"); }
+          else { c.setAttribute("rel","nofollow noopener noreferrer"); c.setAttribute("target","_blank"); }
+        }
       }
     });
   })(doc);
@@ -241,7 +258,10 @@ function renderList(){
   if(!POSTS.length){ tb.innerHTML="<tr><td colspan='5' class='lxadm-empty'>No posts yet. Press <b>New post</b> to write the first one.</td></tr>"; return; }
   var mob=!!q(".mob-page-title");
   tb.innerHTML=POSTS.map(function(p){
-    var badge="<span class='lxb-badge"+(p.published?" live":"")+"'>"+(p.published?"published":"draft")+"</span>";
+    var pending=p.published&&p.publishAt&&p.publishAt>Date.now();
+    var cls=pending?" soon":(p.published?" live":"");
+    var word=pending?("scheduled · "+new Date(p.publishAt).toLocaleDateString(undefined,{month:"short",day:"numeric"})):(p.published?"published":"draft");
+    var badge="<span class='lxb-badge"+cls+"'>"+esc(word)+"</span>";
     if(mob)return "<tr><td>"+esc(p.title)+"</td><td style='text-align:right'>"+badge+"</td></tr>";
     return "<tr data-slug='"+esc(p.slug)+"'><td><b>"+esc(p.title)+"</b><div class='lxb-h mono' style='margin-top:3px'>/blog/"+esc(p.slug)+"</div></td>"
       +"<td>"+esc(p.category||"")+"</td>"
@@ -269,6 +289,27 @@ function catValue(){
   if(sel.value==="__other")return (oth&&oth.value||"").trim();
   return sel.value;
 }
+
+function whenToInput(ms){
+  if(!ms)return "";
+  var d=new Date(ms - new Date(ms).getTimezoneOffset()*60000);
+  return d.toISOString().slice(0,16);
+}
+function inputToWhen(v){
+  v=String(v||"").trim();
+  if(!v)return null;
+  var t=Date.parse(v);                       // parsed as local time, which is what the control shows
+  return isFinite(t)?t:null;
+}
+function whenHint(){
+  var e=q("#lxbWhenHint"); if(!e)return;
+  var t=inputToWhen((q("#lxbWhen")||{}).value);
+  if(!t){ e.textContent=""; return; }
+  e.textContent=(t>Date.now())
+    ? ("Goes live " + new Date(t).toLocaleString() + " \u2014 hidden until then.")
+    : ("That time has already passed, so it goes live as soon as you publish.");
+}
+
 function openEditor(post){
   CUR=post||null; PREV_SLUG=post?post.slug:""; SLUG_TOUCHED=!!post;
   var ed=q("#lxbEditor"); if(!ed)return;
@@ -284,11 +325,22 @@ function openEditor(post){
   q("#lxbMeta").value=post?(post.metaDescription||""):"";
   q("#lxbTags").value=post?((post.tags||[]).join(", ")):"";
   q("#lxbRead").value=post&&post.readMins?post.readMins:"";
-  q("#lxbPublish").textContent=(post&&post.published)?"Update":"Publish";
+  q("#lxbWhen").value=post?whenToInput(post.publishAt):""; whenHint();
+  syncPublishLabel(post);
   status("");
   coverPrev(); metaCount(); wordCount();
   ed.scrollIntoView({behavior:"smooth",block:"start"});
 }
+
+// The button names the action rather than always saying Publish: pressing "Publish" on a post dated
+// next Tuesday would look like it went live now, and the difference matters.
+function syncPublishLabel(post){
+  var b=q("#lxbPublish"); if(!b)return;
+  var t=inputToWhen((q("#lxbWhen")||{}).value);
+  var future=t&&t>Date.now();
+  b.textContent=future?"Schedule":((post&&post.published)?"Update":"Publish");
+}
+
 function closeEditor(){ var ed=q("#lxbEditor"); if(ed)ed.hidden=true; CUR=null; }
 function status(msg,kind){ var s=q("#lxbStatus"); if(!s)return; s.textContent=msg||""; s.className="lxb-status"+(kind?(" "+kind):""); }
 function coverPrev(){ var v=(q("#lxbCover")||{}).value||""; var p=q("#lxbCoverPrev"); if(!p)return;
@@ -312,6 +364,7 @@ function gather(published){
     coverAlt:title,
     metaDescription:(q("#lxbMeta").value||"").trim(),
     tags:tags, readMins:(read>0?read:Math.max(1,Math.round(words()/200))),
+    publishAt:inputToWhen((q("#lxbWhen")||{}).value),
     published:!!published};
 }
 function save(published){
@@ -512,6 +565,8 @@ function boot(){
     if(!oth.hidden)oth.focus(); else oth.value=""; }); }
   var cv=q("#lxbCover"); if(cv&&!cv.__lx){ cv.__lx=1; cv.addEventListener("input",coverPrev); }
   var mt=q("#lxbMeta"); if(mt&&!mt.__lx){ mt.__lx=1; mt.addEventListener("input",metaCount); }
+  var wn=q("#lxbWhen");
+  if(wn&&!wn.__lx){ wn.__lx=1; wn.addEventListener("input",function(){ whenHint(); syncPublishLabel(CUR); }); }
   var bd=q("#lxbBody"); if(bd&&!bd.__lx){ bd.__lx=1; bd.addEventListener("input",wordCount);
     // Paste as plain text: the sanitiser would strip the markup at save time anyway, and stripping it
     // at paste time means what you see while writing is what gets stored.
