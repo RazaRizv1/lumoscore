@@ -1024,7 +1024,7 @@ function editAsset(k){
 +'      var f=c.querySelector(".kpi-foot"); if(f){ f.innerHTML=""; f.textContent=foot; } }'
 +'    set(0,"Listed assets",String(LIST.length),"in your list");'
 +'    set(1,"Traded on LumosCore",LXV?String(live):"\u2026","in the last 7 days");'
-+'    set(2,"With a spot price",String(priced),"priced on the DEX");'
++'    set(2,"With a spot price",(vals.length<LIST.length?"…":String(priced)),"priced on the DEX");'
 +'    if(!LXV){ set(3,"LumosCore 7d volume","\u2026","traded on our platform"); }'
 +'    else { var ks=Object.keys(LXV).filter(function(k){ return LXV[k].amt>0; });'
 +'      if(!ks.length){ set(3,"LumosCore 7d volume",usd(0),"no trades in the last 7 days"); }'
@@ -1351,6 +1351,54 @@ function revItem(active,suffix){ return '<a class="adn-item '+(active?'active':'
 
 function variantOf(key){ if(/-dark\.html$/.test(key))return '-dark'; if(/-mobile\.html$/.test(key))return '-mobile'; return ''; }
 
+// ---- the Assets page ships with invented figures, so blank them AT BUILD TIME -----------------------
+// 492 assets, 423 listed, 187 active, 8 flagged and twenty rows of made-up tokens are the design's
+// filler. They are in the HTML, so they paint before a single line of our script runs -- no amount of
+// care in the painter can beat markup that is already on screen. This is the markup-level fix the flash
+// rules ask for first; the script then fills the same slots with real numbers.
+function blankAssets(h, mobile) {
+  const LABELS = ['Listed assets', 'Traded on LumosCore', 'With a spot price', 'LumosCore 7d volume'];
+  const FEET = ['in your list', 'in the last 7 days', 'priced on the DEX', 'traded on our platform'];
+  let i = 0, j = 0, f = 0;
+  h = h.replace(/(<div class="kpi-value"[^>]*>)([^<]*)(<\/div>)/g, (m, a, v, b) => (i++ < 4 ? a + '—' + b : m));
+  h = h.replace(/(<span class="kpi-label">)([^<]*)(<\/span>)/g, (m, a, v, b) => (j < 4 ? a + LABELS[j++] + b : m));
+  h = h.replace(/(<div class="kpi-foot"[^>]*>)([\s\S]*?)(<\/div>)/g, (m, a, v, b) => (f < 4 ? a + FEET[f++] + b : m));
+  // Whole element, not just its first text node: the count sits in a nested <span class="mono">, so
+  // stopping at the first tag left "Assets you list on LumosCore492 total" on screen.
+  h = h.replace(/(<p class="admin-page-sub">)[\s\S]*?(<\/p>)/, '$1Assets you list on LumosCore$2');
+  h = h.replace(/(<div class="mob-page-sub"[^>]*>)[\s\S]*?(<\/div>)/, '$1Assets you list on LumosCore$2');
+  h = h.replace(/(<span class="seg-count"[^>]*>)[^<]*(<\/span>)/g, '$1—$2');
+  h = h.replace(/(<span class="sc-count"[^>]*>)[^<]*(<\/span>)/g, '$1—$2');
+  h = h.replace(/Showing[\s\S]{0,200}?assets<\/span>/, 'Showing — assets</span>');
+
+  if (mobile) {
+    // The phone lists filler cards instead of a table, and they are anchors, not divs.
+    //
+    // ONE is kept, hidden. The painter finds the cards, takes the first as its insertion point and
+    // removes them all -- delete every card here and it finds none, returns early, and the mobile
+    // Assets page renders nothing at all. So the anchor survives with no content to flash.
+    let first = true;
+    h = h.replace(/<a class="mob-user-card"[\s\S]*?<\/a>/g, () => {
+      if (!first) return '';
+      first = false;
+      return '<a class="mob-user-card" href="#" style="display:none"></a>';
+    });
+    h = h.replace(/(<p class="mob-page-sub"[^>]*>)[\s\S]*?(<\/p>)/, '$1Assets you list on LumosCore$2');
+    h = h.replace(/(<div class="mob-kpi-value"[^>]*>)[^<]*(<\/div>)/g, '$1—$2');
+    h = h.replace(/<span class="mono">\d[\d,]*<\/span>/g, '<span class="mono">—</span>');
+  } else {
+    const a = h.indexOf('<tbody');
+    const e = h.indexOf('</tbody>', a);
+    if (a >= 0 && e > a) {
+      const open = h.indexOf('>', a) + 1;
+      h = h.slice(0, open)
+        + '<tr><td colspan="8" style="padding:26px 4px;color:var(--text-muted)">Loading…</td></tr>'
+        + h.slice(e);
+    }
+  }
+  return h;
+}
+
 let pages=0, made=0;
 for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']){
   for(const dev of ['desktop','mobile']){
@@ -1388,6 +1436,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
     for(const k of Object.keys(json)){
       if(!/^lumoscore-admin-/.test(k)) continue;
       let h=json[k];
+      if(/^lumoscore-admin-assets/.test(k)) h=blankAssets(h, /-mobile\.html$/.test(k));
       h=h.replace(/<a class="adn-item [^"]*" href="lumoscore-admin-revenue[^"]*"[\s\S]*?<\/a>\s*/g,'');   // strip old
       // The mobile menu needs the same strip, and did not have one. The insert below is unguarded, so
       // every run of this transform appended another Revenue entry to the container -- which persists
