@@ -293,17 +293,67 @@ function save(published){
   }).catch(function(e){ status("Could not save: "+e.message,"err"); });
 }
 
+// THE SELECTION HAS TO BE SAVED AND PUT BACK.
+//
+// Pressing a toolbar button moves focus out of the editable, and the browser drops the selection with
+// it -- so by the time the command runs there is nothing selected to apply it to. prompt() destroys it
+// a second time. This affected every button; Link was simply the one where the failure was visible,
+// because bold on a collapsed cursor still looks like it might have worked.
+//
+// Two defences: preventDefault on MOUSEDOWN (so focus never leaves in the first place), and an
+// explicit save/restore of the Range around anything that can steal it.
+var SAVED=null;
+function saveSel(){
+  try{
+    var s=window.getSelection();
+    if(!s||!s.rangeCount)return;
+    var b=q("#lxbBody"); if(!b)return;
+    var r=s.getRangeAt(0);
+    if(b.contains(r.commonAncestorContainer))SAVED=r.cloneRange();
+  }catch(_){}
+}
+function restoreSel(){
+  var b=q("#lxbBody"); if(!b)return;
+  b.focus();
+  try{
+    if(!SAVED)return;
+    var s=window.getSelection(); s.removeAllRanges(); s.addRange(SAVED);
+  }catch(_){}
+}
+// A link with no scheme is the common case -- people paste "lumoscore.com". Left alone the browser
+// treats it as a relative path and the link goes nowhere. javascript: is refused outright: the body is
+// sanitised on save anyway, but an editor that lets you build one is a trap for whoever uses it next.
+function tidyUrl(u){
+  u=String(u||"").trim();
+  if(!u)return "";
+  var lc=u.toLowerCase();
+  if(lc.indexOf("javascript:")===0||lc.indexOf("data:")===0)return "";
+  if(lc.indexOf("http://")===0||lc.indexOf("https://")===0)return u;
+  if(u.charAt(0)==="/"||u.charAt(0)==="#")return u;          // site-relative and anchors are fine
+  if(lc.indexOf("mailto:")===0)return u;
+  return "https://"+u;
+}
 function cmd(name){
-  var b=q("#lxbBody"); if(!b)return; b.focus();
+  restoreSel();
   try{
     if(name==="h2"||name==="h3"||name==="p")document.execCommand("formatBlock",false,name);
     else if(name==="quote")document.execCommand("formatBlock",false,"blockquote");
     else if(name==="ul")document.execCommand("insertUnorderedList");
     else if(name==="ol")document.execCommand("insertOrderedList");
-    else if(name==="link"){ var u=prompt("Link URL"); if(u)document.execCommand("createLink",false,u); }
+    else if(name==="link"){
+      var sel=window.getSelection();
+      var had=sel&&String(sel).length>0;
+      var u=tidyUrl(prompt("Link URL", "https://"));
+      if(!u){ if(u==="")return; return; }
+      restoreSel();                                   // prompt() collapsed it again
+      if(had)document.execCommand("createLink",false,u);
+      // Nothing selected: insert the address as its own link rather than doing nothing silently.
+      else document.execCommand("insertHTML",false,"<a href='"+u.replace(/'/g,"%27")+"'>"+u+"</a>");
+    }
     else if(name==="unlink")document.execCommand("unlink");
     else document.execCommand(name);
   }catch(e){}
+  saveSel();
   wordCount();
 }
 
@@ -315,8 +365,22 @@ function boot(){
   var cn=q("#lxbCancel"); if(cn&&!cn.__lx){ cn.__lx=1; cn.addEventListener("click",closeEditor); }
   var dr=q("#lxbDraft"); if(dr&&!dr.__lx){ dr.__lx=1; dr.addEventListener("click",function(){ save(false); }); }
   var pb=q("#lxbPublish"); if(pb&&!pb.__lx){ pb.__lx=1; pb.addEventListener("click",function(){ save(true); }); }
-  var tl=q("#lxbTools"); if(tl&&!tl.__lx){ tl.__lx=1; tl.addEventListener("click",function(e){
-    var b=e.target.closest&&e.target.closest("button[data-cmd]"); if(!b)return; e.preventDefault(); cmd(b.getAttribute("data-cmd")); }); }
+  var tl=q("#lxbTools");
+  if(tl&&!tl.__lx){ tl.__lx=1;
+    // mousedown, not click: by the time click fires the browser has already moved focus and thrown the
+    // selection away. Preventing the default here means the caret never leaves the editor at all.
+    tl.addEventListener("mousedown",function(e){
+      if(e.target.closest&&e.target.closest("button[data-cmd]"))e.preventDefault(); });
+    tl.addEventListener("click",function(e){
+      var b=e.target.closest&&e.target.closest("button[data-cmd]"); if(!b)return;
+      e.preventDefault(); cmd(b.getAttribute("data-cmd")); }); }
+  // Track the selection as it moves, so a command always has something to put back even if focus was
+  // lost some other way -- clicking the sidebar, tabbing out, switching windows.
+  var bd2=q("#lxbBody");
+  if(bd2&&!bd2.__lxsel){ bd2.__lxsel=1;
+    ["keyup","mouseup","input"].forEach(function(ev){ bd2.addEventListener(ev,saveSel); });
+    document.addEventListener("selectionchange",function(){
+      var a=document.activeElement; if(a===bd2)saveSel(); }); }
   var tb=q("#lxbTable"); if(tb&&!tb.__lx){ tb.__lx=1; tb.addEventListener("click",function(e){
     var ed=e.target.closest&&e.target.closest(".lxb-edit");
     var dl=e.target.closest&&e.target.closest(".lxb-del");
