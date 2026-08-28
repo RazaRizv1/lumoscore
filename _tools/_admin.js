@@ -94,6 +94,10 @@ const REVENUE_MOB=`
 `;
 
 const CSS=`<style id="lx-admin-css">
+.lxu-tier{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.02em;padding:4px 9px;border-radius:999px}
+.lxu-tier.on{background:rgba(34,197,94,.14);color:#22c55e}
+.lxu-tier.off{background:rgba(127,127,140,.14);color:var(--text-muted)}
+.lxu-tre{display:inline-block;margin-left:6px;font:700 10px/1 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;padding:3px 6px;border-radius:999px;background:rgba(234,106,44,.16);color:#ea6a2c;vertical-align:middle}
 #lxdPeriod{-webkit-appearance:none;appearance:none;cursor:pointer;padding-right:26px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a8fa3' stroke-width='2.6' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 8px center;background-size:11px}
 .adm-table th{font-size:12px;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--text-muted);padding:12px 18px;border-bottom:1px solid var(--border)}
 .adm-table td{padding:13px 18px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle}
@@ -328,19 +332,19 @@ var TREASURY={"GBIU5NISX5IP6VXZK7DEKLZC4ZVPWNCDEYQLQGXG33Y3J2LHPKPCHUOK":1,
 "GDB46BXMVI7FEZCHG4OTZ3OCSJX4CRBOOK6OJL5JD7BF5QIW3AS53IWA":1};
 var TIERC=null;
 function loadTier(){ if(TIERC)return Promise.resolve(TIERC);
-  var n=0,excl=0;
+  var n=0,excl=0,set={};
   function page(cur,depth){
     return j("/lxapi/holders?asset=LUMOS-"+LUMOS_ISS+"&limit=200"+(cur?("&cursor="+encodeURIComponent(cur)):"")).then(function(d){
       var rs=(d&&d._embedded&&d._embedded.records)||[]; if(!rs.length)return;
       var below=false;
       for(var i=0;i<rs.length;i++){ var bal=(+rs[i].balance||0)/1e7;
         if(bal<TIER){ below=true; break; }
-        if(TREASURY[rs[i].address||rs[i].account])excl++; else n++; }
+        var ad=rs[i].address||rs[i].account; if(TREASURY[ad])excl++; else { n++; set[ad]=1; } }
       if(below)return;
       var nx=rs[rs.length-1].paging_token;
       if(nx&&depth<6)return page(nx,depth+1); }); }
-  return page("",1).then(function(){ TIERC={n:n,excluded:excl}; return TIERC; })
-   .catch(function(){ TIERC={n:null,excluded:0}; return TIERC; }); }
+  return page("",1).then(function(){ TIERC={n:n,excluded:excl,set:set}; return TIERC; })
+   .catch(function(){ TIERC={n:null,excluded:0,set:{}}; return TIERC; }); }
 var WIN=[["24H",864e5],["7D",6048e5],["30D",2592e6],["Lifetime",0]], WI=0;
 function winSince(){ var ms=WIN[WI][1]; return ms?(Date.now()-ms):0; }
 function kpiTile(id,label,foot,tip){
@@ -546,74 +550,105 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'    cardBody(c3,"<div class=\\"lxadm-empty\\">Retention needs sessions to measure, and LumosCore has no accounts and no analytics \u2014 a wallet that connects twice is indistinguishable from two wallets. This needs a backend.</div>"); }'
 +'}'
 +'function accountOf(a){ return j(H+"/accounts/"+a); }'
-+'function paintUsers(){'
-+'  var t=(q(".admin-page-title")||{}).textContent||""; if(!/^\\s*Users/.test(t))return;'
-+'  var tbl=q(".adm-table"); if(!tbl||tbl.getAttribute("data-lxbuilt")==="1")return; tbl.setAttribute("data-lxbuilt","1");'
-// there is no tier, no email and no session, so those columns are replaced rather than left blank
-+'  var TH=["Wallet","Assets held","XLM balance","Fee payments","Fees paid","First seen","Last seen"];'
-+'  var thr=tbl.querySelector("thead tr");'
-+'  if(thr)thr.innerHTML=TH.map(function(h,i){ return "<th"+(i>0?" style=\\"text-align:right\\"":"")+">"+esc(h)+"</th>"; }).join("");'
-+'  var tb=tbl.querySelector("tbody");'
-+'  if(tb)tb.innerHTML="<tr><td colspan=\\""+TH.length+"\\" class=\\"lxadm-empty\\">Loading\u2026</td></tr>";'
-// the segment chips describe cohorts nothing here can compute
-+'  var seg=q(".seg-row"); if(seg)seg.innerHTML="<button class=\\"seg-chip active\\" type=\\"button\\"><span class=\\"seg-label\\">All wallets</span><span class=\\"seg-count\\" id=\\"lxuAll\\">\u2014</span></button>";'
-+'  var head=q(".admin-page-head");'
-+'  if(head&&!q(".lxadm-note")){ var nt=document.createElement("div"); nt.className="lxadm-note";'
-+'    nt.textContent="LumosCore has no sign-up, so there is no user table to read. A user here is a wallet that has paid a platform fee on-chain \u2014 that is the only record of someone having used the app. Names, emails, tiers and cohort segments would need an account system and analytics behind them.";'
-+'    head.parentNode.insertBefore(nt, head.nextSibling); }'
-// "Invite admin" has nowhere to send an invite to
-+'  qa(".admin-page-actions .adm-btn").forEach(function(b){ if(/invite/i.test(b.textContent)){ b.disabled=true; b.style.opacity="0.5"; b.style.cursor="not-allowed"; b.title="Needs a backend \u2014 there is nowhere to store an admin account or send an invite."; } });'
-+'  var ROWS=[];'
-+'  loadRevenue().then(function(rv){'
-+'    var w={};'
-+'    rv.rows.forEach(function(p){ var a=assetOf(p), u=w[p.from]=w[p.from]||{addr:p.from,n:0,by:{},first:p.created_at,last:p.created_at};'
-+'      u.n++; u.by[a.code+"-"+a.iss]=(u.by[a.code+"-"+a.iss]||0)+(+p.amount||0);'
-+'      if(Date.parse(p.created_at)<Date.parse(u.first))u.first=p.created_at;'
-+'      if(Date.parse(p.created_at)>Date.parse(u.last))u.last=p.created_at; });'
-+'    ROWS=Object.keys(w).map(function(k){return w[k];}).sort(function(x,y){return y.n-x.n;});'
-+'    setT(q("#lxuAll"), String(ROWS.length)); fixPager(ROWS.length);'
-+'    var sub=q(".admin-page-sub"); if(sub)sub.innerHTML="Wallets that have paid a platform fee \u00b7 <span class=\\"mono\\">"+ROWS.length+"</span> total";'
-+'    if(!ROWS.length){ if(tb)tb.innerHTML="<tr><td colspan=\\""+TH.length+"\\" class=\\"lxadm-empty\\">No wallet has paid a fee yet.</td></tr>"; return; }'
-+'    render();'
-+'    ROWS.forEach(function(u){ accountOf(u.addr).then(function(d){ if(!d)return;'
-+'      var bal=d.balances||[]; u.trust=bal.filter(function(b){return b.asset_type!=="native"&&b.asset_type!=="liquidity_pool_shares";}).length;'
-+'      var nb=bal.filter(function(b){return b.asset_type==="native";})[0]; u.xlm=nb?+nb.balance:null; render(); }); });'
-+'    var codes={}; ROWS.forEach(function(u){ Object.keys(u.by).forEach(function(k){ codes[k]=1; }); });'
-+'    Object.keys(codes).forEach(function(k){ var p=k.split("-");'
-+'      priceUsd(p[0],p[1]||"",function(px){ if(px==null)return;'
-+'        ROWS.forEach(function(u){ if(u.by[k]!=null){ u.usd=(u.usd||0)+u.by[k]*px; } }); render(); }); });'
-+'  });'
-+'  function render(){ if(!tb)return; var qy=((q(".fs-search input")||{}).value||"").trim().toLowerCase();'
-+'    var list=ROWS.filter(function(u){ return !qy || u.addr.toLowerCase().indexOf(qy)>=0; });'
-+'    if(!list.length){ tb.innerHTML="<tr><td colspan=\\""+TH.length+"\\" class=\\"lxadm-empty\\">No wallet matches that search.</td></tr>"; return; }'
-+'    tb.innerHTML=list.map(function(u){'
-+'      var paid=Object.keys(u.by).map(function(k){ return num(u.by[k])+" "+k.split("-")[0]; }).join(", ");'
-+'      return "<tr class=\\"clickable\\" onclick=\\"__lxNav&&__lxNav(\u0027lumoscore-admin-user-profile.html?w="+esc(u.addr)+"\u0027)\\">"'
-+'        +"<td><div class=\\"user-cell\\"><img class=\\"lxu-av\\" data-lxc=\\"wallet\\" alt=\\"\\" src=\\""+avatar(u.addr.slice(1,3))+"\\">"'
-+'        +"<div><div class=\\"un mono\\">"+esc(shortG(u.addr))+"</div><div class=\\"um\\">Stellar mainnet</div></div></div></td>"'
-+'        +"<td class=\\"num-cell\\" style=\\"text-align:right\\">"+(u.trust==null?"\u2026":u.trust)+"</td>"'
-+'        +"<td class=\\"num-cell\\" style=\\"text-align:right\\">"+(u.xlm==null?"\u2026":num(u.xlm))+"</td>"'
-+'        +"<td class=\\"num-cell\\" style=\\"text-align:right\\">"+u.n+"</td>"'
-+'        +"<td class=\\"num-cell\\" style=\\"text-align:right\\" title=\\""+esc(paid)+"\\">"+(u.usd==null?esc(paid):esc(usd(u.usd)))+"</td>"'
-+'        +"<td style=\\"text-align:right;color:var(--text-muted);font-size:13.5px\\">"+esc(new Date(u.first).toLocaleDateString())+"</td>"'
-+'        +"<td style=\\"text-align:right;color:var(--text-muted);font-size:13.5px\\">"+esc(ago(u.last))+"</td></tr>"; }).join(""); }'
-+'  var si=q(".fs-search input"); if(si){ si.placeholder="Search by wallet address\u2026"; si.addEventListener("input",render); }'
-// the sort/network selects offer fields that do not exist on a wallet
-+'  qa(".filter-strip .fs-select").forEach(function(sel,i){'
-+'    if(i===0){ sel.innerHTML="<option>Sort: Fee payments</option><option>Sort: Fees paid</option><option>Sort: Last seen</option>";'
-+'      sel.addEventListener("change",function(){ var v=sel.selectedIndex;'
-+'        ROWS.sort(function(x,y){ if(v===1)return (y.usd||0)-(x.usd||0); if(v===2)return Date.parse(y.last)-Date.parse(x.last); return y.n-x.n; }); render(); }); }'
-+'    else sel.remove(); });'
-+'  var more=qa(".filter-strip .adm-btn").filter(function(b){return /more/i.test(b.textContent);})[0]; if(more)more.remove();'
-// Export CSV is real: it writes the rows on screen
-+'  qa(".admin-page-actions .adm-btn").forEach(function(b){ if(!/export/i.test(b.textContent)||b.__lx)return; b.__lx=1;'
-+'    b.addEventListener("click",function(){'
-+'      var head="wallet,assets_held,xlm_balance,fee_payments,fees_paid_usd,first_seen,last_seen\\n";'
-+'      var body=ROWS.map(function(u){ return [u.addr,u.trust==null?"":u.trust,u.xlm==null?"":u.xlm,u.n,u.usd==null?"":u.usd.toFixed(6),u.first,u.last].join(","); }).join("\\n");'
-+'      var bl=new Blob([head+body],{type:"text/csv"}), url=URL.createObjectURL(bl);'
-+'      var el=document.createElement("a"); el.href=url; el.download="lumoscore-users.csv"; el.click();'
-+'      setTimeout(function(){URL.revokeObjectURL(url);},1000); }); });'
-+'}'
++`
+function paintUsers(){
+  var t=((q(".admin-page-title")||{}).textContent||"").trim(); if(t.indexOf("Users")!==0)return;
+  var tbl=q(".adm-table"); if(!tbl||tbl.getAttribute("data-lxbuilt")==="1")return; tbl.setAttribute("data-lxbuilt","1");
+  // Columns are the question asked of this page: who trades most, how much, and what they are worth.
+  var TH=["Wallet","Volume","Trades","Revenue","Fee tier","First seen","Last seen"];
+  var thr=tbl.querySelector("thead tr");
+  if(thr)thr.innerHTML=TH.map(function(h,i){ return "<th"+(i>0?" style='text-align:right'":"")+">"+esc(h)+"</th>"; }).join("");
+  var tb=tbl.querySelector("tbody");
+  if(tb)tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>Loading\u2026</td></tr>";
+  var seg=q(".seg-row");
+  if(seg)seg.innerHTML="<button class='seg-chip active' type='button'><span class='seg-label'>All wallets</span><span class='seg-count' id='lxuAll'>\u2014</span></button>"
+    +"<button class='seg-chip' type='button' data-seg='tier'><span class='seg-label'>On 0.1% fee</span><span class='seg-count' id='lxuTier'>\u2014</span></button>"
+    +"<button class='seg-chip' type='button' data-seg='ext'><span class='seg-label'>External only</span><span class='seg-count' id='lxuExt'>\u2014</span></button>";
+  var head=q(".admin-page-head");
+  if(head&&!q(".lxadm-note")){ var nt=document.createElement("div"); nt.className="lxadm-note";
+    nt.textContent="LumosCore has no sign-up, so there is no user table to read. A user here is a wallet that has paid a platform fee on-chain \u2014 the only record of someone having used the app. Everything on this page is Stellar mainnet; there is no second network to split by.";
+    head.parentNode.insertBefore(nt, head.nextSibling); }
+  qa(".admin-page-actions .adm-btn").forEach(function(b){ if(/invite/i.test(b.textContent)){ b.disabled=true; b.style.opacity="0.5"; b.style.cursor="not-allowed"; b.title="Needs a backend \u2014 there is nowhere to store an admin account or send an invite."; } });
+  var ROWS=[], SORT=0, TIERSET=null, SEG="all";
+  loadRevenue().then(function(rv){
+    var w={};
+    rv.rows.forEach(function(p){ var a=assetOf(p), u=w[p.from]=w[p.from]||{addr:p.from,n:0,by:{},vol:{},first:p.created_at,last:p.created_at};
+      u.n++; u.by[a.code+"-"+a.iss]=(u.by[a.code+"-"+a.iss]||0)+(+p.amount||0);
+      if(Date.parse(p.created_at)<Date.parse(u.first))u.first=p.created_at;
+      if(Date.parse(p.created_at)>Date.parse(u.last))u.last=p.created_at; });
+    ROWS=Object.keys(w).map(function(k){return w[k];});
+    // The top row by volume was a LumosDAO treasury wallet -- our own testing, not a customer.
+    // Labelling beats silently dropping: excluding them here would make this page disagree with the
+    // dashboard and the Revenue page, which DO count that on-chain activity. The admin can filter.
+    ROWS.forEach(function(u){ u.tre=!!TREASURY[u.addr]; });
+    setT(q("#lxuExt"), String(ROWS.filter(function(u){return !u.tre;}).length));
+    setT(q("#lxuAll"), String(ROWS.length)); fixPager(ROWS.length);
+    var sub=q(".admin-page-sub"); if(sub)sub.innerHTML="Wallets that have paid a platform fee \u00b7 <span class='mono'>"+ROWS.length+"</span> total";
+    if(!ROWS.length){ if(tb)tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>No wallet has paid a fee yet.</td></tr>"; return; }
+    sortRows(); render();
+    // revenue: the fees this wallet actually paid us, priced per asset
+    var codes={}; ROWS.forEach(function(u){ Object.keys(u.by).forEach(function(k){ codes[k]=1; }); });
+    Object.keys(codes).forEach(function(k){ var pp=k.split("-");
+      priceUsd(pp[0],pp[1]||"",function(px){ if(px==null)return;
+        ROWS.forEach(function(u){ if(u.by[k]!=null){ u.usd=(u.usd||0)+u.by[k]*px; } }); sortRows(); render(); }); });
+    // volume: gross swap size per wallet, from the same decoded envelopes the dashboard uses
+    loadVolume().then(function(v){
+      var idx={}; ROWS.forEach(function(u){ idx[u.addr]=u; });
+      var vcodes={};
+      v.rows.forEach(function(r){ var u=idx[r.from]; if(!u)return; var k=r.code+"-"+r.iss;
+        u.vol[k]=(u.vol[k]||0)+r.gross; vcodes[k]=1; });
+      Object.keys(vcodes).forEach(function(k){ var pp=k.split("-");
+        priceUsd(pp[0],pp[1]||"",function(px){ if(px==null)return;
+          ROWS.forEach(function(u){ if(u.vol[k]!=null){ u.volUsd=(u.volUsd||0)+u.vol[k]*px; } }); sortRows(); render(); }); });
+    });
+    // fee tier: membership of the >=250K LUMOS set, which is already fetched for the dashboard
+    loadTier().then(function(ti){ TIERSET=ti.set||{};
+      var onTier=0; ROWS.forEach(function(u){ u.tier=!!TIERSET[u.addr]; if(u.tier)onTier++; });
+      setT(q("#lxuTier"), String(onTier)); render(); });
+  });
+  function sortRows(){ ROWS.sort(function(x,y){
+    if(SORT===1)return (y.n||0)-(x.n||0);
+    if(SORT===2)return (y.usd||0)-(x.usd||0);
+    if(SORT===3)return Date.parse(y.last)-Date.parse(x.last);
+    return (y.volUsd||0)-(x.volUsd||0); }); }
+  function render(){ if(!tb)return; var qy=((q(".fs-search input")||{}).value||"").trim().toLowerCase();
+    var list=ROWS.filter(function(u){ if(qy&&u.addr.toLowerCase().indexOf(qy)<0)return false; if(SEG==="ext"&&u.tre)return false; if(SEG==="tier"&&!u.tier)return false; return true; });
+    if(!list.length){ tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>No wallet matches that search.</td></tr>"; return; }
+    tb.innerHTML=list.map(function(u){
+      var paid=Object.keys(u.by).map(function(k){ return num(u.by[k])+" "+k.split("-")[0]; }).join(", ");
+      // A wallet whose LUMOS balance we have not resolved yet shows a dash, not "No" -- claiming someone
+      // is off the discount before the check has finished would be a wrong answer, not a pending one.
+      var tier=(u.tier==null)?"\u2014":(u.tier
+        ?"<span class='lxu-tier on' title='Holds at least 250,000 LUMOS, so pays the reduced 0.1% platform fee.'>0.1%</span>"
+        :"<span class='lxu-tier off' title='Below 250,000 LUMOS, so pays the standard 0.2% platform fee.'>0.2%</span>");
+      return "<tr class='clickable' data-w='"+esc(u.addr)+"'>"
+        +"<td><div class='user-cell'><img class='lxu-av' data-lxc='wallet' alt='' src='"+avatar(u.addr.slice(1,3))+"'>"
+        +"<div><div class='un mono'>"+esc(shortG(u.addr))+(u.tre?" <span class='lxu-tre' title='A LumosDAO treasury or burn wallet, not a customer. Its activity is real on-chain volume so it is counted, but it is not a trader.'>treasury</span>":"")+"</div><div class='um'>Stellar mainnet</div></div></div></td>"
+        +"<td class='num-cell' style='text-align:right'>"+(u.volUsd==null?"\u2026":esc(usd(u.volUsd)))+"</td>"
+        +"<td class='num-cell' style='text-align:right'>"+u.n+"</td>"
+        +"<td class='num-cell' style='text-align:right' title='"+esc(paid)+"'>"+(u.usd==null?esc(paid):esc(usd(u.usd)))+"</td>"
+        +"<td style='text-align:right'>"+tier+"</td>"
+        +"<td style='text-align:right;color:var(--text-muted);font-size:13.5px'>"+esc(new Date(u.first).toLocaleDateString())+"</td>"
+        +"<td style='text-align:right;color:var(--text-muted);font-size:13.5px'>"+esc(ago(u.last))+"</td></tr>"; }).join(""); }
+  // Delegated, so the row markup carries no inline handler and the address needs no quote juggling.
+  if(tb&&!tb.__lxw){ tb.__lxw=1; tb.addEventListener("click",function(e){
+    var tr=e.target.closest&&e.target.closest("tr[data-w]"); if(!tr)return;
+    if(window.__lxNav)window.__lxNav("lumoscore-admin-user-profile.html?w="+tr.getAttribute("data-w")); }); }
+  qa(".seg-chip").forEach(function(ch){ ch.addEventListener("click",function(){ qa(".seg-chip").forEach(function(o){ o.classList.remove("active"); }); ch.classList.add("active"); SEG=ch.getAttribute("data-seg")||"all"; render(); }); });   var si=q(".fs-search input"); if(si){ si.placeholder="Search by wallet address\u2026"; si.addEventListener("input",render); }
+  qa(".filter-strip .fs-select").forEach(function(sel,i){
+    if(i===0){ sel.innerHTML="<option>Sort: Volume</option><option>Sort: Trades</option><option>Sort: Revenue</option><option>Sort: Last seen</option>";
+      sel.addEventListener("change",function(){ SORT=sel.selectedIndex; sortRows(); render(); }); }
+    else sel.remove(); });
+  var more=qa(".filter-strip .adm-btn").filter(function(b){return /more/i.test(b.textContent);})[0]; if(more)more.remove();
+  qa(".admin-page-actions .adm-btn").forEach(function(b){ if(!/export/i.test(b.textContent)||b.__lx)return; b.__lx=1;
+    b.addEventListener("click",function(){
+      var head2="wallet,volume_usd,trades,revenue_usd,fee_rate,first_seen,last_seen\\n";
+      var body=ROWS.map(function(u){ return [u.addr,u.volUsd==null?"":u.volUsd.toFixed(6),u.n,u.usd==null?"":u.usd.toFixed(6),u.tier==null?"":(u.tier?"0.001":"0.002"),u.first,u.last].join(","); }).join("\\n");
+      var bl=new Blob([head2+body],{type:"text/csv"}), url=URL.createObjectURL(bl);
+      var el=document.createElement("a"); el.href=url; el.download="lumoscore-users.csv"; el.click();
+      setTimeout(function(){URL.revokeObjectURL(url);},1000); }); });
+}
+`
 +'var ASEED=[["LUMOS","GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S"],["USDC","GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"],["AQUA","GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"],["yXLM","GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"],["EURC","GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"],["yUSDC","GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF"]];'
 +'var AKEY="lumos.admin.assets";'
 +'function aList(){ try{ var v=JSON.parse(localStorage.getItem(AKEY)||"null"); if(v&&v.length)return v; }catch(_){}'
