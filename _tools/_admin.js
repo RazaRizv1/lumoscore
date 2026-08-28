@@ -1048,7 +1048,7 @@ function paintAssets(){
 
   var head=q(".admin-page-head");
   if(head&&!q(".lxadm-note")){ var nt=document.createElement("div"); nt.className="lxadm-note";
-    nt.textContent="Curated is what LumosCore lists — the same set Trade shows. Mints are the tokens issued through our launchpad. A tick means the asset’s own issuer vouches for it: its on-chain home domain publishes a stellar.toml naming this exact code and issuer. Volume is what traded on LumosCore, in USD.";
+    nt.textContent="Curated is what LumosCore lists — the same set Trade shows. Mints are the tokens issued through our launchpad. A tick means the asset’s own issuer vouches for it: its on-chain home domain publishes a stellar.toml naming this exact code and issuer. Volume is what traded on LumosCore, in USD. Adding an asset here curates it immediately; it appears on the public site at the next publish.";
     head.parentNode.insertBefore(nt, head.nextSibling); }
 
   function tabs(){
@@ -1240,7 +1240,13 @@ function paintAssets(){
               CUR.push({code:code,iss:iss}); DATA[kk]=undefined;
               try{ localStorage.setItem(AKEY,JSON.stringify(CUR)); }catch(_){}
               MODE="curated"; close(); tabs(); render(); kpis(); load({code:code,iss:iss});
-              editAsset(kk); })
+              editAsset(kk);
+              // Says where it is and is not yet. The curated list lives in KV and the public site is
+              // BUILT from it, so an asset is live here the moment it is added and live on Trade only
+              // after the next publish. Leaving that unsaid is why an asset was reported missing from
+              // Trade twice -- it was curated correctly both times and simply had not been published.
+              setTimeout(function(){ var s=document.querySelector("#lxeSrc");
+                if(s)s.textContent="Curated and verified. It shows on the public site after the next publish (node _tools/_syncverified.js, then deploy). "+s.textContent; },900); })
             .catch(function(e){ ok.disabled=false; ok.textContent="Verify & add"; er.textContent=e.message; });
         }); }); }); });
 }
