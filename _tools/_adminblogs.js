@@ -76,8 +76,6 @@ const MAIN = `
             <input type="file" id="lxbBodyFile" accept="image/*" hidden>
             <div class="lxb-cover" id="lxbCoverPrev"></div>
             <div class="lxb-h">1200&times;630 is the size to export &mdash; it is what link previews crop to.</div>
-            <label class="lxb-l">Cover alt text</label>
-            <input class="lxb-i" id="lxbCoverAlt" type="text" placeholder="What the image shows">
             <label class="lxb-l">Category</label>
             <select class="lxb-i" id="lxbCat">
               <option value="Stellar">Stellar</option>
@@ -282,7 +280,6 @@ function openEditor(post){
   q("#lxbSlugHint").textContent=post?"changing this changes the public link — the old one stops working":"set from the title";
   q("#lxbBody").innerHTML=post?(post.body||""):"";
   q("#lxbCover").value=post?(post.cover||""):"";
-  q("#lxbCoverAlt").value=post?(post.coverAlt||""):"";
   setCat(post?(post.category||""):"Stellar");
   q("#lxbMeta").value=post?(post.metaDescription||""):"";
   q("#lxbTags").value=post?((post.tags||[]).join(", ")):"";
@@ -312,7 +309,7 @@ function gather(published){
   return {slug:slug,prevSlug:PREV_SLUG,title:title,category:catValue(),
     body:clean(q("#lxbBody")),
     cover:(q("#lxbCover").value||"").trim(),
-    coverAlt:(q("#lxbCoverAlt").value||"").trim(),
+    coverAlt:title,
     metaDescription:(q("#lxbMeta").value||"").trim(),
     tags:tags, readMins:(read>0?read:Math.max(1,Math.round(words()/200))),
     published:!!published};
