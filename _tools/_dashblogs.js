@@ -84,12 +84,12 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   // Desktop: back to five fixed columns, and every scroller property reset -- leaving grid-auto-flow or
   // the negative margin behind would quietly reshape the row that works.
   + '@media(min-width:1000px){.lx-blogs-list{grid-auto-flow:row;grid-auto-columns:auto;'
-  + 'grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;overflow-x:visible;'
+  + 'grid-template-columns:repeat(var(--lxn,5),minmax(0,1fr));gap:14px;overflow-x:visible;'
   + 'scroll-snap-type:none;margin:0;padding:0}}'
   // Not a link: no href, and the cursor does not promise one. It keeps a link's hover so the section
   // reads as the list of posts it will become.
   + '.lx-blog-row{display:flex;flex-direction:column;align-items:stretch;gap:10px;min-width:0;'
-  + 'border-radius:12px;cursor:default}'
+  + 'border-radius:12px;cursor:pointer}'
   + '.lx-blog-row:hover .lx-blog-cover{transform:translateY(-2px);'
   + 'box-shadow:0 8px 18px -10px rgba(0,0,0,.55)}'
   + '.lx-blog-row:hover .lx-blog-title{color:var(--accent,#ea6a2c)}'
@@ -112,17 +112,36 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   + '.lx-blog-dot{width:3px;height:3px;border-radius:50%;background:var(--text-muted,#8a8fa3);'
   + 'opacity:.6;flex:0 0 auto}'
   // The tag rides on the cover, where it reads as part of the artwork rather than a third line of text.
-  + '.lx-blog-chip{position:absolute;left:8px;bottom:8px;z-index:1;'
+  + '.lx-blog-chip{position:absolute;left:8px;bottom:8px;z-index:3;'
   + 'font:700 9.5px/1 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;'
   + 'color:#fff;background:rgba(0,0,0,.30);border:1px solid rgba(255,255,255,.22);'
   + 'border-radius:999px;padding:4px 7px;backdrop-filter:blur(3px)}'
+  + '.lx-blogs-list[data-n="1"]{grid-auto-columns:100%}'
+  + '@media(min-width:1000px){'
+  + '.lx-blogs-list[data-n="1"] .lx-blog-row,.lx-blogs-list[data-n="2"] .lx-blog-row'
+  + '{flex-direction:row;align-items:center;gap:18px}'
+  + '.lx-blogs-list[data-n="1"] .lx-blog-cover,.lx-blogs-list[data-n="2"] .lx-blog-cover{width:auto}'
+  + '.lx-blogs-list[data-n="1"] .lx-blog-cover{flex:0 0 clamp(240px,32%,380px)}'
+  + '.lx-blogs-list[data-n="2"] .lx-blog-cover{flex:0 0 clamp(150px,36%,210px)}'
+  + '.lx-blogs-list[data-n="1"] .lx-blog-row{padding:14px;border-radius:16px;'
+  + 'background:var(--lx-blog-feature,rgba(127,127,140,.07))}'
+  + '.lx-blogs-list[data-n="1"] .lx-blog-title{font-size:19px;-webkit-line-clamp:3}'
+  + '.lx-blogs-list[data-n="1"] .lx-blog-meta,.lx-blogs-list[data-n="2"] .lx-blog-meta'
+  + '{flex:1 1 auto;min-width:0}'
+  + '.lx-blogs-list[data-n="1"] .lx-blog-meta{gap:9px}'
+  + '}'
+  + '.lx-blog-read{display:inline-flex;align-items:center;gap:5px;margin-top:2px;'
+  + 'font:700 12.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--accent,#ea6a2c)}'
+  + '.lx-blog-read svg{width:11px;height:11px;transition:transform .16s ease}'
+  + '.lx-blog-row:hover .lx-blog-read svg{transform:translateX(3px)}'
+  + '@media(prefers-reduced-motion:reduce){.lx-blog-read svg{transition:none}}'
   + '</style>';
 
 function esc(s) {
   return String(s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;');
 }
 
-const DATA_SCRIPT = "<script id=\"lx-dashblogdata\">(function(){\nif(window.__lxDashBlog)return; window.__lxDashBlog=1;\nfunction esc(s){return String(s==null?\"\":s).replace(/[<>&\"]/g,function(c){return c===\"<\"?\"&lt;\":c===\">\"?\"&gt;\":c===\"&\"?\"&amp;\":\"&quot;\";});}\nfunction when(t){ if(!t)return \"\";\n  var d=Date.now()-t, day=86400000;\n  if(d<day)return \"today\";\n  if(d<2*day)return \"yesterday\";\n  if(d<7*day)return Math.floor(d/day)+\" days ago\";\n  if(d<30*day)return Math.floor(d/(7*day))+\"w ago\";\n  if(d<365*day)return Math.floor(d/(30*day))+\"mo ago\";\n  return new Date(t).toLocaleDateString(); }\n\nfunction paint(posts){\n  var card=document.querySelector(\".lx-blogs-card\"); if(!card)return;\n  var list=card.querySelector(\".lx-blogs-list\"); if(!list)return;\n  var soon=card.querySelector(\".lx-blogs-soon\");\n\n  if(!posts.length){\n    // No posts is a real state and says so. Falling back to the stand-in rows would put invented\n    // article titles on the dashboard, which is worse than an empty card.\n    if(soon)soon.remove();\n    list.innerHTML=\"<div class='lx-blog-empty'>No posts yet.</div>\";\n    return;\n  }\n  if(soon)soon.remove();\n  list.innerHTML=posts.slice(0,5).map(function(p){\n    var cover=p.cover\n      ? (\"<img class='lx-blog-img' alt='' src='\"+esc(p.cover)+\"'>\")\n      : \"\";\n    return \"<a class='lx-blog-row' href='/blog/\"+esc(p.slug)+\"'>\"\n      +\"<div class='lx-blog-cover'>\"+cover\n      +(p.category?(\"<span class='lx-blog-chip' data-lxc=''>\"+esc(p.category)+\"</span>\"):\"\")+\"</div>\"\n      +\"<div class='lx-blog-meta'>\"\n      +\"<div class='lx-blog-title'>\"+esc(p.title)+\"</div>\"\n      +\"<div class='lx-blog-sub'><span class='lx-blog-when'>\"+esc(when(p.publishedAt||p.createdAt))+\"</span></div>\"\n      +\"</div></a>\";\n  }).join(\"\");\n}\n\nfunction boot(){\n  if(!document.querySelector(\".lx-blogs-card\"))return;\n  fetch(\"/lxapi/blog\").then(function(r){ return r.ok?r.json():null; })\n    .then(function(d){ if(d&&d.posts)paint(d.posts); })\n    .catch(function(){});\n  // The card's own header link goes to the blog index. It was inert while there was nothing to link to.\n  var more=document.querySelector(\".lx-blogs-more\");\n  if(more&&!more.__lx){ more.__lx=1; more.style.cursor=\"pointer\";\n    more.addEventListener(\"click\",function(){ location.href=\"/blog\"; }); }\n}\nif(document.readyState!==\"loading\")boot(); else document.addEventListener(\"DOMContentLoaded\",boot);\n})();</script>";
+const DATA_SCRIPT = "<script id=\"lx-dashblogdata\">(function(){\nif(window.__lxDashBlog)return; window.__lxDashBlog=1;\nfunction esc(s){return String(s==null?\"\":s).replace(/[<>&\"]/g,function(c){return c===\"<\"?\"&lt;\":c===\">\"?\"&gt;\":c===\"&\"?\"&amp;\":\"&quot;\";});}\nfunction when(t){ if(!t)return \"\";\n  var d=Date.now()-t, day=86400000;\n  if(d<day)return \"today\";\n  if(d<2*day)return \"yesterday\";\n  if(d<7*day)return Math.floor(d/day)+\" days ago\";\n  if(d<30*day)return Math.floor(d/(7*day))+\"w ago\";\n  if(d<365*day)return Math.floor(d/(30*day))+\"mo ago\";\n  return new Date(t).toLocaleDateString(); }\nvar ARROW=\"<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><path d='M5 12h14'/><path d='M13 5l7 7-7 7'/></svg>\";\n\nfunction paint(posts){\n  var card=document.querySelector(\".lx-blogs-card\"); if(!card)return;\n  var list=card.querySelector(\".lx-blogs-list\"); if(!list)return;\n  var soon=card.querySelector(\".lx-blogs-soon\");\n  if(soon)soon.remove();\n\n  if(!posts.length){\n    list.removeAttribute(\"data-n\");\n    list.innerHTML=\"<div class='lx-blog-empty'>No posts yet.</div>\";\n    return;\n  }\n  var show=posts.slice(0,5);\n  // The grid was built for five columns. Driving the track count from the real post count is what\n  // stops a single post sitting in a fifth of a full-width card with nothing beside it.\n  list.setAttribute(\"data-n\",String(show.length));\n  list.style.setProperty(\"--lxn\",String(show.length));\n  var wide=show.length<=2;\n  list.innerHTML=show.map(function(p){\n    var cover=p.cover?(\"<img class='lx-blog-img' alt='' src='\"+esc(p.cover)+\"'>\"):\"\";\n    var sub=\"<span class='lx-blog-when'>\"+esc(when(p.publishedAt||p.createdAt))+\"</span>\";\n    if(p.readMins)sub+=\"<span class='lx-blog-dot'></span><span class='lx-blog-when'>\"+esc(p.readMins)+\" min read</span>\";\n    // Only on the wide shapes: in a five-column grid this is a third line in a column already tight.\n    var read=wide?(\"<span class='lx-blog-read'>Read article\"+ARROW+\"</span>\"):\"\";\n    return \"<a class='lx-blog-row' href='/blog/\"+esc(p.slug)+\"'>\"\n      +\"<div class='lx-blog-cover'>\"+cover\n      +(p.category?(\"<span class='lx-blog-chip' data-lxc=''>\"+esc(p.category)+\"</span>\"):\"\")+\"</div>\"\n      +\"<div class='lx-blog-meta'>\"\n      +\"<div class='lx-blog-title'>\"+esc(p.title)+\"</div>\"\n      +\"<div class='lx-blog-sub'>\"+sub+\"</div>\"+read\n      +\"</div></a>\";\n  }).join(\"\");\n}\n\nfunction boot(){\n  if(!document.querySelector(\".lx-blogs-card\"))return;\n  fetch(\"/lxapi/blog\").then(function(r){ return r.ok?r.json():null; })\n    .then(function(d){ paint((d&&d.posts)||[]); })\n    .catch(function(){});\n  var more=document.querySelector(\".lx-blogs-more\");\n  if(more&&!more.__lx){ more.__lx=1; more.style.cursor=\"pointer\";\n    more.addEventListener(\"click\",function(){ location.href=\"/blog\"; }); }\n}\nif(document.readyState!==\"loading\")boot(); else document.addEventListener(\"DOMContentLoaded\",boot);\n})();</script>";
 
 // NO PLACEHOLDER ROWS IN THE MARKUP.
 //
@@ -199,7 +218,12 @@ for (const dev of ['desktop', 'mobile']) {
     const hi = p.indexOf('</head>');
     if (hi < 0) continue;
     p = p.slice(0, hi) + STYLE + p.slice(hi);
-    if (p.indexOf("lx-dashblogdata") < 0) {
+    // Strip before inserting, the way the stylesheet above is handled. Insert-if-absent looks
+    // idempotent but pins the container to whichever version of the painter landed first, so every
+    // later edit to this script is silently a no-op -- the transform reports success and ships the
+    // old code.
+    p = p.replace(/<script id="lx-dashblogdata">[\s\S]*?<\/script>/g, "");
+    {
       const bi = p.lastIndexOf("</body>");
       if (bi >= 0) p = p.slice(0, bi) + DATA_SCRIPT + p.slice(bi);
     }
