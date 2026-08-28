@@ -696,7 +696,13 @@ function paintUsers(){
 +'var AKEY="lumos.admin.assets";'
 +'function aList(){ try{ var v=JSON.parse(localStorage.getItem(AKEY)||"null"); if(v&&v.length)return v; }catch(_){}'
 +'  return ASEED.map(function(t){ return {code:t[0],iss:t[1]}; }); }'
-+'function aSave(l){ try{ localStorage.setItem(AKEY,JSON.stringify(l)); }catch(_){} }'
+// The list lives in KV now, not in this browser, so it is the same list for everyone and the public
+// site can read it. localStorage is kept only as an instant-paint cache for the next page load.
++'function aSave(l){ try{ localStorage.setItem(AKEY,JSON.stringify(l)); }catch(_){}'
++'  var names=l.map(function(a){ return a.code+"-"+a.iss; });'
++'  return fetch("/lxapi/assetmeta",{method:"PUT",headers:{"content-type":"application/json"},'
++'    body:JSON.stringify({list:names})}).then(function(r){ return r.json(); })'
++'    .catch(function(){ return null; }); }'
 // stellar.expert prices in USD (USDC comes back at 1.0001, not 6.26), so no XLM conversion here
 +'function aInfo(code,iss,cb){ j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code+"-"+iss)+"&limit=5").then(function(d){'
 +'    var rs=(d&&d._embedded&&d._embedded.records)||[];'
@@ -710,6 +716,76 @@ function paintUsers(){
 +'      funded:(m.trustlines&&m.trustlines[2])||0,domain:m.domain||"",img:ti.image||"",name:ti.name||""}); }); }'
 +'function pct(v){ if(v==null||!isFinite(v))return "<span style=\\"color:var(--text-muted)\\">\u2014</span>";'
 +'  var c=v>=0?"ch-up":"ch-down"; return "<span class=\\""+c+"\\">"+(v>=0?"+":"")+v.toFixed(2)+"%</span>"; }'
++`
+// Per-asset overrides for the public Trade-Asset page. Everything there normally comes from the
+// issuer's own stellar.toml, which we cannot edit -- so when a project asks us to fix their
+// description, logo or links, this is the only place that can answer. Saved values beat the toml.
+function editAsset(k){
+  if(q(".lxmodal"))return;
+  var i=k.lastIndexOf("-"), code=k.slice(0,i);
+  var m=document.createElement("div"); m.className="lxmodal";
+  function row(id,label,hint,type){
+    return "<label class='lxmodal-l' for='"+id+"'>"+esc(label)+(hint?(" <span style='font-weight:600;text-transform:none;letter-spacing:0;opacity:.7'>"+esc(hint)+"</span>"):"")+"</label>"
+      +(type==="area"
+        ? "<textarea class='lxmodal-i' id='"+id+"' rows='4'></textarea>"
+        : "<input class='lxmodal-i' id='"+id+"' type='text'>");
+  }
+  m.innerHTML="<div class='lxmodal-box' style='max-width:560px'><h3 class='lxmodal-t'>Edit "+esc(code)+"</h3>"
+    +"<p class='lxmodal-s'>These replace what the issuer publishes in their stellar.toml, on the public asset page. Leave a field empty to keep using theirs.</p>"
+    +row("lxeName","Display name","optional")
+    +row("lxeDesc","Description","shown under the asset name","area")
+    +row("lxeImg","Logo URL","https://…")
+    +row("lxeSite","Website","https://…")
+    +row("lxeX","X / Twitter","handle or full URL")
+    +row("lxeTg","Telegram","handle or full URL")
+    +"<p class='lxmodal-e' id='lxeErr'></p>"
+    +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxeClear'>Clear overrides</button>"
+    +"<button class='adm-btn ghost' type='button' id='lxeCancel'>Cancel</button>"
+    +"<button class='adm-btn primary' type='button' id='lxeOk'>Save</button></div></div>";
+  document.body.appendChild(m);
+  function close(){ m.remove(); }
+  m.addEventListener("click",function(e){ if(e.target===m)close(); });
+  m.querySelector("#lxeCancel").addEventListener("click",close);
+  var er=m.querySelector("#lxeErr");
+  function val(id){ return (m.querySelector(id).value||"").trim(); }
+
+  // Prefill with whatever is already stored. Deliberately NOT prefilled from the toml: a form showing
+  // the issuer's text would save a copy of it as an override the moment you touched any other field,
+  // freezing their live description at today's wording.
+  j("/lxapi/assetmeta?asset="+encodeURIComponent(k)).then(function(d){
+    var v=(d&&d.meta)||{};
+    m.querySelector("#lxeName").value=v.name||"";
+    m.querySelector("#lxeDesc").value=v.description||"";
+    m.querySelector("#lxeImg").value=v.image||"";
+    m.querySelector("#lxeSite").value=v.website||"";
+    m.querySelector("#lxeX").value=v.twitter||"";
+    m.querySelector("#lxeTg").value=v.telegram||"";
+  });
+
+  m.querySelector("#lxeOk").addEventListener("click",function(){
+    var ok=m.querySelector("#lxeOk"); er.textContent=""; ok.disabled=true; ok.textContent="Saving\u2026";
+    fetch("/lxapi/assetmeta",{method:"PUT",headers:{"content-type":"application/json"},
+      body:JSON.stringify({asset:k,name:val("#lxeName"),description:val("#lxeDesc"),
+        image:val("#lxeImg"),website:val("#lxeSite"),twitter:val("#lxeX"),telegram:val("#lxeTg")})})
+      .then(function(r){ return r.json().then(function(b){ return {ok:r.ok,b:b}; }); })
+      .then(function(z){
+        ok.disabled=false; ok.textContent="Save";
+        if(!z.ok){ er.textContent=(z.b&&(z.b.error||z.b.reason))||"Could not save."; return; }
+        close();
+      }).catch(function(e){ ok.disabled=false; ok.textContent="Save"; er.textContent=e.message; });
+  });
+
+  m.querySelector("#lxeClear").addEventListener("click",function(){
+    if(!confirm("Clear the overrides for "+code+"? The asset page will go back to showing whatever the issuer publishes."))return;
+    // meta=1 keeps the asset listed and only drops our copy -- de-listing is the x button, a different
+    // intention that should not happen by accident from an edit form.
+    fetch("/lxapi/assetmeta?meta=1&asset="+encodeURIComponent(k),{method:"DELETE"})
+      .then(function(r){ return r.json(); })
+      .then(function(b){ if(b&&b.ok)close(); else er.textContent=(b&&b.error)||"Could not clear."; })
+      .catch(function(e){ er.textContent=e.message; });
+  });
+}
+`
 +'function paintAssets(){'
 +'  var t=(q(".admin-page-title")||{}).textContent||""; if(!/^\\s*Assets/.test(t))return;'
 +'  var tbl=q(".adm-table"); if(!tbl||tbl.getAttribute("data-lxbuilt")==="1")return; tbl.setAttribute("data-lxbuilt","1");'
@@ -758,14 +834,25 @@ function paintUsers(){
 +'        +"<td class=\\"num-cell\\" style=\\"text-align:right\\" title=\\""+(v?esc(v.funded+" funded"):"")+"\\">"+(load?"\u2026":esc(num(v.trust)))+"</td>"'
 +'        +"<td style=\\"text-align:right\\"><span class=\\"row-act\\">"'
 +'        +"<a class=\\"row-act-btn\\" title=\\"Open asset page\\" href=\\"lumoscore-dex-asset.html?asset="+esc(k)+"\\">\u2197</a>"'
++'        +"<button class=\\"row-act-btn\\" type=\\"button\\" title=\\"Edit description, logo and links\\" data-lxed=\\""+esc(k)+"\\">\u270e</button>"'
 +'        +"<button class=\\"row-act-btn\\" type=\\"button\\" title=\\"Remove from list\\" data-lxrm=\\""+esc(k)+"\\">\u00d7</button>"'
 +'        +"</span></td></tr>"; }).join("");'
 +'    qa("[data-lxrm]").forEach(function(b){ if(b.__lx)return; b.__lx=1;'
 +'      b.addEventListener("click",function(){ var k=b.getAttribute("data-lxrm");'
-+'        LIST=LIST.filter(function(a){ return key(a)!==k; }); aSave(LIST); render(); kpis(); }); }); }'
++'        LIST=LIST.filter(function(a){ return key(a)!==k; }); aSave(LIST); render(); kpis(); }); });'
++'    qa("[data-lxed]").forEach(function(b){ if(b.__lx)return; b.__lx=1;'
++'      b.addEventListener("click",function(){ editAsset(b.getAttribute("data-lxed")); }); }); }'
 +'  function load(a){ var k=key(a); if(DATA[k]!==undefined)return;'
 +'    aInfo(a.code,a.iss,function(v){ DATA[k]=v; render(); kpis(); }); }'
 +'  render(); kpis(); LIST.forEach(load);'
+// The seeded/cached list paints immediately; the shared one replaces it as soon as it arrives. An empty
+// stored list is NOT treated as "no assets" on first run -- it means nobody has curated one yet, so the
+// seed stands until someone saves.
++'  j("/lxapi/assetmeta").then(function(d){'
++'    var names=(d&&d.list)||[]; if(!names.length)return;'
++'    LIST=names.map(function(s){ var i=s.lastIndexOf("-"); return {code:s.slice(0,i),iss:s.slice(i+1)}; });'
++'    try{ localStorage.setItem(AKEY,JSON.stringify(LIST)); }catch(_){}'
++'    render(); kpis(); LIST.forEach(load); });'
 +'  var si=q(".fs-search input"); if(si){ si.placeholder="Search by code, issuer or domain\u2026"; si.addEventListener("input",render); }'
 +'  qa(".filter-strip .fs-select").forEach(function(sel,i){'
 +'    if(i===0){ sel.innerHTML="<option>Sort: 7d volume</option><option>Sort: Trustlines</option><option>Sort: Code</option>";'
