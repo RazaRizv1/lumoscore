@@ -84,8 +84,8 @@ export async function onRequestPut({ request, env }) {
   const title = String((b && b.title) || '').trim();
   if (!title) return json({ error: 'title is required' }, 400, 0);
 
-  // The slug is the URL, so it is fixed at creation and never silently rewritten by an edit -- renaming
-  // it later would break every link already shared to the post.
+  // The slug is the URL. It CAN be changed after publishing -- the editor warns that the old link
+  // stops working -- and a change moves the post rather than copying it (see prevSlug below).
   const slug = SLUG_RE.test(String(b.slug || '')) ? String(b.slug) : slugify(title);
   if (!SLUG_RE.test(slug)) return json({ error: 'could not derive a slug from that title' }, 400, 0);
 
@@ -112,6 +112,12 @@ export async function onRequestPut({ request, env }) {
 
   await kv.put(POST + slug, JSON.stringify(post));
 
+  // A rename MOVES the post. Without this the old slug would keep serving a stale copy of the same
+  // article and the index would list it twice.
+  const prev = String((b && b.prevSlug) || "");
+  const renamed = prev && SLUG_RE.test(prev) && prev !== slug;
+  if (renamed) { try { await kv.delete(POST + prev); } catch (_) {} }
+
   // The index carries no body, so it stays small however long the posts get.
   const idx = await readIndex(kv);
   const summary = {
@@ -120,7 +126,7 @@ export async function onRequestPut({ request, env }) {
     published: post.published, createdAt: post.createdAt, updatedAt: post.updatedAt,
     publishedAt: post.publishedAt,
   };
-  const next = idx.filter((p) => p && p.slug !== slug);
+  const next = idx.filter((p) => p && p.slug !== slug && (!renamed || p.slug !== prev));
   next.unshift(summary);
   next.sort((x, y) => (y.publishedAt || y.createdAt || 0) - (x.publishedAt || x.createdAt || 0));
   await kv.put(IDX, JSON.stringify(next));

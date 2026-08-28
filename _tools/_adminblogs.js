@@ -50,8 +50,6 @@ const MAIN = `
             <input class="lxb-i" id="lxbTitle" type="text" placeholder="How liquidity pools work on Stellar">
             <label class="lxb-l">URL <span class="lxb-h" id="lxbSlugHint"></span></label>
             <input class="lxb-i mono" id="lxbSlug" type="text" placeholder="how-liquidity-pools-work-on-stellar">
-            <label class="lxb-l">Excerpt <span class="lxb-h">shown on the blog index card</span></label>
-            <textarea class="lxb-i" id="lxbExcerpt" rows="2" placeholder="One or two sentences."></textarea>
             <label class="lxb-l">Body</label>
             <div class="lxb-tools" id="lxbTools">
               <button type="button" data-cmd="bold" title="Bold"><b>B</b></button>
@@ -229,7 +227,7 @@ function api(method,body,slug){
 }
 function list(){ return fetch("/lxapi/blog?all=1&t="+Date.now()).then(function(r){return r.json();}); }
 
-var POSTS=[], CUR=null;
+var POSTS=[], CUR=null, PREV_SLUG="", SLUG_TOUCHED=false;
 function renderList(){
   var tb=q("#lxbTable tbody"); if(!tb)return;
   var sub=q("#lxbSub");
@@ -251,15 +249,14 @@ function refresh(){ return list().then(function(d){ POSTS=(d&&d.posts)||[]; rend
   if(d&&d.reason==="no kv"){ var s=q("#lxbSub"); if(s)s.textContent="Storage is not connected (CONTENT_KV binding missing on this project)."; } }); }
 
 function openEditor(post){
-  CUR=post||null;
+  CUR=post||null; PREV_SLUG=post?post.slug:""; SLUG_TOUCHED=!!post;
   var ed=q("#lxbEditor"); if(!ed)return;
   ed.hidden=false;
   q("#lxbEdTitle").textContent=post?"Edit post":"New post";
   q("#lxbTitle").value=post?post.title:"";
   q("#lxbSlug").value=post?post.slug:"";
-  q("#lxbSlug").disabled=!!post;
-  q("#lxbSlugHint").textContent=post?"fixed once published \\u2014 changing it would break shared links":"set from the title";
-  q("#lxbExcerpt").value=post?(post.excerpt||""):"";
+  q("#lxbSlug").disabled=false;
+  q("#lxbSlugHint").textContent=post?"changing this changes the public link — the old one stops working":"set from the title";
   q("#lxbBody").innerHTML=post?(post.body||""):"";
   q("#lxbCover").value=post?(post.cover||""):"";
   q("#lxbCoverAlt").value=post?(post.coverAlt||""):"";
@@ -289,8 +286,7 @@ function gather(published){
   var slug=(q("#lxbSlug").value||"").trim()||slugify(title);
   var tags=(q("#lxbTags").value||"").split(",").map(function(t){return t.trim();}).filter(Boolean);
   var read=parseInt(q("#lxbRead").value,10);
-  return {slug:slug,title:title,category:(q("#lxbCat").value||"").trim(),
-    excerpt:(q("#lxbExcerpt").value||"").trim(),
+  return {slug:slug,prevSlug:PREV_SLUG,title:title,category:(q("#lxbCat").value||"").trim(),
     body:clean(q("#lxbBody")),
     cover:(q("#lxbCover").value||"").trim(),
     coverAlt:(q("#lxbCoverAlt").value||"").trim(),
@@ -304,7 +300,7 @@ function save(published){
   api("PUT",body).then(function(r){
     if(!r.ok){ status("Could not save: "+((r.d&&(r.d.error||r.d.reason))||("HTTP "+r.status)),"err"); return; }
     status(published?"Published.":"Draft saved.","ok");
-    q("#lxbSlug").disabled=true; CUR=r.d.post;
+    CUR=r.d.post; PREV_SLUG=r.d.post.slug;
     q("#lxbPublish").textContent=published?"Update":"Publish";
     refresh();
   }).catch(function(e){ status("Could not save: "+e.message,"err"); });
@@ -484,7 +480,11 @@ function boot(){
   }
 
   var ti=q("#lxbTitle"); if(ti&&!ti.__lx){ ti.__lx=1; ti.addEventListener("input",function(){
-    var sl=q("#lxbSlug"); if(sl&&!sl.disabled)sl.value=slugify(ti.value); }); }
+    var sl=q("#lxbSlug"); if(sl&&!SLUG_TOUCHED&&!CUR)sl.value=slugify(ti.value); }); }
+  var sli=q("#lxbSlug");
+  if(sli&&!sli.__lx){ sli.__lx=1; sli.addEventListener("input",function(){ SLUG_TOUCHED=true;
+    // Normalise as it is typed: the URL has to be a valid slug whatever gets pasted in.
+    var v=slugify(sli.value); if(v!==sli.value)sli.value=v; }); }
   var cv=q("#lxbCover"); if(cv&&!cv.__lx){ cv.__lx=1; cv.addEventListener("input",coverPrev); }
   var mt=q("#lxbMeta"); if(mt&&!mt.__lx){ mt.__lx=1; mt.addEventListener("input",metaCount); }
   var bd=q("#lxbBody"); if(bd&&!bd.__lx){ bd.__lx=1; bd.addEventListener("input",wordCount);
