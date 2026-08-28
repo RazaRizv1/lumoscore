@@ -342,6 +342,9 @@ for (const c of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'stella
       if (!/^lumoscore-admin-/.test(k)) continue;
       let h = json[k];
       h = h.replace(/<a class="adn-item [^"]*" href="lumoscore-admin-rewards[^"]*"[\s\S]*?<\/a>\s*/g, '');
+      // The mobile entry was never stripped, so the "idempotent" above only ever held for the sidebar:
+      // the unguarded insert below appended another Rewards item to the container on every run.
+      h = h.replace(/<a class="mob-menu-item[^"]*" href="lumoscore-admin-rewards-mobile\.html"[\s\S]*?<\/a>\s*/g, '');
       h = h.replace(/<style id="lx-adminrewards-css">[\s\S]*?<\/style>/g, '')
            .replace(/<script id="lx-adminrewards">[\s\S]*?<\/script>/g, '');
       const suffix = variantOf(k);

@@ -241,7 +241,12 @@ const ADMIN_RE = /^lumoscore-admin-/;
 // lumoscore-asset-overview.html cannot quietly keep working. Everything pointing at it is redirected:
 // the clean map and lxClean send it to /trade/stellar, legacyClean 301s the raw filename, and the
 // middleware 301s /asset/stellar/<ASSET> for urls already published in the sitemap.
-const DROPPED = new Set(['lumoscore-asset-overview']);
+// admin-create-pool came with the design and was never wired: no submit handler, and nothing behind
+// its Validate or Save-draft buttons. There is also nothing for it to do. Pools are not imported --
+// lxapi/pools reads the network live from Horizon, so a pool appears because it exists on-chain --
+// and creating one is an on-chain operation signed by a wallet, which is the public Pools section,
+// not a panel with no signing key. Its fields were token fields anyway, duplicating the Assets page.
+const DROPPED = new Set(['lumoscore-asset-overview', 'lumoscore-admin-create-pool']);
 function isDropped(name){
   let b = name.replace(/\.html$/, '');
   let prev;

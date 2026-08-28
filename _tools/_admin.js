@@ -1287,6 +1287,10 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       if(!/^lumoscore-admin-/.test(k)) continue;
       let h=json[k];
       h=h.replace(/<a class="adn-item [^"]*" href="lumoscore-admin-revenue[^"]*"[\s\S]*?<\/a>\s*/g,'');   // strip old
+      // The mobile menu needs the same strip, and did not have one. The insert below is unguarded, so
+      // every run of this transform appended another Revenue entry to the container -- which persists
+      // between runs because containers are not rebuilt from the design. 28 had accumulated.
+      h=h.replace(/<a class="mob-menu-item[^"]*" href="lumoscore-admin-revenue-mobile\.html"[\s\S]*?<\/a>\s*/g,'');
       h=h.replace(/<style id="lx-admin-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-admindata">[\s\S]*?<\/script>/g,'');
       const suffix=variantOf(k);
       const isRev=/^lumoscore-admin-revenue/.test(k);
@@ -1298,7 +1302,7 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
         const mrev='<a class="mob-menu-item'+(isRev?' active':'')+'" href="lumoscore-admin-revenue-mobile.html">'+REV_ICON+'<span>Revenue</span></a>\n      ';
         const mdash=/(<a class="mob-menu-item[^"]*" href="lumoscore-admin-dashboard-mobile\.html">[\s\S]*?<\/a>\s*)/;
         if(mdash.test(h)) h=h.replace(mdash,'$1'+mrev);
-        const MAP={Assets:'assets',Support:'support',Blogs:'blogs','Create pool':'create-pool','Create Pool':'create-pool'};
+        const MAP={Assets:'assets',Support:'support',Blogs:'blogs'};
         h=h.replace(/<a class="(mob-menu-item[^"]*)" href="#">([\s\S]*?)<\/a>/g,(full,cls,inner)=>{
           const m2=inner.match(/<span>([^<]+)<\/span>/);
           const key=m2&&MAP[m2[1].trim()];
@@ -1307,6 +1311,14 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
           return key ? '<a class="'+cls+'" href="lumoscore-admin-'+key+'-mobile.html">'+inner+'</a>' : '';
         });
       }
+      // The page is no longer built (see DROPPED in extract_site.js), so every nav entry that links it
+      // has to go too -- otherwise the panel carries an item that 404s.
+      //
+      // BOTH shapes, and the mobile one is not covered by the MAP above. That map only rewrites the
+      // design's dead href="#" items; an earlier run already rewrote this one to a real filename and
+      // baked it into the container, so it no longer matches href="#" and has to be cut by name.
+      h=h.replace(/<a class="adn-item[^"]*" href="lumoscore-admin-create-pool[^"]*"[\s\S]*?<\/a>\s*/g, '');
+      h=h.replace(/<a class="mob-menu-item[^"]*" href="lumoscore-admin-create-pool[^"]*"[\s\S]*?<\/a>\s*/g, '');
       const bi=h.lastIndexOf('</body>');
       if(bi>=0) h=h.slice(0,bi)+CSS+SCRIPT+h.slice(bi);
       json[k]=h; changed=true; pages++;
