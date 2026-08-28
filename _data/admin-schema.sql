@@ -38,7 +38,10 @@ CREATE TABLE IF NOT EXISTS mail (
   body_html  TEXT,
   size       INTEGER,
   read_at    INTEGER,
-  archived   INTEGER NOT NULL DEFAULT 0
+  archived   INTEGER NOT NULL DEFAULT 0,
+  -- The original source. Kept so a gap in the MIME parser can never lose a message: the body columns
+  -- are a convenience, this is the record.
+  raw        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_mail_ts ON mail (ts DESC);
 CREATE INDEX IF NOT EXISTS idx_mail_unread ON mail (read_at) WHERE read_at IS NULL;

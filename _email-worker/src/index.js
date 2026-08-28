@@ -4,7 +4,7 @@
 // delivers to VERIFIED destination addresses, so pointing this at the wrong mailbox does not quietly
 // send mail elsewhere -- forward() fails, the handler rejects, and real mail bounces.
 //
-// FORWARDING HAPPENS FIRST, AND STORING SECOND. Mail delivery is the thing that must not break: if the
+// ORDER: read the message, then FORWARD, then store. Mail delivery is the thing that must not break: if the
 // database is unavailable, or the parser trips on an unusual message, the message has already gone to
 // the real mailbox and the only thing lost is a copy in the admin panel. The other order would mean a
 // bug in here could silently swallow customer email, which is not a trade anyone would make for an
@@ -153,23 +153,34 @@ async function readAll(stream, limit) {
 
 export default {
   async email(message, env, ctx) {
-    // 1. DELIVERY FIRST. Nothing below this line can stop the mail reaching the real mailbox.
-    let forwarded = true;
+    // 1. READ THE MESSAGE FIRST -- but do not act on it yet.
+    //
+    // message.raw is a ReadableStream and a stream can only be read once. forward() consumes it, so
+    // reading afterwards yielded nothing and every message was delivered but never stored: the first
+    // real test arrived in Gmail with no copy in the panel. Reading first cannot endanger delivery --
+    // it is a bounded 1 MB read into memory, and forward() still runs whatever happens here.
+    let raw = null;
+    try {
+      raw = await readAll(message.raw, 1024 * 1024);
+    } catch (e) {
+      console.log('lumoscore-mail: could not read raw message: ' + ((e && e.message) || e));
+    }
+
+    // 2. DELIVERY. Nothing below this line can stop the mail reaching the real mailbox.
     try {
       await message.forward(FORWARD_TO);
     } catch (e) {
-      forwarded = false;
+      console.log('lumoscore-mail: forward failed: ' + ((e && e.message) || e));
       // If forwarding itself fails, reject so the sender's server retries rather than believing it
       // was delivered. Silently accepting undeliverable mail is worse than a bounce.
       try { message.setReject('Could not deliver'); } catch (_) {}
     }
 
-    // 2. Then keep a copy for the admin panel, best-effort.
+    // 3. Then keep a copy for the admin panel, best-effort.
     try {
       const db = env && env.ADMIN_DB;
-      if (!db) return;
-      // 1 MB is plenty for the body of a support message and bounds what one email can cost.
-      const raw = await readAll(message.raw, 1024 * 1024);
+      if (!db) { console.log('lumoscore-mail: no ADMIN_DB binding'); return; }
+      if (raw == null) { console.log('lumoscore-mail: nothing to store, raw was unreadable'); return; }
       const p = parse(raw);
       const h = p.headers;
       const id = (h['message-id'] || ('gen-' + Date.now() + '-' + Math.round(Number(message.rawSize) || 0)))
@@ -178,8 +189,8 @@ export default {
       const fromName = nameOf(h.from).slice(0, 120);
 
       await db.prepare(
-        'INSERT OR IGNORE INTO mail (id, ts, to_addr, from_addr, from_name, subject, body_text, body_html, size, archived) '
-        + 'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0)'
+        'INSERT OR IGNORE INTO mail (id, ts, to_addr, from_addr, from_name, subject, body_text, body_html, size, archived, raw) '
+        + 'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10)'
       ).bind(
         id, Date.now(),
         String(message.to || '').slice(0, 200),
@@ -187,12 +198,16 @@ export default {
         fromName, subject,
         (p.text || '').slice(0, 200000),
         (p.html || '').slice(0, 400000),
-        Number(message.rawSize) || raw.length
+        Number(message.rawSize) || raw.length,
+        raw.slice(0, 256 * 1024)
       ).run();
       // INSERT OR IGNORE on the Message-ID: a retried delivery must not create a second row.
+      console.log('lumoscore-mail: stored ' + id);
     } catch (e) {
-      // Swallowed on purpose. The mail is already delivered; a storage failure is a missing copy in an
-      // internal tool, and throwing here would turn that into a bounce for the sender.
+      // Still swallowed: the mail is already delivered, and throwing here would turn a missing copy in
+      // an internal tool into a bounce for the sender. But it is LOGGED now -- the first failure was
+      // invisible precisely because this catch said nothing, which cost a round trip to diagnose.
+      console.log('lumoscore-mail: store failed: ' + ((e && e.message) || e));
     }
   },
 };
