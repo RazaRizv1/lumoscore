@@ -80,7 +80,7 @@ const MAIN = `
             <input class="lxb-i" id="lxbCoverAlt" type="text" placeholder="What the image shows">
             <label class="lxb-l">Category</label>
             <input class="lxb-i" id="lxbCat" type="text" placeholder="Stellar" list="lxbCats">
-            <datalist id="lxbCats"><option>Stellar</option><option>Guide</option><option>Walkthrough</option><option>Product</option></datalist>
+            <datalist id="lxbCats"><option>Stellar</option><option>XRPL</option><option>LumosCore</option><option>Guide</option><option>Walkthrough</option><option>Product</option></datalist>
             <label class="lxb-l">Meta description <span class="lxb-h" id="lxbMetaCount"></span></label>
             <textarea class="lxb-i" id="lxbMeta" rows="3" placeholder="What a search result should say about this post."></textarea>
             <label class="lxb-l">Tags <span class="lxb-h">comma separated</span></label>
