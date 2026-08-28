@@ -63,7 +63,9 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-read-subj{font:800 19px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text)}
 .lxm-read-meta{margin-top:7px;font-size:13px;color:var(--text-muted);line-height:1.7}
 .lxm-read-meta a{color:var(--accent,#ea6a2c);text-decoration:none}
-.lxm-body{white-space:pre-wrap;word-break:break-word;font:400 14.5px/1.7 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}
+.lxm-body{word-break:break-word;max-width:92ch;font:400 14.5px/1.7 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}
+.lxm-body p{margin:0 0 14px;white-space:pre-line}
+.lxm-body p:last-child{margin-bottom:0}
 .lxm-html{width:100%;min-height:280px;max-height:60vh;border:1px solid var(--border);border-radius:10px;background:#fff}
 .lxm-acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
 .lxm-note{margin-top:14px;font-size:12.5px;color:var(--text-muted)}
@@ -155,7 +157,37 @@ function open(id){
     // <div dir="ltr"><br></div> for an empty message. Strip the tags to see whether there are words.
     var htmlWords=html.replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").trim();
     var body;
-    if(text){ body=document.createElement("div"); body.className="lxm-body"; body.textContent=text; }
+    if(text){
+      body=document.createElement("div"); body.className="lxm-body";
+      // Plain-text mail is HARD-WRAPPED by the sending client -- Gmail breaks at about 78 characters.
+      // Rendering it with pre-wrap honours every one of those breaks, so the text kept its 78-column
+      // shape no matter how wide the pane was. Lines within a paragraph are rejoined so the text flows
+      // to the available width, and blank lines still separate paragraphs.
+      //
+      // Breaks are KEPT before quotes and list items: a line starting with >, -, * or "1." is a
+      // structure the sender intended, and joining those would turn a list into a run-on sentence.
+      // No newline escapes in the regexes here: this sits inside a template literal, where a written
+      // backslash-n becomes a real line break and silently destroys the pattern it was meant to be.
+      // The characters come from fromCharCode instead, which nothing can mangle on the way out.
+      var LF=String.fromCharCode(10), CR=String.fromCharCode(13);
+      var keep=/^[ ]*([>*-]|[0-9]+[.)])[ ]/;
+      var lines=text.split(CR).join("").split(LF);
+      var paras=[], cur=[];
+      lines.forEach(function(ln){
+        if(!ln.trim()){ if(cur.length){ paras.push(cur); cur=[]; } return; }
+        cur.push(ln);
+      });
+      if(cur.length)paras.push(cur);
+      if(!paras.length)paras=[[text]];
+      paras.forEach(function(para){
+        var out=[];
+        para.forEach(function(ln){
+          if(!out.length||keep.test(ln)){ out.push(ln); return; }
+          out[out.length-1]=out[out.length-1].replace(/[ ]+$/,"")+" "+ln.trim();
+        });
+        var p=document.createElement("p"); p.textContent=out.join(LF); body.appendChild(p);
+      });
+    }
     else if(htmlWords){
       body=document.createElement("iframe");
       body.className="lxm-html";
