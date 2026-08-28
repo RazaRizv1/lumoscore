@@ -11,7 +11,7 @@
     "serve:admin": "node serve.js 8080 --admin",
     "deploy": "wrangler pages deploy dist --project-name=lumoscore --commit-dirty=true",
     "deploy:staging": "wrangler pages deploy dist --project-name=lumoscore-staging --commit-dirty=true",
-    "deploy:admin": "wrangler pages deploy dist-admin --project-name=lumoscore-admin --commit-dirty=true",
+    "deploy:admin": "wrangler pages deploy dist-admin --project-name=lumoscore-admin --branch=main --commit-dirty=true",
     "predeploy": "node _tools/predeploy_check.js",
     "predeploy:admin": "node _tools/predeploy_check.js --admin"
   },
