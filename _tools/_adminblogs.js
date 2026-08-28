@@ -64,13 +64,18 @@ const MAIN = `
               <button type="button" data-cmd="quote" title="Quote">&ldquo;&rdquo;</button>
               <button type="button" data-cmd="link" title="Link">Link</button>
               <button type="button" data-cmd="unlink" title="Remove link">Unlink</button>
+              <button type="button" data-cmd="image" title="Insert an image">Image</button>
             </div>
             <div class="lxb-body" id="lxbBody" contenteditable="true"></div>
             <div class="lxb-count" id="lxbWords"></div>
           </div>
           <div class="lxb-ed-side">
             <label class="lxb-l">Cover image URL</label>
-            <input class="lxb-i" id="lxbCover" type="text" placeholder="https://&hellip;/cover.jpg">
+            <input class="lxb-i" id="lxbCover" type="text" placeholder="Upload below, or paste a URL">
+            <div class="lxb-up"><button class="adm-btn ghost" id="lxbCoverPick" type="button">Upload image</button>
+            <span class="lxb-h" id="lxbCoverMsg"></span></div>
+            <input type="file" id="lxbCoverFile" accept="image/*" hidden>
+            <input type="file" id="lxbBodyFile" accept="image/*" hidden>
             <div class="lxb-cover" id="lxbCoverPrev"></div>
             <div class="lxb-h">1200&times;630 is the size to export &mdash; it is what link previews crop to.</div>
             <label class="lxb-l">Cover alt text</label>
@@ -126,6 +131,10 @@ const CSS = `<style id="lx-adminblogs-css">
 .lxb-body blockquote{margin:16px 0;padding:10px 14px;border-left:3px solid var(--accent,#ea6a2c);background:rgba(127,127,140,.08);border-radius:0 8px 8px 0}
 .lxb-body a{color:var(--accent,#ea6a2c);text-decoration:underline;text-underline-offset:2px}
 .lxb-count{margin-top:8px;font-size:12.5px;color:var(--text-muted)}
+.lxb-up{display:flex;align-items:center;gap:10px;margin-top:8px;flex-wrap:wrap}
+.lxb-body img{max-width:100%;height:auto;border-radius:10px;margin:6px 0;display:block}
+.lxb-body img.lxb-uploading{opacity:.45;filter:grayscale(1)}
+.lxb-drop{outline:2px dashed var(--accent,#ea6a2c);outline-offset:-4px}
 .lxb-cover{margin-top:8px;width:100%;aspect-ratio:1200/630;border-radius:10px;border:1px dashed var(--border);background-size:cover;background-position:center;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12.5px}
 .lxb-status{margin-top:14px;font-size:13px;color:var(--text-muted);min-height:20px}
 .lxb-status.ok{color:#22c55e}
@@ -148,7 +157,7 @@ function ago(t){var d=Date.now()-t; if(d<60000)return "just now"; if(d<3600000)r
 // Only tags the public article page styles survive. Anything else is unwrapped, keeping its text, so
 // pasting from Word or Google Docs cannot smuggle in font tags and inline styles that would render
 // unformatted next to properly formatted paragraphs.
-var OK={P:1,H2:1,H3:1,UL:1,OL:1,LI:1,BLOCKQUOTE:1,A:1,STRONG:1,EM:1,BR:1,B:1,I:1};
+var OK={P:1,H2:1,H3:1,UL:1,OL:1,LI:1,BLOCKQUOTE:1,A:1,STRONG:1,EM:1,BR:1,B:1,I:1,IMG:1,FIGURE:1,FIGCAPTION:1};
 var MAP={B:"STRONG",I:"EM",DIV:"P"};
 // These are dropped WITH their contents. Everything else that is not on the allowlist is unwrapped so
 // its words survive -- but a script's words are code, and leaving "alert(1)" sitting in the article as
@@ -175,9 +184,16 @@ function clean(root){
         c.replaceWith(frag); return;
       }
       [].slice.call(c.attributes||[]).forEach(function(a){
-        var keep=(tag==="A"&&a.name==="href");
+        var keep=(tag==="A"&&a.name==="href")||(tag==="IMG"&&(a.name==="src"||a.name==="alt"));
         if(!keep)c.removeAttribute(a.name);
       });
+      if(tag==="IMG"){
+        var src=c.getAttribute("src")||"";
+        // Our own uploads and plain https only. A data: URI would bloat the stored post, and a
+        // still-uploading placeholder must never be saved as the finished picture.
+        if(!(src.indexOf("/lxapi/media?id=")===0||src.indexOf("https://")===0)){ c.remove(); return; }
+        if(c.classList&&c.classList.contains("lxb-uploading")){ c.remove(); return; }
+      }
       if(tag==="A"){
         var href=c.getAttribute("href")||"";
         // Only http(s) and site-relative links. javascript: and data: in a stored post would be
@@ -190,7 +206,7 @@ function clean(root){
   // Anything left loose at the top level -- bare text, a stray <strong> -- gets wrapped in a paragraph.
   // The article page styles p, not naked text nodes, so unwrapped content would render at the browser
   // default size next to properly set paragraphs.
-  var BLOCK={P:1,H2:1,H3:1,UL:1,OL:1,BLOCKQUOTE:1};
+  var BLOCK={P:1,H2:1,H3:1,UL:1,OL:1,BLOCKQUOTE:1,IMG:1,FIGURE:1};
   var out=document.createElement("div"), buf=null;
   function flush(){ if(buf&&buf.textContent.trim())out.appendChild(buf); buf=null; }
   [].slice.call(doc.childNodes).forEach(function(n){
@@ -334,6 +350,39 @@ function tidyUrl(u){
   if(lc.indexOf("mailto:")===0)return u;
   return "https://"+u;
 }
+
+// One place that talks to /lxapi/media, so the cover picker, the Image button and drag-and-drop all
+// report failures the same way instead of each inventing their own.
+function uploadImage(file){
+  if(!file)return Promise.reject(new Error("no file"));
+  if(file.size>4*1024*1024)return Promise.reject(new Error(Math.round(file.size/1024)+"KB is over the 4MB limit"));
+  var fd=new FormData(); fd.append("file",file);
+  return fetch("/lxapi/media",{method:"POST",body:fd})
+    .then(function(r){ return r.text().then(function(t){ var d=null; try{ d=JSON.parse(t); }catch(_){}
+      if(!r.ok||!d||!d.url)throw new Error((d&&(d.message||d.error))||("upload failed ("+r.status+")"));
+      return d; }); });
+}
+function coverMsg(t,bad){ var e=q("#lxbCoverMsg"); if(!e)return; e.textContent=t||"";
+  e.style.color=bad?"#ef4444":""; }
+
+// Inserts a placeholder immediately and swaps in the real src when the upload lands, so a slow upload
+// does not look like a dead button and the caret keeps its place in the text.
+function insertImage(file){
+  var b=q("#lxbBody"); if(!b)return;
+  restoreSel();
+  var id="up"+Date.now();
+  document.execCommand("insertHTML",false,"<img id='"+id+"' class='lxb-uploading' alt='' src='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='>");
+  var ph=document.getElementById(id);
+  uploadImage(file).then(function(d){
+    if(!ph)return;
+    ph.src=d.url; ph.classList.remove("lxb-uploading"); ph.removeAttribute("id");
+    saveSel(); wordCount();
+  }).catch(function(e){
+    if(ph)ph.remove();
+    status("Image not uploaded: "+e.message,"err");
+  });
+}
+
 function cmd(name){
   restoreSel();
   try{
@@ -352,6 +401,7 @@ function cmd(name){
       else document.execCommand("insertHTML",false,"<a href='"+u.replace(/'/g,"%27")+"'>"+u+"</a>");
     }
     else if(name==="unlink")document.execCommand("unlink");
+    else if(name==="image"){ saveSel(); var fi=q("#lxbBodyFile"); if(fi){ fi.value=""; fi.click(); } }
     else document.execCommand(name);
   }catch(e){}
   saveSel();
@@ -391,6 +441,48 @@ function boot(){
     if(dl){ var s2=dl.getAttribute("data-slug");
       if(!confirm("Delete this post? The URL /blog/"+s2+" will stop working."))return;
       api("DELETE",null,s2).then(function(r){ if(!r.ok)alert("Could not delete: "+((r.d&&r.d.error)||r.status)); refresh(); }); } }); }
+
+  // Cover upload
+  var cp=q("#lxbCoverPick"), cf=q("#lxbCoverFile");
+  if(cp&&cf&&!cp.__lx){ cp.__lx=1;
+    cp.addEventListener("click",function(){ cf.value=""; cf.click(); });
+    cf.addEventListener("change",function(){
+      var f=cf.files&&cf.files[0]; if(!f)return;
+      coverMsg("Uploading\u2026");
+      uploadImage(f).then(function(d){
+        var ci=q("#lxbCover"); if(ci){ ci.value=d.url; coverPrev(); }
+        coverMsg(Math.round(d.size/1024)+"KB uploaded");
+      }).catch(function(e){ coverMsg(e.message,true); });
+    });
+  }
+  // Body image, chosen from the Image button
+  var bf=q("#lxbBodyFile");
+  if(bf&&!bf.__lx){ bf.__lx=1;
+    bf.addEventListener("change",function(){ var f=bf.files&&bf.files[0]; if(f)insertImage(f); });
+  }
+  // Drag an image straight into the body, and paste one from the clipboard -- both are what people
+  // actually do, and both would otherwise drop a file:// reference that works on no other machine.
+  var bd3=q("#lxbBody");
+  if(bd3&&!bd3.__lxdrop){ bd3.__lxdrop=1;
+    ["dragenter","dragover"].forEach(function(ev){ bd3.addEventListener(ev,function(e){
+      if(e.dataTransfer&&e.dataTransfer.types&&[].indexOf.call(e.dataTransfer.types,"Files")>=0){
+        e.preventDefault(); bd3.classList.add("lxb-drop"); } }); });
+    ["dragleave","drop"].forEach(function(ev){ bd3.addEventListener(ev,function(){ bd3.classList.remove("lxb-drop"); }); });
+    bd3.addEventListener("drop",function(e){
+      var f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
+      if(!f||f.type.indexOf("image/")!==0)return;
+      e.preventDefault(); saveSel(); insertImage(f);
+    });
+    bd3.addEventListener("paste",function(e){
+      var items=(e.clipboardData&&e.clipboardData.items)||[];
+      for(var i=0;i<items.length;i++){
+        if(items[i].type&&items[i].type.indexOf("image/")===0){
+          var f=items[i].getAsFile(); if(f){ e.preventDefault(); saveSel(); insertImage(f); return; }
+        }
+      }
+    },true);
+  }
+
   var ti=q("#lxbTitle"); if(ti&&!ti.__lx){ ti.__lx=1; ti.addEventListener("input",function(){
     var sl=q("#lxbSlug"); if(sl&&!sl.disabled)sl.value=slugify(ti.value); }); }
   var cv=q("#lxbCover"); if(cv&&!cv.__lx){ cv.__lx=1; cv.addEventListener("input",coverPrev); }
