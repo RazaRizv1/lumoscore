@@ -169,13 +169,18 @@ const POST_MAIN = '<div class="container lx-post">'
 
 const POST_STYLE = '<style id="lx-blogpost-css">/*lxts:1.1*/'
   // A reading measure, not a full-width page: long lines are what makes an article tiring to read.
-  + '.lx-post{max-width:760px}'
+  + '.lx-post{max-width:720px;margin-left:auto;margin-right:auto;padding-left:24px;padding-right:24px;'
+  + 'text-align:center}'
+  // The furniture is centred; the PROSE is not. Centred paragraphs give every line a different
+  // starting point, so the eye has to hunt for each one -- it is the one part of a page where
+  // centring costs real readability.
+  + '.lx-post-body{text-align:left}'
   + '.lx-post-back{display:inline-flex;align-items:center;gap:6px;text-decoration:none;'
   + 'font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);'
   + 'transition:color .15s ease}'
   + '.lx-post-back:hover{color:var(--accent,#ea6a2c)}'
   + '.lx-post-back svg{width:13px;height:13px}'
-  + '.lx-post-head{margin:18px 0 20px;display:flex;flex-direction:column;align-items:flex-start;gap:12px}'
+  + '.lx-post-head{margin:22px 0 22px;display:flex;flex-direction:column;align-items:center;gap:12px}'
   + '.lx-post-chip{position:static;background:rgba(127,127,140,.16);border-color:transparent;'
   + 'color:var(--text-muted,#8a8fa3);backdrop-filter:none}'
   + '.lx-post-head h1{margin:0;font:800 36px/1.2 "Hanken Grotesk",system-ui,sans-serif;'
@@ -196,7 +201,8 @@ const POST_STYLE = '<style id="lx-blogpost-css">/*lxts:1.1*/'
   + '.lx-post-body blockquote{margin:26px 0;padding:14px 18px;border-left:3px solid var(--accent,#ea6a2c);'
   + 'background:var(--surface-2,rgba(127,127,140,.07));border-radius:0 10px 10px 0;color:var(--text,#0e0e10)}'
   + '.lx-post-foot{margin-top:34px;padding-top:20px;border-top:1px solid var(--border,#ececef)}'
-  + '@media(max-width:620px){.lx-post-head h1{font-size:28px}.lx-post-cover{aspect-ratio:16/9}}'
+  + '@media(max-width:620px){.lx-post-head h1{font-size:28px}.lx-post-cover{aspect-ratio:16/9}'
+  + '.lx-post{padding-left:0;padding-right:0}}'
   + '</style>';
 
 function setPostHead(html) {
