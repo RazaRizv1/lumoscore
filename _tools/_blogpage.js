@@ -43,7 +43,7 @@ const STYLE = '<style id="lx-blogpage-css">/*lxts:1.1*/'
   + 'font:400 16px/1.6 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}'
   // Three across with room to breathe, down to one on a phone. auto-fit so it reflows rather than
   // overflowing at any width in between.
-  + '.lx-bp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:26px 22px}'
+  + '.lx-bp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:26px 22px}'
   // Not links: there is nowhere to go yet, so the cursor does not promise one. The hover stays, so the
   // page reads as the index it will become.
   + '.lx-bp-card{display:flex;flex-direction:column;gap:12px;min-width:0;text-decoration:none;color:inherit}'
