@@ -425,7 +425,7 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 // ---- Support / Blogs: honest empty states, no invented records ----
 +'function paintNoBackend(){'
 +'  var t=pageTitle();'
-+'  var isSup=/support/i.test(t), isBlog=/blog/i.test(t);'
++'  var isSup=/support/i.test(t), isBlog=false;   // Blogs now has KV storage; Support still does not'
 +'  if(!isSup&&!isBlog)return;'
 +'  qa(".kpi .kpi-value").forEach(function(v){ setT(v,"\\u2014"); v.title="No backend connected \\u2014 there is nowhere for this data to come from yet."; });'
 +'  qa(".kpi .kpi-foot").forEach(function(f){ setT(f,"awaiting backend"); });'
