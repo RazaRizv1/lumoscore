@@ -19,6 +19,7 @@ const CSS = `<style id="lx-blogdata-css">
 .lx-bd-empty .t{font:700 17px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10)}
 .lx-bd-empty .s{margin-top:8px;font-size:14.5px;line-height:1.6;color:var(--text-muted,#8a8fa3)}
 .lx-bd-cover-img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
+.lx-post-cover:empty{display:none}
 .lx-post-tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:26px 0 0}
 .lx-post-tag{font:600 12px/1 "Hanken Grotesk",system-ui,sans-serif;padding:6px 10px;border-radius:999px;background:rgba(127,127,140,.12);color:var(--text-muted,#8a8fa3)}
 </style>`;
@@ -43,7 +44,8 @@ function j(u){ return fetch(u).then(function(r){ return r.ok?r.json():null; }).c
 // crop the CSS already defines.
 function coverInto(el,post){
   if(!el)return;
-  if(post.cover){ el.innerHTML="<img class='lx-bd-cover-img' alt='"+esc(post.coverAlt||"")+"' src='"+esc(post.cover)+"'>"; }
+  if(!post.cover){ el.remove(); return; }
+  el.innerHTML="<img class='lx-bd-cover-img' alt='"+esc(post.coverAlt||"")+"' src='"+esc(post.cover)+"'>";
 }
 
 function fillIndex(posts){
@@ -124,7 +126,7 @@ function boot(){
     return;
   }
   if(/[/]blog$/.test(path)||q(".lx-bp-grid")){
-    j("/lxapi/blog").then(function(d){ if(d&&d.posts)fillIndex(d.posts); });
+    j("/lxapi/blog").then(function(d){ fillIndex((d&&d.posts)||[]); });
   }
 }
 if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
