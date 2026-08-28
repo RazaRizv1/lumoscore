@@ -62,6 +62,7 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-read-meta{margin-top:7px;font-size:13px;color:var(--text-muted);line-height:1.7}
 .lxm-read-meta a{color:var(--accent,#ea6a2c);text-decoration:none}
 .lxm-body{white-space:pre-wrap;word-break:break-word;font:400 14.5px/1.7 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}
+.lxm-html{width:100%;min-height:280px;max-height:60vh;border:1px solid var(--border);border-radius:10px;background:#fff}
 .lxm-acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
 .lxm-note{margin-top:14px;font-size:12.5px;color:var(--text-muted)}
 </style>`;
@@ -133,12 +134,29 @@ function open(id){
   api("?id="+encodeURIComponent(id)+"&t="+Date.now()).then(function(r){
     if(!r.ok||!r.d||!r.d.message){ pane.innerHTML="<div class='lxadm-empty'>Could not open that message.</div>"; return; }
     var m=r.d.message;
-    // The body is inserted as TEXT. The sender's HTML is stored but never rendered here -- arbitrary
-    // markup from a stranger, executing on the admin origin, is not worth a prettier email view.
-    var body=document.createElement("div"); body.className="lxm-body";
-    body.textContent=(m.body_text&&m.body_text.trim())
-      ? m.body_text
-      : (m.body_html ? "(This message was sent as HTML only. Open it in your mail client to see the formatting.)" : "(empty message)");
+    // Plain text is shown as text. HTML is shown in a SANDBOXED iframe -- srcdoc with a bare sandbox
+    // attribute, so no scripts, no forms, no top-level navigation and its own opaque origin. Inserting
+    // a stranger's markup into this document instead would run their script on the admin origin.
+    var text=(m.body_text||"").trim();
+    var html=(m.body_html||"");
+    // An HTML part can be technically present and still say nothing: Gmail sends
+    // <div dir="ltr"><br></div> for an empty message. Strip the tags to see whether there are words.
+    var htmlWords=html.replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").trim();
+    var body;
+    if(text){ body=document.createElement("div"); body.className="lxm-body"; body.textContent=text; }
+    else if(htmlWords){
+      body=document.createElement("iframe");
+      body.className="lxm-html";
+      body.setAttribute("sandbox","");
+      body.setAttribute("srcdoc","<style>body{font:400 14.5px/1.7 system-ui,sans-serif;color:#333;margin:0}"
+        +"img{max-width:100%;height:auto}</style>"+html);
+    }
+    else {
+      body=document.createElement("div"); body.className="lxm-body";
+      // Say what is actually true. "Sent as HTML only" was wrong and sent me looking for a parser bug
+      // that did not exist -- the sender had simply written a subject and no message.
+      body.textContent="(No message body \\u2014 the sender wrote only a subject.)";
+    }
     pane.innerHTML="<div class='lxm-read-head'>"
       +"<div class='lxm-read-subj'>"+esc(m.subject||"(no subject)")+"</div>"
       +"<div class='lxm-read-meta'>From <b>"+esc(m.from_name||"")+"</b> &lt;<a href='mailto:"+esc(m.from_addr)+"'>"+esc(m.from_addr)+"</a>&gt;<br>"
