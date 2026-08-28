@@ -100,7 +100,47 @@ async function expertImage(asset) {
   } catch (_) { return ''; }
 }
 
-export async function onRequestGet({ request }) {
+// Admin overrides win over the issuer's toml. That is the whole point of them: when a project asks us
+// to fix their description, logo or socials, the toml is the thing we cannot edit. Merged HERE rather
+// than on the asset page so the page needs no change at all -- it already trusts this endpoint for
+// desc, image, domain, twitter and telegram.
+export async function onRequestGet(ctx) {
+  const { request, env } = ctx;
+  const asset = new URL(request.url).searchParams.get('asset') || '';
+  let ov = null;
+  const kv = env && env.CONTENT_KV;
+  if (kv && ASSET_RE.test(asset)) {
+    try { ov = await kv.get('asset:' + asset, 'json'); } catch (_) { ov = null; }
+  }
+
+  // A complete override answers on its own: no Horizon lookup, no cross-origin toml fetch, no
+  // stellar.expert fallback. The fastest path is the one where we already know the answer.
+  if (ov && ov.description && ov.image) {
+    return json({
+      image: ov.image, domain: ov.website || '', name: ov.name || '',
+      desc: ov.description, twitter: ov.twitter || '', telegram: ov.telegram || '',
+      source: 'admin',
+    }, 200, TTL_HIT);
+  }
+
+  const res = await tomlLookup({ request });
+  if (!ov) return res;
+
+  // Partial override: fill only the fields that were actually set, and leave the rest of the toml
+  // answer alone. An empty string in the store means "not set", not "blank it out".
+  let body;
+  try { body = await res.clone().json(); } catch (_) { return res; }
+  if (ov.description) body.desc = ov.description;
+  if (ov.image) body.image = ov.image;
+  if (ov.name) body.name = ov.name;
+  if (ov.website) body.domain = ov.website;
+  if (ov.twitter) body.twitter = ov.twitter;
+  if (ov.telegram) body.telegram = ov.telegram;
+  body.source = 'admin+toml';
+  return json(body, 200, TTL_HIT);
+}
+
+async function tomlLookup({ request }) {
   const q = new URL(request.url).searchParams;
   const asset = q.get('asset') || '';
   if (!ASSET_RE.test(asset)) return json({ error: 'bad asset' }, 400, 60);
