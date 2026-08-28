@@ -2263,7 +2263,37 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-heromono-css">/*lxts:1.1*/
+</style><style id="lx-polish">
+/* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */
+@media (prefers-reduced-motion: no-preference){
+  :where(a,button,input,select,textarea,.chip){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .2s ease,transform .16s ease,opacity .16s ease;}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):hover{transform:translateY(-1px);}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):active{transform:translateY(0) scale(.985);}
+  :where(.btn.primary,.btn-primary,.dex-hero-btn.primary,.trade-btn):hover{box-shadow:0 10px 26px -12px var(--accent,#ea6a2c);}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease,background-color .2s ease;}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{transform:translateY(-2px);border-color:var(--border-strong,#34343c);}
+  html:not([data-theme="light"]) :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 14px 34px -22px rgba(0,0,0,.85);}
+  body{transition:background-color .3s ease,color .3s ease;}
+}
+/* keyboard focus */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;}
+/* branded selection */
+::selection{background:rgba(234,106,44,.26);}
+/* headline balance */
+:where(h1,h2,h3){text-wrap:balance;}
+/* clickable market/pool rows: accent affordance */
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr){cursor:pointer;}
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr):hover td:first-child{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c);}
+/* themed thin scrollbars */
+*{scrollbar-width:thin;scrollbar-color:var(--border-strong,#34343c) transparent;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-strong,#34343c);border-radius:8px;border:3px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-soft,#6e6d78);border:3px solid transparent;background-clip:padding-box;}
+/* light-mode elevation: cards read as raised surfaces on light bg */
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
+</style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
    ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
@@ -2309,14 +2339,14 @@ html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
    sheet that already runs last and already owns the shared hero look, because that is what stops the
    two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
 .lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:39.6px!important;line-height:1.08!important;max-width:420px!important}
+  font-size:36px!important;line-height:1.08!important;max-width:420px!important}
 @media(max-width:880px){
 .lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:25.3px!important;line-height:1.14!important;max-width:100%!important}
+  font-size:23px!important;line-height:1.14!important;max-width:100%!important}
 }
 @media(max-width:560px){
 .lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:19.8px!important;line-height:1.18!important;max-width:100%!important}
+  font-size:18px!important;line-height:1.18!important;max-width:100%!important}
 }
 
 /* ---- the chain mark -------------------------------------------------------------------------- */
@@ -2380,36 +2410,6 @@ html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,htm
    card, which is the point -- the eye goes to the action. */
 .lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
 html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
-</style><style id="lx-polish">
-/* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */
-@media (prefers-reduced-motion: no-preference){
-  :where(a,button,input,select,textarea,.chip){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .2s ease,transform .16s ease,opacity .16s ease;}
-  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):hover{transform:translateY(-1px);}
-  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):active{transform:translateY(0) scale(.985);}
-  :where(.btn.primary,.btn-primary,.dex-hero-btn.primary,.trade-btn):hover{box-shadow:0 10px 26px -12px var(--accent,#ea6a2c);}
-  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease,background-color .2s ease;}
-  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{transform:translateY(-2px);border-color:var(--border-strong,#34343c);}
-  html:not([data-theme="light"]) :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 14px 34px -22px rgba(0,0,0,.85);}
-  body{transition:background-color .3s ease,color .3s ease;}
-}
-/* keyboard focus */
-:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;}
-/* branded selection */
-::selection{background:rgba(234,106,44,.26);}
-/* headline balance */
-:where(h1,h2,h3){text-wrap:balance;}
-/* clickable market/pool rows: accent affordance */
-:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr){cursor:pointer;}
-:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr):hover td:first-child{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c);}
-/* themed thin scrollbars */
-*{scrollbar-width:thin;scrollbar-color:var(--border-strong,#34343c) transparent;}
-::-webkit-scrollbar{width:10px;height:10px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--border-strong,#34343c);border-radius:8px;border:3px solid transparent;background-clip:padding-box;}
-::-webkit-scrollbar-thumb:hover{background:var(--text-soft,#6e6d78);border:3px solid transparent;background-clip:padding-box;}
-/* light-mode elevation: cards read as raised surfaces on light bg */
-[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
-[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
 </style></head>
 <body><!--lx-menu--><div class="menu-overlay" id="menuOverlay"></div>
   <aside class="slide-menu" id="slideMenu">

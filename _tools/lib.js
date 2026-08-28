@@ -132,6 +132,23 @@ const CANONICAL={
   "TFT": {issuer:"GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47", by:"ThreeFold"},
   "USDY": {issuer:"GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6", by:"Ondo Finance"},
 };
+// ---- assets curated through the admin panel ---------------------------------------------------------
+// Merged in from a generated file rather than pasted into the literal above, so the hand-checked list
+// stays the reviewable thing it is: `git diff` on lib.js keeps showing deliberate decisions, not
+// machine output. Regenerate with `node _tools/_syncverified.js` after adding an asset in the panel.
+//
+// HAND ENTRIES WIN. If a code/issuer appears in both, the one above stands -- a considered decision
+// here must never be silently replaced by whatever the panel last wrote.
+let GENERATED = { verified: {}, assets: [] };
+try { GENERATED = require(__dirname + '/verified.generated.json'); } catch (_) {}
+for (const k of Object.keys(GENERATED.verified || {})) {
+  if (VERIFIED[k] === undefined) VERIFIED[k] = GENERATED.verified[k];
+}
+// The roster Trade main renders. Separate from VERIFIED on purpose: that map decides whether an asset
+// wears a tick, this decides whether it is listed at all, and conflating them would mean listing an
+// asset as a side effect of trusting it.
+const GENERATED_ASSETS = (GENERATED.assets || []).slice();
+
 // Every entry must also be in VERIFIED under the same issuer -- otherwise the site would be warning
 // about impostors of an asset it does not itself vouch for. Checked at build time so the two lists
 // cannot drift apart in a way nobody notices.
@@ -159,4 +176,4 @@ const DOMAIN_DISPLAY={
   "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"
 };
 
-module.exports={read,getContents,writeContents,VERIFIED,CANONICAL,VTICK_SVG,DOMAIN_DISPLAY};
+module.exports={read,getContents,writeContents,VERIFIED,CANONICAL,VTICK_SVG,DOMAIN_DISPLAY,GENERATED_ASSETS};

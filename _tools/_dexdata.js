@@ -8,7 +8,7 @@
 // the design's mock values never flash; painter-proof icons (::before driven by --lxvar); ES5 var in the
 // browser code, no emoji/astral chars and no \\u escapes that would break JSON re-serialization.
 const fs = require('fs');
-const { read, getContents, VERIFIED, VTICK_SVG, DOMAIN_DISPLAY } = require(__dirname + '/lib.js');
+const { read, getContents, VERIFIED, VTICK_SVG, DOMAIN_DISPLAY, GENERATED_ASSETS } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-dex.html', 'lumoscore-dex-dark.html', 'lumoscore-dex-mobile.html'];
@@ -472,7 +472,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     {code:"SSLX", issuer:"GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR", cat:"utility", b:"#4a6cf7", logo:"https://sl8.online/assets/sslx-icon-e36e8c6134f6d93e6af1cd4d084a053c.png"},
     {code:"AFR", issuer:"GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W", cat:"utility", b:"#e8a33d", logo:"https://afreum.com/stellar/ST_Afreum.png"},
     {code:"TFT", issuer:"GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47", cat:"utility", b:"#2d9cdb", logo:"https://threefoldfoundation.github.io/tft/tft_icon.png"}
-  ];
+  ].concat(${JSON.stringify(GENERATED_ASSETS)});
   // byCode is a TICKER index -- two different issuers can share one. byId is the IDENTITY index, and it
   // is what decides whether we already hold an asset. Ticker alone could not: the cached roster and the
   // fresh stellar.expert discovery both offer every token, and the second offer would see the ticker

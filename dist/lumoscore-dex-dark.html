@@ -2514,7 +2514,37 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-dexmain-css">/*lxts:1.1*/
+</style><style id="lx-polish">
+/* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */
+@media (prefers-reduced-motion: no-preference){
+  :where(a,button,input,select,textarea,.chip){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .2s ease,transform .16s ease,opacity .16s ease;}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):hover{transform:translateY(-1px);}
+  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):active{transform:translateY(0) scale(.985);}
+  :where(.btn.primary,.btn-primary,.dex-hero-btn.primary,.trade-btn):hover{box-shadow:0 10px 26px -12px var(--accent,#ea6a2c);}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease,background-color .2s ease;}
+  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{transform:translateY(-2px);border-color:var(--border-strong,#34343c);}
+  html:not([data-theme="light"]) :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 14px 34px -22px rgba(0,0,0,.85);}
+  body{transition:background-color .3s ease,color .3s ease;}
+}
+/* keyboard focus */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;}
+/* branded selection */
+::selection{background:rgba(234,106,44,.26);}
+/* headline balance */
+:where(h1,h2,h3){text-wrap:balance;}
+/* clickable market/pool rows: accent affordance */
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr){cursor:pointer;}
+:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr):hover td:first-child{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c);}
+/* themed thin scrollbars */
+*{scrollbar-width:thin;scrollbar-color:var(--border-strong,#34343c) transparent;}
+::-webkit-scrollbar{width:10px;height:10px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border-strong,#34343c);border-radius:8px;border:3px solid transparent;background-clip:padding-box;}
+::-webkit-scrollbar-thumb:hover{background:var(--text-soft,#6e6d78);border:3px solid transparent;background-clip:padding-box;}
+/* light-mode elevation: cards read as raised surfaces on light bg */
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
+[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
+</style><style id="lx-dexmain-css">
 /* A20: the four chips the script removes, hidden from the FIRST paint. Keyed on the same data-filter
    values the removal uses, so the two cannot drift apart. */
 .dex-mk-filter[data-filter="stables"],.mdx-mk-filter[data-filter="stables"],
@@ -2530,7 +2560,7 @@ html:not(.lx-dexlate) .lx-faq{visibility:hidden}
    a column was inserted here once before, and :last-child would hide whatever ends up last next time. */
 .dex-mk-table th.th-action,.dex-mk-table td.td-action{display:none!important}
 
-.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5.5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
 .lx-vtick svg{width:9px;height:9px;display:block}
 
 /* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
@@ -2547,8 +2577,8 @@ html:not(.lx-dexlate) .lx-faq{visibility:hidden}
    pre-scale one. See [[lumoscore-typescale]]. */
 .dex-markets thead th:first-child,.dex-markets tbody td:first-child{min-width:239px}
 /* Tabular figures so #9 and #10 line up their digits instead of shuffling the icon beside them. */
-.dex-mk-rank{flex:0 0 auto;min-width:22px;margin-right:2.2px;text-align:right;
-  font:700 12.7px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text-muted,#8a8fa3);
+.dex-mk-rank{flex:0 0 auto;min-width:22px;margin-right:2px;text-align:right;
+  font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text-muted,#8a8fa3);
   font-variant-numeric:tabular-nums}
 /* sortable column headers. Only the five numeric columns take a click -- Asset, Day High/Low and 7d Trend
    are not single values to order by, and a header that looks clickable but is not is worse than a plain
@@ -2556,13 +2586,13 @@ html:not(.lx-dexlate) .lx-faq{visibility:hidden}
 .dex-mk-table thead th.lx-sortable{cursor:pointer;user-select:none;white-space:nowrap;transition:color .12s ease}
 .dex-mk-table thead th.lx-sortable:hover{color:var(--text)}
 .dex-mk-table thead th.lx-son{color:var(--accent)}
-.lx-sarrow{display:inline-block;margin-left:5.5px;font-size:9.9px;line-height:1;opacity:.4;vertical-align:middle}
+.lx-sarrow{display:inline-block;margin-left:5px;font-size:9px;line-height:1;opacity:.4;vertical-align:middle}
 .dex-mk-table thead th.lx-son .lx-sarrow{opacity:1}
 .lm-chip:not(.lxd) .p2,.lm-chip:not(.lxd) .p3{visibility:hidden}
 /* ---- painter-proof token icons: the site logo-painter can't touch a ::before pseudo-element ---- */
 .dex-mint-ic[data-lxic],.dex-mover-ico[data-lxic],.dex-mk-pair-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important;background-image:none!important;background-color:transparent!important}
 .dex-mint-ic[data-lxic]::before,.dex-mover-ico[data-lxic]::before,.dex-mk-pair-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}
-.lx-dex-empty{text-align:center;padding:37.4px 13.2px;color:var(--text-soft);font-size:15.4px}
+.lx-dex-empty{text-align:center;padding:34px 12px;color:var(--text-soft);font-size:14px}
 /* ---- hero "advanced DEX" card: orange constellation (mirrors the Pools lx-constel, orange theme) with 5 data points ---- */
 /* Trade hero gets its OWN warm/amber background (mirrors the Pools purple), always dark regardless of site theme.
    The html prefix boosts specificity to beat inject_livemarket.js's own .lumos-promo.lm-on !important rule (which uses var(--surface) = theme-following). */
@@ -2613,26 +2643,26 @@ svg.lm-svg.lx-dxc{overflow:visible}
    wide and three lines tall -- and the hero as a whole ran ~524px, so All Trading Pairs began well below
    the fold. Full-width copy + a bottom strip carries the same four numbers in roughly 150px less height. */
 .lumos-promo .lm{display:flex!important;flex-direction:column}
-.lumos-promo .lm-c{max-width:none!important;padding:26.4px 28.6px 19.8px!important;flex:1 1 auto;display:flex;flex-direction:column;align-items:flex-start}
-.lumos-promo .lm-h{font-size:35.2px!important;line-height:1.1!important;letter-spacing:-.015em;color:#fff!important;max-width:calc(100% - 200px)}
-.lumos-promo .lm-sub{font-size:16px!important;line-height:1.5!important;color:rgba(228,230,245,.78)!important;max-width:48ch}
-.lumos-promo .lm-cta{margin-top:17.6px}
+.lumos-promo .lm-c{max-width:none!important;padding:24px 26px 18px!important;flex:1 1 auto;display:flex;flex-direction:column;align-items:flex-start}
+.lumos-promo .lm-h{font-size:32px!important;line-height:1.1!important;letter-spacing:-.015em;color:#fff!important;max-width:calc(100% - 200px)}
+.lumos-promo .lm-sub{font-size:14.5px!important;line-height:1.5!important;color:rgba(228,230,245,.78)!important;max-width:48ch}
+.lumos-promo .lm-cta{margin-top:16px}
 /* live XLM price: a pill now, not a panel. The min-width is deliberate -- .lm-chip:not(.lxd) hides p2/p3
    until real data lands, so without it the pill would size to "XLM" alone and then jump. */
-.lumos-promo .lm-chip{position:absolute!important;top:18px;right:18px;width:auto!important;max-width:none!important;min-width:152px;box-sizing:border-box;display:inline-flex!important;flex-direction:row;align-items:baseline;gap:9.9px;padding:9.9px 15.4px!important;z-index:5;background:linear-gradient(158deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:12px!important;backdrop-filter:blur(24px) saturate(1.4)!important;-webkit-backdrop-filter:blur(24px) saturate(1.4)!important;box-shadow:0 14px 34px rgba(6,2,20,.45),inset 0 1px 0 rgba(255,255,255,.26)!important}
-.lumos-promo .lm-chip .p1{order:1;margin:0!important;padding:0!important;border:0!important;font-size:12.1px!important;letter-spacing:.09em;color:rgba(228,230,245,.6)!important}
-.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{order:2;font-size:18.7px!important;line-height:1.05;color:#fff!important}
-.lumos-promo .lm-chip .p3{order:3;font-size:12.1px!important;margin-left:auto}
+.lumos-promo .lm-chip{position:absolute!important;top:18px;right:18px;width:auto!important;max-width:none!important;min-width:152px;box-sizing:border-box;display:inline-flex!important;flex-direction:row;align-items:baseline;gap:9px;padding:9px 14px!important;z-index:5;background:linear-gradient(158deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:12px!important;backdrop-filter:blur(24px) saturate(1.4)!important;-webkit-backdrop-filter:blur(24px) saturate(1.4)!important;box-shadow:0 14px 34px rgba(6,2,20,.45),inset 0 1px 0 rgba(255,255,255,.26)!important}
+.lumos-promo .lm-chip .p1{order:1;margin:0!important;padding:0!important;border:0!important;font-size:11px!important;letter-spacing:.09em;color:rgba(228,230,245,.6)!important}
+.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{order:2;font-size:17px!important;line-height:1.05;color:#fff!important}
+.lumos-promo .lm-chip .p3{order:3;font-size:11px!important;margin-left:auto}
 /* the four exchange stats, as a strip along the bottom edge (z-index 4 clears .lm::after, which is 3) */
-.lumos-promo .lx-dxstats{order:9;margin-top:auto;position:relative;z-index:4;display:grid;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0;padding:14.3px 28.6px 16.5px;background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,.075));border-top:1px solid rgba(255,255,255,.12);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
-.lx-dxstat{display:flex;flex-direction:column;gap:4.4px;min-width:0;overflow:hidden;padding-left:18.7px;border-left:1px solid rgba(255,255,255,.10)}
+.lumos-promo .lx-dxstats{order:9;margin-top:auto;position:relative;z-index:4;display:grid;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0;padding:13px 26px 15px;background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,.075));border-top:1px solid rgba(255,255,255,.12);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
+.lx-dxstat{display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden;padding-left:17px;border-left:1px solid rgba(255,255,255,.10)}
 .lx-dxstat:first-child{padding-left:0;border-left:0}
-.lx-dxstat .v{font:800 30.8px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:11px}
-.lx-dxstat .l{font:600 13.2px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
-.lx-dxstat[data-k=top] .v{font-size:19.8px}
+.lx-dxstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
+.lx-dxstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
+.lx-dxstat[data-k=top] .v{font-size:18px}
 .lx-dxpair{display:inline-flex;flex:0 0 auto}
 .lx-dxpair span{display:block;width:28px;height:28px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
-.lx-dxpair .pb{margin-left:-11px}
+.lx-dxpair .pb{margin-left:-10px}
 /* ===== DESKTOP HERO =====
    Same treatment as mobile, at desktop scale: the neutral gradient image instead of the violet cosmic
    animation, and the card reduced to a headline and the stat strip. The description, the XLM price pill
@@ -2640,13 +2670,13 @@ svg.lm-svg.lx-dxc{overflow:visible}
    on. The two page CTAs take the corner the pill vacated.
    Scoped to .lm-on: the mobile card does not carry it, and this stylesheet is only injected into the three
    Trade keys, so the Pools hero (which shares .lumos-promo) is out of reach. */
-html .lumos-promo.lm-on{overflow:hidden!important;border:1px solid rgba(255,255,255,.10)!important;background:#130c07 url(/assets/hero/trade-hero-dark.svg?v=20c80381) center/cover no-repeat!important}
-html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!important;background:#fff1e6 url(/assets/hero/trade-hero-light.svg?v=ae776572) center/cover no-repeat!important}
+html .lumos-promo.lm-on{overflow:hidden!important;border:1px solid rgba(255,255,255,.10)!important;background:#130c07 url(/assets/hero/trade-hero-dark.svg?v=39868533) center/cover no-repeat!important}
+html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!important;background:#fff1e6 url(/assets/hero/trade-hero-light.svg?v=24b9c9d4) center/cover no-repeat!important}
 .lumos-promo.lm-on .lm::before,.lumos-promo.lm-on .lm::after{display:none!important}   /* design's scanlines + wash */
 .lumos-promo.lm-on .lm-sub,.lumos-promo.lm-on .lm-cta,.lumos-promo.lm-on .lm-chip,.lumos-promo.lm-on .lm-svg,.lumos-promo.lm-on .lm-bars{display:none!important}
 /* Mark on the left, headline beside it. .lm-c becomes a ROW here, so justify-content is now the
    horizontal axis and align-items does the vertical centring the column layout used to do. */
-.lumos-promo.lm-on .lm-c{flex-direction:row;align-items:center;justify-content:flex-start;gap:19.8px;padding:28.6px 33px!important;max-width:none!important}
+.lumos-promo.lm-on .lm-c{flex-direction:row;align-items:center;justify-content:flex-start;gap:18px;padding:26px 30px!important;max-width:none!important}
 /* Painted through ::before, not the element background. The site's own painter writes an inline
    "background:transparent" onto empty spans like this one, and inline beats any stylesheet rule -- the
    mark rendered as nothing. A pseudo-element is out of its reach; this is the same trick the token icons
@@ -2654,13 +2684,13 @@ html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!impo
 .lx-heroico{flex:0 0 auto;position:relative;width:56px;height:56px;border-radius:50%;overflow:hidden;box-shadow:0 6px 18px -8px rgba(0,0,0,.55)}
 .lx-heroico::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+") center/contain no-repeat}
 html[data-theme="light"] .lx-heroico{box-shadow:0 6px 18px -10px rgba(16,16,22,.35)}
-.lumos-promo.lm-on .lm-h{font-size:39.6px!important;line-height:1.08!important;max-width:420px}
+.lumos-promo.lm-on .lm-h{font-size:36px!important;line-height:1.08!important;max-width:420px}
 html[data-theme="light"] .lumos-promo.lm-on .lm-h{color:#0e0e10!important}
 html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70));border-top-color:rgba(16,16,22,.12)}
 html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v{color:#0e0e10!important}
 html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l{color:rgba(52,52,64,.72)!important}
 /* the page CTAs, now in the hero's top-right corner */
-.lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:15.4px;margin:0!important;padding:0!important}
+.lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:14px;margin:0!important;padding:0!important}
 /* DESKTOP: the CTAs share the headline's row instead of floating above it, so the card reads as one line
    of content rather than two things pinned to opposite corners.
    Guarded to >880px because the phone hero is the same .lm markup and keeps its own stacked layout.
@@ -2674,17 +2704,17 @@ html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l{color:rgba(52,52,64,.7
    height by default, so align-self:flex-start on the CTAs pinned them to the top of the card rather than
    to the top of the headline -- which is exactly the stranded-in-a-corner look this is meant to end.
    Centring the line collapses it to its content, and flex-start then means the headline's first line. */
-.lumos-promo.lm-on .lm-c{flex-wrap:wrap;column-gap:26.4px;row-gap:13.2px;align-content:center}
+.lumos-promo.lm-on .lm-c{flex-wrap:wrap;column-gap:24px;row-gap:12px;align-content:center}
 .lumos-promo.lm-on .lm-h{flex:0 0 auto}
 .lumos-promo.lm-on .lx-dctas{position:static!important;top:auto;right:auto;order:9;margin-left:auto!important;align-self:flex-start}
 /* the mark and the second line carry the weight; line one stays as it was */
 .lumos-promo.lm-on .lx-heroico{width:64px;height:64px}
 .lumos-promo.lm-on .lm-h .lx-h1{display:block}
-.lumos-promo.lm-on .lm-h .lx-h2{display:block;font-size:52.8px;line-height:1.02;letter-spacing:-.022em}
+.lumos-promo.lm-on .lm-h .lx-h2{display:block;font-size:48px;line-height:1.02;letter-spacing:-.022em}
 }
 .lx-dctas .dex-hero-btn.primary{order:1}   /* the design ships the ghost first; Launch Token leads here */
 .lx-dctas .dex-hero-btn.ghost{order:2}
-.lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7.7px;height:38px;padding:0 16.5px!important;border-radius:10px;font-weight:700;font-size:14.3px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
+.lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 15px!important;border-radius:10px;font-weight:700;font-size:13px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
 .lx-dctas .dex-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
 .lx-dctas .dex-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}
 .lx-dctas .dex-hero-btn.primary:hover{text-decoration:underline}
@@ -2692,7 +2722,7 @@ html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l{color:rgba(52,52,64,.7
 .lx-dctas .dex-hero-btn.lx-was-primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
 .lx-dctas .dex-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-size:0!important;gap:0!important;color:var(--text-muted,#75757f)!important}
 .lx-dctas .dex-hero-btn.ghost svg{width:17px!important;height:17px!important}
-.lx-dctas .dex-hero-btn.lx-was-ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:14.3px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+.lx-dctas .dex-hero-btn.lx-was-ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:13px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
 /* the header row is empty once the heading is hidden and the buttons have moved out */
 .dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
@@ -2714,7 +2744,7 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
    follows: border, price pill, stat strip and the secondary button are all neutral too. The only brand
    colour left inside the hero is the primary button and the accent word in the headline.
    The flat colour behind the image is the art's own mid-tone, so a slow image load shows no white flash. */
-.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#130c07 url(/assets/hero/trade-hero-dark.svg?v=20c80381) center/cover no-repeat}
+.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#130c07 url(/assets/hero/trade-hero-dark.svg?v=39868533) center/cover no-repeat}
 .lx-mobhero .lx-cosmic{display:none!important}     /* belt and braces if a stale layer ever survives */
 /* the two page CTAs, moved inside the card: Launch Token leads, How it works sits beside it */
 /* Copy, then the stat band. The actions are no longer on the card -- they sit in the All Trading Pairs
@@ -2723,16 +2753,16 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
 .lx-mobhero .lx-dxstats{order:2!important;margin-top:0!important}
 /* the CTA row, now in the section heading: title left, actions right, wrapping onto a second line rather
    than overflowing when a narrow screen cannot seat all three */
-.mdx-section-head:has(.lx-ctas){display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8.8px}
-.lx-ctas{display:flex!important;align-items:center;gap:7.7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
+.mdx-section-head:has(.lx-ctas){display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.lx-ctas{display:flex!important;align-items:center;gap:7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
 /* the strip is no longer the last thing on the card, so it closes with a rule as well as opening with one */
 
 /* visually hidden, still in the document outline and the accessibility tree */
-.lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1.1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+.lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
 /* Sized so the pair of them seats beside the 121px heading inside a 343px row at 375px. It was 3px over
    and wrapped to a second line; the group is 197px now against 212px of space. Narrower phones still wrap
    rather than overflow -- that is what the flex-wrap on the head is for. */
-.lx-ctas .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5.5px;height:31px;padding:0 8.8px!important;border-radius:9px;font-weight:700;font-size:11.6px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
+.lx-ctas .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5px;height:31px;padding:0 8px!important;border-radius:9px;font-weight:700;font-size:10.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
 .lx-ctas .mdx-hero-btn svg{width:11px;height:11px;flex:0 0 auto}
 /* Launch Token is a TEXT LINK, the same as desktop -- it was the only place on the site where this
    control rendered as a filled button, and only on the phone. */
@@ -2742,10 +2772,10 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
    is a page away from a table of trading pairs. */
 .lx-ctas .mdx-hero-btn.ghost{display:none!important}
 /* the design ships these as flex children that grow; a link must be its own width, not half the row */
-.lx-ctas .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:11.6px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+.lx-ctas .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
 .lx-ctas .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
 /* ---- light theme: the same card, warmed rather than darkened ---- */
-html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(16,16,22,.10);background:#fff1e6 url(/assets/hero/trade-hero-light.svg?v=ae776572) center/cover no-repeat}
+html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(16,16,22,.10);background:#fff1e6 url(/assets/hero/trade-hero-light.svg?v=24b9c9d4) center/cover no-repeat}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h{color:#0e0e10!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h em{color:#c2551d!important}
 html[data-theme="light"] .lumos-promo.lx-mobhero .lm-sub{color:rgba(38,38,48,.75)!important}
@@ -2759,32 +2789,32 @@ html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l{color:rgba(52,52,
 html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,255,.95)}
 .lx-mobhero .lumos-promo-slides,.lx-mobhero .lumos-promo-dots{display:none!important}
 .lx-mobhero .lm{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;min-height:260px}
-.lx-mobhero .lm-c{position:relative;z-index:3;display:flex;flex-direction:column;align-items:flex-start;padding:22px 19.8px 19.8px;flex:1 1 auto}
+.lx-mobhero .lm-c{position:relative;z-index:3;display:flex;flex-direction:column;align-items:flex-start;padding:20px 18px 18px;flex:1 1 auto}
 .lx-mobhero .lm-h{margin:0;font-weight:800;letter-spacing:-.02em}
 .lx-mobhero .lm-h em{font-style:normal;color:var(--accent,#ff7a3c)}
-.lx-mobhero .lm-sub{margin:9.9px 0 0}
-.lx-mobhero .lm-cta{display:inline-flex;align-items:center;gap:8.8px;font-weight:700;font-size:14.9px;color:#fff;text-decoration:none;background:linear-gradient(180deg,var(--accent-2,#ff894c),var(--accent));padding:11px 18.7px;border-radius:11px;box-shadow:0 10px 24px -10px var(--accent-soft),inset 0 1px 0 rgba(255,255,255,.28)}
+.lx-mobhero .lm-sub{margin:9px 0 0}
+.lx-mobhero .lm-cta{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px;color:#fff;text-decoration:none;background:linear-gradient(180deg,var(--accent-2,#ff894c),var(--accent));padding:10px 17px;border-radius:11px;box-shadow:0 10px 24px -10px var(--accent-soft),inset 0 1px 0 rgba(255,255,255,.28)}
 .lx-mobhero .lm-cta svg{width:16px;height:16px}
 /* Narrow (this also covers the MOBILE page, whose hero is the .lumos-promo-slides carousel -- it has no
    .lm and no .lm-chip, so the strip lands as the card's last child and there is no pill to place).
    The strip folds to 2x2 and everything steps down a size: at 375px the four columns become ~145px, and at
    the desktop sizes "USDC / XLM" plus its two 24px logos overran that by 4px. */
 @media(max-width:880px){
-.lumos-promo .lm-c{padding:19.8px 19.8px 17.6px!important;gap:13.2px;flex-direction:row;align-items:center}
+.lumos-promo .lm-c{padding:18px 18px 16px!important;gap:12px;flex-direction:row;align-items:center}
 .lx-heroico{width:38px;height:38px}
 .lx-hline2{display:block}                 /* forces "on <Chain>." onto its own line on a phone */
-.lumos-promo .lm-h{max-width:100%!important;font-size:25.3px!important;line-height:1.14!important}
-.lumos-promo .lm-sub{font-size:14.9px!important;max-width:100%!important}
-.lumos-promo .lm-cta{margin-top:15.4px}
-.lumos-promo .lm-chip{position:static!important;margin:0 0 14.3px;align-self:flex-start;min-width:0}
-.lumos-promo .lx-dxstats{grid-template-columns:1fr 1fr;gap:12.1px 0;padding:12.1px 19.8px 13.2px}
-.lx-dxstat{padding-left:15.4px}
+.lumos-promo .lm-h{max-width:100%!important;font-size:23px!important;line-height:1.14!important}
+.lumos-promo .lm-sub{font-size:13.5px!important;max-width:100%!important}
+.lumos-promo .lm-cta{margin-top:14px}
+.lumos-promo .lm-chip{position:static!important;margin:0 0 13px;align-self:flex-start;min-width:0}
+.lumos-promo .lx-dxstats{grid-template-columns:1fr 1fr;gap:11px 0;padding:11px 18px 12px}
+.lx-dxstat{padding-left:14px}
 .lx-dxstat:nth-child(3){padding-left:0;border-left:0}
-.lx-dxstat .v{font-size:20.9px;gap:7.7px}
-.lx-dxstat .l{font-size:10.5px}
-.lx-dxstat[data-k=top] .v{font-size:14.9px}
+.lx-dxstat .v{font-size:19px;gap:7px}
+.lx-dxstat .l{font-size:9.5px}
+.lx-dxstat[data-k=top] .v{font-size:13.5px}
 .lx-dxpair span{width:21px;height:21px}
-.lx-dxpair .pb{margin-left:-8.8px}
+.lx-dxpair .pb{margin-left:-8px}
 /* the mobile card carries its own 260px floor, which the carousel needed and this hero does not */
 .lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
 /* first paint: the carousel is already hidden but .lm is not built yet, so hold the card's height for
@@ -2799,31 +2829,31 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
    The price also moves to absolute top-right here. In flow it was a child of .lm, outside .lm-c's padding,
    so it sat flush in the rounded corner and got clipped -- visible as a small empty blob. */
 @media(max-width:560px){
-.lumos-promo .lm-c{padding:14.3px 15.4px 13.2px!important}
-.lx-mobhero .lm-c{padding-bottom:14.3px!important}
-.lumos-promo .lm-h{font-size:19.8px!important;line-height:1.18!important;max-width:100%!important}
+.lumos-promo .lm-c{padding:13px 14px 12px!important}
+.lx-mobhero .lm-c{padding-bottom:13px!important}
+.lumos-promo .lm-h{font-size:18px!important;line-height:1.18!important;max-width:100%!important}
 .lumos-promo .lm-sub{display:none!important}          /* no room for it at half height; the headline carries the message */
-.lumos-promo .lm-cta{margin-top:12.1px;font-size:13.8px;padding:8.8px 15.4px;border-radius:9px}
+.lumos-promo .lm-cta{margin-top:11px;font-size:12.5px;padding:8px 14px;border-radius:9px}
 .lumos-promo .lm-cta svg{width:14px;height:14px}
-.lumos-promo .lm-chip{position:absolute!important;top:12px;right:13px;margin:0;padding:6.6px 11px!important;flex-direction:column;align-items:flex-end;gap:1.1px;border-radius:10px!important}
-.lumos-promo .lm-chip .p1{font-size:9.9px!important;letter-spacing:.1em}
-.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{font-size:14.3px!important}
-.lumos-promo .lm-chip .p3{font-size:10.5px!important;margin-left:0}
+.lumos-promo .lm-chip{position:absolute!important;top:12px;right:13px;margin:0;padding:6px 10px!important;flex-direction:column;align-items:flex-end;gap:1px;border-radius:10px!important}
+.lumos-promo .lm-chip .p1{font-size:9px!important;letter-spacing:.1em}
+.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{font-size:13px!important}
+.lumos-promo .lm-chip .p3{font-size:9.5px!important;margin-left:0}
 /* One row of four. The columns size to their CONTENT and the leftover space is spread between them --
    proportional fr tracks cannot work here, because each column's width is set by a string whose length
    nobody controls: "$129.2K" against "35", and "USDC / XLM" plus two logos against "LIQUIDITY". Measured
    at 360px, fr tracks handed 78px to a column needing 87 and 93 to one needing 68. Auto tracks cannot
    clip while the row as a whole fits, so the dividers give way to spacing. */
-.lumos-promo .lx-dxstats{grid-template-columns:repeat(4,auto);justify-content:space-between;gap:0;padding:9.9px 15.4px 11px}
-.lx-dxstat{padding-left:0;border-left:0;gap:3.3px}
-.lx-dxstat .v{font-size:17.6px;gap:6.6px}
-.lx-dxstat .l{font-size:8.8px;letter-spacing:.03em}
-.lx-dxstat[data-k=top] .v{font-size:11.6px}
+.lumos-promo .lx-dxstats{grid-template-columns:repeat(4,auto);justify-content:space-between;gap:0;padding:9px 14px 10px}
+.lx-dxstat{padding-left:0;border-left:0;gap:3px}
+.lx-dxstat .v{font-size:16px;gap:6px}
+.lx-dxstat .l{font-size:8px;letter-spacing:.03em}
+.lx-dxstat[data-k=top] .v{font-size:10.5px}
 .lx-dxpair span{width:16px;height:16px;border-width:1.5px}
-.lx-dxpair .pb{margin-left:-6.6px}
+.lx-dxpair .pb{margin-left:-6px}
 }
 /* Empty Gainers/Losers. Spans the grid so the message sits in the panel rather than in one cell. */
-.dex-mover-empty{grid-column:1/-1;padding:28.6px 17.6px;text-align:center;color:var(--text-muted);font-size:14.9px}
+.dex-mover-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--text-muted);font-size:13.5px}
 /* items 16 + 18: New Mints and Market Movers are off the page. Movers restated the pairs table's own
    sort over four of its rows; New Mints put three launchpad tokens above the index. The launch entry
    point they carried is re-seated in the pairs heading by dropSections() -- see item 17. */
@@ -2835,16 +2865,16 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
    Hidden rather than removed: it is one node with the primary, and the delegate is bound to the pair. */
 .dex-mk-controls>.lx-dctas .dex-hero-btn.ghost{display:none!important}
 .dex-mk-controls>.lx-dctas{position:static!important;top:auto!important;right:auto!important;
-  order:-1;margin:0 4.4px 0 0!important;align-self:center}
+  order:-1;margin:0 4px 0 0!important;align-self:center}
 /* item 15: the placeholder was 191px of text in a 182px field with no padding, so it was clipped and
    touched both edges. Shortened below; this gives what is left room to breathe. */
-.dex-mk-search input,input.lx-mkq{padding-left:11px!important;padding-right:11px!important}
+.dex-mk-search input,input.lx-mkq{padding-left:10px!important;padding-right:10px!important}
 /* ---- Market Movers: symmetric body — price/vol (left) + Trades 24h (right), spark spans below ---- */
-.dex-mover-body{display:flex;justify-content:space-between;align-items:flex-end;gap:11px}
+.dex-mover-body{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
 .dex-mover-l{min-width:0}
 .dex-mover-r{text-align:right;flex:0 0 auto}
-.dex-mover-trades{font:800 19.8px/1.05 'Hanken Grotesk',sans-serif;color:var(--text)}
-.dex-mover-tlabel{font:600 10.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft);margin-top:3.3px;white-space:nowrap}
+.dex-mover-trades{font:800 18px/1.05 'Hanken Grotesk',sans-serif;color:var(--text)}
+.dex-mover-tlabel{font:600 9.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft);margin-top:3px;white-space:nowrap}
 /* ---- All Trading Pairs: Trades (24h) column (header th inserted via JS) ---- */
 .th-trades{text-align:right!important}
 .dex-mk-trades-td{text-align:right}
@@ -2859,10 +2889,10 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
    LUMOS logo in All Trading Pairs). Our real logo lives in ::before -> hide any injected svg child so it can't cover it. */
 .dex-mint-ic[data-lxic]>svg,.dex-mover-ico[data-lxic]>svg,.dex-mk-pair-ic[data-lxic]>svg{display:none!important}
 /* #19 denomination switch. Sized off the search field it sits beside so the row keeps one baseline. */
-.lx-dnsw{display:inline-flex;flex:0 0 auto;align-items:center;gap:2.2px;padding:3.3px;border-radius:10px;
+.lx-dnsw{display:inline-flex;flex:0 0 auto;align-items:center;gap:2px;padding:3px;border-radius:10px;
   background:var(--surface-2);border:1px solid var(--border)}
-.lx-dnsw button{padding:5.5px 12.1px;border:0;border-radius:7px;background:transparent;color:var(--text-soft);
-  font-weight:800;font-size:13.2px;line-height:1;letter-spacing:.02em;cursor:pointer;transition:color .14s ease,background .14s ease}
+.lx-dnsw button{padding:5px 11px;border:0;border-radius:7px;background:transparent;color:var(--text-soft);
+  font-weight:800;font-size:12px;line-height:1;letter-spacing:.02em;cursor:pointer;transition:color .14s ease,background .14s ease}
 .lx-dnsw button:hover{color:var(--text)}
 .lx-dnsw button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.18)}
 /* the row holding the search input is a flex line; the switch must not stretch with the input */
@@ -2872,8 +2902,8 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
    becomes a page of its own. One row that scrolls keeps the whole section the height of a single card,
    and the cut-off card at the right edge is what tells the reader there is more without a label saying
    so. Scroll snapping so it comes to rest on a card rather than mid-way through one. */
-.dex-mover-grid{display:flex!important;flex-wrap:nowrap!important;gap:13.2px;overflow-x:auto;overflow-y:hidden;
-  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:6.6px;scrollbar-width:thin}
+.dex-mover-grid{display:flex!important;flex-wrap:nowrap!important;gap:12px;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:6px;scrollbar-width:thin}
 .dex-mover-grid>.dex-mover-card{flex:0 0 272px;scroll-snap-align:start;min-width:0}
 .dex-mover-grid::-webkit-scrollbar{height:6px}
 .dex-mover-grid::-webkit-scrollbar-thumb{background:var(--border,#ececef);border-radius:99px}
@@ -2881,20 +2911,20 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 @media (max-width:760px){.dex-mover-grid>.dex-mover-card{flex:0 0 232px}}
 @media (prefers-reduced-motion:reduce){.dex-mover-grid{scroll-behavior:auto}}
 /* New Mints: 4 symmetric stat columns (Price / Market cap / 24h Volume / 24h Trades), right-aligned */
-.dex-mint-stats{display:flex;gap:24.2px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
+.dex-mint-stats{display:flex;gap:22px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
 .dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
-.dex-mint-stat .l{font:600 11px/1 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft,#6f6f79);margin-bottom:6.6px}
+.dex-mint-stat .l{font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft,#6f6f79);margin-bottom:6px}
 /* #27: the sub-line under a mint was set in Hanken Grotesk 13/400 while the identical line in All
    Trading Pairs -- same position, same colour, same job -- is JetBrains Mono 12.5/500. Side by side the
    two cards read as belonging to different products. The pairs table is the one to match, since it is
    the larger surface and the rest of this card's small print is already monospace. */
-.dex-mint-sub{font-family:'JetBrains Mono',monospace;font-size:13.8px;font-weight:500}
-.dex-mint-stat .v{font-weight:700;font-size:15.4px;color:var(--text,#0e0e10);white-space:nowrap;line-height:1.25;text-align:right}
+.dex-mint-sub{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:500}
+.dex-mint-stat .v{font-weight:700;font-size:14px;color:var(--text,#0e0e10);white-space:nowrap;line-height:1.25;text-align:right}
 /* the dollar figure is a second line under the XLM price, not a continuation of it */
-.dex-mint-stat .v .sub{display:block;font-weight:600;font-size:12.7px;color:var(--text-soft,#6f6f79);margin-top:3.3px;letter-spacing:0}
+.dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
 /* Price carries the longest string in the row, so it gets room; the counts stay narrow */
 .dex-mint-stat:first-child{min-width:104px}
-</style><style id="lx-heromono-css">/*lxts:1.1*/
+</style><style id="lx-heromono-css">
 /* ---- the card ------------------------------------------------------------------------------- */
 /* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
    ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
@@ -2940,14 +2970,14 @@ html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
    sheet that already runs last and already owns the shared hero look, because that is what stops the
    two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
 .lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:39.6px!important;line-height:1.08!important;max-width:420px!important}
+  font-size:36px!important;line-height:1.08!important;max-width:420px!important}
 @media(max-width:880px){
 .lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:25.3px!important;line-height:1.14!important;max-width:100%!important}
+  font-size:23px!important;line-height:1.14!important;max-width:100%!important}
 }
 @media(max-width:560px){
 .lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:19.8px!important;line-height:1.18!important;max-width:100%!important}
+  font-size:18px!important;line-height:1.18!important;max-width:100%!important}
 }
 
 /* ---- the chain mark -------------------------------------------------------------------------- */
@@ -3011,36 +3041,6 @@ html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,htm
    card, which is the point -- the eye goes to the action. */
 .lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
 html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
-</style><style id="lx-polish">
-/* ---- LumosCore interaction polish (clean direction: motion + focus + finish, no imagery) ---- */
-@media (prefers-reduced-motion: no-preference){
-  :where(a,button,input,select,textarea,.chip){transition:background-color .16s ease,border-color .16s ease,color .16s ease,box-shadow .2s ease,transform .16s ease,opacity .16s ease;}
-  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):hover{transform:translateY(-1px);}
-  :where(.btn,.btn-primary,.dex-hero-btn,.lumos-promo-cta,.dex-mk-action-btn,.trade-btn,.open-btn,.qa-btn,.max-btn,.pill-btn):active{transform:translateY(0) scale(.985);}
-  :where(.btn.primary,.btn-primary,.dex-hero-btn.primary,.trade-btn):hover{box-shadow:0 10px 26px -12px var(--accent,#ea6a2c);}
-  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){transition:transform .2s ease,border-color .2s ease,box-shadow .25s ease,background-color .2s ease;}
-  :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{transform:translateY(-2px);border-color:var(--border-strong,#34343c);}
-  html:not([data-theme="light"]) :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 14px 34px -22px rgba(0,0,0,.85);}
-  body{transition:background-color .3s ease,color .3s ease;}
-}
-/* keyboard focus */
-:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;}
-/* branded selection */
-::selection{background:rgba(234,106,44,.26);}
-/* headline balance */
-:where(h1,h2,h3){text-wrap:balance;}
-/* clickable market/pool rows: accent affordance */
-:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr){cursor:pointer;}
-:where(tr[data-pair],tr[data-pool],.pools tbody tr,.dex-mk-table tbody tr,#assetsTable tr,#lpPanel tbody tr):hover td:first-child{box-shadow:inset 2px 0 0 var(--accent,#ea6a2c);}
-/* themed thin scrollbars */
-*{scrollbar-width:thin;scrollbar-color:var(--border-strong,#34343c) transparent;}
-::-webkit-scrollbar{width:10px;height:10px;}
-::-webkit-scrollbar-track{background:transparent;}
-::-webkit-scrollbar-thumb{background:var(--border-strong,#34343c);border-radius:8px;border:3px solid transparent;background-clip:padding-box;}
-::-webkit-scrollbar-thumb:hover{background:var(--text-soft,#6e6d78);border:3px solid transparent;background-clip:padding-box;}
-/* light-mode elevation: cards read as raised surfaces on light bg */
-[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
-[data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
 </style></head>
 <body>
 <div class="app">
@@ -9458,10 +9458,86 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();</script><script id="lx-poolwarm">(function(){try{function warmRate(){ try{ fetch("/lxapi/xlm").catch(function(){}); }catch(_){} }function warmPoolStats(){ try{ fetch("/lxapi/poolstats").catch(function(){}); }catch(_){} }function warmAll(){ warmRate(); setTimeout(warmPoolStats,600); }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(warmAll,1200);},{timeout:5000});else setTimeout(warmAll,2000);if(document.querySelector("#poolsBody")||document.querySelector("#panelAll"))return;var tries=0;function hit(){if(tries++>=4)return;fetch("/lxapi/pools?per=1&page=1",{cache:"no-store"}).then(function(r){return r.ok?r.json():null;}).then(function(d){if(d&&d.warming){ setTimeout(hit,4000); }}).catch(function(){});}function start(){ try{ hit(); }catch(_){} }if(window.requestIdleCallback)requestIdleCallback(function(){setTimeout(start,2500);},{timeout:6000});else setTimeout(start,3500);}catch(_){}})();</script>
-<script id="lx-dexmain">(function(){
+
+<script id="lx-nofollow">(function(){
+  var KEEP=[];
+  function own(h){
+    if(!h)return true;
+    if(h===location.host)return true;                       // covers localhost and the staging host
+    h=h.toLowerCase();
+    if(h==="lumoscore.com"||h.slice(-14)===".lumoscore.com")return true;
+    for(var i=0;i<KEEP.length;i++)if(h===KEEP[i])return true;
+    return false;
+  }
+  function stamp(a){
+    var raw=a.getAttribute("href");
+    if(!raw)return;
+    var c=raw.charAt(0);
+    if(c==="#"||c==="/"||c==="?")return;                    // relative: ours by definition
+    var u;
+    try{ u=new URL(a.href,location.href); }catch(_){ return; }
+    // mailto:, tel:, javascript: -- not links a crawler follows, and not ours to annotate
+    if(u.protocol!=="http:"&&u.protocol!=="https:")return;
+    if(own(u.host))return;
+    var rel=(a.getAttribute("rel")||"").split(" ");
+    var out=[],seen={};
+    for(var i=0;i<rel.length;i++){ var t=rel[i]; if(!t||seen[t])continue; seen[t]=1; out.push(t); }
+    if(seen.nofollow)return;                                // already done: no write, no mutation
+    out.push("nofollow");
+    if(!seen.noopener)out.push("noopener");
+    a.setAttribute("rel",out.join(" "));
+  }
+  function sweep(root){
+    var n=(root&&root.querySelectorAll)?root:document;
+    var list=n.querySelectorAll("a[href]");
+    for(var i=0;i<list.length;i++)stamp(list[i]);
+    // the root itself can BE the anchor when one is inserted on its own
+    if(root&&root.tagName==="A")stamp(root);
+  }
+  function boot(){
+    sweep(document);
+    try{
+      // childList for anchors that appear with their data; href for an anchor that is re-pointed
+      // later. NOT rel -- stamp() is idempotent so a rel mutation would be a wasted pass, and this
+      // observer must never react to its own write.
+      new MutationObserver(function(muts){
+        for(var i=0;i<muts.length;i++){
+          var m=muts[i];
+          if(m.type==="attributes"){ if(m.target)stamp(m.target); continue; }
+          for(var j=0;j<m.addedNodes.length;j++){
+            var nd=m.addedNodes[j];
+            if(nd.nodeType===1)sweep(nd);
+          }
+        }
+      }).observe(document.documentElement,
+        {childList:true,subtree:true,attributes:true,attributeFilter:["href"]});
+    }catch(_){}
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
+  else boot();
+})();</script><script id="lx-beacon">(function(){
+if(window.__lxBeacon)return; window.__lxBeacon=1;
+var KEY="lumos.address", MARK="lumos.ev.sent";
+function cur(){ try{ var a=localStorage.getItem(KEY)||""; return /^G[A-Z2-7]{55}$/.test(a)?a:""; }catch(e){ return ""; } }
+function already(a){ try{ return sessionStorage.getItem(MARK)===a; }catch(e){ return false; } }
+function mark(a){ try{ sessionStorage.setItem(MARK,a); }catch(e){} }
+function ping(){
+  var a=cur(); if(!a||already(a))return;
+  mark(a);   // marked BEFORE the request, so a slow network cannot let the interval fire it twice
+  try{
+    fetch("/lxapi/ev",{method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({addr:a}),keepalive:true}).catch(function(){});
+  }catch(e){}
+}
+// Fire-and-forget in every direction: the page must never wait on this, and a failure must never
+// surface to the user. An analytics beacon that can break a wallet connect is not worth having.
+if(document.readyState!=="loading")ping(); else document.addEventListener("DOMContentLoaded",ping);
+setInterval(ping,5000);
+window.addEventListener("storage",ping);
+})();</script><script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
-  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","XRP|GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5":"fchain.io","SCOP|GC6OYQJIZF3HFXCYPFCBXYXNGIBQ4TNSFUBUXQJOZWIP6F3YZK4QH3VQ":"scopuly.com","MTL|GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V":"mtl.montelibero.org","EURMTL|GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V":"mtl.montelibero.org","ZARZ|GAROH4EV3WVVTRQKEY43GZK3XSRBEYETRVZ7SVG5LHWOAANSMCTJBB3U":"zeam.money","USDZ|GAKTLPC4ZV37SSCITQ5IS5AQ4WPF4CF4VZJQPPAROSGXMYOATF5U6XPR":"zeam.money","CLPX|GDYSPBVZHPQTYMGSYNOHRZQNLB3ZWFVQ2F7EP7YBOLRGD42XIC3QUX5G":"clpx.finance","yBTC|GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW":"ultracapital.xyz","yETH|GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD":"ultracapital.xyz","ARS|GCYE7C77EB5AWAA25R5XMWNI2EDOKTTFTTPZKM2SR5DI4B4WFD52DARS":"api.anclap.com","PEN|GA4TDPNUCZPTOHB3TKUYMDCRVATXKEADH7ZEYEBWJKQKE2UBFCYNBPEN":"api.anclap.com","ETH|GBFXOHVAS43OIWNIO7XLRJAHT3BICFEIKOJLZVXNT572MISM4CMGSOCC":"ultracapital.xyz","BTCLN|GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT":"kbtrading.org","USDM|GDHDC4GBNPMENZAOBB4NCQ25TGZPDRK6ZGWUGSI22TVFATOLRPSUUSDM":"mtl.montelibero.org","CETES|GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC":"etherfuse.com","USTRY|GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC":"etherfuse.com","SSLX|GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR":"sslx.sl8.online","AFR|GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W":"afreum.com","TFT|GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47":"threefold.io","GOLD|GBC5ZGK6MQU3XG5Y72SXPA7P5R5NHYT2475SNEJB2U3EQ6J56QLVGOLD":"mintx.co","USDY|GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6":"ondo.finance"};
+  var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","XRP|GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5":"fchain.io","SCOP|GC6OYQJIZF3HFXCYPFCBXYXNGIBQ4TNSFUBUXQJOZWIP6F3YZK4QH3VQ":"scopuly.com","MTL|GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V":"mtl.montelibero.org","EURMTL|GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V":"mtl.montelibero.org","ZARZ|GAROH4EV3WVVTRQKEY43GZK3XSRBEYETRVZ7SVG5LHWOAANSMCTJBB3U":"zeam.money","USDZ|GAKTLPC4ZV37SSCITQ5IS5AQ4WPF4CF4VZJQPPAROSGXMYOATF5U6XPR":"zeam.money","CLPX|GDYSPBVZHPQTYMGSYNOHRZQNLB3ZWFVQ2F7EP7YBOLRGD42XIC3QUX5G":"clpx.finance","yBTC|GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW":"ultracapital.xyz","yETH|GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD":"ultracapital.xyz","ARS|GCYE7C77EB5AWAA25R5XMWNI2EDOKTTFTTPZKM2SR5DI4B4WFD52DARS":"api.anclap.com","PEN|GA4TDPNUCZPTOHB3TKUYMDCRVATXKEADH7ZEYEBWJKQKE2UBFCYNBPEN":"api.anclap.com","ETH|GBFXOHVAS43OIWNIO7XLRJAHT3BICFEIKOJLZVXNT572MISM4CMGSOCC":"ultracapital.xyz","BTCLN|GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT":"kbtrading.org","USDM|GDHDC4GBNPMENZAOBB4NCQ25TGZPDRK6ZGWUGSI22TVFATOLRPSUUSDM":"mtl.montelibero.org","CETES|GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC":"etherfuse.com","USTRY|GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC":"etherfuse.com","SSLX|GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR":"sslx.sl8.online","AFR|GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W":"afreum.com","TFT|GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47":"threefold.io","GOLD|GBC5ZGK6MQU3XG5Y72SXPA7P5R5NHYT2475SNEJB2U3EQ6J56QLVGOLD":"mintx.co","USDY|GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6":"ondo.finance","xLMNR|GDKA6WVMFSA73BMEVKPO6WXSSWP4MPRBDJVSXLLSEVIEVH226L5RJ7NL":"thelumenaire.com"};
 
   // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
   // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
@@ -9514,7 +9590,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     {code:"SSLX", issuer:"GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR", cat:"utility", b:"#4a6cf7", logo:"https://sl8.online/assets/sslx-icon-e36e8c6134f6d93e6af1cd4d084a053c.png"},
     {code:"AFR", issuer:"GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W", cat:"utility", b:"#e8a33d", logo:"https://afreum.com/stellar/ST_Afreum.png"},
     {code:"TFT", issuer:"GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47", cat:"utility", b:"#2d9cdb", logo:"https://threefoldfoundation.github.io/tft/tft_icon.png"}
-  ];
+  ].concat([{"code":"xLMNR","issuer":"GDKA6WVMFSA73BMEVKPO6WXSSWP4MPRBDJVSXLLSEVIEVH226L5RJ7NL","cat":"utility","b":"hsl(13,62%,46%)","logo":"https://www.thelumenaire.com/images/xLMNR-icon.png"}]);
   // byCode is a TICKER index -- two different issuers can share one. byId is the IDENTITY index, and it
   // is what decides whether we already hold an asset. Ticker alone could not: the cached roster and the
   // fresh stellar.expert discovery both offer every token, and the second offer would see the ticker
@@ -10850,41 +10926,41 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     var ticks=0, iv=setInterval(function(){ guardApply(); if(++ticks>30)clearInterval(iv); },700);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><style id="lx-hiw-css">/*lxts:1.1*/
-.lx-hiw{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:22px}
+})();</script><style id="lx-hiw-css">
+.lx-hiw{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
 .lx-hiw[hidden]{display:none}
 .lx-hiw-bd{position:absolute;inset:0;background:rgba(8,8,12,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
 .lx-hiw-card{position:relative;z-index:1;width:100%;max-width:560px;max-height:86vh;overflow:auto;-webkit-overflow-scrolling:touch;
   background:var(--surface,#fff);color:var(--text,#0e0e10);border:1px solid var(--border,#ececef);border-radius:18px;
-  padding:28.6px 28.6px 24.2px;box-shadow:0 28px 70px -20px rgba(6,8,16,.55);animation:lxHiwIn .16s ease-out}
+  padding:26px 26px 22px;box-shadow:0 28px 70px -20px rgba(6,8,16,.55);animation:lxHiwIn .16s ease-out}
 @keyframes lxHiwIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media(prefers-reduced-motion:reduce){.lx-hiw-card{animation:none}}
 .lx-hiw-x{position:absolute;top:14px;right:14px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;
   border-radius:9px;border:1px solid var(--border,#ececef);background:transparent;color:var(--text-muted,#5c5c66);
-  font-size:20.9px;line-height:1;cursor:pointer}
+  font-size:19px;line-height:1;cursor:pointer}
 .lx-hiw-x:hover{background:var(--surface-2,#fafbfc);color:var(--text,#0e0e10)}
 .lx-hiw-x:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px}
-.lx-hiw-t{margin:0 37.4px 2.2px 0;font-size:23.1px;font-weight:800;letter-spacing:-.02em}
-.lx-hiw-sub{margin:0 0 17.6px;font-size:14.9px;line-height:1.5;color:var(--text-muted,#5c5c66)}
-.lx-hiw-h{margin:0 0 13.2px;font:700 11.6px/1 'JetBrains Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--accent,#ea6a2c)}
-.lx-hiw-s+.lx-hiw-s{margin-top:19.8px;padding-top:19.8px;border-top:1px solid var(--border,#ececef)}
-.lx-hiw-l{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:13.2px}
-.lx-hiw-l li{display:grid;grid-template-columns:26px 1fr;gap:13.2px;align-items:start}
+.lx-hiw-t{margin:0 34px 2px 0;font-size:21px;font-weight:800;letter-spacing:-.02em}
+.lx-hiw-sub{margin:0 0 16px;font-size:13.5px;line-height:1.5;color:var(--text-muted,#5c5c66)}
+.lx-hiw-h{margin:0 0 12px;font:700 10.5px/1 'JetBrains Mono',monospace;letter-spacing:.09em;text-transform:uppercase;color:var(--accent,#ea6a2c)}
+.lx-hiw-s+.lx-hiw-s{margin-top:18px;padding-top:18px;border-top:1px solid var(--border,#ececef)}
+.lx-hiw-l{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.lx-hiw-l li{display:grid;grid-template-columns:26px 1fr;gap:12px;align-items:start}
 .lx-hiw-n{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
-  font:700 13.2px/1 'JetBrains Mono',monospace;color:var(--accent,#ea6a2c);
+  font:700 12px/1 'JetBrains Mono',monospace;color:var(--accent,#ea6a2c);
   background:var(--accent-pale,rgba(234,106,44,.10));border:1px solid var(--accent-soft,rgba(234,106,44,.22))}
-.lx-hiw-b{display:block;font-size:15.4px;font-weight:700;margin-bottom:3.3px}
-.lx-hiw-p{display:block;font-size:14.9px;line-height:1.55;color:var(--text-muted,#5c5c66)}
-.lx-hiw-f{margin:17.6px 0 0;padding-top:15.4px;border-top:1px solid var(--border,#ececef);
-  font-size:13.8px;line-height:1.55;color:var(--text-muted,#5c5c66)}   /* --text-soft measured 3.64 here: under AA */
+.lx-hiw-b{display:block;font-size:14px;font-weight:700;margin-bottom:3px}
+.lx-hiw-p{display:block;font-size:13.5px;line-height:1.55;color:var(--text-muted,#5c5c66)}
+.lx-hiw-f{margin:16px 0 0;padding-top:14px;border-top:1px solid var(--border,#ececef);
+  font-size:12.5px;line-height:1.55;color:var(--text-muted,#5c5c66)}   /* --text-soft measured 3.64 here: under AA */
 /* --accent on a white card measures 3.18 -- under AA for 10.5px labels and the step numerals. Dark
    theme is fine at 5.82, so only light is deepened. */
 html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a8491a}
 @media(max-width:560px){
   .lx-hiw{padding:0;align-items:flex-end}
-  .lx-hiw-card{max-width:none;max-height:90vh;border-radius:18px 18px 0 0;padding:24.2px 19.8px 22px;animation:lxHiwUp .18s ease-out}
+  .lx-hiw-card{max-width:none;max-height:90vh;border-radius:18px 18px 0 0;padding:22px 18px 20px;animation:lxHiwUp .18s ease-out}
   @keyframes lxHiwUp{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
-  .lx-hiw-t{font-size:20.9px}
+  .lx-hiw-t{font-size:19px}
 }
 </style>
 <script id="lx-hiw">(function(){
@@ -10939,80 +11015,5 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
     if(hit){ e.preventDefault(); e.stopImmediatePropagation(); trigger=hit; open(); }
   },true);
   document.addEventListener("keydown",function(e){ if(e.key==="Escape"||e.keyCode===27)close(); });
-})();</script><script id="lx-nofollow">(function(){
-  var KEEP=[];
-  function own(h){
-    if(!h)return true;
-    if(h===location.host)return true;                       // covers localhost and the staging host
-    h=h.toLowerCase();
-    if(h==="lumoscore.com"||h.slice(-14)===".lumoscore.com")return true;
-    for(var i=0;i<KEEP.length;i++)if(h===KEEP[i])return true;
-    return false;
-  }
-  function stamp(a){
-    var raw=a.getAttribute("href");
-    if(!raw)return;
-    var c=raw.charAt(0);
-    if(c==="#"||c==="/"||c==="?")return;                    // relative: ours by definition
-    var u;
-    try{ u=new URL(a.href,location.href); }catch(_){ return; }
-    // mailto:, tel:, javascript: -- not links a crawler follows, and not ours to annotate
-    if(u.protocol!=="http:"&&u.protocol!=="https:")return;
-    if(own(u.host))return;
-    var rel=(a.getAttribute("rel")||"").split(" ");
-    var out=[],seen={};
-    for(var i=0;i<rel.length;i++){ var t=rel[i]; if(!t||seen[t])continue; seen[t]=1; out.push(t); }
-    if(seen.nofollow)return;                                // already done: no write, no mutation
-    out.push("nofollow");
-    if(!seen.noopener)out.push("noopener");
-    a.setAttribute("rel",out.join(" "));
-  }
-  function sweep(root){
-    var n=(root&&root.querySelectorAll)?root:document;
-    var list=n.querySelectorAll("a[href]");
-    for(var i=0;i<list.length;i++)stamp(list[i]);
-    // the root itself can BE the anchor when one is inserted on its own
-    if(root&&root.tagName==="A")stamp(root);
-  }
-  function boot(){
-    sweep(document);
-    try{
-      // childList for anchors that appear with their data; href for an anchor that is re-pointed
-      // later. NOT rel -- stamp() is idempotent so a rel mutation would be a wasted pass, and this
-      // observer must never react to its own write.
-      new MutationObserver(function(muts){
-        for(var i=0;i<muts.length;i++){
-          var m=muts[i];
-          if(m.type==="attributes"){ if(m.target)stamp(m.target); continue; }
-          for(var j=0;j<m.addedNodes.length;j++){
-            var nd=m.addedNodes[j];
-            if(nd.nodeType===1)sweep(nd);
-          }
-        }
-      }).observe(document.documentElement,
-        {childList:true,subtree:true,attributes:true,attributeFilter:["href"]});
-    }catch(_){}
-  }
-  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot);
-  else boot();
-})();</script><script id="lx-beacon">(function(){
-if(window.__lxBeacon)return; window.__lxBeacon=1;
-var KEY="lumos.address", MARK="lumos.ev.sent";
-function cur(){ try{ var a=localStorage.getItem(KEY)||""; return /^G[A-Z2-7]{55}$/.test(a)?a:""; }catch(e){ return ""; } }
-function already(a){ try{ return sessionStorage.getItem(MARK)===a; }catch(e){ return false; } }
-function mark(a){ try{ sessionStorage.setItem(MARK,a); }catch(e){} }
-function ping(){
-  var a=cur(); if(!a||already(a))return;
-  mark(a);   // marked BEFORE the request, so a slow network cannot let the interval fire it twice
-  try{
-    fetch("/lxapi/ev",{method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({addr:a}),keepalive:true}).catch(function(){});
-  }catch(e){}
-}
-// Fire-and-forget in every direction: the page must never wait on this, and a failure must never
-// surface to the user. An analytics beacon that can break a wallet connect is not worth having.
-if(document.readyState!=="loading")ping(); else document.addEventListener("DOMContentLoaded",ping);
-setInterval(ping,5000);
-window.addEventListener("storage",ping);
 })();</script><script>(function(){if(window.__lxSite)return;window.__lxSite=1;var CLEAN={"lumoscore-dex":"/trade/stellar","lumoscore-amm":"/pools/stellar","lumoscore-launch-review":"/launchpad/review","lumoscore-launch-confirm":"/launchpad/confirm","lumoscore-launch-token":"/launchpad","lumoscore-home":"/dashboard","lumoscore-bridge":"/bridge","lumoscore-wallet":"/wallet","lumoscore-rewards":"/rewards","lumoscore-lumos-token":"/lumos","lumoscore-signin":"/signin","lumoscore-mcp":"/mcp","lumoscore-blog":"/blog","lumoscore-landing":"/","lumoscore-dex-asset":"/trade/stellar","lumoscore-account":"/account/stellar","lumoscore-asset-overview":"/trade/stellar"};function lxClean(u){ if(typeof u!=="string"||u.indexOf("lumoscore-")!==0)return u;  var q="",h="",i=u.indexOf("#"); if(i>=0){h=u.slice(i);u=u.slice(0,i);}  i=u.indexOf("?"); if(i>=0){q=u.slice(i+1);u=u.slice(0,i);}  var base=u.replace(/\.html$/,"").replace(/-(dark|light|mobile)$/,"");  var p=new URLSearchParams(q), a=p.get("asset");  if(base==="lumoscore-account")        return a?("/account/stellar/"+a+h):("/account/stellar"+h);  if(base==="lumoscore-dex-asset")      return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-asset-overview") return a?("/trade/stellar/"+a+h):("/trade/stellar"+h);  if(base==="lumoscore-amm-pool")       return u+(q?("?"+q):"")+h;  var c=CLEAN[base]; if(!c)return u+(q?("?"+q):"")+h;  return c+(q?("?"+q):"")+h; }window.lxCleanUrl=lxClean;var self=(location.pathname.split("/").pop()||"");var MOB=/-mobile(\.html)?$/.test(self);var VALID=["lumoscore-home.html","lumoscore-landing.html","lumoscore-launch-confirm-light.html","lumoscore-launch-confirm.html","lumoscore-launch-review-light.html","lumoscore-launch-review.html","lumoscore-launch-token-light.html","lumoscore-launch-token.html","lumoscore-wallet-light.html","lumoscore-wallet.html","lumoscore-amm-dark.html","lumoscore-amm.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool.html","lumoscore-lumos-token-dark.html","lumoscore-lumos-token.html","lumoscore-dex-dark.html","lumoscore-dex.html","lumoscore-dex-asset-dark.html","lumoscore-dex-asset.html","lumoscore-bridge.html","lumoscore-bridge-dark.html","lumoscore-signin.html","lumoscore-signin-light.html","lumoscore-rewards-dark.html","lumoscore-rewards-light.html","lumoscore-mcp.html","lumoscore-account.html","lumoscore-account-dark.html","lumoscore-blog.html","lumoscore-blog-post.html","lumoscore-home-mobile.html","lumoscore-landing-mobile.html","lumoscore-launch-confirm-mobile.html","lumoscore-launch-review-mobile.html","lumoscore-launch-token-mobile.html","lumoscore-wallet-mobile.html","lumoscore-amm-mobile.html","lumoscore-amm-pool-mobile.html","lumoscore-lumos-token-mobile.html","lumoscore-dex-mobile.html","lumoscore-dex-asset-mobile.html","lumoscore-bridge-mobile.html","lumoscore-signin-mobile.html","lumoscore-rewards-mobile.html","lumoscore-mcp-mobile.html","lumoscore-account-mobile.html","lumoscore-blog-mobile.html","lumoscore-blog-post-mobile.html"];window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile\.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}if(!p)for(var j=0;j<c.length;j++){if(VALID.indexOf(c[j])>=0){p=c[j];break;}}for(var k=0;!p&&k<c.length;k++){var g=c[k];if(MOB===/-mobile\.html$/.test(g)){p=g;break;}}if(!p)p=c[0];if(p){location.href=lxClean(p);}return true;};document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a");if(!a)return;var h=a.getAttribute("href")||"";if(h==="#"||h==="#!"){e.preventDefault();return;}var hb=h.split("?")[0].split("#")[0];if(/^lumoscore-[\w-]+\.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}if(/^lumoscore-[\w-]+\.html/.test(h)){var cl=lxClean(h);if(cl!==h){e.preventDefault();location.href=cl;}}},true);var wrapped=0,tries=0;var iv=setInterval(function(){tries++;if(typeof window.__lxNav==="function"&&!window.__lxNav.__lxc){var o=window.__lxNav;var w=function(u){return o.call(this,lxClean(u));};w.__lxc=1;window.__lxNav=w;wrapped=1;}if(wrapped||tries>40)clearInterval(iv);},50);})();</script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style></body>
 </html>
