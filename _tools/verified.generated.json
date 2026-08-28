@@ -1,0 +1,14 @@
+{
+  "verified": {
+    "xLMNR|GDKA6WVMFSA73BMEVKPO6WXSSWP4MPRBDJVSXLLSEVIEVH226L5RJ7NL": "thelumenaire.com"
+  },
+  "assets": [
+    {
+      "code": "xLMNR",
+      "issuer": "GDKA6WVMFSA73BMEVKPO6WXSSWP4MPRBDJVSXLLSEVIEVH226L5RJ7NL",
+      "cat": "utility",
+      "b": "hsl(13,62%,46%)",
+      "logo": "https://www.thelumenaire.com/images/xLMNR-icon.png"
+    }
+  ]
+}
