@@ -32,6 +32,11 @@ function slugify(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
 }
 
+function isLive(p) {
+  if (!p || !p.published) return false;
+  return !p.publishAt || p.publishAt <= Date.now();
+}
+
 async function readIndex(kv) {
   try { return (await kv.get(IDX, 'json')) || []; } catch (_) { return []; }
 }
@@ -63,12 +68,12 @@ export async function onRequestGet({ request, env }) {
     let post = null;
     try { post = await kv.get(POST + slug, 'json'); } catch (_) {}
     if (!post) return json({ error: 'not found' }, 404, 0);
-    if (!post.published && !all) return json({ error: 'not found' }, 404, 0);
+    if (!isLive(post) && !all) return json({ error: 'not found' }, 404, 0);
     return json({ post }, 200, all ? 0 : 120);
   }
 
   const idx = await readIndex(kv);
-  const posts = all ? idx : idx.filter((p) => p && p.published);
+  const posts = all ? idx : idx.filter(isLive);
   return json({ posts }, 200, all ? 0 : 120);
 }
 
@@ -105,9 +110,11 @@ export async function onRequestPut({ request, env }) {
     tags: Array.isArray(b.tags) ? b.tags.slice(0, 12).map((t) => String(t).slice(0, 32)) : [],
     readMins: Math.max(1, Math.min(60, parseInt(b.readMins, 10) || 0)) || null,
     published: !!b.published,
+    // The moment it becomes public. Null means "as soon as it is published".
+    publishAt: (function(){ var t = Number(b.publishAt); return (isFinite(t) && t > 0) ? t : null; })(),
     createdAt: (existing && existing.createdAt) || now,
     updatedAt: now,
-    publishedAt: (b.published ? ((existing && existing.publishedAt) || now) : null),
+    publishedAt: (b.published ? ((existing && existing.publishedAt) || Number(b.publishAt) || now) : null),
   };
 
   await kv.put(POST + slug, JSON.stringify(post));
@@ -122,7 +129,7 @@ export async function onRequestPut({ request, env }) {
   const idx = await readIndex(kv);
   const summary = {
     slug: post.slug, title: post.title, category: post.category, excerpt: post.excerpt,
-    cover: post.cover, tags: post.tags, readMins: post.readMins,
+    cover: post.cover, tags: post.tags, readMins: post.readMins, publishAt: post.publishAt,
     published: post.published, createdAt: post.createdAt, updatedAt: post.updatedAt,
     publishedAt: post.publishedAt,
   };
