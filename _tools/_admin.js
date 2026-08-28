@@ -355,11 +355,11 @@ function per(){ return "<span class='lxd-per'>"+WIN[WI][0]+"</span>"; }
 function buildDash(grid){
   grid.innerHTML = kpiTile("lxdVol","Volume",per()+" \u00b7 swap volume")
     + kpiTile("lxdTrades","Trades",per()+" \u00b7 fee-paying swaps")
-    + kpiTile("lxdWal","Connected wallets",per()+" \u00b7 needs the site beacon","Nothing on-chain records a wallet CONNECTING to the site - only wallets that went on to pay a fee leave a trace. A first-party beacon is needed for this and it is not installed yet, so this is left blank rather than estimated.")
+    + kpiTile("lxdWal","Connected wallets",per()+" · distinct wallets","Distinct wallets that connected a wallet to the site in this window. Recorded by our own beacon, because nothing on-chain marks a connection - only wallets that go on to pay a fee leave a trace, and those are a fraction of the people who open the app. Counted per UTC day.")
     + kpiTile("lxdRev","Revenue",per()+" \u00b7 fees collected")
     + kpiTile("lxdVolA","Lifetime volume","every swap since launch")
     + kpiTile("lxdTradesA","Lifetime trades","every fee-paying swap")
-    + kpiTile("lxdWalA","Lifetime wallets","distinct fee-paying wallets","Distinct wallets that have paid a platform fee. Not the same as wallets that connected - that needs the beacon.")
+    + kpiTile("lxdWalA","Lifetime wallets","connected since the beacon went live","Distinct wallets ever seen connecting. This starts from the day the beacon was installed - it cannot be backfilled, because the connections before it were never recorded anywhere.")
     + kpiTile("lxdTier","Holders \u2265 250K LUMOS","qualify for the 0.1% fee","Wallets holding at least 250,000 LUMOS, the threshold for the reduced 0.1% platform fee. Treasury and burn wallets are excluded.");
 }
 // The window control sits in the page header beside Export/Refresh, where the design puts actions.
@@ -376,7 +376,7 @@ function fillDash(){
     setT(q("#lxdTrades"), num(inWin.length));
     setT(q("#lxdTradesA"), num(rv.rows.length));
     var wAll={}; rv.rows.forEach(function(p){ wAll[p.from]=1; });
-    setT(q("#lxdWalA"), num(Object.keys(wAll).length));
+    // (fee-paying wallet count lives on the Users page; these two tiles are connections)
     var byA={}; inWin.forEach(function(p){ var a=assetOf(p), k=a.code+"-"+a.iss;
       byA[k]=byA[k]||{code:a.code,iss:a.iss,amt:0}; byA[k].amt+=+p.amount||0; });
     var ks=Object.keys(byA);
@@ -397,7 +397,26 @@ function fillDash(){
   loadTier().then(function(t){ if(t.n==null){ setT(q("#lxdTier"),"\u2014"); return; }
     setT(q("#lxdTier"), num(t.n));
     var f=q("#lxdTierF"); if(f)f.textContent="qualify for the 0.1% fee"+(t.excluded?(" \u00b7 "+t.excluded+" treasury excluded"):""); });
+  // Connected wallets. All four windows arrive in one response, so switching the period never
+  // re-fetches. null means the store could not answer -- rendered as a dash with the reason, never as
+  // zero, because "no connections" and "we could not look" are different claims.
+  loadWallets().then(function(w){
+    var k=["d1","d7","d30","all"][WI];
+    setT(q("#lxdWal"), w[k]==null?"\u2014":num(w[k]));
+    setT(q("#lxdWalA"), w.all==null?"\u2014":num(w.all));
+    var f=q("#lxdWalF");
+    if(f)f.innerHTML=(w[k]==null)?"beacon not reporting":(per()+" \u00b7 distinct wallets");
+    var g=q("#lxdWalAF");
+    if(g)g.textContent=w.since?("connected since "+w.since):"connected since the beacon went live";
+  });
 }
+// Cached for the page's lifetime: the four windows come back together, so the period selector reads
+// from this instead of going to the network again.
+var WAL=null;
+function loadWallets(){ if(WAL)return Promise.resolve(WAL);
+  return j("/lxapi/walletstats").then(function(d){
+    WAL=d||{d1:null,d7:null,d30:null,all:null}; return WAL; })
+   .catch(function(){ WAL={d1:null,d7:null,d30:null,all:null}; return WAL; }); }
 function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!grid)return;
   if(grid.getAttribute("data-lxbuilt")!=="1"){ grid.setAttribute("data-lxbuilt","1"); buildDash(grid); wirePeriod(); }
   fillDash();
