@@ -79,8 +79,16 @@ const MAIN = `
             <label class="lxb-l">Cover alt text</label>
             <input class="lxb-i" id="lxbCoverAlt" type="text" placeholder="What the image shows">
             <label class="lxb-l">Category</label>
-            <input class="lxb-i" id="lxbCat" type="text" placeholder="Stellar" list="lxbCats">
-            <datalist id="lxbCats"><option>Stellar</option><option>XRPL</option><option>LumosCore</option><option>Guide</option><option>Walkthrough</option><option>Product</option></datalist>
+            <select class="lxb-i" id="lxbCat">
+              <option value="Stellar">Stellar</option>
+              <option value="XRPL">XRPL</option>
+              <option value="LumosCore">LumosCore</option>
+              <option value="Guide">Guide</option>
+              <option value="Walkthrough">Walkthrough</option>
+              <option value="Product">Product</option>
+              <option value="__other">Other…</option>
+            </select>
+            <input class="lxb-i" id="lxbCatOther" type="text" placeholder="New category name" hidden style="margin-top:8px">
             <label class="lxb-l">Meta description <span class="lxb-h" id="lxbMetaCount"></span></label>
             <textarea class="lxb-i" id="lxbMeta" rows="3" placeholder="What a search result should say about this post."></textarea>
             <label class="lxb-l">Tags <span class="lxb-h">comma separated</span></label>
@@ -248,6 +256,21 @@ function renderList(){
 function refresh(){ return list().then(function(d){ POSTS=(d&&d.posts)||[]; renderList();
   if(d&&d.reason==="no kv"){ var s=q("#lxbSub"); if(s)s.textContent="Storage is not connected (CONTENT_KV binding missing on this project)."; } }); }
 
+// A category that is not one of the listed options -- an older post, or one typed into Other -- still
+// has to load correctly. It selects Other and fills the box rather than silently resetting to Stellar.
+function setCat(v){
+  var sel=q("#lxbCat"), oth=q("#lxbCatOther"); if(!sel||!oth)return;
+  v=String(v||"").trim();
+  var known=false;
+  [].slice.call(sel.options).forEach(function(o){ if(o.value===v)known=true; });
+  if(v&&!known){ sel.value="__other"; oth.value=v; oth.hidden=false; }
+  else { sel.value=v||"Stellar"; oth.value=""; oth.hidden=true; }
+}
+function catValue(){
+  var sel=q("#lxbCat"), oth=q("#lxbCatOther"); if(!sel)return "";
+  if(sel.value==="__other")return (oth&&oth.value||"").trim();
+  return sel.value;
+}
 function openEditor(post){
   CUR=post||null; PREV_SLUG=post?post.slug:""; SLUG_TOUCHED=!!post;
   var ed=q("#lxbEditor"); if(!ed)return;
@@ -260,7 +283,7 @@ function openEditor(post){
   q("#lxbBody").innerHTML=post?(post.body||""):"";
   q("#lxbCover").value=post?(post.cover||""):"";
   q("#lxbCoverAlt").value=post?(post.coverAlt||""):"";
-  q("#lxbCat").value=post?(post.category||""):"";
+  setCat(post?(post.category||""):"Stellar");
   q("#lxbMeta").value=post?(post.metaDescription||""):"";
   q("#lxbTags").value=post?((post.tags||[]).join(", ")):"";
   q("#lxbRead").value=post&&post.readMins?post.readMins:"";
@@ -286,7 +309,7 @@ function gather(published){
   var slug=(q("#lxbSlug").value||"").trim()||slugify(title);
   var tags=(q("#lxbTags").value||"").split(",").map(function(t){return t.trim();}).filter(Boolean);
   var read=parseInt(q("#lxbRead").value,10);
-  return {slug:slug,prevSlug:PREV_SLUG,title:title,category:(q("#lxbCat").value||"").trim(),
+  return {slug:slug,prevSlug:PREV_SLUG,title:title,category:catValue(),
     body:clean(q("#lxbBody")),
     cover:(q("#lxbCover").value||"").trim(),
     coverAlt:(q("#lxbCoverAlt").value||"").trim(),
@@ -485,6 +508,11 @@ function boot(){
   if(sli&&!sli.__lx){ sli.__lx=1; sli.addEventListener("input",function(){ SLUG_TOUCHED=true;
     // Normalise as it is typed: the URL has to be a valid slug whatever gets pasted in.
     var v=slugify(sli.value); if(v!==sli.value)sli.value=v; }); }
+  var cs=q("#lxbCat");
+  if(cs&&!cs.__lx){ cs.__lx=1; cs.addEventListener("change",function(){
+    var oth=q("#lxbCatOther"); if(!oth)return;
+    oth.hidden=(cs.value!=="__other");
+    if(!oth.hidden)oth.focus(); else oth.value=""; }); }
   var cv=q("#lxbCover"); if(cv&&!cv.__lx){ cv.__lx=1; cv.addEventListener("input",coverPrev); }
   var mt=q("#lxbMeta"); if(mt&&!mt.__lx){ mt.__lx=1; mt.addEventListener("input",metaCount); }
   var bd=q("#lxbBody"); if(bd&&!bd.__lx){ bd.__lx=1; bd.addEventListener("input",wordCount);
