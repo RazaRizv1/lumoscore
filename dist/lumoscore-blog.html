@@ -12807,7 +12807,7 @@ function fillPost(post){
   if(body)body.innerHTML=post.body||"";
   if(post.tags&&post.tags.length&&body){
     var tw=document.createElement("div"); tw.className="lx-post-tags";
-    tw.innerHTML=post.tags.map(function(t){ return "<span class='lx-post-tag'>"+esc(t)+"</span>"; }).join("");
+    tw.innerHTML=post.tags.map(function(t){ return "<span class='lx-post-tag' data-lxc=''>"+esc(t)+"</span>"; }).join("");
     body.parentNode.insertBefore(tw, body.nextSibling);
   }
   // Per-post <title> and description: one file answers every /blog/:slug, so these cannot be baked in.
