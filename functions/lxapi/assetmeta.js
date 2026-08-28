@@ -13,6 +13,7 @@ import { verifyAsset } from '../../_lib/stellartoml.js';
 import { GRANDFATHERED } from '../../_lib/verifiedseed.js';
 
 const LIST = 'assets:list';
+const MINTS = 'assets:mints';
 const META = 'asset:';
 // Verification state for the whole list in one key. It is DERIVED data -- re-running the handshake
 // rebuilds it -- so keeping it beside the list rather than inside each record costs one read to paint
@@ -97,8 +98,13 @@ export async function onRequestGet({ request, env }) {
   try { list = (await kv.get(LIST, 'json')) || []; } catch (_) {}
   let verified = {};
   try { verified = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
-  // `list` stays an array of plain ids so existing callers keep working; the tick state rides alongside.
-  return json({ list, verified }, 200, 60);
+  // Two different things, kept apart. CURATED is what LumosCore chooses to list -- the same set Trade
+  // main shows. MINTS are the tokens issued through our own launchpad: ours by definition, not a
+  // curation decision, and folding them into the curated list made it look like we had picked 55.
+  let mints = [];
+  try { mints = (await kv.get(MINTS, 'json')) || []; } catch (_) {}
+  // `list` stays an array of plain ids so existing callers keep working; the rest rides alongside.
+  return json({ list, mints, verified }, 200, 60);
 }
 
 export async function onRequestPut({ request, env }) {
