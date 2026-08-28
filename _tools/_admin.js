@@ -36,6 +36,19 @@ const REVENUE_MAIN=`
       </div>
 
       <div class="adm-card" style="margin-bottom:18px">
+        <div class="adm-card-head">
+          <div><div class="adm-card-title">Revenue by source</div><div class="adm-card-sub" id="lxSrcSub">Working out where the money came from&hellip;</div></div>
+          <div class="adm-card-actions"><button class="adm-btn ghost" id="lxSrcAdd" type="button">Add off-chain entry</button></div>
+        </div>
+        <div class="adm-card-body" style="padding:0">
+          <table class="adm-table" id="lxSrcTable" style="width:100%;border-collapse:collapse">
+            <thead><tr><th style="text-align:left">Source</th><th style="text-align:left">How it is counted</th><th style="text-align:right">Amount</th><th style="text-align:right">Share</th></tr></thead>
+            <tbody><tr><td colspan="4" class="lxadm-empty">Loading&hellip;</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="adm-card" style="margin-bottom:18px">
         <div class="adm-card-head"><div class="adm-card-title">Revenue by asset</div><div class="adm-card-sub" id="lxRevBySub"></div></div>
         <div class="adm-card-body" style="padding:0">
           <table class="adm-table" id="lxRevByAsset" style="width:100%;border-collapse:collapse">
@@ -286,31 +299,45 @@ function sdk(){ if(!_sbP)_sbP=new Promise(function(res,rej){
 // Gross volume for one fee receipt: the user's own swap leg plus the fee leg, both denominated in the
 // asset being sent. Returns null when the envelope holds no swap -- a bare fee payment with no trade
 // behind it is not volume, and is reported as unresolved rather than counted as zero.
+// Also classifies WHERE the money came from, by the shape of the transaction rather than by its size.
+// Measured across all 69 receipts, the shapes are: a user swap plus its fee (trading), the launchpad's
+// issuance transaction which carries createAccount / setOptions / liquidityPoolDeposit (minting), and a
+// handful of bare payments that are neither. Amount-based guessing would have been fragile -- a mint
+// fee is 34.70 XLM today and that number is a config value, not a law.
 function grossOf(S,p){ try{
   var ex=p.transaction&&p.transaction.envelope_xdr; if(!ex)return null;
   var tx=S.TransactionBuilder.fromXDR(ex,S.Networks.PUBLIC);
-  var ops=tx.operations||[], swap=null, fee=0;
+  var ops=tx.operations||[], swap=null, fee=0, mint=false;
   for(var i=0;i<ops.length;i++){ var o=ops[i];
+    if(o.type==="setOptions"||o.type==="createAccount"||o.type==="liquidityPoolDeposit")mint=true;
     if(o.type==="pathPaymentStrictSend"&&o.destination===p.from){ swap=o; }
     else if(o.destination===FEE){ fee+=(+o.sendAmount||+o.amount||0); } }
-  if(!swap)return null;
-  var a=swap.sendAsset; if(!a)return null;
-  var code=(a.isNative&&a.isNative())?"XLM":a.code; if(!code)return null;
+  var kind=swap?"trade":(mint?"mint":"other");
+  if(!swap)return {kind:kind,code:null,iss:"",gross:0};
+  var a=swap.sendAsset; if(!a)return {kind:kind,code:null,iss:"",gross:0};
+  var code=(a.isNative&&a.isNative())?"XLM":a.code;
+  if(!code)return {kind:kind,code:null,iss:"",gross:0};
   var iss=(code==="XLM")?"":(a.issuer||"");
-  return {code:code,iss:iss,gross:(+swap.sendAmount||0)+fee};
+  return {kind:kind,code:code,iss:iss,gross:(+swap.sendAmount||0)+fee};
 }catch(e){ return null; } }
 var VOL=null;
 function loadVolume(){ if(VOL)return Promise.resolve(VOL);
   return Promise.all([loadRevenue(),sdk()]).then(function(z){ var rv=z[0],S=z[1];
     var out=[],miss=0;
+    // Every receipt is kept now, not just the ones with a swap, because the revenue breakdown needs to
+    // account for all of them. Volume still only counts rows with gross > 0; a mint fee is revenue but
+    // it is not trading volume, and adding it to volume would overstate how much is being traded.
     rv.rows.forEach(function(p){ var g=grossOf(S,p);
       if(!g){ miss++; return; }
-      out.push({t:Date.parse(p.created_at),from:p.from,code:g.code,iss:g.iss,gross:g.gross}); });
+      if(!g.gross)miss++;
+      var fa=assetOf(p);
+      out.push({t:Date.parse(p.created_at),from:p.from,code:g.code,iss:g.iss,gross:g.gross,
+        kind:g.kind,fee:(+p.amount||0),feeCode:fa.code,feeIss:fa.iss}); });
     VOL={rows:out,missing:miss}; return VOL; })
    .catch(function(){ VOL={rows:[],missing:-1}; return VOL; }); }
 // Assets we cannot price are reported, never guessed at -- the rule the revenue table already follows.
 function volUsd(rows,since,cb){ var byA={};
-  rows.forEach(function(r){ if(since&&r.t<since)return; var k=r.code+"-"+r.iss;
+  rows.forEach(function(r){ if(since&&r.t<since)return; if(!r.code||!r.gross)return; var k=r.code+"-"+r.iss;
     byA[k]=byA[k]||{code:r.code,iss:r.iss,amt:0}; byA[k].amt+=r.gross; });
   var ks=Object.keys(byA); if(!ks.length){ cb(0,0); return; }
   var pend=ks.length,total=0,unpriced=0;
@@ -419,6 +446,126 @@ function loadWallets(){ if(WAL)return Promise.resolve(WAL);
   return j("/lxapi/walletstats").then(function(d){
     WAL=d||{d1:null,d7:null,d30:null,all:null}; return WAL; })
    .catch(function(){ WAL={d1:null,d7:null,d30:null,all:null}; return WAL; }); }
+
+// Where the revenue came from. The on-chain half is classified by transaction SHAPE (see grossOf), not
+// by amount. The off-chain half cannot be read from anywhere, so it is entered by hand -- and shown as
+// such, because a category that only ever reads zero should say whether that means "none" or "nobody
+// has recorded any".
+var MANUAL=null;
+function loadManual(){ if(MANUAL)return Promise.resolve(MANUAL);
+  return fetch("/lxapi/revenue").then(function(r){ return r.ok?r.json():null; })
+    .then(function(d){ MANUAL=(d&&d.entries)||[]; return MANUAL; })
+    .catch(function(){ MANUAL=[]; return MANUAL; }); }
+
+var SRC_LABEL={trade:"Trading fees",mint:"Token minting",other:"Other on-chain",
+  ads:"Advertising",listing:"Token listings",sponsorship:"Sponsorships",other_manual:"Other"};
+var SRC_HOW={trade:"platform fee on each swap, read from the chain",
+  mint:"launchpad issuance fee, read from the chain",
+  other:"payments to the fee collector with no swap or mint behind them",
+  ads:"entered by hand",listing:"entered by hand",sponsorship:"entered by hand",other_manual:"entered by hand"};
+
+function paintSources(){
+  var tbl=q("#lxSrcTable"); if(!tbl)return;
+  var tb=tbl.querySelector("tbody"); if(!tb)return;
+  var rows={};
+  function add(k,usd){ rows[k]=(rows[k]||0)+usd; }
+
+  Promise.all([loadVolume(),loadManual()]).then(function(z){
+    var v=z[0], man=z[1];
+    if(v.missing<0){ tb.innerHTML="<tr><td colspan='4' class='lxadm-empty'>Could not read the transaction envelopes, so the on-chain split is unavailable.</td></tr>"; return; }
+
+    // group the on-chain receipts by kind, then by fee asset, so each asset is priced once
+    var byKind={};
+    v.rows.forEach(function(r){ var k=r.kind||"other";
+      byKind[k]=byKind[k]||{}; var a=r.feeCode+"-"+r.feeIss;
+      byKind[k][a]=(byKind[k][a]||0)+r.fee; });
+
+    var pend=0, unpriced=0;
+    Object.keys(byKind).forEach(function(k){ Object.keys(byKind[k]).forEach(function(){ pend++; }); });
+    man.forEach(function(e){ add(e.source==="other"?"other_manual":e.source, parseFloat(e.amountUsd)||0); });
+    if(!pend){ draw(); return; }
+
+    Object.keys(byKind).forEach(function(k){
+      Object.keys(byKind[k]).forEach(function(a){
+        var i=a.lastIndexOf("-"), code=a.slice(0,i), iss=a.slice(i+1);
+        priceUsd(code,iss,function(px){
+          if(px!=null)add(k,byKind[k][a]*px); else unpriced++;
+          if(--pend===0)draw();
+        });
+      });
+    });
+
+    function draw(){
+      var order=["trade","mint","other","ads","listing","sponsorship","other_manual"];
+      var total=0; order.forEach(function(k){ total+=rows[k]||0; });
+      var any=order.some(function(k){ return rows[k]; });
+      if(!any&&!man.length){ tb.innerHTML="<tr><td colspan='4' class='lxadm-empty'>No revenue recorded yet.</td></tr>"; }
+      else {
+        tb.innerHTML=order.map(function(k){
+          var val=rows[k]||0;
+          var manual=(k==="ads"||k==="listing"||k==="sponsorship"||k==="other_manual");
+          // A zero from the chain means zero. A zero from a hand-entered category means nobody has
+          // recorded one, which is a different statement and should not read as revenue of nil.
+          if(!val&&manual)return "";
+          var share=total>0?((val/total*100).toFixed(1)+"%"):"\u2014";
+          return "<tr><td><b>"+esc(SRC_LABEL[k])+"</b></td>"
+            +"<td style='color:var(--text-muted);font-size:13px'>"+esc(SRC_HOW[k])+"</td>"
+            +"<td class='num-cell' style='text-align:right'>"+esc(usd(val))+"</td>"
+            +"<td style='text-align:right'>"+share+"</td></tr>";
+        }).join("");
+      }
+      var sub=q("#lxSrcSub");
+      if(sub){
+        var noManual=!man.length;
+        sub.textContent=usd(total)+" total"
+          +(unpriced?(" \u00b7 "+unpriced+" asset(s) unpriced"):"")
+          +(noManual?" \u00b7 nothing entered for advertising or listings yet":"");
+      }
+    }
+  });
+}
+
+// Adding an off-chain entry. Deliberately a short form: source, amount, date, note. Anything more
+// elaborate is an accounting package, and this only exists so the revenue page is not silently missing
+// the money that never touches the chain.
+function addManual(){
+  if(q(".lxmodal"))return;
+  var m=document.createElement("div"); m.className="lxmodal";
+  var today=new Date().toISOString().slice(0,10);
+  m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Add off-chain revenue</h3>"
+    +"<p class='lxmodal-s'>Advertising, paid listings and sponsorships are invoiced off-chain and leave no trace we can read, so they have to be recorded here or they never appear.</p>"
+    +"<label class='lxmodal-l' for='lxrvSrc'>Source</label>"
+    +"<select class='lxmodal-i' id='lxrvSrc'><option value='ads'>Advertising</option>"
+    +"<option value='listing'>Token listing</option><option value='sponsorship'>Sponsorship</option>"
+    +"<option value='other'>Other</option></select>"
+    +"<label class='lxmodal-l' for='lxrvAmt'>Amount (USD)</label><input class='lxmodal-i' id='lxrvAmt' type='number' step='0.01' placeholder='500.00'>"
+    +"<label class='lxmodal-l' for='lxrvWhen'>Date received</label><input class='lxmodal-i' id='lxrvWhen' type='date' value='"+today+"'>"
+    +"<label class='lxmodal-l' for='lxrvNote'>Note</label><input class='lxmodal-i' id='lxrvNote' placeholder='Who paid, and what for'>"
+    +"<p class='lxmodal-e' id='lxrvErr'></p>"
+    +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxrvCancel'>Cancel</button>"
+    +"<button class='adm-btn primary' type='button' id='lxrvOk'>Record</button></div></div>";
+  document.body.appendChild(m);
+  function close(){ m.remove(); }
+  m.addEventListener("click",function(e){ if(e.target===m)close(); });
+  m.querySelector("#lxrvCancel").addEventListener("click",close);
+  var er=m.querySelector("#lxrvErr");
+  m.querySelector("#lxrvOk").addEventListener("click",function(){
+    var amt=parseFloat(m.querySelector("#lxrvAmt").value);
+    if(!isFinite(amt)||amt===0){ er.textContent="Enter an amount."; return; }
+    var d=m.querySelector("#lxrvWhen").value;
+    var when=d?Date.parse(d+"T12:00:00Z"):Date.now();
+    var ok=m.querySelector("#lxrvOk"); ok.disabled=true; ok.textContent="Saving\u2026";
+    fetch("/lxapi/revenue",{method:"PUT",headers:{"content-type":"application/json"},
+      body:JSON.stringify({source:m.querySelector("#lxrvSrc").value,amountUsd:amt,when:when,
+        note:m.querySelector("#lxrvNote").value})})
+      .then(function(r){ return r.json().then(function(b){ return {ok:r.ok,b:b}; }); })
+      .then(function(z){ ok.disabled=false; ok.textContent="Record";
+        if(!z.ok){ er.textContent=(z.b&&z.b.error)||"Could not save."; return; }
+        MANUAL=null; close(); paintSources(); })
+      .catch(function(e){ ok.disabled=false; ok.textContent="Record"; er.textContent=e.message; });
+  });
+}
+
 function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!grid)return;
   if(grid.getAttribute("data-lxbuilt")!=="1"){ grid.setAttribute("data-lxbuilt","1"); buildDash(grid); wirePeriod(); }
   fillDash();
@@ -1092,7 +1239,7 @@ function editAsset(k){
 +'      rb.innerHTML="<div class=\\"lxadm-empty\\">Nothing scores wallets for risk. Flags like sanctions screening or unusual-activity detection need a monitoring service and somewhere to record findings \u2014 neither exists yet.</div>"; } }'
 +'  qa(".up-tabs, .mob-up-tabs").forEach(function(t){ t.remove(); });'
 +'}'
-+'function boot(){ try{ paintRevenue(); }catch(e){} try{ wireCsv(); }catch(e){} try{ paintDashboard(); }catch(e){} try{ paintDashPanels(); }catch(e){} try{ paintDashRow3(); }catch(e){} try{ paintUsers(); }catch(e){} try{ paintAssets(); }catch(e){} try{ paintMobile(); }catch(e){} try{ paintProfile(); }catch(e){} try{ paintNoBackend(); }catch(e){} try{ paintChrome(); }catch(e){} }'
++'function boot(){ try{ paintRevenue(); }catch(e){} try{ paintSources(); }catch(e){} try{ var _sa=q("#lxSrcAdd"); if(_sa&&!_sa.__lx){ _sa.__lx=1; _sa.addEventListener("click",addManual); } }catch(e){} try{ wireCsv(); }catch(e){} try{ paintDashboard(); }catch(e){} try{ paintDashPanels(); }catch(e){} try{ paintDashRow3(); }catch(e){} try{ paintUsers(); }catch(e){} try{ paintAssets(); }catch(e){} try{ paintMobile(); }catch(e){} try{ paintProfile(); }catch(e){} try{ paintNoBackend(); }catch(e){} try{ paintChrome(); }catch(e){} }'
 +'if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);'
 +'})();</'+'script>';
 
