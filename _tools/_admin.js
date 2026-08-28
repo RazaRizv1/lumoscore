@@ -332,10 +332,11 @@ var TREASURY={"GBIU5NISX5IP6VXZK7DEKLZC4ZVPWNCDEYQLQGXG33Y3J2LHPKPCHUOK":1,
 "GDB46BXMVI7FEZCHG4OTZ3OCSJX4CRBOOK6OJL5JD7BF5QIW3AS53IWA":1};
 var TIERC=null;
 function loadTier(){ if(TIERC)return Promise.resolve(TIERC);
-  var n=0,excl=0,set={};
+  var n=0,excl=0,set={},failed=false;
   function page(cur,depth){
     return j("/lxapi/holders?asset=LUMOS-"+LUMOS_ISS+"&limit=200"+(cur?("&cursor="+encodeURIComponent(cur)):"")).then(function(d){
-      var rs=(d&&d._embedded&&d._embedded.records)||[]; if(!rs.length)return;
+      if(!d){ failed=true; return; }
+      var rs=(d._embedded&&d._embedded.records)||[]; if(!rs.length)return;
       var below=false;
       for(var i=0;i<rs.length;i++){ var bal=(+rs[i].balance||0)/1e7;
         if(bal<TIER){ below=true; break; }
@@ -343,7 +344,7 @@ function loadTier(){ if(TIERC)return Promise.resolve(TIERC);
       if(below)return;
       var nx=rs[rs.length-1].paging_token;
       if(nx&&depth<6)return page(nx,depth+1); }); }
-  return page("",1).then(function(){ TIERC={n:n,excluded:excl,set:set}; return TIERC; })
+  return page("",1).then(function(){ TIERC={n:(failed?null:n),excluded:excl,set:set}; return TIERC; })
    .catch(function(){ TIERC={n:null,excluded:0,set:{}}; return TIERC; }); }
 var WIN=[["24H",864e5],["7D",6048e5],["30D",2592e6],["Lifetime",0]], WI=0;
 function winSince(){ var ms=WIN[WI][1]; return ms?(Date.now()-ms):0; }
@@ -394,7 +395,8 @@ function fillDash(){
       var f=q("#lxdVolF"); if(f)f.innerHTML=per()+" \u00b7 swap volume"+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(v.missing>0?(" \u00b7 "+v.missing+" receipt(s) with no swap"):""); });
     volUsd(v.rows,0,function(t){ setT(q("#lxdVolA"), usd(t)); });
   });
-  loadTier().then(function(t){ if(t.n==null){ setT(q("#lxdTier"),"\u2014"); return; }
+  loadTier().then(function(t){ if(t.n==null){ setT(q("#lxdTier"),"\u2014");
+    var e=q("#lxdTierF"); if(e)e.textContent="could not read the holder list"; return; }
     setT(q("#lxdTier"), num(t.n));
     var f=q("#lxdTierF"); if(f)f.textContent="qualify for the 0.1% fee"+(t.excluded?(" \u00b7 "+t.excluded+" treasury excluded"):""); });
   // Connected wallets. All four windows arrive in one response, so switching the period never
@@ -423,9 +425,31 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 }
 `
 // ---- Support / Blogs: honest empty states, no invented records ----
+// ---- stale chrome inherited from the design ------------------------------------------------------
+// Two things the admin pages carry from the Aptos template they were built out of, both of which say
+// something untrue:
+//   1. The network chip reads "Aptos". These pages are extracted from the lumoscore-aptos-* container,
+//      so the switcher defaults to that chain. LumosCore has been Stellar-only since the mainnet
+//      migration -- and every figure on these pages is read from Stellar.
+//   2. The dashboard subtitle promises "refreshed every 30s". Nothing polls; the figures are read once
+//      per page load. Either build a poller or stop claiming one, and a claim nobody checks is the
+//      worse of the two.
+// Re-asserted through an observer because the chip is drawn by the design's own script, which can
+// redraw it after we run -- the same defence the wallet and rewards layers use.
++'function paintChrome(){'
++'  function fixChip(){ qa(".lxns-trigger").forEach(function(t){'
++'    var el=t.querySelector(".lxns-tname")||t;'
++'    if(/Aptos/i.test(el.textContent||""))setT(el,"Stellar"); }); }'
++'  fixChip();'
++'  try{ var mo=new MutationObserver(fixChip);'
++'    mo.observe(document.body,{childList:true,subtree:true,characterData:true}); }catch(e){}'
++'  var sub=q(".admin-page-sub");'
++'  if(sub&&/refreshed every/i.test(sub.textContent||""))'
++'    setT(sub,"Read from Stellar mainnet when this page loads \\u2014 press Refresh for current figures.");'
++'}'
 +'function paintNoBackend(){'
 +'  var t=pageTitle();'
-+'  var isSup=/support/i.test(t), isBlog=false;   // Blogs now has KV storage; Support still does not'
++'  var isSup=/support/i.test(t), isBlog=false;'
 +'  if(!isSup&&!isBlog)return;'
 +'  qa(".kpi .kpi-value").forEach(function(v){ setT(v,"\\u2014"); v.title="No backend connected \\u2014 there is nowhere for this data to come from yet."; });'
 +'  qa(".kpi .kpi-foot").forEach(function(f){ setT(f,"awaiting backend"); });'
@@ -981,7 +1005,7 @@ function paintUsers(){
 +'      rb.innerHTML="<div class=\\"lxadm-empty\\">Nothing scores wallets for risk. Flags like sanctions screening or unusual-activity detection need a monitoring service and somewhere to record findings \u2014 neither exists yet.</div>"; } }'
 +'  qa(".up-tabs, .mob-up-tabs").forEach(function(t){ t.remove(); });'
 +'}'
-+'function boot(){ try{ paintRevenue(); }catch(e){} try{ wireCsv(); }catch(e){} try{ paintDashboard(); }catch(e){} try{ paintDashPanels(); }catch(e){} try{ paintDashRow3(); }catch(e){} try{ paintUsers(); }catch(e){} try{ paintAssets(); }catch(e){} try{ paintMobile(); }catch(e){} try{ paintProfile(); }catch(e){} try{ paintNoBackend(); }catch(e){} }'
++'function boot(){ try{ paintRevenue(); }catch(e){} try{ wireCsv(); }catch(e){} try{ paintDashboard(); }catch(e){} try{ paintDashPanels(); }catch(e){} try{ paintDashRow3(); }catch(e){} try{ paintUsers(); }catch(e){} try{ paintAssets(); }catch(e){} try{ paintMobile(); }catch(e){} try{ paintProfile(); }catch(e){} try{ paintNoBackend(); }catch(e){} try{ paintChrome(); }catch(e){} }'
 +'if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);'
 +'})();</'+'script>';
 
