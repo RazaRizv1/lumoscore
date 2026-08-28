@@ -7272,7 +7272,7 @@ var qrcode = function() {
     // Always emit an <img>. The shared '.sp-ico.lx-spico-on' rule sets background:initial!important, so a
     // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
     // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
-    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
+    var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img'+(t.img?"":' data-lxneedlogo="'+esc(t.code)+'-'+esc(t.issuer)+'"')+' src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
     var sub = t.hl!=null ? (nfmt(t.hl)+" holders") : (t.tl!=null ? (nfmt(t.tl)+" holders") : "Launchpad token");
     // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
     // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
@@ -7391,7 +7391,7 @@ var qrcode = function() {
       '<div class="sp-sub">Balances, pools and activity</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini">'+short(addr)+'</div></div></a>';
   }
-  function paint(list,html){ if(list.innerHTML!==html) list.innerHTML=html; }
+  function lxSeaLogos(root){ var seen=(window.__lxSeaLogo=window.__lxSeaLogo||{}); [].slice.call((root||document).querySelectorAll("img[data-lxneedlogo]")).forEach(function(im){   var id=im.getAttribute("data-lxneedlogo"); if(!id)return;   im.removeAttribute("data-lxneedlogo");   if(seen[id]===null)return;   if(seen[id]){ im.src=seen[id]; return; }   fetch("/lxapi/assetlogo?asset="+encodeURIComponent(id))     .then(function(r){ return r.ok?r.json():null; })     .then(function(j){ var u=j&&j.image; seen[id]=u||null; if(u)im.src=u; })     .catch(function(){ seen[id]=null; }); }); } function lxSeaCount(list){ if(!list||list.id!=="spAssetList")return; var c=document.getElementById("spAssetCount"); if(!c)return; c.textContent="("+list.querySelectorAll(".sp-row").length+")"; } function paint(list,html){ if(list.innerHTML!==html){ list.innerHTML=html; try{ lxSeaLogos(list); }catch(_){} try{ lxSeaCount(list); }catch(_){} } }
 
   // ---- RECENT SEARCHES ------------------------------------------------------------------------------
   // ONE list of 5, shared by assets, pools and wallets -- not 5 of each. All three render as the same
