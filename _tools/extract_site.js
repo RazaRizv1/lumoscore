@@ -269,7 +269,15 @@ function headersFile(isAdmin){
   if(isAdmin){
     // belt and braces: the admin site is behind Cloudflare Access, but if a policy is ever
     // misconfigured this at least keeps it out of search results.
-    return '/*\n' + common + '  X-Robots-Tag: noindex, nofollow, noarchive\n';
+    //
+    // The public build tells browsers to revalidate HTML; the admin build said nothing, so pages were
+    // cached at the browser's discretion. A rebuilt admin screen then kept showing the OLD one after a
+    // deploy, which is indistinguishable from the deploy having failed and cost a round of debugging.
+    // no-store rather than must-revalidate: this is a single-operator internal tool where being one
+    // deploy behind is far more expensive than a re-fetch, and the pages carry account data anyway.
+    return '/*\n' + common + '  X-Robots-Tag: noindex, nofollow, noarchive\n'
+      + '\n/*.html\n  Cache-Control: no-store\n'
+      + '\n/\n  Cache-Control: no-store\n';
   }
   return '/*\n' + common
     + '\n/assets/*\n  Cache-Control: public, max-age=31536000, immutable\n'
