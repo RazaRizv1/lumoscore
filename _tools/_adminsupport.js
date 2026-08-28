@@ -114,7 +114,7 @@ function render(){
   var rows=visible();
   if(!rows.length){
     list.innerHTML="<div class='lxadm-empty'>"+(BOX==="archived"?"Nothing archived."
-      :(BOX==="unread"?"Nothing unread.":"No messages yet. Mail sent to team@ or raza@lumoscore.com will appear here."))+"</div>";
+      :(BOX==="unread"?"Nothing unread.":"No messages yet. Mail sent to support@, info@ or raza@lumoscore.com will appear here."))+"</div>";
     return;
   }
   list.innerHTML=rows.map(function(m){
@@ -175,7 +175,7 @@ function boot(){
   if(!isPage())return;
   var head=q(".admin-page-head")||q(".mob-page-head");
   if(head&&!q(".lxadm-note")){ var n=document.createElement("div"); n.className="lxadm-note";
-    n.textContent="Mail to team@ and raza@lumoscore.com is forwarded to your mailbox exactly as before; this is a copy kept for reference. Replies are sent from your own mail client, not from here.";
+    n.textContent="Mail to support@, info@ and raza@lumoscore.com is forwarded to your mailbox exactly as before; this is a copy kept for reference. Replies are sent from your own mail client, not from here.";
     head.parentNode.insertBefore(n, head.nextSibling); }
   var list=q("#lxmList");
   if(list&&!list.__lx){ list.__lx=1; list.addEventListener("click",function(e){

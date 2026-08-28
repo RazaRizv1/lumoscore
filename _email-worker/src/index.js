@@ -1,4 +1,8 @@
-// Cloudflare Email Worker for team@ and raza@lumoscore.com.
+// Cloudflare Email Worker for the lumoscore.com addresses: support@, info@ and raza@.
+//
+// FORWARD_TO must match what the routing rule it replaces already delivered to. Cloudflare only
+// delivers to VERIFIED destination addresses, so pointing this at the wrong mailbox does not quietly
+// send mail elsewhere -- forward() fails, the handler rejects, and real mail bounces.
 //
 // FORWARDING HAPPENS FIRST, AND STORING SECOND. Mail delivery is the thing that must not break: if the
 // database is unavailable, or the parser trips on an unusual message, the message has already gone to
@@ -10,7 +14,7 @@
 // the same D1 database as the admin panel through the ADMIN_DB binding.
 //
 // Deploy:  cd _email-worker && npx wrangler deploy
-const FORWARD_TO = 'usa282@protonmail.com';
+const FORWARD_TO = 'daolumos@gmail.com';
 
 // ---- a small MIME reader ---------------------------------------------------------------------------
 // Deliberately dependency-free and deliberately best-effort. It handles what real mail actually is most
