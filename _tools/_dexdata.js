@@ -1619,17 +1619,22 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function recomputeAllTvl(){ ASSETS.forEach(computeTvl); }
 
   // stellar.toml (best-effort; many issuers' domains are CORS-OK) -> [[CURRENCIES]].image for the real logo
+  // The issuer's logo, resolved SERVER-SIDE.
+  //
+  // This used to fetch the toml straight from the browser, described as best-effort because many
+  // issuer domains are CORS-OK. Plenty are not, and a browser cannot read a response without the
+  // header: pubnet-sep.latamex.com serves ARST's toml perfectly well and sends no
+  // Access-Control-Allow-Origin, so ARST wore an initials disc on Trade while its real logo showed
+  // everywhere else on the site. /lxapi/assetlogo does the same walk from a server, which has no such
+  // limit, and is edge-cached -- it is exactly why that endpoint was built.
+  //
+  // The domain argument is kept because callers pass it; the resolver reads the issuer's own
+  // home_domain itself, so it is no longer needed here.
   function loadToml(a,domain){
-    fetch("https://"+domain+"/.well-known/stellar.toml").then(function(r){ if(!r.ok)throw 0; return r.text(); }).then(function(txt){
-      var re=new RegExp("code\\\\s*=\\\\s*[\\"']"+a.code+"[\\"'][^]*?(?=\\\\[\\\\[|$)","i");
-      // NOT ||txt. Falling back to the whole document meant an asset the toml does NOT list matched the
-      // FIRST image= in the file -- LUMOS's -- so every unlisted mint rendered with the LUMOS flame.
-      // Invisible while lumoscore.com served no toml; wrong the moment it started serving one.
-      var blk=(txt.match(re)||[""])[0];
-      if(!blk){ a.__logoDone=1; touch(); return; }
-      var img=(blk.match(/image\\s*=\\s*["']([^"']+)["']/i)||[])[1];
-      if(img)a.img=img; a.__logoDone=1; touch();
-    }).catch(function(){ a.__logoDone=1; touch(); });   // an unreachable toml is a conclusion too
+    fetch("/lxapi/assetlogo?asset="+encodeURIComponent(a.code+"-"+a.issuer))
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(j){ if(j&&j.image)a.img=j.image; a.__logoDone=1; touch(); })
+      .catch(function(){ a.__logoDone=1; touch(); });   // an unreachable resolver is a conclusion too
   }
 
   // Just enough for a mints row: the latest daily bar (price) and /assets (supply + holders). Two
