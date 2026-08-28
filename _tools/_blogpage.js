@@ -20,12 +20,12 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const POSTS = [
-  ['How liquidity pools work on Stellar', 'Explainer', '#a855f7', '#6d28d9', '2 days ago'],
+  ['How liquidity pools work on Stellar', 'Stellar', '#a855f7', '#6d28d9', '2 days ago'],
   ['Understanding trustlines and why assets need them', 'Guide', '#38bdf8', '#2563eb', '5 days ago'],
-  ['Bridging USDC across chains with Circle CCTP', 'Explainer', '#2dd4bf', '#0d9488', '1w ago'],
+  ['Bridging USDC across chains with Circle CCTP', 'Stellar', '#2dd4bf', '#0d9488', '1w ago'],
   ['Path payments, and how a swap actually settles', 'Guide', '#f7b733', '#ea6a2c', '3w ago'],
   ['Issuing a token on Stellar, start to finish', 'Walkthrough', '#f472b6', '#be185d', '1mo ago'],
-  ['Reading a pool: reserves, share and slippage', 'Explainer', '#60a5fa', '#4338ca', '1mo ago'],
+  ['Reading a pool: reserves, share and slippage', 'Stellar', '#60a5fa', '#4338ca', '1mo ago'],
 ];
 
 // /*lxts:1.1*/ pins this at its authored size: without it _typescale scales the block on whichever run
@@ -77,7 +77,7 @@ const MAIN = '<div class="container">'
     // something reads as real. Here the reader has already chosen to look at the blog.
     return '<a class="lx-bp-card" href="/blog/' + slug(p[0]) + '">'
       + '<div class="lx-bp-cover" style="--c1:' + p[2] + ';--c2:' + p[3] + '">'
-      + '<span class="lx-bp-chip">' + esc(p[1]) + '</span></div>'
+      + '<span class="lx-bp-chip" data-lxc="">' + esc(p[1]) + '</span></div>'
       + '<div class="lx-bp-title">' + esc(p[0]) + '</div>'
       + '<div class="lx-bp-when">' + esc(p[4]) + '</div>'
       + '</a>';
@@ -89,6 +89,38 @@ const MAIN = '<div class="container">'
 function clearNavActive(html) {
   return html.replace(/(<a[^>]*class=")nx-item active(")/g, "$1nx-item$2")
              .replace(/(<a[^>]*class=")nx-item active( [^"]*")/g, "$1nx-item$2");
+}
+
+// The donor page carries its own FAQ section outside <main>, so replaceMain() never sees it. It is
+// MCP content on a blog page. Remove the section, its FAQPage JSON-LD and its stylesheet together --
+// keeping the structured data after the visible answers are gone would describe a page that does not
+// exist. Nothing links to #faq on these pages (checked), so no dead anchor is left behind.
+function stripFaq(html) {
+  let h = html;
+  const cut = (open, close) => {
+    const i = h.indexOf(open);
+    if (i < 0) return false;
+    const j = h.indexOf(close, i);
+    if (j < 0) return false;
+    h = h.slice(0, i) + h.slice(j + close.length);
+    return true;
+  };
+  cut('<section class="lx-faq"', '</section>');
+  cut('<script type="application/ld+json" id="lx-faq-ld">', '<\/script>');
+  cut('<style id="lx-faq-css">', '</style>');
+  return h;
+}
+
+// The blog pages' own copy of the second logo healer learns the data-lxc opt-out. Deliberately scoped
+// to these pages: see the note above -- the same script is on 47 others where data-lxc means something
+// else, so this must not be hoisted into the shared transform.
+function optOutLogoHealer(html) {
+  const A = 'function isCandidate(el){';
+  const i = html.indexOf(A);
+  if (i < 0) return html;   // donor changed shape; the chips just look wrong rather than the build failing
+  return html.slice(0, i + A.length)
+    + 'if(el.getAttribute&&el.getAttribute("data-lxc")!=null)return false;'
+    + html.slice(i + A.length);
 }
 
 // swap the contents of <main>, keeping the tag itself (its classes drive the page's own layout)
@@ -156,7 +188,7 @@ const POST_MAIN = '<div class="container lx-post">'
   + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
   + ' Back to dashboard</a></div>'
   + '<div class="lx-post-head">'
-  + '<span class="lx-bp-chip lx-post-chip">' + esc(POST[1]) + '</span>'
+  + '<span class="lx-bp-chip lx-post-chip" data-lxc="">' + esc(POST[1]) + '</span>'
   + '<h1>' + esc(POST[0]) + '</h1>'
   + '<div class="lx-post-meta">' + esc(POST[4]) + '<span class="lx-post-dot"></span>4 min read</div>'
   + '</div>'
@@ -228,12 +260,12 @@ for (const [dev, donor, target] of [
   const src = json[donor];
   if (typeof src !== 'string') { console.error('  ' + file + ': donor ' + donor + ' missing — skipped'); continue; }
 
-  const body = replaceMain(src, MAIN);
+  const body = replaceMain(optOutLogoHealer(stripFaq(src)), MAIN);
   if (!body) { console.error('  ' + file + ': could not find <main> in the donor — skipped'); continue; }
   json[target] = clearNavActive(setHead(body));
   made++;
 
-  const postBody = replaceMain(src, POST_MAIN);
+  const postBody = replaceMain(optOutLogoHealer(stripFaq(src)), POST_MAIN);
   if (postBody) { json[target.replace('-blog', '-blog-post')] = clearNavActive(setPostHead(postBody)); made++; }
   else console.error('  ' + file + ': could not build the post page from the donor');
 
