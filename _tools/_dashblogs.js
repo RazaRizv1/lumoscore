@@ -68,6 +68,9 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   + '.lx-blogs-head h3{margin:0;font:800 15px/1.1 "Hanken Grotesk",system-ui,sans-serif;'
   + 'color:var(--text,#0e0e10);letter-spacing:-.015em}'
   // The tag is the honest part of this section: it says the rows are not real posts yet.
+  + '.lx-blog-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}'
+  + '.lx-blog-empty{padding:26px 4px;color:var(--text-muted,#8a8fa3);font-size:13.5px}'
+  + 'a.lx-blog-row{text-decoration:none;color:inherit}'
   + '.lx-blogs-soon{font:700 10px/1 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;'
   + 'letter-spacing:.06em;color:var(--text-muted,#8a8fa3);border:1px solid var(--border,#ececef);'
   + 'border-radius:999px;padding:4px 8px;white-space:nowrap}'
@@ -118,6 +121,8 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
 function esc(s) {
   return String(s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;');
 }
+
+const DATA_SCRIPT = "<script id=\"lx-dashblogdata\">(function(){\nif(window.__lxDashBlog)return; window.__lxDashBlog=1;\nfunction esc(s){return String(s==null?\"\":s).replace(/[<>&\"]/g,function(c){return c===\"<\"?\"&lt;\":c===\">\"?\"&gt;\":c===\"&\"?\"&amp;\":\"&quot;\";});}\nfunction when(t){ if(!t)return \"\";\n  var d=Date.now()-t, day=86400000;\n  if(d<day)return \"today\";\n  if(d<2*day)return \"yesterday\";\n  if(d<7*day)return Math.floor(d/day)+\" days ago\";\n  if(d<30*day)return Math.floor(d/(7*day))+\"w ago\";\n  if(d<365*day)return Math.floor(d/(30*day))+\"mo ago\";\n  return new Date(t).toLocaleDateString(); }\n\nfunction paint(posts){\n  var card=document.querySelector(\".lx-blogs-card\"); if(!card)return;\n  var list=card.querySelector(\".lx-blogs-list\"); if(!list)return;\n  var soon=card.querySelector(\".lx-blogs-soon\");\n\n  if(!posts.length){\n    // No posts is a real state and says so. Falling back to the stand-in rows would put invented\n    // article titles on the dashboard, which is worse than an empty card.\n    if(soon)soon.remove();\n    list.innerHTML=\"<div class='lx-blog-empty'>No posts yet.</div>\";\n    return;\n  }\n  if(soon)soon.remove();\n  list.innerHTML=posts.slice(0,5).map(function(p){\n    var cover=p.cover\n      ? (\"<img class='lx-blog-img' alt='' src='\"+esc(p.cover)+\"'>\")\n      : \"\";\n    return \"<a class='lx-blog-row' href='/blog/\"+esc(p.slug)+\"'>\"\n      +\"<div class='lx-blog-cover' style='--c1:#a855f7;--c2:#6d28d9'>\"+cover\n      +(p.category?(\"<span class='lx-blog-chip' data-lxc=''>\"+esc(p.category)+\"</span>\"):\"\")+\"</div>\"\n      +\"<div class='lx-blog-meta'>\"\n      +\"<div class='lx-blog-title'>\"+esc(p.title)+\"</div>\"\n      +\"<div class='lx-blog-sub'><span class='lx-blog-when'>\"+esc(when(p.publishedAt||p.createdAt))+\"</span></div>\"\n      +\"</div></a>\";\n  }).join(\"\");\n}\n\nfunction boot(){\n  if(!document.querySelector(\".lx-blogs-card\"))return;\n  fetch(\"/lxapi/blog\").then(function(r){ return r.ok?r.json():null; })\n    .then(function(d){ if(d&&d.posts)paint(d.posts); })\n    .catch(function(){});\n  // The card's own header link goes to the blog index. It was inert while there was nothing to link to.\n  var more=document.querySelector(\".lx-blogs-more\");\n  if(more&&!more.__lx){ more.__lx=1; more.style.cursor=\"pointer\";\n    more.addEventListener(\"click\",function(){ location.href=\"/blog\"; }); }\n}\nif(document.readyState!==\"loading\")boot(); else document.addEventListener(\"DOMContentLoaded\",boot);\n})();</script>";
 
 const CARD = '<div class="lx-blogs-card" data-lxnonav="1">'
   + '<div class="lx-blogs-head"><h3>Blog</h3><span class="lx-blogs-soon">Coming soon</span>'
@@ -197,6 +202,10 @@ for (const dev of ['desktop', 'mobile']) {
     const hi = p.indexOf('</head>');
     if (hi < 0) continue;
     p = p.slice(0, hi) + STYLE + p.slice(hi);
+    if (p.indexOf("lx-dashblogdata") < 0) {
+      const bi = p.lastIndexOf("</body>");
+      if (bi >= 0) p = p.slice(0, bi) + DATA_SCRIPT + p.slice(bi);
+    }
 
     if (p !== before) { json[k] = p; changed = true; keys++; }
   }
