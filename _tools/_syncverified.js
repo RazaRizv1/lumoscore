@@ -91,5 +91,48 @@ function colourFor(code) {
   console.log('already hand-listed: ' + list.filter((id) => { const i = id.lastIndexOf('-'); return hand.has(id.slice(0, i) + '|' + id.slice(i + 1)); }).length);
   console.log('written to lib     : ' + assets.length + (assets.length ? ('  -> ' + assets.map((a) => a.code).join(', ')) : ''));
   if (skipped.length) console.log('skipped            : ' + skipped.join('; '));
-  console.log('\nNow rebuild and deploy the public site for these to appear on Trade.');
+  // REBUILD HERE, AUTOMATICALLY. Every one of these transforms bakes its OWN copy of VERIFIED into the
+  // pages it writes -- that is the point of lib.js being a single list -- so changing the list and
+  // re-running only one of them leaves the asset ticked on that page and bare everywhere else. That is
+  // precisely what happened: xLMNR showed a tick on Trade main and had none on Trade-Asset, in search,
+  // in the wallet or on the account page. Left as a step to remember, it goes wrong again next time.
+  if (process.argv.indexOf('--no-build') >= 0) {
+    console.log('\n--no-build: run the VERIFIED transforms yourself, then _heromono.js LAST, then npm run build.');
+    return;
+  }
+  // SOME OF THESE ARE DRY RUNS WITHOUT --write, and say so only on stdout. Run without it,
+  // _accountpage and _mobdex change nothing, exit 0, and look exactly like success -- which is how the
+  // account page kept an old verified map while every other page had the new one. The flag is passed
+  // to all of them: the ones that do not take it ignore it.
+  const CONSUMERS = ['_accountpage', '_dashboxes', '_dexassetdata', '_dexdata', '_lumostoken',
+                     '_mobdex', '_searchassets', '_trending', '_walletdata'];
+  const run = (file, args) => execFileSync('node', [path.join(__dirname, file)].concat(args || []),
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+
+  console.log('\nrebuilding every page that bakes the verified list:');
+  for (const t of CONSUMERS) {
+    process.stdout.write('  ' + t + ' ... ');
+    let out;
+    try { out = run(t + '.js', ['--write']); }
+    catch (e) { console.log('FAILED'); console.error(String(e.stderr || e).slice(0, 500)); process.exit(1); }
+    // A transform that reports a dry run has done nothing. Treating that as success is the whole bug.
+    if (/dry run/i.test(out || '')) {
+      console.log('DRY RUN — nothing written');
+      console.error('    ' + String(out).trim().split('\n').pop());
+      process.exit(1);
+    }
+    console.log('ok');
+  }
+  // _heromono.js LAST, always. It carries the shared hero look and only beats the per-page hero CSS by
+  // sitting after it; _dexdata above moves it out of place every time. predeploy_check catches this,
+  // but catching it is not the same as not doing it.
+  process.stdout.write('  _heromono (must be last) ... ');
+  try { run('_heromono.js'); console.log('ok'); }
+  catch (e) { console.log('FAILED'); console.error(String(e.stderr || e).slice(0, 500)); process.exit(1); }
+
+  process.stdout.write('  extract_site ... ');
+  try { run('extract_site.js', ['aptos', '--root']); console.log('ok'); }
+  catch (e) { console.log('FAILED'); console.error(String(e.stderr || e).slice(0, 500)); process.exit(1); }
+
+  console.log('\nBuilt. Now: node _tools/predeploy_check.js  &&  npm run deploy:staging');
 })();
