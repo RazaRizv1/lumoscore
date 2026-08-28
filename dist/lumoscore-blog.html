@@ -2625,7 +2625,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
       
     </header>
 
-    <main class="page"><div class="container"><div class="lx-bp-head"><h1>Blog</h1></div><p class="lx-bp-lede">Guides and explainers on trading, pools, bridging and issuing assets on Stellar. The first posts are being written — the cards below are placeholders for their layout.</p><div class="lx-bp-grid"><a class="lx-bp-card" href="/blog/how-liquidity-pools-work-on-stellar"><div class="lx-bp-cover" style="--c1:#a855f7;--c2:#6d28d9"><span class="lx-bp-chip" data-lxc="">Stellar</span></div><div class="lx-bp-title">How liquidity pools work on Stellar</div><div class="lx-bp-when">2 days ago</div></a><a class="lx-bp-card" href="/blog/understanding-trustlines-and-why-assets-need-them"><div class="lx-bp-cover" style="--c1:#38bdf8;--c2:#2563eb"><span class="lx-bp-chip" data-lxc="">Guide</span></div><div class="lx-bp-title">Understanding trustlines and why assets need them</div><div class="lx-bp-when">5 days ago</div></a><a class="lx-bp-card" href="/blog/bridging-usdc-across-chains-with-circle-cctp"><div class="lx-bp-cover" style="--c1:#2dd4bf;--c2:#0d9488"><span class="lx-bp-chip" data-lxc="">Stellar</span></div><div class="lx-bp-title">Bridging USDC across chains with Circle CCTP</div><div class="lx-bp-when">1w ago</div></a><a class="lx-bp-card" href="/blog/path-payments-and-how-a-swap-actually-settles"><div class="lx-bp-cover" style="--c1:#f7b733;--c2:#ea6a2c"><span class="lx-bp-chip" data-lxc="">Guide</span></div><div class="lx-bp-title">Path payments, and how a swap actually settles</div><div class="lx-bp-when">3w ago</div></a><a class="lx-bp-card" href="/blog/issuing-a-token-on-stellar-start-to-finish"><div class="lx-bp-cover" style="--c1:#f472b6;--c2:#be185d"><span class="lx-bp-chip" data-lxc="">Walkthrough</span></div><div class="lx-bp-title">Issuing a token on Stellar, start to finish</div><div class="lx-bp-when">1mo ago</div></a><a class="lx-bp-card" href="/blog/reading-a-pool-reserves-share-and-slippage"><div class="lx-bp-cover" style="--c1:#60a5fa;--c2:#4338ca"><span class="lx-bp-chip" data-lxc="">Stellar</span></div><div class="lx-bp-title">Reading a pool: reserves, share and slippage</div><div class="lx-bp-when">1mo ago</div></a></div></div></main><footer>
+    <main class="page"><div class="container"><div class="lx-bp-head"><h1>Blog</h1></div><p class="lx-bp-lede">Guides and explainers on trading, pools, bridging and issuing assets on Stellar.</p><div class="lx-bp-grid"></div></div></main><footer>
       <div class="ft-grid"><div class="ft-col ft-brand"><div class="ft-mark"><span class="ft-logo"></span><span class="ft-name">LUMOSCORE</span></div><p>Multichain infrastructure for issuing, trading and bridging assets on multiple networks.</p><div class="socials">
           <a href="https://x.com/LumosCore" target="_blank" rel="noopener nofollow" aria-label="X"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg></a>
           <a href="http://t.me/lumoscore" target="_blank" rel="noopener nofollow" aria-label="Telegram"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M22.05 1.577c-.393-.016-.784.08-1.117.235-.484.186-21.087 8.502-21.087 8.502s5.523 1.86 5.523 1.86 2.61 8.155 2.708 8.479c.108.357.42.768.793 1.052.473.288 1.214.336 1.86-.016.7-.382 2.166-1.255 2.166-1.255l4.13 3.046s.572.345 1.218.396c.323.025 1.082-.27 1.082-.27.371-.255.62-.7.74-1.211l3.32-16.65c.085-.382-.094-.59-.166-.66-.43-.404-1.038-.524-1.295-.522l-.012-.06z"/></svg></a>
@@ -12722,6 +12722,7 @@ window.addEventListener("storage",ping);
 .lx-bd-empty .t{font:700 17px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10)}
 .lx-bd-empty .s{margin-top:8px;font-size:14.5px;line-height:1.6;color:var(--text-muted,#8a8fa3)}
 .lx-bd-cover-img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
+.lx-post-cover:empty{display:none}
 .lx-post-tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:26px 0 0}
 .lx-post-tag{font:600 12px/1 "Hanken Grotesk",system-ui,sans-serif;padding:6px 10px;border-radius:999px;background:rgba(127,127,140,.12);color:var(--text-muted,#8a8fa3)}
 </style><script id="lx-blogdata">(function(){
@@ -12744,7 +12745,8 @@ function j(u){ return fetch(u).then(function(r){ return r.ok?r.json():null; }).c
 // crop the CSS already defines.
 function coverInto(el,post){
   if(!el)return;
-  if(post.cover){ el.innerHTML="<img class='lx-bd-cover-img' alt='"+esc(post.coverAlt||"")+"' src='"+esc(post.cover)+"'>"; }
+  if(!post.cover){ el.remove(); return; }
+  el.innerHTML="<img class='lx-bd-cover-img' alt='"+esc(post.coverAlt||"")+"' src='"+esc(post.cover)+"'>";
 }
 
 function fillIndex(posts){
@@ -12825,7 +12827,7 @@ function boot(){
     return;
   }
   if(/[/]blog$/.test(path)||q(".lx-bp-grid")){
-    j("/lxapi/blog").then(function(d){ if(d&&d.posts)fillIndex(d.posts); });
+    j("/lxapi/blog").then(function(d){ fillIndex((d&&d.posts)||[]); });
   }
 }
 if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);

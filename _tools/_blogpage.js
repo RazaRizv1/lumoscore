@@ -68,12 +68,14 @@ function esc(s) {
   return String(s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;');
 }
 
+function FALSE_AND(){ return { join: function(){ return ""; } }; }
+
 const MAIN = '<div class="container">'
   + '<div class="lx-bp-head"><h1>Blog</h1></div>'
   + '<p class="lx-bp-lede">Guides and explainers on trading, pools, bridging and issuing assets on '
-  + 'Stellar. The first posts are being written — the cards below are placeholders for their layout.</p>'
+  + 'Stellar.</p>'
   + '<div class="lx-bp-grid">'
-  + POSTS.map(function (p) {
+  + FALSE_AND(function (p) {
     // The index cards ARE links now -- there is a page behind them. The dashboard card stays
     // unclickable, as asked: that one sits next to live figures where a placeholder that opens
     // something reads as real. Here the reader has already chosen to look at the blog.
@@ -190,14 +192,11 @@ const POST_MAIN = '<div class="container lx-post">'
   + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
   + ' Back to dashboard</a></div>'
   + '<div class="lx-post-head">'
-  + '<h1>' + esc(POST[0]) + '</h1>'
-  + '<div class="lx-post-meta">'
-  + '<span class="lx-bp-chip lx-post-chip" data-lxc="">' + esc(POST[1]) + '</span>'
-  + '<span class="lx-post-dot"></span>' + esc(POST[4])
-  + '<span class="lx-post-dot"></span>4 min read</div>'
+  + '<h1></h1>'
+  + '<div class="lx-post-meta"></div>'
   + '</div>'
-  + '<div class="lx-post-cover" style="--c1:' + POST[2] + ';--c2:' + POST[3] + '"></div>'
-  + '<article class="lx-post-body">' + BODY + '</article>'
+  + '<div class="lx-post-cover"></div>'
+  + '<article class="lx-post-body"></article>'
   + '<div class="lx-post-foot"><a class="lx-post-back" href="/blog">'
   + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>'
   + 'Back to all posts</a></div>'
@@ -247,7 +246,7 @@ const POST_STYLE = '<style id="lx-blogpost-css">/*lxts:1.1*/'
 
 function setPostHead(html) {
   let h = html.replace(/<title>[\s\S]*?<\/title>/,
-    '<title>' + esc(POST[0]) + ' | LumosCore Blog</title>');
+    '<title>LumosCore Blog</title>');
   h = h.replace(/<meta name="description" content="[^"]*">/,
     '<meta name="description" content="How a constant-product liquidity pool prices a trade on Stellar, '
     + 'what pool shares represent, and what to look at before depositing.">');

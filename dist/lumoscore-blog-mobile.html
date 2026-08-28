@@ -2368,7 +2368,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
     </button>
 </header>
 
-  <main class="page"><div class="container"><div class="lx-bp-head"><h1>Blog</h1></div><p class="lx-bp-lede">Guides and explainers on trading, pools, bridging and issuing assets on Stellar. The first posts are being written — the cards below are placeholders for their layout.</p><div class="lx-bp-grid"><a class="lx-bp-card" href="/blog/how-liquidity-pools-work-on-stellar"><div class="lx-bp-cover" style="--c1:#a855f7;--c2:#6d28d9"><span class="lx-bp-chip" data-lxc="">Stellar</span></div><div class="lx-bp-title">How liquidity pools work on Stellar</div><div class="lx-bp-when">2 days ago</div></a><a class="lx-bp-card" href="/blog/understanding-trustlines-and-why-assets-need-them"><div class="lx-bp-cover" style="--c1:#38bdf8;--c2:#2563eb"><span class="lx-bp-chip" data-lxc="">Guide</span></div><div class="lx-bp-title">Understanding trustlines and why assets need them</div><div class="lx-bp-when">5 days ago</div></a><a class="lx-bp-card" href="/blog/bridging-usdc-across-chains-with-circle-cctp"><div class="lx-bp-cover" style="--c1:#2dd4bf;--c2:#0d9488"><span class="lx-bp-chip" data-lxc="">Stellar</span></div><div class="lx-bp-title">Bridging USDC across chains with Circle CCTP</div><div class="lx-bp-when">1w ago</div></a><a class="lx-bp-card" href="/blog/path-payments-and-how-a-swap-actually-settles"><div class="lx-bp-cover" style="--c1:#f7b733;--c2:#ea6a2c"><span class="lx-bp-chip" data-lxc="">Guide</span></div><div class="lx-bp-title">Path payments, and how a swap actually settles</div><div class="lx-bp-when">3w ago</div></a><a class="lx-bp-card" href="/blog/issuing-a-token-on-stellar-start-to-finish"><div class="lx-bp-cover" style="--c1:#f472b6;--c2:#be185d"><span class="lx-bp-chip" data-lxc="">Walkthrough</span></div><div class="lx-bp-title">Issuing a token on Stellar, start to finish</div><div class="lx-bp-when">1mo ago</div></a><a class="lx-bp-card" href="/blog/reading-a-pool-reserves-share-and-slippage"><div class="lx-bp-cover" style="--c1:#60a5fa;--c2:#4338ca"><span class="lx-bp-chip" data-lxc="">Stellar</span></div><div class="lx-bp-title">Reading a pool: reserves, share and slippage</div><div class="lx-bp-when">1mo ago</div></a></div></div></main>
+  <main class="page"><div class="container"><div class="lx-bp-head"><h1>Blog</h1></div><p class="lx-bp-lede">Guides and explainers on trading, pools, bridging and issuing assets on Stellar.</p><div class="lx-bp-grid"></div></div></main>
 
   <!-- Footer -->
   <footer class="site-footer">
@@ -8909,6 +8909,7 @@ window.addEventListener("storage",ping);
 .lx-bd-empty .t{font:700 17px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10)}
 .lx-bd-empty .s{margin-top:8px;font-size:14.5px;line-height:1.6;color:var(--text-muted,#8a8fa3)}
 .lx-bd-cover-img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
+.lx-post-cover:empty{display:none}
 .lx-post-tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:26px 0 0}
 .lx-post-tag{font:600 12px/1 "Hanken Grotesk",system-ui,sans-serif;padding:6px 10px;border-radius:999px;background:rgba(127,127,140,.12);color:var(--text-muted,#8a8fa3)}
 </style><script id="lx-blogdata">(function(){
@@ -8931,7 +8932,8 @@ function j(u){ return fetch(u).then(function(r){ return r.ok?r.json():null; }).c
 // crop the CSS already defines.
 function coverInto(el,post){
   if(!el)return;
-  if(post.cover){ el.innerHTML="<img class='lx-bd-cover-img' alt='"+esc(post.coverAlt||"")+"' src='"+esc(post.cover)+"'>"; }
+  if(!post.cover){ el.remove(); return; }
+  el.innerHTML="<img class='lx-bd-cover-img' alt='"+esc(post.coverAlt||"")+"' src='"+esc(post.cover)+"'>";
 }
 
 function fillIndex(posts){
@@ -9012,7 +9014,7 @@ function boot(){
     return;
   }
   if(/[/]blog$/.test(path)||q(".lx-bp-grid")){
-    j("/lxapi/blog").then(function(d){ if(d&&d.posts)fillIndex(d.posts); });
+    j("/lxapi/blog").then(function(d){ fillIndex((d&&d.posts)||[]); });
   }
 }
 if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
