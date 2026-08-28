@@ -896,8 +896,9 @@ function editAsset(k){
     +"<div style='display:flex;align-items:center;gap:10px;margin:8px 0 4px'>"
     +"<input type='file' id='lxeFile' accept='image/png,image/jpeg,image/webp,image/gif,image/avif' style='display:none'>"
     +"<button class='adm-btn ghost' type='button' id='lxeUp'>Upload logo…</button>"
+    +"<button class='adm-btn ghost' type='button' id='lxeCopy' style='display:none'>Save a copy here</button>"
     +"<span class='lxmodal-s' id='lxeUpMsg' style='margin:0'></span>"
-    +"<img id='lxePrev' alt='' style='display:none;width:28px;height:28px;border-radius:50%;object-fit:cover'></div>"
+    +"<img id='lxePrev' data-lxc='' alt='' style='display:none;width:28px;height:28px;border-radius:50%;object-fit:cover'></div>"
     +row("lxeSite","Website","https://…")
     +row("lxeX","X / Twitter","handle or full URL")
     +row("lxeTg","Telegram","handle or full URL")
@@ -923,7 +924,36 @@ function editAsset(k){
   var TOMLV={name:"",description:"",image:"",website:"",twitter:"",telegram:""};
   var prev=m.querySelector("#lxePrev");
   function showPrev(){ var u=(m.querySelector("#lxeImg").value||"").trim();
-    if(prev){ if(u){ prev.src=u; prev.style.display=""; } else prev.style.display="none"; } }
+    var copy=m.querySelector("#lxeCopy"), msg=m.querySelector("#lxeUpMsg");
+    // Offered only for a logo still living on someone else's host. Once it is ours there is nothing
+    // left to copy, and the button would be an action with no effect.
+    if(copy)copy.style.display=(u&&u.indexOf("/lxapi/media")!==0)?"":"none";
+    if(!prev)return;
+    if(!u){ prev.style.display="none"; return; }
+    prev.style.display=""; prev.src=u;
+    // A broken image with an empty alt renders as a silent glyph and says nothing about why. The
+    // usual causes are all actionable -- a wrong URL, a host that is down, or a blocker in THIS
+    // browser refusing the issuer's domain -- so say them rather than showing a broken square.
+    prev.onerror=function(){ prev.style.display="none";
+      if(msg)msg.textContent="That image would not load here. The URL may be wrong or its host unreachable — or your browser is blocking that domain. “Save a copy here” serves it from LumosCore instead.";
+    };
+    prev.onload=function(){ if(msg&&/would not load/.test(msg.textContent))msg.textContent=""; };
+  }
+
+  // Copies the issuer's published logo into our own media store. The server fetches only the image
+  // that asset's own toml declares, so this cannot be pointed anywhere else.
+  var cp=m.querySelector("#lxeCopy");
+  if(cp)cp.addEventListener("click",function(){
+    var msg=m.querySelector("#lxeUpMsg");
+    cp.disabled=true; if(msg)msg.textContent="Copying…";
+    fetch("/lxapi/media?fromToml="+encodeURIComponent(k),{method:"POST"})
+      .then(function(r){ return r.json().then(function(b){ return {ok:r.ok,b:b}; }); })
+      .then(function(z){ cp.disabled=false;
+        if(!z.ok||!z.b||!z.b.url){ if(msg)msg.textContent=(z.b&&(z.b.error||z.b.message))||"Could not copy that image."; return; }
+        m.querySelector("#lxeImg").value=z.b.url; showPrev();
+        if(msg)msg.textContent="Copied ("+Math.round((z.b.size||0)/1024)+" KB) — now served from LumosCore.";
+      }).catch(function(e){ cp.disabled=false; if(msg)msg.textContent=e.message; });
+  });
   Promise.all([
     j("/lxapi/assetmeta?asset="+encodeURIComponent(k)),
     j("/lxapi/assetverify?asset="+encodeURIComponent(k))
