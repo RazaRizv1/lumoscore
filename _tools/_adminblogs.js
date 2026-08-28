@@ -94,8 +94,6 @@ const MAIN = `
             <label class="lxb-l">Publish at <span class="lxb-h">leave empty to go live immediately</span></label>
             <input class="lxb-i" id="lxbWhen" type="datetime-local">
             <div class="lxb-h" id="lxbWhenHint"></div>
-            <label class="lxb-l">Read time</label>
-            <input class="lxb-i" id="lxbRead" type="number" min="1" max="60" placeholder="auto">
             <div class="lxb-status" id="lxbStatus"></div>
           </div>
         </div>
@@ -324,7 +322,6 @@ function openEditor(post){
   setCat(post?(post.category||""):"Stellar");
   q("#lxbMeta").value=post?(post.metaDescription||""):"";
   q("#lxbTags").value=post?((post.tags||[]).join(", ")):"";
-  q("#lxbRead").value=post&&post.readMins?post.readMins:"";
   q("#lxbWhen").value=post?whenToInput(post.publishAt):""; whenHint();
   syncPublishLabel(post);
   status("");
@@ -357,13 +354,12 @@ function gather(published){
   if(!title){ status("A title is required.","err"); return null; }
   var slug=(q("#lxbSlug").value||"").trim()||slugify(title);
   var tags=(q("#lxbTags").value||"").split(",").map(function(t){return t.trim();}).filter(Boolean);
-  var read=parseInt(q("#lxbRead").value,10);
   return {slug:slug,prevSlug:PREV_SLUG,title:title,category:catValue(),
     body:clean(q("#lxbBody")),
     cover:(q("#lxbCover").value||"").trim(),
     coverAlt:title,
     metaDescription:(q("#lxbMeta").value||"").trim(),
-    tags:tags, readMins:(read>0?read:Math.max(1,Math.round(words()/200))),
+    tags:tags, readMins:Math.max(1,Math.round(words()/200)),
     publishAt:inputToWhen((q("#lxbWhen")||{}).value),
     published:!!published};
 }
