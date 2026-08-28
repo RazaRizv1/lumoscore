@@ -878,10 +878,16 @@ function editAsset(k){
         : "<input class='lxmodal-i' id='"+id+"' type='text'>");
   }
   m.innerHTML="<div class='lxmodal-box' style='max-width:560px'><h3 class='lxmodal-t'>Edit "+esc(code)+"</h3>"
-    +"<p class='lxmodal-s'>These replace what the issuer publishes in their stellar.toml, on the public asset page. Leave a field empty to keep using theirs.</p>"
+    +"<p class='lxmodal-s'>What the public asset page shows. Prefilled from the issuer's own stellar.toml where we have no override of our own — change a field and ours is used instead.</p>"
+    +"<p class='lxmodal-s' id='lxeSrc' style='opacity:.75'>Checking the issuer’s domain…</p>"
     +row("lxeName","Display name","optional")
     +row("lxeDesc","Description","shown under the asset name","area")
-    +row("lxeImg","Logo URL","https://…")
+    +row("lxeImg","Logo","paste a URL, or upload a file")
+    +"<div style='display:flex;align-items:center;gap:10px;margin:8px 0 4px'>"
+    +"<input type='file' id='lxeFile' accept='image/png,image/jpeg,image/webp,image/gif,image/avif' style='display:none'>"
+    +"<button class='adm-btn ghost' type='button' id='lxeUp'>Upload logo…</button>"
+    +"<span class='lxmodal-s' id='lxeUpMsg' style='margin:0'></span>"
+    +"<img id='lxePrev' alt='' style='display:none;width:28px;height:28px;border-radius:50%;object-fit:cover'></div>"
     +row("lxeSite","Website","https://…")
     +row("lxeX","X / Twitter","handle or full URL")
     +row("lxeTg","Telegram","handle or full URL")
@@ -895,25 +901,72 @@ function editAsset(k){
   m.querySelector("#lxeCancel").addEventListener("click",close);
   var er=m.querySelector("#lxeErr");
   function val(id){ return (m.querySelector(id).value||"").trim(); }
+  function same(id,key){ var x=val(id); return (x===(TOMLV[key]||"").trim())?"":x; }
 
-  // Prefill with whatever is already stored. Deliberately NOT prefilled from the toml: a form showing
-  // the issuer's text would save a copy of it as an override the moment you touched any other field,
-  // freezing their live description at today's wording.
-  j("/lxapi/assetmeta?asset="+encodeURIComponent(k)).then(function(d){
-    var v=(d&&d.meta)||{};
-    m.querySelector("#lxeName").value=v.name||"";
-    m.querySelector("#lxeDesc").value=v.description||"";
-    m.querySelector("#lxeImg").value=v.image||"";
-    m.querySelector("#lxeSite").value=v.website||"";
-    m.querySelector("#lxeX").value=v.twitter||"";
-    m.querySelector("#lxeTg").value=v.telegram||"";
+  // Prefilled from the issuer's own stellar.toml wherever we hold no override, so the form opens
+  // showing what the asset page actually displays today instead of six empty boxes.
+  //
+  // The hazard that kept it empty before is still avoided, just further along: saving a field that
+  // still holds the toml's own text would freeze the issuer's live wording as our copy. So on save,
+  // any field still equal to the toml value is sent EMPTY -- it keeps tracking theirs. Only what you
+  // actually changed is stored as an override.
+  var TOMLV={name:"",description:"",image:"",website:"",twitter:"",telegram:""};
+  var prev=m.querySelector("#lxePrev");
+  function showPrev(){ var u=(m.querySelector("#lxeImg").value||"").trim();
+    if(prev){ if(u){ prev.src=u; prev.style.display=""; } else prev.style.display="none"; } }
+  Promise.all([
+    j("/lxapi/assetmeta?asset="+encodeURIComponent(k)),
+    j("/lxapi/assetverify?asset="+encodeURIComponent(k))
+  ]).then(function(z){
+    var v=(z[0]&&z[0].meta)||{}, vr=z[1]||{}, t=(vr&&vr.toml)||{};
+    TOMLV={name:t.name||"",description:t.description||"",image:t.image||"",
+           website:t.website||"",twitter:t.twitter||"",telegram:t.telegram||""};
+    function put(sel,own,tom){ m.querySelector(sel).value=(own!=null&&own!=="")?own:(tom||""); }
+    put("#lxeName",v.name,TOMLV.name);
+    put("#lxeDesc",v.description,TOMLV.description);
+    put("#lxeImg",v.image,TOMLV.image);
+    put("#lxeSite",v.website,TOMLV.website);
+    put("#lxeX",v.twitter,TOMLV.twitter);
+    put("#lxeTg",v.telegram,TOMLV.telegram);
+    showPrev();
+    var src=m.querySelector("#lxeSrc");
+    // Says which of the three situations this asset is in, because "empty because they publish
+    // nothing" and "empty because their domain is unreachable" call for different action from you.
+    if(src){
+      if(!vr.domain) src.textContent="This issuer publishes no home domain, so nothing could be prefilled. Whatever you enter here is what the asset page will show.";
+      else if(!t.name&&!t.description&&!t.image) src.textContent="No usable stellar.toml at "+vr.domain+" — nothing to prefill. Whatever you enter here is what the asset page will show.";
+      else src.textContent=(vr.verified?"Verified · ":"Not verified · ")+"prefilled from "+vr.domain+"’s stellar.toml. Edited fields override it.";
+    }
   });
+
+  // Upload goes to our own media store and comes back as a relative /lxapi/media URL, so the same
+  // record works on staging and production.
+  var fi=m.querySelector("#lxeFile"), ub=m.querySelector("#lxeUp"), um=m.querySelector("#lxeUpMsg");
+  if(ub&&fi){
+    ub.addEventListener("click",function(){ fi.click(); });
+    fi.addEventListener("change",function(){
+      var f=fi.files&&fi.files[0]; if(!f)return;
+      um.textContent="Uploading…";
+      var fd=new FormData(); fd.append("file",f);
+      fetch("/lxapi/media",{method:"POST",body:fd})
+        .then(function(r){ return r.json().then(function(b){ return {ok:r.ok,b:b}; }); })
+        .then(function(z){
+          if(!z.ok||!z.b||!z.b.url){ um.textContent=(z.b&&(z.b.message||z.b.error))||"Upload failed."; return; }
+          m.querySelector("#lxeImg").value=z.b.url; showPrev();
+          um.textContent="Uploaded ("+Math.round((z.b.size||0)/1024)+" KB)";
+        }).catch(function(e){ um.textContent=e.message; });
+    });
+  }
+  var ii2=m.querySelector("#lxeImg"); if(ii2)ii2.addEventListener("input",showPrev);
 
   m.querySelector("#lxeOk").addEventListener("click",function(){
     var ok=m.querySelector("#lxeOk"); er.textContent=""; ok.disabled=true; ok.textContent="Saving\u2026";
     fetch("/lxapi/assetmeta",{method:"PUT",headers:{"content-type":"application/json"},
-      body:JSON.stringify({asset:k,name:val("#lxeName"),description:val("#lxeDesc"),
-        image:val("#lxeImg"),website:val("#lxeSite"),twitter:val("#lxeX"),telegram:val("#lxeTg")})})
+      // A field still equal to the toml is sent empty, so it goes on tracking the issuer's live text
+      // rather than being frozen as our copy of today's wording.
+      body:JSON.stringify({asset:k,name:same("#lxeName","name"),description:same("#lxeDesc","description"),
+        image:same("#lxeImg","image"),website:same("#lxeSite","website"),
+        twitter:same("#lxeX","twitter"),telegram:same("#lxeTg","telegram")})})
       .then(function(r){ return r.json().then(function(b){ return {ok:r.ok,b:b}; }); })
       .then(function(z){
         ok.disabled=false; ok.textContent="Save";
@@ -936,30 +989,50 @@ function editAsset(k){
 +'function paintAssets(){'
 +'  var t=(q(".admin-page-title")||{}).textContent||""; if(!/^\\s*Assets/.test(t))return;'
 +'  var tbl=q(".adm-table"); if(!tbl||tbl.getAttribute("data-lxbuilt")==="1")return; tbl.setAttribute("data-lxbuilt","1");'
-+'  var TH=["Asset","Issuer domain","Price","24h","7d","Volume (7d)","Trustlines","Actions"];'
++'  var TH=["Asset","Issuer domain","Price","24h","7d","LumosCore 7d vol","Trustlines","Actions"];'
 +'  var thr=tbl.querySelector("thead tr");'
 +'  if(thr)thr.innerHTML=TH.map(function(h,i){ return "<th"+(i>1?" style=\\"text-align:right\\"":"")+">"+esc(h)+"</th>"; }).join("");'
 +'  var tb=tbl.querySelector("tbody");'
 +'  var seg=q(".seg-row"); if(seg)seg.innerHTML="<button class=\\"seg-chip active\\" type=\\"button\\"><span class=\\"seg-label\\">Listed assets</span><span class=\\"seg-count\\" id=\\"lxaAll\\">\u2014</span></button>";'
 +'  var head=q(".admin-page-head");'
 +'  if(head&&!q(".lxadm-note")){ var nt=document.createElement("div"); nt.className="lxadm-note";'
-+'    nt.textContent="LumosCore talks to the Stellar DEX directly and does not curate a token list, so there is no server-side asset table. This is a list you maintain: it is stored in THIS BROWSER until there is a backend, and it seeds with the assets LumosCore already uses. Every figure on a row is live from the chain.";'
++'    nt.textContent="The curated list is stored on the server and shared by everyone. A tick means the asset’s own issuer vouches for it: its on-chain home domain publishes a stellar.toml naming this exact code and issuer. Volume is what has traded on LumosCore — not the whole Stellar DEX.";'
 +'    head.parentNode.insertBefore(nt, head.nextSibling); }'
-+'  var LIST=aList(), DATA={};'
++'  var LIST=aList(), DATA={}, VER={}, LXV=null;'
++'  function loadLxVol(){ return loadVolume().then(function(V){'
++'    var since=Date.now()-7*86400000, m={};'
++'    (V&&V.rows||[]).forEach(function(r){ if(!r.code||!r.gross||r.t<since)return;'
++'      var k=r.code+"-"+r.iss; m[k]=m[k]||{amt:0,n:0}; m[k].amt+=r.gross; m[k].n++; });'
++'    LXV=m; return m; }).catch(function(){ LXV={}; return LXV; }); }'
++'  var TICK="<svg viewBox=\\"0 0 24 24\\" width=\\"13\\" height=\\"13\\" fill=\\"none\\" stroke=\\"#22c55e\\" stroke-width=\\"3\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\" style=\\"vertical-align:-2px;margin-left:5px;flex:0 0 auto\\"><polyline points=\\"20 6 9 17 4 12\\"/></svg>";'
++'  function tickFor(k){ var r=VER[k]; if(!r||!r.v)return "";'
++'    var t=(r.s==="grandfathered")?("Verified by hand when added — "+(r.why||"")):(r.why||"Verified");'
++'    return "<span title=\\""+esc(t)+"\\">"+TICK+"</span>"; }'
 +'  function key(a){ return a.code+"-"+a.iss; }'
++'  function lxCell(k,code){ if(LXV===null)return "\u2026";'
++'    var r=LXV[k]; if(!r||!r.amt)return "<span style=\\"color:var(--text-muted)\\">0</span>";'
++'    return "<span title=\\""+r.n+" trade"+(r.n===1?"":"s")+" on LumosCore in the last 7 days\\">"'
++'      +esc(num(Math.round(r.amt*100)/100)+" "+code)+"</span>"; }'
 +'  function kpis(){'
 +'    var vals=LIST.map(function(a){ return DATA[key(a)]; }).filter(Boolean);'
-+'    var vol=0, priced=0, live=0;'
-+'    vals.forEach(function(v){ vol+=v.vol7d||0; if(v.price)priced++; if(v.vol7d>0)live++; });'
++'    var priced=0; vals.forEach(function(v){ if(v.price)priced++; });'
++'    var live=0; if(LXV)LIST.forEach(function(a){ var r=LXV[key(a)]; if(r&&r.amt>0)live++; });'
 +'    var cards=qa(".kpi-grid .kpi");'
 +'    function set(i,label,val,foot){ var c=cards[i]; if(!c)return;'
 +'      var l=c.querySelector(".kpi-label"); if(l)setT(l,label);'
 +'      setT(c.querySelector(".kpi-value"),val);'
 +'      var f=c.querySelector(".kpi-foot"); if(f){ f.innerHTML=""; f.textContent=foot; } }'
 +'    set(0,"Listed assets",String(LIST.length),"in your list");'
-+'    set(1,"Traded in last 7d",String(live),live===LIST.length?"all of them":"had DEX volume");'
++'    set(1,"Traded on LumosCore",LXV?String(live):"\u2026","in the last 7 days");'
 +'    set(2,"With a spot price",String(priced),"priced on the DEX");'
-+'    priceUsd("XLM","",function(px){ set(3,"Combined 7d volume", px?usd(vol*px):num(vol)+" XLM","across listed assets"); });'
++'    if(!LXV){ set(3,"LumosCore 7d volume","\u2026","traded on our platform"); }'
++'    else { var ks=Object.keys(LXV).filter(function(k){ return LXV[k].amt>0; });'
++'      if(!ks.length){ set(3,"LumosCore 7d volume",usd(0),"no trades in the last 7 days"); }'
++'      else { var tot=0,un=0,pend=ks.length;'
++'        ks.forEach(function(k){ var i=k.lastIndexOf("-");'
++'          priceUsd(k.slice(0,i),k.slice(i+1),function(px){'
++'            if(px!=null)tot+=LXV[k].amt*px; else un++;'
++'            if(--pend===0)set(3,"LumosCore 7d volume",usd(tot),un?(un+" asset"+(un===1?"":"s")+" not priced"):"traded on our platform"); }); }); } }'
 +'    setT(q("#lxaAll"),String(LIST.length)); fixPager(LIST.length);'
 +'    var sub=q(".admin-page-sub"); if(sub)sub.innerHTML="Assets you list on LumosCore \u00b7 <span class=\\"mono\\">"+LIST.length+"</span> total"; }'
 +'  function render(){ if(!tb)return;'
@@ -967,17 +1040,16 @@ function editAsset(k){
 +'    var list=LIST.filter(function(a){ return !qy || (a.code+" "+a.iss+" "+((DATA[key(a)]||{}).domain||"")).toLowerCase().indexOf(qy)>=0; });'
 +'    if(!list.length){ tb.innerHTML="<tr><td colspan=\\""+TH.length+"\\" class=\\"lxadm-empty\\">"+(LIST.length?"No asset matches that search.":"Your list is empty. Use \u201cAdd asset\u201d to list one.")+"</td></tr>"; return; }'
 +'    tb.innerHTML=list.map(function(a){ var v=DATA[key(a)], k=key(a);'
-+'      if(v===null)return "<tr><td colspan=\\""+TH.length+"\\" style=\\"color:var(--text-muted)\\">"+esc(a.code)+" \u2014 not found on mainnet</td></tr>";'
 +'      var load=!v;'
 +'      return "<tr>"'
 +'        +"<td><div class=\\"asset-cell\\"><img class=\\"lxa-ico\\" data-lxc=\\""+esc(a.code)+"\\" alt=\\"\\" src=\\""+((v&&v.img)||avatar(a.code))+"\\">"'
-+'        +"<div><div class=\\"asset-name\\">"+esc(a.code)+((v&&v.name&&v.name!==a.code)?" <span style=\\"font-weight:500;color:var(--text-muted);font-size:13.5px\\">"+esc(v.name)+"</span>":"")+"</div>"'
++'        +"<div><div class=\\"asset-name\\">"+esc(a.code)+tickFor(k)+((v&&v.name&&v.name!==a.code)?" <span style=\\"font-weight:500;color:var(--text-muted);font-size:13.5px\\">"+esc(v.name)+"</span>":"")+"</div>"'
 +'        +"<div class=\\"asset-sub mono\\">"+esc(shortG(a.iss))+"</div></div></div></td>"'
 +'        +"<td>"+(load?"\u2026":(v.domain?("<a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\"https://"+esc(v.domain)+"\\">"+esc(v.domain)+"</a>"):"<span style=\\"color:var(--text-muted)\\">no home domain</span>"))+"</td>"'
 +'        +"<td class=\\"num-cell\\" style=\\"text-align:right\\">"+(load?"\u2026":(v.price?esc(usd(v.price)):"<span style=\\"color:var(--text-muted)\\">\u2014</span>"))+"</td>"'
 +'        +"<td style=\\"text-align:right\\">"+(load?"\u2026":pct(v.d1))+"</td>"'
 +'        +"<td style=\\"text-align:right\\">"+(load?"\u2026":pct(v.d7))+"</td>"'
-+'        +"<td class=\\"num-cell\\" style=\\"text-align:right\\">"+(load?"\u2026":esc(num(Math.round(v.vol7d))+" XLM"))+"</td>"'
++'        +"<td class=\\"num-cell\\" style=\\"text-align:right\\">"+lxCell(k,a.code)+"</td>"'
 +'        +"<td class=\\"num-cell\\" style=\\"text-align:right\\" title=\\""+(v?esc(v.funded+" funded"):"")+"\\">"+(load?"\u2026":esc(num(v.trust)))+"</td>"'
 +'        +"<td style=\\"text-align:right\\"><span class=\\"row-act\\">"'
 +'        +"<a class=\\"row-act-btn\\" title=\\"Open asset page\\" href=\\"lumoscore-dex-asset.html?asset="+esc(k)+"\\">\u2197</a>"'
@@ -986,36 +1058,48 @@ function editAsset(k){
 +'        +"</span></td></tr>"; }).join("");'
 +'    qa("[data-lxrm]").forEach(function(b){ if(b.__lx)return; b.__lx=1;'
 +'      b.addEventListener("click",function(){ var k=b.getAttribute("data-lxrm");'
++'        if(!confirm("Remove "+k.split("-")[0]+" from the curated list?\\n\\nIt stops being listed on LumosCore. Its description, logo and links are kept, so re-adding it restores them."))return;'
 +'        LIST=LIST.filter(function(a){ return key(a)!==k; }); aSave(LIST); render(); kpis(); }); });'
 +'    qa("[data-lxed]").forEach(function(b){ if(b.__lx)return; b.__lx=1;'
 +'      b.addEventListener("click",function(){ editAsset(b.getAttribute("data-lxed")); }); }); }'
 +'  function load(a){ var k=key(a); if(DATA[k]!==undefined)return;'
 +'    aInfo(a.code,a.iss,function(v){ DATA[k]=v; render(); kpis(); }); }'
-+'  render(); kpis(); LIST.forEach(load);'
++'  var PAINTED=false;'
++'  function first(){ if(PAINTED)return; PAINTED=true; render(); kpis(); LIST.forEach(load); }'
++'  setTimeout(function(){ first(); },2500);'
 // The seeded/cached list paints immediately; the shared one replaces it as soon as it arrives. An empty
 // stored list is NOT treated as "no assets" on first run -- it means nobody has curated one yet, so the
 // seed stands until someone saves.
 +'  j("/lxapi/assetmeta").then(function(d){'
-+'    var names=(d&&d.list)||[]; if(!names.length)return;'
-+'    LIST=names.map(function(s){ var i=s.lastIndexOf("-"); return {code:s.slice(0,i),iss:s.slice(i+1)}; });'
-+'    try{ localStorage.setItem(AKEY,JSON.stringify(LIST)); }catch(_){}'
-+'    render(); kpis(); LIST.forEach(load); });'
++'    VER=(d&&d.verified)||{};'
++'    var names=(d&&d.list)||[];'
++'    if(names.length){'
++'      LIST=names.map(function(s){ var i=s.lastIndexOf("-"); return {code:s.slice(0,i),iss:s.slice(i+1)}; });'
++'      try{ localStorage.setItem(AKEY,JSON.stringify(LIST)); }catch(_){}'
++'    }'
++'    PAINTED=true; render(); kpis(); LIST.forEach(load);'
++'    loadLxVol().then(function(){ render(); kpis(); });'
++'  }).catch(function(){ first(); });'
 +'  var si=q(".fs-search input"); if(si){ si.placeholder="Search by code, issuer or domain\u2026"; si.addEventListener("input",render); }'
 +'  qa(".filter-strip .fs-select").forEach(function(sel,i){'
-+'    if(i===0){ sel.innerHTML="<option>Sort: 7d volume</option><option>Sort: Trustlines</option><option>Sort: Code</option>";'
++'    if(i===0){ sel.innerHTML="<option>Sort: LumosCore volume</option><option>Sort: Trustlines</option><option>Sort: Code</option>";'
 +'      sel.addEventListener("change",function(){ var m=sel.selectedIndex;'
 +'        LIST.sort(function(x,y){ var a=DATA[key(x)]||{}, b=DATA[key(y)]||{};'
 +'          if(m===1)return (b.trust||0)-(a.trust||0);'
 +'          if(m===2)return x.code.localeCompare(y.code);'
-+'          return (b.vol7d||0)-(a.vol7d||0); }); aSave(LIST); render(); }); }'
++'          var xa=(LXV&&LXV[key(x)]&&LXV[key(x)].amt)||0, xb=(LXV&&LXV[key(y)]&&LXV[key(y)].amt)||0;'
++'          return xb-xa; }); aSave(LIST); render(); }); }'
 +'    else sel.remove(); });'
 +'  var more=qa(".filter-strip .adm-btn").filter(function(b){return /more/i.test(b.textContent);})[0]; if(more)more.remove();'
 // ---- Add asset: verified against Horizon before anything is written ----
 +'  qa(".admin-page-actions .adm-btn").forEach(function(b){'
 +'    if(/export/i.test(b.textContent)&&!b.__lx){ b.__lx=1; b.addEventListener("click",function(){'
-+'      var hd="code,issuer,domain,price_usd,change_24h,change_7d,volume_7d_xlm,trustlines\\n";'
+// A column name that says what it is NOT is worse in an export than on screen: the file outlives the
+// page it came from, and volume_7d_xlm held the whole DEX's figure.
++'      var hd="code,issuer,domain,price_usd,change_24h,change_7d,lumoscore_7d_volume,lumoscore_7d_trades,verified,trustlines\\n";'
 +'      var bd=LIST.map(function(a){ var v=DATA[key(a)]||{};'
-+'        return [a.code,a.iss,v.domain||"",v.price||"",v.d1==null?"":v.d1.toFixed(4),v.d7==null?"":v.d7.toFixed(4),v.vol7d==null?"":Math.round(v.vol7d),v.trust||""].join(","); }).join("\\n");'
++'        var lv=(LXV&&LXV[key(a)])||null, vr=VER[key(a)]||null;'
++'        return [a.code,a.iss,v.domain||"",v.price||"",v.d1==null?"":v.d1.toFixed(4),v.d7==null?"":v.d7.toFixed(4),lv?Math.round(lv.amt*100)/100:0,lv?lv.n:0,(vr&&vr.v)?vr.s:"no",v.trust||""].join(","); }).join("\\n");'
 +'      var bl=new Blob([hd+bd],{type:"text/csv"}), u=URL.createObjectURL(bl);'
 +'      var el=document.createElement("a"); el.href=u; el.download="lumoscore-assets.csv"; el.click();'
 +'      setTimeout(function(){URL.revokeObjectURL(u);},1000); }); }'
@@ -1024,7 +1108,7 @@ function editAsset(k){
 +'      if(q(".lxmodal"))return;'
 +'      var m=document.createElement("div"); m.className="lxmodal";'
 +'      m.innerHTML="<div class=\\"lxmodal-box\\"><h3 class=\\"lxmodal-t\\">Add asset</h3>"'
-+'        +"<p class=\\"lxmodal-s\\">A ticker is not an identity on Stellar \u2014 hundreds of assets share the code USDC. Give the issuer too. The asset is checked against Horizon before it is added.</p>"'
++'        +"<p class=\\"lxmodal-s\\">A ticker is not an identity on Stellar \u2014 hundreds of assets share the code USDC, so give the issuer too. We check the asset exists, then ask its issuer\u2019s own domain to vouch for it. Logo, description and links come next, prefilled from whatever it publishes.</p>"'
 +'        +"<label class=\\"lxmodal-l\\" for=\\"lxaCode\\">Asset code</label><input class=\\"lxmodal-i\\" id=\\"lxaCode\\" placeholder=\\"USDC\\" maxlength=\\"12\\">"'
 +'        +"<label class=\\"lxmodal-l\\" for=\\"lxaIss\\">Issuer account</label><input class=\\"lxmodal-i\\" id=\\"lxaIss\\" placeholder=\\"G\u2026\\" maxlength=\\"56\\">"'
 +'        +"<p class=\\"lxmodal-e\\" id=\\"lxaErr\\"></p>"'
@@ -1047,8 +1131,18 @@ function editAsset(k){
 +'          var r=d&&d._embedded&&d._embedded.records&&d._embedded.records[0];'
 +'          ok.disabled=false; ok.textContent="Verify & add";'
 +'          if(!r){ er.textContent="No such asset on Stellar mainnet. Check the code and issuer."; return; }'
-+'          LIST.push({code:code,iss:iss}); aSave(LIST); DATA[code+"-"+iss]=undefined;'
-+'          close(); render(); kpis(); load({code:code,iss:iss}); }); }); }); });'
++'          var kk=code+"-"+iss;'
++'          ok.disabled=true; ok.textContent="Verifying\u2026";'
++'          fetch("/lxapi/assetmeta",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({asset:kk})})'
++'            .then(function(r){ return r.json().then(function(b){ return {ok:r.ok,b:b}; }); })'
++'            .then(function(z){ ok.disabled=false; ok.textContent="Verify & add";'
++'              if(!z.ok){ er.textContent=(z.b&&(z.b.error||z.b.message))||"Could not add."; return; }'
++'              if(z.b&&z.b.verified)VER[kk]=z.b.verified;'
++'              LIST.push({code:code,iss:iss}); DATA[kk]=undefined;'
++'              close(); render(); kpis(); load({code:code,iss:iss});'
++'              editAsset(kk); })'
++'            .catch(function(e){ ok.disabled=false; ok.textContent="Verify & add"; er.textContent=e.message; });'
++'          }); }); }); });'
 +'}'
 +'function mobNote(txt){ var head=pageHead(); if(!head||q(".lxadm-note"))return;'
 +'  var d=document.createElement("div"); d.className="lxadm-note"; d.textContent=txt;'
@@ -1109,11 +1203,11 @@ function editAsset(k){
 +'    var ah=ac[0].parentNode, aa=ac[0]; ac.forEach(function(c){ c.remove(); });'
 +'    var abox=document.createElement("div"); abox.id="lxmAList"; ah.insertBefore(abox,aa.nextSibling||null);'
 +'    abox.innerHTML="<div class=\\"lxadm-empty\\">Loading\u2026</div>";'
-+'    mobKpis([["lxmaN","Listed","in your list"],["lxmaV","7d volume","across listed"]]);'
-+'    mobNote("LumosCore does not curate a token list, so there is no server-side asset table. This is a list you maintain \u2014 stored in this browser until there is a backend. Every figure on a row is live from the chain.");'
++'    mobKpis([["lxmaN","Listed","in your list"],["lxmaV","LumosCore 7d vol","traded with us"]]);'
++'    mobNote("The curated list is stored on the server. A tick means the asset’s own issuer vouches for it. Volume is what has traded on LumosCore, not the whole Stellar DEX.");'
 +'    var maseg=q(".mob-seg-row"); if(maseg)maseg.innerHTML="<button class=\\"mob-seg-chip active\\" type=\\"button\\"><span class=\\"sc-label\\">Listed</span><span class=\\"sc-count\\" id=\\"lxmaSeg\\">\\u2014</span></button>";'
 +'    var mai=q(".mob-filter-bar input"); if(mai)mai.placeholder="Search by code or issuer…";'
-+'    var LIST=aList(), D={};'
++'    var LIST=aList(), D={}, LXV=null;'
 +'    setT(q("#lxmaN"),String(LIST.length)); setT(q("#lxmaSeg"),String(LIST.length)); fixPager(LIST.length);'
 +'    var sub2=q(".mob-page-sub"); if(sub2)sub2.innerHTML="<span class=\\"mono\\">"+LIST.length+"</span> listed assets";'
 +'    function draw(){ abox.innerHTML=LIST.map(function(a){ var v=D[a.code+"-"+a.iss], ld=!v;'
@@ -1122,12 +1216,20 @@ function editAsset(k){
 +'        +"<div><div class=\\"lxm-name\\">"+esc(a.code)+"</div><div class=\\"lxm-sub\\">"+(ld?"\u2026":esc(v.domain||"no home domain"))+"</div></div>"'
 +'        +"<div class=\\"lxm-right\\">"+(ld?"\u2026":(v.price?esc(usd(v.price)):"\u2014"))+"</div></div>"'
 +'        +"<div class=\\"lxm-stats\\"><div><div class=\\"lxm-sl\\">24h</div><div class=\\"lxm-sv\\">"+(ld?"\u2026":pct(v.d1))+"</div></div>"'
-+'        +"<div><div class=\\"lxm-sl\\">7d vol</div><div class=\\"lxm-sv\\">"+(ld?"\u2026":esc(num(Math.round(v.vol7d))))+"</div></div>"'
++'        +"<div><div class=\\"lxm-sl\\">LumosCore 7d</div><div class=\\"lxm-sv\\">"+(LXV===null?"\u2026":(function(){ var r=LXV[a.code+"-"+a.iss]; return r&&r.amt?esc(num(Math.round(r.amt*100)/100)):"0"; })())+"</div></div>"'
 +'        +"<div><div class=\\"lxm-sl\\">Trustlines</div><div class=\\"lxm-sv\\">"+(ld?"\u2026":esc(num(v.trust)))+"</div></div></div></a>"; }).join(""); }'
 +'    draw();'
-+'    var vol=0;'
-+'    LIST.forEach(function(a){ aInfo(a.code,a.iss,function(v){ D[a.code+"-"+a.iss]=v; if(v)vol+=v.vol7d||0; draw();'
-+'      priceUsd("XLM","",function(px){ setT(q("#lxmaV"), px?usd(vol*px):num(Math.round(vol))+" XLM"); }); }); });'
++'    LIST.forEach(function(a){ aInfo(a.code,a.iss,function(v){ D[a.code+"-"+a.iss]=v; draw(); }); });'
++'    loadVolume().then(function(V){ var since=Date.now()-7*86400000, m={};'
++'      (V&&V.rows||[]).forEach(function(r){ if(!r.code||!r.gross||r.t<since)return;'
++'        var k=r.code+"-"+r.iss; m[k]=m[k]||{amt:0,n:0}; m[k].amt+=r.gross; m[k].n++; });'
++'      LXV=m; draw();'
++'      var ks=Object.keys(m).filter(function(k){ return m[k].amt>0; });'
++'      if(!ks.length){ setT(q("#lxmaV"),usd(0)); return; }'
++'      var tot=0,pend=ks.length;'
++'      ks.forEach(function(k){ var i=k.lastIndexOf("-"); priceUsd(k.slice(0,i),k.slice(i+1),function(px){'
++'        if(px!=null)tot+=m[k].amt*px; if(--pend===0)setT(q("#lxmaV"),usd(tot)); }); });'
++'    }).catch(function(){ LXV={}; draw(); });'
 +'    return; }'
 +'}'
 +'function profWallet(){ try{ return (new URLSearchParams(location.search)).get("w")||""; }catch(_){ return ""; } }'
