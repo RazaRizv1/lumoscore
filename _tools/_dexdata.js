@@ -1803,8 +1803,51 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     guardEl("#dexMintsList",renderMints);
     guardEl("#dexMoverGrid",renderMovers);
     guardEl("#mdxMoverList",renderMovers);
+  // ---- curated assets, live ------------------------------------------------------------------
+  // The roster and the tick map are baked at build time because this page avoids runtime work. But
+  // an asset curated in the admin panel then not appearing here reads as the add having failed, and
+  // that has now been reported three times for assets that were curated correctly every time. One
+  // cached request is cheaper than that.
+  //
+  // It ADDS; it never removes or repaints what is already on screen. The table renders progressively
+  // anyway as prices arrive, so a late arrival is the pattern here rather than a flash. Once the site
+  // is next published the same assets are baked in and this becomes a no-op.
+  function curatedLive(){
+    return fetch("/lxapi/assetmeta").then(function(r){ return r.ok?r.json():null; }).then(function(d){
+      if(!d)return;
+      var vf=d.verified||{}, added=[];
+      // The tick first, and for every asset -- the map is keyed CODE-ISSUER here and CODE|ISSUER there.
+      Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;
+        var i=id.lastIndexOf("-"); if(i<0)return;
+        VFD[id.slice(0,i)+"|"+id.slice(i+1)]=r.d||""; });
+      (d.list||[]).forEach(function(id){
+        var i=id.lastIndexOf("-"); if(i<0)return;
+        var code=id.slice(0,i), iss=id.slice(i+1);
+        if(byId[code+"|"+iss])return;                    // already baked in
+        var tkr=byCode[code]?code+"~"+iss.slice(0,4):code;
+        if(byCode[tkr])return;
+        var a={code:code,issuer:iss,cat:"utility",tkr:tkr,b:"#3d4351",
+          logo:"",domain:(vf[id]&&vf[id].d)||"",
+          px:0,chg:null,vol:null,high:null,low:null,tvlUsd:null,
+          holders:null,supply:null,spark:null,img:null,trades:null};
+        byCode[tkr]=a; byId[code+"|"+iss]=a; ASSETS.push(a); added.push(a);
+      });
+      try{ renderTable(); }catch(_){}                    // ticks land even when nothing was added
+      if(!added.length)return;
+      // Logos through the same server-side resolver every other screen uses: plenty of toml hosts
+      // refuse a browser outright, which is why this is not fetched from the issuer directly.
+      added.forEach(function(a){
+        fetch("/lxapi/assetlogo?asset="+encodeURIComponent(a.code+"-"+a.issuer))
+          .then(function(r){ return r.ok?r.json():null; })
+          .then(function(j){ if(j&&j.image){ a.logo=j.image; try{ renderTable(); }catch(_){} } })
+          .catch(function(){});
+      });
+      return batchPx(added).then(function(){ try{ renderTable(); }catch(_){} });
+    }).catch(function(){});
+  }
     guardEl("#dexMkTbody",renderTable);
     loadData();
+    try{ curatedLive(); }catch(_){}
     var ticks=0, iv=setInterval(function(){ guardApply(); if(++ticks>30)clearInterval(iv); },700);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
