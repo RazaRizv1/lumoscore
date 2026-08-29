@@ -13,8 +13,8 @@
 //
 // It deliberately does NOT verify the address. A support form that makes you confirm an email before it
 // will carry your problem is a support form people give up on.
-const TO = 'team@lumoscore.com';
-const FROM = 'LumosCore Support <support@lumoscore.com>';
+const TO = 'support@lumoscore.com';
+const FROM = 'LumosCore Support <support@mail.lumoscore.com>';
 
 const LIMITS = { email: 254, name: 80, subject: 160, message: 5000, wallet: 60, txHash: 80 };
 const WINDOW_S = 30;        // shortest gap between two messages from one address
