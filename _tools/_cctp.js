@@ -132,6 +132,10 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brp-head{display:flex;align-items:center;gap:10px;margin-bottom:6px}'
 +'.lx-brp-head h2{margin:0;font-size:17px;font-weight:700;color:var(--text,#0e0e10)}'
 +'.lx-brp-n{min-width:22px;height:22px;padding:0 7px;border-radius:11px;background:var(--accent,#ea6a2c);color:#fff;font:700 12px/22px inherit;text-align:center}'
++'.lx-brp-copyh{margin-left:6px;padding:2px;border:0;background:none;cursor:pointer;'
++'color:var(--text-soft,#6b6b76);vertical-align:-3px;border-radius:4px;line-height:0}'
++'.lx-brp-copyh:hover{color:var(--accent,#ea6a2c)}'
++'.lx-brp-copyh svg{width:13px;height:13px;display:block}'
 +'.lx-brp-note{margin:0 0 16px;font-size:12.8px;line-height:1.55;color:var(--text-soft,#6b6b76);max-width:72ch}'
 +'.lx-brp-row{display:flex;align-items:center;gap:20px;flex-wrap:wrap;padding:15px 0;border-top:1px solid var(--border,#e6e6ea)}'
 +'.lx-brp-main{flex:0 1 auto;min-width:0}'
@@ -1486,6 +1490,26 @@ function lxBrPairIco(kind,dom){
   var name=(kind==="src")?"Stellar":lxBrDomName(dom);
   return '<span class="lx-brp-ico" title="USDC on '+lxBrEsc(name)+'"><img src="assets/tokens/usdc.png" alt="USDC"><i>'+badge+'</i></span>'; }
 
+var LX_BR_COPY_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
+  +'stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2">'
+  +'</rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>';
+if(!window.__lxBrCopyWired){ window.__lxBrCopyWired=1;
+  document.addEventListener("click",function(e){
+    var b=e.target&&e.target.closest?e.target.closest("[data-copyh]"):null; if(!b) return;
+    e.preventDefault(); e.stopPropagation();
+    var h=b.getAttribute("data-copyh")||"";
+    function ok(){ try{ lxBrToast("Transaction hash copied \\u2014 keep it to claim later"); }catch(_){} }
+    try{
+      if(navigator.clipboard&&navigator.clipboard.writeText){
+        navigator.clipboard.writeText(h).then(ok).catch(fallback);
+      } else fallback();
+    }catch(_){ fallback(); }
+    function fallback(){ try{ var t=document.createElement("textarea"); t.value=h;
+      t.setAttribute("readonly",""); t.style.position="fixed"; t.style.opacity="0";
+      document.body.appendChild(t); t.select(); document.execCommand("copy");
+      document.body.removeChild(t); ok(); }catch(_e){} }
+  },true);
+}
 function lxBrRenderPending(){ try{
   var host=lxBrPendHost(); if(!host) return false;
   var p=host.el, list=lxBrListPending();
@@ -1512,6 +1536,8 @@ function lxBrRenderPending(){ try{
     // way the transactions table above it does, instead of clumping everything against the left edge
     +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrPairIco("src",r.destDomain)+'<span>'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC</span><span class="lx-brp-ar">\→</span>'+lxBrPairIco("dst",r.destDomain)+'<span>'+lxBrEsc(lxBrDomName(r.destDomain))+'</span></div></div>'
     +'<div class="lx-brp-meta"><div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \· <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
+    +'<button type="button" class="lx-brp-copyh" data-copyh="'+lxBrEsc(r.burnHash)+'" '
+    +'title="Copy transaction hash" aria-label="Copy transaction hash">'+LX_BR_COPY_SVG+'</button>'
     // the platform fee is LumosCore's problem, not the user's: they can do nothing about it, it does not
     // affect what they receive, and it is already carried to their next bridge. It stays recorded on the
     // record, it just no longer sits in their way.
@@ -1533,7 +1559,7 @@ function lxBrRenderPending(){ try{
   // In tab mode the tab IS the heading — a second "Awaiting redemption" title under it would just repeat
   // itself. The standalone mobile panel still needs one.
   p.innerHTML=(host.tabbed?'':'<div class="lx-brp-head"><h2>Awaiting redemption</h2><span class="lx-brp-n">'+list.length+'</span>'+lxBrVidBtn()+'</div>')
-    +'<div class="lx-brp-intro"><p class="lx-brp-note">CCTP burns your USDC on Stellar and Circle holds it until the mint is submitted on the destination chain. That last step is yours to make: press Claim, approve it in your EVM wallet, and the USDC appears. You need a little gas on the destination chain to do it. Nothing here expires \\u2014 an unclaimed transfer waits indefinitely.</p>'
+    +'<div class="lx-brp-intro"><p class="lx-brp-note">CCTP burns your USDC on Stellar and Circle holds it until the mint is submitted on the destination chain. That last step is yours to make: press Claim, approve it in your EVM wallet, and the USDC appears. You need a little gas on the destination chain to do it. Nothing here expires \\u2014 an unclaimed transfer waits indefinitely. <b>Keep the transaction hash on each row.</b> Circle can rebuild everything a claim needs from it, so the hash on its own is enough to finish a transfer from any browser or device \\u2014 including after you clear this one.</p>'
     +(host.tabbed?lxBrVidBtn():'')+'</div>'
     +lxBrHowTo()
     +rows;
