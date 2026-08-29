@@ -87,7 +87,7 @@ export async function onRequestPost(ctx) {
   }
 
   const key = env && env.RESEND_API_KEY;
-  if (!key) return json({ ok: false, error: 'support is temporarily unavailable' }, 503);
+  if (!key) return json({ ok: false, error: 'Support is temporarily unavailable. Email ' + TO + ' directly and we will pick it up.' }, 503);
 
   const who = name ? name + ' <' + email + '>' : email;
   const rows = [
