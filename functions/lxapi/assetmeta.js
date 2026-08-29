@@ -138,7 +138,21 @@ export async function onRequestPut({ request, env }) {
   if (Array.isArray(b && b.list)) {
     const list = b.list.map((x) => clean(x, 80)).filter((x) => ASSET_RE.test(x));
     await kv.put(LIST, JSON.stringify(list));
-    return json({ ok: true, list }, 200, 0);
+
+    // The remove button in the panel comes through HERE, not through DELETE, so the tick map has to be
+    // pruned on this path too -- otherwise removing an asset leaves its record behind and it stays
+    // ticked everywhere while no longer being curated. Mints keep theirs: they are a separate list and
+    // were never granted a tick by being curated.
+    let vmap = {};
+    try { vmap = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
+    let mints = [];
+    try { mints = (await kv.get(MINTS, 'json')) || []; } catch (_) {}
+    const keep = new Set(list.concat(mints));
+    let dropped = 0;
+    for (const k of Object.keys(vmap)) if (!keep.has(k)) { delete vmap[k]; dropped++; }
+    if (dropped) await kv.put(VMAP, JSON.stringify(vmap));
+
+    return json({ ok: true, list, unticked: dropped }, 200, 0);
   }
 
   // Bulk re-verification, deliberately CHUNKED. Each handshake costs a Horizon call plus a toml fetch
@@ -247,6 +261,13 @@ export async function onRequestDelete({ request, env }) {
     let list = [];
     try { list = (await kv.get(LIST, 'json')) || []; } catch (_) {}
     await kv.put(LIST, JSON.stringify(list.filter((a) => a !== asset)));
+    // THE TICK GOES WITH THE LISTING. Curated means ticked, so de-listed has to mean un-ticked --
+    // otherwise the record survives in the tick map and the asset keeps its mark everywhere while
+    // being absent from the very list that granted it. WXT sat like that: removed from curated,
+    // still verified on the asset page, because only the list was being edited.
+    let vmap = {};
+    try { vmap = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
+    if (vmap[asset]) { delete vmap[asset]; await kv.put(VMAP, JSON.stringify(vmap)); }
   }
   return json({ ok: true }, 200, 0);
 }

@@ -23,6 +23,12 @@ const HOST_RE = /^[A-Za-z0-9.-]{1,253}$/;
 // the cache is what makes this affordable on a page listing 25 assets.
 const TTL_HIT = 86400;   // 24h for a resolved logo
 const TTL_MISS = 3600;   // 1h for "this asset publishes none" -- retry sooner in case one appears
+// A DAY IS RIGHT FOR THE ISSUER'S TOML AND WRONG FOR OUR OWN EDITS. When an admin override is part of
+// the answer, the answer is something we control and have just changed -- caching that for 24h means
+// an edit made in the panel does not reach the asset page for a day, which reads as the edit not
+// having saved. It saved; nobody could see it. Short enough to feel immediate, long enough that the
+// visitor path is still served from the edge.
+const TTL_OVERRIDE = 30;
 
 // Some toml hosts are slow or dead. A row must not wait on them.
 const TIMEOUT_MS = 4000;
@@ -120,7 +126,7 @@ export async function onRequestGet(ctx) {
       image: ov.image, domain: ov.website || '', name: ov.name || '',
       desc: ov.description, twitter: ov.twitter || '', telegram: ov.telegram || '',
       source: 'admin',
-    }, 200, TTL_HIT);
+    }, 200, TTL_OVERRIDE);
   }
 
   const res = await tomlLookup({ request });
@@ -137,7 +143,7 @@ export async function onRequestGet(ctx) {
   if (ov.twitter) body.twitter = ov.twitter;
   if (ov.telegram) body.telegram = ov.telegram;
   body.source = 'admin+toml';
-  return json(body, 200, TTL_HIT);
+  return json(body, 200, TTL_OVERRIDE);
 }
 
 async function tomlLookup({ request }) {

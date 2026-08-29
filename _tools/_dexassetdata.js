@@ -4014,7 +4014,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   function loadTomlEdge(){
     if(NATIVE||!CODE||!ISSUER)return;
     edgePending=true;
-    fetch("/lxapi/assetlogo?asset="+encodeURIComponent(CODE+"-"+ISSUER))
+    fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(CODE+"-"+ISSUER))
       .then(function(r){ if(!r.ok)throw 0; return r.json(); })
       .then(function(d){
         if(!d)return;
