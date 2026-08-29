@@ -92,7 +92,10 @@ const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replac
 
 // ---- generated furniture --------------------------------------------------------------------------
 function sidebar(current) {
-  let out = '<nav class="dc-nav">';
+  let out = '<nav class="dc-nav">'
+    + '<input class="dc-filter" id="dcFilter" type="search" autocomplete="off" '
+    + 'placeholder="Filter pages" aria-label="Filter documentation pages">'
+    + '<p class="dc-nomatch" id="dcNoMatch" hidden>No pages match.</p>';
   let group = null;
   for (const [slug, title, grp] of PAGES) {
     if (grp !== group) {
@@ -117,7 +120,9 @@ function withAnchors(body) {
     seen.set(id, n);
     if (n > 1) id += '-' + n;
     toc.push([id, text]);
-    return '<h2 id="' + id + '">' + inner + '</h2>';
+    return '<h2 id="' + id + '">'
+      + '<a class="dc-anchor" href="#' + id + '" aria-label="Link to this section">#</a>'
+      + inner + '</h2>';
   });
   return { body: out, toc };
 }
@@ -126,6 +131,47 @@ function tocRail(toc) {
   return '<div class="dc-toc"><p class="dc-toc-h">On this page</p>'
     + toc.map(([id, t]) => '<a href="#' + id + '">' + esc(t) + '</a>').join('') + '</div>';
 }
+// Two behaviours the page is worse without: the rail should say which section you are actually
+// reading, and sixteen items is enough that filtering beats scanning. Both are progressive — with
+// the script absent the nav is a plain list and the rail is a plain set of links.
+const SCRIPT = '<script id="lx-docs-js">(function(){'
+  + 'var d=document;'
+  // ---- scroll-spy on the on-this-page rail ----
+  // Measured on scroll rather than through IntersectionObserver. An observer only reports a heading
+  // at the moment it crosses, so the rects it hands back go stale the instant you scroll past --
+  // which is exactly when the rail needs to be right. Reading live positions cannot drift.
+  + 'var links=[].slice.call(d.querySelectorAll(".dc-toc a"));'
+  + 'if(links.length){'
+  +   'var pairs=[];links.forEach(function(a){var h=d.getElementById(a.getAttribute("href").slice(1));'
+  +     'if(h)pairs.push([h,a]);});'
+  +   'var cur=null,tick=0;'
+  +   'var spy=function(){tick=0;'
+  +     'var line=Math.max(90,innerHeight*0.22),best=pairs.length?pairs[0][1]:null;'
+  +     'for(var i=0;i<pairs.length;i++){'
+  +       'if(pairs[i][0].getBoundingClientRect().top<=line)best=pairs[i][1];else break;}'
+  // at the very bottom the last section is what you are reading, whatever the line says
+  +     'if(innerHeight+scrollY>=d.documentElement.scrollHeight-4&&pairs.length)'
+  +       'best=pairs[pairs.length-1][1];'
+  +     'if(best!==cur){if(cur)cur.classList.remove("dc-tocon");'
+  +       'if(best)best.classList.add("dc-tocon");cur=best;}};'
+  +   'var onScroll=function(){if(!tick)tick=requestAnimationFrame(spy);};'
+  +   'addEventListener("scroll",onScroll,{passive:true});'
+  +   'addEventListener("resize",onScroll,{passive:true});'
+  +   'spy();'
+  + '}'
+  // ---- filter the nav ----
+  + 'var f=d.getElementById("dcFilter"),none=d.getElementById("dcNoMatch");'
+  + 'if(f){f.addEventListener("input",function(){'
+  +   'var q=f.value.trim().toLowerCase(),hits=0;'
+  +   '[].forEach.call(d.querySelectorAll(".dc-nav-group"),function(g){'
+  +     'var shown=0;'
+  +     '[].forEach.call(g.querySelectorAll("a"),function(a){'
+  +       'var ok=!q||a.textContent.toLowerCase().indexOf(q)>=0;'
+  +       'a.hidden=!ok;if(ok)shown++;});'
+  +     'g.hidden=shown===0;hits+=shown;});'
+  +   'if(none)none.hidden=hits>0;});}'
+  + '})();</scr' + 'ipt>';
+
 function pager(i) {
   const prev = i > 0 ? PAGES[i - 1] : null;
   const next = i < PAGES.length - 1 ? PAGES[i + 1] : null;
@@ -181,15 +227,18 @@ for (const [dev, donor, suffix] of [
     const main = '<div class="lxdc">'
       + sidebar(slug)
       + '<div class="dc-main">'
+      + '<div class="dc-head">'
       + '<p class="dc-crumb">' + esc(group) + '</p>'
       + '<h1>' + esc(title) + '</h1>'
       + '<p class="dc-sub">' + esc(desc) + '</p>'
+      + '</div>'
       + body
       + pager(i)
       + '<p class="dc-updated">' + UPDATED + '</p>'
       + '</div>'
       + tocRail(toc)
-      + '</div>';
+      + '</div>'
+      + SCRIPT;
     const page = replaceMain(shell, main);
     if (!page) { console.error('  ' + file + ': no <main> in donor — ' + slug + ' skipped'); return; }
     json['lumoscore-docs-' + slug + suffix] =
