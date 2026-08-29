@@ -623,7 +623,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     var k=code+"-"+iss;
     if(LTLOGO[k]!==undefined){ if(LTLOGO[k])cb(LTLOGO[k]); return; }
     LTLOGO[k]=null;                              // in flight: stops a repaint firing a second request
-    fetch("/lxapi/assetlogo?asset="+encodeURIComponent(k))
+    fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(k))
       .then(function(r){ return r.ok?r.json():null; })
       .then(function(d){ var u=d&&d.image;
         // Only a SUCCESS is remembered. yXLM came back {reason:"timeout"} on one call -- its toml host

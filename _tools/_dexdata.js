@@ -1631,7 +1631,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // The domain argument is kept because callers pass it; the resolver reads the issuer's own
   // home_domain itself, so it is no longer needed here.
   function loadToml(a,domain){
-    fetch("/lxapi/assetlogo?asset="+encodeURIComponent(a.code+"-"+a.issuer))
+    fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(a.code+"-"+a.issuer))
       .then(function(r){ return r.ok?r.json():null; })
       .then(function(j){ if(j&&j.image)a.img=j.image; a.__logoDone=1; touch(); })
       .catch(function(){ a.__logoDone=1; touch(); });   // an unreachable resolver is a conclusion too
@@ -1842,7 +1842,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       // Logos through the same server-side resolver every other screen uses: plenty of toml hosts
       // refuse a browser outright, which is why this is not fetched from the issuer directly.
       added.forEach(function(a){
-        fetch("/lxapi/assetlogo?asset="+encodeURIComponent(a.code+"-"+a.issuer))
+        fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(a.code+"-"+a.issuer))
           .then(function(r){ return r.ok?r.json():null; })
           .then(function(j){ if(j&&j.image){ a.logo=j.image; try{ renderTable(); }catch(_){} } })
           .catch(function(){});
