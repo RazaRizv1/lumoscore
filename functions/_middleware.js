@@ -117,9 +117,14 @@ const ROUTES = [
     "/support",
     "lumoscore-support",
     null
+  ],
+  [
+    "/whitepaper",
+    "lumoscore-whitepaper",
+    null
   ]
 ];
-const HAS_MOBILE = new Set(["lumoscore-home-mobile","lumoscore-landing-mobile","lumoscore-launch-confirm-mobile","lumoscore-launch-review-mobile","lumoscore-launch-token-mobile","lumoscore-wallet-mobile","lumoscore-amm-mobile","lumoscore-amm-pool-mobile","lumoscore-lumos-token-mobile","lumoscore-dex-mobile","lumoscore-dex-asset-mobile","lumoscore-bridge-mobile","lumoscore-signin-mobile","lumoscore-rewards-mobile","lumoscore-mcp-mobile","lumoscore-account-mobile","lumoscore-blog-mobile","lumoscore-blog-post-mobile","lumoscore-privacy-mobile","lumoscore-terms-mobile","lumoscore-support-mobile"]);
+const HAS_MOBILE = new Set(["lumoscore-home-mobile","lumoscore-landing-mobile","lumoscore-launch-confirm-mobile","lumoscore-launch-review-mobile","lumoscore-launch-token-mobile","lumoscore-wallet-mobile","lumoscore-amm-mobile","lumoscore-amm-pool-mobile","lumoscore-lumos-token-mobile","lumoscore-dex-mobile","lumoscore-dex-asset-mobile","lumoscore-bridge-mobile","lumoscore-signin-mobile","lumoscore-rewards-mobile","lumoscore-mcp-mobile","lumoscore-account-mobile","lumoscore-blog-mobile","lumoscore-blog-post-mobile","lumoscore-privacy-mobile","lumoscore-terms-mobile","lumoscore-support-mobile","lumoscore-whitepaper-mobile"]);
 
 function match(pathname){
   const segs = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
