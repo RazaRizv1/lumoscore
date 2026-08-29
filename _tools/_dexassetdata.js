@@ -1252,7 +1252,11 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
       if(!tf||!ch){ cell.innerHTML='<div class="tf">'+(TFS[i]||"")+'</div><div class="ch">—</div>'; tf=cell.querySelector(".tf"); ch=cell.querySelector(".ch"); }
       if(!cell.querySelector("svg")){ var gsvg=document.createElementNS("http://www.w3.org/2000/svg","svg"); gsvg.setAttribute("width","0"); gsvg.setAttribute("height","0"); gsvg.setAttribute("aria-hidden","true"); gsvg.style.cssText="position:absolute;width:0;height:0;overflow:hidden"; cell.appendChild(gsvg); }
       var key=((tf||{}).textContent||"").trim().toLowerCase();
-      var v=null; if(key==="1h")v=chg1h; else if(key==="24h")v=chg24; else if(key==="7d")v=chg7d;
+      // The 24h cell was the only cell reading a USD figure while the page, the chart, the headline and
+      // the other five cells were all in XLM. On FRED that printed the pill at +1.30% and this cell at
+      // -0.38% in red -- one grid contradicting itself, and the reason the graph looked like it told a
+      // different story. This is the exact expression the pill uses, so the two cannot disagree again.
+      var v=null; if(key==="1h")v=chg1h; else if(key==="24h")v=((cDenom()==="xlm")?((chg24X!=null)?chg24X:chg24):chg24); else if(key==="7d")v=chg7d;
       else if(key==="1m")v=chg1m; else if(key==="3m")v=chg3m; else if(key==="6m")v=chg6m;
       // NEVER leave the bare "dxa-perf-cell" class: the logo-painter targets exactly that (cells with an
       // up/down modifier are skipped) — dashed cells carry an inert "lx-nd" modifier to stay off its radar.
@@ -1834,7 +1838,11 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
       var d2=t.closest("[data-cdn]");
       if(d2){ e.preventDefault(); e.stopImmediatePropagation();
         setCDenom(d2.getAttribute("data-cdn")==="xlm"?"xlm":"usd");
-        chartUiSync(); if(chartPts)drawChart(chartPts); try{ applyOhlc(); }catch(_){} return; }
+        chartUiSync(); if(chartPts)drawChart(chartPts); try{ applyOhlc(); }catch(_){}
+        // The pill and the perf grid are denomination-dependent and were never repainted here, so they
+        // kept whatever unit they were painted in at boot. applyAll is idempotent and already runs from
+        // every async path on this page, so it is the safe repaint.
+        try{ applyAll(); }catch(_){} return; }
     },true);
   }
   function chartUiSync(){
@@ -3822,7 +3830,13 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // inventing a flat 0.00%: an hourly pair for 1h, and ~200 daily candles for 1m/3m/6m. A dash now means
     // the asset genuinely had no trade in that window, and 0.00% means it genuinely did not move.
     jAgg({res:3600000,order:"desc",limit:2}).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
-      if(r[0]&&r[1]&&+r[1].close>0)chg1h=((+r[0].close-+r[1].close)/+r[1].close)*100; applyAll(); }).catch(function(){});
+      // trade_aggregations omits hours in which nothing traded, so the two newest records are not
+      // necessarily an hour apart -- FRED ran 06:00, 05:00, 03:00, where the newest pair spans three
+      // hours and still gets labelled "1h". A cell that quietly measures the wrong window is worse
+      // than one that admits it cannot say, so a non-adjacent pair leaves chg1h null and the cell
+      // dashes, which applyPerf already renders. 1.5h of slack absorbs bucket-boundary jitter.
+      var gap1h=(r[0]&&r[1])?(+r[0].timestamp-+r[1].timestamp):0;
+      if(r[0]&&r[1]&&+r[1].close>0&&gap1h<=5400000)chg1h=((+r[0].close-+r[1].close)/+r[1].close)*100; applyAll(); }).catch(function(){});
     jAgg({res:86400000,order:"desc",limit:200}).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
       if(!r.length)return; var latest=+r[0].close; if(!(latest>0))return;
       var now=Date.now();
