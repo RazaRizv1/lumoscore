@@ -144,6 +144,27 @@ html[data-theme="light"] .lxdc{
 .lxdc .dc-num{font-family:"JetBrains Mono",monospace;font-variant-numeric:tabular-nums;
   white-space:nowrap;color:var(--dc-ink);font-weight:600}
 
+/* ---------------- FAQ accordions ---------------- */
+/* <details>/<summary>, so the questions are readable, linkable and searchable in the page with no
+   script at all. The marker is drawn rather than inherited: the native triangle differs per browser
+   and sits at the wrong optical weight beside this type. */
+.lxdc .dc-qa-more{margin:-6px 0 16px;font-size:14px;color:var(--text-soft)}
+.lxdc .dc-qa-set{margin:0 0 30px;border-top:1px solid var(--dc-hair);max-width:74ch}
+.lxdc .dc-qa{border-bottom:1px solid var(--dc-hair)}
+.lxdc .dc-qa>summary{list-style:none;cursor:pointer;position:relative;padding:15px 34px 15px 0;
+  font-size:15.5px;font-weight:600;color:var(--text);letter-spacing:-.012em;line-height:1.5}
+.lxdc .dc-qa>summary::-webkit-details-marker{display:none}
+.lxdc .dc-qa>summary:hover{color:var(--dc-ink)}
+.lxdc .dc-qa>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;
+  border-radius:4px}
+.lxdc .dc-qa>summary::after{content:"";position:absolute;right:6px;top:22px;width:8px;height:8px;
+  border-right:1.5px solid var(--text-soft);border-bottom:1.5px solid var(--text-soft);
+  transform:rotate(45deg);transform-origin:70% 70%;transition:transform .16s,border-color .16s}
+.lxdc .dc-qa[open]>summary::after{transform:rotate(-135deg);border-color:var(--accent)}
+.lxdc .dc-qa[open]>summary{color:var(--dc-ink)}
+.lxdc .dc-qa-a{padding:0 34px 18px 0}
+.lxdc .dc-qa-a p{margin:0;font-size:15.5px;line-height:1.68;color:var(--text-muted);max-width:none}
+
 /* ---------------- cards on the index ---------------- */
 .lxdc .dc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:12px;
   margin:28px 0}

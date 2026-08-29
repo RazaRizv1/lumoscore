@@ -51,6 +51,8 @@ const PAGES = [
     'The custody model, what we will never ask for, and the risks that remain.'],
   ['troubleshooting',  'Troubleshooting',     'Reference',
     'The errors people actually hit, what each one means, and how to clear it.'],
+  ['faq',              'FAQ',                 'Reference',
+    'Every question from every page on LumosCore, collected in one place.'],
 ];
 
 const TITLE_SUFFIX = ' | LumosCore Docs';
