@@ -369,7 +369,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   function mkFilter(){var t=q(".mdx-mk-filters .active,.mdx-mk-filters button.active");
     return t?((t.getAttribute("data-cat")||(t.textContent||"").trim().toLowerCase())):"all";}
   function mkQuery(){var i=q(".mdx-mk-search input");return i?String(i.value||"").trim().toLowerCase():"";}
-  var MK_PER=25, mkPage=1, mkKey="";
+  var MK_PER=50, mkPage=1, mkKey="";
   // ---- sorting -------------------------------------------------------------------------------------
   // The phone list has no column headers to click, so the control is a button in the search row that
   // opens a small sheet. Same five fields and the same rules as the desktop table, so a reader moving
@@ -574,13 +574,23 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   // Logos resolved from stellar.toml land AFTER the first render, and a late logo alone does not change
   // a row's signature, so nothing would repaint. Re-applying the variable each pass costs nothing and is
   // what the desktop layer's paintIcons does.
+  var LXMQ={};
+  // Neither the initials disc nor a third-party index can know about a logo uploaded in the admin
+  // panel. /lxapi/assetlogo is the one resolver that merges our own overrides, and it is asked only
+  // for an asset that resolved to nothing -- a row with artwork costs no request.
+  function lxMobLogo(a){ var k=a.code+"-"+a.issuer; if(LXMQ[k]!==undefined)return; LXMQ[k]=null;
+    fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(k))
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(j){ var u=j&&j.image; if(u){ a.img=u; try{ repaintIcons(); }catch(_){} } })
+      .catch(function(){}); }
   function repaintIcons(){
     var A=assets();if(!A)return;var by={};
     A.forEach(function(a){by[a.code]=a;});
     [].slice.call(document.querySelectorAll("[data-lxic]")).forEach(function(ic){
       var a=by[ic.getAttribute("data-lxic")];if(!a)return;
       var css=logoCss(a);
-      if(css&&ic.style.getPropertyValue("--lxvar")!==css)ic.style.setProperty("--lxvar",css);});
+      if(css&&ic.style.getPropertyValue("--lxvar")!==css)ic.style.setProperty("--lxvar",css);
+      if(a.code&&a.issuer&&!a.logo&&!a.img)lxMobLogo(a);});
   }
   // ---- Section order + mover tabs (mobile layout) ---------------------------------------------------
   // Trading pairs first, then the mints card, then Market Movers. The design ships them the other way
