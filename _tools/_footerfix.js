@@ -41,6 +41,11 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
     for(const k of Object.keys(json)){
       let h=json[k]; const before=h;
       if(h.indexOf('LUMOS Token')>=0) h=h.replace(RE,'$1');
+      // "Features" pointed at nothing and named nothing on the site — dropped from the Menu column.
+      // Runs AFTER the RE above, which anchors on it.
+      h=h.replace(/\s*<a[^>]*href="#"[^>]*>\s*Features\s*<\/a>/gi,'');
+      // "FAQs" now has a page. Wired here rather than left to the runtime neutralizer below.
+      h=h.replace(/(<a[^>]*)href="#"([^>]*>\s*FAQs?\s*<\/a>)/gi,'$1href="/faq"$2');
       if(h.indexOf('class="socials"')>=0) h=fixSocials(h);
       if(h.indexOf('href="#"')>=0 || h.indexOf('lx-footerlinks')>=0){
         h=h.replace(/<script id="lx-footerlinks">[\s\S]*?<\/script>/g,'');   // GLOBAL: also catches the unclosed-legacy + fixed pair as one lazy span

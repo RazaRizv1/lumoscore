@@ -367,7 +367,10 @@ const ROUTES = [
   ['/docs/curated-listing',             'lumoscore-docs-curated-listing.html'],
   ['/docs/security',                    'lumoscore-docs-security.html'],
   ['/docs/troubleshooting',             'lumoscore-docs-troubleshooting.html'],
+  ['/docs/faq',                        'lumoscore-docs-faq.html'],
   ['/docs',                            'lumoscore-docs-introduction.html'],
+  // the footer has always called it FAQs; /faq serves the same page as /docs/faq
+  ['/faq',                             'lumoscore-docs-faq.html'],
 ];
 
 // Case: fixed segments are lowercase, but an asset segment must keep its case — yUSDC and YUSDC are

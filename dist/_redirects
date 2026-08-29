@@ -40,7 +40,9 @@
 /docs/curated-listing                     /lumoscore-docs-curated-listing  200
 /docs/security                            /lumoscore-docs-security  200
 /docs/troubleshooting                     /lumoscore-docs-troubleshooting  200
+/docs/faq                                 /lumoscore-docs-faq  200
 /docs                                     /lumoscore-docs-introduction  200
+/faq                                      /lumoscore-docs-faq  200
 
 # forgive capitalised entry points
 /Trade/*                                  /trade/:splat  301
