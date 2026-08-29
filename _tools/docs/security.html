@@ -1,0 +1,77 @@
+<p>LumosCore is non-custodial. That removes a whole category of risk and leaves others in place. This
+  page is about both halves of that.</p>
+
+<h2>What the custody model removes</h2>
+
+<ul>
+  <li><strong>We hold no private keys.</strong> Yours stays in your wallet. We never see it and have
+    no mechanism to request it.</li>
+  <li><strong>We hold no customer balances.</strong> There is no deposit, no account balance and no
+    pooled treasury — so there is nothing here to be drained, frozen or misappropriated.</li>
+  <li><strong>We run no bridge.</strong> Cross-chain transport is delegated and we never take
+    possession of funds in transit. See <a href="/docs/cross-chain">Cross-chain</a>.</li>
+  <li><strong>There is no account to compromise.</strong> No email, no password, no session that an
+    attacker could take over — because none is ever created.</li>
+</ul>
+
+<h2>What remains</h2>
+
+<p>Non-custodial does not mean risk-free. It means we do not add a custodial pool of customer funds
+  to the system. These risks are real and are yours:</p>
+
+<div class="dc-tw">
+  <table>
+    <thead><tr><th>Risk</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td>Key management</td>
+        <td>You are responsible for your own keys. A lost key cannot be recovered — not by us, not by
+          anyone.</td></tr>
+      <tr><td>Transaction finality</td>
+        <td>A signed and submitted transaction cannot be reversed. Payments to the wrong address are
+          gone.</td></tr>
+      <tr><td>Protocol and contract</td>
+        <td>We route to on-chain infrastructure we did not write — network protocols, pools, transport
+          mechanisms. A defect in any of them can cause loss.</td></tr>
+      <tr><td>Transport</td>
+        <td>Between the burn and the claim, a cross-chain transfer depends on CCTP's own security.
+          Our design bounds the exposure to transfers in flight; it does not remove it.</td></tr>
+      <tr><td>Liquidity provision</td>
+        <td>Divergence loss, and the solvency of both assets in a pair. See
+          <a href="/docs/liquidity-pools">Liquidity pools</a>.</td></tr>
+      <tr><td>Asset risk</td>
+        <td>Any asset can fail, including a verified one. Verification is an identity check, not a
+          quality judgement.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>We will never ask for your keys</h2>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">No exceptions, ever</p>
+  <p>Not your seed phrase. Not your private key. Not to verify you, not to recover funds, not to fix
+    an error, not for support, not for an airdrop. Anyone asking — by email, in a chat, on social
+    media, or on a site that looks like this one — is trying to steal from you.</p>
+</div>
+
+<p>There is no situation in which giving those to anyone helps you. Support can work entirely from
+  your public address and a transaction hash, both of which are already public on the ledger.</p>
+
+<h2>Staying safe in practice</h2>
+
+<ul>
+  <li><strong>Check the domain.</strong> The real site is <code>lumoscore.com</code>. Bookmark it and
+    use the bookmark rather than search results or links from messages.</li>
+  <li><strong>Read what you sign.</strong> Your wallet shows the operations before you approve. If a
+    transaction does something you did not ask for, reject it.</li>
+  <li><strong>Check the issuer, not the ticker.</strong> Especially for an asset that arrived as a
+    claimable balance — anyone can send you one, named anything.</li>
+  <li><strong>Be suspicious of urgency.</strong> Pressure to act immediately is the common ingredient
+    in nearly every crypto theft.</li>
+</ul>
+
+<h2>Reporting something</h2>
+
+<p>If you find a vulnerability, or see a site or account impersonating LumosCore, tell us through
+  <a href="/support">Support</a>. Include enough to reproduce it. Please report a security issue
+  privately first rather than publishing it.</p>

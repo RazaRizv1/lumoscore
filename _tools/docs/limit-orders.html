@@ -1,0 +1,66 @@
+<p>A limit order sets your own price and waits. Instead of taking whatever the market offers now, you
+  place an offer on Stellar's order book and it sits there until someone trades against it, or until
+  you cancel it.</p>
+
+<h2>Placing an order</h2>
+
+<ol class="dc-steps">
+  <li>Open <a href="/trade/stellar">Trade</a>, choose the pair, and switch from a market swap to a
+    limit order.</li>
+  <li>Set the amount and the price you want. The total you will receive if it fills completely is
+    shown as you type.</li>
+  <li>Approve in your wallet. The offer is written to the ledger and is public from that
+    moment.</li>
+</ol>
+
+<p>Your open orders are listed on the same page, and can be cancelled at any time. Cancelling is
+  itself a transaction, so it needs signing and costs the network fee.</p>
+
+<h2>Limit orders are free</h2>
+
+<p>LumosCore takes <strong>no fee on a limit order</strong>, filled or not. You pay only Stellar's
+  network fee to place it, and another to cancel it.</p>
+
+<div class="dc-note">
+  <p class="dc-note-h">Why free</p>
+  <p>A resting order may never fill. Charging for one up front would mean charging for something that
+    might never happen, and charging on the fill would mean a fee landing at a moment you are not
+    present to see. Neither is defensible, so there is no fee.</p>
+</div>
+
+<h2>How filling works</h2>
+
+<p>Stellar matches orders at the protocol level. Yours can be filled by anyone trading the pair,
+  whether they came through LumosCore or not — the order book belongs to the network, not to us.</p>
+
+<p>Orders can fill <strong>partially</strong>. If someone takes half of your offer, half remains on
+  the book at the same price. Your wallet balance changes as each part fills; there is nothing to
+  claim afterwards.</p>
+
+<h2>What holds your funds while it rests</h2>
+
+<p>The assets you are selling are committed to the offer while it is open. They stay in your account
+  — nobody takes custody of them — but they are reserved against that offer and are not available to
+  spend elsewhere until it fills or you cancel.</p>
+
+<p>Each open offer also holds <span class="dc-num">0.5 XLM</span> of your account's minimum balance,
+  the same as a trustline does. Cancelling the offer releases it. See
+  <a href="/docs/trustlines">Trustlines</a> for how the reserve works.</p>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">Orders do not expire</p>
+  <p>An offer placed at a price the market never reaches will sit on the book indefinitely, holding
+    your assets and its reserve. If you have forgotten orders open, cancel them — check the open
+    orders list on the Trade page.</p>
+</div>
+
+<h2>When a limit order is the better tool</h2>
+
+<ul>
+  <li><strong>Thin pairs.</strong> On a market with little liquidity, a swap moves the price against
+    you. A limit order lets the market come to you instead.</li>
+  <li><strong>A price you actually want.</strong> Rather than watching a chart, leave the order and
+    let it fill.</li>
+  <li><strong>Providing liquidity to the book.</strong> A resting offer is what other people's swaps
+    trade against.</li>
+</ul>

@@ -1,0 +1,66 @@
+<p>Stellar will not let an account hold an asset it has not agreed to hold. That agreement is a
+  <strong>trustline</strong>: a small record on the ledger saying "this account accepts this asset
+  from this issuer". It is why a token someone sent you may not appear in your wallet, and why you
+  sometimes have to act before you can buy something.</p>
+
+<h2>Why it exists</h2>
+
+<p>Anyone can issue an asset on Stellar and send it to any address. Without trustlines, your wallet
+  would fill with unsolicited tokens from strangers — including ones designed to look like assets you
+  recognise. Requiring you to opt in first means nothing arrives in your balance list unless you put
+  it there.</p>
+
+<p>It also makes the issuer explicit. A trustline is to <em>an asset from a specific issuing
+  account</em>, not to a ticker. This is the mechanism that stops a copycat USDC from landing in your
+  wallet alongside the real one.</p>
+
+<h2>Adding one</h2>
+
+<ol class="dc-steps">
+  <li>Open <a href="/wallet">Wallet</a> and choose <strong>Trustlines</strong>.</li>
+  <li>Search for the asset. Check the issuer, not just the ticker — see
+    <a href="/docs/verification">Asset verification</a>.</li>
+  <li>Approve in your wallet. The asset now appears in your balances at zero until you receive
+    some.</li>
+</ol>
+
+<p>LumosCore adds trustlines for you as part of a swap when you buy an asset you do not yet hold, so
+  most of the time you will not need to do this by hand.</p>
+
+<h2>The reserve</h2>
+
+<p>Each trustline holds <span class="dc-num">0.5 XLM</span> of your account's minimum balance. It is
+  not a fee and it is not spent — the network reserves it while the trustline exists, and releases it
+  the moment you remove the trustline.</p>
+
+<p>An account's minimum balance is <code>(2 + number of subentries) × 0.5 XLM</code>, where
+  subentries are your trustlines, open offers and pool positions. XLM at or below that minimum cannot
+  be spent, which is the usual explanation when a transaction fails despite an apparently healthy
+  balance.</p>
+
+<div class="dc-note">
+  <p class="dc-note-h">"I have enough of both assets and it still failed"</p>
+  <p>Almost always the XLM reserve. Creating a pool adds subentries, and each needs its 0.5 XLM
+    available on top of what you are depositing. Free some XLM up — or remove a trustline you no
+    longer use — and try again.</p>
+</div>
+
+<h2>Removing one</h2>
+
+<p>A trustline can only be removed when its balance is exactly zero. Send or swap the remainder
+  first, then remove the trustline, and the 0.5 XLM it was holding is released back into your
+  spendable balance.</p>
+
+<p>Clearing out trustlines you no longer use is the simplest way to recover XLM from an account that
+  has accumulated a lot of them.</p>
+
+<h2>Claimable balances</h2>
+
+<p>If somebody sends you an asset you have no trustline for, the payment cannot be credited
+  directly. Stellar parks it as a <strong>claimable balance</strong> — it is yours, held by the
+  network, waiting.</p>
+
+<p>Claimable balances appear on your <a href="/wallet">Wallet</a> page. To accept one, add the
+  trustline for that asset and then claim it. Check the issuer before you do: anyone can create a
+  claimable balance addressed to you, including with an asset named to impersonate a real one, and
+  accepting it is what puts it in your wallet.</p>

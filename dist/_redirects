@@ -24,6 +24,23 @@
 /terms                                    /lumoscore-terms  200
 /support                                  /lumoscore-support  200
 /whitepaper                               /lumoscore-whitepaper  200
+/docs/introduction                        /lumoscore-docs-introduction  200
+/docs/connect-a-wallet                    /lumoscore-docs-connect-a-wallet  200
+/docs/fees                                /lumoscore-docs-fees  200
+/docs/swaps                               /lumoscore-docs-swaps  200
+/docs/limit-orders                        /lumoscore-docs-limit-orders  200
+/docs/liquidity-pools                     /lumoscore-docs-liquidity-pools  200
+/docs/cross-chain                         /lumoscore-docs-cross-chain  200
+/docs/wallet                              /lumoscore-docs-wallet  200
+/docs/trustlines                          /lumoscore-docs-trustlines  200
+/docs/rewards                             /lumoscore-docs-rewards  200
+/docs/launch-a-token                      /lumoscore-docs-launch-a-token  200
+/docs/asset-metadata                      /lumoscore-docs-asset-metadata  200
+/docs/verification                        /lumoscore-docs-verification  200
+/docs/curated-listing                     /lumoscore-docs-curated-listing  200
+/docs/security                            /lumoscore-docs-security  200
+/docs/troubleshooting                     /lumoscore-docs-troubleshooting  200
+/docs                                     /lumoscore-docs-introduction  200
 
 # forgive capitalised entry points
 /Trade/*                                  /trade/:splat  301

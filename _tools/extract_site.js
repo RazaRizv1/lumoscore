@@ -350,6 +350,24 @@ const ROUTES = [
   ['/terms',                           'lumoscore-terms.html'],
   ['/support',                         'lumoscore-support.html'],
   ['/whitepaper',                      'lumoscore-whitepaper.html'],
+  // docs: each slug before the bare /docs, which serves the introduction
+  ['/docs/introduction',                'lumoscore-docs-introduction.html'],
+  ['/docs/connect-a-wallet',            'lumoscore-docs-connect-a-wallet.html'],
+  ['/docs/fees',                        'lumoscore-docs-fees.html'],
+  ['/docs/swaps',                       'lumoscore-docs-swaps.html'],
+  ['/docs/limit-orders',                'lumoscore-docs-limit-orders.html'],
+  ['/docs/liquidity-pools',             'lumoscore-docs-liquidity-pools.html'],
+  ['/docs/cross-chain',                 'lumoscore-docs-cross-chain.html'],
+  ['/docs/wallet',                      'lumoscore-docs-wallet.html'],
+  ['/docs/trustlines',                  'lumoscore-docs-trustlines.html'],
+  ['/docs/rewards',                     'lumoscore-docs-rewards.html'],
+  ['/docs/launch-a-token',              'lumoscore-docs-launch-a-token.html'],
+  ['/docs/asset-metadata',              'lumoscore-docs-asset-metadata.html'],
+  ['/docs/verification',                'lumoscore-docs-verification.html'],
+  ['/docs/curated-listing',             'lumoscore-docs-curated-listing.html'],
+  ['/docs/security',                    'lumoscore-docs-security.html'],
+  ['/docs/troubleshooting',             'lumoscore-docs-troubleshooting.html'],
+  ['/docs',                            'lumoscore-docs-introduction.html'],
 ];
 
 // Case: fixed segments are lowercase, but an asset segment must keep its case — yUSDC and YUSDC are

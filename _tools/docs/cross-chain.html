@@ -1,0 +1,76 @@
+<p>Cross-chain transfers move <strong>USDC</strong> between Stellar and eight other networks.
+  LumosCore does not run a bridge and never holds your funds in transit — the transfer is carried by
+  Circle's Cross-Chain Transfer Protocol (CCTP), which burns USDC on the source chain and mints
+  native USDC on the destination.</p>
+
+<h2>Supported networks</h2>
+
+<div class="dc-tw">
+  <table>
+    <thead><tr><th>From</th><th>To</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Stellar</td>
+        <td>Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea, World Chain — and back
+          again in either direction.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p>USDC is the only asset CCTP carries. That is a real limit and we would rather state it than work
+  around it: moving one asset in a way that cannot be drained is worth more than moving every asset
+  through something that repeatedly has been.</p>
+
+<h2>Making a transfer</h2>
+
+<ol class="dc-steps">
+  <li>Open <a href="/bridge">Cross-chain</a>, choose the source and destination networks, and enter
+    an amount of USDC.</li>
+  <li>Approve the burn on the source chain. Your USDC is destroyed there — this is the step that
+    commits the transfer.</li>
+  <li>Wait for attestation. Circle observes the burn and issues a signed attestation. This normally
+    takes a few minutes and is not something either of us can speed up.</li>
+  <li>Claim on the destination. Submit the attestation to mint native USDC into your address on the
+    destination chain, paying that chain's gas.</li>
+</ol>
+
+<div class="dc-note">
+  <p class="dc-note-h">You claim it yourself</p>
+  <p>The final mint is a transaction on the destination chain and you pay its gas. On Ethereum
+    mainnet at a busy moment that can cost more than the transfer fee — check gas before you start,
+    and consider a cheaper destination such as Base or Arbitrum if you have the choice.</p>
+</div>
+
+<h2>If you close the tab before claiming</h2>
+
+<p>The burn is on-chain and permanent; the funds are not lost. Reopen
+  <a href="/bridge">Cross-chain</a> with the same wallet connected and the pending transfer is listed
+  so you can complete the claim. A burned but unclaimed transfer stays claimable — it does not
+  expire.</p>
+
+<p>Keep the burn transaction hash. There is a copy button on the transfer screen for exactly this
+  reason, and with it we can trace any transfer that appears stuck.</p>
+
+<h2>What it costs</h2>
+
+<ul>
+  <li><strong>LumosCore:</strong> <span class="dc-num">0.2%</span> of the amount transferred, or
+    <span class="dc-num">0.1%</span> on the LUMOS tier.</li>
+  <li><strong>Circle:</strong> nothing. CCTP itself charges no fee for the transfer.</li>
+  <li><strong>The networks:</strong> the source chain's fee to burn, and the destination chain's gas
+    to claim. Both paid to those networks in their own gas token.</li>
+</ul>
+
+<h2>What can still go wrong</h2>
+
+<p>Delegating the transport does not remove transport risk. Between the burn and the claim, the
+  transfer depends on CCTP's own security and operation. LumosCore's design bounds the exposure — we
+  hold no pooled balance, so a failure is limited to transfers actually in flight — but it does not
+  eliminate it. See <a href="/docs/security">Security</a>.</p>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">Check the destination address</p>
+  <p>Sending to an address you do not control, or to a contract that cannot receive USDC, is not
+    reversible by anyone. Confirm the destination before approving the burn.</p>
+</div>

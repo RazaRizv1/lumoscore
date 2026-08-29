@@ -1,0 +1,64 @@
+<p>The <a href="/wallet">Wallet</a> page reads your Stellar account and shows what is in it. It holds
+  nothing itself: every figure is read from the ledger, and every action is a transaction your own
+  wallet signs.</p>
+
+<h2>What it shows</h2>
+
+<ul>
+  <li><strong>Balances</strong> for XLM and every asset you hold a trustline to, with current
+    value.</li>
+  <li><strong>Portfolio value</strong> across those holdings.</li>
+  <li><strong>Activity</strong> — payments, trades, trustline changes and pool operations, read from
+    the ledger rather than from any record of ours.</li>
+  <li><strong>Trustlines</strong> you hold, and the controls to add or remove them.</li>
+  <li><strong>Claimable balances</strong> waiting for you to accept.</li>
+</ul>
+
+<p>Because it is all read from the chain, the same information is visible on any Stellar explorer.
+  Nothing here is private to LumosCore, and nothing is lost if you stop using us.</p>
+
+<h2>Sending</h2>
+
+<ol class="dc-steps">
+  <li>Choose <strong>Send</strong>, pick the asset and enter the amount.</li>
+  <li>Enter the destination address. Check it character by character — Stellar payments are final
+    and there is nobody who can reverse one.</li>
+  <li>Approve in your wallet.</li>
+</ol>
+
+<div class="dc-note">
+  <p class="dc-note-h">The recipient may need a trustline</p>
+  <p>If they do not hold a trustline for the asset you are sending, the payment cannot be delivered
+    directly. It becomes a claimable balance they must accept — see
+    <a href="/docs/trustlines">Trustlines</a>.</p>
+</div>
+
+<h2>Receiving</h2>
+
+<p><strong>Receive</strong> shows your public address and a QR code. Sharing it is safe: a Stellar
+  address is public information, and knowing it does not let anyone spend from your account.</p>
+
+<p>To receive an asset you do not yet hold, add its trustline first — otherwise the sender's payment
+  will arrive as a claimable balance instead of a direct credit.</p>
+
+<h2>Swapping from the wallet</h2>
+
+<p>The <strong>Swap</strong> action opens the same trade flow as the
+  <a href="/trade/stellar">Trade</a> page, prefilled with the asset you selected. The routing, fees
+  and slippage behaviour are identical — see <a href="/docs/swaps">Swaps</a>.</p>
+
+<h2>Keeping XLM for fees</h2>
+
+<p>Every transaction costs a small XLM network fee, and your account must keep a minimum balance that
+  grows with each trustline, open offer and pool position. If you spend your XLM down to the
+  minimum, further transactions fail — including the ones that would free the reserve.</p>
+
+<p>Leave yourself a working balance of XLM. A few XLM is enough for a very large number of
+  transactions.</p>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">There is no recovery</p>
+  <p>We cannot reverse a payment, restore a lost key, or freeze an account. That is the direct
+    consequence of never having custody — and it applies to us as much as to anyone else who might
+    try.</p>
+</div>

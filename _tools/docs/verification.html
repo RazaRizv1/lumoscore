@@ -1,0 +1,67 @@
+<p>A ticker on Stellar is not an identity. Anyone can issue an asset called <code>USDC</code>, and
+  several hundred accounts have. What makes an asset unique is the account that issued it — and
+  almost nobody reads a 56-character address before trading.</p>
+
+<p>Verification closes that gap. It links an asset to a domain its issuer controls, and marks the
+  ones where the link holds.</p>
+
+<h2>How the check works</h2>
+
+<ol class="dc-steps">
+  <li>The issuing account publishes a home domain on the ledger.</li>
+  <li>That domain publishes a <a href="/docs/asset-metadata">stellar.toml</a> naming the asset code
+    and the exact issuing account.</li>
+  <li>LumosCore checks that the two references point at each other. If they do, the asset carries the
+    mark.</li>
+</ol>
+
+<p>Both directions are required. A home domain proves nothing on its own — anyone can set theirs to
+  any domain, including yours. A <code>stellar.toml</code> proves nothing on its own either — anyone
+  can write a file claiming any asset. Only the pair, agreeing, means anything.</p>
+
+<h2>What the mark means</h2>
+
+<p><strong>Identity, not quality.</strong> It says this asset is issued by the account that controls
+  that domain. That is all it says.</p>
+
+<p>It is <strong>not</strong>:</p>
+
+<ul>
+  <li>a recommendation, or any opinion on whether the asset is a good investment;</li>
+  <li>a guarantee of value, backing, redemption or solvency;</li>
+  <li>an endorsement of the issuer, their conduct or their competence;</li>
+  <li>a statement that the project will still exist next month.</li>
+</ul>
+
+<p>A verified asset can lose all its value. Verification tells you that you are trading the thing you
+  think you are trading — which is the specific problem a shared ticker creates, and the only problem
+  this mark solves.</p>
+
+<div class="dc-note">
+  <p class="dc-note-h">It cannot be bought</p>
+  <p>There is no fee for verification and no way to pay for one. A handshake resolving to a domain
+    <em>we</em> control would only prove a token was minted through us, so it does not count —
+    <a href="/docs/launch-a-token">issuing on the Launchpad</a> earns no mark on its own.</p>
+</div>
+
+<h2>Getting your asset verified</h2>
+
+<ol class="dc-steps">
+  <li>Publish <code>stellar.toml</code> at <code>/.well-known/stellar.toml</code> on your domain,
+    over HTTPS, readable cross-origin.</li>
+  <li>List your asset in it with the correct <code>code</code> and <code>issuer</code>.</li>
+  <li>Set the issuing account's home domain to that same domain.</li>
+  <li>Wait for the next read. Nothing needs submitting to us — the check is automatic, and results
+    are cached for a period.</li>
+</ol>
+
+<p>If the mark does not appear, the cause is almost always one of these: the file is not reachable
+  from another origin, the domain redirects to a different host than the one on the account, or the
+  <code>issuer</code> in the file does not exactly match the account that issued the asset.</p>
+
+<h2>Verification and curation are different things</h2>
+
+<p>Verification is automatic and free, and answers "is this asset who it says it is?".
+  <a href="/docs/curated-listing">Curation</a> is a paid, hand-reviewed listing that puts an asset in
+  a selected set. An asset can be verified without being curated; a curated asset is checked more
+  closely, but curation is still not investment advice.</p>
