@@ -211,7 +211,7 @@ html[data-theme="light"] .lxwp{
 
 /* ---------------- responsive ---------------- */
 @media(max-width:1120px){
-  .lxwp .wp-frame{grid-template-columns:1fr;gap:24px;padding:48px 0}
+  .lxwp .wp-frame{grid-template-columns:minmax(0,1fr);gap:24px;padding:48px 0}
   .lxwp .wp-rail{position:static;display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 22px;
     align-items:center}
   .lxwp .wp-ghost{font-size:38px;margin:0}
@@ -225,6 +225,6 @@ html[data-theme="light"] .lxwp{
 }
 @media(max-width:640px){
   .lxwp{font-size:17px}
-  .lxwp .wp-m4,.lxwp .wp-m3{grid-template-columns:1fr}
+  .lxwp .wp-m4,.lxwp .wp-m3{grid-template-columns:minmax(0,1fr)}
   .lxwp .wp-frame{padding:38px 0}
 }
