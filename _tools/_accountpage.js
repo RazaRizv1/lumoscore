@@ -488,9 +488,19 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     var _d=dispDom(c,i,DOM[key(c,i)]||"");
     var t=shortG(i);
     if(el.textContent!==t)el.textContent=t; }); }
+  var LXAQ={};
+  // brand() is a hardcoded map and IMG a third-party index, so neither can ever hold a logo an admin
+  // uploaded here -- which is why BLND showed its mark on Trade and none in this list.
+  function lxAccLogo(c,i){ var k=key(c,i); if(LXAQ[k]!==undefined)return; LXAQ[k]=null;
+    fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(c+"-"+i))
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(j){ var u=j&&j.image; if(u){ IMG[k]=u; try{ paintLogos(); }catch(_){} } })
+      .catch(function(){}); }
   function paintLogos(){ qa(".acc-ico[data-lxc]").forEach(function(el){
     var c=el.getAttribute("data-lxc"), i=el.getAttribute("data-lxi")||"";
-    el.style.backgroundImage="url("+logoOf(c,i)+")"; }); }
+    el.style.backgroundImage="url("+logoOf(c,i)+")";
+    // Guarded on IMG being filled, so the repaint above cannot loop back into another request.
+    if(c&&c!=="XLM"&&i&&!brand(c,i)&&!IMG[key(c,i)])lxAccLogo(c,i); }); }
   // Same two-source chain the pools tab uses: the issuer-scoped index, then the issuer's own toml.
   function tomlField(block,k){ var lines=block.split(String.fromCharCode(10));
     for(var i=0;i<lines.length;i++){ var ln=lines[i].trim(), eq=ln.indexOf("=");
