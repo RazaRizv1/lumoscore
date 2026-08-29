@@ -229,7 +229,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
       '<div class="sp-sub">Balances, pools and activity</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini">'+short(addr)+'</div></div></a>';
   }
-  function lxSeaLogos(root){ var seen=(window.__lxSeaLogo=window.__lxSeaLogo||{}); [].slice.call((root||document).querySelectorAll("img[data-lxneedlogo]")).forEach(function(im){   var id=im.getAttribute("data-lxneedlogo"); if(!id)return;   im.removeAttribute("data-lxneedlogo");   if(seen[id]===null)return;   if(seen[id]){ im.src=seen[id]; return; }   fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(id))     .then(function(r){ return r.ok?r.json():null; })     .then(function(j){ var u=j&&j.image; seen[id]=u||null; if(u)im.src=u; })     .catch(function(){ seen[id]=null; }); }); } function lxMergeV(VFDmap,after){ window.__lxCuratedV=window.__lxCuratedV||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};}); window.__lxCuratedV.then(function(vf){ var added=0;   Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;     var i=id.lastIndexOf("-"); if(i<0)return;     var k=id.slice(0,i)+"|"+id.slice(i+1);     if(VFDmap[k]===undefined){ VFDmap[k]=r.d||""; added++; } });   if(added&&after){ try{ after(); }catch(_){} } }); } function lxSeaRedraw(){ var i=document.getElementById("spSearchInput"); if(i&&i.value){ i.dispatchEvent(new Event("input",{bubbles:true})); } } lxMergeV(VFD,lxSeaRedraw); function lxSeaCount(list){ if(!list||list.id!=="spAssetList")return; var c=document.getElementById("spAssetCount"); if(!c)return; c.textContent="("+list.querySelectorAll(".sp-row").length+")"; } function paint(list,html){ if(list.innerHTML!==html){ list.innerHTML=html; try{ lxSeaLogos(list); }catch(_){} try{ lxSeaCount(list); }catch(_){} } }
+  function lxSeaLogos(root){ var seen=(window.__lxSeaLogo=window.__lxSeaLogo||{}); [].slice.call((root||document).querySelectorAll("img[data-lxneedlogo]")).forEach(function(im){   var id=im.getAttribute("data-lxneedlogo"); if(!id)return;   im.removeAttribute("data-lxneedlogo");   if(seen[id]===null)return;   if(seen[id]){ im.src=seen[id]; return; }   fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(id))     .then(function(r){ return r.ok?r.json():null; })     .then(function(j){ var u=j&&j.image; seen[id]=u||null; if(u)im.src=u; })     .catch(function(){ seen[id]=null; }); }); } function lxMergeV(VFDmap,after){ window.__lxCuratedV=window.__lxCuratedV||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};}); window.__lxCuratedV.then(function(vf){ var added=0;   Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;     var i=id.lastIndexOf("-"); if(i<0)return;     var k=id.slice(0,i)+"|"+id.slice(i+1);     if(VFDmap[k]===undefined){ VFDmap[k]=r.d||""; added++; } });   if(added&&after){ try{ after(); }catch(_){} } }); } function lxSeaRedraw(){ var i=document.getElementById("spSearchInput"); if(i){ i.dispatchEvent(new Event("input",{bubbles:true})); } } lxMergeV(VFD,lxSeaRedraw); function lxSeaCount(list){ if(!list||list.id!=="spAssetList")return; var c=document.getElementById("spAssetCount"); if(!c)return; c.textContent="("+list.querySelectorAll(".sp-row").length+")"; } function paint(list,html){ if(list.innerHTML!==html){ list.innerHTML=html; try{ lxSeaLogos(list); }catch(_){} try{ lxSeaCount(list); }catch(_){} } }
 
   // ---- RECENT SEARCHES ------------------------------------------------------------------------------
   // ONE list of 5, shared by assets, pools and wallets -- not 5 of each. All three render as the same
@@ -315,6 +315,23 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     return { href:a.getAttribute("href")||"", name:name, dom:txt(".sp-domain"), sub:txt(".sp-sub"),
       right:txt(".sp-addr-mini"), img:img?(img.getAttribute("src")||""):"", pis:pis };
   }
+  // A live row carries the tick as a <span class="lx-seavfd"><svg></span>, which holds no text --
+  // and recFromRow captures the row with textContent, so the tick was never part of what got saved.
+  // Re-derive it from the href, the one field every stored entry has: that fixes entries saved
+  // before this change, and an asset removed from the curated list stops being ticked here the same
+  // moment it stops being ticked everywhere else, which a stored flag could not do.
+  function recVKey(h){
+    h=String(h||""); var m="/trade/stellar/", i=h.indexOf(m); if(i<0)return "";
+    var a=h.slice(i+m.length), c=a.indexOf("?"); if(c>=0)a=a.slice(0,c);
+    c=a.indexOf("#"); if(c>=0)a=a.slice(0,c);
+    while(a.length&&a.charAt(a.length-1)==="/")a=a.slice(0,-1);
+    try{ a=decodeURIComponent(a); }catch(_e){}
+    var d=a.lastIndexOf("-"); if(d<0)return "";
+    return a.slice(0,d)+"|"+a.slice(d+1);
+  }
+  // !==undefined, not truthiness: the map's values are DOMAINS, and an asset we vouch for with no
+  // domain stores "" -- testing the value would silently drop exactly those.
+  function recTick(h){ var k=recVKey(h); return (k&&VFD[k]!==undefined)?VTICK:""; }
   function recRow(t){
     var ico = (t.pis&&t.pis.length)
       // esc() turns the quotes into &quot;, which the browser decodes back to url("...") inside the style
@@ -324,7 +341,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       : '<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img src="'+esc(t.img||avatarUri(t.name||"?"))
         +'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
     return '<a class="sp-row sp-row--asset lx-searow lx-recrow" data-chain="stellar" href="'+esc(t.href)+'">'+ico+
-      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||"Result")
+      '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||"Result")+recTick(t.href)
         +(t.dom?' <span class="sp-domain">'+esc(t.dom)+'</span>':'')+'</div>'+
       '<div class="sp-sub">'+esc(t.sub)+'</div></div>'+
       (t.right?'<div class="sp-right"><div class="sp-addr-mini">'+esc(t.right)+'</div></div>':'')+'</a>';

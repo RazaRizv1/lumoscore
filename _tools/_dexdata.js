@@ -495,7 +495,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // figure -- the desktop table was converted here and the mobile one was not, so the same asset read
   // -10.26% on one and its true dollar move on the other. One implementation, both renderers.
   try{ window.__lxChgU=chgU; }catch(_){}
-  // #19: the reader chooses the denomination. Dollars stay the default -- that is the honest reading of
+  // #19: the reader chooses the denomination. XLM is the default -- this is a Stellar pair list and the pair move is the reading
   // "is this up or down" for anyone not already thinking in XLM -- but a trader pricing against XLM wants
   // the raw pair move, and until now the page simply asserted one of the two.
   //
@@ -503,7 +503,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // reopening on a desktop shows the same thing rather than two pages disagreeing about the same asset.
   function denom(){ try{ if(window.__lxDenom)return window.__lxDenom;
     var v=localStorage.getItem("lumos.dexDenom"); if(v==="xlm"||v==="usd"){window.__lxDenom=v;return v;} }catch(_){}
-    return "usd"; }
+    return "xlm"; }
   function setDenom(v){ window.__lxDenom=v; try{ localStorage.setItem("lumos.dexDenom",v); }catch(_){}
     try{ window.dispatchEvent(new CustomEvent("lx-denom",{detail:v})); }catch(_){} }
   // XLM is the raw pair move Horizon reports; USD folds in what XLM itself did.

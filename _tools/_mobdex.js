@@ -218,7 +218,7 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   // window before that script has run, and it reads the same stored key so the two cannot disagree.
   function denom(){ try{ if(window.__lxDenom)return window.__lxDenom;
     var v=localStorage.getItem("lumos.dexDenom"); if(v==="xlm"||v==="usd")return v; }catch(_){}
-    return "usd"; }
+    return "xlm"; }
   // XLM/USD from the shared cache -- the same key and the same 6h freshness window cu() uses below, so
   // the two cannot disagree about the rate within one render.
   function xu(){

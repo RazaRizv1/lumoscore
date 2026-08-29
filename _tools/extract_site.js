@@ -93,7 +93,20 @@ function runtime(validArray){
     + 'if(wrapped||tries>40)clearInterval(iv);},50);'
     + '})();</scr' + 'ipt>'
     // light-theme was missing --surface-3 (elevated surface), leaving the account-widget wallet chip dark in light mode
-    + '<style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style>';
+    + '<style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style>'
+    // The site tooltip renders ABOVE its trigger (bottom:calc(100% + 8px)). #themeToggle sits in the
+    // header, so above is off the top of the viewport and all the reader sees is the arrow. The design
+    // already ships a below variant as [data-tooltip-pos="below"], but setting that attribute means
+    // editing the toggle's markup in every container; one rule here reaches all 30 pages that have it.
+    // The arrow flips with it -- border-top drew it pointing down at a tooltip now underneath.
+    + '<style id="lx-tiptheme">'
+    + '#themeToggle[data-tooltip]::before{bottom:auto;top:calc(100% + 8px);transform:translateX(-50%) translateY(-2px)}'
+    + '#themeToggle[data-tooltip]::after{bottom:auto;top:calc(100% + 2px);transform:translateX(-50%) translateY(-2px);'
+    + 'border-top:0;border-bottom:5px solid var(--text)}'
+    + '#themeToggle[data-tooltip]:hover::before,#themeToggle[data-tooltip]:hover::after,'
+    + '#themeToggle[data-tooltip]:focus-visible::before,#themeToggle[data-tooltip]:focus-visible::after'
+    + '{transform:translateX(-50%) translateY(0)}'
+    + '</style>';
 }
 
 // Clean URLs put pages at depth (/trade/stellar/<ASSET>), where a relative "assets/x.png" resolves to
