@@ -10569,7 +10569,13 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // N3: holders is NOT the trustline count -- see the note in the transform. Null until the record lands.
   var holdersFunded=null;
   var seUsd=0;                                               // stellar.expert USD price — real fallback for assets with no XLM orderbook (e.g. PYUSD)
-  var chg7d=null;                                            // 7d change from stellar.expert price7d (for the performance grid)
+  // chg7d used to be one variable fed by two sources in two different units -- stellar.expert's
+  // price7d is USD, Horizon's back(7) is XLM -- so the 7d cell changed denomination depending on
+  // which lookup answered last. Kept apart, each is only ever read in the unit it was measured in.
+  var chg7dX=null;                                           // 7d from Horizon candles, in XLM
+  var chg7dU=null;                                           // 7d from stellar.expert price7d, in USD
+  // XLM's own move in dollars over each grid window, used to convert the XLM-measured cells.
+  var xu1h=null, xu7d=null, xu1m=null, xu3m=null, xu6m=null;
   var chg1h=null, chg1m=null, chg3m=null, chg6m=null;        // the rest of the performance grid, computed from real candles
   var natMcap=0, natVol=0;                                   // XLM native: real market cap + 24h volume (USD, CoinGecko)
   // #5: is this address flagged by stellar.expert? One request per address, cached for the session --
@@ -11074,6 +11080,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // have no real data for get an honest "—" instead of an invented percentage.
   // Mobile names these .mdxa-perf-grid/.mdxa-perf-cell, so this returned on its first line there and the
   // baked mock survived — a dollar stablecoin reading "+47.62%" over 6 months. Same numbers, both layouts.
+  // A window measured against XLM becomes a dollar figure by compounding it with XLM's own dollar
+  // move over the same window. Null when either side is missing: the cell dashes rather than print a
+  // number in the wrong unit, which is the whole failure being fixed here.
+  function perfUsd(x,xu){ return (x==null||xu==null)?null:((1+x/100)*(1+xu/100)-1)*100; }
+  function perfPick(x,xu){ return (cDenom()==="xlm")?x:perfUsd(x,xu); }
   function applyPerf(){
     var g=q(".dxa-perf-grid,.mdxa-perf-grid"); if(!g)return;
     var TFS=["1h","24h","7d","1m","3m","6m"];
@@ -11091,8 +11102,13 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       // the other five cells were all in XLM. On FRED that printed the pill at +1.30% and this cell at
       // -0.38% in red -- one grid contradicting itself, and the reason the graph looked like it told a
       // different story. This is the exact expression the pill uses, so the two cannot disagree again.
-      var v=null; if(key==="1h")v=chg1h; else if(key==="24h")v=((cDenom()==="xlm")?((chg24X!=null)?chg24X:chg24):chg24); else if(key==="7d")v=chg7d;
-      else if(key==="1m")v=chg1m; else if(key==="3m")v=chg3m; else if(key==="6m")v=chg6m;
+      var v=null; if(key==="1h")v=perfPick(chg1h,xu1h);
+      else if(key==="24h")v=((cDenom()==="xlm")?((chg24X!=null)?chg24X:chg24):chg24);
+      // 7d is the one window with a directly measured dollar figure, so in $ it is preferred over a
+      // conversion and the conversion is only the fallback.
+      else if(key==="7d")v=(cDenom()==="xlm")?chg7dX:((chg7dU!=null)?chg7dU:perfUsd(chg7dX,xu7d));
+      else if(key==="1m")v=perfPick(chg1m,xu1m); else if(key==="3m")v=perfPick(chg3m,xu3m);
+      else if(key==="6m")v=perfPick(chg6m,xu6m);
       // NEVER leave the bare "dxa-perf-cell" class: the logo-painter targets exactly that (cells with an
       // up/down modifier are skipped) — dashed cells carry an inert "lx-nd" modifier to stay off its radar.
       // Rewriting className wholesale would strip the layout's own class — writing "dxa-perf-cell up" onto
@@ -13684,7 +13700,37 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       chg1m=back(30); chg3m=back(90); chg6m=back(180);
       // 7d came only from stellar.expert's price7d; when that lookup misses, the cell dashed even though
       // Horizon had the candles all along. Same source as the others as a fallback.
-      if(chg7d==null)chg7d=back(7);
+      chg7dX=back(7);
+      applyAll(); }).catch(function(){});
+    // The perf grid is denominated by the same toggle as the chart, but 1h/7d/1m/3m/6m are measured
+    // against XLM, so a dollar reading needs XLM's own move over each of those windows. XLM/USD is
+    // not a Stellar pair, but USDC/XLM is: Circle's USDC priced in XLM, whose close is XLM-per-USDC,
+    // so a dollar per XLM is 1/close and a window's move inverts to best/latest-1. Same cached
+    // /lxapi/candles endpoint as everything else here, and the URL is identical on every asset page,
+    // so it is one of the warmest objects at the edge rather than per-asset traffic.
+    var XREF="USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";
+    function jRef(res,limit){
+      var direct=H+"/trade_aggregations?base_asset_type=credit_alphanum4&base_asset_code=USDC"
+        +"&base_asset_issuer="+XREF.slice(5)+"&counter_asset_type=native&resolution="+res
+        +"&order=desc&limit="+limit;
+      return fetch("/lxapi/candles?a="+encodeURIComponent(XREF)+"&res="+res+"&order=desc&limit="+limit)
+        .then(function(r){ if(!r.ok)throw new Error("HTTP"+r.status); return r.json(); })
+        .then(function(d){ if(d&&d.error)throw new Error(String(d.error)); return d; })
+        .catch(function(){ return j(direct); });
+    }
+    // 1h, with the same adjacency rule the asset's own hourly pair uses -- an XLM move measured over
+    // three hours would corrupt the conversion exactly the way it corrupted the raw figure.
+    jRef(3600000,2).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
+      var g=(r[0]&&r[1])?(+r[0].timestamp-+r[1].timestamp):0;
+      if(r[0]&&r[1]&&+r[0].close>0&&+r[1].close>0&&g<=5400000)xu1h=((+r[1].close/+r[0].close)-1)*100;
+      applyAll(); }).catch(function(){});
+    jRef(86400000,200).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
+      if(!r.length)return; var latest=+r[0].close; if(!(latest>0))return; var now=Date.now();
+      function xback(days){ var target=now-days*86400000, best=null, bestDt=Infinity;
+        for(var i=0;i<r.length;i++){ var ts=+r[i].timestamp, dt=Math.abs(ts-target);
+          if(dt<bestDt&&dt<=days*86400000*0.25&&+r[i].close>0){ bestDt=dt; best=+r[i].close; } }
+        return (best>0)?((best/latest)-1)*100:null; }
+      xu7d=xback(7); xu1m=xback(30); xu3m=xback(90); xu6m=xback(180);
       applyAll(); }).catch(function(){});
     // supply + holder (trustline) count
     j(H+"/assets?asset_code="+CODE+"&asset_issuer="+ISSUER).then(function(d){ var rec=(d&&d._embedded&&d._embedded.records&&d._embedded.records[0])||null; if(!rec)return;
@@ -13790,7 +13836,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var p7=mx.price7d;
       if(p7&&p7.length>=2){ var a=+p7[p7.length-2][1], b=+p7[p7.length-1][1];
         if(a>0&&b>0){ chgSe=(b/a-1)*100; recomputeChg(); }
-        var f=+p7[0][1]; if(f>0&&b>0)chg7d=(b/f-1)*100; }
+        var f=+p7[0][1]; if(f>0&&b>0)chg7dU=(b/f-1)*100; }
       guardApply();
     }).catch(function(){});
   }
@@ -13802,7 +13848,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // the toml home domain (-> website link when the Horizon issuer fetch fails or has no home_domain).
       if(mx){ if(+mx.price>0)seUsd=+mx.price;
         var p7=mx.price7d; if(p7&&p7.length>=2){ var _a=+p7[p7.length-2][1],_b=+p7[p7.length-1][1]; if(_a>0&&_b>0){ chgSe=(_b/_a-1)*100; recomputeChg(); }
-          var _f=+p7[0][1]; if(_f>0&&_b>0)chg7d=(_b/_f-1)*100; }
+          var _f=+p7[0][1]; if(_f>0&&_b>0)chg7dU=(_b/_f-1)*100; }
         var dm=(mx.domain||"").trim(); if(dm&&homeDomain==null)homeDomain=dm; }
       // Harvest only. This used to paint the header directly, which is what put stellar.expert's icon on
       // screen a beat before the issuer's own toml image replaced it. applyHeader owns the paint now and
