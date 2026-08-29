@@ -514,7 +514,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   function pxPair(px,pu,fmtUsd){
     if(!(px>0))return "\u2014";
     if(denom()==="usd"&&pu>0)return fmtUsd(pu)+'<span class="sub">'+fmtPrice(px)+' XLM</span>';
-    return fmtPrice(px)+' XLM<span class="sub">'+(pu>0?fmtUsd(pu):"\u2014")+'</span>';
+    return fmtPrice(px)+'<span class="sub">'+(pu>0?fmtUsd(pu):"\u2014")+'</span>';
   }
   try{ window.__lxDenomGet=denom; window.__lxDenomSet=setDenom; window.__lxChgShown=chgShown; }catch(_){}
   var byCode={}; ASSETS.forEach(function(a){ byCode[a.code]=a; byId[a.code+"|"+a.issuer]=a; a.px=0; a.chg=null; a.vol=null; a.high=null; a.low=null;
@@ -1591,7 +1591,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       setHTML(q(".dex-mk-vol",tr),(a.vol!=null?fmtAmt(a.vol)+" XLM":"\\u2014")+'<span class="sub">'+(vu!=null?lcm(vu):"")+'</span>');
       setTxt(q(".dex-mk-trades",tr),a.trades!=null?num(a.trades):"\\u2014");
       setHTML(q(".dex-mk-tvl",tr),a.tvlUsd!=null?lcm(a.tvlUsd):"\\u2014");
-      setTxt(q(".v-h",tr),fmtPrice(hi)+" XLM"); setTxt(q(".v-l",tr),fmtPrice(lo)+" XLM");
+      setTxt(q(".v-h",tr),fmtPrice(hi)); setTxt(q(".v-l",tr),fmtPrice(lo));
       fillSpark(tr,a.spark,up); paintIcons(tr);
     });
   }
@@ -1773,6 +1773,23 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         if(_tn){ if(_tn.nodeValue.trim()!==_want)_tn.nodeValue=_want; }
         else if(_th.textContent.trim()!==_want)_th.textContent=_want;
       }
+    }catch(_){}
+    // Same treatment for the two columns that were printing their unit on every row. A per-row suffix
+    // widened Last Price enough to wrap it in XLM, and the width it took squeezed Day High / Low onto
+    // three lines -- the whole table got taller on a toggle that changed no data.
+    try{
+      var _setTh=function(sel,want){
+        var t=document.querySelector(sel); if(!t)return;
+        // The TEXT node only. The sort caret is an element child of the same th, and writing
+        // textContent would delete it -- the column would lose its control on the first repaint.
+        var tn=null,ns=t.childNodes;
+        for(var i2=0;i2<ns.length;i2++){ if(ns[i2].nodeType===3&&(ns[i2].nodeValue||"").trim()){ tn=ns[i2]; break; } }
+        if(tn){ if(tn.nodeValue.trim()!==want)tn.nodeValue=want; }
+        else if(t.textContent.trim()!==want)t.textContent=want;
+      };
+      _setTh(".dex-mk-table thead th.th-price","LAST PRICE ("+(d==="xlm"?"XLM":"$")+")");
+      // High/low is quoted against XLM in BOTH views, so this label does not follow the toggle.
+      _setTh(".dex-mk-table thead th.th-hl","DAY HIGH / LOW (XLM)");
     }catch(_){}
     qa(".lx-dnsw button[data-dn]").forEach(function(b){
       var on=b.getAttribute("data-dn")===d;
