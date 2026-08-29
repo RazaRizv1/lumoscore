@@ -375,6 +375,14 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
    an orphan rather than as the pair of the group above it. Right-aligned, the two new controls stack
    against the same edge and the design own two keep the left. */
 .chart-controls .lxda-denom{margin-left:auto}
+/* The unit toggle changed how much room this row needed, so at some column widths the timeframes sat
+   on line 1 in XLM and dropped to line 2 in $ -- switching units looked like the design breaking. The
+   H/L strip is the only part whose width depends on the unit (a "$" plus more significant digits):
+   measured on FRED it goes 221px -> 250px, moving the one-line requirement from 730px to 759px. Give
+   back ~31px of gap and padding so the dollar view fits wherever the XLM view already did, rather than
+   pinning the strip to its widest state, which would only make both views wrap. */
+.chart-controls.chart-controls{gap:8px}
+.ohlc-strip.ohlc-strip{gap:11px;padding:7.7px 10px}
 /* #3: on the phone these two ended up on different lines -- Price/MCap tucked after the timeframes on
    the first, $/XLM alone on the second -- so the pair that belongs together read as two unrelated
    controls and the row wasted a line. Put them on their OWN line, $/XLM against the left edge and
