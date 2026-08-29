@@ -350,6 +350,7 @@ const ROUTES = [
   ['/terms',                           'lumoscore-terms.html'],
   ['/support',                         'lumoscore-support.html'],
   ['/whitepaper',                      'lumoscore-whitepaper.html'],
+  ['/about',                           'lumoscore-about.html'],
   // docs: each slug before the bare /docs, which serves the introduction
   ['/docs/introduction',                'lumoscore-docs-introduction.html'],
   ['/docs/connect-a-wallet',            'lumoscore-docs-connect-a-wallet.html'],
