@@ -11495,6 +11495,25 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
     var w=document.createElement("div"); w.className="lx-mkrow";
     f.parentNode.insertBefore(w,f); w.appendChild(f); w.appendChild(s);
   }
+  // Mobile keeps its OWN copy of the verified map, so the merge added to the desktop script never
+  // reached it: an asset curated after the last build was ticked on desktop and bare on the phone.
+  // Shares the one request the other blocks already make.
+  function lxMobMergeV(){
+    window.__lxCuratedV=window.__lxCuratedV||fetch("/lxapi/assetmeta")
+      .then(function(r){return r.ok?r.json():null;})
+      .then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};});
+    window.__lxCuratedV.then(function(vf){ var added=0;
+      Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;
+        var i=id.lastIndexOf("-"); if(i<0)return;
+        var k=id.slice(0,i)+"|"+id.slice(i+1);
+        if(VFD[k]===undefined){ VFD[k]=r.d||""; added++; } });
+      if(!added)return;
+      // The row signature is built from code and price, so a changed tick map does not move it and
+      // the staleness guard would skip the repaint. Clearing it is what makes the ticks appear.
+      try{ var l=q(".mdx-mk-list"); if(l)l.removeAttribute("data-lxmd"); }catch(_){}
+      try{ renderPairs(); }catch(_){}
+    });
+  }
   function renderPairs(){
     try{ mkOneLine(); }catch(_){}
     var list=q(".mdx-mk-list");if(!list)return;var A=assets();if(!A)return;
@@ -11692,7 +11711,7 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
   function pass(){try{
     orderSections();orderMoverTabs();
     hideDropped();
-    wire();renderMints();renderMovers();renderPairs();repaintIcons();
+    wire();renderMints();renderMovers();renderPairs();repaintIcons();try{lxMobMergeV();}catch(_){}
     // Hold the reveal until the ORDER is real, not merely until assets exist. The list defaults to 24h
     // volume, and __lxDEXassets appears as soon as the eight majors are priced -- the launchpad roster
     // lands after that, so revealing on assets() alone showed volume order for the majors and then
