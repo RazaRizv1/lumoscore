@@ -31,9 +31,12 @@ html[data-theme="light"] .lxdc{
 .lxdc{display:grid;grid-template-columns:224px minmax(0,1fr) 184px;gap:0 46px;align-items:start}
 
 /* ---------------- nav rail ---------------- */
-.lxdc .dc-nav{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);
-  overflow-y:auto;padding:0 14px 24px 0;border-right:1px solid var(--dc-hair);
-  scrollbar-width:thin}
+/* The rail is a <details open>. On desktop the summary is hidden and it reads as a plain sticky
+   column; on a phone the script closes it, and the summary becomes the bar that reopens it. */
+.lxdc .dc-navbox{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);
+  overflow-y:auto;border-right:1px solid var(--dc-hair);scrollbar-width:thin}
+.lxdc .dc-navsum{display:none}
+.lxdc .dc-nav{padding:0 14px 24px 0}
 .lxdc .dc-filter{width:100%;height:34px;padding:0 11px;margin:0 0 22px;border-radius:8px;
   background:var(--surface);border:1px solid var(--dc-hair);color:var(--text);
   font-family:inherit;font-size:13.5px;letter-spacing:-.005em}
@@ -214,10 +217,24 @@ html[data-theme="light"] .lxdc{
   .lxdc .dc-toc{display:none}
 }
 @media(max-width:880px){
-  .lxdc{grid-template-columns:1fr;gap:0}
-  .lxdc .dc-nav{position:static;max-height:none;overflow:visible;border-right:0;
-    border-bottom:1px solid var(--dc-hair);padding:0 0 22px;margin:0 0 26px;
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 24px}
+  .lxdc{grid-template-columns:minmax(0,1fr);gap:0}
+  /* Content first. The nav collapses to a single bar that says where you are, and opens on tap. */
+  .lxdc .dc-navbox{position:static;max-height:none;overflow:visible;border-right:0;
+    border:1px solid var(--dc-hair);border-radius:10px;margin:0 0 26px;background:var(--surface)}
+  .lxdc .dc-navsum{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;
+    padding:13px 16px;position:relative}
+  .lxdc .dc-navsum::-webkit-details-marker{display:none}
+  .lxdc .dc-navsum-k{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;
+    letter-spacing:.14em;text-transform:uppercase;color:var(--text-soft);flex:0 0 auto}
+  .lxdc .dc-navsum-t{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.015em;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .lxdc .dc-navsum::after{content:"";position:absolute;right:18px;top:19px;width:7px;height:7px;
+    border-right:1.5px solid var(--text-soft);border-bottom:1.5px solid var(--text-soft);
+    transform:rotate(45deg);transform-origin:70% 70%;transition:transform .16s}
+  .lxdc .dc-navbox[open] .dc-navsum{border-bottom:1px solid var(--dc-hair)}
+  .lxdc .dc-navbox[open] .dc-navsum::after{transform:rotate(-135deg)}
+  .lxdc .dc-nav{padding:14px 16px 18px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:0 22px}
   .lxdc .dc-filter{grid-column:1/-1}
   .lxdc h1{font-size:31px}
   .lxdc .dc-sub{font-size:17px}

@@ -93,8 +93,15 @@ function setHead(html, title, desc, style) {
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 // ---- generated furniture --------------------------------------------------------------------------
-function sidebar(current) {
-  let out = '<nav class="dc-nav">'
+// On a phone the rail stacks above the article, so seventeen links were the first thing a reader met
+// and the page they asked for started somewhere past the fold. Wrapping it in <details open> lets the
+// script close it on narrow screens: content first, nav one tap away. It ships OPEN, so if the script
+// never runs the nav is simply visible — the old behaviour, not a hidden menu with no way in.
+function sidebar(current, title) {
+  let out = '<details class="dc-navbox" open><summary class="dc-navsum">'
+    + '<span class="dc-navsum-k">Documentation</span>'
+    + '<span class="dc-navsum-t">' + esc(title) + '</span></summary>'
+    + '<nav class="dc-nav">'
     + '<input class="dc-filter" id="dcFilter" type="search" autocomplete="off" '
     + 'placeholder="Filter pages" aria-label="Filter documentation pages">'
     + '<p class="dc-nomatch" id="dcNoMatch" hidden>No pages match.</p>';
@@ -108,7 +115,7 @@ function sidebar(current) {
     out += '<a href="/docs/' + slug + '"' + (slug === current ? ' class="dc-on"' : '')
         + '>' + esc(title) + '</a>';
   }
-  return out + '</div></nav>';
+  return out + '</div></nav></details>';
 }
 // The rail is read off the page's own <h2>s, so it cannot drift from the content. Headings are given
 // ids here too -- authoring them by hand in sixteen files invites duplicates and typos.
@@ -162,6 +169,12 @@ const SCRIPT = '<script id="lx-docs-js">(function(){'
   +   'spy();'
   + '}'
   // ---- filter the nav ----
+  + 'var box=d.querySelector(".dc-navbox");'
+  + 'if(box){var narrow=function(){return matchMedia("(max-width:880px)").matches;};'
+  +   'if(narrow())box.removeAttribute("open");'
+  +   'box.addEventListener("click",function(e){'
+  +     'if(narrow()&&e.target&&e.target.closest&&e.target.closest(".dc-nav a"))box.removeAttribute("open");});'
+  +   'addEventListener("resize",function(){if(!narrow())box.setAttribute("open","");},{passive:true});}'
   + 'var f=d.getElementById("dcFilter"),none=d.getElementById("dcNoMatch");'
   + 'if(f){f.addEventListener("input",function(){'
   +   'var q=f.value.trim().toLowerCase(),hits=0;'
@@ -227,7 +240,7 @@ for (const [dev, donor, suffix] of [
     if (!raw) return;
     const { body, toc } = withAnchors(raw);
     const main = '<div class="lxdc">'
-      + sidebar(slug)
+      + sidebar(slug, title)
       + '<div class="dc-main">'
       + '<div class="dc-head">'
       + '<p class="dc-crumb">' + esc(group) + '</p>'

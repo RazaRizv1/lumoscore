@@ -46,6 +46,41 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       h=h.replace(/\s*<a[^>]*href="#"[^>]*>\s*Features\s*<\/a>/gi,'');
       // "FAQs" now has a page. Wired here rather than left to the runtime neutralizer below.
       h=h.replace(/(<a[^>]*)href="#"([^>]*>\s*FAQs?\s*<\/a>)/gi,'$1href="/faq"$2');
+
+      // ---- mobile footer parity -------------------------------------------------------------------
+      // The phone footer is a DIFFERENT markup block from the desktop one, so wiring href="#" links
+      // never reached it: it had no Support or About entry to wire, and its FAQs pointed at #faq --
+      // a section that exists only on the landing page, so everywhere else it linked to nothing.
+      //
+      // EVERY edit here is confined to the <footer> slice. "Why LumosCore" and "Whitepaper" both
+      // appear in the top nav as well, and an unscoped replace put an About link into the mobile
+      // navigation menu instead of the footer. The line below removes that if a previous run left
+      // one; the inserts then work on the footer substring alone.
+      h=h.replace(/(<nav class="menu-links">[\s\S]*?)\s*<a href="\/about">About<\/a>/g,'$1');
+      // Same slip, second symptom: the nav's own FAQs link was rewritten from #faq to /faq. On a page
+      // that HAS an on-page FAQ section that link is meant to scroll, not navigate away, so it is put
+      // back. Only where the section actually exists — elsewhere #faq would be a link to nothing.
+      if(h.indexOf('id="faq"')>=0)
+        h=h.replace(/(<nav class="menu-links">[\s\S]*?)<a href="\/faq">FAQs<\/a>/g,'$1<a href="#faq">FAQs</a>');
+
+      const fi=h.lastIndexOf('<footer');
+      if(fi>=0){
+        let ft=h.slice(fi);
+        const bft=ft;
+        ft=ft.replace(/<a href="#faq">FAQs<\/a>/g,'<a href="/faq">FAQs</a>');
+        if(ft.indexOf('href="/about"')<0)
+          ft=ft.replace(/(<a href="#why">Why LumosCore<\/a>)/,'$1\n        <a href="/about">About</a>');
+        if(ft.indexOf('href="/support"')<0)
+          ft=ft.replace(/(<a href="\/whitepaper">Whitepaper<\/a>)/,'<a href="/support">Support</a>\n        $1');
+        // The phone ships TWO footer variants: the landing one (Products / Why LumosCore / FAQs) and
+        // the in-app one (Home / AMM Pools), which carries neither FAQs nor About. Anchored on
+        // Documentation and Blog, which the in-app variant does have.
+        if(ft.indexOf('href="/faq"')<0)
+          ft=ft.replace(/(<a href="\/docs">Documentation<\/a>)/,'$1\n        <a href="/faq">FAQs</a>');
+        if(ft.indexOf('href="/about"')<0)
+          ft=ft.replace(/(<a href="\/blog">Blog<\/a>)/,'$1\n        <a href="/about">About</a>');
+        if(ft!==bft) h=h.slice(0,fi)+ft;
+      }
       if(h.indexOf('class="socials"')>=0) h=fixSocials(h);
       if(h.indexOf('href="#"')>=0 || h.indexOf('lx-footerlinks')>=0){
         h=h.replace(/<script id="lx-footerlinks">[\s\S]*?<\/script>/g,'');   // GLOBAL: also catches the unclosed-legacy + fixed pair as one lazy span
