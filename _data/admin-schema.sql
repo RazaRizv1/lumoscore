@@ -70,3 +70,19 @@ CREATE TABLE IF NOT EXISTS reward_payment (
   PRIMARY KEY (run_id, addr)
 );
 CREATE INDEX IF NOT EXISTS idx_reward_payment_run ON reward_payment (run_id);
+
+-- Transactions submitted THROUGH LumosCore.
+--
+-- The dashboard activity feed was built from fee payments to the collector, so it could only show
+-- fee-paying actions. Pool creation, deposits, withdrawals and limit orders are free and leave no
+-- on-chain marker tying them to us, so they were invisible. Only the platform knows what the platform
+-- did, which is what this records.
+--
+-- Hash and address are both already public on-chain; the hash reveals strictly more than is kept here.
+-- The hash is the primary key so a retry or a second tab costs nothing.
+CREATE TABLE IF NOT EXISTS activity (
+  hash TEXT PRIMARY KEY,
+  addr TEXT NOT NULL,
+  ts   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS activity_ts ON activity (ts DESC);
