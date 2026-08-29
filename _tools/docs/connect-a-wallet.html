@@ -1,0 +1,76 @@
+<p>LumosCore never asks you to create an account. You connect a Stellar wallet you already control,
+  and that wallet signs every transaction. Connecting is a read-only step: it tells the site your
+  public address so it can show your balances and build transactions for you to approve.</p>
+
+<h2>Supported wallets</h2>
+
+<div class="dc-tw">
+  <table>
+    <thead><tr><th>Wallet</th><th>Type</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Freighter</td><td>Browser extension</td>
+        <td>The most widely used Stellar extension. Desktop browsers.</td></tr>
+      <tr><td>xBull</td><td>Browser extension</td>
+        <td>Also available as a web wallet.</td></tr>
+      <tr><td>Rabet</td><td>Browser extension</td>
+        <td>Desktop browsers.</td></tr>
+      <tr><td>Albedo</td><td>Web wallet</td>
+        <td>Nothing to install — signing happens in a popup window.</td></tr>
+      <tr><td>LOBSTR</td><td>Mobile &amp; web</td>
+        <td>Connects over WalletConnect. On a phone this opens the LOBSTR app to approve.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Connecting</h2>
+
+<ol class="dc-steps">
+  <li>Select <strong>Launch App</strong> or any action that needs an address — the wallet chooser
+    opens.</li>
+  <li>Pick your wallet. Extensions prompt in the browser; Albedo opens a popup; LOBSTR opens on your
+    phone.</li>
+  <li>Approve the connection request in the wallet. It shares your public address and nothing
+    else.</li>
+</ol>
+
+<p>Your address then appears in the header, and pages that depend on it — Wallet, Pools, Rewards —
+  fill in with your own data.</p>
+
+<div class="dc-note">
+  <p class="dc-note-h">On mobile</p>
+  <p>LOBSTR is the practical choice: browser extensions are desktop-only. The connection is handed
+    off to the LOBSTR app, which is where you approve it, and where you will approve every
+    transaction afterwards.</p>
+</div>
+
+<h2>What connecting does and does not do</h2>
+
+<ul>
+  <li><strong>It shares your public address.</strong> That address is already public on the ledger —
+    anyone with it can read your balances and history on any Stellar explorer.</li>
+  <li><strong>It does not grant spending permission.</strong> There is no allowance or approval to
+    revoke, as there is on some other networks. Every single transaction is signed
+    individually.</li>
+  <li><strong>It does not move your keys.</strong> Your private key stays in the wallet. LumosCore
+    never sees it and has no way to ask for it.</li>
+</ul>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">We will never ask for your keys</p>
+  <p>Not your seed phrase, not your private key, not for support, not for verification, not for any
+    reason at all. Anyone asking — on this site, by email, in a chat, or on social media claiming to
+    be us — is trying to steal from you.</p>
+</div>
+
+<h2>Disconnecting</h2>
+
+<p>Select your address in the header and choose to disconnect. That clears the address from this
+  browser. It is a local action: there is no session on our side to end, because there was never one
+  to begin with.</p>
+
+<h2>Before your first transaction</h2>
+
+<p>Stellar accounts need a small XLM balance to exist and to pay network fees, and each asset you
+  hold reserves a little more. If you are new to Stellar, read
+  <a href="/docs/trustlines">Trustlines</a> first — it explains why an asset you have been sent might
+  not appear in your wallet yet, and what the reserve is for.</p>

@@ -1,0 +1,74 @@
+<p>The <a href="/launchpad">Launchpad</a> issues an asset on Stellar mainnet, mints its supply to you,
+  and opens its first liquidity pool — in one flow, for a flat fee.</p>
+
+<h2>What it costs</h2>
+
+<p><strong>$25</strong> in total, itemised:</p>
+
+<div class="dc-tw">
+  <table>
+    <thead><tr><th>Component</th><th>Amount</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td>Token creation</td><td class="dc-num">$5</td>
+        <td>Issuing the asset and minting your supply.</td></tr>
+      <tr><td>Starting liquidity</td><td class="dc-num">$10</td>
+        <td>Goes into your own pool. This is not a fee — it is your liquidity, and you can withdraw
+          it.</td></tr>
+      <tr><td>Pool and network setup</td><td class="dc-num">$10</td>
+        <td>Creating the pool and covering the account reserves and network fees involved.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>You pay in XLM at the live rate, so the total stays $25 regardless of where XLM is trading.</p>
+
+<h2>The flow</h2>
+
+<ol class="dc-steps">
+  <li><strong>Details.</strong> Choose the asset code and the total supply, and add the description
+    and logo that will appear across the site.</li>
+  <li><strong>Review.</strong> Everything is shown before anything is signed, including the exact XLM
+    amounts at the current rate.</li>
+  <li><strong>Sign.</strong> Your wallet approves the transactions that create the asset, mint the
+    supply and open the pool.</li>
+  <li><strong>Confirmation.</strong> The asset exists on mainnet, its supply is in your account, and
+    its pool is live and tradable.</li>
+</ol>
+
+<h2>Choosing an asset code</h2>
+
+<p>Stellar asset codes are not unique and are not reserved. Picking a code somebody else already uses
+  is allowed by the network and will make your asset harder to tell apart from theirs — which is
+  everyone's problem, including yours. Pick something distinctive.</p>
+
+<div class="dc-note">
+  <p class="dc-note-h">Supply is fixed at issuance</p>
+  <p>The supply you choose is minted to your account in the issuing transaction. Decide the number
+    before you start.</p>
+</div>
+
+<h2>What you get</h2>
+
+<ul>
+  <li>An asset on <strong>Stellar mainnet</strong>, tradable immediately by anyone.</li>
+  <li>The full supply in your account.</li>
+  <li>A live liquidity pool with your $10 of starting liquidity, which you can add to or withdraw
+    from like any other <a href="/docs/liquidity-pools">pool</a>.</li>
+  <li>A page on LumosCore for the asset, showing its price, pool and activity.</li>
+</ul>
+
+<h2>What it does not get you</h2>
+
+<p>Issuing through LumosCore does <strong>not</strong> give your asset a verification mark. Our own
+  domain cannot vouch for an asset — a handshake that resolves to a domain we control would only
+  prove the token was minted here, which is not what the mark is for.</p>
+
+<p>To be verified, publish a <a href="/docs/asset-metadata">stellar.toml</a> on your own domain and
+  point the issuing account at it. See <a href="/docs/verification">Asset verification</a>. To be
+  listed in the curated set, see <a href="/docs/curated-listing">Curated listing</a>.</p>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">Issuance is permanent</p>
+  <p>An asset on a public ledger cannot be un-issued, and the transaction cannot be reversed. Check
+    the code, the supply and the amounts on the review screen before you sign.</p>
+</div>

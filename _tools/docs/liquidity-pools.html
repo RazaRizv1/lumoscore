@@ -1,0 +1,65 @@
+<p>A liquidity pool holds a reserve of two assets and quotes a price between them from the ratio of
+  those reserves. Anyone can deposit into one, and depositors earn a share of the fees that traders
+  pay to swap through it.</p>
+
+<h2>Depositing</h2>
+
+<ol class="dc-steps">
+  <li>Open <a href="/pools/stellar">Pools</a> and choose a pool, or find it by its pair.</li>
+  <li>Enter an amount. You deposit <strong>both</strong> assets, in the ratio the pool currently
+    holds — enter one side and the other is calculated.</li>
+  <li>Approve in your wallet. You receive pool shares representing your portion of the reserves.</li>
+</ol>
+
+<p>Your positions appear under My Positions on the Pools page, with the current value of each.</p>
+
+<h2>Withdrawing</h2>
+
+<p>Withdraw any part of a position at any time. There is <strong>no lock-up</strong>, no cooldown and
+  no withdrawal queue: you burn pool shares and the underlying assets return to your account in the
+  same transaction.</p>
+
+<h2>Creating a pool</h2>
+
+<p>If no pool exists for a pair, you can create one. You set the initial deposit, and that deposit
+  sets the pool's opening price — the ratio you choose <em>is</em> the exchange rate until someone
+  trades against it.</p>
+
+<div class="dc-note">
+  <p class="dc-note-h">Check the ratio twice</p>
+  <p>Creating a pool at a price far from the real market is an open invitation: the first trader will
+    arbitrage it back and the difference comes out of your deposit. Look up the market rate
+    first.</p>
+</div>
+
+<p>Creating a pool needs a trustline to the pool share asset as well as to both assets in the pair,
+  and each of those reserves XLM in your account. If the create step fails, an
+  <a href="/docs/trustlines">XLM shortage</a> is the usual reason.</p>
+
+<h2>What you earn</h2>
+
+<p>Stellar's pools charge <span class="dc-num">0.3%</span> on every swap routed through them, paid to
+  the pool's depositors in proportion to their share. It accrues into the reserves rather than being
+  paid out separately, so your position grows in value instead of producing a claimable balance.</p>
+
+<p>Some pools also pay LUMOS through the reward programmes — see <a href="/docs/rewards">Rewards</a>
+  for which ones and how the rounds work.</p>
+
+<h2>The risk that catches people out</h2>
+
+<p><strong>Divergence loss</strong> — often called impermanent loss — is the cost of a pool
+  rebalancing as the price moves. When one asset rises against the other, the pool sells some of the
+  riser to whoever is trading. You end up holding more of the asset that fell and less of the one
+  that rose, and your position can be worth less than if you had simply held both assets in your
+  wallet.</p>
+
+<p>Fee income offsets it, and on a stable pair it usually more than offsets it. On a volatile pair it
+  may not. The loss becomes real when you withdraw, which is why "impermanent" is a misleading name
+  for it.</p>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">You are exposed to both assets</p>
+  <p>A pool cannot protect you from either side of the pair. If one asset in the pool fails or its
+    issuer stops honouring it, the pool absorbs that — and so does your position. Rewards do not
+    indemnify you against it.</p>
+</div>

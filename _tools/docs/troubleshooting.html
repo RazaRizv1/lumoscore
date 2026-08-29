@@ -1,0 +1,91 @@
+<p>The problems people actually hit, what each one means, and how to clear it. Nearly all of them come
+  down to XLM reserves, trustlines or a stale page.</p>
+
+<h2>A transaction failed and I have enough of both assets</h2>
+
+<p>Almost always the <strong>XLM reserve</strong>. Your account must keep a minimum balance of
+  <code>(2 + subentries) × 0.5 XLM</code>, where each trustline, open offer and pool position is a
+  subentry. XLM at or below that minimum cannot be spent, and adding anything new needs another 0.5
+  XLM on top.</p>
+
+<p>Creating a pool is the usual trigger, because it adds subentries and needs its reserve
+  <em>in addition</em> to what you are depositing. Free up XLM — sell a little of something else, or
+  remove trustlines you no longer use — and try again. See
+  <a href="/docs/trustlines">Trustlines</a>.</p>
+
+<h2>Someone sent me a token and it is not in my wallet</h2>
+
+<p>You have no <a href="/docs/trustlines">trustline</a> for it, so it could not be credited directly.
+  Stellar parked it as a <strong>claimable balance</strong>, which appears on your
+  <a href="/wallet">Wallet</a> page. Add the trustline, then claim it.</p>
+
+<p>Check the issuer before you do. Anyone can send you a claimable balance, including one using the
+  ticker of an asset you recognise.</p>
+
+<h2>I cannot buy an asset</h2>
+
+<p>Either you need a trustline for it — usually added automatically as part of the swap — or the
+  account is short of XLM to reserve one. Both are covered above.</p>
+
+<h2>My swap failed but the fee was taken</h2>
+
+<p>A failed transaction still costs the Stellar network fee, because the network did the work of
+  processing it. That fee is a fraction of a cent and is paid to the network, not to LumosCore. No
+  platform fee is charged on a swap that did not execute.</p>
+
+<p>The common cause is the price moving past your slippage tolerance between building and submitting.
+  Retry, or widen the tolerance slightly on a volatile pair.</p>
+
+<h2>My cross-chain transfer is stuck</h2>
+
+<p>Work out which step it is on:</p>
+
+<ul>
+  <li><strong>Burned, not yet attested.</strong> Circle's attestation normally takes a few minutes.
+    Waiting is the only option — neither of us can speed it up.</li>
+  <li><strong>Attested, not claimed.</strong> The claim is a transaction on the destination chain and
+    you need that chain's gas token to pay for it.</li>
+  <li><strong>Tab closed part way.</strong> The funds are not lost. Reopen
+    <a href="/bridge">Cross-chain</a> with the same wallet connected and the pending transfer is
+    listed so you can finish the claim.</li>
+</ul>
+
+<p>Keep the burn transaction hash — there is a copy button for it. With that hash we can trace any
+  transfer.</p>
+
+<h2>My balance or a price looks wrong</h2>
+
+<p>Hard-refresh the page: <strong>Ctrl+Shift+R</strong>, or <strong>Cmd+Shift+R</strong> on a Mac.
+  Browsers cache aggressively and a stale response is by far the most common explanation for a figure
+  that does not match the ledger.</p>
+
+<p>If it persists, check the same address on any Stellar explorer. The chain is the source of truth,
+  and if the explorer agrees with us then the number is right.</p>
+
+<h2>My wallet will not connect</h2>
+
+<ul>
+  <li><strong>Extensions</strong> (Freighter, xBull, Rabet) are desktop-only, and must be unlocked
+    before they will respond.</li>
+  <li><strong>On mobile</strong>, use LOBSTR. The connection hands off to the LOBSTR app, which is
+    where you approve it.</li>
+  <li><strong>Albedo</strong> opens a popup — a popup blocker will stop it silently.</li>
+</ul>
+
+<h2>My asset is not showing as verified</h2>
+
+<p>Three usual causes: the <code>stellar.toml</code> is not reachable from another origin, the domain
+  redirects somewhere other than the home domain set on the account, or the <code>issuer</code> in
+  the file does not exactly match the issuing account. Results are also cached, so a correct fix is
+  not visible instantly. See <a href="/docs/verification">Asset verification</a>.</p>
+
+<h2>Still stuck</h2>
+
+<p>Write to us through <a href="/support">Support</a>. Include your public address and the
+  transaction hash if there is one — both are already public, both are safe to share, and together
+  they usually save a round trip.</p>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">Never send your seed phrase or private key</p>
+  <p>Support will never ask for either, and nobody legitimate ever needs them.</p>
+</div>

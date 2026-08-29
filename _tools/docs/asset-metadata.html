@@ -1,0 +1,68 @@
+<p>Stellar's convention for asset metadata is a file called <code>stellar.toml</code>, published on
+  the issuer's own domain at <code>/.well-known/stellar.toml</code>. It is where an issuer states, in
+  public and under their own control, what their asset is.</p>
+
+<p>LumosCore reads it for two purposes: to display your asset properly, and to
+  <a href="/docs/verification">verify</a> it.</p>
+
+<h2>The two halves of the handshake</h2>
+
+<p>Metadata only means something if both ends agree, so two things must be true at once:</p>
+
+<ol class="dc-steps">
+  <li><strong>The issuing account names your domain.</strong> Set the account's home domain on the
+    ledger to the domain hosting your <code>stellar.toml</code>.</li>
+  <li><strong>The domain names the asset back.</strong> Your <code>stellar.toml</code> lists the
+    asset code and the exact issuing account address.</li>
+</ol>
+
+<p>Either one alone proves nothing. A home domain can be set to any domain by anyone, and a file can
+  claim any asset. It is the two matching that makes the link real.</p>
+
+<h2>What LumosCore reads</h2>
+
+<div class="dc-tw">
+  <table>
+    <thead><tr><th>Field</th><th>Used for</th></tr></thead>
+    <tbody>
+      <tr><td><code>code</code></td><td>Matching the entry to the asset.</td></tr>
+      <tr><td><code>issuer</code></td>
+        <td>The identity check. Must match the account that actually issued the asset.</td></tr>
+      <tr><td><code>name</code></td><td>The display name shown beside the ticker.</td></tr>
+      <tr><td><code>desc</code></td>
+        <td>The description on the asset's page. Write it for someone who has never heard of your
+          project.</td></tr>
+      <tr><td><code>image</code></td><td>The logo shown in lists, pools and the trade view.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Hosting it</h2>
+
+<ul>
+  <li>Serve it at <code>https://yourdomain/.well-known/stellar.toml</code> over HTTPS.</li>
+  <li>It must be reachable by a browser from another origin — a file behind a login, a firewall or a
+    strict CORS policy cannot be read, and verification will not complete.</li>
+  <li>Use the same domain you set as the account's home domain, exactly. A redirect from one host to
+    another is a common reason a handshake does not resolve.</li>
+</ul>
+
+<div class="dc-note">
+  <p class="dc-note-h">Logos</p>
+  <p>Use a square image with a transparent background, served over HTTPS from a stable URL. Assets
+    without a usable logo fall back to a generated mark, which works but looks like what it is.</p>
+</div>
+
+<h2>Changing it later</h2>
+
+<p>The file is yours and you can edit it whenever you like. Updates to the description or logo are
+  picked up on the next read; changes are not instant, because responses are cached for a period.</p>
+
+<p>If you change the issuing account, everything changes: it is a different asset as far as Stellar
+  is concerned, and it needs its own entry and its own verification.</p>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">Keep control of the domain</p>
+  <p>Whoever controls the domain controls what your asset appears to be. Letting it lapse hands that
+    to whoever registers it next — and the handshake will keep resolving for them.</p>
+</div>

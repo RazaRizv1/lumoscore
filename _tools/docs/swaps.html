@@ -1,0 +1,62 @@
+<p>A swap exchanges one asset for another in a single Stellar transaction. LumosCore builds it, shows
+  you what you will receive, and hands it to your wallet to sign. The trade settles on the ledger in
+  a few seconds.</p>
+
+<h2>Making a swap</h2>
+
+<ol class="dc-steps">
+  <li>Open <a href="/trade/stellar">Trade</a> and pick the asset you are selling and the one you are
+    buying.</li>
+  <li>Enter an amount. The quote updates as you type, and shows the rate, the price impact and the
+    fee.</li>
+  <li>Review the summary. This is the last screen before signing — check the receive amount and the
+    issuer of the asset you are buying.</li>
+  <li>Approve in your wallet. The transaction is submitted and confirmed on the ledger.</li>
+</ol>
+
+<h2>How the price is found</h2>
+
+<p>Stellar has two independent sources of liquidity, and a swap can use either:</p>
+
+<ul>
+  <li><strong>The order book.</strong> Stellar has a native on-chain order book. If someone has a
+    resting offer at a better price, your trade takes it.</li>
+  <li><strong>Liquidity pools.</strong> Constant-product pools that quote a price from their
+    reserves. These charge their own 0.3%, which goes to the pool's liquidity providers.</li>
+</ul>
+
+<p>The quote you see is drawn from executed on-chain trades rather than an off-chain price feed, so
+  it reflects what the market actually did, not what a data provider says it should have done.</p>
+
+<div class="dc-note">
+  <p class="dc-note-h">Thin markets move</p>
+  <p>Stellar carries assets of every size. On a small pair, a modest order can move the price
+    noticeably — that is price impact, not a fee, and it is shown before you sign. If it looks
+    wrong, trade a smaller amount and watch how it changes.</p>
+</div>
+
+<h2>Slippage</h2>
+
+<p>Between building a transaction and its inclusion in a ledger, the price can move. Slippage
+  tolerance is the worst rate you are willing to accept: if the market moves past it, the
+  transaction fails rather than filling at a price you did not agree to.</p>
+
+<p>A failed swap still costs the network fee, but your assets are untouched. On a volatile or thin
+  pair, a slightly wider tolerance trades a worse worst-case price for a better chance of filling.</p>
+
+<h2>What it costs</h2>
+
+<p>LumosCore charges <span class="dc-num">0.2%</span> of the traded amount, or
+  <span class="dc-num">0.1%</span> if you hold 250,000 LUMOS or more — see <a href="/docs/fees">Fees</a>.
+  On top of that sit the Stellar network fee, which is a fraction of a cent, and the pool's own 0.3%
+  if your trade routes through a pool rather than the order book.</p>
+
+<h2>Before you trade something unfamiliar</h2>
+
+<p>Check the issuer. A ticker on Stellar is not unique and cannot be trusted on its own — several
+  hundred different assets call themselves USDC. Assets that have passed the
+  <a href="/docs/verification">domain handshake</a> carry a mark; that mark tells you the asset is
+  who it claims to be, and nothing about whether it is a good investment.</p>
+
+<p>If you cannot buy an asset at all, you probably need a
+  <a href="/docs/trustlines">trustline</a> for it first.</p>

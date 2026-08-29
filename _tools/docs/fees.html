@@ -1,0 +1,82 @@
+<p>Every charge is shown before you sign, and settles on-chain to a published address. Nothing is
+  added to the quoted price, and no fee appears after a signature.</p>
+
+<h2>What LumosCore charges</h2>
+
+<div class="dc-tw">
+  <table>
+    <thead><tr><th>Action</th><th>Fee</th><th>Basis</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="/docs/swaps">Swaps</a></td>
+        <td class="dc-num">0.2%</td>
+        <td>Of the traded amount. Drops to <span class="dc-num">0.1%</span> on the LUMOS tier
+          below.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/limit-orders">Limit orders</a></td>
+        <td class="dc-num">Free</td>
+        <td>No platform fee, whether the order fills or not. Network fee only.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/cross-chain">Cross-chain</a></td>
+        <td class="dc-num">0.2% / 0.1%</td>
+        <td>Of the amount transferred, on the same tier. Circle charges nothing for CCTP itself.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/liquidity-pools">Liquidity pools</a></td>
+        <td class="dc-num">Free</td>
+        <td>No fee to create a pool, deposit or withdraw. Network fee only.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/launch-a-token">Token issuance</a></td>
+        <td class="dc-num">$25</td>
+        <td>Flat, and itemised on the next page. Paid in XLM at the live rate.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/curated-listing">Curated listing</a></td>
+        <td class="dc-num">$250</td>
+        <td>Refunded in full, in the asset you paid, if the listing is declined.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>The LUMOS tier</h2>
+
+<p>Hold <strong>250,000 LUMOS or more</strong> and the swap and cross-chain fee halves, from 0.2% to
+  0.1%. There is nothing to claim, stake or lock — the balance is read from the ledger when you
+  connect, and the lower rate applies from then on.</p>
+
+<div class="dc-note">
+  <p class="dc-note-h">Pool-held LUMOS counts</p>
+  <p>LUMOS sitting inside a liquidity pool counts toward the 250,000 threshold. Providing liquidity
+    does not cost you the discount, which would otherwise punish the people doing the most useful
+    thing with the token.</p>
+</div>
+
+<p>If your balance falls below the threshold the rate returns to 0.2%, and rises back to 0.1% the
+  moment it does not. Nothing needs to be re-enabled.</p>
+
+<h2>Fees that are not ours</h2>
+
+<p>Two other costs appear on a transaction, and neither is charged by LumosCore:</p>
+
+<ul>
+  <li><strong>The Stellar network fee.</strong> A fraction of a cent per operation, paid to the
+    network, not to us. It applies to every transaction including the free ones.</li>
+  <li><strong>Liquidity pool fees.</strong> Stellar's own pools charge 0.3% on a swap that routes
+    through them, which is paid to the liquidity providers of that pool — that is the yield behind
+    <a href="/docs/liquidity-pools">providing liquidity</a>. Trades that route through the order book
+    instead do not incur it.</li>
+</ul>
+
+<p>On a cross-chain transfer you also pay the destination network's own fee, in that network's gas
+  token, when the funds are claimed. On Ethereum mainnet that can exceed everything else on this
+  page — see <a href="/docs/cross-chain">Cross-chain</a>.</p>
+
+<h2>Where fees go</h2>
+
+<p>Platform fees settle on-chain, as a separate payment operation within the same transaction you
+  signed. Because they are on-chain, they are auditable: the fee-collecting account and every payment
+  into it can be inspected on any Stellar explorer, by anyone, without asking us.</p>

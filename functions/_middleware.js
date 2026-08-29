@@ -122,9 +122,94 @@ const ROUTES = [
     "/whitepaper",
     "lumoscore-whitepaper",
     null
+  ],
+  [
+    "/docs/introduction",
+    "lumoscore-docs-introduction",
+    null
+  ],
+  [
+    "/docs/connect-a-wallet",
+    "lumoscore-docs-connect-a-wallet",
+    null
+  ],
+  [
+    "/docs/fees",
+    "lumoscore-docs-fees",
+    null
+  ],
+  [
+    "/docs/swaps",
+    "lumoscore-docs-swaps",
+    null
+  ],
+  [
+    "/docs/limit-orders",
+    "lumoscore-docs-limit-orders",
+    null
+  ],
+  [
+    "/docs/liquidity-pools",
+    "lumoscore-docs-liquidity-pools",
+    null
+  ],
+  [
+    "/docs/cross-chain",
+    "lumoscore-docs-cross-chain",
+    null
+  ],
+  [
+    "/docs/wallet",
+    "lumoscore-docs-wallet",
+    null
+  ],
+  [
+    "/docs/trustlines",
+    "lumoscore-docs-trustlines",
+    null
+  ],
+  [
+    "/docs/rewards",
+    "lumoscore-docs-rewards",
+    null
+  ],
+  [
+    "/docs/launch-a-token",
+    "lumoscore-docs-launch-a-token",
+    null
+  ],
+  [
+    "/docs/asset-metadata",
+    "lumoscore-docs-asset-metadata",
+    null
+  ],
+  [
+    "/docs/verification",
+    "lumoscore-docs-verification",
+    null
+  ],
+  [
+    "/docs/curated-listing",
+    "lumoscore-docs-curated-listing",
+    null
+  ],
+  [
+    "/docs/security",
+    "lumoscore-docs-security",
+    null
+  ],
+  [
+    "/docs/troubleshooting",
+    "lumoscore-docs-troubleshooting",
+    null
+  ],
+  [
+    "/docs",
+    "lumoscore-docs-introduction",
+    null
   ]
 ];
-const HAS_MOBILE = new Set(["lumoscore-home-mobile","lumoscore-landing-mobile","lumoscore-launch-confirm-mobile","lumoscore-launch-review-mobile","lumoscore-launch-token-mobile","lumoscore-wallet-mobile","lumoscore-amm-mobile","lumoscore-amm-pool-mobile","lumoscore-lumos-token-mobile","lumoscore-dex-mobile","lumoscore-dex-asset-mobile","lumoscore-bridge-mobile","lumoscore-signin-mobile","lumoscore-rewards-mobile","lumoscore-mcp-mobile","lumoscore-account-mobile","lumoscore-blog-mobile","lumoscore-blog-post-mobile","lumoscore-privacy-mobile","lumoscore-terms-mobile","lumoscore-support-mobile","lumoscore-whitepaper-mobile"]);
+const HAS_MOBILE = new Set(["lumoscore-home-mobile","lumoscore-landing-mobile","lumoscore-launch-confirm-mobile","lumoscore-launch-review-mobile","lumoscore-launch-token-mobile","lumoscore-wallet-mobile","lumoscore-amm-mobile","lumoscore-amm-pool-mobile","lumoscore-lumos-token-mobile","lumoscore-dex-mobile","lumoscore-dex-asset-mobile","lumoscore-bridge-mobile","lumoscore-signin-mobile","lumoscore-rewards-mobile","lumoscore-mcp-mobile","lumoscore-account-mobile","lumoscore-blog-mobile","lumoscore-blog-post-mobile","lumoscore-privacy-mobile","lumoscore-terms-mobile","lumoscore-support-mobile","lumoscore-whitepaper-mobile","lumoscore-docs-introduction-mobile","lumoscore-docs-connect-a-wallet-mobile","lumoscore-docs-fees-mobile","lumoscore-docs-swaps-mobile","lumoscore-docs-limit-orders-mobile","lumoscore-docs-liquidity-pools-mobile","lumoscore-docs-cross-chain-mobile","lumoscore-docs-wallet-mobile","lumoscore-docs-trustlines-mobile","lumoscore-docs-rewards-mobile","lumoscore-docs-launch-a-token-mobile","lumoscore-docs-asset-metadata-mobile","lumoscore-docs-verification-mobile","lumoscore-docs-curated-listing-mobile","lumoscore-docs-security-mobile","lumoscore-docs-troubleshooting-mobile"]);
 
 function match(pathname){
   const segs = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);

@@ -1,0 +1,102 @@
+<p>LumosCore is a non-custodial interface to on-chain markets. You connect a wallet you already
+  control, and every transaction is built in your browser and signed by that wallet. There is no
+  account to create, no deposit to make, and no LumosCore-held balance — which also means there is
+  nothing here for us to lose or freeze.</p>
+
+<p>These docs cover what is live today. If something is described here, it works on Stellar mainnet
+  right now.</p>
+
+<h2>Where to start</h2>
+
+<div class="dc-grid">
+  <a class="dc-card" href="/docs/connect-a-wallet">
+    <span class="dc-card-t">Connect a wallet</span>
+    <span class="dc-card-d">Five supported Stellar wallets and what connecting actually does.</span>
+  </a>
+  <a class="dc-card" href="/docs/swaps">
+    <span class="dc-card-t">Make your first swap</span>
+    <span class="dc-card-d">Routing, price, slippage and what you approve before signing.</span>
+  </a>
+  <a class="dc-card" href="/docs/fees">
+    <span class="dc-card-t">Understand the fees</span>
+    <span class="dc-card-d">What we charge, what the network charges, and the LUMOS discount.</span>
+  </a>
+  <a class="dc-card" href="/docs/trustlines">
+    <span class="dc-card-t">Trustlines</span>
+    <span class="dc-card-d">Why Stellar asks before you can hold an asset, and what it reserves.</span>
+  </a>
+</div>
+
+<h2>What runs today</h2>
+
+<p>LumosCore has been live on Stellar mainnet since 1 August 2026. Each of these is in production,
+  not planned.</p>
+
+<div class="dc-tw">
+  <table>
+    <thead><tr><th>Capability</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><a href="/docs/swaps">Swaps</a></td>
+        <td>Trade assets against Stellar's own order book and liquidity pools, priced from executed
+          on-chain trades rather than a quoted feed.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/limit-orders">Limit orders</a></td>
+        <td>Place a resting order at your own price. Free — you pay only the network fee.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/liquidity-pools">Liquidity pools</a></td>
+        <td>Create a pool, deposit into one, withdraw whenever you like. No lock-up.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/cross-chain">Cross-chain</a></td>
+        <td>Move USDC between Stellar and eight networks over Circle's CCTP.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/wallet">Wallet</a></td>
+        <td>Balances, activity, sending and receiving, all signed in your own wallet.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/launch-a-token">Launchpad</a></td>
+        <td>Issue an asset, mint the supply and open its first pool in one flow.</td>
+      </tr>
+      <tr>
+        <td><a href="/docs/rewards">Rewards</a></td>
+        <td>Three LUMOS programmes for liquidity providers and holders.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>How the custody model works</h2>
+
+<p>Three parties, three jobs, and none of them is holding someone else's assets:</p>
+
+<ul>
+  <li><strong>LumosCore</strong> presents the network through one interface and builds the
+    transaction.</li>
+  <li><strong>Stellar</strong> executes and records it, and remains the source of truth.</li>
+  <li><strong>Your wallet</strong> holds the keys and signs. Nothing moves without it.</li>
+</ul>
+
+<p>In practice this means we cannot move your funds, cannot reverse a transaction you signed, and
+  cannot recover a key you have lost. The trade-off runs both ways: nobody can freeze your balance
+  either, and there is no account of yours for an attacker to take over.</p>
+
+<div class="dc-note">
+  <p class="dc-note-h">Non-custodial is not risk-free</p>
+  <p>It means we do not add a pool of customer funds to the system. It does not remove the risks of
+    the assets you hold, the pools you enter, or the transactions you approve. <a href="/docs/security">Security</a>
+    covers what remains.</p>
+</div>
+
+<h2>A note on asset names</h2>
+
+<p>On Stellar a ticker is not an identity. Anyone can issue an asset called <code>USDC</code>, and
+  many have. What identifies an asset is the account that issued it. LumosCore checks assets against
+  their issuer through a domain handshake and marks the ones that resolve — see
+  <a href="/docs/verification">Asset verification</a> for what that mark does and does not mean.</p>
+
+<p>The habit worth forming: <strong>check the issuer, not the ticker</strong>, before you trade
+  something unfamiliar.</p>
