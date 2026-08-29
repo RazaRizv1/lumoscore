@@ -141,6 +141,12 @@ const PRIVACY = '<div class="lxlg">'
   + '<p>When you connect a wallet, the site sends your <strong>public wallet address</strong> to our own '
   + 'server once per browsing session, so we can count how many people use the platform. That address is '
   + 'already public on the Stellar network, and we do not attach a name, email or profile to it.</p>'
+  // The activity feed is built from this. Stated plainly and in its natural place -- the section that
+  // already says what we record -- rather than as an alarming standalone heading. It is accurate about
+  // the two fields kept, and about the fact that both are already public on the ledger.
+  + '<p>When you submit a transaction through the site, we record its <strong>transaction hash</strong> '
+  + 'and the address that submitted it, so the platform can show its own recent activity. Both are '
+  + 'already public on the Stellar network. Nothing is recorded for a transaction you do not submit.</p>'
   + '<p>Our hosting provider, <strong>Cloudflare</strong>, keeps standard server logs and aggregate '
   + 'analytics for security and performance. We do not use them to build a profile of you.</p>'
 
