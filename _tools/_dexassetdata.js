@@ -1008,16 +1008,16 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     // the design's baked demo asset: open AQUA and you got AQUA's price under USDC's name, logo,
     // description, circle.com link and a foreign 0x… issuer. Every INNER class is shared, so accepting
     // both wrappers is the whole fix.
-    var hdr=q(".asset-header")||q(".asset-top"); if(!hdr)return;
+    function lxMergeV(VFDmap,after){ window.__lxCuratedV=window.__lxCuratedV||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};}); window.__lxCuratedV.then(function(vf){ var added=0;   Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;     var i=id.lastIndexOf("-"); if(i<0)return;     var k=id.slice(0,i)+"|"+id.slice(i+1);     if(VFDmap[k]===undefined){ VFDmap[k]=r.d||""; added++; } });   if(added&&after){ try{ after(); }catch(_){} } }); } var hdr=q(".asset-header")||q(".asset-top"); if(!hdr)return;
     // name + ticker
     setText(q(".asset-name"), CODE);
-    try{ var _nm=q(".asset-name");
+    function lxTick(){ try{ var _nm=q(".asset-name");
       if(_nm&&_nm.parentNode){
         var _ok=VFD[CODE+"|"+ISSUER]!==undefined, _b=_nm.parentNode.querySelector(".lx-vtick");
         if(_ok&&!_b){ var _s=document.createElement("span"); _s.className="lx-vtick"; _s.title="Verified issuer";
           _s.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'; _nm.parentNode.insertBefore(_s,_nm.nextSibling); }
         else if(!_ok&&_b&&_b.parentNode){ _b.parentNode.removeChild(_b); }
-      } }catch(_){}
+      } }catch(_){} } lxTick(); lxMergeV(VFD,lxTick);
     // #5: and the same flag on the page the search leads to -- a warning that only appears in the popup
     // is a warning you can walk straight past. Asked once; the tag is inserted when the answer lands.
     // Impersonation is checked FIRST and wins. It needs no network, it is true by construction, and
