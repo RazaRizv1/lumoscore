@@ -1,0 +1,105 @@
+/* About page, scoped to .lxab, every class prefixed ab-.
+ *
+ * A single reading column rather than the docs' three, because this page is read start to finish.
+ * Colour comes from the site's own tokens; the accent tints the site does not define are declared on
+ * .lxab, dark first with a light override, mirroring html[data-theme].
+ */
+.lxab{
+  --ab-hair:var(--border);
+  --ab-ink:#f5854c;
+  --ab-soft:rgba(234,106,44,.11);
+  --ab-line:rgba(234,106,44,.32);
+  --ab-glow:rgba(234,106,44,.18);
+  --ab-grid:rgba(255,255,255,.04);
+  max-width:860px;margin:0 auto;
+  font-size:17.5px;line-height:1.75;letter-spacing:-.006em;color:var(--text-soft)
+}
+html[data-theme="light"] .lxab{
+  --ab-ink:#c8511a;
+  --ab-soft:rgba(234,106,44,.08);
+  --ab-line:rgba(234,106,44,.26);
+  --ab-glow:rgba(234,106,44,.11);
+  --ab-grid:rgba(14,14,16,.05)
+}
+.lxab *{box-sizing:border-box}
+.lxab p{margin:0 0 19px;max-width:70ch}
+.lxab p strong,.lxab li strong{color:var(--text);font-weight:600}
+.lxab a{color:var(--ab-ink);text-decoration:underline;text-decoration-color:var(--ab-line);
+  text-decoration-thickness:1.5px;text-underline-offset:3px;transition:text-decoration-color .13s}
+.lxab a:hover{text-decoration-color:var(--accent)}
+
+/* ---------------- opening ---------------- */
+.lxab .ab-top{position:relative;padding:26px 0 34px;margin:0 0 8px}
+.lxab .ab-top::before{content:"";position:absolute;left:-60px;right:-60px;top:-40px;height:260px;
+  pointer-events:none;z-index:0;
+  background:radial-gradient(560px 190px at 18% 0%, var(--ab-glow), transparent 72%)}
+.lxab .ab-top>*{position:relative;z-index:1}
+.lxab .ab-eyebrow{margin:0 0 14px;display:inline-flex;align-items:center;gap:9px;
+  font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.16em;
+  text-transform:uppercase;color:var(--ab-ink)}
+.lxab .ab-eyebrow::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.lxab h1{margin:0 0 18px;font-size:clamp(32px,4.6vw,50px);line-height:1.08;font-weight:800;
+  letter-spacing:-.036em;color:var(--text);text-wrap:balance;max-width:18ch}
+.lxab .ab-lede{margin:0;font-size:clamp(18px,2.2vw,21px);line-height:1.55;color:var(--text);
+  font-weight:500;max-width:56ch}
+
+/* ---------------- sections ---------------- */
+.lxab h2{margin:52px 0 16px;font-size:25px;line-height:1.24;font-weight:800;letter-spacing:-.024em;
+  color:var(--text);padding-top:26px;border-top:1px solid var(--ab-hair)}
+.lxab h3{margin:30px 0 10px;font-size:18px;font-weight:700;letter-spacing:-.015em;color:var(--text)}
+.lxab ul{margin:0 0 19px;padding-left:22px;max-width:70ch}
+.lxab li{margin:0 0 10px}
+.lxab li::marker{color:var(--text-soft)}
+
+/* the one pulled-out line per section, set at display size with no box around it */
+.lxab .ab-say{margin:30px 0 32px;padding:22px 0 0;border-top:2px solid var(--text)}
+.lxab .ab-say p{margin:0;font-size:clamp(21px,2.7vw,29px);line-height:1.2;font-weight:800;
+  letter-spacing:-.03em;color:var(--text);max-width:24ch}
+.lxab .ab-say em{font-style:normal;color:var(--ab-ink)}
+
+/* ---------------- fact register ---------------- */
+.lxab .ab-reg{margin:26px 0 8px;border-top:1px solid var(--text)}
+.lxab .ab-row{display:grid;grid-template-columns:190px minmax(0,1fr);gap:6px 28px;
+  padding:15px 0;border-bottom:1px solid var(--ab-hair)}
+.lxab .ab-k{font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--text-soft);padding-top:3px}
+.lxab .ab-v{font-size:16.5px;line-height:1.6;color:var(--text)}
+.lxab .ab-v .ab-note{display:block;font-size:14.5px;color:var(--text-muted);margin-top:3px}
+.lxab .ab-mono{font-family:"JetBrains Mono",monospace;font-size:.9em}
+
+/* ---------------- what we run ---------------- */
+.lxab .ab-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(228px,1fr));gap:12px;
+  margin:26px 0}
+.lxab a.ab-card{display:block;padding:17px 19px;border-radius:10px;background:var(--surface);
+  border:1px solid var(--ab-hair);text-decoration:none;transition:border-color .14s,transform .14s}
+.lxab a.ab-card:hover{border-color:var(--ab-line);transform:translateY(-2px)}
+.lxab .ab-card-t{display:block;font-size:15.5px;font-weight:700;color:var(--text);
+  letter-spacing:-.015em;margin-bottom:5px}
+.lxab a.ab-card:hover .ab-card-t{color:var(--ab-ink)}
+.lxab .ab-card-t::after{content:"\2192";float:right;font-family:"JetBrains Mono",monospace;
+  font-size:13px;color:var(--text-soft);transition:transform .14s,color .14s}
+.lxab a.ab-card:hover .ab-card-t::after{color:var(--accent);transform:translateX(3px)}
+.lxab .ab-card-d{display:block;font-size:14px;line-height:1.55;color:var(--text-muted)}
+
+/* ---------------- team ---------------- */
+.lxab .ab-team{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 44px;
+  margin:26px 0 0;border-top:1px solid var(--text)}
+.lxab .ab-person{padding:22px 0;border-bottom:1px solid var(--ab-hair)}
+.lxab .ab-nm{margin:0;font-size:19px;font-weight:800;letter-spacing:-.026em;color:var(--text)}
+.lxab .ab-rl{margin:2px 0 9px;font-size:13px;color:var(--text-soft)}
+.lxab .ab-lk{margin:0;display:flex;gap:16px;font-size:13.5px;font-weight:600}
+
+/* ---------------- closing note ---------------- */
+.lxab .ab-note-box{position:relative;margin:34px 0 0;padding:22px 22px 18px;border-radius:8px;
+  background:var(--surface);border:1px solid var(--ab-line)}
+.lxab .ab-note-h{position:absolute;top:0;left:18px;transform:translateY(-50%);margin:0;
+  padding:0 9px;background:var(--bg);font-family:"JetBrains Mono",monospace;font-size:10px;
+  font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--ab-ink)}
+.lxab .ab-note-box p{margin:0;color:var(--text);font-size:16px;line-height:1.62}
+
+@media(max-width:700px){
+  .lxab{font-size:17px}
+  .lxab .ab-row{grid-template-columns:1fr;gap:2px}
+  .lxab .ab-top::before{display:none}
+  .lxab h2{font-size:22px}
+}
