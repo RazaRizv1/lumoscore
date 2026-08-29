@@ -349,6 +349,7 @@ const ROUTES = [
   ['/privacy',                         'lumoscore-privacy.html'],
   ['/terms',                           'lumoscore-terms.html'],
   ['/support',                         'lumoscore-support.html'],
+  ['/whitepaper',                      'lumoscore-whitepaper.html'],
 ];
 
 // Case: fixed segments are lowercase, but an asset segment must keep its case — yUSDC and YUSDC are

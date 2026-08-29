@@ -1,0 +1,677 @@
+<div class="lxwp">
+
+  <!-- ══════════════════════════ HERO ══════════════════════════ -->
+  <header class="wp-hero">
+    <div class="wp-hero-in">
+      <div class="wp-eyerow">
+        <span class="wp-dot"></span>
+        <span class="wp-label">Whitepaper</span>
+        <span class="wp-sep"></span>
+        <span class="wp-label">August 2026</span>
+      </div>
+      <h1 class="wp-wordmark">LumosCore</h1>
+      <div class="wp-hero-foot">
+        <p class="wp-disc">Multichain Web3 Infrastructure</p>
+        <p class="wp-tag">One interface. Every network. <b>Custody nowhere.</b></p>
+      </div>
+    </div>
+    <div class="wp-imprint">
+      <span><b>LumosCore OÜ</b></span>
+      <span>Estonia</span>
+      <span>Reg. <b>17336483</b></span>
+      <span class="wp-sp"></span>
+      <span><a href="/">lumoscore.com</a></span>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════ ABSTRACT ══════════════════════════ -->
+  <div class="wp-frame">
+    <div class="wp-rail">
+      <span class="wp-ghost">§</span>
+      <h2>Abstract</h2>
+      <p class="wp-gloss">Where the industry has been, and the trade-off LumosCore refuses to make.</p>
+    </div>
+    <div class="wp-body">
+      <div class="wp-abs-cols">
+        <p>The first generation of crypto infrastructure made digital assets accessible through
+          centralised exchanges. The model was simple: create an account, deposit assets and trade through
+          one interface. It solved the usability problem, but introduced a fundamental trade-off.
+          <strong>The exchange held the keys.</strong></p>
+        <p>The emergence of decentralised finance changed that model. Users could interact with markets
+          directly from their own wallets, without depositing assets into a centralised platform. But
+          another problem emerged. As blockchain ecosystems multiplied, decentralised activity became
+          increasingly fragmented across networks, wallets, applications and liquidity venues.</p>
+        <p>LumosCore is designed around the next step in that evolution.</p>
+      </div>
+
+      <div class="wp-say">
+        <span class="wp-label">The proposition</span>
+        <p>The simplicity of a unified platform, with the control of <em>self-custody</em>.</p>
+      </div>
+
+      <div class="wp-abs-cols">
+        <p>LumosCore provides a unified interface for <a href="/trade/stellar">trading</a>,
+          <a href="/pools/stellar">liquidity</a>,
+          <a href="/launchpad">token issuance</a>,
+          <a href="/bridge">cross-chain transfers</a>,
+          <a href="/wallet">wallet functionality</a>, asset discovery and
+          <a href="/rewards">rewards</a> across supported blockchain ecosystems.</p>
+        <p>The underlying networks remain independent. Transactions are constructed for the relevant
+          network and signed by the user's own wallet. LumosCore does not custody user assets, maintain
+          user balances or operate a bridge holding pooled customer funds.</p>
+        <p>Cross-chain transport is delegated to external protocols and selected on a network-by-network
+          basis according to defined requirements, including the avoidance of LumosCore custody and a
+          preference for canonical assets where available.</p>
+        <p>This whitepaper explains the problem LumosCore is addressing, the platform architecture, its
+          current deployment, economics, expansion strategy and associated risks.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 1 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s1">
+    <div class="wp-rail">
+      <span class="wp-ghost">01</span>
+      <h2>From CEX to Multichain</h2>
+      <p class="wp-gloss">How the industry traded custody for usability, then usability for
+        fragmentation.</p>
+    </div>
+    <div class="wp-body">
+
+      <h3><span class="wp-n">1.1</span>The first problem: access</h3>
+      <p>For much of crypto's early growth, the easiest way to interact with digital assets was through a
+        centralised exchange. The model was familiar.</p>
+      <div class="wp-march wp-m4">
+        <div><span class="wp-mn">01</span><span class="wp-mt">Create an account</span></div>
+        <div><span class="wp-mn">02</span><span class="wp-mt">Deposit funds</span></div>
+        <div><span class="wp-mn">03</span><span class="wp-mt">Trade</span></div>
+        <div><span class="wp-mn">04</span><span class="wp-mt">Withdraw</span></div>
+      </div>
+      <p>The complexity of blockchain infrastructure was largely hidden from the user.</p>
+      <p>That simplicity came from centralisation. A centralised exchange controls the infrastructure
+        through which customer assets are held and transactions are executed. Coinbase, for example,
+        explicitly describes its exchange as a custodial service in which it maintains the private keys for
+        assets held on its platform.</p>
+      <p>This creates a fundamental trade-off: convenience increases, but the user gives up direct control
+        of the keys. The exchange becomes a counterparty. Its security, solvency, operational controls and
+        governance become relevant to the user's ability to access their assets.</p>
+      <p>The industry has seen the consequences when that relationship breaks down. Major exchange
+        incidents have included the Mt. Gox hack, the Bitfinex hack and the collapse of
+        FTX.<sup><a href="#wp-r2">2</a></sup> The common characteristic is not that every event had the same
+        cause, but that users had entrusted assets to a centralised intermediary.</p>
+      <p>This created one of the defining principles of decentralised finance.</p>
+
+      <div class="wp-say">
+        <span class="wp-label">Principle</span>
+        <p>Users should be able to interact with financial infrastructure without first surrendering
+          <em>custody</em> of their assets.</p>
+      </div>
+
+      <h3><span class="wp-n">1.2</span>The second problem: custody</h3>
+      <p>Decentralised exchanges changed the architecture. Instead of depositing assets with an exchange,
+        users could connect their own wallets and interact directly with on-chain markets. The private key
+        remained with the user. The exchange no longer needed to hold the user's assets.</p>
+      <p>This solved an important problem. But it introduced another.</p>
+      <p>The infrastructure became distributed. A user might now need one application for trading, another
+        for liquidity, another for bridging, another for wallet activity and another for interacting with a
+        different blockchain.</p>
+
+      <div class="wp-say">
+        <span class="wp-label">The gap</span>
+        <p>Self-custody solved the custody problem. It did not solve the <em>fragmentation</em>
+          problem.</p>
+      </div>
+
+      <h3><span class="wp-n">1.3</span>The multichain problem</h3>
+      <p>The industry continued to expand. Ethereum was joined by Layer 2 networks, alternative Layer 1s,
+        appchains and specialised ecosystems. Liquidity moved across them. Projects deployed across them.
+        Users began holding assets across them.</p>
+      <p>The result is an ecosystem where the underlying technology can be powerful, but the experience can
+        be unnecessarily complicated. A user who operates across several networks may have to
+        understand:</p>
+      <div class="wp-cols">
+        <div>different wallets</div>
+        <div>different transaction models</div>
+        <div>different explorers</div>
+        <div>different liquidity venues</div>
+        <div>different asset identifiers</div>
+        <div>different cross-chain mechanisms</div>
+      </div>
+      <p>The user did not necessarily ask for any of that complexity. They simply wanted to use their
+        assets. This creates two costs.</p>
+      <div class="wp-reg">
+        <div class="wp-reg-row">
+          <div><span class="wp-rk">For users</span><span class="wp-rt">A usability cost</span></div>
+          <div class="wp-rd">The same basic action can require a different workflow depending on the
+            network.</div>
+          <div></div>
+        </div>
+        <div class="wp-reg-row">
+          <div><span class="wp-rk">For projects</span><span class="wp-rt">A distribution cost</span></div>
+          <div class="wp-rd">Issuers and applications must reach users across increasingly fragmented
+            ecosystems.</div>
+          <div></div>
+        </div>
+      </div>
+      <p><strong>The number of networks is growing. The interface should not have to grow with it.</strong></p>
+
+      <h3><span class="wp-n">1.4</span>The LumosCore thesis</h3>
+      <div class="wp-say">
+        <span class="wp-label">Thesis</span>
+        <p>Self-custody should not require a <em>fragmented</em> user experience.</p>
+      </div>
+      <p>The goal is not to replace blockchains. It is not to force every network into one technical
+        architecture. And it is not to create another custodial exchange.</p>
+      <p>Instead, LumosCore provides a unified interface through which users can access functionality
+        across supported ecosystems while the underlying assets and settlement remain on the relevant
+        networks. This creates a different model:</p>
+
+      <div class="wp-tw">
+        <table>
+          <thead><tr><th>Model</th><th>User experience</th><th>Asset custody</th></tr></thead>
+          <tbody>
+            <tr><td>Centralised exchange</td><td>Unified</td><td>Platform controlled</td></tr>
+            <tr><td>Individual DeFi apps</td><td>Fragmented</td><td>User controlled</td></tr>
+            <tr class="wp-hi"><td>LumosCore</td><td>Unified</td><td>User controlled</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="wp-cap"><b>Table 1.</b> Where the experience is unified, and where custody sits. This is the
+        core idea behind the platform — everything else in the architecture follows from it.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 2 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s2">
+    <div class="wp-rail">
+      <span class="wp-ghost">02</span>
+      <h2>The LumosCore Platform</h2>
+      <p class="wp-gloss">Seven kinds of on-chain activity behind one interface.</p>
+      <p class="wp-rlink"><a href="/dashboard">Open the dashboard ↗</a></p>
+    </div>
+    <div class="wp-body">
+      <p class="wp-lead">LumosCore brings multiple forms of on-chain activity into one interface. Every entry
+        below is a live page on the platform.</p>
+
+      <div class="wp-reg">
+        <a class="wp-reg-row" href="/trade/stellar">
+          <div class="wp-rt">Trading</div>
+          <div class="wp-rd">Users can swap assets and place limit orders against supported network-native
+            markets.</div>
+          <div class="wp-ra">↗</div>
+        </a>
+        <a class="wp-reg-row" href="/pools/stellar">
+          <div class="wp-rt">Liquidity</div>
+          <div class="wp-rd">Users can create liquidity pools, provide liquidity and withdraw positions
+            without a platform-imposed lock-up period.</div>
+          <div class="wp-ra">↗</div>
+        </a>
+        <a class="wp-reg-row" href="/launchpad">
+          <div class="wp-rt">Token Issuance</div>
+          <div class="wp-rd">Users can issue an asset, mint supply and establish its initial liquidity
+            through a single flow.</div>
+          <div class="wp-ra">↗</div>
+        </a>
+        <a class="wp-reg-row" href="/bridge">
+          <div class="wp-rt">Cross-Chain</div>
+          <div class="wp-rd">Supported assets can move between supported networks through external transport
+            mechanisms selected according to LumosCore's cross-chain requirements.</div>
+          <div class="wp-ra">↗</div>
+        </a>
+        <a class="wp-reg-row" href="/wallet">
+          <div class="wp-rt">Wallet</div>
+          <div class="wp-rd">Users can view balances, transaction activity, trustlines and claimable payments
+            without transferring custody to LumosCore.</div>
+          <div class="wp-ra">↗</div>
+        </a>
+        <a class="wp-reg-row" href="/trade/stellar">
+          <div class="wp-rt">Asset Discovery</div>
+          <div class="wp-rd">Curated listings and issuer verification provide users with additional
+            information when identifying assets.</div>
+          <div class="wp-ra">↗</div>
+        </a>
+        <a class="wp-reg-row" href="/rewards">
+          <div class="wp-rt">Rewards</div>
+          <div class="wp-rd">LumosCore operates liquidity and holding programmes distributing LUMOS on a
+            fifteen-day cycle.</div>
+          <div class="wp-ra">↗</div>
+        </a>
+      </div>
+
+      <p>The objective is not simply to put more features on one website. It is to remove unnecessary
+        boundaries between the activities users already perform across Web3.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 3 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s3">
+    <div class="wp-rail">
+      <span class="wp-ghost">03</span>
+      <h2>Architecture</h2>
+      <p class="wp-gloss">Three parties, three jobs — and none of them holds anyone else's assets.</p>
+    </div>
+    <div class="wp-body">
+      <p>The platform is built around a separation of responsibilities.</p>
+      <div class="wp-reg">
+        <div class="wp-reg-row">
+          <div><span class="wp-rk">LumosCore</span><span class="wp-rt">Interface &amp; coordination</span></div>
+          <div class="wp-rd">Presents the networks through one interface and constructs the transaction.</div>
+          <div></div>
+        </div>
+        <div class="wp-reg-row">
+          <div><span class="wp-rk">Blockchain</span><span class="wp-rt">Settlement</span></div>
+          <div class="wp-rd">Executes and records the transaction. Remains its own source of truth.</div>
+          <div></div>
+        </div>
+        <div class="wp-reg-row">
+          <div><span class="wp-rk">User's wallet</span><span class="wp-rt">Authorisation</span></div>
+          <div class="wp-rd">Holds the keys and signs. Nothing moves without it.</div>
+          <div></div>
+        </div>
+      </div>
+      <p><strong>This distinction is fundamental.</strong></p>
+
+      <h3><span class="wp-n">3.1</span>Non-custodial execution</h3>
+      <p>Transactions are constructed client-side and signed in the user's own wallet. LumosCore does not
+        hold private keys. It does not maintain a custodial balance for users. It does not have a
+        privileged mechanism through which it can move customer assets. There is no requirement to deposit
+        funds before using the platform.</p>
+      <p>This means LumosCore does not need to become the counterparty between the user and the
+        blockchain. <strong>The user authorises the transaction. The relevant network executes it.</strong></p>
+
+      <h3><span class="wp-n">3.2</span>Network-native infrastructure</h3>
+      <p>Each blockchain remains its own source of truth. LumosCore reads balances, market information and
+        position state from the relevant network sources and presents that information through a common
+        interface. Transactions are similarly constructed according to the requirements of the network on
+        which they will execute.</p>
+      <p>This allows LumosCore to maintain a consistent user experience without pretending that different
+        blockchains are technically identical. Adding a network therefore means integrating its:</p>
+      <div class="wp-cols">
+        <div>data layer</div>
+        <div>transaction model</div>
+        <div>wallet signing path</div>
+        <div>liquidity environment</div>
+        <div>relevant cross-chain infrastructure</div>
+      </div>
+      <p><strong>The user experience stays consistent. The infrastructure underneath adapts.</strong></p>
+
+      <h3><span class="wp-n">3.3</span>Platform infrastructure</h3>
+      <p>LumosCore uses static pages served through a CDN together with stateless edge functions. There is
+        no requirement for a large per-user infrastructure footprint.</p>
+      <p>This architecture is intended to allow the platform to scale its user base without requiring an
+        equivalent increase in user-specific infrastructure.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 4 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s4">
+    <div class="wp-rail">
+      <span class="wp-ghost">04</span>
+      <h2>Cross-Chain Infrastructure</h2>
+      <p class="wp-gloss">The mechanism can differ between networks. The requirements do not.</p>
+      <p class="wp-rlink"><a href="/bridge">Try a transfer ↗</a></p>
+    </div>
+    <div class="wp-body">
+      <p>Cross-chain functionality is essential to a multichain platform. It is also one of the areas where
+        security assumptions need to be explicit.</p>
+      <p>LumosCore therefore <strong>does not operate a custodial bridge holding pooled user
+        assets</strong>. Instead, cross-chain transport is delegated to external protocols.</p>
+
+      <h3>Transport requirements</h3>
+      <div class="wp-march wp-m3">
+        <div>
+          <span class="wp-mn">i</span>
+          <span class="wp-mt">No LumosCore custody</span>
+          <p class="wp-md">LumosCore must not take possession of user funds during a cross-chain
+            transaction.</p>
+        </div>
+        <div>
+          <span class="wp-mn">ii</span>
+          <span class="wp-mt">Canonical assets where possible</span>
+          <p class="wp-md">When a transport mechanism can deliver a canonical asset rather than a wrapped
+            representation, the canonical route is preferred.</p>
+        </div>
+        <div>
+          <span class="wp-mn">iii</span>
+          <span class="wp-mt">Transparent assumptions</span>
+          <p class="wp-md">The user should know which transport mechanism is being used and understand its
+            relevant assumptions before signing.</p>
+        </div>
+      </div>
+      <p>This approach avoids making one bridge or protocol a permanent dependency of the entire
+        platform.</p>
+
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 5 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s5">
+    <div class="wp-rail">
+      <span class="wp-ghost">05</span>
+      <h2>Asset Verification</h2>
+      <p class="wp-gloss">A ticker is not an identity. The issuing account is.</p>
+      <p class="wp-rlink"><a href="/trade/stellar">See curated assets ↗</a></p>
+    </div>
+    <div class="wp-body">
+      <p>Multichain infrastructure creates another challenge: <strong>asset identity</strong>.</p>
+      <p>A ticker is not unique. Anyone can issue an asset called <span class="wp-mono">USDC</span>. The
+        issuer and issuing account are what identify the asset.</p>
+      <p>LumosCore therefore uses the network's domain-attestation standard to establish a stronger
+        relationship between an asset, its issuer and its domain. The verification process works as a
+        two-way relationship:</p>
+      <div class="wp-march wp-m3">
+        <div>
+          <span class="wp-mn">01</span>
+          <span class="wp-mt">Issuer names its domain</span>
+          <p class="wp-md">The issuing account publishes its domain on-chain.</p>
+        </div>
+        <div>
+          <span class="wp-mn">02</span>
+          <span class="wp-mt">Domain names the asset</span>
+          <p class="wp-md">That domain identifies the corresponding asset and issuing account.</p>
+        </div>
+        <div>
+          <span class="wp-mn">03</span>
+          <span class="wp-mt">Both must correspond</span>
+          <p class="wp-md">LumosCore checks that the two references resolve to each other.</p>
+        </div>
+      </div>
+      <p>The asset receives the verification mark <strong>only</strong> when the relationship resolves
+        successfully.</p>
+
+      <h3><span class="wp-n">5.1</span>Verification is not endorsement</h3>
+      <p>A verification mark means <strong>identity, not quality</strong>. It does not mean that
+        LumosCore:</p>
+      <div class="wp-cols wp-neg">
+        <div>recommends the asset</div>
+        <div>considers it a good investment</div>
+        <div>guarantees its value</div>
+        <div>endorses its issuer</div>
+      </div>
+      <p>It simply provides additional evidence that the asset is associated with the issuer and domain it
+        claims.</p>
+      <div class="wp-note">
+        <span class="wp-label">Verification cannot be bought</span>
+        <p>Creating an asset through <a href="/launchpad">the launchpad</a> does not
+          automatically qualify it for verification.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 6 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s6">
+    <div class="wp-rail">
+      <span class="wp-ghost">06</span>
+      <h2>Current Deployment</h2>
+      <p class="wp-gloss">Live functionality as of August 2026 — not a roadmap.</p>
+    </div>
+    <div class="wp-body">
+      <p class="wp-lead">The following functionality is live as of August 2026.</p>
+      <div class="wp-tw">
+        <table>
+          <thead><tr><th>Capability</th><th>Production functionality</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><a href="/trade/stellar">Trading</a></td>
+              <td>Swaps and limit orders against the network's order book and pools, priced from executed
+                on-chain trades.</td>
+              </tr>
+            <tr>
+              <td><a href="/pools/stellar">Liquidity Pools</a></td>
+              <td>Pool creation, liquidity deposits and withdrawals without a lock-up period.</td>
+              </tr>
+            <tr>
+              <td><a href="/launchpad">Token Issuance</a></td>
+              <td>Asset issuance, supply minting and initial pool creation through a single flow.</td>
+              </tr>
+            <tr>
+              <td><a href="/bridge">Cross-Chain</a></td>
+              <td>USDC transfers between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon,
+                Avalanche, Linea and World Chain through the transport architecture described in
+                <a href="#wp-s4">Section 4</a>.</td>
+              </tr>
+            <tr>
+              <td><a href="/wallet">Wallet</a></td>
+              <td>Balances, activity, trustlines and claimable payments through a non-custodial
+                interface.</td>
+              </tr>
+            <tr>
+              <td>Curated Listings</td>
+              <td>Hand-reviewed listings with issuer verification, per <a href="#wp-s5">Section 5</a>.</td>
+              </tr>
+            <tr>
+              <td><a href="/rewards">Rewards</a></td>
+              <td>Three liquidity and holding programmes distributing LUMOS on fifteen-day cycles.</td>
+              </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="wp-cap"><b>Table 2.</b> Production functionality, August 2026. Each linked capability opens
+        the live page.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 7 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s7">
+    <div class="wp-rail">
+      <span class="wp-ghost">07</span>
+      <h2>Economics</h2>
+      <p class="wp-gloss">Priced before the signature, settled on-chain, no spread on the quote.</p>
+      <p class="wp-rlink"><a href="/lumos">The LUMOS token ↗</a></p>
+    </div>
+    <div class="wp-body">
+      <p>LumosCore monetises activity occurring across the platform. The pricing model is designed to be
+        visible before a transaction is signed. <strong>There is no additional spread added to quoted
+        prices and no platform fee introduced after the user signs.</strong></p>
+
+      <div class="wp-tw">
+        <table>
+          <thead><tr><th>Revenue stream</th><th>Price</th><th>Details</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Trading</td><td class="wp-num">0.2%</td>
+              <td>Reduced to <span class="wp-num">0.1%</span> for holders of 250,000+
+                <a href="/lumos">LUMOS</a>. LUMOS held in liquidity pools counts
+                toward the threshold.</td>
+            </tr>
+            <tr>
+              <td>Limit Orders</td><td class="wp-num">Free</td>
+              <td>Network fee only.</td>
+            </tr>
+            <tr>
+              <td>Cross-Chain</td><td class="wp-num">0.2% / 0.1%</td>
+              <td>Same LUMOS threshold as trading. External transport and network costs are passed through
+                without markup.</td>
+            </tr>
+            <tr>
+              <td>Token Issuance</td><td class="wp-num">$25</td>
+              <td>$5 asset creation + $10 opening liquidity + $10 pool and network setup.</td>
+            </tr>
+            <tr>
+              <td>Curated Listing</td><td class="wp-num">$250</td>
+              <td>Manual review and issuer verification. Fully refunded in the asset paid if the listing is
+                declined.</td>
+            </tr>
+            <tr>
+              <td>Advertising</td><td class="wp-num">$15 / 1,000</td>
+              <td>Impressions, minimum 5,000. Payable in the network's native asset or LUMOS.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="wp-cap"><b>Table 3.</b> Revenue streams and prices.</p>
+
+      <h3><span class="wp-n">7.1</span>LUMOS utility</h3>
+      <p>LUMOS is integrated into the platform's economic model through:</p>
+      <div class="wp-cols">
+        <div>trading fee reductions</div>
+        <div>cross-chain fee reductions</div>
+        <div>liquidity rewards</div>
+        <div>holding rewards</div>
+      </div>
+      <p>Holding at least <span class="wp-num">250,000</span> LUMOS qualifies a user for the reduced trading
+        and cross-chain fee tier. LUMOS held within a liquidity pool counts toward the threshold. Token
+        details are published at <a href="/lumos">lumoscore.com/lumos</a>.</p>
+      <div class="wp-note">
+        <span class="wp-label">What LUMOS is not</span>
+        <p>LUMOS does not represent equity in LumosCore OÜ, a debt claim, a dividend or a governance right
+          over the company.</p>
+      </div>
+
+      <h3><span class="wp-n">7.2</span>Revenue model</h3>
+      <p>The platform's revenue model is designed around activity rather than account balances.</p>
+      <div class="wp-reg">
+        <div class="wp-reg-row">
+          <div><span class="wp-rk">Usage-based</span><span class="wp-rt">Trading &amp; cross-chain</span></div>
+          <div class="wp-rd">Revenue scales with transaction activity on the platform.</div>
+          <div></div>
+        </div>
+        <div class="wp-reg-row">
+          <div><span class="wp-rk">Service</span><span class="wp-rt">Issuance &amp; listings</span></div>
+          <div class="wp-rd">Token issuance and curated listings generate service revenue.</div>
+          <div></div>
+        </div>
+        <div class="wp-reg-row">
+          <div><span class="wp-rk">Platform</span><span class="wp-rt">Advertising</span></div>
+          <div class="wp-rd">An additional revenue stream across platform surfaces.</div>
+          <div></div>
+        </div>
+      </div>
+      <p>The infrastructure model is designed so that increasing the number of users does not require an
+        equivalent increase in user-specific infrastructure.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 8 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s8">
+    <div class="wp-rail">
+      <span class="wp-ghost">08</span>
+      <h2>Expansion</h2>
+      <p class="wp-gloss">More networks behind the same interface — chosen by activity, not novelty.</p>
+    </div>
+    <div class="wp-body">
+      <p>LumosCore's long-term opportunity comes from extending the same interface across an increasingly
+        multichain ecosystem. <strong>The objective is not simply to maximise the number of supported
+        networks.</strong></p>
+      <p>Network integrations will be driven by the presence of:</p>
+      <div class="wp-cols">
+        <div>users</div>
+        <div>liquidity</div>
+        <div>asset issuers</div>
+        <div>meaningful on-chain activity</div>
+      </div>
+
+      <h3><span class="wp-n">8.1</span>Additional networks</h3>
+      <p>Each new network requires its own data integration, transaction construction, wallet signing path
+        and appropriate cross-chain infrastructure. The user should not have to learn those differences
+        simply because LumosCore has added another network.</p>
+
+      <h3><span class="wp-n">8.2</span>Multichain Explorer</h3>
+      <p>As users hold and transact across multiple ecosystems, activity becomes increasingly difficult to
+        monitor. LumosCore plans to develop a native multichain explorer that brings activity from
+        supported networks into one interface.</p>
+
+      <h3><span class="wp-n">8.3</span>Native Multichain Wallet</h3>
+      <p>LumosCore also intends to extend its wallet capabilities through a mobile-first, passkey-based
+        wallet. The objective is to make holding and using assets across networks part of the same
+        experience while preserving self-custody.</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 9 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s9">
+    <div class="wp-rail">
+      <span class="wp-ghost">09</span>
+      <h2>Team</h2>
+    </div>
+    <div class="wp-body">
+      <div class="wp-team">
+        <div class="wp-person">
+          <div>
+            <p class="wp-nm">Raza Rizvi</p>
+            <p class="wp-rl">Founder &amp; Chief Executive Officer</p>
+            <p class="wp-lk">
+              <a href="https://www.linkedin.com/in/rizviraza4125/">LinkedIn ↗</a>
+              <a href="https://x.com/Razarizv1">X ↗</a>
+            </p>
+          </div>
+        </div>
+        <div class="wp-person">
+          <div>
+            <p class="wp-nm">Abeeha Zaidi</p>
+            <p class="wp-rl">Co-founder &amp; Chief Marketing Officer</p>
+            <p class="wp-lk">
+              <a href="https://www.linkedin.com/in/abeeha-zaidi-19504511b/">LinkedIn ↗</a>
+              <a href="https://x.com/Abeehazaidi15">X ↗</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 10 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s10">
+    <div class="wp-rail">
+      <span class="wp-ghost">10</span>
+      <h2>References</h2>
+    </div>
+    <div class="wp-body">
+      <ol class="wp-refs">
+        <li id="wp-r1"><span class="wp-n">1</span><span>Aggregate decentralised exchange volume. DeFiLlama,
+          <a href="https://defillama.com/dexs">defillama.com/dexs</a>.</span></li>
+        <li id="wp-r2"><span class="wp-n">2</span><span>Centralised exchange security and custody risks are
+          documented across industry research and incident reports. Historical examples include the Mt. Gox
+          and Bitfinex hacks and the FTX collapse.</span></li>
+        <li id="wp-r3"><span class="wp-n">3</span><span>Cross-Chain Transfer Protocol. Circle,
+          <a href="https://www.circle.com/cross-chain-transfer-protocol">circle.com/cross-chain-transfer-protocol</a>.</span></li>
+      </ol>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════ 11 ══════════════════════════ -->
+  <div class="wp-frame" id="wp-s11" style="border-bottom:0">
+    <div class="wp-rail">
+      <span class="wp-ghost">11</span>
+      <h2>Notice</h2>
+      <p class="wp-rlink"><a href="/terms">Terms of Use ↗</a></p>
+    </div>
+    <div class="wp-body wp-notice">
+      <p>This document is published for informational purposes only.</p>
+      <p>It is not an offer to sell or a solicitation to buy any asset and does not constitute investment,
+        legal, tax or financial advice. It should not be relied upon when making financial decisions.</p>
+      <p>LUMOS is a utility token used for fee reduction and reward distribution on the platform. It
+        confers no equity, debt claim, dividend or governance right over LumosCore OÜ.</p>
+      <p>Statements concerning future development represent current intentions and may change without
+        notice. Statements concerning deployed functionality describe the platform as of August 2026.</p>
+      <p>Digital assets are volatile and may lose all of their value.</p>
+      <p>LumosCore operates on a non-custodial basis. Users retain sole control of their keys and sole
+        responsibility for transactions they authorise.</p>
+    </div>
+  </div>
+
+  <footer>
+    <nav class="wp-fnav">
+      <a href="/">Platform</a>
+      <a href="/trade/stellar">Trade</a>
+      <a href="/pools/stellar">Pools</a>
+      <a href="/launchpad">Launchpad</a>
+      <a href="/bridge">Cross-chain</a>
+      <a href="/wallet">Wallet</a>
+      <a href="/rewards">Rewards</a>
+      <a href="/lumos">LUMOS</a>
+      <a href="/blog">Blog</a>
+      <a href="/support">Support</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
+    <div class="wp-fmeta">
+      <span><b>LUMOSCORE OÜ</b></span>
+      <span>Estonia · Reg. 17336483</span>
+      <span>Whitepaper · August 2026</span>
+      <span class="wp-sp"></span>
+      <span><a href="/">lumoscore.com</a></span>
+    </div>
+  </footer>
+
+</div>
