@@ -471,6 +471,33 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
   var VTICK='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
   function vtick(c,i){ return VFD[c+"|"+i]!==undefined?('<span class="lx-vtick" title="Verified issuer">'+VTICK+'</span>'):""; }
+  // The baked map is a snapshot; what LumosCore vouches for changes without a build. Shares
+  // window.__lxCuratedV with search, Trade and the wallet, so a page that has already asked does not
+  // ask twice. Only ever ADDS -- a baked pair was checked by hand and a fetch should not revoke it.
+  function lxAccMergeV(){
+    window.__lxCuratedV=window.__lxCuratedV||fetch("/lxapi/assetmeta").then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){ return (d&&d.verified)||{}; }).catch(function(){ return {}; });
+    window.__lxCuratedV.then(function(vf){ var added=0;
+      Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;
+        var p=id.lastIndexOf("-"); if(p<0)return;
+        var k=id.slice(0,p)+"|"+id.slice(p+1);
+        if(VFD[k]===undefined){ VFD[k]=r.d||""; added++; } });
+      if(added)lxAccPaintV(); }).catch(function(){});
+  }
+  function lxAccPaintV(){ try{
+    var ns=document.querySelectorAll(".acc-pair");
+    for(var i=0;i<ns.length;i++){ var pr=ns[i];
+      var ic=pr.querySelector(".acc-ico[data-lxc]"); if(!ic)continue;
+      var c=ic.getAttribute("data-lxc")||"", is=ic.getAttribute("data-lxi")||"";
+      if(!c||VFD[c+"|"+is]===undefined)continue;
+      if(pr.querySelector(".lx-vtick"))continue;
+      var cd=pr.querySelector(".acc-code"); if(!cd||!cd.parentNode)continue;
+      var sp=document.createElement("span"); sp.className="lx-vtick";
+      sp.setAttribute("title","Verified issuer"); sp.innerHTML=VTICK;
+      if(cd.nextSibling)cd.parentNode.insertBefore(sp,cd.nextSibling); else cd.parentNode.appendChild(sp);
+    }
+  }catch(_e){} }
+  lxAccMergeV();
   function key(c,i){ return c+"-"+(i||""); }
   function brand(c,i){ if(c==="LUMOS"&&i===LUMOS_ISS)return LUMOS_LOGO;
     var u=LOGOS[c]; if(!u)return ""; return (LOGO_ISS[c]&&i===LOGO_ISS[c])?u:""; }
