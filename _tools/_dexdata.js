@@ -1503,7 +1503,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     if(volTh){ thr.insertBefore(th,volTh.nextSibling); } else { thr.appendChild(th); }
   }
   // ---- pagination -----------------------------------------------------------------------------------
-  var MK_PER=25, mkPage=1;
+  var MK_PER=50, mkPage=1;
   var PG_F='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>';
   var PG_P='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="15 18 9 12 15 6"/></svg>';
   var PG_N='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="9 18 15 12 9 6"/></svg>';
