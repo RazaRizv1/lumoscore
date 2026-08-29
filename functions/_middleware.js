@@ -321,6 +321,24 @@ function poolSeo(a, b, img){
 // Declaring a square as a large-image card is why scrapers dropped it and used the favicon instead.
 function isCardImage(u){ return String(u || '').indexOf('/assets/og') >= 0; }
 
+// The logo an admin uploaded for an asset, which the issuer's toml knows nothing about.
+async function adminImage(env, assetId){
+  try {
+    const kv = env && env.CONTENT_KV;
+    if (!kv || !assetId) return '';
+    const ov = await kv.get('asset:' + assetId, 'json');
+    return (ov && ov.image) || '';
+  } catch (e) { return ''; }
+}
+// og:image is fetched by a scraper with no page context, so a relative path is useless to it.
+function absUrl(u){
+  const v = String(u || '');
+  if (!v) return '';
+  if (v.indexOf('//') === 0) return 'https:' + v;
+  if (v.indexOf('/') === 0) return PRIMARY_ORIGIN + v;
+  return v;
+}
+
 function seoFor(pathname){
   const segs = pathname.split('/').filter(Boolean);
   if ((segs[0] === 'trade' || segs[0] === 'asset') && segs[2]) return { kind: 'asset', id: segs[2] };
@@ -460,12 +478,18 @@ export async function onRequest(context){
   const want = seoFor(url.pathname);
 
   let seo = null;
-  if (want && want.kind === 'asset') seo = assetSeo(await assetFacts(want.id), want.id);
+  if (want && want.kind === 'asset') {
+    seo = assetSeo(await assetFacts(want.id), want.id);
+    // an uploaded logo beats the issuer's toml, and beats having no image at all
+    const ai = await adminImage(context.env, want.id);
+    if (ai) seo.image = ai;
+  }
   else if (want && want.kind === 'pool') {
     // XLM has no logo of its own, so the pair's other side is the one worth showing.
     const other = want.a === 'native' ? want.b : want.a;
     const pf = (other && other !== 'native') ? await assetFacts(other) : null;
-    seo = poolSeo(want.a, want.b, pf && pf.image);
+    const ai = (other && other !== 'native') ? await adminImage(context.env, other) : '';
+    seo = poolSeo(want.a, want.b, ai || (pf && pf.image));
   }
 
   const head = [
@@ -482,6 +506,7 @@ export async function onRequest(context){
     head.push('<meta property="og:description" content="' + esc(seo.desc) + '">');
     head.push('<meta name="twitter:title" content="' + esc(seo.title) + '">');
     head.push('<meta name="twitter:description" content="' + esc(seo.desc) + '">');
+    seo.image = absUrl(seo.image);
     if (seo.image){
       head.push('<meta property="og:image" content="' + esc(seo.image) + '">');
       head.push('<meta property="og:image:alt" content="' + esc(seo.title) + '">');
