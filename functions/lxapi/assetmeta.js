@@ -24,12 +24,30 @@ const SPLIT_RE = /^([A-Za-z0-9]{1,12})-(G[A-Z2-7]{55})$/;
 
 // The tick is stamped HERE, by the server, from the asset's own issuer and domain. A client can ask
 // for an asset to be listed; it cannot tell us the asset is verified.
+// Domains WE publish the toml for. A SEP-1 handshake that lands on one of these is not evidence: the
+// launchpad sets a new issuer's home_domain to lumoscore.com and adds the asset to our own toml, so the
+// handshake is us asking ourselves. It passes for every token anyone mints here, which made a green tick
+// something a stranger could obtain by minting -- PEPE, GROK, HULK, NEIRO and FED all held one. What that
+// handshake actually proves is "minted on LumosCore", which is not the same claim as "verified".
+const OWN_DOMAINS = ['lumoscore.com', 'lu.meme'];
+function isOwnDomain(d) {
+  const h = String(d || '').trim().toLowerCase().replace(/^www\./, '');
+  return OWN_DOMAINS.indexOf(h) >= 0;
+}
+
 async function stampVerified(kv, asset) {
   const m = SPLIT_RE.exec(asset);
   if (!m) return null;
   let res;
   try { res = await verifyAsset(m[1], m[2]); } catch (_) { res = null; }
   const gf = GRANDFATHERED[m[1] + '|' + m[2]];
+  // Read rather than take on trust from the caller: stampVerified is reached from the add path AND from
+  // the batch re-verify, and only one of those knows why it is asking. The list is the authority on
+  // whether a human chose this asset.
+  let curatedList = [];
+  try { curatedList = (await kv.get(LIST, 'json')) || []; } catch (_) { curatedList = []; }
+  const curated = Array.isArray(curatedList) && curatedList.indexOf(asset) >= 0;
+  const selfSigned = !!(res && res.verified && isOwnDomain(res.domain));
   let rec;
   // CURATED MEANS TICKED. That is the rule this platform has chosen: an asset LumosCore puts on its
   // curated list carries the mark, whether or not its issuer can be made to vouch for it. BLND is why
@@ -40,11 +58,22 @@ async function stampVerified(kv, asset) {
   // this", not "the issuer vouches for this". The weight has moved onto what gets curated. That is why
   // HOW each tick was obtained is still recorded and still shown -- handshake, grandfathered, or our
   // own word -- so the difference remains visible to whoever is deciding what to curate next.
-  if (res && res.verified) rec = { v: 1, s: 'handshake', d: res.domain, t: Date.now(), why: res.reason };
+  // A handshake counts only when it lands on a domain we do NOT control -- aqua.network, circle.com,
+  // stronghold.co. Those are a third party staking their own domain on the claim, which is the entire
+  // value of SEP-1. Ours proves nothing about the asset.
+  if (res && res.verified && !selfSigned) rec = { v: 1, s: 'handshake', d: res.domain, t: Date.now(), why: res.reason };
   else if (gf) rec = { v: 1, s: 'grandfathered', d: (res && res.domain) || gf, t: Date.now(),
                        why: 'checked by hand when added; live handshake: ' + ((res && res.reason) || 'unavailable') };
-  else rec = { v: 1, s: 'curated', d: (res && res.domain) || '', t: Date.now(),
-               why: 'Ticked because LumosCore curates it — the handshake does not pass: ' + ((res && res.reason) || 'check unavailable') };
+  else if (curated) rec = { v: 1, s: 'curated', d: (res && res.domain) || '', t: Date.now(),
+               why: selfSigned
+                 ? 'Ticked because LumosCore curates it. The handshake lands on our own domain (' + res.domain + '), so it carries no weight on its own — a person chose this asset.'
+                 : 'Ticked because LumosCore curates it — the handshake does not pass: ' + ((res && res.reason) || 'check unavailable') };
+  // Nothing vouches for it and nobody chose it, so it wears no mark. Minting is not a credential: this
+  // is the branch that stops anyone who can issue a token from also issuing themselves a green tick.
+  else rec = { v: 0, s: selfSigned ? 'mint' : 'unverified', d: (res && res.domain) || '', t: Date.now(),
+               why: selfSigned
+                 ? 'Minted on the LumosCore launchpad. Its issuer names our own domain and our own toml lists it, so the handshake only proves it was minted here. Curate it to give it a tick.'
+                 : 'No tick: ' + ((res && res.reason) || 'handshake unavailable') + ', and it is not on the curated list.' };
 
   let map = {};
   try { map = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
