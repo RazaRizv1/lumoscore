@@ -3459,6 +3459,27 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // build → sign → submit; buildOps(S, acctJson) -> [operations]
   // #16: onSigned fires the moment the wallet hands the signature back, BEFORE the network submit.
   // Those are two different waits and the button used to show one label across both -- see wRun.
+  // Every trustline a transaction opens locks up 0.5 XLM of account reserve, and a pool position is a
+  // trustline like any other. Checked here, against the SAME fresh account the transaction is built
+  // from, so the two cannot disagree -- and thrown before signing, because a reserve shortfall is not
+  // something to discover from Horizon after the wallet prompt.
+  //
+  // newSubs is passed in rather than counted off the ops: Operation.changeTrust returns an xdr.Operation,
+  // which has no readable .type, so counting them here would silently always find zero.
+  function cpReserveGuard(a, newSubs){
+    if(!(newSubs>0))return;
+    var bs=(a&&a.balances)||[], nat=null;
+    for(var i=0;i<bs.length;i++){ if(bs[i].asset_type==="native")nat=bs[i]; }
+    var xlm=nat?+nat.balance:0;
+    if(!(a&&a.subentry_count!=null))return;
+    var subs=+a.subentry_count;
+    var need=(2+subs+newSubs)*0.5+0.01;   // base 2 + every subentry, at 0.5 each, plus room for the fee
+    if(xlm+1e-7>=need)return;
+    throw new Error("Not enough XLM for the account reserve. This opens "+newSubs+" new trustline"
+      +(newSubs>1?"s":"")+", so "+need.toFixed(4)+" XLM has to stay in the account and it holds "
+      +xlm.toFixed(4)+". Add about "+(need-xlm).toFixed(4)+" XLM and try again. Your "
+      +"pool assets are untouched \u2014 nothing was sent.");
+  }
   function wSend(addr, buildOps, onSigned){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(180).build(); return wSign(tx.toXDR(),addr); }).then(function(signed){ try{ if(onSigned)onSigned(); }catch(_){} return wSubmit(signed); }); }
   // inline status message under a CTA (no new modals — a small line the existing card already has room for)
   // bottom-center toast, identical to the site's "Copied to clipboard" toast (self-contained CSS above)
@@ -3742,6 +3763,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
           var ops=[];
           var hasTrust=(a.balances||[]).some(function(b){return b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===d.hex;});
           if(!hasTrust)ops.push(S.Operation.changeTrust({asset:poolAsset}));
+          cpReserveGuard(a,ops.length);
           ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:d.hex, maxAmountA:wAmt(amtA), maxAmountB:wAmt(amtB), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
           return ops; }, {ok:"\\u2713 Added",okMsg:"Liquidity is added"}, function(){ var di=dInputs(); if(di[0])di[0].value=""; if(di[1])di[1].value=""; setTimeout(loadDetail,2600); });
       }
@@ -4005,6 +4027,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         var poolId=S.getLiquidityPoolId("constant_product",poolAsset.getLiquidityPoolParameters()).toString("hex"), ops=[];
         [sel[0],sel[1]].forEach(function(x){ if(!x.native){ var held=(a.balances||[]).some(function(b){return b.asset_code===x.code&&b.asset_issuer===x.issuer;}); if(!held)ops.push(S.Operation.changeTrust({asset:new S.Asset(x.code,x.issuer)})); } });
         if(!(a.balances||[]).some(function(b){return b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===poolId;}))ops.push(S.Operation.changeTrust({asset:poolAsset}));
+        cpReserveGuard(a,ops.length);
         ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:poolId, maxAmountA:wAmt(amtA), maxAmountB:wAmt(amtB), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
         return ops; }, {ok:"\\u2713 Pool created",okMsg:"Pool created & liquidity added"}, function(){ setTimeout(function(){ location.reload(); },2600); });
     });
