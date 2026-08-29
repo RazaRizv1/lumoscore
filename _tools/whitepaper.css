@@ -75,6 +75,9 @@ html[data-theme="light"] .lxwp{
   font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--text-soft)}
 .lxwp .wp-imprint b{color:var(--text-muted);font-weight:600}
 .lxwp .wp-imprint .wp-sp{flex:1 1 auto}
+/* The eyebrow rule and the imprint run to the container edge; their last item would
+   otherwise sit flush against it. */
+.lxwp .wp-eyerow>:last-child,.lxwp .wp-imprint>:last-child{padding-right:18px}
 
 /* ---------------- section frame ---------------- */
 /* Margin rail + body. The rail carries the numeral and the one-line gloss; the body runs the
@@ -200,9 +203,8 @@ html[data-theme="light"] .lxwp{
 
 /* The document's own end matter. The site footer follows it, so this stays quiet. */
 .lxwp .wp-wpfoot{padding:40px 0 0}
-.lxwp .wp-fnav{display:flex;flex-wrap:wrap;gap:10px 26px;padding-bottom:26px;
-  border-bottom:1px solid var(--border);font-size:14.5px;font-weight:600}
 .lxwp .wp-fmeta{display:flex;flex-wrap:wrap;gap:9px 32px;padding-top:20px;
+  border-top:1px solid var(--border);
   font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--text-soft)}
 .lxwp .wp-fmeta b{color:var(--text);font-weight:700;letter-spacing:.06em}
 .lxwp .wp-fmeta .wp-sp{flex:1 1 auto}
