@@ -306,16 +306,20 @@ function assetSeo(f, assetId){
   };
 }
 
-function poolSeo(a, b){
+function poolSeo(a, b, img){
   const A = a === 'native' ? 'XLM' : a.split('-')[0];
   const B = b === 'native' ? 'XLM' : b.split('-')[0];
   return {
     title: A + ' / ' + B + ' liquidity pool on Stellar | LumosCore',
     desc: 'Reserves, total value locked, 24h volume and fees for the ' + A + ' / ' + B
       + ' liquidity pool on Stellar. Add or withdraw liquidity from your own wallet.',
-    image: '',
+    image: img || '',
   };
 }
+
+// A purpose-built card is landscape; an asset's toml logo is a small square (SHX's is 128x128).
+// Declaring a square as a large-image card is why scrapers dropped it and used the favicon instead.
+function isCardImage(u){ return String(u || '').indexOf('/assets/og') >= 0; }
 
 function seoFor(pathname){
   const segs = pathname.split('/').filter(Boolean);
@@ -457,21 +461,32 @@ export async function onRequest(context){
 
   let seo = null;
   if (want && want.kind === 'asset') seo = assetSeo(await assetFacts(want.id), want.id);
-  else if (want && want.kind === 'pool') seo = poolSeo(want.a, want.b);
+  else if (want && want.kind === 'pool') {
+    // XLM has no logo of its own, so the pair's other side is the one worth showing.
+    const other = want.a === 'native' ? want.b : want.a;
+    const pf = (other && other !== 'native') ? await assetFacts(other) : null;
+    seo = poolSeo(want.a, want.b, pf && pf.image);
+  }
 
   const head = [
     '<link rel="canonical" href="' + esc(canonical) + '">',
     '<meta property="og:url" content="' + esc(canonical) + '">',
     '<meta property="og:site_name" content="LumosCore">',
     '<meta property="og:type" content="website">',
-    '<meta name="twitter:card" content="summary_large_image">',
   ];
+  // Ask for the card type that matches the image we actually have.
+  head.push('<meta name="twitter:card" content="'
+    + ((seo && isCardImage(seo.image)) ? 'summary_large_image' : 'summary') + '">');
   if (seo){
     head.push('<meta property="og:title" content="' + esc(seo.title) + '">');
     head.push('<meta property="og:description" content="' + esc(seo.desc) + '">');
     head.push('<meta name="twitter:title" content="' + esc(seo.title) + '">');
     head.push('<meta name="twitter:description" content="' + esc(seo.desc) + '">');
-    if (seo.image) head.push('<meta property="og:image" content="' + esc(seo.image) + '">');
+    if (seo.image){
+      head.push('<meta property="og:image" content="' + esc(seo.image) + '">');
+      head.push('<meta property="og:image:alt" content="' + esc(seo.title) + '">');
+      head.push('<meta name="twitter:image" content="' + esc(seo.image) + '">');
+    }
     // a description already exists from the build; replace rather than duplicate
     head.push('<meta name="lx-seo-desc" content="' + esc(seo.desc) + '">');
   }

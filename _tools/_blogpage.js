@@ -222,6 +222,14 @@ const POST_STYLE = '<style id="lx-blogpost-css">/*lxts:1.1*/'
   + 'background:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0) 55%)}'
   + '.lx-post-body{font:400 18px/1.75 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}'
   + '.lx-post-body p{margin:0 0 20px}'
+  // Post bodies had no link rule at all, so every link fell through to the browser default: bright
+  // blue, underlined, the one colour that appears nowhere else on the site. Accent, with the underline
+  // kept -- a link inside running prose has to stay visible as a link.
+  + '.lx-post-body a{color:var(--accent,#ea6a2c);text-decoration:underline;'
+  + 'text-decoration-color:rgba(234,106,44,.4);text-decoration-thickness:1.5px;'
+  + 'text-underline-offset:3px;transition:text-decoration-color .13s}'
+  + '.lx-post-body a:hover{text-decoration-color:var(--accent,#ea6a2c)}'
+  + '.lx-post-body a:visited{color:var(--accent,#ea6a2c)}'
   + '.lx-post-body img{max-width:100%;height:auto;display:block;border-radius:12px;margin:22px auto}'
   + '.lx-post-body figure{margin:22px 0}'
   + '.lx-post-body figcaption{margin-top:8px;text-align:center;font-size:13.5px;color:var(--text-muted,#8a8fa3)}'
