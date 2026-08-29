@@ -23,6 +23,7 @@
 /privacy                                  /lumoscore-privacy  200
 /terms                                    /lumoscore-terms  200
 /support                                  /lumoscore-support  200
+/whitepaper                               /lumoscore-whitepaper  200
 
 # forgive capitalised entry points
 /Trade/*                                  /trade/:splat  301
