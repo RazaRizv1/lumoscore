@@ -40,7 +40,7 @@ export async function onRequestPost({ request, env }) {
   // The recipient comes from the STORED message, never from the request body. Taking it from the
   // caller would turn an authenticated reply box into a way to send mail to anyone.
   let msg;
-  try { msg = await db.prepare('SELECT id, from_addr, from_name, subject FROM mail WHERE id = ?1').bind(mailId).first(); }
+  try { msg = await db.prepare('SELECT id, from_addr, from_name, subject, reply_to FROM mail WHERE id = ?1').bind(mailId).first(); }
   catch (e) { return json({ error: 'lookup failed' }, 500); }
   if (!msg) return json({ error: 'no such message' }, 404);
 
@@ -53,7 +53,7 @@ export async function onRequestPost({ request, env }) {
       headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
       body: JSON.stringify({
         from: FROM,
-        to: [msg.from_addr],
+        to: [msg.reply_to || msg.from_addr],
         subject,
         text,
         reply_to: REPLY_TO,
@@ -90,7 +90,7 @@ export async function onRequestPost({ request, env }) {
     const why = (out && (out.message || (out.error && out.error.message))) || ('HTTP ' + res.status);
     return json({ error: 'not sent', message: why }, 200);
   }
-  return json({ ok: true, id: out.id, to: msg.from_addr, subject }, 200);
+  return json({ ok: true, id: out.id, to: msg.reply_to || msg.from_addr, subject }, 200);
 }
 
 // Replies already sent for one message, so the panel can show the thread rather than just the inbound half.

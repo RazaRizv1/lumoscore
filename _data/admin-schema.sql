@@ -33,6 +33,11 @@ CREATE TABLE IF NOT EXISTS mail (
   to_addr    TEXT NOT NULL,
   from_addr  TEXT NOT NULL,
   from_name  TEXT,
+  -- Where a reply must actually go. A message relayed by a provider carries that provider's bounce
+  -- address as its envelope from -- Resend uses a per-message ...@send.mail. address -- so from_addr
+  -- identifies the relay, not the person. Reply-To is the header that names them, and without it a
+  -- reply from the panel goes back to the relay and is silently lost.
+  reply_to   TEXT,
   subject    TEXT,
   body_text  TEXT,
   body_html  TEXT,

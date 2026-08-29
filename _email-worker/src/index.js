@@ -187,15 +187,24 @@ export default {
         .replace(/[<>]/g, '').slice(0, 250);
       const subject = decodeWords(h.subject || '(no subject)').slice(0, 500);
       const fromName = nameOf(h.from).slice(0, 120);
+  // Bare address out of a possible "Name <addr>" form; null when absent, so reply.js can fall
+  // through to from_addr for ordinary mail that carries no Reply-To.
+  const replyTo = (function () {
+    const v = decodeWords(h['reply-to'] || '');
+    if (!v) return null;
+    const m = /<([^>]+)>/.exec(v);
+    const a = (m ? m[1] : v).trim();
+    return a.indexOf('@') > 0 ? a.slice(0, 200) : null;
+  })();
 
       await db.prepare(
-        'INSERT OR IGNORE INTO mail (id, ts, to_addr, from_addr, from_name, subject, body_text, body_html, size, archived, raw) '
-        + 'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, 0, ?10)'
+        'INSERT OR IGNORE INTO mail (id, ts, to_addr, from_addr, from_name, reply_to, subject, body_text, body_html, size, archived, raw) '
+        + 'VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, 0, ?11)'
       ).bind(
         id, Date.now(),
         String(message.to || '').slice(0, 200),
         String(message.from || '').slice(0, 200),
-        fromName, subject,
+        fromName, replyTo, subject,
         (p.text || '').slice(0, 200000),
         (p.html || '').slice(0, 400000),
         Number(message.rawSize) || raw.length,
