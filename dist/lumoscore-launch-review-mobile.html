@@ -6,9 +6,350 @@
 <title>Review Your Token — Stellar Launchpad | LumosCore</title>
   <meta name="description" content="Check your token details, supply and issuing account before minting on Stellar mainnet.">
   <meta name="robots" content="noindex, nofollow">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+
+<style id="lx-fonts">/* cyrillic-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-cyrillic-ext.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-cyrillic-ext.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-cyrillic-ext.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-cyrillic-ext.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-cyrillic-ext.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'Hanken Grotesk';
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url(/assets/fonts/hankengrotesk-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-cyrillic-ext.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-cyrillic.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-greek.woff2) format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-cyrillic-ext.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-cyrillic.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-greek.woff2) format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+/* cyrillic-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-cyrillic-ext.woff2) format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+/* cyrillic */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-cyrillic.woff2) format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+/* greek */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-greek.woff2) format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+/* vietnamese */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-vietnamese.woff2) format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+0128-0129, U+0168-0169, U+01A0-01A1, U+01AF-01B0, U+0300-0301, U+0303-0304, U+0308-0309, U+0323, U+0329, U+1EA0-1EF9, U+20AB;
+}
+/* latin-ext */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-latin-ext.woff2) format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* latin */
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url(/assets/fonts/jetbrainsmono-latin.woff2) format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}</style>
 <style>/*lxts:1.1*/
   /* ===== THEME VARIABLES ===== */
   html[data-theme="dark"] {
@@ -809,7 +1150,7 @@ html[data-theme="light"] .search-overlay { background: rgba(15,15,20,0.35); }
 /* fix: hide legacy droplet pseudo over flame logo */
 .logo-mark::before,.logo-mark::after{display:none!important;content:none!important;background:none!important;}
 </style>
-<style id="lx-nsico">/*lxts:1.1*/.ns-icon svg,.ns-icon img{width:100% !important;height:100% !important;display:block;border-radius:50%}.ns-icon{overflow:hidden}</style><style id="lx-natico">/*lxts:1.1*/.lx-natico{background:transparent !important;background-image:none !important;font-size:0 !important;color:transparent !important;overflow:hidden;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;box-shadow:none !important}.lx-natico svg,.lx-natico img{width:100% !important;height:100% !important;display:block;border-radius:50%}</style><style id="lx-pairsep">/*lxts:1.1*/.pair-icons{width:56px !important}.pair-icons .pb{left:22px !important}.pair-icons .b,.pair-icons .a{}.trade-row .pair-icons,.tr-pair .pair-icons{width:56px !important}.pair-icons .b{left:22px !important}</style><style id="lx-ovheromob">/*lxts:1.1*/.hero-ico.lx-ovicomob{background:transparent !important;padding:0 !important;overflow:hidden;border:1px solid var(--border-strong);box-shadow:none !important}.hero-ico.lx-ovicomob img,.hero-ico.lx-ovicomob svg{width:100% !important;height:100% !important;display:block;border-radius:50%}.cta{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(234,106,44,.08),rgba(234,106,44,.03)) !important;border:1px solid rgba(234,106,44,.28) !important;transition:transform .16s,border-color .16s,box-shadow .16s}.cta::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--accent),#ff9a3d)}.cta:active{transform:scale(.99)}.cta-ico{background:linear-gradient(135deg,var(--accent),#ff9a3d) !important;border:none !important;box-shadow:0 5px 14px rgba(234,106,44,.3)}.cta-ico svg{color:#fff !important}</style><style id="lx-spicocss">/*lxts:1.1*/.sp-ico.lx-spico-on{background:transparent !important;font-size:0 !important;overflow:hidden;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:0 !important}.sp-ico.lx-spico-on img,.sp-ico.lx-spico-on svg{width:100% !important;height:100% !important;display:block;border-radius:50%}</style><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet"><style id="lx-type">/*lxts:1.1*/@font-face{font-family:'HG Metric Fallback';src:local('Segoe UI');size-adjust:92.7%}@font-face{font-family:'HG Metric Fallback';src:local('Arial'),local('Helvetica Neue'),local('Liberation Sans');size-adjust:85.4%}:root{--lx-ui:"Hanken Grotesk","Hanken Grotesk","HG Metric Fallback",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body,button,input,select,textarea,h1,h2,h3,h4,h5,h6{font-family:var(--lx-ui) !important}body{letter-spacing:-0.006em}h1,h2,h3{letter-spacing:-0.025em}.mono,code,pre,[class*='addr'],[class*='-v'] .mono{font-family:'JetBrains Mono',monospace !important}html[data-theme="dark"]{--text-muted:#b8b8c2;--text-soft:#8b8b97}html[data-theme="light"]{--text-muted:#5c5c66;--text-soft:#6f6f79}</style><style id="lx-nodots">/*lxts:1.1*/.nx-dot,.live-dot,.ns-conn-dot,.lxns-dot,.lxw-netdot,.lxw-sdot,.lc-net-dot,.lc-dot,.lc-cstep-dot,.ct-dot,.cdot,.pdot,.opt .desc .wic,.chart-series-legend .dot{display:none !important}</style><style id="lx-lcm">/*lxts:1.1*/@media (prefers-reduced-motion: no-preference){html.lcm-ready .page-header:not([data-lcm-done]), html.lcm-ready .grid:not([data-lcm-done]){opacity:0;transform:translateY(8px);transition:opacity .55s cubic-bezier(.2,.65,.2,1),transform .55s cubic-bezier(.2,.65,.2,1);will-change:opacity,transform}html.lcm-ready .page-header.lcm-on, html.lcm-ready .grid.lcm-on{opacity:1;transform:none}}</style><script>(function(){try{if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;document.documentElement.classList.add('lcm-ready');}catch(_){}})();</script><style id="lx-menu">/*lxts:1.1*/.menu-user{display:flex;align-items:center;gap:11px;padding:13.2px;margin:0 0 6.6px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border)}.menu-user .mu-link{display:flex;align-items:center;gap:13.2px;flex:1;min-width:0;text-decoration:none}.menu-user .mu-gear{width:34px;height:34px;flex:0 0 34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);border:1px solid var(--border);background:var(--surface)}.menu-user .mu-gear:active{color:var(--text)}.menu-user .mu-gear svg{width:16px;height:16px}.menu-user .mu-av{width:40px;height:40px;border-radius:50%;flex:0 0 40px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15.4px;color:#fff;background:linear-gradient(135deg,var(--accent),#7c5cff)}.menu-user .mu-meta{display:flex;flex-direction:column;gap:2.2px;min-width:0}.menu-user .mu-name{font-size:16.5px;font-weight:700;color:var(--text)}.menu-user .mu-sub{font-size:13.2px;color:var(--text-soft);font-family:"JetBrains Mono",monospace}.menu-group{font-size:11.6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft);padding:13.2px 13.2px 4.4px}.menu-links a{gap:13.2px}.menu-lang-row{border-bottom:1px solid var(--border)}</style><style id="lx-mobpolish">/*lxts:1.1*/*::-webkit-scrollbar{width:0 !important;height:0 !important;display:none !important}html,body,*{scrollbar-width:none !important;-ms-overflow-style:none !important}.status-row{display:grid !important;grid-template-columns:1fr 1fr !important;gap:11px !important;margin-top:17.6px !important}.status-row .lx-netcard{grid-column:1 / -1;padding:13.2px 17.6px 13.2px 13.2px !important}.status-pill{padding:14.3px 15.4px !important;border-radius:14px !important;gap:5.5px !important;min-height:0 !important}.status-pill .lbl{font-size:11px !important;letter-spacing:.09em !important}.status-pill .val{font-size:18.7px !important}.lx-netcard .val{font-size:20.9px !important}footer .ft-bottom{display:flex !important;align-items:center !important;justify-content:space-between !important;gap:11px 15.4px;flex-wrap:wrap;text-align:left !important}footer .ft-bottom .socials,footer .ft-bottom .ft-lang-wrap{margin:0 !important;padding:0 !important}footer .ft-bottom .ft-lang-wrap{width:auto !important;flex:0 0 auto;justify-content:flex-end !important}footer .ft-bottom .socials{order:0}footer .ft-bottom .ft-lang-wrap{order:1}.lx-netmq-lead{display:block !important;text-align:left !important;font-size:22px !important;font-weight:800 !important;letter-spacing:-.02em !important;text-transform:none !important;color:var(--text) !important;margin:0 0 17.6px !important;padding:0 17.6px !important}</style><style id="lx-acctfix">/*lxts:1.1*/.nx-acct .nx-av{background:var(--surface-3) !important;border:1px solid var(--border);color:var(--accent) !important;display:grid;place-items:center}.nx-acct .nx-av svg{width:16px;height:16px;stroke:var(--accent)}.nx-acct .nx-an{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13.2px}.nx-gear{color:var(--text-muted) !important;background:transparent !important}.nx-gear:hover{color:var(--accent) !important;border-color:var(--accent) !important;background:rgba(234,106,44,.10) !important}.menu-user .mu-av{background:var(--surface-3) !important;border:1px solid var(--border);display:grid;place-items:center}.menu-user .mu-av svg{width:16px;height:16px;stroke:var(--accent)}.menu-user .mu-name{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:14.3px}.mu-gear{color:var(--text-muted) !important}.mu-gear:hover{color:var(--accent) !important}</style><style id="lx-mobile-fix">/*lxts:1.1*/.menu-links svg{width:18px !important;height:18px !important;flex-shrink:0}.menu-links a{gap:13.2px}html,body{max-width:100%}body{overflow-x:clip}.appbar{gap:8.8px;overflow:visible;max-width:100%}.appbar .logo{min-width:0;flex-shrink:1;overflow:hidden}.appbar .logo-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.appbar .avatar-sm{flex-shrink:0}.appbar .icon-btn{flex-shrink:0}.appbar #netPill{display:none !important}.nb-tab.center{justify-content:center}.nb-tab.center .nb-lbl{margin-top:0}@media(max-width:600px){.rwpage .hero{padding:22px 17.6px;gap:22px;border-radius:18px}.rwpage .hero .l{min-width:0;width:100%}.rwpage .head{margin-bottom:22px}.rwpage .head h1{font-size:27.5px}.rwpage .head .sub{font-size:14.9px}.rwpage .cd{gap:6.6px;width:100%}.rwpage .cd .u{width:auto;flex:1;min-width:0;padding:9.9px 0}.rwpage .cd .u .n{font-size:23.1px}.rwpage .hstats{flex-direction:column;gap:13.2px;width:100%}.rwpage .hstat .v{font-size:22px}}</style><script id="lx-route">(function(){var out={network:"",asset:"",poolA:"",poolB:"",poolId:""};try{  var seg=location.pathname.replace(/^\/+|\/+$/g,"").split("/").map(decodeURIComponent);  var head=(seg[0]||"").toLowerCase();  var ASSET=/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;  if(head==="trade"||head==="asset"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]&&(ASSET.test(seg[2])||seg[2].toUpperCase()==="XLM"))out.asset=seg[2]; }  else if(head==="pools"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]==="id"){ out.poolId=seg[3]||""; }    else { if(seg[2])out.poolA=seg[2]; if(seg[3])out.poolB=seg[3]; } }}catch(e){}window.__lxRoute=out;})();</script><script id="lx-authgate">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))location.replace("/");}catch(_){}})();</script><style id="lx-chainready-css">/*lxts:1.1*/html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-mobmenufix">/*lxts:1.1*/.slide-menu{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(26.4px + env(safe-area-inset-bottom,0px))}.menu-theme-row{flex-shrink:0}</style><style id="lx-pairicons-css">/*lxts:1.1*/
+<style id="lx-nsico">/*lxts:1.1*/.ns-icon svg,.ns-icon img{width:100% !important;height:100% !important;display:block;border-radius:50%}.ns-icon{overflow:hidden}</style><style id="lx-natico">/*lxts:1.1*/.lx-natico{background:transparent !important;background-image:none !important;font-size:0 !important;color:transparent !important;overflow:hidden;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;box-shadow:none !important}.lx-natico svg,.lx-natico img{width:100% !important;height:100% !important;display:block;border-radius:50%}</style><style id="lx-pairsep">/*lxts:1.1*/.pair-icons{width:56px !important}.pair-icons .pb{left:22px !important}.pair-icons .b,.pair-icons .a{}.trade-row .pair-icons,.tr-pair .pair-icons{width:56px !important}.pair-icons .b{left:22px !important}</style><style id="lx-ovheromob">/*lxts:1.1*/.hero-ico.lx-ovicomob{background:transparent !important;padding:0 !important;overflow:hidden;border:1px solid var(--border-strong);box-shadow:none !important}.hero-ico.lx-ovicomob img,.hero-ico.lx-ovicomob svg{width:100% !important;height:100% !important;display:block;border-radius:50%}.cta{position:relative;overflow:hidden;background:linear-gradient(180deg,rgba(234,106,44,.08),rgba(234,106,44,.03)) !important;border:1px solid rgba(234,106,44,.28) !important;transition:transform .16s,border-color .16s,box-shadow .16s}.cta::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:linear-gradient(180deg,var(--accent),#ff9a3d)}.cta:active{transform:scale(.99)}.cta-ico{background:linear-gradient(135deg,var(--accent),#ff9a3d) !important;border:none !important;box-shadow:0 5px 14px rgba(234,106,44,.3)}.cta-ico svg{color:#fff !important}</style><style id="lx-spicocss">/*lxts:1.1*/.sp-ico.lx-spico-on{background:transparent !important;font-size:0 !important;overflow:hidden;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;padding:0 !important}.sp-ico.lx-spico-on img,.sp-ico.lx-spico-on svg{width:100% !important;height:100% !important;display:block;border-radius:50%}</style><style id="lx-type">/*lxts:1.1*/@font-face{font-family:'HG Metric Fallback';src:local('Segoe UI');size-adjust:92.7%}@font-face{font-family:'HG Metric Fallback';src:local('Arial'),local('Helvetica Neue'),local('Liberation Sans');size-adjust:85.4%}:root{--lx-ui:"Hanken Grotesk","Hanken Grotesk","HG Metric Fallback",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body,button,input,select,textarea,h1,h2,h3,h4,h5,h6{font-family:var(--lx-ui) !important}body{letter-spacing:-0.006em}h1,h2,h3{letter-spacing:-0.025em}.mono,code,pre,[class*='addr'],[class*='-v'] .mono{font-family:'JetBrains Mono',monospace !important}html[data-theme="dark"]{--text-muted:#b8b8c2;--text-soft:#8b8b97}html[data-theme="light"]{--text-muted:#5c5c66;--text-soft:#6f6f79}</style><style id="lx-nodots">/*lxts:1.1*/.nx-dot,.live-dot,.ns-conn-dot,.lxns-dot,.lxw-netdot,.lxw-sdot,.lc-net-dot,.lc-dot,.lc-cstep-dot,.ct-dot,.cdot,.pdot,.opt .desc .wic,.chart-series-legend .dot{display:none !important}</style><style id="lx-lcm">/*lxts:1.1*/@media (prefers-reduced-motion: no-preference){html.lcm-ready .page-header:not([data-lcm-done]), html.lcm-ready .grid:not([data-lcm-done]){opacity:0;transform:translateY(8px);transition:opacity .55s cubic-bezier(.2,.65,.2,1),transform .55s cubic-bezier(.2,.65,.2,1);will-change:opacity,transform}html.lcm-ready .page-header.lcm-on, html.lcm-ready .grid.lcm-on{opacity:1;transform:none}}</style><script>(function(){try{if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches)return;document.documentElement.classList.add('lcm-ready');}catch(_){}})();</script><style id="lx-menu">/*lxts:1.1*/.menu-user{display:flex;align-items:center;gap:11px;padding:13.2px;margin:0 0 6.6px;border-radius:12px;background:var(--surface-2);border:1px solid var(--border)}.menu-user .mu-link{display:flex;align-items:center;gap:13.2px;flex:1;min-width:0;text-decoration:none}.menu-user .mu-gear{width:34px;height:34px;flex:0 0 34px;border-radius:9px;display:inline-flex;align-items:center;justify-content:center;color:var(--text-muted);border:1px solid var(--border);background:var(--surface)}.menu-user .mu-gear:active{color:var(--text)}.menu-user .mu-gear svg{width:16px;height:16px}.menu-user .mu-av{width:40px;height:40px;border-radius:50%;flex:0 0 40px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:15.4px;color:#fff;background:linear-gradient(135deg,var(--accent),#7c5cff)}.menu-user .mu-meta{display:flex;flex-direction:column;gap:2.2px;min-width:0}.menu-user .mu-name{font-size:16.5px;font-weight:700;color:var(--text)}.menu-user .mu-sub{font-size:13.2px;color:var(--text-soft);font-family:"JetBrains Mono",monospace}.menu-group{font-size:11.6px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft);padding:13.2px 13.2px 4.4px}.menu-links a{gap:13.2px}.menu-lang-row{border-bottom:1px solid var(--border)}</style><style id="lx-mobpolish">/*lxts:1.1*/*::-webkit-scrollbar{width:0 !important;height:0 !important;display:none !important}html,body,*{scrollbar-width:none !important;-ms-overflow-style:none !important}.status-row{display:grid !important;grid-template-columns:1fr 1fr !important;gap:11px !important;margin-top:17.6px !important}.status-row .lx-netcard{grid-column:1 / -1;padding:13.2px 17.6px 13.2px 13.2px !important}.status-pill{padding:14.3px 15.4px !important;border-radius:14px !important;gap:5.5px !important;min-height:0 !important}.status-pill .lbl{font-size:11px !important;letter-spacing:.09em !important}.status-pill .val{font-size:18.7px !important}.lx-netcard .val{font-size:20.9px !important}footer .ft-bottom{display:flex !important;align-items:center !important;justify-content:space-between !important;gap:11px 15.4px;flex-wrap:wrap;text-align:left !important}footer .ft-bottom .socials,footer .ft-bottom .ft-lang-wrap{margin:0 !important;padding:0 !important}footer .ft-bottom .ft-lang-wrap{width:auto !important;flex:0 0 auto;justify-content:flex-end !important}footer .ft-bottom .socials{order:0}footer .ft-bottom .ft-lang-wrap{order:1}.lx-netmq-lead{display:block !important;text-align:left !important;font-size:22px !important;font-weight:800 !important;letter-spacing:-.02em !important;text-transform:none !important;color:var(--text) !important;margin:0 0 17.6px !important;padding:0 17.6px !important}</style><style id="lx-acctfix">/*lxts:1.1*/.nx-acct .nx-av{background:var(--surface-3) !important;border:1px solid var(--border);color:var(--accent) !important;display:grid;place-items:center}.nx-acct .nx-av svg{width:16px;height:16px;stroke:var(--accent)}.nx-acct .nx-an{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:13.2px}.nx-gear{color:var(--text-muted) !important;background:transparent !important}.nx-gear:hover{color:var(--accent) !important;border-color:var(--accent) !important;background:rgba(234,106,44,.10) !important}.menu-user .mu-av{background:var(--surface-3) !important;border:1px solid var(--border);display:grid;place-items:center}.menu-user .mu-av svg{width:16px;height:16px;stroke:var(--accent)}.menu-user .mu-name{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:14.3px}.mu-gear{color:var(--text-muted) !important}.mu-gear:hover{color:var(--accent) !important}</style><style id="lx-mobile-fix">/*lxts:1.1*/.menu-links svg{width:18px !important;height:18px !important;flex-shrink:0}.menu-links a{gap:13.2px}html,body{max-width:100%}body{overflow-x:clip}.appbar{gap:8.8px;overflow:visible;max-width:100%}.appbar .logo{min-width:0;flex-shrink:1;overflow:hidden}.appbar .logo-text{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.appbar .avatar-sm{flex-shrink:0}.appbar .icon-btn{flex-shrink:0}.appbar #netPill{display:none !important}.nb-tab.center{justify-content:center}.nb-tab.center .nb-lbl{margin-top:0}@media(max-width:600px){.rwpage .hero{padding:22px 17.6px;gap:22px;border-radius:18px}.rwpage .hero .l{min-width:0;width:100%}.rwpage .head{margin-bottom:22px}.rwpage .head h1{font-size:27.5px}.rwpage .head .sub{font-size:14.9px}.rwpage .cd{gap:6.6px;width:100%}.rwpage .cd .u{width:auto;flex:1;min-width:0;padding:9.9px 0}.rwpage .cd .u .n{font-size:23.1px}.rwpage .hstats{flex-direction:column;gap:13.2px;width:100%}.rwpage .hstat .v{font-size:22px}}</style><script id="lx-route">(function(){var out={network:"",asset:"",poolA:"",poolB:"",poolId:""};try{  var seg=location.pathname.replace(/^\/+|\/+$/g,"").split("/").map(decodeURIComponent);  var head=(seg[0]||"").toLowerCase();  var ASSET=/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;  if(head==="trade"||head==="asset"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]&&(ASSET.test(seg[2])||seg[2].toUpperCase()==="XLM"))out.asset=seg[2]; }  else if(head==="pools"){ out.network=(seg[1]||"").toLowerCase();    if(seg[2]==="id"){ out.poolId=seg[3]||""; }    else { if(seg[2])out.poolA=seg[2]; if(seg[3])out.poolB=seg[3]; } }}catch(e){}window.__lxRoute=out;})();</script><script id="lx-authgate">(function(){try{if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))location.replace("/");}catch(_){}})();</script><style id="lx-chainready-css">/*lxts:1.1*/html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-mobmenufix">/*lxts:1.1*/.slide-menu{height:100vh;height:100dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:calc(26.4px + env(safe-area-inset-bottom,0px))}.menu-theme-row{flex-shrink:0}</style><style id="lx-pairicons-css">/*lxts:1.1*/
 /* The wrapper: a fixed 46px box holding two absolutely-placed logos becomes a flow row.
    [data-paired] is the marker the runtime pair builders stamp on every pair they draw; .pair-cell is
    the table/list cell the static ones sit in. Between them they cover Pools main, the pool page,
