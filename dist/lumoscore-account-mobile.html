@@ -2883,7 +2883,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
     document.querySelectorAll('[data-dw]').forEach(function(b) {
       b.addEventListener('click', function() {
         document.querySelectorAll('[data-dw]').forEach(function(x) { x.classList.toggle('active', x === b); });
-        var cta = document.getElementById('dwCta');
+        var cta = document.getElementById('dwCta') || document.createElement('div');
         if (b.dataset.dw === 'withdraw') {
           cta.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 19 5 12 12 5"/></svg> Withdraw';
         } else {

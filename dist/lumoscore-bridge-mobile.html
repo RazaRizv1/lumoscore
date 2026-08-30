@@ -3267,7 +3267,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
   ready(function() {
     // ===== HIW modal =====
     var btn = document.getElementById('mdxHiwBtn');
-    var modal = document.getElementById('hiwModal');
+    var modal = document.getElementById('hiwModal') || document.createElement('div');
     if (btn && modal) {
       function openHiw(){ modal.classList.add('open'); document.body.style.overflow = 'hidden'; }
       function closeHiw(){ modal.classList.remove('open'); document.body.style.overflow = ''; }
