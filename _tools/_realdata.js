@@ -58,6 +58,14 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'.lx-actverb.lp{background:rgba(45,212,191,.16);color:#2dd4bf}'
 +'.lx-lpneg{color:var(--red,#ff5b5b)}'
 +'.lx-lppos{color:var(--green,#35c07f)}'
+// The 24h count, pushed to the far end of the card header. margin-left:auto rather than a layout
+// change on .market-head, which is shared with other cards and must not move because of this one.
++'.activity-card .market-head .lx-act24{margin-left:auto;flex:0 0 auto;white-space:nowrap;'
++'font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:600;letter-spacing:.03em;'
++'color:var(--text-muted);padding:3px 8px;border:1px solid var(--border);border-radius:999px}'
+// The header is not guaranteed to be a flex row on every layout; if it is not, margin-left:auto does
+// nothing and the pill would sit under the title. This makes it a row only on the card we touch.
++'.activity-card .market-head{display:flex;align-items:center;gap:10px}'
 +'.lx-actverb.xchain{background:rgba(56,189,248,.16);color:#38bdf8}'
 +'.lx-actverb.mint{background:rgba(234,106,44,.18);color:#ea6a2c}'
 +'.lx-actverb.claim{background:rgba(250,204,21,.16);color:#facc15}'
@@ -255,6 +263,26 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'+\'<div class="time">\'+r.when+\'</div>\''
 +'+\'<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/\'+esc(r.hash)+\'" target="_blank" rel="noopener" title="View transaction">\'+XPI+\'</a>\''
 +'+\'</div>\';}'
+// How many distinct transactions came through LumosCore in the last 24 hours. The COUNT only -- no
+// volume, no value -- because that is the one number this panel can state without qualification: it is
+// what the feed itself is built from, deduplicated by hash across both sources.
+//
+// Added to the card header from script rather than to the markup, so it lands on both layouts from one
+// place and simply does not appear if the data never arrives, instead of sitting there reading zero.
+//
+// SOURCE_CAP is the honest part. Both sources are capped -- 100 beacon rows, 100 fee payments -- so a
+// day busier than that could not be counted, only under-reported. If the answer touches the cap it is
+// shown as "100+" rather than as a precise number that is quietly wrong.
++'var SOURCE_CAP=100;'
++'function paint24(rows){'
++'var head=document.querySelector(".activity-card .market-head"); if(!head)return;'
++'var cut=Date.now()-864e5, n=0;'
++'rows.forEach(function(o){ var t=Date.parse(o.created_at); if(t>=cut)n++; });'
++'var el=head.querySelector(".lx-act24");'
++'if(!el){ el=document.createElement("span"); el.className="lx-act24"; head.appendChild(el); }'
++'el.textContent=(n>=SOURCE_CAP?(SOURCE_CAP+"+"):String(n))+" in 24h";'
++'el.title=(n===1?"1 transaction":n+" transactions")+" through LumosCore in the last 24 hours";'
++'}'
 +'function feed(){'
 +'var list=document.getElementById("activityList");if(!list)return;'
 +'j("/lxapi/act").then(function(av){'
@@ -263,7 +291,9 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'}).catch(function(){return [];}).then(function(acts){'
 // join=transactions costs no extra request and brings back each payment's transaction, which is what
 // makes the operation-count test below possible without a second round trip per row.
-+'return j(\"https://horizon.stellar.org/accounts/\"+LX_FEEACCT+\"/payments?order=desc&limit=40&join=transactions\").then(function(d){'
+// limit=100, not 40: the 24h counter below counts these too, and a limit sized for the eight visible
+// rows would cap that number without ever saying it had.
++'return j(\"https://horizon.stellar.org/accounts/\"+LX_FEEACCT+\"/payments?order=desc&limit=100&join=transactions\").then(function(d){'
 +'d.__acts=acts;return d;});'
 +'}).then(function(d){'
 +'var recs=((d._embedded&&d._embedded.records)||[]).filter(function(o){'
@@ -283,6 +313,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'((d&&d.__acts)||[]).concat(recs).forEach(function(o){'
 +'var hh=o.transaction_hash; if(!hh||seenH[hh])return; seenH[hh]=1; merged.push(o);});'
 +'merged.sort(function(a,b){return new Date(b.created_at)-new Date(a.created_at);});'
++'paint24(merged);'
 +'var use=merged.slice(0,8);'
 // Paint what we already know immediately, then upgrade each row once its transaction is read.
 +'var rows=use.map(function(o){return {ic:SWAP,cls:"swap",type:"Platform activity",who:o.from,when:ago(o.created_at),hash:o.transaction_hash};});'

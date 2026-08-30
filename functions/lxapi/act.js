@@ -18,7 +18,10 @@
 // from what the chain says happened.
 const ADDR_RE = /^G[A-Z2-7]{55}$/;
 const HASH_RE = /^[0-9a-f]{64}$/i;
-const MAX_ROWS = 30;
+// The feed shows 8. This is larger than that on purpose: the dashboard also counts how many distinct
+// transactions happened in the last 24 hours, and a limit tight enough for the visible list would cap
+// that count without saying so. 100 is far above a real day here and still one small query.
+const MAX_ROWS = 100;
 
 function json(body, status, sMaxAge) {
   return new Response(JSON.stringify(body), {
