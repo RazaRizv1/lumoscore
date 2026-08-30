@@ -32,8 +32,10 @@ const ACTIVITY = {
   desktop: '<div class="activity-card" data-lxnonav="1">\n          <div class="market-head">\n'
     + '            <h3><span class="live-pulse"></span>Live Platform Activity — Stellar</h3>\n'
     + '          </div>\n          <div class="activity-scroll" id="activityList"></div>\n        </div>',
+  // "— Stellar" on the phone too. It was the one layout naming no chain, on the one layout with no
+  // other clue which chain it is showing. Kept identical to desktop so both share the i18n key.
   mobile: '<div class="activity-card" data-lxnonav="1">\n      <div class="market-head">\n'
-    + '        <h3><span class="live-pulse"></span>Live Platform Activity</h3>\n'
+    + '        <h3><span class="live-pulse"></span>Live Platform Activity — Stellar</h3>\n'
     + '      </div>\n      <div class="activity-scroll" id="activityList"></div>\n    </div>',
 };
 // Where the card belongs, if it has to go back in: immediately after the design's own marker comment.
