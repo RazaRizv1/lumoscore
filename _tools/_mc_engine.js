@@ -88,8 +88,8 @@ function injectNetScreen(){
       +'<span class="lxw-main"><span class="lxw-name">'+CHAINS[id].name+'</span>'
       +'<span class="lxw-wsub">'+(soon?'Support is on the way':('Connect on '+CHAINS[id].name))+'</span></span>'
       // data-lxc + data-logoed + a zero-size svg: the same three guards the token page's chooser uses.
-      // "Coming soon" is short enough for the logo healer to read as a ticker and paint over.
-      +(soon?('<span class="lxw-soon-tag" data-lxc="" data-logoed="1"><svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg>Coming soon</span>'):NP_CHEV);
+      // A two-word tag is short enough for the logo healer to read as a ticker and paint over.
+      +(soon?('<span class="lxw-soon-tag" data-lxc="" data-logoed="1"><svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg>Next up</span>'):NP_CHEV);
     // A div, not a disabled button: a disabled button still looks like a control that failed, and it
     // drops out of the tab order in a way that reads as broken rather than as not-yet.
     return soon
