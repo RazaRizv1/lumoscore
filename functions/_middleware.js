@@ -361,18 +361,25 @@ async function blogPost(env, slug){
     return p;
   } catch (e) { return null; }
 }
+// Whitespace, built without a backslash: this whole function lives inside a template literal, where a
+// backslash is eaten on the way out. Writing /BACKSLASH-s+/g here produced /s+/g, which matched the
+// letter s and quietly deleted every one of them from the description.
+const WS_RE = new RegExp('[' + String.fromCharCode(32, 9, 10, 13) + ']+', 'g');
+
 // The excerpt if the author wrote one, otherwise the opening of the body with its markup removed.
 function blogDesc(p){
   const ex = String((p && p.excerpt) || '').trim();
   if (ex) return ex.slice(0, 300);
   const body = String((p && p.body) || '')
-    .replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/s+/g, ' ').trim();
+    .replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(WS_RE, ' ').trim();
   return body.slice(0, 155) + (body.length > 155 ? '…' : '');
 }
 function blogSeo(p, origin){
   // The stored title already ends in "| LumosCore" on existing posts, so it is not appended twice.
   const t = String((p && p.title) || '').trim();
-  const title = /LumosCores*$/i.test(t) ? t : (t + ' | LumosCore');
+  // endsWith rather than a pattern: no backslash to lose, and it says what it means.
+  const title = t.toLowerCase().replace(WS_RE, ' ').trim().endsWith('lumoscore')
+    ? t : (t + ' | LumosCore');
   const cover = String((p && p.cover) || '');
   return {
     title,
