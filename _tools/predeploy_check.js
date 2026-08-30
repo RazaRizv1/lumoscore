@@ -173,6 +173,25 @@ if (!ADMIN) {
   }
 }
 
+// ---- the blog pages must still know how to load posts ----------------------------------------------
+// _blogdata.js injects the layer that fetches /lxapi/blog and renders the cards; _blogpage.js rebuilds
+// those pages from a donor and REMOVES it. So _blogdata.js must run after _blogpage.js, and when it
+// does not the pages ship as empty shells that still answer 200 -- which is why this went unnoticed
+// until someone opened the page. Presence of the fetch is the cheapest possible proof the layer
+// survived the build.
+if (!ADMIN) {
+  for (const f of files) {
+    const name = rel(f);
+    if (!/lumoscore-blog(-post)?(-mobile)?\.html$/.test(name)) continue;
+    const s = fs.readFileSync(f, 'utf8');
+    if (s.indexOf('/lxapi/blog') < 0) {
+      fail.push(name + ': the blog data layer is missing (no /lxapi/blog call) — this page would ship '
+        + 'as an empty shell that still returns 200. _blogpage.js re-ran after _blogdata.js. '
+        + 'Re-run node _tools/_blogdata.js and rebuild.');
+    }
+  }
+}
+
 // ---- report -------------------------------------------------------------------------------------------
 const size = (files.reduce((s, f) => s + fs.statSync(f).size, 0) / 1048576).toFixed(1);
 console.log(`\n  Pre-deploy check — ${LABEL} build (${files.length} files, ${size} MB)\n`);
