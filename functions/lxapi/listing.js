@@ -5,7 +5,7 @@
 // accepted only if Horizon confirms a transaction that:
 //   * exists and succeeded;
 //   * contains a payment to OUR fee collector;
-//   * in an accepted asset (XLM or LUMOS);
+//   * in XLM;
 //   * of at least the amount that asset was quoted at, checked against a fresh quote;
 //   * and has not already been used for another request.
 //
@@ -14,7 +14,6 @@
 // primary defence against replays and the table's unique key, so a double submit collapses into one
 // row rather than two requests for one payment.
 const FEE_ACCT = 'GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD';
-const LUMOS_ISS = 'GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S';
 const H = 'https://horizon.stellar.org';
 
 const HASH_RE = /^[0-9a-f]{64}$/i;
@@ -115,18 +114,17 @@ async function verifyPayment(hash) {
 
   for (const op of ops) {
     if (op.type !== 'payment' || op.to !== FEE_ACCT) continue;
-    const isXlm = op.asset_type === 'native';
-    const isLumos = op.asset_code === 'LUMOS' && op.asset_issuer === LUMOS_ISS;
-    if (!isXlm && !isLumos) continue;
+    // XLM only. A payment in anything else is not a listing fee, even if its value happens to match.
+    if (op.asset_type !== 'native') continue;
     return {
       payer: op.from,
-      asset: isXlm ? 'native' : ('LUMOS:' + LUMOS_ISS),
-      code: isXlm ? 'XLM' : 'LUMOS',
+      asset: 'native',
+      code: 'XLM',
       amount: String(op.amount),
       at: tx.created_at,
     };
   }
-  return { err: 'no payment to the listing account in that transaction' };
+  return { err: 'no XLM payment to the listing account in that transaction' };
 }
 
 // Re-quote server-side. The number the browser displayed is a claim like any other.
@@ -142,9 +140,6 @@ async function quoted(request, code) {
 }
 
 export async function onRequestPost({ request, env }) {
-  const db = env && env.ADMIN_DB;
-  if (!db) return json({ ok: false, error: 'submissions are unavailable right now' }, 503);
-
   let b;
   try { b = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
   if (!b || typeof b !== 'object') return json({ ok: false, error: 'bad request' }, 400);
@@ -162,6 +157,11 @@ export async function onRequestPost({ request, env }) {
   if (!descr) return json({ ok: false, error: 'add a description' }, 400);
 
   if (!HASH_RE.test(hash)) return json({ ok: false, error: 'missing payment' }, 400);
+
+  // Checked here, not at the top: a bad request deserves to hear what is wrong with it rather
+  // than a 503 implying the fault is ours.
+  const db = env && env.ADMIN_DB;
+  if (!db) return json({ ok: false, error: 'submissions are unavailable right now' }, 503);
 
   // One payment, one request. Checked before touching the chain so a replay costs nothing.
   try {
