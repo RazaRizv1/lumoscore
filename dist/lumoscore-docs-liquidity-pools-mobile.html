@@ -2941,7 +2941,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
     { ic:'PHX', col:'linear-gradient(135deg,#f43f5e,#be123c)', nm:'Wrapped Bitcoin', sb:'WBTC', p:'0.0₄13 APT', p2:'≈ $0.0₅18', c24:'-3.21', xlm:'523.45 APT', usd:'1.2M WBTC' },
     { ic:'PAXG', col:'linear-gradient(135deg,#a855f7,#6d28d9)', nm:'PAX Gold', sb:'PAXG · Utility', p:'2.11 APT', p2:'≈ $0.87', c24:'+5.42', xlm:'51.02 APT', usd:'24.18 PAXG' },
   ];
-  const list = document.getElementById('assetList');
+  const list = document.getElementById('assetList') || document.createElement('div');
   const pools = [
     { ic:'L', col:'linear-gradient(135deg,#ea6a2c,#ff9a3d)', nm:'LUMOS / APT', sb:'AMM Pool', p:'TVL 3,442 APT', p2:'≈ $1,420', c24:'+5.42', xlm:'2,100 APT', usd:'56,800 LUMOS · ≈ $866', poolAddr:'a468d4b3829acbe70088' },
     { ic:'K', col:'linear-gradient(135deg,#35c07f,#16a34a)', nm:'GUI / APT', sb:'AMM Pool', p:'TVL 1,820 APT', p2:'≈ $751', c24:'-1.84', xlm:'1,342 APT', usd:'12,400 GUI · ≈ $554', poolAddr:'b71f9c2538d1ace40177' },
