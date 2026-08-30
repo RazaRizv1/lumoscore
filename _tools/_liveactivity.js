@@ -28,12 +28,14 @@ function entry(key, ko, de, fr, es){
   return Q+key+Q+':{'+Q+'ko'+Q+':'+Q+ko+Q+','+Q+'de'+Q+':'+Q+de+Q+','
         +Q+'fr'+Q+':'+Q+fr+Q+','+Q+'es'+Q+':'+Q+es+Q+'}';
 }
-const LONG = entry('Live Platform Activity — Stellar',
-  '실시간 플랫폼 활동 — Stellar', 'Live-Plattformaktivität — Stellar',
-  'Activité de la plateforme en direct — Stellar', 'Actividad de la plataforma en vivo — Stellar');
-const SHORT = entry('Live Platform Activity',
-  '실시간 플랫폼 활동', 'Live-Plattformaktivität',
-  'Activité de la plateforme en direct', 'Actividad de la plataforma en vivo');
+// "Live" is gone: the pulsing dot beside the heading already says the feed is live, and the word was
+// saying it a second time in the tightest line on the page.
+const LONG = entry('Platform Activity — Stellar',
+  '플랫폼 활동 — Stellar', 'Plattformaktivität — Stellar',
+  'Activité de la plateforme — Stellar', 'Actividad de la plataforma — Stellar');
+const SHORT = entry('Platform Activity',
+  '플랫폼 활동', 'Plattformaktivität',
+  'Activité de la plateforme', 'Actividad de la plataforma');
 
 let files = 0, headings = 0, dicts = 0;
 for (const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']) {
@@ -44,8 +46,10 @@ for (const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','x
 
     // Dictionary entries first: rewrite the whole object so the key AND its translations move together.
     // Values hold no "}", so the non-greedy class is a safe boundary.
-    s = s.replace(/\\"Live (?:Network|Platform) Activity — (?:Aptos|Stellar)\\":\{[^}]*\}/g, () => { dicts++; return LONG; });
-    s = s.replace(/\\"Live (?:Network|Platform) Activity\\":\{[^}]*\}/g,        () => { dicts++; return SHORT; });
+    // "Live " optional: the key has been through more than one spelling, and an entry already renamed
+    // by a previous run must still be matched or its translations are stranded under the old key.
+    s = s.replace(/\\"(?:Live )?(?:Network|Platform) Activity — (?:Aptos|Stellar)\\":\{[^}]*\}/g, () => { dicts++; return LONG; });
+    s = s.replace(/\\"(?:Live )?(?:Network|Platform) Activity\\":\{[^}]*\}/g,        () => { dicts++; return SHORT; });
 
     // Then the visible headings. Longest form first, so the suffixed one is not half-matched.
     for (const from of ['Live Platform Activity — Aptos', 'Live Network Activity — Stellar']) {
@@ -69,6 +73,16 @@ for (const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','x
         s = s.split(from).join('Live Platform Activity — Stellar' + close);
         headings++;
       }
+    }
+
+    // Last: drop "Live". Everything above normalises the older spellings onto "Live Platform
+    // Activity — Stellar" first, so this one replace finishes every path at the same string. It runs
+    // AFTER the dictionary rewrite above, which has already replaced those entries whole -- otherwise
+    // this would rename the key out from under its own translations.
+    //
+    // Idempotent because it removes the thing it matches on: a second run finds nothing.
+    if (s.indexOf('Live Platform Activity') >= 0) {
+      s = s.split('Live Platform Activity').join('Platform Activity'); headings++;
     }
 
     if (s !== before) { fs.writeFileSync(file, s, 'utf8'); files++; }
