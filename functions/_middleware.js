@@ -319,15 +319,14 @@ function poolSeo(a, b, img){
 
 // A purpose-built card is landscape; an asset's toml logo is a small square (SHX's is 128x128).
 // Declaring a square as a large-image card is why scrapers dropped it and used the favicon instead.
-function isCardImage(u){ return String(u || '').indexOf('/cdn-cgi/image/') >= 0; }
+function isCardImage(u){ return String(u || '').indexOf('/lxapi/ogcard') >= 0; }
 
 // A 1200x630 card: the asset's logo padded onto the brand background. Built through Cloudflare's
 // resizing, whose source must be on this zone -- hence /lxapi/logoimg re-serving foreign logos.
-const CARD_OPTS = 'width=1200,height=630,fit=pad,background=%230a0a0b,format=png';
+// One plain URL. The 1200x630 padding happens inside the endpoint, so nothing is nested here.
 function cardFor(assetId){
   if (!assetId) return '';
-  return PRIMARY_ORIGIN + '/cdn-cgi/image/' + CARD_OPTS + '/'
-    + PRIMARY_ORIGIN + '/lxapi/logoimg?asset=' + encodeURIComponent(assetId);
+  return PRIMARY_ORIGIN + '/lxapi/ogcard?asset=' + encodeURIComponent(assetId);
 }
 
 // The logo an admin uploaded for an asset, which the issuer's toml knows nothing about.
