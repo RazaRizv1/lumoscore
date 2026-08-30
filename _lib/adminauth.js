@@ -18,6 +18,23 @@ const TEAM = 'https://soft-rice-4ac1.cloudflareaccess.com';
 const CERTS = TEAM + '/cdn-cgi/access/certs';
 const ADMIN_HOST_SUFFIX = 'lumoscore-admin.pages.dev';
 
+// THE ADMIN APPLICATION'S OWN AUDIENCE TAG, and the reason it is checked.
+//
+// Every Access application in an account issues tokens signed by the SAME team keys, with the same
+// issuer. What distinguishes one application's token from another's is the aud claim. Without this
+// check the verification above proves only "somebody in this Cloudflare account signed in somewhere"
+// -- so a token minted for a DIFFERENT Access app would sail through here.
+//
+// That is not hypothetical: this account already has a second app in front of lumoscore-staging,
+// whose audience is 3a12fe1d… Anyone who can reach staging holds a token that, until now, this gate
+// would have accepted as an admin's.
+//
+// Taken from the admin app's own Access login redirect, which publishes it in the meta parameter, so
+// it is the value Cloudflare itself uses rather than one copied by hand. If the Access application is
+// ever deleted and recreated the tag changes, and the panel locks out until this is updated -- which
+// is the correct direction to fail.
+const ADMIN_AUD = 'c90b244d84522ddc47afcee730618e3cf3de28cdd4ae86d5a2832ab0133f3b4a';
+
 let CERT_CACHE = null, CERT_AT = 0;
 const CERT_TTL = 3600000;   // keys rotate rarely; an hour keeps this off the hot path
 
@@ -75,6 +92,14 @@ async function verifyJwt(token) {
   if (payload.exp && payload.exp < now) return null;
   if (payload.nbf && payload.nbf > now) return null;
   if (payload.iss && payload.iss.indexOf(TEAM) !== 0) return null;
+
+  // aud is an ARRAY in a Cloudflare Access token, not a string -- one entry per application the token
+  // is good for. Both shapes are handled because the spec permits either, and reading an array as a
+  // string here would silently reject every real token.
+  const aud = payload.aud;
+  const list = Array.isArray(aud) ? aud : (aud ? [aud] : []);
+  if (list.indexOf(ADMIN_AUD) < 0) return null;
+
   return payload;
 }
 
