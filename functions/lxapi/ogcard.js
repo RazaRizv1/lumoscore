@@ -26,6 +26,15 @@ export async function onRequestGet(ctx) {
     return new Response(null, { status: 400, headers: { 'cache-control': 'public, max-age=300' } });
   }
 
+  // A Pages Function response is NOT edge-cached by default -- measured cf-cache-status: DYNAMIC --
+  // so every crawler hit was paying for a stellar.expert lookup, a third-party logo fetch and a
+  // transform. That is 2-3 seconds, which is longer than a social crawler will wait, and it is why a
+  // link often only produced a card on the second or third attempt. Serving from the Cache API turns
+  // every hit after the first into a read.
+  const cache = caches.default;
+  const hit = await cache.match(request);
+  if (hit) return hit;
+
   const src = url.origin + '/lxapi/logoimg?asset=' + encodeURIComponent(asset);
 
   let r;
@@ -60,7 +69,7 @@ export async function onRequestGet(ctx) {
 
   const buf = await r.arrayBuffer();
   const type = r.headers.get('content-type') || 'image/png';
-  return new Response(buf, {
+  const out = new Response(buf, {
     status: 200,
     headers: {
       'content-type': type,
@@ -70,4 +79,8 @@ export async function onRequestGet(ctx) {
       'access-control-allow-origin': '*',
     },
   });
+
+  // Store after responding, so the caller never waits on the write.
+  try { ctx.waitUntil(cache.put(request, out.clone())); } catch (e) { /* cache is best-effort */ }
+  return out;
 }
