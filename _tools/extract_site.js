@@ -630,12 +630,27 @@ function seoFor(pathname){
 
 // Replaces an element's text. Used on the asset identity block, whose shipped markup is the design's
 // USDC sample: without this, every asset page tells a non-rendering crawler it is USD Coin.
+// NOTE the property is v, not text: naming it "text" shadows the text() handler HTMLRewriter calls
+// on this same object, which is exactly how this threw Error 1101 on every asset page.
+//
+// mode 'inner' replaces the element's contents outright — correct where the element holds only text.
+// mode 'text' rewrites text nodes only, leaving child elements alone; a.website holds an SVG icon
+// beside the domain and would lose it otherwise.
 class TextSetter {
-  constructor(text){ this.text = String(text == null ? '' : text); this.first = true; }
-  element(){ this.first = true; }
+  constructor(v, mode){
+    this.v = String(v == null ? '' : v);
+    this.mode = mode === 'text' ? 'text' : 'inner';
+    this.first = true;
+  }
+  element(el){
+    this.first = true;
+    if (this.mode === 'inner') el.setInnerContent(this.v);
+  }
   text(chunk){
-    // replace the first chunk, drop the rest: an element's text can arrive in several pieces
-    chunk.replace(this.first ? this.text : '', { html: false });
+    if (this.mode === 'inner') return;
+    const t = chunk.text;
+    if (!t || !t.trim()) return;              // whitespace between the icon and the label
+    chunk.replace(this.first ? this.v : '', { html: false });
     this.first = false;
   }
 }
@@ -921,7 +936,10 @@ export async function onRequest(context){
           + 'Trade it non-custodially on LumosCore from your own wallet.');
     rw = rw.on('.asset-name', new TextSetter(code))
            .on('.asset-description', new TextSetter(desc));
-    if (f.domain) rw = rw.on('a.website', new TextSetter(f.domain));
+    // Always rewritten, even to an empty string: an asset with no home domain was otherwise left
+    // showing the design's placeholder, which claims the issuer is circle.com. Blank is honest.
+    // Text mode because this anchor also holds the globe icon, which setInnerContent would delete.
+    rw = rw.on('a.website', new TextSetter(f.domain || '', 'text'));
   }
 
   out = rw.transform(out);
