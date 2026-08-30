@@ -184,6 +184,16 @@ a.ext-link:hover{color:var(--accent)}
 .lxreq-btn.go{border-color:var(--accent);background:var(--accent);color:#fff}
 .lxreq-btn.go:hover:not(:disabled){filter:brightness(1.06);color:#fff}
 .lxreq-note{white-space:normal;margin-top:4px;line-height:1.45;color:var(--text-muted);font-size:12.5px}
+.lxreq-copy{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:5px;padding:0;vertical-align:-5px;border:0;border-radius:5px;background:transparent;color:var(--text-muted);cursor:pointer;transition:color .13s,background .13s}
+.lxreq-copy:hover{color:var(--text);background:var(--surface-2)}
+.lxreq-copy .c2{display:none}
+.lxreq-copy.ok{color:#1fa968}
+.lxreq-copy.ok .c1{display:none}
+.lxreq-copy.ok .c2{display:block}
+.lxreq-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.lxreq-links a{display:inline-flex;align-items:center;height:22px;padding:0 9px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-weight:600;color:var(--text-muted);text-decoration:none;transition:border-color .13s,color .13s}
+.lxreq-links a:hover{border-color:var(--accent);color:var(--accent)}
+.lxreq-nolinks{font-size:11.5px;font-style:italic;color:var(--text-muted);opacity:.75}
 </'+'style>`.replace("</'+'style>","</"+"style>");
 
 // ---- wallet signing, borrowed from the launchpad ------------------------------------------------------
@@ -226,6 +236,11 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'var H="https://horizon.stellar.org";'
 +'var VTICK="<svg viewBox=\\"0 0 24 24\\" fill=\\"none\\" stroke=\\"currentColor\\" stroke-width=\\"3.4\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><polyline points=\\"20 6 9 17 4 12\\"></polyline></svg>";'
 +'var EXTICON="<svg width=\\"13\\" height=\\"13\\" viewBox=\\"0 0 24 24\\" fill=\\"none\\" stroke=\\"currentColor\\" stroke-width=\\"2\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><path d=\\"M7 17L17 7M17 7H8M17 7v9\\"></path></svg>";'
+// Two glyphs in one button: the pages stack, and a tick that replaces them for a moment after a copy.
+// Feedback matters more than usual here -- copying a 56-character account gives you nothing visible to
+// check, so without it you cannot tell whether the click registered.
++'var COPYICON="<svg class=\\"c1\\" width=\\"12\\" height=\\"12\\" viewBox=\\"0 0 24 24\\" fill=\\"none\\" stroke=\\"currentColor\\" stroke-width=\\"2\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><rect x=\\"9\\" y=\\"9\\" width=\\"12\\" height=\\"12\\" rx=\\"2\\"></rect><path d=\\"M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\"></path></svg>"'
++'  +"<svg class=\\"c2\\" width=\\"12\\" height=\\"12\\" viewBox=\\"0 0 24 24\\" fill=\\"none\\" stroke=\\"currentColor\\" stroke-width=\\"3\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><polyline points=\\"20 6 9 17 4 12\\"></polyline></svg>";'
 +'var FEE="'+FEE_COLLECTOR+'";'
 +'function q(s){return document.querySelector(s);} function qa(s){return [].slice.call(document.querySelectorAll(s));}'
 +'function j(u){return fetch(u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}'
@@ -271,10 +286,16 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'  })).then(function(a){ POOLS=a.filter(Boolean).sort(function(x,y){return y.xlm-x.xlm;}); return POOLS; }); }'
 +'function pageTitle(){ return ((q(".admin-page-title")||q(".mob-page-title")||{}).textContent||"").trim(); }'
 +'function pageHead(){ return q(".admin-page-head")||q(".mob-page-head"); }'
-+'function fixPager(n){ var b=q(".pg-btn"); if(!b)return; var ctrls=b.parentNode, row=ctrls.parentNode;'
-+'  var info=row.querySelector(".pg-info"); if(!info){ var f=row.firstElementChild; if(f&&f!==ctrls)info=f; }'
-+'  if(info)info.innerHTML="<span class=\\"mono\\">"+(n?1:0)+"</span>\\u2013<span class=\\"mono\\">"+n+"</span> of <span class=\\"mono\\">"+n+"</span>";'
-+'  ctrls.remove(); }'
+// The first call REMOVES the pager buttons, which used to make every later call a no-op: .pg-btn was
+// gone, so the function returned before touching the count. That is why switching to a tab with one
+// row left the line reading "1-55 of 55" -- the curated tab had written it and nothing could rewrite
+// it. The info element is stamped on the way past so it can still be found afterwards.
++'function fixPager(n){ var info=q(".lxpg-info"), b=q(".pg-btn");'
++'  if(b){ var ctrls=b.parentNode, row=ctrls.parentNode;'
++'    info=row.querySelector(".pg-info"); if(!info){ var f=row.firstElementChild; if(f&&f!==ctrls)info=f; }'
++'    if(info)info.className=(info.className?info.className+" ":"")+"lxpg-info";'
++'    ctrls.remove(); }'
++'  if(info)info.innerHTML="<span class=\\"mono\\">"+(n?1:0)+"</span>\\u2013<span class=\\"mono\\">"+n+"</span> of <span class=\\"mono\\">"+n+"</span>"; }'
 +'function isMob(){ return !!q(".mob-page-title"); }'
 +'function isDash(){ return /^Dashboard/.test(pageTitle()) && !isMob(); }'
 +'function assetOf(p){ return p.asset_type==="native"?{code:"XLM",iss:""}:{code:p.asset_code||"?",iss:p.asset_issuer||""}; }'
@@ -1216,6 +1237,30 @@ function paintAssets(){
     refunded:{t:"Declined and refunded",c:"var(--text-muted)"}
   };
   function reqOpen(){ return (LR||[]).filter(function(r){ return r.status==="pending"||r.status==="rejected"; }); }
+
+  // A handle can arrive as "@name", "name" or a full URL -- the applicant types what they think of, and
+  // listing.js stores it as typed to match what assetmeta does. Turning it into something clickable is
+  // therefore this function's job, and it is the only place that guesses.
+  function reqHref(kind,v){
+    v=String(v||"").trim(); if(!v)return "";
+    if(/^https?:/i.test(v))return v;
+    var h=v.replace(/^@/,"");
+    if(kind==="twitter")return "https://x.com/"+encodeURIComponent(h);
+    if(kind==="telegram")return "https://t.me/"+encodeURIComponent(h);
+    return "https://"+v;                    // website or a discord invite typed bare
+  }
+  function reqLinks(r){
+    var out=[];
+    [["website",r.website,"Website"],["twitter",r.twitter,"X"],
+     ["telegram",r.telegram,"Telegram"],["discord",r.discord,"Discord"]].forEach(function(p){
+      if(!p[1])return;
+      out.push("<a class='lxreq-link' target='_blank' rel='noopener' title='"+esc(p[1])+"' href='"+esc(reqHref(p[0],p[1]))+"'>"+esc(p[2])+"</a>");
+    });
+    // Said out loud rather than left blank. "No links given" is itself a review finding -- the bar is
+    // whether a project is findable outside our site -- and an empty space does not say that.
+    if(!out.length)return "<div class='lxreq-links lxreq-nolinks'>No links given</div>";
+    return "<div class='lxreq-links'>"+out.join("")+"</div>";
+  }
   function reqLoad(){
     return j("/lxapi/listingadmin").then(function(d){
       LR=(d&&d.requests)||[];
@@ -1289,10 +1334,17 @@ function paintAssets(){
       return "<tr>"
         +"<td><div class='asset-cell'>"+img
           +"<div><div class='asset-name'>"+esc(r.code)+(r.curated?tickFor(r.asset):"")+"</div>"
-          +"<div class='asset-sub mono'>"+esc(shortG(r.issuer))+"</div>"
-          // min-width, not max: the table sizes its own columns, and without a floor the description
-          // wrapped to four words a line and squeezed the asset name into a sliver.
-          +"<div class='lxreq-note' style='min-width:250px;max-width:340px' title='"+esc(r.descr)+"'>"+esc(r.descr.slice(0,120))+(r.descr.length>120?"…":"")+"</div></div></div></td>"
+          // Truncated with a copy button rather than printed in full: 56 characters would dominate the
+          // row, and what you actually do with an issuer is paste it somewhere.
+          +"<div class='asset-sub mono'>"+esc(shortG(r.issuer))
+            +"<button class='lxreq-copy' type='button' title='Copy the issuing account' data-lxcp='"+esc(r.issuer)+"'>"+COPYICON+"</button>"
+            +"<a class='ext-link' title='The issuing account on stellar.expert' target='_blank' rel='noopener' href='https://stellar.expert/explorer/public/account/"+esc(r.issuer)+"'>"+EXTICON+"</a>"
+          +"</div>"
+          // The WHOLE description, not the first 120 characters. This is the review screen; deciding
+          // whether a project describes itself honestly cannot be done from an ellipsis.
+          +"<div class='lxreq-note' style='min-width:260px;max-width:360px'>"+esc(r.descr)+"</div>"
+          +reqLinks(r)
+        +"</div></div></td>"
         +"<td><span class='mono' title='"+esc(r.payer)+"'>"+esc(shortG(r.payer))+"</span>"
           +" <a class='ext-link' title='The payment' target='_blank' rel='noopener' href='https://stellar.expert/explorer/public/tx/"+esc(r.txHash)+"'>"+EXTICON+"</a></td>"
         +"<td class='num-cell' style='text-align:right'>"+esc(reqAmt(r))+"</td>"
@@ -1312,6 +1364,20 @@ function paintAssets(){
       b.addEventListener("click",function(){ reqRefundHash(b.getAttribute("data-lxrh")); }); });
     qa("[data-lxro]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
       b.addEventListener("click",function(){ reqAct(b.getAttribute("data-lxro"),{action:"reopen"}); }); });
+    qa("[data-lxcp]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
+      b.addEventListener("click",function(e){ e.stopPropagation();
+        var v=b.getAttribute("data-lxcp"), done=function(){ b.classList.add("ok");
+          setTimeout(function(){ b.classList.remove("ok"); },1400); };
+        // execCommand is the fallback, not the fashion: navigator.clipboard needs a secure context and
+        // a permission that a panel opened from a hash URL does not always have.
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+          navigator.clipboard.writeText(v).then(done,function(){ legacyCopy(v); done(); });
+        } else { legacyCopy(v); done(); } }); });
+  }
+  function legacyCopy(v){
+    try{ var t=document.createElement("textarea"); t.value=v;
+      t.style.cssText="position:fixed;left:-9999px;top:0"; document.body.appendChild(t);
+      t.select(); document.execCommand("copy"); t.remove(); }catch(_){}
   }
 
   function reqById(id){ return (LR||[]).filter(function(r){ return r.id===id; })[0]; }
@@ -1334,6 +1400,12 @@ function paintAssets(){
     var body={asset:r.asset};
     if(r.descr)body.description=r.descr;
     if(r.logo)body.image=r.logo;
+    // The links travel with the approval too, so an approved asset lands on the public site already
+    // wearing them rather than waiting for someone to retype what the applicant already gave us.
+    if(r.website)body.website=r.website;
+    if(r.twitter)body.twitter=r.twitter;
+    if(r.telegram)body.telegram=r.telegram;
+    if(r.discord)body.discord=r.discord;
     fetch("/lxapi/assetmeta",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
       .then(function(rr){ return rr.json().then(function(bb){ return {ok:rr.ok,b:bb}; }); })
       .then(function(z){

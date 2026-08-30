@@ -79,6 +79,10 @@ html[data-theme="light"] .lxlt{
 /* ---------------- fields ---------------- */
 .lxlt .lt-field{margin:0 0 18px}
 .lxlt .lt-two{display:grid;grid-template-columns:minmax(0,150px) minmax(0,1fr);gap:0 16px}
+/* The link rows are two equal halves, unlike the code/issuer row where one field is much shorter.
+   An explicit class rather than :has(), which is only the second-newest browsers. */
+.lxlt .lt-two-even{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.lxlt .lt-hint-flush{margin:-4px 0 20px}
 .lxlt .lt-lbl{display:block;margin:0 0 7px;font-size:13px;font-weight:650;letter-spacing:-.005em;
   color:var(--text)}
 .lxlt .lt-in{display:block;width:100%;padding:12px 14px;border-radius:10px;
