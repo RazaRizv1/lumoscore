@@ -26,11 +26,34 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 // [ id, the exact declaration, what to fall back to ]
+//
+// The list below is not guesswork: every built page was swept for a getElementById whose id the page
+// does not contain and whose result is then dereferenced with no null check. These are what came back.
+//
+// The landing page entries are NOT from a donor clone: that page simply kept a trending block whose
+// markup has gone, along with the counter animation that went with it. Nothing on the page has an id
+// or class containing "trending" any more.
+//
+// What this costs was checked rather than assumed, and it is LESS than it looks. Reading script-block
+// boundaries suggested the throw killed nine listeners below it; clicking the hero search on the old
+// production build opened the popup anyway, so it does not cascade the way the brace-counting implied.
+// Treat this as removing a red console error from the busiest page on the site, not as restoring lost
+// behaviour -- and it was live long before this work, the previous production build has the same line.
 const FIXES = [
   ['assetsTable', "const tbody = document.getElementById('assetsTable');",
     "const tbody = document.getElementById('assetsTable') || document.createElement('tbody');"],
   ['assetList', "const list = document.getElementById('assetList');",
     "const list = document.getElementById('assetList') || document.createElement('div');"],
+  ['trendingFeatured', "const featured = document.getElementById('trendingFeatured');",
+    "const featured = document.getElementById('trendingFeatured') || document.createElement('div');"],
+  ['trendingRest', "const rest = document.getElementById('trendingRest');",
+    "const rest = document.getElementById('trendingRest') || document.createElement('div');"],
+  ['hiwModal', "var modal = document.getElementById('hiwModal');",
+    "var modal = document.getElementById('hiwModal') || document.createElement('div');"],
+  ['dwCta', "var cta = document.getElementById('dwCta');",
+    "var cta = document.getElementById('dwCta') || document.createElement('div');"],
+  ['themeBtn', "var themeBtn = document.getElementById('themeBtn');",
+    "var themeBtn = document.getElementById('themeBtn') || document.createElement('button');"],
 ];
 
 let patched = 0, pages = 0;
