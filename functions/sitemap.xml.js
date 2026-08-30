@@ -8,18 +8,10 @@
 //
 // Only assets that actually have a Stellar liquidity pool are listed. Submitting thousands of dead
 // tickers would bury the pages that matter and looks like spam.
-const STATIC = [
-  ['/', '1.0', 'daily'],
-  ['/trade/stellar', '0.9', 'daily'],
-  ['/pools/stellar', '0.9', 'daily'],
-  ['/bridge', '0.8', 'weekly'],
-  ['/wallet', '0.7', 'weekly'],
-  ['/rewards', '0.7', 'weekly'],
-  ['/lumos', '0.8', 'weekly'],
-  ['/launchpad', '0.8', 'weekly'],
-  ['/dashboard', '0.6', 'weekly'],
-  ['/mcp', '0.6', 'monthly'],
-];
+// Derived from the route table at build time, so a page added to the site is in the sitemap without
+// anyone remembering to add it here. That list going stale is exactly how /docs, /faq, /about,
+// /whitepaper, /support, /privacy and /terms all ended up unlisted.
+import { SITEMAP_ROUTES as STATIC } from './_sitemap-routes.js';
 
 const MAX_POOLS = 200;
 
@@ -46,7 +38,19 @@ async function livePools(){
   } catch (e) { return []; }
 }
 
-export async function onRequestGet({ request }) {
+// Published posts, newest first. These are the pages meant to rank, so they carry a real lastmod
+// from the post's own updatedAt rather than today's date on everything.
+async function blogPosts(env){
+  try {
+    const kv = env && env.CONTENT_KV;
+    if (!kv) return [];
+    const idx = await kv.get('blog:index', 'json');
+    return (Array.isArray(idx) ? idx : [])
+      .filter(p => p && p.slug && p.published !== false);
+  } catch (e) { return []; }
+}
+
+export async function onRequestGet({ request, env }) {
   // always the primary domain, never the pages.dev host: a sitemap full of preview urls invites
   // indexing of the wrong hostname
   const origin = 'https://lumoscore.com';
@@ -55,6 +59,13 @@ export async function onRequestGet({ request }) {
 
   for (const [path, priority, freq] of STATIC){
     urls.push({ loc: origin + path, priority, freq });
+  }
+
+  for (const p of await blogPosts(env)){
+    const when = p.updatedAt || p.publishedAt || p.publishAt;
+    let lastmod = today;
+    try { if (when) lastmod = new Date(+when || when).toISOString().slice(0, 10); } catch (e) {}
+    urls.push({ loc: origin + '/blog/' + p.slug, priority: '0.8', freq: 'weekly', lastmod });
   }
 
   const pools = await livePools();
@@ -76,7 +87,7 @@ export async function onRequestGet({ request }) {
   const body = '<?xml version="1.0" encoding="UTF-8"?>\n'
     + '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     + urls.map(u =>
-        '  <url><loc>' + esc(u.loc) + '</loc><lastmod>' + today + '</lastmod>'
+        '  <url><loc>' + esc(u.loc) + '</loc><lastmod>' + (u.lastmod || today) + '</lastmod>'
         + '<changefreq>' + u.freq + '</changefreq><priority>' + u.priority + '</priority></url>'
       ).join('\n')
     + '\n</urlset>\n';

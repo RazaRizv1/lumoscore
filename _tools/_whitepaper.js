@@ -18,9 +18,9 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const TITLE = 'Whitepaper | LumosCore';
-const DESC = 'LumosCore is multichain Web3 infrastructure: one interface for trading, liquidity, '
-  + 'token issuance and cross-chain transfers, with custody left entirely to the user. Read the '
-  + 'whitepaper.';
+// Under 160 characters. Names what the document argues rather than repeating the site's own pitch.
+const DESC = 'The LumosCore whitepaper: fragmentation, interoperability, and a non-custodial '
+  + 'architecture for trading, liquidity and cross-chain transfers.';
 
 // ---- shared shell helpers (same contracts as _legalpages.js) --------------------------------------
 function replaceMain(html, inner) {

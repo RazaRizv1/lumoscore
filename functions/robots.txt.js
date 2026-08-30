@@ -30,6 +30,8 @@ export async function onRequestGet({ request }) {
     'Allow: /',
     '',
     'Sitemap: ' + origin + '/sitemap.xml',
+    // the AEO counterpart: what is here, and where the authoritative answer to each question lives
+    '# llms.txt: ' + origin + '/llms.txt',
     '',
   ].join('\n');
 
