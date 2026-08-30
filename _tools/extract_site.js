@@ -377,6 +377,14 @@ const ROUTES = [
 // Case: fixed segments are lowercase, but an asset segment must keep its case — yUSDC and YUSDC are
 // genuinely different assets on Stellar. Pages matches paths case-sensitively, so these redirects
 // only forgive the fixed part.
+// Wrong-but-published urls that must keep working. A link written once and posted somewhere
+// cannot be edited later, so the site forgives the spelling rather than 404ing.
+//   /blogs/... -- the plural. The Rewards page links this way, and the site only serves /blog/...
+const ALIASES = [
+  ['/blogs/*', '/blog/:splat'],
+  ['/blogs',   '/blog'],
+];
+
 const CASE_FIXES = [
   ['/Trade/*', '/trade/:splat'], ['/Pools/*', '/pools/:splat'],
   ['/Bridge',  '/bridge'], ['/Wallet', '/wallet'], ['/Rewards', '/rewards'],
@@ -394,6 +402,7 @@ function redirectsFile(){
   for(const [from, to] of ROUTES) L.push(pad(from) + '/' + to.replace(/\.html$/, '') + '  200');
   L.push('');
   L.push('# forgive capitalised entry points');
+  for(const [from, to] of ALIASES) L.push(pad(from) + to + '  301');
   for(const [from, to] of CASE_FIXES) L.push(pad(from) + to + '  301');
   L.push('');
   L.push('# the landing page IS the site root, so its old path must not be a second copy of it');
