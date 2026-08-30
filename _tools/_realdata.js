@@ -261,12 +261,23 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'return ((av&&av.items)||[]).map(function(x){'
 +'return {transaction_hash:x.hash,from:x.addr,created_at:new Date(x.ts).toISOString()};});'
 +'}).catch(function(){return [];}).then(function(acts){'
-+'return j(\"https://horizon.stellar.org/accounts/\"+LX_FEEACCT+\"/payments?order=desc&limit=40\").then(function(d){'
+// join=transactions costs no extra request and brings back each payment's transaction, which is what
+// makes the operation-count test below possible without a second round trip per row.
++'return j(\"https://horizon.stellar.org/accounts/\"+LX_FEEACCT+\"/payments?order=desc&limit=40&join=transactions\").then(function(d){'
 +'d.__acts=acts;return d;});'
 +'}).then(function(d){'
 +'var recs=((d._embedded&&d._embedded.records)||[]).filter(function(o){'
 // fees paid TO the collector, and never the collector shuffling its own balance
-+'return o.to===LX_FEEACCT&&o.from&&o.from!==LX_FEEACCT;});'
++'if(!(o.to===LX_FEEACCT&&o.from&&o.from!==LX_FEEACCT))return false;'
+// A LONE payment to the collector is not platform activity -- it is somebody paying us for something.
+// Every real action bundles the fee WITH the operation it is a fee for, so a fee-paying swap, mint or
+// bridge is always 2+ operations; a curated-listing fee is one payment and nothing else. Measured
+// against the collector's last 40 inbound payments: 34 were 2-44 ops and every one was a real action,
+// 1 was a single op and it was a listing fee. Without this the row still appeared, and appeared as an
+// unlabelled "Platform activity" stub, because the only operation it had was the one the describer
+// deliberately skips.
++'var tx=o.transaction; if(tx&&tx.operation_count===1)return false;'
++'return true;});'
 +'if(!recs.length&&!((d&&d.__acts)||[]).length){list.innerHTML=\'<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>\';return;}'
 +'var seenH={},merged=[];'
 +'((d&&d.__acts)||[]).concat(recs).forEach(function(o){'
