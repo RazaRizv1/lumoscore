@@ -9,29 +9,12 @@
 // headline value. A real number, but not one any issuer would choose, and quietly discounting it
 // instead would have meant charging less than $250 while claiming otherwise. XLM only until the
 // LUMOS book is deep enough for the honest number to also be a fair one.
+// ONE price, on every host. A staging override briefly quoted $0.10 so the end-to-end path could be
+// exercised with a real mainnet payment without spending $250 on it; that test has been done and the
+// override is gone rather than left dormant. A discount mechanism living in a payments endpoint is
+// worth exactly nothing when it is not in use and is worth a great deal to whoever finds it, so it
+// does not stay behind "just in case" -- re-adding it is a two-minute job and it is in the history.
 const PRICE_USD = 250;
-
-// A TEST PRICE, AND ONLY ON STAGING.
-//
-// The end-to-end flow -- quote, sign, pay, verify on-chain, queue, approve, refund -- can only really
-// be exercised with a real mainnet payment, and nobody should spend $250 to find out whether the
-// button works. So staging quotes a token amount instead.
-//
-// Gated on the HOST rather than left as a constant to flip back, because functions/ is shared by
-// every project: a flat override sitting in this file would go to production with the next deploy and
-// put curated listings on sale for ten cents. Tying it to the hostname means production cannot serve
-// this price even if someone forgets it is here.
-const TEST_PRICE_USD = 0.1;
-const STAGING_HOST = 'lumoscore-staging.pages.dev';
-
-function priceFor(request) {
-  let h = '';
-  try { h = new URL(request.url).hostname.toLowerCase(); } catch (e) { return PRICE_USD; }
-  // Both the project host and its per-deployment hash subdomains, which is what actually gets used --
-  // the bare staging host sits behind Access.
-  const staging = h === STAGING_HOST || h.endsWith('.' + STAGING_HOST);
-  return staging ? TEST_PRICE_USD : PRICE_USD;
-}
 
 // Quotes move. Short enough that nobody pays a stale rate, long enough to survive a page load and a
 // wallet approval without re-quoting underneath the user.
@@ -73,17 +56,15 @@ export async function onRequestGet({ request }) {
   // No price, no quote. Charging from a stale or guessed rate is worse than asking someone to retry.
   if (!usd) return json({ ok: false, error: 'price unavailable' }, 503);
 
-  const price = priceFor(request);
   return json({
     ok: true,
-    priceUsd: price,
-    // Stated in the response rather than inferred by the page, so a host serving the test price says
-    // so out loud and can be shown saying so.
-    testPricing: price !== PRICE_USD,
-    listPriceUsd: PRICE_USD,
+    // Still sent, and the page still renders its headline figure FROM this rather than from its own
+    // markup. That stays: the two were able to disagree before, and a page reading $250 beside a
+    // button charging something else is the one thing this page cannot afford to do.
+    priceUsd: PRICE_USD,
     xlmUsd: usd,
     options: [
-      { asset: 'native', code: 'XLM', amount: amt(price / usd) },
+      { asset: 'native', code: 'XLM', amount: amt(PRICE_USD / usd) },
     ],
     quotedAt: Date.now(),
     validForSeconds: QUOTE_VALID_S,
