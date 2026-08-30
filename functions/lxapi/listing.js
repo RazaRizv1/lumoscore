@@ -21,7 +21,27 @@ const CODE_RE = /^[A-Za-z0-9]{1,12}$/;
 const ADDR_RE = /^G[A-Z2-7]{55}$/;
 const MEDIA_RE = /^[0-9a-f]{32}\.(png|jpg|jpeg|webp|gif)$/i;
 
-const LIMITS = { descr: 600, note: 200 };
+const LIMITS = { descr: 600, note: 200, website: 200, handle: 80, discord: 200 };
+
+// Where to go and look. Review is "is this project findable and is it what it claims", which cannot be
+// answered from a code and an address, so the application carries them and the panel shows them.
+//
+// Kept AS TYPED, matching what /lxapi/assetmeta stores: the asset page already turns a bare handle, an
+// @handle or a full URL into the right link, and normalising here would be a second implementation of
+// that, free to disagree with the first. What IS enforced is the scheme -- see safeSite.
+//
+// javascript: and data: are the reason this is not just a length check. These strings end up in an
+// href on the admin panel and, after approval, on a public asset page.
+function safeSite(s, max) {
+  const v = clip(s, max);
+  if (!v) return '';
+  const lc = v.toLowerCase();
+  if (lc.indexOf('http://') === 0 || lc.indexOf('https://') === 0) return v;
+  // A bare domain is what most people type. Anything else -- a scheme we did not name, or a colon
+  // before the first slash -- is refused rather than guessed at.
+  if (/^[a-z0-9-]+(\.[a-z0-9-]+)+(\/[^\s]*)?$/i.test(v)) return v;
+  return '';
+}
 
 // The logo arrives INSIDE this paid request rather than through an upload endpoint of its own.
 // /lxapi/media requires an admin, and a public upload route would be a free way to fill KV with
@@ -150,6 +170,10 @@ export async function onRequestPost({ request, env }) {
   const descr = clip(b.descr, LIMITS.descr).trim();
   const logoData = String(b.logo || '');
   const hash = String(b.txHash || '').trim().toLowerCase();
+  const website = safeSite(b.website, LIMITS.website);
+  const twitter = clip(b.twitter, LIMITS.handle);
+  const telegram = clip(b.telegram, LIMITS.handle);
+  const discord = safeSite(b.discord, LIMITS.discord);
 
   if (network !== 'stellar') return json({ ok: false, error: 'only Stellar is supported today' }, 400);
   if (!CODE_RE.test(code)) return json({ ok: false, error: 'enter a valid asset code' }, 400);
@@ -203,10 +227,11 @@ export async function onRequestPost({ request, env }) {
   try {
     await db.prepare(
       'INSERT INTO listing_request (id, network, code, issuer, descr, logo_id, payer, pay_asset, '
-      + 'pay_amount, tx_hash, status, created_at) '
-      + "VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,'pending',?11)"
+      + 'pay_amount, tx_hash, status, created_at, website, twitter, telegram, discord) '
+      + "VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,'pending',?11,?12,?13,?14,?15)"
     ).bind(id, network, code, issuer, descr, logoId || null, pay.payer, pay.asset,
-      pay.amount, hash, Date.now()).run();
+      pay.amount, hash, Date.now(),
+      website || null, twitter || null, telegram || null, discord || null).run();
   } catch (e) {
     // UNIQUE on tx_hash: a race between two submits of the same payment lands here, not in a
     // duplicate row.

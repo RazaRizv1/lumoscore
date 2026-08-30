@@ -52,7 +52,7 @@ export async function onRequestGet({ request, env }) {
   try {
     const r = await db.prepare(
       'SELECT id, network, code, issuer, descr, logo_id, payer, pay_asset, pay_amount, tx_hash, '
-      + 'status, created_at, decided_at, refund_hash, note '
+      + 'status, created_at, decided_at, refund_hash, note, website, twitter, telegram, discord '
       + 'FROM listing_request ORDER BY created_at DESC LIMIT 500'
     ).all();
     rows = (r && r.results) || [];
@@ -87,6 +87,13 @@ export async function onRequestGet({ request, env }) {
       decidedAt: r.decided_at,
       refundHash: r.refund_hash || '',
       note: r.note || '',
+      // What review actually needs: somewhere to go and check the project is real. Already
+      // scheme-checked on the way in by listing.js, since these end up in an href here and, after
+      // approval, on a public asset page.
+      website: r.website || '',
+      twitter: r.twitter || '',
+      telegram: r.telegram || '',
+      discord: r.discord || '',
       curated: on.has(r.code + '-' + r.issuer),
     })),
   }, 200);

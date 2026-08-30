@@ -67,7 +67,7 @@
   }
   function clearErrors() {
     formErr('');
-    ['ltCode', 'ltIssuer', 'ltDescr', 'ltLogo'].forEach(function (id) { fieldErr(id, ''); });
+    ['ltCode', 'ltIssuer', 'ltDescr', 'ltLogo', 'ltSite'].forEach(function (id) { fieldErr(id, ''); });
   }
 
   // ---------------------------------------------------------------- the quote
@@ -226,12 +226,21 @@
     if (v !== elIssuer.value) elIssuer.value = v;
   });
 
+  function val(id) { var e = $(id); return e ? (e.value || '').trim() : ''; }
+
   function readForm() {
     return {
       network: ($('ltNet') || {}).value || 'stellar',
       code: (elCode.value || '').trim(),
       issuer: (elIssuer.value || '').trim().toUpperCase(),
       descr: (elDescr.value || '').trim(),
+      // Handles go up AS TYPED. The asset page already turns a bare handle, an @handle or a full URL
+      // into the right link, so cleaning them here would be a second implementation of that, free to
+      // disagree with the first.
+      website: val('ltSite'),
+      twitter: val('ltX'),
+      telegram: val('ltTg'),
+      discord: val('ltDs'),
       logo: logoData
     };
   }
@@ -249,6 +258,11 @@
     }
     if (f.descr.length < 20) {
       fieldErr('ltDescr', 'Say what the project is — at least a sentence.'); ok = false;
+    }
+    // Optional, but if given it has to look like somewhere you can go. A domain with no dot in it is
+    // a typo, not a site, and it would reach review as an unclickable string.
+    if (f.website && !/^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/.*)?$/i.test(f.website)) {
+      fieldErr('ltSite', 'That does not look like a web address.'); ok = false;
     }
     if (!ok) formErr('Fix the fields marked above, then try again.');
     return ok;
@@ -321,7 +335,9 @@
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         network: f.network, code: f.code, issuer: f.issuer,
-        descr: f.descr, logo: f.logo || '', txHash: hash
+        descr: f.descr, logo: f.logo || '', txHash: hash,
+        website: f.website || '', twitter: f.twitter || '',
+        telegram: f.telegram || '', discord: f.discord || ''
       })
     }).then(function (r) {
       return r.json().then(function (d) { return { status: r.status, d: d }; });

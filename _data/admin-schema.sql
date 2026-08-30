@@ -108,6 +108,17 @@ CREATE TABLE IF NOT EXISTS listing_request (
   created_at  INTEGER NOT NULL,
   decided_at  INTEGER,
   refund_hash TEXT,
-  note        TEXT
+  note        TEXT,
+  -- Where to go and look. Review is "is this project findable and is it what it claims", which cannot
+  -- be answered from a code and an address alone, so the application collects them and the panel shows
+  -- them as links. They are also passed straight to /lxapi/assetmeta on approval, so an approved asset
+  -- arrives on the public site already wearing its own links instead of waiting for someone to retype
+  -- them. Handles are kept AS TYPED, matching assetmeta: the asset page already turns a bare handle,
+  -- an @handle or a full URL into the right link, and normalising here would be a second, disagreeing
+  -- implementation of that.
+  website     TEXT,
+  twitter     TEXT,
+  telegram    TEXT,
+  discord     TEXT
 );
 CREATE INDEX IF NOT EXISTS listing_status ON listing_request (status, created_at DESC);
