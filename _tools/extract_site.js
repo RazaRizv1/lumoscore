@@ -714,6 +714,12 @@ export async function onRequest(context){
     head.push('<meta name="twitter:title" content="' + esc(seo.title) + '">');
     head.push('<meta name="twitter:description" content="' + esc(seo.desc) + '">');
     seo.image = absUrl(seo.image);
+    // A crawler reads the page first and fetches og:image a moment later. Building the card now,
+    // without holding up this response, means that second request usually finds it already cached
+    // instead of paying the cold 2-3s that made a link need pasting two or three times.
+    if (isCardImage(seo.image)) {
+      try { context.waitUntil(fetch(seo.image, { headers: { accept: 'image/*' } })); } catch (e) {}
+    }
     if (seo.image){
       head.push('<meta property="og:image" content="' + esc(seo.image) + '">');
       head.push('<meta property="og:image:alt" content="' + esc(seo.title) + '">');
