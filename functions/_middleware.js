@@ -286,6 +286,7 @@ async function assetFacts(assetId){
       domain: m.domain || '',
       image: toml.image || '',
       name: toml.name || '',
+      desc: String(toml.desc || toml.description || '').slice(0, 400),
     };
   } catch (e) { return null; }
 }
@@ -300,8 +301,10 @@ function assetSeo(f, assetId){
   const facts = bits.length ? bits.join(' · ') + '. ' : '';
   return {
     title: code + ' price, pools and holders on Stellar | LumosCore',
-    desc: (facts + 'Live ' + code + ' price, liquidity pools, top holders and recent trades on the '
-      + 'Stellar network. Buy or sell ' + code + ' non-custodially from your own wallet.').slice(0, 300),
+    // Search results truncate around 160 characters and the FACTS are the half worth showing, so
+    // the boilerplate tail is trimmed rather than the price and trustline count.
+    desc: (facts + code + ' price, pools, holders and trades on Stellar. Trade non-custodially.')
+      .slice(0, 158),
     image: (f && f.image) || '',
   };
 }
@@ -347,11 +350,56 @@ function absUrl(u){
   return v;
 }
 
+// A published post, read from the same KV the blog itself reads. Unpublished or missing returns null
+// so the page keeps its template SEO rather than advertising something that is not there.
+async function blogPost(env, slug){
+  try {
+    const kv = env && env.CONTENT_KV;
+    if (!kv || !slug) return null;
+    const p = await kv.get('blog:post:' + slug, 'json');
+    if (!p || p.published === false) return null;
+    return p;
+  } catch (e) { return null; }
+}
+// The excerpt if the author wrote one, otherwise the opening of the body with its markup removed.
+function blogDesc(p){
+  const ex = String((p && p.excerpt) || '').trim();
+  if (ex) return ex.slice(0, 300);
+  const body = String((p && p.body) || '')
+    .replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/gi, ' ').replace(/s+/g, ' ').trim();
+  return body.slice(0, 155) + (body.length > 155 ? '…' : '');
+}
+function blogSeo(p, origin){
+  // The stored title already ends in "| LumosCore" on existing posts, so it is not appended twice.
+  const t = String((p && p.title) || '').trim();
+  const title = /LumosCores*$/i.test(t) ? t : (t + ' | LumosCore');
+  const cover = String((p && p.cover) || '');
+  return {
+    title,
+    desc: blogDesc(p),
+    image: cover ? (cover.indexOf('/') === 0 ? origin + cover : cover) : '',
+    post: p,
+  };
+}
+
 function seoFor(pathname){
   const segs = pathname.split('/').filter(Boolean);
   if ((segs[0] === 'trade' || segs[0] === 'asset') && segs[2]) return { kind: 'asset', id: segs[2] };
   if (segs[0] === 'pools' && segs[2] && segs[3]) return { kind: 'pool', a: segs[2], b: segs[3] };
+  if (segs[0] === 'blog' && segs[1]) return { kind: 'blog', slug: segs[1] };
   return null;
+}
+
+// Replaces an element's text. Used on the asset identity block, whose shipped markup is the design's
+// USDC sample: without this, every asset page tells a non-rendering crawler it is USD Coin.
+class TextSetter {
+  constructor(text){ this.text = String(text == null ? '' : text); this.first = true; }
+  element(){ this.first = true; }
+  text(chunk){
+    // replace the first chunk, drop the rest: an element's text can arrive in several pieces
+    chunk.replace(this.first ? this.text : '', { html: false });
+    this.first = false;
+  }
 }
 
 class HeadInjector {
@@ -489,10 +537,15 @@ export async function onRequest(context){
   if (want && want.kind === 'asset') {
     const f = await assetFacts(want.id);
     seo = assetSeo(f, want.id);
+    seo.facts = f;
     // Only build a card when a logo actually exists, so a missing one stays a missing image
     // rather than an empty rectangle of brand colour.
     const ai = await adminImage(context.env, want.id);
     if (ai || (f && f.image)) seo.image = cardFor(want.id);
+  }
+  else if (want && want.kind === 'blog') {
+    const post = await blogPost(context.env, want.slug);
+    if (post) seo = blogSeo(post, PRIMARY_ORIGIN);
   }
   else if (want && want.kind === 'pool') {
     // XLM has no logo of its own, so the pair's other side is the one worth showing.
@@ -532,6 +585,80 @@ export async function onRequest(context){
     head.push('<meta name="lx-seo-desc" content="' + esc(seo.desc) + '">');
   }
 
+  // ---- structured data -------------------------------------------------------------------------
+  // Organization and WebSite go on every page: they are what lets a search or answer engine attribute
+  // a statement to a publisher rather than to an anonymous URL. The details are the registered ones.
+  const ld = [{
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    '@id': PRIMARY_ORIGIN + '/#organization',
+    name: 'LumosCore',
+    legalName: 'LumosCore OÜ',
+    url: PRIMARY_ORIGIN + '/',
+    logo: PRIMARY_ORIGIN + '/assets/favicon.png',
+    foundingLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressCountry: 'EE' } },
+    identifier: '17336483',
+    sameAs: [
+      'https://x.com/LumosCore',
+      'https://t.me/lumoscore',
+      'https://www.linkedin.com/company/lumoscore/',
+    ],
+  }, {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    '@id': PRIMARY_ORIGIN + '/#website',
+    url: PRIMARY_ORIGIN + '/',
+    name: 'LumosCore',
+    publisher: { '@id': PRIMARY_ORIGIN + '/#organization' },
+    inLanguage: 'en',
+  }];
+
+  // Breadcrumbs only where there is a real hierarchy to describe.
+  const crumbs = [];
+  const segsC = url.pathname.split('/').filter(Boolean);
+  if (segsC.length){
+    crumbs.push({ '@type': 'ListItem', position: 1, name: 'Home', item: PRIMARY_ORIGIN + '/' });
+    let acc = '';
+    segsC.forEach(function(sg, i){
+      acc += '/' + sg;
+      crumbs.push({
+        '@type': 'ListItem',
+        position: i + 2,
+        name: decodeURIComponent(sg).replace(/-/g, ' ').slice(0, 60),
+        item: PRIMARY_ORIGIN + acc,
+      });
+    });
+    ld.push({
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: crumbs,
+    });
+  }
+
+  // An article is a distinct entity with its own dates and author.
+  if (seo && seo.post){
+    const p = seo.post;
+    const iso = (v) => { try { return new Date(+v || v).toISOString(); } catch (e) { return undefined; } };
+    ld.push({
+      '@context': 'https://schema.org',
+      '@type': 'BlogPosting',
+      headline: String(p.title || '').slice(0, 110),
+      description: seo.desc,
+      image: seo.image || undefined,
+      datePublished: iso(p.publishedAt || p.publishAt || p.createdAt),
+      dateModified: iso(p.updatedAt || p.publishedAt || p.publishAt),
+      author: { '@type': 'Organization', name: 'LumosCore', '@id': PRIMARY_ORIGIN + '/#organization' },
+      publisher: { '@id': PRIMARY_ORIGIN + '/#organization' },
+      mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
+      keywords: Array.isArray(p.tags) ? p.tags.join(', ') : undefined,
+      articleSection: p.category || undefined,
+      inLanguage: 'en',
+    });
+  }
+
+  head.push('<script type="application/ld+json" id="lx-ld-core">'
+    + JSON.stringify(ld).split('</').join('<\/') + '</scr' + 'ipt>');
+
   let rw = new HTMLRewriter().on('head', new HeadInjector(head.join('')));
   if (seo){
     rw = rw.on('title', new TitleSetter(seo.title))
@@ -539,6 +666,26 @@ export async function onRequest(context){
              element(el){ el.setAttribute('content', seo.desc); },
            });
   }
+  // The asset identity block ships as the design's USDC sample. Fill it with what this page is
+  // actually about, so a crawler that never runs the page's JavaScript reads the right asset.
+  if (want && want.kind === 'asset' && seo && seo.facts){
+    const f = seo.facts;
+    const code = f.code || want.id.split('-')[0];
+    const bits = [];
+    if (f.price) bits.push('Price ' + fmtUsd(f.price));
+    if (f.trustlines) bits.push(f.trustlines.toLocaleString('en-US') + ' trustlines');
+    // The issuer's own words when they published any; otherwise a factual sentence rather than a
+    // borrowed one. Never another asset's copy.
+    const desc = f.desc
+      || (code + ' is a Stellar asset'
+          + (f.domain ? ' issued by ' + f.domain : '')
+          + '. ' + (bits.length ? bits.join(' · ') + '. ' : '')
+          + 'Trade it non-custodially on LumosCore from your own wallet.');
+    rw = rw.on('.asset-name', new TextSetter(code))
+           .on('.asset-description', new TextSetter(desc));
+    if (f.domain) rw = rw.on('a.website', new TextSetter(f.domain));
+  }
+
   out = rw.transform(out);
   out.headers.set('Vary', 'User-Agent');
   return out;

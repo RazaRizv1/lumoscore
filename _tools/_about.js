@@ -16,9 +16,9 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const TITLE = 'About | LumosCore';
-const DESC = 'LumosCore is multichain Web3 infrastructure operated by LumosCore OÜ in Estonia: one '
-  + 'interface for trading, liquidity, token issuance and cross-chain transfers, with custody left '
-  + 'entirely to the user.';
+// Under 160 characters, so a result shows the whole sentence instead of cutting it mid-clause.
+const DESC = 'Multichain Web3 infrastructure from LumosCore OÜ: one interface for trading, '
+  + 'liquidity, token issuance and cross-chain transfers, custody left to you.';
 
 // ---- shared shell helpers -------------------------------------------------------------------------
 function replaceMain(html, inner) {
