@@ -6,6 +6,10 @@ var CHAINS=/*CHAINS*/;
 // CHAINS still defines the others: this controls what is OFFERED, not what the engine understands,
 // so an existing session on another chain keeps rendering rather than breaking.
 var ORDER=["stellar","xrpl"];
+// Listed, but not yet connectable. The row stayed in the chooser because it says where this is going;
+// it was a clickable button reading "Connect on XRP Ledger", which is a promise nothing behind it can
+// keep -- picking it switched the chain and then offered a wallet list for a network we do not run.
+var SOON={xrpl:1};
 var BASE="aptos",cur=BASE,obs=null;
 function noswap(node){
   var el=node.nodeType===3?node.parentNode:node;
@@ -78,7 +82,20 @@ function injectNetScreen(){
   var modal=document.querySelector(".lxw-modal");if(!modal)return false;
   if(modal.querySelector('.lxw-screen[data-screen="network"]'))return true;
   var scr=document.createElement("div");scr.className="lxw-screen";scr.setAttribute("data-screen","network");scr.setAttribute("data-lx-noswap","");
-  var rows=ORDER.map(function(id){return '<button class="lxw-row" type="button" data-lxnet="'+id+'" data-lxq="'+CHAINS[id].name.toLowerCase()+' '+CHAINS[id].tk.toLowerCase()+'"><span class="lxw-ico lxw-neti"><img src="'+CHAINS[id].logo+'" alt=""></span><span class="lxw-main"><span class="lxw-name">'+CHAINS[id].name+'</span><span class="lxw-wsub">Connect on '+CHAINS[id].name+'</span></span>'+NP_CHEV+'</button>';}).join("");
+  var rows=ORDER.map(function(id){
+    var soon=!!SOON[id], q=CHAINS[id].name.toLowerCase()+' '+CHAINS[id].tk.toLowerCase();
+    var body='<span class="lxw-ico lxw-neti"><img src="'+CHAINS[id].logo+'" alt=""></span>'
+      +'<span class="lxw-main"><span class="lxw-name">'+CHAINS[id].name+'</span>'
+      +'<span class="lxw-wsub">'+(soon?'Support is on the way':('Connect on '+CHAINS[id].name))+'</span></span>'
+      // data-lxc + data-logoed + a zero-size svg: the same three guards the token page's chooser uses.
+      // A two-word tag is short enough for the logo healer to read as a ticker and paint over.
+      +(soon?('<span class="lxw-soon-tag" data-lxc="" data-logoed="1"><svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg>Next up</span>'):NP_CHEV);
+    // A div, not a disabled button: a disabled button still looks like a control that failed, and it
+    // drops out of the tab order in a way that reads as broken rather than as not-yet.
+    return soon
+      ? '<div class="lxw-row lxw-soon" data-lxnet="'+id+'" data-lxq="'+q+'" aria-disabled="true">'+body+'</div>'
+      : '<button class="lxw-row" type="button" data-lxnet="'+id+'" data-lxq="'+q+'">'+body+'</button>';
+  }).join("");
   // exact same shell as the finalized "wallet" screen: head + search + list
   scr.innerHTML='<div class="lxw-head"><div class="lxw-htitles"><h3 class="lxw-title">Choose a network</h3><p class="lxw-sub">Choose a network to continue</p></div><button class="lxw-close lxw-netx" type="button" aria-label="Close">'+NP_CLOSE+'</button></div>'
    +'<div class="lxw-search">'+NP_SICO+'<input type="text" placeholder="Search networks…" class="lxw-searchin lxw-netsearch"/></div>'
@@ -87,7 +104,20 @@ function injectNetScreen(){
   scr.querySelector(".lxw-netx").addEventListener("click",function(){var mo=document.querySelector(".lxw-modal");if(mo&&mo.parentNode)mo.parentNode.setAttribute("hidden","");});
   var inp=scr.querySelector(".lxw-netsearch");
   if(inp)inp.addEventListener("input",function(){var q=(this.value||"").trim().toLowerCase();scr.querySelectorAll(".lxw-row").forEach(function(r){r.style.display=(!q||r.getAttribute("data-lxq").indexOf(q)>=0)?"":"none";});});
-  scr.querySelectorAll(".lxw-row").forEach(function(r){r.addEventListener("click",function(){var net=r.getAttribute("data-lxnet");applyChain(net);if(window.lxwOpenWallet)window.lxwOpenWallet(net,npHome);});});
+  // :not(.lxw-soon) — the coming-soon rows are deliberately inert. Filtering here rather than
+  // returning early inside the handler means there is no listener at all, so nothing to misfire.
+  scr.querySelectorAll(".lxw-row:not(.lxw-soon)").forEach(function(r){r.addEventListener("click",function(){var net=r.getAttribute("data-lxnet");applyChain(net);if(window.lxwOpenWallet)window.lxwOpenWallet(net,npHome);});});
+  if(!document.getElementById("lxw-soon-css")){
+    var st=document.createElement("style"); st.id="lxw-soon-css";
+    st.textContent='.lxw-row.lxw-soon{cursor:default;opacity:.62}'
+      +'.lxw-row.lxw-soon:hover{background:inherit;border-color:inherit;transform:none}'
+      +'.lxw-soon-tag{margin-left:auto;flex:0 0 auto;padding:3px 9px;border-radius:99px;'
+      +'background:var(--surface-2,#f4f5f7);color:var(--text-muted,#8a8fa3);'
+      +'font:700 10px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;'
+      +'letter-spacing:.05em;white-space:nowrap}'
+      +'.lxw-soon-tag>svg{width:0!important;height:0!important;position:absolute!important}';
+    document.head.appendChild(st);
+  }
   return true;
 }
 function chooseNetwork(home){
