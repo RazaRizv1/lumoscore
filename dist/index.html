@@ -2426,8 +2426,8 @@ html body .pool-header-row .ph-icons>*{
   }
 
   function renderTrending(chain) {
-    const featured = document.getElementById('trendingFeatured');
-    const rest = document.getElementById('trendingRest');
+    const featured = document.getElementById('trendingFeatured') || document.createElement('div');
+    const rest = document.getElementById('trendingRest') || document.createElement('div');
     featured.innerHTML = '';
     rest.innerHTML = '';
     const items = trendingByChain[chain] || [];
