@@ -175,13 +175,72 @@ a.ext-link{display:inline-flex;align-items:center;justify-content:center;color:v
 a.ext-link:hover{color:var(--accent)}
 .lxa-ico{width:26px;height:26px;border-radius:50%;object-fit:cover;background:var(--surface-2)}
 .lxadm-note{margin:0 0 16px;padding:12px 14px;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:10px;background:var(--surface-2);color:var(--text-muted);font-size:13px;line-height:1.6}
+/* The listing queue's row actions are WORDS, not glyphs: "Approve" and "Decline" are decisions about
+   someone's money and should not be a pair of unlabelled squares. .row-act-btn is 28x28 and made for
+   the pencil and the cross, so these get their own size. */
+.lxreq-btn{display:inline-flex;align-items:center;height:26px;padding:0 10px;margin-left:6px;border:1px solid var(--border);border-radius:8px;background:var(--surface);color:var(--text);font:inherit;font-size:12.5px;font-weight:600;line-height:1;white-space:nowrap;cursor:pointer;transition:border-color .13s,color .13s}
+.lxreq-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+.lxreq-btn:disabled{opacity:.55;cursor:default}
+.lxreq-btn.go{border-color:var(--accent);background:var(--accent);color:#fff}
+.lxreq-btn.go:hover:not(:disabled){filter:brightness(1.06);color:#fff}
+.lxreq-note{white-space:normal;margin-top:4px;line-height:1.45;color:var(--text-muted);font-size:12.5px}
+.lxreq-copy{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;margin-left:5px;padding:0;vertical-align:-5px;border:0;border-radius:5px;background:transparent;color:var(--text-muted);cursor:pointer;transition:color .13s,background .13s}
+.lxreq-copy:hover{color:var(--text);background:var(--surface-2)}
+.lxreq-copy .c2{display:none}
+.lxreq-copy.ok{color:#1fa968}
+.lxreq-copy.ok .c1{display:none}
+.lxreq-copy.ok .c2{display:block}
+.lxreq-links{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.lxreq-links a{display:inline-flex;align-items:center;height:22px;padding:0 9px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-weight:600;color:var(--text-muted);text-decoration:none;transition:border-color .13s,color .13s}
+.lxreq-links a:hover{border-color:var(--accent);color:var(--accent)}
+.lxreq-nolinks{font-size:11.5px;font-style:italic;color:var(--text-muted);opacity:.75}
 </'+'style>`.replace("</'+'style>","</"+"style>");
+
+// ---- wallet signing, borrowed from the launchpad ------------------------------------------------------
+// The panel signs exactly one kind of transaction: a refund to a declined listing applicant. Rather
+// than write a second wallet stack for that, the launchpad's signer is lifted here BY NAME at build
+// time, so Freighter / Albedo / Rabet / xBull / LOBSTR / WalletConnect keep one implementation across
+// the whole site. If those functions are renamed the build FAILS instead of shipping a dead button.
+function lpSigner(){
+  const src=fs.readFileSync(__dirname+'/_launchpad.js','utf8');
+  const grab=(name)=>{
+    const i=src.indexOf('function '+name+'(');
+    if(i<0) return null;
+    let d=0;
+    for(let k=src.indexOf('{',i); k>=0 && k<src.length; k++){
+      if(src[k]==='{') d++;
+      else if(src[k]==='}'){ d--; if(!d) return src.slice(i,k+1); }
+    }
+    return null;
+  };
+  const parts=[];
+  for(const v of ['var _lpSdkP=null;','var _lpMods={};']){
+    if(src.indexOf(v)<0){ console.error('admin: _launchpad.js no longer declares "'+v+'" — refusing to build.'); process.exit(1); }
+    parts.push(v);
+  }
+  for(const n of ['lxLpSdk','lxLpFreighter','lxLpWalletId','lxLpConnectedAddr','lxLpMod','lxLpSignXdr']){
+    const b=grab(n);
+    if(!b){ console.error('admin: _launchpad.js no longer defines '+n+'() — refusing to build.'); process.exit(1); }
+    parts.push(b);
+  }
+  // lxLpSignXdr reads the passphrase off this. The launchpad sets a fuller version of the same object;
+  // the panel needs only the one field and never overwrites an existing one.
+  parts.push('if(!window.__lxLP)window.__lxLP={passphrase:"Public Global Stellar Network ; September 2015"};');
+  return parts.join('\n')+'\n';
+}
+const LP_SIGNER=lpSigner();
 
 // ---- data layer ---------------------------------------------------------------------------------------
 const SCRIPT='<script id="lx-admindata">(function(){'
++LP_SIGNER
 +'var H="https://horizon.stellar.org";'
 +'var VTICK="<svg viewBox=\\"0 0 24 24\\" fill=\\"none\\" stroke=\\"currentColor\\" stroke-width=\\"3.4\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><polyline points=\\"20 6 9 17 4 12\\"></polyline></svg>";'
 +'var EXTICON="<svg width=\\"13\\" height=\\"13\\" viewBox=\\"0 0 24 24\\" fill=\\"none\\" stroke=\\"currentColor\\" stroke-width=\\"2\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><path d=\\"M7 17L17 7M17 7H8M17 7v9\\"></path></svg>";'
+// Two glyphs in one button: the pages stack, and a tick that replaces them for a moment after a copy.
+// Feedback matters more than usual here -- copying a 56-character account gives you nothing visible to
+// check, so without it you cannot tell whether the click registered.
++'var COPYICON="<svg class=\\"c1\\" width=\\"12\\" height=\\"12\\" viewBox=\\"0 0 24 24\\" fill=\\"none\\" stroke=\\"currentColor\\" stroke-width=\\"2\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><rect x=\\"9\\" y=\\"9\\" width=\\"12\\" height=\\"12\\" rx=\\"2\\"></rect><path d=\\"M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1\\"></path></svg>"'
++'  +"<svg class=\\"c2\\" width=\\"12\\" height=\\"12\\" viewBox=\\"0 0 24 24\\" fill=\\"none\\" stroke=\\"currentColor\\" stroke-width=\\"3\\" stroke-linecap=\\"round\\" stroke-linejoin=\\"round\\"><polyline points=\\"20 6 9 17 4 12\\"></polyline></svg>";'
 +'var FEE="'+FEE_COLLECTOR+'";'
 +'function q(s){return document.querySelector(s);} function qa(s){return [].slice.call(document.querySelectorAll(s));}'
 +'function j(u){return fetch(u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}'
@@ -227,10 +286,16 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'  })).then(function(a){ POOLS=a.filter(Boolean).sort(function(x,y){return y.xlm-x.xlm;}); return POOLS; }); }'
 +'function pageTitle(){ return ((q(".admin-page-title")||q(".mob-page-title")||{}).textContent||"").trim(); }'
 +'function pageHead(){ return q(".admin-page-head")||q(".mob-page-head"); }'
-+'function fixPager(n){ var b=q(".pg-btn"); if(!b)return; var ctrls=b.parentNode, row=ctrls.parentNode;'
-+'  var info=row.querySelector(".pg-info"); if(!info){ var f=row.firstElementChild; if(f&&f!==ctrls)info=f; }'
-+'  if(info)info.innerHTML="<span class=\\"mono\\">"+(n?1:0)+"</span>\\u2013<span class=\\"mono\\">"+n+"</span> of <span class=\\"mono\\">"+n+"</span>";'
-+'  ctrls.remove(); }'
+// The first call REMOVES the pager buttons, which used to make every later call a no-op: .pg-btn was
+// gone, so the function returned before touching the count. That is why switching to a tab with one
+// row left the line reading "1-55 of 55" -- the curated tab had written it and nothing could rewrite
+// it. The info element is stamped on the way past so it can still be found afterwards.
++'function fixPager(n){ var info=q(".lxpg-info"), b=q(".pg-btn");'
++'  if(b){ var ctrls=b.parentNode, row=ctrls.parentNode;'
++'    info=row.querySelector(".pg-info"); if(!info){ var f=row.firstElementChild; if(f&&f!==ctrls)info=f; }'
++'    if(info)info.className=(info.className?info.className+" ":"")+"lxpg-info";'
++'    ctrls.remove(); }'
++'  if(info)info.innerHTML="<span class=\\"mono\\">"+(n?1:0)+"</span>\\u2013<span class=\\"mono\\">"+n+"</span> of <span class=\\"mono\\">"+n+"</span>"; }'
 +'function isMob(){ return !!q(".mob-page-title"); }'
 +'function isDash(){ return /^Dashboard/.test(pageTitle()) && !isMob(); }'
 +'function assetOf(p){ return p.asset_type==="native"?{code:"XLM",iss:""}:{code:p.asset_code||"?",iss:p.asset_issuer||""}; }'
@@ -1060,15 +1125,29 @@ function paintAssets(){
   // Volume over three windows because one number cannot answer "is this moving now" and "is this worth
   // listing" at the same time.
   var TH=["Asset","Issuer domain","Price","24h","7d","Vol 24h","Vol 7d","Vol 30d","Trustlines","Actions"];
+  // The listing queue answers different questions from the asset table, so it gets its own columns.
+  // Set per render rather than once, because the tab can change under a table that is already built.
+  var TH_REQ=["Asset","Applicant","Paid","Submitted","Status","Actions"];
   var thr=tbl.querySelector("thead tr");
-  if(thr)thr.innerHTML=TH.map(function(h,i){ return "<th"+(i>1?" style='text-align:right'":"")+">"+esc(h)+"</th>"; }).join("");
+  function setHead(){
+    if(!thr)return;
+    var want=(MODE==="requests")?TH_REQ:TH, first=(MODE==="requests")?2:1;
+    var made=want.map(function(h,i){ return "<th"+(i>first?" style='text-align:right'":"")+">"+esc(h)+"</th>"; }).join("");
+    if(thr.innerHTML!==made)thr.innerHTML=made;
+  }
   var tb=tbl.querySelector("tbody");
 
   // CURATED and MINTS are different claims. Curated is what LumosCore chooses to list -- the set Trade
   // main shows. Mints are what was issued through our own launchpad: ours by definition, not a curation
   // decision. Merging them made the list look like we had hand-picked 55 assets.
   var CUR=[], MINTS=[], MODE="curated", DATA={}, VER={}, LXV=null, PXA={}, LOGO={};
-  function rows(){ return MODE==="mints"?MINTS:CUR; }
+  // The curated-listing queue. null while it is still being fetched, so the chip can say so instead of
+  // claiming zero.
+  var LR=null;
+  // Requests are not assets: they have no price, no volume and nothing to look up. Returning an empty
+  // list keeps every caller that walks the asset rows -- load, sort, kpis -- a harmless no-op in this
+  // mode rather than a special case in each of them.
+  function rows(){ return MODE==="requests"?[]:(MODE==="mints"?MINTS:CUR); }
   function key(a){ return a.code+"-"+a.iss; }
   function parse(s){ var i=s.lastIndexOf("-"); return {code:s.slice(0,i),iss:s.slice(i+1)}; }
 
@@ -1083,9 +1162,15 @@ function paintAssets(){
       "<button class='seg-chip"+(MODE==="curated"?" active":"")+"' type='button' data-lxtab='curated'>"
        +"<span class='seg-label'>Curated assets</span><span class='seg-count'>"+CUR.length+"</span></button>"
       +"<button class='seg-chip"+(MODE==="mints"?" active":"")+"' type='button' data-lxtab='mints'>"
-       +"<span class='seg-label'>LumosCore native mints</span><span class='seg-count'>"+MINTS.length+"</span></button>";
+       +"<span class='seg-label'>LumosCore native mints</span><span class='seg-count'>"+MINTS.length+"</span></button>"
+      // The count shown is the number still WAITING, not the number ever received: a queue chip is
+      // read as work outstanding, and a growing all-time total would stop meaning anything.
+      +"<button class='seg-chip"+(MODE==="requests"?" active":"")+"' type='button' data-lxtab='requests'>"
+       +"<span class='seg-label'>Listing requests</span><span class='seg-count'>"+(LR===null?"…":String(reqOpen().length))+"</span></button>";
     qa("[data-lxtab]").forEach(function(b){ b.addEventListener("click",function(){
-      MODE=b.getAttribute("data-lxtab"); tabs(); render(); kpis(); rows().forEach(load); }); });
+      MODE=b.getAttribute("data-lxtab");
+      if(MODE==="requests"&&LR===null)reqLoad();
+      tabs(); render(); kpis(); rows().forEach(load); }); });
   }
 
   // The platform resolves logos server-side because plenty of toml hosts refuse a browser's request.
@@ -1115,6 +1200,8 @@ function paintAssets(){
   }
 
   function kpis(){
+    if(MODE==="requests")return reqKpis();
+    setNote();
     var LI=rows();
     var vals=LI.map(function(a){ return DATA[key(a)]; }).filter(function(v){ return !!v; });
     var live=0, trades=0, tot=0, unpriced=0;
@@ -1135,7 +1222,303 @@ function paintAssets(){
     var sub=q(".admin-page-sub"); if(sub)sub.textContent=(MODE==="mints"?"Tokens issued through the LumosCore launchpad":"Assets you list on LumosCore");
   }
 
+  // ---- the curated-listing queue --------------------------------------------------------------------
+  // Applications from /list-your-token. Each one arrives already paid for -- the public endpoint
+  // verifies the payment on-chain before it will store anything -- so what happens here is only the
+  // decision and, on a decline, sending the money back.
+  //
+  // Approving is done by the SAME PUT /lxapi/assetmeta the Add-asset button uses. Nothing about
+  // curation is reimplemented here; the server then refuses to mark a request approved until it can
+  // see the asset on the curated list, so a half-finished approval stays visibly pending.
+  var REQ_ST={
+    pending:{t:"Awaiting review",c:"var(--text)"},
+    approved:{t:"Approved",c:"#1fa968"},
+    rejected:{t:"Declined, refund owed",c:"#e0553c"},
+    refunded:{t:"Declined and refunded",c:"var(--text-muted)"}
+  };
+  function reqOpen(){ return (LR||[]).filter(function(r){ return r.status==="pending"||r.status==="rejected"; }); }
+
+  // A handle can arrive as "@name", "name" or a full URL -- the applicant types what they think of, and
+  // listing.js stores it as typed to match what assetmeta does. Turning it into something clickable is
+  // therefore this function's job, and it is the only place that guesses.
+  function reqHref(kind,v){
+    v=String(v||"").trim(); if(!v)return "";
+    if(/^https?:/i.test(v))return v;
+    var h=v.replace(/^@/,"");
+    if(kind==="twitter")return "https://x.com/"+encodeURIComponent(h);
+    if(kind==="telegram")return "https://t.me/"+encodeURIComponent(h);
+    return "https://"+v;                    // website or a discord invite typed bare
+  }
+  function reqLinks(r){
+    var out=[];
+    [["website",r.website,"Website"],["twitter",r.twitter,"X"],
+     ["telegram",r.telegram,"Telegram"],["discord",r.discord,"Discord"]].forEach(function(p){
+      if(!p[1])return;
+      out.push("<a class='lxreq-link' target='_blank' rel='noopener' title='"+esc(p[1])+"' href='"+esc(reqHref(p[0],p[1]))+"'>"+esc(p[2])+"</a>");
+    });
+    // Said out loud rather than left blank. "No links given" is itself a review finding -- the bar is
+    // whether a project is findable outside our site -- and an empty space does not say that.
+    if(!out.length)return "<div class='lxreq-links lxreq-nolinks'>No links given</div>";
+    return "<div class='lxreq-links'>"+out.join("")+"</div>";
+  }
+  function reqLoad(){
+    return j("/lxapi/listingadmin").then(function(d){
+      LR=(d&&d.requests)||[];
+      tabs(); if(MODE==="requests"){ render(); kpis(); }
+      return LR;
+    }).catch(function(){ LR=[]; tabs(); if(MODE==="requests"){ render(); kpis(); } return LR; });
+  }
+  function reqAmt(r){ return (+r.payAmount||0).toLocaleString(undefined,{maximumFractionDigits:2})+" XLM"; }
+  function reqWhen(t){ if(!t)return "—"; var d=new Date(+t);
+    return d.toLocaleDateString(undefined,{day:"numeric",month:"short"})+", "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}); }
+
+  // The explanatory note above the table belongs to the tab, not to the page. Captured on first use so
+  // switching back restores exactly the text the assets tabs shipped with.
+  var NOTE0=null;
+  var NOTE_REQ="Applications from the public List your token page. Each one is already paid for — the "
+    + "payment is verified against the ledger before a request is stored, so nothing here arrived free. "
+    + "Approving curates the asset immediately, which also gives it the tick; it reaches the public site "
+    + "at the next publish. Declining does not send the money back: the row then shows a refund owed, "
+    + "and Refund pays it from the wallet connected here, to the account that actually paid.";
+  function setNote(){
+    var n=q(".lxadm-note"); if(!n)return;
+    if(NOTE0===null)NOTE0=n.textContent;
+    setT(n, MODE==="requests"?NOTE_REQ:NOTE0);
+  }
+
+  function reqKpis(){
+    setNote();
+    var L=LR||[], pend=0, owed=0, owedN=0, done=0;
+    L.forEach(function(r){
+      if(r.status==="pending")pend++;
+      if(r.status==="rejected"){ owed+=(+r.payAmount||0); owedN++; }
+      if(r.status==="approved")done++;
+    });
+    var cards=qa(".kpi-grid .kpi");
+    function set(i,label,val,foot){ var c=cards[i]; if(!c)return;
+      var l=c.querySelector(".kpi-label"); if(l)setT(l,label);
+      setT(c.querySelector(".kpi-value"),val);
+      var f=c.querySelector(".kpi-foot"); if(f){ f.innerHTML=""; f.textContent=foot; } }
+    set(0,"Awaiting review",LR===null?"…":String(pend),"paid and queued");
+    set(1,"Approved",LR===null?"…":String(done),"now curated");
+    // Money we are holding that is not ours. It reads as a debt on purpose.
+    set(2,"Refunds owed",LR===null?"…":String(owedN),"declined, not yet paid back");
+    set(3,"Owed back",LR===null?"…":(owed?owed.toLocaleString(undefined,{maximumFractionDigits:2})+" XLM":"none"),"to the accounts that paid");
+    fixPager((LR||[]).length);
+    var sub=q(".admin-page-sub"); if(sub)sub.textContent="Paid applications for a curated listing";
+  }
+
+  function reqRender(){
+    if(LR===null){ tb.innerHTML="<tr><td colspan='6' class='lxadm-empty'>Loading the queue…</td></tr>"; return; }
+    var qy=((q(".fs-search input")||{}).value||"").trim().toLowerCase();
+    var L=LR.filter(function(r){ return !qy || (r.code+" "+r.issuer+" "+r.payer+" "+r.descr).toLowerCase().indexOf(qy)>=0; });
+    if(!L.length){ tb.innerHTML="<tr><td colspan='6' class='lxadm-empty'>"
+      +(LR.length?"No request matches that search.":"No listing requests yet. They arrive from the public List your token page.")+"</td></tr>"; return; }
+    tb.innerHTML=L.map(function(r){
+      var st=REQ_ST[r.status]||{t:r.status,c:"var(--text-muted)"};
+      var act="";
+      if(r.status==="pending"){
+        act="<button class='lxreq-btn go' type='button' title='Curate this asset and approve the request' data-lxap='"+esc(r.id)+"'>Approve</button>"
+           +"<button class='lxreq-btn' type='button' title='Decline with a reason' data-lxrj='"+esc(r.id)+"'>Decline</button>";
+      } else if(r.status==="rejected"){
+        act="<button class='lxreq-btn go' type='button' title='Send "+esc(reqAmt(r))+" back to the account that paid' data-lxrf='"+esc(r.id)+"'>Refund</button>"
+           +"<button class='lxreq-btn' type='button' title='Record a refund you sent from elsewhere' data-lxrh='"+esc(r.id)+"'>Have the hash</button>"
+           +"<button class='lxreq-btn' type='button' title='Put this back in the queue' data-lxro='"+esc(r.id)+"'>Reopen</button>";
+      } else if(r.status==="approved"){
+        act="<button class='lxreq-btn' type='button' title='Put this back in the queue' data-lxro='"+esc(r.id)+"'>Reopen</button>";
+      } else {
+        act="<a class='ext-link' title='The refund transaction' target='_blank' rel='noopener' href='https://stellar.expert/explorer/public/tx/"+esc(r.refundHash)+"'>"+EXTICON+"</a>";
+      }
+      var img=r.logo?("<img class='lxa-ico' data-lxc='"+esc(r.code)+"' alt='' src='"+esc(r.logo)+"'>")
+                    :("<img class='lxa-ico' data-lxc='"+esc(r.code)+"' alt='' src='"+esc(avatar(r.code))+"'>");
+      return "<tr>"
+        +"<td><div class='asset-cell'>"+img
+          +"<div><div class='asset-name'>"+esc(r.code)+(r.curated?tickFor(r.asset):"")+"</div>"
+          // Truncated with a copy button rather than printed in full: 56 characters would dominate the
+          // row, and what you actually do with an issuer is paste it somewhere.
+          +"<div class='asset-sub mono'>"+esc(shortG(r.issuer))
+            +"<button class='lxreq-copy' type='button' title='Copy the issuing account' data-lxcp='"+esc(r.issuer)+"'>"+COPYICON+"</button>"
+            +"<a class='ext-link' title='The issuing account on stellar.expert' target='_blank' rel='noopener' href='https://stellar.expert/explorer/public/account/"+esc(r.issuer)+"'>"+EXTICON+"</a>"
+          +"</div>"
+          // The WHOLE description, not the first 120 characters. This is the review screen; deciding
+          // whether a project describes itself honestly cannot be done from an ellipsis.
+          +"<div class='lxreq-note' style='min-width:260px;max-width:360px'>"+esc(r.descr)+"</div>"
+          +reqLinks(r)
+        +"</div></div></td>"
+        +"<td><span class='mono' title='"+esc(r.payer)+"'>"+esc(shortG(r.payer))+"</span>"
+          +" <a class='ext-link' title='The payment' target='_blank' rel='noopener' href='https://stellar.expert/explorer/public/tx/"+esc(r.txHash)+"'>"+EXTICON+"</a></td>"
+        +"<td class='num-cell' style='text-align:right'>"+esc(reqAmt(r))+"</td>"
+        +"<td style='text-align:right'>"+esc(reqWhen(r.createdAt))+"</td>"
+        +"<td style='text-align:right'><span style='color:"+st.c+";font-weight:600'>"+esc(st.t)+"</span>"
+          +(r.note?("<div class='lxreq-note' style='max-width:240px;margin-left:auto'>"+esc(r.note)+"</div>"):"")+"</td>"
+        +"<td style='text-align:right'><span class='row-act'>"+act+"</span></td>"
+      +"</tr>";
+    }).join("");
+    qa("[data-lxap]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
+      b.addEventListener("click",function(){ reqApprove(b.getAttribute("data-lxap"),b); }); });
+    qa("[data-lxrj]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
+      b.addEventListener("click",function(){ reqReject(b.getAttribute("data-lxrj")); }); });
+    qa("[data-lxrf]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
+      b.addEventListener("click",function(){ reqRefund(b.getAttribute("data-lxrf"),b); }); });
+    qa("[data-lxrh]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
+      b.addEventListener("click",function(){ reqRefundHash(b.getAttribute("data-lxrh")); }); });
+    qa("[data-lxro]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
+      b.addEventListener("click",function(){ reqAct(b.getAttribute("data-lxro"),{action:"reopen"}); }); });
+    qa("[data-lxcp]").forEach(function(b){ if(b.__lx)return; b.__lx=1;
+      b.addEventListener("click",function(e){ e.stopPropagation();
+        var v=b.getAttribute("data-lxcp"), done=function(){ b.classList.add("ok");
+          setTimeout(function(){ b.classList.remove("ok"); },1400); };
+        // execCommand is the fallback, not the fashion: navigator.clipboard needs a secure context and
+        // a permission that a panel opened from a hash URL does not always have.
+        if(navigator.clipboard&&navigator.clipboard.writeText){
+          navigator.clipboard.writeText(v).then(done,function(){ legacyCopy(v); done(); });
+        } else { legacyCopy(v); done(); } }); });
+  }
+  function legacyCopy(v){
+    try{ var t=document.createElement("textarea"); t.value=v;
+      t.style.cssText="position:fixed;left:-9999px;top:0"; document.body.appendChild(t);
+      t.select(); document.execCommand("copy"); t.remove(); }catch(_){}
+  }
+
+  function reqById(id){ return (LR||[]).filter(function(r){ return r.id===id; })[0]; }
+
+  // Every decision goes through here, so the queue is re-read from the server afterwards rather than
+  // patched locally: the row on screen then reflects what was actually stored.
+  function reqAct(id,body){
+    body.id=id;
+    return fetch("/lxapi/listingadmin",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
+      .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,d:d}; }); })
+      .then(function(z){ if(!z.ok||!z.d.ok)throw new Error((z.d&&z.d.error)||"That did not save."); return reqLoad().then(function(){ return z.d; }); });
+  }
+
+  function reqApprove(id,btn){
+    var r=reqById(id); if(!r)return;
+    if(!confirm("Approve "+r.code+"? It is curated immediately, carries the tick, and appears on the public site at the next publish."))return;
+    btn.disabled=true; btn.textContent="Curating…";
+    // Description and logo travel with the approval, so the asset arrives on the public site wearing
+    // what the applicant sent rather than an empty record someone has to fill in later.
+    var body={asset:r.asset};
+    if(r.descr)body.description=r.descr;
+    if(r.logo)body.image=r.logo;
+    // The links travel with the approval too, so an approved asset lands on the public site already
+    // wearing them rather than waiting for someone to retype what the applicant already gave us.
+    if(r.website)body.website=r.website;
+    if(r.twitter)body.twitter=r.twitter;
+    if(r.telegram)body.telegram=r.telegram;
+    if(r.discord)body.discord=r.discord;
+    fetch("/lxapi/assetmeta",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify(body)})
+      .then(function(rr){ return rr.json().then(function(bb){ return {ok:rr.ok,b:bb}; }); })
+      .then(function(z){
+        if(!z.ok)throw new Error((z.b&&(z.b.error||z.b.message))||"Could not curate that asset.");
+        if(z.b&&z.b.verified)VER[r.asset]=z.b.verified;
+        if(!CUR.some(function(a){ return a.code===r.code&&a.iss===r.issuer; })){
+          CUR.push({code:r.code,iss:r.issuer});
+          try{ localStorage.setItem(AKEY,JSON.stringify(CUR)); }catch(_){}
+        }
+        btn.textContent="Recording…";
+        return reqAct(id,{action:"approve"});
+      })
+      .then(function(){ alert(r.code+" is curated and the request is approved. It reaches the public site at the next publish (node _tools/_syncverified.js, then deploy)."); })
+      .catch(function(e){ btn.disabled=false; btn.textContent="Approve"; alert(e.message); });
+  }
+
+  function reqReject(id){
+    var r=reqById(id); if(!r||q(".lxmodal"))return;
+    var m=document.createElement("div"); m.className="lxmodal";
+    m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Decline "+esc(r.code)+"</h3>"
+      +"<p class='lxmodal-s'>The reason is what the applicant is told, so write it for them. Declining does not send the money back — the row then shows a refund owed, and the Refund button pays it from your connected wallet.</p>"
+      +"<label class='lxmodal-l' for='lxrjWhy'>Reason</label>"
+      +"<textarea class='lxmodal-i' id='lxrjWhy' rows='3' maxlength='300' placeholder='No home domain set, so the handshake cannot resolve.'></textarea>"
+      +"<p class='lxmodal-e' id='lxrjErr'></p>"
+      +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxrjCancel'>Cancel</button>"
+      +"<button class='adm-btn primary' type='button' id='lxrjOk'>Decline</button></div></div>";
+    document.body.appendChild(m);
+    var ta=m.querySelector("#lxrjWhy"), er=m.querySelector("#lxrjErr"), ok=m.querySelector("#lxrjOk");
+    ta.focus();
+    function close(){ m.remove(); }
+    m.addEventListener("click",function(e){ if(e.target===m)close(); });
+    m.querySelector("#lxrjCancel").addEventListener("click",close);
+    ok.addEventListener("click",function(){
+      var why=(ta.value||"").trim();
+      if(why.length<8){ er.textContent="Give a real reason — they are told it verbatim."; return; }
+      ok.disabled=true; ok.textContent="Saving…";
+      reqAct(id,{action:"reject",note:why}).then(close)
+        .catch(function(e){ ok.disabled=false; ok.textContent="Decline"; er.textContent=e.message; });
+    });
+  }
+
+  // The refund is a payment from whichever wallet is connected here, back to the account that paid,
+  // for the exact amount it paid. The address comes from the stored PAYMENT, never from anything the
+  // applicant typed, so a decline can never be steered to a stranger.
+  function reqRefund(id,btn){
+    var r=reqById(id); if(!r)return;
+    var addr=""; try{ addr=localStorage.getItem("lumos.address")||""; }catch(_){}
+    if(addr.charAt(0)!=="G"){
+      if(window.lxwOpenWallet){ window.lxwOpenWallet("stellar"); alert("Connect the wallet you want to refund from, then press Refund again."); }
+      else alert("Connect a Stellar wallet first.");
+      return;
+    }
+    if(!confirm("Send "+reqAmt(r)+" back to "+shortG(r.payer)+" from "+shortG(addr)+"?"))return;
+    btn.disabled=true; btn.textContent="Building…";
+    var PASS="Public Global Stellar Network ; September 2015", S;
+    lxLpSdk().then(function(sdk){
+      S=sdk;
+      return fetch(H+"/accounts/"+addr).then(function(x){ if(!x.ok)throw new Error("Could not read your account."); return x.json(); });
+    }).then(function(acct){
+      var tb2=new S.TransactionBuilder(new S.Account(addr,acct.sequence),{fee:"3000",networkPassphrase:PASS})
+        .addOperation(S.Operation.payment({destination:r.payer,asset:S.Asset.native(),amount:String(r.payAmount)}))
+        .addMemo(S.Memo.text("LumosCore refund"))
+        .setTimeout(180).build();
+      btn.textContent="Sign…";
+      return lxLpSignXdr(tb2.toXDR(),addr);
+    }).then(function(signed){
+      btn.textContent="Sending…";
+      return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)})
+        .then(function(x){ return x.json(); });
+    }).then(function(res){
+      if(!res.successful){
+        var rc=res.extras&&res.extras.result_codes;
+        throw new Error("The refund did not go through: "+(rc?JSON.stringify(rc):(res.detail||"unknown error")));
+      }
+      btn.textContent="Recording…";
+      // Checked against the ledger server-side before the row closes, so a refund we did not make
+      // cannot mark one as paid.
+      return reqAct(id,{action:"refund",refundHash:res.hash});
+    }).catch(function(e){
+      btn.disabled=false; btn.textContent="Refund";
+      alert(e.message+"— if the payment DID leave your wallet, use Have the hash to record it.");
+    });
+  }
+
+  // The escape hatch for a refund sent from a phone, a hardware wallet or anywhere else. Still verified
+  // on-chain before it is accepted.
+  function reqRefundHash(id){
+    var r=reqById(id); if(!r||q(".lxmodal"))return;
+    var m=document.createElement("div"); m.className="lxmodal";
+    m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Record a refund</h3>"
+      +"<p class='lxmodal-s'>For a refund sent from somewhere else. We check the ledger: it has to be an XLM payment to "+esc(shortG(r.payer))+" of at least "+esc(reqAmt(r))+", or it is not accepted.</p>"
+      +"<label class='lxmodal-l' for='lxrhTx'>Transaction hash</label><input class='lxmodal-i' id='lxrhTx' placeholder='64 hex characters' maxlength='64'>"
+      +"<p class='lxmodal-e' id='lxrhErr'></p>"
+      +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxrhCancel'>Cancel</button>"
+      +"<button class='adm-btn primary' type='button' id='lxrhOk'>Check and record</button></div></div>";
+    document.body.appendChild(m);
+    var inp=m.querySelector("#lxrhTx"), er=m.querySelector("#lxrhErr"), ok=m.querySelector("#lxrhOk");
+    inp.focus();
+    function close(){ m.remove(); }
+    m.addEventListener("click",function(e){ if(e.target===m)close(); });
+    m.querySelector("#lxrhCancel").addEventListener("click",close);
+    ok.addEventListener("click",function(){
+      var h=(inp.value||"").trim().toLowerCase();
+      if(!/^[0-9a-f]{64}$/.test(h)){ er.textContent="That is not a transaction hash."; return; }
+      ok.disabled=true; ok.textContent="Checking…";
+      reqAct(id,{action:"refund",refundHash:h}).then(close)
+        .catch(function(e){ ok.disabled=false; ok.textContent="Check and record"; er.textContent=e.message; });
+    });
+  }
+
   function render(){ if(!tb)return;
+    setHead();
+    if(MODE==="requests")return reqRender();
     var qy=((q(".fs-search input")||{}).value||"").trim().toLowerCase();
     var LI=rows().filter(function(a){ return !qy || (a.code+" "+a.iss+" "+((DATA[key(a)]||{}).domain||"")).toLowerCase().indexOf(qy)>=0; });
     if(!LI.length){ tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>"+(rows().length?"No asset matches that search.":"Nothing here yet.")+"</td></tr>"; return; }
@@ -1204,6 +1587,11 @@ function paintAssets(){
     window.__lxVER=VER; window.__lxRefresh=function(){ try{ render(); kpis(); }catch(_){} };
     loadLxVol();
   }).catch(function(){ CUR=aList(); first(); });
+
+  // Fetched on load rather than on the first click, so the chip carries a real waiting count from the
+  // moment the page settles -- an unreviewed application is the one thing here nobody should have to
+  // go looking for.
+  reqLoad();
 
   var si=q(".fs-search input"); if(si){ si.placeholder="Search by code, issuer or domain…"; si.addEventListener("input",render); }
   qa(".filter-strip .fs-select").forEach(function(sel,i){

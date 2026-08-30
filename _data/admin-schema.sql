@@ -86,3 +86,39 @@ CREATE TABLE IF NOT EXISTS activity (
   ts   INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS activity_ts ON activity (ts DESC);
+
+-- Curated listing applications from the public "List your token" page.
+--
+-- The $250 is paid in the SAME transaction that submits the form, so tx_hash is the proof and is the
+-- natural unique key: a resubmit or a double-click cannot create a second request for one payment.
+-- pay_asset and pay_amount record what was actually received, because a rejection has to refund
+-- exactly that -- same asset, same amount -- and the quote that produced it will have moved by then.
+CREATE TABLE IF NOT EXISTS listing_request (
+  id          TEXT PRIMARY KEY,
+  network     TEXT NOT NULL,
+  code        TEXT NOT NULL,
+  issuer      TEXT NOT NULL,
+  descr       TEXT,
+  logo_id     TEXT,
+  payer       TEXT NOT NULL,          -- refunds go back here, never to an address supplied in the form
+  pay_asset   TEXT NOT NULL,          -- 'native' or CODE:ISSUER
+  pay_amount  TEXT NOT NULL,
+  tx_hash     TEXT NOT NULL UNIQUE,
+  status      TEXT NOT NULL DEFAULT 'pending',   -- pending | approved | rejected | refunded
+  created_at  INTEGER NOT NULL,
+  decided_at  INTEGER,
+  refund_hash TEXT,
+  note        TEXT,
+  -- Where to go and look. Review is "is this project findable and is it what it claims", which cannot
+  -- be answered from a code and an address alone, so the application collects them and the panel shows
+  -- them as links. They are also passed straight to /lxapi/assetmeta on approval, so an approved asset
+  -- arrives on the public site already wearing its own links instead of waiting for someone to retype
+  -- them. Handles are kept AS TYPED, matching assetmeta: the asset page already turns a bare handle,
+  -- an @handle or a full URL into the right link, and normalising here would be a second, disagreeing
+  -- implementation of that.
+  website     TEXT,
+  twitter     TEXT,
+  telegram    TEXT,
+  discord     TEXT
+);
+CREATE INDEX IF NOT EXISTS listing_status ON listing_request (status, created_at DESC);

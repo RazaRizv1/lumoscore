@@ -37,11 +37,29 @@
   think you are trading — which is the specific problem a shared ticker creates, and the only problem
   this mark solves.</p>
 
-<div class="dc-note">
-  <p class="dc-note-h">It cannot be bought</p>
-  <p>There is no fee for verification and no way to pay for one. A handshake resolving to a domain
-    <em>we</em> control would only prove a token was minted through us, so it does not count —
-    <a href="/docs/launch-a-token">issuing on the Launchpad</a> earns no mark on its own.</p>
+<h2>Two ways an asset gets the mark</h2>
+
+<p>The handshake above is the first, and it is automatic and free. Publish the pair and the mark
+  appears at the next read; nothing is submitted to us and nothing is paid.</p>
+
+<p>The second is <a href="/docs/curated-listing">curation</a>. An asset LumosCore lists has been
+  checked by a person, and that check is what the mark records. This exists because some legitimate
+  assets can never pass the handshake: BLND is the only BLND on Stellar, held by more than a hundred
+  thousand accounts, and its issuing account sets no home domain at all — there is nothing to ask, and
+  there never will be until the issuer changes it. Refusing those forever would make the rule useless.</p>
+
+<p>The consequence, stated plainly because it is a real one: the mark means <strong>either the issuer
+  vouched for the asset, or we did</strong>. Which of the two is recorded on every mark and shown when
+  you hover it — a handshake landing on a third party's own domain and a tick LumosCore stands behind
+  are both marks, and they are not the same claim.</p>
+
+<div class="dc-note dc-warn">
+  <p class="dc-note-h">What paying does not buy</p>
+  <p>A curated listing costs $250, and that pays for the <em>review</em>, not the outcome. A declined
+    application is refunded in full and carries no mark. Issuing on the
+    <a href="/docs/launch-a-token">Launchpad</a> earns nothing on its own either — a handshake
+    resolving to a domain <em>we</em> control would only prove a token was minted through us, so it
+    does not count.</p>
 </div>
 
 <h2>Getting your asset verified</h2>
@@ -59,9 +77,13 @@
   from another origin, the domain redirects to a different host than the one on the account, or the
   <code>issuer</code> in the file does not exactly match the account that issued the asset.</p>
 
-<h2>Verification and curation are different things</h2>
+<h2>Verification and curation are not the same thing</h2>
 
-<p>Verification is automatic and free, and answers "is this asset who it says it is?".
-  <a href="/docs/curated-listing">Curation</a> is a paid, hand-reviewed listing that puts an asset in
-  a selected set. An asset can be verified without being curated; a curated asset is checked more
-  closely, but curation is still not investment advice.</p>
+<p>They overlap without being interchangeable. Verification answers "is this asset who it says it
+  is?", and the handshake answers it for free, automatically, whether or not we have ever looked at
+  the asset. <a href="/docs/curated-listing">Curation</a> is a paid, hand-reviewed decision to put an
+  asset in the set we surface — a higher bar, applied to far fewer assets, and one that also carries
+  the mark because the check behind it is a person.</p>
+
+<p>So most verified assets are not curated. Every curated asset is marked. And neither is investment
+  advice: a curated, verified asset can still lose all its value.</p>

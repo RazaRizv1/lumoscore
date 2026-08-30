@@ -87,6 +87,11 @@ export const SITEMAP_ROUTES = [
     "monthly"
   ],
   [
+    "/list-your-token",
+    "0.7",
+    "monthly"
+  ],
+  [
     "/docs/introduction",
     "0.6",
     "weekly"

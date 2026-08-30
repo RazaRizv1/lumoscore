@@ -1,0 +1,193 @@
+<div class="lxlt">
+
+  <div class="lt-top">
+    <p class="lt-eyebrow">Curated listing</p>
+    <h1>List your token on LumosCore</h1>
+    <p class="lt-lede">A curated listing puts your asset into the set we surface by hand — in asset
+      lists, in discovery, and with a description and logo a person has actually looked at.</p>
+  </div>
+
+  <div class="lt-facts">
+    <div class="lt-fact">
+      <span class="lt-fact-k">Cost</span>
+      <span class="lt-fact-v" id="ltFee">$250</span>
+      <span class="lt-fact-d">Paid in XLM at the live rate.</span>
+    </div>
+    <div class="lt-fact">
+      <span class="lt-fact-k">If declined</span>
+      <span class="lt-fact-v">Refunded</span>
+      <span class="lt-fact-d">In full, in XLM, to the account that paid.</span>
+    </div>
+    <div class="lt-fact">
+      <span class="lt-fact-k">Reviewed by</span>
+      <span class="lt-fact-v">A person</span>
+      <span class="lt-fact-d">Not a script. We reply either way.</span>
+    </div>
+  </div>
+
+  <p class="lt-intro">Review checks that the asset is what it claims to be and that someone landing on
+    it is not being misled. It is not an opinion on whether the asset is a good investment, and being
+    listed is never a recommendation. What review looks for is set out in
+    <a href="/docs/curated-listing">the documentation</a>.</p>
+
+  <form class="lt-form" id="ltForm" novalidate>
+
+    <section class="lt-step" data-n="1">
+      <h2>Network</h2>
+      <p class="lt-help">Which chain the asset lives on.</p>
+      <label class="lt-lbl" for="ltNet">Network</label>
+      <div class="lt-selwrap">
+        <select class="lt-sel" id="ltNet" name="network">
+          <option value="stellar">Stellar</option>
+        </select>
+      </div>
+      <p class="lt-hint">Stellar today. Other networks open as LumosCore adds them.</p>
+    </section>
+
+    <section class="lt-step" data-n="2">
+      <h2>The asset</h2>
+      <p class="lt-help">Exactly as it exists on the ledger. We check the pair against Stellar before
+        the request is accepted, so a typo here fails rather than queues.</p>
+
+      <div class="lt-two">
+        <div class="lt-field">
+          <label class="lt-lbl" for="ltCode">Asset code</label>
+          <input class="lt-in lt-mono" id="ltCode" name="code" type="text" maxlength="12"
+                 autocomplete="off" spellcheck="false" placeholder="LUMOS">
+          <p class="lt-err" id="ltCodeErr" hidden></p>
+        </div>
+        <div class="lt-field">
+          <label class="lt-lbl" for="ltIssuer">Issuing account</label>
+          <input class="lt-in lt-mono" id="ltIssuer" name="issuer" type="text" maxlength="56"
+                 autocomplete="off" spellcheck="false" placeholder="G…">
+          <p class="lt-err" id="ltIssuerErr" hidden></p>
+        </div>
+      </div>
+
+      <div class="lt-field">
+        <label class="lt-lbl" for="ltDescr">Description</label>
+        <textarea class="lt-in lt-ta" id="ltDescr" name="descr" rows="4" maxlength="600"
+                  placeholder="What the project is, in a couple of sentences."></textarea>
+        <p class="lt-count"><span id="ltCount">0</span> / 600</p>
+        <p class="lt-err" id="ltDescrErr" hidden></p>
+      </div>
+
+      <div class="lt-two lt-two-even">
+        <div class="lt-field">
+          <label class="lt-lbl" for="ltSite">Website</label>
+          <input class="lt-in" id="ltSite" name="website" type="text" maxlength="200"
+                 autocomplete="off" spellcheck="false" placeholder="yourproject.com">
+          <p class="lt-err" id="ltSiteErr" hidden></p>
+        </div>
+        <div class="lt-field">
+          <label class="lt-lbl" for="ltX">X</label>
+          <input class="lt-in" id="ltX" name="twitter" type="text" maxlength="80"
+                 autocomplete="off" spellcheck="false" placeholder="@yourproject">
+        </div>
+      </div>
+
+      <div class="lt-two lt-two-even">
+        <div class="lt-field">
+          <label class="lt-lbl" for="ltTg">Telegram</label>
+          <input class="lt-in" id="ltTg" name="telegram" type="text" maxlength="80"
+                 autocomplete="off" spellcheck="false" placeholder="@yourproject">
+        </div>
+        <div class="lt-field">
+          <label class="lt-lbl" for="ltDs">Discord</label>
+          <input class="lt-in" id="ltDs" name="discord" type="text" maxlength="200"
+                 autocomplete="off" spellcheck="false" placeholder="discord.gg/…">
+        </div>
+      </div>
+
+      <p class="lt-hint lt-hint-flush">Links are optional, but review asks whether the project is
+        findable outside our site — leaving all of them blank makes that harder to answer. Whatever you
+        give here goes onto the asset page if the listing is approved.</p>
+
+      <div class="lt-field">
+        <label class="lt-lbl" for="ltLogo">Logo</label>
+        <div class="lt-drop" id="ltDrop" tabindex="0" role="button">
+          <div class="lt-drop-in" id="ltDropIn">
+            <span class="lt-drop-t">Choose a logo</span>
+            <span class="lt-drop-d">PNG, JPEG, WebP or GIF · square · up to 512KB</span>
+          </div>
+          <input class="lt-file" id="ltLogo" name="logo" type="file"
+                 accept="image/png,image/jpeg,image/webp,image/gif">
+        </div>
+        <p class="lt-err" id="ltLogoErr" hidden></p>
+      </div>
+    </section>
+
+    <section class="lt-step" data-n="3">
+      <h2>Payment</h2>
+      <p class="lt-help"><span id="ltFee2">$250</span>, charged in XLM at the rate below. Your wallet
+        signs one payment; nothing is submitted before you approve it.</p>
+
+      <div class="lt-pay">
+        <div class="lt-pay-row">
+          <span class="lt-pay-k">Listing fee</span>
+          <span class="lt-pay-v lt-mono" id="ltAmt">—</span>
+        </div>
+        <div class="lt-pay-row lt-pay-sub">
+          <span class="lt-pay-k">Rate</span>
+          <span class="lt-pay-v lt-mono" id="ltRate">loading…</span>
+        </div>
+        <div class="lt-pay-row lt-pay-sub">
+          <span class="lt-pay-k">Paid to</span>
+          <span class="lt-pay-v lt-mono lt-trunc" id="ltTo">—</span>
+        </div>
+      </div>
+
+      <p class="lt-hint">Network fees are paid separately to Stellar and are a fraction of a cent.</p>
+
+      <button class="lt-go" id="ltGo" type="submit">
+        <span id="ltGoT">Connect wallet to pay</span>
+      </button>
+      <p class="lt-status" id="ltStatus" role="status" aria-live="polite"></p>
+      <p class="lt-err lt-err-big" id="ltFormErr" hidden></p>
+    </section>
+
+  </form>
+
+  <div class="lt-done" id="ltDone" hidden>
+    <p class="lt-done-h">Request received</p>
+    <h2 class="lt-done-t">We have your payment and your application</h2>
+    <p>A person reviews it and replies by email through <a href="/support">Support</a>. If it is
+      declined, the full amount comes back to the account that paid — same asset, same address.</p>
+    <div class="lt-done-reg">
+      <div class="lt-done-row"><span class="lt-done-k">Asset</span>
+        <span class="lt-done-v lt-mono" id="ltDoneAsset">—</span></div>
+      <div class="lt-done-row"><span class="lt-done-k">Paid</span>
+        <span class="lt-done-v lt-mono" id="ltDonePaid">—</span></div>
+      <div class="lt-done-row"><span class="lt-done-k">Transaction</span>
+        <span class="lt-done-v lt-mono lt-trunc" id="ltDoneTx">—</span></div>
+      <div class="lt-done-row"><span class="lt-done-k">Reference</span>
+        <span class="lt-done-v lt-mono" id="ltDoneId">—</span></div>
+    </div>
+  </div>
+
+  <div class="lt-stranded" id="ltStranded" hidden>
+    <p class="lt-stranded-h">Your payment went through — the application did not</p>
+    <p>The XLM left your wallet and is on the ledger, but we could not record the request against it.
+      Nothing is lost: keep the transaction hash below and send it to <a href="/support">Support</a>,
+      and we will attach it by hand. Reloading this page will also retry on its own.</p>
+    <p class="lt-mono lt-stranded-tx" id="ltStrandedTx">—</p>
+  </div>
+
+  <div class="lt-after">
+    <h2>What happens next</h2>
+    <ol class="lt-steps">
+      <li>Your payment is verified on-chain before the request is accepted. Nothing is stored until it
+        clears.</li>
+      <li>A person reviews the issuer link, the metadata, the liquidity and whether the project is
+        findable outside our site.</li>
+      <li>We reply either way. If something needs changing, we say what.</li>
+      <li>Approved, the listing goes live. Declined, the fee is returned in full and you are welcome to
+        reapply once the cause is fixed.</li>
+    </ol>
+    <p class="lt-fine">Before applying it is worth having the
+      <a href="/docs/verification">domain handshake</a> resolving and a
+      <a href="/docs/asset-metadata">stellar.toml</a> published — they are free, and they are most of
+      what review looks at.</p>
+  </div>
+
+</div>
