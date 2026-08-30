@@ -10,7 +10,7 @@
   <div class="lt-facts">
     <div class="lt-fact">
       <span class="lt-fact-k">Cost</span>
-      <span class="lt-fact-v">$250</span>
+      <span class="lt-fact-v" id="ltFee">$250</span>
       <span class="lt-fact-d">Paid in XLM at the live rate.</span>
     </div>
     <div class="lt-fact">
@@ -88,8 +88,10 @@
 
     <section class="lt-step" data-n="3">
       <h2>Payment</h2>
-      <p class="lt-help">$250, charged in XLM at the rate below. Your wallet signs one payment; nothing
-        is submitted before you approve it.</p>
+      <p class="lt-help"><span id="ltFee2">$250</span>, charged in XLM at the rate below. Your wallet
+        signs one payment; nothing is submitted before you approve it.</p>
+
+      <p class="lt-test" id="ltTest" hidden></p>
 
       <div class="lt-pay">
         <div class="lt-pay-row">

@@ -79,6 +79,22 @@
     if (elAmt) elAmt.textContent = human(o.amount) + ' XLM';
     if (elRate) elRate.textContent = '$' + quote.priceUsd + ' at $' + Number(quote.xlmUsd).toFixed(6) + ' / XLM';
     if (elTo) { elTo.textContent = FEE_ACCT; elTo.title = FEE_ACCT; }
+
+    // The headline figure comes from the endpoint, not from the markup. The two used to be able to
+    // disagree, and a page saying $250 beside a button charging something else is the one thing this
+    // page cannot afford to do.
+    var shown = '$' + quote.priceUsd;
+    ['ltFee', 'ltFee2'].forEach(function (id) { var e = $(id); if (e) e.textContent = shown; });
+
+    var t = $('ltTest');
+    if (t) {
+      if (quote.testPricing) {
+        t.textContent = 'Test pricing is active on this deployment: ' + shown + ' instead of $'
+          + quote.listPriceUsd + '. This is not the live site, and a listing bought here is not a '
+          + 'listing on lumoscore.com.';
+        show(t, true);
+      } else { show(t, false); }
+    }
     paintButton();
   }
 
