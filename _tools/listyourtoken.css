@@ -93,6 +93,11 @@ html[data-theme="light"] .lxlt{
 .lxlt .lt-hint{margin:9px 0 0;padding-left:0;font-size:13px;line-height:1.55;color:var(--text-muted)}
 .lxlt .lt-step .lt-hint{padding-left:38px}
 .lxlt .lt-err{margin:7px 0 0;font-size:13px;line-height:1.5;color:var(--lt-bad);font-weight:550}
+/* Shown only where the endpoint reports test pricing, which is staging alone. Loud on purpose: a page
+   quoting cents for a $250 product should never be mistaken for the real one. */
+.lxlt .lt-test{margin:0 0 20px;padding:11px 14px;border:1px solid var(--lt-bad);border-radius:9px;
+  background:var(--lt-field);color:var(--lt-bad);font-size:13.5px;font-weight:600;line-height:1.5}
+.lxlt .lt-step .lt-test{margin-left:38px}
 .lxlt .lt-err-big{margin:14px 0 0;font-size:14.5px}
 .lxlt .lt-in.lt-wrong{border-color:var(--lt-bad)}
 
