@@ -73,9 +73,10 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 // "Activité de la plateforme en direct — Stellar", half again as long as the English.
 +'.activity-card .market-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}'
 +'.activity-card .market-head h3{min-width:0}'
-// At phone widths English needs about 15px more than the row has. This buys it, and is still a
-// perfectly ordinary size for a card title on a phone.
-+'@media(max-width:480px){.activity-card .market-head h3{font-size:14px}}'
+// No font-size override here any more. One was added when the heading read "Live Platform Activity —
+// Stellar", which needed about 15px more than a 375px row had; dropping "Live" gave back roughly
+// double that, so the heading keeps its designed size and the shrink is not carried around for a
+// problem that no longer exists. nowrap + min-width:0 above still covers the longer translations.
 // Sized from the heading's own font so it tracks the two layouts without a second rule, and nudged up
 // a hair because the glyph sits low in its disc.
 +'.activity-card .market-head h3 .lx-chainmark{display:inline-block;width:1.05em;height:1.05em;'

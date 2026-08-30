@@ -1,4 +1,4 @@
-// Dashboard: a Blog section BELOW the Live Platform Activity feed. Both exist; neither replaces the other.
+// Dashboard: a Blog section BELOW the Platform Activity feed. Both exist; neither replaces the other.
 //
 // An earlier version of this transform swapped the activity feed out for the blog. That was reverted on
 // request, and reverting it is why this file also RESTORES the activity card: the containers are
@@ -30,12 +30,12 @@ const B = String.fromCharCode(92);
 // Recovered verbatim from dist/ at the commit before the swap, per device.
 const ACTIVITY = {
   desktop: '<div class="activity-card" data-lxnonav="1">\n          <div class="market-head">\n'
-    + '            <h3><span class="live-pulse"></span>Live Platform Activity — Stellar</h3>\n'
+    + '            <h3><span class="live-pulse"></span>Platform Activity — Stellar</h3>\n'
     + '          </div>\n          <div class="activity-scroll" id="activityList"></div>\n        </div>',
   // "— Stellar" on the phone too. It was the one layout naming no chain, on the one layout with no
   // other clue which chain it is showing. Kept identical to desktop so both share the i18n key.
   mobile: '<div class="activity-card" data-lxnonav="1">\n      <div class="market-head">\n'
-    + '        <h3><span class="live-pulse"></span>Live Platform Activity — Stellar</h3>\n'
+    + '        <h3><span class="live-pulse"></span>Platform Activity — Stellar</h3>\n'
     + '      </div>\n      <div class="activity-scroll" id="activityList"></div>\n    </div>',
 };
 // Where the card belongs, if it has to go back in: immediately after the design's own marker comment.
