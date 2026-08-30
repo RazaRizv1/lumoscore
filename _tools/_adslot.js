@@ -123,53 +123,73 @@ const DEFAULT_C = CAMPAIGNS[0] || HOUSE[0];   // HOUSE[1] is kept as a ready spa
 const WRAP = '<div class="lxad-wrap" id="lxAdWrap" data-lx-noswap>' + card(DEFAULT_C) + '</div>';
 
 const STYLE = `<style id="lx-ad-css">
-/* No margin here on purpose: .dxa-trade-col is already flex-direction:column with gap:10px. That gap has
-   never applied because the column has only ever had one child; adding a margin on top of it would make
-   the ad sit at 28px while every other pair of stacked cards on the page sits at the design's 10px. */
-.lxad{background:var(--surface);border:.8px solid var(--border);border-radius:14px;padding:14px;
-  display:flex;flex-direction:column;cursor:pointer;transition:border-color .15s,background .15s}
-/* Tokens, not literals: the app has a light theme, and a hard-coded #16161b hover would turn a white
-   card charcoal under the cursor. --border-strong/--surface-2 are the design's own hover pair. */
-.lxad:hover{border-color:var(--border-strong);background:var(--surface-2)}
-.lxad:hover .lxad-cta{text-decoration:underline}
-.lxad-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
-.lxad-lab{font-size:11.5px;letter-spacing:.92px;text-transform:uppercase;font-weight:700;color:var(--text-soft,#6e6d78)}
-/* The site's logo painter claimed this chip: it hunts small elements whose text looks like a ticker,
-   and Ad is two characters. It had replaced the background with an inline data-URI of the LUMOS flame
-   and forced display:block, so the chip rendered as an 8px-tall smear with no fill. Two defences, both
-   from DEV landmine 1: !important on everything it writes inline, and the label moved into ::after so
-   there is no text node for it to key on and nothing for it to strip. */
+/* No margin here on purpose: .dxa-trade-col is already flex-direction:column with gap:10px, and a
+   margin on top of it would seat the ad at 28px while every other stacked pair sits at 10px. */
+.lxad{position:relative;overflow:hidden;background:var(--surface);border:.8px solid var(--border);
+  border-radius:14px;padding:16px;display:flex;flex-direction:column;cursor:pointer;
+  transition:border-color .16s,transform .16s,box-shadow .16s}
+/* The promoted signal is the card itself, not a louder label: an accent hairline across the top edge
+   and a wash bleeding out of the corner behind the logo. Both are decoration, so both sit behind the
+   content and neither can intercept the click. */
+.lxad::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;
+  background:linear-gradient(90deg,var(--accent),rgba(234,106,44,0));z-index:0}
+.lxad::after{content:"";position:absolute;right:-40px;top:-50px;width:200px;height:150px;
+  background:radial-gradient(closest-side,rgba(234,106,44,.16),transparent 70%);
+  pointer-events:none;z-index:0}
+.lxad>*{position:relative;z-index:1}
+/* Tokens, not literals: a hard-coded hover would turn a white card charcoal under the light theme. */
+.lxad:hover{border-color:rgba(234,106,44,.42);transform:translateY(-2px);
+  box-shadow:0 6px 20px rgba(0,0,0,.18)}
+.lxad-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+/* Disclosure has to stay obvious, so it keeps the accent and a dot to catch the eye -- it is simply
+   no longer the largest thing in the card. */
+.lxad-lab{display:inline-flex;align-items:center;gap:7px;font-size:10.5px;letter-spacing:1.1px;
+  text-transform:uppercase;font-weight:800;color:var(--accent)}
+.lxad-lab::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent)}
+/* The logo painter claimed this chip: it hunts small elements whose text looks like a ticker, and Ad
+   is two characters. Two defences, both from DEV landmine 1 -- !important on everything it writes
+   inline, and the label in ::after so there is no text node to key on or strip. */
 .lxad-tag{font-size:0;letter-spacing:.6px;text-transform:uppercase;font-weight:800;
   color:var(--text-soft,#6e6d78);border:.8px solid var(--border);
-  background:var(--surface-2)!important;background-image:none!important;
-  display:inline-block!important;border-radius:6px;padding:3px 8px;line-height:1.35}
-.lxad-tag::after{content:attr(data-l);font-size:10.5px}
-.lxad-body{display:flex;gap:12px;align-items:flex-start}
-/* !important + data-lxc: the logo painter's favourite shape is a small empty element, and it strips
+  background:transparent!important;background-image:none!important;
+  display:inline-block!important;border-radius:5px;padding:2px 7px;line-height:1.35}
+.lxad-tag::after{content:attr(data-l);font-size:9.5px}
+.lxad-body{display:flex;gap:13px;align-items:center}
+/* !important + data-lxc: the painter's favourite shape is a small empty element, and it strips
    whatever it finds there before painting its own guess. */
-.lxad-logo{width:46px;height:46px;border-radius:13px;flex:none;
+.lxad-logo{width:52px;height:52px;border-radius:15px;flex:none;
   background-color:#0a0a0b!important;background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-.lxad-id{display:block}
-.lxad-pair{display:flex;align-items:center;font-size:19px;font-weight:800;letter-spacing:-.3px;line-height:1.15}
-.lxad-sub{display:block;margin-top:4px;font-size:12.5px;color:var(--text-soft,#6e6d78);font-weight:600}
+  background-repeat:no-repeat!important;
+  box-shadow:0 0 0 1px var(--border),0 4px 12px rgba(0,0,0,.28)}
+.lxad-id{display:block;min-width:0}
+.lxad-pair{display:flex;align-items:center;gap:6px;font-size:20px;font-weight:800;letter-spacing:-.4px;
+  line-height:1.15;color:var(--text)}
+.lxad-sub{display:block;margin-top:5px;font-size:12.5px;color:var(--text-soft,#6e6d78);font-weight:600}
 .lxad-dom{color:var(--accent)}
-/* Three lines, hard. The rail is 400px wide, so the copy column is ~370px: at 13.5px that is about 171
-   characters of ordinary prose but only ~79 of wide capitals. A character limit alone therefore cannot
-   promise three lines -- the clamp is the guarantee and the form's limit is only guidance. */
-.lxad-copy{margin:12px 0 0;font-size:13.5px;color:var(--text-soft,#6e6d78);line-height:1.5;
+/* Three lines, hard. The rail is ~400px, so a character limit alone cannot promise three lines -- the
+   clamp is the guarantee and the booking form's limit is only guidance. */
+.lxad-copy{margin:13px 0 0;font-size:13.5px;color:var(--text-muted,#8a8fa3);line-height:1.55;
   display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden;
-  /* an unbroken 400-character paste has nowhere to wrap and rendered as one clipped line, slipping under
-     the clamp entirely */
+  /* an unbroken 400-character paste has nowhere to wrap and rendered as one clipped line, slipping
+     under the clamp entirely */
   overflow-wrap:anywhere}
-.lxad-foot{display:flex;align-items:center;justify-content:space-between;margin-top:12px;
-  padding-top:11px;border-top:.8px solid var(--border)}
-.lxad-cta{font-size:13.5px;font-weight:800;color:var(--accent)}
-.lxad-why{font-size:12.5px;color:var(--text-soft,#6e6d78);border-bottom:1px solid transparent}
-.lxad:hover .lxad-why{color:var(--text)}
-/* Below 1280 the grid collapses to one column and the rail falls under the chart, where a full-width ad
-   would be louder than anything around it. Cap it to the trade card's width and centre it. */
+/* No divider: the CTA is now a solid shape, which separates the row on its own. */
+.lxad-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:15px}
+/* The one element in the card with a job. A filled button reads as the thing to press; the old 13.5px
+   text link did not. */
+.lxad-cta{display:inline-flex;align-items:center;white-space:nowrap;background:var(--accent);color:#fff;
+  font-size:13px;font-weight:800;letter-spacing:-.1px;padding:9px 15px;border-radius:9px;
+  transition:filter .16s}
+.lxad:hover .lxad-cta{filter:brightness(1.08)}
+/* Deliberately quiet: it is a different action for a different person, and it must not compete with
+   the CTA beside it. */
+.lxad-why{font-size:12px;color:var(--text-soft,#6e6d78);white-space:nowrap;
+  border-bottom:1px solid transparent;transition:color .14s,border-color .14s}
+.lxad:hover .lxad-why{color:var(--text-muted,#8a8fa3);border-bottom-color:var(--border)}
+/* Below 1280 the grid collapses and the rail falls under the chart, where a full-width ad would be
+   louder than anything around it. Cap it to the trade card's width and centre it. */
 @media (max-width:1280px){.lxad-wrap{max-width:400px;margin-left:auto;margin-right:auto}}
+@media (prefers-reduced-motion:reduce){.lxad,.lxad-cta{transition:none}.lxad:hover{transform:none}}
 </style>`;
 
 const SCRIPT = `<script id="lx-ad">
