@@ -351,6 +351,7 @@ const ROUTES = [
   ['/support',                         'lumoscore-support.html'],
   ['/whitepaper',                      'lumoscore-whitepaper.html'],
   ['/about',                           'lumoscore-about.html'],
+  ['/list-your-token',                 'lumoscore-list-token.html'],
   // docs: each slug before the bare /docs, which serves the introduction
   ['/docs/introduction',                'lumoscore-docs-introduction.html'],
   ['/docs/connect-a-wallet',            'lumoscore-docs-connect-a-wallet.html'],
@@ -443,6 +444,9 @@ const SITEMAP_WEIGHT = {
   '/whitepaper': ['0.8', 'monthly'],
   '/faq': ['0.7', 'monthly'],
   '/about': ['0.6', 'monthly'],
+  // An issuer looking for "list token on Stellar" is exactly who this page is for, so it is not a
+  // default-weight page.
+  '/list-your-token': ['0.7', 'monthly'],
   '/lumos': ['0.8', 'weekly'],
   '/bridge': ['0.8', 'weekly'],
   '/launchpad': ['0.8', 'weekly'],
