@@ -23,6 +23,23 @@ function fixSocials(h){
   }
   return h;
 }
+// ---- the phone footer's hole ----------------------------------------------------------------------
+// .ft-cols-2 is a two-column grid holding THREE columns: Menu, Resources, Legal. Grid puts Menu and
+// Resources on row 1 and Legal on row 2, and row 1 is as tall as its tallest cell -- Resources, with
+// six links against Menu's three. The result is a column of dead space under Menu, which is the gap in
+// the screenshot.
+//
+// Fixed by placement, not by padding: Resources spans both rows, Legal moves up under Menu. Each row
+// is then only as tall as what is in it.
+//
+// The selectors are deliberately narrow. :nth-child(2):nth-last-child(2) and :nth-child(3):last-child
+// both only match when the footer has EXACTLY three columns, so a footer that gains a fourth falls
+// back to the plain grid instead of being mis-placed by a rule written for three.
+const FGRID='<style id="lx-footergrid">'
+  +'.ft-cols-2{align-items:start}'
+  +'.ft-cols-2 .ft-col:nth-child(2):nth-last-child(2){grid-row:1/span 2}'
+  +'.ft-cols-2 .ft-col:nth-child(3):last-child{grid-column:1;grid-row:2}'
+  +'</style>';
 const FSCRIPT='<script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;'
 +'var ROUTE={"home":"lumoscore-home.html"};'
 +'function fix(){var scope=document.querySelectorAll("footer a[href=\\u0022#\\u0022], .footer a[href=\\u0022#\\u0022], [class*=footer] a[href=\\u0022#\\u0022]");'
@@ -82,6 +99,11 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
         if(ft!==bft) h=h.slice(0,fi)+ft;
       }
       if(h.indexOf('class="socials"')>=0) h=fixSocials(h);
+      // Only where that grid actually exists, and only once.
+      if(h.indexOf('ft-cols-2')>=0 && h.indexOf('id="lx-footergrid"')<0){
+        const hi=h.indexOf('</head>');
+        if(hi>=0) h=h.slice(0,hi)+FGRID+h.slice(hi);
+      }
       if(h.indexOf('href="#"')>=0 || h.indexOf('lx-footerlinks')>=0){
         h=h.replace(/<script id="lx-footerlinks">[\s\S]*?<\/script>/g,'');   // GLOBAL: also catches the unclosed-legacy + fixed pair as one lazy span
         const bi=h.lastIndexOf('</body>');

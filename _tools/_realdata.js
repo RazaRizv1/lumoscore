@@ -112,7 +112,30 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}'
 +'function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}'
 +'function usd(n){return "$"+abbr(n);}'
-+'function amt(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";if(a>=1)return (Math.round(n*100)/100).toString();if(a>0){var s=n.toFixed(7).replace(/0+$/,"").replace(/\\.$/,"");return s&&s!=="0"?s:"<0.0000001";}return "0";}'   /* toFixed, NOT toPrecision — the feed showed "9e-7 TGM" (scientific notation) */
+// toFixed, NOT toPrecision — the feed showed "9e-7 TGM" (scientific notation).
+//
+// Sub-1 amounts are also CUT after three decimals, with an ellipsis saying so. Seven decimals is what
+// the ledger stores, and printing all of them put "0.00998 XLM → 0.747725 SCOP" over two lines and
+// broke the row. Three decimals is enough to tell one trade from another; anyone who needs the exact
+// figure has the transaction link at the end of the row.
++'function amt(n){n=+n||0;var a=Math.abs(n);'
++'if(a>=1e9)return (n/1e9).toFixed(2)+"B";'
++'if(a>=1e6)return (n/1e6).toFixed(2)+"M";'
++'if(a>=1e3)return (n/1e3).toFixed(1)+"K";'
++'if(a>=1)return (Math.round(n*100)/100).toString();'
++'if(a>0){var s=n.toFixed(7).replace(/0+$/,"").replace(/\\.$/,"");'
++'if(!s||s==="0")return "<0.0000001";'
++'var dot=s.indexOf("."); if(dot<0||s.length<=dot+4)return s;'
++'var head=s.slice(0,dot+4);'
+// Truncated, never rounded: 0.00998 reads 0.009, not 0.01. A feed row should not report a number
+// larger than the one on the ledger, however slightly.
++'if(/[1-9]/.test(head.slice(dot+1)))return head+"\\u2026";'
+// Three decimals of a very small amount is just "0.000", which says nothing. Those keep three
+// SIGNIFICANT digits instead, so a tiny trade still shows what it was.
++'var m=/^(-?0\\.0*)(\\d+)$/.exec(s);'
++'if(m)return m[1]+m[2].slice(0,3)+(m[2].length>3?"\\u2026":"");'
++'return s;}'
++'return "0";}'
 +'function price(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}'
 +'function ago(t){var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);if(s<60)return Math.floor(s)+"s";if(s<3600)return Math.floor(s/60)+"m";if(s<86400)return Math.floor(s/3600)+"h";return Math.floor(s/86400)+"d";}'
 +'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'

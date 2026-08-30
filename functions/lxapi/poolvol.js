@@ -45,10 +45,46 @@ function json(body, status, ttl) {
   });
 }
 
-export async function onRequestGet({ request }) {
+// How long a computed answer counts as fresh, and how long a stale one may still be SERVED while a
+// replacement is fetched behind it. A rolling 24h total does not move meaningfully in minutes, so
+// handing back a ten-minute-old figure instantly beats making someone watch the walk again.
+const FRESH_MS = 5 * 60 * 1000;
+const STALE_MS = 60 * 60 * 1000;
+
+export async function onRequestGet({ request, waitUntil }) {
   const id = new URL(request.url).searchParams.get('id') || '';
   if (!/^[0-9a-f]{64}$/i.test(id)) return json({ error: 'bad pool id' }, 400, 60);
 
+  // THE RESPONSE WAS NEVER EDGE-CACHED. "cache-control: public, max-age=300" instructs the BROWSER;
+  // Cloudflare does not cache a Function's response off the back of it, and every response came back
+  // cf-cache-status: DYNAMIC. So the per-page cf.cacheTtl below saved the Horizon round trips but
+  // every single visitor still paid for the walk itself -- measured on production at 9.8s, 11.0s and
+  // 13.2s for three of the first four pools, which is the "Counting…" that never seems to end.
+  //
+  // Putting the finished answer in the Cache API fixes that: the first visitor in a colo pays, and
+  // everyone after them is served from memory. Stale entries are returned IMMEDIATELY and refreshed
+  // behind the response, so even the visitor who arrives after expiry waits for nothing.
+  const cache = caches.default;
+  const key = new Request(new URL(request.url).origin + '/lxapi/poolvol?id=' + id.toLowerCase());
+  let hit = null;
+  try { hit = await cache.match(key); } catch (e) { hit = null; }
+  if (hit) {
+    const at = +hit.headers.get('x-lx-at') || 0;
+    const age = Date.now() - at;
+    if (age < FRESH_MS) return hit;
+    if (age < STALE_MS) {
+      if (waitUntil) waitUntil(compute(id, cache, key).catch(() => {}));
+      return hit;
+    }
+  }
+
+  const res = await compute(id, cache, key);
+  return res;
+}
+
+// The walk itself, plus the write into the cache. Split out so the stale path can call it in the
+// background without also having to return anything.
+async function compute(id, cache, key) {
   const cut = Date.now() - 864e5;
   let url = H + '/liquidity_pools/' + id + '/trades?order=desc&limit=' + PAGE;
   const vol = Object.create(null);
@@ -82,11 +118,22 @@ export async function onRequestGet({ request }) {
   // floor. The caller must say so rather than printing it as the answer -- see the ">=" on the page.
   // A partial answer is cached briefly, not for the full period: it should get another chance to
   // finish rather than standing as the number for five minutes.
-  return json({
+  const res = json({
     trades: trades,
     vol: vol,                       // { "native": n, "CODE-ISSUER": n, ... } — caller picks its leg
     partial: !done,
     failed: failed && !trades,      // nothing at all came back: unknown, which is not the same as zero
     pages: pages,
   }, 200, done ? TTL : 60);
+  // The stamp the reader above ages against. A Response's own Date header only has second resolution
+  // and gets rewritten in transit, so the answer carries its own.
+  res.headers.set('x-lx-at', String(Date.now()));
+
+  // A partial answer is NOT cached. It is a floor produced by running out of budget, and storing it
+  // would freeze that floor in place for everyone in the colo instead of letting the next request try
+  // to finish the day.
+  if (done && cache && key) {
+    try { await cache.put(key, res.clone()); } catch (e) { /* cache write is never the user's problem */ }
+  }
+  return res;
 }

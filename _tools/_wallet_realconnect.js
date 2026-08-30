@@ -465,6 +465,12 @@ window.addEventListener('click',function(e){
         // they fell through to the design's demo listener, which navigates — picking a network reloaded
         // the page and destroyed the modal. Claim them here and drive the real chain switch + wallet list.
         var netId=row.getAttribute('data-lxnet');
+        // A coming-soon network is inert. This listener is bound on WINDOW to get ahead of the
+        // design's demo handler, so leaving it out of the chooser's own wiring was not enough --
+        // this one still claimed the row and walked on to a wallet list for a chain we do not run.
+        // Swallowed here rather than ignored, so the demo listener underneath cannot navigate either.
+        if(netId&&row.classList&&row.classList.contains('lxw-soon')){
+          e.preventDefault();e.stopImmediatePropagation();return;}
         if(netId){e.preventDefault();e.stopImmediatePropagation();
           try{if(window.lxSetChain)window.lxSetChain(netId);}catch(_){}
           try{if(window.lxwOpenWallet)window.lxwOpenWallet(netId);}catch(_){}
