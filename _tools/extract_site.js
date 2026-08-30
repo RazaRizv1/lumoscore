@@ -516,7 +516,16 @@ function poolSeo(a, b, img){
 
 // A purpose-built card is landscape; an asset's toml logo is a small square (SHX's is 128x128).
 // Declaring a square as a large-image card is why scrapers dropped it and used the favicon instead.
-function isCardImage(u){ return String(u || '').indexOf('/assets/og') >= 0; }
+function isCardImage(u){ return String(u || '').indexOf('/cdn-cgi/image/') >= 0; }
+
+// A 1200x630 card: the asset's logo padded onto the brand background. Built through Cloudflare's
+// resizing, whose source must be on this zone -- hence /lxapi/logoimg re-serving foreign logos.
+const CARD_OPTS = 'width=1200,height=630,fit=pad,background=%230a0a0b,format=png';
+function cardFor(assetId){
+  if (!assetId) return '';
+  return PRIMARY_ORIGIN + '/cdn-cgi/image/' + CARD_OPTS + '/'
+    + PRIMARY_ORIGIN + '/lxapi/logoimg?asset=' + encodeURIComponent(assetId);
+}
 
 // The logo an admin uploaded for an asset, which the issuer's toml knows nothing about.
 async function adminImage(env, assetId){
@@ -676,17 +685,19 @@ export async function onRequest(context){
 
   let seo = null;
   if (want && want.kind === 'asset') {
-    seo = assetSeo(await assetFacts(want.id), want.id);
-    // an uploaded logo beats the issuer's toml, and beats having no image at all
+    const f = await assetFacts(want.id);
+    seo = assetSeo(f, want.id);
+    // Only build a card when a logo actually exists, so a missing one stays a missing image
+    // rather than an empty rectangle of brand colour.
     const ai = await adminImage(context.env, want.id);
-    if (ai) seo.image = ai;
+    if (ai || (f && f.image)) seo.image = cardFor(want.id);
   }
   else if (want && want.kind === 'pool') {
     // XLM has no logo of its own, so the pair's other side is the one worth showing.
     const other = want.a === 'native' ? want.b : want.a;
     const pf = (other && other !== 'native') ? await assetFacts(other) : null;
     const ai = (other && other !== 'native') ? await adminImage(context.env, other) : '';
-    seo = poolSeo(want.a, want.b, ai || (pf && pf.image));
+    seo = poolSeo(want.a, want.b, (ai || (pf && pf.image)) ? cardFor(other) : '');
   }
 
   const head = [
