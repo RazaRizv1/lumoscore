@@ -65,7 +65,21 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'color:var(--text-muted);padding:3px 8px;border:1px solid var(--border);border-radius:999px}'
 // The header is not guaranteed to be a flex row on every layout; if it is not, margin-left:auto does
 // nothing and the pill would sit under the title. This makes it a row only on the card we touch.
-+'.activity-card .market-head{display:flex;align-items:center;gap:10px}'
+//
+// nowrap + min-width:0 is the load-bearing pair. The head ships with flex-wrap:wrap, so once the
+// Stellar mark widened the heading past the line the COUNT was the thing that wrapped, and it dropped
+// to a line of its own. Now the pill can never wrap; a heading too long for the row shrinks and wraps
+// its own text underneath it instead. That matters beyond English -- the French heading is
+// "Activité de la plateforme en direct — Stellar", half again as long as the English.
++'.activity-card .market-head{display:flex;align-items:center;gap:10px;flex-wrap:nowrap}'
++'.activity-card .market-head h3{min-width:0}'
+// At phone widths English needs about 15px more than the row has. This buys it, and is still a
+// perfectly ordinary size for a card title on a phone.
++'@media(max-width:480px){.activity-card .market-head h3{font-size:14px}}'
+// Sized from the heading's own font so it tracks the two layouts without a second rule, and nudged up
+// a hair because the glyph sits low in its disc.
++'.activity-card .market-head h3 .lx-chainmark{display:inline-block;width:1.05em;height:1.05em;'
++'vertical-align:-.16em;margin:0 .18em 0 .02em;border-radius:50%;object-fit:cover;flex:0 0 auto}'
 +'.lx-actverb.xchain{background:rgba(56,189,248,.16);color:#38bdf8}'
 +'.lx-actverb.mint{background:rgba(234,106,44,.18);color:#ea6a2c}'
 +'.lx-actverb.claim{background:rgba(250,204,21,.16);color:#facc15}'
@@ -274,7 +288,31 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // day busier than that could not be counted, only under-reported. If the answer touches the cap it is
 // shown as "100+" rather than as a precise number that is quietly wrong.
 +'var SOURCE_CAP=100;'
+// The Stellar mark, in the heading, before the word it belongs to: "Live Platform Activity — (*) Stellar".
+//
+// Inserted from script rather than written into the container markup, for the same reason the 24h pill
+// is: the heading string is ALSO an i18n dictionary key, verbatim. Putting an <img> inside it would
+// change the key and drop every non-English visitor back to raw English.
+//
+// It anchors on the word rather than on a position, so the four translated headings -- which all end
+// in "Stellar" -- get the mark in the right place too.
++'function paintChainMark(){'
++'var h3=document.querySelector(".activity-card .market-head h3"); if(!h3)return;'
++'if(h3.querySelector(".lx-chainmark"))return;'
++'var nodes=[].slice.call(h3.childNodes);'
++'for(var k=0;k<nodes.length;k++){ var n=nodes[k];'
++'if(n.nodeType!==3)continue;'
++'var t=n.nodeValue||"", p=t.lastIndexOf("Stellar"); if(p<0)continue;'
++'var img=document.createElement("img"); img.className="lx-chainmark";'
++'img.src="/assets/tokens/xlm.png"; img.alt=""; img.setAttribute("aria-hidden","true");'
+// data-lxc is the logo healer's opt-out. Without it _logoguard.js treats this as an asset icon it
+// should resolve and swaps the source out from under us.
++'img.setAttribute("data-lxc","XLM");'
++'var tail=document.createTextNode(t.slice(p)); n.nodeValue=t.slice(0,p);'
++'n.parentNode.insertBefore(tail,n.nextSibling); n.parentNode.insertBefore(img,tail);'
++'return; } }'
 +'function paint24(rows){'
++'paintChainMark();'
 +'var head=document.querySelector(".activity-card .market-head"); if(!head)return;'
 +'var cut=Date.now()-864e5, n=0;'
 +'rows.forEach(function(o){ var t=Date.parse(o.created_at); if(t>=cut)n++; });'
@@ -348,7 +386,12 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'var _d={dayTip:"",accountsExact:""};for(var i=0;i<NSKEYS.length;i++)_d[NSKEYS[i]]="\\u2026";'
 +'if(c&&!c.length&&typeof c==="object"){for(var k in _d){if(c[k]&&c[k]!=="\\u2014")_d[k]=c[k];}}'
 +'rebuildStats(_d);}'
-+'function run(){prep();stats();feed();}'
+// paintChainMark runs here as well as from paint24: the mark belongs to the heading, not to the data,
+// so it must not wait on a fetch that might never land. The later calls cover the language switcher,
+// which rewrites the heading's text and would otherwise take the mark with it. Idempotent, so the
+// repeats cost nothing.
++'function run(){prep();stats();feed();paintChainMark();'
++'[400,1500,4000].forEach(function(ms){setTimeout(paintChainMark,ms);});}'
 +'if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);'
 +'setInterval(feed,60000);setInterval(stats,45000);'
 +'})();</script>';
