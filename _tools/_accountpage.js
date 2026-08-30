@@ -298,6 +298,11 @@ const STYLE = `<style id="lx-acc-css">
   font-family:'JetBrains Mono',monospace}
 #accActs .activity-info .meta::before{content:"\\00b7";margin:0 8px;opacity:.5}
 #accActs .activity-info .meta:empty{display:none}
+/* The counterparty link. Underlined on hover only: a row of permanently underlined addresses reads as
+   noise, but with no hover state at all there is nothing telling you it can be clicked. */
+#accActs .meta .acc-who{color:var(--text);text-decoration:none;border-bottom:1px solid transparent;
+  transition:color .13s,border-color .13s}
+#accActs .meta .acc-who:hover{color:var(--accent);border-bottom-color:var(--accent)}
 #accActs .activity-amt{text-align:right}
 #accActs .activity-amt .a1{font-family:'JetBrains Mono',monospace;font-weight:700;font-size:17.5px}
 #accActs .activity-amt .a1.up{color:var(--green)}
@@ -827,6 +832,13 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     other:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg>'
   };
   function opCode(o){ return o.asset_type==="native"?"XLM":(o.asset_code||""); }
+  // The counterparty on a payment row, as a link to ITS OWN page on this site. It was plain text, so
+  // the one thing you actually want to do next from someone's activity -- look at who they paid --
+  // was the one thing the row would not let you do.
+  function accWho(a){
+    a=String(a||""); if(!a)return "";
+    return '<a class="acc-who" href="/account/stellar/'+esc(a)+'" title="'+esc(a)+'">'+esc(shortG(a))+'</a>';
+  }
   function describe(o){
     var t=o.type||"", me=ADDR;
     if(t==="payment"){
@@ -834,7 +846,8 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       return {ic:"payment", kind:out?"sent":"received",
         titleHtml:(out?"Sent":"Received")+accAsset(pc,pn),
         title:(out?"Sent ":"Received ")+pc,
-        sub:(out?("to "+shortG(o.to)):("from "+shortG(o.from))), cls:out?"acc-dn":"acc-up",
+        sub:(out?("to "+shortG(o.to)):("from "+shortG(o.from))),
+        subHtml:(out?("to "+accWho(o.to)):("from "+accWho(o.from))), cls:out?"acc-dn":"acc-up",
         right:(out?"-":"+")+amt(o.amount)+" "+pc}; }
     if(t.indexOf("path_payment")===0){
       var sc=o.source_asset_type==="native"?"XLM":(o.source_asset_code||"");
@@ -882,7 +895,9 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       var kind=d.kind||"other";
       var ac=(kind==="received")?"up":(kind==="sent")?"down":(kind==="swap")?"swap":"";
       var title=d.titleHtml||esc(d.title);
-      var meta=[esc(d.sub||""),(ts?ago(ts):"")].filter(Boolean).join(" "+MID+" ");
+      // subHtml when the row has a linked counterparty, the escaped plain text otherwise. Rows without
+      // one (swaps, pool ids) are unchanged.
+      var meta=[(d.subHtml||esc(d.sub||"")),(ts?ago(ts):"")].filter(Boolean).join(" "+MID+" ");
       return '<div class="activity-row"><div class="activity-icon '+kind+'">'+(WIC[kind]||WIC.other)+'</div>'
         +'<div class="activity-info"><div class="type">'+title+'</div>'
         +'<div class="meta">'+meta+'</div></div>'
