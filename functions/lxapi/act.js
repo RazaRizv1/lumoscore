@@ -78,8 +78,16 @@ export async function onRequestGet({ env }) {
   if (!db) return json({ items: [], reason: 'no db' }, 200, 30);
 
   try {
+    // Listing fees and their refunds are NOT platform activity, and the beacon cannot tell: it wraps
+    // every submission to Horizon, so paying for a curated listing looks exactly like trading. They are
+    // excluded on the way OUT instead, by asking the listing queue -- which lives in this same database
+    // -- whether it owns the hash. That is exact rather than a guess at a memo, it needs nothing stored
+    // at write time, and it also hides rows that were already recorded before this existed.
     const r = await db.prepare(
-      'SELECT hash, addr, ts FROM activity ORDER BY ts DESC LIMIT ?1'
+      'SELECT a.hash AS hash, a.addr AS addr, a.ts AS ts FROM activity a '
+      + 'WHERE a.hash NOT IN (SELECT tx_hash FROM listing_request) '
+      + 'AND a.hash NOT IN (SELECT refund_hash FROM listing_request WHERE refund_hash IS NOT NULL) '
+      + 'ORDER BY a.ts DESC LIMIT ?1'
     ).bind(MAX_ROWS).all();
     const items = ((r && r.results) || []).map((x) => ({
       hash: x.hash, addr: x.addr, ts: x.ts,
