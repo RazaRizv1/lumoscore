@@ -85,16 +85,6 @@
     // page cannot afford to do.
     var shown = '$' + quote.priceUsd;
     ['ltFee', 'ltFee2'].forEach(function (id) { var e = $(id); if (e) e.textContent = shown; });
-
-    var t = $('ltTest');
-    if (t) {
-      if (quote.testPricing) {
-        t.textContent = 'Test pricing is active on this deployment: ' + shown + ' instead of $'
-          + quote.listPriceUsd + '. This is not the live site, and a listing bought here is not a '
-          + 'listing on lumoscore.com.';
-        show(t, true);
-      } else { show(t, false); }
-    }
     paintButton();
   }
 
