@@ -55,6 +55,21 @@ for (const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','x
     if (s.indexOf('Live Network Activity') >= 0) {
       s = s.split('Live Network Activity').join('Live Platform Activity'); headings++;
     }
+    // The phone said only "Live Platform Activity" while the desktop said "— Stellar", so the one
+    // layout that gives no other clue which chain it is showing was the one that named no chain.
+    //
+    // Anchored on the closing </h3> so it cannot also rewrite the i18n KEY, which is the bare string
+    // and was already rebuilt above. BOTH spellings of that tag are tried: the heading lives inside
+    // the container's JSON, where every "</" is stored escaped as "<\/", so matching the plain form
+    // alone finds nothing and reports a clean run having changed not a thing.
+    const H3 = '<' + String.fromCharCode(92) + '/h3>';
+    for (const close of [H3, '</h3>']) {
+      const from = 'Live Platform Activity' + close;
+      if (s.indexOf(from) >= 0) {
+        s = s.split(from).join('Live Platform Activity — Stellar' + close);
+        headings++;
+      }
+    }
 
     if (s !== before) { fs.writeFileSync(file, s, 'utf8'); files++; }
   }
