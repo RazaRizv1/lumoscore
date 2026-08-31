@@ -207,13 +207,26 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 // both logos -- __lxDXAxlmLogo for XLM and __lxLogos[CODE] for the asset -- so ask it rather than
 // showing nothing.
 +'function stateIco(code){try{'
-+'var raw=(code==="XLM")?(window.__lxDXAxlmLogo||""):(((window.__lxLogos||{})[code])||"");'
+// XLM has a published logo. For the page's OWN asset, take the mark the page header is already
+// painting -- .asset-logo carries whichever asset this page is for, so this is not LUMOS-specific.
+// __lxLogos is last because it does not contain every asset (LUMOS is not in it, which is why the
+// first version of this fell through to nothing).
++'var raw="";'
++'if(code==="XLM")raw=window.__lxDXAxlmLogo||"";'
++'else if(code&&code===window.__lxDXAcode){var hd=document.querySelector(".asset-logo");'
++'if(hd)raw=getComputedStyle(hd).backgroundImage||"";}'
++'if(!raw)raw=((window.__lxLogos||{})[code])||"";'
 +'var u=rawUrl(raw);if(!u&&raw&&String(raw).indexOf("url(")<0)u=String(raw);'
 +'if(!u)return "";'
 +'var e2=String(u).replace(/\\x27/g,"%27").replace(/\\s+/g,"");'
 +'return \'<span class="lx-rv-mk" data-logoed="1" data-lxc="1" style="background-image:url(\\x27\'+e2+\'\\x27)"></span>\';'
 +'}catch(_){return "";}}'
-+'var payIco=payTok?(legIco(fields[0])||stateIco(payTok)):"",recIco=recTok?(legIco(fields[1])||stateIco(recTok)):"";'
+// stateIco FIRST, legIco second -- the order matters and getting it wrong is what put two Stellar
+// marks on a LUMOS -> XLM review. The pay chip carries a nested <img> holding the generic Stellar
+// placeholder, which legIco happily returns, so scraping the pane won a fight it should have lost.
+// The page's own header logo is the asset's real mark; the chip is only a fallback for pages that
+// publish no state.
++'var payIco=payTok?(stateIco(payTok)||legIco(fields[0])):"",recIco=recTok?(stateIco(recTok)||legIco(fields[1])):"";'
 +'modal.querySelector("[data-pay]").innerHTML=payIco+\'<span>\'+fnum(payNum)+" "+payTok+\'</span>\';'
 +'modal.querySelector("[data-receive]").innerHTML=recIco+\'<span>\'+fnum(recNum)+" "+recTok+\'</span>\';'
 +'modal.querySelector("[data-details]").innerHTML=det;'
