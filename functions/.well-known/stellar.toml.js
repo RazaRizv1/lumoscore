@@ -30,7 +30,7 @@ const PLATFORM = [{
   code: 'LUMOS',
   issuer: 'GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S',
   name: 'Lumos Core',
-  desc: 'LumosCore native utility token — powers platform fees and rewards.',
+  desc: 'Utility token of LumosCore on Stellar. Hold 250,000 LUMOS to halve trading fees; or earn it by providing liquidity and holding. Fixed 1B supply.',
   image: 'https://lumoscore.com/assets/tokens/lumos.png',
 }];
 const DOMAIN = 'lumoscore.com';
