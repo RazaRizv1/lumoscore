@@ -20,6 +20,61 @@ const IDX = 'blog:index';
 const POST = 'blog:post:';
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
+// THE ALLOWLIST, SERVER-SIDE.
+//
+// It used to live only in the admin browser — the editor cleaned the contenteditable before saving and
+// this endpoint stored whatever arrived. That was survivable while the body was only ever written back
+// with innerHTML, which does not execute a <script>. It stopped being survivable when the middleware
+// began injecting the body into the page server-side, where the markup is parsed for real and a script
+// would run. So the cleaning happens at the boundary that actually is one.
+//
+// HTMLRewriter rather than a regex, because this has to be right: it is the same parser the edge uses
+// on real pages, so it sees the markup the way a browser will rather than the way a pattern hopes to.
+const BODY_OK = new Set(['p', 'h2', 'h3', 'ul', 'ol', 'li', 'blockquote', 'a', 'strong', 'em',
+  'br', 'b', 'i', 'img', 'figure', 'figcaption']);
+// Removed WITH their contents. Everything else off the allowlist is unwrapped instead, so a stray
+// <div> loses the tag and keeps the sentence inside it.
+const BODY_DROP = new Set(['script', 'style', 'iframe', 'object', 'embed', 'noscript', 'template',
+  'form', 'input', 'button', 'select', 'textarea', 'svg', 'math', 'link', 'meta', 'base']);
+const ATTR_OK = { a: ['href', 'rel', 'target'], img: ['src', 'alt', 'width', 'height'] };
+
+function safeHref(v) {
+  const s = String(v || '').trim();
+  if (!s) return false;
+  if (s.charAt(0) === '/' || s.charAt(0) === '#') return true;         // our own pages, anchors
+  const lc = s.toLowerCase();
+  return lc.indexOf('https://') === 0 || lc.indexOf('http://') === 0 || lc.indexOf('mailto:') === 0;
+}
+
+async function sanitiseBody(raw) {
+  const html = String(raw == null ? '' : raw);
+  if (!html) return '';
+  try {
+    const out = new HTMLRewriter().on('*', {
+      element(el) {
+        const tag = String(el.tagName || '').toLowerCase();
+        if (BODY_DROP.has(tag)) { el.remove(); return; }
+        if (!BODY_OK.has(tag)) { el.removeAndKeepContent(); return; }
+        // Collect first: removing while iterating the attribute list is not safe to rely on.
+        const names = [];
+        for (const pair of el.attributes) names.push(pair[0]);
+        const keep = ATTR_OK[tag] || [];
+        for (const n of names) {
+          if (keep.indexOf(String(n).toLowerCase()) < 0) el.removeAttribute(n);
+        }
+        // javascript: and data: are the reason an allowlist of TAGS alone is not enough.
+        if (tag === 'a' && !safeHref(el.getAttribute('href'))) el.removeAttribute('href');
+        if (tag === 'img' && !safeHref(el.getAttribute('src'))) el.remove();
+      },
+    }).transform(new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8' } }));
+    return await out.text();
+  } catch (e) {
+    // A body that cannot be cleaned is not stored raw. Losing the markup is recoverable; storing
+    // something unparseable and then injecting it into every reader's page is not.
+    return html.replace(/<[^>]*>/g, '');
+  }
+}
+
 function json(body, status, ttl) {
   const h = {
     'content-type': 'application/json',
@@ -104,7 +159,7 @@ export async function onRequestPut({ request, env }) {
     title,
     category: String(b.category || '').slice(0, 40),
     excerpt: String(b.excerpt || '').slice(0, 400),
-    body: String(b.body || ''),
+    body: await sanitiseBody(b.body),
     cover: String(b.cover || '').slice(0, 2000),      // a URL, or a gradient spec the page renders
     coverAlt: String(b.coverAlt || '').slice(0, 200),
     metaDescription: String(b.metaDescription || '').slice(0, 320),
