@@ -13,7 +13,16 @@
 //
 // Deliberately narrow: POST only, one field, and the address must match Stellar's G-address shape
 // exactly, so this cannot be used to write arbitrary rows.
+//
+// It is still an UNAUTHENTICATED writer, and it has to be -- see _lib/ratelimit.js for why there is
+// nobody here to authenticate. Shape-checking bounds what a row can contain but not how many rows can
+// be written, so a per-IP ceiling bounds the rest. Generous enough that a real visitor, or a whole
+// office behind one NAT address, will never see it.
+import { rateLimit } from '../../_lib/ratelimit.js';
+
 const ADDR_RE = /^G[A-Z2-7]{55}$/;
+const PER_MIN = 30;
+const PER_HOUR = 300;
 
 function json(body, status) {
   return new Response(JSON.stringify(body), {
@@ -50,6 +59,12 @@ export async function onRequestPost({ request, env }) {
     addr = String((b && b.addr) || '');
   } catch (_) { return json({ ok: false, reason: 'bad body' }, 200); }
   if (!ADDR_RE.test(addr)) return json({ ok: false, reason: 'bad addr' }, 200);
+
+  // 200, not 429: this is a fire-and-forget beacon and the page must behave identically either way.
+  // A refused write is not the visitor's problem and must not surface as one.
+  const rl = await rateLimit(env && env.CONTENT_KV,
+    request.headers.get('cf-connecting-ip'), 'ev', PER_MIN, PER_HOUR);
+  if (!rl.ok) return json({ ok: false, reason: 'rate' }, 200);
 
   const now = Date.now();
   const day = new Date(now).toISOString().slice(0, 10);   // UTC, so days do not shift with the viewer
