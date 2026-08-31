@@ -148,7 +148,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'return "0";}'
 +'function price(n){n=+n||0;return "$"+(n<1?n.toFixed(4):n.toFixed(2));}'
 +'function ago(t){var s=Math.max(0,(Date.now()-new Date(t).getTime())/1000);if(s<60)return Math.floor(s)+"s";if(s<3600)return Math.floor(s/60)+"m";if(s<86400)return Math.floor(s/3600)+"h";return Math.floor(s/86400)+"d";}'
-+'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'
++'function esc(s){return (String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";})).split(String.fromCharCode(39)).join("&#39;");}'
 // Rebuild the whole stats row atomically (keeps the network logo card, replaces the 4 value cards).
 // This sidesteps the logo-painter (which mangles individual pills) and the re-skin entirely.
 +'var PICO={'

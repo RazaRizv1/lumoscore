@@ -262,10 +262,8 @@ const SEO_CACHE_TTL = 300;
 // the request, so the *.pages.dev preview url cannot compete with the real domain in search results.
 const PRIMARY_ORIGIN = 'https://lumoscore.com';
 
-function esc(s){
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+function esc(s){return (String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')).split(String.fromCharCode(39)).join("&#39;");}
 function fmtUsd(n){
   if (n == null || !isFinite(n)) return null;
   if (n >= 1000) return '$' + Math.round(n).toLocaleString('en-US');

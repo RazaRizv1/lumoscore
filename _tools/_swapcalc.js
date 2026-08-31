@@ -819,7 +819,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 // A number the amount FIELD can hold: fixed precision, never exponential, padding trimmed.
 +'function plain7(n){n=+n||0;if(!isFinite(n)||n<=0)return "0";'
 +'var t=n.toFixed(7).replace(/0+$/,"").replace(/\\.$/,"");return t||"0";}'
-+'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'
++'function esc(s){return (String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";})).split(String.fromCharCode(39)).join("&#39;");}'
 +'function swAbbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e12)return (n/1e12).toFixed(2)+"T";if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3&&a<1e5)return fmt(n);if(a>=1e5)return (n/1e3).toFixed(1)+"K";return fmt(n);}'
 +'function lastNum(t){var m=(t||"").match(/[0-9.]+/g);return m&&m.length?parseFloat(m[m.length-1]):NaN;}'
 +'function panelHTML(){var p=document.createElement("div");p.className="lx-swapd";p.style.display="none";p.innerHTML='+ROWS+';return p;}'

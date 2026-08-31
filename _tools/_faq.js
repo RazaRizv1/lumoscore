@@ -119,9 +119,7 @@ const CSS = `<style id="lx-faq-css">
 @media(max-width:640px){.lx-faq{padding:28px 16px 34px}.lx-faq h2{font-size:21px}}
 </'+'style>`.replace("</'+'style>", "</" + "style>");
 
-function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+function esc(s){return (String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')).split(String.fromCharCode(39)).join("&#39;");}
 
 function block(items) {
   const qs = items.map(([q, a]) =>

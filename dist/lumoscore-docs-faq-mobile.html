@@ -4181,8 +4181,8 @@ window.addEventListener('resize',move);requestAnimationFrame(move);setTimeout(mo
   var H="https://horizon.stellar.org";
   function me(){ try{ return localStorage.getItem("lumos.address")||""; }catch(_){ return ""; } }
   function j(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
-  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){
-    return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;"; }); }
+  function esc(s){return (String(s==null?"":s).replace(/[&<>"]/g,function(c){
+    return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;"; })).split(String.fromCharCode(39)).join("&#39;");}
   function amt(n){ n=+n||0; if(n>=1000)return n.toLocaleString("en-US",{maximumFractionDigits:2});
     if(n>=1)return String(+n.toFixed(4)); return String(+n.toFixed(7)); }
   function shortG(a){ a=String(a||""); return a.length>12?(a.slice(0,4)+"\u2026"+a.slice(-4)):a; }
@@ -5241,7 +5241,7 @@ if(document.readyState!=="loading")boot();else document.addEventListener("DOMCon
     return num(n); }
   function qty(n){ n=+n||0; var a=Math.abs(n); if(a>=1e6)return (n/1e6).toFixed(2)+"M"; if(a>=1e3)return Math.round(n).toLocaleString("en-US"); if(a>=1)return (Math.round(n*100)/100).toLocaleString("en-US"); if(a>0){ var d=Math.min(7,Math.max(2,2-Math.floor(Math.log(a)/Math.LN10))); var s=n.toFixed(d); if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\.$/,""); return s; } return "0"; }
   function usd(x){x=+x;if(!x)return "$0";var a=Math.abs(x);if(a>=1e9)return "$"+(x/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(x/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(x/1e3).toFixed(1)+"K";if(a>=1)return "$"+x.toFixed(2);return "$"+x.toFixed(x>=0.01?4:6);}
-  function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+  function esc(s){return ((s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
   // HOST FALLBACK, per GUARDRAILS E12. Same gap the Trade-asset layer had, same symptom: Horizon allows
   // 100 requests per 5 minutes PER IP, this page spends a large share of that on one load, and once the
   // budget is gone every call fails. The page then shows "Couldn't load this pool from Horizon" and sits
@@ -8896,7 +8896,7 @@ if(document.readyState!=="loading")boot();else document.addEventListener("DOMCon
   function launchTokens(){ try{ var e=JSON.parse(localStorage.getItem("lumos.launches")||"[]"); return (e&&e.length)?e:[]; }catch(_){ return []; } }
   var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#3b82f6"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
   function short(a){return a?a.slice(0,4)+"…"+a.slice(-4):"";}
-  function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+  function esc(s){return ((s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
   function avatarUri(code){ var c=String(code||"?"),h=0; for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;
     var t=c.replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
     var svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl('+h+',60%,50%)"/><text x="20" y="26" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="15" fill="#fff">'+t+'</text></svg>';
