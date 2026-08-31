@@ -515,7 +515,17 @@ function esc(s){
 function fmtUsd(n){
   if (n == null || !isFinite(n)) return null;
   if (n >= 1000) return '$' + Math.round(n).toLocaleString('en-US');
-  if (n < 0.0001) return '$' + Number(n).toPrecision(3);
+  // toPrecision(3) goes exponential below about 1e-6, so a genuinely cheap token shipped its price
+  // into the search result as "$7.72e-7" -- which reads as a bug to a person and is not a number a
+  // language model restates cleanly. Plenty of Stellar assets sit down there.
+  //
+  // Zero and negative are guarded before the log, which would otherwise be -Infinity and ask toFixed
+  // for 100 decimals -- that trimmed back to a bare "$0." once the zeros were stripped.
+  if (!(n > 0)) return null;
+  if (n < 0.0001) {
+    const places = Math.min(100, Math.max(4, 2 - Math.floor(Math.log10(n))));
+    return '$' + Number(n).toFixed(places).replace(/0+$/, '').replace(/\\.$/, '');
+  }
   return '$' + Number(n).toFixed(n < 1 ? 4 : 2);
 }
 
@@ -675,6 +685,15 @@ class TextSetter {
   }
 }
 
+// Writes stored HTML into an element. Only the blog body uses this, and only with markup that came
+// back through the sanitiser in lxapi/blog.js -- setInnerContent with html:true is parsed as real
+// markup, so a <script> in there would RUN, where the client's innerHTML would not have executed it.
+// That difference is the whole reason the allowlist moved server-side.
+class HtmlSetter {
+  constructor(html){ this.html = String(html == null ? '' : html); }
+  element(el){ if (this.html) el.setInnerContent(this.html, { html: true }); }
+}
+
 class HeadInjector {
   constructor(html){ this.html = html; this.done = false; }
   element(el){ if (this.done) return; this.done = true; el.append(this.html, { html: true }); }
@@ -731,6 +750,35 @@ function legacyClean(pathname, params){
   return null;
 }
 
+// Shapes, not existence. A Stellar public key is 56 characters of base32 starting with G; an asset id
+// is CODE-ISSUER; a pool id is 64 hex. Built with String.fromCharCode where a character class would
+// otherwise need a backslash, because this whole file is emitted from a template literal and a lone
+// backslash does not survive the trip.
+const G_RE = new RegExp('^G[A-Z2-7]{55}$');
+const ASSET_RE = new RegExp('^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$');
+const POOLID_RE = new RegExp('^[0-9a-fA-F]{64}$');
+function malformedId(pathname){
+  const s = pathname.replace(/^\\/+|\\/+$/g, '').split('/').filter(Boolean);
+  // A percent-encoded segment that will not decode is malformed by definition, so the original is
+  // tested and fails the shape check rather than throwing.
+  const dec = (x) => { try { return decodeURIComponent(x); } catch (e) { return x; } };
+  if (s[0] === 'trade' && s[1] === 'stellar' && s.length === 3){
+    return !ASSET_RE.test(dec(s[2]));
+  }
+  if (s[0] === 'account' && s[1] === 'stellar' && s.length === 3){
+    return !G_RE.test(dec(s[2]));
+  }
+  if (s[0] === 'pools' && s[1] === 'stellar' && s[2] === 'id' && s.length === 4){
+    return !POOLID_RE.test(dec(s[3]));
+  }
+  // The pair form. "native" is XLM and has no issuer, so it is the one value that is not an asset id.
+  if (s[0] === 'pools' && s[1] === 'stellar' && s.length === 4){
+    const okSide = (x) => x === 'native' || ASSET_RE.test(x);
+    return !(okSide(dec(s[2])) && okSide(dec(s[3])));
+  }
+  return false;
+}
+
 export async function onRequest(context){
   const { request, next } = context;
   const url = new URL(request.url);
@@ -744,6 +792,48 @@ export async function onRequest(context){
     const to = new URL(url.toString());
     to.hostname = url.hostname.slice(4);
     return Response.redirect(to.toString(), 301);
+  }
+
+  // 0b) A TRAILING SLASH IS THE SAME PAGE, so it must redirect rather than 404.
+  //
+  // Every path answered 404 with a slash on the end: /blog/, /about/, /docs/, /faq/, /lumos/,
+  // /bridge/. People append them by habit, directory forms normalise to them, and forum software adds
+  // them -- so each was a dead link carrying nothing, and a backlink placed on the wrong form of the
+  // url was simply wasted.
+  //
+  // 301, because the canonical form is the one without. Query and hash ride along. The root is left
+  // alone: "/" IS the canonical path and trimming it would loop.
+  //
+  // GET and HEAD only. A 301 on a POST is turned into a GET by most clients and the body is dropped,
+  // so an api call that happened to carry a trailing slash would fail silently rather than loudly.
+  const navMethod = request.method === 'GET' || request.method === 'HEAD';
+  if (navMethod && url.pathname.length > 1 && url.pathname.endsWith('/')){
+    const to = new URL(url.toString());
+    to.pathname = url.pathname.replace(/\\/+$/, '');
+    if (to.pathname === '') to.pathname = '/';
+    return Response.redirect(to.toString(), 301);
+  }
+
+  // 0c) THE THREE OPEN URL PATTERNS. /trade/stellar/:asset, /account/stellar/:address and the two
+  // /pools/stellar forms accepted literally any string, returned 200, built a unique title out of the
+  // junk and self-canonicalised to it -- an unbounded space of indexable pages that burns crawl budget
+  // and dilutes the real asset pages.
+  //
+  // FORMAT ONLY, deliberately. Checking that the asset actually EXISTS would need an upstream call on
+  // every request, and that upstream is exactly the one already proven to fail intermittently -- a
+  // wobble there would start 404ing real assets, which is far worse than serving a well-formed one
+  // that happens to be empty. A Stellar issuer is 56 base32 characters; a crawler does not invent
+  // those, so the space stops being unbounded.
+  const bad = malformedId(url.pathname);
+  if (bad){
+    return new Response('Not found', {
+      status: 404,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'public, max-age=300',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    });
   }
 
   // 1) someone navigated to a raw build filename -> send them to the canonical clean url
@@ -941,17 +1031,26 @@ export async function onRequest(context){
   }
   // The asset identity block ships as the design's USDC sample. Fill it with what this page is
   // actually about, so a crawler that never runs the page's JavaScript reads the right asset.
-  if (want && want.kind === 'asset' && seo && seo.facts){
-    const f = seo.facts;
-    const code = f.code || want.id.split('-')[0];
+  // GATED ON THE ROUTE, NOT ON THE FACTS. assetFacts() depends on stellar.expert, and when that
+  // subrequest comes back empty the block used to be skipped entirely -- leaving the design's USDC
+  // sample in place, so the page told a non-rendering crawler it was USD Coin. Measured 2026-08-31:
+  // every asset page served that way to GPTBot and ClaudeBot while answering correctly to Googlebot
+  // and to browsers, which is the worst possible audience to get it wrong for.
+  //
+  // The code and the issuer are in the URL and need no upstream, so the identity is always corrected
+  // and only the enrichment is conditional. A missing price is a missing line; it is never another
+  // asset's name.
+  if (want && want.kind === 'asset'){
+    const f = seo && seo.facts ? seo.facts : null;
+    const code = (f && f.code) || want.id.split('-')[0];
     const bits = [];
-    if (f.price) bits.push('Price ' + fmtUsd(f.price));
-    if (f.trustlines) bits.push(f.trustlines.toLocaleString('en-US') + ' trustlines');
+    if (f && f.price) bits.push('Price ' + fmtUsd(f.price));
+    if (f && f.trustlines) bits.push(f.trustlines.toLocaleString('en-US') + ' trustlines');
     // The issuer's own words when they published any; otherwise a factual sentence rather than a
     // borrowed one. Never another asset's copy.
-    const desc = f.desc
+    const desc = (f && f.desc)
       || (code + ' is a Stellar asset'
-          + (f.domain ? ' issued by ' + f.domain : '')
+          + (f && f.domain ? ' issued by ' + f.domain : '')
           + '. ' + (bits.length ? bits.join(' \u00b7 ') + '. ' : '')
           + 'Trade it non-custodially on LumosCore from your own wallet.');
     rw = rw.on('.asset-name', new TextSetter(code))
@@ -959,7 +1058,23 @@ export async function onRequest(context){
     // Always rewritten, even to an empty string: an asset with no home domain was otherwise left
     // showing the design's placeholder, which claims the issuer is circle.com. Blank is honest.
     // Text mode because this anchor also holds the globe icon, which setInnerContent would delete.
-    rw = rw.on('a.website', new TextSetter(f.domain || '', 'text'));
+    rw = rw.on('a.website', new TextSetter((f && f.domain) || '', 'text'));
+  }
+
+  // THE ARTICLE ITSELF, for a crawler that runs no JavaScript.
+  //
+  // The post page ships an empty shell -- <h1></h1> and <article class="lx-post-body"></article> --
+  // and the browser fills both from /lxapi/blog. So what a crawler received was 329 words of nav and
+  // footer and not one word of the article, on the exact pages the backlink plan points at. Links to
+  // a page whose body is invisible pass their authority to a nav bar.
+  //
+  // The post is already in hand: the metadata above reads it at request time to build the title and
+  // description, so this costs no extra work. The client sets the same innerHTML on load, so it
+  // overwrites this with identical content -- no duplication, and nothing visibly changes.
+  if (want && want.kind === 'blog' && seo && seo.post){
+    const p = seo.post;
+    if (p.title) rw = rw.on('.lx-post-head h1', new TextSetter(String(p.title)));
+    if (p.body) rw = rw.on('.lx-post-body', new HtmlSetter(p.body));
   }
 
   out = rw.transform(out);
