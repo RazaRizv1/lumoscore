@@ -8,6 +8,7 @@
 // Gated on every method, reads included: these are the business's revenue figures, and functions/ is
 // shared with the public projects where nothing sits in front of it.
 import { requireAdmin } from '../../_lib/adminauth.js';
+import { audit } from '../../_lib/audit.js';
 
 const KEY = 'revenue:manual';
 const SOURCES = ['ads', 'listing', 'sponsorship', 'other'];
@@ -66,6 +67,7 @@ export async function onRequestPut({ request, env }) {
   next.unshift(entry);
   next.sort((x, y) => (y.when || 0) - (x.when || 0));
   await kv.put(KEY, JSON.stringify(next));
+  await audit(env, request, 'revenue.add', entry && entry.id, { amount: entry && entry.amount });
   return json({ ok: true, entry }, 200);
 }
 

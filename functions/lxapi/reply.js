@@ -9,6 +9,7 @@
 // back through the routing we already have and lands in BOTH the real mailbox and this panel. Without
 // that header the conversation would dead-end at a subdomain nothing listens to.
 import { requireAdmin } from '../../_lib/adminauth.js';
+import { audit } from '../../_lib/audit.js';
 
 const API = 'https://api.resend.com/emails';
 const FROM = 'LumosCore Support <support@mail.lumoscore.com>';
@@ -90,6 +91,10 @@ export async function onRequestPost({ request, env }) {
     const why = (out && (out.message || (out.error && out.error.message))) || ('HTTP ' + res.status);
     return json({ error: 'not sent', message: why }, 200);
   }
+  // A support reply is an email leaving the building under the LumosCore name, so it is logged
+  // like the other outward-facing actions. The BODY is not stored -- mail_reply already holds it, and
+  // the audit trail is a record of who did what, not a second copy of customer correspondence.
+  await audit(env, request, 'support.reply', mailId, { to: msg.reply_to || msg.from_addr, subject });
   return json({ ok: true, id: out.id, to: msg.reply_to || msg.from_addr, subject }, 200);
 }
 

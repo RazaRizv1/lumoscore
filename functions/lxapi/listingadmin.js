@@ -15,6 +15,7 @@
 //     row is marked refunded: right payee, right asset, at least the amount taken. A refund we did not
 //     actually make must never be able to close a request.
 import { requireAdmin } from '../../_lib/adminauth.js';
+import { audit } from '../../_lib/audit.js';
 
 const H = 'https://horizon.stellar.org';
 const LIST = 'assets:list';
@@ -161,6 +162,7 @@ export async function onRequestPost({ request, env }) {
         "UPDATE listing_request SET status='approved', decided_at=?2, note=?3 WHERE id=?1"
       ).bind(id, Date.now(), note || row.note || null).run();
     } catch (e) { return json({ ok: false, error: 'could not save that decision' }, 500); }
+    await audit(env, request, 'listing.approve', id, { asset, note: note || undefined });
     return json({ ok: true, id, status: 'approved' }, 200);
   }
 
@@ -175,6 +177,7 @@ export async function onRequestPost({ request, env }) {
         "UPDATE listing_request SET status='rejected', decided_at=?2, note=?3 WHERE id=?1"
       ).bind(id, Date.now(), note).run();
     } catch (e) { return json({ ok: false, error: 'could not save that decision' }, 500); }
+    await audit(env, request, 'listing.decline', id, { asset: row.code + '-' + row.issuer, reason: note, owed: row.pay_amount });
     return json({ ok: true, id, status: 'rejected', owed: row.pay_amount, to: row.payer }, 200);
   }
 
@@ -193,6 +196,7 @@ export async function onRequestPost({ request, env }) {
         + 'COALESCE(decided_at, ?3) WHERE id=?1'
       ).bind(id, hash, Date.now()).run();
     } catch (e) { return json({ ok: false, error: 'could not record that refund' }, 500); }
+    await audit(env, request, 'listing.refund', id, { to: row.payer, amount: v.amount, tx: hash });
     return json({ ok: true, id, status: 'refunded', refunded: v.amount }, 200);
   }
 
@@ -208,6 +212,7 @@ export async function onRequestPost({ request, env }) {
         "UPDATE listing_request SET status='pending', decided_at=NULL WHERE id=?1"
       ).bind(id).run();
     } catch (e) { return json({ ok: false, error: 'could not reopen that request' }, 500); }
+    await audit(env, request, 'listing.reopen', id, { from: row.status });
     return json({ ok: true, id, status: 'pending' }, 200);
   }
 

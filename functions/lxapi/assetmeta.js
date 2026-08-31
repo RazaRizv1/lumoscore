@@ -9,6 +9,7 @@
 // Writes go through requireAdmin() -- see the note in blog.js about functions/ being shared with the
 // PUBLIC projects, where there is no Access in front of anything.
 import { requireAdmin } from '../../_lib/adminauth.js';
+import { audit } from '../../_lib/audit.js';
 import { verifyAsset } from '../../_lib/stellartoml.js';
 import { GRANDFATHERED } from '../../_lib/verifiedseed.js';
 
@@ -181,6 +182,7 @@ export async function onRequestPut({ request, env }) {
     for (const k of Object.keys(vmap)) if (!keep.has(k)) { delete vmap[k]; dropped++; }
     if (dropped) await kv.put(VMAP, JSON.stringify(vmap));
 
+    await audit(env, request, 'asset.list.replace', '', { count: list.length, unticked: dropped });
     return json({ ok: true, list, unticked: dropped }, 200, 0);
   }
 
@@ -217,6 +219,7 @@ export async function onRequestPut({ request, env }) {
     if (!b.override) {
       delete map[asset];
       await kv.put(VMAP, JSON.stringify(map));
+      await audit(env, request, 'asset.untick', asset, null);
       return json({ ok: true, asset, verified: null }, 200, 0);
     }
     const sp = SPLIT_RE.exec(asset);
@@ -231,6 +234,7 @@ export async function onRequestPut({ request, env }) {
         why: 'Vouched for by an admin — the handshake does not pass: ' + ((live && live.reason) || 'check unavailable') };
     }
     await kv.put(VMAP, JSON.stringify(map));
+    await audit(env, request, 'asset.tick.override', asset, { kind: map[asset] && map[asset].s });
     return json({ ok: true, asset, verified: map[asset] }, 200, 0);
   }
 
@@ -266,9 +270,11 @@ export async function onRequestPut({ request, env }) {
     };
     await kv.put(META + asset, JSON.stringify(meta));
     await kv.put(LIST, JSON.stringify(list));
+    await audit(env, request, isNew ? 'asset.curate' : 'asset.edit', asset, { name: meta.name || undefined });
     return json({ ok: true, asset, meta, verified: stamp && stamp.rec, toml: stamp && stamp.toml }, 200, 0);
   }
   await kv.put(LIST, JSON.stringify(list));
+  await audit(env, request, isNew ? 'asset.curate' : 'asset.edit', asset, null);
   return json({ ok: true, asset, meta: null, verified: stamp && stamp.rec, toml: stamp && stamp.toml }, 200, 0);
 }
 
@@ -298,5 +304,6 @@ export async function onRequestDelete({ request, env }) {
     try { vmap = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
     if (vmap[asset]) { delete vmap[asset]; await kv.put(VMAP, JSON.stringify(vmap)); }
   }
+  await audit(env, request, metaOnly ? 'asset.meta.clear' : 'asset.uncurate', asset, null);
   return json({ ok: true }, 200, 0);
 }
