@@ -35,6 +35,35 @@ export async function onRequestGet(ctx) {
   const hit = await cache.match(request);
   if (hit) return hit;
 
+  // A DESIGNED CARD, IF THE BUILD DREW ONE.
+  //
+  // _tools/_ogcards.js renders a real 1200x630 card per curated asset -- code, logo, issuer domain,
+  // verification mark, branding -- into assets/og/, which ships as a static file. Rendering one on
+  // demand is not possible here: it needs satori plus a wasm rasteriser, about 8.5MB against a 1MB
+  // bundle cap, and 50-200ms of CPU against a 10ms budget.
+  //
+  // Checked HERE rather than in the middleware on purpose. The middleware already points every asset
+  // at this endpoint, so preferring the static file inside it means no page markup changes, no second
+  // list of which assets have cards to keep in step, and an asset whose card was never drawn simply
+  // falls through to the padded-logo version below.
+  try {
+    const stat = await fetch(url.origin + '/assets/og/' + encodeURIComponent(asset) + '.png', {
+      cf: { cacheTtl: TTL, cacheEverything: true },
+    });
+    if (stat.ok && (stat.headers.get('content-type') || '').indexOf('image/') === 0) {
+      const out = new Response(stat.body, {
+        status: 200,
+        headers: {
+          'content-type': 'image/png',
+          'cache-control': 'public, max-age=' + TTL + ', immutable',
+          'access-control-allow-origin': '*',
+        },
+      });
+      if (ctx.waitUntil) ctx.waitUntil(cache.put(request, out.clone()));
+      return out;
+    }
+  } catch (e) { /* fall through to the padded logo */ }
+
   const src = url.origin + '/lxapi/logoimg?asset=' + encodeURIComponent(asset);
 
   let r;

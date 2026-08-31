@@ -56,6 +56,7 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'background:rgba(127,127,140,.14);color:var(--text-muted,#8a8fa3)}'
 +'.lx-actverb.swap{background:rgba(139,123,255,.16);color:#8b7bff}'
 +'.lx-actverb.lp{background:rgba(45,212,191,.16);color:#2dd4bf}'
++'.lx-actverb.order{background:rgba(244,114,182,.16);color:#f472b6}'
 +'.lx-lpneg{color:var(--red,#ff5b5b)}'
 +'.lx-lppos{color:var(--green,#35c07f)}'
 // The 24h count, pushed to the far end of the card header. margin-left:auto rather than a layout
@@ -125,6 +126,15 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'if(a>=1)return (Math.round(n*100)/100).toString();'
 +'if(a>0){var s=n.toFixed(7).replace(/0+$/,"").replace(/\\.$/,"");'
 +'if(!s||s==="0")return "<0.0000001";'
+// A run of leading zeros is collapsed the way exchanges write it: 0.0000998 becomes 0.0(3)998, where
+// the subscript counts the zeros the "0.0" is standing in for. Reading 0.0000998 means counting zeros
+// in a 10px monospace row, which is exactly what the notation exists to stop.
+//
+// Only from three zeros up. At two, "0.009" is already short and 0.0(1)9 would be longer AND harder.
++'var z=/^(-?)0\\.(0+)([0-9]+)$/.exec(s);'
++'if(z&&z[2].length>=3){var SUB="\\u2080\\u2081\\u2082\\u2083\\u2084\\u2085\\u2086\\u2087\\u2088\\u2089";'
++'var hid=z[2].length-1, tag=String(hid).split("").map(function(d){return SUB.charAt(+d);}).join("");'
++'return z[1]+"0.0"+tag+z[3].slice(0,3);}'
 +'var dot=s.indexOf("."); if(dot<0||s.length<=dot+4)return s;'
 +'var head=s.slice(0,dot+4);'
 // Truncated, never rounded: 0.00998 reads 0.009, not 0.01. A feed row should not report a number
@@ -213,7 +223,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'if(o.type==="payment")'
 +'return {ic:SWAP,cls:"swap",act:"Transfer",type:"<b>"+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",inl:1};'
 +'if(o.type&&o.type.indexOf("offer")>=0)'
-+'return {ic:DROP,cls:"lp",act:"Order",type:"<b>"+amt(+o.amount)+" "+aic(acode(o,"selling"),o.selling_asset_issuer||"")+esc(acode(o,"selling"))+"</b> / "+aic(acode(o,"buying"),o.buying_asset_issuer||"")+esc(acode(o,"buying")),inl:1};'
++'return {ic:DROP,cls:"order",act:"Order",type:"<b>"+amt(+o.amount)+" "+aic(acode(o,"selling"),o.selling_asset_issuer||"")+esc(acode(o,"selling"))+"</b> / "+aic(acode(o,"buying"),o.buying_asset_issuer||"")+esc(acode(o,"buying")),inl:1};'
 +'if(o.type&&o.type.indexOf("liquidity_pool")===0)'
 +'var dep=o.type.indexOf("deposit")>=0;'
 +'var res=(dep?(o.reserves_deposited||o.reserves_max):(o.reserves_received||o.reserves_min))||[];'
@@ -223,8 +233,10 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'var rc=rs==="native"?"XLM":rs.split(":")[0];'
 +'var ri=rs==="native"?"":(rs.split(":")[1]||"");'
 +'lp.push("<b><span class="+(dep?"lx-lppos>+":"lx-lpneg>-")+amt(+ra.amount)+"</span> "+aic(rc,ri)+esc(rc)+"</b>");}'
-+'return {ic:DROP,cls:"lp",act:"Liquidity",'
-+'type:(lp.length?((dep?"Added ":"Removed ")+lp.join(" \u00b7 ")):(dep?"Added liquidity":"Removed liquidity")),'
++'return {ic:DROP,cls:"lp",act:(dep?"Liquidity Added":"Liquidity Withdrawn"),'
+// The verb lives in the tag now, so the amount line starts with the numbers rather than repeating a
+// word the tag beside it already says.
++'type:(lp.length?lp.join(" \u00b7 "):(dep?"Added liquidity":"Removed liquidity")),'
 +'inl:lp.length?1:0};'
 +'if(o.type==="invoke_host_function")'
 +'return {ic:SWAP,cls:"xchain",act:"Cross-chain",type:"Cross-chain transfer"};'
