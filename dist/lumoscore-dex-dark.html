@@ -6827,7 +6827,7 @@ var _sbP=null;
 function lxSbase(){ if(_sbP)return _sbP; _sbP=new Promise(function(res,rej){
   if(window.StellarBase)return res(window.StellarBase);
   var el=document.createElement('script');
-  el.src='https://cdn.jsdelivr.net/npm/@stellar/stellar-base@13.0.1/dist/stellar-base.min.js';
+  el.src='/assets/vendor/stellar-base-13.0.1.min.js';
   el.onload=function(){ window.StellarBase?res(window.StellarBase):rej(new Error('Stellar SDK failed to load')); };
   el.onerror=function(){ rej(new Error('Stellar SDK failed to load')); };
   document.head.appendChild(el); }); return _sbP; }
@@ -10233,7 +10233,7 @@ if(document.readyState!=="loading")boot();else document.addEventListener("DOMCon
   var WPASS="Public Global Stellar Network ; September 2015";
   var _wsdk=null, _wmods={};
   function wMod(u){ return _wmods[u]||(_wmods[u]=import(u)); }
-  function wLoadSdk(){ if(window.StellarSdk)return Promise.resolve(window.StellarSdk); if(_wsdk)return _wsdk; _wsdk=new Promise(function(res,rej){ var s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/dist/stellar-sdk.min.js"; s.onload=function(){res(window.StellarSdk);}; s.onerror=function(){rej(new Error("Failed to load Stellar SDK"));}; document.head.appendChild(s); }); return _wsdk; }
+  function wLoadSdk(){ if(window.StellarSdk)return Promise.resolve(window.StellarSdk); if(_wsdk)return _wsdk; _wsdk=new Promise(function(res,rej){ var s=document.createElement("script"); s.src="/assets/vendor/stellar-sdk-13.3.0.min.js"; s.onload=function(){res(window.StellarSdk);}; s.onerror=function(){rej(new Error("Failed to load Stellar SDK"));}; document.head.appendChild(s); }); return _wsdk; }
   function wWallet(){ try{ return (localStorage.getItem("lumos.wallet")||"").toLowerCase().replace(/[^a-z]/g,""); }catch(e){ return ""; } }
   function wXhr(method,url,body){ return new Promise(function(resolve,reject){ var r=new XMLHttpRequest(); r.open(method,url,true); if(body!=null)r.setRequestHeader("Content-Type","application/x-www-form-urlencoded"); r.onload=function(){ var j=null; try{j=JSON.parse(r.responseText);}catch(e){} resolve({status:r.status,ok:r.status>=200&&r.status<300,json:j}); }; r.onerror=function(){reject(new Error("Network error contacting Horizon"));}; r.timeout=45000; r.ontimeout=function(){reject(new Error("Horizon request timed out"));}; r.send(body==null?null:body); }); }
   function wAcct(pk){ return wXhr("GET",H+"/accounts/"+pk).then(function(r){ if(!r.ok||!r.json)throw new Error("Your account isn't activated on mainnet yet."); return r.json; }); }
