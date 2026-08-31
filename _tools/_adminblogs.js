@@ -127,6 +127,20 @@ const CSS = `<style id="lx-adminblogs-css">
 .lxb-tools{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .lxb-tools button{padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2,transparent);color:var(--text);font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;cursor:pointer}
 .lxb-tools button:hover{border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}
+/* Lit when the caret is inside that kind of block, so the toolbar answers "what is this line?" without
+   the writer having to remember what they pressed. Same accent fill the segmented controls use
+   elsewhere; the :hover rule above would otherwise repaint the label on the way past. */
+.lxb-tools button.on{border-color:var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff}
+.lxb-tools button.on:hover{color:#fff}
+.lxb-tools button.on b,.lxb-tools button.on i{color:#fff}
+/* Row thumbnail. The dashed empty state is the same language as the cover box in the editor, so a post
+   with no cover reads as "none set" rather than as a broken image. */
+.lxb-th{position:relative;flex:0 0 auto;width:72px;height:38px;border-radius:6px;overflow:hidden;
+  border:1px dashed var(--border);background:linear-gradient(135deg,rgba(127,127,140,.16),rgba(127,127,140,.05))}
+.lxb-th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.lxb-th.has{border-style:solid}
+.lxb-row{display:flex;align-items:center;gap:12px}
+.lxb-rowtxt{min-width:0}
 .lxb-body{min-height:340px;max-height:60vh;overflow-y:auto;padding:16px 18px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,transparent);color:var(--text);font:400 15px/1.7 "Hanken Grotesk",system-ui,sans-serif}
 .lxb-body:focus{outline:2px solid var(--accent,#ea6a2c);outline-offset:1px}
 .lxb-body h2{font:800 20px/1.3 "Hanken Grotesk",system-ui,sans-serif;margin:22px 0 8px}
@@ -249,6 +263,15 @@ function api(method,body,slug){
 function list(){ return fetch("/lxapi/blog?all=1&t="+Date.now()).then(function(r){return r.json();}); }
 
 var POSTS=[], CUR=null, PREV_SLUG="", SLUG_TOUCHED=false;
+// The cover, at row size. The empty state is a dashed box rather than nothing, so a draft still occupies
+// the same shape as a finished post and the list does not go ragged as covers get added.
+// onerror removes the image rather than leaving a broken-image glyph: a cover whose URL has rotted then
+// falls back to the same dashed box, which is the honest state.
+function thumb(p){
+  var u=String((p&&p.cover)||"").trim();
+  if(!u)return "<span class='lxb-th' title='No cover image'></span>";
+  return "<span class='lxb-th has'><img src='"+esc(u).split("'").join("%27")+"' alt='' loading='lazy' onerror='this.parentNode.className=&quot;lxb-th&quot;;this.remove();'></span>";
+}
 function renderList(){
   var tb=q("#lxbTable tbody"); if(!tb)return;
   var sub=q("#lxbSub");
@@ -262,7 +285,8 @@ function renderList(){
     var word=pending?("scheduled · "+new Date(p.publishAt).toLocaleDateString(undefined,{month:"short",day:"numeric"})):(p.published?"published":"draft");
     var badge="<span class='lxb-badge"+cls+"'>"+esc(word)+"</span>";
     if(mob)return "<tr><td>"+esc(p.title)+"</td><td style='text-align:right'>"+badge+"</td></tr>";
-    return "<tr data-slug='"+esc(p.slug)+"'><td><b>"+esc(p.title)+"</b><div class='lxb-h mono' style='margin-top:3px'>/blog/"+esc(p.slug)+"</div></td>"
+    return "<tr data-slug='"+esc(p.slug)+"'><td><div class='lxb-row'>"+thumb(p)
+      +"<div class='lxb-rowtxt'><b>"+esc(p.title)+"</b><div class='lxb-h mono' style='margin-top:3px'>/blog/"+esc(p.slug)+"</div></div></div></td>"
       +"<td>"+esc(p.category||"")+"</td>"
       +"<td style='text-align:right'>"+badge+"</td>"
       +"<td style='text-align:right;color:var(--text-muted);font-size:13px'>"+esc(ago(p.updatedAt||p.createdAt||Date.now()))+"</td>"
@@ -328,7 +352,7 @@ function openEditor(post){
   q("#lxbWhen").value=post?whenToInput(post.publishAt):""; whenHint();
   syncPublishLabel(post);
   status("");
-  coverPrev(); metaCount(); wordCount();
+  coverPrev(); metaCount(); wordCount(); syncTools();
   ed.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
@@ -451,6 +475,60 @@ function insertImage(file){
   });
 }
 
+// WHAT KIND OF LINE IS THE CARET ON? The toolbar is write-only without this: you press H2, come back
+// twenty minutes later, and the only way to find out whether a line is H2 or H3 is to press one and see
+// if it changes. Now the button that matches the caret is lit, so putting the cursor on a line answers
+// the question.
+//
+// Read from the DOM rather than from what was last pressed -- the caret moves, the document is loaded
+// from storage, and text gets pasted in, none of which goes through cmd().
+function selNode(){
+  var b=q("#lxbBody"); if(!b)return null;
+  var s=window.getSelection(); if(!s||!s.rangeCount)return null;
+  var n=s.getRangeAt(0).startContainer;
+  if(n&&n.nodeType===3)n=n.parentNode;
+  return (n&&b.contains(n))?n:null;
+}
+function upTag(tag){
+  var b=q("#lxbBody"), n=selNode();
+  while(n&&n!==b){ if(n.tagName===tag)return true; n=n.parentNode; }
+  return false;
+}
+// The nearest block, which is what the H2 / H3 / paragraph buttons actually act on.
+function selBlockTag(){
+  var b=q("#lxbBody"), n=selNode();
+  var BLK={H2:1,H3:1,P:1,BLOCKQUOTE:1,LI:1};
+  while(n&&n!==b){ if(BLK[n.tagName])return n.tagName; n=n.parentNode; }
+  return "";
+}
+function syncTools(){
+  var tl=q("#lxbTools"); if(!tl)return;
+  var on={};
+  if(selNode()){
+    var t=selBlockTag();
+    on.h2=(t==="H2"); on.h3=(t==="H3");
+    on.quote=upTag("BLOCKQUOTE");
+    // queryCommandState for the lists, so a nested list reports the same way the button behaves.
+    try{ on.ul=document.queryCommandState("insertUnorderedList"); }catch(e){}
+    try{ on.ol=document.queryCommandState("insertOrderedList"); }catch(e){}
+    // Paragraph is the absence of the others, not a tag test: execCommand leaves a P inside a list item
+    // and inside a quote, and lighting the paragraph button there would be a lie.
+    on.p=(t==="P"&&!on.quote&&!on.ul&&!on.ol);
+    // Bold and italic come from the MARKUP, not from queryCommandState. That reports the computed
+    // weight, so it answers true inside every H2 and H3 -- the heading buttons and the B button would
+    // light together and the toolbar would be back to being ambiguous, which is the whole complaint.
+    // Both tag spellings, because execCommand emits b/i while pasted and stored content uses strong/em.
+    on.bold=(upTag("STRONG")||upTag("B"));
+    on.italic=(upTag("EM")||upTag("I"));
+    on.link=upTag("A");
+  }
+  qa("#lxbTools button[data-cmd]").forEach(function(x){
+    var c=x.getAttribute("data-cmd"), yes=!!on[c];
+    if(x.classList.contains("on")!==yes)x.classList.toggle("on",yes);
+    x.setAttribute("aria-pressed",yes?"true":"false");
+  });
+}
+
 function cmd(name){
   restoreSel();
   try{
@@ -473,6 +551,7 @@ function cmd(name){
     else document.execCommand(name);
   }catch(e){}
   saveSel();
+  syncTools();
   wordCount();
 }
 
@@ -497,9 +576,13 @@ function boot(){
   // lost some other way -- clicking the sidebar, tabbing out, switching windows.
   var bd2=q("#lxbBody");
   if(bd2&&!bd2.__lxsel){ bd2.__lxsel=1;
-    ["keyup","mouseup","input"].forEach(function(ev){ bd2.addEventListener(ev,saveSel); });
+    ["keyup","mouseup","input","focus"].forEach(function(ev){ bd2.addEventListener(ev,function(){ saveSel(); syncTools(); }); });
+    // selectionchange is the one that catches a plain caret move -- arrow keys and click-to-place fire
+    // no input event, which is exactly the case the writer is in when they are checking a heading.
     document.addEventListener("selectionchange",function(){
-      var a=document.activeElement; if(a===bd2)saveSel(); }); }
+      var a=document.activeElement; if(a===bd2){ saveSel(); syncTools(); } });
+    // Focus leaving the editor clears the lights rather than freezing them on the last line visited.
+    bd2.addEventListener("blur",function(){ setTimeout(syncTools,0); }); }
   var tb=q("#lxbTable"); if(tb&&!tb.__lx){ tb.__lx=1; tb.addEventListener("click",function(e){
     var ed=e.target.closest&&e.target.closest(".lxb-edit");
     var dl=e.target.closest&&e.target.closest(".lxb-del");
