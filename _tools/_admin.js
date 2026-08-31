@@ -376,7 +376,7 @@ var _sbP=null;
 function sdk(){ if(!_sbP)_sbP=new Promise(function(res,rej){
   if(window.StellarBase)return res(window.StellarBase);
   var el=document.createElement("script");
-  el.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-base@13.0.1/dist/stellar-base.min.js";
+  el.src="/assets/vendor/stellar-base-13.0.1.min.js";
   el.onload=function(){ window.StellarBase?res(window.StellarBase):rej(new Error("sdk")); };
   el.onerror=function(){ rej(new Error("sdk")); };
   document.head.appendChild(el); }); return _sbP; }
