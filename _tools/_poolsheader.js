@@ -42,8 +42,20 @@ const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
-// Only the phone builds of the two Pools pages.
-const KEYS = ['lumoscore-amm-mobile.html', 'lumoscore-amm-pool-mobile.html'];
+// Only the phone builds of the pages that came from that design source.
+//
+// The public account page was added later, when its header was reported as breaking. It is the same
+// defect from the same origin, not a lookalike -- checked before adding it rather than assumed, and
+// every value below was already present on it to change:
+//   .appbar padding 13.2/15.4, .logo-text 16.5px at -0.2px, html+body 16.5px, .logo flex:1, no spacer.
+// Measured at 375px with no wallet connected, its last control ended at x=269 in a 375px viewport
+// while Trade's reached the edge -- the controls were packed left with 106px of empty bar beside them.
+//
+// Its bar is a <div class="appbar">, not a <header class="appbar"> like the others. That is why a grep
+// for the header tag says this page has no app bar at all. The matching below keys on class="appbar",
+// so it finds either.
+const KEYS = ['lumoscore-amm-mobile.html', 'lumoscore-amm-pool-mobile.html',
+  'lumoscore-account-mobile.html'];
 
 // [ the rule to look inside, what to change within it ]
 const FIXES = [

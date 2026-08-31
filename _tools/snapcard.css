@@ -16,9 +16,22 @@
 .chart-controls .lxda-snap button{
   border:0;background:transparent;cursor:pointer;border-radius:6px;padding:0 8px;height:28px;
   display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:0;
-  color:var(--text-soft,#6f6f79);transition:none!important}
-#dxaChart .lxda-snap button:hover,#mdxaChart .lxda-snap button:hover,
-.chart-controls .lxda-snap button:hover{color:var(--text,#0e0e10)}
+  transition:none!important}
+/* NO colour in the rule above, deliberately. In the controls row the $ button takes its colour from
+   ONE rule -- the design's own `.chart-tools button{color:var(--text-muted)}` -- and nothing else
+   applies to it. Setting a colour here at all outranked that rule and made the camera the one control
+   in the strip picking its own shade.
+   Naming --text-soft was what made it visible: measured, the two tokens invert between themes, so the
+   camera looked merely a little pale in light mode and went dark-on-dark in dark mode:
+     light  --text-soft #9a9aa3   --text-muted #6b6b75
+     dark   --text-soft #6e6d78   --text-muted #a5a4ac
+   The fix is not to name the other token -- it is to name neither, and let the same rule that colours
+   $ colour this too. Then it tracks the design in both themes by construction rather than by a value
+   copied here that can drift. */
+/* Inside the plot the denomination DOES set its own colour, so the camera matches it there, using the
+   same declaration rather than a value copied from it. */
+#dxaChart .lxda-snap button,#mdxaChart .lxda-snap button{color:var(--text-soft,#6f6f79)}
+#dxaChart .lxda-snap button:hover,#mdxaChart .lxda-snap button:hover{color:var(--text,#0e0e10)}
 .lxda-snap button svg{width:15px;height:15px;display:block;pointer-events:none}
 /* Busy: the logo may still be coming down the wire, so the tap has to show it was received. */
 .lxda-snap button.lxsnap-busy{opacity:.5;cursor:default}
