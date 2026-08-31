@@ -1,0 +1,9 @@
+# core.autocrlf is on for this repo, which is right for our own sources but WRONG for third-party
+# libraries we vendor. Proven, not assumed: deleting dist/assets/vendor/stellar-sdk-13.3.0.min.js and
+# checking it back out turned 923,458 bytes into 923,459 and changed its sha256 -- git had rewritten a
+# byte inside a file whose provenance was verified against two independent CDNs. Every fresh clone
+# would have deployed a library that is not the one that was checked.
+#
+# -text disables all end-of-line conversion for these paths, so what was verified is what ships.
+dist/assets/vendor/** -text
+dist-admin/assets/vendor/** -text
