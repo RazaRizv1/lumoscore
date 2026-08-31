@@ -4881,6 +4881,21 @@ function setConnected(net,row,addr,transport){
   // lumos.transport tells the signing paths WHICH LOBSTR to talk to on this device. Always written, so
   // reconnecting with the extension can never inherit a stale 'wc' from an earlier phone session.
   try{localStorage.setItem('lumos.wallet',name);localStorage.setItem('lumos.network',net);localStorage.setItem('lumos.address',String(addr));localStorage.setItem('lumos.transport',transport||'ext');}catch(_){}
+  // lumos.lastWallet is what puts the "Last used" tag on a row, and NOTHING on this path was writing
+  // it. The design's own demo flow does, but every wallet with a real adapter -- Freighter, Rabet,
+  // Albedo, LOBSTR -- comes through here instead and skipped it entirely.
+  //
+  // It looked like it worked because __lxLastWallet() lazily copies lumos.wallet into it when the modal
+  // renders. But Disconnect removes lumos.wallet, so after connect -> disconnect -> reopen there is
+  // nothing left to copy: the seeding only fires while you are STILL CONNECTED, which is the one time
+  // the hint is useless. Reproduced in that exact order before fixing.
+  //
+  // Written from data-wallet, not from the display name, because data-wallet is what __lxMarkLastUsed
+  // compares against -- taking the same value from the same place is what keeps them from drifting.
+  // Deliberately NOT cleared by Disconnect: which wallet you last used is the thing worth remembering
+  // once you are signed out.
+  try{var _wid=(row&&row.getAttribute&&row.getAttribute('data-wallet'))||name;
+    if(_wid)localStorage.setItem('lumos.lastWallet',_wid);}catch(_){}
   if(window.lxnsSetConnected)try{window.lxnsSetConnected(net,name);}catch(_){}
   screen('connected');
 // lxPostConnectHome: land on the dashboard after connecting from anywhere in the app. Connecting is
