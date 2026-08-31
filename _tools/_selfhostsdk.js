@@ -34,6 +34,9 @@ const path = require('path');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
+// ⚠ THE LEFT COLUMN MUST STAY A CDN URL. It is the search pattern, not a setting -- rewriting it to
+// the local path (which a bulk find-and-replace across _tools/ will happily do, and once did) turns
+// every entry into a no-op and this file silently stops swapping anything.
 const SWAPS = [
   ['https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/dist/stellar-sdk.min.js',
    '/assets/vendor/stellar-sdk-13.3.0.min.js'],

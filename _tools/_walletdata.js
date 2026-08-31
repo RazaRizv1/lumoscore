@@ -393,7 +393,15 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'function lxFixLpIcons(){try{var els=document.querySelectorAll("#lpPanel .lx-lpico");for(var i=0;i<els.length;i++){var el=els[i];var nat=el.getAttribute("data-lxnat")==="1";var code=el.getAttribute("data-lxcode")||"";var lg=nat?(window.__lxStellarUri||STELLAR_URI):((window.__lxLogos||{})[code]||"");if(!lg)continue;var cur=el.style.getPropertyValue("--ic")||"";if(cur.indexOf(String(lg).slice(0,24))<0)el.style.setProperty("--ic","url(\\x27"+String(lg).replace(/\\x27/g,"%27")+"\\x27)");if(el.getAttribute("data-l")){el.classList.add("lx-din");el.setAttribute("data-l","");}}}catch(_){}}'
 +'var _lpFixIv=null;function lxScheduleLpFix(){lxFixLpIcons();if(_lpFixIv)clearInterval(_lpFixIv);var n=0;_lpFixIv=setInterval(function(){n++;lxFixLpIcons();if(n>=12){clearInterval(_lpFixIv);_lpFixIv=null;}},400);}'
 +'function lxHarvestLpLogos(){var seen={};[].slice.call(document.querySelectorAll("#lpPanel .lx-lpico[data-lxi]")).forEach(function(el){var code=el.getAttribute("data-lxc"),iss=el.getAttribute("data-lxi");if(!code||!iss)return;var cached=(window.__lxLogos||{})[code];if(cached){el.style.setProperty("--ic","url(\\x27"+String(cached).replace(/\\x27/g,"%27")+"\\x27)");el.setAttribute("data-l","");return;}var key=code+"|"+iss;if(seen[key])return;seen[key]=1;j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){var recs=(d._embedded&&d._embedded.records)||[];var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+iss)===0;})[0];var ti=(m&&(m.tomlInfo||m.toml_info))||{};var img=ti.image||ti.orgLogo||"";if(!img)return;try{(window.__lxLogos=window.__lxLogos||{})[code]=img;}catch(_){}[].slice.call(document.querySelectorAll("#lpPanel .lx-lpico[data-lxi=\\x27"+iss+"\\x27][data-lxc=\\x27"+code+"\\x27]")).forEach(function(x){x.style.setProperty("--ic","url(\\x27"+String(img).replace(/\\x27/g,"%27")+"\\x27)");x.setAttribute("data-l","");});}).catch(function(){});});}'
-+'function renderLP(lps){var panel=document.getElementById("lpPanel");if(!panel)return;var tb=panel.querySelector("tbody");if(!tb)return;var top=lps.slice(0,10);'
++'function renderLP(lps,page){var panel=document.getElementById("lpPanel");if(!panel)return;var tb=panel.querySelector("tbody");if(!tb)return;'
+// 25 a page, then a pager. The old slice(0,10) was a silent truncation: the tab counter beside it reads
+// the full length, so an account with 22 positions was told it had 22 and shown 10, with nothing on the
+// page admitting the other 12 existed. Each row costs one /liquidity_pools call, which is why this is
+// paged rather than simply unbounded.
++'var LPPER=25;window.__lxLpAll=lps;'
++'var lpPages=Math.max(1,Math.ceil(lps.length/LPPER));'
++'page=Math.min(Math.max(0,page|0),lpPages-1);window.__lxLpPage=page;'
++'var top=lps.slice(page*LPPER,page*LPPER+LPPER);'
 +'if(!top.length){tb.innerHTML=\'<tr><td colspan="6" style="padding:28px;text-align:center;color:var(--text-muted)">No liquidity positions</td></tr>\';return;}'
 +'Promise.all(top.map(function(b){return j(H+"/liquidity_pools/"+b.liquidity_pool_id).then(function(p){return{b:b,p:p};}).catch(function(){return{b:b,p:null};});})).then(function(rows){var html="";rows.forEach(function(r){var p=r.p,bal=+r.b.balance;var res=(p&&p.reserves)||[];var a0=assetCode(res[0]),a1=assetCode(res[1]);var i0=assetIssuer(res[0]),i1=assetIssuer(res[1]),n0=assetNative(res[0]),n1=assetNative(res[1]);var pct=(p&&+p.total_shares>0)?(bal/(+p.total_shares)*100):0;'
 +'html+=\'<tr data-pool="\'+esc(r.b.liquidity_pool_id)+\'"><td><div class="lp-pair" style="cursor:pointer"><div class="lp-icons">\'+lpIco(a0,i0,n0)+lpIco(a1,i1,n1)+\'</div><div><div class="lp-nm">\'+esc(a0)+\' / \'+esc(a1)+\'</div><div class="lp-sb">0.30% fee tier \\u00b7 Stellar AMM</div></div></div></td>\''
@@ -401,7 +409,23 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'+\'<td><span class="lp-apr">\\u2014</span></td>\''
 +'+\'<td class="right"><div class="p1">\'+(res.length?amt(+res[0].amount)+\' <span style="color:var(--text-soft);font-size:14px">\'+esc(a0)+\'</span>\':"\\u2014")+\'</div><div class="p2">\'+(res.length>1?amt(+res[1].amount)+\' \'+esc(a1):"")+\'</div></td>\''
 +'+\'<td class="right"><div class="p1">\\u2014</div></td>\''
-+'+\'<td class="right">\'+LPQA+\'</td></tr>\';});tb.innerHTML=html;lxHarvestLpLogos();lxScheduleLpFix();if(!tb.__lxMo){tb.__lxMo=1;try{new MutationObserver(function(){lxFixLpIcons();}).observe(tb,{childList:true});}catch(_){}}'
++'+\'<td class="right">\'+LPQA+\'</td></tr>\';});'
+// The pager only exists when there is a second page; with 22 positions nothing is added at all.
++'if(lpPages>1){html+=\'<tr class="lx-lppg"><td colspan="6" style="padding:14px 18px">\''
++'+\'<div style="display:flex;align-items:center;justify-content:center;gap:14px">\''
++'+\'<button type="button" class="lx-lpp" data-d="-1"\'+(page<=0?\' disabled\':\'\')'
++'+\' style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;opacity:\'+(page<=0?\'.4\':\'1\')+\'">Previous</button>\''
++'+\'<span style="color:var(--text-muted);font-size:12.5px;font-family:\\x27JetBrains Mono\\x27,monospace">Page \'+(page+1)+\' of \'+lpPages+\'</span>\''
++'+\'<button type="button" class="lx-lpp" data-d="1"\'+(page>=lpPages-1?\' disabled\':\'\')'
++'+\' style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;opacity:\'+(page>=lpPages-1?\'.4\':\'1\')+\'">Next</button>\''
++'+\'</div></td></tr>\';}'
++'tb.innerHTML=html;lxHarvestLpLogos();lxScheduleLpFix();if(!tb.__lxMo){tb.__lxMo=1;try{new MutationObserver(function(){lxFixLpIcons();}).observe(tb,{childList:true});}catch(_){}}'
+// Bound in capture and stopped here so the row-opens-the-pool handler never sees a pager click.
++'if(!tb.__lxpg){tb.__lxpg=1;tb.addEventListener("click",function(ev){'
++'var pb=ev.target&&ev.target.closest?ev.target.closest(".lx-lpp"):null;if(!pb)return;'
++'ev.preventDefault();ev.stopImmediatePropagation();if(pb.disabled)return;'
++'renderLP(window.__lxLpAll||[],(window.__lxLpPage|0)+(pb.getAttribute("data-d")==="1"?1:-1));'
++'},true);}'
 // LP row -> pool detail nav: pair name / +Add (deposit) / -Remove (withdraw) / ...menu "View pool page".
 +'if(!panel.__lxNav){panel.__lxNav=1;panel.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var row=t.closest("tr[data-pool]");if(!row)return;var hex=row.getAttribute("data-pool");if(!hex)return;/* clean url DIRECTLY: going via lumoscore-amm-pool.html?pool= meant a 301, and the redirect that promoted the id into the path used to drop act=withdraw. Browsers cache a 301 permanently, so every user who clicked Remove before that fix would keep getting the old query-less redirect from cache. Link straight to the destination and no redirect is involved. */var base="/pools/stellar/id/"+hex;var btn=t.closest(".qa-row-btn");if(btn){if(btn.classList.contains("icon-only")){window.__lxLpMenuPool=hex;setTimeout(function(){var mn=document.querySelector(".row-menu");if(!mn)return;[].slice.call(mn.querySelectorAll("button,a")).forEach(function(it){if(/view pool/i.test(it.textContent||"")){if(it.__lxwp)return;it.__lxwp=1;it.addEventListener("click",function(){location.href="/pools/stellar/id/"+(window.__lxLpMenuPool||hex);});}});},70);return;}var lbl=(btn.textContent||"").trim();if(/remove/i.test(lbl)){e.preventDefault();e.stopImmediatePropagation();location.href=base+"?act=withdraw";}else if(/add/i.test(lbl)){e.preventDefault();e.stopImmediatePropagation();location.href=base;}return;}if(t.closest(".lp-nm")||t.closest(".lp-pair")){e.preventDefault();location.href=base;}},true);}'
 +'}).catch(function(){});}'
@@ -416,7 +440,22 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // offer selling it, or -- the case that prompted this -- deposits sitting in a liquidity pool, where the
 // asset does NOT show up as a balance and the row honestly reads 0. Ask, then name the actual blocker.
 +'.catch(function(err){bt.__lxb=0;bt.innerHTML=lbl;var m=((err&&err.message)||err)+"";'
-+'function say(t){try{lxToast(t);}catch(_){}}'
+// These are DIAGNOSES, not confirmations -- a sentence naming what is still holding the trustline --
+// and they were sharing the 2.2s the design uses for "Copied". That is under a second of reading time
+// per line, so the one message that exists to explain something was gone before it was read.
+//
+// NOTE ON THE NUMBER: the request was "increase it to 2 seconds", but the toast these already used
+// runs 2200ms, so 2s would have been a cut. 6s is roughly reading time for the longest of them plus a
+// beat to look down at it. Easy to change -- it is the one number below.
+//
+// Own renderer rather than the design's showToast: that one owns its own removal timer and returns
+// nothing to re-schedule. Same .toast element in the same .toast-stack, so it looks identical, minus
+// the success tick, which has no business on a failure.
++'function lxToastFor(msg,ms){try{var st=document.querySelector(".toast-stack");if(!st){lxToast(msg);return;}'
++'var t=document.createElement("div");t.className="toast";'
++'var sp=document.createElement("span");sp.textContent=msg;t.appendChild(sp);'
++'st.appendChild(t);setTimeout(function(){try{t.remove();}catch(_){}},ms||2200);}catch(_){try{lxToast(msg);}catch(__){}}}'
++'function say(t){try{lxToastFor(t,6000);}catch(_){}}'
 // Do NOT gate the diagnosis on the error text. Stellar returns op_cannot_delete when a liquidity-pool share
 // still depends on the trustline -- that string contains none of the words the old filter looked for, so the
 // one case this message exists for was the one case it never explained. Diagnose every failure instead.

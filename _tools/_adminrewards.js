@@ -106,7 +106,7 @@ function num(n,d){return (+n||0).toLocaleString(undefined,{maximumFractionDigits
 function isPage(){var t=((q(".admin-page-title")||{}).textContent||"").trim();return t.indexOf("LUMOS Rewards")===0;}
 function sdk(){ if(window.StellarBase)return Promise.resolve(window.StellarBase);
   return new Promise(function(res,rej){ var el=document.createElement("script");
-    el.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-base@13.0.1/dist/stellar-base.min.js";
+    el.src="/assets/vendor/stellar-base-13.0.1.min.js";
     el.onload=function(){ window.StellarBase?res(window.StellarBase):rej(new Error("SDK failed to load")); };
     el.onerror=function(){ rej(new Error("SDK failed to load")); }; document.head.appendChild(el); }); }
 

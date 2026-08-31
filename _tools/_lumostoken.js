@@ -896,7 +896,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     try{ alert(msg); }catch(e3){}
   }
   function ltLoadSdk(){ if(window.StellarSdk)return Promise.resolve(window.StellarSdk); if(_ltsdk)return _ltsdk;
-    _ltsdk=new Promise(function(res,rej){ var s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/dist/stellar-sdk.min.js"; s.onload=function(){res(window.StellarSdk);}; s.onerror=function(){rej(new Error("SDK load failed"));}; document.head.appendChild(s); }); return _ltsdk; }
+    _ltsdk=new Promise(function(res,rej){ var s=document.createElement("script"); s.src="/assets/vendor/stellar-sdk-13.3.0.min.js"; s.onload=function(){res(window.StellarSdk);}; s.onerror=function(){rej(new Error("SDK load failed"));}; document.head.appendChild(s); }); return _ltsdk; }
   // AUDIT (user-reported): this signed via Freighter unconditionally, so a Rabet user clicking Swap or
   // Add Liquidity on the LUMOS page got a FREIGHTER prompt — and because line ~600 installs this as the
   // global window.lxSign, it hijacked the shared Swap modal too. Same multi-wallet signer as the Trade
