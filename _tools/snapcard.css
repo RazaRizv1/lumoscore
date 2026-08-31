@@ -1,0 +1,40 @@
+/*lxts:1.1*/
+/* The camera sits in the same control strip as $ / XLM and has to be indistinguishable from it, so
+   every rule below is the .lxda-denom rule with the class swapped. Two hosts, because chartUi()
+   re-homes that strip: inside the plot on a wide column, in the .chart-controls row when it wraps.
+   The stamp above keeps _typescale.js off these numbers -- they were measured against the already
+   scaled neighbours (28px tall, 11px label), not authored at the design's original size. */
+.chart-controls .lxda-snap{position:static;top:auto;left:auto;box-shadow:none;background:transparent;border:0}
+#dxaChart .lxda-snap,#mdxaChart .lxda-snap{position:absolute;top:8px;z-index:4;
+  background:var(--surface,#fff);border:1px solid var(--border);box-shadow:0 2px 8px -4px rgba(0,0,0,.35)}
+#dxaChart .lxda-snap,#mdxaChart .lxda-snap{left:8px;top:40px}
+/* transition:none is load-bearing, not a preference -- see the long note beside the same rule for
+   .lxda-denom in _dexassetdata.js. These buttons inherit a site-wide control transition that something
+   restarts on every apply tick, and a running transition outranks !important author styles, so the
+   hover and busy states simply never paint without this. */
+#dxaChart .lxda-snap button,#mdxaChart .lxda-snap button,
+.chart-controls .lxda-snap button{
+  border:0;background:transparent;cursor:pointer;border-radius:6px;padding:0 8px;height:28px;
+  display:inline-flex;align-items:center;justify-content:center;width:auto;min-width:0;
+  color:var(--text-soft,#6f6f79);transition:none!important}
+#dxaChart .lxda-snap button:hover,#mdxaChart .lxda-snap button:hover,
+.chart-controls .lxda-snap button:hover{color:var(--text,#0e0e10)}
+.lxda-snap button svg{width:15px;height:15px;display:block;pointer-events:none}
+/* Busy: the logo may still be coming down the wire, so the tap has to show it was received. */
+.lxda-snap button.lxsnap-busy{opacity:.5;cursor:default}
+.lxda-snap button.lxsnap-busy svg{animation:lxsnapPulse .9s ease-in-out infinite}
+@keyframes lxsnapPulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.lxda-snap button.lxsnap-busy svg{animation:none}}
+/* Keeps the camera with the unit toggle on whichever line the row wraps onto, matching the pair rule
+   the two design groups already follow at this width. */
+@media (max-width:760px){
+  .chart-controls .lxda-snap{order:3;margin-left:0!important}
+}
+/* Failure only. A save that worked announces itself -- the browser's download chip on a desktop, the
+   share sheet on a phone -- so the silent path stays silent. */
+.lxsnap-toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);z-index:99999;
+  background:var(--surface,#fff);color:var(--text,#0e0e10);border:1px solid var(--border,#ececef);
+  border-radius:10px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,.24);
+  font:600 13px/1.35 'Hanken Grotesk',system-ui,sans-serif;max-width:min(86vw,340px);
+  opacity:0;transition:opacity .18s}
+.lxsnap-toast.on{opacity:1}
