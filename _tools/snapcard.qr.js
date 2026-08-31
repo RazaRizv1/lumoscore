@@ -30,6 +30,16 @@
   function mul(a, b) { return (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]]; }
 
   // Generator polynomial for `deg` error-correction codewords: (x-a^0)(x-a^1)...(x-a^(deg-1)).
+  //
+  // RETURNED IN DESCENDING POWERS, leading 1 first. The loop below builds it the other way round --
+  // index k is the coefficient of x^k -- and the division that follows indexes it as g[j+1], which is
+  // the standard form and expects descending. Leaving the two disagreeing computed every parity byte
+  // against the REVERSED polynomial: still a well-formed codeword, but of a different code, so a
+  // decoder reading a flawless symbol still got non-zero syndromes and could not correct. Nothing in a
+  // round-trip test notices, because the same reversed generator verifies it.
+  //
+  // Descending also makes this directly comparable to the published tables: deg 7 must come out
+  // 1,127,122,154,164,11,68,117, which is a^0,a^87,a^229,a^146,a^149,a^238,a^102,a^21.
   function genPoly(deg) {
     var p = [1];
     for (var i = 0; i < deg; i++) {
@@ -41,7 +51,7 @@
       }
       p = np;
     }
-    return p;
+    return p.reverse();
   }
 
   // Polynomial long division; the remainder IS the error-correction block.
@@ -130,6 +140,18 @@
   }
   function bitLen(x) { var n = 0; while (x) { n++; x >>>= 1; } return n; }
 
+  // The 15 format bits, written twice.
+  //
+  // COPY 1 IS NOT THE TRANSPOSE OF COPY 2, and getting that wrong is why the first version of this
+  // file produced a symbol no camera would read. The low bits of copy 1 run ALONG ROW 8 (8,0)..(8,5),
+  // and the high bits run UP COLUMN 8 (5,8)..(0,8). Writing them the other way round puts all fifteen
+  // bits in valid cells -- the region is symmetric in shape, so nothing looks wrong and every
+  // structural check still passes -- but in permuted order. A decoder reads copy 1 first, gets a
+  // format whose BCH will not decode, and gives up before it ever looks at copy 2.
+  //
+  // It survived a round-trip test because the test's reader was written from the same mistaken
+  // understanding: it read copy 1 the same wrong way and agreed with itself. The self-check in
+  // _snapcard.js now pins both copies against the published format strings instead.
   function drawFormat(mat, mask) {
     // 01 = level L, then the three mask bits, through BCH and the fixed 0x5412 mask.
     var data = (0x01 << 3) | mask;
@@ -137,11 +159,12 @@
     var n = mat.n, i;
     for (i = 0; i < 15; i++) {
       var bit = (bitsv >>> i) & 1;
-      // copy 1, around the top-left finder
-      if (i < 6) mat.set(i, 8, bit, true);
-      else if (i < 8) mat.set(i + 1, 8, bit, true);
-      else if (i === 8) mat.set(8, 7, bit, true);
-      else mat.set(8, 14 - i, bit, true);
+      // copy 1, wrapped around the top-left finder
+      if (i < 6) mat.set(8, i, bit, true);
+      else if (i === 6) mat.set(8, 7, bit, true);
+      else if (i === 7) mat.set(8, 8, bit, true);
+      else if (i === 8) mat.set(7, 8, bit, true);
+      else mat.set(14 - i, 8, bit, true);
       // copy 2, split between the other two finders
       if (i < 8) mat.set(8, n - 1 - i, bit, true);
       else mat.set(n - 15 + i, 8, bit, true);
@@ -325,7 +348,43 @@
     return { size: n, version: ver, modules: best };
   }
 
-  var API = { encode: encode };
+  // Build-time only: hands back each block as data||parity so the self-check in _snapcard.js can test
+  // the syndromes directly. Not used in the browser.
+  function __codeword(text) {
+    var bytes = [];
+    var esc = encodeURIComponent(String(text));
+    for (var i = 0; i < esc.length; i++) {
+      if (esc.charAt(i) === '%') { bytes.push(parseInt(esc.substr(i + 1, 2), 16)); i += 2; }
+      else bytes.push(esc.charCodeAt(i));
+    }
+    var ver = 0;
+    for (var v = 1; v <= 10; v++) {
+      var ccBits = v < 10 ? 8 : 16;
+      if (Math.ceil((4 + ccBits + bytes.length * 8) / 8) <= capacity(v)) { ver = v; break; }
+    }
+    if (!ver) return null;
+    var t = VER[ver], total = capacity(ver);
+    var bits = new Bits();
+    bits.put(4, 4);
+    bits.put(bytes.length, ver < 10 ? 8 : 16);
+    for (i = 0; i < bytes.length; i++) bits.put(bytes[i], 8);
+    bits.put(0, Math.min(4, total * 8 - bits.b.length));
+    while (bits.b.length % 8) bits.b.push(0);
+    var dataCw = [];
+    for (i = 0; i < bits.b.length; i += 8) {
+      var byteV = 0;
+      for (var k = 0; k < 8; k++) byteV = (byteV << 1) | bits.b[i + k];
+      dataCw.push(byteV);
+    }
+    var pad = [0xEC, 0x11], pi = 0;
+    while (dataCw.length < total) { dataCw.push(pad[pi & 1]); pi++; }
+    var blocks = [], at = 0, b;
+    for (b = 0; b < t[2]; b++) { blocks.push(dataCw.slice(at, at + t[3])); at += t[3]; }
+    for (b = 0; b < t[4]; b++) { blocks.push(dataCw.slice(at, at + t[5])); at += t[5]; }
+    return { ecLen: t[1], blocks: blocks.map(function (d) { return d.concat(ecc(d, t[1])); }) };
+  }
+
+  var API = { encode: encode, __codeword: __codeword };
   if (typeof module === 'object' && module.exports) module.exports = API;
   else root.LXQR = API;
 })(typeof self !== 'undefined' ? self : this);

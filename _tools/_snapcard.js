@@ -36,28 +36,80 @@ try {
 }
 
 // The encoder is the one part of this that can be wrong in a way nobody sees until someone points a
-// phone at a printed card, so the build refuses to ship it unverified: encode a representative URL,
-// read the matrix back the way a scanner would, and require the payload to survive the round trip.
+// phone at a card, so the build refuses to ship it unverified.
+//
+// THE FIRST VERSION OF THIS CHECK WAS WORTHLESS, and it is worth saying why. It encoded a URL, read
+// the matrix back with a reader written from the same understanding of the spec, and asked whether the
+// payload survived. It always did -- because a shared misunderstanding cancels out. The format
+// information was being written to copy 1 transposed, the round trip did not care, and the symbol went
+// out unreadable.
+//
+// So the check below is pinned to values that come from OUTSIDE this file: the published format
+// strings for error-correction level L, which every conformant encoder must produce. Both copies of
+// the format information are read straight out of the matrix, by absolute cell, and must equal the
+// published string for the mask the encoder chose. Nothing here can be satisfied by agreeing with
+// snapcard.qr.js.
 (function selfCheck() {
   const M = require(__dirname + '/snapcard.qr.js');
   const url = 'https://lumoscore.com/trade/stellar/VELO-GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M';
+  const die = (m) => { console.error('snapcard: ' + m); process.exit(1); };
   const r = M.encode(url);
-  if (!r || !r.modules) { console.error('snapcard: QR encoder returned nothing'); process.exit(1); }
-  const n = r.size;
-  // finder patterns, timing patterns and the always-dark module -- the parts a decoder locks onto
+  if (!r || !r.modules) die('QR encoder returned nothing');
+  const n = r.size, m = r.modules;
+
+  // ISO/IEC 18004 format strings, level L, masks 0-7. Independent of anything in this repo.
+  const FMT_L = [0x77C4, 0x72F3, 0x7DAA, 0x789D, 0x662F, 0x6318, 0x6C41, 0x6976];
+
+  // Copy 1: low six bits along row 8, then (8,7), (8,8), (7,8), then up column 8.
+  let c1 = 0;
+  for (let i = 0; i < 15; i++) {
+    let b;
+    if (i < 6) b = m[8][i];
+    else if (i === 6) b = m[8][7];
+    else if (i === 7) b = m[8][8];
+    else if (i === 8) b = m[7][8];
+    else b = m[14 - i][8];
+    c1 |= b << i;
+  }
+  // Copy 2: along row 8 from the right edge, then up column 8 from the bottom.
+  let c2 = 0;
+  for (let i = 0; i < 15; i++) c2 |= (i < 8 ? m[8][n - 1 - i] : m[n - 15 + i][8]) << i;
+
+  if (FMT_L.indexOf(c1) < 0) die('format copy 1 is 0x' + c1.toString(16) + ', not a published level-L string');
+  if (c1 !== c2) die('format copies disagree: 0x' + c1.toString(16) + ' vs 0x' + c2.toString(16));
+
+  // The error correction, checked by the property that DEFINES it rather than by re-running the same
+  // division: a Reed-Solomon codeword is zero at a^0 .. a^(deg-1). The first version of this encoder
+  // built its generator polynomial ascending and divided by it as though it were descending, so every
+  // parity byte belonged to the reciprocal code -- a perfectly formed symbol that no decoder could
+  // correct. A round-trip test cannot see that; this can.
+  const EXP = new Uint8Array(512), LOG = new Uint8Array(256);
+  (() => { let x = 1; for (let i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11D; } for (let j = 255; j < 512; j++) EXP[j] = EXP[j - 255]; })();
+  const gmul = (a, b) => (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]];
+  const cw = M.__codeword ? M.__codeword(url) : null;
+  if (!cw) die('encoder exposes no codeword to check');
+  for (let i = 0; i < cw.ecLen; i++) {
+    const a = EXP[i];
+    for (const blk of cw.blocks) {
+      let acc = 0;
+      for (let k = 0; k < blk.length; k++) acc = gmul(acc, a) ^ blk[k];
+      if (acc !== 0) die('Reed-Solomon syndrome ' + i + ' is ' + acc + ', not zero — the parity is wrong');
+    }
+  }
+
+  // Structure a decoder locks onto before it reads anything.
   const fin = (r0, c0) => {
     for (let y = 0; y < 7; y++) for (let x = 0; x < 7; x++) {
       const on = (y === 0 || y === 6 || x === 0 || x === 6 || (y >= 2 && y <= 4 && x >= 2 && x <= 4)) ? 1 : 0;
-      if (r.modules[r0 + y][c0 + x] !== on) return false;
+      if (m[r0 + y][c0 + x] !== on) return false;
     }
     return true;
   };
-  let ok = fin(0, 0) && fin(0, n - 7) && fin(n - 7, 0) && r.modules[n - 8][8] === 1;
+  if (!(fin(0, 0) && fin(0, n - 7) && fin(n - 7, 0))) die('finder patterns are wrong');
+  if (m[n - 8][8] !== 1) die('the always-dark module is not set');
   for (let i = 8; i < n - 8; i++) {
-    if (r.modules[6][i] !== (i % 2 === 0 ? 1 : 0)) ok = false;
-    if (r.modules[i][6] !== (i % 2 === 0 ? 1 : 0)) ok = false;
+    if (m[6][i] !== (i % 2 === 0 ? 1 : 0) || m[i][6] !== (i % 2 === 0 ? 1 : 0)) die('timing pattern is wrong');
   }
-  if (!ok) { console.error('snapcard: QR matrix failed its structural check'); process.exit(1); }
 })();
 
 const STYLE = '<style id="lx-snap-css">' + CSS + '</style>';
