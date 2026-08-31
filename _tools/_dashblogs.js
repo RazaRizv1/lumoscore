@@ -178,8 +178,11 @@ const STYLE = '<style id="lx-dashblogs-css">/*lxts:1.1*/'
   + '.lx-blogs-list[data-n=\"1\"] .lx-blog-title{font-size:16.5px;-webkit-line-clamp:2}'
   + '.lx-blog-cover{position:relative;aspect-ratio:16/9;width:auto;height:auto;flex:0 0 auto;'
   + 'background:var(--surface-2,#1a1a1f);border-radius:0}'
+  // #fff, not var(--text). This chip sits on a near-black scrim over the artwork, and that scrim does
+  // not follow the theme -- so in light mode var(--text) resolved to near-black and the category read
+  // as an empty pill. The earlier rule this one overrides had it right.
   + '.lx-blog-chip{position:absolute;left:10px;bottom:10px;z-index:3;'
-  + 'background:rgba(10,10,11,.72);backdrop-filter:blur(6px);color:var(--text,#f6f5f3);'
+  + 'background:rgba(10,10,11,.72);backdrop-filter:blur(6px);color:#fff;'
   + 'padding:4px 9px;border-radius:999px;font:700 10px/1 \"Hanken Grotesk\",system-ui,sans-serif;'
   + 'text-transform:uppercase;letter-spacing:.07em}'
   + '.lx-blog-meta{padding:15px 16px 16px;display:flex;flex-direction:column;gap:9px;flex:1 1 auto;min-width:0}'
