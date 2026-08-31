@@ -430,6 +430,25 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'say("Can\u2019t remove "+code+" yet \u2014 it is still in use (pool deposit, balance or open offer).");'
 +'}).catch(function(){say("Can\u2019t remove "+code+" yet \u2014 it is still in use (pool deposit, balance or open offer).");});'
 +'});},true);}'
+// The empty/failed states for My Assets. prep() lays four shimmer rows into #assetsTable and the
+// painter below only replaces them `if(out)` -- so with nothing to paint the placeholders stayed, and
+// the table shimmered forever. On Stellar that is not a rare corner: an account does not EXIST until
+// it is funded, Horizon answers 404, j() resolves {__nf:1}, and every balance list is empty. Everything
+// else on the page handled it (0 Holdings, No open orders, No recent activity) -- this one table did
+// not, so an unfunded wallet looked like a page still loading, forever.
+//
+// rows.length===0 means the account is not on the ledger, not that it holds nothing: a real account
+// always carries a native XLM balance, so it can never produce zero rows. The __nf marker is still
+// what decides the wording, so a future non-404 empty gets the neutral copy rather than a wrong claim.
++'function lxAssetsEmpty(kind){var t,s;'
++'if(kind==="nf"){t="Your wallet address is not active";'
++'s="A Stellar account only exists once it has been funded. Send at least 1 XLM to this address to activate it.";}'
++'else if(kind==="err"){t="Couldn\\u2019t load your balances";s="Check your connection and refresh the page.";}'
++'else{t="No assets yet";s="Assets you hold will show up here.";}'
++'return \'<tr><td colspan="5"><div style="padding:28px 24px;text-align:center">\''
++'+\'<div style="color:var(--text);font-size:15px;font-weight:700">\'+t+\'</div>\''
++'+\'<div style="margin-top:7px;color:var(--text-muted);font-size:13px;line-height:1.55;max-width:420px;margin-left:auto;margin-right:auto">\'+s+\'</div>\''
++'+\'</div></td></tr>\';}'
 +'function prep(){var v=document.querySelector(".value-side .value");if(v)v.innerHTML=\'<span class="lx-skel" style="width:230px;height:40px"></span>\';var ad=document.querySelector(".wallet-chip .text");if(ad)ad.textContent=shrt(ME);var tb=document.getElementById("assetsTable");if(tb){var s="";for(var i=0;i<4;i++)s+=\'<tr><td colspan="5"><div class="lx-skel" style="width:96%;height:38px;margin:9px 2%"></div></td></tr>\';tb.innerHTML=s;}if(!window.__lxAct){var ar=document.querySelector(".activity-row");window.__lxAct=ar?ar.parentNode:null;}var acn=window.__lxAct;if(acn){var a="";for(var i=0;i<5;i++)a+=\'<div class="lx-skel" style="height:40px;margin:11px 22px"></div>\';acn.innerHTML=a;}var ob=document.querySelector(".orders-block");if(ob){var o="";for(var i=0;i<3;i++)o+=\'<div class="lx-skel" style="height:44px;margin:11px 22px"></div>\';ob.innerHTML=o;}}'
 +'function setPortfolio(xlm,u){var v=document.querySelector(".value-side .value");if(v)v.innerHTML=num(xlm,2)+\' <span style="font-size:.6em;color:var(--text-muted);font-weight:700">XLM</span>\';var sv=document.querySelector(".sub-value");if(sv)sv.textContent="\\u2248 "+usd(u)+" USD";'
 // 7d change line is mock (no portfolio history feed) — hide it so we do not show fake data
@@ -580,7 +599,10 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // Published for the mobile renderer: rows carry the per-asset value in XLM (balance x price), which is
 // the only place that number exists — __lxHoldings has balances but no valuation. lps are the raw
 // liquidity-pool share balances.
-+'try{window.__lxRows=rows;window.__lxLps=lps;}catch(_){}'
+// __lxAcctMissing published for the MOBILE renderer, which has none of the containers this layer
+// writes into and so cannot see the 404 for itself. Set on every load (0 as well as 1) so a later
+// reconnect to a funded account clears it rather than leaving a stale "not active".
++'try{window.__lxRows=rows;window.__lxLps=lps;window.__lxAcctMissing=(acc&&acc.__nf)?1:0;}catch(_){}'
 +'window.__lxHoldings=bals.filter(function(bb){return bb.asset_type!=="liquidity_pool_shares"&&(bb.asset_type==="native"||+bb.balance>0);}).map(function(bb){var nat=bb.asset_type==="native";return{code:nat?"XLM":bb.asset_code,iss:nat?"":(bb.asset_issuer||""),bal:+bb.balance,native:nat};}).filter(function(h){return h.code;}).sort(function(a,b){return (b.native?1:0)-(a.native?1:0)||b.bal-a.bal;});'
 // ---- address ----
 +'var ad=document.querySelector(".wallet-chip .text");if(ad)ad.textContent=shrt(ME);'
@@ -596,6 +618,8 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'+\'<td class="spark-cell"></td>\''
 +'+\'<td class="right balance-cell"><div class="b1">\'+amt(bal)+\' \'+esc(c)+\'</div><div class="b2">\'+(r.xlm>0?"\\u2248 "+usd(r.xlm*xu):"")+\'</div></td>\''
 +'+\'<td class="right">\'+_act+\'</td></tr>\';});if(out){tb.innerHTML=out;applyPins();lxFillHd(tb);lxLoadChanges(rows);try{lxHealAllLogos(tb);}catch(_){}}'
+// else: say so, rather than leaving prep()'s shimmer rows in place for good.
++'else{tb.innerHTML=lxAssetsEmpty((acc&&acc.__nf)?"nf":"");}'
 // hide the now-empty "Last 7d" column header + cells so nothing misaligns
 +'var thd=tb.parentNode&&tb.parentNode.querySelector("thead");if(thd){var ths=thd.querySelectorAll("th");if(ths[2])ths[2].style.display="none";}'
 // fetch each held asset’s real logo from Stellar.Expert and swap it into the icon (bg-image is CORS-free)
@@ -652,14 +676,17 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'try{lxHealAllLogos(document);setTimeout(function(){lxHealAllLogos(document);},900);setTimeout(function(){lxHealAllLogos(document);},2400);}catch(_){}'
 +'reveal();'
 +'});'
-+'}).catch(function(){reveal();});}'
+// A Horizon outage took the same path to the same place: reveal() showed the page and the shimmer rows
+// stayed forever, indistinguishable from still-loading. Say what happened instead.
++'}).catch(function(){try{var _tb=document.getElementById("assetsTable");'
++'if(_tb&&_tb.querySelector(".lx-skel"))_tb.innerHTML=lxAssetsEmpty("err");}catch(_){}reveal();});}'
 // update a summary card by its uppercase label
 +'function updInsight(title,head,sub){var cards=document.querySelectorAll(".insight-card");for(var i=0;i<cards.length;i++){var t=cards[i].querySelector(".ttl");if(t&&(t.textContent||"").trim().toLowerCase()===title.toLowerCase()){var hd=cards[i].querySelector(".headline");if(hd&&head!=null)hd.textContent=head;var sb=cards[i].querySelector(".sub");if(sb&&sub!=null)sb.textContent=sub;return;}}}'
 // build order rows
 // ---- real on-chain cancel (build tx via stellar-base, sign with connected wallet, submit to Horizon) ----
 +'function lxToast(msg){try{if(typeof window.showToast==="function"){window.showToast(msg);return;}}catch(_){}try{var t=document.createElement("div");t.textContent=msg;t.style.cssText="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1c1f27;color:#fff;border:1px solid rgba(255,255,255,.16);padding:10px 16px;border-radius:10px;font-size:13px;z-index:99999;box-shadow:0 10px 34px rgba(0,0,0,.45);max-width:82vw;text-align:center";document.body.appendChild(t);setTimeout(function(){t.style.transition="opacity .4s";t.style.opacity="0";setTimeout(function(){t.remove();},420);},2600);}catch(_){}}'
 +'function lxTimeout(p,ms,msg){return new Promise(function(res,rej){var done=false;var to=setTimeout(function(){if(!done){done=true;rej(new Error(msg));}},ms);p.then(function(v){if(!done){done=true;clearTimeout(to);res(v);}},function(e){if(!done){done=true;clearTimeout(to);rej(e);}});});}'
-+'var __sbP=null;function lxStellar(){if(!__sbP)__sbP=new Promise(function(res,rej){if(window.StellarBase)return res(window.StellarBase);var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-base@13.0.1/dist/stellar-base.min.js";s.onload=function(){window.StellarBase?res(window.StellarBase):rej(new Error("Stellar SDK failed to load"));};s.onerror=function(){rej(new Error("Stellar SDK failed to load"));};document.head.appendChild(s);});return __sbP;}'
++'var __sbP=null;function lxStellar(){if(!__sbP)__sbP=new Promise(function(res,rej){if(window.StellarBase)return res(window.StellarBase);var s=document.createElement("script");s.src="/assets/vendor/stellar-base-13.0.1.min.js";s.onload=function(){window.StellarBase?res(window.StellarBase):rej(new Error("Stellar SDK failed to load"));};s.onerror=function(){rej(new Error("Stellar SDK failed to load"));};document.head.appendChild(s);});return __sbP;}'
 +'function lxWallet(){try{return (localStorage.getItem("lumos.wallet")||"").toLowerCase();}catch(_){return "";}}'
 +'function lxSign(xdr,S){var w=lxWallet(),PP=(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC);'
 +'if(w==="freighter"){if(window.freighterApi&&window.freighterApi.signTransaction)return Promise.resolve(window.freighterApi.signTransaction(xdr,{networkPassphrase:PP,network:(LX_NET==="testnet"?"TESTNET":"PUBLIC"),address:ME})).then(function(r){return (r&&(r.signedTxXdr||r.signedXDR))||r;});return import("https://esm.sh/@stellar/freighter-api@6").then(function(m){var f=m.default||m;return f.signTransaction(xdr,{networkPassphrase:PP,address:ME});}).then(function(r){return (r&&(r.signedTxXdr||r.signedXDR))||r;});}'
