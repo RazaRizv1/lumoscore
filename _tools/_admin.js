@@ -194,6 +194,18 @@ a.ext-link:hover{color:var(--accent)}
 .lxreq-links a{display:inline-flex;align-items:center;height:22px;padding:0 9px;border:1px solid var(--border);border-radius:6px;font-size:11.5px;font-weight:600;color:var(--text-muted);text-decoration:none;transition:border-color .13s,color .13s}
 .lxreq-links a:hover{border-color:var(--accent);color:var(--accent)}
 .lxreq-nolinks{font-size:11.5px;font-style:italic;color:var(--text-muted);opacity:.75}
+/* The admin activity feed on the dashboard. */
+.lxaud-row{display:flex;align-items:center;gap:11px;padding:11px 16px;border-bottom:1px solid var(--border)}
+.lxaud-row:last-child{border-bottom:0}
+.lxaud-dot{width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:var(--text-muted)}
+.lxaud-dot.ok{background:#1fa968}
+.lxaud-dot.warn{background:#e0553c}
+.lxaud-dot.money{background:var(--accent)}
+.lxaud-meta{flex:1;min-width:0}
+.lxaud-act{font-size:13.5px;color:var(--text);line-height:1.35}
+.lxaud-tgt{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-muted)}
+.lxaud-who{font-size:11.5px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lxaud-when{flex:0 0 auto;font-size:11.5px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
 </'+'style>`.replace("</'+'style>","</"+"style>");
 
 // ---- wallet signing, borrowed from the launchpad ------------------------------------------------------
@@ -806,11 +818,43 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'      j(x[1]).then(function(d){ var row=q("#lxsvc"+i); if(!row)return; var ms=Date.now()-t0;'
 +'        row.querySelector(".lxstat-dot").className="lxstat-dot "+(d?"ok":"bad");'
 +'        row.querySelector(".lxstat-val").textContent=d?(ms+"ms"):"unreachable"; }); }); }'
-// 3. retention needs sessions; there are none
-+'  var c3=cardByTitle("New & Retention")||cardByTitle("Retention");'
+// 3. Retention needed sessions and there are none, so that card sat admitting it had nothing to show.
+//    The audit trail goes here instead: with two people working in the panel, "who changed this and
+//    when" is a question that now gets asked, and this is the first place anyone looks.
++'  var c3=cardByTitle("New & Retention")||cardByTitle("Retention")||cardByTitle("Admin activity");'
 +'  if(c3&&c3.getAttribute("data-lxbuilt")!=="1"){ c3.setAttribute("data-lxbuilt","1");'
-+'    cardBody(c3,"<div class=\\"lxadm-empty\\">Retention needs sessions to measure, and LumosCore has no accounts and no analytics \u2014 a wallet that connects twice is indistinguishable from two wallets. This needs a backend.</div>"); }'
++'    retitle(c3.querySelector(".adm-card-head"),"Admin activity");'
++'    var b3=cardBody(c3,"<div class=\\"lxadm-empty\\">Loading\u2026</div>");'
++'    j("/lxapi/adminaudit?limit=8").then(function(d){'
++'      var es=(d&&d.entries)||[];'
++'      if(!es.length){ b3.innerHTML="<div class=\\"lxadm-empty\\">Nothing recorded yet. Every change made here \u2014 a listing approved, an asset curated, a refund sent, a post published \u2014 is logged with who made it and when.</div>"; return; }'
++'      b3.removeAttribute("style"); b3.style.padding="0";'
++'      b3.innerHTML=es.map(function(e){'
++'        return "<div class=\\"lxaud-row\\">"'
++'          +"<span class=\\"lxaud-dot "+esc(auditTone(e.action))+"\\"></span>"'
++'          +"<div class=\\"lxaud-meta\\"><div class=\\"lxaud-act\\">"+esc(auditLabel(e.action))'
++'            +(e.target?(" <span class=\\"lxaud-tgt\\">"+esc(auditTarget(e.target))+"</span>"):"")+"</div>"'
++'          +"<div class=\\"lxaud-who\\">"+esc(e.actor)+"</div></div>"'
++'          +"<div class=\\"lxaud-when\\">"+esc(ago(new Date(e.at).toISOString()))+"</div></div>"; }).join(""); }); }'
 +'}'
+// Reads as a sentence rather than a dotted key. Anything unmapped falls through to the raw action, so
+// a new one added later shows up unlabelled instead of not showing up at all.
++'var AUD_LABEL={"listing.approve":"approved a listing","listing.decline":"declined a listing",'
++'"listing.refund":"refunded a listing fee","listing.reopen":"reopened a request",'
++'"asset.curate":"curated","asset.uncurate":"removed from curated","asset.edit":"edited",'
++'"asset.tick.override":"granted a tick","asset.untick":"removed a tick",'
++'"asset.meta.clear":"cleared overrides for","asset.list.replace":"reordered the curated list",'
++'"blog.publish":"published","blog.save":"saved a draft of","blog.delete":"deleted the post",'
++'"media.upload":"uploaded an image","revenue.add":"added a revenue entry",'
++'"support.reply":"replied to a support message"};'
++'function auditLabel(a){ return AUD_LABEL[a]||a; }'
+// Money and removals are the entries worth spotting from across the room.
++'function auditTone(a){ if(a==="listing.refund"||a==="revenue.add")return "money";'
++'  if(a.indexOf("delete")>=0||a.indexOf("uncurate")>=0||a.indexOf("untick")>=0||a==="listing.decline")return "warn";'
++'  return "ok"; }'
+// A 56-character issuer would swamp the row; the asset code is what identifies it at a glance.
++'function auditTarget(t){ t=String(t||""); var m=/^([A-Za-z0-9]{1,12})-G[A-Z2-7]{55}$/.exec(t);'
++'  if(m)return m[1]; if(/^G[A-Z2-7]{55}$/.test(t))return shortG(t); return t.length>28?(t.slice(0,27)+"\u2026"):t; }'
 +'function accountOf(a){ return j(H+"/accounts/"+a); }'
 +`
 function paintUsers(){

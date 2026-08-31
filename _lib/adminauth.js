@@ -103,6 +103,22 @@ async function verifyJwt(token) {
   return payload;
 }
 
+// The verified payload of the request currently being handled, so the audit trail can record WHO did
+// something without verifying the token a second time.
+//
+// A WeakMap keyed on the Request rather than a module-level variable: a Worker isolate handles many
+// requests and can interleave them, and a shared "current admin" would eventually attribute one
+// person's action to another. Keyed this way an entry cannot outlive its request or be read by a
+// different one, and it is collected with it.
+const VERIFIED = new WeakMap();
+
+// The signed-in admin's email for this request, or '' if there is none. Only ever populated by
+// requireAdmin() after the token verified, so it cannot be influenced by anything a caller sent.
+export function adminActor(request) {
+  const p = VERIFIED.get(request);
+  return (p && (p.email || p.sub)) || '';
+}
+
 // Returns null when the caller is a verified admin, or a Response to return as-is when they are not.
 export async function requireAdmin(request) {
   const host = new URL(request.url).hostname;
@@ -116,6 +132,7 @@ export async function requireAdmin(request) {
   let payload;
   try { payload = await verifyJwt(token); } catch (_) { return deny('verification failed'); }
   if (!payload) return deny('invalid access token');
+  VERIFIED.set(request, payload);
   return null;
 }
 
