@@ -269,7 +269,20 @@ function esc(s){
 function fmtUsd(n){
   if (n == null || !isFinite(n)) return null;
   if (n >= 1000) return '$' + Math.round(n).toLocaleString('en-US');
-  if (n < 0.0001) return '$' + Number(n).toPrecision(3);
+  // toPrecision(3) goes exponential below about 1e-6, so a genuinely cheap token shipped its price
+  // into the search result as "$7.72e-7" -- which reads as a bug to a person and is not a number a
+  // language model restates cleanly. Plenty of Stellar assets sit down there.
+  //
+  // Written out in full instead, to three significant figures. toFixed caps at 100 decimals, and the
+  // exponent here is never near that, so the digit count is derived rather than guessed: for 7.72e-7
+  // that is 9 decimals -> $0.000000772.
+  // Zero or negative is not a price. Guarded before the log, which would otherwise be -Infinity and
+  // ask toFixed for 100 decimals -- that stripped back to a bare "$0." once the zeros were trimmed.
+  if (!(n > 0)) return null;
+  if (n < 0.0001) {
+    const places = Math.min(100, Math.max(4, 2 - Math.floor(Math.log10(n))));
+    return '$' + Number(n).toFixed(places).replace(/0+$/, '').replace(/\.$/, '');
+  }
   return '$' + Number(n).toFixed(n < 1 ? 4 : 2);
 }
 
@@ -500,6 +513,28 @@ export async function onRequest(context){
     return Response.redirect(to.toString(), 301);
   }
 
+  // 0b) A TRAILING SLASH IS THE SAME PAGE, so it must redirect rather than 404.
+  //
+  // Every path here answered 404 with a slash on the end: /blog/, /about/, /docs/, /faq/, /lumos/,
+  // /bridge/. People append them by habit, directory forms normalise to them, and forum software adds
+  // them -- and each one was a dead link carrying no authority anywhere. A backlink placed on the wrong
+  // form of the url was simply wasted.
+  //
+  // 301, because the canonical form is the one without. The query and hash ride along so a shared
+  // /trade/stellar/X/?ref=... still lands where it was meant to. The root is left alone: "/" IS the
+  // canonical path and trimming it would loop.
+  // GET and HEAD only. A 301 on a POST is turned into a GET by most clients and the body is dropped,
+  // so a form or an api call that happened to carry a trailing slash would fail silently rather than
+  // loudly -- the worst way for it to fail. Anything else with a slash falls through and is handled as
+  // it was before.
+  const navMethod = request.method === 'GET' || request.method === 'HEAD';
+  if (navMethod && url.pathname.length > 1 && url.pathname.endsWith('/')){
+    const to = new URL(url.toString());
+    to.pathname = url.pathname.replace(/\/+$/, '');
+    if (to.pathname === '') to.pathname = '/';
+    return Response.redirect(to.toString(), 301);
+  }
+
   // 1) someone navigated to a raw build filename -> send them to the canonical clean url
   const legacy = legacyClean(url.pathname, url.searchParams);
   if (legacy){
@@ -695,17 +730,26 @@ export async function onRequest(context){
   }
   // The asset identity block ships as the design's USDC sample. Fill it with what this page is
   // actually about, so a crawler that never runs the page's JavaScript reads the right asset.
-  if (want && want.kind === 'asset' && seo && seo.facts){
-    const f = seo.facts;
-    const code = f.code || want.id.split('-')[0];
+  // GATED ON THE ROUTE, NOT ON THE FACTS. assetFacts() depends on stellar.expert, and when that
+  // subrequest comes back empty the block used to be skipped entirely -- leaving the design's USDC
+  // sample in place, so the page told a non-rendering crawler it was USD Coin. Measured on 2026-08-31:
+  // every asset page served that way to GPTBot and ClaudeBot, while the same urls answered correctly
+  // to Googlebot and to browsers, which is the worst possible audience to get it wrong for.
+  //
+  // The code and the issuer are in the URL. They need no upstream at all, so the identity is always
+  // corrected and only the enrichment is conditional. A missing price is a missing line; it is never
+  // another asset's name.
+  if (want && want.kind === 'asset'){
+    const f = seo && seo.facts ? seo.facts : null;
+    const code = (f && f.code) || want.id.split('-')[0];
     const bits = [];
-    if (f.price) bits.push('Price ' + fmtUsd(f.price));
-    if (f.trustlines) bits.push(f.trustlines.toLocaleString('en-US') + ' trustlines');
+    if (f && f.price) bits.push('Price ' + fmtUsd(f.price));
+    if (f && f.trustlines) bits.push(f.trustlines.toLocaleString('en-US') + ' trustlines');
     // The issuer's own words when they published any; otherwise a factual sentence rather than a
     // borrowed one. Never another asset's copy.
-    const desc = f.desc
+    const desc = (f && f.desc)
       || (code + ' is a Stellar asset'
-          + (f.domain ? ' issued by ' + f.domain : '')
+          + (f && f.domain ? ' issued by ' + f.domain : '')
           + '. ' + (bits.length ? bits.join(' · ') + '. ' : '')
           + 'Trade it non-custodially on LumosCore from your own wallet.');
     rw = rw.on('.asset-name', new TextSetter(code))
@@ -713,7 +757,7 @@ export async function onRequest(context){
     // Always rewritten, even to an empty string: an asset with no home domain was otherwise left
     // showing the design's placeholder, which claims the issuer is circle.com. Blank is honest.
     // Text mode because this anchor also holds the globe icon, which setInnerContent would delete.
-    rw = rw.on('a.website', new TextSetter(f.domain || '', 'text'));
+    rw = rw.on('a.website', new TextSetter((f && f.domain) || '', 'text'));
   }
 
   out = rw.transform(out);
