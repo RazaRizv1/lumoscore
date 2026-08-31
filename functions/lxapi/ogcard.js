@@ -17,6 +17,8 @@ const W = 1200;
 const H = 630;
 const BG = '#0a0a0b';        // --bg, the site's own background
 const TTL = 86400;
+// Bump to retire every cached card at once.
+const CARD_V = 2;
 
 export async function onRequestGet(ctx) {
   const { request } = ctx;
@@ -32,7 +34,13 @@ export async function onRequestGet(ctx) {
   // link often only produced a card on the second or third attempt. Serving from the Cache API turns
   // every hit after the first into a read.
   const cache = caches.default;
-  const hit = await cache.match(request);
+  // VERSIONED CACHE KEY. Entries written before the designed cards existed are still in the edge
+  // cache and this lookup runs before the static-file check, so every asset already fetched kept
+  // serving the old padded logo -- production returned a 16KB jpeg while the new 71KB png sat right
+  // there. Keying on our own versioned URL rather than the incoming request retires the whole
+  // previous generation at once, and bumping CARD_V does it again next time.
+  const key = new Request(url.origin + '/lxapi/ogcard?v=' + CARD_V + '&asset=' + encodeURIComponent(asset));
+  const hit = await cache.match(key);
   if (hit) return hit;
 
   // A DESIGNED CARD, IF THE BUILD DREW ONE.
@@ -59,7 +67,7 @@ export async function onRequestGet(ctx) {
           'access-control-allow-origin': '*',
         },
       });
-      if (ctx.waitUntil) ctx.waitUntil(cache.put(request, out.clone()));
+      if (ctx.waitUntil) ctx.waitUntil(cache.put(key, out.clone()));
       return out;
     }
   } catch (e) { /* fall through to the padded logo */ }
@@ -110,6 +118,6 @@ export async function onRequestGet(ctx) {
   });
 
   // Store after responding, so the caller never waits on the write.
-  try { ctx.waitUntil(cache.put(request, out.clone())); } catch (e) { /* cache is best-effort */ }
+  try { ctx.waitUntil(cache.put(key, out.clone())); } catch (e) { /* cache is best-effort */ }
   return out;
 }
