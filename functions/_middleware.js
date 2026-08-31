@@ -442,6 +442,15 @@ class TextSetter {
   }
 }
 
+// Writes stored HTML into an element. Only the blog body uses this, and only with markup that came
+// back through the sanitiser on the way in -- setInnerContent with html:true is parsed as real markup,
+// so a <script> in there would RUN, where the client's innerHTML would not have executed it. That
+// difference is the whole reason the allowlist moved server-side in lxapi/blog.js.
+class HtmlSetter {
+  constructor(html){ this.html = String(html == null ? '' : html); }
+  element(el){ if (this.html) el.setInnerContent(this.html, { html: true }); }
+}
+
 class HeadInjector {
   constructor(html){ this.html = html; this.done = false; }
   element(el){ if (this.done) return; this.done = true; el.append(this.html, { html: true }); }
@@ -758,6 +767,22 @@ export async function onRequest(context){
     // showing the design's placeholder, which claims the issuer is circle.com. Blank is honest.
     // Text mode because this anchor also holds the globe icon, which setInnerContent would delete.
     rw = rw.on('a.website', new TextSetter((f && f.domain) || '', 'text'));
+  }
+
+  // THE ARTICLE ITSELF, for a crawler that runs no JavaScript.
+  //
+  // The post page ships an empty shell -- <h1></h1> and <article class="lx-post-body"></article> --
+  // and the browser fills both from /lxapi/blog. So what a crawler received was 329 words of nav and
+  // footer and not one word of the article, on the exact pages the backlink plan points at. Links to a
+  // page whose body is invisible pass their authority to a nav bar.
+  //
+  // The post is already in hand: the metadata above reads it at request time to build the title and
+  // description, so this costs no extra work. The client sets the same innerHTML on load, so it
+  // overwrites this with identical content -- no duplication, and nothing visibly changes.
+  if (want && want.kind === 'blog' && seo && seo.post){
+    const p = seo.post;
+    if (p.title) rw = rw.on('.lx-post-head h1', new TextSetter(String(p.title)));
+    if (p.body) rw = rw.on('.lx-post-body', new HtmlSetter(p.body));
   }
 
   out = rw.transform(out);
