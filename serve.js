@@ -169,7 +169,7 @@ const TOML_FUNDER = 'GA7VKQBOILVBDABEHRSVW72JM3OI54I2GSCCIHGNMECGUMKHLZG7JCDH';
 // LUMOS is named here rather than matched by the funder rule: it predates the launchpad and its issuer
 // was created by a different wallet, so the rule correctly does not recognise it. See the Pages Function.
 const TOML_PLATFORM = [{ code:'LUMOS', issuer:'GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S',
-  name:'Lumos Core', desc:'Utility token of LumosCore on Stellar. Hold 250,000 LUMOS to halve trading fees; or earn it by providing liquidity and holding. Fixed 1B supply.',
+  name:'Lumos Core', desc:'LumosCore brings Web3 essentials — Minting, Trading, Liquidity, Wallets & Explorers — into one multichain platform. LUMOS: Stellar utility token with a fixed 1B supply. Hold 250K to halve trading fees or earn LUMOS through liquidity.',
   image:'https://lumoscore.com/assets/tokens/lumos.png' }];
 function tq(v){ return '"' + String(v == null ? '' : v)
   .replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/[\r\n]+/g, ' ').trim() + '"'; }
