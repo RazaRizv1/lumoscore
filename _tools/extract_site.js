@@ -276,12 +276,34 @@ function stripAuthGate(h){
 //
 // X-Frame-Options DENY matters more than usual here: this app asks a wallet to sign transactions, and
 // a framed signing prompt is a clickjacking target. Verified nothing in the build frames its own pages.
-// No CSP — the design carries hundreds of inline <script> and style attributes, so any useful policy
-// would need 'unsafe-inline' and buy nothing. Adding a real CSP means moving that inline code out first.
+//
+// THE CSP IS DELIBERATELY PARTIAL, and the earlier note here — "any useful policy would need
+// 'unsafe-inline' and buy nothing" — was half right. It is true of script-src and style-src: the design
+// carries hundreds of inline <script> and style attributes, and a script-src that has to allow
+// 'unsafe-inline' protects almost nothing. It is NOT true of the four directives below, none of which
+// has anything to do with inline code, so they are set and the rest are left off until that inline code
+// is moved out.
+//
+//   base-uri 'self'     the one that actually matters. <base href="https://evil/"> re-points every
+//                       root-relative URL on the page at another origin — including
+//                       /assets/vendor/stellar-sdk-*.min.js, the library that builds transactions for
+//                       signing. Self-hosting that file is only worth anything if the browser resolves
+//                       it against OUR origin, and this is what guarantees that.
+//   object-src 'none'   nothing in the build uses <object>, <embed> or a plugin. Checked.
+//   frame-ancestors     backs X-Frame-Options DENY with the header modern browsers actually prefer.
+//   form-action 'self'  the build contains no <form action> and creates none at runtime. Checked. So
+//                       any form that appears is not ours, and cannot post anywhere.
+//
+// Each was verified against the built output before being added rather than assumed safe: zero forms,
+// zero <object>/<embed>, zero real <base> elements (the three matches are inside a comment), and
+// nothing framing our own pages.
+const CSP = "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'";
+
 function headersFile(isAdmin){
   const common =
       '  X-Content-Type-Options: nosniff\n'
     + '  X-Frame-Options: DENY\n'
+    + '  Content-Security-Policy: ' + CSP + '\n'
     + '  Referrer-Policy: strict-origin-when-cross-origin\n'
     + '  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()\n';
   if(isAdmin){
