@@ -90,7 +90,7 @@ const CSS = `<style id="lx-adminanalytics-css">
 const SCRIPT = '<script id="lx-adminanalytics">' + `(function(){
 if(window.__lxAnalytics)return; window.__lxAnalytics=1;
 function q(s){return document.querySelector(s);}
-function esc(s){return String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+function esc(s){return (String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
 function isPage(){var t=((q(".admin-page-title")||q(".mob-page-title")||{}).textContent||"").trim();return t.indexOf("Analytics")===0;}
 function num(n){return (+n||0).toLocaleString();}
 function setT(sel,t){var e=q(sel); if(e)e.textContent=t;}

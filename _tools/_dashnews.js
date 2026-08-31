@@ -42,7 +42,7 @@ const STYLE = '<style id="lx-dashnews-css">'
 
 const SCRIPT = '<script id="lx-dashnews">(function(){'
   + 'var rail=document.querySelector(".lx-news"); if(!rail)return;'
-  + 'function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}'
+  + 'function esc(s){return (String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")).split(String.fromCharCode(39)).join("&#39;");}'
   // Same shortening the trade feed uses, so two parts of the app do not describe the same age differently.
   + 'function ago(ts){var s=Math.max(0,(Date.now()-ts)/1000);'
   + 'if(s<3600)return Math.max(1,Math.floor(s/60))+"m";'

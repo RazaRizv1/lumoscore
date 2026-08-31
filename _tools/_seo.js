@@ -112,9 +112,7 @@ function baseName(key) {
             .replace(/-(dark|light|mobile)$/, '');
 }
 
-function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+function esc(s){return (String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).split(String.fromCharCode(39)).join("&#39;");}
 
 function apply(html, meta) {
   // strip anything a previous run added so this is idempotent

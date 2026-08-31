@@ -176,7 +176,7 @@ const SCRIPT = '<script id="lx-adminblogs">' + `(function(){
 if(window.__lxBlogAdmin)return; window.__lxBlogAdmin=1;
 function q(s){return document.querySelector(s);}
 function qa(s){return [].slice.call(document.querySelectorAll(s));}
-function esc(s){return String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+function esc(s){return (String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
 function isPage(){var t=((q(".admin-page-title")||q(".mob-page-title")||{}).textContent||"").trim();return t.indexOf("Blog")===0;}
 function slugify(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,80);}
 function ago(t){var d=Date.now()-t; if(d<60000)return "just now"; if(d<3600000)return Math.floor(d/60000)+"m ago";
