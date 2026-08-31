@@ -320,9 +320,24 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // Re-derive it from the href, the one field every stored entry has: that fixes entries saved
   // before this change, and an asset removed from the curated list stops being ticked here the same
   // moment it stops being ticked everywhere else, which a stored flag could not do.
+  // BOTH url shapes, and the query one is the shape that actually matters. recFromRow stores
+  // a.getAttribute("href") -- the RAW attribute -- and the result rows above emit
+  // lumoscore-dex-asset.html?asset=CODE-ISSUER, not the clean /trade/stellar/CODE-ISSUER the middleware
+  // redirects it to. So this only ever saw the query form, matched nothing, and NO recent asset was
+  // ever ticked. The clean form is still handled: entries saved from a pasted or shared link use it.
   function recVKey(h){
-    h=String(h||""); var m="/trade/stellar/", i=h.indexOf(m); if(i<0)return "";
-    var a=h.slice(i+m.length), c=a.indexOf("?"); if(c>=0)a=a.slice(0,c);
+    h=String(h||"");
+    var a="", m="/trade/stellar/", i=h.indexOf(m);
+    if(i>=0)a=h.slice(i+m.length);
+    else {
+      // ?asset= / &asset= rather than a bare "asset=", so a parameter merely ENDING in "asset" -- a
+      // future "poolasset=" -- cannot be mistaken for this one.
+      var j=h.indexOf("?asset="); if(j<0)j=h.indexOf("&asset=");
+      if(j<0)return "";
+      a=h.slice(j+7);
+    }
+    var c=a.indexOf("&"); if(c>=0)a=a.slice(0,c);
+    c=a.indexOf("?"); if(c>=0)a=a.slice(0,c);
     c=a.indexOf("#"); if(c>=0)a=a.slice(0,c);
     while(a.length&&a.charAt(a.length-1)==="/")a=a.slice(0,-1);
     try{ a=decodeURIComponent(a); }catch(_e){}
