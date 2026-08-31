@@ -1213,7 +1213,9 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
   // serve.js lets it locally — without this its favicon and wallet logos 404 in production.
   // Only what the admin build actually references is copied (~470 KB), not the whole 19 MB folder.
   if(adminOnly){
-    const need = ['favicon.png', 'wallets'];
+    // 'vendor' holds the self-hosted Stellar libraries. The admin panel signs mainnet transactions
+    // too (rewards payouts), so it must NOT be the one origin left loading them off a public CDN.
+    const need = ['favicon.png', 'wallets', 'vendor'];
     for(const item of need){
       const src = path.join(outRoot, 'assets', item);
       const dst = path.join(outDir, 'assets', item);
