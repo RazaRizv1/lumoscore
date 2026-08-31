@@ -30,7 +30,10 @@ const PLATFORM = [{
   code: 'LUMOS',
   issuer: 'GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S',
   name: 'Lumos Core',
-  desc: 'Utility token of LumosCore on Stellar. Hold 250,000 LUMOS to halve trading fees; or earn it by providing liquidity and holding. Fixed 1B supply.',
+  // Kept byte-identical to the copy at lumosdao.io/.well-known/stellar.toml. That domain is the LUMOS
+  // issuer's on-chain home_domain, so it is the document wallets actually resolve through; this one is
+  // our own assertion and must not tell a different story about the same asset.
+  desc: 'LumosCore brings Web3 essentials — Minting, Trading, Liquidity, Wallets & Explorers — into one multichain platform. LUMOS: Stellar utility token with a fixed 1B supply. Hold 250K to halve trading fees or earn LUMOS through liquidity.',
   image: 'https://lumoscore.com/assets/tokens/lumos.png',
 }];
 const DOMAIN = 'lumoscore.com';
