@@ -23,6 +23,8 @@ const MAIN = `
         </div>
       </div>
 
+      <div class="lxb-flash" id="lxbFlash" hidden></div>
+
       <div class="adm-card">
         <div class="adm-card-head">
           <div><div class="adm-card-title">Posts</div><div class="adm-card-sub" id="lxbSub">Loading&hellip;</div></div>
@@ -135,12 +137,19 @@ const CSS = `<style id="lx-adminblogs-css">
 .lxb-tools button.on b,.lxb-tools button.on i{color:#fff}
 /* Row thumbnail. The dashed empty state is the same language as the cover box in the editor, so a post
    with no cover reads as "none set" rather than as a broken image. */
-.lxb-th{position:relative;flex:0 0 auto;width:72px;height:38px;border-radius:6px;overflow:hidden;
+.lxb-th{position:relative;flex:0 0 auto;width:108px;height:57px;border-radius:8px;overflow:hidden;
   border:1px dashed var(--border);background:linear-gradient(135deg,rgba(127,127,140,.16),rgba(127,127,140,.05))}
 .lxb-th img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
 .lxb-th.has{border-style:solid}
-.lxb-row{display:flex;align-items:center;gap:12px}
+.lxb-row{display:flex;align-items:center;gap:14px}
 .lxb-rowtxt{min-width:0}
+/* Said on the LIST, because that is where saving now leaves you. The message inside the editor was
+   only ever visible for as long as the editor was, which is no longer any time at all. */
+.lxb-flash{display:flex;align-items:center;gap:9px;margin:0 0 16px;padding:12px 15px;border-radius:12px;
+  border:1px solid rgba(34,197,94,.34);background:rgba(34,197,94,.10);color:#22c55e;
+  font:700 13.5px/1.35 "Hanken Grotesk",system-ui,sans-serif}
+.lxb-flash[hidden]{display:none}
+.lxb-flash svg{width:17px;height:17px;flex:0 0 auto}
 .lxb-body{min-height:340px;max-height:60vh;overflow-y:auto;padding:16px 18px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2,transparent);color:var(--text);font:400 15px/1.7 "Hanken Grotesk",system-ui,sans-serif}
 .lxb-body:focus{outline:2px solid var(--accent,#ea6a2c);outline-offset:1px}
 .lxb-body h2{font:800 20px/1.3 "Hanken Grotesk",system-ui,sans-serif;margin:22px 0 8px}
@@ -367,6 +376,18 @@ function syncPublishLabel(post){
 
 function closeEditor(){ var ed=q("#lxbEditor"); if(ed)ed.hidden=true; CUR=null; }
 function status(msg,kind){ var s=q("#lxbStatus"); if(!s)return; s.textContent=msg||""; s.className="lxb-status"+(kind?(" "+kind):""); }
+// Confirmation on the list, since that is where a save now returns you. Clears itself: a banner that
+// is still there ten minutes later stops meaning "this just happened".
+var FLASH_T=null;
+function flash(msg){
+  var f=q("#lxbFlash"); if(!f)return;
+  f.innerHTML="<svg viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'><polyline points='20 6 9 17 4 12'></polyline></svg><span></span>";
+  f.querySelector("span").textContent=msg;
+  f.hidden=false;
+  clearTimeout(FLASH_T);
+  FLASH_T=setTimeout(function(){ f.hidden=true; },6000);
+  try{ window.scrollTo({top:0,behavior:"smooth"}); }catch(e){ window.scrollTo(0,0); }
+}
 function coverPrev(){ var v=(q("#lxbCover")||{}).value||""; var p=q("#lxbCoverPrev"); if(!p)return;
   if(v){ p.style.backgroundImage="url('"+v.replace(/'/g,"%27")+"')"; p.textContent=""; }
   else { p.style.backgroundImage="none"; p.textContent="no cover set"; } }
@@ -395,10 +416,17 @@ function save(published){
   status("Saving\\u2026");
   api("PUT",body).then(function(r){
     if(!r.ok){ status("Could not save: "+((r.d&&(r.d.error||r.d.reason))||("HTTP "+r.status)),"err"); return; }
-    status(published?"Published.":"Draft saved.","ok");
     CUR=r.d.post; PREV_SLUG=r.d.post.slug;
     q("#lxbPublish").textContent=published?"Update":"Publish";
+    // Back to the list, and say what happened there. Staying in the editor after a save left no signal
+    // that anything had landed except a line of small text under the buttons.
+    // A future publishAt means scheduled, not published -- claiming otherwise would send someone
+    // looking for a post that is not live yet.
+    var p=r.d.post||{};
+    var pend=p.published&&p.publishAt&&p.publishAt>Date.now();
+    closeEditor();
     refresh();
+    flash(published?(pend?"Scheduled":"Blog post published"):"Saved in Drafts");
   }).catch(function(e){ status("Could not save: "+e.message,"err"); });
 }
 
