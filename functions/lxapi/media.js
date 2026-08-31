@@ -12,6 +12,7 @@
 // THE ID IS A HASH OF THE BYTES. Uploading the same picture twice stores it once, and because the URL
 // changes whenever the content does, images can be cached immutably and forever.
 import { requireAdmin } from '../../_lib/adminauth.js';
+import { audit } from '../../_lib/audit.js';
 
 const PREFIX = 'media:';
 const MAX = 4 * 1024 * 1024;   // 4 MB: far above a well-exported 1200x630 cover, far below the KV cap
@@ -146,5 +147,6 @@ export async function onRequestPost({ request, env }) {
 
   // Relative, deliberately: the same path works on staging and production, and an absolute URL baked
   // into a post body would pin every image to whichever host happened to upload it.
+  await audit(env, request, 'media.upload', id, { size: buf.byteLength, type });
   return json({ ok: true, id, url: '/lxapi/media?id=' + id, size: buf.byteLength, type }, 200);
 }

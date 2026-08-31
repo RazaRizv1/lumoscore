@@ -14,6 +14,7 @@
 // Keeping bodies out of the index is what stops the index growing into a megabyte payload that every
 // visitor downloads to render six cards.
 import { requireAdmin } from '../../_lib/adminauth.js';
+import { audit } from '../../_lib/audit.js';
 
 const IDX = 'blog:index';
 const POST = 'blog:post:';
@@ -138,6 +139,7 @@ export async function onRequestPut({ request, env }) {
   next.sort((x, y) => (y.publishedAt || y.createdAt || 0) - (x.publishedAt || x.createdAt || 0));
   await kv.put(IDX, JSON.stringify(next));
 
+  await audit(env, request, post && post.live ? 'blog.publish' : 'blog.save', post && post.slug, { title: post && post.title });
   return json({ ok: true, post }, 200, 0);
 }
 
@@ -153,5 +155,6 @@ export async function onRequestDelete({ request, env }) {
   await kv.delete(POST + slug);
   const idx = await readIndex(kv);
   await kv.put(IDX, JSON.stringify(idx.filter((p) => p && p.slug !== slug)));
+  await audit(env, request, 'blog.delete', slug, null);
   return json({ ok: true }, 200, 0);
 }

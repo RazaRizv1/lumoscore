@@ -17,6 +17,7 @@
     "test:mail": "node _email-worker/test/mime.test.mjs"
   },
   "devDependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "wrangler": "^4.126.0"
   }
 }

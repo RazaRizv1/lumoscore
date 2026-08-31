@@ -122,3 +122,27 @@ CREATE TABLE IF NOT EXISTS listing_request (
   discord     TEXT
 );
 CREATE INDEX IF NOT EXISTS listing_status ON listing_request (status, created_at DESC);
+
+-- Who did what in the admin panel.
+--
+-- Exists because the panel stopped being single-user. Two people now curate assets, publish posts,
+-- approve listings and send refunds, and until this table there was no way to tell afterwards which
+-- of them did any of it, or when. Refunds are the sharpest case: money leaves, and the only record
+-- was the transaction itself with nothing tying it to a decision.
+--
+-- actor is the email Cloudflare Access put in the verified token, never anything the client sent.
+-- detail is a short JSON blob, deliberately small: enough to answer "what changed", not a copy of the
+-- content -- the content already lives in KV and has its own history.
+--
+-- Append-only by intention. Nothing in the panel updates or deletes a row here; a mistaken entry is
+-- corrected by a later one, because a log you can edit answers no question worth asking.
+CREATE TABLE IF NOT EXISTS admin_audit (
+  id      INTEGER PRIMARY KEY AUTOINCREMENT,
+  at      INTEGER NOT NULL,          -- ms since epoch
+  actor   TEXT NOT NULL,             -- from the Access JWT, not from the request body
+  action  TEXT NOT NULL,             -- 'listing.approve', 'asset.curate', 'blog.publish', …
+  target  TEXT,                      -- what it was done to: an asset, a slug, a request id
+  detail  TEXT                       -- small JSON, may be null
+);
+CREATE INDEX IF NOT EXISTS admin_audit_at ON admin_audit (at DESC);
+CREATE INDEX IF NOT EXISTS admin_audit_actor ON admin_audit (actor, at DESC);
