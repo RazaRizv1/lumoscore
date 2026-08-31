@@ -568,28 +568,6 @@ export async function onRequest(context){
     return Response.redirect(to.toString(), 301);
   }
 
-  // 0c) THE THREE OPEN URL PATTERNS. /trade/stellar/:asset, /account/stellar/:address and the two
-  // /pools/stellar forms accepted literally any string, returned 200, built a unique title out of the
-  // junk and self-canonicalised to it -- an unbounded space of indexable pages that burns crawl budget
-  // and dilutes the real asset pages.
-  //
-  // FORMAT ONLY, deliberately. Checking that the asset actually EXISTS would need an upstream call on
-  // every request, and that upstream is exactly the one already proven to fail intermittently -- a
-  // wobble there would start 404ing real assets, which is far worse than serving a well-formed one
-  // that happens to be empty. A Stellar issuer is 56 base32 characters; a crawler does not invent
-  // those, so the space stops being unbounded.
-  const bad = malformedId(url.pathname);
-  if (bad){
-    return new Response('Not found', {
-      status: 404,
-      headers: {
-        'content-type': 'text/plain; charset=utf-8',
-        'cache-control': 'public, max-age=300',
-        'x-robots-tag': 'noindex, nofollow',
-      },
-    });
-  }
-
   // 1) someone navigated to a raw build filename -> send them to the canonical clean url
   const legacy = legacyClean(url.pathname, url.searchParams);
   if (legacy){
@@ -622,6 +600,34 @@ export async function onRequest(context){
     to.search = url.search;
     to.hash = url.hash;
     return Response.redirect(to.toString(), 301);
+  }
+
+  // 1c) THE THREE OPEN URL PATTERNS. /trade/stellar/:asset, /account/stellar/:address and the two
+  // /pools/stellar forms accepted literally any string, returned 200, built a unique title out of the
+  // junk and self-canonicalised to it -- an unbounded space of indexable pages that burns crawl budget
+  // and dilutes the real asset pages.
+  //
+  // AFTER THE REDIRECTS ABOVE, NOT BEFORE THEM. Placed first, this 404ed every url the app itself
+  // navigates to: the pool page is reached by assigning location.href="lumoscore-amm-pool.html?pool=..."
+  // from a page already at /trade/stellar/..., so the browser asks for
+  // /trade/stellar/lumoscore-amm-pool.html -- three segments under /trade/stellar, whose last one is a
+  // filename and not an asset id. legacyClean exists precisely to redirect that, and it never got the
+  // chance. Every Pools-pool page on production returned "Not found" until this moved down.
+  //
+  // FORMAT ONLY, deliberately. Checking that the asset actually EXISTS would need an upstream call on
+  // every request, and that upstream is exactly the one already proven to fail intermittently -- a
+  // wobble there would start 404ing real assets, which is far worse than serving a well-formed one
+  // that happens to be empty. A Stellar issuer is 56 base32 characters; a crawler does not invent
+  // those, so the space stops being unbounded.
+  if (malformedId(url.pathname)){
+    return new Response('Not found', {
+      status: 404,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'public, max-age=300',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    });
   }
 
   const hit = match(url.pathname);
