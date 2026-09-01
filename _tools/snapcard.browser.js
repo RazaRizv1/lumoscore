@@ -171,12 +171,15 @@
     var pc = q('#dxaChart') || q('#mdxaChart');
     var raw = (pc && pc.__lxpts) || [];
     // __lxpts is stored in USD per unit whatever the toggle says; the toggle is applied at label time.
-    var series = [], vols = [], i;
+    var series = [], vols = [], times = [], i;
     for (i = 0; i < raw.length; i++) {
       var v = parseFloat(raw[i].v);
       if (!isFinite(v)) continue;
       series.push(denom === 'xlm' && xlmUsd > 0 ? v / xlmUsd : v);
       vols.push(Math.max(0, parseFloat(raw[i].vol) || 0));
+      // t is epoch ms on every point; carried so the X axis can be labelled with real times rather
+      // than a guess derived from the timeframe button.
+      times.push(+raw[i].t || 0);
     }
 
     // "0.0275049 XLM" or "$0.0048145" -- the page has already chosen the unit and the precision.
@@ -250,7 +253,7 @@
     return {
       code: code, issuer: issuer, native: native, verified: !!q('.lx-vtick'),
       domain: dom, price: num, unit: unit, alt: alt, chg: chg, dir: dir,
-      hi: hi, lo: lo, wins: wins, series: series, vols: vols,
+      hi: hi, lo: lo, wins: wins, series: series, vols: vols, times: times,
       tf: tfEl ? tfEl.textContent.trim() : '', denom: denom,
       url: location.origin + location.pathname,
       short: location.host.replace(/^www\./i, '') + '/trade',
@@ -494,7 +497,7 @@
   }
 
   // Returns the endpoint, which the light behind the card is centred on.
-  function drawChart(g, R, series, vols, d, th) {
+  function drawChart(g, R, series, vols, d, th, times) {
     var n = series.length;
     if (n < 2) return null;
     var mn = series[0], mx = series[0], i;
@@ -527,36 +530,104 @@
       for (var k = 1; k < n; k++) g.lineTo(X(k), Y(series[k]));
     }
 
-    // area
+    // MATCHED TO THE CHART ON THE PAGE, read off it rather than eyeballed: the SVG line computes to
+    // stroke #ea6a2c at 2.5px with round caps and filter:none, and its area is a single linear
+    // gradient from the accent at 0.20 opacity to 0. The card used to draw something else entirely --
+    // three stacked strokes standing in for a bloom, a left-dim/right-bright ramp along the line, an
+    // area running 0.34 -> 0.10 -> 0, and the whole thing in the 24h direction colour rather than the
+    // accent. It read as a different product's chart. All of that is gone.
+    // Stroke width is proportional so the phone card and the desktop card land on the same weight
+    // relative to the plot, rather than one looking hairline and the other heavy.
+    var LINE = accentOf(th);
+    var lw = Math.max(2, R.h * 0.016);
+
     trace();
     g.lineTo(R.x + R.w, R.y + R.h);
     g.lineTo(R.x, R.y + R.h);
     g.closePath();
     var ag = g.createLinearGradient(0, R.y, 0, R.y + R.h);
-    ag.addColorStop(0, hexA(d.c, 0.34));
-    ag.addColorStop(0.55, hexA(d.c, 0.10));
-    ag.addColorStop(1, hexA(d.c, 0));
+    ag.addColorStop(0, hexA(LINE, 0.20));
+    ag.addColorStop(1, hexA(LINE, 0));
     g.fillStyle = ag; g.fill();
 
-    // The dim-past / bright-now ramp, shared by all three passes. Three stacked strokes stand in for a
-    // bloom: a real blur filter would have to be applied to the whole layer and canvas filters are not
-    // dependable across the browsers a wallet ships.
-    var sg = g.createLinearGradient(R.x, 0, R.x + R.w, 0);
-    sg.addColorStop(0, hexA(d.c, 0.30));
-    sg.addColorStop(0.45, hexA(d.c, 0.62));
-    sg.addColorStop(0.82, d.c);
-    sg.addColorStop(1, d.c);
-    g.lineJoin = 'round'; g.lineCap = 'round'; g.strokeStyle = sg;
-    var passes = [[R.h * 0.062, 0.10], [R.h * 0.029, 0.22], [R.h * 0.0118, 1]];
-    for (i = 0; i < passes.length; i++) {
-      g.globalAlpha = passes[i][1];
-      g.lineWidth = Math.max(1, passes[i][0]);
-      trace(); g.stroke();
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.strokeStyle = LINE; g.lineWidth = lw;
+    trace(); g.stroke();
+
+    // ---- axes. The page labels price down the right and time along the bottom, both in the muted
+    // ink; the card had neither, only a high/low pair and the words "Last 24 hours". Same two scales
+    // here, at the same relative sizes, so a shared card can actually be read as a chart.
+    var aS = Math.max(9, Math.round(R.h * 0.052));
+    g.save();
+    g.globalAlpha = 0.9;
+    var TICKS = 4;
+    for (i = 0; i <= TICKS; i++) {
+      var vv = mn + (mx - mn) * (i / TICKS);
+      var yy = Y(vv);
+      // a hairline behind each label, so the eye can carry the value across the plot
+      g.globalAlpha = 0.10; g.fillStyle = th.axis;
+      g.fillRect(R.x, Math.round(yy) + 0.5, R.w, 1);
+      g.globalAlpha = 0.9;
+      // A halo in the card's own ground. These labels sit INSIDE the plot -- there is no left gutter
+      // to put them in -- so on a series that runs high at the start the top one or two land directly
+      // on the line. Measured on the portrait card: 5.72 and 5.68 were both unreadable against it.
+      // Shadow rather than a filled chip, so nothing boxes the number.
+      g.save();
+      g.shadowColor = th.bg; g.shadowBlur = 6;
+      tx(g, axisNum(vv), R.x + 6, yy - aS - 3, aS, '500', MONO, th.axis);
+      tx(g, axisNum(vv), R.x + 6, yy - aS - 3, aS, '500', MONO, th.axis);
+      g.restore();
     }
-    g.globalAlpha = 1;
+    if (times && times.length === n) {
+      var XT = 4;
+      for (i = 0; i <= XT; i++) {
+        var idx = Math.round((n - 1) * (i / XT));
+        var lab = axisTime(times[idx], times[0], times[n - 1]);
+        if (!lab) continue;
+        var al = i === 0 ? 'left' : (i === XT ? 'right' : 'center');
+        var xx = X(idx) + (i === 0 ? 2 : (i === XT ? -2 : 0));
+        // Drawn on the row that used to hold "Last 24 hours … now". Those two were a description of
+        // the window; these are the window, and they cannot both live here -- chartBot is only 8-12px
+        // above this line.
+        var xay = (R.xAxisY != null) ? R.xAxisY : (R.y + R.h + 6);
+        tx(g, lab, xx, xay, aS, '500', MONO, th.axis, al);
+      }
+    }
+    g.restore();
 
     var ex = X(n - 1), ey = Y(series[n - 1]);
     return { x: ex, y: ey };
+  }
+
+  // The page's accent, not a colour of our own: the card should be the same orange the chart behind
+  // it is drawn in, and it follows a theme change for free.
+  function accentOf(th) {
+    var v = '';
+    try { v = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '').trim(); } catch (_) {}
+    return /^#[0-9a-f]{6}$/i.test(v) ? v : ACCENT;
+  }
+  // Axis values are read at a glance, not to seven decimals. Significant figures rather than a fixed
+  // precision, because one asset trades at 5.63 and the next at 0.0000499.
+  function axisNum(v) {
+    var a = Math.abs(v);
+    if (!isFinite(v)) return '';
+    if (a >= 1000) return Math.round(v).toLocaleString('en-US');
+    if (a >= 1) return v.toFixed(2);
+    if (a >= 0.01) return v.toFixed(4);
+    if (a === 0) return '0';
+    var dp = Math.min(8, Math.max(4, 2 - Math.floor(Math.log(a) / Math.LN10)));
+    return v.toFixed(dp).replace(/0+$/, '').replace(/\.$/, '');
+  }
+  // A day of data wants clock times; a year wants dates. Decided from the span the series covers, so
+  // it is right for whichever timeframe button is active without being told which.
+  function axisTime(t, t0, t1) {
+    if (!t) return '';
+    var d0 = new Date(t), span = (t1 - t0) || 0;
+    if (span <= 36 * 3600 * 1000) return pad2(d0.getHours()) + ':' + pad2(d0.getMinutes());
+    if (span <= 400 * 24 * 3600 * 1000) {
+      return d0.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d0.getMonth()];
+    }
+    return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d0.getMonth()] + ' ' + String(d0.getFullYear()).slice(2);
   }
   // Alpha onto a #rrggbb, since the palette is stored as hex and gradients need rgba.
   function hexA(hex, a) {
@@ -667,7 +738,7 @@
       chartBot = timeTop - 8;
     }
     var axisGutter = big ? 0 : 78;
-    var R = { x: P.l, y: chartTop, w: W - P.l - P.r - axisGutter, h: Math.max(60, chartBot - chartTop) };
+    var R = { x: P.l, y: chartTop, w: W - P.l - P.r - axisGutter, h: Math.max(60, chartBot - chartTop), xAxisY: timeTop };
 
     // A first, throwaway pass just to learn where the line ends, so the light can be laid down before
     // the chart is drawn over it. Cheaper and far simpler than duplicating the scale maths.
@@ -737,7 +808,7 @@
     }
 
     // ---- chart, over the light it cast
-    var end2 = drawChart(g, R, m.series, m.vols, d, th);
+    var end2 = drawChart(g, R, m.series, m.vols, d, th, m.times);
     if (end2) drawDot(g, end2.x, end2.y, big ? 11 : 8, d, th);
 
     // Axis labels. High and low keep their own directional colours -- they are not the day's direction.
@@ -745,11 +816,8 @@
     if (m.hi) tx(g, m.hi + ' H', lx, R.y, axisS, '400', MONO, DIR.up[m.theme].c, 'right');
     if (m.lo) tx(g, m.lo + ' L', lx, R.y + R.h - axisS, axisS, '400', MONO, DIR.down[m.theme].c, 'right');
 
-    // Time row: the window the chart is actually showing, then now.
-    var label = ({ '1D': 'Last 24 hours', '1W': 'Last 7 days', '1M': 'Last 30 days', '1Y': 'Last year' })[m.tf]
-      || (m.tf ? 'Last ' + m.tf : '');
-    if (label) tx(g, label, R.x, timeTop, axisS, '500', MONO, th.axis);
-    tx(g, 'now', R.x + R.w, timeTop, axisS, '700', MONO, th.ink, 'right');
+    // The "Last 24 hours … now" row is gone: drawChart now draws the real X scale on this line, which
+    // says the same thing and says it at every point rather than only at the two ends.
 
     // ---- the windows
     var wins = m.wins.length ? m.wins : [];
@@ -783,26 +851,21 @@
     // 14px it ran clean through the stat cards beside it, and truncated it reads as broken. The QR two
     // centimetres away carries the exact address, which is what the QR is for.
     var shortUrl = m.short;
+    // The wordmark, the flame and the short url are GONE from the footer -- the QR is the only mark
+    // left, and it already carries the address the url was spelling out. shortUrl stays computed in
+    // the model because the QR encodes the full link; it is simply no longer drawn.
+    // The timestamp stays: it is neither the brand nor the link, and a shared card is worth less if
+    // you cannot tell when the price in it was true. Easy to drop if it is not wanted.
     if (big) {
       g.fillStyle = th.rule; g.fillRect(P.l, ruleY, W - P.l - P.r, 1);
-      if (flame) g.drawImage(flame, P.l, footTop + (footH - 46) / 2, 46, 46);
-      tx(g, 'LumosCore', P.l + 46 + 12, footTop + (footH - 34) / 2, 34, '800', UI, th.ink);
       var qx = W - P.r - qrBox;
       drawQR(g, m.url, qx, footTop, qrBox, th);
-      var rx2 = qx - 22;
-      tx(g, shortUrl, rx2, footTop + (footH - 45) / 2, 20, '400', MONO, th.muted, 'right');
-      tx(g, stampS, rx2, footTop + (footH - 45) / 2 + 25, 16, '400', MONO, th.axis, 'right');
+      tx(g, stampS, qx - 22, footTop + (footH - 16) / 2, 16, '400', MONO, th.axis, 'right');
     } else {
       var fy = winsTop, fh = winH;
       var qx2 = W - P.r - qrBox;
       drawQR(g, m.url, qx2, fy + fh - qrBox, qrBox, th);
-      var rx3 = qx2 - 16;
-      var bw2 = wid(g, 'LumosCore', 25, '800', UI);
-      var by = fy + fh - 66;
-      if (flame) g.drawImage(flame, rx3 - bw2 - 34 - 10, by - 4, 34, 34);
-      tx(g, 'LumosCore', rx3, by, 25, '800', UI, th.ink, 'right');
-      tx(g, shortUrl, rx3, by + 25 + 8, 14, '400', MONO, th.muted, 'right');
-      tx(g, stampS, rx3, by + 25 + 8 + 14 + 5, 12, '400', MONO, th.axis, 'right');
+      tx(g, stampS, qx2 - 16, fy + fh - qrBox + (qrBox - 12) / 2, 12, '400', MONO, th.axis, 'right');
     }
 
     grain(g, W, H, th.grain);
