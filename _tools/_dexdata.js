@@ -439,6 +439,13 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // Eleven added so the curated list is deep enough to fill Gainers, Losers and Volume without
     // padding them -- see #34. Every one carries a verified tick, and every tick was earned by the
     // handshake described in lib.js rather than by appearing in an index.
+    // TDT is ours: minted on the launchpad, listed in lumoscore.com's stellar.toml with code, issuer
+    // and image, and already in the admin curated list. It carried the verified tick everywhere that
+    // reads that list -- the Trade-Asset page, search, wallet, account -- but not here, because THIS
+    // table is a hardcoded universe rather than a read of the curated list. Adding an asset in the
+    // admin panel therefore cannot put it on Trade main; it has to be added here as well.
+    // Logo comes from our own manifest rather than meta.stellar.expert, since we host it.
+    {code:"TDT", issuer:"GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG", cat:"utility", b:"#3a3f4b", logo:"/assets/tokens/TDT-GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG.jpg"},
     {code:"XRP", issuer:"GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5", cat:"utility", b:"#23292f", logo:"https://meta.stellar.expert/nucngezl7i5tkm234qvcaoh2bj3vjwplvpay6yi7tqnih6puiyha"},
     {code:"SCOP", issuer:"GC6OYQJIZF3HFXCYPFCBXYXNGIBQ4TNSFUBUXQJOZWIP6F3YZK4QH3VQ", cat:"utility", b:"#2f6fed", logo:"https://meta.stellar.expert/6mixn2ch4cd46jgellalrjnzfhgtuavwoylx3dzx4e7hbx57mnlq"},
     {code:"MTL", issuer:"GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V", cat:"utility", b:"#c0392b", logo:"https://meta.stellar.expert/2lwcjvyaiye2plbkkhesvwammffe7nr4edi7tw55jj3gm2yrhovq"},
