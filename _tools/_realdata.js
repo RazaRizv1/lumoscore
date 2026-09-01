@@ -55,6 +55,12 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'text-transform:uppercase;letter-spacing:.06em;padding:4px 7px;border-radius:999px;'
 +'background:rgba(127,127,140,.14);color:var(--text-muted,#8a8fa3)}'
 +'.lx-actverb.swap{background:rgba(139,123,255,.16);color:#8b7bff}'
+// Transfer had been sharing swap's purple, so the two most common kinds in the feed looked identical.
+// Green is the one clear gap in this set -- purple, teal, pink, sky, orange, yellow and slate are all
+// taken, and the near neighbours of each of those would read as the same tag at 11px.
++'.lx-actverb.transfer{background:rgba(34,197,94,.16);color:#22c55e}'
+// The arrow between the two ends of a transfer. Muted, so the addresses stay the thing you read.
++'.lx-actarrow{color:var(--text-soft,#8a8fa3);opacity:.75;margin:0 2px;font-size:12px}'
 +'.lx-actverb.lp{background:rgba(45,212,191,.16);color:#2dd4bf}'
 +'.lx-actverb.order{background:rgba(244,114,182,.16);color:#f472b6}'
 +'.lx-lpneg{color:var(--red,#ff5b5b)}'
@@ -221,7 +227,10 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'if(o.type==="payment"&&o.asset_issuer&&o.asset_issuer===o.from)'
 +'return {ic:DROP,cls:"mint",act:"Mint",type:"<b>"+amt(+o.amount)+" "+aic(o.asset_code,o.asset_issuer)+esc(o.asset_code)+"</b> issued",inl:1};'
 +'if(o.type==="payment")'
-+'return {ic:SWAP,cls:"swap",act:"Transfer",type:"<b>"+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",inl:1};'
+// cls is "transfer", not "swap": both tags were reading the same purple, so a transfer and a swap
+// were indistinguishable at a glance. from/to are carried through so the row can name both ends --
+// a transfer with only one address does not say who was paid, which is the half that matters.
++'return {ic:SWAP,cls:"transfer",act:"Transfer",from:(o.from||""),to:(o.to||""),type:"<b>"+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",inl:1};'
 +'if(o.type&&o.type.indexOf("offer")>=0)'
 +'{var oamt=+o.amount||0, isNew=String(o.offer_id||"0")==="0";'
 +'var pair=aic(acode(o,"selling"),o.selling_asset_issuer||"")+esc(acode(o,"selling"))+" / "+aic(acode(o,"buying"),o.buying_asset_issuer||"")+esc(acode(o,"buying"));'
@@ -308,10 +317,12 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'function aic(code,iss){ code=String(code||""); if(!code)return "";'
 +'return \'<span class="act-inl lx-actasset" data-lxc="\'+esc(code)+\'" data-c="\'+esc(code)+\'"'
 +' data-i="\'+esc(iss||"")+\'" data-l=""></span>\'; }'
+// One address link, so a row can render two of them without the markup being written out twice.
++'function actWho(a){return \'<a class="lx-actwho" href="/account/stellar/\'+esc(a)+\'" title="\'+esc(a)+\'">\'+iavatar(a,18)+esc(shortAddr(a))+\'</a>\';}'
 +'function feedRow(r){'
 +'return \'<div class="activity-feed-row" data-lx-noswap="1">\''
 +'+\'<div class="info"><div class="type">\'+r.type+\'</div>\''
-+'+(r.who?(\'<div class="meta lx-actmeta">\'+(r.act?(\'<span class="lx-actverb \'+r.cls+\'">\'+esc(r.act)+\'</span>\'):"")+\'<a class="lx-actwho" href="/account/stellar/\'+esc(r.who)+\'" title="\'+esc(r.who)+\'">\'+iavatar(r.who,18)+esc(shortAddr(r.who))+\'</a></div>\'):\'<div class="meta"></div>\')'
++'+(r.who?(\'<div class="meta lx-actmeta">\'+(r.act?(\'<span class="lx-actverb \'+r.cls+\'">\'+esc(r.act)+\'</span>\'):"")+actWho(r.who)+((r.to&&r.to!==r.who)?(\'<span class="lx-actarrow" aria-hidden="true">\\u2192</span>\'+actWho(r.to)):"")+\'</div>\'):\'<div class="meta"></div>\')'
 +'+\'</div>\''
 +'+\'<div class="time">\'+r.when+\'</div>\''
 +'+\'<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/\'+esc(r.hash)+\'" target="_blank" rel="noopener" title="View transaction">\'+XPI+\'</a>\''
@@ -412,6 +423,9 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'||ops[0];'
 +'var de=describeOp(pick); if(!de)return;'
 +'rows[i].ic=de.ic;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].act=de.act||"";rows[i].acode=de.acode||"";rows[i].aiss=de.aiss||"";'
+// The row is seeded with the transaction's source account; the operation knows who actually paid and
+// who was paid, so prefer those once it has been read.
++'if(de.from)rows[i].who=de.from;rows[i].to=de.to||"";'
 +'list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});'
 +'}).catch(function(){}).then(function(){ _eA--; _ePump(); });});});'
