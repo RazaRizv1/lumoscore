@@ -393,7 +393,15 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'function lxFixLpIcons(){try{var els=document.querySelectorAll("#lpPanel .lx-lpico");for(var i=0;i<els.length;i++){var el=els[i];var nat=el.getAttribute("data-lxnat")==="1";var code=el.getAttribute("data-lxcode")||"";var lg=nat?(window.__lxStellarUri||STELLAR_URI):((window.__lxLogos||{})[code]||"");if(!lg)continue;var cur=el.style.getPropertyValue("--ic")||"";if(cur.indexOf(String(lg).slice(0,24))<0)el.style.setProperty("--ic","url(\\x27"+String(lg).replace(/\\x27/g,"%27")+"\\x27)");if(el.getAttribute("data-l")){el.classList.add("lx-din");el.setAttribute("data-l","");}}}catch(_){}}'
 +'var _lpFixIv=null;function lxScheduleLpFix(){lxFixLpIcons();if(_lpFixIv)clearInterval(_lpFixIv);var n=0;_lpFixIv=setInterval(function(){n++;lxFixLpIcons();if(n>=12){clearInterval(_lpFixIv);_lpFixIv=null;}},400);}'
 +'function lxHarvestLpLogos(){var seen={};[].slice.call(document.querySelectorAll("#lpPanel .lx-lpico[data-lxi]")).forEach(function(el){var code=el.getAttribute("data-lxc"),iss=el.getAttribute("data-lxi");if(!code||!iss)return;var cached=(window.__lxLogos||{})[code];if(cached){el.style.setProperty("--ic","url(\\x27"+String(cached).replace(/\\x27/g,"%27")+"\\x27)");el.setAttribute("data-l","");return;}var key=code+"|"+iss;if(seen[key])return;seen[key]=1;j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){var recs=(d._embedded&&d._embedded.records)||[];var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+iss)===0;})[0];var ti=(m&&(m.tomlInfo||m.toml_info))||{};var img=ti.image||ti.orgLogo||"";if(!img)return;try{(window.__lxLogos=window.__lxLogos||{})[code]=img;}catch(_){}[].slice.call(document.querySelectorAll("#lpPanel .lx-lpico[data-lxi=\\x27"+iss+"\\x27][data-lxc=\\x27"+code+"\\x27]")).forEach(function(x){x.style.setProperty("--ic","url(\\x27"+String(img).replace(/\\x27/g,"%27")+"\\x27)");x.setAttribute("data-l","");});}).catch(function(){});});}'
-+'function renderLP(lps){var panel=document.getElementById("lpPanel");if(!panel)return;var tb=panel.querySelector("tbody");if(!tb)return;var top=lps.slice(0,10);'
++'function renderLP(lps,page){var panel=document.getElementById("lpPanel");if(!panel)return;var tb=panel.querySelector("tbody");if(!tb)return;'
+// 25 a page, then a pager. The old slice(0,10) was a silent truncation: the tab counter beside it reads
+// the full length, so an account with 22 positions was told it had 22 and shown 10, with nothing on the
+// page admitting the other 12 existed. Each row costs one /liquidity_pools call, which is why this is
+// paged rather than simply unbounded.
++'var LPPER=25;window.__lxLpAll=lps;'
++'var lpPages=Math.max(1,Math.ceil(lps.length/LPPER));'
++'page=Math.min(Math.max(0,page|0),lpPages-1);window.__lxLpPage=page;'
++'var top=lps.slice(page*LPPER,page*LPPER+LPPER);'
 +'if(!top.length){tb.innerHTML=\'<tr><td colspan="6" style="padding:28px;text-align:center;color:var(--text-muted)">No liquidity positions</td></tr>\';return;}'
 +'Promise.all(top.map(function(b){return j(H+"/liquidity_pools/"+b.liquidity_pool_id).then(function(p){return{b:b,p:p};}).catch(function(){return{b:b,p:null};});})).then(function(rows){var html="";rows.forEach(function(r){var p=r.p,bal=+r.b.balance;var res=(p&&p.reserves)||[];var a0=assetCode(res[0]),a1=assetCode(res[1]);var i0=assetIssuer(res[0]),i1=assetIssuer(res[1]),n0=assetNative(res[0]),n1=assetNative(res[1]);var pct=(p&&+p.total_shares>0)?(bal/(+p.total_shares)*100):0;'
 +'html+=\'<tr data-pool="\'+esc(r.b.liquidity_pool_id)+\'"><td><div class="lp-pair" style="cursor:pointer"><div class="lp-icons">\'+lpIco(a0,i0,n0)+lpIco(a1,i1,n1)+\'</div><div><div class="lp-nm">\'+esc(a0)+\' / \'+esc(a1)+\'</div><div class="lp-sb">0.30% fee tier \\u00b7 Stellar AMM</div></div></div></td>\''
@@ -401,7 +409,23 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'+\'<td><span class="lp-apr">\\u2014</span></td>\''
 +'+\'<td class="right"><div class="p1">\'+(res.length?amt(+res[0].amount)+\' <span style="color:var(--text-soft);font-size:14px">\'+esc(a0)+\'</span>\':"\\u2014")+\'</div><div class="p2">\'+(res.length>1?amt(+res[1].amount)+\' \'+esc(a1):"")+\'</div></td>\''
 +'+\'<td class="right"><div class="p1">\\u2014</div></td>\''
-+'+\'<td class="right">\'+LPQA+\'</td></tr>\';});tb.innerHTML=html;lxHarvestLpLogos();lxScheduleLpFix();if(!tb.__lxMo){tb.__lxMo=1;try{new MutationObserver(function(){lxFixLpIcons();}).observe(tb,{childList:true});}catch(_){}}'
++'+\'<td class="right">\'+LPQA+\'</td></tr>\';});'
+// The pager only exists when there is a second page; with 22 positions nothing is added at all.
++'if(lpPages>1){html+=\'<tr class="lx-lppg"><td colspan="6" style="padding:14px 18px">\''
++'+\'<div style="display:flex;align-items:center;justify-content:center;gap:14px">\''
++'+\'<button type="button" class="lx-lpp" data-d="-1"\'+(page<=0?\' disabled\':\'\')'
++'+\' style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;opacity:\'+(page<=0?\'.4\':\'1\')+\'">Previous</button>\''
++'+\'<span style="color:var(--text-muted);font-size:12.5px;font-family:\\x27JetBrains Mono\\x27,monospace">Page \'+(page+1)+\' of \'+lpPages+\'</span>\''
++'+\'<button type="button" class="lx-lpp" data-d="1"\'+(page>=lpPages-1?\' disabled\':\'\')'
++'+\' style="background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 12px;font-size:12.5px;font-weight:700;cursor:pointer;opacity:\'+(page>=lpPages-1?\'.4\':\'1\')+\'">Next</button>\''
++'+\'</div></td></tr>\';}'
++'tb.innerHTML=html;lxHarvestLpLogos();lxScheduleLpFix();if(!tb.__lxMo){tb.__lxMo=1;try{new MutationObserver(function(){lxFixLpIcons();}).observe(tb,{childList:true});}catch(_){}}'
+// Bound in capture and stopped here so the row-opens-the-pool handler never sees a pager click.
++'if(!tb.__lxpg){tb.__lxpg=1;tb.addEventListener("click",function(ev){'
++'var pb=ev.target&&ev.target.closest?ev.target.closest(".lx-lpp"):null;if(!pb)return;'
++'ev.preventDefault();ev.stopImmediatePropagation();if(pb.disabled)return;'
++'renderLP(window.__lxLpAll||[],(window.__lxLpPage|0)+(pb.getAttribute("data-d")==="1"?1:-1));'
++'},true);}'
 // LP row -> pool detail nav: pair name / +Add (deposit) / -Remove (withdraw) / ...menu "View pool page".
 +'if(!panel.__lxNav){panel.__lxNav=1;panel.addEventListener("click",function(e){var t=e.target;if(!t||!t.closest)return;var row=t.closest("tr[data-pool]");if(!row)return;var hex=row.getAttribute("data-pool");if(!hex)return;/* clean url DIRECTLY: going via lumoscore-amm-pool.html?pool= meant a 301, and the redirect that promoted the id into the path used to drop act=withdraw. Browsers cache a 301 permanently, so every user who clicked Remove before that fix would keep getting the old query-less redirect from cache. Link straight to the destination and no redirect is involved. */var base="/pools/stellar/id/"+hex;var btn=t.closest(".qa-row-btn");if(btn){if(btn.classList.contains("icon-only")){window.__lxLpMenuPool=hex;setTimeout(function(){var mn=document.querySelector(".row-menu");if(!mn)return;[].slice.call(mn.querySelectorAll("button,a")).forEach(function(it){if(/view pool/i.test(it.textContent||"")){if(it.__lxwp)return;it.__lxwp=1;it.addEventListener("click",function(){location.href="/pools/stellar/id/"+(window.__lxLpMenuPool||hex);});}});},70);return;}var lbl=(btn.textContent||"").trim();if(/remove/i.test(lbl)){e.preventDefault();e.stopImmediatePropagation();location.href=base+"?act=withdraw";}else if(/add/i.test(lbl)){e.preventDefault();e.stopImmediatePropagation();location.href=base;}return;}if(t.closest(".lp-nm")||t.closest(".lp-pair")){e.preventDefault();location.href=base;}},true);}'
 +'}).catch(function(){});}'
@@ -416,7 +440,22 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // offer selling it, or -- the case that prompted this -- deposits sitting in a liquidity pool, where the
 // asset does NOT show up as a balance and the row honestly reads 0. Ask, then name the actual blocker.
 +'.catch(function(err){bt.__lxb=0;bt.innerHTML=lbl;var m=((err&&err.message)||err)+"";'
-+'function say(t){try{lxToast(t);}catch(_){}}'
+// These are DIAGNOSES, not confirmations -- a sentence naming what is still holding the trustline --
+// and they were sharing the 2.2s the design uses for "Copied". That is under a second of reading time
+// per line, so the one message that exists to explain something was gone before it was read.
+//
+// NOTE ON THE NUMBER: the request was "increase it to 2 seconds", but the toast these already used
+// runs 2200ms, so 2s would have been a cut. 6s is roughly reading time for the longest of them plus a
+// beat to look down at it. Easy to change -- it is the one number below.
+//
+// Own renderer rather than the design's showToast: that one owns its own removal timer and returns
+// nothing to re-schedule. Same .toast element in the same .toast-stack, so it looks identical, minus
+// the success tick, which has no business on a failure.
++'function lxToastFor(msg,ms){try{var st=document.querySelector(".toast-stack");if(!st){lxToast(msg);return;}'
++'var t=document.createElement("div");t.className="toast";'
++'var sp=document.createElement("span");sp.textContent=msg;t.appendChild(sp);'
++'st.appendChild(t);setTimeout(function(){try{t.remove();}catch(_){}},ms||2200);}catch(_){try{lxToast(msg);}catch(__){}}}'
++'function say(t){try{lxToastFor(t,6000);}catch(_){}}'
 // Do NOT gate the diagnosis on the error text. Stellar returns op_cannot_delete when a liquidity-pool share
 // still depends on the trustline -- that string contains none of the words the old filter looked for, so the
 // one case this message exists for was the one case it never explained. Diagnose every failure instead.
@@ -430,6 +469,25 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'say("Can\u2019t remove "+code+" yet \u2014 it is still in use (pool deposit, balance or open offer).");'
 +'}).catch(function(){say("Can\u2019t remove "+code+" yet \u2014 it is still in use (pool deposit, balance or open offer).");});'
 +'});},true);}'
+// The empty/failed states for My Assets. prep() lays four shimmer rows into #assetsTable and the
+// painter below only replaces them `if(out)` -- so with nothing to paint the placeholders stayed, and
+// the table shimmered forever. On Stellar that is not a rare corner: an account does not EXIST until
+// it is funded, Horizon answers 404, j() resolves {__nf:1}, and every balance list is empty. Everything
+// else on the page handled it (0 Holdings, No open orders, No recent activity) -- this one table did
+// not, so an unfunded wallet looked like a page still loading, forever.
+//
+// rows.length===0 means the account is not on the ledger, not that it holds nothing: a real account
+// always carries a native XLM balance, so it can never produce zero rows. The __nf marker is still
+// what decides the wording, so a future non-404 empty gets the neutral copy rather than a wrong claim.
++'function lxAssetsEmpty(kind){var t,s;'
++'if(kind==="nf"){t="Your wallet address is not active";'
++'s="A Stellar account only exists once it has been funded. Send at least 1 XLM to this address to activate it.";}'
++'else if(kind==="err"){t="Couldn\\u2019t load your balances";s="Check your connection and refresh the page.";}'
++'else{t="No assets yet";s="Assets you hold will show up here.";}'
++'return \'<tr><td colspan="5"><div style="padding:28px 24px;text-align:center">\''
++'+\'<div style="color:var(--text);font-size:15px;font-weight:700">\'+t+\'</div>\''
++'+\'<div style="margin-top:7px;color:var(--text-muted);font-size:13px;line-height:1.55;max-width:420px;margin-left:auto;margin-right:auto">\'+s+\'</div>\''
++'+\'</div></td></tr>\';}'
 +'function prep(){var v=document.querySelector(".value-side .value");if(v)v.innerHTML=\'<span class="lx-skel" style="width:230px;height:40px"></span>\';var ad=document.querySelector(".wallet-chip .text");if(ad)ad.textContent=shrt(ME);var tb=document.getElementById("assetsTable");if(tb){var s="";for(var i=0;i<4;i++)s+=\'<tr><td colspan="5"><div class="lx-skel" style="width:96%;height:38px;margin:9px 2%"></div></td></tr>\';tb.innerHTML=s;}if(!window.__lxAct){var ar=document.querySelector(".activity-row");window.__lxAct=ar?ar.parentNode:null;}var acn=window.__lxAct;if(acn){var a="";for(var i=0;i<5;i++)a+=\'<div class="lx-skel" style="height:40px;margin:11px 22px"></div>\';acn.innerHTML=a;}var ob=document.querySelector(".orders-block");if(ob){var o="";for(var i=0;i<3;i++)o+=\'<div class="lx-skel" style="height:44px;margin:11px 22px"></div>\';ob.innerHTML=o;}}'
 +'function setPortfolio(xlm,u){var v=document.querySelector(".value-side .value");if(v)v.innerHTML=num(xlm,2)+\' <span style="font-size:.6em;color:var(--text-muted);font-weight:700">XLM</span>\';var sv=document.querySelector(".sub-value");if(sv)sv.textContent="\\u2248 "+usd(u)+" USD";'
 // 7d change line is mock (no portfolio history feed) — hide it so we do not show fake data
@@ -441,7 +499,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'var HHOSTS=(LX_NET==="testnet")?["https://horizon-testnet.stellar.org"]:["https://horizon.stellar.org","https://horizon.stellarx.com","https://horizon.stellar.lobstr.co"];function _jHost(u,i){for(var k=0;k<HHOSTS.length;k++){if(u.indexOf(HHOSTS[k])===0)return HHOSTS[i%HHOSTS.length]+u.slice(HHOSTS[k].length);}return u;}'
 +'var _jQ=[],_jA=0,_jMax=6;function _jPump(){while(_jA<_jMax&&_jQ.length){_jA++;(_jQ.shift())();}}'
 +'function j(u){return new Promise(function(res,rej){function fin(){_jA--;_jPump();}function bk(t){return Math.min(3000,250*Math.pow(2,t))+t*80;}function att(t){fetch(_jHost(u,t)).then(function(r){if(r.status===404){fin();res({__nf:1});return;}if((r.status===429||r.status>=500)&&t<5){setTimeout(function(){att(t+1);},bk(t));return;}if(!r.ok){fin();rej(new Error(r.status));return;}r.json().then(function(d){fin();res(d);},function(e){fin();rej(e);});}).catch(function(e){if(t<5){setTimeout(function(){att(t+1);},bk(t));}else{fin();rej(e);}});}_jQ.push(function(){att(0);});_jPump();});}'
-+'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'
++'function esc(s){return (String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";})).split(String.fromCharCode(39)).join("&#39;");}'
 +'function num(n,d){n=+n||0;return n.toLocaleString(undefined,{minimumFractionDigits:d||0,maximumFractionDigits:d||0});}'
 +'function amt(n){n=+n||0;var a=Math.abs(n);if(a>=1e12)return (n/1e12).toFixed(2)+"T";if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return num(n,a>=1e4?0:1);if(a>=1)return num(n,2);if(a>0){var d=Math.min(7,Math.max(2,2-Math.floor(Math.log(a)/Math.LN10)));var s=n.toFixed(d);if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\\.$/,"");return s;}return "0";}'
 +'function usd(n){n=+n||0;var a=Math.abs(n);return "$"+(a>=1e9?(n/1e9).toFixed(2)+"B":a>=1e6?(n/1e6).toFixed(2)+"M":a>=1e3?num(n,0):n.toFixed(2));}'
@@ -580,7 +638,10 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // Published for the mobile renderer: rows carry the per-asset value in XLM (balance x price), which is
 // the only place that number exists — __lxHoldings has balances but no valuation. lps are the raw
 // liquidity-pool share balances.
-+'try{window.__lxRows=rows;window.__lxLps=lps;}catch(_){}'
+// __lxAcctMissing published for the MOBILE renderer, which has none of the containers this layer
+// writes into and so cannot see the 404 for itself. Set on every load (0 as well as 1) so a later
+// reconnect to a funded account clears it rather than leaving a stale "not active".
++'try{window.__lxRows=rows;window.__lxLps=lps;window.__lxAcctMissing=(acc&&acc.__nf)?1:0;}catch(_){}'
 +'window.__lxHoldings=bals.filter(function(bb){return bb.asset_type!=="liquidity_pool_shares"&&(bb.asset_type==="native"||+bb.balance>0);}).map(function(bb){var nat=bb.asset_type==="native";return{code:nat?"XLM":bb.asset_code,iss:nat?"":(bb.asset_issuer||""),bal:+bb.balance,native:nat};}).filter(function(h){return h.code;}).sort(function(a,b){return (b.native?1:0)-(a.native?1:0)||b.bal-a.bal;});'
 // ---- address ----
 +'var ad=document.querySelector(".wallet-chip .text");if(ad)ad.textContent=shrt(ME);'
@@ -596,6 +657,8 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'+\'<td class="spark-cell"></td>\''
 +'+\'<td class="right balance-cell"><div class="b1">\'+amt(bal)+\' \'+esc(c)+\'</div><div class="b2">\'+(r.xlm>0?"\\u2248 "+usd(r.xlm*xu):"")+\'</div></td>\''
 +'+\'<td class="right">\'+_act+\'</td></tr>\';});if(out){tb.innerHTML=out;applyPins();lxFillHd(tb);lxLoadChanges(rows);try{lxHealAllLogos(tb);}catch(_){}}'
+// else: say so, rather than leaving prep()'s shimmer rows in place for good.
++'else{tb.innerHTML=lxAssetsEmpty((acc&&acc.__nf)?"nf":"");}'
 // hide the now-empty "Last 7d" column header + cells so nothing misaligns
 +'var thd=tb.parentNode&&tb.parentNode.querySelector("thead");if(thd){var ths=thd.querySelectorAll("th");if(ths[2])ths[2].style.display="none";}'
 // fetch each held asset’s real logo from Stellar.Expert and swap it into the icon (bg-image is CORS-free)
@@ -652,14 +715,17 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'try{lxHealAllLogos(document);setTimeout(function(){lxHealAllLogos(document);},900);setTimeout(function(){lxHealAllLogos(document);},2400);}catch(_){}'
 +'reveal();'
 +'});'
-+'}).catch(function(){reveal();});}'
+// A Horizon outage took the same path to the same place: reveal() showed the page and the shimmer rows
+// stayed forever, indistinguishable from still-loading. Say what happened instead.
++'}).catch(function(){try{var _tb=document.getElementById("assetsTable");'
++'if(_tb&&_tb.querySelector(".lx-skel"))_tb.innerHTML=lxAssetsEmpty("err");}catch(_){}reveal();});}'
 // update a summary card by its uppercase label
 +'function updInsight(title,head,sub){var cards=document.querySelectorAll(".insight-card");for(var i=0;i<cards.length;i++){var t=cards[i].querySelector(".ttl");if(t&&(t.textContent||"").trim().toLowerCase()===title.toLowerCase()){var hd=cards[i].querySelector(".headline");if(hd&&head!=null)hd.textContent=head;var sb=cards[i].querySelector(".sub");if(sb&&sub!=null)sb.textContent=sub;return;}}}'
 // build order rows
 // ---- real on-chain cancel (build tx via stellar-base, sign with connected wallet, submit to Horizon) ----
 +'function lxToast(msg){try{if(typeof window.showToast==="function"){window.showToast(msg);return;}}catch(_){}try{var t=document.createElement("div");t.textContent=msg;t.style.cssText="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1c1f27;color:#fff;border:1px solid rgba(255,255,255,.16);padding:10px 16px;border-radius:10px;font-size:13px;z-index:99999;box-shadow:0 10px 34px rgba(0,0,0,.45);max-width:82vw;text-align:center";document.body.appendChild(t);setTimeout(function(){t.style.transition="opacity .4s";t.style.opacity="0";setTimeout(function(){t.remove();},420);},2600);}catch(_){}}'
 +'function lxTimeout(p,ms,msg){return new Promise(function(res,rej){var done=false;var to=setTimeout(function(){if(!done){done=true;rej(new Error(msg));}},ms);p.then(function(v){if(!done){done=true;clearTimeout(to);res(v);}},function(e){if(!done){done=true;clearTimeout(to);rej(e);}});});}'
-+'var __sbP=null;function lxStellar(){if(!__sbP)__sbP=new Promise(function(res,rej){if(window.StellarBase)return res(window.StellarBase);var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-base@13.0.1/dist/stellar-base.min.js";s.onload=function(){window.StellarBase?res(window.StellarBase):rej(new Error("Stellar SDK failed to load"));};s.onerror=function(){rej(new Error("Stellar SDK failed to load"));};document.head.appendChild(s);});return __sbP;}'
++'var __sbP=null;function lxStellar(){if(!__sbP)__sbP=new Promise(function(res,rej){if(window.StellarBase)return res(window.StellarBase);var s=document.createElement("script");s.src="/assets/vendor/stellar-base-13.0.1.min.js";s.onload=function(){window.StellarBase?res(window.StellarBase):rej(new Error("Stellar SDK failed to load"));};s.onerror=function(){rej(new Error("Stellar SDK failed to load"));};document.head.appendChild(s);});return __sbP;}'
 +'function lxWallet(){try{return (localStorage.getItem("lumos.wallet")||"").toLowerCase();}catch(_){return "";}}'
 +'function lxSign(xdr,S){var w=lxWallet(),PP=(LX_NET==="testnet"?S.Networks.TESTNET:S.Networks.PUBLIC);'
 +'if(w==="freighter"){if(window.freighterApi&&window.freighterApi.signTransaction)return Promise.resolve(window.freighterApi.signTransaction(xdr,{networkPassphrase:PP,network:(LX_NET==="testnet"?"TESTNET":"PUBLIC"),address:ME})).then(function(r){return (r&&(r.signedTxXdr||r.signedXDR))||r;});return import("https://esm.sh/@stellar/freighter-api@6").then(function(m){var f=m.default||m;return f.signTransaction(xdr,{networkPassphrase:PP,address:ME});}).then(function(r){return (r&&(r.signedTxXdr||r.signedXDR))||r;});}'

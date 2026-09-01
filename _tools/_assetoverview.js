@@ -82,7 +82,7 @@ const SCRIPT = `<script id="lx-aodata">(function(){
   function aoXuFallback(){ try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null"); if(c&&+c.v>0&&(Date.now()-c.ts<216e5))return +c.v; }catch(_){}
     return (+window.__lxXlmUsd>0)?+window.__lxXlmUsd:0.11; }
   function aoXuSave(v){ if(+v>0){ try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:+v,ts:Date.now()})); }catch(_){} } return +v||0; }
-  function esc(s){return (s+"").replace(/[<>&]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":"&amp;";});}
+  function esc(s){return ((s+"").replace(/[<>&]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":"&amp;";})).split(String.fromCharCode(39)).join("&#39;");}
   function getJSON(u){return fetch(u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
   function letterIco(code){return code?code[0].toUpperCase():"?";}
 

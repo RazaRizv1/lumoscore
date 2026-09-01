@@ -16,8 +16,19 @@
 // The DESCRIPTION of each row is not stored. The feed reads the operations from Horizon exactly as it
 // already does for fee payments, so one code path renders both sources and a stored row cannot drift
 // from what the chain says happened.
+//
+// ⚠ THIS IS AN UNAUTHENTICATED WRITER, and it has to be -- see _lib/ratelimit.js. The shape checks
+// bound what a row can contain but not how many rows can be written, so a per-IP ceiling bounds the
+// rest. Note what the ceiling does NOT do: it is a limit on volume, not a proof that the transaction
+// went through us. Nothing stored here can establish that, because the free operations this exists to
+// record leave no marker -- which is the whole reason the endpoint exists. See LUMOSCORE_DEV.md.
+import { rateLimit } from '../../_lib/ratelimit.js';
+
 const ADDR_RE = /^G[A-Z2-7]{55}$/;
 const HASH_RE = /^[0-9a-f]{64}$/i;
+// A busy trader submits a few operations a minute at most; each is one beacon.
+const PER_MIN = 20;
+const PER_HOUR = 200;
 // The feed shows 8. This is larger than that on purpose: the dashboard also counts how many distinct
 // transactions happened in the last 24 hours, and a limit tight enough for the visible list would cap
 // that count without saying so. 100 is far above a real day here and still one small query.
@@ -62,6 +73,12 @@ export async function onRequestPost({ request, env }) {
   // Narrow on purpose: two fields, both shape-checked, so this cannot be used to write arbitrary rows.
   if (!ADDR_RE.test(addr)) return json({ ok: false, reason: 'bad addr' }, 200);
   if (!HASH_RE.test(hash)) return json({ ok: false, reason: 'bad hash' }, 200);
+
+  // 200, not 429: fire-and-forget, exactly like the no-db case above. A refused write must not change
+  // how the page behaves.
+  const rl = await rateLimit(env && env.CONTENT_KV,
+    request.headers.get('cf-connecting-ip'), 'act', PER_MIN, PER_HOUR);
+  if (!rl.ok) return json({ ok: false, reason: 'rate' }, 200);
 
   try {
     // The hash is the primary key, so a retry, a double-submit or a second tab costs nothing.

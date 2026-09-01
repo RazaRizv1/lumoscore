@@ -186,7 +186,7 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'function q(s,r){return (r||document).querySelector(s);}'
 + 'function qa(s,r){return [].slice.call((r||document).querySelectorAll(s));}'
 + 'function n(v){return (typeof v==="number"&&isFinite(v))?v:null;}'
-+ 'function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;";});}'
++ 'function esc(t){return (String(t==null?"":t).replace(/[&<>"]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}'
 + 'function fmt(v,d){if(v==null||!isFinite(+v))return DASH;var x=Math.abs(+v);'
 + 'return (+v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:(d!=null?d:(x>=1000?2:(x>=1?4:7)))});}'
 + 'function usd(v){return v==null?DASH:"$"+(+v).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}'
@@ -309,7 +309,23 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'stack.innerHTML=html;}'
 // ---- my assets -------------------------------------------------------------------------------------
 + 'function fixAssets(){var list=q("#assetList");if(!list||activeTab()!==0)return;'
-+ 'var hold=window.__lxHoldings;if(!hold||!hold.length)return;'
+// Bailing out here left the DESIGN'S MOCK HOLDINGS on screen -- "Stellar Coin 25,420 XLM",
+// "USD Coin 3,017.10 USDC" -- for a wallet that holds nothing, directly under a header already saying
+// "0 Holdings". Invented balances on a real-money page are worse than an empty list, and worse than
+// the desktop symptom this was found alongside (which merely shimmered forever).
+// __lxRows is the "the load finished" signal: undefined while in flight, an array (even an empty one)
+// once it has. Gating on it means the mock is only replaced once we actually know there is nothing.
++ 'var hold=window.__lxHoldings;if(!hold||!hold.length){'
++ 'if(window.__lxRows&&!list.__lxEmpty){list.__lxEmpty=1;'
++ 'var _nf=window.__lxAcctMissing;'
++ 'var _t=_nf?"Your wallet address is not active":"No assets yet";'
++ 'var _s=_nf?"A Stellar account only exists once it has been funded. Send at least 1 XLM to this address to activate it.":"Assets you hold will show up here.";'
++ 'list.innerHTML=\'<div style="padding:26px 18px;text-align:center">\''
++ '+\'<div style="color:var(--text);font-size:15px;font-weight:700">\'+esc(_t)+\'</div>\''
++ '+\'<div style="margin-top:7px;color:var(--text-muted);font-size:13px;line-height:1.55">\'+esc(_s)+\'</div>\''
++ '+\'</div>\';}'
++ 'return;}'
++ 'if(list.__lxEmpty){list.__lxEmpty=0;}'
 + 'if(window.__lxRows&&window.__lxRows.length){var seen={};var pr=[];'
 + 'window.__lxRows.forEach(function(r){var b=r&&r.b;if(!b)return;var nat=b.asset_type==="native";'
 + 'var c=nat?"XLM":b.asset_code,i=nat?"":(b.asset_issuer||"");if(seen[c+i])return;seen[c+i]=1;'

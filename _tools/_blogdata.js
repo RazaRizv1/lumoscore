@@ -34,7 +34,7 @@ const SCRIPT = '<script id="lx-blogdata">' + `(function(){
 if(window.__lxBlogData)return; window.__lxBlogData=1;
 function q(s){return document.querySelector(s);}
 function qa(s){return [].slice.call(document.querySelectorAll(s));}
-function esc(s){return String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+function esc(s){return (String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
 function when(t){ if(!t)return "";
   var d=Date.now()-t, day=86400000;
   if(d<day)return "today";

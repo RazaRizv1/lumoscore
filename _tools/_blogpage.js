@@ -64,9 +64,7 @@ const STYLE = '<style id="lx-blogpage-css">/*lxts:1.1*/'
   + '.lx-bp-when{font:600 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3)}'
   + '</style>';
 
-function esc(s) {
-  return String(s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;');
-}
+function esc(s){return (String(s).split('&').join('&amp;').split('<').join('&lt;').split('>').join('&gt;').split('"').join('&quot;')).split(String.fromCharCode(39)).join("&#39;");}
 
 function FALSE_AND(){ return { join: function(){ return ""; } }; }
 

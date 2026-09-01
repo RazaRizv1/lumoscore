@@ -388,7 +388,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   function j(u){ return fetchJ(u).catch(function(e){
     if(u.indexOf("horizon.stellar.org")>=0)return fetchJ(u.replace("horizon.stellar.org","horizon.stellar.lobstr.co"));
     throw e; }); }
-  function esc(s){ return String(s==null?"":s).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;"); }
+  function esc(s){return (String(s==null?"":s).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;")).split(String.fromCharCode(39)).join("&#39;");}
 
   // ---- address: /account/stellar/<G...> or ?address= ------------------------------------------------
   function readAddr(){

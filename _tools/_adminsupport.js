@@ -84,7 +84,7 @@ const SCRIPT = '<script id="lx-adminsupport">' + `(function(){
 if(window.__lxMailAdmin)return; window.__lxMailAdmin=1;
 function q(s){return document.querySelector(s);}
 function qa(s){return [].slice.call(document.querySelectorAll(s));}
-function esc(s){return String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+function esc(s){return (String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
 function isPage(){var t=((q(".admin-page-title")||q(".mob-page-title")||{}).textContent||"").trim();return t.indexOf("Support")===0;}
 function when(t){ var d=Date.now()-t;
   if(d<60000)return "just now";

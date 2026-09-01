@@ -212,6 +212,51 @@ function injectTokenRegistry(html){
   return html;   // no head at all -> leave the page exactly as it was
 }
 
+// Resource hints, injected FIRST in <head> so the handshakes overlap the 234 KB of inline CSS that
+// follows them rather than queueing behind it.
+//
+// MEASURED on production before adding these, not assumed. Handshake cost (DNS+TCP+TLS) to each
+// origin, against when the page first actually contacts it on /trade/stellar/:asset:
+//     horizon.stellar.org   592 ms handshake, first contacted at 1729 ms
+//     api.stellar.expert     95 ms            first contacted at 1714 ms
+//     api.coingecko.com      59 ms            first contacted at 1727 ms
+// Horizon is the whole prize: 185 ms of TCP and 394 ms of TLS, paid serially at the exact moment the
+// page is trying to fill in prices. Nothing touches it for the first 1.7 s, so a hint issued here has
+// the socket open and idle long before it is needed.
+//
+// Checked against the build rather than guessed: horizon and stellar.expert are referenced by 96 of 96
+// pages, coingecko by 92 -- so no page is warming an origin it never calls except four, which pay one
+// idle socket. Only three preconnects: each holds a connection open, so warming everything is
+// counterproductive. coingecko gets dns-prefetch, which is nearly free.
+//
+// ⚠ crossorigin ON THE FONT PRELOAD IS NOT OPTIONAL, even though the file is same-origin. Fonts are
+// fetched in CORS mode, so a preload without it is treated as a DIFFERENT request than the one the
+// stylesheet makes and the browser downloads the file TWICE -- slower than adding nothing at all.
+// Verified after the change by counting font requests, not by reading the tag.
+//
+// The font is hankengrotesk-latin: used on 96 of 96 pages, currently requested at 1212 ms and landing
+// at 1881 ms because it cannot start until the CSS that references it has parsed. font-display is
+// swap, so text is never invisible -- what this removes is a second of fallback-font flash.
+const HINTS =
+    '<link rel="preconnect" href="https://horizon.stellar.org" crossorigin>'
+  + '<link rel="preconnect" href="https://api.stellar.expert" crossorigin>'
+// esm.sh is deliberately NOT preconnected despite being the third-busiest origin in the build. It is
+// only contacted when someone connects a wallet, which is why it does not appear in the page-load
+// timing above at all -- and a preconnected socket is dropped after ~10 s idle, so the hint would
+// expire long before the click that needs it. Warming it would cost a connection and buy nothing.
+  + '<link rel="dns-prefetch" href="https://api.coingecko.com">'
+  + '<link rel="preload" as="font" type="font/woff2" crossorigin'
+  + ' href="/assets/fonts/hankengrotesk-latin.woff2">';
+
+function injectHints(html){
+  if(html.indexOf('rel="preconnect"')>=0) return html;      // idempotent across rebuilds
+  const hi = html.indexOf('<head>');
+  if(hi >= 0) return html.slice(0, hi + 6) + HINTS + html.slice(hi + 6);
+  const he = html.indexOf('</head>');
+  if(he >= 0) return html.slice(0, he) + HINTS + html.slice(he);
+  return html;   // no head at all -> leave the page exactly as it was
+}
+
 function injectRuntime(html, validArray){
   if(html.indexOf('window.__lxSite')>=0) return html;
   const rt = runtime(validArray);
@@ -276,12 +321,34 @@ function stripAuthGate(h){
 //
 // X-Frame-Options DENY matters more than usual here: this app asks a wallet to sign transactions, and
 // a framed signing prompt is a clickjacking target. Verified nothing in the build frames its own pages.
-// No CSP — the design carries hundreds of inline <script> and style attributes, so any useful policy
-// would need 'unsafe-inline' and buy nothing. Adding a real CSP means moving that inline code out first.
+//
+// THE CSP IS DELIBERATELY PARTIAL, and the earlier note here — "any useful policy would need
+// 'unsafe-inline' and buy nothing" — was half right. It is true of script-src and style-src: the design
+// carries hundreds of inline <script> and style attributes, and a script-src that has to allow
+// 'unsafe-inline' protects almost nothing. It is NOT true of the four directives below, none of which
+// has anything to do with inline code, so they are set and the rest are left off until that inline code
+// is moved out.
+//
+//   base-uri 'self'     the one that actually matters. <base href="https://evil/"> re-points every
+//                       root-relative URL on the page at another origin — including
+//                       /assets/vendor/stellar-sdk-*.min.js, the library that builds transactions for
+//                       signing. Self-hosting that file is only worth anything if the browser resolves
+//                       it against OUR origin, and this is what guarantees that.
+//   object-src 'none'   nothing in the build uses <object>, <embed> or a plugin. Checked.
+//   frame-ancestors     backs X-Frame-Options DENY with the header modern browsers actually prefer.
+//   form-action 'self'  the build contains no <form action> and creates none at runtime. Checked. So
+//                       any form that appears is not ours, and cannot post anywhere.
+//
+// Each was verified against the built output before being added rather than assumed safe: zero forms,
+// zero <object>/<embed>, zero real <base> elements (the three matches are inside a comment), and
+// nothing framing our own pages.
+const CSP = "base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'";
+
 function headersFile(isAdmin){
   const common =
       '  X-Content-Type-Options: nosniff\n'
     + '  X-Frame-Options: DENY\n'
+    + '  Content-Security-Policy: ' + CSP + '\n'
     + '  Referrer-Policy: strict-origin-when-cross-origin\n'
     + '  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()\n';
   if(isAdmin){
@@ -508,10 +575,8 @@ const SEO_CACHE_TTL = 300;
 // the request, so the *.pages.dev preview url cannot compete with the real domain in search results.
 const PRIMARY_ORIGIN = 'https://lumoscore.com';
 
-function esc(s){
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+function esc(s){return (String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')).split(String.fromCharCode(39)).join("&#39;");}
 function fmtUsd(n){
   if (n == null || !isFinite(n)) return null;
   if (n >= 1000) return '$' + Math.round(n).toLocaleString('en-US');
@@ -621,6 +686,22 @@ async function blogPost(env, slug){
     if (!p || p.published === false) return null;
     return p;
   } catch (e) { return null; }
+}
+// The index, for the same reason the post body is read: /blog ships an empty grid that the browser
+// fills, so a crawler saw an index of nothing -- 24 links, not one of them to a post. The four posts
+// are in sitemap.xml so they are discoverable, but a sitemap conveys existence and nothing else: no
+// internal links means no authority flowing to them and no topical context, on exactly the pages the
+// backlink campaign is meant to lift.
+//
+// Same filter the public endpoint applies, so a scheduled post is not linked before it is live.
+async function blogIndex(env){
+  try {
+    const kv = env && env.CONTENT_KV;
+    if (!kv) return [];
+    const idx = (await kv.get('blog:index', 'json')) || [];
+    const now = Date.now();
+    return idx.filter((p) => p && p.published && (!p.publishAt || p.publishAt <= now));
+  } catch (e) { return []; }
 }
 // Whitespace, built without a backslash: this whole function lives inside a template literal, where a
 // backslash is eaten on the way out. Writing /BACKSLASH-s+/g here produced /s+/g, which matched the
@@ -899,7 +980,15 @@ export async function onRequest(context){
   if (ct.indexOf('text/html') < 0) return out;
 
   // canonical is the clean url WITHOUT query or hash, on whatever host served this request
-  const canonical = PRIMARY_ORIGIN + (url.pathname === '/' ? '/' : url.pathname.replace(/\\/+$/, ''));
+  //
+  // ONE EXCEPTION. /docs and /docs/introduction are the same page at two urls -- identical title,
+  // description, h1 and body, both in the sitemap, and each canonicalising to itself, so neither
+  // deferred and Google had to pick. That coin-toss lands on the entry point to the best content on
+  // the site. /docs now points at /docs/introduction, which is the one the sidebar links and the one
+  // that names what it is. Both keep serving; only the signal changes.
+  const CANON_OF = { '/docs': '/docs/introduction' };
+  const cleanPath = url.pathname === '/' ? '/' : url.pathname.replace(/\\/+$/, '');
+  const canonical = PRIMARY_ORIGIN + (CANON_OF[cleanPath] || cleanPath);
   const want = seoFor(url.pathname);
 
   let seo = null;
@@ -916,6 +1005,10 @@ export async function onRequest(context){
     const post = await blogPost(context.env, want.slug);
     if (post) seo = blogSeo(post, PRIMARY_ORIGIN);
   }
+  // The index page has no seoFor entry of its own -- its title and description are baked -- so the
+  // post list is fetched here purely to render the links.
+  let blogList = null;
+  if (url.pathname === '/blog') blogList = await blogIndex(context.env);
   else if (want && want.kind === 'pool') {
     // XLM has no logo of its own, so the pair's other side is the one worth showing.
     const other = want.a === 'native' ? want.b : want.a;
@@ -1083,6 +1176,18 @@ export async function onRequest(context){
     if (p.body) rw = rw.on('.lx-post-body', new HtmlSetter(p.body));
   }
 
+  // THE BLOG INDEX, likewise. Same shape the client builds, so when its own render lands a moment
+  // later it replaces this with an equivalent grid and nothing moves. The cover and the date are left
+  // to the client: the cover needs a second lookup, and the date it prints is relative ("today",
+  // "3 days ago"), which cannot be computed server-side without going stale in cache.
+  if (url.pathname === '/blog' && blogList && blogList.length){
+    const cards = blogList.map((p) => '<a class="lx-bp-card" href="/blog/' + esc(p.slug) + '">'
+      + '<div class="lx-bp-cover" data-cov="' + esc(p.slug) + '"></div>'
+      + '<div class="lx-bp-title">' + esc(p.title || p.slug) + '</div>'
+      + '<div class="lx-bp-when"></div></a>').join('');
+    rw = rw.on('.lx-bp-grid', new HtmlSetter(cards));
+  }
+
   out = rw.transform(out);
   out.headers.set('Vary', 'User-Agent');
   return out;
@@ -1157,7 +1262,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
   let written = 0;
   for(const name of files){
     const src  = adminOnly ? stripAuthGate(all[name]) : all[name];
-    const html = cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(src), validArray)));
+    const html = injectHints(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(src), validArray))));
     fs.writeFileSync(path.join(outDir, name), html, 'utf8');
     written++;
   }
@@ -1167,13 +1272,15 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
     const landing = all['lumoscore-landing.html'];
     if(!landing) throw new Error('lumoscore-landing.html missing — cannot build the site root');
     fs.writeFileSync(path.join(outDir, 'index.html'),
-      indexHtml(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(landing), validArray)))), 'utf8');
+      indexHtml(injectHints(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(landing), validArray))))), 'utf8');
   }
   // The admin panel deploys as its OWN Cloudflare project, so it cannot borrow dist/assets the way
   // serve.js lets it locally — without this its favicon and wallet logos 404 in production.
   // Only what the admin build actually references is copied (~470 KB), not the whole 19 MB folder.
   if(adminOnly){
-    const need = ['favicon.png', 'wallets'];
+    // 'vendor' holds the self-hosted Stellar libraries. The admin panel signs mainnet transactions
+    // too (rewards payouts), so it must NOT be the one origin left loading them off a public CDN.
+    const need = ['favicon.png', 'wallets', 'vendor'];
     for(const item of need){
       const src = path.join(outRoot, 'assets', item);
       const dst = path.join(outDir, 'assets', item);

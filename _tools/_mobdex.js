@@ -159,8 +159,8 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   })();
   var DASH="—";
   function q(s,r){return (r||document).querySelector(s);}
-  function esc(t){return String(t==null?"":t).replace(/[&<>"]/g,function(c){
-    return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;";});}
+  function esc(t){return (String(t==null?"":t).replace(/[&<>"]/g,function(c){
+    return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
   function n(v){return (typeof v==="number"&&isFinite(v))?v:null;}
   function num(v,d){if(v==null||!isFinite(+v))return DASH;var x=Math.abs(+v);
     return (+v).toLocaleString(undefined,{minimumFractionDigits:0,

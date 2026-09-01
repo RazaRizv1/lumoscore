@@ -14,8 +14,43 @@ const SCRIPT=`<style id="lx-realconnect-css">.lxw-cwallet-ico,.lxw-acct-ico{posi
 +`.lxw-step.is-done::after{content:"\\2713";margin-left:auto;color:#35c07f;font-weight:800;font-size:13px;line-height:1}`
 +`</style><script id="lx-realconnect">(function(){
 if(window.__lxReal)return;window.__lxReal=true;
+// Self-heal a browser that was already poisoned. The guard below stops a bad address being STORED,
+// but anyone who hit this before carries "[object Object]" in localStorage, and it keeps showing in
+// the header pill on every page -- and the wallet page, unable to load anything for it, keeps
+// displaying its design mock, which is where the stray 0x... EVM address came from. A stored value
+// that is not an address is not a connection, so it is cleared and the app shows its honest
+// disconnected state, one click from being fixed.
+try{var _sa=localStorage.getItem('lumos.address')||'',_sn=localStorage.getItem('lumos.network')||'';
+  if(_sa&&(_sa.indexOf('[object')===0||(_sn==='stellar'&&!/^G[A-Z2-7]{55}$/.test(_sa)))){
+    localStorage.removeItem('lumos.address');localStorage.removeItem('lumos.wallet');
+    localStorage.removeItem('lumos.network');localStorage.removeItem('lumos.transport');
+  }}catch(_){}
 var NETLABEL={aptos:'Aptos',hedera:'Hedera',starknet:'Starknet',vechain:'VeChain',worldchain:'World Chain',stellar:'Stellar',xrpl:'XRP Ledger'};
 function trunc(a){a=String(a||'');if(a.length<=14)return a;return a.slice(0,6)+'\\u2026'+a.slice(-4);}
+// A wallet that hands back something we cannot read is a FAILED connection, not an address.
+//
+// Every Stellar adapter ends its result chain with the same shape -- x&&(x.address||x.publicKey||x) --
+// which returns the RAW OBJECT when none of the expected keys is present. Freighter does exactly that
+// when the selected account has not approved this site yet: it answers {address:""}, the empty string
+// is falsy, the chain falls through to the object, and the object travelled all the way to
+// String(addr) in setConnected -- which is where the literal "[object Object]" in the header pill came
+// from. It also explains why switching to an already-approved account "just worked": the shape of the
+// reply changes, not the code path.
+// Guarded here, at the one place every adapter funnels into, rather than in each of the eight chains.
+// SHOW_MSG so showErr prints THIS text rather than its generic "connection failed or was rejected".
+// The generic line is wrong here in a way that costs the user time: nothing failed and nothing was
+// rejected -- the wallet is connected, it simply has not approved this site for the account that is
+// selected, and the only thing that fixes it is switching or approving that account.
+function addrErr(msg){var e=new Error(msg);e.code='SHOW_MSG';return e;}
+function addrOk(net,a){return net!=='stellar'||/^G[A-Z2-7]{55}$/.test(a);}
+function cleanAddr(net,res){
+  var a=(res&&typeof res==='object'&&typeof res.address==='string')?res.address:res;
+  if(typeof a!=='string')a='';
+  a=a.trim();
+  if(!a)throw addrErr('No address came back \\u2014 approve LumosCore for the account you want to use, then try again');
+  if(!addrOk(net,a))throw addrErr('That wallet did not return a Stellar address \\u2014 switch to the account you want, approve LumosCore, then try again');
+  return a;
+}
 function notInstalled(name){var e=new Error(name+' is not installed');e.code='NOT_INSTALLED';return e;}
 function first(v){return (v&&v[0]!==undefined&&v.length!==undefined)?v[0]:v;}
 // Some extensions inject their provider a tick after load — poll briefly before giving up.
@@ -140,7 +175,7 @@ var _sbP=null;
 function lxSbase(){ if(_sbP)return _sbP; _sbP=new Promise(function(res,rej){
   if(window.StellarBase)return res(window.StellarBase);
   var el=document.createElement('script');
-  el.src='https://cdn.jsdelivr.net/npm/@stellar/stellar-base@13.0.1/dist/stellar-base.min.js';
+  el.src='/assets/vendor/stellar-base-13.0.1.min.js';
   el.onload=function(){ window.StellarBase?res(window.StellarBase):rej(new Error('Stellar SDK failed to load')); };
   el.onerror=function(){ rej(new Error('Stellar SDK failed to load')); };
   document.head.appendChild(el); }); return _sbP; }
@@ -413,6 +448,21 @@ function setConnected(net,row,addr,transport){
   // lumos.transport tells the signing paths WHICH LOBSTR to talk to on this device. Always written, so
   // reconnecting with the extension can never inherit a stale 'wc' from an earlier phone session.
   try{localStorage.setItem('lumos.wallet',name);localStorage.setItem('lumos.network',net);localStorage.setItem('lumos.address',String(addr));localStorage.setItem('lumos.transport',transport||'ext');}catch(_){}
+  // lumos.lastWallet is what puts the "Last used" tag on a row, and NOTHING on this path was writing
+  // it. The design's own demo flow does, but every wallet with a real adapter -- Freighter, Rabet,
+  // Albedo, LOBSTR -- comes through here instead and skipped it entirely.
+  //
+  // It looked like it worked because __lxLastWallet() lazily copies lumos.wallet into it when the modal
+  // renders. But Disconnect removes lumos.wallet, so after connect -> disconnect -> reopen there is
+  // nothing left to copy: the seeding only fires while you are STILL CONNECTED, which is the one time
+  // the hint is useless. Reproduced in that exact order before fixing.
+  //
+  // Written from data-wallet, not from the display name, because data-wallet is what __lxMarkLastUsed
+  // compares against -- taking the same value from the same place is what keeps them from drifting.
+  // Deliberately NOT cleared by Disconnect: which wallet you last used is the thing worth remembering
+  // once you are signed out.
+  try{var _wid=(row&&row.getAttribute&&row.getAttribute('data-wallet'))||name;
+    if(_wid)localStorage.setItem('lumos.lastWallet',_wid);}catch(_){}
   if(window.lxnsSetConnected)try{window.lxnsSetConnected(net,name);}catch(_){}
   screen('connected');
 // lxPostConnectHome: land on the dashboard after connecting from anywhere in the app. Connecting is
@@ -494,8 +544,8 @@ window.addEventListener('click',function(e){
   // Adapters return either a plain address string or {address,transport} when the transport matters
   // (LOBSTR resolves to the extension on desktop and to WalletConnect on a phone).
   Promise.resolve().then(fn).then(function(res){
-    var addr=(res&&res.address)?res.address:res, tr=(res&&res.transport)||'ext';
-    if(!addr)throw new Error('No address returned');
+    var tr=(res&&res.transport)||'ext';
+    var addr=cleanAddr(net,res);   // throws, and showErr says what to do, instead of storing garbage
     clearTimeout(awaitT);setStep(1);
     var el=Date.now()-t0;
     return wait(Math.max(0,900-el))                            // let "Awaiting signature" breathe

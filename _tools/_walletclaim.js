@@ -112,8 +112,8 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
   var H="https://horizon.stellar.org";
   function me(){ try{ return localStorage.getItem("lumos.address")||""; }catch(_){ return ""; } }
   function j(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
-  function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g,function(c){
-    return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;"; }); }
+  function esc(s){return (String(s==null?"":s).replace(/[&<>"]/g,function(c){
+    return c==="&"?"&amp;":c==="<"?"&lt;":c===">"?"&gt;":"&quot;"; })).split(String.fromCharCode(39)).join("&#39;");}
   function amt(n){ n=+n||0; if(n>=1000)return n.toLocaleString("en-US",{maximumFractionDigits:2});
     if(n>=1)return String(+n.toFixed(4)); return String(+n.toFixed(7)); }
   function shortG(a){ a=String(a||""); return a.length>12?(a.slice(0,4)+"\\u2026"+a.slice(-4)):a; }

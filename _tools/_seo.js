@@ -51,9 +51,16 @@ const PAGES = {
     title: 'Stellar Liquidity Pool — Reserves and Liquidity | ' + BRAND,
     desc: 'Pool reserves, total value locked, 24h volume, fee income and participants for a Stellar AMM pool. Deposit or withdraw liquidity from your own wallet.',
   },
+  // EIGHT, not ten. CCTP_DOMAINS in _tools/_cctp.js is the source of truth and lists exactly eight
+  // destinations: Ethereum, Avalanche, Optimism, Arbitrum, Base, Polygon, Linea and World Chain.
+  // Solana and Sui are CCTP chains but are deliberately NOT offered, because neither has a route a
+  // user could actually claim on — see the note above that constant. So the title claimed two chains
+  // that cannot be bridged to, on the page that has to answer "which chains?" for an answer engine.
+  // The FAQ's "eight destinations, nine chains in all" is the same fact counted with Stellar included,
+  // and both now agree.
   'bridge': {
-    title: 'Bridge USDC Across 10 Chains — Circle CCTP | ' + BRAND,   // was wrongly titled "DEX"
-    desc: 'Move native USDC between Stellar, Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche and more using Circle CCTP. Burn-and-mint, so no wrapped tokens.',
+    title: 'Bridge USDC to 8 Chains from Stellar — Circle CCTP | ' + BRAND,
+    desc: 'Move native USDC between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain using Circle CCTP. Burn-and-mint, so no wrapped tokens.',
   },
   'wallet': {
     title: 'Stellar Wallet — Balances, Send and Receive | ' + BRAND,
@@ -105,9 +112,7 @@ function baseName(key) {
             .replace(/-(dark|light|mobile)$/, '');
 }
 
-function esc(s) {
-  return String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
+function esc(s){return (String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')).split(String.fromCharCode(39)).join("&#39;");}
 
 function apply(html, meta) {
   // strip anything a previous run added so this is idempotent

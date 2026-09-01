@@ -121,12 +121,43 @@ export async function onRequestOptions() {
   });
 }
 
+// How old a payment may be and still buy a listing.
+//
+// WHY THIS HAS TO EXIST. FEE_ACCT is not a dedicated listing account -- it is the platform fee
+// collector, and every swap, mint and cross-chain fee lands in it. Without a window, "a payment to our
+// fee collector in XLM of at least the quoted amount" describes not just the payment this applicant
+// just made but every qualifying payment in that account's entire public history, made by anybody.
+// The unique key on tx_hash means each one is good for only a single listing, but they are all sitting
+// on-chain for anyone to read, and claiming one costs the claimant nothing: the payer of record is
+// taken from the payment, so a stranger's transaction buys a stranger's listing.
+//
+// 24 hours rather than minutes. The real flow submits within seconds of paying -- the payment goes
+// first, deliberately, so the hash exists before the form is sent -- but a failed submit, a closed tab
+// or a retry the next morning are all ordinary, and locking those people out to save a few hours of
+// window would be trading a real user's money for very little. A day still reduces the eligible set
+// from the whole ledger to payments made in the last day and not yet claimed.
+const MAX_PAYMENT_AGE_MS = 24 * 3600 * 1000;
+// Small allowance for clock skew between Horizon and the edge; a payment cannot really be in the
+// future, and treating a slightly-ahead timestamp as an error would be a false alarm.
+const FUTURE_SKEW_MS = 5 * 60 * 1000;
+
 // The payment that pays for this listing, as the CHAIN describes it -- not as the form claims.
 async function verifyPayment(hash) {
   const t = await fetch(H + '/transactions/' + hash, { cf: { cacheTtl: 30 } });
   if (!t.ok) return { err: 'transaction not found' };
   const tx = await t.json();
   if (!tx.successful) return { err: 'transaction did not succeed' };
+
+  // Age is checked BEFORE the amount, so someone replaying an old payment is told the real reason
+  // rather than being sent off to re-check a figure that was never the problem.
+  const at = Date.parse(tx.created_at || '');
+  if (!at) return { err: 'could not read the payment date' };
+  const age = Date.now() - at;
+  if (age > MAX_PAYMENT_AGE_MS) {
+    return { err: 'that payment is more than 24 hours old. Listing payments must be made as part of '
+      + 'this application — if you paid recently and the form failed, contact support with the hash.' };
+  }
+  if (age < -FUTURE_SKEW_MS) return { err: 'that payment is dated in the future' };
 
   const o = await fetch(H + '/transactions/' + hash + '/operations?limit=50', { cf: { cacheTtl: 30 } });
   if (!o.ok) return { err: 'could not read the transaction' };

@@ -199,7 +199,7 @@ function num(n){ n=+n||0; var a=Math.abs(n);
 function pctPill(p){ var up=p>=0; return '<span class="pill '+(up?"up":"dn")+'">'+(up?"▲":"▼")+" "+Math.abs(p).toFixed(2)+"%</span>"; }
 function unskel(el){ if(el) el.classList.remove("sk"); }
 function dayKey(ms){ return new Date(ms).toISOString().slice(0,10); }
-function esc(s){ return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";}); }
+function esc(s){ return (String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";})).split(String.fromCharCode(39)).join("&#39;"); }
 
 var STATE={metric:"price",days:30};
 var DATA={price:null,tvl:null,volume:null,trades:null};
