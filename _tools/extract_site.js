@@ -212,6 +212,51 @@ function injectTokenRegistry(html){
   return html;   // no head at all -> leave the page exactly as it was
 }
 
+// Resource hints, injected FIRST in <head> so the handshakes overlap the 234 KB of inline CSS that
+// follows them rather than queueing behind it.
+//
+// MEASURED on production before adding these, not assumed. Handshake cost (DNS+TCP+TLS) to each
+// origin, against when the page first actually contacts it on /trade/stellar/:asset:
+//     horizon.stellar.org   592 ms handshake, first contacted at 1729 ms
+//     api.stellar.expert     95 ms            first contacted at 1714 ms
+//     api.coingecko.com      59 ms            first contacted at 1727 ms
+// Horizon is the whole prize: 185 ms of TCP and 394 ms of TLS, paid serially at the exact moment the
+// page is trying to fill in prices. Nothing touches it for the first 1.7 s, so a hint issued here has
+// the socket open and idle long before it is needed.
+//
+// Checked against the build rather than guessed: horizon and stellar.expert are referenced by 96 of 96
+// pages, coingecko by 92 -- so no page is warming an origin it never calls except four, which pay one
+// idle socket. Only three preconnects: each holds a connection open, so warming everything is
+// counterproductive. coingecko gets dns-prefetch, which is nearly free.
+//
+// ⚠ crossorigin ON THE FONT PRELOAD IS NOT OPTIONAL, even though the file is same-origin. Fonts are
+// fetched in CORS mode, so a preload without it is treated as a DIFFERENT request than the one the
+// stylesheet makes and the browser downloads the file TWICE -- slower than adding nothing at all.
+// Verified after the change by counting font requests, not by reading the tag.
+//
+// The font is hankengrotesk-latin: used on 96 of 96 pages, currently requested at 1212 ms and landing
+// at 1881 ms because it cannot start until the CSS that references it has parsed. font-display is
+// swap, so text is never invisible -- what this removes is a second of fallback-font flash.
+const HINTS =
+    '<link rel="preconnect" href="https://horizon.stellar.org" crossorigin>'
+  + '<link rel="preconnect" href="https://api.stellar.expert" crossorigin>'
+// esm.sh is deliberately NOT preconnected despite being the third-busiest origin in the build. It is
+// only contacted when someone connects a wallet, which is why it does not appear in the page-load
+// timing above at all -- and a preconnected socket is dropped after ~10 s idle, so the hint would
+// expire long before the click that needs it. Warming it would cost a connection and buy nothing.
+  + '<link rel="dns-prefetch" href="https://api.coingecko.com">'
+  + '<link rel="preload" as="font" type="font/woff2" crossorigin'
+  + ' href="/assets/fonts/hankengrotesk-latin.woff2">';
+
+function injectHints(html){
+  if(html.indexOf('rel="preconnect"')>=0) return html;      // idempotent across rebuilds
+  const hi = html.indexOf('<head>');
+  if(hi >= 0) return html.slice(0, hi + 6) + HINTS + html.slice(hi + 6);
+  const he = html.indexOf('</head>');
+  if(he >= 0) return html.slice(0, he) + HINTS + html.slice(he);
+  return html;   // no head at all -> leave the page exactly as it was
+}
+
 function injectRuntime(html, validArray){
   if(html.indexOf('window.__lxSite')>=0) return html;
   const rt = runtime(validArray);
@@ -1217,7 +1262,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
   let written = 0;
   for(const name of files){
     const src  = adminOnly ? stripAuthGate(all[name]) : all[name];
-    const html = cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(src), validArray)));
+    const html = injectHints(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(src), validArray))));
     fs.writeFileSync(path.join(outDir, name), html, 'utf8');
     written++;
   }
@@ -1227,7 +1272,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
     const landing = all['lumoscore-landing.html'];
     if(!landing) throw new Error('lumoscore-landing.html missing — cannot build the site root');
     fs.writeFileSync(path.join(outDir, 'index.html'),
-      indexHtml(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(landing), validArray)))), 'utf8');
+      indexHtml(injectHints(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(landing), validArray))))), 'utf8');
   }
   // The admin panel deploys as its OWN Cloudflare project, so it cannot borrow dist/assets the way
   // serve.js lets it locally — without this its favicon and wallet logos 404 in production.
