@@ -4915,10 +4915,26 @@ function lxPostConnectHome(){try{var _p=location.pathname||'';
     if(_was&&_now&&_was===_now)return;
   }
   if(/dashboard|lumoscore-home|wallet/.test(_p))return;
-  setTimeout(function(){
+  // WAIT FOR THE BUTTON. This used to be setTimeout(..., 1100) -- a second after the Connected screen
+  // appeared it navigated on its own, so the "Continue" sitting under the address was decorative: the
+  // page changed whether or not it was pressed, and anyone reading the address they had just connected
+  // was cut off mid-glance.
+  //
+  // The design already wires that button (close(); if(home){goHome();}) but its "home" variable is only
+  // set by its own demo flow -- on a real connection it stays null and Continue just closes. So the
+  // destination is attached here instead, to the click rather than to a timer.
+  // (No backticks in this comment: it sits inside a template literal, and a stray one ends the string.)
+  //
+  // If the button is not there for any reason, nothing happens: staying put is the safe failure, and
+  // navigating on a timer is the exact behaviour being removed.
+  var _done=q('.lxw-done');
+  if(!_done||_done.__lxHome)return;
+  _done.__lxHome=1;
+  _done.addEventListener('click',function(){
     try{ if(window.__lxNav){window.__lxNav('lumoscore-home.html');return;} }catch(_){}
     try{ location.href='/dashboard'; }catch(_){}
-  },1100);}catch(_){}}
+  });
+}catch(_){}}
 lxPostConnectHome();
 }
 function showErr(row,err){
