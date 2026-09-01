@@ -82,6 +82,15 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 /* #11/#21: a change of zero because nothing traded is not the same thing as a day that ended flat, and
    it must not be dressed in either colour. Grey, no arrow, and the reason on hover. */
 .change-pill.lx-flat{background:var(--surface-2,#f1f1f4)!important;color:var(--text-soft,#8a8fa3)!important}
+/* The MOBILE build never had a .down rule. Its only pill rule is the base one, which hardcodes
+   var(--green-soft)/var(--green), so every pill rendered green no matter which way the day went --
+   LUMOS at -5.67% showed a down arrow inside a green badge, contradicting itself in one element. The
+   class was always correct: the writer below removes "up" explicitly before adding "down", and the
+   element measures as "change-pill lxp down". There was simply nothing to style it. Desktop light and
+   dark both carry this exact declaration; this is the same rule, and specificity (0-3-0 over the
+   base's 0-2-0) puts it in front without !important, which keeps .lx-flat above it for a stale
+   window. */
+.price-display .change-pill.down{background:var(--red-soft,#fee2e2);color:var(--red,#dc2626)}
 /* AUDIT (flash sweep): the .lxda gates above only covered the header + stat cells. A static-vs-settled diff
    showed 9 more groups still painting the design's Aptos mock (4.2271 APT, 2.66%, 18 holders, 189.93K vol)
    before our data lands. Mask them until they are actually written — .lxp is added by the observer in
