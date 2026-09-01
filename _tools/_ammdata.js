@@ -541,7 +541,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     return num(n); }
   function qty(n){ n=+n||0; var a=Math.abs(n); if(a>=1e6)return (n/1e6).toFixed(2)+"M"; if(a>=1e3)return Math.round(n).toLocaleString("en-US"); if(a>=1)return (Math.round(n*100)/100).toLocaleString("en-US"); if(a>0){ var d=Math.min(7,Math.max(2,2-Math.floor(Math.log(a)/Math.LN10))); var s=n.toFixed(d); if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\\.$/,""); return s; } return "0"; }
   function usd(x){x=+x;if(!x)return "$0";var a=Math.abs(x);if(a>=1e9)return "$"+(x/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(x/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(x/1e3).toFixed(1)+"K";if(a>=1)return "$"+x.toFixed(2);return "$"+x.toFixed(x>=0.01?4:6);}
-  function esc(s){return (s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";});}
+  function esc(s){return ((s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
   // HOST FALLBACK, per GUARDRAILS E12. Same gap the Trade-asset layer had, same symptom: Horizon allows
   // 100 requests per 5 minutes PER IP, this page spends a large share of that on one load, and once the
   // budget is gone every call fails. The page then shows "Couldn't load this pool from Horizon" and sits
@@ -3389,7 +3389,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   var WPASS="Public Global Stellar Network ; September 2015";
   var _wsdk=null, _wmods={};
   function wMod(u){ return _wmods[u]||(_wmods[u]=import(u)); }
-  function wLoadSdk(){ if(window.StellarSdk)return Promise.resolve(window.StellarSdk); if(_wsdk)return _wsdk; _wsdk=new Promise(function(res,rej){ var s=document.createElement("script"); s.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/dist/stellar-sdk.min.js"; s.onload=function(){res(window.StellarSdk);}; s.onerror=function(){rej(new Error("Failed to load Stellar SDK"));}; document.head.appendChild(s); }); return _wsdk; }
+  function wLoadSdk(){ if(window.StellarSdk)return Promise.resolve(window.StellarSdk); if(_wsdk)return _wsdk; _wsdk=new Promise(function(res,rej){ var s=document.createElement("script"); s.src="/assets/vendor/stellar-sdk-13.3.0.min.js"; s.onload=function(){res(window.StellarSdk);}; s.onerror=function(){rej(new Error("Failed to load Stellar SDK"));}; document.head.appendChild(s); }); return _wsdk; }
   function wWallet(){ try{ return (localStorage.getItem("lumos.wallet")||"").toLowerCase().replace(/[^a-z]/g,""); }catch(e){ return ""; } }
   function wXhr(method,url,body){ return new Promise(function(resolve,reject){ var r=new XMLHttpRequest(); r.open(method,url,true); if(body!=null)r.setRequestHeader("Content-Type","application/x-www-form-urlencoded"); r.onload=function(){ var j=null; try{j=JSON.parse(r.responseText);}catch(e){} resolve({status:r.status,ok:r.status>=200&&r.status<300,json:j}); }; r.onerror=function(){reject(new Error("Network error contacting Horizon"));}; r.timeout=45000; r.ontimeout=function(){reject(new Error("Horizon request timed out"));}; r.send(body==null?null:body); }); }
   function wAcct(pk){ return wXhr("GET",H+"/accounts/"+pk).then(function(r){ if(!r.ok||!r.json)throw new Error("Your account isn't activated on mainnet yet."); return r.json; }); }

@@ -710,9 +710,17 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var list=qOEl(".lxo-list");if(!list)return;'
 +'var addr=qAddr();'
 +'if(!addr){list.innerHTML=\'<div class="lxo-empty">Connect a wallet<span class="sub">Your open orders across every pair will show here.</span></div>\';return;}'
-+'qIcons().then(function(){return fetch(QH+"/accounts/"+addr+"/offers?limit=50&order=desc");})'
+// cache:"no-store" because the reload right after a cancel asks for a URL the browser already has.
+// Served from that cache it returns the pre-cancel list, which is one of the two reasons a cancelled
+// order kept reappearing until a hard refresh.
++'qIcons().then(function(){return fetch(QH+"/accounts/"+addr+"/offers?limit=50&order=desc",{cache:"no-store"});})'
 +'.then(function(r){return r.json();}).then(function(d){'
-+'var recs=(d&&d._embedded&&d._embedded.records)||[];'
+// The other reason: even uncached, Horizon can still list an offer for a moment after the transaction
+// that deleted it was accepted. Ids we have cancelled ourselves are filtered out here rather than in
+// the row loop, so the "No open orders" branch below still fires when the last one goes. Stellar offer
+// ids are never reused, so an id suppressed here can never hide a real order later.
++'var recs=((d&&d._embedded&&d._embedded.records)||[]).filter(function(o){'
++'return !(window.__lxQOcx&&window.__lxQOcx[String(o.id)]);});'
 +'if(!recs.length){list.innerHTML=\'<div class="lxo-empty">No open orders<span class="sub">A limit order stays here until it fills or you cancel it.</span></div>\';return;}'
 +'list.innerHTML="";'
 // An order is three facts -- what leaves, what arrives, at what rate -- so the row states them as three
@@ -795,7 +803,16 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)})'
 +'.then(function(r){return r.json();});})'
 +'.then(function(resp){btn.__busy=0;btn.disabled=false;btn.textContent=lbl;'
-+'if(resp&&resp.successful){(window.lxToast||function(){})("Order cancelled.",false);window.__lxQOloadOrders();}'
+// Take the row out on the spot. The reload below is still fired to reconcile, but it is a network
+// round trip and the row it deletes should not depend on one: the ledger has already accepted the
+// cancel, so the list is wrong the instant this resolves.
++'if(resp&&resp.successful){(window.lxToast||function(){})("Order cancelled.",false);'
++'try{window.__lxQOcx=window.__lxQOcx||{};window.__lxQOcx[String(o.id)]=1;'
++'var _row=btn.closest?btn.closest(".lxo-o"):null;if(_row&&_row.parentNode)_row.parentNode.removeChild(_row);'
++'var _l=qOEl(".lxo-list");'
++'if(_l&&!_l.querySelector(".lxo-o"))_l.innerHTML=\'<div class="lxo-empty">No open orders<span class="sub">A limit order stays here until it fills or you cancel it.</span></div>\';'
++'}catch(_){}'
++'window.__lxQOloadOrders();}'
 +'else{(window.lxToast||function(){})("The cancel was not accepted. The order is still open.",true);}})'
 +'.catch(function(){btn.__busy=0;btn.disabled=false;btn.textContent=lbl;'
 +'(window.lxToast||function(){})("Could not cancel the order.",true);});'
@@ -819,7 +836,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 // A number the amount FIELD can hold: fixed precision, never exponential, padding trimmed.
 +'function plain7(n){n=+n||0;if(!isFinite(n)||n<=0)return "0";'
 +'var t=n.toFixed(7).replace(/0+$/,"").replace(/\\.$/,"");return t||"0";}'
-+'function esc(s){return String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";});}'
++'function esc(s){return (String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";})).split(String.fromCharCode(39)).join("&#39;");}'
 +'function swAbbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e12)return (n/1e12).toFixed(2)+"T";if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3&&a<1e5)return fmt(n);if(a>=1e5)return (n/1e3).toFixed(1)+"K";return fmt(n);}'
 +'function lastNum(t){var m=(t||"").match(/[0-9.]+/g);return m&&m.length?parseFloat(m[m.length-1]):NaN;}'
 +'function panelHTML(){var p=document.createElement("div");p.className="lx-swapd";p.style.display="none";p.innerHTML='+ROWS+';return p;}'
@@ -913,7 +930,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 +'var __dashBooted=0;function dashBoot(){if(__dashBooted)return;__dashBooted=1;'
 +'if(!window.lxTimeout)window.lxTimeout=function(p,ms,msg){return new Promise(function(res,rej){var d=0,to=setTimeout(function(){if(!d){d=1;rej(new Error(msg));}},ms);p.then(function(v){if(!d){d=1;clearTimeout(to);res(v);}},function(e){if(!d){d=1;clearTimeout(to);rej(e);}});});};'
 +'if(!window.lxToast)window.lxToast=function(msg){try{if(typeof window.showToast==="function"){window.showToast(msg);return;}}catch(_){}try{var t=document.createElement("div");t.textContent=msg;t.style.cssText="position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#1c1f27;color:#fff;border:1px solid rgba(255,255,255,.16);padding:10px 16px;border-radius:10px;font-size:13px;z-index:100002;box-shadow:0 10px 34px rgba(0,0,0,.45);max-width:82vw;text-align:center";document.body.appendChild(t);setTimeout(function(){t.style.transition="opacity .4s";t.style.opacity="0";setTimeout(function(){t.remove();},420);},2600);}catch(_){}};'
-+'if(!window.lxStellar){var _sbP=null;window.lxStellar=function(){if(!_sbP)_sbP=new Promise(function(res,rej){if(window.StellarBase)return res(window.StellarBase);var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-base@13.0.1/dist/stellar-base.min.js";s.onload=function(){window.StellarBase?res(window.StellarBase):rej(new Error("Stellar SDK failed to load"));};s.onerror=function(){rej(new Error("Stellar SDK failed to load"));};document.head.appendChild(s);});return _sbP;};}'
++'if(!window.lxStellar){var _sbP=null;window.lxStellar=function(){if(!_sbP)_sbP=new Promise(function(res,rej){if(window.StellarBase)return res(window.StellarBase);var s=document.createElement("script");s.src="/assets/vendor/stellar-base-13.0.1.min.js";s.onload=function(){window.StellarBase?res(window.StellarBase):rej(new Error("Stellar SDK failed to load"));};s.onerror=function(){rej(new Error("Stellar SDK failed to load"));};document.head.appendChild(s);});return _sbP;};}'
 +'if(!window.lxSign){window.lxSign=function(xdr,S){var w="";try{w=(localStorage.getItem("lumos.wallet")||"").toLowerCase();}catch(_){}var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}var PP=S.Networks.PUBLIC;'
 +'if(w==="freighter"){if(window.freighterApi&&window.freighterApi.signTransaction)return Promise.resolve(window.freighterApi.signTransaction(xdr,{networkPassphrase:PP,network:"PUBLIC",address:ME})).then(function(r){return (r&&(r.signedTxXdr||r.signedXDR))||r;});return import("https://esm.sh/@stellar/freighter-api@6").then(function(m){var f=m.default||m;return f.signTransaction(xdr,{networkPassphrase:PP,address:ME});}).then(function(r){return (r&&(r.signedTxXdr||r.signedXDR))||r;});}'
 +'if(w==="rabet")return window.rabet.sign(xdr,"mainnet").then(function(r){return r.xdr;});'

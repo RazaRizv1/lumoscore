@@ -262,10 +262,8 @@ const SEO_CACHE_TTL = 300;
 // the request, so the *.pages.dev preview url cannot compete with the real domain in search results.
 const PRIMARY_ORIGIN = 'https://lumoscore.com';
 
-function esc(s){
-  return String(s == null ? '' : s)
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
+function esc(s){return (String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')).split(String.fromCharCode(39)).join("&#39;");}
 function fmtUsd(n){
   if (n == null || !isFinite(n)) return null;
   if (n >= 1000) return '$' + Math.round(n).toLocaleString('en-US');
@@ -375,6 +373,22 @@ async function blogPost(env, slug){
     if (!p || p.published === false) return null;
     return p;
   } catch (e) { return null; }
+}
+// The index, for the same reason the post body is read: /blog ships an empty grid that the browser
+// fills, so a crawler saw an index of nothing -- 24 links, not one of them to a post. The four posts
+// are in sitemap.xml so they are discoverable, but a sitemap conveys existence and nothing else: no
+// internal links means no authority flowing to them and no topical context, on exactly the pages the
+// backlink campaign is meant to lift.
+//
+// Same filter the public endpoint applies, so a scheduled post is not linked before it is live.
+async function blogIndex(env){
+  try {
+    const kv = env && env.CONTENT_KV;
+    if (!kv) return [];
+    const idx = (await kv.get('blog:index', 'json')) || [];
+    const now = Date.now();
+    return idx.filter((p) => p && p.published && (!p.publishAt || p.publishAt <= now));
+  } catch (e) { return []; }
 }
 // Whitespace, built without a backslash: this whole function lives inside a template literal, where a
 // backslash is eaten on the way out. Writing /BACKSLASH-s+/g here produced /s+/g, which matched the
@@ -653,7 +667,15 @@ export async function onRequest(context){
   if (ct.indexOf('text/html') < 0) return out;
 
   // canonical is the clean url WITHOUT query or hash, on whatever host served this request
-  const canonical = PRIMARY_ORIGIN + (url.pathname === '/' ? '/' : url.pathname.replace(/\/+$/, ''));
+  //
+  // ONE EXCEPTION. /docs and /docs/introduction are the same page at two urls -- identical title,
+  // description, h1 and body, both in the sitemap, and each canonicalising to itself, so neither
+  // deferred and Google had to pick. That coin-toss lands on the entry point to the best content on
+  // the site. /docs now points at /docs/introduction, which is the one the sidebar links and the one
+  // that names what it is. Both keep serving; only the signal changes.
+  const CANON_OF = { '/docs': '/docs/introduction' };
+  const cleanPath = url.pathname === '/' ? '/' : url.pathname.replace(/\/+$/, '');
+  const canonical = PRIMARY_ORIGIN + (CANON_OF[cleanPath] || cleanPath);
   const want = seoFor(url.pathname);
 
   let seo = null;
@@ -670,6 +692,10 @@ export async function onRequest(context){
     const post = await blogPost(context.env, want.slug);
     if (post) seo = blogSeo(post, PRIMARY_ORIGIN);
   }
+  // The index page has no seoFor entry of its own -- its title and description are baked -- so the
+  // post list is fetched here purely to render the links.
+  let blogList = null;
+  if (url.pathname === '/blog') blogList = await blogIndex(context.env);
   else if (want && want.kind === 'pool') {
     // XLM has no logo of its own, so the pair's other side is the one worth showing.
     const other = want.a === 'native' ? want.b : want.a;
@@ -835,6 +861,18 @@ export async function onRequest(context){
     const p = seo.post;
     if (p.title) rw = rw.on('.lx-post-head h1', new TextSetter(String(p.title)));
     if (p.body) rw = rw.on('.lx-post-body', new HtmlSetter(p.body));
+  }
+
+  // THE BLOG INDEX, likewise. Same shape the client builds, so when its own render lands a moment
+  // later it replaces this with an equivalent grid and nothing moves. The cover and the date are left
+  // to the client: the cover needs a second lookup, and the date it prints is relative ("today",
+  // "3 days ago"), which cannot be computed server-side without going stale in cache.
+  if (url.pathname === '/blog' && blogList && blogList.length){
+    const cards = blogList.map((p) => '<a class="lx-bp-card" href="/blog/' + esc(p.slug) + '">'
+      + '<div class="lx-bp-cover" data-cov="' + esc(p.slug) + '"></div>'
+      + '<div class="lx-bp-title">' + esc(p.title || p.slug) + '</div>'
+      + '<div class="lx-bp-when"></div></a>').join('');
+    rw = rw.on('.lx-bp-grid', new HtmlSetter(cards));
   }
 
   out = rw.transform(out);

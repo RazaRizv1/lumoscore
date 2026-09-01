@@ -254,7 +254,7 @@ function lxCctpSdk(){
   if(_sdkP) return _sdkP;
   _sdkP=new Promise(function(res,rej){
     var s=document.createElement("script");
-    s.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-sdk@13.3.0/dist/stellar-sdk.min.js";
+    s.src="/assets/vendor/stellar-sdk-13.3.0.min.js";
     s.onload=function(){ window.StellarSdk?res(window.StellarSdk):rej(new Error("Stellar SDK failed to load")); };
     s.onerror=function(){ rej(new Error("Stellar SDK failed to load")); };
     document.head.appendChild(s);

@@ -129,6 +129,28 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 // Nobody swaps an asset for itself. If the two legs still agree, the read failed -- say so instead of
 // showing a confident, wrong confirmation and letting it be signed.
 +'if(payTok&&payTok===recTok){payTok="";recTok="";}'
+// LAST RESORT, and the one that stops a failed read being a dead end. Everything above scrapes the
+// pane; when that comes back empty (or with both legs naming the same asset) the review used to give
+// up and show "Could not read this order" -- with no logos either, because the marks are gated on the
+// same two variables. On Trade-Asset none of that guessing is necessary: the page IS one asset traded
+// against XLM, and it already publishes which way round.
+//
+// This is safe precisely because it is the SAME source the transaction is built from. In the data
+// layer: payAsset(){return dxSide()==="buy"?assetXLM():assetTok();} and recvAsset() is its mirror,
+// where dxSide() reads __lxDXAside. Deriving the review from those variables cannot disagree with what
+// gets signed -- reading the DOM was the part that could.
++'function pairFromState(pn){try{'
++'var code=window.__lxDXAcode;if(!code)return null;'
++'var isLim=false;try{isLim=!!(pn&&((pn.className&&/pane-limit/.test(pn.className))||(pn.closest&&pn.closest(".dxa-pane-limit"))));}catch(_){}'
+// EXACTLY the data layer\x27s own rule: dxSide(){return __lxDXAside==="sell"?"sell":"buy";} and
+// limSide() likewise. Anything that is not "sell" is a buy -- including UNSET, which is the state on a
+// fresh page load before the toggle has been touched. Requiring the variable to be present here was
+// wrong and left the very case this fallback exists for still failing; caught by testing it.
++'var raw=isLim?window.__lxDXLside:window.__lxDXAside;'
++'var side=(String(raw||"").toLowerCase()==="sell")?"sell":"buy";'
++'return side==="sell"?[code,"XLM"]:["XLM",code];'
++'}catch(_){return null;}}'
++'if(!payTok||!recTok){var ps=pairFromState(pane);if(ps){payTok=ps[0];recTok=ps[1];}}'
 +'var payNum=parseFloat(((payIn&&payIn.value)||"").replace(/,/g,""))||0;'
 // AUDIT (numeric): the modal derived receive as pay x rate — but the pane's "Rate" row is the GROSS market
 // rate while the pane's receive field is already NET of the platform fee. So the confirmation screen showed
@@ -180,7 +202,31 @@ const SCRIPT='<script id="lx-feemodal">(function(){'
 +'if(!u)return "";'
 +'var esc=String(u).replace(/\\x27/g,"%27").replace(/\\s+/g,"");'
 +'return \'<span class="lx-rv-mk" data-logoed="1" data-lxc="1" style="background-image:url(\\x27\'+esc+\'\\x27)"></span>\';}'
-+'var payIco=payTok?legIco(fields[0]):"",recIco=recTok?legIco(fields[1]):"";'
+// Same idea for the marks. legIco digs the artwork out of the field; if the field could not be read
+// the mark went missing too, which is why the review showed two bare numbers. The page already holds
+// both logos -- __lxDXAxlmLogo for XLM and __lxLogos[CODE] for the asset -- so ask it rather than
+// showing nothing.
++'function stateIco(code){try{'
+// XLM has a published logo. For the page's OWN asset, take the mark the page header is already
+// painting -- .asset-logo carries whichever asset this page is for, so this is not LUMOS-specific.
+// __lxLogos is last because it does not contain every asset (LUMOS is not in it, which is why the
+// first version of this fell through to nothing).
++'var raw="";'
++'if(code==="XLM")raw=window.__lxDXAxlmLogo||"";'
++'else if(code&&code===window.__lxDXAcode){var hd=document.querySelector(".asset-logo");'
++'if(hd)raw=getComputedStyle(hd).backgroundImage||"";}'
++'if(!raw)raw=((window.__lxLogos||{})[code])||"";'
++'var u=rawUrl(raw);if(!u&&raw&&String(raw).indexOf("url(")<0)u=String(raw);'
++'if(!u)return "";'
++'var e2=String(u).replace(/\\x27/g,"%27").replace(/\\s+/g,"");'
++'return \'<span class="lx-rv-mk" data-logoed="1" data-lxc="1" style="background-image:url(\\x27\'+e2+\'\\x27)"></span>\';'
++'}catch(_){return "";}}'
+// stateIco FIRST, legIco second -- the order matters and getting it wrong is what put two Stellar
+// marks on a LUMOS -> XLM review. The pay chip carries a nested <img> holding the generic Stellar
+// placeholder, which legIco happily returns, so scraping the pane won a fight it should have lost.
+// The page's own header logo is the asset's real mark; the chip is only a fallback for pages that
+// publish no state.
++'var payIco=payTok?(stateIco(payTok)||legIco(fields[0])):"",recIco=recTok?(stateIco(recTok)||legIco(fields[1])):"";'
 +'modal.querySelector("[data-pay]").innerHTML=payIco+\'<span>\'+fnum(payNum)+" "+payTok+\'</span>\';'
 +'modal.querySelector("[data-receive]").innerHTML=recIco+\'<span>\'+fnum(recNum)+" "+recTok+\'</span>\';'
 +'modal.querySelector("[data-details]").innerHTML=det;'

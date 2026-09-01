@@ -100,13 +100,13 @@ var EXCLUDE={
 
 function q(s){return document.querySelector(s);}
 function j(u){return fetch(u).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});}
-function esc(s){return String(s==null?"":s).replace(/[<>&]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":"&amp;";});}
+function esc(s){return (String(s==null?"":s).replace(/[<>&]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":"&amp;";})).split(String.fromCharCode(39)).join("&#39;");}
 function shortG(a){return a?a.slice(0,4)+"\\u2026"+a.slice(-4):"";}
 function num(n,d){return (+n||0).toLocaleString(undefined,{maximumFractionDigits:(d==null?2:d)});}
 function isPage(){var t=((q(".admin-page-title")||{}).textContent||"").trim();return t.indexOf("LUMOS Rewards")===0;}
 function sdk(){ if(window.StellarBase)return Promise.resolve(window.StellarBase);
   return new Promise(function(res,rej){ var el=document.createElement("script");
-    el.src="https://cdn.jsdelivr.net/npm/@stellar/stellar-base@13.0.1/dist/stellar-base.min.js";
+    el.src="/assets/vendor/stellar-base-13.0.1.min.js";
     el.onload=function(){ window.StellarBase?res(window.StellarBase):rej(new Error("SDK failed to load")); };
     el.onerror=function(){ rej(new Error("SDK failed to load")); }; document.head.appendChild(el); }); }
 
