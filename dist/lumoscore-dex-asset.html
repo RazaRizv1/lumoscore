@@ -15569,7 +15569,9 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       // measures to 84% of the chart width. These used to be set inside the plot at R.x + 6, over the
       // line, and needed a double-drawn shadow halo to stay legible against it. Outside the plot they
       // need no halo at all, and the gutter was already being reserved on the portrait card.
-      tx(g, axisNum(vv), R.x + R.w + 8, yy - aS / 2, aS, '500', MONO, th.axis);
+      // 16px, not 8: the endpoint dot is centred on the plot's right edge with an 8-11px radius, so at
+      // 8px it painted over the first character of whichever label it sat beside.
+      tx(g, axisNum(vv), R.x + R.w + 16, yy - aS / 2, aS, '500', MONO, th.axis);
     }
     if (times && times.length === n) {
       var XT = 4;
@@ -15715,9 +15717,15 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     }
     // The bottom row carries the QR, so its height is set by what a 37-module symbol needs to stay
     // readable rather than by the stat cards, which look right at anything in this range.
-    var qrBox = big ? 106 : 100;
+    // Bigger, and with the stamp set beneath it rather than alongside. The landscape card had no room
+    // to grow the code downward -- its QR is bottom-aligned to the stat-tile row, which already sits on
+    // the bottom padding -- so the column now starts at the x-axis line and runs to the tile row's
+    // bottom edge, using the 36px of dead gap above the tiles. Nothing else lives out there: the price
+    // labels stop 8px above that line and the x-axis labels stop short of the gutter.
+    var stampLine = big ? 16 : 12, stampGap = 8;
+    var qrBox = big ? 132 : 100; // landscape is re-derived below, once the x-axis line is known
     var winH = big ? 106 : 100;
-    var footH = big ? qrBox : 0;
+    var footH = big ? (qrBox + stampGap + stampLine) : 0;
     var winsTop, timeTop, chartBot, footTop = 0, ruleY = 0;
     if (big) {
       footTop = H - P.b - footH;
@@ -15729,6 +15737,11 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       winsTop = H - P.b - winH;
       timeTop = winsTop - 20 - 16;
       chartBot = timeTop - 8;
+      // Grow the code into the gap above the stat tiles, but stop short of the x-axis line: the last
+      // time label is right-aligned to the plot's edge, and a code sized to the full gap sat on top of
+      // it and hid it. 26px of clearance is the label's own height plus a margin. The stamp goes below
+      // the tile row, into the bottom padding, which is 40px on this layout and holds it comfortably.
+      qrBox = Math.max(100, (winsTop + winH) - (timeTop + 26));
     }
     // The gutter has to exist on BOTH layouts now that the price labels are set in it -- it used to be
     // reserved only on the portrait card (big ? 0 : 78) because the labels were drawn inside the plot.
@@ -15742,7 +15755,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       var pw = wid(g, axisNum(m.series[pk]), probeS, '500', MONO);
       if (pw > widest) widest = pw;
     }
-    var axisGutter = Math.ceil(widest) + 14;
+    var axisGutter = Math.ceil(widest) + 22;
     var R = { x: P.l, y: chartTop, w: W - P.l - P.r - axisGutter, h: chartH, xAxisY: timeTop };
 
     // ---- ground. FLAT, and the same flat the page is. What used to be here was a 24%-opacity orange
@@ -15810,8 +15823,9 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       // url set one above the other. The url is gone, so 200px was being held for a single 12px line
       // -- the tiles stopped early and the gap before the QR read as a hole in the row. Reserve what
       // the stamp actually measures instead, and the tiles grow into what is left.
-      var stampW = Math.ceil(wid(g, stamp(new Date()), 12, '400', MONO));
-      var availW = big ? (W - P.l - P.r) : (W - P.l - P.r - qrBox - 16 - stampW - 20);
+      // The stamp no longer sits beside the QR, so only the QR column has to be kept clear -- the tiles
+      // take back the width that was being held for a line of text.
+      var availW = big ? (W - P.l - P.r) : (W - P.l - P.r - qrBox - 28);
       var cellW = (availW - gap * (wins.length - 1)) / wins.length;
       for (var i2 = 0; i2 < wins.length; i2++) {
         var cx = P.l + i2 * (cellW + gap);
@@ -15848,18 +15862,27 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // which left the whole left half of the footer empty and read as a gap rather than as space. They
     // now sit at opposite ends of the row, left-aligned to the same P.l every other element on the card
     // starts from, and centred on the QR's own vertical midpoint so the two read as one line.
+    // The stamp is centred on the code's own vertical axis in both layouts, directly beneath it, so the
+    // two read as one stacked block rather than as a code with a line of text pushed off to one side.
+    // Centred under the code when it fits, right-aligned to the card margin when it does not. The
+    // stamp is a 22-character line and the code is ~120px wide, so centring it on the code's axis ran
+    // it off the right edge of the card -- the QR's right edge already sits on that margin. Both flush
+    // right reads as the same stacked block and cannot clip.
+    function drawStamp(qx0, topY) {
+      var sw = wid(g, stampS, stampLine, '400', MONO);
+      if (sw <= qrBox) tx(g, stampS, qx0 + qrBox / 2, topY, stampLine, '400', MONO, th.axis, 'center');
+      else tx(g, stampS, qx0 + qrBox, topY, stampLine, '400', MONO, th.axis, 'right');
+    }
     if (big) {
       g.fillStyle = th.rule; g.fillRect(P.l, ruleY, W - P.l - P.r, 1);
       var qx = W - P.r - qrBox;
       drawQR(g, m.url, qx, footTop, qrBox, th);
-      tx(g, stampS, P.l, footTop + (qrBox - 16) / 2, 16, '400', MONO, th.axis);
+      drawStamp(qx, footTop + qrBox + stampGap);
     } else {
-      // Beside the QR, not at P.l: on this layout the footer band IS the stat-tile row, so a stamp
-      // left-aligned to the card margin lands on top of the first tile.
-      var fy = winsTop, fh = winH;
-      var qx2 = W - P.r - qrBox, qy2 = fy + fh - qrBox;
+      var qBot = winsTop + winH;
+      var qx2 = W - P.r - qrBox, qy2 = qBot - qrBox;
       drawQR(g, m.url, qx2, qy2, qrBox, th);
-      tx(g, stampS, qx2 - 16, qy2 + (qrBox - 12) / 2, 12, '400', MONO, th.axis, 'right');
+      drawStamp(qx2, qBot + stampGap);
     }
 
     g.strokeStyle = th.edge; g.lineWidth = 1;
@@ -15944,22 +15967,28 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       toast('Still loading this asset — try again in a moment.');
       return;
     }
-    var m = model();
-    // A card with no line is not worth saving, and would be a blank rectangle with a price on it.
-    if (m.series.length < 2) {
-      busy = false; btn.classList.remove('lxsnap-busy');
-      toast('The chart is still loading — try again in a moment.');
-      return;
-    }
-    var portrait = false;
-    try { portrait = window.matchMedia('(pointer:coarse)').matches && window.innerWidth < 760; } catch (e) { }
-    if (q('#mdxaChart')) portrait = true;
+    // The price and the chart are not the last things to arrive. The 24h/7d/1m/3m figures come from
+    // their own fetch, and model() takes only the cells that are already filled -- so a card taken
+    // straight after a refresh came out with a single 24H tile stretched across the whole row, which
+    // reads as a card that only tracks a day rather than one caught mid-load. Waiting is the right
+    // answer rather than refusing the click: the press is the intent, and the data is seconds away.
+    waitWins().then(function () {
+      var m = model();
+      // A card with no line is not worth saving, and would be a blank rectangle with a price on it.
+      if (m.series.length < 2) {
+        toast('The chart is still loading — try again in a moment.');
+        return;
+      }
+      var portrait = false;
+      try { portrait = window.matchMedia('(pointer:coarse)').matches && window.innerWidth < 760; } catch (e) { }
+      if (q('#mdxaChart')) portrait = true;
 
-    Promise.all([logo(m), loadImg('/assets/tokens/lumos.png', false), fonts(), waitDom()])
-      .then(function (r) {
-        if (!m.domain && r[3]) m.domain = r[3];
-        return save(render(m, r[0], r[1], portrait), m);
-      })
+      return Promise.all([logo(m), loadImg('/assets/tokens/lumos.png', false), fonts(), waitDom()])
+        .then(function (r) {
+          if (!m.domain && r[3]) m.domain = r[3];
+          return save(render(m, r[0], r[1], portrait), m);
+        });
+    })
       .catch(function (e) {
         toast('Could not build the snapshot. ' + ((e && e.message) || ''));
       })
@@ -15967,6 +15996,32 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         busy = false;
         btn.classList.remove('lxsnap-busy');
       });
+  }
+
+  // Resolves once all four windows carry a real figure, or after a ceiling -- whichever lands first.
+  // Capped rather than open-ended because an asset with no 3m history never fills that cell at all,
+  // and the card is still worth having with three.
+  function waitWins() {
+    var WANTK = ['24h', '7d', '1m', '3m'];
+    function ready() {
+      var have = {};
+      qa('.dxa-perf-cell,.mdxa-perf-cell').forEach(function (c) {
+        var k = c.querySelector('.tf'), v = c.querySelector('.ch');
+        if (k && v) have[k.textContent.trim().toLowerCase()] = v.textContent.trim();
+      });
+      for (var i = 0; i < WANTK.length; i++) {
+        var val = have[WANTK[i]];
+        if (!val || val === '—') return false;
+      }
+      return true;
+    }
+    if (ready()) return Promise.resolve();
+    return new Promise(function (res) {
+      var t0 = Date.now();
+      var iv = setInterval(function () {
+        if (ready() || Date.now() - t0 > 6000) { clearInterval(iv); res(); }
+      }, 120);
+    });
   }
 
   // Capture phase and stopImmediatePropagation, like every other control in this strip: the design has
