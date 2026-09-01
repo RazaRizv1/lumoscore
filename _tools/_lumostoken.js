@@ -1416,8 +1416,17 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     // head ended up above supply with its grid still at the bottom, and a guard that only asked "is the
     // head above?" then declared the job done and left the head orphaned. So the guard below asks for
     // BOTH -- head above supply AND its grid directly behind it -- which also repairs that state.
+    // The class is utility-grid. This asked for "util-grid" and therefore never found it, so grid was
+    // null, the guard below short-circuited on (!grid), and orderSections returned having moved
+    // nothing -- every tick, silently. The page shipped as: util head, supply head, supply card,
+    // utility grid. The heading promised "what you can do with LUMOS" and was followed by a screen and
+    // a half of tokenomics before a single one of its own cards appeared.
+    //
+    // Both names are accepted so a rename on either side cannot quietly restore that. If NEITHER is
+    // present the function still returns early and changes nothing, which is the safe direction.
     var grid=null, kk=par.children;
-    for(var g=0;g<kk.length;g++){ if(kk[g].classList&&kk[g].classList.contains("util-grid")){ grid=kk[g]; break; } }
+    for(var g=0;g<kk.length;g++){ var cl=kk[g].classList;
+      if(cl&&(cl.contains("utility-grid")||cl.contains("util-grid"))){ grid=kk[g]; break; } }
     if((ub.compareDocumentPosition(sb)&Node.DOCUMENT_POSITION_FOLLOWING)&&(!grid||ub.nextElementSibling===grid))return;
     // The utility block is its heading wrapper plus the siblings after it, up to the next heading
     // wrapper. Do NOT stop at "contains a heading": the utility cards carry their own h3s, so that

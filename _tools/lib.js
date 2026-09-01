@@ -34,6 +34,10 @@ const VERIFIED={
   "SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co",
   "LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io",
   "AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network",
+  // Ours: minted on the launchpad and listed in lumoscore.com's own stellar.toml with matching code,
+  // issuer and image -- checked before adding, per the rule above that every pair is verified against
+  // its issuer's home_domain rather than taken on trust.
+  "TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com",
 
   // Added deliberately, each one checked by its own SEP-1 handshake rather than taken on an index's
   // word: the issuer's on-chain home_domain read from Horizon, that domain's stellar.toml fetched, and
