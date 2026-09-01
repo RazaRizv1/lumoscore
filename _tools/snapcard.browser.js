@@ -762,7 +762,12 @@
     // top edge sit on the price's top edge and its bottom edge on the pill's, which is the whole point
     // of moving it up there.
     var priceBlockH = 92 + 24 + 32;
-    var qrBox = big ? Math.max(110, priceBlockH - stampGap - stampLine) : 100;
+    // Portrait: the code runs the full height of the header column -- from the top padding, level with
+    // the asset mark, down to the foot of the price -- with the stamp under it landing just above the
+    // change pill. Sized to the price column alone it was a small square floating in a lot of empty
+    // space; this fills the block it shares.
+    var qrIdeal = (P.t + Math.max(glyph, codeS + (big ? 11 : 9) + domS * 1.2) + 52 + 92) - P.t;
+    var qrBox = big ? Math.max(124, qrIdeal) : 100;
     var winH = big ? 106 : 100;
     var winsTop, timeTop, chartBot, qrTop = 0;
     if (big) {
@@ -770,7 +775,15 @@
       // the portrait header was empty -- the price and pill are both left-aligned and rightH is 0 for
       // this layout -- while the code sat alone in a footer that existed only to hold it. Moving it up
       // pairs it with the price and hands the whole footer band, rule and all, back to the chart.
-      qrTop = priceTop;
+      qrTop = headTop;
+      // ...but never into the price. The price is the one long line on this card and its width is a
+      // function of the asset -- 0.0295482 is nine characters where 0.00012345678 is thirteen -- so an
+      // ideal-height code would have run into a long one. 124 is the floor because that is the size
+      // this layout already carried without collision.
+      var hn0 = (m.unit === '$' ? '$' : '') + m.price;
+      var priceRight = P.l + wid(g, hn0, 92, '700', MONO)
+        + ((m.unit && m.unit !== '$') ? wid(g, ' ' + m.unit, 42, '500', MONO) : 0);
+      qrBox = Math.max(124, Math.min(qrBox, (W - P.r) - priceRight - 30));
       winsTop = H - P.b - winH;
       timeTop = winsTop - 40 - 20;
       chartBot = timeTop - 12;
