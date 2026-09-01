@@ -64,6 +64,8 @@
     },
   };
   var ACCENT = '#ea6a2c';
+  // The page chart's two volume-bar fills, taken from its own rects.
+  var VOL_UP = '#22c55e', VOL_DOWN = '#ff5b5b';
   var UI = "'Hanken Grotesk',system-ui,sans-serif";
   var MONO = "'JetBrains Mono',ui-monospace,monospace";
 
@@ -171,12 +173,15 @@
     var pc = q('#dxaChart') || q('#mdxaChart');
     var raw = (pc && pc.__lxpts) || [];
     // __lxpts is stored in USD per unit whatever the toggle says; the toggle is applied at label time.
-    var series = [], vols = [], i;
+    var series = [], vols = [], times = [], i;
     for (i = 0; i < raw.length; i++) {
       var v = parseFloat(raw[i].v);
       if (!isFinite(v)) continue;
       series.push(denom === 'xlm' && xlmUsd > 0 ? v / xlmUsd : v);
       vols.push(Math.max(0, parseFloat(raw[i].vol) || 0));
+      // t is epoch ms on every point; carried so the X axis can be labelled with real times rather
+      // than a guess derived from the timeframe button.
+      times.push(+raw[i].t || 0);
     }
 
     // "0.0275049 XLM" or "$0.0048145" -- the page has already chosen the unit and the precision.
@@ -250,7 +255,7 @@
     return {
       code: code, issuer: issuer, native: native, verified: !!q('.lx-vtick'),
       domain: dom, price: num, unit: unit, alt: alt, chg: chg, dir: dir,
-      hi: hi, lo: lo, wins: wins, series: series, vols: vols,
+      hi: hi, lo: lo, wins: wins, series: series, vols: vols, times: times,
       tf: tfEl ? tfEl.textContent.trim() : '', denom: denom,
       url: location.origin + location.pathname,
       short: location.host.replace(/^www\./i, '') + '/trade',
@@ -318,14 +323,37 @@
   //      either arrives clean or not at all.
   //   4. the page's placeholder, if that is what it is showing.
   // Anything past that and the asset has no mark, and the card draws initials.
+  // THE ISSUER IS IN THE URL. __lxDXAissuer is written by the data layer and is empty until it runs,
+  // so a card taken early skipped the proxy step entirely and fell through to initials -- which is how
+  // SCOP came out as "SC" on a page that was showing its real mark. The path is /trade/stellar/CODE-ISSUER
+  // and needs nothing to have run, so it is the reliable source.
+  //
+  // Step 3 cannot rescue this either: measured, meta.stellar.expert answers with NO
+  // access-control-allow-origin, so loading it with crossOrigin set always fails -- and that host is
+  // where most third-party marks live. The proxy is effectively the only route, so it must be reached.
+  function idFromPath() {
+    try {
+      var m2 = (location.pathname || '').match(/\/([A-Za-z0-9]{1,12})-(G[A-Z2-7]{55})(?:\/|$)/);
+      if (m2) return { code: m2[1], issuer: m2[2] };
+      var qs = new URLSearchParams(location.search || '').get('asset') || '';
+      var m3 = qs.match(/^([A-Za-z0-9]{1,12})-(G[A-Z2-7]{55})$/);
+      if (m3) return { code: m3[1], issuer: m3[2] };
+    } catch (e) { /* fall through */ }
+    return null;
+  }
   function logo(m) {
     var url = pageLogoUrl();
     var isPlaceholder = url.indexOf('data:') === 0;
     var first = (url && !isPlaceholder && sameOrigin(url)) ? loadImg(url, false) : Promise.resolve(null);
     return first.then(function (a) {
       if (a) return a;
-      if (m.code && m.issuer && !m.native) {
-        return loadImg('/lxapi/logoimg?asset=' + encodeURIComponent(m.code + '-' + m.issuer), false);
+      var id = (m.code && m.issuer) ? { code: m.code, issuer: m.issuer } : idFromPath();
+      if (id && !m.native) {
+        var pu = '/lxapi/logoimg?asset=' + encodeURIComponent(id.code + '-' + id.issuer);
+        // One retry. The proxy's first call for an asset builds from the issuer's toml and can fail
+        // where the second, now cached, succeeds -- and the cost of losing this race is a card that
+        // silently misrepresents the asset with initials.
+        return loadImg(pu, false).then(function (r) { return r || loadImg(pu, false); });
       }
       return null;
     }).then(function (b) {
@@ -431,13 +459,11 @@
   // The glyph: the mark inside a rounded square, lit by its own colour.
   function drawGlyph(g, img, x, y, size, code, col, th) {
     var r = size * 0.26;
-    // halo first, behind everything
-    var hg = g.createRadialGradient(x + size / 2, y + size / 2, 0, x + size / 2, y + size / 2, size * 1.2);
-    hg.addColorStop(0, rgba(col, 0.34));
-    hg.addColorStop(1, rgba(col, 0));
-    g.fillStyle = hg;
-    g.fillRect(x - size * 0.7, y - size * 0.7, size * 2.4, size * 2.4);
-
+    // The halo that used to sit behind the mark -- a radial in the logo's own colour at 0.34, spread
+    // over 2.4x the glyph box -- is gone with the rest of the tinting. On the white card it read as a
+    // warm smudge in the top-left corner, which is the last thing left looking like the flame wash
+    // once the ground went flat. The page sets the same mark on a plain background with nothing
+    // behind it.
     g.save();
     rr(g, x, y, size, size, r);
     g.clip();
@@ -494,7 +520,7 @@
   }
 
   // Returns the endpoint, which the light behind the card is centred on.
-  function drawChart(g, R, series, vols, d, th) {
+  function drawChart(g, R, series, vols, d, th, times) {
     var n = series.length;
     if (n < 2) return null;
     var mn = series[0], mx = series[0], i;
@@ -509,13 +535,18 @@
     var mv = 0;
     for (i = 0; i < vols.length; i++) if (vols[i] > mv) mv = vols[i];
     if (mv > 0) {
+      // PER BAR, not one colour for the whole series. Read off the page's own chart rather than
+      // guessed: its 88 volume rects come back as exactly two fills, #22c55e and #ff5b5b, split 43/45
+      // -- so each bar is coloured by whether that candle closed up or down. The card was painting
+      // every bar in d.c, the single 24h direction colour, which on a red day made a solid red block
+      // out of a series that is half green.
       g.save();
       g.globalAlpha = 0.17;
-      g.fillStyle = d.c;
       var bw = Math.max(2, (R.w / n) * 0.62);
       for (i = 0; i < n; i++) {
         var bh = (vols[i] / mv) * (R.h * 0.24);
         if (bh < 1) continue;
+        g.fillStyle = (i > 0 && series[i] < series[i - 1]) ? VOL_DOWN : VOL_UP;
         g.fillRect(X(i) - bw / 2, R.y + R.h - bh, bw, bh);
       }
       g.restore();
@@ -527,36 +558,105 @@
       for (var k = 1; k < n; k++) g.lineTo(X(k), Y(series[k]));
     }
 
-    // area
+    // MATCHED TO THE CHART ON THE PAGE, read off it rather than eyeballed: the SVG line computes to
+    // stroke #ea6a2c at 2.5px with round caps and filter:none, and its area is a single linear
+    // gradient from the accent at 0.20 opacity to 0. The card used to draw something else entirely --
+    // three stacked strokes standing in for a bloom, a left-dim/right-bright ramp along the line, an
+    // area running 0.34 -> 0.10 -> 0, and the whole thing in the 24h direction colour rather than the
+    // accent. It read as a different product's chart. All of that is gone.
+    // Stroke width is proportional so the phone card and the desktop card land on the same weight
+    // relative to the plot, rather than one looking hairline and the other heavy.
+    var LINE = accentOf(th);
+    var lw = Math.max(2, R.h * 0.016);
+
     trace();
     g.lineTo(R.x + R.w, R.y + R.h);
     g.lineTo(R.x, R.y + R.h);
     g.closePath();
     var ag = g.createLinearGradient(0, R.y, 0, R.y + R.h);
-    ag.addColorStop(0, hexA(d.c, 0.34));
-    ag.addColorStop(0.55, hexA(d.c, 0.10));
-    ag.addColorStop(1, hexA(d.c, 0));
+    ag.addColorStop(0, hexA(LINE, 0.20));
+    ag.addColorStop(1, hexA(LINE, 0));
     g.fillStyle = ag; g.fill();
 
-    // The dim-past / bright-now ramp, shared by all three passes. Three stacked strokes stand in for a
-    // bloom: a real blur filter would have to be applied to the whole layer and canvas filters are not
-    // dependable across the browsers a wallet ships.
-    var sg = g.createLinearGradient(R.x, 0, R.x + R.w, 0);
-    sg.addColorStop(0, hexA(d.c, 0.30));
-    sg.addColorStop(0.45, hexA(d.c, 0.62));
-    sg.addColorStop(0.82, d.c);
-    sg.addColorStop(1, d.c);
-    g.lineJoin = 'round'; g.lineCap = 'round'; g.strokeStyle = sg;
-    var passes = [[R.h * 0.062, 0.10], [R.h * 0.029, 0.22], [R.h * 0.0118, 1]];
-    for (i = 0; i < passes.length; i++) {
-      g.globalAlpha = passes[i][1];
-      g.lineWidth = Math.max(1, passes[i][0]);
-      trace(); g.stroke();
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.strokeStyle = LINE; g.lineWidth = lw;
+    trace(); g.stroke();
+
+    // ---- axes. The page labels price down the right and time along the bottom, both in the muted
+    // ink; the card had neither, only a high/low pair and the words "Last 24 hours". Same two scales
+    // here, at the same relative sizes, so a shared card can actually be read as a chart.
+    // Proportional to the plot, but capped. Moving the portrait QR out of the footer handed the chart
+    // ~190px of extra height, and a size derived purely from R.h grew the price and time labels with
+    // it until they were competing with the stat tiles. The axis is meant to be read second.
+    var aS = Math.max(9, Math.min(R.big ? 22 : 15, Math.round(R.h * 0.052)));
+    g.save();
+    g.globalAlpha = 0.9;
+    var TICKS = 4;
+    for (i = 0; i <= TICKS; i++) {
+      var vv = mn + (mx - mn) * (i / TICKS);
+      var yy = Y(vv);
+      // a hairline behind each label, so the eye can carry the value across the plot
+      g.globalAlpha = 0.10; g.fillStyle = th.axis;
+      g.fillRect(R.x, Math.round(yy) + 0.5, R.w, 1);
+      g.globalAlpha = 0.9;
+      // IN THE RIGHT GUTTER, which is where the page puts its own price numbers -- its high/low pair
+      // measures to 84% of the chart width. These used to be set inside the plot at R.x + 6, over the
+      // line, and needed a double-drawn shadow halo to stay legible against it. Outside the plot they
+      // need no halo at all, and the gutter was already being reserved on the portrait card.
+      // 16px, not 8: the endpoint dot is centred on the plot's right edge with an 8-11px radius, so at
+      // 8px it painted over the first character of whichever label it sat beside.
+      tx(g, axisNum(vv), R.x + R.w + 16, yy - aS / 2, aS, '500', MONO, th.axis);
     }
-    g.globalAlpha = 1;
+    if (times && times.length === n) {
+      var XT = 4;
+      for (i = 0; i <= XT; i++) {
+        var idx = Math.round((n - 1) * (i / XT));
+        var lab = axisTime(times[idx], times[0], times[n - 1]);
+        if (!lab) continue;
+        var al = i === 0 ? 'left' : (i === XT ? 'right' : 'center');
+        var xx = X(idx) + (i === 0 ? 2 : (i === XT ? -2 : 0));
+        // Drawn on the row that used to hold "Last 24 hours … now". Those two were a description of
+        // the window; these are the window, and they cannot both live here -- chartBot is only 8-12px
+        // above this line.
+        var xay = (R.xAxisY != null) ? R.xAxisY : (R.y + R.h + 6);
+        tx(g, lab, xx, xay, aS, '500', MONO, th.axis, al);
+      }
+    }
+    g.restore();
 
     var ex = X(n - 1), ey = Y(series[n - 1]);
     return { x: ex, y: ey };
+  }
+
+  // The page's accent, not a colour of our own: the card should be the same orange the chart behind
+  // it is drawn in, and it follows a theme change for free.
+  function accentOf(th) {
+    var v = '';
+    try { v = (getComputedStyle(document.documentElement).getPropertyValue('--accent') || '').trim(); } catch (_) {}
+    return /^#[0-9a-f]{6}$/i.test(v) ? v : ACCENT;
+  }
+  // Axis values are read at a glance, not to seven decimals. Significant figures rather than a fixed
+  // precision, because one asset trades at 5.63 and the next at 0.0000499.
+  function axisNum(v) {
+    var a = Math.abs(v);
+    if (!isFinite(v)) return '';
+    if (a >= 1000) return Math.round(v).toLocaleString('en-US');
+    if (a >= 1) return v.toFixed(2);
+    if (a >= 0.01) return v.toFixed(4);
+    if (a === 0) return '0';
+    var dp = Math.min(8, Math.max(4, 2 - Math.floor(Math.log(a) / Math.LN10)));
+    return v.toFixed(dp).replace(/0+$/, '').replace(/\.$/, '');
+  }
+  // A day of data wants clock times; a year wants dates. Decided from the span the series covers, so
+  // it is right for whichever timeframe button is active without being told which.
+  function axisTime(t, t0, t1) {
+    if (!t) return '';
+    var d0 = new Date(t), span = (t1 - t0) || 0;
+    if (span <= 36 * 3600 * 1000) return pad2(d0.getHours()) + ':' + pad2(d0.getMinutes());
+    if (span <= 400 * 24 * 3600 * 1000) {
+      return d0.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d0.getMonth()];
+    }
+    return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][d0.getMonth()] + ' ' + String(d0.getFullYear()).slice(2);
   }
   // Alpha onto a #rrggbb, since the palette is stored as hex and gradients need rgba.
   function hexA(hex, a) {
@@ -651,55 +751,77 @@
     }
     // The bottom row carries the QR, so its height is set by what a 37-module symbol needs to stay
     // readable rather than by the stat cards, which look right at anything in this range.
-    var qrBox = big ? 106 : 100;
+    // Bigger, and with the stamp set beneath it rather than alongside. The landscape card had no room
+    // to grow the code downward -- its QR is bottom-aligned to the stat-tile row, which already sits on
+    // the bottom padding -- so the column now starts at the x-axis line and runs to the tile row's
+    // bottom edge, using the 36px of dead gap above the tiles. Nothing else lives out there: the price
+    // labels stop 8px above that line and the x-axis labels stop short of the gutter.
+    var stampLine = big ? 16 : 12, stampGap = 8;
+    // The portrait price column: the number, the gap beneath it, and the change pill -- the same three
+    // numbers chartTop is derived from just above. Sizing the code's block to exactly this makes its
+    // top edge sit on the price's top edge and its bottom edge on the pill's, which is the whole point
+    // of moving it up there.
+    var priceBlockH = 92 + 24 + 32;
+    // Portrait: the code runs the full height of the header column -- from the top padding, level with
+    // the asset mark, down to the foot of the price -- with the stamp under it landing just above the
+    // change pill. Sized to the price column alone it was a small square floating in a lot of empty
+    // space; this fills the block it shares.
+    var qrIdeal = (P.t + Math.max(glyph, codeS + (big ? 11 : 9) + domS * 1.2) + 52 + 92) - P.t;
+    var qrBox = big ? Math.max(124, qrIdeal) : 100;
     var winH = big ? 106 : 100;
-    var footH = big ? qrBox : 0;
-    var winsTop, timeTop, chartBot, footTop = 0, ruleY = 0;
+    var winsTop, timeTop, chartBot, qrTop = 0;
     if (big) {
-      footTop = H - P.b - footH;
-      ruleY = footTop - 30;
-      winsTop = ruleY - 40 - winH;
+      // TOP RIGHT, level with the price, instead of a band beneath the stat tiles. The right half of
+      // the portrait header was empty -- the price and pill are both left-aligned and rightH is 0 for
+      // this layout -- while the code sat alone in a footer that existed only to hold it. Moving it up
+      // pairs it with the price and hands the whole footer band, rule and all, back to the chart.
+      qrTop = headTop;
+      // ...but never into the price. The price is the one long line on this card and its width is a
+      // function of the asset -- 0.0295482 is nine characters where 0.00012345678 is thirteen -- so an
+      // ideal-height code would have run into a long one. 124 is the floor because that is the size
+      // this layout already carried without collision.
+      var hn0 = (m.unit === '$' ? '$' : '') + m.price;
+      var priceRight = P.l + wid(g, hn0, 92, '700', MONO)
+        + ((m.unit && m.unit !== '$') ? wid(g, ' ' + m.unit, 42, '500', MONO) : 0);
+      qrBox = Math.max(124, Math.min(qrBox, (W - P.r) - priceRight - 30));
+      winsTop = H - P.b - winH;
       timeTop = winsTop - 40 - 20;
       chartBot = timeTop - 12;
     } else {
       winsTop = H - P.b - winH;
       timeTop = winsTop - 20 - 16;
       chartBot = timeTop - 8;
+      // Grow the code into the gap above the stat tiles, but stop short of the x-axis line: the last
+      // time label is right-aligned to the plot's edge, and a code sized to the full gap sat on top of
+      // it and hid it. 26px of clearance is the label's own height plus a margin. The stamp goes below
+      // the tile row, into the bottom padding, which is 40px on this layout and holds it comfortably.
+      qrBox = Math.max(100, (winsTop + winH) - (timeTop + 26));
     }
-    var axisGutter = big ? 0 : 78;
-    var R = { x: P.l, y: chartTop, w: W - P.l - P.r - axisGutter, h: Math.max(60, chartBot - chartTop) };
+    // The gutter has to exist on BOTH layouts now that the price labels are set in it -- it used to be
+    // reserved only on the portrait card (big ? 0 : 78) because the labels were drawn inside the plot.
+    // Measured rather than guessed at, because the widest label is a function of the asset's price:
+    // SCOP needs "0.0148324" where a four-figure asset needs "1,234". A fixed 78 clipped one and
+    // stranded the other.
+    var chartH = Math.max(60, chartBot - chartTop);
+    // Same clamp drawChart uses, or the gutter gets measured for a font larger than the one drawn.
+    var probeS = Math.max(9, Math.min(big ? 22 : 15, Math.round(chartH * 0.052)));
+    var widest = 0;
+    for (var pk = 0; pk < m.series.length; pk++) {
+      var pw = wid(g, axisNum(m.series[pk]), probeS, '500', MONO);
+      if (pw > widest) widest = pw;
+    }
+    var axisGutter = Math.ceil(widest) + 22;
+    var R = { x: P.l, y: chartTop, w: W - P.l - P.r - axisGutter, h: chartH, xAxisY: timeTop, big: big };
 
-    // A first, throwaway pass just to learn where the line ends, so the light can be laid down before
-    // the chart is drawn over it. Cheaper and far simpler than duplicating the scale maths.
-    var probe = document.createElement('canvas').getContext('2d');
-    var end = drawChart(probe, R, m.series, m.vols, d, th);
-
-    // ---- ground
+    // ---- ground. FLAT, and the same flat the page is. What used to be here was a 24%-opacity orange
+    // radial across the whole card (th.wash), a second radial in the 24h direction colour centred on
+    // the endpoint, an orange-to-transparent bar along the top edge, full-width banding every 44-60px,
+    // and a grain pass. Five tints stacked on a ground that the page paints as one solid colour, which
+    // is why the card came out looking like it was lit by a flame while the chart it was copying is
+    // plain. The page's own .chart-area sits on the page background with nothing behind it, so does
+    // this now. The only lines left are the axis hairlines, and those are drawn inside the plot rect
+    // by drawChart -- not run edge to edge across the header and the footer.
     g.fillStyle = th.bg; g.fillRect(0, 0, W, H);
-    var wg = g.createRadialGradient(W * 0.06, -H * 0.12, 0, W * 0.06, -H * 0.12, Math.max(W, H) * 0.72);
-    wg.addColorStop(0, th.wash);
-    wg.addColorStop(1, 'rgba(0,0,0,0)');
-    g.fillStyle = wg; g.fillRect(0, 0, W, H);
-
-    g.fillStyle = th.grid;
-    var step = big ? 60 : 44;
-    for (var gy = 0; gy < H; gy += step) g.fillRect(0, gy, W, 1);
-
-    // THE MOVE IS THE LIGHT SOURCE. Centred on the endpoint, drawn far larger than the card and
-    // clipped by it, so what shows is the middle of a light and never a disc with an edge.
-    if (end) {
-      var GR = (big ? 590 : 500);
-      var sg2 = g.createRadialGradient(end.x, end.y, 0, end.x, end.y, GR);
-      sg2.addColorStop(0, d.g);
-      sg2.addColorStop(0.7, hexA(d.c, 0));
-      sg2.addColorStop(1, hexA(d.c, 0));
-      g.fillStyle = sg2; g.fillRect(0, 0, W, H);
-    }
-
-    var tg = g.createLinearGradient(0, 0, W, 0);
-    tg.addColorStop(0, ACCENT); tg.addColorStop(0.22, '#ff9a3d');
-    tg.addColorStop(0.78, 'rgba(234,106,44,0)'); tg.addColorStop(1, 'rgba(234,106,44,0)');
-    g.fillStyle = tg; g.fillRect(0, 0, W, big ? 8 : 5);
 
     // ---- identity. Top-aligned in the header, with the mark centred against its own text block.
     var gy0 = headTop + Math.max(0, (textBlockH - glyph) / 2);
@@ -737,25 +859,28 @@
     }
 
     // ---- chart, over the light it cast
-    var end2 = drawChart(g, R, m.series, m.vols, d, th);
+    var end2 = drawChart(g, R, m.series, m.vols, d, th, m.times);
     if (end2) drawDot(g, end2.x, end2.y, big ? 11 : 8, d, th);
 
-    // Axis labels. High and low keep their own directional colours -- they are not the day's direction.
-    var lx = big ? (R.x + R.w) : (R.x + R.w + 70);
-    if (m.hi) tx(g, m.hi + ' H', lx, R.y, axisS, '400', MONO, DIR.up[m.theme].c, 'right');
-    if (m.lo) tx(g, m.lo + ' L', lx, R.y + R.h - axisS, axisS, '400', MONO, DIR.down[m.theme].c, 'right');
+    // The separate "H"/"L" pair that used to sit here is gone. It was drawn at the right edge of the
+    // plot -- exactly where the Y ticks now are -- and it was saying the same thing twice: the ticks
+    // run mn..mx, so the top tick IS the high and the bottom tick IS the low. Two sets of price
+    // numbers stacked in the same gutter read as a collision, not as two readouts.
 
-    // Time row: the window the chart is actually showing, then now.
-    var label = ({ '1D': 'Last 24 hours', '1W': 'Last 7 days', '1M': 'Last 30 days', '1Y': 'Last year' })[m.tf]
-      || (m.tf ? 'Last ' + m.tf : '');
-    if (label) tx(g, label, R.x, timeTop, axisS, '500', MONO, th.axis);
-    tx(g, 'now', R.x + R.w, timeTop, axisS, '700', MONO, th.ink, 'right');
+    // The "Last 24 hours … now" row is gone: drawChart now draws the real X scale on this line, which
+    // says the same thing and says it at every point rather than only at the two ends.
 
     // ---- the windows
     var wins = m.wins.length ? m.wins : [];
     if (wins.length) {
       var gap = 12;
-      var availW = big ? (W - P.l - P.r) : (W - P.l - P.r - qrBox - 16 - 200);
+      // THE BLANK SPACE. This reserved a flat 200px to the left of the QR for a timestamp and a short
+      // url set one above the other. The url is gone, so 200px was being held for a single 12px line
+      // -- the tiles stopped early and the gap before the QR read as a hole in the row. Reserve what
+      // the stamp actually measures instead, and the tiles grow into what is left.
+      // The stamp no longer sits beside the QR, so only the QR column has to be kept clear -- the tiles
+      // take back the width that was being held for a line of text.
+      var availW = big ? (W - P.l - P.r) : (W - P.l - P.r - qrBox - 28);
       var cellW = (availW - gap * (wins.length - 1)) / wins.length;
       for (var i2 = 0; i2 < wins.length; i2++) {
         var cx = P.l + i2 * (cellW + gap);
@@ -783,29 +908,38 @@
     // 14px it ran clean through the stat cards beside it, and truncated it reads as broken. The QR two
     // centimetres away carries the exact address, which is what the QR is for.
     var shortUrl = m.short;
+    // The wordmark, the flame and the short url are GONE from the footer -- the QR is the only mark
+    // left, and it already carries the address the url was spelling out. shortUrl stays computed in
+    // the model because the QR encodes the full link; it is simply no longer drawn.
+    // The timestamp stays: it is neither the brand nor the link, and a shared card is worth less if
+    // you cannot tell when the price in it was true. Easy to drop if it is not wanted.
+    // Both items were pinned to the right edge -- the timestamp set right-aligned a few px off the QR --
+    // which left the whole left half of the footer empty and read as a gap rather than as space. They
+    // now sit at opposite ends of the row, left-aligned to the same P.l every other element on the card
+    // starts from, and centred on the QR's own vertical midpoint so the two read as one line.
+    // The stamp is centred on the code's own vertical axis in both layouts, directly beneath it, so the
+    // two read as one stacked block rather than as a code with a line of text pushed off to one side.
+    // Centred under the code when it fits, right-aligned to the card margin when it does not. The
+    // stamp is a 22-character line and the code is ~120px wide, so centring it on the code's axis ran
+    // it off the right edge of the card -- the QR's right edge already sits on that margin. Both flush
+    // right reads as the same stacked block and cannot clip.
+    function drawStamp(qx0, topY) {
+      var sw = wid(g, stampS, stampLine, '400', MONO);
+      if (sw <= qrBox) tx(g, stampS, qx0 + qrBox / 2, topY, stampLine, '400', MONO, th.axis, 'center');
+      else tx(g, stampS, qx0 + qrBox, topY, stampLine, '400', MONO, th.axis, 'right');
+    }
     if (big) {
-      g.fillStyle = th.rule; g.fillRect(P.l, ruleY, W - P.l - P.r, 1);
-      if (flame) g.drawImage(flame, P.l, footTop + (footH - 46) / 2, 46, 46);
-      tx(g, 'LumosCore', P.l + 46 + 12, footTop + (footH - 34) / 2, 34, '800', UI, th.ink);
+      // No rule any more: it was the top edge of a footer band that no longer exists.
       var qx = W - P.r - qrBox;
-      drawQR(g, m.url, qx, footTop, qrBox, th);
-      var rx2 = qx - 22;
-      tx(g, shortUrl, rx2, footTop + (footH - 45) / 2, 20, '400', MONO, th.muted, 'right');
-      tx(g, stampS, rx2, footTop + (footH - 45) / 2 + 25, 16, '400', MONO, th.axis, 'right');
+      drawQR(g, m.url, qx, qrTop, qrBox, th);
+      drawStamp(qx, qrTop + qrBox + stampGap);
     } else {
-      var fy = winsTop, fh = winH;
-      var qx2 = W - P.r - qrBox;
-      drawQR(g, m.url, qx2, fy + fh - qrBox, qrBox, th);
-      var rx3 = qx2 - 16;
-      var bw2 = wid(g, 'LumosCore', 25, '800', UI);
-      var by = fy + fh - 66;
-      if (flame) g.drawImage(flame, rx3 - bw2 - 34 - 10, by - 4, 34, 34);
-      tx(g, 'LumosCore', rx3, by, 25, '800', UI, th.ink, 'right');
-      tx(g, shortUrl, rx3, by + 25 + 8, 14, '400', MONO, th.muted, 'right');
-      tx(g, stampS, rx3, by + 25 + 8 + 14 + 5, 12, '400', MONO, th.axis, 'right');
+      var qBot = winsTop + winH;
+      var qx2 = W - P.r - qrBox, qy2 = qBot - qrBox;
+      drawQR(g, m.url, qx2, qy2, qrBox, th);
+      drawStamp(qx2, qBot + stampGap);
     }
 
-    grain(g, W, H, th.grain);
     g.strokeStyle = th.edge; g.lineWidth = 1;
     g.strokeRect(0.5, 0.5, W - 1, H - 1);
     return c;
@@ -888,22 +1022,28 @@
       toast('Still loading this asset — try again in a moment.');
       return;
     }
-    var m = model();
-    // A card with no line is not worth saving, and would be a blank rectangle with a price on it.
-    if (m.series.length < 2) {
-      busy = false; btn.classList.remove('lxsnap-busy');
-      toast('The chart is still loading — try again in a moment.');
-      return;
-    }
-    var portrait = false;
-    try { portrait = window.matchMedia('(pointer:coarse)').matches && window.innerWidth < 760; } catch (e) { }
-    if (q('#mdxaChart')) portrait = true;
+    // The price and the chart are not the last things to arrive. The 24h/7d/1m/3m figures come from
+    // their own fetch, and model() takes only the cells that are already filled -- so a card taken
+    // straight after a refresh came out with a single 24H tile stretched across the whole row, which
+    // reads as a card that only tracks a day rather than one caught mid-load. Waiting is the right
+    // answer rather than refusing the click: the press is the intent, and the data is seconds away.
+    waitWins().then(function () {
+      var m = model();
+      // A card with no line is not worth saving, and would be a blank rectangle with a price on it.
+      if (m.series.length < 2) {
+        toast('The chart is still loading — try again in a moment.');
+        return;
+      }
+      var portrait = false;
+      try { portrait = window.matchMedia('(pointer:coarse)').matches && window.innerWidth < 760; } catch (e) { }
+      if (q('#mdxaChart')) portrait = true;
 
-    Promise.all([logo(m), loadImg('/assets/tokens/lumos.png', false), fonts(), waitDom()])
-      .then(function (r) {
-        if (!m.domain && r[3]) m.domain = r[3];
-        return save(render(m, r[0], r[1], portrait), m);
-      })
+      return Promise.all([logo(m), loadImg('/assets/tokens/lumos.png', false), fonts(), waitDom()])
+        .then(function (r) {
+          if (!m.domain && r[3]) m.domain = r[3];
+          return save(render(m, r[0], r[1], portrait), m);
+        });
+    })
       .catch(function (e) {
         toast('Could not build the snapshot. ' + ((e && e.message) || ''));
       })
@@ -911,6 +1051,32 @@
         busy = false;
         btn.classList.remove('lxsnap-busy');
       });
+  }
+
+  // Resolves once all four windows carry a real figure, or after a ceiling -- whichever lands first.
+  // Capped rather than open-ended because an asset with no 3m history never fills that cell at all,
+  // and the card is still worth having with three.
+  function waitWins() {
+    var WANTK = ['24h', '7d', '1m', '3m'];
+    function ready() {
+      var have = {};
+      qa('.dxa-perf-cell,.mdxa-perf-cell').forEach(function (c) {
+        var k = c.querySelector('.tf'), v = c.querySelector('.ch');
+        if (k && v) have[k.textContent.trim().toLowerCase()] = v.textContent.trim();
+      });
+      for (var i = 0; i < WANTK.length; i++) {
+        var val = have[WANTK[i]];
+        if (!val || val === '—') return false;
+      }
+      return true;
+    }
+    if (ready()) return Promise.resolve();
+    return new Promise(function (res) {
+      var t0 = Date.now();
+      var iv = setInterval(function () {
+        if (ready() || Date.now() - t0 > 6000) { clearInterval(iv); res(); }
+      }, 120);
+    });
   }
 
   // Capture phase and stopImmediatePropagation, like every other control in this strip: the design has
