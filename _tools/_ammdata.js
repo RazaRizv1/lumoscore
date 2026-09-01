@@ -538,6 +538,12 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function big(n){ n=+n||0; var a=Math.abs(n);
     if(a>=1e9)return (n/1e9).toFixed(3)+"B";
     if(a>=1e6)return (n/1e6).toFixed(3)+"M";
+    // K completes the ladder that already had M and B. Without it a five-figure pool printed
+    // "32,472 XLM" while a seven-figure one printed "1.234M" -- one box switching conventions.
+    // SHARED with the 24h Volume and Fees Collected cards, which call the same helper: a pool doing
+    // over a thousand XLM a day now reads "12.34K" there too. Same abbreviation applied consistently,
+    // but it is a visible change on busy pools, not only on the Liquidity box.
+    if(a>=1e3)return (n/1e3).toFixed(2)+"K";
     return num(n); }
   function qty(n){ n=+n||0; var a=Math.abs(n); if(a>=1e6)return (n/1e6).toFixed(2)+"M"; if(a>=1e3)return Math.round(n).toLocaleString("en-US"); if(a>=1)return (Math.round(n*100)/100).toLocaleString("en-US"); if(a>0){ var d=Math.min(7,Math.max(2,2-Math.floor(Math.log(a)/Math.LN10))); var s=n.toFixed(d); if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\\.$/,""); return s; } return "0"; }
   function usd(x){x=+x;if(!x)return "$0";var a=Math.abs(x);if(a>=1e9)return "$"+(x/1e9).toFixed(2)+"B";if(a>=1e6)return "$"+(x/1e6).toFixed(2)+"M";if(a>=1e3)return "$"+(x/1e3).toFixed(1)+"K";if(a>=1)return "$"+x.toFixed(2);return "$"+x.toFixed(x>=0.01?4:6);}
@@ -2209,9 +2215,27 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       // #13: these sub-lines were written long and then clipped by the cell they live in, so the one
       // figure worth reading -- the dollar value -- was the part that got cut ("+ 2,317,207 USDC ·
       // ≈ …"). Abbreviated amounts, so the money always fits.
-      if(/liq/.test(cn)){ if(d.nonXlm){ if(v)setAmt(v,big(d.a0.amt),U0);
-          if(sub)setText(sub,"+ "+qty(d.a1.amt)+" "+d.a1.code+(d.tvlUsd>0?(" \\u00b7 "+usd(d.tvlUsd)):"")); }
-        else { if(v)setAmt(v,big(d.xlm),"XLM"); if(sub)setText(sub,"+ "+qty(d.tok)+" "+d.code+(d.tvlUsd>0?(" \\u00b7 "+usd(d.tvlUsd)):"")); } }
+      // The Liquidity box holds TWO amounts and a price, and it used to read the second and third as one
+      // clipped sentence: "+ 57.07 GOLD \\u00b7 $11.5K". The pair is the point of a pool, so the other
+      // side now gets the same weight as the first, and the dollar figure drops underneath it as the
+      // caption it actually is.
+      // Inline styles rather than new rules: .ph-stat .s carries a visibility:hidden!important from the
+      // design that something else already overrides, and adding selectors into that argument is how a
+      // sub-line ends up invisible on one page and not another.
+      if(/liq/.test(cn)){
+        var _LB="font-size:clamp(15px,1.35vw,18px);font-weight:800;letter-spacing:-.2px;color:var(--text);display:block";
+        var _LU="font-size:.7em;font-weight:700;opacity:.6;margin-left:3px;letter-spacing:0";
+        var _LS="font-size:11.5px;color:var(--text-muted);display:block;margin-top:2px";
+        var _oAmt=d.nonXlm?d.a1.amt:d.tok, _oCode=d.nonXlm?d.a1.code:d.code;
+        if(v)setAmt(v,big(d.nonXlm?d.a0.amt:d.xlm),U0);
+        if(sub){
+          // Literal space before the ticker, matching setAmt: the 3px margin only helps the eye, and
+          // without the space the figure copies out of the page as "25.26MRBT".
+          var _h='<span style="'+_LB+'">'+esc(qty(_oAmt))+' <span style="'+_LU+'">'+esc(_oCode)+'</span></span>'
+               +(d.tvlUsd>0?('<span style="'+_LS+'">'+esc(usd(d.tvlUsd))+'</span>'):'');
+          if(sub.innerHTML!==_h)sub.innerHTML=_h;
+        }
+      }
       // null = the trades fetch never answered. Print a dash: a confident "0 XLM" on a pool that traded all
       // day is worse than admitting we do not know.
       // #12: this used to print the running sum while volDeepen walked the day, labelled ">= N, still
@@ -3203,7 +3227,15 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       var myUsd=d.tvlUsd*d.myFrac;
       var amt=q(".mp-amount .lc-money,.mpm-amount .lc-money")||q(".mp-amount,.mpm-amount"); setMoneyEl(amt,myUsd,d.tvlUsd>0?usd(myUsd):"\\u2014");
       var pill=q(".position-share-pill,.mpm-share"); if(pill)setText(pill,(d.myFrac*100>=0.01?(d.myFrac*100).toFixed(2):"<0.01")+"%");
-      var pnl=q(".mp-pnl,.mpm-pnl"); if(pnl)pnl.innerHTML='<span style="color:var(--text-muted)">'+(d.myFrac*100>=0.01?(d.myFrac*100).toFixed(2):"<0.01")+'% of pool \\u00b7 current value</span>';
+      // The share percentage is GONE from this line, on purpose. myFrac is mine/tot, and on this page
+      // it can come back nonsense -- "684030720.16% of pool" was the reported case, which means tot
+      // arrived about 6.8 million times too small. A figure that wrong is worse than no figure: it is
+      // unreadable, and it sits directly above real balances, so it undermines the numbers that ARE
+      // right. The caption alone says what the amount underneath is.
+      //
+      // NOTE: this hides the symptom, not the cause. The same myFrac still drives myUsd above and the
+      // share pill, so wherever it is wrong those are wrong too -- worth chasing separately.
+      var pnl=q(".mp-pnl,.mpm-pnl"); if(pnl)pnl.innerHTML='<span style="color:var(--text-muted)">current value</span>';
       if(d.nonXlm){ pdAssetRow(assets[0],d.a0.code,genLogo(d.a0),famt(d.a0.amt*d.myFrac)); pdAssetRow(assets[1],d.a1.code,genLogo(d.a1),famt(d.a1.amt*d.myFrac)); }
       else { pdAssetRow(assets[0],d.code,tokLogo(),famt(d.tok*d.myFrac)); pdAssetRow(assets[1],"XLM",xlmLogo(),famt(d.xlm*d.myFrac)); }
     } else {

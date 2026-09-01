@@ -7,7 +7,22 @@ const fs=require('fs');
 // Every rule whose selector mentions the fee banner or its Buy button, taken straight out of _swapcalc.
 const FM_BANNER_CSS = (function(){
   const w = fs.readFileSync(__dirname + '/_swapcalc.js', 'utf8');
-  const out = (w.match(/\.lx-fee-(?:banner|ic|buy)[^{}]*\{[^}]*\}/g) || []).join('');
+  let out = (w.match(/\.lx-fee-(?:banner|ic|buy)[^{}]*\{[^}]*\}/g) || []).join('');
+  // This scrapes _swapcalc.js's SOURCE, and one of the rules it lifts is written there across three
+  // concatenated string literals:
+  //     +'.lx-fee-buy{background:none!important;...;'
+  //     +'width:auto!important;...;'
+  // [^}]* does not stop at a line break, so the match dragged the JS syntax -- a quote, a newline, a
+  // plus, a quote -- into the CSS. The browser hit that stray quote and DROPPED EVERY RULE AFTER IT in
+  // the block: six of them, including .lx-fee-lumos{color:...}. That is why the LUMOS link rendered in
+  // the browser's default link blue, and turned purple once the target had been visited -- it had no
+  // author colour at all. Measured: 89 rules in the text, 78 reaching the CSSOM.
+  out = out.replace(/'\s*\+\s*'/g, '');
+  // Refuse rather than ship a stylesheet with JS in it. If _swapcalc is ever reformatted in a way this
+  // does not clean, the build stops here instead of silently losing the tail of the block again.
+  if (/['"`]/.test(out)) {
+    throw new Error('_feemodal: scraped fee-banner CSS still contains a quote -- it would break the stylesheet');
+  }
   if (out.length < 300) throw new Error('_feemodal: fee-banner CSS not found in _swapcalc.js');
   return out; })();const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
