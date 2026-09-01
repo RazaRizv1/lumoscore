@@ -175,6 +175,35 @@ for (const p of PAGES) {
     html = html.slice(0, tr.start) + html.slice(tr.end);
   }
 
+  // Mobile's product cards carried a .pc-stats row that desktop's never had, and the figures in it are
+  // static markup, not data: "Listed 482", "Trades 24h 2,728", "Vol 24h $72.4K", "Pools 142". Nothing
+  // updates them, so the phone was showing invented platform metrics as though they were live.
+  //
+  // Scoped to the inside of a product card rather than a global replace: of the nine
+  // <div class="pc-stats"> literals on that page, four sit inside JS strings that build a different
+  // component, and a blanket strip would have cut them out of the script.
+  let statsRemoved = 0;
+  for (let guard = 0; guard < 20; guard++) {
+    let hit = -1, cardRange = null;
+    let from = 0;
+    while (from < html.length) {
+      const ci = html.indexOf('class="product-card lxpc"', from);
+      if (ci < 0) break;
+      const open = html.lastIndexOf('<a', ci);
+      const r = elRange(html, open, 'a');
+      if (!r) { from = ci + 10; continue; }
+      const si = html.indexOf('<div class="pc-stats">', r.start);
+      if (si >= 0 && si < r.end) { hit = si; cardRange = r; break; }
+      from = r.end;
+    }
+    if (hit < 0) break;
+    const sr = elRange(html, hit, 'div');
+    if (!sr || sr.end > cardRange.end) { problems.push(p.key + ': could not bound a pc-stats block'); break; }
+    html = html.slice(0, sr.start) + html.slice(sr.end);
+    statsRemoved++;
+  }
+  if (problems.length) continue;
+
   const patched = html !== beforePatch;
 
   if (html.indexOf(MARK) >= 0) {
