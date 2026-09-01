@@ -2988,8 +2988,10 @@ if(document.readyState!=="loading")boot();else document.addEventListener("DOMCon
       });
       txs.sort(function(a,b){return b.time-a.time;});
       var accs=(r[4]&&r[4]._embedded&&r[4]._embedded.records)||[];
-      var parts=[], myShares=0;
-      accs.forEach(function(a){ var id=a.account_id||a.id; (a.balances||[]).forEach(function(b){ if(b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===hex){ parts.push({addr:id,shares:+b.balance}); if(myAddr()&&id===myAddr())myShares=+b.balance; } }); });
+      // Horizon's own string is kept beside the parsed number. Max has to withdraw the EXACT balance,
+      // and a double round-tripped through a display formatter is not it -- see the Max handler below.
+      var parts=[], myShares=0, mySharesRaw="";
+      accs.forEach(function(a){ var id=a.account_id||a.id; (a.balances||[]).forEach(function(b){ if(b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===hex){ parts.push({addr:id,shares:+b.balance}); if(myAddr()&&id===myAddr()){myShares=+b.balance;mySharesRaw=String(b.balance||"");} } }); });
       var totShares=+p.total_shares||parts.reduce(function(s,x){return s+x.shares;},0);
       parts.forEach(function(x){ x.frac=totShares>0?x.shares/totShares:0; });
       parts.sort(function(a,b){return b.shares-a.shares;});
@@ -3009,7 +3011,7 @@ if(document.readyState!=="loading")boot();else document.addEventListener("DOMCon
         // #12: true from the first paint until the day's walk finishes, so the two cells derived from it
         // print "Counting…" once instead of a running floor. See pdStats.
         volNext:volNext,volPartial:!!volNext,volCounting:!!volNext,__xlmUsd:xlmUsd,
-        txs:txs,txFail:(trFail||opFail),parts:parts,totShares:totShares,myShares:myShares,myFrac:myFrac,balTok:balTok,balXlm:balXlm,balXlmRaw:balXlmRaw,subs:subs,
+        txs:txs,txFail:(trFail||opFail),parts:parts,totShares:totShares,myShares:myShares,mySharesRaw:mySharesRaw,myFrac:myFrac,balTok:balTok,balXlm:balXlm,balXlmRaw:balXlmRaw,subs:subs,
         // #13: the true provider count. /accounts?liquidity_pool= caps at 100 rows and each page is ~3.8MB,
         // so parts.length is the size of the SAMPLE we fetched, not the number of providers -- which is why
         // this page said 100 while the pools list, reading the pool record's own total_trustlines, said 234.
@@ -4525,6 +4527,24 @@ if(document.readyState!=="loading")boot();else document.addEventListener("DOMCon
   // unsubmittable value into the input. Always emit a plain 7dp decimal (floored, never rounded up past the
   // real balance), with trailing zeros trimmed.
   function fmtIn(v){ v=+v; if(!(v>0))return ""; var dp=v>=1?4:7,f=Math.pow(10,dp); var n=Math.floor(v*f)/f; if(!(n>0))return ""; return trimZ(n.toFixed(dp)); }
+// fmtIn is a DISPLAY formatter: at or above 1 it floors to four decimals. Feeding Max through it is
+// what left a sliver in the pool every time -- a position of 8.7187981 became 8.7187 and 0.0000981
+// stayed behind, so a full exit took two withdrawals and left a dust position in My Pools. Stellar
+// amounts carry seven decimals, so four is not a rounding preference here, it is a wrong number.
+// Horizon's own string is used untouched where we have it; toFixed(7) is the fallback, since a double
+// parsed from a 7dp decimal returns to the same 7dp string. Percentages still go through fmtIn --
+// they are a fraction of a balance rather than the balance, so nothing is stranded by rounding one.
+// Takes the detail object as an argument: d is a local "var d=DET" inside each of the callers, not
+// something visible from up here.
+function maxShares(dd){
+  var raw=(dd&&dd.mySharesRaw)||"";
+  // No regex here on purpose: this string is emitted into a page script, and the transform strips a
+  // single backslash on the way out -- its own guard refuses the write rather than shipping a broken
+  // escape. Horizon returns a plain decimal, so a finite positive value with no exponent is the test.
+  if(raw&&+raw>0&&isFinite(+raw)&&raw.indexOf("e")<0&&raw.indexOf("E")<0) return trimZ(raw);
+  var n=+((dd&&dd.myShares)||0);
+  return n>0?trimZ(n.toFixed(7)):"";
+}
   // build → sign → submit; buildOps(S, acctJson) -> [operations]
   // #16: onSigned fires the moment the wallet hands the signature back, BEFORE the network submit.
   // Those are two different waits and the button used to show one label across both -- see wRun.
@@ -4705,7 +4725,7 @@ if(document.readyState!=="loading")boot();else document.addEventListener("DOMCon
     var wpanel=q("#dwWithdraw");
     if(wpanel&&!wpanel.__lxW){ wpanel.__lxW=1;
       wpanel.addEventListener("input",function(e){ if(e.target&&e.target.tagName==="INPUT"){ wHi(null); withRecv(); } });   // manual amount clears the % highlight
-      wpanel.addEventListener("click",function(e){ var btn=e.target&&e.target.closest&&e.target.closest(".dw-pct-b, .dw-pct button, .max-btn"); if(!btn||!wpanel.contains(btn))return; wHi(btn); var f=/max/i.test(btn.textContent)?1:(parseFloat(btn.textContent)||0)/100; var w=wInEl(); if(w){ w.value=fmtIn(d.myShares*f); withRecv(); } });
+      wpanel.addEventListener("click",function(e){ var btn=e.target&&e.target.closest&&e.target.closest(".dw-pct-b, .dw-pct button, .max-btn"); if(!btn||!wpanel.contains(btn))return; wHi(btn); var isMax=/max/i.test(btn.textContent); var f=isMax?1:(parseFloat(btn.textContent)||0)/100; var w=wInEl(); if(w){ w.value=isMax?maxShares(d):fmtIn(d.myShares*f); withRecv(); } });
     }
     function isWith(){ var wp=q("#dwWithdraw"); return !!(wp&&getComputedStyle(wp).display!=="none"); }
     // every write above is diff-guarded, so this settles on the first pass instead of ping-ponging
