@@ -159,6 +159,22 @@ for (const p of PAGES) {
   // The replace only matches cards that lack the attribute, so re-running adds nothing.
   const beforePatch = html;
   html = html.replace(/<a class="product-card lxpc"/g, '<a data-lxnonav="1" class="product-card lxpc"');
+
+  // The mobile landing's "See what's trending" block, which desktop never had. It was left in place
+  // earlier on the assumption that _trending.js fed it, and removing an element a data layer still
+  // queries is how this codebase produces silent TypeErrors. That assumption was wrong: _trending.js
+  // injects only on lumoscore-dex-asset.html, and the built mobile landing contains no trendingList,
+  // no trending-row and no lx-tready -- nothing reads it. What it actually held was donor filler,
+  // chain tabs reading "Aptos 7 / Aptos 5 / Aptos Soon" and no tokens, under a heading promising
+  // "real tokens, real prices, real volume". Also checked on every run rather than behind the marker,
+  // and a no-op on desktop, which has no such section.
+  const ti = html.indexOf('<section class="block trending-block"');
+  if (ti >= 0) {
+    const tr = elRange(html, ti, 'section');
+    if (!tr) { problems.push(p.key + ': could not close the trending section'); continue; }
+    html = html.slice(0, tr.start) + html.slice(tr.end);
+  }
+
   const patched = html !== beforePatch;
 
   if (html.indexOf(MARK) >= 0) {
