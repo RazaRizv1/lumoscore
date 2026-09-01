@@ -15554,7 +15554,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // ---- axes. The page labels price down the right and time along the bottom, both in the muted
     // ink; the card had neither, only a high/low pair and the words "Last 24 hours". Same two scales
     // here, at the same relative sizes, so a shared card can actually be read as a chart.
-    var aS = Math.max(9, Math.round(R.h * 0.052));
+    // Proportional to the plot, but capped. Moving the portrait QR out of the footer handed the chart
+    // ~190px of extra height, and a size derived purely from R.h grew the price and time labels with
+    // it until they were competing with the stat tiles. The axis is meant to be read second.
+    var aS = Math.max(9, Math.min(R.big ? 22 : 15, Math.round(R.h * 0.052)));
     g.save();
     g.globalAlpha = 0.9;
     var TICKS = 4;
@@ -15723,14 +15726,21 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // bottom edge, using the 36px of dead gap above the tiles. Nothing else lives out there: the price
     // labels stop 8px above that line and the x-axis labels stop short of the gutter.
     var stampLine = big ? 16 : 12, stampGap = 8;
-    var qrBox = big ? 132 : 100; // landscape is re-derived below, once the x-axis line is known
+    // The portrait price column: the number, the gap beneath it, and the change pill -- the same three
+    // numbers chartTop is derived from just above. Sizing the code's block to exactly this makes its
+    // top edge sit on the price's top edge and its bottom edge on the pill's, which is the whole point
+    // of moving it up there.
+    var priceBlockH = 92 + 24 + 32;
+    var qrBox = big ? Math.max(110, priceBlockH - stampGap - stampLine) : 100;
     var winH = big ? 106 : 100;
-    var footH = big ? (qrBox + stampGap + stampLine) : 0;
-    var winsTop, timeTop, chartBot, footTop = 0, ruleY = 0;
+    var winsTop, timeTop, chartBot, qrTop = 0;
     if (big) {
-      footTop = H - P.b - footH;
-      ruleY = footTop - 30;
-      winsTop = ruleY - 40 - winH;
+      // TOP RIGHT, level with the price, instead of a band beneath the stat tiles. The right half of
+      // the portrait header was empty -- the price and pill are both left-aligned and rightH is 0 for
+      // this layout -- while the code sat alone in a footer that existed only to hold it. Moving it up
+      // pairs it with the price and hands the whole footer band, rule and all, back to the chart.
+      qrTop = priceTop;
+      winsTop = H - P.b - winH;
       timeTop = winsTop - 40 - 20;
       chartBot = timeTop - 12;
     } else {
@@ -15749,14 +15759,15 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // SCOP needs "0.0148324" where a four-figure asset needs "1,234". A fixed 78 clipped one and
     // stranded the other.
     var chartH = Math.max(60, chartBot - chartTop);
-    var probeS = Math.max(9, Math.round(chartH * 0.052));
+    // Same clamp drawChart uses, or the gutter gets measured for a font larger than the one drawn.
+    var probeS = Math.max(9, Math.min(big ? 22 : 15, Math.round(chartH * 0.052)));
     var widest = 0;
     for (var pk = 0; pk < m.series.length; pk++) {
       var pw = wid(g, axisNum(m.series[pk]), probeS, '500', MONO);
       if (pw > widest) widest = pw;
     }
     var axisGutter = Math.ceil(widest) + 22;
-    var R = { x: P.l, y: chartTop, w: W - P.l - P.r - axisGutter, h: chartH, xAxisY: timeTop };
+    var R = { x: P.l, y: chartTop, w: W - P.l - P.r - axisGutter, h: chartH, xAxisY: timeTop, big: big };
 
     // ---- ground. FLAT, and the same flat the page is. What used to be here was a 24%-opacity orange
     // radial across the whole card (th.wash), a second radial in the 24h direction colour centred on
@@ -15874,10 +15885,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       else tx(g, stampS, qx0 + qrBox, topY, stampLine, '400', MONO, th.axis, 'right');
     }
     if (big) {
-      g.fillStyle = th.rule; g.fillRect(P.l, ruleY, W - P.l - P.r, 1);
+      // No rule any more: it was the top edge of a footer band that no longer exists.
       var qx = W - P.r - qrBox;
-      drawQR(g, m.url, qx, footTop, qrBox, th);
-      drawStamp(qx, footTop + qrBox + stampGap);
+      drawQR(g, m.url, qx, qrTop, qrBox, th);
+      drawStamp(qx, qrTop + qrBox + stampGap);
     } else {
       var qBot = winsTop + winH;
       var qx2 = W - P.r - qrBox, qy2 = qBot - qrBox;
