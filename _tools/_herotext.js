@@ -118,13 +118,16 @@ const CSS = '<style id="lx-herotext">'
   // fold -- the exact thing this is meant to fix. vh stays first as the fallback for anything without
   // dvh. Content moves down a little with it, but nowhere near the centred position that opened the
   // 167px void.
-  // The hero no longer forces a full screen on phones. At 100dvh a tall handset left ~280px of dead
-  // air between the buttons and the cue, and on a 844px screen the rays ran out at y=752 -- their SVG
-  // is a fixed 1000px and does not stretch with the box I had resized -- so the last 92px of the hero
-  // was flat white. Sizing the hero to its content plus real padding fixes both: the void goes, and
-  // the box stays inside the rays' reach. The next section then follows after that space rather than
-  // after a screenful of nothing.
-  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:132px;min-height:auto;'
+  // Full screen on phones, so the cue lands at the bottom and the next section stays below the fold --
+  // the same behaviour desktop has. Sizing the hero to its content instead was my reading of a report
+  // about a white band under the buttons; the band was actually the rays running out (their SVG is a
+  // fixed 1000px and did not stretch with the box), which is fixed on its own below. With that fixed,
+  // a full-screen hero no longer produces the band, so the height can go back.
+  //
+  // 100dvh rather than 100vh: mobile browsers measure vh against the viewport with the address bar
+  // hidden, so a 100vh hero is taller than what is on screen and pushes the cue below the fold -- the
+  // exact thing this is for. vh stays first as the fallback for anything without dvh.
+  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:132px;min-height:100vh;min-height:100dvh;'
   // Bottom padding up from 35.2px. The new tagline runs to five lines on a 375px screen and six on a
   // 320px one, which left the buttons finishing 9px above the scroll cue -- clear, but only just, and
   // one more wrapped line from colliding. The cue sits at the hero's bottom edge, so padding here is
@@ -140,7 +143,10 @@ const CSS = '<style id="lx-herotext">'
   // Trimming both paddings brings the whole hero inside the screen; measured rather than guessed the
   // second time, since guessing is what put it over.
   + '@media (max-width:900px) and (max-height:680px){'
-  + '.hero{padding-top:100px;padding-bottom:96px}'
+  // 68px, not 96: at 96 the content plus padding came to 596px on a 568px screen, so the hero
+  // outgrew the viewport and took the cue 4px past the fold with it. Confirmed dvh itself resolves
+  // correctly to 568 here, so this was the box being too tall rather than a unit problem.
+  + '.hero{padding-top:100px;padding-bottom:68px}'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
