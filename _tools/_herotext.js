@@ -18,6 +18,14 @@ const B = String.fromCharCode(92);
 const OLD = '<h1 class="hero-headline">The Core of<br/><span class="grad">Multi-Chain Web3</span></h1>';
 const NEW = '<h1 class="hero-headline">The Multichain World<br/><span class="grad">Starts Here</span></h1>';
 
+// The tagline keeps the design's three-part shape -- a bold lead, a plain middle, an accented close --
+// so the new copy inherits the same emphasis the old line had rather than arriving as one flat block.
+const TAG_OLD = '<strong>No more platform hopping.</strong> Trade, launch, and bridge across chains '
+  + '— <span class="lrp-hl">all in one place</span>.';
+const TAG_NEW = '<strong>LumosCore unifies the fragmented blockchain experience into one powerful '
+  + 'platform.</strong> Trade, move, launch, explore, and manage your assets across networks '
+  + '— <span class="lrp-hl">without the platform hopping</span>.';
+
 // 60px is the requested size for the <=1100px rule. The desktop figure is set from measurement in
 // _herotext_size below rather than left at 114.4: at that size the new first line does not fit the
 // width _herofit gives it on narrower desktops.
@@ -46,7 +54,12 @@ const CSS = '<style id="lx-herotext">'
   // inside an 812px hero, leaving ~274px of nothing above the scroll cue. 78vh keeps a hero that
   // still dominates the first screen while letting the next section show at the fold, which is what
   // the cue is asking people to do anyway.
-  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:112px;min-height:78vh}}'
+  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:112px;min-height:78vh;'
+  // Bottom padding up from 35.2px. The new tagline runs to five lines on a 375px screen and six on a
+  // 320px one, which left the buttons finishing 9px above the scroll cue -- clear, but only just, and
+  // one more wrapped line from colliding. The cue sits at the hero's bottom edge, so padding here is
+  // what buys it room.
+  + 'padding-bottom:72px}}'
   + '</st' + 'yle>';
 
 const PAGES = [
@@ -69,6 +82,12 @@ for (const p of PAGES) {
     const n = html.split(OLD).length - 1;
     if (n !== 1) { problems.push(p.key + ': expected 1 old hero headline, found ' + n); continue; }
     html = html.replace(OLD, NEW);
+  }
+
+  if (html.indexOf(TAG_NEW) < 0) {
+    const t = html.split(TAG_OLD).length - 1;
+    if (t !== 1) { problems.push(p.key + ': expected 1 old hero tagline, found ' + t); continue; }
+    html = html.replace(TAG_OLD, TAG_NEW);
   }
 
   const bo = html.lastIndexOf('</body>');
