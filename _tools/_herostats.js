@@ -32,8 +32,14 @@ const STATS = [
   ['accounts', 'Accounts'],
 ];
 
+// The mark comes from _netlogos.json, the same file every other Stellar logo on this page is drawn
+// from, so the hero cannot end up showing a different one from the rest of the site.
+const NETLOGOS = require(__dirname + '/_netlogos.json');
+
 const MARKUP = '<div class="lx-herostats" data-lxnonav="1" hidden>'
-  + '<span class="lx-hst-eyebrow">On the Stellar network</span>'
+  + '<span class="lx-hst-eyebrow">On the '
+  + '<span class="lx-hst-chain"><i class="lx-hst-logo">' + NETLOGOS[0].logo + '</i>Stellar</span>'
+  + ' network</span>'
   + '<div class="lx-hst-row">'
   + STATS.map(([k, label]) =>
       '<div class="lx-hst"><b class="lx-hst-v" data-stat="' + k + '"></b>'
@@ -44,8 +50,19 @@ const CSS = '<style id="lx-herostats-css">'
   + '.lx-herostats{margin:0 auto;text-align:center;opacity:0;transition:opacity .5s ease}'
   + '.lx-herostats.is-in{opacity:1}'
   + '@media (prefers-reduced-motion:reduce){.lx-herostats{transition:none}}'
-  + '.lx-hst-eyebrow{display:block;font-size:11px;font-weight:800;letter-spacing:.18em;'
+  // 15px as asked. The tracking comes down from .18em to .1em with it: .18em was set for an 11px
+  // label, and letter-spacing is relative to the font size, so keeping it would have widened the line
+  // by ~40px on top of the size increase and pushed it off a 320px screen.
+  + '.lx-hst-eyebrow{display:block;font-size:15px;font-weight:800;letter-spacing:.1em;'
   + 'text-transform:uppercase;color:var(--text-soft);margin-bottom:20px}'
+  // The chain name and its mark are held together so the pair never breaks across a line, and the
+  // whole eyebrow can still wrap between "On the" and "network" if a screen is narrow enough.
+  + '.lx-hst-chain{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;'
+  + 'vertical-align:middle;color:var(--text-muted)}'
+  + '.lx-hst-logo{display:inline-flex;width:19px;height:19px;flex:0 0 auto}'
+  // The mark is a circular badge in the source file, so it is not letter-spaced along with the text --
+  // the gap above owns that spacing instead.
+  + '.lx-hst-logo svg{width:100%;height:100%;display:block;border-radius:50%}'
   // No dividers between the figures. The rays radiate from directly behind this row, and every rule
   // tried in this hero has ended up cutting across them; space separates these well enough.
   + '.lx-hst-row{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:center;gap:16px 62px}'
@@ -58,7 +75,8 @@ const CSS = '<style id="lx-herostats-css">'
   + '.lx-hst-l{font-size:12.5px;font-weight:700;letter-spacing:.06em;color:var(--text-soft)}'
   + '@media (max-width:1100px){.lx-hst-row{gap:14px 46px}.lx-hst-v{font-size:26px}}'
   + '@media (max-width:900px){.lx-herostats{margin-top:0}'
-  + '.lx-hst-eyebrow{font-size:10px;margin-bottom:15px}'
+  + '.lx-hst-eyebrow{font-size:13.5px;letter-spacing:.08em;margin-bottom:15px}'
+  + '.lx-hst-logo{width:17px;height:17px}.lx-hst-chain{gap:6px}'
   + '.lx-hst-row{gap:12px 30px}'
   + '.lx-hst-v{font-size:21px;letter-spacing:-.6px}'
   + '.lx-hst-l{font-size:11px}}'
