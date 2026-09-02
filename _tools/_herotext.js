@@ -36,6 +36,17 @@ const CSS = '<style id="lx-herotext">'
   // 403px against 336px of usable width on a 375px screen, so it wrapped and left "World" alone on a
   // line of its own -- three lines, with the orphan in the middle. 9.3vw keeps it to two.
   + '@media (max-width:520px){.hero h1.hero-headline{font-size:min(44px,9.3vw);letter-spacing:-1.2px}}'
+  // Phones opened with a 167px void under the nav. The hero is min-height:100vh with
+  // align-items:center AND 101.2px of top padding, so the block was centred in the full screen and
+  // then pushed down again by the padding: measured on a 375x812 screen, the nav ended at 72px and the
+  // headline did not start until 239px, with the content finishing at 595px. Anchoring to the top
+  // instead of centring puts the gap under our control -- roughly 44px below the nav -- rather than
+  // leaving it to fall out of the leftover space.
+  // min-height comes down with it. Anchoring alone just moved the void: content finished at 468px
+  // inside an 812px hero, leaving ~274px of nothing above the scroll cue. 78vh keeps a hero that
+  // still dominates the first screen while letting the next section show at the fold, which is what
+  // the cue is asking people to do anyway.
+  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:112px;min-height:78vh}}'
   + '</st' + 'yle>';
 
 const PAGES = [
