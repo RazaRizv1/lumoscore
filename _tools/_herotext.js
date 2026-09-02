@@ -74,12 +74,16 @@ function stmtNet(mark, label) {
   return '<span class="lx-hs-net"><i class="lx-hs-mark">' + mark + '</i>' + label + '</span>';
 }
 
+// "across networks" is dropped from the lead: the line below names the networks, and having the word
+// twice in one small box was half of why it read as filler. The four capabilities are emphasised
+// inline rather than left flat -- one sentence at one weight in one grey is what made this look like
+// placeholder text, and the rhythm of four accented nouns is what a reader actually scans.
 const STMT_HTML = '<div class="lx-herostmt">'
-  + '<p class="lx-hs-lead">LumosCore unifies trading, liquidity, bridging, and asset management '
-  + 'across networks.</p>'
+  + '<p class="lx-hs-lead">LumosCore unifies <b>trading</b>, <b>liquidity</b>, <b>bridging</b> '
+  + 'and <b>asset management</b>.</p>'
   + '<span class="lx-hs-rule" aria-hidden="true"></span>'
-  + '<p class="lx-hs-nets">Currently supporting '
-  + stmtNet(NETLOGOS[0].logo, 'Stellar') + ' and ' + stmtNet(NETLOGOS[1].logo, 'XRP Ledger') + '.</p>'
+  + '<p class="lx-hs-nets"><span class="lx-hs-pre">Currently supporting</span>'
+  + stmtNet(NETLOGOS[0].logo, 'Stellar') + stmtNet(NETLOGOS[1].logo, 'XRP Ledger') + '</p>'
   + '</div>';
 
 // The mobile header's Launch App button. Same handler as the desktop header's, so the network chooser
@@ -117,9 +121,9 @@ const CSS = '<style id="lx-herotext">'
   // ---- the statement panel, where the CTA row used to be.
   // Same material as the search field above it -- surface, one hairline border, generous radius -- so
   // the hero reads as one family rather than a field and then a different kind of box. Centred text in
-  // a symmetrical panel: equal padding all round, one max-width, nothing hanging off an edge. That
-  // max-width is the search field's own 680px, so the two stack as one column rather than two nearly-
-  // but-not-quite equal boxes -- measured, not guessed at.
+  // a symmetrical panel: equal padding all round, nothing hanging off an edge. It fills the content
+  // column rather than matching the search field: at the field width the copy ran to two lines in a
+  // tall box, and at the column width it is one line in a wide strip, which is the better shape here.
   // A flat surface with one grey hairline was reading as a placeholder box. It keeps the field's
   // width and radius -- that alignment is the point -- but gains a gradient edge, a lit top, and a
   // shadow, so it sits on the rays rather than being cut out of them.
@@ -129,7 +133,7 @@ const CSS = '<style id="lx-herotext">'
   // at the edge. It is the one way to get a gradient hairline without a wrapper element, and the
   // surface layer must be an explicit gradient (not a bare colour) because the shorthand needs both
   // layers to be images.
-  + '.lx-herostmt{max-width:680px;margin:0 auto;padding:28px 40px 26px;border-radius:22px;'
+  + '.lx-herostmt{max-width:none;margin:0 auto;padding:26px 48px 24px;border-radius:22px;'
   + 'border:1px solid transparent;position:relative;overflow:hidden;'
   + 'background:linear-gradient(var(--surface),var(--surface)) padding-box,'
   + 'linear-gradient(130deg,rgba(234,106,44,.55),rgba(255,255,255,.10) 42%,rgba(139,123,255,.42)) '
@@ -143,35 +147,53 @@ const CSS = '<style id="lx-herotext">'
   + '.lx-herostmt::after{content:"";position:absolute;left:14%;right:14%;top:0;height:1px;'
   + 'pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent)}'
   // A single wash behind the text, centred, tinted to the accent the page already uses.
+  // Two washes, not one, and they match the two ends of the border gradient -- warm at the top left,
+  // cool at the bottom right. A single centred tint gave the panel colour but no direction, which
+  // reads as flat; a diagonal between two hues is what makes it feel lit from somewhere.
   + '.lx-herostmt::before{content:"";position:absolute;inset:0;pointer-events:none;'
-  + 'background:radial-gradient(560px 190px at 50% -10%,rgba(234,106,44,.16),transparent 70%)}'
+  + 'background:radial-gradient(460px 200px at 18% -20%,rgba(234,106,44,.20),transparent 68%),'
+  + 'radial-gradient(420px 200px at 86% 118%,rgba(139,123,255,.16),transparent 70%)}'
   + '.lx-herostmt p{position:relative;margin:0;text-align:center;text-wrap:balance}'
-  + '.lx-hs-lead{font-size:18.5px;line-height:1.6;color:var(--text-muted)}'
+  // The lead carries the box. At 18.5px muted it was the largest thing here and still read as a
+  // caption, which is what made the panel look like a placeholder: nothing in it had any weight.
+  // 22px, and the four capabilities take full-strength ink so the sentence has a rhythm to scan
+  // rather than one even grey line.
+  + '.lx-hs-lead{font-size:22px;line-height:1.5;letter-spacing:-.2px;color:var(--text-muted)}'
+  + '.lx-hs-lead b{color:var(--text);font-weight:700}'
   // The rule separates a description from a fact. Accent-tinted rather than grey: at 1px a border-grey
   // hairline was measurably present (96x1) and still invisible against the panel. Short, centred, and
   // fading at both ends so it reads
   // as a divider rather than a second border inside a bordered box.
   + '.lx-hs-rule{position:relative;display:block;height:1px;width:96px;margin:18px auto 16px;'
   + 'background:linear-gradient(90deg,transparent,rgba(234,106,44,.6),transparent)}'
-  // Inline flow, NOT flex. As a flex row every text node between the chips became its own item and
-  // took the row gap with it, so the closing full stop sat 7px off the end of "XRP Ledger" as if it
-  // belonged to nothing. Ordinary inline layout spaces "and" and "." the way the sentence intends.
-  + '.lx-hs-nets{font-size:16px;line-height:1.9;color:var(--text-soft)}'
-  // Each chain is a name with its mark, held together so the pair never breaks across a line.
-  // vertical-align:middle is what keeps an inline-flex chip sitting on the sentence rather than
-  // hanging below its baseline.
-  + '.lx-hs-net{display:inline-flex;align-items:center;gap:8px;vertical-align:middle;'
-  + 'color:var(--text);font-weight:700;white-space:nowrap}'
+  // The chains are chips now, not words in a sentence. As running text they were the least
+  // considered thing in the box -- two bold names with a stray "and" and a full stop. As bordered
+  // chips they read as what they are: a list of platforms, each one an object.
+  //
+  // Flex row here is correct precisely because there are no text nodes between the items any more:
+  // the connecting words are gone, so nothing can inherit a gap it should not have. That was the bug
+  // in the sentence version -- every "and" and "." became its own flex item.
+  + '.lx-hs-nets{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:9px}'
+  + '.lx-hs-pre{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;'
+  + 'color:var(--text-soft);margin-right:2px}'
+  + '.lx-hs-net{display:inline-flex;align-items:center;gap:8px;padding:5px 13px 5px 6px;'
+  + 'border-radius:999px;border:1px solid var(--border);background:var(--bg-elev,var(--surface));'
+  + 'color:var(--text);font-weight:700;font-size:14.5px;white-space:nowrap}'
   + '.lx-hs-mark{display:inline-flex;width:22px;height:22px;flex:0 0 auto}'
   + '.lx-hs-mark svg{width:100%;height:100%;display:block;border-radius:50%}'
-  + '@media (max-width:1100px){.lx-herostmt{max-width:640px;padding:26px 32px 24px}'
-  + '.lx-hs-lead{font-size:17.5px}.lx-hs-nets{font-size:15.5px}}'
-  + '@media (max-width:900px){.lx-herostmt{max-width:none;padding:22px 20px 20px;border-radius:18px}'
-  + '.lx-hs-lead{font-size:15.5px;line-height:1.58}'
+  + '@media (max-width:1100px){.lx-herostmt{padding:24px 34px 22px}'
+  + '.lx-hs-lead{font-size:20px}.lx-hs-net{font-size:14px}}'
+  + '@media (max-width:900px){.lx-herostmt{padding:22px 20px 20px;border-radius:18px}'
+  + '.lx-hs-lead{font-size:17px;line-height:1.5}'
   + '.lx-hs-rule{width:74px;margin:15px auto 13px}'
-  + '.lx-hs-nets{font-size:13.5px;gap:0 6px}'
-  + '.lx-hs-net{gap:6px}.lx-hs-mark{width:19px;height:19px}}'
-  + '@media (max-width:360px){.lx-hs-nets{font-size:12.5px}'
+  + '.lx-hs-nets{gap:8px}'
+  // Eyebrow on its own line below 900px: label plus both chips does not fit one row at 375px, and
+  // left to wrap it broke between the chips and stranded XRP Ledger. A 100% basis forces the break
+  // where it belongs, so the two chips stay together as a pair.
+  + '.lx-hs-pre{flex:0 0 100%;font-size:10.5px;letter-spacing:.12em;margin:0 0 2px}'
+  + '.lx-hs-net{gap:6px;font-size:13px;padding:4px 11px 4px 5px}'
+  + '.lx-hs-mark{width:19px;height:19px}}'
+  + '@media (max-width:360px){.lx-hs-net{font-size:12px;padding:4px 9px 4px 4px}'
   + '.lx-hs-mark{width:17px;height:17px}}'
   // ---- mobile header Launch App.
   // Sized to sit level with the 36px icon button beside it rather than at the .btn default of 48px,
@@ -208,7 +230,7 @@ const CSS = '<style id="lx-herotext">'
   // second line and a rule.
   // Measured each time; the field centre and the hero
   // centre both read 450 at 1440x900.
-  + '.hero-center{top:-57px}'
+  + '.hero-center{top:-71px}'
   // Bottom padding down from 88px. The networks block added ~100px to a hero that was already close
   // to the viewport: measured 966px tall at 1440x900, which put the scroll cue 28px under the fold.
   // The room is taken from BELOW the cue, never from padding-top -- the rays are pinned to a fixed
@@ -232,7 +254,7 @@ const CSS = '<style id="lx-herotext">'
   // interpolated. This band has probably been a little out since the -42px days, when the offset was
   // also tuned at 1440 alone -- it is only visible now because the miss got big enough to see. It sits
   // after the block above so it wins on source order at equal specificity.
-  + '@media (min-width:901px) and (max-width:1100px){.hero-center{top:10px}}'
+  + '@media (min-width:901px) and (max-width:1100px){.hero-center{top:-3px}}'
   // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
   // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
   // converge on the hero's own centre, well below the search field.
@@ -340,7 +362,7 @@ const CSS = '<style id="lx-herotext">'
   + '.lx-herostmt{padding:16px 16px 15px;border-radius:16px}'
   + '.lx-hs-lead{font-size:14px;line-height:1.5}'
   + '.lx-hs-rule{width:64px;margin:11px auto 10px}'
-  + '.lx-hs-nets{font-size:12.5px;line-height:1.7}'
+  + '.lx-hs-net{font-size:12.5px;padding:4px 10px 4px 4px}'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
