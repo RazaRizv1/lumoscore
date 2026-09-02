@@ -136,7 +136,19 @@ const CSS = '<style id="lx-herotext">'
   // Breathing room between the field and the tagline: 22px originally, then 52, now 104. Applied to
   // the search wrap's own margin so only this gap opens -- the field itself does not move, which
   // matters because the rays are pinned to where it sits.
-  + '.hero-search-wrap{margin-bottom:104px}}'
+  + '.hero-search-wrap{margin-bottom:104px}'
+  // ---- the two CTAs side by side instead of stacked.
+  // The design stacks them on phones and gives .btn width:100%, so each ran the full column. They now
+  // share one row: flex:1 1 0 splits the width evenly whatever the labels say, and max-width caps the
+  // pair short of the full column so they read as buttons rather than two stacked bars. min-width:0
+  // is what lets them actually shrink -- a flex item floors at its content width without it, and the
+  // primary carries an arrow glyph as well as its label.
+  + '.hero-ctas{flex-direction:row;justify-content:center;gap:12px}'
+  + '.hero-ctas .btn{width:auto;flex:1 1 0;min-width:0;max-width:172px;padding:0 12px;'
+  // 15px: "Learn More" and "Launch App" both hold one line at this size inside a 158px button on a
+  // 375px screen, and still fit the 320px case where the buttons come out at ~140px.
+  + 'font-size:15px}'
+  + '.hero-ctas .btn.primary{gap:7px}}'
   // Short handsets. With the hero sized to its content, 132px above and 130px below made it 662px --
   // taller than a 568px screen, so the cue fell below the fold on exactly the devices with least room.
   // Trimming both paddings brings the whole hero inside the screen; measured rather than guessed the
@@ -186,6 +198,16 @@ for (const p of PAGES) {
   if (te < 0) { problems.push(p.key + ': hero tagline paragraph is not closed'); continue; }
   if (html.indexOf(tagOpen, ti + 1) >= 0) { problems.push(p.key + ': more than one hero tagline'); continue; }
   html = html.slice(0, ti + tagOpen.length) + TAG_HTML + html.slice(te);
+
+  // ---- secondary CTA label. Matched on the exact anchor rather than the bare words so a stray
+  // "Explore Products" anywhere else on the page is never touched, and asserted to appear once.
+  // The class list is not part of the match: desktop carries "btn lg" and mobile plain "btn", and
+  // hardcoding the mobile one aborted the desktop page on the first run.
+  const SEC_RE = /(<a href="#products"[^>]*class="btn[^"]*"[^>]*>)Explore Products(<\/a>)/g;
+  const secN = (html.match(SEC_RE) || []).length;
+  if (secN === 0 && html.indexOf('>Learn More</a>') < 0) { problems.push(p.key + ': secondary hero CTA not found'); continue; }
+  if (secN > 1) { problems.push(p.key + ': ' + secN + ' secondary hero CTAs, expected 1'); continue; }
+  html = html.replace(SEC_RE, '$1Learn More$2');
 
   const bo = html.lastIndexOf('</body>');
   html = bo >= 0 ? html.slice(0, bo) + CSS + html.slice(bo) : html + CSS;
