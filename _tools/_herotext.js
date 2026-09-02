@@ -15,8 +15,11 @@ const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
-const OLD = '<h1 class="hero-headline">The Core of<br/><span class="grad">Multi-Chain Web3</span></h1>';
-const NEW = '<h1 class="hero-headline">The Multichain World<br/><span class="grad">Starts Here</span></h1>';
+// Written by replacing the h1's contents outright, for the same reason the tagline is: matching the
+// previous wording means every reword has to carry the last one with it, and the run aborts (or worse,
+// silently no-ops) the moment they drift. The <br/> and the gradient span are part of the design's
+// two-line treatment, so they are re-emitted rather than left to whatever was there.
+const HEAD_HTML = 'The Multi-chain World<br/><span class="grad">Starts Here</span>';
 
 // The tagline is written by REPLACING the paragraph's contents outright rather than swapping one exact
 // string for another. Matching on the previous wording meant every copy change had to carry the last
@@ -53,7 +56,15 @@ const CSS = '<style id="lx-herotext">'
   // and the field's position moves with it. Centre of the block is top + height/2, so -26% + 63% puts
   // it at 37% of the hero -- where the field is -- and spanning -26% to 100% keeps the hero fully
   // covered, which a plain translate would not.
-  + '@media (max-width:900px){.hero-rays{top:-26%;bottom:auto;height:126%}}'
+  // Pinned in PIXELS, not percentages. Percentages were wrong once the hero content became
+  // top-anchored: the field then sits a fixed ~252px from the hero's top whatever the screen height,
+  // while a percentage scales with that height. Tuning it at 812px put the convergence 45px off at
+  // 667px -- the same bug twice, from the same assumption.
+  //
+  // Centre = top + height/2, so with C as the wanted offset: top = 2C - 100%, height = 200% - 2C.
+  // Centre resolves to C at any hero height, and the block still spans 0 to 100%. C = 252px, hence
+  // the 504s.
+  + '@media (max-width:900px){.hero-rays{top:calc(504px - 100%);bottom:auto;height:calc(200% - 504px)}}'
   // Above 1100px the size holds at its designed 114.4px but is capped against the viewport. Measured:
   // "The Multichain World" needs 1047px at 114.4px, and at exactly 1101px -- the narrow end of the
   // range where that size applies -- that left 22px either side. Not clipped, but crowded. 10vw gives
@@ -78,7 +89,15 @@ const CSS = '<style id="lx-herotext">'
   // inside an 812px hero, leaving ~274px of nothing above the scroll cue. 78vh keeps a hero that
   // still dominates the first screen while letting the next section show at the fold, which is what
   // the cue is asking people to do anyway.
-  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:112px;min-height:78vh;'
+  // Back to a full screen on phones. 78vh was my call, to let the next section show at the fold and
+  // encourage scrolling -- but with a "Scroll to learn more" cue on the page that reads as the hero
+  // failing to fill the screen, and the next section arrives before the cue has been acted on.
+  // 100dvh rather than 100vh: on mobile browsers vh is measured against the viewport with the address
+  // bar hidden, so a 100vh hero is taller than what is actually on screen and pushes the cue below the
+  // fold -- the exact thing this is meant to fix. vh stays first as the fallback for anything without
+  // dvh. Content moves down a little with it, but nowhere near the centred position that opened the
+  // 167px void.
+  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:132px;min-height:100vh;min-height:100dvh;'
   // Bottom padding up from 35.2px. The new tagline runs to five lines on a 375px screen and six on a
   // 320px one, which left the buttons finishing 9px above the scroll cue -- clear, but only just, and
   // one more wrapped line from colliding. The cue sits at the hero's bottom edge, so padding here is
@@ -102,11 +121,13 @@ for (const p of PAGES) {
 
   html = html.replace(/<style id="lx-herotext">[\s\S]*?<\/style>/g, '');
 
-  if (html.indexOf(NEW) < 0) {
-    const n = html.split(OLD).length - 1;
-    if (n !== 1) { problems.push(p.key + ': expected 1 old hero headline, found ' + n); continue; }
-    html = html.replace(OLD, NEW);
-  }
+  const headOpen = '<h1 class="hero-headline">';
+  const hi = html.indexOf(headOpen);
+  if (hi < 0) { problems.push(p.key + ': hero headline not found'); continue; }
+  const he = html.indexOf('</h1>', hi);
+  if (he < 0) { problems.push(p.key + ': hero headline is not closed'); continue; }
+  if (html.indexOf(headOpen, hi + 1) >= 0) { problems.push(p.key + ': more than one hero headline'); continue; }
+  html = html.slice(0, hi + headOpen.length) + HEAD_HTML + html.slice(he);
 
   const tagOpen = '<p class="hero-tagline">';
   const ti = html.indexOf(tagOpen);
