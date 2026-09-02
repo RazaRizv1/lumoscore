@@ -303,6 +303,27 @@ async function searchPools(ranked, q) {
   });
   const chased = keys.slice(0, SEARCH_ASSETS);
 
+  // Nothing in the ranking carries this code. That is not the same as "no pools hold it": ranking
+  // requires a leg we can price, so an asset whose every pool is small and XLM-less is invisible here
+  // however many pools it has. Ask Horizon, which indexes assets regardless of what they are worth.
+  // Exact code only -- a substring match would chase a different asset that merely contains the letters,
+  // which on a money page is worse than no result. (The client upper-cases the query, so a mixed-case
+  // code such as DicInu is not resolvable through this path; the ranking still handles those.)
+  if (!chased.length) {
+    try {
+      const d = await j('/assets?asset_code=' + encodeURIComponent(q) + '&limit=' + SEARCH_ASSETS, SEARCH_TTL);
+      for (const rec of ((d && d._embedded && d._embedded.records) || [])) {
+        const code = String(rec.asset_code || ''), issuer = String(rec.asset_issuer || '');
+        if (code.toUpperCase() !== q || !/^G[A-Z2-7]{55}$/.test(issuer)) continue;
+        const key = code + ':' + issuer;
+        if (assets.has(key)) continue;
+        assets.set(key, { code, issuer });
+        chased.push(key);
+        if (chased.length >= SEARCH_ASSETS) break;
+      }
+    } catch (e) { /* leave chased empty -- the caller still answers, just with nothing */ }
+  }
+
   const found = new Map();
   for (const key of chased) {
     let cursor = '';
