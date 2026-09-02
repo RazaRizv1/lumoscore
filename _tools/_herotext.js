@@ -44,6 +44,16 @@ const CSS = '<style id="lx-herotext">'
   // what keeps the gap between them unchanged -- and the rays are positioned against the hero, not
   // this block, so they stay where they are. Verified the headline still clears the nav by 42px.
   + '@media (min-width:901px){.hero-center{top:-42px}}'
+  // Phones need the same trick from the other end. Here the content is deliberately anchored near the
+  // nav, so lifting it is not available -- the rays move instead. They sit at inset:0 and therefore
+  // converge on the hero's own centre: measured at 375x812, that is y=317 while the search field
+  // centres on y=232, leaving the point exposed 85px below the field.
+  //
+  // Expressed as percentages rather than the measured 85px, because the headline is fluid on phones
+  // and the field's position moves with it. Centre of the block is top + height/2, so -26% + 63% puts
+  // it at 37% of the hero -- where the field is -- and spanning -26% to 100% keeps the hero fully
+  // covered, which a plain translate would not.
+  + '@media (max-width:900px){.hero-rays{top:-26%;bottom:auto;height:126%}}'
   // Above 1100px the size holds at its designed 114.4px but is capped against the viewport. Measured:
   // "The Multichain World" needs 1047px at 114.4px, and at exactly 1101px -- the narrow end of the
   // range where that size applies -- that left 22px either side. Not clipped, but crowded. 10vw gives
