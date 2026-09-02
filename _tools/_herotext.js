@@ -201,13 +201,36 @@ for (const p of PAGES) {
 
   // ---- secondary CTA label. Matched on the exact anchor rather than the bare words so a stray
   // "Explore Products" anywhere else on the page is never touched, and asserted to appear once.
-  // The class list is not part of the match: desktop carries "btn lg" and mobile plain "btn", and
-  // hardcoding the mobile one aborted the desktop page on the first run.
-  const SEC_RE = /(<a href="#products"[^>]*class="btn[^"]*"[^>]*>)Explore Products(<\/a>)/g;
-  const secN = (html.match(SEC_RE) || []).length;
-  if (secN === 0 && html.indexOf('>Learn More</a>') < 0) { problems.push(p.key + ': secondary hero CTA not found'); continue; }
-  if (secN > 1) { problems.push(p.key + ': ' + secN + ' secondary hero CTAs, expected 1'); continue; }
-  html = html.replace(SEC_RE, '$1Learn More$2');
+  // ---- secondary CTA: label and destination.
+  // It is now "Docs" pointing at /docs, and the header's own Docs button is dropped below, so the
+  // link moves rather than duplicating. It used to be "Explore Products" -> #products; the previous
+  // "Learn More" was replaced because the scroll cue directly beneath it already says exactly that.
+  //
+  // The whole anchor is rewritten from its class attribute rather than matched on the old label, so
+  // this stays correct whatever a previous run left behind -- and the class list is read off the page
+  // rather than assumed: desktop carries "btn lg" and mobile plain "btn", and hardcoding the mobile
+  // form aborted the desktop page on the first run.
+  const ctaI = html.indexOf('<div class="hero-ctas">');
+  if (ctaI < 0) { problems.push(p.key + ': hero CTA row not found'); continue; }
+  const ctaEnd = html.indexOf('</div>', ctaI);
+  const row = html.slice(ctaI, ctaEnd);
+  const secM = /<a [^>]*class="(btn[^"]*)"[^>]*>([\s\S]*?)<\/a>/.exec(row);
+  if (!secM) { problems.push(p.key + ': secondary hero CTA not found'); continue; }
+  if (/<a /g.test(row.slice(secM.index + 3))) { problems.push(p.key + ': more than one anchor in the hero CTA row'); continue; }
+  html = html.slice(0, ctaI)
+    + row.replace(secM[0], '<a href="/docs" class="' + secM[1] + '">Docs</a>')
+    + html.slice(ctaEnd);
+
+  // ---- the header's Docs button, desktop only. The mobile one lives in the slide-out menu and stays.
+  if (p.key === 'lumoscore-landing.html') {
+    const HDR = '<a href="/docs" class="btn">Docs</a>';
+    const hdrN = html.split(HDR).length - 1;
+    // One in the header. The hero's own is "/docs" too but was just written with the class it had
+    // ("btn lg" on desktop), so it does not collide with this exact-string match -- asserted, because
+    // if the hero ever ends up plain "btn" this would silently delete the wrong one.
+    if (hdrN !== 1) { problems.push(p.key + ': expected 1 header Docs button, found ' + hdrN); continue; }
+    html = html.replace(HDR, '');
+  }
 
   const bo = html.lastIndexOf('</body>');
   html = bo >= 0 ? html.slice(0, bo) + CSS + html.slice(bo) : html + CSS;
