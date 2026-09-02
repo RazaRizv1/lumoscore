@@ -564,12 +564,16 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     for(var i=0;i<want.length;i+=BATCH)jobs.push(want.slice(i,i+BATCH));
     return Promise.all(jobs.map(function(grp){
       var qs=grp.map(function(a){ return a.code+"-"+a.issuer; }).join(",");
+      var fresh=fetchJ("/lxapi/lastprices?a="+encodeURIComponent(qs)).then(function(d2){
+        return (d2&&d2.p)||null;
+      }).catch(function(){ return null; });
       return fetchJ("/lxapi/dexassets?a="+encodeURIComponent(qs)).then(function(d){
         if(!d||!d.a)throw new Error("empty");
         grp.forEach(function(a){
           var v=d.a[a.code+"-"+a.issuer]; if(!v)return;
           if(v.px>0)a.px=v.px;
           if(v.chg!=null)a.chg=v.chg;
+          if(v.pc!=null)a.pc=v.pc;
           if(v.vol!=null)a.vol=v.vol;
           if(v.high!=null)a.high=v.high;
           if(v.low!=null)a.low=v.low;
@@ -582,6 +586,22 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
           if(v.dom&&!a.domain){ a.domain=v.dom; if(!a.img)loadToml(a,v.dom); }
         });
         touch();
+        // The fresh price is applied LAST so it outranks the cached bar whichever request finishes
+        // first -- the asset page had exactly this race, where the slower daily response landed after
+        // the live one and put the five-minute-old close straight back on screen.
+        return fresh.then(function(p){
+          if(!p)return;
+          var moved=0;
+          grp.forEach(function(a){
+            var px=p[a.code+"-"+a.issuer];
+            if(!(px>0))return;
+            a.px=px; moved++;
+            // Same price the row shows, measured against yesterday's close: the figure and the
+            // percentage beside it must describe the same thing.
+            if(a.pc>0)a.chg=((px-a.pc)/a.pc)*100;
+          });
+          if(moved)touch();
+        }).catch(function(){});
       }).catch(function(){
         // endpoint down -> the old path, so the page degrades instead of emptying
         return Promise.all(grp.map(function(a){ return loadAssetLite(a).catch(function(){}); }));
