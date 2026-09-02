@@ -138,10 +138,10 @@ const CSS = '<style id="lx-herotext">'
   // Belt and braces on the rays: make the SVG fill its box so a taller hero can never outrun it again.
   // preserveAspectRatio is "slice", so it covers and crops rather than letterboxing.
   + '.hero-rays svg{height:100%}'
-  // Breathing room between the field and the tagline. It was 22px, which read as one block rather than
-  // two. Applied to the search wrap's own margin so only this gap opens -- the field itself does not
-  // move, which matters because the rays are pinned to where it sits.
-  + '.hero-search-wrap{margin-bottom:52px}}'
+  // Breathing room between the field and the tagline: 22px originally, then 52, now 104. Applied to
+  // the search wrap's own margin so only this gap opens -- the field itself does not move, which
+  // matters because the rays are pinned to where it sits.
+  + '.hero-search-wrap{margin-bottom:104px}}'
   // Short handsets. With the hero sized to its content, 132px above and 130px below made it 662px --
   // taller than a 568px screen, so the cue fell below the fold on exactly the devices with least room.
   // Trimming both paddings brings the whole hero inside the screen; measured rather than guessed the
