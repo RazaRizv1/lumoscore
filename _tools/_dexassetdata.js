@@ -653,7 +653,14 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
   // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
   var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
-  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
+  function dispDom(c,i,d){ return lxBareHost(DDOM[(c||"")+"|"+(i||"")]||d||""); }
+  // A home_domain is a bare host, but this value can come from our own asset record, where an admin
+  // pasted a full URL (USDT0 holds "https://usdt0.to/"). The href is built as "https://"+value, so an
+  // unnormalised one renders the scheme twice. Several sources race to set homeDomain and the first to
+  // answer wins, so this reproduced only sometimes; normalising here fixes it whichever source wins,
+  // because dispDom is the single point the link text and the href both read from.
+  // "www." is deliberately kept -- it is a real part of how some issuers present their domain.
+  function lxBareHost(v){ try{ v=String(v==null?"":v).trim(); var i=v.indexOf("://"); if(i>=0)v=v.slice(i+3); var j=v.length; var marks=["/","?","#"]; for(var k=0;k<marks.length;k++){ var p=v.indexOf(marks[k]); if(p>=0&&p<j)j=p; } return v.slice(0,j).trim(); }catch(_){ return ""; } }
   var VTICK='<span class="lx-vtick" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
   if(window.__lxDXA)return;window.__lxDXA=true;
   var H="https://horizon.stellar.org";                       // MAINNET
