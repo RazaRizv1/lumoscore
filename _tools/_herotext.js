@@ -35,16 +35,27 @@ const MORE_MARK = '<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="
   + '<circle cx="9.5" cy="16" r="2" fill="currentColor"/><circle cx="16" cy="16" r="2" fill="currentColor"/>'
   + '<circle cx="22.5" cy="16" r="2" fill="currentColor"/></svg>';
 
-function netChip(mark, label, extraClass) {
+// Three equal pills under a centred eyebrow, not an inline list. The first pass set the label and the
+// three names loose on one line at three different sizes, so the whole thing read as debris between
+// the tagline and the primary button rather than as one element. The pills are a fixed equal width so
+// the row is symmetrical whatever the names are, which is the only way "Stellar" and "More upcoming"
+// sit side by side without looking accidental.
+function netPill(mark, label, extraClass) {
   return '<span class="lx-hnet' + (extraClass ? ' ' + extraClass : '') + '">'
-    + '<i class="lx-hnet-m">' + mark + '</i>' + label + '</span>';
+    + '<i class="lx-hnet-m">' + mark + '</i>'
+    + '<b class="lx-hnet-t">' + label + '</b></span>';
 }
 
+// Flat on purpose -- no wrapper div around the pills. This block is stripped and re-injected on every
+// run, and a nested <div> is a trap for that: the strip is a non-greedy match to </div>, so the next
+// run would remove the inner half and leave the outer close loose in the container. The eyebrow takes
+// its own line with a 100% flex basis instead, which is the same result with nothing to get wrong.
+// (The strip below handles the nested form too, so a container carrying one is still repaired.)
 const NETS_HTML = '<div class="lx-heronets" data-lxnonav="1">'
   + '<span class="lx-heronets-l">Networks</span>'
-  + netChip(NETLOGOS[0].logo, 'Stellar', 'is-live')
-  + netChip(NETLOGOS[1].logo, 'XRPL')
-  + netChip(MORE_MARK, 'More upcoming', 'is-more')
+  + netPill(NETLOGOS[0].logo, 'Stellar', 'is-live')
+  + netPill(NETLOGOS[1].logo, 'XRPL')
+  + netPill(MORE_MARK, 'More upcoming', 'is-more')
   + '</div>';
 
 // The tagline is written by REPLACING the paragraph's contents outright rather than swapping one exact
@@ -87,39 +98,72 @@ const CSS = '<style id="lx-herotext">'
   // place.", which reads as a broken sentence and puts the emphasis on the wrong word. nowrap rather
   // than a hard <br>, so the line still collapses to one on a viewport wide enough to hold it.
   + '.hero-tagline .lrp-hl{white-space:nowrap}'
-  // ---- the networks line. Deliberately quiet: it sits between the tagline and the primary CTA, so
-  // anything with weight here competes with the button it introduces. Small caps-ish label, muted ink,
-  // marks at 22px.
-  + '.lx-heronets{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;'
-  + 'gap:9px 16px;margin:0 0 26px}'
-  + '.lx-heronets-l{font-size:12.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;'
-  + 'color:var(--text-soft)}'
-  + '.lx-hnet{display:inline-flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;'
-  + 'color:var(--text-muted)}'
-  + '.lx-hnet-m{display:inline-flex;width:22px;height:22px;flex:0 0 auto}'
+  // ---- the networks block: a centred eyebrow over a row of three equal pills.
+  // It sits between the tagline and the primary CTA, so it has to read as one deliberate object
+  // without competing with the button it introduces -- hence pill chrome at surface weight rather
+  // than anything accented, and the eyebrow kept small.
+  + '.lx-heronets{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin:0 0 22px}'
+  // A 100% basis puts the eyebrow on its own line without a wrapper element -- see the note on
+  // NETS_HTML for why there is no wrapper.
+  + '.lx-heronets-l{flex:0 0 100%;text-align:center;font-size:11.5px;font-weight:800;'
+  + 'letter-spacing:.18em;text-transform:uppercase;color:var(--text-soft);margin:0 0 -2px}'
+  // Equal width is the whole point: "Stellar" and "More upcoming" differ by ~60px of text, and pills
+  // sized to their own content made the row look accidental. A shared flex-basis with no grow keeps
+  // all three identical whatever the labels say.
+  + '.lx-hnet{flex:0 0 196px;min-width:0;height:46px;display:inline-flex;align-items:center;'
+  + 'justify-content:center;gap:11px;padding:0 14px;border-radius:999px;'
+  + 'border:1px solid var(--border);background:var(--surface);color:var(--text-muted);'
+  + 'transition:border-color .18s ease,transform .18s ease}'
+  + '.lx-hnet-t{font-size:16px;font-weight:700;letter-spacing:-.1px;white-space:nowrap}'
+  + '.lx-hnet-m{display:inline-flex;width:28px;height:28px;flex:0 0 auto}'
   + '.lx-hnet-m svg{width:100%;height:100%;display:block;border-radius:50%}'
-  // The live chain reads as live. A dot rather than a word keeps the row to one line on a phone.
-  + '.lx-hnet.is-live{color:var(--text)}'
-  + '.lx-hnet.is-live::after{content:"";width:6px;height:6px;border-radius:50%;'
+  // The live chain reads as live: full-strength ink and a dot, which is a lot quieter than a "LIVE"
+  // badge would be this close to the CTA.
+  + '.lx-hnet.is-live{color:var(--text);border-color:rgba(52,210,122,.42)}'
+  + '.lx-hnet.is-live::after{content:"";width:7px;height:7px;border-radius:50%;flex:0 0 auto;'
   + 'background:var(--green,#34d27a);box-shadow:0 0 0 3px rgba(52,210,122,.18)}'
-  // The placeholder mark inherits ink rather than carrying a colour of its own, so it is legible on
-  // both grounds without a second definition.
-  + '.lx-hnet.is-more{color:var(--text-soft)}'
-  // Phones cannot hold label plus three chips on one line -- measured at 375px, the four come to
-  // ~400px against ~335px of usable width. Left to wrap on its own it broke after XRPL and left
-  // "More upcoming" alone and centred on a second line, which reads as a stray. The label takes the
-  // first line instead (a 100% basis forces the break) so the three chips stay together as a set.
-  + '@media (max-width:900px){.lx-heronets{gap:6px 12px;margin-bottom:20px}'
-  + '.lx-heronets-l{flex:0 0 100%;font-size:11px}'
-  + '.lx-hnet{font-size:13px;gap:6px}'
-  + '.lx-hnet-m{width:18px;height:18px}}'
+  // The placeholder is drawn as one: dashed edge, softer ink, and a mark that inherits that ink
+  // rather than carrying a colour of its own, so it needs no second definition for dark ground.
+  + '.lx-hnet.is-more{color:var(--text-soft);border-style:dashed;background:transparent}'
+  // ---- phones. The pills stay a single row of three equal columns rather than wrapping: a wrapped
+  // third pill was exactly what made the first version look like debris. flex:1 1 0 with min-width:0
+  // splits the width evenly, and the sizes below are set from measurement -- "More upcoming" is the
+  // widest label by ~60px and is what every number here is checked against.
+  + '@media (max-width:900px){.lx-heronets{margin-bottom:22px;gap:8px}'
+  + '.lx-heronets-l{font-size:10.5px;letter-spacing:.16em;margin-bottom:-2px}'
+  + '.lx-hnet{flex:1 1 0;height:46px;gap:7px;padding:0 8px;border-radius:16px;overflow:hidden}'
+  + '.lx-hnet-m{width:22px;height:22px}'
+  + '.lx-hnet-t{font-size:12px;letter-spacing:-.2px}'
+  // "More upcoming" is 13 characters in a pill that equal-width splitting makes ~107px wide at 375px,
+  // and its mark plus label needed ~129px -- the label ran straight out through the pill's edge. The
+  // mark goes rather than the equal widths or the wording: it is a placeholder for chains that do not
+  // exist yet, so it is the one element here with nothing to depict. The dashed edge already says the
+  // same thing. Measured after: 96px of content in a 107px pill.
+  + '.lx-hnet.is-more .lx-hnet-m{display:none}'
+  // The live dot is dropped on phones: at this width it is the difference between the widest label
+  // fitting and not, and the pill row is not where "which chain is live" has to be answered -- the
+  // networks section further down the page says it in words.
+  + '.lx-hnet.is-live::after{display:none}}'
+  // Narrow handsets. Equal splitting puts the pills at ~88px at 320px, where even a mark-less "More
+  // upcoming" at 12px needs ~96px. Type and padding come down together rather than either alone.
+  + '@media (max-width:360px){.lx-heronets{gap:6px}'
+  + '.lx-hnet{gap:5px;padding:0 6px;height:42px}'
+  + '.lx-hnet-m{width:19px;height:19px}'
+  + '.lx-hnet-t{font-size:11px}}'
+  + '@media (prefers-reduced-motion:reduce){.lx-hnet{transition:none}}'
   // Lift the hero content on desktop so the search field covers the point where the background rays
   // converge. Measured at 1440x900: the rays centre on y=423 and the field began at y=436, leaving the
   // convergence exposed as a bright dot just above it. 42px puts that point at the field's own centre.
   // Shifting .hero-center rather than the field alone moves the headline by the same amount, which is
   // what keeps the gap between them unchanged -- and the rays are positioned against the hero, not
   // this block, so they stay where they are. Verified the headline still clears the nav by 42px.
-  + '@media (min-width:901px){.hero-center{top:-42px}}'
+  + '@media (min-width:901px){.hero-center{top:-42px}'
+  // Bottom padding down from 88px. The networks block added ~100px to a hero that was already close
+  // to the viewport: measured 966px tall at 1440x900, which put the scroll cue 28px under the fold.
+  // The room is taken from BELOW the cue, never from padding-top -- the rays are pinned to a fixed
+  // offset from the hero's top and the whole convergence alignment moves with it. The cue keeps 94px
+  // of clearance above it, so nothing here crowds the buttons.
+  + '.hero{padding-bottom:40px}}'
   // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
   // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
   // converge on the hero's own centre, well below the search field.
@@ -219,6 +263,10 @@ const CSS = '<style id="lx-herotext">'
   // going under the fold, which is the bug this whole block exists to fix.
   + '.hero-search-wrap{margin-bottom:12px}'
   + '.lx-heronets{margin-bottom:8px}'
+  // The pills are taller than the inline row they replaced, and at 320x568 that put the gap between
+  // the buttons and the scroll cue back down to 6px. 39.6px of tagline margin is the largest single
+  // gap left in the hero on these screens and the least missed, so it goes rather than the pills.
+  + '.hero-tagline{margin-bottom:16px}'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
@@ -240,9 +288,14 @@ for (const p of PAGES) {
   if (html == null) { problems.push(p.key + ': missing'); continue; }
 
   html = html.replace(/<style id="lx-herotext">[\s\S]*?<\/style>/g, '')
-    // The networks line is re-injected, so it is stripped first. Its own div holds only spans, so
-    // the first </div> after it is its own -- no nesting to walk.
-    .replace(/<div class="lx-heronets"[\s\S]*?<\/div>/g, '');
+    // The networks block is re-injected, so it is stripped first. BOTH patterns are bounded, which is
+    // the whole lesson here: a "<div class=lx-heronets>[\s\S]*?</div></div>" written to catch a nested
+    // form does not stop at the flat block -- non-greedy only means "the nearest match", and with no
+    // </div></div> nearby it runs on until it finds one, swallowing the CTA row with it. So the legacy
+    // nested form must name its wrapper, and the flat form is forbidden from crossing any div tag.
+    .replace(/<div class="lx-heronets"[^>]*>[\s\S]*?<div class="lx-heronets-row">[\s\S]*?<\/div>\s*<\/div>/g, '')
+    .replace(/<div class="lx-heronets"[^>]*>(?:(?!<\/?div)[\s\S])*<\/div>/g, '');
+  if (html.indexOf('lx-heronets') >= 0) { problems.push(p.key + ': networks block survived the strip'); continue; }
 
   const headOpen = '<h1 class="hero-headline">';
   const hi = html.indexOf(headOpen);
@@ -260,10 +313,34 @@ for (const p of PAGES) {
   if (html.indexOf(tagOpen, ti + 1) >= 0) { problems.push(p.key + ': more than one hero tagline'); continue; }
   html = html.slice(0, ti + tagOpen.length) + TAG_HTML + html.slice(te);
 
-  // ---- networks line, between the tagline and the buttons. Anchored to the tagline's close rather
-  // than to the CTA row so it lands in the same place on both builds, whatever sits between them.
+  // ---- structural check, then insert.
+  // The gap between the tagline and the CTA row must be empty before the block goes in. This exists
+  // because a version of this transform emitted a wrapper div inside the networks block while the
+  // strip above still stopped at the first </div> -- a combination that removes the inner half of the
+  // block and leaves the outer close loose in the container, where it would close .hero-center early.
+  // The markup is flat again and the strip handles both forms, so this should never fire; it is here
+  // to fail loudly rather than let a malformed hero through silently. One stray close tag is removed
+  // and reported, anything else aborts, because this is editing markup nobody wrote.
   const afterTag = html.indexOf('</p>', ti) + 4;
-  html = html.slice(0, afterTag) + NETS_HTML + html.slice(afterTag);
+  const ctaAt = html.indexOf('<div class="hero-ctas">', afterTag);
+  if (ctaAt < 0) { problems.push(p.key + ': hero CTA row not found after the tagline'); continue; }
+  const between = html.slice(afterTag, ctaAt);
+  let repaired = 0;
+  if (between.trim() !== '') {
+    if (between.trim() === '</div>') {
+      html = html.slice(0, afterTag) + ' ' + html.slice(ctaAt);
+      repaired = 1;
+    } else {
+      problems.push(p.key + ': unexpected markup between the tagline and the CTAs: '
+        + JSON.stringify(between.trim().slice(0, 120)));
+      continue;
+    }
+  }
+
+  // The block is anchored to the tagline's close rather than to the CTA row, so it lands in the same
+  // place on both builds whatever sits between them.
+  const at = html.indexOf('</p>', ti) + 4;
+  html = html.slice(0, at) + NETS_HTML + html.slice(at);
 
   // ---- secondary CTA label. Matched on the exact anchor rather than the bare words so a stray
   // "Explore Products" anywhere else on the page is never touched, and asserted to appear once.
@@ -305,7 +382,7 @@ for (const p of PAGES) {
   html = bo >= 0 ? html.slice(0, bo) + CSS + html.slice(bo) : html + CSS;
 
   json[p.key] = html;
-  staged.push({ file: p.file, data, s, e, json, key: p.key });
+  staged.push({ file: p.file, data, s, e, json, key: p.key, repaired });
 }
 
 if (problems.length) {
@@ -316,6 +393,7 @@ if (problems.length) {
 for (const st of staged) {
   const ser = JSON.stringify(st.json).split('</').join('<' + B + '/');
   fs.writeFileSync(st.file, st.data.slice(0, st.s) + ser + st.data.slice(st.e), 'utf8');
-  console.log('  ' + st.key + ': hero headline reworded, <=1100px size set to 60px');
+  console.log('  ' + st.key + ': hero headline reworded, networks block, CTAs'
+    + (st.repaired ? '  [repaired ' + st.repaired + ' stray </di' + 'v> in the container]' : ''));
 }
 console.log('hero text: done on ' + staged.length + ' page(s)');
