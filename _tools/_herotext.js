@@ -44,7 +44,20 @@ function cutElement(html, openMarker, tag) {
 // previous wording means every reword has to carry the last one with it, and the run aborts (or worse,
 // silently no-ops) the moment they drift. The <br/> and the gradient span are part of the design's
 // two-line treatment, so they are re-emitted rather than left to whatever was there.
-const HEAD_HTML = 'The Multi-chain World<br/><span class="grad">Starts Here</span>';
+// The headline IS the sentence now. "The Multi-chain World Starts Here" and the tagline underneath it
+// were the same claim twice, once as a slogan and once in plain terms, and the slogan carried almost
+// no query surface for a page the SEO work cares about. The tagline element is removed with it.
+//
+// The break is chosen, not left to wrapping, and it splits the sentence at its own hinge: the list of
+// verbs, then the claim. That gives the design's original shape back -- a long line in ink over a
+// short accented one, which is what "The Multi-chain World / Starts Here" was. The dash ends line one
+// deliberately here; the thing to avoid is a dash left dangling by a wrap it did not intend.
+//
+// The space before the <br/> is load-bearing. Phones hide the break and let the text wrap itself, and
+// without one an earlier version ran two words together. A trailing space before a line break
+// collapses, so desktop is unaffected.
+const HEAD_HTML = 'Trade, Launch, Bridge, and Explore — <br/>'
+  + '<span class="grad">All in one place.</span>';
 
 // ---- the networks line, between the tagline and the buttons.
 // Marks come from _netlogos.json, the same file the section further down the page uses, so the hero
@@ -84,17 +97,6 @@ const NETS_HTML = '<div class="lx-heronets" data-lxnonav="1">'
   + netPill(MORE_MARK, 'More upcoming', 'is-more')
   + '</div></div>';
 
-// The tagline is written by REPLACING the paragraph's contents outright rather than swapping one exact
-// string for another. Matching on the previous wording meant every copy change had to carry the last
-// version with it, and the transform would silently no-op the moment the two drifted apart. This way
-// the paragraph always ends up saying exactly what TAG_HTML says, however many times it is run.
-//
-// The accent span is kept: the design ends this line with a highlighted phrase, and that is the shape
-// the hero was drawn around. No <strong> this time -- the old copy opened with a standalone lead
-// sentence to bold, and this one is a single clause with nothing that plays that role.
-const TAG_HTML = 'Trade, Launch, Bridge, and Explore across chains — '
-  + '<span class="lrp-hl">all in one place</span>.';
-
 // 60px is the requested size for the <=1100px rule. The desktop figure is set from measurement in
 // _herotext_size below rather than left at 114.4: at that size the new first line does not fit the
 // width _herofit gives it on narrower desktops.
@@ -123,7 +125,6 @@ const CSS = '<style id="lx-herotext">'
   // Keep the accent phrase whole so it wraps as a unit. It was splitting as "... — all" / "in one
   // place.", which reads as a broken sentence and puts the emphasis on the wrong word. nowrap rather
   // than a hard <br>, so the line still collapses to one on a viewport wide enough to hold it.
-  + '.hero-tagline .lrp-hl{white-space:nowrap}'
   // ---- the networks block: a centred eyebrow over a row of three equal pills.
   // It sits between the tagline and the primary CTA, so it has to read as one deliberate object
   // without competing with the button it introduces -- hence pill chrome at surface weight rather
@@ -178,7 +179,17 @@ const CSS = '<style id="lx-herotext">'
   // Shifting .hero-center rather than the field alone moves the headline by the same amount, which is
   // what keeps the gap between them unchanged -- and the rays are positioned against the hero, not
   // this block, so they stay where they are. Verified the headline still clears the nav by 42px.
-  + '@media (min-width:901px){.hero-center{top:-42px}'
+  // The desktop hero fills the screen. Its min-height is a flat 720px, and it only ever looked
+  // full-height because the old headline happened to push the content to exactly 900px on a 900px
+  // screen -- a coincidence, not a rule. The shorter sentence headline dropped it to 758px and the
+  // next section started showing under the cue, which is the bug this whole area keeps coming back to.
+  + '@media (min-width:901px){.hero{min-height:100vh;min-height:100dvh}'
+  // -32px, re-derived rather than kept. The rays fill the hero and converge on its centre, so the
+  // field has to sit there. With the hero at viewport height the content box is centred between 176px
+  // of top padding and 30px of bottom, which lands the field 10px above centre before any shift; the
+  // old -42px was measured against a hero whose height came from its content. The offset is constant
+  // across viewport heights because both sides scale together -- checked at 900 and 1080.
+  + '.hero-center{top:-32px}'
   // Bottom padding down from 88px. The networks block added ~100px to a hero that was already close
   // to the viewport: measured 966px tall at 1440x900, which put the scroll cue 28px under the fold.
   // The room is taken from BELOW the cue, never from padding-top -- the rays are pinned to a fixed
@@ -195,13 +206,8 @@ const CSS = '<style id="lx-herotext">'
   // Nothing above the field moves. It is pinned -- the background rays converge on its centre, and
   // _herotext's whole desktop offset is built around that measurement.
   + '.hero-search-wrap{margin-bottom:44px}'
-  + '.hero-tagline{margin-bottom:44px}'
   + '.lx-heronets{margin-bottom:44px}'
-  + '.hero-ctas{margin-bottom:66px}'
-  // The tagline was capped at 620px -- narrower than the 680px field above it, inside an 880px
-  // container -- so it broke after the em dash and left "all in one place." alone on a second line,
-  // the one ragged block in an otherwise clean stack. It needs 766px to hold one line.
-  + '.hero-tagline{max-width:820px}}'
+  + '.hero-ctas{margin-bottom:66px}}'
   // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
   // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
   // converge on the hero's own centre, well below the search field.
@@ -214,7 +220,7 @@ const CSS = '<style id="lx-herotext">'
   //
   // C is 257px: 132px of top padding, the headline, the gap, and half a 60px field. It moved from 252
   // when the field grew from 50px to 60px -- the pin is an offset to the FIELD, so it follows it.
-  + '@media (max-width:900px){.hero-rays{top:calc(514px - 100%);bottom:auto;height:calc(200% - 514px)}}'
+  + '@media (max-width:900px){.hero-rays{top:calc(504px - 100%);bottom:auto;height:calc(200% - 504px)}}'
   // Above 1100px the size holds at its designed 114.4px but is capped against the viewport. Measured:
   // "The Multichain World" needs 1047px at 114.4px, and at exactly 1101px -- the narrow end of the
   // range where that size applies -- that left 22px either side. Not clipped, but crowded. 10vw gives
@@ -223,12 +229,27 @@ const CSS = '<style id="lx-herotext">'
   // h1.hero-headline -- element plus class, 0-1-1 -- so a bare class selector loses on specificity no
   // matter how late it is injected, and the 60px below simply never applied. Verified by reading the
   // computed size back, not by assuming the later block wins.
-  + '@media (min-width:1101px){.hero h1.hero-headline{font-size:min(114.4px,10vw)}}'
-  + '@media (max-width:1100px){.hero h1.hero-headline{font-size:60px;letter-spacing:-1.6px}}'
-  // Phones: fluid, because the new first line is long. At a flat 44px "The Multichain World" needs
-  // 403px against 336px of usable width on a 375px screen, so it wrapped and left "World" alone on a
-  // line of its own -- three lines, with the orphan in the middle. 9.3vw keeps it to two.
-  + '@media (max-width:520px){.hero h1.hero-headline{font-size:min(44px,9.3vw);letter-spacing:-1.2px}}'
+  // ---- headline sizes, reset for the sentence.
+  // 114.4px was sized for "The Multi-chain World" -- 20 characters. The sentence is 67 across two
+  // lines, so the old size would run four lines and swallow the screen. Every figure below is set from
+  // measuring the two lines against the width actually available at the narrow end of its own range,
+  // not scaled down by eye.
+  //
+  // Selector is .hero h1.hero-headline, not .hero-headline. The design sets the size with
+  // h1.hero-headline -- element plus class, 0-1-1 -- so a bare class selector loses on specificity no
+  // matter how late it is injected. Verified by reading the computed size back.
+  + '@media (min-width:1101px){.hero h1.hero-headline{font-size:min(72px,5.2vw);letter-spacing:-1.6px}}'
+  + '@media (max-width:1100px){.hero h1.hero-headline{font-size:46px;letter-spacing:-1.2px}}'
+  + '@media (max-width:900px){.hero h1.hero-headline{font-size:min(38px,7.4vw);letter-spacing:-.9px}}'
+  + '@media (max-width:520px){.hero h1.hero-headline{font-size:min(30px,7.4vw);letter-spacing:-.6px}}'
+  // Line height comes down with the size: 1.1 was drawn for a two-word line, and at sentence length
+  // two lines that tall read as two separate statements rather than one sentence.
+  + '.hero h1.hero-headline{line-height:1.18;text-wrap:balance}'
+  // The chosen break is a desktop decision. On a phone the line is short enough that forcing a break
+  // after "Explore" only makes things worse -- measured 4 lines at 375px with "place." orphaned on the
+  // last one. Hiding the <br> lets text-wrap:balance divide the sentence itself, which is what it is
+  // for. The gradient span is unaffected; it is inline either way.
+  + '@media (max-width:900px){.hero h1.hero-headline br{display:none}}'
   // Phones opened with a 167px void under the nav. The hero is min-height:100vh with
   // align-items:center AND 101.2px of top padding, so the block was centred in the full screen and
   // then pushed down again by the padding: measured on a 375x812 screen, the nav ended at 72px and the
@@ -274,7 +295,6 @@ const CSS = '<style id="lx-herotext">'
   // Same grouping fix as desktop, at phone scale. Measured 30 / 9 / 22 below the tagline, so the
   // buttons sat closer to the networks bar than the bar sat to the tagline and read as part of it.
   // One tight gap, and only between the eyebrow and its own bar. The 104px above stays as asked.
-  + '.hero-tagline{margin-bottom:32px}'
   + '.lx-heronets{margin-bottom:32px}'
   // ---- the two CTAs side by side instead of stacked.
   // The design stacks them on phones and gives .btn width:100%, so each ran the full column. They now
@@ -304,12 +324,11 @@ const CSS = '<style id="lx-herotext">'
   // wrapped line from touching. Height is taken out of the content rather than by moving the cue: the
   // cue sits at the hero's bottom edge, so buying room with padding trades one collision for the cue
   // going under the fold, which is the bug this whole block exists to fix.
-  + '.hero-search-wrap{margin-bottom:12px}'
-  + '.lx-heronets{margin-bottom:8px}'
+  + '.hero-search-wrap{margin-bottom:48px}'
+  + '.lx-heronets{margin-bottom:32px}'
   // The pills are taller than the inline row they replaced, and at 320x568 that put the gap between
   // the buttons and the scroll cue back down to 6px. 39.6px of tagline margin is the largest single
   // gap left in the hero on these screens and the least missed, so it goes rather than the pills.
-  + '.hero-tagline{margin-bottom:16px}'
   // The bar is a few pixels taller than the inline row it replaced, which took the buttons-to-cue gap
   // back down to 11px here. Height off the bar and its eyebrow gap, not off the cells -- the cells are
   // already at the size where "More upcoming" only just fits a 320px screen.
@@ -317,7 +336,7 @@ const CSS = '<style id="lx-herotext">'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
-  + '.hero-rays{top:calc(450px - 100%);height:calc(200% - 450px)}}'
+  + '.hero-rays{top:calc(420px - 100%);height:calc(200% - 420px)}}'
   + '</st' + 'yle>';
 
 const PAGES = [
@@ -351,41 +370,22 @@ for (const p of PAGES) {
   if (html.indexOf(headOpen, hi + 1) >= 0) { problems.push(p.key + ': more than one hero headline'); continue; }
   html = html.slice(0, hi + headOpen.length) + HEAD_HTML + html.slice(he);
 
-  const tagOpen = '<p class="hero-tagline">';
-  const ti = html.indexOf(tagOpen);
-  if (ti < 0) { problems.push(p.key + ': hero tagline paragraph not found'); continue; }
-  const te = html.indexOf('</p>', ti);
-  if (te < 0) { problems.push(p.key + ': hero tagline paragraph is not closed'); continue; }
-  if (html.indexOf(tagOpen, ti + 1) >= 0) { problems.push(p.key + ': more than one hero tagline'); continue; }
-  html = html.slice(0, ti + tagOpen.length) + TAG_HTML + html.slice(te);
+  // ---- the tagline is gone: the headline says what it said.
+  // Removed rather than hidden, so there is no empty paragraph left in the flow to reason about later.
+  // Absence is the steady state -- every other step here re-injects, so the second run finds nothing
+  // to remove and that is not an error. More than one would be.
+  const tagN = (html.match(/<p class="hero-tagline">/g) || []).length;
+  if (tagN > 1) { problems.push(p.key + ': ' + tagN + ' hero taglines, expected at most 1'); continue; }
+  if (tagN === 1) html = cutElement(html, '<p class="hero-tagline">', 'p');
+  if (html.indexOf('<p class="hero-tagline">') >= 0) { problems.push(p.key + ': tagline survived removal'); continue; }
 
-  // ---- structural check, then insert.
-  // The gap between the tagline and the CTA row must be empty before the block goes in. This exists
-  // because a version of this transform emitted a wrapper div inside the networks block while the
-  // strip above still stopped at the first </div> -- a combination that removes the inner half of the
-  // block and leaves the outer close loose in the container, where it would close .hero-center early.
-  // The markup is flat again and the strip handles both forms, so this should never fire; it is here
-  // to fail loudly rather than let a malformed hero through silently. One stray close tag is removed
-  // and reported, anything else aborts, because this is editing markup nobody wrote.
-  const afterTag = html.indexOf('</p>', ti) + 4;
-  const ctaAt = html.indexOf('<div class="hero-ctas">', afterTag);
-  if (ctaAt < 0) { problems.push(p.key + ': hero CTA row not found after the tagline'); continue; }
-  const between = html.slice(afterTag, ctaAt);
-  let repaired = 0;
-  if (between.trim() !== '') {
-    if (between.trim() === '</div>') {
-      html = html.slice(0, afterTag) + ' ' + html.slice(ctaAt);
-      repaired = 1;
-    } else {
-      problems.push(p.key + ': unexpected markup between the tagline and the CTAs: '
-        + JSON.stringify(between.trim().slice(0, 120)));
-      continue;
-    }
-  }
-
-  // The block is anchored to the tagline's close rather than to the CTA row, so it lands in the same
-  // place on both builds whatever sits between them.
-  const at = html.indexOf('</p>', ti) + 4;
+  // ---- the networks block goes immediately above the buttons.
+  // It used to be anchored to the tagline's close; with the tagline gone the CTA row is the anchor.
+  // The row is asserted to appear exactly once rather than taking the first hit on trust -- inserting
+  // against the wrong one would put the networks bar somewhere arbitrary in the page.
+  const ctaN = (html.match(/<div class="hero-ctas">/g) || []).length;
+  if (ctaN !== 1) { problems.push(p.key + ': expected 1 hero CTA row, found ' + ctaN); continue; }
+  const at = html.indexOf('<div class="hero-ctas">');
   html = html.slice(0, at) + NETS_HTML + html.slice(at);
 
   // ---- secondary CTA label. Matched on the exact anchor rather than the bare words so a stray
@@ -428,7 +428,7 @@ for (const p of PAGES) {
   html = bo >= 0 ? html.slice(0, bo) + CSS + html.slice(bo) : html + CSS;
 
   json[p.key] = html;
-  staged.push({ file: p.file, data, s, e, json, key: p.key, repaired });
+  staged.push({ file: p.file, data, s, e, json, key: p.key });
 }
 
 if (problems.length) {
@@ -440,6 +440,6 @@ for (const st of staged) {
   const ser = JSON.stringify(st.json).split('</').join('<' + B + '/');
   fs.writeFileSync(st.file, st.data.slice(0, st.s) + ser + st.data.slice(st.e), 'utf8');
   console.log('  ' + st.key + ': hero headline reworded, networks block, CTAs'
-    + (st.repaired ? '  [repaired ' + st.repaired + ' stray </di' + 'v> in the container]' : ''));
+    + '');
 }
 console.log('hero text: done on ' + staged.length + ' page(s)');
