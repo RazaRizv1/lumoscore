@@ -132,9 +132,10 @@ const JS = '<script id="lx-heronet-js">(function(){'
   + 'if(b&&lbl)b.setAttribute("aria-label","Network: "+lbl.textContent);'
   + 'window.__lxSearchNet=net;'
   + 'if(!silent){try{localStorage.setItem("lumos.searchNet",net);}catch(_){}}'
+  + 'try{hint();}catch(_){}'
   + '}'
   // Restore on load, once the markup exists.
-  + 'function boot(){if(window.__lxSearchNet)apply(window.__lxSearchNet,true);}'
+  + 'function boot(){if(window.__lxSearchNet)apply(window.__lxSearchNet,true);try{hint();}catch(_){}}'
   + 'if(document.readyState!=="loading")setTimeout(boot,0);'
   + 'else document.addEventListener("DOMContentLoaded",boot);'
   + 'function root(){return document.querySelector(".lx-nsel");}'
@@ -144,7 +145,23 @@ const JS = '<script id="lx-heronet-js">(function(){'
   + 'function open(){var r=root();if(!r)return;r.setAttribute("data-open","1");'
   + 'var m=r.querySelector(".lx-nsel-menu"),b=r.querySelector(".lx-nsel-btn");'
   + 'if(m)m.hidden=false;if(b)b.setAttribute("aria-expanded","true");}'
-  + 'document.addEventListener("click",function(e){'
+  // Driven by pointerup, NOT click. The page ships a script (id="lx-nonav") that arms on mousedown
+  // inside .hero-search / .hero-search-wrap / .search-box and then swallows the following click with
+  // stopImmediatePropagation -- so no click event reaches anything inside the field, including this
+  // control. Measured: mousedown, focus, pointerup and mouseup all arrive on the button and the click
+  // never does. A synthetic btn.click() worked precisely because it never armed the swallower, which is
+  // why this passed testing and failed for a real finger.
+  //
+  // click stays registered as a fallback for anything without pointer events; the timestamp guard stops
+  // the pair double-firing on the same gesture.
+  // De-duped per GESTURE, not on a timer. A time window was wrong twice over: it blocked a second,
+  // genuinely separate tap that happened to land inside it -- tapping the disabled XRPL row and then
+  // Stellar did nothing at all, because the first tap started the window -- and it would have kept
+  // doing so for any quick pair. A flag cleared on pointerdown covers exactly the pointerup/click pair
+  // of one press and nothing else.
+  + 'var handled=false;'
+  + 'document.addEventListener("pointerdown",function(){handled=false;},true);'
+  + 'function act(e){if(e.type==="click"&&handled)return;if(e.type==="pointerup")handled=true;'
   + 'var t=e.target;if(!t||!t.closest)return;'
   + 'var btn=t.closest(".lx-nsel-btn");'
   + 'if(btn){'
@@ -157,13 +174,36 @@ const JS = '<script id="lx-heronet-js">(function(){'
   + 'if(opt.hasAttribute("disabled")||opt.getAttribute("aria-disabled")==="true")return;'
   + 'var net=opt.getAttribute("data-net");if(net)apply(net,false);'
   + 'close();return;}'
-  + 'if(!t.closest(".lx-nsel"))close();'
+  // Close on a press outside -- except the gated press on the search field, which has just opened this
+  // menu on purpose from the mousedown handler below. Without that exemption the two fight: mousedown
+  // opens it and the pointerup that follows closes it again, so the field looked simply dead.
+  + 'if(t.closest(".lx-nsel"))return;'
+  + 'if(gated(t))return;'
+  + 'close();'
   // CAPTURE, not bubble. The design binds its own click handler to .hero-search, which is an ancestor
   // of this button -- on the way up it fires before a document-level listener, so stopPropagation from
   // there is already too late and every press of the selector also opened the search popup behind the
   // menu. Capturing at the document means this runs first and the wrapper never sees the event.
-  + '},true);'
+  + '}'
+  + 'document.addEventListener("pointerup",act,true);'
+  + 'document.addEventListener("click",act,true);'
   + 'document.addEventListener("keydown",function(e){if(e.key==="Escape")close();},false);'
+  // ---- a network has to be chosen before the field will search.
+  // The search popup opens on FOCUS, not click (the swallower above eats the click), so the gate is on
+  // mousedown -- preventing the default stops focus ever happening -- with a focus guard behind it for
+  // keyboard tabbing. Choosing a network is offered in the same gesture rather than just refusing.
+  + 'function gated(t){try{return t&&t.closest&&!t.closest(".lx-nsel")&&'
+  + 't.closest(".hero-search,.hero-search-wrap")&&!window.__lxSearchNet;}catch(_){return false;}}'
+  + 'document.addEventListener("mousedown",function(e){if(!gated(e.target))return;'
+  + 'e.preventDefault();open();},true);'
+  + 'document.addEventListener("focus",function(e){if(!gated(e.target))return;'
+  + 'try{e.target.blur();}catch(_){}open();},true);'
+  // The field says why it is inert instead of just ignoring the tap.
+  + 'function hint(){var i=document.querySelector(".hero-search input");if(!i)return;'
+  + 'if(!i.getAttribute("data-lxph"))i.setAttribute("data-lxph",i.getAttribute("placeholder")||"");'
+  + 'i.setAttribute("placeholder",window.__lxSearchNet?i.getAttribute("data-lxph"):'
+  + '"Select a network to search");}'
+  + 'window.__lxNetHint=hint;'
   + '})();</scr' + 'ipt>';
 
 const PAGES = [
