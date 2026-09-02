@@ -250,7 +250,11 @@ for (const p of PAGES) {
     const kind = (inner.match(/ic-prod ([a-z]+)/) || [])[1];
     if (!kind || !CARDS[kind]) { problems.push(p.key + ': card with unknown icon kind ' + kind); break; }
     const [href, accent, rgb] = CARDS[kind];
-    inner = inner.replace(/<span class="pc-go">[\s\S]*?<\/span>/g, '') + pcGo('Open');
+    // The "Open ->" label is gone: the whole card is the link, so the label was restating the
+    // affordance rather than adding one, and it fought the centred icon/title layout the cards now
+    // use. The strip stays so re-running this removes any left by an earlier build; pcGo() and the
+    // .pc-go rules stay defined and unused rather than being torn out of a working stylesheet.
+    inner = inner.replace(/<span class="pc-go">[\s\S]*?<\/span>/g, '');
     html = html.slice(0, at)
       + '<a data-lxnonav="1" class="product-card lxpc" data-pc="' + kind + '" href="' + href + '"'
       + ' style="--pc:' + accent + ';--pc-rgb:' + rgb + '">' + inner + '</a>'
