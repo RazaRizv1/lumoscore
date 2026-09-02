@@ -15,6 +15,7 @@ import { GRANDFATHERED } from '../../_lib/verifiedseed.js';
 
 const LIST = 'assets:list';
 const MINTS = 'assets:mints';
+const MINTMETA = 'mintmeta:approved';  // {id: {name, desc, image}} -- written by mintmeta.js, read by the toml
 const META = 'asset:';
 // Verification state for the whole list in one key. It is DERIVED data -- re-running the handshake
 // rebuilds it -- so keeping it beside the list rather than inside each record costs one read to paint
@@ -143,6 +144,21 @@ export async function onRequestGet({ request, env }) {
   // curation decision, and folding them into the curated list made it look like we had picked 55.
   let mints = [];
   try { mints = (await kv.get(MINTS, 'json')) || []; } catch (_) {}
+  // What each mint is CALLED, alongside the bare ids. `mints` is a list of "CODE-ISSUER" strings, which
+  // is enough to know a token exists and nothing else -- so search could not render a row for one even
+  // once it knew about it, and a freshly minted token was unfindable by the name its minter gave it.
+  // Same key the SEP-1 document reads, so there is one source for a mint's name and logo, not two.
+  let mintmeta = {};
+  try {
+    const live = (await kv.get(MINTMETA, 'json')) || {};
+    if (live && typeof live === 'object' && !Array.isArray(live)) {
+      for (const k of Object.keys(live)) {
+        const v = live[k] || {};
+        // Only what a search row needs. Descriptions can be long and there can be hundreds of these.
+        mintmeta[k] = { name: v.name || '', image: v.image || '' };
+      }
+    }
+  } catch (_) { mintmeta = {}; }
   // `list` stays an array of plain ids so existing callers keep working; the rest rides alongside.
   //
   // NEVER CACHED, and this is the bug that ate an asset. The admin panel reads this list and can then
@@ -150,7 +166,7 @@ export async function onRequestGet({ request, env }) {
   // returned the list WITHOUT it -- and the next save wrote that stale copy back, deleting the asset
   // from KV for good. The verification record survived under its own key, which is how it was traced.
   // A read that can be written back must never be stale.
-  return json({ list, mints, verified }, 200, 0);
+  return json({ list, mints, mintmeta, verified }, 200, 0);
 }
 
 export async function onRequestPut({ request, env }) {
