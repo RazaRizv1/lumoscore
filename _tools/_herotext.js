@@ -184,7 +184,24 @@ const CSS = '<style id="lx-herotext">'
   // The room is taken from BELOW the cue, never from padding-top -- the rays are pinned to a fixed
   // offset from the hero's top and the whole convergence alignment moves with it. The cue keeps 94px
   // of clearance above it, so nothing here crowds the buttons.
-  + '.hero{padding-bottom:30px}}'
+  + '.hero{padding-bottom:30px}'
+  // ---- vertical rhythm below the search field.
+  // Measured at 1440x900, the gaps down the hero ran 31 / 26 / 40 / 11 / 22 / 36 -- six different
+  // values, and the tight ones bound the wrong things together. Proximity is what says what belongs
+  // to what, and at 26px the tagline read as a caption on the search field while at 22px the buttons
+  // read as part of the networks bar. One tight gap is kept, and only where it is true: the eyebrow
+  // to its own bar. Everything else is one break value.
+  //
+  // Nothing above the field moves. It is pinned -- the background rays converge on its centre, and
+  // _herotext's whole desktop offset is built around that measurement.
+  + '.hero-search-wrap{margin-bottom:44px}'
+  + '.hero-tagline{margin-bottom:44px}'
+  + '.lx-heronets{margin-bottom:44px}'
+  + '.hero-ctas{margin-bottom:66px}'
+  // The tagline was capped at 620px -- narrower than the 680px field above it, inside an 880px
+  // container -- so it broke after the em dash and left "all in one place." alone on a second line,
+  // the one ragged block in an otherwise clean stack. It needs 766px to hold one line.
+  + '.hero-tagline{max-width:820px}}'
   // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
   // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
   // converge on the hero's own centre, well below the search field.
@@ -254,6 +271,11 @@ const CSS = '<style id="lx-herotext">'
   // the search wrap's own margin so only this gap opens -- the field itself does not move, which
   // matters because the rays are pinned to where it sits.
   + '.hero-search-wrap{margin-bottom:104px}'
+  // Same grouping fix as desktop, at phone scale. Measured 30 / 9 / 22 below the tagline, so the
+  // buttons sat closer to the networks bar than the bar sat to the tagline and read as part of it.
+  // One tight gap, and only between the eyebrow and its own bar. The 104px above stays as asked.
+  + '.hero-tagline{margin-bottom:32px}'
+  + '.lx-heronets{margin-bottom:32px}'
   // ---- the two CTAs side by side instead of stacked.
   // The design stacks them on phones and gives .btn width:100%, so each ran the full column. They now
   // share one row: flex:1 1 0 splits the width evenly whatever the labels say, and max-width caps the
