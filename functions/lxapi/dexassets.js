@@ -90,7 +90,7 @@ async function oneAsset(code, issuer) {
     '&base_asset_issuer=' + issuer +
     '&counter_asset_type=native';
 
-  const out = { px: 0, chg: null, vol: null, high: null, low: null, tr: null, ho: null, su: null, dom: null };
+  const out = { px: 0, pc: null, chg: null, vol: null, high: null, low: null, tr: null, ho: null, su: null, dom: null };
 
   // Two bars: the latest gives price/volume/range, the one before it gives the 24h change.
   const agg = getJson(H + '/trade_aggregations?' + base + '&resolution=86400000&order=desc&limit=2')
@@ -103,6 +103,10 @@ async function oneAsset(code, issuer) {
       out.low = +r[0].low || 0;
       out.tr = +r[0].trade_count || 0;
       const prev = priceOf(r[1]);
+      // Yesterday's close rides along so the caller can recompute the move against a FRESHER price
+      // than this bar carries (see lastprices.js) -- otherwise the table shows a live price beside a
+      // percentage measured from a different one.
+      if (prev > 0) out.pc = prev;
       if (prev > 0 && out.px > 0) out.chg = ((out.px - prev) / prev) * 100;
     })
     .catch(() => {});
