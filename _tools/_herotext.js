@@ -36,6 +36,27 @@ const TAG_HTML = 'Trade, Launch, Bridge, and Explore across chains — '
 // _herotext_size below rather than left at 114.4: at that size the new first line does not fit the
 // width _herofit gives it on narrower desktops.
 const CSS = '<style id="lx-herotext">'
+  // ---- the scroll cue, on both layouts. It was a 11.6px muted label above a bare 22px chevron, which
+  // is the one thing on the first screen asking for an action and looked like a caption. The chevron
+  // becomes a real target -- a bordered disc on the card surface that drifts down and back, hinting
+  // the direction rather than just pointing -- and the label gets the weight and tracking of the other
+  // small caps on the page. Colour alone does not carry the hover: the disc takes the accent border
+  // and a lift as well.
+  + '.scroll-hint{gap:12px}'
+  + '.scroll-hint>span:first-child{font-size:12px;font-weight:700;letter-spacing:.14em;'
+  + 'color:var(--text-soft);transition:color .2s ease}'
+  + '.scroll-hint .arrow{width:40px;height:40px;border-radius:999px;display:inline-flex;'
+  + 'align-items:center;justify-content:center;border:1px solid var(--border);'
+  + 'background:var(--surface);color:var(--text-soft);'
+  + 'transition:border-color .2s ease,color .2s ease,box-shadow .2s ease,background .2s ease;'
+  + 'animation:lxcuebob 2.6s ease-in-out infinite}'
+  + '.scroll-hint .arrow svg{width:16px;height:16px}'
+  + '.scroll-hint:hover>span:first-child{color:var(--text)}'
+  + '.scroll-hint:hover .arrow{border-color:var(--accent);color:var(--accent);'
+  + 'box-shadow:0 12px 26px -14px rgba(234,106,44,.85);animation-play-state:paused}'
+  + '.scroll-hint:focus-visible .arrow{outline:2px solid var(--accent);outline-offset:3px}'
+  + '@keyframes lxcuebob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}'
+  + '@media (prefers-reduced-motion:reduce){.scroll-hint .arrow{animation:none}}'
   // Keep the accent phrase whole so it wraps as a unit. It was splitting as "... — all" / "in one
   // place.", which reads as a broken sentence and puts the emphasis on the wrong word. nowrap rather
   // than a hard <br>, so the line still collapses to one on a viewport wide enough to hold it.
@@ -97,12 +118,33 @@ const CSS = '<style id="lx-herotext">'
   // fold -- the exact thing this is meant to fix. vh stays first as the fallback for anything without
   // dvh. Content moves down a little with it, but nowhere near the centred position that opened the
   // 167px void.
-  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:132px;min-height:100vh;min-height:100dvh;'
+  // The hero no longer forces a full screen on phones. At 100dvh a tall handset left ~280px of dead
+  // air between the buttons and the cue, and on a 844px screen the rays ran out at y=752 -- their SVG
+  // is a fixed 1000px and does not stretch with the box I had resized -- so the last 92px of the hero
+  // was flat white. Sizing the hero to its content plus real padding fixes both: the void goes, and
+  // the box stays inside the rays' reach. The next section then follows after that space rather than
+  // after a screenful of nothing.
+  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:132px;min-height:auto;'
   // Bottom padding up from 35.2px. The new tagline runs to five lines on a 375px screen and six on a
   // 320px one, which left the buttons finishing 9px above the scroll cue -- clear, but only just, and
   // one more wrapped line from colliding. The cue sits at the hero's bottom edge, so padding here is
   // what buys it room.
-  + 'padding-bottom:72px}}'
+  // 130px leaves the cue clear of the buttons (~60px) while keeping the whole hero inside a 568px
+  // screen, the shortest phone worth supporting.
+  + 'padding-bottom:130px}'
+  // Belt and braces on the rays: make the SVG fill its box so a taller hero can never outrun it again.
+  // preserveAspectRatio is "slice", so it covers and crops rather than letterboxing.
+  + '.hero-rays svg{height:100%}}'
+  // Short handsets. With the hero sized to its content, 132px above and 130px below made it 662px --
+  // taller than a 568px screen, so the cue fell below the fold on exactly the devices with least room.
+  // Trimming both paddings brings the whole hero inside the screen; measured rather than guessed the
+  // second time, since guessing is what put it over.
+  + '@media (max-width:900px) and (max-height:680px){'
+  + '.hero{padding-top:100px;padding-bottom:96px}'
+  // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
+  // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
+  // follow. C becomes 220, hence 440.
+  + '.hero-rays{top:calc(440px - 100%);height:calc(200% - 440px)}}'
   + '</st' + 'yle>';
 
 const PAGES = [
