@@ -12757,6 +12757,17 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     nm.parentNode.insertBefore(t,nm.nextSibling);
   }
   var homeDomain=null, tomlDesc=null, tomlImg=null, tomlX=null, tomlTg=null;
+  // null = registry not answered yet, "" = not one of ours, "lumoscore.com" = minted here.
+  // Kept separate from homeDomain so the two claims never get confused: one is what the ISSUER
+  // declares on chain, the other is what WE publish on its behalf.
+  var mintDomain=null;
+  function loadMintDomain(){
+    try{ fetch("/lxapi/assetmeta").then(function(r){ return r.ok?r.json():null; }).then(function(d){
+      var ids=(d&&d.mints)||[]; var me=CODE+"-"+ISSUER; mintDomain="";
+      for(var i=0;i<ids.length;i++){ if(String(ids[i])===me){ mintDomain="lumoscore.com"; break; } }
+      try{ applyAll(); }catch(_){}
+    }).catch(function(){ mintDomain=""; try{ applyAll(); }catch(_){} }); }catch(_){ mintDomain=""; }
+  }
   // #4: the green padlock beside the issuer is a claim, not decoration -- it says this asset cannot be
   // minted any further -- and the design ships it baked into the markup, so it was shown for EVERY
   // asset. USDC is not locked: Circle holds five signers on that issuer. An asset is locked only when
@@ -13068,14 +13079,22 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // While the domain is UNKNOWN (fetch pending/failed) hide the link entirely — the baked mock reads
     // "circle.com" and was visible from first paint on every non-USDC asset until home_domain resolved.
     var web=q(".asset-meta-row .website,.asset-meta .website");
-    if(web&&homeDomain==null){ if(web.style.display!=="none")web.style.display="none"; }
-    if(web&&homeDomain!=null){
+    // The issuer's own declaration wins. Only when it has none -- and only for a token our registry
+    // proves was minted here -- do we fall back to the domain that actually publishes its metadata.
+    var _effDom = homeDomain ? homeDomain : (mintDomain || "");
+    var _domUnknown = (homeDomain==null && mintDomain==null);
+    var _domOurs = (!homeDomain && !!mintDomain);
+    if(web&&_domUnknown){ if(web.style.display!=="none")web.style.display="none"; }
+    if(web&&!_domUnknown){
       if(web.getAttribute("data-lxfixed")!=="1"){
         var c2=web.cloneNode(true); c2.setAttribute("data-lxfixed","1"); c2.setAttribute("data-lx-noswap","");
         if(web.parentNode){ web.parentNode.replaceChild(c2,web); web=c2; }
       }
-      var _hd=dispDom(CODE,ISSUER,homeDomain);
-      if(homeDomain){ if(web.style.display==="none")web.style.display=""; if(web.getAttribute("href")!=="https://"+_hd){ web.setAttribute("href","https://"+_hd); web.setAttribute("target","_blank"); web.setAttribute("rel","noopener"); }
+      var _hd=dispDom(CODE,ISSUER,_effDom);
+      // Two different claims, so two different tooltips.
+      var _tip=_domOurs?"Metadata published by lumoscore.com — this token was minted here and its issuer sets no home_domain":"Visit homedomain";
+      if(web.getAttribute("data-tooltip")!==_tip)web.setAttribute("data-tooltip",_tip);
+      if(_effDom){ if(web.style.display==="none")web.style.display=""; if(web.getAttribute("href")!=="https://"+_hd){ web.setAttribute("href","https://"+_hd); web.setAttribute("target","_blank"); web.setAttribute("rel","noopener"); }
         if(!fixTextNode(web,_hd))web.appendChild(document.createTextNode(" "+_hd));
       } else if(web.style.display!=="none"){ web.style.display="none"; }
     }
@@ -15930,7 +15949,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         .then(function(){ poolsDone(0); },function(){ poolsDone(1); });
     })();
     // issuer home_domain (-> website + stellar.toml for logo/description)
-    if(ISSUER){ loadOwnDesc(); loadTomlEdge(); loadSeLogo(); loadSeChange(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false);
+    if(ISSUER){ loadOwnDesc(); loadTomlEdge(); loadSeLogo(); loadSeChange(); loadMintDomain(); j(H+"/accounts/"+ISSUER).then(function(a){ homeDomain=a.home_domain||(homeDomain||false);
       try{ var _mw=0; (a.signers||[]).forEach(function(sg){ var w=+sg.weight||0; if(w>_mw)_mw=w; }); issLocked=(_mw===0); }catch(_){ issLocked=false; } guardApply(); if(a.home_domain)loadToml(a.home_domain); else { tomlDone(); logoDone(); } }).catch(function(){ if(homeDomain==null)homeDomain=false; tomlDone(); logoDone(); guardApply(); });
       // Safety net: an unresponsive host must never hold the description back for good.
       setTimeout(tomlDone, 3000);
