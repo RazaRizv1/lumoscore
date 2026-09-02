@@ -309,7 +309,13 @@ async function searchPools(ranked, q) {
   // Exact code only -- a substring match would chase a different asset that merely contains the letters,
   // which on a money page is worse than no result. (The client upper-cases the query, so a mixed-case
   // code such as DicInu is not resolvable through this path; the ranking still handles those.)
-  if (!chased.length) {
+  // Resolve the code straight from Horizon's asset index, which does not care whether the asset can be
+  // valued. Returns only keys we did not already have. Exact code only: a substring match would chase a
+  // different asset that merely contains the letters, which on a money page is worse than no result.
+  // (The client upper-cases the query, so a mixed-case code such as DicInu is not resolvable this way;
+  // the ranking still handles those.)
+  async function resolveFromHorizon() {
+    const added = [];
     try {
       const d = await j('/assets?asset_code=' + encodeURIComponent(q) + '&limit=' + SEARCH_ASSETS, SEARCH_TTL);
       for (const rec of ((d && d._embedded && d._embedded.records) || [])) {
@@ -318,25 +324,37 @@ async function searchPools(ranked, q) {
         const key = code + ':' + issuer;
         if (assets.has(key)) continue;
         assets.set(key, { code, issuer });
-        chased.push(key);
-        if (chased.length >= SEARCH_ASSETS) break;
+        added.push(key);
+        if (added.length >= SEARCH_ASSETS) break;
       }
-    } catch (e) { /* leave chased empty -- the caller still answers, just with nothing */ }
+    } catch (e) { /* answer with whatever the ranking gave us */ }
+    return added;
   }
 
+  if (!chased.length) chased.push(...(await resolveFromHorizon()));
+
   const found = new Map();
-  for (const key of chased) {
-    let cursor = '';
-    for (let page = 0; page < 4; page++) {
-      const d = await j('/liquidity_pools?reserves=' + encodeURIComponent(key) + '&limit=' + PAGE
-        + '&order=asc' + (cursor ? '&cursor=' + cursor : ''), SEARCH_TTL);
-      const recs = (d && d._embedded && d._embedded.records) || [];
-      if (!recs.length) break;
-      for (const rec of recs) if (!found.has(rec.id)) found.set(rec.id, rec);
-      if (recs.length < PAGE) break;
-      cursor = recs[recs.length - 1].paging_token;
+  async function chase(keys) {
+    for (const key of keys) {
+      let cursor = '';
+      for (let page = 0; page < 4; page++) {
+        const d = await j('/liquidity_pools?reserves=' + encodeURIComponent(key) + '&limit=' + PAGE
+          + '&order=asc' + (cursor ? '&cursor=' + cursor : ''), SEARCH_TTL);
+        const recs = (d && d._embedded && d._embedded.records) || [];
+        if (!recs.length) break;
+        for (const rec of recs) if (!found.has(rec.id)) found.set(rec.id, rec);
+        if (recs.length < PAGE) break;
+        cursor = recs[recs.length - 1].paging_token;
+      }
     }
   }
+  await chase(chased);
+
+  // The ranking resolving a code is not the same as it resolving the RIGHT issuer -- a ticker is not an
+  // identity on Stellar. If the chase came back empty, ask Horizon for the code and chase whatever it
+  // names as well. Only reached when the answer would otherwise be "no pools", so no query that already
+  // returns something pays for it.
+  if (!found.size) await chase(await resolveFromHorizon());
 
   const out = [];
   for (const [id, rec] of found) {
