@@ -68,24 +68,19 @@ const CSS = '<style id="lx-herotext">'
   // what keeps the gap between them unchanged -- and the rays are positioned against the hero, not
   // this block, so they stay where they are. Verified the headline still clears the nav by 42px.
   + '@media (min-width:901px){.hero-center{top:-42px}}'
-  // Phones need the same trick from the other end. Here the content is deliberately anchored near the
-  // nav, so lifting it is not available -- the rays move instead. They sit at inset:0 and therefore
-  // converge on the hero's own centre: measured at 375x812, that is y=317 while the search field
-  // centres on y=232, leaving the point exposed 85px below the field.
+  // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
+  // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
+  // converge on the hero's own centre, well below the search field.
   //
-  // Expressed as percentages rather than the measured 85px, because the headline is fluid on phones
-  // and the field's position moves with it. Centre of the block is top + height/2, so -26% + 63% puts
-  // it at 37% of the hero -- where the field is -- and spanning -26% to 100% keeps the hero fully
-  // covered, which a plain translate would not.
-  // Pinned in PIXELS, not percentages. Percentages were wrong once the hero content became
-  // top-anchored: the field then sits a fixed ~252px from the hero's top whatever the screen height,
-  // while a percentage scales with that height. Tuning it at 812px put the convergence 45px off at
-  // 667px -- the same bug twice, from the same assumption.
+  // Pinned in PIXELS, not percentages. Because the content is top-anchored, the field sits a fixed
+  // offset from the hero's top whatever the screen height, while a percentage scales with that height:
+  // a version tuned at 812px was 45px out at 667px. Centre = top + height/2, so with C as the wanted
+  // offset, top = 2C - 100% and height = 200% - 2C resolves to C at any hero height while still
+  // spanning 0 to 100%.
   //
-  // Centre = top + height/2, so with C as the wanted offset: top = 2C - 100%, height = 200% - 2C.
-  // Centre resolves to C at any hero height, and the block still spans 0 to 100%. C = 252px, hence
-  // the 504s.
-  + '@media (max-width:900px){.hero-rays{top:calc(504px - 100%);bottom:auto;height:calc(200% - 504px)}}'
+  // C is 257px: 132px of top padding, the headline, the gap, and half a 60px field. It moved from 252
+  // when the field grew from 50px to 60px -- the pin is an offset to the FIELD, so it follows it.
+  + '@media (max-width:900px){.hero-rays{top:calc(514px - 100%);bottom:auto;height:calc(200% - 514px)}}'
   // Above 1100px the size holds at its designed 114.4px but is capped against the viewport. Measured:
   // "The Multichain World" needs 1047px at 114.4px, and at exactly 1101px -- the narrow end of the
   // range where that size applies -- that left 22px either side. Not clipped, but crowded. 10vw gives
@@ -157,7 +152,7 @@ const CSS = '<style id="lx-herotext">'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
-  + '.hero-rays{top:calc(440px - 100%);height:calc(200% - 440px)}}'
+  + '.hero-rays{top:calc(450px - 100%);height:calc(200% - 450px)}}'
   + '</st' + 'yle>';
 
 const PAGES = [
