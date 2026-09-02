@@ -21,6 +21,32 @@ const B = String.fromCharCode(92);
 // two-line treatment, so they are re-emitted rather than left to whatever was there.
 const HEAD_HTML = 'The Multi-chain World<br/><span class="grad">Starts Here</span>';
 
+// ---- the networks line, between the tagline and the buttons.
+// Marks come from _netlogos.json, the same file the section further down the page uses, so the hero
+// and that section cannot drift apart. Labelled XRPL rather than the file's "XRP Ledger", which is
+// what the rest of the landing copy calls it.
+//
+// This states what runs where, so the claims are held to what is actually true: Stellar is live,
+// XRPL is not, and nothing else is named. "More upcoming" gets a neutral mark rather than a logo
+// because there is no third chain to put a logo to yet.
+const NETLOGOS = require(__dirname + '/_netlogos.json');
+const MORE_MARK = '<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">'
+  + '<circle cx="16" cy="16" r="16" fill="currentColor" opacity=".14"/>'
+  + '<circle cx="9.5" cy="16" r="2" fill="currentColor"/><circle cx="16" cy="16" r="2" fill="currentColor"/>'
+  + '<circle cx="22.5" cy="16" r="2" fill="currentColor"/></svg>';
+
+function netChip(mark, label, extraClass) {
+  return '<span class="lx-hnet' + (extraClass ? ' ' + extraClass : '') + '">'
+    + '<i class="lx-hnet-m">' + mark + '</i>' + label + '</span>';
+}
+
+const NETS_HTML = '<div class="lx-heronets" data-lxnonav="1">'
+  + '<span class="lx-heronets-l">Networks</span>'
+  + netChip(NETLOGOS[0].logo, 'Stellar', 'is-live')
+  + netChip(NETLOGOS[1].logo, 'XRPL')
+  + netChip(MORE_MARK, 'More upcoming', 'is-more')
+  + '</div>';
+
 // The tagline is written by REPLACING the paragraph's contents outright rather than swapping one exact
 // string for another. Matching on the previous wording meant every copy change had to carry the last
 // version with it, and the transform would silently no-op the moment the two drifted apart. This way
@@ -61,6 +87,32 @@ const CSS = '<style id="lx-herotext">'
   // place.", which reads as a broken sentence and puts the emphasis on the wrong word. nowrap rather
   // than a hard <br>, so the line still collapses to one on a viewport wide enough to hold it.
   + '.hero-tagline .lrp-hl{white-space:nowrap}'
+  // ---- the networks line. Deliberately quiet: it sits between the tagline and the primary CTA, so
+  // anything with weight here competes with the button it introduces. Small caps-ish label, muted ink,
+  // marks at 22px.
+  + '.lx-heronets{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;'
+  + 'gap:9px 16px;margin:0 0 26px}'
+  + '.lx-heronets-l{font-size:12.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;'
+  + 'color:var(--text-soft)}'
+  + '.lx-hnet{display:inline-flex;align-items:center;gap:8px;font-size:14.5px;font-weight:700;'
+  + 'color:var(--text-muted)}'
+  + '.lx-hnet-m{display:inline-flex;width:22px;height:22px;flex:0 0 auto}'
+  + '.lx-hnet-m svg{width:100%;height:100%;display:block;border-radius:50%}'
+  // The live chain reads as live. A dot rather than a word keeps the row to one line on a phone.
+  + '.lx-hnet.is-live{color:var(--text)}'
+  + '.lx-hnet.is-live::after{content:"";width:6px;height:6px;border-radius:50%;'
+  + 'background:var(--green,#34d27a);box-shadow:0 0 0 3px rgba(52,210,122,.18)}'
+  // The placeholder mark inherits ink rather than carrying a colour of its own, so it is legible on
+  // both grounds without a second definition.
+  + '.lx-hnet.is-more{color:var(--text-soft)}'
+  // Phones cannot hold label plus three chips on one line -- measured at 375px, the four come to
+  // ~400px against ~335px of usable width. Left to wrap on its own it broke after XRPL and left
+  // "More upcoming" alone and centred on a second line, which reads as a stray. The label takes the
+  // first line instead (a 100% basis forces the break) so the three chips stay together as a set.
+  + '@media (max-width:900px){.lx-heronets{gap:6px 12px;margin-bottom:20px}'
+  + '.lx-heronets-l{flex:0 0 100%;font-size:11px}'
+  + '.lx-hnet{font-size:13px;gap:6px}'
+  + '.lx-hnet-m{width:18px;height:18px}}'
   // Lift the hero content on desktop so the search field covers the point where the background rays
   // converge. Measured at 1440x900: the rays centre on y=423 and the field began at y=436, leaving the
   // convergence exposed as a bright dot just above it. 42px puts that point at the field's own centre.
@@ -160,7 +212,13 @@ const CSS = '<style id="lx-herotext">'
   + '.hero{padding-top:100px;padding-bottom:68px}'
   // The wider gap stays off short screens: at 568px the hero already ends exactly on the fold with
   // 20px between the buttons and the cue, so anything added here pushes the cue straight past it.
-  + '.hero-search-wrap{margin-bottom:22px}'
+  // 12px, down from 22: the networks line adds ~38px of content to a hero that had none to spare, and
+  // at 320x568 it closed the gap between the buttons and the scroll cue to 5px -- clear, but one
+  // wrapped line from touching. Height is taken out of the content rather than by moving the cue: the
+  // cue sits at the hero's bottom edge, so buying room with padding trades one collision for the cue
+  // going under the fold, which is the bug this whole block exists to fix.
+  + '.hero-search-wrap{margin-bottom:12px}'
+  + '.lx-heronets{margin-bottom:8px}'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
@@ -181,7 +239,10 @@ for (const p of PAGES) {
   let html = json[p.key];
   if (html == null) { problems.push(p.key + ': missing'); continue; }
 
-  html = html.replace(/<style id="lx-herotext">[\s\S]*?<\/style>/g, '');
+  html = html.replace(/<style id="lx-herotext">[\s\S]*?<\/style>/g, '')
+    // The networks line is re-injected, so it is stripped first. Its own div holds only spans, so
+    // the first </div> after it is its own -- no nesting to walk.
+    .replace(/<div class="lx-heronets"[\s\S]*?<\/div>/g, '');
 
   const headOpen = '<h1 class="hero-headline">';
   const hi = html.indexOf(headOpen);
@@ -198,6 +259,11 @@ for (const p of PAGES) {
   if (te < 0) { problems.push(p.key + ': hero tagline paragraph is not closed'); continue; }
   if (html.indexOf(tagOpen, ti + 1) >= 0) { problems.push(p.key + ': more than one hero tagline'); continue; }
   html = html.slice(0, ti + tagOpen.length) + TAG_HTML + html.slice(te);
+
+  // ---- networks line, between the tagline and the buttons. Anchored to the tagline's close rather
+  // than to the CTA row so it lands in the same place on both builds, whatever sits between them.
+  const afterTag = html.indexOf('</p>', ti) + 4;
+  html = html.slice(0, afterTag) + NETS_HTML + html.slice(afterTag);
 
   // ---- secondary CTA label. Matched on the exact anchor rather than the bare words so a stray
   // "Explore Products" anywhere else on the page is never touched, and asserted to appear once.
@@ -228,8 +294,11 @@ for (const p of PAGES) {
     // One in the header. The hero's own is "/docs" too but was just written with the class it had
     // ("btn lg" on desktop), so it does not collide with this exact-string match -- asserted, because
     // if the hero ever ends up plain "btn" this would silently delete the wrong one.
-    if (hdrN !== 1) { problems.push(p.key + ': expected 1 header Docs button, found ' + hdrN); continue; }
-    html = html.replace(HDR, '');
+    // 0 is fine and is the steady state: everything else in this transform re-injects, so a second
+    // run finds the button already gone. Only more than one is a signal that the page is not what
+    // this expects.
+    if (hdrN > 1) { problems.push(p.key + ': ' + hdrN + ' header Docs buttons, expected at most 1'); continue; }
+    if (hdrN === 1) html = html.replace(HDR, '');
   }
 
   const bo = html.lastIndexOf('</body>');
