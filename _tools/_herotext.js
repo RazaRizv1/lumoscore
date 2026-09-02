@@ -9,9 +9,15 @@
 // negative offset on desktop, and a calc() pin on phones -- and BOTH are functions of how tall the
 // hero's contents are. Every change to the headline size, the copy, the spacing, or what elements are
 // present moves the field and breaks them. They have been re-derived on every such change:
-// -42 -> -32 -> -93 -> -123 on desktop, with a separate value for 901-1100px where the headline is
-// 70.4px, and 514 -> 568 -> 504 -> 640 -> 650 on phones. Do not carry any of them forward on faith.
-// Measure: field centre against hero centre on desktop, field centre against rays centre on phones.
+// -42 -> -32 -> -93 -> -123 -> -86 -> -57 -> -71 -> -181 on desktop, with a separate value for
+// 901-1100px where the headline is 70.4px, and 514 -> 568 -> 504 -> 640 -> 650 on phones. Do not
+// carry any of them forward on faith. Measure: field centre against hero centre on desktop, field
+// centre against rays centre on phones.
+//
+// AND CHECK THE STYLESHEET IS WELL-FORMED BEFORE BELIEVING A MEASUREMENT. Removing a block from CSS
+// assembled by string concatenation once took a media query's closing brace with it; every rule after
+// that point was nested inside an unclosed @media and silently inert, and the offsets measured in that
+// state were all wrong by ~110px. Count braces in the emitted <style> when a number looks surprising.
 //
 // Re-injects its own style block, so everything here can be tuned by editing this file and re-running.
 
@@ -57,35 +63,6 @@ function cutElement(html, openMarker, tag) {
 // carried the whole sentence, and the hero reads fine without it.
 const HEAD_HTML = 'The Core of<br/><span class="grad">Multi-chain Web3</span>';
 
-// The statement panel: what the platform does, then which chains it runs on.
-//
-// The two are separate lines with a rule between them because they are different kinds of statement --
-// one is a description, the other is a fact that will change as chains are added. Marks come from
-// _netlogos.json, the same file the networks section further down the page uses, so the two cannot
-// show different logos for the same chain.
-//
-// ON THE CLAIM: naming XRP Ledger here is deliberate and was confirmed by the owner. It reads
-// stronger than the networks section further down, which says Stellar mainnet today with XRPL next --
-// the distinction being that XRPL support exists but not yet at full functionality. If that section
-// or the FAQ is ever reworded, this line is the one to keep it consistent with.
-const NETLOGOS = require(__dirname + '/_netlogos.json');
-
-function stmtNet(mark, label) {
-  return '<span class="lx-hs-net"><i class="lx-hs-mark">' + mark + '</i>' + label + '</span>';
-}
-
-// "across networks" is dropped from the lead: the line below names the networks, and having the word
-// twice in one small box was half of why it read as filler. The four capabilities are emphasised
-// inline rather than left flat -- one sentence at one weight in one grey is what made this look like
-// placeholder text, and the rhythm of four accented nouns is what a reader actually scans.
-const STMT_HTML = '<div class="lx-herostmt">'
-  + '<p class="lx-hs-lead">LumosCore unifies <b>trading</b>, <b>liquidity</b>, <b>bridging</b> '
-  + 'and <b>asset management</b>.</p>'
-  + '<span class="lx-hs-rule" aria-hidden="true"></span>'
-  + '<p class="lx-hs-nets"><span class="lx-hs-pre">Currently supporting</span>'
-  + stmtNet(NETLOGOS[0].logo, 'Stellar') + stmtNet(NETLOGOS[1].logo, 'XRP Ledger') + '</p>'
-  + '</div>';
-
 // The mobile header's Launch App button. Same handler as the desktop header's, so the network chooser
 // behaves identically; data-lxnonav keeps it clear of the landing page's text-matching interceptor,
 // which would otherwise see "Launch App" and swallow the click.
@@ -118,83 +95,6 @@ const CSS = '<style id="lx-herotext">'
   + '.scroll-hint:focus-visible .arrow{outline:2px solid var(--accent);outline-offset:3px}'
   + '@keyframes lxcuebob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}'
   + '@media (prefers-reduced-motion:reduce){.scroll-hint .arrow{animation:none}}'
-  // ---- the statement panel, where the CTA row used to be.
-  // Same material as the search field above it -- surface, one hairline border, generous radius -- so
-  // the hero reads as one family rather than a field and then a different kind of box. Centred text in
-  // a symmetrical panel: equal padding all round, nothing hanging off an edge. It fills the content
-  // column rather than matching the search field: at the field width the copy ran to two lines in a
-  // tall box, and at the column width it is one line in a wide strip, which is the better shape here.
-  // A flat surface with one grey hairline was reading as a placeholder box. It keeps the field's
-  // width and radius -- that alignment is the point -- but gains a gradient edge, a lit top, and a
-  // shadow, so it sits on the rays rather than being cut out of them.
-  //
-  // The gradient border is two backgrounds with different clips: the surface fills the padding-box,
-  // the gradient fills the border-box, and a transparent 1px border lets the second show through only
-  // at the edge. It is the one way to get a gradient hairline without a wrapper element, and the
-  // surface layer must be an explicit gradient (not a bare colour) because the shorthand needs both
-  // layers to be images.
-  + '.lx-herostmt{max-width:none;margin:0 auto;padding:26px 48px 24px;border-radius:22px;'
-  + 'border:1px solid transparent;position:relative;overflow:hidden;'
-  + 'background:linear-gradient(var(--surface),var(--surface)) padding-box,'
-  + 'linear-gradient(130deg,rgba(234,106,44,.55),rgba(255,255,255,.10) 42%,rgba(139,123,255,.42)) '
-  + 'border-box;'
-  + 'box-shadow:0 22px 48px -30px rgba(0,0,0,.85)}'
-  // Light theme gets its own shadow: the dark one is invisible on a pale ground and the panel goes
-  // back to looking cut out.
-  + 'html[data-theme="light"] .lx-herostmt{box-shadow:0 18px 40px -28px rgba(15,15,20,.30)}'
-  // The lit top edge -- a hairline of light along the first few pixels, which is what makes a dark
-  // panel read as a raised surface rather than a hole.
-  + '.lx-herostmt::after{content:"";position:absolute;left:14%;right:14%;top:0;height:1px;'
-  + 'pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent)}'
-  // A single wash behind the text, centred, tinted to the accent the page already uses.
-  // Two washes, not one, and they match the two ends of the border gradient -- warm at the top left,
-  // cool at the bottom right. A single centred tint gave the panel colour but no direction, which
-  // reads as flat; a diagonal between two hues is what makes it feel lit from somewhere.
-  + '.lx-herostmt::before{content:"";position:absolute;inset:0;pointer-events:none;'
-  + 'background:radial-gradient(460px 200px at 18% -20%,rgba(234,106,44,.20),transparent 68%),'
-  + 'radial-gradient(420px 200px at 86% 118%,rgba(139,123,255,.16),transparent 70%)}'
-  + '.lx-herostmt p{position:relative;margin:0;text-align:center;text-wrap:balance}'
-  // The lead carries the box. At 18.5px muted it was the largest thing here and still read as a
-  // caption, which is what made the panel look like a placeholder: nothing in it had any weight.
-  // 22px, and the four capabilities take full-strength ink so the sentence has a rhythm to scan
-  // rather than one even grey line.
-  + '.lx-hs-lead{font-size:22px;line-height:1.5;letter-spacing:-.2px;color:var(--text-muted)}'
-  + '.lx-hs-lead b{color:var(--text);font-weight:700}'
-  // The rule separates a description from a fact. Accent-tinted rather than grey: at 1px a border-grey
-  // hairline was measurably present (96x1) and still invisible against the panel. Short, centred, and
-  // fading at both ends so it reads
-  // as a divider rather than a second border inside a bordered box.
-  + '.lx-hs-rule{position:relative;display:block;height:1px;width:96px;margin:18px auto 16px;'
-  + 'background:linear-gradient(90deg,transparent,rgba(234,106,44,.6),transparent)}'
-  // The chains are chips now, not words in a sentence. As running text they were the least
-  // considered thing in the box -- two bold names with a stray "and" and a full stop. As bordered
-  // chips they read as what they are: a list of platforms, each one an object.
-  //
-  // Flex row here is correct precisely because there are no text nodes between the items any more:
-  // the connecting words are gone, so nothing can inherit a gap it should not have. That was the bug
-  // in the sentence version -- every "and" and "." became its own flex item.
-  + '.lx-hs-nets{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:9px}'
-  + '.lx-hs-pre{font-size:11.5px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;'
-  + 'color:var(--text-soft);margin-right:2px}'
-  + '.lx-hs-net{display:inline-flex;align-items:center;gap:8px;padding:5px 13px 5px 6px;'
-  + 'border-radius:999px;border:1px solid var(--border);background:var(--bg-elev,var(--surface));'
-  + 'color:var(--text);font-weight:700;font-size:14.5px;white-space:nowrap}'
-  + '.lx-hs-mark{display:inline-flex;width:22px;height:22px;flex:0 0 auto}'
-  + '.lx-hs-mark svg{width:100%;height:100%;display:block;border-radius:50%}'
-  + '@media (max-width:1100px){.lx-herostmt{padding:24px 34px 22px}'
-  + '.lx-hs-lead{font-size:20px}.lx-hs-net{font-size:14px}}'
-  + '@media (max-width:900px){.lx-herostmt{padding:22px 20px 20px;border-radius:18px}'
-  + '.lx-hs-lead{font-size:17px;line-height:1.5}'
-  + '.lx-hs-rule{width:74px;margin:15px auto 13px}'
-  + '.lx-hs-nets{gap:8px}'
-  // Eyebrow on its own line below 900px: label plus both chips does not fit one row at 375px, and
-  // left to wrap it broke between the chips and stranded XRP Ledger. A 100% basis forces the break
-  // where it belongs, so the two chips stay together as a pair.
-  + '.lx-hs-pre{flex:0 0 100%;font-size:10.5px;letter-spacing:.12em;margin:0 0 2px}'
-  + '.lx-hs-net{gap:6px;font-size:13px;padding:4px 11px 4px 5px}'
-  + '.lx-hs-mark{width:19px;height:19px}}'
-  + '@media (max-width:360px){.lx-hs-net{font-size:12px;padding:4px 9px 4px 4px}'
-  + '.lx-hs-mark{width:17px;height:17px}}'
   // ---- mobile header Launch App.
   // Sized to sit level with the 36px icon button beside it rather than at the .btn default of 48px,
   // and the label is allowed to shrink before the nav starts wrapping on a 320px screen.
@@ -230,7 +130,7 @@ const CSS = '<style id="lx-herotext">'
   // second line and a rule.
   // Measured each time; the field centre and the hero
   // centre both read 450 at 1440x900.
-  + '.hero-center{top:-71px}'
+  + '.hero-center{top:-181px}'
   // Bottom padding down from 88px. The networks block added ~100px to a hero that was already close
   // to the viewport: measured 966px tall at 1440x900, which put the scroll cue 28px under the fold.
   // The room is taken from BELOW the cue, never from padding-top -- the rays are pinned to a fixed
@@ -246,15 +146,15 @@ const CSS = '<style id="lx-herotext">'
   //
   // Nothing above the field moves. It is pinned -- the background rays converge on its centre, and
   // _herotext's whole desktop offset is built around that measurement.
-  + '.hero-search-wrap{margin-bottom:44px}'
-  + '.lx-herostmt{margin-bottom:66px}}'
+  + '.hero-search-wrap{margin-bottom:44px}}'
+
   // ---- a second offset for 901-1100px, where the headline is 70.4px rather than 114.4px.
   // One value cannot serve both bands: the smaller headline makes the content block ~97px shorter,
   // which lifts the field 72px above the hero centre at 950px wide. Measured there rather than
   // interpolated. This band has probably been a little out since the -42px days, when the offset was
   // also tuned at 1440 alone -- it is only visible now because the miss got big enough to see. It sits
   // after the block above so it wins on source order at equal specificity.
-  + '@media (min-width:901px) and (max-width:1100px){.hero-center{top:-3px}}'
+  + '@media (min-width:901px) and (max-width:1100px){.hero-center{top:-109px}}'
   // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
   // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
   // converge on the hero's own centre, well below the search field.
@@ -354,15 +254,6 @@ const CSS = '<style id="lx-herotext">'
   // cue sits at the hero's bottom edge, so buying room with padding trades one collision for the cue
   // going under the fold, which is the bug this whole block exists to fix.
   + '.hero-search-wrap{margin-bottom:24px}'
-  // The panel, tightened for the shortest screens. It grew a second line and a rule, and at 320x568
-  // that put the scroll cue 28px INSIDE it -- overlapping text, not just a small gap. Everything here
-  // comes out of the panel's own box rather than the hero's padding: the cue sits at the hero's bottom
-  // edge, so buying room with padding trades this collision for the cue going under the fold, which is
-  // the bug this whole block exists to fix. None of it moves the search field, so the pin above holds.
-  + '.lx-herostmt{padding:16px 16px 15px;border-radius:16px}'
-  + '.lx-hs-lead{font-size:14px;line-height:1.5}'
-  + '.lx-hs-rule{width:64px;margin:11px auto 10px}'
-  + '.lx-hs-net{font-size:12.5px;padding:4px 10px 4px 4px}'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
@@ -414,33 +305,30 @@ for (const p of PAGES) {
   if (html.indexOf('<p class="hero-tagline">') >= 0) { problems.push(p.key + ': tagline survived removal'); continue; }
 
 
-  // ---- the hero CTA row goes; a statement takes its place.
-  // Launch App was in the hero AND in the header, two identical buttons a few hundred pixels apart.
-  // The header keeps it, and the mobile header gains one below so both layouts work the same way.
+  // ---- the hero holds the headline and the search field, and nothing else.
   //
-  // Docs left the header earlier to live in this row, so removing the row would strand it in the
-  // footer. It goes back into the desktop nav links instead of the header actions -- a text link
-  // beside Products / Networks / FAQs rather than a second button competing with Launch App.
+  // The CTA row went first: Launch App was in the hero AND in the header, two identical buttons a few
+  // hundred pixels apart. The header keeps it, and the mobile header gains one below.
   //
-  // The statement is re-injected on every run, so it is stripped first. Both removals are depth walks:
-  // the CTA row contains a <button> with its own nested markup, and the statement is a div in a div.
+  // The statement panel that replaced it went too. It was tried as a centred paragraph, then with real
+  // type hierarchy and chain chips, then at the full content width, and it never earned the space
+  // between the field and the scroll cue. What it said is said by the products grid and the "Why
+  // Choose LumosCore?" section further down the page.
+  //
+  // Docs left the header earlier to live in that CTA row, so removing the row would have stranded it
+  // in the footer. It sits in the desktop nav links now, beside Products / Networks / FAQs.
+  //
+  // Both strips stay: containers built before this still carry these elements and they have to come
+  // out. Depth walks, because the CTA row holds a <button> with nested markup and the panel was a div
+  // inside a div.
   html = cutElement(html, '<div class="lx-herostmt"', 'div');
+  if (html.indexOf('lx-herostmt') >= 0) { problems.push(p.key + ': statement panel survived the strip'); continue; }
   const ctaN = (html.match(/<div class="hero-ctas">/g) || []).length;
   if (ctaN > 1) { problems.push(p.key + ': ' + ctaN + ' hero CTA rows, expected at most 1'); continue; }
   const ctaI = html.indexOf('<div class="hero-ctas">');
   if (ctaI >= 0) html = cutElement(html, '<div class="hero-ctas">', 'div');
   if (html.indexOf('<div class="hero-ctas">') >= 0) { problems.push(p.key + ': CTA row survived removal'); continue; }
 
-  // The statement lands where the row was on the first run, and after the search field on every run
-  // after that, which is the same place -- the field's wrapper is the last element before it.
-  const swEnd = (() => {
-    const at = html.indexOf('<div class="hero-search-wrap">');
-    if (at < 0) return -1;
-    const rest = cutElement(html.slice(at), '<div class="hero-search-wrap">', 'div');
-    return at + (html.length - at - rest.length);
-  })();
-  if (swEnd < 0) { problems.push(p.key + ': hero search wrap not found'); continue; }
-  html = html.slice(0, swEnd) + STMT_HTML + html.slice(swEnd);
 
   if (p.key === 'lumoscore-landing.html') {
     // Docs back into the nav links, once. Anchored to the FAQs link so it lands at the end of the row.
@@ -477,7 +365,7 @@ if (problems.length) {
 for (const st of staged) {
   const ser = JSON.stringify(st.json).split('</').join('<' + B + '/');
   fs.writeFileSync(st.file, st.data.slice(0, st.s) + ser + st.data.slice(st.e), 'utf8');
-  console.log('  ' + st.key + ': hero headline, tagline removed, CTAs'
+  console.log('  ' + st.key + ': hero headline, tagline/CTAs/panel removed'
     + '');
 }
 console.log('hero text: done on ' + staged.length + ' page(s)');
