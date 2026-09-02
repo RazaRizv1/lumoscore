@@ -25,7 +25,7 @@ const B = String.fromCharCode(92);
 
 const HEAD = 'One Interface. Multiple chains. Zero tab-switching.';
 const SUB = 'Trade, pool, bridge, deploy, and manage your entire multichain portfolio from a single '
-  + 'interface. No more bouncing between dexes, bridges, and explorers across a dozen networks.';
+  + 'interface.';
 
 // kind -> [icon key, copy]
 const CARDS = {
@@ -40,7 +40,7 @@ const CARDS = {
   wallet: ['wallet',
     'Your entire multichain portfolio in one view. Send, receive, and manage assets across the networks.'],
   launchpad: ['launchpad',
-    'Deploy tokens on any supported network.'],
+    'Mint asset and deploy its first pool on any supported network in less than 2 minutes.'],
 };
 
 // The nav sizes its glyphs from CSS, so the nav markup carries no width/height -- dropped into the
