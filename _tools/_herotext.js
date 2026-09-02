@@ -130,7 +130,7 @@ const CSS = '<style id="lx-herotext">'
   // second line and a rule.
   // Measured each time; the field centre and the hero
   // centre both read 450 at 1440x900.
-  + '.hero-center{top:-181px}'
+  + '.hero-center{top:-137px}'
   // Bottom padding down from 88px. The networks block added ~100px to a hero that was already close
   // to the viewport: measured 966px tall at 1440x900, which put the scroll cue 28px under the fold.
   // The room is taken from BELOW the cue, never from padding-top -- the rays are pinned to a fixed
@@ -154,7 +154,7 @@ const CSS = '<style id="lx-herotext">'
   // interpolated. This band has probably been a little out since the -42px days, when the offset was
   // also tuned at 1440 alone -- it is only visible now because the miss got big enough to see. It sits
   // after the block above so it wins on source order at equal specificity.
-  + '@media (min-width:901px) and (max-width:1100px){.hero-center{top:-109px}}'
+  + '@media (min-width:901px) and (max-width:1100px){.hero-center{top:-67px}}'
   // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
   // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
   // converge on the hero's own centre, well below the search field.
