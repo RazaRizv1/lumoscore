@@ -20,6 +20,14 @@
 // it appears here on the next cache refresh with no deploy and no list to edit. A forgery never does.
 const FUNDER = 'GA7VKQBOILVBDABEHRSVW72JM3OI54I2GSCCIHGNMECGUMKHLZG7JCDH';
 
+// The launchpad's fee collector, and the number of operations a mint transaction has. Both are read
+// by mintedByUs() below; see the note there for why paying this address is part of what proves a mint.
+// Kept in step with _tools/_launchpad.js -- if the fee collector moves, it moves in both files.
+const FEE_COLLECTOR = 'GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD';
+// A mint is 7 operations. 20 leaves room for the shape to grow without this silently reading only part
+// of a transaction and concluding the wrong thing from it.
+const MINT_OPS = 20;
+
 // LUMOS is listed by name rather than by the funder rule. It is the platform's own token and predates the
 // launchpad -- its issuer was created by a different wallet (GBMAZPFH…), so the rule below correctly does
 // not recognise it. Naming it here is safe for the same reason the rule is: this file is our assertion, and
@@ -180,10 +188,55 @@ async function fundedByUs(issuer, b) {
       const d = await r.json();
       const op = ((d._embedded || {}).records || [])[0] || {};
       if (op.type !== 'create_account') return false;
-      return (op.funder || op.source_account) === FUNDER;
+      if ((op.funder || op.source_account) === FUNDER) return true;
+      // Not funded by our wallet -- which on mainnet is the NORMAL case, not a red flag. Fall through
+      // to the launchpad-shape check below rather than denying here.
+      return await mintedByUs(op.transaction_hash, issuer, b, host);
     } catch (e) { await sleep(250 * (attempt + 1)); }  // timeout / network -> retry, do not conclude
   }
   return null;
+}
+
+// Was this issuer minted through our launchpad, judged from the transaction that created it?
+//
+// WHY THIS EXISTS ALONGSIDE THE FUNDER CHECK. FUNDER was the whole test while the launchpad ran on
+// testnet, where a LumosCore wallet created every issuer with friendbot. The mainnet migration moved
+// that to the MINTER's own wallet -- there is no friendbot on mainnet, so the connected wallet funds
+// the new issuer with real XLM. From that day the funder check could never be true for a real mint,
+// and every mainnet launchpad token was silently refused a place in this document. FUNDER's own last
+// operation is dated 2026-08-02, right when the migration landed.
+//
+// WHAT IS BEING TRUSTED. Not "someone paid us" on its own -- a dust payment would be trivial to fake.
+// The whole transaction has to look like a launchpad mint: it created this issuer, it paid our fee
+// collector in XLM, and it locked the issuer by zeroing its master weight. Reproducing that means
+// actually paying us and actually surrendering control of the issuer, which is not a forgery of a
+// LumosCore mint so much as a description of one.
+//
+// ADDITIVE, deliberately: an asset that satisfied the old rule still satisfies it, on the same code
+// path, before this function is ever called. Nothing that appears in today's document can drop out.
+async function mintedByUs(txHash, issuer, b, host) {
+  if (!txHash) return false;
+  if (!b.take()) return null;                         // no allowance left -> unknown, never a denial
+  let r;
+  try {
+    r = await withTimeout(host + '/transactions/' + encodeURIComponent(txHash) + '/operations?limit=' + MINT_OPS);
+  } catch (e) { return null; }                        // timeout -> unknown, so it is not cached as a no
+  if (r.status === 429 || r.status >= 500) return null;
+  if (!r.ok) return false;
+
+  let recs;
+  try { recs = (((await r.json())._embedded) || {}).records || []; } catch (e) { return null; }
+
+  let paidUs = false, locked = false;
+  for (const op of recs) {
+    if (op.type === 'payment' && op.to === FEE_COLLECTOR && op.asset_type === 'native'
+        && parseFloat(op.amount) > 0) paidUs = true;
+    // The lock has to be on THIS issuer: a transaction may set options on more than one account, and
+    // "some account in this transaction was locked" is not the same claim.
+    if (op.type === 'set_options' && op.source_account === issuer
+        && String(op.master_key_weight) === '0') locked = true;
+  }
+  return paidUs && locked;
 }
 
 async function candidates() {

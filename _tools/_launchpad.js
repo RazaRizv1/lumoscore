@@ -266,7 +266,20 @@ window.lxLaunchToken=function(draft, onStatus, opts){
           .addOperation(S.Operation.changeTrust({asset:poolAsset}))
           .addOperation(S.Operation.liquidityPoolDeposit({liquidityPoolId:poolId, maxAmountA:lxLpAmt(liqXlm), maxAmountB:lxLpAmt(lpTokens), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}))
           .addOperation(S.Operation.payment({destination:C.feeCollector, asset:native, amount:lxLpAmt(feeXlm)}))
-          .addOperation(S.Operation.setOptions({source:issuerPk, masterWeight:0, lowThreshold:0, medThreshold:0, highThreshold:0}))
+          // homeDomain rides on the SAME setOptions that locks the issuer, and this is the only chance
+          // to set it. masterWeight:0 removes the issuer's ability to sign anything ever again, so an
+          // asset minted without a home domain can NEVER be given one -- reported 2026-09-02, FRANK
+          // (GBATOPMB...3XNO) went out with home_domain unset and is permanently unable to claim this
+          // site. Every mainnet mint since the migration is in that state.
+          //
+          // It matters because the SEP-1 document at lumoscore.com only lists assets that CLAIM
+          // lumoscore.com: functions/.well-known/stellar.toml.js builds its candidate list by asking
+          // stellar.expert for assets whose domain is ours. No home domain, no entry, and therefore no
+          // name, description or logo anywhere the ecosystem can read them.
+          //
+          // Added to the existing operation rather than as a new one: same op count, same fee, and no
+          // ordering question about whether the lock lands before the domain is set.
+          .addOperation(S.Operation.setOptions({source:issuerPk, homeDomain:"lumoscore.com", masterWeight:0, lowThreshold:0, medThreshold:0, highThreshold:0}))
           .setTimeout(300).build();
         tb.sign(issuerKp); // issuer co-signs its two ops locally (throwaway key)
         // Fire the ONE wallet signature now (earliest possible), so the popup opens within the click gesture.
