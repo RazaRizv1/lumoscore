@@ -829,6 +829,8 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   var logoSettled=false, ownLogo=false;
   function logoDone(){ if(logoSettled)return; logoSettled=true; try{ guardApply(); }catch(_){} }
   var dayOHLC=null;                                          // {o,h,l,c,v} from the latest daily aggregation
+  var prevDayClose=0;                                        // yesterday's daily close, kept so the 24h move can be recomputed against a fresh price
+  var freshPx=0;                                             // last TRADED price; outranks the cached daily close whichever arrives first
 
   // HOST FALLBACK, which GUARDRAILS E12 has always required and this layer never had.
   //
@@ -865,6 +867,16 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // So go through our own edge cache first -- a server has neither the rate limit nor the CORS problem, and
   // the cached response collapses many visitors into one upstream hit. Fall back to Horizon directly when
   // that is not there, so localhost (where Pages Functions do not run) behaves exactly as before.
+  // The last TRADED price, from /trades rather than /trade_aggregations. Separate from jAgg on
+  // purpose: that one is the metered endpoint and is cached for five minutes to stay inside its
+  // budget, which is precisely why it cannot carry a live price. Resolves to 0 on any failure so the
+  // caller keeps whatever the daily bucket gave it -- a stale price beats no price.
+  function lastPrice(){
+    return fetch("/lxapi/lastprice?a="+encodeURIComponent(CODE+"-"+ISSUER),{headers:{accept:"application/json"}})
+      .then(function(r){ if(!r.ok)throw 0; return r.json(); })
+      .then(function(d){ return (d&&+d.price>0)?+d.price:0; })
+      .catch(function(){ return 0; });
+  }
   function jAgg(o){
     var ord=o.order||"desc", lim=o.limit||200;
     var qs="a="+encodeURIComponent(CODE+"-"+ISSUER)+"&res="+o.res+"&order="+ord+"&limit="+lim;
@@ -3846,18 +3858,36 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     if(NATIVE){ assetXlm=1; logoDone(); loadNativeStats(); return; }
     // price + 24h change + 24h volume via daily trade aggregations
     jAgg({res:86400000,order:"desc",limit:2}).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
-      if(r[0]){ assetXlm=+r[0].close||+r[0].avg||assetXlm; vol24Xlm=+r[0].counter_volume||0;
+      // freshPx wins if it has already landed. /lxapi/lastprice is one small request and usually
+      // resolves FIRST, so without this the slower daily response arrives afterwards and puts the
+      // five-minute-old close straight back on screen -- which is what happened the first time this
+      // was wired: the fetch ran, the assignment ran, and the price did not change.
+      if(r[0]){ assetXlm=(freshPx>0)?freshPx:(+r[0].close||+r[0].avg||assetXlm); vol24Xlm=+r[0].counter_volume||0;
         dayOHLC={o:+r[0].open||0,h:+r[0].high||0,l:+r[0].low||0,c:+r[0].close||0,v:+r[0].counter_volume||0}; }
       // A daily bucket is stamped with the start of its UTC day, so the newest one is "today" or, just
       // after midnight with no trades yet, "yesterday". Anything older means the asset did not trade in
       // the last 24 hours and there is no 24h move to report. Two days of slack covers the midnight
       // case without letting a months-old bucket through.
       if(r[0]&&r[0].timestamp){ chg24Fresh=((Date.now()-(+r[0].timestamp))<=2*864e5); }
-      if(r[0]&&r[1]&&+r[1].close>0){ chgXlm24=((+r[0].close-+r[1].close)/+r[1].close)*100; }
+      // The move is measured from yesterday's close to whatever price is actually on screen, so the
+      // number and the percentage always describe the same thing.
+      if(r[0]&&r[1]&&+r[1].close>0){ prevDayClose=+r[1].close;
+        var nowPx=(freshPx>0)?freshPx:+r[0].close; chgXlm24=((nowPx-+r[1].close)/+r[1].close)*100; }
       recomputeChg();
       if(r[0]&&r[1]&&+r[1].counter_volume>0)volChg=((+r[0].counter_volume-+r[1].counter_volume)/+r[1].counter_volume)*100;
       applyAll(); try{ loadChart(chartTF); }catch(_){}
     }).catch(function(){});
+    // The headline price comes from /lxapi/lastprice, not from the daily bucket above. That bucket is
+    // served at TTL=300 because /trade_aggregations is the metered Horizon endpoint, so during a sharp
+    // move the page showed a price minutes old -- reported 2026-09-02, LUMOS read 0.00028 while Horizon
+    // itself said 0.00063. /trades is not metered, so the last trade can be had at a 20s TTL. The daily
+    // bucket still supplies 24h volume and the OHLC strip; only the price and the 24h change move.
+    lastPrice().then(function(p){ if(!(p>0))return; freshPx=p; assetXlm=p;
+      // Recompute the 24h move against the SAME number now on screen. Left derived from the cached
+      // close, the page would show a price and a percentage that disagree with each other.
+      if(prevDayClose>0){ chgXlm24=((p-prevDayClose)/prevDayClose)*100; recomputeChg(); }
+      if(dayOHLC){ dayOHLC.c=p; if(!(dayOHLC.h>0)||p>dayOHLC.h)dayOHLC.h=p; if(!(dayOHLC.l>0)||p<dayOHLC.l)dayOHLC.l=p; }
+      applyAll(); }).catch(function(){});
     // AUDIT (user-reported: "just show 0.00% instead of -"): 1h/1m/3m/6m were dashed because we simply
     // never fetched them — the dash was honest but useless. Compute them from real candles instead of
     // inventing a flat 0.00%: an hourly pair for 1h, and ~200 daily candles for 1m/3m/6m. A dash now means
