@@ -57,12 +57,29 @@ function cutElement(html, openMarker, tag) {
 // carried the whole sentence, and the hero reads fine without it.
 const HEAD_HTML = 'The Core of<br/><span class="grad">Multi-chain Web3</span>';
 
-// The statement that replaces the CTA row. The closing two sentences carry the emphasis rather than
-// getting a second element: they are the claim, the first sentence is the explanation, and splitting
-// them by weight keeps the block one shape.
+// The statement panel: what the platform does, then which chains it runs on.
+//
+// The two are separate lines with a rule between them because they are different kinds of statement --
+// one is a description, the other is a fact that will change as chains are added. Marks come from
+// _netlogos.json, the same file the networks section further down the page uses, so the two cannot
+// show different logos for the same chain.
+//
+// ON THE CLAIM: naming XRP Ledger here is deliberate and was confirmed by the owner. It reads
+// stronger than the networks section further down, which says Stellar mainnet today with XRPL next --
+// the distinction being that XRPL support exists but not yet at full functionality. If that section
+// or the FAQ is ever reworded, this line is the one to keep it consistent with.
+const NETLOGOS = require(__dirname + '/_netlogos.json');
+
+function stmtNet(mark, label) {
+  return '<span class="lx-hs-net"><i class="lx-hs-mark">' + mark + '</i>' + label + '</span>';
+}
+
 const STMT_HTML = '<div class="lx-herostmt">'
-  + '<p>LumosCore unifies trading, liquidity, bridging, and asset management across networks. '
-  + '<b>One platform. No fragmentation.</b></p>'
+  + '<p class="lx-hs-lead">LumosCore unifies trading, liquidity, bridging, and asset management '
+  + 'across networks.</p>'
+  + '<span class="lx-hs-rule" aria-hidden="true"></span>'
+  + '<p class="lx-hs-nets">Currently supporting '
+  + stmtNet(NETLOGOS[0].logo, 'Stellar') + ' and ' + stmtNet(NETLOGOS[1].logo, 'XRP Ledger') + '.</p>'
   + '</div>';
 
 // The mobile header's Launch App button. Same handler as the desktop header's, so the network chooser
@@ -103,21 +120,59 @@ const CSS = '<style id="lx-herotext">'
   // a symmetrical panel: equal padding all round, one max-width, nothing hanging off an edge. That
   // max-width is the search field's own 680px, so the two stack as one column rather than two nearly-
   // but-not-quite equal boxes -- measured, not guessed at.
-  + '.lx-herostmt{max-width:680px;margin:0 auto;padding:30px 40px;border-radius:22px;'
-  + 'border:1px solid var(--border);background:var(--surface);position:relative;overflow:hidden}'
-  // A single wash behind it, centred, so the panel has some depth without a second border or a shadow
-  // that would fight the buttons in the header. Tinted to the accent the page already uses.
+  // A flat surface with one grey hairline was reading as a placeholder box. It keeps the field's
+  // width and radius -- that alignment is the point -- but gains a gradient edge, a lit top, and a
+  // shadow, so it sits on the rays rather than being cut out of them.
+  //
+  // The gradient border is two backgrounds with different clips: the surface fills the padding-box,
+  // the gradient fills the border-box, and a transparent 1px border lets the second show through only
+  // at the edge. It is the one way to get a gradient hairline without a wrapper element, and the
+  // surface layer must be an explicit gradient (not a bare colour) because the shorthand needs both
+  // layers to be images.
+  + '.lx-herostmt{max-width:680px;margin:0 auto;padding:28px 40px 26px;border-radius:22px;'
+  + 'border:1px solid transparent;position:relative;overflow:hidden;'
+  + 'background:linear-gradient(var(--surface),var(--surface)) padding-box,'
+  + 'linear-gradient(130deg,rgba(234,106,44,.55),rgba(255,255,255,.10) 42%,rgba(139,123,255,.42)) '
+  + 'border-box;'
+  + 'box-shadow:0 22px 48px -30px rgba(0,0,0,.85)}'
+  // Light theme gets its own shadow: the dark one is invisible on a pale ground and the panel goes
+  // back to looking cut out.
+  + 'html[data-theme="light"] .lx-herostmt{box-shadow:0 18px 40px -28px rgba(15,15,20,.30)}'
+  // The lit top edge -- a hairline of light along the first few pixels, which is what makes a dark
+  // panel read as a raised surface rather than a hole.
+  + '.lx-herostmt::after{content:"";position:absolute;left:14%;right:14%;top:0;height:1px;'
+  + 'pointer-events:none;background:linear-gradient(90deg,transparent,rgba(255,255,255,.22),transparent)}'
+  // A single wash behind the text, centred, tinted to the accent the page already uses.
   + '.lx-herostmt::before{content:"";position:absolute;inset:0;pointer-events:none;'
-  + 'background:radial-gradient(620px 200px at 50% 0%,rgba(234,106,44,.10),transparent 72%)}'
-  + '.lx-herostmt p{position:relative;margin:0;text-align:center;font-size:19px;line-height:1.62;'
-  + 'color:var(--text-muted);text-wrap:balance}'
-  // The closing claim in full-strength ink: it is the sentence that matters, and weight carries it
-  // without introducing a second colour into a hero that already has the gradient headline.
-  + '.lx-herostmt p b{color:var(--text);font-weight:800}'
-  + '@media (max-width:1100px){.lx-herostmt{max-width:640px;padding:26px 32px}'
-  + '.lx-herostmt p{font-size:17.5px}}'
-  + '@media (max-width:900px){.lx-herostmt{max-width:none;padding:22px 22px;border-radius:18px}'
-  + '.lx-herostmt p{font-size:15.5px;line-height:1.6}}'
+  + 'background:radial-gradient(560px 190px at 50% -10%,rgba(234,106,44,.16),transparent 70%)}'
+  + '.lx-herostmt p{position:relative;margin:0;text-align:center;text-wrap:balance}'
+  + '.lx-hs-lead{font-size:18.5px;line-height:1.6;color:var(--text-muted)}'
+  // The rule separates a description from a fact. Accent-tinted rather than grey: at 1px a border-grey
+  // hairline was measurably present (96x1) and still invisible against the panel. Short, centred, and
+  // fading at both ends so it reads
+  // as a divider rather than a second border inside a bordered box.
+  + '.lx-hs-rule{position:relative;display:block;height:1px;width:96px;margin:18px auto 16px;'
+  + 'background:linear-gradient(90deg,transparent,rgba(234,106,44,.6),transparent)}'
+  // Inline flow, NOT flex. As a flex row every text node between the chips became its own item and
+  // took the row gap with it, so the closing full stop sat 7px off the end of "XRP Ledger" as if it
+  // belonged to nothing. Ordinary inline layout spaces "and" and "." the way the sentence intends.
+  + '.lx-hs-nets{font-size:16px;line-height:1.9;color:var(--text-soft)}'
+  // Each chain is a name with its mark, held together so the pair never breaks across a line.
+  // vertical-align:middle is what keeps an inline-flex chip sitting on the sentence rather than
+  // hanging below its baseline.
+  + '.lx-hs-net{display:inline-flex;align-items:center;gap:8px;vertical-align:middle;'
+  + 'color:var(--text);font-weight:700;white-space:nowrap}'
+  + '.lx-hs-mark{display:inline-flex;width:22px;height:22px;flex:0 0 auto}'
+  + '.lx-hs-mark svg{width:100%;height:100%;display:block;border-radius:50%}'
+  + '@media (max-width:1100px){.lx-herostmt{max-width:640px;padding:26px 32px 24px}'
+  + '.lx-hs-lead{font-size:17.5px}.lx-hs-nets{font-size:15.5px}}'
+  + '@media (max-width:900px){.lx-herostmt{max-width:none;padding:22px 20px 20px;border-radius:18px}'
+  + '.lx-hs-lead{font-size:15.5px;line-height:1.58}'
+  + '.lx-hs-rule{width:74px;margin:15px auto 13px}'
+  + '.lx-hs-nets{font-size:13.5px;gap:0 6px}'
+  + '.lx-hs-net{gap:6px}.lx-hs-mark{width:19px;height:19px}}'
+  + '@media (max-width:360px){.lx-hs-nets{font-size:12.5px}'
+  + '.lx-hs-mark{width:17px;height:17px}}'
   // ---- mobile header Launch App.
   // Sized to sit level with the 36px icon button beside it rather than at the .btn default of 48px,
   // and the label is allowed to shrink before the nav starts wrapping on a 320px screen.
@@ -149,10 +204,11 @@ const CSS = '<style id="lx-herotext">'
   // sit there, and this offset is whatever it takes -- it is not a constant to be carried forward.
   // It has moved with every change to the hero's contents: -42 when the hero's height came from its
   // content, -32 once the hero became viewport-height, -93 with the networks block out, -123 for
-  // the design headline coming back, and -86 with the CTA row swapped for the statement panel.
+  // the design headline coming back, -86 with the CTA row swapped for the statement panel, and -57 once that panel grew a
+  // second line and a rule.
   // Measured each time; the field centre and the hero
   // centre both read 450 at 1440x900.
-  + '.hero-center{top:-86px}'
+  + '.hero-center{top:-57px}'
   // Bottom padding down from 88px. The networks block added ~100px to a hero that was already close
   // to the viewport: measured 966px tall at 1440x900, which put the scroll cue 28px under the fold.
   // The room is taken from BELOW the cue, never from padding-top -- the rays are pinned to a fixed
@@ -176,7 +232,7 @@ const CSS = '<style id="lx-herotext">'
   // interpolated. This band has probably been a little out since the -42px days, when the offset was
   // also tuned at 1440 alone -- it is only visible now because the miss got big enough to see. It sits
   // after the block above so it wins on source order at equal specificity.
-  + '@media (min-width:901px) and (max-width:1100px){.hero-center{top:-21px}}'
+  + '@media (min-width:901px) and (max-width:1100px){.hero-center{top:10px}}'
   // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
   // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
   // converge on the hero's own centre, well below the search field.
@@ -275,7 +331,16 @@ const CSS = '<style id="lx-herotext">'
   // wrapped line from touching. Height is taken out of the content rather than by moving the cue: the
   // cue sits at the hero's bottom edge, so buying room with padding trades one collision for the cue
   // going under the fold, which is the bug this whole block exists to fix.
-  + '.hero-search-wrap{margin-bottom:48px}'
+  + '.hero-search-wrap{margin-bottom:24px}'
+  // The panel, tightened for the shortest screens. It grew a second line and a rule, and at 320x568
+  // that put the scroll cue 28px INSIDE it -- overlapping text, not just a small gap. Everything here
+  // comes out of the panel's own box rather than the hero's padding: the cue sits at the hero's bottom
+  // edge, so buying room with padding trades this collision for the cue going under the fold, which is
+  // the bug this whole block exists to fix. None of it moves the search field, so the pin above holds.
+  + '.lx-herostmt{padding:16px 16px 15px;border-radius:16px}'
+  + '.lx-hs-lead{font-size:14px;line-height:1.5}'
+  + '.lx-hs-rule{width:64px;margin:11px auto 10px}'
+  + '.lx-hs-nets{font-size:12.5px;line-height:1.7}'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
