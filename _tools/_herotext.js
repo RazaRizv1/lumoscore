@@ -18,13 +18,16 @@ const B = String.fromCharCode(92);
 const OLD = '<h1 class="hero-headline">The Core of<br/><span class="grad">Multi-Chain Web3</span></h1>';
 const NEW = '<h1 class="hero-headline">The Multichain World<br/><span class="grad">Starts Here</span></h1>';
 
-// The tagline keeps the design's three-part shape -- a bold lead, a plain middle, an accented close --
-// so the new copy inherits the same emphasis the old line had rather than arriving as one flat block.
-const TAG_OLD = '<strong>No more platform hopping.</strong> Trade, launch, and bridge across chains '
-  + '— <span class="lrp-hl">all in one place</span>.';
-const TAG_NEW = '<strong>LumosCore unifies the fragmented blockchain experience into one powerful '
-  + 'platform.</strong> Trade, move, launch, explore, and manage your assets across networks '
-  + '— <span class="lrp-hl">without the platform hopping</span>.';
+// The tagline is written by REPLACING the paragraph's contents outright rather than swapping one exact
+// string for another. Matching on the previous wording meant every copy change had to carry the last
+// version with it, and the transform would silently no-op the moment the two drifted apart. This way
+// the paragraph always ends up saying exactly what TAG_HTML says, however many times it is run.
+//
+// The accent span is kept: the design ends this line with a highlighted phrase, and that is the shape
+// the hero was drawn around. No <strong> this time -- the old copy opened with a standalone lead
+// sentence to bold, and this one is a single clause with nothing that plays that role.
+const TAG_HTML = 'Trade, move, launch, and explore across chains — '
+  + '<span class="lrp-hl">all in one place</span>.';
 
 // 60px is the requested size for the <=1100px rule. The desktop figure is set from measurement in
 // _herotext_size below rather than left at 114.4: at that size the new first line does not fit the
@@ -84,11 +87,13 @@ for (const p of PAGES) {
     html = html.replace(OLD, NEW);
   }
 
-  if (html.indexOf(TAG_NEW) < 0) {
-    const t = html.split(TAG_OLD).length - 1;
-    if (t !== 1) { problems.push(p.key + ': expected 1 old hero tagline, found ' + t); continue; }
-    html = html.replace(TAG_OLD, TAG_NEW);
-  }
+  const tagOpen = '<p class="hero-tagline">';
+  const ti = html.indexOf(tagOpen);
+  if (ti < 0) { problems.push(p.key + ': hero tagline paragraph not found'); continue; }
+  const te = html.indexOf('</p>', ti);
+  if (te < 0) { problems.push(p.key + ': hero tagline paragraph is not closed'); continue; }
+  if (html.indexOf(tagOpen, ti + 1) >= 0) { problems.push(p.key + ': more than one hero tagline'); continue; }
+  html = html.slice(0, ti + tagOpen.length) + TAG_HTML + html.slice(te);
 
   const bo = html.lastIndexOf('</body>');
   html = bo >= 0 ? html.slice(0, bo) + CSS + html.slice(bo) : html + CSS;
