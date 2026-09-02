@@ -121,6 +121,115 @@ const CSS = `<style id="lx-faq-css">
 
 function esc(s){return (String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')).split(String.fromCharCode(39)).join("&#39;");}
 
+// The landing page was showing 7 of the ~64 answers this file already holds, because it rendered one
+// page's set like every other page does. The other 57 existed and were reachable nowhere from the front
+// door. Grouped into tabs, all of them ship on the landing page and all of them go into its FAQPage
+// structured data, which is the thing answer engines actually read.
+//
+// Grouping is by what a reader would look for, not by page key: Trade covers the market, the asset page
+// and the overview; Pools covers the list and the detail; LUMOS Token covers the token and rewards. A
+// question repeated across merged sets -- the fee answer appears in three -- is kept once.
+const GROUPS = [
+  ['General', ['landing']],
+  ['Trade', ['dex', 'dex-asset', 'asset-overview']],
+  ['Pools', ['amm', 'amm-pool']],
+  ['Launchpad', ['launch-token']],
+  ['Cross-chain', ['bridge']],
+  ['Wallet', ['wallet']],
+  ['LUMOS Token', ['lumos-token', 'rewards']],
+  ['MCP', ['mcp']],
+];
+
+const TABCSS = '<style id="lx-faqtabs-css">'
+  + '.lx-faqtabs{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 30px}'
+  + '.lx-faqtab{appearance:none;cursor:pointer;font:inherit;font-size:14px;font-weight:700;'
+  + 'color:var(--text-soft);background:var(--surface);border:1px solid var(--border);'
+  + 'border-radius:999px;padding:10px 18px;display:inline-flex;align-items:center;gap:8px;'
+  + 'transition:color .16s ease,border-color .16s ease,background .16s ease}'
+  + '.lx-faqtab:hover{color:var(--text);border-color:var(--accent)}'
+  + '.lx-faqtab span{font-size:12px;font-weight:600;color:var(--text-soft);'
+  + 'background:var(--bg-elev,rgba(127,127,127,.14));border-radius:999px;padding:2px 8px}'
+  + '.lx-faqtab.is-on{color:#fff;background:var(--accent);border-color:var(--accent)}'
+  + '.lx-faqtab.is-on span{color:#fff;background:rgba(255,255,255,.22)}'
+  + '.lx-faqtab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}'
+  // Panes are hidden with display:none rather than height:0 so a collapsed pane is not focusable and
+  // not read out, and so the section does not reserve the tallest group's height.
+  //
+  // Selector is .lx-faq .lx-faqpane, not .lx-faqpane: a pane also carries .lx-faq-grid, whose
+  // display:grid lives in the lx-faq-css block that gets appended AFTER this one. At equal specificity
+  // the later rule wins, so the bare class lost and every pane rendered open at once. Two classes beat
+  // one regardless of which order the two style blocks land in.
+  + '.lx-faq .lx-faqpane{display:none}'
+  + '.lx-faq .lx-faqpane.is-on{display:grid}'
+  + '@media (max-width:640px){.lx-faqtabs{gap:8px;margin-bottom:22px}'
+  + '.lx-faqtab{font-size:13px;padding:9px 14px}}'
+  + '</st' + 'yle>';
+
+const TABJS = '<script id="lx-faqtabs-js">(function(){'
+  + 'function go(root,id){'
+  + 'var ts=root.querySelectorAll(".lx-faqtab"),ps=root.querySelectorAll(".lx-faqpane"),i;'
+  + 'for(i=0;i<ts.length;i++){var on=ts[i].getAttribute("data-lxfaq")===id;'
+  + 'ts[i].classList.toggle("is-on",on);ts[i].setAttribute("aria-selected",on?"true":"false");}'
+  + 'for(i=0;i<ps.length;i++){ps[i].classList.toggle("is-on",ps[i].getAttribute("data-lxfaqpane")===id);}'
+  + '}'
+  // Delegated, so it survives the page re-rendering the section, and bound once.
+  + 'if(window.__lxFaqTabs)return;window.__lxFaqTabs=1;'
+  + 'document.addEventListener("click",function(e){'
+  + 'var b=e.target&&e.target.closest?e.target.closest(".lx-faqtab"):null;if(!b)return;'
+  + 'var root=b.closest(".lx-faq");if(!root)return;'
+  + 'e.preventDefault();go(root,b.getAttribute("data-lxfaq"));'
+  + '},false);'
+  + '})();</scr' + 'ipt>';
+
+function blockGrouped() {
+  const groups = GROUPS.map(function (g) {
+    const seen = {}, items = [];
+    g[1].forEach(function (k) {
+      (FAQ[k] || []).forEach(function (qa) { if (!seen[qa[0]]) { seen[qa[0]] = 1; items.push(qa); } });
+    });
+    return { label: g[0], id: g[0].toLowerCase().replace(/[^a-z0-9]+/g, '-'), items: items };
+  }).filter(function (g) { return g.items.length; });
+
+  const tabs = groups.map(function (g, i) {
+    return '<button type="button" class="lx-faqtab' + (i === 0 ? ' is-on' : '') + '" role="tab"'
+      + ' aria-selected="' + (i === 0 ? 'true' : 'false') + '" aria-controls="lxfaq-' + g.id + '"'
+      + ' data-lxfaq="' + g.id + '">' + esc(g.label) + ' <span>' + g.items.length + '</span></button>';
+  }).join('');
+
+  const panes = groups.map(function (g, i) {
+    const qs = g.items.map(function (qa) {
+      return '<div><h3 class="lx-faq-q">' + esc(qa[0]) + '</h3><p class="lx-faq-a">' + esc(qa[1]) + '</p></div>';
+    }).join('');
+    return '<div class="lx-faq-grid lx-faqpane' + (i === 0 ? ' is-on' : '') + '" id="lxfaq-' + g.id + '"'
+      + ' role="tabpanel" data-lxfaqpane="' + g.id + '">' + qs + '</div>';
+  }).join('');
+
+  // Every answer on the page goes into the structured data, deduped across groups.
+  const seen = {}, all = [];
+  groups.forEach(function (g) {
+    g.items.forEach(function (qa) { if (!seen[qa[0]]) { seen[qa[0]] = 1; all.push(qa); } });
+  });
+  const ld = {
+    '@context': 'https://schema.org', '@type': 'FAQPage',
+    mainEntity: all.map(function (qa) {
+      return { '@type': 'Question', name: qa[0], acceptedAnswer: { '@type': 'Answer', text: qa[1] } };
+    }),
+  };
+
+  // data-lxnonav is not decoration. The landing page runs a delegated click handler that matches an
+  // element's TEXT against the nav labels and navigates, with stopImmediatePropagation, before any
+  // later listener sees the event. Four of these tabs are named after destinations -- Trade, Launchpad,
+  // Pools, Wallet -- so clicking them tried to leave the page and the panel never switched, while
+  // Cross-chain and MCP worked fine. That handler bails on the first [data-lxnonav] ancestor, so the
+  // flag goes on the tab strip. Its own role="tab" skip-list is checked too late to help.
+  return '<section class="lx-faq" id="faq"><h2>Frequently asked questions</h2>'
+    + '<div class="lx-faqtabs" role="tablist" data-lxnonav="1">' + tabs + '</div>'
+    + '<div class="lx-faqpanes">' + panes + '</div></section>'
+    + '<script type="application/ld+json" id="lx-faq-ld">'
+    + JSON.stringify(ld).replace(/</g, '\\u003c') + '</scr' + 'ipt>'
+    + TABCSS + TABJS;
+}
+
 function block(items) {
   const qs = items.map(([q, a]) =>
     '<div><h3 class="lx-faq-q">' + esc(q) + '</h3><p class="lx-faq-a">' + esc(a) + '</p></div>').join('');
@@ -157,11 +266,19 @@ for (const chain of ['aptos', 'hedera', 'starknet', 'vechain', 'worldchain', 'st
       // idempotent: drop whatever a previous run injected
       h = h.replace(/<section class="lx-faq"[\s\S]*?<\/section>/g, '')
            .replace(/<script type="application\/ld\+json" id="lx-faq-ld">[\s\S]*?<\/script>/g, '')
-           .replace(/<style id="lx-faq-css">[\s\S]*?<\/style>/g, '');
+           .replace(/<style id="lx-faq-css">[\s\S]*?<\/style>/g, '')
+           .replace(/<style id="lx-faqtabs-css">[\s\S]*?<\/style>/g, '')
+           .replace(/<script id="lx-faqtabs-js">[\s\S]*?<\/script>/g, '');
 
-      const fi = h.lastIndexOf('<footer');
-      if (fi < 0) continue;                       // no footer to anchor to — skip rather than guess
-      h = h.slice(0, fi) + block(items) + h.slice(fi);
+      const isLanding = /^lumoscore-landing(-mobile)?\.html$/.test(key);
+      const markup = isLanding ? blockGrouped() : block(items);
+      // The landing page ends on its call to action, so the FAQ goes ABOVE it. Anchoring on the footer
+      // like every other page would drop it below the CTA and leave the page closing on a list of
+      // questions -- the opposite of the order the page was rearranged into.
+      const cta = isLanding ? h.indexOf('<section class="final-cta-section"') : -1;
+      const fi = cta >= 0 ? cta : h.lastIndexOf('<footer');
+      if (fi < 0) continue;                       // nothing to anchor to — skip rather than guess
+      h = h.slice(0, fi) + markup + h.slice(fi);
 
       const bi = h.lastIndexOf('</body>');
       if (bi >= 0) h = h.slice(0, bi) + CSS + h.slice(bi);

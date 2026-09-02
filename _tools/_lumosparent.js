@@ -78,7 +78,21 @@ function cardHTML(n) {
   // healer to leave this element alone. Without them it paints a letter-"L" over the chain's mark.
   const SKIP = ' data-lxc="" data-logoed="1"';
   const GUARD = '<svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg>';
-  const inner = '<span class="lx-lp-ico"' + SKIP + (n.icon ? (' style="background-image:url(' + JSON.stringify(n.icon) + ')"') : '') + '>' + GUARD + '</span>'
+  // SINGLE quotes around the URL, not JSON.stringify.
+  //
+  // JSON.stringify wraps the data URI in DOUBLE quotes, and this goes inside a double-quoted style
+  // attribute, so the parser ended the attribute at the URI's opening quote. What reached the browser
+  // was style="background-image:url(" -- an invalid declaration and a pile of junk attributes -- which
+  // is why both chain marks on /lumos rendered as empty circles. It looked correct in the source and
+  // was broken in the DOM, so it survived every read of the file.
+  //
+  // Asserted rather than assumed safe: a URI containing a single quote would reintroduce the same bug
+  // one quote-character over.
+  if (n.icon && n.icon.indexOf("'") >= 0) {
+    throw new Error('chain icon for ' + n.id + " contains a single quote; it would break the style attribute");
+  }
+  const bg = n.icon ? (" style=\"background-image:url('" + n.icon + "')\"") : '';
+  const inner = '<span class="lx-lp-ico"' + SKIP + bg + '>' + GUARD + '</span>'
     + '<span class="lx-lp-main"><span class="lx-lp-net">' + n.name + '</span>'
     + '<span class="lx-lp-meta">' + n.meta + '</span></span>'
     + (n.live ? ('<span class="lx-lp-go">' + GO + '</span>')
