@@ -17,11 +17,23 @@
 // zeroing its master weight. Reproducing that means actually minting through LumosCore, which is the
 // thing being claimed. No verified mint, no stored bytes.
 //
-// WHAT IS PUBLISHED IMMEDIATELY AND WHAT WAITS. Registering the asset in assets:mints is a fact the
-// chain proves, so it happens on submission -- assetmeta.js's own comment calls mints "ours by
-// definition, not a curation decision". The name, description, links and logo are a stranger's words
-// and a stranger's image about to appear on our domain, so they are held as PENDING and published only
-// when an admin approves. Approval is the only path from this file into "asset:<id>".
+// PUBLISHED ON MINT, NOT ON APPROVAL, and this was reconsidered rather than assumed. The first version
+// held every submission in a queue for an admin to approve. That is the wrong trade: a minter pays the
+// fee, types their project's name and description as part of the flow, and would then watch their token
+// sit nameless until a human happened to click something. It also makes the admin a bottleneck on every
+// mint, forever.
+//
+// The argument for a queue was that this is stranger-supplied content appearing on our domain. It does
+// not hold up. The asset CODE is already published unmoderated the moment the mint lands -- the toml
+// lists it without anyone looking -- so a description is not a different kind of claim. And every way
+// this content could do actual harm is already closed elsewhere:
+//   * the asset page writes descriptions with textContent, not innerHTML, so the text is inert;
+//   * storeLogo takes raster formats only and caps the size, and /lxapi/media serves with nosniff --
+//     the SVG behind a past incident cannot get in;
+//   * safeSite refuses any scheme we did not name, so javascript: and data: never reach an href.
+// What is left is taste, and taste is better handled by removing something afterwards than by making
+// every honest minter wait. assetmeta.js already has the admin DELETE that does it; the PUT below
+// clears the toml's copy at the same time, which DELETE alone would leave behind.
 import { requireAdmin } from '../../_lib/adminauth.js';
 import { audit } from '../../_lib/audit.js';
 import { storeLogo } from './listing.js';
@@ -33,8 +45,10 @@ const HASH_RE = /^[0-9a-f]{64}$/i;
 const CODE_RE = /^[A-Za-z0-9]{1,12}$/;
 const ADDR_RE = /^G[A-Z2-7]{55}$/;
 
-const PEND = 'mintmeta:';          // mintmeta:<CODE-ISSUER> -> one submission
-const APPROVED = 'mintmeta:approved';  // {id: {name, desc, image}} -- one read for the toml
+const SUB = 'mintmeta:';           // mintmeta:<CODE-ISSUER> -> one submission, kept for restore
+const LIVE = 'mintmeta:approved';  // {id: {name, desc, image}} -- one read for the toml.
+// The key keeps its old name so an entry written before the queue was dropped is still found; the
+// constant says what it now means.
 const MINTS = 'assets:mints';      // read by assetmeta.js; the launchpad never wrote it
 const META = 'asset:';             // assetmeta.js's per-asset record
 
@@ -129,9 +143,10 @@ export async function onRequestPost({ request, env }) {
   // Idempotent by asset. A retry, a double click, or the page being reopened must not create a second
   // submission or overwrite something an admin has already ruled on.
   let prev = null;
-  try { prev = await kv.get(PEND + id, 'json'); } catch (e) { /* treat as absent */ }
-  if (prev && prev.status !== 'pending') {
-    return json({ ok: true, status: prev.status, already: true }, 200);
+  try { prev = await kv.get(SUB + id, 'json'); } catch (e) { /* treat as absent */ }
+  // A taken-down entry stays down: a resubmit must not be a way to undo a removal.
+  if (prev && prev.status === 'removed') {
+    return json({ ok: true, status: 'removed', already: true }, 200);
   }
 
   // Checked BEFORE any bytes are stored, so an unverified submission costs us nothing.
@@ -146,7 +161,7 @@ export async function onRequestPost({ request, env }) {
   }
 
   const rec = {
-    asset: id, code, issuer, txHash, status: 'pending',
+    asset: id, code, issuer, txHash, status: 'live',
     name: clip(b.name, LIMITS.name),
     description: clip(b.description != null ? b.description : b.desc, LIMITS.description),
     website: safeSite(b.website, LIMITS.website),
@@ -156,7 +171,39 @@ export async function onRequestPost({ request, env }) {
     at: (prev && prev.at) || Date.now(),
     updated: Date.now(),
   };
-  await kv.put(PEND + id, JSON.stringify(rec));
+  await kv.put(SUB + id, JSON.stringify(rec));
+
+  // Straight to the record assetmeta.js serves, in the shape its own admin PUT writes, so a minted
+  // asset is indistinguishable downstream from one curated by hand -- one reader, one shape.
+  const image = rec.logoId ? '/lxapi/media?id=' + encodeURIComponent(rec.logoId) : '';
+  let meta = null;
+  try { meta = await kv.get(META + id, 'json'); } catch (e) { /* new record */ }
+  // An admin edit is not undone by a resubmit: a field already set by hand stays unless the minter
+  // actually supplies something for it.
+  // PRESENT beats non-empty. A field the request carries wins even when it is empty, so a minter can
+  // clear something they mistyped; a field the request omits keeps whatever is stored, so a partial
+  // resubmit does not wipe an admin's edit. Falling back on emptiness instead -- which this did at
+  // first -- makes a value unclearable, and the author of a description is then stuck with it.
+  const has = (k) => Object.prototype.hasOwnProperty.call(b, k);
+  const keep = (k, v) => (has(k) ? v : ((meta && meta[k]) || ''));
+  meta = {
+    ...(meta || {}),
+    asset: id,
+    name: keep('name', rec.name),
+    description: (has('description') || has('desc')) ? rec.description : ((meta && meta.description) || ''),
+    image: has('logo') ? image : ((meta && meta.image) || ''),
+    website: keep('website', rec.website),
+    twitter: keep('twitter', rec.twitter),
+    telegram: keep('telegram', rec.telegram),
+  };
+  await kv.put(META + id, JSON.stringify(meta));
+
+  // One key the SEP-1 document reads, so building the toml costs a single read rather than a scan.
+  try {
+    const map = (await kv.get(LIVE, 'json')) || {};
+    map[id] = { name: meta.name, desc: meta.description, image: meta.image };
+    await kv.put(LIVE, JSON.stringify(map));
+  } catch (e) { /* the asset record is written either way; the map can be rebuilt from it */ }
 
   // The registry is a statement of fact the chain just proved, so it does not wait for review. This is
   // what assetmeta.js has been reading all along with nothing writing it.
@@ -165,7 +212,7 @@ export async function onRequestPost({ request, env }) {
     if (mints.indexOf(id) < 0) { mints.push(id); await kv.put(MINTS, JSON.stringify(mints)); }
   } catch (e) { /* the submission is stored either way; the registry can be rebuilt */ }
 
-  return json({ ok: true, status: 'pending' }, 200);
+  return json({ ok: true, status: 'live' }, 200);
 }
 
 // ---- admin: the review queue ----------------------------------------------------------------------
@@ -180,9 +227,9 @@ export async function onRequestGet({ request, env }) {
   const out = [];
   let cursor;
   do {
-    const page = await kv.list({ prefix: PEND, cursor, limit: 100 });
+    const page = await kv.list({ prefix: SUB, cursor, limit: 100 });
     for (const k of page.keys) {
-      if (k.name === APPROVED) continue;               // the derived map, not a submission
+      if (k.name === LIVE) continue;               // the derived map, not a submission
       let rec = null;
       try { rec = await kv.get(k.name, 'json'); } catch (e) { continue; }
       if (rec) out.push({ ...rec, logo: rec.logoId ? '/lxapi/media?id=' + encodeURIComponent(rec.logoId) : '' });
@@ -195,6 +242,14 @@ export async function onRequestGet({ request, env }) {
 }
 
 // ---- admin: approve or reject ---------------------------------------------------------------------
+// ---- admin: take an entry down --------------------------------------------------------------------
+// There is no "approve": metadata publishes when the mint is proven. This is the other direction, for
+// the case the queue was originally meant to cover -- something is up that should not be.
+//
+// It clears BOTH copies. assetmeta.js's own DELETE removes "asset:<id>", but the SEP-1 document reads
+// its own map, so a delete on that side alone would leave the name and logo in the toml for every
+// wallet to keep showing. Removing here does both and marks the submission so a resubmit cannot
+// quietly put it back.
 export async function onRequestPut({ request, env }) {
   const bad = await requireAdmin(request);
   if (bad) return bad;
@@ -206,46 +261,41 @@ export async function onRequestPut({ request, env }) {
   const id = String((b && b.asset) || '').trim();
   const action = String((b && b.action) || '').toLowerCase();
   if (!/^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/.test(id)) return json({ error: 'bad asset' }, 400);
-  if (action !== 'approve' && action !== 'reject') return json({ error: 'bad action' }, 400);
+  if (action !== 'remove' && action !== 'restore') return json({ error: 'bad action' }, 400);
 
   let rec = null;
-  try { rec = await kv.get(PEND + id, 'json'); } catch (e) { /* below */ }
+  try { rec = await kv.get(SUB + id, 'json'); } catch (e) { /* below */ }
   if (!rec) return json({ error: 'no such submission' }, 404);
 
-  if (action === 'reject') {
-    rec.status = 'rejected';
+  let map = {};
+  try { map = (await kv.get(LIVE, 'json')) || {}; } catch (e) { /* rebuilt below either way */ }
+
+  if (action === 'remove') {
+    // The asset itself stays registered in assets:mints -- it WAS minted here, and hiding that would
+    // be untrue. Only the words and the picture come down.
+    try { await kv.delete(META + id); } catch (e) { /* the map clear below is what the toml reads */ }
+    delete map[id];
+    await kv.put(LIVE, JSON.stringify(map));
+    rec.status = 'removed';
     rec.decidedAt = Date.now();
-    await kv.put(PEND + id, JSON.stringify(rec));
-    await audit(env, request, 'mintmeta.reject', id, {});
-    return json({ ok: true, status: 'rejected' }, 200);
+    await kv.put(SUB + id, JSON.stringify(rec));
+    await audit(env, request, 'mintmeta.remove', id, { name: rec.name || undefined });
+    return json({ ok: true, status: 'removed' }, 200);
   }
 
-  // Approving writes the SAME record shape assetmeta.js's own admin PUT writes, so an approved mint is
-  // indistinguishable downstream from one curated by hand -- one reader, one shape.
+  // Restore puts back exactly what the minter sent, from the submission we kept.
   const image = rec.logoId ? '/lxapi/media?id=' + encodeURIComponent(rec.logoId) : '';
-  let meta = null;
-  try { meta = await kv.get(META + id, 'json'); } catch (e) { /* new record */ }
-  meta = {
-    ...(meta || {}),
+  const meta = {
     asset: id,
-    name: rec.name || (meta && meta.name) || '',
-    description: rec.description || (meta && meta.description) || '',
-    image: image || (meta && meta.image) || '',
-    website: rec.website || (meta && meta.website) || '',
-    twitter: rec.twitter || (meta && meta.twitter) || '',
-    telegram: rec.telegram || (meta && meta.telegram) || '',
+    name: rec.name || '', description: rec.description || '', image,
+    website: rec.website || '', twitter: rec.twitter || '', telegram: rec.telegram || '',
   };
   await kv.put(META + id, JSON.stringify(meta));
-
-  // A single key the SEP-1 document reads, so building the toml costs one KV read rather than a scan.
-  let map = {};
-  try { map = (await kv.get(APPROVED, 'json')) || {}; } catch (e) { /* rebuild from this entry */ }
   map[id] = { name: meta.name, desc: meta.description, image: meta.image };
-  await kv.put(APPROVED, JSON.stringify(map));
-
-  rec.status = 'approved';
+  await kv.put(LIVE, JSON.stringify(map));
+  rec.status = 'live';
   rec.decidedAt = Date.now();
-  await kv.put(PEND + id, JSON.stringify(rec));
-  await audit(env, request, 'mintmeta.approve', id, { name: meta.name || undefined });
-  return json({ ok: true, status: 'approved' }, 200);
+  await kv.put(SUB + id, JSON.stringify(rec));
+  await audit(env, request, 'mintmeta.restore', id, {});
+  return json({ ok: true, status: 'live' }, 200);
 }
