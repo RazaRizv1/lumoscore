@@ -39,14 +39,23 @@ const TICK = '<svg class="lx-nsel-tick" viewBox="0 0 24 24" width="15" height="1
   + 'stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" '
   + 'aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>';
 
+// Nothing is chosen up front: the point of the control is that the reader says which network their
+// pasted id belongs to, and preselecting Stellar answers that for them. The resting state is a neutral
+// globe and the word "Network", which reads as a prompt; once a network is picked the word goes and the
+// mark stands alone, the way it already did on phones.
+const GLOBE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" '
+  + 'stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/>'
+  + '<path d="M12 3c2.6 2.7 4 5.7 4 9s-1.4 6.3-4 9c-2.6-2.7-4-5.7-4-9s1.4-6.3 4-9z"/></svg>';
+
 const SEL = '<div class="lx-nsel" data-lxnonav="1">'
   + '<button type="button" class="lx-nsel-btn" aria-haspopup="listbox" aria-expanded="false" '
-  + 'aria-label="Network: Stellar">'
-  + '<span class="lx-nsel-mark">' + STELLAR + '</span>'
-  + '<span class="lx-nsel-name">Stellar</span>' + CHEV
+  + 'aria-label="Choose a network">'
+  + '<span class="lx-nsel-mark lx-nsel-ph">' + GLOBE + '</span>'
+  + '<span class="lx-nsel-name">Network</span>' + CHEV
   + '</button>'
   + '<div class="lx-nsel-menu" role="listbox" aria-label="Choose a network" hidden>'
-  + '<button type="button" class="lx-nsel-opt is-on" role="option" aria-selected="true" data-net="stellar">'
+  + '<button type="button" class="lx-nsel-opt" role="option" aria-selected="false" data-net="stellar">'
   + '<span class="lx-nsel-mark">' + STELLAR + '</span><span class="lx-nsel-t">Stellar</span>' + TICK + '</button>'
   + '<button type="button" class="lx-nsel-opt is-off" role="option" aria-selected="false" '
   + 'data-net="xrpl" aria-disabled="true" disabled>'
@@ -55,9 +64,24 @@ const SEL = '<div class="lx-nsel" data-lxnonav="1">'
   + '</div></div>';
 
 const CSS = '<style id="lx-heronet-css">'
-  + '.lx-nsel{position:relative;flex:0 0 auto;display:flex;align-items:center}'
-  + '.lx-nsel::after{content:"";position:absolute;right:-11px;top:50%;transform:translateY(-50%);'
-  + 'width:1px;height:24px;background:var(--border)}'
+  // ---- the field itself: taller, wider, softer, with room either side of the divider. The magnifier
+  // used to sit ~2px from the rule, which read as one crowded cluster rather than a scope control and
+  // a search box.
+  + '.hero-search-wrap{max-width:680px}'
+  + '.hero-search{height:68px;border-radius:19px;padding:0 24px;gap:14px;'
+  + 'box-shadow:0 20px 54px -20px rgba(0,0,0,.30)}'
+  + '.hero-search svg.s-ico{width:21px;height:21px}'
+  + '.hero-search input{font-size:19.5px}'
+  + '.hero-search:focus-within{box-shadow:0 0 0 4px var(--accent-pale),0 20px 54px -18px rgba(234,106,44,.34)}'
+  + '@media (max-width:900px){.hero-search{height:60px;border-radius:17px;padding:0 16px;gap:11px}'
+  + '.hero-search input{font-size:17px}.hero-search svg.s-ico{width:19px;height:19px}}'
+  + '.lx-nsel{position:relative;flex:0 0 auto;display:flex;align-items:center;margin-right:18px}'
+  + '.lx-nsel::after{content:"";position:absolute;right:-16px;top:50%;transform:translateY(-50%);'
+  + 'width:1px;height:26px;background:var(--border)}'
+  // Selected state: the mark alone, on every width.
+  + '.lx-nsel[data-sel="1"] .lx-nsel-name{display:none}'
+  + '.lx-nsel-ph{color:var(--text-soft)}'
+  + '@media (max-width:900px){.lx-nsel{margin-right:14px}.lx-nsel::after{right:-12px;height:22px}}'
   + '.lx-nsel-btn{appearance:none;cursor:pointer;font:inherit;display:inline-flex;align-items:center;'
   + 'gap:7px;padding:6px 8px 6px 4px;border:0;background:transparent;color:var(--text);'
   + 'border-radius:9px;transition:background .16s ease}'
@@ -94,8 +118,25 @@ const CSS = '<style id="lx-heronet-css">'
 
 const JS = '<script id="lx-heronet-js">(function(){'
   + 'if(window.__lxHeroNet)return;window.__lxHeroNet=1;'
-  // Published for whatever builds the search routes. Stellar is the only selectable value today.
-  + 'try{window.__lxSearchNet=localStorage.getItem("lumos.searchNet")||"stellar";}catch(e){window.__lxSearchNet="stellar";}'
+  // Empty until the reader chooses. A previously made choice is restored, because that WAS their
+  // choice; what is not done is answering the question for them on a first visit.
+  + 'try{window.__lxSearchNet=localStorage.getItem("lumos.searchNet")||"";}catch(e){window.__lxSearchNet="";}'
+  + 'function apply(net,silent){var r=root();if(!r||!net)return;'
+  + 'var opt=r.querySelector(\'.lx-nsel-opt[data-net="\'+net+\'"]\');if(!opt)return;'
+  + 'r.querySelectorAll(".lx-nsel-opt").forEach(function(o){var on=o===opt;'
+  + 'o.classList.toggle("is-on",on);o.setAttribute("aria-selected",on?"true":"false");});'
+  + 'var mk=r.querySelector(".lx-nsel-btn .lx-nsel-mark"),src=opt.querySelector(".lx-nsel-mark"),'
+  + 'lbl=opt.querySelector(".lx-nsel-t"),b=r.querySelector(".lx-nsel-btn");'
+  + 'if(mk&&src){mk.innerHTML=src.innerHTML;mk.classList.remove("lx-nsel-ph");}'
+  + 'r.setAttribute("data-sel","1");'
+  + 'if(b&&lbl)b.setAttribute("aria-label","Network: "+lbl.textContent);'
+  + 'window.__lxSearchNet=net;'
+  + 'if(!silent){try{localStorage.setItem("lumos.searchNet",net);}catch(_){}}'
+  + '}'
+  // Restore on load, once the markup exists.
+  + 'function boot(){if(window.__lxSearchNet)apply(window.__lxSearchNet,true);}'
+  + 'if(document.readyState!=="loading")setTimeout(boot,0);'
+  + 'else document.addEventListener("DOMContentLoaded",boot);'
   + 'function root(){return document.querySelector(".lx-nsel");}'
   + 'function close(){var r=root();if(!r)return;r.removeAttribute("data-open");'
   + 'var m=r.querySelector(".lx-nsel-menu"),b=r.querySelector(".lx-nsel-btn");'
@@ -114,16 +155,7 @@ const JS = '<script id="lx-heronet-js">(function(){'
   + 'var opt=t.closest(".lx-nsel-opt");'
   + 'if(opt){e.preventDefault();e.stopPropagation();'
   + 'if(opt.hasAttribute("disabled")||opt.getAttribute("aria-disabled")==="true")return;'
-  + 'var net=opt.getAttribute("data-net")||"stellar";'
-  + 'window.__lxSearchNet=net;try{localStorage.setItem("lumos.searchNet",net);}catch(_){}'
-  + 'var r=root();if(r){'
-  + 'r.querySelectorAll(".lx-nsel-opt").forEach(function(o){var on=o===opt;'
-  + 'o.classList.toggle("is-on",on);o.setAttribute("aria-selected",on?"true":"false");});'
-  + 'var nm=r.querySelector(".lx-nsel-name"),mk=r.querySelector(".lx-nsel-btn .lx-nsel-mark"),'
-  + 'src=opt.querySelector(".lx-nsel-mark"),lbl=opt.querySelector(".lx-nsel-t");'
-  + 'if(nm&&lbl)nm.textContent=lbl.textContent;'
-  + 'if(mk&&src)mk.innerHTML=src.innerHTML;'
-  + 'var b=r.querySelector(".lx-nsel-btn");if(b&&lbl)b.setAttribute("aria-label","Network: "+lbl.textContent);}'
+  + 'var net=opt.getAttribute("data-net");if(net)apply(net,false);'
   + 'close();return;}'
   + 'if(!t.closest(".lx-nsel"))close();'
   // CAPTURE, not bubble. The design binds its own click handler to .hero-search, which is an ancestor
