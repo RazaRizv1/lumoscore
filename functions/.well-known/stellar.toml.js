@@ -265,9 +265,10 @@ export async function onRequestGet(ctx) {
     '# LumosCore — SEP-1 stellar.toml',
     '#',
     '# Lists the assets minted through the LumosCore launchpad on Stellar mainnet.',
-    '# An asset appears here only if its issuer account was created by the LumosCore funding wallet,',
-    '# which is recorded on the ledger and cannot be forged. Declaring home_domain=lumoscore.com is not',
-    '# sufficient on its own.',
+    '# An asset appears here only if the ledger proves it was minted here: either its issuer account was',
+    '# created by the LumosCore funding wallet, or the transaction that created its issuer also paid the',
+    '# LumosCore mint fee and locked that issuer. Both are recorded on the ledger and neither can be',
+    '# forged. Declaring home_domain=lumoscore.com is not sufficient on its own.',
     '',
     'VERSION="2.0.0"',
     'NETWORK_PASSPHRASE=' + q(PASSPHRASE),
@@ -282,6 +283,27 @@ export async function onRequestGet(ctx) {
 
   let list, icons;
   // iconManifest never rejects, so this still fails exactly and only when the asset list does.
+  // Approved launchpad metadata, merged on top of the static manifest. The manifest is written into
+  // the repo at build time, so a token minted by a stranger can never appear in it -- which is why a
+  // mint's own name, description and logo never reached this document. mintmeta.js keeps them in one
+  // KV key, already reviewed, in exactly the shape the manifest uses, so the merge is a merge and the
+  // emitter below is untouched. A missing binding or a bad value degrades to the manifest alone.
+  let approved = {};
+  try {
+    const kv = ctx && ctx.env && ctx.env.CONTENT_KV;
+    if (kv) approved = (await kv.get('mintmeta:approved', 'json')) || {};
+    if (!approved || typeof approved !== 'object' || Array.isArray(approved)) approved = {};
+    // Same-origin absolute paths only, and made absolute here -- the identical rule the manifest gets,
+    // for the identical reason: one bad write must not be able to point every wallet at another host's
+    // picture. An image that does not satisfy it is dropped, not published relative.
+    for (const k of Object.keys(approved)) {
+      const v = approved[k] || {};
+      const img = v.image;
+      const okImg = typeof img === 'string' && img.charAt(0) === '/' && img.indexOf('//') !== 0;
+      approved[k] = { name: v.name || '', desc: v.desc || '', image: okImg ? origin + img : '' };
+    }
+  } catch (e) { approved = {}; }
+
   try { [list, icons] = await Promise.all([candidates(), iconManifest(origin)]); }
   catch (e) { return tomlResponse(head.join('\n') + '\n# asset list temporarily unavailable\n', TTL_ERR); }
 
@@ -335,11 +357,15 @@ export async function onRequestGet(ctx) {
     const c = ['[[CURRENCIES]]', 'code=' + q(a.code), 'issuer=' + q(a.issuer), 'display_decimals=7'];
     // Our own manifest wins for BOTH fields. a.name/a.image (stellar.expert's tomlInfo) stay as the
     // fallback: correct for an asset that publishes through some other domain, and empty for our mints.
+    // Reviewed mint metadata first, then the build-time manifest, then stellar.expert's tomlInfo. The
+    // order is deliberate: an approved submission is the most recent thing a human looked at.
+    const ok = approved[a.code + '-' + a.issuer] || {};
     const mine = icons[a.code + '-' + a.issuer] || {};
-    const name = mine.name || a.name;
-    const img = mine.image || a.image;
+    const name = ok.name || mine.name || a.name;
+    const img = ok.image || mine.image || a.image;
+    const desc = ok.desc || a.desc;
     if (name) c.push('name=' + q(name));
-    if (a.desc) c.push('desc=' + q(a.desc));
+    if (desc) c.push('desc=' + q(desc));
     if (img) c.push('image=' + q(img));
     // These are launchpad-issued tokens, not claims on an off-chain reserve. Saying so explicitly stops a
     // reader inferring a backing that does not exist.

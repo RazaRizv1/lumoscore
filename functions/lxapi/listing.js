@@ -65,7 +65,11 @@ async function mediaId(buf, ext) {
 }
 
 // Accepts a data: URI as produced by FileReader in the browser. Returns { id } or { err }.
-async function storeLogo(env, dataUri) {
+// Exported so mintmeta.js uses THIS implementation rather than a second copy of it. Image handling is
+// the security-critical part of both endpoints -- the SVG that this rejects is the one that caused a
+// past incident -- and two copies are two things to keep in step. Exporting a helper does not add a
+// route: Pages Functions only treat onRequest* exports as handlers.
+export async function storeLogo(env, dataUri) {
   const kv = env && env.CONTENT_KV;
   if (!kv) return { err: 'image storage unavailable' };
   const m = /^data:([a-z/+.-]+);base64,([A-Za-z0-9+/=]+)$/i.exec(String(dataUri || ''));
