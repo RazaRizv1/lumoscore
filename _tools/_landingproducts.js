@@ -180,6 +180,39 @@ for (const p of PAGES) {
   section = section.replace(/<span class="pc-go">[\s\S]*?<\/span>\s*/g, '');
   if (section.indexOf('pc-go') >= 0) { problems.push(p.key + ': pc-go survived the strip'); continue; }
 
+  // ---- the cards are not links.
+  // _landingpolish wraps each one in an <a href> and skips pages it has already done, so the anchors
+  // have to come out here, where the section is rewritten every run. The element is swapped for a
+  // <div> rather than having its href stripped: an <a> without href is still in the tab order and
+  // still announced as a link, so a keyboard user would land on six controls that do nothing.
+  //
+  // Every other attribute is kept verbatim -- data-pc and the --pc/--pc-rgb custom properties are
+  // what colour each card, and rebuilding the tag from scratch would drop them.
+  let unlinked = 0;
+  for (let guard = 0; guard < 8; guard++) {
+    const m = /<a ([^>]*class="product-card lxpc"[^>]*)>/.exec(section);
+    if (!m) break;
+    const open = m.index;
+    // Matching </a> by depth. Product cards contain no nested anchors -- asserted by the walk itself,
+    // which would land on the wrong tag and be caught by the count check below if one appeared.
+    const re = /<a\b|<\/a>/g;
+    re.lastIndex = open;
+    let depth = 0, mm, close = -1;
+    while ((mm = re.exec(section))) {
+      if (mm[0] === '</a>') { depth--; if (depth === 0) { close = mm.index; break; } }
+      else depth++;
+    }
+    if (close < 0) { problems.push(p.key + ': a product card anchor is not closed'); break; }
+    const attrs = m[1].replace(/\s*href="[^"]*"/, '');
+    section = section.slice(0, open) + '<div ' + attrs + '>'
+      + section.slice(open + m[0].length, close) + '</div>'
+      + section.slice(close + 4);
+    unlinked++;
+  }
+  if (problems.length) continue;
+  if (unlinked && unlinked !== 6) { problems.push(p.key + ': unlinked ' + unlinked + ' cards, expected 6'); continue; }
+  if (/<a [^>]*class="product-card/.test(section)) { problems.push(p.key + ': a product card is still a link'); continue; }
+
   // ---- heading + standfirst
   const h2s = section.indexOf('<h2');
   const h2e = section.indexOf('</h2>', h2s);
@@ -232,7 +265,7 @@ for (const p of PAGES) {
   html = bo >= 0 ? html.slice(0, bo) + CSS + JS + html.slice(bo) : html + CSS + JS;
 
   json[p.key] = html;
-  staged.push({ file: p.file, data, s, e, json, key: p.key, goBefore });
+  staged.push({ file: p.file, data, s, e, json, key: p.key, goBefore, unlinked });
 }
 
 if (problems.length) {
@@ -244,6 +277,6 @@ for (const st of staged) {
   const ser = JSON.stringify(st.json).split('</').join('<' + B + '/');
   fs.writeFileSync(st.file, st.data.slice(0, st.s) + ser + st.data.slice(st.e), 'utf8');
   console.log('  ' + st.key + ': heading, standfirst, 6 icons + 6 copies, rail, '
-    + st.goBefore + ' "Open" label(s) removed');
+    + st.goBefore + ' "Open" label(s) removed, ' + st.unlinked + ' card(s) unlinked');
 }
 console.log('landing products: done on ' + staged.length + ' page(s)');
