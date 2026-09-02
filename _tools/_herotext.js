@@ -59,44 +59,6 @@ function cutElement(html, openMarker, tag) {
 const HEAD_HTML = 'Trade, Launch, Bridge, and Explore — <br/>'
   + '<span class="grad">All in one place.</span>';
 
-// ---- the networks line, between the tagline and the buttons.
-// Marks come from _netlogos.json, the same file the section further down the page uses, so the hero
-// and that section cannot drift apart. Labelled XRPL rather than the file's "XRP Ledger", which is
-// what the rest of the landing copy calls it.
-//
-// This states what runs where, so the claims are held to what is actually true: Stellar is live,
-// XRPL is not, and nothing else is named. "More upcoming" gets a neutral mark rather than a logo
-// because there is no third chain to put a logo to yet.
-const NETLOGOS = require(__dirname + '/_netlogos.json');
-const MORE_MARK = '<svg viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">'
-  + '<circle cx="16" cy="16" r="16" fill="currentColor" opacity=".14"/>'
-  + '<circle cx="9.5" cy="16" r="2" fill="currentColor"/><circle cx="16" cy="16" r="2" fill="currentColor"/>'
-  + '<circle cx="22.5" cy="16" r="2" fill="currentColor"/></svg>';
-
-// ONE capsule, divided by hairlines -- not three separate pills, and not a loose inline list.
-//
-// Both earlier attempts failed the same way. Loose text at three sizes read as debris. Equal-width
-// pills were symmetrical as boxes but not as an image: each pill centred its own contents, so the
-// three logos landed at three unrelated offsets and the eye had nothing to line up on. Sizing the
-// cells to their content inside a single bordered bar fixes that by construction -- there is one
-// outline, one baseline, one rhythm of dividers, and the logos sit at the same height with equal
-// padding either side of every rule.
-//
-// It also matches the search field directly above it: the hero now reads bar, bar, buttons.
-function netPill(mark, label, extraClass) {
-  return '<span class="lx-hnet' + (extraClass ? ' ' + extraClass : '') + '">'
-    + '<i class="lx-hnet-m">' + mark + '</i>'
-    + '<b class="lx-hnet-t">' + label + '</b></span>';
-}
-
-const NETS_HTML = '<div class="lx-heronets" data-lxnonav="1">'
-  + '<span class="lx-heronets-l">Networks</span>'
-  + '<div class="lx-hnetbar">'
-  + netPill(NETLOGOS[0].logo, 'Stellar', 'is-live')
-  + netPill(NETLOGOS[1].logo, 'XRPL')
-  + netPill(MORE_MARK, 'More upcoming', 'is-more')
-  + '</div></div>';
-
 // 60px is the requested size for the <=1100px rule. The desktop figure is set from measurement in
 // _herotext_size below rather than left at 114.4: at that size the new first line does not fit the
 // width _herofit gives it on narrower desktops.
@@ -125,54 +87,6 @@ const CSS = '<style id="lx-herotext">'
   // Keep the accent phrase whole so it wraps as a unit. It was splitting as "... — all" / "in one
   // place.", which reads as a broken sentence and puts the emphasis on the wrong word. nowrap rather
   // than a hard <br>, so the line still collapses to one on a viewport wide enough to hold it.
-  // ---- the networks block: a centred eyebrow over a row of three equal pills.
-  // It sits between the tagline and the primary CTA, so it has to read as one deliberate object
-  // without competing with the button it introduces -- hence pill chrome at surface weight rather
-  // than anything accented, and the eyebrow kept small.
-  + '.lx-heronets{display:flex;flex-direction:column;align-items:center;gap:11px;margin:0 0 22px}'
-  + '.lx-heronets-l{font-size:11.5px;font-weight:800;letter-spacing:.18em;text-transform:uppercase;'
-  + 'color:var(--text-soft)}'
-  // The bar. One outline around all three, echoing the search field above it.
-  + '.lx-hnetbar{display:inline-flex;align-items:center;height:54px;padding:0 6px;'
-  + 'border:1px solid var(--border);border-radius:999px;background:var(--surface)}'
-  // Cells size to their content. That is only legible because the dividers give the row its
-  // structure -- as free-standing pills, content-sized boxes looked accidental, which is what sent
-  // the last attempt to equal widths and its own set of alignment problems.
-  + '.lx-hnet{display:inline-flex;align-items:center;gap:10px;height:28px;padding:0 20px;'
-  + 'color:var(--text-muted)}'
-  // A hairline between cells, not around them: border-left on a child shorter than the bar draws a
-  // rule that stops clear of the rounded ends.
-  + '.lx-hnet+.lx-hnet{border-left:1px solid var(--border)}'
-  + '.lx-hnet-t{font-size:16px;font-weight:700;letter-spacing:-.1px;white-space:nowrap}'
-  + '.lx-hnet-m{display:inline-flex;width:26px;height:26px;flex:0 0 auto}'
-  + '.lx-hnet-m svg{width:100%;height:100%;display:block;border-radius:50%}'
-  // The live chain reads as live: full-strength ink and a dot, quieter than a "LIVE" badge would be
-  // this close to the CTA.
-  + '.lx-hnet.is-live{color:var(--text)}'
-  + '.lx-hnet.is-live::after{content:"";width:7px;height:7px;border-radius:50%;flex:0 0 auto;'
-  + 'background:var(--green,#34d27a);box-shadow:0 0 0 3px rgba(52,210,122,.18)}'
-  // The placeholder is carried by ink weight alone now. A dashed outline made sense when each item
-  // had its own box; inside a single bar it would cut the shape up again.
-  + '.lx-hnet.is-more{color:var(--text-soft)}'
-  // ---- phones. Same bar, tightened. Every number below is checked against "More upcoming", which is
-  // the widest cell by a distance and decides whether the bar fits the screen at all.
-  + '@media (max-width:900px){.lx-heronets{margin-bottom:22px;gap:9px}'
-  + '.lx-heronets-l{font-size:10.5px;letter-spacing:.16em}'
-  + '.lx-hnetbar{height:46px;padding:0 3px;border-radius:16px}'
-  + '.lx-hnet{gap:7px;height:24px;padding:0 11px}'
-  + '.lx-hnet-m{width:21px;height:21px}'
-  + '.lx-hnet-t{font-size:12.5px;letter-spacing:-.2px}'
-  // The live dot goes on phones: it is worth ~10px of a bar that has none to give, and which chain is
-  // live is answered in words by the networks section further down the page.
-  + '.lx-hnet.is-live::after{display:none}}'
-  // Narrow handsets: ~280px of usable width against a bar that wants ~316px at the sizes above.
-  + '@media (max-width:360px){.lx-hnetbar{padding:0 2px}'
-  + '.lx-hnet{gap:6px;padding:0 7px}'
-  + '.lx-hnet-m{width:18px;height:18px}'
-  + '.lx-hnet-t{font-size:11.5px}'
-  // Nothing left to trim by this point, and the placeholder is the one cell whose mark depicts
-  // nothing -- there is no third chain yet for it to stand for.
-  + '.lx-hnet.is-more .lx-hnet-m{display:none}}'
   // Lift the hero content on desktop so the search field covers the point where the background rays
   // converge. Measured at 1440x900: the rays centre on y=423 and the field began at y=436, leaving the
   // convergence exposed as a bright dot just above it. 42px puts that point at the field's own centre.
@@ -184,12 +98,13 @@ const CSS = '<style id="lx-herotext">'
   // screen -- a coincidence, not a rule. The shorter sentence headline dropped it to 758px and the
   // next section started showing under the cue, which is the bug this whole area keeps coming back to.
   + '@media (min-width:901px){.hero{min-height:100vh;min-height:100dvh}'
-  // -32px, re-derived rather than kept. The rays fill the hero and converge on its centre, so the
-  // field has to sit there. With the hero at viewport height the content box is centred between 176px
-  // of top padding and 30px of bottom, which lands the field 10px above centre before any shift; the
-  // old -42px was measured against a hero whose height came from its content. The offset is constant
-  // across viewport heights because both sides scale together -- checked at 900 and 1080.
-  + '.hero-center{top:-32px}'
+  // -93px, re-derived again. The rays fill the hero and converge on its centre, so the field has to
+  // sit there, and this offset is whatever it takes -- it is not a constant to be carried forward.
+  // It has moved with every change to the hero's contents: -42 when the hero's height came from its
+  // content, -32 once the hero became viewport-height, and -93 now that the networks block is out and
+  // the centred content block is ~100px shorter. Measured each time; the field centre and the hero
+  // centre both read 450 at 1440x900.
+  + '.hero-center{top:-93px}'
   // Bottom padding down from 88px. The networks block added ~100px to a hero that was already close
   // to the viewport: measured 966px tall at 1440x900, which put the scroll cue 28px under the fold.
   // The room is taken from BELOW the cue, never from padding-top -- the rays are pinned to a fixed
@@ -206,7 +121,6 @@ const CSS = '<style id="lx-herotext">'
   // Nothing above the field moves. It is pinned -- the background rays converge on its centre, and
   // _herotext's whole desktop offset is built around that measurement.
   + '.hero-search-wrap{margin-bottom:44px}'
-  + '.lx-heronets{margin-bottom:44px}'
   + '.hero-ctas{margin-bottom:66px}}'
   // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
   // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
@@ -220,7 +134,7 @@ const CSS = '<style id="lx-herotext">'
   //
   // C is 257px: 132px of top padding, the headline, the gap, and half a 60px field. It moved from 252
   // when the field grew from 50px to 60px -- the pin is an offset to the FIELD, so it follows it.
-  + '@media (max-width:900px){.hero-rays{top:calc(504px - 100%);bottom:auto;height:calc(200% - 504px)}}'
+  + '@media (max-width:900px){.hero-rays{top:calc(640px - 100%);bottom:auto;height:calc(200% - 640px)}}'
   // Above 1100px the size holds at its designed 114.4px but is capped against the viewport. Measured:
   // "The Multichain World" needs 1047px at 114.4px, and at exactly 1101px -- the narrow end of the
   // range where that size applies -- that left 22px either side. Not clipped, but crowded. 10vw gives
@@ -277,7 +191,7 @@ const CSS = '<style id="lx-herotext">'
   // 100dvh rather than 100vh: mobile browsers measure vh against the viewport with the address bar
   // hidden, so a 100vh hero is taller than what is on screen and pushes the cue below the fold -- the
   // exact thing this is for. vh stays first as the fallback for anything without dvh.
-  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:132px;min-height:100vh;min-height:100dvh;'
+  + '@media (max-width:900px){.hero{align-items:flex-start;padding-top:200px;min-height:100vh;min-height:100dvh;'
   // Bottom padding up from 35.2px. The new tagline runs to five lines on a 375px screen and six on a
   // 320px one, which left the buttons finishing 9px above the scroll cue -- clear, but only just, and
   // one more wrapped line from colliding. The cue sits at the hero's bottom edge, so padding here is
@@ -291,11 +205,8 @@ const CSS = '<style id="lx-herotext">'
   // Breathing room between the field and the tagline: 22px originally, then 52, now 104. Applied to
   // the search wrap's own margin so only this gap opens -- the field itself does not move, which
   // matters because the rays are pinned to where it sits.
-  + '.hero-search-wrap{margin-bottom:104px}'
+  + '.hero-search-wrap{margin-bottom:44px}'
   // Same grouping fix as desktop, at phone scale. Measured 30 / 9 / 22 below the tagline, so the
-  // buttons sat closer to the networks bar than the bar sat to the tagline and read as part of it.
-  // One tight gap, and only between the eyebrow and its own bar. The 104px above stays as asked.
-  + '.lx-heronets{margin-bottom:32px}'
   // ---- the two CTAs side by side instead of stacked.
   // The design stacks them on phones and gives .btn width:100%, so each ran the full column. They now
   // share one row: flex:1 1 0 splits the width evenly whatever the labels say, and max-width caps the
@@ -325,14 +236,6 @@ const CSS = '<style id="lx-herotext">'
   // cue sits at the hero's bottom edge, so buying room with padding trades one collision for the cue
   // going under the fold, which is the bug this whole block exists to fix.
   + '.hero-search-wrap{margin-bottom:48px}'
-  + '.lx-heronets{margin-bottom:32px}'
-  // The pills are taller than the inline row they replaced, and at 320x568 that put the gap between
-  // the buttons and the scroll cue back down to 6px. 39.6px of tagline margin is the largest single
-  // gap left in the hero on these screens and the least missed, so it goes rather than the pills.
-  // The bar is a few pixels taller than the inline row it replaced, which took the buttons-to-cue gap
-  // back down to 11px here. Height off the bar and its eyebrow gap, not off the cells -- the cells are
-  // already at the size where "More upcoming" only just fits a 320px screen.
-  + '.lx-heronets{gap:7px}.lx-hnetbar{height:40px}'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
@@ -355,10 +258,14 @@ for (const p of PAGES) {
 
   html = html.replace(/<style id="lx-herotext">[\s\S]*?<\/style>/g, '')
     ;
-  // The networks block is re-injected, so it is stripped first -- by depth walk, not by regex. See
-  // cutElement: every regex form of this was wrong in one direction or the other, and the version
-  // that ran past a flat block swallowed the hero's CTA row with it. Handles whatever shape an
-  // earlier build left in the container, nested or flat.
+  // ---- the hero networks block is gone.
+  // It was tried as a loose inline list, then as three equal pills, then as one divided capsule, and
+  // it never earned its place between the tagline and the buttons. What it said is said properly by
+  // the networks section further down the page, which is untouched.
+  //
+  // The strip stays: containers built before this still carry the block, and it has to come out of
+  // them. Depth walk rather than regex -- every regex form of this was wrong in one direction or the
+  // other, and the one that ran past a flat block swallowed the hero's CTA row with it.
   html = cutElement(html, '<div class="lx-heronets"', 'div');
   if (html.indexOf('lx-heronets') >= 0) { problems.push(p.key + ': networks block survived the strip'); continue; }
 
@@ -379,14 +286,6 @@ for (const p of PAGES) {
   if (tagN === 1) html = cutElement(html, '<p class="hero-tagline">', 'p');
   if (html.indexOf('<p class="hero-tagline">') >= 0) { problems.push(p.key + ': tagline survived removal'); continue; }
 
-  // ---- the networks block goes immediately above the buttons.
-  // It used to be anchored to the tagline's close; with the tagline gone the CTA row is the anchor.
-  // The row is asserted to appear exactly once rather than taking the first hit on trust -- inserting
-  // against the wrong one would put the networks bar somewhere arbitrary in the page.
-  const ctaN = (html.match(/<div class="hero-ctas">/g) || []).length;
-  if (ctaN !== 1) { problems.push(p.key + ': expected 1 hero CTA row, found ' + ctaN); continue; }
-  const at = html.indexOf('<div class="hero-ctas">');
-  html = html.slice(0, at) + NETS_HTML + html.slice(at);
 
   // ---- secondary CTA label. Matched on the exact anchor rather than the bare words so a stray
   // "Explore Products" anywhere else on the page is never touched, and asserted to appear once.
@@ -439,7 +338,7 @@ if (problems.length) {
 for (const st of staged) {
   const ser = JSON.stringify(st.json).split('</').join('<' + B + '/');
   fs.writeFileSync(st.file, st.data.slice(0, st.s) + ser + st.data.slice(st.e), 'utf8');
-  console.log('  ' + st.key + ': hero headline reworded, networks block, CTAs'
+  console.log('  ' + st.key + ': hero headline, tagline removed, CTAs'
     + '');
 }
 console.log('hero text: done on ' + staged.length + ' page(s)');
