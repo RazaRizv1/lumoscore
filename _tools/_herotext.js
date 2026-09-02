@@ -1,15 +1,19 @@
-// Hero headline: new wording, and the sub-1100px size drops to 60px.
+// The landing hero: headline, scroll cue, CTA row, and the geometry that holds it together.
 //
-// "The Core of / Multi-Chain Web3" becomes "The Multichain World / Starts Here", keeping the design's
-// split -- first line in the ink colour, second in the gradient.
+// The headline is the design's own again -- "The Core of / Multi-chain Web3", with the lowercase "c"
+// the rest of the page uses. It has been through two other wordings on the way here, and the tagline
+// paragraph that used to sit under it is gone for good.
 //
-// The requested 60px is the <=1100px rule; above that the headline is 114.4px. That matters here
-// because _herofit pins the second line to one line above 1100px, and the new line is LONGER than the
-// old one: "The Multichain World" is 20 characters where "Multi-Chain Web3" was 16. So the desktop
-// size is checked against the room actually available rather than assumed to still fit -- see the
-// measurement note beside HERO_MAX below.
+// THE THING TO KNOW BEFORE EDITING: the background rays converge on a single point, and the search
+// field has to sit exactly on it. That alignment is held by hard pixel values -- .hero-center's
+// negative offset on desktop, and a calc() pin on phones -- and BOTH are functions of how tall the
+// hero's contents are. Every change to the headline size, the copy, the spacing, or what elements are
+// present moves the field and breaks them. They have been re-derived on every such change:
+// -42 -> -32 -> -93 -> -123 on desktop, with a separate value for 901-1100px where the headline is
+// 70.4px, and 514 -> 568 -> 504 -> 640 -> 650 on phones. Do not carry any of them forward on faith.
+// Measure: field centre against hero centre on desktop, field centre against rays centre on phones.
 //
-// Re-injects its own style block, so the sizes can be tuned by editing this file and running it again.
+// Re-injects its own style block, so everything here can be tuned by editing this file and re-running.
 
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
@@ -44,20 +48,14 @@ function cutElement(html, openMarker, tag) {
 // previous wording means every reword has to carry the last one with it, and the run aborts (or worse,
 // silently no-ops) the moment they drift. The <br/> and the gradient span are part of the design's
 // two-line treatment, so they are re-emitted rather than left to whatever was there.
-// The headline IS the sentence now. "The Multi-chain World Starts Here" and the tagline underneath it
-// were the same claim twice, once as a slogan and once in plain terms, and the slogan carried almost
-// no query surface for a page the SEO work cares about. The tagline element is removed with it.
+// Back to the design's own headline, with "Multi-chain" spelled the way the rest of the page spells
+// it. The two-line split -- first line in the ink colour, second in the gradient -- is the shape the
+// hero was drawn around, and _herofit is written specifically to hold "Multi-chain Web3" on one line
+// above 1101px, so the break is explicit rather than left to wrapping at every width.
 //
-// The break is chosen, not left to wrapping, and it splits the sentence at its own hinge: the list of
-// verbs, then the claim. That gives the design's original shape back -- a long line in ink over a
-// short accented one, which is what "The Multi-chain World / Starts Here" was. The dash ends line one
-// deliberately here; the thing to avoid is a dash left dangling by a wrap it did not intend.
-//
-// The space before the <br/> is load-bearing. Phones hide the break and let the text wrap itself, and
-// without one an earlier version ran two words together. A trailing space before a line break
-// collapses, so desktop is unaffected.
-const HEAD_HTML = 'Trade, Launch, Bridge, and Explore — <br/>'
-  + '<span class="grad">All in one place.</span>';
+// The tagline that used to sit under it is not coming back: it was removed when the headline briefly
+// carried the whole sentence, and the hero reads fine without it.
+const HEAD_HTML = 'The Core of<br/><span class="grad">Multi-chain Web3</span>';
 
 // 60px is the requested size for the <=1100px rule. The desktop figure is set from measurement in
 // _herotext_size below rather than left at 114.4: at that size the new first line does not fit the
@@ -101,10 +99,10 @@ const CSS = '<style id="lx-herotext">'
   // -93px, re-derived again. The rays fill the hero and converge on its centre, so the field has to
   // sit there, and this offset is whatever it takes -- it is not a constant to be carried forward.
   // It has moved with every change to the hero's contents: -42 when the hero's height came from its
-  // content, -32 once the hero became viewport-height, and -93 now that the networks block is out and
-  // the centred content block is ~100px shorter. Measured each time; the field centre and the hero
+  // content, -32 once the hero became viewport-height, -93 with the networks block out, and -123 for
+  // the design headline coming back at 114.4px. Measured each time; the field centre and the hero
   // centre both read 450 at 1440x900.
-  + '.hero-center{top:-93px}'
+  + '.hero-center{top:-123px}'
   // Bottom padding down from 88px. The networks block added ~100px to a hero that was already close
   // to the viewport: measured 966px tall at 1440x900, which put the scroll cue 28px under the fold.
   // The room is taken from BELOW the cue, never from padding-top -- the rays are pinned to a fixed
@@ -122,6 +120,13 @@ const CSS = '<style id="lx-herotext">'
   // _herotext's whole desktop offset is built around that measurement.
   + '.hero-search-wrap{margin-bottom:44px}'
   + '.hero-ctas{margin-bottom:66px}}'
+  // ---- a second offset for 901-1100px, where the headline is 70.4px rather than 114.4px.
+  // One value cannot serve both bands: the smaller headline makes the content block ~97px shorter,
+  // which lifts the field 72px above the hero centre at 950px wide. Measured there rather than
+  // interpolated. This band has probably been a little out since the -42px days, when the offset was
+  // also tuned at 1440 alone -- it is only visible now because the miss got big enough to see. It sits
+  // after the block above so it wins on source order at equal specificity.
+  + '@media (min-width:901px) and (max-width:1100px){.hero-center{top:-51px}}'
   // Phones need the same trick from the other end. The content is deliberately anchored near the nav,
   // so lifting it is not available -- the rays move instead. Left alone they sit at inset:0 and
   // converge on the hero's own centre, well below the search field.
@@ -134,7 +139,7 @@ const CSS = '<style id="lx-herotext">'
   //
   // C is 257px: 132px of top padding, the headline, the gap, and half a 60px field. It moved from 252
   // when the field grew from 50px to 60px -- the pin is an offset to the FIELD, so it follows it.
-  + '@media (max-width:900px){.hero-rays{top:calc(640px - 100%);bottom:auto;height:calc(200% - 640px)}}'
+  + '@media (max-width:900px){.hero-rays{top:calc(650px - 100%);bottom:auto;height:calc(200% - 650px)}}'
   // Above 1100px the size holds at its designed 114.4px but is capped against the viewport. Measured:
   // "The Multichain World" needs 1047px at 114.4px, and at exactly 1101px -- the narrow end of the
   // range where that size applies -- that left 22px either side. Not clipped, but crowded. 10vw gives
@@ -143,27 +148,24 @@ const CSS = '<style id="lx-herotext">'
   // h1.hero-headline -- element plus class, 0-1-1 -- so a bare class selector loses on specificity no
   // matter how late it is injected, and the 60px below simply never applied. Verified by reading the
   // computed size back, not by assuming the later block wins.
-  // ---- headline sizes, reset for the sentence.
-  // 114.4px was sized for "The Multi-chain World" -- 20 characters. The sentence is 67 across two
-  // lines, so the old size would run four lines and swallow the screen. Every figure below is set from
-  // measuring the two lines against the width actually available at the narrow end of its own range,
-  // not scaled down by eye.
+  // ---- headline sizes, back to the design's own now that the design's own headline is back.
+  // The sentence headline needed 72/46/38/30; those were sized for 67 characters over two lines and
+  // are far too small for "The Core of / Multi-chain Web3". The desktop figure is the design's
+  // 114.4px, capped at 10vw: _herofit measures "Multi-chain Web3" at 7.674x the font size, so 878px at
+  // 114.4, and at the narrow end of this range that would leave only ~110px of margin either side.
   //
   // Selector is .hero h1.hero-headline, not .hero-headline. The design sets the size with
   // h1.hero-headline -- element plus class, 0-1-1 -- so a bare class selector loses on specificity no
   // matter how late it is injected. Verified by reading the computed size back.
-  + '@media (min-width:1101px){.hero h1.hero-headline{font-size:min(72px,5.2vw);letter-spacing:-1.6px}}'
-  + '@media (max-width:1100px){.hero h1.hero-headline{font-size:46px;letter-spacing:-1.2px}}'
-  + '@media (max-width:900px){.hero h1.hero-headline{font-size:min(38px,7.4vw);letter-spacing:-.9px}}'
-  + '@media (max-width:520px){.hero h1.hero-headline{font-size:min(30px,7.4vw);letter-spacing:-.6px}}'
-  // Line height comes down with the size: 1.1 was drawn for a two-word line, and at sentence length
-  // two lines that tall read as two separate statements rather than one sentence.
-  + '.hero h1.hero-headline{line-height:1.18;text-wrap:balance}'
-  // The chosen break is a desktop decision. On a phone the line is short enough that forcing a break
-  // after "Explore" only makes things worse -- measured 4 lines at 375px with "place." orphaned on the
-  // last one. Hiding the <br> lets text-wrap:balance divide the sentence itself, which is what it is
-  // for. The gradient span is unaffected; it is inline either way.
-  + '@media (max-width:900px){.hero h1.hero-headline br{display:none}}'
+  + '@media (min-width:1101px){.hero h1.hero-headline{font-size:min(114.4px,10vw)}}'
+  + '@media (max-width:1100px){.hero h1.hero-headline{font-size:70.4px;letter-spacing:-1.6px}}'
+  // Phones: fluid, because "Multi-chain Web3" is the long line. At a flat 44px it needs 338px against
+  // 336px of usable width on a 375px screen -- over by two pixels, which wraps "Web3" onto a line of
+  // its own. 9.3vw gives 35px there and keeps the headline to the two lines the <br> intends.
+  + '@media (max-width:520px){.hero h1.hero-headline{font-size:min(44px,9.3vw);letter-spacing:-1.2px}}'
+  // The <br> stays visible at every width: it is the design's two-line split, and both halves are
+  // short enough to hold a line on a phone. The sentence headline had to hide it and let the text
+  // wrap itself; this one does not.
   // Phones opened with a 167px void under the nav. The hero is min-height:100vh with
   // align-items:center AND 101.2px of top padding, so the block was centred in the full screen and
   // then pushed down again by the padding: measured on a 375x812 screen, the nav ended at 72px and the
@@ -239,7 +241,7 @@ const CSS = '<style id="lx-herotext">'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
-  + '.hero-rays{top:calc(420px - 100%);height:calc(200% - 420px)}}'
+  + '.hero-rays{top:calc(430px - 100%);height:calc(200% - 430px)}}'
   + '</st' + 'yle>';
 
 const PAGES = [
