@@ -333,6 +333,29 @@ export async function onRequestGet(ctx) {
     list.push({ code, issuer, name: mi.name || '', image: '', desc: mi.desc || '' });
   }
 
+  // A token minted MINUTES ago is in NEITHER source above, so until now it could not appear here at all:
+  // the icon manifest is written into the repo at build time, and stellar.expert's index both lags a
+  // fresh issuance and (see the note above) misses assets outright. The approved map was therefore only
+  // ever able to ENRICH an asset something else had already discovered -- never to introduce one.
+  // Measured 2026-09-03: BOMB (GDK6R7M6…) minted correctly, home_domain set, issuer locked, fee paid, its
+  // metadata accepted and stored by mintmeta.js, and it still did not appear in this document.
+  //
+  // Seeding candidates from the mint registry closes that. It is the same widening as the manifest and
+  // carries the same guarantee: this changes who gets ASKED, never who gets believed -- mintedByUs still
+  // decides, on the ledger. Nor can a stranger stuff this list: mintmeta.js verifies the mint on chain
+  // BEFORE it writes, so every key here is already a real launch that paid us and locked its issuer.
+  // Seeded at the FRONT because a fresh mint is precisely the entry MAX_VERIFY would otherwise truncate.
+  const fresh = [];
+  for (const k of Object.keys(approved)) {
+    const dash = k.indexOf('-');
+    if (dash < 1) continue;
+    const code = k.slice(0, dash), issuer = k.slice(dash + 1);
+    if (!/^[A-Za-z0-9]{1,12}$/.test(code) || !/^G[A-Z2-7]{55}$/.test(issuer)) continue;
+    if (list.some((a) => a.code === code && a.issuer === issuer)) continue;
+    fresh.push({ code, issuer, name: '', image: '', desc: '' });
+  }
+  if (fresh.length) list = fresh.concat(list);
+
   const checked = list.slice(0, MAX_VERIFY);
   const b = budget(VERIFY_BUDGET);
   const verdicts = await Promise.all(checked.map((a) => fundedByUs(a.issuer, b)));
