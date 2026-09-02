@@ -26,13 +26,24 @@ const NEW = '<h1 class="hero-headline">The Multichain World<br/><span class="gra
 // The accent span is kept: the design ends this line with a highlighted phrase, and that is the shape
 // the hero was drawn around. No <strong> this time -- the old copy opened with a standalone lead
 // sentence to bold, and this one is a single clause with nothing that plays that role.
-const TAG_HTML = 'Trade, move, launch, and explore across chains — '
+const TAG_HTML = 'Trade, Launch, Bridge, and Explore across chains — '
   + '<span class="lrp-hl">all in one place</span>.';
 
 // 60px is the requested size for the <=1100px rule. The desktop figure is set from measurement in
 // _herotext_size below rather than left at 114.4: at that size the new first line does not fit the
 // width _herofit gives it on narrower desktops.
 const CSS = '<style id="lx-herotext">'
+  // Keep the accent phrase whole so it wraps as a unit. It was splitting as "... — all" / "in one
+  // place.", which reads as a broken sentence and puts the emphasis on the wrong word. nowrap rather
+  // than a hard <br>, so the line still collapses to one on a viewport wide enough to hold it.
+  + '.hero-tagline .lrp-hl{white-space:nowrap}'
+  // Lift the hero content on desktop so the search field covers the point where the background rays
+  // converge. Measured at 1440x900: the rays centre on y=423 and the field began at y=436, leaving the
+  // convergence exposed as a bright dot just above it. 42px puts that point at the field's own centre.
+  // Shifting .hero-center rather than the field alone moves the headline by the same amount, which is
+  // what keeps the gap between them unchanged -- and the rays are positioned against the hero, not
+  // this block, so they stay where they are. Verified the headline still clears the nav by 42px.
+  + '@media (min-width:901px){.hero-center{top:-42px}}'
   // Above 1100px the size holds at its designed 114.4px but is capped against the viewport. Measured:
   // "The Multichain World" needs 1047px at 114.4px, and at exactly 1101px -- the narrow end of the
   // range where that size applies -- that left 22px either side. Not clipped, but crowded. 10vw gives
