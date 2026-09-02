@@ -68,6 +68,20 @@ const CSS = '<style id="lx-landproducts-css">'
   + '{max-width:none;margin-left:auto;margin-right:auto}'
   // Phones have no width to give away, so the standfirst goes back to a readable measure.
   + '@media (max-width:900px){.block#products .center-head .block-sub{max-width:560px}}'
+  // ---- card interior: icon and title on one centred row, copy centred beneath.
+  // No markup change -- the card is already a flex column of three siblings, so it becomes a wrapping
+  // row and the <p> is forced onto its own line with a 100% basis. That keeps the icon/title pairing
+  // in the flow rather than absolutely positioning anything, so a long title still wraps cleanly.
+  // display is restated, not assumed: the mobile build sets the card back to display:block, so a rule
+  // that only changed flex-direction left the phone cards as three stacked blocks -- icon hard left,
+  // title centred on its own line -- while the desktop ones were right.
+  + '.block#products .product-card{display:flex;flex-direction:row;flex-wrap:wrap;align-items:center;'
+  + 'justify-content:center;text-align:center;gap:15px}'
+  + '.block#products .product-card .ic-prod{margin-bottom:0;flex:0 0 auto}'
+  + '.block#products .product-card h3{margin-bottom:0}'
+  // The design gave the copy flex:1 so the removed "Open" label could be pushed to the card foot.
+  // With the label gone that would make the copy a flexible row item, so it is pinned to a full line.
+  + '.block#products .product-card p{flex:0 0 100%;margin-bottom:0}'
   // ---- phones: a snapping rail instead of a six-storey stack.
   + '@media (max-width:900px){'
   // flex-direction is explicit: a mobile rule further down already sets the grid to a column, and
@@ -159,6 +173,13 @@ for (const p of PAGES) {
   if (!sec) { problems.push(p.key + ': products section not closed'); continue; }
   let section = html.slice(sec.start, sec.end);
 
+  // The "Open ->" label. _landingpolish no longer emits it, but that transform skips pages it has
+  // already polished, so containers built before that change still carry one per card -- they are
+  // removed here, where the section is rewritten every run.
+  const goBefore = (section.match(/<span class="pc-go">/g) || []).length;
+  section = section.replace(/<span class="pc-go">[\s\S]*?<\/span>\s*/g, '');
+  if (section.indexOf('pc-go') >= 0) { problems.push(p.key + ': pc-go survived the strip'); continue; }
+
   // ---- heading + standfirst
   const h2s = section.indexOf('<h2');
   const h2e = section.indexOf('</h2>', h2s);
@@ -211,7 +232,7 @@ for (const p of PAGES) {
   html = bo >= 0 ? html.slice(0, bo) + CSS + JS + html.slice(bo) : html + CSS + JS;
 
   json[p.key] = html;
-  staged.push({ file: p.file, data, s, e, json, key: p.key });
+  staged.push({ file: p.file, data, s, e, json, key: p.key, goBefore });
 }
 
 if (problems.length) {
@@ -222,6 +243,7 @@ if (problems.length) {
 for (const st of staged) {
   const ser = JSON.stringify(st.json).split('</').join('<' + B + '/');
   fs.writeFileSync(st.file, st.data.slice(0, st.s) + ser + st.data.slice(st.e), 'utf8');
-  console.log('  ' + st.key + ': heading, standfirst, 6 icons + 6 copies, rail');
+  console.log('  ' + st.key + ': heading, standfirst, 6 icons + 6 copies, rail, '
+    + st.goBefore + ' "Open" label(s) removed');
 }
 console.log('landing products: done on ' + staged.length + ' page(s)');
