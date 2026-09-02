@@ -20,6 +20,14 @@
 // it appears here on the next cache refresh with no deploy and no list to edit. A forgery never does.
 const FUNDER = 'GA7VKQBOILVBDABEHRSVW72JM3OI54I2GSCCIHGNMECGUMKHLZG7JCDH';
 
+// The launchpad's fee collector, and the number of operations a mint transaction has. Both are read
+// by mintedByUs() below; see the note there for why paying this address is part of what proves a mint.
+// Kept in step with _tools/_launchpad.js -- if the fee collector moves, it moves in both files.
+const FEE_COLLECTOR = 'GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD';
+// A mint is 7 operations. 20 leaves room for the shape to grow without this silently reading only part
+// of a transaction and concluding the wrong thing from it.
+const MINT_OPS = 20;
+
 // LUMOS is listed by name rather than by the funder rule. It is the platform's own token and predates the
 // launchpad -- its issuer was created by a different wallet (GBMAZPFH…), so the rule below correctly does
 // not recognise it. Naming it here is safe for the same reason the rule is: this file is our assertion, and
@@ -180,10 +188,55 @@ async function fundedByUs(issuer, b) {
       const d = await r.json();
       const op = ((d._embedded || {}).records || [])[0] || {};
       if (op.type !== 'create_account') return false;
-      return (op.funder || op.source_account) === FUNDER;
+      if ((op.funder || op.source_account) === FUNDER) return true;
+      // Not funded by our wallet -- which on mainnet is the NORMAL case, not a red flag. Fall through
+      // to the launchpad-shape check below rather than denying here.
+      return await mintedByUs(op.transaction_hash, issuer, b, host);
     } catch (e) { await sleep(250 * (attempt + 1)); }  // timeout / network -> retry, do not conclude
   }
   return null;
+}
+
+// Was this issuer minted through our launchpad, judged from the transaction that created it?
+//
+// WHY THIS EXISTS ALONGSIDE THE FUNDER CHECK. FUNDER was the whole test while the launchpad ran on
+// testnet, where a LumosCore wallet created every issuer with friendbot. The mainnet migration moved
+// that to the MINTER's own wallet -- there is no friendbot on mainnet, so the connected wallet funds
+// the new issuer with real XLM. From that day the funder check could never be true for a real mint,
+// and every mainnet launchpad token was silently refused a place in this document. FUNDER's own last
+// operation is dated 2026-08-02, right when the migration landed.
+//
+// WHAT IS BEING TRUSTED. Not "someone paid us" on its own -- a dust payment would be trivial to fake.
+// The whole transaction has to look like a launchpad mint: it created this issuer, it paid our fee
+// collector in XLM, and it locked the issuer by zeroing its master weight. Reproducing that means
+// actually paying us and actually surrendering control of the issuer, which is not a forgery of a
+// LumosCore mint so much as a description of one.
+//
+// ADDITIVE, deliberately: an asset that satisfied the old rule still satisfies it, on the same code
+// path, before this function is ever called. Nothing that appears in today's document can drop out.
+async function mintedByUs(txHash, issuer, b, host) {
+  if (!txHash) return false;
+  if (!b.take()) return null;                         // no allowance left -> unknown, never a denial
+  let r;
+  try {
+    r = await withTimeout(host + '/transactions/' + encodeURIComponent(txHash) + '/operations?limit=' + MINT_OPS);
+  } catch (e) { return null; }                        // timeout -> unknown, so it is not cached as a no
+  if (r.status === 429 || r.status >= 500) return null;
+  if (!r.ok) return false;
+
+  let recs;
+  try { recs = (((await r.json())._embedded) || {}).records || []; } catch (e) { return null; }
+
+  let paidUs = false, locked = false;
+  for (const op of recs) {
+    if (op.type === 'payment' && op.to === FEE_COLLECTOR && op.asset_type === 'native'
+        && parseFloat(op.amount) > 0) paidUs = true;
+    // The lock has to be on THIS issuer: a transaction may set options on more than one account, and
+    // "some account in this transaction was locked" is not the same claim.
+    if (op.type === 'set_options' && op.source_account === issuer
+        && String(op.master_key_weight) === '0') locked = true;
+  }
+  return paidUs && locked;
 }
 
 async function candidates() {
@@ -212,9 +265,10 @@ export async function onRequestGet(ctx) {
     '# LumosCore — SEP-1 stellar.toml',
     '#',
     '# Lists the assets minted through the LumosCore launchpad on Stellar mainnet.',
-    '# An asset appears here only if its issuer account was created by the LumosCore funding wallet,',
-    '# which is recorded on the ledger and cannot be forged. Declaring home_domain=lumoscore.com is not',
-    '# sufficient on its own.',
+    '# An asset appears here only if the ledger proves it was minted here: either its issuer account was',
+    '# created by the LumosCore funding wallet, or the transaction that created its issuer also paid the',
+    '# LumosCore mint fee and locked that issuer. Both are recorded on the ledger and neither can be',
+    '# forged. Declaring home_domain=lumoscore.com is not sufficient on its own.',
     '',
     'VERSION="2.0.0"',
     'NETWORK_PASSPHRASE=' + q(PASSPHRASE),
@@ -229,6 +283,27 @@ export async function onRequestGet(ctx) {
 
   let list, icons;
   // iconManifest never rejects, so this still fails exactly and only when the asset list does.
+  // Approved launchpad metadata, merged on top of the static manifest. The manifest is written into
+  // the repo at build time, so a token minted by a stranger can never appear in it -- which is why a
+  // mint's own name, description and logo never reached this document. mintmeta.js keeps them in one
+  // KV key, already reviewed, in exactly the shape the manifest uses, so the merge is a merge and the
+  // emitter below is untouched. A missing binding or a bad value degrades to the manifest alone.
+  let approved = {};
+  try {
+    const kv = ctx && ctx.env && ctx.env.CONTENT_KV;
+    if (kv) approved = (await kv.get('mintmeta:approved', 'json')) || {};
+    if (!approved || typeof approved !== 'object' || Array.isArray(approved)) approved = {};
+    // Same-origin absolute paths only, and made absolute here -- the identical rule the manifest gets,
+    // for the identical reason: one bad write must not be able to point every wallet at another host's
+    // picture. An image that does not satisfy it is dropped, not published relative.
+    for (const k of Object.keys(approved)) {
+      const v = approved[k] || {};
+      const img = v.image;
+      const okImg = typeof img === 'string' && img.charAt(0) === '/' && img.indexOf('//') !== 0;
+      approved[k] = { name: v.name || '', desc: v.desc || '', image: okImg ? origin + img : '' };
+    }
+  } catch (e) { approved = {}; }
+
   try { [list, icons] = await Promise.all([candidates(), iconManifest(origin)]); }
   catch (e) { return tomlResponse(head.join('\n') + '\n# asset list temporarily unavailable\n', TTL_ERR); }
 
@@ -258,6 +333,29 @@ export async function onRequestGet(ctx) {
     list.push({ code, issuer, name: mi.name || '', image: '', desc: mi.desc || '' });
   }
 
+  // A token minted MINUTES ago is in NEITHER source above, so until now it could not appear here at all:
+  // the icon manifest is written into the repo at build time, and stellar.expert's index both lags a
+  // fresh issuance and (see the note above) misses assets outright. The approved map was therefore only
+  // ever able to ENRICH an asset something else had already discovered -- never to introduce one.
+  // Measured 2026-09-03: BOMB (GDK6R7M6…) minted correctly, home_domain set, issuer locked, fee paid, its
+  // metadata accepted and stored by mintmeta.js, and it still did not appear in this document.
+  //
+  // Seeding candidates from the mint registry closes that. It is the same widening as the manifest and
+  // carries the same guarantee: this changes who gets ASKED, never who gets believed -- mintedByUs still
+  // decides, on the ledger. Nor can a stranger stuff this list: mintmeta.js verifies the mint on chain
+  // BEFORE it writes, so every key here is already a real launch that paid us and locked its issuer.
+  // Seeded at the FRONT because a fresh mint is precisely the entry MAX_VERIFY would otherwise truncate.
+  const fresh = [];
+  for (const k of Object.keys(approved)) {
+    const dash = k.indexOf('-');
+    if (dash < 1) continue;
+    const code = k.slice(0, dash), issuer = k.slice(dash + 1);
+    if (!/^[A-Za-z0-9]{1,12}$/.test(code) || !/^G[A-Z2-7]{55}$/.test(issuer)) continue;
+    if (list.some((a) => a.code === code && a.issuer === issuer)) continue;
+    fresh.push({ code, issuer, name: '', image: '', desc: '' });
+  }
+  if (fresh.length) list = fresh.concat(list);
+
   const checked = list.slice(0, MAX_VERIFY);
   const b = budget(VERIFY_BUDGET);
   const verdicts = await Promise.all(checked.map((a) => fundedByUs(a.issuer, b)));
@@ -282,11 +380,15 @@ export async function onRequestGet(ctx) {
     const c = ['[[CURRENCIES]]', 'code=' + q(a.code), 'issuer=' + q(a.issuer), 'display_decimals=7'];
     // Our own manifest wins for BOTH fields. a.name/a.image (stellar.expert's tomlInfo) stay as the
     // fallback: correct for an asset that publishes through some other domain, and empty for our mints.
+    // Reviewed mint metadata first, then the build-time manifest, then stellar.expert's tomlInfo. The
+    // order is deliberate: an approved submission is the most recent thing a human looked at.
+    const ok = approved[a.code + '-' + a.issuer] || {};
     const mine = icons[a.code + '-' + a.issuer] || {};
-    const name = mine.name || a.name;
-    const img = mine.image || a.image;
+    const name = ok.name || mine.name || a.name;
+    const img = ok.image || mine.image || a.image;
+    const desc = ok.desc || a.desc;
     if (name) c.push('name=' + q(name));
-    if (a.desc) c.push('desc=' + q(a.desc));
+    if (desc) c.push('desc=' + q(desc));
     if (img) c.push('image=' + q(img));
     // These are launchpad-issued tokens, not claims on an off-chain reserve. Saying so explicitly stops a
     // reader inferring a backing that does not exist.
