@@ -76,7 +76,30 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
   // (91,001 trustlines, stronghold.co) and five of which are look-alikes. So every row carries the domain,
   // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
   var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
-  function launchTokens(){ try{ var e=JSON.parse(localStorage.getItem("lumos.launches")||"[]"); return (e&&e.length)?e:[]; }catch(_){ return []; } }
+  // Tokens minted on OUR launchpad. This used to read localStorage "lumos.launches" -- a key nothing in
+  // the codebase has ever written, so it was always [] and a minted token was unfindable by name or code.
+  // Even had it been written it was per-browser, so it could never have shown another person a mint.
+  // /lxapi/assetmeta carries the shared registry (ids) and, alongside it, each mint's name and logo.
+  var LXMINTS=[];
+  function lxLoadMints(after){
+    if(window.__lxMintRows){ LXMINTS=window.__lxMintRows; return; }
+    (window.__lxAM||Promise.resolve(null)).then(function(d){
+      var ids=(d&&d.mints)||[], mm=(d&&d.mintmeta)||{}, out=[];
+      for(var i=0;i<ids.length;i++){
+        var id=String(ids[i]||""), dash=id.lastIndexOf("-"); if(dash<1)continue;
+        var code=id.slice(0,dash), iss=id.slice(dash+1);
+        if(!/^[A-Za-z0-9]{1,12}$/.test(code)||!/^G[A-Z2-7]{55}$/.test(iss))continue;
+        var m=mm[id]||{};
+        out.push({code:code, issuer:iss, name:m.name||"", domain:"lumoscore.com", tl:0, hl:null, img:m.image||""});
+      }
+      window.__lxMintRows=LXMINTS=out;
+      if(out.length&&after){ try{ after(); }catch(_){} }
+    });
+  }
+  function launchTokens(){
+    var extra=[]; try{ extra=JSON.parse(localStorage.getItem("lumos.launches")||"[]")||[]; }catch(_){ extra=[]; }
+    return LXMINTS.concat(extra&&extra.length?extra:[]);
+  }
   var GRAD=["#ea6a2c","#7c6cf5","#14b8a6","#ec4899","#3b82f6"];   // solid: .lx-spico-on forces background-image:initial!important, so gradients are impossible here
   function short(a){return a?a.slice(0,4)+"\u2026"+a.slice(-4):"";}
   function esc(s){return ((s+"").replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
@@ -229,7 +252,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
       '<div class="sp-sub">Balances, pools and activity</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini">'+short(addr)+'</div></div></a>';
   }
-  function lxSeaLogos(root){ var seen=(window.__lxSeaLogo=window.__lxSeaLogo||{}); [].slice.call((root||document).querySelectorAll("img[data-lxneedlogo]")).forEach(function(im){   var id=im.getAttribute("data-lxneedlogo"); if(!id)return;   im.removeAttribute("data-lxneedlogo");   if(seen[id]===null)return;   if(seen[id]){ im.src=seen[id]; return; }   fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(id))     .then(function(r){ return r.ok?r.json():null; })     .then(function(j){ var u=j&&j.image; seen[id]=u||null; if(u)im.src=u; })     .catch(function(){ seen[id]=null; }); }); } function lxMergeV(VFDmap,after){ window.__lxCuratedV=window.__lxCuratedV||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};}); window.__lxCuratedV.then(function(vf){ var added=0;   Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;     var i=id.lastIndexOf("-"); if(i<0)return;     var k=id.slice(0,i)+"|"+id.slice(i+1);     if(VFDmap[k]===undefined){ VFDmap[k]=r.d||""; added++; } });   if(added&&after){ try{ after(); }catch(_){} } }); } function lxSeaRedraw(){ var i=document.getElementById("spSearchInput"); if(i){ i.dispatchEvent(new Event("input",{bubbles:true})); } } lxMergeV(VFD,lxSeaRedraw); function lxSeaCount(list){ if(!list||list.id!=="spAssetList")return; var c=document.getElementById("spAssetCount"); if(!c)return; c.textContent="("+list.querySelectorAll(".sp-row").length+")"; } function paint(list,html){ if(list.innerHTML!==html){ list.innerHTML=html; try{ lxSeaLogos(list); }catch(_){} try{ lxSeaCount(list); }catch(_){} } }
+  function lxSeaLogos(root){ var seen=(window.__lxSeaLogo=window.__lxSeaLogo||{}); [].slice.call((root||document).querySelectorAll("img[data-lxneedlogo]")).forEach(function(im){   var id=im.getAttribute("data-lxneedlogo"); if(!id)return;   im.removeAttribute("data-lxneedlogo");   if(seen[id]===null)return;   if(seen[id]){ im.src=seen[id]; return; }   fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(id))     .then(function(r){ return r.ok?r.json():null; })     .then(function(j){ var u=j&&j.image; seen[id]=u||null; if(u)im.src=u; })     .catch(function(){ seen[id]=null; }); }); } function lxMergeV(VFDmap,after){ window.__lxAM=window.__lxAM||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}); window.__lxCuratedV=window.__lxCuratedV||window.__lxAM.then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};}); window.__lxCuratedV.then(function(vf){ var added=0;   Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;     var i=id.lastIndexOf("-"); if(i<0)return;     var k=id.slice(0,i)+"|"+id.slice(i+1);     if(VFDmap[k]===undefined){ VFDmap[k]=r.d||""; added++; } });   if(added&&after){ try{ after(); }catch(_){} } }); } function lxSeaRedraw(){ var i=document.getElementById("spSearchInput"); if(i){ i.dispatchEvent(new Event("input",{bubbles:true})); } } lxMergeV(VFD,lxSeaRedraw); lxLoadMints(lxSeaRedraw); function lxSeaCount(list){ if(!list||list.id!=="spAssetList")return; var c=document.getElementById("spAssetCount"); if(!c)return; c.textContent="("+list.querySelectorAll(".sp-row").length+")"; } function paint(list,html){ if(list.innerHTML!==html){ list.innerHTML=html; try{ lxSeaLogos(list); }catch(_){} try{ lxSeaCount(list); }catch(_){} } }
 
   // ---- RECENT SEARCHES ------------------------------------------------------------------------------
   // ONE list of 5, shared by assets, pools and wallets -- not 5 of each. All three render as the same
@@ -427,7 +450,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     // state exactly as before rather than showing a "Recent" heading over nothing.
     if(!q){ recPaint(list); return; }
     // locally minted Launchpad tokens match instantly, with no round trip
-    var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&t.code.toLowerCase().indexOf(q)>=0; });
+    var local=launchTokens().filter(function(t){ return t&&t.code&&t.issuer&&((t.code.toLowerCase().indexOf(q)>=0)||(String(t.name||"").toLowerCase().indexOf(q)>=0)); });
     var seq=++SEA_SEQ;
     // The account row needs no network call, so it lands on the first keystroke rather than after the
     // asset index answers.
@@ -451,7 +474,23 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
           if(isPool(_qi))setTimeout(function(){ poolLoad(_qi); },0);
           return; }
         var seen={}, all=[];
-        local.concat(remote).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
+        // REMOTE FIRST, deliberately. Minting is open to anyone, so a launchpad token must never
+        // outrank the established asset whose ticker it borrowed -- that would turn our own search into
+        // the delivery mechanism. Dedupe keeps the first occurrence, so once the index does carry one of
+        // our mints its record (with real trustline counts) wins and ours simply drops out.
+        remote.concat(local).forEach(function(t){ var k=t.code+"-"+t.issuer; if(!seen[k]){ seen[k]=1; all.push(t); } });
+        // For OUR OWN mints, our record wins even when the index supplied the row. Same precedence the
+        // SEP-1 document uses, and for the same reason: the index carries whatever tomlInfo it last
+        // crawled, which for a token minted here is usually nothing -- BOMB surfaced as a bare ticker
+        // while we held "Bomb Token" and its logo. Scoped to ids in the mint registry, so it can only
+        // ever relabel a token we minted, never an asset someone else issued.
+        if(LXMINTS.length){
+          var MM={}; for(var mi=0;mi<LXMINTS.length;mi++){ MM[LXMINTS[mi].code+"-"+LXMINTS[mi].issuer]=LXMINTS[mi]; }
+          for(var ai=0;ai<all.length;ai++){ var mine=MM[all[ai].code+"-"+all[ai].issuer]; if(!mine)continue;
+            if(mine.name) all[ai].name=mine.name;
+            if(mine.img) all[ai].img=mine.img;
+            if(!all[ai].domain) all[ai].domain="lumoscore.com"; }
+        }
         // An address answers itself: show the account first, then anything that address issued.
         var _q=String(raw).trim();
         var lead = isAddr(_q) ? acctRow(_q) : (isPool(_q) ? poolRow(_q) : "");
