@@ -66,6 +66,12 @@ try{ window.__lxLP={
   createFeeXlm:34.70, liqXlm:69.40, poolFeeXlm:69.40,
   // Mint is a fixed $25 product (Token creation $5 + Initial liquidity $10 + Pool/network $10);
   // the XLM amounts are derived from the LIVE rate so the total always equals $25 at current price.
+  //
+  // A cheap build was deployed to STAGING ONLY on 2026-09-03 so a real mainnet mint could be walked
+  // through for about 20 cents (createFeeUsd:0.05, liqUsd:0.10, poolFeeUsd:0.05). It was never
+  // committed and the repo was put back to these numbers straight after deploying, precisely so a
+  // later promote could not carry test pricing into production. Only the USD values are read --
+  // lxLpCosts derives the XLM from the live rate, and the cost card reads the same constants.
   createFeeUsd:5, liqUsd:10, poolFeeUsd:10
 }; }catch(_){}
 
@@ -266,7 +272,20 @@ window.lxLaunchToken=function(draft, onStatus, opts){
           .addOperation(S.Operation.changeTrust({asset:poolAsset}))
           .addOperation(S.Operation.liquidityPoolDeposit({liquidityPoolId:poolId, maxAmountA:lxLpAmt(liqXlm), maxAmountB:lxLpAmt(lpTokens), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}))
           .addOperation(S.Operation.payment({destination:C.feeCollector, asset:native, amount:lxLpAmt(feeXlm)}))
-          .addOperation(S.Operation.setOptions({source:issuerPk, masterWeight:0, lowThreshold:0, medThreshold:0, highThreshold:0}))
+          // homeDomain rides on the SAME setOptions that locks the issuer, and this is the only chance
+          // to set it. masterWeight:0 removes the issuer's ability to sign anything ever again, so an
+          // asset minted without a home domain can NEVER be given one -- reported 2026-09-02, FRANK
+          // (GBATOPMB...3XNO) went out with home_domain unset and is permanently unable to claim this
+          // site. Every mainnet mint since the migration is in that state.
+          //
+          // It matters because the SEP-1 document at lumoscore.com only lists assets that CLAIM
+          // lumoscore.com: functions/.well-known/stellar.toml.js builds its candidate list by asking
+          // stellar.expert for assets whose domain is ours. No home domain, no entry, and therefore no
+          // name, description or logo anywhere the ecosystem can read them.
+          //
+          // Added to the existing operation rather than as a new one: same op count, same fee, and no
+          // ordering question about whether the lock lands before the domain is set.
+          .addOperation(S.Operation.setOptions({source:issuerPk, homeDomain:"lumoscore.com", masterWeight:0, lowThreshold:0, medThreshold:0, highThreshold:0}))
           .setTimeout(300).build();
         tb.sign(issuerKp); // issuer co-signs its two ops locally (throwaway key)
         // Fire the ONE wallet signature now (earliest possible), so the popup opens within the click gesture.
@@ -283,7 +302,14 @@ window.lxLaunchToken=function(draft, onStatus, opts){
         });
       });
     }).then(function(){
-      onStatus("Token launched ✓"); return result;
+      // WAIT for the details to publish before declaring the launch done. This used to be fire-and-forget,
+      // which lost the race: the promise resolved immediately, "Done" appeared, and the click navigated
+      // away mid-upload -- aborting a POST carrying up to 700KB of logo. Measured 2026-09-03: BOMB
+      // (GDK6R7M6…) minted correctly on-chain, home_domain and all, but never reached the toml, while
+      // slower mints like HULK did. Bounded, because the mint has ALREADY succeeded and a slow or failing
+      // publish must never strand the user on a spinner -- the confirm page retries what times out here.
+      onStatus("Publishing token details…");
+      return lxLpAtMost(lxLpSaveMeta(result), 20000).then(function(){ onStatus("Token launched ✓"); return result; });
     });
   });
 };
@@ -300,6 +326,61 @@ function lxLpCaptureDraft(){
     icon:window.__lxLpIcon||"", iconName:window.__lxLpIconName||"" };
   try{ localStorage.setItem("lumos.launch.draft", JSON.stringify(d)); }catch(_){}
   return d;
+}
+// Send what the minter typed to /lxapi/mintmeta, once the mint has actually succeeded.
+//
+// Until now this was the missing half of the launchpad: lxLpCaptureDraft() writes name, description,
+// socials and the logo to localStorage and NOTHING ever posted them, so an asset arrived on the site
+// with nothing but a code and an issuer. The endpoint proves the mint from the transaction hash before
+// storing anything, which is why the hash is sent and why this can be called by anyone.
+//
+// FIRE AND FORGET, deliberately. The tokens are already minted and the fee is already paid by the time
+// this runs; a failure here must never turn a successful launch into an error the minter sees. Any
+// rejection is recoverable later by resubmitting, and losing the metadata is the status quo, not a
+// regression.
+// Resolve when p does, or after ms -- whichever comes first. Never rejects.
+function lxLpAtMost(p, ms){
+  return new Promise(function(res){
+    var done=false; function fin(v){ if(!done){ done=true; res(v); } }
+    setTimeout(function(){ fin("timeout"); }, ms);
+    try{ Promise.resolve(p).then(fin, function(){ fin(false); }); }catch(_){ fin(false); }
+  });
+}
+// Records whether the details for CODE-ISSUER are known to have published, so the confirm page can retry
+// exactly the submissions that did not.
+function lxLpMetaKey(r){ return "1:"+r.code+"-"+r.issuer; }
+function lxLpSaveMeta(result){
+  try{
+    if(!result || !result.code || !result.issuer || !result.mintHash) return Promise.resolve(false);
+    var d={}; try{ d=JSON.parse(localStorage.getItem("lumos.launch.draft")||"{}"); }catch(_){}
+    var logo=window.__lxLpIcon||d.icon||"";
+    // The file input accepts up to 10MB but the store caps a logo at 512KB, and the endpoint rejects
+    // the WHOLE submission if the image is over. Dropping just the image keeps the description and the
+    // links, which is far better than losing everything to a large PNG.
+    if(logo && logo.length > 700000) logo="";
+    // Only describe the token when we still have what the minter actually typed.
+    //
+    // The endpoint merges PRESENT-beats-non-empty: a key the request carries wins even when it is empty
+    // (so a minter can clear a mistyped field), and a key it omits keeps what is stored. That makes
+    // sending blanks actively destructive rather than merely useless -- it ERASES the name, description
+    // and logo. Measured 2026-09-03: the confirm-page retry ran in a browser with no draft and wiped
+    // BOMB's metadata. The retry is worth keeping regardless, because the registration alone is what
+    // makes a fresh mint a candidate for the toml at all; it just must not claim to know the details.
+    // The form requires a name, so an absent draft means we lost it, never that the user left it blank.
+    var body={ code:result.code, issuer:result.issuer, txHash:result.mintHash };
+    if(d && (d.name||d.desc||d.website||d.twitter||d.telegram||logo)){
+      body.name=d.name||""; body.description=d.desc||""; body.website=d.website||"";
+      body.twitter=d.twitter||""; body.telegram=d.telegram||""; body.logo=logo;
+    }
+    return fetch("/lxapi/mintmeta",{
+      method:"POST", headers:{"content-type":"application/json"},
+      body:JSON.stringify(body)
+    }).then(function(r){
+      var ok=!!(r&&r.ok);
+      if(ok){ try{ localStorage.setItem("lumos.launch.metaok", lxLpMetaKey(result)); }catch(_){} }
+      return ok;
+    }).catch(function(){ return false; });
+  }catch(_){ return Promise.resolve(false); }
 }
 function lxLpErr(msg){ var host=document.querySelector(".summary-cta"); if(!host)return; var el=document.getElementById("lx-lp-err"); if(!el){ el=document.createElement("div"); el.id="lx-lp-err"; el.style.cssText="color:#e5484d;font-size:12.5px;margin:8px 2px 0;text-align:center;line-height:1.4"; host.parentNode.insertBefore(el, host.nextSibling); } el.textContent=msg||""; }
 
@@ -325,10 +406,70 @@ function lxLpPopulateForm(){
   if(d.icon){ window.__lxLpIcon=d.icon; window.__lxLpIconName=d.iconName||""; }
   lxLpPreviewIcon(); lxLpPaintUpload();
 }
+// Downscale an uploaded logo before anything stores it.
+//
+// WHY. The upload cap is 10MB, but localStorage is ~5MB per ORIGIN and base64 inflates a file by 4/3 --
+// so a 10MB logo becomes a ~13MB data URI that cannot be stored at all. That mattered because
+// lxLpConfirmLaunch persists the launch result with the icon inside it, and its setItem was wrapped in a
+// silent try/catch: measured 2026-09-03, a real BOMB mint succeeded on-chain, the result was never
+// written, and the confirm page fell back to the DESIGN MOCK ("Aptos Coin", 1,000,000,000 supply, 0x…
+// addresses) with no error anywhere. Smaller logos could reach the same quota once lumos.launch.icons had
+// accumulated a few previous mints.
+//
+// 256px is what the confirm card, the asset page and the token lists actually render, so nothing on
+// screen loses fidelity; it puts a typical logo at 20-60KB and makes the quota unreachable in practice.
+// PNG is used (not WebP) because the data URI is also POSTed to /lxapi/mintmeta and served back as the
+// asset's logo, where broad support matters more than a few KB.
+//
+// SVG is passed through untouched when it is already small: it is markup, it scales, and rasterising it
+// would throw away the one format that never needs to be. A large SVG still gets rasterised.
+// Every failure path falls back to the original data URI rather than dropping the user's logo -- the
+// store below is what has to survive a too-big icon, not this.
+var LXLP_ICON_PX = 256;
+function lxLpShrinkIcon(dataUrl, mime, done){
+  try{
+    if(!dataUrl || dataUrl.indexOf("data:")!==0){ done(dataUrl); return; }
+    if(/svg/i.test(mime||"") && dataUrl.length<40000){ done(dataUrl); return; }
+    var img=new Image();
+    img.onload=function(){
+      try{
+        var w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+        if(!(w>0&&h>0)){ done(dataUrl); return; }
+        var s=Math.min(1, LXLP_ICON_PX/Math.max(w,h));
+        var cw=Math.max(1,Math.round(w*s)), ch=Math.max(1,Math.round(h*s));
+        var c=document.createElement("canvas"); c.width=cw; c.height=ch;
+        var x=c.getContext("2d"); if(!x){ done(dataUrl); return; }
+        x.drawImage(img,0,0,cw,ch);
+        var out=c.toDataURL("image/png");
+        // Only accept the re-encode if it actually helped -- a tiny flat PNG can grow when redrawn.
+        done((out && out.length<dataUrl.length) ? out : dataUrl);
+      }catch(_){ done(dataUrl); }
+    };
+    img.onerror=function(){ done(dataUrl); };
+    img.src=dataUrl;
+  }catch(_){ done(dataUrl); }
+}
+
+// Persist the launch result so the confirm page can paint it. NEVER silently -- see lxLpShrinkIcon for
+// what a swallowed QuotaExceededError looked like from the outside. Degrade in steps instead: the icon is
+// the only unbounded field and it is also held separately (lumos.launch.icons) and server-side (mintmeta),
+// so dropping it still leaves a correct page with a placeholder logo, which beats the design mock.
+function lxLpStoreResult(res){
+  function put(o){ localStorage.setItem("lumos.launch.result", JSON.stringify(o)); return true; }
+  try{ return put(res); }catch(_){}
+  var slim={}; for(var k in res){ if(Object.prototype.hasOwnProperty.call(res,k) && k!=="icon") slim[k]=res[k]; }
+  try{ return put(slim); }catch(_){}
+  try{ localStorage.removeItem("lumos.launch.icons"); }catch(_){}
+  try{ return put(slim); }catch(e){
+    try{ console.error("[LumosCore launch] could not persist launch result:", e); }catch(_){}
+    return false;
+  }
+}
+
 function lxLpWireToken(){
   var fi=document.querySelector("#iconFileInput");
   if(fi){ fi.setAttribute("accept","image/png,image/jpeg,image/jpg,image/gif,image/webp,image/avif,image/svg+xml,.png,.jpg,.jpeg,.gif,.webp,.avif,.svg"); }
-  if(fi && !fi.__lxWired){ fi.__lxWired=true; fi.addEventListener("change",function(){ var f=fi.files&&fi.files[0]; if(!f){window.__lxLpIcon="";window.__lxLpIconName="";lxLpPreviewIcon();lxLpPaintUpload();return;} if(f.size>10*1024*1024){window.__lxLpIcon="";window.__lxLpIconName="";lxLpPreviewIcon();lxLpPaintUpload();return;} window.__lxLpIconName=f.name||""; var rd=new FileReader(); rd.onload=function(){ window.__lxLpIcon=rd.result; lxLpPreviewIcon(); lxLpPaintUpload(); }; rd.readAsDataURL(f); }); }
+  if(fi && !fi.__lxWired){ fi.__lxWired=true; fi.addEventListener("change",function(){ var f=fi.files&&fi.files[0]; if(!f){window.__lxLpIcon="";window.__lxLpIconName="";lxLpPreviewIcon();lxLpPaintUpload();return;} if(f.size>10*1024*1024){window.__lxLpIcon="";window.__lxLpIconName="";lxLpPreviewIcon();lxLpPaintUpload();return;} window.__lxLpIconName=f.name||""; var rd=new FileReader(); rd.onload=function(){ lxLpShrinkIcon(rd.result, f.type||"", function(small){ window.__lxLpIcon=small; lxLpPreviewIcon(); lxLpPaintUpload(); }); }; rd.readAsDataURL(f); }); }
   // Extra XLM liquidity: numbers (and one decimal point) only — no minus sign, exponents, or letters
   var xl=document.querySelector("#extraLiquidity");
   if(xl && !xl.__lxNum){ xl.__lxNum=true; xl.setAttribute("inputmode","decimal"); xl.setAttribute("min","0");
@@ -454,7 +595,7 @@ function lxLpConfirmLaunch(d){
   var lastMsg="";
   window.lxLaunchToken(d, function(m){ lastMsg=m; lxLpProgUpdate(m); }).then(function(res){
     res.name=d.name; res.projectType=d.projectType; res.desc=d.desc; res.telegram=d.telegram; res.twitter=d.twitter; res.website=d.website; res.icon=d.icon; res.ts=Date.now();
-    try{ localStorage.setItem("lumos.launch.result", JSON.stringify(res)); }catch(_){}
+    lxLpStoreResult(res);
     // persist the uploaded logo per-asset so the token's Asset-Overview page shows it (keyed CODE-ISSUER; keep last 12)
     try{ if(res.icon && res.code && res.issuer){ var im=JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}"); im[res.code+"-"+res.issuer]=res.icon; var ks=Object.keys(im); if(ks.length>12) ks.slice(0,ks.length-12).forEach(function(k){ delete im[k]; }); localStorage.setItem("lumos.launch.icons", JSON.stringify(im)); } }catch(_){}
     lxLpProgDone("lumoscore-launch-confirm.html");
@@ -559,7 +700,11 @@ function lxLpWireConfirm(){
   function paint(){
     txt(document.querySelector(".result-name"), r.name||CODE);
     txt(document.querySelector(".result-meta .addr"), lxLpShort(r.issuer));
-    var ci=document.querySelector(".result-icon img")||document.querySelector(".result-top img")||document.querySelector(".hero-icon img"); var iconSrc=r.icon||LXLP_PH; if(ci&&ci.getAttribute("src")!==iconSrc) ci.src=iconSrc;
+    var ci=document.querySelector(".result-icon img")||document.querySelector(".result-top img")||document.querySelector(".hero-icon img");
+    // r.icon is dropped from the stored result if it would not fit the quota (lxLpStoreResult), so fall
+    // back to the per-asset icon map before the placeholder.
+    var iconSrc=r.icon; if(!iconSrc && r.issuer){ try{ iconSrc=(JSON.parse(localStorage.getItem("lumos.launch.icons")||"{}"))[CODE+"-"+r.issuer]||""; }catch(_){} }
+    iconSrc=iconSrc||LXLP_PH; if(ci&&ci.getAttribute("src")!==iconSrc) ci.src=iconSrc;
     var stats=document.querySelectorAll(".result-stats .stat");
     if(stats[0]){ txt(stats[0].querySelector(".val"),lxLpFmt(supply)); txt(stats[0].querySelector(".sub"),CODE); }
     if(stats[1]){ txt(stats[1].querySelector(".val"),lxLpFmt(keep)); txt(stats[1].querySelector(".sub"),share+"% of supply"); }
@@ -582,10 +727,25 @@ function lxLpWireConfirm(){
     }
     [].slice.call(document.querySelectorAll("a")).forEach(function(x){ var t=(x.textContent||"");
       if(/explorer/i.test(t)){ var href=EXP+"/asset/"+CODE+"-"+r.issuer; if(x.getAttribute("href")!==href){ x.setAttribute("href",href); x.setAttribute("target","_blank"); x.setAttribute("rel","noopener"); } txt(x,"View on Stellar Explorer"); }
-      else if(t.indexOf("($")>=0 || /Token Page/i.test(t)){ txt(x,"View "+(r.name||CODE)+" ($"+CODE+") Token Page"); }
+      // The design ships this CTA pointing at /trade/stellar -- the Trade section index, with no asset --
+      // so even a correctly painted card sent the minter to a generic page. Point it at the token they
+      // just launched. Two elements carry this label (.result-cta and the .action-btn below it).
+      else if(t.indexOf("($")>=0 || /Token Page/i.test(t)){
+        txt(x,"View "+(r.name||CODE)+" ($"+CODE+") Token Page");
+        if(r.issuer){ var tp="/trade/stellar/"+CODE+"-"+r.issuer; if(x.getAttribute("href")!==tp) x.setAttribute("href",tp); }
+      }
     });
   }
   paint();
+  // Second chance for the details POST. lxLaunchToken waits up to 20s for it, but a slow upload, a dropped
+  // connection or a closed tab can still leave the token published on-chain with nothing in the toml --
+  // which is exactly how BOMB ended up minted but invisible. The draft (logo included) outlives the
+  // navigation, so this page can simply send it again; the endpoint re-verifies the mint on chain and the
+  // merge is idempotent, so a duplicate submission is harmless.
+  if(!document.body.__lxLpMetaRetry){ document.body.__lxLpMetaRetry=true;
+    var mk=""; try{ mk=localStorage.getItem("lumos.launch.metaok")||""; }catch(_){}
+    if(mk!==lxLpMetaKey(r)) { try{ lxLpSaveMeta(r); }catch(_){} }
+  }
   if(!document.body.__lxLpObs){ document.body.__lxLpObs=true;
     // The design reveals the tx-detail labels with a per-letter animation, and may re-render
     // rows after load; keep a persistent observer + a bounded poll re-applying the idempotent
