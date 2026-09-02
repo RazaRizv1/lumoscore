@@ -137,7 +137,11 @@ const CSS = '<style id="lx-herotext">'
   + 'padding-bottom:130px}'
   // Belt and braces on the rays: make the SVG fill its box so a taller hero can never outrun it again.
   // preserveAspectRatio is "slice", so it covers and crops rather than letterboxing.
-  + '.hero-rays svg{height:100%}}'
+  + '.hero-rays svg{height:100%}'
+  // Breathing room between the field and the tagline. It was 22px, which read as one block rather than
+  // two. Applied to the search wrap's own margin so only this gap opens -- the field itself does not
+  // move, which matters because the rays are pinned to where it sits.
+  + '.hero-search-wrap{margin-bottom:52px}}'
   // Short handsets. With the hero sized to its content, 132px above and 130px below made it 662px --
   // taller than a 568px screen, so the cue fell below the fold on exactly the devices with least room.
   // Trimming both paddings brings the whole hero inside the screen; measured rather than guessed the
@@ -147,6 +151,9 @@ const CSS = '<style id="lx-herotext">'
   // outgrew the viewport and took the cue 4px past the fold with it. Confirmed dvh itself resolves
   // correctly to 568 here, so this was the box being too tall rather than a unit problem.
   + '.hero{padding-top:100px;padding-bottom:68px}'
+  // The wider gap stays off short screens: at 568px the hero already ends exactly on the fold with
+  // 20px between the buttons and the cue, so anything added here pushes the cue straight past it.
+  + '.hero-search-wrap{margin-bottom:22px}'
   // The rays pin is an offset from the hero's top, so it moves with padding-top. Dropping that from
   // 132 to 100 slid the field up by 32px and left the convergence exposed again -- the pin has to
   // follow. C becomes 220, hence 440.
