@@ -8662,7 +8662,7 @@ window.lxLaunchToken=function(draft, onStatus, opts){
         });
       });
     }).then(function(){
-      onStatus("Token launched ✓"); return result;
+      onStatus("Token launched ✓"); try{ lxLpSaveMeta(result); }catch(_){} return result;
     });
   });
 };
@@ -8679,6 +8679,34 @@ function lxLpCaptureDraft(){
     icon:window.__lxLpIcon||"", iconName:window.__lxLpIconName||"" };
   try{ localStorage.setItem("lumos.launch.draft", JSON.stringify(d)); }catch(_){}
   return d;
+}
+// Send what the minter typed to /lxapi/mintmeta, once the mint has actually succeeded.
+//
+// Until now this was the missing half of the launchpad: lxLpCaptureDraft() writes name, description,
+// socials and the logo to localStorage and NOTHING ever posted them, so an asset arrived on the site
+// with nothing but a code and an issuer. The endpoint proves the mint from the transaction hash before
+// storing anything, which is why the hash is sent and why this can be called by anyone.
+//
+// FIRE AND FORGET, deliberately. The tokens are already minted and the fee is already paid by the time
+// this runs; a failure here must never turn a successful launch into an error the minter sees. Any
+// rejection is recoverable later by resubmitting, and losing the metadata is the status quo, not a
+// regression.
+function lxLpSaveMeta(result){
+  try{
+    if(!result || !result.code || !result.issuer || !result.mintHash) return;
+    var d={}; try{ d=JSON.parse(localStorage.getItem("lumos.launch.draft")||"{}"); }catch(_){}
+    var logo=window.__lxLpIcon||d.icon||"";
+    // The file input accepts up to 10MB but the store caps a logo at 512KB, and the endpoint rejects
+    // the WHOLE submission if the image is over. Dropping just the image keeps the description and the
+    // links, which is far better than losing everything to a large PNG.
+    if(logo && logo.length > 700000) logo="";
+    fetch("/lxapi/mintmeta",{
+      method:"POST", headers:{"content-type":"application/json"},
+      body:JSON.stringify({ code:result.code, issuer:result.issuer, txHash:result.mintHash,
+        name:d.name||"", description:d.desc||"", website:d.website||"",
+        twitter:d.twitter||"", telegram:d.telegram||"", logo:logo })
+    }).catch(function(){});
+  }catch(_){}
 }
 function lxLpErr(msg){ var host=document.querySelector(".summary-cta"); if(!host)return; var el=document.getElementById("lx-lp-err"); if(!el){ el=document.createElement("div"); el.id="lx-lp-err"; el.style.cssText="color:#e5484d;font-size:12.5px;margin:8px 2px 0;text-align:center;line-height:1.4"; host.parentNode.insertBefore(el, host.nextSibling); } el.textContent=msg||""; }
 
