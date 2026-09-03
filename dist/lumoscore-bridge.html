@@ -10074,7 +10074,15 @@ function lxBrRenderMobileTxs(){ try{
   var pseen={}; LX_PUBTX.forEach(function(o){ pseen[o.hash]=1; });
   loc=LX_PUBTX.concat(loc.filter(function(o){ return o&&!pseen[o.hash]; }));
   lxBrPaintMobileTxs(host, loc);
-  try{ lxBrMergedTxs().then(function(a){ if(a&&a.length) lxBrPaintMobileTxs(host, a); }); }catch(_){}
+  // Then the shared registry -- the step desktop was getting and mobile was not. Rebuilt from
+  // LX_PUBTX rather than reusing loc, because the loader mutates that array in place.
+  try{ lxBrLoadPublic().then(function(){
+      var l2=[]; try{ l2=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); }catch(_){}
+      var s2={}; LX_PUBTX.forEach(function(o){ if(o&&o.hash)s2[o.hash]=1; });
+      l2=LX_PUBTX.concat(l2.filter(function(o){ return o&&!s2[o.hash]; }));
+      if(l2.length) lxBrPaintMobileTxs(host, l2);
+      return lxBrMergedTxs();
+    }).then(function(a){ if(a&&a.length) lxBrPaintMobileTxs(host, a); }); }catch(_){}
 }catch(_){} }
 function lxBrPaintMobileTxs(host, a){ try{
   if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
