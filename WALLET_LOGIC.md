@@ -172,7 +172,12 @@ and `_dexassetdata.js` but are unreachable: the parallel quote is `Promise.resol
 The server proxy (`functions/lxapi/soroswap/`) and its local mirror in `serve.js` were deleted.
 
 ### 7.6 LUMOS fee tier (brand mechanic — reuse everywhere)
-- Guest 0.8%, holders of **250,000 LUMOS** pay 0.5% (`__lxFeeRate`). Promo banner (`.lx-fee-banner`) on step 2 + a **Buy LUMOS** button. Copy: "Trade like a whale 🐋 Hold 250,000 LUMOS and cut your swap fee from 0.8% to just 0.5%."
+- Guest **0.2%**, holders of **250,000 LUMOS** pay **0.1%** (`__lxFeeRate`, set by `_feerate.js`, which
+  checks the balance against the LUMOS issuer; pool-held LUMOS counts toward the threshold).
+- Promo banner (`.lx-fee-banner`) on step 2, with a **Buy LUMOS** link to `/lumos/stellar`. Live copy:
+  qualifying — "**You qualify for 0.1% trading fees** — 50% Discount"; not qualifying —
+  "**50% off trading fees** — hold 250,000 LUMOS".
+- Limit orders are **free** — the fee applies to swaps only.
 
 ---
 
