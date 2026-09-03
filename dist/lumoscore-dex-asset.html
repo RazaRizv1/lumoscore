@@ -15271,7 +15271,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // Soroswap's build assumes the destination trustline already exists -> add it (own signature) first if missing
   function dxEnsureTrust(ra){ if(ra.native||window.__lxDXAhasTrust)return Promise.resolve(false); var addr=lxAddr(); if(!addr)return Promise.reject(new Error("No wallet connected"));
     return dxLoadSdk().then(function(S){ var asset=new S.Asset(ra.code,ra.iss); return j(H+"/accounts/"+addr).then(function(acc){ var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:WPASS_PUB}).addOperation(S.Operation.changeTrust({asset:asset})).setTimeout(120).build();
-      return dxTimeout(dxSign(tb.toXDR(),addr),200000,"Signing timed out \u2014 open your wallet and try again").then(function(signed){ return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){ if(res&&(res.successful||res.hash)){ window.__lxDXAhasTrust=true; return true; } var x=res&&res.extras&&res.extras.result_codes; throw new Error(x?("Trustline failed: "+JSON.stringify(x)):"Trustline failed"); }); }); }); }); }
+      return dxTimeout(dxSign(tb.toXDR(),addr),200000,"Signing timed out \u2014 open your wallet and try again").then(function(signed){ return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){ if(res&&(res.successful||res.hash)){ window.__lxDXAhasTrust=true; return true; } var x=res&&res.extras&&res.extras.result_codes; throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"The trustline"):("Trustline failed: "+JSON.stringify(x))):"Trustline failed"); }); }); }); }); }
   // build unsigned XDR from the best-rate quote -> sign with the connected wallet -> submit via Soroswap
   function soroExecute(soro){ var addr=lxAddr(); if(!addr)return Promise.reject(new Error("No wallet connected"));
     return soroBuild(soro.quote,addr).then(function(xdr){ return dxTimeout(dxSign(xdr,addr),200000,"Signing timed out \u2014 open your wallet and try again").then(function(signed){ return soroSend(signed); }); }); }
@@ -15561,7 +15561,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         dxToast((side==="buy"?"Bought ":"Sold ")+xlmAmt(_dxQuoteOut)+" "+(side==="buy"?CODE:"XLM"));
         dxPostSwapReset();
         setTimeout(function(){ cta.textContent="Swap"; },1600);
-      } else { var x=resp&&resp.extras&&resp.extras.result_codes; throw new Error(x?JSON.stringify(x):"Submit failed"); }
+      } else { var x=resp&&resp.extras&&resp.extras.result_codes; throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"The swap"):JSON.stringify(x)):"Submit failed"); }
     }).catch(function(e){ cta.disabled=false; cta.__lxbusy=0; cta.classList.remove("lx-btnload"); cta.textContent="Swap"; dxToast("Swap failed \u2014 "+((e&&e.message)||e),true); });
   }
   function resetWidget(){ _dxQuick=null; window.__lxDXASoro=null; var pin=payInput(), rin=recvInput(); if(pin)pin.value=""; if(rin)rin.value=""; dxErr(""); setRecvUsd(0); dxSmartBadge(null); var cta=q(".dxa-trade-cta"); if(cta)cta.removeAttribute("data-lxdis"); }
