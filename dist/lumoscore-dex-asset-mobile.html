@@ -15876,7 +15876,30 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // it. Without this the native page would hold the neutral tile for ever and never draw its mark.
     if(NATIVE){ assetXlm=1; logoDone(); loadNativeStats(); return; }
     // price + 24h change + 24h volume via daily trade aggregations
-    jAgg({res:86400000,order:"desc",limit:2}).then(function(d){ var r=(d&&d._embedded&&d._embedded.records)||[];
+    // A ROLLING 24 hours, not the current UTC day -- a daily bar empties itself every midnight, so the
+    // header read 0 XLM and a zero-width day range just after 00:00. Hourly bars, windowed by timestamp
+    // because bars exist only for hours that actually traded. Same single request as before.
+    jAgg({res:3600000,order:"desc",limit:30}).then(function(d){ var _all=(d&&d._embedded&&d._embedded.records)||[];
+      var _cut=Date.now()-864e5;
+      var _win=_all.filter(function(x){ return (+x.timestamp)>=_cut; });
+      var _older=null; for(var _i=0;_i<_all.length;_i++){ if((+_all[_i].timestamp)<_cut){ _older=_all[_i]; break; } }
+      // r[0] stands for "the window": newest bar for price, the window's totals for volume and range.
+      // r[1] stands for "24h ago", so the move below is measured across a real 24 hours.
+      var r=[];
+      if(_all[0]){
+        var _his=_win.map(function(x){return +x.high||0;}).filter(function(v){return v>0;});
+        var _los=_win.map(function(x){return +x.low||0;}).filter(function(v){return v>0;});
+        r[0]={ timestamp:_all[0].timestamp,
+               open:(_win.length?(+_win[_win.length-1].open||0):(+_all[0].open||0)),
+               close:(+_all[0].close||0), avg:(+_all[0].avg||0),
+               base_volume:(+_all[0].base_volume||0),
+               high:(_his.length?Math.max.apply(null,_his):(+_all[0].high||0)),
+               low:(_los.length?Math.min.apply(null,_los):(+_all[0].low||0)),
+               counter_volume:_win.reduce(function(a,x){return a+(+x.counter_volume||0);},0),
+               trade_count:_win.reduce(function(a,x){return a+(+x.trade_count||0);},0) };
+        if(_older) r[1]=_older;
+        else if(_win.length>1) r[1]=_win[_win.length-1];
+      }
       // freshPx wins if it has already landed. /lxapi/lastprice is one small request and usually
       // resolves FIRST, so without this the slower daily response arrives afterwards and puts the
       // five-minute-old close straight back on screen -- which is what happened the first time this
@@ -15887,7 +15910,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // after midnight with no trades yet, "yesterday". Anything older means the asset did not trade in
       // the last 24 hours and there is no 24h move to report. Two days of slack covers the midnight
       // case without letting a months-old bucket through.
-      if(r[0]&&r[0].timestamp){ chg24Fresh=((Date.now()-(+r[0].timestamp))<=2*864e5); }
+      // Was there a trade recently enough for a 24h move to mean anything? The bar is hourly now, so
+      // the old two-DAY slack would call a three-day-stale price fresh. One day of slack keeps the
+      // original intent: a move is reportable if the asset traded within about the last day.
+      if(r[0]&&r[0].timestamp){ chg24Fresh=((Date.now()-(+r[0].timestamp))<=864e5); }
       // The move is measured from yesterday's close to whatever price is actually on screen, so the
       // number and the percentage always describe the same thing.
       if(r[0]&&r[1]&&+r[1].close>0){ prevDayClose=+r[1].close;
