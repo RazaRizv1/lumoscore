@@ -404,19 +404,34 @@ function grossOf(S,p){ try{
   var iss=(code==="XLM")?"":(a.issuer||"");
   return {kind:kind,code:code,iss:iss,gross:(+swap.sendAmount||0)+fee};
 }catch(e){ return null; } }
+// Which receipts were bridge fees. Shape cannot tell us (see the note above), so this is the authority;
+// every entry was verified against the ledger server-side before it was stored. An unreachable
+// registry degrades to {} and the rows simply stay in "other" -- never to a wrong attribution.
+var BRIDGE=null;
+function loadBridge(){ if(BRIDGE)return Promise.resolve(BRIDGE);
+  return fetch("/lxapi/bridgetx?limit=200").then(function(r){ return r.ok?r.json():null; })
+    .then(function(d){ var m={}; ((d&&d.rows)||[]).forEach(function(x){ if(x&&x.feeHash)m[x.feeHash]=x; });
+      BRIDGE=m; return m; })
+    .catch(function(){ BRIDGE={}; return BRIDGE; }); }
 var VOL=null;
 function loadVolume(){ if(VOL)return Promise.resolve(VOL);
-  return Promise.all([loadRevenue(),sdk()]).then(function(z){ var rv=z[0],S=z[1];
+  return Promise.all([loadRevenue(),sdk(),loadBridge()]).then(function(z){ var rv=z[0],S=z[1],BR=z[2]||{};
     var out=[],miss=0;
     // Every receipt is kept now, not just the ones with a swap, because the revenue breakdown needs to
     // account for all of them. Volume still only counts rows with gross > 0; a mint fee is revenue but
     // it is not trading volume, and adding it to volume would overstate how much is being traded.
     rv.rows.forEach(function(p){ var g=grossOf(S,p);
       if(!g){ miss++; return; }
-      if(!g.gross)miss++;
+      var br=BR[p.transaction_hash];
+      // A registered bridge is a bridge, whatever its shape looked like. Its "gross" is the amount
+      // that crossed, kept in bridged rather than gross so it can never be added to SWAP volume --
+      // bridging is real volume, but it is not trading, and conflating them overstates the DEX.
+      if(br)g.kind="bridge";
+      if(!g.gross&&!br)miss++;
       var fa=assetOf(p);
       out.push({t:Date.parse(p.created_at),from:p.from,code:g.code,iss:g.iss,gross:g.gross,
-        kind:g.kind,fee:(+p.amount||0),feeCode:fa.code,feeIss:fa.iss}); });
+        kind:g.kind,fee:(+p.amount||0),feeCode:fa.code,feeIss:fa.iss,
+        bridged:br?(+br.gross||+br.amount||0):0,bridgeTo:br?(br.destName||""):""}); });
     VOL={rows:out,missing:miss}; return VOL; })
    .catch(function(){ VOL={rows:[],missing:-1}; return VOL; }); }
 // Assets we cannot price are reported, never guessed at -- the rule the revenue table already follows.
@@ -541,11 +556,12 @@ function loadManual(){ if(MANUAL)return Promise.resolve(MANUAL);
     .then(function(d){ MANUAL=(d&&d.entries)||[]; return MANUAL; })
     .catch(function(){ MANUAL=[]; return MANUAL; }); }
 
-var SRC_LABEL={trade:"Trading fees",mint:"Token minting",other:"Other on-chain",
+var SRC_LABEL={trade:"Trading fees",mint:"Token minting",bridge:"Cross-chain fees",other:"Other on-chain",
   ads:"Advertising",listing:"Token listings",sponsorship:"Sponsorships",other_manual:"Other"};
 var SRC_HOW={trade:"platform fee on each swap, read from the chain",
   mint:"launchpad issuance fee, read from the chain",
-  other:"payments to the fee collector with no swap or mint behind them",
+  bridge:"CCTP bridge fee, matched to its burn on the chain",
+  other:"payments to the fee collector with no swap, mint or bridge behind them",
   ads:"entered by hand",listing:"entered by hand",sponsorship:"entered by hand",other_manual:"entered by hand"};
 
 function paintSources(){
@@ -580,7 +596,7 @@ function paintSources(){
     });
 
     function draw(){
-      var order=["trade","mint","other","ads","listing","sponsorship","other_manual"];
+      var order=["trade","mint","bridge","other","ads","listing","sponsorship","other_manual"];
       var total=0; order.forEach(function(k){ total+=rows[k]||0; });
       var any=order.some(function(k){ return rows[k]; });
       if(!any&&!man.length){ tb.innerHTML="<tr><td colspan='4' class='lxadm-empty'>No revenue recorded yet.</td></tr>"; }
