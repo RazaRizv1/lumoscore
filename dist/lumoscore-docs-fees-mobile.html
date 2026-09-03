@@ -9447,7 +9447,7 @@ window.addEventListener('click',function(e){
         return;
       }
       var x=res&&res.extras&&res.extras.result_codes;
-      throw new Error(x?JSON.stringify(x):"Claim failed");
+      throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"The claim"):JSON.stringify(x)):"Claim failed");
     }).catch(function(e){
       btn.disabled=false; btn.textContent=lbl;
       say("Claim failed \u2014 "+((e&&e.message)||e));
