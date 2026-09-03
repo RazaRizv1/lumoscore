@@ -192,7 +192,55 @@ backend and the admin auth model are network-independent.
 
 ---
 
-## 7. Companion documents
+## 7. Reference implementation — xMagnetic (observed 2026-09-03)
+
+xmagnetic.org is a live XRPL DEX with almost our exact feature set, and it is fast. Its data layer was
+read from its own network calls, so this is what it *does*, not what it claims.
+
+**Their services** — note this is a split microservice architecture, i.e. what it grows into, not what
+v1 needs:
+
+| Host | Purpose | Our equivalent |
+|---|---|---|
+| `pairsapi.xmagnetic.org/pairsApi/TokenData?currency_hex=&issuer=` | per-token market stats | `dexassets.js` |
+| `pairsapi…/MainPrice?network=MAINNET` | native-asset price | `xlm.js` |
+| `ammapi.xmagnetic.org/AMMAPI/AMMPool?currency1=&issuer1=&currency2=&issuer2=` | AMM pool data | `pools.js` |
+| `token-info.xmagnetic.org/v1/tokens/{CODE}_{issuer}` | curated token metadata | `assetmeta.js` / `mintmeta.js` |
+| `img.xmagnetic.org/u/{issuer}_{CODE}.webp` | logos, keyed by issuer+code | `/lxapi/media` |
+| `node1` / `node2.xmagnetic.org` | **their own rippled nodes** | Horizon (public) |
+| `xrpldata.inftf.org/v1/iou/exchanges/{issuer}_{CODE}/XRP?limit=400&descending=true` | **raw trade history** | `candles.js` |
+
+**Two findings that settle open questions:**
+
+1. **Metadata is a curated first-party service, not an on-chain standard.** Their `token-info`
+   response is `{id, tokenName, description, currency, currencyHex, issuer, website, twitter,
+   telegram, iconUrl, launchpad, …}` — essentially our `assetmeta`/`mintmeta` record, including a
+   `launchpad` field that mirrors our mint registry. This is the industry answer to "there is no
+   SEP-1", and **we already have the whole thing built**. §4.2 is a rekeying job.
+
+2. **A third OHLC path.** They do not use OnTheDEX; they pull raw exchanges from the free public
+   `xrpldata.inftf.org` and aggregate themselves. The records carry `base_amount`, `counter_amount`,
+   `rate`, `executed_time`, `tx_hash`, `ledger_index` and `provider_is_amm` (so AMM and orderbook
+   fills are distinguishable). So there are three viable routes — OnTheDEX `/ohlc`, xrpl.to, or raw
+   exchanges plus our own aggregation. **The risk in §4.1 is dead several times over.**
+
+**Their routing puts the pair in the path**: `/dex/{CODE}+{issuer}_{CODE}+{issuer}`, with separate
+`/swap`, `/amm`, `/pro` trees. Independent support for Option A in §0.
+
+**Their feature set maps to ours almost 1:1** — `dex`, `swap`, `amm`, `farming` (our Rewards),
+`memepad` (our Launchpad), `pro`, `nfts`, `xrpl-radar`, and `token-trasher`. That last one exists
+because clearing dead trust lines is a real XRPL pain point — the same problem as the PEACE trustline
+fix on 2026-09-03, and worth noting as a small feature XRPL users actively look for.
+
+**What to take, and what not to.** Take the shape: curated token-info, a per-token stats service, a
+separate AMM service, logos keyed by issuer+code. Do **not** copy the own-nodes-plus-microservices
+footprint for v1 — public rippled clusters and the existing `lxapi` functions are enough to launch.
+Their node1/node2 exist because public clusters throttle at scale, which is the same lesson Horizon
+and stellar.expert taught this codebase; treat it as the scaling path, not the starting point.
+
+---
+
+## 8. Companion documents
 
 - `GUARDRAILS.md`, `LUMOSCORE_DEV.md` — build-system traps. **Read before touching anything.**
 - `RELEASE.md` — branch and deploy process. `main` is production; `git push` does not deploy.
