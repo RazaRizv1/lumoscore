@@ -648,6 +648,91 @@ function poolSeo(a, b, img){
 
 // A purpose-built card is landscape; an asset's toml logo is a small square (SHX's is 128x128).
 // Declaring a square as a large-image card is why scrapers dropped it and used the favicon instead.
+// ---- og:image dimensions -------------------------------------------------------------------------
+// Read from the image's own header, cached in KV, and emitted only when both values are real. See the
+// note in the commit: none is always preferable to wrong.
+const DIM_KEY = 'imgdim:';
+const DIM_TTL = 60 * 60 * 24 * 365;
+
+// Only our own uploaded media. A foreign URL is never fetched and never measured.
+function mediaIdOf(u){
+  try {
+    // Our origin and our media endpoint, or nothing. The id pattern alone also matches a cover
+    // pointing at another host, and learnImgDims would then go and fetch it.
+    if (String(u || '').indexOf(PRIMARY_ORIGIN + '/lxapi/media?') !== 0) return '';
+    const m = /[?&]id=([0-9a-f]{32}\\.[a-z0-9]{2,5})/i.exec(String(u || ''));
+    return m ? m[1].toLowerCase() : '';
+  } catch (e) { return ''; }
+}
+
+// Header-only parsers. Anything unrecognised returns null rather than a guess.
+function parseImgDims(b){
+  try {
+    if (!b || b.length < 24) return null;
+    const be16 = (i) => (b[i] << 8) | b[i + 1];
+    const be32 = (i) => ((b[i] << 24) | (b[i + 1] << 16) | (b[i + 2] << 8) | b[i + 3]) >>> 0;
+    const le16 = (i) => b[i] | (b[i + 1] << 8);
+    // PNG: IHDR is always the first chunk
+    if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4e && b[3] === 0x47) {
+      return { w: be32(16), h: be32(20) };
+    }
+    // GIF87a / GIF89a
+    if (b[0] === 0x47 && b[1] === 0x49 && b[2] === 0x46) {
+      return { w: le16(6), h: le16(8) };
+    }
+    // WebP: RIFF....WEBP
+    if (b[0] === 0x52 && b[1] === 0x49 && b[2] === 0x46 && b[3] === 0x46 &&
+        b[8] === 0x57 && b[9] === 0x45 && b[10] === 0x42 && b[11] === 0x50) {
+      const c = String.fromCharCode(b[12], b[13], b[14], b[15]);
+      if (c === 'VP8X') return { w: (b[24] | (b[25] << 8) | (b[26] << 16)) + 1,
+                                 h: (b[27] | (b[28] << 8) | (b[29] << 16)) + 1 };
+      if (c === 'VP8 ') return { w: le16(26) & 0x3fff, h: le16(28) & 0x3fff };
+      return null;                                   // VP8L and friends: not worth a fragile parser
+    }
+    // JPEG: walk the segments to the first start-of-frame
+    if (b[0] === 0xff && b[1] === 0xd8) {
+      let i = 2;
+      while (i + 9 < b.length) {
+        if (b[i] !== 0xff) { i++; continue; }
+        const m = b[i + 1];
+        if (m === 0xd8 || m === 0x01 || (m >= 0xd0 && m <= 0xd7)) { i += 2; continue; }
+        const len = be16(i + 2);
+        if (len < 2) return null;
+        const isSOF = (m >= 0xc0 && m <= 0xcf) && m !== 0xc4 && m !== 0xc8 && m !== 0xcc;
+        if (isSOF) return { h: be16(i + 5), w: be16(i + 7) };
+        i += 2 + len;
+      }
+      return null;                                    // header not inside the range we fetched
+    }
+    return null;
+  } catch (e) { return null; }
+}
+
+// What we already know. One cheap get; never fetches, never blocks on anything.
+async function imgDims(env, url){
+  try {
+    const kv = env && env.CONTENT_KV; if (!kv) return null;
+    const id = mediaIdOf(url); if (!id) return null;
+    const d = await kv.get(DIM_KEY + id, 'json');
+    if (!d) return null;
+    const w = +d.w, h = +d.h;
+    return (w > 0 && h > 0 && w < 100000 && h < 100000) ? { w, h } : null;
+  } catch (e) { return null; }
+}
+
+// Learn them for next time. waitUntil only -- this must never be awaited on the response path.
+async function learnImgDims(env, url){
+  try {
+    const kv = env && env.CONTENT_KV; if (!kv) return;
+    const id = mediaIdOf(url); if (!id) return;
+    if (await kv.get(DIM_KEY + id, 'json')) return;   // already known
+    const r = await fetch(url, { headers: { range: 'bytes=0-65535' }, cf: { cacheTtl: 300 } });
+    if (!r.ok && r.status !== 206) return;
+    const d = parseImgDims(new Uint8Array(await r.arrayBuffer()));
+    if (!d || !(d.w > 0) || !(d.h > 0)) return;
+    await kv.put(DIM_KEY + id, JSON.stringify({ w: d.w, h: d.h }), { expirationTtl: DIM_TTL });
+  } catch (e) { /* a missing dimension costs nothing; a thrown one would cost the page */ }
+}
 function isCardImage(u){ return String(u || '').indexOf('/lxapi/ogcard') >= 0; }
 
 // A 1200x630 card: the asset's logo padded onto the brand background. Built through Cloudflare's
@@ -727,6 +812,9 @@ function blogSeo(p, origin){
     title,
     desc: blogDesc(p),
     image: cover ? (cover.indexOf('/') === 0 ? origin + cover : cover) : '',
+    // A post cover is a wide editorial image, so it earns the large card. isCardImage() only
+    // recognises our generated /lxapi/ogcard, which a cover is not.
+    largeCard: !!cover,
     post: p,
   };
 }
@@ -1025,7 +1113,7 @@ export async function onRequest(context){
   ];
   // Ask for the card type that matches the image we actually have.
   head.push('<meta name="twitter:card" content="'
-    + ((seo && isCardImage(seo.image)) ? 'summary_large_image' : 'summary') + '">');
+    + ((seo && (isCardImage(seo.image) || seo.largeCard)) ? 'summary_large_image' : 'summary') + '">');
   if (seo){
     head.push('<meta property="og:title" content="' + esc(seo.title) + '">');
     head.push('<meta property="og:description" content="' + esc(seo.desc) + '">');
@@ -1041,6 +1129,14 @@ export async function onRequest(context){
     if (seo.image){
       head.push('<meta property="og:image" content="' + esc(seo.image) + '">');
       head.push('<meta property="og:image:alt" content="' + esc(seo.title) + '">');
+    // Only when both are known and real. Unknown emits nothing, which is the previous behaviour.
+    const _dim = await imgDims(context.env, seo.image);
+    if (_dim) {
+      head.push('<meta property="og:image:width" content="' + _dim.w + '">');
+      head.push('<meta property="og:image:height" content="' + _dim.h + '">');
+    } else if (context.waitUntil) {
+      context.waitUntil(learnImgDims(context.env, seo.image));
+    }
       head.push('<meta name="twitter:image" content="' + esc(seo.image) + '">');
     }
     // a description already exists from the build; replace rather than duplicate
