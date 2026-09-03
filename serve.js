@@ -713,31 +713,9 @@ function moversRoute(req, res) {
   });
 }
 
-// Local mirror of functions/lxapi/soroswap — same allow-list, same shape, so the swap path behaves
-// identically in dev and production. The key comes from the environment, never the repo:
-//   $env:SOROSWAP_KEY = "sk_…" ; node serve.js 8080 --admin
-// Without it, quotes return 503 and routing falls back to Horizon path-finding, which is exactly
-// what happens on a deployment with no secret set.
-const SORO_ALLOWED = new Set(['quote', 'quote/build', 'send']);
-function soroswapProxy(req, res, sub, query) {
-  if (req.method !== 'POST') { res.writeHead(405, {'content-type':'application/json'}); return res.end('{"error":"method not allowed"}'); }
-  if (!SORO_ALLOWED.has(sub)) { res.writeHead(404, {'content-type':'application/json'}); return res.end('{"error":"unknown endpoint"}'); }
-  const key = process.env.SOROSWAP_KEY || '';
-  if (!key) { res.writeHead(503, {'content-type':'application/json'}); return res.end('{"error":"SOROSWAP_KEY is not set in this shell"}'); }
-  const net = (query.get('network') || 'mainnet');
-  let body = '';
-  req.on('data', c => { body += c; if (body.length > 200000) req.destroy(); });
-  req.on('end', () => {
-    fetch('https://api.soroswap.finance/' + sub + '?network=' + encodeURIComponent(net), {
-      method: 'POST',
-      headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json', accept: 'application/json' },
-      body,
-    }).then(r => r.text().then(t => {
-      res.writeHead(r.status, {'content-type':'application/json','cache-control':'no-store'});
-      res.end(t);
-    })).catch(e => { res.writeHead(502, {'content-type':'application/json'}); res.end(JSON.stringify({error:String(e&&e.message||e)})); });
-  });
-}
+// The Soroswap proxy that used to live here was removed with Smart Swap (2026-09-04): the Soroban
+// route could not carry our fee, so every swap goes through the classic Horizon path now and nothing
+// calls the aggregator. functions/lxapi/soroswap/ is gone too.
 
 // Clean-URL rewrites, read from the generated dist/_redirects so there is ONE source of truth (the
 // ROUTES table in _tools/extract_site.js) rather than a second copy that drifts.
@@ -1077,9 +1055,6 @@ http.createServer((req, res) => {
   if (p === '/lxapi/news') return newsRoute(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/poolvol') return poolVol(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/xlm') return xlmProxy(req, res, new URL(req.url, 'http://x').searchParams);
-  if (p.startsWith('/lxapi/soroswap/')) {
-    return soroswapProxy(req, res, p.slice('/lxapi/soroswap/'.length), new URL(req.url, 'http://x').searchParams);
-  }
 
   // /admin/... is the only way in, and only with --admin from this machine
   let root = ROOT, adminReq = false;
