@@ -15443,7 +15443,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // price the classic Horizon path AND the Soroswap aggregator in parallel; route through whichever returns more
       Promise.all([
         j(H+"/paths/strict-send?"+apParam("source",pa)+"&source_amount="+net.toFixed(7)+"&"+destParam(ra)).then(function(pd){ var recs=(pd._embedded&&pd._embedded.records)||[]; return recs.length?parseFloat(recs[0].destination_amount):0; }).catch(function(){ return 0; }),
-        soroQuote(pa,ra,Math.round(net*1e7)).catch(function(){ return null; })
+        Promise.resolve(null)/*smart swap removed: fee is uncollectable on a Soroban route*/
       ]).then(function(qres){
         if(seq!==_dxSeq)return; var out=qres[0], soro=qres[1];
         // only prefer Soroswap when a Soroban AMM route beats the classic path by >0.5% and impact stays sane
