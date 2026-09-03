@@ -276,7 +276,7 @@ const SCRIPT = `<script id="lx-wclaim">(function(){
         tb.addOperation(S.Operation.claimClaimableBalance({balanceId:id}));
         var tx=tb.setTimeout(180).build();
         var p=window.lxSign(tx.toXDR(),S);
-        if(window.lxTimeout)p=window.lxTimeout(p,150000,"Signing timed out \\u2014 open your wallet and try again");
+        if(window.lxTimeout)p=window.lxTimeout(p,200000,"Signing timed out \\u2014 open your wallet and try again");
         return p.then(function(signed){
           if(!signed)throw new Error("Signing cancelled");
           btn.textContent="Submitting\\u2026";

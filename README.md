@@ -6,7 +6,7 @@ a wallet view, a token launchpad and rewards, served as a static site from Cloud
 Live at **<https://lumoscore.com>**.
 
 Every number in the UI is read from the chain or a public API at runtime. There is no backend
-database and no server-side account system: the app talks to Horizon, Soroswap, stellar.expert,
+database and no server-side account system: the app talks to Horizon, stellar.expert,
 CoinGecko and DefiLlama directly from the browser, and **every transaction is signed in the user's own
 wallet**. LumosCore never holds keys and never has custody.
 
@@ -17,7 +17,7 @@ wallet**. LumosCore never holds keys and never has custody.
 | Section | What it does |
 |---|---|
 | **Dashboard** | Network stats, trending assets, quick actions |
-| **Trade** | Asset pages with price/holders/pools, swaps routed across Soroswap, Aquarius and the Stellar SDEX orderbook, plus limit orders |
+| **Trade** | Asset pages with price/holders/pools, swaps on the Stellar SDEX orderbook via Horizon path-finding, plus limit orders |
 | **Pools** | Stellar AMM pools — browse, add liquidity, withdraw, create |
 | **Bridge** | Cross-chain USDC transfers via Circle CCTP |
 | **Wallet** | Balances, send/receive, trustlines, activity |
@@ -70,7 +70,6 @@ WALLET_LOGIC.md  wallet page specification
 | Function | Purpose |
 |---|---|
 | `_middleware.js` | Clean-URL rewrites, legacy-filename 301s, device selection by User-Agent, edge SEO injection |
-| `lxapi/soroswap/[[path]].js` | Server-side proxy that attaches the Soroswap API key so it never reaches the browser |
 | `lxapi/holders.js` | Holder-distribution proxy |
 | `robots.txt.js`, `sitemap.xml.js` | Generated at the edge; the sitemap enumerates live assets and pools from the chain |
 
@@ -140,8 +139,8 @@ resembling a secret (API keys, Stellar seeds, AWS or GitHub tokens), oversized f
   server, so publishing them here would defeat the point.
 - **The design containers** (~337 MB) and the wider source asset library — excluded for size.
   `dist/assets` holds everything the built site actually references.
-- **Any secret.** The Soroswap API key is a Cloudflare secret read server-side by the proxy Function;
-  the browser calls `/lxapi/soroswap/…` with no credential attached. There are no keys in the git
+- **Any secret.** Every third-party key lives as a Cloudflare secret and is read server-side by the
+  Function that needs it; the browser never receives a credential. There are no keys in the git
   history to find.
 
 ---
@@ -149,8 +148,6 @@ resembling a secret (API keys, Stellar seeds, AWS or GitHub tokens), oversized f
 ## Security notes
 
 - The app is **non-custodial**. Transactions are built client-side and signed in the user's wallet.
-- The Soroswap `/send` endpoint relays an **already-signed** transaction, so the proxy can forward or
-  refuse a swap but can never authorise one.
 - `X-Frame-Options: DENY` is set site-wide: this app triggers wallet signing prompts, and a framed
   signing flow is a clickjacking target.
 - There is no Content-Security-Policy. The design carries hundreds of inline scripts, so any workable

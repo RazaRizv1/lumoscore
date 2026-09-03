@@ -48,7 +48,7 @@ The wallet only renders real data when a Stellar account is connected:
 | Asset/token logos | **stellar.expert** `…/explorer/public/asset?search=CODE` → `tomlInfo.image\|orgLogo` | Flaky IPFS; we now cache the top tokens locally (see §8). |
 | USD prices / TVL / network stats | CoinGecko + DefiLlama (via `_realdata.js`) | Dashboard layer; wallet reads the resulting price map. |
 | Classic swap rate | Horizon `paths/strict-send` + orderbook | See §7. |
-| Smart-swap (Stellar-only) | Soroswap aggregator `api.soroswap.finance` | See §7 + `lumoscore-smartswap.md`. |
+| ~~Smart-swap~~ | **removed 2026-09-04** | See §7.5 — the fee could not be collected on a Soroban route. |
 
 **Per-network swap:** each chain needs its own adapter for balances (indexer/RPC), logos (that chain's token list), and pricing (its DEX/router). The *shape* below stays identical.
 
@@ -144,15 +144,40 @@ Sum of `bal × priceUSD` across holdings; rendered into `.value-side .value`. Sk
 ### 7.4 Classic pricing (general — reusable on any chain)
 - `refreshRate()` sets `spotRate` from `realRate(from,to)` then refines via Horizon `paths/strict-send` (source_amount 1). `run()` (debounced) computes the destination for the actual amount, applies the LumosCore fee (`__lxFeeRate`), and renders rate / min-received / **signed price impact** (`rawImp=(effRate−sr)/sr*100` → `-x%` red loss / `+x%` green gain).
 
-### 7.5 Smart-swap — **STELLAR-ONLY, exclude on other networks**
-- Aggregator: Soroswap `api.soroswap.finance` (Bearer key in `lxSoroKey()`, `?network=mainnet`). Assets as **SAC `C…` contract ids** via `Asset(code,iss).contractId(Networks.PUBLIC)` (`_sacCache`); amounts in stroops.
-- Flow: `run()` does `Promise.all([classic strict-send, soroQuote(protocols:["sdex","soroswap","phoenix"], net)])`. Use smart only if `soro.usesSoroban && soro.out > classicOut*1.005 && soro.impact < 10` (impact guard rejects mispriced thin Aquarius pools). When used → `window.__lxSoro` set + a Lumenswap-style `.lx-smart-badge` (icon, "Best rate via Soroswap", green savings pill, Learn-more popover).
-- **Known limitation:** Soroswap `/quote/build` rejects `aqua` poolHashes ("Invalid poolHashes string"), so `aqua` is dropped from executable protocols; pure-Aquarius routes quote-but-can't-execute. Executable wins: AQUA→USDC ~+5%, SSLX→USDC ~+21%.
-- **⚠ the `sk_` Soroswap key is a secret exposed in client JS** on this static site — rotate if abused.
-- Confirm routing: `window.__lxSoro ? soroExecute : lxSwap`. `soroExecute` = build XDR → `lxSign` → `soroSend`. `lxSwap` = classic `pathPaymentStrictSend`, signed.
+### 7.5 Smart-swap (aggregator routing) — **REMOVED 2026-09-04. Do not rebuild this without reading why.**
+
+Every swap now goes through the classic path in §7.4. The aggregator route was cut because **it could
+not carry the platform fee**, and that limitation is structural, not a Soroswap quirk:
+
+- A Stellar transaction cannot hold a classic `payment` op alongside an `invoke_host_function` op. An
+  aggregator returns a single contract-call transaction, so the fee payment has nowhere to ride. The
+  quote was still taken on the post-fee amount, so users were charged 0.2% that reached nobody.
+- Soroswap does expose `feeBps` (on `/quote`) and `referralId` (on `/quote/build`, required whenever
+  `feeBps` is set), but measured against the live API: the fee is taken in the **input asset** (so a
+  sell pays us in the sold token and the collector needs a trustline for it), **they keep 40% of it**
+  (the simulated auth tree shows two transfers, 60% to referralId and 40% to their own account), and
+  their build **traps on every route through their own AMM** — `HostError: Error(Object, UnexpectedSize)`
+  in `vec_unpack_to_linear_memory`. Only `sdex` routes build, and we already fee those ourselves at 100%.
+- So the only ways to charge a fee on an aggregator route are a **second, sequence-chained transaction**
+  (two wallet prompts) or the aggregator collecting it for us. Decide that BEFORE building the feature.
+
+**For a new chain:** the same question decides it — can the router transaction carry your fee op, or
+does the router collect it for you? If neither, aggregator routing costs you the fee on every swap it
+wins. On chains with an EVM-style router (approve and swap as separate calls) this is usually fine; on
+single-op contract-call chains it is not.
+
+The client helpers (`soroQuote` / `soroBuild` / `soroSend` / `soroExecute`) still exist in `_swapcalc.js`
+and `_dexassetdata.js` but are unreachable: the parallel quote is `Promise.resolve(null)`, so
+`window.__lxSoro` and `window.__lxDXASoro` are always null and the confirm path always takes `lxSwap`.
+The server proxy (`functions/lxapi/soroswap/`) and its local mirror in `serve.js` were deleted.
 
 ### 7.6 LUMOS fee tier (brand mechanic — reuse everywhere)
-- Guest 0.8%, holders of **250,000 LUMOS** pay 0.5% (`__lxFeeRate`). Promo banner (`.lx-fee-banner`) on step 2 + a **Buy LUMOS** button. Copy: "Trade like a whale 🐋 Hold 250,000 LUMOS and cut your swap fee from 0.8% to just 0.5%."
+- Guest **0.2%**, holders of **250,000 LUMOS** pay **0.1%** (`__lxFeeRate`, set by `_feerate.js`, which
+  checks the balance against the LUMOS issuer; pool-held LUMOS counts toward the threshold).
+- Promo banner (`.lx-fee-banner`) on step 2, with a **Buy LUMOS** link to `/lumos/stellar`. Live copy:
+  qualifying — "**You qualify for 0.1% trading fees** — 50% Discount"; not qualifying —
+  "**50% off trading fees** — hold 250,000 LUMOS".
+- Limit orders are **free** — the fee applies to swaps only.
 
 ---
 

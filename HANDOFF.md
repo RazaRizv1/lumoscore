@@ -29,7 +29,6 @@ Do not "improve" any of this without being asked. It was hard-won.
 | Clean URLs | `/trade/stellar/<CODE>-<ISSUER>`, `/pools/stellar/<A>/<B>`, etc. |
 | SEO / AEO / GEO | Edge-rendered meta, canonical pinned to apex, sitemap generated live from Horizon |
 | Admin panel | `lumoscore-admin.pages.dev`, behind Cloudflare Access (email one-time PIN) |
-| Soroswap | Key rotated, stored as a Cloudflare **Secret**, proxied server-side |
 | Wallet connect | Network screen → wallet list, works from any page, correct logos |
 | Deploys | Push to `main` → auto-deploy, ~30s |
 | Licence | MIT |
@@ -213,7 +212,7 @@ single-quoted transform strings terminate them (this broke a file today). Prefer
 - **`dist-admin/` in the public repo** — it is gitignored on purpose.
 - **`predeploy_check.js`** — never bypass. It blocks admin pages and secrets reaching the public build.
 - **Secrets** — the user pastes them into Cloudflare. Never into a file, never into chat, never into
-  git. `SOROSWAP_KEY` is a Cloudflare **Secret** (not Plaintext) in the `lumoscore` project.
+  git. Third-party keys are Cloudflare **Secrets** (not Plaintext) in the `lumoscore` project.
 - **Wallet signing** — the app is non-custodial. The user signs every transaction in their own wallet.
   Never build anything that could sign, and never execute a transfer.
 
