@@ -80,8 +80,8 @@ Roughly half the pages need no network work whatsoever.
 | AMM pools, `liquidity_pool_shares` | pools, rewards | **[C]** native AMM with LP tokens (XLS-30) | Medium — pool identity, fee model and deposit/withdraw semantics differ |
 | Order book | trade, limit orders | **[C]** native DEX offers (`book_offers`, `OfferCreate`) | Low — XRPL's DEX is older than Stellar's |
 | Path payments | swap routing | **[C]** pathfinding (`path_find` / `ripple_path_find`) | Medium — different call shape and trust semantics (rippling) |
-| `home_domain` + SEP-1 `stellar.toml` | asset metadata, verification, our whole toml | **[V]** account `Domain` field exists; an `xrp-ledger.toml` convention exists but is **not** SEP-1 and is used differently | **HIGH — see §4** |
-| `trade_aggregations` (OHLC) | charts, 24h volume/high/low/change | **[V]** believed to have **no** rippled/Clio equivalent | **HIGHEST — see §4** |
+| `home_domain` + SEP-1 `stellar.toml` | asset metadata, verification, our whole toml | **[C]** account `Domain` field for display; our own KV `assetmeta`/`mintmeta` already carries name/desc/logo and is chain-agnostic; OnTheDEX `/token/meta` as a third source | Low — see §4.2 |
+| `trade_aggregations` (OHLC) | charts, 24h volume/high/low/change | **[C]** no rippled/Clio equivalent, but OnTheDEX `/ohlc` + `/ticker` + `/daily/tokens` cover it, free and keyless | Low — **resolved, see §4.1** |
 | Issuer lock (`set_options`, master weight 0) | launchpad, mint proof, toml | **[C]** blackholing: `asfDisableMaster` + regular key set unusable | Medium — same intent, different mechanics and different proof |
 | Amount precision (stroops, 7 dp) | all formatting, all validators | **[C]** XRP is 6 dp (drops); IOUs are 15-significant-digit decimals | Medium — our formatters and the sub-1e-7 price handling assume Stellar |
 | Wallets: Freighter, Albedo, LOBSTR, Rabet, xBull, WalletConnect | connect, sign | **[C]** entirely different set — Xaman, Crossmark, Gem, Ledger | **HIGH** — no code reuse; the whole signing layer is new |
@@ -124,19 +124,34 @@ orderbook(pair)         candles(asset, resolution, limit)
 
 ## 4. Hard gaps — read this before promising a timeline
 
-**1. No OHLC / aggregation endpoint. [V] — verify first, it is the biggest single risk.**
-Stellar's `/trade_aggregations` gives volume, high, low, trade count and candles in one call. XRPL is
-believed to have no equivalent on public rippled or Clio. Everything below depends on it:
+**1. ~~No OHLC / aggregation endpoint~~ — RESOLVED 2026-09-03. [C] Not a blocker.**
+rippled/Clio has no native OHLC endpoint, but it does not need one. **OnTheDEX**
+(`https://api.onthedex.live/public/v1`) is free, needs **no API key**, has fair-use limits and offers
+a WebSocket:
 
-- the price chart on the asset page (1D/1W/1M/1Y)
-- 24h volume, high/low, trade count and % change on the market table *and* the asset page
-- the 7-day sparkline on every market row
-- "movers" on Trade-main and Trending on the dashboard
+| endpoint | replaces |
+|---|---|
+| `/ohlc` (5/15/60/240min, D, W) | `candles.js` — the asset-page chart |
+| `/ticker/:tokens_or_pairs` | the 24h volume / high / low / change columns |
+| `/daily/tokens` (top 100 by volume + mcap) | the Trade-main market roster |
+| `/daily/pairs` | pair discovery |
+| `/token/meta/:tokens` | part of the metadata gap in §4.2 |
 
-Options if confirmed absent: a third-party data provider (a dependency and probably a cost), or
-computing aggregates ourselves from transaction history (expensive — note that Cloudflare's free plan
-CPU limits already shape this codebase, see `lumoscore-cf-plan-limits`). **Resolve this before
-committing to a date.** It is plausibly the difference between weeks and months.
+`https://api.xrpl.to/v1/ohlc/{md5}` is a free second source if a fallback is wanted.
+
+**This is easier than Stellar, not harder.** `/daily/tokens` returns the market roster in one call.
+On Stellar that roster needs the whole ranked-list machinery in `pools.js`/`dexassets.js` — which
+exists *because* `/trade_aggregations` is the one metered Horizon endpoint (100 per 5 min). That
+constraint, and the 300s TTL it forces, simply does not apply here.
+
+Two things to weigh, neither a blocker:
+
+- It is a **third-party dependency** on the price path. That is not new — the site already leans on
+  stellar.expert for search, trending and logos, and that dependency rate-limited us to 429 on
+  2026-09-03. Cache it at the edge the way `candles.js` does and treat an outage as "figures
+  unavailable", never as zero.
+- **No AMM/pool data.** Pools come from rippled's native `amm_info` instead, which is first-party and
+  fine.
 
 **2. No SEP-1. [V]**
 Our entire asset-metadata and verification story is SEP-1: issuer declares `home_domain`, we serve
@@ -167,7 +182,8 @@ backend and the admin auth model are network-independent.
 ## 6. Open questions
 
 1. Routing model — §0. **Blocks everything.**
-2. Is there a usable XRPL OHLC source? — §4.1. **Blocks the whole Trade section.**
+2. ~~Is there a usable XRPL OHLC source?~~ **ANSWERED 2026-09-03: yes — OnTheDEX, free and keyless,
+   plus xrpl.to as a fallback. See §4.1. This was the estimate's biggest unknown and it is closed.**
 3. Does the launchpad port, and what is the XRPL definition of "minted here"? — §2, §4.2.
 4. Is Bridge in or out? — §4.3.
 5. Are XRPL pages built from the existing `lumoscore-xrpl-*` containers, or from the aptos ones the
