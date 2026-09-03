@@ -26,6 +26,9 @@ const MAX_ASSETS = 16;   // 2 subrequests each; the free plan allows 50
 // whole roster costs ~62 requests, so a 5-minute TTL is the shortest one that fits inside that budget --
 // this number is set by Horizon, not by taste. Shorten it and the endpoint rate-limits itself.
 const TTL = 300;
+// 30 hourly bars: 24 for the window plus headroom so a bar older than the cutoff is present to measure
+// the change against. Still ONE request per asset, which is what the metered budget cares about.
+const HOURS_FETCH = 30;
 const TTL_ERR = 15;
 const TIMEOUT_MS = 6000;
 
@@ -92,17 +95,29 @@ async function oneAsset(code, issuer) {
 
   const out = { px: 0, pc: null, chg: null, vol: null, high: null, low: null, tr: null, ho: null, su: null, dom: null };
 
-  // Two bars: the latest gives price/volume/range, the one before it gives the 24h change.
-  const agg = getJson(H + '/trade_aggregations?' + base + '&resolution=86400000&order=desc&limit=2')
+  // A ROLLING 24 hours, summed from hourly bars -- not the current UTC day, which is what a daily bar
+  // is and which empties itself every midnight. Selected by timestamp, not by count: bars exist only for
+  // hours that traded, so "the newest 24" would quietly span days on a thin asset. HOURS_BACK over-fetches
+  // a little so there is still a bar older than the cutoff to price the change against.
+  const agg = getJson(H + '/trade_aggregations?' + base + '&resolution=3600000&order=desc&limit=' + HOURS_FETCH)
     .then((d) => {
       const r = records(d);
       if (!r[0]) return;
+      const cut = Date.now() - 24 * 3600 * 1000;
+      const win = r.filter((x) => +x.timestamp >= cut);
+      // Price comes from the newest bar there is, even if the asset has not traded for a day -- a stale
+      // price is a fact about a quiet asset, whereas zero would read as "worthless".
       out.px = priceOf(r[0]);
-      out.vol = +r[0].counter_volume || 0;
-      out.high = +r[0].high || 0;
-      out.low = +r[0].low || 0;
-      out.tr = +r[0].trade_count || 0;
-      const prev = priceOf(r[1]);
+      out.vol = win.reduce((a, x) => a + (+x.counter_volume || 0), 0);
+      out.tr = win.reduce((a, x) => a + (+x.trade_count || 0), 0);
+      const his = win.map((x) => +x.high || 0).filter((v) => v > 0);
+      const los = win.map((x) => +x.low || 0).filter((v) => v > 0);
+      out.high = his.length ? Math.max.apply(null, his) : (+r[0].high || 0);
+      out.low = los.length ? Math.min.apply(null, los) : (+r[0].low || 0);
+      // What it was worth 24h ago: the last bar that closed BEFORE the cutoff. If the fetch does not reach
+      // back that far (a very busy asset fills every hour), fall back to the oldest bar in the window.
+      const older = r.find((x) => +x.timestamp < cut);
+      const prev = older ? priceOf(older) : (win.length ? priceOf(win[win.length - 1]) : 0);
       // Yesterday's close rides along so the caller can recompute the move against a FRESHER price
       // than this bar carries (see lastprices.js) -- otherwise the table shows a live price beside a
       // percentage measured from a different one.
