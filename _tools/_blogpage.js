@@ -199,7 +199,7 @@ const POST_MAIN = '<div class="container lx-post">'
 
 const POST_STYLE = '<style id="lx-blogpost-css">/*lxts:1.1*/'
   // A reading measure, not a full-width page: long lines are what makes an article tiring to read.
-  + '.lx-post{max-width:900px;margin-left:auto;margin-right:auto;padding-left:24px;padding-right:24px;'
+  + '.lx-post{max-width:1060px;margin-left:auto;margin-right:auto;padding-left:24px;padding-right:24px;'
   + 'text-align:center}'
   // The furniture is centred; the PROSE is not. Centred paragraphs give every line a different
   // starting point, so the eye has to hunt for each one -- it is the one part of a page where
@@ -218,7 +218,7 @@ const POST_STYLE = '<style id="lx-blogpost-css">/*lxts:1.1*/'
   + 'overflow:hidden;background:linear-gradient(135deg,var(--c1) 0%,var(--c2) 100%)}'
   + '.lx-post-cover::after{content:"";position:absolute;inset:0;'
   + 'background:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0) 55%)}'
-  + '.lx-post-body{font:400 18px/1.75 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}'
+  + '.lx-post-body{font:400 19.5px/1.8 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10)}'
   + '.lx-post-body p{margin:0 0 20px}'
   // Post bodies had no link rule at all, so every link fell through to the browser default: bright
   // blue, underlined, the one colour that appears nowhere else on the site. Accent, with the underline
@@ -237,7 +237,7 @@ const POST_STYLE = '<style id="lx-blogpost-css">/*lxts:1.1*/'
   + '.lx-post-body li{margin:0 0 9px}'
   + '.lx-post-body blockquote{margin:26px 0;padding:14px 18px;border-left:3px solid var(--accent,#ea6a2c);'
   + 'background:var(--surface-2,rgba(127,127,140,.07));border-radius:0 10px 10px 0;color:var(--text,#0e0e10)}'
-  + '@media(max-width:620px){.lx-post-head h1{font-size:28px}.lx-post-body{font-size:17px}'
+  + '@media(max-width:620px){.lx-post-head h1{font-size:28px}.lx-post-body{font-size:18px}'
   + '.lx-post{padding-left:0;padding-right:0}}'
   + '</style>';
 
