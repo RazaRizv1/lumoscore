@@ -298,6 +298,41 @@ const QSTYLE='<style id="lx-qorders-css">'
 const QSCRIPT='<script id="lx-qorders">(function(){'
 +'if(window.__lxQOrders)return;window.__lxQOrders=1;'
 +'function q(s,r){return (r||document).querySelector(s);}'
++'if(!window.lxTxMsg)window.lxTxMsg=function(x,what){'
++'try{'
++'var T={'
++'tx_bad_auth:"The wallet signature was rejected. Unlock your wallet, check it is still on the account shown here, then try again.",'
++'tx_bad_auth_extra:"Your wallet attached a signature this transaction did not need. Reconnect it and try again.",'
++'tx_bad_seq:"Your wallet was out of step with the network. Try again.",'
++'tx_too_late:"This expired before it reached the network. Try again.",'
++'tx_too_early:"Your device clock looks out of sync. Check the time and try again.",'
++'tx_insufficient_fee:"The network is busy and the fee was too low. Try again shortly.",'
++'tx_insufficient_balance:"Not enough XLM to cover the network fee and the account reserve.",'
++'tx_no_source_account:"This account does not exist on Stellar yet."'
++'};'
++'var O={'
++'op_underfunded:"You do not have enough of that asset for this.",'
++'op_under_dest_min:"The price moved past your slippage tolerance before this went through. Try again, or raise slippage.",'
++'op_over_source_max:"The price moved past your limit before this went through. Try again.",'
++'op_too_few_offers:"Not enough liquidity to fill this. Try a smaller amount.",'
++'op_cross_self:"This would trade against your own order. Cancel it first.",'
++'op_no_trust:"You need a trustline for that asset before you can receive it.",'
++'op_src_no_trust:"You do not hold that asset.",'
++'op_not_authorized:"The issuer has not authorised your account to hold that asset.",'
++'op_no_destination:"That destination account does not exist on Stellar.",'
++'op_line_full:"That would go past the trustline limit for that asset.",'
++'op_low_reserve:"Not enough XLM left to meet the account reserve.",'
++'op_no_issuer:"The issuer of that asset no longer exists.",'
++'op_malformed:"Something in that request was not valid."'
++'};'
++'var t=(x&&x.transaction)||"",ops=(x&&x.operations)||[],op="";'
++'for(var i=0;i<ops.length;i++){if(ops[i]&&ops[i]!=="op_success"){op=ops[i];break;}}'
++'var code=op||t||"";'
++'var msg=(op&&O[op])||T[t]||"";'
++'if(!msg)msg=(what||"That")+" did not go through.";'
++'return code?(msg+" ("+code+")"):msg;'
++'}catch(_){return (what||"That")+" did not go through.";}'
++'};'
 // dashboard only: the renamed card is the marker, and it exists on no other page
 // THE MODAL IS #swapModal, NOT #modalSwap.
 //
@@ -884,7 +919,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 // ensure the connected wallet trusts tSym; if not, sign+submit a changeTrust tx first (its own signature),
 // then resolve. Used before Soroswap swaps (Soroswap's XDR assumes the trustline already exists). Classic
 // lxSwap adds its trustline inline, so it does NOT need this.
-+'function ensureTrust(tSym){if(!tSym||tSym==="XLM"||(window.__lxAssets||{})[tSym])return Promise.resolve(false);var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(!ME)return Promise.reject(new Error("No wallet connected"));var H="https://horizon.stellar.org";return window.lxStellar().then(function(S){var iss=lxIssuer(tSym);if(!iss)throw new Error("Cannot resolve "+tSym+" issuer \\u2014 add it to your wallet first");var asset=new S.Asset(tSym,iss);return fetch(H+"/accounts/"+ME).then(function(r){return r.json();}).then(function(acc){var tb=new S.TransactionBuilder(new S.Account(ME,acc.sequence),{fee:"1000",networkPassphrase:S.Networks.PUBLIC}).addOperation(S.Operation.changeTrust({asset:asset})).setTimeout(120).build();return window.lxTimeout(window.lxSign(tb.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Trustline signing cancelled");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){if(res&&(res.successful||res.hash)){(window.__lxAssets=window.__lxAssets||{})[tSym]=iss;return true;}var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?("Trustline failed: "+JSON.stringify(x)):"Trustline failed");});});});});}'
++'function ensureTrust(tSym){if(!tSym||tSym==="XLM"||(window.__lxAssets||{})[tSym])return Promise.resolve(false);var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(!ME)return Promise.reject(new Error("No wallet connected"));var H="https://horizon.stellar.org";return window.lxStellar().then(function(S){var iss=lxIssuer(tSym);if(!iss)throw new Error("Cannot resolve "+tSym+" issuer \\u2014 add it to your wallet first");var asset=new S.Asset(tSym,iss);return fetch(H+"/accounts/"+ME).then(function(r){return r.json();}).then(function(acc){var tb=new S.TransactionBuilder(new S.Account(ME,acc.sequence),{fee:"1000",networkPassphrase:S.Networks.PUBLIC}).addOperation(S.Operation.changeTrust({asset:asset})).setTimeout(120).build();return window.lxTimeout(window.lxSign(tb.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Trustline signing cancelled");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){if(res&&(res.successful||res.hash)){(window.__lxAssets=window.__lxAssets||{})[tSym]=iss;return true;}var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"The trustline"):("Trustline failed: "+JSON.stringify(x))):"Trustline failed");});});});});}'
 +'function soroExecute(soro){var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(!ME)return Promise.reject(new Error("No wallet connected"));return soroBuild(soro.quote,ME).then(function(xdr){return window.lxStellar().then(function(S){return window.lxTimeout(window.lxSign(xdr,S),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Signing cancelled");return soroSend(signed);});});});}'
 // "Learn more" popover on the smart-swap badge (one delegated listener)
 +'(function(){if(window.__lxSmartInfoWired)return;window.__lxSmartInfoWired=1;document.addEventListener("click",function(e){var a=e.target&&e.target.closest?e.target.closest("[data-lx-smartinfo]"):null;var open=document.querySelector(".lx-smart-info");if(open)open.remove();if(!a)return;e.preventDefault();e.stopPropagation();var pop=document.createElement("div");pop.className="lx-smart-info";pop.innerHTML=\'<h5>\\u26a1 Smart Swap</h5><p>LumosCore checks Soroban AMMs (Soroswap, Phoenix) alongside the classic Stellar order book and automatically routes your swap through whichever returns the most \\u2014 at no extra cost.</p>\';document.body.appendChild(pop);var r=a.getBoundingClientRect();var top=r.bottom+8;if(top+150>window.innerHeight)top=Math.max(10,r.top-158);pop.style.top=top+"px";pop.style.left=Math.max(10,Math.min(r.left-40,window.innerWidth-302))+"px";},true);})();'
@@ -911,7 +946,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 +'tb2.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:send,sendAmount:_net.toFixed(7),destination:ME,destAsset:dest,destMin:dm,path:path}));'
 +'if(_fee>0&&_collExists){if(!fSym||fSym==="XLM"){tb2.addOperation(S.Operation.payment({destination:LX_FEE_COLLECTOR,asset:send,amount:_fee.toFixed(7)}));}else{var _frecs=(_feePd&&_feePd._embedded&&_feePd._embedded.records)||[];if(_frecs.length){var _fpath=(_frecs[0].path||[]).map(function(a){return a.asset_type==="native"?S.Asset.native():new S.Asset(a.asset_code,a.asset_issuer);});tb2.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:send,sendAmount:_fee.toFixed(7),destination:LX_FEE_COLLECTOR,destAsset:S.Asset.native(),destMin:"0.0000001",path:_fpath}));}}}'
 +'var tx=tb2.setTimeout(180).build();'
-+'return window.lxTimeout(window.lxSign(tx.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Signing cancelled");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){if(res&&(res.successful||res.hash))return res;var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?("Swap: "+JSON.stringify(x)):"Submit failed");});});});});});}'
++'return window.lxTimeout(window.lxSign(tx.toXDR(),S),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){if(!signed)throw new Error("Signing cancelled");return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){if(res&&(res.successful||res.hash))return res;var x=res&&res.extras&&res.extras.result_codes;throw new Error(x?(window.lxTxMsg?window.lxTxMsg(x,"The swap"):("Swap: "+JSON.stringify(x))):"Submit failed");});});});});});}'
 // ---- #swapModal (dashboard quick-action Swap): real held-asset picker + balances + live best-rate quote + execute ----
 // The dashboard has no _walletdata, so bootstrap the swap globals (holdings, sign, SDK) it lacks, guarded so we
 // never clobber the wallet page's own. Reuses the shared soroQuote/soroExecute/ensureTrust/lxSwap/calc helpers above.
