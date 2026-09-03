@@ -488,7 +488,7 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
   var srcAmt=parseFloat(String(sourceAmountHuman).replace(/,/g,"")); if(!(srcAmt>0)) return Promise.reject(new Error("Enter a valid amount"));
   return lxCctpSdk().then(function(S){ return lxCctpSigner().then(function(f){
     var pk;
-    var deferredFee=null, deferredFeeAmt=0;   // AUDIT #2 (FUNDS): USDC-path fee runs AFTER a successful burn, never before
+    var deferredFee=null, deferredFeeAmt=0, deferredFeeHash="";   // AUDIT #2 (FUNDS): USDC-path fee runs AFTER a successful burn, never before
     function acc(){ return fetch(C.horizon+"/accounts/"+pk).then(function(r){return r.json();}); }
     function usdcBal(){ return acc().then(function(a){ var b=(a.balances||[]).filter(function(x){return x.asset_code==="USDC"&&x.asset_issuer===UI;})[0]; return b?parseFloat(b.balance):0; }); }
     function signSubmit(txB,label){ onStatus("Waiting for signature ("+label+")…"); return lxCctpGateSign(label, function(){ return Promise.resolve(f.signTransaction(txB.toXDR(),{networkPassphrase:C.passphrase,network:"PUBLIC",address:pk})); }).then(function(sig){ var xdr=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof xdr!=="string") throw new Error("Signing cancelled."); onStatus("Submitting "+label+"…"); return lxSubmitClassic(C,xdr); }); }
@@ -516,8 +516,9 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
             return acc().then(function(ad){
               var tb=new S.TransactionBuilder(new S.Account(pk,ad.sequence),{fee:"1000",networkPassphrase:C.passphrase})
                 .addOperation(S.Operation.payment({destination:C.feeCollector,asset:new S.Asset("USDC",UI),amount:owed.toFixed(7)}))
+                .addMemo(S.Memo.text("lx:cctp"))
                 .setTimeout(180).build();
-              return signSubmit(tb,"fee");
+              return signSubmit(tb,"fee").then(function(sr){ try{ deferredFeeHash=(sr&&(sr.hash||sr.id))||""; }catch(_){} return sr; });
             });
           }
           // one silent retry: a stale sequence number or a dropped submit is worth another go before
@@ -563,7 +564,8 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
         // collected is remembered against this wallet and added to its next bridge
         var feeP = deferredFee ? deferredFee().catch(function(fe){
           rec.feeError=(fe&&fe.message)||"fee not collected"; lxFeeOwedAdd(pk,deferredFeeAmt); lxBrSavePending(rec); }) : Promise.resolve();
-        return feeP.then(function(){ return lxCctpAttest(res.hash,onStatus); }).then(function(att){
+        return feeP.then(function(){ return lxBrRegister(deferredFeeHash,res.hash); })
+          .then(function(){ return lxCctpAttest(res.hash,onStatus); }).then(function(att){
           rec.message=att.message; rec.attestation=att.attestation; rec.decodedMessage=att.decodedMessage;
           rec.status="attested";                       // redeemable: message + attestation are now stored
           lxBrSavePending(rec);
@@ -1044,9 +1046,54 @@ function lxBrSavePending(rec){ try{
   localStorage.setItem("lumos.cctp.pending",JSON.stringify(a));
 }catch(_){} }
 function lxBrListPending(){ try{ return JSON.parse(localStorage.getItem("lumos.cctp.pending")||"[]"); }catch(_){ return []; } }
+// Tell the server that this fee payment belongs to this burn. The endpoint re-checks BOTH against the
+// ledger before storing, so this call is a pointer, not a claim -- nothing here is trusted.
+// Bounded to 8s and never rethrows: the USDC is already bridged and the fee already paid, so a
+// bookkeeping failure must not surface as a bridge failure. A miss is recoverable -- the confirm
+// page and the history panel both re-register anything they find unregistered.
+function lxBrRegister(feeHash,burnHash){
+  try{
+    if(!feeHash||!burnHash) return Promise.resolve(false);
+    var done=false;
+    return new Promise(function(res){
+      setTimeout(function(){ if(!done){ done=true; res(false); } },8000);
+      fetch("/lxapi/bridgetx",{method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({feeHash:feeHash,burnHash:burnHash})})
+        .then(function(r){ if(!done){ done=true; res(!!(r&&r.ok)); } })
+        .catch(function(){ if(!done){ done=true; res(false); } });
+    });
+  }catch(_){ return Promise.resolve(false); }
+}
 function lxBrClearPending(hash){ try{ var a=lxBrListPending().filter(function(x){return x.burnHash!==hash;}); localStorage.setItem("lumos.cctp.pending",JSON.stringify(a)); }catch(_){} }
 window.lxBrSavePending=lxBrSavePending; window.lxBrListPending=lxBrListPending; window.lxBrClearPending=lxBrClearPending;
-function lxBrRestoreTxs(){ try{ var tbody=document.querySelector('.br-table tbody'); if(!tbody||tbody.__lxRestored)return; tbody.__lxRestored=true; var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]");
+// Pull the shared bridge record into LX_PUBTX. Deduped by burn hash and sorted newest-first, so a
+// transfer this browser already knows about is not duplicated. Resolves either way: an unreachable
+// registry leaves the previous behaviour exactly as it was rather than emptying the table.
+var LX_PUBLOAD=null;
+function lxBrLoadPublic(){
+  if(LX_PUBLOAD)return LX_PUBLOAD;
+  LX_PUBLOAD=fetch("/lxapi/bridgetx?limit=100").then(function(r){ return r.ok?r.json():null; })
+    .then(function(d){
+      var rows=(d&&d.rows)||[]; if(!rows.length)return LX_PUBTX;
+      var seen={}; LX_PUBTX.forEach(function(o){ if(o&&o.hash)seen[o.hash]=1; });
+      rows.forEach(function(x){
+        if(!x||!x.burnHash||seen[x.burnHash])return; seen[x.burnHash]=1;
+        LX_PUBTX.push({ ts:+x.ts||Date.now(), hash:x.burnHash,
+          amount:(+x.amount||0), srcAmount:String(x.gross!=null?x.gross:(x.amount||0)),
+          srcKey:"USDC", net:(x.destName||""), recipient:(x.recipient||"") });
+      });
+      LX_PUBTX.sort(function(a,b){ return (+b.ts||0)-(+a.ts||0); });
+      return LX_PUBTX;
+    }).catch(function(){ return LX_PUBTX; });
+  return LX_PUBLOAD;
+}
+function lxBrRestoreTxs(){ try{ var _tb0=document.querySelector('.br-table tbody'); if(!_tb0||_tb0.__lxRestored||_tb0.__lxWaiting)return;
+  // Claim the table immediately so the polling caller cannot start a second pass while the fetch is
+  // in flight, but do not mark it restored until it is actually painted.
+  _tb0.__lxWaiting=true;
+  lxBrLoadPublic().then(function(){ _tb0.__lxWaiting=false; lxBrRestoreTxsNow(); });
+}catch(_){} }
+function lxBrRestoreTxsNow(){ try{ var tbody=document.querySelector('.br-table tbody'); if(!tbody||tbody.__lxRestored)return; tbody.__lxRestored=true; var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]");
   // Same source the phone paints from. lxBrRenderMobileTxs prepends LX_PUBTX to the local store; this
   // read only the local store, so a transfer that exists on chain but was never recorded in THIS
   // browser appeared on mobile and not on desktop -- the same account, the same origin, two different
