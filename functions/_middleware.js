@@ -414,6 +414,9 @@ function blogSeo(p, origin){
     title,
     desc: blogDesc(p),
     image: cover ? (cover.indexOf('/') === 0 ? origin + cover : cover) : '',
+    // A post cover is a wide editorial image, so it earns the large card. isCardImage() only
+    // recognises our generated /lxapi/ogcard, which a cover is not.
+    largeCard: !!cover,
     post: p,
   };
 }
@@ -712,7 +715,7 @@ export async function onRequest(context){
   ];
   // Ask for the card type that matches the image we actually have.
   head.push('<meta name="twitter:card" content="'
-    + ((seo && isCardImage(seo.image)) ? 'summary_large_image' : 'summary') + '">');
+    + ((seo && (isCardImage(seo.image) || seo.largeCard)) ? 'summary_large_image' : 'summary') + '">');
   if (seo){
     head.push('<meta property="og:title" content="' + esc(seo.title) + '">');
     head.push('<meta property="og:description" content="' + esc(seo.desc) + '">');
