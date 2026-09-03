@@ -3299,10 +3299,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // Soroswap's build assumes the destination trustline already exists -> add it (own signature) first if missing
   function dxEnsureTrust(ra){ if(ra.native||window.__lxDXAhasTrust)return Promise.resolve(false); var addr=lxAddr(); if(!addr)return Promise.reject(new Error("No wallet connected"));
     return dxLoadSdk().then(function(S){ var asset=new S.Asset(ra.code,ra.iss); return j(H+"/accounts/"+addr).then(function(acc){ var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:WPASS_PUB}).addOperation(S.Operation.changeTrust({asset:asset})).setTimeout(120).build();
-      return dxTimeout(dxSign(tb.toXDR(),addr),150000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){ return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){ if(res&&(res.successful||res.hash)){ window.__lxDXAhasTrust=true; return true; } var x=res&&res.extras&&res.extras.result_codes; throw new Error(x?("Trustline failed: "+JSON.stringify(x)):"Trustline failed"); }); }); }); }); }
+      return dxTimeout(dxSign(tb.toXDR(),addr),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){ return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();}).then(function(res){ if(res&&(res.successful||res.hash)){ window.__lxDXAhasTrust=true; return true; } var x=res&&res.extras&&res.extras.result_codes; throw new Error(x?("Trustline failed: "+JSON.stringify(x)):"Trustline failed"); }); }); }); }); }
   // build unsigned XDR from the best-rate quote -> sign with the connected wallet -> submit via Soroswap
   function soroExecute(soro){ var addr=lxAddr(); if(!addr)return Promise.reject(new Error("No wallet connected"));
-    return soroBuild(soro.quote,addr).then(function(xdr){ return dxTimeout(dxSign(xdr,addr),150000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){ return soroSend(signed); }); }); }
+    return soroBuild(soro.quote,addr).then(function(xdr){ return dxTimeout(dxSign(xdr,addr),200000,"Signing timed out \\u2014 open your wallet and try again").then(function(signed){ return soroSend(signed); }); }); }
   // paint/hide the Smart Swap badge in the swap pane (state re-asserted by reAssertView so the design can't wipe it)
   function dxSmartBadge(soro){ var pane=q(".dxa-pane-swap"); if(!pane)return; var b=pane.querySelector(".lx-dxsmart");
     if(!soro){ if(b)b.style.display="none"; return; }
@@ -3501,7 +3501,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // price the classic Horizon path AND the Soroswap aggregator in parallel; route through whichever returns more
       Promise.all([
         j(H+"/paths/strict-send?"+apParam("source",pa)+"&source_amount="+net.toFixed(7)+"&"+destParam(ra)).then(function(pd){ var recs=(pd._embedded&&pd._embedded.records)||[]; return recs.length?parseFloat(recs[0].destination_amount):0; }).catch(function(){ return 0; }),
-        soroQuote(pa,ra,Math.round(net*1e7)).catch(function(){ return null; })
+        Promise.resolve(null)/*smart swap removed: fee is uncollectable on a Soroban route*/
       ]).then(function(qres){
         if(seq!==_dxSeq)return; var out=qres[0], soro=qres[1];
         // only prefer Soroswap when a Soroban AMM route beats the classic path by >0.5% and impact stays sane
@@ -3572,7 +3572,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
           if(needTrust)tb.addOperation(S.Operation.changeTrust({asset:dest}));
           tb.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:send,sendAmount:net.toFixed(7),destination:addr,destAsset:dest,destMin:dm,path:path}));
           if(fee>0&&collExists){ if(pa.native){ tb.addOperation(S.Operation.payment({destination:FEE_COLLECTOR,asset:send,amount:fee.toFixed(7)})); } else { var frr=(feePd&&feePd._embedded&&feePd._embedded.records)||[]; if(frr.length){ var fpath=(frr[0].path||[]).map(function(a){return a.asset_type==="native"?S.Asset.native():new S.Asset(a.asset_code,a.asset_issuer);}); tb.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:send,sendAmount:fee.toFixed(7),destination:FEE_COLLECTOR,destAsset:S.Asset.native(),destMin:"0.0000001",path:fpath})); } } }
-          return dxTimeout(dxSign(tb.setTimeout(180).build().toXDR(),addr),150000,"Signing timed out \\u2014 open your wallet and try again");
+          return dxTimeout(dxSign(tb.setTimeout(180).build().toXDR(),addr),200000,"Signing timed out \\u2014 open your wallet and try again");
         });
       });
     }).then(function(signed){
@@ -3781,7 +3781,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         if(needTrust)tb.addOperation(S.Operation.changeTrust({asset:tok}));
         if(side==="sell")tb.addOperation(S.Operation.manageSellOffer({selling:tok,buying:xlm,amount:amt.toFixed(7),price:(+price.toFixed(7)).toString()}));
         else tb.addOperation(S.Operation.manageBuyOffer({selling:xlm,buying:tok,buyAmount:amt.toFixed(7),price:(+price.toFixed(7)).toString()}));
-        return dxTimeout(dxSign(tb.setTimeout(180).build().toXDR(),addr),150000,"Signing timed out \\u2014 open your wallet and try again");
+        return dxTimeout(dxSign(tb.setTimeout(180).build().toXDR(),addr),200000,"Signing timed out \\u2014 open your wallet and try again");
       });
     }).then(function(signed){
       // #16: the signature is in. Everything from here is the NETWORK -- Horizon's submit endpoint

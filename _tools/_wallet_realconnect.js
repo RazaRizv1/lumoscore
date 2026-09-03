@@ -103,6 +103,36 @@ function wcClient(){
   try{ ["pointerdown","touchstart","keydown"].forEach(function(ev){
     window.addEventListener(ev, warm, {once:true, passive:true}); }); }catch(_){}
 })();
+// MOBILE RESUME. Switching to the wallet app suspends this tab and the OS closes the relay socket
+// with it. The wallet publishes its signed response while we are away; if the socket is still down
+// when we come back, that response is never delivered, the signing promise never settles, and the
+// button sits on "Confirm in wallet..." while the wallet shows no error at all -- because from its
+// side it signed perfectly well. Re-open the transport on return so the relay redelivers it.
+// No-op unless WalletConnect is actually in use: _wcClient stays null on the extension and SEP-7
+// paths, so this cannot affect them.
+(function(){
+  var busy=false;
+  function resume(){
+    if(busy||!_wcClient)return;
+    busy=true;
+    var done=function(){busy=false;};
+    try{
+      _wcClient.then(function(c){
+        var r=c&&c.core&&c.core.relayer;
+        if(!r)return null;
+        if(r.connected)return null;
+        return r.restartTransport();
+      }).then(done,done);
+    }catch(_){ done(); }
+  }
+  try{
+    document.addEventListener("visibilitychange",function(){
+      if(document.visibilityState==="visible")resume();
+    });
+    window.addEventListener("pageshow",resume);
+    window.addEventListener("focus",resume);
+  }catch(_){}
+})();
 function wcAddr(s){var a=s&&s.namespaces&&s.namespaces.stellar&&s.namespaces.stellar.accounts&&s.namespaces.stellar.accounts[0];
   if(!a)throw new Error('WalletConnect returned no Stellar account');return String(a).split(':').pop();}
 // WalletConnect v2 connect. The modal is always opened: it carries the QR that desktop needs AND, on a

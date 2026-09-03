@@ -220,7 +220,8 @@ const POST_STYLE = '<style id="lx-blogpost-css">/*lxts:1.1*/'
   + 'overflow:hidden;background:linear-gradient(135deg,var(--c1) 0%,var(--c2) 100%)}'
   + '.lx-post-cover::after{content:"";position:absolute;inset:0;'
   + 'background:linear-gradient(180deg,rgba(255,255,255,.20),rgba(255,255,255,0) 55%)}'
-  + '.lx-post-body{font:400 19.5px/1.8 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10)}'
+  + '.lx-post-body{font:400 19.5px/1.8 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);overflow-wrap:break-word}'
+  + '.lx-post-body pre{overflow-x:auto;max-width:100%}'
   + '.lx-post-body p{margin:0 0 20px}'
   // Post bodies had no link rule at all, so every link fell through to the browser default: bright
   // blue, underlined, the one colour that appears nowhere else on the site. Accent, with the underline
