@@ -441,6 +441,30 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var u=a.native?SWSU:(a.img||(QICO?QICO[a.code+"-"+a.issuer]:""));if(!u)return;'
 +'el.textContent="";el.style.setProperty("--lxa","url("+u+")");el.setAttribute("data-art","1");}'
 +'var QBAL=null;'
+// Artwork for anything outside the curated five and the launchpad manifest. Same source and the same
+// QUSD session cache the Orders pane uses: ask stellar.expert for the issuer's toml image once, then
+// fill the mark in when it lands. Initials stay wherever the issuer publishes no image -- that is
+// still the honest answer, it was just being given far too often.
++'function qArtLazy(a,el){'
++'if(!a||!el||a.native||!a.issuer)return;'
++'var k=a.code+"|"+a.issuer;'
++'if(QUSD["art:"+k]!==undefined){if(QUSD["art:"+k]){a.img=QUSD["art:"+k];qPaintIco(el,a);}return;}'
+// Our own aggregator first: it is what the rest of the site paints from (activity feed, search, the
+// asset page), so the picker agrees with them instead of inventing a third answer, and it covers our
+// own mints, which stellar.expert does not know. stellar.expert is the fallback for everything else.
++'fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(a.code+"-"+a.issuer))'
++'.then(function(r){return r.ok?r.json():null;},function(){return null;})'
++'.then(function(d){'
++'var im=d&&d.image;'
++'if(im){QUSD["art:"+k]=im;a.img=im;qPaintIco(el,a);return;}'
++'return fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(a.issuer)+"&limit=20")'
++'.then(function(r){return r.json();}).then(function(dd){'
++'var rr=((dd&&dd._embedded&&dd._embedded.records)||[]).filter(function(x){'
++'return String(x.asset||"").indexOf(a.code+"-"+a.issuer)===0;})[0];'
++'var ti=(rr&&(rr.tomlInfo||rr.toml_info))||{};var im2=ti.image||ti.orgLogo||"";'
++'QUSD["art:"+k]=im2;if(im2){a.img=im2;qPaintIco(el,a);}'
++'});'
++'}).catch(function(){QUSD["art:"+k]="";});}'
 +'function qMap(b){var _sl=+b.selling_liabilities||0,_av=Math.max(0,(+b.balance||0)-_sl);'
 +'return b.asset_type==="native"?{code:"XLM",issuer:"",native:true,bal:_av,lock:_sl}'
 +':{code:b.asset_code,issuer:b.asset_issuer,native:false,bal:_av,lock:_sl};}'
@@ -485,7 +509,9 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var sub=(a.dom||(a.native?"native asset":qShort(a.issuer)));'
 +'if(a.dom&&!a.native)sub+=" \u00b7 "+qShort(a.issuer);'
 +'var sb=document.createElement("span");sb.className="s";sb.textContent=sub;'
-+'qPaintIco(ic,a);tx.appendChild(cd);tx.appendChild(sb);b.appendChild(ic);b.appendChild(tx);'
++'qPaintIco(ic,a);'
++'if(ic.getAttribute("data-art")!=="1")qArtLazy(a,ic);'
++'tx.appendChild(cd);tx.appendChild(sb);b.appendChild(ic);b.appendChild(tx);'
 +'if(right){var rt=document.createElement("span");rt.className="rt";rt.textContent=right;b.appendChild(rt);}'
 +'return b;}'
 +'function qPick(side,anchor){'
@@ -597,7 +623,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // qPick throw on anchor.offsetTop, which silently killed every picker click.
 +'if(p){e.preventDefault();e.stopImmediatePropagation();qPick(p.getAttribute("data-side"),p.closest(".lxq-fld"));return;}'
 +'if(t.closest&&t.closest(".lxq-max")){e.preventDefault();e.stopImmediatePropagation();'
-+'if(qS){var b=qBal(qS);if(qS.native)b=Math.max(0,b-1.5);var i=qEl(".lxq-amt");if(i){i.value=plain7(Math.floor(b*1e7)/1e7);qSync();}}return;}'
++'if(!qS){(window.lxToast||function(){})("Choose an asset to sell first.",true);return;}var b=qBal(qS);if(qS.native)b=Math.max(0,b-1.5);var i=qEl(".lxq-amt");if(i){i.value=plain7(Math.floor(b*1e7)/1e7);qSync();}return;}'
 +'if(t.closest&&t.closest(".lxq-mkt")){e.preventDefault();e.stopImmediatePropagation();'
 // MARKET hands the field back to the live quote after a manual edit -- qAuto is what the typing
 // listener turns off, so turning it on and refetching is the whole gesture.
