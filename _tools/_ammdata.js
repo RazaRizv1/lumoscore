@@ -914,7 +914,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     host.innerHTML='<div class="lx-psnote">Searching Stellar for pools with \u201c'+esc(qq)+'\u201d\u2026</div>';
     clearTimeout(LXPS_T);
     LXPS_T=setTimeout(function(){
-      lxPsRace(fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(qq)+"&limit=12")
+      lxPsRace(fetch("/lxapi/assetsearch?search="+encodeURIComponent(qq)+"&limit=12")
         .then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); })
         .then(function(d){
           var recs=(d&&d._embedded&&d._embedded.records)||[];
@@ -1770,7 +1770,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   // Registry first: it is keyed by CODE+ISSUER, where AMLOGOS and __lxLogos are keyed by CODE alone,
   // and a ticker is not an identity on Stellar. Everything after it is the previous behaviour.
   function amTokUrl(code,issuer){ return manIcon(code,issuer)||AMLOGOS[code]||launchIcon(code,issuer)||((window.__lxLogos||{})[code])||""; }
-  function amFetchLogo(code,issuer,cb){ var u=amTokUrl(code,issuer); if(u){cb(u);return;} if(!code||!issuer){cb("");return;} getJSON("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code)+"&limit=20").then(function(d){ var recs=(d&&d._embedded&&d._embedded.records)||[]; var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+issuer)===0;})[0]; var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||ti.orgLogo||""; if(img){AMLOGOS[code]=img;try{(window.__lxLogos=window.__lxLogos||{})[code]=img;}catch(_){}} cb(img||""); }).catch(function(){cb("");}); }
+  function amFetchLogo(code,issuer,cb){ var u=amTokUrl(code,issuer); if(u){cb(u);return;} if(!code||!issuer){cb("");return;} getJSON("/lxapi/assetsearch?search="+encodeURIComponent(code)+"&limit=20").then(function(d){ var recs=(d&&d._embedded&&d._embedded.records)||[]; var m=recs.filter(function(rc){return (rc.asset||"").indexOf(code+"-"+issuer)===0;})[0]; var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||ti.orgLogo||""; if(img){AMLOGOS[code]=img;try{(window.__lxLogos=window.__lxLogos||{})[code]=img;}catch(_){}} cb(img||""); }).catch(function(){cb("");}); }
   function tokLogo(){ var c=(DET&&DET.code)||"", i=(DET&&DET.issuer)||""; var av=avatarUri(c); var u=amTokUrl(c,i)||av;
     return '<img class="lx-tokimg" data-lxc="'+esc(c)+'" data-lxi="'+esc(i)+'" src="'+u+'" alt="" onerror="this.onerror=null;this.src=\\x27'+av+'\\x27">'; }
   // data-lxc so the "is this icon already ours, and for THIS asset?" test in wrSide reads the same way for

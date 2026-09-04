@@ -528,7 +528,7 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     a.tvlUsd=null; a.holders=null; a.supply=null; a.spark=null; a.domain=null; a.img=null; a.trades=null; });
   // ---- LumosCore-native assets: issuer home_domain = lumoscore.com (minted through our Launchpad) ----
   var NATIVE=[], nativeState=0;                             // 0 idle | 1 loading | 2 loaded
-  var SX="https://api.stellar.expert/explorer/public/asset?search=lumoscore&limit=200";
+  var SX="/lxapi/assetsearch?search=lumoscore&limit=200";
   // v2: the saved roster is a list of WHICH assets exist, so a copy written before an asset was
   // registered hides it for six hours. Bumping the key retires those, once.
   // v3, not v2: every warm v2 roster was written with t=0 on our own mints (see the created fix in the
