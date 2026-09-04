@@ -9188,8 +9188,8 @@ bar.innerHTML='<div class="asset-tabs lx-wcgroup">'
     if(code==="XLM"||!issuer){ poolIcoSet(id,which,code==="XLM"?LXSTELLAR:avatarUri(code)); return; }
     var bd=LXBRAND[code+"|"+issuer]; if(bd){ poolIcoSet(id,which,bd); return; }   // known mark, no lookup needed
     poolIcoSet(id,which,avatarUri(code));
-    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(issuer)+"&limit=50")
-      .then(function(r){ return r.json(); }).then(function(d){
+    seaIdx(issuer,50)
+      .then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[];
         var m=recs.filter(function(x){ return (x.asset||"").indexOf(code+"-"+issuer)===0; })[0];
         var img=(m&&m.tomlInfo&&m.tomlInfo.image)||"";
@@ -9398,8 +9398,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   function lxHlOne(code,iss){
     var k=code+"|"+iss;
     if(HLC[k]!==undefined)return Promise.resolve(HLC[k]);
-    return fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(iss)+"&limit=20")
-      .then(function(r){return r.ok?r.json():null;})
+    return seaIdx(iss,20)
+      .catch(function(){return null;})
       .then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[];
         var rr=recs.filter(function(x){return String(x.asset||"").indexOf(code+"-"+iss)===0;})[0];
@@ -9518,13 +9518,27 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       try{ recAdd(recFromRow(row)); }catch(_){}
     },true);
   }
-  function seaFetch(q,cb){
+  // One way in to the asset index. Same-origin first so the rate limit lands on Cloudflare rather than
+  // on the visitor (mobile carriers put hundreds of people behind one IP), and so the edge cache can
+  // serve a repeat query without touching upstream. Direct URL as the fallback, which keeps this no
+  // worse than before if the proxy is ever unavailable -- including on the local dev server.
+  function seaIdx(q,limit){
+    var qs="search="+encodeURIComponent(q)+"&limit="+(limit||12);
+    function direct(){
+      return fetch("https://api.stellar.expert/explorer/public/asset?"+qs)
+        .then(function(r){ if(!r.ok)throw new Error("s"+r.status); return r.json(); });
+    }
+    return fetch("/lxapi/assetsearch?"+qs)
+      .then(function(r){ if(!r.ok)throw new Error("p"+r.status); return r.json(); })
+      .catch(direct);
+  }
+  
+    function seaFetch(q,cb){
     if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
-    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
-      // A rate-limited index answers with an error BODY, and parsing it yielded zero records -- so a
-      // failure was reported to the caller as "nothing on Stellar matches", which is a different and much
-      // worse message than the truth. Check the status before trusting the body.
-      .then(function(r){ if(!r.ok)throw new Error("s"+r.status); return r.json(); })
+    // Status is checked inside seaIdx: a rate-limited index answers with an error BODY, and parsing
+    // it yielded zero records, so a failure reached the caller as "nothing matches" -- a different
+    // and much worse message than the truth.
+    seaIdx(q,12)
       .then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[];
         var out=recs.map(function(x){
