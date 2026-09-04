@@ -390,6 +390,8 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // shortened issuer are shown on every row and the tick means "this is the one we verified".
 // LUMOS shows lumoscore.com though the issuer still declares lumosdao.io -- same rule the rest of the
 // site uses for our own token.
+// The lumen itself. It is not an issued asset, so it appears in no asset search and was in no list.
++'var QXLM={code:"XLM",issuer:"",native:true,dom:"stellar.org",v:1};'
 +'var QCUR=['
 +'{code:"USDC",issuer:"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",dom:"centre.io",v:1,img:"https://assets.coingecko.com/coins/images/6319/small/usdc.png"},'
 +'{code:"EURC",issuer:"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",dom:"circle.com",v:1,img:"https://assets.coingecko.com/coins/images/26045/small/euro.png"},'
@@ -445,6 +447,11 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // QUSD session cache the Orders pane uses: ask stellar.expert for the issuer's toml image once, then
 // fill the mark in when it lands. Initials stay wherever the issuer publishes no image -- that is
 // still the honest answer, it was just being given far too often.
+// plain7 lives in lx-swapcalc, a different script and a different scope, so calling it from here threw
+// and MAX silently did nothing. Same formatting rule, defined where it is used.
++'function qPlain7(n){n=+n||0;if(!isFinite(n)||n<=0)return "0";'
++'var t=n.toFixed(7);while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);'
++'if(t.charAt(t.length-1)===".")t=t.slice(0,-1);return t||"0";}'
 +'function qArtLazy(a,el){'
 +'if(!a||!el||a.native||!a.issuer)return;'
 +'var k=a.code+"|"+a.issuer;'
@@ -545,12 +552,17 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // tomlInfo is the issuer's OWN stellar.toml, already resolved by stellar.expert on this same response --
 // so the artwork comes from the toml exactly as it should, with no extra request per row. Without this
 // the mapper threw the image away and every search result fell back to a lettered mark.
-+'recs.map(function(x){var p=String(x.asset||"").split("-");var ti=x.tomlInfo||x.toml_info||{};'
++'var _list=recs.map(function(x){var p=String(x.asset||"").split("-");var ti=x.tomlInfo||x.toml_info||{};'
 +'return {code:p[0]||"",issuer:p[1]||"",native:false,dom:x.domain||"",'
 +'img:ti.image||ti.orgLogo||"",tl:(x.trustlines&&x.trustlines[0])||0};})'
 +'.filter(function(a){return a.code&&/^G[A-Z2-7]{55}$/.test(a.issuer)&&!qSame(a,qS);})'
-+'.sort(function(a,b){return b.tl-a.tl;})'
-+'.forEach(function(a){var b=qRow(a,"");'
++'.sort(function(a,b){return b.tl-a.tl;});'
+// "xlm" returns yXLM, SeagullCash and XLM626 from the asset index but never the lumen, because the
+// lumen is not an issued asset. Put it on top when that is plainly what was typed.
++'var _q=(v||"").toLowerCase();'
++'if("xlm".indexOf(_q)===0||"lumens".indexOf(_q)===0||"stellar".indexOf(_q)===0||"native".indexOf(_q)===0){'
++'if(!qSame(QXLM,qS))_list.unshift(QXLM);}'
++'_list.forEach(function(a){var b=qRow(a,"");'
 +'b.addEventListener("click",function(e){e.preventDefault();e.stopImmediatePropagation();qB=a;qClose();qSync();qQuote();'
 +'qUsdLoad(a).then(function(){qSync();});},true);'
 +'res.appendChild(b);pend.push({a:a,el:b.querySelector(".lxq-ic")});});'
@@ -561,6 +573,9 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'}).catch(function(){qMsg(res,"Search unavailable");});},260);});'
 // the five sit BELOW the search box: typing is the fast path for anything, and the shortlist is what
 // you fall back to when you are not looking for something specific
+// XLM first: it is the other half of most pairs on this DEX. add() already skips it if it is the
+// asset selected on the sell side.
++'add(QXLM);'
 +'QCUR.forEach(function(a){ add(a); });'
 +'}'
 +'var f=qEl(".lxq-f");if(f)f.appendChild(m);'
@@ -623,7 +638,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // qPick throw on anchor.offsetTop, which silently killed every picker click.
 +'if(p){e.preventDefault();e.stopImmediatePropagation();qPick(p.getAttribute("data-side"),p.closest(".lxq-fld"));return;}'
 +'if(t.closest&&t.closest(".lxq-max")){e.preventDefault();e.stopImmediatePropagation();'
-+'if(!qS){(window.lxToast||function(){})("Choose an asset to sell first.",true);return;}var b=qBal(qS);if(qS.native)b=Math.max(0,b-1.5);var i=qEl(".lxq-amt");if(i){i.value=plain7(Math.floor(b*1e7)/1e7);qSync();}return;}'
++'if(!qS){(window.lxToast||function(){})("Choose an asset to sell first.",true);return;}var b=qBal(qS);if(qS.native)b=Math.max(0,b-1.5);var i=qEl(".lxq-amt");if(i){i.value=qPlain7(Math.floor(b*1e7)/1e7);qSync();}return;}'
 +'if(t.closest&&t.closest(".lxq-mkt")){e.preventDefault();e.stopImmediatePropagation();'
 // MARKET hands the field back to the live quote after a manual edit -- qAuto is what the typing
 // listener turns off, so turning it on and refetching is the whole gesture.
