@@ -390,6 +390,8 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // shortened issuer are shown on every row and the tick means "this is the one we verified".
 // LUMOS shows lumoscore.com though the issuer still declares lumosdao.io -- same rule the rest of the
 // site uses for our own token.
+// The lumen itself. It is not an issued asset, so it appears in no asset search and was in no list.
++'var QXLM={code:"XLM",issuer:"",native:true,dom:"stellar.org",v:1};'
 +'var QCUR=['
 +'{code:"USDC",issuer:"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",dom:"centre.io",v:1,img:"https://assets.coingecko.com/coins/images/6319/small/usdc.png"},'
 +'{code:"EURC",issuer:"GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2",dom:"circle.com",v:1,img:"https://assets.coingecko.com/coins/images/26045/small/euro.png"},'
@@ -441,6 +443,35 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var u=a.native?SWSU:(a.img||(QICO?QICO[a.code+"-"+a.issuer]:""));if(!u)return;'
 +'el.textContent="";el.style.setProperty("--lxa","url("+u+")");el.setAttribute("data-art","1");}'
 +'var QBAL=null;'
+// Artwork for anything outside the curated five and the launchpad manifest. Same source and the same
+// QUSD session cache the Orders pane uses: ask stellar.expert for the issuer's toml image once, then
+// fill the mark in when it lands. Initials stay wherever the issuer publishes no image -- that is
+// still the honest answer, it was just being given far too often.
+// plain7 lives in lx-swapcalc, a different script and a different scope, so calling it from here threw
+// and MAX silently did nothing. Same formatting rule, defined where it is used.
++'function qPlain7(n){n=+n||0;if(!isFinite(n)||n<=0)return "0";'
++'var t=n.toFixed(7);while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);'
++'if(t.charAt(t.length-1)===".")t=t.slice(0,-1);return t||"0";}'
++'function qArtLazy(a,el){'
++'if(!a||!el||a.native||!a.issuer)return;'
++'var k=a.code+"|"+a.issuer;'
++'if(QUSD["art:"+k]!==undefined){if(QUSD["art:"+k]){a.img=QUSD["art:"+k];qPaintIco(el,a);}return;}'
+// Our own aggregator first: it is what the rest of the site paints from (activity feed, search, the
+// asset page), so the picker agrees with them instead of inventing a third answer, and it covers our
+// own mints, which stellar.expert does not know. stellar.expert is the fallback for everything else.
++'fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(a.code+"-"+a.issuer))'
++'.then(function(r){return r.ok?r.json():null;},function(){return null;})'
++'.then(function(d){'
++'var im=d&&d.image;'
++'if(im){QUSD["art:"+k]=im;a.img=im;qPaintIco(el,a);return;}'
++'return fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(a.issuer)+"&limit=20")'
++'.then(function(r){return r.json();}).then(function(dd){'
++'var rr=((dd&&dd._embedded&&dd._embedded.records)||[]).filter(function(x){'
++'return String(x.asset||"").indexOf(a.code+"-"+a.issuer)===0;})[0];'
++'var ti=(rr&&(rr.tomlInfo||rr.toml_info))||{};var im2=ti.image||ti.orgLogo||"";'
++'QUSD["art:"+k]=im2;if(im2){a.img=im2;qPaintIco(el,a);}'
++'});'
++'}).catch(function(){QUSD["art:"+k]="";});}'
 +'function qMap(b){var _sl=+b.selling_liabilities||0,_av=Math.max(0,(+b.balance||0)-_sl);'
 +'return b.asset_type==="native"?{code:"XLM",issuer:"",native:true,bal:_av,lock:_sl}'
 +':{code:b.asset_code,issuer:b.asset_issuer,native:false,bal:_av,lock:_sl};}'
@@ -485,7 +516,9 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var sub=(a.dom||(a.native?"native asset":qShort(a.issuer)));'
 +'if(a.dom&&!a.native)sub+=" \u00b7 "+qShort(a.issuer);'
 +'var sb=document.createElement("span");sb.className="s";sb.textContent=sub;'
-+'qPaintIco(ic,a);tx.appendChild(cd);tx.appendChild(sb);b.appendChild(ic);b.appendChild(tx);'
++'qPaintIco(ic,a);'
++'if(ic.getAttribute("data-art")!=="1")qArtLazy(a,ic);'
++'tx.appendChild(cd);tx.appendChild(sb);b.appendChild(ic);b.appendChild(tx);'
 +'if(right){var rt=document.createElement("span");rt.className="rt";rt.textContent=right;b.appendChild(rt);}'
 +'return b;}'
 +'function qPick(side,anchor){'
@@ -519,12 +552,17 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // tomlInfo is the issuer's OWN stellar.toml, already resolved by stellar.expert on this same response --
 // so the artwork comes from the toml exactly as it should, with no extra request per row. Without this
 // the mapper threw the image away and every search result fell back to a lettered mark.
-+'recs.map(function(x){var p=String(x.asset||"").split("-");var ti=x.tomlInfo||x.toml_info||{};'
++'var _list=recs.map(function(x){var p=String(x.asset||"").split("-");var ti=x.tomlInfo||x.toml_info||{};'
 +'return {code:p[0]||"",issuer:p[1]||"",native:false,dom:x.domain||"",'
 +'img:ti.image||ti.orgLogo||"",tl:(x.trustlines&&x.trustlines[0])||0};})'
 +'.filter(function(a){return a.code&&/^G[A-Z2-7]{55}$/.test(a.issuer)&&!qSame(a,qS);})'
-+'.sort(function(a,b){return b.tl-a.tl;})'
-+'.forEach(function(a){var b=qRow(a,"");'
++'.sort(function(a,b){return b.tl-a.tl;});'
+// "xlm" returns yXLM, SeagullCash and XLM626 from the asset index but never the lumen, because the
+// lumen is not an issued asset. Put it on top when that is plainly what was typed.
++'var _q=(v||"").toLowerCase();'
++'if("xlm".indexOf(_q)===0||"lumens".indexOf(_q)===0||"stellar".indexOf(_q)===0||"native".indexOf(_q)===0){'
++'if(!qSame(QXLM,qS))_list.unshift(QXLM);}'
++'_list.forEach(function(a){var b=qRow(a,"");'
 +'b.addEventListener("click",function(e){e.preventDefault();e.stopImmediatePropagation();qB=a;qClose();qSync();qQuote();'
 +'qUsdLoad(a).then(function(){qSync();});},true);'
 +'res.appendChild(b);pend.push({a:a,el:b.querySelector(".lxq-ic")});});'
@@ -535,6 +573,9 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'}).catch(function(){qMsg(res,"Search unavailable");});},260);});'
 // the five sit BELOW the search box: typing is the fast path for anything, and the shortlist is what
 // you fall back to when you are not looking for something specific
+// XLM first: it is the other half of most pairs on this DEX. add() already skips it if it is the
+// asset selected on the sell side.
++'add(QXLM);'
 +'QCUR.forEach(function(a){ add(a); });'
 +'}'
 +'var f=qEl(".lxq-f");if(f)f.appendChild(m);'
@@ -597,7 +638,7 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // qPick throw on anchor.offsetTop, which silently killed every picker click.
 +'if(p){e.preventDefault();e.stopImmediatePropagation();qPick(p.getAttribute("data-side"),p.closest(".lxq-fld"));return;}'
 +'if(t.closest&&t.closest(".lxq-max")){e.preventDefault();e.stopImmediatePropagation();'
-+'if(qS){var b=qBal(qS);if(qS.native)b=Math.max(0,b-1.5);var i=qEl(".lxq-amt");if(i){i.value=plain7(Math.floor(b*1e7)/1e7);qSync();}}return;}'
++'if(!qS){(window.lxToast||function(){})("Choose an asset to sell first.",true);return;}var b=qBal(qS);if(qS.native)b=Math.max(0,b-1.5);var i=qEl(".lxq-amt");if(i){i.value=qPlain7(Math.floor(b*1e7)/1e7);qSync();}return;}'
 +'if(t.closest&&t.closest(".lxq-mkt")){e.preventDefault();e.stopImmediatePropagation();'
 // MARKET hands the field back to the live quote after a manual edit -- qAuto is what the typing
 // listener turns off, so turning it on and refetching is the whole gesture.
@@ -686,7 +727,11 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:S.Networks.PUBLIC});'
 +'if(!qHas(qB))tb.addOperation(S.Operation.changeTrust({asset:buy}));'
 +'tb.addOperation(S.Operation.manageSellOffer({selling:sell,buying:buy,amount:amt.toFixed(7),price:(+pr.toFixed(7)).toString()}));'
-+'return window.lxSign(tb.setTimeout(180).build().toXDR(),S);});})'
++'var _plx=tb.setTimeout(180).build().toXDR(),_plp=window.lxSign(_plx,S);'
+// Bare lxSign never settles when the wallet does not answer, and an unsettled promise cannot reach
+// the .catch below -- which is why this button used to stick on "Confirm..." for good. 200s matches
+// every other signing site and outlasts the 180s SEP-7 poll.
++'return window.lxTimeout?window.lxTimeout(_plp,200000,"Signing timed out \\u2014 open your wallet and try again"):_plp;});})'
 +'.then(function(signed){'
 // The signature is in hand here; from now on we are waiting on the ledger, not on the user.
 +'try{go.textContent="Placing order\u2026";}catch(_){}'
@@ -831,7 +876,11 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:S.Networks.PUBLIC});'
 // amount 0 + the original offerId deletes it; price is required but irrelevant at amount 0
 +'tb.addOperation(S.Operation.manageSellOffer({selling:sell,buying:buy,amount:"0",price:o.price,offerId:o.id}));'
-+'return window.lxSign(tb.setTimeout(180).build().toXDR(),S);});})'
++'var _cnx=tb.setTimeout(180).build().toXDR(),_cnp=window.lxSign(_cnx,S);'
+// Bare lxSign never settles when the wallet does not answer, and an unsettled promise cannot reach
+// the .catch below -- which is why this button used to stick on "Confirm..." for good. 200s matches
+// every other signing site and outlasts the 180s SEP-7 poll.
++'return window.lxTimeout?window.lxTimeout(_cnp,200000,"Signing timed out \\u2014 open your wallet and try again"):_cnp;});})'
 +'.then(function(signed){'
 +'try{btn.textContent="Cancelling\u2026";}catch(_){}'
 +'return fetch(QH+"/transactions",{method:"POST",'
@@ -848,9 +897,10 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'if(_l&&!_l.querySelector(".lxo-o"))_l.innerHTML=\'<div class="lxo-empty">No open orders<span class="sub">A limit order stays here until it fills or you cancel it.</span></div>\';'
 +'}catch(_){}'
 +'window.__lxQOloadOrders();}'
-+'else{(window.lxToast||function(){})("The cancel was not accepted. The order is still open.",true);}})'
-+'.catch(function(){btn.__busy=0;btn.disabled=false;btn.textContent=lbl;'
-+'(window.lxToast||function(){})("Could not cancel the order.",true);});'
++'else{var _rc=resp&&resp.extras&&resp.extras.result_codes;'
++'(window.lxToast||function(){})((_rc&&window.lxTxMsg)?window.lxTxMsg(_rc,"The cancel"):"The cancel was not accepted. The order is still open.",true);}})'
++'.catch(function(e){btn.__busy=0;btn.disabled=false;btn.textContent=lbl;'
++'(window.lxToast||function(){})(((e&&e.message)||"Could not cancel the order."),true);});'
 +'}'
 +'window.__lxQOorders=function(){qOrdersUi();window.__lxQOloadOrders();};'
 +'})();</script>';
