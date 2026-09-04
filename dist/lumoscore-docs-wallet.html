@@ -12870,6 +12870,7 @@ var qrcode = function() {
   // (91,001 trustlines, stronghold.co) and five of which are look-alikes. So every row carries the domain,
   // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
   var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
+  var _seaRetried={};   // one retry per query, so a dead index still reports itself
   // Tokens minted on OUR launchpad. This used to read localStorage "lumos.launches" -- a key nothing in
   // the codebase has ever written, so it was always [] and a minted token was unfindable by name or code.
   // Even had it been written it was per-browser, so it could never have shown another person a mint.
@@ -13207,17 +13208,29 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     try{
       var MID=String.fromCharCode(183);
       var rows=list.querySelectorAll("a.lx-searow,a.lx-recrow");
+      var q=[];
       for(var i=0;i<rows.length;i++){
-        (function(row){
-          var a=lxSeaIdOf(row.getAttribute("href"));
-          if(!a)return;                                  // pools and wallets carry no CODE-ISSUER
-          var sb=row.querySelector(".sp-sub"); if(!sb)return;
-          lxHlOne(a.code,a.issuer).then(function(n){
-            if(n==null||!sb.parentNode)return;           // unresolved stays as it is, never a guess
-            sb.textContent=a.code+" "+MID+" "+nfmt(n)+" holders";
-          });
-        })(rows[i]);
+        var row=rows[i];
+        var sb=row.querySelector(".sp-sub"); if(!sb)continue;
+        // A row that already shows a count got it from the asset-index response itself. Asking again
+        // would spend a request per result on every keystroke, which is what got the index throttled.
+        if((sb.textContent||"").indexOf("holders")>=0)continue;
+        var a=lxSeaIdOf(row.getAttribute("href")); if(!a)continue;   // pools and wallets have no asset
+        q.push({a:a,sb:sb});
       }
+      var run=0, idx=0;
+      function pump(){
+        while(run<3&&idx<q.length){
+          var it=q[idx++]; run++;
+          (function(it){
+            var done=function(){ run--; pump(); };
+            lxHlOne(it.a.code,it.a.issuer).then(function(n){
+              if(n!=null&&it.sb.parentNode)it.sb.textContent=it.a.code+" "+MID+" "+nfmt(n)+" holders";
+            }).then(done,done);
+          })(it);
+        }
+      }
+      pump();
     }catch(_){}
   }
   
@@ -13342,6 +13355,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         // then appears" flap: every re-render repainted the row, and 220ms later this line wiped it.
         // Keeping the lead also makes the repaint idempotent, so paint()'s equality check ends the loop.
         if(remote===null){
+          // One transient failure should not wipe the results. Retry once, quietly, before saying
+          // the index is down -- this message was showing up far more often than the index is
+          // actually out, usually because we had just been throttled.
+          if(!_seaRetried[_qi]){ _seaRetried[_qi]=1; setTimeout(function(){ try{ lxSeaRedraw(); }catch(_){} }, 700); return; }
           var _lead0 = isAddr(_qi) ? acctRow(_qi) : (isPool(_qi) ? poolRow(_qi) : "");
           paint(list, _lead0 + '<div class="sp-seaempty">Asset index unavailable right now'
             + (_lead0 ? ' — pools and accounts are unaffected.' : '.') + '</div>');
