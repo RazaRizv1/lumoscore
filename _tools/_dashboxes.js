@@ -211,7 +211,7 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   + 'set("tliq", hit?usd(tot):"\\u2014");'
   + '}).catch(function(){ set("tliq","\\u2014"); });'
   // ---- Launchpad: assets issued through this deployment.
-  + 'j("https://api.stellar.expert/explorer/public/asset?search=lumoscore&limit=200").then(function(d){'
+  + 'j("/lxapi/assetsearch?search=lumoscore&limit=200").then(function(d){'
   + 'var r=(d&&d._embedded&&d._embedded.records)||[];'
   // home_domain is the claim that binds an asset to this launchpad, so filter on it rather than trusting
   // a search term to have matched only ours.

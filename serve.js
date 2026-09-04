@@ -1055,6 +1055,17 @@ http.createServer((req, res) => {
   if (p === '/lxapi/news') return newsRoute(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/poolvol') return poolVol(req, res, new URL(req.url, 'http://x').searchParams);
   if (p === '/lxapi/xlm') return xlmProxy(req, res, new URL(req.url, 'http://x').searchParams);
+  // Local mirror of functions/lxapi/assetsearch. Without it every asset lookup 404s in dev while
+  // working in production, which is exactly the kind of split that hides a real bug.
+  if (p === '/lxapi/assetsearch') {
+    const sp = new URL(req.url, 'http://x').searchParams;
+    const q = (sp.get('search') || '').trim();
+    const lim = Math.min(Math.max(parseInt(sp.get('limit'), 10) || 12, 1), 200);
+    if (!q) { res.writeHead(400, {'content-type':'application/json'}); return res.end('{"error":"bad search"}'); }
+    return fetch('https://api.stellar.expert/explorer/public/asset?search=' + encodeURIComponent(q) + '&limit=' + lim)
+      .then(r => r.text().then(t => { res.writeHead(r.status, {'content-type':'application/json'}); res.end(t); }))
+      .catch(e => { res.writeHead(502, {'content-type':'application/json'}); res.end('{"error":"unreachable"}'); });
+  }
 
   // /admin/... is the only way in, and only with --admin from this machine
   let root = ROOT, adminReq = false;
