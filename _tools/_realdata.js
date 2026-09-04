@@ -288,7 +288,19 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'if(code==="XLM")return (L.XLM||"/assets/tokens/xlm.png");'
 // Fall back to a code-only match when the registry holds one, which it does for our own mints.
 +'var ks=Object.keys(L);for(var i=0;i<ks.length;i++){if(ks[i].indexOf(code+"-")===0)return L[ks[i]];}'
+// The launchpad icon manifest: the only source that has our own mints. /lxapi/assetlogo answers
+// "asset not in toml" for them and stellar.expert has no image either, so without this a token we
+// minted ourselves was the one thing the feed could not draw.
++'if(FMAN){if(iss&&FMAN[code+"-"+iss])return FMAN[code+"-"+iss];'
++'var mk=Object.keys(FMAN);for(var j=0;j<mk.length;j++){if(mk[j].indexOf(code+"-")===0)return FMAN[mk[j]];}}'
 +'}catch(_){}return "";}'
+// Loaded once, then the feed repaints. Static JSON, so the browser caches it across pages.
++'var FMAN=null,_fManGo=0;'
++'function fManLoad(){if(_fManGo)return;_fManGo=1;'
++'fetch("/assets/tokens/launchpad-icons.json").then(function(r){return r.ok?r.json():null;}).then(function(m){'
++'var out={};Object.keys(m||{}).forEach(function(k){var v=m[k];var img=(v&&typeof v==="object")?v.image:v;if(img)out[k]=img;});'
++'FMAN=out;try{paintFeedIcons();}catch(_){}'
++'}).catch(function(){FMAN={};});}'
 +'var _fQ=[],_fA=0,_fAsked={};'
 +'function _fPump(){while(_fA<4&&_fQ.length){_fA++;(_fQ.shift())();}}'
 // Bounded to 4 in flight and asked once per code, so a feed that refreshes every 60s does not re-ask.
@@ -311,6 +323,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'_fPump();}catch(_){}}'
 +'function lxActHue(c){c=String(c||"?");var h=0;for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;return "hsl("+h+",52%,42%)";}'
 +'function paintFeedIcons(){'
++'try{fManLoad();}catch(_){}'
 +'try{var els=document.querySelectorAll(".lx-actasset");'
 +'for(var i=0;i<els.length;i++){var e=els[i];'
 +'if(e.getAttribute("data-lxpainted")==="1")continue;'

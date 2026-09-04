@@ -76,6 +76,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
   // (91,001 trustlines, stronghold.co) and five of which are look-alikes. So every row carries the domain,
   // the trustline count and the issuer, and results are ordered by trustlines so the real one leads.
   var SEA_CACHE={}, SEA_SEQ=0, SEA_T=null;
+  var _seaRetried={};   // one retry per query, so a dead index still reports itself
   // Tokens minted on OUR launchpad. This used to read localStorage "lumos.launches" -- a key nothing in
   // the codebase has ever written, so it was always [] and a minted token was unfindable by name or code.
   // Even had it been written it was per-browser, so it could never have shown another person a mint.
@@ -90,7 +91,9 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
         var code=id.slice(0,dash), iss=id.slice(dash+1);
         if(!/^[A-Za-z0-9]{1,12}$/.test(code)||!/^G[A-Z2-7]{55}$/.test(iss))continue;
         var m=mm[id]||{};
-        out.push({code:code, issuer:iss, name:m.name||"", domain:"lumoscore.com", tl:0, hl:null, img:m.image||""});
+        // tl:null, NOT 0 -- the subtitle treats a non-null tl as a measured count, so 0 here rendered as
+        // "0 holders" on every mint. The real number is filled in by lxSeaHolders once it lands.
+        out.push({code:code, issuer:iss, name:m.name||"", domain:"lumoscore.com", tl:null, hl:null, img:m.image||""});
       }
       window.__lxMintRows=LXMINTS=out;
       if(out.length&&after){ try{ after(); }catch(_){} }
@@ -173,8 +176,8 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     if(code==="XLM"||!issuer){ poolIcoSet(id,which,code==="XLM"?LXSTELLAR:avatarUri(code)); return; }
     var bd=LXBRAND[code+"|"+issuer]; if(bd){ poolIcoSet(id,which,bd); return; }   // known mark, no lookup needed
     poolIcoSet(id,which,avatarUri(code));
-    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(issuer)+"&limit=50")
-      .then(function(r){ return r.json(); }).then(function(d){
+    seaIdx(issuer,50)
+      .then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[];
         var m=recs.filter(function(x){ return (x.asset||"").indexOf(code+"-"+issuer)===0; })[0];
         var img=(m&&m.tomlInfo&&m.tomlInfo.image)||"";
@@ -252,7 +255,7 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
       '<div class="sp-sub">Balances, pools and activity</div></div>'+
       '<div class="sp-right"><div class="sp-addr-mini">'+short(addr)+'</div></div></a>';
   }
-  function lxSeaLogos(root){ var seen=(window.__lxSeaLogo=window.__lxSeaLogo||{}); [].slice.call((root||document).querySelectorAll("img[data-lxneedlogo]")).forEach(function(im){   var id=im.getAttribute("data-lxneedlogo"); if(!id)return;   im.removeAttribute("data-lxneedlogo");   if(seen[id]===null)return;   if(seen[id]){ im.src=seen[id]; return; }   fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(id))     .then(function(r){ return r.ok?r.json():null; })     .then(function(j){ var u=j&&j.image; seen[id]=u||null; if(u)im.src=u; })     .catch(function(){ seen[id]=null; }); }); } function lxMergeV(VFDmap,after){ window.__lxAM=window.__lxAM||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}); window.__lxCuratedV=window.__lxCuratedV||window.__lxAM.then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};}); window.__lxCuratedV.then(function(vf){ var added=0;   Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;     var i=id.lastIndexOf("-"); if(i<0)return;     var k=id.slice(0,i)+"|"+id.slice(i+1);     if(VFDmap[k]===undefined){ VFDmap[k]=r.d||""; added++; } });   if(added&&after){ try{ after(); }catch(_){} } }); } function lxSeaRedraw(){ var i=document.getElementById("spSearchInput"); if(i){ i.dispatchEvent(new Event("input",{bubbles:true})); } } lxMergeV(VFD,lxSeaRedraw); lxLoadMints(lxSeaRedraw); function lxSeaCount(list){ if(!list||list.id!=="spAssetList")return; var c=document.getElementById("spAssetCount"); if(!c)return; c.textContent="("+list.querySelectorAll(".sp-row").length+")"; } function paint(list,html){ if(list.innerHTML!==html){ list.innerHTML=html; try{ lxSeaLogos(list); }catch(_){} try{ lxSeaCount(list); }catch(_){} } }
+  function lxSeaLogos(root){ var seen=(window.__lxSeaLogo=window.__lxSeaLogo||{}); [].slice.call((root||document).querySelectorAll("img[data-lxneedlogo]")).forEach(function(im){   var id=im.getAttribute("data-lxneedlogo"); if(!id)return;   im.removeAttribute("data-lxneedlogo");   if(seen[id]===null)return;   if(seen[id]){ im.src=seen[id]; return; }   fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(id))     .then(function(r){ return r.ok?r.json():null; })     .then(function(j){ var u=j&&j.image; seen[id]=u||null; if(u)im.src=u; })     .catch(function(){ seen[id]=null; }); }); } function lxMergeV(VFDmap,after){ window.__lxAM=window.__lxAM||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}); window.__lxCuratedV=window.__lxCuratedV||window.__lxAM.then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};}); window.__lxCuratedV.then(function(vf){ var added=0;   Object.keys(vf).forEach(function(id){ var r=vf[id]; if(!r||!r.v)return;     var i=id.lastIndexOf("-"); if(i<0)return;     var k=id.slice(0,i)+"|"+id.slice(i+1);     if(VFDmap[k]===undefined){ VFDmap[k]=r.d||""; added++; } });   if(added&&after){ try{ after(); }catch(_){} } }); } function lxSeaRedraw(){ var i=document.getElementById("spSearchInput"); if(i){ i.dispatchEvent(new Event("input",{bubbles:true})); } } lxMergeV(VFD,lxSeaRedraw); lxLoadMints(lxSeaRedraw); function lxSeaCount(list){ if(!list||list.id!=="spAssetList")return; var c=document.getElementById("spAssetCount"); if(!c)return; c.textContent="("+list.querySelectorAll(".sp-row").length+")"; } function paint(list,html){ if(list.innerHTML!==html){ list.innerHTML=html; try{ lxSeaLogos(list); }catch(_){} try{ lxSeaCount(list); }catch(_){} try{ lxSeaHolders(list); }catch(_){} } }
 
   // ---- RECENT SEARCHES ------------------------------------------------------------------------------
   // ONE list of 5, shared by assets, pools and wallets -- not 5 of each. All three render as the same
@@ -370,7 +373,97 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // !==undefined, not truthiness: the map's values are DOMAINS, and an asset we vouch for with no
   // domain stores "" -- testing the value would silently drop exactly those.
   function recTick(h){ var k=recVKey(h); return (k&&VFD[k]!==undefined)?VTICK:""; }
-  function recRow(t){
+  // A recents row replays a subtitle captured at save time, so any live figure in it is frozen --
+  // USDT0 sat at "87 holders" long after it was not. Drop the count, keep the identity half.
+  // NO BACKSLASHES IN HERE: this script is emitted through a template literal, which silently ate the
+  // regex version of this function (\s and \d arrived as plain s and d). Hence the manual scan and
+  // String.fromCharCode for the separators.
+  // ---- live holder counts -------------------------------------------------------------------------
+  // trustlines[2] is the funded-holder count, the same field the full-code search path already reads.
+  // Cached per session. Runs off the row href so both search results and recents are covered without
+  // either row builder knowing about it.
+  var HLC={};
+  function lxHlOne(code,iss){
+    var k=code+"|"+iss;
+    if(HLC[k]!==undefined)return Promise.resolve(HLC[k]);
+    return seaIdx(iss,20)
+      .catch(function(){return null;})
+      .then(function(d){
+        var recs=(d&&d._embedded&&d._embedded.records)||[];
+        var rr=recs.filter(function(x){return String(x.asset||"").indexOf(code+"-"+iss)===0;})[0];
+        var tls=rr&&rr.trustlines;
+        var n=tls?((tls[2]!=null)?tls[2]:((tls[0]!=null)?tls[0]:null)):null;
+        HLC[k]=n; return n;
+      })
+      .catch(function(){ HLC[k]=null; return null; });
+  }
+  function lxSeaIdOf(href){
+    var h=String(href||""), id="";
+    var q=h.indexOf("asset=");
+    if(q>=0)id=h.slice(q+6).split("&")[0];
+    else { var parts=h.split("?")[0].split("/"); id=parts[parts.length-1]||""; }
+    try{ id=decodeURIComponent(id); }catch(_){}
+    var dash=id.lastIndexOf("-");
+    if(dash<1)return null;
+    var code=id.slice(0,dash), iss=id.slice(dash+1);
+    if(!/^[A-Za-z0-9]{1,12}$/.test(code))return null;
+    if(!/^G[A-Z2-7]{55}$/.test(iss))return null;
+    return {code:code, issuer:iss};
+  }
+  function lxSeaHolders(list){
+    try{
+      var MID=String.fromCharCode(183);
+      var rows=list.querySelectorAll("a.lx-searow,a.lx-recrow");
+      var q=[];
+      for(var i=0;i<rows.length;i++){
+        var row=rows[i];
+        var sb=row.querySelector(".sp-sub"); if(!sb)continue;
+        // A row that already shows a count got it from the asset-index response itself. Asking again
+        // would spend a request per result on every keystroke, which is what got the index throttled.
+        if((sb.textContent||"").indexOf("holders")>=0)continue;
+        var a=lxSeaIdOf(row.getAttribute("href")); if(!a)continue;   // pools and wallets have no asset
+        q.push({a:a,sb:sb});
+      }
+      var run=0, idx=0;
+      function pump(){
+        while(run<3&&idx<q.length){
+          var it=q[idx++]; run++;
+          (function(it){
+            var done=function(){ run--; pump(); };
+            lxHlOne(it.a.code,it.a.issuer).then(function(n){
+              if(n!=null&&it.sb.parentNode)it.sb.textContent=it.a.code+" "+MID+" "+nfmt(n)+" holders";
+            }).then(done,done);
+          })(it);
+        }
+      }
+      pump();
+    }catch(_){}
+  }
+  
+    function recSub(v){
+    v=String(v==null?"":v);
+    try{
+      var MID=String.fromCharCode(183), BUL=String.fromCharCode(8226);
+      var low=v.toLowerCase(), k=low.lastIndexOf("holders");
+      if(k<0)return v;
+      if(low.slice(k+7).replace(/ /g,"")!=="")return v;      // "holders" has to end the string
+      var head=v.slice(0,k), i=head.length;
+      while(i>0){                                            // walk back over the number itself
+        var c=head.charAt(i-1);
+        if(c===" "||c==="."||c===","||(c>="0"&&c<="9")||"KMBkmb".indexOf(c)>=0){i--;continue;}
+        break;
+      }
+      var out=head.slice(0,i);
+      while(out.length){                                     // then the separator before it
+        var d=out.charAt(out.length-1);
+        if(d===" "||d===MID||d===BUL||d==="|"||d===","||d==="-"){out=out.slice(0,-1);continue;}
+        break;
+      }
+      return out||v;                                         // count-only: keep it, never blank the row
+    }catch(_){ return v; }
+  }
+  
+    function recRow(t){
     var ico = (t.pis&&t.pis.length)
       // esc() turns the quotes into &quot;, which the browser decodes back to url("...") inside the style
       // attribute instead of ending it early.
@@ -381,7 +474,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     return '<a class="sp-row sp-row--asset lx-searow lx-recrow" data-chain="stellar" href="'+esc(t.href)+'">'+ico+
       '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||"Result")+recTick(t.href)
         +(t.dom?' <span class="sp-domain">'+esc(t.dom)+'</span>':'')+'</div>'+
-      '<div class="sp-sub">'+esc(t.sub)+'</div></div>'+
+      '<div class="sp-sub">'+esc(recSub(t.sub))+'</div></div>'+
       (t.right?'<div class="sp-right"><div class="sp-addr-mini">'+esc(t.right)+'</div></div>':'')+'</a>';
   }
   // Returns whether anything was painted, so the caller can leave the design's own empty state alone when
@@ -413,13 +506,27 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
       try{ recAdd(recFromRow(row)); }catch(_){}
     },true);
   }
-  function seaFetch(q,cb){
+  // One way in to the asset index. Same-origin first so the rate limit lands on Cloudflare rather than
+  // on the visitor (mobile carriers put hundreds of people behind one IP), and so the edge cache can
+  // serve a repeat query without touching upstream. Direct URL as the fallback, which keeps this no
+  // worse than before if the proxy is ever unavailable -- including on the local dev server.
+  function seaIdx(q,limit){
+    var qs="search="+encodeURIComponent(q)+"&limit="+(limit||12);
+    function direct(){
+      return fetch("https://api.stellar.expert/explorer/public/asset?"+qs)
+        .then(function(r){ if(!r.ok)throw new Error("s"+r.status); return r.json(); });
+    }
+    return fetch("/lxapi/assetsearch?"+qs)
+      .then(function(r){ if(!r.ok)throw new Error("p"+r.status); return r.json(); })
+      .catch(direct);
+  }
+  
+    function seaFetch(q,cb){
     if(SEA_CACHE[q]) { cb(SEA_CACHE[q]); return; }
-    fetch("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(q)+"&limit=12")
-      // A rate-limited index answers with an error BODY, and parsing it yielded zero records -- so a
-      // failure was reported to the caller as "nothing on Stellar matches", which is a different and much
-      // worse message than the truth. Check the status before trusting the body.
-      .then(function(r){ if(!r.ok)throw new Error("s"+r.status); return r.json(); })
+    // Status is checked inside seaIdx: a rate-limited index answers with an error BODY, and parsing
+    // it yielded zero records, so a failure reached the caller as "nothing matches" -- a different
+    // and much worse message than the truth.
+    seaIdx(q,12)
       .then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[];
         var out=recs.map(function(x){
@@ -468,6 +575,10 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         // then appears" flap: every re-render repainted the row, and 220ms later this line wiped it.
         // Keeping the lead also makes the repaint idempotent, so paint()'s equality check ends the loop.
         if(remote===null){
+          // One transient failure should not wipe the results. Retry once, quietly, before saying
+          // the index is down -- this message was showing up far more often than the index is
+          // actually out, usually because we had just been throttled.
+          if(!_seaRetried[_qi]){ _seaRetried[_qi]=1; setTimeout(function(){ try{ lxSeaRedraw(); }catch(_){} }, 700); return; }
           var _lead0 = isAddr(_qi) ? acctRow(_qi) : (isPool(_qi) ? poolRow(_qi) : "");
           paint(list, _lead0 + '<div class="sp-seaempty">Asset index unavailable right now'
             + (_lead0 ? ' \u2014 pools and accounts are unaffected.' : '.') + '</div>');
