@@ -973,6 +973,13 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     return "0.0"+zsub(exp-1)+mant; }
   function usd(x){x=+x||0;if(x>=1)return "$"+x.toLocaleString("en-US",{maximumFractionDigits:2});if(x>=0.01)return "$"+x.toFixed(4);if(x>0)return "$"+smallNum(x,4);return "$0";}
   function xlmAmt(x){x=+x||0;if(x>=1000)return Math.round(x).toLocaleString("en-US");if(x>=1)return (+x.toFixed(4)).toString();if(x>0)return smallNum(x,4);return "0";}
+  // A spendable amount must never round UP: xlmAmt uses toFixed(4), which does, and MAX then asks
+  // for more than the wallet holds. Floor at Stellar precision and trim, same rule the swap pane uses.
+  function dxTrimZeros(t){while(t.length>1&&t.charAt(t.length-1)==="0")t=t.slice(0,-1);if(t.charAt(t.length-1)===".")t=t.slice(0,-1);return t;}
+  function dxSpendAmt(v){v=+v||0;if(!(v>0))return "";return dxTrimZeros((Math.floor(v*1e7)/1e7).toFixed(7));}
+  function dxAvailStr(v){v=+v||0;if(!(v>0))return "0";if(v>=1000)return Math.floor(v).toLocaleString("en-US");
+    var f=Math.floor(v*1e4)/1e4; if(f<=0)return smallNum(v,4);   // dust: 4dp would read as 0
+    return dxTrimZeros(f.toFixed(4));}
   function num(n){return Math.round(+n||0).toLocaleString("en-US");}
     // abbrNum rounds sub-1000 values to whole units, which reads as "0 BTC" for a real holding. Keep the
   // abbreviation for big numbers and give small ones enough places to exist. Trailing zeros trimmed so
@@ -3720,7 +3727,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     if(_spendF){ var frow2=_spendF.querySelector(".dxa-trade-frow"); if(frow2){ var bm=frow2.querySelector(".mono");
       if(bm){
         var bt;
-        if(_sell){ var _tb=window.__lxDXAassetBal; bt=(_tb==null)?"Avail: \\u2014":("Avail: "+xlmAmt(_tb)+" "+CODE); }
+        if(_sell){ var _tb=window.__lxDXAassetBal; bt=(_tb==null)?"Avail: \\u2014":("Avail: "+dxAvailStr(_tb)+" "+CODE); }
         else { var _xb=(window.__lxDXAxlmSpend!=null?window.__lxDXAxlmSpend:window.__lxDXAxlm); bt=(_xb==null)?"Avail: \\u2014":("Avail: "+(Math.floor(_xb*100)/100).toFixed(2)+" XLM"); }
         if(bm.textContent!==bt){bm.textContent=bt; bm.setAttribute("data-lxbal","1");}
       }
@@ -3752,7 +3759,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var maxAmt=0;
     if(side==="sell"){ maxAmt=window.__lxDXAassetBal||0; }
     else { var xb=(window.__lxDXAxlmSpend!=null?window.__lxDXAxlmSpend:window.__lxDXAxlm)||0; maxAmt=price>0?(xb/price):0; }
-    ain.value=maxAmt>0?xlmAmt(maxAmt):""; limRecalc();
+    ain.value=maxAmt>0?dxSpendAmt(maxAmt):""; limRecalc();
   }
   function limRecalc(){
     var pin=limPriceInput(), ain=limAmtInput(), tin=limTotInput(); if(!pin||!ain)return;
