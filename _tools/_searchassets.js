@@ -370,7 +370,35 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
   // !==undefined, not truthiness: the map's values are DOMAINS, and an asset we vouch for with no
   // domain stores "" -- testing the value would silently drop exactly those.
   function recTick(h){ var k=recVKey(h); return (k&&VFD[k]!==undefined)?VTICK:""; }
-  function recRow(t){
+  // A recents row replays a subtitle captured at save time, so any live figure in it is frozen --
+  // USDT0 sat at "87 holders" long after it was not. Drop the count, keep the identity half.
+  // NO BACKSLASHES IN HERE: this script is emitted through a template literal, which silently ate the
+  // regex version of this function (\s and \d arrived as plain s and d). Hence the manual scan and
+  // String.fromCharCode for the separators.
+  function recSub(v){
+    v=String(v==null?"":v);
+    try{
+      var MID=String.fromCharCode(183), BUL=String.fromCharCode(8226);
+      var low=v.toLowerCase(), k=low.lastIndexOf("holders");
+      if(k<0)return v;
+      if(low.slice(k+7).replace(/ /g,"")!=="")return v;      // "holders" has to end the string
+      var head=v.slice(0,k), i=head.length;
+      while(i>0){                                            // walk back over the number itself
+        var c=head.charAt(i-1);
+        if(c===" "||c==="."||c===","||(c>="0"&&c<="9")||"KMBkmb".indexOf(c)>=0){i--;continue;}
+        break;
+      }
+      var out=head.slice(0,i);
+      while(out.length){                                     // then the separator before it
+        var d=out.charAt(out.length-1);
+        if(d===" "||d===MID||d===BUL||d==="|"||d===","||d==="-"){out=out.slice(0,-1);continue;}
+        break;
+      }
+      return out||v;                                         // count-only: keep it, never blank the row
+    }catch(_){ return v; }
+  }
+  
+    function recRow(t){
     var ico = (t.pis&&t.pis.length)
       // esc() turns the quotes into &quot;, which the browser decodes back to url("...") inside the style
       // attribute instead of ending it early.
@@ -381,7 +409,7 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
     return '<a class="sp-row sp-row--asset lx-searow lx-recrow" data-chain="stellar" href="'+esc(t.href)+'">'+ico+
       '<div class="sp-info"><div class="sp-name-row">'+esc(t.name||"Result")+recTick(t.href)
         +(t.dom?' <span class="sp-domain">'+esc(t.dom)+'</span>':'')+'</div>'+
-      '<div class="sp-sub">'+esc(t.sub)+'</div></div>'+
+      '<div class="sp-sub">'+esc(recSub(t.sub))+'</div></div>'+
       (t.right?'<div class="sp-right"><div class="sp-addr-mini">'+esc(t.right)+'</div></div>':'')+'</a>';
   }
   // Returns whether anything was painted, so the caller can leave the design's own empty state alone when

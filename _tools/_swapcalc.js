@@ -686,7 +686,11 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:S.Networks.PUBLIC});'
 +'if(!qHas(qB))tb.addOperation(S.Operation.changeTrust({asset:buy}));'
 +'tb.addOperation(S.Operation.manageSellOffer({selling:sell,buying:buy,amount:amt.toFixed(7),price:(+pr.toFixed(7)).toString()}));'
-+'return window.lxSign(tb.setTimeout(180).build().toXDR(),S);});})'
++'var _plx=tb.setTimeout(180).build().toXDR(),_plp=window.lxSign(_plx,S);'
+// Bare lxSign never settles when the wallet does not answer, and an unsettled promise cannot reach
+// the .catch below -- which is why this button used to stick on "Confirm..." for good. 200s matches
+// every other signing site and outlasts the 180s SEP-7 poll.
++'return window.lxTimeout?window.lxTimeout(_plp,200000,"Signing timed out \\u2014 open your wallet and try again"):_plp;});})'
 +'.then(function(signed){'
 // The signature is in hand here; from now on we are waiting on the ledger, not on the user.
 +'try{go.textContent="Placing order\u2026";}catch(_){}'
@@ -831,7 +835,11 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:S.Networks.PUBLIC});'
 // amount 0 + the original offerId deletes it; price is required but irrelevant at amount 0
 +'tb.addOperation(S.Operation.manageSellOffer({selling:sell,buying:buy,amount:"0",price:o.price,offerId:o.id}));'
-+'return window.lxSign(tb.setTimeout(180).build().toXDR(),S);});})'
++'var _cnx=tb.setTimeout(180).build().toXDR(),_cnp=window.lxSign(_cnx,S);'
+// Bare lxSign never settles when the wallet does not answer, and an unsettled promise cannot reach
+// the .catch below -- which is why this button used to stick on "Confirm..." for good. 200s matches
+// every other signing site and outlasts the 180s SEP-7 poll.
++'return window.lxTimeout?window.lxTimeout(_cnp,200000,"Signing timed out \\u2014 open your wallet and try again"):_cnp;});})'
 +'.then(function(signed){'
 +'try{btn.textContent="Cancelling\u2026";}catch(_){}'
 +'return fetch(QH+"/transactions",{method:"POST",'
@@ -848,9 +856,10 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'if(_l&&!_l.querySelector(".lxo-o"))_l.innerHTML=\'<div class="lxo-empty">No open orders<span class="sub">A limit order stays here until it fills or you cancel it.</span></div>\';'
 +'}catch(_){}'
 +'window.__lxQOloadOrders();}'
-+'else{(window.lxToast||function(){})("The cancel was not accepted. The order is still open.",true);}})'
-+'.catch(function(){btn.__busy=0;btn.disabled=false;btn.textContent=lbl;'
-+'(window.lxToast||function(){})("Could not cancel the order.",true);});'
++'else{var _rc=resp&&resp.extras&&resp.extras.result_codes;'
++'(window.lxToast||function(){})((_rc&&window.lxTxMsg)?window.lxTxMsg(_rc,"The cancel"):"The cancel was not accepted. The order is still open.",true);}})'
++'.catch(function(e){btn.__busy=0;btn.disabled=false;btn.textContent=lbl;'
++'(window.lxToast||function(){})(((e&&e.message)||"Could not cancel the order."),true);});'
 +'}'
 +'window.__lxQOorders=function(){qOrdersUi();window.__lxQOloadOrders();};'
 +'})();</script>';
