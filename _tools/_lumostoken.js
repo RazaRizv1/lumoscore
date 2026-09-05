@@ -840,7 +840,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   // but the COUNT no longer waits on it.
   function loadHolderCountFast(){
     if(window.__lxLThcFast!=null||window.__lxLThcFastTried)return; window.__lxLThcFastTried=true;
-    j("https://api.stellar.expert/explorer/public/asset?search="+CODE+"&limit=20").then(function(d){
+    j("/lxapi/assetsearch?search="+CODE+"&limit=20").then(function(d){
       var recs=(d&&d._embedded&&d._embedded.records)||[];
       var want=CODE+"-"+ISSUER;
       var hit=recs.filter(function(x){return String(x.asset||"").indexOf(want)===0;})[0];
@@ -1043,7 +1043,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     return ""; }
   var cpTried={};
   function cpFetchLogo(o,cb){ if(!o||!o.iss||o.native)return; var k=o.code+"-"+o.iss; if(cpTried[k]||cpLogo(o))return; cpTried[k]=1;
-    j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(o.code)+"&limit=20").then(function(d){
+    j("/lxapi/assetsearch?search="+encodeURIComponent(o.code)+"&limit=20").then(function(d){
       var recs=(d&&d._embedded&&d._embedded.records)||[];
       var m=recs.filter(function(r){ return String(r.asset||"").indexOf(o.code+"-"+o.iss)===0; })[0];   // exact code+issuer only
       var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||"";
