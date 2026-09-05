@@ -2806,7 +2806,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   var dxaNameTried=false;
   function dxaFetchName(){
     if(dxaNameTried||NATIVE||!ISSUER||!CODE)return; dxaNameTried=true;
-    j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(ISSUER)+"&limit=50").then(function(d){
+    j("/lxapi/assetsearch?search="+encodeURIComponent(ISSUER)+"&limit=50").then(function(d){
       var recs=(d&&d._embedded&&d._embedded.records)||[];
       var m=recs.filter(function(r){ return (r.asset||"").indexOf(CODE+"-"+ISSUER)===0; })[0];
       var ti=(m&&(m.tomlInfo||m.toml_info))||{};
@@ -2836,7 +2836,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var _k=logoKey(code,iss); if(dxaLogoTried[_k])return; dxaLogoTried[_k]=1;
     // by ISSUER, not by ticker: a ticker search is score-ranked and capped, so a small asset sharing a
     // popular ticker never appears in it at any limit. An issuer has few assets and no ranking problem.
-    j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(iss)+"&limit=50").then(function(d){
+    j("/lxapi/assetsearch?search="+encodeURIComponent(iss)+"&limit=50").then(function(d){
       var recs=(d&&d._embedded&&d._embedded.records)||[];
       var m=recs.filter(function(r){ return (r.asset||"").indexOf(code+"-"+iss)===0; })[0];   // exact code+issuer ONLY
       var ti=(m&&(m.tomlInfo||m.toml_info))||{};
@@ -4097,7 +4097,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // the logo precedence in loadSeLogo is delicate and is deliberately not touched.
   function loadSeChange(){
     if(NATIVE||!LOGOS[CODE]||!ISSUER)return;
-    j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(CODE)+"&limit=20").then(function(d){
+    j("/lxapi/assetsearch?search="+encodeURIComponent(CODE)+"&limit=20").then(function(d){
       var recs=(d&&d._embedded&&d._embedded.records)||[];
       var mx=recs.filter(function(r){return (r.asset||"").indexOf(CODE+"-"+ISSUER)===0;})[0];
       if(!mx)return;
@@ -4112,7 +4112,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     }).catch(function(){});
   }
   function loadSeLogo(){ if(NATIVE||CODE==="LUMOS"||LOGOS[CODE])return;
-    j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(CODE)+"&limit=20").then(function(d){
+    j("/lxapi/assetsearch?search="+encodeURIComponent(CODE)+"&limit=20").then(function(d){
       var recs=(d&&d._embedded&&d._embedded.records)||[]; var mx=recs.filter(function(r){return (r.asset||"").indexOf(CODE+"-"+ISSUER)===0;})[0]; var m=mx||recs[0];
       // harvest REAL fallbacks from the EXACT-issuer record only (recs[0] may be a different issuer's asset):
       // USD price (-> price/market-cap cells for assets with no XLM orderbook), 24h change from price7d, and

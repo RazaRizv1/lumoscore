@@ -42,7 +42,9 @@ export async function onRequestGet({ request }) {
   if (!search || search.length > MAX_Q || !/^[A-Za-z0-9 ._:-]+$/.test(search)) {
     return json('{"error":"bad search"}', 400, TTL_ERR);
   }
-  const limit = Math.min(Math.max(parseInt(q.get('limit'), 10) || 12, 1), 50);
+  // Callers use 1, 5, 12, 20, 50 and 200. Capping below the highest would silently truncate a
+  // roster lookup into a short list, which is worse than a visible failure.
+  const limit = Math.min(Math.max(parseInt(q.get('limit'), 10) || 12, 1), 200);
 
   const url = UPSTREAM + '?search=' + encodeURIComponent(search) + '&limit=' + limit;
 
