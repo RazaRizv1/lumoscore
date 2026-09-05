@@ -107,6 +107,13 @@ const REVENUE_MOB=`
 `;
 
 const CSS=`<style id="lx-admin-css">
+/* Dashboard groups. .kpi-grid is repeat(auto-fit,minmax(180px,1fr)), so a heading has to span the
+   whole row or it would sit in a column and read as an eleventh tile. */
+.lxd-sec{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;margin:18px 0 -4px}
+.lxd-sec:first-child{margin-top:0}
+.lxd-sec-t{font-weight:800;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
+.lxd-sec .lxd-per{font-weight:700;font-size:11px;letter-spacing:.04em;padding:2px 8px;border-radius:999px;
+background:var(--surface-2);color:var(--text-muted)}
 .lxu-tier{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.02em;padding:4px 9px;border-radius:999px}
 .lxu-tier.on{background:rgba(34,197,94,.14);color:#22c55e}
 .lxu-tier.off{background:rgba(127,127,140,.14);color:var(--text-muted)}
@@ -480,15 +487,18 @@ function kpiTile(id,label,foot,tip){
     +"<div class='kpi-foot' id='"+id+"F'>"+foot+"</div></div>"; }
 function per(){ return "<span class='lxd-per'>"+WIN[WI][0]+"</span>"; }
 function buildDash(grid){
-  grid.innerHTML = kpiTile("lxdVol","Volume",per()+" \u00b7 swap volume")
-    + kpiTile("lxdBrVol","Cross-chain volume",per()+" \u00b7 bridged via CCTP","USDC sent through the Cross-Chain bridge, counted gross \u2014 what the sender parted with, including our fee. Kept out of Volume on purpose: that figure is swap volume, and adding bridged USDC to it would overstate how much is being traded.")
-    + kpiTile("lxdTrades","Trades",per()+" \u00b7 fee-paying swaps")
-    + kpiTile("lxdWal","Connected wallets",per()+" · distinct wallets","Distinct wallets that connected a wallet to the site in this window. Recorded by our own beacon, because nothing on-chain marks a connection - only wallets that go on to pay a fee leave a trace, and those are a fraction of the people who open the app. Counted per UTC day.")
-    + kpiTile("lxdRev","Revenue",per()+" \u00b7 fees collected")
-    + kpiTile("lxdVolA","Lifetime volume","every swap since launch")
-    + kpiTile("lxdBrVolA","Lifetime cross-chain","every bridge since launch")
-    + kpiTile("lxdTradesA","Lifetime trades","every fee-paying swap")
-    + kpiTile("lxdWalA","Lifetime wallets","connected since the beacon went live","Distinct wallets ever seen connecting. This starts from the day the beacon was installed - it cannot be backfilled, because the connections before it were never recorded anywhere.")
+  grid.innerHTML = "<div class='lxd-sec'><span class='lxd-sec-t'>Current period</span><span class='lxd-per'>" + WIN[WI][0] + "</span></div>"
+    + kpiTile("lxdRev","Revenue","fees collected")
+    + kpiTile("lxdVol","Volume","swap volume")
+    + kpiTile("lxdBrVol","Cross-chain volume","bridged via CCTP","USDC sent through the Cross-Chain bridge, counted gross \u2014 what the sender parted with, including our fee. Kept out of Volume on purpose: that figure is swap volume, and adding bridged USDC to it would overstate how much is being traded.")
+    + kpiTile("lxdTrades","Trades","fee-paying swaps")
+    + kpiTile("lxdWal","Connected wallets","distinct wallets","Distinct wallets that connected a wallet to the site in this window. Recorded by our own beacon, because nothing on-chain marks a connection - only wallets that go on to pay a fee leave a trace, and those are a fraction of the people who open the app. Counted per UTC day.")
+    + "<div class='lxd-sec'><span class='lxd-sec-t'>All time</span></div>"
+    + kpiTile("lxdVolA","Volume","every swap since launch")
+    + kpiTile("lxdBrVolA","Cross-chain","every bridge since launch")
+    + kpiTile("lxdTradesA","Trades","every fee-paying swap")
+    + kpiTile("lxdWalA","Wallets","connected since the beacon went live","Distinct wallets ever seen connecting. This starts from the day the beacon was installed - it cannot be backfilled, because the connections before it were never recorded anywhere.")
+    + "<div class='lxd-sec'><span class='lxd-sec-t'>LUMOS holders</span></div>"
     + kpiTile("lxdTier","Holders \u2265 250K LUMOS","qualify for the 0.1% fee","Wallets holding at least 250,000 LUMOS, the threshold for the reduced 0.1% platform fee. Treasury and burn wallets are excluded.");
 }
 // The window control sits in the page header beside Export/Refresh, where the design puts actions.
@@ -520,14 +530,14 @@ function fillDash(){
       // Some fee receipts carry no swap in their envelope -- real revenue, but not volume. That is why
       // revenue/volume lands above the 0.2% fee rate, so the count is shown rather than left to puzzle
       // over: an unexplained ratio invites someone to trust the wrong number.
-      var f=q("#lxdVolF"); if(f)f.innerHTML=per()+" \u00b7 swap volume"+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(v.missing>0?(" \u00b7 "+v.missing+" receipt(s) with no swap"):""); });
+      var f=q("#lxdVolF"); if(f)f.innerHTML="swap volume"+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(v.missing>0?(" \u00b7 "+v.missing+" receipt(s) with no swap"):""); });
     volUsd(v.rows,0,function(t){ setT(q("#lxdVolA"), usd(t)); });
     // Straight sum, no pricing step: CCTP moves USDC and nothing else.
     var brP=0,brA=0,brN=0;
     v.rows.forEach(function(r){ var b=+r.bridged||0; if(!b)return;
       brA+=b; brN++; if(!since||r.t>=since)brP+=b; });
     setT(q("#lxdBrVol"), usd(brP)); setT(q("#lxdBrVolA"), usd(brA));
-    var bf=q("#lxdBrVolF"); if(bf)bf.innerHTML=per()+" \u00b7 bridged via CCTP";
+    var bf=q("#lxdBrVolF"); if(bf)bf.innerHTML="bridged via CCTP";
     var bfa=q("#lxdBrVolAF"); if(bfa)bfa.textContent=brN?("every bridge since launch \u00b7 "+brN+" transfer"+(brN===1?"":"s")):"no bridges recorded yet";
   });
   loadTier().then(function(t){ if(t.n==null){ setT(q("#lxdTier"),"\u2014");
@@ -542,7 +552,7 @@ function fillDash(){
     setT(q("#lxdWal"), w[k]==null?"\u2014":num(w[k]));
     setT(q("#lxdWalA"), w.all==null?"\u2014":num(w.all));
     var f=q("#lxdWalF");
-    if(f)f.innerHTML=(w[k]==null)?"beacon not reporting":(per()+" \u00b7 distinct wallets");
+    if(f)f.innerHTML=(w[k]==null)?"beacon not reporting":("distinct wallets");
     var g=q("#lxdWalAF");
     if(g)g.textContent=w.since?("connected since "+w.since):"connected since the beacon went live";
   });
