@@ -28,6 +28,11 @@ const CSS='<style id="lx-lp-css">'
 +'.type-card .radio{display:none!important}'
 +'.type-card .ic{width:30px!important;height:30px!important;flex:0 0 30px!important}'
 +'.type-card .ic svg{width:16px!important;height:16px!important}'
+// ...and the two places that PRINTED the chosen type after audit #8 stopped asking for it: the live
+// preview card on the form and the hero pill on review. Both were still stamping "Meme Project" on
+// every launch — a label nobody picked, on a field that no longer exists. Killed in CSS rather than
+// by script so it cannot lose a race with the design's own preview painter.
++'.preview-type-badge,.hero-type-badge{display:none!important}'
 +'.type-card .info{display:flex;align-items:center}'
 +'.type-card .ttl{font-size:14px!important;font-weight:700!important;white-space:nowrap}'
 // launch progress overlay (theme-aware via site CSS vars)
@@ -610,9 +615,8 @@ function lxLpWireReview(){
   try{ lxLpSdk(); }catch(_){} // pre-warm the Stellar SDK so the launch signature fires with minimal delay (keeps the click gesture alive for web wallets)
   var C=window.__lxLP, CODE=lxLpCode(d.ticker), supply=parseFloat(String(d.supply||"").replace(/,/g,""))||0, share=Math.max(0,Math.min(30,parseFloat(d.sharePct)||10));
   var keep=supply*share/100, lp=supply*(100-share)/100, extra=Math.max(0, parseFloat(String(d.extraXlm||"0").replace(/,/g,""))||0);
-  var typeName=d.projectType==="utility"?"Utility Project":"Meme Project", dim='<span style="opacity:.55">';
+  var dim='<span style="opacity:.55">';
   var hn=document.querySelector(".hero-name"); if(hn) hn.textContent=d.name;
-  var hb=document.querySelector(".hero-type-badge"); if(hb) hb.textContent=typeName;
   var hd=document.querySelector(".hero-desc"); if(hd) hd.textContent=d.desc||"No description provided.";
   // hero icon: uploaded logo, else neutral placeholder (never the baked Stellar native logo)
   var hi=document.querySelector(".hero-icon img"); if(hi) hi.src=d.icon||LXLP_PH;
@@ -631,8 +635,18 @@ function lxLpWireReview(){
   [].slice.call(document.querySelectorAll('a[href*="launch-token"]')).forEach(function(a){ if(a.__lxEd) return; a.__lxEd=true; a.addEventListener("click",function(){ try{ sessionStorage.setItem("lumos.launch.edit","1"); }catch(_){} }); });
   lxLpSetRow(/^Token Name/i, d.name);
   lxLpSetRow(/^Ticker/i, "$"+CODE);
-  lxLpSetRow(/^Project Type/i, typeName);
+  // Audit #8 hid the Project Type row on the FORM (.review-row/.rv-row/.lp-row). The review screen
+  // builds it as a .detail-row, which that selector never matched — and this line then wrote a type
+  // into it. Passing null asks lxLpSetRow for the cell WITHOUT writing, so the whole row can go.
+  var _ptv=lxLpSetRow(/^Project Type/i, null);
+  if(_ptv){ var _ptr=(_ptv.closest&&_ptv.closest(".detail-row,.review-row,.rv-row,.lp-row"))||_ptv.parentElement; if(_ptr) _ptr.style.display="none"; }
   lxLpSetRow(/^Description/i, d.desc||"Not provided");
+  // Found while removing the type badge: NOTHING wrote the Icon row, so the design's mock
+  // "icon-slr.png · 142 KB" was shown to every launcher regardless of what they uploaded — and to
+  // launchers who uploaded nothing at all. The real name is captured at pick time (fi change ->
+  // __lxLpIconName) and round-trips in the draft, so print that. Angle brackets stripped: a file
+  // name containing "<" would otherwise take lxLpSetRow's innerHTML path instead of textContent.
+  lxLpSetRow(/^Icon/i, d.icon ? (String(d.iconName||"").replace(/[<>]/g,"").trim()||"Uploaded") : "Not provided");
   lxLpSetRow(/^Telegram/i, d.telegram||"Not provided");
   lxLpSetRow(/Twitter|^X\b/i, d.twitter||"Not provided");
   lxLpSetRow(/^Website/i, d.website||"Not provided");
@@ -832,6 +846,12 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       // AUDIT FIX: the crumb bakes TWO consecutive "/" separators ("Home / / Create Token") — a middle
       // segment was removed upstream but its separator stayed. Collapse doubled seps (idempotent).
       h=h.replace(/(<span class="sep">\/<\/span>)\s*<span class="sep">\/<\/span>/g,'$1');
+      // The review screen's "Project Type / Meme Project" row. The badges beside it are killed in CSS
+      // (which lands in <head>, so they never paint), but a row identified only by its LABEL TEXT has
+      // no CSS selector — hiding it in script would leave "Meme Project" on screen until the script
+      // runs. Cut the markup instead, so there is nothing to flash. Anchored on the open tag and
+      // forbidding a nested <div> in the value cell, so it cannot run past the row it means to take.
+      h=h.replace(/<div class="(?:detail-row|review-row|rv-row|lp-row)">\s*<div class="k">\s*Project Type\s*<\/div>\s*<div class="v">(?:(?!<div)[\s\S])*?<\/div>\s*<\/div>/g,'');
       if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');
       const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+SCRIPT+h.slice(bi);
       if(h!==before){ json[k]=h; pages++; }
