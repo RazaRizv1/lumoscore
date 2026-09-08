@@ -8471,7 +8471,8 @@ function lxLpAmt(n){ var x=Number(n); if(!isFinite(x)||x<0) x=0; return x.toFixe
 function lxLpCode(t){ return String(t||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,12); }
 // neutral "no logo yet" placeholder + Stellar network logo (relative asset, resolves under dist root)
 var LXLP_PH="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI5NiIgaGVpZ2h0PSI5NiIgdmlld0JveD0iMCAwIDk2IDk2Ij48cmVjdCB3aWR0aD0iOTYiIGhlaWdodD0iOTYiIHJ4PSIyMiIgZmlsbD0iI2VjZWVmMyIvPjxnIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2FhYjFiZCIgc3Ryb2tlLXdpZHRoPSI0IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHg9IjI3IiB5PSIzMSIgd2lkdGg9IjQyIiBoZWlnaHQ9IjM0IiByeD0iNSIvPjxjaXJjbGUgY3g9IjM5IiBjeT0iNDMiIHI9IjQiLz48cGF0aCBkPSJNMzAgNTlsMTEtMTEgOSA4IDctNiA5IDkiLz48L2c+PC9zdmc+";
-var LXLP_XLM="assets/tokens/xlm.png";
+// (LXLP_XLM removed — a relative asset path that 404'd on every clean route; its only consumer, the
+//  "Paying from" avatar, now draws an identicon instead.)
 function lxLpImgTag(src){ return '<img src="'+(src||LXLP_PH)+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">'; }
 // fill an icon container with the uploaded logo (or the placeholder) as an <img>, replacing any monogram text
 function lxLpFillIcon(box, src){ if(!box) return; var want=src||LXLP_PH; var cur=box.querySelector('img[data-lxlp]'); if(cur){ if(cur.getAttribute("src")!==want) cur.setAttribute("src",want); return; } box.innerHTML='<img data-lxlp="1" src="'+want+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit">'; box.style.color="transparent"; box.style.overflow="hidden"; if(!box.style.background) box.style.background="var(--surface,#fff)"; }
@@ -8913,10 +8914,12 @@ function lxLpWireReview(){
     if(_iname) _iname.textContent = d.icon ? String(d.iconName||"").trim() : "No icon uploaded";
     if(_ipill) _ipill.style.display = d.icon ? "" : "none";   // the pill reads "Uploaded" over a tick — a lie with no icon
   }
-  // Paying from: show the Stellar network logo (not the RR identicon), as a fixed round avatar
-  // (the original box was a shrinking rounded-square, which looked lopsided next to the circular logo).
-  var av=document.querySelector(".wallet-info .av"); if(av){ av.style.cssText="width:34px;height:34px;flex:0 0 34px;border-radius:50%;overflow:hidden;background:transparent;color:transparent;display:block;padding:0"; av.innerHTML=lxLpImgTag(LXLP_XLM); }
-  var pfAddr=document.querySelector(".wallet-info .addr"); var pfReal=localStorage.getItem("lumos.address"); if(pfAddr){ if(pfReal) pfAddr.textContent=lxLpShort(pfReal); pfAddr.style.whiteSpace="nowrap"; }
+  // Paying from: an identicon of the connected address, as a fixed round avatar (the original box was a
+  // shrinking rounded-square). This used to paint the Stellar logo from a RELATIVE asset path, which
+  // 404'd on every clean route — see lxLpIdenticon.
+  var pfReal=localStorage.getItem("lumos.address");
+  var av=document.querySelector(".wallet-info .av"); if(av){ av.style.cssText="width:34px;height:34px;flex:0 0 34px;border-radius:50%;overflow:hidden;background:transparent;color:transparent;display:block;padding:0"; av.innerHTML=lxLpIdenticon(pfReal); }
+  var pfAddr=document.querySelector(".wallet-info .addr"); if(pfAddr){ if(pfReal) pfAddr.textContent=lxLpShort(pfReal); pfAddr.style.whiteSpace="nowrap"; }
   // Editing means returning to step 1 with the form intact — flag it so the token page repopulates
   // (a fresh entry via the sidebar or "Launch another" leaves no flag and starts blank).
   [].slice.call(document.querySelectorAll('a[href*="launch-token"]')).forEach(function(a){ if(a.__lxEd) return; a.__lxEd=true; a.addEventListener("click",function(){ try{ sessionStorage.setItem("lumos.launch.edit","1"); }catch(_){} }); });
@@ -8971,6 +8974,24 @@ function lxLpWireReview(){
   var _dn=0, _div=setInterval(function(){ _dn++; var v=lxLpApplyDesc(); if((v && (v.textContent||"")===wantDesc && _dn>=6) || _dn>32) clearInterval(_div); },250);
 }
 function lxLpShort(a){ return a&&a.length>10?a.slice(0,5)+"…"+a.slice(-4):(a||""); }
+// Identicon for the "Paying from" avatar, drawn from the address itself. Replaces an <img> pointing at
+// the RELATIVE path "assets/tokens/xlm.png": every launchpad page is served from a clean route
+// (/launchpad/review), so that resolved to /launchpad/assets/... and 404'd — the broken image users saw.
+// Inline SVG has no path to get wrong, differs per wallet, and (needing an svg child) is also what keeps
+// the ticker-logo healer from repainting the box.
+function lxLpIdenticon(addr){
+  var s=String(addr||""), h=2166136261;
+  for(var i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=(h*16777619)>>>0; }          // FNV-1a
+  var hue=h%360, r=h||1, cells="";
+  function nxt(){ r^=r<<13; r>>>=0; r^=r>>>17; r^=r<<5; r>>>=0; return r; }       // xorshift32
+  for(var y=0;y<5;y++){ for(var x=0;x<3;x++){ if(nxt()%2){                        // left half + centre...
+    cells+='<rect x="'+x+'" y="'+y+'" width="1" height="1"/>';
+    if(x<2) cells+='<rect x="'+(4-x)+'" y="'+y+'" width="1" height="1"/>';        // ...mirrored right
+  } } }
+  return '<svg viewBox="0 0 5 5" width="100%" height="100%" shape-rendering="crispEdges" '
+    +'style="display:block" aria-hidden="true"><rect width="5" height="5" fill="hsl('+hue+',65%,90%)"/>'
+    +'<g fill="hsl('+hue+',58%,42%)">'+cells+'</g></svg>';
+}
 function lxLpToast(msg){ var t=document.getElementById("lxlp-toast"); if(!t){ t=document.createElement("div"); t.id="lxlp-toast"; t.style.cssText="position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(10px);background:#0e0e10;color:#fff;padding:10px 16px;border-radius:10px;font-size:13.5px;font-weight:600;z-index:100000;box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transition:opacity .2s,transform .2s;pointer-events:none"; document.body.appendChild(t); } t.textContent=msg; void t.offsetHeight; t.style.opacity="1"; t.style.transform="translateX(-50%) translateY(0)"; clearTimeout(t.__h); t.__h=setTimeout(function(){ t.style.opacity="0"; t.style.transform="translateX(-50%) translateY(10px)"; },1500); }
 function lxLpCopyToast(){ if(window.showToast){ try{ window.showToast("Copied to clipboard"); return; }catch(_){} } lxLpToast("Copied to clipboard"); }
 function lxLpCopyCell(el, full){ if(!el||el.__lxCopy||!full) return; el.__lxCopy=true; el.style.cursor="pointer"; el.setAttribute("title","Click to copy"); el.addEventListener("click",function(){ try{ navigator.clipboard.writeText(full); }catch(_){} lxLpCopyToast(); }); }
