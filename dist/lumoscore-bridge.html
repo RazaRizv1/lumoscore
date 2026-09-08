@@ -10387,7 +10387,26 @@ function lxBrTableCols(){ try{
 window.lxBrSaveTx=lxBrSaveTx;
 // ---- appealing step-progress overlay for Confirm (theme-aware via CSS vars) ----
 var LX_PSTEPS=[{k:"approve",label:"Approve spending",re:/approv|allowance/i},{k:"fee",label:"Collect bridge fee",re:/fee|swap/i},{k:"burn",label:"Burn on Stellar",re:/burn|bridging/i},{k:"attest",label:"Circle CCTP attestation",re:/attest/i}];
-function lxBrProg(){ var el=document.getElementById("lx-prog"); if(!el){ el=document.createElement("div"); el.id="lx-prog"; el.className="lx-prog"; var items=LX_PSTEPS.map(function(s){return '<li data-pk="'+s.k+'"><span class="lx-pdot"><span class="lx-spin"></span><span class="lx-tick">✓</span></span><span class="lx-plab">'+s.label+'</span></li>';}).join(""); el.innerHTML='<div class="lx-prog-card"><div class="lx-prog-h">Bridging via Circle CCTP</div><div class="lx-prog-sub">Approve the wallet prompts — everything else runs automatically.</div><ul class="lx-prog-list">'+items+'</ul><div class="lx-prog-msg"></div><button class="lx-prog-x" type="button" hidden>Done</button></div>'; (document.querySelector(".br-card")||document.body).appendChild(el); el.querySelector(".lx-prog-x").addEventListener("click",function(){ el.style.display="none"; if(el.__ok) lxBrResetWizard(); }); } return el; }
+function lxBrProg(){ var el=document.getElementById("lx-prog"); if(!el){ el=document.createElement("div"); el.id="lx-prog"; el.className="lx-prog"; var items=LX_PSTEPS.map(function(s){return '<li data-pk="'+s.k+'"><span class="lx-pdot"><span class="lx-spin"></span><span class="lx-tick">✓</span></span><span class="lx-plab">'+s.label+'</span></li>';}).join(""); el.innerHTML='<div class="lx-prog-card"><div class="lx-prog-h">Bridging via Circle CCTP</div><div class="lx-prog-sub">Approve the wallet prompts — everything else runs automatically.</div><ul class="lx-prog-list">'+items+'</ul><div class="lx-prog-msg"></div><button class="lx-prog-x" type="button" hidden>Done</button></div>'; (document.querySelector(".br-card")||document.body).appendChild(el); el.querySelector(".lx-prog-x").addEventListener("click",function(){ el.style.display="none"; if(el.__ok){ lxBrResetWizard(); if(!el.__minted) lxBrGoPending(); } }); } return el; }
+// A burn that was not minted leaves the reader with one thing they MUST still do, and closing the overlay
+// used to drop them back on step 1 of an empty wizard with that transfer filed behind an unselected tab.
+// Send them to it instead. Only when the mint did NOT happen: a completed bridge has nothing to claim, and
+// Recent transactions is the right place for it.
+function lxBrGoPending(){ try{
+  if(!lxBrListPending().length) return;                  // nothing to send them to
+  lxBrRenderPending();                                   // make sure the row for the burn that just happened exists
+  var host=lxBrPendHost(); if(!host) return;             // the accessor also CREATES the host, so ask it rather than the DOM
+  if(host.tabbed){                                       // desktop: a tab beside Recent transactions
+    var tab=host.wrap.querySelector('.lx-brtab[data-brtab="pend"]');
+    if(tab && !tab.hidden) tab.click();
+  }
+  var el=host.tabbed?host.wrap:host.el;                  // mobile ships a standalone panel instead
+  // AFTER lxBrResetWizard, not alongside it: that runs its own step-back clicks on a 140ms timer, and a
+  // smooth scroll started at 160ms was cancelled by the re-render every time -- measured on the phone
+  // layout as scrollY still 0 a second after the click, while an instant scroll to the same element
+  // landed at 815. Wait for the reset to settle, and scroll instantly so nothing can interrupt it.
+  if(el&&el.scrollIntoView) setTimeout(function(){ try{ el.scrollIntoView({block:"start"}); }catch(_){ el.scrollIntoView(true); } },420);
+}catch(_){} }
 // after a successful bridge, return the wizard to step 1 and clear the form (recent transactions stays put)
 function lxBrResetWizard(){ try{
   var s3=document.querySelector('.br-step[data-step="3"]'); var b3=s3?s3.querySelector('[data-go="2"]'):null; if(b3) b3.click();
@@ -10406,7 +10425,7 @@ function lxBrProgUpdate(msg){ var el=lxBrProg(); el.querySelector(".lx-prog-msg"
 // app does not do — so the transfer is NOT complete here. Report exactly what happened and keep the redeem
 // data visible. Pass minted=true once a destination mint is actually performed.
 function lxBrProgDone(res){
-  var el=lxBrProg(); el.__ok=true;
+  var el=lxBrProg(); el.__ok=true; el.__minted=!!(res&&res.minted);   // drives where "Done" sends the reader
   [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className="done"; });
   var m=el.querySelector(".lx-prog-msg"); m.style.color="";
   if(res&&res.minted){
