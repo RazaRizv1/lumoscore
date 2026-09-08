@@ -605,6 +605,12 @@ var LX_ASSETS={
   AQUA:{logo:"assets/tokens/aqua.png", spec:{code:"AQUA",issuer:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"}, px:0.004}
 };
 var LX_AORDER=["USDC","XLM","SHX","yXLM","LUMOS","BLND","AQUA"];
+// Which px values are a LIVE price rather than the baked placeholder above. Only USDC is inherently
+// true (it is the unit). XLM is set from our own /lxapi/xlm route, the rest by the CoinGecko pass --
+// and CoinGecko does not list LUMOS, so LUMOS never becomes live and must never be quoted from px.
+// Measured before this gate existed: typing 711 LUMOS printed "You get ~ 177.39 USDC" for ~2 seconds
+// (baked px 0.25) against a real 0.05 -- overstated 3,548x -- until the live path quote replaced it.
+var LX_PXLIVE={USDC:true};
 var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arbitrum:"arbitrum",Base:"base",Polygon:"polygon",Solana:"solana",Sui:"sui",Linea:"linea","World Chain":"worldchain"};
 // per-network block explorer "wallet address" pages (for clickable recent-tx addresses)
 var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan.org/address/",Arbitrum:"https://arbiscan.io/address/",Optimism:"https://optimistic.etherscan.io/address/",Polygon:"https://polygonscan.com/address/",Avalanche:"https://snowtrace.io/address/",Linea:"https://lineascan.build/address/","World Chain":"https://worldscan.org/address/",Solana:"https://solscan.io/account/",Sui:"https://suiscan.xyz/mainnet/account/"};
@@ -721,6 +727,14 @@ function lxBrMoney(side, usd){
   if(!u)return;
   u.setAttribute('data-usd',v); u.setAttribute('data-orig',"~ "+s); u.textContent="~ "+s;   // design format
 }
+// The dollar line while no live price is known. data-usd stays 0 so the money-hiding toggle has a number
+// to work from, but the visible text says "unknown" rather than naming a figure derived from a guess.
+function lxBrMoneyPending(side){
+  if(!side)return;
+  var el=side.querySelector('.br-amt .usd .lc-money')||side.querySelector('.br-amt .usd')||side.querySelector('.usd');
+  if(!el)return;
+  el.setAttribute('data-usd','0'); el.setAttribute('data-orig',"~ $—"); el.textContent="~ $—";
+}
 // Load LIVE market prices (CoinGecko) into the px table so the $ / USDC estimates are real, not hardcoded.
 // Falls back silently to the built-in px values if the request fails.
 var __lxPxLoaded=false;
@@ -733,14 +747,14 @@ function lxCctpLoadPrices(){
   // fails this table falls back to a baked px of 0.12 against a real ~0.18: a third off, on the dollar
   // figure beside a bridge amount. This route is ours and cached, so it does not have that failure mode.
   fetch("/lxapi/xlm").then(function(r){return r.ok?r.json():null;}).then(function(x){
-    var u=x&&+x.usd; if(u>0){ window.__lxXlmUsd=u; if(LX_ASSETS.XLM)LX_ASSETS.XLM.px=u; try{ lxBrCalc(); }catch(_){} }
+    var u=x&&+x.usd; if(u>0){ window.__lxXlmUsd=u; if(LX_ASSETS.XLM)LX_ASSETS.XLM.px=u; LX_PXLIVE.XLM=true; try{ lxBrCalc(); }catch(_){} }
   }).catch(function(){});
   fetch("https://api.coingecko.com/api/v3/simple/price?ids="+ids+"&vs_currencies=usd").then(function(r){return r.json();}).then(function(j){
     if(!j)throw new Error("no price data");
-    var xlm=j.stellar&&j.stellar.usd; if(xlm>0&&!(window.__lxXlmUsd>0)) window.__lxXlmUsd=xlm;   // the edge route wins
+    var xlm=j.stellar&&j.stellar.usd; if(xlm>0&&!(window.__lxXlmUsd>0)){ window.__lxXlmUsd=xlm; LX_PXLIVE.XLM=true; }   // the edge route wins
     Object.keys(CG).forEach(function(id){ var p=j[id]&&j[id].usd; if(p>0){ CG[id].forEach(function(k){
       if(k==="XLM"&&window.__lxXlmUsd>0)return;                                                  // ditto
-      if(LX_ASSETS[k]) LX_ASSETS[k].px=p; }); } });
+      if(LX_ASSETS[k]){ LX_ASSETS[k].px=p; LX_PXLIVE[k]=true; } }); } });
     try{ lxBrCalc(); }catch(_){}
   }).catch(function(){ __lxPxLoaded=false; });
 }
@@ -758,11 +772,19 @@ function lxBrCalc(){
   // figure paints instantly as a placeholder, and a debounced LIVE strict-send path quote — the same rate
   // execution uses — overwrites it. If no path exists, show a dash and zero the target: execution would
   // fail on that pair anyway, and an honest dash beats an invented number.
+  // AUDIT #3 left the px table painting the FIRST figure the user sees, with the live quote arriving ~2s
+  // later. That is fine for an asset whose px is live and wrong for one whose px is a baked guess: LUMOS
+  // is not listed on CoinGecko, so it kept px 0.25 against a real ~0.00007 and printed a number 3,548x
+  // too big beside a bridge amount. The same happens to SHX/BLND/AQUA/yXLM whenever the CoinGecko call
+  // fails and their baked values stand in. So gate on whether the price is LIVE, not on which asset it is:
+  // an honest "—" for a second beats a confident wrong number, and the quote fills it in either way.
+  var pxLive = (k==="USDC") || (k==="XLM" ? !!(window.__lxXlmUsd>0) : !!LX_PXLIVE[k]);
   var pxu = k==="USDC"?1:(k==="XLM"?(window.__lxXlmUsd||A.px):A.px);
   var srcUsd=amt*pxu, out=amt*pxu*(1-feeRate);
-  lxBrMoney(sides[0], srcUsd);
+  if(pxLive) lxBrMoney(sides[0], srcUsd); else lxBrMoneyPending(sides[0]);
   if(amt<=0){ outEl.textContent="~ 0.00"; lxBrMoney(sides[1],0); window.__lxBr.netUsdc=0; return; }
-  outEl.textContent="~ "+lxBrFmt(out,2); lxBrMoney(sides[1], out); window.__lxBr.netUsdc=+out.toFixed(7);
+  if(pxLive){ outEl.textContent="~ "+lxBrFmt(out,2); lxBrMoney(sides[1], out); window.__lxBr.netUsdc=+out.toFixed(7); }
+  else { outEl.textContent="~ —"; lxBrMoneyPending(sides[1]); window.__lxBr.netUsdc=0; }
   if(k==="USDC")return;                                     // USDC->USDC: amt*(1-fee) IS exact, nothing to quote
   // LANDMINE: lxBrCalc is re-invoked on a ~200ms design loop, so a plain debounce (clearTimeout on every
   // call) NEVER fired — measured seq climbing 2,4,5,6,8… while the quote never ran. Key the work on the
