@@ -24,6 +24,19 @@ const STYLE='<style id="lx-bridgefee-css">'
 
 const SCRIPT='<script id="lx-bridgefee">(function(){'
 +'var URL="lumoscore-lumos-token.html";'
+// The same bug audit #37 fixed in lx-feetier, missed here because the number is a duplicated
+// literal rather than shared code: "You hold 48,240" was HARDCODED, so every visitor on the bridge
+// saw the same invented holding regardless of what they actually held. Reported by a user with
+// 102,375 LUMOS who was shown 48,240. Reads the live, issuer-checked balance lx-feerate publishes.
++'var THRESH=250000;'
++'function bal(){var b=window.__lxLumosBal;return (typeof b==="number"&&isFinite(b))?b:null;}'
++'function fmt(n){return Math.floor(n).toLocaleString("en-US");}'
++'function lumHtml(){var b=bal();'
++'var foot=(b===null)?"Connect your wallet to see your balance":("You hold <b>"+fmt(b)+"</b> / "+fmt(THRESH)+" LUMOS");'
++'return \'<span class="lx-brlumos-ic"><img src="assets/favicon.png" alt="LUMOS"></span>\''
++'+\'<div class="lx-brlumos-main"><div class="lx-brlumos-t">Hold <b>250,000 LUMOS</b> to bridge at <b>0.1%</b> instead of 0.2%</div>\''
++'+\'<div class="lx-brlumos-s">\'+foot+\'</div></div>\''
++'+\'<button class="lx-brlumos-buy" type="button">Buy LUMOS</button>\';}'
 +'function boot(){var done=false;'
 // 1) bridge fee row
 +'var list=document.querySelector(".br-rv-list");'
@@ -31,11 +44,14 @@ const SCRIPT='<script id="lx-bridgefee">(function(){'
 +'r.innerHTML=\'<span class="k">Bridge fee</span><span class="v">0.2%<span class="lx-bchip">0.1% with LUMOS</span></span>\';list.appendChild(r);done=true;}'
 // 2) lumos note in review
 +'var rv=document.querySelector(\'.br-step[data-step="3"] .br-rv\')||document.querySelector(".br-rv");'
-+'if(rv&&!rv.querySelector(".lx-brlumos")){var n=document.createElement("div");n.className="lx-brlumos";'
-+'n.innerHTML=\'<span class="lx-brlumos-ic"><img src="assets/favicon.png" alt="LUMOS"></span>\''
-+'+\'<div class="lx-brlumos-main"><div class="lx-brlumos-t">Hold <b>250,000 LUMOS</b> to bridge at <b>0.1%</b> instead of 0.2%</div>\''
-+'+\'<div class="lx-brlumos-s">You hold <b>48,240</b> / 250,000 LUMOS</div></div>\''
-+'+\'<button class="lx-brlumos-buy" type="button">Buy LUMOS</button>\';rv.appendChild(n);done=true;}'
+// Repaints in place rather than only creating once, so the figure corrects itself when the balance
+// resolves. A holder already on the 0.1% tier is shown nothing — the same rule lx-feetier uses,
+// rather than telling someone with 300,000 that they hold 300,000 of 250,000.
++'if(rv){var lb=bal(),qual=(lb!==null&&lb>=THRESH),ex=rv.querySelector(".lx-brlumos");'
++'if(qual){if(ex&&ex.parentNode){ex.parentNode.removeChild(ex);done=true;}}'
++'else if(ex){var nh=lumHtml();if(ex.innerHTML!==nh)ex.innerHTML=nh;done=true;}'
++'else{var n=document.createElement("div");n.className="lx-brlumos";n.innerHTML=lumHtml();'
++'rv.appendChild(n);done=true;}}'
 // 3) HIW fee step
 +'var body=document.querySelector(".modal-hiw .modal-body");'
 +'if(body&&!body.querySelector(".lx-hiwfee")){var steps=body.querySelectorAll(".hiw-step");var num=steps.length+1;var ns=num<10?"0"+num:""+num;'
@@ -43,6 +59,7 @@ const SCRIPT='<script id="lx-bridgefee">(function(){'
 +'st.innerHTML=\'<div class="hiw-num">\'+ns+\'</div><div class="hiw-text"><div class="hiw-h">Low, transparent fees</div><div class="hiw-d">Bridging costs <b>0.2%</b> per transfer \\u2014 or just <b>0.1%</b> if you hold <b>250,000 LUMOS</b>.</div></div>\';body.appendChild(st);done=true;}'
 +'return done;}'
 +'document.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest(".lx-brlumos-buy"):null;if(!b)return;e.preventDefault();if(window.__lxNav)__lxNav(URL);else location.href=URL;},true);'
++'window.addEventListener("lx:feetier",function(){boot();});'   // repaint when the real balance lands
 +'function run(){var n=0,iv=setInterval(function(){boot();if(++n>30)clearInterval(iv);},220);}'   // keep trying (review step + HIW render lazily)
 +'if(document.readyState!=="loading")run();else document.addEventListener("DOMContentLoaded",run);'
 +'})();</script>';
