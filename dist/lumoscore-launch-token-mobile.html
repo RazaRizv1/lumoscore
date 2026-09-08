@@ -9166,7 +9166,20 @@ function lxLpWireReview(){
   var ht=document.querySelector(".hero-ticker"); if(ht){ ht.setAttribute("data-lx-noswap","1"); ht.removeAttribute("data-logo"); ht.style.removeProperty("background"); ht.style.removeProperty("background-image"); ht.textContent="$"+CODE; }
   // ICON detail row: replace the orange monogram box with the uploaded logo (or placeholder)
   var iconRow=[].slice.call(document.querySelectorAll(".detail-row")).filter(function(rw){ var k=rw.querySelector(".k"); return k && /^icon$/i.test((k.textContent||"").replace(/s+/g," ").trim()); })[0];
-  if(iconRow){ var mono=iconRow.querySelector(".v > div"); if(mono){ mono.style.cssText="width:36px;height:36px;border-radius:10px;overflow:hidden;display:block;background:var(--surface,#fff);border:1px solid var(--border,#e6e8ee)"; mono.innerHTML=lxLpImgTag(d.icon||LXLP_PH); } }
+  if(iconRow){ var mono=iconRow.querySelector(".v > div"); if(mono){ mono.style.cssText="width:36px;height:36px;border-radius:10px;overflow:hidden;display:block;background:var(--surface,#fff);border:1px solid var(--border,#e6e8ee)"; mono.innerHTML=lxLpImgTag(d.icon||LXLP_PH); }
+    // ...and the MOCK filename baked beside it. "icon-slr.png · 142 KB" was printed to every launcher
+    // whatever they uploaded, and to launchers who uploaded nothing — the thumbnail was swapped for the
+    // real image while the caption still named a file that never existed. The real name is captured at
+    // pick time (fi change -> __lxLpIconName) and round-trips in the draft. Only the trailing text span
+    // is touched: the thumbnail and the "Uploaded" pill above it are correct and must survive. (No size
+    // is shown — only the SHRUNK data URL is kept, so the original's byte count is no longer knowable.)
+    var _iv=iconRow.querySelector(".v");
+    var _ipill=_iv?_iv.querySelector(".pill"):null;
+    var _iname=_iv?[].slice.call(_iv.children).filter(function(el){ return el.tagName==="SPAN" && !el.classList.contains("pill"); })[0]:null;
+    if(_iv && !_iname){ _iname=document.createElement("span"); _iname.style.cssText="color:var(--text-soft)"; _iv.appendChild(_iname); }   // the phone layout ships no caption span
+    if(_iname) _iname.textContent = d.icon ? String(d.iconName||"").trim() : "No icon uploaded";
+    if(_ipill) _ipill.style.display = d.icon ? "" : "none";   // the pill reads "Uploaded" over a tick — a lie with no icon
+  }
   // Paying from: show the Stellar network logo (not the RR identicon), as a fixed round avatar
   // (the original box was a shrinking rounded-square, which looked lopsided next to the circular logo).
   var av=document.querySelector(".wallet-info .av"); if(av){ av.style.cssText="width:34px;height:34px;flex:0 0 34px;border-radius:50%;overflow:hidden;background:transparent;color:transparent;display:block;padding:0"; av.innerHTML=lxLpImgTag(LXLP_XLM); }
@@ -9182,12 +9195,6 @@ function lxLpWireReview(){
   var _ptv=lxLpSetRow(/^Project Type/i, null);
   if(_ptv){ var _ptr=(_ptv.closest&&_ptv.closest(".detail-row,.review-row,.rv-row,.lp-row"))||_ptv.parentElement; if(_ptr) _ptr.style.display="none"; }
   lxLpSetRow(/^Description/i, d.desc||"Not provided");
-  // Found while removing the type badge: NOTHING wrote the Icon row, so the design's mock
-  // "icon-slr.png · 142 KB" was shown to every launcher regardless of what they uploaded — and to
-  // launchers who uploaded nothing at all. The real name is captured at pick time (fi change ->
-  // __lxLpIconName) and round-trips in the draft, so print that. Angle brackets stripped: a file
-  // name containing "<" would otherwise take lxLpSetRow's innerHTML path instead of textContent.
-  lxLpSetRow(/^Icon/i, d.icon ? (String(d.iconName||"").replace(/[<>]/g,"").trim()||"Uploaded") : "Not provided");
   lxLpSetRow(/^Telegram/i, d.telegram||"Not provided");
   lxLpSetRow(/Twitter|^X/i, d.twitter||"Not provided");
   lxLpSetRow(/^Website/i, d.website||"Not provided");
