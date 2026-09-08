@@ -10663,8 +10663,22 @@ function lxAbiReceive(msg,att){ var a=lxBytesArg(msg), b=lxBytesArg(att);
   var off1=64, off2=64+32+Math.ceil(a.len/32)*32;
   return "0x57ecfd28"+lxHex32(off1)+lxHex32(off2)+lxHex32(a.len)+a.body+lxHex32(b.len)+b.body; }
 function lxEvmProv(){ return (window.ethereum||null); }
+// "Install MetaMask or Rabby" is advice a phone cannot take: there are no browser extensions on mobile,
+// so this message sent every mobile claimer to a dead end while their USDC sat burned. On a phone the
+// real route is the wallet app's OWN browser -- and the non-obvious part is that this transfer lives in
+// THIS browser's localStorage, so it does not follow you into that app. Copy the redeem data first.
+// UA only, deliberately: the question is whether this PLATFORM can have a browser extension, which a
+// viewport width does not answer. A first attempt fell back to "touch and innerWidth<900" and served the
+// phone message to a touch-screen Windows desktop -- caught because the test pane reported width 0, but a
+// narrow window on a touch laptop would have done it too. A desktop browser keeps its extensions at any size.
+function lxIsPhoneUA(){ try{
+  return /Android|iPhone|iPad|iPod|Windows Phone|Mobile Safari/i.test(navigator.userAgent||"");
+}catch(_){ return false; } }
+function lxNoProvMsg(){ return lxIsPhoneUA()
+  ? "No wallet browser detected. On a phone there are no extensions \u2014 claiming has to happen inside your wallet app's own browser (MetaMask, Rabby, Coinbase Wallet), or on a desktop that has one. Tap \u201cCopy redeem data\u201d first: this transfer is stored in THIS browser and will not follow you into the wallet app. Your burn is safe either way."
+  : "No EVM wallet detected \u2014 install MetaMask or Rabby to claim on the destination chain."; }
 function lxEvmReq(m,p){ var e=lxEvmProv();
-  if(!e)return Promise.reject(new Error("No EVM wallet detected \u2014 install MetaMask or Rabby to claim on the destination chain."));
+  if(!e)return Promise.reject(new Error(lxNoProvMsg()));
   return e.request({method:m,params:p||[]}); }
 function lxEvmConnect(){ return lxEvmReq("eth_requestAccounts").then(function(a){ if(!a||!a.length)throw new Error("No account authorised in your EVM wallet."); return a[0]; }); }
 function lxEvmSwitch(cfg){ return lxEvmReq("wallet_switchEthereumChain",[{chainId:cfg.id}]).catch(function(e){
@@ -10931,7 +10945,7 @@ document.addEventListener("click",function(e){
         lxBrClearPending(hash); setTimeout(lxBrRenderPending,900); return; }
       var em=(e&&e.message)||"Could not claim";
       // the reassurance only makes sense for failures DURING a claim — not for "you have no wallet installed"
-      var selfContained=/No EVM wallet|no account authorised|not wired for this chain|no attestation yet/i.test(em);
+      var selfContained=/No EVM wallet|No wallet browser|no account authorised|not wired for this chain|no attestation yet/i.test(em);
       say((e&&e.code===4001)?"Cancelled in your wallet \u2014 nothing was sent.":(selfContained?em:em+" \u2014 your burn is untouched, nothing was lost."),true);
     });
     return; }
