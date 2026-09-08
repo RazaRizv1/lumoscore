@@ -151,6 +151,29 @@ const ROW = '<div class="lx-dbx">'
   + '</div>';
 
 const SCRIPT = '<script id="lx-dashboxes">(function(){'
+  // These cards are real <a href> links, and every one of them was landing on Trade.
+  //
+  // The page carries a label-based nav bridge that intercepts clicks. Its rowTarget() takes the nearest
+  // 'tr,li,[class*="row"],[class*="pair"],[class*="item"],[class*="card"]' -- which is a.lx-dbx-card
+  // itself -- then walks up to seven ancestors looking for a container signal. Two hops up sits
+  // .market-grid, /market/ matches, and it returns 'dex-asset' and navigates there, calling
+  // preventDefault + stopImmediatePropagation on the way so the anchor's own href never runs.
+  //
+  // Measured on all four cards: Pools -> Trade, Cross-chain -> Trade, Launchpad -> Trade. Trade -> Trade
+  // was correct only by accident, which is why this read as "two cards are wrong" rather than "the hrefs
+  // are being ignored".
+  //
+  // Fixed here rather than in the bridge: the bridge deliberately drives dozens of pages whose anchors
+  // point at design-mock filenames, so teaching it to trust every href would be a site-wide change to
+  // land for one grid. Capture on WINDOW, which runs ahead of the bridge's document-level capture
+  // listener (and ahead of the mobile tap bridge), then follow the href the markup already states.
+  + '(function(){ if(window.__lxDbxNav)return; window.__lxDbxNav=1;'
+  + 'window.addEventListener("click",function(e){'
+  + 'var a=e.target&&e.target.closest?e.target.closest("a.lx-dbx-card[href]"):null; if(!a)return;'
+  + 'if(e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||e.button!==0)return;'   // leave new-tab/window/download gestures alone
+  + 'e.preventDefault(); e.stopImmediatePropagation();'
+  + 'var h=a.getAttribute("href"); if(h) location.href=h;'   // real routes ("/pools/stellar"), not the design filenames __lxNav takes
+  + '},true); })();'
   + 'var row=document.querySelector(".lx-dbx"); if(!row)return;'
   + 'var CUR=' + JSON.stringify(CURATED) + ';'
   + 'var CK="lumos.dbx", CACHE={}; try{ CACHE=JSON.parse(localStorage.getItem(CK)||"{}")||{}; }catch(_){ CACHE={}; }'
