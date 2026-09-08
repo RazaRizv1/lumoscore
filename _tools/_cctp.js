@@ -48,6 +48,23 @@ const CSS='<style id="lx-cctp-css">'
 +'.br-wallet.brw-in .br-addr-in{outline:0!important;border:0!important;box-shadow:none!important;background:transparent!important}'
 +'.br-wallet.brw-in{transition:border-color .15s ease,box-shadow .15s ease}'
 +'.br-wallet.brw-in:focus-within{border-color:rgba(234,106,44,.55)!important;box-shadow:0 0 0 3px rgba(234,106,44,.12)!important}'
+// PHONE: step 2 hung off the right edge of its own card.
+//
+// .br-side is a grid, and on the phone it collapses to ONE column whose width is the widest child's
+// min-content. Grid items default to min-width:auto, so that track cannot shrink to fit. Measured at
+// 375px: both sides have a 270px content box, but the source column resolved to 287px and the
+// destination to 339px -- the destination address row (input + Paste) is what sets that 339. Every row
+// in the card inherits the track width, so "YOU GET" and its amount were drawn out to x=393 while the
+// card ends at 341, and the document itself scrolled sideways (scrollWidth 393 vs client 375).
+//
+// minmax(0,1fr) removes that automatic minimum so the track is the container's width, and min-width:0
+// lets the rows and the address input actually shrink into it. Phone only: at 1280 the same grid runs
+// as two real columns (409px + 396px) with no overflow, and that layout is left untouched.
++'@media (max-width:760px){'
++'.br-step[data-step="2"] .br-side{grid-template-columns:minmax(0,1fr)}'
++'.br-step[data-step="2"] .br-side>*{min-width:0}'
++'.br-step[data-step="2"] .br-wallet.brw-in .br-addr-in{min-width:0;width:100%}'
++'}'
 // source: balance moved beneath the amount (right-aligned), clean spacing
 +'.br-side .lx-balrow{display:flex;justify-content:flex-end;align-items:center;margin-top:10px}'
 +'.br-side .lx-balrow .bal{display:inline-flex;align-items:center;gap:8px;font-size:12px;white-space:nowrap}'
@@ -834,6 +851,24 @@ function lxCctpWireStep2(){
     var wc=srcSide.querySelector('.br-wallet'); if(wc) wc.addEventListener('click',function(){ if(!window.__lxBr.pk) lxBrLoadWallet(true); },false);
     // gate: block advance to Review unless a valid destination address is present
     var dstInEl=dstSide.querySelector('.br-addr-in'); var revBtn=s2.querySelector('[data-go="3"]');
+    // Letting the phone grid shrink (see the max-width:760px block) leaves this input about 136px, and
+    // the design's "Enter receiving address" needs 203px -- it was being cut to "Enter receiving".
+    // MEASURE rather than assume a breakpoint: swap in the short wording only when the real one does not
+    // actually fit, so the desktop keeps its own copy and this keeps working if the layout moves again.
+    function lxFitAddrPh(){ try{
+      if(!dstInEl || dstInEl.value) return;
+      var cs=getComputedStyle(dstInEl);
+      var avail=dstInEl.clientWidth-(parseFloat(cs.paddingLeft)||0)-(parseFloat(cs.paddingRight)||0);
+      if(!(avail>0)) return;
+      if(!dstInEl.__lxPhFull) dstInEl.__lxPhFull=dstInEl.placeholder||"";
+      var m=document.createElement("span");
+      m.style.cssText="position:absolute;visibility:hidden;white-space:pre;font:"+cs.font;
+      m.textContent=dstInEl.__lxPhFull; document.body.appendChild(m);
+      var need=m.getBoundingClientRect().width; m.remove();
+      var want=(need>avail)?"Wallet address":dstInEl.__lxPhFull;
+      if(dstInEl.placeholder!==want) dstInEl.placeholder=want;
+    }catch(_){} }
+    lxFitAddrPh(); setTimeout(lxFitAddrPh,300); window.addEventListener("resize",lxFitAddrPh);
     if(revBtn) revBtn.addEventListener('click',function(e){ var net=lxBrDestNet(); var a=dstInEl?(dstInEl.value||'').trim():''; var msg=''; if(!a) msg="Enter the destination address to continue."; else if(!lxBrValidAddr(net,a)) msg="That doesn't look like a valid "+(net||'destination')+" address."; if(msg){ e.stopPropagation(); e.preventDefault(); lxBrStep2Err(msg); if(dstInEl) dstInEl.focus(); } else { lxBrStep2Err(''); } },true);
     if(dstInEl) dstInEl.addEventListener('input',function(){ if(lxBrValidAddr(lxBrDestNet(),(dstInEl.value||'').trim())) lxBrStep2Err(''); lxBrValidateStep2(); });
     // Paste button -> read clipboard into the destination input
