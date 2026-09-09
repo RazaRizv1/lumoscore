@@ -286,6 +286,16 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'if(iss&&L[code+"-"+iss])return L[code+"-"+iss];'
 // XLM has no issuer, and the registry keys it plainly.
 +'if(code==="XLM")return (L.XLM||"/assets/tokens/xlm.png");'
+// A CODE-ONLY KEY, which this lookup used to walk straight past. The registry stores some marks under
+// the bare code ("USDC") rather than "CODE-ISSUER", and the scan below only matches keys beginning
+// "CODE-" - so for those the feed concluded there was no logo, drew the letter, and the site's logo
+// healer then painted the real mark over it a moment later. That swap was the flicker: every chip
+// that changed was USDC, its mark was never in this registry under an issuer key, and what replaced
+// the letter was an inline SVG the feed had not painted at all.
+//
+// Same precision as the scan underneath it, which already matches on code alone - so this adds no
+// new risk of showing one issuer's mark for another's ticker, and removes a guaranteed repaint.
++'if(L[code])return L[code];'
 // Fall back to a code-only match when the registry holds one, which it does for our own mints.
 +'var ks=Object.keys(L);for(var i=0;i<ks.length;i++){if(ks[i].indexOf(code+"-")===0)return L[ks[i]];}'
 // The launchpad icon manifest: the only source that has our own mints. /lxapi/assetlogo answers
@@ -301,7 +311,19 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'var out={};Object.keys(m||{}).forEach(function(k){var v=m[k];var img=(v&&typeof v==="object")?v.image:v;if(img)out[k]=img;});'
 +'FMAN=out;try{paintFeedIcons();}catch(_){}'
 +'}).catch(function(){FMAN={};});}'
-+'var _fQ=[],_fA=0,_fAsked={};'
+// THE FEED FLICKERED BECAUSE EACH MARK WAS DRAWN TWICE. A chip starts empty, paintFeedIcons gives it
+// a coloured LETTER when no logo is known yet, and the logo replaces that letter when its request
+// lands. With ~100 marks resolving a few at a time over about three seconds, the section spent those
+// seconds visibly swapping letters for logos on every refresh.
+//
+// _fAsked only records that a request went out, so a pending lookup and a lookup that came back with
+// nothing were indistinguishable — and the letter was drawn for both. _fDone separates them: the
+// letter is now only drawn once we KNOW there is no logo coming, so a mark is painted once.
+//
+// _fT is the safety valve. If a request never settles the chip would otherwise stay blank forever,
+// so after a bounded wait the letters are allowed regardless — a letter is a fine end state, it is
+// only a bad intermediate one.
++'var _fQ=[],_fA=0,_fAsked={},_fDone={},_fT=0;'
 +'function _fPump(){while(_fA<4&&_fQ.length){_fA++;(_fQ.shift())();}}'
 // Bounded to 4 in flight and asked once per code, so a feed that refreshes every 60s does not re-ask.
 // LUMOS must be seeded before the fill runs. Its issuer's home_domain resolves to lumosdao.io -- a
@@ -319,7 +341,9 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'fetch("/lxapi/assetlogo?v=2&asset="+encodeURIComponent(c+"-"+want[c])).then(function(r){return r.ok?r.json():null;})'
 +'.then(function(d){var u=d&&d.image;'
 +'if(u&&!/^assets\\//.test(((window.__lxLogos||{})[c+"-"+want[c]])||"")){(window.__lxLogos=window.__lxLogos||{})[c+"-"+want[c]]=u;try{paintFeedIcons();}catch(_){}}'
-+'},function(){}).then(function(){_fA--;_fPump();});});});'
+// Marked settled on BOTH paths — resolved and rejected — because "we asked and got nothing back" and
+// "we asked and it failed" both mean the letter is now the right answer for this asset.
++'},function(){}).then(function(){_fDone[c]=1;_fA--;_fPump();try{paintFeedIcons();}catch(_){}});});});'
 +'_fPump();}catch(_){}}'
 +'function lxActHue(c){c=String(c||"?");var h=0;for(var i=0;i<c.length;i++)h=(h*31+c.charCodeAt(i))%360;return "hsl("+h+",52%,42%)";}'
 +'function paintFeedIcons(){'
@@ -329,7 +353,34 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'if(e.getAttribute("data-lxpainted")==="1")continue;'
 +'var u=feedLogo(e.getAttribute("data-c")||"",e.getAttribute("data-i")||"");'
 +'if(u){e.style.backgroundImage="url(\'"+u+"\')";e.textContent="";e.style.backgroundColor="";e.style.color="";e.setAttribute("data-lxpainted","1");}'
-+'else if(!e.textContent){var _l=(e.getAttribute("data-l")||"");if(_l){e.textContent=_l;e.style.backgroundColor=lxActHue(e.getAttribute("data-c")||"");e.style.color="#fff";}}'
+// The letter is only drawn once the logo lookup has SETTLED (or was never going to happen, or the
+// safety valve has fired). Drawing it while a request is in flight is what produced the swap.
+//
+// KEYED ON HAVING AN ISSUER, NOT ON _fAsked. The first version tested _fAsked and still produced 49
+// letter-to-logo swaps, because this function runs BEFORE feedFillLogos queues the request for a
+// freshly inserted batch — so nothing had been asked yet, the chip looked settled, and the letter was
+// drawn a moment before the logo arrived. An asset with an issuer is one a lookup is coming for,
+// whether or not it has been queued at this instant, which is the property that actually matters.
+// THE SAFETY VALVE HAS TO BE PER CHIP, which a second measurement forced. As one global deadline it
+// fired 2.5s after the first request while rows were still arriving until about five seconds — so
+// every chip inserted after the deadline drew its letter immediately and then swapped to its logo,
+// and the swap count did not move. Each chip now carries the moment it was first seen and waits its
+// own 2.5s, so a late row gets the same grace as an early one.
++'else if(!e.textContent){var _c=e.getAttribute("data-c")||"",_i2=e.getAttribute("data-i")||"";'
++'var _seen=+(e.getAttribute("data-lxseen")||0);'
++'if(!_seen){_seen=Date.now();e.setAttribute("data-lxseen",String(_seen));}'
+// TWO SOURCES FEED A MARK, and waiting on only one is what kept the swap alive through three
+// attempts. feedLogo() reads window.__lxLogos (the per-asset /lxapi/assetlogo request, tracked by
+// _fDone) and ALSO falls back to FMAN, the launchpad icon manifest, which is fetched separately.
+//
+// Measuring which chips actually swapped is what found it: every one was USDC, and its logo was not
+// in __lxLogos at all - it arrived from the manifest, after the per-asset request had already
+// settled empty and the letter had been drawn. So a chip is pending until BOTH have answered.
++'var _pending=_c&&(FMAN===null||(_i2&&!_fDone[_c]))&&(Date.now()-_seen<12000);'
+// One repaint pass is kept scheduled while anything is still waiting, so a chip whose lookup never
+// settles is not left blank -- it simply falls back to the letter when its own grace expires.
++'if(_pending){if(_fT)clearTimeout(_fT);_fT=setTimeout(function(){try{paintFeedIcons();}catch(_){}},700);}'
++'if(!_pending){var _l=(e.getAttribute("data-l")||"");if(_l){e.textContent=_l;e.style.backgroundColor=lxActHue(_c);e.style.color="#fff";}}}'
 +'try{var _b=e.closest&&e.closest("b");if(_b&&(e.getAttribute("data-c")||"")!=="XLM"&&/^G[A-Z2-7]{55}$/.test(e.getAttribute("data-i")||"")){_b.style.cursor="pointer";}}catch(_){}}'
 +'}catch(_){}}'
 // item 7: one mark per asset, inline with the code it names.
