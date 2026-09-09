@@ -35,6 +35,12 @@ const HERO_DARK = '/assets/hero/trade-hero-dark.svg?v=' + heroV('trade-hero-dark
 const HERO_LIGHT = '/assets/hero/trade-hero-light.svg?v=' + heroV('trade-hero-light.svg');
 
 const STYLE = `<style id="lx-dexmain-css">
+/* The asset cell is a real <a> so the browser can offer "open in new tab" and honour Ctrl/middle-click.
+   It must look like nothing changed: inherit the colour, drop the underline, and keep the block layout
+   the cell already had. display:block matters -- an inline anchor would collapse the flex row inside it.
+   The focus ring is left alone deliberately: it is now a real link and should be reachable by keyboard. */
+.dex-mk-pair-link{color:inherit;text-decoration:none;display:block}
+.dex-mk-pair-link:hover{color:inherit;text-decoration:none}
 /* A20: the four chips the script removes, hidden from the FIRST paint. Keyed on the same data-filter
    values the removal uses, so the two cannot drift apart. */
 .dex-mk-filter[data-filter="stables"],.mdx-mk-filter[data-filter="stables"],
@@ -1076,6 +1082,20 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
   // string, landing on the default (LUMOS) page, so use a direct location.href which preserves it.
   function navTo(a){ try{ location.href="lumoscore-dex-asset.html?asset="+a.code+"-"+a.issuer; }catch(e){} }
 
+  // The same destination as a REAL URL, for a real link.
+  //
+  // Rows were only ever navigable by script, so the browser had nothing to offer on a right-click and
+  // no way to honour Ctrl/Cmd/middle-click - "open in new tab" simply did nothing on this page.
+  //
+  // The CLEAN route is used rather than navTo's query form, because it carries the asset in the PATH:
+  // /trade/stellar/<CODE>-<ISSUER>. Verified against production - that URL is server-rendered with the
+  // right asset (title comes back "USDC price, pools and holders on Stellar"), so a new tab, a
+  // bookmark and a pasted link all land on the asset rather than on the default LUMOS page. It is
+  // also the URL a person would want to share.
+  function assetHref(a){
+    try{ return "/trade/stellar/"+encodeURIComponent((a.code||"")+"-"+(a.issuer||"")); }catch(e){ return "#"; }
+  }
+
   // ================= 1) HERO price chip (.lm-chip) =================
   function applyHero(){ var chip=q(".lm-chip"); if(!chip)return;
     var p2=chip.querySelector(".p2"), p3=chip.querySelector(".p3");
@@ -1583,11 +1603,11 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       if(!data.length){ tb.innerHTML='<tr class="lx-dex-empty-row"><td colspan="9"><div class="lx-dex-empty">No matching markets on Stellar right now.</div></td></tr>'; }
       else tb.innerHTML=data.map(function(a,_i){
         return '<tr data-tkr="'+(a.tkr||a.code)+'" data-iss="'+a.issuer+'" data-cat="'+a.cat+'">'
-          +'<td><div class="dex-mk-pair-cell">'
+          +'<td><a class="dex-mk-pair-link" href="'+assetHref(a)+'"><div class="dex-mk-pair-cell">'
             +'<span class="dex-mk-rank">#'+(start+_i+1)+'</span>'
             +'<span class="dex-mk-pair-ic" data-lxic="'+a.code+'" style="background:linear-gradient(135deg,'+a.b+','+a.b+'aa)">'+initials(a.code)+'</span>'
             +'<div class="dex-mk-pair-name"><div class="dex-mk-pair-head">'+a.code+vtick(a.code,a.issuer)+'</div><span class="sub">'+(dispDom(a.code,a.issuer,a.domain)||shortG(a.issuer))+'</span></div>'
-          +'</div></td>'
+          +'</div></a></td>'
           +'<td><div class="dex-mk-price">\\u2014</div></td>'
           +'<td><div class="dex-mk-change">\\u2014</div></td>'
           +'<td><div class="dex-mk-vol">\\u2014</div></td>'
@@ -1840,7 +1860,45 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       window.addEventListener("click",function(e){ var t=e.target; if(!t||!t.closest)return;
         var el=t.closest(".dex-mk-action-btn[data-tkr],tr[data-tkr],.dex-mint-row[data-tkr],.dex-mover-card[data-tkr]"); if(!el)return;
         var a=byCode[el.getAttribute("data-tkr")]; if(!a)return;
+
+        // THIS HANDLER WAS THE REASON "OPEN IN NEW TAB" DID NOT WORK, and it is ours, not the
+        // design's. It ran on window-capture - the earliest phase there is - and unconditionally
+        // preventDefault()ed every click on a row, so Ctrl/Cmd-click was swallowed exactly like a
+        // plain one and always navigated in the current tab.
+        //
+        // A real link now sits in the first cell, so when the click is on that link the browser
+        // already knows what to do: open in a new tab, a new window, or the same one.
+        //
+        // BUT GETTING OUT OF THE WAY IS NOT ENOUGH, which a test caught: a Ctrl+click on the link
+        // still came back defaultPrevented with this handler doing nothing, because the DESIGN's own
+        // router claims the click further down and cancels it - the same interception that made a
+        // plain <a href> useless on the XRPL fork. So the router is removed from the picture with
+        // stopImmediatePropagation, while the default is deliberately left intact.
+        //
+        // That covers the plain click too, and improves it: the browser follows the href to
+        // /trade/stellar/<CODE>-<ISSUER>, which is server-rendered with the right asset, instead of
+        // the router resolving to a route with no asset in it and landing on the default page.
+        if(t.closest("a[href]")){ e.stopImmediatePropagation(); return; }
+
+        // Anywhere ELSE on the row there is no link to inherit, so the intent is honoured directly.
+        // window.open is permitted here because this is a genuine user gesture.
+        if(e.metaKey||e.ctrlKey||e.shiftKey){
+          e.preventDefault(); e.stopImmediatePropagation();
+          try{ window.open(assetHref(a),"_blank","noopener"); }catch(_){}
+          return;
+        }
         e.preventDefault(); e.stopImmediatePropagation(); navTo(a);
+      },true);
+
+      // Middle-click does not fire "click" in every browser - it fires auxclick - so it is handled
+      // separately rather than by testing e.button above, which would silently miss it.
+      window.addEventListener("auxclick",function(e){ if(e.button!==1)return;
+        var t=e.target; if(!t||!t.closest)return;
+        if(t.closest("a[href]")) return;                        // the link already opens a new tab
+        var el=t.closest(".dex-mk-action-btn[data-tkr],tr[data-tkr],.dex-mint-row[data-tkr],.dex-mover-card[data-tkr]"); if(!el)return;
+        var a=byCode[el.getAttribute("data-tkr")]; if(!a)return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        try{ window.open(assetHref(a),"_blank","noopener"); }catch(_){}
       },true);
     }
     // Market-mover tab clicks must re-render (the boot interval stops after ~21s, and a tab click alone
