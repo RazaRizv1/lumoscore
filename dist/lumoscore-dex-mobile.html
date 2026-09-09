@@ -2856,7 +2856,130 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
+</style><style id="lx-heromono-css">
+/* ---- the card ------------------------------------------------------------------------------- */
+/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
+   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
+   per-page background rules on both pages. */
+html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
+             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
+html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
+             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
+  border:1px solid rgba(16,16,22,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
+/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
+   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
+.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
+
+/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
+/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
+   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
+   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
+   itself is untouched everywhere else it is used. */
+.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
+
+/* ---- type: the loudest thing on the card ----------------------------------------------------- */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
+/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
+   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
+   and colour alone leaves it transparent. */
+.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
+.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
+  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
+html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
+  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
+
+/* ---- the headline, ONE size for both heroes ---------------------------------------------------- */
+/* #14: Pools drifted to 38px inside a 340px column (lx-amm-css) while Trade sat at 36px inside 420px,
+   so the same sentence broke onto a different number of lines and the two tops of the app stopped
+   looking like the same design. Trade's numbers are the ones both use now. This lives HERE, in the
+   sheet that already runs last and already owns the shared hero look, because that is what stops the
+   two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:36px!important;line-height:1.08!important;max-width:420px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:23px!important;line-height:1.14!important;max-width:100%!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:18px!important;line-height:1.18!important;max-width:100%!important}
+}
+
+/* ---- the chain mark -------------------------------------------------------------------------- */
+/* #2: the hairline ring here was written for a dark disc with a white glyph, which would have been
+   lost against a dark card. The mark that actually ships is the blue Stellar disc -- it carries its
+   own edge -- so the ring was not giving it one, it was drawing a white outline around it. Depth
+   only; nothing traces the artwork. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 10px 24px -12px rgba(0,0,0,.8)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 10px 26px -14px rgba(16,16,22,.5)!important}
+/* #8/#9: the mark is the first thing on the page and it was smaller than the headline beside it --
+   and the two heroes were not even the same size as each other (56 on Trade, 64 on Pools). One size,
+   large enough to lead, on both. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:76px!important;height:76px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:52px!important;height:52px!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:46px!important;height:46px!important}
+}
+
+/* ---- the stats strip -------------------------------------------------------------------------- */
+.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
+  border-top:1px solid rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
+  border-top:1px solid rgba(16,16,22,.10)!important}
+.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
+.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
+.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
+html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
+
+/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
+/* These two coins OVERLAP by 10px, and the ring is what keeps them reading as two coins.
+   The design drew it in near-black, which read as an outline drawn around each coin. A 0.8px
+   hairline fixed that and broke the other half: against a black XLM mark on a near-white card it is
+   invisible, so the pair merged into one blob wherever they overlap -- the broken edge.
+   The answer is the ring every overlapping-avatar stack uses: keep the design's 2px, but paint it in
+   the card's OWN ground, so it reads as a gap between the coins rather than a line around them.
+   The drop shadow goes with it -- on a light card it was just a grey smudge under each coin. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
+  border:2px solid #17171d!important;box-shadow:none!important}
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border:2px solid #ebebee!important;box-shadow:none!important}
+/* 2px of ring on a 16-17px phone mark is most of the coin; the design already steps this down. */
+@media(max-width:560px){
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span,
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border-width:1.5px!important}
+}
+
+/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
+/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
+   card, which is the point -- the eye goes to the action. */
+.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
+html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
 </style><style id="lx-dexmain-css">
+/* The asset cell is a real <a> so the browser can offer "open in new tab" and honour Ctrl/middle-click.
+   It must look like nothing changed: inherit the colour, drop the underline, and keep the block layout
+   the cell already had. display:block matters -- an inline anchor would collapse the flex row inside it.
+   The focus ring is left alone deliberately: it is now a real link and should be reachable by keyboard. */
+.dex-mk-pair-link{color:inherit;text-decoration:none;display:block}
+.dex-mk-pair-link:hover{color:inherit;text-decoration:none}
 /* A20: the four chips the script removes, hidden from the FIRST paint. Keyed on the same data-filter
    values the removal uses, so the two cannot drift apart. */
 .dex-mk-filter[data-filter="stables"],.mdx-mk-filter[data-filter="stables"],
@@ -3236,123 +3359,6 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
 /* Price carries the longest string in the row, so it gets room; the counts stay narrow */
 .dex-mint-stat:first-child{min-width:104px}
-</style><style id="lx-heromono-css">
-/* ---- the card ------------------------------------------------------------------------------- */
-/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
-   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
-   per-page background rules on both pages. */
-html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
-             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
-  border:1px solid rgba(255,255,255,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
-html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
-             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
-  border:1px solid rgba(16,16,22,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
-/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
-   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
-.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
-
-/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
-/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
-   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
-   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
-   itself is untouched everywhere else it is used. */
-.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
-
-/* ---- type: the loudest thing on the card ----------------------------------------------------- */
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
-/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
-   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
-   and colour alone leaves it transparent. */
-.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
-.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
-  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
-html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
-  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
-
-/* ---- the headline, ONE size for both heroes ---------------------------------------------------- */
-/* #14: Pools drifted to 38px inside a 340px column (lx-amm-css) while Trade sat at 36px inside 420px,
-   so the same sentence broke onto a different number of lines and the two tops of the app stopped
-   looking like the same design. Trade's numbers are the ones both use now. This lives HERE, in the
-   sheet that already runs last and already owns the shared hero look, because that is what stops the
-   two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:36px!important;line-height:1.08!important;max-width:420px!important}
-@media(max-width:880px){
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:23px!important;line-height:1.14!important;max-width:100%!important}
-}
-@media(max-width:560px){
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:18px!important;line-height:1.18!important;max-width:100%!important}
-}
-
-/* ---- the chain mark -------------------------------------------------------------------------- */
-/* #2: the hairline ring here was written for a dark disc with a white glyph, which would have been
-   lost against a dark card. The mark that actually ships is the blue Stellar disc -- it carries its
-   own edge -- so the ring was not giving it one, it was drawing a white outline around it. Depth
-   only; nothing traces the artwork. */
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 10px 24px -12px rgba(0,0,0,.8)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 10px 26px -14px rgba(16,16,22,.5)!important}
-/* #8/#9: the mark is the first thing on the page and it was smaller than the headline beside it --
-   and the two heroes were not even the same size as each other (56 on Trade, 64 on Pools). One size,
-   large enough to lead, on both. */
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
-  width:76px!important;height:76px!important}
-@media(max-width:880px){
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
-  width:52px!important;height:52px!important}
-}
-@media(max-width:560px){
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
-  width:46px!important;height:46px!important}
-}
-
-/* ---- the stats strip -------------------------------------------------------------------------- */
-.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
-  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
-  border-top:1px solid rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
-  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
-  border-top:1px solid rgba(16,16,22,.10)!important}
-.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
-.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
-.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
-html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
-
-/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
-/* These two coins OVERLAP by 10px, and the ring is what keeps them reading as two coins.
-   The design drew it in near-black, which read as an outline drawn around each coin. A 0.8px
-   hairline fixed that and broke the other half: against a black XLM mark on a near-white card it is
-   invisible, so the pair merged into one blob wherever they overlap -- the broken edge.
-   The answer is the ring every overlapping-avatar stack uses: keep the design's 2px, but paint it in
-   the card's OWN ground, so it reads as a gap between the coins rather than a line around them.
-   The drop shadow goes with it -- on a light card it was just a grey smudge under each coin. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
-  border:2px solid #17171d!important;box-shadow:none!important}
-html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border:2px solid #ebebee!important;box-shadow:none!important}
-/* 2px of ring on a 16-17px phone mark is most of the coin; the design already steps this down. */
-@media(max-width:560px){
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span,
-html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border-width:1.5px!important}
-}
-
-/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
-/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
-   card, which is the point -- the eye goes to the action. */
-.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
-html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
 </style></head>
 <body>
 
@@ -10923,7 +10929,9 @@ function maxShares(dd){
     setTimeout(detGiveUp,7000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
-})();</script><script id="lx-dexmain">(function(){
+})();</script>
+
+<script id="lx-dexmain">(function(){
   // Verified issuers come from _tools/lib.js so every page ticks the same set — a list that drifted
   // between screens would make an asset trustworthy here and not there.
   var VFD={"XLM|":"stellar.org","USDC|GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN":"circle.com","EURC|GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2":"circle.com","yXLM|GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55":"ultracapital.xyz","yUSDC|GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF":"ultracapital.xyz","SHX|GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH":"stronghold.co","LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumosdao.io","AQUA|GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA":"aqua.network","TDT|GBINRJAGLT2WN6DK2I47QKMKEJW56ASPO6K2GQPCLY7ZO7TAQMKUBPOG":"lumoscore.com","XRP|GBXRPL45NPHCVMFFAYZVUVFFVKSIZ362ZXFP7I2ETNQ3QKZMFLPRDTD5":"fchain.io","SCOP|GC6OYQJIZF3HFXCYPFCBXYXNGIBQ4TNSFUBUXQJOZWIP6F3YZK4QH3VQ":"scopuly.com","MTL|GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V":"mtl.montelibero.org","EURMTL|GACKTN5DAZGWXRWB2WLM6OPBDHAMT6SJNGLJZPQMEZBUR4JUGBX2UK7V":"mtl.montelibero.org","ZARZ|GAROH4EV3WVVTRQKEY43GZK3XSRBEYETRVZ7SVG5LHWOAANSMCTJBB3U":"zeam.money","USDZ|GAKTLPC4ZV37SSCITQ5IS5AQ4WPF4CF4VZJQPPAROSGXMYOATF5U6XPR":"zeam.money","CLPX|GDYSPBVZHPQTYMGSYNOHRZQNLB3ZWFVQ2F7EP7YBOLRGD42XIC3QUX5G":"clpx.finance","yBTC|GBUVRNH4RW4VLHP4C5MOF46RRIRZLAVHYGX45MVSTKA2F6TMR7E7L6NW":"ultracapital.xyz","yETH|GDYQNEF2UWTK4L6HITMT53MZ6F5QWO3Q4UVE6SCGC4OMEQIZQQDERQFD":"ultracapital.xyz","ARS|GCYE7C77EB5AWAA25R5XMWNI2EDOKTTFTTPZKM2SR5DI4B4WFD52DARS":"api.anclap.com","PEN|GA4TDPNUCZPTOHB3TKUYMDCRVATXKEADH7ZEYEBWJKQKE2UBFCYNBPEN":"api.anclap.com","ETH|GBFXOHVAS43OIWNIO7XLRJAHT3BICFEIKOJLZVXNT572MISM4CMGSOCC":"ultracapital.xyz","BTCLN|GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT":"kbtrading.org","USDM|GDHDC4GBNPMENZAOBB4NCQ25TGZPDRK6ZGWUGSI22TVFATOLRPSUUSDM":"mtl.montelibero.org","CETES|GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC":"etherfuse.com","USTRY|GCRYUGD5NVARGXT56XEZI5CIFCQETYHAPQQTHO2O3IQZTHDH4LATMYWC":"etherfuse.com","SSLX|GBHFGY3ZNEJWLNO4LBUKLYOCEK4V7ENEBJGPRHHX7JU47GWHBREH37UR":"sslx.sl8.online","AFR|GBX6YI45VU7WNAAKA3RBFDR3I3UKNFHTJPQ5F6KOOKSGYIAM4TRQN54W":"afreum.com","TFT|GBOVQKJYHXRR3DX6NOX2RRYFRCUMSADGDESTDNBDS6CDVLGVESRTAC47":"threefold.io","GOLD|GBC5ZGK6MQU3XG5Y72SXPA7P5R5NHYT2475SNEJB2U3EQ6J56QLVGOLD":"mintx.co","USDY|GAJMPX5NBOG6TQFPQGRABJEEB2YE7RFRLUKJDZAZGAD5GFX4J7TADAZ6":"ondo.finance","FRED|GCA73U2PZFWAXJSNVMEVPNPPJCZGETWPWZC6E4DJAIWP3ZW3BAGYZLV6":"fredenergy.org","PYBC|GBVB43NLVIP2USHXSKI7QQCZKZU2Z6U6A5PAHMIW7LLNVMQJTOX2BZI5":"luxpayband.io","BLND|GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY":"","KALE|GBDVX4VELCDSQ54KQJYTNHXAHFLBCA77ZY2USQBM4CSHTTV7DME7KALE":"kalepail.com","XXA|GC4HS4CQCZULIOTGLLPGRAAMSBDLFRR6Y7HCUQG66LNQDISXKIXXADIM":"ixinium.io","XTAR|GAORYJ3KBDGIM7FFSKVUJHJ5NEFWIRDIAGGBJBJS7TY6ECZS53257IG4":"dogstarcoin.com","xLMNR|GDKA6WVMFSA73BMEVKPO6WXSSWP4MPRBDJVSXLLSEVIEVH226L5RJ7NL":"thelumenaire.com","ARST|GCSAZVWXZKWS4XS223M5F54H2B6XPIIXZZGP7KEAIU6YSL5HDRGCI3DG":"pubnet-sep.latamex.com"};
@@ -11583,6 +11591,20 @@ function maxShares(dd){
   // string, landing on the default (LUMOS) page, so use a direct location.href which preserves it.
   function navTo(a){ try{ location.href="lumoscore-dex-asset.html?asset="+a.code+"-"+a.issuer; }catch(e){} }
 
+  // The same destination as a REAL URL, for a real link.
+  //
+  // Rows were only ever navigable by script, so the browser had nothing to offer on a right-click and
+  // no way to honour Ctrl/Cmd/middle-click - "open in new tab" simply did nothing on this page.
+  //
+  // The CLEAN route is used rather than navTo's query form, because it carries the asset in the PATH:
+  // /trade/stellar/<CODE>-<ISSUER>. Verified against production - that URL is server-rendered with the
+  // right asset (title comes back "USDC price, pools and holders on Stellar"), so a new tab, a
+  // bookmark and a pasted link all land on the asset rather than on the default LUMOS page. It is
+  // also the URL a person would want to share.
+  function assetHref(a){
+    try{ return "/trade/stellar/"+encodeURIComponent((a.code||"")+"-"+(a.issuer||"")); }catch(e){ return "#"; }
+  }
+
   // ================= 1) HERO price chip (.lm-chip) =================
   function applyHero(){ var chip=q(".lm-chip"); if(!chip)return;
     var p2=chip.querySelector(".p2"), p3=chip.querySelector(".p3");
@@ -12090,11 +12112,11 @@ function maxShares(dd){
       if(!data.length){ tb.innerHTML='<tr class="lx-dex-empty-row"><td colspan="9"><div class="lx-dex-empty">No matching markets on Stellar right now.</div></td></tr>'; }
       else tb.innerHTML=data.map(function(a,_i){
         return '<tr data-tkr="'+(a.tkr||a.code)+'" data-iss="'+a.issuer+'" data-cat="'+a.cat+'">'
-          +'<td><div class="dex-mk-pair-cell">'
+          +'<td><a class="dex-mk-pair-link" href="'+assetHref(a)+'"><div class="dex-mk-pair-cell">'
             +'<span class="dex-mk-rank">#'+(start+_i+1)+'</span>'
             +'<span class="dex-mk-pair-ic" data-lxic="'+a.code+'" style="background:linear-gradient(135deg,'+a.b+','+a.b+'aa)">'+initials(a.code)+'</span>'
             +'<div class="dex-mk-pair-name"><div class="dex-mk-pair-head">'+a.code+vtick(a.code,a.issuer)+'</div><span class="sub">'+(dispDom(a.code,a.issuer,a.domain)||shortG(a.issuer))+'</span></div>'
-          +'</div></td>'
+          +'</div></a></td>'
           +'<td><div class="dex-mk-price">\u2014</div></td>'
           +'<td><div class="dex-mk-change">\u2014</div></td>'
           +'<td><div class="dex-mk-vol">\u2014</div></td>'
@@ -12347,7 +12369,45 @@ function maxShares(dd){
       window.addEventListener("click",function(e){ var t=e.target; if(!t||!t.closest)return;
         var el=t.closest(".dex-mk-action-btn[data-tkr],tr[data-tkr],.dex-mint-row[data-tkr],.dex-mover-card[data-tkr]"); if(!el)return;
         var a=byCode[el.getAttribute("data-tkr")]; if(!a)return;
+
+        // THIS HANDLER WAS THE REASON "OPEN IN NEW TAB" DID NOT WORK, and it is ours, not the
+        // design's. It ran on window-capture - the earliest phase there is - and unconditionally
+        // preventDefault()ed every click on a row, so Ctrl/Cmd-click was swallowed exactly like a
+        // plain one and always navigated in the current tab.
+        //
+        // A real link now sits in the first cell, so when the click is on that link the browser
+        // already knows what to do: open in a new tab, a new window, or the same one.
+        //
+        // BUT GETTING OUT OF THE WAY IS NOT ENOUGH, which a test caught: a Ctrl+click on the link
+        // still came back defaultPrevented with this handler doing nothing, because the DESIGN's own
+        // router claims the click further down and cancels it - the same interception that made a
+        // plain <a href> useless on the XRPL fork. So the router is removed from the picture with
+        // stopImmediatePropagation, while the default is deliberately left intact.
+        //
+        // That covers the plain click too, and improves it: the browser follows the href to
+        // /trade/stellar/<CODE>-<ISSUER>, which is server-rendered with the right asset, instead of
+        // the router resolving to a route with no asset in it and landing on the default page.
+        if(t.closest("a[href]")){ e.stopImmediatePropagation(); return; }
+
+        // Anywhere ELSE on the row there is no link to inherit, so the intent is honoured directly.
+        // window.open is permitted here because this is a genuine user gesture.
+        if(e.metaKey||e.ctrlKey||e.shiftKey){
+          e.preventDefault(); e.stopImmediatePropagation();
+          try{ window.open(assetHref(a),"_blank","noopener"); }catch(_){}
+          return;
+        }
         e.preventDefault(); e.stopImmediatePropagation(); navTo(a);
+      },true);
+
+      // Middle-click does not fire "click" in every browser - it fires auxclick - so it is handled
+      // separately rather than by testing e.button above, which would silently miss it.
+      window.addEventListener("auxclick",function(e){ if(e.button!==1)return;
+        var t=e.target; if(!t||!t.closest)return;
+        if(t.closest("a[href]")) return;                        // the link already opens a new tab
+        var el=t.closest(".dex-mk-action-btn[data-tkr],tr[data-tkr],.dex-mint-row[data-tkr],.dex-mover-card[data-tkr]"); if(!el)return;
+        var a=byCode[el.getAttribute("data-tkr")]; if(!a)return;
+        e.preventDefault(); e.stopImmediatePropagation();
+        try{ window.open(assetHref(a),"_blank","noopener"); }catch(_){}
       },true);
     }
     // Market-mover tab clicks must re-render (the boot interval stops after ~21s, and a tab click alone
