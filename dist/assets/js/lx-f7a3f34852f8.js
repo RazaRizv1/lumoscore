@@ -689,7 +689,8 @@ function lxBrAddRecentTx(o){
   var tr=document.createElement('tr'); tr.className="lx-newtx";
   tr.innerHTML='<td>'+(o.when||'Just now')+'</td>'
     +'<td><span class="br-asschip"><span class="br-ic lx-netic">'+srcIco+'</span><span><span class="am">'+o.srcAmount+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span></td>'
-    +'<td class="mono"><a class="lx-txaddr" href="'+lxSrcExp(o.src)+'" target="_blank" rel="noopener" title="View source wallet on Stellar Expert">'+lxBrShort(o.src)+'</a></td>'
+    // A record with no source account gets a dash, not an empty link to /account/undefined.
+    +'<td class="mono">'+(o.src?('<a class="lx-txaddr" href="'+lxSrcExp(o.src)+'" target="_blank" rel="noopener" title="View source wallet on Stellar Expert">'+lxBrShort(o.src)+'</a>'):'\u2014')+'</td>'
     +'<td><span class="br-asschip"><span class="br-ic lx-netic"><img class="lx-netimg" src="/assets/networks/'+nkey+'.png" style="width:100%;height:100%;object-fit:cover;display:block" alt=""></span><span><span class="am">'+lxBrFmt(o.amount,2)+' USDC</span><span class="nt">'+o.net+'</span></span></span></td>'
     +'<td class="mono"><a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener" title="View destination wallet on '+o.net+' explorer">'+lxBrShort(o.recipient)+'</a></td>'
     +'<td class="lx-buse"><span class="lx-buse-cctp">CCTP</span></td>'
@@ -898,9 +899,16 @@ function lxBrLoadPublic(){
       var seen={}; LX_PUBTX.forEach(function(o){ if(o&&o.hash)seen[o.hash]=1; });
       rows.forEach(function(x){
         if(!x||!x.burnHash||seen[x.burnHash])return; seen[x.burnHash]=1;
+        // src IS THE SOURCE ADDRESS COLUMN (RAZA 2026-09-17: "why's the source address missing on Bridge recent
+        // transactions"). lxBrAddRecentTx reads o.src for that cell, and this mapper never carried it over, so every
+        // row sourced from the shared record drew an empty link while Destination address -- taken from x.recipient
+        // right beside it -- was fine. The registry has always stored it as x.from, the Stellar account the burn and
+        // the fee both came from; it is the same field lxBrSeedFromServer matches against the connected wallet.
+        // Rows recorded by THIS browser were never affected, which is why it reads as "some data missing" rather than
+        // a broken column: the public rows win the merge in lxBrRestoreTxsNow, so in practice they all lost it.
         LX_PUBTX.push({ ts:+x.ts||Date.now(), hash:x.burnHash,
           amount:(+x.amount||0), srcAmount:String(x.gross!=null?x.gross:(x.amount||0)),
-          srcKey:"USDC", net:(x.destName||""), recipient:(x.recipient||"") });
+          srcKey:"USDC", net:(x.destName||""), recipient:(x.recipient||""), src:(x.from||"") });
       });
       LX_PUBTX.sort(function(a,b){ return (+b.ts||0)-(+a.ts||0); });
       return LX_PUBTX;
