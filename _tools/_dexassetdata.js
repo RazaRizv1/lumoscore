@@ -2166,6 +2166,46 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
 
   // ================= RECENT EXCHANGES (#dxaExTable) =================
   var TRADE_FILTER=0;
+  // MY TRADES (RAZA 2026-09-17: "On Trade-Asset, in recent, on right side, also show the user's own trades for that
+  // asset"). A filter over the trades already loaded, not a second request: the same list the table is built from
+  // carries both accounts of every fill.
+  var MY_TRADES=false;
+  // MY TRADES ASKS HORIZON FOR THIS WALLET'S TRADES, not for a slice of the market's (RAZA 2026-09-17: "I do have trades
+  // for USDC in the same connected wallet but here its not showing"). The first version filtered the 200 most recent
+  // trades of the asset, which on USDC is a few minutes of the order book -- his were older, so the honest-looking
+  // "No trades from this wallet in the last 200 trades" was true and useless.
+  //
+  // /accounts/<addr>/trades is the account's own history and has no such window. One request, cached for the page.
+  var MY_ROWS=null, MY_BUSY=false;
+  function myTradeSide(t,which){
+    // Is our page's asset this leg? Native pages compare by type, issued ones by code AND issuer -- a ticker is not an
+    // identity, and USDC alone matches several issuers.
+    var ty=t[which+"_asset_type"], cd=t[which+"_asset_code"], is=t[which+"_asset_issuer"];
+    return NATIVE ? (ty==="native") : (cd===CODE && is===ISSUER);
+  }
+  function mapMyTrade(t){
+    var pr=t.price?(+t.price.n/+t.price.d):0;
+    var ts=Date.parse(t.ledger_close_time||"")||0, op=String(t.id||"").split("-")[0];
+    var b=t.base_account||"", c=t.counter_account||"";
+    if(myTradeSide(t,"base")){
+      return {b:b,c:c,addr:c||b,side:t.base_is_seller?"buy":"sell",px:pr,amount:+t.base_amount,xlm:+t.counter_amount,ts:ts,time:relTime(t.ledger_close_time),op:op};
+    }
+    // Our asset is the COUNTER here, so the legs are the other way round: the amount is the counter amount, the value is
+    // the base amount, the price is the reciprocal, and the side flips with them. Reading these rows as base-first is
+    // what would turn a sell into a buy at an inverted price.
+    return {b:b,c:c,addr:b||c,side:t.base_is_seller?"sell":"buy",px:pr?1/pr:0,amount:+t.counter_amount,xlm:+t.base_amount,ts:ts,time:relTime(t.ledger_close_time),op:op};
+  }
+  function loadMyTrades(){
+    var addr=lxAddr();
+    if(!addr){ MY_ROWS=[]; MY_BUSY=false; return; }
+    if(MY_BUSY)return;
+    MY_BUSY=true; try{ renderExchanges(); }catch(_){}
+    j(H+"/accounts/"+addr+"/trades?order=desc&limit=200").then(function(d){
+      var recs=(d&&d._embedded&&d._embedded.records)||[];
+      MY_ROWS=recs.filter(function(t){ return myTradeSide(t,"base")||myTradeSide(t,"counter"); }).map(mapMyTrade);
+      MY_BUSY=false; try{ renderExchanges(); }catch(_){}
+    }).catch(function(){ MY_BUSY=false; MY_ROWS=MY_ROWS||[]; try{ renderExchanges(); }catch(_){} });
+  }
   var EX_PAGE=1, EX_PER_PAGE=50;
   // #20/#22: this is one narrow cell in a dense table and every row of it repeated the same word. "ago"
 // is the only thing a time in a Recent Trades list can mean, and "just now" says in two words what
@@ -2187,7 +2227,9 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // 0.0019965, i.e. the best ASK (0.0019966) = takers lifting offers = buys; false averages the bid
   // exactly. This query pins base=CODE, counter=native, so base IS the token and no flip is needed.
   function mapTrade(t){ var pr=t.price?(+t.price.n/+t.price.d):0;
-    return {addr:t.base_account||t.counter_account||"", side:t.base_is_seller?"buy":"sell", px:pr, amount:+t.base_amount, xlm:+t.counter_amount, ts:Date.parse(t.ledger_close_time||"")||0, time:relTime(t.ledger_close_time),
+    // b and c are the two ACCOUNTS in the fill. addr is what the row shows; these are what "My Trades" matches on,
+    // because the connected wallet can be either side of a trade and matching one side would hide half of them.
+    return {b:t.base_account||"", c:t.counter_account||"", addr:t.base_account||t.counter_account||"", side:t.base_is_seller?"buy":"sell", px:pr, amount:+t.base_amount, xlm:+t.counter_amount, ts:Date.parse(t.ledger_close_time||"")||0, time:relTime(t.ledger_close_time),
       // Horizon trade ids are "<operationId>-<order>"; keep the operation id so the row can link to
       // THIS trade rather than to the asset. Matches t._links.operation.href.
       op:String(t.id||"").split("-")[0]}; }
@@ -2290,7 +2332,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // markup differs — filtering, paging and the anti-mock guards below are shared. Without the mobile
     // host this bailed on its first line, and the page kept the design's mock: 15 rows of ETHEREUM
     // addresses (0x0f…3ce6) at invented prices, on a Stellar asset page.
-    var rows=window.__lxDXAtrades; var tb=q("#dxaExTable"); var MOB=false;
+    var rows=MY_TRADES?(MY_ROWS||[]):window.__lxDXAtrades; var tb=q("#dxaExTable"); var MOB=false;
     if(!tb){ tb=q("#mdxaExList"); MOB=!!tb; }
     if(!tb||!rows)return;
     // PAGE the filtered set instead of hard-slicing the first 50. The design's own pager sat in
@@ -2298,7 +2340,17 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // builds 15 rows from a hardcoded WALLETS array of ETHEREUM addresses priced in APT/USDC. One
     // click on a real asset page replaced live Stellar trades with fabricated ones. We now own the
     // pager, so that path is unreachable.
-    var all=rows.filter(function(r){ return r.xlm>=TRADE_FILTER; });
+    var _me=MY_TRADES?lxAddr():"";
+    var all=rows.filter(function(r){
+      if(r.xlm<TRADE_FILTER)return false;
+      // MY TRADES WITH NO WALLET SHOWS NOTHING, not everything. Falling through to the unfiltered list would answer a
+      // question about YOUR trades with the market's, which is a wrong answer rather than a missing one. The empty
+      // state below says what to do about it.
+      if(MY_TRADES&&!_me)return false;
+      // No per-row account test any more: with My Trades on, the rows ARE this wallet's own trade history, straight
+      // from /accounts/<addr>/trades, so there is nothing of anyone else's in the list to filter out.
+      return true;
+    });
     // Short of 25 for this size? Go and find more. Cheap when it is not needed: exMatches short-circuits
     // and deepenTrades returns without a request.
     if(TRADE_FILTER>0 && all.length<EX_MIN) try{ deepenTrades(); }catch(_){}
@@ -2315,7 +2367,11 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // nothing, which is exactly the confusion this message existed to prevent.
     var _sz=(TRADE_FILTER>=1000?(TRADE_FILTER/1000)+"K":TRADE_FILTER)+" XLM";
     var _busy=!!(EX_DEEP[TRADE_FILTER]&&EX_DEEP[TRADE_FILTER].busy);
-    var emptyTxt = TRADE_FILTER>0
+    var emptyTxt = MY_TRADES
+      ? (!lxAddr() ? "Connect a wallet to see your own trades in this asset."
+         : MY_BUSY ? "Looking up your trades\\u2026"
+                   : "No trades from this wallet in this asset.")
+      : TRADE_FILTER>0
       ? (_busy ? ("Looking further back for trades \\u2265 "+_sz+" \\u2026")
                : ("No trades \\u2265 "+_sz+" in the last "+num(EX_SCANNED)+" trades"+exSpan()+"."))
       : 'No trades in the recent window.';
@@ -2343,7 +2399,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // and this guard skipped it as a no-op. The only thing that had changed was the sentence itself, and
     // the signature could not see it. Verified on yXLM at 10K+: the crawl finished at 2.8s and the page
     // still claimed to be looking eleven seconds later.
-    var sig=TRADE_FILTER+"|"+EX_PAGE+"|"+all.length+"|"+f.length+"|"+((f[0]&&f[0].addr)||"")+"|"+((f[f.length-1]&&f[f.length-1].addr)||"")+"|"+emptyTxt;
+    var sig=TRADE_FILTER+"|"+(MY_TRADES?1:0)+(MY_BUSY?"b":"")+"|"+EX_PAGE+"|"+all.length+"|"+f.length+"|"+((f[0]&&f[0].addr)||"")+"|"+((f[f.length-1]&&f[f.length-1].addr)||"")+"|"+emptyTxt;
     // AUDIT: the old guard trusted the .lxda class, which survives when the design replaces the ROWS
     // underneath it — so once the mock came back we refused to repaint and left it on screen. Trust the
     // content instead — but NOT .wallet-cell: the design's mock rows use that class too, so the guard
@@ -2468,6 +2524,45 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       e.preventDefault(); e.stopImmediatePropagation();
       qa(".chip",c.parentNode).forEach(function(o){o.classList.toggle("active",o===c);});
       TRADE_FILTER=parseFloat(c.getAttribute("data-min-xlm"))||0; EX_PAGE=1; renderExchanges();
+    },true);
+
+    // THE MY-TRADES TOGGLE, at the end of the tab row (RAZA 2026-09-17: "On Trade-Asset, in recent, on right side, also
+    // show the user's own trades for that asset"). Built here because the design ships no such control, and re-asserted
+    // on a few ticks because the tab bar is repainted while the page loads.
+    function lxMyTradesBtn(){
+      var bar=q(".tabs-bar"); if(!bar)return;
+      var b=bar.querySelector(".lx-mytrades");
+      if(!b){
+        b=document.createElement("button");
+        // The label lives in a SPAN, and that is not decoration. The site transitions the color property on everything (the theme
+        // transition layer), and a transition in flight beats even an inline !important -- measured here: the button's
+        // inline colour read back correctly as rgb(138,143,163) !important and computed to rgb(0,0,0) regardless, with
+        // no stylesheet rule targeting it and getAnimations() showing a CSSTransition on color. A child element is
+        // outside that transition and takes the colour normally.
+        b.type="button"; b.className="lx-mytrades";
+        b.innerHTML='<span class="lx-mtlabel">My Trades</span>';
+        b.style.cssText="margin-left:auto;background:none;border:0;padding:6px 2px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer";
+        bar.appendChild(b);
+        if(getComputedStyle(bar).display==="flex")bar.style.alignItems="center";
+      }
+      // !important, because the tab bar colours its buttons with one (GUARDRAILS E14). Measured: the inline colour was
+      // set, --accent read back as #ea6a2c, and the button still computed to black until this beat the design's rule.
+      // LITERALS, not var(). Measured on the page: no stylesheet rule targets this button, --accent and --text-muted
+      // both resolve at it, and yet color: var(--accent,#ea6a2c) computed to rgb(0,0,0) -- the substitution fails here and
+      // the declaration falls back to a button element's default black. The two values are the design's own.
+      var lbl=b.querySelector(".lx-mtlabel")||b;
+      lbl.style.setProperty("color", MY_TRADES?"#ea6a2c":"#8a8fa3", "important");
+      lbl.style.setProperty("text-decoration", MY_TRADES?"underline":"none", "important");
+    }
+    lxMyTradesBtn();
+    [200,600,1400,2600].forEach(function(ms){setTimeout(lxMyTradesBtn,ms);});
+    // Window capture, like the chips above: this page has a delegated handler that repaints the design's mock rows and
+    // stops propagation before an element listener would ever run.
+    window.addEventListener("click",function(e){
+      var t=e.target&&e.target.closest?e.target.closest(".lx-mytrades"):null; if(!t)return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      MY_TRADES=!MY_TRADES; EX_PAGE=1; lxMyTradesBtn();
+      if(MY_TRADES&&MY_ROWS===null)loadMyTrades(); else renderExchanges();
     },true);
   }
 

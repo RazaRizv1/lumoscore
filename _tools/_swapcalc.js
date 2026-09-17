@@ -126,9 +126,14 @@ const STYLE='<style id="lx-swapcalc-css">'
 // 2-step: hide the full picker on step 2, show a compact 2-line summary; bump review sizes
 +'#modalSwap:not(.lx-on-step2) .lx-swapd,#modalSwap:not(.lx-on-step2) .lx-step2-only{display:none!important}'
 +'#modalSwap.lx-on-step2 .lx-step1-only{display:none!important}'
-+'#modalSwap.lx-on-step2 .swap-pair{display:none!important}'
+// STEP 2 KEEPS THE FIELDS (RAZA 2026-09-17: "Lumos token page -> Swap popup -> Step 2: Make it like on XRPL").
+// The review step used to replace the From/To pair with a compact YOU PAY / YOU RECEIVE card, so the amounts a reader
+// was about to confirm were rendered in a different shape from the ones they typed. The XRPL build leaves the pair in
+// place and adds the detail rows beneath it, and that is what is wanted on both. The summary card's styling is left
+// below rather than deleted, so this is one line to put back if the compact form is ever preferred again.
++'#modalSwap.lx-on-step2 .swap-pair{display:block}'
 +'.lx-swap-summary{display:none}'
-+'#modalSwap.lx-on-step2 .lx-swap-summary{display:flex;align-items:stretch;position:relative;margin:2px 0 12px;border:1px solid var(--border);border-radius:14px;background:var(--surface,#fff)}'
++'#modalSwap.lx-on-step2 .lx-swap-summary{display:none;align-items:stretch;position:relative;margin:2px 0 12px;border:1px solid var(--border);border-radius:14px;background:var(--surface,#fff)}'
 +'.lx-swap-summary .lx-ss-row{flex:1 1 0;min-width:0;padding:12px 14px}'
 +'.lx-swap-summary .lx-ss-row:first-child{border-right:1px solid var(--border);padding-right:26px}'
 +'.lx-swap-summary .lx-ss-row:last-child{padding-left:26px}'
@@ -948,7 +953,13 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 +'set("feenote",fr<=0.001?\'<div class="lx-fee-banner holder"><span class="lx-fee-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4 0-7-2.7-7-6.5 0-2.3 1.2-4 2.4-5.4.3.9 1 1.6 1.9 1.6 1.4 0 1.7-1 1.6-3.5-.1-2.4 1-4.6 3.1-6.2-.4 2 .3 3.2 1.6 4.6C19 9.6 19 11.8 19 16.5c0 3.8-3 6.5-7 6.5z"></path></svg></span><span class="txt"><b>You qualify for 0.1% trading fees</b> \u2014 50% Discount</span></div>\':\'<div class="lx-fee-banner nudge"><span class="lx-fee-ic"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 23c-4 0-7-2.7-7-6.5 0-2.3 1.2-4 2.4-5.4.3.9 1 1.6 1.9 1.6 1.4 0 1.7-1 1.6-3.5-.1-2.4 1-4.6 3.1-6.2-.4 2 .3 3.2 1.6 4.6C19 9.6 19 11.8 19 16.5c0 3.8-3 6.5-7 6.5z"></path></svg></span><span class="txt"><b>50% off trading fees</b> \u2014 hold 250,000 <a class="lx-fee-buy" href="/lumos/stellar" data-lxc="" data-logoed="1"><svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg>LUMOS</a></span></div>\');'
 +'set("rate","1 "+fSym+" \\u2248 "+fmt(rate)+" "+tSym);set("slip",slip+"%");set("fee",fmt(fee)+" "+fSym);'
 +'set("net","~0.00001 "+fSym);set("pi",piTxt);var pe=panel.querySelector(\'[data-k="pi"]\');if(pe)pe.style.color=piPct<0.5?"var(--green,#35c07f)":"var(--yellow,#ffb547)";'
-+'setNum("min",minR,tSym);panel.style.display="";}else{panel.style.display="none";}}'
+// ONE RATE ON SCREEN, NOT TWO (RAZA 2026-09-17: "entering in You Receive is kinda broken" -- his screenshot carries
+// 'Rate 1 XLM = 0.181645 USDC' above the details block and 'Rate 1 XLM = 0.1818363 USDC' inside it, differing in the
+// fourth decimal). They are two honest numbers answering different questions: the standalone line is the market rate,
+// the panel's is the rate this quote actually achieves. Side by side and identically labelled, they just read as the
+// page disagreeing with itself. The standalone line stays while there is nothing to quote, and steps aside once the
+// panel -- which carries the rate, slippage, fee and minimum together -- has the answer.
++'setNum("min",minR,tSym);panel.style.display="";var _sr=document.getElementById("swapRate");if(_sr)_sr.style.display="none";}else{panel.style.display="none";var _sr2=document.getElementById("swapRate");if(_sr2)_sr2.style.display="";}}'
 // real swap: pathPaymentStrictSend (send From, receive To to self via best DEX path), signed by the connected wallet
 +'var LXKNOWN={USDC:"GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN",yUSDC:"GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF",AQUA:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"};'
 +'var LX_FEE_COLLECTOR="GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD";'

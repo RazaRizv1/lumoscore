@@ -251,9 +251,40 @@ function mkStore(env) {
 }
 
 // The cached page RESPONSE key. `q` is already uppercased and length-capped by the caller.
-function pageKey(ts, per, page, q) {
+function pageKey(ts, per, page, q, sort, dir) {
   return new Request('https://lumoscore.internal/pools-page/' + ts + '/' + per + '/' + page
-    + '/' + encodeURIComponent(q || ''), { method: 'GET' });
+    + '/' + encodeURIComponent(q || '') + '/' + (sort || 'tvl') + (dir === 'asc' ? 'a' : 'd'), { method: 'GET' });
+}
+
+// COLUMN SORTING, RANKED ACROSS THE WHOLE LIST (RAZA 2026-09-17: "Let me short the pool columns (Liq, Vol, Fees,
+// Participants) from high to low just like im able to sort Trade main page columns").
+//
+// It was refused before for a reason that was right at the time: the browser holds 25 of ~11,000 ranked rows, so sorting
+// what it has would reorder one page and present the result as the top of the list. The ranking lives HERE, whole, so
+// the sort belongs here too — every row, then the page cut from it, cached per column exactly like the default one is.
+//
+// Fees are volume x the pool's own fee rate, which is how the table's Fees column is computed, so sorting by it sorts
+// the number the reader is actually looking at.
+const SORTS = {
+  tvl: (r) => (r.tvl == null ? null : +r.tvl),
+  vol: (r) => (r.vol24 == null ? null : +r.vol24),
+  fees: (r) => (r.vol24 == null ? null : (+r.vol24) * (+r.fee || 0) / 100),
+  members: (r) => (r.members == null ? null : +r.members),
+};
+
+// A row whose figure was never measured is not a row worth zero. vol24 is null on every pool the volume overlay did not
+// cover, and sorting those in as zeros would bury real pools beneath them ascending and pad the bottom descending. They
+// go last in both directions, which is the only position that claims nothing about them.
+function rankBy(rows, sort, dir) {
+  const f = SORTS[sort] || SORTS.tvl;
+  const sign = dir === 'asc' ? 1 : -1;
+  return rows.slice().sort((x, y) => {
+    const a = f(x), b = f(y);
+    if (a == null && b == null) return 0;
+    if (a == null) return 1;
+    if (b == null) return -1;
+    return sign * (a - b);
+  });
 }
 // How long the ranking SURVIVES in cache. Freshness is judged separately, by its own timestamp against
 // RANK_TTL, so this is not "how stale a visitor may see" -- a stale entry is served instantly and
@@ -489,6 +520,11 @@ export async function onRequestGet(ctx) {
   const per = Math.min(100, Math.max(1, parseInt(url.searchParams.get('per') || '25', 10) || 25));
   const page = Math.max(1, parseInt(url.searchParams.get('page') || '1', 10) || 1);
   const qRaw = (url.searchParams.get('q') || '').trim().toUpperCase().slice(0, 24);
+  // Default is the ranking as built — by TVL, descending — so the ordinary page costs exactly what it did before.
+  const sortRaw = String(url.searchParams.get('sort') || 'tvl').toLowerCase();
+  const sort = Object.prototype.hasOwnProperty.call(SORTS, sortRaw) ? sortRaw : 'tvl';
+  const dir = String(url.searchParams.get('dir') || 'desc').toLowerCase() === 'asc' ? 'asc' : 'desc';
+  const reranked = !(sort === 'tvl' && dir === 'desc');
 
   const cache = caches.default;
   const store = mkStore(ctx && ctx.env);
@@ -500,7 +536,7 @@ export async function onRequestGet(ctx) {
     // FAST PATH -- one cache read, no JSON parsed, response returned verbatim. This is what makes a warm
     // request cost ~0 ms of CPU instead of the 14-45 ms that parsing 3.38 MB to emit 8 KB used to cost.
     if (meta && meta.ts) {
-      const hit = await cache.match(pageKey(meta.ts, per, page, qRaw));
+      const hit = await cache.match(pageKey(meta.ts, per, page, qRaw, sort, dir));
       if (hit) {
         if (Date.now() - meta.ts > RANK_TTL * 1000) later(advance(store));
         // Re-headered, not re-read: the stored copy carries a long max-age so it survives as long as its
@@ -551,7 +587,8 @@ export async function onRequestGet(ctx) {
           headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + SEARCH_TTL },
         })));
       }
-      rows = hitS.rows;
+      // A search result set is small and already in hand, so the same column ordering applies there for free.
+      rows = reranked ? rankBy(hitS.rows, sort, dir) : hitS.rows;
       total = rows.length;
       pages = Math.max(1, Math.ceil(total / per));
       start = Math.min((page - 1) * per, Math.max(0, (pages - 1) * per));
@@ -562,8 +599,10 @@ export async function onRequestGet(ctx) {
       // Clamp FIRST, then decide how much of the ranking to read -- an out-of-range page clamps back to
       // the last one, which may sit far outside the hot slice even though `page` looked small.
       start = Math.min((page - 1) * per, Math.max(0, (pages - 1) * per));
+      // The hot slice is the TOP of the TVL ranking, so it holds the right rows only while that is the order being
+      // served. Under any other column the answer can come from anywhere in the list, so the whole one is read.
       const blob = (built && { rows: built.rows })
-        || await store.get(start + per > meta.hot ? K.full : K.hot);
+        || await store.get((reranked || start + per > meta.hot) ? K.full : K.hot);
       if (!blob || !blob.rows) {
         // meta without its data: the entries expire together, but KV is eventually consistent and one
         // can lag. Rebuild rather than answer with an empty list that would look like "no pools".
@@ -572,13 +611,14 @@ export async function onRequestGet(ctx) {
           headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
         });
       }
-      rows = blob.rows;
+      rows = reranked ? rankBy(blob.rows, sort, dir) : blob.rows;
     }
 
     const body = JSON.stringify({
       page: Math.floor(start / per) + 1,
       per, pages, total,
       ranked: meta.ranked,
+      sort, dir,
       unpriceable: 28882,          // measured; pools with neither an XLM nor a Circle USDC leg
       withVol: meta.withVol,
       xlmUsd: meta.px,
@@ -592,7 +632,7 @@ export async function onRequestGet(ctx) {
     // The stored copy outlives the served one on purpose. The client is told 120s so its own numbers
     // refresh; the slice is keyed on the ranking's ts, so it stays valid for as long as that ranking is
     // the published one and never needs invalidating.
-    later(cache.put(pageKey(meta.ts, per, page, qRaw), new Response(body, {
+    later(cache.put(pageKey(meta.ts, per, page, qRaw, sort, dir), new Response(body, {
       headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + RANK_HOLD },
     })));
 

@@ -183,18 +183,55 @@ async function fundedByUs(issuer, b) {
       const r = await withTimeout(host + '/accounts/' + issuer + '/operations?order=asc&limit=1');
       // Throttled or upstream-broken: retryable, and emphatically not an answer.
       if (r.status === 429 || r.status >= 500) { await sleep(250 * (attempt + 1)); continue; }
-      // A 404 IS an answer: no such account, so it is certainly not one we funded.
-      if (!r.ok) return false;
+      // A 404 HERE IS NOT "no such account". This asks for an account's OPERATIONS, and Horizon answers 404 when it holds
+      // none for it — which is what a rolling history window produces for an old account. Measured: POTATO, ZOMBIE, JROLL
+      // and MILL all answer 404 on this path while `/accounts/{id}` answers 200, so the accounts plainly exist and the
+      // comment that used to sit here ("no such account, so it is certainly not one we funded") was wrong about all four.
+      // Their creator is still on the ledger; it is only this node that has stopped keeping it, so ask a full-history one.
+      if (!r.ok) return await createdByFunder(issuer, b);
       const d = await r.json();
       const op = ((d._embedded || {}).records || [])[0] || {};
-      if (op.type !== 'create_account') return false;
-      if ((op.funder || op.source_account) === FUNDER) return true;
-      // Not funded by our wallet -- which on mainnet is the NORMAL case, not a red flag. Fall through
-      // to the launchpad-shape check below rather than denying here.
-      return await mintedByUs(op.transaction_hash, issuer, b, host);
+      if (op.type === 'create_account') {
+        if ((op.funder || op.source_account) === FUNDER) return true;
+        // Not funded by our wallet -- which on mainnet is the NORMAL case, not a red flag. Fall through
+        // to the launchpad-shape check below rather than denying here.
+        return await mintedByUs(op.transaction_hash, issuer, b, host);
+      }
+      // THE CREATION HAS AGED OUT OF HORIZON, WHICH IS NOT A DENIAL (RAZA 2026-09-17: "Trade Titan (TDT) is not in
+      // lumoscore.com/.well-known/stellar.toml"). This read the FIRST RETAINED operation and treated anything that was not
+      // a create_account as proof the account was not ours. SDF's Horizon keeps a rolling window, not full history: TDT's
+      // issuer was created 2025-07-13 and the oldest operation Horizon still holds for it is dated 2025-11-03, so the
+      // creation is simply gone. For five others -- POTATO, REKT, ZOMBIE, JROLL, MILL -- Horizon returns no operations at
+      // all. All seven were created by our own funding wallet, and all seven had quietly fallen out of this document; the
+      // list was 24 when it was written and was 22 when he asked. It would have kept shrinking as the window advanced.
+      return await createdByFunder(issuer, b);
     } catch (e) { await sleep(250 * (attempt + 1)); }  // timeout / network -> retry, do not conclude
   }
   return null;
+}
+
+// The creator of an account, for the case above where Horizon no longer holds the creation itself.
+//
+// An account's creator is fixed at creation and permanent on the ledger — that is the whole basis of the rule this file
+// enforces — so the fact is not in question; only whether the node we asked still keeps a record of it. stellar.expert
+// keeps full history and reports the creator directly, and it is already the source this document trusts to decide which
+// assets are candidates at all, so reading one more field from it widens nothing.
+//
+// Three-valued like everything else here: true = created by our wallet, false = created by someone else (a real answer
+// from a full-history source), null = could not determine, which is never published.
+async function createdByFunder(issuer, b) {
+  if (!b.take()) return null;
+  let r;
+  try {
+    r = await withTimeout('https://api.stellar.expert/explorer/public/account/' + encodeURIComponent(issuer));
+  } catch (e) { return null; }
+  if (r.status === 429 || r.status >= 500) return null;
+  if (!r.ok) return null;
+  let d;
+  try { d = await r.json(); } catch (e) { return null; }
+  const creator = d && typeof d.creator === 'string' ? d.creator : '';
+  if (!/^G[A-Z2-7]{55}$/.test(creator)) return null;     // no creator reported is not "someone else's"
+  return creator === FUNDER;
 }
 
 // Was this issuer minted through our launchpad, judged from the transaction that created it?

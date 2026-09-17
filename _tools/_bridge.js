@@ -50,6 +50,13 @@ const SEARCHBOX='<div class="brd-search"><svg class="brd-sic" width="15" height=
 
 const STYLE='<style id="lx-brdnet">'
 +'.brd-menu{max-height:344px;overflow-y:auto}'
+// NOTHING HERE FIXES RAZA'S 2026-09-17 REPORT YET ("This design issue only appears when there is a pending claim for
+// a bridge transaction"). A '.brd.open{z-index:150}' rule was added here on the theory that the open network menu was
+// losing the stacking order to the .lx-brpend claim panel below it. It was then MEASURED both ways on the live page,
+// and the menu paints above the panel with or without it -- so the rule was doing nothing for the reported symptom and
+// has been removed rather than shipped with a comment claiming a fix. Two other theories are also dead: --surface is
+// defined on all three bridge pages (#ffffff / #131317), so the menu is not painting transparent for want of a token,
+// and .lx-brpend carries its own opaque background. Cause still unknown; do not guess a third time without a repro.
 +'.brd-opt .brd-ic.lx-netlm{display:inline-flex !important;align-items:center;justify-content:center;width:26px;height:26px;min-width:26px;border-radius:50%;color:#fff;font:800 8.5px/1 \'Hanken Grotesk\',system-ui,sans-serif;letter-spacing:.01em;flex-shrink:0;overflow:hidden;background-clip:padding-box}'
 // destination search box (sticky at top of the menu)
 +'.brd-search{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:8px;padding:9px 11px;margin:-6px -6px 6px;background:var(--surface);border-bottom:1px solid var(--border);border-radius:14px 14px 0 0}'
