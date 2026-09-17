@@ -131,17 +131,30 @@ function strkeyToHex(s) {
 // back to coloured letter tiles. Resolving them client-side instead would be 50 lookups per 25-row page.
 // Shipping the URL with the row is one lookup for everybody, and it is issuer-correct rather than
 // code-keyed -- which matters on Stellar, where a ticker is not an identity.
+// RAZA 2026-09-17: "on pools main page, why are Vol and Fees column empty". Both columns come from this one
+// overlay (Fees is vol x the pool's fee rate), and it was returning an EMPTY MAP at the edge while the same
+// upstream request answered fine from a laptop -- api.stellar.expert served real volume_value['1d'] figures, and
+// the ids converted to exactly the ids the rows carry, so neither the source nor the key was at fault.
+//
+// The previous shape of this function could not tell us which: every failure -- a non-200, a body in an
+// unexpected shape, a thrown fetch -- ended as the same silent empty Map, and 'break' on the first empty page
+// made a single bad response look identical to "upstream has no pools". That is why this is instrumented rather
+// than patched on a hunch: diag is carried into the published meta and out of the API, so the NEXT build states
+// the reason instead of leaving it to be guessed at again.
 async function volumeOverlay() {
   const vol = new Map(), img = new Map();
+  const diag = { pages: 0, recs: 0, status: null, err: null, stop: null };
   for (let p = 0; p < VOL_PAGES; p++) {
     let d = null;
     try {
       const r = await fetch(XPERT + '?limit=' + PAGE + '&cursor=' + p * PAGE,
         { headers: { accept: 'application/json' }, cf: { cacheTtl: UPSTREAM_TTL, cacheEverything: true } });
-      if (r.ok) d = await r.json();
-    } catch (_) {}
+      diag.status = r.status;
+      if (r.ok) d = await r.json(); else if (!diag.stop) diag.stop = 'http ' + r.status;
+    } catch (e) { diag.err = String((e && e.message) || e).slice(0, 120); }
     const recs = (d && d._embedded && d._embedded.records) || [];
-    if (!recs.length) break;
+    diag.pages++; diag.recs += recs.length;
+    if (!recs.length) { if (!diag.stop) diag.stop = diag.err ? 'threw' : 'empty page ' + p; break; }
     for (const r of recs) {
       const hex = strkeyToHex(r.id);
       if (!hex) continue;
@@ -160,7 +173,9 @@ async function volumeOverlay() {
       }
     }
   }
-  return { vol, img };
+  if (!diag.stop) diag.stop = 'ok';
+  diag.matchable = vol.size;
+  return { vol, img, diag };
 }
 
 function legOf(rec, want) {
@@ -420,13 +435,14 @@ async function searchPools(ranked, q) {
 
 // Publish a completed build. Data first, meta last: a reader that sees meta can rely on hot/full being
 // there, and one that races in between simply sees no meta and treats it as not-yet-built.
-async function publish(store, rows, px) {
+async function publish(store, rows, px, volDiag) {
   const meta = {
     ts: Date.now(),
     px,
     total: rows.length,
     ranked: rows.length,
     withVol: rows.filter((r) => r.vol24 !== null).length,
+    volDiag: volDiag || null,
     hot: Math.min(HOT_ROWS, rows.length),
   };
   await store.put(K.full, { rows, px }, RANK_HOLD);
@@ -449,7 +465,7 @@ async function advance(store) {
     await store.put(K.state, state, 900);
     return null;
   }
-  return publish(store, state.rows, state.px);
+  return publish(store, state.rows, state.px, state.volDiag);
 }
 
 function rowsFrom(recs, priceLeg, px, seen, rows) {
@@ -494,11 +510,12 @@ async function buildStep(state) {
     // same pool off two different legs would give it two different TVLs depending on which loop won.
     rowsFrom(r.recs, USDC, 1, state.seen, state.rows);
     state.cursor = r.cursor;
-    if (r.done) state.phase = 'overlay';
+    if (r.done) { state.phase = 'overlay'; return state; }
     if (spent >= STEP_BUDGET - VOL_PAGES) return state;
   }
   if (state.phase === 'overlay') {
-    const { vol, img } = await volumeOverlay();
+    const { vol, img, diag } = await volumeOverlay();
+    state.volDiag = diag;
     for (const r of state.rows) {
       if (vol.has(r.id)) r.vol24 = Math.round(vol.get(r.id) * 100) / 100;
       for (const leg of [r.a, r.b]) {
@@ -621,6 +638,7 @@ export async function onRequestGet(ctx) {
       sort, dir,
       unpriceable: 28882,          // measured; pools with neither an XLM nor a Circle USDC leg
       withVol: meta.withVol,
+      volDiag: meta.volDiag || null,
       xlmUsd: meta.px,
       ts: meta.ts,
       // Present only on a search, and only worth reading when assetsChased < assetsMatched: the query
