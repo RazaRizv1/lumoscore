@@ -1129,7 +1129,13 @@ function lxBrRegister(feeHash,burnHash){
     });
   }catch(_){ return Promise.resolve(false); }
 }
-function lxBrClearPending(hash){ try{ var a=lxBrListPending().filter(function(x){return x.burnHash!==hash;}); localStorage.setItem("lumos.cctp.pending",JSON.stringify(a)); }catch(_){} }
+// A cleared claim is REMEMBERED, not just removed. Pending rows are seeded from the shared bridge record below, so
+// without this a transfer claimed here would be handed straight back on the next load, and the panel would argue with
+// the user about something they had already finished.
+function lxBrMarkDone(hash){ try{ if(!hash)return; var d=JSON.parse(localStorage.getItem("lumos.cctp.done")||"[]");
+  if(d.indexOf(hash)<0){ d.unshift(hash); if(d.length>200)d=d.slice(0,200); localStorage.setItem("lumos.cctp.done",JSON.stringify(d)); } }catch(_){} }
+function lxBrIsDone(hash){ try{ return JSON.parse(localStorage.getItem("lumos.cctp.done")||"[]").indexOf(hash)>=0; }catch(_){ return false; } }
+function lxBrClearPending(hash){ try{ lxBrMarkDone(hash); var a=lxBrListPending().filter(function(x){return x.burnHash!==hash;}); localStorage.setItem("lumos.cctp.pending",JSON.stringify(a)); }catch(_){} }
 window.lxBrSavePending=lxBrSavePending; window.lxBrListPending=lxBrListPending; window.lxBrClearPending=lxBrClearPending;
 // Pull the shared bridge record into LX_PUBTX. Deduped by burn hash and sorted newest-first, so a
 // transfer this browser already knows about is not duplicated. Resolves either way: an unreachable
@@ -1773,6 +1779,48 @@ function lxBrAutoClear(){ try{
 }catch(_){} }
 window.lxBrAutoClear=lxBrAutoClear;
 
+// A CLAIM FOLLOWS THE WALLET, NOT THE BROWSER (RAZA 2026-09-17: "Awaiting redemption is showing on the smartphone, but
+// there is no pending claim on the desktop with the same wallet").
+//
+// Pending transfers have only ever lived in this browser's localStorage, so a transfer burned on a phone was invisible
+// on a desktop holding the same wallet — and a CCTP burn that is never claimed is USDC that exists nowhere. The comment
+// on LX_PUBTX above says a shared list has to ship with the page "until there is a server-side feed"; that feed now
+// exists and this is the rest of that sentence.
+//
+// NOTHING NEW IS TRUSTED. /lxapi/bridgetx stores a record only when the ledger agrees the fee and the burn came from the
+// same account inside one window, and it reads the amount and destination from Circle rather than from the caller. The
+// Recent-transactions table has been drawing on it for weeks. All that changes is that the rows belonging to the
+// CONNECTED account are also offered as claims.
+//
+// Already-claimed transfers do not linger: lxBrResumePending fetches the attestation, then lxBrAutoClear asks the
+// destination chain whether the message has been spent (a read-only eth_call, no wallet, no gas) and removes the row.
+// A claim cleared in THIS browser is remembered in lumos.cctp.done, so it is never seeded back.
+function lxBrSeedFromServer(){
+  try{
+    var me=(window.lumos&&window.lumos.address)||localStorage.getItem("lumos.address")||"";
+    if(!me||window.__lxBrSeeded)return;
+    window.__lxBrSeeded=1;
+    fetch("/lxapi/bridgetx?limit=100").then(function(r){ return r.ok?r.json():null; }).then(function(d){
+      var rows=(d&&d.rows)||[]; if(!rows.length)return;
+      var have={}; lxBrListPending().forEach(function(x){ if(x&&x.burnHash)have[x.burnHash]=1; });
+      var added=0;
+      rows.forEach(function(x){
+        if(!x||!x.burnHash||x.from!==me)return;              // only this wallet's own burns
+        if(have[x.burnHash]||lxBrIsDone(x.burnHash))return;
+        // status "burned": lxBrResumePending will ask Circle for the attestation on this same pass.
+        lxBrSavePending({ burnHash:x.burnHash, destDomain:x.destDomain, amount:x.amount,
+                          recipient:x.recipient, ts:+x.ts||Date.now(), status:"burned", fromServer:1 });
+        added++;
+      });
+      if(!added)return;
+      try{ lxBrRenderPending(); }catch(_){}
+      try{ lxBrResumePending(); }catch(_){}
+      try{ lxBrAutoClear(); }catch(_){}
+    }).catch(function(){});
+  }catch(_){}
+}
+window.lxBrSeedFromServer=lxBrSeedFromServer;
+
 // a burn whose attestation timed out (or whose tab was closed mid-poll) resolves itself on the next visit
 function lxBrResumePending(){ try{
   lxBrListPending().filter(function(x){ return !(x.status==="attested"&&x.attestation); }).slice(0,6).forEach(function(r){
@@ -1789,6 +1837,9 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
   if(!tb&&!card) return false;
   lxBrRenderMobileTxs();   // mobile has no tb, so this must sit OUTSIDE the if(tb) gate below
   if(tb){ lxBrTableCols(); lxBrRestoreTxs(); lxBrTxApply(); fixFrom(); setTimeout(fixFrom,500); setTimeout(fixFrom,1200); var _t=document.querySelector('.br-table'); if(_t)_t.classList.add('lx-tbl-ready'); }
+  // Seeded BEFORE the three passes below, so a transfer burned on another device is rendered, attested and
+  // auto-cleared on this same load rather than only on the next one.
+  lxBrSeedFromServer();
   lxBrRenderPending(); lxBrResumePending(); lxBrAutoClear(); return true; }
  if(!pass()){ var n=0,iv=setInterval(function(){ n++; if(pass()||n>40) clearInterval(iv); },120); } })();
 })();`;

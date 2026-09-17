@@ -708,9 +708,13 @@ const SCRIPT = `<script id="lx-accdata">(function(){
         +'</tr>'; }).join("");
     setMore("#accAssetsTbl","assets",rows.length,all.length);
     paintLogos();
-    qa("#accAssetsTbl tbody tr.acc-row").forEach(function(tr){ tr.addEventListener("click",function(){
+    qa("#accAssetsTbl tbody tr.acc-row").forEach(function(tr){
       var c=tr.getAttribute("data-code"), i=tr.getAttribute("data-iss");
-      if(c&&c!=="XLM"&&i)location.href="/trade/stellar/"+c+"-"+i; }); });
+      // XLM has no Trade-Asset page -- /trade/stellar/XLM is a 404 -- so that row cannot go anywhere. It still wore the
+      // pointer cursor the others wear, promising a page that does not exist. Every issued asset does open its page.
+      if(!(c&&c!=="XLM"&&i)){ tr.style.cursor="default"; return; }
+      tr.addEventListener("click",function(){ location.href="/trade/stellar/"+c+"-"+i; });
+    });
   }
 
   // ---- pools --------------------------------------------------------------------------------------

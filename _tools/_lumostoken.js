@@ -216,6 +216,13 @@ html[data-theme="dark"] .lx-supinfo:hover::after{background:#f7f7f9!important;co
 .lx-cpmenu .lx-cpm-ic{width:26px;height:26px;border-radius:50%;flex:0 0 26px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#fff;background-size:cover!important;background-position:center!important;background-repeat:no-repeat!important;overflow:hidden}
 .lx-cpmenu .lx-cpm-bal{margin-left:auto;font-size:12px;color:var(--text-soft,#8a8fa3);font-weight:600}
 #createPoolModal .asset-picker .ap-ico{background-size:cover;background-position:center;background-repeat:no-repeat;overflow:hidden}
+/* THE AMOUNT SPILLS OUT OF THE DIALOG WITHOUT THIS (RAZA 2026-09-17: "Lumos token page, add liquiity popup is still
+   breaking" — the 0.00 on Asset 2 clipped at the panel edge, with a horizontal scrollbar under it). .asset-amt is an
+   <input> in a flex row with flex:1 1 0, and an input's default min-width:auto resolves to its intrinsic ~20-character
+   width, so it refuses to shrink and pushes itself past the panel. The Pools page has carried this exact rule since
+   _ammdata line 49; this page ships the same dialog WITHOUT that stylesheet, which is the whole difference between the
+   two. Identical rule, so the dialog behaves the same wherever it is opened from. */
+#createPoolModal .asset-field .row .asset-amt{min-width:0!important;width:auto!important}
 </style>`;
 
 const SCRIPT = `<script id="lx-ltdata">(function(){

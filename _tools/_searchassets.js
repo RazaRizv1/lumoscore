@@ -137,7 +137,9 @@ const SCRIPT = `<script id="lx-searchassets">(function(){
     // CSS-painted fallback (gradient OR solid colour) can never show here — a generated letter-avatar data
     // URI sidesteps that entirely and matches how the rest of the app draws unknown tokens.
     var ico='<div class="sp-ico lx-spico-on" style="position:relative;overflow:hidden"><img'+(t.img?"":' data-lxneedlogo="'+esc(t.code)+'-'+esc(t.issuer)+'"')+' src="'+esc(t.img||avatarUri(t.code))+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block"></div>';
-    var sub = t.hl!=null ? (nfmt(t.hl)+" holders") : (t.tl!=null ? (nfmt(t.tl)+" holders") : "Launchpad token");
+    // >0, not !=null: a count of zero on a real asset means the field was missing, and printing it states something
+    // the data never said. A row with no number is left for lxSeaHolders to fill from its own request.
+    var sub = t.hl>0 ? (nfmt(t.hl)+" holders") : (t.tl>0 ? (nfmt(t.tl)+" holders") : "Launchpad token");
     // Trade-asset, NOT asset-overview: the overview page was removed, and every asset url now resolves
     // to /trade/stellar/<CODE>-<ISSUER> — the same facts plus the ability to act on them.
     return '<a class="sp-row sp-row--asset lx-searow" data-chain="stellar" data-lxiss="'+esc(t.issuer)+'" href="lumoscore-dex-asset.html?asset='+esc(t.code)+'-'+esc(t.issuer)+'">'+
@@ -392,7 +394,8 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
         var recs=(d&&d._embedded&&d._embedded.records)||[];
         var rr=recs.filter(function(x){return String(x.asset||"").indexOf(code+"-"+iss)===0;})[0];
         var tls=rr&&rr.trustlines;
-        var n=tls?((tls[2]!=null)?tls[2]:((tls[0]!=null)?tls[0]:null)):null;
+        // Same object-or-array shape as the index mapping: {total, authorized, funded} on today upstream.
+        var n=tls?((tls.funded!=null)?tls.funded:((tls.total!=null)?tls.total:((tls[2]!=null)?tls[2]:((tls[0]!=null)?tls[0]:null)))):null;
         HLC[k]=n; return n;
       })
       .catch(function(){ HLC[k]=null; return null; });
@@ -539,12 +542,19 @@ function txt(s){ var e=a.querySelector(s); return e?e.textContent.trim().replace
           // says "Lumos Core"; until that is corrected this is what the search shows for it.
           var _nm=ti.name||"";
           if((p[0]||"")==="LUMOS"&&(p[1]||"")==="GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S")_nm="LumosCore";
+          // TRUSTLINES IS AN OBJECT, NOT AN ARRAY (RAZA 2026-09-17: "WHy's all tokens on search showing 0 holders").
+          // The upstream sends {total, authorized, funded}; this read [0] and [2], which are undefined on an object, and
+          // undefined-or-0 is 0 -- so every result rendered a measured-looking "0 holders". Measured live: ATOM 38,
+          // TKG 1,021, TDT 56. Both shapes are read so an older cached response still works.
+          var _tls=x.trustlines||null;
+          var _tot=_tls?(_tls.total!=null?_tls.total:(_tls[0]!=null?_tls[0]:null)):null;
+          var _fun=_tls?(_tls.funded!=null?_tls.funded:(_tls[2]!=null?_tls[2]:null)):null;
           return {code:p[0]||"", issuer:p[1]||"", name:_nm, domain:x.domain||"",
-                  tl:(x.trustlines&&x.trustlines[0])||0,
-                  hl:(x.trustlines&&x.trustlines[2]!=null)?x.trustlines[2]:null,
+                  tl:_tot,
+                  hl:_fun,
                   img:LXBRAND[(p[0]||"")+"|"+(p[1]||"")]||ti.image||ti.orgLogo||lxSeaReg(p[0],p[1])||""};
         }).filter(function(t){ return t.code && /^G[A-Z2-7]{55}$/.test(t.issuer); });
-        out.sort(function(a,b){ return b.tl-a.tl; });          // the widely-held one first
+        out.sort(function(a,b){ return (b.tl||0)-(a.tl||0); });   // the widely-held one first; an unmeasured count sorts last rather than making the comparator NaN
         SEA_CACHE[q]=out; cb(out);
       })
       .catch(function(){ cb(null); });                          // null = upstream failed (distinct from "no results")

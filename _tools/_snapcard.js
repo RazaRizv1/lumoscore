@@ -13,6 +13,12 @@
 // silently matches nothing (landmine 8 in LUMOSCORE_DEV.md). Read verbatim off disk, the escapes
 // survive, and `node --check` can be run against them, which it is below.
 //
+// WITHDRAWN 2026-09-17, on RAZA's instruction: "Trade-Asset page: Remove the camera icon for screenshot". The
+// transform stays because it is also what REMOVES the blocks — it strips its own <style> and two <script> ids from every
+// page key before deciding whether to inject, so running it with REMOVED set takes the camera, the renderer and the QR
+// library off the pages and leaves nothing behind. Flip this back to false to bring the feature back exactly as it was.
+const REMOVED = true;
+
 // Usage: node _tools/_snapcard.js
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
@@ -135,6 +141,12 @@ for (const dev of ['desktop', 'mobile']) {
     p = p.replace(/<style id="lx-snap-css">[\s\S]*?<\/style>/g, '');
     p = p.replace(/<script id="lx-snap-qr">[\s\S]*?<\/script>/g, '');
     p = p.replace(/<script id="lx-snap">[\s\S]*?<\/script>/g, '');
+
+    // Withdrawn: the strips above have already taken the blocks out, and nothing goes back in.
+    if (REMOVED) {
+      if (p !== before) { json[k] = p; changed = true; keys++; }
+      continue;
+    }
 
     // The button hangs off .lxda-denom, which _dexassetdata builds. Without that layer there is
     // nothing to attach to, so this page is left alone rather than given a dead button.

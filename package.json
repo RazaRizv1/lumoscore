@@ -4,7 +4,7 @@
   "private": true,
   "description": "LumosCore — multi-chain DeFi front end on Stellar mainnet. Static build, deployed to Cloudflare Pages as TWO separate projects: the public site (dist) and the admin panel (dist-admin, behind Cloudflare Access).",
   "scripts": {
-    "build": "node _tools/extract_site.js aptos --root",
+    "build": "node _tools/extract_site.js aptos --root && node _tools/_externalize.js",
     "build:admin": "node _tools/extract_site.js aptos --admin",
     "build:all": "npm run build && npm run build:admin",
     "serve": "node serve.js 8080",

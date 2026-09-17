@@ -28,7 +28,10 @@ const STYLE = `<style id="lx-wclaim-css">
    wrapper, its plain <button>, its .active state and its .cnt badge, which makes them the same control
    by construction rather than by a copy of its numbers that would drift the next time the design moves.
    Only the spacing below the bar is ours. */
-.lx-wctabs{margin:0 0 14px}
+/* The tabs at one end, Cancel all at the other, on one row. gap keeps them apart if the row ever narrows
+   enough for the two to meet. */
+.lx-wctabs{margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lx-wctabs>.right{display:flex;align-items:center;gap:8px;margin:0}
 .lx-wcpanel[hidden]{display:none}
 /* #16: the duplicate heading text inside the panel -- the tab above already names the list and counts it.
    Only the <h2> is hidden; its row still holds Cancel all. */
@@ -364,6 +367,20 @@ bar.innerHTML='<div class="asset-tabs lx-wcgroup">'
     pClaim.setAttribute("hidden","");
 
     host.insertBefore(bar,anchor);
+    // CANCEL ALL SITS ON THE TAB ROW (RAZA 2026-09-17: "Wallet -> Open orders: place the cancel all button aligning with
+    // Claimable payments (but on right side)"). It shipped in the heading row ABOVE this bar, so it floated over the title
+    // with the tabs on their own line underneath -- two rows doing the work of one, and the button furthest from the list
+    // it acts on. Moved onto the bar itself, at the far end, opposite the tabs. Re-asserted on a few ticks because the
+    // design rebuilds that heading while the offers are still loading.
+    var lxMoveCancelAll=function(){
+      var b=[].slice.call(document.querySelectorAll("button,a")).filter(function(x){return /cancel all/i.test(x.textContent||"");})[0];
+      if(!b)return;
+      var wrap=(b.closest&&b.closest(".right"))||b;
+      if(wrap.parentNode===bar)return;
+      bar.appendChild(wrap);
+    };
+    lxMoveCancelAll();
+    [120,400,900,1800].forEach(function(ms){setTimeout(lxMoveCancelAll,ms);});
     startOrdersSync();
     host.insertBefore(pOrders,anchor);
     if(orders)pOrders.appendChild(orders);

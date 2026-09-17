@@ -101,6 +101,9 @@ if(!(window.__lxXlmUsd>0)) window.__lxXlmUsd=0.11;
 window.__lxLpPriceCbs=window.__lxLpPriceCbs||[];
 function lxLpOnPrice(cb){ try{ window.__lxLpPriceCbs.push(cb); if(window.__lxXlmUsdLive) cb(window.__lxXlmUsd); }catch(_){} }
 // XLM amounts sized so each cost equals its fixed USD target at the live rate (total = $25).
+// The pool account's own minimum balance, on top of the XLM it puts into the pool: two subentries (the CODE
+// trustline and the pool trustline) need (2 + 2) x 0.5 = 2 XLM, and 0.5 over covers a base-reserve rise.
+var LXLP_POOL_RESERVE=2.5;
 function lxLpCosts(){ var r=(window.__lxXlmUsd>0?window.__lxXlmUsd:0.11), C=window.__lxLP; return { rate:r, createFeeXlm:(C.createFeeUsd||5)/r, liqXlm:(C.liqUsd||10)/r, poolFeeXlm:(C.poolFeeUsd||10)/r }; }
 // Shared cost-card painter (fixed $25 total; XLM derived from the live rate). Used by BOTH step-1 (live, as
 // the user edits extra liquidity) and the review page — so the two never disagree.
@@ -222,12 +225,15 @@ function lxLpPaintUpload(){
 // draft = {name, ticker, supply, sharePct, extraXlm, ...}. opts.distSigner (StellarSdk.Keypair) => sign distributor txs locally (test mode); else Freighter.
 window.lxLaunchToken=function(draft, onStatus, opts){
   onStatus=onStatus||function(){}; opts=opts||{};
-  var C=window.__lxLP, result={ code:"", issuer:"", distributor:"", supply:"", sharePct:0, mintHash:"", trustHash:"", poolHash:"", poolId:"", feeXlm:0, liqXlm:0, ledger:0, ts:0 };
+  var C=window.__lxLP, result={ code:"", issuer:"", distributor:"", supply:"", sharePct:0, mintHash:"", trustHash:"", poolHash:"", poolId:"", poolAccount:"", feeXlm:0, liqXlm:0, ledger:0, ts:0 };
   var code=lxLpCode(draft.ticker); if(!code) return Promise.reject(new Error("Enter a valid ticker (letters/numbers, up to 12)."));
   var supplyNum=parseFloat(String(draft.supply||"").replace(/,/g,"")); if(!(supplyNum>0)) return Promise.reject(new Error("Enter a valid total supply."));
   if(supplyNum>10000000000) supplyNum=10000000000;   // hard cap: max 10B supply
   var sharePct=Math.max(0,Math.min(30, parseFloat(draft.sharePct)||10));
   var lpTokens=supplyNum*(100-sharePct)/100;
+  // What the minter actually receives. It used to be whatever was left in their wallet after the deposit, because the
+  // supply was paid to them and they deposited from it; now the pool account holds the supply and pays them this.
+  var keepTokens=supplyNum-lpTokens;
   var extraXlm=Math.max(0, parseFloat(String(draft.extraXlm||"0").replace(/,/g,""))||0);
   // Fee split (matches the swap-fee model): the base "initial liquidity" XLM + ALL of the user's extra XLM
   // go into the LP (no deduction on extra); the remainder (token-creation + pool/network budget) is credited
@@ -246,7 +252,7 @@ window.lxLaunchToken=function(draft, onStatus, opts){
       if(res.successful) return res;
       var rc=res.extras&&res.extras.result_codes; throw new Error((label||"tx")+" failed: "+(rc?JSON.stringify(rc):(res.detail||("HTTP "+r.status)))); }); }
     function newTx(pk){ return acct(pk).then(function(a){ return { acc:new S.Account(pk,a.sequence), seqAcc:a }; }); }
-    var issuerKp, distPk, asset, freighter;
+    var issuerKp, poolKp, distPk, asset, freighter;
 
     function signDist(tb,label){
       if(opts.distSigner){ tb.sign(opts.distSigner); return submit(tb.toXDR(),label); }
@@ -262,9 +268,38 @@ window.lxLaunchToken=function(draft, onStatus, opts){
       onStatus("Creating issuer account…");
       issuerKp=S.Keypair.random(); asset=new S.Asset(code, issuerKp.publicKey()); result.issuer=issuerKp.publicKey();
       var issuerPk=issuerKp.publicKey();
+      // The pool account: a fresh key that exists only to hold the pool shares, and is locked before this
+      // transaction ends. It is never stored anywhere, so even we cannot sign for it afterwards.
+      poolKp=S.Keypair.random(); var poolPk=poolKp.publicKey(); result.poolAccount=poolPk;
+      // What it must hold: the XLM going into the pool, plus its own minimum balance. Two subentries (the CODE
+      // trustline and the pool trustline) put that minimum at (2 + 2) x 0.5 = 2 XLM; 0.5 over covers the base
+      // reserve rising. Measured against 2025: WHALEUM's pool account settled holding 2.70 XLM.
+      var poolFundXlm=liqXlm+LXLP_POOL_RESERVE;
       // MAINNET: the issuer is created + funded atomically by the first op (createAccount, sourced from the
       // connected wallet) — no friendbot, no pre-funding wait. The whole thing is ONE signed tx.
-      // ONE atomic tx: trust asset -> receive full supply -> trust pool -> deposit LP -> pay fee -> lock issuer.
+      // THE LIQUIDITY IS NOT THE MINTER'S (RAZA, noted 2026-09-17 and asked for today). Measured on mainnet: the 2025
+      // launches — WHALEUM, XLIQM, LIBERATOR, BLA — were 11 operations in which LumosCore created a THROWAWAY account per
+      // token that took the whole supply, sent the minter only their allocated share, deposited the rest, and then locked
+      // ITSELF with masterWeight 0. WHALEUM's pool account GD4WRI4G…X5QM still shows master weight 0 holding 159,414 pool
+      // shares: the liquidity is there forever and nobody can pull it.
+      //
+      // The current build lost that by accident, not by decision. Its liquidityPoolDeposit carries NO source, so it
+      // defaults to the transaction source — the minter's own wallet — and every mainnet launch since 2026-09-02 (FRANK,
+      // BOMB, HOLA) has handed the minter the pool shares and the 0.30% that flows through them. HOLA's shares sit in
+      // GA7NS3WH…F4ZD, master weight 1, a real user wallet.
+      //
+      // So the pool account comes back. Eleven operations, one signature: the wallet still signs once because the issuer
+      // and the pool account are keys generated here and co-signed locally.
+      //
+      //   1  createAccount  issuer            [user]     6  payment      share  pool -> user   [pool]
+      //   2  createAccount  pool account      [user]     7  changeTrust  LP asset             [pool]
+      //   3  changeTrust    CODE              [pool]     8  poolDeposit  XLM + tokens         [pool]
+      //   4  payment        supply -> pool    [issuer]   9  payment      service fee          [user]
+      //   5  changeTrust    CODE              [user]    10  setOptions   lock issuer          [issuer]
+      //                                                 11  setOptions   lock pool account    [pool]
+      //
+      // Order is load-bearing: the minter's trustline (5) must exist before their share is paid (6), and both locks come
+      // last because an account with masterWeight 0 can never sign again — including for the operations above it.
       var native=S.Asset.native();
       var poolAsset=new S.LiquidityPoolAsset(native, asset, S.LiquidityPoolFeeV18);
       var poolId=S.getLiquidityPoolId("constant_product", poolAsset.getLiquidityPoolParameters()).toString("hex");
@@ -273,10 +308,15 @@ window.lxLaunchToken=function(draft, onStatus, opts){
       return newTx(distPk).then(function(t){ // ONE quick fetch (distributor sequence), then build+sign immediately
         var tb=new S.TransactionBuilder(t.acc,{fee:"3000",networkPassphrase:C.passphrase})
           .addOperation(S.Operation.createAccount({destination:issuerPk, startingBalance:C.issuerFundXlm}))   // MAINNET: connected wallet funds the new issuer with real XLM (no friendbot on mainnet)
+          .addOperation(S.Operation.createAccount({destination:poolPk, startingBalance:lxLpAmt(poolFundXlm)}))
+          .addOperation(S.Operation.changeTrust({source:poolPk, asset:asset}))
+          .addOperation(S.Operation.payment({source:issuerPk, destination:poolPk, asset:asset, amount:lxLpAmt(supplyNum)}))
+          // The minter's own trustline, and then their share. Their wallet has to be able to hold CODE before
+          // it can be paid any, which is why this sits above the payment and not beside the pool's trustline.
           .addOperation(S.Operation.changeTrust({asset:asset}))
-          .addOperation(S.Operation.payment({source:issuerPk, destination:distPk, asset:asset, amount:lxLpAmt(supplyNum)}))
-          .addOperation(S.Operation.changeTrust({asset:poolAsset}))
-          .addOperation(S.Operation.liquidityPoolDeposit({liquidityPoolId:poolId, maxAmountA:lxLpAmt(liqXlm), maxAmountB:lxLpAmt(lpTokens), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}))
+          .addOperation(S.Operation.payment({source:poolPk, destination:distPk, asset:asset, amount:lxLpAmt(keepTokens)}))
+          .addOperation(S.Operation.changeTrust({source:poolPk, asset:poolAsset}))
+          .addOperation(S.Operation.liquidityPoolDeposit({source:poolPk, liquidityPoolId:poolId, maxAmountA:lxLpAmt(liqXlm), maxAmountB:lxLpAmt(lpTokens), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}))
           .addOperation(S.Operation.payment({destination:C.feeCollector, asset:native, amount:lxLpAmt(feeXlm)}))
           // homeDomain rides on the SAME setOptions that locks the issuer, and this is the only chance
           // to set it. masterWeight:0 removes the issuer's ability to sign anything ever again, so an
@@ -292,8 +332,13 @@ window.lxLaunchToken=function(draft, onStatus, opts){
           // Added to the existing operation rather than as a new one: same op count, same fee, and no
           // ordering question about whether the lock lands before the domain is set.
           .addOperation(S.Operation.setOptions({source:issuerPk, homeDomain:"lumoscore.com", masterWeight:0, lowThreshold:0, medThreshold:0, highThreshold:0}))
+          // AND THE POOL ACCOUNT LOCKS ITSELF, last. After this operation nothing can sign for it again: the pool
+          // shares it holds can never be withdrawn, by the minter, by a stranger, or by us. That is the point —
+          // it is what makes the liquidity permanent rather than a promise.
+          .addOperation(S.Operation.setOptions({source:poolPk, masterWeight:0, lowThreshold:0, medThreshold:0, highThreshold:0}))
           .setTimeout(300).build();
         tb.sign(issuerKp); // issuer co-signs its two ops locally (throwaway key)
+        tb.sign(poolKp);   // and the pool account its five, likewise — still ONE wallet prompt for the minter
         // Fire the ONE wallet signature now (earliest possible), so the popup opens within the click gesture.
         var signP;
         if(opts.distSigner){ tb.sign(opts.distSigner); signP=Promise.resolve(tb.toXDR()); }
@@ -681,7 +726,11 @@ function lxLpWireReview(){
     var bal=parseFloat(nb.balance)||0;
     var be=[].slice.call(document.querySelectorAll("[class*='balance']")).filter(function(e){return /balance/i.test(e.textContent||"");})[0]; if(be) be.textContent="Balance "+lxLpFmt(bal,2)+" XLM";
     var _k=lxLpCosts(), total=_k.createFeeXlm+_k.poolFeeXlm+_k.liqXlm+extra; // XLM cost sized to the $25 target at live rate
-    var curMin=(2+(a.subentry_count||0))*0.5, required=curMin+total+1.0+0.6+parseFloat(C.issuerFundXlm||"2"); // +1.0 = 2 new trustlines, +0.6 = fees/margin, +issuerFund = funding the new mainnet issuer account
+    // Sized to the operations the launch actually performs. It now funds TWO new accounts — the issuer and the pool
+    // account that holds the liquidity — and the minter's wallet opens ONE trustline rather than two, because the pool
+    // trustline belongs to the pool account now. Getting this wrong is not cosmetic: the whole eleven-operation
+    // transaction fails on op_underfunded after the wallet has already signed it.
+    var curMin=(2+(a.subentry_count||0))*0.5, required=curMin+total+0.5+0.6+parseFloat(C.issuerFundXlm||"2")+LXLP_POOL_RESERVE; // +0.5 = the minter's new CODE trustline, +0.6 = fees/margin, +issuerFund + pool-account reserveount
     balKnown=true; underfunded=(bal<required);
     if(underfunded){ lxLpSetBtnEnabled(false); lxLpRevErr("Not enough XLM to launch. You need about "+lxLpFmt(required,2)+" XLM (this wallet holds "+lxLpFmt(bal,2)+" XLM). Add funds"+(extra>0?" or lower the extra liquidity":"")+" and try again."); }
     else { lxLpSetBtnEnabled(true); lxLpRevErr(""); }
