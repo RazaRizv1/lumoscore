@@ -238,6 +238,65 @@ function runtime(NI_SENDABLE) {
     return fetch('/lxapi/oneclick?op=status&depositAddress=' + encodeURIComponent(depositAddress) + (memo ? '&depositMemo=' + encodeURIComponent(memo) : ''))
       .then(function (r) { return r.json(); });
   }
+
+  // ---- history read back from the chain -----------------------------------------------------------------------
+  // RAZA 2026-09-19: two NEAR Intents transfers made, one listed. Recent transactions lived only in the browser that
+  // sent them, written after the deposit's signature came back -- so a transfer made on the phone never reached the
+  // desktop, and one whose tab was suspended while a mobile wallet app signed never got written at all, although it
+  // landed and delivered. Every deposit goes to ONE 1Click account and is told apart by its memo, so the connected
+  // wallet's payments to that account ARE its NEAR Intents history; 1Click's status for each memo says what was
+  // delivered, where and to whom. Missing ones are added to the store and the list is repainted. Read-only.
+  var NI_DEP = 'GDJ4JZXZELZD737NVFORH4PSSQDWFDZTKW3AIDKHYQG23ZXBPDGGQBJK';
+  var NI_NET = {}; Object.keys(NI_CHAIN).forEach(function (n) { NI_NET[NI_CHAIN[n]] = n; });   // 'arb' -> 'Arbitrum'
+  var syncing = false;
+  window.lxNiSync = function () {
+    var pk = ''; try { pk = localStorage.getItem('lumos.address') || ''; } catch (_) {}
+    if (syncing || !/^G[A-Z2-7]{55}$/.test(pk)) return Promise.resolve(0);
+    syncing = true;
+    var have = {}; try { JSON.parse(localStorage.getItem('lumos.cctp.txs') || '[]').forEach(function (o) { if (o && o.hash) have[o.hash] = 1; }); } catch (_) {}
+    return fetch('https://horizon.stellar.org/accounts/' + pk + '/payments?order=desc&limit=100&join=transactions')
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var deps = ((d && d._embedded && d._embedded.records) || []).filter(function (p) {
+          var tx = p.transaction || {};
+          return p.type === 'payment' && p.to === NI_DEP && p.from === pk && tx.successful !== false && !have[p.transaction_hash]
+            && tx.memo_type === 'id' && /^[0-9]{1,20}$/.test(String(tx.memo || ''));
+        }).slice(0, 12);
+        if (!deps.length) return 0;
+        return tokens().then(function () {
+          return Promise.all(deps.map(function (p) {
+            return status(NI_DEP, String(p.transaction.memo)).then(function (s) {
+              var q = (s && s.quoteResponse) || {}, qr = q.quoteRequest || {}, sd = (s && s.swapDetails) || {};
+              var tk = (TOK || []).filter(function (t) { return t.assetId === qr.destinationAsset; })[0];
+              if (!tk || !NI_NET[tk.blockchain]) return null;
+              var code = (p.asset_type === 'native' || !p.asset_code) ? 'XLM' : p.asset_code;
+              var out = s.status === 'SUCCESS' ? +(sd.amountOutFormatted || 0) : +((q.quote || {}).amountOutFormatted || 0);
+              return { src: pk, recipient: qr.recipient || '', srcAmount: String(+p.amount), srcKey: code, amount: out,
+                net: NI_NET[tk.blockchain], hash: p.transaction_hash, ts: Date.parse(p.created_at) || Date.now(),
+                bridge: 'NEAR Intents', asset: tk.symbol, fromChain: 1 };
+            }).catch(function () { return null; });
+          }));
+        }).then(function (recs) {
+          recs = recs.filter(Boolean); if (!recs.length) return 0;
+          try {
+            var a = JSON.parse(localStorage.getItem('lumos.cctp.txs') || '[]');
+            var seen = {}; a.forEach(function (o) { if (o && o.hash) seen[o.hash] = 1; });
+            a = a.concat(recs.filter(function (o) { return !seen[o.hash]; }));
+            a.sort(function (x, y) { return (y.ts || 0) - (x.ts || 0); });
+            localStorage.setItem('lumos.cctp.txs', JSON.stringify(a.slice(0, 100)));
+          } catch (_) { return 0; }
+          try { if (window.lxBrRepaintTxs) window.lxBrRepaintTxs(); } catch (_) {}
+          try { if (window.lxBrRenderMobileTxs) window.lxBrRenderMobileTxs(); } catch (_) {}
+          return recs.length;
+        });
+      })
+      .catch(function () { return 0; })
+      .then(function (n) { syncing = false; return n; });
+  };
+  // once the page has painted its own history; again when a wallet connects or switches (lumos.address changes)
+  setTimeout(function () { window.lxNiSync(); }, 1500);
+  window.addEventListener('storage', function (e) { if (e && e.key === 'lumos.address') window.lxNiSync(); });
+
   window.lxNiConfirm = function (btn, say, net, domain, recipient, amt, k, A) {
     var CC = window.__lxCCTP || {}, dest = net, sym = pick(dest), chain = chainOf(dest);
     if (!window.__lxNiSendable) { say('Sending by NEAR Intents isn’t switched on yet — choose another route.'); return; }

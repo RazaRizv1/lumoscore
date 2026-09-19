@@ -812,7 +812,9 @@ const BODY = '(function(){'
   + ' var panel=document.querySelector("[data-lxroute]"); if(!panel) return; var host=panel.querySelector("[data-lxroute-opts]"); if(!host) return;'
   + ' if(!rows.length){ panel.hidden=true; _lzRows=[]; lzPaintStats(); return; }'
   + ' var pick=lzChoose(dest,rows); window.__lxBrRoute=pick?pick.route:null;'
-  + ' host.innerHTML=rows.map(function(r){ return lzCard(r, pick&&r.route===pick.route); }).join("");'
+  // rebuilt only when something in them changed: every rebuild throws away the node a finger may be on
+  + ' var _h=rows.map(function(r){ return lzCard(r, pick&&r.route===pick.route); }).join("");'
+  + ' if(host.__lzh!==_h){ host.innerHTML=_h; host.__lzh=_h; }'
   + ' _lzRows=rows; lzPaintStats(); panel.hidden=false; }'
   + 'function lzProvisional(dest){ try{ if(dest) lzDraw(dest, lzSkeleton(dest)); }catch(_){ } }'
 
@@ -845,13 +847,31 @@ const BODY = '(function(){'
 
   + 'function lzWire(){'
   + ' var panel=document.querySelector("[data-lxroute]"); if(!panel||panel.__lzw)return; panel.__lzw=1;'
+  // ONE TAP SELECTS (RAZA 2026-09-19: "it doesn't tap smoothly. I have to tap 3-4 times until it's selected"). A click
+  // is decided at finger-UP, against whatever is under the finger THEN -- and two things move it between down and up:
+  // the phone keyboard closing (a tap outside a focused field dismisses it, and the page reflows under the finger), and
+  // a quote landing, which rebuilds these cards so the tapped node is gone before its click. So the route is read at
+  // finger-DOWN and applied at finger-up, whatever moved in between; a finger that travelled is a scroll, not a tap.
+  + ' var pd=null, lastSel=0;'
+  + ' function sel(route){ var hit=null;'
+  + '  [].slice.call(panel.querySelectorAll(".lx-brr[data-route]")).forEach(function(x){ if(x.getAttribute("data-route")===route) hit=x; });'
+  + '  if(!hit||hit.disabled) return;'
+  + '  window.__lxBrRoute=route; lastSel=Date.now();'
+  + '  var dn=lzDest(); if(dn) window.__lxBrRouteFor[dn]=route;'   // the user's own choice, for this destination only
+  + '  [].slice.call(panel.querySelectorAll(".lx-brr")).forEach(function(x){ x.setAttribute("aria-pressed", x===hit?"true":"false"); });'
+  + '  lzPaintStats(); }'
+  + ' document.addEventListener("pointerdown",function(e){ var b=e.target&&e.target.closest&&e.target.closest(".lx-brr[data-route]");'
+  + '  pd=(b&&panel.contains(b))?{r:b.getAttribute("data-route"),x:e.clientX,y:e.clientY,t:Date.now()}:null; },true);'
+  + ' document.addEventListener("pointerup",function(e){ if(!pd) return; var p=pd; pd=null;'
+  + '  if(Math.abs(e.clientX-p.x)>12||Math.abs(e.clientY-p.y)>12||Date.now()-p.t>1200) return;'
+  + '  sel(p.r); },true);'
+  + ' document.addEventListener("pointercancel",function(){ pd=null; },true);'
+  // the click that follows is the same tap: swallowed. A keyboard "click" (Enter/Space) has no pointer before it.
   + ' panel.addEventListener("click",function(e){'
-  + '  var b=e.target&&e.target.closest&&e.target.closest(".lx-brr[data-route]"); if(!b||b.disabled)return;'
+  + '  var b=e.target&&e.target.closest&&e.target.closest(".lx-brr[data-route]"); if(!b)return;'
   + '  e.preventDefault(); e.stopPropagation();'
-  + '  window.__lxBrRoute=b.getAttribute("data-route");'
-  + '  var dn=lzDest(); if(dn) window.__lxBrRouteFor[dn]=window.__lxBrRoute;'   // the user's own choice, for this destination only
-  + '  [].slice.call(panel.querySelectorAll(".lx-brr")).forEach(function(x){ x.setAttribute("aria-pressed", x===b?"true":"false"); });'
-  + '  lzPaintStats();'
+  + '  if(Date.now()-lastSel<700) return;'
+  + '  sel(b.getAttribute("data-route"));'
   + ' });'
   // Re-quote when the thing being quoted changes. The destination is chosen in step 1, so a step change is the
   // moment the answer can differ; the amount moves the platform fee but not the messaging fee, and is debounced.

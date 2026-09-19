@@ -29,6 +29,9 @@ const IRIS = 'https://iris-api.circle.com/v2/messages/27?transactionHash=';
 const FEE_ACCT = 'GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD';
 
 const KEY = 'bridge:txs';          // {feeHash: record} -- one read for every consumer
+// LayerZero / NEAR Intents rows, {transferHash: record}. A SEPARATE key on purpose: staging and production share this
+// KV namespace, and a deployment built before these routes existed reads KEY and treats every row in it as a CCTP burn.
+const RKEY = 'bridge:routes';
 const MAX_KEEP = 500;
 const BRIDGE_WINDOW_MS = 30 * 60 * 1000;
 const TIMEOUT_MS = 8000;
@@ -107,7 +110,7 @@ async function fromBurn(burnHash, payer) {
 // request, so a backlog can never push one request past the free plan's subrequest cap.
 const HEAL_MAX = 3;
 async function heal(kv, map) {
-  const todo = Object.keys(map).filter((k) => map[k] && map[k].destName == null && HASH_RE.test(map[k].burnHash || '')).slice(0, HEAL_MAX);
+  const todo = Object.keys(map).filter((k) => map[k] && (!map[k].route || map[k].route === 'CCTP') && map[k].destName == null && HASH_RE.test(map[k].burnHash || '')).slice(0, HEAL_MAX);
   let changed = 0;
   for (const k of todo) {
     const r = map[k];
@@ -121,6 +124,178 @@ async function heal(kv, map) {
   if (changed) { try { await kv.put(KEY, JSON.stringify(map)); } catch (e) {} }
 }
 
+// ---- LayerZero and NEAR Intents ------------------------------------------------------------------
+// RAZA 2026-09-19: "it should show all on both devices". Only CCTP transfers reached this record; the other two
+// routes lived in the localStorage of the browser that sent them, so phone and desktop showed different histories.
+// They are registered here by the transfer's own hash, and -- as for CCTP -- nothing the caller says is trusted:
+//
+//   LayerZero     the tx must be a `send` call on the USDT0 OFT contract that burned USDT0, from `payer`. Destination
+//                 (dst_eid) and recipient (`to`) are read from the call's own arguments, the amount from the burn.
+//   NEAR Intents  the tx must pay 1Click's Stellar deposit account from `payer`, under a numeric memo. What it
+//                 delivered, on which chain and to whom is read from 1Click's status for that memo, and the quote's
+//                 refund address must be `payer` -- the deposit is the payer's own.
+//
+// AND BOTH MUST CARRY LUMOSCORE'S FEE. Anyone can call the OFT, and every Stellar user of 1Click pays the same deposit
+// account, so the transfer alone does not show it went through LumosCore. It counts only when the same account paid
+// the fee collector in the transfer itself or in a transaction within BRIDGE_WINDOW_MS of it (the swap-first leg, or
+// LayerZero's deferred fee). A stranger's transfer cannot be recorded as ours.
+const OFT = '5d672cb21b3afcdda54546c7f5b9fd346920e41f8fe8f39e838e5d7bd7435546';   // CBOWOLFSDM5P…UMMF6, raw contract id
+const NI_DEP = 'GDJ4JZXZELZD737NVFORH4PSSQDWFDZTKW3AIDKHYQG23ZXBPDGGQBJK';            // 1Click, one account, memo per transfer
+const ONECLICK = 'https://1click.chaindefuser.com/v0';
+const EID = { 30101: 'Ethereum', 30110: 'Arbitrum', 30111: 'Optimism', 30109: 'Polygon', 30362: 'Berachain', 30339: 'Ink',
+  30367: 'Hyperliquid', 30390: 'Monad', 30295: 'Flare', 30280: 'Sei', 30398: 'MegaETH', 30383: 'Plasma' };
+const NI_CHAIN = { eth: 'Ethereum', arb: 'Arbitrum', base: 'Base', pol: 'Polygon', op: 'Optimism', avax: 'Avalanche',
+  bera: 'Berachain', monad: 'Monad', plasma: 'Plasma' };
+const NI_FINAL = { SUCCESS: 1, REFUNDED: 1, FAILED: 1 };
+// Sent through LumosCore but carrying no fee, checked by hand against the ledger 2026-09-19: the first USDT0-sourced
+// LayerZero send (0.05988 USDT0 -> Polygon, RAZA's wallet). Its deferred fee failed with op_no_trust -- the collector had
+// no USDT0 trustline yet -- and it predates the `lx:lz` memo. Nothing else is accepted without a fee.
+const LZ_FEELESS = { '18bddff507944aa88f1cc4345e48b893d1d7dd9db3bd16b8914e6151272c7b1d': 1 };
+
+// The value stored under a symbol key of a Soroban map, as raw ScVal bytes (key: tag 15, u32 length, padded name).
+function scMapVal(u, name) {
+  const key = [0, 0, 0, 15, 0, 0, 0, name.length].concat(Array.from(name, (c) => c.charCodeAt(0)));
+  while (key.length % 4) key.push(0);
+  outer: for (let i = 0; i + key.length <= u.length; i++) {
+    for (let k = 0; k < key.length; k++) if (u[i + k] !== key[k]) continue outer;
+    return u.slice(i + key.length);
+  }
+  return null;
+}
+function codeOf(o, p) { p = p || ''; return o[p + 'asset_type'] === 'native' ? 'XLM' : String(o[p + 'asset_code'] || ''); }
+
+// The fee this transfer paid LumosCore: in the transfer itself, or in the payer's own transaction nearest to it.
+// A fee in ANOTHER transaction is matched with care: the same wallet may have bridged by CCTP minutes earlier (RAZA did,
+// 12:11 CCTP then 12:14 LayerZero). So the route's own memo wins (`lx:lz` / `lx:ni`), a swap in that transaction must
+// deliver THIS route's transport asset, and a fee already credited to another record is never taken twice.
+async function feeFor(payer, at, sameOps, memoTag, transport, used) {
+  const own = (sameOps || []).filter((o) => o.to === FEE_ACCT && o.from === payer)[0];
+  if (own) return { op: own, ops: sameOps, hash: own.transaction_hash };
+  const txs = await getJson(H + '/accounts/' + payer + '/payments?order=desc&limit=50&join=transactions');
+  const cands = ((txs && txs._embedded && txs._embedded.records) || [])
+    .filter((p) => p.to === FEE_ACCT && p.from === payer && !used[p.transaction_hash]
+      && Math.abs((Date.parse(p.created_at) || 0) - at) <= BRIDGE_WINDOW_MS)
+    .sort((a, b) => {
+      const ma = ((a.transaction || {}).memo === memoTag) ? 0 : 1, mb = ((b.transaction || {}).memo === memoTag) ? 0 : 1;
+      return (ma - mb) || (Math.abs(Date.parse(a.created_at) - at) - Math.abs(Date.parse(b.created_at) - at));
+    }).slice(0, 3);
+  for (const c of cands) {
+    // IN ANOTHER TRANSACTION THE FEE MUST CARRY THIS ROUTE'S MEMO. Untagged, the nearest fee was an ordinary swap's --
+    // tested against the ledger, RAZA's 12:14 LayerZero send picked up a dashboard XLM->USDT0 swap three minutes
+    // earlier, which would have moved that swap's revenue into bridge revenue. Every send since the memos exist has one.
+    const memo = (c.transaction || {}).memo || '';
+    if (memo !== memoTag) continue;
+    const r = await getJson(H + '/transactions/' + c.transaction_hash + '/operations?limit=10');
+    const ops = (r && r._embedded && r._embedded.records) || [];
+    const swap = ops.filter((o) => /^path_payment/.test(o.type) && o.to && o.to === o.from)[0];
+    if (swap && swap.asset_code !== transport) continue;        // swapped into another route's asset
+    const feeIn = /^path_payment/.test(c.type) ? codeOf(c, 'source_') : codeOf(c);
+    if (!swap && feeIn !== transport) continue;                  // a lone fee must be paid in this route's asset
+    return { op: c, ops, hash: c.transaction_hash };
+  }
+  return null;
+}
+// what the user put in: the swap into the transport asset when there was one, else transport + fee in the same asset
+function srcOf(fee, transportCode, transportAmt) {
+  const swap = (fee.ops || []).filter((o) => /^path_payment/.test(o.type) && o.to && o.to === o.from)[0];
+  const fc = fee.op.asset_type === 'native' ? 'XLM' : String(fee.op.asset_code || '');
+  const feeSrcCode = /^path_payment/.test(fee.op.type) ? codeOf(fee.op, 'source_') : fc;
+  const feeSrcAmt = /^path_payment/.test(fee.op.type) ? +fee.op.source_amount : +fee.op.amount;
+  if (swap) {
+    const sc = codeOf(swap, 'source_');
+    return { srcAmount: +(+swap.source_amount + (feeSrcCode === sc ? feeSrcAmt : 0)).toFixed(7), srcCode: sc };
+  }
+  return { srcAmount: +(transportAmt + (feeSrcCode === transportCode ? feeSrcAmt : 0)).toFixed(7), srcCode: transportCode };
+}
+
+async function registerLz(hash, used) {
+  const ops = await getJson(H + '/transactions/' + hash + '/operations?limit=10');
+  const op = ((ops && ops._embedded && ops._embedded.records) || []).filter((o) => o.type === 'invoke_host_function')[0];
+  if (!op || op.transaction_successful === false) return { error: 'not a LayerZero send' };
+  const P = op.parameters || [];
+  const c = P[0] ? b64u8(P[0].value) : new Uint8Array(0);
+  if (scTag(c) !== 18 || hex(c.slice(8, 40)) !== OFT || scSym(b64u8((P[1] || {}).value)) !== 'send') return { error: 'not a LayerZero send' };
+  const burn = (op.asset_balance_changes || []).filter((b) => b.type === 'burn' && b.asset_code === 'USDT0')[0];
+  const payer = op.source_account;
+  let eid = -1, to = '';
+  for (const p of P) {
+    if (p.type !== 'Map') continue;
+    const u = b64u8(p.value);
+    const e = scMapVal(u, 'dst_eid'); if (e && scTag(e) === 3) eid = be32(e, 4);
+    const t = scMapVal(u, 'to'); if (t && scTag(t) === 13) { const b = t.slice(8, 8 + be32(t, 4)); if (b.length >= 20) to = '0x' + hex(b.slice(b.length - 20)); }
+  }
+  if (!burn || !ADDR_RE.test(payer || '') || !EID[eid]) return { error: 'unreadable LayerZero send' };
+  const at = Date.parse(op.created_at) || Date.now();
+  const fee = await feeFor(payer, at, null, 'lx:lz', 'USDT0', used);
+  if (!fee && !LZ_FEELESS[hash]) return { error: 'no LumosCore fee for that transfer' };
+  if (!fee) return { rec: { route: 'LayerZero', feeHash: null, burnHash: hash, from: payer, fee: 0, feeCode: 'USDT0',
+    amount: +burn.amount, asset: 'USDT0', gross: null, srcAmount: +burn.amount, srcCode: 'USDT0',
+    destDomain: null, destName: EID[eid], recipient: to, ts: at } };
+  const s = srcOf(fee, 'USDT0', +burn.amount);
+  return { rec: { route: 'LayerZero', feeHash: fee.hash, burnHash: hash, from: payer, fee: +fee.op.amount, feeCode: codeOf(fee.op),
+    amount: +burn.amount, asset: 'USDT0', gross: null, srcAmount: s.srcAmount, srcCode: s.srcCode,
+    destDomain: null, destName: EID[eid], recipient: to, ts: at } };
+}
+
+let NI_TOK = null, NI_TOK_AT = 0;
+async function niTokens(env) {
+  if (NI_TOK && Date.now() - NI_TOK_AT < 3600000) return NI_TOK;
+  const a = await getJson(ONECLICK + '/tokens');
+  if (Array.isArray(a)) { NI_TOK = {}; a.forEach((t) => { if (t && t.assetId) NI_TOK[t.assetId] = { symbol: t.symbol, chain: t.blockchain }; }); NI_TOK_AT = Date.now(); }
+  return NI_TOK || {};
+}
+async function niStatus(env, memo) {
+  const h = { accept: 'application/json' };
+  if (env && env.ONECLICK_JWT) h['X-API-Key'] = env.ONECLICK_JWT;   // never echoed
+  const r = await fetch(ONECLICK + '/status?depositAddress=' + NI_DEP + '&depositMemo=' + encodeURIComponent(memo), { headers: h, signal: AbortSignal.timeout(TIMEOUT_MS) });
+  return r.ok ? r.json() : null;
+}
+function niApply(rec, s, tok) {
+  const q = (s && s.quoteResponse) || {}, qr = q.quoteRequest || {}, sd = (s && s.swapDetails) || {};
+  const t = tok[qr.destinationAsset];
+  if (!t || !NI_CHAIN[t.chain]) return false;
+  rec.asset = String(t.symbol || '').slice(0, 20);
+  rec.destName = NI_CHAIN[t.chain];
+  rec.recipient = String(qr.recipient || '').slice(0, 80);
+  rec.amount = s.status === 'SUCCESS' ? +(sd.amountOutFormatted || 0) : +((q.quote || {}).amountOutFormatted || 0);
+  rec.niStatus = String(s.status || '');
+  return true;
+}
+async function registerNi(hash, env, used) {
+  const ops = await getJson(H + '/transactions/' + hash + '/operations?limit=10&join=transactions');
+  const recs = (ops && ops._embedded && ops._embedded.records) || [];
+  const dep = recs.filter((o) => o.type === 'payment' && o.to === NI_DEP)[0];
+  const tx = (recs[0] && recs[0].transaction) || {};
+  const memo = String(tx.memo || '');
+  if (!dep || tx.successful === false || tx.memo_type !== 'id' || !/^[0-9]{1,20}$/.test(memo)) return { error: 'not a NEAR Intents deposit' };
+  const payer = dep.from;
+  const s = await niStatus(env, memo);
+  const qr = (s && s.quoteResponse && s.quoteResponse.quoteRequest) || {};
+  if (!s || qr.refundTo !== payer) return { error: 'that deposit is not this account’s' };
+  const at = Date.parse(dep.created_at) || Date.now();
+  const code = codeOf(dep);
+  const fee = await feeFor(payer, at, recs, 'lx:ni', code, used);
+  if (!fee) return { error: 'no LumosCore fee for that transfer' };
+  const sIn = srcOf(fee, code, +dep.amount);
+  const rec = { route: 'NEAR Intents', feeHash: fee.hash, burnHash: hash, from: payer, fee: +fee.op.amount, feeCode: codeOf(fee.op),
+    amount: null, asset: null, gross: null, srcAmount: sIn.srcAmount, srcCode: sIn.srcCode, depositMemo: memo,
+    destDomain: null, destName: null, recipient: '', ts: at };
+  if (!niApply(rec, s, await niTokens(env))) return { error: 'unknown destination token' };
+  return { rec };
+}
+// a NEAR Intents row still in flight is brought up to date on read, a few per request
+async function healNi(kv, map, env) {   // map is the RKEY map
+  const todo = Object.keys(map).filter((k) => map[k] && map[k].route === 'NEAR Intents' && !NI_FINAL[map[k].niStatus]).slice(0, HEAL_MAX);
+  if (!todo.length) return;
+  const tok = await niTokens(env);
+  let changed = 0;
+  for (const k of todo) {
+    const s = await niStatus(env, map[k].depositMemo).catch(() => null);
+    if (s && niApply(map[k], s, tok)) changed++;
+  }
+  if (changed) { try { await kv.put(RKEY, JSON.stringify(map)); } catch (e) {} }
+}
+
 // ---- public: read the registry -------------------------------------------------------------------
 // Everything here is already public on chain; the value is that it is assembled and attributed.
 export async function onRequestGet({ request, env }) {
@@ -130,12 +305,22 @@ export async function onRequestGet({ request, env }) {
   let map = {};
   try { map = (await kv.get(KEY, 'json')) || {}; } catch (e) { map = {}; }
   await heal(kv, map);
+  const q0 = new URL(request.url).searchParams;
+  let rmap = {};
+  if (q0.get('routes') === 'all') {
+    try { rmap = (await kv.get(RKEY, 'json')) || {}; } catch (e) { rmap = {}; }
+    await healNi(kv, rmap, env).catch(() => {});
+  }
 
   const q = new URL(request.url).searchParams;
   const who = (q.get('from') || '').trim();
   const limit = Math.max(1, Math.min(200, +(q.get('limit') || 50) || 50));
 
-  let rows = Object.keys(map).map((k) => map[k]).filter(Boolean);
+  let rows = Object.keys(map).map((k) => map[k]).concat(Object.keys(rmap).map((k) => rmap[k])).filter(Boolean);
+  // LayerZero / NEAR Intents rows go only to a caller that asks for them. Staging and production share this store, and
+  // a client written before these routes existed reads every row as a CCTP burn: it would draw them as USDC and --
+  // worse -- offer each one to its connected wallet as a claim that can never complete. Opt-in keeps old pages right.
+  if (q.get('routes') !== 'all') rows = rows.filter((r) => !r.route || r.route === 'CCTP');
   if (ADDR_RE.test(who)) rows = rows.filter((r) => r.from === who);
   rows.sort((a, b) => (+b.ts || 0) - (+a.ts || 0));
 
@@ -150,6 +335,27 @@ export async function onRequestPost({ request, env }) {
   let b;
   try { b = await request.json(); } catch (e) { return json({ ok: false, error: 'bad request' }, 400); }
   if (!b || typeof b !== 'object') return json({ ok: false, error: 'bad request' }, 400);
+
+  // LayerZero / NEAR Intents: registered by the transfer's own hash, verified above. Keyed by that hash (the fee may
+  // live in another transaction), so a retry is idempotent and one transfer is one row.
+  if (b.route === 'LayerZero' || b.route === 'NEAR Intents') {
+    const h = String(b.hash || '').trim().toLowerCase();
+    if (!HASH_RE.test(h)) return json({ ok: false, error: 'bad hash' }, 400);
+    let m = {}, cm = {};
+    try { m = (await kv.get(RKEY, 'json')) || {}; } catch (e) { m = {}; }
+    if (m[h]) return json({ ok: true, status: 'known' }, 200);
+    try { cm = (await kv.get(KEY, 'json')) || {}; } catch (e) { cm = {}; }
+    const used = {}; [m, cm].forEach((mm) => Object.keys(mm).forEach((k) => { if (mm[k] && mm[k].feeHash) used[mm[k].feeHash] = 1; }));
+    const r = await (b.route === 'LayerZero' ? registerLz(h, used) : registerNi(h, env, used)).catch(() => ({ error: 'could not read that transfer' }));
+    if (!r.rec) return json({ ok: false, error: r.error || 'rejected' }, 400);
+    // read again right before the write: another registration may have landed while the ledger was being read
+    try { m = (await kv.get(RKEY, 'json')) || m; } catch (e) {}
+    m[h] = r.rec;
+    const ks = Object.keys(m);
+    if (ks.length > MAX_KEEP) { ks.sort((a, c) => (+m[c].ts || 0) - (+m[a].ts || 0)); const t = {}; ks.slice(0, MAX_KEEP).forEach((k) => { t[k] = m[k]; }); m = t; }
+    try { await kv.put(RKEY, JSON.stringify(m)); } catch (e) { return json({ ok: false, error: 'could not store' }, 500); }
+    return json({ ok: true, status: 'stored', record: r.rec }, 200);
+  }
 
   const feeHash = String(b.feeHash || '').trim();
   const burnHash = String(b.burnHash || '').trim();

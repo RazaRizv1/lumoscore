@@ -110,21 +110,101 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'/* The leading mark stays: hiding it on rows with an inline chip blanked nearly the whole feed. */'
 +'.act-inl{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:5px;background-size:cover;background-position:center;background-repeat:no-repeat;background-color:rgba(127,127,140,.18);flex:0 0 auto}'
 +'.activity-feed-row .info .type{overflow-wrap:anywhere}'
+// ---- the feed row, redesigned (RAZA 2026-09-19: "too dull and boring") ---------------------------------------------
+// glyph | sentence over tag + route + wallet | time over link. The glyph is the row's picture: the asset that moved,
+// with the one it became tucked over its lower-right edge (ringed in the card colour so the two read as a pair).
++'.activity-feed-row.lx-fr{display:flex!important;align-items:center;gap:14px;padding:13px 16px!important;position:relative}'
++'.activity-feed-row.lx-fr:hover{background:rgba(127,127,140,.07)}'
++'.lx-fg{position:relative;flex:0 0 42px;width:42px;height:42px;display:block}'
++'.activity-feed-row .lx-fg .act-inl.lx-fgi{position:absolute;margin:0!important;vertical-align:0!important;border-radius:50%}'
++'.activity-feed-row .lx-fg:not(.lx-fg2) .lx-fgi{left:3px;top:3px;width:36px!important;height:36px!important}'
++'.activity-feed-row .lx-fg2 .lx-fga .lx-fgi{left:0;top:0;width:32px!important;height:32px!important}'
++'.activity-feed-row .lx-fg2 .lx-fgb .lx-fgi{right:-1px;bottom:-1px;width:23px!important;height:23px!important;'
++'box-shadow:0 0 0 2.5px var(--surface,var(--bg-2,#141419))}'
+// rows with no asset (orders cancelled, trustlines...): the type's icon on a disc tinted in the type's own colour
++'.lx-fgt{display:flex!important;align-items:center;justify-content:center;border-radius:50%;color:#94a3b8;'
++'background:color-mix(in srgb,currentColor 15%,transparent)}'
++'.lx-fgt svg{width:19px;height:19px;display:block}'
++'.lx-fgt.swap{color:#8b7bff}.lx-fgt.transfer{color:#22c55e}.lx-fgt.lp{color:#2dd4bf}.lx-fgt.order{color:#f472b6}'
++'.lx-fgt.xchain{color:#38bdf8}.lx-fgt.mint{color:#ea6a2c}.lx-fgt.claim{color:#facc15}'
++'@media(prefers-reduced-motion:no-preference){.lx-fg{transition:transform .18s ease}.activity-feed-row.lx-fr:hover .lx-fg{transform:scale(1.06)}}'
+// a non-Stellar asset (ETH, MON, USDT0...): its logo over a letter, the letter drawn by CSS, never a text node
++'.lx-dimg{position:relative;overflow:hidden;background:rgba(127,127,140,.22)!important}'
++'.lx-dimg::before{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;justify-content:center;'
++'font:700 .55em/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#e8e8ee)}'
++'.lx-dimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:50%;background:var(--surface,#141419)}'
++'.lx-fg .lx-dimg::before{font-size:13px}'
+// the sentence: the UI face, figures tabular, the connecting words quiet
++'.activity-feed-row.lx-fr .info{flex:1 1 auto;gap:6px}'
++'.activity-feed-row.lx-fr .info .type{font:500 15px/1.4 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#8a8fa3)}'
++'.activity-feed-row.lx-fr .info .type b{font-family:"Hanken Grotesk",system-ui,sans-serif!important;font-size:15px!important;'
++'font-weight:700;color:var(--text,#ececf1);font-variant-numeric:tabular-nums;letter-spacing:-.01em}'
++'.activity-feed-row.lx-fr .info .type .act-inl{width:18px!important;height:18px!important;vertical-align:-4px;margin-right:4px}'
++'.lx-actto{color:var(--text-soft,#8a8fa3);margin:0 1px}.lx-acton{color:var(--text-soft,#8a8fa3);font-weight:500}'
++'.lx-netlg{width:16px;height:16px;border-radius:4px;vertical-align:-3px;margin-right:4px;object-fit:cover}'
++'.lx-actnote{font-size:12px;font-weight:600;color:#facc15;white-space:nowrap}'
+// the route, with its own mark: the one place the three bridges look different
++'.lx-via{display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;font:600 11.5px/1 "Hanken Grotesk",system-ui,sans-serif;'
++'color:var(--text-muted,#a1a1ad);padding:3px 8px 3px 4px;border-radius:999px;border:1px solid var(--border,rgba(127,127,140,.25))}'
++'.lx-via img{width:14px;height:14px;border-radius:50%;object-fit:cover;display:block}'
++'.activity-feed-row.lx-fr .lx-actmeta{flex-wrap:wrap;row-gap:6px}'
++'.lx-frr{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px}'
++'.activity-feed-row.lx-fr .lx-frr .time{min-width:0;font-size:12.5px}'
++'.activity-feed-row.lx-fr .lx-actlink{margin-left:0}'
+// ONE colour for cross-chain, whatever the bridge (it had been two: CCTP rows used a separate class)
++'.lx-actverb.bridge{background:rgba(56,189,248,.16);color:#38bdf8}'
++'@media(max-width:760px){.activity-feed-row.lx-fr{gap:11px;padding:12px 12px!important}.lx-fg{flex-basis:36px;width:36px;height:36px}'
++'.activity-feed-row .lx-fg:not(.lx-fg2) .lx-fgi{width:32px!important;height:32px!important;left:2px;top:2px}'
++'.activity-feed-row .lx-fg2 .lx-fga .lx-fgi{width:28px!important;height:28px!important}'
++'.activity-feed-row .lx-fg2 .lx-fgb .lx-fgi{width:20px!important;height:20px!important}'
++'.activity-feed-row.lx-fr .info .type,.activity-feed-row.lx-fr .info .type b{font-size:14px!important}}'
 +'.status-row{opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready{opacity:1!important;animation:none;transition:opacity .3s ease}'
 +'</style>';
-// ---- cross-chain rows for LayerZero and NEAR Intents (RAZA 2026-09-19: the feed showed neither) --------------------
-// Only CCTP transfers were recognised, through the /lxapi/bridgetx registry. The other two routes looked like
-// something else: a LayerZero send's fee rides a swap or a lone fee payment tagged `lx:lz` (the USDT0 burn itself is a
-// separate contract call, submitted over Soroban RPC, that pays no fee and so never reaches this feed), and a NEAR
-// Intents send is a plain payment to 1Click's deposit account. Both are recognised here from what is on chain:
-//   NEAR Intents  a payment to 1Click's Stellar deposit account. ONE shared account (checked across quotes
-//                 2026-09-19); each transfer is told apart by its numeric memo, and 1Click's status for that memo
-//                 says what was delivered and on which chain. The `lx:ni` swap leg is hidden -- the deposit is the row.
-//   LayerZero     memo `lx:lz`; the burn is the same wallet's nearest USDT0-burning contract call within 20 minutes,
-//                 and its `dst_eid` argument names the chain.
-// Nothing is invented: until the lookup answers, the row names the route rather than a guessed chain.
-// Serialised with toString(), so `node --check` on this file checks the code that ships; it runs inside the feed's
-// closure and uses its amt/aic/esc/j.
+// ---- cross-chain rows: one format for every route (RAZA 2026-09-19) -----------------------------------------------
+// "for CCTP you haven't mentioned via CCTP. Also i need same tag color for cross-chain, no matter what the bridge. Also
+// show logo of the destination asset." Every cross-chain row -- CCTP, LayerZero, NEAR Intents -- is built here, so they
+// read alike: what was paid -> what arrived (with its logo) on which chain (with its logo), and the route as a badge.
+//
+// Sources, all from the chain, nothing invented:
+//   the shared bridge record (/lxapi/bridgetx?routes=all) -- every route, verified server-side  -> lxXcRow
+//   for a transfer the record has not taken yet: NEAR Intents' deposit account + 1Click status, or LayerZero's `lx:lz`
+//   memo + the wallet's nearest USDT0 burn (its dst_eid names the chain)                          -> lxXc
+// A NEAR Intents transfer that swapped first is TWO transactions (the `lx:ni` swap carrying the fee, then the deposit);
+// the record lists it under the swap, so the deposit row is hidden (see _brBurn in the feed) -- one transfer, one row.
+// Serialised with toString(), so `node --check` on this file checks the code that ships; runs inside the feed's closure
+// and uses its amt/aic/esc/j.
+function lxXcBuild(p) {
+  // p: {from, srcAmt, srcCode, srcIss, out, asset, dest, via, note}
+  var NI_LOCAL = { NEAR: 1, ETH: 1, WETH: 1, USDC: 1, USDT: 1, USDT0: 1, WBTC: 1, cbBTC: 1, DAI: 1, LINK: 1, UNI: 1, AAVE: 1,
+    ARB: 1, GMX: 1, OP: 1, POL: 1, AVAX: 1, BERA: 1, MON: 1, XPL: 1 };
+  function dlogo(sym) { return NI_LOCAL[sym] ? '/assets/tokens/ni/' + sym + '.png' : ''; }
+  // a logo that is not a Stellar asset: an <img> over a letter drawn by CSS (a text node here would be repainted as a
+  // ticker badge by the site's logo healer)
+  function dimg(sym) {
+    var u = dlogo(sym), l = esc(String(sym || '?').charAt(0).toUpperCase());
+    return '<span class="act-inl lx-dimg" data-l="' + l + '">' + (u ? '<img src="' + u + '" alt="" onerror="this.remove()">' : '') + '</span>';
+  }
+  var net = String(p.dest || ''), key = net.toLowerCase().replace(/\s+/g, '');
+  var netImg = net ? '<img class="lx-netlg" src="/assets/networks/' + esc(key) + '.png" alt="" onerror="this.remove()">' : '';
+  var src = p.srcCode ? ('<b>' + (p.srcAmt > 0 ? amt(+p.srcAmt) + ' ' : '') + aic(p.srcCode, p.srcIss || '') + esc(p.srcCode) + '</b>') : '';
+  var dst = p.asset ? ('<b>' + (p.out > 0 ? amt(+p.out) + ' ' : '') + dimg(p.asset) + esc(p.asset) + '</b>') : '';
+  var type = (src ? src + ' <span class="lx-actto">→</span> ' : '') + (dst || '<b>' + esc(net || 'another chain') + '</b>')
+    + (dst && net ? ' <span class="lx-acton">on</span> <b class="lx-actnet">' + netImg + esc(net) + '</b>' : '')
+    + (p.note ? ' <span class="lx-actnote">' + esc(p.note) + '</span>' : '');
+  return { cls: 'xchain', act: 'Cross-chain', from: p.from || '', via: p.via || '', type: type,
+    pair: { a: { code: p.srcCode || '', iss: p.srcIss || '' }, b: p.asset ? { img: dlogo(p.asset), code: p.asset } : null } };
+}
+var LX_C_USDC = 'GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN';
+// a row of the shared bridge record, any route
+function lxXcRow(br, fallbackFrom) {
+  var route = br.route || 'CCTP';
+  var srcCode = br.srcCode || 'USDC';
+  var srcAmt = br.srcAmount != null ? +br.srcAmount : (+br.gross || +br.amount || 0);
+  var note = route === 'NEAR Intents' && br.niStatus && br.niStatus !== 'SUCCESS'
+    ? (br.niStatus === 'REFUNDED' ? 'refunded' : (br.niStatus === 'FAILED' ? 'failed' : 'in progress')) : '';
+  return lxXcBuild({ from: br.from || fallbackFrom, srcAmt: srcAmt, srcCode: srcCode, srcIss: srcCode === 'USDC' ? LX_C_USDC : '',
+    out: +br.amount || 0, asset: br.asset || (route === 'LayerZero' ? 'USDT0' : 'USDC'), dest: br.destName || '', via: route, note: note });
+}
 function lxXc(o, t, ops, done) {
   var NI_DEP = 'GDJ4JZXZELZD737NVFORH4PSSQDWFDZTKW3AIDKHYQG23ZXBPDGGQBJK';
   var EID = { 30101: 'Ethereum', 30110: 'Arbitrum', 30111: 'Optimism', 30109: 'Polygon', 30362: 'Berachain', 30339: 'Ink',
@@ -136,13 +216,11 @@ function lxXc(o, t, ops, done) {
   var memo = String(tx.memo || '');
   var from = (recs[0] && recs[0].source_account) || o.from || '';
   function code(x) { return (x.asset_type === 'native' || !x.asset_code) ? 'XLM' : x.asset_code; }
-  function row(type) { return { cls: 'xchain', act: 'Cross-chain', from: from, type: type }; }
-  var via = function (r) { return ' <span class="lx-actvia">via ' + r + '</span>'; };
 
   // ---- NEAR Intents: the deposit ----
   var dep = ops.filter(function (x) { return x.type === 'payment' && x.to === NI_DEP; })[0];
   if (dep) {
-    var c = code(dep), head = '<b>' + amt(+dep.amount) + ' ' + aic(c, dep.asset_issuer || '') + esc(c) + '</b> → ';
+    var c = code(dep), base = { from: from, srcAmt: +dep.amount, srcCode: c, srcIss: dep.asset_issuer || '', via: 'NEAR Intents' };
     if (tx.memo_type === 'id' && /^[0-9]{1,20}$/.test(memo)) {
       Promise.all([
         j('/lxapi/oneclick?op=status&depositAddress=' + NI_DEP + '&depositMemo=' + memo),
@@ -153,14 +231,14 @@ function lxXc(o, t, ops, done) {
         var tk = toks.filter(function (x) { return x.assetId === dst; })[0];
         if (!tk) return;
         var sd = s.swapDetails || {};
-        var out = s.status === 'SUCCESS' ? +(sd.amountOutFormatted || 0) : +((q.quote || {}).amountOutFormatted || 0);
-        var chain = NI_CHAIN[tk.blockchain] || tk.blockchain;
-        var tail = s.status === 'REFUNDED' ? ' <span class="lx-actvia">refunded</span>'
-          : (s.status === 'SUCCESS' ? '' : ' <span class="lx-actvia">in progress</span>');
-        done(row(head + '<b>' + (out > 0 ? amt(out) + ' ' : '') + esc(tk.symbol) + '</b> on <b>' + esc(chain) + '</b>' + via('NEAR Intents') + tail));
+        base.out = s.status === 'SUCCESS' ? +(sd.amountOutFormatted || 0) : +((q.quote || {}).amountOutFormatted || 0);
+        base.asset = tk.symbol; base.dest = NI_CHAIN[tk.blockchain] || tk.blockchain;
+        base.note = s.status === 'REFUNDED' ? 'refunded' : (s.status === 'SUCCESS' ? '' : 'in progress');
+        done(lxXcBuild(base));
       }).catch(function () {});
     }
-    return row(head + '<b>NEAR Intents</b>');
+    base.dest = 'NEAR Intents';
+    return lxXcBuild(base);
   }
   if (memo === 'lx:ni') return { skip: true };
 
@@ -186,16 +264,45 @@ function lxXc(o, t, ops, done) {
         if (s.charCodeAt(v + 3) !== 3) return;
         eid = ((s.charCodeAt(v + 4) << 24) >>> 0) + (s.charCodeAt(v + 5) << 16) + (s.charCodeAt(v + 6) << 8) + s.charCodeAt(v + 7);
       });
-      var b = best.burn;
-      done(row('<b>' + amt(+b.amount) + ' ' + aic('USDT0', b.asset_issuer || '') + 'USDT0</b> → <b>' + esc(EID[eid] || 'another chain') + '</b>' + via('LayerZero')));
+      done(lxXcBuild({ from: from, out: +best.burn.amount, asset: 'USDT0', dest: EID[eid] || 'another chain', via: 'LayerZero' }));
     }).catch(function () {});
-    return row('<b>USDT0</b> → <b>another chain</b>' + via('LayerZero'));
+    return lxXcBuild({ from: from, asset: 'USDT0', dest: 'another chain', via: 'LayerZero' });
   }
   return null;
 }
 
+// ---- the feed row (RAZA 2026-09-19: "Make it more appealing. its too dull and boring") ------------------------------
+// A row now LEADS with what moved: the asset's logo, and for a swap or a cross-chain transfer the asset it became
+// overlapping it -- so the column scans as pictures, not as a wall of monospace. The sentence beside it is set in the
+// UI face with the figures tabular; the type tag, the route (with its own mark) and the wallet sit under it; time and
+// the explorer link on the right. Nothing blinks: a pulsing "live" dot was taken out on purpose (item 28).
+function lxFeedRow(r) {
+  var VIA = { CCTP: '/assets/tokens/circle.png', LayerZero: '/assets/tokens/layerzero.png', 'NEAR Intents': '/assets/tokens/ni/NEAR.png' };
+  function gi(x) {
+    if (x.img != null) {
+      return '<span class="act-inl lx-dimg lx-fgi" data-l="' + esc(String(x.code || '?').charAt(0).toUpperCase()) + '">'
+        + (x.img ? '<img src="' + x.img + '" alt="" onerror="this.remove()">' : '') + '</span>';
+    }
+    return aic(x.code, x.iss || '').replace('class="act-inl ', 'class="act-inl lx-fgi ');
+  }
+  var glyph = (r.pair && r.pair.a && r.pair.a.code)
+    ? '<span class="lx-fg' + (r.pair.b ? ' lx-fg2' : '') + '" aria-hidden="true"><span class="lx-fga">' + gi(r.pair.a) + '</span>'
+      + (r.pair.b ? '<span class="lx-fgb">' + gi(r.pair.b) + '</span>' : '') + '</span>'
+    : '<span class="lx-fg lx-fgt ' + esc(r.cls || '') + '" aria-hidden="true">' + (r.ic || '') + '</span>';
+  var via = r.via ? ('<span class="lx-via">' + (VIA[r.via] ? '<img src="' + VIA[r.via] + '" alt="">' : '') + 'via ' + esc(r.via) + '</span>') : '';
+  var meta = r.who
+    ? ('<div class="meta lx-actmeta">' + (r.act ? ('<span class="lx-actverb ' + esc(r.cls || '') + '">' + esc(r.act) + '</span>') : '') + via
+      + actWho(r.who) + ((r.to && r.to !== r.who) ? ('<span class="lx-actarrow" aria-hidden="true">→</span>' + actWho(r.to)) : '') + '</div>')
+    : '<div class="meta"></div>';
+  return '<div class="activity-feed-row lx-fr" data-lx-noswap="1">' + glyph
+    + '<div class="info"><div class="type">' + r.type + '</div>' + meta + '</div>'
+    + '<div class="lx-frr"><div class="time">' + r.when + '</div>'
+    + '<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/' + esc(r.hash) + '" target="_blank" rel="noopener" title="View transaction">' + XPI + '</a></div>'
+    + '</div>';
+}
+
 const SCRIPT='<script id="lx-realdata">(function(){'
-+ lxXc.toString() + ';'
++ lxXcBuild.toString() + ';' + 'var LX_C_USDC="' + LX_C_USDC + '";' + lxXcRow.toString() + ';' + lxXc.toString() + ';' + lxFeedRow.toString() + ';'
 +'if(window.__lxRealData)return;window.__lxRealData=1;'
 +'function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}'
 +'if(net()!=="stellar")return;'                        // Stellar-only for now
@@ -307,7 +414,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // dest_asset_*. acode(o,"") builds o["_asset_type"], which is always undefined, so every swap printed
 // its destination as XLM regardless of what was actually received.
 +'return {ic:SWAP,cls:"swap",act:"Swap",type:"<b>"+amt(+o.source_amount)+" "+aic(acode(o,"source"),o.source_asset_issuer||"")+esc(acode(o,"source"))+"</b> \\u2192 <b>"+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",'
-+'acode:acode(o,"source"),aiss:(o.source_asset_issuer||""),inl:1};'
++'acode:acode(o,"source"),aiss:(o.source_asset_issuer||""),bcode:((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code),biss:(o.asset_issuer||""),inl:1};'
 +'if(o.type==="payment"&&o.asset_issuer&&o.asset_issuer===o.from)'
 +'return {ic:DROP,cls:"mint",act:"Mint",type:"<b>"+amt(+o.amount)+" "+aic(o.asset_code,o.asset_issuer)+esc(o.asset_code)+"</b> issued",inl:1};'
 +'if(o.type==="payment")'
@@ -480,14 +587,8 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'var c=sp.getAttribute("data-c")||"",i=sp.getAttribute("data-i")||"";'
 +'if(!c||c==="XLM"||!/^G[A-Z2-7]{55}$/.test(i))return;'
 +'ev.preventDefault();ev.stopPropagation();location.href="/trade/stellar/"+c+"-"+i;}catch(_){}},true);}'
-+'function feedRow(r){'
-+'return \'<div class="activity-feed-row" data-lx-noswap="1">\''
-+'+\'<div class="info"><div class="type">\'+r.type+\'</div>\''
-+'+(r.who?(\'<div class="meta lx-actmeta">\'+(r.act?(\'<span class="lx-actverb \'+r.cls+\'">\'+esc(r.act)+\'</span>\'):"")+actWho(r.who)+((r.to&&r.to!==r.who)?(\'<span class="lx-actarrow" aria-hidden="true">\\u2192</span>\'+actWho(r.to)):"")+\'</div>\'):\'<div class="meta"></div>\')'
-+'+\'</div>\''
-+'+\'<div class="time">\'+r.when+\'</div>\''
-+'+\'<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/\'+esc(r.hash)+\'" target="_blank" rel="noopener" title="View transaction">\'+XPI+\'</a>\''
-+'+\'</div>\';}'
+// the row itself is lxFeedRow (a real function, above SCRIPT): a logo glyph, the sentence, tag + route + wallet
++'function feedRow(r){ return lxFeedRow(r); }'
 // How many distinct transactions came through LumosCore in the last 24 hours. The COUNT only -- no
 // volume, no value -- because that is the one number this panel can state without qualification: it is
 // what the feed itself is built from, deduplicated by hash across both sources.
@@ -570,10 +671,10 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});'
 +'var C_USDC="GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";'
-+'var _brMap=null;'
++'var _brMap=null,_brBurn={};'
 +'function _brLoad(){ if(_brMap)return Promise.resolve(_brMap);'
-+'return fetch("/lxapi/bridgetx?limit=200").then(function(r){return r.ok?r.json():null;}).then(function(d){'
-+'var m={}; ((d&&d.rows)||[]).forEach(function(x){ if(x&&x.feeHash)m[x.feeHash]=x; }); _brMap=m; return m;'
++'return fetch("/lxapi/bridgetx?limit=200&routes=all").then(function(r){return r.ok?r.json():null;}).then(function(d){'
++'var m={},bm={}; ((d&&d.rows)||[]).forEach(function(x){ if(x&&x.feeHash)m[x.feeHash]=x; if(x&&x.burnHash)bm[x.burnHash]=x; }); _brMap=m; _brBurn=bm; return m;'
 +'}).catch(function(){ _brMap={}; return _brMap; }); }'
 +'var _eQ=[],_eA=0;'
 +'function _ePump(){ while(_eA<6&&_eQ.length){ _eA++; (_eQ.shift())(); } }'
@@ -595,14 +696,21 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'var _br=(_brMap||{})[o.transaction_hash];'
 // A registered cross-chain transfer. Described from the registry because the transaction itself holds
 // only the fee payment -- the burn that gives it meaning is a separate transaction.
-+'var de=_br?{ic:SWAP,cls:"bridge",act:"Cross-chain",from:(_br.from||o.from||""),'
-+'type:"<b>"+amt(+_br.gross||+_br.amount||0)+" "+aic("USDC",C_USDC)+esc("USDC")+"</b> \\u2192 <b>"+esc(_br.destName||"another chain")+"</b>"}'
-// LayerZero and NEAR Intents transfers are recognised first (lxXc); it may refine its row later via put()
-+':null; if(!de){ try{ de=lxXc(o,t,ops,function(d2){ put(d2); }); }catch(_){ de=null; } }'
+// The shared record now holds LayerZero and NEAR Intents rows too; they say what they delivered, so they are
+// described from it (what was paid, what arrived, where, which route) rather than as USDC.
+// Every route through ONE builder (lxXcRow), so CCTP rows also say "via CCTP" and all share the Cross-chain tag.
+// A transfer the record lists under ANOTHER transaction (a NEAR Intents deposit whose fee rode the swap before it) is
+// the same transfer twice -- hidden here, the record's own row stands for it.
++'var _dup=!_br&&(_brBurn||{})[o.transaction_hash];'
++'var de=_br?lxXcRow(_br,o.from||""):((_dup&&_dup.feeHash&&_dup.feeHash!==o.transaction_hash)?{skip:true}:null);'
+// LayerZero and NEAR Intents transfers not in the record yet are recognised from the chain (lxXc); put() may refine
++'if(!de){ try{ de=lxXc(o,t,ops,function(d2){ put(d2); }); }catch(_){ de=null; } }'
 +'if(!de)de=describeOp(pick); if(!de)return; put(de);'
 +'function put(de){'
 +'if(de.skip){ rows[i].hide=1; }else{'
 +'rows[i].ic=de.ic||SWAP;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].act=de.act||"";rows[i].acode=de.acode||"";rows[i].aiss=de.aiss||"";'
+// the logo glyph: what moved, and (swap / cross-chain) what it became
++'rows[i].via=de.via||"";rows[i].pair=de.pair||(de.acode?{a:{code:de.acode,iss:de.aiss||""},b:(de.bcode?{code:de.bcode,iss:de.biss||""}:null)}:null);'
 // The row is seeded with the transaction's source account; the operation knows who actually paid and
 // who was paid, so prefer those once it has been read.
 +'if(de.from)rows[i].who=de.from;rows[i].to=de.to||""; }'
