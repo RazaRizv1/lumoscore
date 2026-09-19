@@ -429,7 +429,11 @@ function runtime(NI_SENDABLE) {
   };
 }
 
-const JS = '(' + runtime.toString() + ')(' + (LZ_LIVE ? 'true' : 'false') + ');';
+// The logos actually shipped in assets/tokens/ni (see _nilogos.js), read at BUILD time and baked into the page, so a
+// token gets its logo the moment its file exists -- no second list to keep in step by hand.
+const NI_FILES = (() => { const o = {}; try { fs.readdirSync(require('path').join(__dirname, '..', 'assets', 'tokens', 'ni')).forEach((f) => { const m = f.match(/^([A-Za-z0-9._-]+).png$/); if (m) o[m[1]] = 1; }); } catch (e) {} return o; })();
+function withNiFiles(src) { const out = src.replace(/var NI_LOCAL = {[^}]*};/, 'var NI_LOCAL = ' + JSON.stringify(NI_FILES) + ';'); if (out === src) throw new Error('NI_LOCAL not found'); return out; }
+const JS = '(' + withNiFiles(runtime.toString()) + ')(' + (LZ_LIVE ? 'true' : 'false') + ');';
 try { new Function(JS); } catch (e) { console.error('  ! NEAR Intents runtime does not parse: ' + e.message); process.exit(1); }
 const SCRIPT = '<script id="lx-nearintents">' + JS + '<' + '/script>';
 

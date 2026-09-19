@@ -301,8 +301,12 @@ function lxFeedRow(r) {
     + '</div>';
 }
 
+// The logos actually shipped in assets/tokens/ni (see _nilogos.js), read at BUILD time and baked into the page, so a
+// token gets its logo the moment its file exists -- no second list to keep in step by hand.
+const NI_FILES = (() => { const o = {}; try { fs.readdirSync(require('path').join(__dirname, '..', 'assets', 'tokens', 'ni')).forEach((f) => { const m = f.match(/^([A-Za-z0-9._-]+).png$/); if (m) o[m[1]] = 1; }); } catch (e) {} return o; })();
+function withNiFiles(src) { const out = src.replace(/var NI_LOCAL = {[^}]*};/, 'var NI_LOCAL = ' + JSON.stringify(NI_FILES) + ';'); if (out === src) throw new Error('NI_LOCAL not found'); return out; }
 const SCRIPT='<script id="lx-realdata">(function(){'
-+ lxXcBuild.toString() + ';' + 'var LX_C_USDC="' + LX_C_USDC + '";' + lxXcRow.toString() + ';' + lxXc.toString() + ';' + lxFeedRow.toString() + ';'
++ withNiFiles(lxXcBuild.toString()) + ';' + 'var LX_C_USDC="' + LX_C_USDC + '";' + lxXcRow.toString() + ';' + lxXc.toString() + ';' + lxFeedRow.toString() + ';'
 +'if(window.__lxRealData)return;window.__lxRealData=1;'
 +'function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}'
 +'if(net()!=="stellar")return;'                        // Stellar-only for now
