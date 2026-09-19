@@ -89,6 +89,7 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'.activity-card .market-head h3 .lx-chainmark{display:inline-block;width:1.05em;height:1.05em;'
 +'vertical-align:-.16em;margin:0 .18em 0 .02em;border-radius:50%;object-fit:cover;flex:0 0 auto}'
 +'.lx-actverb.xchain{background:rgba(56,189,248,.16);color:#38bdf8}'
++'.lx-actvia{font-weight:500;font-size:.86em;color:var(--text-soft,#8b8b95);white-space:nowrap}'
 +'.lx-actverb.mint{background:rgba(234,106,44,.18);color:#ea6a2c}'
 +'.lx-actverb.claim{background:rgba(250,204,21,.16);color:#facc15}'
 +'.lx-actverb.trust{background:rgba(148,163,184,.18);color:#94a3b8}'
@@ -111,7 +112,90 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'.activity-feed-row .info .type{overflow-wrap:anywhere}'
 +'.status-row{opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready{opacity:1!important;animation:none;transition:opacity .3s ease}'
 +'</style>';
+// ---- cross-chain rows for LayerZero and NEAR Intents (RAZA 2026-09-19: the feed showed neither) --------------------
+// Only CCTP transfers were recognised, through the /lxapi/bridgetx registry. The other two routes looked like
+// something else: a LayerZero send's fee rides a swap or a lone fee payment tagged `lx:lz` (the USDT0 burn itself is a
+// separate contract call, submitted over Soroban RPC, that pays no fee and so never reaches this feed), and a NEAR
+// Intents send is a plain payment to 1Click's deposit account. Both are recognised here from what is on chain:
+//   NEAR Intents  a payment to 1Click's Stellar deposit account. ONE shared account (checked across quotes
+//                 2026-09-19); each transfer is told apart by its numeric memo, and 1Click's status for that memo
+//                 says what was delivered and on which chain. The `lx:ni` swap leg is hidden -- the deposit is the row.
+//   LayerZero     memo `lx:lz`; the burn is the same wallet's nearest USDT0-burning contract call within 20 minutes,
+//                 and its `dst_eid` argument names the chain.
+// Nothing is invented: until the lookup answers, the row names the route rather than a guessed chain.
+// Serialised with toString(), so `node --check` on this file checks the code that ships; it runs inside the feed's
+// closure and uses its amt/aic/esc/j.
+function lxXc(o, t, ops, done) {
+  var NI_DEP = 'GDJ4JZXZELZD737NVFORH4PSSQDWFDZTKW3AIDKHYQG23ZXBPDGGQBJK';
+  var EID = { 30101: 'Ethereum', 30110: 'Arbitrum', 30111: 'Optimism', 30109: 'Polygon', 30362: 'Berachain', 30339: 'Ink',
+    30367: 'Hyperliquid', 30390: 'Monad', 30295: 'Flare', 30280: 'Sei', 30398: 'MegaETH', 30383: 'Plasma' };
+  var NI_CHAIN = { eth: 'Ethereum', arb: 'Arbitrum', base: 'Base', pol: 'Polygon', op: 'Optimism', avax: 'Avalanche',
+    bera: 'Berachain', monad: 'Monad', plasma: 'Plasma' };
+  var recs = (t && t._embedded && t._embedded.records) || [];
+  var tx = (recs[0] && recs[0].transaction) || {};
+  var memo = String(tx.memo || '');
+  var from = (recs[0] && recs[0].source_account) || o.from || '';
+  function code(x) { return (x.asset_type === 'native' || !x.asset_code) ? 'XLM' : x.asset_code; }
+  function row(type) { return { cls: 'xchain', act: 'Cross-chain', from: from, type: type }; }
+  var via = function (r) { return ' <span class="lx-actvia">via ' + r + '</span>'; };
+
+  // ---- NEAR Intents: the deposit ----
+  var dep = ops.filter(function (x) { return x.type === 'payment' && x.to === NI_DEP; })[0];
+  if (dep) {
+    var c = code(dep), head = '<b>' + amt(+dep.amount) + ' ' + aic(c, dep.asset_issuer || '') + esc(c) + '</b> → ';
+    if (tx.memo_type === 'id' && /^[0-9]{1,20}$/.test(memo)) {
+      Promise.all([
+        j('/lxapi/oneclick?op=status&depositAddress=' + NI_DEP + '&depositMemo=' + memo),
+        window.__lxNiTok || (window.__lxNiTok = j('/lxapi/oneclick?op=tokens').catch(function () { window.__lxNiTok = null; return null; }))
+      ]).then(function (p) {
+        var s = p[0] || {}, toks = (p[1] && p[1].tokens) || [];
+        var q = s.quoteResponse || {}, dst = (q.quoteRequest || {}).destinationAsset;
+        var tk = toks.filter(function (x) { return x.assetId === dst; })[0];
+        if (!tk) return;
+        var sd = s.swapDetails || {};
+        var out = s.status === 'SUCCESS' ? +(sd.amountOutFormatted || 0) : +((q.quote || {}).amountOutFormatted || 0);
+        var chain = NI_CHAIN[tk.blockchain] || tk.blockchain;
+        var tail = s.status === 'REFUNDED' ? ' <span class="lx-actvia">refunded</span>'
+          : (s.status === 'SUCCESS' ? '' : ' <span class="lx-actvia">in progress</span>');
+        done(row(head + '<b>' + (out > 0 ? amt(out) + ' ' : '') + esc(tk.symbol) + '</b> on <b>' + esc(chain) + '</b>' + via('NEAR Intents') + tail));
+      }).catch(function () {});
+    }
+    return row(head + '<b>NEAR Intents</b>');
+  }
+  if (memo === 'lx:ni') return { skip: true };
+
+  // ---- LayerZero ----
+  if (memo === 'lx:lz') {
+    var at = Date.parse((recs[0] && recs[0].created_at) || o.created_at || 0);
+    j('https://horizon.stellar.org/accounts/' + from + '/operations?order=desc&limit=30').then(function (a) {
+      var best = null, gap = 12e5;
+      ((a && a._embedded && a._embedded.records) || []).forEach(function (x) {
+        if (x.type !== 'invoke_host_function') return;
+        var burn = (x.asset_balance_changes || []).filter(function (b) { return b.type === 'burn' && b.asset_code === 'USDT0'; })[0];
+        if (!burn) return;
+        var d = Math.abs(Date.parse(x.created_at) - at);
+        if (d < gap) { gap = d; best = { op: x, burn: burn }; }
+      });
+      if (!best) return;
+      var eid = 0;
+      (best.op.parameters || []).forEach(function (p) {
+        if (eid || p.type !== 'Map') return;
+        var s = ''; try { s = atob(p.value); } catch (_) { return; }
+        var k = s.indexOf('dst_eid'); if (k < 0) return;
+        var v = k + 8;   // "dst_eid" is 7 bytes, padded to 8; then the value: 4-byte type (3 = u32), 4-byte u32
+        if (s.charCodeAt(v + 3) !== 3) return;
+        eid = ((s.charCodeAt(v + 4) << 24) >>> 0) + (s.charCodeAt(v + 5) << 16) + (s.charCodeAt(v + 6) << 8) + s.charCodeAt(v + 7);
+      });
+      var b = best.burn;
+      done(row('<b>' + amt(+b.amount) + ' ' + aic('USDT0', b.asset_issuer || '') + 'USDT0</b> → <b>' + esc(EID[eid] || 'another chain') + '</b>' + via('LayerZero')));
+    }).catch(function () {});
+    return row('<b>USDT0</b> → <b>another chain</b>' + via('LayerZero'));
+  }
+  return null;
+}
+
 const SCRIPT='<script id="lx-realdata">(function(){'
++ lxXc.toString() + ';'
 +'if(window.__lxRealData)return;window.__lxRealData=1;'
 +'function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}'
 +'if(net()!=="stellar")return;'                        // Stellar-only for now
@@ -471,7 +555,8 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // 1 was a single op and it was a listing fee. Without this the row still appeared, and appeared as an
 // unlabelled "Platform activity" stub, because the only operation it had was the one the describer
 // deliberately skips.
-+'var tx=o.transaction; if(tx&&tx.operation_count===1)return false;'
+// ...except LayerZero's deferred fee: a USDT0-sourced send pays its fee alone, in its own `lx:lz` transaction
++'var tx=o.transaction; if(tx&&tx.operation_count===1&&tx.memo!=="lx:lz")return false;'
 +'return true;});'
 +'if(!recs.length&&!((d&&d.__acts)||[]).length){list.innerHTML=\'<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>\';return;}'
 +'var seenH={},merged=[];'
@@ -493,7 +578,8 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'var _eQ=[],_eA=0;'
 +'function _ePump(){ while(_eA<6&&_eQ.length){ _eA++; (_eQ.shift())(); } }'
 +'use.forEach(function(o,i){ _eQ.push(function(){'
-+'j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20").then(function(t){'
+// join=transactions brings the memo, which is how a LayerZero or NEAR Intents transfer is recognised (lxXc)
++'j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20&join=transactions").then(function(t){'
 +'var ops=((t._embedded&&t._embedded.records)||[]).filter(function(x){'
 // the fee payment itself is not the story; the operation beside it is
 +'return !(x.type==="payment"&&x.to===LX_FEEACCT);});'
@@ -511,13 +597,17 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // only the fee payment -- the burn that gives it meaning is a separate transaction.
 +'var de=_br?{ic:SWAP,cls:"bridge",act:"Cross-chain",from:(_br.from||o.from||""),'
 +'type:"<b>"+amt(+_br.gross||+_br.amount||0)+" "+aic("USDC",C_USDC)+esc("USDC")+"</b> \\u2192 <b>"+esc(_br.destName||"another chain")+"</b>"}'
-+':describeOp(pick); if(!de)return;'
-+'rows[i].ic=de.ic;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].act=de.act||"";rows[i].acode=de.acode||"";rows[i].aiss=de.aiss||"";'
+// LayerZero and NEAR Intents transfers are recognised first (lxXc); it may refine its row later via put()
++':null; if(!de){ try{ de=lxXc(o,t,ops,function(d2){ put(d2); }); }catch(_){ de=null; } }'
++'if(!de)de=describeOp(pick); if(!de)return; put(de);'
++'function put(de){'
++'if(de.skip){ rows[i].hide=1; }else{'
++'rows[i].ic=de.ic||SWAP;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].act=de.act||"";rows[i].acode=de.acode||"";rows[i].aiss=de.aiss||"";'
 // The row is seeded with the transaction's source account; the operation knows who actually paid and
 // who was paid, so prefer those once it has been read.
-+'if(de.from)rows[i].who=de.from;rows[i].to=de.to||"";'
-+'list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
-+'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});'
++'if(de.from)rows[i].who=de.from;rows[i].to=de.to||""; }'
++'list.innerHTML=rows.filter(function(r){ return !r.hide; }).map(feedRow).join("");paintFeedIcons();feedFillLogos();'
++'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);}); }'
 +'}).catch(function(){}).then(function(){ _eA--; _ePump(); });});});'
 +'_brLoad().then(function(){ _ePump(); });'
 +'}).catch(function(){});}'

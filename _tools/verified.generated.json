@@ -1,5 +1,26 @@
 {
   "verified": {
+    "USDT0|GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q": "",
+    "XTROOP|GARPXWTVB4QAGDZDCKV7ERN5GJTTMBSLOGPQPHYRVLYOW24CFB2SWCR5": "librequidity.org",
+    "GRAT|GAJ7V3EMD3FRWAPBEJAP7EC4223XI5EACDZ46RFMY5DYOMCIMWEFR5II": "gratz.io",
+    "VELO|GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M": "",
+    "PHO|GAX5TXB5RYJNLBUR477PEXM4X75APK2PGMTN6KEFQSESGWFXEAKFSXJO": "app.phoenix-hub.io",
+    "ACT|GAHHULDPDVGB5WS5PH7BCGLJ7ZHECDBIIMKB62UPVDUOCHNFL7HX3FS7": "authentic-payment.com",
+    "IDRT|GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT": "kbtrading.org",
+    "LMX|GCJF4534PAFBOQ6R7QLVMRKUQV2AMNGEXGGDDN2ISYAIN5XPKTLUMEXO": "lumexo.io",
+    "LTC|GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYFPFD5VJRWXR72VA33VFNL225PL5": "stellarport.io",
+    "SLVR|GBZVELEQD3WBN3R3VAG64HVBDOZ76ZL6QPLSFGKWPFED33Q3234NSLVR": "mintx.co",
+    "XRF|GCHI6I3X62ND5XUMWINNNKXS2HPYZWKFQBZZYBSMHJ4MIP2XJXSZTXRF": "reflector.network",
+    "PYUSD|GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5": "token-metadata.paxos.com",
+    "sUSD|GCHW7CWI7GMIYQYFXMFJNJX5645XGWIINIAEQK3SABQO6CAYL5T7JYIH": "synt.tech",
+    "XLMG|GCVNN7O5JISPEYUTLK3JYGBDWCPDIHB4MTG4PMSJVIKJCR64NOXWI3YH": "stellargold.net",
+    "BRAVE|GDREF4TAC3RFYVLHEV24CXN2VBGCEEP74BZOC3T4Q4XJ6SXJFMDPNTJL": "brave-token.age-shield.com",
+    "Xoge|GCELOR2TIPF6WJLVIXYQNWEO2QAABIAGGFJYHKTULOJ7MR5F5P4DSLNR": "xoge.xmint.io",
+    "LIBERATOR|GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F": "lumoscore.com",
+    "JDMC|GDZ7MGCU3TH4EVXU6S7EZSCRH6VCL36L4Q436MNVLEEFFVXRLRMHGZX2": "justdumbmemes.com",
+    "Fucupcakes|GAYLMXU2ACEUZCHCFZM4OAIUJCJTU6QZBWUTVRGOB5JHLWKNVGNP2P6B": "justdumbmemes.com",
+    "TKG|GAM3PID2IOBTNCBMJXHIAS4EO3GQXAGRX4UB6HTQY2DUOVL3AQRB4UKQ": "tokenglade.com",
+    "PAYBO|GDNUDY5LNUVCO55LLK6H2RCOILB6EO7UOVAOGDTV3FB7Y2U45TMAXD3D": "paybo.club",
     "FRED|GCA73U2PZFWAXJSNVMEVPNPPJCZGETWPWZC6E4DJAIWP3ZW3BAGYZLV6": "fredenergy.org",
     "PYBC|GBVB43NLVIP2USHXSKI7QQCZKZU2Z6U6A5PAHMIW7LLNVMQJTOX2BZI5": "luxpayband.io",
     "BLND|GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY": "",
@@ -10,6 +31,153 @@
     "ARST|GCSAZVWXZKWS4XS223M5F54H2B6XPIIXZZGP7KEAIU6YSL5HDRGCI3DG": "pubnet-sep.latamex.com"
   },
   "assets": [
+    {
+      "code": "USDT0",
+      "issuer": "GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q",
+      "cat": "utility",
+      "b": "hsl(338,62%,46%)",
+      "logo": "/lxapi/media?id=31755efd3cd8ed976866670197810e95.jpg"
+    },
+    {
+      "code": "XTROOP",
+      "issuer": "GARPXWTVB4QAGDZDCKV7ERN5GJTTMBSLOGPQPHYRVLYOW24CFB2SWCR5",
+      "cat": "utility",
+      "b": "hsl(282,62%,46%)",
+      "logo": "/lxapi/media?id=723c0df2f54ae8cb3ce21c47a9fa7bf1.png"
+    },
+    {
+      "code": "GRAT",
+      "issuer": "GAJ7V3EMD3FRWAPBEJAP7EC4223XI5EACDZ46RFMY5DYOMCIMWEFR5II",
+      "cat": "utility",
+      "b": "hsl(62,62%,46%)",
+      "logo": "https://gratz.io/grat.png"
+    },
+    {
+      "code": "VELO",
+      "issuer": "GDM4RQUQQUVSKQA7S6EM7XBZP3FCGH4Q7CL6TABQ7B2BEJ5ERARM2M5M",
+      "cat": "utility",
+      "b": "hsl(250,62%,46%)",
+      "logo": "/lxapi/media?id=fa72766e1c9c49c3a857972aa7134996.png"
+    },
+    {
+      "code": "PHO",
+      "issuer": "GAX5TXB5RYJNLBUR477PEXM4X75APK2PGMTN6KEFQSESGWFXEAKFSXJO",
+      "cat": "utility",
+      "b": "hsl(351,62%,46%)",
+      "logo": "https://app.phoenix-hub.io/logoIcon.png"
+    },
+    {
+      "code": "ACT",
+      "issuer": "GAHHULDPDVGB5WS5PH7BCGLJ7ZHECDBIIMKB62UPVDUOCHNFL7HX3FS7",
+      "cat": "utility",
+      "b": "hsl(186,62%,46%)",
+      "logo": "https://authentic-payment.com/wp-content/uploads/2025/10/ACTlogoORGnoBG-1-150x150.png"
+    },
+    {
+      "code": "IDRT",
+      "issuer": "GDPKQ2TSNJOFSEE7XSUXPWRP27H6GFGLWD7JCHNEYYWQVGFA543EVBVT",
+      "cat": "utility",
+      "b": "hsl(277,62%,46%)",
+      "logo": "https://kbtrading.org/static/idrt.200x200.png"
+    },
+    {
+      "code": "LMX",
+      "issuer": "GCJF4534PAFBOQ6R7QLVMRKUQV2AMNGEXGGDDN2ISYAIN5XPKTLUMEXO",
+      "cat": "utility",
+      "b": "hsl(271,62%,46%)",
+      "logo": "https://lumexo.io/img/lumexologo.png"
+    },
+    {
+      "code": "LTC",
+      "issuer": "GBVOL67TMUQBGL4TZYNMY3ZQ5WGQYFPFD5VJRWXR72VA33VFNL225PL5",
+      "cat": "utility",
+      "b": "hsl(107,62%,46%)",
+      "logo": "https://stellarport.io/assets/issues/ltc.png"
+    },
+    {
+      "code": "SLVR",
+      "issuer": "GBZVELEQD3WBN3R3VAG64HVBDOZ76ZL6QPLSFGKWPFED33Q3234NSLVR",
+      "cat": "utility",
+      "b": "hsl(357,62%,46%)",
+      "logo": "https://www.mintx.co/images/logo-silver100.png"
+    },
+    {
+      "code": "XRF",
+      "issuer": "GCHI6I3X62ND5XUMWINNNKXS2HPYZWKFQBZZYBSMHJ4MIP2XJXSZTXRF",
+      "cat": "utility",
+      "b": "hsl(60,62%,46%)",
+      "logo": "https://reflector.network/images/logo.svg"
+    },
+    {
+      "code": "PYUSD",
+      "issuer": "GDQE7IXJ4HUHV6RQHIUPRJSEZE4DRS5WY577O2FY6YQ5LVWZ7JZTU2V5",
+      "cat": "utility",
+      "b": "hsl(45,62%,46%)",
+      "logo": "/lxapi/media?id=f57b2742438c440340402154d5b4228d.png"
+    },
+    {
+      "code": "sUSD",
+      "issuer": "GCHW7CWI7GMIYQYFXMFJNJX5645XGWIINIAEQK3SABQO6CAYL5T7JYIH",
+      "cat": "utility",
+      "b": "hsl(291,62%,46%)",
+      "logo": " https://synt.tech/sUSD_100c.png"
+    },
+    {
+      "code": "XLMG",
+      "issuer": "GCVNN7O5JISPEYUTLK3JYGBDWCPDIHB4MTG4PMSJVIKJCR64NOXWI3YH",
+      "cat": "utility",
+      "b": "hsl(342,62%,46%)",
+      "logo": "https://stellargold.net/img/main_logo.png"
+    },
+    {
+      "code": "BRAVE",
+      "issuer": "GDREF4TAC3RFYVLHEV24CXN2VBGCEEP74BZOC3T4Q4XJ6SXJFMDPNTJL",
+      "cat": "utility",
+      "b": "hsl(8,62%,46%)",
+      "logo": "/lxapi/media?id=0ad4ccb0875fe78de092a44deeda37e6.png"
+    },
+    {
+      "code": "Xoge",
+      "issuer": "GCELOR2TIPF6WJLVIXYQNWEO2QAABIAGGFJYHKTULOJ7MR5F5P4DSLNR",
+      "cat": "utility",
+      "b": "hsl(253,62%,46%)",
+      "logo": "/lxapi/media?id=eae7bb4450faba5e391fc9868eced212.png"
+    },
+    {
+      "code": "LIBERATOR",
+      "issuer": "GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F",
+      "cat": "utility",
+      "b": "hsl(328,62%,46%)",
+      "logo": "https://lumoscore.com/assets/tokens/LIBERATOR-GCV4LXAU5PMYTIO7P5USPE2HUKLRCV2PPMULTOQSZESFLJLVL25W6D7F.png?v=9a39e629"
+    },
+    {
+      "code": "JDMC",
+      "issuer": "GDZ7MGCU3TH4EVXU6S7EZSCRH6VCL36L4Q436MNVLEEFFVXRLRMHGZX2",
+      "cat": "utility",
+      "b": "hsl(16,62%,46%)",
+      "logo": "https://justdumbmemes.com/images/JDM_Logo.png"
+    },
+    {
+      "code": "Fucupcakes",
+      "issuer": "GAYLMXU2ACEUZCHCFZM4OAIUJCJTU6QZBWUTVRGOB5JHLWKNVGNP2P6B",
+      "cat": "utility",
+      "b": "hsl(20,62%,46%)",
+      "logo": "https://justdumbmemes.com/images/Fucupcakes_Logo.png"
+    },
+    {
+      "code": "TKG",
+      "issuer": "GAM3PID2IOBTNCBMJXHIAS4EO3GQXAGRX4UB6HTQY2DUOVL3AQRB4UKQ",
+      "cat": "utility",
+      "b": "hsl(320,62%,46%)",
+      "logo": "https://tokenglade.com/build/assets/token-glade-logo-fc9beecd.png"
+    },
+    {
+      "code": "PAYBO",
+      "issuer": "GDNUDY5LNUVCO55LLK6H2RCOILB6EO7UOVAOGDTV3FB7Y2U45TMAXD3D",
+      "cat": "utility",
+      "b": "hsl(109,62%,46%)",
+      "logo": "https://paybo.club/paybo-logo.png"
+    },
     {
       "code": "FRED",
       "issuer": "GCA73U2PZFWAXJSNVMEVPNPPJCZGETWPWZC6E4DJAIWP3ZW3BAGYZLV6",
@@ -36,7 +204,7 @@
       "issuer": "GBDVX4VELCDSQ54KQJYTNHXAHFLBCA77ZY2USQBM4CSHTTV7DME7KALE",
       "cat": "utility",
       "b": "hsl(255,62%,46%)",
-      "logo": "https://imagedelivery.net/yd3qPvu7Jy_6BfgoQb2pZQ/30466c1d-ef73-4d2b-8814-949157465a00/public"
+      "logo": ""
     },
     {
       "code": "XXA",

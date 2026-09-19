@@ -20,7 +20,7 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xlmpanel{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:stretch;
   background:var(--surface);border:1px solid var(--border);border-radius:16px;
   padding:16px 18px;margin:0 0 14px}
-.lx-xt-l{min-width:0;display:flex;flex-direction:column;gap:2px}
+.lx-xt-l{min-width:0;display:flex;flex-direction:column;justify-content:center;gap:14px}
 .lx-xt-lbl{font-weight:800;font-size:17px;line-height:1.15;font-family:'JetBrains Mono',monospace;
   letter-spacing:.06em;text-transform:uppercase;color:var(--text)}
 /* The XLM mark, sized to the label it sits beside. */
@@ -35,7 +35,7 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xt-ledger::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--green,#35c07f);
   flex:0 0 5px;animation:lxLedgerPulse 2.2s ease-in-out infinite}
 .lx-xt-l>.lx-xt-lbl{display:inline-flex;align-items:center}
-.lx-xt-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.lx-xt-row{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 /* #13: the readout. Pinned inside the plot rather than following the pointer, because on a phone the
    finger IS the pointer and a tooltip under it is a tooltip you cannot see. Top-left, where the series
    has headroom on every timeframe this chart offers. */
@@ -53,8 +53,8 @@ const STYLE = `<style id="lx-dashtop-css">
   transition:opacity .1s;z-index:6}
 .lx-xt-vl{position:absolute;top:0;bottom:0;width:1px;background:var(--border-strong,#d5d5dd);
   opacity:0;pointer-events:none;z-index:4}
-.lx-xt-price{font:800 30px/1.05 'JetBrains Mono',monospace;letter-spacing:-1px;color:var(--text)}
-.lx-xt-chg{font:800 12.5px/1 'JetBrains Mono',monospace;padding:5px 9px;border-radius:999px;
+.lx-xt-price{font:800 42px/1 'JetBrains Mono',monospace;letter-spacing:-1.5px;color:var(--text);font-variant-numeric:tabular-nums}
+.lx-xt-chg{font:800 14px/1 'JetBrains Mono',monospace;padding:7px 12px;border-radius:999px;
   display:inline-flex;align-items:center;gap:4px}
 .lx-xt-chg.up{background:var(--green-soft);color:var(--green)}
 .lx-xt-chg.down{background:var(--red-soft);color:var(--red)}
@@ -65,6 +65,8 @@ const STYLE = `<style id="lx-dashtop-css">
 .lx-xt-tfs button{padding:5px 11px;border:0;border-radius:6px;background:transparent;color:var(--text-muted);
   font:700 11.5px/1 inherit;font-family:inherit;cursor:pointer}
 .lx-xt-tfs button.active{background:var(--accent);color:#fff}
+.lx-xt-r{display:flex;flex-direction:column;align-items:flex-end;gap:10px;align-self:center;min-width:0}
+.lx-xt-r .lx-xt-tfs{margin-top:0;align-self:flex-end}
 .lx-xt-chart{position:relative;width:min(420px,42vw);min-width:220px;height:104px;align-self:center}
 /* item 20: subtle horizontal gridlines behind the plot. */
 .lx-xt-chart svg{background-image:repeating-linear-gradient(to bottom,rgba(127,127,140,.17) 0,rgba(127,127,140,.17) 1px,transparent 1px,transparent 25%)}
@@ -87,7 +89,7 @@ const STYLE = `<style id="lx-dashtop-css">
    for good.
    On ::after, getComputedStyle(el) reports no radius and no background image, the element fails the
    test, and it is left alone. */
-.lx-xlmpanel.lx-loading .lx-xt-price{color:transparent!important;position:relative;min-width:170px;
+.lx-xlmpanel.lx-loading .lx-xt-price{color:transparent!important;position:relative;min-width:220px;
   display:inline-block}
 .lx-xlmpanel.lx-loading .lx-xt-price::after,
 .lx-xlmpanel.lx-loading .lx-xt-chg::after{content:"";position:absolute;inset:0;border-radius:7px;
@@ -174,7 +176,8 @@ const STYLE = `<style id="lx-dashtop-css">
 @media(max-width:860px){
 .lx-xlmpanel{grid-template-columns:1fr;gap:12px;padding:14px 14px 0}
 .lx-xt-chart{width:100%;min-width:0;height:92px}
-.lx-xt-price{font-size:25px}
+.lx-xt-r{align-self:stretch;width:100%}
+.lx-xt-price{font-size:32px}
 .lx-xlmpanel>.status-row{margin:12px -14px 0;padding:14px 14px 15px;
   grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px 0!important}
 /* the network cell spans the row, so the four figures below it pair up cleanly two by two */
@@ -251,13 +254,19 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
       +'<span class="lx-xt-lbl">Stellar (XLM)</span>'
       +'</span>'
       +'<div class="lx-xt-row"><span class="lx-xt-price">\\u2014</span><span class="lx-xt-chg"></span></div>'
+      +'</div>'
+      // THE RANGE BELONGS TO THE CHART (RAZA 2026-09-19: "place 24H 7D 1M 1Y above the chart on right. this looks
+      // misplaced"). Under the price it read as a setting for the price; it sets the chart's window, so it sits on top of
+      // the chart, right-aligned to it. Both are still found by class inside the panel, so the wiring is unchanged.
+      +'<div class="lx-xt-r">'
       +'<div class="lx-xt-tfs">'
         +'<button type="button" data-lxnonav="1" data-tf="24H" class="active">24H</button>'
         +'<button type="button" data-lxnonav="1" data-tf="7D">7D</button>'
         +'<button type="button" data-lxnonav="1" data-tf="1M">1M</button>'
         +'<button type="button" data-lxnonav="1" data-tf="1Y">1Y</button>'
-      +'</div></div>'
-      +'<div class="lx-xt-chart lx-empty"></div>';
+      +'</div>'
+      +'<div class="lx-xt-chart lx-empty"></div>'
+      +'</div>';
     host.insertBefore(p,row);
     p.appendChild(row);            // #1: the strip lives inside the card -- see place()
     // The dashboard maps clicked label text to a destination, so a control inside it needs the
