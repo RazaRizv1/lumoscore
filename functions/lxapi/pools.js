@@ -458,6 +458,26 @@ async function publish(store, rows, px, volDiag) {
 //
 // It returns the rows it just built rather than re-reading them, because KV is eventually consistent --
 // a read immediately after a write can still answer with the old value, or nothing.
+// A PUBLISHED BUILD WITH NO VOLUME IS A FAILED BUILD, NOT A FRESH ONE.
+//
+// When the overlay cannot run -- the 50-subrequest cap did exactly this until 2026-09-17 -- the ranking still
+// publishes, with withVol 0, and then reports itself fresh for RANK_HOLD (6 hours). That is how a deployed fix
+// stays invisible: production recovered only because real traffic kept advancing the state machine, while staging,
+// which gets almost no traffic, carried on serving the pre-fix build and looked unfixed for hours after the code
+// that fixed it was live. RAZA 2026-09-17: "make sure that stellar staging is alligned with stellar main".
+//
+// So a zero-volume ranking is treated as stale once it is a few minutes old, and rebuilt in the background like any
+// other stale one. The floor stops a genuinely unreachable upstream from forcing a rebuild on every request, and
+// stale-while-revalidate means visitors keep seeing the existing rows the whole time.
+const ZERO_VOL_RETRY = 300;
+function needsRebuild(meta) {
+  if (!meta || !meta.ts) return true;
+  const age = Date.now() - meta.ts;
+  if (age > RANK_TTL * 1000) return true;
+  if (!meta.withVol && age > ZERO_VOL_RETRY * 1000) return true;
+  return false;
+}
+
 async function advance(store) {
   let state = await store.get(K.state);
   state = await buildStep(state);
@@ -555,7 +575,7 @@ export async function onRequestGet(ctx) {
     if (meta && meta.ts) {
       const hit = await cache.match(pageKey(meta.ts, per, page, qRaw, sort, dir));
       if (hit) {
-        if (Date.now() - meta.ts > RANK_TTL * 1000) later(advance(store));
+        if (needsRebuild(meta)) later(advance(store));
         // Re-headered, not re-read: the stored copy carries a long max-age so it survives as long as its
         // ranking does, but the CLIENT must still be told 120s or a browser would hold this for hours.
         // Passing the body through as a stream copies no bytes and parses nothing.
@@ -582,7 +602,7 @@ export async function onRequestGet(ctx) {
         }), { headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
       }
       meta = built.meta;
-    } else if (Date.now() - meta.ts > RANK_TTL * 1000) {
+    } else if (needsRebuild(meta)) {
       later(advance(store));
     }
 

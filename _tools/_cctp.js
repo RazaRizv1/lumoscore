@@ -5,7 +5,19 @@
 //   dest_caller 32B(0), max_fee i128(0), min_finality u32(2000)). Freighter (testnet) signs both.
 // Freighter access: window.freighterApi if present, else dynamic-import @stellar/freighter-api@6 (same as wallet lxSign).
 // Layered ON TOP of the finalized bridge + _bridge*.js transforms (never edits them). See GUARDRAILS.md.
-const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
+const fs=require('fs');const{read,getContents,VERIFIED,GENERATED_ASSETS}=require(__dirname+'/lib.js');
+// THE FROM LIST IS THE CURATED LIST (RAZA 2026-09-19: "its supposed to show all curated assets"). It was seven
+// hand-typed entries while the site curates ~40 in lib.js VERIFIED (hand-checked + admin panel). Generated here at
+// build time from that one list, so an asset curated anywhere appears here too and the two cannot drift.
+const LX_BASE_CODES={USDC:1,XLM:1,SHX:1,yXLM:1,LUMOS:1,BLND:1,AQUA:1};
+// BOTH lists: VERIFIED (hand-checked + ticked in the admin panel) and GENERATED_ASSETS (the roster Trade lists).
+// An asset can be listed without a tick; RAZA wants every curated asset here, no exceptions.
+const LX_CURATED_EXTRA=Object.keys(VERIFIED).map(function(k){ var p=k.split("|"); return {c:p[0],i:p[1],d:VERIFIED[k]||""}; })
+  .concat((GENERATED_ASSETS||[]).map(function(a){ return {c:a.code,i:a.issuer,d:VERIFIED[a.code+"|"+a.issuer]||a.domain||""}; }))
+  .filter(function(a,ix,arr){ return arr.findIndex(function(b){ return b.c===a.c&&b.i===a.i; })===ix; })
+  .filter(function(a){ return a.i&&/^[A-Za-z0-9]{1,12}$/.test(a.c)&&/^G[A-Z2-7]{55}$/.test(a.i)&&!LX_BASE_CODES[a.c]; })
+  // a logo fetched by _bridgelogos.js ships with the site; the endpoint is only the fallback for one not fetched yet
+  .map(function(a){ var f="assets/tokens/curated/"+a.c+"-"+a.i+".png"; if(fs.existsSync(require("path").join(__dirname,"..",f))) a.l="/"+f; return a; });const B=String.fromCharCode(92);
 
 // Solana (5) and Sui (8) are CCTP chains but are NOT offered as destinations. Claiming there is the user's
 // step, and neither has a route a user can actually take: their explorers cannot submit an arbitrary
@@ -15,7 +27,23 @@ const CCTP_DOMAINS={Ethereum:0,Avalanche:1,Optimism:2,Arbitrum:3,Base:6,Polygon:
 const HIDE=['BNB Chain','Hedera','Mantle','Near','Scroll','Sei','Starknet','zkSync Era','Solana','Sui'];
 
 const OLD_SUB='Swap assets seamlessly between networks via Wormhole and LayerZero.';
-const NEW_SUB='Bridge USDC natively across chains with Circle CCTP — burn on Stellar, mint on the destination.';
+const { LZ_LIVE } = require(__dirname + '/_lzflag.js');
+// One sub-heading per state. The CCTP-only line stays exactly as it was so nothing moves until the flag flips.
+const NEW_SUB = LZ_LIVE
+  ? 'Bridge USDC with Circle CCTP or USDT0 with LayerZero — burned on Stellar, minted on the destination, never wrapped.'
+  : 'Bridge USDC natively across chains with Circle CCTP — burn on Stellar, mint on the destination.';
+const PAGE_TITLE = LZ_LIVE
+  ? 'Bridge USDC and USDT0 across 16 chains | LumosCore'
+  : 'Bridge USDC across 8 chains with Circle CCTP | LumosCore';
+// Every wording this line has ever had. Whichever one a container currently holds gets normalised to NEW_SUB, so
+// the transform is idempotent in both directions. Add to this list, never edit in place.
+const SUB_VARIANTS = [
+  OLD_SUB,
+  // the escaped-dash variant a previous build shipped (a literal backslash-u2014 instead of an em dash)
+  'Bridge USDC natively across chains with Circle CCTP \\u2014 burn on Stellar, mint on the destination.',
+  'Bridge USDC natively across chains with Circle CCTP — burn on Stellar, mint on the destination.',
+  'Bridge USDC with Circle CCTP or USDT0 with LayerZero — burned on Stellar, minted on the destination, never wrapped.',
+];
 const BUGGY_SUB='Bridge USDC natively across chains with Circle CCTP \\u2014 burn on Stellar, mint on the destination.';
 
 const CSS='<style id="lx-cctp-css">'
@@ -110,7 +138,7 @@ const CSS='<style id="lx-cctp-css">'
 +'.br-table .lx-vbadge{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:600;padding:2px 7px;border-radius:20px;background:rgba(31,169,104,.12);color:#0f9257;border:.8px solid rgba(31,169,104,.28);vertical-align:middle;white-space:nowrap}'
 // Bridge Used column
 +'.br-table .lx-buse-dash{opacity:.4}'
-+'.br-table .lx-buse-cctp{font-weight:600;color:var(--text,#0e0e10)}'
++'.br-table .lx-buse-cctp,.br-table .lx-buse-lz{font-weight:600;color:var(--text,#0e0e10)}'
 // MAX button in the You Swap balance row
 +'.br-side .lx-balrow .max.lx-maxbtn{background:var(--accent-pale,rgba(234,106,44,.1))!important;background-image:none!important;color:var(--accent,#ea6a2c)!important;border:0!important;border-radius:7px;padding:2px 9px!important;width:auto!important;height:auto!important;min-width:0!important;font-size:11px;font-weight:700;line-height:1.7;cursor:pointer;box-shadow:none!important}'
 +'.br-side .lx-balrow .max.lx-maxbtn::after{content:"MAX"}'
@@ -140,8 +168,20 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-prog-list li.active .lx-spin{display:block}'
 +'.lx-tick{color:#fff;font-size:13px;font-weight:700;line-height:1;display:none}'
 +'.lx-prog-list li.done .lx-tick{display:block}'
+// The tick is CSS content, not a text node: a round marker holding one character is exactly what the site's logo
+// painter repaints -- it took the step 'Burn on Stellar', guessed from the word Stellar, and drew the Stellar logo.
++'.lx-prog-list .lx-tick::before{content:"✓"}'
 +'@keyframes lxspin{to{transform:rotate(360deg)}}'
-+'.lx-prog-msg{margin-top:18px;font-size:12.5px;color:var(--text,#0e0e10);opacity:.65;min-height:18px}'
++'.lx-prog-msg{margin-top:18px;font-size:12.5px;line-height:1.5;color:var(--text-soft,#6b6f7b);min-height:18px}'
+// soft by COLOUR, not opacity: opacity reached into the redeem button inside the message and washed it out
++'.lx-prog-msg b{color:var(--text,#0e0e10)}'
++'.lx-prog-redeem{margin-top:14px;padding:12px 14px;border:1px solid var(--border,#e5e6ea);border-radius:12px;background:var(--surface-2,#f6f7f9)}'
++'.lx-prog-rk{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft,#6b6f7b);margin-bottom:5px}'
++'.lx-prog-rh{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;line-height:1.5;color:var(--text,#0e0e10);word-break:break-all;user-select:all}'
++'.lx-prog-copy{margin-top:10px;display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border:1px solid var(--border-strong,#d4d6dd);border-radius:10px;background:transparent;color:var(--text,#0e0e10);font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:border-color .15s,color .15s}'
++'.lx-prog-copy:hover{border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}'
++'.lx-prog-copy:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px}'
++'.lx-prog-copy.is-ok{border-color:#1fa968;color:#1fa968}.lx-prog-copy.is-bad{border-color:#e5484d;color:#e5484d}'
 +'.lx-prog-x{margin-top:16px;width:100%;padding:13px;border:0;border-radius:13px;background:linear-gradient(135deg,var(--accent,#ea6a2c),#ff8a3d);color:#fff;font:inherit;font-size:15px;font-weight:650;cursor:pointer;box-shadow:0 8px 20px rgba(234,106,44,.32)}'
 +'.lx-prog-x:hover{filter:brightness(1.05)}'
 // ---- Awaiting redemption panel ----
@@ -213,6 +253,25 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brpbody{padding:6px 24px 14px}'
 // USDC disc with the chain it lives on badged onto it — the same read as the Recent transactions chips
 +'.lx-brp-amt{display:flex;align-items:center;gap:9px;flex-wrap:wrap}'
+// the phone hand-off: open this claim inside a wallet app's own browser
++'.lx-brp-hand{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}'
++'.lx-brp-hb{display:inline-flex;align-items:center;justify-content:center;padding:9px 14px;border-radius:10px;font-size:13.5px;font-weight:650;text-decoration:none !important;border:1px solid var(--border,#e5e6ea);color:var(--text,#0e0e10);background:var(--surface-2,#f6f7f9)}'
++'.lx-brp-hb:first-child{background:var(--accent,#ea6a2c);border-color:var(--accent,#ea6a2c);color:#fff}'
+// a claim already submitted: one quiet line with a spinner and the transaction link, nothing to press twice
++'.lx-brp-sent{flex:1 1 100%;display:flex;align-items:center;gap:10px;margin-top:12px;padding:11px 13px;border-radius:12px;border:1px solid var(--border,#e5e6ea);background:var(--surface-2,#f6f7f9);font-size:13px;color:var(--text,#0e0e10)}'
++'.lx-brp-sent a{color:var(--accent,#ea6a2c);font-weight:650;text-decoration:none}'
++'.lx-brp-spin{flex:0 0 14px;width:14px;height:14px;border-radius:50%;border:2px solid var(--border,#e5e6ea);border-top-color:var(--accent,#ea6a2c);animation:lxbrspin .8s linear infinite}'
++'@keyframes lxbrspin{to{transform:rotate(360deg)}}'
+// the phone claim block: "Claim on <network>", then three equal tiles -- icon over label, same size, one row
++'.lx-brp-claim{flex:1 1 100%;margin-top:12px}'
++'.lx-brp-claimh{font-size:15px;font-weight:700;color:var(--text,#0e0e10);margin-bottom:10px}'
++'.lx-brp-claim3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}'
++'.lx-brp-hb3{display:flex !important;flex-direction:column;align-items:center;justify-content:center;gap:7px;min-height:74px;padding:10px 6px !important;margin:0 !important;'
++'border:1px solid var(--border,#e5e6ea) !important;border-radius:12px !important;background:var(--surface-2,#f6f7f9) !important;color:var(--text,#0e0e10) !important;'
++'font:inherit;font-size:12.5px !important;font-weight:650 !important;line-height:1.2;text-align:center;text-decoration:none !important;cursor:pointer;box-shadow:none !important}'
++'.lx-brp-hb3:active{border-color:var(--accent,#ea6a2c) !important}'
++'.lx-brp-hi{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 26px}'
++'.lx-brp-hi svg,.lx-brp-hi img{width:26px;height:26px;display:block}'
 +'.lx-brp-ico{position:relative;width:24px;height:24px;flex:0 0 24px;display:inline-block}'
 +'.lx-brp-ico>img{width:100%;height:100%;border-radius:50%;object-fit:cover;display:block}'
 +'.lx-brp-ico>i{position:absolute;right:-4px;bottom:-4px;width:13px;height:13px;border-radius:50%;overflow:hidden;display:block;background:var(--surface,#16161a);box-shadow:0 0 0 2px var(--surface,#16161a)}'
@@ -250,7 +309,7 @@ const CSS='<style id="lx-cctp-css">'
 
 // ---- Browser engine (no backticks / no ${ } inside the browser code; no literal closing script tag) ----
 const BODY=`(function(){
-try{ document.title="Bridge USDC across 8 chains with Circle CCTP | LumosCore"; }catch(_){}   /* baked title said "DEX" */
+try{ document.title="${PAGE_TITLE}"; }catch(_){}   /* baked title said "DEX" */
 try{ window.__lxCCTP={
   testnet:false, sourceDomain:27,
   tokenMessenger:"CAE2G5Z77UP7GYPYGFOWFGW7C7J6I4YP2AFGSADRKQY62SYUFLPNFTXL",
@@ -433,6 +492,19 @@ function lxCctpBurn(destDomain, amountHuman, recipient, onStatus){
   });
 }
 window.lxCctpBurn=lxCctpBurn;
+// EXPORTED FOR THE LAYERZERO LAYER, deliberately rather than duplicating them there. lxCctpSigner resolves three
+// different wallet transports (Freighter, LOBSTR, WalletConnect) and lxCctpSdk owns the single lazy load of the
+// vendored SDK. A second copy of either in _lzusdt0.js would be two wallet paths that move real money and drift
+// apart the first time one is fixed -- so the LayerZero route signs through exactly the same code CCTP does.
+// (function declarations hoist, so lxCctpGateSign is defined by the time this runs even though it appears later)
+window.lxCctpSigner=lxCctpSigner; window.lxCctpSdk=lxCctpSdk; window.lxCctpGateSign=lxCctpGateSign;
+// Same reasoning for the swap half: lxStrictPath is the only pathfinder that knows this site's slippage and
+// error conventions, and lxFeeOwed* is the record that stops a missed fee signature from losing the fee. The
+// LayerZero route swaps into USDT0 the same way this one swaps into USDC, so it uses these, not copies.
+window.lxStrictPath=lxStrictPath; window.lxAssetOf=lxAssetOf; window.lxToAssets=lxToAssets;
+window.lxFeeOwed=lxFeeOwed; window.lxFeeOwedSet=lxFeeOwedSet; window.lxFeeOwedAdd=lxFeeOwedAdd;
+// (LX_ASSETS is exported further down, NOT here: it is a var, so only its declaration hoists to this point and
+//  assigning it now would publish undefined. The function declarations above are safe because their bodies hoist.)
 
 // Phase 3: poll Circle Iris (sandbox) for the burn's attestation. Returns {message, attestation, decodedMessage}.
 function lxCctpAttest(hash, onStatus){
@@ -477,9 +549,11 @@ function lxSubmitClassic(C,xdr){
 }
 function lxStrictPath(C,srcSpec,amount,destSpec){
   var sp=srcSpec.native?"source_asset_type=native":("source_asset_type="+((srcSpec.code||"").length>4?"credit_alphanum12":"credit_alphanum4")+"&source_asset_code="+srcSpec.code+"&source_asset_issuer="+srcSpec.issuer);
-  var da=destSpec.native?"native":("USDC:"+destSpec.issuer);
+  // The destination CODE was hardcoded to USDC here, which was harmless while CCTP was the only route but wrong the
+  // moment anything asks for a path to USDT0. Defaulted so every existing caller behaves exactly as before.
+  var da=destSpec.native?"native":((destSpec.code||"USDC")+":"+destSpec.issuer);
   return fetch(C.horizon+"/paths/strict-send?"+sp+"&source_amount="+amount+"&destination_assets="+encodeURIComponent(da)).then(function(r){return r.json();}).then(function(d){
-    var recs=(d._embedded&&d._embedded.records)||[]; if(!recs.length) throw new Error("No "+(srcSpec.code||"XLM")+"→"+(destSpec.native?"XLM":"USDC")+" swap path on mainnet.");
+    var recs=(d._embedded&&d._embedded.records)||[]; if(!recs.length) throw new Error("No "+(srcSpec.code||"XLM")+"→"+(destSpec.native?"XLM":(destSpec.code||"USDC"))+" swap path on mainnet.");
     return { out:parseFloat(recs[0].destination_amount), path:recs[0].path||[] };
   });
 }
@@ -564,7 +638,7 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
           // and fabricates a revenue row, so leave the slice in the user's wallet instead
           if(C.feeCollector!==pk) _tb2=_tb2.addOperation(feeOp);
           var tb=_tb2.setTimeout(120).build();
-          return signSubmit(tb,"swap+fee").then(function(){ return usdcBal().then(function(after){ var got=+(after-before).toFixed(7); if(!(got>0)) throw new Error("Swap produced no USDC."); var net=(netUsdcTarget>0&&netUsdcTarget<=got)?+netUsdcTarget.toFixed(7):got; return net; }); });
+          return signSubmit(tb,"swap+fee").then(function(sr){ /* the fee rides in this transaction: it is what the registry verifies */ try{ if(C.feeCollector!==pk) deferredFeeHash=(sr&&(sr.hash||sr.id))||""; }catch(_){} return usdcBal().then(function(after){ var got=+(after-before).toFixed(7); if(!(got>0)) throw new Error("Swap produced no USDC."); var net=(netUsdcTarget>0&&netUsdcTarget<=got)?+netUsdcTarget.toFixed(7):got; return net; }); });
         }); }); });
       });
     }).then(function(netHuman){
@@ -573,6 +647,8 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
         // AUDIT #1/#3 (FUNDS): persist the burn IMMEDIATELY, before attestation. Past this point the USDC is
         // already destroyed on Stellar, so the record must exist even if attestation times out or the tab closes.
         var rec={ burnHash:res.hash, approveHash:res.approveHash||null, netUsdc:netHuman, feeRate:feeRate,
+                  // what the user sent, so the claims panel can say "72.50 BLND -> 0.41 USDC on Base"
+                  srcKey:(isUSDC?"USDC":(sourceSpec&&sourceSpec.native?"XLM":((sourceSpec&&sourceSpec.code)||"USDC"))), srcAmount:srcAmt,
                   destDomain:parseInt(destDomain,10), recipient:recipient, status:"burned", ts:Date.now() };
         lxBrSavePending(rec);
         // fee now that the burn is confirmed. A fee failure must NEVER fail the bridge (the USDC is already
@@ -597,7 +673,13 @@ window.lxCctpBridgeFull=lxCctpBridgeFull;
 // Step 1: real network logos in the destination dropdown options + selected chip (logos only)
 function lxCctpNetLogos(){
   try{
-    var MAP={Ethereum:'ethereum',Avalanche:'avalanche',Optimism:'optimism',Arbitrum:'arbitrum',Base:'base',Polygon:'polygon',Solana:'solana',Sui:'sui',Linea:'linea','World Chain':'worldchain'};
+    // ONE MAP, NOT TWO. This function used to carry its own private copy of the network -> logo map, separate from
+    // LX_NETMAP below, and when LayerZero added eight destinations neither copy knew them. Any network missing
+    // here is simply left alone -- so the selected chip kept the design's default, which is Ethereum. That is why
+    // picking Plasma, MegaETH, Flare, Monad or Sei showed an Ethereum logo (RAZA 2026-09-19). Reading LX_NETMAP
+    // means a destination is added in one place and gets its logo everywhere. (It is a var assigned further down,
+    // but this only ever runs from the interval and click handlers below, by which time it has its value.)
+    var MAP=LX_NETMAP;
     // force=false: skip icons that already carry a real logo as a url() background (e.g. Ethereum's option) so we
     // don't fight the design's own re-render loop (that fight caused the Ethereum dropdown blip). force=true: always set.
     function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','assets/networks/'+key+'.png'); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="assets/networks/'+key+'.png" alt="">'; }
@@ -608,6 +690,26 @@ function lxCctpNetLogos(){
 }
 (function(){ var n=0,iv=setInterval(function(){ n++; lxCctpNetLogos(); if(n>25) clearInterval(iv); },250);
   document.addEventListener('click',function(){ setTimeout(lxCctpNetLogos,60); setTimeout(lxCctpNetLogos,260); },true); })();
+// THE FLASH ON SELECTING A DESTINATION (RAZA 2026-09-19: "There's a flash bug whenever i select any destination...
+// for split second, it shows something else"). The correction above runs 60ms and 260ms AFTER the click, so the
+// browser always painted the design's own icon first and then swapped it -- a frame of the wrong logo, every time.
+//
+// A MutationObserver callback runs as a microtask straight after the DOM change and BEFORE the next paint, so the
+// design's icon is replaced before it is ever drawn. Watching only the picker (.brd, trigger + menu) keeps it cheap.
+// It terminates by construction: apply() leaves an icon alone once it already shows the right src, so the change it
+// makes triggers one more pass that finds nothing to do.
+(function(){
+  function attach(){
+    var host=document.querySelector('.br-step[data-step="1"] .brd');
+    if(!host) return false;
+    if(host.__lxNetObs) return true;
+    host.__lxNetObs=1;
+    new MutationObserver(function(){ try{ lxCctpNetLogos(); }catch(_){} })
+      .observe(host,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['style','src','class']});
+    return true;
+  }
+  if(!attach()){ var t=0,iv=setInterval(function(){ if(attach()||++t>40) clearInterval(iv); },150); }
+})();
 
 // ---- Step 2: wire the EXISTING wizard (source asset + amount + USDC calc + dest logos). Design preserved: only content/logos + editability. ----
 var LX_ASSETS={
@@ -622,13 +724,31 @@ var LX_ASSETS={
   AQUA:{logo:"assets/tokens/aqua.png", spec:{code:"AQUA",issuer:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"}, px:0.004}
 };
 var LX_AORDER=["USDC","XLM","SHX","yXLM","LUMOS","BLND","AQUA"];
+// the rest of the curated list, after the seven that carry baked logos and CoinGecko prices. No price here: these
+// are valued by the live path quote (LX_PXLIVE stays unset, so the dollar line waits for it rather than guessing).
+(function(){ var X=${JSON.stringify(LX_CURATED_EXTRA)}; X.forEach(function(a){ if(LX_ASSETS[a.c])return;
+  LX_ASSETS[a.c]={logo:(a.l||("/lxapi/logoimg?asset="+a.c+"-"+a.i)), spec:{code:a.c,issuer:a.i}, px:0, dom:a.d}; LX_AORDER.push(a.c); }); })();
+// an asset with no logo anywhere leaves the grey disc rather than a broken-image mark
+document.addEventListener("error",function(e){ var t=e.target; if(t&&t.tagName==="IMG"&&t.closest&&(t.closest("#lx-br-amenu")||t.closest(".br-asset"))) t.style.visibility="hidden"; },true);
+document.addEventListener("load",function(e){ var t=e.target; if(t&&t.tagName==="IMG"&&t.style.visibility==="hidden") t.style.visibility=""; },true);
 // Which px values are a LIVE price rather than the baked placeholder above. Only USDC is inherently
 // true (it is the unit). XLM is set from our own /lxapi/xlm route, the rest by the CoinGecko pass --
 // and CoinGecko does not list LUMOS, so LUMOS never becomes live and must never be quoted from px.
 // Measured before this gate existed: typing 711 LUMOS printed "You get ~ 177.39 USDC" for ~2 seconds
 // (baked px 0.25) against a real 0.05 -- overstated 3,548x -- until the live path quote replaced it.
 var LX_PXLIVE={USDC:true};
-var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arbitrum:"arbitrum",Base:"base",Polygon:"polygon",Solana:"solana",Sui:"sui",Linea:"linea","World Chain":"worldchain"};
+var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arbitrum:"arbitrum",Base:"base",Polygon:"polygon",Solana:"solana",Sui:"sui",Linea:"linea","World Chain":"worldchain",
+  // The eight destinations only LayerZero reaches. Each logo was fetched from DefiLlama's chain icon set, checked by
+  // eye against the brand, resized to 96x96 and self-hosted under assets/networks/ -- never hotlinked.
+  Sei:"sei",Berachain:"berachain",Ink:"ink",Hyperliquid:"hyperliquid",Monad:"monad",Flare:"flare",MegaETH:"megaeth",Plasma:"plasma"};
+// THE PICKER'S ICONS, BY STYLESHEET. lxCctpNetLogos leaves an option alone when the design already gave it a url()
+// background -- replacing it fought the design's re-render loop -- and Ethereum's option carries the design's own
+// ETH-TOKEN diamond. So the list showed that, and the selected field our network logo (RAZA 2026-09-19: "Why is
+// ethereum's logo different in the dropdown and different when selected"). An !important background outranks the
+// inline one without touching the node, so there is nothing for the loop to fight and nothing to flash.
+(function(){ try{ if(document.getElementById("lx-netbg"))return; var css="";
+  Object.keys(LX_NETMAP).forEach(function(n){ css+='.brd-opt[data-net="'+n+'"] .brd-ic{background:url(/assets/networks/'+LX_NETMAP[n]+'.png) center/cover no-repeat !important;color:transparent !important}'; });
+  var st=document.createElement("style"); st.id="lx-netbg"; st.textContent=css; (document.head||document.documentElement).appendChild(st); }catch(_){} })();
 // per-network block explorer "wallet address" pages (for clickable recent-tx addresses)
 var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan.org/address/",Arbitrum:"https://arbiscan.io/address/",Optimism:"https://optimistic.etherscan.io/address/",Polygon:"https://polygonscan.com/address/",Avalanche:"https://snowtrace.io/address/",Linea:"https://lineascan.build/address/","World Chain":"https://worldscan.org/address/",Solana:"https://solscan.io/account/",Sui:"https://suiscan.xyz/mainnet/account/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
@@ -636,13 +756,24 @@ function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
 var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
 window.__lxBr=window.__lxBr||{srcKey:"USDC", amount:"", pk:null, bals:null, _loading:false};
 
+// ROUND DOWN for anything that is a balance. toLocaleString rounds half-up, so 0.03297 USDC showed as 0.033 and MAX
+// filled 0.033 -- more than the wallet holds -- which then failed its own balance check (RAZA 2026-09-19).
+function lxBrFloor(n,dp){ var f=Math.pow(10,dp); return Math.floor(n*f+1e-6)/f; }
+// the exact spendable figure, Stellar precision (7dp), no separators -- what MAX writes into the field
+function lxBrExact(n){ return lxBrFloor(n,7).toFixed(7).replace(/\\.?0+$/,""); }
+// a received amount: 4 decimals under 1, otherwise always exactly 2 ("9,957.60", never "9,957.6")
+function lxBrAmt2(n){ if(!(n>0))return "0.00"; return n<1?lxBrFmt(n,4):Number(n).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function lxBrFmt(n,dp){ if(n==null||!isFinite(n))return "0"; return Number(n).toLocaleString("en-US",{maximumFractionDigits:dp==null?2:dp}); }
 function lxBrShort(a){ return a&&a.length>12 ? a.slice(0,5)+"…"+a.slice(-4) : (a||""); }
 function lxBrDestNet(){ var t=document.querySelector('.br-step[data-step="1"] .brd-trigger .nm'); return t?(t.textContent||"").trim():""; }
 function lxBrBalOf(k){ var Bm=window.__lxBr.bals; if(!Bm)return null; return Bm[k]!=null?Bm[k]:0; }
 // destination address validation. CCTP dests are EVM/Solana/Sui — none require a pre-existing USDC trustline
 // (EVM: any address holds ERC-20 USDC; Solana ATA + Sui coin object are auto-created by CCTP mint). So format-check only.
-var LX_EVM_NETS={Ethereum:1,Avalanche:1,Optimism:1,Arbitrum:1,Base:1,Polygon:1,Linea:1,'World Chain':1};
+var LX_EVM_NETS={Ethereum:1,Avalanche:1,Optimism:1,Arbitrum:1,Base:1,Polygon:1,Linea:1,'World Chain':1,
+  // The LayerZero-only destinations are all EVM chains too, and USDT0's OFT takes the recipient as an EVM address
+  // left-padded to 32 bytes. Without these entries any text at all passed the address check for them -- and a
+  // cross-chain transfer to a mistyped address cannot be recalled.
+  Berachain:1,Ink:1,Hyperliquid:1,Monad:1,Flare:1,Sei:1,MegaETH:1,Plasma:1};
 function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false; if(LX_EVM_NETS[net])return /^0x[0-9a-fA-F]{40}$/.test(a); if(net==='Solana')return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a); if(net==='Sui')return /^0x[0-9a-fA-F]{64}$/.test(a); return a.length>0; }
 function lxBrStep2Err(msg){ var s2=document.querySelector('.br-step[data-step="2"]'); var e=s2?s2.querySelector('.br-errslot'):null; if(e){ e.textContent=msg||''; if(msg) e.setAttribute('data-err',msg); else e.removeAttribute('data-err'); e.style.color=msg?'#e04f4f':''; } }
 // keep the Review button disabled until amount>0 AND a valid destination address; flag an invalid address in red
@@ -652,11 +783,29 @@ function lxBrValidateStep2(){
   var k=window.__lxBr.srcKey; var amtIn=sides[0].querySelector('.br-amt .lx-amtin'); var amt=parseFloat((((amtIn?amtIn.value:'')||'').split(',').join('')))||0;
   var dstIn=sides[1].querySelector('.br-addr-in'); var addr=dstIn?(dstIn.value||'').trim():''; var net=lxBrDestNet();
   var bal=lxBrBalOf(k); var overBal=(bal!=null && amt>bal);
-  var addrOk=lxBrValidAddr(net,addr), amtOk=(amt>0 && !overBal), ok=addrOk&&amtOk;
+  // THE ROUTE MUST BE ONE THIS PAGE CAN SEND. Review -> Confirm runs the CCTP engine and nothing else; the LayerZero
+  // send engine exists but is not wired to it. So with LayerZero chosen, Review would have sent the money by CCTP
+  // (USDC instead of USDT0, to be claimed) -- or aimed CCTP at a LayerZero-only chain such as Plasma (found
+  // 2026-09-19). The route panel publishes its choice in __lxBrRouteGate; with no panel rendered, nothing changes.
+  var rg=window.__lxBrRouteGate, routeMsg="";
+  if(rg&&rg.rendered&&amt>0&&!overBal){
+    // LayerZero is sendable once its engine is live (LZ_SENDABLE, published by _lzusdt0.js); until then, blocked.
+    // the chosen route can't take this amount (a minimum, the liquidity guard): it stays chosen, and says why
+    if(rg.blocked) routeMsg=rg.blocked;
+    else if(rg.route==="LayerZero"&&window.__lxLzSendable){ routeMsg=""; }
+    else if(rg.route==="NEAR Intents"&&window.__lxNiSendable){ routeMsg=""; }
+    else if(rg.route==="NEAR Intents") routeMsg="Sending by NEAR Intents isn't switched on yet — choose another route.";
+    else if(rg.route==="LayerZero") routeMsg=rg.cctp
+      ? "Sending by LayerZero isn't switched on yet — choose CCTP to continue."
+      : "Sending to "+(net||"this network")+" isn't switched on yet — it can only be reached by LayerZero.";
+    else if(rg.route!=="CCTP") routeMsg=rg.why||"No route can take this amount without a large loss. Try a smaller amount.";
+  }
+  var addrOk=lxBrValidAddr(net,addr), amtOk=(amt>0 && !overBal), ok=addrOk&&amtOk&&!routeMsg;
   var wrap=(dstIn&&dstIn.closest)?dstIn.closest('.br-wallet'):null;
   if(wrap){ if(addr&&!addrOk) wrap.classList.add('lx-invalid'); else wrap.classList.remove('lx-invalid'); }
   // inline error (balance-exceeded takes priority over a malformed address)
-  if(overBal) lxBrStep2Err("Amount exceeds your balance ("+lxBrFmt(bal,bal>=1000?0:2)+" "+k+").");
+  if(overBal) lxBrStep2Err("Amount exceeds your balance ("+lxBrFmt(lxBrFloor(bal,bal>=1000?2:4),bal>=1000?2:4)+" "+k+").");
+  else if(routeMsg) lxBrStep2Err(routeMsg);
   else if(addr && !addrOk) lxBrStep2Err("That doesn't look like a valid "+(net||'destination')+" address.");
   else lxBrStep2Err("");
   var rev=s2.querySelector('[data-go="3"]');
@@ -669,18 +818,19 @@ function lxBrAssetMenu(anchor){
   var m=document.getElementById("lx-br-amenu");
   if(!m){
     if(!document.getElementById("lx-br-amenu-css")){ var st=document.createElement("style"); st.id="lx-br-amenu-css";
-      st.textContent=".lx-br-amenu{background:#fff;border:1px solid #ececef;border-radius:14px;box-shadow:0 18px 44px rgba(15,20,35,.16);padding:6px;font:inherit;color:#0e0e10}"
+      st.textContent=".lx-br-amenu{background:var(--surface-2,#fff);border:1px solid var(--border,#ececef);border-radius:14px;box-shadow:0 18px 44px rgba(0,0,0,.28);padding:6px;font:inherit;color:var(--text,#0e0e10)}"
         +".lx-amsearch{padding:4px 4px 6px}"
-        +".lx-amq{width:100%;box-sizing:border-box;background:#f6f7f9;border:1px solid #ececef;border-radius:9px;color:#0e0e10;font:inherit;font-size:13px;padding:8px 10px;outline:none}"
+        +".lx-amq{width:100%;box-sizing:border-box;background:var(--surface,#f6f7f9);border:1px solid var(--border,#ececef);border-radius:9px;color:var(--text,#0e0e10);font:inherit;font-size:13px;padding:8px 10px;outline:none}"
+        +".lx-amq::placeholder{color:var(--text-soft,#8a90a2)}"
         +".lx-amq:focus{border-color:rgba(234,106,44,.55);box-shadow:0 0 0 3px rgba(234,106,44,.1)}"
         +".lx-amlist{max-height:264px;overflow:auto}"
         +".lx-br-amenu button{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;border-radius:10px;background:transparent;color:inherit;font:inherit;cursor:pointer;text-align:left}"
-        +".lx-br-amenu button:hover{background:#f4f5f7}"
-        +".lx-br-amenu .aic{width:26px;height:26px;border-radius:50%;overflow:hidden;display:inline-flex;flex:0 0 26px;background:#f0f1f4}"
+        +".lx-br-amenu button:hover{background:var(--surface,#f4f5f7)}"
+        +".lx-br-amenu .aic{width:26px;height:26px;border-radius:50%;overflow:hidden;display:inline-flex;flex:0 0 26px;background:var(--surface,#f0f1f4)}"
         +".lx-br-amenu .aic img{width:100%;height:100%;object-fit:cover;display:block}"
         +".lx-br-amenu .atx{display:flex;flex-direction:column;line-height:1.25;min-width:0}"
         +".lx-br-amenu .anm{font-size:14px;font-weight:600}"
-        +".lx-br-amenu .aiss{font-size:11px;color:#8a90a2;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}";
+        +".lx-br-amenu .aiss{font-size:11px;color:var(--text-soft,#8a90a2);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}";
       document.head.appendChild(st); }
     m=document.createElement("div"); m.id="lx-br-amenu"; m.className="lx-br-amenu"; m.style.cssText="position:absolute;z-index:99999;min-width:236px;display:none";
     m.innerHTML='<div class="lx-amsearch"><input class="lx-amq" type="text" placeholder="Search asset or issuer" spellcheck="false" autocomplete="off"></div>'
@@ -711,7 +861,7 @@ function lxBrRenderSource(){
   if(chip){ var nm=chip.querySelector('.nm'); if(nm)nm.textContent=k; var im=chip.querySelector('.lx-assetic img'); if(im){ if(im.getAttribute('src')!==A.logo) im.src=A.logo; } else { var ic=chip.querySelector('.lx-assetic')||chip.querySelector('.br-ic'); if(ic) ic.innerHTML='<img src="'+A.logo+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; } }
   var addr=side.querySelector('.br-wallet .addr'); if(addr){ var full=window.__lxBr.pk||LX_SRC_ADDR, sh=lxBrShort(full); if(addr.textContent!==sh){ addr.textContent=sh; addr.title=full; } }
   var bal=side.querySelector('.bal');
-  if(bal){ var b=lxBrBalOf(k); var maxEl=bal.querySelector('.max'); var bStr=(b==null?"—":lxBrFmt(b,b>=1000?0:4));
+  if(bal){ var b=lxBrBalOf(k); var maxEl=bal.querySelector('.max'); var bStr=(b==null?"—":lxBrFmt(lxBrFloor(b,b>=1000?2:4),b>=1000?2:4));
     var txt=bal.querySelector('.lx-bal-txt');
     if(!txt){ txt=document.createElement('span'); txt.className='lx-bal-txt'; var fc=bal.firstChild; if(fc&&fc.nodeType===3){ bal.replaceChild(txt,fc); } else { bal.insertBefore(txt,bal.firstChild); } }
     txt.textContent="Balance: "+bStr+" "+k+" ";
@@ -737,12 +887,15 @@ function lxBrRenderDest(){
 // Write the money element when there is one, and the .usd line itself when there is not.
 function lxBrMoney(side, usd){
   if(!side)return;
-  var s="$"+lxBrFmt(usd,2), v=String(Math.round(usd*100)/100);
+  // Under a cent says so. Rounded to 2dp, 0.5125 SHX (~$0.0018) read "~ $0" -- as if SHX had no price at all.
+  // Always two decimals: "$10,003.5" read as a different precision from its neighbours.
+  var s=(usd>0&&usd<0.01)?"< $0.01":"$"+Number(usd).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}), v=String(Math.round(usd*100)/100);
   var el=side.querySelector('.br-amt .usd .lc-money');
   if(el){ el.setAttribute('data-usd',v); el.setAttribute('data-orig',s); el.textContent=s; return; }
   var u=side.querySelector('.br-amt .usd')||side.querySelector('.usd');
   if(!u)return;
-  u.setAttribute('data-usd',v); u.setAttribute('data-orig',"~ "+s); u.textContent="~ "+s;   // design format
+  var pre=(s.charAt(0)==="<")?"":"~ ";                                                  // "< $0.01" is already approximate
+  u.setAttribute('data-usd',v); u.setAttribute('data-orig',pre+s); u.textContent=pre+s;   // design format
 }
 // The dollar line while no live price is known. data-usd stays 0 so the money-hiding toggle has a number
 // to work from, but the visible text says "unknown" rather than naming a figure derived from a guess.
@@ -800,7 +953,7 @@ function lxBrCalc(){
   var srcUsd=amt*pxu, out=amt*pxu*(1-feeRate);
   if(pxLive) lxBrMoney(sides[0], srcUsd); else lxBrMoneyPending(sides[0]);
   if(amt<=0){ outEl.textContent="~ 0.00"; lxBrMoney(sides[1],0); window.__lxBr.netUsdc=0; return; }
-  if(pxLive){ outEl.textContent="~ "+lxBrFmt(out,2); lxBrMoney(sides[1], out); window.__lxBr.netUsdc=+out.toFixed(7); }
+  if(pxLive){ outEl.textContent="~ "+lxBrAmt2(out); lxBrMoney(sides[1], out); window.__lxBr.netUsdc=+out.toFixed(7); }
   else { outEl.textContent="~ —"; lxBrMoneyPending(sides[1]); window.__lxBr.netUsdc=0; }
   if(k==="USDC")return;                                     // USDC->USDC: amt*(1-fee) IS exact, nothing to quote
   // LANDMINE: lxBrCalc is re-invoked on a ~200ms design loop, so a plain debounce (clearTimeout on every
@@ -811,8 +964,12 @@ function lxBrCalc(){
   var qk=k+"|"+amt.toFixed(7)+"|"+feeRate;
   function paint(real){
     if(real==null){ outEl.textContent="~ —"; lxBrMoney(sides[1],0); window.__lxBr.netUsdc=0; return; }
-    outEl.textContent="~ "+lxBrFmt(real,2); lxBrMoney(sides[1], real);
-    window.__lxBr.netUsdc=+real.toFixed(7); lxBrMoney(sides[0], real/(1-feeRate));
+    outEl.textContent="~ "+lxBrAmt2(real); lxBrMoney(sides[1], real);
+    // The SOURCE dollar line is the value of what you send: amount x live price. It used to be rebuilt from the swap
+    // quote (real/(1-fee)), which is what you RECEIVE and moves with whichever path Horizon picks that instant -- so
+    // 51,981 XLM read $10,003.50, 51,982 read $9,996.77 and 51,983 read $10,001.08 (RAZA 2026-09-19): more XLM, fewer
+    // dollars. Only an asset with no live price (LUMOS, most curated extras) still takes its value from the quote.
+    window.__lxBr.netUsdc=+real.toFixed(7); if(!pxLive) lxBrMoney(sides[0], real/(1-feeRate));
   }
   if(Object.prototype.hasOwnProperty.call(Q.cache,qk)){ paint(Q.cache[qk]); return; }
   if(Q.key===qk)return;                                     // already in flight for exactly these inputs
@@ -823,13 +980,29 @@ function lxBrCalc(){
     .catch(function(){ Q.cache[qk]=null; if(Q.key===qk)paint(null); });
 }
 
+// After a transfer the balances on screen are stale -- the source asset (and the XLM for fees) just left the wallet.
+// Re-read them WITHOUT a wallet prompt: clearing bals lets the non-forced path through, which only asks isAllowed.
+// Once now and again after 6s, because Horizon can lag the ledger by a close or two.
+function lxBrRefreshBalances(){ try{ var go=function(){ var B=window.__lxBr; if(!B||B._loading)return; B.bals=null; lxBrLoadWallet(false); }; go(); setTimeout(go,6000); }catch(_){} }
+window.lxBrRefreshBalances=lxBrRefreshBalances;
 function lxBrLoadWallet(force){
   var B=window.__lxBr; if(B._loading||(B.pk&&B.bals&&!force))return; B._loading=true;
   try{ lxCctpSigner().then(function(f){
     function grab(){ return Promise.resolve(f.getAddress?f.getAddress():f.getPublicKey()).then(function(a){ return (a&&a.address)||a; }); }
     var gate = force ? Promise.resolve(f.requestAccess?f.requestAccess():null) : (f.isAllowed?Promise.resolve(f.isAllowed()).then(function(ok){ if(!ok) throw new Error("not-allowed"); }):Promise.resolve());
     return gate.then(grab).then(function(pk){ if(!pk)throw new Error("no-pk"); B.pk=pk; var C=window.__lxCCTP;
-      return fetch(C.horizon+"/accounts/"+pk).then(function(r){return r.json();}).then(function(ac){ var m={}; (ac.balances||[]).forEach(function(x){ if(x.asset_type==="native")m.XLM=parseFloat(x.balance); else if(x.asset_code)m[x.asset_code]=parseFloat(x.balance); }); B.bals=m; B._loading=false; lxBrRenderSource(); });
+      return fetch(C.horizon+"/accounts/"+pk).then(function(r){return r.json();}).then(function(ac){ var m={};
+      // SPENDABLE, not held (RAZA 2026-09-19: 32.45 XLM shown, 5 XLM refused op_underfunded). Stellar locks 0.5 XLM per
+      // subentry plus 1 base -- his 61 trustlines, pool shares and offers held 31.5 of the 32.45, leaving 0.95 -- and an
+      // open offer reserves its selling amount of any asset. "Available to send", MAX and the balance check all read
+      // this, so each now means what it says. XLM also keeps 0.3 back for the network fees of the burn itself: a
+      // transfer that spends every lumen on the swap cannot then pay to send what it swapped.
+      var res=(2+(+ac.subentry_count||0)+(+ac.num_sponsoring||0)-(+ac.num_sponsored||0))*0.5;
+      (ac.balances||[]).forEach(function(x){
+        var free=(parseFloat(x.balance)||0)-(parseFloat(x.selling_liabilities)||0);
+        if(x.asset_type==="native") m.XLM=Math.max(0,+(free-res-0.3).toFixed(7));
+        else if(x.asset_code) m[x.asset_code]=Math.max(0,+free.toFixed(7)); });
+      B.bals=m; B._loading=false; lxBrRenderSource(); });
     });
   }).catch(function(){ B._loading=false; lxBrRenderSource(); }); }catch(_){ B._loading=false; }
 }
@@ -847,7 +1020,7 @@ function lxCctpWireStep2(){
     var dChip=dstSide.querySelector('.br-asset'); if(dChip){ dChip.style.cursor="default"; dChip.addEventListener('click',function(e){ e.stopPropagation(); e.preventDefault(); },true); }
     lxBrRenderSource(); // creates the amount <input> (idempotent, value-preserving)
     var amtBox=srcSide.querySelector('.br-amt'); if(amtBox) amtBox.addEventListener('click',function(e){ if(e.target.closest && e.target.closest('.max'))return; var i=amtBox.querySelector('.lx-amtin'); if(i) i.focus(); });
-    var maxEl=srcSide.querySelector('.bal .max'); if(maxEl){ maxEl.style.cursor="pointer"; maxEl.addEventListener('click',function(e){ e.stopPropagation(); var b=lxBrBalOf(window.__lxBr.srcKey); if(b==null){ lxBrLoadWallet(true); return; } var a2=srcSide.querySelector('.br-amt .lx-amtin'); if(a2){ a2.value=lxBrFmt(b,b>=1000?0:4); lxBrCalc(); } }); }
+    var maxEl=srcSide.querySelector('.bal .max'); if(maxEl){ maxEl.style.cursor="pointer"; maxEl.addEventListener('click',function(e){ e.stopPropagation(); var b=lxBrBalOf(window.__lxBr.srcKey); if(b==null){ lxBrLoadWallet(true); return; } var a2=srcSide.querySelector('.br-amt .lx-amtin'); if(a2){ a2.value=lxBrExact(b); lxBrCalc(); } }); }
     var wc=srcSide.querySelector('.br-wallet'); if(wc) wc.addEventListener('click',function(){ if(!window.__lxBr.pk) lxBrLoadWallet(true); },false);
     // gate: block advance to Review unless a valid destination address is present
     var dstInEl=dstSide.querySelector('.br-addr-in'); var revBtn=s2.querySelector('[data-go="3"]');
@@ -874,7 +1047,7 @@ function lxCctpWireStep2(){
     // Paste button -> read clipboard into the destination input
     var pasteBtn=dstSide.querySelector('.br-paste');
     if(pasteBtn) pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation();
-      function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); dstInEl.focus(); } }
+      function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); /* filled: no keyboard needed (RAZA 2026-09-19) */ dstInEl.blur(); } }
       if(navigator.clipboard&&navigator.clipboard.readText){ navigator.clipboard.readText().then(set).catch(function(){ if(dstInEl){ dstInEl.focus(); } }); }
       else if(dstInEl){ dstInEl.focus(); try{ document.execCommand('paste'); }catch(_){ } }
     },true);
@@ -930,27 +1103,63 @@ function lxBrReview(){
   // Circle CCTP fee row — Standard transfer is free (only our 0.2%/0.1% applies). Structured so a Fast-transfer fee could slot in later.
   var list=s3.querySelector('.br-rv-list');
   if(list && !list.querySelector('.lx-cfee')){ var feeRow=list.querySelector('.lx-bfee'); var r=document.createElement('div'); r.className='r lx-cfee'; r.innerHTML='<span class="k">Circle CCTP fee</span><span class="v">Free <span class="lx-cchip">Standard transfer</span></span>'; if(feeRow) feeRow.parentNode.insertBefore(r, feeRow.nextSibling); else list.appendChild(r); }
+  // THE REVIEW FOLLOWS THE ROUTE. With LayerZero chosen it said "USDC", showed the USDC logo and "Circle CCTP fee:
+  // Free" -- a review of a transfer that was not the one about to be signed. Rewritten on every show, both ways.
+  var cf=list?list.querySelector('.lx-cfee'):null;
+  if(window.__lxBrRoute==="LayerZero"){
+    var rv=document.documentElement.getAttribute('data-lxroute-recv')||"";
+    var rn=parseFloat(rv); if(recvAm) recvAm.textContent=(rv===""||!isFinite(rn))?"~ — USDT0":("~ "+rn.toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:rn<1?4:2})+" USDT0");
+    if(rIc) rIc.innerHTML='<img src="/assets/tokens/usdt0.png" style="width:100%;height:100%;object-fit:cover;display:block" alt="">';
+    // the messaging fee as the route panel quoted it, e.g. "0.2% + 0.4845 XLM" -> "0.4845 XLM"
+    var fv=[].slice.call(document.querySelectorAll('.lx-brs-row')).filter(function(x){ return /Bridge fee/.test(x.textContent||""); })[0];
+    var xm=fv?/([0-9.]+)\\s*XLM/.exec(fv.textContent||""):null;
+    if(cf) cf.innerHTML='<span class="k">LayerZero messaging fee</span><span class="v">'+(xm?xm[1]+' XLM':'Quoted at signing')+' <span class="lx-cchip">Delivered in ~30 min</span></span>';
+  } else if(window.__lxBrRoute==="NEAR Intents"){
+    // the token picked for delivery (ETH, POL...), its logo, and NEAR Intents' own cut beside ours
+    var de2=document.documentElement, sym=de2.getAttribute('data-lxroute-asset')||"", rv2=de2.getAttribute('data-lxroute-recv')||"", n2=parseFloat(rv2);
+    if(recvAm) recvAm.textContent=(rv2===""||!isFinite(n2))?("~ — "+sym):("~ "+(n2<1?n2.toPrecision(4):n2.toLocaleString("en-US",{maximumFractionDigits:4}))+" "+sym);
+    var lg2=de2.getAttribute('data-lxroute-logo'); if(rIc&&lg2) rIc.innerHTML='<img src="'+lg2+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">';
+    var nf=[].slice.call(document.querySelectorAll('.lx-brs-row')).filter(function(x){ return /Bridge fee/.test(x.textContent||""); })[0];
+    var nm2=nf?/([0-9.]+)%\\s*NEAR/.exec(nf.textContent||""):null;
+    if(cf) cf.innerHTML='<span class="k">NEAR Intents fee</span><span class="v">'+(nm2?nm2[1]+'%':'Included in the quote')+' <span class="lx-cchip">Delivered in ~30 s, no claim</span></span>';
+  } else if(cf){
+    cf.innerHTML='<span class="k">Circle CCTP fee</span><span class="v">Free <span class="lx-cchip">Standard transfer</span></span>';
+  }
 }
 function lxBrAddRecentTx(o){
   var tbody=document.querySelector('.br-table tbody'); if(!tbody)return;
   var nkey=LX_NETMAP[o.net]||"", sIcon=lxBrStellarIcon(), xp=lxBrXpIcon();
   // FROM icon = the SOURCE ASSET logo (USDC/XLM), not always the Stellar network mark.
-  var srcImg=(o.srcKey==="USDC")?"assets/tokens/usdc.png":((o.srcKey==="XLM")?"assets/tokens/xlm.png":"");
+  /* the SOURCE asset's own logo, from the curated list -- it knew only USDC and XLM, so BLND (and every other
+     source) fell back to the Stellar mark and read as XLM (RAZA 2026-09-19) */
+  var srcImg=((LX_ASSETS[o.srcKey]||{}).logo)||"";
   var srcIco=srcImg?('<img class="lx-netimg" src="'+srcImg+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'):sIcon;
   var tr=document.createElement('tr'); tr.className="lx-newtx";
   tr.innerHTML='<td>'+(o.when||'Just now')+'</td>'
     +'<td><span class="br-asschip"><span class="br-ic lx-netic">'+srcIco+'</span><span><span class="am">'+o.srcAmount+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span></td>'
     // A record with no source account gets a dash, not an empty link to /account/undefined.
     +'<td class="mono">'+(o.src?('<a class="lx-txaddr" href="'+lxSrcExp(o.src)+'" target="_blank" rel="noopener" title="View source wallet on Stellar Expert">'+lxBrShort(o.src)+'</a>'):'\\u2014')+'</td>'
-    +'<td><span class="br-asschip"><span class="br-ic lx-netic"><img class="lx-netimg" src="assets/networks/'+nkey+'.png" style="width:100%;height:100%;object-fit:cover;display:block" alt=""></span><span><span class="am">'+lxBrFmt(o.amount,2)+' USDC</span><span class="nt">'+o.net+'</span></span></span></td>'
-    +'<td class="mono"><a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener" title="View destination wallet on '+o.net+' explorer">'+lxBrShort(o.recipient)+'</a></td>'
-    +'<td class="lx-buse"><span class="lx-buse-cctp">CCTP</span></td>'
-    +'<td class="br-xp"><a class="br-xplink" href="https://stellar.expert/explorer/public/tx/'+o.hash+'" target="_blank" rel="noopener" aria-label="View on explorer" title="View burn on Stellar Expert">'+xp+'</a></td>';
+    // A burn whose destination is not known yet says so. It used to draw a broken image for the network, "0 USDC"
+    // and an empty address cell (RAZA 2026-09-19) -- which read as an unclaimed transfer. The registry now fills
+    // these in from the burn transaction itself, so this is only ever a brief state.
+    +(o.net
+      ? ('<td><span class="br-asschip"><span class="br-ic lx-netic"><img class="lx-netimg" src="assets/networks/'+nkey+'.png" style="width:100%;height:100%;object-fit:cover;display:block" alt=""></span><span><span class="am">'+lxBrFmt(o.amount,(+o.amount>0&&+o.amount<1)?6:2)+' '+(o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC"))+'</span><span class="nt">'+o.net+'</span></span></span></td>'
+        +'<td class="mono">'+(o.recipient?('<a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener" title="View destination wallet on '+o.net+' explorer">'+lxBrShort(o.recipient)+'</a>'):'\\u2014')+'</td>')
+      : ('<td><span class="br-asschip"><span><span class="am">USDC</span><span class="nt">Destination pending</span></span></span></td>'
+        +'<td class="mono" style="color:var(--text-soft)">Pending</td>'))
+    +((o.bridge&&o.bridge!=="CCTP")?'<td class="lx-buse"><span class="lx-buse-lz">'+lxBrEsc(o.bridge)+'</span></td>':'<td class="lx-buse"><span class="lx-buse-cctp">CCTP</span></td>')
+    +'<td class="br-xp"><a class="br-xplink" href="'+(o.bridge==="LayerZero"?('https://layerzeroscan.com/tx/'+o.hash):('https://stellar.expert/explorer/public/tx/'+o.hash))+'" target="_blank" rel="noopener" aria-label="View on explorer" title="'+(o.bridge==="LayerZero"?'Track delivery on LayerZero Scan':'View burn on Stellar Expert')+'">'+xp+'</a></td>';
   tbody.insertBefore(tr, tbody.firstChild);
   // a new row lands at the top, which shifts every page boundary — repage, and show the page it is on
   try{ lxBrTxPage=1; lxBrTxApply(); }catch(_){}
 }
-window.lxBrAddRecentTx=lxBrAddRecentTx; window.lxBrReview=lxBrReview;
+window.lxBrAddRecentTx=lxBrAddRecentTx; window.lxBrReview=lxBrReview; window.lxBrValidateStep2=lxBrValidateStep2;
+// the progress dialog, reachable so its states can be rendered and checked without moving money
+window.lxBrProgShow=lxBrProgShow; window.lxBrProgUpdate=lxBrProgUpdate; window.lxBrProgDone=lxBrProgDone; window.lxBrProgFail=lxBrProgFail;
+// The canonical issuer per source asset. A ticker is not an identity on Stellar and this table is where the right
+// issuer lives (the AUDIT #4 note above fixed LUMOS pointing at the USDC issuer), so anything resolving a source
+// asset reads it here rather than keeping a second copy that can drift. Exported HERE, after the assignment.
+window.LX_ASSETS=LX_ASSETS;
 // ---- history from the chain ----------------------------------------------------------------------
 function lxB64(v){ try{ var s=atob(v), a=new Uint8Array(s.length); for(var i=0;i<s.length;i++)a[i]=s.charCodeAt(i); return a; }catch(_){ return new Uint8Array(0); } }
 function lxB64Str(v){ try{ return atob(v); }catch(_){ return ""; } }
@@ -1018,19 +1227,21 @@ window.lxBrChainHistory=lxBrChainHistory; window.lxBrMergedTxs=lxBrMergedTxs;
 // build step strips those; this fills the .lx-brmhost left in their place.
 function lxBrMobCard(o){
   var nkey=LX_NETMAP[o.net]||"";
-  var srcImg=(o.srcKey==="USDC")?"assets/tokens/usdc.png":((o.srcKey==="XLM")?"assets/tokens/xlm.png":"");
+  /* the SOURCE asset's own logo, from the curated list -- it knew only USDC and XLM, so BLND (and every other
+     source) fell back to the Stellar mark and read as XLM (RAZA 2026-09-19) */
+  var srcImg=((LX_ASSETS[o.srcKey]||{}).logo)||"";
   var srcIco=srcImg?('<img class="lx-netimg" src="'+srcImg+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'):lxBrStellarIcon();
   return '<div class="brm-txc lx-brmtx">'
     +'<div class="brm-tr1"><span class="brm-tm">'+(o.when||'Just now')+'</span>'
-      +'<a class="br-xplink" style="margin-left:auto" href="https://stellar.expert/explorer/public/tx/'+o.hash+'" target="_blank" rel="noopener" title="View burn on Stellar Expert">'+lxBrXpIcon()+'</a></div>'
+      +'<a class="br-xplink" style="margin-left:auto" href="'+(o.bridge==="LayerZero"?('https://layerzeroscan.com/tx/'+o.hash):('https://stellar.expert/explorer/public/tx/'+o.hash))+'" target="_blank" rel="noopener" title="View burn on Stellar Expert">'+lxBrXpIcon()+'</a></div>'
     +'<div class="brm-flow">'
       +'<span class="br-asschip"><span class="br-ic lx-netic">'+srcIco+'</span>'
         +'<span><span class="am">'+o.srcAmount+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span>'
       +'<span class="br-ar">→</span>'
       +'<span class="br-asschip"><span class="br-ic lx-netic"><img class="lx-netimg" src="assets/networks/'+nkey+'.png" style="width:100%;height:100%;object-fit:cover;display:block" alt=""></span>'
-        +'<span><span class="am">'+lxBrFmt(o.amount,2)+' USDC</span><span class="nt">'+o.net+'</span></span></span>'
+        +'<span><span class="am">'+lxBrFmt(o.amount,(+o.amount>0&&+o.amount<1)?6:2)+' '+(o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC"))+'</span><span class="nt">'+o.net+'</span></span></span>'
     +'</div>'
-    +'<div class="brm-recv">To <a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener">'+lxBrShort(o.recipient)+'</a> · via CCTP</div>'
+    +'<div class="brm-recv">To <a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener">'+lxBrShort(o.recipient)+'</a> · via '+lxBrEsc(o.bridge||"CCTP")+'</div>'
   +'</div>';
 }
 function lxBrRenderMobileTxs(){ try{
@@ -1053,6 +1264,7 @@ function lxBrRenderMobileTxs(){ try{
     }).then(function(a){ if(a&&a.length) lxBrPaintMobileTxs(host, a); }); }catch(_){}
 }catch(_){} }
 function lxBrPaintMobileTxs(host, a){ try{
+  a=a.slice().sort(function(x,y){ return (+y.ts||0)-(+x.ts||0); });   // newest first, as on desktop
   if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
   if(!a.length){ host.innerHTML='<div class="brm-txc" style="text-align:center;color:var(--text-soft);font-size:13px">No cross-chain transactions yet.</div>'; return; }
   var out=""; for(var i=0;i<a.length;i++){ var o=a[i]; o.when=lxBrRelTime(o.ts); out+=lxBrMobCard(o); }
@@ -1158,8 +1370,9 @@ function lxBrLoadPublic(){
         // Rows recorded by THIS browser were never affected, which is why it reads as "some data missing" rather than
         // a broken column: the public rows win the merge in lxBrRestoreTxsNow, so in practice they all lost it.
         LX_PUBTX.push({ ts:+x.ts||Date.now(), hash:x.burnHash,
-          amount:(+x.amount||0), srcAmount:String(x.gross!=null?x.gross:(x.amount||0)),
-          srcKey:"USDC", net:(x.destName||""), recipient:(x.recipient||""), src:(x.from||"") });
+          // srcAmount/srcCode: what was really sent, when a swap came first ("5 XLM"); USDC transfers carry neither
+          amount:(+x.amount||0), srcAmount:(x.srcAmount!=null?String(x.srcAmount):(x.gross!=null?String(x.gross):(x.amount!=null?String(x.amount):"\\u2014"))),
+          srcKey:(x.srcCode||"USDC"), net:(x.destName||""), recipient:(x.recipient||""), src:(x.from||"") });
       });
       LX_PUBTX.sort(function(a,b){ return (+b.ts||0)-(+a.ts||0); });
       return LX_PUBTX;
@@ -1179,6 +1392,9 @@ function lxBrRestoreTxsNow(){ try{ var tbody=document.querySelector('.br-table t
   // answers. Merged by hash, public first, exactly as the mobile path does it.
   var _pseen={}; LX_PUBTX.forEach(function(o){ _pseen[o.hash]=1; });
   a=LX_PUBTX.concat(a.filter(function(o){ return o&&!_pseen[o.hash]; }));
+  // NEWEST FIRST, after the merge. The shared record came first and this browser's own transfers were appended after
+  // it, so a transfer made a minute ago -- not in the shared record yet -- was listed LAST (RAZA 2026-09-19).
+  a.sort(function(x,y){ return (+y.ts||0)-(+x.ts||0); });
   // a store written before the cap existed can hold more than 100 — render only what is reachable, rather
   // than building rows the pager will hide forever
   if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
@@ -1205,7 +1421,7 @@ function lxBrTableCols(){ try{
 window.lxBrSaveTx=lxBrSaveTx;
 // ---- appealing step-progress overlay for Confirm (theme-aware via CSS vars) ----
 var LX_PSTEPS=[{k:"approve",label:"Approve spending",re:/approv|allowance/i},{k:"fee",label:"Collect bridge fee",re:/fee|swap/i},{k:"burn",label:"Burn on Stellar",re:/burn|bridging/i},{k:"attest",label:"Circle CCTP attestation",re:/attest/i}];
-function lxBrProg(){ var el=document.getElementById("lx-prog"); if(!el){ el=document.createElement("div"); el.id="lx-prog"; el.className="lx-prog"; var items=LX_PSTEPS.map(function(s){return '<li data-pk="'+s.k+'"><span class="lx-pdot"><span class="lx-spin"></span><span class="lx-tick">✓</span></span><span class="lx-plab">'+s.label+'</span></li>';}).join(""); el.innerHTML='<div class="lx-prog-card"><div class="lx-prog-h">Bridging via Circle CCTP</div><div class="lx-prog-sub">Approve the wallet prompts — everything else runs automatically.</div><ul class="lx-prog-list">'+items+'</ul><div class="lx-prog-msg"></div><button class="lx-prog-x" type="button" hidden>Done</button></div>'; (document.querySelector(".br-card")||document.body).appendChild(el); el.querySelector(".lx-prog-x").addEventListener("click",function(){ el.style.display="none"; if(el.__ok){ lxBrResetWizard(); if(!el.__minted) lxBrGoPending(); } }); } return el; }
+function lxBrProg(){ var el=document.getElementById("lx-prog"); if(!el){ el=document.createElement("div"); el.id="lx-prog"; el.className="lx-prog"; var items=LX_PSTEPS.map(function(s){return '<li data-pk="'+s.k+'"><span class="lx-pdot"><span class="lx-spin"></span><span class="lx-tick"></span></span><span class="lx-plab">'+s.label+'</span></li>';}).join(""); el.innerHTML='<div class="lx-prog-card"><div class="lx-prog-h">Bridging via Circle CCTP</div><div class="lx-prog-sub">Approve the wallet prompts — everything else runs automatically.</div><ul class="lx-prog-list">'+items+'</ul><div class="lx-prog-msg"></div><button class="lx-prog-x" type="button" hidden>Done</button></div>'; (document.querySelector(".br-card")||document.body).appendChild(el); el.querySelector(".lx-prog-x").addEventListener("click",function(){ el.style.display="none"; if(el.__ok){ lxBrResetWizard(); if(!el.__minted) lxBrGoPending(); } }); } return el; }
 // A burn that was not minted leaves the reader with one thing they MUST still do, and closing the overlay
 // used to drop them back on step 1 of an empty wizard with that transfer filed behind an unselected tab.
 // Send them to it instead. Only when the mint did NOT happen: a completed bridge has nothing to claim, and
@@ -1234,7 +1450,9 @@ function lxBrResetWizard(){ try{
     lxBrStep2Err(''); lxBrValidateStep2();
   },140);
 }catch(_){} }
-function lxBrProgShow(){ var el=lxBrProg(); el.style.display="flex"; el.__idx=-1; el.__ok=false; var x=el.querySelector(".lx-prog-x"); x.hidden=true; x.textContent="Done"; var h=el.querySelector(".lx-prog-h"); h.textContent="Bridging via Circle CCTP"; var m=el.querySelector(".lx-prog-msg"); m.textContent="Preparing…"; m.style.color=""; [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className=""; }); var g=el.querySelector(".lx-prog-gate"); if(g) g.style.display="none";
+// route: "LayerZero" swaps the header and hides the CCTP step list (approve / burn / attestation are not its steps;
+// its own progress arrives as the status line instead). Anything else is the CCTP flow exactly as before.
+function lxBrProgShow(route){ var el=lxBrProg(); el.style.display="flex"; el.__idx=-1; el.__ok=false; el.__route=route||"CCTP"; var x=el.querySelector(".lx-prog-x"); x.hidden=true; x.textContent="Done"; var h=el.querySelector(".lx-prog-h"); h.textContent=(route&&route!=="CCTP")?("Bridging via "+route):"Bridging via Circle CCTP"; var pl=el.querySelector(".lx-prog-list"); if(pl) pl.style.display=(route&&route!=="CCTP")?"none":""; var m=el.querySelector(".lx-prog-msg"); m.textContent="Preparing…"; m.style.color=""; [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className=""; }); var g=el.querySelector(".lx-prog-gate"); if(g) g.style.display="none";
   // pre-load the web-wallet SDK so its sign popup can open synchronously from the gate click
   if(lxCctpIsWebWallet()){ try{ lxCctpMod("https://esm.sh/@albedo-link/intent@0.12.0"); }catch(_){} } }
 function lxBrProgUpdate(msg){ var el=lxBrProg(); el.querySelector(".lx-prog-msg").textContent=msg; var idx=-1,i; for(i=0;i<LX_PSTEPS.length;i++){ if(LX_PSTEPS[i].re.test(msg)) idx=i; } if(idx<0||idx<(el.__idx||0))return; el.__idx=idx; var lis=el.querySelectorAll(".lx-prog-list li"); for(i=0;i<lis.length;i++){ lis[i].className = i<idx?"done":(i===idx?"active":""); } }
@@ -1244,6 +1462,23 @@ function lxBrProgUpdate(msg){ var el=lxBrProg(); el.querySelector(".lx-prog-msg"
 // data visible. Pass minted=true once a destination mint is actually performed.
 function lxBrProgDone(res){
   var el=lxBrProg(); el.__ok=true; el.__minted=!!(res&&res.minted);   // drives where "Done" sends the reader
+  // LayerZero: nothing to claim -- the executor delivers. Say what happened, how long the rest takes (measured median),
+  // and where to watch it. __minted=true so "Done" does not send the reader to the CCTP claims tab.
+  // NEAR Intents: done means DELIVERED -- this is only called once 1Click reports SUCCESS, with the destination tx
+  if(res&&res.route==="NEAR Intents"){ el.__minted=true;
+    [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className="done"; });
+    var nm=el.querySelector(".lx-prog-msg"); nm.style.color="";
+    el.querySelector(".lx-prog-h").textContent="Delivered via NEAR Intents \\u2713";
+    nm.innerHTML=lxBrEsc(res.amountOut||"")+" "+lxBrEsc(res.asset||"")+" arrived at your "+lxBrEsc(res.dest||"destination")+" address. There is nothing to claim."
+      +(res.destUrl?'<br><br><a href="'+lxBrEsc(res.destUrl)+'" target="_blank" rel="noopener" style="color:var(--accent,#ea6a2c);font-weight:700">View on '+lxBrEsc(res.dest||"explorer")+' \\u2197</a>':'');
+    el.querySelector(".lx-prog-x").hidden=false; return; }
+  if(res&&res.route==="LayerZero"){ el.__minted=true;
+    [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className="done"; });
+    var lm=el.querySelector(".lx-prog-msg"); lm.style.color="";
+    el.querySelector(".lx-prog-h").textContent="Sent via LayerZero ✓";
+    lm.innerHTML="Your USDT0 has left Stellar and will be delivered to your "+lxBrEsc(res.dest||"destination")+" address automatically, usually in about 30 minutes. There is nothing to claim."
+      +(res.hash?'<br><br><a href="https://layerzeroscan.com/tx/'+res.hash+'" target="_blank" rel="noopener" style="color:var(--accent,#ea6a2c);font-weight:700">Track it on LayerZero Scan ↗</a>':'');
+    el.querySelector(".lx-prog-x").hidden=false; return; }
   [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className="done"; });
   var m=el.querySelector(".lx-prog-msg"); m.style.color="";
   if(res&&res.minted){
@@ -1253,14 +1488,23 @@ function lxBrProgDone(res){
     el.querySelector(".lx-prog-h").textContent="Burned on Stellar ✓ — awaiting mint";
     m.innerHTML='Your USDC was burned on Stellar and Circle has signed the attestation, but it has <b>not been minted on the destination chain yet</b> — that final step is not automated here.'
       +'<br><br>Your transfer is safe and recoverable: the burn hash, Circle message and attestation are stored in this browser.'
-      +(res&&res.burnHash?'<br><span class="lx-prog-hash" style="font-family:monospace;font-size:11.5px;opacity:.8;word-break:break-all">Burn: '+res.burnHash+'</span>':'')
-      +'<br><button type="button" class="lx-prog-copy" style="margin-top:9px;background:var(--accent,#ea6a2c);color:#fff;border:none;border-radius:8px;padding:7px 12px;font-weight:700;cursor:pointer">Copy redeem data</button>';
+      // The hash and the copy action as ONE labelled panel, with a quiet outlined button: it is the backup, and "Done"
+      // below stays the one primary action. (It used to be a second orange block, rendered at the message's 65%
+      // opacity, which is what made it look washed out -- RAZA 2026-09-19.)
+      +'<div class="lx-prog-redeem"><div class="lx-prog-rk">Burn transaction</div>'
+      +(res&&res.burnHash?'<div class="lx-prog-rh">'+res.burnHash+'</div>':'')
+      +'<button type="button" class="lx-prog-copy"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></svg><span>Copy redeem data</span></button></div>';
     var cb=m.querySelector(".lx-prog-copy");
-    if(cb)cb.addEventListener("click",function(){ try{ navigator.clipboard.writeText(JSON.stringify(res||{},null,2)); cb.textContent="Copied ✓"; }catch(_){ cb.textContent="Copy failed"; } });
+    // "Copied" only once the clipboard actually took it -- writeText is a promise and can be refused
+    if(cb)cb.addEventListener("click",function(){ var lab=cb.querySelector("span")||cb;
+      function set(t,ok){ lab.textContent=t; cb.classList.toggle("is-ok",!!ok); cb.classList.toggle("is-bad",!ok); }
+      try{ Promise.resolve(navigator.clipboard.writeText(JSON.stringify(res||{},null,2)))
+        .then(function(){ set("Copied",true); }).catch(function(){ set("Copy failed \\u2014 select the hash above",false); }); }
+      catch(_){ set("Copy failed \\u2014 select the hash above",false); } });
   }
   el.querySelector(".lx-prog-x").hidden=false;
 }
-function lxBrProgFail(msg){ var el=lxBrProg(); el.querySelector(".lx-prog-h").textContent="Bridge failed"; var m=el.querySelector(".lx-prog-msg"); m.textContent=msg||"Something went wrong."; m.style.color="#e5484d"; var x=el.querySelector(".lx-prog-x"); x.hidden=false; x.textContent="Close"; }
+function lxBrProgFail(msg){ try{ lxBrRefreshBalances(); }catch(_){} /* a swap may have landed first */ var el=lxBrProg(); el.querySelector(".lx-prog-h").textContent="Bridge failed"; var m=el.querySelector(".lx-prog-msg"); m.textContent=msg||"Something went wrong."; m.style.color="#e5484d"; var x=el.querySelector(".lx-prog-x"); x.hidden=false; x.textContent="Close"; }
 window.lxBrProg={show:lxBrProgShow,update:lxBrProgUpdate,done:lxBrProgDone,fail:lxBrProgFail};
 // Web-popup wallets (Albedo) can only open their sign popup from a fresh user click. The bridge needs
 // several sequential signatures, so for those wallets we show an "Approve" button in the overlay before
@@ -1379,12 +1623,17 @@ function lxBrConfirm(btn){
   function say(m,ok){ if(errslot){ errslot.setAttribute('data-err',ok?'':m); errslot.textContent=m; errslot.style.color=ok?'#3fb950':''; } }
   say("");
   if(!(parseFloat(amt)>0)){ say("Enter a valid amount on the previous step."); return; }
+  if(window.__lxBrRoute==="LayerZero"){ lxBrConfirmLz(btn,say,net,domain,recipient,amt,k,A); return; }
+  // NEAR Intents: its own flow in _nearintents.js (swap if needed -> fresh live quote -> deposit with memo -> track)
+  if(window.__lxBrRoute==="NEAR Intents"){
+    if(!window.__lxNiSendable||!window.lxNiConfirm){ say("Sending by NEAR Intents isn't switched on yet — choose another route."); return; }
+    window.lxNiConfirm(btn,say,net,domain,recipient,amt,k,A); return; }
   if(domain==null){ say("Select a CCTP-supported destination network."); return; }
   if(!recipient){ say("Paste the destination address on the previous step."); return; }
   // check the destination is a live account BEFORE any signature — nothing is burned yet, so this is the
   // last moment a wrong address costs nothing
   if(btn) btn.disabled=true;
-  say("Checking the destination address\\u2026");
+  say("Checking the destination address\\u2026",true);   // progress, not an error: green (RAZA 2026-09-19)
   lxBrDestCheck(domain,recipient).then(function(chk){
     if(btn) btn.disabled=false;
     if(!chk.ok){ say(chk.msg); return; }
@@ -1394,7 +1643,7 @@ function lxBrConfirm(btn){
   lxBrProgShow();
   function status(m){ lxBrProgUpdate(m); }
   try{ lxCctpBridgeFull(domain, amt, recipient, A.spec, status, window.__lxBr.netUsdc).then(function(res){
-    lxBrProgDone(res);
+    lxBrProgDone(res); lxBrRefreshBalances();
     var tx={src:(B.pk||LX_SRC_ADDR), recipient:recipient, srcAmount:amt, srcKey:k, amount:res.netUsdc, net:net, hash:res.burnHash, ts:Date.now(), minted:!!res.minted};
     lxBrAddRecentTx(tx); lxBrSaveTx(tx);
   }).catch(function(e){
@@ -1408,6 +1657,52 @@ function lxBrConfirm(btn){
     } else { lxBrProgFail((e&&e.message)||"Bridge failed."); }
   });
   }catch(e){ lxBrProgFail((e&&e.message)||"Bridge failed."); }
+  }
+}
+// ---- Confirm, LayerZero route --------------------------------------------------------------------------------
+// Until 2026-09-19 Confirm ran the CCTP engine whatever route was chosen (lxLzBridgeFull existed with no caller).
+// The same guarantees as the CCTP path, in the same order, before any signature:
+//   1. the address is well-formed for that chain (LX_EVM_NETS now covers every LayerZero destination);
+//   2. where the chain is one we can read (it is also a CCTP chain), the exchange + funded-address checks;
+//   3. there is enough SPENDABLE XLM for LayerZero's messaging fee -- the reserve and open offers held back,
+//      plus the XLM being sent when XLM is the source, plus a trustline's reserve if USDT0 must be opened.
+function lxBrConfirmLz(btn,say,net,domain,recipient,amt,k,A){
+  var C=window.__lxCCTP||{};
+  if(!window.__lxLzSendable||!window.lxLzBridgeFull){ say("Sending by LayerZero isn't switched on yet — choose CCTP to continue."); return; }
+  if(!recipient){ say("Paste the destination address on the previous step."); return; }
+  if(!lxBrValidAddr(net,recipient)){ say("That doesn't look like a valid "+net+" address."); return; }
+  // the source asset as {code,issuer} -- USDC's entry is the string "USDC", which the LayerZero engine cannot use
+  var spec=(A.spec==="USDC")?{code:"USDC",issuer:C.usdcIssuer}:A.spec;
+  if(btn) btn.disabled=true;
+  say("Checking the destination address and your XLM…",true);   // progress, not an error: green
+  var addrP=(domain!=null)?lxBrDestCheck(domain,recipient):Promise.resolve({ok:true});
+  addrP.then(function(chk){
+    if(!chk.ok) throw {user:chk.msg};
+    return Promise.all([ window.lxLzQuote(net,parseFloat(amt)||1,recipient),
+      fetch(C.horizon+"/accounts/"+(window.__lxBr.pk||"")).then(function(r){ return r.json(); }).catch(function(){ return null; }) ]);
+  }).then(function(pair){
+    var q=pair[0], ac=pair[1]; var fee=(q&&q.feeXlm)||0;
+    if(ac&&ac.balances){
+      var nat=ac.balances.filter(function(b){ return b.asset_type==="native"; })[0]||{};
+      var reserve=(2+(+ac.subentry_count||0)+(+ac.num_sponsoring||0)-(+ac.num_sponsored||0))*0.5;
+      var free=(+nat.balance||0)-reserve-(+nat.selling_liabilities||0);
+      var hasT0=ac.balances.some(function(b){ return b.asset_code==="USDT0"; });
+      var need=fee*1.1+0.05+(k==="XLM"?(parseFloat(amt)||0):0)+((!hasT0&&k!=="USDT0")?0.5:0);
+      if(free<need) throw {user:"LayerZero's messaging fee is "+fee.toFixed(4)+" XLM, paid from your wallet. You have "+Math.max(0,free).toFixed(4)+" XLM spendable"+(k==="XLM"?" beyond the amount you're sending":"")+" — you need about "+need.toFixed(4)+" XLM. Add XLM, or choose CCTP."};
+    }
+    if(btn) btn.disabled=false; say(""); goLz(fee);
+  }).catch(function(e){ if(btn) btn.disabled=false; say((e&&e.user)||("Could not check this transfer: "+((e&&e.message)||e))); });
+
+  function goLz(fee){
+    lxBrProgShow("LayerZero");
+    window.lxLzBridgeFull(net,amt,recipient,spec,function(m){ lxBrProgUpdate(m); }).then(function(res){
+      lxBrProgDone({route:"LayerZero", hash:res.hash, dest:net, amount:res.net, feeXlm:res.feeXlm}); lxBrRefreshBalances();
+    }).catch(function(e){
+      var m=(e&&e.message)||"Transfer failed.";
+      // The swap is its own transaction: if it went through and the send did not, the USDT0 is in the wallet.
+      if(e&&e.__lxSwapped) m+=" — your swap completed, so the USDT0 is in your Stellar wallet. Nothing was sent cross-chain.";
+      lxBrProgFail(m); lxBrRefreshBalances();   // a swap may have gone through before the failure
+    });
   }
 }
 function lxCctpWireStep3(){
@@ -1439,7 +1734,9 @@ function lxCctpWireStep3(){
 // regenerated by scanning deposit_for_burn on the CCTP TokenMessenger). Everyone sees these with no
 // wallet connected: a browser cannot read another browser's localStorage, so a shared list has to
 // ship with the page until there is a server-side feed.
-var LX_PUBTX=[{"ts":1786677750000,"hash":"71085fcb0ba8193e97331b709da680edcb451d33b4e9e4606ce3cd30551ff853","amount":1.269819,"srcAmount":"1.269819","srcKey":"USDC","net":"Base","recipient":"0x18789c94642c5295cfc1b344f60a3a24fd7ecc39"}];
+var LX_PUBTX=[{"ts":1786677750000,"hash":"71085fcb0ba8193e97331b709da680edcb451d33b4e9e4606ce3cd30551ff853","amount":1.269819,"srcAmount":"1.269819","srcKey":"USDC","net":"Base","recipient":"0x18789c94642c5295cfc1b344f60a3a24fd7ecc39","src":"GCVZ2EHCGY2GES7DMPRKM4424QVKXEVLLR6FBZG34PYMWTR7IZC44X2J"}];
+// src read off the ledger 2026-09-19: the burn's source account, and the account the 1.269819 USDC left. This entry
+// predates the shared bridge record, so it was hand-written -- without the field the Source address column reads.
 var LX_DOMNAME={0:"Ethereum",1:"Avalanche",2:"Optimism",3:"Arbitrum",5:"Solana",6:"Base",7:"Polygon",8:"Sui",11:"Linea",14:"World Chain"};
 function lxBrDomName(d){ var C=window.__lxCCTP,m=(C&&C.domains)||{}; for(var k in m){ if(m[k]===d) return k; } return LX_DOMNAME[d]||("chain "+d); }
 function lxBrEsc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -1523,9 +1820,44 @@ function lxEvmMint(rec,onStatus){
     .then(function(){ onStatus("Confirm in your wallet\\u2026");
       return lxEvmReq("eth_sendTransaction",[{from:from,to:LX_MT,data:data}]); })
     .then(function(hash){ onStatus("Waiting for "+cfg.n+" to confirm\\u2026");
+      // Remember the submission ON THE RECORD, so a re-render shows "submitted" rather than the Claim button again,
+      // and let the chain sweep clear the row the moment usedNonces agrees -- not whenever the wallet reports.
+      try{ rec.claimTx=hash; rec.claimAt=Date.now(); lxBrSavePending(rec); lxBrRenderPending(); setTimeout(lxBrSweepClaimed,6000); }catch(_){}
       return lxEvmWait(hash).then(function(ok){ return {hash:hash,ok:ok,chain:cfg.n,exp:cfg.exp}; }); });
 }
 window.lxEvmMint=lxEvmMint; window.lxAbiReceive=lxAbiReceive;
+
+// ---- is it claimed? Ask the destination chain, not the wallet --------------------------------------------------
+// RAZA 2026-09-19: claimed on Polygon from MetaMask's browser (MetaMask: "Transaction #2 complete"), yet the row stayed
+// until a refresh. The row waited on the WALLET to report a receipt, up to 3 minutes -- and a re-render in between left
+// it on a detached button. The chain is the authority: Circle's MessageTransmitter marks every message it mints in
+// usedNonces(nonce), permanently. The nonce is bytes 12..44 of the CCTP v2 message (checked against Circle's own
+// eventNonce for a real transfer: identical). Read through the chain's PUBLIC RPC, so it needs no wallet and works for
+// claims made anywhere -- another browser, another device, a block explorer.
+function lxBrNonce(rec){ var m=String((rec&&rec.message)||""); if(m.slice(0,2)!=="0x"||m.length<2+88) return ""; return m.slice(2+24,2+24+64); }
+function lxBrClaimedOnChain(rec){
+  var cfg=LX_EVM[rec&&rec.destDomain], n=lxBrNonce(rec);
+  if(!cfg||!cfg.rpc||!n) return Promise.resolve(null);                 // unknown -- never guess "claimed"
+  return lxJrpc(cfg.rpc,"eth_call",[{to:LX_MT,data:"0xfeb61724"+n},"latest"]).then(function(d){
+    var r=d&&d.result; if(typeof r!=="string"||r.length<3) return null;
+    return /[1-9a-f]/i.test(r.slice(2)); }).catch(function(){ return null; }); }
+// Sweep the panel: every attested row is checked against its chain; a claimed one is cleared with a toast. Runs on
+// load, and every 10s while a claim is in flight (a row carrying claimTx) -- so the row goes the moment the chain
+// agrees, whatever the wallet reports.
+var _lxSweepT=null;
+function lxBrSweepClaimed(){ try{
+  var list=lxBrListPending().filter(function(x){ return x&&x.attestation&&x.message; }).slice(0,8); if(!list.length) return;
+  Promise.all(list.map(function(rec){ return lxBrClaimedOnChain(rec).then(function(c){ return {rec:rec,c:c}; }); })).then(function(res){
+    var cleared=0;
+    res.forEach(function(x){ if(x.c===true){ lxBrClearPending(x.rec.burnHash); cleared++;
+      lxBrToast("Claimed on "+((LX_EVM[x.rec.destDomain]||{}).n||lxBrDomName(x.rec.destDomain))+" \\u2014 "+lxBrAmt(x.rec.netUsdc)+" USDC"); } });
+    if(cleared) lxBrRenderPending();
+    var inFlight=lxBrListPending().some(function(x){ return x&&x.claimTx; });
+    clearTimeout(_lxSweepT); if(inFlight) _lxSweepT=setTimeout(lxBrSweepClaimed,10000);
+  });
+}catch(_){} }
+window.lxBrSweepClaimed=lxBrSweepClaimed;
+setTimeout(lxBrSweepClaimed,2500);
 
 
 // Bottom-centre dark pill with a green circled check — the same toast the wallet and issuer copy buttons
@@ -1644,10 +1976,19 @@ var LX_STELLAR_SVG='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="3
 // Stellar is inlined because there is no assets/networks/stellar.png, and scraping the wizard's chip would
 // break the moment that markup moves.
 function lxBrNetImg(dom){ var n=LX_NETMAP[lxBrDomName(dom)]; return n?('<img src="assets/networks/'+n+'.png" alt="">'):''; }
-function lxBrPairIco(kind,dom){
+// key: the asset the icon shows (defaults to USDC). The SOURCE side shows what the user actually sent -- BLND, XLM,
+// LUMOS... -- not the USDC it was swapped into; the destination side is always the USDC being claimed.
+function lxBrPairIco(kind,dom,key){
   var badge=(kind==="src")?LX_STELLAR_SVG:lxBrNetImg(dom);
   var name=(kind==="src")?"Stellar":lxBrDomName(dom);
-  return '<span class="lx-brp-ico" title="USDC on '+lxBrEsc(name)+'"><img src="assets/tokens/usdc.png" alt="USDC"><i>'+badge+'</i></span>'; }
+  key=key||"USDC"; var logo=((LX_ASSETS[key]||{}).logo)||"assets/tokens/usdc.png";
+  return '<span class="lx-brp-ico" title="'+lxBrEsc(key)+' on '+lxBrEsc(name)+'"><img src="'+logo+'" alt="'+lxBrEsc(key)+'"><i>'+badge+'</i></span>'; }
+// What a pending transfer started as. Stored on the record from 2026-09-19; older records are matched by burn hash
+// against this browser's own transaction history, which always carried it.
+function lxBrPendSrc(r){ if(r&&r.srcKey) return {k:r.srcKey,a:r.srcAmount};
+  try{ var t=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]").filter(function(x){ return x&&x.hash===r.burnHash; })[0];
+    if(t&&t.srcKey) return {k:t.srcKey,a:t.srcAmount}; }catch(_){}
+  return {k:"USDC",a:r.netUsdc}; }
 
 var LX_BR_COPY_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" '
   +'stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2">'
@@ -1669,6 +2010,51 @@ if(!window.__lxBrCopyWired){ window.__lxBrCopyWired=1;
       document.body.removeChild(t); ok(); }catch(_e){} }
   },true);
 }
+// ---- opening the MetaMask APP on a phone ------------------------------------------------------------------------
+// metamask.app.link is a "universal link": the OS is supposed to hand it to the app, but tapped from inside a browser
+// Android and iOS often just load it as a web page -- the MetaMask website, not the app. The app's own entry points:
+//   Android  intent://dapp/<page>#Intent;scheme=metamask;package=io.metamask;...  -> the app, or the Play Store
+//            listing if it is not installed (browser_fallback_url = the universal link)
+//   iOS      metamask://dapp/<page>  -> the app; if nothing took it within 1.5s (not installed), the universal link
+// <page> is this page without its scheme, which is what MetaMask's dapp browser expects.
+function lxIsAndroid(){ try{ return /Android/i.test(navigator.userAgent||""); }catch(_){ return false; } }
+function lxMmLink(page){
+  var uni="https://metamask.app.link/dapp/"+page;
+  if(lxIsAndroid()) return "intent://dapp/"+page+"#Intent;scheme=metamask;package=io.metamask;S.browser_fallback_url="+encodeURIComponent(uni)+";end";
+  return "metamask://dapp/"+page; }
+// NO FALLBACK TIMER. iOS Safari answers metamask:// with its own "Open this page in MetaMask?" sheet; while that sheet
+// is up the page is still visible, so a 1.5s "did we leave?" timer fired and sent the reader to the universal link,
+// which forwards to the App Store -- with MetaMask installed (RAZA 2026-09-19, iPhone: "it opens it in Apple store").
+// The scheme link alone is right: installed -> Safari asks once -> the app opens on this page.
+function lxMmOpen(page){ location.href=lxMmLink(page); }
+// Coinbase Wallet, same reasoning: its own scheme (cbwallet://dapp?url=) rather than the go.cb-w.com universal link,
+// which a browser tap can equally resolve to a web page. Android goes through an intent to the app (org.toshi).
+function lxCbLink(full){
+  var uni="https://go.cb-w.com/dapp?cb_url="+encodeURIComponent(full);
+  if(lxIsAndroid()) return "intent://dapp?url="+encodeURIComponent(full)+"#Intent;scheme=cbwallet;package=org.toshi;S.browser_fallback_url="+encodeURIComponent(uni)+";end";
+  return "cbwallet://dapp?url="+encodeURIComponent(full); }
+// ---- a claim handed over by link: ?claim=<burn hash> --------------------------------------------------------
+// Opened inside a wallet app's browser (see the phone hand-off in the claim handler), this page has none of the
+// original browser's storage. Everything a claim needs comes from Circle's record of the burn, keyed by its hash --
+// message, attestation, destination, amount, recipient -- so the transfer is rebuilt here and shown in the claims
+// panel. The recipient is fixed inside Circle's signed message: a link cannot redirect anyone's USDC.
+function lxBrClaimFromLink(){ try{
+  var m=/[?&]claim=([0-9a-fA-F]{64})(?![0-9a-fA-F])/.exec(location.search||""); if(!m) return;
+  var hash=m[1].toLowerCase();
+  // The ?claim= stays in the address bar: in a wallet app's browser there is no Stellar wallet, so it is the only thing
+  // that lets this page past the sign-in gate on a reload. Re-importing is harmless -- records are upserted by burn
+  // hash, and one already claimed here is remembered (lxBrIsDone) and skipped.
+  if(lxBrIsDone(hash)) return;
+  lxBrPeekAttest(hash).then(function(att){
+    if(!att){ lxBrToast("That transfer isn\\u2019t ready to claim yet \\u2014 Circle has not approved it."); return; }
+    var dm=att.decodedMessage||{}, body=dm.decodedMessageBody||{}, mr=String(body.mintRecipient||"");
+    var rec={ burnHash:hash, message:att.message, attestation:att.attestation, decodedMessage:dm,
+      destDomain:parseInt(dm.destinationDomain,10), netUsdc:(+body.amount||0)/1e6,
+      recipient:mr.length>=42?("0x"+mr.slice(-40)):mr, status:"attested", ts:Date.now() };
+    lxBrSavePending(rec); lxBrRenderPending(); setTimeout(lxBrGoPending,300);
+  });
+}catch(_){} }
+setTimeout(lxBrClaimFromLink,1200);
 function lxBrRenderPending(){ try{
   var host=lxBrPendHost(); if(!host) return false;
   var p=host.el, list=lxBrListPending();
@@ -1693,7 +2079,10 @@ function lxBrRenderPending(){ try{
     return '<div class="lx-brp-row" data-h="'+lxBrEsc(r.burnHash)+'">'
     // amount left, provenance in the middle, actions hard right — the row reads across the full width the
     // way the transactions table above it does, instead of clumping everything against the left edge
-    +'<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrPairIco("src",r.destDomain)+'<span>'+lxBrEsc(lxBrAmt(r.netUsdc))+' USDC</span><span class="lx-brp-ar">\→</span>'+lxBrPairIco("dst",r.destDomain)+'<span>'+lxBrEsc(lxBrDomName(r.destDomain))+'</span></div></div>'
+    // "72.50 BLND -> 0.41 USDC on Base": what was sent, then what is being claimed and where (was "0.41 USDC -> Base")
+    +(function(){ var ps=lxBrPendSrc(r), same=(ps.k==="USDC");
+      return '<div class="lx-brp-main"><div class="lx-brp-amt">'+lxBrPairIco("src",r.destDomain,ps.k)+'<span>'+lxBrEsc(same?lxBrAmt(r.netUsdc):lxBrAmt(parseFloat(ps.a)||0))+' '+lxBrEsc(ps.k)+'</span><span class="lx-brp-ar">\→</span>'
+        +lxBrPairIco("dst",r.destDomain)+'<span>'+(same?'':lxBrEsc(lxBrAmt(r.netUsdc))+' USDC on ')+lxBrEsc(lxBrDomName(r.destDomain))+'</span></div></div>'; })()
     +'<div class="lx-brp-meta"><div class="lx-brp-sub">Burned '+lxBrEsc(lxBrRelTime(r.ts))+' \· <a class="mono" target="_blank" rel="noopener" href="https://stellar.expert/explorer/public/tx/'+lxBrEsc(r.burnHash)+'">'+lxBrEsc(lxBrShortH(r.burnHash))+'</a>'
     +'<button type="button" class="lx-brp-copyh" data-copyh="'+lxBrEsc(r.burnHash)+'" '
     +'title="Copy transaction hash" aria-label="Copy transaction hash">'+LX_BR_COPY_SVG+'</button>'
@@ -1704,11 +2093,27 @@ function lxBrRenderPending(){ try{
     // no "Ready to claim" chip — the Claim button next to it already says exactly that. The waiting state
     // is the one worth a chip, because then there is nothing else on the row explaining the delay.
     +(ready?'':'<span class="lx-brp-chip wait">Awaiting Circle attestation</span>')
-    +'<div class="lx-brp-btns">'
+    // ON A PHONE WITH NO WALLET IN THE PAGE (RAZA 2026-09-19): the claim happens inside a wallet app, so the row says
+    // where -- "Claim on <network>" as its heading -- and offers the three ways to do it as one even row:
+    // MetaMask | Coinbase Wallet | Copy redeem data. Each app button opens this page in that app with ?claim=<hash>,
+    // which rebuilds the claim there from Circle's record (lxBrClaimFromLink).
+    // A claim already submitted: say so, link it, and offer nothing to press twice. The chain sweep removes the row.
+    +(r.claimTx?('<div class="lx-brp-sent"><span class="lx-brp-spin"></span><span>Claim submitted \\u2014 confirming on '+lxBrEsc((LX_EVM[r.destDomain]||{}).n||lxBrDomName(r.destDomain))+'\\u2026 '
+      +((LX_EVM[r.destDomain]||{}).exp?'<a target="_blank" rel="noopener" href="'+lxBrEsc(LX_EVM[r.destDomain].exp+"/tx/"+r.claimTx)+'">View transaction</a>':'')+'</span></div>'):(
+    ((ready&&evm&&!lxEvmProv()&&lxIsPhoneUA())?(function(){
+      var page=location.host+location.pathname+"?claim="+encodeURIComponent(r.burnHash);
+      var cbu=lxCbLink(location.protocol+"//"+page);
+      return '<div class="lx-brp-claim"><div class="lx-brp-claimh">Claim on '+lxBrEsc(LX_EVM[r.destDomain].n)+'</div>'
+        +'<div class="lx-brp-claim3">'
+        +'<a class="lx-brp-hb3 lx-brp-mm" href="'+lxMmLink(page)+'" data-page="'+lxBrEsc(page)+'"><span class="lx-brp-hi">'+lxEvmWalletIcon()+'</span><span>MetaMask</span></a>'
+        +'<a class="lx-brp-hb3 lx-brp-cb" href="'+cbu+'"><span class="lx-brp-hi"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#0052FF"/><rect x="8.6" y="8.6" width="6.8" height="6.8" rx="1.3" fill="#fff"/></svg></span><span>Coinbase Wallet</span></a>'
+        +'<button type="button" class="lx-brp-b lx-brp-hb3" data-act="copy"><span class="lx-brp-hi">'+LX_BR_COPY_SVG+'</span><span>Copy redeem data</span></button>'
+        +'</div></div>'; })():(
+    '<div class="lx-brp-btns">'
     +(ready?'':'<button type="button" class="lx-brp-b" data-act="check">Check status</button>')
     +((ready&&evm)?'<button type="button" class="lx-brp-b primary lx-hasico" data-act="mint" title="Opens '+lxBrEsc(lxEvmWalletName())+' on '+lxBrEsc(LX_EVM[r.destDomain].n)+'"><span class="lx-wbadge">'+lxEvmWalletIcon()+'</span>Claim on '+lxBrEsc(LX_EVM[r.destDomain].n)+'</button>':'')
     +'<button type="button" class="lx-brp-b" data-act="copy">Copy redeem data</button>'
-    +'</div>'
+    +'</div>'))))   // closes: non-phone branch, phone ?: expr, the claimTx ":(" branch, the claimTx "+(" wrapper
     // Solana and Sui have no "connect wallet and press a button" route — not here, and not on their block
     // explorers either, which offer no way to submit an arbitrary instruction. Saying "use Copy redeem
     // data" as though that were equivalent would be misleading, so say what it actually takes.
@@ -1726,6 +2131,9 @@ function lxBrRenderPending(){ try{
   return true;
 }catch(_){ return false; } }
 document.addEventListener("click",function(e){
+  // the phone row's wallet-app buttons are plain links to the app's own scheme: let the browser follow the tap as-is
+  // (a real user tap on a scheme link is what iOS/Android hand to the app -- intercepting it only makes that worse)
+  if(e.target&&e.target.closest&&e.target.closest(".lx-brp-mm,.lx-brp-cb")) return;
   var b=e.target&&e.target.closest?e.target.closest(".lx-brp-b"):null; if(!b) return;
   var row=b.closest(".lx-brp-row"); if(!row) return;
   var hash=row.getAttribute("data-h"), act=b.getAttribute("data-act");
@@ -1743,6 +2151,21 @@ document.addEventListener("click",function(e){
   if(act==="mint"){
     var msg=row.querySelector(".lx-brp-msg"), lbl=b.textContent;
     function say(t,err){ if(!msg)return; msg.textContent=t; msg.style.display=t?"":"none"; msg.className="lx-brp-msg"+(err?" err":""); }
+    // A PHONE HAS NO WALLET EXTENSION, so there is nothing here to sign with (RAZA 2026-09-19: MetaMask "not
+    // detected" on his phone). Hand the claim to the wallet app instead: open THIS page inside the app's browser with
+    // the burn hash in the link, and lxBrClaimFromLink rebuilds the claim there from Circle's record. Nothing from
+    // this browser's storage has to travel.
+    if(!lxEvmProv()&&lxIsPhoneUA()){
+      var here=location.host+location.pathname, q="?claim="+encodeURIComponent(hash);
+      var cb="https://go.cb-w.com/dapp?cb_url="+encodeURIComponent(location.protocol+"//"+here+q);
+      if(msg){ msg.className="lx-brp-msg"; msg.style.display="";
+        msg.innerHTML='Opening MetaMask with this transfer ready to claim\\u2026 If it does not open:'
+          // lx-brp-hb, NOT lx-brp-b: the panel's click handler cancels every .lx-brp-b click, which would kill these links
+          +'<div class="lx-brp-hand"><a class="lx-brp-hb lx-mm-open" href="'+lxMmLink(here+q)+'">Open in MetaMask</a><a class="lx-brp-hb" href="'+cb+'">Open in Coinbase Wallet</a></div>';
+        var mo=msg.querySelector(".lx-mm-open"); if(mo) mo.addEventListener("click",function(ev){ ev.preventDefault(); lxMmOpen(here+q); }); }
+      // The Claim tap itself opens the APP (RAZA 2026-09-19: "it gotta open the MetaMask app ... instead of website").
+      lxMmOpen(here+q);
+      return; }
     b.disabled=true; b.textContent="Working\\u2026";
     lxEvmMint(rec,function(s){ say(s,false); }).then(function(r){
       if(r.ok===false){ b.disabled=false; b.textContent=lbl; say("The claim transaction reverted on "+r.chain+". Your burn is still valid \\u2014 nothing was lost; try again.",true); return; }
@@ -1863,8 +2286,12 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
     for(const k of Object.keys(json)){
       if(!/bridge/.test(k)) continue;
       let h=json[k]; const before=h;
-      if(h.indexOf(OLD_SUB)>=0) h=h.split(OLD_SUB).join(NEW_SUB);
-      if(h.indexOf(BUGGY_SUB)>=0) h=h.split(BUGGY_SUB).join(NEW_SUB);
+      // NORMALISE FROM EVERY KNOWN VARIANT, not just the design's original. This replaced OLD_SUB -> NEW_SUB only,
+      // which worked exactly once: as soon as the container held a previous NEW_SUB, neither OLD_SUB nor BUGGY_SUB
+      // matched any more and the line was frozen. That is why the page still read "with Circle CCTP" after the
+      // LayerZero flag was turned on -- RAZA 2026-09-17: "Also on top it only mentions CCTP". Listing every past
+      // wording here makes the transform idempotent in BOTH directions, so flipping the flag back also works.
+      for (const old of SUB_VARIANTS) { if (old !== NEW_SUB && h.indexOf(old) >= 0) h = h.split(old).join(NEW_SUB); }
       // The design seeded Recent transactions with fabricated transfers — Aptos and XRPL assets, invented
       // addresses, "19 days ago" — on a page that otherwise reports real money movements. Empty the tbody
       // at build time so only real bridges appear, and ~138KB of mock markup stops shipping with it.

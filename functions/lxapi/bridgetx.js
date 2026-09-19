@@ -73,6 +73,54 @@ async function getJson(url) {
   try { return await r.json(); } catch (e) { return null; }
 }
 
+// ---- the burn, read from the ledger itself ---------------------------------------------------------
+// Circle's attestation is only ONE source of "where did it go", and it is the one that can be late: a record
+// registered seconds after the burn found Circle still pending, stored destination/amount/recipient as null, and
+// nothing ever came back for it (2026-09-17, 0.0999 USDC to Base -- a blank row with no network logo on the
+// Cross-Chain page). The burn transaction carries all three as its own call arguments:
+//   deposit_for_burn(from, amount:i128, destination_domain:u32, mint_recipient:bytes32, ...)
+// and Horizon reports the USDC actually burned as a balance change. So the ledger answers without Circle.
+function b64u8(s) { const b = atob(String(s || '')); const u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+function be32(u, o) { return ((u[o] << 24) >>> 0) + (u[o + 1] << 16) + (u[o + 2] << 8) + u[o + 3]; }
+function scTag(u) { return u.length >= 4 ? be32(u, 0) : -1; }
+function scSym(u) { if (scTag(u) !== 15) return ''; const n = be32(u, 4); let s = ''; for (let i = 0; i < n; i++) s += String.fromCharCode(u[8 + i]); return s; }
+function scU32(u) { return scTag(u) === 3 ? be32(u, 4) : -1; }
+function scBytes(u) { return scTag(u) === 13 ? u.slice(8, 8 + be32(u, 4)) : new Uint8Array(0); }
+function hex(u) { return Array.from(u, (x) => x.toString(16).padStart(2, '0')).join(''); }
+
+async function fromBurn(burnHash, payer) {
+  const ops = await getJson(H + '/transactions/' + encodeURIComponent(burnHash) + '/operations?limit=10').catch(() => null);
+  const recs = (ops && ops._embedded && ops._embedded.records) || [];
+  const op = recs.filter((o) => o.type === 'invoke_host_function' && (!payer || o.source_account === payer))[0];
+  if (!op || op.transaction_successful === false) return null;
+  const P = op.parameters || [];
+  if (P.length < 6 || scSym(b64u8(P[1].value)) !== 'deposit_for_burn') return null;
+  const dom = scU32(b64u8(P[4].value));
+  const mr = scBytes(b64u8(P[5].value));
+  const burned = (op.asset_balance_changes || []).filter((c) => c.type === 'burn' && c.asset_code === 'USDC')[0];
+  const amount = burned ? +burned.amount : NaN;
+  if (!(dom >= 0) || !DOMAIN[dom] || mr.length < 20 || !(amount > 0)) return null;
+  return { destDomain: dom, amount, recipient: '0x' + hex(mr.slice(mr.length - 20)) };
+}
+
+// A stored row missing its destination is completed from the chain and written back -- at most HEAL_MAX per
+// request, so a backlog can never push one request past the free plan's subrequest cap.
+const HEAL_MAX = 3;
+async function heal(kv, map) {
+  const todo = Object.keys(map).filter((k) => map[k] && map[k].destName == null && HASH_RE.test(map[k].burnHash || '')).slice(0, HEAL_MAX);
+  let changed = 0;
+  for (const k of todo) {
+    const r = map[k];
+    const d = await fromBurn(r.burnHash, r.from).catch(() => null);
+    if (!d) continue;
+    r.destDomain = d.destDomain; r.destName = DOMAIN[d.destDomain];
+    r.amount = d.amount; r.gross = (r.feeCode === 'USDC' || !r.feeCode) ? +(d.amount + (+r.fee || 0)).toFixed(7) : null;
+    if (!r.recipient) r.recipient = d.recipient;
+    changed++;
+  }
+  if (changed) { try { await kv.put(KEY, JSON.stringify(map)); } catch (e) {} }
+}
+
 // ---- public: read the registry -------------------------------------------------------------------
 // Everything here is already public on chain; the value is that it is assembled and attributed.
 export async function onRequestGet({ request, env }) {
@@ -81,6 +129,7 @@ export async function onRequestGet({ request, env }) {
 
   let map = {};
   try { map = (await kv.get(KEY, 'json')) || {}; } catch (e) { map = {}; }
+  await heal(kv, map);
 
   const q = new URL(request.url).searchParams;
   const who = (q.get('from') || '').trim();
@@ -116,14 +165,31 @@ export async function onRequestPost({ request, env }) {
   const feeOps = await getJson(H + '/transactions/' + encodeURIComponent(feeHash) + '/operations?limit=5');
   const fops = (feeOps && feeOps._embedded && feeOps._embedded.records) || [];
   if (!fops.length) return json({ ok: false, error: 'fee transaction not found' }, 400);
-  if (fops.length !== 1 || fops[0].type !== 'payment' || fops[0].to !== FEE_ACCT) {
-    return json({ ok: false, error: 'that transaction is not a standalone fee payment' }, 400);
+  // TWO SHAPES, both read off the ledger. A USDC-sourced bridge pays its fee as its own one-op payment, after the
+  // burn. A bridge from any other asset (XLM, SHX, LUMOS...) pays it INSIDE the swap transaction: optionally a
+  // trustline, the path payment into USDC to the sender, then the fee -- a payment in XLM, or a path payment ending
+  // in XLM -- to the collector. Only the first shape was accepted, so no swap-first bridge ever reached this record
+  // (RAZA 2026-09-19: 5 XLM -> Polygon, burn ae2fe3db...). Anything else in the transaction is still refused.
+  let feeOp = null, swapOp = null;
+  if (fops.length === 1 && fops[0].type === 'payment' && fops[0].to === FEE_ACCT) {
+    feeOp = fops[0];
+  } else {
+    const allowed = { change_trust: 1, path_payment_strict_send: 1, path_payment_strict_receive: 1, payment: 1 };
+    if (fops.some((o) => !allowed[o.type])) return json({ ok: false, error: 'that transaction is not a bridge fee payment' }, 400);
+    const toFee = fops.filter((o) => o.to === FEE_ACCT);
+    const toSelf = fops.filter((o) => /^path_payment/.test(o.type) && o.to && o.to === o.from && o.asset_code === 'USDC');
+    if (toFee.length !== 1 || toSelf.length !== 1) return json({ ok: false, error: 'that transaction is not a bridge fee payment' }, 400);
+    feeOp = toFee[0]; swapOp = toSelf[0];
+    if (feeOp.from !== swapOp.from) return json({ ok: false, error: 'fee and swap are from different accounts' }, 400);
   }
-  const payer = String(fops[0].from || '');
-  const feeAmount = +fops[0].amount || 0;
-  const feeCode = fops[0].asset_type === 'native' ? 'XLM' : String(fops[0].asset_code || '');
-  const feeAt = Date.parse(fops[0].created_at || '') || 0;
+  const payer = String(feeOp.from || '');
+  const feeAmount = +feeOp.amount || 0;                   // for a path payment, what the collector RECEIVED
+  const feeCode = feeOp.asset_type === 'native' ? 'XLM' : String(feeOp.asset_code || '');
+  const feeAt = Date.parse(feeOp.created_at || '') || 0;
   if (!ADDR_RE.test(payer) || !(feeAmount > 0)) return json({ ok: false, error: 'unreadable fee payment' }, 400);
+  // what the user actually put in, when it was not USDC -- shown as "5 XLM", not as the USDC it became
+  const srcAmount = swapOp ? +(+swapOp.source_amount + (feeOp.type === 'payment' && feeOp.asset_type === swapOp.source_asset_type ? feeAmount : 0)).toFixed(7) : null;
+  const srcCode = swapOp ? (swapOp.source_asset_type === 'native' ? 'XLM' : String(swapOp.source_asset_code || '')) : null;
 
   // 2) the burn must be a Soroban call from the SAME account, close in time
   const burnOps = await getJson(H + '/transactions/' + encodeURIComponent(burnHash) + '/operations?limit=10');
@@ -149,12 +215,23 @@ export async function onRequestPost({ request, env }) {
     if (amt > 0) burnAmount = amt / 1e6;                 // CCTP USDC is 6dp
     recipient = String(body.mintRecipient || '').slice(0, 80);
   }
+  // Circle not ready yet: the burn's own arguments say the same thing.
+  if (destDomain == null || burnAmount == null) {
+    const d = await fromBurn(burnHash, payer).catch(() => null);
+    if (d) {
+      if (destDomain == null) destDomain = d.destDomain;
+      if (burnAmount == null) burnAmount = d.amount;
+      if (!recipient) recipient = d.recipient;
+    }
+  }
 
   const rec = {
     feeHash, burnHash, from: payer,
     fee: feeAmount, feeCode,
     amount: burnAmount,                                   // USDC burned, net of our fee
-    gross: burnAmount != null ? +(burnAmount + feeAmount).toFixed(7) : null,
+    // gross is only meaningful when the fee is in the same unit as the burn (USDC); a fee in XLM is not addable
+    gross: burnAmount != null && feeCode === 'USDC' ? +(burnAmount + feeAmount).toFixed(7) : null,
+    srcAmount, srcCode,                                   // e.g. 5 / "XLM" for a swap-first bridge; null for USDC
     destDomain, destName: destDomain != null ? DOMAIN[destDomain] : null,
     recipient,
     ts: feeAt || burnAt || Date.now(),

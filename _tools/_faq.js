@@ -24,6 +24,25 @@ const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
+const { LZ_LIVE } = require(__dirname + '/_lzflag.js');
+
+// The bridge FAQ once the LayerZero route is live. Kept as a whole replacement set rather than as edits to the
+// CCTP-only answers, because the two differ in substance and not in wording: with two routes the claim step, the
+// fee and the chain list all stop having a single answer. Selected by LZ_LIVE so the prose can never promise a
+// route the product is not carrying yet. Answers below are measured, not estimated -- the ~30 minutes (median of 53 real sends, 2026-09-19) is a real
+// Stellar->Polygon delivery and the 320-confirmation wait that explains it.
+const BRIDGE_TWO_ROUTES = [
+  ["How do I bridge to or from Stellar?", "Pick the destination chain and an amount, then choose a route: CCTP delivers USDC, LayerZero delivers USDT0. Each shows what it costs and how long it takes before you commit. Whatever you are sending is swapped into the stablecoin that route carries, then burned on Stellar and minted on the destination — never wrapped and never held by us."],
+  ["Do I have to claim it on the other side?", "That depends on the route. With CCTP you do: LumosCore burns the USDC here, and the destination chain mints once the redeem is submitted there. That redeem is your own transaction, so keep a little of that chain’s gas token. With LayerZero you do not — its executor delivers for you, paid for by the messaging fee you already covered on Stellar."],
+  ["What if I close the tab before claiming?", "Nothing is stranded. For a CCTP transfer the burn hash, Circle’s message and the attestation are all saved the moment they exist and listed under Awaiting redemption, so you can come back and finish whenever you like. A LayerZero transfer needs no claim at all — it arrives on its own."],
+  ["What is Circle CCTP?", "Circle’s Cross-Chain Transfer Protocol, run by the company that issues USDC. Rather than locking your USDC and handing you a wrapped copy, it destroys it on one chain and issues real USDC on the other."],
+  ["What are LayerZero and USDT0?", "LayerZero is a cross-chain messaging protocol, and USDT0 is Tether’s omnichain dollar built on it, live on Stellar since September 2026. The route burns USDT0 here and mints it on the destination, so what lands is real USDT0 rather than a wrapped copy — and it reaches eight chains CCTP cannot."],
+  ["Which chains are supported?", "Sixteen destinations. CCTP carries USDC to Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain. LayerZero carries USDT0 to Ethereum, Arbitrum, Optimism, Polygon, Berachain, Ink, Hyperliquid, Monad, Flare, Sei, MegaETH and Plasma. Four chains take either route, and you choose which one to use."],
+  ["How long does a transfer take?", "CCTP is ready in about five seconds, because the confirmations Circle counts are on Stellar and Stellar needs one — but it is only ready to claim, and you still have to send that claim. LayerZero takes about 30 minutes and needs nothing from you afterwards: it waits 320 Stellar ledgers before its verifiers sign off, then delivers."],
+  ["What are the cross-chain fees?", "LumosCore takes 0.2% of the amount you bridge, or 0.1% if you hold 250,000 LUMOS or more, so send 100 and 99.8 arrives. Circle charges nothing for CCTP, but you pay the destination chain’s gas to claim. LayerZero charges a messaging fee in XLM, quoted before you sign, and nothing to claim afterwards. Both routes show the whole cost before you commit."],
+  ["Can I bridge my own Stellar asset?", "As the asset you send, yes. Any curated LumosCore asset is swapped into whichever stablecoin the route carries — USDC for CCTP, USDT0 for LayerZero — and that is what crosses. What arrives is real USDC or USDT0 rather than a wrapped copy of your token, and the swap rate is shown before you sign."],
+];
+
 const FEE = 'LumosCore charges 0.2% per trade, reduced to 0.1% if you hold at least 250,000 LUMOS. '
           + 'On top of that Stellar itself charges a network fee of a small fraction of a cent.';
 const NONCUSTODIAL = 'No. LumosCore is non-custodial and never holds your funds or your keys. '
@@ -74,7 +93,7 @@ const FAQ = {
     ["What do the pool reserves mean?", "The reserves are how much of each asset the pool currently holds. Their ratio is its price and their size is its depth, so a bigger pool absorbs a large trade with less movement."],
     ["What are the risks?", "As prices move the pool sells whichever asset is rising and buys the one falling, so you can withdraw less of the winner than you put in and fees may not cover it. A pool is also only as sound as its two assets."],
   ],
-  'bridge': [
+  'bridge': LZ_LIVE ? BRIDGE_TWO_ROUTES : [
     ["How do I bridge USDC to or from Stellar?", "Pick the source and destination chains, enter an amount and approve it in your wallet. The USDC is burned on one chain and minted on the other, never wrapped and never held by us. You then redeem it on the destination chain to finish."],
     ["Do I have to claim the USDC on the other side?", "Yes. A bridge is two halves: LumosCore burns the USDC on the chain you are leaving, and the destination chain only mints once a redeem is submitted there. That redeem is your own transaction, so keep a little of the destination chain’s gas token."],
     ["What if I close the tab before claiming?", "Nothing is stranded. The burn hash, Circle’s message and the attestation, everything a redeem needs, are saved the moment they exist and listed under Awaiting redemption. Come back and finish the transfer whenever you like."],

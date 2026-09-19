@@ -229,6 +229,31 @@ if (!ADMIN) {
   }
 }
 
+// ---- the LayerZero route must not reach production by accident ----------------------------------------
+// dist/ is COMMITTED and a push to main serves it directly (the source containers are gitignored, so
+// Cloudflare cannot rebuild). So a staging build made with LZ_LIVE=1 sitting in the working tree would ship
+// the enabled route to production the next time anyone commits dist -- enabling a real-money path that has
+// never round-tripped a signature, with nobody having decided to.
+//
+// The build is therefore asked what it actually contains, rather than trusting whoever ran it: if dist says
+// LZ_SENDABLE=true, this only passes when LZ_LIVE=1 is set for THIS run too. Deploying staging with the route
+// on is `LZ_LIVE=1 npm run predeploy && LZ_LIVE=1 npm run deploy:staging`; anything else blocks.
+{
+  const jsDir = path.join(DIR, "assets", "js");
+  let enabled = false;
+  try {
+    for (const f of fs.readdirSync(jsDir)) {
+      if (!f.endsWith('.js')) continue;
+      if (fs.readFileSync(path.join(jsDir, f), 'utf8').includes('var LZ_SENDABLE=true')) { enabled = true; break; }
+    }
+  } catch (_) { /* no externalised js in this build */ }
+  if (enabled && process.env.LZ_LIVE !== '1') {
+    fail.push('dist was built with the LayerZero route ENABLED (LZ_SENDABLE=true) but LZ_LIVE=1 is not set for this run.\n'
+      + '      That build is for staging only. Rebuild without LZ_LIVE before committing dist or pushing to main:\n'
+      + '        node _tools/_cctp.js && node _tools/_faq.js && node _tools/_seo.js && node _tools/_lzusdt0.js && npm run build');
+  }
+}
+
 // ---- report -------------------------------------------------------------------------------------------
 const size = (files.reduce((s, f) => s + fs.statSync(f).size, 0) / 1048576).toFixed(1);
 console.log(`\n  Pre-deploy check — ${LABEL} build (${files.length} files, ${size} MB)\n`);
