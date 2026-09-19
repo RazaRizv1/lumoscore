@@ -28,7 +28,7 @@
   function transportOf(sk) { return sk === 'XLM' ? 'XLM' : 'USDC'; }   // XLM goes as XLM; everything else as USDC
   // Logos: the 20 shipped with the site (assets/tokens/ni, _nilogos.js); any other token on 1Click's list through our
   // logo lookup, keyed on the coingeckoId 1Click gives it; nothing known -> a letter disc (see the menu's onerror).
-  var NI_LOCAL = { NEAR: 1, ETH: 1, WETH: 1, USDC: 1, USDT: 1, USDT0: 1, WBTC: 1, cbBTC: 1, DAI: 1, LINK: 1, UNI: 1, AAVE: 1, ARB: 1, GMX: 1, OP: 1, POL: 1, AVAX: 1, BERA: 1, MON: 1, XPL: 1 };
+  var NI_LOCAL = {"AAVE":1,"ADI":1,"ARB":1,"AURORA":1,"AVAX":1,"BERA":1,"BRETT":1,"cbBTC":1,"CFI":1,"COCA":1,"DAI":1,"ETH":1,"GMX":1,"HAPI":1,"hemiBTC":1,"INX":1,"KAITO":1,"KNC":1,"LINK":1,"MOG":1,"MON":1,"NEAR":1,"OP":1,"PEPE":1,"POL":1,"SAFE":1,"SHIB":1,"SPX":1,"sUSDC":1,"SWEAT":1,"TITN":1,"TURBO":1,"UNI":1,"USD1":1,"USDC":1,"USDf":1,"USDT":1,"USDT0":1,"VVV":1,"WBTC":1,"WETH":1,"XAUT":1,"XPL":1};
   function logo(sym, chain) {
     if (NI_LOCAL[sym]) return '/assets/tokens/ni/' + sym + '.png';
     var t = chain ? tok(chain, sym) : null;

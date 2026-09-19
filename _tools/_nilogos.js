@@ -10,8 +10,15 @@ let sharp; try { sharp = require('sharp'); } catch (e) { console.error('  ! shar
 
 const OUT = path.join(__dirname, '..', 'assets', 'tokens', 'ni');
 const FORCE = process.argv.includes('--force');
-// The destination list the bridge offers (native first per chain) -- kept in step with NI_DEST in _nearintents.js.
-const SYMBOLS = ['NEAR', 'ETH', 'WETH', 'USDC', 'USDT', 'USDT0', 'WBTC', 'cbBTC', 'DAI', 'LINK', 'UNI', 'AAVE', 'ARB', 'GMX', 'OP', 'POL', 'AVAX', 'BERA', 'MON', 'XPL'];
+// EVERY token the bridge can deliver by NEAR Intents, not only the majors (RAZA 2026-09-19: "many of near intents assets
+// don't have logos"). The picker lists all of them, and the fallback -- /lxapi/oneclick?op=logo fetching CoinGecko at
+// request time -- 404s from Cloudflare's edge (CoinGecko refuses those requests; measured on production for aurora-near,
+// hapi, hemi-bitcoin). So every logo is fetched here, once, and shipped. The file name is the SYMBOL, the key the picker,
+// the feed and the dashboard look logos up by; _nearintents.js and _realdata.js read this folder at build time.
+const NI_CHAINS = ['eth', 'arb', 'base', 'pol', 'op', 'avax', 'bera', 'monad', 'plasma'];
+const MAJORS = ['NEAR', 'ETH', 'WETH', 'USDC', 'USDT', 'USDT0', 'WBTC', 'cbBTC', 'DAI', 'LINK', 'UNI', 'AAVE', 'ARB', 'GMX', 'OP', 'POL', 'AVAX', 'BERA', 'MON', 'XPL'];
+let SYMBOLS = MAJORS.slice();
+const SAFE = /^[A-Za-z0-9._-]{1,24}$/;   // becomes a file name and a URL path segment
 const LOCAL = { USDC: 'usdc.png', USDT0: 'usdt0.png' };
 
 // CoinGecko's free tier answers 429 when called in bursts; wait and retry rather than give up.
@@ -29,6 +36,7 @@ async function png(buf) { return sharp(buf, { density: 300 }).resize(96, 96, { f
   const toks = await j('https://1click.chaindefuser.com/v0/tokens');
   const idOf = {};
   toks.forEach((t) => { if (t.coingeckoId && !/DEPRECATED/i.test(t.symbol) && !idOf[t.symbol]) idOf[t.symbol] = t.coingeckoId; });
+  toks.forEach((t) => { if (NI_CHAINS.indexOf(t.blockchain) >= 0 && !/DEPRECATED/i.test(t.symbol || '') && SAFE.test(t.symbol || '') && SYMBOLS.indexOf(t.symbol) < 0) SYMBOLS.push(t.symbol); });
   // ONE request for every image: /coins/markets takes a list of ids. Per-coin lookups hit CoinGecko's free-tier 429
   // after five.
   const need = SYMBOLS.filter((s) => !LOCAL[s] && idOf[s] && (FORCE || !fs.existsSync(path.join(OUT, s + '.png'))));
@@ -48,6 +56,7 @@ async function png(buf) { return sharp(buf, { density: 300 }).resize(96, 96, { f
       else {
         const id = idOf[s]; if (!id) throw new Error('no coingeckoId');
         const url = imgOf[id]; if (!url) throw new Error('no image for ' + id);
+        if (/missing_(large|small|thumb)/.test(url)) throw new Error('CoinGecko has no logo for ' + id);   // its placeholder
         const r = await fetch(url, { signal: AbortSignal.timeout(20000) }); buf = Buffer.from(await r.arrayBuffer());
         console.log('  ' + s.padEnd(6) + ' <- ' + id);
       }
