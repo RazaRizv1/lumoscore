@@ -1,5 +1,5 @@
 (function(){
-try{ document.title="Bridge USDC across 8 chains with Circle CCTP | LumosCore"; }catch(_){}   /* baked title said "DEX" */
+try{ document.title="Bridge USDC and USDT0 across 16 chains | LumosCore"; }catch(_){}   /* baked title said "DEX" */
 try{ window.__lxCCTP={
   testnet:false, sourceDomain:27,
   tokenMessenger:"CAE2G5Z77UP7GYPYGFOWFGW7C7J6I4YP2AFGSADRKQY62SYUFLPNFTXL",

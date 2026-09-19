@@ -247,7 +247,10 @@ if (!ADMIN) {
       if (fs.readFileSync(path.join(jsDir, f), 'utf8').includes('var LZ_SENDABLE=true')) { enabled = true; break; }
     }
   } catch (_) { /* no externalised js in this build */ }
-  if (enabled && process.env.LZ_LIVE !== '1') {
+  // Inverted 2026-09-19 when the routes went live on production: a live build is now the normal one, and what must
+  // not ship by accident is a WITHDRAWN build mislabelled as normal -- so a live dist fails only when LZ_LIVE=0 says
+  // this run is meant to be the withdrawn one.
+  if (enabled && process.env.LZ_LIVE === '0') {
     fail.push('dist was built with the LayerZero route ENABLED (LZ_SENDABLE=true) but LZ_LIVE=1 is not set for this run.\n'
       + '      That build is for staging only. Rebuild without LZ_LIVE before committing dist or pushing to main:\n'
       + '        node _tools/_cctp.js && node _tools/_faq.js && node _tools/_seo.js && node _tools/_lzusdt0.js && npm run build');
