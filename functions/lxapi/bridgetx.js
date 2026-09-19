@@ -259,6 +259,10 @@ function niApply(rec, s, tok) {
   rec.recipient = String(qr.recipient || '').slice(0, 80);
   rec.amount = s.status === 'SUCCESS' ? +(sd.amountOutFormatted || 0) : +((q.quote || {}).amountOutFormatted || 0);
   rec.niStatus = String(s.status || '');
+  // what the deposit was worth in dollars, as 1Click itself valued it -- the admin's cross-chain volume. Taken from
+  // 1Click rather than priced here, because the source may be AQUA or LUMOS, which this function cannot price.
+  const usd = +(sd.amountInUsd || sd.depositedAmountUsd || (q.quote || {}).amountInUsd || 0);
+  if (usd > 0) rec.usdIn = +usd.toFixed(2);
   return true;
 }
 async function registerNi(hash, env, used) {
@@ -285,13 +289,17 @@ async function registerNi(hash, env, used) {
 }
 // a NEAR Intents row still in flight is brought up to date on read, a few per request
 async function healNi(kv, map, env) {   // map is the RKEY map
-  const todo = Object.keys(map).filter((k) => map[k] && map[k].route === 'NEAR Intents' && !NI_FINAL[map[k].niStatus]).slice(0, HEAL_MAX);
+  const todo = Object.keys(map).filter((k) => map[k] && map[k].route === 'NEAR Intents' && (!NI_FINAL[map[k].niStatus] || map[k].usdIn == null)).slice(0, HEAL_MAX);
   if (!todo.length) return;
   const tok = await niTokens(env);
   let changed = 0;
   for (const k of todo) {
     const s = await niStatus(env, map[k].depositMemo).catch(() => null);
-    if (s && niApply(map[k], s, tok)) changed++;
+    if (s && niApply(map[k], s, tok)) {
+      // finished and 1Click gave no dollar value: settle at 0 so this row is not asked about on every request
+      if (map[k].usdIn == null && NI_FINAL[map[k].niStatus]) map[k].usdIn = 0;
+      changed++;
+    }
   }
   if (changed) { try { await kv.put(RKEY, JSON.stringify(map)); } catch (e) {} }
 }

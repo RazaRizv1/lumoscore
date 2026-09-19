@@ -416,7 +416,7 @@ function grossOf(S,p){ try{
 // registry degrades to {} and the rows simply stay in "other" -- never to a wrong attribution.
 var BRIDGE=null;
 function loadBridge(){ if(BRIDGE)return Promise.resolve(BRIDGE);
-  return fetch("/lxapi/bridgetx?limit=200").then(function(r){ return r.ok?r.json():null; })
+  return fetch("/lxapi/bridgetx?limit=200&routes=all").then(function(r){ return r.ok?r.json():null; })
     .then(function(d){ var m={}; ((d&&d.rows)||[]).forEach(function(x){ if(x&&x.feeHash)m[x.feeHash]=x; });
       BRIDGE=m; return m; })
     .catch(function(){ BRIDGE={}; return BRIDGE; }); }
@@ -438,12 +438,18 @@ function loadVolume(){ if(VOL)return Promise.resolve(VOL);
       var fa=assetOf(p);
       out.push({t:Date.parse(p.created_at),from:p.from,code:g.code,iss:g.iss,gross:g.gross,
         kind:g.kind,fee:(+p.amount||0),feeCode:fa.code,feeIss:fa.iss,
-        bridged:br?(+br.gross||+br.amount||0):0,bridgeTo:br?(br.destName||""):""}); });
+        // IN DOLLARS, per route (RAZA 2026-09-19: add LayerZero and NEAR Intents fees to admin). CCTP moves USDC and
+        // LayerZero USDT0 -- both dollars by construction; a NEAR Intents transfer can deliver ETH or MON, so its value
+        // is the one 1Click itself put on the deposit (usdIn, stored with the record).
+        bridged:br?(br.route==="NEAR Intents"?(+br.usdIn||0):(br.route==="LayerZero"?(+br.amount||0):(+br.gross||+br.amount||0))):0,
+        route:br?(br.route||"CCTP"):"",bridgeTo:br?(br.destName||""):""}); });
     VOL={rows:out,missing:miss}; return VOL; })
    .catch(function(){ VOL={rows:[],missing:-1}; return VOL; }); }
 // Assets we cannot price are reported, never guessed at -- the rule the revenue table already follows.
 function volUsd(rows,since,cb){ var byA={};
-  rows.forEach(function(r){ if(since&&r.t<since)return; if(!r.code||!r.gross)return; var k=r.code+"-"+r.iss;
+  // a bridge whose fee rode a swap (every swap-first transfer, any route) is NOT swap volume: it is counted once, as
+  // cross-chain volume. The comment on bridged said so; this is where it was not enforced.
+  rows.forEach(function(r){ if(since&&r.t<since)return; if(r.kind==="bridge")return; if(!r.code||!r.gross)return; var k=r.code+"-"+r.iss;
     byA[k]=byA[k]||{code:r.code,iss:r.iss,amt:0}; byA[k].amt+=r.gross; });
   var ks=Object.keys(byA); if(!ks.length){ cb(0,0); return; }
   var pend=ks.length,total=0,unpriced=0;
@@ -490,7 +496,7 @@ function buildDash(grid){
   grid.innerHTML = "<div class='lxd-sec'><span class='lxd-sec-t'>Current period</span><span class='lxd-per'>" + WIN[WI][0] + "</span></div>"
     + kpiTile("lxdRev","Revenue","fees collected")
     + kpiTile("lxdVol","Volume","swap volume")
-    + kpiTile("lxdBrVol","Cross-chain volume","bridged via CCTP","USDC sent through the Cross-Chain bridge, counted gross \u2014 what the sender parted with, including our fee. Kept out of Volume on purpose: that figure is swap volume, and adding bridged USDC to it would overstate how much is being traded.")
+    + kpiTile("lxdBrVol","Cross-chain volume","bridged via CCTP, LayerZero or NEAR Intents","What was sent through the Cross-Chain bridge, in dollars, split by route: CCTP counts the USDC gross (including our fee), LayerZero the USDT0 sent, NEAR Intents the deposit as NEAR Intents itself valued it. Kept out of Volume on purpose: that figure is swap volume, and adding bridged value to it would overstate how much is being traded.")
     + kpiTile("lxdTrades","Trades","fee-paying swaps")
     + kpiTile("lxdWal","Connected wallets","distinct wallets","Distinct wallets that connected a wallet to the site in this window. Recorded by our own beacon, because nothing on-chain marks a connection - only wallets that go on to pay a fee leave a trace, and those are a fraction of the people who open the app. Counted per UTC day.")
     + "<div class='lxd-sec'><span class='lxd-sec-t'>All time</span></div>"
@@ -533,11 +539,12 @@ function fillDash(){
       var f=q("#lxdVolF"); if(f)f.innerHTML="swap volume"+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(v.missing>0?(" \u00b7 "+v.missing+" receipt(s) with no swap"):""); });
     volUsd(v.rows,0,function(t){ setT(q("#lxdVolA"), usd(t)); });
     // Straight sum, no pricing step: CCTP moves USDC and nothing else.
-    var brP=0,brA=0,brN=0;
+    var brP=0,brA=0,brN=0,byR={};   // every bridged figure is already in dollars (see bridged); split by route
     v.rows.forEach(function(r){ var b=+r.bridged||0; if(!b)return;
-      brA+=b; brN++; if(!since||r.t>=since)brP+=b; });
+      brA+=b; brN++; if(!since||r.t>=since){ brP+=b; byR[r.route||"CCTP"]=(byR[r.route||"CCTP"]||0)+b; } });
     setT(q("#lxdBrVol"), usd(brP)); setT(q("#lxdBrVolA"), usd(brA));
-    var bf=q("#lxdBrVolF"); if(bf)bf.innerHTML="bridged via CCTP";
+    var bf=q("#lxdBrVolF"); if(bf){ var parts=["CCTP","LayerZero","NEAR Intents"].filter(function(k){ return byR[k]; }).map(function(k){ return k+" "+usd(byR[k]); });
+      bf.innerHTML=parts.length?parts.join(" · "):"bridged via CCTP, LayerZero or NEAR Intents"; }
     var bfa=q("#lxdBrVolAF"); if(bfa)bfa.textContent=brN?("every bridge since launch \u00b7 "+brN+" transfer"+(brN===1?"":"s")):"no bridges recorded yet";
   });
   loadTier().then(function(t){ if(t.n==null){ setT(q("#lxdTier"),"\u2014");
