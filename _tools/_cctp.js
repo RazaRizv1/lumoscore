@@ -1206,18 +1206,13 @@ function lxBrMergedTxs(){
   // public first, then anything this browser recorded that is not already in it
   var seen={}; LX_PUBTX.forEach(function(o){ seen[o.hash]=1; });
   local=LX_PUBTX.concat(local.filter(function(o){ return o&&!seen[o.hash]; }));
-  return lxBrChainHistory().then(function(chain){
-    if(!chain.length) return local;
-    var byHash={}; local.forEach(function(o){ if(o&&o.hash) byHash[o.hash]=o; });
-    var merged=chain.map(function(c){
-      var l=byHash[c.hash];
-      if(l){ c.srcAmount=l.srcAmount||c.srcAmount; c.srcKey=l.srcKey||c.srcKey; delete byHash[c.hash]; }
-      return c;
-    });
-    Object.keys(byHash).forEach(function(h){ merged.push(byHash[h]); });
-    merged.sort(function(a,b){ return (b.ts||0)-(a.ts||0); });
-    return merged;
-  });
+  // ONE LIST ON EVERY DEVICE (RAZA 2026-09-19: "why the fuck mobile and desktop are showing different recent
+  // transactions ... it should show all on both devices"). This used to add the CONNECTED wallet's burns read from the
+  // chain -- on the phone only, since desktop never called it -- so each device showed its own wallet's extras. Now
+  // every route is REGISTERED in the shared record instead (lxBrSyncChain), and both layouts paint the same thing:
+  // the shared record, plus whatever this browser sent that the record has not taken yet.
+  local.sort(function(a,b){ return (+b.ts||0)-(+a.ts||0); });
+  return Promise.resolve(local);
 }
 window.lxBrChainHistory=lxBrChainHistory; window.lxBrMergedTxs=lxBrMergedTxs;
 
@@ -1277,7 +1272,9 @@ function lxBrRelTime(ts){ if(!ts)return "Just now"; var s=Math.floor((Date.now()
 // 100 kept, shown 25 at a time over at most 4 pages. Nothing older is retained: this is a local record
 // in one browser, not a server-side feed, so it is bounded on purpose.
 var LX_TXPP=25, LX_TXMAX=100, lxBrTxPage=1;
-function lxBrSaveTx(o){ setTimeout(function(){try{lxBrRenderMobileTxs();}catch(_){}},0); try{ var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); var dseen={}; a.forEach(function(o){ if(o&&o.hash)dseen[o.hash]=1; }); a=a.concat(LX_PUBTX.filter(function(o){ return !dseen[o.hash]; })); a.sort(function(x,y){ return (x.ts||0)-(y.ts||0); }); a.unshift(o); if(a.length>LX_TXMAX)a=a.slice(0,LX_TXMAX); localStorage.setItem("lumos.cctp.txs",JSON.stringify(a)); }catch(_){} }
+function lxBrSaveTx(o){ setTimeout(function(){try{lxBrRenderMobileTxs();}catch(_){}},0);
+  // LayerZero / NEAR Intents: into the shared record at once, so the other device has it too (CCTP registers itself)
+  if(o&&o.hash&&(o.bridge==="LayerZero"||o.bridge==="NEAR Intents")) setTimeout(function(){ try{ lxBrRegister(o.bridge,o.hash); }catch(_){} },4000); try{ var a=JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]"); var dseen={}; a.forEach(function(o){ if(o&&o.hash)dseen[o.hash]=1; }); a=a.concat(LX_PUBTX.filter(function(o){ return !dseen[o.hash]; })); /* NEWEST first before the cap: sorted oldest-first, the cap kept the oldest and dropped recent transfers */ a=a.filter(function(x){ return x&&x.hash!==o.hash; }); a.sort(function(x,y){ return (y.ts||0)-(x.ts||0); }); a.unshift(o); if(a.length>LX_TXMAX)a=a.slice(0,LX_TXMAX); localStorage.setItem("lumos.cctp.txs",JSON.stringify(a)); }catch(_){} }
 function lxBrTxRows(){ var tb=document.querySelector(".br-table tbody"); return tb?[].slice.call(tb.querySelectorAll("tr:not(.lx-txempty)")):[]; }
 // an empty table has to say so rather than look broken
 function lxBrTxEmpty(){ var tb=document.querySelector(".br-table tbody"); if(!tb) return;
@@ -1356,7 +1353,7 @@ window.lxBrSavePending=lxBrSavePending; window.lxBrListPending=lxBrListPending; 
 var LX_PUBLOAD=null;
 function lxBrLoadPublic(){
   if(LX_PUBLOAD)return LX_PUBLOAD;
-  LX_PUBLOAD=fetch("/lxapi/bridgetx?limit=100").then(function(r){ return r.ok?r.json():null; })
+  LX_PUBLOAD=fetch("/lxapi/bridgetx?limit=200&routes=all").then(function(r){ return r.ok?r.json():null; })
     .then(function(d){
       var rows=(d&&d.rows)||[]; if(!rows.length)return LX_PUBTX;
       var seen={}; LX_PUBTX.forEach(function(o){ if(o&&o.hash)seen[o.hash]=1; });
@@ -1372,7 +1369,9 @@ function lxBrLoadPublic(){
         LX_PUBTX.push({ ts:+x.ts||Date.now(), hash:x.burnHash,
           // srcAmount/srcCode: what was really sent, when a swap came first ("5 XLM"); USDC transfers carry neither
           amount:(+x.amount||0), srcAmount:(x.srcAmount!=null?String(x.srcAmount):(x.gross!=null?String(x.gross):(x.amount!=null?String(x.amount):"\\u2014"))),
-          srcKey:(x.srcCode||"USDC"), net:(x.destName||""), recipient:(x.recipient||""), src:(x.from||"") });
+          srcKey:(x.srcCode||"USDC"), net:(x.destName||""), recipient:(x.recipient||""), src:(x.from||""),
+          // the route and what it delivered: USDT0 by LayerZero, any token by NEAR Intents; CCTP rows carry neither
+          bridge:(x.route||"CCTP"), asset:(x.asset||undefined) });
       });
       LX_PUBTX.sort(function(a,b){ return (+b.ts||0)-(+a.ts||0); });
       return LX_PUBTX;
@@ -1399,6 +1398,64 @@ function lxBrRestoreTxsNow(){ try{ var tbody=document.querySelector('.br-table t
   // than building rows the pager will hide forever
   if(a.length>LX_TXMAX) a=a.slice(0,LX_TXMAX);
   for(var i=a.length-1;i>=0;i--){ var o=a[i]; o.when=lxBrRelTime(o.ts); lxBrAddRecentTx(o); } }catch(_){} }
+// Repaint the desktop table from the store -- for a record that arrives AFTER the first paint (NEAR Intents history
+// read back from the chain, lxNiSync). Only once the first restore has run: before that, it will read the store itself,
+// and repainting early would mark the table restored before the shared registry had loaded.
+window.lxBrRepaintTxs=function(){ try{ var tb=document.querySelector('.br-table tbody'); if(!tb||!tb.__lxRestored) return;
+  [].slice.call(tb.querySelectorAll('tr.lx-newtx')).forEach(function(r){ r.parentNode.removeChild(r); });
+  tb.__lxRestored=false; lxBrRestoreTxsNow(); try{ lxBrTxEmpty(); }catch(_){} }catch(_){} };
+
+// ---- every route in the SHARED record, so every device shows the same list ----------------------------------------
+// RAZA 2026-09-19: "it should show all on both devices". CCTP transfers were registered with /lxapi/bridgetx when sent;
+// LayerZero and NEAR Intents lived only in the sending browser. They are registered too now -- the server verifies each
+// against the ledger and against LumosCore's fee, so this only POINTS at transfers, it cannot describe them. Sources:
+//   the connected wallet's own transfers, read from the chain (made on any device -- or never recorded, when a phone
+//   tab was suspended while a wallet app signed), and every LayerZero / NEAR Intents record this browser holds.
+var LX_OFT_HEX="5d672cb21b3afcdda54546c7f5b9fd346920e41f8fe8f39e838e5d7bd7435546";   // the USDT0 OFT contract, raw id
+var LX_NI_DEP="GDJ4JZXZELZD737NVFORH4PSSQDWFDZTKW3AIDKHYQG23ZXBPDGGQBJK";              // 1Click's Stellar deposit account
+function lxBrRegister(route, hash){
+  return fetch("/lxapi/bridgetx",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({route:route,hash:hash})})
+    .then(function(r){ return r.json(); }).then(function(j){ return !!(j&&j.ok&&j.status==="stored"); }).catch(function(){ return false; });
+}
+var lxBrSyncing=false;
+function lxBrSyncChain(){
+  if(lxBrSyncing) return Promise.resolve(0); lxBrSyncing=true;
+  var pk=""; try{ pk=localStorage.getItem("lumos.address")||""; }catch(_){}
+  var todo={};   // hash -> route
+  try{ JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]").forEach(function(o){
+    if(o&&o.hash&&(o.bridge==="LayerZero"||o.bridge==="NEAR Intents")) todo[o.hash]=o.bridge; }); }catch(_){}
+  var chainP=!/^G[A-Z2-7]{55}$/.test(pk)?Promise.resolve():
+    fetch("https://horizon.stellar.org/accounts/"+pk+"/operations?order=desc&limit=100&join=transactions")
+      .then(function(r){ return r.ok?r.json():null; }).then(function(d){
+        (((d&&d._embedded)||{}).records||[]).forEach(function(o){
+          if(o.transaction_successful===false) return;
+          if(o.type==="invoke_host_function"){
+            var p0=(o.parameters||[])[0], c=p0?lxB64(p0.value):new Uint8Array(0);
+            var burnT0=(o.asset_balance_changes||[]).some(function(b){ return b.type==="burn"&&b.asset_code==="USDT0"; });
+            if(burnT0&&c.length>=40&&lxHex(c.slice(8,40))===LX_OFT_HEX) todo[o.transaction_hash]="LayerZero";
+          } else if(o.type==="payment"&&o.to===LX_NI_DEP&&o.from===pk){
+            var tx=o.transaction||{}; if(tx.memo_type==="id") todo[o.transaction_hash]="NEAR Intents";
+          }
+        });
+      }).catch(function(){});
+  return chainP.then(function(){ return lxBrLoadPublic(); }).then(function(){
+    var have={}; LX_PUBTX.forEach(function(o){ if(o&&o.hash) have[o.hash]=1; });
+    var hs=Object.keys(todo).filter(function(h){ return !have[h]; }).slice(0,8);
+    // one at a time: each registration reads the shared record and writes it back
+    var n=0, chain=Promise.resolve();
+    hs.forEach(function(h){ chain=chain.then(function(){ return lxBrRegister(todo[h],h).then(function(ok){ if(ok) n++; }); }); });
+    return chain.then(function(){ return n; });
+  }).then(function(n){
+    if(!n) return 0;
+    LX_PUBLOAD=null;   // read the record again, now holding the new rows
+    return lxBrLoadPublic().then(function(){
+      try{ window.lxBrRepaintTxs(); }catch(_){}
+      try{ lxBrRenderMobileTxs(); }catch(_){}
+      return n; });
+  }).catch(function(){ return 0; }).then(function(n){ lxBrSyncing=false; return n; });
+}
+window.lxBrSyncChain=lxBrSyncChain;
+setTimeout(function(){ try{ lxBrSyncChain(); }catch(_){} },2500);
 // add a "Bridge Used" column after "To" + rename the explorer header; backfill existing (non-CCTP) rows with a dash
 function lxBrTableCols(){ try{
   var table=document.querySelector('.br-table'); if(!table||table.__lxCols)return; table.__lxCols=true;
@@ -2237,6 +2294,7 @@ function lxBrSeedFromServer(){
       var added=0;
       rows.forEach(function(x){
         if(!x||!x.burnHash||x.from!==me)return;              // only this wallet's own burns
+        if(x.route&&x.route!=="CCTP")return;                 // LayerZero / NEAR Intents deliver by themselves: nothing to claim
         if(have[x.burnHash]||lxBrIsDone(x.burnHash))return;
         // status "burned": lxBrResumePending will ask Circle for the attestation on this same pass.
         lxBrSavePending({ burnHash:x.burnHash, destDomain:x.destDomain, amount:x.amount,

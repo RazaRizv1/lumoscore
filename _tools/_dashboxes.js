@@ -21,6 +21,7 @@
 const fs = require('fs');
 const crypto = require('crypto');
 const { read, getContents, VERIFIED } = require(__dirname + '/lib.js');
+const { LZ_LIVE } = require(__dirname + '/_lzflag.js');
 const B = String.fromCharCode(92);
 
 // The curated list, baked from lib.js at build time so it cannot drift from the one the Trade page
@@ -62,6 +63,9 @@ const STYLE = '<style id="lx-dashboxes-css">/*lxts:1.1*/'
   // A value that is a NAME rather than a figure reads wrong in the tabular face -- it is set in the text
   // face at a size that fits the row it shares.
   + '.lx-dbx-v[data-k="cvia"]{font:800 15px/1.35 "Hanken Grotesk",system-ui,sans-serif!important;letter-spacing:-.01em}'
+  // three bridges now: allowed to wrap between names (never inside one) -- on a phone the column is ~77px wide
+  + '.lx-dbx-v[data-k="cvia"]{white-space:normal!important;overflow:visible!important;text-overflow:clip!important;overflow-wrap:normal;word-break:keep-all}'
+  + '@media(max-width:760px){.lx-dbx-v[data-k="cvia"]{font-size:13px!important;line-height:1.3!important}}'
   + '.lx-dbx-v{margin-top:4px;font:800 15px/1.1 "JetBrains Mono",ui-monospace,monospace;'
   + 'color:var(--text,#0e0e10);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'
   + 'letter-spacing:-.02em}'
@@ -146,7 +150,7 @@ const QAFIRST = '<script id="lx-dashqafirst">(function(){'
 const ROW = '<div class="lx-dbx">'
   + card('/trade/stellar', ART_TRADE, 'Trade', [['24h Volume', 'tvol'], ['Liquidity', 'tliq'], ['Markets', 'tmkt']], 'Browse markets', '#a855f7', '#6d28d9')
   + card('/pools/stellar', ART_POOLS, 'Pools', [['Pools', 'ppool'], ['TVL', 'ptvl'], ['24h Volume', 'pvol']], 'Explore pools', '#38bdf8', '#2563eb')
-  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['Asset', 'casset'], ['Via', 'cvia']], 'Explore Bridge', '#2dd4bf', '#0d9488')
+  + card('/bridge', ART_CHAIN, 'Cross-chain', [['Networks', 'cnet'], ['Assets', 'casset'], ['Via', 'cvia']], 'Explore Bridge', '#2dd4bf', '#0d9488')
   + card('/launchpad', ART_LAUNCH, 'Launchpad', [['Tokens', 'ltok'], ['Newest', 'lnew'], ['24h Mints', 'lmint']], 'Launch a token', '#f7b733', '#ea6a2c')
   + '</div>';
 
@@ -255,7 +259,20 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   // ---- Cross-chain: this deployment's own bridge, not the network's.
   // The count of destinations is a property of what is wired up here, so it is stated rather than
   // fetched. The activity figures come from the bridge's own log; absent one, they are an honest 0.
-  + 'set("cnet","10"); set("casset","USDC"); set("cvia","Circle CCTP");'
+  // RAZA 2026-09-19: Networks = every destination the bridge offers; Assets = what can ARRIVE, counted per route --
+  // USDC by CCTP, USDT0 by LayerZero, and each token NEAR Intents delivers on each of its chains; Via = all three.
+  // Measured the same day: 16 destinations (CCTP 8 + LayerZero 12, overlapping; NEAR Intents' 9 all among them) and
+  // 1 + 1 + 73 = 75 assets. The NEAR Intents part is recounted live from the list the bridge's picker uses (same
+  // rule: per chain, by symbol, deprecated excluded), so the figure follows 1Click; 75 stands if that call fails.
+  // Until LayerZero and NEAR Intents can send (LZ_LIVE), the card states CCTP alone: 8 networks, USDC, Circle CCTP.
+  + (LZ_LIVE
+    ? 'set("cnet","16"); set("casset","75"); set("cvia","CCTP · LayerZero · NEAR Intents");'
+      + 'fetch("/lxapi/oneclick?op=tokens").then(function(r){ return r.ok?r.json():null; }).then(function(d){'
+      + ' var C={eth:1,arb:1,base:1,pol:1,op:1,avax:1,bera:1,monad:1,plasma:1}, seen={}, n=0;'
+      + ' ((d&&d.tokens)||[]).forEach(function(t){ if(!t||!C[t.blockchain]||/DEPRECATED/i.test(t.symbol||""))return;'
+      + '  var k=t.blockchain+":"+t.symbol; if(!seen[k]){ seen[k]=1; n++; } });'
+      + ' if(n>0) set("casset",String(2+n)); }).catch(function(){});'
+    : 'set("cnet","8"); set("casset","USDC"); set("cvia","Circle CCTP");')
   + '})();</script>';
 
 let removed = 0, rows = 0, keys = 0;
