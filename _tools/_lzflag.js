@@ -23,4 +23,13 @@
 //
 // A push to main builds from the committed source with no such variable set, so main is off unless somebody
 // deliberately changes this line.
-module.exports = { LZ_LIVE: process.env.LZ_LIVE === '1' };
+// SWITCHED ON FOR PRODUCTION 2026-09-19 (RAZA: 'switch them on'). Both routes had round-tripped real transfers on
+// mainnet by then -- LayerZero (1 XLM -> USDT0 on Sei, delivered; the first send delivered in 27.6 min) and NEAR Intents
+// (three transfers, all SUCCESS). So the default is now ON, and the routes are withdrawn only DELIBERATELY:
+//
+//   production + staging (default):   npm run build            (LayerZero + NEAR Intents sendable)
+//   routes withdrawn:                 LZ_LIVE=0 node _tools/... && LZ_LIVE=0 npm run build
+//
+// Defaulting to off after the launch would have been the dangerous direction: any routine rebuild would have
+// silently switched both routes off on production.
+module.exports = { LZ_LIVE: process.env.LZ_LIVE !== '0' };
