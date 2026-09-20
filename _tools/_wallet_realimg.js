@@ -5,7 +5,7 @@
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);const Q=String.fromCharCode(34);
 
 // var-I key -> [fallback letter, file | null]
-const IK={freighter:['F','freighter.png'],xbull:['X',null],rabet:['R','rabet.jpg'],albedo:['A','albedo.png'],lobstr:['L','lobstr.png'],
+const IK={freighter:['F','freighter.png'],xbull:['X',null],rabet:['R','rabet.png'],albedo:['A','albedo.png'],lobstr:['L','lobstr.png'],
   wc:['W',null],gem:['G','gem.png'],xaman:['X','xaman.png'],joey:['J',null],crossmark:['C','crossmark.webp'],
   hashpack:['H','hashpack.png'],kabila:['K','kabila.png'],blade:['B',null],metamask:['M',null],
   argent:['R','ready.png'],braavos:['B',null],petra:['P',null],martian:['M',null],pontem:['P',null],
@@ -18,7 +18,7 @@ function iconJS(letter,file){
 const IMAP='var I={'+Object.keys(IK).map(k=>k+':'+iconJS(IK[k][0],IK[k][1])).join(',')+'};';
 
 function slug(n){return n.toLowerCase().replace(/[^a-z0-9]/g,'');}
-const NFILE={hashpack:'hashpack.png',kabila:'kabila.png',gemwallet:'gem.png',gem:'gem.png',ready:'ready.png',argent:'ready.png',xaman:'xaman.png',crossmark:'crossmark.webp',rabet:'rabet.jpg'};
+const NFILE={hashpack:'hashpack.png',kabila:'kabila.png',gemwallet:'gem.png',gem:'gem.png',ready:'ready.png',argent:'ready.png',xaman:'xaman.png',crossmark:'crossmark.webp',rabet:'rabet.png'};
 
 const STYLE='<style id="lx-wl-css">/* lx-wico-square: wallet marks are SQUARE app icons whose artwork runs edge to edge. The container was border-radius:50% with object-fit:cover, so a circular mask cut the corners off and the logos read as different, simpler marks at 40px. A rounded square shows the whole artwork. */.lxw-ico{border-radius:12px !important}.lxw-ico .lx-wimg{border-radius:12px !important}.lx-wl{font:800 15px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:-.02em;display:inline-flex;align-items:center;justify-content:center;width:100%;height:100%}.lxw-ico,.opt-card .ico{position:relative;overflow:hidden}.lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit;display:block}</style>';
 

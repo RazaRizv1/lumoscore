@@ -15,11 +15,18 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const DIR = path.join(__dirname, '..', 'assets', 'wallets');
-let MAP = {};
+// One wallet can have two files on disk -- rabet.png is the keyed-out version of rabet.jpg, and the
+// jpg stays as its source. Whichever readdir happened to return last would otherwise win, so the
+// extension order decides it: a format that can carry alpha beats one that cannot.
+const RANK = { svg: 0, png: 1, webp: 2, jpeg: 3, jpg: 4 };
+let MAP = {}, PICKED = {};
 try {
   for (const f of fs.readdirSync(DIR)) {
     const m = f.match(/^(.+)\.(png|jpg|jpeg|webp|svg)$/i);
-    if (m) MAP[m[1].toLowerCase()] = '/assets/wallets/' + f;
+    if (!m) continue;
+    const k = m[1].toLowerCase(), r = RANK[m[2].toLowerCase()];
+    if (k in PICKED && PICKED[k] <= r) continue;
+    PICKED[k] = r; MAP[k] = '/assets/wallets/' + f;
   }
 } catch (e) { }
 if (!Object.keys(MAP).length) { console.log('no wallet logos on disk — nothing to do'); process.exit(0); }
@@ -32,6 +39,10 @@ const STYLE = `<style id="lx-walletlogo-css">
 /* A mark on a white ground would otherwise read as a hole punched in the header. The ring gives it an
    edge; it is translucent so it works on either theme. */
 .mu-av.lx-haswl,.lx-tw-av.lx-haswl{box-shadow:inset 0 0 0 1px rgba(127,127,140,.30)}
+/* ...but a mark with a transparent ground has no tile for the ring to edge, so it would draw an empty
+   box around the artwork. Those carry .lx-wl-bare instead (RAZA asked for a transparent rabet on
+   2026-09-20, and it is the first logo here that has no ground of its own). */
+.mu-av.lx-wl-bare,.lx-tw-av.lx-wl-bare{box-shadow:none!important}
 /* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
 .mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
 /* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
@@ -88,6 +99,8 @@ const SCRIPT = `<script id="lx-walletlogo">(function(){
   // fine before"). An app icon leaves a margin, so the target is the ink filling ~75% of the tile:
   // zoom = 75/inkPercent, and a mark already at or above that keeps plain cover (albedo is 82%).
   var ZOOM={rabet:106,ready:120};
+  // Logos whose artwork has no ground of its own: they take the surface's colour, so no ring.
+  var BARE={rabet:1};
   function paint(){
     try{ nameIt(); }catch(_){}
     var url=logo(); if(!url)return;
@@ -99,9 +112,10 @@ const SCRIPT = `<script id="lx-walletlogo">(function(){
       e.classList.add("lx-haswl");
       e.style.setProperty("background-image","url('"+url+"')","important");
       // Crop the dead margin on the marks that have one; the rest keep plain cover.
-      var _z=ZOOM[walletId()];
+      var _w=walletId(), _z=ZOOM[_w];
       if(_z)e.style.setProperty("background-size",_z+"%","important");
       else e.style.removeProperty("background-size");
+      if(BARE[_w])e.classList.add("lx-wl-bare"); else e.classList.remove("lx-wl-bare");
     }
   }
   function boot(){
