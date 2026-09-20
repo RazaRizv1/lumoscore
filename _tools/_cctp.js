@@ -1102,45 +1102,26 @@ function lxCctpWireStep2(){
     var pasteBtn=dstSide.querySelector('.br-paste');
     if(pasteBtn) pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation();
       function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); /* filled: no keyboard needed (RAZA 2026-09-19) */ dstInEl.blur(); } }
-      // PASTE ON A PHONE OR TABLET (RAZA 2026-09-20: "i did allow it, but even then its not pasting"). Chrome on Android
-      // REJECTS the very call that raises its clipboard prompt -- tapping Allow answers the prompt, but the read that
-      // asked for it has already failed, so the old single attempt could never succeed on the first try. Asked again
-      // once the permission is granted, it reads fine. The retry is bounded, and if the browser still refuses, the
-      // field is focused and the reader is told how to paste by hand instead of being left with a dead button.
-      var _pasteTries=0;
-      function _readClip(){
-        if(!(navigator.clipboard&&navigator.clipboard.readText)){ _pasteManual(); return; }
-        navigator.clipboard.readText().then(function(t){
-          t=String(t==null?"":t).trim();
-          if(!t){ if(dstInEl) dstInEl.focus(); lxBrToast("Nothing to paste \\u2014 the clipboard is empty",true); return; }
-          set(t);
-        }).catch(function(){
-          // Chrome may refuse to SHOW the prompt at all -- "This site can't ask for your permission", which it says when
-          // another app is drawing an overlay over it (RAZA 2026-09-20, on a tablet with a floating bubble on screen).
-          // No amount of retrying earns a permission that cannot be asked for, so the way out is offered on the FIRST
-          // failure and the retries continue quietly behind it; if one does land, the address still fills in.
-          if(_pasteTries===0) _pasteManual();
-          if(_pasteTries++>=2) return;
-          var again=function(){ setTimeout(_readClip,350); };
-          // ask the browser whether permission has since been granted; retry regardless, but sooner when it has
-          try{
-            if(navigator.permissions&&navigator.permissions.query){
-              navigator.permissions.query({name:"clipboard-read"}).then(function(st){
-                if(st&&st.state==="granted") setTimeout(_readClip,120); else again();
-              }).catch(again);
-            } else again();
-          }catch(_){ again(); }
-        });
-      }
+      // ONE READ, INSIDE THE TAP. A clipboard read is only allowed while the tap that asked for it is still "active";
+      // a retry on a timer has no such activation, and Chrome answers those with "This site can't ask for your
+      // permission" -- the dialog RAZA saw on the tablet AND then on a phone where Paste had worked that morning. The
+      // retries I added earlier today were themselves the cause, so there are none: the read happens in the handler and
+      // nowhere else. When it fails (a refused permission, an overlay from another app blocking the prompt), the field
+      // is focused and the way out is named -- tapping Paste again after granting is a new tap, and a new activation.
+      if(!(navigator.clipboard&&navigator.clipboard.readText)){ _pasteManual(); return; }
+      navigator.clipboard.readText().then(function(t){
+        t=String(t==null?"":t).trim();
+        if(!t){ if(dstInEl) dstInEl.focus(); lxBrToast("Nothing to paste \\u2014 the clipboard is empty",true); return; }
+        set(t);
+      }).catch(function(){ _pasteManual(); });
       function _pasteManual(){
         if(dstInEl){ try{ dstInEl.focus(); }catch(_){ } }
         var touch=false; try{ touch=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
-        // NAME THE CAUSE. "Blocked" alone sends someone hunting through site settings for a permission Chrome never
-        // managed to ask for; the overlay is the thing they can actually close.
-        lxBrToast(touch?"Clipboard blocked \\u2014 close any floating app bubbles, or long-press the field and paste"
+        // Name what to do next: if Chrome asked and they allowed, the answer is simply to tap Paste again; if an
+        // overlay stopped it asking at all, closing that is the fix. Long-press always works.
+        lxBrToast(touch?"Couldn\\u2019t read the clipboard \\u2014 tap Paste again, or long-press the field and paste"
                        :"Couldn\\u2019t read the clipboard \\u2014 press Ctrl+V to paste",true);
       }
-      _readClip();
     },true);
     // close the source asset dropdown when clicking anywhere outside it
     document.addEventListener('click',function(e){ var m=document.getElementById('lx-br-amenu'); if(m&&m.style.display==="block"&&!m.contains(e.target)&&!(sChip&&sChip.contains(e.target))) m.style.display="none"; });
