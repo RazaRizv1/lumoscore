@@ -250,7 +250,7 @@ const BODY = '(function(){'
   + ' return fetch(hz+"/accounts/"+fromG).then(function(r){ if(!r.ok) throw new Error("Account not found on Stellar"); return r.json(); })'
   + ' .then(function(a){'
   + '  var tx=new S.TransactionBuilder(new S.Account(fromG,a.sequence),{fee:"2000000",networkPassphrase:pass})'
-  + '   .addOperation(new S.Contract(C.oft).call.apply(new S.Contract(C.oft),[fn].concat(args))).setTimeout(60).build();'
+  + '   .addOperation(new S.Contract(C.oft).call.apply(new S.Contract(C.oft),[fn].concat(args))).setTimeout(300).build();'
   + '  return lzPost(JSON.stringify({jsonrpc:"2.0",id:1,method:"simulateTransaction",params:{transaction:tx.toXDR()}}));'
   + ' }).then(function(j){'
   + '  var res=(j&&j.result)||{};'
@@ -471,7 +471,7 @@ const BODY = '(function(){'
   // Inclusion bid 0.01 XLM (100,000 stroops), not 1 XLM. The network charges the going rate, not the bid -- but the
   // account must HOLD the whole bid, so 1 XLM made a wallet with enough for the transfer fail for want of a fee it
   // would never actually pay. 0.01 XLM is 1,000x the minimum; the resource fee is added on top by assembleTransaction.
-  + '    var tx=new S.TransactionBuilder(acct,{fee:"100000",networkPassphrase:pass}).addOperation(op).setTimeout(120).build();'
+  + '    var tx=new S.TransactionBuilder(acct,{fee:"100000",networkPassphrase:pass}).addOperation(op).setTimeout(300).build();'
   + '    return server.simulateTransaction(tx).then(function(sim){ if(sim.error) throw new Error(lzErr(sim.error));'
   + '     return S.rpc.assembleTransaction(tx,sim).build(); }); }); }'
   + '   function signSubmit(prepared,label){'

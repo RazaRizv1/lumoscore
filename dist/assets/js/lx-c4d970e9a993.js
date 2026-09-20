@@ -3228,7 +3228,7 @@ function maxShares(dd){
       +xlm.toFixed(4)+". Add about "+(need-xlm).toFixed(4)+" XLM and try again. Your "
       +"pool assets are untouched — nothing was sent.");
   }
-  function wSend(addr, buildOps, onSigned){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(180).build(); return wSign(tx.toXDR(),addr); }).then(function(signed){ try{ if(onSigned)onSigned(); }catch(_){} return wSubmit(signed); }); }
+  function wSend(addr, buildOps, onSigned){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(300).build(); return wSign(tx.toXDR(),addr); }).then(function(signed){ try{ if(onSigned)onSigned(); }catch(_){} return wSubmit(signed); }); }
   // inline status message under a CTA (no new modals — a small line the existing card already has room for)
   // bottom-center toast, identical to the site's "Copied to clipboard" toast (self-contained CSS above)
   function ammToast(msg,isErr,hash){ var CK='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';

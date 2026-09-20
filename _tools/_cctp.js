@@ -444,7 +444,7 @@ function lxCctpBurn(destDomain, amountHuman, recipient, onStatus){
     onStatus("Connecting wallet…");
     return lxCctpSigner().then(function(f){
       function buildSim(op,fee){ return server.getAccount(pk).then(function(acct){
-        var tx=new S.TransactionBuilder(acct,{fee:fee||"10000000",networkPassphrase:C.passphrase}).addOperation(op).setTimeout(120).build();
+        var tx=new S.TransactionBuilder(acct,{fee:fee||"10000000",networkPassphrase:C.passphrase}).addOperation(op).setTimeout(300).build();
         return server.simulateTransaction(tx).then(function(sim){ if(sim.error) throw new Error(lxCctpErrMap(sim.error)); return S.rpc.assembleTransaction(tx,sim).build(); });
       }); }
       function lxRpc(method,params){ return fetch(C.rpc,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({jsonrpc:"2.0",id:1,method:method,params:params})}).then(function(r){return r.json();}); }
@@ -482,7 +482,7 @@ function lxCctpBurn(destDomain, amountHuman, recipient, onStatus){
         onStatus("Checking allowance…");
         return server.getAccount(pk).then(function(acct){
           var opAl=new S.Contract(C.usdc).call("allowance", new S.Address(pk).toScVal(), new S.Address(C.tokenMessenger).toScVal());
-          var txAl=new S.TransactionBuilder(acct,{fee:"1000000",networkPassphrase:C.passphrase}).addOperation(opAl).setTimeout(60).build();
+          var txAl=new S.TransactionBuilder(acct,{fee:"1000000",networkPassphrase:C.passphrase}).addOperation(opAl).setTimeout(300).build();
           return server.simulateTransaction(txAl).then(function(simAl){
             var allowance=(!simAl.error&&simAl.result)?S.scValToNative(simAl.result.retval).toString():"0";
             var need,have; try{ need=BigInt(units); have=BigInt(allowance); }catch(_){ need=1; have=0; }
@@ -656,7 +656,7 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
           // same self-payment rule as the USDC path: paying the fee to yourself only costs a network fee
           // and fabricates a revenue row, so leave the slice in the user's wallet instead
           if(C.feeCollector!==pk) _tb2=_tb2.addOperation(feeOp);
-          var tb=_tb2.setTimeout(120).build();
+          var tb=_tb2.setTimeout(300).build();
           return signSubmit(tb,"swap+fee").then(function(sr){ /* the fee rides in this transaction: it is what the registry verifies */ try{ if(C.feeCollector!==pk) deferredFeeHash=(sr&&(sr.hash||sr.id))||""; }catch(_){} return usdcBal().then(function(after){ var got=+(after-before).toFixed(7); if(!(got>0)) throw new Error("Swap produced no USDC."); var net=(netUsdcTarget>0&&netUsdcTarget<=got)?+netUsdcTarget.toFixed(7):got; return net; }); });
         }); }); });
       });
@@ -804,7 +804,15 @@ var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arb
   Object.keys(LX_NETMAP).forEach(function(n){ css+='.brd-opt[data-net="'+n+'"] .brd-ic{background:url(/assets/networks/'+LX_NETMAP[n]+'.png) center/cover no-repeat !important;color:transparent !important}'; });
   var st=document.createElement("style"); st.id="lx-netbg"; st.textContent=css; (document.head||document.documentElement).appendChild(st); }catch(_){} })();
 // per-network block explorer "wallet address" pages (for clickable recent-tx addresses)
-var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan.org/address/",Arbitrum:"https://arbiscan.io/address/",Optimism:"https://optimistic.etherscan.io/address/",Polygon:"https://polygonscan.com/address/",Avalanche:"https://snowtrace.io/address/",Linea:"https://lineascan.build/address/","World Chain":"https://worldscan.org/address/",Solana:"https://solscan.io/account/",Sui:"https://suiscan.xyz/mainnet/account/"};
+var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan.org/address/",Arbitrum:"https://arbiscan.io/address/",Optimism:"https://optimistic.etherscan.io/address/",Polygon:"https://polygonscan.com/address/",Avalanche:"https://snowtrace.io/address/",Linea:"https://lineascan.build/address/","World Chain":"https://worldscan.org/address/",Solana:"https://solscan.io/account/",Sui:"https://suiscan.xyz/mainnet/account/",
+  // The destinations LayerZero and NEAR Intents added: without these the To address on a Sei or Monad transfer was a
+  // dead "#" link (RAZA 2026-09-20, visible on the phone's cards). Official explorers, address pages.
+  // Each one opened on the address below before it was listed. seitrace.com is down (521 in a browser, not just to a
+  // script) so Sei uses seistream; megaexplorer.xyz is a PARKED domain now and is deliberately absent -- a dead "#"
+  // link is better than sending someone to a squatter, and MegaETH gets one back when it has a real explorer.
+  Sei:"https://seistream.app/account/",Monad:"https://monadexplorer.com/address/",Berachain:"https://berascan.com/address/",
+  Plasma:"https://plasmascan.to/address/",Flare:"https://flare-explorer.flare.network/address/",
+  Hyperliquid:"https://hyperevmscan.io/address/",Ink:"https://explorer.inkonchain.com/address/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
 function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
 var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
@@ -1373,6 +1381,10 @@ function lxBrMobCard(o){
       +'<span class="br-asschip">'+lxBrChipIco((o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC")),o.net,lxBrStellarIcon())
         +'<span><span class="am">'+lxBrFmt(o.amount,(+o.amount>0&&+o.amount<1)?6:2)+' '+(o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC"))+'</span><span class="nt">'+o.net+'</span></span></span>'
     +'</div>'
+    // WHO SENT IT, as the desktop table's Source address column says (RAZA 2026-09-20: "on mobile it's not showing the
+    // source wallet address like it's showing on desktop"). A shared record holds other people's transfers too, so on
+    // a phone the row was the only one that could not say whose transfer it was.
+    +(o.src?('<div class="brm-recv">From <a class="lx-txaddr" href="'+lxSrcExp(o.src)+'" target="_blank" rel="noopener">'+lxBrShort(o.src)+'</a></div>'):'')
     +'<div class="brm-recv">To <a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener">'+lxBrShort(o.recipient)+'</a> · via '+lxBrBridgeCell(o.bridge)+'</div>'
   +'</div>';
 }
