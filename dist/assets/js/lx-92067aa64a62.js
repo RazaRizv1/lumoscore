@@ -803,20 +803,33 @@ function lxCctpWireStep2(){
       // ask for the focus back first -- a tap on our own button usually has it already, and this costs nothing
       try{ window.focus(); }catch(_){ }
       var focused=true; try{ focused=document.hasFocus(); }catch(_){ }
-      if(!can||!focused||window.__lxClipPerm==="denied"){ _pasteManual(!focused); return; }
+      if(!can||!focused||window.__lxClipPerm==="denied"){ _pasteManual(!focused?"unfocused":(window.__lxClipPerm==="denied"?"denied":"")); return; }
       navigator.clipboard.readText().then(function(t){
         t=String(t==null?"":t).trim();
         if(!t){ if(dstInEl) dstInEl.focus(); lxBrToast("Nothing to paste \u2014 the clipboard is empty",true); return; }
         set(t);
-      }).catch(function(){ _pasteManual(false); });
-      function _pasteManual(unfocused){
+      }).catch(function(err){
+        // "denied" here is Chrome's own record for this site -- the permission is set to Block, and no retry, gesture
+        // or dialog can get past it. Only the reader can undo it, so say exactly where.
+        var nm=""; try{ nm=String((err&&err.name)||""); }catch(_){ }
+        _pasteManual(nm==="NotAllowedError"&&window.__lxClipPerm==="denied"?"denied":"");
+      });
+      function _pasteManual(why){
         // Focus the field: on a phone that opens the keyboard, whose own Paste sits one tap away -- no permission, no
         // dialog, nothing for an overlay to block.
         if(dstInEl){ try{ dstInEl.focus(); }catch(_){ } }
         var touch=false; try{ touch=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
+        // BLOCKED IS NOT THE SAME AS BUSY, and the difference is the only thing the reader can act on: a blocked
+        // permission lives in Chrome's own site settings (RAZA 2026-09-20 -- clipboard access was set to Block for
+        // lumoscore.com, which is why tapping Paste could never fill the field however the page asked).
+        if(why==="denied"){
+          lxBrToast(touch ? "Clipboard is blocked for this site \u2014 tap the lock beside the address, then Permissions \u2192 Clipboard \u2192 Allow"
+                          : "Clipboard is blocked for this site \u2014 allow it from the lock icon beside the address, or press Ctrl+V",true);
+          return;
+        }
         lxBrToast(!touch ? "Couldn\u2019t read the clipboard \u2014 press Ctrl+V to paste"
-          : (unfocused ? "Use Paste on the keyboard, or long-press the field \u2014 another app is over this window"
-                       : "Use Paste on the keyboard, or long-press the field and choose Paste"),true);
+          : (why==="unfocused" ? "Use Paste on the keyboard, or long-press the field \u2014 another app is over this window"
+                               : "Use Paste on the keyboard, or long-press the field and choose Paste"),true);
       }
     },true);
     // close the source asset dropdown when clicking anywhere outside it
