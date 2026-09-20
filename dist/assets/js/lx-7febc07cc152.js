@@ -401,6 +401,41 @@ function lxCctpNetLogos(){
   if(!attach()){ var t=0,iv=setInterval(function(){ if(attach()||++t>40) clearInterval(iv); },150); }
 })();
 
+// ---- Step 1: Next waits for a destination (RAZA 2026-09-20) --------------------------------------------------------
+// The button shipped enabled with the picker still reading "Select Network", so it advanced to step 2 with no
+// destination: no routes to compare, no address format to check against, and an empty "To" side. The destination is
+// whatever the picker's own label says -- and it counts only when it NAMES one of the destinations this bridge
+// offers, so the placeholder, an empty label and anything stale all read as "not chosen yet".
+// Disabled the way step 2 disables Review (disabled + .lx-disabled), so both steps look and behave alike.
+(function(){
+  function step1Next(){
+    var s=document.querySelector('.br-step[data-step="1"]'); if(!s) return null;
+    return s.querySelector('.br-actions .br-next')||s.querySelector('button.br-next')||s.querySelector('.br-next');
+  }
+  function chosen(){
+    var n=lxBrDestNet(); if(!n) return false;
+    try{ return lxBrRoutes().some(function(r){ return r.name===n; }); }catch(_){ return false; }
+  }
+  function gate(){
+    var b=step1Next(); if(!b) return;
+    var ok=chosen();
+    if(b.tagName==="BUTTON") b.disabled=!ok;
+    b.classList.toggle('lx-disabled',!ok);
+    b.setAttribute('aria-disabled',ok?'false':'true');
+    b.title=ok?'':'Choose a destination network first';
+  }
+  window.lxBrStep1Gate=gate;
+  // the picker rewrites its own label, so watch the step itself; the click listener covers a menu that replaces it
+  function wire(){
+    var s=document.querySelector('.br-step[data-step="1"]'); if(!s) return false;
+    if(s.__lxGate) return true; s.__lxGate=1;
+    new MutationObserver(function(){ try{ gate(); }catch(_){} }).observe(s,{childList:true,subtree:true,characterData:true});
+    document.addEventListener('click',function(){ setTimeout(gate,0); },true);
+    gate(); return true;
+  }
+  if(!wire()){ var t=0,iv=setInterval(function(){ if(wire()||++t>60) clearInterval(iv); },150); }
+})();
+
 // ---- Step 2: wire the EXISTING wizard (source asset + amount + USDC calc + dest logos). Design preserved: only content/logos + editability. ----
 var LX_ASSETS={
   USDC:{logo:"assets/tokens/usdc.png", spec:"USDC", px:1},
