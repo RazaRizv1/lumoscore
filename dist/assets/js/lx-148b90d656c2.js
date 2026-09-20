@@ -771,6 +771,20 @@ function lxCctpWireStep2(){
     if(dstInEl) dstInEl.addEventListener('input',function(){ if(lxBrValidAddr(lxBrDestNet(),(dstInEl.value||'').trim())) lxBrStep2Err(''); lxBrValidateStep2(); });
     // Paste button -> read clipboard into the destination input
     var pasteBtn=dstSide.querySelector('.br-paste');
+    // The clipboard permission, watched OUTSIDE the tap. Querying it is async, and awaiting anything inside the tap
+    // spends the activation a clipboard read needs -- so it is read here, on load, and kept current by the browser's
+    // own change event. Never prompts; it only reports what has already been decided.
+    if(!window.__lxClipWatch){
+      window.__lxClipWatch=1;
+      try{
+        if(navigator.permissions&&navigator.permissions.query){
+          navigator.permissions.query({name:"clipboard-read"}).then(function(st){
+            if(!st)return; window.__lxClipPerm=st.state;
+            try{ st.onchange=function(){ window.__lxClipPerm=st.state; }; }catch(_){ }
+          }).catch(function(){});
+        }
+      }catch(_){ }
+    }
     if(pasteBtn) pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation();
       function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); /* filled: no keyboard needed (RAZA 2026-09-19) */ dstInEl.blur(); } }
       // ONE READ, INSIDE THE TAP. A clipboard read is only allowed while the tap that asked for it is still "active";
@@ -779,19 +793,30 @@ function lxCctpWireStep2(){
       // retries I added earlier today were themselves the cause, so there are none: the read happens in the handler and
       // nowhere else. When it fails (a refused permission, an overlay from another app blocking the prompt), the field
       // is focused and the way out is named -- tapping Paste again after granting is a new tap, and a new activation.
-      if(!(navigator.clipboard&&navigator.clipboard.readText)){ _pasteManual(); return; }
+      // DO NOT ASK WHEN THE ANSWER IS ALREADY NO. Chrome refuses a clipboard read when the page is not the focused
+      // window -- which is what an overlay from another app causes -- and refuses when the permission is set to Block;
+      // in both cases it puts up "This site can't ask for your permission" (RAZA 2026-09-20, repeatedly, on a tablet
+      // with a floating bubble on screen). Both conditions can be checked WITHOUT calling the clipboard, so the dialog
+      // never appears: document.hasFocus() is synchronous, and the permission state is kept up to date in the
+      // background (lxClipPerm) since querying it inside the tap would spend the tap's activation.
+      var can=!!(navigator.clipboard&&navigator.clipboard.readText);
+      // ask for the focus back first -- a tap on our own button usually has it already, and this costs nothing
+      try{ window.focus(); }catch(_){ }
+      var focused=true; try{ focused=document.hasFocus(); }catch(_){ }
+      if(!can||!focused||window.__lxClipPerm==="denied"){ _pasteManual(!focused); return; }
       navigator.clipboard.readText().then(function(t){
         t=String(t==null?"":t).trim();
         if(!t){ if(dstInEl) dstInEl.focus(); lxBrToast("Nothing to paste \u2014 the clipboard is empty",true); return; }
         set(t);
-      }).catch(function(){ _pasteManual(); });
-      function _pasteManual(){
+      }).catch(function(){ _pasteManual(false); });
+      function _pasteManual(unfocused){
+        // Focus the field: on a phone that opens the keyboard, whose own Paste sits one tap away -- no permission, no
+        // dialog, nothing for an overlay to block.
         if(dstInEl){ try{ dstInEl.focus(); }catch(_){ } }
         var touch=false; try{ touch=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
-        // Name what to do next: if Chrome asked and they allowed, the answer is simply to tap Paste again; if an
-        // overlay stopped it asking at all, closing that is the fix. Long-press always works.
-        lxBrToast(touch?"Couldn\u2019t read the clipboard \u2014 tap Paste again, or long-press the field and paste"
-                       :"Couldn\u2019t read the clipboard \u2014 press Ctrl+V to paste",true);
+        lxBrToast(!touch ? "Couldn\u2019t read the clipboard \u2014 press Ctrl+V to paste"
+          : (unfocused ? "Use Paste on the keyboard, or long-press the field \u2014 another app is over this window"
+                       : "Use Paste on the keyboard, or long-press the field and choose Paste"),true);
       }
     },true);
     // close the source asset dropdown when clicking anywhere outside it

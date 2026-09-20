@@ -280,6 +280,13 @@ const CSS = '<style id="' + ID + '">'
   // It is sticky at the top of a panel that has ~6.6px of padding, so rows scrolled up THROUGH that band and showed
   // above the search bar ("Arbitrum" peeking over it on RAZA's phone, 2026-09-19). No top padding, no gap.
   + '.brd-menu{padding-top:0 !important}.brd-menu .brd-search{margin-top:0 !important;top:0 !important}'
+  // THE OPEN DROPDOWN MUST WIN AGAINST THE CARDS BELOW IT (RAZA 2026-09-20: two transaction icons floating over the
+  // network list on a phone). Each .br-step carries a transform for its slide, which traps the menu's z-index INSIDE
+  // the step -- so the step as a whole paints at its place in the page, and anything positioned further down (the
+  // recent-transaction icons, which are positioned because the network badge sits in their corner) paints over it.
+  // Giving the step its own layer restores the obvious order: the wizard, then the history beneath it. Modals are
+  // children of <body> with their own far higher layers, so they are unaffected.
+  + S2.replace('[data-step="2"] ', '') + '{position:relative;z-index:5}'
 
   // ---- scan a QR code for the receiving address (phones) ----------------------------------------------------
   + DST + '.lx-scan{flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;'
