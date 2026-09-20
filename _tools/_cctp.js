@@ -1108,35 +1108,11 @@ function lxCctpWireStep2(){
     if(dstInEl) dstInEl.addEventListener('input',function(){ if(lxBrValidAddr(lxBrDestNet(),(dstInEl.value||'').trim())) lxBrStep2Err(''); lxBrValidateStep2(); });
     // Paste button -> read clipboard into the destination input
     var pasteBtn=dstSide.querySelector('.br-paste');
-    // A BUTTON THAT CANNOT DO WHAT IT SAYS IS THE BUG (RAZA 2026-09-20, after four rounds on this). When Chrome has
-    // the clipboard BLOCKED for the site, no page can read it -- so the control stops calling itself Paste and says
-    // what will actually work on that device. Tapping it still focuses the field, which raises the keyboard (its own
-    // paste key is right there); the QR button beside it needs no clipboard at all. It reverts the moment the
-    // permission is allowed again, which the watcher above reports without ever prompting.
-    function lxPasteBtnState(){
-      try{
-        if(!pasteBtn) return;
-        if(pasteBtn.__lxLabel==null) pasteBtn.__lxLabel=pasteBtn.textContent;
-        var blocked=(window.__lxClipPerm==="denied");
-        pasteBtn.textContent=blocked?"Long-press":pasteBtn.__lxLabel;
-        pasteBtn.title=blocked?"Chrome blocks clipboard access for this site — long-press the field and choose Paste, or scan a QR code":"";
-      }catch(_){ }
-    }
-    window.lxPasteBtnState=lxPasteBtnState;
-    // The clipboard permission, watched OUTSIDE the tap. Querying it is async, and awaiting anything inside the tap
-    // spends the activation a clipboard read needs -- so it is read here, on load, and kept current by the browser's
-    // own change event. Never prompts; it only reports what has already been decided.
-    if(!window.__lxClipWatch){
-      window.__lxClipWatch=1;
-      try{
-        if(navigator.permissions&&navigator.permissions.query){
-          navigator.permissions.query({name:"clipboard-read"}).then(function(st){
-            if(!st)return; window.__lxClipPerm=st.state; lxPasteBtnState();
-            try{ st.onchange=function(){ window.__lxClipPerm=st.state; lxPasteBtnState(); }; }catch(_){ }
-          }).catch(function(){});
-        }
-      }catch(_){ }
-    }
+    // IT STAYS "Paste" AND IT PASTES (RAZA 2026-09-20, after four rounds on this). There was a permission watcher
+    // here that relabelled the button, and it was wrong twice over: navigator.permissions reports clipboard-read as
+    // "denied" on Android whether or not a read would succeed, and renaming a button is not a fix for a button that
+    // does nothing. Both the watcher and the label states are gone -- the only thing that decides anything now is the
+    // read itself, attempted on every tap.
     if(pasteBtn) pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation();
       function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); /* filled: no keyboard needed (RAZA 2026-09-19) */ dstInEl.blur(); } }
       // ONE READ, INSIDE THE TAP. A clipboard read is only allowed while the tap that asked for it is still "active";
@@ -1145,17 +1121,17 @@ function lxCctpWireStep2(){
       // retries I added earlier today were themselves the cause, so there are none: the read happens in the handler and
       // nowhere else. When it fails (a refused permission, an overlay from another app blocking the prompt), the field
       // is focused and the way out is named -- tapping Paste again after granting is a new tap, and a new activation.
-      // DO NOT ASK WHEN THE ANSWER IS ALREADY NO. Chrome refuses a clipboard read when the page is not the focused
-      // window -- which is what an overlay from another app causes -- and refuses when the permission is set to Block;
-      // in both cases it puts up "This site can't ask for your permission" (RAZA 2026-09-20, repeatedly, on a tablet
-      // with a floating bubble on screen). Both conditions can be checked WITHOUT calling the clipboard, so the dialog
-      // never appears: document.hasFocus() is synchronous, and the permission state is kept up to date in the
-      // background (lxClipPerm) since querying it inside the tap would spend the tap's activation.
+      // ALWAYS TRY THE READ. I previously skipped it whenever the permission query said "denied" -- and on Android that
+      // query reports denied as a matter of course, because Chrome there does not grant clipboard-read up front: it
+      // shows its OWN paste confirmation when a page asks, and only the asking triggers it. So the check I added to
+      // avoid a dialog was suppressing the very call that works, and Paste did nothing at all (RAZA 2026-09-20: "the
+      // paste button should be working ... the issue is still there"). The read is attempted on every tap now; the
+      // only thing still checked is whether this window has focus, which is a hard refusal, not a permission.
       var can=!!(navigator.clipboard&&navigator.clipboard.readText);
       // ask for the focus back first -- a tap on our own button usually has it already, and this costs nothing
       try{ window.focus(); }catch(_){ }
       var focused=true; try{ focused=document.hasFocus(); }catch(_){ }
-      if(!can||!focused||window.__lxClipPerm==="denied"){ _pasteManual(!focused?"unfocused":(window.__lxClipPerm==="denied"?"denied":"")); return; }
+      if(!can){ _pasteManual(""); return; }
       navigator.clipboard.readText().then(function(t){
         t=String(t==null?"":t).trim();
         if(!t){ if(dstInEl) dstInEl.focus(); lxBrToast("Nothing to paste \\u2014 the clipboard is empty",true); return; }
@@ -1164,23 +1140,18 @@ function lxCctpWireStep2(){
         // "denied" here is Chrome's own record for this site -- the permission is set to Block, and no retry, gesture
         // or dialog can get past it. Only the reader can undo it, so say exactly where.
         var nm=""; try{ nm=String((err&&err.name)||""); }catch(_){ }
-        _pasteManual(nm==="NotAllowedError"&&window.__lxClipPerm==="denied"?"denied":"");
+        // Not "denied" from a permission query -- that lies on Android. Only a read that actually failed gets a
+        // message, and losing the window to another app is the one refusal with its own wording.
+        _pasteManual(!focused ? "unfocused" : (nm==="NotAllowedError" ? "refused" : ""));
       });
       function _pasteManual(why){
         // Focus the field: on a phone that opens the keyboard, whose own Paste sits one tap away -- no permission, no
         // dialog, nothing for an overlay to block.
         if(dstInEl){ try{ dstInEl.focus(); }catch(_){ } }
         var touch=false; try{ touch=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
-        // BLOCKED IS NOT THE SAME AS BUSY, and the difference is the only thing the reader can act on: a blocked
-        // permission lives in Chrome's own site settings (RAZA 2026-09-20 -- clipboard access was set to Block for
-        // lumoscore.com, which is why tapping Paste could never fill the field however the page asked).
-        if(why==="denied"){
-          // Short enough to read on a phone. The long version ran off both edges of the screen, which is how RAZA saw
-          // it on the tablet: "…board is blocked for this site — tap the lock beside…". What to do comes first.
-          lxBrToast(touch ? "Long-press the field to paste \\u2014 Chrome blocks the clipboard for this site"
-                          : "Clipboard blocked for this site \\u2014 press Ctrl+V, or allow it from the lock icon",true);
-          return;
-        }
+        // No "blocked for this site" wording here any more: it came from the permission query, and that query says
+        // denied on Android whether or not a read would work, so the message accused the reader's settings of a
+        // failure they had not caused. Every message below names a way to paste instead.
         lxBrToast(!touch ? "Couldn\\u2019t read the clipboard \\u2014 press Ctrl+V to paste"
           : (why==="unfocused" ? "Use Paste on the keyboard, or long-press the field \\u2014 another app is over this window"
                                : "Use Paste on the keyboard, or long-press the field and choose Paste"),true);
