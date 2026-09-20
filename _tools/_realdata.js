@@ -242,6 +242,40 @@ function lxXc(o, t, ops, done) {
   }
   if (memo === 'lx:ni') return { skip: true };
 
+  // ---- CCTP, when the shared record does not have it (RAZA 2026-09-20: a row reading just "Platform activity") ------
+  // A CCTP fee is its own transaction, and `ops` here has already dropped payments to the fee collector -- so for a
+  // USDC-sourced transfer NOTHING is left to describe and the row kept its placeholder text. It is normally described
+  // from the shared record, but that registration is made by the sending page and can simply not happen (the tab was
+  // closed, the call failed): measured on production, one transfer out of four was missing. So the burn is found the
+  // same way LayerZero's is -- the payer's nearest USDC deposit_for_burn -- and the pair is registered as well, so
+  // every other reader of the record gets it too.
+  if (memo === 'lx:cctp' || !ops.length) {
+    var DOM = { 0: 'Ethereum', 1: 'Avalanche', 2: 'Optimism', 3: 'Arbitrum', 5: 'Solana', 6: 'Base', 7: 'Polygon', 8: 'Sui', 11: 'Linea', 14: 'World Chain' };
+    var cAt = Date.parse((recs[0] && recs[0].created_at) || o.created_at || 0);
+    j('https://horizon.stellar.org/accounts/' + from + '/operations?order=desc&limit=30').then(function (a) {
+      var best = null, gap = 12e5;
+      ((a && a._embedded && a._embedded.records) || []).forEach(function (x) {
+        if (x.type !== 'invoke_host_function' || (x.parameters || []).length < 6) return;
+        var burn = (x.asset_balance_changes || []).filter(function (b) { return b.type === 'burn' && b.asset_code === 'USDC'; })[0];
+        if (!burn) return;
+        var d = Math.abs(Date.parse(x.created_at) - cAt);
+        if (d < gap) { gap = d; best = { op: x, burn: burn }; }
+      });
+      if (!best) return;
+      var dom = -1, s = ''; try { s = atob(best.op.parameters[4].value); } catch (_) { s = ''; }
+      if (s.length >= 8 && s.charCodeAt(3) === 3) dom = ((s.charCodeAt(4) << 24) >>> 0) + (s.charCodeAt(5) << 16) + (s.charCodeAt(6) << 8) + s.charCodeAt(7);
+      // put the pair in the shared record, so this is the last time anyone has to work it out from the chain
+      try {
+        fetch('/lxapi/bridgetx', { method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ feeHash: o.transaction_hash, burnHash: best.op.transaction_hash }) }).catch(function () {});
+      } catch (_) {}
+      done(lxXcBuild({ from: from, out: +best.burn.amount, asset: 'USDC', dest: DOM[dom] || 'another chain', via: 'CCTP' }));
+    }).catch(function () {});
+    // Only the memo PROVES this is a bridge fee. Without one, a fee-only transaction could be a curated-listing
+    // payment, so nothing is claimed until the burn above is actually found -- the row simply waits.
+    return memo === 'lx:cctp' ? lxXcBuild({ from: from, asset: 'USDC', dest: 'another chain', via: 'CCTP' }) : null;
+  }
+
   // ---- LayerZero ----
   if (memo === 'lx:lz') {
     var at = Date.parse((recs[0] && recs[0].created_at) || o.created_at || 0);
@@ -254,7 +288,13 @@ function lxXc(o, t, ops, done) {
         var d = Math.abs(Date.parse(x.created_at) - at);
         if (d < gap) { gap = d; best = { op: x, burn: burn }; }
       });
-      if (!best) return;
+      // No burn within the window: the swap into USDT0 happened but the send never did (an abandoned or failed
+      // attempt). That is a swap, and saying "cross-chain to another chain" would claim a transfer that never left.
+      if (!best) {
+        var sw = ops.filter(function (x) { return /^path_payment/.test(x.type) && x.to && x.to === x.from; })[0];
+        if (sw) done(describeOp(sw));
+        return;
+      }
       var eid = 0;
       (best.op.parameters || []).forEach(function (p) {
         if (eid || p.type !== 'Map') return;
