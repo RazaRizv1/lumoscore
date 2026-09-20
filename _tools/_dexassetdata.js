@@ -468,8 +468,8 @@ html body .stat-row{grid-template-columns:repeat(3,minmax(0,1fr))!important}
 #lxCenterToast{position:fixed;left:50%;bottom:34px;transform:translateX(-50%) translateY(12px);background:var(--text,#14151a);color:var(--surface,#fff);font:600 13.5px/1 'Hanken Grotesk',system-ui,sans-serif;padding:12px 20px;border-radius:11px;box-shadow:0 12px 34px rgba(0,0,0,.35);opacity:0;pointer-events:none;z-index:99999;transition:opacity .18s,transform .18s}
 #lxCenterToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 /* swap success/error toast — matches the design's "Copied to clipboard" toast exactly (self-contained copy of its CSS so it works before any copy has run) */
-.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
-.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:nowrap;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
+.lx-ctoast-stack{position:fixed;bottom:24px;left:0;right:0;transform:none;padding:0 12px;box-sizing:border-box;z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:normal;max-width:min(92vw,520px);text-align:left;line-height:1.35;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
 .lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .lx-ctoast.lxda-terr .ci{background:var(--red,#ff5b5b)}
 @keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
@@ -1950,8 +1950,8 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
       // Only when the site-wide script has not already provided it -- then both use the one stylesheet.
       if(!document.getElementById("lx-copytoast-css")){
         var st=document.createElement("style"); st.id="lx-copytoast-css";
-        st.textContent=".lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}"
-          +".lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:nowrap;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}"
+        st.textContent=".lx-ctoast-stack{position:fixed;bottom:24px;left:0;right:0;transform:none;padding:0 12px;box-sizing:border-box;z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}"
+          +".lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:normal;max-width:min(92vw,520px);text-align:left;line-height:1.35;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}"
           +".lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}"
           +"@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}";
         document.head.appendChild(st);
