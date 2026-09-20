@@ -58,8 +58,8 @@ const STYLE = `<style id="lx-amm-css">
 #createPoolModal .field-foot .max-btn:active{background:rgba(234,106,44,.24)}
 #createPoolModal .lx-cpwarn{margin:8px 2px 0;font-size:12.5px;line-height:1.45;color:#c9791f}
 /* success toast — same look as the site's "Copied to clipboard" toast (self-contained) */
-.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
-.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:nowrap;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
+.lx-ctoast-stack{position:fixed;bottom:24px;left:0;right:0;transform:none;padding:0 12px;box-sizing:border-box;z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}
+.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:normal;max-width:min(92vw,520px);text-align:left;line-height:1.35;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}
 .lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
 .lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}
 /* The stack is pointer-events:none so a toast never blocks the page underneath — but that also made the
