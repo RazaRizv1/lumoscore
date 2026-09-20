@@ -161,8 +161,44 @@ function tokenRegistry(){
       if(typeof img === 'string' && img.charAt(0) === '/' && img.indexOf('//') !== 0) out[k] = { image: img, name: name };
       else if(name) out[k] = { image: '', name: name };
     }
+    addCurated(out);
     return out;
-  }catch(e){ return {}; }
+  }catch(e){ const out = {}; try{ addCurated(out); }catch(_){} return out; }
+}
+// THE CURATED LOGOS WE ALREADY SHIP (assets/tokens/curated/CODE-ISSUER.png, written by _bridgelogos.js).
+//
+// RAZA 2026-09-20: "Where's VELO logo on Trade-Asset page". It was there -- about half a second late. Nothing in the
+// page knew the asset, so it drew the initials avatar and asked the edge (/lxapi/assetlogo, ~500ms on that asset),
+// then repainted. Measured on production: the letter first, the real logo after. Every curated asset has a logo file
+// sitting in this build, so the page can know it on the FIRST paint instead, with no request at all -- which is what
+// this registry is for. Only fills keys the launchpad file has not already claimed.
+// A few curated assets ship their logo under their own name rather than as CODE-ISSUER.png, so the scan below never
+// sees them (BLND was the one left drawing a letter). Issuers are the canonical ones from _cctp.js's LX_ASSETS table --
+// a ticker is not an identity on Stellar, so each is pinned to its issuer and nothing is matched on code alone.
+const NAMED_LOGOS = {
+  'BLND-GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY': '/assets/tokens/blnd.svg',
+  'AQUA-GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA': '/assets/tokens/aqua.png',
+  'SHX-GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH': '/assets/tokens/shx.png',
+  'LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S': '/assets/tokens/lumos.png',
+  'USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN': '/assets/tokens/usdc.png',
+  'USDT0-GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q': '/assets/tokens/usdt0.png',
+};
+function addCurated(out){
+  for(const k of Object.keys(NAMED_LOGOS)){
+    const p = NAMED_LOGOS[k];
+    if(out[k] && out[k].image) continue;
+    if(!fs.existsSync(path.join(__dirname, '..', p.replace(/^\//, '')))) continue;   // never name a file this build lacks
+    out[k] = { image: p, name: (out[k] && out[k].name) || '' };
+  }
+  const dir = path.join(__dirname, '..', 'assets', 'tokens', 'curated');
+  let files = []; try{ files = fs.readdirSync(dir); }catch(e){ return; }
+  for(const f of files){
+    const m = /^([A-Za-z0-9]{1,12})-(G[A-Z2-7]{55})\.png$/.exec(f);
+    if(!m) continue;
+    const k = m[1] + '-' + m[2];
+    if(out[k] && out[k].image) continue;
+    out[k] = { image: '/assets/tokens/curated/' + f, name: (out[k] && out[k].name) || '' };
+  }
 }
 const TOKEN_REG_JSON = JSON.stringify(tokenRegistry());
 
