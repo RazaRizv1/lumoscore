@@ -202,6 +202,16 @@ const CSS = '<style id="' + ID + '">'
   + 'border-radius:50% !important;background:var(--surface-2) !important;border:1px solid var(--accent,#ea6a2c) !important;'
   + 'color:var(--accent,#ea6a2c) !important;box-shadow:none !important;padding:0 !important}'
 
+  // ---- the asset chip's hit area ----------------------------------------------------------------------------
+  // The chip opens the asset dropdown, and it is a grid ITEM that its parent stretches: measured on the bridge at
+  // tablet width its visible content (logo, code, caret) ends 128px in while the box runs 664px, so 536px of
+  // apparently empty row still opened the menu -- "wherever i click in from box, it opens up the asset dropdown"
+  // (RAZA 2026-09-21). Desktop had the same dead space, ~230px of it. A control's hit area should be the control:
+  // hug the content and stop stretching. Nothing visible moves, because the pill's own background is drawn by the
+  // chip's children, not by the stretched box.
+  + S2 + '.br-asset{justify-self:start !important;align-self:center !important;width:max-content !important;'
+  + 'max-width:100% !important;margin-right:auto !important}'
+
   // ---- the error banner -------------------------------------------------------------------------------------
   // Width and offset repeat the wrapper grid's arithmetic (max 1240px, columns 1.9fr/1fr, 24px gap) so the banner
   // sits under the LEFT card exactly, as in the mock, instead of running the full width under both. It is outside

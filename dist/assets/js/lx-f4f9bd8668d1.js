@@ -60,6 +60,16 @@ var WC_LOBSTR='lobstr://wc';
 // LOBSTR in the WalletConnect explorer registry (looked up via explorer-api.walletconnect.com).
 var WC_LOBSTR_ID="76a3d548a08cf402f5c7d021f24fd2881d767084b387a5325df88bc3d4b6f21b";
 function isMobile(){return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent||'');}
+// A DEVICE THE WALLET APP LIVES ON IS NOT ALWAYS A "MOBILE" USER AGENT. Chrome on an Android tablet never says
+// "Mobile", and with Desktop site switched on it does not say "Android" either -- it sends a plain Linux UA. So a
+// UA test skips exactly the device RAZA signs on: the deep link that brings LOBSTR forward never fired and the
+// "Open LOBSTR" button never appeared, leaving him watching a step that looked stuck while the request sat waiting
+// inside an app that was never asked to come forward (2026-09-21). Ask the DEVICE, and keep the UA as one answer.
+function isHandheld(){
+  try{ if(window.matchMedia('(pointer:coarse)').matches)return true; }catch(_){}
+  try{ if((navigator.maxTouchPoints||0)>0)return true; }catch(_){}
+  return isMobile();
+}
 function wcPoke(link,uri){try{location.href=link+(uri?('?uri='+encodeURIComponent(uri)):'');}catch(_){}}
 // Getting as far as a pairing URI must not be able to hang. A bad or unreachable relay leaves
 // SignClient.init pending forever, and the connect modal would sit on "Confirming with <wallet>" with
@@ -84,7 +94,7 @@ function wcClient(){
 // wallet's. Kick it off on the first user gesture instead: by the time a wallet is picked the client
 // is usually already up, and wcClient() memoises so the real call reuses it. Failures are swallowed --
 // this is only a head start, and the normal path still reports errors properly.
-(function(){ if(!isMobile())return; var warmed=false;
+(function(){ if(!isHandheld())return; var warmed=false;
   function warm(){ if(warmed)return; warmed=true; try{ wcClient().catch(function(){}); }catch(_){} }
   try{ ["pointerdown","touchstart","keydown"].forEach(function(ev){
     window.addEventListener(ev, warm, {once:true, passive:true}); }); }catch(_){}
@@ -130,8 +140,16 @@ function wcConnect(deepLink){
     return wcTimeout(client.connect({requiredNamespaces:{stellar:{methods:WC_METHODS,chains:[WC_CHAIN],events:[]}}}),20000,'WalletConnect did not respond \u2014 try again').then(function(res){
       // Deep-linked straight into the wallet app? Then the pairing modal is noise - the user is already
         // in LOBSTR approving. Only the generic WalletConnect row (no deepLink) needs the QR/list UI.
-        var wentDirect=!!(res.uri&&deepLink&&isMobile());
-        if(wentDirect)wcPoke(deepLink,res.uri);
+        // isHandheld, not isMobile: on RAZA's tablet the UA test was false, so picking LOBSTR skipped the deep
+        // link and showed the WalletConnect list instead of opening the app that is installed on the device
+        // ("why does it open wallet connect instead of directly opening the Lobstr app", 2026-09-21).
+        var wentDirect=!!(res.uri&&deepLink&&isHandheld());
+        var closeOpen=function(){};
+        if(wentDirect){ wcPoke(deepLink,res.uri);
+          // The poke happens after the relay handshake, so the tap that started it is spent and the browser
+          // may drop the navigation -- with the pairing modal deliberately skipped, that would leave nothing
+          // on screen at all. Tapping this IS an activation, so it always works.
+          closeOpen=lxSep7Prompt(deepLink+(res.uri?('?uri='+encodeURIComponent(res.uri)):''),'Continue in LOBSTR to connect','Open LOBSTR'); }
       return loadMod('https://esm.sh/@walletconnect/modal@2').then(function(mm){
         var Modal=mm.WalletConnectModal||mm.default;
           // WalletConnect Modal defaults to z-index 89. Our own connect modal sits at 100000, so the
@@ -148,7 +166,7 @@ function wcConnect(deepLink){
           try{setTimeout(function(){var el=document.querySelector("wcm-modal,w3m-modal");if(el)el.style.zIndex="2147483000";},60);}catch(_){}
           return md;
       },function(){return null;}).then(function(md){
-        var close=function(){if(md){try{md.closeModal();}catch(_){}}};
+        var close=function(){try{closeOpen();}catch(_){}if(md){try{md.closeModal();}catch(_){}}};
         return res.approval().then(function(session){close();
           try{localStorage.setItem('lumos.wcTopic',session.topic);}catch(_){}
           return wcAddr(session);},function(err){close();throw err;});
@@ -254,15 +272,15 @@ function lxSep7Connect(){
 // signature in a launch -- is built after network work, by which time that activation is spent and the navigation is
 // silently dropped. The app never opens, the reader waits at a step that looks stuck, and by the time they switch
 // apps by hand the transaction has expired. So the link is also offered as a button: tapping it IS an activation.
-function lxSep7Prompt(link){
+function lxSep7Prompt(link,msg,label){
   var old=document.getElementById('lx-sep7-open'); if(old&&old.parentNode)old.parentNode.removeChild(old);
   var w=document.createElement('div'); w.id='lx-sep7-open';
   w.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));'
     +'z-index:100000;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;max-width:min(420px,calc(100vw - 24px));'
     +'background:#17171c;color:#fff;border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.45);'
     +'font:600 13.5px/1.35 "Hanken Grotesk",system-ui,sans-serif';
-  var t=document.createElement('span'); t.textContent='Approve this transaction in LOBSTR'; t.style.cssText='flex:1 1 auto';
-  var b=document.createElement('button'); b.type='button'; b.textContent='Open LOBSTR';
+  var t=document.createElement('span'); t.textContent=msg||'Approve this transaction in LOBSTR'; t.style.cssText='flex:1 1 auto';
+  var b=document.createElement('button'); b.type='button'; b.textContent=label||'Open LOBSTR';
   b.style.cssText='flex:0 0 auto;padding:9px 14px;border-radius:10px;border:0;cursor:pointer;'
     +'background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif';
   b.addEventListener('click',function(){ try{ window.location.href=link; }catch(_){ } });
@@ -334,7 +352,7 @@ window.__lxWcSign=function(xdr,passphrase){
     // The poke is a navigation too, so it is dropped for exactly the same reason as the sep7 link: by the second
     // signature of a flow the tap that started it is spent. Offer the same button beside it (RAZA 2026-09-20: the
     // bridge fee step "didnt automatically open lobstr", and approving by hand later was too late).
-    if(isMobile()&&wn.indexOf('lobstr')>=0){ wcPoke(WC_LOBSTR,''); closePoke=lxSep7Prompt(WC_LOBSTR); }
+    if(isHandheld()&&wn.indexOf('lobstr')>=0){ wcPoke(WC_LOBSTR,''); closePoke=lxSep7Prompt(WC_LOBSTR); }
     var req=cs.client.request({topic:cs.session.topic,chainId:chain,request:{method:'stellar_signXDR',params:{xdr:xdr}}});
     return req.then(function(v){ closePoke(); return v; },function(e){ closePoke(); throw e; });
   }).then(function(r){

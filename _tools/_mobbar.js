@@ -75,20 +75,31 @@ const WIDE = '<style id="lx-nbwide">@media (min-width:431px){'
 // ratio is several million device pixels held and re-rastered while scrolling. will-change is a hint for what is
 // ABOUT to animate; once the reveal has finished there is nothing left to hint at. The reveal itself is
 // unchanged: opacity and transform are composited anyway, with or without the hint.
+// THE MOBILE BUILD IS CAPPED TO A PHONE'S WIDTH, AND MOST PAGES ALREADY LIFT THAT CAP. Every mobile page
+// carries body{max-width:430px;margin:0 auto} from the design, and 39 of the 41 also carry the design's own
+// lx-mobile-fix, which sets html,body{max-width:100%} and lets the page fill whatever screen it is on. The
+// landing and signin pages never got it, so on a tablet they rendered as a 430px column marooned in the
+// middle of a 1024px screen -- "it still shows just at the center, like im viewing on mobile resolution"
+// (RAZA 2026-09-21, after tablets were switched to this build). Give those two the same rule the other 39
+// have, rather than inventing a different one.
+const WIDEBODY = '<style id="lx-mobwide">html,body{max-width:100%}</style>';
 const OVB = '<style id="lx-scrollcost">'
   + '.menu-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}'
   + '.menu-overlay.open{backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}'
   + '[data-lcmu].lcmu-in{will-change:auto!important}'
   + '</style>';
-let wide = 0, ovb = 0;
+let wide = 0, ovb = 0, widebody = 0;
 for (const k of Object.keys(json)) {
   let h = json[k];
   const before = h;
   h = h.replace(/<style id="lx-nbwide">[\s\S]*?<\/style>/g, '');
   h = h.replace(/<style id="lx-ovblur">[\s\S]*?<\/style>/g, '');     // the id this block used to carry
   h = h.replace(/<style id="lx-scrollcost">[\s\S]*?<\/style>/g, '');
+  h = h.replace(/<style id="lx-mobwide">[\s\S]*?<\/style>/g, '');
   if (h.indexOf('class="nb-bar"') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', WIDE + '</head>'); wide++; }
   if (h.indexOf('menu-overlay') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', OVB + '</head>'); ovb++; }
+  // only the pages the design left capped -- the other 39 already lift it themselves
+  if (h.indexOf('lx-mobile-fix') < 0 && h.indexOf('max-width: 430px') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', WIDEBODY + '</head>'); widebody++; }
   if (h !== before) { json[k] = h; added++; }
 }
 
@@ -96,4 +107,4 @@ if (added) {
   const serialized = JSON.stringify(json).split('</').join('<' + B + '/');
   fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
 }
-console.log("mobile bottom nav: added to " + added + " page key(s), " + already + " already had it; tablet backing on " + wide + "; overlay blur gated on " + ovb);
+console.log("mobile bottom nav: added to " + added + " page key(s), " + already + " already had it; tablet backing on " + wide + "; overlay blur gated on " + ovb + "; width cap lifted on " + widebody);
