@@ -1203,68 +1203,74 @@ function lxCctpWireStep2(){
     // "denied" on Android whether or not a read would succeed, and renaming a button is not a fix for a button that
     // does nothing. Both the watcher and the label states are gone -- the only thing that decides anything now is the
     // read itself, attempted on every tap.
-    if(pasteBtn) pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation();
-      // ONE TAP ARRIVES TWICE, AND ONLY ONE OF THE TWO CAN READ THE CLIPBOARD. _mobnav's tap bridge suppresses the
-      // native click on touch and re-dispatches a synthetic one; the native straggler still lands when its swallow
-      // misses. The SYNTHETIC click cannot read the clipboard -- a script-dispatched click carries no user activation
-      // -- and the trusted one can. That is the whole explanation for the screenshot that had a filled field AND an
-      // error toast from a single tap: one attempt worked, the other was refused.
-      // My first fix dropped the second click outright. The failing attempt is the one that arrives FIRST, so that
-      // kept the failure and threw away the paste, and Paste stopped working on every touch device -- RAZA on
-      // 2026-09-21: "i just cant paste anything by tapping on paste button", "that paste error is also on mobile".
-      // So BOTH attempts run, because either one may be the one with activation. The first success wins and fills
-      // the field; the error is shown only once every attempt in the gesture has failed, which is what the short
-      // timer below waits for. Nothing reads the clipboard on a timer -- the timer only decides whether to speak.
+    // READ ON THE REAL GESTURE, NOT ON THE CLICK. This is the thing I kept missing while RAZA spent nine hours on
+    // one button (2026-09-21). On touch, _mobnav suppresses the native click, dispatches a SYNTHETIC one, and then
+    // swallows the straggler if it still lands. A script-dispatched click carries no user activation, so it can
+    // never read the clipboard -- and when that swallow succeeds, the synthetic click is the ONLY attempt there is.
+    // Whether the swallow lands is a matter of the device's own timing, which is exactly the shape of "works on my
+    // phone, never on my tablet": identical code, different straggler. touchend is the genuine, trusted gesture and
+    // is not swallowed by anything, so the read happens there too. Desktop keeps the click, which is trusted anyway.
+    function lxPasteRun(){
       var _now=Date.now(), G=pasteBtn.__lxG;
-      if(!G || _now-G.t>900){ G=pasteBtn.__lxG={ok:false,timer:0}; }
+      if(!G || _now-G.t>900){ G=pasteBtn.__lxG={ok:false,timer:0,tries:0}; }
       G.t=_now;
+      if(G.ok) return;                       // this gesture already pasted; a second attempt would only re-ask
+      G.tries++;
+      var t0=_now;
       function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); /* filled: no keyboard needed (RAZA 2026-09-19) */ dstInEl.blur(); } }
       function win(t){ G.ok=true; if(G.timer){ clearTimeout(G.timer); G.timer=0; } set(t); }
+      // The error waits, because the other half of the same tap may still succeed. Nothing READS on a timer -- the
+      // timer only decides whether to speak, which needs no user activation.
       function fail(why){ if(G.ok)return; if(G.timer)clearTimeout(G.timer);
         G.timer=setTimeout(function(){ G.timer=0; if(!G.ok) _pasteManual(why); },450); }
-      // ONE READ, INSIDE THE TAP. A clipboard read is only allowed while the tap that asked for it is still "active";
-      // a retry on a timer has no such activation, and Chrome answers those with "This site can't ask for your
-      // permission" -- the dialog RAZA saw on the tablet AND then on a phone where Paste had worked that morning. The
-      // retries I added earlier today were themselves the cause, so there are none: the read happens in the handler and
-      // nowhere else. When it fails (a refused permission, an overlay from another app blocking the prompt), the field
-      // is focused and the way out is named -- tapping Paste again after granting is a new tap, and a new activation.
-      // ALWAYS TRY THE READ. I previously skipped it whenever the permission query said "denied" -- and on Android that
-      // query reports denied as a matter of course, because Chrome there does not grant clipboard-read up front: it
-      // shows its OWN paste confirmation when a page asks, and only the asking triggers it. So the check I added to
-      // avoid a dialog was suppressing the very call that works, and Paste did nothing at all (RAZA 2026-09-20: "the
-      // paste button should be working ... the issue is still there"). The read is attempted on every tap now; the
-      // only thing still checked is whether this window has focus, which is a hard refusal, not a permission.
       var can=!!(navigator.clipboard&&navigator.clipboard.readText);
-      // ask for the focus back first -- a tap on our own button usually has it already, and this costs nothing
       try{ window.focus(); }catch(_){ }
-      var focused=true; try{ focused=document.hasFocus(); }catch(_){ }
-      if(!can){ fail(""); return; }
+      if(!can){ fail("noapi"); return; }
       navigator.clipboard.readText().then(function(t){
         t=String(t==null?"":t).trim();
         if(!t){ fail("empty"); return; }
         win(t);
       }).catch(function(err){
-        // "denied" here is Chrome's own record for this site -- the permission is set to Block, and no retry, gesture
-        // or dialog can get past it. Only the reader can undo it, so say exactly where.
         var nm=""; try{ nm=String((err&&err.name)||""); }catch(_){ }
-        // Not "denied" from a permission query -- that lies on Android. Only a read that actually failed gets a
-        // message, and losing the window to another app is the one refusal with its own wording.
-        fail(!focused ? "unfocused" : (nm==="NotAllowedError" ? "refused" : ""));
+        // WHICH REFUSAL IT IS, MEASURED RATHER THAN GUESSED. Android Chrome does not grant clipboard-read up front:
+        // when a page asks, it shows its own paste confirmation and waits for a tap. So a refusal that takes a while
+        // is a confirmation that was shown and not taken, while one that comes back instantly means no confirmation
+        // was ever offered -- the permission is set to Block for this site, and no amount of code gets past that.
+        // The permission QUERY cannot tell these apart (it answers "denied" to both on Android, which is what sent
+        // me down the wrong road twice); the clock can, and it is evidence from the reader's own device.
+        // Chrome names the lost-focus case in the error itself ("Document is not focused"), which beats asking
+        // document.hasFocus() and hoping: that answer can be false for reasons that have nothing to do with the
+        // refusal, and when it led the ordering it relabelled every failure as another app being in the way.
+        var msg=""; try{ msg=String((err&&err.message)||""); }catch(_){ }
+        var dt=Date.now()-t0;
+        fail(/not focused/i.test(msg) ? "unfocused"
+           : nm!=="NotAllowedError"   ? ""
+           : dt<250                   ? "blocked"
+                                      : "notconfirmed");
       });
       function _pasteManual(why){
-        // Focus the field: on a phone that opens the keyboard, whose own Paste sits one tap away -- no permission, no
-        // dialog, nothing for an overlay to block.
+        // Focus the field: that opens the keyboard, whose own Paste sits one tap away -- no permission, no dialog,
+        // nothing for an overlay to block. Whatever the message says, this much always works.
         if(dstInEl){ try{ dstInEl.focus(); }catch(_){ } }
         if(why==="empty"){ lxBrToast("Nothing to paste \\u2014 the clipboard is empty",true); return; }
         var touch=false; try{ touch=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
-        // No "blocked for this site" wording here any more: it came from the permission query, and that query says
-        // denied on Android whether or not a read would work, so the message accused the reader's settings of a
-        // failure they had not caused. Every message below names a way to paste instead.
-        lxBrToast(!touch ? "Couldn\\u2019t read the clipboard \\u2014 press Ctrl+V to paste"
-          : (why==="unfocused" ? "Use Paste on the keyboard, or long-press the field \\u2014 another app is over this window"
-                               : "Use Paste on the keyboard, or long-press the field and choose Paste"),true);
+        if(!touch){ lxBrToast(why==="blocked" ? "Chrome blocks the clipboard for this site \\u2014 allow it from the icon left of the address bar, or press Ctrl+V"
+                                             : "Couldn\\u2019t read the clipboard \\u2014 press Ctrl+V to paste",true); return; }
+        // Named for what the reader can actually do about it, on a screen this size.
+        lxBrToast(why==="blocked"     ? "Clipboard blocked for this site: tap the icon left of the web address \\u2192 Permissions \\u2192 Clipboard \\u2192 Allow. Or long-press the field and choose Paste."
+                : why==="notconfirmed"? "Chrome asks before a page may read the clipboard \\u2014 tap Paste in its popup. Or long-press the field and choose Paste."
+                : why==="unfocused"   ? "Another app is over this window \\u2014 tap the page once, then Paste. Or long-press the field and choose Paste."
+                                      : "Use Paste on the keyboard, or long-press the field and choose Paste",true);
       }
-    },true);
+    }
+    if(pasteBtn){
+      // The real gesture. Passive: nothing here needs to cancel the touch, and the click that follows is welcome to
+      // try again -- lxPasteRun returns early once this gesture has pasted. There is deliberately no isTrusted gate:
+      // nothing in this codebase dispatches a touch event, so it would exclude nothing real, and it made this path
+      // impossible to exercise in a test (a synthetic TouchEvent is untrusted by definition).
+      pasteBtn.addEventListener('touchend',function(){ lxPasteRun(); },{passive:true});
+      pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); lxPasteRun(); },true);
+    }
     // close the source asset dropdown when clicking anywhere outside it
     document.addEventListener('click',function(e){ var m=document.getElementById('lx-br-amenu'); if(m&&m.style.display==="block"&&!m.contains(e.target)&&!(sChip&&sChip.contains(e.target))) m.style.display="none"; });
   }

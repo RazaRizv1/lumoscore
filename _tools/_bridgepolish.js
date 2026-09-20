@@ -517,6 +517,11 @@ function runtime() {
   function scan(net, onFound) {
     if (!window.isSecureContext) { toast('The camera needs a secure (https) connection.'); return; }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('This browser cannot open the camera.'); return; }
+    // ONE SCANNER AT A TIME. On touch the same finger can deliver two clicks -- _mobnav re-dispatches the click it
+    // suppressed and the native straggler still lands -- which opened two scanners and made two camera requests.
+    // Two concurrent requests race, one loses, and its NotAllowedError is reported as a refusal the reader never
+    // made: RAZA accepted the prompt on his tablet and still got "Camera permission was declined" (2026-09-21).
+    if (document.querySelector('.lx-qr')) return;
     var ov = el('div', 'lx-qr', '');
     ov.innerHTML = '<video playsinline muted autoplay></video><div class="lx-qr-frame"></div>'
       + '<div class="lx-qr-hint">Point at ' + esc(net ? ('a ' + net) : 'the') + ' address QR code</div>'
@@ -534,8 +539,17 @@ function runtime() {
     document.addEventListener('keydown', onKey, true);
     ov.querySelector('.lx-qr-x').addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); stop(); });
     var cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
-    qrLib().then(function (dec) {
-      return navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false }).then(function (st) {
+    // ASK FOR THE CAMERA IN THE SAME TURN AS THE TAP. This used to await qrLib() first -- a script fetched over the
+    // network -- and only then call getUserMedia, by which time the tap's user activation is long spent. A permission
+    // prompt asked for without it can be refused before the reader ever sees it, and that refusal is the same
+    // NotAllowedError as a real decline. Both start together now; the decoder is only needed once frames arrive.
+    var camP = navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    var libP = qrLib();
+    // If the decoder fails to load, the camera must not be left running behind the failure.
+    libP.catch(function () { camP.then(function (st) { try { st.getTracks().forEach(function (t) { t.stop(); }); } catch (_) {} }, function () {}); });
+    Promise.all([libP, camP]).then(function (both) {
+      var dec = both[0], st = both[1];
+      return Promise.resolve().then(function () {
         if (dead) { st.getTracks().forEach(function (t) { t.stop(); }); return; }
         stream = st; vid.srcObject = st;
         return vid.play().catch(function () {}).then(function () {

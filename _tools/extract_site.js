@@ -386,7 +386,12 @@ function headersFile(isAdmin){
     + '  X-Frame-Options: DENY\n'
     + '  Content-Security-Policy: ' + CSP + '\n'
     + '  Referrer-Policy: strict-origin-when-cross-origin\n'
-    + '  Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()\n';
+    // camera=(self), NOT camera=(). The empty allowlist disables the camera for every origin INCLUDING this one,
+    // so the QR scanners on the bridge and the wallet could never open one: getUserMedia was rejected with
+    // NotAllowedError however the reader answered the prompt, which is why RAZA saw "Camera permission was
+    // declined" on a tablet where he had just accepted it (2026-09-21). (self) grants it to this origin only --
+    // no third party and no iframe, which is what the empty list was protecting. Everything else stays off.
+    + '  Permissions-Policy: camera=(self), microphone=(), geolocation=(), interest-cohort=()\n';
   if(isAdmin){
     // belt and braces: the admin site is behind Cloudflare Access, but if a policy is ever
     // misconfigured this at least keeps it out of search results.
