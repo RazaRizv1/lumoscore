@@ -158,6 +158,13 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'.activity-feed-row .lx-fg2 .lx-fga .lx-fgi{width:28px!important;height:28px!important}'
 +'.activity-feed-row .lx-fg2 .lx-fgb .lx-fgi{width:20px!important;height:20px!important}'
 +'.activity-feed-row.lx-fr .info .type,.activity-feed-row.lx-fr .info .type b{font-size:14px!important}}'
+// the waiting row: the same rhythm as a real one, saying nothing (shares the shimmer the stat pills use)
++'.lx-actskel{display:inline-block;height:15px;border-radius:6px;vertical-align:-2px;'
++'background-image:linear-gradient(90deg,rgba(140,140,150,.10),rgba(140,140,150,.22),rgba(140,140,150,.10));'
++'background-size:200% 100%;animation:lxdbxshim 1.2s ease-in-out infinite}'
++'.lx-actskel-s{height:11px;border-radius:5px}'
++'@media(prefers-reduced-motion:reduce){.lx-actskel{animation:none}}'
++'.lx-frwait .lx-fgt{background:rgba(127,127,140,.14)}'
 +'.status-row{opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready{opacity:1!important;animation:none;transition:opacity .3s ease}'
 +'</style>';
 // ---- cross-chain rows: one format for every route (RAZA 2026-09-19) -----------------------------------------------
@@ -261,7 +268,8 @@ function lxXc(o, t, ops, done) {
         var d = Math.abs(Date.parse(x.created_at) - cAt);
         if (d < gap) { gap = d; best = { op: x, burn: burn }; }
       });
-      if (!best) return;
+      // nothing found to describe it with: settle on the generic label rather than leave the row waiting
+      if (!best) { done({ cls: 'swap', type: 'Platform activity' }); return; }
       var dom = -1, s = ''; try { s = atob(best.op.parameters[4].value); } catch (_) { s = ''; }
       if (s.length >= 8 && s.charCodeAt(3) === 3) dom = ((s.charCodeAt(4) << 24) >>> 0) + (s.charCodeAt(5) << 16) + (s.charCodeAt(6) << 8) + s.charCodeAt(7);
       // put the pair in the shared record, so this is the last time anyone has to work it out from the chain
@@ -324,6 +332,13 @@ function lxFeedRow(r) {
         + (x.img ? '<img src="' + x.img + '" alt="" onerror="this.remove()">' : '') + '</span>';
     }
     return aic(x.code, x.iss || '').replace('class="act-inl ', 'class="act-inl lx-fgi ');
+  }
+  // not read yet: a shimmer where the sentence will be, rather than a claim about what happened
+  if (!r.type) {
+    return '<div class="activity-feed-row lx-fr lx-frwait" data-lx-noswap="1"><span class="lx-fg lx-fgt" aria-hidden="true"></span>'
+      + '<div class="info"><div class="type"><span class="lx-actskel" style="width:62%"></span></div>'
+      + '<div class="meta lx-actmeta"><span class="lx-actskel lx-actskel-s" style="width:84px"></span>' + (r.who ? actWho(r.who) : '') + '</div></div>'
+      + '<div class="lx-frr"><div class="time">' + r.when + '</div></div></div>';
   }
   var glyph = (r.pair && r.pair.a && r.pair.a.code)
     ? '<span class="lx-fg' + (r.pair.b ? ' lx-fg2' : '') + '" aria-hidden="true"><span class="lx-fga">' + gi(r.pair.a) + '</span>'
@@ -711,7 +726,11 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'paint24(merged);'
 +'var use=merged.slice(0,50);'
 // Paint what we already know immediately, then upgrade each row once its transaction is read.
-+'var rows=use.map(function(o){return {ic:SWAP,cls:"swap",type:"Platform activity",who:o.from,when:ago(o.created_at),hash:o.transaction_hash};});'
+// A ROW SAYS NOTHING UNTIL IT KNOWS (RAZA 2026-09-20: "There's this flash bug on Dashboard page when it loads").
+// Every row was painted as "Platform activity" and then replaced one by one as its transaction was read -- so the feed
+// opened as a column of identical placeholder text. The row is drawn as a loading shimmer instead: the time, the wallet
+// and the row's shape are already known and stay put, and nothing is claimed about what happened until it is.
++'var rows=use.map(function(o){return {ic:SWAP,cls:"",type:"",pending:1,who:o.from,when:ago(o.created_at),hash:o.transaction_hash};});'
 +'list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});'
 +'var C_USDC="GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";'
@@ -749,7 +768,10 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'var de=_br?lxXcRow(_br,o.from||""):((_dup&&_dup.feeHash&&_dup.feeHash!==o.transaction_hash)?{skip:true}:null);'
 // LayerZero and NEAR Intents transfers not in the record yet are recognised from the chain (lxXc); put() may refine
 +'if(!de){ try{ de=lxXc(o,t,ops,function(d2){ put(d2); }); }catch(_){ de=null; } }'
-+'if(!de)de=describeOp(pick); if(!de)return; put(de);'
++'if(!de)de=describeOp(pick);'
+// EVERY ROW SETTLES. A waiting row that never resolves would shimmer for good, which is worse than the placeholder it
+// replaced -- so a transaction nothing can describe lands on the honest generic label instead.
++'if(!de)de={ic:SWAP,cls:"swap",type:"Platform activity"}; put(de);'
 +'function put(de){'
 +'if(de.skip){ rows[i].hide=1; }else{'
 +'rows[i].ic=de.ic||SWAP;rows[i].cls=de.cls;rows[i].type=de.type;rows[i].act=de.act||"";rows[i].acode=de.acode||"";rows[i].aiss=de.aiss||"";'
@@ -760,7 +782,11 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'if(de.from)rows[i].who=de.from;rows[i].to=de.to||""; }'
 +'list.innerHTML=rows.filter(function(r){ return !r.hide; }).map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);}); }'
-+'}).catch(function(){}).then(function(){ _eA--; _ePump(); });});});'
+// the fetch itself failed: put() lives inside the then() above and cannot be reached from here, so the row is settled
+// directly -- a waiting row must never be left waiting.
++'}).catch(function(){ try{ rows[i].ic=SWAP; rows[i].cls="swap"; rows[i].type="Platform activity"; rows[i].pending=0;'
++'  list.innerHTML=rows.filter(function(r){ return !r.hide; }).map(feedRow).join(""); paintFeedIcons(); }catch(_){} })'
++'.then(function(){ _eA--; _ePump(); });});});'
 +'_brLoad().then(function(){ _ePump(); });'
 +'}).catch(function(){});}'
 // A cache written by a previous build is an ARRAY, not this object, so the shape check is what stops a
