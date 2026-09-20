@@ -737,7 +737,22 @@ export async function onRequest(context){
   // not a page route -> let Pages serve it as usual
   if (!hit) return next();
 
-  const isMobile = MOBILE.test(request.headers.get('user-agent') || '');
+  // WHICH BUILD A TABLET GETS. The user agent alone cannot answer this: Chrome's "Desktop site" is
+  // remembered per site, and with it on an Android tablet sends a plain Linux UA -- indistinguishable
+  // from a laptop here. That is why RAZA's tablet showed the side rail one minute and the bottom bar
+  // the next, and why the desktop build's transaction table and landing page were being squeezed into
+  // a tablet (2026-09-21). Two more signals answer it:
+  //   - client hints. Chrome keeps sending the real platform, so Sec-CH-UA-Platform still says Android
+  //     (and sec-ch-ua-mobile ?1 on a phone) even when the UA string has been rewritten.
+  //   - the lxdev cookie, set by the page itself when it finds it is a touch device of tablet size
+  //     looking at the desktop build. That covers any browser whose hints are stripped.
+  const ua = request.headers.get('user-agent') || '';
+  const chPlat = (request.headers.get('sec-ch-ua-platform') || '').replace(/"/g, '');
+  const chMob = (request.headers.get('sec-ch-ua-mobile') || '');
+  const cookie = request.headers.get('cookie') || '';
+  const forcedMobile = /(?:^|;\s*)lxdev=m(?:;|$)/.test(cookie);
+  const forcedDesktop = /(?:^|;\s*)lxdev=d(?:;|$)/.test(cookie);
+  const isMobile = !forcedDesktop && (MOBILE.test(ua) || chPlat === 'Android' || chMob === '?1' || forcedMobile);
   const wantMobile = isMobile && HAS_MOBILE.has(hit.mobile);
 
   // Desktop needs no rewrite — Pages already serves the right file for this url. Rewriting anyway
