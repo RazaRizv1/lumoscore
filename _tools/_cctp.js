@@ -627,7 +627,7 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
               var tb=new S.TransactionBuilder(new S.Account(pk,ad.sequence),{fee:"1000",networkPassphrase:C.passphrase})
                 .addOperation(S.Operation.payment({destination:C.feeCollector,asset:new S.Asset("USDC",UI),amount:owed.toFixed(7)}))
                 .addMemo(S.Memo.text("lx:cctp"))
-                .setTimeout(180).build();
+                .setTimeout(300).build();
               return signSubmit(tb,"fee").then(function(sr){ try{ deferredFeeHash=(sr&&(sr.hash||sr.id))||""; }catch(_){} return sr; });
             });
           }

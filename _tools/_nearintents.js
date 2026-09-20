@@ -361,7 +361,7 @@ function runtime(NI_SENDABLE) {
                 : S.Operation.pathPaymentStrictSend({ sendAsset: src, sendAmount: feeAmt.toFixed(7), destination: CC.feeCollector, destAsset: S.Asset.native(),
                     destMin: (pFee.out * 0.97).toFixed(7), path: window.lxToAssets(S, pFee.path) }));
               up('Swapping ' + k + '→USDC…');
-              return signSubmit(tb.addMemo(S.Memo.text('lx:ni')).setTimeout(180).build(), 'swap').then(function () {
+              return signSubmit(tb.addMemo(S.Memo.text('lx:ni')).setTimeout(300).build(), 'swap').then(function () {
                 swapped = true;
                 return acc().then(function (after) { var got = +(bal(after, 'USDC', CC.usdcIssuer) - bal(before, 'USDC', CC.usdcIssuer)).toFixed(7);
                   if (!(got > 0)) throw new Error('The swap did not deliver any USDC.'); return got; });
@@ -384,7 +384,7 @@ function runtime(NI_SENDABLE) {
               tb.addOperation(S.Operation.payment({ destination: q.depositAddress, asset: A2, amount: net.toFixed(7) }));
               var memo = String(q.depositMemo || '');
               tb.addMemo(/^[0-9]{1,19}$/.test(memo) ? S.Memo.id(memo) : S.Memo.text(memo.slice(0, 28)));
-              return signSubmit(tb.setTimeout(180).build(), 'deposit').then(function (res) {
+              return signSubmit(tb.setTimeout(300).build(), 'deposit').then(function (res) {
                 var hash = res.hash || res.id;
                 // 5. tell 1Click (speeds pickup; the deposit is found either way), record, then track to completion
                 fetch('/lxapi/oneclick?op=submit', { method: 'POST', headers: { 'content-type': 'application/json' },
