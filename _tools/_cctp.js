@@ -386,6 +386,28 @@ function lxCctpSignXdr(xdr, addr){
 // Return a Freighter-API-compatible object for the connected wallet. For non-Freighter wallets a shim
 // implements the same methods the engine calls (signTransaction/getAddress/requestAccess/getNetworkDetails),
 // so the rest of the flow is untouched. Freighter users get the real API exactly as before.
+// READING WHAT THE NETWORK SAID ---------------------------------------------------------------------
+// A rejected submit comes back as a base64 TransactionResult. Undecoded it reached RAZA as
+// a quoted base64 blob, "burn rejected: AAAA..." (2026-09-21) -- nothing anyone can act on. Decoded it is
+// txBAD_AUTH, and that has ordinary causes worth naming: the wallet sitting on a different account
+// than the one connected here, or not being on Mainnet.
+var LX_WNAMES={rabet:"Rabet",freighter:"Freighter",albedo:"Albedo",xbull:"xBull",lobstr:"LOBSTR",hana:"Hana",walletconnect:"your wallet"};
+function lxCctpWalletName(){ var w=lxCctpWalletId(); return LX_WNAMES[w]||(w?(w.charAt(0).toUpperCase()+w.slice(1)):"Your wallet"); }
+function lxShortG(a){ a=String(a||""); return a.length>12 ? (a.slice(0,4)+"\\u2026"+a.slice(-4)) : a; }
+function lxCctpResultMsg(S,raw,label){
+  var name=""; try{ name=S.xdr.TransactionResult.fromXDR(String(raw).replace(/^"|"$/g,""),"base64").result().switch().name; }catch(_){ }
+  if(name==="txBadAuth"||name==="txBadAuthExtra"){
+    return "The "+label+" signature wasn\\u2019t accepted by the network. Check "+lxCctpWalletName()+" is unlocked, on Mainnet, "
+         + "and set to the account connected here \\u2014 signing from a different account gives exactly this \\u2014 then retry.";
+  }
+  var M={txBadSeq:"the account\\u2019s sequence number had already moved on \\u2014 retry",
+         txTooLate:"the signing window closed before it was submitted \\u2014 retry",
+         txInsufficientBalance:"the account balance is too low to cover it",
+         txInsufficientFee:"the network fee offered was too low \\u2014 retry",
+         txNoAccount:"the account could not be found on Mainnet"};
+  if(M[name]) return "The "+label+" was rejected: "+M[name]+".";
+  return label+" rejected"+(name?(" ("+name+")"):"")+". Nothing was sent.";
+}
 function lxCctpSigner(){
   var w=lxCctpWalletId(), addr=lxCctpConnectedAddr(), pass=(window.__lxCCTP||{}).passphrase;
   if(w && w!=="freighter" && addr && addr.charAt(0)==="G"){
@@ -453,11 +475,30 @@ function lxCctpBurn(destDomain, amountHuman, recipient, onStatus){
         return lxCctpGateSign(label, function(){ return Promise.resolve(f.signTransaction(prepared.toXDR(),{networkPassphrase:C.passphrase,network:"PUBLIC",address:pk})); }).then(function(sig){
           var xdr=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||!xdr) throw new Error("Signing cancelled.");
           if(typeof xdr!=="string") throw new Error("Unexpected signature format from your wallet.");
+          // LOOK AT WHAT THE WALLET ACTUALLY RETURNED, before spending a submit on it. This is evidence about
+          // this wallet on this machine -- unlike a published capability list, which told me Rabet could not sign
+          // contract calls at all and had me refuse a route RAZA has completed twelve times (2026-09-21).
+          // Two things are checkable here and both have plain causes: an envelope with no signature on it, and an
+          // envelope signed by a key that is not the account we are sending from, which is what a wallet left on
+          // a different account produces -- and the network answers both with the same opaque txBAD_AUTH.
+          try{
+            var _env=S.TransactionBuilder.fromXDR(xdr,C.passphrase), _sigs=_env.signatures||[];
+            if(!_sigs.length) throw new Error("__lxNoSig");
+            var _kp=S.Keypair.fromPublicKey(pk), _h=_env.hash(), _ok=false;
+            for(var _i=0;_i<_sigs.length;_i++){ try{ if(_kp.verify(_h,_sigs[_i].signature())){ _ok=true; break; } }catch(_){ } }
+            if(!_ok) throw new Error("__lxOtherKey");
+          }catch(_e){
+            var _m=(_e&&_e.message)||"";
+            if(_m==="__lxNoSig") throw new Error(lxCctpWalletName()+" returned the "+label+" unsigned. Unlock it, check it is on Mainnet, and retry \\u2014 nothing has been sent.");
+            if(_m==="__lxOtherKey") throw new Error(lxCctpWalletName()+" signed the "+label+" with a different account than the one connected here ("+lxShortG(pk)+"). Switch it to that account, or reconnect with the account you want to use, then retry \\u2014 nothing has been sent.");
+            /* anything else is a parse difference, not evidence: let the network be the judge */
+          }
           onStatus("Submitting "+label+"…");
           return lxRpc("sendTransaction",{transaction:xdr}).then(function(res){
             if(res.error) throw new Error(label+" submit error: "+JSON.stringify(res.error).slice(0,180));
             var r=res.result||{};
-            if(r.status==="ERROR") throw new Error(label+" rejected: "+JSON.stringify(r.errorResultXdr||r).slice(0,180));
+            if(r.status==="ERROR") throw new Error(r.errorResultXdr ? lxCctpResultMsg(S,r.errorResultXdr,label)
+                                                                    : (label+" rejected: "+JSON.stringify(r).slice(0,180)));
             var hash=r.hash; if(!hash) throw new Error(label+" submit failed: "+JSON.stringify(res).slice(0,180));
             function poll(t){ return lxRpc("getTransaction",{hash:hash}).then(function(g){
               var st=(g.result&&g.result.status)||"NOT_FOUND";
@@ -838,6 +879,55 @@ var LX_EVM_NETS={Ethereum:1,Avalanche:1,Optimism:1,Arbitrum:1,Base:1,Polygon:1,L
   Berachain:1,Ink:1,Hyperliquid:1,Monad:1,Flare:1,Sei:1,MegaETH:1,Plasma:1};
 function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false; if(LX_EVM_NETS[net])return /^0x[0-9a-fA-F]{40}$/.test(a); if(net==='Solana')return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a); if(net==='Sui')return /^0x[0-9a-fA-F]{64}$/.test(a); return a.length>0; }
 function lxBrStep2Err(msg){ var s2=document.querySelector('.br-step[data-step="2"]'); var e=s2?s2.querySelector('.br-errslot'):null; if(e){ e.textContent=msg||''; if(msg) e.setAttribute('data-err',msg); else e.removeAttribute('data-err'); e.style.color=msg?'#e04f4f':''; } }
+// A MESSAGE IN THESE SLOTS DESCRIBES THE STATE THAT WAS THERE WHEN IT WAS WRITTEN -- this destination, this
+// address, this route. Change any of them and it stops being true, but it used to stay on screen: RAZA hit the
+// destination-funding gate on Ethereum, went back, switched the destination to Polygon, and came forward to find
+// the Ethereum warning still sitting under the Polygon summary (2026-09-21). The gate itself is deliberate and
+// stays; only its leftovers go. Clearing is tied to the user's own actions -- picking a destination, choosing a
+// route, moving between steps, editing the address -- rather than to a poll, so a message never disappears while
+// it is being read.
+function lxBrClearErrSlots(){
+  [].slice.call(document.querySelectorAll('.br-step .br-errslot')).forEach(function(e){
+    if(!e.textContent) return;
+    e.textContent=''; e.removeAttribute('data-err'); e.style.color='';
+  });
+}
+if(!window.__lxBrErrReset){
+  window.__lxBrErrReset=1;
+  document.addEventListener('click',function(ev){
+    var t=ev.target&&ev.target.closest?ev.target.closest('[data-go],.brd-opt[data-net],.lx-brr[data-route],.br-netchip,.brd-trigger'):null;
+    if(t) lxBrClearErrSlots();
+  },true);
+  // the picker on a phone selects on pointerup, which the click above may never follow (_mobnav bridges it)
+  document.addEventListener('pointerup',function(ev){
+    var t=ev.target&&ev.target.closest?ev.target.closest('.brd-opt[data-net],.lx-brr[data-route]'):null;
+    if(t) lxBrClearErrSlots();
+  },true);
+  document.addEventListener('input',function(ev){
+    var t=ev.target; if(t&&t.classList&&(t.classList.contains('br-addr-in')||t.classList.contains('lx-amtin'))) lxBrClearErrSlots();
+  },true);
+  // SECOND NET, tied to nothing I had to enumerate: ARRIVING at a step clears that step's slot. The list of
+  // controls above is only as complete as my reading of the markup, and a control I missed puts the reader back
+  // in front of a message about a destination they have already left. A step going hidden -> visible is the
+  // reader arriving, which is never the moment to still be showing the last answer. Confirm does not hide the
+  // step it writes into, so an error still stands for as long as it is being read.
+  try{
+    var _seen={};
+    var _watch=function(){
+      [].slice.call(document.querySelectorAll('.br-step[data-step]')).forEach(function(st){
+        var k=st.getAttribute('data-step');
+        var vis=!st.hasAttribute('hidden')&&getComputedStyle(st).display!=="none";
+        if(vis&&_seen[k]===false){ var e=st.querySelector('.br-errslot'); if(e&&e.textContent){ e.textContent=''; e.removeAttribute('data-err'); e.style.color=''; } }
+        _seen[k]=vis;
+      });
+    };
+    _watch();
+    var _mo=new MutationObserver(_watch);
+    [].slice.call(document.querySelectorAll('.br-step[data-step]')).forEach(function(st){
+      _mo.observe(st,{attributes:true,attributeFilter:["hidden","style","class"]});
+    });
+  }catch(_){ }
+}
 // keep the Review button disabled until amount>0 AND a valid destination address; flag an invalid address in red
 function lxBrValidateStep2(){
   var s2=document.querySelector('.br-step[data-step="2"]'); if(!s2)return false;
@@ -1114,17 +1204,24 @@ function lxCctpWireStep2(){
     // does nothing. Both the watcher and the label states are gone -- the only thing that decides anything now is the
     // read itself, attempted on every tap.
     if(pasteBtn) pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation();
-      // ONE TAP, ONE READ -- AND A TAP CAN ARRIVE TWICE. _mobnav's tap bridge suppresses the native click on touch and
-      // re-dispatches a synthetic one, then swallows the browser's straggler click if it still lands. When that swallow
-      // misses (its timing is the device's to choose) this handler runs TWICE for one finger. A single tap carries a
-      // single clipboard read: the first call fills the field, the second is refused, and the refusal painted an error
-      // over a paste that had just worked -- RAZA's tablet on 2026-09-20, filled field and "use Paste on the keyboard"
-      // toast in the same screenshot, while the same build was fine on the phone. So a replayed click within the
-      // straggler window is dropped whole: no read, no toast. A deliberate second tap comes far later than this.
-      var _now=Date.now();
-      if(pasteBtn.__lxTapT && _now-pasteBtn.__lxTapT<900) return;
-      pasteBtn.__lxTapT=_now;
+      // ONE TAP ARRIVES TWICE, AND ONLY ONE OF THE TWO CAN READ THE CLIPBOARD. _mobnav's tap bridge suppresses the
+      // native click on touch and re-dispatches a synthetic one; the native straggler still lands when its swallow
+      // misses. The SYNTHETIC click cannot read the clipboard -- a script-dispatched click carries no user activation
+      // -- and the trusted one can. That is the whole explanation for the screenshot that had a filled field AND an
+      // error toast from a single tap: one attempt worked, the other was refused.
+      // My first fix dropped the second click outright. The failing attempt is the one that arrives FIRST, so that
+      // kept the failure and threw away the paste, and Paste stopped working on every touch device -- RAZA on
+      // 2026-09-21: "i just cant paste anything by tapping on paste button", "that paste error is also on mobile".
+      // So BOTH attempts run, because either one may be the one with activation. The first success wins and fills
+      // the field; the error is shown only once every attempt in the gesture has failed, which is what the short
+      // timer below waits for. Nothing reads the clipboard on a timer -- the timer only decides whether to speak.
+      var _now=Date.now(), G=pasteBtn.__lxG;
+      if(!G || _now-G.t>900){ G=pasteBtn.__lxG={ok:false,timer:0}; }
+      G.t=_now;
       function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); /* filled: no keyboard needed (RAZA 2026-09-19) */ dstInEl.blur(); } }
+      function win(t){ G.ok=true; if(G.timer){ clearTimeout(G.timer); G.timer=0; } set(t); }
+      function fail(why){ if(G.ok)return; if(G.timer)clearTimeout(G.timer);
+        G.timer=setTimeout(function(){ G.timer=0; if(!G.ok) _pasteManual(why); },450); }
       // ONE READ, INSIDE THE TAP. A clipboard read is only allowed while the tap that asked for it is still "active";
       // a retry on a timer has no such activation, and Chrome answers those with "This site can't ask for your
       // permission" -- the dialog RAZA saw on the tablet AND then on a phone where Paste had worked that morning. The
@@ -1141,23 +1238,24 @@ function lxCctpWireStep2(){
       // ask for the focus back first -- a tap on our own button usually has it already, and this costs nothing
       try{ window.focus(); }catch(_){ }
       var focused=true; try{ focused=document.hasFocus(); }catch(_){ }
-      if(!can){ _pasteManual(""); return; }
+      if(!can){ fail(""); return; }
       navigator.clipboard.readText().then(function(t){
         t=String(t==null?"":t).trim();
-        if(!t){ if(dstInEl) dstInEl.focus(); lxBrToast("Nothing to paste \\u2014 the clipboard is empty",true); return; }
-        set(t);
+        if(!t){ fail("empty"); return; }
+        win(t);
       }).catch(function(err){
         // "denied" here is Chrome's own record for this site -- the permission is set to Block, and no retry, gesture
         // or dialog can get past it. Only the reader can undo it, so say exactly where.
         var nm=""; try{ nm=String((err&&err.name)||""); }catch(_){ }
         // Not "denied" from a permission query -- that lies on Android. Only a read that actually failed gets a
         // message, and losing the window to another app is the one refusal with its own wording.
-        _pasteManual(!focused ? "unfocused" : (nm==="NotAllowedError" ? "refused" : ""));
+        fail(!focused ? "unfocused" : (nm==="NotAllowedError" ? "refused" : ""));
       });
       function _pasteManual(why){
         // Focus the field: on a phone that opens the keyboard, whose own Paste sits one tap away -- no permission, no
         // dialog, nothing for an overlay to block.
         if(dstInEl){ try{ dstInEl.focus(); }catch(_){ } }
+        if(why==="empty"){ lxBrToast("Nothing to paste \\u2014 the clipboard is empty",true); return; }
         var touch=false; try{ touch=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
         // No "blocked for this site" wording here any more: it came from the permission query, and that query says
         // denied on Android whether or not a read would work, so the message accused the reader's settings of a
@@ -1848,6 +1946,11 @@ function lxBrConfirm(btn){
   function say(m,ok){ if(errslot){ errslot.setAttribute('data-err',ok?'':m); errslot.textContent=m; errslot.style.color=ok?'#3fb950':''; } }
   say("");
   if(!(parseFloat(amt)>0)){ say("Enter a valid amount on the previous step."); return; }
+  // NO WALLET IS BLOCKED HERE. A capability list said Rabet cannot sign contract calls, so this refused the
+  // route before the first signature -- and RAZA's own bridge history has twelve transfers from that account,
+  // LayerZero among them, which are contract calls too ("this was working absolutely fine", 2026-09-21).
+  // A published claim about a wallet is not evidence about THIS wallet on THIS machine; what the wallet
+  // actually returns is. The check now happens after signing, on the envelope itself, in signSubmit.
   if(window.__lxBrRoute==="LayerZero"){ lxBrConfirmLz(btn,say,net,domain,recipient,amt,k,A); return; }
   // NEAR Intents: its own flow in _nearintents.js (swap if needed -> fresh live quote -> deposit with memo -> track)
   if(window.__lxBrRoute==="NEAR Intents"){
