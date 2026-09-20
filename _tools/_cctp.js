@@ -264,8 +264,8 @@ const CSS='<style id="lx-cctp-css">'
 +'.lx-brtxpg-p{min-width:30px;height:30px;padding:0 8px;border-radius:8px;border:1px solid var(--border-strong,#d5d5dd);background:var(--surface-2,#f6f6f8);color:var(--text,#0e0e10);font:650 12.5px/1 inherit;cursor:pointer;transition:.15s}'
 +'.lx-brtxpg-p:hover{border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}'
 +'.lx-brtxpg-p.active{background:var(--accent,#ea6a2c);border-color:var(--accent,#ea6a2c);color:#fff}'
-+'.lx-ctoast-stack{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}'
-+'.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:nowrap;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}'
++'.lx-ctoast-stack{position:fixed;bottom:24px;left:0;right:0;transform:none;padding:0 12px;box-sizing:border-box;z-index:99999;display:flex;flex-direction:column;gap:8px;align-items:center;pointer-events:none}'
++'.lx-ctoast{background:var(--text,#16171b);color:var(--bg,#fff);padding:11px 18px 11px 14px;border-radius:10px;font-family:"Hanken Grotesk",system-ui,sans-serif;font-size:16px;font-weight:600;display:inline-flex;align-items:center;gap:9px;white-space:normal;max-width:min(92vw,520px);text-align:left;line-height:1.35;box-shadow:0 12px 32px rgba(0,0,0,.28),0 2px 8px rgba(0,0,0,.16);animation:lxCtIn .25s ease}'
 +'.lx-ctoast .ci{width:18px;height:18px;border-radius:50%;background:var(--green,#35c07f);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}'
 +'.lx-ctoast.lxa-terr .ci{background:var(--red,#ef4444)}'
 +'@keyframes lxCtIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}'
@@ -1160,8 +1160,10 @@ function lxCctpWireStep2(){
         // permission lives in Chrome's own site settings (RAZA 2026-09-20 -- clipboard access was set to Block for
         // lumoscore.com, which is why tapping Paste could never fill the field however the page asked).
         if(why==="denied"){
-          lxBrToast(touch ? "Clipboard is blocked for this site \\u2014 tap the lock beside the address, then Permissions \\u2192 Clipboard \\u2192 Allow"
-                          : "Clipboard is blocked for this site \\u2014 allow it from the lock icon beside the address, or press Ctrl+V",true);
+          // Short enough to read on a phone. The long version ran off both edges of the screen, which is how RAZA saw
+          // it on the tablet: "…board is blocked for this site — tap the lock beside…". What to do comes first.
+          lxBrToast(touch ? "Long-press the field to paste \\u2014 Chrome blocks the clipboard for this site"
+                          : "Clipboard blocked for this site \\u2014 press Ctrl+V, or allow it from the lock icon",true);
           return;
         }
         lxBrToast(!touch ? "Couldn\\u2019t read the clipboard \\u2014 press Ctrl+V to paste"

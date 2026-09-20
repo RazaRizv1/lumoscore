@@ -831,8 +831,10 @@ function lxCctpWireStep2(){
         // permission lives in Chrome's own site settings (RAZA 2026-09-20 -- clipboard access was set to Block for
         // lumoscore.com, which is why tapping Paste could never fill the field however the page asked).
         if(why==="denied"){
-          lxBrToast(touch ? "Clipboard is blocked for this site \u2014 tap the lock beside the address, then Permissions \u2192 Clipboard \u2192 Allow"
-                          : "Clipboard is blocked for this site \u2014 allow it from the lock icon beside the address, or press Ctrl+V",true);
+          // Short enough to read on a phone. The long version ran off both edges of the screen, which is how RAZA saw
+          // it on the tablet: "…board is blocked for this site — tap the lock beside…". What to do comes first.
+          lxBrToast(touch ? "Long-press the field to paste \u2014 Chrome blocks the clipboard for this site"
+                          : "Clipboard blocked for this site \u2014 press Ctrl+V, or allow it from the lock icon",true);
           return;
         }
         lxBrToast(!touch ? "Couldn\u2019t read the clipboard \u2014 press Ctrl+V to paste"
