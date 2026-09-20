@@ -33,19 +33,40 @@ const JS = '(function(){'
   + 'function hrefFor(t){ try{'
   +   'var a=t.closest&&t.closest("a.lx-poollink[href],a.lx-ammcard[href]"); if(a) return a.getAttribute("href");'
   +   'var r=t.closest&&t.closest("[data-href]"); if(r) return r.getAttribute("data-href");'
-  +   'return null; }catch(e){ return null; } }'
+  // My Pools rows carry no data-href, so a ctrl-click on one fell through to the shim and replaced the list instead of
+  // opening a tab -- the same cause as the plain click below.
+  +   'return rowHref(t); }catch(e){ return null; } }'
   // "View position" is a real anchor in the My Pools table, and a plain click on it was being resolved by the design's
   // shim back to the pools list -- RAZA: "when clicking view position, it just refreshes the pools page". Because this
   // handler is the first one registered on the page, taking the click here is the only way to be sure the anchor's own
   // href is what happens. Only this one control is claimed on a plain click; everything else is left alone.
   + 'function ownPlain(t){ try{ return !!(t.closest && t.closest("a.lx-ammview[href]")); }catch(e){ return false; } }'
+  // A MY POOLS ROW IS NOT A LINK (RAZA 2026-09-20: "clicking on any of my pools takes me to All pools tab instead of
+  // opening the pool"). Those rows carry the pool's id and its pair as attributes and are navigated by script -- and
+  // the data layer DOES navigate them, correctly, from inside the design's nav shim. The shim then carries on and
+  // navigates again, to its own placeholder page name, which the server 301s to the pools list: measured on the click,
+  // one redirect, landing back on /pools/stellar with All Pools selected. The second navigation always wins, so the
+  // click has to be taken before the shim sees it -- and this handler is the first one registered on the page.
+  // The pair gives the clean two-asset url; a pool whose pair is unknown still has the /id/ route.
+  + 'function rowHref(t){ try{'
+  +   'var r=t.closest&&t.closest("tr.lx-ammrow[data-pool]"); if(!r) return null;'
+  +   'var q=String(r.getAttribute("data-pair")||"").split("|");'
+  +   'if(q.length===2&&q[0]&&q[1]) return "/pools/stellar/"+q[0]+"/"+q[1];'
+  +   'var id=r.getAttribute("data-pool"); return id?("/pools/stellar/id/"+id):null;'
+  + '}catch(e){ return null; } }'
   + 'function go(e){'
   +   'if(!wants(e)){'
-  +     'if(!ownPlain(e.target)) return;'
-  +     'var a=e.target.closest("a.lx-ammview[href]"), hp=a&&a.getAttribute("href");'
-  +     'if(!hp) return;'
+  +     'if(ownPlain(e.target)){'
+  +       'var a=e.target.closest("a.lx-ammview[href]"), hp=a&&a.getAttribute("href");'
+  +       'if(!hp) return;'
+  +       'e.preventDefault(); e.stopImmediatePropagation();'
+  +       'location.href=hp; return;'
+  +     '}'
+  // a real link inside the row (the pair name, "View position") keeps its own href -- this only claims the ROW itself
+  +     'if(e.target.closest&&e.target.closest("a[href]")) return;'
+  +     'var hr=rowHref(e.target); if(!hr) return;'
   +     'e.preventDefault(); e.stopImmediatePropagation();'
-  +     'location.href=hp; return;'
+  +     'location.href=hr; return;'
   +   '}'
   +   'if(e.button!=null && e.button!==0 && e.button!==1) return;'   // right-click belongs to the context menu
   +   'var t=e.target; if(!t||!t.closest) return;'

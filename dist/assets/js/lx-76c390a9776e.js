@@ -1483,9 +1483,12 @@
     // The pool record got three chances; its auxiliaries got ONE, and getJSON turns any failure into null.
     // A throttled or blipped /trades therefore rendered as "this pool has had 1 transaction" (on a pool with
     // 100) and "24h Volume 0 XLM" — a failure wearing the costume of a fact. Same retry as the pool record.
-    function tryJSON(u,n){ return getJSON(u).then(function(r){
+    // BACKING OFF, not hammering: a retry 700ms behind a rate-limited request is usually refused as well. Horizon
+    // answers again within a couple of seconds, so each attempt waits longer than the last (RAZA 2026-09-20: "Some
+    // transactions couldn\u2019t be loaded" on a pool whose feeds are fine when asked again).
+    function tryJSON(u,n,d){ d=d||600; return getJSON(u).then(function(r){
       if(r||n<=0)return r;
-      return new Promise(function(rs){ setTimeout(rs,700); }).then(function(){ return tryJSON(u,n-1); }); }); }
+      return new Promise(function(rs){ setTimeout(rs,d); }).then(function(){ return tryJSON(u,n-1,Math.min(d*2,4000)); }); }); }
     // 24h volume is a SUM over the day's trades, and a busy day does not fit in one page. This fetched
     // limit=100 ONCE and summed whatever came back: on SSLX/XLM, which ran 2,114 trades in 24 hours, it
     // summed the newest 100 and reported 293 XLM against a true 8,272 -- a 28x undercount, printed as a
@@ -1494,7 +1497,7 @@
     // Still ONE request here, now 200 (Horizon's max), because this is on the critical path and the page
     // must not get slower. The rest of the day is walked in the background by volDeepen and the two cards
     // are corrected when it lands.
-    var trP=tryJSON(H+"/liquidity_pools/"+hex+"/trades?order=desc&limit=200",2);
+    var trP=tryJSON(H+"/liquidity_pools/"+hex+"/trades?order=desc&limit=200",3);
     // Deposits/withdrawals are RARE next to swaps: this pool runs ~600 path-payments for every 5 LP
     // operations, so a 50-record window held 3 deposits and 0 withdrawals and the Withdrawals filter came
     // up empty on a pool that has had withdrawals. Horizon cannot filter operations by type, so widen the
@@ -1666,6 +1669,10 @@
       // MUTATE the existing DET in place on refresh (don't replace it) so wireDW's captured d (===DET)
       // stays valid with fresh numbers — this lets add/withdraw re-fetch+repaint with NO page reload.
       if(DET){for(var _k in _det)DET[_k]=_det[_k];}else{DET=_det;}
+      // ONE SILENT RETRY BEFORE SAYING ANYTHING. A feed that failed once is usually a moment of rate limiting, and the
+      // warning is only true if it fails again -- so the whole detail is re-read once, quietly, and the note (gated on
+      // __lxTxRetried) appears only if that second read fails too.
+      try{ if(DET.txFail&&!window.__lxTxRetried){ window.__lxTxRetried=1; setTimeout(function(){ try{ loadDetail(); }catch(_e){} },2500); } }catch(_){}
       // Finish counting the day's volume behind the already-rendered page (see volDeepen).
       // The edge answers in one request; volDeepen is what it falls back to if that fails.
       try{ if(!volFast())volDeepen(); }catch(_){ try{ volDeepen(); }catch(_e){} }
@@ -1689,7 +1696,10 @@
         _ol.then(function(o){
           if(!DET) return;
           var recs=(o&&o._embedded&&o._embedded.records)||[];
-          if(o&&o.__failed){ DET.txFail=true; try{ txFailNote(q(".tx-card")); }catch(_){} return; }
+          if(o&&o.__failed){ DET.txFail=true;
+            // same rule as above: one quiet retry first, and the note only if that fails too
+            try{ if(!window.__lxTxRetried){ window.__lxTxRetried=1; setTimeout(function(){ try{ loadDetail(); }catch(_e){} },2500); } }catch(_){}
+            try{ txFailNote(q(".tx-card")); }catch(_){} return; }
           var add=[];
           recs.forEach(function(op){
             var ts=Date.parse(op.created_at||"")||0;
@@ -2803,7 +2813,7 @@
   function txFailNote(host){
     if(!host)return;
     var n=host.querySelector(".lx-txfail");
-    if(!DET||!DET.txFail){ if(n&&n.parentNode)n.parentNode.removeChild(n); return; }
+    if(!DET||!DET.txFail||!window.__lxTxRetried){ if(n&&n.parentNode)n.parentNode.removeChild(n); return; }
     if(n)return;
     n=document.createElement("div"); n.className="lx-txfail";
     n.style.cssText="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 16px 12px;padding:9px 12px;border:1px solid rgba(234,106,44,.38);background:rgba(234,106,44,.10);border-radius:9px;font-size:12.5px;color:var(--text-muted)";

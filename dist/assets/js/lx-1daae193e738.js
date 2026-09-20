@@ -851,6 +851,33 @@ function lxBrReview(){
     cf.innerHTML='<span class="k">Circle CCTP fee</span><span class="v">Free <span class="lx-cchip">Standard transfer</span></span>';
   }
 }
+// ---- what moved, and where it lives (RAZA 2026-09-20) --------------------------------------------------------------
+// "make the Asset and its network logo like this: Asset [logo] (same size as now), and small logo for the network
+// beside it. The goal is to easily understand that this token has been swapped from this network to this token of this
+// network." So both ends are built the same way: the ASSET's own logo at the size the column already used, with its
+// NETWORK tucked into the lower-right corner and ringed in the row colour. The To column used to show only the network
+// mark, which said where it landed but never what arrived.
+var LX_NILOGO={"AAVE":1,"ADI":1,"ARB":1,"AURORA":1,"AVAX":1,"BERA":1,"BRETT":1,"cbBTC":1,"CFI":1,"COCA":1,"DAI":1,"ETH":1,"GMX":1,"HAPI":1,"hemiBTC":1,"INX":1,"KAITO":1,"KNC":1,"LINK":1,"MOG":1,"MON":1,"NEAR":1,"OP":1,"PEPE":1,"POL":1,"SAFE":1,"SHIB":1,"SPX":1,"sUSDC":1,"SWEAT":1,"TITN":1,"TURBO":1,"UNI":1,"USD1":1,"USDC":1,"USDf":1,"USDT":1,"USDT0":1,"VVV":1,"WBTC":1,"WETH":1,"XAUT":1,"XPL":1};
+function lxBrAssetLogo(code){
+  var A=LX_ASSETS[code]; if(A&&A.logo) return A.logo;                 // the Stellar side: the curated logo
+  return LX_NILOGO[code]?('assets/tokens/ni/'+code+'.png'):'';        // the destination side: shipped with the site
+}
+// A letter is drawn by CSS, never as a text node: a one-to-five character element gets repainted as a ticker badge by
+// the site's logo healer, which would put the wrong mark on an asset it guessed from the ticker.
+function lxBrChipIco(code,net,stellarIcon){
+  var u=lxBrAssetLogo(code), nkey=net?(LX_NETMAP[net]||""):"";
+  var face=u?('<img src="'+u+'" alt="">'):('<span class="lx-tl" data-l="'+lxBrEsc(String(code||"?").charAt(0).toUpperCase())+'"></span>');
+  var badge=net
+    ? (nkey?('<span class="lx-tnet"><img src="/assets/networks/'+nkey+'.png" alt=""></span>'):'')
+    : ('<span class="lx-tnet lx-tnet-x">'+(stellarIcon||'')+'</span>');   // no net named = the Stellar side
+  return '<span class="lx-tic">'+face+badge+'</span>';
+}
+// the bridge, with its own mark (RAZA: "Add logo for Bridge used along with its name")
+var LX_BRIDGELOGO={CCTP:'assets/tokens/circle.png',LayerZero:'assets/tokens/layerzero.png','NEAR Intents':'assets/tokens/ni/NEAR.png'};
+function lxBrBridgeCell(name){
+  name=name||"CCTP"; var u=LX_BRIDGELOGO[name]||'';
+  return '<span class="lx-buse-r">'+(u?('<img src="'+u+'" alt="">'):'')+'<span>'+lxBrEsc(name)+'</span></span>';
+}
 function lxBrAddRecentTx(o){
   var tbody=document.querySelector('.br-table tbody'); if(!tbody)return;
   var nkey=LX_NETMAP[o.net]||"", sIcon=lxBrStellarIcon(), xp=lxBrXpIcon();
@@ -861,18 +888,18 @@ function lxBrAddRecentTx(o){
   var srcIco=srcImg?('<img class="lx-netimg" src="'+srcImg+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'):sIcon;
   var tr=document.createElement('tr'); tr.className="lx-newtx";
   tr.innerHTML='<td>'+(o.when||'Just now')+'</td>'
-    +'<td><span class="br-asschip"><span class="br-ic lx-netic">'+srcIco+'</span><span><span class="am">'+o.srcAmount+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span></td>'
+    +'<td><span class="br-asschip">'+lxBrChipIco(o.srcKey,"",sIcon)+'<span><span class="am">'+o.srcAmount+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span></td>'
     // A record with no source account gets a dash, not an empty link to /account/undefined.
     +'<td class="mono">'+(o.src?('<a class="lx-txaddr" href="'+lxSrcExp(o.src)+'" target="_blank" rel="noopener" title="View source wallet on Stellar Expert">'+lxBrShort(o.src)+'</a>'):'\u2014')+'</td>'
     // A burn whose destination is not known yet says so. It used to draw a broken image for the network, "0 USDC"
     // and an empty address cell (RAZA 2026-09-19) -- which read as an unclaimed transfer. The registry now fills
     // these in from the burn transaction itself, so this is only ever a brief state.
     +(o.net
-      ? ('<td><span class="br-asschip"><span class="br-ic lx-netic"><img class="lx-netimg" src="/assets/networks/'+nkey+'.png" style="width:100%;height:100%;object-fit:cover;display:block" alt=""></span><span><span class="am">'+lxBrFmt(o.amount,(+o.amount>0&&+o.amount<1)?6:2)+' '+(o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC"))+'</span><span class="nt">'+o.net+'</span></span></span></td>'
+      ? ('<td><span class="br-asschip">'+lxBrChipIco((o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC")),o.net,sIcon)+'<span><span class="am">'+lxBrFmt(o.amount,(+o.amount>0&&+o.amount<1)?6:2)+' '+(o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC"))+'</span><span class="nt">'+o.net+'</span></span></span></td>'
         +'<td class="mono">'+(o.recipient?('<a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener" title="View destination wallet on '+o.net+' explorer">'+lxBrShort(o.recipient)+'</a>'):'\u2014')+'</td>')
       : ('<td><span class="br-asschip"><span><span class="am">USDC</span><span class="nt">Destination pending</span></span></span></td>'
         +'<td class="mono" style="color:var(--text-soft)">Pending</td>'))
-    +((o.bridge&&o.bridge!=="CCTP")?'<td class="lx-buse"><span class="lx-buse-lz">'+lxBrEsc(o.bridge)+'</span></td>':'<td class="lx-buse"><span class="lx-buse-cctp">CCTP</span></td>')
+    +'<td class="lx-buse">'+lxBrBridgeCell(o.bridge)+'</td>'
     +'<td class="br-xp"><a class="br-xplink" href="'+(o.bridge==="LayerZero"?('https://layerzeroscan.com/tx/'+o.hash):('https://stellar.expert/explorer/public/tx/'+o.hash))+'" target="_blank" rel="noopener" aria-label="View on explorer" title="'+(o.bridge==="LayerZero"?'Track delivery on LayerZero Scan':'View burn on Stellar Expert')+'">'+xp+'</a></td>';
   tbody.insertBefore(tr, tbody.firstChild);
   // a new row lands at the top, which shifts every page boundary — repage, and show the page it is on
@@ -955,13 +982,13 @@ function lxBrMobCard(o){
     +'<div class="brm-tr1"><span class="brm-tm">'+(o.when||'Just now')+'</span>'
       +'<a class="br-xplink" style="margin-left:auto" href="'+(o.bridge==="LayerZero"?('https://layerzeroscan.com/tx/'+o.hash):('https://stellar.expert/explorer/public/tx/'+o.hash))+'" target="_blank" rel="noopener" title="View burn on Stellar Expert">'+lxBrXpIcon()+'</a></div>'
     +'<div class="brm-flow">'
-      +'<span class="br-asschip"><span class="br-ic lx-netic">'+srcIco+'</span>'
+      +'<span class="br-asschip">'+lxBrChipIco(o.srcKey,"",lxBrStellarIcon())
         +'<span><span class="am">'+o.srcAmount+' '+o.srcKey+'</span><span class="nt">Stellar</span></span></span>'
       +'<span class="br-ar">→</span>'
-      +'<span class="br-asschip"><span class="br-ic lx-netic"><img class="lx-netimg" src="/assets/networks/'+nkey+'.png" style="width:100%;height:100%;object-fit:cover;display:block" alt=""></span>'
+      +'<span class="br-asschip">'+lxBrChipIco((o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC")),o.net,lxBrStellarIcon())
         +'<span><span class="am">'+lxBrFmt(o.amount,(+o.amount>0&&+o.amount<1)?6:2)+' '+(o.asset||(o.bridge==="LayerZero"?"USDT0":"USDC"))+'</span><span class="nt">'+o.net+'</span></span></span>'
     +'</div>'
-    +'<div class="brm-recv">To <a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener">'+lxBrShort(o.recipient)+'</a> · via '+lxBrEsc(o.bridge||"CCTP")+'</div>'
+    +'<div class="brm-recv">To <a class="lx-txaddr" href="'+lxDstExp(o.net,o.recipient)+'" target="_blank" rel="noopener">'+lxBrShort(o.recipient)+'</a> · via '+lxBrBridgeCell(o.bridge)+'</div>'
   +'</div>';
 }
 function lxBrRenderMobileTxs(){ try{
@@ -1138,6 +1165,12 @@ window.lxBrRepaintTxs=function(){ try{ var tb=document.querySelector('.br-table 
 //   tab was suspended while a wallet app signed), and every LayerZero / NEAR Intents record this browser holds.
 var LX_OFT_HEX="5d672cb21b3afcdda54546c7f5b9fd346920e41f8fe8f39e838e5d7bd7435546";   // the USDT0 OFT contract, raw id
 var LX_NI_DEP="GDJ4JZXZELZD737NVFORH4PSSQDWFDZTKW3AIDKHYQG23ZXBPDGGQBJK";              // 1Click's Stellar deposit account
+// A CCTP transfer is registered as a PAIR (fee + burn); the server checks they belong together, so a wrong guess is
+// simply refused and the next candidate tried.
+function lxBrRegisterPair(feeHash,burnHash){
+  return fetch("/lxapi/bridgetx",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({feeHash:feeHash,burnHash:burnHash})})
+    .then(function(r){ return r.json(); }).then(function(j){ return !!(j&&j.ok&&j.status==="stored"); }).catch(function(){ return false; });
+}
 function lxBrRegister(route, hash){
   return fetch("/lxapi/bridgetx",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({route:route,hash:hash})})
     .then(function(r){ return r.json(); }).then(function(j){ return !!(j&&j.ok&&j.status==="stored"); }).catch(function(){ return false; });
@@ -1147,6 +1180,9 @@ function lxBrSyncChain(){
   if(lxBrSyncing) return Promise.resolve(0); lxBrSyncing=true;
   var pk=""; try{ pk=localStorage.getItem("lumos.address")||""; }catch(_){}
   var todo={};   // hash -> route
+  // CCTP is registered by the sending page, and that can fail (a closed tab, a dropped call): one transfer in four was
+  // missing on 2026-09-20, and the dashboard showed it as a bare "Platform activity" row. Pair them up here as well.
+  var cctpBurns=[], feePays=[];
   try{ JSON.parse(localStorage.getItem("lumos.cctp.txs")||"[]").forEach(function(o){
     if(o&&o.hash&&(o.bridge==="LayerZero"||o.bridge==="NEAR Intents")) todo[o.hash]=o.bridge; }); }catch(_){}
   var chainP=!/^G[A-Z2-7]{55}$/.test(pk)?Promise.resolve():
@@ -1158,8 +1194,12 @@ function lxBrSyncChain(){
             var p0=(o.parameters||[])[0], c=p0?lxB64(p0.value):new Uint8Array(0);
             var burnT0=(o.asset_balance_changes||[]).some(function(b){ return b.type==="burn"&&b.asset_code==="USDT0"; });
             if(burnT0&&c.length>=40&&lxHex(c.slice(8,40))===LX_OFT_HEX) todo[o.transaction_hash]="LayerZero";
+            else if((o.parameters||[]).length>=6&&(o.asset_balance_changes||[]).some(function(b){ return b.type==="burn"&&b.asset_code==="USDC"; }))
+              cctpBurns.push({h:o.transaction_hash,t:Date.parse(o.created_at)||0});
           } else if(o.type==="payment"&&o.to===LX_NI_DEP&&o.from===pk){
             var tx=o.transaction||{}; if(tx.memo_type==="id") todo[o.transaction_hash]="NEAR Intents";
+          } else if((o.type==="payment"||/^path_payment/.test(o.type))&&o.to===LX_FEEACCT&&o.from===pk){
+            feePays.push({h:o.transaction_hash,t:Date.parse(o.created_at)||0});
           }
         });
       }).catch(function(){});
@@ -1169,6 +1209,14 @@ function lxBrSyncChain(){
     // one at a time: each registration reads the shared record and writes it back
     var n=0, chain=Promise.resolve();
     hs.forEach(function(h){ chain=chain.then(function(){ return lxBrRegister(todo[h],h).then(function(ok){ if(ok) n++; }); }); });
+    // CCTP: each unregistered burn against the nearest fee payments, inside the half hour the server allows
+    cctpBurns.filter(function(b){ return !have[b.h]; }).slice(0,4).forEach(function(b){
+      var cands=feePays.filter(function(f){ return Math.abs(f.t-b.t)<=18e5; })
+        .sort(function(x,y){ return Math.abs(x.t-b.t)-Math.abs(y.t-b.t); }).slice(0,3);
+      cands.forEach(function(f){ chain=chain.then(function(hit){ if(hit==="hit") return "hit";
+        return lxBrRegisterPair(f.h,b.h).then(function(ok){ if(ok){ n++; return "hit"; } return null; }); }); });
+      chain=chain.then(function(){ return null; });
+    });
     return chain.then(function(){ return n; });
   }).then(function(n){
     if(!n) return 0;
@@ -1626,20 +1674,37 @@ function lxBrClaimedOnChain(rec){
 // Sweep the panel: every attested row is checked against its chain; a claimed one is cleared with a toast. Runs on
 // load, and every 10s while a claim is in flight (a row carrying claimTx) -- so the row goes the moment the chain
 // agrees, whatever the wallet reports.
+// A ROW IS NOT SHOWN UNTIL THE CHAIN HAS BEEN ASKED (RAZA 2026-09-20: "it shows me that i have 2 claimables for 2
+// seconds and then it instantly fixes"). The panel painted from the saved list the moment the page opened, and the
+// sweep below -- the only thing that knows a claim already happened, possibly on another device an hour ago -- ran
+// afterwards. So the claim count flashed up and then corrected itself, with a toast announcing an hour-old claim as if
+// it had just landed. Rows that COULD already be claimed (attested, with a message to check) are held back until the
+// first sweep answers; a row still waiting for its attestation cannot have been claimed, so it shows at once.
+var _lxPendOk={}, _lxPendFailsafe=false;
+// visible when: it cannot be claimed yet (no attestation), or the chain has said it is NOT claimed, or the check itself
+// never answered (failsafe) -- never hidden indefinitely because an RPC is down.
+function lxBrPendVisible(list){ return list.filter(function(r){
+  if(!(r&&r.attestation&&r.message)) return true;
+  return _lxPendFailsafe||!!_lxPendOk[r.burnHash]; }); }
 var _lxSweepT=null;
-function lxBrSweepClaimed(){ try{
+function lxBrSweepClaimed(quiet){ try{
   var list=lxBrListPending().filter(function(x){ return x&&x.attestation&&x.message; }).slice(0,8); if(!list.length) return;
   Promise.all(list.map(function(rec){ return lxBrClaimedOnChain(rec).then(function(c){ return {rec:rec,c:c}; }); })).then(function(res){
     var cleared=0;
-    res.forEach(function(x){ if(x.c===true){ lxBrClearPending(x.rec.burnHash); cleared++;
-      lxBrToast("Claimed on "+((LX_EVM[x.rec.destDomain]||{}).n||lxBrDomName(x.rec.destDomain))+" \u2014 "+lxBrAmt(x.rec.netUsdc)+" USDC"); } });
-    if(cleared) lxBrRenderPending();
+    res.forEach(function(x){ if(x.c!==true&&x.rec&&x.rec.burnHash) _lxPendOk[x.rec.burnHash]=1;   // asked, and not claimed
+      if(x.c===true){ lxBrClearPending(x.rec.burnHash); cleared++;
+      // only for a claim that completes while the page is open: on load this sweep is reconciliation, not news
+      if(!quiet) lxBrToast("Claimed on "+((LX_EVM[x.rec.destDomain]||{}).n||lxBrDomName(x.rec.destDomain))+" \u2014 "+lxBrAmt(x.rec.netUsdc)+" USDC"); } });
+    lxBrRenderPending();
     var inFlight=lxBrListPending().some(function(x){ return x&&x.claimTx; });
     clearTimeout(_lxSweepT); if(inFlight) _lxSweepT=setTimeout(lxBrSweepClaimed,10000);
   });
 }catch(_){} }
 window.lxBrSweepClaimed=lxBrSweepClaimed;
-setTimeout(lxBrSweepClaimed,2500);
+// At once, and QUIETLY: this first pass is reconciliation with the chain, not news. Nothing waits on it except the rows
+// it might clear -- and if the RPC never answers they are shown anyway, rather than hidden for good.
+lxBrSweepClaimed(true);
+setTimeout(function(){ _lxPendFailsafe=true; lxBrRenderPending(); },6000);
 
 
 // Bottom-centre dark pill with a green circled check — the same toast the wallet and issuer copy buttons
@@ -1839,7 +1904,7 @@ function lxBrClaimFromLink(){ try{
 setTimeout(lxBrClaimFromLink,1200);
 function lxBrRenderPending(){ try{
   var host=lxBrPendHost(); if(!host) return false;
-  var p=host.el, list=lxBrListPending();
+  var p=host.el, list=lxBrPendVisible(lxBrListPending());
   // keep the tab label's count honest whether or not there is anything to show
   if(host.tabbed){
     var tabBtn=host.wrap.querySelector('.lx-brtab[data-brtab="pend"]');
@@ -2040,7 +2105,10 @@ function lxBrResumePending(){ try{
   lxBrListPending().filter(function(x){ return !(x.status==="attested"&&x.attestation); }).slice(0,6).forEach(function(r){
     lxBrPeekAttest(r.burnHash).then(function(att){ if(!att)return;
       r.message=att.message; r.attestation=att.attestation; r.decodedMessage=att.decodedMessage; r.status="attested";
-      lxBrSavePending(r); lxBrRenderPending(); }); });
+      lxBrSavePending(r);
+      // A row that has just become checkable is checked before it is drawn as claimable: a transfer seeded from the
+      // shared record may have been claimed elsewhere long ago, and rendering first is what made the count flash.
+      lxBrSweepClaimed(true); lxBrRenderPending(); }); });
 }catch(_){} }
 window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest;
 
