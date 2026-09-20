@@ -35,8 +35,14 @@
       if(e.textContent!==want)e.textContent=want;
     }
   }
-  // Measured ink-bounding-box crops. 1 = the mark already fills its canvas, so leave it alone.
-  var ZOOM={rabet:141,ready:160,albedo:122};
+  // Measured ink-bounding-box crops: how much to scale a logo whose artwork sits inside dead margin.
+  // The first pass set each of these to 100/inkFraction, which scales the ink to touch the tile edges
+  // with NO margin left. On a squat mark that merely looks tight; on Rabet's -- ink box 36% wide by
+  // 71% tall in a 400px square -- the mark then ran straight off the top and bottom of a 28px rounded
+  // tile and read as a broken image (RAZA 2026-09-20: "the connected wallet logo is messed up, it was
+  // fine before"). An app icon leaves a margin, so the target is the ink filling ~75% of the tile:
+  // zoom = 75/inkPercent, and a mark already at or above that keeps plain cover (albedo is 82%).
+  var ZOOM={rabet:106,ready:120};
   function paint(){
     try{ nameIt(); }catch(_){}
     var url=logo(); if(!url)return;
