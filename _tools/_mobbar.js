@@ -61,12 +61,34 @@ for (const k of Object.keys(json)) {
 const WIDE = '<style id="lx-nbwide">@media (min-width:431px){'
   + '.nb-bar::before{content:"";position:absolute;top:-1px;bottom:0;left:50%;width:100vw;transform:translateX(-50%);'
   + 'background:inherit;border-top:inherit;z-index:-1}}</style>';
-let wide = 0;
+// A BLUR THAT IS NEVER SEEN AND NEVER STOPS COSTING. The slide-menu's overlay covers the whole viewport and
+// carries backdrop-filter:blur(4px) in its BASE rule, while it is hidden with opacity+visibility rather than
+// display -- so the element stays laid out and the compositor keeps that full-screen blur alive behind every
+// scroll. What it costs is per pixel, and a tablet has several times a phone's pixels, which is the shape of
+// what RAZA reported on 2026-09-21: "scrolling on tab is very laggy while on mobile its smooth". The blur
+// belongs to the open state; closed, it should cost nothing. Opening looks the same -- the overlay fades in
+// and its blur comes with it. (.search-overlay and .modal-overlay already close with display:none, so they
+// cost nothing when shut and are left alone.)
+// The second permanent cost on the same screen: the design's scroll-reveal keeps will-change:opacity,transform
+// in its SETTLED state, so every revealed block stays pinned to its own compositor layer for the life of the
+// page -- measured on the dashboard at tablet width: five elements, ~0.9 of a screen, which at a tablet's pixel
+// ratio is several million device pixels held and re-rastered while scrolling. will-change is a hint for what is
+// ABOUT to animate; once the reveal has finished there is nothing left to hint at. The reveal itself is
+// unchanged: opacity and transform are composited anyway, with or without the hint.
+const OVB = '<style id="lx-scrollcost">'
+  + '.menu-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}'
+  + '.menu-overlay.open{backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}'
+  + '[data-lcmu].lcmu-in{will-change:auto!important}'
+  + '</style>';
+let wide = 0, ovb = 0;
 for (const k of Object.keys(json)) {
   let h = json[k];
   const before = h;
   h = h.replace(/<style id="lx-nbwide">[\s\S]*?<\/style>/g, '');
+  h = h.replace(/<style id="lx-ovblur">[\s\S]*?<\/style>/g, '');     // the id this block used to carry
+  h = h.replace(/<style id="lx-scrollcost">[\s\S]*?<\/style>/g, '');
   if (h.indexOf('class="nb-bar"') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', WIDE + '</head>'); wide++; }
+  if (h.indexOf('menu-overlay') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', OVB + '</head>'); ovb++; }
   if (h !== before) { json[k] = h; added++; }
 }
 
@@ -74,4 +96,4 @@ if (added) {
   const serialized = JSON.stringify(json).split('</').join('<' + B + '/');
   fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
 }
-console.log('mobile bottom nav: added to ' + added + ' page key(s), ' + already + ' already had it; tablet backing on ' + wide);
+console.log("mobile bottom nav: added to " + added + " page key(s), " + already + " already had it; tablet backing on " + wide + "; overlay blur gated on " + ovb);
