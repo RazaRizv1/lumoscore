@@ -558,9 +558,13 @@ function runtime() {
       else toast((err && err.message) || 'Could not open the camera.');
     });
   }
-  // A scan button beside Paste, on phones only (on a desktop the camera faces the user; Paste is the gesture).
+  // A scan button beside Paste, wherever a camera meets a finger (on a desktop the camera faces the user; Paste is the
+  // gesture there). Gated on the DEVICE, not its user agent: Chrome on an Android tablet does not call itself "Mobile",
+  // and that is exactly where the clipboard is least reliable -- an overlay from another app can stop Chrome asking for
+  // clipboard permission at all (RAZA 2026-09-20), leaving scan and long-press as the only ways in.
   function addScan(step) {
-    if (!isMob() || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return;
+    var touch = false; try { touch = window.matchMedia('(pointer:coarse)').matches; } catch (_) {}
+    if (!(touch || isMob()) || !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) return;
     var sides = step.querySelectorAll('.br-io > .br-side'), dst = sides[1]; if (!dst) return;
     var box = dst.querySelector('.br-wallet.brw-in'); if (!box || box.querySelector('.lx-scan')) return;
     var input = box.querySelector('.br-addr-in');
