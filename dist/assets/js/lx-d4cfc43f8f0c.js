@@ -785,6 +785,16 @@ function lxCctpWireStep2(){
     // does nothing. Both the watcher and the label states are gone -- the only thing that decides anything now is the
     // read itself, attempted on every tap.
     if(pasteBtn) pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation();
+      // ONE TAP, ONE READ -- AND A TAP CAN ARRIVE TWICE. _mobnav's tap bridge suppresses the native click on touch and
+      // re-dispatches a synthetic one, then swallows the browser's straggler click if it still lands. When that swallow
+      // misses (its timing is the device's to choose) this handler runs TWICE for one finger. A single tap carries a
+      // single clipboard read: the first call fills the field, the second is refused, and the refusal painted an error
+      // over a paste that had just worked -- RAZA's tablet on 2026-09-20, filled field and "use Paste on the keyboard"
+      // toast in the same screenshot, while the same build was fine on the phone. So a replayed click within the
+      // straggler window is dropped whole: no read, no toast. A deliberate second tap comes far later than this.
+      var _now=Date.now();
+      if(pasteBtn.__lxTapT && _now-pasteBtn.__lxTapT<900) return;
+      pasteBtn.__lxTapT=_now;
       function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); /* filled: no keyboard needed (RAZA 2026-09-19) */ dstInEl.blur(); } }
       // ONE READ, INSIDE THE TAP. A clipboard read is only allowed while the tap that asked for it is still "active";
       // a retry on a timer has no such activation, and Chrome answers those with "This site can't ask for your
