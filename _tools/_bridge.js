@@ -75,7 +75,27 @@ const DROPJS='<script id="lx-brdnetjs">(function(){function boot(){var d=documen
 +'srch.addEventListener("click",function(e){e.stopPropagation();});'
 +'function apply(){var v=q.value.trim().toLowerCase(),shown=0;d.querySelectorAll(".brd-opt").forEach(function(o){var n=(o.getAttribute("data-net")||"").toLowerCase();var ok=!v||n.indexOf(v)>=0;o.style.display=ok?"":"none";if(ok)shown++;});if(nohit)nohit.setAttribute("data-on",shown?"":"1"),shown?nohit.removeAttribute("data-on"):nohit.setAttribute("data-on","1");}'
 +'q.addEventListener("input",apply);q.addEventListener("keydown",function(e){if(e.key==="Escape"){q.value="";apply();}});'
-+'t.addEventListener("click",function(){setTimeout(function(){if(d.classList.contains("open")){q.value="";apply();try{q.focus();}catch(_){}}},20);});'
+// THE KEYBOARD ONLY WHEN IT IS WANTED (RAZA 2026-09-20: "can we please stop showing this large keypad in here. I just
+// wanna select the network. only show this if i tap on Search field"). Focusing the search on open raised the phone
+// keyboard over the very list the reader came to tap -- and worse, the keyboard closing on that tap reflowed the page
+// under their finger, which is why the option "just won't select". A pointer that can hover (a mouse) still gets the
+// focus, because there it costs nothing and typing is the fast path.
++'t.addEventListener("click",function(){setTimeout(function(){if(!d.classList.contains("open"))return;q.value="";apply();'
++'  var fine=false; try{ fine=window.matchMedia("(pointer:fine)").matches; }catch(_){ }'
++'  if(fine){ try{ q.focus(); }catch(_){} }},20);});'
+// A TAP SELECTS WHAT IT STARTED ON. Anything that moves the list between finger-down and finger-up (the keyboard
+// closing, the menu repositioning) sends the click to whatever slid under the finger -- usually nothing at all.
+// Only fires when the click missed: when it lands on the right option, the page's own handler does the work.
++'var _pd=null;'
++'document.addEventListener("pointerdown",function(e){ var o=e.target&&e.target.closest&&e.target.closest(".brd-opt[data-net]");'
++'  _pd=(o&&menu.contains(o))?{o:o,x:e.clientX,y:e.clientY,t:Date.now()}:null; },true);'
++'document.addEventListener("pointercancel",function(){ _pd=null; },true);'
++'document.addEventListener("pointerup",function(e){ var p=_pd; _pd=null; if(!p)return;'
++'  if(Math.abs(e.clientX-p.x)>12||Math.abs(e.clientY-p.y)>12||Date.now()-p.t>1200)return;'
++'  var el=document.elementFromPoint(e.clientX,e.clientY);'
++'  var o2=el&&el.closest&&el.closest(".brd-opt[data-net]");'
++'  if(o2===p.o)return;'
++'  try{ p.o.click(); }catch(_){} },true);'
 +'return true;}var n=0,iv=setInterval(function(){if(boot()||++n>30)clearInterval(iv);},200);})();</script>';
 
 let n=0;
