@@ -703,7 +703,7 @@
     ltLoadSdk().then(function(sdk){ S=sdk; return j(H+"/accounts/"+addr); }).then(function(a){
       var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"1000",networkPassphrase:WPASS_PUB});
       tb.addOperation(S.Operation.changeTrust({asset:new S.Asset(CODE,ISSUER)}));
-      return ltSign(tb.setTimeout(180).build().toXDR(),addr);
+      return ltSign(tb.setTimeout(300).build().toXDR(),addr);
     }).then(function(signed){
       return fetch(H+"/transactions",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:"tx="+encodeURIComponent(signed)}).then(function(r){return r.json();});
     }).then(function(res){
@@ -931,7 +931,7 @@
       if(!hasShare)tb.addOperation(S.Operation.changeTrust({asset:share}));
       var price=amtA/amtB;
       tb.addOperation(S.Operation.liquidityPoolDeposit({liquidityPoolId:poolId,maxAmountA:amtA.toFixed(7),maxAmountB:amtB.toFixed(7),minPrice:(price*0.98).toFixed(7),maxPrice:(price*1.02).toFixed(7)}));
-      var tx=tb.setTimeout(180).build();
+      var tx=tb.setTimeout(300).build();
       return {tx:tx,xdr:tx.toXDR(),poolId:poolId,pair:a1.code+" / "+a2.code};
     });
   }
