@@ -1115,7 +1115,12 @@ function lxCctpWireStep2(){
           if(!t){ if(dstInEl) dstInEl.focus(); lxBrToast("Nothing to paste \\u2014 the clipboard is empty",true); return; }
           set(t);
         }).catch(function(){
-          if(_pasteTries++>=2){ _pasteManual(); return; }
+          // Chrome may refuse to SHOW the prompt at all -- "This site can't ask for your permission", which it says when
+          // another app is drawing an overlay over it (RAZA 2026-09-20, on a tablet with a floating bubble on screen).
+          // No amount of retrying earns a permission that cannot be asked for, so the way out is offered on the FIRST
+          // failure and the retries continue quietly behind it; if one does land, the address still fills in.
+          if(_pasteTries===0) _pasteManual();
+          if(_pasteTries++>=2) return;
           var again=function(){ setTimeout(_readClip,350); };
           // ask the browser whether permission has since been granted; retry regardless, but sooner when it has
           try{
@@ -1130,7 +1135,9 @@ function lxCctpWireStep2(){
       function _pasteManual(){
         if(dstInEl){ try{ dstInEl.focus(); }catch(_){ } }
         var touch=false; try{ touch=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
-        lxBrToast(touch?"Couldn\\u2019t read the clipboard \\u2014 long-press the field and choose Paste"
+        // NAME THE CAUSE. "Blocked" alone sends someone hunting through site settings for a permission Chrome never
+        // managed to ask for; the overlay is the thing they can actually close.
+        lxBrToast(touch?"Clipboard blocked \\u2014 close any floating app bubbles, or long-press the field and paste"
                        :"Couldn\\u2019t read the clipboard \\u2014 press Ctrl+V to paste",true);
       }
       _readClip();
