@@ -779,6 +779,21 @@ function lxCctpWireStep2(){
     if(dstInEl) dstInEl.addEventListener('input',function(){ if(lxBrValidAddr(lxBrDestNet(),(dstInEl.value||'').trim())) lxBrStep2Err(''); lxBrValidateStep2(); });
     // Paste button -> read clipboard into the destination input
     var pasteBtn=dstSide.querySelector('.br-paste');
+    // A BUTTON THAT CANNOT DO WHAT IT SAYS IS THE BUG (RAZA 2026-09-20, after four rounds on this). When Chrome has
+    // the clipboard BLOCKED for the site, no page can read it -- so the control stops calling itself Paste and says
+    // what will actually work on that device. Tapping it still focuses the field, which raises the keyboard (its own
+    // paste key is right there); the QR button beside it needs no clipboard at all. It reverts the moment the
+    // permission is allowed again, which the watcher above reports without ever prompting.
+    function lxPasteBtnState(){
+      try{
+        if(!pasteBtn) return;
+        if(pasteBtn.__lxLabel==null) pasteBtn.__lxLabel=pasteBtn.textContent;
+        var blocked=(window.__lxClipPerm==="denied");
+        pasteBtn.textContent=blocked?"Long-press":pasteBtn.__lxLabel;
+        pasteBtn.title=blocked?"Chrome blocks clipboard access for this site — long-press the field and choose Paste, or scan a QR code":"";
+      }catch(_){ }
+    }
+    window.lxPasteBtnState=lxPasteBtnState;
     // The clipboard permission, watched OUTSIDE the tap. Querying it is async, and awaiting anything inside the tap
     // spends the activation a clipboard read needs -- so it is read here, on load, and kept current by the browser's
     // own change event. Never prompts; it only reports what has already been decided.
@@ -787,8 +802,8 @@ function lxCctpWireStep2(){
       try{
         if(navigator.permissions&&navigator.permissions.query){
           navigator.permissions.query({name:"clipboard-read"}).then(function(st){
-            if(!st)return; window.__lxClipPerm=st.state;
-            try{ st.onchange=function(){ window.__lxClipPerm=st.state; }; }catch(_){ }
+            if(!st)return; window.__lxClipPerm=st.state; lxPasteBtnState();
+            try{ st.onchange=function(){ window.__lxClipPerm=st.state; lxPasteBtnState(); }; }catch(_){ }
           }).catch(function(){});
         }
       }catch(_){ }
