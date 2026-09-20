@@ -773,8 +773,38 @@ function lxCctpWireStep2(){
     var pasteBtn=dstSide.querySelector('.br-paste');
     if(pasteBtn) pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation();
       function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); /* filled: no keyboard needed (RAZA 2026-09-19) */ dstInEl.blur(); } }
-      if(navigator.clipboard&&navigator.clipboard.readText){ navigator.clipboard.readText().then(set).catch(function(){ if(dstInEl){ dstInEl.focus(); } }); }
-      else if(dstInEl){ dstInEl.focus(); try{ document.execCommand('paste'); }catch(_){ } }
+      // PASTE ON A PHONE OR TABLET (RAZA 2026-09-20: "i did allow it, but even then its not pasting"). Chrome on Android
+      // REJECTS the very call that raises its clipboard prompt -- tapping Allow answers the prompt, but the read that
+      // asked for it has already failed, so the old single attempt could never succeed on the first try. Asked again
+      // once the permission is granted, it reads fine. The retry is bounded, and if the browser still refuses, the
+      // field is focused and the reader is told how to paste by hand instead of being left with a dead button.
+      var _pasteTries=0;
+      function _readClip(){
+        if(!(navigator.clipboard&&navigator.clipboard.readText)){ _pasteManual(); return; }
+        navigator.clipboard.readText().then(function(t){
+          t=String(t==null?"":t).trim();
+          if(!t){ if(dstInEl) dstInEl.focus(); lxBrToast("Nothing to paste \u2014 the clipboard is empty",true); return; }
+          set(t);
+        }).catch(function(){
+          if(_pasteTries++>=2){ _pasteManual(); return; }
+          var again=function(){ setTimeout(_readClip,350); };
+          // ask the browser whether permission has since been granted; retry regardless, but sooner when it has
+          try{
+            if(navigator.permissions&&navigator.permissions.query){
+              navigator.permissions.query({name:"clipboard-read"}).then(function(st){
+                if(st&&st.state==="granted") setTimeout(_readClip,120); else again();
+              }).catch(again);
+            } else again();
+          }catch(_){ again(); }
+        });
+      }
+      function _pasteManual(){
+        if(dstInEl){ try{ dstInEl.focus(); }catch(_){ } }
+        var touch=false; try{ touch=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
+        lxBrToast(touch?"Couldn\u2019t read the clipboard \u2014 long-press the field and choose Paste"
+                       :"Couldn\u2019t read the clipboard \u2014 press Ctrl+V to paste",true);
+      }
+      _readClip();
     },true);
     // close the source asset dropdown when clicking anywhere outside it
     document.addEventListener('click',function(e){ var m=document.getElementById('lx-br-amenu'); if(m&&m.style.display==="block"&&!m.contains(e.target)&&!(sChip&&sChip.contains(e.target))) m.style.display="none"; });
