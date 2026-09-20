@@ -262,6 +262,29 @@ function lxSep7Connect(){
     inp.onkeydown=function(e){ if(e.key==='Enter')submit(); };
   });
 }
+// A TAP THE READER CAN MAKE (RAZA 2026-09-20: "it got stuck on Collect Bridge fee and didnt automatically open
+// lobstr"). The deep link below is a navigation, and a browser only allows one while a tap is still "active". The
+// first signature of a flow rides the button press that started it; every later one -- the bridge fee, a second
+// signature in a launch -- is built after network work, by which time that activation is spent and the navigation is
+// silently dropped. The app never opens, the reader waits at a step that looks stuck, and by the time they switch
+// apps by hand the transaction has expired. So the link is also offered as a button: tapping it IS an activation.
+function lxSep7Prompt(link){
+  var old=document.getElementById('lx-sep7-open'); if(old&&old.parentNode)old.parentNode.removeChild(old);
+  var w=document.createElement('div'); w.id='lx-sep7-open';
+  w.style.cssText='position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));'
+    +'z-index:100000;display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;max-width:min(420px,calc(100vw - 24px));'
+    +'background:#17171c;color:#fff;border:1px solid rgba(255,255,255,.14);box-shadow:0 18px 44px rgba(0,0,0,.45);'
+    +'font:600 13.5px/1.35 "Hanken Grotesk",system-ui,sans-serif';
+  var t=document.createElement('span'); t.textContent='Approve this transaction in LOBSTR'; t.style.cssText='flex:1 1 auto';
+  var b=document.createElement('button'); b.type='button'; b.textContent='Open LOBSTR';
+  b.style.cssText='flex:0 0 auto;padding:9px 14px;border-radius:10px;border:0;cursor:pointer;'
+    +'background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif';
+  b.addEventListener('click',function(){ try{ window.location.href=link; }catch(_){ } });
+  w.appendChild(t); w.appendChild(b);
+  (document.body||document.documentElement).appendChild(w);
+  return function(){ try{ if(w.parentNode)w.parentNode.removeChild(w); }catch(_){ } };
+}
+try{ window.__lxSep7Prompt=lxSep7Prompt; }catch(_){}
 // Hand the xdr to LOBSTR and wait for the network, not for the app - there is no return channel.
 function lxSep7Sign(xdr,passphrase){
   return lxSbase().then(function(SB){
@@ -271,9 +294,15 @@ function lxSep7Sign(xdr,passphrase){
     catch(e){ throw new Error('Could not read that transaction'); }
     var link='web+stellar:tx?xdr='+encodeURIComponent(xdr)+'&msg='+encodeURIComponent('LumosCore');
     try{ window.location.href=link; }catch(_){}
-    // Poll for the hash. Signing does not change it, so this is the same transaction LOBSTR submits.
-    var tries=0, MAX=72;   // 72 x 2.5s = 3 minutes to approve in the app
-    return new Promise(function(res,rej){
+    // and the button, for when that navigation was not allowed -- removed as soon as the wait ends, either way
+    var closePrompt=lxSep7Prompt(link);
+    // Poll for the hash. Signing does not change it, so this is the same transaction LOBSTR submits. The window is
+    // the transaction's OWN validity (callers build these to live 5 minutes), not a shorter guess of our own: giving
+    // up while the transaction is still valid would strand a signature the reader is in the middle of approving.
+    var tries=0, MAX=120;   // 120 x 2.5s = 5 minutes, matching the built timebound
+    var done=function(fn){ return function(v){ closePrompt(); fn(v); }; };
+    return new Promise(function(_res,_rej){
+      var res=done(_res), rej=done(_rej);
       (function tick(){
         tries++;
         fetch(SEP7_HORIZON+'/transactions/'+hash).then(function(r){
@@ -315,8 +344,13 @@ window.__lxWcSign=function(xdr,passphrase){
     // The request travels over the relay, and on a phone the user is looking at the browser, not at the
     // wallet, so nothing would prompt them to approve it. Poke the app forward; harmless if already open.
     var wn='';try{wn=(localStorage.getItem('lumos.wallet')||'').toLowerCase();}catch(_){}
-    if(isMobile()&&wn.indexOf('lobstr')>=0)wcPoke(WC_LOBSTR,'');
-    return cs.client.request({topic:cs.session.topic,chainId:chain,request:{method:'stellar_signXDR',params:{xdr:xdr}}});
+    var closePoke=function(){};
+    // The poke is a navigation too, so it is dropped for exactly the same reason as the sep7 link: by the second
+    // signature of a flow the tap that started it is spent. Offer the same button beside it (RAZA 2026-09-20: the
+    // bridge fee step "didnt automatically open lobstr", and approving by hand later was too late).
+    if(isMobile()&&wn.indexOf('lobstr')>=0){ wcPoke(WC_LOBSTR,''); closePoke=lxSep7Prompt(WC_LOBSTR); }
+    var req=cs.client.request({topic:cs.session.topic,chainId:chain,request:{method:'stellar_signXDR',params:{xdr:xdr}}});
+    return req.then(function(v){ closePoke(); return v; },function(e){ closePoke(); throw e; });
   }).then(function(r){
     var s=(r&&(r.signedXDR||r.signedTxXdr||r.xdr))||(typeof r==='string'?r:null);
     if(!s||typeof s!=='string')throw new Error('Your wallet did not return a signed transaction');
