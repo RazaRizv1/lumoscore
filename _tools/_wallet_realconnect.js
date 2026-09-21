@@ -303,6 +303,9 @@ function lxSep7Prompt(link,msg,label){
   return function(){ try{ if(w.parentNode)w.parentNode.removeChild(w); }catch(_){ } };
 }
 try{ window.__lxSep7Prompt=lxSep7Prompt; }catch(_){}
+// The bridge claims on the destination chain through the SAME client (one SignClient per page -- two would fight over
+// WalletConnect's storage). Its MetaMask session is recorded under its own key, so lumos.wcTopic is never touched.
+try{ window.__lxWcClient=wcClient; }catch(_){}
 // Hand the xdr to LOBSTR and wait for the network, not for the app - there is no return channel.
 function lxSep7Sign(xdr,passphrase){
   return lxSbase().then(function(SB){

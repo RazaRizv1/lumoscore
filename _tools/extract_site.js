@@ -1444,7 +1444,9 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
   let written = 0;
   for(const name of files){
     const src  = adminOnly ? stripAuthGate(all[name]) : all[name];
-    const html = injectDeviceSwap(injectHints(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(src), validArray)))), name);
+    // the device swap is for the public site's mobile builds; the admin has none, so on a tablet it would only reload
+    const built = injectHints(cleanLinks(rootRelative(injectRuntime(injectTokenRegistry(src), validArray))));
+    const html = adminOnly ? built : injectDeviceSwap(built, name);
     fs.writeFileSync(path.join(outDir, name), html, 'utf8');
     written++;
   }

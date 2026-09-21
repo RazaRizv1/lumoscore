@@ -278,6 +278,25 @@ function lxSubmitClassic(C,xdr){
     var rc=res.extras&&res.extras.result_codes; throw new Error("Swap/fee tx failed: "+(rc?JSON.stringify(rc):JSON.stringify(res).slice(0,150)));
   });
 }
+// The amount a swap+fee transaction delivered to the sender's own account, read from Horizon's result_xdr.
+// The swap is the path payment whose destination is the sender; the fee, when it is also a path payment (a
+// non-native source), goes to the collector and is skipped. Returns 0 when the result cannot be read, and the
+// caller then falls back to waiting for the balance.
+function lxSwapDelivered(S,sr,pk){
+  try{
+    if(!sr||!sr.result_xdr) return 0;
+    var ops=S.xdr.TransactionResult.fromXDR(sr.result_xdr,"base64").result().results();
+    for(var i=0;i<ops.length;i++){
+      var tr=ops[i].tr(); if(!tr||tr.switch().name!=="pathPaymentStrictSend") continue;
+      var pr=tr.pathPaymentStrictSendResult(); if(pr.switch().name!=="pathPaymentStrictSendSuccess") continue;
+      var last=pr.success().last(), to="";
+      try{ to=S.StrKey.encodeEd25519PublicKey(last.destination().ed25519()); }catch(_){ }
+      if(to&&pk&&to!==pk) continue;                 // the fee leg, paid to the collector
+      return Number(last.amount().toString())/1e7;
+    }
+  }catch(_){ }
+  return 0;
+}
 function lxStrictPath(C,srcSpec,amount,destSpec){
   var sp=srcSpec.native?"source_asset_type=native":("source_asset_type="+((srcSpec.code||"").length>4?"credit_alphanum12":"credit_alphanum4")+"&source_asset_code="+srcSpec.code+"&source_asset_issuer="+srcSpec.issuer);
   // The destination CODE was hardcoded to USDC here, which was harmless while CCTP was the only route but wrong the
@@ -369,7 +388,23 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
           // and fabricates a revenue row, so leave the slice in the user's wallet instead
           if(C.feeCollector!==pk) _tb2=_tb2.addOperation(feeOp);
           var tb=_tb2.setTimeout(300).build();
-          return signSubmit(tb,"swap+fee").then(function(sr){ /* the fee rides in this transaction: it is what the registry verifies */ try{ if(C.feeCollector!==pk) deferredFeeHash=(sr&&(sr.hash||sr.id))||""; }catch(_){} return usdcBal().then(function(after){ var got=+(after-before).toFixed(7); if(!(got>0)) throw new Error("Swap produced no USDC."); var net=(netUsdcTarget>0&&netUsdcTarget<=got)?+netUsdcTarget.toFixed(7):got; return net; }); });
+          return signSubmit(tb,"swap+fee").then(function(sr){ /* the fee rides in this transaction: it is what the registry verifies */ try{ if(C.feeCollector!==pk) deferredFeeHash=(sr&&(sr.hash||sr.id))||""; }catch(_){}
+            // HOW MUCH THE SWAP DELIVERED, FROM THE TRANSACTION ITSELF. This used to read the USDC balance once,
+            // straight after the submit, and subtract. Horizon answers from several replicas, and the one that
+            // accepted the transaction is not always the one asked next -- so the read could predate the swap,
+            // find no change, and throw "Swap produced no USDC" over a swap that had worked. That is exactly what
+            // RAZA hit on 2026-09-21 (tx dc17ece5...): 0.999 XLM -> 0.2112944 USDC landed in his wallet, the fee
+            // was paid, and the bridge stopped before the burn. The result XDR states the amount outright.
+            function fin(got){ var net=(netUsdcTarget>0&&netUsdcTarget<=got)?+netUsdcTarget.toFixed(7):got; return net; }
+            var got=lxSwapDelivered(S,sr,pk);
+            if(got>0) return fin(+got.toFixed(7));
+            // Only if the result could not be read: wait for the balance to move, rather than trusting one read.
+            var tries=0;
+            return (function poll(){ return usdcBal().then(function(after){ var g=+(after-before).toFixed(7);
+              if(g>0) return fin(g);
+              if(++tries>=10) throw new Error("The swap went through, but its USDC has not shown up in your wallet yet. It is not lost \u2014 wait a minute, then bridge it with USDC selected as the source.");
+              return new Promise(function(r){ setTimeout(r,1500); }).then(poll); }); })();
+          });
         }); }); });
       });
     }).then(function(netHuman){
@@ -1812,7 +1847,16 @@ function lxEvmProv(){ return (window.ethereum||null); }
 // phone message to a touch-screen Windows desktop -- caught because the test pane reported width 0, but a
 // narrow window on a touch laptop would have done it too. A desktop browser keeps its extensions at any size.
 function lxIsPhoneUA(){ try{
-  return /Android|iPhone|iPad|iPod|Windows Phone|Mobile Safari/i.test(navigator.userAgent||"");
+  if(/Android|iPhone|iPad|iPod|Windows Phone|Mobile Safari/i.test(navigator.userAgent||"")) return true;
+  // A TABLET WITH "DESKTOP SITE" ON sends a plain Linux user agent, so the test above called it a desktop -- and
+  // offered "install MetaMask or Rabby" to someone whose MetaMask is an app on that very tablet, with no way to
+  // hand the claim over to it (RAZA 2026-09-21, a CCTP transfer burned and waiting on Base). It is still a touch
+  // screen that cannot hover. The worry recorded above -- a touch-screen laptop wrongly treated as a phone --
+  // does not apply: a laptop keeps its trackpad, so it hovers. Same test the build swap uses (lx-devswap).
+  var coarse=false, hover=true;
+  try{ coarse=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
+  try{ hover=window.matchMedia("(hover:hover)").matches; }catch(_){ }
+  return coarse && !hover;
 }catch(_){ return false; } }
 function lxNoProvMsg(){ return lxIsPhoneUA()
   ? "No wallet browser detected. On a phone there are no extensions \u2014 claiming has to happen inside your wallet app's own browser (MetaMask, Rabby, Coinbase Wallet), or on a desktop that has one. Tap \u201cCopy redeem data\u201d first: this transfer is stored in THIS browser and will not follow you into the wallet app. Your burn is safe either way."
@@ -2058,10 +2102,22 @@ if(!window.__lxBrCopyWired){ window.__lxBrCopyWired=1;
 //            listing if it is not installed (browser_fallback_url = the universal link)
 //   iOS      metamask://dapp/<page>  -> the app; if nothing took it within 1.5s (not installed), the universal link
 // <page> is this page without its scheme, which is what MetaMask's dapp browser expects.
-function lxIsAndroid(){ try{ return /Android/i.test(navigator.userAgent||""); }catch(_){ return false; } }
+function lxIsAndroid(){ try{
+  var ua=navigator.userAgent||"";
+  if(/Android/i.test(ua)) return true;
+  // An Android tablet with "Desktop site" on sends a plain Linux UA, and this answered no -- so it got iOS's
+  // metamask:// link instead of the Android intent that names MetaMask's package outright. A touch screen that
+  // cannot hover and is not iOS is Android. (iPadOS in desktop mode says "Macintosh" but still reports touch points.)
+  var ios=/iPhone|iPad|iPod/i.test(ua)||(/Macintosh/i.test(ua)&&(navigator.maxTouchPoints||0)>1);
+  var coarse=false, hover=true;
+  try{ coarse=window.matchMedia("(pointer:coarse)").matches; }catch(_){ }
+  try{ hover=window.matchMedia("(hover:hover)").matches; }catch(_){ }
+  return !ios && coarse && !hover;
+}catch(_){ return false; } }
 function lxMmLink(page){
-  var uni="https://metamask.app.link/dapp/"+page;
-  if(lxIsAndroid()) return "intent://dapp/"+page+"#Intent;scheme=metamask;package=io.metamask;S.browser_fallback_url="+encodeURIComponent(uni)+";end";
+  // The plain scheme on Android too (RAZA 2026-09-22: "Choose activity" with Chrome AND MetaMask). The intent form
+  // carried a https://metamask.app.link fallback; on his tablet Chrome took that fallback, and a https link is one
+  // both Chrome and MetaMask can open -- hence the chooser. metamask:// only MetaMask can open.
   return "metamask://dapp/"+page; }
 // NO FALLBACK TIMER. iOS Safari answers metamask:// with its own "Open this page in MetaMask?" sheet; while that sheet
 // is up the page is still visible, so a 1.5s "did we leave?" timer fired and sent the reader to the universal link,
@@ -2074,6 +2130,140 @@ function lxCbLink(full){
   var uni="https://go.cb-w.com/dapp?cb_url="+encodeURIComponent(full);
   if(lxIsAndroid()) return "intent://dapp?url="+encodeURIComponent(full)+"#Intent;scheme=cbwallet;package=org.toshi;S.browser_fallback_url="+encodeURIComponent(uni)+";end";
   return "cbwallet://dapp?url="+encodeURIComponent(full); }
+// ---- claiming with the MetaMask APP, the way LOBSTR signs the burn ----------------------------------------------
+// RAZA 2026-09-22 (iPhone): the burn is smooth -- LOBSTR opens with its own confirmation sheet already up -- but the
+// MetaMask button opened this page INSIDE MetaMask's browser, a second website to load before anything could be
+// confirmed. LOBSTR does not work that way: the page talks to the app over WalletConnect, sends it the request, and
+// only brings the app forward. This does the same for the claim. The first time, MetaMask asks to connect (once per
+// device); after that every claim is: tap MetaMask -> MetaMask opens on its confirmation.
+// The in-browser hand-off (lxMmLink) stays as the fallback: no WalletConnect, or a chain MetaMask did not approve.
+var LX_MM_TOPIC="lumos.mmWcTopic", _lxMmC=null, _lxMmPrep=null, _lxMmBusy=false, _lxMmT=0, _lxMmLinkNow="";
+function lxMmNs(){ return {eip155:{
+  chains:Object.keys(LX_EVM).map(function(k){ return "eip155:"+parseInt(LX_EVM[k].id,16); }),
+  methods:["eth_sendTransaction","personal_sign","wallet_switchEthereumChain","wallet_addEthereumChain"],
+  events:["chainChanged","accountsChanged"]}}; }
+// brings the app forward: with the pairing uri the first time, bare afterwards (the request is already waiting for it)
+function lxMmApp(uri){
+  // ONE LINK FOR EVERY DEVICE, the phone's (RAZA 2026-09-22: "I need it exactly like phone on tablet too"). The Android
+  // intent:// form is what put up the Chrome / WalletConnect chooser on the tablet; the plain scheme is what the iPhone
+  // uses, and what LOBSTR (lobstr://wc) already uses on that same tablet, where it opens the app directly.
+  return "metamask://"+(uri?("wc?uri="+encodeURIComponent(uri)):""); }
+function lxMmSess(c){ var t=""; try{ t=localStorage.getItem(LX_MM_TOPIC)||""; }catch(_){ }
+  if(!t||!c) return null; var all=[]; try{ all=c.session.getAll()||[]; }catch(_){ }
+  for(var i=0;i<all.length;i++){ var s=all[i]; if(s&&s.topic===t&&(+s.expiry||0)*1000>Date.now()+60000) return s; }
+  return null; }
+function lxMmAcct(s,cfg){ var cid="eip155:"+parseInt(cfg.id,16)+":", acc=(s&&s.namespaces&&s.namespaces.eip155&&s.namespaces.eip155.accounts)||[];
+  for(var i=0;i<acc.length;i++){ if(String(acc[i]).indexOf(cid)===0) return String(acc[i]).slice(cid.length); }
+  return null; }
+// MetaMask on Android approves a connection for the ONE network it is set to (RAZA 2026-09-22, tablet: connected, and
+// then "the claim confirmation DIDN'T appear" -- the session had no Base account, so no request was ever sent). The
+// address is the same on every EVM chain, so ask MetaMask to switch (or add) the destination network over the chain it
+// did approve, wait for it to report the new network, and only then send. The transaction also names its chainId, so
+// MetaMask refuses it outright rather than send it on the wrong network.
+function lxMmAny(s){ var acc=(s&&s.namespaces&&s.namespaces.eip155&&s.namespaces.eip155.accounts)||[]; return acc.length?String(acc[0]):""; }
+function lxMmOnChain(c,sess,cfg){
+  var from=lxMmAcct(sess,cfg); if(from) return Promise.resolve({sess:sess,from:from,chain:"eip155:"+parseInt(cfg.id,16)});
+  var any=lxMmAny(sess).split(":"); if(any.length<3) return Promise.reject(new Error("MetaMask connected without an account."));
+  var on=any[0]+":"+any[1], addr=any[2];
+  function rq(m,p){ return c.request({topic:sess.topic,chainId:on,request:{method:m,params:p}}); }
+  return rq("wallet_switchEthereumChain",[{chainId:cfg.id}]).catch(function(e){
+    var em=String((e&&e.message)||"").toLowerCase();
+    if(e&&(e.code===4902||em.indexOf("unrecogn")>=0||em.indexOf("not added")>=0||em.indexOf("unknown chain")>=0))
+      return rq("wallet_addEthereumChain",[{chainId:cfg.id,chainName:cfg.n,nativeCurrency:{name:cfg.cur,symbol:cfg.cur,decimals:18},rpcUrls:[cfg.rpc],blockExplorerUrls:[cfg.exp]}]);
+    throw e;
+  }).then(function(){ return new Promise(function(res){ var n=0; (function look(){
+    var s2=null; try{ s2=c.session.get(sess.topic); }catch(_){ }
+    var f=s2&&lxMmAcct(s2,cfg); if(f) return res({sess:s2,from:f,chain:"eip155:"+parseInt(cfg.id,16)});
+    // MetaMask switched but never widened the session: send over the approved chain; the chainId inside the
+    // transaction still pins it to the destination network. MetaMask on RAZA's tablet NEVER widens it, and waiting 10s
+    // for that made the confirmation arrive "after ages" -- so look for a moment only, and not at all once it is known
+    // that this MetaMask does not.
+    var known=false; try{ known=localStorage.getItem("lumos.mmNoWiden")==="1"; }catch(_){ }
+    if(known||++n>=4){ try{ localStorage.setItem("lumos.mmNoWiden","1"); }catch(_){ } return res({sess:sess,from:addr,chain:on}); }
+    setTimeout(look,150); })(); }); });
+}
+// The pairing is prepared BEFORE the tap, so the tap itself can open MetaMask: a navigation made after network work
+// can be dropped by the browser. A proposal lives 5 minutes; this one is replaced after 4.
+function lxMmPrep(c){
+  if(lxMmSess(c)) return;
+  if(_lxMmPrep&&Date.now()-_lxMmPrep.at<240000) return;
+  var p={at:Date.now(),uri:null,ap:null}; _lxMmPrep=p;
+  Promise.resolve(c.connect({optionalNamespaces:lxMmNs()})).then(function(res){
+    if(!res||!res.uri){ if(_lxMmPrep===p) _lxMmPrep=null; return; }
+    p.uri=res.uri; p.ap=res.approval(); p.ap.catch(function(){ if(_lxMmPrep===p) _lxMmPrep=null; });
+  }).catch(function(){ if(_lxMmPrep===p) _lxMmPrep=null; });
+}
+function lxMmWarm(){ try{
+  if(_lxMmC){ lxMmPrep(_lxMmC); return; }
+  if(!window.__lxWcClient) return;
+  window.__lxWcClient().then(function(c){ _lxMmC=c; lxMmPrep(c); }).catch(function(){});
+}catch(_){} }
+// Returns true when it took the tap; false leaves the link to do the old hand-off into MetaMask's browser.
+function lxMmClaim(rec,row,page){
+  var cfg=LX_EVM[rec.destDomain], c=_lxMmC;
+  if(!cfg||!rec.message||!rec.attestation) return false;
+  // NOT READY YET IS NOT A REASON TO FALL BACK (RAZA 2026-09-22, tablet: "its the same old mechanism, choose between
+  // chrome or metamask"). A tap that came before WalletConnect had loaded quietly took the old hand-off link, which is
+  // the one that ends in Android's chooser and a MetaMask asking for its password. Take the tap, finish loading, carry on;
+  // the "Open MetaMask" button covers a navigation the browser no longer allows after the wait.
+  if(!c){
+    if(!window.__lxWcClient) return false;
+    if(_lxMmBusy&&Date.now()-_lxMmT<1500) return true;
+    _lxMmBusy=true; _lxMmT=Date.now();
+    var m0=row.querySelector(".lx-brp-msg"); if(m0){ m0.className="lx-brp-msg"; m0.style.display=""; m0.textContent="Opening MetaMask\u2026"; }
+    window.__lxWcClient().then(function(cc){ _lxMmC=cc; _lxMmBusy=false; _lxMmT=0; lxMmClaim(rec,row,page); })
+      .catch(function(){ _lxMmBusy=false; if(m0){ m0.className="lx-brp-msg err";
+        m0.innerHTML="Could not reach WalletConnect. Your burn is untouched \u2014 try again, or claim inside MetaMask\u2019s browser:"
+          +'<div class="lx-brp-hand"><a class="lx-brp-hb" href="'+lxMmLink(page)+'">Open in MetaMask browser</a></div>'; } });
+    return true;
+  }
+  // one tap can arrive twice (the touch bridge, then the browser's own click): the second is swallowed
+  if(_lxMmBusy&&Date.now()-_lxMmT<1500) return true;
+  var msg=row.querySelector(".lx-brp-msg"), close=function(){};
+  function say(t,err){ if(!msg)return; msg.textContent=t; msg.style.display=t?"":"none"; msg.className="lx-brp-msg"+(err?" err":""); }
+  function go(l){ _lxMmLinkNow=l; try{ location.href=l; }catch(_){ }
+    // and a button, for when that navigation was not allowed (the same one LOBSTR gets): tapping it IS an activation
+    try{ close(); close=window.__lxSep7Prompt?window.__lxSep7Prompt(l,"Confirm the claim in MetaMask","Open MetaMask"):function(){}; }catch(_){ } }
+  // back without confirming: the request is still waiting in MetaMask -- just bring it forward again
+  if(_lxMmBusy){ go(_lxMmLinkNow||lxMmApp("")); return true; }
+  var s=lxMmSess(c), sessP;
+  if(s){ sessP=Promise.resolve(s); go(lxMmApp("")); }
+  else if(_lxMmPrep&&_lxMmPrep.uri&&_lxMmPrep.ap&&Date.now()-_lxMmPrep.at<280000){
+    var p=_lxMmPrep; _lxMmPrep=null; sessP=p.ap; go(lxMmApp(p.uri)); }
+  else sessP=Promise.resolve(c.connect({optionalNamespaces:lxMmNs()})).then(function(res){ go(lxMmApp(res.uri)); return res.approval(); });
+  _lxMmBusy=true; _lxMmT=Date.now();
+  say(s?"Confirm the claim in MetaMask\u2026":"Approve the connection in MetaMask \u2014 the claim confirmation follows\u2026",false);
+  sessP.then(function(sess){
+    try{ localStorage.setItem(LX_MM_TOPIC,sess.topic); }catch(_){ }
+    // Just connected and already back on this page? Then MetaMask has to come forward again for what follows.
+    // Still in MetaMask? The requests land there on their own, right after the connection.
+    if(!s&&document.visibilityState==="visible") go(lxMmApp(""));
+    if(!lxMmAcct(sess,cfg)) say("Switch MetaMask to "+cfg.n+", then confirm the claim\u2026",false);
+    return lxMmOnChain(c,sess,cfg).then(function(o){
+      say("Confirm the claim in MetaMask\u2026",false);
+      return c.request({topic:o.sess.topic,chainId:o.chain,
+        request:{method:"eth_sendTransaction",params:[{from:o.from,to:LX_MT,data:lxAbiReceive(rec.message,rec.attestation),chainId:cfg.id}]}});
+    });
+  }).then(function(hash){
+    close(); _lxMmBusy=false;
+    if(typeof hash!=="string"||hash.slice(0,2)!=="0x") throw new Error("MetaMask did not return a transaction.");
+    say("",false);
+    rec.claimTx=hash; rec.claimAt=Date.now(); lxBrSavePending(rec); lxBrRenderPending(); setTimeout(lxBrSweepClaimed,6000);
+  }).catch(function(e){
+    close(); _lxMmBusy=false;
+    var em=String((e&&e.message)||""), lo=em.toLowerCase();
+    if(e&&(e.code===4001||e.code===5000||e.code===5002||lo.indexOf("reject")>=0||lo.indexOf("denied")>=0||lo.indexOf("cancel")>=0)){
+      say("Cancelled in MetaMask \u2014 nothing was sent. Your burn is safe.",true); return; }
+    if(lxAlreadyMinted(e)){ say("Already claimed on this chain \u2014 removing it from the list.",false);
+      lxBrClearPending(rec.burnHash); setTimeout(lxBrRenderPending,900); return; }
+    // the session was ended from MetaMask's side: forget it, so the next tap connects afresh
+    if(lo.indexOf("no matching key")>=0||lo.indexOf("session")>=0){ try{ localStorage.removeItem(LX_MM_TOPIC); }catch(_){ } lxMmWarm(); }
+    if(msg){ msg.className="lx-brp-msg err"; msg.style.display="";
+      msg.innerHTML=lxBrEsc((em||"MetaMask did not respond")+" Your burn is untouched \u2014 try again, or claim inside MetaMask\u2019s browser:")
+        +'<div class="lx-brp-hand"><a class="lx-brp-hb" href="'+lxMmLink(page)+'">Open in MetaMask browser</a></div>'; }
+  });
+  return true;
+}
 // ---- a claim handed over by link: ?claim=<burn hash> --------------------------------------------------------
 // Opened inside a wallet app's browser (see the phone hand-off in the claim handler), this page has none of the
 // original browser's storage. Everything a claim needs comes from Circle's record of the burn, keyed by its hash --
@@ -2093,7 +2283,39 @@ function lxBrClaimFromLink(){ try{
       destDomain:parseInt(dm.destinationDomain,10), netUsdc:(+body.amount||0)/1e6,
       recipient:mr.length>=42?("0x"+mr.slice(-40)):mr, status:"attested", ts:Date.now() };
     lxBrSavePending(rec); lxBrRenderPending(); setTimeout(lxBrGoPending,300);
+    lxBrAutoClaim(hash);
   });
+}catch(_){} }
+// ARRIVED IN THE WALLET'S OWN BROWSER TO CLAIM: ask for it at once. The reader already chose to claim -- that is what
+// the MetaMask button on the other device was -- so making them find and press Claim a second time here was a step
+// with nothing in it ("the trx confirmation msg should show up automatically", RAZA 2026-09-21). Nothing is signed
+// behind their back: the wallet still shows its own confirmation, and the reader approves or declines it there.
+// Only inside a wallet browser (an injected provider), only once per transfer per session so a reload cannot keep
+// re-prompting, and only by pressing the row's own Claim button, so every guard that button has still applies.
+function lxBrAutoClaim(hash){ try{
+  if(!window.ethereum) return;
+  // WAIT FOR THE WALLET, THEN ASK. This is the flow RAZA had working on his phone on 2026-09-21 (commit ef964eb1):
+  // tap MetaMask, MetaMask opens on the transfer, the claim runs -- with one extra tap on Claim inside MetaMask.
+  // This removes that tap. It presses Claim only once MetaMask can answer: eth_accounts asks the reader nothing and
+  // returns the accounts already connected to this site, or none while MetaMask sits on its password screen.
+  // Pressing earlier left the row on Working... with no confirmation (8:40 that evening); checking only once, at
+  // load, gave up whenever MetaMask opened locked -- so it looks again every 1.5s, for up to 90s, and presses the
+  // moment the reader has unlocked. A first-ever visit (site not yet connected) still waits for the reader to tap
+  // Claim, exactly as it did on 2026-09-21.
+  var k="lxAutoClaim:"+hash;
+  try{ if(sessionStorage.getItem(k)) return; }catch(_){ }
+  var tries=0;
+  function press(){ var n=0; (function go(){
+    var row=document.querySelector('.lx-brp-row[data-h="'+hash+'"]'), b=row&&row.querySelector('[data-act="mint"]');
+    if(b&&!b.disabled){ b.click(); return; }       // already pressed by the reader, or claimed: nothing to do
+    if(++n<24) setTimeout(go,250);
+  })(); }
+  (function ask(){
+    Promise.resolve(window.ethereum.request({method:"eth_accounts"})).then(function(acc){
+      if(acc&&acc.length){ try{ sessionStorage.setItem(k,"1"); }catch(_){ } press(); return; }
+      if(++tries<60) setTimeout(ask,1500);
+    }).catch(function(){ if(++tries<60) setTimeout(ask,1500); });
+  })();
 }catch(_){} }
 setTimeout(lxBrClaimFromLink,1200);
 function lxBrRenderPending(){ try{
@@ -2169,12 +2391,19 @@ function lxBrRenderPending(){ try{
     +lxBrHowTo()
     +rows;
   if(!host.tabbed) p.style.display="";
+  if(p.querySelector(".lx-brp-mm")) lxMmWarm();   // a MetaMask button on screen: have WalletConnect ready before the tap
   return true;
 }catch(_){ return false; } }
 document.addEventListener("click",function(e){
   // the phone row's wallet-app buttons are plain links to the app's own scheme: let the browser follow the tap as-is
   // (a real user tap on a scheme link is what iOS/Android hand to the app -- intercepting it only makes that worse)
-  if(e.target&&e.target.closest&&e.target.closest(".lx-brp-mm,.lx-brp-cb")) return;
+  // ...except MetaMask, when WalletConnect is up: then the app is sent the claim itself and opens on its confirmation
+  var mmA=e.target&&e.target.closest?e.target.closest(".lx-brp-mm"):null;
+  if(mmA){ try{ var mr=mmA.closest(".lx-brp-row"), mh=mr&&mr.getAttribute("data-h");
+    var mrec=mh&&lxBrListPending().filter(function(x){return x.burnHash===mh;})[0];
+    if(mrec&&lxMmClaim(mrec,mr,mmA.getAttribute("data-page")||"")){ e.preventDefault(); e.stopPropagation(); }
+  }catch(_){ } return; }
+  if(e.target&&e.target.closest&&e.target.closest(".lx-brp-cb")) return;
   var b=e.target&&e.target.closest?e.target.closest(".lx-brp-b"):null; if(!b) return;
   var row=b.closest(".lx-brp-row"); if(!row) return;
   var hash=row.getAttribute("data-h"), act=b.getAttribute("data-act");
