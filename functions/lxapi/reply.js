@@ -98,6 +98,46 @@ export async function onRequestPost({ request, env }) {
   return json({ ok: true, id: out.id, to: msg.reply_to || msg.from_addr, subject }, 200);
 }
 
+// DID IT ARRIVE? Resend accepting a reply is not the recipient getting it -- delivery, a bounce or a spam
+// complaint happen afterwards, and Resend is the only one that knows (Cloudflare only RECEIVES our mail; it
+// never sees what we send). So each reply's current state is read from Resend when the thread is opened,
+// with the key that already lives in this project's environment: it never reaches the browser, and this
+// runs only behind requireAdmin. Asked for RAZA on 2026-09-22 after a reply to v.babaiev@legarithm.io
+// showed only "sent" with no way to tell whether it landed.
+//
+// Kept deliberately small: the latest event only, sequential calls (Resend's default limit is 2 req/s and
+// a thread holds a handful of replies at most), a short timeout, and any failure answers "unknown" rather
+// than failing the thread -- the replies themselves must always show.
+const RESEND_EVENT = {
+  delivered: 'delivered', opened: 'opened', clicked: 'opened',
+  bounced: 'bounced', complained: 'complained', failed: 'failed',
+  delivery_delayed: 'delayed', sent: 'sent', queued: 'sent', scheduled: 'sent',
+};
+export async function resendStatuses(key, replies, fetchImpl) {
+  const f = fetchImpl || fetch;
+  const out = replies.map((r) => Object.assign({}, r, { status: null }));
+  if (!key) return out;
+  const recent = out.filter((r) => r.provider && !r.err).slice(-10);
+  for (const r of recent) {
+    try {
+      const ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+      const t = ctl ? setTimeout(() => ctl.abort(), 5000) : null;
+      const res = await f(API + '/' + encodeURIComponent(r.provider), {
+        headers: { authorization: 'Bearer ' + key },
+        signal: ctl ? ctl.signal : undefined,
+      });
+      if (t) clearTimeout(t);
+      if (!res.ok) { r.status = 'unknown'; continue; }
+      const d = await res.json();
+      const ev = String((d && d.last_event) || '').toLowerCase();
+      r.status = RESEND_EVENT[ev] || 'unknown';
+    } catch (_) {
+      r.status = 'unknown';
+    }
+  }
+  return out;
+}
+
 // Replies already sent for one message, so the panel can show the thread rather than just the inbound half.
 export async function onRequestGet({ request, env }) {
   const bad = await requireAdmin(request);
@@ -106,10 +146,13 @@ export async function onRequestGet({ request, env }) {
   if (!db) return json({ replies: [] }, 200);
   const id = new URL(request.url).searchParams.get('id') || '';
   if (!id) return json({ error: 'id required' }, 400);
+  let rows;
   try {
     const r = await db.prepare('SELECT id, ts, to_addr, subject, body, provider, err FROM mail_reply WHERE mail_id = ?1 ORDER BY ts ASC').bind(id).all();
-    return json({ replies: (r && r.results) || [] }, 200);
+    rows = (r && r.results) || [];
   } catch (e) {
     return json({ replies: [], error: String((e && e.message) || e) }, 200);
   }
+  const replies = await resendStatuses(env && env.RESEND_API_KEY, rows);
+  return json({ replies }, 200);
 }

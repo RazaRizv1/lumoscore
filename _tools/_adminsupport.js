@@ -73,6 +73,12 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-sent{margin-top:10px;padding:12px 14px;border-radius:10px;background:rgba(234,106,44,.07);border:1px solid rgba(234,106,44,.18)}
 .lxm-sent-h{font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--accent,#ea6a2c);margin-bottom:7px}
 .lxm-sent-b{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.65;color:var(--text-soft,#6b6b76)}
+/* delivery state, read from Resend when the thread opens: what the reader actually needs to know about a reply */
+.lxm-st{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;font:700 10.5px/1.5 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.2px;vertical-align:1px}
+.lxm-st.ok{background:rgba(53,192,127,.14);color:#2aa56c}
+.lxm-st.bad{background:rgba(239,68,68,.12);color:#dc4a4a}
+.lxm-st.warn{background:rgba(234,179,8,.15);color:#b7870a}
+.lxm-st.wait{background:rgba(127,127,140,.14);color:var(--text-soft,#6b6b76)}
 .lxm-reply{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
 .lxm-ta{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);color:var(--text);font:400 14.5px/1.65 "Hanken Grotesk",system-ui,sans-serif;resize:vertical}
 .lxm-ta:focus{outline:2px solid var(--accent,#ea6a2c);outline-offset:1px;border-color:transparent}
@@ -85,6 +91,14 @@ if(window.__lxMailAdmin)return; window.__lxMailAdmin=1;
 function q(s){return document.querySelector(s);}
 function qa(s){return [].slice.call(document.querySelectorAll(s));}
 function esc(s){return (String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
+// What happened to a reply AFTER Resend accepted it -- delivered, bounced, marked as spam -- as the server read it
+// from Resend. Wording says what the reader can act on; "unknown" shows nothing rather than a false claim.
+function lxmStatus(st){
+  var M={delivered:["ok","Delivered"], opened:["ok","Delivered \\u00b7 opened"], bounced:["bad","Bounced \\u2014 not delivered"],
+    complained:["bad","Marked as spam"], failed:["bad","Failed"], delayed:["warn","Delivery delayed"], sent:["wait","Sent \\u2014 waiting for delivery"]};
+  var v=M[st]; if(!v) return "";
+  return "<span class='lxm-st "+v[0]+"'>"+v[1]+"</span>";
+}
 function isPage(){var t=((q(".admin-page-title")||q(".mob-page-title")||{}).textContent||"").trim();return t.indexOf("Support")===0;}
 function when(t){ var d=Date.now()-t;
   if(d<60000)return "just now";
@@ -212,7 +226,7 @@ function open(id){
       .then(function(d){ var rs=(d&&d.replies)||[]; if(!rs.length)return;
         thread.innerHTML=rs.map(function(x){
           return "<div class='lxm-sent'><div class='lxm-sent-h'>You replied · "+esc(new Date(x.ts).toLocaleString())
-            +(x.err?" · <b>failed</b>":"")+"</div><div class='lxm-sent-b'></div></div>"; }).join("");
+            +(x.err?" · <b>failed</b>":lxmStatus(x.status))+"</div><div class='lxm-sent-b'></div></div>"; }).join("");
         [].slice.call(thread.querySelectorAll(".lxm-sent-b")).forEach(function(el,i){ el.textContent=rs[i].body; });
       });
     // The reply box. It sends to the address on the STORED message, never to anything typed here.
