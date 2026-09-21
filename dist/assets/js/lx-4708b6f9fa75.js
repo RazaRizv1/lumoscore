@@ -881,19 +881,24 @@ function lxCctpWireStep2(){
     // Whether the swallow lands is a matter of the device's own timing, which is exactly the shape of "works on my
     // phone, never on my tablet": identical code, different straggler. touchend is the genuine, trusted gesture and
     // is not swallowed by anything, so the read happens there too. Desktop keeps the click, which is trusted anyway.
+    // EXACTLY ONE READ PER TAP (RAZA 2026-09-21, the morning after: "This paste bug is back on Tablet and mobile").
+    // Two reads were starting from every tap -- _mobnav's copy of the click, dispatched INSIDE the touchend, and the
+    // touchend listener below -- and both had the gesture's activation. Browsers answer a clipboard read with their OWN
+    // prompt (Chrome's permission chip, iOS's Paste callout) and wait for the reader; a second read arriving while that
+    // prompt is open cancels or rejects it. So the reader either never got to tap Paste, or tapped a prompt that had
+    // already been withdrawn -- and the second call's instant rejection was then read as "blocked for this site",
+    // which is the message on the tablet; the iPhone got the other one. Nothing may re-ask while a read is pending.
     function lxPasteRun(){
       var _now=Date.now(), G=pasteBtn.__lxG;
-      if(!G || _now-G.t>900){ G=pasteBtn.__lxG={ok:false,timer:0,tries:0}; }
+      if(!G || _now-G.t>900){ G=pasteBtn.__lxG={ok:false,busy:false,timer:0}; }
       G.t=_now;
-      if(G.ok) return;                       // this gesture already pasted; a second attempt would only re-ask
-      G.tries++;
+      if(G.ok || G.busy) return;             // already pasted, or a prompt is open and waiting for the reader
+      G.busy=true;
       var t0=_now;
       function set(t){ if(dstInEl){ dstInEl.value=(t||'').trim(); dstInEl.dispatchEvent(new Event('input',{bubbles:true})); /* filled: no keyboard needed (RAZA 2026-09-19) */ dstInEl.blur(); } }
-      function win(t){ G.ok=true; if(G.timer){ clearTimeout(G.timer); G.timer=0; } set(t); }
-      // The error waits, because the other half of the same tap may still succeed. Nothing READS on a timer -- the
-      // timer only decides whether to speak, which needs no user activation.
-      function fail(why){ if(G.ok)return; if(G.timer)clearTimeout(G.timer);
-        G.timer=setTimeout(function(){ G.timer=0; if(!G.ok) _pasteManual(why); },450); }
+      function win(t){ G.ok=true; G.busy=false; if(G.timer){ clearTimeout(G.timer); G.timer=0; } set(t); }
+      function fail(why){ G.busy=false; if(G.ok)return; if(G.timer)clearTimeout(G.timer);
+        G.timer=setTimeout(function(){ G.timer=0; if(!G.ok) _pasteManual(why); },250); }
       var can=!!(navigator.clipboard&&navigator.clipboard.readText);
       try{ window.focus(); }catch(_){ }
       if(!can){ fail("noapi"); return; }
@@ -929,18 +934,32 @@ function lxCctpWireStep2(){
                                              : "Couldn\u2019t read the clipboard \u2014 press Ctrl+V to paste",true); return; }
         // Named for what the reader can actually do about it, on a screen this size.
         lxBrToast(why==="blocked"     ? "Clipboard blocked for this site: tap the icon left of the web address \u2192 Permissions \u2192 Clipboard \u2192 Allow. Or long-press the field and choose Paste."
-                : why==="notconfirmed"? "Chrome asks before a page may read the clipboard \u2014 tap Paste in its popup. Or long-press the field and choose Paste."
+                : why==="notconfirmed"? "Your browser asks before a page may read the clipboard \u2014 tap Paste in its prompt. Or long-press the field and choose Paste."
                 : why==="unfocused"   ? "Another app is over this window \u2014 tap the page once, then Paste. Or long-press the field and choose Paste."
                                       : "Use Paste on the keyboard, or long-press the field and choose Paste",true);
       }
     }
     if(pasteBtn){
-      // The real gesture. Passive: nothing here needs to cancel the touch, and the click that follows is welcome to
-      // try again -- lxPasteRun returns early once this gesture has pasted. There is deliberately no isTrusted gate:
-      // nothing in this codebase dispatches a touch event, so it would exclude nothing real, and it made this path
-      // impossible to exercise in a test (a synthetic TouchEvent is untrusted by definition).
-      pasteBtn.addEventListener('touchend',function(){ lxPasteRun(); },{passive:true});
-      pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation(); lxPasteRun(); },true);
+      // WHO READS. On touch, the touchend below and nothing else: it is the real gesture, it always reaches this
+      // button, and it runs after _mobnav's window-level handler has already dispatched its copy of the click -- so
+      // that copy (marked __lxBridged) stands down, and so does any native straggler that lands afterwards. On a mouse
+      // there is no touch, and the click is the gesture. Either way one tap asks once.
+      // No isTrusted gate on touchend: nothing here dispatches touch events, so it excludes nothing real, and a gate
+      // makes the path impossible to test (a synthetic TouchEvent is untrusted by definition).
+      var _ts=null;
+      pasteBtn.addEventListener('touchstart',function(e){ var p=e.touches&&e.touches[0]; _ts=p?{x:p.clientX,y:p.clientY,t:Date.now()}:null; },{passive:true});
+      pasteBtn.addEventListener('touchend',function(e){
+        var p=e.changedTouches&&e.changedTouches[0];
+        // a finger that travelled is a scroll that happened to start here, not a tap -- same rule as _mobnav
+        if(_ts&&p&&(Math.abs(p.clientX-_ts.x)>=12||Math.abs(p.clientY-_ts.y)>=12||(Date.now()-_ts.t)>=600)) return;
+        pasteBtn.__lxTouchT=Date.now();
+        lxPasteRun();
+      },{passive:true});
+      pasteBtn.addEventListener('click',function(e){ e.preventDefault(); e.stopPropagation();
+        if(e.__lxBridged) return;                                                // _mobnav's copy of this same tap
+        if(pasteBtn.__lxTouchT && Date.now()-pasteBtn.__lxTouchT<900) return;    // the touch already asked
+        lxPasteRun();
+      },true);
     }
     // close the source asset dropdown when clicking anywhere outside it
     document.addEventListener('click',function(e){ var m=document.getElementById('lx-br-amenu'); if(m&&m.style.display==="block"&&!m.contains(e.target)&&!(sChip&&sChip.contains(e.target))) m.style.display="none"; });
