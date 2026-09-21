@@ -83,12 +83,27 @@ const WIDE = '<style id="lx-nbwide">@media (min-width:431px){'
 // (RAZA 2026-09-21, after tablets were switched to this build). Give those two the same rule the other 39
 // have, rather than inventing a different one.
 const WIDEBODY = '<style id="lx-mobwide">html,body{max-width:100%}</style>';
+// PHONE-WIDTH COMPONENTS ON A TABLET (RAZA 2026-09-21, three screenshots at tablet width). Lifting the body cap
+// let pages fill a tablet, but components inside keep their own phone caps -- each of which FILLS a phone (the
+// screen is narrower than the cap) and STRANDS the component mid-screen on anything wider. Measured at the
+// tablet's real 690 CSS px:
+//   - bottom sheets: .modal-overlay .modal is width:100% with max-width:430px, so Send (and Receive, Swap)
+//     sat as a 430px sheet in the middle instead of spanning the bottom like on a phone;
+//   - the promoted card: .lxad-wrap max-width:400px with auto margins, a 400px island on a 690px screen;
+//   - Price / MCap above the chart: pushed right with margin-left:auto -- but only to the end of .chart-controls,
+//     a content-sized 417px box, so "right" meant x=451 on a 690px screen. On a phone that box IS the row.
+// Scoped above phone width, so a phone renders exactly as before.
+const TABFILL = '<style id="lx-tabfill">@media (min-width:431px){'
+  + '.modal-overlay .modal{max-width:none!important}'
+  + '.lxad-wrap{max-width:none!important}'
+  + '.chart-head .chart-controls{flex:1 1 100%!important;max-width:100%!important}'
+  + '}</style>';
 const OVB = '<style id="lx-scrollcost">'
   + '.menu-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}'
   + '.menu-overlay.open{backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}'
   + '[data-lcmu].lcmu-in{will-change:auto!important}'
   + '</style>';
-let wide = 0, ovb = 0, widebody = 0;
+let wide = 0, ovb = 0, widebody = 0, tabfill = 0;
 for (const k of Object.keys(json)) {
   let h = json[k];
   const before = h;
@@ -96,10 +111,12 @@ for (const k of Object.keys(json)) {
   h = h.replace(/<style id="lx-ovblur">[\s\S]*?<\/style>/g, '');     // the id this block used to carry
   h = h.replace(/<style id="lx-scrollcost">[\s\S]*?<\/style>/g, '');
   h = h.replace(/<style id="lx-mobwide">[\s\S]*?<\/style>/g, '');
+  h = h.replace(/<style id="lx-tabfill">[\s\S]*?<\/style>/g, '');
   if (h.indexOf('class="nb-bar"') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', WIDE + '</head>'); wide++; }
   if (h.indexOf('menu-overlay') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', OVB + '</head>'); ovb++; }
   // only the pages the design left capped -- the other 39 already lift it themselves
   if (h.indexOf('lx-mobile-fix') < 0 && h.indexOf('max-width: 430px') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', WIDEBODY + '</head>'); widebody++; }
+  if (h.indexOf('</head>') >= 0 && (h.indexOf('modal-overlay') >= 0 || h.indexOf('lxad-wrap') >= 0 || h.indexOf('chart-controls') >= 0)) { h = h.replace('</head>', TABFILL + '</head>'); tabfill++; }
   if (h !== before) { json[k] = h; added++; }
 }
 
@@ -107,4 +124,4 @@ if (added) {
   const serialized = JSON.stringify(json).split('</').join('<' + B + '/');
   fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
 }
-console.log("mobile bottom nav: added to " + added + " page key(s), " + already + " already had it; tablet backing on " + wide + "; overlay blur gated on " + ovb + "; width cap lifted on " + widebody);
+console.log("mobile bottom nav: added to " + added + " page key(s), " + already + " already had it; tablet backing on " + wide + "; overlay blur gated on " + ovb + "; width cap lifted on " + widebody + "; tablet fill on " + tabfill);
