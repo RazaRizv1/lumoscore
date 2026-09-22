@@ -609,8 +609,11 @@ const BODY = '(function(){'
   + '         destAsset:S.Asset.native(),destMin:(pFee.out*0.97).toFixed(7),path:window.lxToAssets(S,pFee.path)}));'
   + '     }'
   + '     onStatus("Swapping "+(sourceSpec.code||"XLM")+"\\u2192USDT0\\u2026");'
-  + '     return signClassic(tb.addMemo(S.Memo.text("lx:lz")).setTimeout(300).build(),"swap").then(function(){'
+  + '     return signClassic(tb.addMemo(S.Memo.text("lx:lz")).setTimeout(300).build(),"swap").then(function(res){'
   // What ACTUALLY arrived, not what the quote predicted: the send must carry a real number or it fails on balance.
+  // Read from the swap's own result first -- the balance alone read stale on production (2026-09-22) and called a
+  // completed swap a failure. window.lxSwapGot (in _cctp.js) is shared by all three routes.
+  + '      if(window.lxSwapGot) return window.lxSwapGot(S,res,pk,t0Bal,before);'
   + '      return t0Bal().then(function(after){ var got=+(after-before).toFixed(7);'
   + '       if(!(got>0)) throw new Error("The swap did not deliver any USDT0.");'
   + '       return got; }); });'
