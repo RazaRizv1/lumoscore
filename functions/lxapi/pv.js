@@ -41,6 +41,30 @@ export async function onRequestPost({ request, env }) {
 
   let b = null;
   try { b = JSON.parse(await request.text()); } catch (_) { return json({ ok: false, reason: 'bad body' }, 200); }
+
+  // A CLICK (RAZA 2026-09-22: "also show their live activity, for eg: clicks and pages. just like ... Plausible"). Only
+  // what the link or button SAYS, and for a link leaving the site its destination host -- never typed text, amounts,
+  // addresses or any form value. Capped harder than page views: 200 an hour per session, 6,000 an hour site-wide.
+  if (b && b.kind === 'click') {
+    const csid = String(b.sid || ''), cpath = String(b.path || '');
+    if (!SID_RE.test(csid) || cpath.charAt(0) !== '/') return json({ ok: false, reason: 'bad click' }, 200);
+    const label = clip(String(b.label || '').replace(/\s+/g, ' ').trim(), 80);
+    const href = /^[a-z0-9.-]{1,100}$/i.test(String(b.href || '')) ? String(b.href).toLowerCase() : '';
+    if (!label && !href) return json({ ok: false, reason: 'empty' }, 200);
+    const t = Date.now();
+    let chost = ''; try { chost = new URL(request.url).hostname.replace(/^www\./, ''); } catch (_) { }
+    try {
+      const lim = await db.prepare(
+        'SELECT (SELECT COUNT(*) FROM pvevent WHERE sid = ?1 AND ts > ?2) AS s, (SELECT COUNT(*) FROM pvevent WHERE ts > ?2) AS h'
+      ).bind(csid, t - 3600000).first();
+      if (lim && ((+lim.s || 0) >= 200 || (+lim.h || 0) >= 6000)) return json({ ok: false, reason: 'rate' }, 200);
+      await db.prepare('INSERT INTO pvevent (ts, sid, path, kind, label, href, host) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
+        .bind(t, csid, clip(cpath.split('?')[0], 200), 'click', label, href, chost).run();
+      if (Math.random() < 0.005) await db.prepare('DELETE FROM pvevent WHERE ts < ?1').bind(t - KEEP_MS).run();
+    } catch (e) { return json({ ok: false, reason: 'write failed' }, 200); }
+    return json({ ok: true }, 200);
+  }
+
   const sid = String((b && b.sid) || '');
   let path = String((b && b.path) || '');
   let ref = String((b && b.ref) || '');

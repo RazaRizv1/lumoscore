@@ -194,6 +194,10 @@ const CSS = `<style id="lx-adminanalytics-css">
 .lxan-livebig{font:800 30px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text);font-variant-numeric:tabular-nums}
 .lxan-live{max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
 .lxan-live .lxan-row{gap:10px}
+.lxan-livrow{cursor:pointer;user-select:none}
+.lxan-livrow:hover{background:rgba(127,127,140,.07)}
+.lxan-livrow.open .lxan-chev{transform:rotate(90deg)}
+.lxan-jrn .lxan-row{padding-left:46px}
 .lxan-ago{flex:0 0 auto;font-size:var(--lxan-s);color:var(--text-muted);font-variant-numeric:tabular-nums;min-width:74px;text-align:right}
 .lxan-dev{flex:0 0 auto;font-size:var(--lxan-s);color:var(--text-muted);text-transform:capitalize;min-width:64px}
 .lxan-id{flex:0 0 auto;font:600 12px/1 ui-monospace,Menlo,Consolas,monospace;color:var(--text-muted);background:rgba(127,127,140,.14);padding:4px 6px;border-radius:6px}
@@ -602,10 +606,34 @@ function liveTick(){
     if(!rows.length){ el.innerHTML="<div class='lxadm-empty'>Nobody on the site right now.</div>"; return; }
     el.innerHTML=rows.map(function(r){
       var where=[r.city,r.region&&r.region!==r.city?r.region:"",cname(r.country)].filter(Boolean).join(", ");
-      return "<div class='lxan-row'>"+flag(r.country)+"<div class='lxan-name' title='"+esc(where)+"'>"+esc(where||"Unknown")+" <span class='m'>\u00b7 "+esc(r.path||"/")+"</span></div>"
+      return "<div class='lxan-row lxan-livrow' tabindex='0' role='button' aria-expanded='false' data-sid='"+esc(r.sid||"")+"'><span class='lxan-chev'>\u25b6</span>"+flag(r.country)+"<div class='lxan-name' title='"+esc(where)+"'>"+esc(where||"Unknown")+" <span class='m'>\u00b7 "+esc(r.path||"/")+"</span></div>"
         +"<div class='lxan-dev'>"+esc(r.device||"")+"</div><div class='lxan-id' title='a random id for this browsing session'>"+esc(r.id||"")+"</div><div class='lxan-ago'>"+esc(ago(r.ts))+"</div></div>"; }).join("");
     flagFallback(el);
+    if(window.__lxLiveOpen){ var row=q(".lxan-livrow[data-sid='"+window.__lxLiveOpen+"']",el); if(row) toggleLive(el,row,true); }
   }).catch(function(){});
+}
+// THE VISITOR'S JOURNEY (RAZA 2026-09-22: "show their live activity, for eg: clicks and pages. just like ... Plausible"):
+// the pages of this visit and the links and buttons pressed, newest first, from our own records.
+function toggleLive(el,row,keep){
+  var open=keep?true:!row.classList.contains("open");
+  qa(".lxan-livrow.open",el).forEach(function(r){ if(r!==row){ r.classList.remove("open"); r.setAttribute("aria-expanded","false"); var n2=r.nextElementSibling; if(n2&&n2.classList.contains("lxan-jrn")) n2.parentNode.removeChild(n2); } });
+  row.classList.toggle("open",open); row.setAttribute("aria-expanded",open?"true":"false");
+  var nx=row.nextElementSibling; if(nx&&nx.classList.contains("lxan-jrn")) nx.parentNode.removeChild(nx);
+  var sid=row.getAttribute("data-sid")||"";
+  if(!open){ if(window.__lxLiveOpen===sid) window.__lxLiveOpen=""; return; }
+  window.__lxLiveOpen=sid;
+  var box=document.createElement("div"); box.className="lxan-cities lxan-jrn";
+  box.innerHTML="<div class='lxan-cnote'>Reading this visit\u2026</div>";
+  row.parentNode.insertBefore(box,row.nextSibling);
+  fetch("/lxapi/analytics?session="+encodeURIComponent(sid)+"&t="+Date.now()).then(function(r){ return r.json(); }).then(function(d){
+    if(!box.parentNode) return; var rows=((d&&d.journey)||{}).rows||[];
+    if(!rows.length){ box.innerHTML="<div class='lxan-cnote'>Nothing recorded for this visit yet.</div>"; return; }
+    box.innerHTML=rows.map(function(r){
+      var when=new Date(r.ts).toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+      var what=r.kind==="page"?("<b>viewed</b> "+esc(r.path||"/")):("<b>clicked</b> \u201c"+esc(r.label||"a link")+"\u201d"+(r.href?(" <span class='m'>\u2192 "+esc(r.href)+"</span>"):"")+" <span class='m'>on "+esc(r.path||"/")+"</span>");
+      return "<div class='lxan-row'><div class='lxan-name' style='white-space:normal'>"+what+"</div><div class='lxan-ago'>"+esc(when)+"</div></div>"; }).join("")
+      +"<div class='lxan-cnote'>Pages and the labels of links and buttons pressed \u00b7 last 6 hours of this visit.</div>";
+  }).catch(function(e){ if(box.parentNode) box.innerHTML="<div class='lxan-cnote'>Could not read this visit: "+esc(e.message)+"</div>"; });
 }
 function liveStart(){ if(window.__lxLiveT) return; liveTick(); window.__lxLiveT=setInterval(function(){ if(document.visibilityState==="visible") liveTick(); },20000);
   document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") liveTick(); }); }
@@ -634,10 +662,11 @@ function boot(){
   // into a page load, and it runs before any listener on the page itself; only window capture comes earlier
   // (lumoscore-lumosnav-row-hijack). Every click this page owns is handled here and then stopped, so it never sees them.
   if(!window.__lxAnRouter){ window.__lxAnRouter=1;
-    function route(e){ var t=e.target; if(!t||!t.closest||!t.closest(".lxan-box,.lxan-drawer")) return false;
+    function route(e){ var t=e.target; if(!t||!t.closest||!t.closest(".lxan-box,.lxan-drawer,.lxan-live")) return false;
       if(t.closest("a[href]")) return false;                                  // real links inside a row keep working
       var box=t.closest(".lxan-box"), b=t.closest("button[data-p]"), r;
       if(b&&box){ if(!b.disabled){ box.__pg=(box.__pg||0)+(+b.getAttribute("data-p")); if(box.__redraw) box.__redraw(); var rw=q(".lxan-rows",box); if(rw) rw.scrollTop=0; } return true; }
+      if((r=t.closest(".lxan-livrow"))){ var lv=q("#lxanLiveRows"); if(lv){ toggleLive(lv,r); return true; } }
       if((r=t.closest(".lxan-ctry"))&&box){ toggleCountry(box,r); return true; }
       if((r=t.closest(".lxan-link[data-path]"))){ openPage(r.getAttribute("data-path")); return true; }
       if((r=t.closest(".lxan-link[data-ref]"))&&box){ toggleSource(box,r); return true; }

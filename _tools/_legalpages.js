@@ -156,6 +156,11 @@ const PRIVACY = '<div class="lxlg">'
   + 'and country Cloudflare associates with your connection. A random identifier that your browser keeps only for '
   + 'the current browsing session links the pages of one visit together. We do not store your IP address, your '
   + 'browser details or your wallet address with it, and these records are deleted after 180 days.</p>'
+  // Added with the live-activity panel (pvevent, functions/lxapi/pv.js kind=click). Deliberately explicit about the
+  // boundary: the label of what was pressed, never the content of anything typed.
+  + '<p>Within that same record we also note <strong>which links and buttons you press</strong> — the words shown on '
+  + 'them, such as &ldquo;Confirm swap&rdquo;, and the website a link leads to when it takes you off LumosCore. We do '
+  + 'not record anything you type: not amounts, not addresses, not search boxes, not any field on any form.</p>'
 
   + '<h2>What your own browser stores</h2>'
   + '<p>The site keeps a small amount of information in your browser so it can work properly between '
