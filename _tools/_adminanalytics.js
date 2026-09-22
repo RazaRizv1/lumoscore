@@ -25,6 +25,11 @@ const MAIN = `
         </div>
       </div>
 
+      <div class="adm-card lxan-card lxan-livecard" style="margin-bottom:18px">
+        <div class="adm-card-head"><div><div class="adm-card-title"><span class="lxan-dot"></span>Live now</div><div class="adm-card-sub" id="lxanLiveSub">people on the site in the last 5 minutes &middot; where they are and the page they are on</div></div><div class="lxan-livebig" id="lxanLiveN">&mdash;</div></div>
+        <div class="adm-card-body" style="padding:0"><div id="lxanLiveRows" class="lxan-live"><div class="lxadm-empty">Loading&hellip;</div></div></div>
+      </div>
+
       <div class="lxan-kpis">
         <div class="lxan-kpi"><div class="lxan-kl">Visits</div><div class="lxan-kvrow"><div class="lxan-kv" id="lxanVisits">&mdash;</div><div class="lxan-spark" id="lxanVisitsS"></div></div><div class="lxan-kd" id="lxanVisitsD"></div><div class="lxan-kf">people arriving from another site or typing the address</div></div>
         <div class="lxan-kpi"><div class="lxan-kl">Page views</div><div class="lxan-kvrow"><div class="lxan-kv" id="lxanViews">&mdash;</div><div class="lxan-spark" id="lxanViewsS"></div></div><div class="lxan-kd" id="lxanViewsD"></div><div class="lxan-kf">every page opened, by people</div></div>
@@ -67,7 +72,7 @@ const MAIN = `
           <div class="adm-card-body" style="padding:0"><div id="lxanPages" class="lxan-box"><div class="lxadm-empty">Loading&hellip;</div></div></div>
         </div>
         <div class="adm-card lxan-card">
-          <div class="adm-card-head"><div><div class="adm-card-title">Traffic Sources</div><div class="adm-card-sub">visits by where they came from &middot; search, AI, social, direct</div></div></div>
+          <div class="adm-card-head"><div><div class="adm-card-title">Traffic Sources</div><div class="adm-card-sub">every site that sent visitors &middot; Cloudflare (sampled) plus LumosCore’s own record</div></div></div>
           <div class="adm-card-body" style="padding:0"><div id="lxanRefs" class="lxan-box"><div class="lxadm-empty">Loading&hellip;</div></div></div>
         </div>
         <div class="adm-card lxan-card">
@@ -182,6 +187,16 @@ const CSS = `<style id="lx-adminanalytics-css">
 .lxan-cities{background:rgba(127,127,140,.06);border-bottom:1px solid var(--border)}
 .lxan-cities .lxan-row{padding:9px 16px 9px 64px;border-bottom:1px solid rgba(127,127,140,.12)}
 .lxan-cnote{padding:11px 16px 13px 64px;font-size:var(--lxan-s);line-height:1.55;color:var(--text-muted)}
+.lxan-livecard .adm-card-title{display:flex;align-items:center;gap:9px}
+.lxan-dot{width:9px;height:9px;border-radius:50%;background:#35c07f;box-shadow:0 0 0 0 rgba(53,192,127,.6);animation:lxanPulse 2s infinite}
+@keyframes lxanPulse{70%{box-shadow:0 0 0 9px rgba(53,192,127,0)}100%{box-shadow:0 0 0 0 rgba(53,192,127,0)}}
+@media (prefers-reduced-motion:reduce){.lxan-dot{animation:none}}
+.lxan-livebig{font:800 30px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text);font-variant-numeric:tabular-nums}
+.lxan-live{max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+.lxan-live .lxan-row{gap:10px}
+.lxan-ago{flex:0 0 auto;font-size:var(--lxan-s);color:var(--text-muted);font-variant-numeric:tabular-nums;min-width:74px;text-align:right}
+.lxan-dev{flex:0 0 auto;font-size:var(--lxan-s);color:var(--text-muted);text-transform:capitalize;min-width:64px}
+.lxan-id{flex:0 0 auto;font:600 12px/1 ui-monospace,Menlo,Consolas,monospace;color:var(--text-muted);background:rgba(127,127,140,.14);padding:4px 6px;border-radius:6px}
 .lxan-about{margin-top:18px;padding:16px 18px;border:1px dashed var(--border);border-radius:14px;font-size:var(--lxan-s);line-height:1.65;color:var(--text-muted)}
 .lxan-about b{color:var(--text)}
 /* PER-PAGE ANALYTICS (RAZA: "When I click on a URL in the top pages box ... analytics related only to that specific URL"): a
@@ -287,9 +302,22 @@ function refBase(k){
 // TRAFFIC SOURCES = WHERE VISITS CAME FROM (RAZA 2026-09-22: every page showed "lumoscore.com" as its main source). Cloudflare
 // gives each PAGE VIEW's referrer, and after the first page that is the previous page of this site. Ranked by visits instead
 // -- sum.visits, the page views that arrived from another site or from nowhere -- internal moves drop out by definition.
-function sources(d){ return (d.topReferers||[]).filter(function(r){ return String(r.key||"").toLowerCase()!=="lumoscore.com"; })
-  .map(function(r){ return {key:r.key,count:(typeof r.visits==="number")?r.visits:0}; }).filter(function(r){ return r.count>0; })
-  .sort(function(a,b){ return b.count-a.count; }); }
+// EVERY SOURCE, NOT ONLY THE ONES CLOUDFLARE COUNTS A VISIT FOR (RAZA 2026-09-22: "only showing 7 traffic sources ...
+// i need to view all"). Two reasons rows were missing: Cloudflare rounds small numbers, so a real referrer could report
+// visits 0 and be dropped; and Cloudflare samples, so a rare referrer may not reach it at all. For a site OTHER than our
+// own every page view it refers IS an arrival, so the larger of the two figures is the honest one -- and LumosCore's own
+// record (exact, unsampled, from the day it went live) is merged in, so a source Cloudflare missed still appears.
+function sources(d){
+  var out={}, own=(d.own&&d.own.refs)||[];
+  (d.topReferers||[]).forEach(function(r){ var k=String(r.key||""); if(k.toLowerCase()==="lumoscore.com") return;
+    var v=Math.max((typeof r.visits==="number")?r.visits:0,(k==="(none)"?0:(r.count||0)));
+    if(v>0) out[k]={key:k,count:v,cf:true}; });
+  own.forEach(function(r){ var k=String(r.ref||""); if(!k||k.toLowerCase()==="lumoscore.com") return;
+    if(out[k]){ out[k].count=Math.max(out[k].count,r.views||0); out[k].own=true; }
+    else out[k]={key:k,count:r.views||0,own:true}; });
+  return Object.keys(out).map(function(k){ return out[k]; }).filter(function(r){ return r.count>0; })
+    .sort(function(a,b){ return b.count-a.count; });
+}
 function pageName(k){ return k==="/"?"/ <span class='m'>(home)</span>":esc(k); }
 
 function buckets(d){
@@ -561,6 +589,26 @@ function renderPage(body,d){
   list(q("[data-f=os]",body),d.systems,pv);
 }
 
+// LIVE NOW: our own page views only -- Cloudflare's analytics is aggregated and arrives too late to answer "who is on the
+// site now". Refreshed every 20s while the page is open and in front, paused when it is not, so a tab left open all day
+// does not keep asking.
+function ago(ts){ var s=Math.max(0,Math.round((Date.now()-ts)/1000)); if(s<15) return "just now"; if(s<60) return s+"s ago"; var m=Math.round(s/60); return m+(m===1?" min ago":" mins ago"); }
+function liveTick(){
+  var el=q("#lxanLiveRows"); if(!el) return;
+  fetch("/lxapi/analytics?live=1&t="+Date.now()).then(function(r){ return r.json(); }).then(function(d){
+    var L=(d&&d.live)||{}, rows=L.rows||[];
+    setT("#lxanLiveN",String(L.sessions||0));
+    setT("#lxanLiveSub",(L.sessions?((L.sessions===1?"1 person":num(L.sessions)+" people")+" in the last 5 minutes \u00b7 "+num(L.views||0)+" page "+((L.views||0)===1?"view":"views")):"nobody on the site in the last 5 minutes")+(L.error?(" \u00b7 "+L.error):""));
+    if(!rows.length){ el.innerHTML="<div class='lxadm-empty'>Nobody on the site right now.</div>"; return; }
+    el.innerHTML=rows.map(function(r){
+      var where=[r.city,r.region&&r.region!==r.city?r.region:"",cname(r.country)].filter(Boolean).join(", ");
+      return "<div class='lxan-row'>"+flag(r.country)+"<div class='lxan-name' title='"+esc(where)+"'>"+esc(where||"Unknown")+" <span class='m'>\u00b7 "+esc(r.path||"/")+"</span></div>"
+        +"<div class='lxan-dev'>"+esc(r.device||"")+"</div><div class='lxan-id' title='a random id for this browsing session'>"+esc(r.id||"")+"</div><div class='lxan-ago'>"+esc(ago(r.ts))+"</div></div>"; }).join("");
+    flagFallback(el);
+  }).catch(function(){});
+}
+function liveStart(){ if(window.__lxLiveT) return; liveTick(); window.__lxLiveT=setInterval(function(){ if(document.visibilityState==="visible") liveTick(); },20000);
+  document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") liveTick(); }); }
 function load(){
   qa("#lxanRange button").forEach(function(b){ b.classList.toggle("on",b.getAttribute("data-r")===RANGE); b.setAttribute("aria-selected",b.getAttribute("data-r")===RANGE?"true":"false"); });
   setT("#lxanSub","Reading Cloudflare Web Analytics\\u2026");
@@ -601,9 +649,9 @@ function boot(){
   if(pg&&!pg.__lk){ pg.__lk=1;
     pg.addEventListener("click",function(e){ var r=e.target&&e.target.closest&&e.target.closest(".lxan-link[data-path]"); if(r) openPage(r.getAttribute("data-path")); });
     pg.addEventListener("keydown",function(e){ if(e.key!=="Enter"&&e.key!==" ") return; var r=e.target&&e.target.closest&&e.target.closest(".lxan-link[data-path]"); if(r){ e.preventDefault(); openPage(r.getAttribute("data-path")); } }); }
-  load();
+  load(); liveStart();
 }
-window.__lxAnRender=render; window.__lxAnRenderPage=function(d){ var D=drawer(); DPATH=d.path||"/"; q("[data-f=path]",D.dr).textContent=DPATH; D.dim.classList.add("on"); D.dr.classList.add("on"); renderPage(q("[data-f=body]",D.dr),d); };
+window.__lxAnLive=liveTick; window.__lxAnRender=render; window.__lxAnRenderPage=function(d){ var D=drawer(); DPATH=d.path||"/"; q("[data-f=path]",D.dr).textContent=DPATH; D.dim.classList.add("on"); D.dr.classList.add("on"); renderPage(q("[data-f=body]",D.dr),d); };
 if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();` + '</' + 'script>';
 
