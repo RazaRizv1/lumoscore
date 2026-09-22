@@ -146,3 +146,22 @@ CREATE TABLE IF NOT EXISTS admin_audit (
 );
 CREATE INDEX IF NOT EXISTS admin_audit_at ON admin_audit (at DESC);
 CREATE INDEX IF NOT EXISTS admin_audit_actor ON admin_audit (actor, at DESC);
+
+-- ---- first-party page views (functions/lxapi/pv.js) ------------------------------------------------------------
+-- Cities and bounce rate: Cloudflare Web Analytics has neither (no city field, no sessions). One row per page view;
+-- sid is a random id the page keeps in sessionStorage for that browsing session only. No IP, no user agent, no
+-- cookie, no wallet address. host keeps staging/preview rows apart from lumoscore.com. Pruned after 180 days.
+CREATE TABLE IF NOT EXISTS pageview (
+  ts      INTEGER NOT NULL,          -- epoch ms
+  day     TEXT NOT NULL,             -- UTC date, YYYY-MM-DD
+  sid     TEXT NOT NULL,
+  path    TEXT NOT NULL,
+  ref     TEXT,                      -- referring host, only when it is another site
+  country TEXT,                      -- ISO 3166 alpha-2, from Cloudflare
+  region  TEXT,
+  city    TEXT,
+  device  TEXT,                      -- desktop | mobile | tablet
+  host    TEXT
+);
+CREATE INDEX IF NOT EXISTS pageview_ts ON pageview (ts);
+CREATE INDEX IF NOT EXISTS pageview_sid_ts ON pageview (sid, ts);
