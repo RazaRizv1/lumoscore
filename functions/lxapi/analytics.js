@@ -150,7 +150,8 @@ async function ownStats(db, startMs, prevStartMs, path) {
       (byCountry[c] = byCountry[c] || []).push({ city: r.city || '', region: r.region || '', views: r.views, sessions: r.sessions });
     });
     const pack = (x) => (x ? { sessions: +x.sessions || 0, bounces: +x.bounces || 0, views: +x.views || 0 } : null);
-    return { since: since && since.first ? since.first : null, cur: pack(cur), prev: pack(prev), cities: byCountry };
+    // the counter went live on lumoscore.com at this moment (main 7c7c7074); before any row exists, that is the honest start
+    return { since: since && since.first ? since.first : Date.parse('2026-09-22T16:59:00Z'), cur: pack(cur), prev: pack(prev), cities: byCountry };
   } catch (e) {
     return { error: String((e && e.message) || e) };
   }
@@ -179,6 +180,32 @@ export async function onRequestGet({ request, env }) {
   try {
     const found = await siteTag(token, u.searchParams.get("site") || "");
     const site = found.tag;
+    // ?refhost=t.co -> WHICH link on that site brought the visits (RAZA 2026-09-22: "which exact tweet or page brought that
+    // visit"). refererPath is what the other site let the browser send: t.co gives the exact short link of the tweet's
+    // link, forums and blogs give their page, while Google, Bing and chatgpt.com send their bare address only -- search
+    // queries have not been passed to websites since search went encrypted. Paired with the page it landed on here.
+    const refhost = String(u.searchParams.get('refhost') || '');
+    if (refhost) {
+      if (!/^[a-z0-9.:()_-]{1,120}$/i.test(refhost)) return json({ error: 'bad refhost' }, 200);
+      const rp = String(u.searchParams.get('path') || '');
+      const pathF = (rp.charAt(0) === '/' && rp.length <= 300) ? ', requestPath: $path' : '';
+      const RQ = `query ($account: String!, $site: String!, $start: Time!, $end: Time!, $rh: string${pathF ? ', $path: string' : ''}) {
+  viewer { accounts(filter: { accountTag: $account }) {
+    refPaths: rumPageloadEventsAdaptiveGroups(limit: 300, orderBy: [sum_visits_DESC], filter: { siteTag: $site, datetime_geq: $start, datetime_leq: $end, bot: 0, refererHost: $rh${pathF} }) { dimensions { refererPath requestPath } count sum { visits } }
+  } }
+}`;
+      const vars = { account: ACCOUNT, site, start: start.toISOString(), end: end.toISOString(), rh: refhost === '(none)' ? '' : refhost };
+      if (pathF) vars.path = rp;
+      const rr = await fetch(GQL, { method: 'POST', headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, body: JSON.stringify({ query: RQ, variables: vars }) });
+      const rd = await rr.json();
+      if (rd && rd.errors && rd.errors.length) return json({ error: 'graphql', messages: rd.errors.map((e) => e && e.message).filter(Boolean) }, 200);
+      const ra = ((((rd || {}).data || {}).viewer || {}).accounts || [])[0] || {};
+      return json({ range, refhost, refPaths: (ra.refPaths || []).map((x) => ({
+        ref: (x.dimensions && x.dimensions.refererPath) || '', landing: (x.dimensions && x.dimensions.requestPath) || '',
+        visits: x.sum ? x.sum.visits : 0, views: x.count,
+      })).filter((x) => x.visits > 0) }, 200);
+    }
+
     // ?path=/trade/stellar -> every figure for that one page (the per-page panel). A path, nothing else, and bounded.
     let path = String(u.searchParams.get('path') || '');
     path = (path.charAt(0) === '/' && path.length <= 300) ? path : '';

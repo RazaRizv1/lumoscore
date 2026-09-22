@@ -239,7 +239,7 @@ function flag(cc){ cc=String(cc||"").toLowerCase(); if(!/^[a-z][a-z]$/.test(cc))
   return "<img class='lxan-flag' alt='' loading='lazy' src='https://flagcdn.com/w40/"+cc+".png' data-cc='"+cc.toUpperCase()+"'>"; }
 function flagFallback(root){ qa("img.lxan-flag",root).forEach(function(im){ if(im.__lx) return; im.__lx=1;
   im.addEventListener("error",function(){ var s=document.createElement("span"); s.className="lxan-cc"; s.textContent=im.getAttribute("data-cc")||"?"; if(im.parentNode) im.parentNode.replaceChild(s,im); }); }); }
-function sinceText(own){ if(!own||!own.since) return "from the moment it went live"; return "since "+new Date(own.since).toLocaleDateString(undefined,{month:"long",day:"numeric",year:"numeric"}); }
+function sinceText(own){ if(!own||!own.since) return "from the moment it went live"; return "since "+new Date(own.since).toLocaleString(undefined,{month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}); }
 
 function delta(el,cur,prev,opts){ if(!el) return; opts=opts||{};
   if(prev==null||!(prev>0)){ el.innerHTML=(cur>0&&prev===0)?"<span class='fl'>new</span><small>vs "+esc(RPREV[RANGE])+"</small>":""; return; }
@@ -260,7 +260,7 @@ function list(el,rows,total,fmt,opts){
     var slice=rows.slice(pg*PAGE,(pg+1)*PAGE);
     var html="<div class='lxan-rows'>"+slice.map(function(r){
       var w=Math.max(2,Math.round((r.count/max)*100)), sh=total>0?(r.count/total*100):0;
-      return "<div class='lxan-row"+(opts.link?" lxan-link":"")+"'"+(opts.link?(" tabindex='0' role='button' data-path='"+esc(r.key)+"'"):"")+"><div class='lxan-name' title='"+esc(r.key)+"'>"+(fmt?fmt(r.key):esc(r.key))+"</div>"
+      return "<div class='lxan-row"+((opts.link||opts.src)?" lxan-link":"")+"'"+(opts.link?(" tabindex='0' role='button' data-path='"+esc(r.key)+"'"):(opts.src?(" tabindex='0' role='button' aria-expanded='false' data-ref='"+esc(r.key)+"'"):""))+">"+(opts.src?"<span class='lxan-chev'>\\u25b6</span>":"")+"<div class='lxan-name' title='"+esc(r.key)+"'>"+(fmt?fmt(r.key):esc(r.key))+"</div>"
         +"<div class='lxan-track'><div class='lxan-fill' style='width:"+w+"%'></div></div>"
         +"<div class='lxan-pc'>"+pctTxt(sh)+"</div><div class='lxan-n'>"+num(r.count)+"</div></div>";
     }).join("")+"</div>";
@@ -416,6 +416,40 @@ function toggleCountry(el,row){
       +"<div class='lxan-cnote'>Page views per city, counted by LumosCore "+esc(sinceText(own))+" (Cloudflare has no city data).</div>"; }
   row.parentNode.insertBefore(box,row.nextSibling);
 }
+// A SOURCE, OPENED (RAZA 2026-09-22: "it should tell which exact tweet or page brought that visit ... which search query").
+// What each site lets the browser send decides what can be shown, and the note says so rather than leaving a gap:
+// t.co sends the exact short link of the post's link (and X search finds the post from it); forums and blogs send
+// their page; search engines send no search words at all (encrypted search), and AI assistants send only their address.
+var SRC_NOTE={
+  Search:"Search engines (Google, Bing, DuckDuckGo) have not passed the searched words to websites since search went encrypted, so no website can see which query brought a visit. Those searches are only in Google Search Console \\u2014 connecting it would show them here.",
+  "AI assistants":"AI assistants send only their own address, not the conversation or question behind the link.",
+  Direct:"A direct visit has no link behind it: the address was typed, bookmarked, or opened from an app, a message or an email.",
+  Social:"", "Other sites":""};
+function toggleSource(box,row){
+  var open=row.classList.toggle("open"); row.setAttribute("aria-expanded",open?"true":"false");
+  var nx=row.nextElementSibling; if(nx&&nx.classList.contains("lxan-srcd")) nx.parentNode.removeChild(nx);
+  if(!open) return;
+  var host=row.getAttribute("data-ref")||"", ch=channelOf(host)||"Other sites";
+  var det=document.createElement("div"); det.className="lxan-cities lxan-srcd";
+  row.parentNode.insertBefore(det,row.nextSibling);
+  if(ch==="Direct"){ det.innerHTML="<div class='lxan-cnote'>"+SRC_NOTE.Direct+"</div>"; return; }
+  det.innerHTML="<div class='lxan-cnote'>Reading the links from "+esc(host)+"\\u2026</div>";
+  fetch("/lxapi/analytics?range="+encodeURIComponent(RANGE)+"&refhost="+encodeURIComponent(host)+(box.__ctx?("&path="+encodeURIComponent(box.__ctx)):"")+"&t="+Date.now())
+    .then(function(r){ return r.json(); }).then(function(d){
+      if(!det.parentNode) return;
+      if(!d||d.error){ det.innerHTML="<div class='lxan-cnote'>Could not read the links: "+esc((d&&(d.messages&&d.messages.join("; ")||d.error))||"no answer")+"</div>"; return; }
+      var rows=(d.refPaths||[]).slice().sort(function(a,b){ return b.visits-a.visits; });
+      var withPath=rows.filter(function(r){ return r.ref&&r.ref!=="/"; });
+      var html=rows.map(function(r){ var hasP=r.ref&&r.ref!=="/", url="https://"+host+(hasP?r.ref:"/");
+        var label=hasP?(host+r.ref):(host+" <span class='m'>(address only)</span>");
+        var extra=(host==="t.co"&&hasP)?(" \\u00b7 <a href='https://x.com/search?q="+encodeURIComponent("https://t.co"+r.ref)+"&f=live' target='_blank' rel='noopener noreferrer'>find the post on X \\u2197</a>"):"";
+        return "<div class='lxan-row'><div class='lxan-name' style='white-space:normal'>"+(hasP?("<a href='"+esc(url)+"' target='_blank' rel='noopener noreferrer'>"+esc(host+r.ref)+"</a>"):label)+extra
+          +" <span class='m'>\\u2192 "+esc(r.landing||"/")+"</span></div><div class='lxan-n' title='visits'>"+num(r.visits)+"</div></div>"; }).join("");
+      var note=SRC_NOTE[ch]||((rows.length&&!withPath.length)?("This site shares only its address with the browser, not the page the link was on."):"");
+      if(host==="t.co"&&withPath.length) note="Each t.co link is the short link X puts on a post. \\u201cFind the post on X\\u201d searches X for it; a post that has been deleted or is private will not show.";
+      det.innerHTML=(html||"<div class='lxan-cnote'>No individual links recorded for this period.</div>")+(note?"<div class='lxan-cnote'>"+note+"</div>":"");
+    }).catch(function(e){ if(det.parentNode) det.innerHTML="<div class='lxan-cnote'>Could not read the links: "+esc(e.message)+"</div>"; });
+}
 function mapPaint(d){
   var wrap=q("#lxanMap"); if(!wrap) return; var svg=q("svg",wrap); if(!svg) return;
   var m={}, mx=0; (d.countries||[]).forEach(function(r){ var cc=String(r.key||"").toUpperCase(); m[cc]=(m[cc]||0)+(r.count||0); if(m[cc]>mx) mx=m[cc]; });
@@ -441,7 +475,7 @@ function bounceInto(valEl,deltaEl,noteEl,own,entry){
     if(prv&&prv.sessions>0) delta(deltaEl,br,prv.bounces/prv.sessions*100,{points:true,lowerIsBetter:true}); else if(deltaEl) deltaEl.innerHTML="";
     if(noteEl) noteEl.textContent=num(cur.bounces)+" of "+num(cur.sessions)+" "+(entry?"visits that started here":"visits")+" left after one page"; }
   else { valEl.textContent="\\u2014"; if(deltaEl) deltaEl.innerHTML="";
-    if(noteEl) noteEl.textContent=own&&own.error?("could not read our own visit log: "+own.error):("no visits recorded yet \\u2014 LumosCore counts these itself, "+sinceText(own)); }
+    if(noteEl) noteEl.textContent=own&&own.error?("could not read our own visit log: "+own.error):("counting "+sinceText(own)+" \\u00b7 no visits recorded yet"); }
 }
 
 function render(d){
@@ -465,7 +499,7 @@ function render(d){
   var nC=(d.countries||[]).filter(function(r){ return (r.count||0)>0; }).length;
   setT("#lxanGeoSub",nC+" "+(nC===1?"country":"countries")+" \\u00b7 tap one to see its cities");
   list(q("#lxanPages"),d.topPages,pv,pageName,{link:true});
-  var src=sources(d); list(q("#lxanRefs"),src,src.reduce(function(a,r){ return a+r.count; },0),refName);
+  var src=sources(d), rb=q("#lxanRefs"); if(rb) rb.__ctx=""; list(rb,src,src.reduce(function(a,r){ return a+r.count; },0),refName,{src:true});
   list(q("#lxanBrw"),d.browsers,pv);
   list(q("#lxanOs"),d.systems,pv);
   setT("#lxanSub","Cloudflare Web Analytics \\u00b7 people only \\u00b7 "+RLABEL[d.range||RANGE]);
@@ -520,7 +554,7 @@ function renderPage(body,d){
   bounceInto(q("[data-f=bv]",body),q("[data-f=bd]",body),q("[data-f=bn]",body),d.own,true);
   areaChart(q("[data-f=chart]",body),d,240);
   countries(q("[data-f=geo]",body),d);
-  var src=sources(d); list(q("[data-f=refs]",body),src,src.reduce(function(a,r){ return a+r.count; },0),refName);
+  var src=sources(d), rb=q("[data-f=refs]",body); if(rb) rb.__ctx=d.path||""; list(rb,src,src.reduce(function(a,r){ return a+r.count; },0),refName,{src:true});
   donut(q("[data-f=dev]",body),d.devices);
   channels(q("[data-f=chan]",body),d);
   list(q("[data-f=brw]",body),d.browsers,pv);
@@ -547,6 +581,22 @@ function boot(){
   var seg=q("#lxanRange");
   if(seg&&!seg.__lx){ seg.__lx=1; seg.addEventListener("click",function(e){ var b=e.target&&e.target.closest&&e.target.closest("button[data-r]"); if(!b) return;
     RANGE=b.getAttribute("data-r"); try{ localStorage.setItem("lx.admin.anRange",RANGE); }catch(_){} load(); }); }
+  // ONE ROUTER, AT WINDOW CAPTURE (RAZA 2026-09-22: tapping some Top pages rows opened lumoscore-admin.pages.dev/bridge -> 404).
+  // The site design carries a navigator that turns a clicked list row whose text looks like a route (/bridge, /dashboard)
+  // into a page load, and it runs before any listener on the page itself; only window capture comes earlier
+  // (lumoscore-lumosnav-row-hijack). Every click this page owns is handled here and then stopped, so it never sees them.
+  if(!window.__lxAnRouter){ window.__lxAnRouter=1;
+    function route(e){ var t=e.target; if(!t||!t.closest||!t.closest(".lxan-box,.lxan-drawer")) return false;
+      if(t.closest("a[href]")) return false;                                  // real links inside a row keep working
+      var box=t.closest(".lxan-box"), b=t.closest("button[data-p]"), r;
+      if(b&&box){ if(!b.disabled){ box.__pg=(box.__pg||0)+(+b.getAttribute("data-p")); if(box.__redraw) box.__redraw(); var rw=q(".lxan-rows",box); if(rw) rw.scrollTop=0; } return true; }
+      if((r=t.closest(".lxan-ctry"))&&box){ toggleCountry(box,r); return true; }
+      if((r=t.closest(".lxan-link[data-path]"))){ openPage(r.getAttribute("data-path")); return true; }
+      if((r=t.closest(".lxan-link[data-ref]"))&&box){ toggleSource(box,r); return true; }
+      return false; }
+    window.addEventListener("click",function(e){ if(route(e)){ e.preventDefault(); e.stopImmediatePropagation(); } },true);
+    window.addEventListener("keydown",function(e){ if((e.key==="Enter"||e.key===" ")&&route(e)){ e.preventDefault(); e.stopImmediatePropagation(); } },true);
+  }
   var pg=q("#lxanPages");
   if(pg&&!pg.__lk){ pg.__lk=1;
     pg.addEventListener("click",function(e){ var r=e.target&&e.target.closest&&e.target.closest(".lxan-link[data-path]"); if(r) openPage(r.getAttribute("data-path")); });
