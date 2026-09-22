@@ -752,7 +752,7 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
         // collected is remembered against this wallet and added to its next bridge
         var feeP = deferredFee ? deferredFee().catch(function(fe){
           rec.feeError=(fe&&fe.message)||"fee not collected"; lxFeeOwedAdd(pk,deferredFeeAmt); lxBrSavePending(rec); }) : Promise.resolve();
-        return feeP.then(function(){ return lxBrRegister(deferredFeeHash,res.hash); })
+        return feeP.then(function(){ return lxBrRegisterFee(deferredFeeHash,res.hash); })
           .then(function(){ return lxCctpAttest(res.hash,onStatus); }).then(function(att){
           rec.message=att.message; rec.attestation=att.attestation; rec.decodedMessage=att.decodedMessage;
           rec.status="attested";                       // redeemable: message + attestation are now stored
@@ -1631,7 +1631,11 @@ function lxBrListPending(){ try{ return JSON.parse(localStorage.getItem("lumos.c
 // Bounded to 8s and never rethrows: the USDC is already bridged and the fee already paid, so a
 // bookkeeping failure must not surface as a bridge failure. A miss is recoverable -- the confirm
 // page and the history panel both re-register anything they find unregistered.
-function lxBrRegister(feeHash,burnHash){
+// NAMED APART FROM lxBrRegister(route,hash) below (RAZA 2026-09-22: "its showing all these cross-chain swaps as simple
+// swaps"). Both were once called lxBrRegister; a later function declaration replaces an earlier one, so every CCTP
+// transfer was reported to the record as {route:<fee hash>, hash:<burn hash>}, refused, and never stored -- and the
+// dashboard, finding no record, painted the XLM -> USDC leg as a plain swap.
+function lxBrRegisterFee(feeHash,burnHash){
   try{
     if(!feeHash||!burnHash) return Promise.resolve(false);
     var done=false;
@@ -1751,7 +1755,10 @@ function lxBrSyncChain(){
               cctpBurns.push({h:o.transaction_hash,t:Date.parse(o.created_at)||0});
           } else if(o.type==="payment"&&o.to===LX_NI_DEP&&o.from===pk){
             var tx=o.transaction||{}; if(tx.memo_type==="id") todo[o.transaction_hash]="NEAR Intents";
-          } else if((o.type==="payment"||/^path_payment/.test(o.type))&&o.to===LX_FEEACCT&&o.from===pk){
+          // the collector from THIS page's config: LX_FEEACCT belongs to the dashboard script and does not exist here, so
+          // naming it threw a ReferenceError at the first payment, the .catch below swallowed it, and this backfill had
+          // never registered a single CCTP transfer (found 2026-09-22 with the XLM -> Base rows the dashboard called swaps)
+          } else if((o.type==="payment"||/^path_payment/.test(o.type))&&o.to===((window.__lxCCTP||{}).feeCollector||"GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD")&&o.from===pk){
             feePays.push({h:o.transaction_hash,t:Date.parse(o.created_at)||0});
           }
         });
@@ -1804,6 +1811,21 @@ function lxBrTableCols(){ try{
 window.lxBrSaveTx=lxBrSaveTx;
 // ---- appealing step-progress overlay for Confirm (theme-aware via CSS vars) ----
 var LX_PSTEPS=[{k:"approve",label:"Approve spending",re:/approv|allowance/i},{k:"fee",label:"Collect bridge fee",re:/fee|swap/i},{k:"burn",label:"Burn on Stellar",re:/burn|bridging/i},{k:"attest",label:"Circle CCTP attestation",re:/attest/i}];
+// LayerZero and NEAR Intents get their own ticked steps too (RAZA 2026-09-22: "create loading steps and after all are
+// loaded for LayerZero and Near Intents just like we have for CCTP"). Each regex matches the status line that route's
+// engine already sends (_lzusdt0.js / _nearintents.js), so nothing there changed. The swap step is dropped when the
+// reader sends the route's own token (USDT0 / USDC) -- there is no swap then. The last step ticks on success.
+var LX_PSTEPS_LZ=[{k:"swap",label:"Swap to USDT0",re:/\u2192USDT0|\\(swap\\)|submitting swap/i},{k:"quote",label:"Quote LayerZero fee",re:/quoting|building/i},
+  {k:"send",label:"Send on Stellar",re:/\\(transfer\\)|submitting transfer|\\(fee\\)|submitting fee/i},{k:"deliver",label:"Delivery to {dest}",re:/^\b$/}];
+var LX_PSTEPS_NI=[{k:"swap",label:"Swap to USDC",re:/\u2192USDC|\\(swap\\)|submitting swap/i},{k:"quote",label:"Get live quote",re:/live quote/i},
+  {k:"deposit",label:"Deposit on Stellar",re:/\\(deposit\\)|submitting deposit/i},{k:"deliver",label:"Delivery on {dest}",re:/deposit sent|delivering|pick it up/i}];
+function lxBrStepsFor(route){
+  var k=((window.__lxBr||{}).srcKey)||"", dest=""; try{ dest=lxBrDestNet(); }catch(_){ }
+  var list=route==="LayerZero"?LX_PSTEPS_LZ:(route==="NEAR Intents"?LX_PSTEPS_NI:LX_PSTEPS);
+  if(route==="LayerZero"&&k==="USDT0") list=list.filter(function(s){ return s.k!=="swap"; });
+  if(route==="NEAR Intents"&&k==="USDC") list=list.filter(function(s){ return s.k!=="swap"; });
+  return list.map(function(s){ return {k:s.k,re:s.re,label:s.label.replace("{dest}",dest||"destination")}; }); }
+function lxBrStepsHtml(steps){ return steps.map(function(s){return '<li data-pk="'+s.k+'"><span class="lx-pdot"><span class="lx-spin"></span><span class="lx-tick"></span></span><span class="lx-plab">'+lxBrEsc(s.label)+'</span></li>';}).join(""); }
 function lxBrProg(){ var el=document.getElementById("lx-prog"); if(!el){ el=document.createElement("div"); el.id="lx-prog"; el.className="lx-prog"; var items=LX_PSTEPS.map(function(s){return '<li data-pk="'+s.k+'"><span class="lx-pdot"><span class="lx-spin"></span><span class="lx-tick"></span></span><span class="lx-plab">'+s.label+'</span></li>';}).join(""); el.innerHTML='<div class="lx-prog-card"><div class="lx-prog-h">Bridging via Circle CCTP</div><div class="lx-prog-sub">Approve the wallet prompts — everything else runs automatically.</div><ul class="lx-prog-list">'+items+'</ul><div class="lx-prog-msg"></div><button class="lx-prog-x" type="button" hidden>Done</button></div>'; (document.querySelector(".br-card")||document.body).appendChild(el); el.querySelector(".lx-prog-x").addEventListener("click",function(){ el.style.display="none"; if(el.__ok){ lxBrResetWizard(); if(!el.__minted) lxBrGoPending(); } }); } return el; }
 // A burn that was not minted leaves the reader with one thing they MUST still do, and closing the overlay
 // used to drop them back on step 1 of an empty wizard with that transfer filed behind an unselected tab.
@@ -1835,10 +1857,10 @@ function lxBrResetWizard(){ try{
 }catch(_){} }
 // route: "LayerZero" swaps the header and hides the CCTP step list (approve / burn / attestation are not its steps;
 // its own progress arrives as the status line instead). Anything else is the CCTP flow exactly as before.
-function lxBrProgShow(route){ var el=lxBrProg(); el.style.display="flex"; el.__idx=-1; el.__ok=false; el.__route=route||"CCTP"; var x=el.querySelector(".lx-prog-x"); x.hidden=true; x.textContent="Done"; var h=el.querySelector(".lx-prog-h"); h.textContent=(route&&route!=="CCTP")?("Bridging via "+route):"Bridging via Circle CCTP"; var pl=el.querySelector(".lx-prog-list"); if(pl) pl.style.display=(route&&route!=="CCTP")?"none":""; var m=el.querySelector(".lx-prog-msg"); m.textContent="Preparing…"; m.style.color=""; [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className=""; }); var g=el.querySelector(".lx-prog-gate"); if(g) g.style.display="none";
+function lxBrProgShow(route){ var el=lxBrProg(); el.style.display="flex"; el.__idx=-1; el.__ok=false; el.__route=route||"CCTP"; var x=el.querySelector(".lx-prog-x"); x.hidden=true; x.textContent="Done"; var h=el.querySelector(".lx-prog-h"); h.textContent=(route&&route!=="CCTP")?("Bridging via "+route):"Bridging via Circle CCTP"; var pl=el.querySelector(".lx-prog-list"); el.__steps=lxBrStepsFor(route||"CCTP"); if(pl){ pl.innerHTML=lxBrStepsHtml(el.__steps); pl.style.display=""; } var m=el.querySelector(".lx-prog-msg"); m.textContent="Preparing…"; m.style.color=""; [].slice.call(el.querySelectorAll(".lx-prog-list li")).forEach(function(li){ li.className=""; }); var g=el.querySelector(".lx-prog-gate"); if(g) g.style.display="none";
   // pre-load the web-wallet SDK so its sign popup can open synchronously from the gate click
   if(lxCctpIsWebWallet()){ try{ lxCctpMod("https://esm.sh/@albedo-link/intent@0.12.0"); }catch(_){} } }
-function lxBrProgUpdate(msg){ var el=lxBrProg(); el.querySelector(".lx-prog-msg").textContent=msg; var idx=-1,i; for(i=0;i<LX_PSTEPS.length;i++){ if(LX_PSTEPS[i].re.test(msg)) idx=i; } if(idx<0||idx<(el.__idx||0))return; el.__idx=idx; var lis=el.querySelectorAll(".lx-prog-list li"); for(i=0;i<lis.length;i++){ lis[i].className = i<idx?"done":(i===idx?"active":""); } }
+function lxBrProgUpdate(msg){ var el=lxBrProg(); el.querySelector(".lx-prog-msg").textContent=msg; var idx=-1,i; var PS=el.__steps||LX_PSTEPS; for(i=0;i<PS.length;i++){ if(PS[i].re.test(msg)) idx=i; } if(idx<0||idx<(el.__idx||0))return; el.__idx=idx; var lis=el.querySelectorAll(".lx-prog-list li"); for(i=0;i<lis.length;i++){ lis[i].className = i<idx?"done":(i===idx?"active":""); } }
 // AUDIT #1 (FUNDS): this used to claim "Bridge complete ✓ — your USDC is on its way" as soon as Circle
 // attested. But CCTP only delivers once someone submits receiveMessage() on the DESTINATION chain, which this
 // app does not do — so the transfer is NOT complete here. Report exactly what happened and keep the redeem
@@ -1974,8 +1996,11 @@ function lxBrDestFunded(domain,addr){
       var id=LX_NATIVE[domain], u=px&&px[id]&&px[id].usd; if(!u) return {ok:true};
       if(bal*u>=LX_MINUSD) return {ok:true};
       var sym=LX_NATSYM[domain]||"gas", nm=lxBrDomName(domain);
-      return {ok:false,msg:"That "+nm+" address holds "+(bal>0?(bal.toFixed(6)+" "+sym):("no "+sym))
-        +". LumosCore only sends to a destination already funded with at least $0.50 \\u2014 an unused address is usually a wrong one, and a cross-chain transfer cannot be undone. Check the address, fund it on "+nm+", then try again."};
+      // A WARNING, NOT A BLOCK (RAZA 2026-09-22: "remove this limitation ... However, its important to show a message at
+      // this step that the wallet is empty ... Just dont disallow the swap entirely"). ok stays true; warn is shown on the
+      // Review step (lxBrWarnWatch) and the reader decides.
+      return {ok:true,warn:"This "+nm+" address holds "+(bal>0?(bal.toFixed(4)+" "+sym):("no "+sym))+". Double-check it \u2014 transfers can\u2019t be undone."
+        +((window.__lxBrRoute||"CCTP")==="CCTP"?" You\u2019ll need "+sym+" there to claim.":"")};
     });
   }).catch(function(){ return {ok:true}; }); }
 window.lxBrDestFunded=lxBrDestFunded;
@@ -1996,6 +2021,44 @@ window.lxBrDestExchange=lxBrDestExchange;
 function lxBrDestCheck(domain,addr){
   return lxBrDestExchange(domain,addr).then(function(x){ return x.ok?lxBrDestFunded(domain,addr):x; }); }
 window.lxBrDestCheck=lxBrDestCheck;
+// The empty-wallet warning, on the Review step as soon as it is on screen -- not only after Confirm is pressed, when it
+// would flash past on the way to the wallet. Re-asked whenever the network or the address changes.
+var _lxWarnKey="";
+function lxBrWarnWatch(){ try{
+  var s3=document.querySelector('.br-step[data-step="3"]'); if(!s3||!s3.offsetParent) { _lxWarnKey=""; return; }
+  var C=window.__lxCCTP, net=lxBrDestNet(), domain=(C&&C.domains)?C.domains[net]:null;
+  var s2=document.querySelector('.br-step[data-step="2"]'), inp=s2?s2.querySelector('.br-addr-in'):null;
+  var addr=inp?(inp.value||"").trim():"";
+  var key=domain+"|"+addr+"|"+(window.__lxBrRoute||"");
+  if(key===_lxWarnKey) return; _lxWarnKey=key;
+  var slot=s3.querySelector('.lx-br-warn');
+  if(!slot){ var err=s3.querySelector('.br-errslot'); if(!err||!err.parentNode) return;
+    slot=document.createElement('div'); slot.className='lx-br-warn';
+    slot.style.cssText='color:#e3a008;font-size:inherit;line-height:1.45;text-align:center;margin:18px 0 10px';
+    err.parentNode.insertBefore(slot,err); }
+  slot.textContent=""; slot.style.display="none";
+  if(domain==null||!addr) return;
+  lxBrDestFunded(domain,addr).then(function(chk){
+    if(key!==_lxWarnKey) return;                       // the reader changed something meanwhile
+    if(chk&&chk.warn){ slot.textContent=chk.warn; slot.style.display=""; }
+  });
+}catch(_){} }
+setInterval(lxBrWarnWatch,700);
+// A NEW DESTINATION NETWORK STARTS CLEAN (RAZA 2026-09-22: an address pasted for Base "come pre fed on Polygon" after
+// switching -- "I want it to refresh all fields if the network is changed"). An address is only ever valid for the network
+// it was pasted for, and sending to it on another chain is exactly the mistake that cannot be undone. Watched rather than
+// hooked, because the network can be changed from more than one control (step 1 and the mobile "To" picker).
+var _lxNetWas=null;
+setInterval(function(){ try{
+  var n=lxBrDestNet(); if(_lxNetWas===null){ _lxNetWas=n; return; }
+  if(n===_lxNetWas) return; var was=_lxNetWas; _lxNetWas=n; if(!was) return;   // first pick: nothing to clear
+  var s2=document.querySelector('.br-step[data-step="2"]');
+  var din=s2&&s2.querySelector('.br-addr-in'); if(din&&din.value){ din.value=''; try{ din.dispatchEvent(new Event('input',{bubbles:true})); }catch(_){ } }
+  var ain=s2&&s2.querySelector('.br-amt .lx-amtin'); if(ain&&ain.value){ ain.value=''; try{ ain.dispatchEvent(new Event('input',{bubbles:true})); }catch(_){ } }
+  if(window.__lxBr) window.__lxBr.amount='';
+  try{ lxBrStep2Err(''); lxBrValidateStep2(); }catch(_){ }
+  _lxWarnKey="";
+}catch(_){} },400);
 
 function lxBrConfirm(btn){
   var B=window.__lxBr, k=B.srcKey, A=LX_ASSETS[k]||LX_ASSETS.USDC, C=window.__lxCCTP, net=lxBrDestNet();
@@ -2024,8 +2087,8 @@ function lxBrConfirm(btn){
   say("Checking the destination address\\u2026",true);   // progress, not an error: green (RAZA 2026-09-19)
   lxBrDestCheck(domain,recipient).then(function(chk){
     if(btn) btn.disabled=false;
-    if(!chk.ok){ say(chk.msg); return; }
-    say(""); go();
+    if(!chk.ok){ say(chk.msg); return; }       // an exchange or service address: still refused
+    say(""); go();                              // an empty wallet only warns (lxBrWarnWatch), never stops the transfer
   });
   function go(){
   lxBrProgShow();
@@ -2254,19 +2317,27 @@ function lxBrPendVisible(list){ return list.filter(function(r){
   if(!(r&&r.attestation&&r.message)) return true;
   return _lxPendFailsafe||!!_lxPendOk[r.burnHash]; }); }
 var _lxSweepT=null;
+// ONE SWEEP AT A TIME, ONE TOAST PER CLAIM (RAZA 2026-09-22: one claim, then "tonnes of 'Claimed on Base' msgs"). The
+// 4s watch kept firing while Chrome sat in the background; on return the queued ticks ran together, every sweep read the
+// row as still pending before any had cleared it, and each announced the same claim.
+var _lxSweepBusy=false, _lxToasted={};
 function lxBrSweepClaimed(quiet){ try{
+  if(_lxSweepBusy) return;
   var list=lxBrListPending().filter(function(x){ return x&&x.attestation&&x.message; }).slice(0,8); if(!list.length) return;
+  _lxSweepBusy=true;
   Promise.all(list.map(function(rec){ return lxBrClaimedOnChain(rec).then(function(c){ return {rec:rec,c:c}; }); })).then(function(res){
+    _lxSweepBusy=false;
     var cleared=0;
     res.forEach(function(x){ if(x.c!==true&&x.rec&&x.rec.burnHash) _lxPendOk[x.rec.burnHash]=1;   // asked, and not claimed
       if(x.c===true){ lxBrClearPending(x.rec.burnHash); cleared++;
+      if(_lxToasted[x.rec.burnHash]) return; _lxToasted[x.rec.burnHash]=1;
       // only for a claim that completes while the page is open: on load this sweep is reconciliation, not news
       if(!quiet) lxBrToast("Claimed on "+((LX_EVM[x.rec.destDomain]||{}).n||lxBrDomName(x.rec.destDomain))+" \\u2014 "+lxBrAmt(x.rec.netUsdc)+" USDC"); } });
     lxBrRenderPending();
     var inFlight=lxBrListPending().some(function(x){ return x&&x.claimTx; });
     clearTimeout(_lxSweepT); if(inFlight) _lxSweepT=setTimeout(lxBrSweepClaimed,10000);
-  });
-}catch(_){} }
+  },function(){ _lxSweepBusy=false; });
+}catch(_){ _lxSweepBusy=false; } }
 window.lxBrSweepClaimed=lxBrSweepClaimed;
 // At once, and QUIETLY: this first pass is reconciliation with the chain, not news. Nothing waits on it except the rows
 // it might clear -- and if the RPC never answers they are shown anyway, rather than hidden for good.
@@ -2495,6 +2566,12 @@ function lxMmOnChain(c,sess,cfg){
   var any=lxMmAny(sess).split(":"); if(any.length<3) return Promise.reject(new Error("MetaMask connected without an account."));
   var on=any[0]+":"+any[1], addr=any[2];
   function rq(m,p){ return c.request({topic:sess.topic,chainId:on,request:{method:m,params:p}}); }
+  // KNOWN NOT TO WIDEN: send the switch and the claim TOGETHER, at the tap (RAZA 2026-09-22: the confirmation "took ~5
+  // seconds. it gotta be instant"). Waiting for the switch's answer meant the claim left only after the reader had gone
+  // to MetaMask -- with Chrome in the background, where Android slows the page down. MetaMask takes requests in order,
+  // so the switch still lands first, and the claim's own chainId keeps it on the destination network.
+  var known=false; try{ known=localStorage.getItem("lumos.mmNoWiden")==="1"; }catch(_){ }
+  if(known){ rq("wallet_switchEthereumChain",[{chainId:cfg.id}]).catch(function(){}); return Promise.resolve({sess:sess,from:addr,chain:on}); }
   return rq("wallet_switchEthereumChain",[{chainId:cfg.id}]).catch(function(e){
     var em=String((e&&e.message)||"").toLowerCase();
     if(e&&(e.code===4902||em.indexOf("unrecogn")>=0||em.indexOf("not added")>=0||em.indexOf("unknown chain")>=0))
@@ -2522,11 +2599,28 @@ function lxMmPrep(c){
     p.uri=res.uri; p.ap=res.approval(); p.ap.catch(function(){ if(_lxMmPrep===p) _lxMmPrep=null; });
   }).catch(function(){ if(_lxMmPrep===p) _lxMmPrep=null; });
 }
+// the relay socket is closed by an idle or backgrounded tab; reopening it at the tap costs the claim a second or more
+function lxMmAwake(){ try{ var r=_lxMmC&&_lxMmC.core&&_lxMmC.core.relayer; if(r&&!r.connected&&r.restartTransport) r.restartTransport(); }catch(_){ } }
+try{ document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible"&&document.querySelector(".lx-brp-mm")) lxMmAwake(); }); }catch(_){ }
 function lxMmWarm(){ try{
-  if(_lxMmC){ lxMmPrep(_lxMmC); return; }
+  if(_lxMmC){ lxMmAwake(); lxMmPrep(_lxMmC); return; }
   if(!window.__lxWcClient) return;
   window.__lxWcClient().then(function(c){ _lxMmC=c; lxMmPrep(c); }).catch(function(){});
 }catch(_){} }
+// THE ROW LEAVES WHEN BASE SAYS SO, NOT WHEN METAMASK SAYS SO (RAZA 2026-09-22: claimed in MetaMask, and the page "kept
+// showing the claim until i refreshed"). MetaMask's answer comes back over WalletConnect to a Chrome tab that was in the
+// background the whole time, and it may never arrive. The chain is the authority (lxBrSweepClaimed reads Circle's
+// usedNonces): ask it every 4s for up to 5 minutes, and at once when the reader comes back to this tab. Cleared with the
+// "Claimed on <chain>" toast the moment the destination chain agrees.
+var _lxMmWatchT=0;
+function lxMmWatch(hash){ var n=0; clearInterval(_lxMmWatchT);
+  _lxMmWatchT=setInterval(function(){
+    var still=lxBrListPending().some(function(x){ return x&&x.burnHash===hash; });
+    if(!still||++n>75){ clearInterval(_lxMmWatchT); _lxMmWatchT=0; return; }
+    try{ lxBrSweepClaimed(); }catch(_){ }
+  },4000); }
+try{ document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="visible"&&_lxMmWatchT){ try{ lxBrSweepClaimed(); }catch(_){ } } }); }catch(_){ }
 // Returns true when it took the tap; false leaves the link to do the old hand-off into MetaMask's browser.
 function lxMmClaim(rec,row,page){
   var cfg=LX_EVM[rec.destDomain], c=_lxMmC;
@@ -2539,8 +2633,7 @@ function lxMmClaim(rec,row,page){
     if(!window.__lxWcClient) return false;
     if(_lxMmBusy&&Date.now()-_lxMmT<1500) return true;
     _lxMmBusy=true; _lxMmT=Date.now();
-    var m0=row.querySelector(".lx-brp-msg"); if(m0){ m0.className="lx-brp-msg"; m0.style.display=""; m0.textContent="Opening MetaMask\\u2026"; }
-    window.__lxWcClient().then(function(cc){ _lxMmC=cc; _lxMmBusy=false; _lxMmT=0; lxMmClaim(rec,row,page); })
+    var m0=row.querySelector(".lx-brp-msg");    window.__lxWcClient().then(function(cc){ _lxMmC=cc; _lxMmBusy=false; _lxMmT=0; lxMmClaim(rec,row,page); })
       .catch(function(){ _lxMmBusy=false; if(m0){ m0.className="lx-brp-msg err";
         m0.innerHTML="Could not reach WalletConnect. Your burn is untouched \\u2014 try again, or claim inside MetaMask\\u2019s browser:"
           +'<div class="lx-brp-hand"><a class="lx-brp-hb" href="'+lxMmLink(page)+'">Open in MetaMask browser</a></div>'; } });
@@ -2550,28 +2643,48 @@ function lxMmClaim(rec,row,page){
   if(_lxMmBusy&&Date.now()-_lxMmT<1500) return true;
   var msg=row.querySelector(".lx-brp-msg"), close=function(){};
   function say(t,err){ if(!msg)return; msg.textContent=t; msg.style.display=t?"":"none"; msg.className="lx-brp-msg"+(err?" err":""); }
+  // NO AUTOMATIC LINK OFF iOS (RAZA 2026-09-22: "just ignore this Choose activity popup. just remove it"). On Android
+  // every MetaMask link -- metamask://, intent://, both official https links -- gets the system's Chrome / MetaMask
+  // chooser, because MetaMask registers itself as a browser. The request does not need the link: it is already waiting
+  // for MetaMask over WalletConnect, so the pill at the bottom says where to confirm and nothing is opened on its own.
+  // The pairing link (the first connection only) still has to be opened, since that is how MetaMask learns of us.
+  var ios=/iPhone|iPad|iPod/i.test(navigator.userAgent||"")||(/Macintosh/i.test(navigator.userAgent||"")&&(navigator.maxTouchPoints||0)>1);
+  // ...but the tap MUST open MetaMask (RAZA, same day: "its not even opening metamask app"). So the link fires on every
+  // device again; only the bottom bar stays iOS-only. On Android the system may still ask Chrome / MetaMask -- no link
+  // a page can use avoids that (all four variants tested on his tablet showed it).
+  // THE TAP OPENS METAMASK, ON EVERY DEVICE (RAZA 2026-09-22: "I WANT YOU TO OPEN METAMASK APP upon tap"). Not opening it
+  // (claim sent silently, reader switches by hand) was tried and rejected, and so was a "Sent" label on the tile. On
+  // Android the system may still show its Chrome / MetaMask chooser -- no link a page can use avoids it. The claim itself
+  // is sent at the tap, before Chrome is backgrounded, so it is already waiting when MetaMask comes up.
   function go(l){ _lxMmLinkNow=l; try{ location.href=l; }catch(_){ }
-    // and a button, for when that navigation was not allowed (the same one LOBSTR gets): tapping it IS an activation
-    try{ close(); close=window.__lxSep7Prompt?window.__lxSep7Prompt(l,"Confirm the claim in MetaMask","Open MetaMask"):function(){}; }catch(_){ } }
+    // NO BOTTOM BAR ON ANY DEVICE (RAZA 2026-09-22, iPhone: "it shows 2 open MetaMask sections ... Remove the bottom one").
+    // The browser asks on its own -- Safari "Open in MetaMask?", Android the Chrome / MetaMask chooser -- so a second
+    // "Open MetaMask" button only repeated it. Same call as the LOBSTR prompt (_wallet_realconnect.js).
+    try{ close(); close=function(){}; }catch(_){ } }
   // back without confirming: the request is still waiting in MetaMask -- just bring it forward again
   if(_lxMmBusy){ go(_lxMmLinkNow||lxMmApp("")); return true; }
   var s=lxMmSess(c), sessP;
-  if(s){ sessP=Promise.resolve(s); go(lxMmApp("")); }
+  // CLAIM FIRST, THEN METAMASK (RAZA 2026-09-22: the confirmation still took "4-5 seconds ... less than 2 seconds is much
+  // better"). Opening MetaMask at once sent Chrome to the background BEFORE the requests below had gone out, and Android
+  // slows a background tab's connection -- so MetaMask came up and then waited for them. Off iOS the app is opened a
+  // moment later, once they are on their way; Chrome keeps a tap usable for navigation well beyond that. iOS unchanged.
+  var goLater="";
+  if(s){ sessP=Promise.resolve(s); if(ios) go(lxMmApp("")); else goLater=lxMmApp(""); }
   else if(_lxMmPrep&&_lxMmPrep.uri&&_lxMmPrep.ap&&Date.now()-_lxMmPrep.at<280000){
     var p=_lxMmPrep; _lxMmPrep=null; sessP=p.ap; go(lxMmApp(p.uri)); }
   else sessP=Promise.resolve(c.connect({optionalNamespaces:lxMmNs()})).then(function(res){ go(lxMmApp(res.uri)); return res.approval(); });
-  _lxMmBusy=true; _lxMmT=Date.now();
-  say(s?"Confirm the claim in MetaMask\\u2026":"Approve the connection in MetaMask \\u2014 the claim confirmation follows\\u2026",false);
+  _lxMmBusy=true; _lxMmT=Date.now(); lxMmWatch(rec.burnHash);
+  if(goLater){ var gl=goLater; setTimeout(function(){ go(gl); },350); }   // on a timer from the tap: a first-time Base switch needs MetaMask open to be approved
+  say("",false);   // no progress text on the row (RAZA 2026-09-22: "that message needs to go away entirely"); errors only
   sessP.then(function(sess){
     try{ localStorage.setItem(LX_MM_TOPIC,sess.topic); }catch(_){ }
     // Just connected and already back on this page? Then MetaMask has to come forward again for what follows.
     // Still in MetaMask? The requests land there on their own, right after the connection.
     if(!s&&document.visibilityState==="visible") go(lxMmApp(""));
-    if(!lxMmAcct(sess,cfg)) say("Switch MetaMask to "+cfg.n+", then confirm the claim\\u2026",false);
     return lxMmOnChain(c,sess,cfg).then(function(o){
-      say("Confirm the claim in MetaMask\\u2026",false);
-      return c.request({topic:o.sess.topic,chainId:o.chain,
+      var rq=c.request({topic:o.sess.topic,chainId:o.chain,
         request:{method:"eth_sendTransaction",params:[{from:o.from,to:LX_MT,data:lxAbiReceive(rec.message,rec.attestation),chainId:cfg.id}]}});
+      return rq;
     });
   }).then(function(hash){
     close(); _lxMmBusy=false;

@@ -316,7 +316,7 @@ function lxSep7Sign(xdr,passphrase){
     var link='web+stellar:tx?xdr='+encodeURIComponent(xdr)+'&msg='+encodeURIComponent('LumosCore');
     try{ window.location.href=link; }catch(_){}
     // and the button, for when that navigation was not allowed -- removed as soon as the wait ends, either way
-    var closePrompt=lxSep7Prompt(link);
+    var closePrompt=function(){};   // the browser asks on its own; a second prompt beside it only repeated it (2026-09-22)
     // Poll for the hash. Signing does not change it, so this is the same transaction LOBSTR submits. The window is
     // the transaction's OWN validity (callers build these to live 5 minutes), not a shorter guess of our own: giving
     // up while the transaction is still valid would strand a signature the reader is in the middle of approving.
@@ -369,8 +369,19 @@ window.__lxWcSign=function(xdr,passphrase){
     // The poke is a navigation too, so it is dropped for exactly the same reason as the sep7 link: by the second
     // signature of a flow the tap that started it is spent. Offer the same button beside it (RAZA 2026-09-20: the
     // bridge fee step "didnt automatically open lobstr", and approving by hand later was too late).
-    if(isHandheld()&&wn.indexOf('lobstr')>=0){ wcPoke(WC_LOBSTR,''); closePoke=lxSep7Prompt(WC_LOBSTR); }
-    var req=cs.client.request({topic:cs.session.topic,chainId:chain,request:{method:'stellar_signXDR',params:{xdr:xdr}}});
+    // ONE PROMPT, NOT TWO (RAZA 2026-09-22: "it shows approve trx in lobstr in 2 places, at top and bottom"). A navigation
+    // that has lost its tap is no longer dropped silently: Chrome asks "Continue to LOBSTR?" and iOS Safari asks "Open in
+    // LOBSTR?" on their own, so the button this used to add beside them only repeated the browser's question.
+    // LOBSTR FIRST, THE REQUEST ONCE IT IS UP -- the opposite of MetaMask (RAZA 2026-09-22, tablet). Measured on his
+    // device: a request that reaches LOBSTR while the app is open shows at once; one already waiting when the app opens
+    // shows 10+ seconds later (sending the request first made ALL three bridges slow, CCTP included). So off iOS LOBSTR is
+    // opened first and the request follows 1.5s later, when LOBSTR is back on its connection and takes it live. iOS keeps
+    // the original timing, which was never slow there.
+    var ios=/iPhone|iPad|iPod/i.test(navigator.userAgent||'')||(/Macintosh/i.test(navigator.userAgent||'')&&(navigator.maxTouchPoints||0)>1);
+    var lob=isHandheld()&&wn.indexOf('lobstr')>=0;
+    if(lob) wcPoke(WC_LOBSTR,'');
+    var send=function(){ return cs.client.request({topic:cs.session.topic,chainId:chain,request:{method:'stellar_signXDR',params:{xdr:xdr}}}); };
+    var req=(lob&&!ios)?new Promise(function(res){ setTimeout(res,1500); }).then(send):send();
     return req.then(function(v){ closePoke(); return v; },function(e){ closePoke(); throw e; });
   }).then(function(r){
     var s=(r&&(r.signedXDR||r.signedTxXdr||r.xdr))||(typeof r==='string'?r:null);
