@@ -2607,7 +2607,9 @@ function lxMmOnChain(c,sess,cfg){
 // can be dropped by the browser. A proposal lives 5 minutes; this one is replaced after 4.
 function lxMmPrep(c){
   if(lxMmSess(c)) return;
-  if(_lxMmPrep&&Date.now()-_lxMmPrep.at<240000) return;
+  // ONCE PER PAGE VISIT, not every 4 minutes: each pairing is stored in the same WalletConnect storage LOBSTR's session
+  // lives in, and the page repaints often. A tap after the prepared one has gone stale pairs on the spot instead.
+  if(_lxMmPrep||window.__lxMmPrepped) return; window.__lxMmPrepped=1;
   var p={at:Date.now(),uri:null,ap:null}; _lxMmPrep=p;
   Promise.resolve(c.connect({optionalNamespaces:lxMmNs()})).then(function(res){
     if(!res||!res.uri){ if(_lxMmPrep===p) _lxMmPrep=null; return; }
@@ -2650,7 +2652,7 @@ function lxMmClaim(rec,row,page){
     _lxMmBusy=true; _lxMmT=Date.now();
     var m0=row.querySelector(".lx-brp-msg");    window.__lxWcClient().then(function(cc){ _lxMmC=cc; _lxMmBusy=false; _lxMmT=0; lxMmClaim(rec,row,page); })
       .catch(function(){ _lxMmBusy=false; if(m0){ m0.className="lx-brp-msg err";
-        m0.innerHTML="Could not reach WalletConnect. Your burn is untouched \\u2014 try again, or claim inside MetaMask\\u2019s browser:"
+        m0.innerHTML="Couldn\\u2019t connect to MetaMask directly. Your burn is untouched \\u2014 claim it inside MetaMask\\u2019s browser instead:"
           +'<div class="lx-brp-hand"><a class="lx-brp-hb" href="'+lxMmLink(page)+'">Open in MetaMask browser</a></div>'; } });
     return true;
   }

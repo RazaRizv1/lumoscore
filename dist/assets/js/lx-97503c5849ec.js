@@ -109,6 +109,7 @@
   }
   function place(el,sym){
     var src=srcFor(sym); if(!src) return;
+    if(el.getAttribute('data-logo')===sym&&!el.textContent&&(el.style.backgroundImage||'').indexOf(src)>=0) return;
     el.setAttribute('data-logo',sym);
     el.textContent='';
     el.style.background='transparent';
