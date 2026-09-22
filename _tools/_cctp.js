@@ -626,6 +626,21 @@ function lxSwapDelivered(S,sr,pk){
   }catch(_){ }
   return 0;
 }
+// SHARED WITH LAYERZERO AND NEAR INTENTS (RAZA 2026-09-22, production: LOBSTR said "You just sold 0.499 XLM for
+// 0.1066048 USDT0", and the LayerZero route stopped with "The swap did not deliver any USDT0"). Both routes judged the
+// swap by reading the balance straight after it -- and Horizon's account view can trail the ledger, so it read the old
+// balance and called a completed swap a failure. CCTP was fixed this way on 2026-09-21; the other two kept the race.
+// First what the swap's own result says was delivered to the sender; failing that, the balance, re-read for ~12s.
+function lxSwapGot(S,res,pk,readBal,before){
+  var got=lxSwapDelivered(S,res,pk);
+  if(got>0) return Promise.resolve(+got.toFixed(7));
+  var n=0;
+  return (function again(){ return readBal().then(function(now){ var d=+(now-before).toFixed(7);
+    if(d>0) return d;
+    if(++n>=8) throw new Error("The swap went through but its output has not shown in your balance yet \\u2014 check your wallet before trying again.");
+    return new Promise(function(r){ setTimeout(r,1500); }).then(again); }); })();
+}
+window.lxSwapDelivered=lxSwapDelivered; window.lxSwapGot=lxSwapGot;
 function lxStrictPath(C,srcSpec,amount,destSpec){
   var sp=srcSpec.native?"source_asset_type=native":("source_asset_type="+((srcSpec.code||"").length>4?"credit_alphanum12":"credit_alphanum4")+"&source_asset_code="+srcSpec.code+"&source_asset_issuer="+srcSpec.issuer);
   // The destination CODE was hardcoded to USDC here, which was harmless while CCTP was the only route but wrong the

@@ -361,8 +361,10 @@ function runtime(NI_SENDABLE) {
                 : S.Operation.pathPaymentStrictSend({ sendAsset: src, sendAmount: feeAmt.toFixed(7), destination: CC.feeCollector, destAsset: S.Asset.native(),
                     destMin: (pFee.out * 0.97).toFixed(7), path: window.lxToAssets(S, pFee.path) }));
               up('Swapping ' + k + '→USDC…');
-              return signSubmit(tb.addMemo(S.Memo.text('lx:ni')).setTimeout(300).build(), 'swap').then(function () {
+              return signSubmit(tb.addMemo(S.Memo.text('lx:ni')).setTimeout(300).build(), 'swap').then(function (res) {
                 swapped = true;
+                // from the swap's own result first: a balance read straight after it can be stale (2026-09-22, LayerZero)
+                if (window.lxSwapGot) return window.lxSwapGot(S, res, pk, function () { return acc().then(function (a) { return bal(a, 'USDC', CC.usdcIssuer); }); }, bal(before, 'USDC', CC.usdcIssuer));
                 return acc().then(function (after) { var got = +(bal(after, 'USDC', CC.usdcIssuer) - bal(before, 'USDC', CC.usdcIssuer)).toFixed(7);
                   if (!(got > 0)) throw new Error('The swap did not deliver any USDC.'); return got; });
               });
