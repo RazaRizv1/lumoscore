@@ -225,11 +225,28 @@ export async function onRequestGet({ request, env }) {
           sessions: (tot && +tot.sessions) || 0,
           views: (tot && +tot.views) || 0,
           rows: ((now && now.results) || []).map((r) => ({
-            id: String(r.sid || '').slice(0, 6), ts: r.ts, path: r.path,
+            id: String(r.sid || '').slice(0, 6), sid: r.sid, ts: r.ts, path: r.path,
             country: (r.country || '').toUpperCase(), region: r.region || '', city: r.city || '', device: r.device || '',
           })),
         } }, 200);
       } catch (e) { return json({ live: { sessions: 0, views: 0, rows: [], error: String((e && e.message) || e) } }, 200); }
+    }
+
+    // ?session=<sid> -> what that visitor has been doing: the pages of the visit and the links and buttons pressed,
+    // newest first. Both halves come from our own records; nothing here exists in Cloudflare's analytics.
+    const sess = String(u.searchParams.get('session') || '');
+    if (sess) {
+      const db = env && env.ADMIN_DB;
+      if (!/^[a-z0-9]{6,40}$/.test(sess) || !db) return json({ journey: { rows: [] } }, 200);
+      const H3 = 'lumoscore.com', from = Date.now() - 6 * 3600000;
+      try {
+        const r3 = await db.prepare(
+          "SELECT ts, path, 'page' AS kind, '' AS label, '' AS href FROM pageview WHERE sid = ?1 AND host = ?2 AND ts > ?3"
+          + " UNION ALL SELECT ts, path, kind, label, href FROM pvevent WHERE sid = ?1 AND host = ?2 AND ts > ?3"
+          + ' ORDER BY ts DESC LIMIT 100'
+        ).bind(sess, H3, from).all();
+        return json({ journey: { sid: sess.slice(0, 6), rows: ((r3 && r3.results) || []).map((r) => ({ ts: r.ts, path: r.path, kind: r.kind, label: r.label || '', href: r.href || '' })) } }, 200);
+      } catch (e) { return json({ journey: { rows: [], error: String((e && e.message) || e) } }, 200); }
     }
 
     // ?refhost=t.co -> WHICH link on that site brought the visits (RAZA 2026-09-22: "which exact tweet or page brought that

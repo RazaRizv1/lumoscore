@@ -165,3 +165,19 @@ CREATE TABLE IF NOT EXISTS pageview (
 );
 CREATE INDEX IF NOT EXISTS pageview_ts ON pageview (ts);
 CREATE INDEX IF NOT EXISTS pageview_sid_ts ON pageview (sid, ts);
+
+-- ---- live activity: clicks (functions/lxapi/pv.js, kind=click) -------------------------------------------------
+-- The live panel answers "what is this visitor doing right now" the way Plausible does: the pages of the visit, and
+-- the links and buttons pressed. Only the element's VISIBLE LABEL is kept (and the destination host for an outbound
+-- link) -- never typed text, amounts, addresses or form values. Same session id as pageview, same 180-day pruning.
+CREATE TABLE IF NOT EXISTS pvevent (
+  ts    INTEGER NOT NULL,
+  sid   TEXT NOT NULL,
+  path  TEXT NOT NULL,            -- the page it happened on
+  kind  TEXT NOT NULL,            -- 'click'
+  label TEXT,                     -- what the link or button says
+  href  TEXT,                     -- destination host, only for a link leaving the site
+  host  TEXT
+);
+CREATE INDEX IF NOT EXISTS pvevent_ts ON pvevent (ts);
+CREATE INDEX IF NOT EXISTS pvevent_sid_ts ON pvevent (sid, ts);
