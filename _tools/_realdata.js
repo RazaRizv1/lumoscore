@@ -731,6 +731,15 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // opened as a column of identical placeholder text. The row is drawn as a loading shimmer instead: the time, the wallet
 // and the row's shape are already known and stay put, and nothing is claimed about what happened until it is.
 +'var rows=use.map(function(o){return {ic:SWAP,cls:"",type:"",pending:1,who:o.from,when:ago(o.created_at),hash:o.transaction_hash};});'
+// ONE REPAINT PER BURST, NOT ONE PER ROW (RAZA 2026-09-22, Android tablet: "the dashboard kinda lags for ~5 seconds
+// until becoming smooth"). Every row that resolved rebuilt the WHOLE list and queued five more icon passes, so ~50 rows
+// arriving one by one meant ~50 rebuilds and ~250 passes -- measured at 8,000+ attribute writes in three seconds, each
+// one a style/layout recalculation, which a tablet feels as stutter. Rows resolving together now share one repaint
+// (at most every 120ms), and the delayed icon passes are re-armed rather than stacked.
++'var _frT=0,_frP=[];'
++'function _feedRender(){ if(_frT) return; _frT=setTimeout(function(){ _frT=0;'
++' list.innerHTML=rows.filter(function(r){ return !r.hide; }).map(feedRow).join("");paintFeedIcons();feedFillLogos();'
++' _frP.forEach(clearTimeout); _frP=[300,1200,3000,6000,10000].map(function(ms){ return setTimeout(paintFeedIcons,ms); }); },120); }'
 +'list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});'
 +'var C_USDC="GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";'
@@ -780,12 +789,11 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // The row is seeded with the transaction's source account; the operation knows who actually paid and
 // who was paid, so prefer those once it has been read.
 +'if(de.from)rows[i].who=de.from;rows[i].to=de.to||""; }'
-+'list.innerHTML=rows.filter(function(r){ return !r.hide; }).map(feedRow).join("");paintFeedIcons();feedFillLogos();'
-+'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);}); }'
++'_feedRender(); }'
 // the fetch itself failed: put() lives inside the then() above and cannot be reached from here, so the row is settled
 // directly -- a waiting row must never be left waiting.
 +'}).catch(function(){ try{ rows[i].ic=SWAP; rows[i].cls="swap"; rows[i].type="Platform activity"; rows[i].pending=0;'
-+'  list.innerHTML=rows.filter(function(r){ return !r.hide; }).map(feedRow).join(""); paintFeedIcons(); }catch(_){} })'
++'  _feedRender(); }catch(_){} })'
 +'.then(function(){ _eA--; _ePump(); });});});'
 +'_brLoad().then(function(){ _ePump(); });'
 +'}).catch(function(){});}'

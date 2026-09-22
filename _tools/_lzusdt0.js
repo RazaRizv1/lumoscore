@@ -811,7 +811,14 @@ const BODY = '(function(){'
   + '  claimNote:"Delivered to your address automatically \\u2014 the XLM messaging fee pays for delivery." }); }'
   + ' try{ var ni=window.lxNiSkeleton&&window.lxNiSkeleton(dest); if(ni) rows.push(ni); }catch(_){ }'   // same no-flash rule
   + ' return rows; }'
+  // NO REDRAW UNDER A FINGER (RAZA 2026-09-22, tablet: the route "doesn't select upon first click"). A quote that lands
+  // mid-tap rebuilt the cards, so the finger lifted off a node that was no longer in the page: its touch events and the
+  // bridged click went to the removed card and never reached the handlers. While a finger is on the panel -- and for a
+  // moment after, until the tap has been applied -- the newest redraw waits, then runs.
+  + 'var _lzHold=null, _lzHoldT=0;'
+  + 'function lzBusy(){ return Date.now()-(window.__lzTouchT||0)<700; }'
   + 'function lzDraw(dest,rows){'
+  + ' if(lzBusy()){ _lzHold=[dest,rows]; if(!_lzHoldT){ _lzHoldT=setTimeout(function again(){ if(lzBusy()){ _lzHoldT=setTimeout(again,250); return; } _lzHoldT=0; var h=_lzHold; _lzHold=null; if(h) lzDraw(h[0],h[1]); },250); } return; }'
   + ' var panel=document.querySelector("[data-lxroute]"); if(!panel) return; var host=panel.querySelector("[data-lxroute-opts]"); if(!host) return;'
   + ' if(!rows.length){ panel.hidden=true; _lzRows=[]; lzPaintStats(); return; }'
   + ' var pick=lzChoose(dest,rows); window.__lxBrRoute=pick?pick.route:null;'
@@ -864,11 +871,24 @@ const BODY = '(function(){'
   + '  [].slice.call(panel.querySelectorAll(".lx-brr")).forEach(function(x){ x.setAttribute("aria-pressed", x===hit?"true":"false"); });'
   + '  lzPaintStats(); }'
   + ' document.addEventListener("pointerdown",function(e){ var b=e.target&&e.target.closest&&e.target.closest(".lx-brr[data-route]");'
-  + '  pd=(b&&panel.contains(b))?{r:b.getAttribute("data-route"),x:e.clientX,y:e.clientY,t:Date.now()}:null; },true);'
-  + ' document.addEventListener("pointerup",function(e){ if(!pd) return; var p=pd; pd=null;'
+  + '  pd=(b&&panel.contains(b))?{r:b.getAttribute("data-route"),x:e.clientX,y:e.clientY,t:Date.now()}:null; if(pd) window.__lzTouchT=Date.now(); },true);'
+  + ' document.addEventListener("pointerup",function(e){ if(!pd) return; var p=pd; pd=null; window.__lzTouchT=Date.now();'
   + '  if(Math.abs(e.clientX-p.x)>12||Math.abs(e.clientY-p.y)>12||Date.now()-p.t>1200) return;'
   + '  sel(p.r); },true);'
   + ' document.addEventListener("pointercancel",function(){ pd=null; },true);'
+  // THE FINGER ITSELF, TOO (RAZA 2026-09-22, tablet: "It doesn't select upon first click and i have to click it multiple
+  // times"). A tap that lands while the page is still gliding from a scroll is taken by Chrome as "stop scrolling": the
+  // pointer events are cancelled and no click follows, so both paths above miss it. touchstart/touchend are still sent,
+  // so the card also selects on its own touchend -- tracked per finger, and a finger that travelled is still a scroll.
+  // sel() is idempotent and stamps lastSel, so the click that may follow is swallowed as before.
+  + ' var tt={};'
+  + ' panel.addEventListener("touchstart",function(e){ [].slice.call(e.changedTouches||[]).forEach(function(t){'
+  + '  var b=t.target&&t.target.closest&&t.target.closest(".lx-brr[data-route]");'
+  + '  tt[t.identifier]=b?{r:b.getAttribute("data-route"),x:t.clientX,y:t.clientY,t:Date.now()}:null; if(b) window.__lzTouchT=Date.now(); }); },{passive:true});'
+  + ' panel.addEventListener("touchend",function(e){ [].slice.call(e.changedTouches||[]).forEach(function(t){'
+  + '  var s=tt[t.identifier]; delete tt[t.identifier]; if(!s) return; window.__lzTouchT=Date.now();'
+  + '  if(Math.abs(t.clientX-s.x)>12||Math.abs(t.clientY-s.y)>12||Date.now()-s.t>1200) return;'
+  + '  if(window.__lxBrRoute!==s.r) sel(s.r); }); },{passive:true});'
   // the click that follows is the same tap: swallowed. A keyboard "click" (Enter/Space) has no pointer before it.
   + ' panel.addEventListener("click",function(e){'
   + '  var b=e.target&&e.target.closest&&e.target.closest(".lx-brr[data-route]"); if(!b)return;'

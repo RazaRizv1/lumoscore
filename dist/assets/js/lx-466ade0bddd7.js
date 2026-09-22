@@ -82,10 +82,17 @@ function wcTimeout(p,ms,msg){return new Promise(function(res,rej){var done=false
 var _wcClient=null;
 function wcClient(){
   if(!WC_PROJECT_ID)return Promise.reject(needsSetup('WalletConnect needs a free Project ID (cloud.reown.com) \u2014 add it to enable this option'));
-  if(!_wcClient)_wcClient=wcTimeout(loadMod('https://esm.sh/@walletconnect/sign-client@2').then(function(m){
+  // SELF-HOSTED, ONE FILE (RAZA 2026-09-22: two iPhones could not start WalletConnect -- "Could not reach WalletConnect",
+  // then the paste-your-address fallback on a tester's iPhone 12). It was loaded from esm.sh as "@2": whatever 2.x is
+  // newest, built per browser on esm.sh's side, and delivered as a chain of dozens of small modules fetched one level
+  // at a time -- measured at ~6s for the FIRST level alone with an iPhone user agent, so on a phone connection the
+  // start could outrun the limit. The same 2.25.0, bundled once (esbuild, es2020/safari14, _tools note in
+  // lumoscore-security-hardening memory), is served from our own origin as a single file. esm.sh stays as the backup.
+  if(!_wcClient)_wcClient=wcTimeout(loadMod('/assets/vendor/wc-sign-client-2.25.0.min.js').catch(function(){
+      return loadMod('https://esm.sh/@walletconnect/sign-client@2.25.0'); }).then(function(m){
     var SignClient=m.default||m.SignClient||m;
     return SignClient.init({projectId:WC_PROJECT_ID,metadata:{name:'LumosCore',description:'Multichain DeFi',url:location.origin,icons:[]}});
-  }),20000,'Could not reach WalletConnect \u2014 check your connection and try again').catch(function(e){_wcClient=null;throw e;});
+  }),20000,'Could not connect to LOBSTR \u2014 try again').catch(function(e){_wcClient=null;try{e.wcDown=true;}catch(_){}throw e;});
   return _wcClient;
 }
 // PREWARM. The LOBSTR deep link cannot fire until the WalletConnect SDK has been fetched from the CDN
@@ -137,7 +144,7 @@ function wcAddr(s){var a=s&&s.namespaces&&s.namespaces.stellar&&s.namespaces.ste
 // extra taps, and the modal is just the fallback if that poke goes nowhere.
 function wcConnect(deepLink){
   return wcClient().then(function(client){
-    return wcTimeout(client.connect({requiredNamespaces:{stellar:{methods:WC_METHODS,chains:[WC_CHAIN],events:[]}}}),20000,'WalletConnect did not respond \u2014 try again').then(function(res){
+    return wcTimeout(client.connect({requiredNamespaces:{stellar:{methods:WC_METHODS,chains:[WC_CHAIN],events:[]}}}),20000,'Could not connect to LOBSTR \u2014 try again').catch(function(e){try{e.wcDown=true;}catch(_){}throw e;}).then(function(res){
       // Deep-linked straight into the wallet app? Then the pairing modal is noise - the user is already
         // in LOBSTR approving. Only the generic WalletConnect row (no deepLink) needs the QR/list UI.
         // isHandheld, not isMobile: on RAZA's tablet the UA test was false, so picking LOBSTR skipped the deep
@@ -149,7 +156,9 @@ function wcConnect(deepLink){
           // The poke happens after the relay handshake, so the tap that started it is spent and the browser
           // may drop the navigation -- with the pairing modal deliberately skipped, that would leave nothing
           // on screen at all. Tapping this IS an activation, so it always works.
-          closeOpen=lxSep7Prompt(deepLink+(res.uri?('?uri='+encodeURIComponent(res.uri)):''),'Continue in LOBSTR to connect','Open LOBSTR'); }
+          // ...no second button any more (RAZA 2026-09-22, iPhone: "2 open Lobstr msgs, one at center and one at bottom. Remove
+          // the bottom one"): Safari's "Open this page in LOBSTR?" and Chrome's "Continue to LOBSTR?" already ask.
+          }
       return loadMod('https://esm.sh/@walletconnect/modal@2').then(function(mm){
         var Modal=mm.WalletConnectModal||mm.default;
           // WalletConnect Modal defaults to z-index 89. Our own connect modal sits at 100000, so the
@@ -168,7 +177,7 @@ function wcConnect(deepLink){
       },function(){return null;}).then(function(md){
         var close=function(){try{closeOpen();}catch(_){}if(md){try{md.closeModal();}catch(_){}}};
         return res.approval().then(function(session){close();
-          try{localStorage.setItem('lumos.wcTopic',session.topic);}catch(_){}
+          try{localStorage.setItem('lumos.wcTopic',session.topic);localStorage.removeItem('lumos.sep7conn');}catch(_){}
           return wcAddr(session);},function(err){close();throw err;});
       });
     });
@@ -184,7 +193,7 @@ function wcSession(){
     var topic='';try{topic=localStorage.getItem('lumos.wcTopic')||'';}catch(_){}
     var all=[];try{all=client.session.getAll()||[];}catch(_){}
     var s=null;for(var i=0;i<all.length;i++){if(all[i]&&all[i].topic===topic)s=all[i];}
-    if(!s)throw new Error('Your WalletConnect session has expired \u2014 connect your wallet again.');
+    if(!s){var ge=new Error('Your LOBSTR connection has expired \u2014 connect your wallet again.');ge.wcGone=true;throw ge;}
     return {client:client,session:s};
   });
 }
@@ -228,7 +237,7 @@ function lxSep7Connect(){
       scr.innerHTML='<div class="lxw-head"><div class="lxw-htitles"><h3 class="lxw-title">Connect LOBSTR</h3>'
         +'<p class="lxw-sub">Paste your Stellar address. You approve every transaction in the LOBSTR app.</p></div></div>'
         +'<div style="padding:4px 20px 20px">'
-        +'<input class="lxw-searchin lx-s7in" type="text" inputmode="verbatim" autocapitalize="characters" spellcheck="false" placeholder="G..." style="width:100%;box-sizing:border-box;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px">'
+        +'<input class="lxw-searchin lx-s7in" type="text" inputmode="verbatim" autocapitalize="characters" spellcheck="false" placeholder="G..." style="display:block;width:100%;box-sizing:border-box;height:auto;min-height:48px;padding:13px 14px;border-radius:12px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.05);color:inherit;outline:none;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;line-height:1.3">'
         +'<div class="lx-s7err" style="min-height:18px;margin:8px 2px 0;font-size:12.5px;color:#ff6b6b"></div>'
         +'<button type="button" class="lx-s7go" style="width:100%;margin-top:10px;padding:13px 16px;border:0;border-radius:12px;background:var(--accent,#ea6a2c);color:#fff;font-weight:700;font-size:14px;cursor:pointer">Continue</button>'
         +'<p style="margin:14px 2px 0;font-size:12px;line-height:1.5;color:var(--text-soft,#8a8fa3)">Open LOBSTR, tap your account and copy the address. This only tells LumosCore which account to display - it cannot move funds.</p>'
@@ -253,7 +262,9 @@ function lxSep7Connect(){
           return a;
         });
       }).then(function(addr){
-        try{ localStorage.setItem('lumos.transport','sep7'); }catch(_){}
+        // marked as a CHOSEN link connection, so it is never mistaken for a WalletConnect session that fell back for a
+        // moment; and any older WalletConnect session is not this connection
+        try{ localStorage.setItem('lumos.transport','sep7'); localStorage.setItem('lumos.sep7conn','1'); localStorage.removeItem('lumos.wcTopic'); }catch(_){}
         resolve(addr);
       }).catch(function(e){
         var m=(e&&e.message)||'';
@@ -341,9 +352,33 @@ window.__lxWcActive=function(){try{
 window.__lxWcSign=function(xdr,passphrase){
   // sep7 is a separate transport behind the same entry point, so the seven signing paths that call
   // __lxWcSign need no changes at all.
-  if(window.__lxSep7Active&&window.__lxSep7Active())return lxSep7Sign(xdr,passphrase);
+  // WALLETCONNECT FIRST WHENEVER THERE IS A SESSION (RAZA 2026-09-22, iPhone: LOBSTR answered the link route with "Invalid
+  // transaction signature request ... invalid or unsupported data" on a swap into a new asset, while the same phone's
+  // WalletConnect swaps had gone through). The link is only for a connection MADE through it (a pasted address,
+  // lumos.sep7conn) and, per signature, for a WalletConnect that will not start. Today's first fallback made the link
+  // permanent for the connection; a phone left that way goes back to WalletConnect here, on its own.
+  var mode='',addr='',hasWc=false;
+  try{ mode=localStorage.getItem('lumos.transport')||''; addr=localStorage.getItem('lumos.address')||'';
+    hasWc=!!localStorage.getItem('lumos.wcTopic')&&localStorage.getItem('lumos.sep7conn')!=='1'; }catch(_){}
+  if(mode==='sep7'&&!hasWc) return lxSep7Sign(xdr,passphrase);
+  if(mode==='sep7'&&hasWc){ try{ localStorage.setItem('lumos.transport','wc'); }catch(_){} }
   var chain=(String(passphrase||'').indexOf('Test Network')>=0)?'stellar:testnet':WC_CHAIN;
-  return wcSession().then(function(cs){
+  // WALLETCONNECT WILL NOT START, OR ITS SESSION IS GONE: this ONE signature goes through the LOBSTR link instead of
+  // failing ("Could not reach WalletConnect" mid-swap). Not saved: the next signature tries WalletConnect again -- after a
+  // 2-minute pause, so a relay that is down does not cost every signature a 10s wait. A decline in LOBSTR stays a decline.
+  var down=(window.__lxWcDownUntil||0)>Date.now();
+  var sessP=down?Promise.reject({wcDown:true}):wcSession();
+  return sessP.catch(function(e){
+    if(e&&(e.wcDown||e.wcGone)&&isHandheld()&&lxSep7Supported()){
+      if(e.wcDown&&!down) window.__lxWcDownUntil=Date.now()+120000;
+      return {sep7:true};
+    }
+    throw e;
+  }).then(function(cs){
+    if(cs&&cs.sep7) return lxSep7Sign(xdr,passphrase).then(function(x){ return {signedXDR:x}; });
+    // the session must be for the account connected here; an older session for another account is not this one
+    try{ var sa=(((cs.session.namespaces||{}).stellar||{}).accounts||[])[0]; sa=sa?String(sa).split(':').pop():'';
+      if(addr&&sa&&sa!==addr&&isHandheld()&&lxSep7Supported()) return lxSep7Sign(xdr,passphrase).then(function(x){ return {signedXDR:x}; }); }catch(_){}
     // Refuse rather than sign against a network this session never approved.
     var accs=(cs.session.namespaces&&cs.session.namespaces.stellar&&cs.session.namespaces.stellar.accounts)||[];
     var ok=false;for(var i=0;i<accs.length;i++){if(String(accs[i]).indexOf(chain+':')===0)ok=true;}
@@ -447,7 +482,11 @@ var A={
         // WalletConnect first: it opens the LOBSTR app and hands back the address, no typing. SEP-7
         // cannot do that - it has no way to return an address - so it is only the fallback for a
         // build with no project id.
-        if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};});
+        if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};},function(e){
+          // FALL BACK, DO NOT FAIL (RAZA 2026-09-22, iPhone: "Could not reach WalletConnect" on connect and mid-swap -- "i
+          // just dont wanna see this error"). WalletConnect is only a relay to the same app; when it will not start, the
+          // LOBSTR link (SEP-7) reaches the app with no relay at all. The cost is pasting the address once.
+          if(e&&e.wcDown)return lxLobstrApp(); throw e; });
         return lxLobstrApp();
       }
       // Desktop: real extension, else WalletConnect if a project id is configured.
