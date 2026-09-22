@@ -2902,5 +2902,24 @@ window.addEventListener("storage",ping);
 .lx-faq-q{font-size:16px;font-weight:700;color:var(--text);margin:0 0 7px}
 .lx-faq-a{font-size:14.5px;line-height:1.7;color:var(--text-muted);margin:0}
 @media(max-width:640px){.lx-faq{padding:28px 16px 34px}.lx-faq h2{font-size:21px}}
-</style><script id="lx-walletlogo" src="/assets/js/lx-8ce0a4150cc5.js" defer></script><style id="lx-mobfix">html,body{overscroll-behavior:none}</style><script id="lx-mobnav" src="/assets/js/lx-42131ce15f9b.js" defer></script><style id="lx-realconnect-css">.lxw-cwallet-ico,.lxw-acct-ico{position:relative;overflow:hidden}.lxw-cwallet-ico .lx-wimg,.lxw-acct-ico .lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}.lxw-step{transition:background .28s ease,border-color .28s ease,color .28s ease}.lxw-step.is-done{color:var(--text,#fff)!important;border-color:rgba(52,192,127,.55)!important;background:rgba(52,192,127,.13)!important}.lxw-step.is-done::after{content:"\2713";margin-left:auto;color:#35c07f;font-weight:800;font-size:13px;line-height:1}</style><script id="lx-realconnect" src="/assets/js/lx-466ade0bddd7.js" defer></script><script src="/assets/js/lx-350422ae2143.js" defer></script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style><style id="lx-tiptheme">#themeToggle[data-tooltip]::before{bottom:auto;top:calc(100% + 8px);transform:translateX(-50%) translateY(-2px)}#themeToggle[data-tooltip]::after{bottom:auto;top:calc(100% + 2px);transform:translateX(-50%) translateY(-2px);border-top:0;border-bottom:5px solid var(--text)}#themeToggle[data-tooltip]:hover::before,#themeToggle[data-tooltip]:hover::after,#themeToggle[data-tooltip]:focus-visible::before,#themeToggle[data-tooltip]:focus-visible::after{transform:translateX(-50%) translateY(0)}</style></body>
+</style><script id="lx-walletlogo" src="/assets/js/lx-8ce0a4150cc5.js" defer></script><style id="lx-mobfix">html,body{overscroll-behavior:none}</style><script id="lx-mobnav" src="/assets/js/lx-42131ce15f9b.js" defer></script><style id="lx-realconnect-css">.lxw-cwallet-ico,.lxw-acct-ico{position:relative;overflow:hidden}.lxw-cwallet-ico .lx-wimg,.lxw-acct-ico .lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}.lxw-step{transition:background .28s ease,border-color .28s ease,color .28s ease}.lxw-step.is-done{color:var(--text,#fff)!important;border-color:rgba(52,192,127,.55)!important;background:rgba(52,192,127,.13)!important}.lxw-step.is-done::after{content:"\2713";margin-left:auto;color:#35c07f;font-weight:800;font-size:13px;line-height:1}</style><script id="lx-realconnect" src="/assets/js/lx-466ade0bddd7.js" defer></script><script id="lx-pv">(function(){
+if(window.__lxPv)return; window.__lxPv=1;
+try{
+  var h=location.hostname.replace(/^www\./,"");
+  if(h!=="lumoscore.com")return;
+  if(navigator.webdriver)return;
+  var sid="";
+  try{ sid=sessionStorage.getItem("lx.sid")||""; }catch(_){}
+  if(!/^[a-z0-9]{12,40}$/.test(sid)){
+    sid=(Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2)+Date.now().toString(36)).replace(/[^a-z0-9]/g,"").slice(0,32);
+    try{ sessionStorage.setItem("lx.sid",sid); }catch(_){}
+  }
+  var ref="";
+  try{ if(document.referrer){ var rh=new URL(document.referrer).hostname.replace(/^www\./,""); if(rh&&rh!==h) ref=rh; } }catch(_){}
+  var body=JSON.stringify({sid:sid,path:location.pathname,ref:ref});
+  var sent=false;
+  try{ if(navigator.sendBeacon) sent=navigator.sendBeacon("/lxapi/pv",new Blob([body],{type:"application/json"})); }catch(_){}
+  if(!sent){ try{ fetch("/lxapi/pv",{method:"POST",headers:{"content-type":"application/json"},body:body,keepalive:true}).catch(function(){}); }catch(_){} }
+}catch(_){}
+})();</script><script src="/assets/js/lx-350422ae2143.js" defer></script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style><style id="lx-tiptheme">#themeToggle[data-tooltip]::before{bottom:auto;top:calc(100% + 8px);transform:translateX(-50%) translateY(-2px)}#themeToggle[data-tooltip]::after{bottom:auto;top:calc(100% + 2px);transform:translateX(-50%) translateY(-2px);border-top:0;border-bottom:5px solid var(--text)}#themeToggle[data-tooltip]:hover::before,#themeToggle[data-tooltip]:hover::after,#themeToggle[data-tooltip]:focus-visible::before,#themeToggle[data-tooltip]:focus-visible::after{transform:translateX(-50%) translateY(0)}</style></body>
 </html>

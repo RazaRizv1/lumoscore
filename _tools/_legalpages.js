@@ -149,6 +149,13 @@ const PRIVACY = '<div class="lxlg">'
   + 'already public on the Stellar network. Nothing is recorded for a transaction you do not submit.</p>'
   + '<p>Our hosting provider, <strong>Cloudflare</strong>, keeps standard server logs and aggregate '
   + 'analytics for security and performance. We do not use them to build a profile of you.</p>'
+  // Added 2026-09-22 with functions/lxapi/pv.js (bounce rate and cities on the admin Analytics page). Worded to match
+  // exactly what that endpoint stores, field for field, and what it does not.
+  + '<p>We also count <strong>page views</strong> ourselves, to see how the site is used: for each page you open, '
+  + 'the page, the website you came from, your device type (desktop, mobile or tablet), and the approximate city '
+  + 'and country Cloudflare associates with your connection. A random identifier that your browser keeps only for '
+  + 'the current browsing session links the pages of one visit together. We do not store your IP address, your '
+  + 'browser details or your wallet address with it, and these records are deleted after 180 days.</p>'
 
   + '<h2>What your own browser stores</h2>'
   + '<p>The site keeps a small amount of information in your browser so it can work properly between '
