@@ -90,29 +90,48 @@ async function siteTag(token, explicit) {
 // ALL ROWS, NOT A TOP TEN (RAZA 2026-09-22: "Full and accurate stats are not shown ... i need to view all, from highest hits
 // to at least 1 hit"). The lists were capped at 10-50 groups; they now ask for up to 1,000 (the API allows 10,000) and
 // the page paginates. PER PAGE: with a path, every figure is filtered to that one page (requestPath is a filter field).
-function buildQuery(hourly, withPath) {
+// SPLIT IN TWO, AND SMALLER ON A RETRY (RAZA 2026-09-22: "Could not read analytics: unable to execute query, please try
+// again later", on 90D). That message is Cloudflare refusing a query that asks for too much at once -- the lists had grown
+// to 1,000 groups each and 90 days of rows behind them. The headline figures and the lists are now two smaller queries
+// sent together, and a refusal is retried once with shorter lists rather than shown to the reader.
+function headQuery(hourly, withPath) {
   const PF = withPath ? ', requestPath: $path' : '';
   const F = '{ siteTag: $site, datetime_geq: $start, datetime_leq: $end, bot: 0' + PF + ' }';
   const series = hourly
     ? `series: rumPageloadEventsAdaptiveGroups(limit: 200, orderBy: [datetimeHour_ASC], filter: ${F}) { dimensions { t: datetimeHour } count sum { visits } }`
     : `series: rumPageloadEventsAdaptiveGroups(limit: 200, orderBy: [date_ASC], filter: ${F}) { dimensions { t: date } count sum { visits } }`;
-  const pages = withPath ? '' : `pages: rumPageloadEventsAdaptiveGroups(limit: 1000, orderBy: [count_DESC], filter: ${F}) { dimensions { requestPath } count sum { visits } }`;
   return `query ($account: String!, $site: String!, $start: Time!, $end: Time!, $pstart: Time!${withPath ? ', $path: string' : ''}) {
-  viewer {
-    accounts(filter: { accountTag: $account }) {
+  viewer { accounts(filter: { accountTag: $account }) {
       totals: rumPageloadEventsAdaptiveGroups(limit: 1, filter: ${F}) { count sum { visits } }
       prev: rumPageloadEventsAdaptiveGroups(limit: 1, filter: { siteTag: $site, datetime_geq: $pstart, datetime_leq: $start, bot: 0${PF} }) { count sum { visits } }
       bots: rumPageloadEventsAdaptiveGroups(limit: 1, filter: { siteTag: $site, datetime_geq: $start, datetime_leq: $end, bot: 1${PF} }) { count }
       ${series}
-      ${pages}
-      referers: rumPageloadEventsAdaptiveGroups(limit: 1000, orderBy: [count_DESC], filter: ${F}) { dimensions { refererHost } count sum { visits } }
-      countries: rumPageloadEventsAdaptiveGroups(limit: 300, orderBy: [count_DESC], filter: ${F}) { dimensions { countryName } count sum { visits } }
-      devices: rumPageloadEventsAdaptiveGroups(limit: 10, orderBy: [count_DESC], filter: ${F}) { dimensions { deviceType } count }
-      browsers: rumPageloadEventsAdaptiveGroups(limit: 200, orderBy: [count_DESC], filter: ${F}) { dimensions { userAgentBrowser } count }
-      systems: rumPageloadEventsAdaptiveGroups(limit: 200, orderBy: [count_DESC], filter: ${F}) { dimensions { userAgentOS } count }
-    }
-  }
+  } }
 }`;
+}
+function listQuery(withPath, big) {
+  const PF = withPath ? ', requestPath: $path' : '';
+  const F = '{ siteTag: $site, datetime_geq: $start, datetime_leq: $end, bot: 0' + PF + ' }';
+  const L = big ? { p: 600, r: 600, c: 250, b: 100, s: 100 } : { p: 150, r: 150, c: 150, b: 40, s: 40 };
+  const pages = withPath ? '' : `pages: rumPageloadEventsAdaptiveGroups(limit: ${L.p}, orderBy: [count_DESC], filter: ${F}) { dimensions { requestPath } count sum { visits } }`;
+  return `query ($account: String!, $site: String!, $start: Time!, $end: Time!${withPath ? ', $path: string' : ''}) {
+  viewer { accounts(filter: { accountTag: $account }) {
+      ${pages}
+      referers: rumPageloadEventsAdaptiveGroups(limit: ${L.r}, orderBy: [count_DESC], filter: ${F}) { dimensions { refererHost } count sum { visits } }
+      countries: rumPageloadEventsAdaptiveGroups(limit: ${L.c}, orderBy: [count_DESC], filter: ${F}) { dimensions { countryName } count sum { visits } }
+      devices: rumPageloadEventsAdaptiveGroups(limit: 10, orderBy: [count_DESC], filter: ${F}) { dimensions { deviceType } count }
+      browsers: rumPageloadEventsAdaptiveGroups(limit: ${L.b}, orderBy: [count_DESC], filter: ${F}) { dimensions { userAgentBrowser } count }
+      systems: rumPageloadEventsAdaptiveGroups(limit: ${L.s}, orderBy: [count_DESC], filter: ${F}) { dimensions { userAgentOS } count }
+  } }
+}`;
+}
+// One GraphQL call. Returns { acc, errors } -- the caller decides whether an error is worth a retry.
+async function gql(token, query, variables) {
+  const r = await fetch(GQL, { method: 'POST', headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, body: JSON.stringify({ query, variables }) });
+  const d = await r.json();
+  const errors = (d && d.errors && d.errors.length) ? d.errors.map((e) => e && e.message).filter(Boolean) : null;
+  const acc = ((((d || {}).data || {}).viewer || {}).accounts || [])[0] || null;
+  return { acc, errors };
 }
 
 // Our own page views: sessions (so a bounce rate), and cities per country. Only rows served on lumoscore.com count.
@@ -134,7 +153,7 @@ async function ownStats(db, startMs, prevStartMs, path) {
         'SELECT COUNT(*) AS sessions, SUM(CASE WHEN n = 1 THEN 1 ELSE 0 END) AS bounces, SUM(n) AS views '
         + 'FROM (SELECT sid, COUNT(*) AS n FROM pageview WHERE ts >= ?1 AND ts < ?2 AND host = ?3 GROUP BY sid)'
       ).bind(w0, w1, H)).first();
-    const [cur, prev, cities, since] = await Promise.all([
+    const [cur, prev, cities, since, refs] = await Promise.all([
       sess(startMs, now + 60000),
       sess(prevStartMs, startMs),
       (path
@@ -143,6 +162,9 @@ async function ownStats(db, startMs, prevStartMs, path) {
         : db.prepare('SELECT country, city, region, COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview '
           + 'WHERE ts >= ?1 AND host = ?2 GROUP BY country, city, region ORDER BY views DESC LIMIT 3000').bind(startMs, H)).all(),
       db.prepare('SELECT MIN(ts) AS first FROM pageview WHERE host = ?1').bind(H).first(),
+      (path
+        ? db.prepare("SELECT ref, COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview WHERE ts >= ?1 AND host = ?2 AND path = ?3 AND ref <> '' GROUP BY ref ORDER BY views DESC LIMIT 500").bind(startMs, H, path)
+        : db.prepare("SELECT ref, COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview WHERE ts >= ?1 AND host = ?2 AND ref <> '' GROUP BY ref ORDER BY views DESC LIMIT 500").bind(startMs, H)).all(),
     ]);
     const byCountry = {};
     ((cities && cities.results) || []).forEach((r) => {
@@ -151,7 +173,8 @@ async function ownStats(db, startMs, prevStartMs, path) {
     });
     const pack = (x) => (x ? { sessions: +x.sessions || 0, bounces: +x.bounces || 0, views: +x.views || 0 } : null);
     // the counter went live on lumoscore.com at this moment (main 7c7c7074); before any row exists, that is the honest start
-    return { since: since && since.first ? since.first : Date.parse('2026-09-22T16:59:00Z'), cur: pack(cur), prev: pack(prev), cities: byCountry };
+    return { since: since && since.first ? since.first : Date.parse('2026-09-22T16:59:00Z'), cur: pack(cur), prev: pack(prev), cities: byCountry,
+      refs: ((refs && refs.results) || []).map((r) => ({ ref: r.ref, views: r.views, sessions: r.sessions })) };
   } catch (e) {
     return { error: String((e && e.message) || e) };
   }
@@ -180,6 +203,35 @@ export async function onRequestGet({ request, env }) {
   try {
     const found = await siteTag(token, u.searchParams.get("site") || "");
     const site = found.tag;
+    // ?live=1 -> WHO IS ON THE SITE RIGHT NOW (RAZA 2026-09-22: "its also important to know who's live on the platform and
+    // from where and on which page"). Only our own page views can answer this: Cloudflare's analytics is aggregated with a
+    // delay. One row per session seen in the last 5 minutes, with the page it is on, its city and country. The session id
+    // is shortened to six characters -- enough to tell two visitors apart on screen, useless for anything else.
+    if (u.searchParams.get('live')) {
+      const db = env && env.ADMIN_DB;
+      if (!db) return json({ live: { sessions: 0, views: 0, rows: [], reason: 'no db' } }, 200);
+      const since = Date.now() - 300000, H2 = 'lumoscore.com';
+      try {
+        const [now, tot] = await Promise.all([
+          db.prepare(
+            'SELECT p.sid AS sid, p.ts AS ts, p.path AS path, p.country AS country, p.region AS region, p.city AS city, p.device AS device '
+            + 'FROM pageview p JOIN (SELECT sid, MAX(ts) AS t FROM pageview WHERE ts > ?1 AND host = ?2 GROUP BY sid) m '
+            + 'ON m.sid = p.sid AND m.t = p.ts WHERE p.host = ?2 ORDER BY p.ts DESC LIMIT 100'
+          ).bind(since, H2).all(),
+          db.prepare('SELECT COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview WHERE ts > ?1 AND host = ?2').bind(since, H2).first(),
+        ]);
+        return json({ live: {
+          windowMinutes: 5,
+          sessions: (tot && +tot.sessions) || 0,
+          views: (tot && +tot.views) || 0,
+          rows: ((now && now.results) || []).map((r) => ({
+            id: String(r.sid || '').slice(0, 6), ts: r.ts, path: r.path,
+            country: (r.country || '').toUpperCase(), region: r.region || '', city: r.city || '', device: r.device || '',
+          })),
+        } }, 200);
+      } catch (e) { return json({ live: { sessions: 0, views: 0, rows: [], error: String((e && e.message) || e) } }, 200); }
+    }
+
     // ?refhost=t.co -> WHICH link on that site brought the visits (RAZA 2026-09-22: "which exact tweet or page brought that
     // visit"). refererPath is what the other site let the browser send: t.co gives the exact short link of the tweet's
     // link, forums and blogs give their page, while Google, Bing and chatgpt.com send their bare address only -- search
@@ -210,27 +262,17 @@ export async function onRequestGet({ request, env }) {
     let path = String(u.searchParams.get('path') || '');
     path = (path.charAt(0) === '/' && path.length <= 300) ? path : '';
     const ownP = ownStats(env && env.ADMIN_DB, start.getTime(), pstart.getTime(), path);
-    const r = await fetch(GQL, {
-      method: 'POST',
-      headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
-      body: JSON.stringify({
-        query: buildQuery(hourly, !!path),
-        variables: {
-          account: ACCOUNT, site,
-          start: start.toISOString(), end: end.toISOString(), pstart: pstart.toISOString(),
-          ...(path ? { path } : {}),
-        },
-      }),
-    });
-    const d = await r.json();
-    // GraphQL answers 200 with an errors array, so the status alone proves nothing. The message is
-    // passed through verbatim: a wrong field name here is diagnosable only if the API's own words survive.
-    if (d && d.errors && d.errors.length) {
-      return json({ error: 'graphql', messages: d.errors.map((e) => e && e.message).filter(Boolean), site, found }, 200);
-    }
-    const acc = (((d || {}).data || {}).viewer || {}).accounts;
-    if (!acc || !acc.length) return json({ error: 'no account data', site }, 200);
-    const a = acc[0];
+    const vars = { account: ACCOUNT, site, start: start.toISOString(), end: end.toISOString(), pstart: pstart.toISOString(), ...(path ? { path } : {}) };
+    const lvars = { account: ACCOUNT, site, start: vars.start, end: vars.end, ...(path ? { path } : {}) };
+    // the two halves together; if Cloudflare refuses the lists (they are the expensive half), ask again for shorter ones
+    let [head, lists] = await Promise.all([ gql(token, headQuery(hourly, !!path), vars), gql(token, listQuery(!!path, true), lvars) ]);
+    if (lists.errors) lists = await gql(token, listQuery(!!path, false), lvars);
+    // the headline figures are cheap; a refusal there is worth reporting verbatim rather than guessing
+    if (head.errors) return json({ error: 'graphql', messages: head.errors, site, found }, 200);
+    if (!head.acc) return json({ error: 'no account data', site }, 200);
+    // lists that still fail leave the page with its totals and chart rather than nothing at all
+    const a = Object.assign({}, head.acc, lists.acc || {});
+    const listErrors = lists.errors || null;
 
     const tot = (a.totals && a.totals[0]) || null;
     const prv = (a.prev && a.prev[0]) || null;
@@ -243,7 +285,7 @@ export async function onRequestGet({ request, env }) {
     const own = await ownP;
 
     return json({
-      site, siteFoundBy: found.how, siteCandidates: found.candidates || null,
+      site, siteFoundBy: found.how, siteCandidates: found.candidates || null, listErrors,
       range, days, hourly, path: path || null, start: start.toISOString(), end: end.toISOString(),
       pageViews: tot ? tot.count : 0,
       visits: tot && tot.sum ? tot.sum.visits : 0,
