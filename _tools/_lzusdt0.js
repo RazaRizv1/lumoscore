@@ -325,13 +325,21 @@ const BODY = '(function(){'
 
   // Every destination this site can reach, and by which transport. A chain on both is a CHOICE, not a tie to break
   // automatically: the two deliver different assets (CCTP -> USDC, LayerZero -> USDT0).
+  // NEAR Intents is counted here too. It was not, and step 1's Next is gated on the chosen network appearing in
+  // this table (see the chosen() gate in _cctp.js) -- so every destination only NEAR Intents reaches was pickable
+  // and then dead: the wizard refused to advance and said nothing. The list comes from the route itself
+  // (window.__lxNiChains) rather than a second copy here, so the two cannot drift.
   + 'function lxBrRoutes(){'
   + ' var cc=((window.__lxCCTP||{}).domains)||{}, lz=((window.__lxLZ||{}).eids)||{};'
+  + ' var niArr=window.__lxNiChains||[], ni={};'
+  + ' for(var i=0;i<niArr.length;i++) ni[niArr[i]]=1;'
   + ' var names={}, out=[];'
   + ' Object.keys(cc).forEach(function(k){ names[k]=1; }); Object.keys(lz).forEach(function(k){ names[k]=1; });'
+  + ' Object.keys(ni).forEach(function(k){ names[k]=1; });'
   + ' Object.keys(names).sort().forEach(function(k){'
-  + '  out.push({ name:k, cctp:(cc[k]!=null), lz:(lz[k]!=null), domain:cc[k], eid:lz[k],'
-  + '   asset:(cc[k]!=null&&lz[k]==null)?"USDC":((lz[k]!=null&&cc[k]==null)?"USDT0":"USDC or USDT0") });'
+  + '  var hasC=(cc[k]!=null), hasL=(lz[k]!=null);'
+  + '  var a=(hasC&&!hasL)?"USDC":((hasL&&!hasC)?"USDT0":(hasC&&hasL)?"USDC or USDT0":"major tokens");'
+  + '  out.push({ name:k, cctp:hasC, lz:hasL, ni:(ni[k]===1), domain:cc[k], eid:lz[k], asset:a });'
   + ' });'
   + ' return out; }'
 

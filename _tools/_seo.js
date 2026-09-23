@@ -30,7 +30,7 @@ const PAGES = {
   'landing': {
     title: 'LumosCore — Trade, Pool and Bridge on Stellar',
     desc: LZ_LIVE
-      ? 'Swap tokens, provide liquidity, bridge USDC and USDT0 across 36 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.'
+      ? 'Swap tokens, provide liquidity, bridge assets across 51 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.'
       : 'Swap tokens, provide liquidity, bridge USDC across 8 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.',
   },
   'home': {
@@ -60,8 +60,11 @@ const PAGES = {
   // could actually make -- see the note above that constant. The title must never count those: this is the page
   // that has to answer "which chains?" for an answer engine, and it once claimed two that could not be reached.
   //
-  // THIRTY-SIX: 17 + 21 - 7 = 31 across CCTP and LayerZero, plus the five only NEAR Intents reaches (BNB Chain,
-  // Gnosis, Scroll, Hood and ADI). The seven counted out are Ethereum, Arbitrum, Optimism, Polygon,
+  // FIFTY-ONE: 17 + 21 - 7 = 31 across CCTP and LayerZero, plus the twenty only NEAR Intents reaches (BNB
+  // Chain, Gnosis, Scroll, Hood, ADI, Bitcoin, Solana, Tron, TON, Near, Sui, Starknet, Cardano, Litecoin,
+  // Dogecoin, Bitcoin Cash, Zcash, Dash, Movement, Fogo). Every one of those twenty was proved with a live
+  // dry quote using a correct address for its chain -- XRP, Abstract, Aleo and HyperCore were tested the same way
+  // and are deliberately absent, as is Aptos (the re-skin engine renames it). The seven counted out are Ethereum, Arbitrum, Optimism, Polygon,
   // Unichain, Morph and X Layer, which both routes serve. Adding those last three raised the CCTP count without
   // moving the total, which is exactly the point: they are a second route on a row that already existed, not a
   // new destination. Neither half is copied from a vendor page. The LayerZero 21 is complete BY
@@ -70,8 +73,8 @@ const PAGES = {
   // MessageTransmitterV2 returned the same 2175 bytes as the Base control on each new chain. So the count cannot
   // quietly drift as either vendor adds deployments; only a re-scan can change it.
   'bridge': LZ_LIVE ? {
-    title: 'Bridge USDC and USDT0 to 36 Chains from Stellar | ' + BRAND,
-    desc: 'Move native USDC with Circle CCTP, USDT0 with LayerZero, or any major token with NEAR Intents, between Stellar and 36 chains. Nothing arrives wrapped.',
+    title: 'Bridge Assets to 51 Chains from Stellar | ' + BRAND,
+    desc: 'Move native USDC with Circle CCTP, USDT0 with LayerZero, or any major token with NEAR Intents, between Stellar and 51 chains. Nothing arrives wrapped.',
   } : {
     title: 'Bridge USDC to 8 Chains from Stellar — Circle CCTP | ' + BRAND,
     desc: 'Move native USDC between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain using Circle CCTP. Burn-and-mint, so no wrapped tokens.',

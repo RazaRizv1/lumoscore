@@ -26,13 +26,23 @@ const { LZ_LIVE } = require(__dirname + '/_lzflag.js');
 const B = String.fromCharCode(92);
 
 function runtime(NI_SENDABLE) {
-  // Our network names -> 1Click chain keys. The 9 of our 16 destinations 1Click serves.
-  // Our network names -> 1Click chain keys. Extended 2026-09-23 with the five 1Click serves that take a PLAIN 0x
-  // RECIPIENT, which is the only reason they could ship ahead of the rest: every other chain 1Click reaches
-  // (Bitcoin, Solana, XRP, Tron, TON, Cardano...) needs its own address validator first, and lxBrValidAddr only
-  // knows EVM, Solana and Sui today. Each of the five was confirmed with a live dry quote before listing.
+  // Our network names -> 1Click chain keys. Every entry here must also have a validator in LX_ADDR (or be EVM and
+  // in LX_EVM_NETS) in _cctp.js, and every one was proved with a LIVE dry quote using a correct address for that
+  // chain before being listed. Not listed, and why: XRP (1Click 500s on it in both directions), Abstract and Aleo
+  // (both refuse a correctly-formed recipient), HyperCore (would sit beside Hyperliquid as a near-identical row,
+  // and sending to the wrong layer strands the funds).
   var NI_CHAIN = { Ethereum: 'eth', Arbitrum: 'arb', Base: 'base', Polygon: 'pol', Optimism: 'op', Avalanche: 'avax', Berachain: 'bera', Monad: 'monad', Plasma: 'plasma',
-    'BNB Chain': 'bsc', Gnosis: 'gnosis', Scroll: 'scroll', Hood: 'hood', ADI: 'adi' };
+    'BNB Chain': 'bsc', Gnosis: 'gnosis', Scroll: 'scroll', Hood: 'hood', ADI: 'adi',
+    // The sixteen non-EVM chains, added 2026-09-23 once lxBrValidAddr learned their address families. Each one
+    // was proved with a LIVE dry quote using a correct address for that chain before it was listed here.
+    // APTOS IS DELIBERATELY ABSENT. The design's base chain is Aptos, and the multichain re-skin observer rewrites
+    // the text "Aptos" to the connected network's name wherever it appears (LUMOSCORE_DEV.md landmine 4). The row
+    // therefore renamed ITSELF to "Stellar" the moment it was selected -- measured 2026-09-23, with Cardano beside
+    // it behaving correctly. Escaping it would mean carving an exception out of the engine that renames Aptos
+    // across the entire site, which is load-bearing for the multichain design. One destination is not worth that.
+    Bitcoin: 'btc', Solana: 'sol', Tron: 'tron', TON: 'ton', Near: 'near', Sui: 'sui',
+    Starknet: 'starknet', Cardano: 'cardano', Litecoin: 'ltc', Dogecoin: 'doge', 'Bitcoin Cash': 'bch',
+    Zcash: 'zec', Dash: 'dash', Movement: 'movement', Fogo: 'fogo' };
   // The offer per chain: NATIVE FIRST, then majors. Fixed on purpose -- 1Click's own lists include micro-caps.
   var NI_DEST = {
     eth: ['ETH', 'USDC', 'USDT', 'WBTC', 'cbBTC', 'DAI', 'LINK', 'UNI', 'AAVE', 'WETH'],
@@ -57,17 +67,33 @@ function runtime(NI_SENDABLE) {
     gnosis: ['USDC', 'USDT', 'WETH', 'xDAI', 'GNO', 'SAFE', 'COW'],
     scroll: ['ETH', 'USDT'],
     hood: ['USDG', 'ETH', 'WETH'],
-    adi: ['ADI']
+    adi: ['ADI'],
+    // The sixteen non-EVM chains. The LEADING asset is the one that actually quotes, not the one the naming
+    // convention would pick: movement leads USDCx because MOVE returned no liquidity at $300 while USDCx priced
+    // fine, and ton leads GRAM for the same reason. Same trap as gnosis and hood above -- the first entry is the
+    // picker's default, so a thin native coin there makes the default the choice that fails first.
+    btc: ['BTC'], sol: ['SOL', 'USDC', 'USDT'], tron: ['TRX', 'USDT'], ton: ['GRAM', 'USDT'],
+    near: ['wNEAR', 'USDC'], sui: ['SUI', 'USDC'], starknet: ['STRK'],
+    cardano: ['ADA'], ltc: ['LTC'], doge: ['DOGE'], bch: ['BCH'], zec: ['ZEC'], dash: ['DASH'],
+    movement: ['USDCx', 'MOVE'], fogo: ['FOGO']
   };
   var NI_NAME = { ETH: 'Ether', WETH: 'Wrapped Ether', USDC: 'USD Coin', USDT: 'Tether USD', USDT0: 'Tether USD0', WBTC: 'Wrapped Bitcoin',
     cbBTC: 'Coinbase Wrapped BTC', DAI: 'Dai', LINK: 'Chainlink', UNI: 'Uniswap', AAVE: 'Aave', ARB: 'Arbitrum', GMX: 'GMX', OP: 'Optimism',
     POL: 'Polygon', AVAX: 'Avalanche', BERA: 'Berachain', MON: 'Monad', XPL: 'Plasma',
     BNB: 'BNB', NEAR: 'NEAR', ASTER: 'Aster', xDAI: 'xDAI', GNO: 'Gnosis', SAFE: 'Safe', COW: 'CoW Protocol',
-    USDG: 'Global Dollar', USDe: 'Ethena USDe', ADI: 'ADI' };
+    USDG: 'Global Dollar', USDe: 'Ethena USDe', ADI: 'ADI',
+    BTC: 'Bitcoin', SOL: 'Solana', TRX: 'TRON', GRAM: 'Gram', wNEAR: 'Wrapped NEAR', SUI: 'Sui', APT: 'Aptos',
+    STRK: 'Starknet', ADA: 'Cardano', LTC: 'Litecoin', DOGE: 'Dogecoin', BCH: 'Bitcoin Cash', ZEC: 'Zcash',
+    DASH: 'Dash', MOVE: 'Movement', USDCx: 'USD Coin', FOGO: 'Fogo' };
   var STABLE = { USDC: 1, USDT: 1, USDT0: 1, DAI: 1, xDAI: 1, USDG: 1, USDe: 1, EURe: 1 };
   var PLACEHOLDER_EVM = '0x1111111111111111111111111111111111111111';   // DRY quotes only (1Click refuses 0x..dEaD); a real send uses the user's validated address
 
   window.__lxNiSendable = !!NI_SENDABLE;
+  // THE DESTINATION LIST THIS ROUTE ADDS, published for lxBrRoutes in _lzusdt0.js. That function used to union
+  // CCTP's domains with LayerZero's eids and nothing else, and step 1's Next is gated on the chosen network
+  // appearing in it -- so a NEAR-Intents-only destination could be picked from the dropdown and the wizard would
+  // simply refuse to advance, with no message. Every chain this route reaches has to be visible there.
+  window.__lxNiChains = Object.keys(NI_CHAIN);
   // The NEAR-Intents-only destination rows are hidden until this class exists, exactly as the LayerZero-only rows
   // wait on lx-lz-on. Those five chains have NO other transport, so without the gate a build with the flag off
   // would show rows whose only route is locked -- the selectable-dead-route problem, moved one step earlier in
@@ -472,8 +498,12 @@ const SCRIPT = '<script id="lx-nearintents">' + JS + '<' + '/script>';
 //
 // All five are gated behind html.lx-ni-on, which the runtime sets only when NI_SENDABLE. The prefix is needed on
 // the un-hide rules to outrank the CCTP layer's own .brd-opt[data-net="…"]{display:none!important}.
-const NI_UNHIDE = ['BNB Chain', 'Scroll'];
-const NI_ONLY = [['Gnosis', 'GNO', '#133629'], ['Hood', 'HOOD', '#00c805'], ['ADI', 'ADI', '#1b1b1f']];
+const NI_UNHIDE = ['BNB Chain', 'Scroll', 'Solana', 'Sui', 'Starknet', 'Near'];
+const NI_ONLY = [['Gnosis', 'GNO', '#133629'], ['Hood', 'HOOD', '#00c805'], ['ADI', 'ADI', '#1b1b1f'],
+  ['Bitcoin', 'BTC', '#f7931a'], ['Tron', 'TRX', '#eb0029'], ['TON', 'TON', '#0098ea'],
+  ['Cardano', 'ADA', '#0133ad'], ['Litecoin', 'LTC', '#a6a9aa'],
+  ['Dogecoin', 'DOGE', '#c2a633'], ['Bitcoin Cash', 'BCH', '#0ac18e'], ['Zcash', 'ZEC', '#f4b728'],
+  ['Dash', 'DASH', '#008ce7'], ['Movement', 'MOVE', '#1a1a1a'], ['Fogo', 'FOGO', '#1a1a1a']];
 const NI_OPTS = NI_ONLY.map(function (n) {
   return '<button class="brd-opt lx-niopt" type="button" data-net="' + n[0] + '">'
     + '<span class="brd-ic lx-netlm" style="background:' + n[2] + '">' + n[1] + '</span>'
