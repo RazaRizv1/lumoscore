@@ -30,10 +30,23 @@ const MAIN = `
       </div>
 
       <div class="kpi-grid">
-        <div class="kpi"><div class="kpi-head"><span class="kpi-label">Round total</span></div><div class="kpi-value" id="lxrTotal">&mdash;</div><div class="kpi-foot" id="lxrTotalF">press Generate to calculate</div></div>
+        <div class="kpi"><div class="kpi-head"><span class="kpi-label">Round total</span></div><div class="kpi-value" id="lxrTotal">&mdash;</div><div class="kpi-foot" id="lxrTotalF">reading mainnet&hellip;</div></div>
         <div class="kpi"><div class="kpi-head"><span class="kpi-label">Recipients</span></div><div class="kpi-value" id="lxrCount">&mdash;</div><div class="kpi-foot">wallets due a payout</div></div>
-        <div class="kpi"><div class="kpi-head"><span class="kpi-label">Liquidity programs</span></div><div class="kpi-value" id="lxrLp">&mdash;</div><div class="kpi-foot" id="lxrLpF">LUMOS/XLM + eco pools</div></div>
-        <div class="kpi"><div class="kpi-head"><span class="kpi-label">Holder program</span></div><div class="kpi-value" id="lxrWhale">&mdash;</div><div class="kpi-foot" id="lxrWhaleF">5,000,000+ LUMOS</div></div>
+        <div class="kpi"><div class="kpi-head"><span class="kpi-label">Liquidity programs</span></div><div class="kpi-value" id="lxrLp">&mdash;</div><div class="kpi-foot" id="lxrLpF">1,000,000 LUMOS/XLM + 100,000 per eco pool</div></div>
+        <div class="kpi"><div class="kpi-head"><span class="kpi-label">Holder program</span></div><div class="kpi-value" id="lxrWhale">&mdash;</div><div class="kpi-foot" id="lxrWhaleF">1,000,000 across 5,000,000+ holders</div></div>
+      </div>
+
+      <div class="adm-card" id="lxrProgCard">
+        <div class="adm-card-head">
+          <div><div class="adm-card-title">Where the round comes from</div>
+          <div class="adm-card-sub" id="lxrProgSub">Each program has its own fixed pot, split between whoever qualifies at the moment the round is calculated.</div></div>
+        </div>
+        <div class="adm-card-body" style="padding:0">
+          <table class="adm-table" id="lxrProg" style="width:100%;border-collapse:collapse">
+            <thead><tr><th style="text-align:left">Program</th><th style="text-align:left">Who it pays</th><th style="text-align:right">Pot</th><th style="text-align:right">Qualifying</th><th style="text-align:right">LUMOS this round</th></tr></thead>
+            <tbody><tr><td colspan="5" class="lxadm-empty">Reading pool holders and LUMOS balances from mainnet&hellip;</td></tr></tbody>
+          </table>
+        </div>
       </div>
 
       <div class="adm-card">
@@ -44,7 +57,7 @@ const MAIN = `
         <div class="adm-card-body" style="padding:0">
           <table class="adm-table" id="lxrTable" style="width:100%;border-collapse:collapse">
             <thead><tr><th style="text-align:left">Wallet</th><th style="text-align:right">LUMOS/XLM</th><th style="text-align:right">Eco pools</th><th style="text-align:right">Holder</th><th style="text-align:right">Total LUMOS</th><th style="text-align:right">Status</th></tr></thead>
-            <tbody><tr><td colspan="6" class="lxadm-empty">Press <b>Generate round</b> to calculate every participant&rsquo;s share as of now.</td></tr></tbody>
+            <tbody><tr><td colspan="6" class="lxadm-empty">Reading every pool holder and LUMOS balance from mainnet&hellip;</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -185,6 +198,7 @@ function generate(btn){
     setTxt("#lxrWhale", num(wh,0));
     var empty=res.filter(function(r){ return r&&r.holders===0; }).map(function(r){ return r.code; });
     setTxt("#lxrLpF","LUMOS/XLM + "+ECO.length+" eco pools"+(empty.length?(" \\u00b7 "+empty.length+" pool(s) with no LPs"):""));
+    renderPrograms(res);
     if(sub)sub.textContent=rows.length
       ? (rows.length+" wallets \\u00b7 "+num(tot,0)+" LUMOS \\u00b7 as of "+ROUND.at.toLocaleString())
       : "No wallet qualifies for this round.";
@@ -193,9 +207,42 @@ function generate(btn){
     var csv=q("#lxrCsv"); if(csv)csv.disabled=!rows.length;
     var snd=q("#lxrSend"); if(snd)snd.disabled=!rows.length;
   }).catch(function(e){
-    btn.disabled=false; btn.textContent="Generate round";
+    btn.disabled=false; btn.textContent="Recalculate";
     if(sub)sub.textContent="Could not calculate: "+((e&&e.message)||e);
   });
+}
+// WHERE THE NUMBER COMES FROM, one row per program. The page used to show a single total and a list
+// of wallets, which left "why is it this much?" unanswerable without reading the source -- and a pool
+// with no liquidity providers was indistinguishable from a pool that had not been read. A pot that
+// pays nothing now says so, and says why.
+function renderPrograms(res){
+  var tb=q("#lxrProg tbody"); if(!tb)return;
+  var by={}; (res||[]).forEach(function(r){ if(r)by[r.code]=r; });
+  var rows=[];
+  rows.push({name:"LUMOS/XLM liquidity", who:"Providers in the LUMOS/XLM pool, by share of the pool",
+             pot:NATIVE_POOL, r:by.XLM});
+  ECO.forEach(function(p){ rows.push({name:"LUMOS/"+p.code+" liquidity",
+             who:"Providers in the LUMOS/"+p.code+" pool, by share of the pool", pot:ECO_PER_POOL, r:by[p.code]}); });
+  rows.push({name:"Holder program", who:"Wallets holding 5,000,000+ LUMOS, one share per 5,000,000",
+             pot:WHALE_POOL, r:by.holders});
+  tb.innerHTML=rows.map(function(x){
+    var r=x.r, n=r?r.holders:null, paid=r?r.paid:null;
+    // Nobody qualifying is a real answer, not a missing one, so it reads as "nobody yet" and the pot
+    // is shown greyed rather than as a number that was never paid.
+    var none=(n===0);
+    return "<tr>"
+      +"<td><b>"+esc(x.name)+"</b></td>"
+      +"<td style='color:var(--text-muted);font-size:13.5px'>"+esc(x.who)+"</td>"
+      +"<td class='num-cell' style='text-align:right'>"+num(x.pot,0)+"</td>"
+      +"<td class='num-cell' style='text-align:right"+(none?";color:var(--text-muted)":"")+"'>"
+        +(n==null?"\\u2026":(none?"nobody yet":num(n,0)))+"</td>"
+      +"<td class='num-cell' style='text-align:right"+(none?";color:var(--text-muted)":"")+"'>"
+        +(paid==null?"\\u2026":(paid>0?num(paid,0):"0"))+"</td></tr>";
+  }).join("");
+  var tot=rows.reduce(function(s,x){ return s+x.pot; },0);
+  var live=rows.filter(function(x){ return x.r&&x.r.holders>0; }).length;
+  setTxt("#lxrProgSub", num(tot,0)+" LUMOS is set aside across "+rows.length+" programs; "
+    +live+" of them have someone qualifying right now. A pot with nobody in it pays nothing \\u2014 it is not carried over.");
 }
 function setTxt(sel,t){ var e=q(sel); if(e)e.textContent=t; }
 function render(){
@@ -296,9 +343,15 @@ function boot(){
   if(!isPage())return;
   var head=q(".admin-page-head");
   if(head&&!q(".lxr-warn")){ var wn=document.createElement("div"); wn.className="lxr-warn";
-    wn.innerHTML="<b>Generate</b> reads every pool holder and LUMOS balance from mainnet and works out this round exactly as the public Rewards page does for a single wallet. <b>Send</b> pays real LUMOS from the wallet you sign with, in batches of 100. Stellar payments are final.";
+    wn.innerHTML="This round is worked out from mainnet the moment the page opens, exactly as the public Rewards page does for a single wallet \\u2014 <b>Recalculate</b> re-reads it. Nothing leaves the treasury until you press <b>Send</b> and sign: it pays real LUMOS from the wallet you sign with, in batches of 100, and Stellar payments are final.";
     head.parentNode.insertBefore(wn, head.nextSibling); }
   var g=q("#lxrGen"); if(g&&!g.__lx){ g.__lx=1; g.addEventListener("click",function(){ generate(g); }); }
+  // CALCULATED ON LOAD. The page used to open with four dashes and an empty table behind a button,
+  // so its normal state was blank and it taught nothing about the programs it administers (RAZA,
+  // 2026-09-23: "so confusing and empty"). Reading the round is read-only -- pool holders and LUMOS
+  // balances off Horizon -- so there is no reason to make it wait for a click. SENDING still takes
+  // the same two deliberate acts it always did, and Send stays disabled until a round exists.
+  if(g&&!g.__auto){ g.__auto=1; generate(g); }
   var s=q("#lxrSend"); if(s&&!s.__lx){ s.__lx=1; s.addEventListener("click",function(){ send(s); }); }
   var c=q("#lxrCsv"); if(c&&!c.__lx){ c.__lx=1; c.addEventListener("click",csv); }
   window.__lxRoundDbg=function(){ return ROUND; };
