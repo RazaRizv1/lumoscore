@@ -212,18 +212,30 @@ export async function onRequestGet({ request, env }) {
       if (!db) return json({ live: { sessions: 0, views: 0, rows: [], reason: 'no db' } }, 200);
       const since = Date.now() - 300000, H2 = 'lumoscore.com';
       try {
-        const [now, tot] = await Promise.all([
+        // An empty five-minute window is the NORMAL state for a site this size, so the panel needs
+        // something true to show in it rather than a blank band. Both of these are cheap and answer
+        // the question someone actually has when nobody is on: when was anyone last here, and how
+        // has today gone. Midnight is UTC, matching every other day boundary in this file.
+        const dayStart = Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), new Date().getUTCDate());
+        const [now, tot, last, today] = await Promise.all([
           db.prepare(
             'SELECT p.sid AS sid, p.ts AS ts, p.path AS path, p.country AS country, p.region AS region, p.city AS city, p.device AS device '
             + 'FROM pageview p JOIN (SELECT sid, MAX(ts) AS t FROM pageview WHERE ts > ?1 AND host = ?2 GROUP BY sid) m '
             + 'ON m.sid = p.sid AND m.t = p.ts WHERE p.host = ?2 ORDER BY p.ts DESC LIMIT 100'
           ).bind(since, H2).all(),
           db.prepare('SELECT COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview WHERE ts > ?1 AND host = ?2').bind(since, H2).first(),
+          db.prepare('SELECT ts, path, country, region, city, device FROM pageview WHERE host = ?1 ORDER BY ts DESC LIMIT 1').bind(H2).first(),
+          db.prepare('SELECT COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview WHERE ts >= ?1 AND host = ?2').bind(dayStart, H2).first(),
         ]);
         return json({ live: {
           windowMinutes: 5,
           sessions: (tot && +tot.sessions) || 0,
           views: (tot && +tot.views) || 0,
+          today: { sessions: (today && +today.sessions) || 0, views: (today && +today.views) || 0 },
+          last: last ? {
+            ts: last.ts, path: last.path || '/', device: last.device || '',
+            country: (last.country || '').toUpperCase(), region: last.region || '', city: last.city || '',
+          } : null,
           rows: ((now && now.results) || []).map((r) => ({
             id: String(r.sid || '').slice(0, 6), sid: r.sid, ts: r.ts, path: r.path,
             country: (r.country || '').toUpperCase(), region: r.region || '', city: r.city || '', device: r.device || '',
