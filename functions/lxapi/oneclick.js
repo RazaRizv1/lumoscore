@@ -18,7 +18,11 @@
 //       POST ?op=submit   -> 1Click /v0/deposit/submit {txHash, depositAddress, memo}
 const API = 'https://1click.chaindefuser.com/v0';
 const TIMEOUT_MS = 12000;
-const CHAINS = { eth: 1, arb: 1, base: 1, pol: 1, op: 1, avax: 1, bera: 1, monad: 1, plasma: 1, stellar: 1 };
+// The destination chains this proxy will price, plus stellar as the origin. THIS IS A WHITELIST: a chain the
+// page offers but this map omits is dropped from the token list, and every quote for it fails as 'unsupported
+// destination asset'. Keep it in step with NI_CHAIN in _tools/_nearintents.js.
+const CHAINS = { eth: 1, arb: 1, base: 1, pol: 1, op: 1, avax: 1, bera: 1, monad: 1, plasma: 1, stellar: 1,
+  bsc: 1, gnosis: 1, scroll: 1, hood: 1, adi: 1 };
 const STELLAR_ORIGIN = { XLM: 1, USDC: 1 };
 const G_RE = /^G[A-Z2-7]{55}$/;
 const EVM_RE = /^0x[0-9a-fA-F]{40}$/;

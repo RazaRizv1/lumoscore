@@ -1,5 +1,5 @@
 (function(){
-try{ document.title="Bridge USDC and USDT0 across 31 chains | LumosCore"; }catch(_){}   /* baked title said "DEX" */
+try{ document.title="Bridge USDC and USDT0 across 36 chains | LumosCore"; }catch(_){}   /* baked title said "DEX" */
 try{ window.__lxCCTP={
   testnet:false, sourceDomain:27,
   tokenMessenger:"CAE2G5Z77UP7GYPYGFOWFGW7C7J6I4YP2AFGSADRKQY62SYUFLPNFTXL",
@@ -564,7 +564,11 @@ var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arb
   "Conflux eSpace":"conflux",Rootstock:"rootstock",Stable:"stable",Tempo:"tempo",
   // The six CCTP chains added 2026-09-23, same provenance. Cronos and XDC ship only 28x28 source art; both are
   // flat single-colour marks, so they upscale cleanly -- checked by eye against the existing set before listing.
-  Codex:"codex",Sonic:"sonic",XDC:"xdc",Plume:"plume",Pharos:"pharos",Cronos:"cronos"};
+  Codex:"codex",Sonic:"sonic",XDC:"xdc",Plume:"plume",Pharos:"pharos",Cronos:"cronos",
+  // The five NEAR-Intents-only chains added 2026-09-23. "Hood" on 1Click is ROBINHOOD CHAIN (chainId 4663), which
+  // is why its art comes from the robinhood icon and its explorer is robinscan.io -- the short name in the token
+  // list hides whose chain it is, and guessing hood.xyz got a dead host.
+  "BNB Chain":"bnbchain",Gnosis:"gnosis",Scroll:"scroll",Hood:"hood",ADI:"adi"};
 // THE PICKER'S ICONS, BY STYLESHEET. lxCctpNetLogos leaves an option alone when the design already gave it a url()
 // background -- replacing it fought the design's re-render loop -- and Ethereum's option carries the design's own
 // ETH-TOKEN diamond. So the list showed that, and the selected field our network logo (RAZA 2026-09-19: "Why is
@@ -600,7 +604,12 @@ var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan
   // The six CCTP chains added 2026-09-23. Pharos is www.pharosscan.xyz: the bare host redirects there, and the
   // Tempo lesson above is that a 200 on a redirecting host is not the host to bake in.
   Codex:"https://explorer.codex.xyz/address/",Sonic:"https://sonicscan.org/address/",XDC:"https://xdcscan.com/address/",
-  Plume:"https://explorer.plume.org/address/",Pharos:"https://www.pharosscan.xyz/address/",Cronos:"https://cronoscan.com/address/"};
+  Plume:"https://explorer.plume.org/address/",Pharos:"https://www.pharosscan.xyz/address/",Cronos:"https://cronoscan.com/address/",
+  // The five NEAR-Intents-only chains. Hood resolves to Robinhood Chain and ADI to ADI Chain (36900) -- both found
+  // in the chainid.network registry rather than by guessing a hostname, which is how the dead explorer.hood.xyz and
+  // explorer.adi.foundation guesses were caught before they shipped.
+  "BNB Chain":"https://bscscan.com/address/",Gnosis:"https://gnosisscan.io/address/",Scroll:"https://scrollscan.com/address/",
+  Hood:"https://robinscan.io/address/",ADI:"https://explorer.adifoundation.ai/address/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
 function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
 var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
@@ -632,7 +641,9 @@ var LX_EVM_NETS={Ethereum:1,Avalanche:1,Optimism:1,Arbitrum:1,Base:1,Polygon:1,L
   // rejected, which is the safe direction to fail.
   Unichain:1,Mantle:1,Morph:1,'X Layer':1,Hedera:1,'Conflux eSpace':1,Rootstock:1,Stable:1,Tempo:1,
   // The six CCTP chains added 2026-09-23 -- same rule, same reason: unlisted means unvalidated.
-  Codex:1,Sonic:1,XDC:1,Plume:1,Pharos:1,Cronos:1};
+  Codex:1,Sonic:1,XDC:1,Plume:1,Pharos:1,Cronos:1,
+  // The five NEAR-Intents-only chains -- all EVM, all 0x recipients. Unlisted means unvalidated; see above.
+  "BNB Chain":1,Gnosis:1,Scroll:1,Hood:1,ADI:1};
 function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false; if(LX_EVM_NETS[net])return /^0x[0-9a-fA-F]{40}$/.test(a); if(net==='Solana')return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a); if(net==='Sui')return /^0x[0-9a-fA-F]{64}$/.test(a); return a.length>0; }
 function lxBrStep2Err(msg){ var s2=document.querySelector('.br-step[data-step="2"]'); var e=s2?s2.querySelector('.br-errslot'):null; if(e){ e.textContent=msg||''; if(msg) e.setAttribute('data-err',msg); else e.removeAttribute('data-err'); e.style.color=msg?'#e04f4f':''; } }
 // A MESSAGE IN THESE SLOTS DESCRIBES THE STATE THAT WAS THERE WHEN IT WAS WRITTEN -- this destination, this
