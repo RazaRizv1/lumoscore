@@ -72,6 +72,7 @@ function runtime(NI_SENDABLE) {
     // convention would pick: movement leads USDCx because MOVE returned no liquidity at $300 while USDCx priced
     // fine, and ton leads GRAM for the same reason. Same trap as gnosis and hood above -- the first entry is the
     // picker's default, so a thin native coin there makes the default the choice that fails first.
+    // ton leads GRAM because that IS Toncoin (see NI_LABEL): the chain has exactly two assets on 1Click.
     btc: ['BTC'], sol: ['SOL', 'USDC', 'USDT'], tron: ['TRX', 'USDT'], ton: ['GRAM', 'USDT'],
     near: ['wNEAR', 'USDC'], sui: ['SUI', 'USDC'], starknet: ['STRK'],
     cardano: ['ADA'], ltc: ['LTC'], doge: ['DOGE'], bch: ['BCH'], zec: ['ZEC'], dash: ['DASH'],
@@ -82,10 +83,17 @@ function runtime(NI_SENDABLE) {
     POL: 'Polygon', AVAX: 'Avalanche', BERA: 'Berachain', MON: 'Monad', XPL: 'Plasma',
     BNB: 'BNB', NEAR: 'NEAR', ASTER: 'Aster', xDAI: 'xDAI', GNO: 'Gnosis', SAFE: 'Safe', COW: 'CoW Protocol',
     USDG: 'Global Dollar', USDe: 'Ethena USDe', ADI: 'ADI',
-    BTC: 'Bitcoin', SOL: 'Solana', TRX: 'TRON', GRAM: 'Gram', wNEAR: 'Wrapped NEAR', SUI: 'Sui', APT: 'Aptos',
+    BTC: 'Bitcoin', SOL: 'Solana', TRX: 'TRON', wNEAR: 'Wrapped NEAR', SUI: 'Sui', APT: 'Aptos',
     STRK: 'Starknet', ADA: 'Cardano', LTC: 'Litecoin', DOGE: 'Dogecoin', BCH: 'Bitcoin Cash', ZEC: 'Zcash',
-    DASH: 'Dash', MOVE: 'Movement', USDCx: 'USD Coin', FOGO: 'Fogo' };
+    DASH: 'Dash', MOVE: 'Movement', USDCx: 'USD Coin', FOGO: 'Fogo', GRAM: 'Toncoin' };
   var STABLE = { USDC: 1, USDT: 1, USDT0: 1, DAI: 1, xDAI: 1, USDG: 1, USDe: 1, EURe: 1 };
+  // WHAT 1CLICK CALLS IT vs WHAT IT IS. TON's native coin is listed as "GRAM" -- but that entry has no contract
+  // address, 9 decimals, and 1Click's own coingeckoId for it is "the-open-network", so it is Toncoin under an old
+  // name. The picker was offering people "GRAM / Gram" on TON (RAZA 2026-09-23). Relabelled for DISPLAY ONLY: the
+  // symbol stays the key everywhere it matters -- the quote, the stored pick, the logo file -- because that key is
+  // 1Click's and renaming it would break the lookup that makes the transfer work.
+  var NI_LABEL = { GRAM: 'TON' };
+  function labelOf(s) { return NI_LABEL[s] || s; }
   var PLACEHOLDER_EVM = '0x1111111111111111111111111111111111111111';   // DRY quotes only (1Click refuses 0x..dEaD); a real send uses the user's validated address
 
   window.__lxNiSendable = !!NI_SENDABLE;
@@ -154,9 +162,9 @@ function runtime(NI_SENDABLE) {
   }
   function baseRow(dest, sym) {
     var chainName = dest;
-    return { route: 'NEAR Intents', asset: sym, assetLogo: logo(sym, chainOf(dest)), assetName: NI_NAME[sym] || sym, available: true, recv: null,
+    return { route: 'NEAR Intents', asset: labelOf(sym), assetLogo: logo(sym, chainOf(dest)), assetName: NI_NAME[sym] || sym, available: true, recv: null,
       tag: tagFor(dest), networkFeeXlm: 0, niFeeBps: niFeeBps(transportOf(srcKey()), sym), etaSeconds: 30, etaText: '~30 seconds', needsClaim: false,
-      claimNote: 'Delivered as ' + sym + ' to your address automatically — no claim, and no gas needed on ' + chainName + '.' };
+      claimNote: 'Delivered as ' + labelOf(sym) + ' to your address automatically — no claim, and no gas needed on ' + chainName + '.' };
   }
 
   // What reaches the deposit, in the transport asset: after LumosCore's fee, and after the Stellar swap for others.
@@ -249,7 +257,7 @@ function runtime(NI_SENDABLE) {
     var t = tok(c, s), lg = logo(s, c), sub = NI_NAME[s] || (t && t.contractAddress ? short(t.contractAddress) : (t && !t.contractAddress ? 'Native' : ''));
     return '<button type="button" data-sym="' + esc(s) + '" data-q="' + esc((s + ' ' + (NI_NAME[s] || '') + ' ' + ((t && t.contractAddress) || '')).toLowerCase()) + '" aria-selected="' + (s === cur ? 'true' : 'false') + '">'
       + (lg ? '<img src="' + esc(lg) + '" alt="" data-l="' + esc(s.slice(0, 1).toUpperCase()) + '">' : '<span class="lx-ni-l" data-l="' + esc(s.slice(0, 1).toUpperCase()) + '"></span>')
-      + '<span><span>' + esc(s) + '</span><br><span class="n">' + esc(sub) + '</span></span></button>';
+      + '<span><span>' + esc(labelOf(s)) + '</span><br><span class="n">' + esc(sub) + '</span></span></button>';
   }
   function openMenu(anchor) {
     closeMenu();
@@ -282,7 +290,7 @@ function runtime(NI_SENDABLE) {
       var s = b.getAttribute('data-sym'); window.__lxNiAsset[dest] = s; closeMenu();
       // show the new face at once (dash for the figure until the quote lands), then re-quote
       var de = document.documentElement;
-      de.setAttribute('data-lxroute-asset', s); de.setAttribute('data-lxroute-logo', logo(s, c) || ''); de.setAttribute('data-lxroute-name', NI_NAME[s] || s);
+      de.setAttribute('data-lxroute-asset', labelOf(s)); de.setAttribute('data-lxroute-logo', logo(s, c) || ''); de.setAttribute('data-lxroute-name', NI_NAME[s] || s);
       de.setAttribute('data-lxroute-recv', '');
       try { if (window.lxBrRouteRender) window.lxBrRouteRender(); } catch (_) {}
     });
