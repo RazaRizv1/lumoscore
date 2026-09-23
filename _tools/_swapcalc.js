@@ -565,7 +565,10 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 // the mapper threw the image away and every search result fell back to a lettered mark.
 +'var _list=recs.map(function(x){var p=String(x.asset||"").split("-");var ti=x.tomlInfo||x.toml_info||{};'
 +'return {code:p[0]||"",issuer:p[1]||"",native:false,dom:x.domain||"",'
-+'img:ti.image||ti.orgLogo||"",tl:(x.trustlines&&x.trustlines[0])||0};})'
+// THE SORT BELOW RANKS BY THIS, so a broken read is not a cosmetic 0 -- it silently flattened the
+// ordering and stopped the real asset leading its look-alikes. stellar.expert now sends
+// {total, authorized, funded}; [0] is undefined on an object. Both shapes read.
++'img:ti.image||ti.orgLogo||"",tl:(function(t){return !t?0:(t.total!=null?+t.total||0:+t[0]||0);})(x.trustlines)};})'
 +'.filter(function(a){return a.code&&/^G[A-Z2-7]{55}$/.test(a.issuer)&&!qSame(a,qS);})'
 +'.sort(function(a,b){return b.tl-a.tl;});'
 // "xlm" returns yXLM, SeagullCash and XLM626 from the asset index but never the lumen, because the
