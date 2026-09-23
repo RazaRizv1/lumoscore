@@ -871,9 +871,15 @@ const BODY = '(function(){'
   // moment after, until the tap has been applied -- the newest redraw waits, then runs.
   + 'var _lzHold=null, _lzHoldT=0;'
   + 'function lzBusy(){ return Date.now()-(window.__lzTouchT||0)<700; }'
+  // SCOPED TO THE PANEL'S OWN CLASS, and it must stay that way. data-lxroute is ALSO set on
+  // document.documentElement (that is how _bridgepolish.js styles the destination face), and <html> precedes the
+  // panel in document order -- so a bare querySelector("[data-lxroute]") returns <html>. The next line then ran
+  // panel.hidden=true on the ROOT ELEMENT, which is [hidden]{display:none} in the UA sheet: the entire page went
+  // blank with its DOM perfectly intact. Latent since data-lxroute moved onto <html>; XRPL exposed it because it
+  // is the only destination no SYNCHRONOUS route serves, so rows is briefly empty and only that branch hides.
   + 'function lzDraw(dest,rows){'
   + ' if(lzBusy()){ _lzHold=[dest,rows]; if(!_lzHoldT){ _lzHoldT=setTimeout(function again(){ if(lzBusy()){ _lzHoldT=setTimeout(again,250); return; } _lzHoldT=0; var h=_lzHold; _lzHold=null; if(h) lzDraw(h[0],h[1]); },250); } return; }'
-  + ' var panel=document.querySelector("[data-lxroute]"); if(!panel) return; var host=panel.querySelector("[data-lxroute-opts]"); if(!host) return;'
+  + ' var panel=document.querySelector(".lx-brroute[data-lxroute]"); if(!panel) return; var host=panel.querySelector("[data-lxroute-opts]"); if(!host) return;'
   + ' if(!rows.length){ panel.hidden=true; _lzRows=[]; lzPaintStats(); return; }'
   + ' var pick=lzChoose(dest,rows); window.__lxBrRoute=pick?pick.route:null;'
   // rebuilt only when something in them changed: every rebuild throws away the node a finger may be on
@@ -890,7 +896,7 @@ const BODY = '(function(){'
 
   + 'var _lzTok=0;'
   + 'function lxBrRouteRender(){'
-  + ' var panel=document.querySelector("[data-lxroute]"); if(!panel)return Promise.resolve();'
+  + ' var panel=document.querySelector(".lx-brroute[data-lxroute]"); if(!panel)return Promise.resolve();'
   + ' var host=panel.querySelector("[data-lxroute-opts]"); var dest=lzDest();'
   + ' if(!dest||!host){ panel.hidden=true; return Promise.resolve(); }'
   + ' var tok=++_lzTok;'
@@ -910,7 +916,7 @@ const BODY = '(function(){'
   + ' }).catch(function(){ if(tok===_lzTok) panel.hidden=true; }); }'
 
   + 'function lzWire(){'
-  + ' var panel=document.querySelector("[data-lxroute]"); if(!panel||panel.__lzw)return; panel.__lzw=1;'
+  + ' var panel=document.querySelector(".lx-brroute[data-lxroute]"); if(!panel||panel.__lzw)return; panel.__lzw=1;'
   // ONE TAP SELECTS (RAZA 2026-09-19: "it doesn't tap smoothly. I have to tap 3-4 times until it's selected"). A click
   // is decided at finger-UP, against whatever is under the finger THEN -- and two things move it between down and up:
   // the phone keyboard closing (a tap outside a focused field dismisses it, and the page reflows under the finger), and
