@@ -36,7 +36,7 @@ const NEW_SUB = LZ_LIVE
   ? 'Bridge USDC with Circle CCTP or USDT0 with LayerZero — burned on Stellar, minted on the destination, never wrapped.'
   : 'Bridge USDC natively across chains with Circle CCTP — burn on Stellar, mint on the destination.';
 const PAGE_TITLE = LZ_LIVE
-  ? 'Bridge USDC and USDT0 across 16 chains | LumosCore'
+  ? 'Bridge USDC and USDT0 across 25 chains | LumosCore'
   : 'Bridge USDC across 8 chains with Circle CCTP | LumosCore';
 // Every wording this line has ever had. Whichever one a container currently holds gets normalised to NEW_SUB, so
 // the transform is idempotent in both directions. Add to this list, never edit in place.
@@ -885,7 +885,12 @@ var LX_PXLIVE={USDC:true};
 var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arbitrum:"arbitrum",Base:"base",Polygon:"polygon",Solana:"solana",Sui:"sui",Linea:"linea","World Chain":"worldchain",
   // The eight destinations only LayerZero reaches. Each logo was fetched from DefiLlama's chain icon set, checked by
   // eye against the brand, resized to 96x96 and self-hosted under assets/networks/ -- never hotlinked.
-  Sei:"sei",Berachain:"berachain",Ink:"ink",Hyperliquid:"hyperliquid",Monad:"monad",Flare:"flare",MegaETH:"megaeth",Plasma:"plasma"};
+  Sei:"sei",Berachain:"berachain",Ink:"ink",Hyperliquid:"hyperliquid",Monad:"monad",Flare:"flare",MegaETH:"megaeth",Plasma:"plasma",
+  // The nine added 2026-09-23, same provenance: DefiLlama's chain icon set, rendered to 96x96 PNG, self-hosted
+  // under assets/networks/ -- never hotlinked. Hedera's source art is only 28x28 (DefiLlama has no larger one);
+  // it upscales acceptably because the mark is a single flat glyph, but swap it if a proper asset turns up.
+  Unichain:"unichain",Mantle:"mantle",Morph:"morph","X Layer":"xlayer",Hedera:"hedera",
+  "Conflux eSpace":"conflux",Rootstock:"rootstock",Stable:"stable",Tempo:"tempo"};
 // THE PICKER'S ICONS, BY STYLESHEET. lxCctpNetLogos leaves an option alone when the design already gave it a url()
 // background -- replacing it fought the design's re-render loop -- and Ethereum's option carries the design's own
 // ETH-TOKEN diamond. So the list showed that, and the selected field our network logo (RAZA 2026-09-19: "Why is
@@ -903,7 +908,21 @@ var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan
   // link is better than sending someone to a squatter, and MegaETH gets one back when it has a real explorer.
   Sei:"https://seistream.app/account/",Monad:"https://monadexplorer.com/address/",Berachain:"https://berascan.com/address/",
   Plasma:"https://plasmascan.to/address/",Flare:"https://flare-explorer.flare.network/address/",
-  Hyperliquid:"https://hyperevmscan.io/address/",Ink:"https://explorer.inkonchain.com/address/"};
+  Hyperliquid:"https://hyperevmscan.io/address/",Ink:"https://explorer.inkonchain.com/address/",
+  // The nine added 2026-09-23. Each URL below was opened on a real address before being listed, same rule as above.
+  // Two findings worth keeping:
+  //   * Tempo's explorer is explore.tempo.xyz, NOT explorer.tempo.xyz -- the latter 200s and silently redirects,
+  //     so a status check alone would have baked in the wrong host.
+  //   * Hedera's hashscan returns a server-side 404 for the 0x form (it only prerenders 0.0.x ids) but resolves it
+  //     client-side -- confirmed rendering "Account 0.0.10282786" for the USDT0 peer address. The 404 is a red
+  //     herring; the link works in a browser, which is the only place it is ever followed.
+  // STABLE IS DELIBERATELY ABSENT. stablescan.io is a 114-byte parked lander that redirects to /lander -- the same
+  // trap megaexplorer.xyz set above. A dead "#" beats handing someone to a squatter. It gets one when it has a
+  // real explorer.
+  Unichain:"https://uniscan.xyz/address/",Mantle:"https://mantlescan.xyz/address/",
+  Morph:"https://explorer.morphl2.io/address/","X Layer":"https://www.oklink.com/x-layer/address/",
+  Hedera:"https://hashscan.io/mainnet/account/","Conflux eSpace":"https://evm.confluxscan.org/address/",
+  Rootstock:"https://explorer.rootstock.io/address/",Tempo:"https://explore.tempo.xyz/address/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
 function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
 var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
@@ -926,7 +945,14 @@ var LX_EVM_NETS={Ethereum:1,Avalanche:1,Optimism:1,Arbitrum:1,Base:1,Polygon:1,L
   // The LayerZero-only destinations are all EVM chains too, and USDT0's OFT takes the recipient as an EVM address
   // left-padded to 32 bytes. Without these entries any text at all passed the address check for them -- and a
   // cross-chain transfer to a mistyped address cannot be recalled.
-  Berachain:1,Ink:1,Hyperliquid:1,Monad:1,Flare:1,Sei:1,MegaETH:1,Plasma:1};
+  Berachain:1,Ink:1,Hyperliquid:1,Monad:1,Flare:1,Sei:1,MegaETH:1,Plasma:1,
+  // The nine added 2026-09-23. Every one is an EVM chain taking a 20-byte 0x recipient, which is why they could
+  // ship without new address validation -- but they are listed HERE FIRST, before anywhere else, because the
+  // fall-through in lxBrValidAddr below accepts ANY non-empty string for a network it does not know. A destination
+  // added to the dropdown and forgotten here is not a cosmetic miss: it is an unvalidated address on a transfer
+  // that cannot be recalled. Hedera is correct as 0x -- USDT0 lives on its EVM side, and a 0.0.x account id is
+  // rejected, which is the safe direction to fail.
+  Unichain:1,Mantle:1,Morph:1,'X Layer':1,Hedera:1,'Conflux eSpace':1,Rootstock:1,Stable:1,Tempo:1};
 function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false; if(LX_EVM_NETS[net])return /^0x[0-9a-fA-F]{40}$/.test(a); if(net==='Solana')return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a); if(net==='Sui')return /^0x[0-9a-fA-F]{64}$/.test(a); return a.length>0; }
 function lxBrStep2Err(msg){ var s2=document.querySelector('.br-step[data-step="2"]'); var e=s2?s2.querySelector('.br-errslot'):null; if(e){ e.textContent=msg||''; if(msg) e.setAttribute('data-err',msg); else e.removeAttribute('data-err'); e.style.color=msg?'#e04f4f':''; } }
 // A MESSAGE IN THESE SLOTS DESCRIBES THE STATE THAT WAS THERE WHEN IT WAS WRITTEN -- this destination, this

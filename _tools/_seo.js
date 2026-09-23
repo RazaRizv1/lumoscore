@@ -30,7 +30,7 @@ const PAGES = {
   'landing': {
     title: 'LumosCore — Trade, Pool and Bridge on Stellar',
     desc: LZ_LIVE
-      ? 'Swap tokens, provide liquidity, bridge USDC and USDT0 across 16 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.'
+      ? 'Swap tokens, provide liquidity, bridge USDC and USDT0 across 25 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.'
       : 'Swap tokens, provide liquidity, bridge USDC across 8 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.',
   },
   'home': {
@@ -61,12 +61,15 @@ const PAGES = {
   // that cannot be bridged to, on the page that has to answer "which chains?" for an answer engine.
   // The FAQ's "eight destinations, nine chains in all" is the same fact counted with Stellar included,
   // and both now agree.
-  // Sixteen once LayerZero is live: CCTP's eight plus the eight only USDT0 reaches (Sei, Berachain, Ink,
-  // Hyperliquid, Monad, Flare, MegaETH, Plasma), with four chains served by both. Every one of those twelve
-  // LayerZero destinations was confirmed by calling peer(eid) on the live OFT, so this count is not aspirational.
+  // Twenty-five once LayerZero is live: CCTP's eight plus the seventeen only USDT0 reaches, with four chains
+  // (Ethereum, Arbitrum, Optimism, Polygon) served by both -- 8 + 21 - 4 = 25. LayerZero's own list is 21, and it
+  // is complete BY MEASUREMENT rather than by documentation: every mainnet eid from 30101 to 30700 was put through
+  // peer() on the live OFT on 2026-09-23 (600 simulations, no failures) and exactly 21 answered. So this count is
+  // neither aspirational nor copied from a vendor page, and it cannot quietly drift as USDT0 adds deployments --
+  // only a re-scan can change it.
   'bridge': LZ_LIVE ? {
-    title: 'Bridge USDC and USDT0 to 16 Chains from Stellar | ' + BRAND,
-    desc: 'Move native USDC with Circle CCTP or USDT0 with LayerZero, between Stellar and 16 chains. Burn-and-mint on both routes, so nothing arrives wrapped.',
+    title: 'Bridge USDC and USDT0 to 25 Chains from Stellar | ' + BRAND,
+    desc: 'Move native USDC with Circle CCTP or USDT0 with LayerZero, between Stellar and 25 chains. Burn-and-mint on both routes, so nothing arrives wrapped.',
   } : {
     title: 'Bridge USDC to 8 Chains from Stellar — Circle CCTP | ' + BRAND,
     desc: 'Move native USDC between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain using Circle CCTP. Burn-and-mint, so no wrapped tokens.',

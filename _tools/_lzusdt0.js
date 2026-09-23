@@ -63,8 +63,20 @@ const CFG = {
     Ethereum: 30101, Arbitrum: 30110, Optimism: 30111, Polygon: 30109,
     Berachain: 30362, Ink: 30339, Hyperliquid: 30367, Monad: 30390,
     Flare: 30295, Sei: 30280, MegaETH: 30398, Plasma: 30383,
+    // Added 2026-09-23. Found by scanning EVERY mainnet eid from 30101 to 30700 against peer() on the live OFT --
+    // 600 simulations, no failures -- rather than by reading USDT0's deployment page. The scan returned exactly 21
+    // peers: the twelve above and these nine. Nothing else on the contract, so this list is now complete by
+    // measurement, and IOTA (30423) is absent on purpose: it is on USDT0's published list and has NO peer here.
+    // Each of the nine also answered quote_oft with a 1:1 receipt, matching the Arbitrum control.
+    Unichain: 30320, Mantle: 30181, Morph: 30322, 'X Layer': 30274, Hedera: 30316,
+    'Conflux eSpace': 30212, Rootstock: 30333, Stable: 30396, Tempo: 30410,
   },
 };
+
+// Destinations the design ALREADY ships in its dropdown, hidden by the CCTP layer's HIDE list, that LayerZero can
+// reach. Every name here must match a data-net value in _cctp.js's HIDE, or the rule selects nothing and the option
+// silently stays hidden -- that is the whole failure mode, so keep the two lists in step.
+const LZ_UNHIDE = ['Sei', 'Hedera', 'Mantle'];
 
 // The picker is built from the bridge's OWN components -- .br-side is the bordered grid panel the Source address and
 // asset rows already sit in, and .hd is its uppercase label. Only the option cards and the selected state are new,
@@ -137,7 +149,11 @@ const CSS = '<style id="lx-lzpick-css">'
   // Sei rule needs the html prefix to outrank the CCTP layer's own .brd-opt[data-net="Sei"]{display:none!important}.
   + '.brd-opt.lx-lzopt{display:none !important}'
   + 'html.lx-lz-on .brd-opt.lx-lzopt{display:flex !important}'
-  + 'html.lx-lz-on .brd-opt[data-net="Sei"]{display:flex !important}'
+  // Hedera and Mantle join Sei here for the same reason: all three ship in the design's dropdown and were hidden by
+  // the CCTP layer BECAUSE Circle cannot reach them. LayerZero can (peer + quote_oft both verified 2026-09-23), so
+  // the hide no longer holds. They are un-hidden rather than re-added as lx-lzopt buttons, because the design
+  // already owns the row -- a second copy would sit beside the first the moment the CCTP hide were ever lifted.
+  + LZ_UNHIDE.map(function (n) { return 'html.lx-lz-on .brd-opt[data-net="' + n + '"]{display:flex !important}'; }).join('')
   // THE CARD IS THE DECISION, so it is built to be looked at: a brand mark, the name at a real size, what the
   // route is in one line, and a tag naming why you would pick it.
   + '.lx-brr-top{display:grid !important;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:11px;margin-bottom:13px}'
@@ -155,11 +171,13 @@ const CSS = '<style id="lx-lzpick-css">'
   + 'border-radius:999px;padding:4px 8px}'
   + '<' + '/style>';
 
-// THE EIGHT DESTINATIONS ONLY LAYERZERO CAN REACH. Seven are not in the design's dropdown at all (it ships 18
-// options: CCTP's 8 plus 10 the CCTP layer hides by CSS); Sei is there but hidden for exactly the reason that no
-// longer holds -- it was hidden BECAUSE CCTP cannot reach it, and LayerZero can.
+// THE SEVENTEEN DESTINATIONS ONLY LAYERZERO CAN REACH. Fourteen are not in the design's dropdown at all (it ships
+// 18 options: CCTP's 8 plus 10 the CCTP layer hides by CSS) and are built as the lx-lzopt buttons below; the other
+// three -- Sei, Hedera and Mantle -- are in the dropdown but hidden, for exactly the reason that no longer holds:
+// they were hidden BECAUSE CCTP cannot reach them, and LayerZero can. Those three are handled by LZ_UNHIDE above
+// rather than re-added here, so the design keeps owning its own row.
 //
-// All eight are gated behind html.lx-lz-on, which the runtime sets only when LZ_SENDABLE is true. That keeps the
+// All seventeen are gated behind html.lx-lz-on, which the runtime sets only when LZ_SENDABLE is true. That keeps the
 // whole feature on ONE switch: until it flips, the route card, these destinations and the copy all stay off
 // together. Offering a destination that cannot yet be bridged would be the same misrouting risk as a selectable
 // disabled route, moved one step earlier in the wizard.
@@ -170,6 +188,13 @@ const LZ_ONLY = [
   ['Berachain', 'BERA', '#814625'], ['Ink', 'INK', '#7132f5'], ['Hyperliquid', 'HYPE', '#0f3d34'],
   ['Monad', 'MON', '#836ef9'], ['Flare', 'FLR', '#e62058'], ['MegaETH', 'MEGA', '#2b2b31'],
   ['Plasma', 'XPL', '#0f7b6c'],
+  // Added 2026-09-23 off the exhaustive peer scan. Every one takes a 0x recipient, so nothing here needs new
+  // address validation -- that is the whole reason these seven could ship ahead of the NEAR Intents chains.
+  // 'Conflux eSpace' is deliberately not shortened to 'Conflux': eSpace takes 0x addresses and Conflux Core takes
+  // cfx: ones, and a user who reads the short name and pastes a Core address loses the transfer.
+  ['Unichain', 'UNI', '#ff007a'], ['Morph', 'MORPH', '#14ae5c'], ['X Layer', 'OKB', '#1c1c1e'],
+  ['Conflux eSpace', 'CFX', '#1f6feb'], ['Rootstock', 'RBTC', '#ff9100'], ['Stable', 'STBL', '#1a7f5a'],
+  ['Tempo', 'TMPO', '#635bff'],
 ];
 const LZ_OPTS = LZ_ONLY.map(function (n) {
   return '<button class="brd-opt lx-lzopt" type="button" data-net="' + n[0] + '" data-lz-only>'
