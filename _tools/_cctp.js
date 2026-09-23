@@ -8,6 +8,16 @@
 const fs=require('fs');const{read,getContents,VERIFIED,GENERATED_ASSETS}=require(__dirname+'/lib.js');
 // The destination-asset logos shipped in assets/tokens/ni (_nilogos.js), read at BUILD time: Recent transactions shows
 // what ARRIVED (MON, ETH, USDT0...), and those are not Stellar assets, so they are not in LX_ASSETS.
+// A VERSION TOKEN FOR THE LOGO URLS, from the bytes of the logo files themselves.
+// dist/_headers serves /assets/* as 'max-age=31536000, immutable', which means a browser that has already
+// fetched assets/networks/<name>.png will NOT revalidate it for a YEAR. Replacing a logo in place therefore
+// reaches nobody who has visited before -- RAZA was still seeing the old blue Ripple mark long after it was
+// replaced, on a build that definitely shipped the new one (2026-09-23). Immutable caching is right for these
+// files; what was missing is a name that changes when the bytes do. The token below is a hash of every logo,
+// so it moves only when a logo actually changes, and then busts all of them exactly once.
+const LX_ICONV=(()=>{ try{ const d=__dirname+'/../assets/networks'; const h=require('crypto').createHash('md5');
+  fs.readdirSync(d).sort().forEach(n=>{ h.update(n); h.update(fs.readFileSync(require('path').join(d,n))); });
+  return h.digest('hex').slice(0,8); }catch(e){ return '0'; } })();
 const LX_NI_LOGOS=(()=>{const o={};try{fs.readdirSync(__dirname+'/../assets/tokens/ni').forEach(f=>{const m=f.match(/^([A-Za-z0-9._-]+)\.png$/);if(m)o[m[1]]=1;});}catch(e){}return o;})();
 // THE FROM LIST IS THE CURATED LIST (RAZA 2026-09-19: "its supposed to show all curated assets"). It was seven
 // hand-typed entries while the site curates ~40 in lib.js VERIFIED (hand-checked + admin panel). Generated here at
@@ -832,7 +842,7 @@ function lxCctpNetLogos(){
     var MAP=LX_NETMAP;
     // force=false: skip icons that already carry a real logo as a url() background (e.g. Ethereum's option) so we
     // don't fight the design's own re-render loop (that fight caused the Ethereum dropdown blip). force=true: always set.
-    function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','assets/networks/'+key+'.png'); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="assets/networks/'+key+'.png" alt="">'; }
+    function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','assets/networks/'+key+'.png?v='+LX_ICONV); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="assets/networks/'+key+'.png?v='+LX_ICONV+'" alt="">'; }
     [].slice.call(document.querySelectorAll('.brd-opt[data-net]')).forEach(function(o){ var key=MAP[o.getAttribute('data-net')]; if(key) apply(o.querySelector('.brd-ic'),key,false); });
     // .br-netchip covers the source chip AND the .brd-trigger (selected dest); force so the selected chip always shows the PNG (set once, no blip)
     [].slice.call(document.querySelectorAll('.br-netchip')).forEach(function(ch){ var key=MAP[((ch.querySelector('.br-nm')||ch.querySelector('.nm')||{}).textContent||'').trim()]; if(key) apply(ch.querySelector('.br-ic'),key,true); });
@@ -921,6 +931,7 @@ document.addEventListener("load",function(e){ var t=e.target; if(t&&t.tagName===
 // and CoinGecko does not list LUMOS, so LUMOS never becomes live and must never be quoted from px.
 // Measured before this gate existed: typing 711 LUMOS printed "You get ~ 177.39 USDC" for ~2 seconds
 // (baked px 0.25) against a real 0.05 -- overstated 3,548x -- until the live path quote replaced it.
+var LX_ICONV="${LX_ICONV}";   // see the note beside LX_ICONV in _tools/_cctp.js
 var LX_PXLIVE={USDC:true};
 var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arbitrum:"arbitrum",Base:"base",Polygon:"polygon",Solana:"solana",Sui:"sui",Linea:"linea","World Chain":"worldchain",
   // The eight destinations only LayerZero reaches. Each logo was fetched from DefiLlama's chain icon set, checked by
@@ -949,7 +960,7 @@ var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arb
 // ethereum's logo different in the dropdown and different when selected"). An !important background outranks the
 // inline one without touching the node, so there is nothing for the loop to fight and nothing to flash.
 (function(){ try{ if(document.getElementById("lx-netbg"))return; var css="";
-  Object.keys(LX_NETMAP).forEach(function(n){ css+='.brd-opt[data-net="'+n+'"] .brd-ic{background:url(/assets/networks/'+LX_NETMAP[n]+'.png) center/cover no-repeat !important;color:transparent !important}'; });
+  Object.keys(LX_NETMAP).forEach(function(n){ css+='.brd-opt[data-net="'+n+'"] .brd-ic{background:url(/assets/networks/'+LX_NETMAP[n]+'.png?v='+LX_ICONV+') center/cover no-repeat !important;color:transparent !important}'; });
   var st=document.createElement("style"); st.id="lx-netbg"; st.textContent=css; (document.head||document.documentElement).appendChild(st); }catch(_){} })();
 // per-network block explorer "wallet address" pages (for clickable recent-tx addresses)
 var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan.org/address/",Arbitrum:"https://arbiscan.io/address/",Optimism:"https://optimistic.etherscan.io/address/",Polygon:"https://polygonscan.com/address/",Avalanche:"https://snowtrace.io/address/",Linea:"https://lineascan.build/address/","World Chain":"https://worldscan.org/address/",Solana:"https://solscan.io/account/",Sui:"https://suiscan.xyz/mainnet/account/",

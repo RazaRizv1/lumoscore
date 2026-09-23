@@ -463,7 +463,7 @@ function lxCctpNetLogos(){
     var MAP=LX_NETMAP;
     // force=false: skip icons that already carry a real logo as a url() background (e.g. Ethereum's option) so we
     // don't fight the design's own re-render loop (that fight caused the Ethereum dropdown blip). force=true: always set.
-    function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','assets/networks/'+key+'.png'); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="/assets/networks/'+key+'.png" alt="">'; }
+    function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','assets/networks/'+key+'.png?v='+LX_ICONV); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="/assets/networks/'+key+'.png?v='+LX_ICONV+'" alt="">'; }
     [].slice.call(document.querySelectorAll('.brd-opt[data-net]')).forEach(function(o){ var key=MAP[o.getAttribute('data-net')]; if(key) apply(o.querySelector('.brd-ic'),key,false); });
     // .br-netchip covers the source chip AND the .brd-trigger (selected dest); force so the selected chip always shows the PNG (set once, no blip)
     [].slice.call(document.querySelectorAll('.br-netchip')).forEach(function(ch){ var key=MAP[((ch.querySelector('.br-nm')||ch.querySelector('.nm')||{}).textContent||'').trim()]; if(key) apply(ch.querySelector('.br-ic'),key,true); });
@@ -552,6 +552,7 @@ document.addEventListener("load",function(e){ var t=e.target; if(t&&t.tagName===
 // and CoinGecko does not list LUMOS, so LUMOS never becomes live and must never be quoted from px.
 // Measured before this gate existed: typing 711 LUMOS printed "You get ~ 177.39 USDC" for ~2 seconds
 // (baked px 0.25) against a real 0.05 -- overstated 3,548x -- until the live path quote replaced it.
+var LX_ICONV="bae53a04";   // see the note beside LX_ICONV in _tools/_cctp.js
 var LX_PXLIVE={USDC:true};
 var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arbitrum:"arbitrum",Base:"base",Polygon:"polygon",Solana:"solana",Sui:"sui",Linea:"linea","World Chain":"worldchain",
   // The eight destinations only LayerZero reaches. Each logo was fetched from DefiLlama's chain icon set, checked by
@@ -580,7 +581,7 @@ var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arb
 // ethereum's logo different in the dropdown and different when selected"). An !important background outranks the
 // inline one without touching the node, so there is nothing for the loop to fight and nothing to flash.
 (function(){ try{ if(document.getElementById("lx-netbg"))return; var css="";
-  Object.keys(LX_NETMAP).forEach(function(n){ css+='.brd-opt[data-net="'+n+'"] .brd-ic{background:url(/assets/networks/'+LX_NETMAP[n]+'.png) center/cover no-repeat !important;color:transparent !important}'; });
+  Object.keys(LX_NETMAP).forEach(function(n){ css+='.brd-opt[data-net="'+n+'"] .brd-ic{background:url(/assets/networks/'+LX_NETMAP[n]+'.png?v='+LX_ICONV+') center/cover no-repeat !important;color:transparent !important}'; });
   var st=document.createElement("style"); st.id="lx-netbg"; st.textContent=css; (document.head||document.documentElement).appendChild(st); }catch(_){} })();
 // per-network block explorer "wallet address" pages (for clickable recent-tx addresses)
 var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan.org/address/",Arbitrum:"https://arbiscan.io/address/",Optimism:"https://optimistic.etherscan.io/address/",Polygon:"https://polygonscan.com/address/",Avalanche:"https://snowtrace.io/address/",Linea:"https://lineascan.build/address/","World Chain":"https://worldscan.org/address/",Solana:"https://solscan.io/account/",Sui:"https://suiscan.xyz/mainnet/account/",
