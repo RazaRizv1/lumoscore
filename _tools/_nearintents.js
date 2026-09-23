@@ -144,7 +144,10 @@ function runtime(NI_SENDABLE) {
     if (TOK) return Promise.resolve(TOK);
     if (TOKP) return TOKP;
     TOKP = fetch('/lxapi/oneclick?op=tokens').then(function (r) { return r.json(); }).then(function (j) {
-      TOK = (j && j.tokens) || []; KEYED = !!(j && j.keyed); return TOK;
+      TOK = (j && j.tokens) || []; KEYED = !!(j && j.keyed);
+      // computed at the edge from the UNFILTERED list -- see the note beside NATIVES in functions/lxapi/oneclick.js
+      NATIVE_AT = (j && j.natives) || null;
+      return TOK;
     }).catch(function (e) { TOKP = null; throw e; });
     return TOKP;
   }
@@ -162,7 +165,8 @@ function runtime(NI_SENDABLE) {
   }
   function baseRow(dest, sym) {
     var chainName = dest;
-    return { route: 'NEAR Intents', asset: labelOf(sym), assetLogo: logo(sym, chainOf(dest)), assetName: NI_NAME[sym] || sym, available: true, recv: null,
+    return { route: 'NEAR Intents', asset: labelOf(sym), assetLogo: logo(sym, chainOf(dest)),
+      assetName: (bridged(chainOf(dest), sym) ? 'Bridged ' : '') + (NI_NAME[sym] || sym), available: true, recv: null,
       tag: tagFor(dest), networkFeeXlm: 0, niFeeBps: niFeeBps(transportOf(srcKey()), sym), etaSeconds: 30, etaText: '~30 seconds', needsClaim: false,
       claimNote: 'Delivered as ' + labelOf(sym) + ' to your address automatically — no claim, and no gas needed on ' + chainName + '.' };
   }
@@ -253,8 +257,36 @@ function runtime(NI_SENDABLE) {
   // of the dropdown"). Every token 1Click delivers on the chain, majors first; each row names the token and, where there
   // is no known name, its contract -- a ticker is not an identity. A logo that will not load becomes a letter disc.
   function short(a) { return a ? (a.slice(0, 6) + '…' + a.slice(-4)) : ''; }
+  // A WRAPPED TOKEN IS NOT THE COIN IT IS NAMED AFTER. 1Click lists ZEC and XRP on Starknet, Solana, Aptos and NEAR
+  // as ordinary ERC-20s -- real entries with real contracts, but they are bridged representations, not Zcash and not
+  // XRP. Labelled "Zcash" they read as the genuine article, and this bridge offers Zcash itself as a separate
+  // destination one click away, so the two are trivially confused (RAZA 2026-09-23: "Is ZEC really an asset on
+  // starknet?"). Worked out from the data rather than a hand-kept list: a token is bridged when it carries a
+  // contract address while the SAME symbol exists with no contract -- i.e. natively -- on a different chain in the
+  // same list. Matching on symbol as well as identity keeps WETH out of it: its coingeckoId is ethereum, but its
+  // symbol is not ETH, and it is wrapped rather than bridged.
+  var NATIVE_AT = null, _natives = null;
+  function nativeChainOf(sym, cgId) {
+    // The EDGE's map first. It is built from every chain 1Click serves, including ones this bridge does not offer,
+    // and that is the whole point: working it out from TOK alone misses exactly the interesting case. The page only
+    // ever receives the chains we list, XRP's home chain is not one of them, so from here native XRP appears not to
+    // exist and the Starknet copy of it looks canonical.
+    if (NATIVE_AT) return NATIVE_AT[sym + '|' + cgId] || '';
+    if (!_natives) {
+      _natives = {};
+      (TOK || []).forEach(function (x) { if (!x.contractAddress && x.coingeckoId) _natives[x.symbol + '|' + x.coingeckoId] = x.blockchain; });
+    }
+    return _natives[sym + '|' + cgId] || '';
+  }
+  function bridged(c, s) {
+    var t = tok(c, s);
+    if (!t || !t.contractAddress || !t.coingeckoId) return false;
+    var home = nativeChainOf(s, t.coingeckoId);
+    return !!home && home !== c;
+  }
   function row(c, s, cur) {
     var t = tok(c, s), lg = logo(s, c), sub = NI_NAME[s] || (t && t.contractAddress ? short(t.contractAddress) : (t && !t.contractAddress ? 'Native' : ''));
+    if (bridged(c, s)) sub = 'Bridged ' + (NI_NAME[s] || s);
     return '<button type="button" data-sym="' + esc(s) + '" data-q="' + esc((s + ' ' + (NI_NAME[s] || '') + ' ' + ((t && t.contractAddress) || '')).toLowerCase()) + '" aria-selected="' + (s === cur ? 'true' : 'false') + '">'
       + (lg ? '<img src="' + esc(lg) + '" alt="" data-l="' + esc(s.slice(0, 1).toUpperCase()) + '">' : '<span class="lx-ni-l" data-l="' + esc(s.slice(0, 1).toUpperCase()) + '"></span>')
       + '<span><span>' + esc(labelOf(s)) + '</span><br><span class="n">' + esc(sub) + '</span></span></button>';
@@ -290,7 +322,8 @@ function runtime(NI_SENDABLE) {
       var s = b.getAttribute('data-sym'); window.__lxNiAsset[dest] = s; closeMenu();
       // show the new face at once (dash for the figure until the quote lands), then re-quote
       var de = document.documentElement;
-      de.setAttribute('data-lxroute-asset', labelOf(s)); de.setAttribute('data-lxroute-logo', logo(s, c) || ''); de.setAttribute('data-lxroute-name', NI_NAME[s] || s);
+      de.setAttribute('data-lxroute-asset', labelOf(s)); de.setAttribute('data-lxroute-logo', logo(s, c) || '');
+      de.setAttribute('data-lxroute-name', (bridged(c, s) ? 'Bridged ' : '') + (NI_NAME[s] || s));
       de.setAttribute('data-lxroute-recv', '');
       try { if (window.lxBrRouteRender) window.lxBrRouteRender(); } catch (_) {}
     });
