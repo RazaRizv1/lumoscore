@@ -156,6 +156,14 @@ const PRIVACY = '<div class="lxlg">'
   + 'and country Cloudflare associates with your connection. A random identifier that your browser keeps only for '
   + 'the current browsing session links the pages of one visit together. We do not store your IP address, your '
   + 'browser details or your wallet address with it, and these records are deleted after 180 days.</p>'
+  // Added 2026-09-23 with functions/lxapi/walletgeo.js. This is a NEW processing activity -- a wallet address stored
+  // alongside a country -- so it is disclosed on its own rather than folded into the page-view paragraph above. That
+  // paragraph's promise that no wallet address is stored with the page-view record stays true: this is a separate
+  // table with no session identifier in it, which is exactly why the beacon sends the address and nothing else.
+  + '<p>When you <strong>connect a wallet</strong>, we record the wallet address together with the country '
+  + 'Cloudflare associates with your connection, so we can see roughly where LumosCore is used. We keep only the '
+  + 'most recent one — it is overwritten each time you connect, so it is not a history of where you have been — '
+  + 'and we do not keep the city or region with it, or link it to the page-view record described above.</p>'
   // Added with the live-activity panel (pvevent, functions/lxapi/pv.js kind=click). Deliberately explicit about the
   // boundary: the label of what was pressed, never the content of anything typed.
   + '<p>Within that same record we also note <strong>which links and buttons you press</strong> — the words shown on '

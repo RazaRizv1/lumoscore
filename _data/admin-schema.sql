@@ -81,6 +81,25 @@ CREATE TABLE IF NOT EXISTS mail_block (
   by   TEXT                -- the admin who blocked it, from the verified Access token
 );
 
+-- ---- where a wallet last connected from -------------------------------------------------------------
+-- COUNTRY ONLY, and deliberately so. Cloudflare hands every request a country, a region and a city;
+-- only the country is kept here, because the question this answers is "roughly where are the people
+-- using this" and a wallet address plus a city is a materially different, and much more identifying,
+-- record than a wallet address plus a flag.
+--
+-- The country is taken from request.cf at the edge and NEVER from the request body, so it cannot be
+-- claimed by the caller. One row per address, overwritten on each connect: this is "last seen from",
+-- not a location history, so there is nothing here to reconstruct someone's movements from.
+--
+-- It only fills going forward. Nothing recorded a wallet's origin before this existed and there is no
+-- way to backfill it, so a wallet that has not connected since will have no flag.
+CREATE TABLE IF NOT EXISTS wallet_geo (
+  addr    TEXT PRIMARY KEY,
+  country TEXT,                      -- ISO 3166 alpha-2, from Cloudflare
+  ts      INTEGER NOT NULL,          -- epoch ms of the most recent connect
+  n       INTEGER NOT NULL DEFAULT 1 -- how many connects have been seen, for a sense of regularity
+);
+
 -- ---- reward payout history ------------------------------------------------------------------------
 -- The ROUND is recomputed from chain every time, so it is not stored. What cannot be recomputed is what
 -- we actually sent and when -- without it there is no way to tell a paid round from an unpaid one.

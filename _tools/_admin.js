@@ -125,6 +125,11 @@ thead th[style*="right"] .lxth{flex-direction:row-reverse}
 .lxd-sec-t{font-weight:800;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
 .lxd-sec .lxd-per{font-weight:700;font-size:11px;letter-spacing:.04em;padding:2px 8px;border-radius:999px;
 background:var(--surface-2);color:var(--text-muted)}
+/* The flag renders as an emoji, so it needs a font stack that actually HAS the regional-indicator
+   glyphs -- on a desktop without one the pair falls back to the bare letters "GB", which is still a
+   correct answer rather than a pair of empty boxes. */
+.lxu-flag{font-size:18px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",system-ui,sans-serif}
+.lxu-noflag{color:var(--text-muted);font-size:13.5px}
 .lxu-tier{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.02em;padding:4px 9px;border-radius:999px}
 .lxu-tier.on{background:rgba(34,197,94,.14);color:#22c55e}
 .lxu-tier.off{background:rgba(127,127,140,.14);color:var(--text-muted)}
@@ -914,9 +919,54 @@ function paintUsers(){
   var t=((q(".admin-page-title")||{}).textContent||"").trim(); if(t.indexOf("Users")!==0)return;
   var tbl=q(".adm-table"); if(!tbl||tbl.getAttribute("data-lxbuilt")==="1")return; tbl.setAttribute("data-lxbuilt","1");
   // Columns are the question asked of this page: who trades most, how much, and what they are worth.
-  var TH=["Wallet","Volume","Trades","Revenue","Fee tier","First seen","Last seen"];
+  var TH=["Wallet","From","Volume","Trades","Revenue","Fee tier","First seen","Last seen"];
+  // Same contract as the Assets table: null means "leave ROWS in the order sortRows() put them", so the
+  // Sort dropdown and the column headers coexist without either knowing the other's state.
+  var SORTABLE={2:"vol",3:"trades",4:"rev",5:"tier",6:"first",7:"last"};
+  var UCOL=null, UDIR=-1;
   var thr=tbl.querySelector("thead tr");
-  if(thr)thr.innerHTML=TH.map(function(h,i){ return "<th"+(i>0?" style='text-align:right'":"")+">"+esc(h)+"</th>"; }).join("");
+  function uHead(){
+    if(!thr)return;
+    var made=TH.map(function(h,i){
+      var al=(i>1?" style='text-align:right'":"");
+      var col=SORTABLE[i];
+      if(!col)return "<th"+al+">"+esc(h)+"</th>";
+      var on=(UCOL===col);
+      return "<th"+al+"><button type='button' class='lxth"+(on?" on":"")+"' data-lxusort='"+col+"'"
+        +" aria-label='Sort by "+esc(h)+(on?(UDIR<0?", high to low":", low to high"):"")+"'>"
+        +esc(h)+"<span class='lxth-a'>"+(on?(UDIR<0?"▼":"▲"):"↕")+"</span></button></th>";
+    }).join("");
+    if(thr.innerHTML!==made)thr.innerHTML=made;
+  }
+  uHead();
+  function uVal(u,col){
+    if(col==="vol")return u.volUsd!=null?+u.volUsd:null;
+    if(col==="trades")return +u.n||0;
+    if(col==="rev")return u.usd!=null?+u.usd:null;
+    // The tier is a yes/no, so it sorts as one: everyone on the reduced fee together, and a wallet
+    // whose LUMOS balance has not resolved yet stays out of both groups rather than joining "no".
+    if(col==="tier")return u.tier==null?null:(u.tier?1:0);
+    if(col==="first")return Date.parse(u.first)||null;
+    if(col==="last")return Date.parse(u.last)||null;
+    return null;
+  }
+  // Same rule as the Assets table: a value still loading sorts LAST in both directions, so ascending
+  // does not open with a screen of dashes. Ties fall back to the address, which is stable.
+  function uBy(x,y){
+    var a=uVal(x,UCOL), b=uVal(y,UCOL);
+    var an=(a==null||a!==a), bn=(b==null||b!==b);
+    if(an&&bn)return x.addr.localeCompare(y.addr);
+    if(an)return 1;
+    if(bn)return -1;
+    if(a===b)return x.addr.localeCompare(y.addr);
+    return UDIR*(a-b);
+  }
+  if(thr&&!thr.__lxus){ thr.__lxus=1; thr.addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest("[data-lxusort]"); if(!b)return;
+    var c=b.getAttribute("data-lxusort");
+    if(UCOL===c)UDIR=-UDIR; else { UCOL=c; UDIR=-1; }
+    uHead(); render();
+  }); }
   var tb=tbl.querySelector("tbody");
   if(tb)tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>Loading\u2026</td></tr>";
   var seg=q(".seg-row");
@@ -928,7 +978,29 @@ function paintUsers(){
     nt.textContent="LumosCore has no sign-up, so there is no user table to read. A user here is a wallet that has paid a platform fee on-chain \u2014 the only record of someone having used the app. Everything on this page is Stellar mainnet; there is no second network to split by.";
     head.parentNode.insertBefore(nt, head.nextSibling); }
   qa(".admin-page-actions .adm-btn").forEach(function(b){ if(/invite/i.test(b.textContent)){ b.disabled=true; b.style.opacity="0.5"; b.style.cursor="not-allowed"; b.title="Needs a backend \u2014 there is nowhere to store an admin account or send an invite."; } });
-  var ROWS=[], SORT=0, TIERSET=null, SEG="all";
+  var ROWS=[], SORT=0, TIERSET=null, SEG="all", GEO=null;
+  // THE FLAG IS A UNICODE REGIONAL-INDICATOR PAIR, not an image: two code points per country, no
+  // request, no sprite sheet, and nothing to 404. "GB" -> the two letters shifted into the regional
+  // indicator block, which every platform renders as a flag.
+  function flagOf(cc){
+    if(!/^[A-Za-z]{2}$/.test(cc||""))return "";
+    var s=String(cc).toUpperCase();
+    return String.fromCodePoint(0x1F1E6+s.charCodeAt(0)-65)+String.fromCodePoint(0x1F1E6+s.charCodeAt(1)-65);
+  }
+  // Three states, and they are NOT the same thing, so they do not look the same:
+  //   still loading      -> nothing yet
+  //   loaded, no record  -> a dash, meaning this wallet has not connected since we started recording
+  //   loaded, has record -> the flag
+  // Nothing was recorded before 2026-09-23 and there is no way to backfill it, so most wallets will
+  // sit on the dash until their owner next connects. Saying so in the title beats a blank cell that
+  // looks like a bug.
+  function flagCell(addr){
+    if(GEO===null)return "";
+    var g=GEO[addr];
+    if(!g||!g.c)return "<span class='lxu-noflag' title='This wallet has not connected since LumosCore began recording where connections come from (2026-09-23). It fills in the next time they connect.'>—</span>";
+    return "<span class='lxu-flag' title='Last connected from "+esc(g.c)+" · "+esc(new Date(g.t).toLocaleString())
+      +(g.n>1?(" · "+g.n+" connects seen"):"")+"'>"+flagOf(g.c)+"</span>";
+  }
   loadRevenue().then(function(rv){
     var w={};
     rv.rows.forEach(function(p){ var a=assetOf(p), u=w[p.from]=w[p.from]||{addr:p.from,n:0,by:{},vol:{},first:p.created_at,last:p.created_at};
@@ -961,6 +1033,10 @@ function paintUsers(){
           ROWS.forEach(function(u){ if(u.vol[k]!=null){ u.volUsd=(u.volUsd||0)+u.vol[k]*px; } }); sortRows(); render(); }); });
     });
     // fee tier: membership of the >=250K LUMOS set, which is already fetched for the dashboard
+    // Separate from everything else on the page, and failing softly: a missing geo map costs a column
+    // of dashes, never the table.
+    j("/lxapi/walletgeo").then(function(d){ GEO=(d&&d.geo)||{}; render(); })
+      .catch(function(){ GEO={}; render(); });
     loadTier().then(function(ti){ TIERSET=ti.set||{};
       var onTier=0; ROWS.forEach(function(u){ u.tier=!!TIERSET[u.addr]; if(u.tier)onTier++; });
       setT(q("#lxuTier"), String(onTier)); render(); });
@@ -972,6 +1048,9 @@ function paintUsers(){
     return (y.volUsd||0)-(x.volUsd||0); }); }
   function render(){ if(!tb)return; var qy=((q(".fs-search input")||{}).value||"").trim().toLowerCase();
     var list=ROWS.filter(function(u){ if(qy&&u.addr.toLowerCase().indexOf(qy)<0)return false; if(SEG==="ext"&&u.tre)return false; if(SEG==="tier"&&!u.tier)return false; return true; });
+    // On the filtered copy, never on ROWS: sortRows() owns that array and re-runs on every price that
+    // lands, so a column choice written into it would be overwritten a second later.
+    if(UCOL)list.sort(uBy);
     if(!list.length){ tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>No wallet matches that search.</td></tr>"; return; }
     tb.innerHTML=list.map(function(u){
       var paid=Object.keys(u.by).map(function(k){ return num(u.by[k])+" "+k.split("-")[0]; }).join(", ");
@@ -983,6 +1062,7 @@ function paintUsers(){
       return "<tr class='clickable' data-w='"+esc(u.addr)+"'>"
         +"<td><div class='user-cell'><img class='lxu-av' data-lxc='wallet' alt='' src='"+avatar(u.addr.slice(1,3))+"'>"
         +"<div><div class='un mono'>"+esc(shortG(u.addr))+(u.tre?" <span class='lxu-tre' title='A LumosDAO treasury or burn wallet, not a customer. Its activity is real on-chain volume so it is counted, but it is not a trader.'>treasury</span>":"")+"</div><div class='um'>Stellar mainnet</div></div></div></td>"
+        +"<td>"+flagCell(u.addr)+"</td>"
         +"<td class='num-cell' style='text-align:right'>"+(u.volUsd==null?"\u2026":esc(usd(u.volUsd)))+"</td>"
         +"<td class='num-cell' style='text-align:right'>"+u.n+"</td>"
         +"<td class='num-cell' style='text-align:right' title='"+esc(paid)+"'>"+(u.usd==null?esc(paid):esc(usd(u.usd)))+"</td>"
@@ -996,7 +1076,8 @@ function paintUsers(){
   qa(".seg-chip").forEach(function(ch){ ch.addEventListener("click",function(){ qa(".seg-chip").forEach(function(o){ o.classList.remove("active"); }); ch.classList.add("active"); SEG=ch.getAttribute("data-seg")||"all"; render(); }); });   var si=q(".fs-search input"); if(si){ si.placeholder="Search by wallet address\u2026"; si.addEventListener("input",render); }
   qa(".filter-strip .fs-select").forEach(function(sel,i){
     if(i===0){ sel.innerHTML="<option>Sort: Volume</option><option>Sort: Trades</option><option>Sort: Revenue</option><option>Sort: Last seen</option>";
-      sel.addEventListener("change",function(){ SORT=sel.selectedIndex; sortRows(); render(); }); }
+      // The dropdown reorders ROWS itself, so it has to clear any column choice or it would look broken.
+      sel.addEventListener("change",function(){ UCOL=null; uHead(); SORT=sel.selectedIndex; sortRows(); render(); }); }
     else sel.remove(); });
   var more=qa(".filter-strip .adm-btn").filter(function(b){return /more/i.test(b.textContent);})[0]; if(more)more.remove();
   qa(".admin-page-actions .adm-btn").forEach(function(b){ if(!/export/i.test(b.textContent)||b.__lx)return; b.__lx=1;
