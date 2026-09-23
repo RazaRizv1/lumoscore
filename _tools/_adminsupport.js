@@ -1,8 +1,12 @@
 // ADMIN — Support: the inbox for team@ and raza@lumoscore.com.
 //
 // Mail arrives via the Email Worker in _email-worker/, which forwards to the real mailbox first and
-// keeps a copy second. This page is a VIEW of that copy: it never sends, and it cannot delete. Replying
-// happens in the normal mail client, where the thread already lives.
+// keeps a copy second. This page is a VIEW of that copy. Nothing done here can touch what was already
+// delivered to the real mailbox -- including Delete, which removes LumosCore's copy and nothing else.
+//
+// Spam is a rule about a SENDER, not a flag on one message: marking a message as spam blocks the
+// address, which moves every mail that address has ever sent and every one it sends next. It is
+// applied when the list is read, so it is reversible in one click. See functions/lxapi/mail.js.
 //
 // Bodies are shown as TEXT, never as the sender's HTML. An inbox that renders arbitrary HTML from
 // strangers inside the admin origin is an invitation, and the plain-text part is what support mail is
@@ -23,6 +27,13 @@ const MAIN = `
         <button class="seg-chip active" type="button" data-box="inbox"><span class="seg-label">Inbox</span><span class="seg-count" id="lxmCInbox">&mdash;</span></button>
         <button class="seg-chip" type="button" data-box="unread"><span class="seg-label">Unread</span><span class="seg-count" id="lxmCUnread">&mdash;</span></button>
         <button class="seg-chip" type="button" data-box="archived"><span class="seg-label">Archived</span><span class="seg-count" id="lxmCArch">&mdash;</span></button>
+        <button class="seg-chip" type="button" data-box="spam"><span class="seg-label">Spam</span><span class="seg-count" id="lxmCSpam">&mdash;</span></button>
+      </div>
+
+      <div class="lxm-search">
+        <svg class="lxm-search-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        <input class="lxm-search-in" id="lxmQ" type="search" autocomplete="off" spellcheck="false" placeholder="Search sender, subject or message text&hellip;">
+        <button class="lxm-search-x" id="lxmQX" type="button" hidden aria-label="Clear search">&times;</button>
       </div>
 
       <div class="lxm-grid">
@@ -41,11 +52,38 @@ const MAIN = `
 
 const MOB = `
       <div class="mob-page-head"><h1 class="mob-page-title">Support</h1></div>
+      <div class="seg-row" id="lxmSegs">
+        <button class="seg-chip active" type="button" data-box="inbox"><span class="seg-label">Inbox</span><span class="seg-count" id="lxmCInbox">&mdash;</span></button>
+        <button class="seg-chip" type="button" data-box="unread"><span class="seg-label">Unread</span><span class="seg-count" id="lxmCUnread">&mdash;</span></button>
+        <button class="seg-chip" type="button" data-box="archived"><span class="seg-label">Archived</span><span class="seg-count" id="lxmCArch">&mdash;</span></button>
+        <button class="seg-chip" type="button" data-box="spam"><span class="seg-label">Spam</span><span class="seg-count" id="lxmCSpam">&mdash;</span></button>
+      </div>
+      <div class="lxm-search">
+        <svg class="lxm-search-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+        <input class="lxm-search-in" id="lxmQ" type="search" autocomplete="off" spellcheck="false" placeholder="Search mail&hellip;">
+        <button class="lxm-search-x" id="lxmQX" type="button" hidden aria-label="Clear search">&times;</button>
+      </div>
       <div class="adm-card"><div class="adm-card-body" style="padding:0"><div id="lxmList"><div class="lxadm-empty">Loading&hellip;</div></div></div></div>
       <div class="adm-card" style="margin-top:14px"><div class="adm-card-body" id="lxmRead"><div class="lxadm-empty">Select a message to read it.</div></div></div>
 `;
 
 const CSS = `<style id="lx-adminsupport-css">
+/* Search sits between the box chips and the list it filters, so the thing being narrowed is directly
+   under the control that narrows it. */
+.lxm-search{position:relative;display:flex;align-items:center;margin:14px 0 16px;max-width:520px}
+.lxm-search-i{position:absolute;left:13px;width:17px;height:17px;color:var(--text-muted);pointer-events:none;stroke-linecap:round}
+.lxm-search-in{width:100%;box-sizing:border-box;padding:11px 38px 11px 39px;border:1px solid var(--border);border-radius:10px;
+  background:var(--surface-2,transparent);color:var(--text);font:400 14.5px/1.4 "Hanken Grotesk",system-ui,sans-serif}
+.lxm-search-in::placeholder{color:var(--text-muted)}
+.lxm-search-in:focus{outline:2px solid var(--accent,#ea6a2c);outline-offset:1px;border-color:transparent}
+/* the browser's own search-cancel button is unstyleable and sits in the wrong place next to ours */
+.lxm-search-in::-webkit-search-cancel-button{display:none}
+.lxm-search-x{position:absolute;right:6px;width:26px;height:26px;border:0;border-radius:7px;background:none;cursor:pointer;
+  color:var(--text-muted);font-size:19px;line-height:1;display:flex;align-items:center;justify-content:center}
+.lxm-search-x:hover{background:rgba(127,127,140,.12);color:var(--text)}
+/* display:flex above beats the UA sheet's [hidden]{display:none}, so the clear button sat there on an
+   empty field with nothing to clear. Any author rule that sets display has to restate this. */
+.lxm-search-x[hidden]{display:none}
 .lxm-grid{display:grid;grid-template-columns:minmax(0,360px) minmax(0,1fr);gap:18px;align-items:start}
 @media(max-width:1000px){.lxm-grid{grid-template-columns:minmax(0,1fr)}}
 .lxm-list{max-height:70vh;overflow-y:auto}
@@ -63,16 +101,34 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-read-subj{font:800 19px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text)}
 .lxm-read-meta{margin-top:7px;font-size:13px;color:var(--text-muted);line-height:1.7}
 .lxm-read-meta a{color:var(--accent,#ea6a2c);text-decoration:none}
-.lxm-body{word-break:break-word;font:400 14.5px/1.7 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}
+/* +2pt on everything that is the EMAIL ITSELF -- the received body, a sent reply, and the box you type
+   the reply into, so what you write matches what you read (RAZA 2026-09-23). The list rows keep their
+   smaller type: those are an index, not the mail. */
+.lxm-body{word-break:break-word;font:400 16.5px/1.7 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}
 .lxm-body p{margin:0 0 14px;white-space:pre-line}
 .lxm-body p:last-child{margin-bottom:0}
 .lxm-html{width:100%;min-height:280px;max-height:60vh;border:1px solid var(--border);border-radius:10px;background:#fff}
 .lxm-acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
+/* Delete is the only irreversible control on this page, so it is the only one that is red -- and it
+   only turns red on the SECOND click, once it is asking to be confirmed. A destructive button that
+   looks dangerous from the start trains you to ignore how it looks. */
+/* Scoped by the parent so it cannot tie with the panel's own .adm-btn.ghost on specificity. Both are
+   (0,2,0) unscoped, which leaves the armed state depending on which sheet is injected last -- true
+   today, and not something to leave to the build order. */
+.lxm-acts .lxm-del{margin-left:auto}
+.lxm-acts .lxm-del.arm{border-color:rgba(220,74,74,.55);color:#dc4a4a;background:rgba(220,74,74,.08)}
+.lxm-acts .lxm-del.arm:hover{background:rgba(220,74,74,.16)}
+/* Why a message is in Spam, said where the question gets asked. Without it the box looks like a filter
+   with no explanation and no way back. */
+.lxm-spambar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  margin-bottom:14px;padding:11px 14px;border-radius:10px;background:rgba(234,179,8,.10);border:1px solid rgba(234,179,8,.28)}
+.lxm-spambar-t{font-size:13px;line-height:1.55;color:var(--text-soft,#6b6b76)}
+.lxm-spambar-t b{color:var(--text)}
 .lxm-note{margin-top:14px;font-size:12.5px;color:var(--text-muted)}
 .lxm-thread{margin-top:16px}
 .lxm-sent{margin-top:10px;padding:12px 14px;border-radius:10px;background:rgba(234,106,44,.07);border:1px solid rgba(234,106,44,.18)}
 .lxm-sent-h{font:700 12px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--accent,#ea6a2c);margin-bottom:7px}
-.lxm-sent-b{white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.65;color:var(--text-soft,#6b6b76)}
+.lxm-sent-b{white-space:pre-wrap;word-break:break-word;font-size:16px;line-height:1.65;color:var(--text-soft,#6b6b76)}
 /* delivery state, read from Resend when the thread opens: what the reader actually needs to know about a reply */
 .lxm-st{display:inline-block;margin-left:6px;padding:2px 7px;border-radius:999px;font:700 10.5px/1.5 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.2px;vertical-align:1px}
 .lxm-st.ok{background:rgba(53,192,127,.14);color:#2aa56c}
@@ -80,7 +136,7 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-st.warn{background:rgba(234,179,8,.15);color:#b7870a}
 .lxm-st.wait{background:rgba(127,127,140,.14);color:var(--text-soft,#6b6b76)}
 .lxm-reply{margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
-.lxm-ta{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);color:var(--text);font:400 14.5px/1.65 "Hanken Grotesk",system-ui,sans-serif;resize:vertical}
+.lxm-ta{width:100%;box-sizing:border-box;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--surface-2,transparent);color:var(--text);font:400 16.5px/1.65 "Hanken Grotesk",system-ui,sans-serif;resize:vertical}
 .lxm-ta:focus{outline:2px solid var(--accent,#ea6a2c);outline-offset:1px;border-color:transparent}
 .lxm-reply-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:10px;flex-wrap:wrap}
 .lxm-reply-hint{font-size:12.5px;color:var(--text-muted)}
@@ -107,15 +163,18 @@ function when(t){ var d=Date.now()-t;
   if(d<604800000)return Math.floor(d/86400000)+"d ago";
   return new Date(t).toLocaleDateString(); }
 
-var BOX="inbox", MSGS=[], SEL=null;
+var BOX="inbox", MSGS=[], SEL=null, Q="", QT=0;
 
 function api(path,opts){ return fetch("/lxapi/mail"+path,opts).then(function(r){
   return r.text().then(function(t){ var d=null; try{ d=JSON.parse(t); }catch(_){ }
     return {ok:r.ok&&!!d,status:r.status,d:d}; }); }); }
 
 function load(){
-  var box=(BOX==="archived")?"archived":"inbox";
-  api("?box="+box+"&t="+Date.now()).then(function(r){
+  // "Unread" is not a box on the server -- it is the inbox with a client-side filter, because the
+  // inbox rows are already loaded and refetching them to hide the read ones is a round trip for
+  // nothing. Every other chip maps straight through.
+  var box=(BOX==="archived")?"archived":(BOX==="spam")?"spam":"inbox";
+  api("?box="+box+(Q?("&q="+encodeURIComponent(Q)):"")+"&t="+Date.now()).then(function(r){
     var list=q("#lxmList"); if(!list)return;
     if(!r.ok){
       list.innerHTML="<div class='lxadm-empty'>Could not read the inbox"
@@ -127,7 +186,7 @@ function load(){
     }
     MSGS=(r.d&&r.d.messages)||[];
     var c=(r.d&&r.d.counts)||{};
-    setC("#lxmCInbox",c.inbox); setC("#lxmCUnread",c.unread); setC("#lxmCArch",c.archived);
+    setC("#lxmCInbox",c.inbox); setC("#lxmCUnread",c.unread); setC("#lxmCArch",c.archived); setC("#lxmCSpam",c.spam);
     render();
   }).catch(function(e){
     var list=q("#lxmList"); if(list)list.innerHTML="<div class='lxadm-empty'>Could not read the inbox: "+esc(e.message)+"</div>";
@@ -141,8 +200,15 @@ function render(){
   var list=q("#lxmList"); if(!list)return;
   var rows=visible();
   if(!rows.length){
-    list.innerHTML="<div class='lxadm-empty'>"+(BOX==="archived"?"Nothing archived."
-      :(BOX==="unread"?"Nothing unread.":"No messages yet. Mail sent to support@, info@ or raza@lumoscore.com will appear here."))+"</div>";
+    // A search that finds nothing says WHERE it looked, because the box it looked in is the usual
+    // reason: mail you remember is often archived, or from someone you have since blocked.
+    var msg = Q
+      ? ("No match for \\u201c"+esc(Q)+"\\u201d in "+({inbox:"Inbox",unread:"Unread",archived:"Archived",spam:"Spam"}[BOX]||"Inbox")
+         +". Try another box \\u2014 search only looks in the one you are on.")
+      : (BOX==="archived"?"Nothing archived."
+        :(BOX==="spam"?"Nothing in spam. Mark a message as spam and everything from that sender moves here."
+        :(BOX==="unread"?"Nothing unread.":"No messages yet. Mail sent to support@, info@ or raza@lumoscore.com will appear here.")));
+    list.innerHTML="<div class='lxadm-empty'>"+msg+"</div>";
     return;
   }
   list.innerHTML=rows.map(function(m){
@@ -206,7 +272,7 @@ function open(id){
       body=document.createElement("iframe");
       body.className="lxm-html";
       body.setAttribute("sandbox","");
-      body.setAttribute("srcdoc","<style>body{font:400 14.5px/1.7 system-ui,sans-serif;color:#333;margin:0}"
+      body.setAttribute("srcdoc","<style>body{font:400 16.5px/1.7 system-ui,sans-serif;color:#333;margin:0}"
         +"img{max-width:100%;height:auto}</style>"+html);
     }
     else {
@@ -215,7 +281,10 @@ function open(id){
       // that did not exist -- the sender had simply written a subject and no message.
       body.textContent="(No message body \\u2014 the sender wrote only a subject.)";
     }
-    pane.innerHTML="<div class='lxm-read-head'>"
+    pane.innerHTML=(m.spam?("<div class='lxm-spambar'><div class='lxm-spambar-t'>In <b>Spam</b> because <b>"
+        +esc(m.from_addr)+"</b> is blocked \\u2014 everything from this address lands here.</div>"
+        +"<button class='adm-btn ghost' type='button' data-act='unspam'>Not spam</button></div>"):"")
+      +"<div class='lxm-read-head'>"
       +"<div class='lxm-read-subj'>"+esc(m.subject||"(no subject)")+"</div>"
       +"<div class='lxm-read-meta'>From <b>"+esc(m.from_name||"")+"</b> &lt;<a href='mailto:"+esc(m.from_addr)+"'>"+esc(m.from_addr)+"</a>&gt;<br>"
       +"To "+esc(m.to_addr)+" \\u00b7 "+esc(new Date(m.ts).toLocaleString())+"</div></div>";
@@ -252,7 +321,9 @@ function open(id){
     acts.innerHTML="<a class='adm-btn primary' href='mailto:"+esc(m.from_addr)
       +"?subject="+encodeURIComponent("Re: "+(m.subject||""))+"'>Reply in mail client</a>"
       +"<button class='adm-btn ghost' type='button' data-act='unread'>Mark unread</button>"
-      +"<button class='adm-btn ghost' type='button' data-act='arch'>"+(m.archived?"Move to inbox":"Archive")+"</button>";
+      +"<button class='adm-btn ghost' type='button' data-act='arch'>"+(m.archived?"Move to inbox":"Archive")+"</button>"
+      +"<button class='adm-btn ghost' type='button' data-act='"+(m.spam?"unspam":"spam")+"'>"+(m.spam?"Not spam":"Mark as spam")+"</button>"
+      +"<button class='adm-btn ghost lxm-del' type='button' data-act='del'>Delete</button>";
     pane.appendChild(acts);
     // View original. The stored raw is the record; the parsed body is a convenience. Being able to see
     // the source is what settles "is this empty or did the parser miss it?" without a round trip.
@@ -264,16 +335,47 @@ function open(id){
       pane.appendChild(tog); pane.appendChild(pre);
     }
     var note=document.createElement("div"); note.className="lxm-note";
-    note.textContent="This is a copy. The original was delivered to your mailbox as usual, and replies are sent from there.";
+    note.textContent="This is a copy. The original was delivered to your mailbox as usual — archiving, spam and delete here change only this copy.";
     pane.appendChild(note);
+
+    function done(){ SEL=null; pane.innerHTML="<div class='lxadm-empty'>Select a message to read it.</div>"; load(); }
+    function fail(b,msg){ var n=document.createElement("div"); n.className="lxm-note"; n.style.color="#dc4a4a";
+      n.textContent=msg; acts.parentNode.insertBefore(n,acts.nextSibling); if(b){b.disabled=false;} }
+
+    function doAct(act,b){
+      // DELETE IS THE ONE THING THAT CANNOT BE UNDONE, so it takes two clicks rather than a confirm()
+      // dialog: the button says what the second click will do, in place, where the message it will
+      // destroy is still on screen.
+      if(act==="del"){
+        if(!b.classList.contains("arm")){
+          b.classList.add("arm"); b.textContent="Delete permanently?";
+          setTimeout(function(){ if(b&&b.classList){ b.classList.remove("arm"); b.textContent="Delete"; } },5000);
+          return;
+        }
+        b.disabled=true; b.textContent="Deleting\\u2026";
+        api("",{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({id:m.id})})
+          .then(function(r){ if(!r.ok||!r.d||r.d.error){ fail(b,"Not deleted: "+((r.d&&r.d.error)||("HTTP "+r.status))); b.textContent="Delete"; b.classList.remove("arm"); return; }
+            done(); });
+        return;
+      }
+      if(act==="spam"||act==="unspam"){
+        b.disabled=true;
+        api("",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id:m.id,spam:act==="spam"})})
+          .then(function(r){ if(!r.ok||!r.d||r.d.error){ fail(b,(r.d&&r.d.error)||("HTTP "+r.status)); return; } done(); });
+        return;
+      }
+      var body2=(act==="unread")?{id:m.id,read:false}:{id:m.id,archived:m.archived?0:1};
+      api("",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(body2)}).then(done);
+    }
 
     acts.addEventListener("click",function(e){
       var b=e.target.closest&&e.target.closest("button[data-act]"); if(!b)return;
-      var act=b.getAttribute("data-act");
-      var body2=(act==="unread")?{id:m.id,read:false}:{id:m.id,archived:m.archived?0:1};
-      api("",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify(body2)})
-        .then(function(){ SEL=null; pane.innerHTML="<div class='lxadm-empty'>Select a message to read it.</div>"; load(); });
+      doAct(b.getAttribute("data-act"),b);
     });
+    // The "Not spam" button in the banner at the top does the same job as the one in the row of
+    // actions at the bottom; both go through doAct so there is only one description of what happens.
+    var bar=pane.querySelector(".lxm-spambar button[data-act]");
+    if(bar) bar.addEventListener("click",function(){ doAct(bar.getAttribute("data-act"),bar); });
 
     if(!m.read_at){
       api("",{method:"PATCH",headers:{"content-type":"application/json"},body:JSON.stringify({id:m.id,read:true})})
@@ -288,7 +390,9 @@ function boot(){
   if(!isPage())return;
   var head=q(".admin-page-head")||q(".mob-page-head");
   if(head&&!q(".lxadm-note")){ var n=document.createElement("div"); n.className="lxadm-note";
-    n.textContent="Mail to support@, info@ and raza@lumoscore.com is forwarded to your mailbox exactly as before; this is a copy kept for reference. Replies are sent from your own mail client, not from here.";
+    // This line is what stops Delete and Spam from being frightening, so it has to stay TRUE. It said
+    // replies were sent from your own mail client, which stopped being true when the reply box landed.
+    n.textContent="Mail to support@, info@ and raza@lumoscore.com is forwarded to your mailbox exactly as before; this is a copy kept for reference. Marking as spam or deleting here changes only this copy \\u2014 never what was delivered to your mailbox.";
     head.parentNode.insertBefore(n, head.nextSibling); }
   var list=q("#lxmList");
   if(list&&!list.__lx){ list.__lx=1; list.addEventListener("click",function(e){
@@ -298,7 +402,25 @@ function boot(){
     var b=e.target.closest&&e.target.closest("[data-box]"); if(!b)return;
     qa("#lxmSegs .seg-chip").forEach(function(c){ c.classList.remove("active"); });
     b.classList.add("active"); BOX=b.getAttribute("data-box");
-    if(BOX==="archived")load(); else render(); }); }
+    // Unread alone can be drawn from what is already in memory. Archived, Spam and ANY search need
+    // the server -- and once a search is running even Unread does, because the loaded set is a
+    // filtered one, not the whole inbox.
+    if(BOX==="unread"&&!Q)render(); else load(); }); }
+
+  // Search asks the server, so it waits for a pause in typing rather than firing per keystroke. 280ms
+  // is long enough that a whole word is one query and short enough that it still feels live.
+  var qi=q("#lxmQ"), qx=q("#lxmQX");
+  if(qi&&!qi.__lx){ qi.__lx=1;
+    var run=function(){ var v=(qi.value||"").trim(); if(v===Q)return; Q=v; if(qx)qx.hidden=!Q; load(); };
+    qi.addEventListener("input",function(){ if(qx)qx.hidden=!(qi.value||"").trim(); clearTimeout(QT); QT=setTimeout(run,280); });
+    // Enter searches at once instead of waiting out the debounce; Escape clears, which is what the
+    // key does in every other search field.
+    qi.addEventListener("keydown",function(e){
+      if(e.key==="Enter"){ e.preventDefault(); clearTimeout(QT); run(); }
+      if(e.key==="Escape"){ e.preventDefault(); qi.value=""; clearTimeout(QT); run(); } });
+  }
+  if(qx&&!qx.__lx){ qx.__lx=1; qx.addEventListener("click",function(){
+    if(qi)qi.value=""; qx.hidden=true; clearTimeout(QT); if(Q){ Q=""; load(); } if(qi)qi.focus(); }); }
   var rf=q("#lxmRefresh"); if(rf&&!rf.__lx){ rf.__lx=1; rf.addEventListener("click",load); }
   load();
 }
