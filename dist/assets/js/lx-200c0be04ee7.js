@@ -1,5 +1,5 @@
 (function(){
-try{ document.title="Bridge USDC and USDT0 across 36 chains | LumosCore"; }catch(_){}   /* baked title said "DEX" */
+try{ document.title="Bridge assets across 51 chains from Stellar | LumosCore"; }catch(_){}   /* baked title said "DEX" */
 try{ window.__lxCCTP={
   testnet:false, sourceDomain:27,
   tokenMessenger:"CAE2G5Z77UP7GYPYGFOWFGW7C7J6I4YP2AFGSADRKQY62SYUFLPNFTXL",
@@ -568,7 +568,12 @@ var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arb
   // The five NEAR-Intents-only chains added 2026-09-23. "Hood" on 1Click is ROBINHOOD CHAIN (chainId 4663), which
   // is why its art comes from the robinhood icon and its explorer is robinscan.io -- the short name in the token
   // list hides whose chain it is, and guessing hood.xyz got a dead host.
-  "BNB Chain":"bnbchain",Gnosis:"gnosis",Scroll:"scroll",Hood:"hood",ADI:"adi"};
+  "BNB Chain":"bnbchain",Gnosis:"gnosis",Scroll:"scroll",Hood:"hood",ADI:"adi",
+  // The sixteen non-EVM chains added 2026-09-23. Solana and Sui already had art from the original CCTP set.
+  // Starknet and Dash are not in DefiLlama chain icons at all, so those two come from CoinGecko instead.
+  Bitcoin:"bitcoin",Tron:"tron",TON:"ton",Near:"near",Starknet:"starknet",Cardano:"cardano",
+  Litecoin:"litecoin",Dogecoin:"dogecoin","Bitcoin Cash":"bitcoincash",Zcash:"zcash",Dash:"dash",
+  Movement:"movement",Fogo:"fogo"};
 // THE PICKER'S ICONS, BY STYLESHEET. lxCctpNetLogos leaves an option alone when the design already gave it a url()
 // background -- replacing it fought the design's re-render loop -- and Ethereum's option carries the design's own
 // ETH-TOKEN diamond. So the list showed that, and the selected field our network logo (RAZA 2026-09-19: "Why is
@@ -609,7 +614,16 @@ var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan
   // in the chainid.network registry rather than by guessing a hostname, which is how the dead explorer.hood.xyz and
   // explorer.adi.foundation guesses were caught before they shipped.
   "BNB Chain":"https://bscscan.com/address/",Gnosis:"https://gnosisscan.io/address/",Scroll:"https://scrollscan.com/address/",
-  Hood:"https://robinscan.io/address/",ADI:"https://explorer.adifoundation.ai/address/"};
+  Hood:"https://robinscan.io/address/",ADI:"https://explorer.adifoundation.ai/address/",
+  // The sixteen non-EVM chains. Solana and Sui already had entries above. blockchair is deliberately unused --
+  // it answers 401 to anything that is not a browser, so its links would have looked fine and been dead.
+  Bitcoin:"https://mempool.space/address/",Tron:"https://tronscan.org/#/address/",TON:"https://tonviewer.com/",
+  Near:"https://nearblocks.io/address/",
+  Starknet:"https://starkscan.co/contract/",Cardano:"https://cardanoscan.io/address/",
+  Litecoin:"https://litecoinspace.org/address/",Dogecoin:"https://dogechain.info/address/",
+  "Bitcoin Cash":"https://www.blockchain.com/explorer/addresses/bch/",
+  Zcash:"https://mainnet.zcashexplorer.app/address/",Dash:"https://blockexplorer.one/dash/mainnet/address/",
+  Movement:"https://explorer.movementnetwork.xyz/account/",Fogo:"https://explorer.fogo.io/address/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
 function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
 var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
@@ -644,7 +658,72 @@ var LX_EVM_NETS={Ethereum:1,Avalanche:1,Optimism:1,Arbitrum:1,Base:1,Polygon:1,L
   Codex:1,Sonic:1,XDC:1,Plume:1,Pharos:1,Cronos:1,
   // The five NEAR-Intents-only chains -- all EVM, all 0x recipients. Unlisted means unvalidated; see above.
   "BNB Chain":1,Gnosis:1,Scroll:1,Hood:1,ADI:1};
-function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false; if(LX_EVM_NETS[net])return /^0x[0-9a-fA-F]{40}$/.test(a); if(net==='Solana')return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a); if(net==='Sui')return /^0x[0-9a-fA-F]{64}$/.test(a); return a.length>0; }
+// The non-EVM destinations do NOT go in LX_EVM_NETS -- each has its own entry in LX_ADDR above, which
+// lxBrValidAddr consults first. Listing one here by mistake would apply the 0x test to a Bitcoin address.
+// BECH32, WITH THE REAL CHECKSUM. Pure integer polymod -- no hashing, so it stays synchronous and can run on every
+// keystroke. This is what actually catches a typo: a single wrong character fails the checksum, where a charset
+// test would wave it through. Verified against the published BIP-173 vector bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4
+// and the published Cardano addr1qx2f... , and both reject a one-character mutation. Accepts bech32 and bech32m.
+// NO BACKSLASH ESCAPES ANYWHERE BELOW -- this whole block ships inside a template literal, where a single backslash
+// is eaten on the way to the browser (see LUMOSCORE_DEV.md landmine 8). Character classes and string compares only.
+var LX_B32C="qpzry9x8gf2tvdw0s3jn54khce6mua7l";
+function lxB32Polymod(v){ var G=[0x3b6a57b2,0x26508e6d,0x1ea119fa,0x3d4233dd,0x2a1462b3], chk=1;
+  for(var i=0;i<v.length;i++){ var b=chk>>>25; chk=((chk&0x1ffffff)<<5)^v[i];
+    for(var j=0;j<5;j++) if((b>>>j)&1) chk^=G[j]; }
+  return chk>>>0; }
+function lxB32(s,hrpWant){
+  if(!s||s.length<8||s.length>130) return false;
+  var low=s.toLowerCase(), up=s.toUpperCase();
+  if(s!==low&&s!==up) return false;                       // mixed case is invalid in bech32
+  s=low;
+  var pos=s.lastIndexOf("1"); if(pos<1||pos+7>s.length) return false;
+  var hrp=s.slice(0,pos); if(hrp!==hrpWant) return false; // an address for the WRONG chain must not pass
+  var data=[],i,k;
+  for(i=pos+1;i<s.length;i++){ var c=LX_B32C.indexOf(s.charAt(i)); if(c<0) return false; data.push(c); }
+  var exp=[];
+  for(k=0;k<hrp.length;k++) exp.push(hrp.charCodeAt(k)>>>5);
+  exp.push(0);
+  for(k=0;k<hrp.length;k++) exp.push(hrp.charCodeAt(k)&31);
+  var pm=lxB32Polymod(exp.concat(data));
+  return pm===1||pm===0x2bc830a3; }
+var LX_B58="[1-9A-HJ-NP-Za-km-z]";
+function lxB58Re(prefix,lo,hi){ return new RegExp("^"+prefix+LX_B58+"{"+lo+","+hi+"}$"); }
+// One validator per address family. The base58check chains get charset + version prefix + length rather than a
+// checksum, because theirs needs SHA-256d, which is async in a browser and cannot gate a synchronous field check.
+// That is not the last line of defence: 1Click validates the recipient server-side when the QUOTE is requested,
+// and the quote always precedes the deposit -- so a typo that slips past this is refused before any money moves.
+var LX_ADDR={
+  "Bitcoin":function(a){ return lxB32(a,"bc")||lxB58Re("[13]",25,39).test(a); },
+  "Litecoin":function(a){ return lxB32(a,"ltc")||lxB58Re("[LM3]",26,33).test(a); },
+  "Dogecoin":function(a){ return lxB58Re("D",25,34).test(a); },
+  "Dash":function(a){ return lxB58Re("X",25,34).test(a); },
+  "Zcash":function(a){ return lxB58Re("t[13]",25,34).test(a); },
+  "Bitcoin Cash":function(a){ return /^(bitcoincash:)?[qp][a-z0-9]{41}$/.test(String(a).toLowerCase()); },
+  "Cardano":function(a){ return lxB32(a,"addr"); },
+  "Aleo":function(a){ return lxB32(a,"aleo"); },
+  "Tron":function(a){ return lxB58Re("T",33,33).test(a); },
+  "XRP":function(a){ return lxB58Re("r",24,34).test(a); },
+  "TON":function(a){ return /^[EU]Q[A-Za-z0-9_-]{46}$/.test(a); },
+  // NEAR takes a named account or a 64-hex implicit one. The suffix test is string slicing on purpose: a regex
+  // would need an escaped dot, and an escaped dot does not survive the template literal.
+  "Near":function(a){ if(/^[0-9a-f]{64}$/.test(a)) return true;
+    if(!/^[a-z0-9._-]{2,64}$/.test(a)) return false;
+    return a.slice(-5)===".near"||a.slice(-3)===".tg"; },
+  "Solana":function(a){ return lxB58Re("",32,44).test(a); },
+  "Fogo":function(a){ return lxB58Re("",32,44).test(a); },      // SVM, same address format as Solana
+  "Sui":function(a){ return /^0x[0-9a-fA-F]{64}$/.test(a); },
+  "Aptos":function(a){ return /^0x[0-9a-fA-F]{1,64}$/.test(a); },
+  "Movement":function(a){ return /^0x[0-9a-fA-F]{1,64}$/.test(a); },
+  "Starknet":function(a){ return /^0x[0-9a-fA-F]{1,64}$/.test(a); }
+};
+// THE FALL-THROUGH IS NOW A REFUSAL. It used to be "return a.length>0", so any destination this function did not
+// recognise accepted literally any text -- on a transfer that cannot be recalled. Refusing an unknown network is
+// the safe direction to be wrong: the worst case is a chain that cannot be used until it is listed here, instead
+// of a transfer sent into nowhere.
+function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false;
+  if(LX_ADDR[net]) return !!LX_ADDR[net](a);
+  if(LX_EVM_NETS[net])return /^0x[0-9a-fA-F]{40}$/.test(a);
+  return false; }
 function lxBrStep2Err(msg){ var s2=document.querySelector('.br-step[data-step="2"]'); var e=s2?s2.querySelector('.br-errslot'):null; if(e){ e.textContent=msg||''; if(msg) e.setAttribute('data-err',msg); else e.removeAttribute('data-err'); e.style.color=msg?'#e04f4f':''; } }
 // A MESSAGE IN THESE SLOTS DESCRIBES THE STATE THAT WAS THERE WHEN IT WAS WRITTEN -- this destination, this
 // address, this route. Change any of them and it stops being true, but it used to stay on screen: RAZA hit the
