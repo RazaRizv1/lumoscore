@@ -30,7 +30,7 @@ const PAGES = {
   'landing': {
     title: 'LumosCore — Trade, Pool and Bridge on Stellar',
     desc: LZ_LIVE
-      ? 'Swap tokens, provide liquidity, bridge assets across 51 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.'
+      ? 'Swap tokens, provide liquidity, bridge assets across 52 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.'
       : 'Swap tokens, provide liquidity, bridge USDC across 8 chains and launch your own asset on Stellar. Non-custodial — you sign every transaction.',
   },
   'home': {
@@ -60,7 +60,8 @@ const PAGES = {
   // could actually make -- see the note above that constant. The title must never count those: this is the page
   // that has to answer "which chains?" for an answer engine, and it once claimed two that could not be reached.
   //
-  // FIFTY-ONE: 17 + 21 - 7 = 31 across CCTP and LayerZero, plus the twenty only NEAR Intents reaches (BNB
+  // FIFTY-TWO: 17 + 21 - 7 = 31 across CCTP and LayerZero, plus the twenty only NEAR Intents reaches, plus XRPL,
+  // which ONLY Axelar reaches (and which is the whole reason that fourth route exists). The twenty are (BNB
   // Chain, Gnosis, Scroll, Hood, ADI, Bitcoin, Solana, Tron, TON, Near, Sui, Starknet, Cardano, Litecoin,
   // Dogecoin, Bitcoin Cash, Zcash, Dash, Movement, Fogo). Every one of those twenty was proved with a live
   // dry quote using a correct address for its chain -- XRP, Abstract, Aleo and HyperCore were tested the same way
@@ -73,8 +74,8 @@ const PAGES = {
   // MessageTransmitterV2 returned the same 2175 bytes as the Base control on each new chain. So the count cannot
   // quietly drift as either vendor adds deployments; only a re-scan can change it.
   'bridge': LZ_LIVE ? {
-    title: 'Bridge Assets to 51 Chains from Stellar | ' + BRAND,
-    desc: 'Move native USDC with Circle CCTP, USDT0 with LayerZero, or any major token with NEAR Intents, between Stellar and 51 chains. Nothing arrives wrapped.',
+    title: 'Bridge Assets to 52 Chains from Stellar | ' + BRAND,
+    desc: 'Move native USDC with Circle CCTP, USDT0 with LayerZero, or any major token with NEAR Intents, between Stellar and 52 chains. Nothing arrives wrapped.',
   } : {
     title: 'Bridge USDC to 8 Chains from Stellar — Circle CCTP | ' + BRAND,
     desc: 'Move native USDC between Stellar and Ethereum, Base, Arbitrum, Optimism, Polygon, Avalanche, Linea and World Chain using Circle CCTP. Burn-and-mint, so no wrapped tokens.',

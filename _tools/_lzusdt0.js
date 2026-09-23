@@ -333,13 +333,18 @@ const BODY = '(function(){'
   + ' var cc=((window.__lxCCTP||{}).domains)||{}, lz=((window.__lxLZ||{}).eids)||{};'
   + ' var niArr=window.__lxNiChains||[], ni={};'
   + ' for(var i=0;i<niArr.length;i++) ni[niArr[i]]=1;'
+  // Axelar counts the same way. EVERY route that adds a destination must publish it here, because step 1's Next is
+  // gated on this table -- a chain missing from it is pickable and then dead with no message. That has now bitten
+  // twice: once for the NEAR Intents chains, once for XRPL. If a fifth route is ever added, this is the line.
+  + ' var axArr=window.__lxAxChains||[], ax={};'
+  + ' for(var m=0;m<axArr.length;m++) ax[axArr[m]]=1;'
   + ' var names={}, out=[];'
   + ' Object.keys(cc).forEach(function(k){ names[k]=1; }); Object.keys(lz).forEach(function(k){ names[k]=1; });'
-  + ' Object.keys(ni).forEach(function(k){ names[k]=1; });'
+  + ' Object.keys(ni).forEach(function(k){ names[k]=1; }); Object.keys(ax).forEach(function(k){ names[k]=1; });'
   + ' Object.keys(names).sort().forEach(function(k){'
   + '  var hasC=(cc[k]!=null), hasL=(lz[k]!=null);'
-  + '  var a=(hasC&&!hasL)?"USDC":((hasL&&!hasC)?"USDT0":(hasC&&hasL)?"USDC or USDT0":"major tokens");'
-  + '  out.push({ name:k, cctp:hasC, lz:hasL, ni:(ni[k]===1), domain:cc[k], eid:lz[k], asset:a });'
+  + '  var a=(hasC&&!hasL)?"USDC":((hasL&&!hasC)?"USDT0":(hasC&&hasL)?"USDC or USDT0":(ax[k]===1&&ni[k]!==1)?"SHX":"major tokens");'
+  + '  out.push({ name:k, cctp:hasC, lz:hasL, ni:(ni[k]===1), ax:(ax[k]===1), domain:cc[k], eid:lz[k], asset:a });'
   + ' });'
   + ' return out; }'
 
@@ -842,7 +847,8 @@ const BODY = '(function(){'
   + ' if(rt.lz){ var b=prev("LayerZero"); rows.push({ route:"LayerZero", asset:"USDT0", available:true, recv:(src==="USDT0"&&amt>0)?+(amt*(1-rate)).toFixed(6):known(b.recv), impact:b.impact,'
   + '  networkFeeXlm:(_lzLast["fee|"+dest]||0), etaSeconds:lzEta(), etaText:lzHuman(lzEta())+", delivered automatically", needsClaim:false,'
   + '  claimNote:"Delivered to your address automatically \\u2014 the XLM messaging fee pays for delivery." }); }'
-  + ' try{ var ni=window.lxNiSkeleton&&window.lxNiSkeleton(dest); if(ni) rows.push(ni); }catch(_){ }'   // same no-flash rule
+  + ' try{ var ni=window.lxNiSkeleton&&window.lxNiSkeleton(dest); if(ni) rows.push(ni); }catch(_){ }'
+  + ' try{ var ax=window.lxAxSkeleton&&window.lxAxSkeleton(dest); if(ax) rows.push(ax); }catch(_){ }'   // same no-flash rule
   + ' return rows; }'
   // NO REDRAW UNDER A FINGER (RAZA 2026-09-22, tablet: the route "doesn't select upon first click"). A quote that lands
   // mid-tap rebuilt the cards, so the finger lifted off a node that was no longer in the page: its touch events and the
