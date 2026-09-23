@@ -62,10 +62,10 @@ const OLD_SUB='Swap assets seamlessly between networks via Wormhole and LayerZer
 const { LZ_LIVE } = require(__dirname + '/_lzflag.js');
 // One sub-heading per state. The CCTP-only line stays exactly as it was so nothing moves until the flag flips.
 const NEW_SUB = LZ_LIVE
-  ? 'Bridge USDC with Circle CCTP, USDT0 with LayerZero, or swap into Bitcoin, Solana and other major assets with NEAR Intents.'
+  ? 'Bridge USDC with Circle CCTP, USDT0 with LayerZero, SHX to the XRP Ledger with Axelar, or swap into Bitcoin, Solana and other major assets with NEAR Intents.'
   : 'Bridge USDC natively across chains with Circle CCTP — burn on Stellar, mint on the destination.';
 const PAGE_TITLE = LZ_LIVE
-  ? 'Bridge assets across 51 chains from Stellar | LumosCore'
+  ? 'Bridge assets across 52 chains from Stellar | LumosCore'
   : 'Bridge USDC across 8 chains with Circle CCTP | LumosCore';
 // Every wording this line has ever had. Whichever one a container currently holds gets normalised to NEW_SUB, so
 // the transform is idempotent in both directions. Add to this list, never edit in place.
@@ -78,6 +78,8 @@ const SUB_VARIANTS = [
   // The two-route wording, superseded once NEAR Intents reached twenty destinations neither of the other two can:
   // the line named only CCTP and LayerZero on a page whose dropdown now leads with Bitcoin and Solana.
   'Bridge USDC with Circle CCTP, USDT0 with LayerZero, or swap into Bitcoin, Solana and other major assets with NEAR Intents.',
+  // superseded when Axelar became the fourth route and XRPL the 52nd destination
+  'Bridge USDC with Circle CCTP, USDT0 with LayerZero, SHX to the XRP Ledger with Axelar, or swap into Bitcoin, Solana and other major assets with NEAR Intents.',
 ];
 const BUGGY_SUB='Bridge USDC natively across chains with Circle CCTP \\u2014 burn on Stellar, mint on the destination.';
 
@@ -934,7 +936,7 @@ var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arb
   // Starknet and Dash are not in DefiLlama chain icons at all, so those two come from CoinGecko instead.
   Bitcoin:"bitcoin",Tron:"tron",TON:"ton",Near:"near",Starknet:"starknet",Cardano:"cardano",
   Litecoin:"litecoin",Dogecoin:"dogecoin","Bitcoin Cash":"bitcoincash",Zcash:"zcash",Dash:"dash",
-  Movement:"movement",Fogo:"fogo"};
+  Movement:"movement",Fogo:"fogo",XRPL:"xrpl"};
 // THE PICKER'S ICONS, BY STYLESHEET. lxCctpNetLogos leaves an option alone when the design already gave it a url()
 // background -- replacing it fought the design's re-render loop -- and Ethereum's option carries the design's own
 // ETH-TOKEN diamond. So the list showed that, and the selected field our network logo (RAZA 2026-09-19: "Why is
@@ -984,7 +986,8 @@ var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan
   Litecoin:"https://litecoinspace.org/address/",Dogecoin:"https://dogechain.info/address/",
   "Bitcoin Cash":"https://www.blockchain.com/explorer/addresses/bch/",
   Zcash:"https://mainnet.zcashexplorer.app/address/",Dash:"https://blockexplorer.one/dash/mainnet/address/",
-  Movement:"https://explorer.movementnetwork.xyz/account/",Fogo:"https://explorer.fogo.io/address/"};
+  Movement:"https://explorer.movementnetwork.xyz/account/",Fogo:"https://explorer.fogo.io/address/",
+  XRPL:"https://xrpscan.com/account/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
 function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
 var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
@@ -1064,6 +1067,9 @@ var LX_ADDR={
   "Aleo":function(a){ return lxB32(a,"aleo"); },
   "Tron":function(a){ return lxB58Re("T",33,33).test(a); },
   "XRP":function(a){ return lxB58Re("r",24,34).test(a); },
+  // The Axelar route's destination. Same r-address family as XRP -- named XRPL because that is the CHAIN, and the
+  // dropdown row is the chain, not the coin.
+  "XRPL":function(a){ return lxB58Re("r",24,34).test(a); },
   "TON":function(a){ return /^[EU]Q[A-Za-z0-9_-]{46}$/.test(a); },
   // NEAR takes a named account or a 64-hex implicit one. The suffix test is string slicing on purpose: a regex
   // would need an escaped dot, and an escaped dot does not survive the template literal.
@@ -2248,6 +2254,10 @@ function lxBrConfirm(btn){
   // actually returns is. The check now happens after signing, on the envelope itself, in signSubmit.
   if(window.__lxBrRoute==="LayerZero"){ lxBrConfirmLz(btn,say,net,domain,recipient,amt,k,A); return; }
   // NEAR Intents: its own flow in _nearintents.js (swap if needed -> fresh live quote -> deposit with memo -> track)
+  // Axelar ITS: its own flow in _axelar.js (fee -> gas estimate -> interchain_transfer -> relayed, no claim)
+  if(window.__lxBrRoute==="Axelar"){
+    if(!window.__lxAxSendable||!window.lxAxConfirm){ say("Sending by Axelar isn't switched on yet — choose another route."); return; }
+    window.lxAxConfirm(btn,say,net,domain,recipient,amt,k,A); return; }
   if(window.__lxBrRoute==="NEAR Intents"){
     if(!window.__lxNiSendable||!window.lxNiConfirm){ say("Sending by NEAR Intents isn't switched on yet — choose another route."); return; }
     window.lxNiConfirm(btn,say,net,domain,recipient,amt,k,A); return; }

@@ -1,5 +1,5 @@
 (function(){
-try{ document.title="Bridge assets across 51 chains from Stellar | LumosCore"; }catch(_){}   /* baked title said "DEX" */
+try{ document.title="Bridge assets across 52 chains from Stellar | LumosCore"; }catch(_){}   /* baked title said "DEX" */
 try{ window.__lxCCTP={
   testnet:false, sourceDomain:27,
   tokenMessenger:"CAE2G5Z77UP7GYPYGFOWFGW7C7J6I4YP2AFGSADRKQY62SYUFLPNFTXL",
@@ -573,7 +573,7 @@ var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arb
   // Starknet and Dash are not in DefiLlama chain icons at all, so those two come from CoinGecko instead.
   Bitcoin:"bitcoin",Tron:"tron",TON:"ton",Near:"near",Starknet:"starknet",Cardano:"cardano",
   Litecoin:"litecoin",Dogecoin:"dogecoin","Bitcoin Cash":"bitcoincash",Zcash:"zcash",Dash:"dash",
-  Movement:"movement",Fogo:"fogo"};
+  Movement:"movement",Fogo:"fogo",XRPL:"xrpl"};
 // THE PICKER'S ICONS, BY STYLESHEET. lxCctpNetLogos leaves an option alone when the design already gave it a url()
 // background -- replacing it fought the design's re-render loop -- and Ethereum's option carries the design's own
 // ETH-TOKEN diamond. So the list showed that, and the selected field our network logo (RAZA 2026-09-19: "Why is
@@ -623,7 +623,8 @@ var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan
   Litecoin:"https://litecoinspace.org/address/",Dogecoin:"https://dogechain.info/address/",
   "Bitcoin Cash":"https://www.blockchain.com/explorer/addresses/bch/",
   Zcash:"https://mainnet.zcashexplorer.app/address/",Dash:"https://blockexplorer.one/dash/mainnet/address/",
-  Movement:"https://explorer.movementnetwork.xyz/account/",Fogo:"https://explorer.fogo.io/address/"};
+  Movement:"https://explorer.movementnetwork.xyz/account/",Fogo:"https://explorer.fogo.io/address/",
+  XRPL:"https://xrpscan.com/account/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
 function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
 var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
@@ -703,6 +704,9 @@ var LX_ADDR={
   "Aleo":function(a){ return lxB32(a,"aleo"); },
   "Tron":function(a){ return lxB58Re("T",33,33).test(a); },
   "XRP":function(a){ return lxB58Re("r",24,34).test(a); },
+  // The Axelar route's destination. Same r-address family as XRP -- named XRPL because that is the CHAIN, and the
+  // dropdown row is the chain, not the coin.
+  "XRPL":function(a){ return lxB58Re("r",24,34).test(a); },
   "TON":function(a){ return /^[EU]Q[A-Za-z0-9_-]{46}$/.test(a); },
   // NEAR takes a named account or a 64-hex implicit one. The suffix test is string slicing on purpose: a regex
   // would need an escaped dot, and an escaped dot does not survive the template literal.
@@ -1887,6 +1891,10 @@ function lxBrConfirm(btn){
   // actually returns is. The check now happens after signing, on the envelope itself, in signSubmit.
   if(window.__lxBrRoute==="LayerZero"){ lxBrConfirmLz(btn,say,net,domain,recipient,amt,k,A); return; }
   // NEAR Intents: its own flow in _nearintents.js (swap if needed -> fresh live quote -> deposit with memo -> track)
+  // Axelar ITS: its own flow in _axelar.js (fee -> gas estimate -> interchain_transfer -> relayed, no claim)
+  if(window.__lxBrRoute==="Axelar"){
+    if(!window.__lxAxSendable||!window.lxAxConfirm){ say("Sending by Axelar isn't switched on yet — choose another route."); return; }
+    window.lxAxConfirm(btn,say,net,domain,recipient,amt,k,A); return; }
   if(window.__lxBrRoute==="NEAR Intents"){
     if(!window.__lxNiSendable||!window.lxNiConfirm){ say("Sending by NEAR Intents isn't switched on yet — choose another route."); return; }
     window.lxNiConfirm(btn,say,net,domain,recipient,amt,k,A); return; }
