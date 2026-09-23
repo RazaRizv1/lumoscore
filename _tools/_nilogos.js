@@ -15,7 +15,18 @@ const FORCE = process.argv.includes('--force');
 // request time -- 404s from Cloudflare's edge (CoinGecko refuses those requests; measured on production for aurora-near,
 // hapi, hemi-bitcoin). So every logo is fetched here, once, and shipped. The file name is the SYMBOL, the key the picker,
 // the feed and the dashboard look logos up by; _nearintents.js and _realdata.js read this folder at build time.
-const NI_CHAINS = ['eth', 'arb', 'base', 'pol', 'op', 'avax', 'bera', 'monad', 'plasma'];
+// READ FROM _nearintents.js RATHER THAN LISTED AGAIN. This was a hand-written array of the original nine chains and
+// stayed that way while the route grew to thirty, so not one token on any chain added afterwards was ever fetched --
+// DOGE, xDAI, GNO, COW and EURe all rendered as letter discs in the picker (RAZA 2026-09-23). The list of chains is
+// not this file's to own; it belongs to the route, and a second copy only tells you it is wrong once someone looks.
+const NI_CHAINS = (() => {
+  const src = fs.readFileSync(path.join(__dirname, '_nearintents.js'), 'utf8');
+  const m = src.match(/var NI_CHAIN = \{([\s\S]*?)\};/);
+  if (!m) { console.error('  ! could not read NI_CHAIN from _nearintents.js'); process.exit(1); }
+  const keys = (m[1].match(/:\s*'([a-z0-9-]+)'/g) || []).map((s) => s.replace(/^:\s*'|'$/g, ''));
+  if (!keys.length) { console.error('  ! NI_CHAIN parsed empty'); process.exit(1); }
+  return keys;
+})();
 const MAJORS = ['NEAR', 'ETH', 'WETH', 'USDC', 'USDT', 'USDT0', 'WBTC', 'cbBTC', 'DAI', 'LINK', 'UNI', 'AAVE', 'ARB', 'GMX', 'OP', 'POL', 'AVAX', 'BERA', 'MON', 'XPL'];
 let SYMBOLS = MAJORS.slice();
 const SAFE = /^[A-Za-z0-9._-]{1,24}$/;   // becomes a file name and a URL path segment

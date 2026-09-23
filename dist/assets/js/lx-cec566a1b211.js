@@ -80,7 +80,7 @@
   function transportOf(sk) { return sk === 'XLM' ? 'XLM' : 'USDC'; }   // XLM goes as XLM; everything else as USDC
   // Logos: the 20 shipped with the site (assets/tokens/ni, _nilogos.js); any other token on 1Click's list through our
   // logo lookup, keyed on the coingeckoId 1Click gives it; nothing known -> a letter disc (see the menu's onerror).
-  var NI_LOCAL = {"AAVE":1,"ADI":1,"ARB":1,"AURORA":1,"AVAX":1,"BERA":1,"BRETT":1,"cbBTC":1,"CFI":1,"COCA":1,"DAI":1,"ETH":1,"GMX":1,"HAPI":1,"hemiBTC":1,"INX":1,"KAITO":1,"KNC":1,"LINK":1,"MOG":1,"MON":1,"NEAR":1,"OP":1,"PEPE":1,"POL":1,"SAFE":1,"SHIB":1,"SPX":1,"sUSDC":1,"SWEAT":1,"TITN":1,"TURBO":1,"UNI":1,"USD1":1,"USDC":1,"USDf":1,"USDT":1,"USDT0":1,"VVV":1,"WBTC":1,"WETH":1,"XAUT":1,"XPL":1};
+  var NI_LOCAL = {"AAVE":1,"ADA":1,"ADI":1,"ARB":1,"ASTER":1,"AURORA":1,"AVAX":1,"BCH":1,"BERA":1,"BLACKDRAGON":1,"BNB":1,"BOME":1,"BRETT":1,"BTC":1,"CASHCAT":1,"cbBTC":1,"CFI":1,"COCA":1,"COW":1,"DAI":1,"DASH":1,"DOGE":1,"ETH":1,"EURe":1,"EVAA":1,"FOGO":1,"FRAX":1,"GBPe":1,"GMX":1,"GNO":1,"GRAM":1,"HAPI":1,"hemiBTC":1,"INX":1,"JAMBO":1,"KAITO":1,"KNC":1,"LINK":1,"LOUD":1,"LTC":1,"MELANIA":1,"MOG":1,"MON":1,"MOVE":1,"mpDAO":1,"NEAR":1,"NearKat":1,"NPRO":1,"nrUsdt":1,"OP":1,"PENGU":1,"PEPE":1,"POL":1,"PONS":1,"PUBLIC":1,"PURGE":1,"RHEA":1,"SAFE":1,"SHIB":1,"SHITZU":1,"SOL":1,"SPX":1,"stNEAR":1,"STRK":1,"SUI":1,"sUSDC":1,"SWEAT":1,"TITN":1,"TRUMP":1,"TRX":1,"TURBO":1,"UNI":1,"USD1":1,"USDC":1,"USDCx":1,"USDe":1,"USDf":1,"USDG":1,"USDT":1,"USDT0":1,"VVV":1,"WBTC":1,"WETH":1,"wNEAR":1,"wNEARKAT":1,"XAUT":1,"xBTC":1,"xDAI":1,"XPL":1,"XRP":1,"ZEC":1};
   function logo(sym, chain) {
     if (NI_LOCAL[sym]) return '/assets/tokens/ni/' + sym + '.png';
     var t = chain ? tok(chain, sym) : null;
@@ -204,6 +204,15 @@
 
   // ---- the destination token picker ----------------------------------------------------------------------------
   function destNow() { var t = document.querySelector('.br-step[data-step="1"] .brd-trigger .nm'); return t ? (t.textContent || '').trim() : ''; }
+  // HOW MANY TOKENS THIS CHAIN ACTUALLY OFFERS, published for _bridgepolish.js so it can decide whether the
+  // destination asset is a CONTROL or just a label. Dogecoin, Litecoin, Cardano, Zcash, Dash, XRP, ADI and Fogo
+  // each have exactly one asset on 1Click, and they were still given a caret and a search box that could only ever
+  // offer the token already shown (RAZA 2026-09-23). Falls back to the curated majors before the live list loads,
+  // so the answer is never briefly wrong in the direction of showing a useless control.
+  window.__lxNiAssetCount = function (dest) {
+    var c = chainOf(dest); if (!c) return 0;
+    try { return TOK ? fullList(c).length : (NI_DEST[c] || []).length; } catch (_) { return (NI_DEST[c] || []).length; }
+  };
   function closeMenu() { var m = document.querySelector('.lx-ni-menu'); if (m && m.parentNode) m.parentNode.removeChild(m); }
   // THE FULL LIST, with a search box on top (RAZA 2026-09-19: "show the full list of possibilities" / "add search on top
   // of the dropdown"). Every token 1Click delivers on the chain, majors first; each row names the token and, where there

@@ -461,8 +461,14 @@ function runtime() {
         var im = da.querySelector('.lx-s2ic2 img'), nm2 = da.querySelector('.lx-s2nm2');
         if (im && logo && im.getAttribute('src') !== logo) im.setAttribute('src', logo);
         if (nm2 && nm2.textContent !== arr) nm2.textContent = arr;
-        // NEAR Intents: the token is the user's pick -- the face is the control that changes it (see the picker)
-        da.classList.toggle('lx-s2pick', de.getAttribute('data-lxroute') === 'NEAR Intents');
+        // NEAR Intents: the token is the user's pick -- the face is the control that changes it (see the picker).
+        // ONLY WHEN THERE IS SOMETHING TO PICK: a caret and a search box on a chain that offers exactly one asset
+        // (Dogecoin, Litecoin, Cardano, Zcash, Dash, XRP, ADI, Fogo) is a control whose entire menu is the token
+        // already on screen. __lxNiAssetCount comes from _nearintents.js, which owns that list.
+        var niN = window.__lxNiAssetCount
+          ? window.__lxNiAssetCount((((document.querySelector('.br-step[data-step="1"] .brd-trigger .nm') || {}).textContent) || '').trim())
+          : 2;
+        da.classList.toggle('lx-s2pick', de.getAttribute('data-lxroute') === 'NEAR Intents' && niN > 1);
       } else if (da) da.classList.remove('lx-s2pick');
       var dm = dside.querySelector('.br-amt');
       if (dm) {

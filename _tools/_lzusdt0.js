@@ -825,9 +825,15 @@ const BODY = '(function(){'
   // another route changed what would arrive; now it stays, its card says why, and the route gate blocks Review with
   // that reason (lzPaintStats: blocked).
   + ' var m=rows.filter(function(r){ return r.route===mine&&!lzLocked(r); })[0]; if(m) return m;'
-  // NEAR Intents is never picked automatically: it delivers a DIFFERENT token (ETH, POL...), so it is only chosen by
-  // the user. The stablecoin routes compete on value as before.
-  + ' var c=rows.filter(lzOk).filter(function(r){ return r.route!=="NEAR Intents"; }); if(!c.length) return null;'
+  // THE ONLY ROUTE THERE IS, IS THE ROUTE. On a destination just one transport reaches -- most of the chains added
+  // in September -- the card sat unselected and Review stayed dead until the user clicked the single option, which
+  // is a click that asks them to confirm they have no choice (RAZA 2026-09-23). This does NOT weaken the rule
+  // below: that rule exists to stop NEAR Intents silently REPLACING a stablecoin route, and with nothing to
+  // replace there is no substitution to make.
+  + ' var only=rows.filter(lzOk); if(only.length===1) return only[0];'
+  // NEAR Intents is never picked automatically WHEN THERE IS A CHOICE: it delivers a DIFFERENT token (ETH, POL...),
+  // so against a stablecoin route it is only ever chosen by the user. The stablecoin routes compete on value.
+  + ' var c=only.filter(function(r){ return r.route!=="NEAR Intents"; }); if(!c.length) return null;'
   + ' var u=lzXlmUsd(); function net(r){ return (+r.recv||0)-(+r.networkFeeXlm||0)*u; }'
   + ' var best=c.filter(function(r){ return r.route==="CCTP"; })[0]||c[0];'
   + ' if(best.route==="CCTP"&&best.recv==null) return best;'   // CCTP not priced yet: nothing can show LayerZero is better

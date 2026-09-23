@@ -231,6 +231,15 @@ function runtime(NI_SENDABLE) {
 
   // ---- the destination token picker ----------------------------------------------------------------------------
   function destNow() { var t = document.querySelector('.br-step[data-step="1"] .brd-trigger .nm'); return t ? (t.textContent || '').trim() : ''; }
+  // HOW MANY TOKENS THIS CHAIN ACTUALLY OFFERS, published for _bridgepolish.js so it can decide whether the
+  // destination asset is a CONTROL or just a label. Dogecoin, Litecoin, Cardano, Zcash, Dash, XRP, ADI and Fogo
+  // each have exactly one asset on 1Click, and they were still given a caret and a search box that could only ever
+  // offer the token already shown (RAZA 2026-09-23). Falls back to the curated majors before the live list loads,
+  // so the answer is never briefly wrong in the direction of showing a useless control.
+  window.__lxNiAssetCount = function (dest) {
+    var c = chainOf(dest); if (!c) return 0;
+    try { return TOK ? fullList(c).length : (NI_DEST[c] || []).length; } catch (_) { return (NI_DEST[c] || []).length; }
+  };
   function closeMenu() { var m = document.querySelector('.lx-ni-menu'); if (m && m.parentNode) m.parentNode.removeChild(m); }
   // THE FULL LIST, with a search box on top (RAZA 2026-09-19: "show the full list of possibilities" / "add search on top
   // of the dropdown"). Every token 1Click delivers on the chain, majors first; each row names the token and, where there
