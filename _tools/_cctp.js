@@ -41,7 +41,13 @@ const CCTP_DOMAINS={Ethereum:0,Avalanche:1,Optimism:2,Arbitrum:3,Base:6,Polygon:
   // is a second route. Listing them here means someone sending to Unichain, Morph or X Layer can pick native USDC
   // via CCTP instead of USDT0, and the route card offers both. Same on-chain verification as the six above.
   Unichain:10,Morph:30,'X Layer':37};
-const HIDE=['BNB Chain','Hedera','Mantle','Near','Scroll','Sei','Starknet','zkSync Era','Solana','Sui'];
+// ONLY WHAT NO ROUTE REACHES. This list used to hold ten names and each one was then fought back into view by an
+// 'html.<gate>-on ... display:flex !important' rule in the LayerZero or NEAR Intents layer -- and that positive
+// rule also beat the design's own network search, which hides a row with an INLINE display:none (an inline style
+// loses to !important). The result was a search box that filtered the design's rows and left every one of ours
+// showing. Each route now states its own rule as "hidden only while my gate is OFF", so there is no override war
+// and nothing outranks the search. A name belongs here only if NOTHING can carry a transfer to it.
+const HIDE=['zkSync Era'];
 
 // The six CCTP destinations the design does not ship a row for. Built the same way the LayerZero layer builds its
 // lx-lzopt buttons, and deliberately NOT gated behind a class: CCTP is live, so unlike the LayerZero set there is
