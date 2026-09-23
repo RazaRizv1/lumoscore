@@ -1,6 +1,11 @@
 (function runtime(NI_SENDABLE) {
   // Our network names -> 1Click chain keys. The 9 of our 16 destinations 1Click serves.
-  var NI_CHAIN = { Ethereum: 'eth', Arbitrum: 'arb', Base: 'base', Polygon: 'pol', Optimism: 'op', Avalanche: 'avax', Berachain: 'bera', Monad: 'monad', Plasma: 'plasma' };
+  // Our network names -> 1Click chain keys. Extended 2026-09-23 with the five 1Click serves that take a PLAIN 0x
+  // RECIPIENT, which is the only reason they could ship ahead of the rest: every other chain 1Click reaches
+  // (Bitcoin, Solana, XRP, Tron, TON, Cardano...) needs its own address validator first, and lxBrValidAddr only
+  // knows EVM, Solana and Sui today. Each of the five was confirmed with a live dry quote before listing.
+  var NI_CHAIN = { Ethereum: 'eth', Arbitrum: 'arb', Base: 'base', Polygon: 'pol', Optimism: 'op', Avalanche: 'avax', Berachain: 'bera', Monad: 'monad', Plasma: 'plasma',
+    'BNB Chain': 'bsc', Gnosis: 'gnosis', Scroll: 'scroll', Hood: 'hood', ADI: 'adi' };
   // The offer per chain: NATIVE FIRST, then majors. Fixed on purpose -- 1Click's own lists include micro-caps.
   var NI_DEST = {
     eth: ['ETH', 'USDC', 'USDT', 'WBTC', 'cbBTC', 'DAI', 'LINK', 'UNI', 'AAVE', 'WETH'],
@@ -11,15 +16,36 @@
     avax: ['AVAX', 'USDC', 'USDT'],
     bera: ['BERA', 'USDT0'],
     monad: ['MON', 'USDC', 'USDT0'],
-    plasma: ['XPL', 'USDT0']
+    plasma: ['XPL', 'USDT0'],
+    // Native first, then majors -- same rule as above, and the same deliberate exclusion of 1Click's micro-caps
+    // (bsc alone lists SWEAT, RHEA, EVAA and nrUsdt; gnosis lists GBPe). ADI's chain serves exactly one asset.
+    //
+    // GNOSIS AND HOOD DELIBERATELY BREAK THE NATIVE-FIRST RULE, because on those two the native coin is the
+    // THINNEST asset and the first entry is what the picker defaults to. Measured through our own proxy on
+    // 2026-09-23: gnosis xDAI and hood ETH both quote at $100 and return "No liquidity available" at $2,000,
+    // while gnosis USDC/USDT/WETH and hood USDG quote fine at both. Leading with the native coin would have made
+    // the default choice the one that fails first, on chains most people reach for a stablecoin anyway.
+    // hood USDe is absent, not reordered: it returned no liquidity at ANY size tested.
+    bsc: ['BNB', 'USDC', 'USDT', 'NEAR', 'ASTER'],
+    gnosis: ['USDC', 'USDT', 'WETH', 'xDAI', 'GNO', 'SAFE', 'COW'],
+    scroll: ['ETH', 'USDT'],
+    hood: ['USDG', 'ETH', 'WETH'],
+    adi: ['ADI']
   };
   var NI_NAME = { ETH: 'Ether', WETH: 'Wrapped Ether', USDC: 'USD Coin', USDT: 'Tether USD', USDT0: 'Tether USD0', WBTC: 'Wrapped Bitcoin',
     cbBTC: 'Coinbase Wrapped BTC', DAI: 'Dai', LINK: 'Chainlink', UNI: 'Uniswap', AAVE: 'Aave', ARB: 'Arbitrum', GMX: 'GMX', OP: 'Optimism',
-    POL: 'Polygon', AVAX: 'Avalanche', BERA: 'Berachain', MON: 'Monad', XPL: 'Plasma' };
-  var STABLE = { USDC: 1, USDT: 1, USDT0: 1, DAI: 1 };
+    POL: 'Polygon', AVAX: 'Avalanche', BERA: 'Berachain', MON: 'Monad', XPL: 'Plasma',
+    BNB: 'BNB', NEAR: 'NEAR', ASTER: 'Aster', xDAI: 'xDAI', GNO: 'Gnosis', SAFE: 'Safe', COW: 'CoW Protocol',
+    USDG: 'Global Dollar', USDe: 'Ethena USDe', ADI: 'ADI' };
+  var STABLE = { USDC: 1, USDT: 1, USDT0: 1, DAI: 1, xDAI: 1, USDG: 1, USDe: 1, EURe: 1 };
   var PLACEHOLDER_EVM = '0x1111111111111111111111111111111111111111';   // DRY quotes only (1Click refuses 0x..dEaD); a real send uses the user's validated address
 
   window.__lxNiSendable = !!NI_SENDABLE;
+  // The NEAR-Intents-only destination rows are hidden until this class exists, exactly as the LayerZero-only rows
+  // wait on lx-lz-on. Those five chains have NO other transport, so without the gate a build with the flag off
+  // would show rows whose only route is locked -- the selectable-dead-route problem, moved one step earlier in
+  // the wizard. One switch turns the route and its destinations on together.
+  try { if (NI_SENDABLE) document.documentElement.classList.add('lx-ni-on'); } catch (_) {}
   window.__lxNiAsset = window.__lxNiAsset || {};
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }

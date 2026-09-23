@@ -27,7 +27,12 @@ const B = String.fromCharCode(92);
 
 function runtime(NI_SENDABLE) {
   // Our network names -> 1Click chain keys. The 9 of our 16 destinations 1Click serves.
-  var NI_CHAIN = { Ethereum: 'eth', Arbitrum: 'arb', Base: 'base', Polygon: 'pol', Optimism: 'op', Avalanche: 'avax', Berachain: 'bera', Monad: 'monad', Plasma: 'plasma' };
+  // Our network names -> 1Click chain keys. Extended 2026-09-23 with the five 1Click serves that take a PLAIN 0x
+  // RECIPIENT, which is the only reason they could ship ahead of the rest: every other chain 1Click reaches
+  // (Bitcoin, Solana, XRP, Tron, TON, Cardano...) needs its own address validator first, and lxBrValidAddr only
+  // knows EVM, Solana and Sui today. Each of the five was confirmed with a live dry quote before listing.
+  var NI_CHAIN = { Ethereum: 'eth', Arbitrum: 'arb', Base: 'base', Polygon: 'pol', Optimism: 'op', Avalanche: 'avax', Berachain: 'bera', Monad: 'monad', Plasma: 'plasma',
+    'BNB Chain': 'bsc', Gnosis: 'gnosis', Scroll: 'scroll', Hood: 'hood', ADI: 'adi' };
   // The offer per chain: NATIVE FIRST, then majors. Fixed on purpose -- 1Click's own lists include micro-caps.
   var NI_DEST = {
     eth: ['ETH', 'USDC', 'USDT', 'WBTC', 'cbBTC', 'DAI', 'LINK', 'UNI', 'AAVE', 'WETH'],
@@ -38,15 +43,36 @@ function runtime(NI_SENDABLE) {
     avax: ['AVAX', 'USDC', 'USDT'],
     bera: ['BERA', 'USDT0'],
     monad: ['MON', 'USDC', 'USDT0'],
-    plasma: ['XPL', 'USDT0']
+    plasma: ['XPL', 'USDT0'],
+    // Native first, then majors -- same rule as above, and the same deliberate exclusion of 1Click's micro-caps
+    // (bsc alone lists SWEAT, RHEA, EVAA and nrUsdt; gnosis lists GBPe). ADI's chain serves exactly one asset.
+    //
+    // GNOSIS AND HOOD DELIBERATELY BREAK THE NATIVE-FIRST RULE, because on those two the native coin is the
+    // THINNEST asset and the first entry is what the picker defaults to. Measured through our own proxy on
+    // 2026-09-23: gnosis xDAI and hood ETH both quote at $100 and return "No liquidity available" at $2,000,
+    // while gnosis USDC/USDT/WETH and hood USDG quote fine at both. Leading with the native coin would have made
+    // the default choice the one that fails first, on chains most people reach for a stablecoin anyway.
+    // hood USDe is absent, not reordered: it returned no liquidity at ANY size tested.
+    bsc: ['BNB', 'USDC', 'USDT', 'NEAR', 'ASTER'],
+    gnosis: ['USDC', 'USDT', 'WETH', 'xDAI', 'GNO', 'SAFE', 'COW'],
+    scroll: ['ETH', 'USDT'],
+    hood: ['USDG', 'ETH', 'WETH'],
+    adi: ['ADI']
   };
   var NI_NAME = { ETH: 'Ether', WETH: 'Wrapped Ether', USDC: 'USD Coin', USDT: 'Tether USD', USDT0: 'Tether USD0', WBTC: 'Wrapped Bitcoin',
     cbBTC: 'Coinbase Wrapped BTC', DAI: 'Dai', LINK: 'Chainlink', UNI: 'Uniswap', AAVE: 'Aave', ARB: 'Arbitrum', GMX: 'GMX', OP: 'Optimism',
-    POL: 'Polygon', AVAX: 'Avalanche', BERA: 'Berachain', MON: 'Monad', XPL: 'Plasma' };
-  var STABLE = { USDC: 1, USDT: 1, USDT0: 1, DAI: 1 };
+    POL: 'Polygon', AVAX: 'Avalanche', BERA: 'Berachain', MON: 'Monad', XPL: 'Plasma',
+    BNB: 'BNB', NEAR: 'NEAR', ASTER: 'Aster', xDAI: 'xDAI', GNO: 'Gnosis', SAFE: 'Safe', COW: 'CoW Protocol',
+    USDG: 'Global Dollar', USDe: 'Ethena USDe', ADI: 'ADI' };
+  var STABLE = { USDC: 1, USDT: 1, USDT0: 1, DAI: 1, xDAI: 1, USDG: 1, USDe: 1, EURe: 1 };
   var PLACEHOLDER_EVM = '0x1111111111111111111111111111111111111111';   // DRY quotes only (1Click refuses 0x..dEaD); a real send uses the user's validated address
 
   window.__lxNiSendable = !!NI_SENDABLE;
+  // The NEAR-Intents-only destination rows are hidden until this class exists, exactly as the LayerZero-only rows
+  // wait on lx-lz-on. Those five chains have NO other transport, so without the gate a build with the flag off
+  // would show rows whose only route is locked -- the selectable-dead-route problem, moved one step earlier in
+  // the wizard. One switch turns the route and its destinations on together.
+  try { if (NI_SENDABLE) document.documentElement.classList.add('lx-ni-on'); } catch (_) {}
   window.__lxNiAsset = window.__lxNiAsset || {};
 
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -439,7 +465,27 @@ const JS = '(' + withNiFiles(runtime.toString()) + ')(' + (LZ_LIVE ? 'true' : 'f
 try { new Function(JS); } catch (e) { console.error('  ! NEAR Intents runtime does not parse: ' + e.message); process.exit(1); }
 const SCRIPT = '<script id="lx-nearintents">' + JS + '<' + '/script>';
 
-let n = 0, seen = 0;
+// THE FIVE DESTINATIONS ONLY NEAR INTENTS CAN REACH. Two of them -- BNB Chain and Scroll -- already ship in the
+// design's dropdown and are hidden by the CCTP layer's HIDE list; they are un-hidden here rather than re-added, so
+// the design keeps owning its own row (the same call the LayerZero layer makes for Sei, Hedera and Mantle). The
+// other three are not in the design at all and are built below.
+//
+// All five are gated behind html.lx-ni-on, which the runtime sets only when NI_SENDABLE. The prefix is needed on
+// the un-hide rules to outrank the CCTP layer's own .brd-opt[data-net="…"]{display:none!important}.
+const NI_UNHIDE = ['BNB Chain', 'Scroll'];
+const NI_ONLY = [['Gnosis', 'GNO', '#133629'], ['Hood', 'HOOD', '#00c805'], ['ADI', 'ADI', '#1b1b1f']];
+const NI_OPTS = NI_ONLY.map(function (n) {
+  return '<button class="brd-opt lx-niopt" type="button" data-net="' + n[0] + '">'
+    + '<span class="brd-ic lx-netlm" style="background:' + n[2] + '">' + n[1] + '</span>'
+    + '<span class="brd-nm">' + n[0] + '</span></button>';
+}).join('');
+const NI_CSS = '<style id="lx-nipick-css">'
+  + '.brd-opt.lx-niopt{display:none !important}'
+  + 'html.lx-ni-on .brd-opt.lx-niopt{display:flex !important}'
+  + NI_UNHIDE.map(function (n) { return 'html.lx-ni-on .brd-opt[data-net="' + n + '"]{display:flex !important}'; }).join('')
+  + '<' + '/style>';
+
+let n = 0, seen = 0, dd = 0;
 for (const dev of ['desktop', 'mobile']) {
   const file = 'lumoscore-aptos-' + dev + '.html';
   let data;
@@ -450,6 +496,14 @@ for (const dev of ['desktop', 'mobile']) {
     let h = json[k];
     const before = h;
     h = h.replace(new RegExp('<script id="lx-nearintents">[' + B + 's' + B + 'S]*?<' + B + '/script>', 'g'), '');   // idempotent
+    // Same contract as the CCTP and LayerZero rows: strip with /g, then re-add on World Chain's closing tag, so
+    // editing NI_ONLY can never leave a stale row behind. Each layer's strip matches only its own class.
+    h = h.replace(new RegExp('<style id="lx-nipick-css">[' + B + 's' + B + 'S]*?<' + B + '/style>', 'g'), '');
+    h = h.replace(new RegExp('<button class="brd-opt lx-niopt"[' + B + 's' + B + 'S]*?<' + B + '/button>', 'g'), '');
+    if (h.indexOf('</head>') >= 0) h = h.replace('</head>', NI_CSS + '</head>');
+    { const anchor = '<span class="brd-nm">World Chain</span></button>';
+      const ai = h.indexOf(anchor);
+      if (ai >= 0) { h = h.slice(0, ai + anchor.length) + NI_OPTS + h.slice(ai + anchor.length); dd++; } }
     const bi = h.lastIndexOf('</body>');
     if (bi < 0) { json[k] = h; continue; }
     h = h.slice(0, bi) + SCRIPT + h.slice(bi);
@@ -459,5 +513,5 @@ for (const dev of ['desktop', 'mobile']) {
   const serialized = JSON.stringify(json).split('</').join('<' + B + '/');
   fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
 }
-console.log('NEAR Intents route: ' + seen + ' bridge page key(s), ' + n + ' changed' + (LZ_LIVE ? ' (sendable)' : ' (shown, not sendable)'));
+console.log('NEAR Intents route: ' + seen + ' bridge page key(s), ' + n + ' changed, ' + dd + ' dropdown(s) got the ' + NI_ONLY.length + ' NI-only rows' + (LZ_LIVE ? ' (sendable)' : ' (shown, not sendable)'));
 if (!seen) { console.error('  ! no bridge page matched'); process.exit(1); }
