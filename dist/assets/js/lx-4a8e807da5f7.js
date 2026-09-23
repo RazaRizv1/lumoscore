@@ -19,6 +19,26 @@ try{
   // WHAT WAS PRESSED, not what was typed: the visible label of a link or button (and, for a link leaving the site, its
   // destination host). Never a field's value, an amount or an address -- inputs are ignored entirely, and a label is
   // trimmed to 80 characters. One click a second at most, 120 per page at most, so a stuck finger cannot flood it.
+  // ---- where a connected wallet is connecting from ------------------------------------------------
+  // A SEPARATE PING TO A SEPARATE ENDPOINT, carrying the ADDRESS AND NOTHING ELSE -- no sid, no path,
+  // no referrer. That is what keeps the two records unlinkable, and it is why the privacy policy can
+  // still say the page-view record holds no wallet address: it does not, and this one holds no
+  // session. The country is read from the connection at the edge; nothing about it is sent from here.
+  //
+  // Once per address per session, so a wallet that stays connected across twenty pages is one write.
+  try{
+    var wa=(localStorage.getItem("lumos.address")||"").trim().toUpperCase();
+    if(/^G[A-Z2-7]{55}$/.test(wa)){
+      var seen=""; try{ seen=sessionStorage.getItem("lx.geo")||""; }catch(_){}
+      if(seen!==wa){
+        try{ sessionStorage.setItem("lx.geo",wa); }catch(_){}
+        var gb=JSON.stringify({addr:wa}), gsent=false;
+        try{ if(navigator.sendBeacon) gsent=navigator.sendBeacon("/lxapi/walletgeo",new Blob([gb],{type:"application/json"})); }catch(_){}
+        if(!gsent){ try{ fetch("/lxapi/walletgeo",{method:"POST",headers:{"content-type":"application/json"},body:gb,keepalive:true}).catch(function(){}); }catch(_){} }
+      }
+    }
+  }catch(_){}
+
   var last=0, n=0;
   document.addEventListener("click",function(e){
     try{
