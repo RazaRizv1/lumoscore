@@ -107,6 +107,17 @@ const REVENUE_MOB=`
 `;
 
 const CSS=`<style id="lx-admin-css">
+/* Sortable column headings. A button rather than a click handler on the <th> so the keyboard reaches
+   it and a screen reader announces it as something you can press. The arrow is always present, in a
+   fixed-width slot, so the heading row does not shift as the active column moves. */
+.lxth{display:inline-flex;align-items:center;gap:5px;background:none;border:0;padding:0;margin:0;cursor:pointer;
+  font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit}
+thead th[style*="right"] .lxth{flex-direction:row-reverse}
+.lxth:hover{color:var(--text)}
+.lxth-a{display:inline-block;width:9px;text-align:center;font-size:9px;line-height:1;opacity:.35}
+.lxth.on{color:var(--accent,#ea6a2c)}
+.lxth.on .lxth-a{opacity:1}
+.lxth:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;border-radius:4px}
 /* Dashboard groups. .kpi-grid is repeat(auto-fit,minmax(180px,1fr)), so a heading has to span the
    whole row or it would sit in a column and read as an eleventh tile. */
 .lxd-sec{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;margin:18px 0 -4px}
@@ -1215,12 +1226,58 @@ function paintAssets(){
   // Set per render rather than once, because the tab can change under a table that is already built.
   var TH_REQ=["Asset","Applicant","Paid","Submitted","Status","Actions"];
   var thr=tbl.querySelector("thead tr");
+  // Which TH index sorts by what. Only the numeric columns: sorting by Asset or Issuer domain is what
+  // the search box is for, and Actions is not a value.
+  var SORTABLE={2:"price",3:"d1",4:"d7",5:"v1",6:"v7",7:"v30",8:"trust"};
+  // null means "leave the rows in the order the array is already in", which is what the Sort dropdown
+  // produces. So the two controls coexist without either having to know about the other's state.
+  var COL=null, DIR=-1;
   function setHead(){
     if(!thr)return;
     var want=(MODE==="requests")?TH_REQ:TH, first=(MODE==="requests")?2:1;
-    var made=want.map(function(h,i){ return "<th"+(i>first?" style='text-align:right'":"")+">"+esc(h)+"</th>"; }).join("");
+    var made=want.map(function(h,i){
+      var al=(i>first?" style='text-align:right'":"");
+      var col=(MODE==="requests")?null:SORTABLE[i];
+      if(!col)return "<th"+al+">"+esc(h)+"</th>";
+      var on=(COL===col);
+      return "<th"+al+"><button type='button' class='lxth"+(on?" on":"")+"' data-lxsort='"+col+"'"
+        +" aria-label='Sort by "+esc(h)+(on?(DIR<0?", high to low":", low to high"):"")+"'>"
+        +esc(h)+"<span class='lxth-a'>"+(on?(DIR<0?"\\u25bc":"\\u25b2"):"\\u2195")+"</span></button></th>";
+    }).join("");
     if(thr.innerHTML!==made)thr.innerHTML=made;
   }
+  // The value the column SHOWS, so the order always matches what is on screen. Volume is read in USD
+  // for the same reason: the cells are USD, and sorting the raw token amounts would put a million
+  // units of something worthless above a thousand dollars of something real.
+  function sortVal(a,col){
+    var k=key(a), v=DATA[k]||{}, px=PXA[k], w={v1:"d1",v7:"d7",v30:"d30"}[col];
+    if(w){ var r=win(k,w); return (r&&r.amt&&px!=null)?r.amt*px:null; }
+    if(col==="price")return v.price!=null?+v.price:null;
+    if(col==="trust")return v.trust!=null?+v.trust:null;
+    if(col==="d1"||col==="d7")return v[col]!=null?+v[col]:null;
+    return null;
+  }
+  // A row whose number has not arrived yet sorts LAST in BOTH directions. Letting nulls ride at one
+  // end means clicking "low to high" fills the top of the table with blanks, which looks like the
+  // sort is broken rather than like the data is still loading. Ties fall back to code so the order
+  // is stable instead of reshuffling on every repaint.
+  function bySort(x,y){
+    var a=sortVal(x,COL), b=sortVal(y,COL);
+    var an=(a==null||a!==a), bn=(b==null||b!==b);
+    if(an&&bn)return x.code.localeCompare(y.code);
+    if(an)return 1;
+    if(bn)return -1;
+    if(a===b)return x.code.localeCompare(y.code);
+    return DIR*(a-b);
+  }
+  if(thr&&!thr.__lxs){ thr.__lxs=1; thr.addEventListener("click",function(e){
+    var b=e.target.closest&&e.target.closest("[data-lxsort]"); if(!b)return;
+    var c=b.getAttribute("data-lxsort");
+    // First click on a column is HIGH TO LOW. For money, volume and holders that is the question
+    // being asked nine times out of ten; ascending is one more click away.
+    if(COL===c)DIR=-DIR; else { COL=c; DIR=-1; }
+    render();
+  }); }
   var tb=tbl.querySelector("tbody");
 
   // CURATED and MINTS are different claims. Curated is what LumosCore chooses to list -- the set Trade
@@ -1607,6 +1664,10 @@ function paintAssets(){
     if(MODE==="requests")return reqRender();
     var qy=((q(".fs-search input")||{}).value||"").trim().toLowerCase();
     var LI=rows().filter(function(a){ return !qy || (a.code+" "+a.iss+" "+((DATA[key(a)]||{}).domain||"")).toLowerCase().indexOf(qy)>=0; });
+    // Sorted on the FILTERED copy, never on rows() itself. The curated array is the saved order and
+    // gets written back to KV by the Sort dropdown's own handler -- reordering it from a column click
+    // would silently persist a view preference as the list's real order.
+    if(COL)LI.sort(bySort);
     if(!LI.length){ tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>"+(rows().length?"No asset matches that search.":"Nothing here yet.")+"</td></tr>"; return; }
     tb.innerHTML=LI.map(function(a){ var k=key(a), v=DATA[k];
       // undefined means still looking; null means the lookup came back with nothing. Both used to
@@ -1682,7 +1743,9 @@ function paintAssets(){
   var si=q(".fs-search input"); if(si){ si.placeholder="Search by code, issuer or domain…"; si.addEventListener("input",render); }
   qa(".filter-strip .fs-select").forEach(function(sel,i){
     if(i===0){ sel.innerHTML="<option>Sort: LumosCore volume</option><option>Sort: Trustlines</option><option>Sort: Code</option>";
-      sel.addEventListener("change",function(){ var mm=sel.selectedIndex; var LI=rows();
+      // The dropdown reorders the stored list, so it has to win outright -- otherwise a column sort
+      // left active would keep overriding it and the dropdown would look broken.
+      sel.addEventListener("change",function(){ COL=null; var mm=sel.selectedIndex; var LI=rows();
         LI.sort(function(x,y){ var a=DATA[key(x)]||{}, b=DATA[key(y)]||{};
           if(mm===1)return (b.trust||0)-(a.trust||0);
           if(mm===2)return x.code.localeCompare(y.code);

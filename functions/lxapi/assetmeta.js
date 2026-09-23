@@ -84,6 +84,34 @@ async function stampVerified(kv, asset) {
   return { rec, toml: (res && res.toml) || null };
 }
 
+// CURATED MEANS TICKED, and the curated LIST is the authority on what is curated -- but the tick map
+// is only ever stamped at write time, so the two drift apart. A launchpad mint is stamped
+// {v:0, s:'mint'} when it is issued, and curating it afterwards changed the list without restamping,
+// so it stayed unticked for good. TDT is exactly that (RAZA, 2026-09-23: "must add curated
+// verification tick for TDT") -- its handshake even passes, but it lands on lumoscore.com, which is
+// our own domain and therefore carries no weight, so `curated` was the only branch that could tick it
+// and nothing ever re-ran it.
+//
+// No handshake is needed to repair this: "LumosCore lists this" is a decision, not a network fact, so
+// the record can be rebuilt from the list alone. Everything already carrying a tick is left untouched,
+// so a handshake or grandfathered record is never downgraded to our own word.
+function reconcileCurated(list, vmap) {
+  const fixed = [];
+  for (const a of list) {
+    const r = vmap[a];
+    if (r && r.v) continue;
+    vmap[a] = {
+      v: 1, s: 'curated', d: (r && r.d) || '', t: Date.now(),
+      why: 'Ticked because LumosCore curates it.'
+        + ((r && r.s === 'mint')
+          ? ' It was minted on the launchpad and stamped before it was curated; the handshake lands on our own domain, so a person choosing it is what the tick rests on.'
+          : ' The handshake does not pass: ' + ((r && r.why) || 'not checked') + '.'),
+    };
+    fixed.push(a);
+  }
+  return fixed;
+}
+
 function json(body, status, ttl) {
   return new Response(JSON.stringify(body), {
     status,
@@ -139,6 +167,10 @@ export async function onRequestGet({ request, env }) {
   try { list = (await kv.get(LIST, 'json')) || []; } catch (_) {}
   let verified = {};
   try { verified = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
+  // Applied to the ANSWER, not to the store: a read must not write, and an unauthenticated caller
+  // reaches this handler. It only means the panel never shows a curated asset as unticked while the
+  // stored record catches up -- the PUT above is what persists the repair.
+  reconcileCurated(Array.isArray(list) ? list : [], verified);
   // Two different things, kept apart. CURATED is what LumosCore chooses to list -- the same set Trade
   // main shows. MINTS are the tokens issued through our own launchpad: ours by definition, not a
   // curation decision, and folding them into the curated list made it look like we had picked 55.
@@ -196,10 +228,13 @@ export async function onRequestPut({ request, env }) {
     const keep = new Set(list.concat(mints));
     let dropped = 0;
     for (const k of Object.keys(vmap)) if (!keep.has(k)) { delete vmap[k]; dropped++; }
-    if (dropped) await kv.put(VMAP, JSON.stringify(vmap));
+    // The other half of the same job. Pruning alone kept the map from over-ticking and did nothing
+    // about under-ticking, which is how a curated asset could sit there with no mark.
+    const ticked = reconcileCurated(list, vmap);
+    if (dropped || ticked.length) await kv.put(VMAP, JSON.stringify(vmap));
 
-    await audit(env, request, 'asset.list.replace', '', { count: list.length, unticked: dropped });
-    return json({ ok: true, list, unticked: dropped }, 200, 0);
+    await audit(env, request, 'asset.list.replace', '', { count: list.length, unticked: dropped, ticked: ticked.length });
+    return json({ ok: true, list, unticked: dropped, ticked }, 200, 0);
   }
 
   // Bulk re-verification, deliberately CHUNKED. Each handshake costs a Horizon call plus a toml fetch

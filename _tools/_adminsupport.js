@@ -15,6 +15,28 @@ const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
+// Icons are inline SVG CHILDREN, never a glyph or a letter in the chip's own text. The logo engine
+// repaints any 1-5 character element as a ticker logo, and an svg/img child is one of the few shapes
+// that escapes it -- see the logo-healer note in the dev guide.
+//
+// Every one carries width and height ATTRIBUTES as well as CSS. This stylesheet is appended at the end
+// of <body>, so the page paints once before it applies; an SVG with no intrinsic size renders at 274px
+// in that frame, which is exactly the giant search icon RAZA saw flash on load (2026-09-23).
+const SVG = (p, extra) => '<svg class="seg-ic" width="15" height="15" viewBox="0 0 24 24" fill="none" '
+  + 'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + p + (extra || '') + '</svg>';
+const IC = {
+  inbox: SVG('<path d="M4 13h4l1.5 2.5h5L16 13h4"/><path d="M5.5 5h13l2.5 8v4.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5V13z"/>'),
+  unread: SVG('<path d="M3 8.5 12 14l9-5.5"/><rect x="3" y="5" width="18" height="14" rx="1.6"/>'),
+  archived: SVG('<rect x="3" y="4.5" width="18" height="4" rx="1"/><path d="M5 8.5v9.9A1.6 1.6 0 0 0 6.6 20h10.8a1.6 1.6 0 0 0 1.6-1.6V8.5"/><path d="M10 12.5h4"/>'),
+  spam: SVG('<path d="M12 3.2 20 6v5.6c0 4.3-3.1 7.5-8 8.7-4.9-1.2-8-4.4-8-8.7V6z"/><path d="M12 8.6v3.6"/><path d="M12 15.4h.01"/>'),
+  trash: '<svg class="lxm-ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
+    + ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    + '<path d="M4 7h16"/><path d="M9.5 7V5.2A1.2 1.2 0 0 1 10.7 4h2.6a1.2 1.2 0 0 1 1.2 1.2V7"/>'
+    + '<path d="M6.5 7 7.4 19a1.4 1.4 0 0 0 1.4 1.3h6.4A1.4 1.4 0 0 0 16.6 19L17.5 7"/>'
+    + '<path d="M10.5 11v5.5"/><path d="M13.5 11v5.5"/></svg>',
+};
+
 const MAIN = `
       <div class="admin-page-head">
         <h1 class="admin-page-title">Support</h1>
@@ -25,13 +47,13 @@ const MAIN = `
 
       <div class="lxm-bar">
         <div class="seg-row" id="lxmSegs">
-          <button class="seg-chip active" type="button" data-box="inbox"><span class="seg-label">Inbox</span><span class="seg-count" id="lxmCInbox">&mdash;</span></button>
-          <button class="seg-chip" type="button" data-box="unread"><span class="seg-label">Unread</span><span class="seg-count" id="lxmCUnread">&mdash;</span></button>
-          <button class="seg-chip" type="button" data-box="archived"><span class="seg-label">Archived</span><span class="seg-count" id="lxmCArch">&mdash;</span></button>
-          <button class="seg-chip" type="button" data-box="spam"><span class="seg-label">Spam</span><span class="seg-count" id="lxmCSpam">&mdash;</span></button>
+          <button class="seg-chip active" type="button" data-box="inbox">${IC.inbox}<span class="seg-label">Inbox</span><span class="seg-count" id="lxmCInbox">&mdash;</span></button>
+          <button class="seg-chip" type="button" data-box="unread">${IC.unread}<span class="seg-label">Unread</span><span class="seg-count" id="lxmCUnread">&mdash;</span></button>
+          <button class="seg-chip" type="button" data-box="archived">${IC.archived}<span class="seg-label">Archived</span><span class="seg-count" id="lxmCArch">&mdash;</span></button>
+          <button class="seg-chip" type="button" data-box="spam">${IC.spam}<span class="seg-label">Spam</span><span class="seg-count" id="lxmCSpam">&mdash;</span></button>
         </div>
         <div class="lxm-search">
-          <svg class="lxm-search-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+          <svg class="lxm-search-i" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
           <input class="lxm-search-in" id="lxmQ" type="search" autocomplete="off" spellcheck="false" placeholder="Search mail&hellip;">
           <button class="lxm-search-x" id="lxmQX" type="button" hidden aria-label="Clear search">&times;</button>
         </div>
@@ -43,9 +65,9 @@ const MAIN = `
             <label class="lxm-ck lxm-ck-all"><input type="checkbox" id="lxmAll" aria-label="Select all"></label>
             <span class="lxm-lhead-t" id="lxmSelTxt">Select all</span>
             <div class="lxm-bulk" id="lxmBulk" hidden>
-              <button class="adm-btn ghost lxm-mini" type="button" data-bulk="spam">Spam</button>
-              <button class="adm-btn ghost lxm-mini" type="button" data-bulk="spamdom">Block domain</button>
-              <button class="adm-btn ghost lxm-mini lxm-del" type="button" data-bulk="del">Delete</button>
+              <button class="adm-btn ghost lxm-mini" type="button" data-bulk="spam" title="Block these senders’ addresses">Spam</button>
+              <button class="adm-btn ghost lxm-mini" type="button" data-bulk="spamdom" title="Block the whole sending domain">Domain</button>
+              <button class="adm-btn ghost lxm-mini lxm-del" type="button" data-bulk="del">${IC.trash}Delete</button>
             </div>
           </div>
           <div class="lxm-lbody" id="lxmList"><div class="lxadm-empty">Loading&hellip;</div></div>
@@ -62,13 +84,13 @@ const MOB = `
       <div class="mob-page-head"><h1 class="mob-page-title">Support</h1></div>
       <div class="lxm-bar">
         <div class="seg-row" id="lxmSegs">
-          <button class="seg-chip active" type="button" data-box="inbox"><span class="seg-label">Inbox</span><span class="seg-count" id="lxmCInbox">&mdash;</span></button>
-          <button class="seg-chip" type="button" data-box="unread"><span class="seg-label">Unread</span><span class="seg-count" id="lxmCUnread">&mdash;</span></button>
-          <button class="seg-chip" type="button" data-box="archived"><span class="seg-label">Archived</span><span class="seg-count" id="lxmCArch">&mdash;</span></button>
-          <button class="seg-chip" type="button" data-box="spam"><span class="seg-label">Spam</span><span class="seg-count" id="lxmCSpam">&mdash;</span></button>
+          <button class="seg-chip active" type="button" data-box="inbox">${IC.inbox}<span class="seg-label">Inbox</span><span class="seg-count" id="lxmCInbox">&mdash;</span></button>
+          <button class="seg-chip" type="button" data-box="unread">${IC.unread}<span class="seg-label">Unread</span><span class="seg-count" id="lxmCUnread">&mdash;</span></button>
+          <button class="seg-chip" type="button" data-box="archived">${IC.archived}<span class="seg-label">Archived</span><span class="seg-count" id="lxmCArch">&mdash;</span></button>
+          <button class="seg-chip" type="button" data-box="spam">${IC.spam}<span class="seg-label">Spam</span><span class="seg-count" id="lxmCSpam">&mdash;</span></button>
         </div>
         <div class="lxm-search">
-          <svg class="lxm-search-i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
+          <svg class="lxm-search-i" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.2-3.2"/></svg>
           <input class="lxm-search-in" id="lxmQ" type="search" autocomplete="off" spellcheck="false" placeholder="Search mail&hellip;">
           <button class="lxm-search-x" id="lxmQX" type="button" hidden aria-label="Clear search">&times;</button>
         </div>
@@ -78,9 +100,9 @@ const MOB = `
           <label class="lxm-ck lxm-ck-all"><input type="checkbox" id="lxmAll" aria-label="Select all"></label>
           <span class="lxm-lhead-t" id="lxmSelTxt">Select all</span>
           <div class="lxm-bulk" id="lxmBulk" hidden>
-            <button class="adm-btn ghost lxm-mini" type="button" data-bulk="spam">Spam</button>
-            <button class="adm-btn ghost lxm-mini" type="button" data-bulk="spamdom">Domain</button>
-            <button class="adm-btn ghost lxm-mini lxm-del" type="button" data-bulk="del">Delete</button>
+            <button class="adm-btn ghost lxm-mini" type="button" data-bulk="spam" title="Block these senders’ addresses">Spam</button>
+            <button class="adm-btn ghost lxm-mini" type="button" data-bulk="spamdom" title="Block the whole sending domain">Domain</button>
+            <button class="adm-btn ghost lxm-mini lxm-del" type="button" data-bulk="del">${IC.trash}Delete</button>
           </div>
         </div>
         <div class="lxm-lbody" id="lxmList"><div class="lxadm-empty">Loading&hellip;</div></div>
@@ -95,6 +117,16 @@ const CSS = `<style id="lx-adminsupport-css">
    stack only when the row genuinely runs out of width. */
 .lxm-bar{display:flex;align-items:center;justify-content:space-between;gap:14px 18px;flex-wrap:wrap;margin:16px 0 18px}
 .lxm-bar .seg-row{margin:0;flex:0 1 auto}
+/* Chip icons. The chip is made a flex row here rather than assumed to be one, so the icon, the label
+   and the count share a baseline whatever the base sheet does with .seg-chip. */
+.seg-chip{display:inline-flex;align-items:center;gap:7px}
+.seg-ic{flex:0 0 auto;width:15px;height:15px;opacity:.6}
+.seg-chip.active .seg-ic{opacity:1}
+.seg-chip:hover .seg-ic{opacity:.85}
+/* The icon rides INSIDE the button next to its label, so the button has to be a flex row too --
+   otherwise the svg sits on its own line and doubles the button's height. */
+.adm-btn .lxm-ic{flex:0 0 auto;width:14px;height:14px;margin-right:-1px}
+.lxm-bulk .adm-btn,.lxm-acts .adm-btn{display:inline-flex;align-items:center;gap:6px}
 .lxm-search{position:relative;display:flex;align-items:center;margin:0;flex:1 1 240px;max-width:340px;min-width:200px}
 .lxm-search-i{position:absolute;left:13px;width:17px;height:17px;color:var(--text-muted);pointer-events:none;stroke-linecap:round}
 .lxm-search-in{width:100%;box-sizing:border-box;padding:11px 38px 11px 39px;border:1px solid var(--border);border-radius:10px;
@@ -128,7 +160,8 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-lhead.on .lxm-lhead-t{color:var(--accent,#ea6a2c);font-weight:700}
 .lxm-bulk{display:flex;gap:7px;margin-left:auto}
 .lxm-bulk[hidden]{display:none}
-.lxm-mini{padding:6px 11px;font-size:12.5px;border-radius:8px}
+.lxm-mini{padding:6px 11px;font-size:12.5px;border-radius:8px;white-space:nowrap}
+.lxm-lhead-t{white-space:nowrap}
 
 /* Checkboxes get a fixed-width gutter so every row's text starts on the same vertical line, header
    included -- that single shared edge is most of what "organised" means here. */
@@ -198,6 +231,10 @@ const CSS = `<style id="lx-adminsupport-css">
 
 const SCRIPT = '<script id="lx-adminsupport">' + `(function(){
 if(window.__lxMailAdmin)return; window.__lxMailAdmin=1;
+// The delete buttons carry an icon, so every label change below writes innerHTML. textContent would
+// drop the <svg> the first time a button re-labelled itself ("Delete permanently?") and never bring
+// it back, leaving one button in the row silently without its icon.
+var IC_TRASH=${JSON.stringify(IC.trash)};
 function q(s){return document.querySelector(s);}
 function qa(s){return [].slice.call(document.querySelectorAll(s));}
 function esc(s){return (String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
@@ -312,7 +349,7 @@ function paintSel(){
   if(bulk){ bulk.hidden=!n;
     // Re-arming has to reset with the selection: a Delete left armed for three messages must not
     // still be armed when the selection has become thirty.
-    var d=bulk.querySelector(".lxm-del"); if(d&&!n){ d.classList.remove("arm"); d.textContent="Delete"; } }
+    var d=bulk.querySelector(".lxm-del"); if(d&&!n){ d.classList.remove("arm"); d.innerHTML=(d.__lbl!=null?d.__lbl:IC_TRASH+"Delete"); } }
 }
 
 function open(id){
@@ -423,7 +460,7 @@ function open(id){
       // Offered beside it rather than instead of it, with the host spelled out, because the choice
       // between "this sender" and "everyone at this host" is the user's and the two are not close.
       +(m.spam?"":"<button class='adm-btn ghost' type='button' data-act='spamdom'>Block "+esc(dom(m.from_addr))+"</button>")
-      +"<button class='adm-btn ghost lxm-del' type='button' data-act='del'>Delete</button>";
+      +"<button class='adm-btn ghost lxm-del' type='button' data-act='del'>"+IC_TRASH+"Delete</button>";
     pane.appendChild(acts);
     // View original. The stored raw is the record; the parsed body is a convenience. Being able to see
     // the source is what settles "is this empty or did the parser miss it?" without a round trip.
@@ -448,13 +485,13 @@ function open(id){
       // destroy is still on screen.
       if(act==="del"){
         if(!b.classList.contains("arm")){
-          b.classList.add("arm"); b.textContent="Delete permanently?";
-          setTimeout(function(){ if(b&&b.classList){ b.classList.remove("arm"); b.textContent="Delete"; } },5000);
+          b.classList.add("arm"); b.innerHTML=IC_TRASH+"Delete permanently?";
+          setTimeout(function(){ if(b&&b.classList){ b.classList.remove("arm"); b.innerHTML=IC_TRASH+"Delete"; } },5000);
           return;
         }
-        b.disabled=true; b.textContent="Deleting\\u2026";
+        b.disabled=true; b.innerHTML=IC_TRASH+"Deleting\\u2026";
         api("",{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({id:m.id})})
-          .then(function(r){ if(!r.ok||!r.d||r.d.error){ fail(b,"Not deleted: "+((r.d&&r.d.error)||("HTTP "+r.status))); b.textContent="Delete"; b.classList.remove("arm"); return; }
+          .then(function(r){ if(!r.ok||!r.d||r.d.error){ fail(b,"Not deleted: "+((r.d&&r.d.error)||("HTTP "+r.status))); b.innerHTML=IC_TRASH+"Delete"; b.classList.remove("arm"); return; }
             done(); });
         return;
       }
@@ -526,16 +563,16 @@ function boot(){
     var b=e.target.closest&&e.target.closest("[data-bulk]"); if(!b)return;
     var ids=selIds(); if(!ids.length)return;
     var kind=b.getAttribute("data-bulk");
-    if(b.__lbl==null)b.__lbl=b.textContent;
+    if(b.__lbl==null)b.__lbl=b.innerHTML;
     if(kind==="del"){
       if(!b.classList.contains("arm")){
-        b.classList.add("arm"); b.textContent="Delete "+ids.length+" permanently?";
-        setTimeout(function(){ if(b&&b.classList){ b.classList.remove("arm"); b.textContent=b.__lbl; } },5000);
+        b.classList.add("arm"); b.innerHTML=IC_TRASH+"Delete "+ids.length+" permanently?";
+        setTimeout(function(){ if(b&&b.classList){ b.classList.remove("arm"); b.innerHTML=b.__lbl; } },5000);
         return;
       }
-      b.disabled=true; b.textContent="Deleting\\u2026";
+      b.disabled=true; b.innerHTML=IC_TRASH+"Deleting\\u2026";
       api("",{method:"DELETE",headers:{"content-type":"application/json"},body:JSON.stringify({ids:ids})})
-        .then(function(r){ b.disabled=false; b.classList.remove("arm"); b.textContent=b.__lbl;
+        .then(function(r){ b.disabled=false; b.classList.remove("arm"); b.innerHTML=b.__lbl;
           if(!r.ok||!r.d||r.d.error){ bulkErr(r); return; }
           clearSel(); SEL=null; var p=q("#lxmRead"); if(p)p.innerHTML="<div class='lxadm-empty'>Select a message to read it.</div>"; load(); });
       return;
@@ -545,7 +582,7 @@ function boot(){
     b.disabled=true; b.textContent="Blocking\\u2026";
     api("",{method:"PATCH",headers:{"content-type":"application/json"},
       body:JSON.stringify({ids:ids,spam:true,scope:kind==="spamdom"?"domain":"addr"})})
-      .then(function(r){ b.disabled=false; b.textContent=b.__lbl;
+      .then(function(r){ b.disabled=false; b.innerHTML=b.__lbl;
         if(!r.ok||!r.d||r.d.error){ bulkErr(r); return; }
         clearSel(); SEL=null; var p=q("#lxmRead"); if(p)p.innerHTML="<div class='lxadm-empty'>Select a message to read it.</div>"; load(); });
   }); }
