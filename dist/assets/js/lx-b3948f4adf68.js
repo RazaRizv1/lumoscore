@@ -1,5 +1,5 @@
 (function(){
-try{ document.title="Bridge USDC and USDT0 across 25 chains | LumosCore"; }catch(_){}   /* baked title said "DEX" */
+try{ document.title="Bridge USDC and USDT0 across 31 chains | LumosCore"; }catch(_){}   /* baked title said "DEX" */
 try{ window.__lxCCTP={
   testnet:false, sourceDomain:27,
   tokenMessenger:"CAE2G5Z77UP7GYPYGFOWFGW7C7J6I4YP2AFGSADRKQY62SYUFLPNFTXL",
@@ -11,7 +11,7 @@ try{ window.__lxCCTP={
   decimals:7, iris:"https://iris-api.circle.com",
   horizon:"https://horizon.stellar.org",
   feeCollector:"GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD", feeRate:0.002,
-  domains:{"Ethereum":0,"Avalanche":1,"Optimism":2,"Arbitrum":3,"Base":6,"Polygon":7,"Linea":11,"World Chain":14}, chains:["Ethereum","Avalanche","Optimism","Arbitrum","Base","Polygon","Linea","World Chain"]
+  domains:{"Ethereum":0,"Avalanche":1,"Optimism":2,"Arbitrum":3,"Base":6,"Polygon":7,"Linea":11,"World Chain":14,"Codex":12,"Sonic":13,"XDC":18,"Plume":22,"Pharos":31,"Cronos":32,"Unichain":10,"Morph":30,"X Layer":37}, chains:["Ethereum","Avalanche","Optimism","Arbitrum","Base","Polygon","Linea","World Chain","Codex","Sonic","XDC","Plume","Pharos","Cronos","Unichain","Morph","X Layer"]
 }; }catch(_){}
 
 var _sdkP=null;
@@ -561,7 +561,10 @@ var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arb
   // under assets/networks/ -- never hotlinked. Hedera's source art is only 28x28 (DefiLlama has no larger one);
   // it upscales acceptably because the mark is a single flat glyph, but swap it if a proper asset turns up.
   Unichain:"unichain",Mantle:"mantle",Morph:"morph","X Layer":"xlayer",Hedera:"hedera",
-  "Conflux eSpace":"conflux",Rootstock:"rootstock",Stable:"stable",Tempo:"tempo"};
+  "Conflux eSpace":"conflux",Rootstock:"rootstock",Stable:"stable",Tempo:"tempo",
+  // The six CCTP chains added 2026-09-23, same provenance. Cronos and XDC ship only 28x28 source art; both are
+  // flat single-colour marks, so they upscale cleanly -- checked by eye against the existing set before listing.
+  Codex:"codex",Sonic:"sonic",XDC:"xdc",Plume:"plume",Pharos:"pharos",Cronos:"cronos"};
 // THE PICKER'S ICONS, BY STYLESHEET. lxCctpNetLogos leaves an option alone when the design already gave it a url()
 // background -- replacing it fought the design's re-render loop -- and Ethereum's option carries the design's own
 // ETH-TOKEN diamond. So the list showed that, and the selected field our network logo (RAZA 2026-09-19: "Why is
@@ -593,7 +596,11 @@ var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan
   Unichain:"https://uniscan.xyz/address/",Mantle:"https://mantlescan.xyz/address/",
   Morph:"https://explorer.morphl2.io/address/","X Layer":"https://www.oklink.com/x-layer/address/",
   Hedera:"https://hashscan.io/mainnet/account/","Conflux eSpace":"https://evm.confluxscan.org/address/",
-  Rootstock:"https://explorer.rootstock.io/address/",Tempo:"https://explore.tempo.xyz/address/"};
+  Rootstock:"https://explorer.rootstock.io/address/",Tempo:"https://explore.tempo.xyz/address/",
+  // The six CCTP chains added 2026-09-23. Pharos is www.pharosscan.xyz: the bare host redirects there, and the
+  // Tempo lesson above is that a 200 on a redirecting host is not the host to bake in.
+  Codex:"https://explorer.codex.xyz/address/",Sonic:"https://sonicscan.org/address/",XDC:"https://xdcscan.com/address/",
+  Plume:"https://explorer.plume.org/address/",Pharos:"https://www.pharosscan.xyz/address/",Cronos:"https://cronoscan.com/address/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
 function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
 var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
@@ -623,7 +630,9 @@ var LX_EVM_NETS={Ethereum:1,Avalanche:1,Optimism:1,Arbitrum:1,Base:1,Polygon:1,L
   // added to the dropdown and forgotten here is not a cosmetic miss: it is an unvalidated address on a transfer
   // that cannot be recalled. Hedera is correct as 0x -- USDT0 lives on its EVM side, and a 0.0.x account id is
   // rejected, which is the safe direction to fail.
-  Unichain:1,Mantle:1,Morph:1,'X Layer':1,Hedera:1,'Conflux eSpace':1,Rootstock:1,Stable:1,Tempo:1};
+  Unichain:1,Mantle:1,Morph:1,'X Layer':1,Hedera:1,'Conflux eSpace':1,Rootstock:1,Stable:1,Tempo:1,
+  // The six CCTP chains added 2026-09-23 -- same rule, same reason: unlisted means unvalidated.
+  Codex:1,Sonic:1,XDC:1,Plume:1,Pharos:1,Cronos:1};
 function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false; if(LX_EVM_NETS[net])return /^0x[0-9a-fA-F]{40}$/.test(a); if(net==='Solana')return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a); if(net==='Sui')return /^0x[0-9a-fA-F]{64}$/.test(a); return a.length>0; }
 function lxBrStep2Err(msg){ var s2=document.querySelector('.br-step[data-step="2"]'); var e=s2?s2.querySelector('.br-errslot'):null; if(e){ e.textContent=msg||''; if(msg) e.setAttribute('data-err',msg); else e.removeAttribute('data-err'); e.style.color=msg?'#e04f4f':''; } }
 // A MESSAGE IN THESE SLOTS DESCRIBES THE STATE THAT WAS THERE WHEN IT WAS WRITTEN -- this destination, this
@@ -1900,7 +1909,8 @@ function lxCctpWireStep3(){
 var LX_PUBTX=[{"ts":1786677750000,"hash":"71085fcb0ba8193e97331b709da680edcb451d33b4e9e4606ce3cd30551ff853","amount":1.269819,"srcAmount":"1.269819","srcKey":"USDC","net":"Base","recipient":"0x18789c94642c5295cfc1b344f60a3a24fd7ecc39","src":"GCVZ2EHCGY2GES7DMPRKM4424QVKXEVLLR6FBZG34PYMWTR7IZC44X2J"}];
 // src read off the ledger 2026-09-19: the burn's source account, and the account the 1.269819 USDC left. This entry
 // predates the shared bridge record, so it was hand-written -- without the field the Source address column reads.
-var LX_DOMNAME={0:"Ethereum",1:"Avalanche",2:"Optimism",3:"Arbitrum",5:"Solana",6:"Base",7:"Polygon",8:"Sui",11:"Linea",14:"World Chain"};
+var LX_DOMNAME={0:"Ethereum",1:"Avalanche",2:"Optimism",3:"Arbitrum",5:"Solana",6:"Base",7:"Polygon",8:"Sui",11:"Linea",14:"World Chain",
+  12:"Codex",13:"Sonic",18:"XDC",22:"Plume",31:"Pharos",32:"Cronos",10:"Unichain",30:"Morph",37:"X Layer"};
 function lxBrDomName(d){ var C=window.__lxCCTP,m=(C&&C.domains)||{}; for(var k in m){ if(m[k]===d) return k; } return LX_DOMNAME[d]||("chain "+d); }
 function lxBrEsc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function lxBrShortH(h){ h=String(h||""); return h.length>16?(h.slice(0,8)+"\u2026"+h.slice(-6)):h; }
@@ -1933,7 +1943,19 @@ var LX_EVM={
   6:{n:"Base",id:"0x2105",cur:"ETH",rpc:"https://base-rpc.publicnode.com",exp:"https://basescan.org"},
   7:{n:"Polygon",id:"0x89",cur:"POL",rpc:"https://polygon-bor-rpc.publicnode.com",exp:"https://polygonscan.com"},
   11:{n:"Linea",id:"0xe708",cur:"ETH",rpc:"https://linea-rpc.publicnode.com",exp:"https://lineascan.build"},
-  14:{n:"World Chain",id:"0x1e0",cur:"ETH",rpc:"https://worldchain-mainnet.g.alchemy.com/public",exp:"https://worldscan.org"}
+  14:{n:"World Chain",id:"0x1e0",cur:"ETH",rpc:"https://worldchain-mainnet.g.alchemy.com/public",exp:"https://worldscan.org"},
+  // The six added 2026-09-23. chainId and native symbol come from the chainid.network registry, not from guesswork
+  // -- cur is what the claim screen tells someone to hold for gas, so a wrong symbol sends them to buy the wrong
+  // token. Every rpc below answered eth_chainId with exactly the id listed beside it.
+  12:{n:"Codex",id:"0x13d48",cur:"ETH",rpc:"https://rpc.codex.xyz",exp:"https://explorer.codex.xyz"},
+  13:{n:"Sonic",id:"0x92",cur:"S",rpc:"https://sonic-rpc.publicnode.com",exp:"https://sonicscan.org"},
+  18:{n:"XDC",id:"0x32",cur:"XDC",rpc:"https://rpc.xdcrpc.com",exp:"https://xdcscan.com"},
+  22:{n:"Plume",id:"0x18232",cur:"PLUME",rpc:"https://rpc.plume.org",exp:"https://explorer.plume.org"},
+  31:{n:"Pharos",id:"0x688",cur:"PROS",rpc:"https://api.zan.top/public/pharos-mainnet",exp:"https://www.pharosscan.xyz"},
+  32:{n:"Cronos",id:"0x19",cur:"CRO",rpc:"https://cronos-evm-rpc.publicnode.com",exp:"https://cronoscan.com"},
+  10:{n:"Unichain",id:"0x82",cur:"ETH",rpc:"https://unichain-rpc.publicnode.com",exp:"https://uniscan.xyz"},
+  30:{n:"Morph",id:"0xb02",cur:"ETH",rpc:"https://rpc.morphl2.io",exp:"https://explorer.morphl2.io"},
+  37:{n:"X Layer",id:"0xc4",cur:"OKB",rpc:"https://rpc.xlayer.tech",exp:"https://www.oklink.com/x-layer"}
 };
 function lxHex32(n){ var h=(+n).toString(16); while(h.length<64)h="0"+h; return h; }
 function lxBytesArg(hex){ hex=String(hex||"").replace(/^0x/,""); if(hex.length%2)hex="0"+hex;

@@ -26,8 +26,37 @@ const LX_CURATED_EXTRA=Object.keys(VERIFIED).map(function(k){ var p=k.split("|")
 // step, and neither has a route a user can actually take: their explorers cannot submit an arbitrary
 // instruction or Move call, and no wallet composes one. Offering a destination whose USDC cannot be
 // retrieved is worse than not offering it. Re-add them the day LumosCore can sign on those chains.
-const CCTP_DOMAINS={Ethereum:0,Avalanche:1,Optimism:2,Arbitrum:3,Base:6,Polygon:7,Linea:11,'World Chain':14};
+// Added 2026-09-23. Circle now publishes 29 mainnet v2 destination domains; these six are the EVM ones our claim
+// flow can actually serve. Each was verified on-chain before listing: eth_getCode at LX_MT returned the SAME 2175
+// bytes as the Base control, and eth_chainId matched the registry. A domain that is merely documented is not
+// enough -- the claim is a user transaction against that contract, so it has to be there.
+//
+// NOT ADDED, and why: Arc (26) and EDGE (28) have no reachable public RPC, and without one the wallet cannot be
+// asked to add the chain, so the claim step is impossible -- documented domains we still cannot land on. Solana
+// (5), Aptos (9), Starknet (25), Injective (29) and Sui (8, v1) are non-EVM and keep the original exclusion: no
+// wallet composes their claim. BNB (17) is a CCTP domain that does not carry USDC at all.
+const CCTP_DOMAINS={Ethereum:0,Avalanche:1,Optimism:2,Arbitrum:3,Base:6,Polygon:7,Linea:11,'World Chain':14,
+  Codex:12,Sonic:13,XDC:18,Plume:22,Pharos:31,Cronos:32,
+  // These three are ALREADY listed as LayerZero destinations, so they add no row to the dropdown -- what they add
+  // is a second route. Listing them here means someone sending to Unichain, Morph or X Layer can pick native USDC
+  // via CCTP instead of USDT0, and the route card offers both. Same on-chain verification as the six above.
+  Unichain:10,Morph:30,'X Layer':37};
 const HIDE=['BNB Chain','Hedera','Mantle','Near','Scroll','Sei','Starknet','zkSync Era','Solana','Sui'];
+
+// The six CCTP destinations the design does not ship a row for. Built the same way the LayerZero layer builds its
+// lx-lzopt buttons, and deliberately NOT gated behind a class: CCTP is live, so unlike the LayerZero set there is
+// no flag that could leave these offering a route that cannot carry a transfer.
+// The badge letters are placeholders the logo engine paints over -- every one of these is in LX_NETMAP, so the
+// lx-netbg stylesheet sets a real background and colour:transparent, and the letters are never readable.
+const CCTP_ONLY = [
+  ['Sonic', 'S', '#1d1d1f'], ['Cronos', 'CRO', '#002d74'], ['XDC', 'XDC', '#2a4b8d'],
+  ['Plume', 'PLUME', '#ff3d00'], ['Codex', 'CDX', '#1e1e28'], ['Pharos', 'PROS', '#1a4fd6'],
+];
+const CCTP_OPTS = CCTP_ONLY.map(function (n) {
+  return '<button class="brd-opt lx-cctpopt" type="button" data-net="' + n[0] + '">'
+    + '<span class="brd-ic lx-netlm" style="background:' + n[2] + '">' + n[1] + '</span>'
+    + '<span class="brd-nm">' + n[0] + '</span></button>';
+}).join('');
 
 const OLD_SUB='Swap assets seamlessly between networks via Wormhole and LayerZero.';
 const { LZ_LIVE } = require(__dirname + '/_lzflag.js');
@@ -36,7 +65,7 @@ const NEW_SUB = LZ_LIVE
   ? 'Bridge USDC with Circle CCTP or USDT0 with LayerZero — burned on Stellar, minted on the destination, never wrapped.'
   : 'Bridge USDC natively across chains with Circle CCTP — burn on Stellar, mint on the destination.';
 const PAGE_TITLE = LZ_LIVE
-  ? 'Bridge USDC and USDT0 across 25 chains | LumosCore'
+  ? 'Bridge USDC and USDT0 across 31 chains | LumosCore'
   : 'Bridge USDC across 8 chains with Circle CCTP | LumosCore';
 // Every wording this line has ever had. Whichever one a container currently holds gets normalised to NEW_SUB, so
 // the transform is idempotent in both directions. Add to this list, never edit in place.
@@ -890,7 +919,10 @@ var LX_NETMAP={Ethereum:"ethereum",Avalanche:"avalanche",Optimism:"optimism",Arb
   // under assets/networks/ -- never hotlinked. Hedera's source art is only 28x28 (DefiLlama has no larger one);
   // it upscales acceptably because the mark is a single flat glyph, but swap it if a proper asset turns up.
   Unichain:"unichain",Mantle:"mantle",Morph:"morph","X Layer":"xlayer",Hedera:"hedera",
-  "Conflux eSpace":"conflux",Rootstock:"rootstock",Stable:"stable",Tempo:"tempo"};
+  "Conflux eSpace":"conflux",Rootstock:"rootstock",Stable:"stable",Tempo:"tempo",
+  // The six CCTP chains added 2026-09-23, same provenance. Cronos and XDC ship only 28x28 source art; both are
+  // flat single-colour marks, so they upscale cleanly -- checked by eye against the existing set before listing.
+  Codex:"codex",Sonic:"sonic",XDC:"xdc",Plume:"plume",Pharos:"pharos",Cronos:"cronos"};
 // THE PICKER'S ICONS, BY STYLESHEET. lxCctpNetLogos leaves an option alone when the design already gave it a url()
 // background -- replacing it fought the design's re-render loop -- and Ethereum's option carries the design's own
 // ETH-TOKEN diamond. So the list showed that, and the selected field our network logo (RAZA 2026-09-19: "Why is
@@ -922,7 +954,11 @@ var LX_ACCT_EXP={Ethereum:"https://etherscan.io/address/",Base:"https://basescan
   Unichain:"https://uniscan.xyz/address/",Mantle:"https://mantlescan.xyz/address/",
   Morph:"https://explorer.morphl2.io/address/","X Layer":"https://www.oklink.com/x-layer/address/",
   Hedera:"https://hashscan.io/mainnet/account/","Conflux eSpace":"https://evm.confluxscan.org/address/",
-  Rootstock:"https://explorer.rootstock.io/address/",Tempo:"https://explore.tempo.xyz/address/"};
+  Rootstock:"https://explorer.rootstock.io/address/",Tempo:"https://explore.tempo.xyz/address/",
+  // The six CCTP chains added 2026-09-23. Pharos is www.pharosscan.xyz: the bare host redirects there, and the
+  // Tempo lesson above is that a 200 on a redirecting host is not the host to bake in.
+  Codex:"https://explorer.codex.xyz/address/",Sonic:"https://sonicscan.org/address/",XDC:"https://xdcscan.com/address/",
+  Plume:"https://explorer.plume.org/address/",Pharos:"https://www.pharosscan.xyz/address/",Cronos:"https://cronoscan.com/address/"};
 function lxSrcExp(pk){ return "https://stellar.expert/explorer/public/account/"+pk; }
 function lxDstExp(net,a){ var b=LX_ACCT_EXP[net]; return b?b+a:"#"; }
 var LX_SRC_ADDR="GC4WVG7LVFCSERJZVIB4WHBJCNCWUGHEVRHTAA6PSSDNRGEZWZMTEIUG"; // Stellar source placeholder; overwritten by real Freighter address on connect
@@ -952,7 +988,9 @@ var LX_EVM_NETS={Ethereum:1,Avalanche:1,Optimism:1,Arbitrum:1,Base:1,Polygon:1,L
   // added to the dropdown and forgotten here is not a cosmetic miss: it is an unvalidated address on a transfer
   // that cannot be recalled. Hedera is correct as 0x -- USDT0 lives on its EVM side, and a 0.0.x account id is
   // rejected, which is the safe direction to fail.
-  Unichain:1,Mantle:1,Morph:1,'X Layer':1,Hedera:1,'Conflux eSpace':1,Rootstock:1,Stable:1,Tempo:1};
+  Unichain:1,Mantle:1,Morph:1,'X Layer':1,Hedera:1,'Conflux eSpace':1,Rootstock:1,Stable:1,Tempo:1,
+  // The six CCTP chains added 2026-09-23 -- same rule, same reason: unlisted means unvalidated.
+  Codex:1,Sonic:1,XDC:1,Plume:1,Pharos:1,Cronos:1};
 function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false; if(LX_EVM_NETS[net])return /^0x[0-9a-fA-F]{40}$/.test(a); if(net==='Solana')return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(a); if(net==='Sui')return /^0x[0-9a-fA-F]{64}$/.test(a); return a.length>0; }
 function lxBrStep2Err(msg){ var s2=document.querySelector('.br-step[data-step="2"]'); var e=s2?s2.querySelector('.br-errslot'):null; if(e){ e.textContent=msg||''; if(msg) e.setAttribute('data-err',msg); else e.removeAttribute('data-err'); e.style.color=msg?'#e04f4f':''; } }
 // A MESSAGE IN THESE SLOTS DESCRIBES THE STATE THAT WAS THERE WHEN IT WAS WRITTEN -- this destination, this
@@ -2229,7 +2267,8 @@ function lxCctpWireStep3(){
 var LX_PUBTX=[{"ts":1786677750000,"hash":"71085fcb0ba8193e97331b709da680edcb451d33b4e9e4606ce3cd30551ff853","amount":1.269819,"srcAmount":"1.269819","srcKey":"USDC","net":"Base","recipient":"0x18789c94642c5295cfc1b344f60a3a24fd7ecc39","src":"GCVZ2EHCGY2GES7DMPRKM4424QVKXEVLLR6FBZG34PYMWTR7IZC44X2J"}];
 // src read off the ledger 2026-09-19: the burn's source account, and the account the 1.269819 USDC left. This entry
 // predates the shared bridge record, so it was hand-written -- without the field the Source address column reads.
-var LX_DOMNAME={0:"Ethereum",1:"Avalanche",2:"Optimism",3:"Arbitrum",5:"Solana",6:"Base",7:"Polygon",8:"Sui",11:"Linea",14:"World Chain"};
+var LX_DOMNAME={0:"Ethereum",1:"Avalanche",2:"Optimism",3:"Arbitrum",5:"Solana",6:"Base",7:"Polygon",8:"Sui",11:"Linea",14:"World Chain",
+  12:"Codex",13:"Sonic",18:"XDC",22:"Plume",31:"Pharos",32:"Cronos",10:"Unichain",30:"Morph",37:"X Layer"};
 function lxBrDomName(d){ var C=window.__lxCCTP,m=(C&&C.domains)||{}; for(var k in m){ if(m[k]===d) return k; } return LX_DOMNAME[d]||("chain "+d); }
 function lxBrEsc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function lxBrShortH(h){ h=String(h||""); return h.length>16?(h.slice(0,8)+"\\u2026"+h.slice(-6)):h; }
@@ -2262,7 +2301,19 @@ var LX_EVM={
   6:{n:"Base",id:"0x2105",cur:"ETH",rpc:"https://base-rpc.publicnode.com",exp:"https://basescan.org"},
   7:{n:"Polygon",id:"0x89",cur:"POL",rpc:"https://polygon-bor-rpc.publicnode.com",exp:"https://polygonscan.com"},
   11:{n:"Linea",id:"0xe708",cur:"ETH",rpc:"https://linea-rpc.publicnode.com",exp:"https://lineascan.build"},
-  14:{n:"World Chain",id:"0x1e0",cur:"ETH",rpc:"https://worldchain-mainnet.g.alchemy.com/public",exp:"https://worldscan.org"}
+  14:{n:"World Chain",id:"0x1e0",cur:"ETH",rpc:"https://worldchain-mainnet.g.alchemy.com/public",exp:"https://worldscan.org"},
+  // The six added 2026-09-23. chainId and native symbol come from the chainid.network registry, not from guesswork
+  // -- cur is what the claim screen tells someone to hold for gas, so a wrong symbol sends them to buy the wrong
+  // token. Every rpc below answered eth_chainId with exactly the id listed beside it.
+  12:{n:"Codex",id:"0x13d48",cur:"ETH",rpc:"https://rpc.codex.xyz",exp:"https://explorer.codex.xyz"},
+  13:{n:"Sonic",id:"0x92",cur:"S",rpc:"https://sonic-rpc.publicnode.com",exp:"https://sonicscan.org"},
+  18:{n:"XDC",id:"0x32",cur:"XDC",rpc:"https://rpc.xdcrpc.com",exp:"https://xdcscan.com"},
+  22:{n:"Plume",id:"0x18232",cur:"PLUME",rpc:"https://rpc.plume.org",exp:"https://explorer.plume.org"},
+  31:{n:"Pharos",id:"0x688",cur:"PROS",rpc:"https://api.zan.top/public/pharos-mainnet",exp:"https://www.pharosscan.xyz"},
+  32:{n:"Cronos",id:"0x19",cur:"CRO",rpc:"https://cronos-evm-rpc.publicnode.com",exp:"https://cronoscan.com"},
+  10:{n:"Unichain",id:"0x82",cur:"ETH",rpc:"https://unichain-rpc.publicnode.com",exp:"https://uniscan.xyz"},
+  30:{n:"Morph",id:"0xb02",cur:"ETH",rpc:"https://rpc.morphl2.io",exp:"https://explorer.morphl2.io"},
+  37:{n:"X Layer",id:"0xc4",cur:"OKB",rpc:"https://rpc.xlayer.tech",exp:"https://www.oklink.com/x-layer"}
 };
 function lxHex32(n){ var h=(+n).toString(16); while(h.length<64)h="0"+h; return h; }
 function lxBytesArg(hex){ hex=String(hex||"").replace(/^0x/,""); if(hex.length%2)hex="0"+hex;
@@ -3036,7 +3087,7 @@ window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest
 
 const SCRIPT='<script id="lx-cctp-js">'+BODY+'<'+'/script>';
 
-let brmN=0; let n=0;
+let brmN=0; let n=0; let ddN=0;
 for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']){
   for(const dev of ['desktop','mobile']){
     const file=`lumoscore-${c}-${dev}.html`;
@@ -3083,6 +3134,14 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       { const ti=h.indexOf('<table class="br-table">');
         if(ti>=0){ const tb=h.indexOf('<tbody>',ti), te=h.indexOf('</tbody>',tb);
           if(tb>=0&&te>tb) h=h.slice(0,tb+'<tbody>'.length)+h.slice(te); } }
+      // The six CCTP-only destination rows. Anchored on World Chain's closing tag rather than an index, and
+      // stripped with /g before re-adding, so editing CCTP_ONLY can never leave yesterday's rows behind -- the
+      // same contract the lx-lzopt buttons use. _lzusdt0.js runs after this and appends its own rows at the same
+      // anchor; the two strips match different classes, so neither removes the other's.
+      h = h.replace(/<button class="brd-opt lx-cctpopt"[\s\S]*?<\/button>/g, '');
+      { const anchor='<span class="brd-nm">World Chain</span></button>';
+        const ai=h.indexOf(anchor);
+        if(ai>=0){ h=h.slice(0,ai+anchor.length)+CCTP_OPTS+h.slice(ai+anchor.length); ddN++; } }
       h=h.replace(/<style id="lx-cctp-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-cctp-js">[\s\S]*?<\/script>/g,'');
       if(h.indexOf('</head>')>=0) h=h.replace('</head>',CSS+'</head>');
       const bi=h.lastIndexOf('</body>'); if(bi>=0) h=h.slice(0,bi)+SCRIPT+h.slice(bi);
@@ -3092,4 +3151,4 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
     fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');
   }
 }
-console.log('CCTP phase-2 (approve+burn engine, freighter-api fallback) on '+n+' bridge page keys');
+console.log('CCTP phase-2 (approve+burn engine, freighter-api fallback) on '+n+' bridge page keys; '+ddN+' dropdown(s) got the '+CCTP_ONLY.length+' CCTP-only rows');
