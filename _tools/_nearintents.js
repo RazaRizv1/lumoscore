@@ -487,6 +487,27 @@ function runtime(NI_SENDABLE) {
 // token gets its logo the moment its file exists -- no second list to keep in step by hand.
 const NI_FILES = (() => { const o = {}; try { fs.readdirSync(require('path').join(__dirname, '..', 'assets', 'tokens', 'ni')).forEach((f) => { const m = f.match(/^([A-Za-z0-9._-]+).png$/); if (m) o[m[1]] = 1; }); } catch (e) {} return o; })();
 function withNiFiles(src) { const out = src.replace(/var NI_LOCAL = {[^}]*};/, 'var NI_LOCAL = ' + JSON.stringify(NI_FILES) + ';'); if (out === src) throw new Error('NI_LOCAL not found'); return out; }
+// THE TWO LISTS MUST AGREE, AND THIS IS THE CHECK THAT MAKES THEM.
+// functions/lxapi/oneclick.js holds a CHAINS whitelist; a chain in NI_CHAIN but missing there is dropped from the
+// token list at the edge, and the failure is SILENT in the worst way -- the row appears, the picker reads "0 ASSETS",
+// the destination asset falls back to USDC, and the quote fails as 'unsupported destination asset'. That shipped
+// once (the fifteen non-EVM chains, 2026-09-23) because the only thing keeping the lists together was a comment.
+// Now the build refuses instead.
+(() => {
+  const src = fs.readFileSync(__dirname + '/../functions/lxapi/oneclick.js', 'utf8');
+  const m = src.match(/const CHAINS = \{([\s\S]*?)\};/);
+  if (!m) { console.error('  ! could not read CHAINS from functions/lxapi/oneclick.js'); process.exit(1); }
+  const allowed = new Set((m[1].match(/([A-Za-z0-9_]+)\s*:\s*1/g) || []).map((s) => s.split(':')[0].trim()));
+  const want = (runtime.toString().match(/var NI_CHAIN = \{([\s\S]*?)\};/) || [, ''])[1];
+  const keys = (want.match(/:\s*'([a-z0-9-]+)'/g) || []).map((s) => s.replace(/^:\s*'|'$/g, ''));
+  const missing = keys.filter((k) => !allowed.has(k));
+  if (missing.length) {
+    console.error('  ! NI_CHAIN lists chains the edge proxy will drop: ' + missing.join(', '));
+    console.error('    add them to CHAINS in functions/lxapi/oneclick.js, or the picker shows "0 ASSETS" and every quote fails.');
+    process.exit(1);
+  }
+})();
+
 const JS = '(' + withNiFiles(runtime.toString()) + ')(' + (LZ_LIVE ? 'true' : 'false') + ');';
 try { new Function(JS); } catch (e) { console.error('  ! NEAR Intents runtime does not parse: ' + e.message); process.exit(1); }
 const SCRIPT = '<script id="lx-nearintents">' + JS + '<' + '/script>';
@@ -510,9 +531,10 @@ const NI_OPTS = NI_ONLY.map(function (n) {
     + '<span class="brd-nm">' + n[0] + '</span></button>';
 }).join('');
 const NI_CSS = '<style id="lx-nipick-css">'
-  + '.brd-opt.lx-niopt{display:none !important}'
-  + 'html.lx-ni-on .brd-opt.lx-niopt{display:flex !important}'
-  + NI_UNHIDE.map(function (n) { return 'html.lx-ni-on .brd-opt[data-net="' + n + '"]{display:flex !important}'; }).join('')
+  // Inverted for the same reason as the LayerZero rules: a positive 'display:flex !important' outranked the
+  // design's own network search, which hides a row with an inline display:none.
+  + 'html:not(.lx-ni-on) .brd-opt.lx-niopt{display:none !important}'
+  + NI_UNHIDE.map(function (n) { return 'html:not(.lx-ni-on) .brd-opt[data-net="' + n + '"]{display:none !important}'; }).join('')
   + '<' + '/style>';
 
 let n = 0, seen = 0, dd = 0;

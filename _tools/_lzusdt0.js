@@ -147,13 +147,17 @@ const CSS = '<style id="lx-lzpick-css">'
   + 'letter-spacing:-.1254px;color:var(--text-muted,#75757f)}'
   // The LayerZero-only destinations stay out of the dropdown until the route can actually carry a transfer. The
   // Sei rule needs the html prefix to outrank the CCTP layer's own .brd-opt[data-net="Sei"]{display:none!important}.
-  + '.brd-opt.lx-lzopt{display:none !important}'
-  + 'html.lx-lz-on .brd-opt.lx-lzopt{display:flex !important}'
+  // INVERTED ON PURPOSE. This was a default 'display:none !important' plus 'html.lx-lz-on ... display:flex
+  // !important', and that positive rule BEAT THE DESIGN'S OWN NETWORK SEARCH, which hides a row by setting
+  // display:none INLINE -- an inline style loses to !important. Typing in the search filtered every design row and
+  // left all of ours on screen (RAZA 2026-09-23). Stated as "hidden only while the gate is OFF" there is no rule
+  // at all once it is on, so the search behaves normally and the gate still does its job.
+  + 'html:not(.lx-lz-on) .brd-opt.lx-lzopt{display:none !important}'
   // Hedera and Mantle join Sei here for the same reason: all three ship in the design's dropdown and were hidden by
   // the CCTP layer BECAUSE Circle cannot reach them. LayerZero can (peer + quote_oft both verified 2026-09-23), so
   // the hide no longer holds. They are un-hidden rather than re-added as lx-lzopt buttons, because the design
   // already owns the row -- a second copy would sit beside the first the moment the CCTP hide were ever lifted.
-  + LZ_UNHIDE.map(function (n) { return 'html.lx-lz-on .brd-opt[data-net="' + n + '"]{display:flex !important}'; }).join('')
+  + LZ_UNHIDE.map(function (n) { return 'html:not(.lx-lz-on) .brd-opt[data-net="' + n + '"]{display:none !important}'; }).join('')
   // THE CARD IS THE DECISION, so it is built to be looked at: a brand mark, the name at a real size, what the
   // route is in one line, and a tag naming why you would pick it.
   + '.lx-brr-top{display:grid !important;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:11px;margin-bottom:13px}'
@@ -716,13 +720,18 @@ const BODY = '(function(){'
   // logo that is not a Z at all. This is the protocol's own icon from DefiLlama's set, checked by eye, 96x96, self-hosted.
   + 'LayerZero:\'<img src="/assets/tokens/layerzero.png" alt="" width="30" height="30" decoding="async">\','
   // NEAR Intents: the NEAR mark, self-hosted like the others (assets/tokens/ni, fetched by _nilogos.js)
-  + '"NEAR Intents":\'<img src="/assets/tokens/ni/NEAR.png" alt="" width="30" height="30" decoding="async">\'};'
-  + 'var LZ_SUB={CCTP:"Circle\\u2019s own burn-and-mint",LayerZero:"Tether\\u2019s omnichain dollar","NEAR Intents":"ETH, POL or another major token, delivered"};'
+  + '"NEAR Intents":\'<img src="/assets/tokens/ni/NEAR.png" alt="" width="30" height="30" decoding="async">\','
+  // Axelar: the protocol's own mark from DefiLlama, 96x96, self-hosted beside the other three. A route with NO
+  // entry here renders an empty circle, which is exactly how the Axelar card shipped first (RAZA 2026-09-23:
+  // "its logo is missing"). Any new route needs all three of LZ_MARK, LZ_SUB and LZ_TAG, or it looks half-built
+  // next to the others however correct its figures are.
+  + 'Axelar:\'<img src="/assets/tokens/axelar.png" alt="" width="30" height="30" decoding="async">\'};'
+  + 'var LZ_SUB={CCTP:"Circle\\u2019s own burn-and-mint",LayerZero:"Tether\\u2019s omnichain dollar","NEAR Intents":"ETH, POL or another major token, delivered",Axelar:"Stronghold SHX to the XRP Ledger"};'
   // "No claim" read as "you have no claim to it" -- RAZA: "what do you mean by no claim?". What it meant is that the
   // transfer arrives by itself, so the tag now says that.
-  + 'var LZ_TAG={CCTP:"Fastest",LayerZero:"Auto-delivered","NEAR Intents":"Multi-asset"};'
+  + 'var LZ_TAG={CCTP:"Fastest",LayerZero:"Auto-delivered","NEAR Intents":"Multi-asset",Axelar:"Only XRPL route"};'
   // A route this build has not switched on: shown with its real figures, but not selectable ("Not yet available").
-  + 'function lzLocked(r){ return (r.route==="LayerZero"&&!LZ_SENDABLE)||(r.route==="NEAR Intents"&&!window.__lxNiSendable); }'
+  + 'function lzLocked(r){ return (r.route==="LayerZero"&&!LZ_SENDABLE)||(r.route==="NEAR Intents"&&!window.__lxNiSendable)||(r.route==="Axelar"&&!window.__lxAxSendable); }'
 
   + 'function lzCard(r,sel){'
   + ' var u=lzXlmUsd();'

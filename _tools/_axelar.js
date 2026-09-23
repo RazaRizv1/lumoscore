@@ -67,6 +67,62 @@ function runtime(AX_SENDABLE) {
   window.__lxAxChains = Object.keys(AX_CHAIN);
   try { if (AX_SENDABLE) document.documentElement.classList.add('lx-ax-on'); } catch (_) {}
 
+  // ---- two picker-wide fixes ------------------------------------------------------------------------------------
+  // Neither belongs to Axelar; they live here because this is the LAST route layer to run, so by the time it
+  // executes every layer's rows are in the DOM and the destination list is complete.
+  //
+  // 1. A-Z. The list was design order, then CCTP's rows, then LayerZero's, then NEAR Intents', then this one --
+  //    four appended blocks, so it read as four lists stuck together. With 52 destinations that is unusable
+  //    (RAZA 2026-09-23: "sort it alphabetically a-z"). Sorted in place by data-net, case-insensitively.
+  // 2. The address placeholder must name the CHOSEN network. It is written by the design and there are two
+  //    controls that change the destination, so it could be left describing the previous one while the hint below
+  //    it already named the new one -- "Enter XRPL address" under "To Zcash". Rather than chase which control
+  //    forgot to update it, this keeps it true: it only writes when the text is actually wrong, so it never fights
+  //    the design's own animation of that field.
+  function axSortPicker() {
+    try {
+      var rows = [].slice.call(document.querySelectorAll('.brd-opt[data-net]'));
+      if (rows.length < 2) return;
+      var host = rows[0].parentNode; if (!host) return;
+      var sorted = rows.slice().sort(function (a, b) {
+        var x = (a.getAttribute('data-net') || '').toLowerCase(), y = (b.getAttribute('data-net') || '').toLowerCase();
+        return x < y ? -1 : (x > y ? 1 : 0);
+      });
+      var same = true;
+      for (var i = 0; i < rows.length; i++) if (rows[i] !== sorted[i]) { same = false; break; }
+      if (same) return;                       // already in order: touch nothing, so no needless reflow
+      var frag = document.createDocumentFragment();
+      for (var j = 0; j < sorted.length; j++) frag.appendChild(sorted[j]);
+      host.appendChild(frag);
+    } catch (_) {}
+  }
+  function axSyncPlaceholder() {
+    try {
+      var i = document.querySelector('.br-addr-in'); if (!i) return;
+      // READ THE DOM, NOT lxBrDestNet. That function is declared inside the CCTP layer's script, and _externalize.js
+      // moves each script into its own file with its own scope -- so window.lxBrDestNet is UNDEFINED in this one.
+      // The first version of this called it, got nothing, and returned silently: the placeholder stayed wrong and
+      // the "fix" looked applied. The picker's own label is the source of truth and is always in the document.
+      var t = document.querySelector('.br-step[data-step="1"] .brd-trigger .nm')
+           || document.querySelector('.brd-trigger .nm');
+      var n = t ? (t.textContent || '').trim() : '';
+      if (!n || /select/i.test(n)) return;          // placeholder state, not a chosen network
+      var want = 'Enter ' + n + ' address';
+      if (i.getAttribute('placeholder') !== want) i.setAttribute('placeholder', want);
+    } catch (_) {}
+  }
+  function axPickerBoot() { axSortPicker(); axSyncPlaceholder(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', axPickerBoot); else axPickerBoot();
+  setTimeout(axPickerBoot, 600);
+  setInterval(axSyncPlaceholder, 500);
+  // A click can be the one that moves the wizard to step 2, and that transition takes a few hundred milliseconds --
+  // so a single check 60ms later runs before the field it is meant to correct has even been laid out, and the
+  // interval below only catches it on the next tick. That gap is visible as the old network's name in the box for
+  // a moment. Re-check across the whole transition instead.
+  document.addEventListener('click', function () {
+    [60, 250, 600, 1000].forEach(function (ms) { setTimeout(axSyncPlaceholder, ms); });
+  }, true);
+
   function chainOf(d) { return AX_CHAIN[d] || null; }
   function tokenOf(d) { return AX_TOKEN[d] || null; }
   function feeRate() { return window.__lxFeeRate || ((window.__lxCCTP || {}).feeRate) || 0.002; }
@@ -89,7 +145,10 @@ function runtime(AX_SENDABLE) {
     var t = tokenOf(dest);
     return {
       route: 'Axelar', asset: t.sym, assetLogo: '/assets/tokens/shx.png', assetName: t.sym === 'SHX' ? 'Stronghold' : 'USD Coin',
-      available: true, recv: null, tag: 'Interchain Token Service', networkFeeXlm: 0,
+      // No `tag` here on purpose: the card falls back to LZ_TAG, which holds the SHORT uppercase badge the other
+      // three use ("FASTEST", "MULTI-ASSET"). "Interchain Token Service" sat in that badge as a sentence and was
+      // the main reason this card did not look like its neighbours.
+      available: true, recv: null, networkFeeXlm: 0,
       etaSeconds: 300, etaText: '~5 minutes, delivered automatically', needsClaim: false,
       claimNote: 'Delivered as ' + t.sym + ' to your address on ' + dest + ' automatically — no claim, and no gas needed there.'
     };
@@ -306,8 +365,9 @@ const AX_OPTS = AX_ONLY.map(function (n) {
     + '<span class="brd-nm">' + n[0] + '</span></button>';
 }).join('');
 const AX_CSS = '<style id="lx-axpick-css">'
-  + '.brd-opt.lx-axopt{display:none !important}'
-  + 'html.lx-ax-on .brd-opt.lx-axopt{display:flex !important}'
+  // Hidden only while the gate is OFF: a positive display rule would outrank the design's search filter, which
+  // hides a row with an inline display:none.
+  + 'html:not(.lx-ax-on) .brd-opt.lx-axopt{display:none !important}'
   + '<' + '/style>';
 
 const JS = '(' + runtime.toString() + ')(' + (LZ_LIVE ? 'true' : 'false') + ');';
