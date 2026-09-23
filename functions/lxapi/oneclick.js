@@ -55,11 +55,20 @@ async function call(env, path, init) {
   return { status: r.status, body };
 }
 
-let TOKENS = null, TOKENS_AT = 0;
+let TOKENS = null, TOKENS_AT = 0, NATIVES = null;
 async function tokens(env) {
   if (TOKENS && Date.now() - TOKENS_AT < 600000) return TOKENS;
   const r = await call(env, '/tokens', { method: 'GET' });
   if (r.status !== 200 || !Array.isArray(r.body)) throw new Error('token list unavailable');
+  // WHICH COINS EXIST NATIVELY SOMEWHERE, computed from the FULL upstream list before the chain filter below.
+  // The page uses this to tell a real coin from a bridged copy of one: 1Click lists ZEC and XRP as ordinary ERC-20s
+  // on Starknet, Solana, Aptos and NEAR, and labelled "Zcash" those read as the genuine article. The page cannot
+  // work this out alone, because it only ever receives the chains WE offer -- XRP's home chain is not one of them,
+  // so from the page's side native XRP appears not to exist and the Starknet copy looks canonical.
+  NATIVES = {};
+  for (const t of r.body) {
+    if (t && !t.contractAddress && t.coingeckoId && t.symbol) NATIVES[t.symbol + '|' + t.coingeckoId] = t.blockchain;
+  }
   TOKENS = r.body.filter((t) => t && CHAINS[t.blockchain] && !/DEPRECATED/i.test(t.symbol || ''))
     .map((t) => ({ assetId: t.assetId, blockchain: t.blockchain, symbol: t.symbol, decimals: t.decimals,
       price: t.price, contractAddress: t.contractAddress || null, coingeckoId: t.coingeckoId || null }));
@@ -111,7 +120,7 @@ export async function onRequestGet({ request, env }) {
   const op = q.get('op');
   try {
     if (op === 'logo') return await logo(request, q.get('id'));
-    if (op === 'tokens') return json({ ok: 1, keyed: !!(env && env.ONECLICK_JWT), tokens: await tokens(env) }, 200, 600);
+    if (op === 'tokens') { const list = await tokens(env); return json({ ok: 1, keyed: !!(env && env.ONECLICK_JWT), tokens: list, natives: NATIVES || {} }, 200, 600); }
     if (op === 'status') {
       const a = (q.get('depositAddress') || '').trim(), m = (q.get('depositMemo') || '').trim();
       if (!G_RE.test(a) || (m && !/^[0-9A-Za-z_-]{1,64}$/.test(m))) return json({ ok: 0, error: 'bad deposit' }, 400);
