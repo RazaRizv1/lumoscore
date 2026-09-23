@@ -905,7 +905,14 @@ const BODY = '(function(){'
   // 48.48 USDT0, 100 USDC gets only 50.85. So the liquidity guard fired on a number nobody typed, and LayerZero
   // showed as unavailable on page load. With 0 it is priced at 1 unit (lxLzQuote and lzPathOut both floor there),
   // which is enough to state the fee and the time, and the depth check waits for a real amount.
-  + ' return lxBrCompare(dest, lzAmt(), lzRecip(), ((window.__lxBr||{}).srcKey||"USDC")).then(function(rows){'
+  // CALL IT OFF `window`, NOT BY NAME. `lxBrCompare` is a function DECLARATION in this script, and _externalize.js
+  // gives every script its own scope -- so a later route that extends the comparison by wrapping
+  // `window.lxBrCompare` (Axelar does, from its own file) is invisible to a bare-identifier call here, which keeps
+  // resolving to the local binding. That is exactly what happened to XRPL: lzSkeleton drew the Axelar card, then
+  // this line's unwrapped compare answered with NO rows, which hid the panel and left lzPaintStats nothing to find --
+  // a card on screen with no Receive / Bridge fee / Estimated time under it (RAZA 2026-09-23). Same-file wrappers
+  // rebind the local and are exported at the end of this script, so `window` holds the fullest chain either way.
+  + ' return (window.lxBrCompare||lxBrCompare)(dest, lzAmt(), lzRecip(), ((window.__lxBr||{}).srcKey||"USDC")).then(function(rows){'
   + '  if(tok!==_lzTok)return;'                     // a later destination/amount already asked
   // remember what this source+amount yields per route, and each destination's messaging fee, for lzSkeleton
   + '  rows.forEach(function(r){ if(r.available!==false) _lzLast[lzKey(r.route)]={recv:r.recv, impact:r.impact};'

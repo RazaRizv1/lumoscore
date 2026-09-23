@@ -226,12 +226,22 @@ function runtime(AX_SENDABLE) {
     var base = window.lxBrCompare;
     if (typeof base !== 'function') return;
     window.lxBrCompare = function (dest, amountHuman, recipient, sourceKey) {
-      return Promise.resolve(base(dest, amountHuman, recipient, sourceKey)).then(function (out) {
-        if (!chainOf(dest)) return out;
-        return Promise.resolve(window.lxAxRow(dest, amountHuman, sourceKey, recipient))
-          .then(function (r) { return r ? out.concat([r]) : out; })
-          .catch(function () { return out; });
-      });
+      // THE BASE COMPARE MAY REJECT, and for an Axelar-only destination it does: XRPL has no CCTP domain and no
+      // LayerZero peer, so the two stablecoin routes have nothing to price and the chain ends in a rejection.
+      // Chaining .then onto that never ran, the rejection reached lzDraw as an EMPTY row set, and the result was a
+      // card left on screen from an earlier draw with NO stats block under it -- the Receive / Bridge fee /
+      // Estimated time rows simply never rendered, because lzPaintStats had no rows to find (RAZA 2026-09-23).
+      // Recovering to [] keeps this route's row alive on exactly the destinations that need it most.
+      return Promise.resolve()
+        .then(function () { return base(dest, amountHuman, recipient, sourceKey); })
+        .catch(function () { return []; })
+        .then(function (out) {
+          out = out || [];
+          if (!chainOf(dest)) return out;
+          return Promise.resolve(window.lxAxRow(dest, amountHuman, sourceKey, recipient))
+            .then(function (r) { return r ? out.concat([r]) : out; })
+            .catch(function () { return out; });
+        });
     };
   })();
 
