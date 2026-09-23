@@ -50,6 +50,36 @@ CREATE TABLE IF NOT EXISTS mail (
 );
 CREATE INDEX IF NOT EXISTS idx_mail_ts ON mail (ts DESC);
 CREATE INDEX IF NOT EXISTS idx_mail_unread ON mail (read_at) WHERE read_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_mail_from ON mail (from_addr);
+
+-- Replies sent from the panel through Resend. This table predates the file and was created directly
+-- against D1; it is written down here so the schema is the record it claims to be.
+CREATE TABLE IF NOT EXISTS mail_reply (
+  id        TEXT PRIMARY KEY,
+  mail_id   TEXT NOT NULL,
+  ts        INTEGER NOT NULL,
+  to_addr   TEXT NOT NULL,
+  subject   TEXT,
+  body      TEXT,
+  provider  TEXT,          -- the id Resend gives back, so a delivery question can be traced
+  err       TEXT
+);
+
+-- ---- blocked senders (the Spam box) ----------------------------------------------------------------
+-- Marking a message as spam blocks its SENDER, not only that one message, because "always land in
+-- spam" is a statement about a correspondent rather than about one email.
+--
+-- IT IS APPLIED WHEN THE INBOX IS READ, not when mail arrives. Two reasons, both deliberate:
+--   * it is retroactive and reversible -- blocking someone moves everything they have ever sent into
+--     Spam at once, and unblocking puts it all back, with no rows rewritten either way;
+--   * it keeps the Email Worker out of it entirely. That Worker's one invariant is that nothing can
+--     stop mail reaching the real mailbox, so a spam rule that it had to consult would put delivery
+--     downstream of a judgement call. Here a mistake costs a filtered view and nothing else.
+CREATE TABLE IF NOT EXISTS mail_block (
+  addr TEXT PRIMARY KEY,   -- lower-cased from_addr, exactly as stored on the message
+  ts   INTEGER NOT NULL,
+  by   TEXT                -- the admin who blocked it, from the verified Access token
+);
 
 -- ---- reward payout history ------------------------------------------------------------------------
 -- The ROUND is recomputed from chain every time, so it is not stored. What cannot be recomputed is what
