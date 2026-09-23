@@ -17,8 +17,22 @@ function json(body, status) {
 // SPAM IS A RULE ABOUT A SENDER, evaluated on every read, so it is retroactive both ways: blocking
 // someone sweeps their whole history into Spam and unblocking returns it, without touching a single
 // mail row. See _data/admin-schema.sql for why this lives here and not in the Email Worker.
-const BLOCKED = 'LOWER(from_addr) IN (SELECT addr FROM mail_block)';
-const CLEAN = 'LOWER(from_addr) NOT IN (SELECT addr FROM mail_block)';
+// A block entry is EITHER a full address (`someone@example.com`) OR a domain, written with a leading
+// @ (`@bounce.linkedin.com`) so the two can never be confused. The domain form exists because bulk
+// senders do not reuse an address: LinkedIn's envelope from is
+// `m-13zz0j7n32av8...@bounce.linkedin.com`, a fresh random local part on every single message, so an
+// address block would catch the one mail you clicked and nothing after it -- which is the opposite of
+// "always land in spam" (measured against the live inbox, 2026-09-23).
+const MATCH = "(LOWER(from_addr) IN (SELECT addr FROM mail_block)"
+  + " OR '@' || LOWER(SUBSTR(from_addr, INSTR(from_addr, '@') + 1)) IN (SELECT addr FROM mail_block))";
+const BLOCKED = MATCH;
+const CLEAN = 'NOT ' + MATCH;
+
+function domainOf(addr) {
+  const s = String(addr || '').trim().toLowerCase();
+  const at = s.lastIndexOf('@');
+  return at > 0 ? '@' + s.slice(at + 1) : '';
+}
 
 // Our own addresses are never spam. Blocking one would hide every forward and every reply that comes
 // back through routing, and the only way to notice would be mail quietly going missing -- so the case
@@ -31,6 +45,29 @@ function ours(addr) {
 // -- and a lone trailing backslash would break the ESCAPE clause. Neutralise all three.
 function likeTerm(q) {
   return '%' + String(q).replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+}
+
+// One id or a list of them, normalised to a list. The cap is what the panel can actually put on
+// screen (the list itself is LIMIT 200), so a request larger than that is not a bulk action from
+// this UI and is cut rather than turned into an unbounded statement.
+const IDS_MAX = 200;
+function idsOf(b) {
+  const raw = (b && Array.isArray(b.ids)) ? b.ids : [(b && b.id)];
+  const seen = Object.create(null);
+  const out = [];
+  for (const v of raw) {
+    const s = String(v == null ? '' : v);
+    if (!s || seen[s]) continue;
+    seen[s] = 1;
+    out.push(s);
+    if (out.length >= IDS_MAX) break;
+  }
+  return out;
+}
+function places(n, from) {
+  const a = [];
+  for (let i = 0; i < n; i++) a.push('?' + (i + (from || 1)));
+  return a.join(',');
 }
 
 export async function onRequestGet({ request, env }) {
@@ -48,8 +85,13 @@ export async function onRequestGet({ request, env }) {
     if (id) {
       // A message opens from whichever box it is in, Spam included -- the point of a Spam box you can
       // see is that you can check it.
+      // block_addr is the ENTRY that put it in Spam -- an address or an @domain -- so the panel can
+      // name the actual rule rather than guess which of the two applied.
       const r = await db.prepare(
-        'SELECT *, (LOWER(from_addr) IN (SELECT addr FROM mail_block)) AS spam FROM mail WHERE id = ?1'
+        'SELECT *, ' + MATCH + ' AS spam, '
+        + "(SELECT addr FROM mail_block WHERE addr = LOWER(from_addr)"
+        + " OR addr = '@' || LOWER(SUBSTR(from_addr, INSTR(from_addr, '@') + 1)) LIMIT 1) AS block_addr "
+        + 'FROM mail WHERE id = ?1'
       ).bind(id).first();
       if (!r) return json({ error: 'not found' }, 404);
       return json({ message: r }, 200);
@@ -104,8 +146,10 @@ export async function onRequestPatch({ request, env }) {
 
   let b;
   try { b = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
-  const id = String((b && b.id) || '');
-  if (!id) return json({ error: 'id required' }, 400);
+  const ids = idsOf(b);
+  if (!ids.length) return json({ error: 'id required' }, 400);
+  // read / archived stay single-message: they are per-message flags and the panel only ever sends one.
+  const id = ids[0];
 
   try {
     if (b.read === true) await db.prepare('UPDATE mail SET read_at = ?2 WHERE id = ?1 AND read_at IS NULL').bind(id, Date.now()).run();
@@ -113,22 +157,48 @@ export async function onRequestPatch({ request, env }) {
     if (b.archived != null) await db.prepare('UPDATE mail SET archived = ?2 WHERE id = ?1').bind(id, b.archived ? 1 : 0).run();
 
     if (b.spam != null) {
-      // THE ADDRESS COMES FROM THE STORED MESSAGE, never from the request body. Taking it from the
+      // THE ADDRESSES COME FROM THE STORED MESSAGES, never from the request body. Taking them from the
       // caller would turn this into a way to block any address at all with one forged field.
-      const m = await db.prepare('SELECT from_addr FROM mail WHERE id = ?1').bind(id).first();
-      if (!m) return json({ error: 'not found' }, 404);
-      const addr = String(m.from_addr || '').trim().toLowerCase();
-      if (!addr) return json({ error: 'that message has no sender address to block' }, 400);
-      if (b.spam && ours(addr)) return json({ error: 'That is one of our own addresses — blocking it would hide your own forwarded mail.' }, 400);
+      //
+      // Selecting several messages usually means selecting several FROM ONE SENDER, so the distinct
+      // set is what gets written -- twenty newsletters from one address are one block, not twenty.
+      const rows = await db.prepare(
+        'SELECT DISTINCT LOWER(from_addr) AS addr FROM mail WHERE id IN (' + places(ids.length) + ')'
+      ).bind(...ids).all();
+      const addrs = ((rows && rows.results) || []).map((r) => String(r.addr || '').trim()).filter(Boolean);
+      if (!addrs.length) return json({ error: 'no sender address on those messages' }, 404);
 
-      if (b.spam) {
-        await db.prepare('INSERT OR REPLACE INTO mail_block (addr, ts, by) VALUES (?1, ?2, ?3)')
-          .bind(addr, Date.now(), adminActor(request) || 'unknown').run();
-      } else {
-        await db.prepare('DELETE FROM mail_block WHERE addr = ?1').bind(addr).run();
+      // scope 'domain' blocks everything from the sending host; anything else blocks the exact address.
+      const domain = b.scope === 'domain';
+      const found = domain
+        ? [...new Set(addrs.map(domainOf).filter(Boolean))]
+        : addrs;
+      if (!found.length) return json({ error: 'could not read a domain from those senders' }, 400);
+
+      // Refused rather than skipped: silently blocking 4 of 5 and saying "ok" would leave you
+      // believing a sender was blocked when it was not.
+      const mine = found.filter(ours);
+      if (b.spam && mine.length) {
+        return json({ error: 'That is one of our own (' + mine[0] + ') — blocking it would hide your own forwarded mail.' }, 400);
       }
-      await audit(env, request, b.spam ? 'support.spam' : 'support.unspam', id, { addr });
-      return json({ ok: true, addr, spam: !!b.spam }, 200);
+
+      const now = Date.now();
+      const actor = adminActor(request) || 'unknown';
+      let stmts;
+      if (b.spam) {
+        stmts = found.map((a) => db.prepare('INSERT OR REPLACE INTO mail_block (addr, ts, by) VALUES (?1, ?2, ?3)').bind(a, now, actor));
+      } else {
+        // UNBLOCKING CLEARS BOTH FORMS. "Not spam" means get this out of spam, and the reader has no
+        // reason to know whether it landed there by address or by domain -- removing only the one they
+        // named would leave the message exactly where it was, with a button that appeared to do
+        // nothing.
+        const all = [...new Set(addrs.concat(addrs.map(domainOf)).filter(Boolean))];
+        stmts = all.map((a) => db.prepare('DELETE FROM mail_block WHERE addr = ?1').bind(a));
+      }
+      await db.batch(stmts);
+      await audit(env, request, b.spam ? 'support.spam' : 'support.unspam', ids[0],
+        { addrs: found.slice(0, 8), n: found.length, scope: domain ? 'domain' : 'addr' });
+      return json({ ok: true, addrs: found, addr: found[0], senders: found.length, messages: ids.length, scope: domain ? 'domain' : 'addr', spam: !!b.spam }, 200);
     }
     return json({ ok: true }, 200);
   } catch (e) {
@@ -152,20 +222,32 @@ export async function onRequestDelete({ request, env }) {
 
   let b;
   try { b = await request.json(); } catch (_) { return json({ error: 'bad json' }, 400); }
-  const id = String((b && b.id) || '');
-  if (!id) return json({ error: 'id required' }, 400);
+  const ids = idsOf(b);
+  if (!ids.length) return json({ error: 'id required' }, 400);
 
   try {
     // Read first, so the audit line can name what was destroyed. Afterwards there is nothing to name.
-    const m = await db.prepare('SELECT from_addr, subject FROM mail WHERE id = ?1').bind(id).first();
-    if (!m) return json({ error: 'not found' }, 404);
-    await db.prepare('DELETE FROM mail_reply WHERE mail_id = ?1').bind(id).run();
-    const r = await db.prepare('DELETE FROM mail WHERE id = ?1').bind(id).run();
-    await audit(env, request, 'support.delete', id, {
-      from: String(m.from_addr || '').slice(0, 120),
-      subject: String(m.subject || '').slice(0, 160),
+    const rows = await db.prepare(
+      'SELECT id, from_addr, subject FROM mail WHERE id IN (' + places(ids.length) + ')'
+    ).bind(...ids).all();
+    const found = (rows && rows.results) || [];
+    if (!found.length) return json({ error: 'not found' }, 404);
+
+    // The mail and its replies go in ONE batch, so there is no window in which a reply row points at
+    // a message that no longer exists.
+    const inList = places(found.length);
+    const args = found.map((r) => r.id);
+    const res = await db.batch([
+      db.prepare('DELETE FROM mail_reply WHERE mail_id IN (' + inList + ')').bind(...args),
+      db.prepare('DELETE FROM mail WHERE id IN (' + inList + ')').bind(...args),
+    ]);
+    const deleted = (res && res[1] && res[1].meta && res[1].meta.changes) || 0;
+    await audit(env, request, 'support.delete', found[0].id, {
+      n: found.length,
+      from: found.slice(0, 5).map((r) => String(r.from_addr || '').slice(0, 80)),
+      subject: String(found[0].subject || '').slice(0, 160),
     });
-    return json({ ok: true, deleted: ((r && r.meta && r.meta.changes) || 0) }, 200);
+    return json({ ok: true, deleted }, 200);
   } catch (e) {
     return json({ error: String((e && e.message) || e) }, 500);
   }
