@@ -27,10 +27,13 @@
 //     pure Soroban ITS token, not a SAC. Circle USDC's real SAC is CCW67TSZ..., a different contract. Someone
 //     holding the USDC this bridge already moves does NOT hold USDC.axl and cannot get it through a trustline or
 //     the classic DEX, only by bridging it in. So that row is real but thinly useful, which RAZA chose knowingly.
-// Because of that, this route requires the SOURCE asset to be the asset it carries. It does not swap into it: a
-// swap would quietly convert someone's USDC into SHX to satisfy the route, which is not what "bridge my USDC" means.
-// When the source does not match, the row is shown UNAVAILABLE with the reason rather than hidden, so the choice is
-// visible and explained.
+// Because ITS moves a REGISTERED token, whatever the user is sending is swapped into SHX on Stellar first -- the
+// same thing CCTP does into USDC and NEAR Intents does into its transport asset. This route originally REFUSED any
+// source but SHX, reasoning that turning someone's USDC into SHX is not what "bridge my USDC" means. That was wrong
+// twice over: it left the card permanently unavailable for every normal wallet, which is why it looked unlike the
+// other three (RAZA 2026-09-23: "Why is Axelar bridge written differently?"), and it was inconsistent with the three
+// routes that already convert. The card names what arrives -- "Receive SHX", "Stronghold SHX to the XRP Ledger" --
+// and the route is only ever chosen deliberately, so the conversion is visible rather than silent.
 //
 // Gated like the other two optional routes: sendable only in an LZ_LIVE build until a real transfer has round-tripped.
 //
@@ -162,30 +165,58 @@ function runtime(AX_SENDABLE) {
   // -- a card that invites a click and then withdraws it, which is the flash rule applied to state rather than
   // to a value. The check is cheap and synchronous, so the first frame is already right.
   window.lxAxSkeleton = function (dest) {
-    var t = tokenOf(dest);
-    if (!chainOf(dest) || !t) return null;
-    var row = baseRow(dest);
-    if (srcKey() !== t.src) { row.available = false; row.error = axWhy(dest, t); }
-    return row;
+    if (!chainOf(dest) || !tokenOf(dest)) return null;
+    return baseRow(dest);
   };
   function axWhy(dest, t) {
     return 'Axelar carries ' + t.sym + ' to ' + dest + '. Choose ' + t.src + ' as the asset you are sending to use this route.';
+  }
+
+  // THE SOURCE IS SWAPPED INTO SHX ON STELLAR FIRST, exactly as CCTP swaps into USDC and NEAR Intents swaps into
+  // its transport asset. This route originally REFUSED anything but SHX, on the reasoning that turning someone's
+  // USDC into SHX is not what "bridge my USDC" means -- but that made the card permanently unavailable for every
+  // normal wallet, which is why it looked unlike the other three (RAZA 2026-09-23: "Why is Axelar bridge written
+  // differently?"). It was also inconsistent: every other route already converts. The card names what arrives
+  // ("Receive SHX", "Stronghold SHX to the XRP Ledger") and the route is only ever chosen deliberately, so the
+  // conversion is visible rather than silent.
+  var SHX_SPEC = { code: 'SHX', issuer: 'GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH' };
+  function srcSpecOf(k) {
+    var CC = window.__lxCCTP || {};
+    if (k === 'XLM') return { native: true };
+    if (k === 'USDC') return { code: 'USDC', issuer: CC.usdcIssuer };
+    var A = (window.LX_ASSETS || {})[k];
+    var spec = A && A.spec;
+    if (spec === 'USDC') return { code: 'USDC', issuer: CC.usdcIssuer };
+    if (spec === 'XLM' || spec === 'native') return { native: true };
+    return spec || null;
+  }
+  // How much SHX the amount buys, after LumosCore's rate. SHX in means no swap at all.
+  function transportOut(k, amt) {
+    var net = amt * (1 - feeRate());
+    if (k === 'SHX') return Promise.resolve(net);
+    var spec = srcSpecOf(k);
+    if (!spec || !window.lxStrictPath) return Promise.reject(new Error('No route from ' + k + ' to SHX on Stellar.'));
+    return window.lxStrictPath(window.__lxCCTP || {}, spec, net.toFixed(7), SHX_SPEC).then(function (p) { return +p.out; });
   }
 
   window.lxAxRow = function (dest, amountHuman, sourceKey, recipient) {
     if (!chainOf(dest) || !tokenOf(dest)) return Promise.resolve(null);
     var t = tokenOf(dest), row = baseRow(dest);
     var sk = sourceKey || srcKey();
-    // THE ROUTE IS ONLY HONEST WHEN THE SOURCE MATCHES. Saying "unavailable, and here is why" beats hiding the row:
-    // someone looking for a way to reach XRPL should see that one exists and what it needs.
-    if (sk !== t.src) { row.available = false; row.error = axWhy(dest, t); return Promise.resolve(row); }
     var amt = parseFloat(String(amountHuman || 0).replace(/,/g, '')) || 0;
     return gasXlm(dest).then(function (g) {
-      if (g != null) { row.networkFeeXlm = g; row.etaText = '~5 minutes, delivered automatically'; }
-      // ITS is lock/mint: what leaves is what arrives, less only LumosCore's own rate. There is no swap and no
-      // slippage on this route, so the figure is exact rather than quoted.
-      if (amt > 0) row.recv = +(amt * (1 - feeRate())).toFixed(t.dp);
-      return row;
+      if (g != null) row.networkFeeXlm = g;
+      if (!(amt > 0)) return row;
+      // ITS is lock/mint, so once the transfer is in SHX what leaves is what arrives. The only question is how much
+      // SHX the source buys, and that is the Stellar DEX's answer -- the same pathfinder CCTP and NEAR Intents use.
+      return transportOut(sk, amt).then(function (out) {
+        row.recv = +out.toFixed(t.dp);
+        return row;
+      }, function (e) {
+        row.available = false;
+        row.error = (e && e.message) || axWhy(dest, t);
+        return row;
+      });
     });
   };
 
@@ -212,13 +243,11 @@ function runtime(AX_SENDABLE) {
   window.lxAxConfirm = function (btn, say, net, domain, recipient, amt, k, A) {
     var CC = window.__lxCCTP || {}, t = tokenOf(net), chain = chainOf(net);
     if (!window.__lxAxSendable || !t || !chain) { say('Sending by Axelar isn’t switched on yet — choose another route.'); return; }
-    if (k !== t.src) { say('Axelar carries ' + t.sym + ' to ' + net + '. Choose ' + t.src + ' as the asset you are sending.'); return; }
     if (!window.lxBrValidAddr || !window.lxBrValidAddr(net, recipient)) { say('That doesn’t look like a valid ' + net + ' address.'); return; }
     var srcAmt = parseFloat(String(amt).replace(/,/g, '')) || 0;
     if (!(srcAmt > 0)) { say('Enter a valid amount on the previous step.'); return; }
     var feeAmt = +(srcAmt * feeRate()).toFixed(7);
-    var netAmt = +(srcAmt - feeAmt).toFixed(t.dp);
-    if (!(netAmt > 0)) { say('That amount is too small to bridge.'); return; }
+    if (!(srcAmt - feeAmt > 0)) { say('That amount is too small to bridge.'); return; }
 
     if (btn) btn.disabled = true;
     say('');
@@ -252,16 +281,46 @@ function runtime(AX_SENDABLE) {
         });
       }
 
-      // 1. LumosCore's fee, in the asset being sent, as its own classic payment.
-      var feeP = (feeAmt > 0 && CC.feeCollector && CC.feeCollector !== pk)
-        ? acc().then(function (ad) {
-            var asset = (t.src === 'XLM') ? S.Asset.native() : new S.Asset(t.src, axIssuerOf(ad, t.src));
-            var tb = new S.TransactionBuilder(new S.Account(pk, ad.sequence), { fee: '100000', networkPassphrase: CC.passphrase })
-              .addOperation(S.Operation.payment({ destination: CC.feeCollector, asset: asset, amount: feeAmt.toFixed(7) }))
-              .setTimeout(180).build();
-            return signSubmitClassic(tb, 'fee');
-          })
-        : Promise.resolve(null);
+      // 1. Get the amount into SHX, and take LumosCore's fee, in ONE classic transaction -- the CCTP pattern. A
+      //    Soroban op cannot share a transaction with classic ops, so the contract call below has to be a second
+      //    signature either way; putting the swap and the fee together at least keeps it to two.
+      //    What actually arrived is MEASURED from the balance, never assumed from the quote: a path payment
+      //    guarantees only destMin, and sending the contract more than the wallet holds fails at the token.
+      function shxBal(ad) {
+        var b = (ad.balances || []).filter(function (x) { return x.asset_code === 'SHX' && x.asset_issuer === SHX_SPEC.issuer; })[0];
+        return b ? (+b.balance || 0) : 0;
+      }
+      var sendP = acc().then(function (ad) {
+        var before = shxBal(ad);
+        var spend = +(srcAmt - feeAmt).toFixed(7);
+        var takeFee = feeAmt > 0 && CC.feeCollector && CC.feeCollector !== pk;
+        if (k === 'SHX') {
+          if (!takeFee) return spend;
+          var tbF = new S.TransactionBuilder(new S.Account(pk, ad.sequence), { fee: '100000', networkPassphrase: CC.passphrase })
+            .addOperation(S.Operation.payment({ destination: CC.feeCollector, asset: new S.Asset('SHX', SHX_SPEC.issuer), amount: feeAmt.toFixed(7) }))
+            .setTimeout(180).build();
+          return signSubmitClassic(tbF, 'fee').then(function () { return spend; });
+        }
+        up('Pricing the swap into SHX…');
+        return window.lxStrictPath(CC, srcSpecOf(k), spend.toFixed(7), SHX_SPEC).then(function (p) {
+          var sendAsset = (k === 'XLM') ? S.Asset.native() : new S.Asset(k, axIssuerOf(ad, k));
+          var tb = new S.TransactionBuilder(new S.Account(pk, ad.sequence), { fee: '200000', networkPassphrase: CC.passphrase })
+            .addOperation(S.Operation.pathPaymentStrictSend({
+              sendAsset: sendAsset, sendAmount: spend.toFixed(7),
+              destination: pk, destAsset: new S.Asset('SHX', SHX_SPEC.issuer),
+              destMin: (p.out * 0.97).toFixed(7),
+              path: window.lxToAssets ? window.lxToAssets(S, p.path) : []
+            }));
+          if (takeFee) tb = tb.addOperation(S.Operation.payment({ destination: CC.feeCollector, asset: sendAsset, amount: feeAmt.toFixed(7) }));
+          return signSubmitClassic(tb.setTimeout(180).build(), 'swap+fee').then(function () {
+            return acc().then(function (after) {
+              var got = +(shxBal(after) - before).toFixed(7);
+              if (!(got > 0)) throw new Error('The swap into SHX did not deliver — nothing was sent cross-chain.');
+              return got;
+            });
+          });
+        });
+      });
 
       // The issuer of the source asset, read from the sender's own balances rather than a hardcoded map, so a
       // curated asset cannot be paired with the wrong issuer.
@@ -271,7 +330,9 @@ function runtime(AX_SENDABLE) {
         return b.asset_issuer;
       }
 
-      return feeP.then(function () {
+      var sendAmt = 0;
+      return sendP.then(function (got) {
+        sendAmt = got;
         up('Pricing the Axelar message…');
         return gasXlm(net);
       }).then(function (g) {
@@ -279,7 +340,7 @@ function runtime(AX_SENDABLE) {
         if (g == null) throw new Error('Could not price the Axelar message — nothing was sent cross-chain.');
         var gasStroops = String(Math.ceil(g * 1e7));
         up('Building the interchain transfer…');
-        var units = BigInt(Math.round(netAmt * Math.pow(10, t.dp))).toString();
+        var units = BigInt(Math.round(sendAmt * Math.pow(10, t.dp))).toString();
         var destBytes = new Uint8Array(recipient.length);
         for (var i = 0; i < recipient.length; i++) destBytes[i] = recipient.charCodeAt(i);
         var idBytes = new Uint8Array(32);
