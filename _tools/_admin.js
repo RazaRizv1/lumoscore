@@ -1023,6 +1023,12 @@ function paintUsers(){
 +'    body:JSON.stringify({list:names})}).then(function(r){ return r.json(); })'
 +'    .catch(function(){ return null; }); }'
 // stellar.expert prices in USD (USDC comes back at 1.0001, not 6.26), so no XLM conversion here
+// UPSTREAM SENDS AN OBJECT NOW: stellar.expert returns trustlines as {total, authorized, funded},
+// and this read [0] and [2]. Undefined-or-0 is 0, so every row showed a measured-looking 0 -- AQUA
+// has 191,991 total / 129,324 funded (RAZA, 2026-09-23). _searchassets.js had already been fixed for
+// the identical change; three other call sites had not been swept. Both shapes are read so a cached
+// older response still works.
++'function lxTl(t,k){ if(!t)return 0; if(t[k]!=null)return +t[k]||0; var i=(k==="funded")?2:0; return +t[i]||0; }'
 +'function aInfo(code,iss,cb){ j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code+"-"+iss)+"&limit=5").then(function(d){'
 +'    var rs=(d&&d._embedded&&d._embedded.records)||[];'
 +'    var m=rs.filter(function(r){ return String(r.asset||"").indexOf(code+"-"+iss)===0; })[0];'
@@ -1031,8 +1037,8 @@ function paintUsers(){
 +'    function chg(n){ if(sr.length<n+1)return null; var a=sr[sr.length-1-n]&&sr[sr.length-1-n][1], b=sr[sr.length-1]&&sr[sr.length-1][1];'
 +'      if(!a||!b)return null; return (b-a)/a*100; }'
 +'    cb({code:code,iss:iss,price:+m.price||null,d1:chg(1),d7:chg(sr.length-1),'
-+'      vol7d:(+m.volume7d||0)/1e7,trust:(m.trustlines&&m.trustlines[0])||0,'
-+'      funded:(m.trustlines&&m.trustlines[2])||0,domain:m.domain||"",img:ti.image||"",name:ti.name||""}); }); }'
++'      vol7d:(+m.volume7d||0)/1e7,trust:lxTl(m.trustlines,"total"),'
++'      funded:lxTl(m.trustlines,"funded"),domain:m.domain||"",img:ti.image||"",name:ti.name||""}); }); }'
 +'function pct(v){ if(v==null||!isFinite(v))return "<span style=\\"color:var(--text-muted)\\">\u2014</span>";'
 +'  var c=v>=0?"ch-up":"ch-down"; return "<span class=\\""+c+"\\">"+(v>=0?"+":"")+v.toFixed(2)+"%</span>"; }'
 +`

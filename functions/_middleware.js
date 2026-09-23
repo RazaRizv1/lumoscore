@@ -295,7 +295,10 @@ async function assetFacts(assetId){
     return {
       code: assetId.split('-')[0],
       price: +m.price || null,
-      trustlines: (m.trustlines && m.trustlines[0]) || 0,
+      // stellar.expert returns {total, authorized, funded}; this read [0], which is undefined on an
+      // object, so it reported 0 for every asset. Both shapes read — see _searchassets.js, fixed earlier
+      // for the same upstream change.
+      trustlines: (function (t) { return !t ? 0 : (t.total != null ? +t.total || 0 : +t[0] || 0); })(m.trustlines),
       domain: m.domain || '',
       image: toml.image || '',
       name: toml.name || '',
