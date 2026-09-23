@@ -72,7 +72,7 @@ const MAIN = `
           <div class="adm-card-body" style="padding:0"><div id="lxanPages" class="lxan-box"><div class="lxadm-empty">Loading&hellip;</div></div></div>
         </div>
         <div class="adm-card lxan-card">
-          <div class="adm-card-head"><div><div class="adm-card-title">Traffic Sources</div><div class="adm-card-sub">every site that sent visitors &middot; Cloudflare (sampled) plus LumosCore’s own record</div></div></div>
+          <div class="adm-card-head"><div><div class="adm-card-title">Traffic Sources</div><div class="adm-card-sub" id="lxanRefSub">where visitors came from &middot; Cloudflare (sampled) plus LumosCore’s own record</div></div></div>
           <div class="adm-card-body" style="padding:0"><div id="lxanRefs" class="lxan-box"><div class="lxadm-empty">Loading&hellip;</div></div></div>
         </div>
         <div class="adm-card lxan-card">
@@ -193,6 +193,20 @@ const CSS = `<style id="lx-adminanalytics-css">
 @media (prefers-reduced-motion:reduce){.lxan-dot{animation:none}}
 .lxan-livebig{font:800 30px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text);font-variant-numeric:tabular-nums}
 .lxan-live{max-height:320px;overflow-y:auto;-webkit-overflow-scrolling:touch;touch-action:pan-y}
+/* The quiet state sizes to its own content instead of holding the live list's height open. */
+.lxan-quiet{display:flex;align-items:center;gap:16px;padding:18px 20px;flex-wrap:wrap}
+.lxan-quiet-i{flex:0 0 auto;width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  background:rgba(127,127,140,.10);color:var(--text-muted)}
+.lxan-quiet-m{flex:1 1 260px;min-width:0;display:flex;flex-direction:column;gap:3px}
+.lxan-quiet-m b{font:700 14.5px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text)}
+.lxan-quiet-m span{font-size:13px;line-height:1.5;color:var(--text-muted)}
+.lxan-quiet-m code{font:500 12.5px/1 ui-monospace,SFMono-Regular,Menlo,monospace;padding:2px 5px;border-radius:5px;
+  background:rgba(127,127,140,.12);color:var(--text-soft,#6b6b76)}
+.lxan-quiet-k{display:flex;gap:26px;flex:0 0 auto;margin-left:auto}
+.lxan-quiet-k div{display:flex;flex-direction:column;align-items:flex-end}
+.lxan-quiet-k b{font:800 20px/1.1 "Hanken Grotesk",system-ui,sans-serif;color:var(--text);font-variant-numeric:tabular-nums}
+.lxan-quiet-k span{font-size:11.5px;color:var(--text-muted);letter-spacing:.02em}
+@media(max-width:620px){.lxan-quiet-k{margin-left:0;width:100%;justify-content:space-between}}
 .lxan-live .lxan-row{gap:10px}
 .lxan-livrow{cursor:pointer;user-select:none}
 .lxan-livrow:hover{background:rgba(127,127,140,.07)}
@@ -532,6 +546,22 @@ function render(d){
   setT("#lxanGeoSub",nC+" "+(nC===1?"country":"countries")+" \\u00b7 tap one to see its cities");
   list(q("#lxanPages"),d.topPages,pv,pageName,{link:true});
   var src=sources(d), rb=q("#lxanRefs"); if(rb) rb.__ctx=""; list(rb,src,src.reduce(function(a,r){ return a+r.count; },0),refName,{src:true});
+  // SAY HOW FAR BACK THIS ACTUALLY SEES. "Every site that sent visitors" over 90D reads as a complete
+  // answer, and it is not: our own record only began when the counter was installed, and Cloudflare's
+  // half is sampled, so a short list looks like a bug rather than the limit of what is knowable
+  // (RAZA 2026-09-23: "it says 7 sources in 90 days which is not true"). Our own record IS exact for
+  // the window it covers, so the honest line is the one that names that window.
+  var rs=q("#lxanRefSub");
+  if(rs){
+    var msg=src.length+" source"+(src.length===1?"":"s")+" \\u00b7 Cloudflare (sampled) plus LumosCore\\u2019s own record";
+    if(d.since){
+      var st=(d.start!=null)?d.start:0;
+      msg+=(d.since>st)
+        ? (" \\u2014 exact only since "+new Date(d.since).toLocaleDateString()+", when the counter was installed; anything earlier in this period is Cloudflare\\u2019s sample alone")
+        : " \\u2014 exact for this whole period";
+    }
+    rs.textContent=msg;
+  }
   list(q("#lxanBrw"),d.browsers,pv);
   list(q("#lxanOs"),d.systems,pv);
   setT("#lxanSub","Cloudflare Web Analytics \\u00b7 people only \\u00b7 "+RLABEL[d.range||RANGE]);
@@ -603,7 +633,23 @@ function liveTick(){
     var L=(d&&d.live)||{}, rows=L.rows||[];
     setT("#lxanLiveN",String(L.sessions||0));
     setT("#lxanLiveSub",(L.sessions?((L.sessions===1?"1 person":num(L.sessions)+" people")+" in the last 5 minutes \u00b7 "+num(L.views||0)+" page "+((L.views||0)===1?"view":"views")):"nobody on the site in the last 5 minutes")+(L.error?(" \u00b7 "+L.error):""));
-    if(!rows.length){ el.innerHTML="<div class='lxadm-empty'>Nobody on the site right now.</div>"; return; }
+    // AN EMPTY WINDOW IS THE NORMAL STATE for a site this size, and it used to render as a tall blank
+    // band with one grey sentence in it -- the single least useful thing on the page, taking the most
+    // room (RAZA 2026-09-23). It now answers the two questions someone actually has when nobody is on:
+    // when was the last person here, and how has today gone.
+    if(!rows.length){
+      var lt=L.last, td=L.today||{};
+      var where=lt?[lt.city,lt.region&&lt.region!==lt.city?lt.region:"",cname(lt.country)].filter(Boolean).join(", "):"";
+      el.innerHTML="<div class='lxan-quiet'>"
+        +"<div class='lxan-quiet-i'><svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'><circle cx='12' cy='12' r='9'/><path d='M12 7v5l3 2'/></svg></div>"
+        +"<div class='lxan-quiet-m'><b>Nobody on the site right now.</b>"
+        +(lt?("<span>Last visitor "+esc(ago(lt.ts))+(where?(" from "+esc(where)):"")+", on <code>"+esc(lt.path||"/")+"</code>.</span>")
+             :"<span>No page view has been recorded yet.</span>")+"</div>"
+        +"<div class='lxan-quiet-k'><div><b>"+num(td.sessions||0)+"</b><span>visitors today</span></div>"
+        +"<div><b>"+num(td.views||0)+"</b><span>page views today</span></div></div></div>";
+      if(lt&&lt.country)flagFallback(el);
+      return;
+    }
     el.innerHTML=rows.map(function(r){
       var where=[r.city,r.region&&r.region!==r.city?r.region:"",cname(r.country)].filter(Boolean).join(", ");
       return "<div class='lxan-row lxan-livrow' tabindex='0' role='button' aria-expanded='false' data-sid='"+esc(r.sid||"")+"'><span class='lxan-chev'>\u25b6</span>"+flag(r.country)+"<div class='lxan-name' title='"+esc(where)+"'>"+esc(where||"Unknown")+" <span class='m'>\u00b7 "+esc(r.path||"/")+"</span></div>"

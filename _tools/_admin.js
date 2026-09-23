@@ -120,6 +120,19 @@ thead th[style*="right"] .lxth{flex-direction:row-reverse}
 .lxth:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px;border-radius:4px}
 /* Dashboard groups. .kpi-grid is repeat(auto-fit,minmax(180px,1fr)), so a heading has to span the
    whole row or it would sit in a column and read as an eleventh tile. */
+/* THE RAGGED RIGHT EDGE. The design's .kpi-grid is repeat(auto-fit,minmax(180px,1fr)), which resolves
+   to about nine columns at desktop width -- so a group of five tiles sat in the left five and left
+   four empty tracks beside it, and the two groups ended at different x positions. Both groups are
+   five tiles, so the column count is pinned and every row fills edge to edge. Scoped to the dashboard
+   because the other admin pages use .kpi-grid with four tiles. */
+.lxd-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+@media(max-width:1400px){.lxd-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.lxd-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:560px){.lxd-grid{grid-template-columns:minmax(0,1fr)}}
+/* Tiles in a row share a height from the grid; this keeps their INSIDES aligned too, so the feet sit
+   on one line whether the label wrapped to two lines or not. */
+.lxd-grid .kpi{display:flex;flex-direction:column}
+.lxd-grid .kpi-foot{margin-top:auto}
 .lxd-sec{grid-column:1/-1;display:flex;align-items:baseline;gap:10px;margin:18px 0 -4px}
 .lxd-sec:first-child{margin-top:0}
 .lxd-sec-t{font-weight:800;font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted)}
@@ -520,8 +533,12 @@ function buildDash(grid){
     + kpiTile("lxdBrVolA","Cross-chain","every bridge since launch")
     + kpiTile("lxdTradesA","Trades","every fee-paying swap")
     + kpiTile("lxdWalA","Wallets","connected since the beacon went live","Distinct wallets ever seen connecting. This starts from the day the beacon was installed - it cannot be backfilled, because the connections before it were never recorded anywhere.")
-    + "<div class='lxd-sec'><span class='lxd-sec-t'>LUMOS holders</span></div>"
+    // FIFTH TILE IN THE ALL-TIME ROW, not a section of its own. A heading over a single tile left it
+    // stranded on a full-width row with nothing beside it, which was the most obviously lopsided thing
+    // on the page (RAZA 2026-09-23). It is an all-time figure anyway -- holders now, not holders in the
+    // selected window -- so this is where it belonged, and both rows are now five.
     + kpiTile("lxdTier","Holders \u2265 250K LUMOS","qualify for the 0.1% fee","Wallets holding at least 250,000 LUMOS, the threshold for the reduced 0.1% platform fee. Treasury and burn wallets are excluded.");
+  grid.classList.add("lxd-grid");
 }
 // The window control sits in the page header beside Export/Refresh, where the design puts actions.
 function wirePeriod(){ var host=q(".admin-page-actions"); if(!host||q("#lxdPeriod"))return;
