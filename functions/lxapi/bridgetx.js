@@ -144,8 +144,16 @@ const NI_DEP = 'GDJ4JZXZELZD737NVFORH4PSSQDWFDZTKW3AIDKHYQG23ZXBPDGGQBJK';      
 const ONECLICK = 'https://1click.chaindefuser.com/v0';
 const EID = { 30101: 'Ethereum', 30110: 'Arbitrum', 30111: 'Optimism', 30109: 'Polygon', 30362: 'Berachain', 30339: 'Ink',
   30367: 'Hyperliquid', 30390: 'Monad', 30295: 'Flare', 30280: 'Sei', 30398: 'MegaETH', 30383: 'Plasma' };
+// chain id -> the name a person reads. A record written with the raw id instead is what put a row
+// reading "xrp" in Platform Activity, pointing at a network logo we do not ship (the file is
+// xrpl.png) -- so the mark 404d, and because a 404 is never cached it was re-requested on every
+// repaint and the row twitched. 'xrp' is NEAR Intents' id for the XRP Ledger.
+//
+// THIS MAP ALSO DECIDES WHAT GETS RECORDED AT ALL: the caller bails on `!NI_CHAIN[t.chain]`, so a
+// transfer to a chain missing from here is dropped from history entirely. It lists 10 of the 52
+// destinations the bridge offers, which is worth widening deliberately rather than in this fix.
 const NI_CHAIN = { eth: 'Ethereum', arb: 'Arbitrum', base: 'Base', pol: 'Polygon', op: 'Optimism', avax: 'Avalanche',
-  bera: 'Berachain', monad: 'Monad', plasma: 'Plasma' };
+  bera: 'Berachain', monad: 'Monad', plasma: 'Plasma', xrp: 'XRP Ledger' };
 const NI_FINAL = { SUCCESS: 1, REFUNDED: 1, FAILED: 1 };
 // Sent through LumosCore but carrying no fee, checked by hand against the ledger 2026-09-19: the first USDT0-sourced
 // LayerZero send (0.05988 USDT0 -> Polygon, RAZA's wallet). Its deferred fee failed with op_no_trust -- the collector had

@@ -180,6 +180,21 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 // the record lists it under the swap, so the deposit row is hidden (see _brBurn in the feed) -- one transfer, one row.
 // Serialised with toString(), so `node --check` on this file checks the code that ships; runs inside the feed's closure
 // and uses its amt/aic/esc/j.
+// Every network mark this build can serve, keyed the same way lxXcBuild keys them. Read from disk at
+// build time rather than hand-listed, so adding or removing a logo needs no second edit here and the
+// two cannot disagree -- disagreeing is precisely what produced a permanently-404ing <img>.
+function netLogoKeys() {
+  const dir = require('path').join(__dirname, '..', 'assets', 'networks');
+  const out = {};
+  let names = [];
+  try { names = fs.readdirSync(dir); } catch (e) { return out; }
+  for (const n of names) {
+    const m = /^(.+)\.png$/i.exec(n);
+    if (m) out[m[1].toLowerCase()] = 1;
+  }
+  return out;
+}
+
 function lxXcBuild(p) {
   // p: {from, srcAmt, srcCode, srcIss, out, asset, dest, via, note}
   var NI_LOCAL = { NEAR: 1, ETH: 1, WETH: 1, USDC: 1, USDT: 1, USDT0: 1, WBTC: 1, cbBTC: 1, DAI: 1, LINK: 1, UNI: 1, AAVE: 1,
@@ -191,8 +206,29 @@ function lxXcBuild(p) {
     var u = dlogo(sym), l = esc(String(sym || '?').charAt(0).toUpperCase());
     return '<span class="act-inl lx-dimg" data-l="' + l + '">' + (u ? '<img src="' + u + '" alt="" onerror="this.remove()">' : '') + '</span>';
   }
+  // THE NETWORK MARK, AND WHY IT USED TO TWITCH (RAZA 2026-09-24: the Platform Activity logos "twitch
+  // for a few seconds" after landing on the dashboard).
+  //
+  // The key was just the destination name lowercased, and one record carries the raw NEAR Intents
+  // chain id "xrp" instead of a display name. That asked for /assets/networks/xrp.png -- the file we
+  // ship is xrpl.png -- so it 404d. A 404 comes back `cache-control: no-store`, so it is NEVER cached:
+  // every repaint of the feed re-requested it, onerror removed the <img> again, and the row visibly
+  // jumped each time. Measured on production: NINE requests for that one url between 2.0s and 4.2s.
+  //
+  // Two guards, because either alone leaves the trap open:
+  //   ALIAS fixes the name we were given, so the row reads "XRP Ledger" rather than "xrp" and points
+  //   at the file that exists.
+  //   NETF is the list of network logos this build actually ships, baked in at build time from
+  //   assets/networks/. An unknown chain now renders its name with no mark, which is honest and
+  //   silent, instead of firing a request that can never succeed and can never be cached.
+  // An alias carries the FILE KEY as well as the label, because they are not the same string and
+  // deriving one from the other is wrong: "XRP Ledger" lowercases to "xrpledger" and the file is
+  // xrpl.png. Caught by measuring -- the first version killed the 404 and the twitch with it, and
+  // silently dropped a logo we do ship.
+  var ALIAS = { xrp: ['XRP Ledger', 'xrpl'], xrpl: ['XRP Ledger', 'xrpl'], xrpledger: ['XRP Ledger', 'xrpl'] };
   var net = String(p.dest || ''), key = net.toLowerCase().replace(/\s+/g, '');
-  var netImg = net ? '<img class="lx-netlg" src="/assets/networks/' + esc(key) + '.png" alt="" onerror="this.remove()">' : '';
+  if (ALIAS[key]) { net = ALIAS[key][0]; key = ALIAS[key][1]; }
+  var netImg = (net && NETF[key]) ? '<img class="lx-netlg" src="/assets/networks/' + esc(key) + '.png" alt="" onerror="this.remove()">' : '';
   var src = p.srcCode ? ('<b>' + (p.srcAmt > 0 ? amt(+p.srcAmt) + ' ' : '') + aic(p.srcCode, p.srcIss || '') + esc(p.srcCode) + '</b>') : '';
   var dst = p.asset ? ('<b>' + (p.out > 0 ? amt(+p.out) + ' ' : '') + dimg(p.asset) + esc(p.asset) + '</b>') : '';
   var type = (src ? src + ' <span class="lx-actto">→</span> ' : '') + (dst || '<b>' + esc(net || 'another chain') + '</b>')
@@ -361,6 +397,9 @@ function lxFeedRow(r) {
 const NI_FILES = (() => { const o = {}; try { fs.readdirSync(require('path').join(__dirname, '..', 'assets', 'tokens', 'ni')).forEach((f) => { const m = f.match(/^([A-Za-z0-9._-]+).png$/); if (m) o[m[1]] = 1; }); } catch (e) {} return o; })();
 function withNiFiles(src) { const out = src.replace(/var NI_LOCAL = {[^}]*};/, 'var NI_LOCAL = ' + JSON.stringify(NI_FILES) + ';'); if (out === src) throw new Error('NI_LOCAL not found'); return out; }
 const SCRIPT='<script id="lx-realdata">(function(){'
+// The network logos this build ships, read off disk so the list cannot drift from the files. The feed
+// only draws a mark it can actually load -- see the comment in lxXcBuild.
++ 'var NETF=' + JSON.stringify(netLogoKeys()) + ';'
 + withNiFiles(lxXcBuild.toString()) + ';' + 'var LX_C_USDC="' + LX_C_USDC + '";' + lxXcRow.toString() + ';' + lxXc.toString() + ';' + lxFeedRow.toString() + ';'
 +'if(window.__lxRealData)return;window.__lxRealData=1;'
 +'function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}'

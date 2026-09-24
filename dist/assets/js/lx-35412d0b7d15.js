@@ -1,6 +1,6 @@
-(function(){function lxXcBuild(p) {
+(function(){var NETF={"adi":1,"aptos":1,"arbitrum":1,"avalanche":1,"base":1,"berachain":1,"bitcoin":1,"bitcoincash":1,"bnbchain":1,"cardano":1,"codex":1,"conflux":1,"cronos":1,"dash":1,"dogecoin":1,"ethereum":1,"flare":1,"fogo":1,"gnosis":1,"hedera":1,"hood":1,"hyperliquid":1,"ink":1,"linea":1,"litecoin":1,"mantle":1,"megaeth":1,"monad":1,"morph":1,"movement":1,"near":1,"optimism":1,"pharos":1,"plasma":1,"plume":1,"polygon":1,"rootstock":1,"scroll":1,"sei":1,"solana":1,"sonic":1,"stable":1,"starknet":1,"sui":1,"tempo":1,"ton":1,"tron":1,"unichain":1,"worldchain":1,"xdc":1,"xlayer":1,"xrpl":1,"zcash":1};function lxXcBuild(p) {
   // p: {from, srcAmt, srcCode, srcIss, out, asset, dest, via, note}
-  var NI_LOCAL = {"AAVE":1,"ADI":1,"ARB":1,"AURORA":1,"AVAX":1,"BERA":1,"BRETT":1,"cbBTC":1,"CFI":1,"COCA":1,"DAI":1,"ETH":1,"GMX":1,"HAPI":1,"hemiBTC":1,"INX":1,"KAITO":1,"KNC":1,"LINK":1,"MOG":1,"MON":1,"NEAR":1,"OP":1,"PEPE":1,"POL":1,"SAFE":1,"SHIB":1,"SPX":1,"sUSDC":1,"SWEAT":1,"TITN":1,"TURBO":1,"UNI":1,"USD1":1,"USDC":1,"USDf":1,"USDT":1,"USDT0":1,"VVV":1,"WBTC":1,"WETH":1,"XAUT":1,"XPL":1};
+  var NI_LOCAL = {"AAVE":1,"ADA":1,"ADI":1,"ARB":1,"ASTER":1,"AURORA":1,"AVAX":1,"BCH":1,"BERA":1,"BLACKDRAGON":1,"BNB":1,"BOME":1,"BRETT":1,"BTC":1,"CASHCAT":1,"cbBTC":1,"CFI":1,"COCA":1,"COW":1,"DAI":1,"DASH":1,"DOGE":1,"ETH":1,"EURe":1,"EVAA":1,"FOGO":1,"FRAX":1,"GBPe":1,"GMX":1,"GNO":1,"GRAM":1,"HAPI":1,"hemiBTC":1,"INX":1,"JAMBO":1,"KAITO":1,"KNC":1,"LINK":1,"LOUD":1,"LTC":1,"MELANIA":1,"MOG":1,"MON":1,"MOVE":1,"mpDAO":1,"NEAR":1,"NearKat":1,"NPRO":1,"nrUsdt":1,"OP":1,"PENGU":1,"PEPE":1,"POL":1,"PONS":1,"PUBLIC":1,"PURGE":1,"RHEA":1,"SAFE":1,"SHIB":1,"SHITZU":1,"SOL":1,"SPX":1,"stNEAR":1,"STRK":1,"SUI":1,"sUSDC":1,"SWEAT":1,"TITN":1,"TRUMP":1,"TRX":1,"TURBO":1,"UNI":1,"USD1":1,"USDC":1,"USDCx":1,"USDe":1,"USDf":1,"USDG":1,"USDT":1,"USDT0":1,"VVV":1,"WBTC":1,"WETH":1,"wNEAR":1,"wNEARKAT":1,"XAUT":1,"xBTC":1,"xDAI":1,"XPL":1,"XRP":1,"ZEC":1};
   function dlogo(sym) { return NI_LOCAL[sym] ? '/assets/tokens/ni/' + sym + '.png' : ''; }
   // a logo that is not a Stellar asset: an <img> over a letter drawn by CSS (a text node here would be repainted as a
   // ticker badge by the site's logo healer)
@@ -8,8 +8,29 @@
     var u = dlogo(sym), l = esc(String(sym || '?').charAt(0).toUpperCase());
     return '<span class="act-inl lx-dimg" data-l="' + l + '">' + (u ? '<img src="' + u + '" alt="" onerror="this.remove()">' : '') + '</span>';
   }
+  // THE NETWORK MARK, AND WHY IT USED TO TWITCH (RAZA 2026-09-24: the Platform Activity logos "twitch
+  // for a few seconds" after landing on the dashboard).
+  //
+  // The key was just the destination name lowercased, and one record carries the raw NEAR Intents
+  // chain id "xrp" instead of a display name. That asked for /assets/networks/xrp.png -- the file we
+  // ship is xrpl.png -- so it 404d. A 404 comes back `cache-control: no-store`, so it is NEVER cached:
+  // every repaint of the feed re-requested it, onerror removed the <img> again, and the row visibly
+  // jumped each time. Measured on production: NINE requests for that one url between 2.0s and 4.2s.
+  //
+  // Two guards, because either alone leaves the trap open:
+  //   ALIAS fixes the name we were given, so the row reads "XRP Ledger" rather than "xrp" and points
+  //   at the file that exists.
+  //   NETF is the list of network logos this build actually ships, baked in at build time from
+  //   assets/networks/. An unknown chain now renders its name with no mark, which is honest and
+  //   silent, instead of firing a request that can never succeed and can never be cached.
+  // An alias carries the FILE KEY as well as the label, because they are not the same string and
+  // deriving one from the other is wrong: "XRP Ledger" lowercases to "xrpledger" and the file is
+  // xrpl.png. Caught by measuring -- the first version killed the 404 and the twitch with it, and
+  // silently dropped a logo we do ship.
+  var ALIAS = { xrp: ['XRP Ledger', 'xrpl'], xrpl: ['XRP Ledger', 'xrpl'], xrpledger: ['XRP Ledger', 'xrpl'] };
   var net = String(p.dest || ''), key = net.toLowerCase().replace(/\s+/g, '');
-  var netImg = net ? '<img class="lx-netlg" src="/assets/networks/' + esc(key) + '.png" alt="" onerror="this.remove()">' : '';
+  if (ALIAS[key]) { net = ALIAS[key][0]; key = ALIAS[key][1]; }
+  var netImg = (net && NETF[key]) ? '<img class="lx-netlg" src="/assets/networks/' + esc(key) + '.png" alt="" onerror="this.remove()">' : '';
   var src = p.srcCode ? ('<b>' + (p.srcAmt > 0 ? amt(+p.srcAmt) + ' ' : '') + aic(p.srcCode, p.srcIss || '') + esc(p.srcCode) + '</b>') : '';
   var dst = p.asset ? ('<b>' + (p.out > 0 ? amt(+p.out) + ' ' : '') + dimg(p.asset) + esc(p.asset) + '</b>') : '';
   var type = (src ? src + ' <span class="lx-actto">→</span> ' : '') + (dst || '<b>' + esc(net || 'another chain') + '</b>')
