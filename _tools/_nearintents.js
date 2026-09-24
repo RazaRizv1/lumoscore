@@ -630,7 +630,11 @@ const NI_ONLY = [['Gnosis', 'GNO', '#133629'], ['Hood', 'HOOD', '#00c805'], ['AD
   ['Bitcoin', 'BTC', '#f7931a'], ['Tron', 'TRX', '#eb0029'], ['TON', 'TON', '#0098ea'],
   ['Cardano', 'ADA', '#0133ad'], ['Litecoin', 'LTC', '#a6a9aa'],
   ['Dogecoin', 'DOGE', '#c2a633'], ['Bitcoin Cash', 'BCH', '#0ac18e'], ['Zcash', 'ZEC', '#f4b728'],
-  ['Dash', 'DASH', '#008ce7'], ['Movement', 'MOVE', '#1a1a1a'], ['Fogo', 'FOGO', '#1a1a1a']];
+  ['Dash', 'DASH', '#008ce7'], ['Movement', 'MOVE', '#1a1a1a'], ['Fogo', 'FOGO', '#1a1a1a'],
+  // MOVED HERE FROM _axelar.js on 2026-09-24, when Axelar was removed. This row is the ONLY thing that puts
+  // XRPL in the destination dropdown -- Axelar used to supply it, so deleting that layer without moving this
+  // first would have taken XRPL off the bridge entirely, even though NEAR Intents serves it.
+  ['XRPL', 'XRP', '#23292f']];
 const NI_OPTS = NI_ONLY.map(function (n) {
   return '<button class="brd-opt lx-niopt" type="button" data-net="' + n[0] + '">'
     + '<span class="brd-ic lx-netlm" style="background:' + n[2] + '">' + n[1] + '</span>'

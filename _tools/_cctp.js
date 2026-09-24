@@ -78,7 +78,7 @@ const OLD_SUB='Swap assets seamlessly between networks via Wormhole and LayerZer
 const { LZ_LIVE } = require(__dirname + '/_lzflag.js');
 // One sub-heading per state. The CCTP-only line stays exactly as it was so nothing moves until the flag flips.
 const NEW_SUB = LZ_LIVE
-  ? 'Bridge USDC with Circle CCTP, USDT0 with LayerZero, SHX to the XRP Ledger with Axelar, or swap into Bitcoin, Solana and other major assets with NEAR Intents.'
+  ? 'Bridge USDC with Circle CCTP, USDT0 with LayerZero, or swap into XRP, Bitcoin, Solana and other major assets with NEAR Intents.'
   : 'Bridge USDC natively across chains with Circle CCTP — burn on Stellar, mint on the destination.';
 const PAGE_TITLE = LZ_LIVE
   ? 'Bridge assets across 52 chains from Stellar | LumosCore'
