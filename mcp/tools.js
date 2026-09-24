@@ -12,6 +12,37 @@ import { api, horizon, parseAsset, G_RE, web, ApiError } from './api.js';
 
 const nf = (n, d = 7) => (n == null || !isFinite(n) ? null : +(+n).toFixed(d));
 
+// XLM/USD, memoised for the life of a call batch. A screen across the whole curated list asks for it
+// once per asset, and that is 58 identical requests for a number that moves in cents.
+let _xlm = { usd: null, at: 0 };
+async function xlmUsd() {
+  if (_xlm.usd != null && Date.now() - _xlm.at < 60000) return _xlm.usd;
+  try {
+    const d = await api('/lxapi/xlm');
+    if (d && +d.usd > 0) _xlm = { usd: +d.usd, at: Date.now() };
+  } catch (_) { /* a missing dollar price must not cost the caller the XLM figures */ }
+  return _xlm.usd;
+}
+
+// SUPPLY IS NOT `amount`. Horizon's /assets dropped that field: reading it gives 0, and therefore a
+// confident, measured-looking market cap of $0 for every asset on the network. Circulating supply is
+// the sum of the four places a balance can sit -- trustlines, claimable balances, AMM pools and
+// Soroban contracts -- and leaving any of them out understates a token that mostly lives in a pool.
+async function supplyOf(a) {
+  try {
+    const d = await horizon(`/assets?asset_code=${encodeURIComponent(a.code)}&asset_issuer=${a.issuer}&limit=1`);
+    const r = (((d || {})._embedded || {}).records || [])[0];
+    if (!r) return null;
+    return {
+      supply: +((r.balances || {}).authorized || 0) + +(r.claimable_balances_amount || 0)
+            + +(r.liquidity_pools_amount || 0) + +(r.contracts_amount || 0),
+      trustlines: (r.accounts || {}).authorized ?? null,
+      in_pools: +(r.liquidity_pools_amount || 0),
+      in_contracts: +(r.contracts_amount || 0),
+    };
+  } catch (_) { return null; }
+}
+
 // ---- reads ------------------------------------------------------------------------------------
 
 async function getMarket({ asset }) {
@@ -21,12 +52,27 @@ async function getMarket({ asset }) {
   const d = await api('/lxapi/dexassets?a=' + encodeURIComponent(a.id));
   const row = d && d.a && d.a[a.id];
   if (!row) return fail(`No market data for ${a.code}. It may not be traded on the Stellar DEX.`);
+  const [sup, usd] = await Promise.all([supplyOf(a), xlmUsd()]);
+  const px = +row.px || 0;
+  const mcapXlm = (sup && sup.supply && px) ? sup.supply * px : null;
   return ok({
     asset: a.id, code: a.code, issuer: a.issuer,
-    price_xlm: nf(row.px), price_24h_ago_xlm: nf(row.pc), change_24h_pct: nf(row.chg, 2),
+    price_xlm: nf(px), price_24h_ago_xlm: nf(row.pc), change_24h_pct: nf(row.chg, 2),
+    price_usd: (usd && px) ? nf(px * usd) : null,
     volume_24h_xlm: nf(row.vol, 2), high_24h_xlm: nf(row.high), low_24h_xlm: nf(row.low),
     trades_24h: row.trades ?? null,
-    source: 'Stellar DEX via lumoscore.com', page: web('/trade/stellar/' + a.id),
+    supply: sup ? nf(sup.supply, 4) : null,
+    trustlines: sup ? sup.trustlines : null,
+    supply_in_pools: sup ? nf(sup.in_pools, 4) : null,
+    market_cap_xlm: nf(mcapXlm, 2),
+    market_cap_usd: (mcapXlm && usd) ? nf(mcapXlm * usd, 2) : null,
+    xlm_usd: usd ? nf(usd, 6) : null,
+    // Said plainly because "market cap" is read as a valuation: this is circulating supply times the
+    // last DEX price. On a token whose book is a handful of XLM deep, that price is what one small
+    // order paid, and multiplying it by a billion units does not make the result worth that.
+    market_cap_note: 'supply x last DEX price. On a thin book this is arithmetic, not a valuation — '
+      + 'check get_orderbook depth before trusting it.',
+    source: 'Stellar DEX via lumoscore.com; supply from Horizon', page: web('/trade/stellar/' + a.id),
   });
 }
 
@@ -337,7 +383,7 @@ function ok(obj) { return { content: [{ type: 'text', text: JSON.stringify(obj, 
 function fail(msg) { return { isError: true, content: [{ type: 'text', text: msg }] }; }
 
 export const TOOLS = [
-  { name: 'get_market', title: 'Live price and 24h stats for a Stellar asset',
+  { name: 'get_market', title: 'Live price, 24h stats, supply and market cap for a Stellar asset',
     schema: { asset: { type: 'string', description: 'CODE-ISSUER, e.g. SHX-GDSTRSHX…' } }, required: ['asset'], run: getMarket },
   { name: 'list_pools', title: 'Liquidity pools by TVL, optionally filtered to one asset',
     schema: { limit: { type: 'number', description: 'Max pools to return (default 20)' }, asset: { type: 'string', description: 'Only pools containing this asset' } }, required: [], run: listPools },
