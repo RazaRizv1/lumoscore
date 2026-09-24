@@ -41,7 +41,11 @@ const FGRID='<style id="lx-footergrid">'
   +'.ft-cols-2 .ft-col:nth-child(3):last-child{grid-column:1;grid-row:2}'
   +'</style>';
 const FSCRIPT='<script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;'
-+'var ROUTE={"home":"lumoscore-home.html"};'
+// "/" not lumoscore-home.html. Home pointed at the DASHBOARD, which needs a wallet, so a signed-out
+// visitor clicking Home in the footer was bounced to the landing page -- it looked like a dead link
+// (RAZA 2026-09-24). "/" is right for both: it IS the front door, and lx-homegate forwards a
+// connected visitor from there to /dashboard, which is where Home meant to send them all along.
++'var ROUTE={"home":"/"};'
 +'function fix(){var scope=document.querySelectorAll("footer a[href=\\u0022#\\u0022], .footer a[href=\\u0022#\\u0022], [class*=footer] a[href=\\u0022#\\u0022]");'
 +'[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();'
 +'if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}'

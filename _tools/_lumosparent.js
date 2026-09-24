@@ -35,17 +35,27 @@ const CHAINS = JSON.parse(fs.readFileSync(__dirname + '/_chains.json', 'utf8'));
 const chainLogo = (id) => (CHAINS[id] && CHAINS[id].logo) || '';
 
 const STYLE = '<style id="lx-lumosparent-css">'
-  + '.lx-lp{max-width:760px;margin:0 auto;padding:8px 0 40px}'
-  + '.lx-lp-h{font:800 26px/1.15 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
-  + 'letter-spacing:-.02em;margin:0 0 6px}'
-  + '.lx-lp-sub{font:600 14px/1.5 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);margin:0 0 22px}'
-  + '.lx-lp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}'
+  + '.lx-lp{max-width:720px;margin:0 auto;padding:30px 0 60px}'
+  // The header is CENTRED and the cards are not: centring a heading reads as a title, while centring
+  // a row of label/value pairs makes them harder to scan down.
+  + '.lx-lp-head{text-align:center;margin:0 0 28px}'
+  + '.lx-lp-h{font:800 34px/1.12 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
+  + 'letter-spacing:-.03em;text-wrap:balance;margin:0 0 10px}'
+  + '.lx-lp-sub{font:500 15px/1.6 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);'
+  + 'max-width:46ch;margin:0 auto;text-wrap:pretty}'
+  + '@media(max-width:640px){.lx-lp{padding:22px 0 44px}.lx-lp-h{font-size:26px}.lx-lp-sub{font-size:14px}}'
+  + '.lx-lp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}'
   + '@media(max-width:640px){.lx-lp-grid{grid-template-columns:1fr}}'
-  + '.lx-lp-card{display:flex;align-items:center;gap:13px;padding:16px;border-radius:15px;'
+  + '.lx-lp-card{display:flex;align-items:center;gap:14px;padding:18px;border-radius:16px;'
   + 'border:1px solid var(--border,#ececef);background:var(--surface,#fff);text-decoration:none;color:inherit;'
-  + 'transition:border-color .15s,transform .15s}'
-  + '.lx-lp-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-1px)}'
-  + '.lx-lp-ico{width:40px;height:40px;flex:0 0 40px;border-radius:50%;background-size:cover;'
+  // a barely-there top highlight, so the card reads as a raised surface on the dark build without
+  // needing a second colour token that light mode would have to undo
+  + 'background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%);'
+  + 'transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}'
+  + '.lx-lp-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-2px);'
+  + 'box-shadow:0 10px 26px rgba(0,0,0,.16)}'
+  + '.lx-lp-card:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:3px}'
+  + '.lx-lp-ico{width:42px;height:42px;flex:0 0 42px;border-radius:50%;background-size:cover;'
   + 'background-position:center;background-repeat:no-repeat;position:relative;'
   // a hairline ring so a dark mark still reads as a disc on a dark card
   + 'box-shadow:0 0 0 1px rgba(127,127,140,.22)}'
@@ -54,19 +64,27 @@ const STYLE = '<style id="lx-lumosparent-css">'
   + '.lx-lp-ico>svg{width:0!important;height:0!important;position:absolute!important}'
   // A column, because these are two lines: as inline spans they ran together and the meta's margin-top
   // was inert.
-  + '.lx-lp-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:3px}'
-  + '.lx-lp-net{font:800 15px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10)}'
-  + '.lx-lp-meta{font:600 12.5px/1.35 "JetBrains Mono",ui-monospace,monospace;'
+  + '.lx-lp-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:4px}'
+  + '.lx-lp-net{font:800 16px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
+  + 'letter-spacing:-.01em}'
+  + '.lx-lp-meta{font:600 12px/1.35 "JetBrains Mono",ui-monospace,monospace;'
   + 'color:var(--text-muted,#8a8fa3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-  + '.lx-lp-go{flex:0 0 auto;color:var(--text-muted,#8a8fa3);display:flex}'
-  + '.lx-lp-go svg{width:15px;height:15px}'
-  + '.lx-lp-card:hover .lx-lp-go{color:var(--accent,#ea6a2c)}'
-  // A chain that is announced but not live must not look clickable.
-  + '.lx-lp-card.soon{opacity:.55;pointer-events:none}'
-  + '.lx-lp-soon{margin-left:auto;flex:0 0 auto;padding:3px 8px;border-radius:99px;'
-  + 'background:var(--surface-2,#f4f5f7);color:var(--text-muted,#8a8fa3);'
-  + 'font:700 10px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.04em;'
+  // The chevron sits in a disc that fills with the accent on hover, so the live card has one obvious
+  // thing to aim at rather than a bare glyph.
+  + '.lx-lp-go{flex:0 0 auto;width:28px;height:28px;border-radius:50%;display:flex;'
+  + 'align-items:center;justify-content:center;background:var(--surface-2,#f4f5f7);'
+  + 'color:var(--text-muted,#8a8fa3);transition:background .18s ease,color .18s ease,transform .18s ease}'
+  + '.lx-lp-go svg{width:14px;height:14px}'
+  + '.lx-lp-card:hover .lx-lp-go{background:var(--accent,#ea6a2c);color:#fff;transform:translateX(2px)}'
+  // A chain that is announced but not live must not look clickable: no hover, no pointer, dimmed.
+  + '.lx-lp-card.soon{opacity:.6;pointer-events:none;background-image:none;'
+  + 'border-style:dashed}'
+  + '.lx-lp-soon{margin-left:auto;flex:0 0 auto;padding:4px 9px;border-radius:99px;'
+  + 'background:transparent;border:1px solid var(--border,#ececef);color:var(--text-muted,#8a8fa3);'
+  + 'font:700 9.5px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;'
   + 'white-space:nowrap}'
+  + '@media(prefers-reduced-motion:reduce){.lx-lp-card,.lx-lp-go{transition:none}'
+  + '.lx-lp-card:hover{transform:none}}'
   // and the tag itself is short enough for the healer to mistake for a ticker, so it opts out too
   + '.lx-lp-soon>svg{width:0!important;height:0!important;position:absolute!important}'
   // The chooser is hidden by default and revealed only on the bare path, so the chain page (same
@@ -161,8 +179,10 @@ function cardHTML(n) {
 
 function viewHTML(hub) {
   return '<section class="lx-lp">'
+    + '<div class="lx-lp-head">'
     + '<h1 class="lx-lp-h">' + hub.h1 + '</h1>'
     + '<p class="lx-lp-sub">' + hub.sub + '</p>'
+    + '</div>'
     + '<div class="lx-lp-grid">' + netsFor(hub).map(cardHTML).join('') + '</div>'
     + '</section>';
 }

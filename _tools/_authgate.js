@@ -68,7 +68,28 @@ const PUBLIC_BASES = new Set([
   // way -- this gate was protecting the view, not the money.
   'lumoscore-bridge',         // Bridge  (the page we promote)
   'lumoscore-rewards',        // Rewards (base name; the only variant is -dark)
+  // OPENED 2026-09-24. EVERY FOOTER LINK WAS BROKEN WHEN SIGNED OUT (RAZA): Home, Blogs, About,
+  // LUMOS Token, Documentation, FAQs, Support, Whitepaper, List your token, Terms, Privacy -- all
+  // bounced to the landing page. These are the CONTENT pages: they contain no wallet data, nothing
+  // on them is personal, and there is nothing to sign. The round above opened the chain-data pages
+  // for exactly the reason stated at the top of this list and stopped short of the static ones, so
+  // the docs the SEO layer was written for stayed unreachable to the people it brought in.
+  //
+  // Terms and Privacy are the sharp end: a visitor who cannot read them without connecting a wallet
+  // cannot agree to them either, and both are linked from the consent copy.
+  'lumoscore-about',
+  'lumoscore-blog',           // the index
+  'lumoscore-blog-post',      // and every post
+  'lumoscore-support',
+  'lumoscore-whitepaper',
+  'lumoscore-terms',
+  'lumoscore-privacy',
+  // Reading how to list a token needs no wallet; PAYING for one still does, and that is enforced in
+  // the flow itself rather than by hiding the page from everyone who has not connected yet.
+  'lumoscore-list-token',
 ]);
+// All 17 docs pages, by prefix rather than 17 entries that a new page would have to be added to.
+const PUBLIC_RE = /^lumoscore-docs-/;
 // STILL GATED, deliberately: dashboard/home and wallet (both meaningless with no wallet), and the
 // launchpad flow, where every step needs a signature.
 
@@ -79,7 +100,7 @@ function isPublicPage(k){
   let b = k.replace(/\.html$/, '');
   let prev;
   do { prev = b; b = b.replace(/-(dark|light|mobile)$/, ''); } while (b !== prev);
-  return /^lumoscore-admin-/.test(b) || PUBLIC_BASES.has(b);
+  return /^lumoscore-admin-/.test(b) || PUBLIC_RE.test(b) || PUBLIC_BASES.has(b);
 }
 
 let gated=0, rewired=0, homed=0;
