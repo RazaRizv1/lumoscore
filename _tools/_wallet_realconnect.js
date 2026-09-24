@@ -610,10 +610,16 @@ function lxPostConnectHome(){try{var _p=location.pathname||'';
   // Connecting from an in-page CTA (Swap on an asset, Add liquidity on a pool, Next on the bridge):
   // the page they were reading is only worth returning to if the wallet they picked is on the SAME
   // chain. Pick XRPL while reading a Stellar asset and that asset is not theirs to trade any more,
-  // so the dashboard is the honest destination. Header "Launch App" always means the dashboard.
+  // so the dashboard is the honest destination. The header "Launch App" sends "stay:<chain>" too when
+  // it is clicked from a chain-scoped path, and "home" only from the landing page or a chooser --
+  // it used to be an unconditional "home", which is what dumped people on the dashboard after
+  // connecting from a page they were deliberately reading.
   if(_d&&_d.indexOf('stay:')===0){
-    var _was=_d.slice(5),_now='';
-    try{_now=localStorage.getItem('lumos.network')||localStorage.getItem('lumos.chain')||'';}catch(_){}
+    // Compared case-insensitively: the page's chain comes from a url segment and the connected one
+    // from localStorage, two vocabularies that only have to disagree in case for this to silently
+    // fail open and send people to the dashboard -- the exact behaviour "stay" exists to prevent.
+    var _was=String(_d.slice(5)||'').toLowerCase(),_now='';
+    try{_now=String(localStorage.getItem('lumos.network')||localStorage.getItem('lumos.chain')||'').toLowerCase();}catch(_){}
     if(_was&&_now&&_was===_now)return;
   }
   if(/dashboard|lumoscore-home|wallet/.test(_p))return;
