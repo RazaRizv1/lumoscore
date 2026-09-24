@@ -18,14 +18,25 @@ const BS = String.fromCharCode(92); // backslash
 // Used at RUNTIME (lxNavigate + click) because most navigation here is built dynamically in JS;
 // the static hrefs are additionally rewritten at build time so crawlers follow clean urls too.
 function cleanMapJson(){
-  const m = {};
+  const m = {}, hub = {};
   for(const [url, file, flag] of ROUTES){
-    if(flag) continue;                              // alias or hub: never where a link should point
+    if(flag === 'alias') continue;                  // an alias is never where a link should point
     if(/:/.test(url)) continue;                     // dynamic routes are handled by query conversion
     // key on the BASE name: /rewards is served by lumoscore-rewards-dark.html, but links to it appear
     // as -dark, -light and -mobile, and every one of them is the same page.
-    m[file.replace(/\.html$/, '').replace(/-(dark|light|mobile)$/, '')] = url;
+    const base = file.replace(/\.html$/, '').replace(/-(dark|light|mobile)$/, '');
+    if (flag === 'hub') hub[base] = url;
+    else if (!(base in m)) m[base] = url;
   }
+  // A HUB WINS. Clicking "Cross-chain" in the menu while signed out must open the chooser, not drop
+  // the visitor onto the Stellar bridge -- picking the network for them is the whole thing the
+  // chooser exists to stop. Pointing these at /<hub>/stellar meant the menu bypassed every chooser on
+  // the site, which is how they were unreachable from inside the app.
+  //
+  // Someone who IS connected does not want the question, and the head gate on the hub forwards them.
+  // That costs a second document load, so runtime() ALSO upgrades the click to /<hub>/stellar when a
+  // wallet is present -- the gate stays as the safety net for a typed url or an external link.
+  for (const b in hub) m[b] = hub[b];
   m['lumoscore-landing'] = '/';
   // dynamic routes with no identifier in the link fall back to the list page
   m['lumoscore-dex-asset'] = '/trade/stellar';
@@ -63,6 +74,8 @@ function runtime(validArray){
     // like a desktop one and sent them to desktop pages. Accept both forms.
     + 'var MOB=/-mobile('+BS+'.html)?$/.test(self);'
     + 'var VALID=' + VALID + ';'
+    // the network choosers, straight off the route table so this list cannot drift from it
+    + 'var HUBS=' + JSON.stringify(ROUTES.filter((r) => r[2] === 'hub').map((r) => r[0])) + ';'
     + 'window.lxNavigate=function(c){if(typeof c==="string")c=[c];var p=null;'
     // 1) candidate matching this device (desktop/mobile) AND that actually exists
     + 'for(var i=0;i<c.length;i++){var f=c[i];if(MOB===/-mobile'+BS+'.html$/.test(f)&&VALID.indexOf(f)>=0){p=f;break;}}'
@@ -79,6 +92,17 @@ function runtime(validArray){
     // strip query/hash before the existence check — without this, "…dex-asset.html?asset=X" never
     // matched the guard at all, so a link to a page not shipped here would 404 instead of going inert
     + 'var hb=h.split("?")[0].split("#")[0];'
+    // A connected wallet has already answered the chooser's question, so skip straight to its chain
+    // page. Without this the menu link lands on the hub, whose head gate then forwards -- correct but
+    // a second document load on every single navigation. Modified clicks are left alone so
+    // ctrl/cmd-click still opens the hub in a new tab.
+    + 'if(HUBS.indexOf(hb)>=0&&!e.defaultPrevented&&e.button===0'
+    + '&&!e.metaKey&&!e.ctrlKey&&!e.shiftKey&&!e.altKey){'
+    + 'var ad="",ch="";'
+    + 'try{ ad=localStorage.getItem("lumos.address")||"";'
+    + 'ch=(localStorage.getItem("lumos.chain")||"").toLowerCase(); }catch(_){}'
+    + 'if(ad&&(ch===""||ch==="stellar")){e.preventDefault();'
+    + 'location.href=hb+"/stellar"+h.slice(hb.length);return;}}'
     + 'if(/^lumoscore-['+BS+'w-]+'+BS+'.html$/.test(hb)&&VALID.indexOf(hb)<0){e.preventDefault();return;}'
     // anything still pointing at a build filename navigates to the clean url instead
     + 'if(/^lumoscore-['+BS+'w-]+'+BS+'.html/.test(h)){var cl=lxClean(h);'
@@ -436,12 +460,13 @@ function headersFile(isAdmin){
 //             posted somewhere must keep working), but it stays out of the clean-URL map, out of the
 //             sitemap, and its canonical points at the real one.
 //   'hub'   — a NETWORK CHOOSER. Same file, genuinely different page: the bare path asks which chain
-//             and /<thing>/stellar answers (see _tools/_lumosparent.js). So it keeps its own canonical
-//             and its own sitemap row, but it is still not a link target -- inside the app, "Trade"
-//             means /trade/stellar, and routing every click through a chooser that then forwards is
-//             a redirect on every navigation.
+//             and /<thing>/stellar answers (see _tools/_lumosparent.js). It keeps its own canonical
+//             and its own sitemap row, AND it is what the menu links to -- a signed-out visitor
+//             picking "Cross-chain" must get the question, not be dropped onto the Stellar bridge.
+//             runtime() upgrades the click to /<thing>/stellar when a wallet is already connected.
 //
-// Both keep a url out of the clean map and out of legacyClean; they differ only on canonical/sitemap.
+// An alias stays out of the clean map, the sitemap and legacyClean, and its canonical points at the
+// real url. A hub is the opposite on every count except that it is still not an alias of anything.
 //
 // Without that flag the two derivations of "the url for this file" DISAGREED, which is what produced
 // the duplicates. cleanMapJson takes the LAST matching route and legacyClean the FIRST, so
@@ -1080,9 +1105,15 @@ function legacyClean(pathname, params){
   // "lumoscore-landing.html" — rendering an asset page for an asset that does not exist, i.e. blank.
   if (base === 'lumoscore-landing') return '/';
 
+  // Two passes, so this agrees with the clean-url map rather than depending on route order: a hub is
+  // preferred, and an alias is never a destination. The app assigns location.href="lumoscore-bridge.html"
+  // in a dozen places, and that is a menu navigation like any other -- it should reach the chooser.
   for (const r of ROUTES){
-    if (r[0].indexOf('/:') >= 0) continue;
-    if (r[3]) continue;   // an alias or a hub is not where a legacy filename should land
+    if (r[0].indexOf('/:') >= 0 || r[3] !== 'hub') continue;
+    if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];
+  }
+  for (const r of ROUTES){
+    if (r[0].indexOf('/:') >= 0 || r[3]) continue;
     if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];
   }
   return null;

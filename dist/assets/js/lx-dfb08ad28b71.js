@@ -607,7 +607,7 @@
           '<td><span class="dxa-pl-apr ' + aprClass + '">' + p.apr + '</span></td>' +
           '<td class="mono">' + p.vol + '</td>' +
           '<td class="mono">' + p.share + '</td>' +
-          '<td style="text-align:right;"><a class="dxa-pl-cta" href="/pools/stellar">Add liquidity →</a></td></tr>';
+          '<td style="text-align:right;"><a class="dxa-pl-cta" href="/pools">Add liquidity →</a></td></tr>';
       });
       html += '</tbody></table></div>';
     }
