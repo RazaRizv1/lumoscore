@@ -806,7 +806,18 @@ const BODY = '(function(){'
   + ' if(r){ de.setAttribute("data-lxroute-asset",r.asset); de.setAttribute("data-lxroute-recv",r.recv==null?"":String(r.recv));'
   + '  de.setAttribute("data-lxroute",r.route); if(r.assetLogo) de.setAttribute("data-lxroute-logo",r.assetLogo); else de.removeAttribute("data-lxroute-logo");'
   + '  if(r.assetName) de.setAttribute("data-lxroute-name",r.assetName); else de.removeAttribute("data-lxroute-name"); }'
-  + ' else { ["data-lxroute-asset","data-lxroute-recv","data-lxroute","data-lxroute-logo","data-lxroute-name"].forEach(function(a){ de.removeAttribute(a); }); } }'
+  // WHAT A DESTINATION DELIVERS DOES NOT DEPEND ON WHETHER IT CAN BE SENT RIGHT NOW. Stripping every attribute
+  // here meant that when the only route's quote failed -- below NEAR Intents' minimum, say -- the To side lost
+  // its face entirely and the design's own USDC markup showed through underneath, announcing that 500 LUMOS
+  // would deliver '0.0215 USDC' on XRPL. Wrong asset, and that number is the intermediate swap output, not a
+  // delivery (RAZA 2026-09-24). The asset, logo and name now survive from a fallback row; only the AMOUNT and
+  // the CHOSEN ROUTE clear, which is exactly what stopped being known.
+  + ' else { var _fb=_lzRows.filter(function(x){ return x.route===(window.__lxBrRouteFor||{})[lzDest()]; })[0]||_lzRows[0];'
+  + '  if(_fb){ de.setAttribute("data-lxroute-asset",_fb.asset);'
+  + '   if(_fb.assetLogo) de.setAttribute("data-lxroute-logo",_fb.assetLogo); else de.removeAttribute("data-lxroute-logo");'
+  + '   if(_fb.assetName) de.setAttribute("data-lxroute-name",_fb.assetName); else de.removeAttribute("data-lxroute-name"); }'
+  + '  else { ["data-lxroute-asset","data-lxroute-logo","data-lxroute-name"].forEach(function(a){ de.removeAttribute(a); }); }'
+  + '  de.setAttribute("data-lxroute-recv",""); de.removeAttribute("data-lxroute"); } }'
 
   // ---- which route is chosen --------------------------------------------------------------------------------
   // RAZA 2026-09-19: "it keeps auto selects LayerZero as the recommended bridge. Make sure that the recommended bridge
