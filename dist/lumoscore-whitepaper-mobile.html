@@ -2065,6 +2065,131 @@ html body .pool-header-row .ph-icons>*{
   font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
   vertical-align:1px;white-space:nowrap;flex:0 0 auto}
 .lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
+</style><style id="lx-walletlogo-css">
+/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
+   and ring stay whatever each surface already sets. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
+  background-repeat:no-repeat!important}
+/* A mark on a white ground would otherwise read as a hole punched in the header. The ring gives it an
+   edge; it is translucent so it works on either theme. */
+.mu-av.lx-haswl,.lx-tw-av.lx-haswl{box-shadow:inset 0 0 0 1px rgba(127,127,140,.30)}
+/* ...but a mark with a transparent ground has no tile for the ring to edge, so it would draw an empty
+   box around the artwork. Those carry .lx-wl-bare instead (RAZA asked for a transparent rabet on
+   2026-09-20, and it is the first logo here that has no ground of its own). */
+.mu-av.lx-wl-bare,.lx-tw-av.lx-wl-bare{box-shadow:none!important}
+/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
+.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
+/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
+   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
+   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
+   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
+   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
+   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
+.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
+</style><style id="lx-nbwide">@media (min-width:431px){.nb-bar::before{content:"";position:absolute;top:-1px;bottom:0;left:50%;width:100vw;transform:translateX(-50%);background:inherit;border-top:inherit;z-index:-1}}</style><style id="lx-scrollcost">.menu-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.menu-overlay.open{backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}[data-lcmu].lcmu-in{will-change:auto!important}</style><style id="lx-tabfill">@media (min-width:431px){.modal-overlay .modal{max-width:none!important}.lxad-wrap{max-width:none!important}.chart-head .chart-controls{flex:1 1 100%!important;max-width:100%!important}}</style><style id="lx-wclaim-css">
+/* #5: these tabs used to carry their own look -- pill buttons with a rounded count badge -- and sat
+   directly above the design's Assets / Liq Pools tabs, which are a different shape, a different badge
+   and a different active treatment. Two tab bars, one screen, two visual languages.
+   So they are not styled here at all any more. The markup below reuses the design's own .asset-tabs
+   wrapper, its plain <button>, its .active state and its .cnt badge, which makes them the same control
+   by construction rather than by a copy of its numbers that would drift the next time the design moves.
+   Only the spacing below the bar is ours. */
+/* The tabs at one end, Cancel all at the other, on one row. gap keeps them apart if the row ever narrows
+   enough for the two to meet. */
+.lx-wctabs{margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.lx-wctabs>.right{display:flex;align-items:center;gap:8px;margin:0}
+/* CANCEL ALL LOST ITS STYLING THE MOMENT WE MOVED IT (RAZA 2026-09-24: "in weird color" on the phone).
+   It is an <a href="#">, and the ONLY rule dressing it was the design's own ".section-heading a"
+   -- accent, no underline. lxMoveCancelAll below lifts it out of .section-heading and onto this bar,
+   so that selector stopped matching and the browser default took over: link blue, underlined. The
+   markup never changed, which is why it looked fine in the source.
+   Restated here, keyed on the element rather than on where it happens to sit, so moving it again
+   cannot undress it a second time. Same values as the rule it lost. */
+/* margin-left:auto keeps it at the RIGHT END even when the row wraps. space-between already does that
+   while everything fits on one line, but a long claimable count (42 here) pushes it onto a second row,
+   where it would otherwise sit at the left -- the opposite of where it was asked to be. */
+.lx-wctabs a,#cancelAllBtn{color:var(--accent);text-decoration:none;font-size:13.2px;font-weight:600;
+  white-space:nowrap;display:inline-flex;align-items:center;cursor:pointer;margin-left:auto;
+  /* a phone tap target, without moving the baseline it shares with the tabs */
+  min-height:32px;padding:0 2px}
+.lx-wctabs a:hover,#cancelAllBtn:hover{text-decoration:underline}
+.lx-wctabs a:focus-visible,#cancelAllBtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.lx-wcpanel[hidden]{display:none}
+/* #16: the duplicate heading text inside the panel -- the tab above already names the list and counts it.
+   Only the <h2> is hidden; its row still holds Cancel all. */
+.lx-wchide{display:none!important}
+/* And the desktop container's empty-state, when the phone renderer is the one with the rows. Both live
+   in the panel now, so a bare "No open orders." under a list of three would be a flat contradiction. */
+.lx-wcpanel-orders:has(.orders-stack .lxmw-row) .orders-block{display:none}
+/* The design bakes two sample orders into .orders-block -- APT/USDT and APT/USDC, complete with working
+   Cancel buttons -- and they are what the browser paints while the real offers are still in flight. On a
+   wallet page that is not a cosmetic flicker: it is a stranger's positions, on someone else's chain,
+   offering to cancel something. 
+   Gated on the real offer id rather than on a timing class, so there is no window where it can be wrong:
+   every row we build carries data-oid, and nothing the design shipped ever will. The empty state and the
+   real rows both replace the block outright, so this only ever hides the mock. */
+.orders-block .order-row:not([data-oid]){display:none!important}
+
+.lx-wclist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;
+  margin-bottom:32px}
+.lx-wcrow{display:flex;align-items:center;gap:11px;padding:13px 18px;border-bottom:1px solid var(--border)}
+.lx-wcrow:last-child{border-bottom:0}
+/* #6: the asset disc. --lxlogo is set inline -- a real logo when we have one, otherwise a flat colour
+   derived from the code, with the initial drawn over it by ::after. data-lxc/data-lxi opt this element
+   INTO the shared resolver in _walletdata.js, which replaces --lxlogo in place once a toml logo turns up,
+   so a row never has to be rebuilt to gain its picture. */
+.lx-wcico{width:32px;height:32px;flex:0 0 32px;border-radius:50%;position:relative;overflow:hidden;
+  background-image:var(--lxlogo,none);background-size:cover;background-position:center;
+  background-repeat:no-repeat;background-color:var(--surface-2)}
+.lx-wcico::after{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;
+  justify-content:center;color:#fff;font-weight:800;font-size:13px;line-height:1;pointer-events:none}
+/* Once a real picture is in, the initial would sit on top of it. The resolver blanks data-l when it
+   paints, so this only ever hides a letter that has been deliberately cleared. */
+.lx-wcico[data-l=""]::after{content:none}
+.lx-wcmain{flex:1 1 auto;min-width:0}
+.lx-wcname{font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:700;font-size:18.55px;line-height:1.25;
+  color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* #1: measured against this page's own holdings rows (.lxmw-row) and matched to them, rather than
+   picked by eye. Those rows set the quantity in JetBrains Mono 14/800 at text colour, the unit beside
+   it in the body face at 11.5/600 soft, and every secondary line at 11.5/600 soft. This list was mono
+   15/800 for the whole string -- code included -- over a 12.5px sub, so it read as a heavier, wider,
+   slightly larger version of a row sitting directly above it. Same numbers, same faces, same sizes. */
+.lx-wcamt{display:flex;align-items:baseline;gap:6px;min-width:0;margin-left:auto;
+  justify-content:flex-end;white-space:nowrap;flex:0 0 auto}
+/* Sizes taken off the My Assets table on this same page rather than chosen: its figures are JetBrains
+   Mono 17.5px/600, its change chip 12px/800, its asset name the body face at 17.5px. The previous pass
+   matched the PHONE list (14/800), which left this looking like a smaller, heavier version of the table
+   directly beneath it — the mismatch being pointed at. The phone keeps its own sizes, further down.
+   NOTE the longhands. Writing this as a font shorthand ending in "inherit" is invalid CSS -- inherit is
+   not a legal family there -- and the browser drops the WHOLE declaration, weight and size with it.
+   That is why none of the typography set on the previous pass ever applied. */
+.lx-wcamt .a{font-weight:700;font-size:18.55px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text);font-variant-numeric:tabular-nums}
+.lx-wcamt .u{font-size:14.55px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text-soft)}
+.lx-wcaddr{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:600;letter-spacing:-.01em}
+.lx-wcsub{margin-top:3px;font-weight:400;font-size:14.55px;font-family:'JetBrains Mono',monospace;line-height:1.35;color:var(--text-soft);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* #19: flat accent, not a gradient. .btn-primary on this page is a solid rgb(234,106,44) with a 9px
+   radius and a soft accent shadow; this ran a gradient down to #c1440a, which reads as a darker, redder
+   orange sitting right beside the real one. Measured off that button rather than approximated. */
+.lx-wcbtn{flex:0 0 auto;height:38px;padding:6px 11px;border-radius:8px;border:1px solid transparent;
+  color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+  font-weight:600;font-size:16px;line-height:1;background:transparent;
+  font-family:"Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.01em;
+  transition:background .14s ease,border-color .14s ease}
+.lx-wcbtn:hover:not(:disabled){background:rgba(127,127,140,.12);border-color:var(--border)}
+.lx-wcbtn:disabled{opacity:.55;cursor:default}
+/* A balance whose predicate has not opened yet is shown, not hidden -- knowing it is coming is the
+   point -- but it cannot be claimed, and the row says why rather than failing at the wallet. */
+.lx-wcrow.locked .lx-wcamt{color:var(--text-soft)}
+.lx-wcnote{padding:22px 18px;text-align:center;font-size:13.5px;color:var(--text-muted)}
+@media(max-width:620px){
+.lx-wcrow{padding:13px 14px;gap:10px}
+.lx-wcbtn{height:32px;padding:0 13px;font-size:12.5px}
+/* The phone holdings list beside this one is 14/800 over 11.5/600, so these follow that instead. */
+.lx-wcamt .a{font-weight:800;font-size:14px}
+.lx-wcamt .u{font-weight:600;font-size:11.5px}
+.lx-wcsub{font-size:11.5px;margin-top:2px}
+}
 </style><style id="lx-amm-css">
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
@@ -2577,131 +2702,6 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
-</style><style id="lx-walletlogo-css">
-/* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
-   and ring stay whatever each surface already sets. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{background-size:cover!important;background-position:center!important;
-  background-repeat:no-repeat!important}
-/* A mark on a white ground would otherwise read as a hole punched in the header. The ring gives it an
-   edge; it is translucent so it works on either theme. */
-.mu-av.lx-haswl,.lx-tw-av.lx-haswl{box-shadow:inset 0 0 0 1px rgba(127,127,140,.30)}
-/* ...but a mark with a transparent ground has no tile for the ring to edge, so it would draw an empty
-   box around the artwork. Those carry .lx-wl-bare instead (RAZA asked for a transparent rabet on
-   2026-09-20, and it is the first logo here that has no ground of its own). */
-.mu-av.lx-wl-bare,.lx-tw-av.lx-wl-bare{box-shadow:none!important}
-/* The network mark was drawn by a child svg in the phone card; with a wallet logo behind it, hide it. */
-.mu-av.lx-haswl>svg,.lx-tw-av.lx-haswl>svg{display:none!important}
-/* ...and by a child IMG in the desktop chip, which this rule did not cover. _walletchip2.js bakes the
-   chain mark in as an <img>, so on desktop it sat ON TOP of the wallet logo: the chip showed Stellar
-   where the phone menu showed the wallet you are actually connected with. Worse, that mark is a CIRCLE
-   inside a 28px rounded SQUARE, so its four transparent corners let the wallet logo behind it bleed
-   through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
-   Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
-.mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
-</style><style id="lx-nbwide">@media (min-width:431px){.nb-bar::before{content:"";position:absolute;top:-1px;bottom:0;left:50%;width:100vw;transform:translateX(-50%);background:inherit;border-top:inherit;z-index:-1}}</style><style id="lx-scrollcost">.menu-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}.menu-overlay.open{backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}[data-lcmu].lcmu-in{will-change:auto!important}</style><style id="lx-tabfill">@media (min-width:431px){.modal-overlay .modal{max-width:none!important}.lxad-wrap{max-width:none!important}.chart-head .chart-controls{flex:1 1 100%!important;max-width:100%!important}}</style><style id="lx-wclaim-css">
-/* #5: these tabs used to carry their own look -- pill buttons with a rounded count badge -- and sat
-   directly above the design's Assets / Liq Pools tabs, which are a different shape, a different badge
-   and a different active treatment. Two tab bars, one screen, two visual languages.
-   So they are not styled here at all any more. The markup below reuses the design's own .asset-tabs
-   wrapper, its plain <button>, its .active state and its .cnt badge, which makes them the same control
-   by construction rather than by a copy of its numbers that would drift the next time the design moves.
-   Only the spacing below the bar is ours. */
-/* The tabs at one end, Cancel all at the other, on one row. gap keeps them apart if the row ever narrows
-   enough for the two to meet. */
-.lx-wctabs{margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.lx-wctabs>.right{display:flex;align-items:center;gap:8px;margin:0}
-/* CANCEL ALL LOST ITS STYLING THE MOMENT WE MOVED IT (RAZA 2026-09-24: "in weird color" on the phone).
-   It is an <a href="#">, and the ONLY rule dressing it was the design's own ".section-heading a"
-   -- accent, no underline. lxMoveCancelAll below lifts it out of .section-heading and onto this bar,
-   so that selector stopped matching and the browser default took over: link blue, underlined. The
-   markup never changed, which is why it looked fine in the source.
-   Restated here, keyed on the element rather than on where it happens to sit, so moving it again
-   cannot undress it a second time. Same values as the rule it lost. */
-/* margin-left:auto keeps it at the RIGHT END even when the row wraps. space-between already does that
-   while everything fits on one line, but a long claimable count (42 here) pushes it onto a second row,
-   where it would otherwise sit at the left -- the opposite of where it was asked to be. */
-.lx-wctabs a,#cancelAllBtn{color:var(--accent);text-decoration:none;font-size:13.2px;font-weight:600;
-  white-space:nowrap;display:inline-flex;align-items:center;cursor:pointer;margin-left:auto;
-  /* a phone tap target, without moving the baseline it shares with the tabs */
-  min-height:32px;padding:0 2px}
-.lx-wctabs a:hover,#cancelAllBtn:hover{text-decoration:underline}
-.lx-wctabs a:focus-visible,#cancelAllBtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
-.lx-wcpanel[hidden]{display:none}
-/* #16: the duplicate heading text inside the panel -- the tab above already names the list and counts it.
-   Only the <h2> is hidden; its row still holds Cancel all. */
-.lx-wchide{display:none!important}
-/* And the desktop container's empty-state, when the phone renderer is the one with the rows. Both live
-   in the panel now, so a bare "No open orders." under a list of three would be a flat contradiction. */
-.lx-wcpanel-orders:has(.orders-stack .lxmw-row) .orders-block{display:none}
-/* The design bakes two sample orders into .orders-block -- APT/USDT and APT/USDC, complete with working
-   Cancel buttons -- and they are what the browser paints while the real offers are still in flight. On a
-   wallet page that is not a cosmetic flicker: it is a stranger's positions, on someone else's chain,
-   offering to cancel something. 
-   Gated on the real offer id rather than on a timing class, so there is no window where it can be wrong:
-   every row we build carries data-oid, and nothing the design shipped ever will. The empty state and the
-   real rows both replace the block outright, so this only ever hides the mock. */
-.orders-block .order-row:not([data-oid]){display:none!important}
-
-.lx-wclist{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;
-  margin-bottom:32px}
-.lx-wcrow{display:flex;align-items:center;gap:11px;padding:13px 18px;border-bottom:1px solid var(--border)}
-.lx-wcrow:last-child{border-bottom:0}
-/* #6: the asset disc. --lxlogo is set inline -- a real logo when we have one, otherwise a flat colour
-   derived from the code, with the initial drawn over it by ::after. data-lxc/data-lxi opt this element
-   INTO the shared resolver in _walletdata.js, which replaces --lxlogo in place once a toml logo turns up,
-   so a row never has to be rebuilt to gain its picture. */
-.lx-wcico{width:32px;height:32px;flex:0 0 32px;border-radius:50%;position:relative;overflow:hidden;
-  background-image:var(--lxlogo,none);background-size:cover;background-position:center;
-  background-repeat:no-repeat;background-color:var(--surface-2)}
-.lx-wcico::after{content:attr(data-l);position:absolute;inset:0;display:flex;align-items:center;
-  justify-content:center;color:#fff;font-weight:800;font-size:13px;line-height:1;pointer-events:none}
-/* Once a real picture is in, the initial would sit on top of it. The resolver blanks data-l when it
-   paints, so this only ever hides a letter that has been deliberately cleared. */
-.lx-wcico[data-l=""]::after{content:none}
-.lx-wcmain{flex:1 1 auto;min-width:0}
-.lx-wcname{font-family:"Hanken Grotesk",system-ui,sans-serif;font-weight:700;font-size:18.55px;line-height:1.25;
-  color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* #1: measured against this page's own holdings rows (.lxmw-row) and matched to them, rather than
-   picked by eye. Those rows set the quantity in JetBrains Mono 14/800 at text colour, the unit beside
-   it in the body face at 11.5/600 soft, and every secondary line at 11.5/600 soft. This list was mono
-   15/800 for the whole string -- code included -- over a 12.5px sub, so it read as a heavier, wider,
-   slightly larger version of a row sitting directly above it. Same numbers, same faces, same sizes. */
-.lx-wcamt{display:flex;align-items:baseline;gap:6px;min-width:0;margin-left:auto;
-  justify-content:flex-end;white-space:nowrap;flex:0 0 auto}
-/* Sizes taken off the My Assets table on this same page rather than chosen: its figures are JetBrains
-   Mono 17.5px/600, its change chip 12px/800, its asset name the body face at 17.5px. The previous pass
-   matched the PHONE list (14/800), which left this looking like a smaller, heavier version of the table
-   directly beneath it — the mismatch being pointed at. The phone keeps its own sizes, further down.
-   NOTE the longhands. Writing this as a font shorthand ending in "inherit" is invalid CSS -- inherit is
-   not a legal family there -- and the browser drops the WHOLE declaration, weight and size with it.
-   That is why none of the typography set on the previous pass ever applied. */
-.lx-wcamt .a{font-weight:700;font-size:18.55px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text);font-variant-numeric:tabular-nums}
-.lx-wcamt .u{font-size:14.55px;line-height:1.25;font-family:'JetBrains Mono',monospace;color:var(--text-soft)}
-.lx-wcaddr{font-family:'JetBrains Mono',ui-monospace,monospace;font-weight:600;letter-spacing:-.01em}
-.lx-wcsub{margin-top:3px;font-weight:400;font-size:14.55px;font-family:'JetBrains Mono',monospace;line-height:1.35;color:var(--text-soft);
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-/* #19: flat accent, not a gradient. .btn-primary on this page is a solid rgb(234,106,44) with a 9px
-   radius and a soft accent shadow; this ran a gradient down to #c1440a, which reads as a darker, redder
-   orange sitting right beside the real one. Measured off that button rather than approximated. */
-.lx-wcbtn{flex:0 0 auto;height:38px;padding:6px 11px;border-radius:8px;border:1px solid transparent;
-  color:var(--text);cursor:pointer;display:inline-flex;align-items:center;gap:6px;
-  font-weight:600;font-size:16px;line-height:1;background:transparent;
-  font-family:"Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.01em;
-  transition:background .14s ease,border-color .14s ease}
-.lx-wcbtn:hover:not(:disabled){background:rgba(127,127,140,.12);border-color:var(--border)}
-.lx-wcbtn:disabled{opacity:.55;cursor:default}
-/* A balance whose predicate has not opened yet is shown, not hidden -- knowing it is coming is the
-   point -- but it cannot be claimed, and the row says why rather than failing at the wallet. */
-.lx-wcrow.locked .lx-wcamt{color:var(--text-soft)}
-.lx-wcnote{padding:22px 18px;text-align:center;font-size:13.5px;color:var(--text-muted)}
-@media(max-width:620px){
-.lx-wcrow{padding:13px 14px;gap:10px}
-.lx-wcbtn{height:32px;padding:0 13px;font-size:12.5px}
-/* The phone holdings list beside this one is 14/800 over 11.5/600, so these follow that instead. */
-.lx-wcamt .a{font-weight:800;font-size:14px}
-.lx-wcamt .u{font-weight:600;font-size:11.5px}
-.lx-wcsub{font-size:11.5px;margin-top:2px}
-}
 </style><script id="lx-devesc">(function(){try{var m=/[?&]lxdev=(d|m|0)(?:&|$)/.exec(location.search||"");if(!m)return;if(m[1]==="0")document.cookie="lxdev=;path=/;max-age=0;samesite=lax";else document.cookie="lxdev="+m[1]+";path=/;max-age=31536000;samesite=lax";var q=(location.search||"").replace(/([?&])lxdev=(?:d|m|0)(&|$)/,"$1").replace(/[?&]$/,"");location.replace(location.pathname+(q&&q!=="?"?q:"")+location.hash);}catch(_){}})();</script></head>
 <body>
 
@@ -3732,5 +3732,5 @@ function ping(){
 if(document.readyState!=="loading")ping(); else document.addEventListener("DOMContentLoaded",ping);
 setInterval(ping,5000);
 window.addEventListener("storage",ping);
-})();</script><script id="lx-actbeacon">(function(){if(window.__lxActB)return;window.__lxActB=1;var SENT={};function addr(){try{return localStorage.getItem("lumos.address")||"";}catch(e){return "";}}function rec(h){try{if(!h||SENT[h])return;if(!/^[0-9a-f]{64}$/i.test(h))return;var a=addr(); if(!/^G[A-Z2-7]{55}$/.test(a))return;SENT[h]=1;fetch("/lxapi/act",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({addr:a,hash:h}),keepalive:true}).catch(function(){});}catch(e){}}function fromBody(t){try{var j=JSON.parse(t);if(j&&j.successful&&j.hash)rec(j.hash);}catch(e){}}function isTx(u){u=String(u||"");return u.indexOf("/transactions")>=0&&u.indexOf("horizon")>=0;}try{var of=window.fetch;window.fetch=function(i,o){var u=(typeof i==="string")?i:(i&&i.url)||"";var m=((o&&o.method)||(i&&i.method)||"GET").toUpperCase();var p=of.apply(this,arguments);try{ if(m==="POST"&&isTx(u)){ p.then(function(r){try{ r.clone().text().then(fromBody).catch(function(){}); }catch(e){}return r;}).catch(function(){}); } }catch(e){}return p;};}catch(e){}try{var oo=XMLHttpRequest.prototype.open,os=XMLHttpRequest.prototype.send;XMLHttpRequest.prototype.open=function(m,u){try{this.__lxM=String(m||"").toUpperCase();this.__lxU=u;}catch(e){}return oo.apply(this,arguments);};XMLHttpRequest.prototype.send=function(){try{ if(this.__lxM==="POST"&&isTx(this.__lxU)){this.addEventListener("load",function(){try{fromBody(this.responseText);}catch(e){}});} }catch(e){}return os.apply(this,arguments);};}catch(e){}})();</script><style id="lx-mc-css">.lxmc{position:relative;flex-shrink:0}.lxmc-trig{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;font:600 14px/1 "Hanken Grotesk",system-ui,sans-serif;transition:.15s}.lxmc-trig:hover{border-color:var(--border-strong)}.lxmc-logo,.lxmc-ol{width:24px;height:24px;border-radius:50%;overflow:hidden;display:inline-flex;flex-shrink:0;background:var(--surface-3,#eee)}.lxmc-logo img,.lxmc-ol img{width:100%;height:100%;object-fit:cover;display:block}.lxmc-name{white-space:nowrap}.lxmc-trig svg{width:14px;height:14px;color:var(--text-soft)}.lxmc-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:200;min-width:216px;background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.28)}.lxmc-menu[hidden]{display:none}.lxmc-opt{width:100%;display:flex;align-items:center;gap:11px;padding:9px 11px;border:none;background:transparent;color:var(--text);border-radius:10px;cursor:pointer;font:600 14.5px/1 "Hanken Grotesk",system-ui,sans-serif;text-align:left}.lxmc-opt:hover{background:var(--surface-2)}.lxmc-opt.active{background:var(--accent-soft);color:var(--accent)}@media(max-width:1080px){.lxmc-name{display:none}.lxmc-trig{padding:0 9px}}.lxw-neti{overflow:hidden;background:var(--surface-3,#eee)!important}.lxw-neti img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}</style><script id="lx-mc" src="/assets/js/lx-87e4cdd7989a.js" defer></script><script id="lx-searchassets" src="/assets/js/lx-8b66c87c3358.js" defer></script><script id="lx-ammdata" src="/assets/js/lx-c4d970e9a993.js" defer></script><script id="lx-walletlogo" src="/assets/js/lx-8ce0a4150cc5.js" defer></script><style id="lx-mobfix">html,body{overscroll-behavior:none}</style><script id="lx-mobnav" src="/assets/js/lx-42131ce15f9b.js" defer></script><script id="lx-nofollow" src="/assets/js/lx-8ed1bca29860.js" defer></script><script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;var ROUTE={"home":"/"};function fix(){var scope=document.querySelectorAll("footer a[href=\u0022#\u0022], .footer a[href=\u0022#\u0022], [class*=footer] a[href=\u0022#\u0022]");[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}a.style.cursor="default";a.addEventListener("click",function(e){e.preventDefault();});});}if(document.readyState!=="loading")fix();else document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1200);})();</script><script id="lx-wclaim" src="/assets/js/lx-ac187129638d.js" defer></script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}@media (max-width:560px){.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}.appbar .logo .logo-text{overflow:visible!important}.appbar .avatar-sm.lx-mav{flex:0 0 auto!important;min-width:0;overflow:visible}.appbar .logo{min-width:0;flex:0 1 auto;overflow:hidden}@media(max-width:430px){.appbar{padding-left:10px!important;padding-right:10px!important;gap:6px!important}.appbar .avatar-sm.lx-mav{gap:6px!important;padding-left:5px!important;padding-right:9px!important}.appbar .avatar-sm.lx-mav::after{font-size:12px!important}.appbar .avatar-sm.lx-mav::before{width:18px!important;height:18px!important}@media(max-width:390px){.appbar .logo-text{display:none!important}}}.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}.appbar .avatar-sm.lx-mav{white-space:nowrap}}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead" src="/assets/js/lx-5af1dac98912.js" defer></script><style id="lx-realconnect-css">.lxw-cwallet-ico,.lxw-acct-ico{position:relative;overflow:hidden}.lxw-cwallet-ico .lx-wimg,.lxw-acct-ico .lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}.lxw-step{transition:background .28s ease,border-color .28s ease,color .28s ease}.lxw-step.is-done{color:var(--text,#fff)!important;border-color:rgba(52,192,127,.55)!important;background:rgba(52,192,127,.13)!important}.lxw-step.is-done::after{content:"\2713";margin-left:auto;color:#35c07f;font-weight:800;font-size:13px;line-height:1}</style><script id="lx-realconnect" src="/assets/js/lx-1c3bde207c6c.js" defer></script><script id="lx-pv" src="/assets/js/lx-ff5f9a21a078.js" defer></script><script src="/assets/js/lx-901712a72ed0.js" defer></script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style><style id="lx-tiptheme">#themeToggle[data-tooltip]::before{bottom:auto;top:calc(100% + 8px);transform:translateX(-50%) translateY(-2px)}#themeToggle[data-tooltip]::after{bottom:auto;top:calc(100% + 2px);transform:translateX(-50%) translateY(-2px);border-top:0;border-bottom:5px solid var(--text)}#themeToggle[data-tooltip]:hover::before,#themeToggle[data-tooltip]:hover::after,#themeToggle[data-tooltip]:focus-visible::before,#themeToggle[data-tooltip]:focus-visible::after{transform:translateX(-50%) translateY(0)}</style></body>
+})();</script><script id="lx-actbeacon">(function(){if(window.__lxActB)return;window.__lxActB=1;var SENT={};function addr(){try{return localStorage.getItem("lumos.address")||"";}catch(e){return "";}}function rec(h){try{if(!h||SENT[h])return;if(!/^[0-9a-f]{64}$/i.test(h))return;var a=addr(); if(!/^G[A-Z2-7]{55}$/.test(a))return;SENT[h]=1;fetch("/lxapi/act",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({addr:a,hash:h}),keepalive:true}).catch(function(){});}catch(e){}}function fromBody(t){try{var j=JSON.parse(t);if(j&&j.successful&&j.hash)rec(j.hash);}catch(e){}}function isTx(u){u=String(u||"");return u.indexOf("/transactions")>=0&&u.indexOf("horizon")>=0;}try{var of=window.fetch;window.fetch=function(i,o){var u=(typeof i==="string")?i:(i&&i.url)||"";var m=((o&&o.method)||(i&&i.method)||"GET").toUpperCase();var p=of.apply(this,arguments);try{ if(m==="POST"&&isTx(u)){ p.then(function(r){try{ r.clone().text().then(fromBody).catch(function(){}); }catch(e){}return r;}).catch(function(){}); } }catch(e){}return p;};}catch(e){}try{var oo=XMLHttpRequest.prototype.open,os=XMLHttpRequest.prototype.send;XMLHttpRequest.prototype.open=function(m,u){try{this.__lxM=String(m||"").toUpperCase();this.__lxU=u;}catch(e){}return oo.apply(this,arguments);};XMLHttpRequest.prototype.send=function(){try{ if(this.__lxM==="POST"&&isTx(this.__lxU)){this.addEventListener("load",function(){try{fromBody(this.responseText);}catch(e){}});} }catch(e){}return os.apply(this,arguments);};}catch(e){}})();</script><style id="lx-mc-css">.lxmc{position:relative;flex-shrink:0}.lxmc-trig{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;font:600 14px/1 "Hanken Grotesk",system-ui,sans-serif;transition:.15s}.lxmc-trig:hover{border-color:var(--border-strong)}.lxmc-logo,.lxmc-ol{width:24px;height:24px;border-radius:50%;overflow:hidden;display:inline-flex;flex-shrink:0;background:var(--surface-3,#eee)}.lxmc-logo img,.lxmc-ol img{width:100%;height:100%;object-fit:cover;display:block}.lxmc-name{white-space:nowrap}.lxmc-trig svg{width:14px;height:14px;color:var(--text-soft)}.lxmc-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:200;min-width:216px;background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.28)}.lxmc-menu[hidden]{display:none}.lxmc-opt{width:100%;display:flex;align-items:center;gap:11px;padding:9px 11px;border:none;background:transparent;color:var(--text);border-radius:10px;cursor:pointer;font:600 14.5px/1 "Hanken Grotesk",system-ui,sans-serif;text-align:left}.lxmc-opt:hover{background:var(--surface-2)}.lxmc-opt.active{background:var(--accent-soft);color:var(--accent)}@media(max-width:1080px){.lxmc-name{display:none}.lxmc-trig{padding:0 9px}}.lxw-neti{overflow:hidden;background:var(--surface-3,#eee)!important}.lxw-neti img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}</style><script id="lx-mc" src="/assets/js/lx-87e4cdd7989a.js" defer></script><script id="lx-searchassets" src="/assets/js/lx-8b66c87c3358.js" defer></script><script id="lx-walletlogo" src="/assets/js/lx-8ce0a4150cc5.js" defer></script><style id="lx-mobfix">html,body{overscroll-behavior:none}</style><script id="lx-mobnav" src="/assets/js/lx-42131ce15f9b.js" defer></script><script id="lx-nofollow" src="/assets/js/lx-8ed1bca29860.js" defer></script><script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;var ROUTE={"home":"/"};function fix(){var scope=document.querySelectorAll("footer a[href=\u0022#\u0022], .footer a[href=\u0022#\u0022], [class*=footer] a[href=\u0022#\u0022]");[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}a.style.cursor="default";a.addEventListener("click",function(e){e.preventDefault();});});}if(document.readyState!=="loading")fix();else document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1200);})();</script><script id="lx-wclaim" src="/assets/js/lx-ac187129638d.js" defer></script><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}@media (max-width:560px){.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}.appbar .logo .logo-text{overflow:visible!important}.appbar .avatar-sm.lx-mav{flex:0 0 auto!important;min-width:0;overflow:visible}.appbar .logo{min-width:0;flex:0 1 auto;overflow:hidden}@media(max-width:430px){.appbar{padding-left:10px!important;padding-right:10px!important;gap:6px!important}.appbar .avatar-sm.lx-mav{gap:6px!important;padding-left:5px!important;padding-right:9px!important}.appbar .avatar-sm.lx-mav::after{font-size:12px!important}.appbar .avatar-sm.lx-mav::before{width:18px!important;height:18px!important}@media(max-width:390px){.appbar .logo-text{display:none!important}}}.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}.appbar .avatar-sm.lx-mav{white-space:nowrap}}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><script id="lx-whead" src="/assets/js/lx-5af1dac98912.js" defer></script><style id="lx-realconnect-css">.lxw-cwallet-ico,.lxw-acct-ico{position:relative;overflow:hidden}.lxw-cwallet-ico .lx-wimg,.lxw-acct-ico .lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}.lxw-step{transition:background .28s ease,border-color .28s ease,color .28s ease}.lxw-step.is-done{color:var(--text,#fff)!important;border-color:rgba(52,192,127,.55)!important;background:rgba(52,192,127,.13)!important}.lxw-step.is-done::after{content:"\2713";margin-left:auto;color:#35c07f;font-weight:800;font-size:13px;line-height:1}</style><script id="lx-realconnect" src="/assets/js/lx-1c3bde207c6c.js" defer></script><script id="lx-pv" src="/assets/js/lx-ff5f9a21a078.js" defer></script><script id="lx-ammdata" src="/assets/js/lx-2af38958701e.js" defer></script><script src="/assets/js/lx-901712a72ed0.js" defer></script><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style><style id="lx-tiptheme">#themeToggle[data-tooltip]::before{bottom:auto;top:calc(100% + 8px);transform:translateX(-50%) translateY(-2px)}#themeToggle[data-tooltip]::after{bottom:auto;top:calc(100% + 2px);transform:translateX(-50%) translateY(-2px);border-top:0;border-bottom:5px solid var(--text)}#themeToggle[data-tooltip]:hover::before,#themeToggle[data-tooltip]:hover::after,#themeToggle[data-tooltip]:focus-visible::before,#themeToggle[data-tooltip]:focus-visible::after{transform:translateX(-50%) translateY(0)}</style></body>
 </html>
