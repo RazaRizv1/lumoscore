@@ -42,9 +42,14 @@ const ADDR_RE = /^G[A-Z2-7]{55}$/;
 
 // CCTP domain -> the name the UI shows. Kept here rather than trusted from the client so a record can
 // never claim it went somewhere it did not.
+// ALL 19 CCTP domains the bridge offers, mirroring LX_DOMNAME in _tools/_cctp.js. Same gap as
+// NI_CHAIN below: this listed 10, so a burn to Unichain, Codex, Sonic, XDC, Plume, Morph, Pharos,
+// Cronos or X Layer had no name here and never became a row.
 const DOMAIN = {
   0: 'Ethereum', 1: 'Avalanche', 2: 'Optimism', 3: 'Arbitrum', 5: 'Solana',
-  6: 'Base', 7: 'Polygon', 8: 'Sui', 11: 'Linea', 14: 'World Chain',
+  6: 'Base', 7: 'Polygon', 8: 'Sui', 10: 'Unichain', 11: 'Linea', 12: 'Codex',
+  13: 'Sonic', 14: 'World Chain', 18: 'XDC', 22: 'Plume', 30: 'Morph',
+  31: 'Pharos', 32: 'Cronos', 37: 'X Layer',
 };
 
 function json(body, status, ttl) {
@@ -142,8 +147,14 @@ async function heal(kv, map) {
 const OFT = '5d672cb21b3afcdda54546c7f5b9fd346920e41f8fe8f39e838e5d7bd7435546';   // CBOWOLFSDM5P…UMMF6, raw contract id
 const NI_DEP = 'GDJ4JZXZELZD737NVFORH4PSSQDWFDZTKW3AIDKHYQG23ZXBPDGGQBJK';            // 1Click, one account, memo per transfer
 const ONECLICK = 'https://1click.chaindefuser.com/v0';
-const EID = { 30101: 'Ethereum', 30110: 'Arbitrum', 30111: 'Optimism', 30109: 'Polygon', 30362: 'Berachain', 30339: 'Ink',
-  30367: 'Hyperliquid', 30390: 'Monad', 30295: 'Flare', 30280: 'Sei', 30398: 'MegaETH', 30383: 'Plasma' };
+// ALL 21 LayerZero peers, mirroring the eids table in _tools/_lzusdt0.js -- the ones proved by
+// scanning peer() on the live OFT, so each is a route that exists rather than a chain LayerZero
+// supports in general. This listed 12, so a send to Mantle, Conflux eSpace, X Layer, Hedera,
+// Unichain, Morph, Rootstock, Stable or Tempo was dropped from history.
+const EID = { 30101: 'Ethereum', 30109: 'Polygon', 30110: 'Arbitrum', 30111: 'Optimism', 30181: 'Mantle',
+  30212: 'Conflux eSpace', 30274: 'X Layer', 30280: 'Sei', 30295: 'Flare', 30316: 'Hedera', 30320: 'Unichain',
+  30322: 'Morph', 30333: 'Rootstock', 30339: 'Ink', 30362: 'Berachain', 30367: 'Hyperliquid', 30383: 'Plasma',
+  30390: 'Monad', 30396: 'Stable', 30398: 'MegaETH', 30410: 'Tempo' };
 // chain id -> the name a person reads. A record written with the raw id instead is what put a row
 // reading "xrp" in Platform Activity, pointing at a network logo we do not ship (the file is
 // xrpl.png) -- so the mark 404d, and because a 404 is never cached it was re-requested on every
@@ -152,8 +163,18 @@ const EID = { 30101: 'Ethereum', 30110: 'Arbitrum', 30111: 'Optimism', 30109: 'P
 // THIS MAP ALSO DECIDES WHAT GETS RECORDED AT ALL: the caller bails on `!NI_CHAIN[t.chain]`, so a
 // transfer to a chain missing from here is dropped from history entirely. It lists 10 of the 52
 // destinations the bridge offers, which is worth widening deliberately rather than in this fix.
+// ALL 30 NEAR Intents destinations, mirroring NI_CHAIN in _tools/_nearintents.js (inverted: that one
+// is name -> id, this one id -> name). It listed 9 of them, so a transfer to any of the other 21 was
+// dropped from history: the caller bails on an unknown chain, so the row simply never existed.
+// Cross-checked against the live 1Click token list -- all 30 are chains it actually serves, and the
+// only id it offers that is absent here is "stellar", which is the source, not a destination.
 const NI_CHAIN = { eth: 'Ethereum', arb: 'Arbitrum', base: 'Base', pol: 'Polygon', op: 'Optimism', avax: 'Avalanche',
-  bera: 'Berachain', monad: 'Monad', plasma: 'Plasma', xrp: 'XRP Ledger' };
+  bera: 'Berachain', monad: 'Monad', plasma: 'Plasma', bsc: 'BNB Chain', gnosis: 'Gnosis', scroll: 'Scroll',
+  hood: 'Hood', adi: 'ADI', btc: 'Bitcoin', sol: 'Solana', tron: 'Tron', ton: 'TON', near: 'Near', sui: 'Sui',
+  starknet: 'Starknet', cardano: 'Cardano', ltc: 'Litecoin', doge: 'Dogecoin', bch: 'Bitcoin Cash', zec: 'Zcash',
+  // 'XRP Ledger', not the bridge's shorter 'XRPL' label: records already stored carry this spelling,
+  // and the feed's ALIAS normalises both to it anyway. One spelling in the history beats two.
+  dash: 'Dash', movement: 'Movement', fogo: 'Fogo', xrp: 'XRP Ledger' };
 const NI_FINAL = { SUCCESS: 1, REFUNDED: 1, FAILED: 1 };
 // Sent through LumosCore but carrying no fee, checked by hand against the ledger 2026-09-19: the first USDT0-sourced
 // LayerZero send (0.05988 USDT0 -> Polygon, RAZA's wallet). Its deferred fee failed with op_no_trust -- the collector had
