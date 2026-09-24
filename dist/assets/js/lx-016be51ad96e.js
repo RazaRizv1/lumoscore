@@ -431,7 +431,10 @@
     // VALIDATED AGAINST THE DESTINATION, not against Ethereum. This refused every non-EVM address, so the
     // sixteen non-EVM chains could be picked and quoted and then never sent. lxBrValidAddr is the bridge's own
     // per-chain check, the same one that gates Review.
-    var okAddr = window.lxBrValidAddr ? window.lxBrValidAddr(dest, recipient) : /^0x[0-9a-fA-F]{40}$/.test(recipient || '');
+    // If the shared validator is somehow missing, DO NOT guess with an EVM regex -- that is what refused a
+    // valid XRPL address. 1Click validates the recipient against the real chain when the quote is requested,
+    // and the quote always precedes the deposit, so deferring to it is both safer and correct.
+    var okAddr = window.lxBrValidAddr ? window.lxBrValidAddr(dest, recipient) : !!String(recipient || '').trim();
     if (!okAddr) { say('That doesn’t look like a valid ' + dest + ' address.'); return; }
     var srcAmt = parseFloat(String(amt).replace(/,/g, '')) || 0; if (!(srcAmt > 0)) { say('Enter a valid amount on the previous step.'); return; }
     var rate = feeRate(), feeAmt = +(srcAmt * rate).toFixed(7), transport = transportOf(k);

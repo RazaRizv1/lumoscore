@@ -729,6 +729,12 @@ function lxBrValidAddr(net,a){ a=(a||'').trim(); if(!a)return false;
   if(LX_ADDR[net]) return !!LX_ADDR[net](a);
   if(LX_EVM_NETS[net])return /^0x[0-9a-fA-F]{40}$/.test(a);
   return false; }
+// EXPORTED, because the other route layers need it and they are in DIFFERENT emitted scripts.
+// _externalize.js gives each script its own scope, so a bare declaration here is invisible to
+// _nearintents.js -- which asked for window.lxBrValidAddr, got undefined, and fell back to an EVM
+// regex that refuses every r-address: 'That doesn't look like a valid XRPL address' on a perfectly
+// good one (RAZA 2026-09-24). Same trap as lxBrCompare; see lumoscore-externalize-scope.
+try{ window.lxBrValidAddr = lxBrValidAddr; }catch(_){ }
 function lxBrStep2Err(msg){ var s2=document.querySelector('.br-step[data-step="2"]'); var e=s2?s2.querySelector('.br-errslot'):null; if(e){ e.textContent=msg||''; if(msg) e.setAttribute('data-err',msg); else e.removeAttribute('data-err'); e.style.color=msg?'#e04f4f':''; } }
 // A MESSAGE IN THESE SLOTS DESCRIBES THE STATE THAT WAS THERE WHEN IT WAS WRITTEN -- this destination, this
 // address, this route. Change any of them and it stops being true, but it used to stay on screen: RAZA hit the
@@ -884,7 +890,7 @@ function lxBrRenderDest(){
   var net=lxBrDestNet(), nkey=LX_NETMAP[net];
   var chip=side.querySelector('.br-asset');
   if(chip){ var nm=chip.querySelector('.nm'); if(nm&&nm.textContent!=="USDC")nm.textContent="USDC"; var ic=chip.querySelector('.lx-assetic')||chip.querySelector('.br-ic'); if(ic && !ic.querySelector('img')) ic.innerHTML='<img src="/assets/tokens/usdc.png" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; var cv=chip.querySelector('.cv'); if(cv)cv.style.display="none"; }
-  if(nkey){ var lead=side.querySelector('.br-wallet .br-ic.lx-netic')||side.querySelector('.br-ic.lx-netic'); if(lead && !(lead.querySelector('img')&&lead.querySelector('img').getAttribute('src').indexOf(nkey)>=0)) lead.innerHTML='<img class="lx-netimg" src="/assets/networks/'+nkey+'.png" alt="">'; }
+  if(nkey){ var lead=side.querySelector('.br-wallet .br-ic.lx-netic')||side.querySelector('.br-ic.lx-netic'); if(lead && !(lead.querySelector('img')&&lead.querySelector('img').getAttribute('src').indexOf(nkey)>=0)) lead.innerHTML='<img class="lx-netimg" src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt="">'; }
   // note: do NOT touch the input placeholder — the finalized design animates/owns it; overriding here caused flicker.
 }
 
@@ -1184,7 +1190,7 @@ function lxBrReview(){
   var rIc=legs[1].querySelector('.v .ic:not(.lx-rvnet)'); if(rIc) rIc.innerHTML='<img src="/assets/tokens/usdc.png" style="width:100%;height:100%;object-fit:cover;display:block" alt="">';
   var srcRow=s3.querySelector('[data-rv="src"]'); if(srcRow) srcRow.innerHTML='<span class="lx-rvaddric">'+lxBrStellarIcon()+'</span><span>'+lxBrShort(B.pk||LX_SRC_ADDR)+'</span>';
   var dstIn=s2?s2.querySelector('.br-addr-in'):null; var dst=dstIn?(dstIn.value||"").trim():""; var nkey=LX_NETMAP[net];
-  var dstRow=s3.querySelector('[data-rv="dst"]'); if(dstRow){ if(dst){ dstRow.innerHTML=(nkey?'<span class="lx-rvaddric"><img class="lx-netimg" src="/assets/networks/'+nkey+'.png" alt=""></span>':'')+'<span>'+lxBrShort(dst)+'</span>'; } else dstRow.textContent="—"; }
+  var dstRow=s3.querySelector('[data-rv="dst"]'); if(dstRow){ if(dst){ dstRow.innerHTML=(nkey?'<span class="lx-rvaddric"><img class="lx-netimg" src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>':'')+'<span>'+lxBrShort(dst)+'</span>'; } else dstRow.textContent="—"; }
   // Bridge fee row: show the actual amount, not just the rate. It always read "0.2%" and nothing else,
   // while "You send" showed the gross amount — so from the review alone there was no way to tell the fee
   // had been taken at all. It is deducted from the source asset, so name it in the source asset.
@@ -1240,7 +1246,7 @@ function lxBrChipIco(code,net,stellarIcon){
   var u=lxBrAssetLogo(code), nkey=net?(LX_NETMAP[net]||""):"";
   var face=u?('<img src="'+u+'" alt="">'):('<span class="lx-tl" data-l="'+lxBrEsc(String(code||"?").charAt(0).toUpperCase())+'"></span>');
   var badge=net
-    ? (nkey?('<span class="lx-tnet"><img src="/assets/networks/'+nkey+'.png" alt=""></span>'):'')
+    ? (nkey?('<span class="lx-tnet"><img src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>'):'')
     : ('<span class="lx-tnet lx-tnet-x">'+(stellarIcon||'')+'</span>');   // no net named = the Stellar side
   return '<span class="lx-tic">'+face+badge+'</span>';
 }
@@ -2300,7 +2306,7 @@ var LX_STELLAR_SVG='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="3
 // USDC on the source chain, USDC on the destination chain — each token disc badged with its network.
 // Stellar is inlined because there is no assets/networks/stellar.png, and scraping the wizard's chip would
 // break the moment that markup moves.
-function lxBrNetImg(dom){ var n=LX_NETMAP[lxBrDomName(dom)]; return n?('<img src="/assets/networks/'+n+'.png" alt="">'):''; }
+function lxBrNetImg(dom){ var n=LX_NETMAP[lxBrDomName(dom)]; return n?('<img src="/assets/networks/'+n+'.png?v='+LX_ICONV+'" alt="">'):''; }
 // key: the asset the icon shows (defaults to USDC). The SOURCE side shows what the user actually sent -- BLND, XLM,
 // LUMOS... -- not the USDC it was swapped into; the destination side is always the USDC being claimed.
 function lxBrPairIco(kind,dom,key){
