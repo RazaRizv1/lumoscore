@@ -937,12 +937,24 @@ const BODY = '(function(){'
   + '  var dn=lzDest(); if(dn) window.__lxBrRouteFor[dn]=route;'   // the user's own choice, for this destination only
   + '  [].slice.call(panel.querySelectorAll(".lx-brr")).forEach(function(x){ x.setAttribute("aria-pressed", x===hit?"true":"false"); });'
   + '  lzPaintStats(); }'
+  // THE BORDER MOVES ON POINTERDOWN, like every native control. It used to wait for pointerup, and RAZA saw it
+  // arrive 'after a couple of seconds' -- the commit itself is instant (measured at 7ms with synthetic events),
+  // so what was slow is the REAL, isTrusted event reaching this handler: the inherited nav layers in this design
+  // intercept trusted clicks and re-dispatch them, which is invisible to a synthetic test and is exactly why
+  // this could not be reproduced from a script. Painting on the press removes the dependency entirely -- there
+  // is nothing left between the finger going down and the card looking chosen.
+  // The COMMIT still happens on pointerup, so a press that turns into a drag or a long-hold changes nothing:
+  // paintOnly is reverted to whatever was selected before.
+  + ' function paintOnly(route){'
+  + '  [].slice.call(panel.querySelectorAll(".lx-brr[data-route]")).forEach(function(x){'
+  + '   x.setAttribute("aria-pressed", x.getAttribute("data-route")===route?"true":"false"); }); }'
   + ' document.addEventListener("pointerdown",function(e){ var b=e.target&&e.target.closest&&e.target.closest(".lx-brr[data-route]");'
-  + '  pd=(b&&panel.contains(b))?{r:b.getAttribute("data-route"),x:e.clientX,y:e.clientY,t:Date.now()}:null; if(pd) window.__lzTouchT=Date.now(); },true);'
+  + '  pd=(b&&panel.contains(b)&&!b.disabled)?{r:b.getAttribute("data-route"),x:e.clientX,y:e.clientY,t:Date.now(),was:window.__lxBrRoute}:null;'
+  + '  if(pd){ window.__lzTouchT=Date.now(); paintOnly(pd.r); } },true);'
   + ' document.addEventListener("pointerup",function(e){ if(!pd) return; var p=pd; pd=null; window.__lzTouchT=Date.now();'
-  + '  if(Math.abs(e.clientX-p.x)>12||Math.abs(e.clientY-p.y)>12||Date.now()-p.t>1200) return;'
+  + '  if(Math.abs(e.clientX-p.x)>12||Math.abs(e.clientY-p.y)>12||Date.now()-p.t>1200){ paintOnly(p.was); return; }'
   + '  sel(p.r); },true);'
-  + ' document.addEventListener("pointercancel",function(){ pd=null; },true);'
+  + ' document.addEventListener("pointercancel",function(){ if(pd) paintOnly(pd.was); pd=null; },true);'
   // THE FINGER ITSELF, TOO (RAZA 2026-09-22, tablet: "It doesn't select upon first click and i have to click it multiple
   // times"). A tap that lands while the page is still gliding from a scroll is taken by Chrome as "stop scrolling": the
   // pointer events are cancelled and no click follows, so both paths above miss it. touchstart/touchend are still sent,
