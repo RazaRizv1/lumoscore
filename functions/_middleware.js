@@ -49,13 +49,13 @@ const ROUTES = [
     "/trade",
     "lumoscore-dex",
     null,
-    "alias"
+    "hub"
   ],
   [
     "/pools",
     "lumoscore-amm",
     null,
-    "alias"
+    "hub"
   ],
   [
     "/launchpad/review",
@@ -85,13 +85,13 @@ const ROUTES = [
     "/bridge/stellar",
     "lumoscore-bridge",
     null,
-    "alias"
+    null
   ],
   [
     "/bridge",
     "lumoscore-bridge",
     null,
-    null
+    "hub"
   ],
   [
     "/wallet",
@@ -103,25 +103,25 @@ const ROUTES = [
     "/rewards/stellar",
     "lumoscore-rewards-dark",
     null,
-    "alias"
+    null
   ],
   [
     "/rewards",
     "lumoscore-rewards-dark",
     null,
-    null
+    "hub"
   ],
   [
     "/lumos/stellar",
     "lumoscore-lumos-token",
     null,
-    "alias"
+    null
   ],
   [
     "/lumos",
     "lumoscore-lumos-token",
     null,
-    null
+    "hub"
   ],
   [
     "/signin",
@@ -578,11 +578,40 @@ function blogSeo(p, origin){
   };
 }
 
+// The network choosers. A hub and its Stellar page SHARE A FILE and differ only by what the head
+// gate shows, so to a crawler that does not run JavaScript they would otherwise be the same document
+// down to the title -- the duplicate-pair problem the alias flag exists to prevent, reintroduced at
+// five new urls. These give each hub its own title and description at the edge.
+const HUB_SEO = {
+  '/trade': {
+    title: 'Trade on LumosCore — Choose a network',
+    desc: 'Swap assets and place limit orders on-chain. Choose a network to see its markets, prices and pairs on LumosCore.',
+  },
+  '/pools': {
+    title: 'Liquidity Pools on LumosCore — Choose a network',
+    desc: 'Provide liquidity and earn a share of the trading fees. Choose a network to see its pools, TVL and volume on LumosCore.',
+  },
+  '/bridge': {
+    title: 'Bridge assets with LumosCore — Choose a network',
+    desc: 'Move assets between networks with Circle CCTP, LayerZero and NEAR Intents. Choose the network you are bridging from.',
+  },
+  '/rewards': {
+    title: 'LUMOS Rewards — Choose a network',
+    desc: 'Liquidity and holder rewards, paid out each round. Choose a network to see its rounds and your share.',
+  },
+  '/lumos': {
+    title: 'LUMOS token — Choose a network',
+    desc: 'LumosCore’s native token. Choose a network to see its price, pools and holders on that chain.',
+  },
+};
+
 function seoFor(pathname){
   const segs = pathname.split('/').filter(Boolean);
   if ((segs[0] === 'trade' || segs[0] === 'asset') && segs[2]) return { kind: 'asset', id: segs[2] };
   if (segs[0] === 'pools' && segs[2] && segs[3]) return { kind: 'pool', a: segs[2], b: segs[3] };
   if (segs[0] === 'blog' && segs[1]) return { kind: 'blog', slug: segs[1] };
+  // exactly one segment, so /trade is the hub and /trade/stellar is not
+  if (segs.length === 1 && HUB_SEO['/' + segs[0]]) return { kind: 'hub', id: '/' + segs[0] };
   return null;
 }
 
@@ -673,7 +702,7 @@ function legacyClean(pathname, params){
 
   for (const r of ROUTES){
     if (r[0].indexOf('/:') >= 0) continue;
-    if (r[3]) continue;   // an alias is not where a legacy filename should land
+    if (r[3]) continue;   // an alias or a hub is not where a legacy filename should land
     if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];
   }
   return null;
@@ -850,7 +879,7 @@ export async function onRequest(context){
   // (/bridge, /rewards, /lumos, /faq) because nothing stopped it. This map is now GENERATED from the
   // route table's alias flag, so every pair is covered and a new one cannot be added without it.
   // Both urls keep serving; only the signal changes.
-  const CANON_OF = {"/trade":"/trade/stellar","/pools":"/pools/stellar","/bridge/stellar":"/bridge","/rewards/stellar":"/rewards","/lumos/stellar":"/lumos","/docs/faq":"/faq","/docs":"/docs/introduction"};
+  const CANON_OF = {"/docs/faq":"/faq","/docs":"/docs/introduction"};
   const cleanPath = url.pathname === '/' ? '/' : url.pathname.replace(/\/+$/, '');
   const canonPath = CANON_OF[cleanPath] || cleanPath;
   const canonical = PRIMARY_ORIGIN + canonPath;
@@ -865,6 +894,9 @@ export async function onRequest(context){
     // rather than an empty rectangle of brand colour.
     const ai = await adminImage(context.env, want.id);
     if (ai || (f && f.image)) seo.image = cardFor(want.id);
+  }
+  else if (want && want.kind === 'hub') {
+    seo = { title: HUB_SEO[want.id].title + ' | LumosCore', desc: HUB_SEO[want.id].desc, image: '' };
   }
   else if (want && want.kind === 'blog') {
     const post = await blogPost(context.env, want.slug);

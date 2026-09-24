@@ -19,8 +19,8 @@ const BS = String.fromCharCode(92); // backslash
 // the static hrefs are additionally rewritten at build time so crawlers follow clean urls too.
 function cleanMapJson(){
   const m = {};
-  for(const [url, file, alias] of ROUTES){
-    if(alias) continue;                             // an alias is never where a link should point
+  for(const [url, file, flag] of ROUTES){
+    if(flag) continue;                              // alias or hub: never where a link should point
     if(/:/.test(url)) continue;                     // dynamic routes are handled by query conversion
     // key on the BASE name: /rewards is served by lumoscore-rewards-dark.html, but links to it appear
     // as -dark, -light and -mobile, and every one of them is the same page.
@@ -430,9 +430,18 @@ function headersFile(isAdmin){
 // Placeholders (:name) match a single segment. Theme never appears in a URL — light and dark are the
 // same page — and device is resolved server-side, not by a separate URL.
 //
-// THE THIRD FIELD, 'alias', MARKS A SECOND URL FOR A PAGE THAT ALREADY HAS ONE. It still serves (that
-// is the entire point — a link posted somewhere must keep working), but it is not the page's address:
-// it stays out of the clean-URL map, out of the sitemap, and its canonical points at the real one.
+// THE THIRD FIELD marks a url that is not the page's primary address. Two values:
+//
+//   'alias' — a SECOND URL FOR THE SAME PAGE. It still serves (that is the entire point: a link
+//             posted somewhere must keep working), but it stays out of the clean-URL map, out of the
+//             sitemap, and its canonical points at the real one.
+//   'hub'   — a NETWORK CHOOSER. Same file, genuinely different page: the bare path asks which chain
+//             and /<thing>/stellar answers (see _tools/_lumosparent.js). So it keeps its own canonical
+//             and its own sitemap row, but it is still not a link target -- inside the app, "Trade"
+//             means /trade/stellar, and routing every click through a chooser that then forwards is
+//             a redirect on every navigation.
+//
+// Both keep a url out of the clean map and out of legacyClean; they differ only on canonical/sitemap.
 //
 // Without that flag the two derivations of "the url for this file" DISAGREED, which is what produced
 // the duplicates. cleanMapJson takes the LAST matching route and legacyClean the FIRST, so
@@ -452,13 +461,11 @@ const ROUTES = [
   ['/pools/stellar/id/:pool',          'lumoscore-amm-pool.html'],   // fallback: id-only links
   ['/pools/stellar/:a/:b',             'lumoscore-amm-pool.html'],
   ['/pools/stellar',                   'lumoscore-amm.html'],
-  // The bare paths, which 404d while every other promoted path served: /bridge, /rewards and /lumos
-  // were opened and these two were left behind, so a link to lumoscore.com/trade — the most obvious
-  // url on the site — hit the 404 page. They serve the Stellar page, the same answer /bridge already
-  // gives, NOT a chain chooser: an interstitial would put a click in front of the page we promote,
-  // and it would have to name XRPL, which is not public yet.
-  ['/trade',                           'lumoscore-dex.html',  'alias'],
-  ['/pools',                           'lumoscore-amm.html',  'alias'],
+  // The bare paths are NETWORK CHOOSERS, the same pattern /lumos already uses: Stellar live, XRP
+  // Ledger shown as Upcoming and not clickable, so the chooser never promotes a chain that is not
+  // public. /trade and /pools 404d entirely until now.
+  ['/trade',                           'lumoscore-dex.html',  'hub'],
+  ['/pools',                           'lumoscore-amm.html',  'hub'],
   // NO /asset/stellar route. The asset-overview page was removed — it showed the same facts as
   // Trade-asset with no way to act on them. /asset/stellar/<ASSET> is now a permanent 301 to
   // /trade/stellar/<ASSET>, handled in the middleware so already-indexed urls keep their value.
@@ -470,13 +477,13 @@ const ROUTES = [
   ['/dashboard',                       'lumoscore-home.html'],
   // CHAIN-SCOPED ALIASES. The same page addressed by chain, so a promoted link names the network it is
   // about -- the scheme /trade/stellar already proved. The bare path stays as the chain-neutral form.
-  ['/bridge/stellar',                  'lumoscore-bridge.html', 'alias'],
-  ['/bridge',                          'lumoscore-bridge.html'],
+  ['/bridge/stellar',                  'lumoscore-bridge.html'],
+  ['/bridge',                          'lumoscore-bridge.html', 'hub'],
   ['/wallet',                          'lumoscore-wallet.html'],
-  ['/rewards/stellar',                 'lumoscore-rewards-dark.html', 'alias'],
-  ['/rewards',                         'lumoscore-rewards-dark.html'],   // only variant that exists
-  ['/lumos/stellar',                   'lumoscore-lumos-token.html', 'alias'],
-  ['/lumos',                           'lumoscore-lumos-token.html'],
+  ['/rewards/stellar',                 'lumoscore-rewards-dark.html'],   // only variant that exists
+  ['/rewards',                         'lumoscore-rewards-dark.html', 'hub'],
+  ['/lumos/stellar',                   'lumoscore-lumos-token.html'],
+  ['/lumos',                           'lumoscore-lumos-token.html', 'hub'],
   ['/signin',                          'lumoscore-signin.html'],
   ['/mcp',                             'lumoscore-mcp.html'],
   ['/blog/:slug',                      'lumoscore-blog-post.html'],
@@ -597,9 +604,12 @@ function sitemapRoutesJs(routePairs){
     if (SITEMAP_SKIP.has(urlPattern)) continue;
     // An alias is the SAME PAGE at a second url. Listing both submitted two identical documents and
     // asked Google to pick -- the dedupe here was keyed on the url, which is unique by construction,
-    // so it never removed anything and /lumos, /lumos/stellar (and bridge, rewards, docs, faq) all
-    // shipped as pairs. The flag is what actually makes "one page, one row" true.
-    if (alias) continue;
+    // so it never removed anything and /docs and /docs/faq shipped as pairs. The flag is what
+    // actually makes "one page, one row" true.
+    //
+    // A HUB IS NOT AN ALIAS and stays listed: /trade asks which network and /trade/stellar answers,
+    // so they are two pages that happen to share a file, and both are worth finding.
+    if (alias === 'alias') continue;
     if (seen.has(urlPattern)) continue;
     seen.add(urlPattern);
     const w = SITEMAP_WEIGHT[urlPattern] || ['0.6', 'weekly'];
@@ -645,14 +655,17 @@ function injectDeviceSwap(html, name){
 // because that is what makes two urls the same page.
 function canonOfJson(routePairs){
   const home = {};                                        // file -> the page's real url
-  for (const [u, f, , alias] of routePairs){
-    if (alias || u.indexOf(':') >= 0) continue;
+  for (const [u, f, , flag] of routePairs){
+    if (flag || u.indexOf(':') >= 0) continue;
     const b = f.replace(/-(dark|light|mobile)$/, '');
     if (!(b in home)) home[b] = u;
   }
   const m = {};
-  for (const [u, f, , alias] of routePairs){
-    if (!alias || u.indexOf(':') >= 0) continue;
+  // ONLY an alias gets a canonical pointing elsewhere. A hub is its own page -- pointing /trade at
+  // /trade/stellar would ask search engines to drop the chooser, which is the page we want strangers
+  // to land on.
+  for (const [u, f, , flag] of routePairs){
+    if (flag !== 'alias' || u.indexOf(':') >= 0) continue;
     const c = home[f.replace(/-(dark|light|mobile)$/, '')];
     if (c && c !== u) m[u] = c;
   }
@@ -945,11 +958,40 @@ function blogSeo(p, origin){
   };
 }
 
+// The network choosers. A hub and its Stellar page SHARE A FILE and differ only by what the head
+// gate shows, so to a crawler that does not run JavaScript they would otherwise be the same document
+// down to the title -- the duplicate-pair problem the alias flag exists to prevent, reintroduced at
+// five new urls. These give each hub its own title and description at the edge.
+const HUB_SEO = {
+  '/trade': {
+    title: 'Trade on LumosCore — Choose a network',
+    desc: 'Swap assets and place limit orders on-chain. Choose a network to see its markets, prices and pairs on LumosCore.',
+  },
+  '/pools': {
+    title: 'Liquidity Pools on LumosCore — Choose a network',
+    desc: 'Provide liquidity and earn a share of the trading fees. Choose a network to see its pools, TVL and volume on LumosCore.',
+  },
+  '/bridge': {
+    title: 'Bridge assets with LumosCore — Choose a network',
+    desc: 'Move assets between networks with Circle CCTP, LayerZero and NEAR Intents. Choose the network you are bridging from.',
+  },
+  '/rewards': {
+    title: 'LUMOS Rewards — Choose a network',
+    desc: 'Liquidity and holder rewards, paid out each round. Choose a network to see its rounds and your share.',
+  },
+  '/lumos': {
+    title: 'LUMOS token — Choose a network',
+    desc: 'LumosCore’s native token. Choose a network to see its price, pools and holders on that chain.',
+  },
+};
+
 function seoFor(pathname){
   const segs = pathname.split('/').filter(Boolean);
   if ((segs[0] === 'trade' || segs[0] === 'asset') && segs[2]) return { kind: 'asset', id: segs[2] };
   if (segs[0] === 'pools' && segs[2] && segs[3]) return { kind: 'pool', a: segs[2], b: segs[3] };
   if (segs[0] === 'blog' && segs[1]) return { kind: 'blog', slug: segs[1] };
+  // exactly one segment, so /trade is the hub and /trade/stellar is not
+  if (segs.length === 1 && HUB_SEO['/' + segs[0]]) return { kind: 'hub', id: '/' + segs[0] };
   return null;
 }
 
@@ -1040,7 +1082,7 @@ function legacyClean(pathname, params){
 
   for (const r of ROUTES){
     if (r[0].indexOf('/:') >= 0) continue;
-    if (r[3]) continue;   // an alias is not where a legacy filename should land
+    if (r[3]) continue;   // an alias or a hub is not where a legacy filename should land
     if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];
   }
   return null;
@@ -1232,6 +1274,9 @@ export async function onRequest(context){
     // rather than an empty rectangle of brand colour.
     const ai = await adminImage(context.env, want.id);
     if (ai || (f && f.image)) seo.image = cardFor(want.id);
+  }
+  else if (want && want.kind === 'hub') {
+    seo = { title: HUB_SEO[want.id].title + ' | LumosCore', desc: HUB_SEO[want.id].desc, image: '' };
   }
   else if (want && want.kind === 'blog') {
     const post = await blogPost(context.env, want.slug);
@@ -1561,7 +1606,7 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
     // 4th field carries the alias flag through to the sitemap and the canonical map. The middleware
     // ignores it for routing -- an alias resolves to its file exactly like any other url.
     const routePairs = [['/', 'index', 'lumoscore-landing-mobile', null]]
-      .concat(ROUTES.map(([u, f, alias]) => [u, f.replace(/\.html$/, ''), null, alias || null]));
+      .concat(ROUTES.map(([u, f, flag]) => [u, f.replace(/\.html$/, ''), null, flag || null]));
     const mobileFiles = files
       .filter(n => /-mobile\.html$/.test(n))
       .map(n => n.replace(/\.html$/, ''));
