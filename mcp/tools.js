@@ -221,7 +221,8 @@ async function bridge({ asset, to_network, amount, recipient }) {
   if (!recipient) return fail('recipient is required — the address that receives the assets on the destination chain.');
   return prepared('bridge', `Bridge ${amount} ${asset} from Stellar to ${to_network}`, web('/bridge/stellar'),
     { recipient, to_network,
-      note: 'LumosCore routes through Circle CCTP, LayerZero or NEAR Intents depending on the destination. '
+      note: 'LumosCore routes through Circle CCTP, LayerZero, NEAR Intents or Axelar depending on the '
+        + 'destination — Axelar is the corridor that reaches the XRP Ledger. '
         + 'The route and its fee are shown before you approve.' });
 }
 

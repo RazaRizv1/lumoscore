@@ -6,21 +6,21 @@ function wait(ms){return new Promise(function(r){TO.push(setTimeout(r,ms));});}
 function mk(html){var d=document.createElement('div');d.className='lxh-tline';d.innerHTML=html;lines.appendChild(d);requestAnimationFrame(function(){d.classList.add('show');});return d;}
 function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent='';(function t(){if(i<txt.length){el.textContent+=txt[i++];TO.push(setTimeout(t,sp));}else res();})();});}
 var steps=[
- {t:'in',x:'lumoscore mcp start',d:400},
- {t:'tx',x:'→ Starting LumosCore MCP server…',c:'lxh-dim',d:520},
- {t:'tx',x:'✓ Connected to Stellar mainnet',c:'lxh-ok',d:460},
- {t:'tx',x:'→ Loaded 10 tools · key lx_live_••••',c:'lxh-dim',d:420},
- {t:'sp',d:160},
- {t:'tx',x:'🤖 Swap 500 XLM for USDC',c:'lxh-sec',d:680},
- {t:'sp',d:120},
- {t:'tx',x:'⚡ Calling swap_tool…',c:'lxh-em',d:460},
- {t:'tx',x:'   from: XLM · amount: 500 · to: USDC',c:'lxh-dim',sm:1,d:300},
- {t:'tx',x:'◉ Pending approval…',c:'lxh-warn',d:560,id:'lxhPend'},
- {t:'pg',d:1400},
- {t:'rep',id:'lxhPend',x:'✓ Approved · Executing…',c:'lxh-ok',d:420},
+ {t:'tx',x:'✓ lumoscore connected · 10 tools · Aptos mainnet',c:'lxh-ok',d:420},
+ {t:'sp',d:140},
+ {t:'in',x:'how much LUMOS do I hold?',d:420},
+ {t:'tx',x:'→ get_portfolio',c:'lxh-dim',d:480},
+ {t:'tx',x:'  12,480.5 LUMOS · 3 pools · 2 open orders',c:'lxh-sec',d:520},
+ {t:'sp',d:140},
+ {t:'in',x:'swap 500 of it for BLND',d:460},
+ {t:'tx',x:'→ get_quote · 4 routes compared',c:'lxh-dim',d:460},
+ {t:'tx',x:'  LUMOS → APT → USDC → BLND',c:'lxh-dim',sm:1,d:320},
+ {t:'tx',x:'✓ ≈ 3.8685 BLND · swap fee 0.2%',c:'lxh-ok',d:480},
+ {t:'tx',x:'◉ Prepared · not signed',c:'lxh-warn',d:520,id:'lxhPend'},
+ {t:'pg',d:1300},
+ {t:'rep',id:'lxhPend',x:'✓ Opens filled in — you approve it',c:'lxh-ok',d:420},
  {t:'sp',d:100},
- {t:'ok',x:'500 XLM → 1,247.82 USDC',d:560},
- {t:'ln',x:'View on the explorer',d:420}
+ {t:'ok',x:'Your wallet signs. LumosCore never sees your key.',y:'Ready to approve',d:540}
 ];
 function run(){
  var i=0;
@@ -33,7 +33,7 @@ function run(){
    else if(s.t==='rep'){var e=document.getElementById(s.id);if(e){e.style.transition='opacity .2s';e.style.opacity='0';wait(200).then(function(){e.innerHTML='<span class="'+s.c+'">'+s.x+'</span>';e.style.opacity='1';next();});return;}}
    else if(s.t==='sp'){mk('').style.height='10px';}
    else if(s.t==='pg'){var w=mk('<div style="padding-left:26px;margin-top:2px"><div class="lxh-pgt"><div class="lxh-pg" style="height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,#ea6a2c,#ff9a3d);transition:width 1.3s cubic-bezier(.4,0,.2,1)"></div></div></div>');wait(60).then(function(){var tr=w.querySelector('.lxh-pg');if(tr)tr.style.width='100%';next();});return;}
-   else if(s.t==='ok'){mk('<div style="display:flex;align-items:flex-start;gap:8px"><span class="lxh-ok" style="font-size:17px;line-height:19px">✓</span><div><div class="lxh-ok" style="font-weight:600">Swap complete!</div><div class="lxh-dim" style="font-size:12px;margin-top:2px">'+s.x+'</div></div></div>');if(term)term.classList.add('win');}
+   else if(s.t==='ok'){mk('<div style="display:flex;align-items:flex-start;gap:8px"><span class="lxh-ok" style="font-size:17px;line-height:19px">✓</span><div><div class="lxh-ok" style="font-weight:600">'+(s.y||'Done')+'</div><div class="lxh-dim" style="font-size:12px;margin-top:2px">'+s.x+'</div></div></div>');if(term)term.classList.add('win');}
    else if(s.t==='ln'){mk('<div style="padding-left:26px;margin-top:4px"><a href="#" class="lxh-em" style="font-size:12px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">'+LINK+s.x+'</a></div>');}
    next();
   });
