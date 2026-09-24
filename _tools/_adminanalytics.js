@@ -458,8 +458,13 @@ function toggleCountry(el,row){
   else { var mx=cs[0].views||1, tv=cs.reduce(function(a,c){ return a+(c.views||0); },0)||1;
     box.innerHTML=cs.map(function(c){ return "<div class='lxan-row'><div class='lxan-name'>"+esc(c.city||"Unknown city")+(c.region&&c.region!==c.city?" <span class='m'>"+esc(c.region)+"</span>":"")+"</div>"
         +"<div class='lxan-track'><div class='lxan-fill' style='width:"+Math.max(2,Math.round((c.views/mx)*100))+"%'></div></div>"
-        +"<div class='lxan-pc'>"+pctTxt(c.views/tv*100)+"</div><div class='lxan-n' title='page views'>"+num(c.views)+"</div></div>"; }).join("")
-      +"<div class='lxan-cnote'>Page views per city, counted by LumosCore "+esc(sinceText(own))+" (Cloudflare has no city data).</div>"; }
+        +"<div class='lxan-pc'>"+pctTxt(c.views/tv*100)+"</div><div class='lxan-n' title='page views'>"+num(c.views)+"</div></div>"; }).join(""); }
+  // No footnote under a populated city list (RAZA 2026-09-24). It repeated under EVERY country opened,
+  // said the same thing each time, and explained the plumbing rather than the numbers -- the rows are
+  // self-evident once they are there.
+  //
+  // The EMPTY-state note above is kept on purpose: it is the only thing standing between the reader and
+  // a blank panel, and it answers the question that blank actually raises.
   row.parentNode.insertBefore(box,row.nextSibling);
 }
 // A SOURCE, OPENED (RAZA 2026-09-22: "it should tell which exact tweet or page brought that visit ... which search query").
