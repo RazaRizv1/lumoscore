@@ -55,7 +55,25 @@ function runtime(AX_SENDABLE) {
   // USDC.axl is a pure Soroban token with no trustline. The row would therefore have shown a route nobody could
   // ever satisfy. SHX is registered on XRPL and IS classic (its Stellar contract is the SAC), which is the whole
   // reason that one works. XRPL EVM returns the day a holdable asset is registered on it.
-  var AX_CHAIN = { 'XRPL': 'xrpl' };
+  // TURNED OFF 2026-09-24, and this is the reason, because the code below still works and will look
+  // like it should be on.
+  //
+  // SHX ON XRPL IS AN ISSUED TOKEN, not a native one -- the Axelar gateway rfmS3zqrQrka8wVyhXifEeyTwe8AMz2Yhw
+  // has 236,566,386 SHX outstanding as an IOU. XRPL will not let an account receive an IOU without a
+  // trustline to its issuer, so every recipient would first have to sign a TrustSet and lock 0.2 XRP of
+  // reserve for it -- BEFORE the transfer, or the delivery simply fails. The card promised the opposite
+  // ("delivered automatically -- no claim, and no gas needed there"), and nothing checked the recipient,
+  // so a send could have been aimed at an address that cannot receive it.
+  //
+  // RAZA chose XRP instead: native, no trustline, genuinely nothing to claim. XRPL stays in the
+  // destination list (AX_ONLY below still puts it there) and is served by NEAR Intents.
+  //
+  // THE COST OF THIS: NEAR Intents will not quote below about 1.51 USDC, where Axelar had no minimum.
+  // Small XRPL transfers are gone with it.
+  //
+  // To bring it back: restore { 'XRPL': 'xrpl' } here AND add a recipient-trustline check to the send
+  // path, or the same trap returns.
+  var AX_CHAIN = {};
   // The asset each destination actually carries, with its ITS token id and decimals. `src` is the bridge's own
   // source-asset key that a user must be sending for this route to apply.
   var AX_TOKEN = {

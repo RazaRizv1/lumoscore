@@ -223,6 +223,16 @@ function runtime(NI_SENDABLE) {
           if (x.status >= 300 || !x.body || !x.body.quote) {
             var m = String((x.body && (x.body.message || x.body.error)) || 'Quote unavailable');
             var min = /minimum swap amount is \$?([0-9,.]+)/i.exec(m);
+            // The OTHER shape of the same refusal, and the one XRP actually returns: a minimum in the origin
+            // asset's BASE UNITS. It reached the card verbatim as 'try at least 15068558', which reads as
+            // fifteen million rather than the 1.51 USDC it means (RAZA 2026-09-24). o.decimals is the origin
+            // token's own scale, so this is exact rather than an assumed 7.
+            var lowRaw = /too low for bridge, try at least ([0-9]+)/i.exec(m);
+            if (lowRaw) {
+              // Rounded UP: quoting the stated minimum exactly is refused again a moment later as the price moves.
+              var minH = Math.ceil((+lowRaw[1] / Math.pow(10, o.decimals)) * 10000) / 10000;
+              throw new Error('NEAR Intents needs at least ' + minH + ' ' + transport + ' for ' + sym + ' on ' + dest + '. Try a larger amount.');
+            }
             throw new Error(min ? ('NEAR Intents needs at least $' + min[1] + ' for ' + sym + ' on ' + dest + ' right now.') : m);
           }
           if (typeof x.body.keyed === 'boolean') KEYED = x.body.keyed;
@@ -265,6 +275,19 @@ function runtime(NI_SENDABLE) {
     }).catch(function (e) {
       row.available = false;
       var m = String((e && e.message) || e || '');
+      // 1Click states its minimum in the TRANSPORT ASSET'S BASE UNITS, so the message arrived as
+      // 'try at least 15068558' -- which reads as fifteen million, not the 1.51 USDC it means. Rewritten into
+      // the units on screen, and into the SOURCE asset where that is what the user is typing.
+      var low = /too low for bridge, try at least ([0-9]+)/i.exec(m);
+      if (low) {
+        var dp = (TOK || []).filter(function (t) { return t.assetId === originAssetId(transportOf(sk)); })[0];
+        var d = (dp && dp.decimals != null) ? dp.decimals : 7;
+        var minH = +low[1] / Math.pow(10, d);
+        // A hair over, because quoting exactly the stated minimum is refused again a moment later as the
+        // price moves. Rounded up to 4dp for the same reason.
+        var shown = Math.ceil(minH * 10000) / 10000;
+        m = 'NEAR Intents needs at least ' + shown + ' ' + transportOf(sk) + ' for this route. Try a larger amount.';
+      }
       row.error = /Failed to fetch|NetworkError|Load failed/i.test(m) ? 'Couldn’t reach NEAR Intents — try again in a moment.' : m;
       return row;
     });
