@@ -1,21 +1,32 @@
-// /lumos is a network chooser; /lumos/stellar is the token page.
+// Network choosers: /trade, /pools, /bridge, /rewards and /lumos each ask which chain first.
 //
-// LUMOS is planned across several chains, and the token page answers "what is LUMOS **on Stellar**" --
-// its price, its pools, its holders are all Stellar facts. Serving that at /lumos made the Stellar
-// figures look like the whole story, which is what produced doubled supply and a "both chains" holder
-// list on a page that only ever counted one.
+// A LumosCore page answers "what is this **on Stellar**" -- the Trade table is Stellar markets, the
+// pools are Stellar pools, the rewards are Stellar rounds. Serving one of those at the bare path made
+// the Stellar figures look like the whole story, which on /lumos produced a doubled supply and a
+// "both chains" holder list on a page that only ever counted one.
 //
-// So: /lumos asks which network, /lumos/stellar answers for Stellar. Today there is one live box and a
-// placeholder for what is coming; adding XRPL later is a row in NETWORKS, not a new page.
+// So the bare path asks, and /<thing>/stellar answers. Adding XRPL later is a row in NETWORKS, not a
+// new page -- and until then it renders as an announced-but-not-live card that cannot be clicked, so
+// the chooser is honest about what exists without promoting a chain that is not public.
 //
-// BOTH PATHS SERVE THE SAME FILE. The route table maps them to lumoscore-lumos-token, and this script
-// decides which view to show from location.pathname. That avoids inventing a second page in a design
-// system where every page is a baked container key.
+// THIS FILE STARTED AS /lumos ONLY and now drives all five (it keeps its name so its own idempotent
+// strip still finds the markup it baked into the containers under the old name -- renaming it would
+// orphan an lx-lp block on the LUMOS page forever, since a transform can only remove what it can
+// still match).
+//
+// BOTH PATHS SERVE THE SAME FILE. The route table maps them to one container key and the head script
+// decides which view to show from location.pathname. That avoids inventing a second baked page per
+// chooser in a design system where every page is a container key.
+//
+// THE DECISION RUNS IN <head>, NOT AT THE END OF <body>. On /lumos that was survivable; on /trade the
+// full market table would paint first and then vanish, which is the flash pattern this codebase keeps
+// re-learning. _externalize.js leaves head scripts inline precisely so gates like this stay
+// pre-paint, and the class goes on <html> because <body> does not exist yet at that point.
 //
 // Someone already connected to Stellar is not asked the question -- they are sent straight through. A
 // chooser with one live option is a speed bump for the person who has already chosen.
 //
-// Idempotent: style and script blocks are replaced wholesale.
+// Idempotent: style, script and section blocks are replaced wholesale.
 const fs = require('fs');
 const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
@@ -58,20 +69,66 @@ const STYLE = '<style id="lx-lumosparent-css">'
   + 'white-space:nowrap}'
   // and the tag itself is short enough for the healer to mistake for a ticker, so it opts out too
   + '.lx-lp-soon>svg{width:0!important;height:0!important;position:absolute!important}'
-  // While the chooser is up, the token page's own sections stay out of the flow entirely.
-  + 'body.lx-lp-on .page > *:not(.lx-lp):not(.crumb),'
-  + 'body.lx-lp-on .container > *:not(.lx-lp):not(.crumb){display:none!important}'
+  // The chooser is hidden by default and revealed only on the bare path, so the chain page (same
+  // file) never shows it. CSS does the reveal, not script, so it cannot flash in on a slow frame.
+  + '.lx-lp{display:none}'
+  + 'html.lx-lp-on .lx-lp{display:block}'
+  // While the chooser is up, the page's own sections stay out of the flow entirely. The breadcrumb is
+  // kept -- it is navigation, not content. Anything OUTSIDE the content wrapper (the FAQ block, the
+  // footer) is deliberately untouched and still renders under the chooser.
+  + 'html.lx-lp-on .page > *:not(.lx-lp):not(.crumb),'
+  + 'html.lx-lp-on main > *:not(.lx-lp):not(.crumb),'
+  + 'html.lx-lp-on .container > *:not(.lx-lp):not(.crumb){display:none!important}'
   + '</style>';
 
-// One entry per chain. `live:false` renders as an announced-but-not-yet row rather than a dead link.
-const NETWORKS = [
-  { id: 'stellar', name: 'Stellar', href: '/lumos/stellar', live: true,
-    icon: chainLogo('stellar'), meta: 'LUMOS · 1B supply' },
-  { id: 'xrpl', name: 'XRP Ledger', href: '', live: false,
-    icon: chainLogo('xrpl'), meta: 'Planned' },
+// One row per chain per hub. `live:false` renders as an announced-but-not-yet card rather than a dead
+// link. XRPL is deliberately NOT linked anywhere here: it is built but not public.
+const XRPL_SOON = { id: 'xrpl', name: 'XRP Ledger', href: '', live: false, meta: 'Planned' };
+
+// key  — the container page key this chooser is baked into (base name, theme suffix stripped)
+// path — the bare url that shows it
+const HUBS = [
+  {
+    key: 'lumoscore-dex', path: '/trade',
+    h1: 'Trade', title: 'Trade — Choose a network | LumosCore',
+    sub: 'Swap assets and place limit orders on-chain. Choose a network to see its markets.',
+    stellarMeta: 'Swaps and limit orders',
+  },
+  {
+    key: 'lumoscore-amm', path: '/pools',
+    h1: 'Liquidity Pools', title: 'Liquidity Pools — Choose a network | LumosCore',
+    sub: 'Provide liquidity and earn a share of the trading fees. Choose a network to see its pools.',
+    stellarMeta: 'AMM pools',
+  },
+  {
+    key: 'lumoscore-bridge', path: '/bridge',
+    h1: 'Bridge', title: 'Bridge — Choose a network | LumosCore',
+    sub: 'Move assets between networks. Choose the network you are bridging from.',
+    stellarMeta: 'CCTP, LayerZero, NEAR Intents',
+  },
+  {
+    key: 'lumoscore-rewards', path: '/rewards',
+    h1: 'LUMOS Rewards', title: 'LUMOS Rewards — Choose a network | LumosCore',
+    sub: 'Liquidity and holder rewards, paid out each round. Choose a network to see its rounds.',
+    stellarMeta: '3M LUMOS per round',
+  },
+  {
+    key: 'lumoscore-lumos-token', path: '/lumos',
+    h1: 'LUMOS', title: 'LUMOS — Choose a network | LumosCore',
+    sub: 'LumosCore’s native token. Choose a network to see its price, pools and holders there.',
+    stellarMeta: 'LUMOS · 1B supply',
+  },
 ];
 
 const GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
+
+function netsFor(hub) {
+  return [
+    { id: 'stellar', name: 'Stellar', href: hub.path + '/stellar', live: true,
+      icon: chainLogo('stellar'), meta: hub.stellarMeta },
+    Object.assign({ icon: chainLogo('xrpl') }, XRPL_SOON),
+  ];
+}
 
 function cardHTML(n) {
   // data-lxc / data-logoed / a zero-size svg child: three independent ways to tell the container's logo
@@ -102,31 +159,41 @@ function cardHTML(n) {
     : '<div class="lx-lp-card soon" data-lxnet="' + n.id + '">' + inner + '</div>';
 }
 
-const VIEW = '<section class="lx-lp" hidden>'
-  + '<h1 class="lx-lp-h">LUMOS</h1>'
-  + '<p class="lx-lp-sub">LumosCore&rsquo;s native token. Choose a network to see its price, pools and holders there.</p>'
-  + '<div class="lx-lp-grid">' + NETWORKS.map(cardHTML).join('') + '</div>'
-  + '</section>';
+function viewHTML(hub) {
+  return '<section class="lx-lp">'
+    + '<h1 class="lx-lp-h">' + hub.h1 + '</h1>'
+    + '<p class="lx-lp-sub">' + hub.sub + '</p>'
+    + '<div class="lx-lp-grid">' + netsFor(hub).map(cardHTML).join('') + '</div>'
+    + '</section>';
+}
 
-const SCRIPT = '<script id="lx-lumosparent">(function(){'
-  + 'var view=document.querySelector(".lx-lp"); if(!view)return;'
-  // Trailing slash tolerated; anything deeper (/lumos/stellar) is a network page, not the chooser.
-  + 'var p=(location.pathname||"").replace(/\\/+$/,"");'
-  + 'var isParent=(p==="/lumos"||p===""||p==="/lumoscore-lumos-token");'
-  + 'if(!isParent)return;'
-  // Already on Stellar: answer the question rather than ask it. replace() so Back does not bounce
-  // between the chooser and the page it forwarded to.
-  + 'var onStellar=false;'
-  + 'try{ var a=localStorage.getItem("lumos.address")||"";'
-  + 'var c=(localStorage.getItem("lumos.chain")||"").toLowerCase();'
-  + 'onStellar=!!a&&(c===""||c==="stellar"); }catch(_){}'
-  + 'if(onStellar){ location.replace("/lumos/stellar"); return; }'
-  + 'document.body.classList.add("lx-lp-on");'
-  + 'view.removeAttribute("hidden");'
-  + 'try{ document.title="LUMOS — Choose a network | LumosCore"; }catch(_){}'
-  + '})();</script>';
+// Runs in <head>, before the body exists and before anything paints.
+function scriptHTML(hub) {
+  return '<script id="lx-lumosparent">(function(){try{'
+    // Trailing slash tolerated; anything deeper (/trade/stellar) is a network page, not the chooser.
+    + 'var p=(location.pathname||"").replace(/\\/+$/,"");'
+    + 'var HUB=' + JSON.stringify(hub.path) + ', KEY=' + JSON.stringify(hub.key) + ';'
+    // The raw container filename only comes up opening the built file directly, where there is no
+    // routing at all; matching it keeps the chooser reachable there too. Anything else -- above all
+    // HUB + "/stellar" -- is the network page and must render normally.
+    + 'var last=p.split("/").pop()||"";'
+    + 'if(p!==HUB&&last.indexOf(KEY)!==0)return;'
+    // Already connected on Stellar: answer the question rather than ask it. replace() so Back does not
+    // bounce between the chooser and the page it forwarded to.
+    + 'var a="",c="";'
+    + 'try{ a=localStorage.getItem("lumos.address")||"";'
+    + 'c=(localStorage.getItem("lumos.chain")||"").toLowerCase(); }catch(_){}'
+    + 'if(a&&(c===""||c==="stellar")){ location.replace(HUB+"/stellar"); return; }'
+    + 'document.documentElement.classList.add("lx-lp-on");'
+    + 'document.addEventListener("DOMContentLoaded",function(){try{document.title=' + JSON.stringify(hub.title) + ';}catch(_){}});'
+    + 'try{document.title=' + JSON.stringify(hub.title) + ';}catch(_){}'
+    + '}catch(_){}})();</script>';
+}
 
-let keys = 0;
+const baseOf = (k) => k.replace(/\.html$/, '').replace(/-(dark|light|mobile)$/, '');
+
+let pages = 0, missed = 0;
+const hit = {};
 for (const dev of ['desktop', 'mobile']) {
   const file = `lumoscore-aptos-${dev}.html`;
   let data; try { data = read(file); } catch (e) { continue; }
@@ -134,31 +201,38 @@ for (const dev of ['desktop', 'mobile']) {
   let changed = false;
 
   for (const k of Object.keys(json)) {
-    if (!/lumos-token/.test(k)) continue;
+    // EXACT base match, never a substring: "lumoscore-dex" is a prefix of "lumoscore-dex-asset" and
+    // "lumoscore-amm" of "lumoscore-amm-pool", so an unanchored test would bake a chooser onto every
+    // asset and pool detail page.
+    const hub = HUBS.filter((h) => h.key === baseOf(k))[0];
     let p = json[k];
     const before = p;
 
+    // Strip unconditionally, on EVERY page: an earlier run of this file put the LUMOS chooser on its
+    // page, and a page that is no longer a hub must lose its markup rather than keep it forever.
     p = p.replace(/<style id="lx-lumosparent-css">[\s\S]*?<\/style>/g, '')
          .replace(/<script id="lx-lumosparent">[\s\S]*?<\/script>/g, '')
-         .replace(/<section class="lx-lp"[\s\S]*?<\/section>/, '');
+         .replace(/<section class="lx-lp"[\s\S]*?<\/section>/g, '');
 
-    // The view goes at the top of the page's own content wrapper, so the breadcrumb above it still
-    // reads. Desktop wraps in <main>; the phone has no <main> at all and uses .container -- checked
-    // rather than assumed, because the first pass silently inserted nothing on mobile.
-    let ins = -1;
-    const mainAt = p.indexOf('<main');
-    if (mainAt >= 0) ins = p.indexOf('>', mainAt) + 1;
-    if (ins <= 0) {
-      const contAt = p.indexOf('<div class="container"');
-      if (contAt >= 0) ins = p.indexOf('>', contAt) + 1;
+    if (hub) {
+      // The view goes at the top of the page's own content wrapper, so the breadcrumb above it still
+      // reads. Desktop wraps in <main>; the phone has no <main> at all and uses .container -- checked
+      // rather than assumed, because the first pass silently inserted nothing on mobile.
+      let ins = -1;
+      const mainAt = p.indexOf('<main');
+      if (mainAt >= 0) ins = p.indexOf('>', mainAt) + 1;
+      if (ins <= 0) {
+        const contAt = p.indexOf('<div class="container"');
+        if (contAt >= 0) ins = p.indexOf('>', contAt) + 1;
+      }
+      if (ins > 0) {
+        p = p.slice(0, ins) + viewHTML(hub) + p.slice(ins);
+        // head, so the gate is pre-paint and the style is present before the first frame
+        if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + scriptHTML(hub) + '</head>');
+        pages++;
+        hit[hub.path] = (hit[hub.path] || 0) + 1;
+      } else { console.log('  ! no insertion point on ' + k); missed++; }
     }
-    if (ins > 0) p = p.slice(0, ins) + VIEW + p.slice(ins);
-    else console.log('  ! no insertion point on ' + k);
-
-    if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
-    const bi = p.lastIndexOf('</body>');
-    if (bi >= 0) p = p.slice(0, bi) + SCRIPT + p.slice(bi);
-    keys++;
 
     if (p !== before) { json[k] = p; changed = true; }
   }
@@ -168,5 +242,9 @@ for (const dev of ['desktop', 'mobile']) {
     fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
   }
 }
-console.log('lumos parent: chooser on ' + keys + ' page keys, ' + NETWORKS.length + ' networks ('
-  + NETWORKS.filter((n) => n.live).length + ' live)');
+const cover = HUBS.map((h) => h.path + ':' + (hit[h.path] || 0)).join(' ');
+console.log('network choosers: ' + pages + ' page key(s) — ' + cover);
+// Every hub must land on at least one page key, or a bare path silently serves the chain page.
+const empty = HUBS.filter((h) => !hit[h.path]);
+if (empty.length) { console.error('  ! no page key matched: ' + empty.map((h) => h.path).join(', ')); process.exit(1); }
+if (missed) process.exit(1);

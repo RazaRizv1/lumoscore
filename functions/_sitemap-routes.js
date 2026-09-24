@@ -17,12 +17,27 @@ export const SITEMAP_ROUTES = [
     "daily"
   ],
   [
+    "/trade",
+    "0.6",
+    "weekly"
+  ],
+  [
+    "/pools",
+    "0.6",
+    "weekly"
+  ],
+  [
     "/launchpad",
     "0.8",
     "weekly"
   ],
   [
     "/dashboard",
+    "0.6",
+    "weekly"
+  ],
+  [
+    "/bridge/stellar",
     "0.6",
     "weekly"
   ],
@@ -37,7 +52,17 @@ export const SITEMAP_ROUTES = [
     "weekly"
   ],
   [
+    "/rewards/stellar",
+    "0.6",
+    "weekly"
+  ],
+  [
     "/rewards",
+    "0.6",
+    "weekly"
+  ],
+  [
+    "/lumos/stellar",
     "0.6",
     "weekly"
   ],
