@@ -700,9 +700,15 @@ function legacyClean(pathname, params){
   // "lumoscore-landing.html" — rendering an asset page for an asset that does not exist, i.e. blank.
   if (base === 'lumoscore-landing') return '/';
 
+  // Two passes, so this agrees with the clean-url map rather than depending on route order: a hub is
+  // preferred, and an alias is never a destination. The app assigns location.href="lumoscore-bridge.html"
+  // in a dozen places, and that is a menu navigation like any other -- it should reach the chooser.
   for (const r of ROUTES){
-    if (r[0].indexOf('/:') >= 0) continue;
-    if (r[3]) continue;   // an alias or a hub is not where a legacy filename should land
+    if (r[0].indexOf('/:') >= 0 || r[3] !== 'hub') continue;
+    if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];
+  }
+  for (const r of ROUTES){
+    if (r[0].indexOf('/:') >= 0 || r[3]) continue;
     if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];
   }
   return null;
