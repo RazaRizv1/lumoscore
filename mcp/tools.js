@@ -150,6 +150,102 @@ async function getRewards({ address }) {
   });
 }
 
+// THE ROSTER, LIVE. /lxapi/assetmeta is a public GET and is the authority: the copy baked into the
+// build (_tools/verified.generated.json) is a snapshot taken whenever someone last ran _syncverified,
+// and it was 28 assets while the live list held 58. A tool answering "all curated assets" off the
+// stale one would quietly omit half the answer and look right doing it.
+//
+// Mints are kept SEPARATE and default to out. A launchpad token is something LumosCore provided the
+// button for, not something it curated, and folding the two lists together would let anyone add
+// themselves to "curated" by minting.
+async function listCuratedAssets({ include_mints = false, verified_only = false }) {
+  const d = await api('/lxapi/assetmeta');
+  const vmap = (d && d.verified) || {};
+  const row = (id, kind) => {
+    const v = vmap[id.replace('-', '|')] || vmap[id] || null;
+    const [code, issuer] = String(id).split('-');
+    return {
+      asset: id, code, issuer, kind,
+      // `v` is the 0/1 flag and `s` is only the REASON. Treating the presence of `s` as truth marked
+      // every "unverified" and every mint as verified -- the tool would have reported a green tick on
+      // exactly the assets the platform declines to vouch for.
+      verified: !!(v && +v.v === 1),
+      verified_via: v ? (v.s || null) : null,
+      domain: v ? (v.d || null) : null,
+      why: v ? (v.why || null) : null,
+      page: web('/trade/stellar/' + id),
+    };
+  };
+  let out = ((d && d.list) || []).map((id) => row(id, 'curated'));
+  if (include_mints) out = out.concat(((d && d.mints) || []).map((id) => row(id, 'mint')));
+  if (verified_only) out = out.filter((r) => r.verified);
+  return ok({
+    count: out.length,
+    curated: ((d && d.list) || []).length,
+    mints: ((d && d.mints) || []).length,
+    included_mints: !!include_mints,
+    assets: out,
+    note: 'Curated means LumosCore lists it. Mints are launchpad tokens and are not curated — '
+      + 'they are excluded unless you ask for them.',
+  });
+}
+
+// THE ORDER BOOK, AND WHAT "THE FLOOR" ACTUALLY IS.
+//
+// A spread alone is not an opportunity, so this returns the DEPTH beside it. Scanning the curated list
+// by hand turned up books where the best bid held 0.08 XLM and the one below it was 87% lower: the
+// "floor" was a single dust order, and a tool that reported only best_bid/best_ask would have shown
+// that asset as a wide-spread bargain. bid_depth_xlm, the top rows, and the drop to the next level are
+// the columns that tell you whether the floor would hold anything.
+//
+// Prices are XLM per unit: the book is asked for with the asset SELLING and XLM BUYING, so Horizon
+// quotes the counter asset per base.
+async function getOrderbook({ asset, limit = 8 }) {
+  const a = parseAsset(asset);
+  if (!a) return fail(`"${asset}" is not an asset id. Use CODE-ISSUER (e.g. KALE-GBDVX4…) or XLM.`);
+  if (a.id === 'native') return fail('XLM is the quote asset here; ask for an asset priced against it.');
+  const n = Math.max(1, Math.min(50, +limit || 8));
+  const t = a.code.length <= 4 ? 'credit_alphanum4' : 'credit_alphanum12';
+  const sel = `selling_asset_type=${t}&selling_asset_code=${encodeURIComponent(a.code)}&selling_asset_issuer=${a.issuer}`;
+
+  const book = await horizon(`/order_book?${sel}&buying_asset_type=native&limit=${Math.max(n, 20)}`);
+  if (!book) return fail(`No order book for ${a.code} against XLM.`);
+  const bids = book.bids || [], asks = book.asks || [];
+  const bestBid = bids.length ? +bids[0].price : null;
+  const bestAsk = asks.length ? +asks[0].price : null;
+
+  let last = null, lastAt = null;
+  try {
+    const tr = await horizon(`/trades?base_asset_type=${t}&base_asset_code=${encodeURIComponent(a.code)}`
+      + `&base_asset_issuer=${a.issuer}&counter_asset_type=native&order=desc&limit=1`);
+    const r = (((tr || {})._embedded || {}).records || [])[0];
+    if (r && r.price && +r.price.d) { last = +r.price.n / +r.price.d; lastAt = r.ledger_close_time; }
+  } catch (_) { /* the book is the answer; a missing last trade must not lose it */ }
+
+  // On a bid, `amount` is denominated in the BUYING asset (XLM). On an ask it is the asset itself.
+  const bidXlm = bids.reduce((s, b) => s + (+b.amount || 0), 0);
+  const askUnits = asks.reduce((s, x) => s + (+x.amount || 0), 0);
+  const second = bids.length > 1 ? +bids[1].price : null;
+
+  return ok({
+    asset: a.id, code: a.code, quote: 'XLM', price_unit: 'XLM per ' + a.code,
+    best_bid: nf(bestBid), best_ask: nf(bestAsk),
+    spread_pct: (bestBid > 0 && bestAsk > 0) ? nf(((bestAsk - bestBid) / bestBid) * 100, 2) : null,
+    last_price: nf(last), last_trade_at: lastAt,
+    last_vs_best_bid_pct: (last && bestBid > 0) ? nf(((last - bestBid) / bestBid) * 100, 2) : null,
+    xlm_resting_at_best_bid: nf(bids.length ? +bids[0].amount : 0, 4),
+    // A big number here with a tiny one above it is the tell: the floor is one order, not a level.
+    drop_to_next_bid_pct: (bestBid > 0 && second > 0) ? nf(((bestBid - second) / bestBid) * 100, 2) : null,
+    bid_depth_xlm: nf(bidXlm, 4), ask_depth_units: nf(askUnits, 4),
+    bids: bids.slice(0, n).map((b) => ({ price_xlm: nf(+b.price), xlm_resting: nf(+b.amount, 4) })),
+    asks: asks.slice(0, n).map((x) => ({ price_xlm: nf(+x.price), units_offered: nf(+x.amount, 4) })),
+    page: web('/trade/stellar/' + a.id),
+    note: 'To buy immediately you pay best_ask. Buying "at the floor" means resting a limit order at '
+      + 'best_bid, which only fills if someone sells into it. Check xlm_resting_at_best_bid and '
+      + 'drop_to_next_bid_pct before treating a wide spread as an opportunity.',
+  });
+}
+
 // ---- writes: prepared, never signed --------------------------------------------------------------
 
 function prepared(action, summary, url, extra) {
@@ -249,6 +345,12 @@ export const TOOLS = [
     schema: { address: { type: 'string', description: 'Stellar public key (G…)' } }, required: ['address'], run: getPortfolio },
   { name: 'get_quote', title: 'Best-route price for a swap, from Stellar path finding',
     schema: { from: { type: 'string' }, to: { type: 'string' }, amount: { type: 'number' } }, required: ['from', 'to', 'amount'], run: getQuote },
+  { name: 'list_curated_assets', title: 'Every asset LumosCore curates, with its verification state',
+    schema: { include_mints: { type: 'boolean', description: 'Also include launchpad mints (not curated)' },
+              verified_only: { type: 'boolean', description: 'Only assets that carry the tick' } }, required: [], run: listCuratedAssets },
+  { name: 'get_orderbook', title: 'Live bids, asks, spread and depth for an asset against XLM',
+    schema: { asset: { type: 'string', description: 'CODE-ISSUER, e.g. KALE-GBDVX4…' },
+              limit: { type: 'number', description: 'Rows per side (default 8, max 50)' } }, required: ['asset'], run: getOrderbook },
   { name: 'get_rewards', title: 'Where to check and claim LUMOS rewards',
     schema: { address: { type: 'string', description: 'Stellar public key (optional)' } }, required: [], run: getRewards },
   { name: 'swap', title: 'Prepare a swap for you to approve (does not sign)',

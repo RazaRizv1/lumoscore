@@ -279,7 +279,7 @@ function chip(icon){ return `<div class="mcp-ic">${icon}</div>`; }
 function feat(cls,icon,title,desc){ return `<div class="fcard ${cls}"><div class="fic">${icon}</div><h3>${title}</h3><div class="ul"></div><p>${desc}</p></div>`; }
 function cmd(icon,name,desc,write){ return `<div class="cmd2 ${write?'write':'read'}"><span class="cic">${icon}</span><div class="cbody"><code>${name}</code><div class="cd">${desc}</div></div><span class="ctag"></span></div>`; }
 
-// The copy here describes the 10 tools in mcp/tools.js and nothing else. The first version of this page
+// The copy here describes the 12 tools in mcp/tools.js and nothing else. The first version of this page
 // promised things the server does not do: an api key it has no concept of, a `lumoscore mcp start` CLI
 // that does not exist, limit orders and reward CLAIMS it has no tool for, and a hero animation in which
 // the agent EXECUTES a swap -- the one thing it deliberately cannot do -- at an invented rate (500 XLM
@@ -303,7 +303,7 @@ function mainHTML(cfg){
       <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="npm i -g @lumoscore/mcp"><span class="p">$</span><code>npm i -g @lumoscore/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
       <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-tools">${I.term}Get Started</a><a class="lxh-btn s" href="#mcp-tools">${I.book}Documentation</a></div>
       <div class="lxh-stats lxh-anim" data-d="600">
-        <div><div class="v">5</div><div class="l">Read tools</div></div>
+        <div><div class="v">7</div><div class="l">Read tools</div></div>
         <div class="dv"></div>
         <div><div class="v">5</div><div class="l">Prepared actions</div></div>
         <div class="dv"></div>
@@ -329,7 +329,7 @@ function wait(ms){return new Promise(function(r){TO.push(setTimeout(r,ms));});}
 function mk(html){var d=document.createElement('div');d.className='lxh-tline';d.innerHTML=html;lines.appendChild(d);requestAnimationFrame(function(){d.classList.add('show');});return d;}
 function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent='';(function t(){if(i<txt.length){el.textContent+=txt[i++];TO.push(setTimeout(t,sp));}else res();})();});}
 var steps=[
- {t:'tx',x:'✓ lumoscore connected · 10 tools · ${N} mainnet',c:'lxh-ok',d:420},
+ {t:'tx',x:'✓ lumoscore connected · 12 tools · ${N} mainnet',c:'lxh-ok',d:420},
  {t:'sp',d:140},
  {t:'in',x:'how much LUMOS do I hold?',d:420},
  {t:'tx',x:'→ get_portfolio',c:'lxh-dim',d:480},
@@ -378,7 +378,7 @@ if(document.readyState!=='loading')boot();else window.addEventListener('load',bo
   </div>
   <div class="mcp-feat">
     ${feat('fc-ember',I.search,'Ask about any wallet','Balances, pool positions and open orders for any ${N} address &mdash; yours or anyone&rsquo;s. Public ledger, plain question.')}
-    ${feat('fc-iris',I.quote,'Price anything, route anything','Live price and 24h stats for any asset, and a real best-route quote from ${N} path finding before you commit.')}
+    ${feat('fc-iris',I.book,'Screen the whole list at once','Every curated asset with its live price, order book, spread and real depth. &ldquo;Which of these is near its floor with a wide spread?&rdquo; is one question, not forty tabs.')}
     ${feat('fc-teal',I.swap,'Swap, prepared','Any pair. The agent compares routes, then opens the swap with both assets and the amount already filled in.')}
     ${feat('fc-ember',I.drop,'Pools','Browse pools by TVL or by asset, then prepare a deposit or a withdrawal for the pair you pick.')}
     ${feat('fc-iris',I.bridge,'Cross-chain','Prepare a transfer off ${N}, routed through Circle CCTP, LayerZero, NEAR Intents or Axelar &mdash; whichever fits the destination.')}
@@ -389,13 +389,15 @@ if(document.readyState!=='loading')boot();else window.addEventListener('load',bo
 <section class="mcp-sec" id="mcp-tools">
   <div class="mcp-cmdhead">
     <div class="k">Commands</div>
-    <h2>Ten tools, <span class="g">one server</span></h2>
-    <p>The five reads answer straight away. The five writes come back as a prepared transaction for you to approve &mdash; the server has no key and cannot sign.</p>
+    <h2>Twelve tools, <span class="g">one server</span></h2>
+    <p>The seven reads answer straight away. The five writes come back as a prepared transaction for you to approve &mdash; the server has no key and cannot sign.</p>
   </div>
   <div class="mcp-cmds">
     ${cmd(I.quote,'get_market','Live price and 24h stats for any ${N} asset.',false)}
     ${cmd(I.pie,'get_portfolio','Balances, pool positions and open orders for any address.',false)}
     ${cmd(I.search,'get_quote','Best-route price for a swap, straight from ${N} path finding.',false)}
+    ${cmd(I.shield,'list_curated_assets','Every asset LumosCore curates, and why each one is ticked.',false)}
+    ${cmd(I.book,'get_orderbook','Bids, asks, spread and real depth against ${A}.',false)}
     ${cmd(I.layers,'list_pools','Liquidity pools by TVL, or filtered to one asset.',false)}
     ${cmd(I.gift,'get_rewards','Where your LUMOS rewards stand and how to claim them.',false)}
     ${cmd(I.swap,'swap','Prepares a swap for any pair, opened filled in.',true)}
