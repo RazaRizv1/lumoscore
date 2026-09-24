@@ -675,7 +675,36 @@ const JS = '(' + runtime.toString() + ')();';
 try { new Function(JS); } catch (e) { console.error('  ! step-2 runtime does not parse: ' + e.message); process.exit(1); }
 const SCRIPT = '<script id="lx-brstep2">' + JS + '<' + '/script>';
 
-let n = 0, seen = 0;
+// DESTINATION NETWORKS, A-Z, ONCE ALL THE LAYERS HAVE ADDED THEIRS.
+//
+// _bridge.js sorts the list it builds -- and that sorted block is only the first 17 of 53. _cctp.js,
+// _lzusdt0.js and _nearintents.js each APPEND their own chains afterwards in their own registry order,
+// so the menu read: Arbitrum..World Chain (sorted), then Gnosis, Hood, ADI, Bitcoin, Tron, TON, ... and
+// XRPL landed between Fogo and Berachain (RAZA 2026-09-24). Every layer was individually right; nothing
+// owned the ORDER OF THE WHOLE, and each one sorting its own block cannot produce a sorted list.
+//
+// This pass runs last in the bridge chain, which is the first point where the full set exists.
+//
+// It rewrites each button IN PLACE -- the i-th button position gets the i-th name alphabetically -- so
+// the buttons' own markup, their data attributes and anything sitting between them (the search box, the
+// no-results line) stay exactly where they are. Reordering nodes could not be done safely here: the
+// options are hidden and shown per route by CSS keyed on data-net, and several layers query them by
+// position within their own group.
+function sortDestOptions(h) {
+  const RE = /<button class="brd-opt[\s\S]*?<\/button>/g;
+  const btns = h.match(RE);
+  if (!btns || btns.length < 2) return { h, n: 0 };
+  const nameOf = (b) => { const m = b.match(/data-net="([^"]*)"/); return m ? m[1] : ''; };
+  // A button with no data-net would sort as "" and jump to the front, so bail rather than shuffle
+  // something we do not understand.
+  if (btns.some((b) => !nameOf(b))) return { h, n: 0 };
+  const sorted = btns.slice().sort((a, b) => nameOf(a).localeCompare(nameOf(b), 'en', { sensitivity: 'base' }));
+  if (sorted.every((b, i) => b === btns[i])) return { h, n: 0 };
+  let i = 0;
+  return { h: h.replace(RE, () => sorted[i++]), n: btns.length };
+}
+
+let n = 0, seen = 0, sortedPages = 0, sortedCount = 0;
 for (const dev of ['desktop', 'mobile']) {
   const file = 'lumoscore-aptos-' + dev + '.html';
   let data;
@@ -688,7 +717,11 @@ for (const dev of ['desktop', 'mobile']) {
     // Both injections strip their previous copy first, or a rebuild stacks them.
     h = h.replace(new RegExp('<style id="' + ID + '">[' + B + 's' + B + 'S]*?<' + B + '/style>', 'g'), '');
     h = h.replace(new RegExp('<script id="lx-brstep2">[' + B + 's' + B + 'S]*?<' + B + '/script>', 'g'), '');
-    if (h.indexOf('</head>') < 0) { json[k] = h; continue; }
+    // before the early-return below, so a page without a <head> still gets its menu sorted
+    const srt = sortDestOptions(h);
+    h = srt.h;
+    if (srt.n) { sortedPages++; sortedCount = srt.n; }
+    if (h.indexOf('</head>') < 0) { if (h !== before) { json[k] = h; n++; } continue; }
     // LAST in the head so it outranks the CCTP and LayerZero layers' rules for the same nodes.
     h = h.replace('</head>', CSS + '</head>');
     const bi = h.lastIndexOf('</body>');
@@ -699,5 +732,6 @@ for (const dev of ['desktop', 'mobile']) {
   const serialized = JSON.stringify(json).split('</').join('<' + B + '/');
   fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
 }
-console.log('bridge step 2 (reference design): ' + seen + ' bridge page key(s), ' + n + ' changed');
+console.log('bridge step 2 (reference design): ' + seen + ' bridge page key(s), ' + n + ' changed'
+  + (sortedPages ? (' | destinations sorted A-Z: ' + sortedCount + ' on ' + sortedPages + ' page key(s)') : ''));
 if (!seen) { console.error('  ! no bridge page matched — nothing was wired'); process.exit(1); }
