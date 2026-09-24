@@ -291,9 +291,9 @@ function mainHTML(cfg){
   <div class="lxh-particles" id="lxhParticles"></div>
   <div class="lxh-in">
     <div class="lxh-l" id="lxhLeft">
-      <div class="lxh-anim" data-d="0"><div class="lxh-badge"><i></i><span>MCP Server for ${N}</span></div></div>
+      <div class="lxh-anim" data-d="0"><div class="lxh-badge"><i></i><span>MCP Server</span></div></div>
       <h1 class="lxh-anim" data-d="120">Your AI agent,<br><span class="grad">on-chain.</span></h1>
-      <p class="lxh-sub lxh-anim" data-d="240">Connect your AI agent to LumosCore on ${N}. Trade, seed liquidity, launch tokens, bridge across chains, manage your wallet, and claim LUMOS rewards &mdash; all in natural language.</p>
+      <p class="lxh-sub lxh-anim" data-d="240">Connect your AI agent to LumosCore. Trade, seed liquidity, launch tokens, bridge across chains, manage your wallet, and claim LUMOS rewards &mdash; all in natural language.</p>
       <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="npm i -g @lumoscore/mcp"><span class="p">$</span><code>npm i -g @lumoscore/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
       <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-tools">${I.term}Get Started</a><a class="lxh-btn s" href="#mcp-tools">${I.book}Documentation</a></div>
       <div class="lxh-stats lxh-anim" data-d="600">
@@ -322,19 +322,19 @@ function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent
 var steps=[
  {t:'in',x:'lumoscore mcp start',d:400},
  {t:'tx',x:'→ Starting LumosCore MCP server…',c:'lxh-dim',d:520},
- {t:'tx',x:'✓ Connected to ${N} mainnet',c:'lxh-ok',d:460},
+ {t:'tx',x:'✓ Connected to Stellar mainnet',c:'lxh-ok',d:460},
  {t:'tx',x:'→ Loaded 10 tools · key lx_live_••••',c:'lxh-dim',d:420},
  {t:'sp',d:160},
- {t:'tx',x:'🤖 Swap 500 ${A} for USDC',c:'lxh-sec',d:680},
+ {t:'tx',x:'🤖 Swap 500 XLM for USDC',c:'lxh-sec',d:680},
  {t:'sp',d:120},
  {t:'tx',x:'⚡ Calling swap_tool…',c:'lxh-em',d:460},
- {t:'tx',x:'   from: ${A} · amount: 500 · to: USDC',c:'lxh-dim',sm:1,d:300},
+ {t:'tx',x:'   from: XLM · amount: 500 · to: USDC',c:'lxh-dim',sm:1,d:300},
  {t:'tx',x:'◉ Pending approval…',c:'lxh-warn',d:560,id:'lxhPend'},
  {t:'pg',d:1400},
  {t:'rep',id:'lxhPend',x:'✓ Approved · Executing…',c:'lxh-ok',d:420},
  {t:'sp',d:100},
- {t:'ok',x:'500 ${A} → 1,247.82 USDC',d:560},
- {t:'ln',x:'View on ${N}Scan',d:420}
+ {t:'ok',x:'500 XLM → 1,247.82 USDC',d:560},
+ {t:'ln',x:'View on the explorer',d:420}
 ];
 function run(){
  var i=0;
