@@ -1236,14 +1236,23 @@ function lxBrReview(){
 // NETWORK tucked into the lower-right corner and ringed in the row colour. The To column used to show only the network
 // mark, which said where it landed but never what arrived.
 var LX_NILOGO={"AAVE":1,"ADA":1,"ADI":1,"ARB":1,"ASTER":1,"AURORA":1,"AVAX":1,"BCH":1,"BERA":1,"BLACKDRAGON":1,"BNB":1,"BOME":1,"BRETT":1,"BTC":1,"CASHCAT":1,"cbBTC":1,"CFI":1,"COCA":1,"COW":1,"DAI":1,"DASH":1,"DOGE":1,"ETH":1,"EURe":1,"EVAA":1,"FOGO":1,"FRAX":1,"GBPe":1,"GMX":1,"GNO":1,"GRAM":1,"HAPI":1,"hemiBTC":1,"INX":1,"JAMBO":1,"KAITO":1,"KNC":1,"LINK":1,"LOUD":1,"LTC":1,"MELANIA":1,"MOG":1,"MON":1,"MOVE":1,"mpDAO":1,"NEAR":1,"NearKat":1,"NPRO":1,"nrUsdt":1,"OP":1,"PENGU":1,"PEPE":1,"POL":1,"PONS":1,"PUBLIC":1,"PURGE":1,"RHEA":1,"SAFE":1,"SHIB":1,"SHITZU":1,"SOL":1,"SPX":1,"stNEAR":1,"STRK":1,"SUI":1,"sUSDC":1,"SWEAT":1,"TITN":1,"TRUMP":1,"TRX":1,"TURBO":1,"UNI":1,"USD1":1,"USDC":1,"USDCx":1,"USDe":1,"USDf":1,"USDG":1,"USDT":1,"USDT0":1,"VVV":1,"WBTC":1,"WETH":1,"wNEAR":1,"wNEARKAT":1,"XAUT":1,"xBTC":1,"xDAI":1,"XPL":1,"XRP":1,"ZEC":1};
-function lxBrAssetLogo(code){
+// A TICKER IS NOT AN IDENTITY, and this function is asked about BOTH SIDES of a transfer. 'XRP' is a curated
+// STELLAR asset -- wrapped XRP from GBXRPL45..., issued by fchain.io -- as well as the native asset of the XRP
+// Ledger. Checking the Stellar map first meant a completed Stellar -> XRPL transfer showed the wrapped-XRP mark
+// in the To column, which is a different token on a different chain (RAZA 2026-09-24, on the first real transfer
+// through this route). Same trap as the 403 USDC variants: see lumoscore-token-logos.
+//
+// The caller knows which side it is asking about -- lxBrChipIco passes the destination NETWORK, and passes none
+// for the Stellar side -- so that decides which map wins rather than the ticker.
+function lxBrAssetLogo(code,net){
+  if(net && LX_NILOGO[code]) return 'assets/tokens/ni/'+code+'.png';  // the far side: the chain's own asset art
   var A=LX_ASSETS[code]; if(A&&A.logo) return A.logo;                 // the Stellar side: the curated logo
-  return LX_NILOGO[code]?('assets/tokens/ni/'+code+'.png'):'';        // the destination side: shipped with the site
+  return LX_NILOGO[code]?('assets/tokens/ni/'+code+'.png'):'';        // no curated match: shipped art if we have it
 }
 // A letter is drawn by CSS, never as a text node: a one-to-five character element gets repainted as a ticker badge by
 // the site's logo healer, which would put the wrong mark on an asset it guessed from the ticker.
 function lxBrChipIco(code,net,stellarIcon){
-  var u=lxBrAssetLogo(code), nkey=net?(LX_NETMAP[net]||""):"";
+  var u=lxBrAssetLogo(code,net), nkey=net?(LX_NETMAP[net]||""):"";
   var face=u?('<img src="'+u+'" alt="">'):('<span class="lx-tl" data-l="'+lxBrEsc(String(code||"?").charAt(0).toUpperCase())+'"></span>');
   var badge=net
     ? (nkey?('<span class="lx-tnet"><img src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>'):'')
