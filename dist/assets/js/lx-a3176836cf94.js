@@ -467,6 +467,16 @@ function lxCctpNetLogos(){
     [].slice.call(document.querySelectorAll('.brd-opt[data-net]')).forEach(function(o){ var key=MAP[o.getAttribute('data-net')]; if(key) apply(o.querySelector('.brd-ic'),key,false); });
     // .br-netchip covers the source chip AND the .brd-trigger (selected dest); force so the selected chip always shows the PNG (set once, no blip)
     [].slice.call(document.querySelectorAll('.br-netchip')).forEach(function(ch){ var key=MAP[((ch.querySelector('.br-nm')||ch.querySelector('.nm')||{}).textContent||'').trim()]; if(key) apply(ch.querySelector('.br-ic'),key,true); });
+    // THE SOURCE CHIP SHIPS WITH A HARDCODED 'Connected' PILL. That was invisible while the page was gated
+    // behind a wallet, and became a lie the moment the bridge started rendering for strangers (2026-09-24):
+    // a visitor with no wallet was told Stellar was Connected. Corrected here because this function already
+    // polls and already walks these chips.
+    var _on=false; try{ _on=!!(localStorage.getItem('lumos.wallet')||localStorage.getItem('lumos.address')); }catch(_e){}
+    [].slice.call(document.querySelectorAll('.br-step[data-step="1"] .br-netbox .br-netchip .st')).forEach(function(st){
+      var want=_on?'Connected':'Not connected';
+      if(st.textContent!==want) st.textContent=want;
+      st.classList.toggle('lx-stoff',!_on);
+    });
   }catch(_){}
 }
 (function(){ var n=0,iv=setInterval(function(){ n++; lxCctpNetLogos(); if(n>25) clearInterval(iv); },250);

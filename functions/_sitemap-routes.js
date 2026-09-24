@@ -27,12 +27,22 @@ export const SITEMAP_ROUTES = [
     "weekly"
   ],
   [
+    "/bridge/stellar",
+    "0.6",
+    "weekly"
+  ],
+  [
     "/bridge",
     "0.8",
     "weekly"
   ],
   [
     "/wallet",
+    "0.6",
+    "weekly"
+  ],
+  [
+    "/rewards/stellar",
     "0.6",
     "weekly"
   ],

@@ -59,6 +59,11 @@ const ROUTES = [
     null
   ],
   [
+    "/bridge/stellar",
+    "lumoscore-bridge",
+    null
+  ],
+  [
     "/bridge",
     "lumoscore-bridge",
     null
@@ -66,6 +71,11 @@ const ROUTES = [
   [
     "/wallet",
     "lumoscore-wallet",
+    null
+  ],
+  [
+    "/rewards/stellar",
+    "lumoscore-rewards-dark",
     null
   ],
   [

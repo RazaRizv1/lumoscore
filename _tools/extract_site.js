@@ -445,8 +445,12 @@ const ROUTES = [
   ['/launchpad',                       'lumoscore-launch-token.html'],
   // flat pages
   ['/dashboard',                       'lumoscore-home.html'],
+  // CHAIN-SCOPED ALIASES. The same page addressed by chain, so a promoted link names the network it is
+  // about -- the scheme /trade/stellar already proved. The bare path stays as the chain-neutral form.
+  ['/bridge/stellar',                  'lumoscore-bridge.html'],
   ['/bridge',                          'lumoscore-bridge.html'],
   ['/wallet',                          'lumoscore-wallet.html'],
+  ['/rewards/stellar',                 'lumoscore-rewards-dark.html'],
   ['/rewards',                         'lumoscore-rewards-dark.html'],   // only variant that exists
   ['/lumos/stellar',                   'lumoscore-lumos-token.html'],
   ['/lumos',                           'lumoscore-lumos-token.html'],
