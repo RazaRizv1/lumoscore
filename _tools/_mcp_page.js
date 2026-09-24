@@ -279,6 +279,12 @@ function chip(icon){ return `<div class="mcp-ic">${icon}</div>`; }
 function feat(cls,icon,title,desc){ return `<div class="fcard ${cls}"><div class="fic">${icon}</div><h3>${title}</h3><div class="ul"></div><p>${desc}</p></div>`; }
 function cmd(icon,name,desc,write){ return `<div class="cmd2 ${write?'write':'read'}"><span class="cic">${icon}</span><div class="cbody"><code>${name}</code><div class="cd">${desc}</div></div><span class="ctag"></span></div>`; }
 
+// The copy here describes the 10 tools in mcp/tools.js and nothing else. The first version of this page
+// promised things the server does not do: an api key it has no concept of, a `lumoscore mcp start` CLI
+// that does not exist, limit orders and reward CLAIMS it has no tool for, and a hero animation in which
+// the agent EXECUTES a swap -- the one thing it deliberately cannot do -- at an invented rate (500 XLM
+// for 1,247.82 USDC, about 12x). On a page about a trading tool, an invented rate is the worst possible
+// place to be loose, and "the agent signs for you" is the opposite of the actual security model.
 function mainHTML(cfg){
   const N=cfg.name, A=cfg.nat;
   const CP=`<span class="cp" data-mcp-copy>${I.copy}Copy</span>`;
@@ -293,15 +299,17 @@ function mainHTML(cfg){
     <div class="lxh-l" id="lxhLeft">
       <div class="lxh-anim" data-d="0"><div class="lxh-badge"><i></i><span>MCP Server</span></div></div>
       <h1 class="lxh-anim" data-d="120">Your AI agent,<br><span class="grad">on-chain.</span></h1>
-      <p class="lxh-sub lxh-anim" data-d="240">Connect your AI agent to LumosCore. Trade, seed liquidity, launch tokens, bridge across chains, manage your wallet, and claim LUMOS rewards &mdash; all in natural language.</p>
+      <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about ${N} and LumosCore answers &mdash; prices, any wallet, pools, live routes. Tell it what to do and it hands back the transaction, filled in and ready for you to sign. <b style="color:#fff;font-weight:600">It never holds your key.</b></p>
       <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="npm i -g @lumoscore/mcp"><span class="p">$</span><code>npm i -g @lumoscore/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
       <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-tools">${I.term}Get Started</a><a class="lxh-btn s" href="#mcp-tools">${I.book}Documentation</a></div>
       <div class="lxh-stats lxh-anim" data-d="600">
-        <div><div class="v">10</div><div class="l">Commands</div></div>
+        <div><div class="v">5</div><div class="l">Read tools</div></div>
         <div class="dv"></div>
-        <div><div class="v">7</div><div class="l">Networks</div></div>
+        <div><div class="v">5</div><div class="l">Prepared actions</div></div>
         <div class="dv"></div>
-        <div><div class="v"><span class="live"></span>Live</div><div class="l">Mainnet</div></div>
+        <div><div class="v">0</div><div class="l">Keys held</div></div>
+        <div class="dv"></div>
+        <div><div class="v"><span class="live"></span>Live</div><div class="l">${N} mainnet</div></div>
       </div>
     </div>
     <div class="lxh-r">
@@ -309,6 +317,7 @@ function mainHTML(cfg){
         <div class="lxh-tbar"><div class="dots"><i></i><i></i><i></i></div><div class="nm">${I.term}lumoscore-mcp</div><span style="width:44px"></span></div>
         <div class="lxh-tbody"><div class="lxh-scan"></div><div id="lxhLines"></div><div class="lxh-cursor" id="lxhCursor"><span style="color:#ff9a3d">❯</span><span class="c"></span></div></div>
       </div>
+      <p style="margin:12px 2px 0;font:500 11.5px/1.5 'JetBrains Mono',monospace;color:#52525b">Example session. Quotes are live and re-quoted at signing.</p>
     </div>
   </div>
 </section>
@@ -320,21 +329,21 @@ function wait(ms){return new Promise(function(r){TO.push(setTimeout(r,ms));});}
 function mk(html){var d=document.createElement('div');d.className='lxh-tline';d.innerHTML=html;lines.appendChild(d);requestAnimationFrame(function(){d.classList.add('show');});return d;}
 function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent='';(function t(){if(i<txt.length){el.textContent+=txt[i++];TO.push(setTimeout(t,sp));}else res();})();});}
 var steps=[
- {t:'in',x:'lumoscore mcp start',d:400},
- {t:'tx',x:'→ Starting LumosCore MCP server…',c:'lxh-dim',d:520},
- {t:'tx',x:'✓ Connected to Stellar mainnet',c:'lxh-ok',d:460},
- {t:'tx',x:'→ Loaded 10 tools · key lx_live_••••',c:'lxh-dim',d:420},
- {t:'sp',d:160},
- {t:'tx',x:'🤖 Swap 500 XLM for USDC',c:'lxh-sec',d:680},
- {t:'sp',d:120},
- {t:'tx',x:'⚡ Calling swap_tool…',c:'lxh-em',d:460},
- {t:'tx',x:'   from: XLM · amount: 500 · to: USDC',c:'lxh-dim',sm:1,d:300},
- {t:'tx',x:'◉ Pending approval…',c:'lxh-warn',d:560,id:'lxhPend'},
- {t:'pg',d:1400},
- {t:'rep',id:'lxhPend',x:'✓ Approved · Executing…',c:'lxh-ok',d:420},
+ {t:'tx',x:'✓ lumoscore connected · 10 tools · ${N} mainnet',c:'lxh-ok',d:420},
+ {t:'sp',d:140},
+ {t:'in',x:'how much LUMOS do I hold?',d:420},
+ {t:'tx',x:'→ get_portfolio',c:'lxh-dim',d:480},
+ {t:'tx',x:'  12,480.5 LUMOS · 3 pools · 2 open orders',c:'lxh-sec',d:520},
+ {t:'sp',d:140},
+ {t:'in',x:'swap 500 of it for BLND',d:460},
+ {t:'tx',x:'→ get_quote · 4 routes compared',c:'lxh-dim',d:460},
+ {t:'tx',x:'  LUMOS → ${A} → USDC → BLND',c:'lxh-dim',sm:1,d:320},
+ {t:'tx',x:'✓ ≈ 3.8685 BLND · swap fee 0.2%',c:'lxh-ok',d:480},
+ {t:'tx',x:'◉ Prepared · not signed',c:'lxh-warn',d:520,id:'lxhPend'},
+ {t:'pg',d:1300},
+ {t:'rep',id:'lxhPend',x:'✓ Opens filled in — you approve it',c:'lxh-ok',d:420},
  {t:'sp',d:100},
- {t:'ok',x:'500 XLM → 1,247.82 USDC',d:560},
- {t:'ln',x:'View on the explorer',d:420}
+ {t:'ok',x:'Your wallet signs. LumosCore never sees your key.',y:'Ready to approve',d:540}
 ];
 function run(){
  var i=0;
@@ -347,7 +356,7 @@ function run(){
    else if(s.t==='rep'){var e=document.getElementById(s.id);if(e){e.style.transition='opacity .2s';e.style.opacity='0';wait(200).then(function(){e.innerHTML='<span class="'+s.c+'">'+s.x+'</span>';e.style.opacity='1';next();});return;}}
    else if(s.t==='sp'){mk('').style.height='10px';}
    else if(s.t==='pg'){var w=mk('<div style="padding-left:26px;margin-top:2px"><div class="lxh-pgt"><div class="lxh-pg" style="height:100%;width:0;border-radius:9px;background:linear-gradient(90deg,#ea6a2c,#ff9a3d);transition:width 1.3s cubic-bezier(.4,0,.2,1)"></div></div></div>');wait(60).then(function(){var tr=w.querySelector('.lxh-pg');if(tr)tr.style.width='100%';next();});return;}
-   else if(s.t==='ok'){mk('<div style="display:flex;align-items:flex-start;gap:8px"><span class="lxh-ok" style="font-size:17px;line-height:19px">✓</span><div><div class="lxh-ok" style="font-weight:600">Swap complete!</div><div class="lxh-dim" style="font-size:12px;margin-top:2px">'+s.x+'</div></div></div>');if(term)term.classList.add('win');}
+   else if(s.t==='ok'){mk('<div style="display:flex;align-items:flex-start;gap:8px"><span class="lxh-ok" style="font-size:17px;line-height:19px">✓</span><div><div class="lxh-ok" style="font-weight:600">'+(s.y||'Done')+'</div><div class="lxh-dim" style="font-size:12px;margin-top:2px">'+s.x+'</div></div></div>');if(term)term.classList.add('win');}
    else if(s.t==='ln'){mk('<div style="padding-left:26px;margin-top:4px"><a href="#" class="lxh-em" style="font-size:12px;display:inline-flex;align-items:center;gap:6px;text-decoration:none">'+LINK+s.x+'</a></div>');}
    next();
   });
@@ -364,36 +373,46 @@ if(document.readyState!=='loading')boot();else window.addEventListener('load',bo
 
 <section class="mcp-sec" data-lx-noswap>
   <div class="mcp-sec-head">
-    <h2>Six capabilities, one agent</h2>
-    <p>Everything in LumosCore is exposed to your AI agent as MCP tools &mdash; reads return instantly, and every on-chain write comes back to you for a signature.</p>
+    <h2>What your agent can actually do</h2>
+    <p>Five tools answer on their own &mdash; no browser, no clicking. Five prepare a transaction and hand it back for your signature. Nothing in the second group moves without you.</p>
   </div>
   <div class="mcp-feat">
-    ${feat('fc-ember',I.quote,'Trade','Orderbook and swap in one place. Rest a limit order on the on-chain book, or take the best route across orderbook and AMM liquidity.')}
-    ${feat('fc-iris',I.drop,'Pools','Create or join an AMM liquidity pool between any two assets and earn a share of every trade that routes through it.')}
-    ${feat('fc-teal',I.rocket,'Launchpad','Mint a brand-new token and seed its initial liquidity in a single guided, signed flow.')}
-    ${feat('fc-ember',I.bridge,'Cross-chain','Move assets between networks through the bridge best-suited to each chain.')}
-    ${feat('fc-iris',I.wallet,'Wallet','Read your portfolio, assets and activity, then send, receive or swap &mdash; the agent drafts, you sign.')}
-    ${feat('fc-teal',I.gift,'Rewards','Track your eligibility and claim your share across all three LUMOS incentive programs.')}
+    ${feat('fc-ember',I.search,'Ask about any wallet','Balances, pool positions and open orders for any ${N} address &mdash; yours or anyone&rsquo;s. Public ledger, plain question.')}
+    ${feat('fc-iris',I.quote,'Price anything, route anything','Live price and 24h stats for any asset, and a real best-route quote from ${N} path finding before you commit.')}
+    ${feat('fc-teal',I.swap,'Swap, prepared','Any pair. The agent compares routes, then opens the swap with both assets and the amount already filled in.')}
+    ${feat('fc-ember',I.drop,'Pools','Browse pools by TVL or by asset, then prepare a deposit or a withdrawal for the pair you pick.')}
+    ${feat('fc-iris',I.bridge,'Cross-chain','Prepare a transfer off ${N}, routed through Circle CCTP, LayerZero, NEAR Intents or Axelar &mdash; whichever fits the destination.')}
+    ${feat('fc-teal',I.rocket,'Launch a token','Describe the token you want. The agent sets up the issuance flow; you approve each signed step.')}
   </div>
 </section>
 
 <section class="mcp-sec" id="mcp-tools">
   <div class="mcp-cmdhead">
     <div class="k">Commands</div>
-    <h2>Ten commands, <span class="g">one server</span></h2>
-    <p>Read commands run instantly. Every write returns to you for a signature &mdash; nothing moves without approval.</p>
+    <h2>Ten tools, <span class="g">one server</span></h2>
+    <p>The five reads answer straight away. The five writes come back as a prepared transaction for you to approve &mdash; the server has no key and cannot sign.</p>
   </div>
   <div class="mcp-cmds">
-    ${cmd(I.search,'get_quote','Best-route price for any pair, with impact and fees.',false)}
-    ${cmd(I.swap,'swap','Execute a swap at the best route across orderbook and AMM.',true)}
-    ${cmd(I.drop,'add_liquidity','Deposit a token pair into an AMM pool and earn fees.',true)}
-    ${cmd(I.minus,'remove_liquidity','Withdraw your position and collect accrued fees.',true)}
-    ${cmd(I.bridge,'bridge','Move assets across networks via the best bridge for each chain.',true)}
-    ${cmd(I.rocket,'launch_token','Create and list a new token, with initial liquidity.',true)}
-    ${cmd(I.layers,'list_pools','Browse pools by TVL, volume, APR, or asset.',false)}
-    ${cmd(I.gift,'get_rewards','Check and claim across all three LUMOS reward programs.',false)}
-    ${cmd(I.pie,'get_portfolio','Balances, LP positions, and open orders in one call.',false)}
-    ${cmd(I.quote,'get_market','Live price, volume, and trend for any listed asset.',false)}
+    ${cmd(I.quote,'get_market','Live price and 24h stats for any ${N} asset.',false)}
+    ${cmd(I.pie,'get_portfolio','Balances, pool positions and open orders for any address.',false)}
+    ${cmd(I.search,'get_quote','Best-route price for a swap, straight from ${N} path finding.',false)}
+    ${cmd(I.layers,'list_pools','Liquidity pools by TVL, or filtered to one asset.',false)}
+    ${cmd(I.gift,'get_rewards','Where your LUMOS rewards stand and how to claim them.',false)}
+    ${cmd(I.swap,'swap','Prepares a swap for any pair, opened filled in.',true)}
+    ${cmd(I.drop,'add_liquidity','Prepares an AMM deposit for a pair you choose.',true)}
+    ${cmd(I.minus,'remove_liquidity','Prepares a withdrawal of your pool position.',true)}
+    ${cmd(I.bridge,'bridge','Prepares a cross-chain transfer to the destination you name.',true)}
+    ${cmd(I.rocket,'launch_token','Prepares a token issuance for you to sign step by step.',true)}
+  </div>
+</section>
+
+<section class="mcp-sec">
+  <div class="mcp-security">
+    ${chip(I.key)}
+    <div>
+      <h3>The agent does the thinking. You do the authorising.</h3>
+      <p>LumosCore&rsquo;s MCP server holds <b>no private key</b>, has <b>no API key</b>, and cannot sign a transaction &mdash; by design, not by omission. Every action it prepares opens in your browser, in your wallet, with the figures in front of you. An agent that could sign would be an agent that could be talked into signing, and this is mainnet. Quotes are live and re-quoted at the moment you sign.</p>
+    </div>
   </div>
 </section>
 
