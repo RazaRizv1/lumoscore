@@ -605,6 +605,33 @@ function setConnected(net,row,addr,transport){
 // strands them one step short of what they just enabled. Short delay so 'Connected' is actually seen.
 // Skipped on the dashboard (already there) and on /wallet, where the page you are on IS what
 // connecting unlocks and bouncing away would be perverse.
+// STAYING MEANS THE PAGE HAS TO SHOW THE CONNECTION IT JUST GAINED.
+//
+// Nothing on these pages re-renders on a wallet change: the header keeps saying "Launch App", the
+// bridge still reads "Not connected", the asset page shows "Balance: -". RAZA hit exactly this, and
+// it was already reachable before staying became the default -- close the modal instead of pressing
+// Continue and you were left on a page that had no idea you had connected. Making "stay" the normal
+// outcome turns that from an edge case into every connect, so it has to be handled here.
+//
+// A RELOAD, not a re-render. The connected state is read independently by the header, the auth gate,
+// the wallet-gated CTAs and each chain's data layer; re-rendering in place means finding and
+// re-running all of them, and anything missed is a page that lies about whether you are connected.
+// The url does not change, which is the whole point of staying, and these pages load in about a
+// second with the script already cached.
+//
+// Fires on Continue, and on the modal being dismissed any other way -- the close control sets hidden
+// on the modal's host, so one observer covers the X, the overlay and Escape alike. Guarded so the two
+// paths cannot both fire.
+function lxStayRefresh(){try{
+  var fired=false;
+  function go(){if(fired)return;fired=true;try{location.reload();}catch(_){}}
+  var _d2=q('.lxw-done');
+  if(_d2&&!_d2.__lxStay){_d2.__lxStay=1;_d2.addEventListener('click',go);}
+  var _mo=document.querySelector('.lxw-modal'),_host=_mo&&_mo.parentNode;
+  if(_host&&!_host.__lxStayObs){_host.__lxStayObs=1;
+    try{new MutationObserver(function(){if(_host.hasAttribute('hidden'))go();})
+      .observe(_host,{attributes:true,attributeFilter:['hidden']});}catch(_){}}
+}catch(_){}}
 function lxPostConnectHome(){try{var _p=location.pathname||'';
   var _d=null;try{_d=sessionStorage.getItem('lumos.connDest');sessionStorage.removeItem('lumos.connDest');}catch(_){}
   // Connecting from an in-page CTA (Swap on an asset, Add liquidity on a pool, Next on the bridge):
@@ -620,7 +647,7 @@ function lxPostConnectHome(){try{var _p=location.pathname||'';
     // fail open and send people to the dashboard -- the exact behaviour "stay" exists to prevent.
     var _was=String(_d.slice(5)||'').toLowerCase(),_now='';
     try{_now=String(localStorage.getItem('lumos.network')||localStorage.getItem('lumos.chain')||'').toLowerCase();}catch(_){}
-    if(_was&&_now&&_was===_now)return;
+    if(_was&&_now&&_was===_now){lxStayRefresh();return;}
   }
   if(/dashboard|lumoscore-home|wallet/.test(_p))return;
   // WAIT FOR THE BUTTON. This used to be setTimeout(..., 1100) -- a second after the Connected screen
