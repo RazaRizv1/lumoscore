@@ -107,6 +107,13 @@ const REVENUE_MOB=`
 `;
 
 const CSS=`<style id="lx-admin-css">
+/* A FALL IN 24H / 7D READS AS RED, LIKE THE RISE READS AS GREEN (RAZA 2026-09-24).
+   pct() has always emitted .ch-up / .ch-down, and the design styles only .ch-up -- so a gain was
+   green and bold while a loss fell back to plain body text, the same white as the price beside it.
+   Direction was carried by the minus sign alone, which is the one character easiest to miss when
+   skimming a column of figures.
+   Mirrors .ch-up exactly (same face, size and weight) so the two differ in hue and nothing else. */
+.ch-down{color:var(--red,#dc2626);font-family:'JetBrains Mono',monospace;font-weight:700;font-size:15.4px}
 /* Sortable column headings. A button rather than a click handler on the <th> so the keyboard reaches
    it and a screen reader announces it as something you can press. The arrow is always present, in a
    fixed-width slot, so the heading row does not shift as the active column moves. */
