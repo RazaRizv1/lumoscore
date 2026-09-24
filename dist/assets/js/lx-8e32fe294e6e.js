@@ -5,18 +5,22 @@ var TO=[];
 function wait(ms){return new Promise(function(r){TO.push(setTimeout(r,ms));});}
 function mk(html){var d=document.createElement('div');d.className='lxh-tline';d.innerHTML=html;lines.appendChild(d);requestAnimationFrame(function(){d.classList.add('show');});return d;}
 function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent='';(function t(){if(i<txt.length){el.textContent+=txt[i++];TO.push(setTimeout(t,sp));}else res();})();});}
+// Two turns, chosen to show the two things a price page cannot. The first is a question no single
+// screen on this site answers -- it reads the whole curated roster and every order book behind it and
+// returns the ones that match. The second ends at "prepared, not signed", which is the security model.
 var steps=[
  {t:'tx',x:'✓ lumoscore connected · 12 tools · Aptos mainnet',c:'lxh-ok',d:420},
  {t:'sp',d:140},
- {t:'in',x:'how much LUMOS do I hold?',d:420},
- {t:'tx',x:'→ get_portfolio',c:'lxh-dim',d:480},
- {t:'tx',x:'  12,480.5 LUMOS · 3 pools · 2 open orders',c:'lxh-sec',d:520},
+ {t:'in',x:'which curated assets sit near their floor?',d:400},
+ {t:'tx',x:'→ list_curated_assets · 58 assets',c:'lxh-dim',d:440},
+ {t:'tx',x:'→ get_orderbook ×58 · spread and depth',c:'lxh-dim',d:520},
+ {t:'tx',x:'✓ 7 match · widest gap +1011%',c:'lxh-ok',d:440},
+ {t:'tx',x:'  PEN · ask 737% over floor · 1.65 APT resting',c:'lxh-sec',sm:1,d:560},
  {t:'sp',d:140},
- {t:'in',x:'swap 500 of it for BLND',d:460},
- {t:'tx',x:'→ get_quote · 4 routes compared',c:'lxh-dim',d:460},
- {t:'tx',x:'  LUMOS → APT → USDC → BLND',c:'lxh-dim',sm:1,d:320},
- {t:'tx',x:'✓ ≈ 3.8685 BLND · swap fee 0.2%',c:'lxh-ok',d:480},
- {t:'tx',x:'◉ Prepared · not signed',c:'lxh-warn',d:520,id:'lxhPend'},
+ {t:'in',x:'swap 200 APT for USDC',d:440},
+ {t:'tx',x:'→ get_quote · best route',c:'lxh-dim',d:460},
+ {t:'tx',x:'✓ ≈ 42.1678 USDC · swap fee 0.2%',c:'lxh-ok',d:480},
+ {t:'tx',x:'◉ Prepared · not signed',c:'lxh-warn',d:500,id:'lxhPend'},
  {t:'pg',d:1300},
  {t:'rep',id:'lxhPend',x:'✓ Opens filled in — you approve it',c:'lxh-ok',d:420},
  {t:'sp',d:100},

@@ -80,7 +80,7 @@ const STYLE=`<style id="lx-mcp">
 .mcp-ic{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);margin-bottom:14px;flex-shrink:0}
 .mcp-ic svg{width:22px;height:22px}
 /* features — big accent cards with 3D illustrations (always-dark, matches ref) */
-.mcp-feat{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.mcp-feat{display:grid;grid-template-columns:repeat(3,1fr);grid-auto-rows:1fr;gap:20px}
 .fcard{position:relative;overflow:hidden;border-radius:20px;background:#0a0a10;border:1px solid var(--fbd);padding:32px 30px 34px}
 .fcard::before{content:"";position:absolute;top:-42%;left:-15%;right:-15%;height:76%;background:radial-gradient(ellipse at 32% 100%,var(--fgl),transparent 64%);pointer-events:none;z-index:0}
 .fcard>*{position:relative;z-index:1}
@@ -112,7 +112,7 @@ const STYLE=`<style id="lx-mcp">
 .cmd2.read .ctag{color:#a89bff;background:rgba(124,108,245,.14) !important}
 .cmd2.write .ctag{color:#ff9a3d;background:rgba(234,106,44,.15) !important}
 .cmd2.read .ctag::after{content:"read"}
-.cmd2.write .ctag::after{content:"write"}
+.cmd2.write .ctag::after{content:"prepares"}
 /* ===== light theme (hero + cards adapt; terminals stay dark) ===== */
 [data-theme="light"] .lxh{background:#f2f1ee;border-color:rgba(0,0,0,.07)}
 [data-theme="light"] .lxh-grid{background-image:linear-gradient(rgba(0,0,0,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(0,0,0,.045) 1px,transparent 1px)}
@@ -186,7 +186,12 @@ const STYLE=`<style id="lx-mcp">
 [data-theme="light"] .mcp-code .s{color:#0d8f5b}
 [data-theme="light"] .mcp-code .k{color:#c2571a}
 [data-theme="light"] .mcp-code .c{color:#a2a2ab}
-.mcp-setup{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start}
+/* minmax(0,1fr), not 1fr: a grid track still sizes to its content's minimum, so the long
+   "claude mcp add --transport http ..." line pushed its own column 25px wider than the other and the
+   pair stopped being a pair. Zero minimum lets the pre scroll inside an equal track instead. */
+.mcp-setup{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:stretch}
+.mcp-setup>div{display:flex;flex-direction:column}
+.mcp-setup>div .mcp-code{flex:1}
 .mcp-steps{display:flex;flex-direction:column;gap:16px}
 .mcp-step{display:flex;gap:14px}
 .mcp-step .n{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font:800 14px/1 'JetBrains Mono',monospace;color:#fff;background:linear-gradient(180deg,var(--accent-2,#ff894c),var(--accent));flex-shrink:0}
@@ -255,7 +260,16 @@ const STYLE=`<style id="lx-mcp">
 .lxh-tbar .dots{display:flex;gap:7px}.lxh-tbar .dots i{width:12px;height:12px;border-radius:50%}
 .lxh-tbar .dots i:nth-child(1){background:#ff5f57}.lxh-tbar .dots i:nth-child(2){background:#febc2e}.lxh-tbar .dots i:nth-child(3){background:#28c840}
 .lxh-tbar .nm{display:flex;align-items:center;gap:7px;font:500 12px/1 'JetBrains Mono',monospace;color:#52525b}.lxh-tbar .nm svg{width:12px;height:12px}
-.lxh-tbody{position:relative;padding:22px;font:500 13px/1.85 'JetBrains Mono',monospace;min-height:302px;overflow:hidden}
+.lxh-tbody{position:relative;padding:22px;font:500 13px/1.85 'JetBrains Mono',monospace;min-height:356px;overflow:hidden}
+/* the stat row, spanning the banner under both columns */
+.lxh-strip{position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(255,255,255,.07);padding:26px 60px 30px}
+.lxh-strip>div{text-align:center;padding:0 16px;border-left:1px solid rgba(255,255,255,.07)}
+.lxh-strip>div:first-child{border-left:none}
+.lxh-strip .v{font:800 26px/1 'JetBrains Mono',monospace;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.01em}
+.lxh-strip .l{font-size:11px;color:#6a6a74;text-transform:uppercase;letter-spacing:.09em;margin-top:10px}
+.lxh-strip .live{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:lxh-dot 2s ease-in-out infinite}
+@media(max-width:900px){.lxh-strip{grid-template-columns:1fr 1fr;row-gap:24px;padding:24px 22px 26px}.lxh-strip>div:nth-child(3){border-left:none}}
+@media(max-width:560px){.lxh-strip .v{font-size:21px}.lxh-strip>div{padding:0 8px}}
 .lxh-tbody .lxh-dim{color:#69748e}.lxh-tbody .lxh-sec{color:#a7a7b0}.lxh-tbody .lxh-em{color:#ea6a2c}.lxh-tbody .lxh-ok{color:#43d38a}.lxh-tbody .lxh-warn{color:#facc15}.lxh-tbody .lxh-w{color:#fff}.lxh-tbody .lxh-p{color:#ff9a3d}.lxh-tbody .sm{font-size:12px}
 .lxh-pgt{width:240px;height:6px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden}
 .lxh-scan{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,154,61,.45),transparent);animation:lxh-scan 4s ease-in-out infinite 2s;top:0;pointer-events:none}
@@ -289,7 +303,7 @@ function mainHTML(cfg){
   const N=cfg.name, A=cfg.nat;
   const CP=`<span class="cp" data-mcp-copy>${I.copy}Copy</span>`;
   return `<main class="page"><div class="mcp-wrap">
-<div class="mcp-crumb"><a href="lumoscore-home.html">Home</a> <span>/</span> MCP CLI</div>
+<div class="mcp-crumb"><a href="lumoscore-home.html">Home</a> <span>/</span> MCP server</div>
 
 <section class="lxh">
   <div class="lxh-grid"></div>
@@ -302,15 +316,6 @@ function mainHTML(cfg){
       <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about ${N} and LumosCore answers &mdash; prices, any wallet, pools, live routes. Tell it what to do and it hands back the transaction, filled in and ready for you to sign. <b style="color:#fff;font-weight:600">It never holds your key.</b></p>
       <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="https://lumoscore.com/mcp"><span class="p">&#8250;</span><code>https://lumoscore.com/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
       <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-connect">${I.term}Connect your agent</a><a class="lxh-btn s" href="#mcp-tools">${I.book}See the tools</a></div>
-      <div class="lxh-stats lxh-anim" data-d="600">
-        <div><div class="v">7</div><div class="l">Read tools</div></div>
-        <div class="dv"></div>
-        <div><div class="v">5</div><div class="l">Prepared actions</div></div>
-        <div class="dv"></div>
-        <div><div class="v">0</div><div class="l">Keys held</div></div>
-        <div class="dv"></div>
-        <div><div class="v"><span class="live"></span>Live</div><div class="l">${N} mainnet</div></div>
-      </div>
     </div>
     <div class="lxh-r">
       <div class="lxh-term" id="lxhTerm">
@@ -320,6 +325,17 @@ function mainHTML(cfg){
       <p style="margin:12px 2px 0;font:500 11.5px/1.5 'JetBrains Mono',monospace;color:#52525b">Example session. Quotes are live and re-quoted at signing.</p>
     </div>
   </div>
+  <!-- The stat row spans the whole banner rather than sitting under the left column. Inside it, the
+       left column ran 610px against a 420px terminal, so the two halves of a two-column hero were
+       visibly unequal and the space under the terminal was dead. It carries no lxh-anim class: the
+       entrance script only reveals descendants of #lxhLeft, so a class here would leave it at
+       opacity 0 forever. -->
+  <div class="lxh-strip">
+    <div><div class="v">7</div><div class="l">Read tools</div></div>
+    <div><div class="v">5</div><div class="l">Prepared actions</div></div>
+    <div><div class="v">0</div><div class="l">Keys held</div></div>
+    <div><div class="v"><span class="live"></span>Live</div><div class="l">${N} mainnet</div></div>
+  </div>
 </section>
 <script id="lx-mcp-hero">(function(){
 var LINK='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>';
@@ -328,18 +344,22 @@ var TO=[];
 function wait(ms){return new Promise(function(r){TO.push(setTimeout(r,ms));});}
 function mk(html){var d=document.createElement('div');d.className='lxh-tline';d.innerHTML=html;lines.appendChild(d);requestAnimationFrame(function(){d.classList.add('show');});return d;}
 function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent='';(function t(){if(i<txt.length){el.textContent+=txt[i++];TO.push(setTimeout(t,sp));}else res();})();});}
+// Two turns, chosen to show the two things a price page cannot. The first is a question no single
+// screen on this site answers -- it reads the whole curated roster and every order book behind it and
+// returns the ones that match. The second ends at "prepared, not signed", which is the security model.
 var steps=[
  {t:'tx',x:'✓ lumoscore connected · 12 tools · ${N} mainnet',c:'lxh-ok',d:420},
  {t:'sp',d:140},
- {t:'in',x:'how much LUMOS do I hold?',d:420},
- {t:'tx',x:'→ get_portfolio',c:'lxh-dim',d:480},
- {t:'tx',x:'  12,480.5 LUMOS · 3 pools · 2 open orders',c:'lxh-sec',d:520},
+ {t:'in',x:'which curated assets sit near their floor?',d:400},
+ {t:'tx',x:'→ list_curated_assets · 58 assets',c:'lxh-dim',d:440},
+ {t:'tx',x:'→ get_orderbook ×58 · spread and depth',c:'lxh-dim',d:520},
+ {t:'tx',x:'✓ 7 match · widest gap +1011%',c:'lxh-ok',d:440},
+ {t:'tx',x:'  PEN · ask 737% over floor · 1.65 ${A} resting',c:'lxh-sec',sm:1,d:560},
  {t:'sp',d:140},
- {t:'in',x:'swap 500 of it for BLND',d:460},
- {t:'tx',x:'→ get_quote · 4 routes compared',c:'lxh-dim',d:460},
- {t:'tx',x:'  LUMOS → ${A} → USDC → BLND',c:'lxh-dim',sm:1,d:320},
- {t:'tx',x:'✓ ≈ 3.8685 BLND · swap fee 0.2%',c:'lxh-ok',d:480},
- {t:'tx',x:'◉ Prepared · not signed',c:'lxh-warn',d:520,id:'lxhPend'},
+ {t:'in',x:'swap 200 ${A} for USDC',d:440},
+ {t:'tx',x:'→ get_quote · best route',c:'lxh-dim',d:460},
+ {t:'tx',x:'✓ ≈ 42.1678 USDC · swap fee 0.2%',c:'lxh-ok',d:480},
+ {t:'tx',x:'◉ Prepared · not signed',c:'lxh-warn',d:500,id:'lxhPend'},
  {t:'pg',d:1300},
  {t:'rep',id:'lxhPend',x:'✓ Opens filled in — you approve it',c:'lxh-ok',d:420},
  {t:'sp',d:100},
