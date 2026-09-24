@@ -257,6 +257,39 @@ if (!ADMIN) {
   }
 }
 
+// ---- every rewrite must point at a file that actually ships ---------------------------------------------
+//
+// A 200-rewrite naming a missing file is a url that 404s while LOOKING routed, and nothing else catches it:
+// the route table is valid, the page exists in someone's dist, and only the two together are wrong.
+//
+// That shipped. _mergexrpl.js writes the 9 XRPL routes into dist/_redirects and the XRPL pages into
+// dist/x/ -- but dist/x/ is gitignored and _redirects is TRACKED, so committing after a merge sent the
+// routes to production without the pages behind them. XRPL is not public, so nothing leaked; the same
+// mistake with a public chain would have published it. Routes and their files must travel together.
+if (!ADMIN) {
+  const rf = path.join(DIR, '_redirects');
+  if (fs.existsSync(rf)) {
+    const orphans = [];
+    for (const line of fs.readFileSync(rf, 'utf8').split('\n')) {
+      const t = line.trim();
+      if (!t || t[0] === '#') continue;
+      const p = t.split(/\s+/);
+      if (p.length < 3 || p[2] !== '200') continue;           // only rewrites; a 301 may leave the site
+      const target = p[1].split('?')[0].split('#')[0];
+      if (target.indexOf(':') >= 0 || target.indexOf('*') >= 0) continue;   // placeholders resolve at runtime
+      const f = path.join(DIR, target.replace(/^\//, ''));
+      if (!fs.existsSync(f) && !fs.existsSync(f + '.html')) orphans.push(p[0] + ' -> ' + target);
+    }
+    if (orphans.length) {
+      fail.push('_redirects rewrites ' + orphans.length + ' url(s) to file(s) not in this build:\n'
+        + orphans.map((o) => '        ' + o).join('\n')
+        + '\n      Each of those 404s while looking like a working route. If they are the merged XRPL\n'
+        + '      routes, `npm run build` regenerates _redirects without them; run `npm run merge:xrpl`\n'
+        + '      only when deploying a build that carries dist/x/, and never commit that state.');
+    }
+  }
+}
+
 // ---- report -------------------------------------------------------------------------------------------
 const size = (files.reduce((s, f) => s + fs.statSync(f).size, 0) / 1048576).toFixed(1);
 console.log(`\n  Pre-deploy check — ${LABEL} build (${files.length} files, ${size} MB)\n`);
