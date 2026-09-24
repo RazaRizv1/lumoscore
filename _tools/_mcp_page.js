@@ -393,7 +393,7 @@ if(document.readyState!=='loading')boot();else window.addEventListener('load',bo
     <p>The seven reads answer straight away. The five writes come back as a prepared transaction for you to approve &mdash; the server has no key and cannot sign.</p>
   </div>
   <div class="mcp-cmds">
-    ${cmd(I.quote,'get_market','Live price and 24h stats for any ${N} asset.',false)}
+    ${cmd(I.quote,'get_market','Live price, supply and market cap for any ${N} asset.',false)}
     ${cmd(I.pie,'get_portfolio','Balances, pool positions and open orders for any address.',false)}
     ${cmd(I.search,'get_quote','Best-route price for a swap, straight from ${N} path finding.',false)}
     ${cmd(I.shield,'list_curated_assets','Every asset LumosCore curates, and why each one is ticked.',false)}
