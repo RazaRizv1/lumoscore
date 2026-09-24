@@ -2175,8 +2175,27 @@ window.lxEvmMint=lxEvmMint; window.lxAbiReceive=lxAbiReceive;
 // eventNonce for a real transfer: identical). Read through the chain's PUBLIC RPC, so it needs no wallet and works for
 // claims made anywhere -- another browser, another device, a block explorer.
 function lxBrNonce(rec){ var m=String((rec&&rec.message)||""); if(m.slice(0,2)!=="0x"||m.length<2+88) return ""; return m.slice(2+24,2+24+64); }
+// THE DESTINATION DOMAIN, FROM WHEREVER IT ACTUALLY IS. A pending row saved before its attestation
+// arrived carries no destDomain; lxBrResumePending then backfills message/attestation/decodedMessage
+// and still does not set it. lxBrClaimedOnChain keyed on rec.destDomain alone, so those rows could
+// never be checked against their chain -- LX_EVM[undefined] is undefined, the check returns null, and
+// the row sits in Pending claims forever even though the USDC landed days ago.
+//
+// That is exactly what RAZA hit: four rows, and all four verified ALREADY MINTED against Base and
+// Polygon (usedNonces returned 1 for every one). Clicking a row cleared it only because the click path
+// fetches the attestation and simulates the mint, which fails with "nonce already used".
+//
+// The decoded message always carries destinationDomain, and it is the same number, so read it as a
+// fallback. The panel already names the chain correctly from it -- only this check was looking in the
+// one place that can be empty.
+function lxBrDestDom(rec){
+  if(!rec) return undefined;
+  if(rec.destDomain!=null) return rec.destDomain;
+  var d=rec.decodedMessage&&rec.decodedMessage.destinationDomain;
+  return d==null?undefined:+d;
+}
 function lxBrClaimedOnChain(rec){
-  var cfg=LX_EVM[rec&&rec.destDomain], n=lxBrNonce(rec);
+  var cfg=LX_EVM[lxBrDestDom(rec)], n=lxBrNonce(rec);
   if(!cfg||!cfg.rpc||!n) return Promise.resolve(null);                 // unknown -- never guess "claimed"
   return lxJrpc(cfg.rpc,"eth_call",[{to:LX_MT,data:"0xfeb61724"+n},"latest"]).then(function(d){
     var r=d&&d.result; if(typeof r!=="string"||r.length<3) return null;
@@ -2852,6 +2871,10 @@ function lxBrResumePending(){ try{
   lxBrListPending().filter(function(x){ return !(x.status==="attested"&&x.attestation); }).slice(0,6).forEach(function(r){
     lxBrPeekAttest(r.burnHash).then(function(att){ if(!att)return;
       r.message=att.message; r.attestation=att.attestation; r.decodedMessage=att.decodedMessage; r.status="attested";
+      // Persist the domain too, not just the decoded message it sits inside. The fallback in
+      // lxBrDestDom covers records already saved without it, but a row backfilled from here should
+      // come out complete rather than depending on that fallback for the rest of its life.
+      if(r.destDomain==null){ var _dd=att.decodedMessage&&att.decodedMessage.destinationDomain; if(_dd!=null) r.destDomain=+_dd; }
       lxBrSavePending(r);
       // A row that has just become checkable is checked before it is drawn as claimable: a transfer seeded from the
       // shared record may have been claimed elsewhere long ago, and rendering first is what made the count flash.
