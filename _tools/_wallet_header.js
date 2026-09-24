@@ -207,9 +207,26 @@ function scriptFor(net){
   // network rows carry .lxw-row but no data-wallet, so the real handler skipped them and the design's
   // demo listener navigated. It now claims data-lxnet rows too, so this flow stays in the modal.
   +'var dc=t.closest(".lx-topwallet[data-lxdisc=\\"1\\"]")||t.closest(".lx-launch");if(dc){e.preventDefault();e.stopImmediatePropagation();'
-  // "Launch App" means take me into the app, not take me back to what I was reading. Always the
-  // dashboard, whatever page it was clicked from and whichever chain they end up connecting on.
-  +'try{sessionStorage.setItem("lumos.connDest","home");}catch(_){}'
+  // WHERE CONNECTING LANDS YOU (RAZA 2026-09-24: "I dont want him to redirect to Dashboard upon
+  // connecting. He should just stay there ... unless he connected from an entirely different network").
+  //
+  // This used to be an unconditional "home", on the reasoning that Launch App means "take me into the
+  // app". That is true from the LANDING page, and wrong everywhere else: someone reading /trade/stellar
+  // or an asset page connects in order to act on THAT asset, and throwing them to the dashboard makes
+  // them navigate back to where they already were.
+  //
+  // The chain comes from the URL, not from the saved wallet: a chain-scoped path names the chain the
+  // page is ABOUT, which is exactly the question "did they connect somewhere else?" needs answered.
+  // /trade/stellar/<ASSET> and /pools/stellar/<A>/<B> both give "stellar" from the same segment.
+  // Paths with no chain -- the landing page, and the /trade and /pools choosers -- keep "home", since
+  // there is no page-specific thing to stay for.
+  //
+  // lxPostConnectHome already implements the rest: "stay:<chain>" stays only if the wallet they picked
+  // is on that chain, and otherwise falls through to the dashboard. Pick XRPL while reading a Stellar
+  // asset and that asset is not yours to trade, so the dashboard is the honest destination.
+  +'var _sg=(location.pathname||"").split("/").filter(Boolean);'
+  +'var _pc=(_sg.length>1&&/^(stellar|xrpl)$/i.test(_sg[1]))?_sg[1].toLowerCase():"";'
+  +'try{sessionStorage.setItem("lumos.connDest",_pc?("stay:"+_pc):"home");}catch(_){}'
   +'if(window.lxChooseNetwork)window.lxChooseNetwork();else if(window.lxwOpenWallet)window.lxwOpenWallet(actNet());return;}'
   // Disconnect leaves for the landing page rather than reloading in place. Reloading only worked on
   // GATED pages, where the auth gate then bounced to "/" — on a public page (Trade, Pools, an asset
