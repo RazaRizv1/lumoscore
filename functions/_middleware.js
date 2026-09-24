@@ -6,236 +6,295 @@ const ROUTES = [
   [
     "/",
     "index",
-    "lumoscore-landing-mobile"
+    "lumoscore-landing-mobile",
+    null
   ],
   [
     "/trade/stellar/:asset",
     "lumoscore-dex-asset",
+    null,
     null
   ],
   [
     "/trade/stellar",
     "lumoscore-dex",
+    null,
     null
   ],
   [
     "/account/stellar/:address",
     "lumoscore-account",
+    null,
     null
   ],
   [
     "/pools/stellar/id/:pool",
     "lumoscore-amm-pool",
+    null,
     null
   ],
   [
     "/pools/stellar/:a/:b",
     "lumoscore-amm-pool",
+    null,
     null
   ],
   [
     "/pools/stellar",
     "lumoscore-amm",
+    null,
     null
+  ],
+  [
+    "/trade",
+    "lumoscore-dex",
+    null,
+    "alias"
+  ],
+  [
+    "/pools",
+    "lumoscore-amm",
+    null,
+    "alias"
   ],
   [
     "/launchpad/review",
     "lumoscore-launch-review",
+    null,
     null
   ],
   [
     "/launchpad/confirm",
     "lumoscore-launch-confirm",
+    null,
     null
   ],
   [
     "/launchpad",
     "lumoscore-launch-token",
+    null,
     null
   ],
   [
     "/dashboard",
     "lumoscore-home",
+    null,
     null
   ],
   [
     "/bridge/stellar",
     "lumoscore-bridge",
-    null
+    null,
+    "alias"
   ],
   [
     "/bridge",
     "lumoscore-bridge",
+    null,
     null
   ],
   [
     "/wallet",
     "lumoscore-wallet",
+    null,
     null
   ],
   [
     "/rewards/stellar",
     "lumoscore-rewards-dark",
-    null
+    null,
+    "alias"
   ],
   [
     "/rewards",
     "lumoscore-rewards-dark",
+    null,
     null
   ],
   [
     "/lumos/stellar",
     "lumoscore-lumos-token",
-    null
+    null,
+    "alias"
   ],
   [
     "/lumos",
     "lumoscore-lumos-token",
+    null,
     null
   ],
   [
     "/signin",
     "lumoscore-signin",
+    null,
     null
   ],
   [
     "/mcp",
     "lumoscore-mcp",
+    null,
     null
   ],
   [
     "/blog/:slug",
     "lumoscore-blog-post",
+    null,
     null
   ],
   [
     "/blog",
     "lumoscore-blog",
+    null,
     null
   ],
   [
     "/privacy",
     "lumoscore-privacy",
+    null,
     null
   ],
   [
     "/terms",
     "lumoscore-terms",
+    null,
     null
   ],
   [
     "/support",
     "lumoscore-support",
+    null,
     null
   ],
   [
     "/whitepaper",
     "lumoscore-whitepaper",
+    null,
     null
   ],
   [
     "/about",
     "lumoscore-about",
+    null,
     null
   ],
   [
     "/list-your-token",
     "lumoscore-list-token",
+    null,
     null
   ],
   [
     "/docs/introduction",
     "lumoscore-docs-introduction",
+    null,
     null
   ],
   [
     "/docs/connect-a-wallet",
     "lumoscore-docs-connect-a-wallet",
+    null,
     null
   ],
   [
     "/docs/fees",
     "lumoscore-docs-fees",
+    null,
     null
   ],
   [
     "/docs/swaps",
     "lumoscore-docs-swaps",
+    null,
     null
   ],
   [
     "/docs/limit-orders",
     "lumoscore-docs-limit-orders",
+    null,
     null
   ],
   [
     "/docs/liquidity-pools",
     "lumoscore-docs-liquidity-pools",
+    null,
     null
   ],
   [
     "/docs/cross-chain",
     "lumoscore-docs-cross-chain",
+    null,
     null
   ],
   [
     "/docs/wallet",
     "lumoscore-docs-wallet",
+    null,
     null
   ],
   [
     "/docs/trustlines",
     "lumoscore-docs-trustlines",
+    null,
     null
   ],
   [
     "/docs/rewards",
     "lumoscore-docs-rewards",
+    null,
     null
   ],
   [
     "/docs/launch-a-token",
     "lumoscore-docs-launch-a-token",
+    null,
     null
   ],
   [
     "/docs/asset-metadata",
     "lumoscore-docs-asset-metadata",
+    null,
     null
   ],
   [
     "/docs/verification",
     "lumoscore-docs-verification",
+    null,
     null
   ],
   [
     "/docs/curated-listing",
     "lumoscore-docs-curated-listing",
+    null,
     null
   ],
   [
     "/docs/security",
     "lumoscore-docs-security",
+    null,
     null
   ],
   [
     "/docs/troubleshooting",
     "lumoscore-docs-troubleshooting",
+    null,
     null
   ],
   [
     "/docs/faq",
     "lumoscore-docs-faq",
-    null
+    null,
+    "alias"
   ],
   [
     "/docs",
     "lumoscore-docs-introduction",
-    null
+    null,
+    "alias"
   ],
   [
     "/faq",
     "lumoscore-docs-faq",
+    null,
     null
   ]
 ];
@@ -614,6 +673,7 @@ function legacyClean(pathname, params){
 
   for (const r of ROUTES){
     if (r[0].indexOf('/:') >= 0) continue;
+    if (r[3]) continue;   // an alias is not where a legacy filename should land
     if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];
   }
   return null;
@@ -784,14 +844,16 @@ export async function onRequest(context){
 
   // canonical is the clean url WITHOUT query or hash, on whatever host served this request
   //
-  // ONE EXCEPTION. /docs and /docs/introduction are the same page at two urls -- identical title,
-  // description, h1 and body, both in the sitemap, and each canonicalising to itself, so neither
-  // deferred and Google had to pick. That coin-toss lands on the entry point to the best content on
-  // the site. /docs now points at /docs/introduction, which is the one the sidebar links and the one
-  // that names what it is. Both keep serving; only the signal changes.
-  const CANON_OF = { '/docs': '/docs/introduction' };
+  // EXCEPT for an alias. Two urls for one page -- identical title, description, h1 and body, each
+  // canonicalising to itself -- means neither defers and Google has to pick. /docs vs
+  // /docs/introduction was fixed by hand here; the same shape then reappeared four more times
+  // (/bridge, /rewards, /lumos, /faq) because nothing stopped it. This map is now GENERATED from the
+  // route table's alias flag, so every pair is covered and a new one cannot be added without it.
+  // Both urls keep serving; only the signal changes.
+  const CANON_OF = {"/trade":"/trade/stellar","/pools":"/pools/stellar","/bridge/stellar":"/bridge","/rewards/stellar":"/rewards","/lumos/stellar":"/lumos","/docs/faq":"/faq","/docs":"/docs/introduction"};
   const cleanPath = url.pathname === '/' ? '/' : url.pathname.replace(/\/+$/, '');
-  const canonical = PRIMARY_ORIGIN + (CANON_OF[cleanPath] || cleanPath);
+  const canonPath = CANON_OF[cleanPath] || cleanPath;
+  const canonical = PRIMARY_ORIGIN + canonPath;
   const want = seoFor(url.pathname);
 
   let seo = null;
@@ -887,8 +949,13 @@ export async function onRequest(context){
   }];
 
   // Breadcrumbs only where there is a real hierarchy to describe.
+  //
+  // Built from the CANONICAL path, not the requested one. On an alias the two differ, and using the
+  // request path made /trade emit a breadcrumb naming /trade as its own node -- structured data
+  // asserting the page exists at the very url the canonical beside it defers away from. Same page,
+  // same trail, whichever of its urls was asked for.
   const crumbs = [];
-  const segsC = url.pathname.split('/').filter(Boolean);
+  const segsC = canonPath.split('/').filter(Boolean);
   if (segsC.length){
     crumbs.push({ '@type': 'ListItem', position: 1, name: 'Home', item: PRIMARY_ORIGIN + '/' });
     let acc = '';

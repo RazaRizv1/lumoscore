@@ -19,7 +19,8 @@ const BS = String.fromCharCode(92); // backslash
 // the static hrefs are additionally rewritten at build time so crawlers follow clean urls too.
 function cleanMapJson(){
   const m = {};
-  for(const [url, file] of ROUTES){
+  for(const [url, file, alias] of ROUTES){
+    if(alias) continue;                             // an alias is never where a link should point
     if(/:/.test(url)) continue;                     // dynamic routes are handled by query conversion
     // key on the BASE name: /rewards is served by lumoscore-rewards-dark.html, but links to it appear
     // as -dark, -light and -mobile, and every one of them is the same page.
@@ -428,6 +429,21 @@ function headersFile(isAdmin){
 // Ordering matters: Pages applies the FIRST matching rule, so more specific paths must come first.
 // Placeholders (:name) match a single segment. Theme never appears in a URL — light and dark are the
 // same page — and device is resolved server-side, not by a separate URL.
+//
+// THE THIRD FIELD, 'alias', MARKS A SECOND URL FOR A PAGE THAT ALREADY HAS ONE. It still serves (that
+// is the entire point — a link posted somewhere must keep working), but it is not the page's address:
+// it stays out of the clean-URL map, out of the sitemap, and its canonical points at the real one.
+//
+// Without that flag the two derivations of "the url for this file" DISAGREED, which is what produced
+// the duplicates. cleanMapJson takes the LAST matching route and legacyClean the FIRST, so
+// lumoscore-bridge was /bridge to lxNavigate and /bridge/stellar to a location.href — and both urls
+// shipped in the sitemap self-canonicalising, which is precisely the split the /docs comment further
+// down describes. Four pages were in that state (bridge, rewards, lumos, faq) and adding bare /trade
+// and /pools would have made six. One flag now decides it for every consumer.
+//
+// WHICH ONE IS THE ALIAS: the one the site does NOT already link. Every canonical below is the url
+// that internal links and existing canonicals use today, so this consolidates the duplicates without
+// moving a single page that search engines have already indexed.
 const ROUTES = [
   // dynamic first: these carry an asset or pool identifier in the path
   ['/trade/stellar/:asset',            'lumoscore-dex-asset.html'],
@@ -436,6 +452,13 @@ const ROUTES = [
   ['/pools/stellar/id/:pool',          'lumoscore-amm-pool.html'],   // fallback: id-only links
   ['/pools/stellar/:a/:b',             'lumoscore-amm-pool.html'],
   ['/pools/stellar',                   'lumoscore-amm.html'],
+  // The bare paths, which 404d while every other promoted path served: /bridge, /rewards and /lumos
+  // were opened and these two were left behind, so a link to lumoscore.com/trade — the most obvious
+  // url on the site — hit the 404 page. They serve the Stellar page, the same answer /bridge already
+  // gives, NOT a chain chooser: an interstitial would put a click in front of the page we promote,
+  // and it would have to name XRPL, which is not public yet.
+  ['/trade',                           'lumoscore-dex.html',  'alias'],
+  ['/pools',                           'lumoscore-amm.html',  'alias'],
   // NO /asset/stellar route. The asset-overview page was removed — it showed the same facts as
   // Trade-asset with no way to act on them. /asset/stellar/<ASSET> is now a permanent 301 to
   // /trade/stellar/<ASSET>, handled in the middleware so already-indexed urls keep their value.
@@ -447,12 +470,12 @@ const ROUTES = [
   ['/dashboard',                       'lumoscore-home.html'],
   // CHAIN-SCOPED ALIASES. The same page addressed by chain, so a promoted link names the network it is
   // about -- the scheme /trade/stellar already proved. The bare path stays as the chain-neutral form.
-  ['/bridge/stellar',                  'lumoscore-bridge.html'],
+  ['/bridge/stellar',                  'lumoscore-bridge.html', 'alias'],
   ['/bridge',                          'lumoscore-bridge.html'],
   ['/wallet',                          'lumoscore-wallet.html'],
-  ['/rewards/stellar',                 'lumoscore-rewards-dark.html'],
+  ['/rewards/stellar',                 'lumoscore-rewards-dark.html', 'alias'],
   ['/rewards',                         'lumoscore-rewards-dark.html'],   // only variant that exists
-  ['/lumos/stellar',                   'lumoscore-lumos-token.html'],
+  ['/lumos/stellar',                   'lumoscore-lumos-token.html', 'alias'],
   ['/lumos',                           'lumoscore-lumos-token.html'],
   ['/signin',                          'lumoscore-signin.html'],
   ['/mcp',                             'lumoscore-mcp.html'],
@@ -481,9 +504,10 @@ const ROUTES = [
   ['/docs/curated-listing',             'lumoscore-docs-curated-listing.html'],
   ['/docs/security',                    'lumoscore-docs-security.html'],
   ['/docs/troubleshooting',             'lumoscore-docs-troubleshooting.html'],
-  ['/docs/faq',                        'lumoscore-docs-faq.html'],
-  ['/docs',                            'lumoscore-docs-introduction.html'],
-  // the footer has always called it FAQs; /faq serves the same page as /docs/faq
+  // /docs/faq is the ALIAS: the footer has always called it FAQs and every link the build rewrites
+  // points at /faq, so /faq is the address and the docs-tree spelling defers to it.
+  ['/docs/faq',                        'lumoscore-docs-faq.html', 'alias'],
+  ['/docs',                            'lumoscore-docs-introduction.html', 'alias'],
   ['/faq',                             'lumoscore-docs-faq.html'],
 ];
 
@@ -568,10 +592,15 @@ const SITEMAP_WEIGHT = {
 function sitemapRoutesJs(routePairs){
   const seen = new Set();
   const rows = [];
-  for (const [urlPattern] of routePairs){
+  for (const [urlPattern, , , alias] of routePairs){
     if (urlPattern.indexOf(':') >= 0) continue;          // dynamic: listed from live data instead
     if (SITEMAP_SKIP.has(urlPattern)) continue;
-    if (seen.has(urlPattern)) continue;                   // /lumos and /lumos/stellar are one page
+    // An alias is the SAME PAGE at a second url. Listing both submitted two identical documents and
+    // asked Google to pick -- the dedupe here was keyed on the url, which is unique by construction,
+    // so it never removed anything and /lumos, /lumos/stellar (and bridge, rewards, docs, faq) all
+    // shipped as pairs. The flag is what actually makes "one page, one row" true.
+    if (alias) continue;
+    if (seen.has(urlPattern)) continue;
     seen.add(urlPattern);
     const w = SITEMAP_WEIGHT[urlPattern] || ['0.6', 'weekly'];
     rows.push([urlPattern, w[0], w[1]]);
@@ -609,6 +638,25 @@ function injectDeviceSwap(html, name){
   if (html.indexOf('id="lx-devswap"') >= 0) return html; // idempotent
   const i = html.indexOf('</head>');
   return i < 0 ? html : html.slice(0, i) + deviceSwapJs() + html.slice(i);
+}
+
+// alias url -> the url that page actually lives at, derived from the route table's alias flag so a new
+// alias cannot be added without its canonical following. Keyed on the file (theme suffix stripped),
+// because that is what makes two urls the same page.
+function canonOfJson(routePairs){
+  const home = {};                                        // file -> the page's real url
+  for (const [u, f, , alias] of routePairs){
+    if (alias || u.indexOf(':') >= 0) continue;
+    const b = f.replace(/-(dark|light|mobile)$/, '');
+    if (!(b in home)) home[b] = u;
+  }
+  const m = {};
+  for (const [u, f, , alias] of routePairs){
+    if (!alias || u.indexOf(':') >= 0) continue;
+    const c = home[f.replace(/-(dark|light|mobile)$/, '')];
+    if (c && c !== u) m[u] = c;
+  }
+  return JSON.stringify(m);
 }
 
 function middlewareJs(routePairs, mobileFiles){
@@ -992,6 +1040,7 @@ function legacyClean(pathname, params){
 
   for (const r of ROUTES){
     if (r[0].indexOf('/:') >= 0) continue;
+    if (r[3]) continue;   // an alias is not where a legacy filename should land
     if (r[1].replace(/-(dark|light|mobile)$/, '') === base) return r[0];
   }
   return null;
@@ -1162,14 +1211,16 @@ export async function onRequest(context){
 
   // canonical is the clean url WITHOUT query or hash, on whatever host served this request
   //
-  // ONE EXCEPTION. /docs and /docs/introduction are the same page at two urls -- identical title,
-  // description, h1 and body, both in the sitemap, and each canonicalising to itself, so neither
-  // deferred and Google had to pick. That coin-toss lands on the entry point to the best content on
-  // the site. /docs now points at /docs/introduction, which is the one the sidebar links and the one
-  // that names what it is. Both keep serving; only the signal changes.
-  const CANON_OF = { '/docs': '/docs/introduction' };
+  // EXCEPT for an alias. Two urls for one page -- identical title, description, h1 and body, each
+  // canonicalising to itself -- means neither defers and Google has to pick. /docs vs
+  // /docs/introduction was fixed by hand here; the same shape then reappeared four more times
+  // (/bridge, /rewards, /lumos, /faq) because nothing stopped it. This map is now GENERATED from the
+  // route table's alias flag, so every pair is covered and a new one cannot be added without it.
+  // Both urls keep serving; only the signal changes.
+  const CANON_OF = ${canonOfJson(routePairs)};
   const cleanPath = url.pathname === '/' ? '/' : url.pathname.replace(/\\/+$/, '');
-  const canonical = PRIMARY_ORIGIN + (CANON_OF[cleanPath] || cleanPath);
+  const canonPath = CANON_OF[cleanPath] || cleanPath;
+  const canonical = PRIMARY_ORIGIN + canonPath;
   const want = seoFor(url.pathname);
 
   let seo = null;
@@ -1265,8 +1316,13 @@ export async function onRequest(context){
   }];
 
   // Breadcrumbs only where there is a real hierarchy to describe.
+  //
+  // Built from the CANONICAL path, not the requested one. On an alias the two differ, and using the
+  // request path made /trade emit a breadcrumb naming /trade as its own node -- structured data
+  // asserting the page exists at the very url the canonical beside it defers away from. Same page,
+  // same trail, whichever of its urls was asked for.
   const crumbs = [];
-  const segsC = url.pathname.split('/').filter(Boolean);
+  const segsC = canonPath.split('/').filter(Boolean);
   if (segsC.length){
     crumbs.push({ '@type': 'ListItem', position: 1, name: 'Home', item: PRIMARY_ORIGIN + '/' });
     let acc = '';
@@ -1502,8 +1558,10 @@ function build(chain, srcDir, outRoot, atRoot, adminOnly){
 
     // device resolution at the edge. "/" is the landing page, which _redirects never covers because
     // index.html answers it directly — so it is added here explicitly.
-    const routePairs = [['/', 'index', 'lumoscore-landing-mobile']]
-      .concat(ROUTES.map(([u, f]) => [u, f.replace(/\.html$/, ''), null]));
+    // 4th field carries the alias flag through to the sitemap and the canonical map. The middleware
+    // ignores it for routing -- an alias resolves to its file exactly like any other url.
+    const routePairs = [['/', 'index', 'lumoscore-landing-mobile', null]]
+      .concat(ROUTES.map(([u, f, alias]) => [u, f.replace(/\.html$/, ''), null, alias || null]));
     const mobileFiles = files
       .filter(n => /-mobile\.html$/.test(n))
       .map(n => n.replace(/\.html$/, ''));
