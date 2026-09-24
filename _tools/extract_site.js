@@ -655,6 +655,26 @@ function sitemapRoutesJs(routePairs){
 // the second address for the same page that the design removed on purpose.
 // Only desktop pages carry it, so the reload lands on a page without it and cannot loop; the cookie is also
 // checked first, so a route with no mobile build settles after one pass. lxdev=d is the way back to desktop.
+// THE WAY BACK OUT, and it has to be on EVERY page including the mobile build.
+//
+// RAZA, on a desktop: "WTF is my desktop showing the like this. also when i check on my other google
+// profile, its showing fine." A cookie is per-profile, which is exactly the shape of that report -- and
+// the cookie below lasts a YEAR. Once it is set wrongly there was nothing on the site that could unset
+// it: the only script that touched it lived on desktop pages, and a stuck visitor never sees one. The
+// answer was "clear your cookies", which is not an answer.
+//
+// ?lxdev=d pins the desktop build, ?lxdev=m pins mobile, ?lxdev=0 forgets the preference and lets
+// detection run again. The parameter is stripped with replaceState so it never enters history and
+// cannot be shared by accident.
+function deviceEscapeJs(){
+  return '<script id="lx-devesc">(function(){try{'
+    + 'var m=/[?&]lxdev=(d|m|0)(?:&|$)/.exec(location.search||"");if(!m)return;'
+    + 'if(m[1]==="0")document.cookie="lxdev=;path=/;max-age=0;samesite=lax";'
+    + 'else document.cookie="lxdev="+m[1]+";path=/;max-age=31536000;samesite=lax";'
+    + 'var q=(location.search||"").replace(/([?&])lxdev=(?:d|m|0)(&|$)/,"$1").replace(/[?&]$/,"");'
+    + 'location.replace(location.pathname+(q&&q!=="?"?q:"")+location.hash);'
+    + '}catch(_){}})();<' + '/script>';
+}
 function deviceSwapJs(){
   return '<script id="lx-devswap">(function(){try{'
     + 'if(/(?:^|; )lxdev=/.test(document.cookie||""))return;'
@@ -662,17 +682,29 @@ function deviceSwapJs(){
     + 'try{coarse=window.matchMedia("(pointer:coarse)").matches;}catch(_){}'
     + 'try{hover=window.matchMedia("(hover:hover)").matches;}catch(_){}'
     + 'if(!coarse||hover)return;'
-    + 'var w=Math.min(window.innerWidth||9999,(window.screen&&window.screen.width)||9999);'
+    // A TOUCH SCREEN, not a touch-capable laptop: some Windows machines report a coarse pointer with no
+    // hover while a mouse is idle, and that is not a reason to hand them a phone layout for a year.
+    + 'if(!(navigator.maxTouchPoints>1))return;'
+    // SCREEN WIDTH, NOT WINDOW WIDTH. This read min(innerWidth, screen.width), so a desktop browser
+    // snapped to half a wide monitor measured under 1280 and pinned itself to the mobile build -- for a
+    // year, on that profile, with no way back. The window can be any size; the SCREEN is what says
+    // whether this is a tablet.
+    + 'var w=(window.screen&&window.screen.width)||9999;'
     + 'if(w>1280)return;'
     + 'document.cookie="lxdev=m;path=/;max-age=31536000;samesite=lax";'
     + 'location.reload();'
     + '}catch(_){}})();<' + '/script>';
 }
 function injectDeviceSwap(html, name){
+  const i = html.indexOf('</head>');
+  if (i < 0) return html;
+  // The escape goes on every build. A visitor pinned to mobile only ever loads mobile pages, so an
+  // escape that lives on desktop pages is an escape they can never reach.
+  if (html.indexOf('id="lx-devesc"') < 0) html = html.slice(0, i) + deviceEscapeJs() + html.slice(i);
   if (/-mobile\.html$/.test(name)) return html;          // already the build it would switch to
   if (html.indexOf('id="lx-devswap"') >= 0) return html; // idempotent
-  const i = html.indexOf('</head>');
-  return i < 0 ? html : html.slice(0, i) + deviceSwapJs() + html.slice(i);
+  const j = html.indexOf('</head>');
+  return j < 0 ? html : html.slice(0, j) + deviceSwapJs() + html.slice(j);
 }
 
 // alias url -> the url that page actually lives at, derived from the route table's alias flag so a new
