@@ -1,0 +1,16 @@
+{
+  "name": "@lumoscore/mcp",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "LumosCore MCP server — Stellar DeFi tools for AI agents",
+  "bin": {
+    "lumoscore-mcp": "./index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.1"
+  }
+}
