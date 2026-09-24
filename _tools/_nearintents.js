@@ -42,7 +42,12 @@ function runtime(NI_SENDABLE) {
     // across the entire site, which is load-bearing for the multichain design. One destination is not worth that.
     Bitcoin: 'btc', Solana: 'sol', Tron: 'tron', TON: 'ton', Near: 'near', Sui: 'sui',
     Starknet: 'starknet', Cardano: 'cardano', Litecoin: 'ltc', Dogecoin: 'doge', 'Bitcoin Cash': 'bch',
-    Zcash: 'zec', Dash: 'dash', Movement: 'movement', Fogo: 'fogo' };
+    Zcash: 'zec', Dash: 'dash', Movement: 'movement', Fogo: 'fogo',
+    // THE SAME DESTINATION AS AXELAR, ON PURPOSE. Axelar ITS can only carry a token registered on both ends,
+    // and from Stellar that is SHX alone -- XRP is not registered on Stellar in ITS at all, so Axelar can never
+    // deliver it. NEAR Intents can, natively. Listing XRPL here gives the destination a second route card, so
+    // the choice of what ARRIVES is the user's (RAZA 2026-09-24).
+    XRPL: 'xrp' };
   // The offer per chain: NATIVE FIRST, then majors. Fixed on purpose -- 1Click's own lists include micro-caps.
   var NI_DEST = {
     eth: ['ETH', 'USDC', 'USDT', 'WBTC', 'cbBTC', 'DAI', 'LINK', 'UNI', 'AAVE', 'WETH'],
@@ -76,7 +81,7 @@ function runtime(NI_SENDABLE) {
     btc: ['BTC'], sol: ['SOL', 'USDC', 'USDT'], tron: ['TRX', 'USDT'], ton: ['GRAM', 'USDT'],
     near: ['wNEAR', 'USDC'], sui: ['SUI', 'USDC'], starknet: ['STRK'],
     cardano: ['ADA'], ltc: ['LTC'], doge: ['DOGE'], bch: ['BCH'], zec: ['ZEC'], dash: ['DASH'],
-    movement: ['USDCx', 'MOVE'], fogo: ['FOGO']
+    movement: ['USDCx', 'MOVE'], fogo: ['FOGO'], xrp: ['XRP']
   };
   var NI_NAME = { ETH: 'Ether', WETH: 'Wrapped Ether', USDC: 'USD Coin', USDT: 'Tether USD', USDT0: 'Tether USD0', WBTC: 'Wrapped Bitcoin',
     cbBTC: 'Coinbase Wrapped BTC', DAI: 'Dai', LINK: 'Chainlink', UNI: 'Uniswap', AAVE: 'Aave', ARB: 'Arbitrum', GMX: 'GMX', OP: 'Optimism',
@@ -95,6 +100,30 @@ function runtime(NI_SENDABLE) {
   var NI_LABEL = { GRAM: 'TON' };
   function labelOf(s) { return NI_LABEL[s] || s; }
   var PLACEHOLDER_EVM = '0x1111111111111111111111111111111111111111';   // DRY quotes only (1Click refuses 0x..dEaD); a real send uses the user's validated address
+  // A PLACEHOLDER PER ADDRESS FAMILY. 1Click validates the recipient against the destination chain even on a
+  // dry quote, so substituting an EVM address for a Bitcoin or XRPL destination made the card answer
+  // 'recipient is not valid' -- which is what every one of the sixteen non-EVM chains has been doing since
+  // they were added (found 2026-09-24 while adding XRPL). These are only ever used to PRICE a route before
+  // the user has typed an address; a real send always uses their own, validated (lxNiConfirm).
+  var PLACEHOLDER = {
+    btc: 'bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq', ltc: 'ltc1qg9d2tjqv2z6yv5cxtnrqjrnhfvqhw3kxkkzppe',
+    doge: 'DH5yaieqoZN36fDVciNyRueRGvGLR3mr7L', bch: 'qzm47qz5ue99y9yl4aca7jnz7dwgdenl85jkfx3znl',
+    dash: 'XnNM6nVnaLnHTkiEuyYDgLmxRgUBwFZtHQ', zec: 't1KDGCUiVfjWGGPYTGmvcNGfJDSWQGhLGEW',
+    sol: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', fogo: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+    tron: 'TNPeeaaFB7K9cmo4uQpcU31zGK8G864Nhk', xrp: 'rN7n7otQDd6FczFgLdSqtcsAUxDkw6fzRH',
+    ton: 'UQAvDfWFG0oYX19jwNDNBBL1rKNT9XfaGP9HyTb5nb2Eml6Y', near: 'wrap.near',
+    sui: '0x2c68443db9e8c813b194010c11040a3ce59f47e4eb97a2ec805371505dad7459',
+    starknet: '0x04270219d365d6b017231b52e92b3fb5d7c8378b05e9abc97724537a80e93b0f',
+    cardano: 'addr1qx2fxv2umyhttkxyxp8x0dlpdt3k6cwng5pxj3jhsydzer3n0d3vllmyqwsx5wktcd8cc3sq835lu7drv2xwl2wywfgse35a3x',
+    movement: '0x2c68443db9e8c813b194010c11040a3ce59f47e4eb97a2ec805371505dad7459'
+  };
+  // Their own address when it is valid FOR THIS destination, else the family's placeholder.
+  function quoteTo(dest, recipient) {
+    var c = NI_CHAIN[dest];
+    var okFn = window.lxBrValidAddr;
+    if (recipient && okFn) { try { if (okFn(dest, recipient)) return recipient; } catch (_) {} }
+    return PLACEHOLDER[c] || PLACEHOLDER_EVM;
+  }
 
   window.__lxNiSendable = !!NI_SENDABLE;
   // THE DESTINATION LIST THIS ROUTE ADDS, published for lxBrRoutes in _lzusdt0.js. That function used to union
@@ -217,7 +246,7 @@ function runtime(NI_SENDABLE) {
     var sk = sourceKey || srcKey(), amt = parseFloat(String(amountHuman || 0).replace(/,/g, '')) || 0;
     var row = baseRow(dest, sym);
     if (!(amt > 0)) return tokens().then(function () { row.niFeeBps = niFeeBps(transportOf(sk), sym); row.tag = tagFor(dest); return row; }, function () { return row; });
-    var to = /^0x[0-9a-fA-F]{40}$/.test(recipient || '') ? recipient : PLACEHOLDER_EVM;
+    var to = quoteTo(dest, recipient);
     // A DRY quote still names a refund account, and 1Click checks it holds the origin asset: the USDT0 issuer (the old
     // fallback) has no USDC trustline, so every USDC-source quote failed before a key was loaded. The fee collector
     // holds both XLM and USDC. A real send always refunds to the signer (lxNiConfirm).
@@ -403,7 +432,11 @@ function runtime(NI_SENDABLE) {
     var CC = window.__lxCCTP || {}, dest = net, sym = pick(dest), chain = chainOf(dest);
     if (!window.__lxNiSendable) { say('Sending by NEAR Intents isn’t switched on yet — choose another route.'); return; }
     if (!chain || !sym) { say('NEAR Intents does not deliver to ' + dest + '.'); return; }
-    if (!/^0x[0-9a-fA-F]{40}$/.test(recipient || '')) { say('That doesn’t look like a valid ' + dest + ' address.'); return; }
+    // VALIDATED AGAINST THE DESTINATION, not against Ethereum. This refused every non-EVM address, so the
+    // sixteen non-EVM chains could be picked and quoted and then never sent. lxBrValidAddr is the bridge's own
+    // per-chain check, the same one that gates Review.
+    var okAddr = window.lxBrValidAddr ? window.lxBrValidAddr(dest, recipient) : /^0x[0-9a-fA-F]{40}$/.test(recipient || '');
+    if (!okAddr) { say('That doesn’t look like a valid ' + dest + ' address.'); return; }
     var srcAmt = parseFloat(String(amt).replace(/,/g, '')) || 0; if (!(srcAmt > 0)) { say('Enter a valid amount on the previous step.'); return; }
     var rate = feeRate(), feeAmt = +(srcAmt * rate).toFixed(7), transport = transportOf(k);
     var spec = (A && A.spec === 'USDC') ? { code: 'USDC', issuer: CC.usdcIssuer } : (A && A.spec);
