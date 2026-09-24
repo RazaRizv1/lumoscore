@@ -163,52 +163,39 @@ function prepared(action, summary, url, extra) {
   }, extra || {}));
 }
 
-// WHAT THE APP CAN ACTUALLY EXECUTE, which is narrower than what Horizon can quote.
+// WHICH SCREEN CAN ACTUALLY DO THIS TRADE.
 //
-// The Trade-Asset page trades its asset against XLM and nothing else -- the "you pay" chip is a
-// display element, not a picker. So a pair with XLM on one side is one action, and any other pair is
-// two: sell into XLM, then buy out of it.
+// Two surfaces, and they are not equivalent:
+//   * the Trade-Asset page pairs ITS asset with XLM only -- its "you pay" chip is a display element
+//   * the DASHBOARD swap takes any pair: both chips are pickers, and it settles through the classic
+//     Horizon path payment, which is also the route that collects the platform fee correctly (the
+//     reason Smart Swap was removed rather than repaired)
 //
-// The first version ignored this. Asked for LUMOS -> BLND it returned a single confident quote (real
-// -- Horizon routes it LUMOS->XLM->USDC->BLND) and linked to the BLND page, which cannot perform that
-// trade at all. A tool that quotes what the product cannot do sends the user somewhere to fail, and
-// an agent repeats the number as if it were one click away. Being narrower here is the honest answer
-// until an any-pair surface exists.
+// So XLM on one side -> the trade page, prefilled. Anything else -> the dashboard swap.
+//
+// I got this wrong first and said an any-pair swap did not exist, because I read the page's served
+// HTML and never opened it: those pickers are plain <span>s in the markup and _swapcalc.js turns them
+// into pickers at runtime. Absent from the HTML is not absent from the product -- the same lesson as
+// "present in the HTML is not working".
 async function swap({ from, to, amount }) {
   const q = await getQuote({ from, to, amount });
   if (q.isError) return q;
   const d = JSON.parse(q.content[0].text);
   const f = parseAsset(from), t = parseAsset(to);
-  const direct = f.id === 'native' || t.id === 'native';
 
-  if (direct) {
+  if (f.id === 'native' || t.id === 'native') {
     const page = t.id === 'native' ? f.id : t.id;
     const side = t.id === 'native' ? 'sell' : 'buy';
     return prepared('swap', `Swap ${amount} ${f.code} for about ${d.amount_out} ${t.code}`,
       web(`/trade/stellar/${page}?side=${side}&amount=${amount}`),
-      { quote: d, opens: 'The trade page with this amount already filled in.' });
+      { quote: d, opens: 'The trade page, with the side and amount already filled in.' });
   }
 
-  // Neither side is XLM: two trades, each on its own page, each signed separately.
-  const leg1 = await getQuote({ from: f.id, to: 'XLM', amount });
-  const xlmOut = leg1.isError ? null : JSON.parse(leg1.content[0].text).amount_out;
-  return ok({
-    action: 'swap',
-    summary: `${f.code} → ${t.code} is two trades on LumosCore, not one`,
-    why: `The trade page pairs each asset with XLM, so ${f.code} → ${t.code} is done as `
-      + `${f.code} → XLM, then XLM → ${t.code}. Horizon can route it in a single path payment, but no `
-      + `screen in the app submits that yet, so this tool will not pretend it is one click.`,
-    signed: false,
-    end_to_end_quote: d,
-    steps: [
-      { step: 1, action: `Sell ${amount} ${f.code} for XLM`,
-        expect_xlm: xlmOut, approve_url: web(`/trade/stellar/${f.id}?side=sell&amount=${amount}`) },
-      { step: 2, action: `Buy ${t.code} with the XLM you receive`,
-        approve_url: web(`/trade/stellar/${t.id}?side=buy`) },
-    ],
-    note: 'Each leg is quoted and signed separately, so the final amount can differ from the '
-      + 'end-to-end quote above. Step 2 is left without an amount on purpose — fill it with what step 1 actually paid out.',
-  });
+  return prepared('swap', `Swap ${amount} ${f.code} for about ${d.amount_out} ${t.code}`,
+    web(`/dashboard?swap=${encodeURIComponent(f.id)},${encodeURIComponent(t.id)},${amount}`),
+    { quote: d,
+      opens: 'The dashboard swap, with both assets and the amount already filled in.',
+      route: `Settled as one path payment (${[f.code, ...d.hops.map((h) => String(h).split('-')[0]), t.code].join(' → ')}), not as two trades.` });
 }
 
 async function addLiquidity({ a, b, amount_a, amount_b }) {
