@@ -843,8 +843,18 @@ function lxCctpNetLogos(){
     var MAP=LX_NETMAP;
     // force=false: skip icons that already carry a real logo as a url() background (e.g. Ethereum's option) so we
     // don't fight the design's own re-render loop (that fight caused the Ethereum dropdown blip). force=true: always set.
-    function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','/assets/networks/'+key+'.png?v='+LX_ICONV); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="/assets/networks/'+key+'.png?v='+LX_ICONV+'" alt="">'; }
-    [].slice.call(document.querySelectorAll('.brd-opt[data-net]')).forEach(function(o){ var key=MAP[o.getAttribute('data-net')]; if(key) apply(o.querySelector('.brd-ic'),key,false); });
+    // The lazy flag marks an icon inside the CLOSED destination dropdown. There are 52 of them and
+    // they were all fetched before the page could finish loading -- measured on production: 401 images
+    // on this page, 277 of them not visible, none lazy, and the load event at 15.2 SECONDS with the
+    // tab spinner running the whole time. That is the "it just keeps loading" RAZA reported, and a
+    // first-time visitor reads it as a slow site.
+    //
+    // loading="lazy" on an element inside a display:none menu is never near the viewport, so the
+    // browser skips it until the menu opens -- which is exactly when the icon is first wanted.
+    // NOT applied to the chips below: those are on screen immediately, and deferring them would trade
+    // a spinner for a visibly empty logo.
+    function apply(ic,key,force,lazy){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','/assets/networks/'+key+'.png?v='+LX_ICONV); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg"'+(lazy?' loading="lazy" decoding="async"':'')+' src="/assets/networks/'+key+'.png?v='+LX_ICONV+'" alt="">'; }
+    [].slice.call(document.querySelectorAll('.brd-opt[data-net]')).forEach(function(o){ var key=MAP[o.getAttribute('data-net')]; if(key) apply(o.querySelector('.brd-ic'),key,false,true); });
     // .br-netchip covers the source chip AND the .brd-trigger (selected dest); force so the selected chip always shows the PNG (set once, no blip)
     [].slice.call(document.querySelectorAll('.br-netchip')).forEach(function(ch){ var key=MAP[((ch.querySelector('.br-nm')||ch.querySelector('.nm')||{}).textContent||'').trim()]; if(key) apply(ch.querySelector('.br-ic'),key,true); });
     // THE SOURCE CHIP SHIPS WITH A HARDCODED 'Connected' PILL. That was invisible while the page was gated
@@ -1643,9 +1653,14 @@ function lxBrAssetLogo(code,net){
 // the site's logo healer, which would put the wrong mark on an asset it guessed from the ticker.
 function lxBrChipIco(code,net,stellarIcon){
   var u=lxBrAssetLogo(code,net), nkey=net?(LX_NETMAP[net]||""):"";
-  var face=u?('<img src="'+u+'" alt="">'):('<span class="lx-tl" data-l="'+lxBrEsc(String(code||"?").charAt(0).toUpperCase())+'"></span>');
+  // Lazy: every one of these is a row in Recent transactions, which sits well below the fold -- 63
+  // rows, two marks each. Fetched eagerly they were the slowest requests on the page (6.7s apiece,
+  // all starting together once the table rendered) and they held the load event open to 15.2s.
+  // Below the viewport is precisely the case loading="lazy" exists for, and they fetch on scroll.
+  var LZ=' loading="lazy" decoding="async"';
+  var face=u?('<img'+LZ+' src="'+u+'" alt="">'):('<span class="lx-tl" data-l="'+lxBrEsc(String(code||"?").charAt(0).toUpperCase())+'"></span>');
   var badge=net
-    ? (nkey?('<span class="lx-tnet"><img src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>'):'')
+    ? (nkey?('<span class="lx-tnet"><img'+LZ+' src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>'):'')
     : ('<span class="lx-tnet lx-tnet-x">'+(stellarIcon||'')+'</span>');   // no net named = the Stellar side
   return '<span class="lx-tic">'+face+badge+'</span>';
 }
