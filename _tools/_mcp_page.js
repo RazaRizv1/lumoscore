@@ -300,8 +300,8 @@ function mainHTML(cfg){
       <div class="lxh-anim" data-d="0"><div class="lxh-badge"><i></i><span>MCP Server</span></div></div>
       <h1 class="lxh-anim" data-d="120">Your AI agent,<br><span class="grad">on-chain.</span></h1>
       <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about ${N} and LumosCore answers &mdash; prices, any wallet, pools, live routes. Tell it what to do and it hands back the transaction, filled in and ready for you to sign. <b style="color:#fff;font-weight:600">It never holds your key.</b></p>
-      <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="npm i -g @lumoscore/mcp"><span class="p">$</span><code>npm i -g @lumoscore/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
-      <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-tools">${I.term}Get Started</a><a class="lxh-btn s" href="#mcp-tools">${I.book}Documentation</a></div>
+      <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="https://lumoscore.com/mcp"><span class="p">&#8250;</span><code>https://lumoscore.com/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
+      <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-connect">${I.term}Connect your agent</a><a class="lxh-btn s" href="#mcp-tools">${I.book}See the tools</a></div>
       <div class="lxh-stats lxh-anim" data-d="600">
         <div><div class="v">7</div><div class="l">Read tools</div></div>
         <div class="dv"></div>
@@ -384,6 +384,35 @@ if(document.readyState!=='loading')boot();else window.addEventListener('load',bo
     ${feat('fc-iris',I.bridge,'Cross-chain','Prepare a transfer off ${N}, routed through Circle CCTP, LayerZero, NEAR Intents or Axelar &mdash; whichever fits the destination.')}
     ${feat('fc-teal',I.rocket,'Launch a token','Describe the token you want. The agent sets up the issuance flow; you approve each signed step.')}
   </div>
+</section>
+
+<section class="mcp-sec" id="mcp-connect">
+  <div class="mcp-sec-head">
+    <h2>Connect your agent</h2>
+    <p>One url, no install and no API key &mdash; the server holds no credentials, so there is nothing to sign in to. A client that speaks remote MCP can reach it, including the ones that cannot run a local server at all.</p>
+  </div>
+  <div class="mcp-setup">
+    <div>
+      <p class="mcp-orlabel">Claude Code, or any CLI that takes an HTTP transport</p>
+      <div class="mcp-code">
+        <div class="mcp-code-bar"><span>terminal</span><span class="cp" data-mcp-copy>${I.copy}Copy</span></div>
+        <pre><span class="c"># add the remote server, then ask it anything</span>
+claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com/mcp"</span></pre>
+      </div>
+    </div>
+    <div>
+      <p class="mcp-orlabel">Cursor, VS Code, Claude Desktop &mdash; <code>mcp.json</code></p>
+      <div class="mcp-code">
+        <div class="mcp-code-bar"><span>mcp.json</span><span class="cp" data-mcp-copy>${I.copy}Copy</span></div>
+        <pre>{
+  <span class="k">"mcpServers"</span>: {
+    <span class="k">"lumoscore"</span>: { <span class="k">"url"</span>: <span class="s">"https://lumoscore.com/mcp"</span> }
+  }
+}</pre>
+      </div>
+    </div>
+  </div>
+  <p class="mcp-orlabel" style="margin:18px 0 0">On an older client that only speaks stdio, bridge it with <code>npx -y mcp-remote https://lumoscore.com/mcp</code>. In ChatGPT, add it as a custom connector pointing at the same url.</p>
 </section>
 
 <section class="mcp-sec" id="mcp-tools">
