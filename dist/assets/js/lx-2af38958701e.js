@@ -3155,15 +3155,30 @@
     tx_no_source_account:"This account is not activated on the network yet."
   };
   function txErr(rc,detail,status){
-    var codes=[];
+    var txCode="", failed=[];
     if(rc){
-      if(rc.transaction)codes.push(rc.transaction);
+      if(rc.transaction)txCode=rc.transaction;
       var ops=rc.operations||[];
-      for(var i=0;i<ops.length;i++)if(ops[i]&&ops[i]!=="op_success")codes.push(ops[i]);
+      for(var i=0;i<ops.length;i++)if(ops[i]&&ops[i]!=="op_success")failed.push(ops[i]);
     }
-    // An operation code says more than tx_failed, which only means "one of the operations did".
-    for(var j=codes.length-1;j>=0;j--){ if(TXERR[codes[j]])return TXERR[codes[j]]+" ["+codes[j]+"]"; }
-    if(codes.length)return "The network rejected this transaction ["+codes.join(", ")+"]";
+    // THE FIRST FAILING OPERATION IS THE CAUSE; anything after it is a consequence of it.
+    //
+    // This walked the codes BACKWARDS, which was right about one thing and wrong about another. Right:
+    // an operation code says more than tx_failed, which only means "one of the operations did" -- so the
+    // transaction code stays a fallback, below. Wrong: among the operations it then reported the LAST
+    // one. A deposit that opens a pool trustline is [changeTrust, liquidityPoolDeposit], so a reserve
+    // shortfall came back as [op_low_reserve, op_no_trust] and the person was told "your wallet does not
+    // hold this asset yet, add it first" -- sent to fix a trustline that was never the problem, when the
+    // truth was that they had no spendable XLM to open it with.
+    if(failed.length){
+      var c0=failed[0];
+      if(TXERR[c0])return TXERR[c0]+" ["+c0+"]";
+      return "The network rejected this transaction ["+failed.join(", ")+"]";
+    }
+    if(txCode){
+      if(TXERR[txCode])return TXERR[txCode]+" ["+txCode+"]";
+      return "The network rejected this transaction ["+txCode+"]";
+    }
     return detail||("The network rejected this transaction (HTTP "+status+")");
   }
   try{ window.__lxTxErr=txErr; }catch(_){}
@@ -3221,11 +3236,27 @@ function maxShares(dd){
     var xlm=nat?+nat.balance:0;
     if(!(a&&a.subentry_count!=null))return;
     var subs=+a.subentry_count;
-    var need=(2+subs+newSubs)*0.5+0.01;   // base 2 + every subentry, at 0.5 each, plus room for the fee
-    if(xlm+1e-7>=need)return;
+    // SPONSORED ENTRIES COUNT TOO. Stellar's reserve is (2 + subentries + sponsoring - sponsored) x 0.5:
+    // an account that sponsors another account's trustlines pays their reserve out of its own balance.
+    // This guard left that term out while the spendable figure shown right above the field (balXlm)
+    // includes it, so two calculations of one quantity disagreed in the same file. On a real wallet
+    // sponsoring 79 entries the guard worked out 37 XLM needed against a 76 XLM balance, waved the
+    // transaction through, and the network refused it after the person had already signed.
+    //
+    // Selling liabilities come off for the same reason: XLM committed to an open offer cannot pay a
+    // reserve either. Both terms only ever make this stricter, and only in the cases the network itself
+    // would reject -- it cannot block a transaction that would have succeeded.
+    var spon=(+a.num_sponsoring||0)-(+a.num_sponsored||0);
+    var sell=nat?(+nat.selling_liabilities||0):0;
+    var avail=xlm-sell;
+    var need=(2+subs+spon+newSubs)*0.5+0.01;   // base 2 + every subentry and sponsored entry, at 0.5 each, plus the fee
+    if(avail+1e-7>=need)return;
+    // Say WHERE the XLM went. "76.5 has to stay in the account" reads as a mistake to someone looking at
+    // a 76.56 balance until they are told that 79 of those entries belong to other people.
+    var why=(spon>0)?(" "+spon+" of those entries are sponsored for other accounts, and this account pays their reserve."):"";
     throw new Error("Not enough XLM for the account reserve. This opens "+newSubs+" new trustline"
-      +(newSubs>1?"s":"")+", so "+need.toFixed(4)+" XLM has to stay in the account and it holds "
-      +xlm.toFixed(4)+". Add about "+(need-xlm).toFixed(4)+" XLM and try again. Your "
+      +(newSubs>1?"s":"")+", so "+need.toFixed(4)+" XLM has to stay in the account and it has "
+      +avail.toFixed(4)+" available."+why+" Add about "+(need-avail).toFixed(4)+" XLM and try again. Your "
       +"pool assets are untouched — nothing was sent.");
   }
   function wSend(addr, buildOps, onSigned){ var S; return wLoadSdk().then(function(sdk){S=sdk; return wAcct(addr);}).then(function(a){ var tb=new S.TransactionBuilder(new S.Account(addr,a.sequence),{fee:"2000",networkPassphrase:WPASS}); buildOps(S,a).forEach(function(op){tb.addOperation(op);}); var tx=tb.setTimeout(300).build(); return wSign(tx.toXDR(),addr); }).then(function(signed){ try{ if(onSigned)onSigned(); }catch(_){} return wSubmit(signed); }); }
