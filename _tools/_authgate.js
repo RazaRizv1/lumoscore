@@ -62,8 +62,15 @@ const PUBLIC_BASES = new Set([
   'lumoscore-amm-pool',       // Pools — per-pool
   'lumoscore-lumos-token',    // LUMOS
   'lumoscore-mcp',            // MCP
+  // OPENED 2026-09-24. These are the pages we PROMOTE, and bouncing an unsigned visitor to the landing
+  // page threw the click away: /trade/stellar converts precisely BECAUSE a stranger can see it. Both now
+  // render with a connect prompt instead of redirecting. Nothing can be SIGNED without a wallet either
+  // way -- this gate was protecting the view, not the money.
+  'lumoscore-bridge',         // Bridge  (the page we promote)
+  'lumoscore-rewards',        // Rewards (base name; the only variant is -dark)
 ]);
-// GATED (deliberately): home/dashboard, wallet, bridge, rewards, launch-token/review/confirm.
+// STILL GATED, deliberately: dashboard/home and wallet (both meaningless with no wallet), and the
+// launchpad flow, where every step needs a signature.
 
 // Keys are filenames and carry variant suffixes (-dark, -light, -mobile). Strip them before
 // comparing, or "lumoscore-dex-asset-dark" misses the set. Substring matching is NOT safe here:

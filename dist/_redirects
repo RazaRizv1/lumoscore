@@ -11,8 +11,10 @@
 /launchpad/confirm                        /lumoscore-launch-confirm  200
 /launchpad                                /lumoscore-launch-token  200
 /dashboard                                /lumoscore-home  200
+/bridge/stellar                           /lumoscore-bridge  200
 /bridge                                   /lumoscore-bridge  200
 /wallet                                   /lumoscore-wallet  200
+/rewards/stellar                          /lumoscore-rewards-dark  200
 /rewards                                  /lumoscore-rewards-dark  200
 /lumos/stellar                            /lumoscore-lumos-token  200
 /lumos                                    /lumoscore-lumos-token  200
