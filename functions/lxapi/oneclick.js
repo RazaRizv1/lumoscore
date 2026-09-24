@@ -202,6 +202,17 @@ export async function onRequestPost({ request, env }) {
         destinationAsset: dest.assetId, amount: String(b.amount),
         refundTo: b.refundTo, refundType: 'ORIGIN_CHAIN',
         recipient: b.recipient, recipientType: 'DESTINATION_CHAIN',
+        // WHO THE VOLUME BELONGS TO. 1Click writes this into the on-chain data and surfaces it on
+        // their public analytics, so it is the handle NEAR Intents can match LumosCore's traffic by --
+        // asked for so they can list us in their ecosystem section (RAZA 2026-09-24).
+        //
+        // We had never sent one, so every transfer routed through us was anonymous to them: the
+        // integration has been live since 2026-09-19 and none of that volume is attributable.
+        // Lowercase because the field is documented lowercase-only.
+        //
+        // It is a label we choose, NOT an id they issue -- there was nothing to look up, which is why
+        // it was missing rather than wrong.
+        referral: 'lumoscore',
         deadline: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
       };
       const r = await call(env, '/quote', { method: 'POST', body: JSON.stringify(body) });
