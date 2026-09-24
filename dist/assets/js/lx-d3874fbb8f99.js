@@ -6,7 +6,7 @@ function wait(ms){return new Promise(function(r){TO.push(setTimeout(r,ms));});}
 function mk(html){var d=document.createElement('div');d.className='lxh-tline';d.innerHTML=html;lines.appendChild(d);requestAnimationFrame(function(){d.classList.add('show');});return d;}
 function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent='';(function t(){if(i<txt.length){el.textContent+=txt[i++];TO.push(setTimeout(t,sp));}else res();})();});}
 var steps=[
- {t:'tx',x:'✓ lumoscore connected · 10 tools · Aptos mainnet',c:'lxh-ok',d:420},
+ {t:'tx',x:'✓ lumoscore connected · 12 tools · Aptos mainnet',c:'lxh-ok',d:420},
  {t:'sp',d:140},
  {t:'in',x:'how much LUMOS do I hold?',d:420},
  {t:'tx',x:'→ get_portfolio',c:'lxh-dim',d:480},
