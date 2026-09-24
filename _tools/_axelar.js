@@ -66,7 +66,8 @@ function runtime(AX_SENDABLE) {
   // so a send could have been aimed at an address that cannot receive it.
   //
   // RAZA chose XRP instead: native, no trustline, genuinely nothing to claim. XRPL stays in the
-  // destination list (AX_ONLY below still puts it there) and is served by NEAR Intents.
+  // destination list -- its dropdown row MOVED to NI_ONLY in _nearintents.js on 2026-09-24 -- and is
+  // served by NEAR Intents.
   //
   // THE COST OF THIS: NEAR Intents will not quote below about 1.51 USDC, where Axelar had no minimum.
   // Small XRPL transfers are gone with it.
@@ -476,15 +477,15 @@ for (const dev of ['desktop', 'mobile']) {
     h = h.replace(new RegExp('<script id="lx-axelar">[' + B + 's' + B + 'S]*?<' + B + '/script>', 'g'), '');
     h = h.replace(new RegExp('<style id="lx-axpick-css">[' + B + 's' + B + 'S]*?<' + B + '/style>', 'g'), '');
     h = h.replace(new RegExp('<button class="brd-opt lx-axopt"[' + B + 's' + B + 'S]*?<' + B + '/button>', 'g'), '');
-    if (h.indexOf('</head>') >= 0) h = h.replace('</head>', AX_CSS + '</head>');
-    { const anchor = '<span class="brd-nm">World Chain</span></button>';
-      const ai = h.indexOf(anchor);
-      if (ai >= 0) { h = h.slice(0, ai + anchor.length) + AX_OPTS + h.slice(ai + anchor.length); dd++; } }
-    // AFTER the NEAR Intents script: this one wraps whatever lxBrCompare is by then, so it must run last of the
-    // route layers or its wrapper would be the one replaced.
-    const bi = h.lastIndexOf('</body>');
-    if (bi < 0) { json[k] = h; continue; }
-    h = h.slice(0, bi) + SCRIPT + h.slice(bi);
+    // STRIP ONLY -- the three replaces above are now the whole job. Axelar was removed from Stellar on
+    // 2026-09-24: it added no destination we do not already reach (ethereum, solana, sui, monad and hedera are
+    // all served by CCTP, LayerZero or NEAR Intents), and the one it did add -- XRPL -- is now served by NEAR
+    // Intents with native XRP, which needs no trustline. See the header for what it could still carry.
+    //
+    // THIS PASS STAYS IN THE BUILD CHAIN DELIBERATELY. The page containers are gitignored, so they still hold
+    // the injected script; deleting this file instead would leave that markup in them and the next rebuild
+    // would ship Axelar again from a source nobody is reading. Running it removes the layer and keeps removing
+    // it. Re-enabling means restoring the three injections below AND putting AX_CHAIN back.
     seen++;
     if (h !== before) { json[k] = h; n++; }
   }
