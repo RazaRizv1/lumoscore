@@ -1245,6 +1245,11 @@ export async function onRequest(context){
     });
   }
 
+  // /mcp IS TWO THINGS ON ONE URL: the marketing page on GET, and the remote MCP server on POST
+  // (functions/mcp.js). Without this line a POST falls into the page branch below, and a client whose
+  // user agent happens to look like a phone is handed the mobile HTML page in reply to a JSON-RPC call.
+  if (url.pathname === '/mcp' && !navMethod) return next();
+
   const hit = match(url.pathname);
 
   // not a page route -> let Pages serve it as usual

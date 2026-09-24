@@ -9,7 +9,11 @@
 //    agent sees the same numbers a visitor does. Where an endpoint cannot answer, the tool says so
 //    rather than guessing -- a plausible wrong price is worse than a refusal, because the agent will
 //    act on it.
-const BASE = process.env.LUMOSCORE_API || 'https://lumoscore.com';
+// This module runs in two places now: Node, for the stdio server people install, and a Cloudflare
+// Worker, for the remote endpoint at /mcp. `process` does not exist in a Worker, so reading it
+// unguarded throws at import time and takes the whole endpoint down before it handles a request.
+const ENV = (typeof process !== 'undefined' && process.env) || {};
+const BASE = ENV.LUMOSCORE_API || 'https://lumoscore.com';
 const UA = 'lumoscore-mcp/0.1.0 (+https://lumoscore.com/mcp)';
 const TIMEOUT_MS = 20000;
 
