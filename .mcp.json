@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "lumoscore": {
+      "command": "node",
+      "args": ["C:\\LumosCore\\mcp\\index.js"]
+    }
+  }
+}
