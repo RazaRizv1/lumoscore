@@ -726,10 +726,10 @@ const BODY = '(function(){'
   // "its logo is missing"). Any new route needs all three of LZ_MARK, LZ_SUB and LZ_TAG, or it looks half-built
   // next to the others however correct its figures are.
   + 'Axelar:\'<img src="/assets/tokens/axelar.png" alt="" width="30" height="30" decoding="async">\'};'
-  + 'var LZ_SUB={CCTP:"Circle\\u2019s own burn-and-mint",LayerZero:"Tether\\u2019s omnichain dollar","NEAR Intents":"ETH, POL or another major token, delivered",Axelar:"Stronghold SHX to the XRP Ledger"};'
+  + 'var LZ_SUB={CCTP:"Circle\\u2019s own burn-and-mint",LayerZero:"Tether\\u2019s omnichain dollar","NEAR Intents":"{ASSET} delivered to your address",Axelar:"Stronghold SHX to the XRP Ledger"};'
   // "No claim" read as "you have no claim to it" -- RAZA: "what do you mean by no claim?". What it meant is that the
   // transfer arrives by itself, so the tag now says that.
-  + 'var LZ_TAG={CCTP:"Fastest",LayerZero:"Auto-delivered","NEAR Intents":"Multi-asset",Axelar:"Only XRPL route"};'
+  + 'var LZ_TAG={CCTP:"Fastest",LayerZero:"Auto-delivered","NEAR Intents":"Multi-asset",Axelar:"Any amount"};'
   // A route this build has not switched on: shown with its real figures, but not selectable ("Not yet available").
   + 'function lzLocked(r){ return (r.route==="LayerZero"&&!LZ_SENDABLE)||(r.route==="NEAR Intents"&&!window.__lxNiSendable)||(r.route==="Axelar"&&!window.__lxAxSendable); }'
 
@@ -749,7 +749,7 @@ const BODY = '(function(){'
   + ' h+=\'<div class="lx-brr-top">\';'
   + ' h+=\'<span class="lx-brr-mark">\'+(LZ_MARK[r.route]||"")+\'</span>\';'
   + ' h+=\'<span class="lx-brr-hd"><span class="lx-brr-nm">\'+r.route+\'</span>\';'
-  + ' h+=\'<span class="lx-brr-sub">\'+(LZ_SUB[r.route]||"")+\'</span></span>\';'
+  + ' h+=\'<span class="lx-brr-sub">\'+((LZ_SUB[r.route]||"").split("{ASSET}").join(r.asset||"A major token"))+\'</span></span>\';'
   + ' if(r.available!==false&&(r.tag||LZ_TAG[r.route])) h+=\'<span class="lx-brr-tag">\'+(r.tag||LZ_TAG[r.route])+\'</span>\';'
   + ' h+=\'</div>\';'
   // AN UNAVAILABLE ROUTE STATES WHY AND NOTHING ELSE. It used to print "Bridge fee  None" above "Quote unavailable

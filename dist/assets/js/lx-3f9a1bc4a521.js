@@ -801,7 +801,14 @@ function lxBrValidateStep2(){
     else if(rg.route==="LayerZero") routeMsg=rg.cctp
       ? "Sending by LayerZero isn't switched on yet — choose CCTP to continue."
       : "Sending to "+(net||"this network")+" isn't switched on yet — it can only be reached by LayerZero.";
-    else if(rg.route!=="CCTP") routeMsg=rg.why||"No route can take this amount without a large loss. Try a smaller amount.";
+    else if(rg.route==="Axelar"&&window.__lxAxSendable){ routeMsg=""; }
+    else if(rg.route==="Axelar") routeMsg="Sending by Axelar isn't switched on yet — choose another route.";
+    // EVERY SENDABLE ROUTE HAS TO BE NAMED HERE. This is a whitelist, and a route missing from it falls to the
+    // line below -- which blames the AMOUNT. Axelar was wired into the confirm dispatcher and never added here,
+    // so bridging 0.1 USDC to XRPL was refused with "no route can take this amount without a large loss" while
+    // the route card beside it showed a perfectly good quote of 27.7108 SHX (RAZA 2026-09-24). Adding a route
+    // means adding it in BOTH places.
+    else if(rg.route!=="CCTP") routeMsg=rg.why||("Sending by "+rg.route+" isn't switched on yet — choose another route.");
   }
   var addrOk=lxBrValidAddr(net,addr), amtOk=(amt>0 && !overBal), ok=addrOk&&amtOk&&!routeMsg;
   var wrap=(dstIn&&dstIn.closest)?dstIn.closest('.br-wallet'):null;

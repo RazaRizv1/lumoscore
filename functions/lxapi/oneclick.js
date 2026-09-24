@@ -28,10 +28,58 @@ const CHAINS = { eth: 1, arb: 1, base: 1, pol: 1, op: 1, avax: 1, bera: 1, monad
   // for those chains failed as 'unsupported destination asset'. _nearintents.js now FAILS THE BUILD if this map
   // and its NI_CHAIN disagree, because a comment asking the next person to keep two lists in step is not a check.
   btc: 1, sol: 1, tron: 1, ton: 1, near: 1, sui: 1, starknet: 1, cardano: 1, ltc: 1, doge: 1,
-  bch: 1, zec: 1, dash: 1, movement: 1, fogo: 1 };
+  bch: 1, zec: 1, dash: 1, movement: 1, fogo: 1,
+  // The XRP Ledger. It reaches XRPL with NATIVE XRP, which Axelar cannot: Axelar ITS only moves tokens
+  // registered on both ends, and from Stellar that is SHX alone. Live dry quote 2026-09-24: 2 USDC ->
+  // 1.332871 XRP in ~62s, minimum about 1.52 USDC.
+  xrp: 1 };
 const STELLAR_ORIGIN = { XLM: 1, USDC: 1 };
 const G_RE = /^G[A-Z2-7]{55}$/;
 const EVM_RE = /^0x[0-9a-fA-F]{40}$/;
+
+// RECIPIENT SHAPE PER DESTINATION FAMILY.
+//
+// This check used to be `EVM_RE` for every chain, which was right when NEAR Intents reached only EVM
+// chains and silently wrong from the moment the sixteen non-EVM ones were added: the picker offered
+// Bitcoin, Solana, Cardano, TON and the rest, and EVERY quote to them was refused here before it ever
+// reached 1Click (found 2026-09-24 while adding XRPL). The build gate that keeps NI_CHAIN and CHAINS
+// in step did not catch it, because this is a third list neither of them knows about.
+//
+// WHAT THIS IS FOR: keeping an open, unauthenticated endpoint from relaying arbitrary junk. It is NOT
+// trying to be the authority on address formats -- 1Click validates the recipient against the real
+// chain and says so ("recipient is not valid"), and duplicating full checksum rules for twenty
+// families here would be a second place to get them wrong. So: an exact pattern where the family has
+// one, and a conservative charset-and-length guard otherwise.
+const ADDR_RE = {
+  evm: /^0x[0-9a-fA-F]{40}$/,
+  sol: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
+  fogo: /^[1-9A-HJ-NP-Za-km-z]{32,44}$/,
+  tron: /^T[1-9A-HJ-NP-Za-km-z]{33}$/,
+  xrp: /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/,
+  ton: /^[UE]Q[A-Za-z0-9_-]{46}$/,
+  near: /^(?:[a-z0-9._-]{2,64}|[0-9a-f]{64})$/,
+  sui: /^0x[0-9a-fA-F]{64}$/,
+  movement: /^0x[0-9a-fA-F]{1,64}$/,
+  starknet: /^0x[0-9a-fA-F]{1,64}$/,
+  cardano: /^(?:addr1[0-9a-z]{20,110}|[1-9A-HJ-NP-Za-km-z]{50,120})$/,
+  btc: /^(?:bc1[0-9a-z]{20,80}|[13][1-9A-HJ-NP-Za-km-z]{25,39})$/,
+  ltc: /^(?:ltc1[0-9a-z]{20,80}|[LM3][1-9A-HJ-NP-Za-km-z]{25,39})$/,
+  doge: /^[DA9][1-9A-HJ-NP-Za-km-z]{25,39}$/,
+  dash: /^X[1-9A-HJ-NP-Za-km-z]{25,39}$/,
+  bch: /^(?:(?:bitcoincash:)?[qp][0-9a-z]{38,58}|[13][1-9A-HJ-NP-Za-km-z]{25,39})$/,
+  zec: /^(?:t1|t3)[1-9A-HJ-NP-Za-km-z]{25,39}$/,
+};
+const EVM_FAMILY = { eth: 1, arb: 1, base: 1, pol: 1, op: 1, avax: 1, bera: 1, monad: 1, plasma: 1,
+  bsc: 1, gnosis: 1, scroll: 1, hood: 1, adi: 1 };
+// Last resort for a family with no pattern above: no spaces, no control characters, no angle brackets,
+// and a plausible length. Anything that gets through still has to satisfy 1Click.
+const ADDR_GENERIC = /^[A-Za-z0-9:._-]{20,120}$/;
+function recipientOk(chain, addr) {
+  const a = String(addr || '');
+  if (!a) return false;
+  const re = EVM_FAMILY[chain] ? ADDR_RE.evm : ADDR_RE[chain];
+  return re ? re.test(a) : ADDR_GENERIC.test(a);
+}
 const HASH_RE = /^[0-9a-f]{64}$/i;
 
 function json(body, status, ttl) {
@@ -144,7 +192,9 @@ export async function onRequestPost({ request, env }) {
       if (!dest || dest.blockchain === 'stellar') return json({ ok: 0, error: 'unsupported destination asset' }, 400);
       if (!/^[0-9]{1,30}$/.test(String(b.amount || ''))) return json({ ok: 0, error: 'bad amount' }, 400);
       if (!G_RE.test(b.refundTo || '')) return json({ ok: 0, error: 'refund must be a Stellar address' }, 400);
-      if (!EVM_RE.test(b.recipient || '')) return json({ ok: 0, error: 'recipient must be an EVM address' }, 400);
+      if (!recipientOk(dest.blockchain, b.recipient)) {
+        return json({ ok: 0, error: 'recipient does not look like a ' + dest.blockchain + ' address' }, 400);
+      }
       const slip = Math.max(10, Math.min(300, parseInt(b.slippageTolerance, 10) || 100));   // 0.1%..3%
       const body = {
         dry: !!b.dry, swapType: 'EXACT_INPUT', slippageTolerance: slip,
