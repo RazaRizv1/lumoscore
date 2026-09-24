@@ -64,3 +64,7 @@ Thumbs.db
 desktop.ini
 .DS_Store
 _TYPESCALE_BACKUP_*/
+
+# XRPL pages copied in by _tools/_mergexrpl.js. Build output of the OTHER repo, reproduced by
+# `npm run merge:xrpl` — committing it would duplicate ~78 MB that is not this repo's source.
+dist/x/

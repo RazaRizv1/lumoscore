@@ -14,7 +14,9 @@
     "deploy:admin": "wrangler pages deploy dist-admin --project-name=lumoscore-admin --branch=main --commit-dirty=true",
     "predeploy": "node _tools/predeploy_check.js",
     "predeploy:admin": "node _tools/predeploy_check.js --admin",
-    "test:mail": "node _email-worker/test/mime.test.mjs"
+    "test:mail": "node _email-worker/test/mime.test.mjs",
+    "merge:xrpl": "node _tools/_mergexrpl.js",
+    "build:merged": "npm run build && npm run merge:xrpl"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
