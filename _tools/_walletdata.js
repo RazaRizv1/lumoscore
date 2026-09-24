@@ -35,6 +35,27 @@ const QA_REMOVE = QA_ACTIONS.replace(
 // Finalized Liq-Pools row action buttons (Add / Remove / more).
 const LP_ACTIONS='<div class="row-quick-actions"><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Add</button><button class="qa-row-btn"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg> Remove</button><button class="qa-row-btn icon-only"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button></div>';
 // Painter-proof icon + hide-until-ready (no flash of mock) styles.
+// IN <head>, AND THAT IS THE WHOLE POINT. The design's inherited script opens the global search
+// overlay for any ".search-box", and the My Assets filter box is one. Blocking it is a listener race:
+// a delegated listener that runs FIRST and calls stopPropagation wins, and the design's stops
+// propagation itself, which is why the guard originally shipped inside lx-walletdata (end of body,
+// and deferred by _externalize) had no effect at all -- measured, not assumed: with the guard
+// installed and the input wired, clicking still opened the overlay.
+//
+// A head script is registered before ANY body script, deferred or not, so this listener is reached
+// first and the overlay handler never sees the event. stopPropagation does not preventDefault, so the
+// input still takes focus normally.
+//
+// Scoped to .inline-filter -- the design's own marker for "this box filters the list below it" -- so
+// the header's real search box is untouched.
+const HEADGUARD='<script id="lx-walletfilter-guard">(function(){'
++'if(window.__lxAfGuard)return; window.__lxAfGuard=1;'
++'function g(e){var t=e.target; if(t&&t.closest&&t.closest(".search-box.inline-filter")){'
++'e.stopPropagation(); if(e.stopImmediatePropagation)e.stopImmediatePropagation();}}'
++'["mousedown","click","focus","focusin"].forEach(function(ev){'
++'window.addEventListener(ev,g,true);});'
++'})();<\/script>';
+
 const CSS='<style id="lx-walletdata-css">'
 // #5: the Send asset picker is built HERE, but its stylesheet lived only in _swapcalc.js, which is
 // not injected on the wallet page. So the search magnifier arrived as a bare <svg viewBox="0 0 24 24">
@@ -1114,7 +1135,61 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // reader having to reload it. load() rewrites the holdings table with tb.innerHTML=out rather than
 // appending to it, so calling it again is safe and cannot double up rows -- which is why this is a
 // re-load and not the location.reload() the trustline-removal flow uses.
-+'function boot(){lxNormToast();wireNavGuard();wireTradeNav();wireBalMax();wireSend();wireSendValidation();wireSendAssetPicker();enhanceSendPre();wireReceiveAddr();wireAssetActions();wireRowMenu();wireWalletLink();wireTf();lxLoadAcctAge();if(!document.querySelector("#heroChart.lx-chart-ready"))renderChart("1M");prep();load();window.__lxWalletRefresh=function(){try{load();}catch(_){}};}'   // finalized Send/Swap/Receive flows stay intact
+// MY ASSETS SEARCH. It filters the table it sits above; before this it opened the GLOBAL search
+// overlay instead (RAZA 2026-09-24), which is a different tool answering a different question --
+// every asset on Stellar rather than the ones you hold.
+//
+// TWO separate faults, and fixing either alone leaves it broken:
+//   1. The box is the design's own `.search-box`, and the design's inherited script opens the header
+//      overlay for ANY `.search-box` click. Confirmed by instrumenting rather than assumed: the click
+//      logs `focusout` on this input, then the overlay going display:flex, then focus landing in the
+//      header input -- and NO focusin on this input at all, which is what rules out the focusin guard
+//      in _searchassets.js (that one is already scoped to .topbar and never fired here).
+//   2. Nothing was filtering. `.inline-filter[data-target]` is the design's convention and _dexdata
+//      wires its own copy; the wallet's was never wired, so even with the overlay gone it would do
+//      nothing.
+// The guard is WINDOW capture because the design listens on document -- window capture runs first, and
+// stopPropagation there keeps the default focus while the overlay handler never sees the event.
++'function lxAssetFilter(){'
++'  var box=document.querySelector(".search-box.inline-filter"); if(!box)return;'
++'  var inp=box.querySelector("input"); if(!inp)return;'
+// the overlay guard is NOT here: it must be registered before the design's own listener, so it ships
+// in <head> as lx-walletfilter-guard. Installing it from this block (end of body, deferred) was
+// measured to do nothing.
+// The two tables are NOT the same shape: #lpPanel is a <table> with a <tbody>, while #assetsTable IS
+// the tbody -- its rows are direct children. "tbody tr" matched ZERO rows on the assets table, so the
+// filter ran and changed nothing, which reads exactly like it being unwired. Measured on the page
+// rather than inferred from the markup.
++'  function rowsOf(t){ var r=t.querySelectorAll("tbody tr"); return r.length?r:t.querySelectorAll(":scope > tr"); }'
++'  function bodyOf(t){ return t.querySelector("tbody")||t; }'
++'  function apply(){'
++'    var q=(inp.value||"").trim().toLowerCase();'
++'    ["#assetsTable","#lpPanel"].forEach(function(sel){'
++'      var t=document.querySelector(sel); if(!t)return;'
++'      var rows=rowsOf(t), shown=0;'
++'      for(var i=0;i<rows.length;i++){ var r=rows[i];'
++'        if(r.getAttribute("data-lxempty"))continue;'
+// Match the IDENTITY cell only. Whole-row text would match the price and balance columns, so typing
+// "1" would keep almost every row and look like the filter was ignoring you.
++'        var cell=r.querySelector("td"); var s=((cell||r).innerText||"").toLowerCase();'
++'        var hit=!q||s.indexOf(q)>=0; r.style.display=hit?"":"none"; if(hit)shown++; }'
++'      var tb=bodyOf(t); if(!tb)return;'
++'      var msg=tb.querySelector("tr[data-lxempty]");'
++'      if(q&&!shown){ if(!msg){ msg=document.createElement("tr"); msg.setAttribute("data-lxempty","1");'
++'        var td=document.createElement("td"); td.colSpan=12;'
++'        td.style.cssText="padding:22px 14px;text-align:center;color:var(--text-muted);font-size:13px";'
++'        msg.appendChild(td); tb.appendChild(msg); }'
++'        msg.firstChild.textContent="No asset matches \\u201c"+inp.value.trim()+"\\u201d."; msg.style.display=""; }'
++'      else if(msg){ msg.style.display="none"; } });'
++'  }'
++'  if(!inp.__lxwf){ inp.__lxwf=1; inp.addEventListener("input",apply); }'
+// The data layer rewrites these tbodies on every refresh, which drops the inline display we set. Re-
+// apply on mutation so a filter typed before a 60s refresh does not silently come back unfiltered.
++'  if(!window.__lxAfObs){ window.__lxAfObs=1;'
++'    ["#assetsTable","#lpPanel"].forEach(function(sel){ var t=document.querySelector(sel); var tb=t&&bodyOf(t); if(!tb)return;'
++'      try{ new MutationObserver(function(){ if((inp.value||"").trim())apply(); }).observe(tb,{childList:true}); }catch(_){} }); }'
++'}'
++'function boot(){lxNormToast();wireNavGuard();wireTradeNav();wireBalMax();wireSend();wireSendValidation();wireSendAssetPicker();enhanceSendPre();wireReceiveAddr();wireAssetActions();wireRowMenu();wireWalletLink();wireTf();lxLoadAcctAge();try{lxAssetFilter();}catch(_){}if(!document.querySelector("#heroChart.lx-chart-ready"))renderChart("1M");prep();load();window.__lxWalletRefresh=function(){try{load();}catch(_){}};}'   // finalized Send/Swap/Receive flows stay intact
 +'try{renderChart("1M");}catch(_){}'
 +'if(document.readyState!=="loading")boot();else document.addEventListener("DOMContentLoaded",boot);'
 +'setInterval(load,60000);'
@@ -1136,10 +1211,11 @@ for(const dev of ['desktop','mobile']){
     // and its desktop-only DOM writes simply find nothing on mobile. _mobwallet.js renders those globals
     // into the mobile markup.
     if(h.indexOf('assetsTable')<0 && h.indexOf('id="assetList"')<0) continue;
-    h=h.replace(/<style id="lx-walletdata-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-qrlib">[\s\S]*?<\/script>/g,'').replace(/<script id="lx-walletdata">[\s\S]*?<\/script>/g,'');
-    // CSS into <head> so hide-until-ready applies before first paint (no flash of mock)
-    if(h.indexOf('</head>')>=0){ h=h.replace('</head>', CSS+'</head>'); }
-    else { const hi=h.indexOf('>',h.indexOf('<head'))+1; if(hi>0) h=h.slice(0,hi)+CSS+h.slice(hi); }
+    h=h.replace(/<style id="lx-walletdata-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-qrlib">[\s\S]*?<\/script>/g,'').replace(/<script id="lx-walletfilter-guard">[\s\S]*?<\/script>/g,'').replace(/<script id="lx-walletdata">[\s\S]*?<\/script>/g,'');
+    // CSS into <head> so hide-until-ready applies before first paint (no flash of mock); the search
+    // guard goes with it because it has to beat the design's own overlay listener (see HEADGUARD).
+    if(h.indexOf('</head>')>=0){ h=h.replace('</head>', CSS+HEADGUARD+'</head>'); }
+    else { const hi=h.indexOf('>',h.indexOf('<head'))+1; if(hi>0) h=h.slice(0,hi)+CSS+HEADGUARD+h.slice(hi); }
     const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
     json[k]=h.slice(0,bi)+QRLIB+SCRIPT+h.slice(bi); n++;
   }

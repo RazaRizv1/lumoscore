@@ -32,6 +32,22 @@ const STYLE = `<style id="lx-wclaim-css">
    enough for the two to meet. */
 .lx-wctabs{margin:0 0 14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
 .lx-wctabs>.right{display:flex;align-items:center;gap:8px;margin:0}
+/* CANCEL ALL LOST ITS STYLING THE MOMENT WE MOVED IT (RAZA 2026-09-24: "in weird color" on the phone).
+   It is an <a href="#">, and the ONLY rule dressing it was the design's own ".section-heading a"
+   -- accent, no underline. lxMoveCancelAll below lifts it out of .section-heading and onto this bar,
+   so that selector stopped matching and the browser default took over: link blue, underlined. The
+   markup never changed, which is why it looked fine in the source.
+   Restated here, keyed on the element rather than on where it happens to sit, so moving it again
+   cannot undress it a second time. Same values as the rule it lost. */
+/* margin-left:auto keeps it at the RIGHT END even when the row wraps. space-between already does that
+   while everything fits on one line, but a long claimable count (42 here) pushes it onto a second row,
+   where it would otherwise sit at the left -- the opposite of where it was asked to be. */
+.lx-wctabs a,#cancelAllBtn{color:var(--accent);text-decoration:none;font-size:13.2px;font-weight:600;
+  white-space:nowrap;display:inline-flex;align-items:center;cursor:pointer;margin-left:auto;
+  /* a phone tap target, without moving the baseline it shares with the tabs */
+  min-height:32px;padding:0 2px}
+.lx-wctabs a:hover,#cancelAllBtn:hover{text-decoration:underline}
+.lx-wctabs a:focus-visible,#cancelAllBtn:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
 .lx-wcpanel[hidden]{display:none}
 /* #16: the duplicate heading text inside the panel -- the tab above already names the list and counts it.
    Only the <h2> is hidden; its row still holds Cancel all. */
