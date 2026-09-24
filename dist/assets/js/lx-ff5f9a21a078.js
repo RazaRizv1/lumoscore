@@ -16,6 +16,30 @@ try{
     try{ if(navigator.sendBeacon) sent=navigator.sendBeacon("/lxapi/pv",new Blob([body],{type:"application/json"})); }catch(_){}
     if(!sent){ try{ fetch("/lxapi/pv",{method:"POST",headers:{"content-type":"application/json"},body:body,keepalive:true}).catch(function(){}); }catch(_){} } }
   send({sid:sid,path:location.pathname,ref:ref});
+  // ---- a load that took absurdly long reports itself ----------------------------------------------
+  // The browser is the only party that can see this. From outside, the origin answers in ~80ms and forty
+  // cache-busted probes never went over 1.5s -- yet a real load can sit for 45 seconds with nothing painted,
+  // which means the time is going somewhere before the response arrives. PerformanceNavigationTiming has
+  // exactly that breakdown, including nextHopProtocol: whether the browser was served over h3 or fell back
+  // to h2 is the difference between "QUIC is stalling on this network" and "something else entirely".
+  //
+  // Runs after load, because loadEventEnd is 0 until then. Sends only past the thresholds, so this is a few
+  // rows a month rather than a metric, and the server applies the same thresholds again.
+  function lxPerf(){
+    try{
+      var n=(performance.getEntriesByType&&performance.getEntriesByType("navigation")||[])[0];
+      if(!n)return;
+      var ttfb=Math.round(n.responseStart||0), load=Math.round(n.loadEventEnd||0);
+      if(!(ttfb>5000||load>20000))return;
+      send({kind:"perf",sid:sid,path:location.pathname,
+        proto:String(n.nextHopProtocol||""),nav:String(n.type||""),
+        dns:Math.round((n.domainLookupEnd||0)-(n.domainLookupStart||0)),
+        conn:Math.round((n.connectEnd||0)-(n.connectStart||0)),
+        ttfb:ttfb,dl:Math.round((n.responseEnd||0)-(n.responseStart||0)),load:load});
+    }catch(_){}
+  }
+  if(document.readyState==="complete")setTimeout(lxPerf,0);
+  else window.addEventListener("load",function(){setTimeout(lxPerf,0);});
   // WHAT WAS PRESSED, not what was typed: the visible label of a link or button (and, for a link leaving the site, its
   // destination host). Never a field's value, an amount or an address -- inputs are ignored entirely, and a label is
   // trimmed to 80 characters. One click a second at most, 120 per page at most, so a stuck finger cannot flood it.

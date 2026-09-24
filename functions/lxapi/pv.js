@@ -20,6 +20,12 @@ const PER_SID_10MIN = 60;
 const PER_HOUR_ALL = 2000;
 const KEEP_MS = 180 * 86400000;
 const BOT_RE = /bot|crawler|spider|crawling|headless|lighthouse|pingdom|monitor|curl|wget|python|preview/i;
+// A slow load is reported only past these. 5s to first byte is never a working connection, and a 20s load is
+// the complaint itself. Ordinary traffic here is ~80ms, so nothing normal comes near them.
+const PERF_TTFB_MS = 5000;
+const PERF_LOAD_MS = 20000;
+const PROTOCOLS = ['h3', 'h2', 'h2c', 'http/1.1', 'http/1.0', 'spdy/3.1', 'quic'];
+const NAVTYPES = ['navigate', 'reload', 'back_forward', 'prerender'];
 
 function json(body, status) {
   return new Response(JSON.stringify(body), {
@@ -63,6 +69,44 @@ export async function onRequestPost({ request, env }) {
       if (Math.random() < 0.005) await db.prepare('DELETE FROM pvevent WHERE ts < ?1').bind(t - KEEP_MS).run();
     } catch (e) { return json({ ok: false, reason: 'write failed' }, 200); }
     return json({ ok: true }, 200);
+  }
+
+  // A LOAD THAT TOOK ABSURDLY LONG, reported by the page that suffered it (RAZA, repeatedly: "I've already
+  // opened LumosCore 15+ seconds ago but the page just wont load ... now its been over 45 seconds").
+  //
+  // Nothing we could measure from outside showed it -- the origin answers in ~80ms, forty cache-busted probes
+  // never once went over 1.5s -- because whatever is wrong happens before the response reaches the browser.
+  // The browser is the only party that can see that, and it already knows: PerformanceNavigationTiming has the
+  // protocol it was actually served over, the DNS and connect times, and the time to first byte. Nobody was
+  // reading it.
+  //
+  // Only the pathological ones are sent, so this is a handful of rows a month rather than a metric. The LABEL IS
+  // BUILT HERE from numbers, never from a string the page supplied: this endpoint is unauthenticated, so text
+  // taken on trust from the client would be text an attacker can write into the admin's activity feed.
+  if (b && b.kind === 'perf') {
+    const psid = String(b.sid || ''), ppath = String(b.path || '');
+    if (!SID_RE.test(psid) || ppath.charAt(0) !== '/') return json({ ok: false, reason: 'bad perf' }, 200);
+    const num = (v) => { const n = Math.round(+v); return (isFinite(n) && n >= 0 && n <= 600000) ? n : 0; };
+    const ttfb = num(b.ttfb), load = num(b.load), dns = num(b.dns), conn = num(b.conn), dl = num(b.dl);
+    // The same threshold the page applies, enforced again here -- a client is free to lie about being slow.
+    if (ttfb < PERF_TTFB_MS && load < PERF_LOAD_MS) return json({ ok: false, reason: 'not slow' }, 200);
+    const proto = PROTOCOLS.indexOf(String(b.proto || '').toLowerCase()) >= 0 ? String(b.proto).toLowerCase() : '?';
+    const navt = NAVTYPES.indexOf(String(b.nav || '')) >= 0 ? String(b.nav) : '';
+    const s = (ms) => (ms / 1000).toFixed(1);
+    const label = clip('slow ' + s(load || ttfb) + 's · ' + proto + ' · dns ' + s(dns) + ' conn ' + s(conn)
+      + ' ttfb ' + s(ttfb) + ' dl ' + s(dl) + (navt && navt !== 'navigate' ? ' · ' + navt : ''), 80);
+    const t = Date.now();
+    let phost = ''; try { phost = new URL(request.url).hostname.replace(/^www\./, ''); } catch (_) { }
+    try {
+      const lim = await db.prepare(
+        "SELECT (SELECT COUNT(*) FROM pvevent WHERE sid = ?1 AND kind = 'perf' AND ts > ?2) AS s,"
+        + " (SELECT COUNT(*) FROM pvevent WHERE kind = 'perf' AND ts > ?2) AS h"
+      ).bind(psid, t - 3600000).first();
+      if (lim && ((+lim.s || 0) >= 10 || (+lim.h || 0) >= 500)) return json({ ok: false, reason: 'rate' }, 200);
+      await db.prepare('INSERT INTO pvevent (ts, sid, path, kind, label, href, host) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)')
+        .bind(t, psid, clip(ppath.split('?')[0], 200), 'perf', label, '', phost).run();
+    } catch (e) { return json({ ok: false, reason: 'write failed' }, 200); }
+    return json({ ok: true, recorded: label }, 200);
   }
 
   const sid = String((b && b.sid) || '');
