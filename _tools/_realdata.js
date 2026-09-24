@@ -225,7 +225,11 @@ function lxXcBuild(p) {
   // deriving one from the other is wrong: "XRP Ledger" lowercases to "xrpledger" and the file is
   // xrpl.png. Caught by measuring -- the first version killed the 404 and the twitch with it, and
   // silently dropped a logo we do ship.
-  var ALIAS = { xrp: ['XRP Ledger', 'xrpl'], xrpl: ['XRP Ledger', 'xrpl'], xrpledger: ['XRP Ledger', 'xrpl'] };
+  // Every destination whose name does not key to its own filename. Found by checking all 52 names the
+  // three server maps can produce against assets/networks/ -- these two are the only mismatches, and
+  // without them NETF would (correctly) draw no mark at all for a chain whose logo we actually ship.
+  var ALIAS = { xrp: ['XRP Ledger', 'xrpl'], xrpl: ['XRP Ledger', 'xrpl'], xrpledger: ['XRP Ledger', 'xrpl'],
+    confluxespace: ['Conflux eSpace', 'conflux'], conflux: ['Conflux eSpace', 'conflux'] };
   var net = String(p.dest || ''), key = net.toLowerCase().replace(/\s+/g, '');
   if (ALIAS[key]) { net = ALIAS[key][0]; key = ALIAS[key][1]; }
   var netImg = (net && NETF[key]) ? '<img class="lx-netlg" src="/assets/networks/' + esc(key) + '.png" alt="" onerror="this.remove()">' : '';
