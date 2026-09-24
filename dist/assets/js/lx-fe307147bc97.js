@@ -463,7 +463,7 @@ function lxCctpNetLogos(){
     var MAP=LX_NETMAP;
     // force=false: skip icons that already carry a real logo as a url() background (e.g. Ethereum's option) so we
     // don't fight the design's own re-render loop (that fight caused the Ethereum dropdown blip). force=true: always set.
-    function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','assets/networks/'+key+'.png?v='+LX_ICONV); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="/assets/networks/'+key+'.png?v='+LX_ICONV+'" alt="">'; }
+    function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','/assets/networks/'+key+'.png?v='+LX_ICONV); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="/assets/networks/'+key+'.png?v='+LX_ICONV+'" alt="">'; }
     [].slice.call(document.querySelectorAll('.brd-opt[data-net]')).forEach(function(o){ var key=MAP[o.getAttribute('data-net')]; if(key) apply(o.querySelector('.brd-ic'),key,false); });
     // .br-netchip covers the source chip AND the .brd-trigger (selected dest); force so the selected chip always shows the PNG (set once, no blip)
     [].slice.call(document.querySelectorAll('.br-netchip')).forEach(function(ch){ var key=MAP[((ch.querySelector('.br-nm')||ch.querySelector('.nm')||{}).textContent||'').trim()]; if(key) apply(ch.querySelector('.br-ic'),key,true); });
@@ -539,15 +539,15 @@ function lxCctpNetLogos(){
 
 // ---- Step 2: wire the EXISTING wizard (source asset + amount + USDC calc + dest logos). Design preserved: only content/logos + editability. ----
 var LX_ASSETS={
-  USDC:{logo:"assets/tokens/usdc.png", spec:"USDC", px:1},
-  XLM:{logo:"assets/tokens/xlm.png", spec:{native:true}, px:0.12},
-  SHX:{logo:"assets/tokens/shx.png", spec:{code:"SHX",issuer:"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH"}, px:0.0016},
-  yXLM:{logo:"assets/tokens/yxlm.png", spec:{code:"yXLM",issuer:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"}, px:0.115},
+  USDC:{logo:"/assets/tokens/usdc.png", spec:"USDC", px:1},
+  XLM:{logo:"/assets/tokens/xlm.png", spec:{native:true}, px:0.12},
+  SHX:{logo:"/assets/tokens/shx.png", spec:{code:"SHX",issuer:"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH"}, px:0.0016},
+  yXLM:{logo:"/assets/tokens/yxlm.png", spec:{code:"yXLM",issuer:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"}, px:0.115},
   // AUDIT #4: this was the USDC issuer (GA5ZSEJY…) — bridging/valuing LUMOS resolved the wrong asset.
   // Canonical LUMOS issuer, matching _lumostoken.js / _dexdata.js / _rewardsdata.js.
-  LUMOS:{logo:"assets/favicon.png", spec:{code:"LUMOS",issuer:"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S"}, px:0.25},
-  BLND:{logo:"assets/tokens/blnd.svg", spec:{code:"BLND",issuer:"GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY"}, px:0.05},
-  AQUA:{logo:"assets/tokens/aqua.png", spec:{code:"AQUA",issuer:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"}, px:0.004}
+  LUMOS:{logo:"/assets/favicon.png", spec:{code:"LUMOS",issuer:"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S"}, px:0.25},
+  BLND:{logo:"/assets/tokens/blnd.svg", spec:{code:"BLND",issuer:"GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY"}, px:0.05},
+  AQUA:{logo:"/assets/tokens/aqua.png", spec:{code:"AQUA",issuer:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"}, px:0.004}
 };
 var LX_AORDER=["USDC","XLM","SHX","yXLM","LUMOS","BLND","AQUA"];
 // the rest of the curated list, after the seven that carry baked logos and CoinGecko prices. No price here: these
@@ -1255,9 +1255,9 @@ var LX_NILOGO={"AAVE":1,"ADA":1,"ADI":1,"ARB":1,"ASTER":1,"AURORA":1,"AVAX":1,"B
 // The caller knows which side it is asking about -- lxBrChipIco passes the destination NETWORK, and passes none
 // for the Stellar side -- so that decides which map wins rather than the ticker.
 function lxBrAssetLogo(code,net){
-  if(net && LX_NILOGO[code]) return 'assets/tokens/ni/'+code+'.png';  // the far side: the chain's own asset art
+  if(net && LX_NILOGO[code]) return '/assets/tokens/ni/'+code+'.png';  // the far side: the chain's own asset art
   var A=LX_ASSETS[code]; if(A&&A.logo) return A.logo;                 // the Stellar side: the curated logo
-  return LX_NILOGO[code]?('assets/tokens/ni/'+code+'.png'):'';        // no curated match: shipped art if we have it
+  return LX_NILOGO[code]?('/assets/tokens/ni/'+code+'.png'):'';        // no curated match: shipped art if we have it
 }
 // A letter is drawn by CSS, never as a text node: a one-to-five character element gets repainted as a ticker badge by
 // the site's logo healer, which would put the wrong mark on an asset it guessed from the ticker.
@@ -1270,7 +1270,7 @@ function lxBrChipIco(code,net,stellarIcon){
   return '<span class="lx-tic">'+face+badge+'</span>';
 }
 // the bridge, with its own mark (RAZA: "Add logo for Bridge used along with its name")
-var LX_BRIDGELOGO={CCTP:'assets/tokens/circle.png',LayerZero:'assets/tokens/layerzero.png','NEAR Intents':'assets/tokens/ni/NEAR.png'};
+var LX_BRIDGELOGO={CCTP:'/assets/tokens/circle.png',LayerZero:'/assets/tokens/layerzero.png','NEAR Intents':'/assets/tokens/ni/NEAR.png'};
 function lxBrBridgeCell(name){
   name=name||"CCTP"; var u=LX_BRIDGELOGO[name]||'';
   return '<span class="lx-buse-r">'+(u?('<img src="'+u+'" alt="">'):'')+'<span>'+lxBrEsc(name)+'</span></span>';
@@ -2331,7 +2331,7 @@ function lxBrNetImg(dom){ var n=LX_NETMAP[lxBrDomName(dom)]; return n?('<img src
 function lxBrPairIco(kind,dom,key){
   var badge=(kind==="src")?LX_STELLAR_SVG:lxBrNetImg(dom);
   var name=(kind==="src")?"Stellar":lxBrDomName(dom);
-  key=key||"USDC"; var logo=((LX_ASSETS[key]||{}).logo)||"assets/tokens/usdc.png";
+  key=key||"USDC"; var logo=((LX_ASSETS[key]||{}).logo)||"/assets/tokens/usdc.png";
   return '<span class="lx-brp-ico" title="'+lxBrEsc(key)+' on '+lxBrEsc(name)+'"><img src="'+logo+'" alt="'+lxBrEsc(key)+'"><i>'+badge+'</i></span>'; }
 // What a pending transfer started as. Stored on the record from 2026-09-19; older records are matched by burn hash
 // against this browser's own transaction history, which always carried it.
@@ -2845,7 +2845,7 @@ function lxBrResumePending(){ try{
 window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest;
 
 // restore persisted bridge transactions into the Recent transactions table on load
-(function(){ function fixFrom(){ try{ var rows=document.querySelectorAll('.br-table tbody tr'); for(var i=0;i<rows.length;i++){ var tds=rows[i].querySelectorAll('td'); var ft=tds[1]; if(!ft)continue; var am=ft.querySelector('.am'), ic=ft.querySelector('.br-ic'); if(!am||!ic||ic.__lxfrom)continue; var t=am.textContent||''; var img=/USDC/i.test(t)?'assets/tokens/usdc.png':(/XLM/i.test(t)?'assets/tokens/xlm.png':''); if(!img)continue; ic.__lxfrom=1; ic.innerHTML='<img class="lx-netimg" src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; } }catch(_){} }
+(function(){ function fixFrom(){ try{ var rows=document.querySelectorAll('.br-table tbody tr'); for(var i=0;i<rows.length;i++){ var tds=rows[i].querySelectorAll('td'); var ft=tds[1]; if(!ft)continue; var am=ft.querySelector('.am'), ic=ft.querySelector('.br-ic'); if(!am||!ic||ic.__lxfrom)continue; var t=am.textContent||''; var img=/USDC/i.test(t)?'/assets/tokens/usdc.png':(/XLM/i.test(t)?'/assets/tokens/xlm.png':''); if(!img)continue; ic.__lxfrom=1; ic.innerHTML='<img class="lx-netimg" src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; } }catch(_){} }
  // the table half is desktop-only; the pending-claims half has to run wherever the bridge card exists
  function pass(){ var tb=document.querySelector('.br-table tbody'), card=document.querySelector('.br-card')||document.querySelector('.br-wizard');
   if(!tb&&!card) return false;

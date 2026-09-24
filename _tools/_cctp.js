@@ -843,7 +843,7 @@ function lxCctpNetLogos(){
     var MAP=LX_NETMAP;
     // force=false: skip icons that already carry a real logo as a url() background (e.g. Ethereum's option) so we
     // don't fight the design's own re-render loop (that fight caused the Ethereum dropdown blip). force=true: always set.
-    function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','assets/networks/'+key+'.png?v='+LX_ICONV); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="assets/networks/'+key+'.png?v='+LX_ICONV+'" alt="">'; }
+    function apply(ic,key,force){ if(!ic)return; var img=ic.querySelector('img.lx-netimg'); if(img){ if((img.getAttribute('src')||'').indexOf(key)<0) img.setAttribute('src','/assets/networks/'+key+'.png?v='+LX_ICONV); return; } if(!force){ var stl=ic.getAttribute('style')||''; if(stl.indexOf('url(')>=0) return; } ic.innerHTML='<img class="lx-netimg" src="/assets/networks/'+key+'.png?v='+LX_ICONV+'" alt="">'; }
     [].slice.call(document.querySelectorAll('.brd-opt[data-net]')).forEach(function(o){ var key=MAP[o.getAttribute('data-net')]; if(key) apply(o.querySelector('.brd-ic'),key,false); });
     // .br-netchip covers the source chip AND the .brd-trigger (selected dest); force so the selected chip always shows the PNG (set once, no blip)
     [].slice.call(document.querySelectorAll('.br-netchip')).forEach(function(ch){ var key=MAP[((ch.querySelector('.br-nm')||ch.querySelector('.nm')||{}).textContent||'').trim()]; if(key) apply(ch.querySelector('.br-ic'),key,true); });
@@ -919,15 +919,15 @@ function lxCctpNetLogos(){
 
 // ---- Step 2: wire the EXISTING wizard (source asset + amount + USDC calc + dest logos). Design preserved: only content/logos + editability. ----
 var LX_ASSETS={
-  USDC:{logo:"assets/tokens/usdc.png", spec:"USDC", px:1},
-  XLM:{logo:"assets/tokens/xlm.png", spec:{native:true}, px:0.12},
-  SHX:{logo:"assets/tokens/shx.png", spec:{code:"SHX",issuer:"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH"}, px:0.0016},
-  yXLM:{logo:"assets/tokens/yxlm.png", spec:{code:"yXLM",issuer:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"}, px:0.115},
+  USDC:{logo:"/assets/tokens/usdc.png", spec:"USDC", px:1},
+  XLM:{logo:"/assets/tokens/xlm.png", spec:{native:true}, px:0.12},
+  SHX:{logo:"/assets/tokens/shx.png", spec:{code:"SHX",issuer:"GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH"}, px:0.0016},
+  yXLM:{logo:"/assets/tokens/yxlm.png", spec:{code:"yXLM",issuer:"GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"}, px:0.115},
   // AUDIT #4: this was the USDC issuer (GA5ZSEJY…) — bridging/valuing LUMOS resolved the wrong asset.
   // Canonical LUMOS issuer, matching _lumostoken.js / _dexdata.js / _rewardsdata.js.
-  LUMOS:{logo:"assets/favicon.png", spec:{code:"LUMOS",issuer:"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S"}, px:0.25},
-  BLND:{logo:"assets/tokens/blnd.svg", spec:{code:"BLND",issuer:"GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY"}, px:0.05},
-  AQUA:{logo:"assets/tokens/aqua.png", spec:{code:"AQUA",issuer:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"}, px:0.004}
+  LUMOS:{logo:"/assets/favicon.png", spec:{code:"LUMOS",issuer:"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S"}, px:0.25},
+  BLND:{logo:"/assets/tokens/blnd.svg", spec:{code:"BLND",issuer:"GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY"}, px:0.05},
+  AQUA:{logo:"/assets/tokens/aqua.png", spec:{code:"AQUA",issuer:"GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"}, px:0.004}
 };
 var LX_AORDER=["USDC","XLM","SHX","yXLM","LUMOS","BLND","AQUA"];
 // the rest of the curated list, after the seven that carry baked logos and CoinGecko prices. No price here: these
@@ -1279,8 +1279,8 @@ function lxBrRenderDest(){
   var side=s2.querySelectorAll('.br-side')[1]; if(!side)return;
   var net=lxBrDestNet(), nkey=LX_NETMAP[net];
   var chip=side.querySelector('.br-asset');
-  if(chip){ var nm=chip.querySelector('.nm'); if(nm&&nm.textContent!=="USDC")nm.textContent="USDC"; var ic=chip.querySelector('.lx-assetic')||chip.querySelector('.br-ic'); if(ic && !ic.querySelector('img')) ic.innerHTML='<img src="assets/tokens/usdc.png" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; var cv=chip.querySelector('.cv'); if(cv)cv.style.display="none"; }
-  if(nkey){ var lead=side.querySelector('.br-wallet .br-ic.lx-netic')||side.querySelector('.br-ic.lx-netic'); if(lead && !(lead.querySelector('img')&&lead.querySelector('img').getAttribute('src').indexOf(nkey)>=0)) lead.innerHTML='<img class="lx-netimg" src="assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt="">'; }
+  if(chip){ var nm=chip.querySelector('.nm'); if(nm&&nm.textContent!=="USDC")nm.textContent="USDC"; var ic=chip.querySelector('.lx-assetic')||chip.querySelector('.br-ic'); if(ic && !ic.querySelector('img')) ic.innerHTML='<img src="/assets/tokens/usdc.png" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; var cv=chip.querySelector('.cv'); if(cv)cv.style.display="none"; }
+  if(nkey){ var lead=side.querySelector('.br-wallet .br-ic.lx-netic')||side.querySelector('.br-ic.lx-netic'); if(lead && !(lead.querySelector('img')&&lead.querySelector('img').getAttribute('src').indexOf(nkey)>=0)) lead.innerHTML='<img class="lx-netimg" src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt="">'; }
   // note: do NOT touch the input placeholder — the finalized design animates/owns it; overriding here caused flicker.
 }
 
@@ -1577,10 +1577,10 @@ function lxBrReview(){
   var sIc=legs[0].querySelector('.v .ic:not(.lx-rvnet)'); if(sIc) sIc.innerHTML='<img src="'+A.logo+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">';
   var recvAm=legs[1].querySelector('[data-rv="recv"]'); if(recvAm) recvAm.textContent=recv+" USDC";
   var recvNet=legs[1].querySelector('[data-rv="recvnet"]'); if(recvNet) recvNet.textContent=net||"—";
-  var rIc=legs[1].querySelector('.v .ic:not(.lx-rvnet)'); if(rIc) rIc.innerHTML='<img src="assets/tokens/usdc.png" style="width:100%;height:100%;object-fit:cover;display:block" alt="">';
+  var rIc=legs[1].querySelector('.v .ic:not(.lx-rvnet)'); if(rIc) rIc.innerHTML='<img src="/assets/tokens/usdc.png" style="width:100%;height:100%;object-fit:cover;display:block" alt="">';
   var srcRow=s3.querySelector('[data-rv="src"]'); if(srcRow) srcRow.innerHTML='<span class="lx-rvaddric">'+lxBrStellarIcon()+'</span><span>'+lxBrShort(B.pk||LX_SRC_ADDR)+'</span>';
   var dstIn=s2?s2.querySelector('.br-addr-in'):null; var dst=dstIn?(dstIn.value||"").trim():""; var nkey=LX_NETMAP[net];
-  var dstRow=s3.querySelector('[data-rv="dst"]'); if(dstRow){ if(dst){ dstRow.innerHTML=(nkey?'<span class="lx-rvaddric"><img class="lx-netimg" src="assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>':'')+'<span>'+lxBrShort(dst)+'</span>'; } else dstRow.textContent="—"; }
+  var dstRow=s3.querySelector('[data-rv="dst"]'); if(dstRow){ if(dst){ dstRow.innerHTML=(nkey?'<span class="lx-rvaddric"><img class="lx-netimg" src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>':'')+'<span>'+lxBrShort(dst)+'</span>'; } else dstRow.textContent="—"; }
   // Bridge fee row: show the actual amount, not just the rate. It always read "0.2%" and nothing else,
   // while "You send" showed the gross amount — so from the review alone there was no way to tell the fee
   // had been taken at all. It is deducted from the source asset, so name it in the source asset.
@@ -1635,9 +1635,9 @@ var LX_NILOGO=${JSON.stringify(LX_NI_LOGOS)};
 // The caller knows which side it is asking about -- lxBrChipIco passes the destination NETWORK, and passes none
 // for the Stellar side -- so that decides which map wins rather than the ticker.
 function lxBrAssetLogo(code,net){
-  if(net && LX_NILOGO[code]) return 'assets/tokens/ni/'+code+'.png';  // the far side: the chain's own asset art
+  if(net && LX_NILOGO[code]) return '/assets/tokens/ni/'+code+'.png';  // the far side: the chain's own asset art
   var A=LX_ASSETS[code]; if(A&&A.logo) return A.logo;                 // the Stellar side: the curated logo
-  return LX_NILOGO[code]?('assets/tokens/ni/'+code+'.png'):'';        // no curated match: shipped art if we have it
+  return LX_NILOGO[code]?('/assets/tokens/ni/'+code+'.png'):'';        // no curated match: shipped art if we have it
 }
 // A letter is drawn by CSS, never as a text node: a one-to-five character element gets repainted as a ticker badge by
 // the site's logo healer, which would put the wrong mark on an asset it guessed from the ticker.
@@ -1645,12 +1645,12 @@ function lxBrChipIco(code,net,stellarIcon){
   var u=lxBrAssetLogo(code,net), nkey=net?(LX_NETMAP[net]||""):"";
   var face=u?('<img src="'+u+'" alt="">'):('<span class="lx-tl" data-l="'+lxBrEsc(String(code||"?").charAt(0).toUpperCase())+'"></span>');
   var badge=net
-    ? (nkey?('<span class="lx-tnet"><img src="assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>'):'')
+    ? (nkey?('<span class="lx-tnet"><img src="/assets/networks/'+nkey+'.png?v='+LX_ICONV+'" alt=""></span>'):'')
     : ('<span class="lx-tnet lx-tnet-x">'+(stellarIcon||'')+'</span>');   // no net named = the Stellar side
   return '<span class="lx-tic">'+face+badge+'</span>';
 }
 // the bridge, with its own mark (RAZA: "Add logo for Bridge used along with its name")
-var LX_BRIDGELOGO={CCTP:'assets/tokens/circle.png',LayerZero:'assets/tokens/layerzero.png','NEAR Intents':'assets/tokens/ni/NEAR.png'};
+var LX_BRIDGELOGO={CCTP:'/assets/tokens/circle.png',LayerZero:'/assets/tokens/layerzero.png','NEAR Intents':'/assets/tokens/ni/NEAR.png'};
 function lxBrBridgeCell(name){
   name=name||"CCTP"; var u=LX_BRIDGELOGO[name]||'';
   return '<span class="lx-buse-r">'+(u?('<img src="'+u+'" alt="">'):'')+'<span>'+lxBrEsc(name)+'</span></span>';
@@ -2705,13 +2705,13 @@ var LX_STELLAR_SVG='<svg xmlns="http://www.w3.org/2000/svg" width="32" height="3
 // USDC on the source chain, USDC on the destination chain — each token disc badged with its network.
 // Stellar is inlined because there is no assets/networks/stellar.png, and scraping the wizard's chip would
 // break the moment that markup moves.
-function lxBrNetImg(dom){ var n=LX_NETMAP[lxBrDomName(dom)]; return n?('<img src="assets/networks/'+n+'.png?v='+LX_ICONV+'" alt="">'):''; }
+function lxBrNetImg(dom){ var n=LX_NETMAP[lxBrDomName(dom)]; return n?('<img src="/assets/networks/'+n+'.png?v='+LX_ICONV+'" alt="">'):''; }
 // key: the asset the icon shows (defaults to USDC). The SOURCE side shows what the user actually sent -- BLND, XLM,
 // LUMOS... -- not the USDC it was swapped into; the destination side is always the USDC being claimed.
 function lxBrPairIco(kind,dom,key){
   var badge=(kind==="src")?LX_STELLAR_SVG:lxBrNetImg(dom);
   var name=(kind==="src")?"Stellar":lxBrDomName(dom);
-  key=key||"USDC"; var logo=((LX_ASSETS[key]||{}).logo)||"assets/tokens/usdc.png";
+  key=key||"USDC"; var logo=((LX_ASSETS[key]||{}).logo)||"/assets/tokens/usdc.png";
   return '<span class="lx-brp-ico" title="'+lxBrEsc(key)+' on '+lxBrEsc(name)+'"><img src="'+logo+'" alt="'+lxBrEsc(key)+'"><i>'+badge+'</i></span>'; }
 // What a pending transfer started as. Stored on the record from 2026-09-19; older records are matched by burn hash
 // against this browser's own transaction history, which always carried it.
@@ -3225,7 +3225,7 @@ function lxBrResumePending(){ try{
 window.lxBrRenderPending=lxBrRenderPending; window.lxBrPeekAttest=lxBrPeekAttest;
 
 // restore persisted bridge transactions into the Recent transactions table on load
-(function(){ function fixFrom(){ try{ var rows=document.querySelectorAll('.br-table tbody tr'); for(var i=0;i<rows.length;i++){ var tds=rows[i].querySelectorAll('td'); var ft=tds[1]; if(!ft)continue; var am=ft.querySelector('.am'), ic=ft.querySelector('.br-ic'); if(!am||!ic||ic.__lxfrom)continue; var t=am.textContent||''; var img=/USDC/i.test(t)?'assets/tokens/usdc.png':(/XLM/i.test(t)?'assets/tokens/xlm.png':''); if(!img)continue; ic.__lxfrom=1; ic.innerHTML='<img class="lx-netimg" src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; } }catch(_){} }
+(function(){ function fixFrom(){ try{ var rows=document.querySelectorAll('.br-table tbody tr'); for(var i=0;i<rows.length;i++){ var tds=rows[i].querySelectorAll('td'); var ft=tds[1]; if(!ft)continue; var am=ft.querySelector('.am'), ic=ft.querySelector('.br-ic'); if(!am||!ic||ic.__lxfrom)continue; var t=am.textContent||''; var img=/USDC/i.test(t)?'/assets/tokens/usdc.png':(/XLM/i.test(t)?'/assets/tokens/xlm.png':''); if(!img)continue; ic.__lxfrom=1; ic.innerHTML='<img class="lx-netimg" src="'+img+'" style="width:100%;height:100%;object-fit:cover;display:block" alt="">'; } }catch(_){} }
  // the table half is desktop-only; the pending-claims half has to run wherever the bridge card exists
  function pass(){ var tb=document.querySelector('.br-table tbody'), card=document.querySelector('.br-card')||document.querySelector('.br-wizard');
   if(!tb&&!card) return false;
