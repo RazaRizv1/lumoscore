@@ -76,14 +76,17 @@ export async function onRequest(context) {
   // a refused upstream call answered with an error the browser then kept for ten minutes. One retry, and an error is never
   // cached, so the next view asks again.
   let upstream = null;
-  // A 429 is the upstream's burst cap (a wallet page asks for a hundred logos): waited out, three more times.
-  for (let attempt = 0; attempt < 4; attempt++) {
+  // ONE retry, not three. xrpl.to's API policy is explicit -- "Honour Retry-After on a 429: back off, do not
+  // retry" -- and four attempts against a burst cap is hammering it, which is how a key gets pulled. A wallet page
+  // asking for a hundred logos is exactly the case that used to fan out here; it now backs off once for as long as
+  // the upstream asks, and a missing logo is already handled quietly downstream (2026-09-24, with the real key live).
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
       upstream = await fetch(UP + id + '?w=' + w, { headers });
       if (upstream.ok || upstream.status === 401 || upstream.status === 404) break;
     } catch (e) { upstream = null; }
     const ra = upstream ? Number(upstream.headers.get('retry-after')) : 0;
-    await new Promise((res) => setTimeout(res, isFinite(ra) && ra > 0 && ra <= 3 ? ra * 1000 : 450 * (attempt + 1)));
+    await new Promise((res) => setTimeout(res, isFinite(ra) && ra > 0 && ra <= 10 ? ra * 1000 : 600));
   }
   if (!upstream) return new Response('upstream unreachable', { status: 502, headers: { 'cache-control': 'no-store' } });
 

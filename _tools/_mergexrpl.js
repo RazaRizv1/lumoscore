@@ -97,10 +97,13 @@ if (fs.existsSync(FN_SRC)) {
   for (const f of fs.readdirSync(FN_SRC)) {
     if (!/\.js$/.test(f)) continue;
     const a = path.join(FN_SRC, f), b = path.join(FN_DST, f);
-    // Only files Stellar does not already have. Nothing present in both differs today, and silently
-    // overwriting a shared endpoint with the other chain's copy is the one mistake here that could
-    // break the live site rather than just a page.
-    if (fs.existsSync(b)) continue;
+    // XRPL OWNS ITS OWN ENDPOINTS, so xrpl*/_tokenid are copied EVERY run, overwriting what is here.
+    // Skipping existing files made this pass one-way-once: a fix made in the XRPL repo (the source of
+    // truth for these) would never reach the deployed copy, and the two would drift silently.
+    // Everything else is left alone -- overwriting a SHARED endpoint with the other chain's copy is the
+    // one mistake here that could break the live site rather than just a page.
+    const owned = /^(xrpl|_tokenid)/.test(f);
+    if (!owned && fs.existsSync(b)) continue;
     cp(a, b); fns++;
   }
 }
