@@ -16,7 +16,8 @@
     "predeploy:admin": "node _tools/predeploy_check.js --admin",
     "test:mail": "node _email-worker/test/mime.test.mjs",
     "merge:xrpl": "node _tools/_mergexrpl.js",
-    "build:merged": "npm run build && npm run merge:xrpl"
+    "build:merged": "npm run build && npm run merge:xrpl",
+    "check:release": "node _tools/release_check.js"
   },
   "devDependencies": {
     "@resvg/resvg-js": "^2.6.2",
