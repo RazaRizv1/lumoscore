@@ -127,8 +127,34 @@ async function listPools({ limit = 20, asset }) {
   // filled in where one side is XLM, since that is the only side this can price without another lookup
   // per pool -- stated as null rather than guessed at.
   if (want) {
-    const recs = await poolsHolding(want, 200);
+    // BOTH SOURCES, because neither is complete on its own. Horizon indexes pools by reserve but returns
+    // them in no useful order and caps at 200, so for an asset held in hundreds of pools the BIGGEST one
+    // can fall outside the page -- asking for USDC pools returned AQUA/USDC and missed XLM/USDC, which
+    // holds $5.5M. /lxapi/pools is the opposite: only the top 25 on the network, but ranked by TVL and
+    // carrying real TVL and volume figures. Merging them means the large pools are always present and
+    // the long tail is there too.
+    const [recs, top] = await Promise.all([
+      poolsHolding(want, 200),
+      api('/lxapi/pools').then((d) => (Array.isArray(d) ? d : ((d && d.rows) || [])), () => []),
+    ]);
     const usd = await xlmUsd();
+    const hit = (s) => {
+      if (!s) return false;
+      if (want.id === 'native') return String(s.code || '').toUpperCase() === 'XLM';
+      return `${s.code}-${s.issuer}` === want.id;
+    };
+    const ranked = new Map();
+    for (const p of top) {
+      if (!hit(p.a) && !hit(p.b)) continue;
+      ranked.set(p.id, {
+        id: p.id, pair: `${(p.a || {}).code || '?'} / ${(p.b || {}).code || '?'}`,
+        a: sideId(p.a), b: sideId(p.b),
+        reserve_a: nf((p.a || {}).amount, 4), reserve_b: nf((p.b || {}).amount, 4),
+        tvl_usd: nf(p.tvl, 2), volume_24h_usd: nf(p.vol24, 2),
+        fee_pct: p.fee ?? null, participants: p.members ?? null,
+        page: web('/pools/stellar/id/' + p.id),
+      });
+    }
     const rows = recs.map((p) => {
       const sides = (p.reserves || []).map((v) => {
         const nat = v.asset === 'native';
@@ -147,10 +173,13 @@ async function listPools({ limit = 20, asset }) {
         participants: p.total_trustlines ?? null,
         page: web('/pools/stellar/id/' + p.id),
       };
-    }).sort((x, y) => (y.tvl_usd || 0) - (x.tvl_usd || 0) || (y.total_shares || 0) - (x.total_shares || 0));
-    const out = rows.slice(0, Math.max(1, Math.min(200, +limit || 20)));
+    });
+    // the ranked rows win on id: they carry TVL and 24h volume that Horizon does not publish
+    for (const r of rows) if (!ranked.has(r.id)) ranked.set(r.id, r);
+    const all = [...ranked.values()].sort((x, y) => (y.tvl_usd || 0) - (x.tvl_usd || 0) || (y.total_shares || 0) - (x.total_shares || 0));
+    const out = all.slice(0, Math.max(1, Math.min(200, +limit || 20)));
     return ok({
-      count: out.length, of: rows.length, asset: want.id,
+      count: out.length, of: all.length, asset: want.id,
       source: 'Horizon, every pool holding this asset',
       tvl_note: 'tvl_usd is filled only where one side is XLM; a pool of two credit assets reports null rather than a guess.',
       pools: out,

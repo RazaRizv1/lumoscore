@@ -111,8 +111,10 @@ const PAGES = {
     desc: 'Full profile for a Stellar asset: issuer, circulating supply, holders, trustlines, home domain and the liquidity pools it trades in.',
   },
   'mcp': {
-    title: 'LumosCore MCP — Stellar DeFi for AI Agents | ' + BRAND,
-    desc: 'Connect Claude and other AI assistants to Stellar via the Model Context Protocol. Query prices, pools and balances in natural language.',
+    // ONE MCP PAGE FOR THE WHOLE PLATFORM: there is a single connector however many networks LumosCore
+    // runs, so the title stopped naming one chain when the body stopped.
+    title: 'LumosCore MCP — Connect Your AI Agent On-Chain | ' + BRAND,
+    desc: 'Give Claude, ChatGPT or any MCP client live prices, wallets, pools and routes from LumosCore, with every transaction prepared for you to approve. No install and no API key.',
   },
   'signin': {
     title: 'Sign In | ' + BRAND,
