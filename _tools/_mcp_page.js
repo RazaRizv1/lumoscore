@@ -271,7 +271,7 @@ const STYLE=`<style id="lx-mcp">
 .lxh-tbar .nm{display:flex;align-items:center;gap:7px;font:500 12px/1 'JetBrains Mono',monospace;color:#52525b}.lxh-tbar .nm svg{width:12px;height:12px}
 .lxh-tbody{position:relative;padding:22px;font:500 13px/1.85 'JetBrains Mono',monospace;min-height:356px;overflow:hidden}
 /* the stat row, spanning the banner under both columns */
-.lxh-strip{position:relative;z-index:2;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid rgba(255,255,255,.07);padding:26px 60px 30px}
+.lxh-strip{position:relative;z-index:2;display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(255,255,255,.07);padding:26px 60px 30px}
 .lxh-strip>div{text-align:center;padding:0 16px;border-left:1px solid rgba(255,255,255,.07)}
 .lxh-strip>div:first-child{border-left:none}
 .lxh-strip .v{font:800 26px/1 'JetBrains Mono',monospace;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.01em}
@@ -282,10 +282,11 @@ const STYLE=`<style id="lx-mcp">
 [data-theme="light"] .lxh-strip .l{color:#8a8a92}
 [data-theme="light"] .lxh-k{color:#17171c}
 .lxh-strip .live{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:lxh-dot 2s ease-in-out infinite}
-@media(max-width:900px){.lxh-strip{grid-template-columns:1fr 1fr;row-gap:24px;padding:24px 22px 26px}.lxh-strip>div:nth-child(3){border-left:none}}
-@media(max-width:560px){.lxh-strip .v{font-size:21px}.lxh-strip>div{padding:0 8px}}
+@media(max-width:900px){.lxh-strip{padding:24px 22px 26px}}
+@media(max-width:560px){.lxh-strip .v{font-size:21px}.lxh-strip>div{padding:0 6px}.lxh-strip .l{font-size:10px;letter-spacing:.06em;margin-top:8px}}
 .lxh-tbody .lxh-row{color:#c7cbd6}.lxh-tbody .lxh-row b{color:#fff;font-weight:600}
 .lxh-tbody .lxh-unit{color:#69748e}
+@media(max-width:374px){.lxh-tbody{font-size:11.5px}}
 .lxh-tbody .lxh-dim{color:#69748e}.lxh-tbody .lxh-sec{color:#a7a7b0}.lxh-tbody .lxh-em{color:#ea6a2c}.lxh-tbody .lxh-ok{color:#43d38a}.lxh-tbody .lxh-warn{color:#facc15}.lxh-tbody .lxh-w{color:#fff}.lxh-tbody .lxh-p{color:#ff9a3d}.lxh-tbody .sm{font-size:12px}
 .lxh-pgt{width:208px;height:4px;border-radius:9px;background:rgba(255,255,255,.09);overflow:hidden}
 .lxh-scan{display:none}
@@ -380,9 +381,9 @@ var steps=[
  {t:'sp',d:130},
  {t:'in',x:'where is the deepest liquidity right now?',d:380},
  {t:'tx',x:'→ list_pools · ranked by TVL',c:'lxh-dim',d:420},
- {t:'tx',x:'  <b>XLM / USDC</b>   $5.52M   <span class="lxh-unit">834 LPs</span>',c:'lxh-row',html:1,d:260},
- {t:'tx',x:'  <b>XLM / yXLM</b>    $918K   <span class="lxh-unit">659 LPs</span>',c:'lxh-row',html:1,d:210},
- {t:'tx',x:'  <b>XLM / SHX</b>     $750K   <span class="lxh-unit">715 LPs</span>',c:'lxh-row',html:1,d:420},
+ {t:'tx',x:' <b>XLM / USDC</b>  $5.52M  <span class="lxh-unit">834 LPs</span>',c:'lxh-row',html:1,d:260},
+ {t:'tx',x:' <b>XLM / yXLM</b>   $918K  <span class="lxh-unit">659 LPs</span>',c:'lxh-row',html:1,d:210},
+ {t:'tx',x:' <b>XLM / SHX</b>    $750K  <span class="lxh-unit">715 LPs</span>',c:'lxh-row',html:1,d:420},
  {t:'sp',d:130},
  {t:'in',x:'is the USDC book tight enough to trade?',d:420},
  {t:'tx',x:'→ get_orderbook · USDC / XLM',c:'lxh-dim',d:430},
