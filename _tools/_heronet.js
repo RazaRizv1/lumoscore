@@ -251,8 +251,17 @@ for (const p of PAGES) {
   html = html.replace(inputRe, '<input placeholder="' + GATED + '" data-lxph="' + REAL + '" />');
   if (html === before && html.indexOf('data-lxph') < 0) problems.push(p.key + ': hero placeholder not found to pre-gate');
 
+  // THE STYLESHEET GOES IN THE HEAD. It was appended before </body>, which put it about 97KB AFTER the
+  // button it styles -- so the browser painted .lx-nsel-btn with the default button chrome first and a
+  // WHITE PILL sat in the middle of a dark hero until the parser reached the rule that makes it
+  // transparent. That is the flash: not the text, the control itself.
+  // A style element in the head is render-blocking, so the first paint already has these rules. The
+  // script stays at the end of the body -- it is behaviour, and nothing it does is needed before paint
+  // now that the placeholder ships pre-gated.
+  if (html.indexOf('</head>') >= 0) html = html.replace('</head>', CSS + '</head>');
+  else problems.push(p.key + ': no </head> to put the hero styles in');
   const bo = html.lastIndexOf('</body>');
-  html = bo >= 0 ? html.slice(0, bo) + CSS + JS + html.slice(bo) : html + CSS + JS;
+  html = bo >= 0 ? html.slice(0, bo) + JS + html.slice(bo) : html + JS;
 
   json[p.key] = html;
   staged.push({ file: p.file, data, s, e, json, key: p.key });
