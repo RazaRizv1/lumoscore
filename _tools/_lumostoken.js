@@ -938,7 +938,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         if(onDone){ if(btn){ btn.disabled=false; btn.textContent=btn.getAttribute("data-lbl")||"Add Trustline"; } onDone(); }
         else if(btn&&btn.parentNode){ btn.parentNode.removeChild(btn); }
         ltToast("LUMOS trustline added."); guardApply(); }
-      else { throw new Error((res&&res.extras&&res.extras.result_codes&&JSON.stringify(res.extras.result_codes))||"Transaction failed."); }
+      else { throw new Error(ltTxErr(res&&res.extras&&res.extras.result_codes)); }
     }).catch(function(e){
       if(btn){ btn.disabled=false; btn.textContent=btn.getAttribute("data-lbl")||"Add trustline"; }
       ltToast("Could not add trustline — "+(e&&e.message||e));
@@ -986,12 +986,22 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   function loadWallet(){
     var addr=ltAddr(); if(!addr||window.__lxWalletLoading)return; window.__lxWalletLoading=true;
     j(H+"/accounts/"+addr).then(function(a){
-      var native=0, sub=+a.subentry_count||0, holdings=[], assets={};
+      // BAL IS SPENDABLE, NOT HELD. window.__lxHoldings is a shared global, and _swapcalc.js fills the
+      // same field with balance MINUS selling liabilities -- so filling it with the raw balance here gave
+      // one global two meanings depending on which page had loaded last. On this page Create Pool's MAX
+      // then offered money that was already committed to an open offer: a wallet holding 34.0349 AQUA
+      // with 33.8841 resting in a sell order had 0.1508 to spend, MAX filled all 34.0349, and the network
+      // answered op_underfunded (RAZA: "if it were, why did it even allow me to enter that value").
+      // The total field keeps the held figure for anywhere that wants to show both.
+      var native=0, nsell=0, sub=+a.subentry_count||0, holdings=[], assets={};
+      var spon=(+a.num_sponsoring||0)-(+a.num_sponsored||0);
       (a.balances||[]).forEach(function(b){
-        if(b.asset_type==="native"){ native=+b.balance; holdings.push({code:"XLM",native:true,bal:+b.balance}); }
-        else if(b.asset_code){ holdings.push({code:b.asset_code,iss:b.asset_issuer,native:false,bal:+b.balance}); window.__lxKnownSwap[b.asset_code]=b.asset_issuer; assets[b.asset_code]=b.asset_issuer; }
+        if(b.asset_type==="native"){ native=+b.balance; nsell=+b.selling_liabilities||0; holdings.push({code:"XLM",native:true,bal:+b.balance,total:+b.balance}); }
+        else if(b.asset_code){ holdings.push({code:b.asset_code,iss:b.asset_issuer,native:false,bal:Math.max(0,(+b.balance||0)-(+b.selling_liabilities||0)),total:+b.balance||0}); window.__lxKnownSwap[b.asset_code]=b.asset_issuer; assets[b.asset_code]=b.asset_issuer; }
       });
-      var reserve=(2+sub)*0.5, spend=Math.max(0, native-reserve-0.5);
+      // Sponsored entries and XLM resting in offers come off the reserve too, the same way the pool pages
+      // count them: an account pays the reserve for entries it sponsors on someone else's behalf.
+      var reserve=(2+sub+spon)*0.5, spend=Math.max(0, native-reserve-nsell-0.5);
       window.__lxNative=native; window.__lxMaxXLM=spend;
       if(!holdings.some(function(h){return h.code==="LUMOS";}))holdings.push({code:"LUMOS",iss:ISSUER,native:false,bal:0,logo:LOGO});
       window.__lxHoldings=holdings; window.__lxAssets=assets; window.__lxWallet=a;
@@ -1056,6 +1066,29 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
       var ti=(m&&(m.tomlInfo||m.toml_info))||{}; var img=ti.image||"";
       if(!img)return; (window.__lxLogosI=window.__lxLogosI||{})[k]=img; if(cb)cb();
     }).catch(function(){});
+  }
+  // A REJECTION IN WORDS. This page threw JSON.stringify(result_codes), so someone who had just tried to
+  // create a pool with their own money read
+  //   Could not create pool - {"transaction":"tx_failed","operations":["op_underfunded"]}
+  // The pool pages already answer this properly, so their formatter is used whenever it is on the page;
+  // this fallback covers the codes THIS flow can produce, and reports the FIRST failing operation,
+  // because the first failure is the cause and anything after it is a consequence.
+  var LT_TXERR={
+    op_underfunded:"Not enough of that asset in your wallet for this amount. Some of it may be resting in an open order.",
+    op_low_reserve:"Not enough XLM left for the account reserve. Every trustline or pool position locks up a little XLM, so some has to stay behind.",
+    op_no_trust:"Your wallet does not hold this asset yet. Add it first, then try again.",
+    op_line_full:"That asset's trustline limit is already reached.",
+    tx_bad_seq:"Your wallet was out of step with the network. Try again.",
+    tx_insufficient_fee:"The network fee offered was too low. Try again.",
+    tx_too_late:"The transaction expired before it reached the network. Try again."
+  };
+  function ltTxErr(rc){
+    if(!rc)return "Transaction failed.";
+    try{ if(typeof window.__lxTxErr==="function")return window.__lxTxErr(rc); }catch(_){}
+    var ops=(rc.operations||[]).filter(function(c){return c&&c!=="op_success";});
+    if(ops.length)return (LT_TXERR[ops[0]]||"The network rejected this transaction")+" ["+ops[0]+"]";
+    if(rc.transaction)return (LT_TXERR[rc.transaction]||"The network rejected this transaction")+" ["+rc.transaction+"]";
+    return "Transaction failed.";
   }
   function cpBal(a){ if(!a)return 0; if(a.native||a.code==="XLM")return (window.__lxNative!=null?window.__lxNative:0); var h=(window.__lxHoldings||[]).filter(function(x){return x.code===a.code&&!x.native;})[0]; return h?(+h.bal||0):0; }
   function cpSpend(a){ if(!a)return 0; if(a.native||a.code==="XLM")return (window.__lxMaxXLM!=null?window.__lxMaxXLM:cpBal(a)); return cpBal(a); }
@@ -1169,7 +1202,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     }).then(function(o){ var res=o.res;
       if(res&&res.successful){ btn.textContent="Pool created"; window.__lxWalletLoading=false; try{ loadWallet(); }catch(_){}
         ltToast("Liquidity added to the "+o.pair+" pool."); setTimeout(function(){ var cl=m.querySelector(".modal-close,[data-close]"); if(cl)cl.click(); btn.disabled=false; btn.textContent=ot; },1500); }
-      else { throw new Error((res&&res.extras&&res.extras.result_codes&&JSON.stringify(res.extras.result_codes))||"Transaction failed."); }
+      else { throw new Error(ltTxErr(res&&res.extras&&res.extras.result_codes)); }
     }).catch(function(e){ btn.disabled=false; btn.textContent=ot; ltToast("Could not create pool — "+(e&&e.message||e)); });
   }
   // ---- Trustline gate ("LUMOS trustline required" banner in both modals): wire its button + toggle it ----
