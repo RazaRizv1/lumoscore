@@ -123,10 +123,14 @@ const FAQ = {
     ['How do I buy LUMOS?', 'LUMOS trades on the Stellar network. You can swap into it from XLM or another asset on the Trade page, using the same routing as any other Stellar asset.'],
   ],
   'mcp': [
-    ['What is the Model Context Protocol?', 'MCP is an open standard that lets AI assistants connect to external tools and data. The LumosCore MCP server exposes Stellar market data and account information so an assistant can work with it directly.'],
-    ['What can I do with LumosCore MCP?', 'Ask an AI assistant about Stellar asset prices, liquidity pools, account balances and trading activity in plain language, and have it prepare actions for you to review.'],
-    ['Can an AI assistant move my funds?', 'No. Signing always happens in your own wallet, where you review and approve every transaction. An assistant can prepare a transaction but cannot authorise one.'],
+    ['What is the Model Context Protocol?', 'MCP is an open standard that lets an AI assistant use an outside tool instead of guessing. Connecting the LumosCore server gives an assistant live market data, wallets, pools and routes, and the ability to prepare a transaction for you.'],
+    ['How do I connect it?', 'Point any MCP client at https://lumoscore.com/mcp. There is nothing to install and no API key: it is a remote server, so a paste is the whole setup. Claude, ChatGPT, Cursor and VS Code all speak it.'],
+    ['Can an assistant move my funds?', 'No. The server holds no private key and cannot sign anything. A write tool validates what you asked for and hands back a link; the transaction opens in your browser, in your wallet, with the figures in front of you, and nothing moves until you approve it there.'],
+    ['What can it see?', 'Only what is already public on-chain. It reads balances, orders and pool positions for any address you name, the same way a block explorer does. It never sees your keys, and it is not connected to your wallet.'],
+    ['Does it cost anything?', 'No. The connector is free and unauthenticated. Trades placed through the links it prepares pay the ordinary LumosCore fee of 0.2%, or 0.1% if you hold 250,000 LUMOS, and limit orders are free.'],
+    ['Which networks does it cover?', 'The tools read Stellar today, which is where LumosCore trading and pools run. Cross-chain transfers it prepares reach the networks LumosCore bridges to, and the connector grows as the platform does — one endpoint, not one per chain.'],
   ],
+
 };
 
 const CSS = `<style id="lx-faq-css">
