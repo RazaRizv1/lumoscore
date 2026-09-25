@@ -1917,6 +1917,16 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var t=e.target&&e.target.closest?e.target.closest(".lx-mytrades"):null; if(!t)return;
       e.preventDefault(); e.stopImmediatePropagation();
       MY_TRADES=!MY_TRADES; EX_PAGE=1; lxMyTradesBtn();
+      // MY TRADES IS A FILTER ON THE EXCHANGES PANEL, not a tab of its own. Turning it on while the
+      // reader was looking at Holders or Pools underlined the label and re-rendered a panel they could
+      // not see -- so it looked like nothing happened (RAZA, on mobile: "My trades in trade asset page
+      // is not working"; the screenshot shows My Trades underlined above a list headed "AMM Pools").
+      // Take them to the panel the rows are actually in. The design owns the tab switch, so its own
+      // button is clicked rather than the active class being forged here.
+      if(MY_TRADES){
+        var ex=q('.tabs-bar .tab[data-tab="exchanges"]');
+        if(ex&&!ex.classList.contains("active")){ try{ ex.click(); }catch(_){} }
+      }
       if(MY_TRADES&&MY_ROWS===null)loadMyTrades(); else renderExchanges();
     },true);
   }

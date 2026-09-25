@@ -22,6 +22,19 @@ const STYLE = '<style id="lx-mobdex-css">'
 // items 16 + 18: New Mints and Market Movers are off this page too. Class rather than an element rule,
 // because a section here is a run of siblings and not one wrapper.
 + '.lx-mdgone.lx-mdgone{display:none!important}'
+// ...AND FROM THE FIRST PAINT, not from whenever the script gets to run. lx-mdgone is added after load,
+// so every phone painted the dropped New Mints card and the Gainers / Losers / Volume box and then
+// blinked them away (RAZA: "a flash bug that appears for split seconds ... an old design where we had
+// a box for Gainers, Losers, Volume"). This stylesheet is in the head and render-blocking, so a rule
+// here lands before anything is drawn. The markup is left in place deliberately: five transforms still
+// reference these nodes, and cutting them out from under those is a bigger risk than a dead element.
+// :has() picks the section head by the block it introduces, since the heads are told apart only by
+// their text. Where it is unsupported that one heading still blinks and lx-mdgone still catches it.
+// The class is DOUBLED for specificity, not by accident: further down this same stylesheet
+// .mdx-mover-list is set to display:flex!important for the sideways row, and an equal-specificity rule
+// later in the file wins on source order. (0,2,0) beats that wherever it sits.
++ '.mdx-mints-card.mdx-mints-card,.mdx-mover-tabs.mdx-mover-tabs,.mdx-mover-list.mdx-mover-list{display:none!important}'
++ '.mdx-section-head:has(+ .mdx-mover-tabs){display:none!important}'
 // #34: the movers become one sideways row here too, rather than ten stacked cards the reader has to
 // scroll the PAGE through. Same idea as desktop: the section stays the height of a single card and the
 // card clipped at the right edge is what says there is more.
