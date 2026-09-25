@@ -9,22 +9,26 @@ function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent
 // screen on this site answers -- it reads the whole curated roster and every order book behind it and
 // returns the ones that match. The second ends at "prepared, not signed", which is the security model.
 var steps=[
- {t:'tx',x:'✓ lumoscore connected · 14 tools · mainnet',c:'lxh-ok',d:420},
- {t:'sp',d:140},
- {t:'in',x:'where is the deepest liquidity right now?',d:400},
- {t:'tx',x:'→ list_pools · ranked by TVL',c:'lxh-dim',d:460},
- {t:'tx',x:'✓ XLM / USDC   $5.52M · 834 providers',c:'lxh-ok',d:380},
- {t:'tx',x:'  XLM / yXLM    $918K · 659',c:'lxh-sec',sm:1,d:260},
- {t:'tx',x:'  XLM / SHX     $750K · 715',c:'lxh-sec',sm:1,d:420},
- {t:'sp',d:140},
- {t:'in',x:'swap 200 XLM for USDC',d:440},
- {t:'tx',x:'→ get_quote · best route',c:'lxh-dim',d:460},
- {t:'tx',x:'✓ ≈ 43.3630 USDC · fee 0.2%',c:'lxh-ok',d:470},
- {t:'tx',x:'◉ Prepared · not signed',c:'lxh-warn',d:500,id:'lxhPend'},
- {t:'pg',d:1300},
- {t:'rep',id:'lxhPend',x:'✓ Opens filled in — you approve it',c:'lxh-ok',d:420},
- {t:'sp',d:100},
- {t:'ok',x:'Your wallet signs. LumosCore never sees your key.',y:'Ready to approve',d:540}
+ {t:'tx',x:'✓ connected · 14 tools · POST /mcp',c:'lxh-ok',d:400},
+ {t:'sp',d:130},
+ {t:'in',x:'where is the deepest liquidity right now?',d:380},
+ {t:'tx',x:'→ list_pools · ranked by TVL',c:'lxh-dim',d:420},
+ {t:'tx',x:'  <b>XLM / USDC</b>   $5.52M   <span class="lxh-unit">834 LPs</span>',c:'lxh-row',html:1,d:260},
+ {t:'tx',x:'  <b>XLM / yXLM</b>    $918K   <span class="lxh-unit">659 LPs</span>',c:'lxh-row',html:1,d:210},
+ {t:'tx',x:'  <b>XLM / SHX</b>     $750K   <span class="lxh-unit">715 LPs</span>',c:'lxh-row',html:1,d:420},
+ {t:'sp',d:130},
+ {t:'in',x:'is the USDC book tight enough to trade?',d:420},
+ {t:'tx',x:'→ get_orderbook · USDC / XLM',c:'lxh-dim',d:430},
+ {t:'tx',x:'✓ spread 0.15% · 275,336 XLM resting on the bid',c:'lxh-ok',d:470},
+ {t:'sp',d:130},
+ {t:'in',x:'swap 200 XLM for USDC',d:420},
+ {t:'tx',x:'→ get_quote · 4 routes compared',c:'lxh-dim',d:430},
+ {t:'tx',x:'✓ ≈ 43.3630 USDC · fee 0.2%',c:'lxh-ok',d:440},
+ {t:'tx',x:'◉ prepared · not signed',c:'lxh-warn',d:470,id:'lxhPend'},
+ {t:'pg',d:1200},
+ {t:'rep',id:'lxhPend',x:'✓ opens filled in, waiting on you',c:'lxh-ok',d:400},
+ {t:'sp',d:90},
+ {t:'ok',x:'Your wallet signs it. LumosCore never sees your key.',y:'Approve in your wallet',d:520}
 ];
 function run(){
  var i=0;
