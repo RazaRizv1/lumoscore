@@ -21,7 +21,15 @@ export class ApiError extends Error {
   constructor(msg, status) { super(msg); this.status = status; }
 }
 
-export async function api(path, { timeout = TIMEOUT_MS } = {}) {
+// ONE RETRY AFTER A TIMEOUT, and only after a timeout.
+//
+// /lxapi/pools measured 30.7s on a cold edge cache and 1.1s warm, against a 20s limit here -- so the
+// first caller after the cache expired got "did not respond within 20s" and everyone behind them got
+// an instant answer. Our giving up does not stop the origin finishing, so by the time a second request
+// goes out the work is done and the cache is warm: the retry costs a second and turns the failure into
+// the same answer everybody else gets. Nothing else is retried -- an HTTP error is an answer, and
+// repeating a request that was actually refused only doubles the load on whatever refused it.
+export async function api(path, { timeout = TIMEOUT_MS, _retried = false } = {}) {
   const url = BASE + path;
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), timeout);
@@ -30,11 +38,12 @@ export async function api(path, { timeout = TIMEOUT_MS } = {}) {
     r = await fetch(url, { headers: { accept: 'application/json', 'user-agent': UA }, signal: ctl.signal });
   } catch (e) {
     clearTimeout(t);
+    if (e && e.name === 'AbortError' && !_retried) return api(path, { timeout, _retried: true });
     // A network failure is reported as one. Returning empty data here would read to the agent as
     // "there are no pools", which is a different and much worse claim than "I could not look".
     throw new ApiError(
       e && e.name === 'AbortError'
-        ? `LumosCore did not respond within ${Math.round(timeout / 1000)}s (${path})`
+        ? `LumosCore did not respond within ${Math.round(timeout / 1000)}s, twice (${path})`
         : `Could not reach LumosCore (${path}): ${e && e.message}`, 0);
   }
   clearTimeout(t);
