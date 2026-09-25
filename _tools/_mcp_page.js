@@ -289,11 +289,24 @@ const STYLE=`<style id="lx-mcp">
 @media(max-width:560px){.mcp-wrap{padding:2px 0 96px}.mcp-hero{margin-bottom:40px}.mcp-hero h1{font-size:29px}.mcp-hero p{font-size:15px}.mcp-sec{margin-bottom:40px}.mcp-sec-head h2{font-size:23px}.mcp-stats{gap:20px}.mcp-stats b{font-size:19px}.mcp-term-body,.mcp-code pre{font-size:11.5px}.mcp-security{grid-template-columns:1fr}.mcp-btn{flex:1 1 100%;justify-content:center}}
 </style>`;
 
+// The collapse used by "See all twelve tools". These rules used to live in _mcpplay.js and were
+// inherited by borrowing its class names; that transform is gone with the playground, so they move here
+// rather than silently leaving the disclosure unstyled.
+const EXPAND_CSS = '<style id="lx-mcp-exp">'
+  + '.lxpg-exp{margin-top:18px}'
+  + '.lxpg-exp summary{cursor:pointer;font-weight:700;font-size:14px;color:var(--text);padding:13px 16px;'
+  + 'background:var(--surface-2);border:1px solid var(--border);border-radius:12px;list-style:none}'
+  + '.lxpg-exp summary::-webkit-details-marker{display:none}'
+  + '.lxpg-exp summary::after{content:" \\203A";color:var(--accent);font-weight:800}'
+  + '.lxpg-exp[open] summary{border-bottom-left-radius:0;border-bottom-right-radius:0}'
+  + '.lxpg-expbody{border:1px solid var(--border);border-top:none;border-radius:0 0 12px 12px;padding:16px}'
+  + '</style>';
+
 function chip(icon){ return `<div class="mcp-ic">${icon}</div>`; }
 function feat(cls,icon,title,desc){ return `<div class="fcard ${cls}"><div class="fic">${icon}</div><h3>${title}</h3><div class="ul"></div><p>${desc}</p></div>`; }
 function cmd(icon,name,desc,write){ return `<div class="cmd2 ${write?'write':'read'}"><span class="cic">${icon}</span><div class="cbody"><code>${name}</code><div class="cd">${desc}</div></div><span class="ctag"></span></div>`; }
 
-// The copy here describes the 12 tools in mcp/tools.js and nothing else. The first version of this page
+// The copy here describes the 14 tools in mcp/tools.js and nothing else. The first version of this page
 // promised things the server does not do: an api key it has no concept of, a `lumoscore mcp start` CLI
 // that does not exist, limit orders and reward CLAIMS it has no tool for, and a hero animation in which
 // the agent EXECUTES a swap -- the one thing it deliberately cannot do -- at an invented rate (500 XLM
@@ -331,7 +344,7 @@ function mainHTML(cfg){
        entrance script only reveals descendants of #lxhLeft, so a class here would leave it at
        opacity 0 forever. -->
   <div class="lxh-strip">
-    <div><div class="v">7</div><div class="l">Read tools</div></div>
+    <div><div class="v">9</div><div class="l">Read tools</div></div>
     <div><div class="v">5</div><div class="l">Prepared actions</div></div>
     <div><div class="v">0</div><div class="l">Keys held</div></div>
     <div><div class="v"><span class="live"></span>Live</div><div class="l">${N} mainnet</div></div>
@@ -348,7 +361,7 @@ function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent
 // screen on this site answers -- it reads the whole curated roster and every order book behind it and
 // returns the ones that match. The second ends at "prepared, not signed", which is the security model.
 var steps=[
- {t:'tx',x:'✓ lumoscore connected · 12 tools · ${N} mainnet',c:'lxh-ok',d:420},
+ {t:'tx',x:'✓ lumoscore connected · 14 tools · ${N} mainnet',c:'lxh-ok',d:420},
  {t:'sp',d:140},
  {t:'in',x:'which curated assets sit near their floor?',d:400},
  {t:'tx',x:'→ list_curated_assets · 58 assets',c:'lxh-dim',d:440},
@@ -428,12 +441,12 @@ claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com
 <section class="mcp-sec" id="mcp-tools">
   <div class="mcp-cmdhead">
     <div class="k">Commands</div>
-    <h2>Twelve tools, <span class="g">one server</span></h2>
-    <p>Seven answer straight away. Five come back as a prepared transaction for you to approve.</p>
+    <h2>Fourteen tools, <span class="g">one server</span></h2>
+    <p>Nine answer straight away. Five come back as a prepared transaction for you to approve.</p>
   </div>
   <!-- The twelve rows are REFERENCE, not a pitch: the heading above already makes the claim and the
        playground above that proves it, so the list is one click away instead of a wall on the way past. -->
-  <details class="lxpg-exp" style="margin-top:0"><summary>See all twelve tools</summary>
+  <details class="lxpg-exp" style="margin-top:0"><summary>See all fourteen tools</summary>
   <div class="lxpg-expbody"><div class="mcp-cmds">
     ${cmd(I.quote,'get_market','Live price, supply and market cap for any ${N} asset.',false)}
     ${cmd(I.pie,'get_portfolio','Balances, pool positions and open orders for any address.',false)}
@@ -441,6 +454,8 @@ claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com
     ${cmd(I.shield,'list_curated_assets','Every asset LumosCore curates, and why each one is ticked.',false)}
     ${cmd(I.book,'get_orderbook','Bids, asks, spread and real depth against ${A}.',false)}
     ${cmd(I.layers,'list_pools','Liquidity pools by TVL, or filtered to one asset.',false)}
+    ${cmd(I.book,'list_blog_posts','Every LumosCore blog post, with tags and categories.',false)}
+    ${cmd(I.chat,'get_blog_post','Read one post in full, as plain text.',false)}
     ${cmd(I.gift,'get_rewards','Where your LUMOS rewards stand and how to claim them.',false)}
     ${cmd(I.swap,'swap','Prepares a swap for any pair, opened filled in.',true)}
     ${cmd(I.drop,'add_liquidity','Prepares an AMM deposit for a pair you choose.',true)}
@@ -469,12 +484,19 @@ const COPYJS='<script id="lx-mcp-copy">(function(){document.addEventListener("cl
 // mobile menu MCP anchor (dead href="#") -> wire to the mobile MCP page
 const MCPMOB_SVG='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.9 4.9l2.8 2.8"/><path d="M16.3 16.3l2.8 2.8"/><path d="M2 12h4"/><path d="M18 12h4"/><circle cx="12" cy="12" r="3"/></svg>';
 const MCPMOB_OLD='<a href="#">'+MCPMOB_SVG+'MCP</a>';
-const MCPMOB_NEW='<a href="lumoscore-mcp-mobile.html">'+MCPMOB_SVG+'MCP</a>';
+const MCPMOB_NEW='<a data-lxnonav="1" href="lumoscore-mcp-mobile.html">'+MCPMOB_SVG+'MCP</a>';
 
 const DEV={
   desktop:{ tmpl:'lumoscore-wallet.html', out:'lumoscore-mcp.html',
     active:p=>p.replace('class="nx-item active" data-id="wallet"','class="nx-item" data-id="wallet"').replace('class="nx-item" data-id="mcp"','class="nx-item active" data-id="mcp"'),
-    wire:b=>b.split('data-id="mcp" href="#"').join('data-id="mcp" href="lumoscore-mcp.html"') },
+    // THE DESIGN'S NAV SHIM SWALLOWS THIS CLICK. It matches an element's visible text against nav
+    // labels, calls preventDefault + stopImmediatePropagation, and hands the label to a resolver that
+    // only knows the pages the design shipped -- so "MCP" was eaten and went nowhere, leaving the
+    // reader on whatever page they were already on (RAZA: "when im clicking on MCP, its redirecting me
+    // to pools main page"). Its own early-out is [data-lxnonav], and the other bypass -- an href ending
+    // in lumoscore-*.html -- stopped applying once extract_site rewrote hrefs to clean urls.
+    wire:b=>b.split('data-id="mcp" href="#"').join('data-id="mcp" href="lumoscore-mcp.html"')
+            .split('data-id="mcp" href="lumoscore-mcp.html"').join('data-id="mcp" data-lxnonav="1" href="lumoscore-mcp.html"') },
   mobile:{ tmpl:'lumoscore-wallet-mobile.html', out:'lumoscore-mcp-mobile.html',
     active:p=>p,
     wire:b=>b.split(MCPMOB_OLD).join(MCPMOB_NEW) },
@@ -492,7 +514,7 @@ for(const chain of Object.keys(CFG)){
       page=page.replace(/<main class="page">[\s\S]*?<\/main>/, mainHTML(CFG[chain]));
       // STYLE goes in <head> so it's render-blocking — otherwise the CSS-sized inline icons
       // (esp. the badge SVG) flash at their huge default size before a body-end <style> loads.
-      if(page.indexOf('</head>')>=0){ page=page.replace('</head>', STYLE+'</head>'); }
+      if(page.indexOf('</head>')>=0){ page=page.replace('</head>', STYLE+EXPAND_CSS+'</head>'); }
       else { const hb=page.lastIndexOf('</body>'); page=page.slice(0,hb)+STYLE+page.slice(hb); }
       const bi=page.lastIndexOf('</body>');
       page=page.slice(0,bi)+COPYJS+page.slice(bi);
