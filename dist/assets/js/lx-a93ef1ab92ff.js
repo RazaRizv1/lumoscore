@@ -9,7 +9,7 @@ function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent
 // screen on this site answers -- it reads the whole curated roster and every order book behind it and
 // returns the ones that match. The second ends at "prepared, not signed", which is the security model.
 var steps=[
- {t:'tx',x:'✓ lumoscore connected · 12 tools · Aptos mainnet',c:'lxh-ok',d:420},
+ {t:'tx',x:'✓ lumoscore connected · 14 tools · Aptos mainnet',c:'lxh-ok',d:420},
  {t:'sp',d:140},
  {t:'in',x:'which curated assets sit near their floor?',d:400},
  {t:'tx',x:'→ list_curated_assets · 58 assets',c:'lxh-dim',d:440},
