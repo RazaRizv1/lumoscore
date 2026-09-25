@@ -23,6 +23,7 @@ const I={
   key:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2M16 7l3 3M14 9l3 3"/></svg>',
   copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2.5"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>',
   term:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 8 8 11 5 14"/><line x1="11" y1="14" x2="15" y2="14"/></svg>',
+  doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><polyline points="14 3 14 8 19 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>',
   book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>',
   search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
   minus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="8" y1="12" x2="16" y2="12"/></svg>',
@@ -32,6 +33,9 @@ const I={
 const STYLE=`<style id="lx-mcp">
 .mcp-wrap{max-width:1340px;margin:0 auto;padding:6px 14px 24px}
 .mcp-sec:last-of-type{margin-bottom:0}
+/* doubled: lx-faq-css is injected at the END of the body, so at equal specificity it wins on
+   source order and the block kept its own 1180px. */
+.lx-faq.lx-faq{max-width:1136px}
 .mcp-crumb{font-size:13px;color:var(--text-soft);margin:0 0 20px}
 .mcp-crumb a{color:var(--text-muted);text-decoration:none}
 .mcp-hero{position:relative;display:grid;grid-template-columns:1.02fr .98fr;gap:38px;align-items:center;margin-bottom:60px}
@@ -418,7 +422,7 @@ if(document.readyState!=='loading')boot();else window.addEventListener('load',bo
 <section class="mcp-sec" id="mcp-connect">
   <div class="mcp-sec-head">
     <h2>Connect your agent</h2>
-    <p>One url, no install and no API key &mdash; the server holds no credentials, so there is nothing to sign in to. A client that speaks remote MCP can reach it, including the ones that cannot run a local server at all.</p>
+    <p>One url and no API key &mdash; the server holds no credentials, so there is nothing to sign in to. A client that speaks remote MCP can reach it, including the ones that cannot run a local server at all.</p>
   </div>
   <div class="mcp-setup">
     <div>
@@ -430,7 +434,7 @@ claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com
       </div>
     </div>
     <div>
-      <p class="mcp-orlabel">Cursor, VS Code, Claude Desktop &mdash; <code>mcp.json</code></p>
+      <p class="mcp-orlabel">Cursor &mdash; <code>~/.cursor/mcp.json</code></p>
       <div class="mcp-code">
         <div class="mcp-code-bar"><span>mcp.json</span><span class="cp" data-mcp-copy>${I.copy}Copy</span></div>
         <pre>{
@@ -441,7 +445,16 @@ claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com
       </div>
     </div>
   </div>
-  <p class="mcp-orlabel" style="margin:18px 0 0">On an older client that only speaks stdio, bridge it with <code>npx -y mcp-remote https://lumoscore.com/mcp</code>. In ChatGPT, add it as a custom connector pointing at the same url.</p>
+  <div class="mcp-setup" style="margin-top:20px"><div><p class="mcp-orlabel">VS Code &mdash; <code>.vscode/mcp.json</code></p><div class="mcp-code"><div class="mcp-code-bar"><span>.vscode/mcp.json</span><span class="cp" data-mcp-copy>${I.copy}Copy</span></div><pre>{
+  <span class="k">"servers"</span>: {
+    <span class="k">"lumoscore"</span>: {
+      <span class="k">"type"</span>: <span class="s">"http"</span>,
+      <span class="k">"url"</span>: <span class="s">"https://lumoscore.com/mcp"</span>
+    }
+  }
+}</pre></div></div><div><p class="mcp-orlabel">Claude Desktop &mdash; <b>Settings &rsaquo; Connectors</b></p><div class="mcp-code"><div class="mcp-code-bar"><span>or bridge it from a terminal</span><span class="cp" data-mcp-copy>${I.copy}Copy</span></div><pre><span class="c"># Claude Desktop takes the url in Connectors, not in a config file.</span>
+<span class="c"># Any stdio-only client can bridge to it instead:</span>
+npx -y mcp-remote <span class="s">"https://lumoscore.com/mcp"</span></pre></div></div></div><p class="mcp-orlabel" style="margin:18px 0 0">In ChatGPT, add it as a custom connector pointing at the same url.</p>
 </section>
 
 <section class="mcp-sec" id="mcp-tools">
@@ -450,13 +463,13 @@ claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com
     <p>Nine answer straight away. Five come back as a prepared transaction for you to approve.</p>
   </div>
   <div class="mcp-cmds">
-    ${cmd(I.quote,'get_market','Live price, supply and market cap for any ${N} asset.',false)}
+    ${cmd(I.quote,'get_market','Live price, supply and market cap for any asset.',false)}
     ${cmd(I.pie,'get_portfolio','Balances, pool positions and open orders for any address.',false)}
-    ${cmd(I.search,'get_quote','Best-route price for a swap, straight from ${N} path finding.',false)}
+    ${cmd(I.search,'get_quote','Best-route price for a swap, straight from on-chain path finding.',false)}
     ${cmd(I.shield,'list_curated_assets','Every asset LumosCore curates, and why each one is ticked.',false)}
-    ${cmd(I.book,'get_orderbook','Bids, asks, spread and real depth against ${A}.',false)}
+    ${cmd(I.book,'get_orderbook','Bids, asks, spread and real depth against the native asset.',false)}
     ${cmd(I.layers,'list_pools','Liquidity pools by TVL, or filtered to one asset.',false)}
-    ${cmd(I.book,'list_blog_posts','Every LumosCore blog post, with tags and categories.',false)}
+    ${cmd(I.doc,'list_blog_posts','Every LumosCore blog post, with tags and categories.',false)}
     ${cmd(I.chat,'get_blog_post','Read one post in full, as plain text.',false)}
     ${cmd(I.gift,'get_rewards','Where your LUMOS rewards stand and how to claim them.',false)}
     ${cmd(I.swap,'swap','Prepares a swap for any pair, opened filled in.',true)}
