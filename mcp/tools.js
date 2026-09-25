@@ -82,11 +82,83 @@ async function getMarket({ asset }) {
 // while the endpoint was serving twenty-five. Read the record, not a summary of it.
 const sideId = (s) => (!s ? null : (s.issuer ? `${s.code}-${s.issuer}` : (String(s.code).toUpperCase() === 'XLM' ? 'native' : s.code)));
 
+// Horizon spells an asset CODE:ISSUER in a query, where the rest of this file uses CODE-ISSUER.
+const hAsset = (x) => (x.id === 'native' ? 'native' : `${x.code}:${x.issuer}`);
+
+// Every pool holding an asset, straight from the ledger. /lxapi/pools serves ONE page of the top pools
+// by TVL, which is the right answer for "show me the big pools" and the wrong one for "which pools hold
+// X" -- see listPools.
+async function poolsHolding(x, limit) {
+  const d = await horizon(`/liquidity_pools?reserves=${encodeURIComponent(hAsset(x))}&limit=${Math.min(200, Math.max(1, limit || 200))}`);
+  return ((((d || {})._embedded || {}).records) || []);
+}
+
+// The one pool made by a specific pair. Horizon takes the two reserves in either order, but only the
+// canonical ordering matches, so both are tried rather than assuming which way round the caller asked.
+async function poolOfPair(A, B) {
+  for (const [x, y] of [[A, B], [B, A]]) {
+    try {
+      const d = await horizon(`/liquidity_pools?reserves=${encodeURIComponent(hAsset(x) + ',' + hAsset(y))}&limit=1`);
+      const p = ((((d || {})._embedded || {}).records) || [])[0];
+      if (p) return p;
+    } catch (_) { /* try the other ordering before giving up */ }
+  }
+  return null;
+}
+const reserveOf = (p, x) => {
+  const want = hAsset(x);
+  const r = (p.reserves || []).filter((v) => v.asset === want)[0];
+  return r ? +r.amount : null;
+};
+
 async function listPools({ limit = 20, asset }) {
-  const d = await api('/lxapi/pools');
-  const list = Array.isArray(d) ? d : (Array.isArray(d && d.rows) ? d.rows : []);
   const want = asset ? parseAsset(asset) : null;
   if (asset && !want) return fail(`"${asset}" is not an asset id. Use CODE-ISSUER or XLM.`);
+
+  // A FILTER HAS TO ASK THE LEDGER, not sift the page we already had.
+  //
+  // /lxapi/pools returns ONE page: the top 25 pools by TVL out of 11,017. Filtering that page for an
+  // asset answered "0 pools" for anything outside the top 25 -- which is almost everything. An agent
+  // using the connector reported it exactly right: "list_pools returns 0 pools across the whole
+  // network. But the market data says about 41M LUMOS is sitting in pools, so the pool list is broken."
+  // LUMOS is in 62 pools. The tool said none.
+  //
+  // Horizon indexes pools BY reserve, so the filtered case goes there and gets all of them. TVL is only
+  // filled in where one side is XLM, since that is the only side this can price without another lookup
+  // per pool -- stated as null rather than guessed at.
+  if (want) {
+    const recs = await poolsHolding(want, 200);
+    const usd = await xlmUsd();
+    const rows = recs.map((p) => {
+      const sides = (p.reserves || []).map((v) => {
+        const nat = v.asset === 'native';
+        const [code, issuer] = nat ? ['XLM', ''] : String(v.asset).split(':');
+        return { code, issuer, amount: +v.amount, id: nat ? 'native' : `${code}-${issuer}` };
+      });
+      const xlmSide = sides.filter((s) => s.id === 'native')[0];
+      return {
+        id: p.id,
+        pair: sides.map((s) => s.code).join(' / '),
+        a: sides[0] ? sides[0].id : null, b: sides[1] ? sides[1].id : null,
+        reserve_a: nf(sides[0] && sides[0].amount, 4), reserve_b: nf(sides[1] && sides[1].amount, 4),
+        tvl_usd: (xlmSide && usd) ? nf(xlmSide.amount * 2 * usd, 2) : null,
+        total_shares: nf(+p.total_shares, 4),
+        fee_pct: p.fee_bp != null ? nf(p.fee_bp / 100, 2) : null,
+        participants: p.total_trustlines ?? null,
+        page: web('/pools/stellar/id/' + p.id),
+      };
+    }).sort((x, y) => (y.tvl_usd || 0) - (x.tvl_usd || 0) || (y.total_shares || 0) - (x.total_shares || 0));
+    const out = rows.slice(0, Math.max(1, Math.min(200, +limit || 20)));
+    return ok({
+      count: out.length, of: rows.length, asset: want.id,
+      source: 'Horizon, every pool holding this asset',
+      tvl_note: 'tvl_usd is filled only where one side is XLM; a pool of two credit assets reports null rather than a guess.',
+      pools: out,
+    });
+  }
+
+  const d = await api('/lxapi/pools');
+  const list = Array.isArray(d) ? d : (Array.isArray(d && d.rows) ? d.rows : []);
   const hit = (s) => {
     if (!want || !s) return !want;
     if (want.id === 'native') return String(s.code || '').toUpperCase() === 'XLM';
@@ -294,6 +366,68 @@ async function getOrderbook({ asset, limit = 8 }) {
   });
 }
 
+// THE BLOG, because an agent asked about LumosCore should be able to read what LumosCore has written
+// rather than infer it. /lxapi/blog lists the posts; ?slug= returns one with its body.
+//
+// The body comes back as HTML and is handed over as TEXT. An agent does not need the markup, tags
+// inflate the payload several times over, and a model reading raw HTML will sooner or later repeat a
+// fragment of it back to somebody as prose.
+function htmlToText(h) {
+  return String(h || '')
+    .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+    .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+    .replace(/<\/(p|div|h[1-6]|li|tr|blockquote)>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/[ \t]+/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+const postRow = (p) => ({
+  slug: p.slug, title: p.title, category: p.category || null,
+  excerpt: p.excerpt || null, tags: p.tags || [],
+  read_minutes: p.readMins ?? null,
+  published_at: p.publishedAt || p.publishAt || p.createdAt || null,
+  url: web('/blog/' + p.slug),
+});
+
+async function listBlogPosts({ limit = 20, tag, category }) {
+  const d = await api('/lxapi/blog');
+  let posts = (d && d.posts) || [];
+  if (tag) {
+    const t = String(tag).toLowerCase();
+    posts = posts.filter((p) => (p.tags || []).some((x) => String(x).toLowerCase() === t));
+  }
+  if (category) {
+    const c = String(category).toLowerCase();
+    posts = posts.filter((p) => String(p.category || '').toLowerCase() === c);
+  }
+  const out = posts.slice(0, Math.max(1, Math.min(100, +limit || 20)));
+  return ok({
+    count: out.length, of: ((d && d.posts) || []).length,
+    posts: out.map(postRow),
+    next_step: 'Call get_blog_post with a slug to read one in full.',
+  });
+}
+
+async function getBlogPost({ slug }) {
+  const s = String(slug || '').trim();
+  if (!/^[a-z0-9][a-z0-9-]{0,120}$/i.test(s)) return fail('slug must be a post slug, e.g. how-to-get-your-token-curated-on-lumoscore. Call list_blog_posts first.');
+  const d = await api('/lxapi/blog?slug=' + encodeURIComponent(s));
+  const p = (d && (d.post || (d.slug ? d : null))) || null;
+  if (!p || !p.slug) return fail(`No post with the slug "${s}". Call list_blog_posts to see what exists.`);
+  const text = htmlToText(p.body);
+  const CAP = 20000;
+  return ok(Object.assign(postRow(p), {
+    meta_description: p.metaDescription || null,
+    body_text: text.length > CAP ? text.slice(0, CAP) + '\n\n[truncated]' : text,
+    body_chars: text.length,
+    truncated: text.length > CAP,
+  }));
+}
+
 // ---- writes: prepared, never signed --------------------------------------------------------------
 
 function prepared(action, summary, url, extra) {
@@ -347,9 +481,47 @@ async function addLiquidity({ a, b, amount_a, amount_b }) {
   if (!A) return fail(`"${a}" is not an asset id.`);
   if (!B) return fail(`"${b}" is not an asset id.`);
   if (!(+amount_a > 0) || !(+amount_b > 0)) return fail('amount_a and amount_b must both be positive.');
+
+  // WHAT THE DEPOSIT ACTUALLY BUYS. An agent asked "how many liq shares will i have for depositing
+  // 1000000 LUMOS and equal value of USDC" and had to answer "I can't give you an exact share count.
+  // The connector doesn't return one, and it couldn't give me the pool's reserves either" -- then work
+  // the formula out by hand. The pool is a single Horizon lookup away and the arithmetic is fixed, so
+  // the tool does it.
+  //
+  // Stellar's own rule, not an approximation: the first deposit into an empty pool mints sqrt(a*b); a
+  // deposit into a pool that already holds liquidity mints the SMALLER of the two ratios times the
+  // existing share total, because the excess of the other side is simply not taken.
+  let pool = null;
+  try { pool = await poolOfPair(A, B); } catch (_) { pool = null; }
+  const extra = { note: 'A new pool position also needs a trustline, which reserves 0.5 XLM.' };
+  if (!pool) {
+    extra.pool = 'none yet — this pair has no pool, so this deposit would create it';
+    extra.shares_estimate = nf(Math.sqrt(+amount_a * +amount_b), 7);
+    extra.shares_basis = 'first deposit into an empty pool mints sqrt(amount_a * amount_b)';
+    extra.price_warning = 'The ratio you deposit SETS the opening price. Match the market or arbitrage will correct it at your expense.';
+  } else {
+    const ra = reserveOf(pool, A), rb = reserveOf(pool, B), tot = +pool.total_shares;
+    extra.pool_id = pool.id;
+    extra.reserves = { [A.code]: nf(ra, 7), [B.code]: nf(rb, 7) };
+    extra.total_shares = nf(tot, 7);
+    extra.fee_pct = pool.fee_bp != null ? nf(pool.fee_bp / 100, 2) : null;
+    if (ra > 0 && rb > 0 && tot > 0) {
+      const fa = +amount_a / ra, fb = +amount_b / rb;
+      const f = Math.min(fa, fb);
+      extra.shares_estimate = nf(f * tot, 7);
+      extra.pool_share_pct = nf((f * tot) / (tot + f * tot) * 100, 4);
+      extra.shares_basis = 'min(amount_a / reserve_a, amount_b / reserve_b) x total_shares';
+      extra.pool_price = `1 ${A.code} = ${nf(rb / ra, 7)} ${B.code}`;
+      // Depositing off-ratio is not an error, it is a quiet haircut: only the smaller side is taken in
+      // full and the rest stays in the wallet, so the figure above is already the real one.
+      if (Math.abs(fa - fb) / Math.max(fa, fb) > 0.01) {
+        extra.ratio_warning = `Your amounts are off the pool's ratio, so only the ${fa < fb ? A.code : B.code} side is taken in full`
+          + ` — about ${nf(Math.abs(fa - fb) * (fa < fb ? rb : ra), 7)} ${fa < fb ? B.code : A.code} would not be deposited.`;
+      }
+    }
+  }
   return prepared('add_liquidity', `Deposit ${amount_a} ${A.code} and ${amount_b} ${B.code} into the ${A.code} / ${B.code} pool`,
-    web(`/pools/stellar/${encodeURIComponent(A.id)}/${encodeURIComponent(B.id)}`),
-    { note: 'A new pool position also needs a trustline, which reserves 0.5 XLM.' });
+    web(`/pools/stellar/${encodeURIComponent(A.id)}/${encodeURIComponent(B.id)}`), extra);
 }
 
 async function removeLiquidity({ a, b }) {
@@ -399,6 +571,12 @@ export const TOOLS = [
   { name: 'get_orderbook', title: 'Live bids, asks, spread and depth for an asset against XLM',
     schema: { asset: { type: 'string', description: 'CODE-ISSUER, e.g. KALE-GBDVX4…' },
               limit: { type: 'number', description: 'Rows per side (default 8, max 50)' } }, required: ['asset'], run: getOrderbook },
+  { name: 'list_blog_posts', title: 'LumosCore blog posts, newest first',
+    schema: { limit: { type: 'number', description: 'Max posts (default 20)' },
+              tag: { type: 'string', description: 'Only posts carrying this tag' },
+              category: { type: 'string', description: 'Only posts in this category' } }, required: [], run: listBlogPosts },
+  { name: 'get_blog_post', title: 'Read one LumosCore blog post in full',
+    schema: { slug: { type: 'string', description: 'Post slug from list_blog_posts' } }, required: ['slug'], run: getBlogPost },
   { name: 'get_rewards', title: 'Where to check and claim LUMOS rewards',
     schema: { address: { type: 'string', description: 'Stellar public key (optional)' } }, required: [], run: getRewards },
   { name: 'swap', title: 'Prepare a swap for you to approve (does not sign)',
