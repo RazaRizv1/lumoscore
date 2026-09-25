@@ -198,7 +198,9 @@ const STYLE=`<style id="lx-mcp">
    "claude mcp add --transport http ..." line pushed its own column 25px wider than the other and the
    pair stopped being a pair. Zero minimum lets the pre scroll inside an equal track instead. */
 .mcp-setup{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:stretch}
-.mcp-setup>div{display:flex;flex-direction:column}
+.mcp-setup>div{display:flex;flex-direction:column;min-width:0}
+.mcp-hero>div,.mcp-feat>*,.mcp-cmds>*,.mcp-security>*,.lxh-in>*{min-width:0}
+.mcp-code{min-width:0}
 .mcp-setup>div .mcp-code{flex:1}
 .mcp-steps{display:flex;flex-direction:column;gap:16px}
 .mcp-step{display:flex;gap:14px}
@@ -299,11 +301,11 @@ const STYLE=`<style id="lx-mcp">
 .lxh-anim{opacity:0;transform:translateY(24px);filter:blur(6px);transition:opacity .9s cubic-bezier(.16,1,.3,1),transform .9s cubic-bezier(.16,1,.3,1),filter .9s cubic-bezier(.16,1,.3,1)}
 .lxh-anim.vis{opacity:1;transform:none;filter:blur(0)}
 @media(prefers-reduced-motion:reduce){.lxh-glow,.lxh-particles i,.lxh-term,.lxh-badge i,.lxh-scan,.lxh-stats .live{animation:none}.lxh-anim{opacity:1;transform:none;filter:none}}
-@media(max-width:900px){.lxh-in{grid-template-columns:1fr;padding:32px 22px;gap:32px}.lxh h1{font-size:40px}}
+@media(max-width:900px){.lxh-in{grid-template-columns:minmax(0,1fr);padding:32px 22px;gap:32px}.lxh h1{font-size:40px}}
 
-@media(max-width:1080px){.mcp-feat{grid-template-columns:1fr 1fr}}
-@media(max-width:900px){.mcp-hero,.mcp-setup{grid-template-columns:1fr}.mcp-feat,.mcp-cmds{grid-template-columns:1fr}.mcp-hero h1{font-size:36px}}
-@media(max-width:560px){.mcp-wrap{padding:2px 0 96px}.mcp-hero{margin-bottom:40px}.mcp-hero h1{font-size:29px}.mcp-hero p{font-size:15px}.mcp-sec{margin-bottom:40px}.mcp-sec-head h2{font-size:23px}.mcp-stats{gap:20px}.mcp-stats b{font-size:19px}.mcp-term-body,.mcp-code pre{font-size:11.5px}.mcp-security{grid-template-columns:1fr}.mcp-btn{flex:1 1 100%;justify-content:center}}
+@media(max-width:1080px){.mcp-feat{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:900px){.mcp-hero,.mcp-setup{grid-template-columns:minmax(0,1fr)}.mcp-feat,.mcp-cmds{grid-template-columns:minmax(0,1fr)}.mcp-hero h1{font-size:36px}}
+@media(max-width:560px){.mcp-wrap{padding:2px 0 96px}.mcp-hero{margin-bottom:40px}.mcp-hero h1{font-size:29px}.mcp-hero p{font-size:15px}.mcp-sec{margin-bottom:40px}.mcp-sec-head h2{font-size:23px}.mcp-stats{gap:20px}.mcp-stats b{font-size:19px}.mcp-term-body,.mcp-code pre{font-size:11.5px}.mcp-security{grid-template-columns:minmax(0,1fr)}.mcp-btn{flex:1 1 100%;justify-content:center}}
 </style>`;
 
 // The collapse used by "See all twelve tools". These rules used to live in _mcpplay.js and were
