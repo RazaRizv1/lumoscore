@@ -30,7 +30,8 @@ const I={
 };
 
 const STYLE=`<style id="lx-mcp">
-.mcp-wrap{max-width:1340px;margin:0 auto;padding:6px 14px 60px}
+.mcp-wrap{max-width:1340px;margin:0 auto;padding:6px 14px 24px}
+.mcp-sec:last-of-type{margin-bottom:0}
 .mcp-crumb{font-size:13px;color:var(--text-soft);margin:0 0 20px}
 .mcp-crumb a{color:var(--text-muted);text-decoration:none}
 .mcp-hero{position:relative;display:grid;grid-template-columns:1.02fr .98fr;gap:38px;align-items:center;margin-bottom:60px}
@@ -95,9 +96,9 @@ const STYLE=`<style id="lx-mcp">
 /* commands — header with 3D server art + individual command cards */
 .mcp-cmdhead{max-width:680px;margin:0 0 28px}
 .mcp-cmdhead .k{color:#a89bff;font:800 13px/1 'JetBrains Mono',monospace;letter-spacing:.14em;text-transform:uppercase}
-.mcp-cmdhead h2{font-size:40px;font-weight:800;letter-spacing:-.03em;color:var(--text);margin:13px 0 12px;line-height:1.02}
+.mcp-cmdhead h2{font-size:30px;font-weight:800;letter-spacing:-.025em;color:var(--text);margin:0;line-height:1.1}
 .mcp-cmdhead h2 .g{background:linear-gradient(100deg,#a89bff,#ff9a3d);-webkit-background-clip:text;background-clip:text;color:transparent}
-.mcp-cmdhead p{font-size:15.5px;line-height:1.6;color:var(--text-muted);margin:0;max-width:52ch}
+.mcp-cmdhead p{font-size:15.5px;line-height:1.6;color:var(--text-muted);margin:10px 0 0;max-width:52ch}
 .mcp-cmds{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .cmd2{display:flex;align-items:center;gap:16px;background:#0a0a10;border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:16px 18px;transition:border-color .18s,background .18s}
 .cmd2:hover{border-color:rgba(255,255,255,.16);background:#0d0d14}
@@ -216,17 +217,17 @@ const STYLE=`<style id="lx-mcp">
 .lxh{position:relative;overflow:hidden;border-radius:26px;background:#08080c;border:1px solid rgba(255,255,255,.06);margin-bottom:58px;isolation:isolate}
 .lxh-grid{position:absolute;inset:0;z-index:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:50px 50px;-webkit-mask-image:radial-gradient(ellipse at 28% 22%,#000 12%,transparent 68%);mask-image:radial-gradient(ellipse at 28% 22%,#000 12%,transparent 68%)}
 .lxh-glow{position:absolute;border-radius:50%;filter:blur(110px);z-index:0;pointer-events:none}
-.lxh-glow.g1{top:-12%;left:-12%;width:520px;height:520px;background:rgba(234,106,44,.18);animation:lxh-pulse 6s ease-in-out infinite}
-.lxh-glow.g2{bottom:-22%;right:-8%;width:440px;height:440px;background:rgba(255,154,61,.13);animation:lxh-pulse 6s ease-in-out infinite 3s}
-.lxh-glow.g3{top:38%;left:44%;width:620px;height:620px;background:rgba(255,196,80,.05);animation:lxh-pulse 6s ease-in-out infinite 1.5s}
+.lxh-glow.g1{top:-12%;left:-12%;width:520px;height:520px;background:rgba(234,106,44,.15)}
+.lxh-glow.g2{bottom:-22%;right:-8%;width:440px;height:440px;background:rgba(255,154,61,.10)}
+.lxh-glow.g3{top:38%;left:44%;width:620px;height:620px;background:rgba(255,196,80,.04)}
 @keyframes lxh-pulse{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:1;transform:scale(1.1)}}
 .lxh-particles{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
-.lxh-particles i{position:absolute;bottom:-8px;width:2px;height:2px;border-radius:50%;background:#ea6a2c;animation:lxh-particle linear infinite}
+.lxh-particles{display:none}
 @keyframes lxh-particle{0%{transform:translateY(0) translateX(0);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-580px) translateX(20px);opacity:0}}
 .lxh-in{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1.02fr;gap:52px;align-items:center;padding:68px 60px}
 .lxh-l{max-width:560px}
 .lxh-badge{display:inline-flex;align-items:center;gap:8px;padding:7px 14px;border-radius:999px;background:rgba(255,154,61,.1);border:1px solid rgba(255,154,61,.24);box-shadow:0 0 12px rgba(255,154,61,.14);margin-bottom:22px}
-.lxh-badge i{width:7px;height:7px;border-radius:50%;background:#ff9a3d;animation:lxh-blink 2s ease-in-out infinite}
+
 .lxh-badge span{font:600 11.5px/1 'JetBrains Mono',monospace;letter-spacing:.1em;text-transform:uppercase;color:#ff9a3d}
 @keyframes lxh-blink{0%,100%{opacity:1}50%{opacity:.35}}
 .lxh h1{font-size:68px;line-height:.95;font-weight:800;letter-spacing:-.035em;color:#fff;margin:0}
@@ -253,7 +254,7 @@ const STYLE=`<style id="lx-mcp">
 .lxh-stats .dv{width:1px;height:38px;background:rgba(255,255,255,.1)}
 .lxh-stats .live{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:lxh-dot 2s ease-in-out infinite}
 @keyframes lxh-dot{0%,100%{box-shadow:0 0 0 0 rgba(34,197,94,.4)}50%{box-shadow:0 0 0 6px rgba(34,197,94,0)}}
-.lxh-term{position:relative;border-radius:16px;overflow:hidden;background:rgba(10,10,14,.92);border:1px solid rgba(255,255,255,.08);box-shadow:0 0 0 1px rgba(255,154,61,.14),0 0 44px rgba(234,106,44,.09),0 26px 54px rgba(0,0,0,.55);animation:lxh-float 6s ease-in-out infinite}
+.lxh-term{position:relative;border-radius:16px;overflow:hidden;background:rgba(10,10,14,.92);border:1px solid rgba(255,255,255,.08);box-shadow:0 0 0 1px rgba(255,255,255,.06),0 26px 54px rgba(0,0,0,.5)}
 @keyframes lxh-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
 .lxh-term.win{box-shadow:0 0 0 1px rgba(34,197,94,.32),0 0 60px rgba(34,197,94,.16),0 26px 54px rgba(0,0,0,.55)}
 .lxh-tbar{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)}
@@ -272,7 +273,7 @@ const STYLE=`<style id="lx-mcp">
 @media(max-width:560px){.lxh-strip .v{font-size:21px}.lxh-strip>div{padding:0 8px}}
 .lxh-tbody .lxh-dim{color:#69748e}.lxh-tbody .lxh-sec{color:#a7a7b0}.lxh-tbody .lxh-em{color:#ea6a2c}.lxh-tbody .lxh-ok{color:#43d38a}.lxh-tbody .lxh-warn{color:#facc15}.lxh-tbody .lxh-w{color:#fff}.lxh-tbody .lxh-p{color:#ff9a3d}.lxh-tbody .sm{font-size:12px}
 .lxh-pgt{width:240px;height:6px;border-radius:9px;background:rgba(255,255,255,.08);overflow:hidden}
-.lxh-scan{position:absolute;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,154,61,.45),transparent);animation:lxh-scan 4s ease-in-out infinite 2s;top:0;pointer-events:none}
+.lxh-scan{display:none}
 @keyframes lxh-scan{0%{top:0;opacity:0}10%{opacity:.6}90%{opacity:.6}100%{top:100%;opacity:0}}
 .lxh-tline{opacity:0;transform:translateX(-6px);transition:opacity .35s ease,transform .35s ease}
 .lxh-tline.show{opacity:1;transform:translateX(0)}
@@ -324,9 +325,9 @@ function mainHTML(cfg){
   <div class="lxh-particles" id="lxhParticles"></div>
   <div class="lxh-in">
     <div class="lxh-l" id="lxhLeft">
-      <div class="lxh-anim" data-d="0"><div class="lxh-badge"><i></i><span>MCP Server</span></div></div>
+      <div class="lxh-anim" data-d="0"><div class="lxh-badge"><span>Model Context Protocol</span></div></div>
       <h1 class="lxh-anim" data-d="120">Your AI agent,<br><span class="grad">on-chain.</span></h1>
-      <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about ${N} and LumosCore answers. Ask it to act and you get the transaction, filled in and ready to sign. <b style="color:#fff;font-weight:600">It never holds your key.</b></p>
+      <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about LumosCore and it answers &mdash; live prices, any wallet, pools and routes. Ask it to act and you get the transaction back, filled in and ready to sign. <b style="color:#fff;font-weight:600">It never holds your key.</b></p>
       <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="https://lumoscore.com/mcp"><span class="p">&#8250;</span><code>https://lumoscore.com/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
       <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-connect">${I.term}Connect your agent</a><a class="lxh-btn s" href="#mcp-tools">${I.book}See the tools</a></div>
     </div>
@@ -344,10 +345,9 @@ function mainHTML(cfg){
        entrance script only reveals descendants of #lxhLeft, so a class here would leave it at
        opacity 0 forever. -->
   <div class="lxh-strip">
-    <div><div class="v">9</div><div class="l">Read tools</div></div>
-    <div><div class="v">5</div><div class="l">Prepared actions</div></div>
-    <div><div class="v">0</div><div class="l">Keys held</div></div>
-    <div><div class="v"><span class="live"></span>Live</div><div class="l">${N} mainnet</div></div>
+    <div><div class="v">14</div><div class="l">Tools</div></div>
+    <div><div class="v">9</div><div class="l">Answer directly</div></div>
+    <div><div class="v">5</div><div class="l">Prepared for you to sign</div></div>
   </div>
 </section>
 <script id="lx-mcp-hero">(function(){
@@ -361,17 +361,17 @@ function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent
 // screen on this site answers -- it reads the whole curated roster and every order book behind it and
 // returns the ones that match. The second ends at "prepared, not signed", which is the security model.
 var steps=[
- {t:'tx',x:'✓ lumoscore connected · 14 tools · ${N} mainnet',c:'lxh-ok',d:420},
+ {t:'tx',x:'✓ lumoscore connected · 14 tools · mainnet',c:'lxh-ok',d:420},
  {t:'sp',d:140},
- {t:'in',x:'which curated assets sit near their floor?',d:400},
- {t:'tx',x:'→ list_curated_assets · 58 assets',c:'lxh-dim',d:440},
- {t:'tx',x:'→ get_orderbook ×58 · spread and depth',c:'lxh-dim',d:520},
- {t:'tx',x:'✓ 7 match · widest gap +1011%',c:'lxh-ok',d:440},
- {t:'tx',x:'  PEN · ask 737% over floor · 1.65 ${A} resting',c:'lxh-sec',sm:1,d:560},
+ {t:'in',x:'where is the deepest liquidity right now?',d:400},
+ {t:'tx',x:'→ list_pools · ranked by TVL',c:'lxh-dim',d:460},
+ {t:'tx',x:'✓ XLM / USDC   $5.52M · 834 providers',c:'lxh-ok',d:380},
+ {t:'tx',x:'  XLM / yXLM    $918K · 659',c:'lxh-sec',sm:1,d:260},
+ {t:'tx',x:'  XLM / SHX     $750K · 715',c:'lxh-sec',sm:1,d:420},
  {t:'sp',d:140},
- {t:'in',x:'swap 200 ${A} for USDC',d:440},
+ {t:'in',x:'swap 200 XLM for USDC',d:440},
  {t:'tx',x:'→ get_quote · best route',c:'lxh-dim',d:460},
- {t:'tx',x:'✓ ≈ 42.1678 USDC · swap fee 0.2%',c:'lxh-ok',d:480},
+ {t:'tx',x:'✓ ≈ 43.3630 USDC · fee 0.2%',c:'lxh-ok',d:470},
  {t:'tx',x:'◉ Prepared · not signed',c:'lxh-warn',d:500,id:'lxhPend'},
  {t:'pg',d:1300},
  {t:'rep',id:'lxhPend',x:'✓ Opens filled in — you approve it',c:'lxh-ok',d:420},
@@ -398,7 +398,7 @@ function run(){
 }
 function entrance(){var els=document.querySelectorAll('#lxhLeft .lxh-anim');for(var i=0;i<els.length;i++){(function(el){var dd=+el.getAttribute('data-d')||0;setTimeout(function(){el.classList.add('vis');},dd+150);})(els[i]);}}
 var pc=document.getElementById('lxhParticles');
-if(pc){for(var i=0;i<18;i++){var p=document.createElement('i');p.style.left=(Math.random()*100)+'%';p.style.animationDuration=(8+Math.random()*10)+'s';p.style.animationDelay=(Math.random()*10)+'s';var sz=(1+Math.random()*2);p.style.width=sz+'px';p.style.height=sz+'px';if(Math.random()>0.5)p.style.background='#ff9a3d';pc.appendChild(p);}}
+if(false&&pc){for(var i=0;i<18;i++){var p=document.createElement('i');p.style.left=(Math.random()*100)+'%';p.style.animationDuration=(8+Math.random()*10)+'s';p.style.animationDelay=(Math.random()*10)+'s';var sz=(1+Math.random()*2);p.style.width=sz+'px';p.style.height=sz+'px';if(Math.random()>0.5)p.style.background='#ff9a3d';pc.appendChild(p);}}
 document.addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('.lxh-install'):null;if(!b)return;var t=b.getAttribute('data-copy')||'';if(navigator.clipboard)navigator.clipboard.writeText(t);b.classList.add('copied');setTimeout(function(){b.classList.remove('copied');},1800);});
 function boot(){entrance();if(lines)run();}
 if(document.readyState!=='loading')boot();else window.addEventListener('load',boot);
@@ -440,14 +440,10 @@ claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com
 
 <section class="mcp-sec" id="mcp-tools">
   <div class="mcp-cmdhead">
-    <div class="k">Commands</div>
-    <h2>Fourteen tools, <span class="g">one server</span></h2>
+    <h2>Fourteen tools, one server</h2>
     <p>Nine answer straight away. Five come back as a prepared transaction for you to approve.</p>
   </div>
-  <!-- The twelve rows are REFERENCE, not a pitch: the heading above already makes the claim and the
-       playground above that proves it, so the list is one click away instead of a wall on the way past. -->
-  <details class="lxpg-exp" style="margin-top:0"><summary>See all fourteen tools</summary>
-  <div class="lxpg-expbody"><div class="mcp-cmds">
+  <div class="mcp-cmds">
     ${cmd(I.quote,'get_market','Live price, supply and market cap for any ${N} asset.',false)}
     ${cmd(I.pie,'get_portfolio','Balances, pool positions and open orders for any address.',false)}
     ${cmd(I.search,'get_quote','Best-route price for a swap, straight from ${N} path finding.',false)}
@@ -462,18 +458,9 @@ claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com
     ${cmd(I.minus,'remove_liquidity','Prepares a withdrawal of your pool position.',true)}
     ${cmd(I.bridge,'bridge','Prepares a cross-chain transfer to the destination you name.',true)}
     ${cmd(I.rocket,'launch_token','Prepares a token issuance for you to sign step by step.',true)}
-  </div></div></details>
-</section>
-
-<section class="mcp-sec">
-  <div class="mcp-security">
-    ${chip(I.key)}
-    <div>
-      <h3>The agent does the thinking. You do the authorising.</h3>
-      <p>LumosCore&rsquo;s MCP server holds <b>no private key</b>, has <b>no API key</b>, and cannot sign a transaction &mdash; by design, not by omission. Every action it prepares opens in your browser, in your wallet, with the figures in front of you. An agent that could sign would be an agent that could be talked into signing, and this is mainnet. Quotes are live and re-quoted at the moment you sign.</p>
-    </div>
   </div>
 </section>
+
 
 </div></main>`;
 }

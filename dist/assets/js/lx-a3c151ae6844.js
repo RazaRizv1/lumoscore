@@ -9,17 +9,17 @@ function type(el,txt,sp){return new Promise(function(res){var i=0;el.textContent
 // screen on this site answers -- it reads the whole curated roster and every order book behind it and
 // returns the ones that match. The second ends at "prepared, not signed", which is the security model.
 var steps=[
- {t:'tx',x:'✓ lumoscore connected · 14 tools · Aptos mainnet',c:'lxh-ok',d:420},
+ {t:'tx',x:'✓ lumoscore connected · 14 tools · mainnet',c:'lxh-ok',d:420},
  {t:'sp',d:140},
- {t:'in',x:'which curated assets sit near their floor?',d:400},
- {t:'tx',x:'→ list_curated_assets · 58 assets',c:'lxh-dim',d:440},
- {t:'tx',x:'→ get_orderbook ×58 · spread and depth',c:'lxh-dim',d:520},
- {t:'tx',x:'✓ 7 match · widest gap +1011%',c:'lxh-ok',d:440},
- {t:'tx',x:'  PEN · ask 737% over floor · 1.65 APT resting',c:'lxh-sec',sm:1,d:560},
+ {t:'in',x:'where is the deepest liquidity right now?',d:400},
+ {t:'tx',x:'→ list_pools · ranked by TVL',c:'lxh-dim',d:460},
+ {t:'tx',x:'✓ XLM / USDC   $5.52M · 834 providers',c:'lxh-ok',d:380},
+ {t:'tx',x:'  XLM / yXLM    $918K · 659',c:'lxh-sec',sm:1,d:260},
+ {t:'tx',x:'  XLM / SHX     $750K · 715',c:'lxh-sec',sm:1,d:420},
  {t:'sp',d:140},
- {t:'in',x:'swap 200 APT for USDC',d:440},
+ {t:'in',x:'swap 200 XLM for USDC',d:440},
  {t:'tx',x:'→ get_quote · best route',c:'lxh-dim',d:460},
- {t:'tx',x:'✓ ≈ 42.1678 USDC · swap fee 0.2%',c:'lxh-ok',d:480},
+ {t:'tx',x:'✓ ≈ 43.3630 USDC · fee 0.2%',c:'lxh-ok',d:470},
  {t:'tx',x:'◉ Prepared · not signed',c:'lxh-warn',d:500,id:'lxhPend'},
  {t:'pg',d:1300},
  {t:'rep',id:'lxhPend',x:'✓ Opens filled in — you approve it',c:'lxh-ok',d:420},
@@ -46,7 +46,7 @@ function run(){
 }
 function entrance(){var els=document.querySelectorAll('#lxhLeft .lxh-anim');for(var i=0;i<els.length;i++){(function(el){var dd=+el.getAttribute('data-d')||0;setTimeout(function(){el.classList.add('vis');},dd+150);})(els[i]);}}
 var pc=document.getElementById('lxhParticles');
-if(pc){for(var i=0;i<18;i++){var p=document.createElement('i');p.style.left=(Math.random()*100)+'%';p.style.animationDuration=(8+Math.random()*10)+'s';p.style.animationDelay=(Math.random()*10)+'s';var sz=(1+Math.random()*2);p.style.width=sz+'px';p.style.height=sz+'px';if(Math.random()>0.5)p.style.background='#ff9a3d';pc.appendChild(p);}}
+if(false&&pc){for(var i=0;i<18;i++){var p=document.createElement('i');p.style.left=(Math.random()*100)+'%';p.style.animationDuration=(8+Math.random()*10)+'s';p.style.animationDelay=(Math.random()*10)+'s';var sz=(1+Math.random()*2);p.style.width=sz+'px';p.style.height=sz+'px';if(Math.random()>0.5)p.style.background='#ff9a3d';pc.appendChild(p);}}
 document.addEventListener('click',function(e){var b=e.target&&e.target.closest?e.target.closest('.lxh-install'):null;if(!b)return;var t=b.getAttribute('data-copy')||'';if(navigator.clipboard)navigator.clipboard.writeText(t);b.classList.add('copied');setTimeout(function(){b.classList.remove('copied');},1800);});
 function boot(){entrance();if(lines)run();}
 if(document.readyState!=='loading')boot();else window.addEventListener('load',boot);
