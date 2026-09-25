@@ -102,7 +102,9 @@ async function listPools({ limit = 20, asset }) {
       a: sideId(p.a), b: sideId(p.b),
       reserve_a: nf((p.a || {}).amount, 4), reserve_b: nf((p.b || {}).amount, 4),
       tvl_usd: nf(p.tvl, 2), volume_24h_usd: nf(p.vol24, 2),
-      fee_bps: p.fee ?? null, participants: p.members ?? null,
+      // NOT basis points: /lxapi/pools returns 0.3 for a 30bp pool, i.e. already a percent. The old name
+      // said bps, so the playground dutifully divided by 100 and displayed a 0.30% pool as "0.003%".
+      fee_pct: p.fee ?? null, participants: p.members ?? null,
       page: web('/pools/stellar/' + encodeURIComponent(sideId(p.a) || '') + '/' + encodeURIComponent(sideId(p.b) || '')),
     })),
   });
