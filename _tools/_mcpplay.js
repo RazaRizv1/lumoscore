@@ -297,8 +297,10 @@ for (const chain of Object.keys(CFG)) {
       h = h.replace(/<script id="lx-mcpplay-js">[\s\S]*?<\/script>/g, '');
 
       if (h.indexOf('</head>') >= 0) h = h.replace('</head>', STYLE + '</head>');
-      // Directly after the hero banner: "try it" before "read about it".
-      const anchor = '<section class="mcp-sec" data-lx-noswap>';
+      // Directly after the hero banner: "try it" before "read about it". The anchor is the Connect
+      // section because the feature-card section that used to sit here was cut -- it described what the
+      // playground already shows.
+      const anchor = '<section class="mcp-sec" id="mcp-connect">';
       if (h.indexOf(anchor) < 0) continue;
       h = h.replace(anchor, sectionHTML(CFG[chain]) + anchor);
       const bi = h.lastIndexOf('</body>');

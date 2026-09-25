@@ -313,7 +313,7 @@ function mainHTML(cfg){
     <div class="lxh-l" id="lxhLeft">
       <div class="lxh-anim" data-d="0"><div class="lxh-badge"><i></i><span>MCP Server</span></div></div>
       <h1 class="lxh-anim" data-d="120">Your AI agent,<br><span class="grad">on-chain.</span></h1>
-      <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about ${N} and LumosCore answers &mdash; prices, any wallet, pools, live routes. Tell it what to do and it hands back the transaction, filled in and ready for you to sign. <b style="color:#fff;font-weight:600">It never holds your key.</b></p>
+      <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about ${N} and LumosCore answers. Ask it to act and you get the transaction, filled in and ready to sign. <b style="color:#fff;font-weight:600">It never holds your key.</b></p>
       <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="https://lumoscore.com/mcp"><span class="p">&#8250;</span><code>https://lumoscore.com/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
       <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-connect">${I.term}Connect your agent</a><a class="lxh-btn s" href="#mcp-tools">${I.book}See the tools</a></div>
     </div>
@@ -391,21 +391,11 @@ function boot(){entrance();if(lines)run();}
 if(document.readyState!=='loading')boot();else window.addEventListener('load',boot);
 })();</script>
 
-<section class="mcp-sec" data-lx-noswap>
-  <div class="mcp-sec-head">
-    <h2>What your agent can actually do</h2>
-    <p>Five tools answer on their own &mdash; no browser, no clicking. Five prepare a transaction and hand it back for your signature. Nothing in the second group moves without you.</p>
-  </div>
-  <div class="mcp-feat">
-    ${feat('fc-ember',I.search,'Ask about any wallet','Balances, pool positions and open orders for any ${N} address &mdash; yours or anyone&rsquo;s. Public ledger, plain question.')}
-    ${feat('fc-iris',I.book,'Screen the whole list at once','Every curated asset with its live price, order book, spread and real depth. &ldquo;Which of these is near its floor with a wide spread?&rdquo; is one question, not forty tabs.')}
-    ${feat('fc-teal',I.swap,'Swap, prepared','Any pair. The agent compares routes, then opens the swap with both assets and the amount already filled in.')}
-    ${feat('fc-ember',I.drop,'Pools','Browse pools by TVL or by asset, then prepare a deposit or a withdrawal for the pair you pick.')}
-    ${feat('fc-iris',I.bridge,'Cross-chain','Prepare a transfer off ${N}, routed through Circle CCTP, LayerZero, NEAR Intents or Axelar &mdash; whichever fits the destination.')}
-    ${feat('fc-teal',I.rocket,'Launch a token','Describe the token you want. The agent sets up the issuance flow; you approve each signed step.')}
-  </div>
-</section>
-
+<!-- CUT: a six-card "What your agent can actually do" section used to sit here (RAZA: "i find this mcp
+     page too confusing and overwhelming"). It was the page saying the same thing a third time -- the
+     playground above it DEMONSTRATES the tools and the command list below it NAMES all twelve, so the
+     cards in between only slowed the scroll. "We never hold your key" appeared six times on one page;
+     it now appears where it earns its place: the hero, the stat strip, the closing panel and the FAQ. -->
 <section class="mcp-sec" id="mcp-connect">
   <div class="mcp-sec-head">
     <h2>Connect your agent</h2>
@@ -439,9 +429,12 @@ claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com
   <div class="mcp-cmdhead">
     <div class="k">Commands</div>
     <h2>Twelve tools, <span class="g">one server</span></h2>
-    <p>The seven reads answer straight away. The five writes come back as a prepared transaction for you to approve &mdash; the server has no key and cannot sign.</p>
+    <p>Seven answer straight away. Five come back as a prepared transaction for you to approve.</p>
   </div>
-  <div class="mcp-cmds">
+  <!-- The twelve rows are REFERENCE, not a pitch: the heading above already makes the claim and the
+       playground above that proves it, so the list is one click away instead of a wall on the way past. -->
+  <details class="lxpg-exp" style="margin-top:0"><summary>See all twelve tools</summary>
+  <div class="lxpg-expbody"><div class="mcp-cmds">
     ${cmd(I.quote,'get_market','Live price, supply and market cap for any ${N} asset.',false)}
     ${cmd(I.pie,'get_portfolio','Balances, pool positions and open orders for any address.',false)}
     ${cmd(I.search,'get_quote','Best-route price for a swap, straight from ${N} path finding.',false)}
@@ -454,7 +447,7 @@ claude mcp add --transport http lumoscore <span class="s">"https://lumoscore.com
     ${cmd(I.minus,'remove_liquidity','Prepares a withdrawal of your pool position.',true)}
     ${cmd(I.bridge,'bridge','Prepares a cross-chain transfer to the destination you name.',true)}
     ${cmd(I.rocket,'launch_token','Prepares a token issuance for you to sign step by step.',true)}
-  </div>
+  </div></div></details>
 </section>
 
 <section class="mcp-sec">
