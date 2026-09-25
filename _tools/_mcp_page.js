@@ -157,7 +157,7 @@ const STYLE=`<style id="lx-mcp">
 [data-theme="light"] .lxh-tbar{background:#f3f3f6;border-bottom-color:rgba(0,0,0,.07)}
 [data-theme="light"] .lxh-tbar .nm{color:#8a8a94}
 [data-theme="light"] .lxh-tbody{color:#3f3f4a}
-[data-theme="light"] .lxh-tbody .lxh-dim{color:#a2a2ab}
+[data-theme="light"] .lxh-tbody .lxh-dim{color:#75757f}
 [data-theme="light"] .lxh-tbody .lxh-sec{color:#5a5a64}
 [data-theme="light"] .lxh-tbody .lxh-ok{color:#16a34a}
 [data-theme="light"] .lxh-tbody .lxh-warn{color:#b7791f}
@@ -186,7 +186,7 @@ const STYLE=`<style id="lx-mcp">
 [data-theme="light"] .mcp-code pre{color:#3f3f4a}
 [data-theme="light"] .mcp-code .s{color:#0d8f5b}
 [data-theme="light"] .mcp-code .k{color:#c2571a}
-[data-theme="light"] .mcp-code .c{color:#a2a2ab}
+[data-theme="light"] .mcp-code .c{color:#7b7b85}
 /* minmax(0,1fr), not 1fr: a grid track still sizes to its content's minimum, so the long
    "claude mcp add --transport http ..." line pushed its own column 25px wider than the other and the
    pair stopped being a pair. Zero minimum lets the pre scroll inside an equal track instead. */
@@ -233,6 +233,7 @@ const STYLE=`<style id="lx-mcp">
 .lxh h1{font-size:68px;line-height:.95;font-weight:800;letter-spacing:-.035em;color:#fff;margin:0}
 .lxh h1 .grad{background:linear-gradient(100deg,#ea6a2c,#ff9a3d,#fff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .lxh-sub{font-size:18px;line-height:1.6;font-weight:400;color:#a7a7b0;margin:20px 0 0;max-width:410px}
+.lxh-k{color:#fff;font-weight:600}
 .lxh-install{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:12px;background:rgba(20,20,26,.82);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.08);margin-top:26px;max-width:404px;cursor:pointer;transition:border-color .25s,background .25s,box-shadow .25s}
 .lxh-install:hover{border-color:rgba(234,106,44,.42);background:rgba(234,106,44,.05);box-shadow:0 0 26px rgba(234,106,44,.12)}
 .lxh-install .p{color:#52525b;font:500 14px/1 'JetBrains Mono',monospace}
@@ -268,6 +269,11 @@ const STYLE=`<style id="lx-mcp">
 .lxh-strip>div:first-child{border-left:none}
 .lxh-strip .v{font:800 26px/1 'JetBrains Mono',monospace;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;letter-spacing:-.01em}
 .lxh-strip .l{font-size:11px;color:#6a6a74;text-transform:uppercase;letter-spacing:.09em;margin-top:10px}
+[data-theme="light"] .lxh-strip{border-top-color:rgba(0,0,0,.1)}
+[data-theme="light"] .lxh-strip>div{border-left-color:rgba(0,0,0,.1)}
+[data-theme="light"] .lxh-strip .v{color:#17171c}
+[data-theme="light"] .lxh-strip .l{color:#8a8a92}
+[data-theme="light"] .lxh-k{color:#17171c}
 .lxh-strip .live{width:8px;height:8px;border-radius:50%;background:#22c55e;animation:lxh-dot 2s ease-in-out infinite}
 @media(max-width:900px){.lxh-strip{grid-template-columns:1fr 1fr;row-gap:24px;padding:24px 22px 26px}.lxh-strip>div:nth-child(3){border-left:none}}
 @media(max-width:560px){.lxh-strip .v{font-size:21px}.lxh-strip>div{padding:0 8px}}
@@ -327,7 +333,7 @@ function mainHTML(cfg){
     <div class="lxh-l" id="lxhLeft">
       <div class="lxh-anim" data-d="0"><div class="lxh-badge"><span>Model Context Protocol</span></div></div>
       <h1 class="lxh-anim" data-d="120">Your AI agent,<br><span class="grad">on-chain.</span></h1>
-      <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about LumosCore and it answers &mdash; live prices, any wallet, pools and routes. Ask it to act and you get the transaction back, filled in and ready to sign. <b style="color:#fff;font-weight:600">It never holds your key.</b></p>
+      <p class="lxh-sub lxh-anim" data-d="240">Ask your AI assistant about LumosCore and it answers &mdash; live prices, any wallet, pools and routes. Ask it to act and you get the transaction back, filled in and ready to sign. <b class="lxh-k">It never holds your key.</b></p>
       <div class="lxh-anim" data-d="360"><div class="lxh-install" data-copy="https://lumoscore.com/mcp"><span class="p">&#8250;</span><code>https://lumoscore.com/mcp</code><span class="ci">${I.copy}</span><span class="done">Copied!</span></div></div>
       <div class="lxh-btns lxh-anim" data-d="480"><a class="lxh-btn p" href="#mcp-connect">${I.term}Connect your agent</a><a class="lxh-btn s" href="#mcp-tools">${I.book}See the tools</a></div>
     </div>
@@ -505,6 +511,13 @@ for(const chain of Object.keys(CFG)){
       else { const hb=page.lastIndexOf('</body>'); page=page.slice(0,hb)+STYLE+page.slice(hb); }
       const bi=page.lastIndexOf('</body>');
       page=page.slice(0,bi)+COPYJS+page.slice(bi);
+      // THE CLONE BRINGS THE WALLET PAGES FAQ WITH IT -- this page is built from lumoscore-wallet.html,
+      // so it inherited "What are claimable payments?" and "How do I add or remove a trustline?",
+      // the right questions for a wallet and meaningless beside a connector. _faq.js has an mcp set
+      // and is idempotent, so stripping the inherited block here means the page is never shown the
+      // wrong one and _faq.js fills in the right one when it runs after this.
+      page=page.replace(/<section class="lx-faq"[\s\S]*?<\/section>/g,'')
+               .replace(/<script type="application\/ld\+json" id="lx-faq-ld">[\s\S]*?<\/script>/g,'');
       page=page.replace(/<title>[\s\S]*?<\/title>/,'<title>LumosCore — MCP</title>');
       page=D.active(page);
       json[D.out]=page; made++;
