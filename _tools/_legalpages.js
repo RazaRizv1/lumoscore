@@ -380,6 +380,10 @@ const FOOTER = [
   [/(<a[^>]*)href="#"([^>]*>\s*Terms of Condition\s*<\/a>)/gi, '$1href="/terms"$2'],
   [/(<a[^>]*)href="#"([^>]*>\s*Terms of Use\s*<\/a>)/gi, '$1href="/terms"$2'],
   [/(<a[^>]*)href="#"([^>]*>\s*Support\s*<\/a>)/gi, '$1href="/support"$2'],
+  // "Terms of Condition" is not a phrase. It shipped in the design's footer and is therefore on every
+  // page of the site; the document it points at is titled Terms and Conditions, so the link says that.
+  // Runs after the href rewrites above, which still match the old label.
+  [/(<a[^>]*>)\s*Terms of Condition\s*(<\/a>)/gi, '$1Terms and Conditions$2'],
 ];
 
 let made = 0, wired = 0;
