@@ -232,6 +232,25 @@ for (const p of PAGES) {
   if (html.indexOf(open, at + 1) >= 0) { problems.push(p.key + ': more than one hero search field'); continue; }
   html = html.slice(0, at + open.length) + SEL + html.slice(at + open.length);
 
+  // SHIP THE GATED PLACEHOLDER, do not swap it after load. hint() rewrites this field to "Select a
+  // network to search" whenever no network has been chosen -- which is every first visit, since the
+  // choice lives in localStorage. The script runs after the page has painted, so the hero field showed
+  // "Search assets, pools and wallets" and then changed under the reader (RAZA: "a flash bug for split
+  // seconds on Landing page, network dropdown when i refresh the page").
+  //
+  // Baking the gated text means nothing changes at load for anyone who has not picked a network.
+  // data-lxph carries the real placeholder exactly as hint() stashes it, so a returning visitor who HAS
+  // picked one still gets it restored -- that case still swaps, but it is the smaller one and it is the
+  // only one left.
+  const GATED = 'Select a network to search';
+  const REAL = 'Search assets, pools and wallets';
+  // ANCHORED TO THE BARE HERO INPUT. A loose /<input[^>]*?placeholder="REAL"/g also matched
+  // #spSearchInput, the search POPUP's own field, and relabelled a control this has no business touching.
+  const inputRe = new RegExp('<input placeholder="' + REAL + '" ?/>');
+  const before = html;
+  html = html.replace(inputRe, '<input placeholder="' + GATED + '" data-lxph="' + REAL + '" />');
+  if (html === before && html.indexOf('data-lxph') < 0) problems.push(p.key + ': hero placeholder not found to pre-gate');
+
   const bo = html.lastIndexOf('</body>');
   html = bo >= 0 ? html.slice(0, bo) + CSS + JS + html.slice(bo) : html + CSS + JS;
 
