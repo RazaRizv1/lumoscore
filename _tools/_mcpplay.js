@@ -182,7 +182,7 @@ const SCRIPT = '<script id="lx-mcpplay-js">(function(){'
   + 'function runPools(){return call("list_pools",{limit:8}).then(function(r){'
   + '  var rows=(r.data&&r.data.pools||[]);head(rows.length+" pools","Ranked by total value locked.");'
   + '  table(["Pair","TVL","24h volume","Fee","Members"],rows.map(function(p){'
-  + '    return [p.pair,"$"+num(p.tvl_usd,0),"$"+num(p.volume_24h_usd,0),(p.fee_bps==null?"-":(p.fee_bps/100)+"%"),String(p.participants==null?"-":p.participants)];}));});}'
+  + '    return [p.pair,"$"+num(p.tvl_usd,0),"$"+num(p.volume_24h_usd,0),(p.fee_pct==null?"-":num(p.fee_pct,2)+"%"),String(p.participants==null?"-":p.participants)];}));});}'
   + 'function runWallet(addr){return call("get_portfolio",{address:addr}).then(function(r){'
   + '  var d=r.data||{};'
   + '  if(!d.funded){head("Not funded","This account does not exist on mainnet yet.");return;}'
@@ -206,7 +206,7 @@ const SCRIPT = '<script id="lx-mcpplay-js">(function(){'
   // ---- the chips ----------------------------------------------------------------------------------
   + 'var DEMOS=['
   + '  {n:"2 tools",t:"Which curated assets sit near their floor?",f:function(){return runFloor(false);}},'
-  + '  {n:"1 tool",t:"What would 100 "+NAT+" get me in USDC?",f:runQuote},'
+  + '  {n:"1 tool",t:"What would 100 "+NAT+" get me in USDC?",f:runQuote,auto:true},'
   + '  {n:"1 tool",t:"Top liquidity pools",f:runPools},'
 // NO BARE TICKER IN THIS LABEL. The runtime logo healer paints a small element that sits next to an
 // uppercase ticker word, and the first version of this chip read "the LUMOS issuer wallet" -- so the
@@ -217,59 +217,33 @@ const SCRIPT = '<script id="lx-mcpplay-js">(function(){'
   + 'DEMOS.forEach(function(d){var b=el("button","lxpg-chip");b.type="button";'
   + '  b.appendChild(el("span","n",d.n));b.appendChild(el("span",null,d.t));'
   + '  b.addEventListener("click",function(){go(d.f);});chipsEl.appendChild(b);});'
-  // ---- the explorer, built from the server's OWN schema -------------------------------------------
-  // Generated from tools/list rather than written out here, so it cannot drift from the server: a tool
-  // added tomorrow appears in this form with its real arguments and no edit to this file.
-  + 'var sel=document.getElementById("lxpgTool"),fieldsEl=document.getElementById("lxpgFields"),'
-  + 'runBtn=document.getElementById("lxpgRun"),rawEl=document.getElementById("lxpgRaw"),TOOLS=[];'
-  + 'function fields(){clear(fieldsEl);var t=TOOLS[sel.value];if(!t)return;'
-  + '  var p=(t.inputSchema&&t.inputSchema.properties)||{},req=(t.inputSchema&&t.inputSchema.required)||[];'
-  + '  Object.keys(p).forEach(function(k){var i=el("input");i.setAttribute("data-k",k);'
-  + '    i.placeholder=k+(req.indexOf(k)>=0?" (required)":"")+(p[k].type==="number"?" — number":"");'
-  + '    fieldsEl.appendChild(i);});'
-  + '  if(!Object.keys(p).length)fieldsEl.appendChild(el("div","lxpg-note","This tool takes no arguments."));}'
-  + 'function loadTools(){if(TOOLS.length)return Promise.resolve();'
-  + '  return rpc("tools/list",{}).then(function(j){TOOLS=(j.result&&j.result.tools)||[];'
-  + '    clear(sel);TOOLS.forEach(function(t,i){var o=el("option",null,t.name);o.value=String(i);sel.appendChild(o);});'
-  + '    fields();});}'
-  + 'if(sel&&fieldsEl&&runBtn&&rawEl){'
-  + '  var det=document.getElementById("lxpgExp");'
-  + '  if(det)det.addEventListener("toggle",function(){if(det.open)loadTools().catch(function(){});});'
-  + '  sel.addEventListener("change",fields);'
-  + '  runBtn.addEventListener("click",function(){'
-  + '    var t=TOOLS[sel.value];if(!t)return;runBtn.disabled=true;rawEl.textContent="Running…";'
-  + '    var args={},p=(t.inputSchema&&t.inputSchema.properties)||{};'
-  + '    [].slice.call(fieldsEl.querySelectorAll("input")).forEach(function(i){'
-  + '      var k=i.getAttribute("data-k"),v=i.value.trim();if(!v)return;'
-  + '      args[k]=(p[k]&&p[k].type==="number")?Number(v):v;});'
-  + '    rpc("tools/call",{name:t.name,arguments:args}).then(function(j){'
-  + '      var c=j.result&&j.result.content&&j.result.content[0];'
-  + '      rawEl.textContent=j.error?("error: "+j.error.message):(c?c.text:JSON.stringify(j,null,1));'
-  + '    }).catch(function(e){rawEl.textContent=(e&&e.message)||"failed";})'
-  + '    .then(function(){runBtn.disabled=false;},function(){runBtn.disabled=false;});});}'
+  // ---- ARRIVE WITH IT ALREADY RUN ------------------------------------------------------------------
+  // The section used to open as two empty boxes reading "Pick a question above" (RAZA: "what exactly
+  // are these 2 sections? what is the user supposed to do here"). Its whole argument is that the tools
+  // return real numbers, and that argument was invisible until somebody clicked. So the page runs one
+  // itself and arrives populated -- the still frame now shows the thing working.
+  //
+  // The QUOTE is the one that runs, not the floor screen. The screen is 25 calls, and firing that on
+  // every page load would spend a visitor's rate limit and hammer Horizon to show something they did
+  // not ask for. The quote is a single call, answers in about a second, and is cached at the endpoint
+  // for 15s, so a burst of arrivals costs one upstream request between them.
+  + 'var AUTO=DEMOS.filter(function(d){return d.auto;})[0];'
+  + 'if(AUTO)setTimeout(function(){if(!busy)go(AUTO.f);},450);'
   + '})();<' + '/script>';
 
 function sectionHTML(nat) {
   return '<section class="mcp-sec" id="mcp-play">'
     + '<div class="mcp-sec-head">'
     + '<h2>Try it right here</h2>'
-    + '<p>Every button below speaks to <b>POST /mcp on this domain</b> &mdash; the same endpoint, the same twelve tools '
-    + 'and the same answers an agent gets. The left panel shows the actual calls behind each answer.</p>'
+    + '<p>These run against <b>POST /mcp on this domain</b> &mdash; the same endpoint and the same answers an agent gets. The first one has already run below; tap any other to run it live, and the left panel shows the calls behind the answer.</p>'
     + '</div>'
     + '<div class="lxpg-lead" id="lxpgChips"></div>'
     + '<div class="lxpg-grid">'
     + '<div class="lxpg-panel"><div class="lxpg-bar"><span>Tool calls</span><span class="ep">POST /mcp</span></div>'
-    + '<div class="lxpg-body" id="lxpgTrace"><div class="lxpg-empty">Pick a question above and the calls appear here, in order, with how long each one took.</div></div></div>'
+    + '<div class="lxpg-body" id="lxpgTrace"><div class="lxpg-empty">The calls appear here, in order, with how long each one took.</div></div></div>'
     + '<div class="lxpg-panel"><div class="lxpg-bar"><span>Answer</span><span class="ep">live ' + nat + ' mainnet</span></div>'
-    + '<div class="lxpg-body" id="lxpgOut"><div class="lxpg-empty">Results render here. Nothing is cached in the page &mdash; each run asks the endpoint again.</div></div></div>'
+    + '<div class="lxpg-body" id="lxpgOut"><div class="lxpg-empty">Nothing is cached in the page &mdash; each run asks the endpoint again.</div></div></div>'
     + '</div>'
-    + '<details class="lxpg-exp" id="lxpgExp"><summary>Or call any tool directly</summary>'
-    + '<div class="lxpg-expbody">'
-    + '<div class="lxpg-in"><select id="lxpgTool"></select><button type="button" id="lxpgRun">Run</button></div>'
-    + '<div class="lxpg-in" id="lxpgFields"></div>'
-    + '<pre class="lxpg-raw" id="lxpgRaw">Open this panel to load the tool list from the server.</pre>'
-    + '<div class="lxpg-note">This form is generated from the server&rsquo;s own <code>tools/list</code> response, so it cannot drift from what the endpoint actually accepts.</div>'
-    + '</div></details>'
     + '</section>';
 }
 
