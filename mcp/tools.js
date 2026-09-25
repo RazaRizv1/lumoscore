@@ -111,9 +111,36 @@ const reserveOf = (p, x) => {
   return r ? +r.amount : null;
 };
 
-async function listPools({ limit = 20, asset }) {
-  const want = asset ? parseAsset(asset) : null;
-  if (asset && !want) return fail(`"${asset}" is not an asset id. Use CODE-ISSUER or XLM.`);
+// A BARE CODE IS NOT AN IDENTITY on Stellar -- 403 different issuers have called a token "USDC".
+// The curated roster is the one place that says which issuer LumosCore means by a code, so a bare
+// code resolves through it and nowhere else. Two curated issuers for one code refuses and names
+// both, because picking one for the caller is how an agent ends up quoting the wrong token.
+async function resolveCode(asset) {
+  const code = String(asset || '').trim();
+  if (!code || code.includes('-')) return { error: `"${asset}" is not an asset id. Use CODE-ISSUER or XLM.` };
+  let d = null;
+  try { d = await api('/lxapi/assetmeta'); } catch (_) { d = null; }
+  const all = ((d && d.list) || []).concat((d && d.mints) || []);
+  const matches = all.filter((id) => String(id).split('-')[0].toUpperCase() === code.toUpperCase());
+  if (!matches.length) {
+    return { error: `"${asset}" is not an asset id and is not a curated asset. Use CODE-ISSUER, or XLM. `
+      + 'list_curated_assets returns every code this server can resolve on its own.' };
+  }
+  if (matches.length > 1) {
+    return { error: `"${asset}" is ambiguous — LumosCore curates ${matches.length} assets with that code: `
+      + matches.join(', ') + '. Pass the full CODE-ISSUER.' };
+  }
+  const w = parseAsset(matches[0]);
+  return w ? { want: w } : { error: `"${asset}" could not be resolved to an asset id.` };
+}
+
+async function listPools({ limit = 20, asset, page = 1 }) {
+  let want = asset ? parseAsset(asset) : null;
+  if (asset && !want) {
+    const r = await resolveCode(asset);
+    if (r.error) return fail(r.error);
+    want = r.want;
+  }
 
   // A FILTER HAS TO ASK THE LEDGER, not sift the page we already had.
   //
@@ -186,17 +213,64 @@ async function listPools({ limit = 20, asset }) {
     });
   }
 
-  const d = await api('/lxapi/pools');
-  const list = Array.isArray(d) ? d : (Array.isArray(d && d.rows) ? d.rows : []);
+  // PAGES, NOT ONE PAGE. limit is honoured up to 100 by walking consecutive pages of 25; asking for
+  // more than the ledger holds simply stops early rather than looping.
+  const per = 25;
+  const want_n = Math.max(1, Math.min(100, +limit || 20));
+  const from_page = Math.max(1, Math.floor(+page) || 1);
+  const first = await api('/lxapi/pools?page=' + from_page);
+  const envelope = (first && !Array.isArray(first)) ? first : {};
+  const rowsOf = (x) => (Array.isArray(x) ? x : (Array.isArray(x && x.rows) ? x.rows : []));
+  let list = rowsOf(first);
+  const last_page = +envelope.pages || 1;
+
+  // AN EMPTY ANSWER IS A FAILED ANSWER, and it must not be reported as a real one.
+  //
+  // api() throws on every transport failure, so nothing here can turn a dead upstream into empty data
+  // -- but /lxapi/pools answers HTTP 200 with an empty envelope when ITS upstream is having a moment,
+  // and that arrives as a perfectly well-formed zero. This tool then published "0 pools, 0 ranked" as
+  // a success, and functions/mcp.js cached it for the TTL because only isError results are witheld
+  // from the cache. That is the failure in RAZA's screenshot: an assistant told "the connected pool
+  // tool returned zero", repeatedly, while the site itself was fine.
+  //
+  // Stellar has never had zero liquidity pools and will not start today, so empty here is never a
+  // fact about the ledger. Saying so costs one condition and stops the wrong answer being both given
+  // and remembered.
+  if (!list.length && !(+envelope.total)) {
+    return fail('LumosCore returned no pool data for page ' + from_page + '. This is an upstream hiccup, '
+      + 'not an empty ledger — Stellar has tens of thousands of pools. Try again in a few seconds.');
+  }
+  if (from_page > last_page) {
+    return fail('page ' + from_page + ' is past the end of the ranking (' + last_page + ' pages of ' + per + ').');
+  }
+  for (let pg = from_page + 1; list.length < want_n && pg <= last_page; pg++) {
+    const more = rowsOf(await api('/lxapi/pools?page=' + pg));
+    if (!more.length) break;
+    list = list.concat(more);
+  }
   const hit = (s) => {
     if (!want || !s) return !want;
     if (want.id === 'native') return String(s.code || '').toUpperCase() === 'XLM';
     return `${s.code}-${s.issuer}` === want.id;
   };
-  const out = list.filter((p) => !want || hit(p.a) || hit(p.b))
-    .slice(0, Math.max(1, Math.min(100, +limit || 20)));
+  const out = list.filter((p) => !want || hit(p.a) || hit(p.b)).slice(0, want_n);
+  const priceable = +envelope.total || list.length;
+  const unpriceable = +envelope.unpriceable || 0;
   return ok({
-    count: out.length, of: list.length, total_pools: (d && d.total) ?? list.length,
+    count: out.length,
+    page: from_page,
+    pages: last_page,
+    per_page: per,
+    // NAMED FOR WHAT THEY ARE. "total_pools" invited the reading "LumosCore has 11,016 pools", which
+    // is wrong twice over: it is not a total, and they are not LumosCore's -- every Stellar AMM pool
+    // is tradeable here, LumosCore ranks them.
+    ranked_pools: priceable,
+    unpriceable_pools: unpriceable,
+    stellar_pools_total: priceable + unpriceable,
+    pools_with_volume_24h: +envelope.withVol || null,
+    counts_note: 'ranked_pools are the pools with a price on both sides, ordered by TVL; '
+      + 'unpriceable_pools exist on the ledger but cannot be valued in USD. LumosCore does not own '
+      + 'any of them -- every Stellar AMM pool is tradeable here. Pass page to walk the ranking.',
     pools: out.map((p) => ({
       id: p.id,
       pair: `${(p.a || {}).code || '?'} / ${(p.b || {}).code || '?'}`,
@@ -289,13 +363,23 @@ async function getQuote({ from, to, amount }) {
 
 async function getRewards({ address }) {
   if (address && !G_RE.test(String(address).trim())) return fail('address must be a Stellar public key (G…, 56 characters).');
+  const eco = ['LMNR', 'yXLM', 'sages', 'AQUA', 'SSLX', 'SHX', 'TKG', 'LIBERATOR', 'KALE', 'USDC'];
   return ok({
     programs: ['LP rewards', 'Holder rewards', 'Trading rewards'],
     per_round: '3,000,000 LUMOS per round, per chain',
+    incentivized_pools: 1 + eco.length,
+    lp_programs: [
+      { program: 'Native LP', pools: ['LUMOS / XLM'], pays_per_round: '1,000,000 LUMOS',
+        pool_id: '78e6cfc930e2d7ceb3f6cefd4f9aa5e098c5b0af086cde0ad3147982f4d217f2' },
+      { program: 'Ecosystem LP', pools: eco.map((c) => 'LUMOS / ' + c),
+        pays_per_round: '100,000 LUMOS per pool', selected: 'reviewed every 6 months' },
+    ],
+    holder_rewards: 'Hold 5,000,000+ LUMOS on Stellar; every further 5,000,000 earns another share.',
     address: address || null,
     page: web('/rewards/stellar'),
-    note: 'Eligibility and claimable amounts are computed on the Rewards page against the live ledger. '
-      + 'This server does not restate them, because a reward figure that disagrees with the page is worse than a link to it.',
+    note: 'The roster above is fixed and is safe to quote. Eligibility and CLAIMABLE AMOUNTS are not: '
+      + 'they are computed on the Rewards page against the live ledger, and this server does not restate '
+      + 'them, because a reward figure that disagrees with the page is worse than a link to it.',
   });
 }
 
@@ -589,7 +673,9 @@ export const TOOLS = [
   { name: 'get_market', title: 'Live price, 24h stats, supply and market cap for a Stellar asset',
     schema: { asset: { type: 'string', description: 'CODE-ISSUER, e.g. SHX-GDSTRSHX…' } }, required: ['asset'], run: getMarket },
   { name: 'list_pools', title: 'Liquidity pools by TVL, optionally filtered to one asset',
-    schema: { limit: { type: 'number', description: 'Max pools to return (default 20)' }, asset: { type: 'string', description: 'Only pools containing this asset' } }, required: [], run: listPools },
+    schema: { limit: { type: 'number', description: 'Max pools to return (default 20, max 100)' },
+              page: { type: 'number', description: 'Page of the TVL ranking, 25 per page (default 1)' },
+              asset: { type: 'string', description: 'Only pools containing this asset. CODE-ISSUER, or a bare code if LumosCore curates exactly one asset with it' } }, required: [], run: listPools },
   { name: 'get_portfolio', title: 'Balances, pool positions and open orders for a Stellar account',
     schema: { address: { type: 'string', description: 'Stellar public key (G…)' } }, required: ['address'], run: getPortfolio },
   { name: 'get_quote', title: 'Best-route price for a swap, from Stellar path finding',
@@ -606,7 +692,7 @@ export const TOOLS = [
               category: { type: 'string', description: 'Only posts in this category' } }, required: [], run: listBlogPosts },
   { name: 'get_blog_post', title: 'Read one LumosCore blog post in full',
     schema: { slug: { type: 'string', description: 'Post slug from list_blog_posts' } }, required: ['slug'], run: getBlogPost },
-  { name: 'get_rewards', title: 'Where to check and claim LUMOS rewards',
+  { name: 'get_rewards', title: 'LUMOS reward programs and the incentivized pool roster',
     schema: { address: { type: 'string', description: 'Stellar public key (optional)' } }, required: [], run: getRewards },
   { name: 'swap', title: 'Prepare a swap for you to approve (does not sign)',
     schema: { from: { type: 'string' }, to: { type: 'string' }, amount: { type: 'number' } }, required: ['from', 'to', 'amount'], run: swap },
