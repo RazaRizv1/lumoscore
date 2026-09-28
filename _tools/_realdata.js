@@ -760,6 +760,10 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // deliberately skips.
 // ...except LayerZero's deferred fee: a USDT0-sourced send pays its fee alone, in its own `lx:lz` transaction
 +'var tx=o.transaction; if(tx&&tx.operation_count===1&&tx.memo!=="lx:lz")return false;'
+// No action on this platform is a hundred operations wide; dust spam always is.
++'if(tx&&tx.operation_count>64)return false;'
+// And a single stroop is never a fee.
++'if((o.asset_type==="native"||!o.asset_code)&&!(parseFloat(o.amount)>=0.0000002))return false;'
 +'return true;});'
 +'if(!recs.length&&!((d&&d.__acts)||[]).length){list.innerHTML=\'<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>\';return;}'
 +'var seenH={},merged=[];'

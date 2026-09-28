@@ -19,6 +19,7 @@ const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');cons
 // entirely on the destination chain. Scoped to the bridge path AND a well-formed 64-hex hash, nothing wider.
 const GUARD='<script id="lx-authgate">(function(){try{'
   +'if(/bridge/i.test(location.pathname)&&/[?&]claim=[0-9a-fA-F]{64}(?![0-9a-fA-F])/.test(location.search))return;'
+  +'if(/^\\/launchpad\\/?$/.test(location.pathname))return;'
   +'if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))location.replace("/");}catch(_){}})();</script>';
 // The INVERSE of the guard above. "/" is the marketing landing page, so a connected user opening the
 // site in a new tab — or from a bookmark, or by typing the domain — was dropped back on the front door

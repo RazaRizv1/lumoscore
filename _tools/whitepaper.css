@@ -17,23 +17,37 @@
  * Type is matched to .lx-post-body on the blog: 400 18px/1.75 in --text-soft.
  */
 .lxwp{
+  /* --text-soft is #6e6d78 site-wide, which measures 3.88:1 on this page -- under the 4.5:1 floor
+     for body text, and nine rules here set it explicitly. Redefined for the whitepaper only, so
+     every one of them lifts together; scoped to .lxwp, so nothing else on the site shifts. */
+  --text-soft:#9b9aa4;
   --wp-strong:var(--text);
-  --wp-hair:var(--border);
+  --wp-hair:rgba(255,255,255,.1);
   --wp-ink:#f5854c;
   --wp-soft:rgba(234,106,44,.12);
   --wp-line:rgba(234,106,44,.32);
-  --wp-ghost:rgba(234,106,44,.22);
+  /* Was rgba(234,106,44,.22): at 22% over a #0a0a0b page that composites to rgb(59,31,18) -- a
+     muddy brown at 1.31:1, which is why the section numerals read as dirt rather than as marks.
+     Solid accent at .8 lands near 5.8:1: bright and unmistakably deliberate, still short of full
+     strength so a 38px numeral anchors the rail without shouting over the heading beside it. */
+  --wp-ghost:rgba(245,133,76,.8);
   --wp-glow:rgba(234,106,44,.22);
-  --wp-grid:rgba(255,255,255,.04);
+  --wp-grid:rgba(255,255,255,.055);
+  /* --text-soft is #6e6d78, which measured 3.88:1 here -- UNDER the 4.5:1 minimum for body text.
+     Long-form prose was the one thing on the page that had to be comfortable and was the least
+     legible. #9b9aa4 is ~7:1: brighter to read against, without going to the near-white used for
+     headings, which would flatten the hierarchy. */
   font-size:18px;line-height:1.75;letter-spacing:-.006em;color:var(--text-soft)
 }
 html[data-theme="light"] .lxwp{
+  --text-soft:#55545f;
   --wp-ink:#c8511a;
   --wp-soft:rgba(234,106,44,.09);
   --wp-line:rgba(234,106,44,.28);
-  --wp-ghost:rgba(234,106,44,.17);
+  --wp-ghost:rgba(200,81,26,.85);
   --wp-glow:rgba(234,106,44,.13);
-  --wp-grid:rgba(14,14,16,.05)
+  --wp-grid:rgba(14,14,16,.06);
+  --wp-hair:rgba(14,14,16,.13)
 }
 .lxwp *{box-sizing:border-box}
 .lxwp p{margin:0 0 20px}
@@ -47,37 +61,53 @@ html[data-theme="light"] .lxwp{
   text-decoration-thickness:1.5px;text-underline-offset:3px;transition:text-decoration-color .13s}
 .lxwp a:hover{text-decoration-color:var(--accent)}
 
-.lxwp .wp-label{font-family:"JetBrains Mono",monospace;font-size:12.5px;font-weight:600;
+.lxwp .wp-label{font-family:"JetBrains Mono",monospace;font-size:13.5px;font-weight:600;
   letter-spacing:.1em;text-transform:uppercase;color:var(--text-soft)}
 
 /* ---------------- hero ---------------- */
-.lxwp .wp-hero{position:relative;overflow:hidden}
-.lxwp .wp-hero::before{content:"";position:absolute;inset:0;pointer-events:none;
-  background:
-    radial-gradient(880px 520px at 68% -14%, var(--wp-glow), transparent 70%),
-    linear-gradient(var(--wp-grid) 1px, transparent 1px) 0 0/100% 46px,
-    linear-gradient(90deg, var(--wp-grid) 1px, transparent 1px) 0 0/46px 100%;
-  -webkit-mask-image:linear-gradient(180deg,#000 0,#000 48%,transparent 96%);
-  mask-image:linear-gradient(180deg,#000 0,#000 48%,transparent 96%)}
+/* The radial glow and the 46px grid are gone. Both are the default backdrop of every generated
+   landing page, and on a technical document they were doing the opposite of what a cover should:
+   decorating instead of declaring. What is left is structure -- a rule, a title, a standfirst, and a
+   specification block -- which is how printed papers have always opened. */
+.lxwp .wp-hero{position:relative}
+/* The warm wash, matched to the other footer pages. The cover keeps everything else from the
+   rebuild -- document title rather than a blown-up wordmark, and the specification block. */
+.lxwp .wp-hero::before{content:"";position:absolute;left:-80px;right:-80px;top:-90px;height:300px;
+  pointer-events:none;z-index:0;
+  background:radial-gradient(820px 260px at 14% 0%, var(--wp-glow), transparent 72%)}
+.lxwp .wp-hero>*{position:relative;z-index:1}
 .lxwp .wp-hero-in{position:relative;padding:34px 0 0}
-.lxwp .wp-eyerow{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;margin-bottom:40px}
+.lxwp .wp-eyerow{display:flex;flex-wrap:wrap;align-items:center;gap:14px 22px;margin-bottom:38px}
 .lxwp .wp-eyerow .wp-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);flex:0 0 auto}
 .lxwp .wp-eyerow .wp-sep{flex:1 1 auto;height:1px;background:var(--border);min-width:20px}
-.lxwp h1.wp-wordmark{margin:0;font-size:clamp(42px,7.4vw,98px);line-height:.94;font-weight:800;
-  letter-spacing:-.046em;color:var(--text)}
-.lxwp .wp-hero-foot{position:relative;padding:22px 0 34px}
-.lxwp .wp-hero .wp-disc{margin:0 0 6px;font-size:clamp(19px,2.5vw,29px);line-height:1.12;
-  font-weight:700;color:var(--text);letter-spacing:-.032em}
-.lxwp .wp-hero .wp-tag{margin:0;font-size:clamp(16.5px,1.9vw,19px);color:var(--text-muted)}
-.lxwp .wp-hero .wp-tag b{color:var(--wp-ink);font-weight:700}
-.lxwp .wp-imprint{position:relative;display:flex;flex-wrap:wrap;gap:9px 38px;padding:16px 0;
-  border-top:1px solid var(--border);border-bottom:2px solid var(--wp-strong);
-  font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--text-soft)}
-.lxwp .wp-imprint b{color:var(--text-muted);font-weight:600}
-.lxwp .wp-imprint .wp-sp{flex:1 1 auto}
-/* The eyebrow rule and the imprint run to the container edge; their last item would
-   otherwise sit flush against it. */
-.lxwp .wp-eyerow>:last-child,.lxwp .wp-imprint>:last-child{padding-right:18px}
+.lxwp .wp-eyerow>:last-child{padding-right:18px}
+
+/* Sized to read as a title, not a logo: it tops out well below the old 98px wordmark, and the measure
+   is capped so it breaks into two or three deliberate lines instead of one long banner. */
+.lxwp h1.wp-title{margin:0 0 22px;font-size:clamp(36px,5.2vw,68px);line-height:1.04;
+  font-weight:800;letter-spacing:-.036em;color:var(--text);max-width:17ch;text-wrap:balance}
+/* The one place the accent appears in the hero. One word, so it reads as emphasis rather than
+   decoration. */
+.lxwp h1.wp-title em{font-style:normal;color:var(--accent)}
+
+.lxwp .wp-standfirst{margin:0;font-size:clamp(17.5px,1.55vw,21px);line-height:1.6;
+  color:var(--text-muted);max-width:64ch}
+
+/* The specification block. Every field is verifiable from the document itself, which is the point:
+   it tells a reader what they are holding before they read a word of it. */
+.lxwp .wp-spec{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));gap:0;
+  margin:46px 0 0;padding:0;border-top:1px solid var(--border);
+  border-bottom:2px solid var(--wp-strong)}
+.lxwp .wp-spec>div{padding:16px 18px 16px 0}
+.lxwp .wp-spec dt{margin:0 0 6px;font-family:"JetBrains Mono",monospace;font-size:13px;
+  font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--text-soft)}
+.lxwp .wp-spec dd{margin:0;font-size:16.5px;line-height:1.4;color:var(--text)}
+
+@media(max-width:640px){
+  .lxwp .wp-spec{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lxwp .wp-spec>div{padding:14px 14px 14px 0}
+  .lxwp h1.wp-title{max-width:none}
+}
 
 /* ---------------- section frame ---------------- */
 /* Margin rail + body. The rail carries the numeral and the one-line gloss; the body runs the
@@ -89,15 +119,15 @@ html[data-theme="light"] .lxwp{
   color:var(--wp-ghost);margin:0 0 14px;font-variant-numeric:tabular-nums}
 .lxwp .wp-rail h2{margin:0;font-size:24px;line-height:1.3;font-weight:800;letter-spacing:-.015em;
   color:var(--text)}
-.lxwp .wp-rail .wp-gloss{margin:14px 0 0;font-size:14px;line-height:1.5;color:var(--text-soft);
+.lxwp .wp-rail .wp-gloss{margin:14px 0 0;font-size:16px;line-height:1.5;color:var(--text-soft);
   max-width:25ch}
-.lxwp .wp-rail .wp-rlink{margin:16px 0 0;font-family:"JetBrains Mono",monospace;font-size:11.5px}
+.lxwp .wp-rail .wp-rlink{margin:16px 0 0;font-family:"JetBrains Mono",monospace;font-size:13.5px}
 .lxwp .wp-body>p{max-width:80ch}
 .lxwp .wp-lead{font-size:20.5px;line-height:1.55;color:var(--text);font-weight:500;max-width:64ch}
 .lxwp h3{margin:44px 0 14px;font-size:20px;font-weight:700;letter-spacing:-.015em;color:var(--text);
   display:flex;align-items:baseline;gap:12px}
 .lxwp h3:first-child{margin-top:0}
-.lxwp h3 .wp-n{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:600;
+.lxwp h3 .wp-n{font-family:"JetBrains Mono",monospace;font-size:15px;font-weight:600;
   color:var(--accent);flex:0 0 auto}
 
 /* ---------------- display statement ---------------- */
@@ -116,12 +146,12 @@ html[data-theme="light"] .lxwp{
   text-decoration:none;color:inherit}
 .lxwp .wp-reg-row .wp-rt{font-size:17px;font-weight:700;color:var(--text);letter-spacing:-.015em}
 .lxwp .wp-reg-row .wp-rd{font-size:16px;line-height:1.65;color:var(--text-muted)}
-.lxwp .wp-reg-row .wp-ra{font-family:"JetBrains Mono",monospace;font-size:13px;
+.lxwp .wp-reg-row .wp-ra{font-family:"JetBrains Mono",monospace;font-size:15px;
   color:var(--text-soft);text-align:right;transition:transform .14s,color .14s}
 .lxwp a.wp-reg-row{text-decoration:none}
 .lxwp a.wp-reg-row:hover .wp-rt{color:var(--wp-ink)}
 .lxwp a.wp-reg-row:hover .wp-ra{color:var(--accent);transform:translateX(3px)}
-.lxwp .wp-reg-row .wp-rk{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:600;
+.lxwp .wp-reg-row .wp-rk{font-family:"JetBrains Mono",monospace;font-size:14px;font-weight:600;
   letter-spacing:.09em;text-transform:uppercase;color:var(--accent);display:block;margin-bottom:5px}
 
 /* ---------------- numbered march ---------------- */
@@ -136,7 +166,7 @@ html[data-theme="light"] .lxwp{
   font-weight:700;line-height:1;color:var(--wp-ghost);letter-spacing:-.04em;margin-bottom:12px}
 .lxwp .wp-march .wp-mt{display:block;font-size:16px;font-weight:700;color:var(--text);
   line-height:1.28;letter-spacing:-.018em}
-.lxwp .wp-march .wp-md{margin:7px 0 0;font-size:15px;line-height:1.6;color:var(--text-muted)}
+.lxwp .wp-march .wp-md{margin:7px 0 0;font-size:16.5px;line-height:1.6;color:var(--text-muted)}
 
 /* ---------------- enumerations ---------------- */
 .lxwp .wp-cols{margin:22px 0 26px;border-top:1px solid var(--wp-strong);
@@ -147,13 +177,13 @@ html[data-theme="light"] .lxwp{
   background:var(--accent);transform:translateY(-3px)}
 .lxwp .wp-cols.wp-neg div{color:var(--text-muted)}
 .lxwp .wp-cols.wp-neg div::before{content:"\2014";width:auto;height:auto;background:none;
-  color:var(--text-soft);font-family:"JetBrains Mono",monospace;font-size:12px;transform:none}
+  color:var(--text-soft);font-family:"JetBrains Mono",monospace;font-size:14px;transform:none}
 
 /* ---------------- tables ---------------- */
 .lxwp .wp-tw{overflow-x:auto;margin:26px 0 12px}
-.lxwp table{width:100%;border-collapse:collapse;font-size:15.5px;min-width:580px}
+.lxwp table{width:100%;border-collapse:collapse;font-size:16.5px;min-width:580px}
 .lxwp thead th{text-align:left;padding:0 20px 11px 0;font-family:"JetBrains Mono",monospace;
-  font-size:11.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
+  font-size:13.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;
   color:var(--text-soft);border-bottom:2px solid var(--wp-strong);white-space:nowrap;background:none}
 .lxwp thead th:last-child{padding-right:0}
 .lxwp tbody td{padding:15px 20px 15px 0;border-bottom:1px solid var(--wp-hair);vertical-align:top;
@@ -166,7 +196,7 @@ html[data-theme="light"] .lxwp{
 .lxwp tr.wp-hi td{background:var(--wp-soft)}
 .lxwp tr.wp-hi td:first-child{box-shadow:inset 3px 0 0 var(--accent);padding-left:14px;
   color:var(--wp-ink)}
-.lxwp .wp-cap{font-size:13px;line-height:1.6;color:var(--text-soft);margin:0;max-width:82ch}
+.lxwp .wp-cap{font-size:15px;line-height:1.6;color:var(--text-soft);margin:0;max-width:82ch}
 .lxwp .wp-cap b{color:var(--text-muted);font-weight:600}
 
 /* ---------------- callout ---------------- */
@@ -186,18 +216,18 @@ html[data-theme="light"] .lxwp{
 .lxwp .wp-person{padding:24px 0;border-bottom:1px solid var(--wp-hair)}
 .lxwp .wp-person .wp-nm{margin:0;font-size:19px;font-weight:800;letter-spacing:-.026em;
   color:var(--text)}
-.lxwp .wp-person .wp-rl{margin:2px 0 8px;font-size:13px;color:var(--text-soft)}
-.lxwp .wp-person .wp-lk{margin:0;display:flex;gap:16px;font-size:13.5px;font-weight:600}
+.lxwp .wp-person .wp-rl{margin:2px 0 8px;font-size:15px;color:var(--text-soft)}
+.lxwp .wp-person .wp-lk{margin:0;display:flex;gap:16px;font-size:15px;font-weight:600}
 
 /* ---------------- back matter ---------------- */
 .lxwp .wp-refs{list-style:none;margin:0;padding:0;border-top:1px solid var(--wp-strong)}
 .lxwp .wp-refs li{display:grid;grid-template-columns:34px minmax(0,1fr);gap:16px;padding:16px 0;
-  border-bottom:1px solid var(--wp-hair);font-size:15.5px;line-height:1.65;color:var(--text-muted)}
-.lxwp .wp-refs .wp-n{font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;
+  border-bottom:1px solid var(--wp-hair);font-size:16.5px;line-height:1.65;color:var(--text-muted)}
+.lxwp .wp-refs .wp-n{font-family:"JetBrains Mono",monospace;font-size:14px;font-weight:700;
   color:var(--accent)}
-.lxwp sup a{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;padding:0 1px;
+.lxwp sup a{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;padding:0 1px;
   text-decoration:none}
-.lxwp .wp-notice p{font-size:15.5px;line-height:1.7;color:var(--text-muted);max-width:82ch;
+.lxwp .wp-notice p{font-size:16.5px;line-height:1.7;color:var(--text-muted);max-width:82ch;
   margin:0 0 13px}
 .lxwp .wp-notice p:first-child{color:var(--text);font-weight:600;font-size:16px}
 
@@ -205,7 +235,7 @@ html[data-theme="light"] .lxwp{
 .lxwp .wp-wpfoot{padding:40px 0 0}
 .lxwp .wp-fmeta{display:flex;flex-wrap:wrap;gap:9px 32px;padding-top:20px;
   border-top:1px solid var(--border);
-  font-family:"JetBrains Mono",monospace;font-size:11.5px;color:var(--text-soft)}
+  font-family:"JetBrains Mono",monospace;font-size:13.5px;color:var(--text-soft)}
 .lxwp .wp-fmeta b{color:var(--text);font-weight:700;letter-spacing:.06em}
 .lxwp .wp-fmeta .wp-sp{flex:1 1 auto}
 

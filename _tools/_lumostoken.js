@@ -458,7 +458,7 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
     });
     // Verified tick on the token name, driven by the shared list rather than asserted here, so removing
     // LUMOS from VERIFIED removes the badge instead of leaving a stale claim on its own page.
-    var _h1=q("h1");
+    var _h1=q("h1:not(.lx-lp-h)");
     if(_h1 && VFD["LUMOS|"+ISSUER]!==undefined && !_h1.querySelector(".lx-vtick")){
       var _tk=document.createElement("span");
       _tk.className="lx-vtick"; _tk.setAttribute("title","Verified issuer");

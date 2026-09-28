@@ -11,6 +11,7 @@
 /pools                                    /lumoscore-amm  200
 /launchpad/review                         /lumoscore-launch-review  200
 /launchpad/confirm                        /lumoscore-launch-confirm  200
+/launchpad/stellar                        /lumoscore-launch-token  200
 /launchpad                                /lumoscore-launch-token  200
 /dashboard                                /lumoscore-home  200
 /bridge/stellar                           /lumoscore-bridge  200

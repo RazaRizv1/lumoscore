@@ -70,10 +70,16 @@ const ROUTES = [
     null
   ],
   [
-    "/launchpad",
+    "/launchpad/stellar",
     "lumoscore-launch-token",
     null,
     null
+  ],
+  [
+    "/launchpad",
+    "lumoscore-launch-token",
+    null,
+    "hub"
   ],
   [
     "/dashboard",

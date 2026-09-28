@@ -243,7 +243,9 @@ for (const [dev, donor, suffix] of [
       + sidebar(slug, title)
       + '<div class="dc-main">'
       + '<div class="dc-head">'
-      + '<p class="dc-crumb">' + esc(group) + '</p>'
+      // The crumb ("Start here", "Reference", "For issuers") was removed on RAZA's instruction: the
+      // nav rail beside it already shows which group the page sits in, with the page highlighted.
+      + ''
       + '<h1>' + esc(title) + '</h1>'
       + '<p class="dc-sub">' + esc(desc) + '</p>'
       + '</div>'

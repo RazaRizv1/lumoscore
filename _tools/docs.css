@@ -13,15 +13,22 @@
   --dc-strong:var(--text);
   --dc-ink:#f5854c;
   --dc-soft:rgba(234,106,44,.11);
-  --dc-line:rgba(234,106,44,.32);
+  /* .32 over a near-black ground is barely an edge. The callouts and the rules drawn with this
+     were technically accent-coloured and read as grey. */
+  --dc-line:rgba(234,106,44,.55);
   --dc-glow:rgba(234,106,44,.16);
   --dc-shadow:0 1px 2px rgba(0,0,0,.35);
+  /* --text-soft is #6e6d78 site-wide, which measures under the 4.5:1 floor on this ground and is
+     written explicitly by several rules below. Redefined for the docs only, so they all lift
+     together and nothing outside .lxdc moves. */
+  --text-soft:#9b9aa4;
   font-size:17px;line-height:1.75;letter-spacing:-.006em;color:var(--text-soft)
 }
 html[data-theme="light"] .lxdc{
+  --text-soft:#55545f;
   --dc-ink:#c8511a;
   --dc-soft:rgba(234,106,44,.08);
-  --dc-line:rgba(234,106,44,.26);
+  --dc-line:rgba(234,106,44,.45);
   --dc-glow:rgba(234,106,44,.10);
   --dc-shadow:0 1px 2px rgba(14,14,16,.05)
 }
@@ -39,37 +46,41 @@ html[data-theme="light"] .lxdc{
 .lxdc .dc-nav{padding:0 14px 24px 0}
 .lxdc .dc-filter{width:100%;height:34px;padding:0 11px;margin:0 0 22px;border-radius:8px;
   background:var(--surface);border:1px solid var(--dc-hair);color:var(--text);
-  font-family:inherit;font-size:13.5px;letter-spacing:-.005em}
+  font-family:inherit;font-size:15px;letter-spacing:-.005em}
 .lxdc .dc-filter::placeholder{color:var(--text-soft)}
 .lxdc .dc-filter:focus{outline:0;border-color:var(--dc-line);
   box-shadow:0 0 0 3px var(--dc-soft)}
 .lxdc .dc-nav-group{margin:0 0 20px}
 .lxdc .dc-nav-group:last-child{margin-bottom:0}
 .lxdc .dc-nav-group[hidden]{display:none}
-.lxdc .dc-nav-label{margin:0 0 8px;font-family:"JetBrains Mono",monospace;font-size:10px;
+.lxdc .dc-nav-label{margin:0 0 8px;font-family:"JetBrains Mono",monospace;font-size:13px;
   font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-soft)}
 /* A 2px indicator on the left edge rather than a filled pill: it marks position without turning
    every nav item into a button. */
-.lxdc .dc-nav a{display:block;padding:6px 0 6px 13px;margin:0 0 1px;font-size:14.5px;
+.lxdc .dc-nav a{display:block;padding:6px 0 6px 13px;margin:0 0 1px;font-size:16px;
   line-height:1.4;color:var(--text-muted);text-decoration:none;
   border-left:2px solid transparent;transition:color .12s,border-color .12s}
 .lxdc .dc-nav a:hover{color:var(--text);border-left-color:var(--dc-hair)}
 .lxdc .dc-nav a.dc-on{color:var(--dc-ink);border-left-color:var(--accent);font-weight:600}
 .lxdc .dc-nav a[hidden]{display:none}
-.lxdc .dc-nomatch{margin:0;padding:4px 0 0 13px;font-size:13.5px;color:var(--text-soft)}
+.lxdc .dc-nomatch{margin:0;padding:4px 0 0 13px;font-size:15px;color:var(--text-soft)}
 
 /* ---------------- page head ---------------- */
 /* The one moment of atmosphere on the page: a soft accent wash behind the title, masked out before
    it reaches the body text. */
 .lxdc .dc-main{min-width:0;padding:0 0 40px;position:relative}
-.lxdc .dc-head{position:relative;padding:22px 0 26px;margin:0 0 30px;
-  border-bottom:1px solid var(--dc-hair)}
-.lxdc .dc-head::before{content:"";position:absolute;left:-40px;right:-40px;top:-30px;height:210px;
+/* A two-tone rule: a short accent segment where the eye starts, then the hairline. Structure
+   rather than atmosphere. */
+.lxdc .dc-head{position:relative;padding:22px 0 26px;margin:0 0 30px;border-bottom:0}
+.lxdc .dc-head::after{content:"";display:block;height:2px;margin-top:26px;
+  background:linear-gradient(90deg,var(--accent,#ea6a2c) 0 72px,var(--dc-hair) 72px)}
+/* The warm wash, restored and matched to the other footer pages. */
+.lxdc .dc-head::before{content:"";position:absolute;left:-80px;right:-80px;top:-90px;height:300px;
   pointer-events:none;z-index:0;
-  background:radial-gradient(520px 160px at 12% 0%, var(--dc-glow), transparent 72%)}
+  background:radial-gradient(820px 260px at 14% 0%, var(--dc-glow), transparent 72%)}
 .lxdc .dc-head>*{position:relative;z-index:1}
 .lxdc .dc-crumb{margin:0 0 12px;display:inline-flex;align-items:center;gap:8px;
-  font-family:"JetBrains Mono",monospace;font-size:10.5px;font-weight:700;letter-spacing:.14em;
+  font-family:"JetBrains Mono",monospace;font-size:13.5px;font-weight:700;letter-spacing:.14em;
   text-transform:uppercase;color:var(--dc-ink)}
 .lxdc .dc-crumb::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--accent)}
 .lxdc h1{margin:0 0 12px;font-size:40px;line-height:1.1;font-weight:800;letter-spacing:-.034em;
@@ -114,7 +125,7 @@ html[data-theme="light"] .lxdc{
 .lxdc .dc-steps li::before{counter-increment:dcstep;content:counter(dcstep);
   position:absolute;left:-13px;top:-2px;width:26px;height:26px;border-radius:50%;
   display:grid;place-items:center;background:var(--bg);border:1px solid var(--dc-line);
-  font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;color:var(--dc-ink)}
+  font-family:"JetBrains Mono",monospace;font-size:14px;font-weight:700;color:var(--dc-ink)}
 
 /* ---------------- callouts ---------------- */
 /* The label sits ON the top border rather than inside a tinted box behind an accent bar. Same
@@ -123,18 +134,19 @@ html[data-theme="light"] .lxdc{
   background:var(--surface);border:1px solid var(--dc-line);max-width:74ch}
 .lxdc .dc-note.dc-warn{border-color:rgba(255,91,91,.42)}
 .lxdc .dc-note-h{position:absolute;top:0;left:18px;transform:translateY(-50%);margin:0;
-  padding:0 9px;background:var(--bg);font-family:"JetBrains Mono",monospace;font-size:10px;
+  padding:0 9px;background:var(--bg);font-family:"JetBrains Mono",monospace;font-size:13px;
   font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--dc-ink)}
 .lxdc .dc-note.dc-warn .dc-note-h{color:var(--red,#ff5b5b)}
-.lxdc .dc-note p{margin:0;color:var(--text);font-size:15.5px;line-height:1.62}
+.lxdc .dc-note p{margin:0;color:var(--text);font-size:16.5px;line-height:1.62}
 .lxdc .dc-note p+p{margin-top:8px;color:var(--text-muted)}
 
 /* ---------------- tables ---------------- */
 .lxdc .dc-tw{overflow-x:auto;margin:24px 0;border:1px solid var(--dc-hair);border-radius:10px;
   background:var(--surface)}
-.lxdc table{width:100%;border-collapse:collapse;font-size:14.5px;min-width:440px}
-.lxdc thead th{text-align:left;padding:12px 18px;font-family:"JetBrains Mono",monospace;
-  font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+.lxdc table{width:100%;border-collapse:collapse;font-size:16px;min-width:440px}
+.lxdc thead th{background:rgba(234,106,44,.055);color:var(--text);
+  text-align:left;padding:12px 18px;font-family:"JetBrains Mono",monospace;
+  font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
   color:var(--text-soft);background:var(--surface-2);border-bottom:1px solid var(--dc-hair);
   white-space:nowrap}
 .lxdc tbody td{padding:13px 18px;border-bottom:1px solid var(--dc-hair);vertical-align:top;
@@ -151,11 +163,11 @@ html[data-theme="light"] .lxdc{
 /* <details>/<summary>, so the questions are readable, linkable and searchable in the page with no
    script at all. The marker is drawn rather than inherited: the native triangle differs per browser
    and sits at the wrong optical weight beside this type. */
-.lxdc .dc-qa-more{margin:-6px 0 16px;font-size:14px;color:var(--text-soft)}
+.lxdc .dc-qa-more{margin:-6px 0 16px;font-size:16px;color:var(--text-soft)}
 .lxdc .dc-qa-set{margin:0 0 30px;border-top:1px solid var(--dc-hair);max-width:74ch}
 .lxdc .dc-qa{border-bottom:1px solid var(--dc-hair)}
 .lxdc .dc-qa>summary{list-style:none;cursor:pointer;position:relative;padding:15px 34px 15px 0;
-  font-size:15.5px;font-weight:600;color:var(--text);letter-spacing:-.012em;line-height:1.5}
+  font-size:16.5px;font-weight:600;color:var(--text);letter-spacing:-.012em;line-height:1.5}
 .lxdc .dc-qa>summary::-webkit-details-marker{display:none}
 .lxdc .dc-qa>summary:hover{color:var(--dc-ink)}
 .lxdc .dc-qa>summary:focus-visible{outline:2px solid var(--accent);outline-offset:3px;
@@ -166,7 +178,7 @@ html[data-theme="light"] .lxdc{
 .lxdc .dc-qa[open]>summary::after{transform:rotate(-135deg);border-color:var(--accent)}
 .lxdc .dc-qa[open]>summary{color:var(--dc-ink)}
 .lxdc .dc-qa-a{padding:0 34px 18px 0}
-.lxdc .dc-qa-a p{margin:0;font-size:15.5px;line-height:1.68;color:var(--text-muted);max-width:none}
+.lxdc .dc-qa-a p{margin:0;font-size:16.5px;line-height:1.68;color:var(--text-muted);max-width:none}
 
 /* ---------------- cards on the index ---------------- */
 .lxdc .dc-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:12px;
@@ -175,20 +187,20 @@ html[data-theme="light"] .lxdc{
   background:var(--surface);border:1px solid var(--dc-hair);text-decoration:none;
   box-shadow:var(--dc-shadow);transition:border-color .14s,transform .14s}
 .lxdc a.dc-card:hover{border-color:var(--dc-line);transform:translateY(-2px)}
-.lxdc .dc-card-t{display:block;font-size:15.5px;font-weight:700;color:var(--text);
+.lxdc .dc-card-t{display:block;font-size:16.5px;font-weight:700;color:var(--text);
   letter-spacing:-.015em;margin-bottom:6px}
 .lxdc a.dc-card:hover .dc-card-t{color:var(--dc-ink)}
 .lxdc .dc-card-t::after{content:"\2192";float:right;font-family:"JetBrains Mono",monospace;
-  font-size:13px;color:var(--text-soft);transition:transform .14s,color .14s}
+  font-size:15px;color:var(--text-soft);transition:transform .14s,color .14s}
 .lxdc a.dc-card:hover .dc-card-t::after{color:var(--accent);transform:translateX(3px)}
-.lxdc .dc-card-d{display:block;font-size:14px;line-height:1.55;color:var(--text-muted)}
+.lxdc .dc-card-d{display:block;font-size:16px;line-height:1.55;color:var(--text-muted)}
 
 /* ---------------- on this page ---------------- */
 .lxdc .dc-toc{position:sticky;top:20px;align-self:start;padding:24px 0}
-.lxdc .dc-toc-h{margin:0 0 10px;font-family:"JetBrains Mono",monospace;font-size:10px;
+.lxdc .dc-toc-h{margin:0 0 10px;font-family:"JetBrains Mono",monospace;font-size:13px;
   font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text-soft)}
 .lxdc .dc-toc a{display:block;padding:6px 0 6px 13px;border-left:2px solid var(--dc-hair);
-  font-size:13px;line-height:1.45;color:var(--text-soft);text-decoration:none;
+  font-size:15px;line-height:1.45;color:var(--text-soft);text-decoration:none;
   transition:color .12s,border-color .12s}
 .lxdc .dc-toc a:hover{color:var(--text)}
 /* scroll-spy: the section you are actually reading */
@@ -200,14 +212,14 @@ html[data-theme="light"] .lxdc{
 .lxdc a.dc-page{display:block;padding:15px 18px;border-radius:10px;border:1px solid var(--dc-hair);
   background:var(--surface);text-decoration:none;transition:border-color .14s,transform .14s}
 .lxdc a.dc-page:hover{border-color:var(--dc-line);transform:translateY(-2px)}
-.lxdc .dc-page-k{display:block;font-family:"JetBrains Mono",monospace;font-size:10px;
+.lxdc .dc-page-k{display:block;font-family:"JetBrains Mono",monospace;font-size:13px;
   font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--text-soft);
   margin-bottom:6px}
-.lxdc .dc-page-t{display:block;font-size:15.5px;font-weight:700;color:var(--text);
+.lxdc .dc-page-t{display:block;font-size:16.5px;font-weight:700;color:var(--text);
   letter-spacing:-.015em}
 .lxdc a.dc-page:hover .dc-page-t{color:var(--dc-ink)}
 .lxdc a.dc-page.dc-next{text-align:right}
-.lxdc .dc-updated{margin:24px 0 0;font-family:"JetBrains Mono",monospace;font-size:11px;
+.lxdc .dc-updated{margin:24px 0 0;font-family:"JetBrains Mono",monospace;font-size:13.5px;
   color:var(--text-soft)}
 
 /* ---------------- responsive ---------------- */
@@ -224,9 +236,9 @@ html[data-theme="light"] .lxdc{
   .lxdc .dc-navsum{display:flex;align-items:center;gap:10px;list-style:none;cursor:pointer;
     padding:13px 16px;position:relative}
   .lxdc .dc-navsum::-webkit-details-marker{display:none}
-  .lxdc .dc-navsum-k{font-family:"JetBrains Mono",monospace;font-size:10px;font-weight:700;
+  .lxdc .dc-navsum-k{font-family:"JetBrains Mono",monospace;font-size:13px;font-weight:700;
     letter-spacing:.14em;text-transform:uppercase;color:var(--text-soft);flex:0 0 auto}
-  .lxdc .dc-navsum-t{font-size:15px;font-weight:700;color:var(--text);letter-spacing:-.015em;
+  .lxdc .dc-navsum-t{font-size:16.5px;font-weight:700;color:var(--text);letter-spacing:-.015em;
     white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .lxdc .dc-navsum::after{content:"";position:absolute;right:18px;top:19px;width:7px;height:7px;
     border-right:1.5px solid var(--text-soft);border-bottom:1.5px solid var(--text-soft);
