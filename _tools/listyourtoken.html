@@ -1,7 +1,6 @@
 <div class="lxlt">
 
   <div class="lt-top">
-    <p class="lt-eyebrow">Curated listing</p>
     <h1>List your token on LumosCore</h1>
     <p class="lt-lede">A curated listing puts your asset into the set we surface by hand — in asset
       lists, in discovery, and with a description and logo a person has actually looked at.</p>
@@ -30,6 +29,8 @@
     listed is never a recommendation. What review looks for is set out in
     <a href="/docs/curated-listing">the documentation</a>.</p>
 
+  <div class="lt-body">
+  <div class="lt-flow">
   <form class="lt-form" id="ltForm" novalidate>
 
     <section class="lt-step" data-n="1">
@@ -51,22 +52,22 @@
 
       <div class="lt-two">
         <div class="lt-field">
-          <label class="lt-lbl" for="ltCode">Asset code</label>
-          <input class="lt-in lt-mono" id="ltCode" name="code" type="text" maxlength="12"
-                 autocomplete="off" spellcheck="false" placeholder="LUMOS">
+          <label class="lt-lbl" for="ltCode">Asset code<span class="lt-req" aria-hidden="true">*</span></label>
+          <input class="lt-in lt-mono" id="ltCode" aria-required="true" name="code" type="text" maxlength="12"
+                 autocomplete="off" spellcheck="false" placeholder="ASSET">
           <p class="lt-err" id="ltCodeErr" hidden></p>
         </div>
         <div class="lt-field">
-          <label class="lt-lbl" for="ltIssuer">Issuing account</label>
-          <input class="lt-in lt-mono" id="ltIssuer" name="issuer" type="text" maxlength="56"
+          <label class="lt-lbl" for="ltIssuer">Issuing account<span class="lt-req" aria-hidden="true">*</span></label>
+          <input class="lt-in lt-mono" id="ltIssuer" aria-required="true" name="issuer" type="text" maxlength="56"
                  autocomplete="off" spellcheck="false" placeholder="G…">
           <p class="lt-err" id="ltIssuerErr" hidden></p>
         </div>
       </div>
 
       <div class="lt-field">
-        <label class="lt-lbl" for="ltDescr">Description</label>
-        <textarea class="lt-in lt-ta" id="ltDescr" name="descr" rows="4" maxlength="600"
+        <label class="lt-lbl" for="ltDescr">Description<span class="lt-req" aria-hidden="true">*</span></label>
+        <textarea class="lt-in lt-ta" id="ltDescr" aria-required="true" name="descr" rows="4" maxlength="600"
                   placeholder="What the project is, in a couple of sentences."></textarea>
         <p class="lt-count"><span id="ltCount">0</span> / 600</p>
         <p class="lt-err" id="ltDescrErr" hidden></p>
@@ -104,13 +105,13 @@
         give here goes onto the asset page if the listing is approved.</p>
 
       <div class="lt-field">
-        <label class="lt-lbl" for="ltLogo">Logo</label>
+        <label class="lt-lbl" for="ltLogo">Logo<span class="lt-req" aria-hidden="true">*</span></label>
         <div class="lt-drop" id="ltDrop" tabindex="0" role="button">
           <div class="lt-drop-in" id="ltDropIn">
             <span class="lt-drop-t">Choose a logo</span>
-            <span class="lt-drop-d">PNG, JPEG, WebP or GIF · square · up to 512KB</span>
+            <span class="lt-drop-d">PNG, JPEG, WebP or GIF · square, 256 × 256px or larger · up to 512KB</span>
           </div>
-          <input class="lt-file" id="ltLogo" name="logo" type="file"
+          <input class="lt-file" id="ltLogo" aria-required="true" name="logo" type="file"
                  accept="image/png,image/jpeg,image/webp,image/gif">
         </div>
         <p class="lt-err" id="ltLogoErr" hidden></p>
@@ -123,17 +124,27 @@
         signs one payment; nothing is submitted before you approve it.</p>
 
       <div class="lt-pay">
-        <div class="lt-pay-row">
-          <span class="lt-pay-k">Listing fee</span>
-          <span class="lt-pay-v lt-mono" id="ltAmt">—</span>
+        <div class="lt-pay-head">
+          <div class="lt-pay-lead">
+            <span class="lt-pay-k">You pay</span>
+            <span class="lt-pay-amt lt-mono" id="ltAmt">—</span>
+          </div>
+          <span class="lt-pay-usd" id="ltFee3">$250</span>
         </div>
-        <div class="lt-pay-row lt-pay-sub">
-          <span class="lt-pay-k">Rate</span>
-          <span class="lt-pay-v lt-mono" id="ltRate">loading…</span>
-        </div>
-        <div class="lt-pay-row lt-pay-sub">
-          <span class="lt-pay-k">Paid to</span>
-          <span class="lt-pay-v lt-mono lt-trunc" id="ltTo">—</span>
+        <div class="lt-pay-grid">
+          <div class="lt-pay-cell">
+            <span class="lt-pay-k">Rate</span>
+            <span class="lt-pay-v lt-mono" id="ltRate">loading…</span>
+            <!-- (5) Where the number came from and how long it is honoured for. The endpoint already
+                 returns quotedAt and validForSeconds; nothing on screen was using either, so the
+                 figure arrived with no way to judge it. -->
+            <span class="lt-pay-src" id="ltRateSrc"></span>
+          </div>
+          <div class="lt-pay-cell">
+            <span class="lt-pay-k">Paid to</span>
+            <span class="lt-pay-v lt-mono lt-trunc" id="ltTo">—</span>
+            <span class="lt-pay-src">LumosCore listing account</span>
+          </div>
         </div>
       </div>
 
@@ -173,7 +184,9 @@
     <p class="lt-mono lt-stranded-tx" id="ltStrandedTx">—</p>
   </div>
 
-  <div class="lt-after">
+  </div>
+
+  <aside class="lt-after lt-rail">
     <h2>What happens next</h2>
     <ol class="lt-steps">
       <li>Your payment is verified on-chain before the request is accepted. Nothing is stored until it
@@ -184,10 +197,7 @@
       <li>Approved, the listing goes live. Declined, the fee is returned in full and you are welcome to
         reapply once the cause is fixed.</li>
     </ol>
-    <p class="lt-fine">Before applying it is worth having the
-      <a href="/docs/verification">domain handshake</a> resolving and a
-      <a href="/docs/asset-metadata">stellar.toml</a> published — they are free, and they are most of
-      what review looks at.</p>
+  </aside>
   </div>
 
 </div>

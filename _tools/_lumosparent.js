@@ -35,53 +35,65 @@ const CHAINS = JSON.parse(fs.readFileSync(__dirname + '/_chains.json', 'utf8'));
 const chainLogo = (id) => (CHAINS[id] && CHAINS[id].logo) || '';
 
 const STYLE = '<style id="lx-lumosparent-css">'
-  + '.lx-lp{max-width:720px;margin:0 auto;padding:30px 0 60px}'
+  + '.lx-lp{position:relative;max-width:780px;margin:0 auto;padding:56px 0 76px}'
+  // The same warm wash the rest of the site opens with. It is the one thing that stops a page of two
+  // cards reading as an empty screen, and it adds no element to the page.
+  + '.lx-lp::before{content:"";position:absolute;left:-120px;right:-120px;top:-40px;height:300px;'
+  + 'pointer-events:none;z-index:0;'
+  + 'background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.14),transparent 72%)}'
+  + '[data-theme="light"] .lx-lp::before{'
+  + 'background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.09),transparent 72%)}'
+  + '.lx-lp>*{position:relative;z-index:1}'
   // The header is CENTRED and the cards are not: centring a heading reads as a title, while centring
   // a row of label/value pairs makes them harder to scan down.
-  + '.lx-lp-head{text-align:center;margin:0 0 28px}'
-  + '.lx-lp-h{font:800 34px/1.12 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
-  + 'letter-spacing:-.03em;text-wrap:balance;margin:0 0 10px}'
-  + '.lx-lp-sub{font:500 15px/1.6 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);'
-  + 'max-width:46ch;margin:0 auto;text-wrap:pretty}'
-  + '@media(max-width:640px){.lx-lp{padding:22px 0 44px}.lx-lp-h{font-size:26px}.lx-lp-sub{font-size:14px}}'
-  + '.lx-lp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}'
+  + '.lx-lp-head{text-align:center;margin:0 0 36px}'
+  + '.lx-lp-h{font:800 clamp(34px,4vw,46px)/1.08 "Hanken Grotesk",system-ui,sans-serif;'
+  + 'color:var(--text,#0e0e10);letter-spacing:-.032em;text-wrap:balance;margin:0 0 12px}'
+  + '.lx-lp-sub{font:500 17px/1.62 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);'
+  + 'max-width:50ch;margin:0 auto;text-wrap:pretty}'
+  + '@media(max-width:640px){.lx-lp{padding:34px 0 52px}.lx-lp-h{font-size:30px}.lx-lp-sub{font-size:16px}}'
+  + '.lx-lp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}'
   + '@media(max-width:640px){.lx-lp-grid{grid-template-columns:1fr}}'
-  + '.lx-lp-card{display:flex;align-items:center;gap:14px;padding:18px;border-radius:16px;'
+  + '.lx-lp-card{display:flex;align-items:center;gap:15px;padding:22px 20px;border-radius:16px;'
   + 'border:1px solid var(--border,#ececef);background:var(--surface,#fff);text-decoration:none;color:inherit;'
   // a barely-there top highlight, so the card reads as a raised surface on the dark build without
   // needing a second colour token that light mode would have to undo
   + 'background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%);'
   + 'transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}'
-  + '.lx-lp-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-2px);'
-  + 'box-shadow:0 10px 26px rgba(0,0,0,.16)}'
+  + '.lx-lp-card:not(.soon){border-color:rgba(234,106,44,.30);'
+  + 'background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%),'
+  + 'linear-gradient(105deg,rgba(234,106,44,.085),rgba(234,106,44,0) 58%)}'
+  + '.lx-lp-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-3px);'
+  + 'box-shadow:0 14px 32px rgba(0,0,0,.30)}'
   + '.lx-lp-card:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:3px}'
-  + '.lx-lp-ico{width:42px;height:42px;flex:0 0 42px;border-radius:50%;background-size:cover;'
+  + '.lx-lp-ico{width:46px;height:46px;flex:0 0 46px;border-radius:50%;background-size:cover;'
   + 'background-position:center;background-repeat:no-repeat;position:relative;'
   // a hairline ring so a dark mark still reads as a disc on a dark card
   + 'box-shadow:0 0 0 1px rgba(127,127,140,.22)}'
+  + '.lx-lp-card:not(.soon) .lx-lp-ico{box-shadow:0 0 0 1px rgba(234,106,44,.34)}'
   // Refuse the healer's letter tile outright if it still lands on this element.
   + '.lx-lp-ico{font-size:0!important;color:transparent!important}'
   + '.lx-lp-ico>svg{width:0!important;height:0!important;position:absolute!important}'
   // A column, because these are two lines: as inline spans they ran together and the meta's margin-top
   // was inert.
   + '.lx-lp-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:4px}'
-  + '.lx-lp-net{font:800 16px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
+  + '.lx-lp-net{font:800 18px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);'
   + 'letter-spacing:-.01em}'
-  + '.lx-lp-meta{font:600 12px/1.35 "JetBrains Mono",ui-monospace,monospace;'
+  + '.lx-lp-meta{font:600 13px/1.35 "JetBrains Mono",ui-monospace,monospace;'
   + 'color:var(--text-muted,#8a8fa3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
   // The chevron sits in a disc that fills with the accent on hover, so the live card has one obvious
   // thing to aim at rather than a bare glyph.
-  + '.lx-lp-go{flex:0 0 auto;width:28px;height:28px;border-radius:50%;display:flex;'
+  + '.lx-lp-go{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:flex;'
   + 'align-items:center;justify-content:center;background:var(--surface-2,#f4f5f7);'
   + 'color:var(--text-muted,#8a8fa3);transition:background .18s ease,color .18s ease,transform .18s ease}'
   + '.lx-lp-go svg{width:14px;height:14px}'
   + '.lx-lp-card:hover .lx-lp-go{background:var(--accent,#ea6a2c);color:#fff;transform:translateX(2px)}'
   // A chain that is announced but not live must not look clickable: no hover, no pointer, dimmed.
-  + '.lx-lp-card.soon{opacity:.6;pointer-events:none;background-image:none;'
+  + '.lx-lp-card.soon{opacity:.8;pointer-events:none;background-image:none;'
   + 'border-style:dashed}'
   + '.lx-lp-soon{margin-left:auto;flex:0 0 auto;padding:4px 9px;border-radius:99px;'
   + 'background:transparent;border:1px solid var(--border,#ececef);color:var(--text-muted,#8a8fa3);'
-  + 'font:700 9.5px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;'
+  + 'font:700 10.5px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;'
   + 'white-space:nowrap}'
   + '@media(prefers-reduced-motion:reduce){.lx-lp-card,.lx-lp-go{transition:none}'
   + '.lx-lp-card:hover{transform:none}}'
@@ -115,7 +127,7 @@ const HUBS = [
   {
     key: 'lumoscore-amm', path: '/pools',
     h1: 'Liquidity Pools', title: 'Liquidity Pools — Choose a network | LumosCore',
-    sub: 'Provide liquidity and earn a share of the trading fees. Choose a network to see its pools.',
+    sub: 'Create and manage AMM pools. Choose a network to see its pools.',
     stellarMeta: 'AMM pools',
   },
   {
@@ -129,6 +141,12 @@ const HUBS = [
     h1: 'LUMOS Rewards', title: 'LUMOS Rewards — Choose a network | LumosCore',
     sub: 'Liquidity and holder rewards, paid out each round. Choose a network to see its rounds.',
     stellarMeta: '3M LUMOS per round',
+  },
+  {
+    key: 'lumoscore-launch-token', path: '/launchpad',
+    h1: 'Launchpad', title: 'Launchpad — Choose a network | LumosCore',
+    sub: 'Issue a token and open its first pool. Choose the network you want to launch on.',
+    stellarMeta: '$25 flat, paid in XLM',
   },
   {
     key: 'lumoscore-lumos-token', path: '/lumos',

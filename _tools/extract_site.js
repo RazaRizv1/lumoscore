@@ -497,7 +497,11 @@ const ROUTES = [
   // launchpad flow: /launchpad/review must precede /launchpad
   ['/launchpad/review',                'lumoscore-launch-review.html'],
   ['/launchpad/confirm',               'lumoscore-launch-confirm.html'],
-  ['/launchpad',                       'lumoscore-launch-token.html'],
+  ['/launchpad/stellar',               'lumoscore-launch-token.html'],
+  // A CHOOSER, like /trade and /pools. It was the one product on the landing page whose card had
+  // nowhere safe to point: the bare path served the Stellar launchpad behind the wallet gate, so a
+  // signed-out visitor clicking it was bounced straight to "/".
+  ['/launchpad',                       'lumoscore-launch-token.html', 'hub'],
   // flat pages
   ['/dashboard',                       'lumoscore-home.html'],
   // CHAIN-SCOPED ALIASES. The same page addressed by chain, so a promoted link names the network it is

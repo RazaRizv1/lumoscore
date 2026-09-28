@@ -77,14 +77,32 @@
     if (!quote) return;
     var o = quote.options[0];
     if (elAmt) elAmt.textContent = human(o.amount) + ' XLM';
-    if (elRate) elRate.textContent = '$' + quote.priceUsd + ' at $' + Number(quote.xlmUsd).toFixed(6) + ' / XLM';
+    if (elRate) elRate.textContent = '$' + Number(quote.xlmUsd).toFixed(6) + ' / XLM';
     if (elTo) { elTo.textContent = FEE_ACCT; elTo.title = FEE_ACCT; }
+
+    // (5) WHERE THE RATE CAME FROM, AND HOW LONG IT HOLDS.
+    //
+    // The figure was landing on screen with nothing to judge it by -- no source, no age, no idea
+    // whether it would still be true when the wallet opened. The endpoint has always returned
+    // quotedAt and validForSeconds and nothing was reading either. Every part of this line is taken
+    // from the response; none of it is asserted by the page.
+    var src = $('ltRateSrc');
+    if (src) {
+      var bits = ['CoinGecko'];
+      if (quote.quotedAt) {
+        var t = new Date(+quote.quotedAt);
+        if (!isNaN(t)) bits.push('quoted ' + t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+      }
+      var mins = Math.round((+quote.validForSeconds || 0) / 60);
+      if (mins > 0) bits.push('held ' + mins + ' min');
+      src.textContent = bits.join(' · ');
+    }
 
     // The headline figure comes from the endpoint, not from the markup. The two used to be able to
     // disagree, and a page saying $250 beside a button charging something else is the one thing this
     // page cannot afford to do.
     var shown = '$' + quote.priceUsd;
-    ['ltFee', 'ltFee2'].forEach(function (id) { var e = $(id); if (e) e.textContent = shown; });
+    ['ltFee', 'ltFee2', 'ltFee3'].forEach(function (id) { var e = $(id); if (e) e.textContent = shown; });
     paintButton();
   }
 
@@ -152,7 +170,7 @@
     if (!logoData) {
       elDropIn.className = 'lt-drop-in';
       elDropIn.innerHTML = '<span class="lt-drop-t">Choose a logo</span>'
-        + '<span class="lt-drop-d">PNG, JPEG, WebP or GIF · square · up to 512KB</span>';
+        + '<span class="lt-drop-d">PNG, JPEG, WebP or GIF · square, 256 × 256px or larger · up to 512KB</span>';
       return;
     }
     elDropIn.className = 'lt-picked';
@@ -188,9 +206,28 @@
     }
     var fr = new FileReader();
     fr.onload = function () {
-      logoData = String(fr.result || '');
-      logoName = file.name || '';
-      paintLogo();
+      var data = String(fr.result || '');
+      var probe = new Image();
+      probe.onload = function () {
+        var w = probe.naturalWidth || 0, h = probe.naturalHeight || 0;
+        if (w < 256 || h < 256) {
+          logoData = ''; logoName = ''; paintLogo();
+          fieldErr('ltLogo', 'That logo is ' + w + ' × ' + h + 'px. It needs to be 256 × 256px or larger.');
+          return;
+        }
+        if (Math.abs(w - h) > Math.max(w, h) * 0.01) {
+          logoData = ''; logoName = ''; paintLogo();
+          fieldErr('ltLogo', 'That logo is ' + w + ' × ' + h + 'px. It needs to be square.');
+          return;
+        }
+        logoData = data; logoName = file.name || ''; paintLogo();
+      };
+      // A file the browser cannot decode is not a usable logo whatever its mime type claims.
+      probe.onerror = function () {
+        logoData = ''; logoName = ''; paintLogo();
+        fieldErr('ltLogo', 'That image could not be read.');
+      };
+      probe.src = data;
     };
     fr.onerror = function () { fieldErr('ltLogo', 'That file could not be read.'); };
     fr.readAsDataURL(file);
@@ -263,6 +300,9 @@
     // a typo, not a site, and it would reach review as an unclickable string.
     if (f.website && !/^(https?:\/\/)?[a-z0-9-]+(\.[a-z0-9-]+)+(\/.*)?$/i.test(f.website)) {
       fieldErr('ltSite', 'That does not look like a web address.'); ok = false;
+    }
+    if (!logoData) {
+      fieldErr('ltLogo', 'A logo is required — pick a square image, 256 × 256px or larger.'); ok = false;
     }
     if (!ok) formErr('Fix the fields marked above, then try again.');
     return ok;

@@ -56,11 +56,44 @@ function setHead(html, style) {
 let CSS, MAIN;
 try {
   CSS = fs.readFileSync(__dirname + '/about.css', 'utf8');
-  MAIN = fs.readFileSync(__dirname + '/about.html', 'utf8').trim();
+  MAIN = withRail(fs.readFileSync(__dirname + '/about.html', 'utf8').trim());
 } catch (e) {
   console.error('about: missing about.css or about.html — nothing written');
   process.exit(1);
 }
+// The contents rail, derived from the markup rather than written into it -- the same approach the
+// legal pages use, and for the same reason: six section headings that would otherwise have to be
+// given ids and numbers by hand, and renumbered by hand every time one moves.
+//
+// Splits the masthead off the top, numbers each <h2> and slugs it, and emits the rail from the same
+// pass so the list and the headings can never disagree. Returns the markup untouched if the masthead
+// is not shaped as expected.
+function withRail(html) {
+  const top = html.indexOf('</div>', html.indexOf('ab-top'));
+  if (top < 0) return html;
+  const headEnd = top + 6;
+  const head = html.slice(0, headEnd);
+  let body = html.slice(headEnd);
+
+  const items = [];
+  body = body.replace(/<h2>([\s\S]*?)<\/h2>/g, (m, txt) => {
+    const plain = txt.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').trim();
+    const id = 'ab-' + plain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    items.push({ id, text: plain });
+    return '<h2 id="' + id + '"><span class="ab-n">'
+      + String(items.length).padStart(2, '0') + '</span><span>' + txt + '</span></h2>';
+  });
+  if (items.length < 3) return html;
+
+  const rail = '<nav class="ab-toc" aria-label="Contents"><p class="ab-toc-h">On this page'
+    + '<span class="ab-toc-c">' + items.length + ' sections</span></p><ol>'
+    + items.map((it, i) => '<li><a href="#' + it.id + '"><span class="ab-tn">'
+        + String(i + 1).padStart(2, '0') + '</span><span>' + it.text + '</span></a></li>').join('')
+    + '</ol></nav>';
+
+  return head + '<div class="ab-body">' + rail + '<article class="ab-art">' + body + '</article></div>';
+}
+
 const STYLE = '<style id="lx-about-css">' + CSS.replace(/\/\*[\s\S]*?\*\//g, '')
   .split('\n').map((l) => l.trim()).filter(Boolean).join('') + '</style>';
 

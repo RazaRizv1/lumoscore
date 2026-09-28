@@ -27,6 +27,11 @@ export const SITEMAP_ROUTES = [
     "weekly"
   ],
   [
+    "/launchpad/stellar",
+    "0.6",
+    "weekly"
+  ],
+  [
     "/launchpad",
     "0.8",
     "weekly"

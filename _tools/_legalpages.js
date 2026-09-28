@@ -116,7 +116,216 @@ const STYLE = '<style id="lx-legal-css">'
   + '.lxsup-aside{order:-1}.lxsup-two{grid-template-columns:1fr;gap:0}'
   + '.lxsup-card{display:block}.lxsup-grow textarea{height:auto}}'
   + '@media(max-width:640px){.lxlg{padding:24px 16px 56px}.lxlg h1{font-size:26px}}'
+
+  // ---- Terms and Privacy: a document, not a centred column ----------------------------------------
+  //
+  // A CONTENTS RAIL beside the prose. Eleven numbered clauses is precisely the shape that earns one:
+  // these get referred to by number ("under clause 8"), so the numerals carry real information rather
+  // than decorating the page, and the rail is what gives the layout a reason to be full width instead
+  // of a column of text floating in the middle.
+  //
+  // Colours come from the existing tokens, so both themes keep working with no second set to maintain,
+  // and the accent is spent in only two places -- links and the clause numerals.
+  + '.lxlg-doc{max-width:1460px;padding:40px 40px 90px}'
+  + '.lxlg-hd{position:relative;padding-bottom:26px;margin-bottom:34px;'
+  + 'border-bottom:1px solid var(--border,#26262c)}'
+  // The same warm wash the rest of the site opens with. These three never had one, which is part of
+  // why they felt colder than every other page.
+  + '.lxlg-hd::before{content:"";position:absolute;left:-80px;right:-80px;top:-90px;height:300px;'
+  + 'pointer-events:none;z-index:0;'
+  + 'background:radial-gradient(820px 260px at 14% 0%,rgba(234,106,44,.16),transparent 72%)}'
+  + '[data-theme="light"] .lxlg-hd::before{background:radial-gradient(820px 260px at 14% 0%,'
+  + 'rgba(234,106,44,.10),transparent 72%)}'
+  + '.lxlg-hd>*{position:relative;z-index:1}'
+  + '.lxlg-doc h1{font-size:clamp(34px,4.2vw,46px);line-height:1.08;margin:0 0 12px;letter-spacing:-.03em;text-wrap:balance}'
+  // The sub-line is a statement about the document, so it reads in full-strength text rather than the
+  // muted grey that was making it look like chrome.
+  + '.lxlg-doc .lxlg-sub{font-size:19px;line-height:1.5;color:var(--text);margin:0 0 14px;max-width:78ch}'
+  + '.lxlg-doc .lxlg-upd{font-size:12px;letter-spacing:.07em;text-transform:uppercase;margin:0;color:var(--text-muted,#8a8fa3)}'
+  + '.lxlg-body{display:grid;grid-template-columns:292px minmax(0,1fr);gap:64px;align-items:start}'
+  + '.lxlg-toc{position:sticky;top:92px;max-height:calc(100vh - 130px);overflow:auto}'
+  // Scoped past '.lxlg-doc p', which is (0,1,1) and was overriding this (0,1,0) rule: the rail heading
+  // is a <p>, so it was silently rendering at the 17px body size -- a label set larger than the items
+  // it labels.
+  + '.lxlg-doc .lxlg-toc-h{margin:0 0 16px;font-size:15px;font-weight:700;letter-spacing:.08em;'
+  + 'text-transform:uppercase;color:var(--text-muted,#8a8fa3)}'
+  // The guide line runs the length of the list; each item paints its own segment of it when active,
+  // which is why the line is drawn on the <ol> and the marker on the <a> rather than both on one node.
+  + '.lxlg-toc ol{list-style:none;margin:0;padding:0 0 0 16px;display:flex;flex-direction:column;'
+  + 'gap:1px;position:relative}'
+  + '.lxlg-toc ol::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:1px;'
+  + 'background:var(--border,#26262c)}'
+  + '.lxlg-toc li{margin:0}'
+  + '.lxlg-toc a{position:relative}'
+  + '.lxlg-toc a::before{content:"";position:absolute;left:-16px;top:6px;bottom:6px;width:2px;'
+  + 'border-radius:2px;background:transparent;transition:background .2s}'
+  // The reading position. Accent on the marker and the numeral, full-strength text on the label -- one
+  // idea said three quiet ways rather than a highlighted block.
+  + '.lxlg-toc a.is-on::before{background:var(--accent,#ea6a2c)}'
+  // Scoped to beat '.lxlg-doc .lxlg-toc a' (0,3,1), which sets the resting muted colour; at (0,2,1)
+  // this rule lost and the active clause read exactly like every inactive one.
+  + '.lxlg-doc .lxlg-toc a.is-on{color:var(--text);font-weight:600}'
+  + '.lxlg-toc a.is-on .lxlg-tn{color:var(--accent,#ea6a2c);opacity:1}'
+  + '@media(prefers-reduced-motion:reduce){.lxlg-toc a::before{transition:none}}'
+  // Header: the label earns a companion count, so the rail says how long the document is before you
+  // start scrolling it.
+  + '.lxlg-toc-h{display:flex;align-items:baseline;gap:9px}'
+  + '.lxlg-toc-c{font-size:12px;font-weight:600;letter-spacing:.02em;text-transform:none;'
+  + 'color:var(--text-muted,#8a8fa3);opacity:.75;font-variant-numeric:tabular-nums}'
+  + '.lxlg-toc a{display:flex;gap:13px;padding:9px 12px;border-radius:9px;font-size:17px;'
+  + 'line-height:1.5;transition:background .15s,color .15s}'
+  + '.lxlg-toc a span{font-variant-numeric:tabular-nums;font-size:14px;opacity:.7;padding-top:1px}'
+  // min-width:0 so a long clause name wraps inside the rail instead of widening the track.
+  + '.lxlg-toc a{min-width:0}'
+  + '.lxlg-art{min-width:0}'
+  + '.lxlg-doc h2{font-size:23px;margin:40px 0 14px;letter-spacing:-.02em;scroll-margin-top:96px;'
+  + 'display:flex;gap:13px;align-items:baseline}'
+  + '.lxlg-doc h2 .lxlg-n{font-size:13px;font-weight:700;color:var(--accent,#ea6a2c);'
+  + 'font-variant-numeric:tabular-nums;flex:none}'
+  + '.lxlg-doc .lxlg-art>h2:first-child{margin-top:0}'
+  // 17px over 15.5px, and 76ch over 70ch. The measure still stops the line getting unreadably long on a
+  // wide monitor -- the fix for "not expanded" is the rail and the 1200px shell, not an endless line.
+  + '.lxlg-doc p{font-size:17px;line-height:1.78;margin:0 0 16px;max-width:92ch}'
+  + '.lxlg-doc ul{font-size:17px;line-height:1.78;margin:0 0 16px;padding-left:24px;max-width:92ch}'
+  + '.lxlg-doc li{margin-bottom:9px}'
+  + '.lxlg-doc .lxlg-warn{font-size:16px;line-height:1.66;padding:16px 20px;margin:0 0 20px;max-width:92ch}'
+  // THE LINK BUG. Nothing styled an anchor in here, so /terms shipped its Support link in Chrome's
+  // default rgb(0,0,238) against a dark page.
+  + '.lxlg-doc a{color:var(--accent,#ea6a2c);text-decoration:underline;text-underline-offset:3px;'
+  + 'text-decoration-thickness:1px}'
+  + '.lxlg-doc a:hover{filter:brightness(1.15)}'
+  // The rail is navigation, not prose, so it opts out of the accent-underline treatment above.
+  + '.lxlg-doc .lxlg-toc a{color:var(--text-muted,#8a8fa3);text-decoration:none}'
+  + '.lxlg-doc .lxlg-toc a:hover{color:var(--text);background:var(--surface,#131317)}'
+  + '.lxlg-doc a:focus-visible,.lxlg-doc .lxlg-toc a:focus-visible{outline:2px solid var(--accent,#ea6a2c);'
+  + 'outline-offset:2px;border-radius:4px}'
+  + '@media(prefers-reduced-motion:reduce){.lxlg-toc a{transition:none}}'
+  // Below the two-column threshold the rail becomes a panel above the text, still useful on a phone for
+  // skipping to a clause, laid out in as many columns as the width allows.
+  + '@media(max-width:1040px){.lxlg-body{grid-template-columns:minmax(0,1fr);gap:0}'
+  + '.lxlg-toc{position:static;max-height:none;overflow:visible;margin:0 0 34px;padding:16px 18px;'
+  + 'border:1px solid var(--border,#26262c);border-radius:12px;background:var(--surface,#131317)}'
+  + '.lxlg-toc ol{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px}}'
+  + '@media(max-width:640px){.lxlg-doc{padding:26px 16px 64px}'
+  + '.lxlg-doc h1{font-size:30px}.lxlg-doc .lxlg-sub{font-size:17px}'
+  + '.lxlg-doc h2{font-size:21px;margin-top:34px}'
+  + '.lxlg-doc p,.lxlg-doc ul{font-size:16.5px}}'
+  // ---- Support: matched to the document pages ---------------------------------------------------
+  + '.lxlg.lxlg-sup{max-width:1320px;padding:40px 40px 90px}'
+  + '.lxlg-sup h1{font-size:clamp(34px,4.2vw,46px);line-height:1.08;margin:0 0 12px;'
+  + 'letter-spacing:-.03em}'
+  + '.lxlg-sup .lxlg-sub{font-size:19px;line-height:1.5;color:var(--text);margin:0;max-width:78ch}'
+  // The form is the page, so it takes the growing track and the aside stays a fixed companion.
+  + '.lxlg-sup .lxsup-grid{grid-template-columns:minmax(0,1fr) 352px;gap:28px}'
+  + '.lxlg-sup .lxsup-card{padding:28px 30px}'
+  + '.lxlg-sup .lxsup-two{gap:18px}'
+  + '.lxlg-sup .lxsup-row{gap:8px;margin-bottom:18px}'
+  + '.lxlg-sup .lxsup-two .lxsup-row{margin-bottom:18px}'
+  + '.lxlg-sup .lxsup-row label{font-size:15px}'
+  + '.lxlg-sup .lxsup-row .hint{font-size:13.5px}'
+  + '.lxlg-sup .lxsup input,.lxlg-sup .lxsup textarea{font-size:16.5px;padding:12px 15px;'
+  + 'border-radius:10px;line-height:1.55}'
+  + '.lxlg-sup .lxsup input.mono{font-size:15px}'
+  + '.lxlg-sup .lxsup textarea{min-height:170px}'
+  + '.lxlg-sup .lxsup-send{font-size:16px;padding:13px 30px;border-radius:10px}'
+  + '.lxlg-sup .lxsup-msg{font-size:15.5px}'
+  + '.lxlg-sup .lxsup-foot{padding-top:20px;gap:16px}'
+  // The aside is genuinely useful -- it answers the question before the form gets sent -- so it stops
+  // being set two sizes below the thing it sits next to.
+  + '.lxlg-sup .lxsup-box{padding:20px 22px;border-radius:14px}'
+  + '.lxlg-sup .lxsup-box h3{font-size:16px;margin:0 0 12px}'
+  + '.lxlg-sup .lxsup-box p{font-size:15.5px;line-height:1.62}'
+  + '.lxlg-sup .lxsup-links{gap:16px}'
+  + '.lxlg-sup .lxsup-links .tag{font-size:12px;letter-spacing:.08em;margin-bottom:4px}'
+  + '.lxlg-sup .lxsup-links .ttl{font-size:16px;line-height:1.45}'
+  // COLOUR, WHERE IT DOES A JOB.
+  //
+  // Measured before changing anything: across the whole page the accent appeared exactly ONCE (the
+  // send button) against 40 white text nodes, 16 grey ones, 10 grey borders and two greys of
+  // background. Nothing was wrong with any single value; there was simply no colour carrying meaning,
+  // which is what made it read as flat.
+  //
+  // Nothing decorative is added below. The accent marks the thing the page is FOR, and the three
+  // aside boxes take the three colours their content already implies -- go read this, here is what we
+  // will do, here is a warning. Three boxes, three meanings: a legend rather than a palette.
+
+  // The form is the page. An accent edge and the faintest warm wash say so without a heading needing to.
+  + '.lxlg-sup .lxsup-card{position:relative;overflow:hidden;'
+  + 'background:linear-gradient(180deg,rgba(234,106,44,.05),rgba(234,106,44,0) 200px),var(--surface,#131317)}'
+  + '.lxlg-sup .lxsup-card::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;'
+  + 'background:linear-gradient(90deg,var(--accent,#ea6a2c),rgba(234,106,44,.12))}'
+
+  // One rail per box, coloured by role, with a tint that fades out well before the text so it never
+  // fights the words sitting on it.
+  + '.lxlg-sup .lxsup-box{position:relative;overflow:hidden;padding-left:24px}'
+  + '.lxlg-sup .lxsup-box::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;'
+  + 'background:var(--border,#26262c)}'
+  + '.lxlg-sup .lxsup-box--guide::before{background:var(--accent,#ea6a2c)}'
+  + '.lxlg-sup .lxsup-box--next::before{background:var(--green,#35c07f)}'
+  + '.lxlg-sup .lxsup-box.warn::before{background:var(--red,#e5484d)}'
+  + '.lxlg-sup .lxsup-box--guide{background:linear-gradient(90deg,rgba(234,106,44,.055),'
+  + 'rgba(234,106,44,0) 48%),var(--surface,#131317)}'
+  + '.lxlg-sup .lxsup-box--next{background:linear-gradient(90deg,rgba(53,192,127,.055),'
+  + 'rgba(53,192,127,0) 48%),var(--surface,#131317)}'
+  + '.lxlg-sup .lxsup-box.warn{background:linear-gradient(90deg,rgba(229,72,77,.06),'
+  + 'rgba(229,72,77,0) 48%),var(--surface,#131317)}'
+
+  // The category eyebrows are wayfinding. In accent the four of them can be scanned at a glance;
+  // in grey they were four identical labels you had to read to tell apart.
+  + '.lxlg-sup .lxsup-links .tag{color:var(--accent,#ea6a2c);opacity:.92}'
+  + '.lxlg-sup .lxsup-links a:hover .tag{opacity:1}'
+
+  // "What happens next" is a service commitment, so it gets the marker a status page would use.
+  + '.lxlg-sup .lxsup-box--next h3{display:flex;align-items:center;gap:9px}'
+  + '.lxlg-sup .lxsup-box--next h3::before{content:"";width:8px;height:8px;border-radius:50%;'
+  + 'flex:0 0 auto;background:var(--green,#35c07f);box-shadow:0 0 0 3px rgba(53,192,127,.18)}'
+
+  // The one button on the page carries the one action on the page.
+  + '.lxlg-sup .lxsup-send{box-shadow:0 6px 18px rgba(234,106,44,.22)}'
+  + '.lxlg-sup .lxsup-send:hover:not(:disabled){box-shadow:0 9px 24px rgba(234,106,44,.3)}'
+
+  + '@media(max-width:1040px){.lxlg-sup .lxsup-grid{grid-template-columns:minmax(0,1fr)}}'
+  + '@media(max-width:640px){.lxlg.lxlg-sup{padding:26px 16px 64px}'
+  + '.lxlg-sup h1{font-size:30px}.lxlg-sup .lxlg-sub{font-size:17px}'
+  + '.lxlg-sup .lxsup-card{padding:20px 18px}'
+  + '.lxlg-sup .lxsup input,.lxlg-sup .lxsup textarea{font-size:16px}}'
   + '</style>';
+
+// Numbering and the contents rail are DERIVED from the markup rather than written into it: the two
+// documents already carry their clauses as <h2>, and hand-adding ids and numerals to twenty-odd
+// headings would mean renumbering by hand every time a clause is inserted or dropped.
+//
+// Splits the masthead (h1 + sub-line + last-updated) off the top, then walks the rest giving each <h2>
+// a slug id and a printed numeral, and emits the rail from the same pass so the two can never disagree.
+// Falls back to the original markup untouched if the masthead is not shaped as expected, and skips the
+// rail entirely below three clauses, where it would be noise.
+function docLayout(inner) {
+  const upd = inner.indexOf('<p class="lxlg-upd">');
+  const openEnd = inner.indexOf('>') + 1;
+  if (upd < 0 || openEnd <= 0) return inner;
+  const headEnd = inner.indexOf('</p>', upd) + 4;
+  const head = inner.slice(openEnd, headEnd);
+  let body = inner.slice(headEnd, inner.lastIndexOf('</div>'));
+
+  const items = [];
+  body = body.replace(/<h2>([\s\S]*?)<\/h2>/g, (m, txt) => {
+    const plain = txt.replace(/<[^>]+>/g, '').replace(/&[a-z]+;/gi, ' ').trim();
+    const id = 'sec-' + plain.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+    items.push({ id, text: plain });
+    return '<h2 id="' + id + '"><span class="lxlg-n">'
+      + String(items.length).padStart(2, '0') + '</span><span>' + txt + '</span></h2>';
+  });
+
+  const toc = items.length < 3 ? ''
+    : '<nav class="lxlg-toc" aria-label="Contents"><p class="lxlg-toc-h">On this page'
+      + '<span class="lxlg-toc-c">' + items.length + ' sections</span></p><ol>'
+      + items.map((it, i) => '<li><a href="#' + it.id + '"><span class="lxlg-tn">'
+          + String(i + 1).padStart(2, '0') + '</span><span>' + it.text + '</span></a></li>').join('')
+      + '</ol>' + TOCJS + '</nav>';
+
+  return '<div class="lxlg lxlg-doc"><header class="lxlg-hd">' + head + '</header>'
+    + '<div class="lxlg-body">' + toc + '<article class="lxlg-art">' + body + '</article></div></div>';
+}
 
 // ---- Privacy -------------------------------------------------------------------------------------
 const PRIVACY = '<div class="lxlg">'
@@ -291,8 +500,10 @@ const TERMS = '<div class="lxlg">'
 
 // ---- Support -------------------------------------------------------------------------------------
 const SUPPORT = '<div class="lxlg lxlg-sup">'
+  + '<header class="lxlg-hd">'
   + '<h1>Get in touch</h1>'
   + '<p class="lxlg-sub">Tell us what happened and we will reply by email.</p>'
+  + '</header>'
   + '<div class="lxsup-grid">'
   + '<form class="lxsup lxsup-card" id="lxSupForm" novalidate>'
   + '<div class="lxsup-two">'
@@ -321,14 +532,14 @@ const SUPPORT = '<div class="lxlg lxlg-sup">'
   + 'Send message</button><p class="lxsup-msg" id="lxsMsgOut"></p></div>'
   + '</form>'
   + '<aside class="lxsup-aside">'
-  + '<div class="lxsup-box"><h3>The answer may already be here</h3>'
+  + '<div class="lxsup-box lxsup-box--guide"><h3>The answer may already be here</h3>'
   + '<ul class="lxsup-links">'
   + '<li><a href="/trade/stellar#faq"><span class="tag">Trade</span><span class="ttl">Fees, curated listings and LUMOS</span></a></li>'
   + '<li><a href="/bridge#faq"><span class="tag">Cross-chain</span><span class="ttl">Bridging USDC and claiming it</span></a></li>'
   + '<li><a href="/wallet#faq"><span class="tag">Wallet</span><span class="ttl">Trustlines and claimable payments</span></a></li>'
   + '<li><a href="/pools/stellar#faq"><span class="tag">Pools</span><span class="ttl">Liquidity pools and their risks</span></a></li>'
   + '</ul></div>'
-  + '<div class="lxsup-box"><h3>What happens next</h3>'
+  + '<div class="lxsup-box lxsup-box--next"><h3>What happens next</h3>'
   + '<p>We usually reply within one business day, to the address you give above. Including your '
   + 'wallet address or a transaction ID normally saves a round trip.</p></div>'
   + '<div class="lxsup-box warn"><h3>We will never ask for your keys</h3>'
@@ -361,12 +572,56 @@ const SUPPORT = '<div class="lxlg lxlg-sup">'
   + '});'
   + '})();</scr' + 'ipt>';
 
+// Rail behaviour. Self-contained, no globals, and safe to run on a page whose rail was suppressed
+// (fewer than three sections) -- it returns immediately when there is no nav.
+//
+// "Current" is the last heading whose top has passed 150px: that matches how someone reads, since the
+// clause you are in is the one whose title has gone above your eyeline, not the one nearest the middle.
+// The final section gets special handling -- at the bottom of the page its heading may never reach the
+// line, so hitting the end of the scroll always selects the last item.
+const TOCJS = '<scr' + 'ipt id="lx-legal-toc">(function(){'
+  // DEFERRED UNTIL THE DOCUMENT IS PARSED. This script sits inside <nav>, and the rail is emitted
+  // BEFORE <article> in the grid, so at execution time not one section heading exists yet:
+  // getElementById returned null for every one of them and the rail silently tracked nothing,
+  // sitting on clause 1 for the whole page. Resolving after DOMContentLoaded is what makes the
+  // lookups find their targets, and it holds wherever the script is later moved to.
+  + 'function init(){'
+  + 'var nav=document.querySelector(".lxlg-toc");if(!nav)return;'
+  + 'var links=[].slice.call(nav.querySelectorAll("a[href^=\'#\']"));if(!links.length)return;'
+  + 'var secs=links.map(function(a){try{return document.getElementById(a.getAttribute("href").slice(1));}catch(e){return null;}});'
+  + 'var cur=-1;'
+  + 'function pick(){'
+  + 'var best=0;'
+  + 'for(var i=0;i<secs.length;i++){var s=secs[i];if(!s)continue;'
+  + 'if(s.getBoundingClientRect().top<=150)best=i;}'
+  + 'if((window.innerHeight+window.scrollY)>=(document.documentElement.scrollHeight-4))best=links.length-1;'
+  + 'if(best===cur)return;cur=best;'
+  + 'for(var j=0;j<links.length;j++){if(j===cur)links[j].classList.add("is-on");else links[j].classList.remove("is-on");}'
+  + '}'
+  + 'var q=false;'
+  + 'function onScroll(){if(q)return;q=true;setTimeout(function(){q=false;pick();},70);}'
+  + 'window.addEventListener("scroll",onScroll,{passive:true});'
+  + 'window.addEventListener("resize",onScroll,{passive:true});'
+  // Smooth only when the reader has not asked for less motion; the jump still works either way because
+  // the href is a real anchor and preventDefault is only called on the branch that scrolls.
+  + 'try{var rm=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;'
+  + 'if(!rm)nav.addEventListener("click",function(e){'
+  + 'var a=e.target&&e.target.closest?e.target.closest("a[href^=\'#\']"):null;if(!a)return;'
+  + 'var t=document.getElementById(a.getAttribute("href").slice(1));if(!t)return;'
+  + 'e.preventDefault();t.scrollIntoView({behavior:"smooth",block:"start"});'
+  + 'try{history.replaceState(null,"",a.getAttribute("href"));}catch(_){}'
+  + '});}catch(_){}'
+  + 'pick();'
+  + '}'
+  + 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();'
+  + '})();</scr' + 'ipt>';
+
 // ---- the pages ------------------------------------------------------------------------------------
 const PAGES = [
-  ['privacy', PRIVACY, 'Privacy Policy | LumosCore',
+  ['privacy', docLayout(PRIVACY), 'Privacy Policy | LumosCore',
     'What LumosCore records and what it does not. No cookies, no account, non-custodial — and a '
     + 'plain account of the one thing we do store.'],
-  ['terms', TERMS, 'Terms of Use | LumosCore',
+  ['terms', docLayout(TERMS), 'Terms of Use | LumosCore',
     'The terms governing use of LumosCore, operated by LumosCore OÜ in Estonia — eligibility, '
     + 'trading risk, fees and liability.'],
   ['support', SUPPORT, 'Support | LumosCore',

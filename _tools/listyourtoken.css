@@ -16,7 +16,7 @@
   --lt-field:rgba(255,255,255,.03);
   --lt-good:#1fa968;
   --lt-bad:#e0553c;
-  max-width:760px;margin:0 auto;
+  max-width:1240px;margin:0 auto;
   font-size:17px;line-height:1.7;letter-spacing:-.006em;color:var(--text-soft)
 }
 html[data-theme="light"] .lxlt{
@@ -29,7 +29,24 @@ html[data-theme="light"] .lxlt{
   --lt-bad:#c2402a
 }
 .lxlt *{box-sizing:border-box}
-.lxlt p{margin:0 0 18px;max-width:68ch}
+.lxlt p{margin:0 0 18px;max-width:74ch}
+
+/* (3) ---- two tracks: the form, and a rail that stays with you while you fill it in ---- */
+.lxlt .lt-body{display:grid;grid-template-columns:minmax(0,1fr) 348px;gap:56px;align-items:start;
+  margin-top:8px}
+.lxlt .lt-flow{min-width:0;max-width:760px}
+.lxlt .lt-rail{position:sticky;top:92px;min-width:0;margin:0;padding:24px 26px;
+  border:1px solid var(--border,#26262c);border-radius:16px;
+  background:linear-gradient(180deg,rgba(234,106,44,.045),rgba(234,106,44,0) 170px),var(--surface,#131317)}
+.lxlt .lt-rail h2{margin:0 0 16px;font-size:19px}
+.lxlt .lt-rail .lt-steps{margin:0;padding-left:20px}
+.lxlt .lt-rail .lt-steps li{margin:0 0 13px;font-size:15.5px;line-height:1.6}
+.lxlt .lt-rail .lt-steps li:last-child{margin-bottom:0}
+@media(max-width:1100px){
+  .lxlt .lt-body{grid-template-columns:minmax(0,1fr);gap:0}
+  .lxlt .lt-flow{max-width:none}
+  .lxlt .lt-rail{position:static;margin-top:40px}
+}
 .lxlt p strong{color:var(--text);font-weight:600}
 .lxlt a{color:var(--lt-ink);text-decoration:underline;text-decoration-color:var(--lt-line);
   text-decoration-thickness:1.5px;text-underline-offset:3px;transition:text-decoration-color .13s}
@@ -38,10 +55,13 @@ html[data-theme="light"] .lxlt{
 .lxlt .lt-trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 
 /* ---------------- opening ---------------- */
-.lxlt .lt-top{position:relative;padding:26px 0 26px}
-.lxlt .lt-top::before{content:"";position:absolute;left:-60px;right:-60px;top:-40px;height:240px;
+.lxlt .lt-top{position:relative;padding:26px 0 30px}
+/* The warm wash the main pages carry, restored on RAZA's instruction and matched across all seven
+   footer pages. Sized well above the text so it reads as page atmosphere rather than a blob behind
+   the heading, which is what it looked like before. */
+.lxlt .lt-top::before{content:"";position:absolute;left:-80px;right:-80px;top:-90px;height:300px;
   pointer-events:none;z-index:0;
-  background:radial-gradient(520px 180px at 16% 0%, var(--lt-glow), transparent 72%)}
+  background:radial-gradient(820px 260px at 14% 0%, var(--lt-glow), transparent 72%)}
 .lxlt .lt-top>*{position:relative;z-index:1}
 .lxlt .lt-eyebrow{margin:0 0 14px;display:inline-flex;align-items:center;gap:9px;
   font-family:"JetBrains Mono",monospace;font-size:11px;font-weight:700;letter-spacing:.16em;
@@ -53,15 +73,17 @@ html[data-theme="light"] .lxlt{
   font-weight:500;max-width:54ch}
 
 /* ---------------- the three facts ---------------- */
-.lxlt .lt-facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 30px;
+/* The three things anyone weighs before applying, so they read as a spec strip rather than three
+   grey values: accent figures over mono labels, bounded above. */
+.lxlt .lt-facts{border-top:2px solid var(--text);display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0 30px;
   margin:30px 0 28px;border-top:1px solid var(--text)}
 .lxlt .lt-fact{padding:16px 0 18px;border-bottom:1px solid var(--lt-hair)}
-.lxlt .lt-fact-k{display:block;font-family:"JetBrains Mono",monospace;font-size:10.5px;
+.lxlt .lt-fact-k{display:block;font-family:"JetBrains Mono",monospace;font-size:12px;
   font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--text-soft)}
-.lxlt .lt-fact-v{display:block;margin:6px 0 3px;font-size:23px;font-weight:800;
+.lxlt .lt-fact-v{color:var(--accent,#ea6a2c);display:block;margin:6px 0 3px;font-size:23px;font-weight:800;
   letter-spacing:-.03em;color:var(--text);line-height:1.1}
-.lxlt .lt-fact-d{display:block;font-size:13.5px;line-height:1.5;color:var(--text-muted)}
-.lxlt .lt-intro{font-size:16px;color:var(--text-muted)}
+.lxlt .lt-fact-d{display:block;font-size:15px;line-height:1.5;color:var(--text-muted)}
+.lxlt .lt-intro{font-size:17px;color:var(--text-muted)}
 
 /* ---------------- steps ---------------- */
 .lxlt .lt-form{margin:12px 0 0;counter-reset:ltstep}
@@ -73,7 +95,7 @@ html[data-theme="light"] .lxlt{
   width:26px;height:26px;border-radius:50%;border:1.5px solid var(--lt-line);
   display:flex;align-items:center;justify-content:center;
   font-family:"JetBrains Mono",monospace;font-size:12px;font-weight:700;color:var(--lt-ink)}
-.lxlt .lt-help{margin:0 0 20px;padding-left:38px;font-size:15px;line-height:1.6;
+.lxlt .lt-help{margin:0 0 20px;padding-left:38px;font-size:16.5px;line-height:1.6;
   color:var(--text-muted);max-width:62ch}
 
 /* ---------------- fields ---------------- */
@@ -83,20 +105,28 @@ html[data-theme="light"] .lxlt{
    An explicit class rather than :has(), which is only the second-newest browsers. */
 .lxlt .lt-two-even{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
 .lxlt .lt-hint-flush{margin:-4px 0 20px}
-.lxlt .lt-lbl{display:block;margin:0 0 7px;font-size:13px;font-weight:650;letter-spacing:-.005em;
+/* The required mark. An asterisk in the accent rather than a "Required" chip: four chips down one
+   short form would weigh more than the labels they annotate, and the convention is already
+   understood. aria-hidden on the span, because the inputs carry aria-required and a screen reader
+   should be told once, properly, rather than hearing "star".
+   Scoped .lxlt like every other rule in this file -- an unscoped .lt-req would style that class
+   anywhere on the site, and gluing it on as .lxlt.lt-req would demand both classes on one node. */
+.lxlt .lt-req{margin-left:4px;color:var(--accent,#ea6a2c);font-weight:700;
+  vertical-align:top;font-size:.92em;line-height:1}
+.lxlt .lt-lbl{display:block;margin:0 0 8px;font-size:15px;font-weight:650;letter-spacing:-.005em;
   color:var(--text)}
 .lxlt .lt-in{display:block;width:100%;padding:12px 14px;border-radius:10px;
   border:1px solid var(--lt-hair);background:var(--lt-field);color:var(--text);
-  font:inherit;font-size:15px;line-height:1.5;transition:border-color .14s,background .14s}
+  font:inherit;font-size:16.5px;line-height:1.5;transition:border-color .14s,background .14s}
 .lxlt .lt-in::placeholder{color:var(--text-muted);opacity:.55}
 .lxlt .lt-in:focus{outline:none;border-color:var(--accent);background:var(--surface)}
-.lxlt .lt-in.lt-mono{font-size:14px;letter-spacing:.01em}
+.lxlt .lt-in.lt-mono{font-size:15.5px;letter-spacing:.01em}
 .lxlt .lt-ta{resize:vertical;min-height:96px}
-.lxlt .lt-count{margin:6px 0 0;font-family:"JetBrains Mono",monospace;font-size:11px;
+.lxlt .lt-count{margin:6px 0 0;font-family:"JetBrains Mono",monospace;font-size:12.5px;
   color:var(--text-muted);text-align:right}
-.lxlt .lt-hint{margin:9px 0 0;padding-left:0;font-size:13px;line-height:1.55;color:var(--text-muted)}
+.lxlt .lt-hint{margin:9px 0 0;padding-left:0;font-size:14.5px;line-height:1.55;color:var(--text-muted)}
 .lxlt .lt-step .lt-hint{padding-left:38px}
-.lxlt .lt-err{margin:7px 0 0;font-size:13px;line-height:1.5;color:var(--lt-bad);font-weight:550}
+.lxlt .lt-err{margin:7px 0 0;font-size:14.5px;line-height:1.5;color:var(--lt-bad);font-weight:550}
 .lxlt .lt-err-big{margin:14px 0 0;font-size:14.5px}
 .lxlt .lt-in.lt-wrong{border-color:var(--lt-bad)}
 
@@ -130,6 +160,19 @@ html[data-theme="light"] .lxlt{
 .lxlt .lt-picked-n{margin-top:3px;font-size:12.5px;color:var(--text-muted)}
 
 /* ---------------- payment ---------------- */
+/* (6) The amount leads. Everything else is the detail that justifies it. */
+.lxlt .lt-pay-head{display:flex;align-items:baseline;justify-content:space-between;gap:18px;
+  flex-wrap:wrap;padding:4px 0 18px}
+.lxlt .lt-pay-lead{display:flex;flex-direction:column;gap:5px;min-width:0}
+.lxlt .lt-pay-amt{font-size:clamp(26px,3vw,34px);line-height:1.05;font-weight:700;
+  color:var(--text);letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.lxlt .lt-pay-usd{font-size:19px;font-weight:600;color:var(--accent,#ea6a2c);
+  font-variant-numeric:tabular-nums}
+.lxlt .lt-pay-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px;
+  padding-top:18px;border-top:1px solid var(--border,#26262c)}
+.lxlt .lt-pay-cell{display:flex;flex-direction:column;gap:5px;min-width:0}
+/* The provenance line. Deliberately quiet -- it is there to be checked, not read every time. */
+.lxlt .lt-pay-src{font-size:13px;line-height:1.45;color:var(--text-muted);opacity:.85}
 .lxlt .lt-pay{margin:0 0 12px;border-top:1px solid var(--text);border-bottom:1px solid var(--lt-hair)}
 .lxlt .lt-pay-row{display:flex;align-items:baseline;justify-content:space-between;gap:18px;
   padding:13px 0;border-bottom:1px solid var(--lt-hair)}

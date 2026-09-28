@@ -25,6 +25,41 @@
 import { rateLimit } from '../../_lib/ratelimit.js';
 
 const ADDR_RE = /^G[A-Z2-7]{55}$/;
+
+// THE SHAPE IS NOT THE ADDRESS (RAZA 2026-09-28: "what's this weird platform activity from a weird
+// wallet address?"). ADDR_RE matches any 56-character G-string, so
+// GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA passed it and was stored. Two such rows
+// were posted at 23:43 and 23:46 on 2026-09-27 and rendered on the dashboard as "Platform activity"
+// beside genuine trades -- an unauthenticated writer putting whatever it liked into our own feed.
+//
+// POST is deliberately open, because the site itself is the writer and has no credential to present.
+// That makes the VALUE the only thing standing between a stranger and the dashboard, so it has to be
+// an address rather than merely look like one.
+//
+// A Stellar account is StrKey: version byte 0x30, a 32-byte key, then a CRC16-XModem of both, base32
+// encoded. Checking that checksum costs nothing and cannot be satisfied by typing letters. Verified
+// against five real mainnet accounts (all pass) and three fabrications including a single-character
+// tamper of a real one (all rejected).
+function crc16(bytes) {
+  let crc = 0;
+  for (const b of bytes) {
+    crc ^= b << 8;
+    for (let i = 0; i < 8; i++) crc = (crc & 0x8000) ? ((crc << 1) ^ 0x1021) & 0xffff : (crc << 1) & 0xffff;
+  }
+  return crc;
+}
+function validAccount(str) {
+  if (!ADDR_RE.test(str)) return false;
+  const A = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits = 0, val = 0; const out = [];
+  for (const c of str) {
+    const i = A.indexOf(c); if (i < 0) return false;
+    val = (val << 5) | i; bits += 5;
+    if (bits >= 8) { out.push((val >> (bits - 8)) & 0xff); bits -= 8; }
+  }
+  if (out.length !== 35 || out[0] !== 0x30) return false;
+  return crc16(out.slice(0, 33)) === (out[33] | (out[34] << 8));
+}
 const HASH_RE = /^[0-9a-f]{64}$/i;
 // A busy trader submits a few operations a minute at most; each is one beacon.
 const PER_MIN = 20;
@@ -71,7 +106,7 @@ export async function onRequestPost({ request, env }) {
   } catch (_) { return json({ ok: false, reason: 'bad body' }, 200); }
 
   // Narrow on purpose: two fields, both shape-checked, so this cannot be used to write arbitrary rows.
-  if (!ADDR_RE.test(addr)) return json({ ok: false, reason: 'bad addr' }, 200);
+  if (!validAccount(addr)) return json({ ok: false, reason: 'bad addr' }, 200);
   if (!HASH_RE.test(hash)) return json({ ok: false, reason: 'bad hash' }, 200);
 
   // 200, not 429: fire-and-forget, exactly like the no-db case above. A refused write must not change
@@ -109,9 +144,15 @@ export async function onRequestGet({ env }) {
       + 'AND a.hash NOT IN (SELECT refund_hash FROM listing_request WHERE refund_hash IS NOT NULL) '
       + 'ORDER BY a.ts DESC LIMIT ?1'
     ).bind(MAX_ROWS).all();
-    const items = ((r && r.results) || []).map((x) => ({
-      hash: x.hash, addr: x.addr, ts: x.ts,
-    }));
+    // The rows written before the checksum was enforced are still in the table, and deleting
+    // production data is not something to do unprompted -- so they are filtered on the way OUT.
+    // That takes effect the moment this deploys, covers anything else already written, and leaves
+    // the records intact for anyone who wants to look at what was posted.
+    const items = ((r && r.results) || [])
+      .filter((x) => validAccount(String(x.addr || '')))
+      .map((x) => ({
+        hash: x.hash, addr: x.addr, ts: x.ts,
+      }));
     return json({ items }, 200, 20);
   } catch (e) {
     return json({ items: [], reason: 'read failed' }, 200, 10);
