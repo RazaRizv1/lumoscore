@@ -84,31 +84,22 @@ function isHandheld(){
   try{ if((navigator.maxTouchPoints||0)>0)return true; }catch(_){}
   return isMobile();
 }
-function isIOS(){try{return /iPhone|iPad|iPod/i.test(navigator.userAgent||'')
-  ||(/Macintosh/i.test(navigator.userAgent||'')&&(navigator.maxTouchPoints||0)>1);}catch(_){return false;}}
-// iOS ONLY: use LOBSTR's UNIVERSAL link instead of its custom scheme.
+// DO NOT USE LOBSTR'S UNIVERSAL LINK. Tried on production 2026-09-30 and reverted the same day.
 //
-// Both are registered by LOBSTR (explorer entry, checked live 2026-09-30:
-//   mobile {"native":"lobstr://","universal":"https://lobstr.co/uni/wc"})
-// but they are different routes into the app. lobstr://wc opens LOBSTR 16 on its DASHBOARD with no
-// pairing screen, every time, on RAZA's iPhone -- while the identical proposal pairs fine on Android.
-// An app can keep a URL scheme registered for launching and stop routing a path within it; a universal
-// link is matched by Apple against the app's apple-app-site-association file instead, which is a
-// completely separate mechanism and is the one Apple has pushed since iOS 9.
+// The theory was sound on paper -- their explorer entry lists both routes
+// (mobile {"native":"lobstr://","universal":"https://lobstr.co/uni/wc"}) and their
+// apple-app-site-association really does claim the path:
+//     applinks.details[].paths = ["/uni/*", "/univ2/*"]
+// so iOS should have handed the link straight to the app.
 //
-// ANDROID IS NOT TOUCHED. It works today on the custom scheme and nothing here may put that at risk.
-// The documented hazard of the universal link -- an UNHANDLED one navigates to lobstr.co and takes the
-// pending promise with it -- only bites when LOBSTR is not installed. If that happens the browser Back
-// button returns to a page whose connect promise is gone, which is recoverable and visible, and it is
-// itself the answer: it would mean iOS does not associate the domain with the app at all.
-function wcLinkFor(link){
-  if(link===WC_LOBSTR&&isIOS())return 'https://lobstr.co/uni/wc';
-  return link;
-}
-// CONNECT ONLY. The signing path also pokes LOBSTR, with NO uri, to bring the app forward for a
-// request already sent over the relay. Sending a bare universal link there risks landing on lobstr.co
-// in Safari and taking the pending SIGNING promise with it -- and signing is not the broken thing.
-// So wcLinkFor is applied at the connect call sites, never inside wcPoke.
+// What it actually did on RAZA's iPhone, WITH LOBSTR INSTALLED: "its taking me to lobstr on apple
+// store, instead of opening the wallet". Strictly worse than the custom scheme, which at least opens
+// the app. Two things conspire: https://lobstr.co/uni/wc?uri= 301-redirects to /uni/wc/?uri=
+// (trailing slash), and a universal link navigated to from JAVASCRIPT is frequently not handed to the
+// app at all -- Safari just loads the page, and LOBSTR's own web page forwards to the App Store.
+//
+// So the custom scheme stays. It opens the app; that LOBSTR iOS 16 then shows no pairing screen is
+// their bug (reproduced on a second iPhone and on StellarX), not something a different link fixes.
 function wcPoke(link,uri){try{location.href=link+(uri?('?uri='+encodeURIComponent(uri)):'');}catch(_){}}
 
 // Getting as far as a pairing URI must not be able to hang. A bad or unreachable relay leaves
@@ -245,7 +236,7 @@ function wcConnect(deepLink){
   // bug back. See wcWarmPair above.
   var warm=wcTakePair();
   var pokedNow=false;
-  if(warm&&warm.res&&warm.res.uri&&deepLink&&isHandheld()){wcPoke(wcLinkFor(deepLink),warm.res.uri);pokedNow=true;}
+  if(warm&&warm.res&&warm.res.uri&&deepLink&&isHandheld()){wcPoke(deepLink,warm.res.uri);pokedNow=true;}
   var proposal=warm
     ? wcTimeout(Promise.resolve(warm.p),20000,'Could not connect to LOBSTR \\u2014 try again')
     : wcClient().then(function(client){
@@ -259,7 +250,7 @@ function wcConnect(deepLink){
         // ("why does it open wallet connect instead of directly opening the Lobstr app", 2026-09-21).
         var wentDirect=pokedNow||!!(res.uri&&deepLink&&isHandheld());
         var closeOpen=function(){};
-        if(wentDirect&&!pokedNow){ wcPoke(wcLinkFor(deepLink),res.uri);
+        if(wentDirect&&!pokedNow){ wcPoke(deepLink,res.uri);
           // The poke happens after the relay handshake, so the tap that started it is spent and the browser
           // may drop the navigation -- with the pairing modal deliberately skipped, that would leave nothing
           // on screen at all. Tapping this IS an activation, so it always works.
