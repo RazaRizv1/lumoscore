@@ -795,7 +795,7 @@ async function assetFacts(assetId){
   try {
     const r = await fetch(
       'https://api.stellar.expert/explorer/public/asset?search=' + encodeURIComponent(assetId) + '&limit=5',
-      { cf: { cacheTtl: SEO_CACHE_TTL, cacheEverything: true } });
+      { cf: { cacheTtlByStatus: { '200-299': SEO_CACHE_TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     if (!r.ok) return null;
     const d = await r.json();
     const recs = (d && d._embedded && d._embedded.records) || [];
@@ -926,7 +926,7 @@ async function learnImgDims(env, url){
     const kv = env && env.CONTENT_KV; if (!kv) return;
     const id = mediaIdOf(url); if (!id) return;
     if (await kv.get(DIM_KEY + id, 'json')) return;   // already known
-    const r = await fetch(url, { headers: { range: 'bytes=0-65535' }, cf: { cacheTtl: 300 } });
+    const r = await fetch(url, { headers: { range: 'bytes=0-65535' }, cf: { cacheTtlByStatus: { '200-299': 300, '300-399': 0, '400-599': 0 } } });
     if (!r.ok && r.status !== 206) return;
     const d = parseImgDims(new Uint8Array(await r.arrayBuffer()));
     if (!d || !(d.w > 0) || !(d.h > 0)) return;
