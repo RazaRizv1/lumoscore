@@ -56,7 +56,7 @@ export async function onRequestGet(ctx) {
   // falls through to the padded-logo version below.
   try {
     const stat = await fetch(url.origin + '/assets/og/' + encodeURIComponent(asset) + '.png', {
-      cf: { cacheTtl: TTL, cacheEverything: true },
+      cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true },
     });
     if (stat.ok && (stat.headers.get('content-type') || '').indexOf('image/') === 0) {
       const out = new Response(stat.body, {
@@ -79,7 +79,9 @@ export async function onRequestGet(ctx) {
     r = await fetch(src, {
       headers: { accept: 'image/*' },
       cf: {
-        cacheTtl: TTL,
+        // 2xx only. A 429 or 5xx from the logo host used to be pinned here for the full TTL, which no
+        // client retry could escape -- the same defect that froze the holders panel.
+        cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 },
         cacheEverything: true,
         image: {
           width: W,

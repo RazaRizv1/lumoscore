@@ -99,7 +99,7 @@ async function pull(feed) {
     const t = setTimeout(() => ctl.abort(), FETCH_MS);
     const r = await fetch(feed.url, {
       signal: ctl.signal,
-      cf: { cacheTtl: TTL, cacheEverything: true },
+      cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true },
       headers: { 'user-agent': 'LumosCore/1.0 (+https://lumoscore.com)', accept: 'application/rss+xml, application/xml, text/xml, */*' },
     });
     clearTimeout(t);

@@ -52,7 +52,7 @@ async function j(path, ttl = UPSTREAM_TTL) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const host = HOSTS[attempt % HOSTS.length];
     try {
-      const r = await fetch(host + path, { cf: { cacheTtl: ttl, cacheEverything: true } });
+      const r = await fetch(host + path, { cf: { cacheTtlByStatus: { '200-299': ttl, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
       if (r.status === 429) { await sleep(700 * (attempt + 1)); continue; }
       if (!r.ok) { await sleep(200); continue; }
       return r.json();
@@ -148,7 +148,7 @@ async function volumeOverlay() {
     let d = null;
     try {
       const r = await fetch(XPERT + '?limit=' + PAGE + '&cursor=' + p * PAGE,
-        { headers: { accept: 'application/json' }, cf: { cacheTtl: UPSTREAM_TTL, cacheEverything: true } });
+        { headers: { accept: 'application/json' }, cf: { cacheTtlByStatus: { '200-299': UPSTREAM_TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
       diag.status = r.status;
       if (r.ok) d = await r.json(); else if (!diag.stop) diag.stop = 'http ' + r.status;
     } catch (e) { diag.err = String((e && e.message) || e).slice(0, 120); }

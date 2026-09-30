@@ -69,7 +69,7 @@ async function siteTag(token, explicit) {
   }
   const r = await fetch(SITES, {
     headers: { authorization: 'Bearer ' + token },
-    cf: { cacheTtl: 86400, cacheEverything: true },
+    cf: { cacheTtlByStatus: { '200-299': 86400, '300-399': 0, '400-599': 0 }, cacheEverything: true },
   });
   if (!r.ok) throw new Error('could not identify the Web Analytics site: GraphQL discovery returned nothing and the site list gave ' + r.status);
   const d = await r.json();

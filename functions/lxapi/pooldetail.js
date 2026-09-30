@@ -40,7 +40,7 @@ async function hz(path) {
   for (let attempt = 0; attempt < 4; attempt++) {
     const host = HOSTS[attempt % HOSTS.length];
     try {
-      const r = await fetch(host + path, { cf: { cacheTtl: TTL, cacheEverything: true } });
+      const r = await fetch(host + path, { cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
       if (r.status === 429) { await new Promise((s) => setTimeout(s, 500 * (attempt + 1))); continue; }
       if (!r.ok) { await new Promise((s) => setTimeout(s, 200)); continue; }
       return r.json();

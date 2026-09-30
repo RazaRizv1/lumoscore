@@ -29,7 +29,7 @@ const KEY = new Request('https://lumoscore.internal/lxapi/movers', { method: 'GE
 
 async function j(origin, path) {
   try {
-    const r = await fetch(origin + path, { cf: { cacheTtl: TTL, cacheEverything: true } });
+    const r = await fetch(origin + path, { cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     if (!r.ok) return null;
     return await r.json();
   } catch (_) { return null; }
