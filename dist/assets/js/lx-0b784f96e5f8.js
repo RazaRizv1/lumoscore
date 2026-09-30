@@ -209,17 +209,17 @@
     function open() {
       popup.classList.add('open');
       document.body.style.overflow = 'hidden';
-      setTimeout(() => input.focus(), 50);
+      setTimeout(() => { if (input) input.focus(); }, 50);
       render();
     }
     function close() {
       popup.classList.remove('open');
       document.body.style.overflow = '';
-      input.value = '';
+      if (input) input.value = '';
       currentQuery = '';
       activeFilter = null;
       filterBtns.forEach(b => b.classList.remove('active'));
-      clearBtn.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'none';
     }
     window._openSearchPopup = open;
     window._closeSearchPopup = close;
@@ -237,8 +237,9 @@
         );
       }
       // Render asset count
-      assetCount.textContent = `(${assets.length})`;
+      if (assetCount) assetCount.textContent = `(${assets.length})`;
       // Build HTML
+      if (!assetList) return;
       if (assets.length === 0) {
         assetList.innerHTML = '<div class="sp-empty">No assets match your search.</div>';
       } else {
@@ -266,7 +267,7 @@
     }
 
     // Wire input
-    input.addEventListener('input', (e) => {
+    if (input) input.addEventListener('input', (e) => {
       currentQuery = e.target.value;
       render();
     });
@@ -283,16 +284,16 @@
           activeFilter = chain;
           filterBtns.forEach(b => b.classList.toggle('active', b === btn));
         }
-        clearBtn.style.display = activeFilter ? '' : 'none';
+        if (clearBtn) clearBtn.style.display = activeFilter ? '' : 'none';
         render();
       });
     });
 
     // Clear filter
-    clearBtn.addEventListener('click', () => {
+    if (clearBtn) clearBtn.addEventListener('click', () => {
       activeFilter = null;
       filterBtns.forEach(b => b.classList.remove('active'));
-      clearBtn.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'none';
       render();
     });
 

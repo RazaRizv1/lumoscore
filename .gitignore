@@ -56,6 +56,10 @@ npm-debug.log*
 *_LOCK_*/
 _FINAL_*/
 _MAINNET_MIGRATION_*/
+# Container snapshots taken before a risky transform run. 714 MB across two folders on 2026-09-29,
+# and they hold whole copies of the source containers — the one thing this repo deliberately does not
+# carry. Anchored and directory-only, per the leading-slash warning above.
+/_BAK_*/
 _scrap/
 dist/_scrap/
 

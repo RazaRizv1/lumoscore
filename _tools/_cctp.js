@@ -770,9 +770,28 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
         var feePathP = sourceSpec.native ? Promise.resolve(null) : lxStrictPath(C,sourceSpec,feeAmt.toFixed(7),{native:true});
         return feePathP.then(function(pFee){ return usdcBal().then(function(before){ return acc().then(function(ad){
           var src=lxAssetOf(S,sourceSpec);
-          var feeOp = sourceSpec.native
+          // A FEE TOO SMALL TO ROUTE MUST NOT FAIL THE WHOLE BRIDGE.
+          //
+          // RAZA, 2026-09-29: bridging 0.001 LUMOS to Base died at "Collect bridge fee" with
+          // {"transaction":"tx_failed","operations":["op_success","op_too_few_offers"]}. The first
+          // operation is the user's swap and it SUCCEEDED; the second is this fee path payment and
+          // it did not, so the whole atomic transaction rolled back. At the LUMOS holder rate the
+          // fee on 0.001 is 0.0000010 -- ten stroops. No orderbook can fill a path payment that
+          // small, so destMin can never be met and the op fails every time. Any dust-sized bridge
+          // hits it.
+          //
+          // Skipping the op is SAFE FOR THE BOOKS, which is the thing to check before touching fee
+          // code. swapAmt is already srcAmt*(1-feeRate), so the slice was never added to the swap:
+          // dropping the op leaves it sitting in the user's own wallet. Nothing is deducted and not
+          // collected -- the failure mode that got Smart Swap removed on 2026-09-04. This is the
+          // same trade the line below already makes when the collector is the user.
+          //
+          // 1e-5 XLM is the floor: below that the path's output rounds away and the op is doomed.
+          // The platform forgoes a fraction of a stroop rather than failing a real transfer.
+          var feeRoutable = sourceSpec.native ? (feeAmt > 0) : !!(pFee && +pFee.out >= 1e-5);
+          var feeOp = !feeRoutable ? null : (sourceSpec.native
             ? S.Operation.payment({destination:C.feeCollector,asset:S.Asset.native(),amount:feeAmt.toFixed(7)})
-            : S.Operation.pathPaymentStrictSend({sendAsset:src,sendAmount:feeAmt.toFixed(7),destination:C.feeCollector,destAsset:S.Asset.native(),destMin:(pFee.out*0.97).toFixed(7),path:lxToAssets(S,pFee.path)});
+            : S.Operation.pathPaymentStrictSend({sendAsset:src,sendAmount:feeAmt.toFixed(7),destination:C.feeCollector,destAsset:S.Asset.native(),destMin:(pFee.out*0.97).toFixed(7),path:lxToAssets(S,pFee.path)}));
           // If the account has no USDC trustline yet (e.g. a fresh wallet), establish it in the SAME tx so the
           // swap can deliver USDC — otherwise the path payment fails with op_no_trust.
           var hasUsdcTrust=(ad.balances||[]).some(function(b){ return b.asset_code==="USDC" && b.asset_issuer===UI; });
@@ -781,9 +800,9 @@ function lxCctpBridgeFull(destDomain, sourceAmountHuman, recipient, sourceSpec, 
           var _tb2=_tbb.addOperation(S.Operation.pathPaymentStrictSend({sendAsset:src,sendAmount:swapAmt.toFixed(7),destination:pk,destAsset:new S.Asset("USDC",UI),destMin:(pSwap.out*0.97).toFixed(7),path:lxToAssets(S,pSwap.path)}));
           // same self-payment rule as the USDC path: paying the fee to yourself only costs a network fee
           // and fabricates a revenue row, so leave the slice in the user's wallet instead
-          if(C.feeCollector!==pk) _tb2=_tb2.addOperation(feeOp);
+          if(C.feeCollector!==pk && feeOp) _tb2=_tb2.addOperation(feeOp);
           var tb=_tb2.setTimeout(300).build();
-          return signSubmit(tb,"swap+fee").then(function(sr){ /* the fee rides in this transaction: it is what the registry verifies */ try{ if(C.feeCollector!==pk) deferredFeeHash=(sr&&(sr.hash||sr.id))||""; }catch(_){}
+          return signSubmit(tb,"swap+fee").then(function(sr){ /* the fee rides in this transaction: it is what the registry verifies */ try{ if(C.feeCollector!==pk && feeOp) deferredFeeHash=(sr&&(sr.hash||sr.id))||""; }catch(_){}
             // HOW MUCH THE SWAP DELIVERED, FROM THE TRANSACTION ITSELF. This used to read the USDC balance once,
             // straight after the submit, and subtract. Horizon answers from several replicas, and the one that
             // accepted the transaction is not always the one asked next -- so the read could predate the swap,

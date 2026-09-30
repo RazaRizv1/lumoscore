@@ -7,7 +7,7 @@
     { ic:'PHX', col:'linear-gradient(135deg,#f43f5e,#be123c)', nm:'Wrapped Bitcoin', sb:'WBTC', p:'0.0₄13 APT', p2:'≈ $0.0₅18', c24:'-3.21', xlm:'523.45 APT', usd:'1.2M WBTC · ≈ $216.00' },
     { ic:'PAXG', col:'linear-gradient(135deg,#a855f7,#6d28d9)', nm:'PAX Gold', sb:'PAXG · Utility', p:'2.11 APT', p2:'≈ $0.87', c24:'+5.42', xlm:'51.02 APT', usd:'24.18 PAXG · ≈ $21.04' },
   ];
-  const tbody = document.getElementById('assetsTable') || document.createElement('tbody');
+  const tbody = document.getElementById('assetsTable');
   assets.forEach((a, i) => {
     const c24 = parseFloat(a.c24);
     const isUp = c24 > 0;
@@ -56,7 +56,7 @@
     const SP = sPts.map((p,i) => [i*stp, h-((p-smin)/srng)*(h-8)-4]);
     const path = SP.map((p,i) => (i===0?'M':'L')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');
     const ar = path + ` L ${w} ${h} L 0 ${h} Z`;
-    const color = isZero ? '#a5a4ac' : (isUp ? '#35c07f' : '#ff5b5b');
+    const color = isZero ? '#9a9aa3' : (isUp ? '#16a34a' : '#dc2626');
     const gid = 'sg'+i;
     sp.innerHTML = `
       <defs><linearGradient id="${gid}" x1="0" x2="0" y1="0" y2="1">
@@ -238,18 +238,18 @@
 
     // Sample dataset for the popup (decoupled from other page data)
     const allAssets = [
-      { chain:'stellar', tk:'LUMOS',  nm:'LUMOS',  domain:'lumosdao.io', ic:'L', col:'#ea6a2c', price:'0.000713 APT', priceUsd:'$0.000108725', mc:'$1.09M', c24:'-7.12', addr:'0x0dd2…cfb8' },
-      { chain:'stellar', tk:'CELL',   nm:'Cellana', domain:null, ic:'A', col:'#6f5ded', price:'0.0042 APT',     priceUsd:'$0.00173', mc:'$48.2M', c24:'+24.8', addr:'0x0a5f…1b46' },
-      { chain:'stellar', tk:'USDC',   nm:'USD Coin', domain:'circle.com', ic:'U', col:'#2775ca', price:'0.7449 APT', priceUsd:'$1.00', mc:'$5.1M', c24:'+0.01', addr:'0x0159…5919' },
-      { chain:'stellar', tk:'GUI',   nm:'Gui Inu', domain:null, ic:'K', col:'#f5a623', price:'0.018 APT', priceUsd:'$0.0074', mc:'$2.4M', c24:'+12.4', addr:'0x0cb5…89f6' },
-      { chain:'stellar', tk:'MOD',   nm:'Move Dollar', domain:null, ic:'N', col:'#6b4ff2', price:'0.0₄17 APT', priceUsd:'$0.0₅22', mc:'$298K', c24:'+184', addr:'0x0aec…38bc', isNew:true },
+      { chain:'stellar', tk:'LUMOS',  nm:'LUMOS',  domain:'lumosdao.io', ic:'L', col:'#ea6a2c', price:'0.000713 APT', priceUsd:'$0.000108725', mc:'$1.09M', c24:'-7.12', addr:'0x00ff…ac7c' },
+      { chain:'stellar', tk:'CELL',   nm:'Cellana', domain:null, ic:'A', col:'#6f5ded', price:'0.0042 APT',     priceUsd:'$0.00173', mc:'$48.2M', c24:'+24.8', addr:'0x0b2c…8a27' },
+      { chain:'stellar', tk:'USDC',   nm:'USD Coin', domain:'circle.com', ic:'U', col:'#2775ca', price:'0.7449 APT', priceUsd:'$1.00', mc:'$5.1M', c24:'+0.01', addr:'0x088f…bf74' },
+      { chain:'stellar', tk:'GUI',   nm:'Gui Inu', domain:null, ic:'K', col:'#f5a623', price:'0.018 APT', priceUsd:'$0.0074', mc:'$2.4M', c24:'+12.4', addr:'0x02b6…5b75' },
+      { chain:'stellar', tk:'MOD',   nm:'Move Dollar', domain:null, ic:'N', col:'#6b4ff2', price:'0.0₄17 APT', priceUsd:'$0.0₅22', mc:'$298K', c24:'+184', addr:'0x04e5…1acb', isNew:true },
       { chain:'stellar', tk:'APT',    nm:'Aptos Coin', domain:'aptosfoundation.org', ic:'X', col:'#000000', price:'1.00 APT', priceUsd:'$0.4128', mc:'$12.6B', c24:'+2.34', addr:'native' },
-      { chain:'stellar', tk:'RION',   nm:'Hyperion', domain:null, ic:'G', col:'#8b5cf6', price:'0.024 APT', priceUsd:'$0.0099', mc:'$1.8M', c24:'+15.7', addr:'0x0acf…836e' },
-      { chain:'xrpl', tk:'LUMOS',     nm:'LUMOS',  domain:'lumosdao.io', ic:'L', col:'#ea6a2c', price:'0.4128 aBTC', priceUsd:'$0.928', mc:'$2.1M', c24:'-3.4', addr:'0x0d5a…148f' },
+      { chain:'stellar', tk:'RION',   nm:'Hyperion', domain:null, ic:'G', col:'#8b5cf6', price:'0.024 APT', priceUsd:'$0.0099', mc:'$1.8M', c24:'+15.7', addr:'0x0d3d…48c3' },
+      { chain:'xrpl', tk:'LUMOS',     nm:'LUMOS',  domain:'lumosdao.io', ic:'L', col:'#ea6a2c', price:'0.4128 aBTC', priceUsd:'$0.928', mc:'$2.1M', c24:'-3.4', addr:'0x0bb9…e28c' },
       { chain:'xrpl', tk:'aBTC',       nm:'aBTC', domain:'echo-protocol.xyz', ic:'X', col:'#f7931a', price:'1.00 aBTC', priceUsd:'$2.18', mc:'$124B', c24:'+3.4', addr:'native' },
-      { chain:'xrpl', tk:'MOD',      nm:'Move Dollar', domain:'thala.fi', ic:'S', col:'#6b4ff2', price:'0.0651 aBTC', priceUsd:'$0.142', mc:'$94M', c24:'+8.6', addr:'0x0d28…cbc9' },
-      { chain:'xrpl', tk:'MOD',       nm:'Move Dollar', domain:null, ic:'C', col:'#6b4ff2', price:'0.000962 aBTC', priceUsd:'$0.0021', mc:'$1.2M', c24:'+18.2', addr:'0x038e…019b' },
-      { chain:'xrpl', tk:'GUI',       nm:'Gui Inu', domain:null, ic:'E', col:'#f5a623', price:'0.0011 aBTC', priceUsd:'$0.0024', mc:'$420K', c24:'+9.1', addr:'0x0b87…23d3' },
+      { chain:'xrpl', tk:'MOD',      nm:'Move Dollar', domain:'thala.fi', ic:'S', col:'#6b4ff2', price:'0.0651 aBTC', priceUsd:'$0.142', mc:'$94M', c24:'+8.6', addr:'0x09e3…ef54' },
+      { chain:'xrpl', tk:'MOD',       nm:'Move Dollar', domain:null, ic:'C', col:'#6b4ff2', price:'0.000962 aBTC', priceUsd:'$0.0021', mc:'$1.2M', c24:'+18.2', addr:'0x004b…f7ba' },
+      { chain:'xrpl', tk:'GUI',       nm:'Gui Inu', domain:null, ic:'E', col:'#f5a623', price:'0.0011 aBTC', priceUsd:'$0.0024', mc:'$420K', c24:'+9.1', addr:'0x0c80…6081' },
     ];
 
     let activeFilter = null;
@@ -258,17 +258,17 @@
     function open() {
       popup.classList.add('open');
       document.body.style.overflow = 'hidden';
-      setTimeout(() => input.focus(), 50);
+      setTimeout(() => { if (input) input.focus(); }, 50);
       render();
     }
     function close() {
       popup.classList.remove('open');
       document.body.style.overflow = '';
-      input.value = '';
+      if (input) input.value = '';
       currentQuery = '';
       activeFilter = null;
       filterBtns.forEach(b => b.classList.remove('active'));
-      clearBtn.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'none';
     }
     window._openSearchPopup = open;
     window._closeSearchPopup = close;
@@ -286,8 +286,9 @@
         );
       }
       // Render asset count
-      assetCount.textContent = `(${assets.length})`;
+      if (assetCount) assetCount.textContent = `(${assets.length})`;
       // Build HTML
+      if (!assetList) return;
       if (assets.length === 0) {
         assetList.innerHTML = '<div class="sp-empty">No assets match your search.</div>';
       } else {
@@ -315,7 +316,7 @@
     }
 
     // Wire input
-    input.addEventListener('input', (e) => {
+    if (input) input.addEventListener('input', (e) => {
       currentQuery = e.target.value;
       render();
     });
@@ -332,16 +333,16 @@
           activeFilter = chain;
           filterBtns.forEach(b => b.classList.toggle('active', b === btn));
         }
-        clearBtn.style.display = activeFilter ? '' : 'none';
+        if (clearBtn) clearBtn.style.display = activeFilter ? '' : 'none';
         render();
       });
     });
 
     // Clear filter
-    clearBtn.addEventListener('click', () => {
+    if (clearBtn) clearBtn.addEventListener('click', () => {
       activeFilter = null;
       filterBtns.forEach(b => b.classList.remove('active'));
-      clearBtn.style.display = 'none';
+      if (clearBtn) clearBtn.style.display = 'none';
       render();
     });
 
@@ -601,7 +602,7 @@
           const label = (btn.textContent || '').trim();
           // Only show toast for copy actions
           if (label === 'Copy issuer address' || label === 'Copy pool address') {
-            try { navigator.clipboard && navigator.clipboard.writeText('0x0bb54b8bb53759c0767cb7f8013cb790fef33ef2c3ff57de13628bef7a127f6c'); } catch (err) {}
+            try { navigator.clipboard && navigator.clipboard.writeText('0x0c8a4b57bc9fa65c00537e8b3c48d2ae89b9c1ffb013ce94e1af408461c58790'); } catch (err) {}
             if (window.showToast) window.showToast(label.replace('Copy ', '') + ' copied to clipboard');
           }
           // Other actions (View pool details, Tx history, View asset, etc.) just close the menu silently
@@ -732,34 +733,34 @@
     // Activity data (25 entries spanning today, yesterday, earlier)
     const allActivities = [
       // Today · May 23
-      { day: 'Today · May 23, 2026', kind:'received', type:'Received USDT', meta:'From 0x0222…02b2 · 13:14', amt:'+500 USDT', amtSub:'≈ $7.42', status:'success', statusLabel:'Confirmed' },
+      { day: 'Today · May 23, 2026', kind:'received', type:'Received USDT', meta:'From 0x0e5d…c932 · 13:14', amt:'+500 USDT', amtSub:'≈ $7.42', status:'success', statusLabel:'Confirmed' },
       { day: 'Today · May 23, 2026', kind:'swap', type:'Swap APT → USDC', meta:'Rate 6.81 · 12:42', amt:'+50 USDC', amtSub:'−340.5 APT', status:'success', statusLabel:'Filled' },
       { day: 'Today · May 23, 2026', kind:'order', type:'Limit order placed · APT/USDT', meta:'Buy 10K USDT @ 0.0142 · 11:30', amt:'Pending', amtSub:'0% filled', status:'pending', statusLabel:'Pending' },
-      { day: 'Today · May 23, 2026', kind:'send', type:'Sent APT', meta:'To 0x043f…8e53 · 10:55', amt:'−240 APT', amtSub:'≈ $99.07', status:'success', statusLabel:'Confirmed' },
+      { day: 'Today · May 23, 2026', kind:'send', type:'Sent APT', meta:'To 0x0877…6e7f · 10:55', amt:'−240 APT', amtSub:'≈ $99.07', status:'success', statusLabel:'Confirmed' },
       { day: 'Today · May 23, 2026', kind:'lp', type:'Added liquidity · APT/USDC', meta:'+48 LP tokens · 09:18', amt:'+48 LP', amtSub:'$1,239 deposited', status:'success', statusLabel:'Confirmed' },
       { day: 'Today · May 23, 2026', kind:'received', type:'Received APT', meta:'From rN7n…fzRH · 08:42', amt:'+1,250 APT', amtSub:'≈ $515.99', status:'success', statusLabel:'Confirmed' },
       // Yesterday · May 22
       { day: 'Yesterday · May 22, 2026', kind:'swap', type:'Swap APT → USDT', meta:'Rate 0.0142 · 22:13', amt:'+8,452 USDT', amtSub:'−120 APT', status:'success', statusLabel:'Filled' },
       { day: 'Yesterday · May 22, 2026', kind:'received', type:'Received CELL airdrop', meta:'From Cellana Protocol · 19:00', amt:'+1,250 CELL', amtSub:'≈ $2.16', status:'success', statusLabel:'Confirmed' },
       { day: 'Yesterday · May 22, 2026', kind:'order', type:'Limit order filled · APT/USDC', meta:'Sell 500 APT @ 0.4128 · 17:42', amt:'+206.4 USDC', amtSub:'−500 APT', status:'success', statusLabel:'Filled' },
-      { day: 'Yesterday · May 22, 2026', kind:'trustline', type:'Trustline added · GUI', meta:'0x089c…d5e3 · 16:30', amt:'—', amtSub:'+0.5 APT reserve', status:'success', statusLabel:'Confirmed' },
+      { day: 'Yesterday · May 22, 2026', kind:'trustline', type:'Trustline added · GUI', meta:'0x01cc…acc2 · 16:30', amt:'—', amtSub:'+0.5 APT reserve', status:'success', statusLabel:'Confirmed' },
       { day: 'Yesterday · May 22, 2026', kind:'lp', type:'Claimed LP rewards', meta:'LUMOS/APT pool · 14:08', amt:'+12.4 APT', amtSub:'≈ $5.12', status:'success', statusLabel:'Confirmed' },
-      { day: 'Yesterday · May 22, 2026', kind:'send', type:'Sent USDC', meta:'To 0x0eaa…60c7 · 12:15', amt:'−100 USDC', amtSub:'≈ $100.00', status:'success', statusLabel:'Confirmed' },
+      { day: 'Yesterday · May 22, 2026', kind:'send', type:'Sent USDC', meta:'To 0x07ad…909f · 12:15', amt:'−100 USDC', amtSub:'≈ $100.00', status:'success', statusLabel:'Confirmed' },
       { day: 'Yesterday · May 22, 2026', kind:'order', type:'Limit order cancelled · APT/WBTC', meta:'Buy 100K WBTC · 10:18', amt:'Cancelled', amtSub:'0% filled', status:'cancelled', statusLabel:'Cancelled' },
       // May 21
       { day: 'May 21, 2026', kind:'swap', type:'Swap USDC → APT', meta:'Rate 2.42 · 21:48', amt:'+483 APT', amtSub:'−200 USDC', status:'success', statusLabel:'Filled' },
       { day: 'May 21, 2026', kind:'received', type:'Received LUMOS', meta:'Token mint · 20:00', amt:'+10,000 LUMOS', amtSub:'≈ $7.13', status:'success', statusLabel:'Confirmed' },
       { day: 'May 21, 2026', kind:'lp', type:'Added liquidity · LUMOS/APT', meta:'+34 LP tokens · 18:42', amt:'+34 LP', amtSub:'$462 deposited', status:'success', statusLabel:'Confirmed' },
-      { day: 'May 21, 2026', kind:'send', type:'Sent USDT', meta:'To 0x036b…a806 · 15:30', amt:'−2,000 USDT', amtSub:'≈ $29.68', status:'success', statusLabel:'Confirmed' },
+      { day: 'May 21, 2026', kind:'send', type:'Sent USDT', meta:'To 0x003f…dd9e · 15:30', amt:'−2,000 USDT', amtSub:'≈ $29.68', status:'success', statusLabel:'Confirmed' },
       { day: 'May 21, 2026', kind:'order', type:'Limit order placed · USDC/EURC', meta:'Buy 50 EURC @ 1.16 · 12:00', amt:'Pending', amtSub:'0% filled', status:'pending', statusLabel:'Pending' },
       // May 20
       { day: 'May 20, 2026', kind:'received', type:'Received APT', meta:'From rDexX…7B2P · 22:15', amt:'+2,800 APT', amtSub:'≈ $1,155.84', status:'success', statusLabel:'Confirmed' },
       { day: 'May 20, 2026', kind:'swap', type:'Swap APT → CELL', meta:'Rate 238.1 · 19:32', amt:'+11,905 CELL', amtSub:'−50 APT', status:'success', statusLabel:'Filled' },
       { day: 'May 20, 2026', kind:'lp', type:'Removed liquidity · APT/USDC', meta:'−24 LP tokens · 17:08', amt:'+382 APT', amtSub:'+157 USDC', status:'success', statusLabel:'Confirmed' },
-      { day: 'May 20, 2026', kind:'trustline', type:'Trustline added · USDC', meta:'0x0225…9851 · 14:42', amt:'—', amtSub:'+0.5 APT reserve', status:'success', statusLabel:'Confirmed' },
+      { day: 'May 20, 2026', kind:'trustline', type:'Trustline added · USDC', meta:'0x04a6…2bce · 14:42', amt:'—', amtSub:'+0.5 APT reserve', status:'success', statusLabel:'Confirmed' },
       // May 19
       { day: 'May 19, 2026', kind:'order', type:'Limit order filled · APT/CELL', meta:'Sell 500 APT @ 240 · 20:00', amt:'+120,000 CELL', amtSub:'−500 APT', status:'success', statusLabel:'Filled' },
-      { day: 'May 19, 2026', kind:'send', type:'Sent APT', meta:'To 0x04f3…1c82 · 15:42', amt:'−800 APT', amtSub:'≈ $330.24', status:'success', statusLabel:'Confirmed' },
+      { day: 'May 19, 2026', kind:'send', type:'Sent APT', meta:'To 0x019a…285e · 15:42', amt:'−800 APT', amtSub:'≈ $330.24', status:'success', statusLabel:'Confirmed' },
       { day: 'May 19, 2026', kind:'received', type:'Received GUI', meta:'From Kale Foundation · 12:08', amt:'+5,000 GUI', amtSub:'≈ $37.20', status:'success', statusLabel:'Confirmed' },
     ];
 
