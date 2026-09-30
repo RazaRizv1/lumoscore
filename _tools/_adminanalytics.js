@@ -38,9 +38,18 @@ const MAIN = `
         <div class="lxan-kpi"><div class="lxan-kl">Bots filtered</div><div class="lxan-kv" id="lxanBots">&mdash;</div><div class="lxan-kd" id="lxanBotsD"></div><div class="lxan-kf">crawler page views, left out of every figure here</div></div>
       </div>
 
+      <div class="lxan-recon" id="lxanRecon" hidden></div>
+
       <div class="adm-card lxan-card" style="margin-bottom:18px">
         <div class="adm-card-head"><div><div class="adm-card-title" id="lxanChartT">Traffic over time</div><div class="adm-card-sub" id="lxanChartSub"></div></div>
-          <div class="lxan-legend"><span><i class="lxan-key"></i>Page views</span><span><i class="lxan-key vis"></i>Visits</span></div></div>
+          <div class="lxan-chartctl">
+            <select class="lxan-sel" id="lxanMetric" aria-label="What the chart shows">
+              <option value="traffic">Page views &amp; visits</option>
+              <option value="per">Pages per visit</option>
+              <option value="bounce">Bounce rate</option>
+            </select>
+            <div class="lxan-legend" id="lxanLegend"><span><i class="lxan-key"></i>Page views</span><span><i class="lxan-key vis"></i>Visits</span></div>
+          </div></div>
         <div class="adm-card-body"><div class="lxan-area" id="lxanChart"></div></div>
       </div>
 
@@ -85,6 +94,11 @@ const MAIN = `
         </div>
       </div>
 
+      <div class="adm-card lxan-card" style="margin-bottom:18px">
+        <div class="adm-card-head"><div><div class="adm-card-title">Exit rate by page</div><div class="adm-card-sub" id="lxanExitSub">the share of each page&rsquo;s views that ended the visit &middot; highest first</div></div></div>
+        <div class="adm-card-body" style="padding:0"><div id="lxanExits" class="lxan-box"><div class="lxadm-empty">Loading&hellip;</div></div></div>
+      </div>
+
       <div class="lxan-about" id="lxanAbout"></div>
 `;
 
@@ -103,7 +117,7 @@ const CSS = `<style id="lx-adminanalytics-css">
 /* ONE SIZE FOR EVERY SHORT TEXT (RAZA 2026-09-22: "keep the text size of all the short text same and equal"): card notes,
    comparisons, subtitles, list shares, legends, city notes, the map key and the about box all use --lxan-s. Rows read
    one step larger (--lxan-r) because they are the content. */
-.lxan-scope,.lxan-kpis,.lxan-card,.lxan-about,.lxan-drawer,.lxan-dim{--lxan-s:15.5px;--lxan-r:16px;--lxan-l:13.5px}
+.lxan-scope,.lxan-kpis,.lxan-card,.lxan-about,.lxan-drawer,.lxan-dim,.lxan-recon{--lxan-s:15.5px;--lxan-r:16px;--lxan-l:13.5px}
 .lxan-seg{display:inline-flex;padding:3px;border-radius:11px;background:rgba(127,127,140,.12);border:1px solid var(--border)}
 .lxan-seg button{appearance:none;border:0;background:transparent;color:var(--text-muted);font:700 14.5px/1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.04em;padding:8px 13px;border-radius:8px;cursor:pointer}
 .lxan-seg button.on{background:var(--accent,#ea6a2c);color:#fff}
@@ -171,6 +185,10 @@ const CSS = `<style id="lx-adminanalytics-css">
 .lxan-name .m{color:var(--text-muted);font-size:var(--lxan-s)}
 .lxan-n{flex:0 0 auto;min-width:44px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:var(--lxan-r);color:var(--text)}
 .lxan-pc{flex:0 0 58px;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--lxan-s);color:var(--text-muted)}
+/* Unique visitors beside the page views. Muted and narrower than .lxan-n so the two read as a pair
+   with the views as the headline figure, not as two competing numbers. */
+.lxan-vis{flex:0 0 auto;min-width:46px;text-align:right;font-variant-numeric:tabular-nums;font-size:var(--lxan-s);color:var(--text-muted)}
+.lxan-vis b{font-weight:700;color:var(--text-muted)}
 .lxan-track{flex:0 0 72px;height:6px;border-radius:3px;background:rgba(127,127,140,.16);overflow:hidden}
 .lxan-fill{height:100%;background:var(--accent,#ea6a2c);border-radius:3px}
 .lxan-link{cursor:pointer}
@@ -246,6 +264,84 @@ const CSS = `<style id="lx-adminanalytics-css">
 .lxan-d2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 @media (max-width:640px){.lxan-d2{grid-template-columns:1fr}}
 .lxan-dload{padding:40px 0;text-align:center;font-size:var(--lxan-s);color:var(--text-muted)}
+/* WHAT THE CHART IS SHOWING. The select sits where the legend was and the legend moves under it, so the head
+   keeps one right-hand column instead of growing a third. */
+.lxan-chartctl{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.lxan-sel{appearance:none;border:1px solid var(--border);background:var(--surface,#16161b);color:var(--text);
+  font:700 14.5px/1 "Hanken Grotesk",system-ui,sans-serif;padding:9px 30px 9px 12px;border-radius:10px;cursor:pointer;
+  background-image:linear-gradient(45deg,transparent 50%,currentColor 50%),linear-gradient(135deg,currentColor 50%,transparent 50%);
+  background-position:calc(100% - 15px) calc(50% + 1px),calc(100% - 10px) calc(50% + 1px);background-size:5px 5px,5px 5px;background-repeat:no-repeat}
+.lxan-sel:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:2px}
+.lxan-key.per{background:#8b7bff}.lxan-key.bnc{background:#e2a13b}
+/* THE TWO COUNTS, SIDE BY SIDE. Cloudflare's figures and LumosCore's own are different numbers for the same
+   window, and leaving the reader to discover that from two cards is what made them look like a contradiction. */
+.lxan-recon{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:-6px 0 18px;padding:11px 16px;
+  border:1px dashed var(--border);border-radius:12px;font-size:var(--lxan-s);line-height:1.5;color:var(--text-muted)}
+.lxan-recon b{color:var(--text);font-variant-numeric:tabular-nums}
+.lxan-recon .s{display:flex;align-items:center;flex-wrap:wrap;gap:4px 7px;min-width:0}
+.lxan-recon .s i{width:7px;height:7px;border-radius:50%;background:var(--text-muted);flex:0 0 auto}
+.lxan-recon .s.own i{background:var(--accent,#ea6a2c)}
+.lxan-recon .w{flex:1 1 100%;font-size:var(--lxan-s)}
+/* the exit-rate column, wider than .lxan-pc because it carries a label */
+.lxan-ex{flex:0 0 auto;min-width:56px;text-align:right;font-variant-numeric:tabular-nums;font-weight:700;font-size:var(--lxan-r);color:var(--text)}
+.lxan-srcsum{padding:11px 16px 4px 64px;font-size:var(--lxan-s);line-height:1.5;color:var(--text-muted)}
+.lxan-srcsum b{color:var(--text);font-variant-numeric:tabular-nums}
+.lxan-srch{padding:12px 16px 4px 64px;font:700 var(--lxan-l)/1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.07em;
+  text-transform:uppercase;color:var(--text-muted)}
+
+/* ---- NARROW SCREENS (RAZA 2026-09-29: "Also improve admin panel on mobile, the page is breaking") -------------
+   Every one of these is a fixed width that had no room: the KPI grid's 190px minimum forced a second column at
+   360px, the live rows carried four fixed-width columns beside the name, the boxes were 520px tall inside a
+   viewport shorter than that, and the drawer's 4-up KPI grid ran off the side. Laid out for the width that
+   exists rather than scaled down. */
+/* THE SHELL, NOT JUST THIS PAGE. The grid is 56px + 1fr, and a 1fr track still refuses to go below
+   its content's own minimum -- so one unbreakable line anywhere inside pushed the track past the
+   viewport and the WHOLE admin panel scrolled sideways, which is the breakage in RAZA's screenshot
+   (the live rows ran off the right edge). min-width:0 lets the track do what 1fr was meant to do, and
+   the desktop padding, which is a fifth of a 390px screen, comes down to something a phone can spare. */
+@media (max-width:760px){
+  /* Every direct child, not a list of them: the footer carries no class at all, and it was the one
+     holding the track open. Tested in the page -- with this the grid resolves to 56 + 334.4 in a 390px
+     viewport and the document stops scrolling sideways. */
+  .admin-shell>*{min-width:0}
+  .admin-main{padding-left:14px;padding-right:14px}
+  .admin-header{padding-left:14px;padding-right:14px}
+  .admin-page-head{flex-wrap:wrap;gap:10px}
+  .lxan-scope,.lxan-kpis,.lxan-card,.lxan-about,.lxan-drawer,.lxan-dim,.lxan-recon{--lxan-s:14px;--lxan-r:15px;--lxan-l:12.5px}
+  .lxan-recon .s{flex:1 1 100%}
+  .lxan-kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .lxan-kpi{padding:13px 14px}
+  .lxan-kv{font-size:24px}
+  .lxan-spark{display:none}
+  .lxan-card .adm-card-head{flex-wrap:wrap}
+  .lxan-chartctl{align-items:flex-start;width:100%;flex-direction:row;justify-content:space-between;flex-wrap:wrap}
+  .lxan-legend{flex-wrap:wrap;white-space:normal}
+  .lxan-box,.lxan-box-geo{height:auto;max-height:66vh}
+  .lxan-quad{grid-template-columns:1fr}
+  .lxan-row{gap:9px;padding:10px 12px}
+  .lxan-track{flex-basis:44px}
+  .lxan-pc{flex-basis:44px}
+  .lxan-cities .lxan-row,.lxan-jrn .lxan-row{padding-left:30px}
+  .lxan-cnote,.lxan-srcsum,.lxan-srch{padding-left:30px;padding-right:12px}
+  /* the live rows: the session id and the device class are the two that can go -- where and what page cannot */
+  .lxan-live .lxan-id,.lxan-live .lxan-dev{display:none}
+  .lxan-ago{min-width:0}
+  .lxan-livebig{font-size:24px}
+  .lxan-donutwrap{flex-wrap:wrap}
+  .lxan-donutwrap svg{flex-basis:104px;width:104px;height:104px}
+  .lxan-chrow{grid-template-columns:92px 1fr auto}
+  .lxan-chrow .v{min-width:0}
+  .lxan-mapkey{flex-wrap:wrap}
+  .lxan-dk{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .lxan-drawer{width:100%}
+  .lxan-dh{padding:14px 14px}
+  .lxan-db{padding:14px 14px 24px}
+}
+@media (max-width:360px){
+  .lxan-kpis{grid-template-columns:1fr}
+  .lxan-track{display:none}
+  .lxan-vis{min-width:0}
+}
 </style>`;
 
 
@@ -339,13 +435,19 @@ function sources(d){
 function pageName(k){ return k==="/"?"/ <span class='m'>(home)</span>":esc(k); }
 
 function buckets(d){
-  var map={}; (d.series||[]).forEach(function(x){ map[String(x.t||"").slice(0,d.hourly?13:10)]=x; });
+  var cut=d.hourly?13:10;
+  var map={}; (d.series||[]).forEach(function(x){ map[String(x.t||"").slice(0,cut)]=x; });
+  // OUR OWN sessions and bounces for the same buckets, keyed the same way -- the endpoint writes them in
+  // Cloudflare's own datetimeHour / date shape so the two line up without a second date parser here.
+  var om={}; (((d.own||{}).series)||[]).forEach(function(x){ om[String(x.t||"").slice(0,cut)]=x; });
   var out=[], end=new Date(d.end), t=new Date(d.start);
   if(d.hourly){ t.setUTCMinutes(0,0,0); t=new Date(t.getTime()+3600000); }
   else { t=new Date(Date.UTC(t.getUTCFullYear(),t.getUTCMonth(),t.getUTCDate())); t=new Date(t.getTime()+86400000); }
   var step=d.hourly?3600000:86400000, n=0;
-  while(t<=end&&n<400){ var key=t.toISOString().slice(0,d.hourly?13:10); var x=map[key]||{views:0,visits:0};
-    out.push({t:new Date(t.getTime()),views:x.views||0,visits:x.visits||0}); t=new Date(t.getTime()+step); n++; }
+  while(t<=end&&n<400){ var key=t.toISOString().slice(0,cut); var x=map[key]||{views:0,visits:0}; var o=om[key]||null;
+    out.push({t:new Date(t.getTime()),views:x.views||0,visits:x.visits||0,
+      sessions:o?(o.sessions||0):0,bounces:o?(o.bounces||0):0,ownViews:o?(o.views||0):0});
+    t=new Date(t.getTime()+step); n++; }
   return out;
 }
 function when(b,hourly,long){ return hourly
@@ -392,6 +494,91 @@ function areaChart(el,d,H0){
   hit.addEventListener("mousemove",show); hit.addEventListener("mouseleave",hide);
   hit.addEventListener("touchstart",function(e){ if(e.touches&&e.touches[0]) show(e.touches[0]); },{passive:true});
 }
+// A RATE OVER TIME (RAZA 2026-09-29: "i also want to see how Avg pages / visit has improved/declined overtime.
+// Add a dropdown on top right side where i could switch to the chart for avg pages/visit and also bounce rate").
+//
+// Deliberately NOT the same function as the traffic chart, because a rate is not a count and drawing it the same
+// way would be wrong in two specific places. An area under a ratio means nothing -- the filled region would
+// invite reading it as a total -- so this is a line with a marked point per bucket and no fill. And a bucket
+// with no visits in it has NO VALUE, not a value of zero: an hour with nobody on the site did not have a 0%
+// bounce rate. Those buckets are left unplotted, which is also why every plotted bucket carries a visible dot --
+// without them a run between two distant points would read as measured data rather than as a gap.
+//
+// Bounce rate comes from LumosCore's own record (Cloudflare has no session, so it cannot be asked); pages per
+// visit is Cloudflare's own two figures divided, so it covers the whole period either way.
+var METRICS={
+  per:{title:"Pages per visit",sub:"page views divided by visits",color:"#8b7bff",legend:"Pages per visit",
+    src:"Cloudflare",top:null,
+    val:function(b){ return b.visits>0?(b.views/b.visits):null; },
+    fmt:function(v){ return v.toFixed(2); },
+    why:function(b){ return b.views>0?"page views but no visits recorded":"no traffic"; }},
+  bounce:{title:"Bounce rate",sub:"visits that left after one page",color:"#e2a13b",legend:"Bounce rate",
+    src:"LumosCore\\u2019s own record",top:100,
+    val:function(b){ return b.sessions>0?(b.bounces/b.sessions*100):null; },
+    fmt:function(v){ return v.toFixed(0)+"%"; },
+    why:function(){ return "no visits recorded"; }}
+};
+function rateChart(el,d,spec,H0){
+  if(!el) return; var bs=buckets(d);
+  var vals=bs.map(function(b){ return spec.val(b); });
+  var have=vals.filter(function(v){ return v!=null; });
+  if(!have.length){ el.innerHTML="<div class='lxadm-empty'>Nothing to measure in this period"
+    +(spec.top===100?(" \\u2014 "+esc(sinceText(d.own))):"")+".</div>"; return; }
+  var u=++UID, W=Math.max(360,Math.round(el.clientWidth||1000)),H=H0||280,L=54,R=14,T=16,Bm=34,iw=W-L-R,ih=H-T-Bm,n=bs.length;
+  var top=spec.top||nice(Math.max.apply(null,have));
+  function X(i){ return L+(n===1?iw/2:i*iw/(n-1)); } function Y(v){ return T+ih-(Math.max(0,Math.min(top,v))/top)*ih; }
+  var pts=[]; vals.forEach(function(v,i){ if(v!=null) pts.push([X(i),Y(v)]); });
+  var g="";
+  for(var k=0;k<=4;k++){ var y=(T+ih*k/4).toFixed(1);
+    g+="<line class='gl' x1='"+L+"' x2='"+(W-R)+"' y1='"+y+"' y2='"+y+"'/><text class='ax' x='"+(L-8)+"' y='"+(+y+4)+"' text-anchor='end'>"+esc(spec.fmt(top*(1-k/4)))+"</text>"; }
+  var kx=Math.min(7,n), xl="";
+  for(var j=0;j<kx;j++){ var ix=Math.round(j*(n-1)/Math.max(1,kx-1)); xl+="<text class='ax' x='"+X(ix).toFixed(1)+"' y='"+(H-8)+"' text-anchor='"+(j===0?"start":j===kx-1?"end":"middle")+"'>"+esc(when(bs[ix],d.hourly,false))+"</text>"; }
+  var dots=pts.map(function(p){ return "<circle cx='"+p[0].toFixed(1)+"' cy='"+p[1].toFixed(1)+"' r='"+(pts.length>60?2:3)+"' fill='"+spec.color+"'/>"; }).join("");
+  el.innerHTML="<svg viewBox='0 0 "+W+" "+H+"' role='img' aria-label='"+esc(spec.title)+" over time'>"+g+xl
+    +(pts.length>1?("<path d='"+smooth(pts,T,T+ih)+"' fill='none' stroke='"+spec.color+"' stroke-width='2.2' stroke-linejoin='round' stroke-linecap='round'/>"):"")
+    +dots
+    +"<line class='xh' x1='0' x2='0' y1='"+T+"' y2='"+(T+ih).toFixed(1)+"' style='display:none'/>"
+    +"<circle class='dv' r='4.5' fill='"+spec.color+"' stroke='#fff' stroke-width='1.5' style='display:none'/>"
+    +"<rect class='hit' x='"+L+"' y='"+T+"' width='"+iw+"' height='"+ih+"' fill='transparent'/></svg><div class='lxan-atip'></div>";
+  var svg=q("svg",el), hit=q(".hit",el), tip=q(".lxan-atip",el), xh=q(".xh",el), dv=q(".dv",el);
+  function hide(){ xh.style.display=dv.style.display="none"; tip.style.opacity="0"; }
+  function show(e){ var r=svg.getBoundingClientRect(); if(!r.width) return; var x=(e.clientX-r.left)/r.width*W;
+    var i=Math.max(0,Math.min(n-1,Math.round((x-L)/iw*(n-1)))), b=bs[i], v=vals[i], xx=X(i).toFixed(1);
+    xh.setAttribute("x1",xx); xh.setAttribute("x2",xx); xh.style.display="";
+    if(v!=null){ dv.setAttribute("cx",xx); dv.setAttribute("cy",Y(v).toFixed(1)); dv.style.display=""; } else dv.style.display="none";
+    var det=(spec.top===100)?(num(b.bounces)+" of "+num(b.sessions)+" visits"):(num(b.views)+" views / "+num(b.visits)+" visits");
+    tip.innerHTML="<div style='opacity:.7;margin-bottom:2px'>"+esc(when(b,d.hourly,true))+"</div>"
+      +(v!=null?("<div><i style='background:"+spec.color+"'></i>"+esc(spec.fmt(v))+"</div><div style='opacity:.7'>"+esc(det)+"</div>")
+               :("<div style='opacity:.7'>"+esc(spec.why(b))+"</div>"));
+    tip.style.left=Math.max(9,Math.min(91,X(i)/W*100))+"%"; tip.style.opacity="1"; }
+  hit.addEventListener("mousemove",show); hit.addEventListener("mouseleave",hide);
+  hit.addEventListener("touchstart",function(e){ if(e.touches&&e.touches[0]) show(e.touches[0]); },{passive:true});
+}
+// One place decides what the chart card shows, so the selector, the title, the subtitle and the legend can
+// never drift apart.
+var METRIC="traffic";
+try{ var ms=localStorage.getItem("lx.admin.anMetric"); if(ms&&(ms==="traffic"||METRICS[ms])) METRIC=ms; }catch(_){}
+function paintChart(d){
+  var el=q("#lxanChart"); if(!el||!d) return;
+  var sel=q("#lxanMetric"); if(sel&&sel.value!==METRIC) sel.value=METRIC;
+  var spec=METRICS[METRIC];
+  if(!spec){
+    var bs=buckets(d), peak=bs.reduce(function(a,b){ return b.views>((a&&a.views)||0)?b:a; },null);
+    setT("#lxanChartT",d.hourly?"Traffic by hour":"Traffic by day");
+    setT("#lxanChartSub",(peak&&peak.views?("busiest: "+when(peak,d.hourly,true)+" \\u00b7 "+num(peak.views)+" views"):"no traffic in this period")+" \\u00b7 hover the chart for each "+(d.hourly?"hour":"day"));
+    setH("#lxanLegend","<span><i class='lxan-key'></i>Page views</span><span><i class='lxan-key vis'></i>Visits</span>");
+    areaChart(el,d); return;
+  }
+  setT("#lxanChartT",spec.title+(d.hourly?" by hour":" by day"));
+  // The overall figure for the period stated beside the chart, so the line is read against a number rather
+  // than only against its own shape.
+  var o=(d.own||{}).cur||null, overall=null;
+  if(METRIC==="bounce"){ if(o&&o.sessions>0) overall=o.bounces/o.sessions*100; }
+  else if(d.visits>0) overall=d.pageViews/d.visits;
+  setT("#lxanChartSub",(overall!=null?(spec.fmt(overall)+" over the whole period \\u00b7 "):"")+spec.sub+" \\u00b7 "+spec.src);
+  setH("#lxanLegend","<span><i class='lxan-key "+(METRIC==="bounce"?"bnc":"per")+"'></i>"+esc(spec.legend)+"</span>");
+  rateChart(el,d,spec);
+}
 function sparkline(el,vals,color){
   if(!el) return; if(!vals||vals.length<2){ el.innerHTML=""; return; }
   var mx=Math.max.apply(null,vals)||1, n=vals.length, pts=vals.map(function(v,i){ return [i*100/(n-1),30-(v/mx)*27-1.5]; });
@@ -437,11 +624,24 @@ function countries(el,d){
   var cities=(d.own&&d.own.cities)||{}, max=rows.reduce(function(m,r){ return Math.max(m,r.count||0); },0)||1, tot=d.pageViews||0;
   el.innerHTML="<div class='lxan-rows'>"+rows.map(function(r){
     var cc=String(r.key||"").toUpperCase(), w=Math.max(2,Math.round((r.count/max)*100)), nc=(cities[cc]||[]).length;
+    // UNIQUE VISITORS PER COUNTRY. Cloudflare's country breakdown is page views only, which is why
+    // the row used to end at a single number. Our own counter already records one row per view with
+    // a session id, and the endpoint already returns COUNT(DISTINCT sid) per city -- summing those
+    // for the country gives the visitors behind those views. Nothing new is queried.
+    //
+    // It is rendered as "N visitors" next to the view count rather than replacing it, and it is
+    // muted, because the two come from different sources: views from Cloudflare (people only, and
+    // only where its beacon loaded) and visitors from LumosCore's own counter, which started later.
+    // Presenting them as one matched pair would imply a precision neither has.
+    var vis=(cities[cc]||[]).reduce(function(a,c){ return a+(+c.sessions||0); },0);
     return "<div class='lxan-row lxan-ctry' tabindex='0' role='button' aria-expanded='false' data-cc='"+esc(cc)+"'>"
       +"<span class='lxan-chev'>\\u25b6</span>"+flag(cc)
       +"<div class='lxan-name'>"+esc(cname(cc))+(nc?" <span class='m'>\\u00b7 "+nc+" "+(nc===1?"city":"cities")+"</span>":"")+"</div>"
       +"<div class='lxan-track'><div class='lxan-fill' style='width:"+w+"%'></div></div>"
-      +"<div class='lxan-pc'>"+pctTxt(tot>0?r.count/tot*100:0)+"</div><div class='lxan-n'>"+num(r.count)+"</div></div>";
+      +"<div class='lxan-pc'>"+pctTxt(tot>0?r.count/tot*100:0)+"</div>"
+      +"<div class='lxan-vis' title='unique visitors from this country, counted by LumosCore'>"
+      +(vis>0?("<b>"+num(vis)+"</b> vis"):"\\u2014")+"</div>"
+      +"<div class='lxan-n' title='page views, from Cloudflare'>"+num(r.count)+"</div></div>";
   }).join("")+"</div><div class='lxan-pager'><span>"+num(rows.length)+" "+(rows.length===1?"country":"countries")+"</span><span>cities: counted by LumosCore "+esc(sinceText(d.own))+"</span></div>";
   flagFallback(el);
   if(!el.__cw){ el.__cw=1;
@@ -471,11 +671,20 @@ function toggleCountry(el,row){
 // What each site lets the browser send decides what can be shown, and the note says so rather than leaving a gap:
 // t.co sends the exact short link of the post's link (and X search finds the post from it); forums and blogs send
 // their page; search engines send no search words at all (encrypted search), and AI assistants send only their address.
+// ONE SHORT LINE, NOT A PARAGRAPH (RAZA 2026-09-29: "instead of giving me proper info, its showing long messages
+// that are absolutely unnecessary. Fix it and show me real data"). These used to be three- and four-sentence
+// explanations of why a figure was missing, printed where the figures should have been -- and for Search and AI
+// assistants, which is most of the list, they were the ONLY thing in the panel. The limitation is still worth
+// stating once, in a clause; the room belongs to the data.
 var SRC_NOTE={
-  Search:"Search engines (Google, Bing, DuckDuckGo) have not passed the searched words to websites since search went encrypted, so no website can see which query brought a visit. Those searches are only in Google Search Console \\u2014 connecting it would show them here.",
-  "AI assistants":"AI assistants send only their own address, not the conversation or question behind the link.",
-  Direct:"A direct visit has no link behind it: the address was typed, bookmarked, or opened from an app, a message or an email.",
+  Search:"Search words are encrypted \\u2014 no website receives the query behind a search visit.",
+  "AI assistants":"AI assistants send their address only, never the conversation behind the link.",
+  Direct:"No link behind these: typed, bookmarked, or opened from an app, message or email.",
   Social:"", "Other sites":""};
+function ago2(ts){ if(!ts) return ""; var s=Math.max(0,Math.round((Date.now()-ts)/1000));
+  if(s<90) return "just now"; var m=Math.round(s/60); if(m<60) return m+" mins ago";
+  var hr=Math.round(m/60); if(hr<36) return hr+(hr===1?" hour ago":" hours ago");
+  var dd=Math.round(hr/24); return dd+(dd===1?" day ago":" days ago"); }
 function toggleSource(box,row){
   var open=row.classList.toggle("open"); row.setAttribute("aria-expanded",open?"true":"false");
   var nx=row.nextElementSibling; if(nx&&nx.classList.contains("lxan-srcd")) nx.parentNode.removeChild(nx);
@@ -483,23 +692,49 @@ function toggleSource(box,row){
   var host=row.getAttribute("data-ref")||"", ch=channelOf(host)||"Other sites";
   var det=document.createElement("div"); det.className="lxan-cities lxan-srcd";
   row.parentNode.insertBefore(det,row.nextSibling);
-  if(ch==="Direct"){ det.innerHTML="<div class='lxan-cnote'>"+SRC_NOTE.Direct+"</div>"; return; }
-  det.innerHTML="<div class='lxan-cnote'>Reading the links from "+esc(host)+"\\u2026</div>";
+  det.innerHTML="<div class='lxan-cnote'>Reading "+esc(host==="(none)"?"direct visits":host)+"\\u2026</div>";
   fetch("/lxapi/analytics?range="+encodeURIComponent(RANGE)+"&refhost="+encodeURIComponent(host)+(box.__ctx?("&path="+encodeURIComponent(box.__ctx)):"")+"&t="+Date.now())
     .then(function(r){ return r.json(); }).then(function(d){
       if(!det.parentNode) return;
-      if(!d||d.error){ det.innerHTML="<div class='lxan-cnote'>Could not read the links: "+esc((d&&(d.messages&&d.messages.join("; ")||d.error))||"no answer")+"</div>"; return; }
+      if(!d||(d.error&&!d.own)){ det.innerHTML="<div class='lxan-cnote'>Could not read this source: "+esc((d&&(d.messages&&d.messages.join("; ")||d.error))||"no answer")+"</div>"; return; }
       var rows=(d.refPaths||[]).slice().sort(function(a,b){ return b.visits-a.visits; });
       var withPath=rows.filter(function(r){ return r.ref&&r.ref!=="/"; });
-      var html=rows.map(function(r){ var hasP=r.ref&&r.ref!=="/", url="https://"+host+(hasP?r.ref:"/");
-        var label=hasP?(host+r.ref):(host+" <span class='m'>(address only)</span>");
-        var extra=(host==="t.co"&&hasP)?(" \\u00b7 <a href='https://x.com/search?q="+encodeURIComponent("https://t.co"+r.ref)+"&f=live' target='_blank' rel='noopener noreferrer'>find the post on X \\u2197</a>"):"";
-        return "<div class='lxan-row'><div class='lxan-name' style='white-space:normal'>"+(hasP?("<a href='"+esc(url)+"' target='_blank' rel='noopener noreferrer'>"+esc(host+r.ref)+"</a>"):label)+extra
-          +" <span class='m'>\\u2192 "+esc(r.landing||"/")+"</span></div><div class='lxan-n' title='visits'>"+num(r.visits)+"</div></div>"; }).join("");
-      var note=SRC_NOTE[ch]||((rows.length&&!withPath.length)?("This site shares only its address with the browser, not the page the link was on."):"");
-      if(host==="t.co"&&withPath.length) note="Each t.co link is the short link X puts on a post. \\u201cFind the post on X\\u201d searches X for it; a post that has been deleted or is private will not show.";
-      det.innerHTML=(html||"<div class='lxan-cnote'>No individual links recorded for this period.</div>")+(note?"<div class='lxan-cnote'>"+note+"</div>":"");
-    }).catch(function(e){ if(det.parentNode) det.innerHTML="<div class='lxan-cnote'>Could not read the links: "+esc(e.message)+"</div>"; });
+      var html="";
+
+      // WHERE THESE PEOPLE LANDED, from our own record. This is the half that is exact and the half that was
+      // missing: which page the source actually delivers people to, how many of them there were, and when the
+      // last one arrived. It is here for every source, including the ones Cloudflare can say nothing about.
+      var own=d.own||null;
+      if(own&&!own.error&&(own.sessions>0||own.views>0)){
+        html+="<div class='lxan-srcsum'><b>"+num(own.sessions)+"</b> visit"+(own.sessions===1?"":"s")
+          +" \\u00b7 <b>"+num(own.views)+"</b> page view"+(own.views===1?"":"s")
+          +(own.last?(" \\u00b7 last "+esc(ago2(own.last))):"")+" \\u00b7 LumosCore\\u2019s own count, exact</div>";
+        var land=(own.landing||[]).filter(function(r){ return r.visits>0; });
+        if(land.length){
+          var lmx=land[0].visits||1;
+          html+="<div class='lxan-srch'>Pages they arrived on</div>"+land.map(function(r){
+            return "<div class='lxan-row'><div class='lxan-name' title='"+esc(r.path)+"'>"+pageName(r.path)+"</div>"
+              +"<div class='lxan-track'><div class='lxan-fill' style='width:"+Math.max(2,Math.round(r.visits/lmx*100))+"%'></div></div>"
+              +"<div class='lxan-n' title='visits that started here'>"+num(r.visits)+"</div></div>"; }).join("");
+        }
+      }
+
+      // AND WHICH LINK IT WAS, where the other site let the browser say. Only shown when there is something
+      // to show -- an empty list used to be announced with a sentence of its own.
+      if(rows.length){
+        html+="<div class='lxan-srch'>"+(withPath.length?"Links that brought them":"Referring address")+"</div>"
+          +rows.map(function(r){ var hasP=r.ref&&r.ref!=="/", url="https://"+host+(hasP?r.ref:"/");
+            var label=hasP?(host+r.ref):(esc(host)+" <span class='m'>(address only)</span>");
+            var extra=(host==="t.co"&&hasP)?(" \\u00b7 <a href='https://x.com/search?q="+encodeURIComponent("https://t.co"+r.ref)+"&f=live' target='_blank' rel='noopener noreferrer'>find the post on X \\u2197</a>"):"";
+            return "<div class='lxan-row'><div class='lxan-name' style='white-space:normal'>"+(hasP?("<a href='"+esc(url)+"' target='_blank' rel='noopener noreferrer'>"+esc(host+r.ref)+"</a>"):label)+extra
+              +" <span class='m'>\\u2192 "+esc(r.landing||"/")+"</span></div><div class='lxan-n' title='visits'>"+num(r.visits)+"</div></div>"; }).join("");
+      }
+
+      var note=SRC_NOTE[ch]||"";
+      if(host==="t.co"&&withPath.length) note="Each t.co link is the short link X puts on a post; a deleted or private post will not be found.";
+      if(!html) html="<div class='lxan-cnote'>Nothing recorded for this source in this period.</div>";
+      det.innerHTML=html+(note?"<div class='lxan-cnote'>"+note+"</div>":"");
+    }).catch(function(e){ if(det.parentNode) det.innerHTML="<div class='lxan-cnote'>Could not read this source: "+esc(e.message)+"</div>"; });
 }
 function mapPaint(d){
   var wrap=q("#lxanMap"); if(!wrap) return; var svg=q("svg",wrap); if(!svg) return;
@@ -529,6 +764,55 @@ function bounceInto(valEl,deltaEl,noteEl,own,entry){
     if(noteEl) noteEl.textContent=own&&own.error?("could not read our own visit log: "+own.error):("counting "+sinceText(own)+" \\u00b7 no visits recorded yet"); }
 }
 
+// WHY THE TWO COUNTS DISAGREE (RAZA 2026-09-29: "in live section it also shows the count of daily visitors and
+// page views (which is fine), but then, below that section, why does it show a different count for 24h visits and
+// pageviews").
+//
+// They were never the same measurement. The live card counts TODAY -- since midnight UTC -- from LumosCore's own
+// record, which writes a row for every page view. The band below counts the SELECTED RANGE from Cloudflare Web
+// Analytics, which is a rolling window, is sampled and rounded, counts people only, and is missing anyone whose
+// browser or extension blocked its beacon. Two windows and two sources, shown one above the other with nothing
+// saying so.
+//
+// The endpoint already returns our own exact figures for the SAME window the band covers (own.cur), so both can
+// now be stated together. That turns a contradiction into a comparison: same period, two counting methods, and
+// the gap between them is the share Cloudflare's beacon does not see.
+function reconcile(d){
+  var el=q("#lxanRecon"); if(!el) return;
+  var o=(d.own||{}).cur||null;
+  if(!o||(!o.views&&!o.sessions)){ el.hidden=true; el.innerHTML=""; return; }
+  var cfV=d.visits||0, cfP=d.pageViews||0, lbl=RLABEL[d.range||RANGE];
+  var gap=(cfP>0&&o.views>0)?Math.round((o.views-cfP)/cfP*100):null;
+  el.hidden=false;
+  // Short on purpose. The point is the two rows of figures; the sentence only has to stop them
+  // reading as a contradiction.
+  el.innerHTML="<span class='s'><i></i>Cloudflare, "+esc(lbl)+": <b>"+num(cfV)+"</b> visits \\u00b7 <b>"+num(cfP)+"</b> views</span>"
+    +"<span class='s own'><i></i>Our own count, same period: <b>"+num(o.sessions)+"</b> visits \\u00b7 <b>"+num(o.views)+"</b> views</span>"
+    +"<span class='w'>Same window, two counters"
+    +(gap!=null&&Math.abs(gap)>=5?(" ("+(gap>0?"+":"")+gap+"%)"):"")
+    +" \\u2014 Cloudflare samples and misses blocked beacons. Live counts today, from midnight UTC.</span>";
+}
+
+// EXIT RATE BY PAGE (RAZA 2026-09-29: "i also wanna see all the pages Exit rate from highest to lowest").
+// An exit is the last page view of a visit, so this is the share of a page's views after which nobody went
+// anywhere else. Ordered by rate, highest first, exactly as asked -- with the view count beside it, because a
+// 100% exit rate on two views is noise and a reader ranking pages without that number would act on it.
+function exitList(el,d){
+  if(!el) return;
+  var rows=(((d.own||{}).exits)||[]).filter(function(r){ return (r.views||0)>0; });
+  if(!rows.length){ el.innerHTML="<div class='lxadm-empty'>No page views recorded yet \\u2014 exit rate is counted by LumosCore, "+esc(sinceText(d.own))+".</div>"; return; }
+  rows=rows.slice().sort(function(a,b){ var ra=a.exits/a.views, rb=b.exits/b.views; return (rb-ra)||(b.views-a.views); });
+  var tot=rows.reduce(function(a,r){ return a+r.views; },0)||1;
+  el.innerHTML="<div class='lxan-rows'>"+rows.map(function(r){
+    var rate=r.exits/r.views*100;
+    return "<div class='lxan-row lxan-link' tabindex='0' role='button' data-path='"+esc(r.path)+"'>"
+      +"<div class='lxan-name' title='"+esc(r.path)+"'>"+pageName(r.path)+"</div>"
+      +"<div class='lxan-track'><div class='lxan-fill' style='width:"+Math.max(2,Math.round(rate))+"%'></div></div>"
+      +"<div class='lxan-ex' title='share of this page\\u2019s views that ended the visit'>"+rate.toFixed(0)+"%</div>"
+      +"<div class='lxan-pc' title='exits'>"+num(r.exits)+"/"+num(r.views)+"</div></div>";
+  }).join("")+"</div><div class='lxan-pager'><span>"+num(rows.length)+" "+(rows.length===1?"page":"pages")+" \\u00b7 "+num(tot)+" views</span><span>counted by LumosCore "+esc(sinceText(d.own))+"</span></div>";
+}
+
 function render(d){
   LAST=d;
   if(d.range&&RLABEL[d.range]){ RANGE=d.range; qa("#lxanRange button").forEach(function(b){ b.classList.toggle("on",b.getAttribute("data-r")===RANGE); }); }
@@ -540,15 +824,14 @@ function render(d){
   bounceInto(q("#lxanBounce"),q("#lxanBounceD"),q("#lxanBounceF"),d.own,false);
   var bots=d.botViews||0, all=bots+pv; setT("#lxanBots",all>0?((bots/all*100).toFixed(bots/all<0.1?1:0)+"%"):"\\u2014");
   setH("#lxanBotsD",bots>0?("<span class='fl'>"+num(bots)+" crawler views</span>"):"");
-  var bs=buckets(d), peak=bs.reduce(function(a,b){ return b.views>((a&&a.views)||0)?b:a; },null);
-  setT("#lxanChartT",d.hourly?"Traffic by hour":"Traffic by day");
-  setT("#lxanChartSub",(peak&&peak.views?("busiest: "+when(peak,d.hourly,true)+" \\u00b7 "+num(peak.views)+" views"):"no traffic in this period")+" \\u00b7 hover the chart for each "+(d.hourly?"hour":"day"));
-  areaChart(q("#lxanChart"),d);
+  reconcile(d);
+  var bs=buckets(d);
+  paintChart(d);
   sparkline(q("#lxanVisitsS"),bs.map(function(b){ return b.visits; }),C_VISIT); sparkline(q("#lxanViewsS"),bs.map(function(b){ return b.views; }),C_VIEW);
   mapPaint(d); channels(q("#lxanChan"),d); donut(q("#lxanDonut"),d.devices);
   var geo=q("#lxanGeo"); countries(geo,d);
   var nC=(d.countries||[]).filter(function(r){ return (r.count||0)>0; }).length;
-  setT("#lxanGeoSub",nC+" "+(nC===1?"country":"countries")+" \\u00b7 tap one to see its cities");
+  setT("#lxanGeoSub",nC+" "+(nC===1?"country":"countries")+" \\u00b7 visitors \\u00b7 page views \\u00b7 tap one to see its cities");
   list(q("#lxanPages"),d.topPages,pv,pageName,{link:true});
   var src=sources(d), rb=q("#lxanRefs"); if(rb) rb.__ctx=""; list(rb,src,src.reduce(function(a,r){ return a+r.count; },0),refName,{src:true});
   // SAY HOW FAR BACK THIS ACTUALLY SEES. "Every site that sent visitors" over 90D reads as a complete
@@ -569,6 +852,7 @@ function render(d){
   }
   list(q("#lxanBrw"),d.browsers,pv);
   list(q("#lxanOs"),d.systems,pv);
+  exitList(q("#lxanExits"),d);
   setT("#lxanSub","Cloudflare Web Analytics \\u00b7 people only \\u00b7 "+RLABEL[d.range||RANGE]);
   setH("#lxanAbout","<b>About these numbers.</b> Page views, visits, pages, sources, countries, devices, browsers and systems come from Cloudflare Web Analytics, with crawlers taken out. Cloudflare samples and rounds, so small figures arrive in tens, and a period can show page views with no visits \\u2014 that means every page was reached by moving around the site. "
     +"<b>Bounce rate and cities</b> are counted by LumosCore itself, "+esc(sinceText(d.own))+", because Cloudflare's analytics records neither: one anonymous note per page view with the page, where the visit came from, the approximate city Cloudflare attaches to the connection, and a random id that lasts for that browsing session. No IP address, cookie or wallet address is stored.");
@@ -650,8 +934,8 @@ function liveTick(){
         +"<div class='lxan-quiet-m'><b>Nobody on the site right now.</b>"
         +(lt?("<span>Last visitor "+esc(ago(lt.ts))+(where?(" from "+esc(where)):"")+", on <code>"+esc(lt.path||"/")+"</code>.</span>")
              :"<span>No page view has been recorded yet.</span>")+"</div>"
-        +"<div class='lxan-quiet-k'><div><b>"+num(td.sessions||0)+"</b><span>visitors today</span></div>"
-        +"<div><b>"+num(td.views||0)+"</b><span>page views today</span></div></div></div>";
+        +"<div class='lxan-quiet-k'><div><b>"+num(td.sessions||0)+"</b><span>visitors today (UTC)</span></div>"
+        +"<div><b>"+num(td.views||0)+"</b><span>page views today (UTC)</span></div></div></div>";
       if(lt&&lt.country)flagFallback(el);
       return;
     }
@@ -708,6 +992,12 @@ function boot(){
   var seg=q("#lxanRange");
   if(seg&&!seg.__lx){ seg.__lx=1; seg.addEventListener("click",function(e){ var b=e.target&&e.target.closest&&e.target.closest("button[data-r]"); if(!b) return;
     RANGE=b.getAttribute("data-r"); try{ localStorage.setItem("lx.admin.anRange",RANGE); }catch(_){} load(); }); }
+  // Switching what the chart shows never refetches: every metric is already in the answer on screen.
+  var msel=q("#lxanMetric");
+  if(msel&&!msel.__lx){ msel.__lx=1; msel.value=METRIC;
+    msel.addEventListener("change",function(){ METRIC=msel.value||"traffic";
+      try{ localStorage.setItem("lx.admin.anMetric",METRIC); }catch(_){}
+      if(LAST) paintChart(LAST); }); }
   // ONE ROUTER, AT WINDOW CAPTURE (RAZA 2026-09-22: tapping some Top pages rows opened lumoscore-admin.pages.dev/bridge -> 404).
   // The site design carries a navigator that turns a clicked list row whose text looks like a route (/bridge, /dashboard)
   // into a page load, and it runs before any listener on the page itself; only window capture comes earlier

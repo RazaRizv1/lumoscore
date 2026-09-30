@@ -133,13 +133,50 @@ const FAQ = {
 
 };
 
+// The answers used to sit as bare text in a bare div -- no card, no edge, nothing separating one
+// question from the next but a gap. Sixty-four of them stacked that way is a wall. They are cards now,
+// and each question carries an accent "?" so the eye can find where one ends and the next begins.
+//
+// THE "?" IS A CSS `content`, NOT A <span>?</span>, and that is not a stylistic preference: the site's
+// logo healer repaints any element holding 1-5 characters into a ticker logo, so a one-character span
+// here would have been turned into a token badge. `::before` content is invisible to it.
+//
+// `transform-origin:center bottom` + scale on hover rather than a lift, for the reason written out in
+// _prodcards.js: a hover that raises the bottom edge pulls it out from under the pointer, drops the
+// hover, falls back, and flickers. Sixty-four cards is sixty-four chances to hit that.
 const CSS = `<style id="lx-faq-css">
-.lx-faq{max-width:1180px;margin:8px auto 0;padding:38px 24px 46px;border-top:1px solid var(--border)}
-.lx-faq h2{font-size:26px;font-weight:800;letter-spacing:-.01em;color:var(--text);margin:0 0 22px}
-.lx-faq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:22px 34px}
-.lx-faq-q{font-size:16px;font-weight:700;color:var(--text);margin:0 0 7px}
-.lx-faq-a{font-size:14.5px;line-height:1.7;color:var(--text-muted);margin:0}
-@media(max-width:640px){.lx-faq{padding:28px 16px 34px}.lx-faq h2{font-size:21px}}
+.lx-faq{max-width:1180px;margin:8px auto 0;padding:52px 24px 60px;border-top:1px solid var(--border)}
+.lx-faq h2{font-size:clamp(26px,3vw,36px);font-weight:800;letter-spacing:-.02em;color:var(--text);
+ text-align:center;text-wrap:balance;margin:0 0 26px}
+.lx-faq-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
+.lx-faq-item{position:relative;padding:22px 22px 24px;border-radius:16px;
+ border:1px solid var(--border);background:linear-gradient(180deg,var(--surface),var(--bg));
+ transform-origin:center bottom;
+ transition:border-color .2s ease,transform .2s ease,box-shadow .2s ease}
+.lx-faq-item:hover{transform:scale(1.012);border-color:rgba(234,106,44,.42);
+ box-shadow:0 16px 36px -26px rgba(234,106,44,.7)}
+.lx-faq-q{display:grid;grid-template-columns:auto 1fr;gap:11px;align-items:start;
+ font-size:16.5px;font-weight:700;line-height:1.38;color:var(--text);margin:0 0 9px}
+.lx-faq-q::before{content:"?";display:flex;align-items:center;justify-content:center;
+ width:24px;height:24px;border-radius:8px;font-size:14px;font-weight:800;line-height:1;
+ color:var(--accent);background:rgba(234,106,44,.14);border:1px solid rgba(234,106,44,.26)}
+.lx-faq-a{font-size:14.5px;line-height:1.7;color:var(--text-muted);margin:0;padding-left:35px}
+/* The eight category pills needed 1207px in a row against a 1132px strip, so "MCP" wrapped alone onto
+   a second line and read as a mistake. 24px of side padding down to 19 gives back 80px across eight
+   pills, and 12px of gap down to 10 gives 14 more -- about 1113px, one row with room spare.
+   .lx-faq-scoped (0,2,0) ON PURPOSE: _landingsections.js sets these same two properties on the bare
+   .lx-faqtab (0,1,0) and is injected LATER in the document, so an equal-specificity rule here would
+   lose on source order. It also cannot be edited there -- that transform injects the networks header
+   _whylumos.js later replaces, so it can no longer be re-run on its own. These pills exist only on the
+   six landing files, so scoping this globally touches nothing else. */
+.lx-faq .lx-faqtabs{gap:10px}
+.lx-faq .lx-faqtab{padding:13px 19px}
+@media(max-width:900px){.lx-faq .lx-faqtab{padding:11px 16px}}
+@media(max-width:640px){.lx-faq .lx-faqtab{padding:9px 14px}}
+@media(prefers-reduced-motion:reduce){.lx-faq-item,.lx-faq-item:hover{transition:none;transform:none}}
+@media(max-width:640px){.lx-faq{padding:34px 16px 40px}.lx-faq h2{font-size:22px;margin-bottom:20px}
+.lx-faq-grid{gap:14px}.lx-faq-item{padding:18px 17px 19px;border-radius:14px}
+.lx-faq-a{padding-left:0}}
 </'+'style>`.replace("</'+'style>", "</" + "style>");
 
 function esc(s){return (String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')).split(String.fromCharCode(39)).join("&#39;");}
@@ -164,16 +201,23 @@ const GROUPS = [
 ];
 
 const TABCSS = '<style id="lx-faqtabs-css">'
-  + '.lx-faqtabs{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 30px}'
+  // Centred, and tighter than before: at 10px gap and 18px of side padding the eight pills wrapped
+  // with MCP stranded alone on a second row, which reads as a mistake rather than a layout.
+  + '.lx-faqtabs{display:flex;flex-wrap:wrap;gap:9px;margin:0 0 28px;justify-content:center}'
   + '.lx-faqtab{appearance:none;cursor:pointer;font:inherit;font-size:14px;font-weight:700;'
   + 'color:var(--text-soft);background:var(--surface);border:1px solid var(--border);'
-  + 'border-radius:999px;padding:10px 18px;display:inline-flex;align-items:center;gap:8px;'
-  + 'transition:color .16s ease,border-color .16s ease,background .16s ease}'
-  + '.lx-faqtab:hover{color:var(--text);border-color:var(--accent)}'
+  + 'border-radius:999px;padding:9px 16px;display:inline-flex;align-items:center;gap:8px;'
+  + 'transition:color .16s ease,border-color .16s ease,background .16s ease,box-shadow .16s ease}'
+  + '.lx-faqtab:hover{color:var(--text);border-color:rgba(234,106,44,.5)}'
   + '.lx-faqtab span{font-size:12px;font-weight:600;color:var(--text-soft);'
-  + 'background:var(--bg-elev,rgba(127,127,127,.14));border-radius:999px;padding:2px 8px}'
-  + '.lx-faqtab.is-on{color:#fff;background:var(--accent);border-color:var(--accent)}'
-  + '.lx-faqtab.is-on span{color:#fff;background:rgba(255,255,255,.22)}'
+  + 'background:var(--bg-elev,rgba(127,127,127,.14));border-radius:999px;padding:2px 8px;'
+  + 'transition:color .16s ease,background .16s ease}'
+  // The selected pill is the only lit thing in the strip, so it gets a real gradient and a glow
+  // rather than a flat accent fill -- it has to win against seven neighbours at a glance.
+  + '.lx-faqtab.is-on{color:#fff;border-color:transparent;'
+  + 'background:linear-gradient(180deg,#f0813f,var(--accent));'
+  + 'box-shadow:0 8px 22px -10px rgba(234,106,44,.9)}'
+  + '.lx-faqtab.is-on span{color:#fff;background:rgba(255,255,255,.24)}'
   + '.lx-faqtab:focus-visible{outline:2px solid var(--accent);outline-offset:2px}'
   // Panes are hidden with display:none rather than height:0 so a collapsed pane is not focusable and
   // not read out, and so the section does not reserve the tallest group's height.
@@ -221,7 +265,8 @@ function blockGrouped() {
 
   const panes = groups.map(function (g, i) {
     const qs = g.items.map(function (qa) {
-      return '<div><h3 class="lx-faq-q">' + esc(qa[0]) + '</h3><p class="lx-faq-a">' + esc(qa[1]) + '</p></div>';
+      return '<div class="lx-faq-item"><h3 class="lx-faq-q">' + esc(qa[0]) + '</h3>'
+        + '<p class="lx-faq-a">' + esc(qa[1]) + '</p></div>';
     }).join('');
     return '<div class="lx-faq-grid lx-faqpane' + (i === 0 ? ' is-on' : '') + '" id="lxfaq-' + g.id + '"'
       + ' role="tabpanel" data-lxfaqpane="' + g.id + '">' + qs + '</div>';
@@ -255,7 +300,8 @@ function blockGrouped() {
 
 function block(items) {
   const qs = items.map(([q, a]) =>
-    '<div><h3 class="lx-faq-q">' + esc(q) + '</h3><p class="lx-faq-a">' + esc(a) + '</p></div>').join('');
+    '<div class="lx-faq-item"><h3 class="lx-faq-q">' + esc(q) + '</h3>'
+    + '<p class="lx-faq-a">' + esc(a) + '</p></div>').join('');
   const ld = {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',

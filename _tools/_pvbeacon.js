@@ -77,6 +77,32 @@ try{
     }
   }catch(_){}
 
+  // ---- the label, in the language the site was WRITTEN in -----------------------------------------
+  // RAZA 2026-09-29: "There's a visitor from russia, and some of the pages that he's viewing are showing
+  // russian page names in my admin panel (he's probably switches to Russian language) but that shouldn't
+  // affect me. I need everything in English."
+  //
+  // He is right about the cause. Chrome's built-in translator REWRITES THE TEXT NODES of the live page, so
+  // by the time a click happens, el.textContent is whatever the visitor chose to read it in -- and
+  // aria-label and title are translated too. Nothing at click time can undo that: Chrome keeps no copy of
+  // the original in the DOM.
+  //
+  // So the original is taken BEFORE the translator can touch it. Translation is applied after the document
+  // loads, so a sweep at DOMContentLoaded catches the static markup; the two later sweeps catch the parts
+  // of this site that script builds after load. A WeakMap, not a data- attribute: this page is covered in
+  // layers that watch for attribute changes and repaint on them (the logo healer among them), and stamping
+  // every link and button on the page is not worth the risk when a map off to one side does the same job
+  // and is collected with the node.
+  var ORIG=(typeof WeakMap==="function")?new WeakMap():null;
+  function txt(el){ return (el.getAttribute("aria-label")||el.getAttribute("title")||el.textContent||"").replace(/\\s+/g," ").trim().slice(0,80); }
+  function sweep(){ if(!ORIG) return;
+    try{ var els=document.querySelectorAll("a[href],button,[role=button]");
+      for(var i=0;i<els.length&&i<3000;i++){ if(!ORIG.has(els[i])){ var v=txt(els[i]); if(v) ORIG.set(els[i],v); } }
+    }catch(_){} }
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",sweep);
+  else sweep();
+  setTimeout(sweep,2500); setTimeout(sweep,8000);
+
   var last=0, n=0;
   document.addEventListener("click",function(e){
     try{
@@ -84,9 +110,20 @@ try{
       if(t.closest("input,textarea,select,[contenteditable]")) return;
       var el=t.closest("a[href],button,[role=button]"); if(!el) return;
       var now=Date.now(); if(now-last<1000||n>=120) return; last=now; n++;
-      var label=(el.getAttribute("aria-label")||el.getAttribute("title")||el.textContent||"").replace(/\\s+/g," ").trim().slice(0,80);
-      var href="";
-      if(el.tagName==="A"){ try{ var u=new URL(el.getAttribute("href"),location.href); if(u.hostname&&u.hostname.replace(/^www\\./,"")!==h) href=u.hostname.replace(/^www\\./,""); }catch(_){} }
+      var href="", dest="";
+      if(el.tagName==="A"){ try{ var u=new URL(el.getAttribute("href"),location.href);
+        if(u.hostname&&u.hostname.replace(/^www\\./,"")!==h) href=u.hostname.replace(/^www\\./,"");
+        else if(u.pathname) dest=u.pathname; }catch(_){} }
+      // The snapshot first. Then, for anything built after the last sweep, the live text -- but only if it
+      // is still in the script the site is written in; a label that has come back in Cyrillic, Greek, Arabic,
+      // Hebrew or a CJK script is a translation, and the link's own destination (which no translator
+      // rewrites) says the same thing in English. Falling back to the translated text would put the admin
+      // panel back where it started.
+      var label=(ORIG&&ORIG.get(el))||"";
+      if(!label){ var live=txt(el);
+        if(live&&!/[\\u0370-\\u06ff\\u0590-\\u05ff\\u0900-\\u0dff\\u0e00-\\u0eff\\u3040-\\u30ff\\u3400-\\u9fff\\uac00-\\ud7af]/.test(live)) label=live;
+        else if(live&&!dest&&!href) label=live; }
+      if(!label&&dest) label=dest;
       if(!label&&!href) return;
       send({kind:"click",sid:sid,path:location.pathname,label:label,href:href});
     }catch(_){}

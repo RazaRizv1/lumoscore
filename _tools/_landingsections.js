@@ -53,6 +53,10 @@ const CSS = '<style id="lx-landsections">'
   + '.lx-faq h2{font-size:57.2px;letter-spacing:-1px;line-height:1.12;margin:0 0 14px;text-align:center}'
   + '.lx-faq-sub{font-size:19px;line-height:1.6;color:var(--text-muted);margin:0 auto 38px;'
   + 'max-width:720px;text-align:center}'
+  // NOTE: the pill row is tightened in _faq.js, at `.lx-faq .lx-faqtab`, which outranks these two
+  // rules on specificity. This transform cannot be re-run on its own any more -- it injects the
+  // networks-section header that _whylumos.js later replaces wholesale, so running it out of order
+  // would put a stale "networks" heading inside the Why section.
   + '.lx-faqtabs{justify-content:center;gap:12px;margin-bottom:38px}'
   + '.lx-faqtab{font-size:15px;padding:13px 24px}'
   + '.lx-faqtab span{font-size:12.5px;padding:3px 9px}'

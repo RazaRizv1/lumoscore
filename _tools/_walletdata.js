@@ -815,7 +815,24 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // toggles it shut. 400ms is far longer than any duplicate from a single gesture and far shorter than a
 // person deciding to tap again.
 +'function openAssetMenu(m,pick,ev){var ex=document.querySelector(".lx-asset-menu");'
-+'if(ex){ if(ev&&ex.__lxEvt===ev)return; if((Date.now()-(+ex.getAttribute("data-lxopened")||0))<600)return; ex.remove(); return; }var hs=window.__lxHoldings||[];if(!hs.length)return;var menu=document.createElement("div");menu.className="lx-asset-menu lx-hassearch";'
+// THE DEAD CLICK. This used to be a bare `if(!hs.length)return;` -- open the Send modal and click
+// the asset picker before the account's balances have come back from Horizon and the click did
+// NOTHING AT ALL: no menu, no error, no feedback. Measured on the built page: holdings 0 at click,
+// menu not created, and no removal of any kind (a stack-trace instrumentation of remove() and
+// removeChild() caught nothing, which is what ruled out the three rival ".lx-asset-menu" closers).
+//
+// From the reader's side that is indistinguishable from "it opened and shut again", and it is
+// exactly the reported symptom: dead on the first tries, then fine -- because by the third attempt
+// the balances have arrived. It got worse as the wallet load got slower, which is why it surfaced
+// alongside the slow-confirmation report rather than on its own.
+//
+// The click now PENDS instead of dying: the intent is remembered and the menu opens by itself the
+// moment holdings land. Polled rather than hooked because the holdings write happens in several
+// places; 120ms is under the threshold where a delay reads as a broken control. __lxPend keeps a
+// second click from stacking another timer, and the 8s stop means a wallet that never loads leaves
+// no timer running forever. When holdings ARE present -- the normal case -- not one line of this
+// executes and the behaviour is byte-identical to before.
++'if(ex){ if(ev&&ex.__lxEvt===ev)return; if((Date.now()-(+ex.getAttribute("data-lxopened")||0))<600)return; ex.remove(); return; }var hs=window.__lxHoldings||[];if(!hs.length){if(pick&&!pick.__lxPend){pick.__lxPend=1;var _pt=setInterval(function(){if((window.__lxHoldings||[]).length){clearInterval(_pt);pick.__lxPend=0;try{openAssetMenu(m,pick,null);}catch(_){}}},120);setTimeout(function(){clearInterval(_pt);pick.__lxPend=0;},8000);}return;}var menu=document.createElement("div");menu.className="lx-asset-menu lx-hassearch";'
 +'var sw=document.createElement("div");sw.className="lx-am-searchwrap";sw.innerHTML=\'<svg class="lx-am-searchic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>\';var si=document.createElement("input");si.className="lx-am-search";si.placeholder="Search your assets\\u2026";sw.appendChild(si);menu.appendChild(sw);'
 +'var list=document.createElement("div");list.className="lx-am-list";menu.appendChild(list);'
 // item 23: magnitude, not digits. Trailing ".0" is trimmed so 214,000 reads "214K" rather than "214.0K".

@@ -138,9 +138,16 @@ async function gql(token, query, variables) {
 // A bounce is a session with exactly one page view. Missing table or binding -> null, never an error for the page.
 // With a path: the bounce rate of visits that STARTED on that page (the usual "entry page" bounce), and the cities
 // of the people who viewed it.
-async function ownStats(db, startMs, prevStartMs, path) {
+async function ownStats(db, startMs, prevStartMs, path, hourly) {
   if (!db) return null;
   const H = 'lumoscore.com';
+  // The bucket a VISIT belongs to is the one it STARTED in, which is why these group on MIN(ts) of the
+  // session rather than on the row's own timestamp -- a visit that runs from 13:58 to 14:03 is one visit
+  // in the 13:00 bucket, not half a visit in each. The key is written in the same shape Cloudflare's
+  // datetimeHour / date dimensions use, so the page can line the two series up without a second format.
+  const BUCKET = hourly
+    ? "strftime('%Y-%m-%dT%H:00:00Z', t0 / 1000, 'unixepoch')"
+    : "strftime('%Y-%m-%d', t0 / 1000, 'unixepoch')";
   try {
     const now = Date.now();
     const sess = (w0, w1) => (path
@@ -153,7 +160,7 @@ async function ownStats(db, startMs, prevStartMs, path) {
         'SELECT COUNT(*) AS sessions, SUM(CASE WHEN n = 1 THEN 1 ELSE 0 END) AS bounces, SUM(n) AS views '
         + 'FROM (SELECT sid, COUNT(*) AS n FROM pageview WHERE ts >= ?1 AND ts < ?2 AND host = ?3 GROUP BY sid)'
       ).bind(w0, w1, H)).first();
-    const [cur, prev, cities, since, refs] = await Promise.all([
+    const [cur, prev, cities, since, refs, series, exits] = await Promise.all([
       sess(startMs, now + 60000),
       sess(prevStartMs, startMs),
       (path
@@ -165,6 +172,30 @@ async function ownStats(db, startMs, prevStartMs, path) {
       (path
         ? db.prepare("SELECT ref, COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview WHERE ts >= ?1 AND host = ?2 AND path = ?3 AND ref <> '' GROUP BY ref ORDER BY views DESC LIMIT 500").bind(startMs, H, path)
         : db.prepare("SELECT ref, COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions FROM pageview WHERE ts >= ?1 AND host = ?2 AND ref <> '' GROUP BY ref ORDER BY views DESC LIMIT 500").bind(startMs, H)).all(),
+      // BOUNCE RATE AND PAGES-PER-VISIT OVER TIME (RAZA 2026-09-29: "i also want to see how Avg pages / visit
+      // has improved/declined overtime ... and also bounce rate"). Cloudflare's series carries page views and
+      // visits, so pages-per-visit is already derivable from it -- a bounce rate is not, because its dataset has
+      // no session at all. Only this table can bucket it.
+      (path
+        ? db.prepare(
+          'SELECT ' + BUCKET + ' AS t, COUNT(*) AS sessions, SUM(CASE WHEN s.n = 1 THEN 1 ELSE 0 END) AS bounces, SUM(s.n) AS views FROM '
+          + '(SELECT sid, MIN(ts) AS t0, COUNT(*) AS n FROM pageview WHERE ts >= ?1 AND host = ?2 GROUP BY sid) s '
+          + 'WHERE (SELECT x.path FROM pageview x WHERE x.sid = s.sid AND x.ts = s.t0 AND x.host = ?2 LIMIT 1) = ?3 GROUP BY t ORDER BY t'
+        ).bind(startMs, H, path)
+        : db.prepare(
+          'SELECT ' + BUCKET + ' AS t, COUNT(*) AS sessions, SUM(CASE WHEN n = 1 THEN 1 ELSE 0 END) AS bounces, SUM(n) AS views FROM '
+          + '(SELECT sid, MIN(ts) AS t0, COUNT(*) AS n FROM pageview WHERE ts >= ?1 AND host = ?2 GROUP BY sid) GROUP BY t ORDER BY t'
+        ).bind(startMs, H)).all(),
+      // EXIT RATE PER PAGE (RAZA 2026-09-29: "i also wanna see all the pages Exit rate from highest to lowest").
+      // An exit is the LAST page view of a visit, so the exit rate of a page is the share of its views that ended
+      // the visit. Cloudflare has no session, so again this is the only place it can come from. The join is against
+      // one pass over the window rather than a per-row correlated lookup.
+      path ? Promise.resolve(null) : db.prepare(
+        'SELECT p.path AS path, COUNT(*) AS views, COUNT(DISTINCT p.sid) AS sessions, '
+        + 'SUM(CASE WHEN l.sid IS NULL THEN 0 ELSE 1 END) AS exits FROM pageview p '
+        + 'LEFT JOIN (SELECT sid, MAX(ts) AS t FROM pageview WHERE ts >= ?1 AND host = ?2 GROUP BY sid) l '
+        + 'ON l.sid = p.sid AND l.t = p.ts WHERE p.ts >= ?1 AND p.host = ?2 GROUP BY p.path ORDER BY views DESC LIMIT 500'
+      ).bind(startMs, H).all(),
     ]);
     const byCountry = {};
     ((cities && cities.results) || []).forEach((r) => {
@@ -174,7 +205,13 @@ async function ownStats(db, startMs, prevStartMs, path) {
     const pack = (x) => (x ? { sessions: +x.sessions || 0, bounces: +x.bounces || 0, views: +x.views || 0 } : null);
     // the counter went live on lumoscore.com at this moment (main 7c7c7074); before any row exists, that is the honest start
     return { since: since && since.first ? since.first : Date.parse('2026-09-22T16:59:00Z'), cur: pack(cur), prev: pack(prev), cities: byCountry,
-      refs: ((refs && refs.results) || []).map((r) => ({ ref: r.ref, views: r.views, sessions: r.sessions })) };
+      refs: ((refs && refs.results) || []).map((r) => ({ ref: r.ref, views: r.views, sessions: r.sessions })),
+      series: ((series && series.results) || []).map((r) => ({
+        t: r.t, sessions: +r.sessions || 0, bounces: +r.bounces || 0, views: +r.views || 0,
+      })),
+      exits: ((exits && exits.results) || []).map((r) => ({
+        path: r.path, views: +r.views || 0, sessions: +r.sessions || 0, exits: +r.exits || 0,
+      })) };
   } catch (e) {
     return { error: String((e && e.message) || e) };
   }
@@ -277,11 +314,48 @@ export async function onRequestGet({ request, env }) {
 }`;
       const vars = { account: ACCOUNT, site, start: start.toISOString(), end: end.toISOString(), rh: refhost === '(none)' ? '' : refhost };
       if (pathF) vars.path = rp;
+      // WHAT THIS SOURCE ACTUALLY SENT US, from our own table (RAZA 2026-09-29: "instead of giving me proper info,
+      // its showing long messages that are absolutely unnecessary. Fix it and show me real data"). Cloudflare can
+      // only answer "which link was it" -- and for a search engine or an AI assistant the answer is permanently
+      // "just the address", which is how the panel ended up being mostly prose. Our own record cannot say which
+      // link it was either, but it CAN say exactly which pages these people landed on, how many of them there
+      // were, and when they last came: real figures, unsampled, for every source including the ones Cloudflare
+      // rounded away. Entry pages only -- the first view of each visit -- so this is where the source delivers
+      // people, not everywhere they wandered afterwards.
+      const rdb = env && env.ADMIN_DB;
+      const RH = refhost === '(none)' ? '' : refhost;
+      const ownLand = (async () => {
+        if (!rdb) return null;
+        const H4 = 'lumoscore.com';
+        try {
+          const [land, tot] = await Promise.all([
+            rdb.prepare(
+              'SELECT p.path AS path, COUNT(*) AS visits, MAX(p.ts) AS last FROM pageview p '
+              + 'JOIN (SELECT sid, MIN(ts) AS t FROM pageview WHERE ts >= ?1 AND host = ?2 GROUP BY sid) f '
+              + 'ON f.sid = p.sid AND f.t = p.ts WHERE p.ts >= ?1 AND p.host = ?2 AND p.ref = ?3 '
+              + 'GROUP BY p.path ORDER BY visits DESC LIMIT 100'
+            ).bind(start.getTime(), H4, RH).all(),
+            rdb.prepare(
+              "SELECT COUNT(*) AS views, COUNT(DISTINCT sid) AS sessions, MAX(ts) AS last FROM pageview "
+              + 'WHERE ts >= ?1 AND host = ?2 AND ref = ?3'
+            ).bind(start.getTime(), H4, RH).first(),
+          ]);
+          return {
+            views: (tot && +tot.views) || 0, sessions: (tot && +tot.sessions) || 0, last: (tot && tot.last) || null,
+            landing: ((land && land.results) || []).map((r) => ({ path: r.path, visits: +r.visits || 0, last: r.last })),
+          };
+        } catch (e) { return { error: String((e && e.message) || e) }; }
+      })();
       const rr = await fetch(GQL, { method: 'POST', headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' }, body: JSON.stringify({ query: RQ, variables: vars }) });
       const rd = await rr.json();
-      if (rd && rd.errors && rd.errors.length) return json({ error: 'graphql', messages: rd.errors.map((e) => e && e.message).filter(Boolean) }, 200);
+      const own = await ownLand;
+      // A GraphQL refusal no longer blanks the panel: our own figures are the half that is exact, so they are
+      // shown with the error beside them rather than instead of them.
+      if (rd && rd.errors && rd.errors.length) {
+        return json({ range, refhost, own, refPaths: [], messages: rd.errors.map((e) => e && e.message).filter(Boolean) }, 200);
+      }
       const ra = ((((rd || {}).data || {}).viewer || {}).accounts || [])[0] || {};
-      return json({ range, refhost, refPaths: (ra.refPaths || []).map((x) => ({
+      return json({ range, refhost, own, refPaths: (ra.refPaths || []).map((x) => ({
         ref: (x.dimensions && x.dimensions.refererPath) || '', landing: (x.dimensions && x.dimensions.requestPath) || '',
         visits: x.sum ? x.sum.visits : 0, views: x.count,
       })).filter((x) => x.visits > 0) }, 200);
@@ -290,7 +364,7 @@ export async function onRequestGet({ request, env }) {
     // ?path=/trade/stellar -> every figure for that one page (the per-page panel). A path, nothing else, and bounded.
     let path = String(u.searchParams.get('path') || '');
     path = (path.charAt(0) === '/' && path.length <= 300) ? path : '';
-    const ownP = ownStats(env && env.ADMIN_DB, start.getTime(), pstart.getTime(), path);
+    const ownP = ownStats(env && env.ADMIN_DB, start.getTime(), pstart.getTime(), path, hourly);
     const vars = { account: ACCOUNT, site, start: start.toISOString(), end: end.toISOString(), pstart: pstart.toISOString(), ...(path ? { path } : {}) };
     const lvars = { account: ACCOUNT, site, start: vars.start, end: vars.end, ...(path ? { path } : {}) };
     // the two halves together; if Cloudflare refuses the lists (they are the expensive half), ask again for shorter ones

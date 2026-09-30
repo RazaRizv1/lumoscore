@@ -594,8 +594,53 @@ function lxLpConfirmLaunch(d){
   });
 }
 
+// A WIZARD STEP WITH NO STATE BEHIND IT MUST NOT LEAVE THE DESIGN'S MOCK TOKEN ON SCREEN.
+//
+// Both lxLpWireReview and lxLpWireConfirm used to return early when their storage key was missing,
+// which left the finalized page exactly as the designer drew it. Measured on /launchpad/review with
+// localStorage cleared: "Stellar Coin", ticker $XLM, a description about the chaotic energy of solar
+// storms, a Total Cost of 173.50 XLM, a Balance of 842.16 XLM, and a "Paying from" of 0x03ce...e9b9
+// -- an ETHEREUM address, on a Stellar launch page.
+//
+// The dangerous part is not the copy. The affordability gate that disables the primary button lives
+// BELOW that early return, so it never ran: "Confirm & Launch" measured aria-disabled null,
+// pointer-events auto, opacity 1, and it is a plain <a href="/launchpad/confirm"> -- one click
+// carried the reader from a fabricated review to a fabricated confirmation, both looking exactly
+// like a real launch.
+//
+// This is reachable three ways: deep-linking the step, reloading after the draft was cleared, and
+// -- the one that will actually bite a real user -- a draft that never saved, because
+// lxLpSaveDraft's localStorage.setItem sits in a bare catch that swallows a quota error, which is
+// precisely what a large icon payload provokes.
+//
+// Children are HIDDEN rather than removed: the lie comes off the screen, and anything else that
+// queries these nodes still finds them.
+function lxLpNoState(kind){
+  if(document.body.__lxLpEmpty) return; document.body.__lxLpEmpty=true;
+  var host=document.querySelector("main.page")||document.querySelector(".main")||document.body;
+  var isRev=kind==="review";
+  var wrap=document.createElement("div");
+  wrap.id="lx-lp-empty";
+  wrap.style.cssText="max-width:560px;margin:0 auto;padding:72px 24px 96px;text-align:center";
+  var h=document.createElement("h1");
+  h.textContent=isRev?"Nothing to review yet":"No launch to show";
+  h.style.cssText="font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1.2;margin:0 0 12px;color:var(--text,#f6f5f3)";
+  var p=document.createElement("p");
+  p.textContent=isRev
+    ?"This step shows the token you filled in on the previous screen. There is no launch in progress in this browser, so there is nothing to check here."
+    :"This step shows the result of a launch you have just completed. No recent launch was found in this browser.";
+  p.style.cssText="font-size:15.5px;line-height:1.65;margin:0 0 26px;color:var(--text-muted,#b8b8c2)";
+  var a=document.createElement("a");
+  a.href="/launchpad";
+  a.textContent=isRev?"Start a launch":"Go to the launchpad";
+  a.style.cssText="display:inline-block;padding:12px 22px;border-radius:999px;background:var(--accent,#ea6a2c);color:#fff;font-weight:700;font-size:15px;text-decoration:none";
+  wrap.appendChild(h); wrap.appendChild(p); wrap.appendChild(a);
+  try{ [].slice.call(host.children).forEach(function(c){ if(c.id!=="lx-lp-empty") c.style.display="none"; }); }catch(_){}
+  host.appendChild(wrap);
+}
+
 function lxLpWireReview(){
-  if(document.body.__lxLpRev) return; var d=lxLpReadDraft(); if(!d||!d.name) return; document.body.__lxLpRev=true;
+  if(document.body.__lxLpRev) return; var d=lxLpReadDraft(); if(!d||!d.name){ lxLpNoState("review"); return; } document.body.__lxLpRev=true;
   try{ lxLpSdk(); }catch(_){} // pre-warm the Stellar SDK so the launch signature fires with minimal delay (keeps the click gesture alive for web wallets)
   var C=window.__lxLP, CODE=lxLpCode(d.ticker), supply=parseFloat(String(d.supply||"").replace(/,/g,""))||0, share=Math.max(0,Math.min(30,parseFloat(d.sharePct)||10));
   var keep=supply*share/100, lp=supply*(100-share)/100, extra=Math.max(0, parseFloat(String(d.extraXlm||"0").replace(/,/g,""))||0);
@@ -710,7 +755,9 @@ function lxLpCopyToast(){ if(window.showToast){ try{ window.showToast("Copied to
 function lxLpCopyCell(el, full){ if(!el||el.__lxCopy||!full) return; el.__lxCopy=true; el.style.cursor="pointer"; el.setAttribute("title","Click to copy"); el.addEventListener("click",function(){ try{ navigator.clipboard.writeText(full); }catch(_){} lxLpCopyToast(); }); }
 function lxLpWireConfirm(){
   var r; try{ r=JSON.parse(localStorage.getItem("lumos.launch.result")||"null"); }catch(_){ r=null; }
-  if(!r||!r.code) return;
+  // Same hole as the review step, same fix -- see lxLpNoState. Without this the confirm page
+  // presents a completed launch, with an explorer link and a timestamp, for a token nobody minted.
+  if(!r||!r.code){ lxLpNoState("confirm"); return; }
   var CODE=r.code, supply=parseFloat(r.supply)||0, share=Math.max(0,Math.min(30,parseFloat(r.sharePct)||10)), keep=supply*share/100, lp=supply*(100-share)/100;
   var EXP="https://stellar.expert/explorer/public";
   var d0=new Date(r.ts||Date.now());
@@ -826,7 +873,22 @@ function lxLpWireConfirm(){
     if(p.length>1&&p.charAt(p.length-1)==="/") p=p.slice(0,-1);
     if(p.indexOf("launch-review")>=0||p.indexOf("/launchpad/review")>=0) lxLpWireReview();
     else if(p.indexOf("launch-confirm")>=0||p.indexOf("/launchpad/confirm")>=0) lxLpWireConfirm();
-    else if(p.indexOf("launch-token")>=0||p.slice(-9)==="launchpad") lxLpWireToken();
+    // THE TOKEN-PAGE GATE BROKE A SECOND TIME, for the same reason as the first. It tested
+    // p.slice(-9)==="launchpad", which is only true when the path ENDS at /launchpad. The launchpad
+    // has since become a network chooser and /launchpad now redirects to /launchpad/stellar, whose
+    // last nine characters are "d/stellar". Measured on the built page: gate false, and the Next
+    // button carried no handler (__lxWired undefined).
+    //
+    // With Next unwired, lxLpCaptureDraft() never runs, so NOTHING is ever written to
+    // lumos.launch.draft -- and the review step, finding no draft, fell back to the design's mock
+    // token. Every report of "the review step shows the wrong details" traces to this line, not to
+    // the review page. The empty-state guard added to lxLpWireReview is the safety net; this is the
+    // actual fault.
+    //
+    // Matching the /launchpad/ PREFIX rather than a suffix is what makes it survive the next alias:
+    // /launchpad/xrpl and anything after it are covered without another edit. Review and confirm are
+    // tested above and have already returned, so the prefix cannot swallow them.
+    else if(p.indexOf("launch-token")>=0||p==="/launchpad"||p.indexOf("/launchpad/")===0) lxLpWireToken();
   }
   if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",run); else run();
   var nn=0,iv=setInterval(function(){ nn++; run(); if(nn>20) clearInterval(iv); },300);

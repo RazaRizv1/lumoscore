@@ -143,8 +143,18 @@ const CSS = '<style id="lx-lzpick-css">'
   + '.lx-brr-l + .lx-brr-l{margin-top:4px}'
   + '.lx-brr-l b{justify-self:end;text-align:right;color:var(--text);'
   + 'font:600 14px/1.5 "JetBrains Mono",monospace;letter-spacing:normal}'
+  // overflow-wrap:anywhere BECAUSE THIS TEXT IS NOT OURS. The note prints whatever the route
+  // returned as its reason, and NEAR Intents answers with identifiers that contain no spaces and no
+  // hyphens to break at -- an asset id like nep245:v2_1.omni.hot.tg:1100_111bzQBB65Gx... beside two
+  // 56-character Stellar addresses. With nothing breakable in them the browser cannot wrap, so the
+  // line ran straight out of the route card and over the panel beside it.
+  //
+  // `anywhere` rather than `break-word`: both break a long word, but only `anywhere` also lets the
+  // element's min-content width shrink below that word, which is what stops a flex or grid parent
+  // being forced wider by it. min-width:0 is the same argument for the box itself.
   + '.lx-brr-note{margin-top:auto;padding-top:11px;font:400 12.5px/1.45 "Hanken Grotesk",system-ui,sans-serif;'
-  + 'letter-spacing:-.1254px;color:var(--text-muted,#75757f)}'
+  + 'letter-spacing:-.1254px;color:var(--text-muted,#75757f);'
+  + 'overflow-wrap:anywhere;word-break:break-word;min-width:0}'
   // The LayerZero-only destinations stay out of the dropdown until the route can actually carry a transfer. The
   // Sei rule needs the html prefix to outrank the CCTP layer's own .brd-opt[data-net="Sei"]{display:none!important}.
   // INVERTED ON PURPOSE. This was a default 'display:none !important' plus 'html.lx-lz-on ... display:flex

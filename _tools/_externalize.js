@@ -46,9 +46,70 @@ for (const f of fs.readdirSync(OUTDIR)) {
   if (/^lx-[0-9a-f]{12}\.js$/.test(f)) fs.unlinkSync(path.join(OUTDIR, f));
 }
 
+// ---------------------------------------------------------------------------------------------
+// SECOND PASS: LIFT THE lx-* STYLESHEETS OUT OF THE BODY AND INTO <head>.
+//
+// WHY. Almost every layer on this site injects its CSS immediately before </body>, which means the
+// browser paints the page BEFORE that CSS exists and then repaints it once the parser gets there.
+// That is a flash on every load, and on the landing page it is the whole hero: photographed on a
+// phone, the headline rendered as unstyled italic with no line break and the orbit ring rendered as
+// a raw grid of square tiles, before snapping into place. Measured on the built mobile landing
+// page: 25 of its 51 lx-* stylesheets sat after </head>, including lx-herounify-css, which owns the
+// hero outright.
+//
+// EVERY BODY <style> MOVES, NOT JUST THE lx-* ONES -- and that distinction is the whole safety
+// argument. An earlier version of this hoisted only `<style id="lx-...">`, on the strength of a
+// check that said every body stylesheet was an lx-* block. That check was run on the landing page
+// and the wallet, and it does not hold site-wide: /bridge/stellar carries the design's own
+// `<style id="br-css">` in its body. Measured against production, which still has the old order:
+// all 16 lx-* body blocks sit AFTER br-css there, so they override it -- and hoisting only the
+// lx-* ones would have left br-css below them and handed it the win on every tie. That is a silent
+// restyle of the bridge page, and it nearly shipped.
+//
+// Taking all of them, in the order they appear, preserves every relationship among them exactly.
+// They land at the END of <head>, so they still come after the design's head stylesheets, which is
+// where they were already winning from. The cascade is therefore unchanged; only the paint timing
+// moves. There is no <link rel="stylesheet"> in the body of any built page.
+//
+// WHY HERE RATHER THAN IN EACH TRANSFORM. There are 25+ of them; editing every one would be a large
+// change with 25 chances to get an injection point wrong, and the next transform anyone writes
+// would reintroduce the flash. This runs on every page on every build, so the fix cannot be undone
+// by re-running a layer.
+function hoistStyles(html) {
+  const headEnd = html.indexOf('</head>');
+  if (headEnd < 0) return html;
+  // A <style> INSIDE AN <svg> IS NOT A PAGE STYLESHEET and must not be hoisted: it scopes to that
+  // document fragment, and lifting it into <head> both breaks the drawing and leaks its rules to the
+  // whole page. Three dex pages carry one. Their ranges are collected first so matches inside them
+  // can be skipped.
+  const svg = [];
+  for (const s of html.matchAll(/<svg\b[\s\S]*?<\/svg>/g)) svg.push([s.index, s.index + s[0].length]);
+  const inSvg = (i) => svg.some((r) => i >= r[0] && i < r[1]);
+
+  // Non-greedy to the first closing tag: CSS cannot contain "</style>" without having already ended
+  // the element, so there is no longer match to miss. No id is required -- see the header for why
+  // restricting this to lx-* was wrong.
+  const re = /<style\b[^>]*>[\s\S]*?<\/style>/g;
+  const blocks = [];
+  let out = '', last = 0, m;
+  while ((m = re.exec(html))) {
+    if (m.index < headEnd) continue;            // already in head: leave it exactly where it is
+    if (inSvg(m.index)) continue;               // belongs to the drawing, not the page
+    blocks.push(m[0]);
+    out += html.slice(last, m.index);
+    last = m.index + m[0].length;
+  }
+  if (!blocks.length) return html;
+  out += html.slice(last);
+  // Every removal was after </head>, so its offset has not moved.
+  const hi = out.indexOf('</head>');
+  if (hi < 0) return html;
+  return out.slice(0, hi) + blocks.join('') + out.slice(hi);
+}
+
 const files = fs.readdirSync(DIST).filter((f) => f.endsWith('.html'));
 const written = new Map();          // hash -> bytes, so a layer shared by 90 pages is written once
-let pages = 0, moved = 0, bytes = 0;
+let pages = 0, moved = 0, bytes = 0, hoistedPages = 0;
 
 for (const name of files) {
   const file = path.join(DIST, name);
@@ -85,8 +146,12 @@ for (const name of files) {
     moved++;
     bytes += Buffer.byteLength(body);
   }
-  if (!changed) continue;
-  out += html.slice(last);
+  out = changed ? out + html.slice(last) : html;
+
+  const hoisted = hoistStyles(out);
+  if (hoisted !== out) { out = hoisted; hoistedPages++; }
+
+  if (out === html) continue;
   fs.writeFileSync(file, out, 'utf8');
   pages++;
 }
