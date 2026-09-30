@@ -445,7 +445,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'page=Math.min(Math.max(0,page|0),lpPages-1);window.__lxLpPage=page;'
 +'var top=lps.slice(page*LPPER,page*LPPER+LPPER);'
 +'if(!top.length){tb.innerHTML=\'<tr><td colspan="6" style="padding:28px;text-align:center;color:var(--text-muted)">No liquidity positions</td></tr>\';return;}'
-+'Promise.all(top.map(function(b){return j(H+"/liquidity_pools/"+b.liquidity_pool_id).then(function(p){return{b:b,p:p};}).catch(function(){return{b:b,p:null};});})).then(function(rows){var html="";rows.forEach(function(r){var p=r.p,bal=+r.b.balance;var res=(p&&p.reserves)||[];var a0=assetCode(res[0]),a1=assetCode(res[1]);var i0=assetIssuer(res[0]),i1=assetIssuer(res[1]),n0=assetNative(res[0]),n1=assetNative(res[1]);var pct=(p&&+p.total_shares>0)?(bal/(+p.total_shares)*100):0;'
++'lpMap().then(function(_m){return Promise.all(top.map(function(b){return lpOne(_m,b.liquidity_pool_id).then(function(p){return{b:b,p:p};}).catch(function(){return{b:b,p:null};});}));}).then(function(rows){var html="";rows.forEach(function(r){var p=r.p,bal=+r.b.balance;var res=(p&&p.reserves)||[];var a0=assetCode(res[0]),a1=assetCode(res[1]);var i0=assetIssuer(res[0]),i1=assetIssuer(res[1]),n0=assetNative(res[0]),n1=assetNative(res[1]);var pct=(p&&+p.total_shares>0)?(bal/(+p.total_shares)*100):0;'
 +'html+=\'<tr data-pool="\'+esc(r.b.liquidity_pool_id)+\'"><td><div class="lp-pair" style="cursor:pointer"><div class="lp-icons">\'+lpIco(a0,i0,n0)+lpIco(a1,i1,n1)+\'</div><div><div class="lp-nm">\'+esc(a0)+\' / \'+esc(a1)+\'</div><div class="lp-sb">0.30% fee tier \\u00b7 Stellar AMM</div></div></div></td>\''
 +'+\'<td class="lp-share"><div class="p1">\'+(pct>0?pct.toFixed(pct<0.01?4:2)+"%":"\\u2014")+\'</div><div class="p2">\'+amt(bal)+\' LP tokens</div></td>\''
 +'+\'<td><span class="lp-apr">\\u2014</span></td>\''
@@ -539,8 +539,56 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'var LX_NET="mainnet";'
 +'var H=(LX_NET==="testnet")?"https://horizon-testnet.stellar.org":"https://horizon.stellar.org";'
 +'var HHOSTS=(LX_NET==="testnet")?["https://horizon-testnet.stellar.org"]:["https://horizon.stellar.org","https://horizon.stellarx.com","https://horizon.stellar.lobstr.co"];function _jHost(u,i){for(var k=0;k<HHOSTS.length;k++){if(u.indexOf(HHOSTS[k])===0)return HHOSTS[i%HHOSTS.length]+u.slice(HHOSTS[k].length);}return u;}'
-+'var _jQ=[],_jA=0,_jMax=6;function _jPump(){while(_jA<_jMax&&_jQ.length){_jA++;(_jQ.shift())();}}'
-+'function j(u){return new Promise(function(res,rej){function fin(){_jA--;_jPump();}function bk(t){return Math.min(3000,250*Math.pow(2,t))+t*80;}function att(t){fetch(_jHost(u,t)).then(function(r){if(r.status===404){fin();res({__nf:1});return;}if((r.status===429||r.status>=500)&&t<5){setTimeout(function(){att(t+1);},bk(t));return;}if(!r.ok){fin();rej(new Error(r.status));return;}r.json().then(function(d){fin();res(d);},function(e){fin();rej(e);});}).catch(function(e){if(t<5){setTimeout(function(){att(t+1);},bk(t));}else{fin();rej(e);}});}_jQ.push(function(){att(0);});_jPump();});}'
+// TWO LANES, because one width cannot serve both kinds of Horizon call.
+//
+// RAZA 2026-09-30, second report: "on mobile, wallet page is taking forever to load" -- the portfolio
+// VALUE in particular, which is gated on 26 /paths/strict-send calls. Measured against Horizon with the
+// real 26-asset roster, same calls, only the queue width changed:
+//     width  6  ->  2055ms      width 20  ->  754ms
+//     width 12  ->   998ms      width 26  ->  744ms
+// Per-call latency was flat across all of them (442ms -> 388ms) and Horizon returned ZERO non-200s, so
+// the 6-wide queue was our own throttle and not back-pressure from Horizon. It flattens past ~16, which
+// is where the general lane is set.
+//
+// The metered lane exists because /trade_aggregations is the ONE Horizon endpoint with a published
+// limit (100 per 5 minutes per IP) and its 429 carries no CORS header, so the browser reads it as
+// "Failed to fetch" rather than as a rate limit. The 24h-change figures come from there, one per asset.
+// Widening THAT would spend the same budget in a burst, so it keeps a narrow lane of its own and the
+// pricing calls no longer queue behind it.
++'var _jQ=[],_jA=0,_jMax=16,_mQ=[],_mA=0,_mMax=4;'
++'function _jPump(){while(_jA<_jMax&&_jQ.length){_jA++;(_jQ.shift())();}while(_mA<_mMax&&_mQ.length){_mA++;(_mQ.shift())();}}'
++'function j(u){var _m=String(u).indexOf("/trade_aggregations")>=0;return new Promise(function(res,rej){function fin(){if(_m)_mA--;else _jA--;_jPump();}function bk(t){return Math.min(3000,250*Math.pow(2,t))+t*80;}function att(t){fetch(_jHost(u,t)).then(function(r){if(r.status===404){fin();res({__nf:1});return;}if((r.status===429||r.status>=500)&&t<5){setTimeout(function(){att(t+1);},bk(t));return;}if(!r.ok){fin();rej(new Error(r.status));return;}r.json().then(function(d){fin();res(d);},function(e){fin();rej(e);});}).catch(function(e){if(t<5){setTimeout(function(){att(t+1);},bk(t));}else{fin();rej(e);}});}(_m?_mQ:_jQ).push(function(){att(0);});_jPump();});}'
+
+// ---- every pool this account is in, in ONE request -------------------------------------------
+// RAZA 2026-09-30: "wallet page details are taking forever to load". Measured on his account
+// (GBSBVU…6B6F) on a warm desktop connection: 142 data requests for one page load, of which
+// **48 were /liquidity_pools/<id>** -- 22.3 SECONDS of cumulative request time -- for an account
+// holding 25 pools. Twice each, because two independent code paths below both walked the list and
+// neither knew about the other: the positions table, and the "Liquidity Pools" insight card
+// reconciling its count against drained pools.
+//
+// They queue through j(), which is 6-wide with retry and backoff, and they share that queue with
+// the 26 /paths/strict-send calls that price the assets. On a phone that is the "forever".
+//
+// Horizon answers the same question in one request, and this file ALREADY uses it in two other
+// places (the trustline-removal and balances paths above) -- these two simply never adopted it.
+// Verified against his account before changing anything: /liquidity_pools?account=<G>&limit=200
+// returns all 25 in 654ms with id, fee_bp, type, total_trustlines, total_shares, reserves and
+// last_modified_ledger byte-identical to the per-id fetch, and with no pool missing in either
+// direction. 48 requests become 1.
+//
+// Memoised per page load rather than per caller, which is what stops the two paths duplicating it.
+// lpOne() keeps the old per-id fetch as a fallback for an id the batch did not return, so a pool
+// that somehow falls outside it still renders instead of vanishing.
+// The cache lives on window under __lxLpB, keyed by host+address, because the layers that need this
+// are SEPARATE emitted scripts with separate scopes (lumoscore-externalize-scope) -- _feerate.js and
+// _mobwallet.js define their own identical accessor. Sharing the object rather than a function is
+// what collapses all of them to ONE request per page load instead of one per layer.
++'function lpMap(){var K="__lxLpB";window[K]=window[K]||{};var k=H+"|"+ME;'
++'if(!window[K][k])window[K][k]=j(H+"/liquidity_pools?account="+ME+"&limit=200").then(function(d){var m={};'
++'((d&&d._embedded&&d._embedded.records)||[]).forEach(function(r){if(r&&r.id)m[r.id]=r;});return m;})'
++'.catch(function(){return{};});return window[K][k];}'
++'function lpOne(m,id){return (m&&m[id])?Promise.resolve(m[id]):j(H+"/liquidity_pools/"+id).catch(function(){return null;});}'
 +'function esc(s){return (String(s==null?"":s).replace(/[&<>]/g,function(c){return c==="&"?"&amp;":c==="<"?"&lt;":"&gt;";})).split(String.fromCharCode(39)).join("&#39;");}'
 +'function num(n,d){n=+n||0;return n.toLocaleString(undefined,{minimumFractionDigits:d||0,maximumFractionDigits:d||0});}'
 +'function amt(n){n=+n||0;var a=Math.abs(n);if(a>=1e12)return (n/1e12).toFixed(2)+"T";if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return num(n,a>=1e4?0:1);if(a>=1)return num(n,2);if(a>0){var d=Math.min(7,Math.max(2,2-Math.floor(Math.log(a)/Math.LN10)));var s=n.toFixed(d);if(s.indexOf(".")>=0)s=s.replace(/0+$/,"").replace(/\\.$/,"");return s;}return "0";}'
@@ -563,6 +611,77 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'if(LX_HDQ[iss]){LX_HDQ[iss].push(cb);return;}LX_HDQ[iss]=[cb];'
 +'function flush(d){var q=LX_HDQ[iss]||[];LX_HDQ[iss]=null;q.forEach(function(f){try{f(d);}catch(_){}});}'
 +'j(H+"/accounts/"+iss).then(function(a){var d=(a&&a.home_domain)||"";try{localStorage.setItem(k,JSON.stringify({d:d,ts:Date.now()}));}catch(_){}flush(d);},function(){flush("");});}'
+// ---- NFTs are not tokens, and My Assets is a token list ------------------------------------------
+// RAZA 2026-09-30: "Please stop showing NFTs (even if im holding in my wallet) on Wallet my assets.
+// Because LumosCore hasn't started supporting NFTs yet. Only show actual tokens in assets".
+//
+// THE TEST IS THE SUPPLY, and it is not a guess. A Stellar NFT is a 1-of-1: the asset is issued with a
+// total supply of ONE STROOP and there is exactly one trustline. Measured across his wallet:
+//   Answerly127  supply 1                  1 trustline      answerly.litemint.store
+//   STONER       supply 2,484,952,935,911,400      92 trustlines
+//   POTATO       supply 10,000,000,000,000         37 trustlines
+//   USDC         supply 3,928,611,398,569,430   2.4M trustlines
+// The nearest real token is thirteen orders of magnitude away, so `supply === "1"` separates them with
+// no judgement call. A balance-based rule would NOT: STONER is held at the same 0.0000001 as the NFT
+// and is an ordinary meme token.
+//
+// AND IT COSTS ALMOST NOTHING, because the balance is a free pre-filter: you cannot hold 20,924 DOPE
+// of a one-stroop asset. Only a holding of EXACTLY one stroop can be a 1-of-1, which is two rows in
+// his wallet rather than twenty-two. The verdict is then cached, so the lookup happens once per asset
+// ever, not once per page load -- this page is already slow enough without adding to it.
+//
+// FAILS OPEN, always. An unknown asset, a failed lookup, a record we cannot match by issuer: the row
+// stays. Hiding a real holding because a third-party lookup blipped would be a far worse bug than
+// showing an NFT, and the whole point of matching on code+ISSUER is that a ticker is not an identity
+// (lumoscore-token-logos).
++'var LX_NFTK="lumos.nft.";'
++'function nftKey(c,i){return LX_NFTK+c+"-"+i;}'
++'function nftKnown(c,i){try{return localStorage.getItem(nftKey(c,i))||"";}catch(_){return "";}}'
++'function nftIs(c,i){return nftKnown(c,i)==="1";}'
++'function nftRemember(c,i,v){try{localStorage.setItem(nftKey(c,i),v);}catch(_){}}'
+// Pull the row out of both renderers. Desktop rows carry .lx-aico[data-lxc]; the phone rows carry
+// [data-astsend] on their Send button. Counts are re-derived from what is left rather than decremented,
+// so this cannot drift if it runs twice.
+// THE ARRAYS FIRST, THEN THE DOM. Removing the row alone does not hold: the phone list rebuilds
+// itself from window.__lxRows on later passes, so a row deleted at 752ms was back a moment later --
+// measured exactly that. __lxRows is what the mobile renderer reads and __lxHoldings is what the
+// pickers read, so both have to lose the asset or it simply returns.
++'function nftDrop(c,i){try{'
++'window.__lxHoldings=(window.__lxHoldings||[]).filter(function(h){return !(h.code===c&&(!i||!h.iss||h.iss===i));});'
++'if(window.__lxRows)window.__lxRows=window.__lxRows.filter(function(r){var b=r&&r.b;if(!b)return true;'
++'return !(b.asset_code===c&&(!i||!b.asset_issuer||b.asset_issuer===i));});'
++'var tb=document.getElementById("assetsTable");'
++'if(tb){[].slice.call(tb.querySelectorAll("tr")).forEach(function(r){var ic=r.querySelector(".lx-aico");'
++'if(ic&&ic.getAttribute("data-lxc")===c&&r.parentNode)r.parentNode.removeChild(r);});}'
++'[].slice.call(document.querySelectorAll("[data-astsend]")).forEach(function(b){'
++'if(b.getAttribute("data-astsend")!==c)return;var row=b.closest(".lxmw-ast,.lxmw-row,li,div[data-astrow]");'
++'if(row&&row.parentNode)row.parentNode.removeChild(row);});'
++'var atc=document.querySelectorAll(".asset-tabs:not(.lx-wcgroup) button .cnt");'
++'if(atc[0])atc[0].textContent=(window.__lxHoldings||[]).length;'
++'}catch(_){}}'
++'function nftScan(hold){try{'
++'var cands=(hold||[]).filter(function(h){return !h.native&&h.iss&&Math.round((+h.bal||0)*1e7)===1&&!nftKnown(h.code,h.iss);}).slice(0,8);'
++'cands.forEach(function(h){'
+// A PLAIN fetch, deliberately not j(). j() is this file's Horizon client: a six-wide queue with
+// host failover and backoff, and on this page that queue is already carrying 26 pricing calls and
+// the issuer-domain sweep. Putting a two-request lookup behind ~68 others delayed the verdict past
+// ten seconds -- long enough that the row rendered, the drop ran against a list that did not have
+// it yet, and the NFT sat there for the whole visit. This is our own edge, one hop, no failover
+// needed, so it goes straight out.
++'fetch("/lxapi/assetsearch?search="+encodeURIComponent(h.code)+"&limit=10").then(function(r){return r.ok?r.json():null;}).then(function(d){'
++'var recs=(d&&d._embedded&&d._embedded.records)||[];var want=h.code+"-"+h.iss;'
++'var rec=recs.filter(function(r){return String(r.asset||"").indexOf(want)===0;})[0];'
++'if(!rec||rec.supply==null)return;'                     /* cannot tell -> leave it alone */
++'var one=String(rec.supply)==="1";'
++'nftRemember(h.code,h.iss,one?"1":"0");'
+// The verdict lands in ~200ms and the rows render at ~750ms, so a single drop here finds nothing to
+// remove and the row then appears anyway -- measured exactly that on the first load. Repeated past
+// the render instead. This only ever runs the FIRST time an asset is judged; from the next load the
+// synchronous filter on `bals` means the row is never built at all.
++'if(one){nftDrop(h.code,h.iss);setTimeout(function(){nftDrop(h.code,h.iss);},700);'
++'setTimeout(function(){nftDrop(h.code,h.iss);},1800);setTimeout(function(){nftDrop(h.code,h.iss);},4000);}'
++'}).catch(function(){});});'                            /* fail open */
++'}catch(_){}}'
 +'var LX_CKSVG=\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>\';'
 +'var LX_CPSVG=\'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>\';'
 +'function lxIssLine(code,iss,native){'
@@ -575,9 +694,49 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'h+=\'<button type="button" class="lx-isscopy" data-iss="\'+esc(iss)+\'" aria-label="Copy issuer address" title="Copy issuer address">\'+LX_CPSVG+\'</button>\';'
 +'return h+\'</span>\';}'
 // unverified domains fill in after render, so a row never waits on a fetch to appear
-+'function lxFillHd(root){try{[].slice.call((root||document).querySelectorAll(".lx-hd[data-hd]")).forEach(function(el){'
+// ...and they fill in for the rows you can SEE first (RAZA 2026-09-30, repeatedly: "on mobile, wallet
+// page is taking forever to load").
+//
+// A curated asset already has its domain baked into the row, so this only ever fires for issuers we do
+// not vouch for -- and a wallet of meme mints is almost all of those. Measured on his account: 42
+// /accounts/<issuer> requests on one load, second only to the pricing calls, all of them for a line of
+// grey text under an asset name. They share j()'s six-wide queue with the 26 /paths/strict-send calls
+// that produce the portfolio VALUE, so the decoration was delaying the number.
+//
+// Resolved for rows in or near the viewport instead. A phone shows about four, so the first paint now
+// costs a handful of requests rather than forty-two, and the rest arrive as you scroll.
+//
+// THE TIMER IS NOT OPTIONAL. IntersectionObserver does not fire in every environment (it is inert in
+// the preview pane this is tested in -- browser-pane-hidden-apis), and a list that is never scrolled
+// would otherwise keep its domains blank for ever. After six seconds -- by which time the balances and
+// prices have long landed -- anything still outstanding is fetched regardless, so the worst case is
+// the old behaviour, late and out of the way, rather than a row that never fills.
+// DEFERRED, NOT SKIPPED. Every row still gets its issuer domain; the sweep simply waits until the
+// figures are on screen.
+//
+// A curated asset has its domain baked into the row, so this only fires for issuers we do not vouch
+// for -- and a wallet of meme mints is almost all of those. Measured on RAZA's account: 42
+// /accounts/<issuer> requests on one load, second only to the pricing calls, every one of them for a
+// line of grey text under an asset name. They share j()'s six-wide queue with the 26
+// /paths/strict-send calls that produce the portfolio VALUE, so the decoration was delaying the
+// number ("on mobile, wallet page is taking forever to load", 2026-09-30).
+//
+// A viewport-gated version of this (IntersectionObserver, resolve what you can see) was written first
+// and REVERTED: it cut the requests to five, and it also left rows permanently blank. Checked against
+// the ledger rather than assumed -- four of five sampled empty rows had a real home_domain
+// (lu.meme, lumoscore.com) that was never fetched, because go() had already cleared the data-hd
+// marker those rows are retried from. Issuer domain is the verification signal on a chain where a
+// ticker is not an identity (lumoscore-token-logos); trading it for load time is the wrong trade.
+//
+// A plain delay gets the same benefit with none of that risk: the value paints first, then all of
+// them resolve, exactly as before. lxHdFor still de-dupes per issuer and caches for a week, so a
+// second visit costs nothing either way.
++'function lxFillHd(root){try{'
++'var scope=root||document;'
++'setTimeout(function(){try{[].slice.call(scope.querySelectorAll(".lx-hd[data-hd]")).forEach(function(el){'
 +'if(el.textContent)return;var iss=el.getAttribute("data-hd");el.removeAttribute("data-hd");'
-+'lxHdFor(iss,function(d){if(d)el.textContent=d;});});}catch(_){}}'
++'lxHdFor(iss,function(d){if(d)el.textContent=d;});});}catch(_){}} ,1200);'
++'}catch(_){}}'
 +'function lxAssetMeta(code,iss,native){'
 +'if(native||!code||!iss)return "";'
 +'var href="/trade/stellar/"+encodeURIComponent(code)+"-"+encodeURIComponent(iss);'
@@ -660,7 +819,11 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'if(!(xu>0)){try{var _c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");if(_c&&+_c.v>0&&(Date.now()-_c.ts<216e5))xu=+_c.v;}catch(_){}}'
 +'if(!(xu>0)&&+window.__lxXlmUsd>0)xu=+window.__lxXlmUsd;'
 +'if(xu>0){try{localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xu,ts:Date.now()}));}catch(_){}}'
-+'var bals=(acc.balances||[]);'
+// Filtered HERE, at the one place the balances enter, so the asset table, the phone rows, the
+// holdings array and every count derive from the same list and cannot disagree. An asset already
+// known to be a 1-of-1 never renders at all; one being seen for the first time is removed by nftScan
+// below once its supply comes back, and is gone from the next load onward.
++'var bals=(acc.balances||[]).filter(function(b){return !(b.asset_code&&b.asset_issuer&&nftIs(b.asset_code,b.asset_issuer));});'
 +'var lps=bals.filter(function(b){return b.asset_type==="liquidity_pool_shares"&&+b.balance>1e-7;});'   /* was >0.001 — dropped dust positions the Pools page counts (wallet said "1 pool", Pools "My Pools 2") */
 +'try{window.__lxOffers=(offers._embedded&&offers._embedded.records)||[];'
   +'window.__lxOps=(ops._embedded&&ops._embedded.records)||[];'
@@ -668,6 +831,9 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
   +'window.__lxHoldings=bals.filter(function(bb){return bb.asset_type!=="liquidity_pool_shares"&&(bb.asset_type==="native"||+bb.balance>0);})'
   +'.map(function(bb){var nat=bb.asset_type==="native";return{code:nat?"XLM":bb.asset_code,iss:nat?"":(bb.asset_issuer||""),bal:+bb.balance,native:nat};});'
   +'window.__lxWalletEarly=1;}catch(_){}'
+// Only ever looks up a holding of exactly one stroop, and only one it has not already judged, so on a
+// normal wallet this makes no requests at all.
++'try{nftScan(window.__lxHoldings);}catch(_){}'
   +'var nativeB=bals.filter(function(b){return b.asset_type==="native";})[0];try{window.__lxNative=+(nativeB&&nativeB.balance)||0;fixBalances(document);}catch(_){}'
 +'var others=bals.filter(function(b){return b.asset_type!=="liquidity_pool_shares"&&b.asset_type!=="native";}).sort(function(a,b){return +b.balance-+a.balance;}).slice(0,30);'
 // expose asset->issuer map, LUMOS-based fee tier (0.2% guest / 0.1% for 250K+ LUMOS holders), and signing helpers for the swap
@@ -714,12 +880,19 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'try{window.__lxOffers=offRecs;window.__lxOps=(ops._embedded&&ops._embedded.records)||[];window.__lxWalletReady=1;}catch(_){}'
 +'var oh=findH2("Open Orders");if(oh){var om=oh.querySelector(".meta");if(om)om.textContent=offRecs.length+" active";}'
 +'renderOrders(offRecs);'
+// AND CORRECT THE TAB COUNT (RAZA 2026-09-30: "There is no open order on Asset page, it still shows
+// '3 open orders'"). orderCount() already computes it right -- window.__lxOffers.length, which for
+// his account is 0, Horizon confirms it -- but it was only ever called from the cancel handlers. So
+// it ran when you cancelled an order and never on load, leaving the design's mock "3" on the tab
+// next to a panel correctly reading "No open orders". The Claimable payments count beside it was
+// right all along (21, also confirmed against Horizon), which is what made the 3 look deliberate.
++'try{orderCount();}catch(_){}'
 // ---- summary cards: open orders + liquidity pools counts ----
 +'updInsight("Open Orders",offRecs.length+" Active",offRecs.length?"Awaiting fill on the DEX":"No open orders");'
 +'updInsight("Liquidity Pools",lps.length+" pool"+(lps.length===1?"":"s"),"Across your positions");'
 // reconcile with the Pools page ("My Pools" counts only positions in pools that still HOLD reserves —
 // a drained pool with dust shares is excluded there): re-check each pool and correct the card count.
-+'try{Promise.all(lps.map(function(b){return j(H+"/liquidity_pools/"+b.liquidity_pool_id).then(function(p){var hasRes=((p&&p.reserves)||[]).some(function(rv){return +rv.amount>0;});return hasRes?1:0;}).catch(function(){return 1;});})).then(function(fl){var live=fl.reduce(function(s,x){return s+x;},0);if(live!==lps.length){updInsight("Liquidity Pools",live+" pool"+(live===1?"":"s"),"Across your positions");var _atc=document.querySelectorAll(".asset-tabs button .cnt");if(_atc[1])_atc[1].textContent=live;}});}catch(_){}'
++'try{lpMap().then(function(_m){return Promise.all(lps.map(function(b){return lpOne(_m,b.liquidity_pool_id).then(function(p){var hasRes=((p&&p.reserves)||[]).some(function(rv){return +rv.amount>0;});return hasRes?1:0;}).catch(function(){return 1;});}));}).then(function(fl){var live=fl.reduce(function(s,x){return s+x;},0);if(live!==lps.length){updInsight("Liquidity Pools",live+" pool"+(live===1?"":"s"),"Across your positions");var _atc=document.querySelectorAll(".asset-tabs button .cnt");if(_atc[1])_atc[1].textContent=live;}});}catch(_){}'
 // tab counts (Assets / Liq Pools) -> real
 +'var atc=document.querySelectorAll(".asset-tabs:not(.lx-wcgroup) button .cnt");if(atc[0])atc[0].textContent=rows.length;if(atc[1])atc[1].textContent=lps.length;'
 +'renderLP(lps);'
@@ -803,6 +976,15 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
   +'if(st)st.textContent=num(_sb,7)+" "+h.code;'
   +'if(h.native&&window.__lxMaxXLM!=null){try{sp[k].title=num(_sb,7)+" XLM spendable \u2014 "+num(h.bal,7)+" XLM total, "+num(Math.max(0,h.bal-_sb),7)+" XLM locked as the Stellar account reserve";}catch(_){}}'
   +'break;}}m.__lxsym=h.code;validateSend(m);}'
+// Exposed on window so the PHONE build can preselect too (RAZA 2026-09-30: "when sending any asset,
+// let's say Lumos ... in the popup its showing XLM by default instead of that asset").
+// _mobwallet.js is a separate emitted script with its own scope (lumoscore-externalize-scope), so it
+// cannot see this function by name -- and setting window.__lxSendPre alone is not enough, because the
+// .lx-asset-pick chip is built once and guarded by `!m.querySelector(".lx-asset-pick")`, so on every
+// open after the first the builder (and with it the only selectSendAsset call) is skipped and the chip
+// keeps whatever it was last set to. The phone therefore has to re-select explicitly, exactly as the
+// desktop row handler does.
+  +'try{window.__lxSelSendAsset=selectSendAsset;}catch(_){}'
 // N1: the dropdown "closes itself as soon as it opens", and took three taps to stay up.
 //
 // openAssetMenu is a TOGGLE, so it only takes TWO activations from one gesture to open and shut again

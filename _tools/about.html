@@ -45,33 +45,64 @@
 
   <h2>What we run</h2>
 
-  <p>LumosCore has been live on <strong>Stellar mainnet since 1 August 2026</strong>. Everything below
-    is in production.</p>
+  <p>LumosCore has been live on <strong>Stellar mainnet since 1 August 2026</strong>.</p>
 
-  <div class="ab-grid">
-    <a class="ab-card" href="/trade/stellar">
-      <span class="ab-card-t">Trading</span>
-      <span class="ab-card-d">Swaps and limit orders against Stellar's own order book and pools.</span>
+  <!-- THE SAME SIX PRODUCTS AS THE LANDING PAGE, and the same six destinations (RAZA 2026-09-30:
+       "make them same exact like 6 product boxes that are on the landing page ... And link each box
+       to their hubpages respectively").
+       Titles, copy, accent colours and calls to action are taken verbatim from the rendered landing
+       cards, so the two pages describe the product in one voice rather than two. The old set said
+       "Trading / Liquidity / Wallet"; the landing set says "Trade / Liquidity Pools / LUMOS", and
+       the sixth card is the token, not the wallet page.
+       Every href is the HUB, never the chain-scoped page -- the reason _landingproducts.js gives is
+       the one that matters here too: a signed-out reader clicking "Cross-Chain" has to be asked
+       which network, and the chain pages sit behind the wallet gate, so the click would bounce them
+       to "/" instead. The About page is read by people who have not connected anything.
+       {{icon:*}} is filled in by _about.js from _navicons.json, so the glyphs stay one source. -->
+  <div class="ab-prodgrid">
+    <a class="ab-prod" href="/trade" style="--pc:#8b7bff;--pc-rgb:139,123,255">
+      <span class="ab-prod-ic">{{icon:trade}}</span>
+      <h3>Trade</h3>
+      <p>LumosCore routes your trade through the best path on any supported network &mdash; AMMs,
+        orderbooks, or both.</p>
+      <span class="ab-prod-cta">Explore markets {{arrow}}</span>
     </a>
-    <a class="ab-card" href="/pools/stellar">
-      <span class="ab-card-t">Liquidity</span>
-      <span class="ab-card-d">Create a pool, deposit, withdraw at any time. No lock-up.</span>
+    <a class="ab-prod" href="/pools" style="--pc:#34d37a;--pc-rgb:52,211,122">
+      <span class="ab-prod-ic">{{icon:pools}}</span>
+      <h3>Liquidity Pools</h3>
+      <p>Create, deposit, and manage liquidity positions across multiple networks from a single
+        dashboard.</p>
+      <span class="ab-prod-cta">Explore pools {{arrow}}</span>
     </a>
-    <a class="ab-card" href="/launchpad">
-      <span class="ab-card-t">Launchpad</span>
-      <span class="ab-card-d">Issue an asset, mint the supply and open its first pool in one flow.</span>
+    <a class="ab-prod" href="/bridge" style="--pc:#a855f7;--pc-rgb:168,85,247">
+      <span class="ab-prod-ic">{{icon:bridge}}</span>
+      <h3>Cross-Chain</h3>
+      <p>Move assets between networks without memorizing ten different bridges. LumosCore integrates
+        the most trusted bridging solution for each chain.</p>
+      <span class="ab-prod-cta">Open the bridge {{arrow}}</span>
     </a>
-    <a class="ab-card" href="/bridge">
-      <span class="ab-card-t">Cross-chain</span>
-      <span class="ab-card-d">USDC between Stellar and eight networks over Circle's CCTP.</span>
+    <a class="ab-prod" href="/rewards" style="--pc:#ffb547;--pc-rgb:255,181,71">
+      <span class="ab-prod-ic">{{icon:rewards}}</span>
+      <h3>Rewards</h3>
+      <p>Put your assets to work and earn LUMOS. Provide liquidity on any supported chain, stake, or
+        hold.</p>
+      <span class="ab-prod-cta">See rewards {{arrow}}</span>
     </a>
-    <a class="ab-card" href="/wallet">
-      <span class="ab-card-t">Wallet</span>
-      <span class="ab-card-d">Balances, activity, trustlines and claimable payments.</span>
+    <a class="ab-prod" href="/launchpad" style="--pc:#ea6a2c;--pc-rgb:234,106,44">
+      <span class="ab-prod-ic">{{icon:launchpad}}</span>
+      <h3>Launchpad</h3>
+      <p>Mint asset and deploy its first pool on any supported network in less than 2 minutes.</p>
+      <span class="ab-prod-cta">Launch a token {{arrow}}</span>
     </a>
-    <a class="ab-card" href="/rewards">
-      <span class="ab-card-t">Rewards</span>
-      <span class="ab-card-d">Three LUMOS programmes for liquidity providers and holders.</span>
+    <!-- LUMOS stands free rather than inside a tinted tile, exactly as it does on the landing page:
+         its mark is the product's own flame, and putting a logo inside a logo reads as a mistake. -->
+    <a class="ab-prod" href="/lumos" style="--pc:#ec4899;--pc-rgb:236,72,153">
+      <span class="ab-prod-ic ab-prod-logo"><img src="/assets/tokens/lumos.png" width="30" height="30"
+        alt="" decoding="async" loading="lazy"></span>
+      <h3>LUMOS</h3>
+      <p>The token the platform runs on. Hold 250,000 LUMOS and your trading fee halves to 0.1%; earn
+        it by providing liquidity, and spend nothing to hold it.</p>
+      <span class="ab-prod-cta">About LUMOS {{arrow}}</span>
     </a>
   </div>
 

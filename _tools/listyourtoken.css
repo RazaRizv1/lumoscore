@@ -233,8 +233,21 @@ html[data-theme="light"] .lxlt{
   .lxlt .lt-two{grid-template-columns:minmax(0,1fr)}
   .lxlt .lt-step h2{font-size:21px}
   .lxlt .lt-step h2,.lxlt .lt-help,.lxlt .lt-step .lt-hint{padding-left:0}
-  .lxlt .lt-step h2::before{position:static;transform:none;display:inline-flex;
-    vertical-align:middle;margin-right:10px;width:24px;height:24px}
+  /* THE HEADING IS A ROW, NOT A LINE OF INLINE CONTENT (RAZA 2026-09-30: "The 3 points 'Network, the
+     asset & payment' isn't aligned properly on iPhone 12 Pro").
+     On his phone the number sat on its own line with the title beneath it, and "The asset" broke after
+     "The" so the second word started hard against the left margin, left of the number itself.
+     Both are failure modes of putting a fixed-size inline-flex badge INSIDE the text flow: the badge
+     participates in line breaking, so whether it shares a line with the first word depends on the
+     engine's line-box and font metrics — and on iOS Safari it did not.
+     Making the h2 a flex row takes the badge out of the text flow for good. A flex item cannot be
+     pushed onto its own line, so `display` on the pseudo-element stops mattering, and the title
+     becomes its own flex item that wraps inside its own column and stays aligned under itself.
+     flex-start rather than center so a two-line title keeps the badge beside its FIRST line; the 1px
+     nudge lines the badge up with that line's cap height. */
+  .lxlt .lt-step h2{display:flex;align-items:flex-start;gap:10px}
+  .lxlt .lt-step h2::before{position:static;transform:none;display:flex;
+    flex:0 0 auto;margin-right:0;margin-top:1px;width:24px;height:24px}
   .lxlt .lt-done-row{grid-template-columns:minmax(0,1fr)}
   .lxlt .lt-pay-row{flex-wrap:wrap;gap:2px 18px}
 }

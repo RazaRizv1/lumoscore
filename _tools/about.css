@@ -115,6 +115,59 @@ html[data-theme="light"] .lxab{
 .lxab a.ab-card:hover .ab-card-t::after{color:var(--accent);transform:translateX(3px)}
 .lxab .ab-card-d{display:block;font-size:16px;line-height:1.55;color:var(--text-muted)}
 
+/* ---------------- what we run: the landing page's product cards ----------------
+   RAZA 2026-09-30: "make them same exact like 6 product boxes that are on the landing page".
+
+   MEASURED OFF THE RENDERED LANDING PAGE, not read out of a transform. The first attempt here
+   reproduced the wrong card: _prodcards.js's centred, glowing, gradient-bordered treatment is what
+   the CAROUSEL shows on a phone, and above 901px _prodbento.js + _prodcalm.js replace it with a flat
+   left-aligned card. RAZA's screenshot is a desktop one, so the calm card is the card he means.
+   Every value below was read back from getComputedStyle on that card: a --surface fill with a 1px
+   --border hairline at 24px radius, 28px 24px 26px of padding, a 60px tinted tile at 15px radius
+   holding a 28px glyph, 800 20px/22px title, 500 15px/1.62 copy, and a plain accent CTA with a 7px
+   gap -- no pill.
+
+   The per-card accent arrives as --pc / --pc-rgb on each anchor exactly as it does on the landing
+   page, so no colour is duplicated here. This is still a SECOND COPY of a design that lives in
+   _prodcalm.js: the landing rules are scoped .block#products .products-grid .product-card.lxpc and
+   that stylesheet also carries the section's grid and, below 901px, the pinned carousel, so it
+   cannot be re-injected onto a text page. If the landing card is restyled, this needs the same edit. */
+.lxab .ab-prodgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(232px,1fr));gap:14px;
+  margin:26px 0}
+.lxab a.ab-prod{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:0;
+  padding:28px 24px 26px;border-radius:24px;background:var(--surface);border:1px solid var(--ab-hair);
+  text-decoration:none;transition:border-color .16s,transform .16s,box-shadow .16s}
+.lxab a.ab-prod:hover{border-color:rgba(var(--pc-rgb,234,106,44),.45);transform:translateY(-2px);
+  box-shadow:0 10px 26px -18px rgba(var(--pc-rgb,234,106,44),.75)}
+/* the tinted tile. The glyph keeps its own stroke="currentColor" from _navicons.json and simply
+   inherits the accent through color -- nothing here touches fill or stroke, so it renders as the
+   same outline the nav draws. */
+.lxab .ab-prod-ic{position:relative;flex:0 0 auto;width:60px;height:60px;margin:0 0 18px;
+  border-radius:15px;display:flex;align-items:center;justify-content:center;
+  background:rgba(var(--pc-rgb,234,106,44),.13);color:var(--pc,#ea6a2c)}
+.lxab .ab-prod-ic svg{display:block;width:28px;height:28px}
+/* LUMOS: its mark is the product's own flame, so it stands free rather than inside a tinted tile --
+   a logo inside a logo reads as a mistake. Same exception the landing card makes. */
+.lxab .ab-prod-logo{background:none}
+.lxab .ab-prod-logo img{width:40px;height:40px;object-fit:contain}
+.lxab a.ab-prod h3{font:800 20px/1.1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:-.02em;
+  color:var(--text);margin:0 0 8px;text-align:left}
+.lxab a.ab-prod p{font:500 15px/1.62 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted);
+  margin:0 0 22px;text-align:left;text-wrap:pretty;flex:1 1 auto}
+.lxab a.ab-prod .ab-prod-cta{flex:0 0 auto;margin:auto 0 0;display:inline-flex;align-items:center;
+  gap:7px;font:700 15.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:var(--pc,#ea6a2c);
+  transition:gap .2s cubic-bezier(.2,.8,.3,1)}
+.lxab a.ab-prod:hover .ab-prod-cta{gap:11px}
+.lxab a.ab-prod .ab-prod-cta svg{display:block;flex:0 0 auto}
+@media(max-width:700px){
+  .lxab .ab-prodgrid{grid-template-columns:minmax(0,1fr);gap:12px}
+  .lxab a.ab-prod{padding:22px 20px 20px}
+}
+@media(prefers-reduced-motion:reduce){
+  .lxab a.ab-prod,.lxab a.ab-prod .ab-prod-cta{transition:none}
+  .lxab a.ab-prod:hover{transform:none}
+}
+
 /* ---------------- team ---------------- */
 .lxab .ab-team{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:0 44px;
   margin:26px 0 0;border-top:1px solid var(--text)}

@@ -84,7 +84,33 @@ function isHandheld(){
   try{ if((navigator.maxTouchPoints||0)>0)return true; }catch(_){}
   return isMobile();
 }
+function isIOS(){try{return /iPhone|iPad|iPod/i.test(navigator.userAgent||'')
+  ||(/Macintosh/i.test(navigator.userAgent||'')&&(navigator.maxTouchPoints||0)>1);}catch(_){return false;}}
+// iOS ONLY: use LOBSTR's UNIVERSAL link instead of its custom scheme.
+//
+// Both are registered by LOBSTR (explorer entry, checked live 2026-09-30:
+//   mobile {"native":"lobstr://","universal":"https://lobstr.co/uni/wc"})
+// but they are different routes into the app. lobstr://wc opens LOBSTR 16 on its DASHBOARD with no
+// pairing screen, every time, on RAZA's iPhone -- while the identical proposal pairs fine on Android.
+// An app can keep a URL scheme registered for launching and stop routing a path within it; a universal
+// link is matched by Apple against the app's apple-app-site-association file instead, which is a
+// completely separate mechanism and is the one Apple has pushed since iOS 9.
+//
+// ANDROID IS NOT TOUCHED. It works today on the custom scheme and nothing here may put that at risk.
+// The documented hazard of the universal link -- an UNHANDLED one navigates to lobstr.co and takes the
+// pending promise with it -- only bites when LOBSTR is not installed. If that happens the browser Back
+// button returns to a page whose connect promise is gone, which is recoverable and visible, and it is
+// itself the answer: it would mean iOS does not associate the domain with the app at all.
+function wcLinkFor(link){
+  if(link===WC_LOBSTR&&isIOS())return 'https://lobstr.co/uni/wc';
+  return link;
+}
+// CONNECT ONLY. The signing path also pokes LOBSTR, with NO uri, to bring the app forward for a
+// request already sent over the relay. Sending a bare universal link there risks landing on lobstr.co
+// in Safari and taking the pending SIGNING promise with it -- and signing is not the broken thing.
+// So wcLinkFor is applied at the connect call sites, never inside wcPoke.
 function wcPoke(link,uri){try{location.href=link+(uri?('?uri='+encodeURIComponent(uri)):'');}catch(_){}}
+
 // Getting as far as a pairing URI must not be able to hang. A bad or unreachable relay leaves
 // SignClient.init pending forever, and the connect modal would sit on "Confirming with <wallet>" with
 // no error and no way back. This bounds ONLY the handshake — never res.approval(), where the user is
@@ -102,10 +128,30 @@ function wcClient(){
   // at a time -- measured at ~6s for the FIRST level alone with an iPhone user agent, so on a phone connection the
   // start could outrun the limit. The same 2.25.0, bundled once (esbuild, es2020/safari14, _tools note in
   // lumoscore-security-hardening memory), is served from our own origin as a single file. esm.sh stays as the backup.
-  if(!_wcClient)_wcClient=wcTimeout(loadMod('/assets/vendor/wc-sign-client-2.25.0.min.js').catch(function(){
+  // THE PATCHED BUNDLE, and the order here is load-bearing.
+  //
+  // Stock 2.25.0 contains, verbatim, inside connect():
+  //   n.optionalNamespaces=tx(n.requiredNamespaces,n.optionalNamespaces),n.requiredNamespaces={}
+  // It folds requiredNamespaces into optionalNamespaces and WIPES requiredNamespaces to {}. LOBSTR's
+  // WalletConnect listing dates from 2022-01-27 and reads requiredNamespaces, so its iPhone app is
+  // handed a proposal that demands nothing and renders nothing — the app opens on its own dashboard
+  // with no approval sheet. Android's LOBSTR is newer, reads optionalNamespaces, and is unaffected.
+  // That is the whole Android-works / iPhone-shows-nothing split.
+  //
+  // wc-sign-client-2.25.0-reqns.min.js is our build of the same library with that one statement
+  // changed to a no-op: requiredNamespaces passes through AND optionalNamespaces still fills, so old
+  // and new wallets both get what they read. Verified by the marker — stock contains exactly one
+  // occurrence of requiredNamespaces set to an empty object, the patched file contains none.
+  //
+  // FOUND UNPATCHED AGAIN 2026-10-01: this loader was pointing at the STOCK file, so the fix built in
+  // September was never actually being served. Both fallbacks below are stock and will reintroduce the
+  // bug if they are ever reached, which is why they are last and why the patched file is first.
+  // NEVER point this at a stock bundle.
+  if(!_wcClient)_wcClient=wcTimeout(loadMod('/assets/vendor/wc-sign-client-2.25.0-reqns.min.js').catch(function(){
+      return loadMod('/assets/vendor/wc-sign-client-2.25.0.min.js'); }).catch(function(){
       return loadMod('https://esm.sh/@walletconnect/sign-client@2.25.0'); }).then(function(m){
     var SignClient=m.default||m.SignClient||m;
-    return SignClient.init({projectId:WC_PROJECT_ID,metadata:{name:'LumosCore',description:'Multichain DeFi',url:location.origin,icons:[]}});
+    return SignClient.init({projectId:WC_PROJECT_ID,metadata:{name:'LumosCore',description:'Multichain DeFi',url:location.origin,icons:[location.origin+'/assets/favicon.png']}});
   }),20000,'Could not connect to LOBSTR \\u2014 try again').catch(function(e){_wcClient=null;try{e.wcDown=true;}catch(_){}throw e;});
   return _wcClient;
 }
@@ -152,21 +198,68 @@ function wcClient(){
 })();
 function wcAddr(s){var a=s&&s.namespaces&&s.namespaces.stellar&&s.namespaces.stellar.accounts&&s.namespaces.stellar.accounts[0];
   if(!a)throw new Error('WalletConnect returned no Stellar account');return String(a).split(':').pop();}
+// WARM PAIRING -- the iOS fix (RAZA 2026-09-27..30: "Lobstr opens up but no connection signature
+// appears", iPhone only, Android fine throughout).
+//
+// iOS hands a custom-scheme navigation to the app WITH ITS QUERY only while the tap that caused it is
+// still live. client.connect() is a relay round trip, so poking after it awaits delivers a bare
+// lobstr://wc -- LOBSTR opens on its own dashboard with no pairing to show. That is the whole symptom,
+// and it is iOS-only because Android does not drop the late navigation. It is NOT the namespace shape:
+// stock (requiredNamespaces wiped) and patched (populated) were both tested on his iPhone and both
+// failed, while Android worked on both.
+//
+// So create the proposal one tap EARLIER -- when the wallet list opens -- and keep the resolved uri in
+// hand. By the time LOBSTR is tapped the poke is a plain synchronous navigation inside a live tap.
+// A proposal is single-use and expires in 5 minutes; 4 minutes is the cutoff so we never deep-link
+// into a dead pairing.
+var _wcPair=null,_wcPairRes=null,_wcPairAt=0;
+function wcPairFresh(){return !!_wcPair&&(Date.now()-_wcPairAt)<240000;}
+function wcWarmPair(){
+  if(!WC_PROJECT_ID||!isHandheld())return;
+  if(wcPairFresh())return;
+  _wcPairRes=null;_wcPairAt=Date.now();
+  var p=null;
+  try{
+    p=wcClient().then(function(client){
+      return client.connect({requiredNamespaces:{stellar:{methods:WC_METHODS,chains:[WC_CHAIN],events:[]}}});
+    });
+  }catch(_){_wcPair=null;return;}
+  _wcPair=p;
+  // Swallowed on purpose: this is only a head start. A failure here leaves _wcPair null and wcConnect
+  // takes the ordinary path, which reports errors properly.
+  p.then(function(r){if(_wcPair===p)_wcPairRes=r;},function(){if(_wcPair===p){_wcPair=null;_wcPairRes=null;}});
+}
+// Hand the warm proposal over exactly once.
+function wcTakePair(){
+  if(!wcPairFresh())return null;
+  var out={p:_wcPair,res:_wcPairRes};_wcPair=null;_wcPairRes=null;return out;
+}
+window.__lxWcWarm=wcWarmPair;
 // WalletConnect v2 connect. The modal is always opened: it carries the QR that desktop needs AND, on a
 // phone, a per-wallet "Open" button whose deep link comes from the registry and is tapped by the user,
 // so it is never popup-blocked. On a phone we ALSO poke the wallet directly so the usual case is zero
 // extra taps, and the modal is just the fallback if that poke goes nowhere.
 function wcConnect(deepLink){
-  return wcClient().then(function(client){
-    return wcTimeout(client.connect({requiredNamespaces:{stellar:{methods:WC_METHODS,chains:[WC_CHAIN],events:[]}}}),20000,'Could not connect to LOBSTR \\u2014 try again').catch(function(e){try{e.wcDown=true;}catch(_){}throw e;}).then(function(res){
+  // Take the proposal warmed when the wallet list opened, and poke with it RIGHT HERE -- synchronously,
+  // in the same task as the tap. This line is the iOS fix; putting any await in front of it puts the
+  // bug back. See wcWarmPair above.
+  var warm=wcTakePair();
+  var pokedNow=false;
+  if(warm&&warm.res&&warm.res.uri&&deepLink&&isHandheld()){wcPoke(wcLinkFor(deepLink),warm.res.uri);pokedNow=true;}
+  var proposal=warm
+    ? wcTimeout(Promise.resolve(warm.p),20000,'Could not connect to LOBSTR \\u2014 try again')
+    : wcClient().then(function(client){
+        return wcTimeout(client.connect({requiredNamespaces:{stellar:{methods:WC_METHODS,chains:[WC_CHAIN],events:[]}}}),20000,'Could not connect to LOBSTR \\u2014 try again');
+      });
+  return proposal.catch(function(e){try{e.wcDown=true;}catch(_){}throw e;}).then(function(res){
       // Deep-linked straight into the wallet app? Then the pairing modal is noise - the user is already
         // in LOBSTR approving. Only the generic WalletConnect row (no deepLink) needs the QR/list UI.
         // isHandheld, not isMobile: on RAZA's tablet the UA test was false, so picking LOBSTR skipped the deep
         // link and showed the WalletConnect list instead of opening the app that is installed on the device
         // ("why does it open wallet connect instead of directly opening the Lobstr app", 2026-09-21).
-        var wentDirect=!!(res.uri&&deepLink&&isHandheld());
+        var wentDirect=pokedNow||!!(res.uri&&deepLink&&isHandheld());
         var closeOpen=function(){};
-        if(wentDirect){ wcPoke(deepLink,res.uri);
+        if(wentDirect&&!pokedNow){ wcPoke(wcLinkFor(deepLink),res.uri);
           // The poke happens after the relay handshake, so the tap that started it is spent and the browser
           // may drop the navigation -- with the pairing modal deliberately skipped, that would leave nothing
           // on screen at all. Tapping this IS an activation, so it always works.
@@ -190,11 +283,15 @@ function wcConnect(deepLink){
           return md;
       },function(){return null;}).then(function(md){
         var close=function(){try{closeOpen();}catch(_){}if(md){try{md.closeModal();}catch(_){}}};
-        return res.approval().then(function(session){close();
+        var approval=res.approval().then(function(session){close();
           try{localStorage.setItem('lumos.wcTopic',session.topic);localStorage.removeItem('lumos.sep7conn');}catch(_){}
           return wcAddr(session);},function(err){close();throw err;});
+        // NO AUTOMATIC FALLBACK UI. Two were tried on 2026-09-30 and RAZA rejected both -- a bottom
+        // panel ("this weird box. Remove it") and then the app's own paste-your-address screen ("it
+        // asks me to paste in my address there. Remove it"). He wants the connection fixed, not routed
+        // around, and he is right: a paste box is not a wallet connection. Do not add another.
+        return approval;
       });
-    });
   });
 }
 
@@ -496,7 +593,7 @@ var A={
         // WalletConnect first: it opens the LOBSTR app and hands back the address, no typing. SEP-7
         // cannot do that - it has no way to return an address - so it is only the fallback for a
         // build with no project id.
-        if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};},function(e){
+        if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return (a&&a.address)?a:{address:a,transport:'wc'};},function(e){
           // FALL BACK, DO NOT FAIL (RAZA 2026-09-22, iPhone: "Could not reach WalletConnect" on connect and mid-swap -- "i
           // just dont wanna see this error"). WalletConnect is only a relay to the same app; when it will not start, the
           // LOBSTR link (SEP-7) reaches the app with no relay at all. The cost is pasting the address once.
@@ -508,15 +605,15 @@ var A={
         return pk?{address:pk,transport:'ext'}:null;
       },function(){return null;}).then(function(r){
         if(r)return r;
-        if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};});
+        if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return (a&&a.address)?a:{address:a,transport:'wc'};});
         throw notInstalled('LOBSTR');
       });
-      if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return {address:a,transport:'wc'};});
+      if(WC_PROJECT_ID)return wcConnect(WC_LOBSTR).then(function(a){return (a&&a.address)?a:{address:a,transport:'wc'};});
       throw notInstalled('LOBSTR');
     });},
     // WalletConnect needs a project id to init the SignClient — gated until one is provided.
     walletconnect:function(){if(!WC_PROJECT_ID)return Promise.reject(needsSetup('WalletConnect needs a free Project ID (cloud.reown.com) \\u2014 add it to enable this option'));
-      return wcConnect(null).then(function(a){return {address:a,transport:'wc'};});}
+      return wcConnect(null).then(function(a){return (a&&a.address)?a:{address:a,transport:'wc'};});}
   },
   starknet:{argent:sn('starknet_argentX','Argent'),braavos:sn('starknet_braavos','Braavos')},
   vechain:{
@@ -708,6 +805,11 @@ window.addEventListener('click',function(e){
         if(netId){e.preventDefault();e.stopImmediatePropagation();
           try{if(window.lxSetChain)window.lxSetChain(netId);}catch(_){}
           try{if(window.lxwOpenWallet)window.lxwOpenWallet(netId);}catch(_){}
+          // ONE TAP EARLIER. Picking Stellar is the step before picking LOBSTR, so this is where the
+          // pairing proposal is created -- the relay round trip happens while the user is reading the
+          // wallet list, and the deep link that follows fires inside their tap with the uri in hand.
+          // This is the iOS fix; see wcWarmPair.
+          if(netId==='stellar')try{wcWarmPair();}catch(_){}
           return;}
         var id=(row.getAttribute('data-wallet')||'').toLowerCase();if(!id)return;
   var net=window.__lxNet||'stellar';

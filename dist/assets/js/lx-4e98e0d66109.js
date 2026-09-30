@@ -451,7 +451,7 @@
         +'<div class="pc-sub">'+((+p.fee_bp||30)/100)+'% fee · Stellar AMM</div></div></div>'
         +'<div class="pc-stats">'
         +'<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+tvl+'</div></div>'
-        +'<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(+p.total_trustlines||0)+'</div></div>'
+        +'<div class="pc-stat"><div class="l">Participants</div><div class="v">'+num(+p.total_trustlines||0)+'</div></div>'
         +'</div></a>';
     }).join("");
   }
@@ -508,7 +508,7 @@
       +'<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+qty(p.xlm)+' XLM</div>'
       +'<div class="vs">'+usd(p.tvlUsd)+'</div></div>'
       +'<div class="pc-stat"><div class="l">24h Vol</div>'+volCell+'</div>'
-      +'<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.trustlines)+'</div></div>'
+      +'<div class="pc-stat"><div class="l">Participants</div><div class="v">'+num(p.trustlines)+'</div></div>'
       +'</div></a>';
   }
   // MOBILE "My Pools". Same problem as the all-pools list, in a different panel: the phone ships
@@ -748,6 +748,50 @@
       setGlyph(th, NET.sort===m.k ? (NET.dir==="asc"?"\u2191":"\u2193") : "\u2195");
       th.__lxnetkey=m.k;
     });
+  }
+  // ---- the same sort, on a phone ------------------------------------------------------------------
+  // The card list has no table headers to click, so it gets chips. They set the SAME NET.sort/NET.dir
+  // the headers set and call the same netFetch(), so the ordering is the endpoint's in both layouts —
+  // there is no second, divergent sort implementation to keep in step.
+  //
+  // Wired on WINDOW CAPTURE for the reason documented on wireNetSortClicks above: the design routes
+  // clicks inside this list through its own row resolver, and a listener on the element never runs.
+  function netSortBarWire(){
+    if(window.__lxNetSortBarWired)return; window.__lxNetSortBarWired=1;
+    window.addEventListener("click",function(e){
+      var b=e.target&&e.target.closest&&e.target.closest(".lx-nsb[data-nsk]");
+      if(!b)return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      var k=b.getAttribute("data-nsk");
+      // Same column again flips direction; a new one opens highest-first — what sorting a money
+      // column means, and what the desktop headers do.
+      if(NET.sort===k)NET.dir=(NET.dir==="asc"?"desc":"asc");
+      else { NET.sort=k; NET.dir="desc"; }
+      NET.page=1;
+      netSortBar();            // acknowledge the tap before the list comes back
+      netFetch();
+    },true);
+  }
+  var NSB=[{k:"tvl",t:"Liquidity"},{k:"vol",t:"Volume"},{k:"fees",t:"Fees"},{k:"members",t:"Participants"}];
+  function netSortBar(){
+    var host=q("#panelAll"); if(!host)return;          // desktop sorts from its headers
+    netSortBarWire();
+    var bar=q(".lx-netsortbar");
+    if(!bar){
+      bar=document.createElement("div");
+      bar.className="lx-netsortbar";
+      bar.setAttribute("data-lxnonav","1");            // keep the label-based nav bridge off "Volume"
+      host.parentNode.insertBefore(bar,host);
+    }
+    var sig=NET.sort+"|"+NET.dir;
+    if(bar.getAttribute("data-lxsig")===sig)return;    // no needless rebuild on every data tick
+    bar.setAttribute("data-lxsig",sig);
+    bar.innerHTML='<span class="lx-nsb-lbl">Sort</span>'+NSB.map(function(s){
+      var on=NET.sort===s.k;
+      return '<button type="button" class="lx-nsb'+(on?" on":"")+'" data-nsk="'+s.k+'" data-lxnonav="1"'
+        +(on?' aria-pressed="true"':'')+'>'+s.t
+        +(on?('<span class="lx-nsb-a">'+(NET.dir==="asc"?"\u2191":"\u2193")+'</span>'):'')+'</button>';
+    }).join("");
   }
   function deadSort(){
     var t=poolsTable(); if(!t)return;
@@ -1033,7 +1077,7 @@
       '<div class="pc-stats">'+
       '<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+(p.tvl==null?'&mdash;':usd(p.tvl))+'</div><div class="vs">'+netLiq(p)+'</div></div>'+
       '<div class="pc-stat"><div class="l">24h Vol</div>'+volCell+'</div>'+
-      '<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.members)+'</div></div>'+
+      '<div class="pc-stat"><div class="l">Participants</div><div class="v">'+num(p.members)+'</div></div>'+
       '</div></a>';
   }
   function netFootHtml(){
@@ -1074,6 +1118,7 @@
       }
     }
     if(mob){
+      try{ netSortBar(); }catch(_){}
       var msig="net|"+NET.page+"|"+NET.q+"|"+NET.sort+NET.dir+"|"+(rows?rows.length:-1)+"|"+NET.err+"|"+NET.warm;
       if(mob.getAttribute("data-lxsig")!==msig){
         mob.innerHTML=(rows&&rows.length)?rows.map(netCard).join("")
