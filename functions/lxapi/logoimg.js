@@ -75,7 +75,7 @@ async function tomlImage(asset) {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), TIMEOUT_MS);
     const r = await fetch(EXPERT + encodeURIComponent(code) + '&limit=20', {
-      signal: c.signal, cf: { cacheTtl: TTL, cacheEverything: true },
+      signal: c.signal, cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true },
     });
     clearTimeout(t);
     if (!r.ok) return '';
@@ -108,7 +108,7 @@ export async function onRequestGet(ctx) {
     up = await fetch(src, {
       signal: c.signal,
       redirect: 'follow',
-      cf: { cacheTtl: TTL, cacheEverything: true },
+      cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true },
     });
     clearTimeout(t);
   } catch (e) { return fail(504); }

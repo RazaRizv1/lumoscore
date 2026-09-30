@@ -122,7 +122,7 @@ async function compute(id, budgetMs, cache, key) {
   while (url && pages < MAXP && Date.now() - started < budgetMs) {
     let j = null;
     try {
-      const r = await fetch(url, { cf: { cacheTtl: TTL, cacheEverything: true } });
+      const r = await fetch(url, { cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
       if (!r.ok) { failed = true; break; }
       j = await r.json();
     } catch (e) { failed = true; break; }

@@ -43,7 +43,7 @@ async function xlmUsd(request) {
   // figure shown everywhere else on the page.
   try {
     const origin = new URL(request.url).origin;
-    const r = await fetch(origin + '/lxapi/xlm', { cf: { cacheTtl: 60, cacheEverything: true } });
+    const r = await fetch(origin + '/lxapi/xlm', { cf: { cacheTtlByStatus: { '200-299': 60, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     if (!r.ok) return 0;
     const d = await r.json();
     const p = +(d && (d.usd || d.price || d.xlmUsd));

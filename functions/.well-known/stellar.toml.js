@@ -144,7 +144,7 @@ function tomlResponse(body, ttl) {
 function withTimeout(url) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), TIMEOUT_MS);
-  return fetch(url, { signal: ctl.signal, cf: { cacheTtl: TTL, cacheEverything: true } })
+  return fetch(url, { signal: ctl.signal, cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } })
     .finally(() => clearTimeout(t));
 }
 

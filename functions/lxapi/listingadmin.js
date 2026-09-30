@@ -103,12 +103,12 @@ export async function onRequestGet({ request, env }) {
 // Did we actually send this refund? Same shape of check as the inbound payment on the public endpoint,
 // pointed the other way.
 async function verifyRefund(hash, payer, amount) {
-  const t = await fetch(H + '/transactions/' + hash, { cf: { cacheTtl: 30 } });
+  const t = await fetch(H + '/transactions/' + hash, { cf: { cacheTtlByStatus: { '200-299': 30, '300-399': 0, '400-599': 0 } } });
   if (!t.ok) return { err: 'that refund transaction is not on the ledger' };
   const tx = await t.json();
   if (!tx.successful) return { err: 'that refund transaction did not succeed' };
 
-  const o = await fetch(H + '/transactions/' + hash + '/operations?limit=50', { cf: { cacheTtl: 30 } });
+  const o = await fetch(H + '/transactions/' + hash + '/operations?limit=50', { cf: { cacheTtlByStatus: { '200-299': 30, '300-399': 0, '400-599': 0 } } });
   if (!o.ok) return { err: 'could not read that transaction' };
   const ops = ((await o.json())._embedded || {}).records || [];
 

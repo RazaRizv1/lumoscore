@@ -147,7 +147,7 @@ const FUTURE_SKEW_MS = 5 * 60 * 1000;
 
 // The payment that pays for this listing, as the CHAIN describes it -- not as the form claims.
 async function verifyPayment(hash) {
-  const t = await fetch(H + '/transactions/' + hash, { cf: { cacheTtl: 30 } });
+  const t = await fetch(H + '/transactions/' + hash, { cf: { cacheTtlByStatus: { '200-299': 30, '300-399': 0, '400-599': 0 } } });
   if (!t.ok) return { err: 'transaction not found' };
   const tx = await t.json();
   if (!tx.successful) return { err: 'transaction did not succeed' };
@@ -163,7 +163,7 @@ async function verifyPayment(hash) {
   }
   if (age < -FUTURE_SKEW_MS) return { err: 'that payment is dated in the future' };
 
-  const o = await fetch(H + '/transactions/' + hash + '/operations?limit=50', { cf: { cacheTtl: 30 } });
+  const o = await fetch(H + '/transactions/' + hash + '/operations?limit=50', { cf: { cacheTtlByStatus: { '200-299': 30, '300-399': 0, '400-599': 0 } } });
   if (!o.ok) return { err: 'could not read the transaction' };
   const ops = ((await o.json())._embedded || {}).records || [];
 
@@ -186,7 +186,7 @@ async function verifyPayment(hash) {
 async function quoted(request, code) {
   try {
     const origin = new URL(request.url).origin;
-    const r = await fetch(origin + '/lxapi/listingquote', { cf: { cacheTtl: 30 } });
+    const r = await fetch(origin + '/lxapi/listingquote', { cf: { cacheTtlByStatus: { '200-299': 30, '300-399': 0, '400-599': 0 } } });
     if (!r.ok) return 0;
     const d = await r.json();
     const opt = ((d && d.options) || []).filter((x) => x.code === code)[0];
@@ -245,7 +245,7 @@ export async function onRequestPost({ request, env }) {
   // The asset must actually exist before we queue a listing for it.
   try {
     const a = await fetch(H + '/assets?asset_code=' + encodeURIComponent(code)
-      + '&asset_issuer=' + encodeURIComponent(issuer) + '&limit=1', { cf: { cacheTtl: 60 } });
+      + '&asset_issuer=' + encodeURIComponent(issuer) + '&limit=1', { cf: { cacheTtlByStatus: { '200-299': 60, '300-399': 0, '400-599': 0 } } });
     const rec = a.ok ? (((await a.json())._embedded || {}).records || [])[0] : null;
     if (!rec) return json({ ok: false, error: 'that asset does not exist on Stellar mainnet' }, 400);
   } catch (e) { /* Horizon wobble should not block a paid submission */ }

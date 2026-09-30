@@ -68,7 +68,7 @@ export async function onRequestGet({ request }) {
     r = await fetch(url, {
       headers: { accept: 'application/json' },
       signal: AbortSignal.timeout(TIMEOUT_MS),
-      cf: { cacheTtl: TTL, cacheEverything: true },
+      cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true },
     });
   } catch (e) {
     return json({ error: 'upstream unreachable' }, 502, TTL_ERR);

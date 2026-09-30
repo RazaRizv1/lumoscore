@@ -47,7 +47,7 @@ function json(body, status, ttl) {
 function withTimeout(url, ms) {
   const ctl = new AbortController();
   const t = setTimeout(() => ctl.abort(), ms);
-  return fetch(url, { signal: ctl.signal, cf: { cacheTtl: TTL_HIT, cacheEverything: true } })
+  return fetch(url, { signal: ctl.signal, cf: { cacheTtlByStatus: { '200-299': TTL_HIT, '300-399': 0, '400-599': 0 }, cacheEverything: true } })
     .finally(() => clearTimeout(t));
 }
 
@@ -97,7 +97,7 @@ async function expertImage(asset) {
   try {
     const c = new AbortController();
     const t = setTimeout(() => c.abort(), 3500);
-    const r = await fetch(EXPERT + asset, { signal: c.signal, cf: { cacheTtl: 86400, cacheEverything: true } });
+    const r = await fetch(EXPERT + asset, { signal: c.signal, cf: { cacheTtlByStatus: { '200-299': 86400, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     clearTimeout(t);
     if (!r.ok) return '';
     const d = await r.json();

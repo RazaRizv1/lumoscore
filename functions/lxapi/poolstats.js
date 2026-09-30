@@ -31,7 +31,7 @@ const COUNT_TTL = 21600;   // 6 h  — the pool count barely moves, and this is 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function j(url, ttl = SAMPLE_TTL) {
   for (let attempt = 0; attempt < 3; attempt++) {
-    const r = await fetch(url, { cf: { cacheTtl: ttl, cacheEverything: true } });
+    const r = await fetch(url, { cf: { cacheTtlByStatus: { '200-299': ttl, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     if (r.status === 429) { await sleep(1200 * (attempt + 1)); continue; }
     if (!r.ok) return null;
     return r.json();

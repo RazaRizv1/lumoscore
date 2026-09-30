@@ -106,7 +106,7 @@ export async function onRequestGet({ request }) {
       const r = await fetch(url, {
         signal: ctl.signal,
         // cacheEverything lets a second invocation reuse the upstream body instead of paying the hop again
-        cf: { cacheTtl: TTL, cacheEverything: true },
+        cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true },
       });
       clearTimeout(t);
       if (r.ok) {

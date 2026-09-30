@@ -30,7 +30,7 @@ async function livePools(){
   try {
     const r = await fetch(
       'https://horizon.stellar.org/liquidity_pools?limit=' + MAX_POOLS + '&order=desc',
-      { cf: { cacheTtl: 1800, cacheEverything: true } });
+      { cf: { cacheTtlByStatus: { '200-299': 1800, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     if (!r.ok) return [];
     const d = await r.json();
     return ((d._embedded && d._embedded.records) || [])

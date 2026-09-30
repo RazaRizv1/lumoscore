@@ -90,7 +90,7 @@ async function verifyMint(txHash, issuer) {
   let r;
   try {
     r = await fetch(H + '/transactions/' + encodeURIComponent(txHash) + '/operations?limit=' + MINT_OPS,
-      { cf: { cacheTtl: 60 } });
+      { cf: { cacheTtlByStatus: { '200-299': 60, '300-399': 0, '400-599': 0 } } });
   } catch (e) { return 'could not reach Stellar to check the mint; try again shortly'; }
   if (!r.ok) return 'that transaction could not be found on Stellar mainnet';
 

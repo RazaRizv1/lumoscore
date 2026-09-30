@@ -48,7 +48,7 @@ function json(body, status, ttl) {
   });
 }
 async function hz(url, ttl) {
-  const r = await fetch(url, { cf: { cacheTtl: ttl, cacheEverything: true } });
+  const r = await fetch(url, { cf: { cacheTtlByStatus: { '200-299': ttl, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
   if (!r.ok) return null;
   const j = await r.json();
   return (((j || {})._embedded || {}).records) || null;
@@ -88,7 +88,7 @@ export async function onRequestGet({ request }) {
     } catch (e) { /* fall through */ }
     try {
       const r = await fetch(CG + '/coins/stellar/market_chart?vs_currency=usd&days=' + (+chart),
-        { cf: { cacheTtl: CHART_TTL, cacheEverything: true } });
+        { cf: { cacheTtlByStatus: { '200-299': CHART_TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
       if (r.ok) {
         const j = await r.json();
         const prices = (j.prices || []).filter((p) => Array.isArray(p) && +p[1] > 0).map((p) => [+p[0], +p[1]]);
@@ -120,7 +120,7 @@ export async function onRequestGet({ request }) {
   try {
     const r = await fetch(CG + '/simple/price?ids=stellar&vs_currencies=usd'
       + '&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true',
-      { cf: { cacheTtl: PRICE_TTL, cacheEverything: true } });
+      { cf: { cacheTtlByStatus: { '200-299': PRICE_TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     if (r.ok) {
       const s = ((await r.json()) || {}).stellar || {};
       mcap = +s.usd_market_cap || null;

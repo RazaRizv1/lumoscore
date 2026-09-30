@@ -30,7 +30,7 @@ const ASSET_TTL = 21600;   // 6 h — the asset count barely moves, and this is 
 const ASSET_STATS = 'https://api.stellar.expert/explorer/public/asset-stats/overall';
 async function assetCount() {
   try {
-    const r = await fetch(ASSET_STATS, { cf: { cacheTtl: ASSET_TTL, cacheEverything: true } });
+    const r = await fetch(ASSET_STATS, { cf: { cacheTtlByStatus: { '200-299': ASSET_TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     if (!r.ok) return null;
     const d = await r.json();
     return +d.total_assets > 0 ? +d.total_assets : null;
@@ -67,7 +67,7 @@ function json(body, status, ttl) {
 export async function onRequestGet() {
   let txt = '';
   try {
-    const r = await fetch(UPSTREAM, { cf: { cacheTtl: TTL, cacheEverything: true } });
+    const r = await fetch(UPSTREAM, { cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     if (!r.ok) return json({ error: 'upstream ' + r.status }, 502, 60);
     txt = await r.text();
   } catch (e) {

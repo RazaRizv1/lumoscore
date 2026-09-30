@@ -53,7 +53,7 @@ export async function onRequestGet({ request }) {
     // visitors collapse into one origin fetch.
     const r = await fetch(url, {
       headers: { accept: 'application/json' },
-      cf: { cacheTtl: TTL, cacheEverything: true },
+      cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true },
     });
 
     if (!r.ok) {
