@@ -522,6 +522,26 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .tx-item .tx-icon.lx-txident{background:none!important;padding:0!important;overflow:hidden;border-radius:50%}
 .tx-item .tx-icon.lx-txident svg{display:block;width:100%;height:100%}
 .tx-item .lx-txext:active{background:var(--surface-2);color:var(--accent)}
+/* ---- All Pools sorting on a phone (RAZA 2026-09-30: "Pools main page, on mobile, there's no sorting
+   option like there is on Desktop").
+   Desktop sorts by clicking the table headers; the phone renders cards and has no headers at all, so
+   the control simply did not exist there. A row of chips carries the same four keys the headers do
+   (tvl / vol / fees / members) and drives the same NET.sort + netFetch() path, so both layouts are
+   sorted by the endpoint in exactly the same way rather than by two different code paths.
+   Scrolls horizontally rather than wrapping: four chips plus a direction arrow do not fit 360px, and
+   a wrapped second row pushes the first card off the screen. */
+.lx-netsortbar{display:flex;gap:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;
+  padding:2px 0 10px;margin:0 0 2px}
+.lx-netsortbar::-webkit-scrollbar{display:none}
+.lx-netsortbar .lx-nsb-lbl{flex:0 0 auto;align-self:center;font-size:12.5px;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-muted);padding-right:2px}
+.lx-nsb{flex:0 0 auto;appearance:none;border:1px solid var(--border);background:var(--surface);
+  color:var(--text-muted);font:600 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;
+  padding:9px 12px;border-radius:999px;cursor:pointer;white-space:nowrap;display:inline-flex;
+  align-items:center;gap:6px;transition:background .14s,color .14s,border-color .14s}
+.lx-nsb:active{background:var(--surface-2)}
+.lx-nsb.on{background:rgba(234,106,44,.14);border-color:rgba(234,106,44,.55);color:var(--accent,#ea6a2c)}
+.lx-nsb .lx-nsb-a{font-family:ui-monospace,Menlo,monospace;font-size:12px;opacity:.9}
 </style>`;
 
 const SCRIPT = `<script id="lx-ammdata">(function(){
@@ -977,7 +997,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
         +'<div class="pc-sub">'+((+p.fee_bp||30)/100)+'% fee \u00b7 Stellar AMM</div></div></div>'
         +'<div class="pc-stats">'
         +'<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+tvl+'</div></div>'
-        +'<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(+p.total_trustlines||0)+'</div></div>'
+        +'<div class="pc-stat"><div class="l">Participants</div><div class="v">'+num(+p.total_trustlines||0)+'</div></div>'
         +'</div></a>';
     }).join("");
   }
@@ -1034,7 +1054,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       +'<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+qty(p.xlm)+' XLM</div>'
       +'<div class="vs">'+usd(p.tvlUsd)+'</div></div>'
       +'<div class="pc-stat"><div class="l">24h Vol</div>'+volCell+'</div>'
-      +'<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.trustlines)+'</div></div>'
+      +'<div class="pc-stat"><div class="l">Participants</div><div class="v">'+num(p.trustlines)+'</div></div>'
       +'</div></a>';
   }
   // MOBILE "My Pools". Same problem as the all-pools list, in a different panel: the phone ships
@@ -1274,6 +1294,50 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       setGlyph(th, NET.sort===m.k ? (NET.dir==="asc"?"\\u2191":"\\u2193") : "\\u2195");
       th.__lxnetkey=m.k;
     });
+  }
+  // ---- the same sort, on a phone ------------------------------------------------------------------
+  // The card list has no table headers to click, so it gets chips. They set the SAME NET.sort/NET.dir
+  // the headers set and call the same netFetch(), so the ordering is the endpoint's in both layouts —
+  // there is no second, divergent sort implementation to keep in step.
+  //
+  // Wired on WINDOW CAPTURE for the reason documented on wireNetSortClicks above: the design routes
+  // clicks inside this list through its own row resolver, and a listener on the element never runs.
+  function netSortBarWire(){
+    if(window.__lxNetSortBarWired)return; window.__lxNetSortBarWired=1;
+    window.addEventListener("click",function(e){
+      var b=e.target&&e.target.closest&&e.target.closest(".lx-nsb[data-nsk]");
+      if(!b)return;
+      e.preventDefault(); e.stopImmediatePropagation();
+      var k=b.getAttribute("data-nsk");
+      // Same column again flips direction; a new one opens highest-first — what sorting a money
+      // column means, and what the desktop headers do.
+      if(NET.sort===k)NET.dir=(NET.dir==="asc"?"desc":"asc");
+      else { NET.sort=k; NET.dir="desc"; }
+      NET.page=1;
+      netSortBar();            // acknowledge the tap before the list comes back
+      netFetch();
+    },true);
+  }
+  var NSB=[{k:"tvl",t:"Liquidity"},{k:"vol",t:"Volume"},{k:"fees",t:"Fees"},{k:"members",t:"Participants"}];
+  function netSortBar(){
+    var host=q("#panelAll"); if(!host)return;          // desktop sorts from its headers
+    netSortBarWire();
+    var bar=q(".lx-netsortbar");
+    if(!bar){
+      bar=document.createElement("div");
+      bar.className="lx-netsortbar";
+      bar.setAttribute("data-lxnonav","1");            // keep the label-based nav bridge off "Volume"
+      host.parentNode.insertBefore(bar,host);
+    }
+    var sig=NET.sort+"|"+NET.dir;
+    if(bar.getAttribute("data-lxsig")===sig)return;    // no needless rebuild on every data tick
+    bar.setAttribute("data-lxsig",sig);
+    bar.innerHTML='<span class="lx-nsb-lbl">Sort</span>'+NSB.map(function(s){
+      var on=NET.sort===s.k;
+      return '<button type="button" class="lx-nsb'+(on?" on":"")+'" data-nsk="'+s.k+'" data-lxnonav="1"'
+        +(on?' aria-pressed="true"':'')+'>'+s.t
+        +(on?('<span class="lx-nsb-a">'+(NET.dir==="asc"?"\\u2191":"\\u2193")+'</span>'):'')+'</button>';
+    }).join("");
   }
   function deadSort(){
     var t=poolsTable(); if(!t)return;
@@ -1559,7 +1623,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       '<div class="pc-stats">'+
       '<div class="pc-stat"><div class="l">Liquidity</div><div class="v">'+(p.tvl==null?'&mdash;':usd(p.tvl))+'</div><div class="vs">'+netLiq(p)+'</div></div>'+
       '<div class="pc-stat"><div class="l">24h Vol</div>'+volCell+'</div>'+
-      '<div class="pc-stat"><div class="l">Members</div><div class="v">'+num(p.members)+'</div></div>'+
+      '<div class="pc-stat"><div class="l">Participants</div><div class="v">'+num(p.members)+'</div></div>'+
       '</div></a>';
   }
   function netFootHtml(){
@@ -1600,6 +1664,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       }
     }
     if(mob){
+      try{ netSortBar(); }catch(_){}
       var msig="net|"+NET.page+"|"+NET.q+"|"+NET.sort+NET.dir+"|"+(rows?rows.length:-1)+"|"+NET.err+"|"+NET.warm;
       if(mob.getAttribute("data-lxsig")!==msig){
         mob.innerHTML=(rows&&rows.length)?rows.map(netCard).join("")

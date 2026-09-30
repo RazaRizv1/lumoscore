@@ -386,10 +386,30 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 // The mobile page has ONE list container shared by both tabs and no pool panel of its own, so pool
 // rows render into #assetList when the Liq Pools tab is selected. __lxLps gives the share balances;
 // the pair and the reserves behind them need the pool itself, fetched once each and cached.
-+ 'var POOLS={};'
-+ 'function poolDetail(id,cb){if(POOLS[id]!==undefined){cb(POOLS[id]);return;}POOLS[id]=null;'
+// ONE REQUEST FOR ALL OF THEM, not one per pool (RAZA 2026-09-30: "wallet page details are taking
+// forever to load"). Measured on his account, 25 pools: the phone build was issuing a
+// /liquidity_pools/<id> per position from here, on top of the same thing happening twice over in
+// _walletdata.js -- 48 pool requests for one page load, 22.3s of cumulative request time, queued
+// behind and alongside the 26 /paths/strict-send calls that price the assets.
+//
+// Horizon answers it in one request and _walletdata.js already uses that form elsewhere. Checked
+// against his account first: /liquidity_pools?account=<G>&limit=200 returns all 25 in ~650ms with
+// reserves, total_shares, fee_bp and total_trustlines identical to the per-id fetch, none missing.
+//
+// poolDetail() keeps its signature and its cache, so nothing that calls it changes. The batch is
+// memoised, so the twenty-odd callers that fire together produce ONE request between them, and the
+// per-id fetch stays as the fallback for an id the batch did not return.
++ 'var POOLS={},POOLSP=null;'
++ 'function poolAll(){if(POOLSP)return POOLSP;var a=addr();'
++ 'if(!a){POOLSP=Promise.resolve();return POOLSP;}'
++ 'POOLSP=fetch(HZ+"/liquidity_pools?account="+encodeURIComponent(a)+"&limit=200")'
++ '.then(function(r){return r.ok?r.json():null;})'
++ '.then(function(d){((d&&d._embedded&&d._embedded.records)||[]).forEach(function(p){if(p&&p.id&&POOLS[p.id]===undefined)POOLS[p.id]=p;});})'
++ '.catch(function(){});return POOLSP;}'
++ 'function poolDetail(id,cb){if(POOLS[id]!==undefined){cb(POOLS[id]);return;}'
++ 'poolAll().then(function(){if(POOLS[id]!==undefined){cb(POOLS[id]);return;}POOLS[id]=null;'
 + 'fetch(HZ+"/liquidity_pools/"+id).then(function(r){return r.ok?r.json():null;}).then(function(d){POOLS[id]=d||false;cb(POOLS[id]);})'
-+ '.catch(function(){POOLS[id]=false;cb(false);});}'
++ '.catch(function(){POOLS[id]=false;cb(false);});});}'
 + 'function resCode(rv){var a=(rv&&rv.asset)||"";return a==="native"?"XLM":String(a).split(":")[0];}'
 // The pool rows shipped with an EMPTY .lxmw-ico — no logo, no letter, so every position showed the same
 // orange disc. The Assets tab two functions up already resolves a real logo per asset; a pool just needs
@@ -489,9 +509,36 @@ const SCRIPT = '<script id="lx-mobwallet">(function(){'
 + 'if(!isTap(e))return;'
 + 'var tr=t.closest("[data-asttrade]");'
 + 'if(tr){e.preventDefault();e.stopPropagation();astTradeMenu(tr,tr.getAttribute("data-asttrade")||"",tr.getAttribute("data-astiss")||"",tr.getAttribute("data-astnat")==="1");return;}'
+// SEND THE ASSET THE ROW IS ABOUT (RAZA 2026-09-30: "when sending any asset, let's say Lumos, in the
+// send popup its supposed to show that particular asset when the popup opens. Right now when I tap
+// send, in the popup its showing XLM by default instead of that asset").
+//
+// The button has carried data-astsend (the code) and data-astiss (the issuer) since it was built, and
+// this handler read NEITHER -- it opened #modalSend and left it on whatever asset it was last on,
+// which on a first open is XLM. The desktop row Send has done this properly all along
+// (wireAssetActions in _walletdata.js); the phone build simply never did.
+//
+// Mirrors that desktop path rather than inventing a second one:
+//   * the real holding out of window.__lxHoldings, so the balance line and the Max button are right,
+//     falling back to a minimal object if the balances have not landed yet;
+//   * window.__lxSendPre, which is what the chip builder reads the FIRST time it builds;
+//   * and an explicit re-select afterwards, because that builder is guarded by
+//     `!m.querySelector(".lx-asset-pick")` and so never runs again on later opens.
+// The retries cover the modal's own reset, which clears fields after the open.
 + 'var sd=t.closest("[data-astsend]");'
-+ 'if(sd){e.preventDefault();e.stopPropagation();var sm=document.getElementById("modalSend");'
-+ 'if(sm){sm.classList.add("open");try{document.body.style.overflow="hidden";}catch(_){}}return;}'
++ 'if(sd){e.preventDefault();e.stopPropagation();'
++ 'var _c=sd.getAttribute("data-astsend")||"",_i=sd.getAttribute("data-astiss")||"";'
++ 'var _held=(window.__lxHoldings||[]).filter(function(h){return h.code===_c&&(!_i||!h.iss||h.iss===_i);})[0]'
++ '||{code:_c,iss:_i,native:_c==="XLM",bal:0};'
++ 'if(!_held.native&&!_held.logo)_held.logo=(window.__lxLogos||{})[_held.code]||"";'
++ 'window.__lxSendPre=_held;'
++ 'var sm=document.getElementById("modalSend");'
++ 'if(sm){sm.classList.add("open");try{document.body.style.overflow="hidden";}catch(_){}}'
++ 'var _ps=function(){try{var m=document.querySelector(".modal-overlay.open")||sm;'
++ 'if(m&&typeof window.__lxSelSendAsset==="function")window.__lxSelSendAsset(m,_held);}catch(_){}};'
++ '_ps();setTimeout(_ps,60);setTimeout(_ps,220);setTimeout(_ps,480);'
++ 'setTimeout(function(){window.__lxSendPre=null;},1400);'
++ 'return;}'
 + 'var rm=t.closest("[data-astrm]");'
 + 'if(rm){ if(e.type==="touchend"){ e.preventDefault(); e.stopPropagation(); rm.click(); } return; }'
 + 'var mr=t.closest("[data-astmore]");'

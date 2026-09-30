@@ -2582,7 +2582,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   var HCAP=200;
   // A ranking is real when it came from the ranked source, OR when one Horizon page happened to contain
   // every holder (small assets — then sorting it locally IS the true order).
-  function canRankHolders(){ return !!window.__lxDXAranked || (holders!=null && holders<=HCAP); }
+  // __lxDXAcomplete: the Horizon fallback paged all the way to the end of the asset's accounts, so
+  // the locally sorted list IS the true order even though it did not come from the ranked source.
+  // That is the same claim the holders<=HCAP branch makes for a one-page asset, no longer capped at a page.
+  function canRankHolders(){ return !!window.__lxDXAranked || !!window.__lxDXAcomplete || (holders!=null && holders<=HCAP); }
   // ---- HOLDERS PAGING -------------------------------------------------------------------------------
   // Upstream pages by an OPAQUE cursor, never an offset: cursor=200 returns nothing, while the token out
   // of _links.next works and the pages stay correctly ranked with no overlap (page 1 ends at balance
@@ -2643,25 +2646,82 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // ranked source first (same-origin proxy -> stellar.expert, ordered by balance)
     // 200 is the upstream maximum and it is a single request, so four pages of the table are in hand
     // before anyone touches Next. Deeper pages come from holdMore() on demand.
-    j("/lxapi/holders?asset="+encodeURIComponent(CODE+"-"+ISSUER)+"&limit=200").then(function(d){
+    // ONE RETRY BEFORE GIVING UP THE RANKING. j() only ever retries HORIZON urls -- it falls back to
+    // the secondary Horizon host -- so for this same-origin path any single failure went straight to
+    // the catch. And the catch is expensive: horizonHolders() returns a SAMPLE ordered by account id,
+    // which is not a ranking, so canRankHolders() stays false and "Top 10 / Top 50 hold" are dashed
+    // for the rest of that page view. One transient 429 or a dropped request on a phone therefore
+    // cost the whole feature, permanently, with rows on screen to make it look like it had worked.
+    // Verified the upstream itself is healthy: all 14 curated assets return 200 with a full 200-record
+    // ranking, so what is being recovered from here is transience, not an unsupported asset.
+    var HURL="/lxapi/holders?asset="+encodeURIComponent(CODE+"-"+ISSUER)+"&limit=200";
+    function takeRanked(d){
       var rk=(d&&d._embedded&&d._embedded.records)||[];
       if(!rk.length)throw new Error("no ranked holders");
       window.__lxDXAhold=rk.map(function(r){ return {addr:r.address||r.account, bal:(+r.balance||0)/1e7}; })
         .filter(function(h){ return h.bal>0; });      // a zero balance is a trustline, not a holder
       window.__lxDXAholdNext=holdCursor(d);
       window.__lxDXAranked=1; guardApply();
+    }
+    j(HURL).then(takeRanked).catch(function(){
+      // A short wait, because the two likely causes -- a cold edge cache in front of a slow upstream,
+      // and a rate-limited one -- both clear on their own; an immediate retry would just repeat the
+      // same failure. Still only one, so a genuinely dead upstream costs one extra request.
+      //
+      // AND A DIFFERENT URL, or the retry is theatre: a failed response used to be served with
+      // max-age=120, so the second fetch read the first failure straight back out of the browser
+      // cache without touching the network. The endpoint no longer caches failures (see
+      // functions/lxapi/holders.js), and the cache-buster makes the retry independent of whatever
+      // any intermediary already holds.
+      return new Promise(function(go){ setTimeout(go,1200); })
+        .then(function(){ return j(HURL+"&_r="+Date.now()); }).then(takeRanked);
     }).catch(function(){ horizonHolders(); });                 // proxy absent (static hosting) or upstream down
   }
   // fallback: one Horizon page, ordered by account id — a sample, never a ranking
+  // PAGE UNTIL THE SET IS COMPLETE, not one page and stop (RAZA 2026-09-30, second report: an asset
+  // with 243 holders still showed an em dash for Top 10 / Top 50).
+  //
+  // The first round of this assumed the ranked source was always available and only needed a retry.
+  // It is not: stellar.expert has no ranking for every asset, and the 14 CURATED assets I tested all
+  // did -- which is why the check passed while RAZA kept hitting assets that failed. An asset it does
+  // not rank falls here, and here only ever fetched ONE page (depth<0 is false on the first call,
+  // so the paging branch was dead code). 200 of 243 accounts is not a holder set you can rank, so
+  // canRankHolders() correctly refused and dashed both figures -- correctly, but needlessly, because
+  // the missing 43 were one more request away.
+  //
+  // Horizon returns every account holding the asset, 200 at a time. Paging to the end gives the
+  // COMPLETE set, and a complete set sorted by balance IS the true ranking -- which is the same
+  // reasoning the holders<=HCAP branch already rests on, just no longer limited to one page.
+  // Bounded at 5 pages / 1,000 accounts so a giant asset still stops early and keeps the dash rather
+  // than pulling itself through Horizon forever; 243 needs two.
+  var HPAGES=5;
+  // HORIZON'S /accounts?asset= IS BRUTALLY SLOW ON A LARGE ASSET, and paging it was my mistake.
+  // Measured 2026-09-30: ONE page of 200 took 61.6s on SCOP (35,444 holders) and 10.7s on PYUSD
+  // (10,116). Paging that five times is up to five minutes of "Loading holders…" -- and on an asset
+  // with more holders than five pages can hold it ends in the same em dash it would have shown at
+  // the start, because the set was never going to be complete. That is RAZA's "taking forever to
+  // load", and the previous round of this fix is what multiplied it.
+  //
+  // So the budget is ONE page unless the whole holder set is genuinely within reach. Paging only
+  // earns its cost when it can finish; on a small asset those same queries return quickly.
+  function pageBudget(){ return (holders!=null && holders<=HPAGES*200) ? HPAGES : 1; }
   function horizonHolders(){
-    var acc=[];
-    function finish(){ window.__lxDXAhold=acc.sort(function(x,y){return y.bal-x.bal;}); guardApply(); }
+    var acc=[], complete=false;
+    function finish(){
+      window.__lxDXAhold=acc.sort(function(x,y){return y.bal-x.bal;});
+      // Only claim a ranking when the list actually ended. Stopping at the page cap means there are
+      // holders we never saw, and the top of an incomplete list is not the top of the asset.
+      if(complete)window.__lxDXAcomplete=1;
+      guardApply();
+    }
     function page(url,depth){
       j(url).then(function(d){
         var recs=(d&&d._embedded&&d._embedded.records)||[];
         recs.forEach(function(a){ (a.balances||[]).forEach(function(bl){ if(bl.asset_code===CODE&&bl.asset_issuer===ISSUER)acc.push({addr:a.account_id||a.id,bal:+bl.balance}); }); });
         var next=d&&d._links&&d._links.next&&d._links.next.href;
-        if(next&&recs.length&&depth<0){ page(next,depth+1); } else { finish(); }   // one page only — see HCAP note   // cap ~3 pages (600 accounts) — enough for top-50 + concentration
+        // A short page or a missing next link is the end of the asset's accounts.
+        if(!next||recs.length<200){ complete=true; finish(); return; }
+        if(depth+1<pageBudget()){ page(next,depth+1); } else { finish(); }
       }).catch(function(){ if(acc.length)finish(); else window.__lxDXAholdLoading=false; });
     }
     page(H+"/accounts?asset="+CODE+":"+ISSUER+"&limit=200&order=desc",0);
@@ -2679,10 +2739,25 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // header stat count (accurate trustline count from /assets)
     var _hn=(holdersFunded!=null?holdersFunded:holders);
     if(_hn!=null){ var st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val"); if(st[0]){var _h=num(_hn);if(st[0].textContent!==_h)st[0].textContent=_h;lxMark(st[0]);} }
-    // Only the rare fallback (no ranked source) leaves these unknown; dash them then, with no prose.
+    // LOADING IS NOT THE SAME AS UNKNOWN (RAZA 2026-09-30: "I'm unable to see top 10 & top 50 holders
+    // for some big assets"). Measured on XRP, 57,140 trustlines: with a warm edge cache both figures
+    // land 1.0s after the tab is opened -- but the ranked fetch is a network round trip to
+    // stellar.expert through our proxy, and until it returns, canRankHolders() is false for every
+    // asset over 200 holders. This wrote a bare em dash into both cells for that whole window, which
+    // reads as "we cannot tell you" rather than "not yet", and his screenshot is exactly that moment.
+    // A dash that means two different things is the bug; the figures themselves were never wrong.
     if(holders!=null&&!canRankHolders()){
       var _st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val");
-      [1,2].forEach(function(i){ if(_st[i]){ if(_st[i].textContent!=="\u2014")_st[i].textContent="\u2014"; lxMark(_st[i]); } });
+      // Still in flight -> say so. Settled without a ranking -> dash it, and let the title say why,
+      // so the one case that genuinely cannot be answered explains itself on hover.
+      var _busy=!!window.__lxDXAholdLoading&&!window.__lxDXAhold;
+      var _txt=_busy?"\u2026":"\u2014";
+      var _ttl=_busy?"reading the ranked holder list"
+        :"this asset has more holders than one page, and the ranked list could not be read";
+      [1,2].forEach(function(i){ if(_st[i]){
+        if(_st[i].textContent!==_txt)_st[i].textContent=_txt;
+        if(_st[i].getAttribute("title")!==_ttl)_st[i].setAttribute("title",_ttl);
+        lxMark(_st[i]); } });
     }
     var _n0=wrap.querySelector(".lxda-hl-note"); if(_n0&&_n0.parentNode)_n0.parentNode.removeChild(_n0);
     // Until the real rows land, the design's mock holders sit there — Ethereum-style "0x00…c3a1" wallets
@@ -2693,8 +2768,20 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       var _tb0=MOB?wrap.querySelector(".mdxa-hl-list"):wrap.querySelector("table tbody");
       if(_tb0&&!_tb0.getAttribute("data-lxbuilt")&&_tb0.getAttribute("data-lxload")!=="1"){
         _tb0.setAttribute("data-lxload","1");
-        _tb0.innerHTML=MOB?'<div style="padding:22px 14px;text-align:center;color:var(--text-muted)">Loading holders…</div>'
-          :'<tr><td colspan="5" style="padding:22px 14px;text-align:center;color:var(--text-muted)">Loading holders…</td></tr>';
+        var _wrapMsg=function(t){ return MOB
+          ? '<div style="padding:22px 14px;text-align:center;color:var(--text-muted)">'+t+'</div>'
+          : '<tr><td colspan="5" style="padding:22px 14px;text-align:center;color:var(--text-muted)">'+t+'</td></tr>'; };
+        _tb0.innerHTML=_wrapMsg("Loading holders…");
+        // SAY SO WHEN IT IS SLOW, rather than showing the same three dots for a minute. When the
+        // ranked list is unavailable this falls back to Horizon, whose /accounts?asset= took a
+        // measured 61.6s for ONE page on SCOP -- so "Loading holders…" could legitimately sit there
+        // for that long with nothing to tell the reader whether it was working or broken. The fetch
+        // is NOT cancelled; if it lands, the rows replace this.
+        setTimeout(function(){ try{
+          if(_tb0.getAttribute("data-lxbuilt"))return;                 // rows arrived, nothing to say
+          if((window.__lxDXAhold||[]).length)return;
+          _tb0.innerHTML=_wrapMsg("Still reading this asset’s holders — it has a lot of them, so this can take a while.");
+        }catch(_){} },12000);
       }
       return;
     }
@@ -2715,9 +2802,22 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // flicker. (The 1,300 rel= writes/6s from the nofollow guard were it dutifully re-marking 1,300
     // brand-new anchors -- a symptom, not the cause.) Nothing to do with hover; hovering is just when
     // you look closely enough to notice.
-    if(tbody.getAttribute("data-lxbuilt")===("p"+_hp))return;
-    var top=hold.slice(_hp*HPP,_hp*HPP+HPP), tot=holders!=null?holders:hold.length;
-    // top-10 / top-50 concentration (of paged supply — approximate for capped assets)
+    // THE CONCENTRATION FIGURES ARE COMPUTED BEFORE THE TABLE GUARD, and that ordering is the whole
+    // fix (RAZA 2026-09-30: "when I refresh, the top 10 and top 50 holders appear. And after
+    // refreshing a few times more, they disappear").
+    //
+    // Intermittent across refreshes means a race, not missing data -- and this was it. The write
+    // below used to sit AFTER the "have I already built this page of the table?" early return. So the
+    // figures were only ever written by the ONE call that happened to build the table, and only if
+    // canRankHolders() was already true at that exact moment. Every later guardApply() -- including
+    // the one that runs the instant the ranked list finally lands -- hit the early return and never
+    // reached this code. Whether you got numbers or a dash came down to which of three independent
+    // async results (the holder list, the holders count, the ranked flag) arrived first, which is why
+    // it changed from one refresh to the next on the same asset.
+    //
+    // They do not belong behind that guard in any case: they are computed from the WHOLE hold array
+    // and have nothing to do with which page of rows is on screen. Computed every call, they now
+    // correct themselves as soon as better information arrives.
     var pagedTot=0; hold.forEach(function(h){pagedTot+=h.bal;});
     var sup=supply||pagedTot||1;   // hold is the COMPLETE holder set here (canRankHolders), so pagedTot is a sound fallback
     var t10=0,t50=0; hold.slice(0,10).forEach(function(h){t10+=h.bal;}); hold.slice(0,50).forEach(function(h){t50+=h.bal;});
@@ -2726,6 +2826,10 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       if(st2[1]){var _t10=(Math.min(100,t10/sup*100)).toFixed(1)+"%";if(st2[1].textContent!==_t10)st2[1].textContent=_t10;if(st2[1].hasAttribute("title"))st2[1].removeAttribute("title");lxMark(st2[1]);}
       if(st2[2]){var _t50=(Math.min(100,t50/sup*100)).toFixed(1)+"%";if(st2[2].textContent!==_t50)st2[2].textContent=_t50;if(st2[2].hasAttribute("title"))st2[2].removeAttribute("title");lxMark(st2[2]);}
     }
+    // Only the ROWS are gated on already having been built -- that guard exists to stop the fifty-row
+    // rebuild loop that caused the grey flicker, and it still does exactly that.
+    if(tbody.getAttribute("data-lxbuilt")===("p"+_hp))return;
+    var top=hold.slice(_hp*HPP,_hp*HPP+HPP), tot=holders!=null?holders:hold.length;
     var EXPL='https://stellar.expert/explorer/public/account/';
     var html=top.map(function(h,i){ var pct=h.bal/sup*100;
       var pctTxt=(pct>=0.001?pct.toFixed(3):"<0.001")+'%';

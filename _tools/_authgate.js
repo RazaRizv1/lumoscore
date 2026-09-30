@@ -88,6 +88,20 @@ const PUBLIC_BASES = new Set([
   // Reading how to list a token needs no wallet; PAYING for one still does, and that is enforced in
   // the flow itself rather than by hiding the page from everyone who has not connected yet.
   'lumoscore-list-token',
+  // OPENED 2026-09-30 (RAZA: "When clicking on either participants' or holders' public wallet address
+  // via Trade, Liquidity Pools, Cross-chains etc when the wallet isn't connected, LumosCore should
+  // redirect us to public wallet address instead of taking on the landing page").
+  //
+  // This is SOMEONE ELSE'S address, read off the public ledger. _accountpage.js exists precisely
+  // because "a holder in the Holders tab or a participant in a pool was a dead-end string of 56
+  // characters" -- and then the gate made it a dead end again for every visitor who had not
+  // connected, which is all of them on a first visit. The rows in Participants and Top Holders are
+  // real <a href="/account/stellar/G..."> anchors, so nothing else had to change: the page was
+  // reachable, the gate was sending it to "/".
+  //
+  // Nothing here is the VIEWER's: the address comes from the URL, the data comes from Horizon, and
+  // there is nothing on the page to sign. Same reasoning as Trade, Pools, Bridge and Rewards above.
+  'lumoscore-account',
 ]);
 // All 17 docs pages, by prefix rather than 17 entries that a new page would have to be added to.
 const PUBLIC_RE = /^lumoscore-docs-/;

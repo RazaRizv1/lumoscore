@@ -39,8 +39,26 @@ const SCRIPT='<script id="lx-feerate">(function(){if(window.__lxFrBooted)return;
 // the pool id; the pool record gives the reserves and total shares, and this account's cut is
 // reserve x (myShares / totalShares). Memoised per pool id, and capped, so a wallet in dozens of pools
 // cannot turn one fee lookup into dozens of requests.
+// ONE REQUEST FOR THE WHOLE ACCOUNT (RAZA 2026-09-30: "wallet page details are taking forever to
+// load"). The comment above says this is "capped, so a wallet in dozens of pools cannot turn one fee
+// lookup into dozens of requests" -- the cap is 25, and 25 requests IS dozens. Measured on his
+// account: 48 /liquidity_pools/<id> calls for one wallet page load, 22.3s of cumulative request
+// time, from here and from two paths in _walletdata.js that did not know about each other.
+//
+// window.__lxLpB is a promise cache shared by every layer that needs this, keyed by host+address.
+// Each layer defines its own accessor -- an externalised script has its own scope, so a shared
+// FUNCTION would not be visible across them (lumoscore-externalize-scope) -- but they all read and
+// write the one object on window, so whichever runs first makes the request and the rest await it.
+// One request for the page instead of one per pool per layer.
++'function lpBatch(host,a){var K="__lxLpB";window[K]=window[K]||{};var k=host+"|"+a;'
++'if(!window[K][k])window[K][k]=fetch(host+"/liquidity_pools?account="+encodeURIComponent(a)+"&limit=200")'
++'.then(function(r){return r.ok?r.json():null;})'
++'.then(function(d){var m={};((d&&d._embedded&&d._embedded.records)||[]).forEach(function(p){if(p&&p.id)m[p.id]=p;});return m;})'
++'.catch(function(){return{};});return window[K][k];}'
 +'window.__lxPoolP=window.__lxPoolP||{};'
-+'function poolRec(id){if(!window.__lxPoolP[id])window.__lxPoolP[id]=fetch(H+"/liquidity_pools/"+id).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});return window.__lxPoolP[id];}'
++'function poolRec(id){if(!window.__lxPoolP[id]){var a="";try{a=localStorage.getItem("lumos.address")||"";}catch(_){}'
++'window.__lxPoolP[id]=(a?lpBatch(H,a):Promise.resolve({})).then(function(m){return m[id]||fetch(H+"/liquidity_pools/"+id).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});});}'
++'return window.__lxPoolP[id];}'
 +'function poolLumos(bals,cb){'
 +'var sh=bals.filter(function(b){return b.asset_type==="liquidity_pool_shares"&&(+b.balance||0)>0;}).slice(0,25);'
 +'if(!sh.length){cb(0);return;}'

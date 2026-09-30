@@ -34,17 +34,40 @@ export async function onRequestGet({ request }) {
     'https://api.stellar.expert/explorer/public/asset/' + asset + '/holders?order=desc&limit=' + limit
     + (okCur ? '&cursor=' + encodeURIComponent(decodeURIComponent(cur)) : '');
 
+  // A FAILURE MUST NOT BE CACHED. This is why "Top 10 / Top 50 hold" kept coming back blank across
+  // reloads (RAZA, repeatedly through 2026-09-30, "still blank on most of the assets", and earlier
+  // "when I refresh they appear ... after refreshing a few times more, they disappear").
+  //
+  // `cacheTtl` with `cacheEverything` caches whatever the upstream returned, INCLUDING a 429 or a 5xx,
+  // and the response below then told the browser to keep it for two minutes as well. So a single
+  // hiccup at stellar.expert was frozen in at that colo: every visitor on it, reloading as often as
+  // they liked, got the same cached error for the next 120 seconds -- and the page correctly fell
+  // back to an unranked Horizon sample, which cannot produce a top-10, so both figures dashed. Two
+  // minutes later it healed on its own. That is exactly the "sometimes yes, sometimes no" pattern,
+  // and it is also why every test from here passed: a colo whose cache already holds a good response
+  // never shows it.
+  //
+  // cacheTtlByStatus keeps the 2-minute cache for a good answer and refuses to store anything else,
+  // so the next request after a failure is a real attempt rather than a replay of it.
   try {
-    const r = await fetch(upstream, { cf: { cacheTtl: 120, cacheEverything: true } });
+    const r = await fetch(upstream, {
+      cf: { cacheTtlByStatus: { '200-299': 120, '300-399': 0, '400-599': 0 }, cacheEverything: true },
+    });
     const body = await r.text();
+    const ok = r.status >= 200 && r.status < 300;
     return new Response(body, {
       status: r.status,
-      headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=120' },
+      headers: {
+        'content-type': 'application/json',
+        // no-store on the way out too: without it the BROWSER holds the failure for two minutes and
+        // the client-side retry just re-reads its own cache.
+        'cache-control': ok ? 'public, max-age=120' : 'no-store',
+      },
     });
   } catch (e) {
     return new Response(JSON.stringify({ error: String((e && e.message) || e) }), {
       status: 502,
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
     });
   }
 }

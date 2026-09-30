@@ -53,10 +53,34 @@ function setHead(html, style) {
   return hi < 0 ? h : h.slice(0, hi) + style + h.slice(hi);
 }
 
+// The product glyphs come from the same file the nav and the landing cards read, so the About page
+// cannot drift into a second set of icons. about.html carries {{icon:<key>}} placeholders; an unknown
+// key is a build failure rather than an empty box on the page.
+const NAVICONS = require(__dirname + '/_navicons.json');
+const CTA_ARROW = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" '
+  + 'stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+  + '<path d="M5 12h13"/><path d="M13 6l6 6-6 6"/></svg>';
+function fillIcons(html) {
+  const missing = [];
+  let out = html.replace(/\{\{icon:([a-z]+)\}\}/g, (m, key) => {
+    const svg = NAVICONS[key];
+    if (!svg) { missing.push(key); return ''; }
+    // The nav sizes its glyphs from CSS and so ships them unsized; in a fixed tile an unsized <svg>
+    // fills it edge to edge. 26 matches what the landing cards use.
+    return svg.replace('<svg ', '<svg width="26" height="26" ');
+  });
+  out = out.split('{{arrow}}').join(CTA_ARROW);
+  if (missing.length) {
+    console.error('about: unknown icon key(s) in about.html: ' + missing.join(', '));
+    process.exit(1);
+  }
+  return out;
+}
+
 let CSS, MAIN;
 try {
   CSS = fs.readFileSync(__dirname + '/about.css', 'utf8');
-  MAIN = withRail(fs.readFileSync(__dirname + '/about.html', 'utf8').trim());
+  MAIN = withRail(fillIcons(fs.readFileSync(__dirname + '/about.html', 'utf8').trim()));
 } catch (e) {
   console.error('about: missing about.css or about.html — nothing written');
   process.exit(1);
