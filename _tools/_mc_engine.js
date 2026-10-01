@@ -145,6 +145,10 @@ function applyChain(to){
   adoptChain(to);
 }
 window.lxSetChain=applyChain;window.lxGetChain=function(){return cur;};
+// Exposed so a hand-off can work out WHERE the other chain is without going through applyChain, whose
+// to===cur guard is there for re-skinning and is wrong for navigation. See the network-row handler in
+// _wallet_realconnect.js.
+window.lxChainHref=chainHref;
 function updSwitcher(){
   var sw=document.getElementById("lxmc");if(!sw)return;
   var nm=sw.querySelector(".lxmc-name");if(nm)nm.textContent=CHAINS[cur].name;
