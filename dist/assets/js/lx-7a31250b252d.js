@@ -813,8 +813,32 @@ window.addEventListener('click',function(e){
           // A hand-off is a navigation, not a chain adoption, so it asks chainHref directly and goes.
           // The literal is a backstop for lxChainHref being absent, not the normal path.
           if(netId!=='stellar'){
-            try{sessionStorage.setItem('lumos.connectOnArrive',netId);}catch(_){}
             try{localStorage.setItem('lumos.chain',netId);}catch(_){}
+            // CONNECT IN PLACE when the other chain's connect layer is on this page.
+            //
+            // On the combined site the landing page carries XRPL's connect module (injected dormant --
+            // see __lxcNoBoot), so picking XRP Ledger opens ITS picker right here, exactly as picking
+            // Stellar opens Stellar's wallet list here. Without that module -- the standalone Stellar
+            // site -- there is nothing to open, and the hand-off below is still the right answer.
+            //
+            // Not Stellar's own .lxw list for this: that list is rendered from adapters in A, and A.xrpl
+            // holds Crossmark alone. Showing Xaman and GemWallet rows that cannot connect is how this
+            // flow looked like it worked while doing nothing.
+            if(netId==='xrpl'&&window.lxc&&window.lxc.open){
+              try{var mo=document.querySelector('.lxw-modal');if(mo&&mo.parentNode)mo.parentNode.setAttribute('hidden','');}catch(_){}
+              // Enter the chain's app once a wallet actually lands, not before. onChange fires on
+              // connect; the address check keeps a disconnect from navigating anyone anywhere.
+              try{window.lxc.onChange(function(){
+                var a=null;try{a=window.lxc.address();}catch(_){}
+                if(!a)return;
+                var h='';try{h=window.lxChainHref?window.lxChainHref('xrpl'):'';}catch(_){}
+                if(!h)h='/trade/xrpl';
+                try{location.assign(h);}catch(_){location.href=h;}
+              });}catch(_){}
+              try{window.lxc.open();}catch(_){}
+              return;}
+            // No connect layer here -> hand off, and let the other build open its own picker on arrival.
+            try{sessionStorage.setItem('lumos.connectOnArrive',netId);}catch(_){}
             var nhref='';
             try{nhref=window.lxChainHref?window.lxChainHref(netId):'';}catch(_){}
             if(!nhref)nhref='/trade/'+netId;
