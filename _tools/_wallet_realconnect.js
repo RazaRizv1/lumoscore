@@ -814,9 +814,25 @@ window.addEventListener('click',function(e){
           // NOTE FOR THE NEXT PERSON: the chooser's own row handler in _mc_engine.js is NOT what runs.
           // This listener is bound on window and calls stopImmediatePropagation, so it claims the click
           // first and the one in injectNetScreen never fires. Fix network-row behaviour HERE.
+          // NAVIGATE DIRECTLY, NOT THROUGH lxSetChain.
+          //
+          // The first version called lxSetChain(netId) here and the row went dead. applyChain opens by
+          // returning early when "to" equals "cur" -- a guard that belongs to re-skinning -- and "cur"
+          // is whatever the page ADOPTED at boot. On "/" the url names no chain, so boot falls back to
+          // the saved lumos.chain; for anyone who had already picked XRP Ledger once that is "xrpl", so
+          // picking it again matched the guard and returned without doing anything at all. Reproduced:
+          // with lumos.chain=xrpl saved, lxGetChain() is "xrpl" on the landing page and the click did
+          // nothing whatsoever.
+          //
+          // A hand-off is a navigation, not a chain adoption, so it asks chainHref directly and goes.
+          // The literal is a backstop for lxChainHref being absent, not the normal path.
           if(netId!=='stellar'){
             try{sessionStorage.setItem('lumos.connectOnArrive',netId);}catch(_){}
-            try{if(window.lxSetChain)window.lxSetChain(netId);}catch(_){}
+            try{localStorage.setItem('lumos.chain',netId);}catch(_){}
+            var nhref='';
+            try{nhref=window.lxChainHref?window.lxChainHref(netId):'';}catch(_){}
+            if(!nhref)nhref='/trade/'+netId;
+            try{location.assign(nhref);}catch(_){location.href=nhref;}
             return;}
           try{if(window.lxSetChain)window.lxSetChain(netId);}catch(_){}
           try{if(window.lxwOpenWallet)window.lxwOpenWallet(netId);}catch(_){}
