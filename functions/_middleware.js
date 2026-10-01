@@ -305,6 +305,16 @@ const ROUTES = [
   ]
 ];
 const HAS_MOBILE = new Set(["lumoscore-home-mobile","lumoscore-landing-mobile","lumoscore-launch-confirm-mobile","lumoscore-launch-review-mobile","lumoscore-launch-token-mobile","lumoscore-wallet-mobile","lumoscore-amm-mobile","lumoscore-amm-pool-mobile","lumoscore-lumos-token-mobile","lumoscore-dex-mobile","lumoscore-dex-asset-mobile","lumoscore-bridge-mobile","lumoscore-signin-mobile","lumoscore-rewards-mobile","lumoscore-mcp-mobile","lumoscore-account-mobile","lumoscore-blog-mobile","lumoscore-blog-post-mobile","lumoscore-privacy-mobile","lumoscore-terms-mobile","lumoscore-support-mobile","lumoscore-whitepaper-mobile","lumoscore-docs-introduction-mobile","lumoscore-docs-connect-a-wallet-mobile","lumoscore-docs-fees-mobile","lumoscore-docs-swaps-mobile","lumoscore-docs-limit-orders-mobile","lumoscore-docs-liquidity-pools-mobile","lumoscore-docs-cross-chain-mobile","lumoscore-docs-wallet-mobile","lumoscore-docs-trustlines-mobile","lumoscore-docs-rewards-mobile","lumoscore-docs-launch-a-token-mobile","lumoscore-docs-asset-metadata-mobile","lumoscore-docs-verification-mobile","lumoscore-docs-curated-listing-mobile","lumoscore-docs-security-mobile","lumoscore-docs-troubleshooting-mobile","lumoscore-docs-faq-mobile","lumoscore-about-mobile","lumoscore-list-token-mobile"]);
+// CHAIN-AWARE PAGES: a Stellar page file -> the same page in another chain's build.
+//
+// The authgated surfaces (dashboard, wallet, launchpad) are ONE url each on a multi-chain deployment,
+// serving whichever network the reader is connected to. They are never indexed -- the gate bounces
+// anyone without a wallet -- so a second url per chain would only ever be a second private link to the
+// same screen, and RAZA's point stands: there is nothing for /dashboard/xrpl to be good for.
+//
+// Empty on a single-chain build, which is what this generator produces; the combine step fills it in
+// when it assembles a deployment that actually has a second chain.
+const CHAIN_ALT = {};
 
 function match(pathname){
   const segs = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
@@ -874,16 +884,30 @@ export async function onRequest(context){
   const isMobile = !forcedDesktop && (MOBILE.test(ua) || chPlat === 'Android' || chMob === '?1' || forcedMobile);
   const wantMobile = isMobile && HAS_MOBILE.has(hit.mobile);
 
+  // WHICH CHAIN'S BUILD, for the pages that have one per chain.
+  //
+  // A COOKIE, because this decision is the server's and localStorage never reaches it. Both connect
+  // layers write lx_chain when a wallet connects and clear it on disconnect, so the default — no
+  // cookie, nobody connected — is the Stellar build, exactly as before.
+  const chain = /(?:^|;\s*)lx_chain=xrpl(?:;|$)/.test(cookie) ? 'xrpl' : 'stellar';
+  const baseFile = wantMobile ? hit.mobile : hit.desktop;
+  const altFile = chain === 'stellar' ? null : CHAIN_ALT[chain + ' ' + baseFile];
+
   // Desktop needs no rewrite — Pages already serves the right file for this url. Rewriting anyway
   // broke "/", whose desktop file is index: fetching /index just 308s back to /.
   // Vary is still set on BOTH branches, or a cache would hand a desktop page to a phone.
-  const res = wantMobile
+  const fetchFile = altFile || (wantMobile ? hit.mobile : null);
+  const res = fetchFile
     ? await context.env.ASSETS.fetch(
-        new Request(new URL('/' + hit.mobile, request.url).toString(), request))
+        new Request(new URL('/' + fetchFile, request.url).toString(), request))
     : await next();
 
   let out = new Response(res.body, res);
-  out.headers.set('Vary', 'User-Agent');
+  // COOKIE BELONGS IN Vary, and not only for the chain. lxdev already changed which build this returns
+  // while Vary named User-Agent alone, so a shared cache could hand one reader's variant to another.
+  // The chain split makes that far worse — it would be one network's private dashboard served to
+  // somebody connected to the other.
+  out.headers.set('Vary', 'User-Agent, Cookie');
 
   const ct = out.headers.get('content-type') || '';
   if (ct.indexOf('text/html') < 0) return out;
@@ -1116,6 +1140,10 @@ export async function onRequest(context){
   }
 
   out = rw.transform(out);
-  out.headers.set('Vary', 'User-Agent');
+  // Set AGAIN here, and it must match the earlier one: this is the last writer on the response, so a
+  // narrower value here silently undoes it. That is exactly what happened — the chain-aware pages went
+  // out with "Vary: User-Agent" despite the header being set correctly further up, which would let a
+  // shared cache hand one network's dashboard to somebody connected to the other.
+  out.headers.set('Vary', 'User-Agent, Cookie');
   return out;
 }

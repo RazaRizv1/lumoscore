@@ -42,12 +42,19 @@ var SOON={};
 // The chain THIS build actually serves, and therefore the only one whose wallet list it can drive.
 // Everything else is a hand-off to the other build.
 var LOCAL_CHAIN='stellar';
+// THE AUTHGATED SECTIONS ARE IN NEITHER TABLE — dashboard, wallet and launchpad. They are ONE url each
+// now, served to whichever chain the reader is connected to, so "switch chain" there is not a
+// navigation to a different path and cannot be expressed here.
+//
+// Nor should it be. Those pages show the connected wallet's own data, and you cannot be on the other
+// chain's dashboard without a wallet on that chain — re-serving it would only put the reader in front
+// of the gate. Falling through to that chain's trade page sends them somewhere public where they can
+// connect, which is the step they actually need. chainFromPath benefits from the same omission: a bare
+// /dashboard genuinely does not name a chain any more, so it correctly defers to the saved one.
 var TO_XRPL={trade:'/trade/xrpl',pools:'/pools/xrpl',bridge:'/bridge/xrpl',rewards:'/rewards/xrpl',
-  lumos:'/lumos/xrpl',launchpad:'/launchpad/xrpl',dashboard:'/dashboard/xrpl',wallet:'/wallet/xrpl',
-  mcp:'/mcp/xrpl','list-your-token':'/list-your-token/xrpl'};
+  lumos:'/lumos/xrpl',mcp:'/mcp/xrpl','list-your-token':'/list-your-token/xrpl'};
 var TO_STELLAR={trade:'/trade/stellar',pools:'/pools/stellar',bridge:'/bridge/stellar',
-  rewards:'/rewards/stellar',lumos:'/lumos/stellar',launchpad:'/launchpad/stellar',
-  dashboard:'/dashboard',wallet:'/wallet',mcp:'/mcp','list-your-token':'/list-your-token'};
+  rewards:'/rewards/stellar',lumos:'/lumos/stellar',mcp:'/mcp','list-your-token':'/list-your-token'};
 // THE FALLBACK MUST BE A PUBLIC PAGE, and that is the whole reason it is not the dashboard.
 //
 // This is the branch the LANDING PAGE takes. "Choose a network" calls applyChain(net) from "/", which
@@ -149,6 +156,17 @@ window.lxSetChain=applyChain;window.lxGetChain=function(){return cur;};
 // to===cur guard is there for re-skinning and is wrong for navigation. See the network-row handler in
 // _wallet_realconnect.js.
 window.lxChainHref=chainHref;
+// WHERE A CHAIN STARTS ONCE A WALLET IS CONNECTED, which is not the same question chainHref answers.
+//
+// chainHref falls back to the TRADE page for a url with no section, and must: that branch is taken by
+// the landing page, where the reader has no wallet yet and the dashboard would bounce them off its
+// authgate. After a successful connect the gate passes, and the dashboard is where someone who just
+// connected expects to be.
+//
+// One url for both chains: the dashboard is authgated, so it is never indexed or shared and has no
+// reason to exist twice. Which build answers it is decided by the lx_chain cookie, which the connect
+// that just happened has already set.
+window.lxChainHome=function(){return '/dashboard';};
 function updSwitcher(){
   var sw=document.getElementById("lxmc");if(!sw)return;
   var nm=sw.querySelector(".lxmc-name");if(nm)nm.textContent=CHAINS[cur].name;

@@ -232,7 +232,10 @@ function scriptFor(net){
   // GATED pages, where the auth gate then bounced to "/" — on a public page (Trade, Pools, an asset
   // page) it reloaded a signed-out view of somewhere that assumes a wallet. replace() not href, so the
   // signed-in page does not sit in history for the back button to restore.
-  +'var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);'
+  +'var lo=t.closest(".nx-logout")||t.closest(".mu-gear[aria-label=Disconnect]");if(lo){e.preventDefault();e.stopImmediatePropagation();try{localStorage.removeItem("lumos.wallet");localStorage.removeItem("lumos.address");localStorage.removeItem("lumos.network");}catch(_){}'
+  // Clear the chain cookie too, or the gated pages keep serving the build of a chain nobody is
+  // connected to any more. Expiring it is how a cookie is deleted; there is no removeItem for these.
+  +'try{document.cookie="lx_chain=; path=/; max-age=0; SameSite=Lax";}catch(_){}try{location.replace("/");}catch(_){try{location.href="/";}catch(__){sync();}}return;}},true);'
   +'if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);'
   // #22 safety net. The gate above is a CSS rule waiting on a class this script sets; if anything ever
   // stops it reaching that line, the class lands here anyway and the avatar appears as the design drew

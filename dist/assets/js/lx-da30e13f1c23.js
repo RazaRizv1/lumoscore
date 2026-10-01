@@ -657,6 +657,11 @@ function setConnected(net,row,addr,transport){
   // lumos.transport tells the signing paths WHICH LOBSTR to talk to on this device. Always written, so
   // reconnecting with the extension can never inherit a stale 'wc' from an earlier phone session.
   try{localStorage.setItem('lumos.wallet',name);localStorage.setItem('lumos.network',net);localStorage.setItem('lumos.address',String(addr));localStorage.setItem('lumos.transport',transport||'ext');}catch(_){}
+  // AND A COOKIE, because the gated pages are one url per SITE, not one per chain, and the server has
+  // to know which build to serve. localStorage cannot tell it; a cookie can. Writing "stellar"
+  // explicitly rather than clearing it matters: it overwrites an "xrpl" left by the other build, so
+  // connecting Stellar after XRPL does not leave the dashboard pointed at the wrong network.
+  try{document.cookie='lx_chain='+encodeURIComponent(net==='xrpl'?'xrpl':'stellar')+'; path=/; max-age=31536000; SameSite=Lax';}catch(_){}
   // lumos.lastWallet is what puts the "Last used" tag on a row, and NOTHING on this path was writing
   // it. The design's own demo flow does, but every wallet with a real adapter -- Freighter, Rabet,
   // Albedo, LOBSTR -- comes through here instead and skipped it entirely.
@@ -828,11 +833,16 @@ window.addEventListener('click',function(e){
               try{var mo=document.querySelector('.lxw-modal');if(mo&&mo.parentNode)mo.parentNode.setAttribute('hidden','');}catch(_){}
               // Enter the chain's app once a wallet actually lands, not before. onChange fires on
               // connect; the address check keeps a disconnect from navigating anyone anywhere.
+              //
+              // lxChainHome, NOT lxChainHref. From "/" chainHref answers the trade page, because that
+              // branch also serves readers who have no wallet and would bounce off the dashboard's
+              // authgate. By the time this fires a wallet has connected, the gate passes, and the
+              // dashboard is where someone who just connected expects to land.
               try{window.lxc.onChange(function(){
                 var a=null;try{a=window.lxc.address();}catch(_){}
                 if(!a)return;
-                var h='';try{h=window.lxChainHref?window.lxChainHref('xrpl'):'';}catch(_){}
-                if(!h)h='/trade/xrpl';
+                var h='';try{h=window.lxChainHome?window.lxChainHome('xrpl'):'';}catch(_){}
+                if(!h)h='/dashboard/xrpl';
                 try{location.assign(h);}catch(_){location.href=h;}
               });}catch(_){}
               try{window.lxc.open();}catch(_){}
