@@ -24,18 +24,33 @@ var SOON={};
 // The section is kept wherever both chains have one, so switching from Stellar's pools lands on
 // XRPL's pools rather than dumping the reader at a dashboard. Anything unrecognised falls back to the
 // dashboard, which always exists on both.
-var CHAIN_SECTIONS={trade:1,pools:1,bridge:1,rewards:1,lumos:1,account:1,launchpad:1,
-  dashboard:1,wallet:1,mcp:1,'list-your-token':1};
-// The sections Stellar serves with a /stellar suffix. The rest it serves bare, and asking for
-// /dashboard/stellar there is a 404.
-var STELLAR_QUALIFIED={trade:1,pools:1,bridge:1,rewards:1,lumos:1,account:1,launchpad:1};
+//
+// SECTION IN, WHOLE PATH OUT, and every value below is a literal route out of the other chain's
+// _redirects. Two flat tables rather than one rule with a suffix, because neither chain's url scheme is
+// derivable from the other's: Stellar serves /trade/stellar but /dashboard bare and /launchpad/review
+// bare, while XRPL qualifies all of them.
+//
+// THE PATH TAIL IS DROPPED ON PURPOSE. This used to append it — '/'+sec+'/xrpl'+rest — which turned
+// /trade/stellar/USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN into
+// /trade/xrpl/USDC-GA5ZSEJ…, an XRPL trade page asked for a Stellar asset. The reader gets an empty
+// page and no reason for it, which is worse than landing one level up. The same held for a pool id, an
+// account address and a launchpad draft mid-flow: an identifier belongs to ONE ledger, and the section
+// is the only part of the url the two chains genuinely share.
+//
+// account appears in neither table. Both chains serve only /account/<chain>/:address — there is no
+// chain-level account page to land on, and an address from the other ledger is not one.
+var TO_XRPL={trade:'/trade/xrpl',pools:'/pools/xrpl',bridge:'/bridge/xrpl',rewards:'/rewards/xrpl',
+  lumos:'/lumos/xrpl',launchpad:'/launchpad/xrpl',dashboard:'/dashboard/xrpl',wallet:'/wallet/xrpl',
+  mcp:'/mcp/xrpl','list-your-token':'/list-your-token/xrpl'};
+var TO_STELLAR={trade:'/trade/stellar',pools:'/pools/stellar',bridge:'/bridge/stellar',
+  rewards:'/rewards/stellar',lumos:'/lumos/stellar',launchpad:'/launchpad/stellar',
+  dashboard:'/dashboard',wallet:'/wallet',mcp:'/mcp','list-your-token':'/list-your-token'};
 function chainHref(to){
   var p=(location.pathname||'/').replace(/\/+$/,'');
-  var m=p.match(/^\/([a-z-]+)(?:\/(stellar|xrpl))?(\/.*)?$/);
-  var sec=m&&m[1], rest=(m&&m[3])||'';
-  if(!sec||!CHAIN_SECTIONS[sec]) return to==='xrpl'?'/dashboard/xrpl':'/dashboard';
-  if(to==='xrpl') return '/'+sec+'/xrpl'+rest;
-  return STELLAR_QUALIFIED[sec]?('/'+sec+'/stellar'+rest):('/'+sec+rest);
+  var m=p.match(/^\/([a-z-]+)/);
+  var sec=m&&m[1];
+  if(to==='xrpl') return (sec&&TO_XRPL[sec])||'/dashboard/xrpl';
+  return (sec&&TO_STELLAR[sec])||'/dashboard';
 }
 var BASE="aptos",cur=BASE,obs=null;
 function noswap(node){
@@ -71,6 +86,36 @@ function walkSwap(root,fc,tc){
   if(root.tagName==="IMG"&&root.getAttribute("src")===f.logo&&!(root.closest&&root.closest("[data-lx-noswap]")))root.setAttribute("src",t.logo);
 }
 function guard(fn){if(obs)obs.disconnect();try{fn();}finally{if(obs&&document.body)obs.observe(document.body,{childList:true,subtree:true,characterData:true});}}
+// WHICH CHAIN THIS URL IS, read from the url rather than from storage. Returns null when the url does
+// not say, which is the only case where the saved preference gets to decide.
+//
+// The rule is one invariant: EVERY XRPL ROUTE CARRIES /xrpl. So a chain segment settles it outright,
+// and a known section reached WITHOUT one can only be Stellar's — whether Stellar serves that section
+// bare only (/dashboard, /wallet) or both ways (/launchpad and /launchpad/stellar are the same page).
+//
+// Testing the target for a '/stellar' suffix instead, as the first version did, got /launchpad wrong:
+// Stellar serves it bare too, so the url was reported as saying nothing and fell through to the stored
+// preference — leaving Stellar's launchpad skinned as the XRP Ledger for anyone whose last visit was
+// XRPL. A page from one chain wearing the other's name is the failure this whole function exists to
+// prevent, so it must not have a gap in it.
+//
+// null means the url genuinely names no chain — "/", /about, /blog — where the saved value may decide.
+function chainFromPath(){
+  var p=(location.pathname||'/').replace(/\/+$/,'');
+  if(/\/xrpl(\/|$)/.test(p))return 'xrpl';
+  if(/\/stellar(\/|$)/.test(p))return 'stellar';
+  var m=p.match(/^\/([a-z-]+)/);
+  return (m&&TO_STELLAR[m[1]])?'stellar':null;
+}
+// RE-SKIN ONLY. What boot needs, and all it ever needed: adopt a chain for rendering without moving the
+// reader anywhere.
+function adoptChain(to){
+  if(!CHAINS[to]||to===cur)return;
+  cur=to;
+  guard(function(){walkSwap(document.body,cur,to);});
+  updSwitcher();try{window.dispatchEvent(new Event("lx-chainchange"));}catch(_){}
+}
+// A DELIBERATE SWITCH — the switcher, the network chooser. This one navigates.
 function applyChain(to){
   if(!CHAINS[to]||to===cur)return;
   // Recorded BEFORE leaving, so the page that loads on the other side already knows which network it
@@ -81,9 +126,7 @@ function applyChain(to){
   // whose every figure comes from a different ledger is not that.
   var href=chainHref(to);
   if(href&&href!==location.pathname){ try{location.assign(href);}catch(_){location.href=href;} return; }
-  cur=to;
-  guard(function(){walkSwap(document.body,cur,to);});
-  updSwitcher();try{window.dispatchEvent(new Event("lx-chainchange"));}catch(_){}
+  adoptChain(to);
 }
 window.lxSetChain=applyChain;window.lxGetChain=function(){return cur;};
 function updSwitcher(){
@@ -187,8 +230,22 @@ function boot(){
   // base: "Trending on Aptos", NETWORK Aptos with the Aptos mark, "Petra or Nightly", APT tickers, on
   // a product that only runs on Stellar. The base is an artefact of where these pages came from, never
   // something a user should see, so default to the first offered chain instead of leaving it unrun.
-  if(!saved||!CHAINS[saved]) saved=ORDER[0];
-  try{ if(saved&&CHAINS[saved]&&saved!==cur)applyChain(saved); }catch(_){}
+  //
+  // THE URL WINS OVER THE SAVED PREFERENCE, and boot NEVER NAVIGATES.
+  //
+  // This line used to be applyChain(saved), which was harmless while Stellar was the only build and
+  // chainHref always returned the url we were already on. The moment XRPL went live at real urls it
+  // became a trap: anyone whose last visit was XRPL had lumos.chain="xrpl", so opening ANY Stellar
+  // url — a bookmark, a shared link, a search result, /trade/stellar typed by hand — ran
+  // applyChain("xrpl") at boot and location.assign'd them to /trade/xrpl before the page settled.
+  // Verified on staging: requesting /trade/stellar landed on /trade/xrpl, with no way back except to
+  // use the switcher. A stored preference must never override an explicitly requested url.
+  //
+  // So the url decides when it says anything, the saved value only fills the gap, and either way this
+  // is adoptChain — re-skin, no navigation. applyChain stays for the switcher, where a navigation is
+  // exactly what the reader asked for.
+  var use=chainFromPath()||((saved&&CHAINS[saved])?saved:ORDER[0]);
+  try{ if(use&&CHAINS[use]&&use!==cur)adoptChain(use); }catch(_){}
   // Signal that the initial rebrand is done. A TARGETED CSS gate (in _multichain.js) hides ONLY the
   // small network logo/name elements until now — NOT the whole body (that blanked heavy pages).
   // Added unconditionally (incl. aptos/no-saved) so those elements always reveal.
