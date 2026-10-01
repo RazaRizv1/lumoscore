@@ -780,13 +780,37 @@ window.addEventListener('click',function(e){
         if(netId&&row.classList&&row.classList.contains('lxw-soon')){
           e.preventDefault();e.stopImmediatePropagation();return;}
         if(netId){e.preventDefault();e.stopImmediatePropagation();
+          // ANOTHER CHAIN IS ANOTHER BUILD. Hand off; do not open a wallet list here.
+          //
+          // This ran lxSetChain(netId) and then lxwOpenWallet(netId) for every network. For XRPL,
+          // lxSetChain navigates to /trade/xrpl -- and location.assign is ASYNCHRONOUS, so the line
+          // below still executed, painted the wallet list, and the pending navigation then wiped it.
+          // What RAZA saw: "it shows the wallets popup for split seconds and directly takes me to the
+          // trade/xrpl page".
+          //
+          // The popup was wrong quite apart from the flicker. THIS BUILD HAS NO XRPL CONNECT LAYER --
+          // measured on the deployed landing page, window.lxc is undefined and there is no
+          // lx-xrplconnect script -- so the Gem/Xaman/Joey/Crossmark rows it listed could not have
+          // connected anything, under a heading that still read "Choose a Stellar wallet to continue".
+          //
+          // So record the intent and leave. The XRPL build consumes the marker on arrival and opens its
+          // own connect modal, which has a connect layer behind it. sessionStorage: same origin, so it
+          // survives the navigation, and it dies with the tab rather than popping a dialog days later.
+          //
+          // NOTE FOR THE NEXT PERSON: the chooser's own row handler in _mc_engine.js is NOT what runs.
+          // This listener is bound on window and calls stopImmediatePropagation, so it claims the click
+          // first and the one in injectNetScreen never fires. Fix network-row behaviour HERE.
+          if(netId!=='stellar'){
+            try{sessionStorage.setItem('lumos.connectOnArrive',netId);}catch(_){}
+            try{if(window.lxSetChain)window.lxSetChain(netId);}catch(_){}
+            return;}
           try{if(window.lxSetChain)window.lxSetChain(netId);}catch(_){}
           try{if(window.lxwOpenWallet)window.lxwOpenWallet(netId);}catch(_){}
           // ONE TAP EARLIER. Picking Stellar is the step before picking LOBSTR, so this is where the
           // pairing proposal is created -- the relay round trip happens while the user is reading the
           // wallet list, and the deep link that follows fires inside their tap with the uri in hand.
           // This is the iOS fix; see wcWarmPair.
-          if(netId==='stellar')try{wcWarmPair();}catch(_){}
+          try{wcWarmPair();}catch(_){}
           return;}
         var id=(row.getAttribute('data-wallet')||'').toLowerCase();if(!id)return;
   var net=window.__lxNet||'stellar';

@@ -39,6 +39,9 @@ var SOON={};
 //
 // account appears in neither table. Both chains serve only /account/<chain>/:address — there is no
 // chain-level account page to land on, and an address from the other ledger is not one.
+// The chain THIS build actually serves, and therefore the only one whose wallet list it can drive.
+// Everything else is a hand-off to the other build.
+var LOCAL_CHAIN='stellar';
 var TO_XRPL={trade:'/trade/xrpl',pools:'/pools/xrpl',bridge:'/bridge/xrpl',rewards:'/rewards/xrpl',
   lumos:'/lumos/xrpl',launchpad:'/launchpad/xrpl',dashboard:'/dashboard/xrpl',wallet:'/wallet/xrpl',
   mcp:'/mcp/xrpl','list-your-token':'/list-your-token/xrpl'};
@@ -197,7 +200,32 @@ function injectNetScreen(){
   if(inp)inp.addEventListener("input",function(){var q=(this.value||"").trim().toLowerCase();scr.querySelectorAll(".lxw-row").forEach(function(r){r.style.display=(!q||r.getAttribute("data-lxq").indexOf(q)>=0)?"":"none";});});
   // :not(.lxw-soon) — the coming-soon rows are deliberately inert. Filtering here rather than
   // returning early inside the handler means there is no listener at all, so nothing to misfire.
-  scr.querySelectorAll(".lxw-row:not(.lxw-soon)").forEach(function(r){r.addEventListener("click",function(){var net=r.getAttribute("data-lxnet");applyChain(net);if(window.lxwOpenWallet)window.lxwOpenWallet(net,npHome);});});
+  // PICKING THE OTHER CHAIN HANDS OFF; IT DOES NOT OPEN A WALLET LIST HERE.
+  //
+  // This used to call applyChain(net) and then lxwOpenWallet(net) unconditionally. applyChain navigates
+  // for the other chain, and location.assign is ASYNCHRONOUS — so the script carried on, the wallet list
+  // painted, and the pending navigation then replaced it. The visible result was a wallet popup that
+  // flashed for a split second before the page jumped to /trade/xrpl.
+  //
+  // Opening it was wrong even without the flash: THIS BUILD CANNOT DRIVE XRPL WALLETS. Measured on the
+  // deployed landing page — window.lxc is undefined and there is no lx-xrplconnect script — so the
+  // Gem/Xaman/Joey/Crossmark rows it listed could not have connected anything. The modal also still
+  // read "Choose a Stellar wallet to continue" above them.
+  //
+  // So for the other chain: record the intent, navigate, and stop. The XRPL build picks the marker up on
+  // arrival and opens its OWN connect modal, which is the one with a connect layer behind it.
+  // sessionStorage because the two builds share an origin, it survives the navigation, and it does not
+  // outlive the tab — a stale marker must never pop a connect dialog on some later visit.
+  scr.querySelectorAll(".lxw-row:not(.lxw-soon)").forEach(function(r){r.addEventListener("click",function(){
+    var net=r.getAttribute("data-lxnet");
+    if(net!==LOCAL_CHAIN){
+      try{sessionStorage.setItem("lumos.connectOnArrive",net);}catch(_){}
+      applyChain(net);
+      return;
+    }
+    applyChain(net);
+    if(window.lxwOpenWallet)window.lxwOpenWallet(net,npHome);
+  });});
   if(!document.getElementById("lxw-soon-css")){
     var st=document.createElement("style"); st.id="lxw-soon-css";
     st.textContent='.lxw-row.lxw-soon{cursor:default;opacity:.62}'
