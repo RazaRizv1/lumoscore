@@ -45,12 +45,25 @@ var TO_XRPL={trade:'/trade/xrpl',pools:'/pools/xrpl',bridge:'/bridge/xrpl',rewar
 var TO_STELLAR={trade:'/trade/stellar',pools:'/pools/stellar',bridge:'/bridge/stellar',
   rewards:'/rewards/stellar',lumos:'/lumos/stellar',launchpad:'/launchpad/stellar',
   dashboard:'/dashboard',wallet:'/wallet',mcp:'/mcp','list-your-token':'/list-your-token'};
+// THE FALLBACK MUST BE A PUBLIC PAGE, and that is the whole reason it is not the dashboard.
+//
+// This is the branch the LANDING PAGE takes. "Choose a network" calls applyChain(net) from "/", which
+// has no section, so every visitor who picks a network from the front door arrives here. It used to
+// answer /dashboard/xrpl — and the dashboard carries lx-authgate, which does location.replace("/") when
+// there is no lumos.wallet. An unconnected visitor is exactly who is choosing a network, so picking
+// XRP Ledger navigated to the dashboard, got bounced straight back to the landing page, and looked like
+// a dead button. Confirmed rather than guessed: after the click document.referrer was
+// ".../dashboard/xrpl" while location.pathname was "/".
+//
+// The trade page is public on both chains, so the hand-off lands somewhere real and that build's own
+// connect modal takes it from there. Same trap _xrplchoosenet.js was rewritten to avoid; it reappeared
+// here because this is a different call site that happens to resolve to the same gated page.
 function chainHref(to){
   var p=(location.pathname||'/').replace(/\/+$/,'');
   var m=p.match(/^\/([a-z-]+)/);
   var sec=m&&m[1];
-  if(to==='xrpl') return (sec&&TO_XRPL[sec])||'/dashboard/xrpl';
-  return (sec&&TO_STELLAR[sec])||'/dashboard';
+  if(to==='xrpl') return (sec&&TO_XRPL[sec])||'/trade/xrpl';
+  return (sec&&TO_STELLAR[sec])||'/trade/stellar';
 }
 var BASE="aptos",cur=BASE,obs=null;
 function noswap(node){
