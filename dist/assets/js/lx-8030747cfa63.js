@@ -9,7 +9,34 @@ var ORDER=["stellar","xrpl"];
 // Listed, but not yet connectable. The row stayed in the chooser because it says where this is going;
 // it was a clickable button reading "Connect on XRP Ledger", which is a promise nothing behind it can
 // keep -- picking it switched the chain and then offered a wallet list for a network we do not run.
-var SOON={xrpl:1};
+// XRPL IS LIVE (2026-10-01). It was listed here as coming-soon because the row was otherwise a
+// clickable button reading "Connect on XRP Ledger", which is a promise nothing behind it can keep.
+// There is now a complete XRPL build served from the same host under /<section>/xrpl, so the promise
+// is keepable and the row is a real one. Anything added here later gets the inert treatment again.
+var SOON={};
+
+// WHERE A CHAIN LIVES. Stellar and XRPL are two BUILDS sharing one host: Stellar owns the bare routes
+// (/dashboard, /wallet) and the /stellar-suffixed ones, XRPL owns /<section>/xrpl. So changing chain
+// is a NAVIGATION and not a re-skin — walkSwap would repaint Stellar's dashboard in XRPL colours
+// while every figure on it stayed Stellar's, which is worse than doing nothing because it looks like
+// it worked.
+//
+// The section is kept wherever both chains have one, so switching from Stellar's pools lands on
+// XRPL's pools rather than dumping the reader at a dashboard. Anything unrecognised falls back to the
+// dashboard, which always exists on both.
+var CHAIN_SECTIONS={trade:1,pools:1,bridge:1,rewards:1,lumos:1,account:1,launchpad:1,
+  dashboard:1,wallet:1,mcp:1,'list-your-token':1};
+// The sections Stellar serves with a /stellar suffix. The rest it serves bare, and asking for
+// /dashboard/stellar there is a 404.
+var STELLAR_QUALIFIED={trade:1,pools:1,bridge:1,rewards:1,lumos:1,account:1,launchpad:1};
+function chainHref(to){
+  var p=(location.pathname||'/').replace(/\/+$/,'');
+  var m=p.match(/^\/([a-z-]+)(?:\/(stellar|xrpl))?(\/.*)?$/);
+  var sec=m&&m[1], rest=(m&&m[3])||'';
+  if(!sec||!CHAIN_SECTIONS[sec]) return to==='xrpl'?'/dashboard/xrpl':'/dashboard';
+  if(to==='xrpl') return '/'+sec+'/xrpl'+rest;
+  return STELLAR_QUALIFIED[sec]?('/'+sec+'/stellar'+rest):('/'+sec+rest);
+}
 var BASE="aptos",cur=BASE,obs=null;
 function noswap(node){
   var el=node.nodeType===3?node.parentNode:node;
@@ -46,8 +73,16 @@ function walkSwap(root,fc,tc){
 function guard(fn){if(obs)obs.disconnect();try{fn();}finally{if(obs&&document.body)obs.observe(document.body,{childList:true,subtree:true,characterData:true});}}
 function applyChain(to){
   if(!CHAINS[to]||to===cur)return;
+  // Recorded BEFORE leaving, so the page that loads on the other side already knows which network it
+  // is on rather than reading the old value and correcting itself visibly.
+  try{localStorage.setItem("lumos.chain",to);}catch(_){}
+  // NAVIGATE, do not repaint. Each chain is a separate build on this host with its own urls — see
+  // chainHref. walkSwap remains for anything that really is one page in two liveries; a dashboard
+  // whose every figure comes from a different ledger is not that.
+  var href=chainHref(to);
+  if(href&&href!==location.pathname){ try{location.assign(href);}catch(_){location.href=href;} return; }
+  cur=to;
   guard(function(){walkSwap(document.body,cur,to);});
-  cur=to;try{localStorage.setItem("lumos.chain",to);}catch(_){}
   updSwitcher();try{window.dispatchEvent(new Event("lx-chainchange"));}catch(_){}
 }
 window.lxSetChain=applyChain;window.lxGetChain=function(){return cur;};
@@ -149,7 +184,7 @@ function boot(){
   startObserver();
   var saved=null;try{saved=localStorage.getItem("lumos.chain");}catch(_){}
   // Nothing saved means a visitor who has never connected — and they were being shown the raw Aptos
-  // base: "Trending on Stellar", NETWORK Aptos with the Aptos mark, "Petra or Nightly", APT tickers, on
+  // base: "Trending on Aptos", NETWORK Aptos with the Aptos mark, "Petra or Nightly", APT tickers, on
   // a product that only runs on Stellar. The base is an artefact of where these pages came from, never
   // something a user should see, so default to the first offered chain instead of leaving it unrun.
   if(!saved||!CHAINS[saved]) saved=ORDER[0];

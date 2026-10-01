@@ -112,8 +112,13 @@ const STYLE = '<style id="lx-lumosparent-css">'
   + '</style>';
 
 // One row per chain per hub. `live:false` renders as an announced-but-not-yet card rather than a dead
-// link. XRPL is deliberately NOT linked anywhere here: it is built but not public.
-const XRPL_SOON = { id: 'xrpl', name: 'XRP Ledger', href: '', live: false, meta: 'Planned' };
+// link.
+//
+// XRPL IS LIVE (2026-10-01). It was unlinked here because it was built but not public; it is now
+// served from this same host under /<section>/xrpl, so each hub links to its own XRPL page exactly as
+// it links to its Stellar one. The href is filled in below from the hub's own path rather than
+// hardcoded, so a hub added later cannot end up pointing at the wrong section.
+const XRPL_LIVE = { id: 'xrpl', name: 'XRP Ledger', href: '', live: true, meta: 'Live' };
 
 // key  — the container page key this chooser is baked into (base name, theme suffix stripped)
 // path — the bare url that shows it
@@ -162,7 +167,9 @@ function netsFor(hub) {
   return [
     { id: 'stellar', name: 'Stellar', href: hub.path + '/stellar', live: true,
       icon: chainLogo('stellar'), meta: hub.stellarMeta },
-    Object.assign({ icon: chainLogo('xrpl') }, XRPL_SOON),
+    // href from the hub's OWN path, exactly as Stellar's is above — /trade/xrpl beside
+    // /trade/stellar — so a hub added later cannot end up pointing at the wrong section.
+    Object.assign({ icon: chainLogo('xrpl') }, XRPL_LIVE, { href: hub.path + '/xrpl' }),
   ];
 }
 
