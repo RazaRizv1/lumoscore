@@ -1,3 +1,4 @@
+import { issuerDomains } from './_issuerdomain.js';
 // Token search for the XRP Ledger.
 //
 // Replaces a Stellar index that was live on every XRPL page: typing "USD" into the search box on
@@ -117,6 +118,27 @@ async function localSearch(origin, q, request) {
     .filter((t) => t.n && t.i);
 }
 
+
+// THE DOMAIN SHOWN IS THE ONE THE ISSUER PUT ON THE LEDGER, not the one the market data carries.
+// See _issuerdomain.js for why, and for the three ATOMs that made the difference obvious. A row whose
+// issuer declares nothing loses its domain rather than keeping the claimed one: no badge is better than
+// a badge that is wrong, and "no domain set" is itself worth seeing on a token page.
+async function withLedgerDomains(rows, origin, ctx) {
+  try {
+    const map = await issuerDomains(rows.map((r) => r.i), origin, ctx);
+    // EVERY row is overwritten, including the ones that did not resolve before the deadline. Keeping the
+    // claimed domain for those would mean a token shows "x.com" or not depending on how fast the ledger
+    // answered — the same row saying different things on two loads, which is worse than saying nothing.
+    for (const r of rows) r.d = map[r.i] || '';
+    // Whether EVERY issuer answered. A cold search can time out on some of them, and caching that for
+    // the full five minutes would bake "no domain" in for everyone behind it — the first visitor's
+    // slow ledger call becoming the next hundred visitors' answer. The caller shortens the TTL instead,
+    // so the next request re-resolves against a per-issuer cache that is by then warm.
+    return rows.every((r) => Object.prototype.hasOwnProperty.call(map, r.i));
+  } catch (e) { /* the claimed domain stands rather than the search failing over a badge */ }
+  return false;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -134,11 +156,12 @@ export async function onRequest(context) {
     const idx = await getIndex(url, env, context);
     if (idx) {
       const rows = searchIndex(idx, q);
+      const domsDone = await withLedgerDomains(rows, url.origin, context);
       if (rows.length) {
         const res = json({
           ok: true, q, count: rows.length, rows, usd: idx.usd,
           src: 'xrpl.to', attribution: 'Data by xrpl.to', attributionUrl: 'https://xrpl.to',
-        }, TTL);
+        }, domsDone ? TTL : 20);
         context.waitUntil(cache.put(key, res.clone()));
         return res;
       }
@@ -170,6 +193,10 @@ export async function onRequest(context) {
       d: String(t.domain || '').slice(0, 80),
       m: String(t.md5 || ''),
     })).filter((t) => t.n && t.i);
+    // The fallback path returns rows too, and a domain that is only corrected on one of two paths is
+    // worse than one that is never corrected: the same token would read differently depending on
+    // whether the index happened to hold it.
+    await withLedgerDomains(rows, url.origin, context);
 
     out = {
       ok: true, q, total: num(r && r.total), count: rows.length, rows,
