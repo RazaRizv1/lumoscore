@@ -27,12 +27,16 @@ const TTL = 300;                       // a query's result set moves slowly; the
 const IDX_TTL = 600;                   // ten minutes: prices move, the roster of tokens does not
 const IDX_LIMIT = 1000;                // how deep the index goes; the upstream decides what it will actually give
 
-const json = (body, secs) => new Response(JSON.stringify(body), {
-  headers: {
+// `diag` goes out as a header rather than into the body: it is for us, it must not become something a
+// page starts reading, and a header survives the response being cached so a hit can still be told apart
+// from a fresh resolve. The domain layer shipped broken-but-plausible once because a blank domain and an
+// unreachable ledger looked the same from outside; this is what makes them different.
+const json = (body, secs, diag) => new Response(JSON.stringify(body), {
+  headers: Object.assign({
     'content-type': 'application/json; charset=utf-8',
     'cache-control': 'public, max-age=' + secs,
     'access-control-allow-origin': '*',
-  },
+  }, diag ? { 'x-lxdom': diag } : null),
 });
 
 function sleep(ms) { return new Promise((r) => setTimeout(r, ms)); }
@@ -123,9 +127,18 @@ async function localSearch(origin, q, request) {
 // See _issuerdomain.js for why, and for the three ATOMs that made the difference obvious. A row whose
 // issuer declares nothing loses its domain rather than keeping the claimed one: no badge is better than
 // a badge that is wrong, and "no domain set" is itself worth seeing on a token page.
-async function withLedgerDomains(rows, origin, ctx) {
+// asked/resolved/none/unreachable/cached, flattened for a header. Absent counters read as 0 rather than
+// being left out, so the shape is the same whether the lookup ran or threw.
+function diag(st) {
+  if (!st) return '';
+  const n = (k) => (st[k] == null ? 0 : st[k]);
+  return 'asked=' + n('asked') + ' resolved=' + n('resolved') + ' none=' + n('none')
+    + ' unreachable=' + n('unreachable') + ' cached=' + n('cached');
+}
+
+async function withLedgerDomains(rows, origin, ctx, stat) {
   try {
-    const map = await issuerDomains(rows.map((r) => r.i), origin, ctx);
+    const map = await issuerDomains(rows.map((r) => r.i), origin, ctx, stat);
     // EVERY row is overwritten, including the ones that did not resolve before the deadline. Keeping the
     // claimed domain for those would mean a token shows "x.com" or not depending on how fast the ledger
     // answered — the same row saying different things on two loads, which is worse than saying nothing.
@@ -156,12 +169,13 @@ export async function onRequest(context) {
     const idx = await getIndex(url, env, context);
     if (idx) {
       const rows = searchIndex(idx, q);
-      const domsDone = await withLedgerDomains(rows, url.origin, context);
+      const dstat = {};
+      const domsDone = await withLedgerDomains(rows, url.origin, context, dstat);
       if (rows.length) {
         const res = json({
           ok: true, q, count: rows.length, rows, usd: idx.usd,
           src: 'xrpl.to', attribution: 'Data by xrpl.to', attributionUrl: 'https://xrpl.to',
-        }, domsDone ? TTL : 20);
+        }, domsDone ? TTL : 20, diag(dstat));
         context.waitUntil(cache.put(key, res.clone()));
         return res;
       }
@@ -170,7 +184,7 @@ export async function onRequest(context) {
     }
   } catch (e) { /* index unavailable: fall through to the per-query filter */ }
 
-  let out;
+  let out, fstat = null, fdone = false;
   try {
     // `filter` is a text search on the token name. limit caps at 50 when a filter is present.
     // NOT lightweight: that view drops \`domain\`, and search rows show the issuer's home domain the way
@@ -196,7 +210,8 @@ export async function onRequest(context) {
     // The fallback path returns rows too, and a domain that is only corrected on one of two paths is
     // worse than one that is never corrected: the same token would read differently depending on
     // whether the index happened to hold it.
-    await withLedgerDomains(rows, url.origin, context);
+    fstat = {};
+    fdone = await withLedgerDomains(rows, url.origin, context, fstat);
 
     out = {
       ok: true, q, total: num(r && r.total), count: rows.length, rows,
@@ -219,7 +234,10 @@ export async function onRequest(context) {
     return json({ ok: false, q, error: String((e && e.message) || e), rows: [] }, 30);
   }
 
-  const res = json(out, TTL);
+  // Same rule as the index path above, and for the same reason: a result set whose domains did not all
+  // resolve is held for 20 seconds, not five minutes. Cached for the full TTL, the first visitor's
+  // unreachable node would be served to everyone behind them as "this issuer has no home domain".
+  const res = json(out, fdone ? TTL : 20, diag(fstat));
   context.waitUntil(cache.put(key, res.clone()));
   return res;
 }
