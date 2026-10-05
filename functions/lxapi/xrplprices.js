@@ -21,6 +21,11 @@
 
 const UP = 'https://api.xrpl.to/api';
 const TTL = 120;                       // seconds at the edge
+// How old a last-good answer may be before it is refused rather than served. Fifteen minutes: long
+// enough to ride out a rate-limit window, short enough that nobody trades on it by accident. Past it
+// the endpoint goes back to saying nothing, which is still the right answer for a price it cannot
+// stand behind.
+const STALE_MAX = 900;
 const MAX_MISSES = 24;                 // still capped: one page view must not become a burst
 const PACE = 60;                       // ms between calls; keyed burst is 20/sec, anonymous was 2
 
@@ -82,7 +87,10 @@ export async function onRequest(context) {
   const url = new URL(request.url);
 
   const cache = caches.default;
-  const key = new Request(url.origin + url.pathname + '?t=' + (url.searchParams.get('t') || ''), request);
+  const tParam = url.searchParams.get('t') || '';
+  const key = new Request(url.origin + url.pathname + '?t=' + tParam, request);
+  // Its own key, per token set, so the last good answer for one set is never handed to another.
+  const lastKey = new Request(url.origin + url.pathname + '/__last?t=' + tParam, request);
   const hit = await cache.match(key);
   if (hit) return hit;
 
@@ -152,12 +160,49 @@ export async function onRequest(context) {
       attributionUrl: 'https://xrpl.to',
     };
   } catch (e) {
+    // THE LAST GOOD PRICES BEAT NO PRICES (RAZA 2026-10-06: "in wallet --> My assets, why did the token
+    // prices suddenly disappeared" — every row reading "—" and no "≈ $" line anywhere on the page).
+    //
+    // The upstream was answering 429 and this returned `t: {}`, so the page had nothing to print. That
+    // is right for a WRONG price and wrong for a LATE one: a figure from ninety seconds ago is what the
+    // market was doing ninety seconds ago, and the alternative on screen is not caution, it is a wallet
+    // that looks broken. xrpl.to's anonymous tier is 333 requests a day per IP and the edge shares that
+    // IP with every other caller in the colo, so a refusal here is an ordinary event, not an outage.
+    //
+    // THIS IS NOT CACHING A FAILURE. The failure is still never cached and never becomes the answer —
+    // what is served is an EARLIER SUCCESS, kept under its own key, stamped with the time it was taken,
+    // refused outright once it is older than STALE_MAX, and marked `stale` so no caller can mistake it
+    // for current. It also goes out `no-store`, so a stale body can never install itself as the fresh
+    // one at the colo.
+    try {
+      const prev = await cache.match(lastKey);
+      if (prev) {
+        const body = await prev.json();
+        const age = Math.round((Date.now() - Number(body.asOf || 0)) / 1000);
+        if (isFinite(age) && age >= 0 && age <= STALE_MAX && body.t && Object.keys(body.t).length) {
+          body.stale = true;
+          body.ageSec = age;
+          body.error = String((e && e.message) || e);
+          return new Response(JSON.stringify(body), {
+            headers: {
+              'content-type': 'application/json; charset=utf-8',
+              'cache-control': 'no-store',
+              'access-control-allow-origin': '*',
+            },
+          });
+        }
+      }
+    } catch (_) { /* no usable last answer; fall through to the refusal */ }
     // A price column that says nothing is fine. A price column that says something wrong is not.
     return json({ ok: false, error: String((e && e.message) || e), t: {} }, 0);   // a refusal is never cached
   }
 
+  out.asOf = Date.now();
   const res = json(out, TTL);
+  // Kept far longer than the serving copy, because its whole job is to still be there when the next
+  // fetch is refused — a last-good that expires with the fresh one would be gone exactly when needed.
   context.waitUntil(cache.put(key, res.clone()));
+  context.waitUntil(cache.put(lastKey, json(out, STALE_MAX)));
   return res;
 }
 
