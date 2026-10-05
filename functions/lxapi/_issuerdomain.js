@@ -92,12 +92,25 @@ async function rpcDomain(account) {
 // cache to pick up, and since every answer is cached per issuer the second person to search a token
 // gets it instantly. An unresolved issuer shows no domain rather than the claimed one — the point of
 // the exercise was to stop showing a domain we have no basis for.
+// THE DEFAULT IS THE SEARCH PAGE'S DEADLINE, AND IT IS NOT EVERY CALLER'S.
+//
+// 1200ms was chosen for the search rows, where the domain is a badge beside a result and the results
+// must not wait for it; the lookup keeps running under waitUntil, so the NEXT search gets it. That is
+// the right trade there and the wrong one for a caller whose whole answer is the domain. Measured on
+// a cold colo (RAZA 2026-10-06, "ATOM still showing 2 X icons" then no icons at all): the asset header
+// and the toml endpoint both came back empty on first load, each warming the cache for a request the
+// reader had already stopped waiting for.
+//
+// So the deadline is now the CALLER's to state. Search keeps 1200; a page that cannot answer without
+// it asks for longer. Nothing here waits forever — the cap is still a cap, just one that fits what is
+// being asked.
 const DEADLINE_MS = 1200;
+const DEADLINE_MAX = 4000;
 
 // `stat`, if passed, is filled in with what happened — resolved / none / unreachable / cached. It exists
 // so this is measurable from outside: the first version's failure was invisible precisely because a
 // missing domain and an unreachable node looked identical in the response.
-export async function issuerDomains(issuers, origin, ctx, stat) {
+export async function issuerDomains(issuers, origin, ctx, stat, deadlineMs) {
   const uniq = [...new Set((issuers || []).filter((a) => /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a || '')))];
   const out = {};
   const st = stat || {};
@@ -147,9 +160,11 @@ export async function issuerDomains(issuers, origin, ctx, stat) {
 
   const all = Promise.all(work);
   if (ctx && ctx.waitUntil) ctx.waitUntil(all.catch(() => {}));
+  const want = Number(deadlineMs);
+  const deadline = (isFinite(want) && want > 0) ? Math.min(want, DEADLINE_MAX) : DEADLINE_MS;
   await Promise.race([
     all.catch(() => {}),
-    new Promise((r) => setTimeout(r, DEADLINE_MS)),
+    new Promise((r) => setTimeout(r, deadline)),
   ]);
   return out;
 }
