@@ -14,9 +14,14 @@ import { tokenId } from './_tokenid.js';
 
 const UP = 'https://api.xrpl.to/api/thumb/';
 const TTL = 604800;                    // a week; logos do not move
-// How long this endpoint stops asking after the upstream refuses. Twenty seconds: longer than the
-// burst window that caused it, shorter than anyone waits for a logo.
-const BRK_TTL = 20;
+// How long this endpoint stops asking after the upstream refuses.
+//
+// EIGHT SECONDS, DOWN FROM TWENTY (RAZA 2026-10-06: "whre are the asset logos?"). The cap being
+// protected is per-SECOND, so eight is already generous for that — and twenty outlived the retries the
+// pages make, which meant a table that hit the window stayed lettered even though it asked again. A
+// breaker whose job is to protect prices and search must not also be the reason the logos never come
+// back. Paired with the retries in trade.js and wallet.js, which are spaced to land after it reopens.
+const BRK_TTL = 8;
 
 // md5('rsPqeamjpr3Bxu4LhtCgvJEAQusYRRg6Ha_4C554D4F53' + 30 zeros) — LUMOS, under the same scheme as every other token.
 const LUMOS_ID = '5c4fb27e6ea19e0bde8900d2c0a7b177';
