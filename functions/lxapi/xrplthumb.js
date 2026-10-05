@@ -22,6 +22,20 @@ const LUMOS_ID = '5c4fb27e6ea19e0bde8900d2c0a7b177';
 // so this cannot be turned into an open image proxy for arbitrary upstream paths.
 const SIZES = [16, 32, 40, 48, 64, 96, 128];
 
+// Bumped to walk away from poisoned entries. The LUMOS branch cached an Access login page as a PNG on every gated
+// hostname, with a week's immutable TTL, and nothing a visitor can do shifts a bad answer sitting in the colo's cache
+// — see [never cache a failure as an answer]. A new key is the only cheap way out.
+const CACHEV = '2';
+
+// The eight-byte PNG signature. Cheap, exact, and the one thing that would have caught the Access page.
+const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+function isPng(buf) {
+  if (!buf || buf.byteLength < 64) return false;
+  const head = new Uint8Array(buf, 0, 8);
+  for (let i = 0; i < 8; i++) if (head[i] !== PNG_SIG[i]) return false;
+  return true;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -47,7 +61,7 @@ export async function onRequest(context) {
   if (SIZES.indexOf(w) < 0) w = 48;
 
   const cache = caches.default;
-  const key = new Request(url.origin + url.pathname + '?id=' + id + '&w=' + w, request);
+  const key = new Request(url.origin + url.pathname + '?id=' + id + '&w=' + w + '&v=' + CACHEV, request);
   const hit = await cache.match(key);
   if (hit) return hit;
 
@@ -65,14 +79,43 @@ export async function onRequest(context) {
   // That makes it the slowest and heaviest logo in any list, which is precisely the one that loses a race it is allowed to
   // lose only once — the wallet drew a letter instead. It is now cached for a week like the rest, and the page retries
   // before lettering, so neither half of that depends on the other.
+  //
+  // AND IT READS THE FILE THROUGH env.ASSETS, NOT THROUGH ITS OWN HOSTNAME (RAZA 2026-10-05: "lumos logo in Wallet --> My
+  // assets is not showing up at all" — an empty slot, not even the letter the fallback draws).
+  //
+  // `fetch(url.origin + '/assets/...')` leaves the worker, comes back in through the edge, AND MEETS CLOUDFLARE ACCESS. The
+  // staging alias is gated; a per-deployment hostname is not. So the subrequest got the Access login page, which is a 200,
+  // so `own.ok` was true, and this served 51 KB of HTML under `content-type: image/png`. A browser cannot decode that into
+  // anything, so the disc painted nothing at all — and because the page's own probe reads the STATUS, it saw 200 and never
+  // drew the letter either. Every environment I can test is ungated, which is why this looked fine from here for weeks.
+  //
+  // env.ASSETS is the binding that reads the project's own static files directly. It never leaves the worker, so there is no
+  // hostname and nothing for Access to gate.
+  //
+  // AND THE BYTES ARE CHECKED BEFORE THEY ARE CALLED A PNG. The signature check is the actual lesson here: whatever a
+  // subrequest hands back, this must never label it `image/png` on trust. A 404 at least lets the page draw a letter.
   if (id === LUMOS_ID) {
-    const own = await fetch(url.origin + '/assets/tokens/lumos.png').catch(() => null);
-    if (!own || !own.ok) return Response.redirect(url.origin + '/assets/tokens/lumos.png', 302);
-    const res = new Response(own.body, {
+    const href = url.origin + '/assets/tokens/lumos.png';
+    const want = new Request(href, { headers: { accept: 'image/png,image/*' } });
+    let own = null, src = 'assets';
+    if (env && env.ASSETS && typeof env.ASSETS.fetch === 'function') {
+      own = await env.ASSETS.fetch(want).catch(() => null);
+    }
+    // `redirect: 'manual'` so a gated hostname cannot be followed into a 200 that is a login page. The
+    // fallback is only reached when there is no ASSETS binding at all, and `x-lxsrc` says which path
+    // answered — the alias is behind Access and cannot be checked from here, so the header is how anyone
+    // confirms it on the host that actually has the problem.
+    if (!own || !own.ok) { src = 'origin'; own = await fetch(want, { redirect: 'manual' }).catch(() => null); }
+    const buf = own && own.ok ? await own.arrayBuffer().catch(() => null) : null;
+    if (!isPng(buf)) {
+      return new Response('no logo', { status: 404, headers: { 'cache-control': 'no-store', 'x-lxsrc': src + '-notpng' } });
+    }
+    const res = new Response(buf, {
       headers: {
         'content-type': 'image/png',
         'cache-control': 'public, max-age=' + TTL + ', immutable',
         'access-control-allow-origin': '*',
+        'x-lxsrc': src,
       },
     });
     context.waitUntil(cache.put(key, res.clone()));
