@@ -827,8 +827,21 @@ async function assetFacts(assetId){
   } catch (e) { return null; }
 }
 
-function assetSeo(f, assetId){
+// THE CHAIN IS PART OF THE ANSWER (RAZA 2026-10-06: "sweep the wrong-chain titles across all XRPL
+// pages"). On the combined deployment this one middleware serves both builds, and every title it
+// composed said "on Stellar" — so /trade/xrpl/PHNIX-… arrived titled "PHNIX price, pools and holders
+// on Stellar", in the browser tab and, worse, in the HTML a crawler reads.
+//
+// Named rather than guessed: 'stellar' is the default, so every existing Stellar url produces the same
+// bytes it did before and this is additive for that build.
+const NET_NAME = { stellar: 'Stellar', xrpl: 'the XRP Ledger' };
+const NET_NATIVE = { stellar: 'XLM', xrpl: 'XRP' };
+function netName(c){ return NET_NAME[c] || NET_NAME.stellar; }
+function netNative(c){ return NET_NATIVE[c] || NET_NATIVE.stellar; }
+
+function assetSeo(f, assetId, chain){
   const code = f ? f.code : assetId.split('-')[0];
+  const net = netName(chain);
   const bits = [];
   const px = f && fmtUsd(f.price);
   if (px) bits.push('Price ' + px);
@@ -836,23 +849,45 @@ function assetSeo(f, assetId){
   if (f && f.domain) bits.push('issued by ' + f.domain);
   const facts = bits.length ? bits.join(' · ') + '. ' : '';
   return {
-    title: code + ' price, pools and holders on Stellar | LumosCore',
+    title: code + ' price, pools and holders on ' + net + ' | LumosCore',
     // Search results truncate around 160 characters and the FACTS are the half worth showing, so
     // the boilerplate tail is trimmed rather than the price and trustline count.
-    desc: (facts + code + ' price, pools, holders and trades on Stellar. Trade non-custodially.')
+    desc: (facts + code + ' price, pools, holders and trades on ' + net + '. Trade non-custodially.')
       .slice(0, 158),
     image: (f && f.image) || '',
   };
 }
 
-function poolSeo(a, b, img){
-  const A = a === 'native' ? 'XLM' : a.split('-')[0];
-  const B = b === 'native' ? 'XLM' : b.split('-')[0];
+function poolSeo(a, b, img, chain){
+  const nat = netNative(chain);
+  const A = a === 'native' ? nat : a.split('-')[0];
+  const B = b === 'native' ? nat : b.split('-')[0];
+  const net = netName(chain);
   return {
-    title: A + ' / ' + B + ' liquidity pool on Stellar | LumosCore',
+    title: A + ' / ' + B + ' liquidity pool on ' + net + ' | LumosCore',
     desc: 'Reserves, total value locked, 24h volume and fees for the ' + A + ' / ' + B
-      + ' liquidity pool on Stellar. Add or withdraw liquidity from your own wallet.',
+      + ' liquidity pool on ' + net + '. Add or withdraw liquidity from your own wallet.',
     image: img || '',
+  };
+}
+
+// A POOL NAMED BY ITS OWN ID IS NOT A PAIR. /pools/<chain>/id/<account> was being read by the pair
+// rule — segs[2] and segs[3] are "id" and the account — so it published, literally, "id /
+// rPivZEebGS9XSLKZbrR4Yqc8t97A4GR3wH liquidity pool on Stellar". Both chains serve this url shape and
+// both had it.
+//
+// The id is shortened the way the page itself prints it, which also keeps each pool's title distinct:
+// one shared title across every pool url is the duplicate-content problem this whole layer exists to
+// avoid. The pair is not named because the edge does not know it without a lookup, and a title that
+// guesses is worse than one that is merely general.
+function poolIdSeo(id, chain){
+  const net = netName(chain);
+  const short = id.length > 12 ? id.slice(0, 6) + '…' + id.slice(-4) : id;
+  return {
+    title: 'Liquidity pool ' + short + ' on ' + net + ' | LumosCore',
+    desc: 'Reserves, total value locked, 24h volume and fees for ' + net + ' liquidity pool '
+      + short + '. Add or withdraw liquidity from your own wallet.',
+    image: '',
   };
 }
 
@@ -1058,8 +1093,14 @@ const HUB_SEO = {
 
 function seoFor(pathname){
   const segs = pathname.split('/').filter(Boolean);
-  if ((segs[0] === 'trade' || segs[0] === 'asset') && segs[2]) return { kind: 'asset', id: segs[2] };
-  if (segs[0] === 'pools' && segs[2] && segs[3]) return { kind: 'pool', a: segs[2], b: segs[3] };
+  // segs[1] names the chain on every parameterised route — /trade/<chain>/<asset>,
+  // /pools/<chain>/<a>/<b>, /pools/<chain>/id/<account>. Anything that is not 'xrpl' is Stellar, so
+  // every url this build already served keeps its exact wording.
+  const chain = segs[1] === 'xrpl' ? 'xrpl' : 'stellar';
+  if ((segs[0] === 'trade' || segs[0] === 'asset') && segs[2]) return { kind: 'asset', id: segs[2], chain };
+  // Before the pair rule, or "id" becomes the first asset of the pair.
+  if (segs[0] === 'pools' && segs[2] === 'id' && segs[3]) return { kind: 'poolid', id: segs[3], chain };
+  if (segs[0] === 'pools' && segs[2] && segs[3]) return { kind: 'pool', a: segs[2], b: segs[3], chain };
   if (segs[0] === 'blog' && segs[1]) return { kind: 'blog', slug: segs[1] };
   // exactly one segment, so /trade is the hub and /trade/stellar is not
   if (segs.length === 1 && HUB_SEO['/' + segs[0]]) return { kind: 'hub', id: '/' + segs[0] };
@@ -1363,13 +1404,24 @@ export async function onRequest(context){
 
   let seo = null;
   if (want && want.kind === 'asset') {
-    const f = await assetFacts(want.id);
-    seo = assetSeo(f, want.id);
+    // THE ENRICHMENT IS STELLAR'S, so it is not run for an XRPL asset. assetFacts asks stellar.expert
+    // and reads a SEP-1 toml; adminImage and cardFor are keyed on a Stellar asset id. Against an XRPL
+    // issuer they cost a round trip to learn nothing, and anything they did return would be a fact
+    // about a different chain's token printed under this one's name. The title and description are
+    // still the XRPL ones — see assetSeo — so the page is correctly described, just not enriched.
+    const stellar = want.chain !== 'xrpl';
+    const f = stellar ? await assetFacts(want.id) : null;
+    seo = assetSeo(f, want.id, want.chain);
     seo.facts = f;
     // Only build a card when a logo actually exists, so a missing one stays a missing image
     // rather than an empty rectangle of brand colour.
-    const ai = await adminImage(context.env, want.id);
-    if (ai || (f && f.image)) seo.image = cardFor(want.id);
+    if (stellar) {
+      const ai = await adminImage(context.env, want.id);
+      if (ai || (f && f.image)) seo.image = cardFor(want.id);
+    }
+  }
+  else if (want && want.kind === 'poolid') {
+    seo = poolIdSeo(want.id, want.chain);
   }
   else if (want && want.kind === 'hub') {
     seo = { title: HUB_SEO[want.id].title + ' | LumosCore', desc: HUB_SEO[want.id].desc, image: '' };
@@ -1385,9 +1437,11 @@ export async function onRequest(context){
   else if (want && want.kind === 'pool') {
     // XLM has no logo of its own, so the pair's other side is the one worth showing.
     const other = want.a === 'native' ? want.b : want.a;
-    const pf = (other && other !== 'native') ? await assetFacts(other) : null;
-    const ai = (other && other !== 'native') ? await adminImage(context.env, other) : '';
-    seo = poolSeo(want.a, want.b, (ai || (pf && pf.image)) ? cardFor(other) : '');
+    // Stellar's enrichment again, skipped for XRPL for the reason given on the asset branch.
+    const look = want.chain !== 'xrpl' && other && other !== 'native';
+    const pf = look ? await assetFacts(other) : null;
+    const ai = look ? await adminImage(context.env, other) : '';
+    seo = poolSeo(want.a, want.b, (ai || (pf && pf.image)) ? cardFor(other) : '', want.chain);
   }
 
   const head = [
