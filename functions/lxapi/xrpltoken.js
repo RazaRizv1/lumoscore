@@ -126,7 +126,8 @@ export async function onRequest(context) {
   let domReached = true;
   if (out.issuer) {
     try {
-      const map = await issuerDomains([out.issuer], url.origin, context, null);
+      // 3s, not the search default: the header has nowhere else to get this from.
+      const map = await issuerDomains([out.issuer], url.origin, context, null, 3000);
       domReached = Object.prototype.hasOwnProperty.call(map, out.issuer);
       out.domain = map[out.issuer] || '';
     } catch (e) { out.domain = ''; }
