@@ -14,6 +14,9 @@ import { tokenId } from './_tokenid.js';
 
 const UP = 'https://api.xrpl.to/api/thumb/';
 const TTL = 604800;                    // a week; logos do not move
+// How long this endpoint stops asking after the upstream refuses. Twenty seconds: longer than the
+// burst window that caused it, shorter than anyone waits for a logo.
+const BRK_TTL = 20;
 
 // md5('rsPqeamjpr3Bxu4LhtCgvJEAQusYRRg6Ha_4C554D4F53' + 30 zeros) — LUMOS, under the same scheme as every other token.
 const LUMOS_ID = '5c4fb27e6ea19e0bde8900d2c0a7b177';
@@ -122,6 +125,29 @@ export async function onRequest(context) {
     return res;
   }
 
+  // LOGOS YIELD, BECAUSE THEY ARE THE ONE THING HERE THAT CAN WAIT.
+  //
+  // RAZA 2026-10-06, twice in ten minutes: "why did the token prices suddenly disappeared" and "Why
+  // isnt it searching ATOM asset". Two symptoms, one cause — xrpl.to answering 429. The budget is
+  // shared by every endpoint in this directory, and with the key live the daily allowance is nowhere
+  // near spent; what gets hit is the per-second burst. A wallet asking for sixty-five marks at once is
+  // the single biggest consumer on the site, and it is competing with the two requests the reader is
+  // actually waiting on.
+  //
+  // So once the upstream refuses, this stops asking for twenty seconds and leaves the headroom to
+  // prices and search. A letter where a logo should be costs the reader nothing; a blank price column
+  // and a search box that cannot find ATOM cost them the page.
+  //
+  // THE BREAKER IS NOT AN ANSWER ABOUT A TOKEN. It returns 429 — "ask me later" — and never 404, so no
+  // row is ever told its mark does not exist; it is `no-store`, so it cannot settle into the colo as
+  // that token's reply; and it sits BELOW the cache lookup and the LUMOS branch, so everything already
+  // cached and our own mark keep serving straight through it. The page's own probe already treats 429
+  // as retryable and holds its queue, so the two halves agree without knowing about each other.
+  const brkKey = new Request(url.origin + url.pathname + '/__brk', request);
+  if (await cache.match(brkKey)) {
+    return new Response('upstream busy', { status: 429, headers: { 'cache-control': 'no-store', 'x-lxbrk': '1' } });
+  }
+
   const headers = { accept: 'image/webp,image/*', 'user-agent': 'LumosCore/1.0 (+https://lumoscore.com)' };
   if (env && env.XRPLTO_API_KEY) headers['x-api-key'] = env.XRPLTO_API_KEY;
 
@@ -146,6 +172,14 @@ export async function onRequest(context) {
   // 401 here means the key is missing or rejected. Say so with a status the page can ignore
   // quietly — a missing logo must never break a row.
   if (!upstream.ok) {
+    // Trip the breaker on a refusal, so the next sixty-four rows do not each find this out for
+    // themselves. A 200 body is used because that is what the Cache API will store; its presence is
+    // the whole signal, and its max-age is how long the breaker stays open.
+    if (upstream.status === 429) {
+      context.waitUntil(cache.put(brkKey, new Response('1', {
+        headers: { 'content-type': 'text/plain', 'cache-control': 'public, max-age=' + BRK_TTL },
+      })));
+    }
     return new Response('no logo', {
       status: upstream.status === 401 ? 404 : upstream.status,
       headers: { 'cache-control': upstream.status === 404 || upstream.status === 401 ? 'public, max-age=600' : 'no-store' },
