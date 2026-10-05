@@ -43,24 +43,6 @@ export async function onRequest(context) {
   if (!/^[0-9a-f]{32}$/.test(id)) {
     return new Response('bad id', { status: 400, headers: { 'cache-control': 'public, max-age=3600' } });
   }
-  // THE LUMOS MARK IS THIS PROJECT'S OWN (RAZA 2026-09-16: "Also fix lumos logo. Use the same logo that we're using on
-  // Stellar"). The upstream holds a different artwork for the token, and it was being drawn on every surface that shows a
-  // logo. Answering here — rather than at each of the dozen call sites — means one rule covers the lot, including rows that
-  // arrive with an id and never name the issuer. The file is byte-identical to lumoscore.com's.
-  if (id === LUMOS_ID) {
-    const own = await fetch(url.origin + '/assets/tokens/lumos.png').catch(() => null);
-    if (own && own.ok) {
-      return new Response(own.body, {
-        headers: {
-          'content-type': 'image/png',
-          'cache-control': 'public, max-age=' + TTL + ', immutable',
-          'access-control-allow-origin': '*',
-        },
-      });
-    }
-    return Response.redirect(url.origin + '/assets/tokens/lumos.png', 302);
-  }
-
   let w = parseInt(url.searchParams.get('w') || '48', 10);
   if (SIZES.indexOf(w) < 0) w = 48;
 
@@ -68,6 +50,34 @@ export async function onRequest(context) {
   const key = new Request(url.origin + url.pathname + '?id=' + id + '&w=' + w, request);
   const hit = await cache.match(key);
   if (hit) return hit;
+
+  // THE LUMOS MARK IS THIS PROJECT'S OWN (RAZA 2026-09-16: "Also fix lumos logo. Use the same logo that we're using on
+  // Stellar"). The upstream holds a different artwork for the token, and it was being drawn on every surface that shows a
+  // logo. Answering here — rather than at each of the dozen call sites — means one rule covers the lot, including rows that
+  // arrive with an id and never name the issuer. The file is byte-identical to lumoscore.com's.
+  //
+  // IT SITS BEHIND THE CACHE NOW, where it always should have been (RAZA 2026-10-05: "why isn't LUMOS logo shown"). This
+  // branch used to return above the cache lookup entirely, so the one logo this project actually owns was the only logo on
+  // the site that was never cached at the edge: every row of every surface spent an origin subrequest on it, and the file
+  // is a 160px PNG — 23.7 KB against the ~800 B the upstream serves for everything else. Measured on the deployed build:
+  // ~190 ms per call versus ~115 ms for a cached one, thirty times the bytes, on a mark that never changes.
+  //
+  // That makes it the slowest and heaviest logo in any list, which is precisely the one that loses a race it is allowed to
+  // lose only once — the wallet drew a letter instead. It is now cached for a week like the rest, and the page retries
+  // before lettering, so neither half of that depends on the other.
+  if (id === LUMOS_ID) {
+    const own = await fetch(url.origin + '/assets/tokens/lumos.png').catch(() => null);
+    if (!own || !own.ok) return Response.redirect(url.origin + '/assets/tokens/lumos.png', 302);
+    const res = new Response(own.body, {
+      headers: {
+        'content-type': 'image/png',
+        'cache-control': 'public, max-age=' + TTL + ', immutable',
+        'access-control-allow-origin': '*',
+      },
+    });
+    context.waitUntil(cache.put(key, res.clone()));
+    return res;
+  }
 
   const headers = { accept: 'image/webp,image/*', 'user-agent': 'LumosCore/1.0 (+https://lumoscore.com)' };
   if (env && env.XRPLTO_API_KEY) headers['x-api-key'] = env.XRPLTO_API_KEY;
