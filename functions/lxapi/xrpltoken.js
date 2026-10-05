@@ -11,6 +11,9 @@
 // book_offers -- there is no rate limit worth proxying for, no third party to trust, and a book is
 // the one thing on the page that should be as live as the ledger itself.
 
+// Shared with xrplsearch, so the two surfaces cannot drift apart on what an issuer's home domain is.
+import { issuerDomains } from './_issuerdomain.js';
+
 const UP = 'https://api.xrpl.to/api';
 const TTL = 60;
 
@@ -97,7 +100,41 @@ export async function onRequest(context) {
     return json({ ok: false, id, error: String((e && e.message) || e) }, 30);
   }
 
-  const res = json(out, TTL);
+  // THE LEDGER'S DOMAIN, NOT THE MARKET'S (RAZA 2026-10-06: "On Trade-asset page for many assets like
+  // ATOM, the homedomain is showing as X.com and such, even though its showing correctly on search").
+  //
+  // Search was fixed on 2026-10-02 and this endpoint was not, so one site gave two answers about the
+  // same issuer: `firstledger.net` in the search row and `x.com` on the page that row opens. ATOM's
+  // issuer r1E7ErLAj4XfbkjUV3E1C57Tgb1TThzW4 is the worked example already written down in
+  // _issuerdomain.js — market data says x.com, the AccountRoot says toml.firstledger.net.
+  //
+  // The difference is who is speaking. xrpl.to's `domain` is supplied by whoever listed the token, so a
+  // token can claim anything; the AccountRoot's `Domain` is set by the issuing account in a transaction
+  // that account signed. Still not proof of ownership, but an assertion BY the issuer rather than ABOUT
+  // it — and on a page carrying a clickable link, that difference is the one that matters.
+  //
+  // THE CLAIMED DOMAIN IS NOT KEPT AS A FALLBACK, which is deliberate and matches xrplsearch exactly: a
+  // row that shows x.com whenever the ledger call is slow, and firstledger.net when it is not, says
+  // different things on two loads, and that is worse than saying nothing. The page already removes the
+  // link when the field is empty.
+  //
+  // RESOLVED AFTER the response is otherwise built, and never allowed to fail the request: a domain is a
+  // badge, and the price, supply and order book are not worth losing over one.
+  //
+  // This reads the ledger over public RPC, so it spends no part of the xrpl.to budget — see the breaker
+  // note in xrplthumb.js for why that distinction is now load-bearing.
+  let domReached = true;
+  if (out.issuer) {
+    try {
+      const map = await issuerDomains([out.issuer], url.origin, context, null);
+      domReached = Object.prototype.hasOwnProperty.call(map, out.issuer);
+      out.domain = map[out.issuer] || '';
+    } catch (e) { out.domain = ''; }
+  }
+
+  // An unresolved issuer is cached briefly rather than for the full minute, so the first visitor's slow
+  // ledger call does not become everyone else's answer while the per-issuer cache warms.
+  const res = json(out, domReached ? TTL : 10);
   context.waitUntil(cache.put(key, res.clone()));
   return res;
 }
