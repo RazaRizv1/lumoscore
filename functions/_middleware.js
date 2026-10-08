@@ -543,7 +543,23 @@ async function learnImgDims(env, url){
     await kv.put(DIM_KEY + id, JSON.stringify({ w: d.w, h: d.h }), { expirationTtl: DIM_TTL });
   } catch (e) { /* a missing dimension costs nothing; a thrown one would cost the page */ }
 }
-function isCardImage(u){ return String(u || '').indexOf('/lxapi/ogcard') >= 0; }
+// Both of our own 1200x630 cards: the per-asset one built on demand by /lxapi/ogcard, and the
+// per-section ones _tools/_ogsection.js draws into assets/og/s/ at build time. Recognising a card
+// is what earns it the large Twitter layout and lets the dimensions be stated as the constants they
+// are, rather than measured.
+function isCardImage(u){
+  const s = String(u || '');
+  return s.indexOf('/lxapi/ogcard') >= 0 || s.indexOf('/assets/og/s/') >= 0;
+}
+
+// Section routes that have a card drawn for them. Keyed on the canonical path. Only the image is
+// taken from here: the title and description are already correct in the built page, and copying
+// them into the edge would be two places to keep in step for no gain.
+const SECTION_CARD = {
+  '/trade': 'trade',
+  '/trade/stellar': 'trade-stellar',
+  '/trade/xrpl': 'trade-xrpl',
+};
 
 // A 1200x630 card: the asset's logo padded onto the brand background. Built through Cloudflare's
 // resizing, whose source must be on this zone -- hence /lxapi/logoimg re-serving foreign logos.
@@ -978,18 +994,22 @@ export async function onRequest(context){
     const f = stellar ? await assetFacts(want.id) : null;
     seo = assetSeo(f, want.id, want.chain);
     seo.facts = f;
-    // Only build a card when a logo actually exists, so a missing one stays a missing image
-    // rather than an empty rectangle of brand colour.
-    if (stellar) {
-      const ai = await adminImage(context.env, want.id);
-      if (ai || (f && f.image)) seo.image = cardFor(want.id);
-    }
+    // EVERY Stellar asset advertises a card now. The gate here used to require a logo, because the
+    // only fallback was that logo padded onto a plain rectangle and a missing one left an empty
+    // field of brand colour. /lxapi/ogcard now answers with the trade page's own card when an asset
+    // has none of its own, so there is always something branded and legible to point at, and the
+    // adminImage/toml lookup that decided it is no longer needed on this path.
+    if (stellar) seo.image = cardFor(want.id);
   }
   else if (want && want.kind === 'poolid') {
     seo = poolIdSeo(want.id, want.chain);
   }
   else if (want && want.kind === 'hub') {
-    seo = { title: HUB_SEO[want.id].title + ' | LumosCore', desc: HUB_SEO[want.id].desc, image: '' };
+    seo = {
+      title: HUB_SEO[want.id].title + ' | LumosCore',
+      desc: HUB_SEO[want.id].desc,
+      image: SECTION_CARD[want.id] ? '/assets/og/s/' + SECTION_CARD[want.id] + '.png' : '',
+    };
   }
   else if (want && want.kind === 'blog') {
     const post = await blogPost(context.env, want.slug);
@@ -1009,6 +1029,14 @@ export async function onRequest(context){
     seo = poolSeo(want.a, want.b, (ai || (pf && pf.image)) ? cardFor(other) : '', want.chain);
   }
 
+  // A plain section route carries no seo object -- its title and description are baked into the page
+  // -- but it does have a card. Only the image is added, so the page keeps its own wording and a
+  // crawler falls back to <title> and <meta name="description"> for the card's text, exactly as it
+  // does today.
+  if (!seo && SECTION_CARD[canonPath]) {
+    seo = { title: '', desc: '', image: '/assets/og/s/' + SECTION_CARD[canonPath] + '.png', imageOnly: true };
+  }
+
   const head = [
     '<link rel="canonical" href="' + esc(canonical) + '">',
     '<meta property="og:url" content="' + esc(canonical) + '">',
@@ -1019,20 +1047,24 @@ export async function onRequest(context){
   head.push('<meta name="twitter:card" content="'
     + ((seo && (isCardImage(seo.image) || seo.largeCard)) ? 'summary_large_image' : 'summary') + '">');
   if (seo){
-    head.push('<meta property="og:title" content="' + esc(seo.title) + '">');
-    head.push('<meta property="og:description" content="' + esc(seo.desc) + '">');
-    head.push('<meta name="twitter:title" content="' + esc(seo.title) + '">');
-    head.push('<meta name="twitter:description" content="' + esc(seo.desc) + '">');
+    if (!seo.imageOnly) {
+      head.push('<meta property="og:title" content="' + esc(seo.title) + '">');
+      head.push('<meta property="og:description" content="' + esc(seo.desc) + '">');
+      head.push('<meta name="twitter:title" content="' + esc(seo.title) + '">');
+      head.push('<meta name="twitter:description" content="' + esc(seo.desc) + '">');
+    }
     seo.image = absUrl(seo.image);
     // A crawler reads the page first and fetches og:image a moment later. Building the card now,
     // without holding up this response, means that second request usually finds it already cached
     // instead of paying the cold 2-3s that made a link need pasting two or three times.
-    if (isCardImage(seo.image)) {
+    // Only the on-demand card is worth warming. A section card is a static file on the CDN, already
+    // as fast as it will ever be, so prewarming it would buy a subrequest and nothing else.
+    if (String(seo.image || '').indexOf('/lxapi/ogcard') >= 0) {
       try { context.waitUntil(fetch(seo.image, { headers: { accept: 'image/*' } })); } catch (e) {}
     }
     if (seo.image){
       head.push('<meta property="og:image" content="' + esc(seo.image) + '">');
-      head.push('<meta property="og:image:alt" content="' + esc(seo.title) + '">');
+      if (seo.title) head.push('<meta property="og:image:alt" content="' + esc(seo.title) + '">');
     // Only when both are known and real. Unknown emits nothing, which is the previous behaviour.
     // The branded card comes from /lxapi/ogcard, which is 1200x630 by construction (W/H there are
     // unconditional constants), so its size is a known value needing neither a KV read nor a fetch.
