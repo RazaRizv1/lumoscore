@@ -252,23 +252,64 @@ function render(svg) {
 // RESVG 2.6.2 CANNOT DECODE WEBP. A webp data URI draws nothing and raises no error, so a card ships
 // with an empty panel while the build reports it had a logo. xrpl.to serves webp for every token
 // icon. sharp is already a dependency, so everything that is not PNG or JPEG is decoded to PNG.
+// Normalise ANY logo to a PNG the renderer can draw and a reader can actually see. Two separate
+// failures, both of which ship a card that looks broken rather than one that looks wrong:
+//
+//   resvg draws only PNG and JPEG from inside an SVG, so webp drew nothing at all and an SVG was
+//   skipped entirely -- which is what left XRF wearing a monogram over a logo that existed.
+//
+//   A logo that is BLACK ON TRANSPARENCY disappears into a dark card. TFT, XRF, XTROOP and AFR all
+//   rendered as a silhouette darker than the panel behind it, reading as a hole. Measured across the
+//   curated list: 4 of 58 sit below luminance 40, where the panel interior is about 26. Those get a
+//   white tile behind them, which is what any app does with a dark mark on a dark surface. The ones
+//   that are merely dark-ish and coloured -- SHX, yXLM, ETH at 56-65 -- are left alone, because they
+//   read perfectly well and flattening them would put a white box where none is wanted.
 async function toPng(buf) {
   try {
-    const out = await require('sharp')(buf).png().toBuffer();
-    return 'data:image/png;base64,' + out.toString('base64');
+    const sharp = require('sharp');
+    // SVG TOO. resvg will not rasterise an SVG referenced from inside another SVG, so these used to
+    // be skipped and the asset fell back to a two-letter monogram -- XRF did, for a logo that was
+    // sitting there the whole time. sharp renders it, but at 72dpi by default, which on a small
+    // source gives a thumbnail that is then blurry in a 226px panel. The density is chosen from the
+    // intrinsic size so the raster lands near 512px however the file was authored.
+    const head = buf.slice(0, 400).toString('latin1');
+    if (head.indexOf('<svg') >= 0 || head.trimStart().indexOf('<?xml') === 0) {
+      const m = await sharp(buf).metadata();
+      const side = Math.max(m.width || 72, m.height || 72);
+      const density = Math.min(2400, Math.max(72, Math.round(72 * 512 / side)));
+      return await encode(sharp(buf, { density }));
+    }
+    return await encode(sharp(buf));
   } catch (e) { return ''; }
 }
+
+// Shared tail of toPng: give a logo that is dark on transparency a white tile, then encode.
+async function encode(img) {
+  const sharp = require('sharp');
+  const meta = await img.metadata();
+  let out = img;
+  if (meta.hasAlpha) {
+    const { data } = await img.clone().ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    let sum = 0, n = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 128) { sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]; n++; }
+    }
+    if (n && sum / n < 40) out = img.clone().flatten({ background: '#ffffff' });
+  }
+  const png = await out.png().toBuffer();
+  return 'data:image/png;base64,' + png.toString('base64');
+}
+
+// EVERY logo goes through toPng now, PNG and JPEG included. They used to pass straight through,
+// which is why a black-on-transparent PNG reached the card untouched.
 async function imageDataUri(url) {
   try {
     const r = await fetch(url, { headers: { accept: 'image/*' } });
     if (!r.ok) return '';
     const type = (r.headers.get('content-type') || '').split(';')[0].toLowerCase();
-    if (type.indexOf('image/') !== 0 || type.indexOf('svg') >= 0) return '';
+    if (type.indexOf('image/') !== 0) return '';   // svg included: toPng() rasterises it
     const b = Buffer.from(await r.arrayBuffer());
     if (!b.length || b.length > 2 * 1024 * 1024) return '';
-    if (type === 'image/png' || type === 'image/jpeg' || type === 'image/jpg') {
-      return 'data:' + type + ';base64,' + b.toString('base64');
-    }
     return await toPng(b);
   } catch (e) { return ''; }
 }

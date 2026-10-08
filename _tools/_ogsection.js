@@ -45,10 +45,11 @@ async function stellarLogo(id) {
     if (!r.ok) return '';
     const d = await r.json(); let u = d && d.image; if (!u) return '';
     if (u.indexOf('data:') === 0) {
-      if (/^data:image\/(png|jpe?g)/i.test(u)) return u;
-      if (/^data:image\/svg/i.test(u)) return '';
+      // SVG included: toPng() rasterises it rather than dropping the logo.
       const m = /^data:([^;]+);base64,(.*)$/i.exec(u);
-      return m ? await K.toPng(Buffer.from(m[2], 'base64')) : '';
+      if (m) return await K.toPng(Buffer.from(m[2], 'base64'));
+      const sv = /^data:image\/svg\+xml[^,]*,(.*)$/i.exec(u);
+      return sv ? await K.toPng(Buffer.from(decodeURIComponent(sv[1]), 'utf8')) : '';
     }
     return await K.imageDataUri(u.indexOf('/') === 0 ? ORIGIN + u : u);
   } catch (e) { return ''; }
@@ -254,7 +255,7 @@ function panelGrid(items, kind) {
     }],
     ['bridge-xrpl', {
       row: K.metaRow([{ chain: 'XRPL' }]).svg,
-      headline: 'XRP Ledger Bridge', accent: 'Bridge on LumosCore',
+      headline: 'XRPL Bridge', accent: 'Bridge on LumosCore',
       features: 'NEAR Intents · Axelar · THORChain',
       grid: panelGrid(bridgeX, 'quad'),
     }],
@@ -284,7 +285,7 @@ function panelGrid(items, kind) {
     // build-time image cannot quote an APR that moves every round.
     ['rewards', {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
-      headline: 'LUMOS Rewards', accent: 'Earn LUMOS every round',
+      headline: 'Rewards', accent: 'Earn LUMOS every round',
       features: 'LP rewards · Holder rewards',
       grid: panelSingle(lumosMark, 'LU'),
     }],
@@ -314,7 +315,7 @@ function panelGrid(items, kind) {
     }],
     ['trade-xrpl', {
       row: K.metaRow([{ chain: 'XRPL' }]).svg,
-      headline: 'XRP Ledger DEX', accent: 'Trade on LumosCore',
+      headline: 'XRPL DEX', accent: 'Trade on LumosCore',
       features: 'Orderbook · AMM pools · Limit orders',
       // With no XRPL origin to read thumbnails from, the chooser's pair of chain marks is a
       // truthful stand-in rather than four empty tiles.
