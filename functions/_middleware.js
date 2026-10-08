@@ -555,6 +555,9 @@ function isCardImage(u){
 // Section routes that have a card drawn for them. Keyed on the canonical path. Only the image is
 // taken from here: the title and description are already correct in the built page, and copying
 // them into the edge would be two places to keep in step for no gain.
+// The one XRPL asset with a card of its own; see the asset branch for why it is the only one.
+const XRPL_LUMOS = 'LUMOS-rsPqeamjpr3Bxu4LhtCgvJEAQusYRRg6Ha';
+
 const SECTION_CARD = {
   '/trade': 'trade',
   '/trade/stellar': 'trade-stellar',
@@ -1000,6 +1003,13 @@ export async function onRequest(context){
     // has none of its own, so there is always something branded and legible to point at, and the
     // adminImage/toml lookup that decided it is no longer needed on this path.
     if (stellar) seo.image = cardFor(want.id);
+    // XRPL HAS NO CURATED ROSTER, so no XRPL token gets a card drawn from its own metadata: the
+    // name, description and icon all come from whoever issued it, and rendering those onto a
+    // LumosCore-branded 1200x630 image would publish an endorsement nobody made. Every XRPL asset
+    // therefore shows the chain's trade card -- the same rule an uncurated Stellar asset follows.
+    // LUMOS is the exception, being ours, with a fixed and blackholed issuer.
+    else seo.image = want.id === XRPL_LUMOS ? '/assets/og/s/asset-lumos-xrpl.png'
+                                            : '/assets/og/s/trade-xrpl.png';
   }
   else if (want && want.kind === 'poolid') {
     seo = poolIdSeo(want.id, want.chain);
