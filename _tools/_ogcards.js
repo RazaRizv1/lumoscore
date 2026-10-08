@@ -184,9 +184,14 @@ function card({ code, logo, verified, domain, chain }) {
   const codeMax = PX - L - 48;
   while (cs > 58 && textW(code, cs, track) > codeMax) cs -= 2;
 
+  // CONTAIN, NEVER CROP. `slice` scales the image to COVER the square and cuts off whatever does not
+  // fit, which is right for a photograph and wrong for a logo. Measured across the curated list:
+  // 49 logos are square and unaffected, 7 are not -- LUMOS worst at 294x385, losing roughly a
+  // quarter of its height, which cut the base clean off the flame. `meet` fits the whole mark inside
+  // the tile and lets the glass panel show at the edges.
   const IX = PX + PAD, IY = PY + PAD, IR = Math.round(INNER * 0.25);
   const mark = logo
-    ? '<image x="' + IX + '" y="' + IY + '" width="' + INNER + '" height="' + INNER + '" href="' + logo + '" clip-path="url(#lclip)" preserveAspectRatio="xMidYMid slice"/>'
+    ? '<image x="' + IX + '" y="' + IY + '" width="' + INNER + '" height="' + INNER + '" href="' + logo + '" clip-path="url(#lclip)" preserveAspectRatio="xMidYMid meet"/>'
     : '<rect x="' + IX + '" y="' + IY + '" width="' + INNER + '" height="' + INNER + '" rx="' + IR + '" fill="hsl(' + hue(code) + ',58%,46%)"/>'
       + bold(IX + INNER / 2, IY + INNER / 2 + 30, 84, code.replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || '?', '#fff', 0, 1.8, 'middle');
 
@@ -290,6 +295,7 @@ function render(svg) {
 
   const done = [];
   let withLogo = 0, withDomain = 0;
+  const kept = [];
   for (const id of ids) {
     const code = id.slice(0, id.lastIndexOf('-'));
     const v = verified[id] || {};
@@ -297,9 +303,20 @@ function render(svg) {
     if (domain) withDomain++;
     const logo = await logoDataUri(id);
     if (logo) withLogo++;
+
+    // A LOGO HOST BLIPPING MUST NOT DOWNGRADE A GOOD CARD.
+    //
+    // These logos live on the issuers' own domains, so any run can lose one to a timeout: this is
+    // how XLMG lost its mark, stellargold.net having been briefly unreachable, and the build still
+    // reported success. Redrawing it as a two-letter monogram would quietly ship a worse card than
+    // the one already on disk. So when the logo could not be fetched and a card already exists, the
+    // existing file is kept and the asset is reported as such rather than overwritten.
+    const out = path.join(OUT_DIR, id + '.png');
+    if (!logo && fs.existsSync(out)) { kept.push(code); done.push(id); continue; }
+
     try {
       const png = render(card({ code, logo, verified: !!v.v, domain, chain: CH }));
-      fs.writeFileSync(path.join(OUT_DIR, id + '.png'), png);
+      fs.writeFileSync(out, png);
       done.push(id);
     } catch (e) {
       console.error('  ' + id + ': ' + e.message);
@@ -308,5 +325,6 @@ function render(svg) {
 
   fs.writeFileSync(LIST_FILE, JSON.stringify(done, null, 0), 'utf8');
   console.log('og cards: wrote ' + done.length + ' card(s) of ' + ids.length
-    + ' (' + withLogo + ' with a real logo, ' + withDomain + ' with a domain) -> dist/assets/og/');
+    + ' (' + withLogo + ' with a real logo, ' + withDomain + ' with a domain) -> dist/assets/og/'
+    + (kept.length ? '\n  kept ' + kept.length + ' existing card(s) whose logo host was unreachable: ' + kept.join(' ') : ''));
 })();
