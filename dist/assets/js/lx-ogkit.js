@@ -335,11 +335,18 @@ function assetPanel(uri, code) {
 // One asset card, from the facts a card is allowed to state. `badge` is the curation wording --
 // "Curated asset" for the vetted list, "Minted on LumosCore" for a token issued through the
 // launchpad, which is true without claiming anyone checked it.
-function assetCard({ code, logo, badge, domain, chain }) {
+function assetCard({ code, logo, badge, domain, issuer, chain }) {
   const p = assetPanel(logo, code);
+  // THE ISSUER WHEN THERE IS NO DOMAIN. A ticker is not an identity on Stellar -- hundreds of assets
+  // share the code USDC -- so the issuer is the only fact that actually says which asset this is,
+  // and three of the curated list publish no domain at all. Without it their row is two segments
+  // where every other card has three, which reads as something having failed to load rather than as
+  // a fact that does not exist. Shortened because 56 characters cannot be read off a card anyway.
+  const third = domain
+    || (issuer ? issuer.slice(0, 4) + '…' + issuer.slice(-4) : '');
   return shell({
     defs: p.defs,
-    row: metaRow([{ chain: chain || 'Stellar' }, badge ? { check: badge } : null, domain ? { text: domain } : null]).svg,
+    row: metaRow([{ chain: chain || 'Stellar' }, badge ? { check: badge } : null, third ? { text: third } : null]).svg,
     headline: code,
     accent: 'Trade on LumosCore',
     features: 'Price · Pools · Holders',
