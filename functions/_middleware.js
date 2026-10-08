@@ -582,12 +582,28 @@ const SECTION_CARD = {
   '/rewards': 'rewards',
   '/rewards/stellar': 'rewards-stellar',
   '/rewards/xrpl': 'rewards-xrpl',
+  '/whitepaper': 'whitepaper',
+  '/list-your-token': 'list-your-token',
 };
 
 // The card for everything with no better answer: the docs, the legal pages, the footer links, a
 // blog post published without a cover. It names the product and the two chains and claims nothing
 // else, because it has to stay true of every page that falls back to it.
 const GENERAL_CARD = '/assets/og/s/general.png';
+
+// Two whole sections share a card rather than each page being listed: all 17 docs pages are docs,
+// and a blog post published without a cover is still the blog. Matched on the prefix so a page added
+// to either tomorrow inherits the right card instead of dropping to the general one.
+function fallbackCard(p){
+  // /faq is here because it is a docs page that does not look like one from its path: CANON_OF
+  // rewrites /docs/faq to /faq, so the prefix alone misses it. ("/docs" canonicalises to
+  // "/docs/introduction", which the prefix still catches.) Caught by checking the built output
+  // rather than the rule -- it was the one page of seventeen serving the general card.
+  if (p === '/faq') return '/assets/og/s/docs.png';
+  if (p === '/docs' || p.indexOf('/docs/') === 0) return '/assets/og/s/docs.png';
+  if (p === '/blog' || p.indexOf('/blog/') === 0) return '/assets/og/s/blog.png';
+  return GENERAL_CARD;
+}
 
 // A 1200x630 card: the asset's logo padded onto the brand background. Built through Cloudflare's
 // resizing, whose source must be on this zone -- hence /lxapi/logoimg re-serving foreign logos.
@@ -1084,8 +1100,8 @@ export async function onRequest(context){
   // all -- falls back to the general one here, rather than each route having to be listed. A page
   // with no og:image unfurls as a bare line of text, which is the thing this whole exercise is
   // about; a correct, branded, generic picture beats that everywhere.
-  if (!seo) seo = { title: '', desc: '', image: GENERAL_CARD, imageOnly: true };
-  else if (!seo.image) seo.image = GENERAL_CARD;
+  if (!seo) seo = { title: '', desc: '', image: fallbackCard(canonPath), imageOnly: true };
+  else if (!seo.image) seo.image = fallbackCard(canonPath);
 
   const head = [
     '<link rel="canonical" href="' + esc(canonical) + '">',
