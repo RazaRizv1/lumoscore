@@ -210,7 +210,12 @@ function panelGrid(items, kind) {
       // NOT "Trade, pool and bridge", for the same reason: it has to describe what LumosCore IS,
       // not what three of its pages do.
       headline: 'LumosCore', accent: 'Multichain web3 infrastructure',
-      features: '',
+      // A claim about the platform, not a list of its products -- the list is what made the
+      // first version of this card wrong, because "Trade, pool and bridge" reads oddly on a
+      // privacy policy. Custody is true of every page that falls back here, it is what actually
+      // distinguishes this from a custodial venue, and it cannot go stale. Leaving the line
+      // empty was the other option and it left an 87px hole above the rule.
+      features: 'Non-custodial by design',
       grid: panelSingle(lumosMark, 'LC'),
     }],
     // ---- the content pages. No chain row: a guide, the whitepaper and the listing form are not
