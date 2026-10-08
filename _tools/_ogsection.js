@@ -69,6 +69,48 @@ async function localLogo(rel) {
   } catch (e) { return ''; }
 }
 
+// A drawn glyph for the pages that have no logo of their own -- blog, docs, whitepaper, listing.
+// Reusing the LumosCore mark on all four would make them the general card with different words,
+// which defeats the point of giving them cards at all. Built from the same tokens as everything
+// else: faint white fills and edges, one accent element each.
+function glyphPanel(kind) {
+  const X = K.PX + K.PAD, Y = K.PY + K.PAD, S = K.INNER;
+  const cx = X + S / 2, cy = Y + S / 2;
+  const SOFT = 'fill="#ffffff" fill-opacity="0.07" stroke="#ffffff" stroke-opacity="0.17"';
+  let g = '';
+
+  if (kind === 'blog') {                      // a stack of posts
+    const w = 158, h = 44, gap = 20, n = 3, top = cy - (n * h + (n - 1) * gap) / 2;
+    for (let i = 0; i < n; i++) {
+      const y = top + i * (h + gap);
+      g += '<rect x="' + (cx - w / 2) + '" y="' + y + '" width="' + w + '" height="' + h + '" rx="12" ' + SOFT + '/>'
+        + '<circle cx="' + (cx - w / 2 + 24) + '" cy="' + (y + h / 2) + '" r="7" fill="'
+        + (i === 0 ? K.ACCENT : '#ffffff') + '" fill-opacity="' + (i === 0 ? 1 : 0.28) + '"/>'
+        + '<rect x="' + (cx - w / 2 + 42) + '" y="' + (y + h / 2 - 5) + '" width="' + (w - 66) + '" height="10" rx="5" fill="#ffffff" fill-opacity="0.22"/>';
+    }
+  } else if (kind === 'docs') {               // lines of text
+    const ws = [164, 132, 152, 112, 144], h = 14, gap = 18;
+    const top = cy - (ws.length * h + (ws.length - 1) * gap) / 2;
+    ws.forEach((w, i) => {
+      g += '<rect x="' + (cx - 82) + '" y="' + (top + i * (h + gap)) + '" width="' + w + '" height="' + h
+        + '" rx="7" fill="' + (i === 0 ? K.ACCENT : '#ffffff') + '" fill-opacity="' + (i === 0 ? 1 : 0.24) + '"/>';
+    });
+  } else if (kind === 'paper') {              // one page, with the accent as its rule
+    const w = 136, h = 176;
+    g += '<rect x="' + (cx - w / 2) + '" y="' + (cy - h / 2) + '" width="' + w + '" height="' + h + '" rx="14" ' + SOFT + '/>'
+      + '<rect x="' + (cx - 44) + '" y="' + (cy - h / 2 + 28) + '" width="56" height="10" rx="5" fill="' + K.ACCENT + '"/>';
+    [88, 72, 84, 64, 78].forEach((w2, i) => {
+      g += '<rect x="' + (cx - 44) + '" y="' + (cy - h / 2 + 58 + i * 22) + '" width="' + w2
+        + '" height="9" rx="4.5" fill="#ffffff" fill-opacity="0.24"/>';
+    });
+  } else if (kind === 'listing') {            // add your token
+    g += '<circle cx="' + cx + '" cy="' + cy + '" r="76" ' + SOFT + '/>'
+      + '<rect x="' + (cx - 32) + '" y="' + (cy - 7) + '" width="64" height="14" rx="7" fill="' + K.ACCENT + '"/>'
+      + '<rect x="' + (cx - 7) + '" y="' + (cy - 32) + '" width="14" height="64" rx="7" fill="' + K.ACCENT + '"/>';
+  }
+  return { defs: '', svg: g };
+}
+
 // The asset-card panel: one logo, centred. Used for the one XRPL asset that gets a card of its own.
 function panelSingle(uri, code) {
   const IX = K.PX + K.PAD, IY = K.PY + K.PAD, IR = Math.round(K.INNER * 0.25);
@@ -170,6 +212,32 @@ function panelGrid(items, kind) {
       features: '',
       grid: panelSingle(lumosMark, 'LC'),
     }],
+    // ---- the content pages. No chain row: a guide, the whitepaper and the listing form are not
+    // about one chain, and the docs cover both.
+    ['blog', {
+      row: '', headline: 'Blog', accent: 'Guides and explainers',
+      features: 'Trading · Liquidity · Cross-chain',
+      grid: glyphPanel('blog'),
+    }],
+    ['docs', {
+      row: '', headline: 'Docs', accent: 'How everything works',
+      features: 'Swaps · Pools · Bridging · Fees',
+      grid: glyphPanel('docs'),
+    }],
+    ['whitepaper', {
+      row: '', headline: 'Whitepaper', accent: 'The architecture, in full',
+      features: 'Interoperability · Custody · Design',
+      grid: glyphPanel('paper'),
+    }],
+    ['list-your-token', {
+      row: '', headline: 'List your token', accent: 'Apply for a curated listing',
+      // No price. The fee is a number that can change, and a build-time image would keep quoting
+      // the old one -- the same reason price stays off the asset cards. What does not change is
+      // how the review works, which is also the part worth knowing.
+      features: 'Reviewed by a person · Refunded if declined',
+      grid: glyphPanel('listing'),
+    }],
+
     ['bridge', {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
       headline: 'Bridge', accent: 'Move assets between networks',
