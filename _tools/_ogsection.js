@@ -54,6 +54,23 @@ async function stellarLogo(id) {
   } catch (e) { return ''; }
 }
 
+// The asset-card panel: one logo, centred. Used for the one XRPL asset that gets a card of its own.
+function panelSingle(uri, code) {
+  const IX = K.PX + K.PAD, IY = K.PY + K.PAD, IR = Math.round(K.INNER * 0.25);
+  if (!uri) {
+    return {
+      defs: '',
+      svg: '<rect x="' + IX + '" y="' + IY + '" width="' + K.INNER + '" height="' + K.INNER + '" rx="' + IR + '" fill="#2a2a32"/>'
+        + K.bold(IX + K.INNER / 2, IY + K.INNER / 2 + 30, 84, String(code || '?').slice(0, 2).toUpperCase(), '#fff', 0, 1.8, 'middle'),
+    };
+  }
+  return {
+    defs: '<clipPath id="one"><rect x="' + IX + '" y="' + IY + '" width="' + K.INNER + '" height="' + K.INNER + '" rx="' + IR + '"/></clipPath>',
+    svg: '<image x="' + IX + '" y="' + IY + '" width="' + K.INNER + '" height="' + K.INNER + '" href="' + uri
+      + '" clip-path="url(#one)" preserveAspectRatio="xMidYMid slice"/>',
+  };
+}
+
 // Two layouts off one grid: four cells for a markets page, two centred cells for the chooser.
 function panelGrid(items, kind) {
   const GAP = 14, CELL = Math.round((K.INNER - GAP) / 2);
@@ -93,7 +110,27 @@ function panelGrid(items, kind) {
   }
   const sOk = sTiles.filter(Boolean).length, xOk = xTiles.filter(Boolean).length;
 
+  // LUMOS IS THE ONE XRPL ASSET WITH A CARD OF ITS OWN.
+  //
+  // XRPL has no curated roster -- RAZA decided on 2026-10-07 not to create one -- and every XRPL
+  // token's name, description and icon come from whoever issued it. A per-token card would put
+  // attacker-controlled artwork and wording onto a LumosCore-branded image and publish it as a
+  // social preview, which reads as an endorsement nobody made. That is the whole reason the Stellar
+  // cards are drawn only for curated assets. So every other XRPL asset shows the trade card, the
+  // same rule an uncurated Stellar asset follows.
+  //
+  // LUMOS is safe to draw: it is ours, the issuer is fixed and blackholed, and the artwork is the
+  // same flame as the Stellar side -- which is why the logo is read from our own Stellar entry
+  // rather than from xrpl.to, whose thumbnails cap at 128px and would be upscaled here.
+  const lumosLogo = await stellarLogo('LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S');
+
   const CARDS = [
+    ['asset-lumos-xrpl', {
+      row: K.metaRow([{ chain: 'XRPL' }, { check: 'LumosCore token' }, { text: 'lumoscore.com' }]).svg,
+      headline: 'LUMOS', accent: 'Trade on LumosCore',
+      features: 'Price · Pools · Holders',
+      grid: panelSingle(lumosLogo, 'LU'),
+    }],
     ['trade', {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
       headline: 'Trade', accent: 'Swaps and limit orders, on-chain',
