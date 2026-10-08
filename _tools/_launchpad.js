@@ -400,6 +400,62 @@ function lxLpAtMost(p, ms){
 // Records whether the details for CODE-ISSUER are known to have published, so the confirm page can retry
 // exactly the submissions that did not.
 function lxLpMetaKey(r){ return "1:"+r.code+"-"+r.issuer; }
+
+// ---- the share card for a freshly minted token -------------------------------------------------
+//
+// Nothing can rasterise a card at the edge -- satori plus a wasm rasteriser is about 8.5MB against a
+// 1MB Worker bundle cap, and 50-200ms of CPU against 10ms -- and there is no CI or cron to redraw one
+// out of band. So a token launched today would preview as the generic trade card until the next
+// build. The browser that just minted it can rasterise, so it draws the card itself and posts it;
+// /lxapi/ogcard then serves that ahead of the build's own file.
+//
+// It draws through /assets/js/lx-ogkit.js, which IS _tools/_ogkit.js, the file the build renders
+// with. A second implementation would drift the first time the design changed.
+//
+// LOADED ON DEMAND. These two scripts plus the font are about 150KB and only matter on the one page
+// where a mint completes; inlining them would put that on every page for nothing.
+//
+// FIRE AND FORGET, for the same reason the metadata post is: the tokens are minted and the fee is
+// paid by the time this runs, and no failure here may turn a successful launch into a visible error.
+function lxLpLoadScript(src){
+  return new Promise(function(res, rej){
+    if(window.document.querySelector('script[data-lxog="'+src+'"]')) return res();
+    var s=document.createElement("script");
+    s.src=src; s.async=true; s.setAttribute("data-lxog", src);
+    s.onload=function(){ res(); };
+    s.onerror=function(){ rej(new Error("load "+src)); };
+    document.head.appendChild(s);
+  });
+}
+function lxLpPublishCard(result, d, logo){
+  try{
+    return lxLpLoadScript("/assets/js/lx-ogkit.js")
+      .then(function(){ return lxLpLoadScript("/assets/js/lx-ogcardgen.js"); })
+      .then(function(){
+        if(!window.LXOGCard) return null;
+        // NO REGEX HERE. This whole script lives inside a template literal, where a backslash is
+        // eaten on the way out: /^https?:BACKSLASH/BACKSLASH// emitted as /^https?:///, which does
+        // not parse, and the built file took the entire launchpad down with it. String operations
+        // need no escaping and cannot be mangled.
+        var dom=String((d&&d.website)||"");
+        var ci=dom.indexOf("://"); if(ci>=0) dom=dom.slice(ci+3);
+        var si=dom.indexOf("/"); if(si>=0) dom=dom.slice(0,si);
+        return window.LXOGCard.publish({
+          asset: result.code+"-"+result.issuer,
+          code: result.code,
+          chain: "Stellar",
+          // NOT "Curated asset". Minting is not vetting, and that badge has to keep meaning that
+          // somebody checked; a token could otherwise mint and immediately wear the same tick as
+          // USDC. This states only what is true: it was issued here.
+          badge: "Minted on LumosCore",
+          domain: dom,
+          logo: logo||"",
+          kind: "mint"
+        });
+      })
+      .catch(function(){ return null; });
+  }catch(_){ return Promise.resolve(null); }
+}
 function lxLpSaveMeta(result){
   try{
     if(!result || !result.code || !result.issuer || !result.mintHash) return Promise.resolve(false);
@@ -428,7 +484,13 @@ function lxLpSaveMeta(result){
       body:JSON.stringify(body)
     }).then(function(r){
       var ok=!!(r&&r.ok);
-      if(ok){ try{ localStorage.setItem("lumos.launch.metaok", lxLpMetaKey(result)); }catch(_){} }
+      if(ok){
+        try{ localStorage.setItem("lumos.launch.metaok", lxLpMetaKey(result)); }catch(_){}
+        // Only after the mint is registered: /lxapi/ogcardput proves the right to store a card for
+        // this asset from the mintmeta record the POST above creates, so publishing earlier is a
+        // guaranteed 403.
+        try{ lxLpPublishCard(result, d, logo); }catch(_){}
+      }
       return ok;
     }).catch(function(){ return false; });
   }catch(_){ return Promise.resolve(false); }
