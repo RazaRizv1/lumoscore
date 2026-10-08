@@ -166,6 +166,22 @@ const SUBS = [
   // counter-asset change in the same sentence.
   ['Aptos DEX charges roughly 0.0001 APT per operation', 'Stellar DEX charges roughly 0.00001 XLM per operation'],
   ['trades natively on the Aptos Decentralized Exchange against APT.', 'trades natively on the Stellar Decentralized Exchange against XLM.'],
+
+  // ---- "no protocol fees" needed a subject (RAZA 2026-10-08) ------------------------------------
+  //
+  // The sentence was true of the Stellar DEX and misleading on LumosCore. It sat a few hundred
+  // pixels from a swap panel reading "Trading fee 0.2%", so a reader could take "there are no
+  // protocol fees" to mean this site charges nothing and then watch 0.2% come off the quote.
+  //
+  // Naming the subject fixes it without weakening the true part: the EXCHANGE takes nothing, and
+  // our fee is stated plainly beside it.
+  //
+  // THE FIGURES ARE READ OUT OF _feerate.js, NOT FROM MEMORY: window.__lxFeeRate is 0.002, dropping
+  // to 0.001 while the account holds THRESH=250000 LUMOS from the canonical mainnet issuer. The
+  // limit-order case is deliberately not mentioned -- feeRate() appears zero times in
+  // _dexassetdata.js, so what the limit pane charges is not something this sentence should assert.
+  ["There are no protocol fees or maker/taker rebates — everyone trades at the same rate.",
+    "The exchange itself takes no protocol fee and offers no maker/taker rebates — everyone trades at the same rate. LumosCore's own trading fee is 0.2%, or 0.1% while you hold 250,000 LUMOS, and is shown on every quote."],
 ];
 
 const problems = [];
