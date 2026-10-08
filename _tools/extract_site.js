@@ -984,7 +984,15 @@ async function learnImgDims(env, url){
 // are, rather than measured.
 function isCardImage(u){
   const s = String(u || '');
-  return s.indexOf('/lxapi/ogcard') >= 0 || s.indexOf('/assets/og/s/') >= 0;
+  return s.indexOf('/lxapi/ogcard') >= 0 || s.indexOf('/lxapi/ogpool') >= 0 || s.indexOf('/assets/og/s/') >= 0;
+}
+
+// One pool's card. Every pool is pointed at the endpoint, which serves the drawn card for the top
+// hundred on that chain and the chain's pools card for the rest -- so the list of which hundred were
+// drawn stays a property of the build instead of something to keep in step here too.
+function poolCardFor(chain, id){
+  if (!id) return '';
+  return PRIMARY_ORIGIN + '/lxapi/ogpool?p=' + (chain === 'xrpl' ? 'xrpl' : 'stellar') + '-' + encodeURIComponent(id);
 }
 
 // The one XRPL asset with a card of its own; see the asset branch for why it is the only one.
@@ -997,6 +1005,9 @@ const SECTION_CARD = {
   '/trade': 'trade',
   '/trade/stellar': 'trade-stellar',
   '/trade/xrpl': 'trade-xrpl',
+  '/pools': 'pools',
+  '/pools/stellar': 'pools-stellar',
+  '/pools/xrpl': 'pools-xrpl',
 };
 
 // A 1200x630 card: the asset's logo padded onto the brand background. Built through Cloudflare's
@@ -1448,6 +1459,8 @@ export async function onRequest(context){
   }
   else if (want && want.kind === 'poolid') {
     seo = poolIdSeo(want.id, want.chain);
+    // Every pool points at the endpoint; it decides between this pool's own card and the chain's.
+    seo.image = poolCardFor(want.chain, want.id);
   }
   else if (want && want.kind === 'hub') {
     seo = {
@@ -1466,12 +1479,15 @@ export async function onRequest(context){
   if (url.pathname === '/blog') blogList = await blogIndex(context.env);
   else if (want && want.kind === 'pool') {
     // XLM has no logo of its own, so the pair's other side is the one worth showing.
-    const other = want.a === 'native' ? want.b : want.a;
-    // Stellar's enrichment again, skipped for XRPL for the reason given on the asset branch.
-    const look = want.chain !== 'xrpl' && other && other !== 'native';
-    const pf = look ? await assetFacts(other) : null;
-    const ai = look ? await adminImage(context.env, other) : '';
-    seo = poolSeo(want.a, want.b, (ai || (pf && pf.image)) ? cardFor(other) : '', want.chain);
+    // THE PAIR FORM CARRIES NO POOL ID, so there is nothing to look a pool card up by: the cards are
+    // keyed on the pool's id (Stellar) or its AMM account (XRPL), and resolving a pair to one of
+    // those would mean a lookup on every page view. It takes the chain's pools card instead, which
+    // is what the id form falls back to anyway for any pool outside the top hundred. The id form is
+    // what the pools table links to, so this is the rarer of the two.
+    //
+    // The asset lookup that used to run here went solely to decide an image, and now decides
+    // nothing, so it is gone rather than left to cost a round trip per request.
+    seo = poolSeo(want.a, want.b, '/assets/og/s/pools-' + (want.chain === 'xrpl' ? 'xrpl' : 'stellar') + '.png', want.chain);
   }
 
   // A plain section route carries no seo object -- its title and description are baked into the page
