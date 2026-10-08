@@ -157,6 +157,14 @@ function metaRow(segs) {
 
 // The headline steps down only as far as it must, measured, so a long one fits where a fixed size
 // would run off the canvas and a short one is not left undersized.
+// Step a secondary line down until it clears the panel. Same idea as the headline, smaller range.
+function fitLine(text, size, track, min) {
+  const max = PX - L - 24;
+  let s = size;
+  while (s > min && textW(text, s, track) > max) s -= 1;
+  return s;
+}
+
 function fitHeadline(text, min) {
   let size = CODE_NOM; const track = -3.5, max = PX - L - 48;
   while (size > (min || 46) && textW(text, size, track) > max) size -= 2;
@@ -205,9 +213,12 @@ function shell({ defs, row, headline, accent, features, panel }) {
     + '</g>'
     + '<rect x="' + L + '" y="' + dashY + '" width="54" height="5" rx="2.5" fill="' + ACCENT + '"/>'
     + (row || '')
+    // The headline was the only line that measured itself, so the other two had to be written to a
+    // guessed length -- which is how boilerplate ends up on a card: short filler is safe, and saying
+    // the true thing risks running into the panel. All three fit themselves now, down to a floor.
     + bold(L, CODE_BASE, f.size, headline, INK, f.track, 2.8)
-    + bold(L, ACCENT_BASE, 46, accent, ACCENT, -1, 1.6)
-    + plain(L, FEAT_BASE, 32, features, MUTED)
+    + bold(L, ACCENT_BASE, fitLine(accent, 46, -1, 34), accent, ACCENT, -1, 1.6)
+    + plain(L, FEAT_BASE, fitLine(features, 32, 0, 24), features, MUTED)
     + '<rect x="' + PX + '" y="' + PY + '" width="' + PANEL + '" height="' + PANEL + '" rx="74" fill="url(#sheen)" stroke="url(#edge)" stroke-width="1.6"/>'
     + (panel || '')
     + '<rect x="' + L + '" y="' + RULE_Y + '" width="' + (W - L * 2) + '" height="1.5" fill="url(#ruleg)"/>'

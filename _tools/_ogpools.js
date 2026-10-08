@@ -155,7 +155,7 @@ async function stellarLogo(u) {
     const p = pairPanel(la2, lb2);
     const png = K.render(K.shell({
       defs: p.defs,
-      row: K.metaRow([{ chain }, { text: 'Non-custodial' }]).svg,
+      row: K.metaRow([{ chain }]).svg,
       headline: isX ? 'XRPL Pools' : 'Stellar Pools',
       accent: 'Provide liquidity on LumosCore',
       features: 'TVL · Volume · Fees · APR',
@@ -179,7 +179,7 @@ async function stellarLogo(u) {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
       headline: 'Pools',
       accent: 'Earn a share of the trading fees',
-      features: 'Choose a network · Non-custodial',
+      features: 'TVL · Volume · Fees · APR',
       panel: svg,
     })));
   }

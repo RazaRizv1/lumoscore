@@ -167,17 +167,17 @@ function panelGrid(items, kind) {
       // NOT "Trade, pool and bridge", for the same reason: it has to describe what LumosCore IS,
       // not what three of its pages do.
       headline: 'LumosCore', accent: 'Multichain web3 infrastructure',
-      features: 'Non-custodial · On-chain',
+      features: '',
       grid: panelSingle(lumosMark, 'LC'),
     }],
     ['bridge', {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
       headline: 'Bridge', accent: 'Move assets between networks',
-      features: 'Choose a network · Non-custodial',
+      features: 'Ethereum · Base · Solana · Bitcoin and more',
       grid: panelGrid([{ chain: 'Stellar' }, { chain: 'XRPL' }], 'pair'),
     }],
     ['bridge-stellar', {
-      row: K.metaRow([{ chain: 'Stellar' }, { text: 'Non-custodial' }]).svg,
+      row: K.metaRow([{ chain: 'Stellar' }]).svg,
       headline: 'Stellar Bridge', accent: 'Bridge on LumosCore',
       // The routes themselves, which do not go stale between builds -- unlike the chain COUNT the
       // page title carries, which moves whenever a corridor is added.
@@ -185,7 +185,7 @@ function panelGrid(items, kind) {
       grid: panelGrid(bridgeS, 'quad'),
     }],
     ['bridge-xrpl', {
-      row: K.metaRow([{ chain: 'XRPL' }, { text: 'Non-custodial' }]).svg,
+      row: K.metaRow([{ chain: 'XRPL' }]).svg,
       headline: 'XRP Ledger Bridge', accent: 'Bridge on LumosCore',
       features: 'NEAR Intents · Axelar · THORChain',
       grid: panelGrid(bridgeX, 'quad'),
@@ -196,7 +196,7 @@ function panelGrid(items, kind) {
     ['lumos', {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
       headline: 'LUMOS', accent: "LumosCore's native token",
-      features: 'Choose a network · Non-custodial',
+      features: 'Price · Supply · Holders',
       grid: panelSingle(lumosMark, 'LU'),
     }],
     ['lumos-stellar', {
@@ -216,36 +216,36 @@ function panelGrid(items, kind) {
     // build-time image cannot quote an APR that moves every round.
     ['rewards', {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
-      headline: 'Rewards', accent: 'Earn a share each round',
-      features: 'Choose a network · Non-custodial',
+      headline: 'LUMOS Rewards', accent: 'Earn LUMOS every round',
+      features: 'LP rewards · Holder rewards',
       grid: panelSingle(lumosMark, 'LU'),
     }],
     ['rewards-stellar', {
-      row: K.metaRow([{ chain: 'Stellar' }, { text: 'Non-custodial' }]).svg,
+      row: K.metaRow([{ chain: 'Stellar' }]).svg,
       headline: 'LUMOS Rewards', accent: 'Hold or provide liquidity',
-      features: 'LP rewards · Holder rewards',
+      features: 'Paid from the treasury each round',
       grid: panelSingle(lumosMark, 'LU'),
     }],
     ['rewards-xrpl', {
-      row: K.metaRow([{ chain: 'XRPL' }, { text: 'Non-custodial' }]).svg,
+      row: K.metaRow([{ chain: 'XRPL' }]).svg,
       headline: 'LUMOS Rewards', accent: 'Hold or provide liquidity',
-      features: 'LP rewards · Holder rewards',
+      features: 'Paid from the treasury each round',
       grid: panelSingle(lumosMark, 'LU'),
     }],
     ['trade', {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
       headline: 'Trade', accent: 'Swaps and limit orders, on-chain',
-      features: 'Choose a network · Non-custodial',
+      features: 'Orderbook · AMM pools · Best-rate routing',
       grid: panelGrid([{ chain: 'Stellar' }, { chain: 'XRPL' }], 'pair'),
     }],
     ['trade-stellar', {
-      row: K.metaRow([{ chain: 'Stellar' }, { text: 'Non-custodial' }]).svg,
+      row: K.metaRow([{ chain: 'Stellar' }]).svg,
       headline: 'Stellar DEX', accent: 'Trade on LumosCore',
       features: 'Orderbook · AMM pools · Limit orders',
       grid: panelGrid(sTiles, 'quad'),
     }],
     ['trade-xrpl', {
-      row: K.metaRow([{ chain: 'XRPL' }, { text: 'Non-custodial' }]).svg,
+      row: K.metaRow([{ chain: 'XRPL' }]).svg,
       headline: 'XRP Ledger DEX', accent: 'Trade on LumosCore',
       features: 'Orderbook · AMM pools · Limit orders',
       // With no XRPL origin to read thumbnails from, the chooser's pair of chain marks is a
