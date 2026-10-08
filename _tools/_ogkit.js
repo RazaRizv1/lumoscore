@@ -281,23 +281,30 @@ function assetCard({ code, logo, badge, domain, chain }) {
 // is needed because the pages' woff2 faces are compressed subsets the metrics parser cannot read.
 function emitBrowser() {
   if (!IS_NODE) return [];
-  const JS = path.join(__dirname, '..', 'dist', 'assets', 'js');
-  const FO = path.join(__dirname, '..', 'dist', 'assets', 'fonts');
-  fs.mkdirSync(JS, { recursive: true });
-  fs.mkdirSync(FO, { recursive: true });
   const out = [];
-  const pairs = [
-    [__filename, path.join(JS, 'lx-ogkit.js')],
-    [path.join(__dirname, '_ogclient.js'), path.join(JS, 'lx-ogcardgen.js')],
-    [FONT, path.join(FO, 'HankenGrotesk-variable.ttf')],
-  ];
-  for (const [src, dst] of pairs) {
-    if (!fs.existsSync(src)) continue;
-    const a = fs.readFileSync(src);
-    // Only write when the bytes differ, so a rebuild does not churn dist for nothing.
-    if (fs.existsSync(dst) && Buffer.compare(a, fs.readFileSync(dst)) === 0) continue;
-    fs.writeFileSync(dst, a);
-    out.push(path.basename(dst));
+  // dist-admin as well as dist: the admin panel is its own Pages project, so loading these from
+  // lumoscore.com would make the FONT fetch cross-origin, and reading a font as an ArrayBuffer needs
+  // CORS the public site does not send. Same-origin copies sidestep that entirely.
+  const roots = [path.join(__dirname, '..', 'dist'), path.join(__dirname, '..', 'dist-admin')];
+  for (const root of roots) {
+    if (!fs.existsSync(root)) continue;
+    const JS = path.join(root, 'assets', 'js');
+    const FO = path.join(root, 'assets', 'fonts');
+    fs.mkdirSync(JS, { recursive: true });
+    fs.mkdirSync(FO, { recursive: true });
+    const pairs = [
+      [__filename, path.join(JS, 'lx-ogkit.js')],
+      [path.join(__dirname, '_ogclient.js'), path.join(JS, 'lx-ogcardgen.js')],
+      [FONT, path.join(FO, 'HankenGrotesk-variable.ttf')],
+    ];
+    for (const [src, dst] of pairs) {
+      if (!fs.existsSync(src)) continue;
+      const a = fs.readFileSync(src);
+      // Only write when the bytes differ, so a rebuild does not churn dist for nothing.
+      if (fs.existsSync(dst) && Buffer.compare(a, fs.readFileSync(dst)) === 0) continue;
+      fs.writeFileSync(dst, a);
+      out.push(path.basename(root) + '/' + path.basename(dst));
+    }
   }
   return out;
 }
