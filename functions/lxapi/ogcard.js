@@ -18,7 +18,7 @@ const H = 630;
 const BG = '#0a0a0b';        // --bg, the site's own background
 const TTL = 86400;
 // Bump to retire every cached card at once.
-const CARD_V = 2;
+const CARD_V = 3;
 
 export async function onRequestGet(ctx) {
   const { request } = ctx;

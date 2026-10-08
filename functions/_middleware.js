@@ -1034,7 +1034,15 @@ export async function onRequest(context){
       head.push('<meta property="og:image" content="' + esc(seo.image) + '">');
       head.push('<meta property="og:image:alt" content="' + esc(seo.title) + '">');
     // Only when both are known and real. Unknown emits nothing, which is the previous behaviour.
-    const _dim = await imgDims(context.env, seo.image);
+    // The branded card comes from /lxapi/ogcard, which is 1200x630 by construction (W/H there are
+    // unconditional constants), so its size is a known value needing neither a KV read nor a fetch.
+    // The learn pass could never see it: mediaIdOf() only recognises /lxapi/media?id=<hash>.<ext>,
+    // so every ogcard url returned '' and BOTH imgDims and learnImgDims bailed on the empty id.
+    // That is why no asset page has ever carried og:image:width -- verified on production, where
+    // blog covers (which do match that pattern) report real measured dimensions and cards report
+    // none. Non-card images keep the measure-and-remember path below, which works.
+    const _dim = isCardImage(seo.image) ? { w: 1200, h: 630 }
+                                        : await imgDims(context.env, seo.image);
     if (_dim) {
       head.push('<meta property="og:image:width" content="' + _dim.w + '">');
       head.push('<meta property="og:image:height" content="' + _dim.h + '">');
