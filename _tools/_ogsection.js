@@ -215,22 +215,22 @@ function panelGrid(items, kind) {
     // ---- the content pages. No chain row: a guide, the whitepaper and the listing form are not
     // about one chain, and the docs cover both.
     ['blog', {
-      row: '', headline: 'Blog', accent: 'Guides from LumosCore',
+      row: K.brandRow(lumosMark), headline: 'Blog', accent: 'Guides and explainers',
       features: 'Trading · Liquidity · Cross-chain',
       grid: glyphPanel('blog'),
     }],
     ['docs', {
-      row: '', headline: 'Docs', accent: 'How LumosCore works',
+      row: K.brandRow(lumosMark), headline: 'Docs', accent: 'How everything works',
       features: 'Swaps · Pools · Bridging · Fees',
       grid: glyphPanel('docs'),
     }],
     ['whitepaper', {
-      row: '', headline: 'Whitepaper', accent: 'The LumosCore architecture',
+      row: K.brandRow(lumosMark), headline: 'Whitepaper', accent: 'The architecture, in full',
       features: 'Interoperability · Custody · Design',
       grid: glyphPanel('paper'),
     }],
     ['list-your-token', {
-      row: '', headline: 'List your token', accent: 'Get listed on LumosCore',
+      row: K.brandRow(lumosMark), headline: 'List your token', accent: 'Apply for a curated listing',
       // No price. The fee is a number that can change, and a build-time image would keep quoting
       // the old one -- the same reason price stays off the asset cards. What does not change is
       // how the review works, which is also the part worth knowing.

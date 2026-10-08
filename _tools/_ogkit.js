@@ -28,7 +28,10 @@ const PX = W - L - PANEL;
 const PY = Math.round((CODE_BASE - CODE_NOM * 0.72 + CODE_BASE) / 2 - PANEL / 2);
 const ROW_Y = 148, ROW_H = 38, ROW_MID = ROW_Y + ROW_H / 2;
 const ROW_FS = 34, ROW_BASE = ROW_MID + ROW_FS * 0.72 / 2;
-const ACCENT_BASE = 464, FEAT_BASE = 520, RULE_Y = 566;
+// The headline is 88px tall, so 29px of air under it read as cramped against the accent line while
+// the top of the card sat empty. Measured gaps now: baseline to the accent's cap 44px, accent
+// baseline to the features' cap 30px, features baseline to the rule 34px.
+const ACCENT_BASE = 479, FEAT_BASE = 532, RULE_Y = 566;
 
 const esc = (s) => String(s == null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -119,6 +122,18 @@ function chainMark(key, x, midY, height, fill) {
     svg: '<g transform="translate(' + (x - C.bb[0] * s).toFixed(2) + ',' + (midY - height / 2 - C.bb[1] * s).toFixed(2)
       + ') scale(' + s.toFixed(4) + ')"><path d="' + C.d + '" fill="' + (fill || INK) + '"/></g>',
   };
+}
+
+// The brand in the row position, for the cards that are not about a chain -- the blog, the docs, the
+// whitepaper, the listing form. It fills the top of the card, which on those was 266px of nothing,
+// and puts the mark where a reader looks first.
+function brandRow(uri) {
+  const h = 46, box = 44;
+  const y = ROW_MID - h / 2;
+  const mark = uri
+    ? '<image x="' + L + '" y="' + y + '" width="' + box + '" height="' + h + '" href="' + uri + '" preserveAspectRatio="xMidYMid meet"/>'
+    : '';
+  return mark + bold(L + box + 14, ROW_BASE, ROW_FS, 'LumosCore', INK, -0.5, 1.5);
 }
 
 // The metadata row, built from segments so both renderers lay it out the same way. A segment is
@@ -328,7 +343,7 @@ const API = {
   W, H, BG, BG_TOP, INK, MUTED, ACCENT, GREEN, LINE, FONT,
   L, CODE_BASE, CODE_NOM, PANEL, PAD, INNER, PX, PY,
   ROW_Y, ROW_H, ROW_MID, ROW_FS, ROW_BASE, ACCENT_BASE, FEAT_BASE, RULE_Y,
-  esc, textW, hasFont, initMetrics, bold, plain, CHAIN, CHECK, chainMark, metaRow, fitHeadline,
+  esc, textW, hasFont, initMetrics, bold, plain, CHAIN, CHECK, chainMark, metaRow, brandRow, fitHeadline,
   shell, assetPanel, assetCard, render, toPng, imageDataUri, emitBrowser,
 };
 if (typeof module !== 'undefined' && module.exports) module.exports = API;
