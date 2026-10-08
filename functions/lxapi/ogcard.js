@@ -13,12 +13,9 @@
 // A missing logo is a 404, not an empty brand-coloured rectangle: the middleware only advertises this
 // card when a logo exists, and a blank canvas would be worse than no preview.
 const ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
-const W = 1200;
-const H = 630;
-const BG = '#0a0a0b';        // --bg, the site's own background
 const TTL = 86400;
 // Bump to retire every cached card at once.
-const CARD_V = 3;
+const CARD_V = 4;
 
 export async function onRequestGet(ctx) {
   const { request } = ctx;
@@ -72,54 +69,36 @@ export async function onRequestGet(ctx) {
     }
   } catch (e) { /* fall through to the padded logo */ }
 
-  const src = url.origin + '/lxapi/logoimg?asset=' + encodeURIComponent(asset);
-
-  let r;
+  // NO CARD OF ITS OWN -> THE SECTION CARD FOR ITS CHAIN.
+  //
+  // This used to pad the asset's logo onto a flat 1200x630 rectangle through Cloudflare's resizing.
+  // In practice a logo is a 32px favicon, so the result was that favicon blown up eight-fold: a
+  // blurry square on an empty field, carrying no text, no wordmark and nothing identifying
+  // LumosCore. It was worse than showing no card, because a crawler happily published it.
+  //
+  // RAZA 2026-10-08: "if the asset is not curated (meaning, we can't show a custom preview for it),
+  // show this preview card instead lumoscore.com/trade/stellar". So an uncurated asset now shares
+  // the trade page's card -- branded, legible at thumbnail size, and true: it points at the page
+  // the link leads to. _tools/_ogsection.js draws it.
   try {
-    r = await fetch(src, {
-      headers: { accept: 'image/*' },
-      cf: {
-        // 2xx only. A 429 or 5xx from the logo host used to be pinned here for the full TTL, which no
-        // client retry could escape -- the same defect that froze the holders panel.
-        cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 },
-        cacheEverything: true,
-        image: {
-          width: W,
-          height: H,
-          // pad rather than cover: a logo is not a photograph and must not be cropped into the frame
-          fit: 'pad',
-          background: BG,
-          format: 'png',
-          quality: 90,
+    const sec = await fetch(url.origin + '/assets/og/s/trade-stellar.png', {
+      cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true },
+    });
+    if (sec.ok && (sec.headers.get('content-type') || '').indexOf('image/') === 0) {
+      const out = new Response(sec.body, {
+        status: 200,
+        headers: {
+          'content-type': 'image/png',
+          'cache-control': 'public, max-age=' + TTL + ', immutable',
+          'access-control-allow-origin': '*',
         },
-      },
-    });
-  } catch (e) {
-    return new Response(null, { status: 502, headers: { 'cache-control': 'public, max-age=60' } });
-  }
+      });
+      if (ctx.waitUntil) ctx.waitUntil(cache.put(key, out.clone()));
+      return out;
+    }
+  } catch (e) { /* fall through to the 404 below */ }
 
-  // No logo upstream, or the transform declined it. Either way there is no card to serve.
-  if (!r.ok) {
-    return new Response(null, {
-      status: r.status === 404 ? 404 : 502,
-      headers: { 'cache-control': 'public, max-age=300' },
-    });
-  }
-
-  const buf = await r.arrayBuffer();
-  const type = r.headers.get('content-type') || 'image/png';
-  const out = new Response(buf, {
-    status: 200,
-    headers: {
-      'content-type': type,
-      'content-length': String(buf.byteLength),
-      // Long cache: the card only changes when the asset's logo does, and crawlers re-fetch rarely.
-      'cache-control': 'public, max-age=' + TTL + ', s-maxage=' + TTL,
-      'access-control-allow-origin': '*',
-    },
-  });
-
-  // Store after responding, so the caller never waits on the write.
-  try { ctx.waitUntil(cache.put(key, out.clone())); } catch (e) { /* cache is best-effort */ }
-  return out;
+  // The section card is a build artefact; if it is missing the build is broken, and a 404 is a
+  // louder, more honest answer than an invented one.
+  return new Response(null, { status: 404, headers: { 'cache-control': 'public, max-age=300' } });
 }
