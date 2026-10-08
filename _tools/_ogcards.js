@@ -98,6 +98,7 @@ async function logoDataUri(assetId) {
     try {
       const png = K.render(K.assetCard({
         code, logo, chain: CH, domain,
+        issuer: id.slice(id.lastIndexOf('-') + 1),
         badge: v.v ? 'Curated asset' : 'Listed asset',
       }));
       fs.writeFileSync(out, png);
