@@ -54,6 +54,79 @@ const SUBS = [
   // the Trade hero (desktop, dark, mobile). Mobile spells the same slot with a span.
   ['<em>Aptos</em>', '<em>Stellar</em>'],
   ['<span class="hl">Aptos</span>', '<span class="hl">Stellar</span>'],
+
+  // ---- PHASE 2: the chain's name in the copy, verified hit by hit ------------------------------
+  //
+  // RAZA 2026-10-08, with the count from his own audit: 96 of 97 built pages carry "Aptos"
+  // somewhere, and a crawler reads the served markup, not what the runtime re-skin puts there.
+  // The inventory behind this batch: 415 occurrences, 73 distinct visible phrases, 10 attributes.
+  //
+  // EVERY PAIR BELOW WAS COUNTED IN THE CONTAINERS BEFORE IT WAS WRITTEN -- 30 pairs, 144
+  // occurrences, no rule matching zero. A pair that matches nothing is a silent no-op that reads
+  // like a fix, which is the failure this file's header already warns about.
+  //
+  // WHAT IS DELIBERATELY NOT HERE, because a rename would make it wrong rather than right:
+  //   * sample DATA -- "Aptos Coin", "$APT", "CELL / APT", "Aptos - 1.48% of supply". These are the
+  //     design's mock rows, replaced at runtime by the real asset. Renaming the chain inside a made
+  //     up holding does not make the holding true, it just hides that it is mock.
+  //   * "Aptos DEX charges roughly 0.0001 APT per operation" and "trades natively on the Aptos
+  //     Decentralized Exchange against APT" -- both carry a FIGURE and a pair. Swapping the chain
+  //     name alone leaves a Stellar sentence quoting an Aptos fee; changing the number too is a
+  //     factual edit, not a copy pass.
+  //   * "Powered by Aptos Wallet Standard" and the per-network label map beside it -- Stellar has no
+  //     "Wallet Standard" to name, so the right text is a product decision, not a substitution.
+  //   * the two search-popup chain pills -- their label disagrees with their own data-chain, which
+  //     is a component bug rather than a word.
+  ['Discover early gems on Aptos.', 'Discover early gems on Stellar.'],
+  ['How the Aptos DEX works', 'How the Stellar DEX works'],
+  ['Trade any Aptos-issued asset', 'Trade any Stellar-issued asset'],
+  ['Initialize a new liquidity pool on Aptos AMM', 'Initialize a new liquidity pool on Stellar AMM'],
+  ['Initialize a new pool on Aptos AMM', 'Initialize a new pool on Stellar AMM'],
+  ["Pools run on Aptos's native AMM.", "Pools run on Stellar's native AMM."],
+  ["Discover, trade, and launch tokens on Aptos's decentralized exchange.", "Discover, trade, and launch tokens on Stellar's decentralized exchange."],
+  ['DEX on Aptos.', 'DEX on Stellar.'],
+  ['Every trade settles peer-to-peer on Aptos.', 'Every trade settles peer-to-peer on Stellar.'],
+  ['Launch tokens on the Aptos DEX.', 'Launch tokens on the Stellar DEX.'],
+  ['Trade pairs on Aptos DEX.', 'Trade pairs on Stellar DEX.'],
+  ['Launch tokens directly on the Aptos DEX.', 'Launch tokens directly on the Stellar DEX.'],
+  ['Your token is now live on the Aptos network', 'Your token is now live on the Stellar network'],
+  ['Once your token is minted on the Aptos network', 'Once your token is minted on the Stellar network'],
+  ['Asset issued on Aptos', 'Asset issued on Stellar'],
+  ['New Mints on Aptos', 'New Mints on Stellar'],
+  ['Create another token on Aptos', 'Create another token on Stellar'],
+  ['Native utility token \u00b7 live on Aptos', 'Native utility token \u00b7 live on Stellar'],
+  ['Aptos distributions are anchored to this same contract.', 'Stellar distributions are anchored to this same contract.'],
+  ["Choose the chains you're bridging between (Aptos and your destination network)", "Choose the chains you're bridging between (Stellar and your destination network)"],
+  ['Aptos automatically finds the cheapest route', 'Stellar automatically finds the cheapest route'],
+  ['digital representation of the US Dollar on the Aptos Decentralized Exchange.', 'digital representation of the US Dollar on the Stellar Decentralized Exchange.'],
+  // Covers the bare text and the aria-label/data-tooltip that wrap it -- we link stellar.expert.
+  ['View on Aptos Explorer', 'View on Stellar Explorer'],
+  ['aria-label="Aptos AMM"', 'aria-label="Stellar AMM"'],
+  ['aria-label="Aptos DEX"', 'aria-label="Stellar DEX"'],
+  ['title="One-time Aptos asset issuance fee"', 'title="One-time Stellar asset issuance fee"'],
+  // Labels that contradict the class sitting on the very same element.
+  ['<span class="chain-pill stellar">Aptos</span>', '<span class="chain-pill stellar">Stellar</span>'],
+  ['<span class="chain-pill xrpl">Aptos</span>', '<span class="chain-pill xrpl">XRP Ledger</span>'],
+  ['<span class="dot stellar"></span>Aptos', '<span class="dot stellar"></span>Stellar'],
+  ['Connected \u00b7 Aptos', 'Connected \u00b7 Stellar'],
+
+  // ---- the search popup's chain filters, whose labels contradict their own data-chain ----------
+  //
+  // Two pills, on 88 and 85 pages, together about half of everything still saying "Aptos". The
+  // first is data-chain="xrpl" labelled Aptos; the second is data-chain="stellar", also labelled
+  // Aptos. The wiring is right -- the live layer filters by the id -- only the roster is wrong,
+  // which is the same shape as the sign-in chooser.
+  //
+  // ANCHORED ON WHAT IS ADJACENT, NOT ON THE BUTTON. Each pill opens thousands of characters
+  // earlier because its icon is an inline base64 image, so "the Aptos inside an sp-filter-pill" is
+  // not expressible as a plain string. Verified instead by walking back 12,000 characters from
+  // every match: 88/88 for the xrpl pill, 51/51 desktop and 40/40 for the stellar one. An earlier
+  // candidate anchor was dropped for failing exactly this -- 3 of its matches were in an lt-panel.
+  ['<span class="ch-ico xrpl">X</span> Aptos', '<span class="ch-ico xrpl">X</span> XRP Ledger'],
+  ['</span></span> Aptos <span style="opacity:0.7;font-weight:600">(',
+    '</span></span> Stellar <span style="opacity:0.7;font-weight:600">('],
+  ['</span></span> Aptos' + String.fromCharCode(10) + '          </button>',
+    '</span></span> Stellar' + String.fromCharCode(10) + '          </button>'],
 ];
 
 const problems = [];
