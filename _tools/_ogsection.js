@@ -67,7 +67,7 @@ function panelSingle(uri, code) {
   return {
     defs: '<clipPath id="one"><rect x="' + IX + '" y="' + IY + '" width="' + K.INNER + '" height="' + K.INNER + '" rx="' + IR + '"/></clipPath>',
     svg: '<image x="' + IX + '" y="' + IY + '" width="' + K.INNER + '" height="' + K.INNER + '" href="' + uri
-      + '" clip-path="url(#one)" preserveAspectRatio="xMidYMid slice"/>',
+      + '" clip-path="url(#one)" preserveAspectRatio="xMidYMid meet"/>',
   };
 }
 
@@ -91,7 +91,7 @@ function panelGrid(items, kind) {
     const p = 14, s = CELL - p * 2, id = 'g' + i;
     defs += '<clipPath id="' + id + '"><rect x="' + (cx + p) + '" y="' + (cy + p) + '" width="' + s + '" height="' + s + '" rx="' + Math.round(s * 0.28) + '"/></clipPath>';
     svg += '<image x="' + (cx + p) + '" y="' + (cy + p) + '" width="' + s + '" height="' + s + '" href="' + it.uri
-      + '" clip-path="url(#' + id + ')" preserveAspectRatio="xMidYMid slice"/>';
+      + '" clip-path="url(#' + id + ')" preserveAspectRatio="xMidYMid meet"/>';
   });
   return { svg, defs };
 }

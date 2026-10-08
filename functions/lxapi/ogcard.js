@@ -15,7 +15,7 @@
 const ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
 const TTL = 86400;
 // Bump to retire every cached card at once.
-const CARD_V = 4;
+const CARD_V = 5;
 
 export async function onRequestGet(ctx) {
   const { request } = ctx;
