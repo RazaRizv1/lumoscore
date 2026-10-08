@@ -31,6 +31,13 @@ const STYLE='<style id="lx-swapcalc-css">'
 // the You pay input beside it has always done with a placeholder attribute. user-select:none keeps a Select-All from
 // picking the ghost up, and it is never in the DOM, so every parseFloat of this field still reads what was typed.
 +'#swapAmtOut:empty::before{content:"0.00";opacity:.5;pointer-events:none;user-select:none;-webkit-user-select:none}'
+// NO FOCUS RING ON "YOU RECEIVE" (RAZA 2026-10-08: "Remove that box around the value when i input").
+// This field is a contenteditable div, and the browser draws its own focus ring on one — a thin box
+// tight around the typed figure, which the real <input> beside it never shows because the design
+// styles that one flat. Two fields in one row, one boxed and one not, reads as a rendering fault.
+// The caret is the focus indicator here, exactly as it is for #swapAmtIn, so nothing is lost by
+// matching it. box-shadow too, because that is the other way a UA draws this.
++'#swapAmtOut:focus,#swapAmtOut:focus-visible{outline:none!important;box-shadow:none!important}'
 +'.lx-swapd{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:8px 13px;margin:0 0 13px;font-size:13.5px}'
 +'.lx-swapd .r{display:flex;justify-content:space-between;align-items:center;gap:14px;padding:4px 0;color:var(--text-soft)}'
 +'.lx-swapd .r strong{color:var(--text);font-weight:600;text-align:right;font-family:\'JetBrains Mono\',monospace;font-size:13px}'
