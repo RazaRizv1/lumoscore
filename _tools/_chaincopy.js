@@ -41,6 +41,19 @@ const SUBS = [
   ['Your Aptos address', 'Your Stellar address'],
   ['Assets on Aptos', 'Assets on Stellar'],
   ['Aptos wallet', 'Stellar wallet'],
+
+  // THE CHAIN SLOT IN THE TRADE HERO (RAZA 2026-10-08, approving the fix). `<h1>Explore the
+  // <em>Aptos</em> DEX</h1>` — the inner element is the slot the runtime re-skin rewrites to the
+  // connected chain, so a human has always read "Explore the Stellar DEX" and every crawler has read
+  // Aptos. That is this transform's whole remit: the rename is unambiguous, and after it the runtime
+  // rewrites Stellar to Stellar, a no-op.
+  //
+  // MATCHED WITH THE TAGS, not on the bare word, which is the discipline the header above sets out —
+  // roughly 42 Aptos strings in these containers are CORRECT and a /Aptos/g sweep would corrupt every
+  // one. Measured before adding: these three markup-exact forms occur 3 times in total, all of them
+  // the Trade hero (desktop, dark, mobile). Mobile spells the same slot with a span.
+  ['<em>Aptos</em>', '<em>Stellar</em>'],
+  ['<span class="hl">Aptos</span>', '<span class="hl">Stellar</span>'],
 ];
 
 const problems = [];
