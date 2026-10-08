@@ -127,6 +127,29 @@ const SUBS = [
     '</span></span> Stellar <span style="opacity:0.7;font-weight:600">('],
   ['</span></span> Aptos' + String.fromCharCode(10) + '          </button>',
     '</span></span> Stellar' + String.fromCharCode(10) + '          </button>'],
+
+  // ---- the chain's name inside the design's sample rows -----------------------------------------
+  //
+  // RAZA 2026-10-08: "why dont you remove the mock rows outright... if it can be done without
+  // breaking anything". It cannot, for the rows that matter, and that is measured rather than
+  // argued. _lumostoken.js fills Top Holders by CLONING the design's rows as templates:
+  //
+  //     var hr=qa(".holder-row"), top=hold.filter(...).slice(0, hr.length);
+  //     hr.forEach(function(row,i){ var c=row.cloneNode(true); ... replaceChild ... })
+  //
+  // "slice(0, hr.length)" means the number of REAL holders the page can show is bounded by the
+  // number of MOCK rows in the markup. Delete them and Top Holders renders nothing. The same
+  // fill-in-place shape is why this codebase marks claimed nodes .lxp at all.
+  //
+  // So the nodes stay and only the chain word changes -- which is the whole machine-readable point,
+  // since none of this is ever visible: sampled 150 times over 9s from first paint on /pools, and
+  // checked at settle on /lumos, /rewards, /dashboard and both launchpad steps -- zero visible.
+  // The renderer drops the "Aptos " prefix entirely at runtime (it removes the .b-ico and rewrites
+  // the text node), so this edit is invisible to a reader and only ever read by a crawler.
+  ['Aptos ' + '·' + ' ', 'Stellar ' + '·' + ' '],
+  ['Aptos AMM utility', 'Stellar AMM utility'],
+  ['fee tier ' + '·' + ' Aptos AMM', 'fee tier ' + '·' + ' Stellar AMM'],
+  ['Aptos price', 'Stellar price'],
 ];
 
 const problems = [];
