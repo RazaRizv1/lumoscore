@@ -195,6 +195,26 @@ const SUBS = [
   // is a landmine this repo has hit before. Matching "quote.</span>" instead of "quote." means that
   // after the edit the tag follows "free." and the search finds nothing on the next run.
   ['shown on every quote.</span>', 'shown on every quote. Limit orders are free.</span>'],
+
+  // ---- the wallet-standard credit, replaced rather than renamed (RAZA 2026-10-08) ---------------
+  //
+  // There is no substitution here: Stellar has no "Wallet Standard" to name, so renaming the chain
+  // would have invented a specification. The line's job is to say what is behind the wallet list,
+  // so it now names the wallets that actually are.
+  //
+  // THE DEAD LINK GOES WITH IT. The credit was wrapped in <a href="#">, which goes nowhere -- a
+  // link to a standard we do not implement, pointing at nothing. The names are plain text now.
+  //
+  // The per-network map loses its hedera key as well. That chain was dropped from the chooser in
+  // _signinnets.js, so the entry could only ever have been dead; and the xrpl value read
+  // "Xaman · Aptos", which named one real wallet and one wrong chain.
+  ["<span class=\"lc-mfoot-attr\">Powered by <a href=\"#\">Aptos Wallet Standard</a></span>",
+    "<span class=\"lc-mfoot-attr\">Powered by Freighter, Albedo, xBull and Rabet</span>"],
+  ["var L={hedera:\"Aptos Wallet Standard\",stellar:\"Aptos Wallet Standard\",xrpl:\"Xaman · Aptos\"};",
+    "var L={stellar:\"Freighter, Albedo, xBull and Rabet\",xrpl:\"Xaman, GemWallet and Crossmark\"};"],
+  // The connected-account chip's network name, baked as the design's base chain. The live layer
+  // rewrites it, so this is markup correctness only -- the same reason as everything above it.
+  ['<span id="lcNetNameDone">Aptos</span>', '<span id="lcNetNameDone">Stellar</span>'],
 ];
 
 const problems = [];
