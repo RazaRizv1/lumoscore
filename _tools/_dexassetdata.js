@@ -113,6 +113,25 @@ html body .stat-row{display:grid!important;grid-template-columns:repeat(4,minmax
 .tabs-bar .tab .count:not(.lxp),
 .dxa-trade-frow .mono:not(.lxp),
 .dxa-trade-summary .dxa-tsum-row .mono:not(.lxp){visibility:hidden!important}
+/* THE DESIGN'S MOCK HOLDER ROWS ARE VISIBLE UNTIL OURS LAND (RAZA 2026-10-08: "View on explorer
+   (which we are not even using) going out of the box for split seconds and then fixes"). The rows
+   that flash are the template's own -- 0x& Ethereum addresses and a literal "View on Explorer"
+   label, neither of which this build ever produces: our row writes the mark as an <svg> and puts
+   those four words in aria-label/title, where they belong.
+   The counts beside them were already gated by the :not(.lxp) rule above; the ROWS never were.
+   holdGo() stamps data-lxbuilt on the container the moment it replaces the markup, so that
+   attribute is the honest "ours now" signal -- no new flag, and it cannot drift from the render.
+   visibility, not display, so the table keeps its height and nothing jumps when the rows arrive. */
+#dxaPanel .dxa-holders table tbody:not([data-lxbuilt]) tr,
+#mdxaPanel .mdxa-holders .mdxa-hl-list:not([data-lxbuilt])>*{visibility:hidden!important}
+/* ...and the line underneath them, for the same reason (RAZA 2026-10-08). The design ships it
+   reading "Showing 1-50 of 12,408 holders - Cumulative 47%", and it stayed on screen about a
+   tenth of a second before our renderer overwrote it with the real "Showing 1-50 of 84 holders".
+   Measured, not inferred: sampling the node every 80ms caught it visible at 86ms and corrected
+   at 192ms. It is marked .lxp where it is written, so this uses the page's own claim convention
+   rather than a second mechanism. */
+#dxaPanel .dxa-hl-pgn .info:not(.lxp),
+#mdxaPanel .mdxa-hl-pgn .info:not(.lxp){visibility:hidden!important}
 /* AUDIT REGRESSION (audit #3, bug 10): the two rules below were once inserted into the MIDDLE of the
    selector list above, which invalidated the whole rule and silently killed every one of these masks on
    all three dex-asset variants. Complete rules must stay OUTSIDE the selector list. The Holders/.count
@@ -2737,7 +2756,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var MOB=isMobPanel(wrap);
     try{ loadHolders(); }catch(_){}                                              // lazy: page the top-holders list only once the tab is actually opened
     // header stat count (accurate trustline count from /assets)
-    var _hn=(holdersFunded!=null?holdersFunded:holders);
+    var _hn=holdersFunded;/*FUNDED ONLY: the fallback showed TRUSTLINES under a HOLDERS label until the funded count landed (RAZA 2026-10-08: "First it shows 111 and then changes to 83"). A trustline is permission to hold, not evidence of holding -- this file says so itself where it prints "Trustlines | Holders" separately. The :not(.lxp) rule keeps the slot hidden until there is a real number, so nothing flashes and nothing wrong is ever shown.*/
     if(_hn!=null){ var st=wrap.querySelectorAll(".dxa-hl-stat .val,.mdxa-hl-stat .val"); if(st[0]){var _h=num(_hn);if(st[0].textContent!==_h)st[0].textContent=_h;lxMark(st[0]);} }
     // LOADING IS NOT THE SAME AS UNKNOWN (RAZA 2026-09-30: "I'm unable to see top 10 & top 50 holders
     // for some big assets"). Measured on XRP, 57,140 trustlines: with a warm edge cache both figures
@@ -2829,7 +2848,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // Only the ROWS are gated on already having been built -- that guard exists to stop the fifty-row
     // rebuild loop that caused the grey flicker, and it still does exactly that.
     if(tbody.getAttribute("data-lxbuilt")===("p"+_hp))return;
-    var top=hold.slice(_hp*HPP,_hp*HPP+HPP), tot=holders!=null?holders:hold.length;
+    var top=hold.slice(_hp*HPP,_hp*HPP+HPP), tot=(holdersFunded!=null?holdersFunded:hold.length);/*FUNDED, NOT TRUSTLINES: this feeds BOTH the Holders tab count and the "Showing 1-50 of N holders" line, and it was reading the trustline figure -- which is why the tab flashed 111 before settling to 84 (RAZA 2026-10-08). The rows render as soon as the holder list lands, carrying this number with them; the funded count arrives a moment later and corrected it. Falling back to hold.length rather than to the trustline count keeps the wrong statistic out of a slot labelled holders at every stage.*/
     var EXPL='https://stellar.expert/explorer/public/account/';
     var html=top.map(function(h,i){ var pct=h.bal/sup*100;
       var pctTxt=(pct>=0.001?pct.toFixed(3):"<0.001")+'%';
@@ -2866,7 +2885,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var _from=_hp*HPP+1, _to=_hp*HPP+top.length;
     var pg=wrap.querySelector(".dxa-hl-pgn .info,.mdxa-hl-pgn .info");
     if(pg)pg.textContent=canRankHolders()?("Showing "+num(_from)+"\\u2013"+num(_to)+" of "+num(tot)+" holders")
-                                         :("Showing "+top.length+" of "+num(tot)+" holders (sample)");
+                                         :("Showing "+top.length+" of "+num(tot)+" holders (sample)");lxMark(pg);
     // REAL pager. This used to hide the design's mock buttons outright -- "we only ever render one page,
     // so drop it" -- which was true when the fetch asked for 50 and stopped. It asks for 200 now and
     // follows the cursor, so there are real pages and the control is built rather than hidden.
@@ -4086,7 +4105,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     // Holders bottom-tab count — written HERE (eagerly, from the /assets fetch) rather than at the end
     // of applyHolders(), which returns early unless the Holders panel is already in the DOM. That made the
     // badge sit on "—" until the user opened the tab, while Pools (written eagerly) showed its count.
-    try{ var _tabN=(holdersFunded!=null?holdersFunded:holders); if(_tabN!=null){ var ht=qa(".tabs-bar .tab").filter(function(t){return /holders/i.test(t.getAttribute("data-tab")||"");})[0]; if(ht){ var hc=ht.querySelector(".count"); if(hc){ hc.textContent=q("#mdxaPanel")?abbrNum(_tabN):num(_tabN); lxMark(hc);} } } }catch(_){}
+    try{ var _tabN=holdersFunded;/*FUNDED ONLY -- same reason as _hn above: the Holders TAB count flashed the trustline figure first.*/ if(_tabN!=null){ var ht=qa(".tabs-bar .tab").filter(function(t){return /holders/i.test(t.getAttribute("data-tab")||"");})[0]; if(ht){ var hc=ht.querySelector(".count"); if(hc){ hc.textContent=q("#mdxaPanel")?abbrNum(_tabN):num(_tabN); lxMark(hc);} } } }catch(_){}
     try{ applyPools(); }catch(_){}
   }
 
