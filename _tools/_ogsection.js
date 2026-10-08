@@ -161,7 +161,10 @@ function panelGrid(items, kind) {
     // chains and claims nothing else, because it has to be true of every page that uses it.
     ['general', {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
-      headline: 'LumosCore', accent: 'Trade, pool and bridge',
+      // NOT "Trade, pool and bridge". This card is the fallback for the docs, the legal pages and
+      // every footer link, and naming three products reads oddly on a privacy policy -- it has to
+      // describe what LumosCore IS, not what three of its pages do (RAZA, 2026-10-08).
+      headline: 'LumosCore', accent: 'Multichain web3 infrastructure',
       features: 'Non-custodial · On-chain',
       grid: panelSingle(lumosMark, 'LC'),
     }],
