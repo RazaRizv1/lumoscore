@@ -160,10 +160,13 @@ function panelGrid(items, kind) {
     // the legal pages, the footer links, a blog post with no cover. It names the product and the two
     // chains and claims nothing else, because it has to be true of every page that uses it.
     ['general', {
-      row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
-      // NOT "Trade, pool and bridge". This card is the fallback for the docs, the legal pages and
-      // every footer link, and naming three products reads oddly on a privacy policy -- it has to
-      // describe what LumosCore IS, not what three of its pages do (RAZA, 2026-10-08).
+      // NO CHAIN ROW (RAZA, 2026-10-08). This is the card for pages that are not about a chain at
+      // all -- the docs, the legal pages, the footer links -- so naming Stellar and the XRP Ledger
+      // on it was the same mistake as naming three products: specific where the card has to be
+      // general. The shell drops the accent dash down to meet the headline when there is no row.
+      row: '',
+      // NOT "Trade, pool and bridge", for the same reason: it has to describe what LumosCore IS,
+      // not what three of its pages do.
       headline: 'LumosCore', accent: 'Multichain web3 infrastructure',
       features: 'Non-custodial · On-chain',
       grid: panelSingle(lumosMark, 'LC'),
