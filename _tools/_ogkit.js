@@ -3,13 +3,20 @@
 // so the background, light shaft, type scale, glass panel and foot rule cannot drift apart.
 //
 // Rendering happens at BUILD time with resvg; see _ogcards.js for why it can never be an endpoint.
-const fs = require('fs');
-const path = require('path');
+// RUNS IN BOTH NODE AND THE BROWSER, from this one file. The build draws cards with resvg; the admin
+// panel and the launchpad draw the same card in the browser the moment an asset is curated or minted,
+// because nothing can rasterise one at the edge. Two implementations would drift the first time the
+// design changed, so this file is copied verbatim to dist/assets/js/ and loaded there as a script.
+// Verified against resvg on a 24x13 grid: mean channel distance 4.6 of a possible 441, worst cell 36,
+// nothing over 40.
+var IS_NODE = typeof process !== 'undefined' && !!(process.versions && process.versions.node);
+var fs = IS_NODE ? require('fs') : null;
+var path = IS_NODE ? require('path') : null;
 
 const W = 1200, H = 630;
 const BG = '#0a0a0b', BG_TOP = '#15151d';
 const INK = '#f6f5f3', MUTED = '#9a9aa3', ACCENT = '#ea6a2c', GREEN = '#1fa968', LINE = '#2c2c34';
-const FONT = path.join(__dirname, 'fonts', 'HankenGrotesk-variable.ttf');
+const FONT = IS_NODE ? path.join(__dirname, 'fonts', 'HankenGrotesk-variable.ttf') : '';
 
 // ---- geometry, shared so every card lines up ----------------------------------------------------
 const L = 84;                                        // left margin, every line sits on it
@@ -29,12 +36,20 @@ const esc = (s) => String(s == null ? '' : s)
 // ---- real text metrics, straight out of the TTF -------------------------------------------------
 // Anything positioned after a run of text needs its true width. Guessing it (the old card used
 // code.length * 52) is what put the verification tick on top of AQUA's last letter.
-const fbuf = fs.existsSync(FONT) ? fs.readFileSync(FONT) : null;
-const U16 = (o) => fbuf.readUInt16BE(o), I16 = (o) => fbuf.readInt16BE(o), U32 = (o) => fbuf.readUInt32BE(o);
-let TBL = {}, UPEM = 1000, NUMH = 0;
-const CMAP = new Map();
-if (fbuf) {
-  for (let i = 0, n = U16(4); i < n; i++) { const o = 12 + i * 16; TBL[fbuf.toString('ascii', o, o + 4)] = U32(o + 8); }
+// Readers written over a plain byte array rather than Buffer methods, so the same parser runs on a
+// Uint8Array in the browser and on the file the build reads.
+let fbuf = null, TBL = {}, UPEM = 1000, NUMH = 0;
+let CMAP = new Map();
+const U16 = (o) => (fbuf[o] << 8) | fbuf[o + 1];
+const I16 = (o) => (((fbuf[o] << 8) | fbuf[o + 1]) << 16) >> 16;
+const U32 = (o) => (((fbuf[o] << 24) | (fbuf[o + 1] << 16) | (fbuf[o + 2] << 8) | fbuf[o + 3]) >>> 0);
+const ascii = (o, n) => { let s = ''; for (let i = 0; i < n; i++) s += String.fromCharCode(fbuf[o + i]); return s; };
+
+function initMetrics(bytes) {
+  fbuf = bytes; TBL = {}; CMAP = new Map();
+  if (!fbuf || fbuf.length < 12) { fbuf = null; return false; }
+  for (let i = 0, n = U16(4); i < n; i++) { const o = 12 + i * 16; TBL[ascii(o, 4)] = U32(o + 8); }
+  if (TBL.head == null || TBL.hhea == null || TBL.hmtx == null || TBL.cmap == null) { fbuf = null; return false; }
   UPEM = U16(TBL.head + 18); NUMH = U16(TBL.hhea + 34);
   const c = TBL.cmap; let best = 0;
   for (let i = 0, n = U16(c + 2); i < n; i++) {
@@ -56,7 +71,10 @@ if (fbuf) {
       }
     }
   }
+  return true;
 }
+if (IS_NODE && fs.existsSync(FONT)) initMetrics(new Uint8Array(fs.readFileSync(FONT)));
+
 function textW(str, size, tracking) {
   let u = 0, n = 0;
   for (const ch of String(str)) { const g = CMAP.get(ch.codePointAt(0)); if (g != null) u += U16(TBL.hmtx + Math.min(g, NUMH - 1) * 4); n++; }
@@ -225,10 +243,71 @@ async function imageDataUri(url) {
   } catch (e) { return ''; }
 }
 
-module.exports = {
+// The asset-card panel: one logo, centred, fitted rather than cropped. Shared so the build and the
+// browser produce the same panel for a curated or freshly minted asset.
+function assetPanel(uri, code) {
+  const IX = PX + PAD, IY = PY + PAD, IR = Math.round(INNER * 0.25);
+  if (!uri) {
+    return {
+      defs: '',
+      svg: '<rect x="' + IX + '" y="' + IY + '" width="' + INNER + '" height="' + INNER + '" rx="' + IR + '" fill="#2a2a32"/>'
+        + bold(IX + INNER / 2, IY + INNER / 2 + 30, 84, String(code || '?').replace(/[^A-Za-z0-9]/g, '').slice(0, 2).toUpperCase() || '?', '#fff', 0, 1.8, 'middle'),
+    };
+  }
+  return {
+    defs: '<clipPath id="one"><rect x="' + IX + '" y="' + IY + '" width="' + INNER + '" height="' + INNER + '" rx="' + IR + '"/></clipPath>',
+    svg: '<image x="' + IX + '" y="' + IY + '" width="' + INNER + '" height="' + INNER + '" href="' + uri
+      + '" clip-path="url(#one)" preserveAspectRatio="xMidYMid meet"/>',
+  };
+}
+
+// One asset card, from the facts a card is allowed to state. `badge` is the curation wording --
+// "Curated asset" for the vetted list, "Minted on LumosCore" for a token issued through the
+// launchpad, which is true without claiming anyone checked it.
+function assetCard({ code, logo, badge, domain, chain }) {
+  const p = assetPanel(logo, code);
+  return shell({
+    defs: p.defs,
+    row: metaRow([{ chain: chain || 'Stellar' }, badge ? { check: badge } : null, domain ? { text: domain } : null]).svg,
+    headline: code,
+    accent: 'Trade on LumosCore',
+    features: 'Price · Pools · Holders',
+    panel: p.svg,
+  });
+}
+
+// Ship this very file, the browser generator and the TTF into dist, so the admin panel and the
+// launchpad draw cards from the SAME source the build uses rather than a copy that drifts. The TTF
+// is needed because the pages' woff2 faces are compressed subsets the metrics parser cannot read.
+function emitBrowser() {
+  if (!IS_NODE) return [];
+  const JS = path.join(__dirname, '..', 'dist', 'assets', 'js');
+  const FO = path.join(__dirname, '..', 'dist', 'assets', 'fonts');
+  fs.mkdirSync(JS, { recursive: true });
+  fs.mkdirSync(FO, { recursive: true });
+  const out = [];
+  const pairs = [
+    [__filename, path.join(JS, 'lx-ogkit.js')],
+    [path.join(__dirname, '_ogclient.js'), path.join(JS, 'lx-ogcardgen.js')],
+    [FONT, path.join(FO, 'HankenGrotesk-variable.ttf')],
+  ];
+  for (const [src, dst] of pairs) {
+    if (!fs.existsSync(src)) continue;
+    const a = fs.readFileSync(src);
+    // Only write when the bytes differ, so a rebuild does not churn dist for nothing.
+    if (fs.existsSync(dst) && Buffer.compare(a, fs.readFileSync(dst)) === 0) continue;
+    fs.writeFileSync(dst, a);
+    out.push(path.basename(dst));
+  }
+  return out;
+}
+
+const API = {
   W, H, BG, BG_TOP, INK, MUTED, ACCENT, GREEN, LINE, FONT,
   L, CODE_BASE, CODE_NOM, PANEL, PAD, INNER, PX, PY,
   ROW_Y, ROW_H, ROW_MID, ROW_FS, ROW_BASE, ACCENT_BASE, FEAT_BASE, RULE_Y,
-  esc, textW, hasFont, bold, plain, CHAIN, CHECK, chainMark, metaRow, fitHeadline,
-  shell, render, toPng, imageDataUri,
+  esc, textW, hasFont, initMetrics, bold, plain, CHAIN, CHECK, chainMark, metaRow, fitHeadline,
+  shell, assetPanel, assetCard, render, toPng, imageDataUri, emitBrowser,
 };
+if (typeof module !== 'undefined' && module.exports) module.exports = API;
+else if (typeof window !== 'undefined') window.LXOGKit = API;

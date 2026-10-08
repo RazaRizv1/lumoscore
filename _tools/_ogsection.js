@@ -97,6 +97,8 @@ function panelGrid(items, kind) {
 }
 
 (async () => {
+  const emitted = K.emitBrowser();
+  if (emitted.length) console.log('  browser kit -> dist/assets/: ' + emitted.join(' '));
   if (!K.hasFont()) { console.error('og sections: missing ' + K.FONT + ' — nothing written'); process.exit(1); }
   const xa = process.argv.indexOf('--xrpl-origin');
   const XRPL_ORIGIN = xa > 0 ? process.argv[xa + 1] : ORIGIN;

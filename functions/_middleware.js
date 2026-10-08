@@ -552,12 +552,12 @@ function isCardImage(u){
   return s.indexOf('/lxapi/ogcard') >= 0 || s.indexOf('/assets/og/s/') >= 0;
 }
 
-// Section routes that have a card drawn for them. Keyed on the canonical path. Only the image is
-// taken from here: the title and description are already correct in the built page, and copying
-// them into the edge would be two places to keep in step for no gain.
 // The one XRPL asset with a card of its own; see the asset branch for why it is the only one.
 const XRPL_LUMOS = 'LUMOS-rsPqeamjpr3Bxu4LhtCgvJEAQusYRRg6Ha';
 
+// Section routes that have a card drawn for them. Keyed on the canonical path. Only the image is
+// taken from here: the title and description are already correct in the built page, and copying
+// them into the edge would be two places to keep in step for no gain.
 const SECTION_CARD = {
   '/trade': 'trade',
   '/trade/stellar': 'trade-stellar',
@@ -1067,6 +1067,7 @@ export async function onRequest(context){
     // A crawler reads the page first and fetches og:image a moment later. Building the card now,
     // without holding up this response, means that second request usually finds it already cached
     // instead of paying the cold 2-3s that made a link need pasting two or three times.
+    //
     // Only the on-demand card is worth warming. A section card is a static file on the CDN, already
     // as fast as it will ever be, so prewarming it would buy a subrequest and nothing else.
     if (String(seo.image || '').indexOf('/lxapi/ogcard') >= 0) {
@@ -1076,13 +1077,12 @@ export async function onRequest(context){
       head.push('<meta property="og:image" content="' + esc(seo.image) + '">');
       if (seo.title) head.push('<meta property="og:image:alt" content="' + esc(seo.title) + '">');
     // Only when both are known and real. Unknown emits nothing, which is the previous behaviour.
-    // The branded card comes from /lxapi/ogcard, which is 1200x630 by construction (W/H there are
-    // unconditional constants), so its size is a known value needing neither a KV read nor a fetch.
-    // The learn pass could never see it: mediaIdOf() only recognises /lxapi/media?id=<hash>.<ext>,
-    // so every ogcard url returned '' and BOTH imgDims and learnImgDims bailed on the empty id.
-    // That is why no asset page has ever carried og:image:width -- verified on production, where
-    // blog covers (which do match that pattern) report real measured dimensions and cards report
-    // none. Non-card images keep the measure-and-remember path below, which works.
+    // Our own cards are 1200x630 by construction, so their size is a known value needing neither a
+    // KV read nor a fetch. The learn pass could never see them: mediaIdOf() only recognises
+    // /lxapi/media?id=<hash>.<ext>, so every card url returned '' and BOTH imgDims and learnImgDims
+    // bailed on the empty id. That is why no asset page ever carried og:image:width -- verified on
+    // production, where blog covers (which do match that pattern) report real measured dimensions
+    // and cards report none. Non-card images keep the measure-and-remember path, which works.
     const _dim = isCardImage(seo.image) ? { w: 1200, h: 630 }
                                         : await imgDims(context.env, seo.image);
     if (_dim) {

@@ -12,10 +12,23 @@
 //
 // A missing logo is a 404, not an empty brand-coloured rectangle: the middleware only advertises this
 // card when a logo exists, and a blank canvas would be worse than no preview.
+// Shared with ogcardput.js so a stored card is written and read under the same number, and bumping
+// it both retires the edge cache and stops older stored cards being trusted.
+import { CARD_V } from '../../_lib/ogcardver.js';
+
 const ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
 const TTL = 86400;
-// Bump to retire every cached card at once.
-const CARD_V = 5;
+const CARD = 'ogcard:';
+
+// Reads a card a browser drew, and only returns it when the CURRENT design drew it.
+async function storedCard(ctx, asset) {
+  const kv = ctx && ctx.env && ctx.env.CONTENT_KV;
+  if (!kv) return null;
+  const got = await kv.getWithMetadata(CARD + asset, 'arrayBuffer');
+  if (!got || !got.value) return null;
+  const v = got.metadata && got.metadata.v;
+  return v === CARD_V ? got.value : null;
+}
 
 export async function onRequestGet(ctx) {
   const { request } = ctx;
@@ -39,6 +52,31 @@ export async function onRequestGet(ctx) {
   const key = new Request(url.origin + '/lxapi/ogcard?v=' + CARD_V + '&asset=' + encodeURIComponent(asset));
   const hit = await cache.match(key);
   if (hit) return hit;
+
+  // A CARD A BROWSER DREW SINCE THE LAST BUILD, IF THERE IS ONE.
+  //
+  // An asset curated or minted between builds has no file in assets/og/, so the admin panel and the
+  // launchpad draw the card there and then and post it to /lxapi/ogcardput. Checked BEFORE the build's
+  // file because it is the newer information: it is only ever written by an explicit action, and the
+  // next build will draw the same asset anyway.
+  //
+  // The stored version must match CARD_V. A card drawn by a previous design would otherwise shadow the
+  // build's current one for ever, which is the exact failure the versioned cache key exists to avoid.
+  try {
+    const got = await storedCard(ctx, asset);
+    if (got) {
+      const out = new Response(got, {
+        status: 200,
+        headers: {
+          'content-type': 'image/png',
+          'cache-control': 'public, max-age=' + TTL + ', immutable',
+          'access-control-allow-origin': '*',
+        },
+      });
+      if (ctx.waitUntil) ctx.waitUntil(cache.put(key, out.clone()));
+      return out;
+    }
+  } catch (e) { /* fall through to the build's own card */ }
 
   // A DESIGNED CARD, IF THE BUILD DREW ONE.
   //
