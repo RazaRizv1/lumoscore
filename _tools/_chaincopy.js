@@ -150,6 +150,22 @@ const SUBS = [
   ['Aptos AMM utility', 'Stellar AMM utility'],
   ['fee tier ' + '·' + ' Aptos AMM', 'fee tier ' + '·' + ' Stellar AMM'],
   ['Aptos price', 'Stellar price'],
+
+  // ---- the two sentences that carry a figure (RAZA 2026-10-08, "fix the fee sentence and the
+  //      USDC one") -------------------------------------------------------------------------------
+  //
+  // Held back from the earlier passes on purpose: swapping only the chain name would have left a
+  // Stellar sentence quoting an Aptos fee and an Aptos trading pair, which is worse than the
+  // original because it reads as deliberate.
+  //
+  // THE FEE. Stellar's base fee is 100 stroops per operation = 0.00001 XLM, one order of magnitude
+  // below the Aptos figure the template carried, so the number moves with the ticker. "roughly"
+  // stays honest: 100 stroops is the floor, and surge pricing raises it when a ledger is full.
+  //
+  // THE PAIR. Circle's USDC on Stellar trades against XLM on the SDEX, so both the venue and the
+  // counter-asset change in the same sentence.
+  ['Aptos DEX charges roughly 0.0001 APT per operation', 'Stellar DEX charges roughly 0.00001 XLM per operation'],
+  ['trades natively on the Aptos Decentralized Exchange against APT.', 'trades natively on the Stellar Decentralized Exchange against XLM.'],
 ];
 
 const problems = [];
