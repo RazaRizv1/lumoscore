@@ -1125,8 +1125,9 @@ export async function onRequest(context){
     }
       head.push('<meta name="twitter:image" content="' + esc(seo.image) + '">');
     }
-    // a description already exists from the build; replace rather than duplicate
-    head.push('<meta name="lx-seo-desc" content="' + esc(seo.desc) + '">');
+    // a description already exists from the build; replace rather than duplicate. Skipped for a
+    // card-only seo, which has no wording of its own and would emit an empty one.
+    if (seo.desc) head.push('<meta name="lx-seo-desc" content="' + esc(seo.desc) + '">');
   }
 
   // ---- structured data -------------------------------------------------------------------------
@@ -1209,11 +1210,22 @@ export async function onRequest(context){
     + JSON.stringify(ld).split('</').join('<\/') + '</scr' + 'ipt>');
 
   let rw = new HTMLRewriter().on('head', new HeadInjector(head.join('')));
+  // GUARDED ON THE VALUE, NOT ON seo EXISTING.
+  //
+  // These two rewrite the page's OWN title and description, so an seo object carrying empty strings
+  // does not leave them alone -- it BLANKS them. That is what the general-card fallback did the
+  // moment it was added: it builds an seo object for every route that previously had none, purely to
+  // carry an image, and every one of those pages started serving <title></title> and an empty
+  // description while still saying index,follow. Measured on /rewards/stellar and /lumos/stellar,
+  // which had real titles an hour earlier.
+  //
+  // Checking the value means a card-only seo cannot touch the wording, and it also protects any
+  // branch that ever computes an empty one.
   if (seo){
-    rw = rw.on('title', new TitleSetter(seo.title))
-           .on('meta[name="description"]', {
-             element(el){ el.setAttribute('content', seo.desc); },
-           });
+    if (seo.title) rw = rw.on('title', new TitleSetter(seo.title));
+    if (seo.desc) rw = rw.on('meta[name="description"]', {
+      element(el){ el.setAttribute('content', seo.desc); },
+    });
   }
   // The asset identity block ships as the design's USDC sample. Fill it with what this page is
   // actually about, so a crawler that never runs the page's JavaScript reads the right asset.
