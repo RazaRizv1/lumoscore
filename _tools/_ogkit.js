@@ -191,6 +191,10 @@ const FRAME_DEFS =
 // One card. `row` and `panel` are svg the caller builds; everything else is the shared frame.
 function shell({ defs, row, headline, accent, features, panel }) {
   const f = fitHeadline(headline);
+  // With no metadata row the accent dash would sit alone at the top with ~190px of nothing under it.
+  // It drops to just above the headline instead, so a card without a row reads as composed rather
+  // than as a card with its row missing.
+  const dashY = row ? 120 : Math.round(CODE_BASE - f.size * 0.72 - 48);
   return '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">'
     + '<defs>' + FRAME_DEFS + (defs || '') + '</defs>'
     + '<rect width="' + W + '" height="' + H + '" fill="url(#bgg)"/>'
@@ -199,7 +203,7 @@ function shell({ defs, row, headline, accent, features, panel }) {
     + '<g mask="url(#beamm)"><rect x="860" y="-340" width="230" height="980" fill="url(#beam)"/></g>'
     + '<g mask="url(#beamm2)" opacity="0.55"><rect x="1120" y="-340" width="90" height="980" fill="url(#beam)"/></g>'
     + '</g>'
-    + '<rect x="' + L + '" y="120" width="54" height="5" rx="2.5" fill="' + ACCENT + '"/>'
+    + '<rect x="' + L + '" y="' + dashY + '" width="54" height="5" rx="2.5" fill="' + ACCENT + '"/>'
     + (row || '')
     + bold(L, CODE_BASE, f.size, headline, INK, f.track, 2.8)
     + bold(L, ACCENT_BASE, 46, accent, ACCENT, -1, 1.6)
