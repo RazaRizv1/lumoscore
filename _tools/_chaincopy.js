@@ -181,7 +181,20 @@ const SUBS = [
   // limit-order case is deliberately not mentioned -- feeRate() appears zero times in
   // _dexassetdata.js, so what the limit pane charges is not something this sentence should assert.
   ["There are no protocol fees or maker/taker rebates — everyone trades at the same rate.",
-    "The exchange itself takes no protocol fee and offers no maker/taker rebates — everyone trades at the same rate. LumosCore's own trading fee is 0.2%, or 0.1% while you hold 250,000 LUMOS, and is shown on every quote."],
+    "The exchange itself takes no protocol fee and offers no maker/taker rebates — everyone trades at the same rate. LumosCore's own trading fee is 0.2%, or 0.1% while you hold 250,000 LUMOS, and is shown on every quote. Limit orders are free."],
+
+  // ---- limit orders are free (RAZA 2026-10-08, confirming what the code would not tell me) ------
+  //
+  // Left out of the fee sentence when it was written, because feeRate() appears zero times in
+  // _dexassetdata.js and a fee claim is not something to assert from memory. Confirmed by RAZA, so
+  // it goes in.
+  //
+  // THE ANCHOR CARRIES ITS OWN CLOSING TAG, and that is what makes this safe to re-run. The pair
+  // above already rewrote this sentence in the containers, so a corrective rule has to match the
+  // NEW text -- and a replacement that contains its own search string appends on every build, which
+  // is a landmine this repo has hit before. Matching "quote.</span>" instead of "quote." means that
+  // after the edit the tag follows "free." and the search finds nothing on the next run.
+  ['shown on every quote.</span>', 'shown on every quote. Limit orders are free.</span>'],
 ];
 
 const problems = [];
