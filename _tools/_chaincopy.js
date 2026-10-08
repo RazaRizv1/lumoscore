@@ -215,6 +215,80 @@ const SUBS = [
   // The connected-account chip's network name, baked as the design's base chain. The live layer
   // rewrites it, so this is markup correctness only -- the same reason as everything above it.
   ['<span id="lcNetNameDone">Aptos</span>', '<span id="lcNetNameDone">Stellar</span>'],
+
+  // ---- the tail (RAZA 2026-10-08: "keep going on the tail") -------------------------------------
+  //
+  // Prose on /trade, and five places where the CONNECTED chain is named. Each checked in context
+  // first, because this is where the correct Aptos strings live and a careless pass does real harm.
+  //
+  // ONE CANDIDATE WAS DROPPED FOR EXACTLY THAT: data-l="Aptos" on the landing page is a label on
+  // the network MARQUEE, sitting between data-l="Hedera" and its own /assets/networks/aptos.png.
+  // That one names Aptos because Aptos is what it is, and renaming it would have put "Stellar"
+  // under the Aptos logo -- the failure this file's header exists to prevent.
+  ['place limit orders against the on-chain Aptos DEX orderbook',
+    'place limit orders against the on-chain Stellar DEX orderbook'],
+  ['Issue an asset on Aptos and list it on Aptos DEX in minutes',
+    'Issue an asset on Stellar and list it on Stellar DEX in minutes'],
+  // The connected-network chips: /dashboard's "Network: Aptos" status pill, the bridge's own chip
+  // reading "Aptos / Connected", and the bridge send-network row. All name the chain in use.
+  ['<span class="val">Aptos', '<span class="val">Stellar'],
+  ['<span class="nm">Aptos', '<span class="nm">Stellar'],
+  ['<div class="s" data-rv="sendnet">Aptos', '<div class="s" data-rv="sendnet">Stellar'],
+  // A legend item carrying an xrpl dot and an Aptos label -- the class is the honest half.
+  ['<span class="dot xrpl"></span>Aptos', '<span class="dot xrpl"></span>XRP Ledger'],
+  // An HTML comment, invisible to a reader and read by anything parsing the document.
+  ['<!-- Aptos ' + '—' + ' Trading Activity -->', '<!-- Stellar ' + '—' + ' Trading Activity -->'],
+
+  // ---- the LUMOS page's chain column, and the rewards chip ---------------------------------------
+  //
+  // Labels sitting beside a logo, on lumoscore-lumos-token and lumoscore-rewards. Every one of them
+  // is next to the SAME image -- the base64 ending CwCQAAA=, which is the Stellar mark the filter
+  // pills and the connected-chain chips also use -- so the picture was right and only the word was
+  // wrong. Checked rather than assumed: all 22 occurrences of the table anchor share that one image
+  // signature, so none of them is another chain's row.
+  //
+  // The sibling rows that DO name other chains were handled separately and correctly: the xrpl
+  // chain-pill and the xrpl legend dot both say XRP Ledger now.
+  ['alt=""></span></span> Aptos</div>', 'alt=""></span></span> Stellar</div>'],
+  ['alt=""></span> Aptos</span></td>', 'alt=""></span> Stellar</span></td>'],
+  ['/></svg> Aptos</span></td>', '/></svg> Stellar</span></td>'],
+  ['alt=""></span>Aptos', 'alt=""></span>Stellar'],
+
+  // ---- the last of the tail -----------------------------------------------------------------
+  //
+  // One more chain label beside the Stellar mark, this one on the phone's LUMOS page, where the
+  // indentation differs from its desktop twin -- which is why the desktop anchor missed it.
+  ["alt=\"\"></span>\n            </span>\n            Aptos",
+    "alt=\"\"></span>\n            </span>\n            Stellar"],
+
+  // THE REWARDS EXAMPLES DO NOT TRANSLATE ONE FOR ONE. The sentence offered two Aptos pools:
+  // "a LUMOS / NATIVE pool — LUMOS/APT on Aptos or LUMOS/aBTC on Aptos — to earn a share".
+  // Stellar's native asset is XLM, so the first example becomes LUMOS/XLM; the second named aBTC,
+  // an Aptos-wrapped BTC with no Stellar counterpart I can point at, so it is dropped rather than
+  // replaced with a pool I would be inventing. The surviving example is one this site actually
+  // promotes, and the sentence still reads as an example rather than a list.
+  ["LUMOS/APT</b> on Aptos or <b>LUMOS/aBTC</b> on Aptos",
+    "LUMOS/XLM</b> on Stellar"],
+
+  // ---- the launchpad's placeholder token -------------------------------------------------------
+  //
+  // The review and confirmation screens ship an example token called "Aptos Coin ($APT)". It is a
+  // PLACEHOLDER -- _launchpad.js overwrites every one of these with the name the user typed, via
+  // txt(document.querySelector(".result-name"), r.name||CODE) and hn.textContent=d.name -- so the
+  // words only ever reach a crawler.
+  //
+  // RENAMED, NOT RE-CHAINED. "Stellar Coin" would invent a token; the honest replacement for a
+  // placeholder is a placeholder, so it says what it is. This is the last thing on these pages
+  // still naming the wrong chain.
+  ['<h2 class="result-name">Aptos Coin', '<h2 class="result-name">Your Token'],
+  ['<div class="v">Aptos Coin', '<div class="v">Your Token'],
+  ['<h2 class="hero-name">Aptos Coin', '<h2 class="hero-name">Your Token'],
+  ['<div class="hero-name">Aptos Coin', '<div class="hero-name">Your Token'],
+  ['View Aptos Coin ($APT) Token Page', 'View Your Token ($TOKEN) Token Page'],
+
+  // The desktop LUMOS page indents this one further again, so neither earlier anchor reached it.
+  ["alt=\"\"></span>\n                  </span>\n                  Aptos",
+    "alt=\"\"></span>\n                  </span>\n                  Stellar"],
 ];
 
 const problems = [];
