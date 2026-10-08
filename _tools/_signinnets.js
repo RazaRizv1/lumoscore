@@ -43,6 +43,18 @@ const KEEP = new Set(['stellar', 'xrpl']);
 // in flat grids, which is what makes this a clean removal rather than a surgical one.
 const ATTRS = ['data-net-id', 'data-wnet'];
 
+// The SEARCH POPUP's chain filters are the same problem in a different component: one pill is
+// data-chain="hedera" labelled "Aptos (9)" -- a chain this site does not run, named after a
+// different chain it also does not run. The whole #spFilters bar is display:none, so nobody sees
+// it; a crawler still reads a filter offering Hedera assets.
+//
+// MATCHED WITH THE CLASS, NOT ON data-chain ALONE, and that distinction is the whole rule. Adding
+// "data-chain" to ATTRS above looked equivalent and is not: the attribute appears 289 times for
+// stellar on the desktop container, including inside script template literals as
+// data-chain="' + a.chain + '" and data-chain="${a.chain}". It removed nothing only because the
+// <button> guard happened to reject those -- the verification still refused the run, correctly.
+const PILL = 'class="sp-filter-pill" data-chain="';
+
 // Remove the <button> whose opening tag starts at `idx`, with its children. Scanned rather than
 // regexed: the buttons hold inline <svg> and <span> (and base64 images hundreds of characters long),
 // so a non-greedy match to the first </button> is right only by luck and a greedy one eats the grid.
@@ -75,6 +87,17 @@ function stripNets(html) {
       if (html.slice(open, m.index).indexOf('>') > -1) continue;
       hits.push({ open, net, attr });
     }
+  }
+  // the search popup's filter pills, matched on the class so no other data-chain is touched
+  let q = -1;
+  while ((q = html.indexOf(PILL, q + 1)) > -1) {
+    const vs = q + PILL.length, ve = html.indexOf('"', vs);
+    if (ve < 0) continue;
+    const net = html.slice(vs, ve);
+    if (KEEP.has(net)) continue;
+    const open = html.lastIndexOf('<button', q);
+    if (open < 0 || html.slice(open, q).indexOf('>') > -1) continue;
+    hits.push({ open, net, attr: 'sp-filter-pill' });
   }
   hits.sort((a, b) => b.open - a.open);
   let out = html, removed = 0;
@@ -110,6 +133,14 @@ for (const file of FILES) {
           counts[attr + '=' + m[1]] = (counts[attr + '=' + m[1]] || 0) + 1;
         }
       }
+      // pills counted the same way, so the post-pass check sees them too
+      let q = -1;
+      while ((q = html.indexOf(PILL, q + 1)) > -1) {
+        const vs = q + PILL.length, ve = html.indexOf('"', vs);
+        if (ve < 0) continue;
+        const k = 'sp-filter-pill=' + html.slice(vs, ve);
+        counts[k] = (counts[k] || 0) + 1;
+      }
     }
     return counts;
   };
@@ -119,7 +150,12 @@ for (const file of FILES) {
   writeContents(file, (json) => {
     for (const key of Object.keys(json)) {
       const html = String(json[key] || '');
-      if (!html || html.indexOf('data-net-id="') < 0 && html.indexOf('data-wnet="') < 0) continue;
+      // The pill pages carry NEITHER of the sign-in attributes, so a gate naming only those two
+      // skipped every one of them and the pass reported a confident 0. The gate has to admit any
+      // page the stripper knows how to act on.
+      if (!html) continue;
+      if (html.indexOf('data-net-id="') < 0 && html.indexOf('data-wnet="') < 0
+        && html.indexOf(PILL) < 0) continue;
       const { html: next, removed } = stripNets(html);
       if (removed) { json[key] = next; removedHere += removed; keysHere++; }
     }
