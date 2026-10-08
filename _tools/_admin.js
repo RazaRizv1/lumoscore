@@ -1866,6 +1866,36 @@ function paintAssets(){
     else sel.remove(); });
   var more=qa(".filter-strip .adm-btn").filter(function(b){return /more/i.test(b.textContent);})[0]; if(more)more.remove();
 
+  // ---- share card for a newly curated asset -----------------------------------------------------
+  //
+  // The two scripts and the font are about 150KB and only matter when an asset is actually added,
+  // so they are fetched on demand rather than shipped on every admin page. They are served from
+  // THIS origin -- _ogkit.js emits them into dist-admin as well as dist -- because reading the font
+  // as an ArrayBuffer cross-origin would need CORS the public site does not send.
+  function lxAdmLoad(src){
+    return new Promise(function(res,rej){
+      if(document.querySelector("script[data-lxog='"+src+"']"))return res();
+      var s=document.createElement("script"); s.src=src; s.async=true; s.setAttribute("data-lxog",src);
+      s.onload=function(){res();}; s.onerror=function(){rej(new Error("load "+src));};
+      document.head.appendChild(s);
+    });
+  }
+  function lxAdmPublishCard(kk, code, domain){
+    return lxAdmLoad("/assets/js/lx-ogkit.js")
+      .then(function(){ return lxAdmLoad("/assets/js/lx-ogcardgen.js"); })
+      .then(function(){
+        if(!window.LXOGCard)return null;
+        return window.LXOGCard.publish({
+          asset:kk, code:code, chain:"Stellar",
+          // An admin adding an asset IS the curation, so this badge is earned here -- unlike a
+          // launchpad mint, which says "Minted on LumosCore" because minting is not vetting.
+          badge:"Curated asset", domain:domain||"",
+          logo:"/lxapi/logoimg?asset="+encodeURIComponent(kk), kind:"curated"
+        });
+      })
+      .catch(function(){ return null; });
+  }
+
   qa(".admin-page-actions .adm-btn").forEach(function(b){
     if(/export/i.test(b.textContent)&&!b.__lx){ b.__lx=1; b.addEventListener("click",function(){
       var hd="list,code,issuer,domain,price_usd,change_24h,change_7d,vol_24h_usd,vol_7d_usd,vol_30d_usd,trades_7d,verified,trustlines\\n";
@@ -1912,6 +1942,16 @@ function paintAssets(){
             .then(function(z){ ok.disabled=false; ok.textContent="Verify & add";
               if(!z.ok){ er.textContent=(z.b&&(z.b.error||z.b.message))||"Could not add."; return; }
               if(z.b&&z.b.verified)VER[kk]=z.b.verified;
+              // Draw this asset's share card now, in this browser.
+              //
+              // A card can only be rasterised at build time -- satori plus a wasm rasteriser is far
+              // over the Worker bundle cap and CPU budget -- and there is no CI or cron here to
+              // redraw one out of band, so a freshly curated asset would preview as the generic
+              // trade card until the next publish. The browser can rasterise, and it draws through
+              // lx-ogkit.js, which IS _tools/_ogkit.js: the same renderer the build uses, so the two
+              // cannot drift. FIRE AND FORGET -- the asset is curated either way, and a failure here
+              // must never look like the add failed.
+              try{ lxAdmPublishCard(kk, code, (z.b&&z.b.verified&&z.b.verified.d)||""); }catch(_){}
               CUR.push({code:code,iss:iss}); DATA[kk]=undefined;
               try{ localStorage.setItem(AKEY,JSON.stringify(CUR)); }catch(_){}
               MODE="curated"; close(); tabs(); render(); kpis(); load({code:code,iss:iss});
