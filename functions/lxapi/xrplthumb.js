@@ -11,6 +11,7 @@
 // for one, so this is the highest-volume endpoint in the project by a wide margin.
 
 import { tokenId } from './_tokenid.js';
+import { tokenIconUrl } from './xrpltoml.js';
 
 const UP = 'https://api.xrpl.to/api/thumb/';
 const TTL = 604800;                    // a week; logos do not move
@@ -33,7 +34,10 @@ const SIZES = [16, 32, 40, 48, 64, 96, 128];
 // Bumped to walk away from poisoned entries. The LUMOS branch cached an Access login page as a PNG on every gated
 // hostname, with a week's immutable TTL, and nothing a visitor can do shifts a bad answer sitting in the colo's cache
 // — see [never cache a failure as an answer]. A new key is the only cheap way out.
-const CACHEV = '2';
+// Bumped with the thin-image fallback: SOLO's near-black 150-byte webp is already sitting in the
+// edge cache for a week under v2, and a fix nobody can see because the bad answer is cached is not
+// a fix.
+const CACHEV = '5';
 
 // The eight-byte PNG signature. Cheap, exact, and the one thing that would have caught the Access page.
 const PNG_SIG = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
@@ -185,6 +189,53 @@ export async function onRequest(context) {
         headers: { 'content-type': 'text/plain', 'cache-control': 'public, max-age=' + BRK_TTL },
       })));
     }
+    // NO THUMBNAIL UPSTREAM IS NOT NO LOGO — the issuer may publish one in its own toml.
+    //
+    // RAZA 2026-10-07: "the logo will be taken from firstledger's toml since army was minted on
+    // firstledger so they must be maintaining its toml somewhere". It is: ARMY's [[TOKENS]] block
+    // carries `icon = https://ipfs.firstledger.net/ipfs/Qm…`. This is also the only place a token
+    // minted minutes ago can have artwork at all, since xrpl.to has not indexed it yet — which
+    // includes every token this launchpad issues.
+    //
+    // A FALLBACK, NOT THE PRIMARY SOURCE, and that is a cost decision. Reading a toml means
+    // resolving the issuer's Domain and fetching a file from its host; doing that FIRST would add
+    // two hops to every logo in every table, against an upstream that rate-limits. xrpl.to answers
+    // for everything it has indexed in one cached call, so the toml is consulted only where that
+    // comes back empty.
+    //
+    // Fetched HERE and streamed, never handed to the browser as a src: the url is a string an
+    // anonymous account chose, so the issuer's host never sees a visitor's address, and the bytes
+    // are type-checked below exactly as the upstream's are.
+    const tIss = (url.searchParams.get('iss') || '').trim();
+    const tCur = (url.searchParams.get('cur') || '').trim();
+    if ((upstream.status === 404 || upstream.status === 401) && tIss && tCur) {
+      const icon = await tokenIconUrl(tIss, tCur, url.origin, context);
+      if (icon) {
+        try {
+          const ac2 = new AbortController();
+          const t2 = setTimeout(() => ac2.abort(), 5000);
+          const img = await fetch(icon, { headers: { accept: 'image/*' }, signal: ac2.signal, redirect: 'follow' });
+          clearTimeout(t2);
+          const ct = (img.headers.get('content-type') || '').toLowerCase();
+          if (img.ok && ct.indexOf('image/') === 0 && ct.indexOf('svg') < 0) {
+            const bytes = await img.arrayBuffer();
+            // A logo is small. Anything larger is either not a logo or is meant to cost us.
+            if (bytes.byteLength && bytes.byteLength <= 512 * 1024) {
+              const tomlRes = new Response(bytes, {
+                headers: {
+                  'content-type': ct,
+                  'cache-control': 'public, max-age=' + TTL,
+                  'access-control-allow-origin': '*',
+                  'x-lxsrc': 'toml',
+                },
+              });
+              context.waitUntil(cache.put(key, tomlRes.clone()));
+              return tomlRes;
+            }
+          }
+        } catch (e) { /* the issuer's host is not ours to depend on */ }
+      }
+    }
     return new Response('no logo', {
       status: upstream.status === 401 ? 404 : upstream.status,
       headers: { 'cache-control': upstream.status === 404 || upstream.status === 401 ? 'public, max-age=600' : 'no-store' },
@@ -192,13 +243,157 @@ export async function onRequest(context) {
   }
 
   const body = await upstream.arrayBuffer();
-  const res = new Response(body, {
+
+  // A 200 FROM THE UPSTREAM IS NOT PROOF OF A LOGO (RAZA 2026-10-08: "Why is SOLO asset on XRPL
+  // showing incorrectly everywhere. Its logo is different").
+  //
+  // xrpl.to answers for SOLO with a perfectly valid 64x64 webp of 150 bytes which is almost entirely
+  // black with a yellow-green speck in the middle. Decoded pixel by pixel on the deployed build: 100%
+  // opaque, every colour from rgb(16,16,16) up, centre pixel rgb(207,244,31) — which is exactly the
+  // dot in the screenshot. We were asking for the right token (the md5 recomputes from
+  // issuer_currencyHex and matches what our own search returns) and proxying it faithfully. The
+  // artwork upstream is simply wrong, and because it arrives as a 200 the fallbacks below — which
+  // only ever fired on 404 and 401 — never got a chance to find the real one.
+  //
+  // THE FLOOR IS MEASURED, NOT GUESSED. Across sixteen of the busiest tokens at w=64 the smallest
+  // REAL logo was 328 bytes (Equilibrium) and typical ones run 600-2000, against SOLO's 150; at
+  // w=32 and w=128 SOLO came in at 124 and 268. `w * 4` sits between the two at every width this
+  // endpoint serves, and a false positive is cheap — the replacement is still that token's own
+  // published artwork, so the worst case is a different CORRECT logo, never a wrong one.
+  if (body.byteLength >= w * 4) {
+    const res = new Response(body, {
+      headers: {
+        'content-type': upstream.headers.get('content-type') || 'image/webp',
+        'cache-control': 'public, max-age=' + TTL + ', immutable',
+        'access-control-allow-origin': '*',
+      },
+    });
+    context.waitUntil(cache.put(key, res.clone()));
+    return res;
+  }
+
+  // THE ID IS ENOUGH; THE CALLERS DO NOT HAVE TO CHANGE. An md5 is one-way, so the toml and
+  // XRPLMeta lookups below need the issuer and currency it was made from — and almost every caller
+  // sends only `id`, which is why the existing 404 toml fallback has been largely unreachable from
+  // the pool and trade tables. xrpl.to's own token endpoint maps the id straight back, using the
+  // same upstream and key this file already holds, so one extra call on the rare thin image fixes
+  // every caller at once. Asked for directly rather than through our own /lxapi/xrpltoken: a worker
+  // fetching its own hostname meets Cloudflare Access on the gated alias and gets a login page
+  // with a 200 on it, which is the trap documented for env.ASSETS above.
+  let bIss = (url.searchParams.get('iss') || '').trim();
+  let bCur = (url.searchParams.get('cur') || '').trim();
+  if (!bIss || !bCur) {
+    try {
+      const ac = new AbortController();
+      const t = setTimeout(() => ac.abort(), 4000);
+      const meta = await fetch('https://api.xrpl.to/api/token/' + encodeURIComponent(id),
+        { headers: { accept: 'application/json', 'user-agent': headers['user-agent'], ...(headers['x-api-key'] ? { 'x-api-key': headers['x-api-key'] } : {}) }, signal: ac.signal });
+      clearTimeout(t);
+      if (meta.ok) {
+        const j = await meta.json();
+        const tok = (j && (j.token || j)) || {};
+        if (!bIss && typeof tok.issuer === 'string') bIss = tok.issuer.trim();
+        if (!bCur && typeof tok.currency === 'string') bCur = tok.currency.trim();
+      }
+    } catch (e) { /* without it the upstream's own bytes still go out below */ }
+  }
+  const better = (bIss && bCur) ? await betterIcon(bIss, bCur, url.origin, context) : null;
+  if (better) {
+    context.waitUntil(cache.put(key, better.clone()));
+    return better;
+  }
+
+  // BELOW A CERTAIN POINT THERE IS NO IMAGE TO DEFEND, so say 404 and let the page draw its letter.
+  // DIPX's upstream logo is a 70-byte 64x64 square that is 100% pure black, and XRPLMeta's copy for
+  // it is a 458x344 rectangle that is also entirely black — there is no artwork for this token
+  // anywhere, and painting a black disc in a row of logos reads as a broken image, while the letter
+  // the page already draws on a 404 reads as a token without a logo, which is the truth.
+  //
+  // A SEPARATE, MUCH LOWER BAR than the one that goes looking for a better source. Trying another
+  // source costs nothing if it fails, so that threshold can sit high; discarding the only image
+  // there is cannot be undone by the page, so this one is half of it — well under the 322 bytes of
+  // the smallest real logo measured across the top hundred tokens.
+  if (body.byteLength < w * 2) {
+    return new Response('no logo', {
+      status: 404,
+      headers: { 'cache-control': 'public, max-age=600', 'x-lxsrc': 'blank' },
+    });
+  }
+
+  // Otherwise the upstream's own bytes still go out: a poor logo beats an empty slot.
+  //
+  // AND THIS ONE IS NOT STORED. The cache key is the id and the width, not the query that produced
+  // it, so caching a thin image fetched by a caller that sent no iss/cur would serve that same thin
+  // image to every later caller that DID send them — the fix would work once and then be cached
+  // out of existence. A short browser max-age keeps a list of sixty rows from re-asking, without
+  // putting the poor answer where the good one belongs.
+  return new Response(body, {
     headers: {
       'content-type': upstream.headers.get('content-type') || 'image/webp',
-      'cache-control': 'public, max-age=' + TTL + ', immutable',
+      'cache-control': 'public, max-age=300',
       'access-control-allow-origin': '*',
+      'x-lxsrc': 'upstream-thin',
     },
   });
-  context.waitUntil(cache.put(key, res.clone()));
-  return res;
+}
+
+// The issuer's own toml first, then XRPLMeta — the two sources this build already trusts for a
+// token's identity, in the order that prefers what the issuer publishes about itself. XRPLMeta is
+// what actually rescues SOLO: it carries the real 100x100 red mark, and this build already reads it
+// for descriptions, with attribution.
+//
+// Fetched here and streamed rather than handed to the browser as a src, exactly as the 404 path
+// does: these urls are strings someone else chose, so a visitor's address never reaches them, and
+// the bytes are type- and size-checked before they are called an image.
+async function betterIcon(iss, cur, origin, context) {
+  const urls = [];
+  try {
+    const own = await tokenIconUrl(iss, cur, origin, context);
+    if (own) urls.push(own);
+  } catch (e) { /* the issuer's host is not ours to depend on */ }
+  try {
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 4000);
+    const m = await fetch('https://s1.xrplmeta.org/token/' + encodeURIComponent(cur) + ':' + encodeURIComponent(iss),
+      { headers: { accept: 'application/json' }, signal: ac.signal });
+    clearTimeout(t);
+    if (m.ok) {
+      const j = await m.json();
+      const ic = j && j.meta && j.meta.token && j.meta.token.icon;
+      if (typeof ic === 'string' && /^https:\/\//i.test(ic) && ic.length <= 500) urls.push(ic);
+    }
+  } catch (e) { /* XRPLMeta is a convenience, never a dependency */ }
+
+  for (const u of urls) {
+    try {
+      const ac2 = new AbortController();
+      const t2 = setTimeout(() => ac2.abort(), 5000);
+      const img = await fetch(u, { headers: { accept: 'image/*' }, signal: ac2.signal, redirect: 'follow' });
+      clearTimeout(t2);
+      const ct = (img.headers.get('content-type') || '').toLowerCase();
+      if (!img.ok || ct.indexOf('image/') !== 0 || ct.indexOf('svg') >= 0) continue;
+      const bytes = await img.arrayBuffer();
+      // Big enough to be artwork, small enough not to be a payload aimed at us.
+      if (!bytes.byteLength || bytes.byteLength > 512 * 1024) continue;
+      // AND THE REPLACEMENT HAS TO BE BETTER THAN WHAT IT REPLACES. Caught by sweeping the pools:
+      // DIPX's icon here is a 458x344 image that is ENTIRELY BLACK — rgb(0,0,0) and rgb(1,1,1), no
+      // transparency — and a uniform image compresses to almost nothing, so it slipped under a floor
+      // meant to catch thin files. It is served at natural size, not 64px, so the bar is higher than
+      // the one upstairs: real artwork at its own resolution is kilobytes (SOLO's is 9.9 KB), while
+      // a flat rectangle is a few hundred bytes whatever its dimensions.
+      //
+      // Erring high is the safe direction. Rejecting a good replacement only leaves the upstream
+      // image we would have shown anyway; accepting a bad one puts a black box on the page.
+      if (bytes.byteLength < 1200) continue;
+      return new Response(bytes, {
+        headers: {
+          'content-type': ct,
+          'cache-control': 'public, max-age=' + TTL,
+          'access-control-allow-origin': '*',
+          'x-lxsrc': 'better',
+        },
+      });
+    } catch (e) { /* try the next source */ }
+  }
+  return null;
 }

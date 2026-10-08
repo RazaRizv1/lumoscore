@@ -18,7 +18,14 @@
 // spent. Ripple's own public nodes answer normally from here; both are listed so one being down is not an outage.
 const RPCS = ['https://s1.ripple.com:51234/', 'https://s2.ripple.com:51234/', 'https://xrplcluster.com/'];
 const TTL = 300;
-const MAX_PAGES = 5;               // 400 lines a page: a pool with more than 2,000 providers reports what it counted
+// 400 lines a page, and a pool past this reports what it counted with `complete:false` — which both
+// callers now treat as "keep the upstream figure" rather than show a floor.
+//
+// RAISED FROM 5 TO 10 (RAZA 2026-10-08: "yes make it exact on the visible rows"). At 2,000 lines the
+// two busiest pools on the first page, XRP/MAG and XRP/XPM, were truncating and so kept a count that
+// is one or two out; 4,000 covers them. The cost lands only on pools that big — the overwhelming
+// majority answer in a single call — and the result is cached at the edge for TTL either way.
+const MAX_PAGES = 10;
 
 const json = (body, secs) => new Response(JSON.stringify(body), {
   headers: {
@@ -58,7 +65,7 @@ export async function onRequest(context) {
   if (!/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(acct)) return json({ ok: false, error: 'bad account' }, 300);
 
   const cache = caches.default;
-  const key = new Request(url.origin + url.pathname + '?v=1&acct=' + acct, request);
+  const key = new Request(url.origin + url.pathname + '?v=2&acct=' + acct, request);
   const hit = await cache.match(key);
   if (hit) return hit;
 

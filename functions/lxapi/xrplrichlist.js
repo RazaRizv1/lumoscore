@@ -38,7 +38,7 @@ export async function onRequest(context) {
   // Paging past the first hundred holders (the pool page's Participants list). Bounded, and an integer.
   const start = Math.min(10000, Math.max(0, parseInt(url.searchParams.get('start') || '0', 10) || 0));
 
-  const CACHE_V = '1';
+  const CACHE_V = '2';
   const cache = caches.default;
   const key = new Request(url.origin + url.pathname + '?v=' + CACHE_V + '&id=' + id + '&n=' + limit + '&start=' + start, request);
   const hit = await cache.match(key);
@@ -69,12 +69,33 @@ export async function onRequest(context) {
       name: String(h.name || ''),
     })).filter((h) => h.account && h.balance != null);
 
+    // A TRUSTLINE IS NOT A HOLDING (RAZA 2026-10-08: "its showing different count on Pools main page
+    // participants column and then inside its showing different on participants box").
+    //
+    // Measured on rpREX8e8asAiG5vqxYmuDMvNKp2i96vWwA, straight from the ledger: the LP token has 13
+    // trustlines and exactly 3 of them carry a balance of zero, so there are 10 liquidity providers.
+    // The pools table said 10 and this box said 13, and the detail page showed BOTH — 10 from the
+    // pool row, then 13 once the richlist landed and overwrote it. Upstream's `length` counts lines;
+    // someone who withdrew everything keeps the line and is not a provider any more.
+    //
+    // It is the same distinction the LUMOS token page already had to make between holders and
+    // trustlines, and a zero row is worth nothing on either page: it renders as a 0.00% participant.
+    const kept = rows.filter((h) => h.balance > 0);
+    const dropped = rows.length - kept.length;
+    // Exact when this page held the whole list, which is every AMM pool — those have tens of
+    // providers, not thousands. Past that the upstream total is corrected by what was actually seen,
+    // which can still overcount further pages but never reports fewer than it is showing.
+    const whole = start === 0 && rows.length < limit;
+    const upstreamTotal = num(j && j.length);
+    const realTotal = whole ? kept.length
+      : Math.max(kept.length, (upstreamTotal == null ? kept.length : upstreamTotal - dropped));
+
     const s = (j && j.summary) || {};
     out = {
       ok: true,
-      total: num(j && j.length),            // every holder, not just the page returned
+      total: realTotal,                     // holders with a balance, not trustlines
       summary: { top10: num(s.top10Hold), top50: num(s.top50Hold), frozen: num(s.frozen) },
-      start, count: rows.length, rows,
+      start, count: kept.length, rows: kept,
       src: 'xrpl.to', attribution: 'Data by xrpl.to', attributionUrl: 'https://xrpl.to',
     };
   } catch (e) {

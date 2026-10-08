@@ -57,7 +57,27 @@ function side(a, amount) {
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
-  const n = Math.min(100, Math.max(1, parseInt(url.searchParams.get('n') || '50', 10) || 50));
+  // HOW MANY POOLS THE RANKING IS DRAWN FROM. The ceiling used to be 100, which is the UPSTREAM's
+  // per-request limit, not a limit on what we can rank — so the Pools page ranked 100 of the
+  // ledger's 31,318 active pools and the table's own badge said so (RAZA 2026-10-07).
+  //
+  // The upstream caps `limit` at 100 and ignores `skip`, but it honours `page`, so more is a matter
+  // of asking repeatedly. PAGES is bounded at 10 deliberately: ten subrequests sits well inside the
+  // Workers ceiling, and the measured volume curve means the eleventh page would add nothing a
+  // reader would see. Fetching all 314 pages per visitor is not an option — the upstream rate-limits
+  // long before that, which this investigation triggered.
+  const MAX_ROWS = 1000;
+  const PER = 100;
+  const n = Math.min(MAX_ROWS, Math.max(1, parseInt(url.searchParams.get('n') || '50', 10) || 50));
+
+  // WHERE IN THE RANKING TO START, so a caller can walk past MAX_ROWS without this function ever
+  // making more than ten upstream calls in one request.
+  //
+  // 1000 per call is not an arbitrary bound: 10,000 rows would be 100 upstream pages, and a Worker
+  // on the free plan gets 50 subrequests and 10ms of CPU. A single request asking for all of them
+  // fails at page 51. So depth is the CLIENT's to accumulate — ten calls of a thousand — and each
+  // call stays well inside the limits and is edge-cached on its own key.
+  const p0 = Math.min(1000, Math.max(1, parseInt(url.searchParams.get('p0') || '1', 10) || 1));
 
   // Optional: restrict to pools where one side is issued by this account. The upstream honours
   // `issuer` on /amm and narrows 30,648 pools to the 22 holding LUMOS -- which is the only way to
@@ -71,15 +91,48 @@ export async function onRequest(context) {
   const issuer = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(issuerRaw) ? issuerRaw : '';
 
   const cache = caches.default;
-  const key = new Request(url.origin + url.pathname + '?n=' + n + '&issuer=' + issuer, request);
+  // p0 BELONGS IN THE KEY. Without it every batch of a walk collides on one cache entry, and
+  // batches 2..10 would be served batch 1's rows — a thousand duplicates presented as ten thousand
+  // pools, which looks like it worked.
+  const key = new Request(url.origin + url.pathname + '?n=' + n + '&p0=' + p0 + '&issuer=' + issuer, request);
   const hit = await cache.match(key);
   if (hit) return hit;
 
   let out;
   try {
-    const r = await upstream('/amm?limit=' + n + '&sort=volume&status=active'
-      + (issuer ? '&issuer=' + encodeURIComponent(issuer) : ''), env);
-    const rows = ((r && r.pools) || []).map((p) => {
+    // THE SORT KEY WAS WRONG, and that mattered more than the row cap.
+    //
+    // This asked for `sort=volume`, and the upstream does not order by the 24h volume we render
+    // under it: measured on our own response, the first five rows came back 156223, 8385, 7193,
+    // 17361, 21612 — not descending by anything on screen. So "the top 100 pools" were an
+    // ARBITRARY 100 of 31,318, and the page then sorted those 100 by liquidity, which is how a
+    // pool with real volume could be missing from a table claiming to rank by it.
+    //
+    // `sort=volume24h` is the key that works. Verified: strictly descending within a page and
+    // continuous across pages (page 1 ended at 58, page 2 opened at 57). So now the upstream does
+    // the "consider every pool" part across all 31,318 and hands back the genuine head of the list.
+    const q = (page) => '/amm?limit=' + PER + '&sort=volume24h&status=active'
+      + (page > 1 ? '&page=' + page : '')
+      + (issuer ? '&issuer=' + encodeURIComponent(issuer) : '');
+
+    const first = await upstream(q(p0), env);
+    const pools = ((first && first.pools) || []).slice();
+    // Sequential, not parallel: the upstream 429s readily, and `upstream()` backs off per call.
+    // Stops early on a short page, which is what makes the `issuer` filter cost ONE request for a
+    // typical issuer — the reason an exhaustive per-asset search is affordable at all.
+    let pagesRead = 1;
+    for (let i = 1; pools.length < n && i < Math.ceil(n / PER); i++) {
+      if ((first.pools || []).length < PER) break;      // the first page was already short
+      const more = await upstream(q(p0 + i), env);
+      const batch = (more && more.pools) || [];
+      pagesRead++;
+      if (!batch.length) break;
+      pools.push(...batch);
+      if (batch.length < PER) break;
+    }
+
+    const r = first;
+    const rows = pools.slice(0, n).map((p) => {
       const a = p.apy24h || {};
       return {
         id: String(p._id || ''),
@@ -108,7 +161,11 @@ export async function onRequest(context) {
     // which is wrong by four orders of magnitude. Dropped rather than relabelled: a filtered
     // summary is not something this response can honestly supply.
     out = {
+      // `more` is what lets a caller walk the ranking without guessing: a full batch means the next
+      // one is worth asking for, a short one means the list ran out. `p0`/`nextP0` are echoed so a
+      // client loop never has to track page arithmetic itself.
       ok: true, count: rows.length, total: num(r && r.total),
+      p0, nextP0: p0 + pagesRead, more: rows.length >= n,
       filteredBy: issuer || null,
       summary: issuer ? null : {
         liquidity: num(s.totalLiquidity),
@@ -123,7 +180,18 @@ export async function onRequest(context) {
     return json({ ok: false, error: String((e && e.message) || e), rows: [] }, 30);
   }
 
-  const res = json(out, TTL);
+  // THE DEEP BATCHES ARE CACHED FOR LONGER, which is what makes a 10,000-row walk reachable at all.
+  //
+  // Measured 2026-10-07: a cold walk asks for ten batches, each costing ten upstream calls, and the
+  // upstream 429s partway — the diagnostic on the page reported "upstream refused (upstream 429)" at
+  // p0=21, so the table settled at 2,000 of the 10,000 it was asked for. At a flat 120s every batch
+  // expired before the next visitor arrived and the whole hundred calls were paid again.
+  //
+  // The head of the ranking is what moves: it is ordered by 24h volume, and the top pools re-order
+  // within minutes. Rows past the first thousand are the long tail — pools whose volume barely
+  // changes — so a short TTL there buys freshness nobody can see and spends the rate limit that the
+  // depth itself needs. The head keeps its 120s.
+  const res = json(out, p0 > 1 ? 900 : TTL);
   context.waitUntil(cache.put(key, res.clone()));
   return res;
 }
