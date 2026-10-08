@@ -1008,7 +1008,15 @@ const SECTION_CARD = {
   '/pools': 'pools',
   '/pools/stellar': 'pools-stellar',
   '/pools/xrpl': 'pools-xrpl',
+  '/bridge': 'bridge',
+  '/bridge/stellar': 'bridge-stellar',
+  '/bridge/xrpl': 'bridge-xrpl',
 };
+
+// The card for everything with no better answer: the docs, the legal pages, the footer links, a
+// blog post published without a cover. It names the product and the two chains and claims nothing
+// else, because it has to stay true of every page that falls back to it.
+const GENERAL_CARD = '/assets/og/s/general.png';
 
 // A 1200x630 card: the asset's logo padded onto the brand background. Built through Cloudflare's
 // resizing, whose source must be on this zone -- hence /lxapi/logoimg re-serving foreign logos.
@@ -1497,6 +1505,14 @@ export async function onRequest(context){
   if (!seo && SECTION_CARD[canonPath]) {
     seo = { title: '', desc: '', image: '/assets/og/s/' + SECTION_CARD[canonPath] + '.png', imageOnly: true };
   }
+
+  // NOTHING SHIPS WITHOUT A CARD. Every branch above that leaves the image empty -- a hub with no
+  // card of its own, a blog post published without a cover, and every route that has no branch at
+  // all -- falls back to the general one here, rather than each route having to be listed. A page
+  // with no og:image unfurls as a bare line of text, which is the thing this whole exercise is
+  // about; a correct, branded, generic picture beats that everywhere.
+  if (!seo) seo = { title: '', desc: '', image: GENERAL_CARD, imageOnly: true };
+  else if (!seo.image) seo.image = GENERAL_CARD;
 
   const head = [
     '<link rel="canonical" href="' + esc(canonical) + '">',

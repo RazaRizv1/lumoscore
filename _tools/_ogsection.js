@@ -54,6 +54,21 @@ async function stellarLogo(id) {
   } catch (e) { return ''; }
 }
 
+// Read a logo that already ships in dist rather than fetching it. The network marks and the
+// LumosCore mark are ours and are sitting right there; going over the wire for them would make the
+// card build depend on a host being up to draw a picture we already have.
+async function localLogo(rel) {
+  try {
+    const p = path.join(__dirname, '..', 'dist', 'assets', rel);
+    if (!fs.existsSync(p)) return '';
+    const b = fs.readFileSync(p);
+    const ext = path.extname(p).toLowerCase();
+    if (ext === '.png') return 'data:image/png;base64,' + b.toString('base64');
+    if (ext === '.jpg' || ext === '.jpeg') return 'data:image/jpeg;base64,' + b.toString('base64');
+    return await K.toPng(b);                       // webp and friends: resvg cannot decode them
+  } catch (e) { return ''; }
+}
+
 // The asset-card panel: one logo, centred. Used for the one XRPL asset that gets a card of its own.
 function panelSingle(uri, code) {
   const IX = K.PX + K.PAD, IY = K.PY + K.PAD, IR = Math.round(K.INNER * 0.25);
@@ -126,7 +141,50 @@ function panelGrid(items, kind) {
   // rather than from xrpl.to, whose thumbnails cap at 128px and would be upscaled here.
   const lumosLogo = await stellarLogo('LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S');
 
+  // Destination networks for the bridge panels, read out of dist. These are the corridors each
+  // chain actually has, not a decorative selection: Stellar bridges USDC through Circle CCTP and
+  // tokens through LayerZero and NEAR Intents; the XRP Ledger goes out through NEAR Intents, Axelar
+  // and THORChain, which is what puts Bitcoin on its side and not on Stellar's.
+  const bridgeS = [];
+  for (const n of ['ethereum.png', 'base.png', 'arbitrum.png', 'solana.png']) {
+    const uri = await localLogo('networks/' + n); bridgeS.push(uri ? { uri } : null);
+  }
+  const bridgeX = [];
+  for (const n of ['ethereum.png', 'base.png', 'solana.png', 'bitcoin.png']) {
+    const uri = await localLogo('networks/' + n); bridgeX.push(uri ? { uri } : null);
+  }
+  const lumosMark = await localLogo('tokens/lumos.png');
+
   const CARDS = [
+    // THE GENERAL CARD. Everything the middleware has no better answer for lands here -- the docs,
+    // the legal pages, the footer links, a blog post with no cover. It names the product and the two
+    // chains and claims nothing else, because it has to be true of every page that uses it.
+    ['general', {
+      row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
+      headline: 'LumosCore', accent: 'Trade, pool and bridge',
+      features: 'Non-custodial · On-chain',
+      grid: panelSingle(lumosMark, 'LC'),
+    }],
+    ['bridge', {
+      row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
+      headline: 'Bridge', accent: 'Move assets between networks',
+      features: 'Choose a network · Non-custodial',
+      grid: panelGrid([{ chain: 'Stellar' }, { chain: 'XRPL' }], 'pair'),
+    }],
+    ['bridge-stellar', {
+      row: K.metaRow([{ chain: 'Stellar' }, { text: 'Non-custodial' }]).svg,
+      headline: 'Stellar Bridge', accent: 'Bridge on LumosCore',
+      // The routes themselves, which do not go stale between builds -- unlike the chain COUNT the
+      // page title carries, which moves whenever a corridor is added.
+      features: 'Circle CCTP · LayerZero · NEAR Intents',
+      grid: panelGrid(bridgeS, 'quad'),
+    }],
+    ['bridge-xrpl', {
+      row: K.metaRow([{ chain: 'XRPL' }, { text: 'Non-custodial' }]).svg,
+      headline: 'XRP Ledger Bridge', accent: 'Bridge on LumosCore',
+      features: 'NEAR Intents · Axelar · THORChain',
+      grid: panelGrid(bridgeX, 'quad'),
+    }],
     ['asset-lumos-xrpl', {
       row: K.metaRow([{ chain: 'XRPL' }, { check: 'LumosCore token' }, { text: 'lumoscore.com' }]).svg,
       headline: 'LUMOS', accent: 'Trade on LumosCore',
