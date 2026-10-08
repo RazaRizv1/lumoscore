@@ -1848,5 +1848,19 @@ if(adminOnly && list.length>1){ console.error('--admin builds one version; pass 
 for(const c of list){
   const r = build(c, SRC, OUT, atRoot, adminOnly);
   console.log(r.chain.padEnd(11), 'pages:'+r.total, (r.purged?('purged '+r.purged+' stale admin page(s)  '):''), '->', r.dir);
+
+  // The browser card kit travels with EVERY build, public or admin.
+  //
+  // The launchpad and the admin panel both load /assets/js/lx-ogkit.js on demand to draw a card the
+  // moment an asset is minted or curated. Emitting it only from _ogsection.js meant an admin-only
+  // build shipped the hook without the scripts it loads -- a 404 at exactly the moment it matters,
+  // and silent, because the publish is deliberately fire-and-forget. Doing it here ties the kit to
+  // the build that serves it instead of to a card script someone may not have run.
+  try {
+    const emitted = require('./_ogkit.js').emitBrowser();
+    if (emitted.length) console.log('            card kit:', emitted.join(' '));
+  } catch (e) {
+    console.error('            card kit NOT emitted: ' + e.message);
+  }
 }
 if(!adminOnly) console.log('admin pages excluded from the public build \u2014 build them with: node _tools/extract_site.js '+(target||'aptos')+' --admin');
