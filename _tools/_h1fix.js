@@ -29,13 +29,26 @@ const CSS = '<style id="lx-h1-css">'
 const NEEDS_H1 = {
   'lumoscore-home': 'LumosCore dashboard',
   'lumoscore-wallet': 'Your Stellar wallet',
+  // Two more found the same way (RAZA 2026-10-08, after the duplicate-h1 sweep): once every page
+  // with TWO h1s was down to one, these six built files — three variants each — were left with NONE.
+  // Both state their subject in <title> and nowhere a crawler reads as the heading.
+  'lumoscore-amm-pool': 'Stellar liquidity pool',
+  'lumoscore-signin': 'Sign in to LumosCore',
 };
+
+// WHERE THE HIDDEN HEADING GOES. <main> first, because that is the element whose job this is — but
+// the sign-in page HAS NO <main>: it is a backdrop plus `.stage > .sheet` holding the step sections.
+// The original single-anchor version found nothing there and skipped the page in silence, reporting
+// a success line either way, which is exactly the failure mode the dev guide warns about for the
+// transforms that no-op without --write. Each fallback below was read off the built page it serves.
+const ANCHORS = [/<main[^>]*>/, /<div class="sheet">/, /<body[^>]*>/];
 
 function baseKey(key) {
   return key.replace(/\.html$/, '').replace(/-(dark|light|mobile)$/, '');
 }
 
 let added = 0, demoted = 0, styled = 0;
+const missing = [];
 for (const dev of ['desktop', 'mobile']) {
   const file = 'lumoscore-aptos-' + dev + '.html';
   let data; try { data = read(file); } catch (e) { continue; }
@@ -63,12 +76,18 @@ for (const dev of ['desktop', 'mobile']) {
     // ---- the missing ones ----
     const title = NEEDS_H1[base];
     if (title && h.indexOf('class="lx-srh1"') < 0) {
-      const m = h.match(/<main[^>]*>/);
-      if (m) {
+      let placed = false;
+      for (const re of ANCHORS) {
+        const m = h.match(re);
+        if (!m) continue;
         const at = h.indexOf(m[0]) + m[0].length;
         h = h.slice(0, at) + '<h1 class="lx-srh1">' + title + '</h1>' + h.slice(at);
-        added++;
+        added++; placed = true;
+        break;
       }
+      // Say so rather than pass. A page listed here and left without its heading is the bug this
+      // transform exists to fix, and it must not report success while leaving it in place.
+      if (!placed) missing.push(key);
     }
 
     // the stylesheet only goes where the hidden heading actually is
@@ -85,5 +104,6 @@ for (const dev of ['desktop', 'mobile']) {
     fs.writeFileSync(file, data.slice(0, s) + ser + data.slice(e), 'utf8');
   }
 }
+if (missing.length) { console.error('h1 fix: NO ANCHOR on -> ' + missing.join(', ')); process.exit(1); }
 console.log('h1 fix: ' + added + ' heading(s) added, ' + demoted + ' duplicate(s) demoted to h2, '
   + styled + ' stylesheet(s) injected');

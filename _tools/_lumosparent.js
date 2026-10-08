@@ -205,7 +205,21 @@ function cardHTML(n) {
 function viewHTML(hub) {
   return '<section class="lx-lp">'
     + '<div class="lx-lp-head">'
-    + '<h1 class="lx-lp-h">' + hub.h1 + '</h1>'
+    // h2, NOT h1 — AND IT UNDID _h1fix.js UNTIL IT WAS (RAZA 2026-10-08, approving the fix).
+    //
+    // _h1fix.js exists to leave exactly one h1 per page, and it demotes `<h1 class="lx-lp-h">` to h2
+    // for the stated reason that the chooser heading "was never the page title". This line emitted it
+    // as an h1 again, so whichever of the two ran last decided the result — and the shipped build had
+    // BOTH: `<h1 class="lx-lp-h">Trade</h1>` beside `<h1>Explore the <em>Aptos</em> DEX</h1>`, on all
+    // six hubs (Trade, Pools, Bridge, Rewards, Launchpad, LUMOS) across desktop, dark and mobile.
+    // Eighteen built files, two h1s each, which means neither states the subject.
+    //
+    // NOTHING MOVES ON SCREEN. Every rule for this heading is keyed to the class — `.lx-lp-h{font:800
+    // clamp(34px,4vw,46px)…}` and the 640px override — and there is no `h1` type selector anywhere in
+    // this layer, so the tag carries no styling. The hero keeps the page's only h1 on both routes this
+    // file serves (/trade the chooser, /trade/stellar the page), which is the half of the problem a
+    // static demotion can actually solve.
+    + '<h2 class="lx-lp-h">' + hub.h1 + '</h2>'
     + '<p class="lx-lp-sub">' + hub.sub + '</p>'
     + '</div>'
     + '<div class="lx-lp-grid">' + netsFor(hub).map(cardHTML).join('') + '</div>'
