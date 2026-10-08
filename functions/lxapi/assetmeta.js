@@ -21,8 +21,44 @@ const META = 'asset:';
 // rebuilds it -- so keeping it beside the list rather than inside each record costs one read to paint
 // the table instead of one per asset.
 const VMAP = 'assets:verified';
-const ASSET_RE = /^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$/;
+// AN ASSET ID ON EITHER LEDGER (RAZA 2026-10-07: "Just integrate XRPL on admin. dont reinvent
+// anything"). The XRPL side gets no second endpoint and no second page: this is CRUD over an id, the
+// admin UI already does it, and the only thing that was Stellar-shaped was this check.
+//
+// XRPL ids differ in both halves. The issuer is an r-address, and the currency is either a short
+// code or a 40-character hex blob — "LUMOS" travels as 4C554D4F53 padded to 40, so the 12-character
+// Stellar limit would have rejected the very tokens this is for. The two forms are kept as separate
+// alternatives rather than one loosened pattern, so a Stellar id is still held to Stellar's rules.
+const ASSET_RE = /^(?:[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}|[A-Za-z0-9]{1,40}-r[1-9A-HJ-NP-Za-km-z]{24,34})$/;
+// SPLIT_RE stays STELLAR-ONLY on purpose. Its only callers verify against a stellar.toml, and both
+// already treat a non-match as "nothing to verify" — so an XRPL id flows through them untouched
+// instead of being handed to a Stellar handshake that cannot mean anything for it.
 const SPLIT_RE = /^([A-Za-z0-9]{1,12})-(G[A-Z2-7]{55})$/;
+const XRPL_RE = /-r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
+const isXrpl = (a) => XRPL_RE.test(String(a || ''));
+// The one key xrp-ledger.toml.js reads, and the one xrplmintmeta.js writes on a fresh mint. An admin
+// edit lands in the same place, so a hand-corrected token and a self-published one are the same
+// record downstream — which is the shape mintmeta.js already argues for on the Stellar side.
+const LIVE_XRPL = 'mintmeta:xrpl';
+
+// Keep that map in step with an admin edit. Only the three fields the toml publishes; everything
+// else about the asset stays in its own record.
+async function syncXrplToml(kv, asset, meta) {
+  if (!isXrpl(asset)) return;
+  try {
+    const map = (await kv.get(LIVE_XRPL, 'json')) || {};
+    if (meta) {
+      map[asset] = {
+        name: (meta.name || ''),
+        desc: (meta.description || ''),
+        image: (meta.image || ''),
+      };
+    } else {
+      delete map[asset];
+    }
+    await kv.put(LIVE_XRPL, JSON.stringify(map));
+  } catch (e) { /* the asset record is written either way; the map can be rebuilt from it */ }
+}
 
 // The tick is stamped HERE, by the server, from the asset's own issuer and domain. A client can ask
 // for an asset to be listed; it cannot tell us the asset is verified.
@@ -321,6 +357,7 @@ export async function onRequestPut({ request, env }) {
     };
     await kv.put(META + asset, JSON.stringify(meta));
     await kv.put(LIST, JSON.stringify(list));
+    await syncXrplToml(kv, asset, meta);
     await audit(env, request, isNew ? 'asset.curate' : 'asset.edit', asset, { name: meta.name || undefined });
     return json({ ok: true, asset, meta, verified: stamp && stamp.rec, toml: stamp && stamp.toml }, 200, 0);
   }
@@ -355,6 +392,10 @@ export async function onRequestDelete({ request, env }) {
     try { vmap = (await kv.get(VMAP, 'json')) || {}; } catch (_) {}
     if (vmap[asset]) { delete vmap[asset]; await kv.put(VMAP, JSON.stringify(vmap)); }
   }
+  // AND THE TOML ENTRY GOES WITH IT, for the same reason the tick does. Clearing the overrides but
+  // leaving the published name, description and logo standing would mean the document keeps saying
+  // what an admin just took down — and that document is what wallets read.
+  await syncXrplToml(kv, asset, null);
   await audit(env, request, metaOnly ? 'asset.meta.clear' : 'asset.uncurate', asset, null);
   return json({ ok: true }, 200, 0);
 }
