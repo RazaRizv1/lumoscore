@@ -576,6 +576,12 @@ const SECTION_CARD = {
   '/bridge': 'bridge',
   '/bridge/stellar': 'bridge-stellar',
   '/bridge/xrpl': 'bridge-xrpl',
+  '/lumos': 'lumos',
+  '/lumos/stellar': 'lumos-stellar',
+  '/lumos/xrpl': 'lumos-xrpl',
+  '/rewards': 'rewards',
+  '/rewards/stellar': 'rewards-stellar',
+  '/rewards/xrpl': 'rewards-xrpl',
 };
 
 // The card for everything with no better answer: the docs, the legal pages, the footer links, a
@@ -1027,7 +1033,9 @@ export async function onRequest(context){
     // LumosCore-branded 1200x630 image would publish an endorsement nobody made. Every XRPL asset
     // therefore shows the chain's trade card -- the same rule an uncurated Stellar asset follows.
     // LUMOS is the exception, being ours, with a fixed and blackholed issuer.
-    else seo.image = want.id === XRPL_LUMOS ? '/assets/og/s/asset-lumos-xrpl.png'
+    // LUMOS shares the card its own token page uses: same token, described the same way, so two
+    // near-identical files would only be two things to keep in step.
+    else seo.image = want.id === XRPL_LUMOS ? '/assets/og/s/lumos-xrpl.png'
                                             : '/assets/og/s/trade-xrpl.png';
   }
   else if (want && want.kind === 'poolid') {

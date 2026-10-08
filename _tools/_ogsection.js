@@ -139,7 +139,6 @@ function panelGrid(items, kind) {
   // LUMOS is safe to draw: it is ours, the issuer is fixed and blackholed, and the artwork is the
   // same flame as the Stellar side -- which is why the logo is read from our own Stellar entry
   // rather than from xrpl.to, whose thumbnails cap at 128px and would be upscaled here.
-  const lumosLogo = await stellarLogo('LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S');
 
   // Destination networks for the bridge panels, read out of dist. These are the corridors each
   // chain actually has, not a decorative selection: Stellar bridges USDC through Circle CCTP and
@@ -191,11 +190,47 @@ function panelGrid(items, kind) {
       features: 'NEAR Intents · Axelar · THORChain',
       grid: panelGrid(bridgeX, 'quad'),
     }],
-    ['asset-lumos-xrpl', {
+    // LUMOS. One card per chain, used by BOTH the token page (/lumos/<chain>) and, on XRPL, the
+    // asset page -- they are the same token described the same way, and two near-identical cards
+    // would only be two things to keep in step.
+    ['lumos', {
+      row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
+      headline: 'LUMOS', accent: "LumosCore's native token",
+      features: 'Choose a network · Non-custodial',
+      grid: panelSingle(lumosMark, 'LU'),
+    }],
+    ['lumos-stellar', {
+      row: K.metaRow([{ chain: 'Stellar' }, { check: 'LumosCore token' }, { text: 'lumoscore.com' }]).svg,
+      headline: 'LUMOS', accent: 'Trade on LumosCore',
+      features: 'Price · Supply · Holders',
+      grid: panelSingle(lumosMark, 'LU'),
+    }],
+    ['lumos-xrpl', {
       row: K.metaRow([{ chain: 'XRPL' }, { check: 'LumosCore token' }, { text: 'lumoscore.com' }]).svg,
       headline: 'LUMOS', accent: 'Trade on LumosCore',
-      features: 'Price · Pools · Holders',
-      grid: panelSingle(lumosLogo, 'LU'),
+      features: 'Price · Supply · Holders',
+      grid: panelSingle(lumosMark, 'LU'),
+    }],
+
+    // REWARDS. Paid in LUMOS, which is why they wear the LUMOS mark. No amounts and no rates: a
+    // build-time image cannot quote an APR that moves every round.
+    ['rewards', {
+      row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
+      headline: 'Rewards', accent: 'Earn a share each round',
+      features: 'Choose a network · Non-custodial',
+      grid: panelSingle(lumosMark, 'LU'),
+    }],
+    ['rewards-stellar', {
+      row: K.metaRow([{ chain: 'Stellar' }, { text: 'Non-custodial' }]).svg,
+      headline: 'LUMOS Rewards', accent: 'Hold or provide liquidity',
+      features: 'LP rewards · Holder rewards',
+      grid: panelSingle(lumosMark, 'LU'),
+    }],
+    ['rewards-xrpl', {
+      row: K.metaRow([{ chain: 'XRPL' }, { text: 'Non-custodial' }]).svg,
+      headline: 'LUMOS Rewards', accent: 'Hold or provide liquidity',
+      features: 'LP rewards · Holder rewards',
+      grid: panelSingle(lumosMark, 'LU'),
     }],
     ['trade', {
       row: K.metaRow([{ chain: 'Stellar' }, { chain: 'XRPL' }]).svg,
