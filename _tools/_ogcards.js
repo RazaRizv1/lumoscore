@@ -95,6 +95,19 @@ const CHAIN = {
 };
 const CHECK = 'M9 16.2l-3.5-3.5-1.4 1.4L9 19 20 8l-1.4-1.4z';
 
+// RESVG 2.6.2 CANNOT DECODE WEBP. A webp data URI draws NOTHING and raises no error, so the card
+// ships with an empty panel while the build reports it had a real logo -- verified against a
+// known-good webp, which renders blank where the same image as PNG renders fine. No Stellar curated
+// logo is webp today (measured: 53 png, 2 jpeg, 1 svg), so this is a trap rather than a live bug
+// here; it is a live one on XRPL, where xrpl.to serves webp for every token icon. sharp is already a
+// dependency, so anything that is not already PNG or JPEG is decoded to PNG before it reaches resvg.
+async function toPng(buf) {
+  try {
+    const out = await require('sharp')(buf).png().toBuffer();
+    return 'data:image/png;base64,' + out.toString('base64');
+  } catch (e) { return ''; }
+}
+
 async function logoDataUri(assetId) {
   try {
     const r = await fetch(ORIGIN + '/lxapi/assetlogo?asset=' + encodeURIComponent(assetId));
@@ -105,16 +118,22 @@ async function logoDataUri(assetId) {
     if (u.indexOf('data:') === 0) {
       // resvg embeds raster data URIs; an SVG one it will not rasterise, so those fall back to the
       // monogram rather than producing a card with a hole in it.
-      return /^data:image\/(png|jpe?g|webp)/i.test(u) ? u : '';
+      if (/^data:image\/(png|jpe?g)/i.test(u)) return u;
+      if (/^data:image\/svg/i.test(u)) return '';
+      const m = /^data:([^;]+);base64,(.*)$/i.exec(u);
+      return m ? await toPng(Buffer.from(m[2], 'base64')) : '';
     }
     if (u.indexOf('/') === 0) u = ORIGIN + u;
     const img = await fetch(u);
     if (!img.ok) return '';
     const type = (img.headers.get('content-type') || '').split(';')[0].toLowerCase();
-    if (!/^image\/(png|jpeg|jpg|webp)$/.test(type)) return '';
+    if (type.indexOf('image/') !== 0 || type.indexOf('svg') >= 0) return '';
     const buf = Buffer.from(await img.arrayBuffer());
     if (buf.length > 2 * 1024 * 1024) return '';
-    return 'data:' + type + ';base64,' + buf.toString('base64');
+    if (type === 'image/png' || type === 'image/jpeg' || type === 'image/jpg') {
+      return 'data:' + type + ';base64,' + buf.toString('base64');
+    }
+    return await toPng(buf);
   } catch (e) { return ''; }
 }
 
