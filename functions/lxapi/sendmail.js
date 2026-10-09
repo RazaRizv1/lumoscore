@@ -18,6 +18,7 @@
 import { requireAdmin } from '../../_lib/adminauth.js';
 import { audit } from '../../_lib/audit.js';
 import { resendStatuses } from './reply.js';
+import { mailHtml } from '../../_lib/mailtemplate.js';
 
 const API = 'https://api.resend.com/emails';
 const FROM = 'LumosCore Support <support@mail.lumoscore.com>';
@@ -72,7 +73,9 @@ export async function onRequestPost({ request, env }) {
     res = await fetch(API, {
       method: 'POST',
       headers: { authorization: 'Bearer ' + key, 'content-type': 'application/json' },
-      body: JSON.stringify({ from: FROM, to: [to], subject, text, reply_to: REPLY_TO }),
+      // Both parts: html for what it looks like, text for plain-text clients, screen readers and
+      // the spam filters that mark a message down for having no text alternative.
+      body: JSON.stringify({ from: FROM, to: [to], subject, text, html: mailHtml(text, { preheader: subject }), reply_to: REPLY_TO }),
     });
     out = await res.json();
   } catch (e) {
