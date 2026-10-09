@@ -202,16 +202,9 @@ function tokenRegistry(){
 // sitting in this build, so the page can know it on the FIRST paint instead, with no request at all -- which is what
 // this registry is for. Only fills keys the launchpad file has not already claimed.
 // A few curated assets ship their logo under their own name rather than as CODE-ISSUER.png, so the scan below never
-// sees them (BLND was the one left drawing a letter). Issuers are the canonical ones from _cctp.js's LX_ASSETS table --
-// a ticker is not an identity on Stellar, so each is pinned to its issuer and nothing is matched on code alone.
-const NAMED_LOGOS = {
-  'BLND-GDJEHTBE6ZHUXSWFI642DCGLUOECLHPF3KSXHPXTSTJ7E3JF6MQ5EZYY': '/assets/tokens/blnd.svg',
-  'AQUA-GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA': '/assets/tokens/aqua.png',
-  'SHX-GDSTRSHXHGJ7ZIVRBXEYE5Q74XUVCUSEKEBR7UCHEUUEK72N7I7KJ6JH': '/assets/tokens/shx.png',
-  'LUMOS-GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S': '/assets/tokens/lumos.png',
-  'USDC-GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN': '/assets/tokens/usdc.png',
-  'USDT0-GATISXX6BZ6NC7IKQBY37CJD4SOZL3CYZJWXEDG6JVIY4WBS6KXJHN6Q': '/assets/tokens/usdt0.png',
-};
+// sees them (BLND was the one left drawing a letter). The map now lives in _namedlogos.js, SHARED with _ogcards.js,
+// which needs the same answer when it picks a logo for the share card.
+const { NAMED_LOGOS } = require('./_namedlogos.js');
 function addCurated(out){
   for(const k of Object.keys(NAMED_LOGOS)){
     const p = NAMED_LOGOS[k];
