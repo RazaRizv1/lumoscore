@@ -1,5 +1,9 @@
 const fs = require('fs');
 const path = require('path');
+// The combined site's XRPL paths. They are not in the ROUTES table below -- they are the other
+// repo's build, served by _redirects rewrites that _mergexrpl.js writes -- but the middleware has to
+// recognise them or they never reach the SEO head. Shared with that tool, not copied.
+const { PATTERNS: XRPL_PATTERNS } = require('./_xrplroutes.js');
 
 function read(f){ return fs.readFileSync(f, 'utf8'); }
 function getContents(data){
@@ -751,6 +755,17 @@ const HAS_MOBILE = new Set(${JSON.stringify(mobileFiles)});
 // when it assembles a deployment that actually has a second chain.
 const CHAIN_ALT = ${JSON.stringify(chainAlt || {})};
 
+// The combined site's XRPL paths, which match() cannot answer for: they are the other repo's build,
+// reached through _redirects rewrites rather than through the ROUTES table above. Generated from the
+// same table _mergexrpl.js writes those rewrites from (_tools/_xrplroutes.js), so the two cannot
+// drift. Compiled ONCE here rather than per request -- there is a 10ms CPU budget on this plan.
+const XRPL_PAGE = ${JSON.stringify(XRPL_PATTERNS)}.map(function (s) { return new RegExp(s); });
+function isXrplPage(pathname){
+  const p = pathname.length > 1 ? pathname.replace(/\\/+$/, '') : pathname;
+  for (const r of XRPL_PAGE) if (r.test(p)) return true;
+  return false;
+}
+
 function match(pathname){
   const segs = pathname.replace(/^\\/+|\\/+$/g, '').split('/').filter(Boolean);
   for (const r of ROUTES){
@@ -1400,8 +1415,32 @@ export async function onRequest(context){
 
   const hit = match(url.pathname);
 
+  // AN XRPL PAGE IS A PAGE, even though match() cannot see it.
+  //
+  // match() is built from the ROUTES table, which is Stellar's. The XRPL urls are _redirects
+  // 200-rewrites to /x/<file> that _mergexrpl.js prepends to dist/_redirects, so they are not in it
+  // -- and the "if (!hit) return next()" below therefore returned before any of the SEO work for every
+  // single one of them. Measured on staging 2026-10-09: /trade/xrpl, /trade/xrpl/<asset>,
+  // /pools/xrpl, /bridge/xrpl, /rewards/xrpl and /lumos/xrpl served NO og:image and NO canonical,
+  // while their Stellar twins served the full set. Every XRPL share card -- the hundred asset cards,
+  // the section cards, the pool cards -- was unreachable by a crawler, and the endpoint serving them
+  // worked perfectly the whole time, which is exactly why it went unnoticed.
+  //
+  // Everything downstream was already waiting for these paths: seoFor() reads the chain out of
+  // segs[1], SECTION_CARD has all five XRPL hubs, and the asset branch builds /lxapi/ogxrpl. Nothing
+  // there needed changing. Only this gate.
+  //
+  // NO FILE SWAP for them. Every line below that reads hit.desktop / hit.mobile picks WHICH file to
+  // serve, and _redirects has already made that choice for an XRPL url. So xrplPage takes the
+  // response from next() untouched and joins at the HTML rewrite, leaving Stellar's matching, its
+  // mobile build and its chain swap byte-for-byte as they were.
+  //
+  // The substring test runs first so the nine regexes are never walked for a Stellar url, which is
+  // every url but these. XRPL_PAGE itself is compiled once at module scope, not per request.
+  const xrplPage = !hit && url.pathname.indexOf('/xrpl') > 0 && isXrplPage(url.pathname);
+
   // not a page route -> let Pages serve it as usual
-  if (!hit) return next();
+  if (!hit && !xrplPage) return next();
 
   // WHICH BUILD A TABLET GETS. The user agent alone cannot answer this: Chrome's "Desktop site" is
   // remembered per site, and with it on an Android tablet sends a plain Linux UA -- indistinguishable
@@ -1419,7 +1458,11 @@ export async function onRequest(context){
   const forcedMobile = /(?:^|;\\s*)lxdev=m(?:;|$)/.test(cookie);
   const forcedDesktop = /(?:^|;\\s*)lxdev=d(?:;|$)/.test(cookie);
   const isMobile = !forcedDesktop && (MOBILE.test(ua) || chPlat === 'Android' || chMob === '?1' || forcedMobile);
-  const wantMobile = isMobile && HAS_MOBILE.has(hit.mobile);
+  // A "hit &&" guard on each of these: an XRPL page has no row in the ROUTES table, and the whole point of
+  // this block is choosing between that row's desktop and mobile files. _redirects already chose for
+  // it, so wantMobile stays false, baseFile stays empty, altFile stays null and fetchFile stays null
+  // -- which lands on the await next() below, the response Pages was going to serve anyway.
+  const wantMobile = !!hit && isMobile && HAS_MOBILE.has(hit.mobile);
 
   // WHICH CHAIN'S BUILD, for the pages that have one per chain.
   //
@@ -1427,8 +1470,8 @@ export async function onRequest(context){
   // layers write lx_chain when a wallet connects and clear it on disconnect, so the default — no
   // cookie, nobody connected — is the Stellar build, exactly as before.
   const chain = /(?:^|;\\s*)lx_chain=xrpl(?:;|$)/.test(cookie) ? 'xrpl' : 'stellar';
-  const baseFile = wantMobile ? hit.mobile : hit.desktop;
-  const altFile = chain === 'stellar' ? null : CHAIN_ALT[chain + ' ' + baseFile];
+  const baseFile = hit ? (wantMobile ? hit.mobile : hit.desktop) : '';
+  const altFile = (!hit || chain === 'stellar') ? null : CHAIN_ALT[chain + ' ' + baseFile];
 
   // Desktop needs no rewrite — Pages already serves the right file for this url. Rewriting anyway
   // broke "/", whose desktop file is index: fetching /index just 308s back to /.
@@ -1444,7 +1487,13 @@ export async function onRequest(context){
   // while Vary named User-Agent alone, so a shared cache could hand one reader's variant to another.
   // The chain split makes that far worse — it would be one network's private dashboard served to
   // somebody connected to the other.
-  out.headers.set('Vary', 'User-Agent, Cookie');
+  //
+  // NOT FOR AN XRPL PAGE, at this writer or the one at the end, and the two conditions must stay
+  // identical for the reason given there. _redirects maps each XRPL url to exactly one file, so the
+  // response varies by neither the user agent nor the chain cookie; "Vary: User-Agent" would split
+  // the edge cache for them by browser and buy nothing. They carried no Vary from us before this
+  // change either, so their caching is left exactly as it was.
+  if (!xrplPage) out.headers.set('Vary', 'User-Agent, Cookie');
 
   const ct = out.headers.get('content-type') || '';
   if (ct.indexOf('text/html') < 0) return out;
@@ -1713,9 +1762,18 @@ export async function onRequest(context){
     if (f && f.trustlines) bits.push(f.trustlines.toLocaleString('en-US') + ' trustlines');
     // The issuer's own words when they published any; otherwise a factual sentence rather than a
     // borrowed one. Never another asset's copy.
+    // THE CHAIN IS NOT ALWAYS STELLAR HERE ANY MORE. This sentence said "is a Stellar asset"
+    // unconditionally, which was harmless only while the middleware never reached an XRPL page --
+    // it returned at the route gate above. Now that it does, the literal would tell a crawler that
+    // every XRP Ledger token is a Stellar one. (What it replaced was worse: the XRPL build serves
+    // ONE file for every asset, so without this rewrite each of those pages shipped the design's
+    // hardcoded Circle blurb and BERT's page told a crawler it was USD Coin.)
+    // Phrased "an asset on <network>" so it can take netName(), the ONE place the two networks are
+    // named (assetSeo and the hub titles already read it). "a Stellar asset" would have needed its
+    // own ternary, which is how a third spelling of the chain name gets into the codebase.
     const desc = (f && f.desc)
-      || (code + ' is a Stellar asset'
-          + (f && f.domain ? ' issued by ' + f.domain : '')
+      || (code + ' is an asset on ' + netName(want.chain)
+          + (f && f.domain ? ', issued by ' + f.domain : '')
           + '. ' + (bits.length ? bits.join(' \u00b7 ') + '. ' : '')
           + 'Trade it non-custodially on LumosCore from your own wallet.');
     rw = rw.on('.asset-name', new TextSetter(code))
@@ -1759,7 +1817,11 @@ export async function onRequest(context){
   // narrower value here silently undoes it. That is exactly what happened — the chain-aware pages went
   // out with "Vary: User-Agent" despite the header being set correctly further up, which would let a
   // shared cache hand one network's dashboard to somebody connected to the other.
-  out.headers.set('Vary', 'User-Agent, Cookie');
+  //
+  // The xrplPage condition is the same one as the earlier writer, for that same reason: if only one
+  // of the two skipped it, this last writer would decide, and which way it went would depend on
+  // which line someone edited.
+  if (!xrplPage) out.headers.set('Vary', 'User-Agent, Cookie');
   return out;
 }
 `;

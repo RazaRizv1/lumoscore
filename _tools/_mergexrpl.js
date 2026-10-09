@@ -35,20 +35,9 @@ const SUB = 'x';                       // XRPL pages live at dist/x/, served as 
 const CLASH = ['assets/hero/trade-hero-dark.svg', 'assets/hero/trade-hero-light.svg'];
 const clashName = (p) => p.replace(/([^/]+)$/, 'xrpl-$1');
 
-// Chain-scoped routes only. XRPL's own _redirects also claims /dashboard, /bridge, /wallet, /rewards,
-// /mcp and /launchpad -- the chain-neutral paths, which in a merged site belong to Stellar. Taking them
-// would silently hand the whole app to XRPL.
-const ROUTES = [
-  ['/trade/xrpl/:asset', 'lumoscore-dex-asset'],
-  ['/trade/xrpl', 'lumoscore-dex'],
-  ['/pools/xrpl/id/:pool', 'lumoscore-amm-pool'],
-  ['/pools/xrpl/:a/:b', 'lumoscore-amm-pool'],
-  ['/pools/xrpl', 'lumoscore-amm'],
-  ['/account/xrpl/:address', 'lumoscore-account'],
-  ['/bridge/xrpl', 'lumoscore-bridge'],
-  ['/rewards/xrpl', 'lumoscore-rewards-dark'],
-  ['/lumos/xrpl', 'lumoscore-lumos-token'],
-];
+// SHARED WITH extract_site.js, which needs the same paths to let an XRPL page reach the SEO head.
+// Written down in one place only -- see the note in _xrplroutes.js for what the second copy cost.
+const { ROUTES } = require('./_xrplroutes.js');
 const MARK_A = '# ---- XRPL (merged by _mergexrpl.js) ----';
 const MARK_B = '# ---- end XRPL ----';
 
