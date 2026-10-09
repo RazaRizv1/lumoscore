@@ -17,8 +17,13 @@ const TO = 'support@lumoscore.com';
 const FROM = 'LumosCore Support <support@mail.lumoscore.com>';
 
 const LIMITS = { email: 254, name: 80, subject: 160, message: 5000, wallet: 60, txHash: 80 };
-const WINDOW_S = 30;        // shortest gap between two messages from one address
+const WINDOW_S = 900;       // 15 minutes between two messages from one IP (RAZA, 2026-10-09)
 const HOURLY_MAX = 5;
+// A field no human ever fills. The form renders it hidden and always submits it empty; a scanner
+// that walks the request and tampers with every parameter fills it, which is exactly what happened
+// here -- sqlmap injects its payloads into each field in turn. This catches the whole class on the
+// FIRST request, where a rate limiter can only ever catch the second.
+const HONEY = 'company';
 
 function json(body, status) {
   return new Response(JSON.stringify(body), {
@@ -61,6 +66,10 @@ export async function onRequestPost(ctx) {
   const wallet = header(clip(b.wallet, LIMITS.wallet));
   const txHash = header(clip(b.txHash, LIMITS.txHash));
 
+  // Answered exactly like a real send. Telling a scanner which check rejected it is telling it
+  // what to change.
+  if (String(b[HONEY] || '').trim()) return json({ ok: true }, 200);
+
   if (!plausibleEmail(email)) return json({ ok: false, error: 'enter a valid email address' }, 400);
   if (!subject) return json({ ok: false, error: 'add a subject' }, 400);
   if (!message.trim()) return json({ ok: false, error: 'add a message' }, 400);
@@ -74,7 +83,7 @@ export async function onRequestPost(ctx) {
     try {
       const burst = 'sup:rl:' + ip;
       if (await kv.get(burst)) {
-        return json({ ok: false, error: 'You just sent one — give it a moment before sending another.' }, 429);
+        return json({ ok: false, error: 'You have already sent one. Please wait 15 minutes before sending another, or email ' + TO + ' directly.' }, 429);
       }
       const hourKey = 'sup:hr:' + ip + ':' + Math.floor(Date.now() / 3600000);
       const n = parseInt((await kv.get(hourKey)) || '0', 10) || 0;
