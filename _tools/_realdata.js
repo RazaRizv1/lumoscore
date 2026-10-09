@@ -737,6 +737,12 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'}'
 +'function feed(){'
 +'var list=document.getElementById("activityList");if(!list)return;'
+// OPENS THE GATE _dashtop.js HOLDS SHUT -- see the note on it there. Called from every path that
+// writes this list, and from a timer regardless, so the rows can never stay hidden by a feed that
+// never answers: the horizon chain below has no catch of its own, so without the timer a dead
+// upstream would turn a flash into a permanently empty card, which is the worse bug.
++'var lxActReady=function(){try{list.setAttribute("data-lxact","1");}catch(e){}};'
++'setTimeout(lxActReady,6000);'
 +'j("/lxapi/act").then(function(av){'
 +'return ((av&&av.items)||[]).map(function(x){'
 +'return {transaction_hash:x.hash,from:x.addr,created_at:new Date(x.ts).toISOString()};});'
@@ -765,7 +771,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // And a single stroop is never a fee.
 +'if((o.asset_type==="native"||!o.asset_code)&&!(parseFloat(o.amount)>=0.0000002))return false;'
 +'return true;});'
-+'if(!recs.length&&!((d&&d.__acts)||[]).length){list.innerHTML=\'<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>\';return;}'
++'if(!recs.length&&!((d&&d.__acts)||[]).length){lxActReady();list.innerHTML=\'<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>\';return;}'
 +'var seenH={},merged=[];'
 +'((d&&d.__acts)||[]).concat(recs).forEach(function(o){'
 +'var hh=o.transaction_hash; if(!hh||seenH[hh])return; seenH[hh]=1; merged.push(o);});'
@@ -785,9 +791,9 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // (at most every 120ms), and the delayed icon passes are re-armed rather than stacked.
 +'var _frT=0,_frP=[];'
 +'function _feedRender(){ if(_frT) return; _frT=setTimeout(function(){ _frT=0;'
-+' list.innerHTML=rows.filter(function(r){ return !r.hide; }).map(feedRow).join("");paintFeedIcons();feedFillLogos();'
++' lxActReady();list.innerHTML=rows.filter(function(r){ return !r.hide; }).map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +' _frP.forEach(clearTimeout); _frP=[300,1200,3000,6000,10000].map(function(ms){ return setTimeout(paintFeedIcons,ms); }); },120); }'
-+'list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
++'lxActReady();list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});'
 +'var C_USDC="GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";'
 +'var _brMap=null,_brBurn={};'

@@ -199,6 +199,21 @@ const STYLE = `<style id="lx-dashtop-css">
 .kpi-grid:not(:has(> *)){display:none!important}
 /* item 13: the dashboard's top cards are present from the first paint rather than fading in. Their entrance animation showed as an empty page on every refresh. The reveal script still runs and still handles every other card type. */
 html.lcm-ready .quick-card,html.lcm-ready .activity-card{opacity:1!important;transform:none!important}
+/* THE ACTIVITY FLASH, ON STELLAR THIS TIME (RAZA 2026-10-09: "upon loading even showing aptos logo
+   for split seconds"). The identical bug was reported on 2026-10-07 and fixed — but only in the XRPL
+   repo, in _xrpldashtop.js. Stellar never got it, and the dashboard RAZA was served was Stellar's,
+   so the design's invented rows ("MOD launched on Aptos", "Bridged 2,400 APT") still painted for a
+   few hundred milliseconds, Aptos marks and all, before the real feed replaced them.
+
+   NOT IN THE MARKUP: _dashblogs.js ships #activityList EMPTY and the DESIGN'S OWN script fills it,
+   so there is nothing to strip at build time. This is the second-writer shape, and a container gate
+   is the next remedy in order.
+
+   The CHILDREN are hidden, never the panel: the card, its heading and its border hold their place,
+   so the page does not jump when the rows arrive. _realdata.js sets data-lxact from every path that
+   writes this list AND from a 6s timer, so a feed that never answers degrades to an empty card
+   instead of a permanently blank one. Change one, change the other. */
+#activityList:not([data-lxact]) > *{display:none!important}
 </style>`;
 
 const SCRIPT = `<script id="lx-dashtop">(function(){
