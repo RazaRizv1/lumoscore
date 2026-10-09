@@ -88,8 +88,20 @@ const FIELDS = [
   '.search-box input',        // wallet asset search, /wallet
 ];
 
+// A BIGGER FONT MADE A FLEX ITEM REFUSE TO SHRINK, and that is this file's own doing. A flex item
+// defaults to min-width:auto, which floors it at its intrinsic width -- and an input's intrinsic
+// width scales with its font-size. Raising #mdxMkSearch from 13.8px to 16px therefore widened the
+// row it sits in: measured on /trade/xrpl at a 375px viewport, documentElement.scrollWidth went from
+// 379 to 405. Setting min-width:0 puts it at exactly 375, at either size.
+//
+// Only this one field, and that is not a guess: of the eight floored above, #mdxMkSearch is the ONLY
+// one whose computed min-width is "auto". The design already sets min-width:0 on #poolSearch,
+// .ad-search-input and .search-box input -- its siblings in the same pattern -- so this is restoring
+// the rule they have rather than inventing one, and a blanket min-width:0 across the list would be
+// changing seven fields to fix one.
 const CSS = FIELDS.map((s) => s + ':not([type=file])').join(',')
-  + '{font-size:16px!important}';
+  + '{font-size:16px!important}'
+  + '#mdxMkSearch{min-width:0!important}';
 const STYLE = '<style id="' + ID + '">' + CSS + '</style>';
 
 // Remove our own previous block before inserting, so a re-run replaces rather than stacks. Matching
