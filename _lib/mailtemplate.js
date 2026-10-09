@@ -19,6 +19,26 @@
 //     with images blocked the brand name still shows.
 const LOGO = 'https://lumoscore.com/assets/tokens/lumos.png';
 const SITE = 'https://lumoscore.com';
+
+// PNG, not SVG: neither Outlook nor Gmail renders SVG in mail. Drawn at 2x for a 20px slot and in
+// the footer's own grey rather than each brand's colour, so two saturated logos do not shout louder
+// than the message above them.
+//
+// THESE LIVE ON THE PUBLIC SITE and appear once it is next deployed to production; the admin project
+// is behind Access, so an image hosted there is unreachable for a recipient. Until then each link
+// still reads, because the alt text is the network's name and clients show alt for an image that
+// does not load -- which is the same reason it is there for recipients who block images anyway.
+const ICON_LI = 'https://lumoscore.com/assets/email/linkedin.png';
+const ICON_X = 'https://lumoscore.com/assets/email/x.png';
+const URL_LI = 'https://www.linkedin.com/company/lumoscore/';
+const URL_X = 'https://x.com/LumosCore';
+
+// The site's own description, trimmed -- not new copy written for the footer. A second description
+// invented here would be a second thing to keep true.
+const BLURB = 'Multichain Web3 infrastructure — one interface for trading, liquidity, token '
+  + 'issuance and cross-chain transfers, with custody left to you.';
+// As the site prints it, on the legal pages.
+const COMPANY = 'LumosCore OÜ · Estonia · 17336483';
 const INK = '#16161a', MUTED = '#6b6b75', ACCENT = '#ea6a2c', LINE = '#e6e6ea', DARK = '#0a0a0b';
 
 function esc(s) {
@@ -78,8 +98,17 @@ export function mailHtml(text, opts) {
     // ---- footer -------------------------------------------------------------------------------
     + '<tr><td style="padding:0 28px;"><div style="height:1px;background:' + LINE + ';font-size:0;line-height:0;">&nbsp;</div></td></tr>'
     + '<tr><td style="padding:16px 28px 24px;font:400 12.5px/1.6 -apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;color:' + MUTED + ';">'
-    + 'LumosCore &middot; <a href="' + SITE + '" style="color:' + MUTED + ';text-decoration:underline;">lumoscore.com</a><br>'
-    + 'Reply to this email and it comes straight back to our support team.'
+    + '<div style="margin:0 0 13px;">' + esc(BLURB) + '</div>'
+    // A table, not inline-blocks: Outlook ignores inline-block spacing and would stack these.
+    + '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 13px;"><tr>'
+    + '<td style="padding-right:12px;"><a href="' + URL_LI + '" style="text-decoration:none;">'
+    + '<img src="' + ICON_LI + '" width="18" height="18" alt="LinkedIn"'
+    + ' style="display:block;width:18px;height:18px;border:0;outline:none;"></a></td>'
+    + '<td><a href="' + URL_X + '" style="text-decoration:none;">'
+    + '<img src="' + ICON_X + '" width="18" height="18" alt="X"'
+    + ' style="display:block;width:18px;height:18px;border:0;outline:none;"></a></td>'
+    + '</tr></table>'
+    + esc(COMPANY) + ' &middot; <a href="' + SITE + '" style="color:' + MUTED + ';text-decoration:underline;">lumoscore.com</a>'
     + '</td></tr>'
 
     + '</table></td></tr></table></body></html>';
