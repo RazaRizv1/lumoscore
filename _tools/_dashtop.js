@@ -209,11 +209,19 @@ html.lcm-ready .quick-card,html.lcm-ready .activity-card{opacity:1!important;tra
    so there is nothing to strip at build time. This is the second-writer shape, and a container gate
    is the next remedy in order.
 
-   The CHILDREN are hidden, never the panel: the card, its heading and its border hold their place,
-   so the page does not jump when the rows arrive. _realdata.js sets data-lxact from every path that
-   writes this list AND from a 6s timer, so a feed that never answers degrades to an empty card
-   instead of a permanently blank one. Change one, change the other. */
-#activityList:not([data-lxact]) > *{display:none!important}
+   VISIBILITY, NOT DISPLAY, so the rows keep their space while they are concealed. "display:none"
+   removed the flash but collapsed the card from 691px to 131px and let it snap back when the feed
+   landed — measured on the deployed build. A "min-height" would be the obvious patch and is the
+   wrong one: the winning rule here is ".market-grid>.activity-card .activity-scroll{flex:1 1 0;min-height:0;max-height:none}", so the height is flex-driven, any number would be a guess that is
+   wrong on a tablet (which gets the MOBILE build at desktop widths), and reserving 560px for an
+   account with three transactions would shrink the card afterwards — the same jump, backwards.
+   Concealing in place costs nothing and needs no number: measured 691px shut, 691px open.
+
+   The panel itself is never touched — card, heading and border are on screen throughout.
+   _realdata.js sets data-lxact from every path that writes this list AND from a 6s timer, so a feed
+   that never answers degrades to an empty card instead of a permanently blank one. Change one,
+   change the other — and XRPL's copy in _xrpldashtop.js is the same rule, deliberately. */
+#activityList:not([data-lxact]) > *{visibility:hidden!important}
 </style>`;
 
 const SCRIPT = `<script id="lx-dashtop">(function(){
