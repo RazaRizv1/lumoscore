@@ -1462,7 +1462,15 @@ export async function onRequest(context){
   // A COOKIE, because this decision is the server's and localStorage never reaches it. Both connect
   // layers write lx_chain when a wallet connects and clear it on disconnect, so the default — no
   // cookie, nobody connected — is the Stellar build, exactly as before.
-  const chain = /(?:^|;\\s*)lx_chain=xrpl(?:;|$)/.test(cookie) ? 'xrpl' : 'stellar';
+  // A CHAIN NAMED IN THE PATH BEATS THE COOKIE. The cookie answers "which chain is connected", which
+  // is the right question for a BARE authgated url (/dashboard, /wallet, /launchpad) and the wrong one
+  // for a url that already says. /launchpad/stellar is the only route that is both chain-qualified and
+  // mapped in CHAIN_ALT, and measured on the deployed build it served the XRPL launchpad -- seven
+  // xrplcluster references, no Stellar one -- to anyone carrying lx_chain=xrpl. A url that names a
+  // network and serves the other one is worse than either answer on its own.
+  const pathChain = /\\/stellar(\\/|$)/.test(url.pathname) ? 'stellar'
+    : (/\\/xrpl(\\/|$)/.test(url.pathname) ? 'xrpl' : '');
+  const chain = pathChain || (/(?:^|;\\s*)lx_chain=xrpl(?:;|$)/.test(cookie) ? 'xrpl' : 'stellar');
   const baseFile = hit ? (wantMobile ? hit.mobile : hit.desktop) : '';
   const altFile = (!hit || chain === 'stellar') ? null : CHAIN_ALT[chain + ' ' + baseFile];
 
