@@ -1834,6 +1834,17 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function detailUrl(hex,fromDest,pair){
     // a pool's clean url is its two assets; fall back to ?pool=<id> when the pair is unknown
     if(pair){ var _q=String(pair).split("|"); if(_q.length===2) return "/pools/stellar/"+_q[0]+"/"+_q[1]; }
+    // ID-ONLY LINKS GET A CLEAN URL TOO. The pair branch above has always produced one; this fallback
+    // ran whenever the pair was unknown and emitted the raw container filename instead --
+    // "lumoscore-amm-pool.html?pool=<hex>" -- on 40 pages. It WORKS (the middleware 301s it to
+    // /pools/stellar/id/<hex>), which is why nothing caught it, but it costs a redirect hop on every
+    // tap and it is what a reader copies when they share a pool. /pools/stellar/id/:pool has been a
+    // real route the whole time; this simply uses it.
+    //
+    // UNLESS THE PAGE IS A FILE. Opened straight off disk there is no routing at all, so a rooted url
+    // would 404 — the sibling file is the only thing that resolves. A pathname ending in .html is
+    // exactly that case, and it is also how the -dark/-mobile suffix below is chosen.
+    if(!/\\.html$/i.test(location.pathname)) return "/pools/stellar/id/"+hex;
  var suf=/-dark\\./.test(location.pathname)?"-dark":(/-mobile\\./.test(location.pathname)?"-mobile":""); var base="lumoscore-amm-pool"+suf+".html"; if(fromDest&&String(fromDest).indexOf("amm-pool")>=0)base=String(fromDest).split("?")[0]; base=base.split("-light.html").join(".html"); if(["lumoscore-amm-pool.html","lumoscore-amm-pool-dark.html","lumoscore-amm-pool-mobile.html"].indexOf(base)<0)base="lumoscore-amm-pool"+suf+".html"; return base+"?pool="+hex; }
   // THE LAST CLICKED ELEMENT, REMEMBERED. Every guard in the override below is keyed on what was clicked, and it read
   // window.event to find out -- a legacy global that is only set while an event is DISPATCHING. The design calls
