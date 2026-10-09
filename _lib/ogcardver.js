@@ -8,4 +8,6 @@
 //
 // Keeping it here rather than in either endpoint is the point: a card stored under one number and
 // read under another would either be served after the design moved on, or thrown away for ever.
-export const CARD_V = 5;
+// 6: the XRPL asset cards gained the "Listed asset" badge, to match the tick dexasset.js already
+// shows on every page in the top-100 roster.
+export const CARD_V = 6;
