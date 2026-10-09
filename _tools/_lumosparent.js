@@ -163,13 +163,30 @@ const HUBS = [
 
 const GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>';
 
+// THE LAUNCHPAD HAS NO /xrpl URL, AND THAT IS DELIBERATE. It is one of the authgated five, which
+// RAZA settled on 2026-10-01 — "neither its indexable. so why create dashboard/xrpl" — so /launchpad
+// is ONE url and the middleware serves whichever build the lx_chain cookie names. /dashboard/xrpl and
+// /wallet/xrpl 404 for the same reason.
+//
+// Every other hub genuinely has both halves, so the generic rule below is right for them; the
+// launchpad was the one place it produced a link to a url the rule above forbids. Found in a mobile
+// audit 2026-10-09: the chooser's XRP Ledger card 404'd, on staging AND production.
+//
+// So this card carries the CHOICE instead of a path: the bare url, plus the chain for the script
+// below to write before it follows the link. RAZA picked this over creating the route (2026-10-09).
+const COOKIE_HUBS = { '/launchpad': 1 };
+
 function netsFor(hub) {
+  const bare = COOKIE_HUBS[hub.path];
   return [
     { id: 'stellar', name: 'Stellar', href: hub.path + '/stellar', live: true,
-      icon: chainLogo('stellar'), meta: hub.stellarMeta },
+      icon: chainLogo('stellar'), meta: hub.stellarMeta, setChain: bare ? 'stellar' : '' },
     // href from the hub's OWN path, exactly as Stellar's is above — /trade/xrpl beside
     // /trade/stellar — so a hub added later cannot end up pointing at the wrong section.
-    Object.assign({ icon: chainLogo('xrpl') }, XRPL_LIVE, { href: hub.path + '/xrpl' }),
+    Object.assign({ icon: chainLogo('xrpl') }, XRPL_LIVE, {
+      href: bare ? hub.path : hub.path + '/xrpl',
+      setChain: bare ? 'xrpl' : '',
+    }),
   ];
 }
 
@@ -197,8 +214,12 @@ function cardHTML(n) {
     + '<span class="lx-lp-meta">' + n.meta + '</span></span>'
     + (n.live ? ('<span class="lx-lp-go">' + GO + '</span>')
               : ('<span class="lx-lp-soon"' + SKIP + '>' + GUARD + 'Upcoming</span>'));
+  // data-lxsetchain is present ONLY on a hub whose two networks share one url (the launchpad). The
+  // script below writes lx_chain from it before following the link, because there the cookie IS the
+  // choice -- the path cannot carry it.
+  const SET = n.setChain ? (' data-lxsetchain="' + n.setChain + '"') : '';
   return n.live
-    ? '<a class="lx-lp-card" href="' + n.href + '" data-lxnet="' + n.id + '">' + inner + '</a>'
+    ? '<a class="lx-lp-card" href="' + n.href + '" data-lxnet="' + n.id + '"' + SET + '>' + inner + '</a>'
     : '<div class="lx-lp-card soon" data-lxnet="' + n.id + '">' + inner + '</div>';
 }
 
@@ -244,6 +265,24 @@ function scriptHTML(hub) {
     + 'c=(localStorage.getItem("lumos.chain")||"").toLowerCase(); }catch(_){}'
     + 'if(a&&(c===""||c==="stellar")){ location.replace(HUB+"/stellar"); return; }'
     + 'document.documentElement.classList.add("lx-lp-on");'
+    // THE COOKIE IS THE CHOICE, on a hub whose two networks share one url. Only the launchpad is
+    // like that -- see COOKIE_HUBS above -- and only its cards carry data-lxsetchain, so this is a
+    // no-op everywhere else. Written on the way out, before the link is followed, so the middleware
+    // already has it when it serves the next page.
+    //
+    // Both directions, not just XRPL: a reader who connected XRPL earlier still has lx_chain=xrpl,
+    // and without this the Stellar card would hand them the XRPL launchpad from a url that says
+    // "stellar". Measured on the deployed build before the fix -- /launchpad/stellar with
+    // lx_chain=xrpl served seven XRPL references and no Stellar one.
+    // ON WINDOW, IN CAPTURE. A document-level capture listener is NOT early enough here: the design
+    // ships its own click router bound to window, and capture runs window -> document, so it took the
+    // click first and this never saw it. Measured -- the cookie stayed unset on a dispatched click
+    // while the handler was demonstrably installed. Same remedy the Trade dropdown needed today.
+    + 'window.addEventListener("click",function(ev){try{'
+    + 'var t=ev.target&&ev.target.closest?ev.target.closest("[data-lxsetchain]"):null; if(!t)return;'
+    + 'var w=t.getAttribute("data-lxsetchain"); if(w!=="xrpl"&&w!=="stellar")return;'
+    + 'document.cookie="lx_chain="+w+";path=/;max-age=31536000;samesite=lax";'
+    + '}catch(_){}} ,true);'
     + 'document.addEventListener("DOMContentLoaded",function(){try{document.title=' + JSON.stringify(hub.title) + ';}catch(_){}});'
     + 'try{document.title=' + JSON.stringify(hub.title) + ';}catch(_){}'
     + '}catch(_){}})();</script>';
