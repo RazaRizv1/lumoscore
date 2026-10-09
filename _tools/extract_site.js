@@ -1189,17 +1189,30 @@ const HUB_SEO = {
   },
 };
 
+// A PATH SEGMENT IS ENCODED; AN ASSET ID IS NOT. A ticker may contain characters a url has to
+// escape, and nine of the XRPL assets in the sitemap start with a dollar sign. Taking segs[2] raw
+// published a title reading "%24FLIPPY price, pools and holders on the XRP Ledger", and sent
+// "/lxapi/ogxrpl?a=%2524FLIPPY-..." for the card, because encodeURIComponent ran over an already
+// encoded string. Decoding once here fixes both, and is the point where every id enters.
+//
+// Malformed input keeps its original form rather than throwing, which is the same choice
+// malformedId() makes just below for the same reason: a bad percent sequence is a 404 to answer, not
+// an exception to raise inside the SEO layer.
+function decSeg(x){
+  try { return decodeURIComponent(x); } catch (e) { return x; }
+}
+
 function seoFor(pathname){
   const segs = pathname.split('/').filter(Boolean);
   // segs[1] names the chain on every parameterised route — /trade/<chain>/<asset>,
   // /pools/<chain>/<a>/<b>, /pools/<chain>/id/<account>. Anything that is not 'xrpl' is Stellar, so
   // every url this build already served keeps its exact wording.
   const chain = segs[1] === 'xrpl' ? 'xrpl' : 'stellar';
-  if ((segs[0] === 'trade' || segs[0] === 'asset') && segs[2]) return { kind: 'asset', id: segs[2], chain };
+  if ((segs[0] === 'trade' || segs[0] === 'asset') && segs[2]) return { kind: 'asset', id: decSeg(segs[2]), chain };
   // Before the pair rule, or "id" becomes the first asset of the pair.
-  if (segs[0] === 'pools' && segs[2] === 'id' && segs[3]) return { kind: 'poolid', id: segs[3], chain };
-  if (segs[0] === 'pools' && segs[2] && segs[3]) return { kind: 'pool', a: segs[2], b: segs[3], chain };
-  if (segs[0] === 'blog' && segs[1]) return { kind: 'blog', slug: segs[1] };
+  if (segs[0] === 'pools' && segs[2] === 'id' && segs[3]) return { kind: 'poolid', id: decSeg(segs[3]), chain };
+  if (segs[0] === 'pools' && segs[2] && segs[3]) return { kind: 'pool', a: decSeg(segs[2]), b: decSeg(segs[3]), chain };
+  if (segs[0] === 'blog' && segs[1]) return { kind: 'blog', slug: decSeg(segs[1]) };
   // exactly one segment, so /trade is the hub and /trade/stellar is not
   if (segs.length === 1 && HUB_SEO['/' + segs[0]]) return { kind: 'hub', id: '/' + segs[0] };
   return null;
@@ -1753,7 +1766,18 @@ export async function onRequest(context){
   }
 
   head.push('<script type="application/ld+json" id="lx-ld-core">'
-    + JSON.stringify(ld).split('</').join('<\\/') + '</scr' + 'ipt>');
+    // THIS ESCAPE WAS A NO-OP AND THAT WAS AN INJECTION. It used to read .join('<\\/'), which this
+    // template literal turns into .join('<\/') in the generated file -- and '<\/' in JavaScript is
+    // just '</', so the replacement replaced a string with itself. Any path segment reaching this
+    // JSON could therefore close the ld+json element early: the breadcrumb name decodes the segment
+    // (see buildLd), so /trade/xrpl/%3C%2Fscript%3E... shipped a literal </script> inside it and
+    // everything after it was parsed as markup.
+    //
+    // Written with String.fromCharCode(92) rather than a backslash because the backslash has to
+    // survive this template literal AND the generated file's own string parsing, and it did not. The
+    // result is the three characters < \ / : still valid JSON (\/ is an escaped solidus) and no
+    // longer the sequence that ends a script element. Verified on the built file, not here.
+    + JSON.stringify(ld).split('</').join('<' + String.fromCharCode(92) + '/') + '</scr' + 'ipt>');
 
   let rw = new HTMLRewriter().on('head', new HeadInjector(head.join('')));
   // GUARDED ON THE VALUE, NOT ON seo EXISTING.
