@@ -499,7 +499,15 @@
       if(monies[0]){ monies[0].textContent=abbrUsd(pool.tvl); monies[0].setAttribute("data-orig",abbrUsd(pool.tvl)); monies[0].setAttribute("data-usd",pool.tvl); }
       if(monies[1]){ monies[1].textContent="$0"; monies[1].setAttribute("data-orig","$0"); monies[1].setAttribute("data-usd","0"); }
       var inc=row.querySelector(".incent-pill"); if(inc){ var lab=REWARD_HEX[pool.hex]; if(lab){ inc.textContent=lab; inc.className="incent-pill "+(lab==="Native LP"?"native":"eco"); } else { inc.style.display="none"; } }
-      var link=row.querySelector("a"); if(link)link.setAttribute("href","lumoscore-amm-pool.html?pool="+pool.hex);
+      // THE CLEAN URL, not the container filename. This wrote "lumoscore-amm-pool.html?pool=<hex>",
+      // which the middleware 301s to /pools/stellar/id/<hex> -- so it worked, and cost a redirect on
+      // every tap while handing anyone who copied the link a raw filename. Same change as
+      // detailUrl() in _ammdata.js; the .html guard is there for the same reason, a page opened off
+      // disk has no routing and only the sibling file resolves.
+      var link=row.querySelector("a");
+      if(link)link.setAttribute("href", /\.html$/i.test(location.pathname)
+        ? ("lumoscore-amm-pool.html?pool="+pool.hex)
+        : ("/pools/stellar/id/"+pool.hex));
       // drop the Network column cell (obvious — always Stellar for a connected Stellar user)
       var netCell=row.querySelector(".chain-pill"); if(netCell){ var td=netCell.closest("td"); if(td&&td.parentNode)td.parentNode.removeChild(td); }
       frag.appendChild(row);
