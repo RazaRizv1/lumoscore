@@ -31,7 +31,7 @@ const staged = [];
 for (const file of FILES) {
   let data; try { data = read(file); } catch (e) { problems.push(file + ': unreadable'); continue; }
   const { json, s, e } = getContents(data);
-  let pages = 0, links = 0;
+  let pages = 0, links = 0, ann = 0;
 
   for (const key of Object.keys(json)) {
     if (key.indexOf('lumoscore-rewards') !== 0) continue;
@@ -54,12 +54,39 @@ for (const file of FILES) {
         .join('<h3><a class="lx-rwlink" href="' + href + '">' + text + '</a></h3>');
       links++;
     }
+
+    // THE "Read the announcement" ANCHORS GET THE SAME TREATMENT AS THE HEADINGS ABOVE, which they
+    // never did. Found in a mobile audit 2026-10-09; three faults in one href, on both chains'
+    // rewards pages:
+    //
+    //   https://lumoscore.com/blogs/introducing-native-lp-rewards-for-lumos  target="_blank"
+    //   ^ absolute: on staging this leaves for PRODUCTION, which is the exact trap the note at the
+    //     top of this file describes
+    //                            ^ "/blogs/", which 301s to "/blog/" -- a redirect hop, on mobile
+    //                                                       ^ a new tab for an internal link, and
+    //                                                         without rel=noopener
+    //
+    // The DESTINATION is deliberately unchanged -- only the form of the url. These point at
+    // different posts from the headings above (introducing-* against the three in LINKS) and whether
+    // that is intended is RAZA's call, not something to quietly normalise here.
+    const annBefore = (html.match(/<a class="blog"/g) || []).length;
+    html = html.replace(
+      /<a class="blog" href="https:\/\/lumoscore\.com\/blogs\/([A-Za-z0-9-]+)"[^>]*>/g,
+      '<a class="blog" href="/blog/$1">');
+    const annAfter = (html.match(/<a class="blog" href="\/blog\//g) || []).length;
+    // Tolerates a re-run: already-relative anchors simply do not match the pattern above.
+    if (annBefore && annAfter !== annBefore) {
+      problems.push(key + ': ' + annBefore + ' announcement link(s) but only ' + annAfter
+        + ' are relative afterwards — the href shape changed');
+    }
+    ann += annAfter;
+
     json[key] = html;
     pages++;
   }
 
   if (problems.length) break;
-  staged.push({ file, data, s, e, json, pages, links });
+  staged.push({ file, data, s, e, json, pages, links, ann });
 }
 
 if (problems.length) {
@@ -90,6 +117,6 @@ for (const st of staged) {
   }
   const ser = JSON.stringify(st.json).split('</').join('<' + B + '/');
   fs.writeFileSync(st.file, st.data.slice(0, st.s) + ser + st.data.slice(st.e), 'utf8');
-  console.log('  ' + st.file + ': ' + st.links + ' programme link(s) across ' + st.pages + ' rewards page(s)');
+  console.log('  ' + st.file + ': ' + st.links + ' programme link(s), ' + st.ann + ' announcement link(s) made relative, across ' + st.pages + ' rewards page(s)');
 }
 console.log('rewards links: done');
