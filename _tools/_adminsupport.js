@@ -29,6 +29,7 @@ const IC = {
   inbox: SVG('<path d="M4 13h4l1.5 2.5h5L16 13h4"/><path d="M5.5 5h13l2.5 8v4.5a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5V13z"/>'),
   unread: SVG('<path d="M3 8.5 12 14l9-5.5"/><rect x="3" y="5" width="18" height="14" rx="1.6"/>'),
   archived: SVG('<rect x="3" y="4.5" width="18" height="4" rx="1"/><path d="M5 8.5v9.9A1.6 1.6 0 0 0 6.6 20h10.8a1.6 1.6 0 0 0 1.6-1.6V8.5"/><path d="M10 12.5h4"/>'),
+  sent: SVG('<path d="M21 4 3 11l7 2.6L12.6 21z"/><path d="M21 4 10 13.6"/>'),
   spam: SVG('<path d="M12 3.2 20 6v5.6c0 4.3-3.1 7.5-8 8.7-4.9-1.2-8-4.4-8-8.7V6z"/><path d="M12 8.6v3.6"/><path d="M12 15.4h.01"/>'),
   trash: '<svg class="lxm-ic" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"'
     + ' stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
@@ -41,6 +42,7 @@ const MAIN = `
       <div class="admin-page-head">
         <h1 class="admin-page-title">Support</h1>
         <div class="admin-page-actions">
+          <button class="adm-btn primary" id="lxmNew" type="button">New email</button>
           <button class="adm-btn ghost" id="lxmRefresh" type="button">Refresh</button>
         </div>
       </div>
@@ -50,6 +52,7 @@ const MAIN = `
           <button class="seg-chip active" type="button" data-box="inbox">${IC.inbox}<span class="seg-label">Inbox</span><span class="seg-count" id="lxmCInbox">&mdash;</span></button>
           <button class="seg-chip" type="button" data-box="unread">${IC.unread}<span class="seg-label">Unread</span><span class="seg-count" id="lxmCUnread">&mdash;</span></button>
           <button class="seg-chip" type="button" data-box="archived">${IC.archived}<span class="seg-label">Archived</span><span class="seg-count" id="lxmCArch">&mdash;</span></button>
+          <button class="seg-chip" type="button" data-box="sent">${IC.sent}<span class="seg-label">Sent</span><span class="seg-count" id="lxmCSent">&mdash;</span></button>
           <button class="seg-chip" type="button" data-box="spam">${IC.spam}<span class="seg-label">Spam</span><span class="seg-count" id="lxmCSpam">&mdash;</span></button>
         </div>
         <div class="lxm-search">
@@ -87,6 +90,7 @@ const MOB = `
           <button class="seg-chip active" type="button" data-box="inbox">${IC.inbox}<span class="seg-label">Inbox</span><span class="seg-count" id="lxmCInbox">&mdash;</span></button>
           <button class="seg-chip" type="button" data-box="unread">${IC.unread}<span class="seg-label">Unread</span><span class="seg-count" id="lxmCUnread">&mdash;</span></button>
           <button class="seg-chip" type="button" data-box="archived">${IC.archived}<span class="seg-label">Archived</span><span class="seg-count" id="lxmCArch">&mdash;</span></button>
+          <button class="seg-chip" type="button" data-box="sent">${IC.sent}<span class="seg-label">Sent</span><span class="seg-count" id="lxmCSent">&mdash;</span></button>
           <button class="seg-chip" type="button" data-box="spam">${IC.spam}<span class="seg-label">Spam</span><span class="seg-count" id="lxmCSpam">&mdash;</span></button>
         </div>
         <div class="lxm-search">
@@ -111,6 +115,11 @@ const MOB = `
 `;
 
 const CSS = `<style id="lx-adminsupport-css">
+/* The compose textarea: the modal input style is built for one-line fields, so only what a
+   textarea needs differently is set and nothing else about the modal is touched. */
+.lxn-ta{min-height:160px;resize:vertical;font:inherit;line-height:1.5;padding:10px 12px}
+.lxm-sentrow .lxm-row-prev{opacity:.85}
+
 /* ONE TOOLBAR, not two stacked blocks. The chips and the search box both narrow the same list, so they
    belong on the same line -- the search sitting alone underneath read as an orphaned control and was
    the first thing RAZA called out (2026-09-23). Chips left, search right, one shared baseline; they
@@ -267,6 +276,9 @@ function load(){
   // "Unread" is not a box on the server -- it is the inbox with a client-side filter, because the
   // inbox rows are already loaded and refetching them to hide the read ones is a round trip for
   // nothing. Every other chip maps straight through.
+  // Sent comes from a different table and a different endpoint, so it is answered before the
+  // inbox request is built rather than being squeezed into the box parameter.
+  if(BOX==="sent"){ loadSent(); return; }
   var box=(BOX==="archived")?"archived":(BOX==="spam")?"spam":"inbox";
   api("?box="+box+(Q?("&q="+encodeURIComponent(Q)):"")+"&t="+Date.now()).then(function(r){
     var list=q("#lxmList"); if(!list)return;
@@ -286,6 +298,93 @@ function load(){
     var list=q("#lxmList"); if(list)list.innerHTML="<div class='lxadm-empty'>Could not read the inbox: "+esc(e.message)+"</div>";
   });
 }
+// ---- Sent ---------------------------------------------------------------------------------------
+// Rendered from its own markup rather than through render(), because an inbox row is about a sender
+// and a sent row is about a recipient: sharing the renderer would mean a branch in every line of it.
+function loadSent(){
+  var list=q("#lxmList"); if(!list)return;
+  list.innerHTML="<div class='lxadm-empty'>Loading&hellip;</div>";
+  fetch("/lxapi/sendmail?t="+Date.now()).then(function(r){ return r.json(); }).then(function(d){
+    var rows=(d&&d.sent)||[];
+    setC("#lxmCSent",rows.length);
+    if(!rows.length){
+      list.innerHTML="<div class='lxadm-empty'>Nothing sent from here yet. Use <b>New email</b> to start one.</div>";
+      return;
+    }
+    list.innerHTML=rows.map(function(x){
+      var state=x.err?"<b>failed</b>":lxmStatus(x.status);
+      return "<button class='lxm-row lxm-sentrow' type='button' data-sent='"+esc(x.id)+"'>"
+        +"<div class='lxm-row-main'><div class='lxm-row-top'><span class='lxm-row-from'>To "+esc(x.to_addr)+"</span>"
+        +"<span class='lxm-row-date'>"+esc(new Date(x.ts).toLocaleDateString())+"</span></div>"
+        +"<div class='lxm-row-subj'>"+esc(x.subject||"(no subject)")+"</div>"
+        +"<div class='lxm-row-prev'>"+state+"</div></div></button>";
+    }).join("");
+    var pane=q("#lxmRead");
+    [].slice.call(list.querySelectorAll("[data-sent]")).forEach(function(btn){
+      btn.addEventListener("click",function(){
+        var x=rows.filter(function(r){ return r.id===btn.getAttribute("data-sent"); })[0];
+        if(!x||!pane)return;
+        pane.innerHTML="<div class='lxm-read-head'><div class='lxm-read-subj'>"+esc(x.subject||"(no subject)")+"</div>"
+          +"<div class='lxm-read-meta'>To <b>"+esc(x.to_addr)+"</b><br>"+esc(new Date(x.ts).toLocaleString())
+          +" \u00b7 "+(x.err?"<b>failed</b>":lxmStatus(x.status))+"</div></div>";
+        var b=document.createElement("div"); b.className="lxm-read-body"; b.textContent=x.body||"";
+        pane.appendChild(b);
+        if(x.err){ var e=document.createElement("div"); e.className="lxm-reply-hint";
+          e.textContent="Resend said: "+x.err; pane.appendChild(e); }
+      });
+    });
+  }).catch(function(e){
+    list.innerHTML="<div class='lxadm-empty'>Could not read sent mail: "+esc(e.message)+"</div>";
+  });
+}
+
+// ---- compose ------------------------------------------------------------------------------------
+// The one place in this panel that sends to an address somebody typed. /lxapi/reply deliberately
+// refuses to do that -- it answers the address on a stored message -- which is correct for a reply
+// and is exactly what made it impossible to write to anyone who had not emailed first.
+function compose(){
+  if(q(".lxmodal"))return;
+  var m=document.createElement("div"); m.className="lxmodal";
+  m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>New email</h3>"
+    +"<p class='lxmodal-s'>Sent from support@mail.lumoscore.com so it passes SPF and DKIM. Replies come back to support@lumoscore.com and land in this inbox.</p>"
+    +"<label class='lxmodal-l' for='lxnTo'>To</label><input class='lxmodal-i' id='lxnTo' type='email' placeholder='name@example.com' autocomplete='off'>"
+    +"<label class='lxmodal-l' for='lxnSubj'>Subject</label><input class='lxmodal-i' id='lxnSubj' maxlength='200' autocomplete='off'>"
+    +"<label class='lxmodal-l' for='lxnBody'>Message</label><textarea class='lxmodal-i lxn-ta' id='lxnBody' rows='8'></textarea>"
+    +"<p class='lxmodal-e' id='lxnErr'></p>"
+    +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxnCancel'>Cancel</button>"
+    +"<button class='adm-btn primary' type='button' id='lxnSend'>Send</button></div></div>";
+  document.body.appendChild(m);
+  var to=m.querySelector("#lxnTo"), subj=m.querySelector("#lxnSubj"), body=m.querySelector("#lxnBody"), err=m.querySelector("#lxnErr");
+  to.focus();
+  function close(){ m.remove(); }
+  m.addEventListener("click",function(e){ if(e.target===m)close(); });
+  m.querySelector("#lxnCancel").addEventListener("click",close);
+  m.querySelector("#lxnSend").addEventListener("click",function(){
+    var btn=m.querySelector("#lxnSend");
+    var payload={to:(to.value||"").trim(),subject:(subj.value||"").trim(),body:(body.value||"").trim()};
+    if(!payload.to){ err.textContent="Who is it going to?"; to.focus(); return; }
+    if(!payload.subject){ err.textContent="Give it a subject."; subj.focus(); return; }
+    if(!payload.body){ err.textContent="Write something first."; body.focus(); return; }
+    btn.disabled=true; btn.textContent="Sending\u2026"; err.textContent="";
+    fetch("/lxapi/sendmail",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)})
+      .then(function(r){ return r.json(); })
+      .then(function(d){
+        btn.disabled=false; btn.textContent="Send";
+        // Resend's own wording is shown, because "domain is not verified" and "invalid recipient"
+        // need different fixes and a generic failure would hide which one happened.
+        if(!d||d.error){ err.textContent="Not sent: "+((d&&(d.message||d.error))||"unknown error"); return; }
+        close(); BOX="sent"; syncSegs(); load();
+      })
+      .catch(function(e){ btn.disabled=false; btn.textContent="Send"; err.textContent="Not sent: "+e.message; });
+  });
+}
+// Keeps the chips in step when the box is changed from code rather than by a click.
+function syncSegs(){
+  [].slice.call(document.querySelectorAll("#lxmSegs .seg-chip")).forEach(function(c){
+    c.classList.toggle("active", c.getAttribute("data-box")===BOX);
+  });
+}
+
 function setC(sel,n){ var e=q(sel); if(e)e.textContent=(n==null?"0":String(n)); }
 
 function visible(){ return (BOX==="unread")?MSGS.filter(function(m){return !m.read_at;}):MSGS; }
@@ -611,6 +710,7 @@ function boot(){
   if(qx&&!qx.__lx){ qx.__lx=1; qx.addEventListener("click",function(){
     if(qi)qi.value=""; qx.hidden=true; clearTimeout(QT); if(Q){ Q=""; clearSel(); load(); } if(qi)qi.focus(); }); }
   var rf=q("#lxmRefresh"); if(rf&&!rf.__lx){ rf.__lx=1; rf.addEventListener("click",load); }
+  var nw=q("#lxmNew"); if(nw&&!nw.__lx){ nw.__lx=1; nw.addEventListener("click",compose); }
   load();
 }
 if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);

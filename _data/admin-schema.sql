@@ -65,6 +65,23 @@ CREATE TABLE IF NOT EXISTS mail_reply (
   err       TEXT
 );
 
+-- ---- mail we started ourselves ----------------------------------------------------------------------
+-- Separate from mail_reply because a reply hangs off a message that arrived -- mail_id is NOT NULL --
+-- and a composed email has no such parent. Same columns otherwise, so the delivery-status lookup in
+-- reply.js reads both without caring which it was given.
+--
+-- functions/lxapi/sendmail.js also creates this table on first use, so enabling it needs no separate
+-- migration against a database that is already serving.
+CREATE TABLE IF NOT EXISTS mail_sent (
+  id        TEXT PRIMARY KEY,
+  ts        INTEGER NOT NULL,
+  to_addr   TEXT NOT NULL,
+  subject   TEXT,
+  body      TEXT,
+  provider  TEXT,          -- the id Resend gives back, so a delivery question can be traced
+  err       TEXT
+);
+
 -- ---- blocked senders (the Spam box) ----------------------------------------------------------------
 -- Marking a message as spam blocks its SENDER, not only that one message, because "always land in
 -- spam" is a statement about a correspondent rather than about one email.
