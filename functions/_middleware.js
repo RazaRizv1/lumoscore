@@ -315,6 +315,15 @@ const HAS_MOBILE = new Set(["lumoscore-home-mobile","lumoscore-landing-mobile","
 // Empty on a single-chain build, which is what this generator produces; the combine step fills it in
 // when it assembles a deployment that actually has a second chain.
 const CHAIN_ALT = {};
+// AMM ACCOUNT -> THE PAIR IT HOLDS, for the /pools/<chain>/id/<account> title. See poolIdSeo below
+// for why this is a baked table and not a lookup: an AMM's pair never changes, so a table can be
+// incomplete but not wrong, while a lookup would cost a subrequest on every render.
+//
+// Empty on a single-chain build, exactly like CHAIN_ALT above; the combine step fills it from the
+// XRPL build's _tools/poolpairs.generated.json when it assembles a deployment that has a second
+// chain. An account that is not in here keeps the account-named title, which is what every pool had
+// before this existed.
+const POOL_PAIRS = {};
 
 // The combined site's XRPL paths, which match() cannot answer for: they are the other repo's build,
 // reached through _redirects rewrites rather than through the ROUTES table above. Generated from the
@@ -454,11 +463,31 @@ function poolSeo(a, b, img, chain){
 //
 // The id is shortened the way the page itself prints it, which also keeps each pool's title distinct:
 // one shared title across every pool url is the duplicate-content problem this whole layer exists to
-// avoid. The pair is not named because the edge does not know it without a lookup, and a title that
-// guesses is worse than one that is merely general.
+// avoid.
+//
+// THE PAIR IS NAMED WHEN WE KNOW IT, AND THE ACCOUNT WHEN WE DO NOT. This used to read "the pair is
+// not named because the edge does not know it without a lookup, and a title that guesses is worse
+// than one that is merely general" -- which is right about guessing and is answered by knowing in
+// advance rather than by looking up. POOL_PAIRS is built at build time, and it is safe to bake for
+// one specific reason: AN AMM ACCOUNT'S PAIR NEVER CHANGES. An AMM is created for one asset pair and
+// its pseudo-account exists to hold that pair; nothing repoints an existing AMM at other assets. So
+// the table can be incomplete, and an account missing from it falls through to exactly the title it
+// had before -- but an entry in it cannot have gone stale.
+//
+// The format matches poolSeo() above character for character, so the two url shapes for the same
+// pool do not describe it differently.
 function poolIdSeo(id, chain){
   const net = netName(chain);
   const short = id.length > 12 ? id.slice(0, 6) + '…' + id.slice(-4) : id;
+  const pair = POOL_PAIRS[id];
+  if (pair) {
+    return {
+      title: pair + ' liquidity pool on ' + net + ' | LumosCore',
+      desc: 'Reserves, total value locked, 24h volume and fees for the ' + pair
+        + ' liquidity pool on ' + net + '. Add or withdraw liquidity from your own wallet.',
+      image: '',
+    };
+  }
   return {
     title: 'Liquidity pool ' + short + ' on ' + net + ' | LumosCore',
     desc: 'Reserves, total value locked, 24h volume and fees for ' + net + ' liquidity pool '
