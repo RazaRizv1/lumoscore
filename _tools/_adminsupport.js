@@ -118,7 +118,10 @@ const CSS = `<style id="lx-adminsupport-css">
 /* The compose textarea: the modal input style is built for one-line fields, so only what a
    textarea needs differently is set and nothing else about the modal is touched. */
 .lxn-ta{min-height:160px;resize:vertical;font:inherit;line-height:1.5;padding:10px 12px}
-.lxm-sentrow .lxm-row-prev{opacity:.85}
+/* A sent row carries no checkbox, so the left padding the checkbox label was contributing has to
+   come from the button instead -- otherwise the text sits 10px from the edge where every inbox row
+   sits at 34. */
+.lxm-sentrow .lxm-rowmain{padding-left:16px}
 
 /* ONE TOOLBAR, not two stacked blocks. The chips and the search box both narrow the same list, so they
    belong on the same line -- the search sitting alone underneath read as an orphaned control and was
@@ -278,6 +281,10 @@ function load(){
   // nothing. Every other chip maps straight through.
   // Sent comes from a different table and a different endpoint, so it is answered before the
   // inbox request is built rather than being squeezed into the box parameter.
+  // Select-all and the bulk Spam/Delete buttons act on INBOX rows; none of them mean anything for
+  // mail we sent, and leaving the header up also leaves the inbox's own count sitting above a list
+  // that is not the inbox.
+  var lh=document.querySelector(".lxm-lhead"); if(lh)lh.hidden=(BOX==="sent");
   if(BOX==="sent"){ loadSent(); return; }
   var box=(BOX==="archived")?"archived":(BOX==="spam")?"spam":"inbox";
   api("?box="+box+(Q?("&q="+encodeURIComponent(Q)):"")+"&t="+Date.now()).then(function(r){
@@ -313,17 +320,24 @@ function loadSent(){
     }
     list.innerHTML=rows.map(function(x){
       var state=x.err?"<b>failed</b>":lxmStatus(x.status);
-      return "<button class='lxm-row lxm-sentrow' type='button' data-sent='"+esc(x.id)+"'>"
-        +"<div class='lxm-row-main'><div class='lxm-row-top'><span class='lxm-row-from'>To "+esc(x.to_addr)+"</span>"
-        +"<span class='lxm-row-date'>"+esc(new Date(x.ts).toLocaleDateString())+"</span></div>"
-        +"<div class='lxm-row-subj'>"+esc(x.subject||"(no subject)")+"</div>"
-        +"<div class='lxm-row-prev'>"+state+"</div></div></button>";
+      // Same shape as an inbox row so it inherits the same styling: the recipient where the sender
+      // goes, the relative time in the same right-hand column, and the delivery state on the meta
+      // line where the inbox puts "to ...".
+      return "<div class='lxm-row lxm-sentrow'>"
+        +"<button class='lxm-rowmain' type='button' data-sent='"+esc(x.id)+"'>"
+        +"<div class='lxm-from'><span class='lxm-from-n'>"+esc(x.to_addr)+"</span>"
+        +"<span class='lxm-when'>"+esc(when(x.ts))+"</span></div>"
+        +"<div class='lxm-subj'>"+esc(x.subject||"(no subject)")+"</div>"
+        +"<div class='lxm-snip'>"+esc((x.body||"").replace(/[ ]+/g," ").trim()||"(no message body)")+"</div>"
+        +"<div class='lxm-meta'>"+state+"</div></button></div>";
     }).join("");
     var pane=q("#lxmRead");
     [].slice.call(list.querySelectorAll("[data-sent]")).forEach(function(btn){
       btn.addEventListener("click",function(){
         var x=rows.filter(function(r){ return r.id===btn.getAttribute("data-sent"); })[0];
         if(!x||!pane)return;
+        [].slice.call(list.querySelectorAll(".lxm-row")).forEach(function(r){ r.classList.remove("sel"); });
+        if(btn.parentNode)btn.parentNode.classList.add("sel");
         pane.innerHTML="<div class='lxm-read-head'><div class='lxm-read-subj'>"+esc(x.subject||"(no subject)")+"</div>"
           +"<div class='lxm-read-meta'>To <b>"+esc(x.to_addr)+"</b><br>"+esc(new Date(x.ts).toLocaleString())
           +" \u00b7 "+(x.err?"<b>failed</b>":lxmStatus(x.status))+"</div></div>";
