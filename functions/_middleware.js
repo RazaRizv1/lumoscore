@@ -549,7 +549,8 @@ async function learnImgDims(env, url){
 // are, rather than measured.
 function isCardImage(u){
   const s = String(u || '');
-  return s.indexOf('/lxapi/ogcard') >= 0 || s.indexOf('/lxapi/ogpool') >= 0 || s.indexOf('/assets/og/s/') >= 0;
+  return s.indexOf('/lxapi/ogcard') >= 0 || s.indexOf('/lxapi/ogpool') >= 0
+    || s.indexOf('/lxapi/ogxrpl') >= 0 || s.indexOf('/assets/og/s/') >= 0;
 }
 
 // One pool's card. Every pool is pointed at the endpoint, which serves the drawn card for the top
@@ -1049,10 +1050,17 @@ export async function onRequest(context){
     // LumosCore-branded 1200x630 image would publish an endorsement nobody made. Every XRPL asset
     // therefore shows the chain's trade card -- the same rule an uncurated Stellar asset follows.
     // LUMOS is the exception, being ours, with a fixed and blackholed issuer.
-    // LUMOS shares the card its own token page uses: same token, described the same way, so two
+    // XRPL ASSETS GET A CARD FOR THE TOP HUNDRED BY 24H VOLUME, and the chain's trade card for the
+    // rest -- the endpoint decides, so which hundred were drawn stays a property of the build. The
+    // bound is the point: XRPL has no curated roster and a token's name and icon are its issuer's to
+    // choose, so the cards are limited to the one filter that costs something to pass. The card
+    // carries the issuer ADDRESS and no issuer name for the same reason -- a name can be copied, an
+    // address cannot, and it is what tells a reader which USDC they are looking at.
+    //
+    // LUMOS keeps the card its own token page uses: same token, described the same way, so two
     // near-identical files would only be two things to keep in step.
-    else seo.image = want.id === XRPL_LUMOS ? '/assets/og/s/lumos-xrpl.png'
-                                            : '/assets/og/s/trade-xrpl.png';
+    else if (want.id === XRPL_LUMOS) seo.image = '/assets/og/s/lumos-xrpl.png';
+    else seo.image = PRIMARY_ORIGIN + '/lxapi/ogxrpl?a=' + encodeURIComponent(want.id);
   }
   else if (want && want.kind === 'poolid') {
     seo = poolIdSeo(want.id, want.chain);
