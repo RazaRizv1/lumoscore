@@ -53,6 +53,48 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 // one to a monogram. ([[never-cache-a-failure-as-an-answer]] inverted -- only successes are written.)
 const LOGOS = path.join(__dirname, '..', '_data', 'ogxlogos');
 let CACHE_HITS = 0;
+const BLANKED = [];
+
+// A 200 CARRYING NOTHING. SOLO's card went out as a near-black tile with a green speck: the
+// thumbnail host answered 200 with a dark, essentially empty 128x128 image, and the build drew it.
+// The same id serves the real red SOLO mark now, so nothing about the HTTP exchange was wrong -- the
+// picture was. No status code or content-type catches that; only looking at the pixels does.
+//
+// THE TEST IS DELIBERATELY NARROW, because most of these logos are legitimately dark and rejecting
+// one of those would be the worse error. Both conditions must hold:
+//
+//   dark      mean luminance of the opaque pixels below 40. The card panel sits at about 26, so this
+//             is the threshold the kit already uses for "cannot be read on this panel".
+//   featureless  under 2% of those pixels differ from the dominant tone by more than 24. A logo --
+//             any logo -- is a mark against a ground, so it has ink. A blank tile does not.
+//
+// Measured against all 100 logos in the roster: this trips on SOLO's bad capture and on nothing else.
+// SPY's green dot-matrix (6.1% ink), the dark USDT (4%) and XRPS (8.4%) all pass on the second test;
+// XRT's cropped wordmark passes on the first, being bright. A tripped image is treated exactly like a
+// failed fetch -- retried, then the cached logo, then the monogram -- never written to the cache.
+async function looksBlank(uri) {
+  try {
+    const c = uri.indexOf('base64,');
+    if (c < 0) return false;
+    const sharp = require('sharp');
+    const { data } = await sharp(Buffer.from(uri.slice(c + 7), 'base64'))
+      .ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const lum = [];
+    for (let i = 0; i < data.length; i += 4) {
+      if (data[i + 3] > 128) lum.push(0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2]);
+    }
+    if (!lum.length) return false;                    // fully transparent: not this bug
+    let sum = 0;
+    for (const v of lum) sum += v;
+    const mean = sum / lum.length;
+    if (mean >= 40) return false;
+    let ink = 0;
+    for (const v of lum) if (Math.abs(v - mean) > 24) ink++;
+    return ink / lum.length < 0.02;
+  } catch (e) {
+    return false;                                     // undecidable is not the same as blank
+  }
+}
 
 async function thumb(origin, m) {
   if (!m) return '';
@@ -62,6 +104,11 @@ async function thumb(origin, m) {
   // lie as a card that states a price nobody quoted.
   for (let i = 0; i < 2; i++) {
     const uri = await K.imageDataUri(origin + '/lxapi/xrplthumb?id=' + m + '&w=128');
+    if (uri && await looksBlank(uri)) {
+      if (BLANKED.indexOf(m) < 0) BLANKED.push(m);
+      await sleep(900);
+      continue;                                       // same handling as a fetch that failed outright
+    }
     if (uri) {
       const c = uri.indexOf('base64,');
       if (c > 0) {
@@ -76,8 +123,18 @@ async function thumb(origin, m) {
   }
   try {
     if (fs.existsSync(cached)) {
+      const uri = 'data:image/png;base64,' + fs.readFileSync(cached).toString('base64');
+      // CHECKED ON THE WAY OUT AS WELL AS ON THE WAY IN. The cache predates this test, so it already
+      // holds SOLO's blank capture; without this, a fetch that failed would fall back onto exactly
+      // the image the test exists to refuse, and the guard would look like it was working. A blank
+      // entry is deleted rather than kept, so the next run has a clean slate for it.
+      if (await looksBlank(uri)) {
+        if (BLANKED.indexOf(m) < 0) BLANKED.push(m);
+        try { fs.unlinkSync(cached); } catch (e) {}
+        return '';
+      }
       CACHE_HITS++;
-      return 'data:image/png;base64,' + fs.readFileSync(cached).toString('base64');
+      return uri;
     }
   } catch (e) { /* fall through to the monogram */ }
   return '';
@@ -171,5 +228,7 @@ async function thumb(origin, m) {
     // failure that let one card keep a pre-badge row while ninety-nine moved on.
     + (stale.length ? '\n  NOT REDRAWN, still on the older design (no logo ever fetched): ' + stale.join(' ') : '')
     + (failed.length ? '\n  FAILED TO WRITE, left on the older design: ' + failed.join(' ') : '')
+    // Said out loud, because the whole point is that this arrives looking like a success.
+    + (BLANKED.length ? '\n  REJECTED ' + BLANKED.length + ' blank thumbnail(s) that came back 200: ' + BLANKED.join(' ') : '')
     + (skipped.length ? '\n  skipped ' + skipped.length + ' with a code the route would not accept: ' + skipped.join(' ') : ''));
 })();
