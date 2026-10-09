@@ -118,6 +118,9 @@ const CSS = `<style id="lx-adminsupport-css">
 /* The compose textarea: the modal input style is built for one-line fields, so only what a
    textarea needs differently is set and nothing else about the modal is touched. */
 .lxn-ta{min-height:160px;resize:vertical;font:inherit;line-height:1.5;padding:10px 12px}
+/* A native select inherits .lxmodal-i for the closed state, but the OPTION list is drawn by the
+   platform and defaults to light-on-light on some of them. */
+.lxmodal-i option{background:var(--surface-2);color:var(--text)}
 /* A sent row carries no checkbox, so the left padding the checkbox label was contributing has to
    come from the button instead -- otherwise the text sits 10px from the edge where every inbox row
    sits at 34. */
@@ -329,7 +332,7 @@ function loadSent(){
         +"<span class='lxm-when'>"+esc(when(x.ts))+"</span></div>"
         +"<div class='lxm-subj'>"+esc(x.subject||"(no subject)")+"</div>"
         +"<div class='lxm-snip'>"+esc((x.body||"").replace(/[ ]+/g," ").trim()||"(no message body)")+"</div>"
-        +"<div class='lxm-meta'>"+state+"</div></button></div>";
+        +"<div class='lxm-meta'>"+state+(x.from_addr?(" · from "+esc(String(x.from_addr).split("@")[0])):"")+"</div></button></div>";
     }).join("");
     var pane=q("#lxmRead");
     [].slice.call(list.querySelectorAll("[data-sent]")).forEach(function(btn){
@@ -339,7 +342,7 @@ function loadSent(){
         [].slice.call(list.querySelectorAll(".lxm-row")).forEach(function(r){ r.classList.remove("sel"); });
         if(btn.parentNode)btn.parentNode.classList.add("sel");
         pane.innerHTML="<div class='lxm-read-head'><div class='lxm-read-subj'>"+esc(x.subject||"(no subject)")+"</div>"
-          +"<div class='lxm-read-meta'>To <b>"+esc(x.to_addr)+"</b><br>"+esc(new Date(x.ts).toLocaleString())
+          +"<div class='lxm-read-meta'>"+(x.from_addr?("From <b>"+esc(x.from_addr)+"</b><br>"):"")+"To <b>"+esc(x.to_addr)+"</b><br>"+esc(new Date(x.ts).toLocaleString())
           +" \u00b7 "+(x.err?"<b>failed</b>":lxmStatus(x.status))+"</div></div>";
         var b=document.createElement("div"); b.className="lxm-read-body"; b.textContent=x.body||"";
         pane.appendChild(b);
@@ -361,6 +364,10 @@ function compose(){
   var m=document.createElement("div"); m.className="lxmodal";
   m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>New email</h3>"
     +"<p class='lxmodal-s'>Sent from support@mail.lumoscore.com so it passes SPF and DKIM. Replies come back to support@lumoscore.com and land in this inbox.</p>"
+    +"<label class='lxmodal-l' for='lxnFrom'>From</label>"
+    +"<select class='lxmodal-i' id='lxnFrom'>"
+    +"<option value='support'>LumosCore Support — support@lumoscore.com</option>"
+    +"<option value='raza'>Raza Rizvi — raza@lumoscore.com</option></select>"
     +"<label class='lxmodal-l' for='lxnTo'>To</label><input class='lxmodal-i' id='lxnTo' type='email' placeholder='name@example.com' autocomplete='off'>"
     +"<label class='lxmodal-l' for='lxnSubj'>Subject</label><input class='lxmodal-i' id='lxnSubj' maxlength='200' autocomplete='off'>"
     +"<label class='lxmodal-l' for='lxnBody'>Message</label><textarea class='lxmodal-i lxn-ta' id='lxnBody' rows='8'></textarea>"
@@ -375,7 +382,8 @@ function compose(){
   m.querySelector("#lxnCancel").addEventListener("click",close);
   m.querySelector("#lxnSend").addEventListener("click",function(){
     var btn=m.querySelector("#lxnSend");
-    var payload={to:(to.value||"").trim(),subject:(subj.value||"").trim(),body:(body.value||"").trim()};
+    var fromEl=m.querySelector("#lxnFrom");
+    var payload={from:fromEl?fromEl.value:"support",to:(to.value||"").trim(),subject:(subj.value||"").trim(),body:(body.value||"").trim()};
     if(!payload.to){ err.textContent="Who is it going to?"; to.focus(); return; }
     if(!payload.subject){ err.textContent="Give it a subject."; subj.focus(); return; }
     if(!payload.body){ err.textContent="Write something first."; body.focus(); return; }
