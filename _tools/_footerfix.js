@@ -45,7 +45,15 @@ const FSCRIPT='<script id="lx-footerlinks">(function(){if(window.__lxFtl)return;
 // visitor clicking Home in the footer was bounced to the landing page -- it looked like a dead link
 // (RAZA 2026-09-24). "/" is right for both: it IS the front door, and lx-homegate forwards a
 // connected visitor from there to /dashboard, which is where Home meant to send them all along.
-+'var ROUTE={"home":"/"};'
+// TERMS AND PRIVACY NOW HAVE PAGES, so they stop being neutralized. When this neutralizer was
+// written neither route existed and refusing to pretend was the right call; /terms and /privacy both
+// answer 200 today, and leaving them dead made the one page a visitor is most likely to look for
+// them on -- the landing footer -- the only place they cannot be reached. Found in a mobile audit
+// 2026-10-09: clicking Terms on the phone did nothing at all, measured, not inferred.
+//
+// These three are the ONLY footer links still shipping href="#", and only on the landing page; every
+// other page's footer is already wired. Anything else that turns up keeps the neutralizer.
++'var ROUTE={"home":"/","terms":"/terms","privacy":"/privacy"};'
 +'function fix(){var scope=document.querySelectorAll("footer a[href=\\u0022#\\u0022], .footer a[href=\\u0022#\\u0022], [class*=footer] a[href=\\u0022#\\u0022]");'
 +'[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();'
 +'if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}'
@@ -67,6 +75,12 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
       h=h.replace(/\s*<a[^>]*href="#"[^>]*>\s*Features\s*<\/a>/gi,'');
       // "FAQs" now has a page. Wired here rather than left to the runtime neutralizer below.
       h=h.replace(/(<a[^>]*)href="#"([^>]*>\s*FAQs?\s*<\/a>)/gi,'$1href="/faq"$2');
+
+      // THE LAUNCHPAD'S CONSENT LINE, which is not a footer link but is the same fault and the worst
+      // instance of it: "By confirming, you agree to our <a href="#">Terms of Service</a>." asked for
+      // agreement to a document the reader could not open. /terms exists and answers 200. Scoped to
+      // .terms-foot so this cannot touch the word "Terms" anywhere else on the site.
+      h=h.replace(/(<div class="terms-foot">[\s\S]{0,160}?<a )href="#"(>\s*Terms of Service\s*<\/a>)/gi,'$1href="/terms"$2');
 
       // ---- mobile footer parity -------------------------------------------------------------------
       // The phone footer is a DIFFERENT markup block from the desktop one, so wiring href="#" links
