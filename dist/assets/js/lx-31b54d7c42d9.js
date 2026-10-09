@@ -228,8 +228,12 @@
   }
 
   // ---- All Trading Pairs ---------------------------------------------------------------------------
+  // data-filter FIRST. The Curated chip is a three-way dropdown since 2026-10-09 (_dexdata.js owns it,
+  // one control for both builds) and it writes the live mode there -- "all", "stables" or "native".
+  // Reading data-cat or the label first would hand this "curated — stables▾", which matches no
+  // category, so the phone would sit on the curated list while the desktop filtered.
   function mkFilter(){var t=q(".mdx-mk-filters .active,.mdx-mk-filters button.active");
-    return t?((t.getAttribute("data-cat")||(t.textContent||"").trim().toLowerCase())):"all";}
+    return t?((t.getAttribute("data-filter")||t.getAttribute("data-cat")||(t.textContent||"").trim().toLowerCase())):"all";}
   function mkQuery(){var i=q(".mdx-mk-search input");return i?String(i.value||"").trim().toLowerCase():"";}
   var MK_PER=50, mkPage=1, mkKey="";
   // ---- sorting -------------------------------------------------------------------------------------
@@ -365,7 +369,10 @@
     var zSeen={};
     function zPut(dst,a){ if(!a)return; var id=a.code+"|"+a.issuer; if(zSeen[id])return; zSeen[id]=1; dst.push(a); }
     src=[];
-    if(cat==="native"){ for(var zi=0;zi<NL.length;zi++)zPut(src,NL[zi]); }
+    // cat==="native" is the dropdown's LumosCore Mints. NL also carries LUMOS, which is pinned into the
+    // native roster but was not minted through the launchpad -- the desktop table and the New Mints card
+    // both exclude it, so this has to as well or the phone counts one more mint than the desktop does.
+    if(cat==="native"){ for(var zi=0;zi<NL.length;zi++){ if(NL[zi]&&NL[zi].cat==="native")zPut(src,NL[zi]); } }
     else { for(var zj=0;zj<A.length;zj++)zPut(src,A[zj]); }
     var d=src.filter(function(a){
       if(cat&&cat!=="all"&&cat!=="native"){var c=String(a.cat||"").toLowerCase();

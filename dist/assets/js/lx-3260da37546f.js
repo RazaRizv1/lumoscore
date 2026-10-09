@@ -422,6 +422,11 @@
     // New Mints and their own pages.
     var kill={stables:1,memes:1,utility:1,native:1};
     qa(".dex-mk-filter,.mdx-mk-filter").forEach(function(b){
+      // THE DROPDOWN'S OWN CHIP IS EXEMPT FROM BOTH HALVES OF THIS. It carries the live mode in
+      // data-filter, so picking Stables or LumosCore Mints would otherwise match the kill map and DELETE
+      // the control the reader had just used; and the relabel below would stamp "Curated" back over
+      // "Curated — Stables" on the next pass. paintModeLabel owns that text now.
+      if(b.getAttribute("data-lxmode"))return;
       var f=(b.getAttribute("data-filter")||"").toLowerCase();
       if(kill[f]){ if(b.parentNode)b.parentNode.removeChild(b); return; }
       if(f==="all"||f===""){
@@ -431,6 +436,7 @@
         if(tn&&tn.nodeValue.trim()!=="Curated")tn.nodeValue="Curated";
       }
     });
+    try{ makeModeChip(); }catch(_){}
     // If the active chip was one of the three just removed, nothing is selected and the table would read
     // an empty filter. Fall back to Curated.
     var act=q(".dex-mk-filter.active,.mdx-mk-filter.active");
@@ -444,6 +450,116 @@
     qa(".mdx-mk-search input,.dex-mk-search input,.search-box.inline-filter input,input.lx-mkq,.lx-mkq input").forEach(function(i){
       if(i.getAttribute("placeholder")!==want)i.setAttribute("placeholder",want);
     });
+  }
+  // ---- the Curated chip is a three-way dropdown -------------------------------------------------
+  // RAZA 2026-10-09: "lets make it a drop down with 3 options (Curated - All, Curated - Stables,
+  // LumosCore Mints). By default it lands on Curated - All everytime the page is refreshed." Ported
+  // from XRPL's trade.js, which got the same control on 2026-10-07 -- same markup, same CSS, same
+  // behaviour, so the two chains do not drift into two different controls.
+  //
+  // NOTHING NEW IN THE DATA LAYER. tableData() has honoured "all", "stables" and "native" since the
+  // chips were removed ("The data-filter values are still honoured if an old chip survives
+  // somewhere"), so this only has to switch the chip's data-filter and repaint. Stables are the 13
+  // assets already carrying cat:"stable", each pinned to its own ISSUER in the ASSETS literal --
+  // a ticker is not an identity on Stellar.
+  //
+  // A MINT IS NOT CURATED. RAZA: "LumosCore mints doesn't necessarily mean its curated. Its just
+  // that we aren't currently showing LumosCore mints anywhere." NATIVE is built from
+  // /lxapi/assetsearch?search=lumoscore plus launchpad-icons.json, and nativeMake() skips anything
+  // already in the curated set -- so this mode REPLACES the rows rather than filtering them, and
+  // nothing here grants a tick.
+  //
+  // MODE is deliberately NOT persisted: a filter remembered across visits is how someone ends up
+  // staring at an almost-empty table wondering where the markets went.
+  var MODE="all";
+  var MODES=[["all","Curated \u2014 All"],["stables","Curated \u2014 Stables"],["native","LumosCore Mints"]];
+  function modeCss(){
+    if(document.getElementById("lx-modemenu-css"))return;
+    var st=document.createElement("style"); st.id="lx-modemenu-css";
+    st.textContent=".lx-modewrap{position:relative;display:inline-flex}"
+      +".lx-modecaret{margin-left:6px;opacity:.75;font-size:10px;line-height:1}"
+      +".lx-modemenu{position:absolute;top:calc(100% + 6px);left:0;z-index:60;min-width:196px;"
+      +"padding:6px;border:1px solid var(--border,#26262c);border-radius:12px;"
+      +"background:var(--surface,#131317);box-shadow:0 18px 40px -22px rgba(0,0,0,.8)}"
+      +".lx-modemenu button{display:flex;align-items:center;gap:8px;width:100%;padding:9px 10px;"
+      +"border:0;border-radius:8px;background:transparent;color:var(--text,#f6f5f3);"
+      +"font:inherit;font-size:13.5px;font-weight:600;text-align:left;cursor:pointer}"
+      +".lx-modemenu button:hover{background:var(--surface-2,#1a1a1f)}"
+      +'.lx-modemenu button[aria-checked="true"]{color:var(--accent,#ea6a2c)}'
+      +".lx-modetick{width:12px;flex:0 0 12px;opacity:0}"
+      +'.lx-modemenu button[aria-checked="true"] .lx-modetick{opacity:1}';
+    (document.head||document.documentElement).appendChild(st);
+  }
+  function closeModeMenu(){ var m=q(".lx-modemenu"); if(m&&m.parentNode)m.parentNode.removeChild(m); }
+  // Only the chip's own TEXT NODE is rewritten -- the design put an icon in there and replacing the
+  // whole chip would throw it away.
+  function paintModeLabel(){
+    var label=(MODES.filter(function(p){ return p[0]===MODE; })[0]||MODES[0])[1];
+    qa(".dex-mk-filter[data-lxmode],.mdx-mk-filter[data-lxmode]").forEach(function(chip){
+      [].forEach.call(chip.childNodes,function(n){
+        if(n.nodeType===3&&n.nodeValue&&n.nodeValue.trim())n.nodeValue=label;
+      });
+    });
+  }
+  function applyMode(next){
+    if(MODE===next)return;
+    MODE=next;
+    qa(".dex-mk-filter[data-lxmode],.mdx-mk-filter[data-lxmode]").forEach(function(chip){
+      chip.setAttribute("data-filter",next); chip.classList.add("active");
+    });
+    paintModeLabel();
+    mkPage=1;                                                 // page 3 of a one-page view is nothing
+    if(next==="native"){ try{ loadNative(); }catch(_){} }
+    try{ window.__lxDEXmode=MODE; }catch(_){}                 // the mobile layer reads this
+    try{ touch(); }catch(_){}
+    try{ guardApply(); }catch(_){}
+  }
+  function makeModeChip(){
+    var chip=q('.dex-mk-filter[data-filter="all"],.mdx-mk-filter[data-filter="all"],.dex-mk-filter[data-lxmode],.mdx-mk-filter[data-lxmode]');
+    if(!chip||chip.__lxMode||!chip.parentNode)return;
+    chip.__lxMode=1; chip.setAttribute("data-lxmode","1"); modeCss();
+    var wrap=document.createElement("span"); wrap.className="lx-modewrap";
+    chip.parentNode.insertBefore(wrap,chip); wrap.appendChild(chip);
+    var caret=document.createElement("span"); caret.className="lx-modecaret";
+    caret.setAttribute("data-logoed","1");                    // the ticker-logo healer repaints short text
+    caret.textContent="\u25be"; chip.appendChild(caret);
+    chip.setAttribute("type","button");                       // a bare <button> is a submit button
+    chip.setAttribute("aria-haspopup","listbox");
+    paintModeLabel();
+    openModeMenu(wrap);
+  }
+  function openModeMenu(wrap){
+    // ONE LISTENER, ON WINDOW, IN CAPTURE. Binding to the chip was not enough: the design ships its
+    // own click router, and on the MOBILE build it took the tap and navigated before a chip-level
+    // capture listener ever ran -- measured as click -> beforeunload with no submit and no
+    // location.reload(), so the page simply went. Capture at window is the only phase that runs
+    // before it, which is the same remedy the inherited row-click hijack needed.
+    if(window.__lxModeClick)return;
+    window.__lxModeClick=1;
+    window.addEventListener("click",function(e){
+      var t=e.target; if(!t||!t.closest)return;
+      var opt=t.closest(".lx-modemenu button");
+      if(opt){ e.preventDefault(); e.stopImmediatePropagation();
+        var m=opt.getAttribute("data-mode"); closeModeMenu(); applyMode(m); return; }
+      if(t.closest(".lx-modemenu"))  { e.stopImmediatePropagation(); return; }
+      var chip=t.closest("[data-lxmode]");
+      if(!chip){ closeModeMenu(); return; }                   // a tap anywhere else puts the menu away
+      e.preventDefault(); e.stopImmediatePropagation();
+      if(q(".lx-modemenu")){ closeModeMenu(); return; }
+      var w=chip.closest(".lx-modewrap")||wrap; if(!w)return;
+      var menu=document.createElement("div"); menu.className="lx-modemenu"; menu.setAttribute("role","listbox");
+      MODES.forEach(function(p){
+        var b=document.createElement("button"); b.type="button"; b.setAttribute("role","option");
+        b.setAttribute("data-mode",p[0]);
+        b.setAttribute("aria-checked",p[0]===MODE?"true":"false");
+        var tick=document.createElement("span"); tick.className="lx-modetick";
+        tick.setAttribute("data-logoed","1"); tick.textContent="\u2713";
+        var txt=document.createElement("span"); txt.setAttribute("data-logoed","1"); txt.textContent=p[1];
+        b.appendChild(tick); b.appendChild(txt);
+        menu.appendChild(b);
+      });
+      w.appendChild(menu);
+    },true);
   }
   function curFilter(){ var el=q(".dex-mk-filter.active"); return (el&&el.getAttribute)?(el.getAttribute("data-filter")||"all"):"all"; }
   // Newest first. Assets we have no created stamp for sort last rather than jumping to the top on a 0.
@@ -1109,7 +1225,12 @@
     // is not a filter anyone needs. The data-filter values are still honoured if an old chip survives
     // somewhere, so nothing breaks if one is missed.
     var d;
-    if(f==="native")d=NATIVE.slice();
+    // ONE DEFINITION OF "MINT" ON THIS PAGE. NATIVE also holds LUMOS, which is pinned into it but was
+    // not minted through the launchpad -- mintList() has always filtered it out for the New Mints
+    // card, and the dropdown's LumosCore Mints mode has to agree or the same page states two
+    // different answers to the same question. Measured before this line existed: 26 rows with LUMOS
+    // at the top, against the 25 the mints card counts.
+    if(f==="native")d=NATIVE.filter(function(a){ return a.cat==="native"; });
     else if(f==="utility")d=allAssets().filter(function(a){return a.cat==="utility";});
     else if(f==="stables")d=allAssets().filter(function(a){return a.cat==="stable";});
     else if(f==="memes")d=[];
