@@ -892,6 +892,31 @@ function legacyClean(pathname, params){
 const G_RE = new RegExp('^G[A-Z2-7]{55}$');
 const ASSET_RE = new RegExp('^[A-Za-z0-9]{1,12}-G[A-Z2-7]{55}$');
 const POOLID_RE = new RegExp('^[0-9a-fA-F]{64}$');
+
+// THE XRPL SHAPES, which this guard did not have. It only ever tested s[1] === 'stellar', so every
+// /trade/xrpl, /pools/xrpl and /account/xrpl url reached the SEO layer whatever was in it:
+// /trade/xrpl/totaljunk answered 200 titled "totaljunk price, pools and holders on the XRP Ledger",
+// and /pools/xrpl/id/totaljunk answered 200 as a liquidity pool. Both are measured, not supposed.
+// That is the same fabrication the Stellar half exists to prevent, and it is how a crafted segment
+// reached the ld+json emitter.
+//
+// An account is 'r' and 24-34 base58 characters -- base58 being why 0, O, I and l are absent.
+// An asset is CODE-ISSUER with the issuer an account, which is what the asset page itself requires:
+// it splits on the LAST dash, so a dash inside a ticker is fine and the greedy class below finds the
+// right one by backtracking.
+//
+// THE CODE CLASS IS DELIBERATELY WIDE. XRPL tickers are not alphanumeric the way Stellar's are: a
+// currency is either three characters or forty hex digits decoded back to as many as twenty, and
+// across the 398 assets currently in the sitemap the codes already use $, = and . besides letters and
+// digits. Constraining it to what today's roster happens to contain would 404 a legitimate token
+// tomorrow, so the rule is only what the url and the page actually require -- printable, no slash,
+// at most twenty characters. Built from char codes because a backslash does not survive the template
+// literal this file is emitted from, which is the same reason the three constants above avoid them.
+const X_PRINT = '[' + String.fromCharCode(33) + '-' + String.fromCharCode(46)
+  + String.fromCharCode(48) + '-' + String.fromCharCode(126) + ']';   // ! to ~, minus "/"
+const X_ACCT = 'r[1-9A-HJ-NP-Za-km-z]{24,34}';
+const XACCT_RE = new RegExp('^' + X_ACCT + '$');
+const XASSET_RE = new RegExp('^' + X_PRINT + '{1,20}-' + X_ACCT + '$');
 function malformedId(pathname){
   const s = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
   // A percent-encoded segment that will not decode is malformed by definition, so the original is
@@ -910,6 +935,27 @@ function malformedId(pathname){
   if (s[0] === 'pools' && s[1] === 'stellar' && s.length === 4){
     const okSide = (x) => x === 'native' || ASSET_RE.test(x);
     return !(okSide(dec(s[2])) && okSide(dec(s[3])));
+  }
+
+  // ---- the same four shapes on XRPL ----
+  if (s[0] === 'trade' && s[1] === 'xrpl' && s.length === 3){
+    return !XASSET_RE.test(dec(s[2]));
+  }
+  if (s[0] === 'account' && s[1] === 'xrpl' && s.length === 3){
+    return !XACCT_RE.test(dec(s[2]));
+  }
+  // An XRPL pool is named by its AMM ACCOUNT, not by a 64-hex id -- that is Stellar's shape and the
+  // one above. Everything this build links to is this form.
+  if (s[0] === 'pools' && s[1] === 'xrpl' && s[2] === 'id' && s.length === 4){
+    return !XACCT_RE.test(dec(s[3]));
+  }
+  // The pair form, which the route table serves and nothing in the build currently links to. BOTH
+  // native markers are accepted because both render: /pools/xrpl/XRP/RLUSD-rMxC… and
+  // /pools/xrpl/native/RLUSD-rMxC… each answer 200 with "XRP / RLUSD liquidity pool" today, and a
+  // guard that 404'd either would be breaking a working url to tidy up an unused one.
+  if (s[0] === 'pools' && s[1] === 'xrpl' && s.length === 4){
+    const okX = (x) => x === 'native' || x === 'XRP' || XASSET_RE.test(x);
+    return !(okX(dec(s[2])) && okX(dec(s[3])));
   }
   return false;
 }
