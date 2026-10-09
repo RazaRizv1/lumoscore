@@ -132,6 +132,14 @@ const STYLE = '<style id="lx-mobdex-css">'
   + '.lx-mkrow{display:flex;align-items:center;gap:10px;margin:0 0 12px}'
   + '.lx-mkrow .mdx-mk-filters{flex:0 0 auto;width:auto!important;margin:0!important}'
   + '.lx-mkrow .mdx-mk-search{flex:1 1 auto;min-width:0;margin:0!important}'
+  // 16px IS A FLOOR ON iOS, not a taste. Safari zooms the whole page when a focused input is under
+  // 16px and does not zoom back out, so tapping the filter box -- the most-used control on this
+  // screen -- left the reader in a magnified, sideways-scrolling table. The design ships this input
+  // at 13.8px. Measured on the deployed build, both chains.
+  //
+  // This file only ever writes into the MOBILE page keys, so the desktop table keeps the size it was
+  // designed with; no media query is needed and none is used.
+  + '.lx-mkrow .mdx-mk-search input,.mdx-mk-search input{font-size:16px}'
   // Separated by a middot in the pseudo-element rather than a space in the string, so the gap cannot be
   // collapsed by the whitespace handling and the two figures never touch ('XLM71,946 trades').
   + '.mdx-mk-trades{color:var(--text-soft,#8a8fa3)}'

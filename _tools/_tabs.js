@@ -137,7 +137,21 @@ const STYLE_PHONE = `<style id="lx-tabs-phone-css">
 .search-box.inline-filter{height:36px!important;padding:0 12px!important;gap:8px!important;
   background:var(--surface-2)!important;border-radius:10px!important;margin-bottom:10px!important}
 .search-box.inline-filter:focus-within{border-color:var(--accent)!important}
-.search-box.inline-filter input{font-size:12.5px!important}
+/* 16px IS A FLOOR ON iOS, not a taste. Safari zooms the whole page when a focused input is under
+   16px and never zooms back out, so tapping the pool filter -- the most-used control on that screen
+   -- left the reader in a magnified, sideways-scrolling list.
+
+   WRITE THE RENDERED VALUE HERE. An earlier attempt wrote 14.55 on the theory that _typescale.js
+   would multiply it to 16.0. It does multiply by 1.1, but it is a MANUAL pass -- "npm run build" is
+   only extract_site + _externalize -- so it had not run since, and 14.55 reached the browser as
+   14.55px. The 13.8px this replaced was 12.5 from a build where typescale HAD run. Measured on the
+   deployed page, never derived from the factor.
+
+   Fixed HERE rather than overridden elsewhere: this rule is !important, so only an ID selector can
+   beat it. An override added to _ammdata.js was present in the page, matched the element, and
+   changed nothing. _zoomfloor.js also carries #poolSearch as a backstop -- same value, so the two
+   cannot disagree, and the XRPL fork (which has no copy of this tool) has nothing else. */
+.search-box.inline-filter input{font-size:16px!important}
 .search-box.inline-filter svg{width:13px!important;height:13px!important}
 </style>`;
 

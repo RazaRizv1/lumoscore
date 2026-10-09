@@ -182,7 +182,13 @@ const CSS = '<style id="' + ID + '">'
   + DST + '> .br-wallet.brw-in > .br-ic{display:none !important}'
   + DST + '> .br-wallet.brw-in::before{content:"";flex:0 0 18px;width:18px;height:18px;background:var(--text-soft);'
   + '-webkit-mask:' + I.link + ' center/contain no-repeat;mask:' + I.link + ' center/contain no-repeat}'
-  + DST + '.br-addr-in{flex:1;min-width:0;font:400 15px/1.2 "Hanken Grotesk",system-ui,sans-serif !important}'
+  // 16px, not 15: iOS Safari zooms the page when a focused input is under 16px and never zooms back
+  // out, and this is the field someone pastes a RECEIVING ADDRESS into -- the worst place in the
+  // product to be dumped into a magnified, sideways-scrolling page. Raised here rather than overridden
+  // in _zoomfloor.js because DST makes this selector (0,6,0); the floor's `input.br-addr-in` is
+  // (0,1,1) and lost the tie even with !important on both sides. One pixel, and the only one in this
+  // declaration that may not be lowered again.
+  + DST + '.br-addr-in{flex:1;min-width:0;font:400 16px/1.2 "Hanken Grotesk",system-ui,sans-serif !important}'
   + '.lx-s2hint{grid-column:1 / -1;display:flex;align-items:center;gap:8px;margin-top:-6px;'
   + 'font:400 13px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft)}'
   + '.lx-s2hint::before{content:"";flex:0 0 14px;width:14px;height:14px;background:currentColor;'
