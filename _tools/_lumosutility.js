@@ -18,6 +18,13 @@ const { read, getContents } = require(__dirname + '/lib.js');
 const B = String.fromCharCode(92);
 
 const KEYS = ['lumoscore-lumos-token.html', 'lumoscore-lumos-token-dark.html', 'lumoscore-lumos-token-mobile.html'];
+// Card class -> where its link goes. Stellar, because this repo's containers are the Stellar build.
+const CARD_LINKS = [
+  ['fee',    '/docs/fees'],        // Trading fee waivers -- the fee schedule is the documentation for it
+  ['native', '/rewards/stellar'],  // Native LP Rewards
+  ['eco',    '/pools/stellar'],    // Ecosystem LP Rewards -- 'View partner pools' means the pools list
+  ['whale',  '/rewards/stellar'],  // Whale Holder Rewards -- eligibility and schedule live on rewards
+];
 
 // The rate pulled out as a figure, so the benefit is a number rather than a sentence to read.
 // Values match _feerate.js (THRESH=250000, 0.002 -> 0.001); if that file changes, change these.
@@ -91,7 +98,8 @@ const STYLE = `<style id="lx-lumosutil-css">
 }
 </style>`;
 
-let containers = 0, pages = 0, copyFixed = 0;
+let containers = 0, pages = 0, copyFixed = 0, wired = 0;
+const missing = [];
 for (const dev of ['desktop', 'mobile']) {
   const file = `lumoscore-aptos-${dev}.html`;
   let data; try { data = read(file); } catch (e) { continue; }
@@ -119,6 +127,29 @@ for (const dev of ['desktop', 'mobile']) {
       }
     }
 
+    // THE FOUR CARD LINKS WENT NOWHERE. Each card ended in an <a class="u-link" href="#"> -- "Learn
+    // how it works", "View reward programs", "View partner pools", "Eligibility & schedule" -- and a
+    // mobile audit on 2026-10-09 found these are the ONLY dead links on this page a phone user can
+    // actually see and tap. Clicked each on the deployed build first: no navigation, no scroll, no
+    // overlay. The other 22 dead links across trade and pools turned out to be hidden markup inside
+    // collapsed hero blocks, which is why only these are wired.
+    //
+    // Destinations confirmed by RAZA 2026-10-09, each chosen for the card it sits in rather than sent
+    // somewhere generic, and each staying on the chain the reader is already on. This repo's
+    // containers are Stellar's; the XRPL build has its own copy of this page and its own fix.
+    //
+    // href="#" is part of the match, so a re-run is a no-op rather than a second rewrite.
+    for (const [cls, href] of CARD_LINKS) {
+      const at = p.indexOf('<div class="util-card ' + cls + '"');
+      if (at < 0) { missing.push(k + ':' + cls); continue; }
+      const DEAD = '<a class="u-link" href="#"';
+      const rel = p.indexOf(DEAD, at);
+      if (rel > at && rel - at < 4000) {
+        p = p.slice(0, rel) + '<a class="u-link" href="' + href + '"' + p.slice(rel + DEAD.length);
+        wired++;
+      }
+    }
+
     if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
     if (p !== before) { json[k] = p; changed = true; pages++; }
   }
@@ -129,4 +160,5 @@ for (const dev of ['desktop', 'mobile']) {
     fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
   }
 }
-console.log('LUMOS utility: two bands on ' + pages + ' page keys, ' + copyFixed + ' fee sentence(s) corrected');
+console.log('LUMOS utility: two bands on ' + pages + ' page keys, ' + copyFixed + ' fee sentence(s) corrected, ' + wired + ' card link(s) wired'
+  + (missing.length ? ' | CARD NOT FOUND: ' + missing.join(' ') : ''));
