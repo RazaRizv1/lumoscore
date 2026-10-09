@@ -10,6 +10,7 @@
 // that header the conversation would dead-end at a subdomain nothing listens to.
 import { requireAdmin } from '../../_lib/adminauth.js';
 import { audit } from '../../_lib/audit.js';
+import { mailHtml } from '../../_lib/mailtemplate.js';
 
 const API = 'https://api.resend.com/emails';
 const FROM = 'LumosCore Support <support@mail.lumoscore.com>';
@@ -57,6 +58,9 @@ export async function onRequestPost({ request, env }) {
         to: [msg.reply_to || msg.from_addr],
         subject,
         text,
+        // The same wrapper the compose path uses, so a reply and a new message look like the same
+        // company. The plain-text part stays, for the reasons given in the template.
+        html: mailHtml(text, { preheader: subject }),
         reply_to: REPLY_TO,
         // Threading. The stored id IS the original Message-ID with its angle brackets stripped, so they
         // go back on here -- without these the reply shows up as a new conversation in the customer's
