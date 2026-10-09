@@ -132,8 +132,24 @@ try {
   process.exit(1);
 }
 
+// 16px IS A FLOOR ON iOS, not a taste. Safari zooms the whole page when a focused input is under
+// 16px and never zooms back out. This form is the PAID one -- $25 on Stellar, and the listing fee on
+// top -- so being thrown into a magnified, sideways-scrolling page on the first field is the worst
+// place in the product for it to happen. Measured on the deployed build: network 15px, code and
+// issuer 15.5px, against a 16px threshold.
+//
+// Behind a width query so the desktop form keeps the sizes it was designed with; 820px covers phones
+// and the small tablets served the mobile build. The file input is left alone deliberately -- iOS
+// does not zoom for one, because there is nothing to type into.
+// Selectors read off the rendered form, not guessed: #ltForm / .lt-form, fields .lt-in. A first
+// attempt used .lxlt and would have been a silent no-op -- a rule that matches nothing looks exactly
+// like a rule that worked.
+const ZOOMFIX = '@media (max-width:820px){'
+  + '#ltForm input:not([type=file]),#ltForm select,#ltForm textarea,'
+  + '.lt-form input:not([type=file]),.lt-form select,.lt-form textarea,'
+  + '.lt-in:not([type=file]){font-size:16px}}';
 const STYLE = '<style id="lx-listtoken-css">' + CSS.replace(/\/\*[\s\S]*?\*\//g, '')
-  .split('\n').map((l) => l.trim()).filter(Boolean).join('') + '</style>';
+  .split('\n').map((l) => l.trim()).filter(Boolean).join('') + ZOOMFIX + '</style>';
 const SCRIPT = '<script id="lx-listtoken">' + JS + '</script>';
 
 // ---- footer: "List your token", last in the Resources column ----------------------------------------

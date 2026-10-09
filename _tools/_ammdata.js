@@ -542,6 +542,12 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .lx-nsb:active{background:var(--surface-2)}
 .lx-nsb.on{background:rgba(234,106,44,.14);border-color:rgba(234,106,44,.55);color:var(--accent,#ea6a2c)}
 .lx-nsb .lx-nsb-a{font-family:ui-monospace,Menlo,monospace;font-size:12px;opacity:.9}
+/* The pool filter's iOS zoom is fixed in _tabs.js, where the size is actually set. An override here
+   could not win: that rule is marked important, which beats even an ID selector, so the version
+   added to this stylesheet was present in the page, matched the element, and changed nothing.
+   NEVER write a selector or a declaration inside a comment in this block -- the comment stripper
+   leaves the text behind and it becomes a live rule. That is how a 12.5px override reappeared here
+   and beat the real fix on source order. */
 </style>`;
 
 const SCRIPT = `<script id="lx-ammdata">(function(){
