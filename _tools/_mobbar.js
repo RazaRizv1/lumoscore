@@ -122,12 +122,40 @@ const TABFILL = '<style id="lx-tabfill">@media (min-width:431px){'
 const NBVP = '<style id="lx-nbviewport">'
   + '.nb-bar{width:100vw!important;left:50vw!important}'
   + '</style>';
+// A DECORATIVE BLEED SHOULD NOT WIDEN THE DOCUMENT (found 2026-10-09 while fixing the bar above).
+// Four pages ship a hero glow that reaches past its column -- on /whitepaper
+// `.wp-hero::before` is `left:-80px; right:-80px` around a 340px column, and on /support, /privacy
+// and /terms `.mcp-hero::before` is a 560px box pinned `right:-60px`. Both are absolutely positioned
+// radial gradients with pointer-events:none, and both are exactly as intended.
+//
+// What they also did was make documentElement.scrollWidth 438 and 422 against a 375px viewport, and
+// a fixed element sizing itself with a percentage resolves that percentage against the wider box --
+// which is how the bottom nav ended up 430px wide with its Wallet tab off-screen. That symptom is
+// fixed above; this removes the cause, so the next percentage-sized fixed element does not inherit
+// the same trap.
+//
+// CLIP ON main, AND THAT IS NOT INTERCHANGEABLE WITH clipping the hero:
+//   - `main.page` spans 0..375, the SAME rectangle the viewport already clips at, so not one visible
+//     pixel changes. Clipping `.wp-hero` instead would cut at 18..358 and lose the ~18px of glow
+//     either side that is currently on screen.
+//   - `body` already carries overflow-x:clip and does NOT contain this, because a body's overflow
+//     propagates to the viewport and the body is then treated as visible. Measured: with body
+//     clipping, scrollWidth is still 438; with main clipping it is 375.
+//   - `clip`, never `hidden`: hidden would make main a scroll container, which changes what
+//     position:sticky inside it scrolls against. clip does not. (Checked: no sticky inside main on
+//     these pages, but the rule is site-wide and the next page may have one.)
+//   - overflow-y is left alone, and `clip` beside `visible` is legal -- verified on the built page
+//     that overflow-y computes to `visible` rather than being coerced to `auto`.
+//
+// The three `.wp-tw` table scrollers inside main keep their own overflow-x:auto and still scroll;
+// confirmed by setting scrollLeft on the deployed page after applying this.
+const MAINCLIP = '<style id="lx-mainclip">main.page{overflow-x:clip}</style>';
 const OVB = '<style id="lx-scrollcost">'
   + '.menu-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}'
   + '.menu-overlay.open{backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}'
   + '[data-lcmu].lcmu-in{will-change:auto!important}'
   + '</style>';
-let wide = 0, ovb = 0, widebody = 0, tabfill = 0, nbvp = 0;
+let wide = 0, ovb = 0, widebody = 0, tabfill = 0, nbvp = 0, mainclip = 0;
 for (const k of Object.keys(json)) {
   let h = json[k];
   const before = h;
@@ -137,6 +165,10 @@ for (const k of Object.keys(json)) {
   h = h.replace(/<style id="lx-mobwide">[\s\S]*?<\/style>/g, '');
   h = h.replace(/<style id="lx-tabfill">[\s\S]*?<\/style>/g, '');
   h = h.replace(/<style id="lx-nbviewport">[\s\S]*?<\/style>/g, '');
+  h = h.replace(/<style id="lx-mainclip">[\s\S]*?<\/style>/g, '');
+  // Only where there is a main to clip: two page keys ship without one, and a stylesheet whose
+  // selector matches nothing is indistinguishable from one that worked.
+  if (h.indexOf('<main') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', MAINCLIP + '</head>'); mainclip++; }
   if (h.indexOf('class="nb-bar"') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', WIDE + '</head>'); wide++; }
   // Same gate as WIDE: every page that carries the bar, since the page that needs it is the page whose
   // own content happens to be wide, and that is not knowable from here.
@@ -152,4 +184,4 @@ if (added) {
   const serialized = JSON.stringify(json).split('</').join('<' + B + '/');
   fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
 }
-console.log("mobile bottom nav: added to " + added + " page key(s), " + already + " already had it; tablet backing on " + wide + "; overlay blur gated on " + ovb + "; width cap lifted on " + widebody + "; tablet fill on " + tabfill + "; bar anchored to the viewport on " + nbvp);
+console.log("mobile bottom nav: added to " + added + " page key(s), " + already + " already had it; tablet backing on " + wide + "; overlay blur gated on " + ovb + "; width cap lifted on " + widebody + "; tablet fill on " + tabfill + "; bar anchored to the viewport on " + nbvp + "; main clipped on " + mainclip);
