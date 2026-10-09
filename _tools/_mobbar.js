@@ -98,12 +98,36 @@ const TABFILL = '<style id="lx-tabfill">@media (min-width:431px){'
   + '.lxad-wrap{max-width:none!important}'
   + '.chart-head .chart-controls{flex:1 1 100%!important;max-width:100%!important}'
   + '}</style>';
+// THE BAR MUST BE MEASURED AGAINST THE VIEWPORT, NOT THE DOCUMENT (found 2026-10-09 on a 375px phone).
+// The design sizes it `width:100%; max-width:430px` and centres it with `left:50%` +
+// translateX(-50%). Those two percentages resolve against the containing block, and on four pages that
+// block came out 438px (/whitepaper) or 422px (/support, /privacy, /terms) rather than the 375px
+// viewport -- so the bar took its full 430px cap and centred on the wider box, leaving it at x=4..434.
+// The Wallet tab then sat with its centre at x=386, OUTSIDE the viewport. Verified as a dead control,
+// not a cosmetic one: elementFromPoint at that centre returns null, and body carries overflow-x:clip
+// so the page cannot be scrolled across to reach it. Three of those four pages had an untappable
+// Wallet tab.
+//
+// What makes the block wider than the viewport is a decorative bleed in those pages' heroes -- on
+// /whitepaper, .wp-hero::before is a 500px glow inset left:-80px right:-80px inside a 340px column.
+// That is DELIBERATE design and is left exactly as it is: it paints correctly, and overflow-x:clip
+// already stops it scrolling anything. This rule only stops the NAVIGATION inheriting the page's
+// overflow, which it should never have depended on.
+//
+// vw units, because they are the one length that ignores the containing block. 100vw at 375 is 375 and
+// max-width:430px stops binding; on a tablet 100vw is wider, the 430px cap applies again, and
+// left:50vw re-centres on the real screen -- so the tablet treatment above is untouched. Written as an
+// override rather than an edit to nbnav-css because that stylesheet is the design's own, inside the
+// containers, and is not ours to rewrite.
+const NBVP = '<style id="lx-nbviewport">'
+  + '.nb-bar{width:100vw!important;left:50vw!important}'
+  + '</style>';
 const OVB = '<style id="lx-scrollcost">'
   + '.menu-overlay{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}'
   + '.menu-overlay.open{backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}'
   + '[data-lcmu].lcmu-in{will-change:auto!important}'
   + '</style>';
-let wide = 0, ovb = 0, widebody = 0, tabfill = 0;
+let wide = 0, ovb = 0, widebody = 0, tabfill = 0, nbvp = 0;
 for (const k of Object.keys(json)) {
   let h = json[k];
   const before = h;
@@ -112,7 +136,11 @@ for (const k of Object.keys(json)) {
   h = h.replace(/<style id="lx-scrollcost">[\s\S]*?<\/style>/g, '');
   h = h.replace(/<style id="lx-mobwide">[\s\S]*?<\/style>/g, '');
   h = h.replace(/<style id="lx-tabfill">[\s\S]*?<\/style>/g, '');
+  h = h.replace(/<style id="lx-nbviewport">[\s\S]*?<\/style>/g, '');
   if (h.indexOf('class="nb-bar"') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', WIDE + '</head>'); wide++; }
+  // Same gate as WIDE: every page that carries the bar, since the page that needs it is the page whose
+  // own content happens to be wide, and that is not knowable from here.
+  if (h.indexOf('class="nb-bar"') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', NBVP + '</head>'); nbvp++; }
   if (h.indexOf('menu-overlay') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', OVB + '</head>'); ovb++; }
   // only the pages the design left capped -- the other 39 already lift it themselves
   if (h.indexOf('lx-mobile-fix') < 0 && h.indexOf('max-width: 430px') >= 0 && h.indexOf('</head>') >= 0) { h = h.replace('</head>', WIDEBODY + '</head>'); widebody++; }
@@ -124,4 +152,4 @@ if (added) {
   const serialized = JSON.stringify(json).split('</').join('<' + B + '/');
   fs.writeFileSync(file, data.slice(0, s) + serialized + data.slice(e), 'utf8');
 }
-console.log("mobile bottom nav: added to " + added + " page key(s), " + already + " already had it; tablet backing on " + wide + "; overlay blur gated on " + ovb + "; width cap lifted on " + widebody + "; tablet fill on " + tabfill);
+console.log("mobile bottom nav: added to " + added + " page key(s), " + already + " already had it; tablet backing on " + wide + "; overlay blur gated on " + ovb + "; width cap lifted on " + widebody + "; tablet fill on " + tabfill + "; bar anchored to the viewport on " + nbvp);
