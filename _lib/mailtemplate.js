@@ -28,6 +28,7 @@ const SITE = 'https://lumoscore.com';
 // is behind Access, so an image hosted there is unreachable for a recipient. Until then each link
 // still reads, because the alt text is the network's name and clients show alt for an image that
 // does not load -- which is the same reason it is there for recipients who block images anyway.
+// Kept, unused, for the swap back once the public site carries them (see the footer).
 const ICON_LI = 'https://lumoscore.com/assets/email/linkedin.png';
 const ICON_X = 'https://lumoscore.com/assets/email/x.png';
 const URL_LI = 'https://www.linkedin.com/company/lumoscore/';
@@ -99,15 +100,15 @@ export function mailHtml(text, opts) {
     + '<tr><td style="padding:0 28px;"><div style="height:1px;background:' + LINE + ';font-size:0;line-height:0;">&nbsp;</div></td></tr>'
     + '<tr><td style="padding:16px 28px 24px;font:400 12.5px/1.6 -apple-system,BlinkMacSystemFont,\'Segoe UI\',Helvetica,Arial,sans-serif;color:' + MUTED + ';">'
     + '<div style="margin:0 0 13px;">' + esc(BLURB) + '</div>'
-    // A table, not inline-blocks: Outlook ignores inline-block spacing and would stack these.
-    + '<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 13px;"><tr>'
-    + '<td style="padding-right:12px;"><a href="' + URL_LI + '" style="text-decoration:none;">'
-    + '<img src="' + ICON_LI + '" width="18" height="18" alt="LinkedIn"'
-    + ' style="display:block;width:18px;height:18px;border:0;outline:none;"></a></td>'
-    + '<td><a href="' + URL_X + '" style="text-decoration:none;">'
-    + '<img src="' + ICON_X + '" width="18" height="18" alt="X"'
-    + ' style="display:block;width:18px;height:18px;border:0;outline:none;"></a></td>'
-    + '</tr></table>'
+    // TEXT, NOT ICONS -- for now. The icon files exist (assets/email/) but they live on the public
+    // site, which has not been deployed since they were added, so every sent email showed two broken
+    // images. A broken image is worse than no icon: it reads as a mail that failed to render.
+    // Swapping back is the ICONS constant below plus a production deploy.
+    + '<div style="margin:0 0 13px;">'
+    + '<a href="' + URL_LI + '" style="color:' + MUTED + ';text-decoration:underline;">LinkedIn</a>'
+    + ' &middot; '
+    + '<a href="' + URL_X + '" style="color:' + MUTED + ';text-decoration:underline;">X</a>'
+    + '</div>'
     + esc(COMPANY) + ' &middot; <a href="' + SITE + '" style="color:' + MUTED + ';text-decoration:underline;">lumoscore.com</a>'
     + '</td></tr>'
 
