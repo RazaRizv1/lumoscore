@@ -75,6 +75,12 @@ const FIELDS = [
   'input.ad-search-input',    // asset picker inside the add-liquidity dialog
   'input.brd-q',              // network search, /bridge/*
   'input.br-addr-in',         // bridge DESTINATION ADDRESS, /bridge/*
+  // The wallet's "Search asset…" field, on both chains. It carries NO id and NO class, which is
+  // exactly why the first sweep missed it -- that sweep keyed on ids and classes, so a bare <input>
+  // had nothing to report itself by. Matched through its wrapper instead. Broad on purpose: every
+  // search box on a phone wants the floor, and the one other element this reaches (#poolSearch, via
+  // .search-box.inline-filter) is already floored to the same 16px, so the two cannot disagree.
+  '.search-box input',        // wallet asset search, /wallet
 ];
 
 const CSS = FIELDS.map((s) => s + ':not([type=file])').join(',')
