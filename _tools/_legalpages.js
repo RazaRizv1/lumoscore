@@ -225,7 +225,13 @@ const STYLE = '<style id="lx-legal-css">'
   + '.lxlg-sup .lxsup-row .hint{font-size:13.5px}'
   + '.lxlg-sup .lxsup input,.lxlg-sup .lxsup textarea{font-size:16.5px;padding:12px 15px;'
   + 'border-radius:10px;line-height:1.55}'
-  + '.lxlg-sup .lxsup input.mono{font-size:15px}'
+  // 16px IS A FLOOR ON iOS, not a taste. Safari zooms the whole page when a focused input is under
+  // 16px, and it does not zoom back out -- so tapping the wallet field threw the reader into a
+  // magnified, horizontally-scrolling form and left them there. These two were 15px while the other
+  // five fields on the same form were 16.5px; the mono face reads larger at a given size, which is
+  // why it was dialled down, so 16 keeps them visibly smaller than their neighbours and stays on the
+  // right side of the threshold. Found in a mobile audit 2026-10-09.
+  + '.lxlg-sup .lxsup input.mono{font-size:16px}'
   + '.lxlg-sup .lxsup textarea{min-height:170px}'
   + '.lxlg-sup .lxsup-send{font-size:16px;padding:13px 30px;border-radius:10px}'
   + '.lxlg-sup .lxsup-msg{font-size:15.5px}'
