@@ -52,6 +52,23 @@ const SUMMARY = {
   '/support': 'Contact the team.',
   '/privacy': 'What LumosCore records, and what it does not.',
   '/terms': 'Terms governing use of the platform.',
+  // EIGHT ROUTES REACHED THIS FILE WITH NO DESCRIPTION and rendered as bare links, because the table
+  // above named only one url per section while the route list carries both the hub and the chain page.
+  // A bare link in llms.txt is a line an answer engine can see and cannot quote, which is the opposite
+  // of what the file is for. Found by grepping the SERVED document for list items with no text after
+  // the url, rather than by reading this table.
+  //
+  // The bare paths are network CHOOSERS and are described as such -- they are not duplicates of the
+  // Stellar pages, and saying so stops an assistant treating /trade and /trade/stellar as the same
+  // document.
+  '/trade': 'Choose a network, then trade: Stellar or the XRP Ledger.',
+  '/pools': 'Choose a network, then browse its AMM liquidity pools.',
+  '/launchpad/stellar': 'Issue a Stellar asset with no code, for a flat $25, and open its first pool.',
+  '/bridge/stellar': 'Move assets from Stellar to 52 networks via Circle CCTP, LayerZero or NEAR Intents.',
+  '/rewards/stellar': 'LUMOS reward programmes on Stellar: eligibility, rounds and payouts.',
+  '/lumos/stellar': 'LUMOS on Stellar: price, liquidity pools, holders and recent trades.',
+  '/mcp': 'MCP server: live prices, pools, wallets and routes for an AI agent, with no API key.',
+  '/list-your-token': 'Apply for a curated listing. $250, refunded in full if the listing is declined.',
 };
 
 const GROUPS = [
@@ -109,9 +126,17 @@ export async function onRequestGet({ env }) {
   if (list.length) {
     out.push('## Blog');
     out.push('');
+    // THE EXCERPT GOES WITH THE LINK. Every other section of this file is "link: what it says", and
+    // the blog was the one listing bare titles -- thirteen lines an answer engine can see but cannot
+    // quote, in the one document published specifically to be quoted. The index record already carries
+    // an excerpt (lxapi/blog.js writes it on save), so this costs no extra read.
+    //
+    // Collapsed to one line and trimmed: an excerpt with a newline in it would break the list item,
+    // and a long one buries the next entry.
     list.forEach((p) => {
       const t = String(p.title || p.slug).replace(/\s*\|\s*LumosCore\s*$/i, '');
-      out.push('- [' + t + '](' + ORIGIN + '/blog/' + p.slug + ')');
+      const ex = String(p.excerpt || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+      out.push('- [' + t + '](' + ORIGIN + '/blog/' + p.slug + ')' + (ex ? ': ' + ex : ''));
     });
     out.push('');
   }
