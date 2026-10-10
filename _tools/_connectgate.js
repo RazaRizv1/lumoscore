@@ -56,7 +56,31 @@ const JS = '<script id="lx-connectgate">' + `(function(){
     function chain(){
       try{ return (window.lxGetChain&&window.lxGetChain())||"stellar"; }catch(e){ return "stellar"; }
     }
-    var SEL="#openCreatePool,.lx-cplink,a[href='/launchpad'],a[href^='/launchpad/'],a[href^='/launchpad?']";
+    // WHAT CHANGED 2026-10-10, and why the launchpad LINKS came out of this list.
+    //
+    // It used to read a[href='/launchpad'],a[href^='/launchpad/'],a[href^='/launchpad?'] -- every link
+    // to the launchpad opened the connect modal instead of navigating. That was right when the whole
+    // flow was wallet-gated: the click would otherwise have hit lx-authgate and been redirected to
+    // "/", and RAZA asked for the modal precisely so a deliberate click was not thrown away
+    // ("the connect wallet pop up should appear instead of taking me back to landing page").
+    //
+    // /launchpad and /launchpad/stellar are now PUBLIC (see PUBLIC_BASES in _authgate.js), so there is
+    // no dead end left to compensate for: the click lands on the network chooser, which is the step
+    // that asks which chain and is exactly what the modal was standing in for. Keeping the
+    // interception would have meant the hub stayed invisible to every signed-out visitor who clicked
+    // a link to it -- reachable only from a search result, which is the opposite of the intent.
+    //
+    // The REVIEW and CONFIRM steps stay in the list. Those are still gated, still need a signature at
+    // every step, and a link landing on them signed-out is still a bounce.
+    //
+    // .summary-cta IS THE STEP-1 "Next" BUTTON, and adding it is what makes opening the form safe.
+    // Its handler is the design's own inline onclick -> lxNavigate(['lumoscore-launch-review.html']),
+    // so without this a signed-out visitor fills in the entire form and is bounced at /launchpad/review
+    // -- worse than before the page was opened. The wallet is asked for at the moment it is first
+    // genuinely needed. Verified unique to the three launch-token variants, so it cannot gate anything
+    // else, and window capture with stopImmediatePropagation runs before an inline onclick can fire.
+    var SEL="#openCreatePool,.lx-cplink,button.summary-cta"
+      + ",a[href^='/launchpad/review'],a[href^='/launchpad/confirm']";
     window.addEventListener("click",function(e){
       var t=e.target; if(!t||!t.closest) return;
       if(!t.closest(SEL)) return;
