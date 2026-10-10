@@ -118,6 +118,19 @@ const STYLE = '<style id="lx-lumosparent-css">'
 // served from this same host under /<section>/xrpl, so each hub links to its own XRPL page exactly as
 // it links to its Stellar one. The href is filled in below from the hub's own path rather than
 // hardcoded, so a hub added later cannot end up pointing at the wrong section.
+// meta: 'Live' is the FALLBACK, not the intended answer. Every Stellar card carries a line saying what
+// the chain gives you there ("Swaps and limit orders", "AMM pools"), and the XRP Ledger card said the
+// same single word on all six hubs — so half of every chooser read as unfinished (RAZA 2026-10-10).
+//
+// A hub supplies xrplMeta where the claim has been CHECKED against the XRPL build, and falls back to
+// 'Live' where it has not. Three are filled in; three deliberately are not:
+//   * /launchpad — browser/launchpad.js is running REDUCED TEST PRICING, about 3.18 XRP (~$4.29), not
+//     the $25 the Stellar card quotes. _xrplaunchpad.js records that this page once published "$25"
+//     beside a panel charging $4.29. Pricing is RAZA's decision, not a copy fix.
+//   * /rewards   — no per-round XRPL figure exists to state.
+//   * /lumos     — Stellar's line quotes supply, and RAZA asked for supply to stay out of our copy
+//                  (it moves: anyone can burn LUMOS).
+// Inventing any of those three would put a number we do not charge, or cannot support, on the card.
 const XRPL_LIVE = { id: 'xrpl', name: 'XRP Ledger', href: '', live: true, meta: 'Live' };
 
 // key  — the container page key this chooser is baked into (base name, theme suffix stripped)
@@ -128,18 +141,32 @@ const HUBS = [
     h1: 'Trade', title: 'Trade — Choose a network | LumosCore',
     sub: 'Swap assets and place limit orders on-chain. Choose a network to see its markets.',
     stellarMeta: 'Swaps and limit orders',
+    // Same line as Stellar's because the XRPL build genuinely has both: /trade/xrpl ships the swap UI
+    // and the limit-order controls, and an XRPL limit order was verified end to end on 2026-09-15
+    // (OfferCreate, buy with no flags / sell with tfSell).
+    xrplMeta: 'Swaps and limit orders',
   },
   {
     key: 'lumoscore-amm', path: '/pools',
     h1: 'Liquidity Pools', title: 'Liquidity Pools — Choose a network | LumosCore',
     sub: 'Create and manage AMM pools. Choose a network to see its pools.',
     stellarMeta: 'AMM pools',
+    // The XRP Ledger has had native AMMs since XLS-30, and /pools/xrpl lists them with a working
+    // Create Pool control — checked on the served page, not assumed from the ledger's capabilities.
+    xrplMeta: 'AMM pools',
   },
   {
     key: 'lumoscore-bridge', path: '/bridge',
     h1: 'Bridge', title: 'Bridge — Choose a network | LumosCore',
     sub: 'Move assets between networks. Choose the network you are bridging from.',
     stellarMeta: 'CCTP, LayerZero, NEAR Intents',
+    // NOT "Axelar ITS", which is what I was about to write. The two chains' route sets are different
+    // and neither is a subset of the other: Axelar is XRPL-ONLY (removed from Stellar 2026-09-24),
+    // LayerZero and CCTP are Stellar-only, and NEAR Intents is on both. Reading the served
+    // /bridge/xrpl settled it — the visible route labels are Axelar and NEAR Intents, LayerZero
+    // appears zero times, and the CCTP strings there are not route labels. Both are backed by real
+    // wiring (_xrplnearintents.js, functions/lxapi/xrplaxelar.js), so this is two routes, not one.
+    xrplMeta: 'Axelar, NEAR Intents',
   },
   {
     key: 'lumoscore-rewards', path: '/rewards',
@@ -186,6 +213,8 @@ function netsFor(hub) {
     Object.assign({ icon: chainLogo('xrpl') }, XRPL_LIVE, {
       href: bare ? hub.path : hub.path + '/xrpl',
       setChain: bare ? 'xrpl' : '',
+      // after XRPL_LIVE in the merge, so a hub that names one wins and a hub that does not keeps 'Live'
+      meta: hub.xrplMeta || XRPL_LIVE.meta,
     }),
   ];
 }
