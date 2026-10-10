@@ -201,7 +201,29 @@ const GO = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-wi
 //
 // So this card carries the CHOICE instead of a path: the bare url, plus the chain for the script
 // below to write before it follows the link. RAZA picked this over creating the route (2026-10-09).
-const COOKIE_HUBS = { '/launchpad': 1 };
+// EMPTIED 2026-10-10, AND THE MECHANISM IS LEFT IN PLACE ON PURPOSE. The cookie worked exactly as
+// designed; the launchpad stopped being the kind of page it suits.
+//
+// Sharing one url between the chains is fine while a page is PRIVATE — there is no chooser to reach
+// and no second url worth having. The launchpad is now public and fronted by this chooser, and a url
+// cannot be both "choose a network" and one of the choices. With lx_chain=xrpl the middleware served
+// the XRPL build's file, which carries no chooser markup, so the hub ceased to exist for anyone who
+// had ever picked XRPL. RAZA hit exactly that: "why its not taking me to hubpage of launchpad where i
+// could select the network like I do on Trade, Cross-chain, Pools, and lumos."
+//
+// Measured on the deployed build before the fix:
+//   /launchpad, no cookie        -> chooser script 1, cards 2
+//   /launchpad, lx_chain=xrpl    -> chooser script 0, cards 0, 194 XRP references
+//   /trade,     lx_chain=xrpl    -> chooser script 1, cards 2   (unaffected: XRPL is at /trade/xrpl)
+//
+// That last row is the whole answer. Every other hub gives each chain its own url, so the bare path is
+// always Stellar's file and its chooser always runs. The launchpad now does the same: the XRPL build
+// claims /launchpad/xrpl, so netsFor() below produces a normal per-chain href and no cookie is needed.
+//
+// Kept as an empty map rather than deleted because the branch it feeds is the only support for a hub
+// whose chains share a url, and nothing about that idea was wrong — if a future hub genuinely needs
+// it, adding the path back here is the whole change.
+const COOKIE_HUBS = {};
 
 function netsFor(hub) {
   const bare = COOKIE_HUBS[hub.path];
