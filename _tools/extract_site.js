@@ -645,6 +645,17 @@ const SITEMAP_SKIP = new Set([
   '/signin', '/launchpad/review', '/launchpad/confirm',
   '/dashboard', '/wallet',
 ]);
+
+// RETIRED, INDEXED, AND WITH NOTHING TO REDIRECT TO. From the site:lumoscore.com results RAZA sent on
+// 2026-10-10. /activity predates this codebase entirely -- it has never appeared in ROUTES and no
+// container page has ever been named for it -- and what it showed now lives inside the dashboard and
+// the wallet, both wallet-gated and noindexed. A 301 there would deliver a searcher to a page that
+// bounces them to the home page.
+//
+// The other twenty urls in that message are NOT here: ten are the old /launchpad/<ASSET> scheme and
+// get a 301 to the Trade-asset page that replaced them, and ten are deleted blog posts that the blog
+// handler already answers 410 from the index. This list is only for pages with no answer at all.
+const GONE_PATHS = ['/activity'];
 // A few pages deserve a stronger signal than the default.
 const SITEMAP_WEIGHT = {
   '/': ['1.0', 'daily'],
@@ -779,6 +790,10 @@ const MOBILE = /Android|iPhone|iPod|IEMobile|BlackBerry|Opera Mini|Mobile Safari
 // index (fetching /lumoscore-landing would hit the 301 back to "/" and loop).
 const ROUTES = ${JSON.stringify(routePairs, null, 2)};
 const HAS_MOBILE = new Set(${JSON.stringify(mobileFiles)});
+// Paths that existed once, are indexed, and have no successor to redirect to. Answered 410 so Google
+// retires them instead of re-asking — see the note at the use site. Keep this short: anything with a
+// real successor belongs in a 301, not here.
+const GONE_PATHS = ${JSON.stringify(GONE_PATHS)};
 // CHAIN-AWARE PAGES: a Stellar page file -> the same page in another chain's build.
 //
 // The authgated surfaces (dashboard, wallet, launchpad) are ONE url each on a multi-chain deployment,
@@ -1570,6 +1585,70 @@ export async function onRequest(context){
     to.search = url.search;
     to.hash = url.hash;
     return Response.redirect(to.toString(), 301);
+  }
+
+  // 1b) /launchpad/<ASSET-ISSUER> — AN OLDER URL SCHEME GOOGLE STILL HOLDS.
+  //
+  // RAZA 2026-10-10 sent the site:lumoscore.com results that still 404: eleven of the twenty-one were
+  // this shape -- /launchpad/PIG-GACERHS…, /launchpad/AQUA-GBNZ…, /launchpad/MAG-rXmagw… The launchpad
+  // once served a page per issued asset; those pages are now the Trade-asset pages, and the id in the
+  // url is the SAME id the new route takes. So this is a rename with a one-to-one successor, and a 301
+  // carries whatever authority those urls earned to the page that replaced them. A 404 or a 410 throws
+  // it away, which is the wrong answer when the content still exists under another address.
+  //
+  // THE CHAIN COMES FROM THE ISSUER, because the old scheme did not name one: a Stellar issuer is 56
+  // base32 characters starting with G, an XRPL issuer is base58 starting with r. MAG-rXmagw… in that
+  // list is an XRP Ledger token, so a blanket redirect to /trade/stellar would have sent it to a
+  // Stellar page for an asset that does not exist there. Same two shapes malformedId() already uses.
+  //
+  // A RULE, NOT A LIST OF TWENTY-ONE. Google surfaces what it has crawled recently; the eleven in that
+  // message are a sample of the scheme, not the whole of it. Anything matching the shape is handled,
+  // including urls nobody has reported.
+  //
+  // The live routes under /launchpad are left alone -- 'stellar', 'xrpl', 'review' and 'confirm' are
+  // not asset ids and cannot match either pattern.
+  if (url.pathname.indexOf('/launchpad/') === 0){
+    const tail = url.pathname.slice('/launchpad/'.length);
+    const G_RE = /^[^/]{1,24}-G[A-Z2-7]{55}$/;
+    const R_RE = /^[^/]{1,24}-r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
+    const chain = G_RE.test(tail) ? 'stellar' : (R_RE.test(tail) ? 'xrpl' : '');
+    if (chain){
+      const to = new URL('/trade/' + chain + '/' + tail, url.origin);
+      to.search = url.search;
+      return Response.redirect(to.toString(), 301);
+    }
+  }
+
+  // 1c) RETIRED PATHS WITH NO SUCCESSOR — answered 410 rather than 404, which is RAZA's rule for the
+  // known-dead ("410 Gone for known-dead, 404 for the rest"). Google retires a 410 faster and stops
+  // re-asking.
+  //
+  // /activity came from the site:lumoscore.com list and is older than this codebase -- it has never
+  // been in the route table and no container page has ever been named for it. What it showed, a
+  // reader's own transaction history, is now inside the dashboard and the wallet, and BOTH are
+  // wallet-gated and noindexed. So there is nothing to 301 to: pointing a searcher at /dashboard sends
+  // them to a page that bounces them to the home page, which is a worse answer than an honest "gone"
+  // with a branded page and a way back.
+  //
+  // Deliberately a short list of exact paths. Anything with a real successor belongs in a redirect
+  // above this, not here.
+  // No regex for the trailing slash: a backslash inside this template literal does not survive into the
+  // generated file, and the first version of this line emitted url.pathname.replace(//+$/, '') -- which
+  // starts a COMMENT and made the whole middleware unparseable. The sibling line below uses the
+  // double-backslash spelling; this one simply does not need one.
+  let gonePath = url.pathname;
+  while (gonePath.length > 1 && gonePath.charAt(gonePath.length - 1) === '/') gonePath = gonePath.slice(0, -1);
+  if (GONE_PATHS.indexOf(gonePath) >= 0){
+    const branded = await context.env.ASSETS.fetch(new URL('/404.html', request.url).toString());
+    const hdrs = {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'public, max-age=300',
+      'x-robots-tag': 'noindex, nofollow, noarchive',
+    };
+    return branded && branded.ok
+      ? new Response(branded.body, { status: 410, headers: hdrs })
+      : new Response('Gone', { status: 410, headers: Object.assign({}, hdrs, {
+          'content-type': 'text/plain; charset=utf-8' }) });
   }
 
   // 1c) THE THREE OPEN URL PATTERNS. /trade/stellar/:asset, /account/stellar/:address and the two
