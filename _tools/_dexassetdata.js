@@ -3556,7 +3556,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     if(b.getAttribute("data-h")!==html){ b.innerHTML=html; b.setAttribute("data-h",html); } b.style.display=""; }
   // best available (top-of-book) receive-per-pay from a small strict-send probe, cached per direction — the
   // honest reference for price impact (the daily-close spot can drift and show a false favorable impact)
-  function dxSpotRate(pa,ra,cb){ var key=(pa.native?"X":pa.code)+">"+(ra.native?"X":ra.code); if(_dxSpot[key]>0){ cb(_dxSpot[key]); return; } var probe=pa.native?"5":"1"; j(H+"/paths/strict-send?"+apParam("source",pa)+"&source_amount="+probe+"&"+destParam(ra)).then(function(pd){ var recs=(pd._embedded&&pd._embedded.records)||[]; var out=recs.length?parseFloat(recs[0].destination_amount):0; if(out>0){ _dxSpot[key]=out/parseFloat(probe); cb(_dxSpot[key]); } }).catch(function(){}); }
+  function dxSpotRate(pa,ra,cb){ var key=(pa.native?"X":pa.code)+">"+(ra.native?"X":ra.code); if(_dxSpot[key]>0){ cb(_dxSpot[key]); return; } var probe=pa.native?"5":"1"; j(H+"/paths/strict-send?"+apParam("source",pa)+"&source_amount="+probe+"&"+destParam(ra)).then(function(pd){ var recs=(pd._embedded&&pd._embedded.records)||[]; var out=recs.length?parseFloat(recs[0].destination_amount):0; if(out>0){ _dxSpot[key]=out/parseFloat(probe); cb(_dxSpot[key]); } else cb(0); }).catch(function(){ cb(0); }); }
   function dxErr(m){ var pane=q(".dxa-pane-swap"); if(!pane)return; var cta=q(".dxa-trade-cta"); var e=pane.querySelector(".lxda-swaperr"); if(!e){ if(!m)return; e=document.createElement("div"); e.className="lxda-swaperr"; if(cta&&cta.parentNode)cta.parentNode.insertBefore(e,cta); } if(m){ e.textContent=m; e.style.display="block"; } else { e.style.display="none"; e.textContent=""; } }
   // The design ships the receive-side dollar value as mock text -- a literal "\\u2248 $21.67 USD" in a plain
   // .mono span. This looked for .lc-money, which does not exist in that field, found nothing, and returned
@@ -3740,7 +3740,25 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     else { dxErr(""); if(cta)cta.removeAttribute("data-lxdis"); }
     var fee=amt*FEE_RATE(), net=amt-fee, spot=pa.native?(assetXlm>0?1/assetXlm:0):assetXlm; // receive per pay
     var rcode=ra.native?"XLM":ra.code, pcode=pa.native?"XLM":pa.code;
-    if(spot>0){ var est=net*spot; _dxView={payUsd:amt*(pa.native?xlmUsd:priceUsd()), recv:xlmAmt(est), usd:est*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+spot.toPrecision(6))+" "+rcode, impact:"\\u2026", impUp:true, minR:xlmAmt(est*(1-SLIP/100))+" "+rcode}; reAssertView(); }
+    // PENDING, NOT AN ESTIMATE. This used to publish net*spot as "You receive" the instant a digit was
+    // typed, then replace it about 300ms later with the routed quote.
+    //
+    // spot is the MID PRICE, so that number ignores depth entirely and is only ever right for a size too
+    // small to move the book. RAZA measured the gap on LUMOS (2026-10-11): paying 38,000 XLM first showed
+    // 94,265,970 LUMOS and settled at 12,530,857 -- 7.5x too high; 3,000 XLM showed 1.5x; 1,000 XLM 1.18x.
+    // The error grows with the trade, so it is worst exactly where it matters most, and the figure it
+    // replaces is the one a reader is deciding on.
+    //
+    // The panel already admitted it did not know -- impact rendered as an ellipsis in that same frame --
+    // while the headline beside it looked settled. So say the same thing in every field instead of
+    // guessing louder. Nothing is slower: the same 260ms debounce, minus a number that was never true.
+    //
+    // RECV IS LEFT EMPTY, NOT SET TO AN ELLIPSIS. That box is an input the reverse quote reads, and
+    // prefilling it is what RAZA objected to on 2026-09-17 ("everytime i wanna enter, i first need to
+    // remove 0.00"). Empty shows the design own 0.00 placeholder in CSS and stays typable. payUsd stays
+    // because it describes what you PAY, which is known from the amount typed.
+    if(spot>0){ _dxView={payUsd:amt*(pa.native?xlmUsd:priceUsd()), recv:"", usd:0,
+      rate:"\u2026", impact:"\u2026", impUp:true, minR:"\u2026"}; reAssertView(); }
     var seq=++_dxSeq; clearTimeout(_dxTmr);
     _dxTmr=setTimeout(function(){
       // price the classic Horizon path AND the Soroswap aggregator in parallel; route through whichever returns more
@@ -3758,12 +3776,23 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
           if(cta)cta.setAttribute("data-lxdis","1");
           return; }
         _dxQuoteOut=best; var minR=best*(1-SLIP/100); _dxMinRecv=minR; var effRate=best/net;
-        _dxView={payUsd:amt*(pa.native?xlmUsd:priceUsd()), recv:xlmAmt(best), usd:best*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+effRate.toPrecision(6))+" "+rcode, impact:useSoro?dxImpTxt(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):"<0.01%", impUp:useSoro?dxImpUp(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):true, minR:xlmAmt(minR)+" "+rcode, soro:useSoro?soro:null};
+        _dxView={payUsd:amt*(pa.native?xlmUsd:priceUsd()), recv:xlmAmt(best), usd:best*(ra.native?xlmUsd:priceUsd()), rate:"1 "+pcode+" = "+(+effRate.toPrecision(6))+" "+rcode, impact:useSoro?dxImpTxt(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):"…", impUp:useSoro?dxImpUp(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra):true, minR:xlmAmt(minR)+" "+rcode, soro:useSoro?soro:null};
         reAssertView();
         // classic route: size the impact against the honest top-of-book probe. That arithmetic only ever
         // measures execution against spot, so it is negative whichever way you trade -- the direction has
         // to come from dxImpTxt, not from its sign.
-        if(!useSoro){ dxSpotRate(pa,ra,function(sr){ if(seq!==_dxSeq||!(sr>0)||!_dxView||_dxView.soro)return; dxSetImp(dxImpMag(effRate/sr,ra),ra,pa,net,best,seq); }); }
+        //
+        // The impact row stays an ellipsis until this probe lands, because the probe IS the measurement --
+        // there is nothing to report before it. It used to publish "<0.01%" here and overwrite it about
+        // 2.5s later: 38,000 XLM into LUMOS read "<0.01%" and settled at +649.7% (RAZA, 2026-10-11). Smart
+        // Swap was removed, so useSoro is now always false and that placeholder was on EVERY quote.
+        // "<0.01%" still ships as a real value wherever dxImpTxt computes it -- it just cannot be guessed.
+        //
+        // A dead probe never used to call back at all, which with an ellipsis would strand the row; it now
+        // reports 0 and resolves to an em dash, the same "unknown" the panel uses before a quote exists.
+        if(!useSoro){ dxSpotRate(pa,ra,function(sr){ if(seq!==_dxSeq||!_dxView||_dxView.soro)return;
+          if(!(sr>0)){ _dxView.impact="—"; _dxView.impUp=false; reAssertView(); return; }
+          dxSetImp(dxImpMag(effRate/sr,ra),ra,pa,net,best,seq); }); }
         else dxSetImp(dxImpMag(1-Math.min(Math.abs(soro.impact||0)/100,0.999999),ra),ra,pa,net,best,seq);
       }).catch(function(){});
     },260);
