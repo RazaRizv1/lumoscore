@@ -102,11 +102,32 @@ const PUBLIC_BASES = new Set([
   // Nothing here is the VIEWER's: the address comes from the URL, the data comes from Horizon, and
   // there is nothing on the page to sign. Same reasoning as Trade, Pools, Bridge and Rewards above.
   'lumoscore-account',
+  // OPENED 2026-10-10 (RAZA). This file serves TWO urls: /launchpad, which the route table marks as a
+  // 'hub' (the network chooser), and /launchpad/stellar, which is the form. Gating the file gated BOTH,
+  // so the chooser built to stop the bounce was itself bounced -- measured on staging: /launchpad ships
+  // two .lx-lp-card chooser cards and a "Launchpad" heading AND the lx-authgate script, while /trade
+  // ships the cards and no gate. The markup was always there; the gate redirected to "/" before it
+  // painted, which is why the hub appeared not to exist.
+  //
+  // That also made the page unrankable. It is titled "Launch a Token on Stellar — No Code Required"
+  // and sits in the sitemap at priority 0.8, so every visitor Google sent was redirected to the
+  // homepage -- a strong commercial query pointing at a bounce.
+  //
+  // Nothing can be SIGNED without a wallet either way: this gate was protecting the VIEW, not the
+  // money, the same finding that opened Trade, Pools, Bridge and Rewards on 2026-09-24. What makes it
+  // safe is the step-1 CTA gate added to _connectgate.js in the same change -- without it a signed-out
+  // visitor would fill the whole form and only THEN be bounced at /launchpad/review, which is worse
+  // than today. The two changes are one unit; do not ship this entry alone.
+  //
+  // /launchpad/review and /launchpad/confirm stay gated and noindexed. They are mid-flow states that
+  // need a signature at every step and have no standalone value.
+  'lumoscore-launch-token',
 ]);
 // All 17 docs pages, by prefix rather than 17 entries that a new page would have to be added to.
 const PUBLIC_RE = /^lumoscore-docs-/;
 // STILL GATED, deliberately: dashboard/home and wallet (both meaningless with no wallet), and the
-// launchpad flow, where every step needs a signature.
+// launchpad's mid-flow steps (review/confirm), where every step needs a signature. The launchpad's
+// own form and chooser are public -- see lumoscore-launch-token above.
 
 // Keys are filenames and carry variant suffixes (-dark, -light, -mobile). Strip them before
 // comparing, or "lumoscore-dex-asset-dark" misses the set. Substring matching is NOT safe here:
