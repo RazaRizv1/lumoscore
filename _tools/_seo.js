@@ -37,6 +37,13 @@ const PAGES = {
     title: 'Dashboard — Your Stellar Portfolio | ' + BRAND,
     // wallet list verified against the connect modal — Hana is NOT supported, do not re-add it
     desc: 'Track your Stellar portfolio, trending assets, pool liquidity and recent activity in one view. Connect Freighter, Rabet, Albedo, xBull or WalletConnect.',
+    // WALLET-GATED: not viewable signed out, so it must never be indexed (RAZA 2026-10-10).
+    // lx-authgate is client-side only -- it reads localStorage and does location.replace("/"). A
+    // crawler has no localStorage, so it got 200 and the full shell while this table said
+    // "index, follow" and the sitemap listed it. Measured on production: 383KB served to Googlebot,
+    // with dollar figures on a page whose title promises the reader their OWN portfolio.
+    // Also removed from SITEMAP_SKIP's inverse in extract_site.js and given an X-Robots-Tag header.
+    noindex: true,
   },
   'dex': {
     title: 'Trade on the Stellar DEX — Swap and Limit Orders | ' + BRAND,
@@ -83,6 +90,10 @@ const PAGES = {
   'wallet': {
     title: 'Stellar Wallet — Balances, Send and Receive | ' + BRAND,
     desc: 'View your Stellar balances and portfolio value, send and receive assets, manage trustlines and swap — all non-custodial, signed in your own wallet.',
+    // WALLET-GATED: same reasoning as 'home' above. 427KB of app shell was being served to Googlebot
+    // under a title offering to show the reader their balances. It also carried the site's only
+    // FAQPage schema, which is now on /faq where it can actually earn a rich result.
+    noindex: true,
   },
   'rewards': {
     title: 'LUMOS Rewards — LP and Holder Incentives | ' + BRAND,     // was wrongly titled "My Wallet"
