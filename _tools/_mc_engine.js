@@ -162,6 +162,12 @@ function applyChain(to){
   adoptChain(to);
 }
 window.lxSetChain=applyChain;window.lxGetChain=function(){return cur;};
+// RE-SKIN WITHOUT MOVING ANYONE. applyChain is a navigation, so a caller that only needs the page to
+// wear the right chain -- picking Stellar in the network chooser, where the next step is the wallet
+// list on this very page -- must have something else to call. Without this the only exported way to
+// change chain was the one that leaves, and the chooser used it. See the Stellar branch of the
+// network-row handler in _wallet_realconnect.js.
+window.lxAdoptChain=adoptChain;
 // Exposed so a hand-off can work out WHERE the other chain is without going through applyChain, whose
 // to===cur guard is there for re-skinning and is wrong for navigation. See the network-row handler in
 // _wallet_realconnect.js.
