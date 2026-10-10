@@ -112,6 +112,44 @@ function stripNets(html) {
   return { html: out, removed };
 }
 
+// FOUR IMAGES ON THIS PAGE 404, AND NOTHING LOOKS WRONG — which is why they survived.
+//
+// The mobile /signin markup asks for assets/wallets/{stellar,xrpledger,xbull,walletconnect}.png. None
+// of the four exists. Each <img> sits BEHIND a lettermark span and carries onerror="this.remove()", so
+// the image deletes itself and the letter shows: verified in a browser at 375px, document.images
+// reports zero broken. The page is correct to look at and still fires four failing requests on every
+// load. Found by crawling with a MOBILE user agent -- the desktop /signin references only four wallet
+// images and all four exist, so a desktop crawl says this page is clean.
+//
+// Two of them we can simply answer, because the logo exists under another name:
+//   stellar.png   -> /assets/networks/stellar.png
+//   xrpledger.png -> /assets/networks/xrpl.png        (the file is named for the chain id, not the brand)
+// These are NETWORK marks, ours to show, and a real logo beats a grey "S" tile on the chooser.
+//
+// The other two stay lettermarks, and that is a decision rather than a gap: _wallet_icons.js states it
+// for the connect popup -- "Official wallet logos are trademarks and should come from each wallet's own
+// brand assets/SDK — not hand-reproduced." So the dead <img> is REMOVED rather than pointed somewhere,
+// leaving the lx-wl span that was already doing the work. xBull keeps its X, WalletConnect its W.
+//
+// Paths are written root-relative. The existing ones are "assets/..." with no leading slash, which
+// happens to resolve on /signin because it is one segment deep and would break anywhere deeper
+// (lumoscore-runtime-relative-assets).
+const ICON_FIX = [
+  ['assets/wallets/stellar.png', '/assets/networks/stellar.png'],
+  ['assets/wallets/xrpledger.png', '/assets/networks/xrpl.png'],
+];
+const ICON_DROP = ['assets/wallets/xbull.png', 'assets/wallets/walletconnect.png'];
+
+function fixIcons(html) {
+  let out = html;
+  for (const [from, to] of ICON_FIX) out = out.split('src="' + from + '"').join('src="' + to + '"');
+  // Remove the whole <img> for the two with no asset: the lettermark behind it is the intended visual.
+  for (const dead of ICON_DROP) {
+    out = out.replace(new RegExp('<img[^>]*src="' + dead.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '"[^>]*>', 'g'), '');
+  }
+  return out;
+}
+
 const problems = [];
 let totalRemoved = 0, pagesTouched = 0;
 
@@ -157,7 +195,9 @@ for (const file of FILES) {
       if (html.indexOf('data-net-id="') < 0 && html.indexOf('data-wnet="') < 0
         && html.indexOf(PILL) < 0) continue;
       const { html: next, removed } = stripNets(html);
-      if (removed) { json[key] = next; removedHere += removed; keysHere++; }
+      const fixed = fixIcons(next);
+      if (removed || fixed !== next) { json[key] = fixed; keysHere++; }
+      removedHere += removed;
     }
     return removedHere;
   });
