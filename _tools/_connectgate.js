@@ -56,6 +56,24 @@ const JS = '<script id="lx-connectgate">' + `(function(){
     function chain(){
       try{ return (window.lxGetChain&&window.lxGetChain())||"stellar"; }catch(e){ return "stellar"; }
     }
+    // THE URL ALREADY ANSWERS "WHICH NETWORK?" ON A CHAIN PAGE, so do not ask it again.
+    //
+    // RAZA 2026-10-10: "Connect wallet button is breaking ... on both xrpl and stellar". On
+    // /launchpad/stellar this handler was calling lxChooseNetwork, which opens the NETWORK chooser --
+    // the reader has just picked Stellar from the hub, landed on a url ending in "stellar", filled in
+    // the form, and is then asked which chain they want. That is the break, and it was mine: the
+    // chooser was the right hand-off for #openCreatePool on a chain-neutral page and the wrong one
+    // the moment .summary-cta brought a chain-specific page into this selector.
+    //
+    // lxGetChain is ALSO undefined on the XRPL build (measured), so chain() silently answered
+    // "stellar" there -- which would have opened a Stellar wallet list on an XRP Ledger page. The
+    // path is the one source both builds agree on.
+    function pathChain(){
+      try{
+        var m=(location.pathname||"").match(/^\\/[a-z-]+\\/(stellar|xrpl)(\\/|$)/);
+        return m?m[1]:"";
+      }catch(e){ return ""; }
+    }
     // WHAT CHANGED 2026-10-10, and why the launchpad LINKS came out of this list.
     //
     // It used to read a[href='/launchpad'],a[href^='/launchpad/'],a[href^='/launchpad?'] -- every link
@@ -86,11 +104,16 @@ const JS = '<script id="lx-connectgate">' + `(function(){
       if(!t.closest(SEL)) return;
       if(connected()) return;                       // let the design do whatever it normally does
       e.preventDefault(); e.stopImmediatePropagation();
-      // The network chooser first where the page has one -- it is the step that decides which
-      // wallet list to show, and it is what the rest of the site opens from a signed-out action.
-      // location.href is handed over as the return target, so connecting resumes the click.
+      // A CHAIN IN THE URL BEATS THE CHOOSER. On /launchpad/stellar or /launchpad/xrpl the network is
+      // already decided, so go straight to that chain's wallet list; asking again is the bug RAZA
+      // reported. Everywhere else (Create Pool on a chain-neutral page) the chooser is still the right
+      // first step, because it is what decides which wallet list to show.
+      //
+      // location.href is handed over as the return target either way, so connecting resumes the click.
       try{
-        if(window.lxChooseNetwork) window.lxChooseNetwork(location.href);
+        var pc=pathChain();
+        if(pc&&window.lxwOpenWallet) window.lxwOpenWallet(pc,location.href);
+        else if(window.lxChooseNetwork) window.lxChooseNetwork(location.href);
         else if(window.lxwOpenWallet) window.lxwOpenWallet(chain(),location.href);
       }catch(_){}
     },true);
@@ -114,6 +137,14 @@ const FILES = ['lumoscore-aptos-desktop.html', 'lumoscore-aptos-mobile.html'];
 // Admin pages are excluded: they are a separate build with their own origin and no wallet flow.
 const isAdmin = (key) => /^lumoscore-admin-/.test(key);
 
+// THIS GATE IS STELLAR-ONLY, AND THAT IS CORRECT. The XRPL build ships its own equivalent: its
+// launchpad CTA carries data-lxgate="1" and a handler in that build intercepts it, calls
+// stopImmediatePropagation and opens the XRP Ledger wallet list. Verified on the deployed page --
+// the CTA has the attribute, and clicking it opens Xaman/GemWallet/Crossmark.
+//
+// I briefly added a second copy of this gate to the XRPL containers on 2026-10-10 and then removed
+// it: it could never fire, because the existing handler stops propagation first, and a dormant
+// duplicate listener is a trap for whoever next changes either selector.
 const problems = [];
 const staged = [];
 
