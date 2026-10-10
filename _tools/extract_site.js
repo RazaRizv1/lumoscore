@@ -656,6 +656,33 @@ const SITEMAP_SKIP = new Set([
 // get a 301 to the Trade-asset page that replaced them, and ten are deleted blog posts that the blog
 // handler already answers 410 from the index. This list is only for pages with no answer at all.
 const GONE_PATHS = ['/activity'];
+
+// RETIRED POSTS THAT A LIVE POST REPLACED. A 301 keeps whatever authority these earned; the 410 they
+// answered before discarded it. Only where the successor genuinely covers the same subject — Google
+// treats a redirect to something unrelated as a soft 404, which is worse than the honest 410.
+//
+// The three introducing-* slugs are the same table _rewardslinks.js uses for the Rewards page's "Read
+// the announcement" links, so a programme's announcement and its link resolve to one post. Two of them
+// were in the site:lumoscore.com list RAZA sent; the third is the same retired scheme and is included
+// because Google holds what it crawled, not what gets reported.
+//
+// WHAT IS DELIBERATELY NOT HERE, and stays 410: the Stellar burn statement, the April distribution and
+// "big reward for LUMOS holders on XRPL" are dated announcements with no standing replacement, and
+// "private mode" describes a feature that does not exist in the build at all — checked, the string
+// appears nowhere. Pointing any of those at today's rewards or trading pages would be inventing a
+// successor.
+//
+// One leaves the blog on purpose: the fragmentation post argued the thesis the whitepaper argues, and
+// /whitepaper is the page that still makes it.
+const LEGACY_POSTS = {
+  '/blog/ecosystem-lp-rewards-faqs': '/blog/lumoscore-ecosystem-liquidity-rewards',
+  '/blog/introducing-ecosystem-lp-rewards-for-lumos': '/blog/lumoscore-ecosystem-liquidity-rewards',
+  '/blog/introducing-whale-holder-rewards-for-lumos': '/blog/lumos-whale-holder-rewards-programme',
+  '/blog/introducing-native-lp-rewards-for-lumos': '/blog/earn-lumos-every-15-days-how-lumoscore-lp-rewards-work',
+  '/blog/how-the-lumoscore-cross-chain-bridge-works-xrpl-stellar': '/blog/cross-chain-swaps-on-lumoscore-connect-stellar-across-52-networks',
+  '/blog/lumoscore-cuts-trading-fees-to-05-0-fee-option-for-holders': '/blog/lumoscore-trading-fees-trade-at-0-2-or-unlock-0-1-with-250k-lumos',
+  '/blog/the-biggest-problem-in-blockchain-fragmentation-and-how-lumoscore-plans-to-solve-it': '/whitepaper',
+};
 // A few pages deserve a stronger signal than the default.
 const SITEMAP_WEIGHT = {
   '/': ['1.0', 'daily'],
@@ -794,6 +821,8 @@ const HAS_MOBILE = new Set(${JSON.stringify(mobileFiles)});
 // retires them instead of re-asking — see the note at the use site. Keep this short: anything with a
 // real successor belongs in a 301, not here.
 const GONE_PATHS = ${JSON.stringify(GONE_PATHS)};
+// Retired post slug -> the live page that replaced it. 301, so the authority survives the rename.
+const LEGACY_POSTS = ${JSON.stringify(LEGACY_POSTS)};
 // CHAIN-AWARE PAGES: a Stellar page file -> the same page in another chain's build.
 //
 // The authgated surfaces (dashboard, wallet, launchpad) are ONE url each on a multi-chain deployment,
@@ -1638,6 +1667,17 @@ export async function onRequest(context){
   // double-backslash spelling; this one simply does not need one.
   let gonePath = url.pathname;
   while (gonePath.length > 1 && gonePath.charAt(gonePath.length - 1) === '/') gonePath = gonePath.slice(0, -1);
+
+  // A RENAMED POST GOES TO THE ONE THAT REPLACED IT, before the blog handler can answer 410 for it.
+  // Must sit here rather than in that handler: by the time blogLookup runs we have already decided the
+  // slug is unknown, and "unknown" is exactly what these are — they are absent from the index, which is
+  // why they were 410 in the first place.
+  if (LEGACY_POSTS[gonePath]){
+    const to = new URL(LEGACY_POSTS[gonePath], url.origin);
+    to.search = url.search;
+    return Response.redirect(to.toString(), 301);
+  }
+
   if (GONE_PATHS.indexOf(gonePath) >= 0){
     const branded = await context.env.ASSETS.fetch(new URL('/404.html', request.url).toString());
     const hdrs = {
