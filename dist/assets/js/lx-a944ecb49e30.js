@@ -626,14 +626,34 @@
   // trustlines = [total, authorized, FUNDED], and funded (balance > 0) is exactly "holders".
   // The Horizon paging still runs — the top-holders table and distribution need per-account balances —
   // but the COUNT no longer waits on it.
+  //
+  // THE SHORTCUT ABOVE WAS DEAD, AND IT FAILED SILENTLY. It read trustlines as an ARRAY -- length>=3
+  // and [2] -- but this endpoint returns an OBJECT: measured live 2026-10-11, LUMOS came back as
+  // {total:1468, authorized:1468, funded:948}. length is undefined on that, so the guard never passed,
+  // __lxLThcFast was never set, and every visitor fell back to the ~29s Horizon walk this function
+  // exists to avoid. That is the "holders sits on a placeholder, then fixes itself if I refresh"
+  // report (RAZA 2026-10-11): a refresh only looks like a fix because the second load is cached.
+  //
+  // There was nothing to see in the console -- no throw, no failed request, just a condition quietly
+  // answering false -- so the symptom read as slowness rather than a bug. Same shape trap as the
+  // search results in 2026-09-17 ("WHy's all tokens on search showing 0 holders"), and the single
+  // place that already had it right is dxaFunded() in _dexassetdata.js. Read BOTH shapes, the way
+  // that function does, so an older cached array response still works.
+  function fundedOf(t){
+    if(!t)return null;
+    var v=null;
+    if(Object.prototype.toString.call(t)==="[object Array]"){ if(t.length>=3)v=+t[2]; }
+    else if(t.funded!=null)v=+t.funded;
+    return (v!=null&&isFinite(v)&&v>=0)?v:null;
+  }
   function loadHolderCountFast(){
     if(window.__lxLThcFast!=null||window.__lxLThcFastTried)return; window.__lxLThcFastTried=true;
     j("/lxapi/assetsearch?search="+CODE+"&limit=20").then(function(d){
       var recs=(d&&d._embedded&&d._embedded.records)||[];
       var want=CODE+"-"+ISSUER;
       var hit=recs.filter(function(x){return String(x.asset||"").indexOf(want)===0;})[0];
-      var tl=hit&&hit.trustlines;
-      if(tl&&tl.length>=3&&+tl[2]>=0){ window.__lxLThcFast=+tl[2]; guardApply(); }
+      var v=fundedOf(hit&&hit.trustlines);
+      if(v!=null){ window.__lxLThcFast=v; guardApply(); }
     }).catch(function(){});
   }
   // prefer the exact paged count once it lands; fall back to the fast funded-trustline count meanwhile
