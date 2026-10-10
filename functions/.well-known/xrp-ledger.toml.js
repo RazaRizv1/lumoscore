@@ -48,6 +48,37 @@ const TOML = `# xrp-ledger.toml for lumoscore.com
 [METADATA]
 modified = "2026-09-06T00:00:00Z"
 
+# LUMOS ITSELF, which this document did not list. Added 2026-10-11: RAZA asked why the Trade-asset
+# page shows no description for LUMOS on the XRP Ledger, and the answer was that the page reads this
+# file and LUMOS was not in it — so the page fell back to the generic "LUMOS is an asset on the XRP
+# Ledger", while every launchpad mint below had a real one.
+#
+# IT IS NOT A LAUNCHPAD MINT, so it does not belong to the funder rule in the header above and says so
+# here rather than sitting silently among tokens that rule does cover. Its proof is different and
+# stronger: the issuing account is BLACKHOLED — its RegularKey is ACCOUNT_ONE and the master key is
+# disabled — so no further LUMOS can ever be issued by anyone.
+#
+# currency IS THE 40-CHARACTER HEX, not the word. The XRP Ledger carries codes of four characters or
+# more in hex, and this is the value the ledger itself returns: gateway_balances on the issuer reports
+# obligations under 4C554D4F53000000000000000000000000000000, which is "LUMOS" padded. Read off the
+# validated ledger rather than typed from the ticker. (The six blocks below spell their 6-character
+# codes in plain text, which does not match what the ledger holds for them either — worth correcting,
+# but they are hand-written entries and not this change.)
+#
+# The description is the one agreed for the Stellar toml on 2026-10-10, word for word, because it
+# describes the same product and the two documents must not tell different stories. No supply figure,
+# deliberately: LUMOS can be burned, so any number here goes stale inside the cache window.
+[[ISSUERS]]
+address = "rsPqeamjpr3Bxu4LhtCgvJEAQusYRRg6Ha"
+name = "LumosCore"
+
+[[TOKENS]]
+issuer = "rsPqeamjpr3Bxu4LhtCgvJEAQusYRRg6Ha"
+currency = "4C554D4F53000000000000000000000000000000"
+name = "LUMOS"
+desc = "The native token of LumosCore, a multichain platform for token launches, DEX trading, liquidity and cross-chain transfers. LUMOS carries reduced trading fees for holders and is distributed to liquidity providers."
+icon = "https://lumoscore.com/assets/tokens/lumos.png"
+
 [[ISSUERS]]
 address = "r389VP68xLBJjUtyaV5vDCJ7LFDGfUzZaK"
 name = "LumosCore Launchpad — POP"
@@ -250,6 +281,64 @@ function appendMints(meta, seen) {
     '# named above. Each is listed only after LumosCore verified, on the validated ledger, that the',
     '# issuer is blackholed and that the mint fee was paid to LumosCore by the same account that',
     '# created it.', ''].concat(blocks);
+}
+
+// WHAT THE TRADE-ASSET PAGE READS, so an XRPL token's own description reaches its page.
+//
+// RAZA 2026-10-11: "make sure that Lumos trade-asset page on both stellar and xrpl is showing the
+// description that we added on toml." It was not, and not only for LUMOS: NO XRPL asset has ever
+// shown one. assetFacts() in the middleware is Stellar-only (it asks stellar.expert), so for an XRPL
+// page `f` is null and the description falls through to the generic "X is an asset on the XRP
+// Ledger" — measured on NPENGU, a launchpad mint whose toml desc has existed all along.
+//
+// This document is the right source for it: it is OUR assertion about tokens we issued or minted,
+// already served from this origin, and already the thing a wallet reads. Exported rather than
+// re-parsed elsewhere so there is one copy of what the file says.
+//
+// MATCHED ON THE ISSUER, not the currency code. In this file every issuer holds exactly one token --
+// the launchpad funds a fresh account per mint, and LUMOS has its own -- so the issuer is a unique
+// key, while the currency is not comparable without care: the url carries "LUMOS" and the ledger (and
+// this file) carry 4C554D4F53…, the 40-character hex the XRP Ledger uses for codes of four characters
+// or more. Comparing those two directly is how this would silently find nothing.
+//
+// KV WINS over the static text, because a mint's metadata is edited after the fact and applyOverrides
+// already treats it that way for the document itself.
+export async function xrplAssetMeta(env, issuer) {
+  if (!issuer || !ADDR_RE.test(String(issuer))) return null;
+
+  // 1) whatever the launchpad recorded at mint time
+  try {
+    const kv = env && env.CONTENT_KV;
+    if (kv) {
+      const meta = await kv.get(MINTMETA_XRPL, 'json');
+      if (meta) {
+        for (const id of Object.keys(meta)) {
+          const cut = id.lastIndexOf('-');
+          if (cut < 1) continue;
+          if (id.slice(cut + 1) !== issuer) continue;
+          const m = meta[id] || {};
+          if (m.name || m.desc) {
+            return { name: String(m.name || ''), desc: String(m.desc || ''), image: safeImage(m.image) };
+          }
+        }
+      }
+    }
+  } catch (e) { /* fall through to the static text */ }
+
+  // 2) the static document. Walks [[TOKENS]] blocks and keeps the one whose issuer matches.
+  try {
+    const blocks = TOML.split('[[TOKENS]]').slice(1);
+    for (const b of blocks) {
+      const seg = b.split('[[')[0];
+      const get = (k) => {
+        const m = seg.match(new RegExp('^' + k + '\\s*=\\s*"([^"]*)"', 'm'));
+        return m ? m[1] : '';
+      };
+      if (get('issuer') !== issuer) continue;
+      return { name: get('name'), desc: get('desc'), image: get('icon') };
+    }
+  } catch (e) { /* no metadata is a valid answer */ }
+  return null;
 }
 
 export async function onRequestGet(context) {
