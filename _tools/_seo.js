@@ -125,12 +125,160 @@ const PAGES = {
     // ONE MCP PAGE FOR THE WHOLE PLATFORM: there is a single connector however many networks LumosCore
     // runs, so the title stopped naming one chain when the body stopped.
     title: 'LumosCore MCP — Connect Your AI Agent On-Chain | ' + BRAND,
-    desc: 'Give Claude, ChatGPT or any MCP client live prices, wallets, pools and routes from LumosCore, with every transaction prepared for you to approve. No install and no API key.',
+    // 172 characters before this, so the tail was being cut mid-claim in results. "No install, no API
+    // key" is the shorter half and the one worth keeping whole.
+    desc: 'Give Claude, ChatGPT or any MCP client live prices, wallets, pools and routes from LumosCore, with every transaction prepared for you to approve. No API key.',
   },
   'signin': {
     title: 'Sign In | ' + BRAND,
     desc: 'Connect a Stellar wallet to use LumosCore.',
     noindex: true,   // nothing to rank for, and a sign-in page in results is a bad first impression
+  },
+
+  // ---- THE PAGES THIS FILE USED TO SKIP -------------------------------------------------------
+  //
+  // Until 2026-10-10 _seo.js printed "NO ENTRY for -> account, blog, privacy, terms, support,
+  // whitepaper, docs-*, about, list-token" on every run -- twenty-six keys it did not manage. Their
+  // titles and descriptions were baked into the containers by nothing in particular, owned by no tool,
+  // and every one of them broke the standard set at the top of this file: titles ~50-60 chars,
+  // descriptions ~150-160.
+  //
+  // Measured in the containers, not guessed: all seventeen docs pages had titles of 20-35 characters
+  // ("Fees | LumosCore Docs" is 21) and descriptions of 66-94. A 21-character title throws away two
+  // thirds of the width Google will give it, and the docs are the pages that answer "how do stellar
+  // trustlines work" -- the queries with the clearest intent on the whole site.
+  //
+  // EVERY DESCRIPTION BELOW IS WRITTEN FROM WHAT THE PAGE ACTUALLY SAYS. The old one-liners were read
+  // first and are preserved in substance; nothing here promises a section a page does not have. That
+  // matters more than usual in docs, where a description that oversells is found out in one click.
+  'about': {
+    title: 'About LumosCore — Non-Custodial Multichain DeFi | ' + BRAND,
+    desc: 'Multichain Web3 infrastructure from LumosCore OÜ: one interface for trading, liquidity, token issuance and cross-chain transfers, with custody left to you.',
+  },
+  'support': {
+    title: 'Support — Report an Issue or Ask a Question | ' + BRAND,
+    desc: 'Get in touch with the LumosCore team about trading, liquidity pools, cross-chain transfers or a token launch. Tell us what happened and we will reply by email.',
+  },
+  'whitepaper': {
+    title: 'Whitepaper — Architecture, Fees and Token Model | ' + BRAND,
+    desc: 'The LumosCore whitepaper: fragmentation, interoperability, and a non-custodial architecture for trading, liquidity and cross-chain transfers.',
+  },
+  'terms': {
+    title: 'Terms of Use — Eligibility, Risk and Fees | ' + BRAND,
+    desc: 'The terms governing use of LumosCore, operated by LumosCore OÜ in Estonia — eligibility, trading risk, fees and limitation of liability.',
+  },
+  // "No cookies, no accounts" is a genuine differentiator and belongs in the title, not buried in the
+  // body: it is the thing a privacy-minded reader is scanning the result for.
+  'privacy': {
+    title: 'Privacy Policy — No Cookies, No Accounts | ' + BRAND,
+    desc: 'What LumosCore records and what it does not. No cookies, no account, non-custodial — and a plain account of the one thing we do store.',
+  },
+  'list-token': {
+    title: 'List Your Token — Curated Stellar Listings | ' + BRAND,
+    desc: 'Apply for a curated listing on LumosCore. $250, paid in XLM, refunded in full if the listing is declined. Reviewed by a person, not a script.',
+  },
+  // The blog INDEX. Individual posts are titled at the edge from KV (blogSeo in the middleware), so
+  // this entry must never describe a specific post -- it is the list page.
+  'blog': {
+    title: 'Blog — Stellar DeFi Guides and Product News | ' + BRAND,
+    desc: 'Guides and product news from LumosCore: how trading, liquidity pools, rewards and cross-chain transfers work on Stellar, and what we have shipped.',
+  },
+  // SOMEONE ELSE'S ADDRESS, read off the public ledger, one page per account. Deliberately generic:
+  // the real title is written at the edge where the address is known, and a baked title must not
+  // claim to describe a specific account.
+  'account': {
+    title: 'Stellar Account — Balances, Assets and Activity | ' + BRAND,
+    desc: 'Public profile for any Stellar account: XLM and asset balances, trustlines, liquidity pool participation and recent on-chain activity.',
+  },
+
+  // ---- DOCS ------------------------------------------------------------------------------------
+  'docs-introduction': {
+    title: 'Introduction — How LumosCore Works | ' + BRAND + ' Docs',
+    desc: 'What LumosCore is, what runs on it today, and how the non-custodial model works: you hold your own keys and sign every transaction yourself.',
+  },
+  'docs-connect-a-wallet': {
+    // Trimmed to clear Google's ~60-character cut. Naming three of the five wallets pushed it to 62,
+    // and a truncated title loses the brand, not the wallet names. "how to connect a stellar wallet"
+    // is also the way the question is actually typed.
+    title: 'How to Connect a Stellar Wallet | ' + BRAND + ' Docs',
+    desc: 'The five supported Stellar wallets, how connecting works, and exactly what LumosCore can and cannot do once a wallet is connected to it.',
+  },
+  'docs-fees': {
+    title: 'Trading Fees on Stellar — 0.2% or 0.1% | ' + BRAND + ' Docs',
+    desc: 'What LumosCore charges on a swap, the LUMOS holder discount tier, why limit orders are free, and which costs belong to the Stellar network itself.',
+  },
+  'docs-swaps': {
+    title: 'Swaps on the Stellar DEX — Routing and Slippage | ' + BRAND,
+    desc: 'How a trade is routed across the Stellar order book and AMM pools, how price and slippage are determined, and what you approve before signing.',
+  },
+  'docs-limit-orders': {
+    title: 'Limit Orders on Stellar — Free Resting Orders | ' + BRAND,
+    desc: 'How resting orders work on the Stellar order book, why LumosCore charges nothing for them, and how to track or cancel one from your own wallet.',
+  },
+  'docs-liquidity-pools': {
+    title: 'Stellar Liquidity Pools — Add, Withdraw, Create | ' + BRAND,
+    desc: 'Adding and withdrawing liquidity on Stellar, creating a new pool, what pool shares represent, and the risks of providing liquidity before you commit.',
+  },
+  // THREE ROUTES, NOT ONE. The old description said "between Stellar and eight networks over Circle's
+  // CCTP", which was true when CCTP was the only route and has been wrong since LayerZero and NEAR
+  // Intents went live (2026-09-19). Deliberately does NOT repeat the "burn-and-mint, nothing arrives
+  // wrapped" line used on the Bridge page: that is true of CCTP, and NEAR Intents is an intent/swap
+  // model, so as a blanket claim about all three it would be false.
+  'docs-cross-chain': {
+    title: 'Cross-Chain Transfers from Stellar | ' + BRAND + ' Docs',
+    desc: 'Moving assets between Stellar and other networks using Circle CCTP, LayerZero and NEAR Intents — three routes, each with its own supported chains.',
+  },
+  'docs-wallet': {
+    title: 'Stellar Wallet — Balances, Send and Receive | ' + BRAND + ' Docs',
+    desc: 'Viewing balances and activity, sending and receiving Stellar assets, and managing trustlines, all without giving up custody of your keys.',
+  },
+  'docs-trustlines': {
+    title: 'Stellar Trustlines Explained | ' + BRAND + ' Docs',
+    desc: 'Why Stellar needs a trustline before you can hold an asset, what XLM reserve each one locks up, and how to add or remove them on LumosCore.',
+  },
+  'docs-rewards': {
+    title: 'LUMOS Rewards — Eligibility and Payout Rounds | ' + BRAND,
+    desc: 'The three LUMOS reward programmes, who is eligible for each, how eligibility is measured on-chain, and when each round pays out.',
+  },
+  'docs-launch-a-token': {
+    title: 'Launch a Token on Stellar — Flat $25, No Code | ' + BRAND,
+    desc: 'Issuing an asset on Stellar mainnet: the flow step by step, the flat $25 cost, what you receive, and why the issuing account is locked afterwards.',
+  },
+  'docs-asset-metadata': {
+    title: 'Stellar Asset Metadata — stellar.toml and Logos | ' + BRAND,
+    desc: 'What the SEP-1 stellar.toml file is, which fields LumosCore reads from it, and how to publish a name, description and logo for your own asset.',
+  },
+  'docs-verification': {
+    title: 'Stellar Asset Verification | ' + BRAND + ' Docs',
+    desc: 'How the home_domain and stellar.toml handshake proves an asset is yours, what the verified mark on LumosCore means, and what it deliberately does not.',
+  },
+  'docs-curated-listing': {
+    title: 'Curated Listing on LumosCore — Apply and Review | ' + BRAND,
+    desc: 'How to apply for a curated listing, what the review covers, how the decision is made, and the full refund if an application is declined.',
+  },
+  'docs-security': {
+    title: 'Security and Custody — What We Never Ask For | ' + BRAND,
+    desc: 'The LumosCore custody model, what we will never ask you for, how every transaction is signed in your own wallet, and the risks that remain.',
+  },
+  'docs-troubleshooting': {
+    title: 'Troubleshooting — Common Errors and Fixes | ' + BRAND + ' Docs',
+    desc: 'The errors people actually hit on Stellar: underfunded accounts, missing trustlines and failed signatures — what each means and how to clear it.',
+  },
+  // THE POST TEMPLATE, AND IT MUST STAY GENERIC. One file serves every post, so a real post's title
+  // and description are written at the edge from KV (blogSeo in the middleware) and overwrite whatever
+  // is baked here. This entry is only ever seen in the fallback case -- a KV read that threw -- so it
+  // describes the blog, never a post. Anything specific here would be a confident lie about whichever
+  // post failed to load. It replaces a 14-character "LumosCore Blog", which was the title the old
+  // soft-404 served for every nonexistent slug.
+  'blog-post': {
+    title: 'Blog — Stellar DeFi Guides and Product News | ' + BRAND,
+    desc: 'Guides and product news from LumosCore: how trading, liquidity pools, rewards and cross-chain transfers work on Stellar, and what we have shipped.',
+  },
+  // /faq AND /docs/faq are the same page; the canonical points at /faq. One entry covers both,
+  // because baseName() keys on the file and the file is shared.
+  'docs-faq': {
+    title: 'FAQ — Trading, Pools, Fees and Cross-Chain | ' + BRAND,
+    desc: 'Answers to the most common questions about trading, liquidity pools, fees, cross-chain transfers, wallets and launching a token on LumosCore.',
   },
 };
 
