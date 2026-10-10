@@ -383,7 +383,23 @@
         if(!(_man&&_man[code+"-"+iss])&&!byId[code+"|"+iss])return;
         // Retired and mistyped tickers linger in the index as husks: zero supply, no trustlines, no toml.
         // They cannot be traded, and padding the tab with dead rows buries the real ones.
-        var tl=x.trustlines; tl=(tl&&typeof tl==="object"&&tl.length)?(+tl[0]||0):(+tl||0);
+        //
+        // THIS GUARD REJECTED EVERYTHING FOR MONTHS. It tested tl.length to decide "array or scalar",
+        // but upstream sends an OBJECT -- {total, authorized, funded} -- whose length is undefined.
+        // That falls to the scalar branch, where +{...} is NaN and ||0 makes it a clean-looking ZERO,
+        // so tl<1 dropped every asset. Measured live 2026-10-11: 26 assets claim our domain here and
+        // ALL 26 were being discarded, which is the whole point of this block.
+        //
+        // The cost was not only the rows. This "return" also skips the enrichment branch below, so
+        // the real mint times never landed either -- the very thing the note down there says it fixed
+        // ("every key it sorted on was zero"). It was fixed; this line above it returned first.
+        //
+        // Same shape trap as _searchassets.js in 2026-09-17 and _lumostoken.js today. Read total the
+        // way extract_site.js and _swapcalc.js already do, and still accept an older cached array.
+        var tl=x.trustlines;
+        tl=(tl&&typeof tl==="object")
+             ? (tl.total!=null ? (+tl.total||0) : (tl.length ? (+tl[0]||0) : 0))
+             : (+tl||0);
         if(!(+x.supply>0)||tl<1)return;
         // one creation point, one guard: this used to inline a second copy of the ticker-only check
         var a=nativeMake(code,iss,(x.tomlInfo&&x.tomlInfo.image)||"",x.domain||"",+x.created||0);
