@@ -97,13 +97,39 @@ const JS = '<script id="lx-connectgate">' + `(function(){
     // -- worse than before the page was opened. The wallet is asked for at the moment it is first
     // genuinely needed. Verified unique to the three launch-token variants, so it cannot gate anything
     // else, and window capture with stopImmediatePropagation runs before an inline onclick can fire.
+    // THE GATED NAV ITEMS ARE IN THE LIST NOW, and that is the fix for the report below.
+    //
+    // RAZA 2026-10-11: "when tapping on the wallet after launch app button, it opens up
+    // lumoscore.com/trade/stellar page instead of opening the wallet popup".
+    //
+    // Signed out, a tap on Wallet or Dashboard in the sidebar reached lx-authgate, which does
+    // location.replace() and throws the click away. Measured on the current build: it lands on "/".
+    // On the build he tested it landed on /trade/stellar, which is chainHref()'s fallback in
+    // _mc_engine.js for a section that is in neither chain table -- and dashboard and wallet are
+    // deliberately in neither. Either way the outcome is the same: a deliberate click on the one
+    // control that means "I want my wallet" is answered by a page change nobody asked for.
+    //
+    // He is describing the behaviour these two should have had all along, and it is the behaviour
+    // Create Pool and Launch Token already have (RAZA 2026-09-30, the reason this file exists): ask
+    // for the wallet at the moment it is needed, then carry on to where they were going.
+    //
+    // THE TARGET, NOT location.href, IS THE RETURN DESTINATION for these. For an in-page CTA the page
+    // you are on IS the destination; for a nav link the destination is the page you were trying to
+    // reach, and sending someone back to the page they were leaving would be the same thrown-away
+    // click in a different costume.
+    var NAVSEL="a[href='/wallet'],a[href='/dashboard']";
     var SEL="#openCreatePool,.lx-cplink,button.summary-cta"
-      + ",a[href^='/launchpad/review'],a[href^='/launchpad/confirm']";
+      + ",a[href^='/launchpad/review'],a[href^='/launchpad/confirm']"
+      + "," + NAVSEL;
     window.addEventListener("click",function(e){
       var t=e.target; if(!t||!t.closest) return;
-      if(!t.closest(SEL)) return;
+      var hit=t.closest(SEL);
+      if(!hit) return;
       if(connected()) return;                       // let the design do whatever it normally does
       e.preventDefault(); e.stopImmediatePropagation();
+      // For a nav link, resume at the page they asked for rather than the one they were on.
+      var dest=null;
+      try{ if(t.closest(NAVSEL)) dest=hit.getAttribute("href")||null; }catch(_){}
       // A CHAIN IN THE URL BEATS THE CHOOSER. On /launchpad/stellar or /launchpad/xrpl the network is
       // already decided, so go straight to that chain's wallet list; asking again is the bug RAZA
       // reported. Everywhere else (Create Pool on a chain-neutral page) the chooser is still the right
@@ -122,10 +148,15 @@ const JS = '<script id="lx-connectgate">' + `(function(){
         // "stay:<chain>" is honoured only if the wallet they pick is on that chain, which is the
         // behaviour we want: connect XRPL while on the Stellar launchpad and this page is not yours to
         // use, so the dashboard is the honest destination. "home" where the url names no chain.
-        try{ sessionStorage.setItem("lumos.connDest",pc?("stay:"+pc):"home"); }catch(_){}
-        if(pc&&window.lxwOpenWallet) window.lxwOpenWallet(pc,location.href);
-        else if(window.lxChooseNetwork) window.lxChooseNetwork(location.href);
-        else if(window.lxwOpenWallet) window.lxwOpenWallet(chain(),location.href);
+        //
+        // A NAV CLICK IS "home", NEVER "stay". /wallet and /dashboard are chain-neutral urls, so
+        // there is no chain to stay on, and lxPostConnectHome's "home" branch is the one that walks
+        // the reader into the app -- which is exactly what tapping Wallet or Dashboard asked for.
+        try{ sessionStorage.setItem("lumos.connDest",(!dest&&pc)?("stay:"+pc):"home"); }catch(_){}
+        var back=dest||location.href;
+        if(pc&&!dest&&window.lxwOpenWallet) window.lxwOpenWallet(pc,back);
+        else if(window.lxChooseNetwork) window.lxChooseNetwork(back);
+        else if(window.lxwOpenWallet) window.lxwOpenWallet(chain(),back);
       }catch(_){}
     },true);
   }catch(e){}
