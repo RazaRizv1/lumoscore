@@ -26,10 +26,16 @@
 // issuer -> Domain -> toml, so in practice this file verifies POP and BRO; the rest are listed
 // because this is still LumosCore's own public record of what it minted.
 //
-// STATIC ON PURPOSE. The Stellar sibling rebuilds its list live, but that walks dozens of accounts
-// per request and this project's Functions run on a plan with a 10ms CPU budget. This file does no
-// ledger work at all. When the launchpad mints again, regenerate the list with the funder walk
-// described above and add the entry here.
+// STATIC BASE, KV TAIL. The Stellar sibling rebuilds its whole list live, but that walks dozens of
+// accounts per request and this project's Functions run on a plan with a 10ms CPU budget. This file
+// still does NO ledger work: the six below are fixed text, and every mint since is appended from
+// `mintmeta:xrpl` — one KV read, no RPC.
+//
+// That key is written only by lxapi/xrplmintmeta.js, which proves on the validated ledger that the
+// issuer is blackholed and that our mint fee was paid to our collector by the account that created
+// it, before it stores anything. So the verification happens once, at mint time, where there is a
+// budget for it — not on every request for this document. See appendMints() below for why that is a
+// different proof from the funder walk, and why the appended block says so in its own words.
 
 const TOML = `# xrp-ledger.toml for lumoscore.com
 # Tokens minted through the LumosCore launchpad on the XRP Ledger.
@@ -128,6 +134,13 @@ desc = "Minted on the XRP Ledger through the LumosCore launchpad. Issuer blackho
 const ORIGIN = 'https://lumoscore.com';
 const MINTMETA_XRPL = 'mintmeta:xrpl';          // {"CODE-issuer": {name, desc, image}}
 
+// The same two shapes lxapi/xrplmintmeta.js validates on the way IN, restated here rather than
+// imported: that module lives in a sibling directory and this one is also built by the XRPL repo,
+// where an import across that boundary would resolve in the combined build and fail in the other.
+// A currency is three characters or forty hex digits; an address is base58 without 0 O I l.
+const ADDR_RE = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
+const CUR_RE = /^([A-Za-z0-9]{1,3}|[0-9A-Fa-f]{40})$/;
+
 function safeImage(v) {
   const s = String(v || '').trim();
   if (!s) return '';
@@ -149,9 +162,14 @@ const esc = (s) => String(s == null ? '' : s).replace(/[\\"]/g, '').replace(/[\r
 function applyOverrides(toml, meta) {
   if (!meta || typeof meta !== 'object') return toml;
   const out = [];
+  const seen = new Set();                 // every CODE-ISSUER the static document already names
   let buf = null, iss = '', cur = '';
   const flush = () => {
     if (!buf) return;
+    if (cur && iss) {
+      seen.add(cur + '-' + iss);
+      seen.add(String(cur).toUpperCase() + '-' + iss);
+    }
     const m = meta[cur + '-' + iss] || meta[String(cur).toUpperCase() + '-' + iss];
     if (m) {
       const img = safeImage(m.image);
@@ -181,7 +199,57 @@ function applyOverrides(toml, meta) {
     out.push(line);
   }
   flush();
-  return out.join('\n');
+  return out.concat(appendMints(meta, seen)).join('\n');
+}
+
+// EVERY MINT SINCE, APPENDED (RAZA 2026-10-09: "fix the xrpl toml to add mints automatically").
+//
+// The header above used to end "When the launchpad mints again, regenerate the list with the funder
+// walk described above and add the entry here" — a manual step nobody was going to remember, and the
+// reason a token minted today was invisible to every wallet that reads this file.
+//
+// WHAT MAKES AN APPENDED ENTRY SAFE IS NOT THE FUNDER WALK, and that distinction is the whole of this
+// block. lxapi/xrplmintmeta.js is the only writer of `mintmeta:xrpl`, and it refuses to store anything
+// until it has proved, on the validated ledger: the issuer is blackholed; which account created the
+// issuer; and that OUR mint fee was paid to our collector BY THAT SAME ACCOUNT. Reproducing that means
+// paying us from the account that funded the issuer and then destroying the issuer's keys — which is
+// precisely the claim being made. So a key in that map is a verified LumosCore mint before it ever
+// reaches this file.
+//
+// It is a DIFFERENT proof from the six above, which really were funded by the launchpad wallet.
+// Today's launchpad funds the new issuer from the MINTER's own wallet (mint.js step 2), so demanding
+// our funder would reject every real mint. The appended block carries its own note saying which of
+// the two proofs applies to it, because a document whose job is verification must not make a claim
+// about an issuer that is not true of it.
+//
+// Shape-checked even though the writer checked first: this is the public document, the values reach
+// it through KV, and an issuer or currency that is not the right shape is dropped rather than
+// published. Same rule the rest of the XRPL surface follows for minter-supplied values.
+function appendMints(meta, seen) {
+  const ids = Object.keys(meta).filter((id) => !seen.has(id));
+  if (!ids.length) return [];
+  const blocks = [];
+  for (const id of ids.sort()) {
+    const cut = id.lastIndexOf('-');                       // a currency never contains "-"
+    if (cut < 1) continue;
+    const cur = id.slice(0, cut), iss = id.slice(cut + 1);
+    if (!ADDR_RE.test(iss) || !CUR_RE.test(cur)) continue;
+    const m = meta[id] || {};
+    const img = safeImage(m.image);
+    blocks.push('[[ISSUERS]]', 'address = "' + iss + '"');
+    if (m.name) blocks.push('name = "' + esc(m.name) + '"');
+    blocks.push('', '[[TOKENS]]', 'issuer = "' + iss + '"', 'currency = "' + cur + '"');
+    if (m.name) blocks.push('name = "' + esc(m.name) + '"');
+    if (m.desc) blocks.push('desc = "' + esc(m.desc) + '"');
+    if (img) blocks.push('icon = "' + img + '"');
+    blocks.push('');
+  }
+  if (!blocks.length) return [];
+  return ['', '# Minted through the LumosCore launchpad since this document was first written.',
+    '# These issuers were funded by the minter\'s own wallet rather than by the launchpad wallet',
+    '# named above. Each is listed only after LumosCore verified, on the validated ledger, that the',
+    '# issuer is blackholed and that the mint fee was paid to LumosCore by the same account that',
+    '# created it.', ''].concat(blocks);
 }
 
 export async function onRequestGet(context) {
