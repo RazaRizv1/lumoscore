@@ -112,6 +112,17 @@ const JS = '<script id="lx-connectgate">' + `(function(){
       // location.href is handed over as the return target either way, so connecting resumes the click.
       try{
         var pc=pathChain();
+        // WHERE TO GO AFTER CONNECTING. Two window-capture handlers can own this click -- this one and
+        // the design's lx-gate -- and only the first to register runs, because both stop propagation.
+        // On the launchpad this one wins, so lx-gate's connDest write never happens and the value was
+        // left unset: lxPostConnectHome then falls through to the dashboard, dumping someone who had
+        // deliberately opened the launchpad, filled the form in and connected. Writing it here keeps
+        // that decision with whichever handler actually ran.
+        //
+        // "stay:<chain>" is honoured only if the wallet they pick is on that chain, which is the
+        // behaviour we want: connect XRPL while on the Stellar launchpad and this page is not yours to
+        // use, so the dashboard is the honest destination. "home" where the url names no chain.
+        try{ sessionStorage.setItem("lumos.connDest",pc?("stay:"+pc):"home"); }catch(_){}
         if(pc&&window.lxwOpenWallet) window.lxwOpenWallet(pc,location.href);
         else if(window.lxChooseNetwork) window.lxChooseNetwork(location.href);
         else if(window.lxwOpenWallet) window.lxwOpenWallet(chain(),location.href);

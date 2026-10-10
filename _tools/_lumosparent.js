@@ -160,13 +160,19 @@ const HUBS = [
     h1: 'Bridge', title: 'Bridge — Choose a network | LumosCore',
     sub: 'Move assets between networks. Choose the network you are bridging from.',
     stellarMeta: 'CCTP, LayerZero, NEAR Intents',
-    // NOT "Axelar ITS", which is what I was about to write. The two chains' route sets are different
-    // and neither is a subset of the other: Axelar is XRPL-ONLY (removed from Stellar 2026-09-24),
-    // LayerZero and CCTP are Stellar-only, and NEAR Intents is on both. Reading the served
-    // /bridge/xrpl settled it — the visible route labels are Axelar and NEAR Intents, LayerZero
-    // appears zero times, and the CCTP strings there are not route labels. Both are backed by real
-    // wiring (_xrplnearintents.js, functions/lxapi/xrplaxelar.js), so this is two routes, not one.
-    xrplMeta: 'Axelar, NEAR Intents',
+    // THREE ROUTES, and I got this wrong twice before reading the page properly. It is not "Axelar
+    // ITS" (my first guess), and it is not "Axelar, NEAR Intents" (my second): /bridge/xrpl titles
+    // itself "39 networks via NEAR Intents, Axelar and THORChain" and answers its own FAQ with
+    // "Three, and they are good at different things." THORChain is mentioned 80 times on it.
+    //
+    // The second answer was wrong because I searched the page for a FIXED LIST of route names I
+    // expected to find -- cctp|layerzero|axelar|near intents -- which cannot report a route I did not
+    // think of. Counting what the page actually names is the only check that can.
+    //
+    // The two chains' route sets are genuinely different and neither contains the other: Axelar and
+    // THORChain are XRPL-only, CCTP and LayerZero are Stellar-only, NEAR Intents is on both. Ordered
+    // as the page orders them.
+    xrplMeta: 'NEAR Intents, Axelar, THORChain',
   },
   {
     key: 'lumoscore-rewards', path: '/rewards',
