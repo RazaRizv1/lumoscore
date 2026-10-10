@@ -56,12 +56,25 @@
 /blogs                                    /blog  301
 /Trade/*                                  /trade/:splat  301
 /Pools/*                                  /pools/:splat  301
+/Trade                                    /trade  301
+/Pools                                    /pools  301
 /Bridge                                   /bridge  301
 /Wallet                                   /wallet  301
 /Rewards                                  /rewards  301
 /MCP                                      /mcp  301
 /Dashboard                                /dashboard  301
 /Launchpad                                /launchpad  301
+/About                                    /about  301
+/Blog                                     /blog  301
+/Blog/*                                   /blog/:splat  301
+/Support                                  /support  301
+/Terms                                    /terms  301
+/Privacy                                  /privacy  301
+/Docs                                     /docs  301
+/Docs/*                                   /docs/:splat  301
+/FAQ                                      /faq  301
+/Whitepaper                               /whitepaper  301
+/Lumos                                    /lumos  301
 
 # the landing page IS the site root, so its old path must not be a second copy of it
 /lumoscore-landing                        /  301

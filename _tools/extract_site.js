@@ -555,10 +555,28 @@ const ALIASES = [
   ['/blogs',   '/blog'],
 ];
 
+// A WILDCARD DOES NOT MATCH THE BARE PATH, which is why /Trade and /Pools 404'd while /Trade/stellar
+// redirected correctly. '/Trade/*' matches /Trade/<something> and nothing else, so the two shortest
+// and most likely hand-typed forms of each were the only ones not forgiven. Both spellings are listed
+// now; Pages applies the first match, and the bare entry cannot shadow the splat because the paths
+// differ.
+//
+// The rest were simply never here. Measured against production on 2026-10-10: /About, /Blog, /Support,
+// /Terms, /Privacy, /Docs and /FAQ all returned 404. These are exactly the urls a person capitalises
+// by hand when writing a link in an email, a tweet or a directory listing -- the links nobody can go
+// back and edit, which is the entire reason this table exists.
+//
+// Only the FIXED segments are forgiven. An asset segment keeps its case, because yUSDC and YUSDC are
+// genuinely different assets on Stellar and folding them would resolve one to the other.
 const CASE_FIXES = [
   ['/Trade/*', '/trade/:splat'], ['/Pools/*', '/pools/:splat'],
+  ['/Trade',   '/trade'],   ['/Pools',   '/pools'],
   ['/Bridge',  '/bridge'], ['/Wallet', '/wallet'], ['/Rewards', '/rewards'],
   ['/MCP',     '/mcp'],    ['/Dashboard', '/dashboard'], ['/Launchpad', '/launchpad'],
+  ['/About',   '/about'],  ['/Blog', '/blog'], ['/Blog/*', '/blog/:splat'],
+  ['/Support', '/support'], ['/Terms', '/terms'], ['/Privacy', '/privacy'],
+  ['/Docs',    '/docs'],   ['/Docs/*', '/docs/:splat'], ['/FAQ', '/faq'],
+  ['/Whitepaper', '/whitepaper'], ['/Lumos', '/lumos'],
 ];
 
 function redirectsFile(){
@@ -1139,6 +1157,38 @@ async function blogPost(env, slug){
     return p;
   } catch (e) { return null; }
 }
+
+// THE SAME READ, BUT ABLE TO SAY WHY IT FOUND NOTHING -- which blogPost above cannot, and that is the
+// whole reason this exists.
+//
+// /blog/<any-slug-at-all> answered HTTP 200. Measured on production: a deleted-looking slug returned a
+// 420KB page titled "LumosCore Blog", stamped index/follow, CANONICALISING TO ITSELF, carrying a
+// description left over from an unrelated post about liquidity pools. That is a soft 404, and a soft
+// 404 is the one thing Google will never drop, because 200 means the page is fine. Every deleted post,
+// every renamed slug (editing a title rewrites it) and every typo became a permanent indexable page
+// in an unbounded url space. This is the likeliest source of the stale results RAZA found with
+// site:lumoscore.com, and unlike a real 404 it could not expire.
+//
+// blogPost returns null for FIVE different situations: no KV binding, no slug, no record, an
+// unpublished record, and a thrown error. Refusing the page on null would therefore mean that one KV
+// wobble 404s all twelve real posts -- strictly worse than the bug being fixed, and the same trap the
+// asset-id note further down refuses to walk into. So this reports the DECISION separately:
+//
+//   decided:true  the read came back and there is genuinely no record at this slug -> safe to refuse
+//   decided:false we could not tell (no binding, or the read threw) -> serve the page, as before
+//
+// Only the no-record case is decided. An UNPUBLISHED or scheduled record is left alone deliberately:
+// it exists, it is somebody's draft, and refusing it could break an admin preview -- a narrower
+// question than the one being fixed here.
+async function blogLookup(env, slug){
+  const kv = env && env.CONTENT_KV;
+  if (!kv || !slug) return { post: null, decided: false };
+  try {
+    const p = await kv.get('blog:post:' + slug, 'json');
+    if (p) return { post: p.published === false ? null : p, decided: false };
+    return { post: null, decided: true };
+  } catch (e) { return { post: null, decided: false }; }
+}
 // The index, for the same reason the post body is read: /blog ships an empty grid that the browser
 // fills, so a crawler saw an index of nothing -- 24 links, not one of them to a post. The four posts
 // are in sitemap.xml so they are discoverable, but a sitemap conveys existence and nothing else: no
@@ -1702,8 +1752,32 @@ export async function onRequest(context){
     };
   }
   else if (want && want.kind === 'blog') {
-    const post = await blogPost(context.env, want.slug);
-    if (post) seo = blogSeo(post, PRIMARY_ORIGIN);
+    const look = await blogLookup(context.env, want.slug);
+    if (look.post) seo = blogSeo(look.post, PRIMARY_ORIGIN);
+    else if (look.decided) {
+      // 410 GONE, NOT 404, and that is RAZA's call: "410 Gone for known-dead, 404 for the rest". This
+      // is the known-dead half -- the authoritative index was read successfully and holds no record at
+      // this slug, so we are not guessing. Google retires a 410 faster than a 404 and does not keep
+      // re-asking. The rest of the site keeps its 404 (see malformedId above), because an asset or
+      // pool id cannot be checked without an upstream call that is allowed to wobble.
+      //
+      // Serves the real 404 page as the body so a reader who follows a dead link from Google gets the
+      // branded page with a way back, not the word "Gone". The STATUS is what search engines read and
+      // the body is what people read; they do not have to agree in tone.
+      const branded = await context.env.ASSETS.fetch(
+        new URL('/404.html', request.url).toString());
+      const hdrs = {
+        'content-type': 'text/html; charset=utf-8',
+        // Short, not immutable: a slug can come back if the post is republished under its old name,
+        // and nothing should cache "gone" for longer than it takes to notice.
+        'cache-control': 'public, max-age=300',
+        'x-robots-tag': 'noindex, nofollow, noarchive',
+      };
+      return branded && branded.ok
+        ? new Response(branded.body, { status: 410, headers: hdrs })
+        : new Response('Gone', { status: 410, headers: Object.assign({}, hdrs, {
+            'content-type': 'text/plain; charset=utf-8' }) });
+    }
   }
   // The index page has no seoFor entry of its own -- its title and description are baked -- so the
   // post list is fetched here purely to render the links.
