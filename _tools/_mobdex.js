@@ -387,11 +387,20 @@ const SCRIPT = '<script id="lx-mobdex">' + String.raw`
   }
 
   // ---- All Trading Pairs ---------------------------------------------------------------------------
-  // data-filter FIRST. The Curated chip is a three-way dropdown since 2026-10-09 (_dexdata.js owns it,
-  // one control for both builds) and it writes the live mode there -- "all", "stables" or "native".
-  // Reading data-cat or the label first would hand this "curated — stables▾", which matches no
-  // category, so the phone would sit on the curated list while the desktop filtered.
-  function mkFilter(){var t=q(".mdx-mk-filters .active,.mdx-mk-filters button.active");
+  // window.__lxDEXmode FIRST. The Curated chip is a three-way dropdown since 2026-10-09 (_dexdata.js
+  // owns it, one control for both builds). It used to write the live mode into the chip's
+  // data-filter, and this read that -- but data-filter is also the key trimFilters' kill map and the
+  // A20 stylesheet match to retire a chip, so holding the mode there got the control deleted or
+  // hidden the moment you picked Mints or Stables. The chip is now pinned to data-filter="all" and
+  // publishes the mode on window.__lxDEXmode instead, so that is what the phone has to read.
+  //
+  // The attribute stays as the fallback for the pre-dropdown markup, where each chip really does
+  // carry its own category. Reading data-cat or the LABEL first would still be wrong: the label is
+  // "curated — stables▾", which matches no category, and that is what left the phone on the curated
+  // list while the desktop filtered.
+  function mkFilter(){
+    try{ var m=window.__lxDEXmode; if(m)return String(m); }catch(_e){}
+    var t=q(".mdx-mk-filters .active,.mdx-mk-filters button.active");
     return t?((t.getAttribute("data-filter")||t.getAttribute("data-cat")||(t.textContent||"").trim().toLowerCase())):"all";}
   function mkQuery(){var i=q(".mdx-mk-search input");return i?String(i.value||"").trim().toLowerCase():"";}
   var MK_PER=50, mkPage=1, mkKey="";

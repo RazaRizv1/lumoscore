@@ -557,16 +557,38 @@
       });
     });
   }
+  // THE CHIP NO LONGER CARRIES ITS MODE IN data-filter, AND THAT IS THE WHOLE POINT.
+  //
+  // data-filter is the key every "retire this chip" mechanism matches on: trimFilters' kill map
+  // DELETES stables|memes|utility|native, and the A20 stylesheet HIDES them. Writing the live mode
+  // into it meant the control announced its state through the one channel used to destroy it, so
+  // picking Mints or Stables armed both. Exempting them (data-lxmode) fixed the two we knew about,
+  // but it is a list of exceptions that has to be kept complete forever -- and it was already
+  // incomplete once: the JS kill map got the exemption in 2026-10-09 and the stylesheet did not,
+  // which is the chip vanishing on desktop (RAZA 2026-10-11), then again on iPhone Safari after the
+  // stylesheet was fixed -- "disappears immediately on tap", a path this build could not reproduce.
+  //
+  // So stop arming them. MODE already lives in this variable and on window.__lxDEXmode (the mobile
+  // layer reads that), which makes data-filter redundant as a carrier. Pinned to "all", the chip
+  // matches no kill selector in either mechanism, now or in any future one keyed the same way --
+  // whatever fires on that tap has nothing to match. This is exactly why XRPL has never had this
+  // bug: its chip keeps data-filter="all" and holds the mode in a variable.
+  //
+  // Readers were updated with it: curFilter(), tableData() and tableSig() take MODE directly (same
+  // emitted scope -- verified), and _mobdex.js reads window.__lxDEXmode before the attribute.
   function applyMode(next){
     if(MODE===next)return;
     MODE=next;
+    try{ window.__lxDEXmode=MODE; }catch(_){}           // set BEFORE any repaint reads it
     qa(".dex-mk-filter[data-lxmode],.mdx-mk-filter[data-lxmode]").forEach(function(chip){
-      chip.setAttribute("data-filter",next); chip.classList.add("active");
+      if(chip.getAttribute("data-filter")!=="all")chip.setAttribute("data-filter","all");
+      chip.classList.add("active");
     });
     paintModeLabel();
     mkPage=1;                                                 // page 3 of a one-page view is nothing
     if(next==="native"){ try{ loadNative(); }catch(_){} }
-    try{ window.__lxDEXmode=MODE; }catch(_){}                 // the mobile layer reads this
+    // (__lxDEXmode is published at the top of this function now -- it is the mode's carrier, not a
+    //  side-channel, so it must be set before anything repaints.)
     try{ touch(); }catch(_){}
     try{ guardApply(); }catch(_){}
   }
@@ -574,6 +596,9 @@
     var chip=q('.dex-mk-filter[data-filter="all"],.mdx-mk-filter[data-filter="all"],.dex-mk-filter[data-lxmode],.mdx-mk-filter[data-lxmode]');
     if(!chip||chip.__lxMode||!chip.parentNode)return;
     chip.__lxMode=1; chip.setAttribute("data-lxmode","1"); modeCss();
+    // Publish the mode the moment the control exists, so the phone never falls back to reading some
+    // other chip's data-filter in the window before the first selection.
+    try{ window.__lxDEXmode=MODE; }catch(_){}
     var wrap=document.createElement("span"); wrap.className="lx-modewrap";
     chip.parentNode.insertBefore(wrap,chip); wrap.appendChild(chip);
     var caret=document.createElement("span"); caret.className="lx-modecaret";
@@ -617,7 +642,14 @@
       w.appendChild(menu);
     },true);
   }
-  function curFilter(){ var el=q(".dex-mk-filter.active"); return (el&&el.getAttribute)?(el.getAttribute("data-filter")||"all"):"all"; }
+  // MODE is the mode. The active chip's data-filter is only consulted when our dropdown never
+  // initialised (no chip carries data-lxmode), which is the pre-dropdown markup.
+  function modeNow(){
+    if(q(".dex-mk-filter[data-lxmode],.mdx-mk-filter[data-lxmode]"))return MODE||"all";
+    var el=q(".dex-mk-filter.active,.mdx-mk-filter.active");
+    return (el&&el.getAttribute)?(el.getAttribute("data-filter")||"all"):"all";
+  }
+  function curFilter(){ return modeNow(); }
   // Newest first. Assets we have no created stamp for sort last rather than jumping to the top on a 0.
   function mintList(){
     return NATIVE.slice()
@@ -1295,7 +1327,7 @@
       guardApply();
     },true);
   }
-  function tableData(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all";
+  function tableData(){ var f=modeNow();
     var qs=""; var si=q("#dexMkSearch"); if(si)qs=(si.value||"").trim().toLowerCase();
     // Kicked off here rather than on the native tab alone: All lists them too, so they load with the page.
     loadNative();
@@ -1321,7 +1353,7 @@
     if(qs)d=d.filter(function(a){ return a.code.toLowerCase().indexOf(qs)>=0; });
     return mkSortRows(d);                                     // sorted here, so pagination pages the SORTED set
   }
-  function tableSig(){ var f=(q(".dex-mk-filter.active")||{}).getAttribute?(q(".dex-mk-filter.active").getAttribute("data-filter")||"all"):"all"; var qs=(q("#dexMkSearch")||{}).value||""; return f+"|"+qs.trim().toLowerCase()+"|"+NATIVE.length+"|"+nativeState+"|"+mkSort.key+mkSort.dir; }
+  function tableSig(){ var f=modeNow(); var qs=(q("#dexMkSearch")||{}).value||""; return f+"|"+qs.trim().toLowerCase()+"|"+NATIVE.length+"|"+nativeState+"|"+mkSort.key+mkSort.dir; }
   // the thead is design markup (8 cols); insert a "Trades (24h)" th once, right after Volume (24h), so the 24h-activity columns sit together.
   function ensureTradesHeader(){ var tb=q("#dexMkTbody"); if(!tb||!tb.closest)return; var tbl=tb.closest("table"); if(!tbl)return;
     var thr=tbl.querySelector("thead tr"); if(!thr||thr.querySelector(".th-trades"))return;
