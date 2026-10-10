@@ -868,7 +868,31 @@ window.addEventListener('click',function(e){
             if(!nhref)nhref='/trade/'+netId;
             try{location.assign(nhref);}catch(_){location.href=nhref;}
             return;}
-          try{if(window.lxSetChain)window.lxSetChain(netId);}catch(_){}
+          // STELLAR CONNECTS IN PLACE, SO THIS MUST NOT NAVIGATE.
+          //
+          // This called lxSetChain(netId), which is applyChain -- and applyChain NAVIGATES. From "/"
+          // chainHref answers the TRADE page, so picking Stellar ran location.assign("/trade/stellar")
+          // and, because that is asynchronous, the line below still painted the wallet list before the
+          // navigation wiped it. RAZA on iPhone Safari 2026-10-11: "I selected launch app, then stellar
+          // network, then as soon as i click the wallet, it redirected me to trade/stellar" -- the
+          // redirect is actually armed one tap earlier, and only LOOKS like the wallet tap because the
+          // list is on screen by the time it lands. Reproduced here exactly.
+          //
+          // IT ONLY BIT SOME PEOPLE, WHICH IS WHY IT SURVIVED. applyChain returns early when "to"
+          // equals "cur", so for anyone whose adopted chain was already Stellar it did nothing and the
+          // flow worked. On "/" the url names no chain, so "cur" comes from the saved lumos.chain --
+          // and for anyone who had ever picked XRP Ledger that is "xrpl", so picking Stellar no longer
+          // matched the guard and the navigation fired. A clean profile cannot reproduce it; seed
+          // lumos.chain=xrpl first.
+          //
+          // This is the SAME defect the XRPL branch above already documents ("it shows the wallets
+          // popup for split seconds and directly takes me to the trade/xrpl page"). That one was fixed
+          // by navigating deliberately instead of through lxSetChain. Stellar's answer is the opposite
+          // and simpler: do not go anywhere. Re-skin, and open the wallet list we are already next to.
+          // Where to land is decided AFTER a wallet connects, by the connect path, which sends them to
+          // the dashboard -- the authgate passes by then.
+          try{localStorage.setItem('lumos.chain',netId);}catch(_){}
+          try{if(window.lxAdoptChain)window.lxAdoptChain(netId);}catch(_){}
           try{if(window.lxwOpenWallet)window.lxwOpenWallet(netId);}catch(_){}
           // ONE TAP EARLIER. Picking Stellar is the step before picking LOBSTR, so this is where the
           // pairing proposal is created -- the relay round trip happens while the user is reading the
