@@ -38,10 +38,31 @@ const PLATFORM = [{
   code: 'LUMOS',
   issuer: 'GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S',
   name: 'Lumos Core',
-  // Kept byte-identical to the copy at lumosdao.io/.well-known/stellar.toml. That domain is the LUMOS
-  // issuer's on-chain home_domain, so it is the document wallets actually resolve through; this one is
-  // our own assertion and must not tell a different story about the same asset.
-  desc: 'LumosCore brings Web3 essentials — Minting, Trading, Liquidity, Wallets & Explorers — into one multichain platform. LUMOS: Stellar utility token with a fixed 1B supply. Hold 250K to halve trading fees or earn LUMOS through liquidity.',
+  // MUST BE MIRRORED to lumosdao.io/.well-known/stellar.toml, which is NOT in this repo. That domain is
+  // the LUMOS issuer's on-chain home_domain, so it is the document wallets actually resolve through via
+  // the SEP-1 round trip; this one is our own assertion and must not tell a different story about the
+  // same asset. The two were byte-identical until 2026-10-10 and this rewrite breaks that until the
+  // other host is updated with the identical string. If you change the text below, change it there too.
+  //
+  // Three things this field deliberately does NOT say, each having been in the previous wording:
+  //
+  //   SUPPLY. The old text said "fixed 1B supply". Two faults: the real figure was 999,988,097.152, and
+  //   more importantly LUMOS can be burned by anyone holding it, so any number here drifts DOWN while
+  //   the document sits in cache for TTL (six hours). A figure that is wrong by the time it is read is
+  //   worse than no figure. The issuer being locked is still true and permanent -- master weight 0 with
+  //   exactly one signer, so no key reaches threshold 1 and nothing can ever mint more -- but stating it
+  //   invites the supply question back, so it is left out on purpose.
+  //
+  //   THE FEE THRESHOLD. "Hold 250K to halve trading fees" is a call to action in a verification
+  //   document. The same fact stated as a fact -- holders receive reduced fees -- carries the
+  //   information without the ask.
+  //
+  //   EXPLORERS. The old text promised "Wallets & Explorers"; lumoscore.com/explorer returns 404. The
+  //   multichain explorer is roadmap, not shipped. Do not put it back here before the route is live.
+  //
+  // The platform pitch belongs to ORG_DESCRIPTION in the [DOCUMENTATION] section, not here. An asset's
+  // desc describes the asset. The old wording did both jobs, which is what made it read as a sales page.
+  desc: 'The native token of LumosCore, a multichain platform for token launches, DEX trading, liquidity and cross-chain transfers. LUMOS carries reduced trading fees for holders and is distributed to liquidity providers.',
   image: 'https://lumoscore.com/assets/tokens/lumos.png',
 }];
 const DOMAIN = 'lumoscore.com';
