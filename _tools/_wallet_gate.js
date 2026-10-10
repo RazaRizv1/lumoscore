@@ -16,7 +16,21 @@ function scriptFor(net,sel){
   return '<style id="lx-gate-css">'+'[data-lxgate="1"]{font-size:0!important;color:transparent!important}'+'[data-lxgate="1"]::after{content:"Connect wallet";font-size:15px;font-weight:800;letter-spacing:0;color:#fff;display:inline-block}'+'</'+'style>'+'<script id="lx-gate">(function(){'
   +'var NET="'+net+'",SEL="'+sel+'";'
   +'function conn(){try{return !!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"));}catch(_){return false;}}'
-  +'function actNet(){try{return localStorage.getItem("lumos.chain")||NET;}catch(_){return NET;}}'
+  // THE URL WINS, because it is the only source that is right on a page the reader reached WITHOUT a
+  // wallet -- which is every page this gate exists for.
+  //
+  // RAZA 2026-10-10 reported the launchpad's Connect button; measuring it turned this up: with a
+  // cleared session, clicking it wrote sessionStorage lumos.connDest = "stay:aptos" on BOTH chains.
+  // "aptos" is the design's BASE CONTAINER name, not a network -- see NET_OF below -- and it reached
+  // here because actNet() fell straight through to NET when lumos.chain was unset, which is exactly
+  // the disconnected case. The same value was also passed to lxwOpenWallet(), i.e. "open the wallet
+  // list for a chain called aptos".
+  //
+  // Same derivation _wallet_header.js already uses for its own connDest write, so the two agree:
+  // second path segment, only when it actually names a chain.
+  +'function pathNet(){try{var s=(location.pathname||"").split("/").filter(Boolean);'
+  +'return (s.length>1&&/^(stellar|xrpl)$/i.test(s[1]))?s[1].toLowerCase():"";}catch(_){return "";}}'
+  +'function actNet(){try{return pathNet()||localStorage.getItem("lumos.chain")||NET;}catch(_){return pathNet()||NET;}}'
   +'function apply(){var on=conn();var els=document.querySelectorAll(SEL);for(var i=0;i<els.length;i++){var b=els[i];'
   +'if(on){if(b.getAttribute("data-lxgate")){if(b.getAttribute("data-lxorig")!=null)b.textContent=b.getAttribute("data-lxorig");'
   +'if(b.getAttribute("data-lxdis")==="1"){try{b.disabled=true;}catch(_){}b.setAttribute("disabled","");}'
@@ -50,6 +64,18 @@ function scriptFor(net,sel){
   +'})();</script>';
 }
 
+// A CONTAINER NAME IS NOT A NETWORK NAME. The list below is the set of design containers; "aptos" is
+// the multichain BASE that the Stellar site is built from (`extract_site.js aptos`), and the four
+// after it are legacy re-skins. Baking the container name as NET meant every Stellar page carried
+// NET="aptos" and told the rest of the app its network was Aptos -- a chain LumosCore does not run.
+//
+// Only the fallback is affected in practice, because pathNet() and lumos.chain both come first now,
+// but the fallback is precisely what a disconnected reader on a bare url (/dashboard, /wallet) gets,
+// and it is also what was being handed to lxwOpenWallet.
+//
+// Anything not listed keeps its own name: 'stellar' and 'xrpl' are already real networks.
+const NET_OF = { aptos: 'stellar' };
+
 let n=0;
 for(const chain of ['aptos','hedera','starknet','vechain','worldchain','stellar','xrpl']){
   for(const dev of ['desktop','mobile']){
@@ -57,14 +83,25 @@ for(const chain of ['aptos','hedera','starknet','vechain','worldchain','stellar'
     let data; try{ data=read(file); }catch(e){ continue; }
     const {json,s,e}=getContents(data);
     for(const k of Object.keys(json)){
-      const type=TYPES.find(t=>k.indexOf(t.m)>=0);
-      if(!type) continue;
       let h=json[k];
-      if(h.indexOf(type.mark)<0) continue;                 // CTA not on this page — skip
-      h=h.replace(/<style id="lx-gate-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-gate">[\s\S]*?<\/script>/g,''); // idempotent: BOTH, or rebuilds stack them
-      const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
-      h=h.slice(0,bi)+scriptFor(chain,type.sel)+h.slice(bi);
-      json[k]=h; n++;
+      if(typeof h!=='string') continue;
+      // STRIP FIRST, FOR EVERY PAGE, AND ONLY THEN DECIDE WHETHER TO INJECT.
+      //
+      // This used to `continue` on a page that matched no TYPE -- before the strip -- so a page that
+      // carried a gate once kept it forever, with no way to correct it. Found on 2026-10-10 while
+      // checking the NET value: lumoscore-account and lumoscore-account-dark still shipped an lx-gate
+      // baked with NET="aptos", left over from a TYPES list that no longer includes them. Nothing
+      // re-ran over those pages because nothing matched them, which is exactly why it survived.
+      //
+      // Stripping unconditionally makes the pass genuinely idempotent in both directions: adding a
+      // page type injects, removing one cleans up after itself.
+      h=h.replace(/<style id="lx-gate-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-gate">[\s\S]*?<\/script>/g,''); // BOTH, or rebuilds stack them
+      const type=TYPES.find(t=>k.indexOf(t.m)>=0);
+      if(type && h.indexOf(type.mark)>=0){                 // CTA present on this page
+        const bi=h.lastIndexOf('</body>');
+        if(bi>=0){ h=h.slice(0,bi)+scriptFor(NET_OF[chain]||chain,type.sel)+h.slice(bi); n++; }
+      }
+      json[k]=h;
     }
     const serialized=JSON.stringify(json).split('</').join('<'+B+'/');
     fs.writeFileSync(file,data.slice(0,s)+serialized+data.slice(e),'utf8');
