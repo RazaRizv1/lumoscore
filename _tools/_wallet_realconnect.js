@@ -845,20 +845,25 @@ window.addEventListener('click',function(e){
             // flow looked like it worked while doing nothing.
             if(netId==='xrpl'&&window.lxc&&window.lxc.open){
               try{var mo=document.querySelector('.lxw-modal');if(mo&&mo.parentNode)mo.parentNode.setAttribute('hidden','');}catch(_){}
-              // Enter the chain's app once a wallet actually lands, not before. onChange fires on
-              // connect; the address check keeps a disconnect from navigating anyone anywhere.
+              // DO NOT NAVIGATE ON CONNECT. The connect flow shows its own "You're connected" screen
+              // with a Continue button, and that button is what enters the app.
               //
-              // lxChainHome, NOT lxChainHref. From "/" chainHref answers the trade page, because that
-              // branch also serves readers who have no wallet and would bounce off the dashboard's
-              // authgate. By the time this fires a wallet has connected, the gate passes, and the
-              // dashboard is where someone who just connected expects to land.
-              try{window.lxc.onChange(function(){
-                var a=null;try{a=window.lxc.address();}catch(_){}
-                if(!a)return;
-                var h='';try{h=window.lxChainHome?window.lxChainHome('xrpl'):'';}catch(_){}
-                if(!h)h='/dashboard/xrpl';
-                try{location.assign(h);}catch(_){location.href=h;}
-              });}catch(_){}
+              // This used to jump to lxChainHome('xrpl') the moment onChange reported an address,
+              // written when nothing else marked the transition. Something else does now, and the
+              // two raced: accept() fires onChange BEFORE the confirmation renders, so the jump
+              // always won and the screen was destroyed in the same frame it was built. RAZA,
+              // 2026-10-11, after Xaman finally connected on iPhone: "it didn't show me any
+              // confirmation on Xaman and totally bypassed that popup that appears after
+              // connection" -- he was already on the dashboard, connected, having seen nothing.
+              //
+              // It was invisible until a session became instant. With a fresh sign-in the reader is
+              // away in the Xaman app while this fires; the confirmation they came back to was on
+              // the page the redirect loaded, not this one. A REMEMBERED session resolves with no
+              // round trip, so the jump and the confirmation finally happened in the same moment --
+              // and the jump won.
+              //
+              // The dialog's Continue goes to /dashboard, which the authgated shared pages serve for
+              // either chain off the lx_chain cookie, so nothing is lost by letting it own this.
               try{window.lxc.open();}catch(_){}
               return;}
             // No connect layer here -> hand off, and let the other build open its own picker on arrival.
