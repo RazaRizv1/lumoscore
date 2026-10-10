@@ -37,11 +37,6 @@ export const SITEMAP_ROUTES = [
     "weekly"
   ],
   [
-    "/dashboard",
-    "0.6",
-    "weekly"
-  ],
-  [
     "/bridge/stellar",
     "0.6",
     "weekly"
@@ -49,11 +44,6 @@ export const SITEMAP_ROUTES = [
   [
     "/bridge",
     "0.8",
-    "weekly"
-  ],
-  [
-    "/wallet",
-    "0.6",
     "weekly"
   ],
   [

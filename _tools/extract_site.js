@@ -602,7 +602,31 @@ function pad(s){ return s + ' '.repeat(Math.max(1, 42 - s.length)); }
 //   * /signin, and the launchpad's mid-flow steps, which are states rather than pages and would be
 //     thin, duplicated entries;
 //   * admin, which is not part of the public site at all.
-const SITEMAP_SKIP = new Set(['/signin', '/launchpad/review', '/launchpad/confirm']);
+// THE WALLET-GATED SURFACES MUST NOT BE LISTED, and until 2026-10-10 two of them were.
+//
+// /dashboard and /wallet carry lx-authgate, which is a CLIENT-SIDE guard: it reads localStorage and
+// calls location.replace("/"). Googlebot has no localStorage and does not run that redirect, so it
+// received HTTP 200 and the whole app shell -- 383KB of dashboard, 427KB of wallet -- while _seo.js
+// stamped them "index, follow" and this list put them in the sitemap. We were actively submitting them.
+//
+// Nothing private leaked: every real balance is fetched at runtime from a connected wallet and a
+// crawler has none, so what got indexed was app chrome plus placeholder figures. That is still wrong
+// twice over. A gated app surface has no business in a search result, and a page titled "Dashboard --
+// Your Stellar Portfolio" showing somebody else's placeholder dollar amounts is precisely the
+// thin-content signal that costs a domain its quality score.
+//
+// _mc_engine.js:166 asserts the dashboard "is authgated, so it is never indexed or shared". That was
+// the assumption; it was false in production. Three defences now, because one of them is a <meta> tag
+// in a 400KB document and the other is a file nobody reads twice: this list, noindex in _seo.js, and
+// an X-Robots-Tag response header in the middleware. The header is the one that holds if the markup
+// changes shape.
+//
+// /launchpad is deliberately NOT here -- see PUBLIC_BASES in _authgate.js. It is a hub, it is now
+// public, and ranking for "launch a token on Stellar" is the entire point of it.
+const SITEMAP_SKIP = new Set([
+  '/signin', '/launchpad/review', '/launchpad/confirm',
+  '/dashboard', '/wallet',
+]);
 // A few pages deserve a stronger signal than the default.
 const SITEMAP_WEIGHT = {
   '/': ['1.0', 'daily'],
@@ -1597,6 +1621,36 @@ export async function onRequest(context){
   // Both urls keep serving; only the signal changes.
   const CANON_OF = ${canonOfJson(routePairs)};
   const cleanPath = url.pathname === '/' ? '/' : url.pathname.replace(/\\/+$/, '');
+
+  // THE UNLISTED PATHS, AS A RESPONSE HEADER. Generated from SITEMAP_SKIP, so "kept out of the
+  // sitemap" and "told not to index" are ONE decision in ONE place and cannot drift apart. That they
+  // had drifted is the whole reason this exists.
+  //
+  // /dashboard and /wallet were gated, listed in the sitemap, and stamped "index, follow". The gate on
+  // them is CLIENT-SIDE -- lx-authgate reads localStorage and calls location.replace("/") -- so a
+  // crawler, having neither, got HTTP 200 and the entire app shell: 383KB and 427KB measured against
+  // production with Googlebot's user agent on 2026-10-10, carrying placeholder dollar figures under a
+  // title promising the reader their own portfolio. _mc_engine.js asserted these were "never indexed".
+  //
+  // Nothing private was exposed -- real balances load at runtime from a wallet the crawler does not
+  // have -- but a gated app surface does not belong in a search result, and that page is a
+  // thin-content signal against the whole domain.
+  //
+  // THIS IS THE THIRD DEFENCE, and the only one that holds without the markup: _seo.js writes the
+  // noindex meta and the sitemap omits the row, but a <meta> tag is one line inside a 400KB document
+  // and this is a header. It is set HERE, in the middleware, rather than in _headers, because these
+  // paths are rewrites answered by this function and Pages applies _headers to its own asset
+  // responses -- a Function's Response is not guaranteed to inherit them.
+  //
+  // noarchive too: without it a cached copy can still be served from a result after the page drops out.
+  //
+  // Keyed on the CLEANED path, so a trailing slash cannot slip past. An ALIAS is also absent from the
+  // sitemap but must stay indexable, which is why this reads SITEMAP_SKIP and not the alias flag.
+  const NOINDEX_PATHS = ${JSON.stringify([...SITEMAP_SKIP].sort())};
+  if (NOINDEX_PATHS.indexOf(cleanPath) >= 0) {
+    out.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  }
+
   const canonPath = CANON_OF[cleanPath] || cleanPath;
   const canonical = PRIMARY_ORIGIN + canonPath;
   const want = seoFor(url.pathname);
