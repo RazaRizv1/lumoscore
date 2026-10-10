@@ -1913,6 +1913,17 @@ export async function onRequest(context){
     logo: PRIMARY_ORIGIN + '/assets/favicon.png',
     foundingLocation: { '@type': 'Place', address: { '@type': 'PostalAddress', addressCountry: 'EE' } },
     identifier: '17336483',
+    // A NAMED, CREDITED HUMAN IS THE E-E-A-T SIGNAL, and the site already states this one visibly:
+    // /about and /whitepaper both carry a Team section reading "Raza Rizvi — Founder & Chief Executive
+    // Officer". Structured data only repeats what a reader can see, which is the rule that decides
+    // what goes in here and what deliberately does not (see the BlogPosting author below).
+    founder: {
+      '@type': 'Person',
+      '@id': PRIMARY_ORIGIN + '/about#founder',
+      name: 'Raza Rizvi',
+      jobTitle: 'Founder & Chief Executive Officer',
+      worksFor: { '@id': PRIMARY_ORIGIN + '/#organization' },
+    },
     sameAs: [
       'https://x.com/LumosCore',
       'https://t.me/lumoscore',
@@ -1927,6 +1938,90 @@ export async function onRequest(context){
     publisher: { '@id': PRIMARY_ORIGIN + '/#organization' },
     inLanguage: 'en',
   }];
+
+  // WHAT THE PRODUCT IS, as a thing rather than as a website. Organization says who publishes, WebSite
+  // says what the domain is; neither says "this is a non-custodial DeFi application on Stellar and the
+  // XRP Ledger". That is the type an answer engine matches against "best Stellar DEX" or "non-custodial
+  // XRPL exchange", and the site had none of it (audited 2026-10-10: Organization, WebSite,
+  // BreadcrumbList, FAQPage and BlogPosting were the only types emitted anywhere).
+  //
+  // ON THE HOME PAGE ONLY, with an @id so other pages can point at it instead of restating it. One
+  // authoritative node beats fifty copies disagreeing about the feature list.
+  //
+  // offers.price IS GENUINELY ZERO: the application costs nothing to use, and the trading fee is
+  // charged per transaction, not for access. Saying 0 and then describing the fees in the same Offer
+  // is the accurate shape — a price of "0.2" here would claim a $0.20 product. The fee numbers are the
+  // ones in _feerate.js and llms.txt: 0.2%, 0.1% for holders of 250,000 LUMOS, limit orders free.
+  //
+  // NO aggregateRating. We have no ratings, and inventing them is review fraud, not optimisation.
+  if (canonPath === '/') {
+    ld.push({
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      '@id': PRIMARY_ORIGIN + '/#app',
+      name: 'LumosCore',
+      applicationCategory: 'FinanceApplication',
+      applicationSubCategory: 'Decentralized Exchange',
+      operatingSystem: 'Web',
+      url: PRIMARY_ORIGIN + '/',
+      publisher: { '@id': PRIMARY_ORIGIN + '/#organization' },
+      inLanguage: 'en',
+      featureList: [
+        'Token swaps on the Stellar DEX and the XRP Ledger DEX',
+        'Limit orders on both ledgers, with no platform fee',
+        'AMM liquidity pools: provide, withdraw and create',
+        'Cross-chain transfers via Circle CCTP, LayerZero and NEAR Intents',
+        'Token issuance with no code, with the issuing account locked',
+        'Non-custodial wallet: balances, send, receive and trustlines',
+        'MCP server for AI agents',
+      ],
+      offers: {
+        '@type': 'Offer',
+        price: 0,
+        priceCurrency: 'USD',
+        description: 'Free to use. Trading and cross-chain transfers cost 0.2%, or 0.1% for holders of 250,000 LUMOS. Limit orders are free.',
+      },
+    });
+  }
+
+  // THE TWO THINGS THAT HAVE A FIXED PRICE, each on its own page. These are real amounts a person pays,
+  // and they were stated only in prose — so an assistant asked "what does it cost to launch a token on
+  // LumosCore" had to parse a sentence instead of reading a figure.
+  //
+  // /launchpad/stellar, NOT /launchpad: the hub is a chooser and prices nothing, and the XRPL launchpad
+  // is on reduced test pricing (~3.18 XRP, not $25 — see _xrplaunchpad.js). Publishing $25 against the
+  // XRPL page, or against a chooser that offers both, would state a price we do not charge. That is the
+  // same trap the launchpad hub card was left out of.
+  const PRICED = {
+    '/launchpad/stellar': {
+      name: 'Token issuance on Stellar',
+      price: '25',
+      description: 'Issue a Stellar asset with no code. A flat fee covering the issuing account, the starting liquidity and network setup.',
+    },
+    '/list-your-token': {
+      name: 'Curated listing review',
+      price: '250',
+      description: 'Apply for a curated listing on LumosCore. Reviewed by a person, and refunded in full if the listing is declined.',
+    },
+  };
+  if (PRICED[canonPath]) {
+    const svc = PRICED[canonPath];
+    ld.push({
+      '@context': 'https://schema.org',
+      '@type': 'Service',
+      name: svc.name,
+      description: svc.description,
+      provider: { '@id': PRIMARY_ORIGIN + '/#organization' },
+      areaServed: 'Worldwide',
+      offers: {
+        '@type': 'Offer',
+        price: svc.price,
+        priceCurrency: 'USD',
+        url: PRIMARY_ORIGIN + canonPath,
+        availability: 'https://schema.org/InStock',
+      },
+    });
+  }
 
   // Breadcrumbs only where there is a real hierarchy to describe.
   //
@@ -1967,6 +2062,15 @@ export async function onRequest(context){
       image: seo.image || undefined,
       datePublished: iso(p.publishedAt || p.publishAt || p.createdAt),
       dateModified: iso(p.updatedAt || p.publishedAt || p.publishAt),
+      // AUTHOR STAYS THE ORGANISATION, DELIBERATELY. A named Person author is a stronger E-E-A-T
+      // signal and it was the obvious thing to add here — but structured data has to describe what is
+      // on the page, and these posts carry NO byline and the post record in lxapi/blog.js has no
+      // author field at all. Naming a person in the markup of a page that names nobody is a mismatch,
+      // and the kind that earns a manual action rather than a rich result.
+      //
+      // The way to earn it properly is a visible byline plus an author field in the editor; then this
+      // reads it. Until then the honest publisher is the company, and the named human is attached
+      // where the site really does name him — Organization.founder above.
       author: { '@type': 'Organization', name: 'LumosCore', '@id': PRIMARY_ORIGIN + '/#organization' },
       publisher: { '@id': PRIMARY_ORIGIN + '/#organization' },
       mainEntityOfPage: { '@type': 'WebPage', '@id': canonical },
