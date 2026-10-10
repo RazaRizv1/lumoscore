@@ -309,6 +309,8 @@ const HAS_MOBILE = new Set(["lumoscore-home-mobile","lumoscore-landing-mobile","
 // retires them instead of re-asking — see the note at the use site. Keep this short: anything with a
 // real successor belongs in a 301, not here.
 const GONE_PATHS = ["/activity"];
+// Retired post slug -> the live page that replaced it. 301, so the authority survives the rename.
+const LEGACY_POSTS = {"/blog/ecosystem-lp-rewards-faqs":"/blog/lumoscore-ecosystem-liquidity-rewards","/blog/introducing-ecosystem-lp-rewards-for-lumos":"/blog/lumoscore-ecosystem-liquidity-rewards","/blog/introducing-whale-holder-rewards-for-lumos":"/blog/lumos-whale-holder-rewards-programme","/blog/introducing-native-lp-rewards-for-lumos":"/blog/earn-lumos-every-15-days-how-lumoscore-lp-rewards-work","/blog/how-the-lumoscore-cross-chain-bridge-works-xrpl-stellar":"/blog/cross-chain-swaps-on-lumoscore-connect-stellar-across-52-networks","/blog/lumoscore-cuts-trading-fees-to-05-0-fee-option-for-holders":"/blog/lumoscore-trading-fees-trade-at-0-2-or-unlock-0-1-with-250k-lumos","/blog/the-biggest-problem-in-blockchain-fragmentation-and-how-lumoscore-plans-to-solve-it":"/whitepaper"};
 // CHAIN-AWARE PAGES: a Stellar page file -> the same page in another chain's build.
 //
 // The authgated surfaces (dashboard, wallet, launchpad) are ONE url each on a multi-chain deployment,
@@ -1153,6 +1155,17 @@ export async function onRequest(context){
   // double-backslash spelling; this one simply does not need one.
   let gonePath = url.pathname;
   while (gonePath.length > 1 && gonePath.charAt(gonePath.length - 1) === '/') gonePath = gonePath.slice(0, -1);
+
+  // A RENAMED POST GOES TO THE ONE THAT REPLACED IT, before the blog handler can answer 410 for it.
+  // Must sit here rather than in that handler: by the time blogLookup runs we have already decided the
+  // slug is unknown, and "unknown" is exactly what these are — they are absent from the index, which is
+  // why they were 410 in the first place.
+  if (LEGACY_POSTS[gonePath]){
+    const to = new URL(LEGACY_POSTS[gonePath], url.origin);
+    to.search = url.search;
+    return Response.redirect(to.toString(), 301);
+  }
+
   if (GONE_PATHS.indexOf(gonePath) >= 0){
     const branded = await context.env.ASSETS.fetch(new URL('/404.html', request.url).toString());
     const hdrs = {
