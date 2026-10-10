@@ -894,8 +894,14 @@ async function assetFacts(assetId){
 // Named rather than guessed: 'stellar' is the default, so every existing Stellar url produces the same
 // bytes it did before and this is additive for that build.
 const NET_NAME = { stellar: 'Stellar', xrpl: 'the XRP Ledger' };
+// THE SAME NAME WITHOUT THE ARTICLE, for titles only. A <title> is cut around 60 characters and
+// "the XRP Ledger" spends four of them on a word that carries no search value; a sentence in a meta
+// description has room for it and reads badly without it, so both forms exist rather than one
+// compromise. Measured: every XRPL asset title ran 61-62 characters with the article and fits without.
+const NET_NAME_SHORT = { stellar: 'Stellar', xrpl: 'XRP Ledger' };
 const NET_NATIVE = { stellar: 'XLM', xrpl: 'XRP' };
 function netName(c){ return NET_NAME[c] || NET_NAME.stellar; }
+function netNameShort(c){ return NET_NAME_SHORT[c] || NET_NAME_SHORT.stellar; }
 function netNative(c){ return NET_NATIVE[c] || NET_NATIVE.stellar; }
 
 function assetSeo(f, assetId, chain){
@@ -908,11 +914,17 @@ function assetSeo(f, assetId, chain){
   if (f && f.domain) bits.push('issued by ' + f.domain);
   const facts = bits.length ? bits.join(' · ') + '. ' : '';
   return {
-    title: code + ' price, pools and holders on ' + net + ' | LumosCore',
+    title: code + ' price, pools and holders on ' + netNameShort(chain) + ' | LumosCore',
     // Search results truncate around 160 characters and the FACTS are the half worth showing, so
     // the boilerplate tail is trimmed rather than the price and trustline count.
-    desc: (facts + code + ' price, pools, holders and trades on ' + net + '. Trade non-custodially.')
-      .slice(0, 158),
+    //
+    // THE TAIL IS ALSO THE FLOOR. The facts prefix is empty whenever stellar.expert has no price or trustline
+    // count for an asset, and the old boilerplate then left the whole description at 82-105
+    // characters -- measured on a live Stellar asset and a live XRPL one. Naming what the page
+    // actually holds costs nothing when the facts ARE present (the slice trims this end anyway) and
+    // lifts the no-facts case over 120.
+    desc: (facts + code + ' price, liquidity pools, top holders and recent trades on ' + net
+      + '. Buy and sell non-custodially from your own wallet.').slice(0, 158),
     image: (f && f.image) || '',
   };
 }
@@ -1221,9 +1233,21 @@ function blogDesc(p){
 function blogSeo(p, origin){
   // The stored title already ends in "| LumosCore" on existing posts, so it is not appended twice.
   const t = String((p && p.title) || '').trim();
-  // endsWith rather than a pattern: no backslash to lose, and it says what it means.
+  // THE BRAND IS DROPPED WHEN IT WOULD PUSH THE TITLE PAST GOOGLE'S CUT, rather than appended
+  // unconditionally. Measured 2026-10-10: eight of the twelve posts served titles of 65-89
+  // characters, every one of them an authored title that was already long plus these twelve.
+  //
+  // The suffix is the part worth losing. A truncated title loses its END, so appending the brand to a
+  // 66-character headline does not add the brand -- it spends the ellipsis on it and cuts the
+  // headline instead. Google also shows the site name beside a result on its own now, so the suffix
+  // earns little even when it does fit.
+  //
+  // POST TITLES THEMSELVES ARE NOT TOUCHED. They are editorial copy written in the admin panel, and
+  // four of them exceed 60 characters on their own; shortening those is RAZA's call, not a build
+  // step's. This only stops the build making them longer.
+  const suffixed = t + ' | LumosCore';
   const title = t.toLowerCase().replace(WS_RE, ' ').trim().endsWith('lumoscore')
-    ? t : (t + ' | LumosCore');
+    ? t : (suffixed.length <= 60 ? suffixed : t);
   const cover = String((p && p.cover) || '');
   return {
     title,
@@ -1243,23 +1267,36 @@ function blogSeo(p, origin){
 const HUB_SEO = {
   '/trade': {
     title: 'Trade on LumosCore — Choose a network',
-    desc: 'Swap assets and place limit orders on-chain. Choose a network to see its markets, prices and pairs on LumosCore.',
+    desc: 'Swap assets and place limit orders on-chain across Stellar and the XRP Ledger. Choose a network to see its markets, prices and trading pairs.',
   },
   '/pools': {
     title: 'Liquidity Pools on LumosCore — Choose a network',
-    desc: 'Provide liquidity and earn a share of the trading fees. Choose a network to see its pools, TVL and volume on LumosCore.',
+    desc: 'Provide liquidity and earn a share of the trading fees. Choose a network to see its pools, total value locked, 24h volume and your own positions.',
   },
   '/bridge': {
     title: 'Bridge assets with LumosCore — Choose a network',
-    desc: 'Move assets between networks with Circle CCTP, LayerZero and NEAR Intents. Choose the network you are bridging from.',
+    desc: 'Move assets between chains with Circle CCTP, LayerZero, NEAR Intents, Axelar and THORChain. Choose the network you are bridging from to see its routes.',
   },
   '/rewards': {
     title: 'LUMOS Rewards — Choose a network',
-    desc: 'Liquidity and holder rewards, paid out each round. Choose a network to see its rounds and your share.',
+    desc: 'Liquidity and holder rewards, paid out each round. Choose a network to see its reward pools, the current round and what your position has earned.',
   },
   '/lumos': {
     title: 'LUMOS token — Choose a network',
-    desc: 'LumosCore’s native token. Choose a network to see its price, pools and holders on that chain.',
+    desc: 'LumosCore’s native token, live on Stellar and the XRP Ledger. Choose a network to see its price, liquidity pools, holders and recent trades.',
+  },
+  // MISSING UNTIL 2026-10-10, WHICH MADE TWO URLS SHARE ONE TITLE. /launchpad became a chooser the
+  // same day but never got an entry here, so seoFor() did not recognise it as a hub and it fell
+  // through to the launchpad FORM's baked title -- byte-identical to /launchpad/stellar's. Two urls
+  // we want ranking separately were telling Google they were the same page.
+  //
+  // It looked right in a browser, which is how it survived: the chooser script sets document.title
+  // client-side from the HUBS table in _lumosparent.js. A crawler reading the served HTML saw the
+  // duplicate, and that is the copy that counts. Found by auditing titles with Googlebot's user agent
+  // rather than by looking at the tab.
+  '/launchpad': {
+    title: 'Launch a Token — Choose a network',
+    desc: 'Issue your own token and open its first liquidity pool in minutes. Choose a network to launch on and see what it costs and what you receive.',
   },
 };
 
