@@ -2393,393 +2393,7 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] 
    through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
    Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
 .mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
-</style><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-dexmain-css">
-/* The asset cell is a real <a> so the browser can offer "open in new tab" and honour Ctrl/middle-click.
-   It must look like nothing changed: inherit the colour, drop the underline, and keep the block layout
-   the cell already had. display:block matters -- an inline anchor would collapse the flex row inside it.
-   The focus ring is left alone deliberately: it is now a real link and should be reachable by keyboard. */
-.dex-mk-pair-link{color:inherit;text-decoration:none;display:block}
-.dex-mk-pair-link:hover{color:inherit;text-decoration:none}
-/* A20: the four chips the script removes, hidden from the FIRST paint. Keyed on the same data-filter
-   values the removal uses, so the two cannot drift apart. */
-.dex-mk-filter[data-filter="stables"],.mdx-mk-filter[data-filter="stables"],
-.dex-mk-filter[data-filter="memes"],.mdx-mk-filter[data-filter="memes"],
-.dex-mk-filter[data-filter="utility"],.mdx-mk-filter[data-filter="utility"],
-.dex-mk-filter[data-filter="native"],.mdx-mk-filter[data-filter="native"]{display:none!important}
-/* B12: the FAQ is static copy, so it painted while every data-backed block above it was still collapsed
-   -- alone at the top of an empty page, which is what made it look oversized. It now waits for the rest.
-   visibility, not display, so it holds its space and nothing below it jumps. */
-html:not(.lx-dexlate) .lx-faq{visibility:hidden}
-/* B15: the row itself opens the asset page, so the Trade column is a second control for the same
-   action -- and this table is already wider than its container. Header and cell together, by class:
-   a column was inserted here once before, and :last-child would hide whatever ends up last next time. */
-.dex-mk-table th.th-action,.dex-mk-table td.td-action{display:none!important}
-
-.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
-.lx-vtick svg{width:9px;height:9px;display:block}
-
-/* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
-#dexMintsList:not(.lxd) .dex-mint-row{visibility:hidden}.lx-tboot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);opacity:1;transition:opacity .28s ease}.lx-tboot.lx-tboot-out{opacity:0;pointer-events:none}.lx-tboot-badge{position:relative;width:104px;height:104px;display:grid;place-items:center}.lx-tboot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));animation:lx-tboot-spin 1.15s linear infinite;opacity:.9}.lx-tboot-badge::after{content:"";position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-tboot-pulse 1.8s ease-in-out infinite}@keyframes lx-tboot-spin{to{transform:rotate(360deg)}}.lx-tboot-mark{position:relative;z-index:1;width:56px;height:56px;background-size:contain;background-repeat:no-repeat;background-position:center;animation:lx-tboot-pulse 1.6s ease-in-out infinite}@keyframes lx-tboot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.88);opacity:.55}}@media (prefers-reduced-motion:reduce){.lx-tboot-mark,.lx-tboot-badge::before,.lx-tboot-badge::after{animation:none}.lx-tboot{transition:none}}
-#dexMoverGrid:not(.lxd) .dex-mover-card{visibility:hidden}
-#dexMkTbody:not(.lxd) tr{visibility:hidden}
-
-/* item 29: the header re-laid itself out after the rows arrived. Measured at 1440px, only ONE column
-   moves -- Asset goes 214px -> 263px once the names and their domains land, and the other eight hold
-   still. table-layout is auto, so the first column is sized from its content and every later arrival
-   re-measures it. Giving it the settled width as a FLOOR means it starts where it ends up; content that
-   genuinely needs more can still grow it.
-   239px, not 263: _typescale.js multiplies every px in this block by 1.1, so the source value is the
-   pre-scale one. See [[lumoscore-typescale]]. */
-.dex-markets thead th:first-child,.dex-markets tbody td:first-child{min-width:239px}
-/* Tabular figures so #9 and #10 line up their digits instead of shuffling the icon beside them. */
-.dex-mk-rank{flex:0 0 auto;min-width:22px;margin-right:2px;text-align:right;
-  font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text-muted,#8a8fa3);
-  font-variant-numeric:tabular-nums}
-/* sortable column headers. Only the five numeric columns take a click -- Asset, Day High/Low and 7d Trend
-   are not single values to order by, and a header that looks clickable but is not is worse than a plain
-   one. The arrow is always present on a sortable column so the affordance does not depend on hover. */
-.dex-mk-table thead th.lx-sortable{cursor:pointer;user-select:none;white-space:nowrap;transition:color .12s ease}
-.dex-mk-table thead th.lx-sortable:hover{color:var(--text)}
-.dex-mk-table thead th.lx-son{color:var(--accent)}
-.lx-sarrow{display:inline-block;margin-left:5px;font-size:9px;line-height:1;opacity:.4;vertical-align:middle}
-.dex-mk-table thead th.lx-son .lx-sarrow{opacity:1}
-.lm-chip:not(.lxd) .p2,.lm-chip:not(.lxd) .p3{visibility:hidden}
-/* ---- painter-proof token icons: the site logo-painter can't touch a ::before pseudo-element ---- */
-.dex-mint-ic[data-lxic],.dex-mover-ico[data-lxic],.dex-mk-pair-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important;background-image:none!important;background-color:transparent!important}
-.dex-mint-ic[data-lxic]::before,.dex-mover-ico[data-lxic]::before,.dex-mk-pair-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}
-.lx-dex-empty{text-align:center;padding:34px 12px;color:var(--text-soft);font-size:14px}
-/* ---- hero "advanced DEX" card: orange constellation (mirrors the Pools lx-constel, orange theme) with 5 data points ---- */
-/* Trade hero gets its OWN warm/amber background (mirrors the Pools purple), always dark regardless of site theme.
-   The html prefix boosts specificity to beat inject_livemarket.js's own .lumos-promo.lm-on !important rule (which uses var(--surface) = theme-following). */
-html .lumos-promo.lm-on{overflow:hidden!important;background:radial-gradient(58% 84% at 70% 30%,rgba(140,96,246,.26),transparent 60%),radial-gradient(46% 64% at 92% 78%,rgba(198,86,232,.14),transparent 62%),radial-gradient(52% 68% at 24% 90%,rgba(74,110,224,.12),transparent 62%),linear-gradient(140deg,#0f1120 0%,#0a0a15 55%,#070610 100%)!important;border:1px solid rgba(255,255,255,.10)!important}
-/* the design's .lm::after overlay uses var(--surface) (resolves LIGHT) -> a white diagonal streak over the heading. Replace with a dark purple readability overlay (mirrors Pools' .lm::after), darkening the heading side, transparent over the constellation. */
-html .lumos-promo.lm-on .lm::after{background:linear-gradient(100deg,rgba(14,9,24,.64) 6%,rgba(14,9,24,.15) 44%,transparent 70%)!important;z-index:2!important}
-.lumos-promo.lm-on .lm-bars{display:none!important}                 /* replace the old zigzag bars with the constellation */
-svg.lm-svg.lx-dxc{overflow:visible}
-.lx-dxc .lx-dxfloat{animation:lxDxFloat 12s ease-in-out infinite}
-@keyframes lxDxFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
-.lx-dxc{display:none!important}                                   /* drop the wireframe constellation; the subtle starfield replaces it */
-.lx-dxc line{stroke:rgba(255,255,255,.12);stroke-width:1}
-.lx-dxc .nd{fill:#f2ddff;filter:drop-shadow(0 0 6px rgba(226,182,255,.9));animation:lxDxNode 4.5s ease-in-out infinite}
-@keyframes lxDxNode{0%,100%{opacity:.4}50%{opacity:1}}
-.lx-dxc .dp{fill:#ffcfa6;filter:drop-shadow(0 0 12px rgba(255,155,85,1));animation:lxDxNode 3.4s ease-in-out infinite}
-.lx-dxc .dpr{fill:none;stroke:rgba(255,190,150,.9);stroke-width:1.4;transform-box:fill-box;transform-origin:center;animation:lxDxRing 3s ease-out infinite}
-@keyframes lxDxRing{0%{opacity:.85;transform:scale(.5)}70%{opacity:0;transform:scale(2.4)}100%{opacity:0}}
-/* ---- 5 floating DATA POINTS on the right side of the hero animation (mirrors the Pools .lx-hstats) ---- */
-.lumos-promo{position:relative!important}
-/* ===== Pools-matched cosmic animation (identical to the AMM/Pools hero): nebulae drift + stars twinkle + constellation float + particles rise ===== */
-.lumos-promo .lm{position:relative;z-index:1}
-.lumos-promo .lm-c{position:relative;z-index:3}                    /* heading/sub/button above the cosmic layer */
-.lx-cosmic{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
-.lx-neb{position:absolute;border-radius:50%;filter:blur(50px);mix-blend-mode:screen;will-change:transform}
-.lx-neb.n1{width:600px;height:470px;right:-70px;top:-130px;background:radial-gradient(circle,rgba(140,96,246,.62),transparent 66%);animation:lxNeb1 30s ease-in-out infinite alternate}
-.lx-neb.n2{width:480px;height:430px;right:150px;bottom:-180px;background:radial-gradient(circle,rgba(206,88,236,.44),transparent 66%);animation:lxNeb2 36s ease-in-out infinite alternate}
-.lx-neb.n3{width:410px;height:340px;left:32%;top:4%;background:radial-gradient(circle,rgba(72,120,232,.34),transparent 66%);animation:lxNeb1 33s ease-in-out infinite alternate-reverse}
-@keyframes lxNeb1{from{transform:translate(0,0) scale(1)}to{transform:translate(-48px,36px) scale(1.18)}}
-@keyframes lxNeb2{from{transform:translate(0,0) scale(1)}to{transform:translate(54px,-32px) scale(1.12)}}
-.lx-stars{position:absolute;inset:0;animation:lxTw 7s ease-in-out infinite;background-repeat:no-repeat;background-image:radial-gradient(1.6px 1.6px at 17% 24%,rgba(255,255,255,.9),transparent 60%),radial-gradient(1.3px 1.3px at 61% 16%,rgba(255,255,255,.62),transparent 60%),radial-gradient(1.7px 1.7px at 83% 52%,rgba(255,255,255,.74),transparent 60%),radial-gradient(1.1px 1.1px at 45% 66%,rgba(255,255,255,.5),transparent 60%),radial-gradient(1.4px 1.4px at 93% 30%,rgba(255,255,255,.64),transparent 60%),radial-gradient(1.2px 1.2px at 34% 44%,rgba(255,255,255,.5),transparent 60%),radial-gradient(1.5px 1.5px at 73% 80%,rgba(255,255,255,.58),transparent 60%),radial-gradient(1px 1px at 55% 90%,rgba(255,255,255,.42),transparent 60%),radial-gradient(1.3px 1.3px at 12% 66%,rgba(255,255,255,.52),transparent 60%),radial-gradient(1.6px 1.6px at 70% 40%,rgba(255,255,255,.66),transparent 60%),radial-gradient(1.1px 1.1px at 88% 66%,rgba(255,255,255,.46),transparent 60%),radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
-@keyframes lxTw{0%,100%{opacity:.6}50%{opacity:1}}
-.lx-constel{position:absolute;right:3%;top:50%;transform:translateY(-50%);width:330px;height:330px;opacity:.95;pointer-events:none;animation:lxConFloat 12s ease-in-out infinite}
-@keyframes lxConFloat{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 12px))}}
-.lx-constel line{stroke:rgba(150,120,240,.26);stroke-width:1}
-.lx-constel circle{fill:#cbbaff;filter:drop-shadow(0 0 5px rgba(168,128,255,.9));animation:lxNode 4.5s ease-in-out infinite}
-@keyframes lxNode{0%,100%{opacity:.5}50%{opacity:1}}
-.lx-part{position:absolute;border-radius:50%;background:rgba(214,196,255,.85);box-shadow:0 0 9px rgba(172,132,255,.9);animation:lxDrift linear infinite}
-.lx-part.p1{width:5px;height:5px;left:57%;bottom:14%;animation-duration:15s}
-.lx-part.p2{width:4px;height:4px;left:74%;bottom:8%;animation-duration:19s;animation-delay:-4s}
-.lx-part.p3{width:6px;height:6px;left:66%;bottom:22%;animation-duration:23s;animation-delay:-9s}
-.lx-part.p4{width:3px;height:3px;left:85%;bottom:12%;animation-duration:17s;animation-delay:-2s}
-@keyframes lxDrift{0%{transform:translateY(20px);opacity:0}12%{opacity:1}86%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
-/* ===== HERO, COMPACT =====
-   Copy runs the full width, a small live XLM pill sits top-right, and the four exchange stats form a
-   strip along the bottom edge.
-   It used to be one large glass panel in the top-right holding a 2x2 stats grid, which cost twice over:
-   the panel forced .lm-c down to calc(100% - 388px) -- at a 1024px viewport that left the headline 165px
-   wide and three lines tall -- and the hero as a whole ran ~524px, so All Trading Pairs began well below
-   the fold. Full-width copy + a bottom strip carries the same four numbers in roughly 150px less height. */
-.lumos-promo .lm{display:flex!important;flex-direction:column}
-.lumos-promo .lm-c{max-width:none!important;padding:24px 26px 18px!important;flex:1 1 auto;display:flex;flex-direction:column;align-items:flex-start}
-.lumos-promo .lm-h{font-size:32px!important;line-height:1.1!important;letter-spacing:-.015em;color:#fff!important;max-width:calc(100% - 200px)}
-.lumos-promo .lm-sub{font-size:14.5px!important;line-height:1.5!important;color:rgba(228,230,245,.78)!important;max-width:48ch}
-.lumos-promo .lm-cta{margin-top:16px}
-/* live XLM price: a pill now, not a panel. The min-width is deliberate -- .lm-chip:not(.lxd) hides p2/p3
-   until real data lands, so without it the pill would size to "XLM" alone and then jump. */
-.lumos-promo .lm-chip{position:absolute!important;top:18px;right:18px;width:auto!important;max-width:none!important;min-width:152px;box-sizing:border-box;display:inline-flex!important;flex-direction:row;align-items:baseline;gap:9px;padding:9px 14px!important;z-index:5;background:linear-gradient(158deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:12px!important;backdrop-filter:blur(24px) saturate(1.4)!important;-webkit-backdrop-filter:blur(24px) saturate(1.4)!important;box-shadow:0 14px 34px rgba(6,2,20,.45),inset 0 1px 0 rgba(255,255,255,.26)!important}
-.lumos-promo .lm-chip .p1{order:1;margin:0!important;padding:0!important;border:0!important;font-size:11px!important;letter-spacing:.09em;color:rgba(228,230,245,.6)!important}
-.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{order:2;font-size:17px!important;line-height:1.05;color:#fff!important}
-.lumos-promo .lm-chip .p3{order:3;font-size:11px!important;margin-left:auto}
-/* the four exchange stats, as a strip along the bottom edge (z-index 4 clears .lm::after, which is 3) */
-.lumos-promo .lx-dxstats{order:9;margin-top:auto;position:relative;z-index:4;display:grid;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0;padding:13px 26px 15px;background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,.075));border-top:1px solid rgba(255,255,255,.12);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
-.lx-dxstat{display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden;padding-left:17px;border-left:1px solid rgba(255,255,255,.10)}
-.lx-dxstat:first-child{padding-left:0;border-left:0}
-.lx-dxstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
-.lx-dxstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
-.lx-dxstat[data-k=top] .v{font-size:18px}
-.lx-dxpair{display:inline-flex;flex:0 0 auto}
-.lx-dxpair span{display:block;width:28px;height:28px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
-.lx-dxpair .pb{margin-left:-10px}
-/* ===== DESKTOP HERO =====
-   Same treatment as mobile, at desktop scale: the neutral gradient image instead of the violet cosmic
-   animation, and the card reduced to a headline and the stat strip. The description, the XLM price pill
-   and the Start Trading button are gone -- that button linked to /trade/stellar, the page you are already
-   on. The two page CTAs take the corner the pill vacated.
-   Scoped to .lm-on: the mobile card does not carry it, and this stylesheet is only injected into the three
-   Trade keys, so the Pools hero (which shares .lumos-promo) is out of reach. */
-html .lumos-promo.lm-on{overflow:hidden!important;border:1px solid rgba(255,255,255,.10)!important;background:#130c07 url(/assets/hero/trade-hero-dark.svg?v=39868533) center/cover no-repeat!important}
-html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!important;background:#fff1e6 url(/assets/hero/trade-hero-light.svg?v=24b9c9d4) center/cover no-repeat!important}
-.lumos-promo.lm-on .lm::before,.lumos-promo.lm-on .lm::after{display:none!important}   /* design's scanlines + wash */
-.lumos-promo.lm-on .lm-sub,.lumos-promo.lm-on .lm-cta,.lumos-promo.lm-on .lm-chip,.lumos-promo.lm-on .lm-svg,.lumos-promo.lm-on .lm-bars{display:none!important}
-/* Mark on the left, headline beside it. .lm-c becomes a ROW here, so justify-content is now the
-   horizontal axis and align-items does the vertical centring the column layout used to do. */
-.lumos-promo.lm-on .lm-c{flex-direction:row;align-items:center;justify-content:flex-start;gap:18px;padding:26px 30px!important;max-width:none!important}
-/* Painted through ::before, not the element background. The site's own painter writes an inline
-   "background:transparent" onto empty spans like this one, and inline beats any stylesheet rule -- the
-   mark rendered as nothing. A pseudo-element is out of its reach; this is the same trick the token icons
-   in this file already use. */
-.lx-heroico{flex:0 0 auto;position:relative;width:56px;height:56px;border-radius:50%;overflow:hidden;box-shadow:0 6px 18px -8px rgba(0,0,0,.55)}
-.lx-heroico::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+") center/contain no-repeat}
-html[data-theme="light"] .lx-heroico{box-shadow:0 6px 18px -10px rgba(16,16,22,.35)}
-.lumos-promo.lm-on .lm-h{font-size:36px!important;line-height:1.08!important;max-width:420px}
-html[data-theme="light"] .lumos-promo.lm-on .lm-h{color:#0e0e10!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70));border-top-color:rgba(16,16,22,.12)}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v{color:#0e0e10!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l{color:rgba(52,52,64,.72)!important}
-/* the page CTAs, now in the hero's top-right corner */
-.lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:14px;margin:0!important;padding:0!important}
-/* DESKTOP: the CTAs share the headline's row instead of floating above it, so the card reads as one line
-   of content rather than two things pinned to opposite corners.
-   Guarded to >880px because the phone hero is the same .lm markup and keeps its own stacked layout.
-   flex-wrap rather than a viewport breakpoint: the hero is one of two columns, so its width tracks the
-   window rather than any round number -- measured 818px at a 1920 viewport (CTAs fit beside a 420px
-   headline with room to spare) but 647px at 1440 (they do not). Wrapping lets the row decide for itself;
-   when it cannot fit, the CTAs drop to their own line, still flush right, and the headline keeps its size.
-   align-self:flex-start puts them level with the FIRST line of the headline, not its vertical middle. */
-@media(min-width:881px){
-/* align-content matters here: once a flex container can wrap, its single line is STRETCHED to the full
-   height by default, so align-self:flex-start on the CTAs pinned them to the top of the card rather than
-   to the top of the headline -- which is exactly the stranded-in-a-corner look this is meant to end.
-   Centring the line collapses it to its content, and flex-start then means the headline's first line. */
-.lumos-promo.lm-on .lm-c{flex-wrap:wrap;column-gap:24px;row-gap:12px;align-content:center}
-.lumos-promo.lm-on .lm-h{flex:0 0 auto}
-.lumos-promo.lm-on .lx-dctas{position:static!important;top:auto;right:auto;order:9;margin-left:auto!important;align-self:flex-start}
-/* the mark and the second line carry the weight; line one stays as it was */
-.lumos-promo.lm-on .lx-heroico{width:64px;height:64px}
-.lumos-promo.lm-on .lm-h .lx-h1{display:block}
-.lumos-promo.lm-on .lm-h .lx-h2{display:block;font-size:48px;line-height:1.02;letter-spacing:-.022em}
-}
-.lx-dctas .dex-hero-btn.primary{order:1}   /* the design ships the ghost first; Launch Token leads here */
-.lx-dctas .dex-hero-btn.ghost{order:2}
-.lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 15px!important;border-radius:10px;font-weight:700;font-size:13px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
-.lx-dctas .dex-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
-.lx-dctas .dex-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}
-.lx-dctas .dex-hero-btn.primary:hover{text-decoration:underline}
-/* superseded by the rule above; kept so the original declaration is still visible in context */
-.lx-dctas .dex-hero-btn.lx-was-primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
-.lx-dctas .dex-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-size:0!important;gap:0!important;color:var(--text-muted,#75757f)!important}
-.lx-dctas .dex-hero-btn.ghost svg{width:17px!important;height:17px!important}
-.lx-dctas .dex-hero-btn.lx-was-ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:13px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
-html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
-/* the header row is empty once the heading is hidden and the buttons have moved out */
-.dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
-
-/* ===== MOBILE HERO =====
-   The mobile page ships a different component: a 4-slide auto-rotating .lumos-promo-slides carousel, with
-   none of the desktop hero's CSS -- no #lx-livemarket block, so .lm, .lm-h, .lm-sub and .lm-cta have no
-   base rules there at all. Everything the mobile hero needs is therefore declared here in full rather than
-   as overrides, scoped to .lx-mobhero so desktop cannot be touched.
-   applyMobileHero() lifts the DEX slide's own copy into the desktop structure, so the headline stays
-   correct per chain, and hides the carousel. */
-/* A flat gradient IMAGE, and no animation at all. The card used to run the Pools cosmic layer -- three
-   drifting nebulae, a twinkling starfield, a floating constellation and four rising particles, eight
-   simultaneous keyframe animations on a phone. applyCosmic() now skips this card and removes the layer if
-   an earlier pass built one, so the elements are gone rather than merely hidden.
-   The art is two authored SVGs under /assets/hero (about 1.3 KB each, pure gradients, no filters), one per
-   theme, and both are NEUTRAL -- stops taken from the site's own grey ramp, depth from luminance alone, no
-   hue at all. The card is a shade of the page rather than a colour on it. Everything else on the card
-   follows: border, price pill, stat strip and the secondary button are all neutral too. The only brand
-   colour left inside the hero is the primary button and the accent word in the headline.
-   The flat colour behind the image is the art's own mid-tone, so a slow image load shows no white flash. */
-.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#130c07 url(/assets/hero/trade-hero-dark.svg?v=39868533) center/cover no-repeat}
-.lx-mobhero .lx-cosmic{display:none!important}     /* belt and braces if a stale layer ever survives */
-/* the two page CTAs, moved inside the card: Launch Token leads, How it works sits beside it */
-/* Copy, then the stat band. The actions are no longer on the card -- they sit in the All Trading Pairs
-   heading. Order is set here because the blocks are appended by different functions. */
-.lx-mobhero .lm-c{order:1}
-.lx-mobhero .lx-dxstats{order:2!important;margin-top:0!important}
-/* the CTA row, now in the section heading: title left, actions right, wrapping onto a second line rather
-   than overflowing when a narrow screen cannot seat all three */
-.mdx-section-head:has(.lx-ctas){display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
-.lx-ctas{display:flex!important;align-items:center;gap:7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
-/* the strip is no longer the last thing on the card, so it closes with a rule as well as opening with one */
-
-/* visually hidden, still in the document outline and the accessibility tree */
-.lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
-/* Sized so the pair of them seats beside the 121px heading inside a 343px row at 375px. It was 3px over
-   and wrapped to a second line; the group is 197px now against 212px of space. Narrower phones still wrap
-   rather than overflow -- that is what the flex-wrap on the head is for. */
-.lx-ctas .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5px;height:31px;padding:0 8px!important;border-radius:9px;font-weight:700;font-size:10.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
-.lx-ctas .mdx-hero-btn svg{width:11px;height:11px;flex:0 0 auto}
-/* Launch Token is a TEXT LINK, the same as desktop -- it was the only place on the site where this
-   control rendered as a filled button, and only on the phone. */
-.lx-ctas .mdx-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;
-  box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}
-/* and the ghost half goes here too, for the reason it went on desktop: it explains the launchpad, which
-   is a page away from a table of trading pairs. */
-.lx-ctas .mdx-hero-btn.ghost{display:none!important}
-/* the design ships these as flex children that grow; a link must be its own width, not half the row */
-.lx-ctas .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
-.lx-ctas .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
-/* ---- light theme: the same card, warmed rather than darkened ---- */
-html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(16,16,22,.10);background:#fff1e6 url(/assets/hero/trade-hero-light.svg?v=24b9c9d4) center/cover no-repeat}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h{color:#0e0e10!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h em{color:#c2551d!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-sub{color:rgba(38,38,48,.75)!important}
-html[data-theme="light"] .lx-ctas .mdx-hero-btn.ghost{color:#33333d!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{background:rgba(255,255,255,.78)!important;border-color:rgba(16,16,22,.12)!important;box-shadow:0 10px 24px -14px rgba(16,16,22,.30)!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p1{color:rgba(52,52,64,.72)!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2 .lc-money{color:#0e0e10!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70));border-top-color:rgba(16,16,22,.12)}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v{color:#0e0e10!important}
-html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l{color:rgba(52,52,64,.72)!important}
-html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,255,.95)}
-.lx-mobhero .lumos-promo-slides,.lx-mobhero .lumos-promo-dots{display:none!important}
-.lx-mobhero .lm{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;min-height:260px}
-.lx-mobhero .lm-c{position:relative;z-index:3;display:flex;flex-direction:column;align-items:flex-start;padding:20px 18px 18px;flex:1 1 auto}
-.lx-mobhero .lm-h{margin:0;font-weight:800;letter-spacing:-.02em}
-.lx-mobhero .lm-h em{font-style:normal;color:var(--accent,#ff7a3c)}
-.lx-mobhero .lm-sub{margin:9px 0 0}
-.lx-mobhero .lm-cta{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px;color:#fff;text-decoration:none;background:linear-gradient(180deg,var(--accent-2,#ff894c),var(--accent));padding:10px 17px;border-radius:11px;box-shadow:0 10px 24px -10px var(--accent-soft),inset 0 1px 0 rgba(255,255,255,.28)}
-.lx-mobhero .lm-cta svg{width:16px;height:16px}
-/* Narrow (this also covers the MOBILE page, whose hero is the .lumos-promo-slides carousel -- it has no
-   .lm and no .lm-chip, so the strip lands as the card's last child and there is no pill to place).
-   The strip folds to 2x2 and everything steps down a size: at 375px the four columns become ~145px, and at
-   the desktop sizes "USDC / XLM" plus its two 24px logos overran that by 4px. */
-@media(max-width:880px){
-.lumos-promo .lm-c{padding:18px 18px 16px!important;gap:12px;flex-direction:row;align-items:center}
-.lx-heroico{width:38px;height:38px}
-.lx-hline2{display:block}                 /* forces "on <Chain>." onto its own line on a phone */
-.lumos-promo .lm-h{max-width:100%!important;font-size:23px!important;line-height:1.14!important}
-.lumos-promo .lm-sub{font-size:13.5px!important;max-width:100%!important}
-.lumos-promo .lm-cta{margin-top:14px}
-.lumos-promo .lm-chip{position:static!important;margin:0 0 13px;align-self:flex-start;min-width:0}
-.lumos-promo .lx-dxstats{grid-template-columns:1fr 1fr;gap:11px 0;padding:11px 18px 12px}
-.lx-dxstat{padding-left:14px}
-.lx-dxstat:nth-child(3){padding-left:0;border-left:0}
-.lx-dxstat .v{font-size:19px;gap:7px}
-.lx-dxstat .l{font-size:9.5px}
-.lx-dxstat[data-k=top] .v{font-size:13.5px}
-.lx-dxpair span{width:21px;height:21px}
-.lx-dxpair .pb{margin-left:-8px}
-/* the mobile card carries its own 260px floor, which the carousel needed and this hero does not */
-.lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
-/* first paint: the carousel is already hidden but .lm is not built yet, so hold the card's height for
-   that one frame rather than letting it collapse to nothing and snap open. */
-.lumos-promo.lx-mobhero:not(:has(.lm)){min-height:120px!important}   /* == the settled height; it was 169 from before the CTAs moved off the card, so the box opened tall and then shrank */
-}
-/* ===== PHONE: the hero becomes a wide banner, about half the height =====
-   At 375px the card was 348px tall against 343px of width -- square, and a third of the screen before a
-   single trading pair. This lays it out landscape: headline left with the live XLM price opposite it, the
-   button under them, and the four stats in ONE horizontal row rather than a 2x2 block.
-   Kept at its own 560px breakpoint so a narrowed desktop window keeps the roomier 2x2 treatment.
-   The price also moves to absolute top-right here. In flow it was a child of .lm, outside .lm-c's padding,
-   so it sat flush in the rounded corner and got clipped -- visible as a small empty blob. */
-@media(max-width:560px){
-.lumos-promo .lm-c{padding:13px 14px 12px!important}
-.lx-mobhero .lm-c{padding-bottom:13px!important}
-.lumos-promo .lm-h{font-size:18px!important;line-height:1.18!important;max-width:100%!important}
-.lumos-promo .lm-sub{display:none!important}          /* no room for it at half height; the headline carries the message */
-.lumos-promo .lm-cta{margin-top:11px;font-size:12.5px;padding:8px 14px;border-radius:9px}
-.lumos-promo .lm-cta svg{width:14px;height:14px}
-.lumos-promo .lm-chip{position:absolute!important;top:12px;right:13px;margin:0;padding:6px 10px!important;flex-direction:column;align-items:flex-end;gap:1px;border-radius:10px!important}
-.lumos-promo .lm-chip .p1{font-size:9px!important;letter-spacing:.1em}
-.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{font-size:13px!important}
-.lumos-promo .lm-chip .p3{font-size:9.5px!important;margin-left:0}
-/* One row of four. The columns size to their CONTENT and the leftover space is spread between them --
-   proportional fr tracks cannot work here, because each column's width is set by a string whose length
-   nobody controls: "$129.2K" against "35", and "USDC / XLM" plus two logos against "LIQUIDITY". Measured
-   at 360px, fr tracks handed 78px to a column needing 87 and 93 to one needing 68. Auto tracks cannot
-   clip while the row as a whole fits, so the dividers give way to spacing. */
-.lumos-promo .lx-dxstats{grid-template-columns:repeat(4,auto);justify-content:space-between;gap:0;padding:9px 14px 10px}
-.lx-dxstat{padding-left:0;border-left:0;gap:3px}
-.lx-dxstat .v{font-size:16px;gap:6px}
-.lx-dxstat .l{font-size:8px;letter-spacing:.03em}
-.lx-dxstat[data-k=top] .v{font-size:10.5px}
-.lx-dxpair span{width:16px;height:16px;border-width:1.5px}
-.lx-dxpair .pb{margin-left:-6px}
-}
-/* Empty Gainers/Losers. Spans the grid so the message sits in the panel rather than in one cell. */
-.dex-mover-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--text-muted);font-size:13.5px}
-/* items 16 + 18: New Mints and Market Movers are off the page. Movers restated the pairs table's own
-   sort over four of its rows; New Mints put three launchpad tokens above the index. The launch entry
-   point they carried is re-seated in the pairs heading by dropSections() -- see item 17. */
-.dex-mints-card,.dex-movers{display:none!important}
-/* item 17: the CTA pair, once re-seated, sits inline at the end of the pairs controls rather than being
-   absolutely placed in a card corner as it was inside the mints head. */
-/* The block that moved here carries both CTAs, and only the launch one belongs in this row -- the
-   "How it works?" ghost explains the launchpad, which is a page away from a table of trading pairs.
-   Hidden rather than removed: it is one node with the primary, and the delegate is bound to the pair. */
-.dex-mk-controls>.lx-dctas .dex-hero-btn.ghost{display:none!important}
-.dex-mk-controls>.lx-dctas{position:static!important;top:auto!important;right:auto!important;
-  order:-1;margin:0 4px 0 0!important;align-self:center}
-/* item 15: the placeholder was 191px of text in a 182px field with no padding, so it was clipped and
-   touched both edges. Shortened below; this gives what is left room to breathe. */
-.dex-mk-search input,input.lx-mkq{padding-left:10px!important;padding-right:10px!important}
-/* ---- Market Movers: symmetric body — price/vol (left) + Trades 24h (right), spark spans below ---- */
-.dex-mover-body{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
-.dex-mover-l{min-width:0}
-.dex-mover-r{text-align:right;flex:0 0 auto}
-.dex-mover-trades{font:800 18px/1.05 'Hanken Grotesk',sans-serif;color:var(--text)}
-.dex-mover-tlabel{font:600 9.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft);margin-top:3px;white-space:nowrap}
-/* ---- All Trading Pairs: Trades (24h) column (header th inserted via JS) ---- */
-.th-trades{text-align:right!important}
-.dex-mk-trades-td{text-align:right}
-.dex-mk-trades{font-weight:700;white-space:nowrap}
-/* kill two stray tiny logos the site's [data-logo] applier paints onto non-logo elements:
-   (1) #dexMintTabs = an empty 6px leftover in the New Mints header (data-logo="APT");
-   (2) .dex-mover-pct = the % badge, which during LOAD (empty "\u2014") gets tagged data-logo=<ticker> and
-       painted with a tiny logo until the real % lands. Only suppress while it carries data-logo -> loaded pills untouched. */
-#dexMintTabs,.dex-mints-tabs,#mdxMintTabs,.mdx-mints-tabs{display:none!important}   /* same empty leftover on the mobile card */
-.dex-mover-pct[data-logo]{background-image:none!important;box-shadow:none!important}
-/* the avatar-painter sometimes injects a stray <svg> initials-avatar INTO our painter-proof icons (it broke the
-   LUMOS logo in All Trading Pairs). Our real logo lives in ::before -> hide any injected svg child so it can't cover it. */
-.dex-mint-ic[data-lxic]>svg,.dex-mover-ico[data-lxic]>svg,.dex-mk-pair-ic[data-lxic]>svg{display:none!important}
-/* #19 denomination switch. Sized off the search field it sits beside so the row keeps one baseline. */
-.lx-dnsw{display:inline-flex;flex:0 0 auto;align-items:center;gap:2px;padding:3px;border-radius:10px;
-  background:var(--surface-2);border:1px solid var(--border)}
-.lx-dnsw button{padding:5px 11px;border:0;border-radius:7px;background:transparent;color:var(--text-soft);
-  font-weight:800;font-size:12px;line-height:1;letter-spacing:.02em;cursor:pointer;transition:color .14s ease,background .14s ease}
-.lx-dnsw button:hover{color:var(--text)}
-.lx-dnsw button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.18)}
-/* the row holding the search input is a flex line; the switch must not stretch with the input */
-.dex-mk-search{flex:1 1 auto;min-width:0}
-/* #34: Market Movers scrolls sideways instead of wrapping into rows.
-   Ten cards in a wrapping grid is four rows of tall cards -- the section stops being a glance and
-   becomes a page of its own. One row that scrolls keeps the whole section the height of a single card,
-   and the cut-off card at the right edge is what tells the reader there is more without a label saying
-   so. Scroll snapping so it comes to rest on a card rather than mid-way through one. */
-.dex-mover-grid{display:flex!important;flex-wrap:nowrap!important;gap:12px;overflow-x:auto;overflow-y:hidden;
-  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:6px;scrollbar-width:thin}
-.dex-mover-grid>.dex-mover-card{flex:0 0 272px;scroll-snap-align:start;min-width:0}
-.dex-mover-grid::-webkit-scrollbar{height:6px}
-.dex-mover-grid::-webkit-scrollbar-thumb{background:var(--border,#ececef);border-radius:99px}
-.dex-mover-grid::-webkit-scrollbar-track{background:transparent}
-@media (max-width:760px){.dex-mover-grid>.dex-mover-card{flex:0 0 232px}}
-@media (prefers-reduced-motion:reduce){.dex-mover-grid{scroll-behavior:auto}}
-/* New Mints: 4 symmetric stat columns (Price / Market cap / 24h Volume / 24h Trades), right-aligned */
-.dex-mint-stats{display:flex;gap:22px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
-.dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
-.dex-mint-stat .l{font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft,#6f6f79);margin-bottom:6px}
-/* #27: the sub-line under a mint was set in Hanken Grotesk 13/400 while the identical line in All
-   Trading Pairs -- same position, same colour, same job -- is JetBrains Mono 12.5/500. Side by side the
-   two cards read as belonging to different products. The pairs table is the one to match, since it is
-   the larger surface and the rest of this card's small print is already monospace. */
-.dex-mint-sub{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:500}
-.dex-mint-stat .v{font-weight:700;font-size:14px;color:var(--text,#0e0e10);white-space:nowrap;line-height:1.25;text-align:right}
-/* the dollar figure is a second line under the XLM price, not a continuation of it */
-.dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
-/* Price carries the longest string in the row, so it gets room; the counts stay narrow */
-.dex-mint-stat:first-child{min-width:104px}
-</style><style id="lx-lumosparent-css">.lx-lp{position:relative;max-width:780px;margin:0 auto;padding:56px 0 76px}.lx-lp::before{content:"";position:absolute;left:-120px;right:-120px;top:-40px;height:300px;pointer-events:none;z-index:0;background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.14),transparent 72%)}[data-theme="light"] .lx-lp::before{background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.09),transparent 72%)}.lx-lp>*{position:relative;z-index:1}.lx-lp-head{text-align:center;margin:0 0 36px}.lx-lp-h{font:800 clamp(34px,4vw,46px)/1.08 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.032em;text-wrap:balance;margin:0 0 12px}.lx-lp-sub{font:500 17px/1.62 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);max-width:50ch;margin:0 auto;text-wrap:pretty}@media(max-width:640px){.lx-lp{padding:34px 0 52px}.lx-lp-h{font-size:30px}.lx-lp-sub{font-size:16px}}.lx-lp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}@media(max-width:640px){.lx-lp-grid{grid-template-columns:1fr}}.lx-lp-card{display:flex;align-items:center;gap:15px;padding:22px 20px;border-radius:16px;border:1px solid var(--border,#ececef);background:var(--surface,#fff);text-decoration:none;color:inherit;background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%);transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}.lx-lp-card:not(.soon){border-color:rgba(234,106,44,.30);background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%),linear-gradient(105deg,rgba(234,106,44,.085),rgba(234,106,44,0) 58%)}.lx-lp-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-3px);box-shadow:0 14px 32px rgba(0,0,0,.30)}.lx-lp-card:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:3px}.lx-lp-ico{width:46px;height:46px;flex:0 0 46px;border-radius:50%;background-size:cover;background-position:center;background-repeat:no-repeat;position:relative;box-shadow:0 0 0 1px rgba(127,127,140,.22)}.lx-lp-card:not(.soon) .lx-lp-ico{box-shadow:0 0 0 1px rgba(234,106,44,.34)}.lx-lp-ico{font-size:0!important;color:transparent!important}.lx-lp-ico>svg{width:0!important;height:0!important;position:absolute!important}.lx-lp-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:4px}.lx-lp-net{font:800 18px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.01em}.lx-lp-meta{font:600 13px/1.35 "JetBrains Mono",ui-monospace,monospace;color:var(--text-muted,#8a8fa3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lx-lp-go{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-2,#f4f5f7);color:var(--text-muted,#8a8fa3);transition:background .18s ease,color .18s ease,transform .18s ease}.lx-lp-go svg{width:14px;height:14px}.lx-lp-card:hover .lx-lp-go{background:var(--accent,#ea6a2c);color:#fff;transform:translateX(2px)}.lx-lp-card.soon{opacity:.8;pointer-events:none;background-image:none;border-style:dashed}.lx-lp-soon{margin-left:auto;flex:0 0 auto;padding:4px 9px;border-radius:99px;background:transparent;border:1px solid var(--border,#ececef);color:var(--text-muted,#8a8fa3);font:700 10.5px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}@media(prefers-reduced-motion:reduce){.lx-lp-card,.lx-lp-go{transition:none}.lx-lp-card:hover{transform:none}}.lx-lp-soon>svg{width:0!important;height:0!important;position:absolute!important}.lx-lp{display:none}html.lx-lp-on .lx-lp{display:block}html.lx-lp-on .page > *:not(.lx-lp):not(.crumb),html.lx-lp-on main > *:not(.lx-lp):not(.crumb),html.lx-lp-on .container > *:not(.lx-lp):not(.crumb){display:none!important}</style><script id="lx-lumosparent">(function(){try{var p=(location.pathname||"").replace(/\/+$/,"");var HUB="/trade", KEY="lumoscore-dex";var last=p.split("/").pop()||"";if(p!==HUB&&last.indexOf(KEY)!==0)return;var a="",c="";try{ a=localStorage.getItem("lumos.address")||"";c=(localStorage.getItem("lumos.chain")||"").toLowerCase(); }catch(_){}if(a&&(c===""||c==="stellar")){ location.replace(HUB+"/stellar"); return; }document.documentElement.classList.add("lx-lp-on");window.addEventListener("click",function(ev){try{var t=ev.target&&ev.target.closest?ev.target.closest("[data-lxsetchain]"):null; if(!t)return;var w=t.getAttribute("data-lxsetchain"); if(w!=="xrpl"&&w!=="stellar")return;document.cookie="lx_chain="+w+";path=/;max-age=31536000;samesite=lax";}catch(_){}} ,true);document.addEventListener("DOMContentLoaded",function(){try{document.title="Trade — Choose a network | LumosCore";}catch(_){}});try{document.title="Trade — Choose a network | LumosCore";}catch(_){}}catch(_){}})();</script><style id="lx-amm-css">
+</style><style id="lx-amm-css">
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
    onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
@@ -3346,6 +2960,392 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
 .mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
 .mdx-mk-filters::-webkit-scrollbar{display:none}
 .mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
+</style><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-lumosparent-css">.lx-lp{position:relative;max-width:780px;margin:0 auto;padding:56px 0 76px}.lx-lp::before{content:"";position:absolute;left:-120px;right:-120px;top:-40px;height:300px;pointer-events:none;z-index:0;background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.14),transparent 72%)}[data-theme="light"] .lx-lp::before{background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.09),transparent 72%)}.lx-lp>*{position:relative;z-index:1}.lx-lp-head{text-align:center;margin:0 0 36px}.lx-lp-h{font:800 clamp(34px,4vw,46px)/1.08 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.032em;text-wrap:balance;margin:0 0 12px}.lx-lp-sub{font:500 17px/1.62 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);max-width:50ch;margin:0 auto;text-wrap:pretty}@media(max-width:640px){.lx-lp{padding:34px 0 52px}.lx-lp-h{font-size:30px}.lx-lp-sub{font-size:16px}}.lx-lp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}@media(max-width:640px){.lx-lp-grid{grid-template-columns:1fr}}.lx-lp-card{display:flex;align-items:center;gap:15px;padding:22px 20px;border-radius:16px;border:1px solid var(--border,#ececef);background:var(--surface,#fff);text-decoration:none;color:inherit;background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%);transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}.lx-lp-card:not(.soon){border-color:rgba(234,106,44,.30);background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%),linear-gradient(105deg,rgba(234,106,44,.085),rgba(234,106,44,0) 58%)}.lx-lp-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-3px);box-shadow:0 14px 32px rgba(0,0,0,.30)}.lx-lp-card:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:3px}.lx-lp-ico{width:46px;height:46px;flex:0 0 46px;border-radius:50%;background-size:cover;background-position:center;background-repeat:no-repeat;position:relative;box-shadow:0 0 0 1px rgba(127,127,140,.22)}.lx-lp-card:not(.soon) .lx-lp-ico{box-shadow:0 0 0 1px rgba(234,106,44,.34)}.lx-lp-ico{font-size:0!important;color:transparent!important}.lx-lp-ico>svg{width:0!important;height:0!important;position:absolute!important}.lx-lp-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:4px}.lx-lp-net{font:800 18px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.01em}.lx-lp-meta{font:600 13px/1.35 "JetBrains Mono",ui-monospace,monospace;color:var(--text-muted,#8a8fa3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lx-lp-go{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-2,#f4f5f7);color:var(--text-muted,#8a8fa3);transition:background .18s ease,color .18s ease,transform .18s ease}.lx-lp-go svg{width:14px;height:14px}.lx-lp-card:hover .lx-lp-go{background:var(--accent,#ea6a2c);color:#fff;transform:translateX(2px)}.lx-lp-card.soon{opacity:.8;pointer-events:none;background-image:none;border-style:dashed}.lx-lp-soon{margin-left:auto;flex:0 0 auto;padding:4px 9px;border-radius:99px;background:transparent;border:1px solid var(--border,#ececef);color:var(--text-muted,#8a8fa3);font:700 10.5px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}@media(prefers-reduced-motion:reduce){.lx-lp-card,.lx-lp-go{transition:none}.lx-lp-card:hover{transform:none}}.lx-lp-soon>svg{width:0!important;height:0!important;position:absolute!important}.lx-lp{display:none}html.lx-lp-on .lx-lp{display:block}html.lx-lp-on .page > *:not(.lx-lp):not(.crumb),html.lx-lp-on main > *:not(.lx-lp):not(.crumb),html.lx-lp-on .container > *:not(.lx-lp):not(.crumb){display:none!important}</style><script id="lx-lumosparent">(function(){try{var p=(location.pathname||"").replace(/\/+$/,"");var HUB="/trade", KEY="lumoscore-dex";var last=p.split("/").pop()||"";if(p!==HUB&&last.indexOf(KEY)!==0)return;var a="",c="";try{ a=localStorage.getItem("lumos.address")||"";c=(localStorage.getItem("lumos.chain")||"").toLowerCase(); }catch(_){}if(a&&(c===""||c==="stellar")){ location.replace(HUB+"/stellar"); return; }document.documentElement.classList.add("lx-lp-on");window.addEventListener("click",function(ev){try{var t=ev.target&&ev.target.closest?ev.target.closest("[data-lxsetchain]"):null; if(!t)return;var w=t.getAttribute("data-lxsetchain"); if(w!=="xrpl"&&w!=="stellar")return;document.cookie="lx_chain="+w+";path=/;max-age=31536000;samesite=lax";}catch(_){}} ,true);document.addEventListener("DOMContentLoaded",function(){try{document.title="Trade — Choose a network | LumosCore";}catch(_){}});try{document.title="Trade — Choose a network | LumosCore";}catch(_){}}catch(_){}})();</script><style id="lx-dexmain-css">
+/* The asset cell is a real <a> so the browser can offer "open in new tab" and honour Ctrl/middle-click.
+   It must look like nothing changed: inherit the colour, drop the underline, and keep the block layout
+   the cell already had. display:block matters -- an inline anchor would collapse the flex row inside it.
+   The focus ring is left alone deliberately: it is now a real link and should be reachable by keyboard. */
+.dex-mk-pair-link{color:inherit;text-decoration:none;display:block}
+.dex-mk-pair-link:hover{color:inherit;text-decoration:none}
+/* A20: the four chips the script removes, hidden from the FIRST paint. Keyed on the same data-filter
+   values the removal uses, so the two cannot drift apart. */
+.dex-mk-filter[data-filter="stables"],.mdx-mk-filter[data-filter="stables"],
+.dex-mk-filter[data-filter="memes"],.mdx-mk-filter[data-filter="memes"],
+.dex-mk-filter[data-filter="utility"],.mdx-mk-filter[data-filter="utility"],
+.dex-mk-filter[data-filter="native"],.mdx-mk-filter[data-filter="native"]{display:none!important}
+/* B12: the FAQ is static copy, so it painted while every data-backed block above it was still collapsed
+   -- alone at the top of an empty page, which is what made it look oversized. It now waits for the rest.
+   visibility, not display, so it holds its space and nothing below it jumps. */
+html:not(.lx-dexlate) .lx-faq{visibility:hidden}
+/* B15: the row itself opens the asset page, so the Trade column is a second control for the same
+   action -- and this table is already wider than its container. Header and cell together, by class:
+   a column was inserted here once before, and :last-child would hide whatever ends up last next time. */
+.dex-mk-table th.th-action,.dex-mk-table td.td-action{display:none!important}
+
+.lx-vtick{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px;flex:0 0 14px}
+.lx-vtick svg{width:9px;height:9px;display:block}
+
+/* ---- no-flash gates: hide the design's mock values until our data owns the element ---- */
+#dexMintsList:not(.lxd) .dex-mint-row{visibility:hidden}.lx-tboot{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:var(--bg,#fff);opacity:1;transition:opacity .28s ease}.lx-tboot.lx-tboot-out{opacity:0;pointer-events:none}.lx-tboot-badge{position:relative;width:104px;height:104px;display:grid;place-items:center}.lx-tboot-badge::before{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,transparent 0deg,var(--accent,#ea6a2c) 90deg,transparent 200deg);-webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));mask:radial-gradient(farthest-side,transparent calc(100% - 3px),#000 calc(100% - 3px));animation:lx-tboot-spin 1.15s linear infinite;opacity:.9}.lx-tboot-badge::after{content:"";position:absolute;inset:9px;border-radius:50%;background:radial-gradient(circle,rgba(234,106,44,.20),transparent 70%);animation:lx-tboot-pulse 1.8s ease-in-out infinite}@keyframes lx-tboot-spin{to{transform:rotate(360deg)}}.lx-tboot-mark{position:relative;z-index:1;width:56px;height:56px;background-size:contain;background-repeat:no-repeat;background-position:center;animation:lx-tboot-pulse 1.6s ease-in-out infinite}@keyframes lx-tboot-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(.88);opacity:.55}}@media (prefers-reduced-motion:reduce){.lx-tboot-mark,.lx-tboot-badge::before,.lx-tboot-badge::after{animation:none}.lx-tboot{transition:none}}
+#dexMoverGrid:not(.lxd) .dex-mover-card{visibility:hidden}
+#dexMkTbody:not(.lxd) tr{visibility:hidden}
+
+/* item 29: the header re-laid itself out after the rows arrived. Measured at 1440px, only ONE column
+   moves -- Asset goes 214px -> 263px once the names and their domains land, and the other eight hold
+   still. table-layout is auto, so the first column is sized from its content and every later arrival
+   re-measures it. Giving it the settled width as a FLOOR means it starts where it ends up; content that
+   genuinely needs more can still grow it.
+   239px, not 263: _typescale.js multiplies every px in this block by 1.1, so the source value is the
+   pre-scale one. See [[lumoscore-typescale]]. */
+.dex-markets thead th:first-child,.dex-markets tbody td:first-child{min-width:239px}
+/* Tabular figures so #9 and #10 line up their digits instead of shuffling the icon beside them. */
+.dex-mk-rank{flex:0 0 auto;min-width:22px;margin-right:2px;text-align:right;
+  font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text-muted,#8a8fa3);
+  font-variant-numeric:tabular-nums}
+/* sortable column headers. Only the five numeric columns take a click -- Asset, Day High/Low and 7d Trend
+   are not single values to order by, and a header that looks clickable but is not is worse than a plain
+   one. The arrow is always present on a sortable column so the affordance does not depend on hover. */
+.dex-mk-table thead th.lx-sortable{cursor:pointer;user-select:none;white-space:nowrap;transition:color .12s ease}
+.dex-mk-table thead th.lx-sortable:hover{color:var(--text)}
+.dex-mk-table thead th.lx-son{color:var(--accent)}
+.lx-sarrow{display:inline-block;margin-left:5px;font-size:9px;line-height:1;opacity:.4;vertical-align:middle}
+.dex-mk-table thead th.lx-son .lx-sarrow{opacity:1}
+.lm-chip:not(.lxd) .p2,.lm-chip:not(.lxd) .p3{visibility:hidden}
+/* ---- painter-proof token icons: the site logo-painter can't touch a ::before pseudo-element ---- */
+.dex-mint-ic[data-lxic],.dex-mover-ico[data-lxic],.dex-mk-pair-ic[data-lxic]{position:relative;overflow:hidden;color:transparent!important;font-size:0!important;background-image:none!important;background-color:transparent!important}
+.dex-mint-ic[data-lxic]::before,.dex-mover-ico[data-lxic]::before,.dex-mk-pair-ic[data-lxic]::before{content:"";position:absolute;inset:0;background:var(--lxvar) center/cover no-repeat;border-radius:inherit;z-index:2}
+.lx-dex-empty{text-align:center;padding:34px 12px;color:var(--text-soft);font-size:14px}
+/* ---- hero "advanced DEX" card: orange constellation (mirrors the Pools lx-constel, orange theme) with 5 data points ---- */
+/* Trade hero gets its OWN warm/amber background (mirrors the Pools purple), always dark regardless of site theme.
+   The html prefix boosts specificity to beat inject_livemarket.js's own .lumos-promo.lm-on !important rule (which uses var(--surface) = theme-following). */
+html .lumos-promo.lm-on{overflow:hidden!important;background:radial-gradient(58% 84% at 70% 30%,rgba(140,96,246,.26),transparent 60%),radial-gradient(46% 64% at 92% 78%,rgba(198,86,232,.14),transparent 62%),radial-gradient(52% 68% at 24% 90%,rgba(74,110,224,.12),transparent 62%),linear-gradient(140deg,#0f1120 0%,#0a0a15 55%,#070610 100%)!important;border:1px solid rgba(255,255,255,.10)!important}
+/* the design's .lm::after overlay uses var(--surface) (resolves LIGHT) -> a white diagonal streak over the heading. Replace with a dark purple readability overlay (mirrors Pools' .lm::after), darkening the heading side, transparent over the constellation. */
+html .lumos-promo.lm-on .lm::after{background:linear-gradient(100deg,rgba(14,9,24,.64) 6%,rgba(14,9,24,.15) 44%,transparent 70%)!important;z-index:2!important}
+.lumos-promo.lm-on .lm-bars{display:none!important}                 /* replace the old zigzag bars with the constellation */
+svg.lm-svg.lx-dxc{overflow:visible}
+.lx-dxc .lx-dxfloat{animation:lxDxFloat 12s ease-in-out infinite}
+@keyframes lxDxFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.lx-dxc{display:none!important}                                   /* drop the wireframe constellation; the subtle starfield replaces it */
+.lx-dxc line{stroke:rgba(255,255,255,.12);stroke-width:1}
+.lx-dxc .nd{fill:#f2ddff;filter:drop-shadow(0 0 6px rgba(226,182,255,.9));animation:lxDxNode 4.5s ease-in-out infinite}
+@keyframes lxDxNode{0%,100%{opacity:.4}50%{opacity:1}}
+.lx-dxc .dp{fill:#ffcfa6;filter:drop-shadow(0 0 12px rgba(255,155,85,1));animation:lxDxNode 3.4s ease-in-out infinite}
+.lx-dxc .dpr{fill:none;stroke:rgba(255,190,150,.9);stroke-width:1.4;transform-box:fill-box;transform-origin:center;animation:lxDxRing 3s ease-out infinite}
+@keyframes lxDxRing{0%{opacity:.85;transform:scale(.5)}70%{opacity:0;transform:scale(2.4)}100%{opacity:0}}
+/* ---- 5 floating DATA POINTS on the right side of the hero animation (mirrors the Pools .lx-hstats) ---- */
+.lumos-promo{position:relative!important}
+/* ===== Pools-matched cosmic animation (identical to the AMM/Pools hero): nebulae drift + stars twinkle + constellation float + particles rise ===== */
+.lumos-promo .lm{position:relative;z-index:1}
+.lumos-promo .lm-c{position:relative;z-index:3}                    /* heading/sub/button above the cosmic layer */
+.lx-cosmic{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.lx-neb{position:absolute;border-radius:50%;filter:blur(50px);mix-blend-mode:screen;will-change:transform}
+.lx-neb.n1{width:600px;height:470px;right:-70px;top:-130px;background:radial-gradient(circle,rgba(140,96,246,.62),transparent 66%);animation:lxNeb1 30s ease-in-out infinite alternate}
+.lx-neb.n2{width:480px;height:430px;right:150px;bottom:-180px;background:radial-gradient(circle,rgba(206,88,236,.44),transparent 66%);animation:lxNeb2 36s ease-in-out infinite alternate}
+.lx-neb.n3{width:410px;height:340px;left:32%;top:4%;background:radial-gradient(circle,rgba(72,120,232,.34),transparent 66%);animation:lxNeb1 33s ease-in-out infinite alternate-reverse}
+@keyframes lxNeb1{from{transform:translate(0,0) scale(1)}to{transform:translate(-48px,36px) scale(1.18)}}
+@keyframes lxNeb2{from{transform:translate(0,0) scale(1)}to{transform:translate(54px,-32px) scale(1.12)}}
+.lx-stars{position:absolute;inset:0;animation:lxTw 7s ease-in-out infinite;background-repeat:no-repeat;background-image:radial-gradient(1.6px 1.6px at 17% 24%,rgba(255,255,255,.9),transparent 60%),radial-gradient(1.3px 1.3px at 61% 16%,rgba(255,255,255,.62),transparent 60%),radial-gradient(1.7px 1.7px at 83% 52%,rgba(255,255,255,.74),transparent 60%),radial-gradient(1.1px 1.1px at 45% 66%,rgba(255,255,255,.5),transparent 60%),radial-gradient(1.4px 1.4px at 93% 30%,rgba(255,255,255,.64),transparent 60%),radial-gradient(1.2px 1.2px at 34% 44%,rgba(255,255,255,.5),transparent 60%),radial-gradient(1.5px 1.5px at 73% 80%,rgba(255,255,255,.58),transparent 60%),radial-gradient(1px 1px at 55% 90%,rgba(255,255,255,.42),transparent 60%),radial-gradient(1.3px 1.3px at 12% 66%,rgba(255,255,255,.52),transparent 60%),radial-gradient(1.6px 1.6px at 70% 40%,rgba(255,255,255,.66),transparent 60%),radial-gradient(1.1px 1.1px at 88% 66%,rgba(255,255,255,.46),transparent 60%),radial-gradient(1.2px 1.2px at 26% 80%,rgba(255,255,255,.48),transparent 60%)}
+@keyframes lxTw{0%,100%{opacity:.6}50%{opacity:1}}
+.lx-constel{position:absolute;right:3%;top:50%;transform:translateY(-50%);width:330px;height:330px;opacity:.95;pointer-events:none;animation:lxConFloat 12s ease-in-out infinite}
+@keyframes lxConFloat{0%,100%{transform:translateY(-50%)}50%{transform:translateY(calc(-50% - 12px))}}
+.lx-constel line{stroke:rgba(150,120,240,.26);stroke-width:1}
+.lx-constel circle{fill:#cbbaff;filter:drop-shadow(0 0 5px rgba(168,128,255,.9));animation:lxNode 4.5s ease-in-out infinite}
+@keyframes lxNode{0%,100%{opacity:.5}50%{opacity:1}}
+.lx-part{position:absolute;border-radius:50%;background:rgba(214,196,255,.85);box-shadow:0 0 9px rgba(172,132,255,.9);animation:lxDrift linear infinite}
+.lx-part.p1{width:5px;height:5px;left:57%;bottom:14%;animation-duration:15s}
+.lx-part.p2{width:4px;height:4px;left:74%;bottom:8%;animation-duration:19s;animation-delay:-4s}
+.lx-part.p3{width:6px;height:6px;left:66%;bottom:22%;animation-duration:23s;animation-delay:-9s}
+.lx-part.p4{width:3px;height:3px;left:85%;bottom:12%;animation-duration:17s;animation-delay:-2s}
+@keyframes lxDrift{0%{transform:translateY(20px);opacity:0}12%{opacity:1}86%{opacity:1}100%{transform:translateY(-160px);opacity:0}}
+/* ===== HERO, COMPACT =====
+   Copy runs the full width, a small live XLM pill sits top-right, and the four exchange stats form a
+   strip along the bottom edge.
+   It used to be one large glass panel in the top-right holding a 2x2 stats grid, which cost twice over:
+   the panel forced .lm-c down to calc(100% - 388px) -- at a 1024px viewport that left the headline 165px
+   wide and three lines tall -- and the hero as a whole ran ~524px, so All Trading Pairs began well below
+   the fold. Full-width copy + a bottom strip carries the same four numbers in roughly 150px less height. */
+.lumos-promo .lm{display:flex!important;flex-direction:column}
+.lumos-promo .lm-c{max-width:none!important;padding:24px 26px 18px!important;flex:1 1 auto;display:flex;flex-direction:column;align-items:flex-start}
+.lumos-promo .lm-h{font-size:32px!important;line-height:1.1!important;letter-spacing:-.015em;color:#fff!important;max-width:calc(100% - 200px)}
+.lumos-promo .lm-sub{font-size:14.5px!important;line-height:1.5!important;color:rgba(228,230,245,.78)!important;max-width:48ch}
+.lumos-promo .lm-cta{margin-top:16px}
+/* live XLM price: a pill now, not a panel. The min-width is deliberate -- .lm-chip:not(.lxd) hides p2/p3
+   until real data lands, so without it the pill would size to "XLM" alone and then jump. */
+.lumos-promo .lm-chip{position:absolute!important;top:18px;right:18px;width:auto!important;max-width:none!important;min-width:152px;box-sizing:border-box;display:inline-flex!important;flex-direction:row;align-items:baseline;gap:9px;padding:9px 14px!important;z-index:5;background:linear-gradient(158deg,rgba(255,255,255,.12),rgba(255,255,255,.035))!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:12px!important;backdrop-filter:blur(24px) saturate(1.4)!important;-webkit-backdrop-filter:blur(24px) saturate(1.4)!important;box-shadow:0 14px 34px rgba(6,2,20,.45),inset 0 1px 0 rgba(255,255,255,.26)!important}
+.lumos-promo .lm-chip .p1{order:1;margin:0!important;padding:0!important;border:0!important;font-size:11px!important;letter-spacing:.09em;color:rgba(228,230,245,.6)!important}
+.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{order:2;font-size:17px!important;line-height:1.05;color:#fff!important}
+.lumos-promo .lm-chip .p3{order:3;font-size:11px!important;margin-left:auto}
+/* the four exchange stats, as a strip along the bottom edge (z-index 4 clears .lm::after, which is 3) */
+.lumos-promo .lx-dxstats{order:9;margin-top:auto;position:relative;z-index:4;display:grid;grid-template-columns:1fr 1fr .78fr 1.32fr;align-items:flex-end;gap:0;padding:13px 26px 15px;background:linear-gradient(180deg,rgba(255,255,255,.015),rgba(255,255,255,.075));border-top:1px solid rgba(255,255,255,.12);backdrop-filter:blur(16px) saturate(1.3);-webkit-backdrop-filter:blur(16px) saturate(1.3)}
+.lx-dxstat{display:flex;flex-direction:column;gap:4px;min-width:0;overflow:hidden;padding-left:17px;border-left:1px solid rgba(255,255,255,.10)}
+.lx-dxstat:first-child{padding-left:0;border-left:0}
+.lx-dxstat .v{font:800 28px/1.05 'Hanken Grotesk',sans-serif;color:#fff!important;letter-spacing:-.01em;white-space:nowrap;display:flex;align-items:center;gap:10px}
+.lx-dxstat .l{font:600 12px/1.2 'JetBrains Mono',monospace;letter-spacing:.06em;text-transform:uppercase;color:rgba(228,230,245,.6)!important;white-space:nowrap}
+.lx-dxstat[data-k=top] .v{font-size:18px}
+.lx-dxpair{display:inline-flex;flex:0 0 auto}
+.lx-dxpair span{display:block;width:28px;height:28px;border-radius:50%;background:#222 center/cover no-repeat;border:2px solid rgba(18,13,32,.92);box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.lx-dxpair .pb{margin-left:-10px}
+/* ===== DESKTOP HERO =====
+   Same treatment as mobile, at desktop scale: the neutral gradient image instead of the violet cosmic
+   animation, and the card reduced to a headline and the stat strip. The description, the XLM price pill
+   and the Start Trading button are gone -- that button linked to /trade/stellar, the page you are already
+   on. The two page CTAs take the corner the pill vacated.
+   Scoped to .lm-on: the mobile card does not carry it, and this stylesheet is only injected into the three
+   Trade keys, so the Pools hero (which shares .lumos-promo) is out of reach. */
+html .lumos-promo.lm-on{overflow:hidden!important;border:1px solid rgba(255,255,255,.10)!important;background:#130c07 url(/assets/hero/trade-hero-dark.svg?v=39868533) center/cover no-repeat!important}
+html[data-theme="light"] .lumos-promo.lm-on{border-color:rgba(16,16,22,.10)!important;background:#fff1e6 url(/assets/hero/trade-hero-light.svg?v=24b9c9d4) center/cover no-repeat!important}
+.lumos-promo.lm-on .lm::before,.lumos-promo.lm-on .lm::after{display:none!important}   /* design's scanlines + wash */
+.lumos-promo.lm-on .lm-sub,.lumos-promo.lm-on .lm-cta,.lumos-promo.lm-on .lm-chip,.lumos-promo.lm-on .lm-svg,.lumos-promo.lm-on .lm-bars{display:none!important}
+/* Mark on the left, headline beside it. .lm-c becomes a ROW here, so justify-content is now the
+   horizontal axis and align-items does the vertical centring the column layout used to do. */
+.lumos-promo.lm-on .lm-c{flex-direction:row;align-items:center;justify-content:flex-start;gap:18px;padding:26px 30px!important;max-width:none!important}
+/* Painted through ::before, not the element background. The site's own painter writes an inline
+   "background:transparent" onto empty spans like this one, and inline beats any stylesheet rule -- the
+   mark rendered as nothing. A pseudo-element is out of its reach; this is the same trick the token icons
+   in this file already use. */
+.lx-heroico{flex:0 0 auto;position:relative;width:56px;height:56px;border-radius:50%;overflow:hidden;box-shadow:0 6px 18px -8px rgba(0,0,0,.55)}
+.lx-heroico::before{content:"";position:absolute;inset:0;background:url("data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+") center/contain no-repeat}
+html[data-theme="light"] .lx-heroico{box-shadow:0 6px 18px -10px rgba(16,16,22,.35)}
+.lumos-promo.lm-on .lm-h{font-size:36px!important;line-height:1.08!important;max-width:420px}
+html[data-theme="light"] .lumos-promo.lm-on .lm-h{color:#0e0e10!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70));border-top-color:rgba(16,16,22,.12)}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v{color:#0e0e10!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l{color:rgba(52,52,64,.72)!important}
+/* the page CTAs, now in the hero's top-right corner */
+.lx-dctas{position:absolute!important;top:20px;right:22px;z-index:5;display:flex!important;align-items:center;gap:14px;margin:0!important;padding:0!important}
+/* DESKTOP: the CTAs share the headline's row instead of floating above it, so the card reads as one line
+   of content rather than two things pinned to opposite corners.
+   Guarded to >880px because the phone hero is the same .lm markup and keeps its own stacked layout.
+   flex-wrap rather than a viewport breakpoint: the hero is one of two columns, so its width tracks the
+   window rather than any round number -- measured 818px at a 1920 viewport (CTAs fit beside a 420px
+   headline with room to spare) but 647px at 1440 (they do not). Wrapping lets the row decide for itself;
+   when it cannot fit, the CTAs drop to their own line, still flush right, and the headline keeps its size.
+   align-self:flex-start puts them level with the FIRST line of the headline, not its vertical middle. */
+@media(min-width:881px){
+/* align-content matters here: once a flex container can wrap, its single line is STRETCHED to the full
+   height by default, so align-self:flex-start on the CTAs pinned them to the top of the card rather than
+   to the top of the headline -- which is exactly the stranded-in-a-corner look this is meant to end.
+   Centring the line collapses it to its content, and flex-start then means the headline's first line. */
+.lumos-promo.lm-on .lm-c{flex-wrap:wrap;column-gap:24px;row-gap:12px;align-content:center}
+.lumos-promo.lm-on .lm-h{flex:0 0 auto}
+.lumos-promo.lm-on .lx-dctas{position:static!important;top:auto;right:auto;order:9;margin-left:auto!important;align-self:flex-start}
+/* the mark and the second line carry the weight; line one stays as it was */
+.lumos-promo.lm-on .lx-heroico{width:64px;height:64px}
+.lumos-promo.lm-on .lm-h .lx-h1{display:block}
+.lumos-promo.lm-on .lm-h .lx-h2{display:block;font-size:48px;line-height:1.02;letter-spacing:-.022em}
+}
+.lx-dctas .dex-hero-btn.primary{order:1}   /* the design ships the ghost first; Launch Token leads here */
+.lx-dctas .dex-hero-btn.ghost{order:2}
+.lx-dctas .dex-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:7px;height:38px;padding:0 15px!important;border-radius:10px;font-weight:700;font-size:13px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;margin:0!important;flex:0 0 auto}
+.lx-dctas .dex-hero-btn svg{width:15px;height:15px;flex:0 0 auto}
+.lx-dctas .dex-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}
+.lx-dctas .dex-hero-btn.primary:hover{text-decoration:underline}
+/* superseded by the rule above; kept so the original declaration is still visible in context */
+.lx-dctas .dex-hero-btn.lx-was-primary{background:linear-gradient(180deg,#ff8a4c,var(--accent,#ea6a2c))!important;color:#fff!important;box-shadow:0 10px 22px -12px rgba(234,106,44,.95),inset 0 1px 0 rgba(255,255,255,.30)}
+.lx-dctas .dex-hero-btn.ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-size:0!important;gap:0!important;color:var(--text-muted,#75757f)!important}
+.lx-dctas .dex-hero-btn.ghost svg{width:17px!important;height:17px!important}
+.lx-dctas .dex-hero-btn.lx-was-ghost{background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:13px;color:rgba(255,255,255,.82)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost{color:#33333d!important}
+/* the header row is empty once the heading is hidden and the buttons have moved out */
+.dex-hero:has(> .dex-hero-l.lx-sronly){margin:0!important;padding:0!important;min-height:0!important;display:block!important}
+
+/* ===== MOBILE HERO =====
+   The mobile page ships a different component: a 4-slide auto-rotating .lumos-promo-slides carousel, with
+   none of the desktop hero's CSS -- no #lx-livemarket block, so .lm, .lm-h, .lm-sub and .lm-cta have no
+   base rules there at all. Everything the mobile hero needs is therefore declared here in full rather than
+   as overrides, scoped to .lx-mobhero so desktop cannot be touched.
+   applyMobileHero() lifts the DEX slide's own copy into the desktop structure, so the headline stays
+   correct per chain, and hides the carousel. */
+/* A flat gradient IMAGE, and no animation at all. The card used to run the Pools cosmic layer -- three
+   drifting nebulae, a twinkling starfield, a floating constellation and four rising particles, eight
+   simultaneous keyframe animations on a phone. applyCosmic() now skips this card and removes the layer if
+   an earlier pass built one, so the elements are gone rather than merely hidden.
+   The art is two authored SVGs under /assets/hero (about 1.3 KB each, pure gradients, no filters), one per
+   theme, and both are NEUTRAL -- stops taken from the site's own grey ramp, depth from luminance alone, no
+   hue at all. The card is a shade of the page rather than a colour on it. Everything else on the card
+   follows: border, price pill, stat strip and the secondary button are all neutral too. The only brand
+   colour left inside the hero is the primary button and the accent word in the headline.
+   The flat colour behind the image is the art's own mid-tone, so a slow image load shows no white flash. */
+.lumos-promo.lx-mobhero{overflow:hidden;border:1px solid rgba(255,255,255,.10);background:#130c07 url(/assets/hero/trade-hero-dark.svg?v=39868533) center/cover no-repeat}
+.lx-mobhero .lx-cosmic{display:none!important}     /* belt and braces if a stale layer ever survives */
+/* the two page CTAs, moved inside the card: Launch Token leads, How it works sits beside it */
+/* Copy, then the stat band. The actions are no longer on the card -- they sit in the All Trading Pairs
+   heading. Order is set here because the blocks are appended by different functions. */
+.lx-mobhero .lm-c{order:1}
+.lx-mobhero .lx-dxstats{order:2!important;margin-top:0!important}
+/* the CTA row, now in the section heading: title left, actions right, wrapping onto a second line rather
+   than overflowing when a narrow screen cannot seat all three */
+.mdx-section-head:has(.lx-ctas){display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.lx-ctas{display:flex!important;align-items:center;gap:7px;margin:0 0 0 auto!important;padding:0!important;flex:0 0 auto}
+/* the strip is no longer the last thing on the card, so it closes with a rule as well as opening with one */
+
+/* visually hidden, still in the document outline and the accessibility tree */
+.lx-sronly{position:absolute!important;width:1px!important;height:1px!important;margin:-1px!important;padding:0!important;overflow:hidden!important;clip:rect(0 0 0 0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
+/* Sized so the pair of them seats beside the 121px heading inside a 343px row at 375px. It was 3px over
+   and wrapped to a second line; the group is 197px now against 212px of space. Narrower phones still wrap
+   rather than overflow -- that is what the flex-wrap on the head is for. */
+.lx-ctas .mdx-hero-btn{display:inline-flex!important;align-items:center;justify-content:center;gap:5px;height:31px;padding:0 8px!important;border-radius:9px;font-weight:700;font-size:10.5px;line-height:1;text-decoration:none;white-space:nowrap;border:1px solid transparent;width:auto!important;margin:0!important;flex:0 0 auto}
+.lx-ctas .mdx-hero-btn svg{width:11px;height:11px;flex:0 0 auto}
+/* Launch Token is a TEXT LINK, the same as desktop -- it was the only place on the site where this
+   control rendered as a filled button, and only on the phone. */
+.lx-ctas .mdx-hero-btn.primary{background:none!important;color:var(--accent,#ea6a2c)!important;
+  box-shadow:none!important;border:0!important;height:auto!important;padding:0!important;font-weight:700}
+/* and the ghost half goes here too, for the reason it went on desktop: it explains the launchpad, which
+   is a page away from a table of trading pairs. */
+.lx-ctas .mdx-hero-btn.ghost{display:none!important}
+/* the design ships these as flex children that grow; a link must be its own width, not half the row */
+.lx-ctas .mdx-hero-btn.ghost{flex:0 0 auto;justify-content:flex-start!important;background:none!important;border:0!important;box-shadow:none!important;height:auto!important;padding:0!important;font-weight:600;font-size:10.5px;color:var(--text-muted,#b8b8c2)!important;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px;text-decoration-color:currentColor}
+.lx-ctas .mdx-hero-btn.ghost svg{width:10px;height:10px;opacity:.75}
+/* ---- light theme: the same card, warmed rather than darkened ---- */
+html[data-theme="light"] .lumos-promo.lx-mobhero{border-color:rgba(16,16,22,.10);background:#fff1e6 url(/assets/hero/trade-hero-light.svg?v=24b9c9d4) center/cover no-repeat}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h{color:#0e0e10!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h em{color:#c2551d!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-sub{color:rgba(38,38,48,.75)!important}
+html[data-theme="light"] .lx-ctas .mdx-hero-btn.ghost{color:#33333d!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{background:rgba(255,255,255,.78)!important;border-color:rgba(16,16,22,.12)!important;box-shadow:0 10px 24px -14px rgba(16,16,22,.30)!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p1{color:rgba(52,52,64,.72)!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip .p2 .lc-money{color:#0e0e10!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats{background:linear-gradient(180deg,rgba(255,255,255,.34),rgba(255,255,255,.70));border-top-color:rgba(16,16,22,.12)}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v{color:#0e0e10!important}
+html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l{color:rgba(52,52,64,.72)!important}
+html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,255,.95)}
+.lx-mobhero .lumos-promo-slides,.lx-mobhero .lumos-promo-dots{display:none!important}
+.lx-mobhero .lm{position:relative;z-index:2;width:100%;display:flex;flex-direction:column;min-height:260px}
+.lx-mobhero .lm-c{position:relative;z-index:3;display:flex;flex-direction:column;align-items:flex-start;padding:20px 18px 18px;flex:1 1 auto}
+.lx-mobhero .lm-h{margin:0;font-weight:800;letter-spacing:-.02em}
+.lx-mobhero .lm-h em{font-style:normal;color:var(--accent,#ff7a3c)}
+.lx-mobhero .lm-sub{margin:9px 0 0}
+.lx-mobhero .lm-cta{display:inline-flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px;color:#fff;text-decoration:none;background:linear-gradient(180deg,var(--accent-2,#ff894c),var(--accent));padding:10px 17px;border-radius:11px;box-shadow:0 10px 24px -10px var(--accent-soft),inset 0 1px 0 rgba(255,255,255,.28)}
+.lx-mobhero .lm-cta svg{width:16px;height:16px}
+/* Narrow (this also covers the MOBILE page, whose hero is the .lumos-promo-slides carousel -- it has no
+   .lm and no .lm-chip, so the strip lands as the card's last child and there is no pill to place).
+   The strip folds to 2x2 and everything steps down a size: at 375px the four columns become ~145px, and at
+   the desktop sizes "USDC / XLM" plus its two 24px logos overran that by 4px. */
+@media(max-width:880px){
+.lumos-promo .lm-c{padding:18px 18px 16px!important;gap:12px;flex-direction:row;align-items:center}
+.lx-heroico{width:38px;height:38px}
+.lx-hline2{display:block}                 /* forces "on <Chain>." onto its own line on a phone */
+.lumos-promo .lm-h{max-width:100%!important;font-size:23px!important;line-height:1.14!important}
+.lumos-promo .lm-sub{font-size:13.5px!important;max-width:100%!important}
+.lumos-promo .lm-cta{margin-top:14px}
+.lumos-promo .lm-chip{position:static!important;margin:0 0 13px;align-self:flex-start;min-width:0}
+.lumos-promo .lx-dxstats{grid-template-columns:1fr 1fr;gap:11px 0;padding:11px 18px 12px}
+.lx-dxstat{padding-left:14px}
+.lx-dxstat:nth-child(3){padding-left:0;border-left:0}
+.lx-dxstat .v{font-size:19px;gap:7px}
+.lx-dxstat .l{font-size:9.5px}
+.lx-dxstat[data-k=top] .v{font-size:13.5px}
+.lx-dxpair span{width:21px;height:21px}
+.lx-dxpair .pb{margin-left:-8px}
+/* the mobile card carries its own 260px floor, which the carousel needed and this hero does not */
+.lumos-promo.lx-mobhero,.lx-mobhero .lm{min-height:0!important}
+/* first paint: the carousel is already hidden but .lm is not built yet, so hold the card's height for
+   that one frame rather than letting it collapse to nothing and snap open. */
+.lumos-promo.lx-mobhero:not(:has(.lm)){min-height:120px!important}   /* == the settled height; it was 169 from before the CTAs moved off the card, so the box opened tall and then shrank */
+}
+/* ===== PHONE: the hero becomes a wide banner, about half the height =====
+   At 375px the card was 348px tall against 343px of width -- square, and a third of the screen before a
+   single trading pair. This lays it out landscape: headline left with the live XLM price opposite it, the
+   button under them, and the four stats in ONE horizontal row rather than a 2x2 block.
+   Kept at its own 560px breakpoint so a narrowed desktop window keeps the roomier 2x2 treatment.
+   The price also moves to absolute top-right here. In flow it was a child of .lm, outside .lm-c's padding,
+   so it sat flush in the rounded corner and got clipped -- visible as a small empty blob. */
+@media(max-width:560px){
+.lumos-promo .lm-c{padding:13px 14px 12px!important}
+.lx-mobhero .lm-c{padding-bottom:13px!important}
+.lumos-promo .lm-h{font-size:18px!important;line-height:1.18!important;max-width:100%!important}
+.lumos-promo .lm-sub{display:none!important}          /* no room for it at half height; the headline carries the message */
+.lumos-promo .lm-cta{margin-top:11px;font-size:12.5px;padding:8px 14px;border-radius:9px}
+.lumos-promo .lm-cta svg{width:14px;height:14px}
+.lumos-promo .lm-chip{position:absolute!important;top:12px;right:13px;margin:0;padding:6px 10px!important;flex-direction:column;align-items:flex-end;gap:1px;border-radius:10px!important}
+.lumos-promo .lm-chip .p1{font-size:9px!important;letter-spacing:.1em}
+.lumos-promo .lm-chip .p2,.lumos-promo .lm-chip .p2 .lc-money{font-size:13px!important}
+.lumos-promo .lm-chip .p3{font-size:9.5px!important;margin-left:0}
+/* One row of four. The columns size to their CONTENT and the leftover space is spread between them --
+   proportional fr tracks cannot work here, because each column's width is set by a string whose length
+   nobody controls: "$129.2K" against "35", and "USDC / XLM" plus two logos against "LIQUIDITY". Measured
+   at 360px, fr tracks handed 78px to a column needing 87 and 93 to one needing 68. Auto tracks cannot
+   clip while the row as a whole fits, so the dividers give way to spacing. */
+.lumos-promo .lx-dxstats{grid-template-columns:repeat(4,auto);justify-content:space-between;gap:0;padding:9px 14px 10px}
+.lx-dxstat{padding-left:0;border-left:0;gap:3px}
+.lx-dxstat .v{font-size:16px;gap:6px}
+.lx-dxstat .l{font-size:8px;letter-spacing:.03em}
+.lx-dxstat[data-k=top] .v{font-size:10.5px}
+.lx-dxpair span{width:16px;height:16px;border-width:1.5px}
+.lx-dxpair .pb{margin-left:-6px}
+}
+/* Empty Gainers/Losers. Spans the grid so the message sits in the panel rather than in one cell. */
+.dex-mover-empty{grid-column:1/-1;padding:26px 16px;text-align:center;color:var(--text-muted);font-size:13.5px}
+/* items 16 + 18: New Mints and Market Movers are off the page. Movers restated the pairs table's own
+   sort over four of its rows; New Mints put three launchpad tokens above the index. The launch entry
+   point they carried is re-seated in the pairs heading by dropSections() -- see item 17. */
+.dex-mints-card,.dex-movers{display:none!important}
+/* item 17: the CTA pair, once re-seated, sits inline at the end of the pairs controls rather than being
+   absolutely placed in a card corner as it was inside the mints head. */
+/* The block that moved here carries both CTAs, and only the launch one belongs in this row -- the
+   "How it works?" ghost explains the launchpad, which is a page away from a table of trading pairs.
+   Hidden rather than removed: it is one node with the primary, and the delegate is bound to the pair. */
+.dex-mk-controls>.lx-dctas .dex-hero-btn.ghost{display:none!important}
+.dex-mk-controls>.lx-dctas{position:static!important;top:auto!important;right:auto!important;
+  order:-1;margin:0 4px 0 0!important;align-self:center}
+/* item 15: the placeholder was 191px of text in a 182px field with no padding, so it was clipped and
+   touched both edges. Shortened below; this gives what is left room to breathe. */
+.dex-mk-search input,input.lx-mkq{padding-left:10px!important;padding-right:10px!important}
+/* ---- Market Movers: symmetric body — price/vol (left) + Trades 24h (right), spark spans below ---- */
+.dex-mover-body{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.dex-mover-l{min-width:0}
+.dex-mover-r{text-align:right;flex:0 0 auto}
+.dex-mover-trades{font:800 18px/1.05 'Hanken Grotesk',sans-serif;color:var(--text)}
+.dex-mover-tlabel{font:600 9.5px/1.2 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft);margin-top:3px;white-space:nowrap}
+/* ---- All Trading Pairs: Trades (24h) column (header th inserted via JS) ---- */
+.th-trades{text-align:right!important}
+.dex-mk-trades-td{text-align:right}
+.dex-mk-trades{font-weight:700;white-space:nowrap}
+/* kill two stray tiny logos the site's [data-logo] applier paints onto non-logo elements:
+   (1) #dexMintTabs = an empty 6px leftover in the New Mints header (data-logo="APT");
+   (2) .dex-mover-pct = the % badge, which during LOAD (empty "\u2014") gets tagged data-logo=<ticker> and
+       painted with a tiny logo until the real % lands. Only suppress while it carries data-logo -> loaded pills untouched. */
+#dexMintTabs,.dex-mints-tabs,#mdxMintTabs,.mdx-mints-tabs{display:none!important}   /* same empty leftover on the mobile card */
+.dex-mover-pct[data-logo]{background-image:none!important;box-shadow:none!important}
+/* the avatar-painter sometimes injects a stray <svg> initials-avatar INTO our painter-proof icons (it broke the
+   LUMOS logo in All Trading Pairs). Our real logo lives in ::before -> hide any injected svg child so it can't cover it. */
+.dex-mint-ic[data-lxic]>svg,.dex-mover-ico[data-lxic]>svg,.dex-mk-pair-ic[data-lxic]>svg{display:none!important}
+/* #19 denomination switch. Sized off the search field it sits beside so the row keeps one baseline. */
+.lx-dnsw{display:inline-flex;flex:0 0 auto;align-items:center;gap:2px;padding:3px;border-radius:10px;
+  background:var(--surface-2);border:1px solid var(--border)}
+.lx-dnsw button{padding:5px 11px;border:0;border-radius:7px;background:transparent;color:var(--text-soft);
+  font-weight:800;font-size:12px;line-height:1;letter-spacing:.02em;cursor:pointer;transition:color .14s ease,background .14s ease}
+.lx-dnsw button:hover{color:var(--text)}
+.lx-dnsw button.on{background:var(--surface);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.18)}
+/* the row holding the search input is a flex line; the switch must not stretch with the input */
+.dex-mk-search{flex:1 1 auto;min-width:0}
+/* #34: Market Movers scrolls sideways instead of wrapping into rows.
+   Ten cards in a wrapping grid is four rows of tall cards -- the section stops being a glance and
+   becomes a page of its own. One row that scrolls keeps the whole section the height of a single card,
+   and the cut-off card at the right edge is what tells the reader there is more without a label saying
+   so. Scroll snapping so it comes to rest on a card rather than mid-way through one. */
+.dex-mover-grid{display:flex!important;flex-wrap:nowrap!important;gap:12px;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding-bottom:6px;scrollbar-width:thin}
+.dex-mover-grid>.dex-mover-card{flex:0 0 272px;scroll-snap-align:start;min-width:0}
+.dex-mover-grid::-webkit-scrollbar{height:6px}
+.dex-mover-grid::-webkit-scrollbar-thumb{background:var(--border,#ececef);border-radius:99px}
+.dex-mover-grid::-webkit-scrollbar-track{background:transparent}
+@media (max-width:760px){.dex-mover-grid>.dex-mover-card{flex:0 0 232px}}
+@media (prefers-reduced-motion:reduce){.dex-mover-grid{scroll-behavior:auto}}
+/* New Mints: 4 symmetric stat columns (Price / Market cap / 24h Volume / 24h Trades), right-aligned */
+.dex-mint-stats{display:flex;gap:22px;flex:0 0 auto;margin-left:auto;align-items:flex-start}
+.dex-mint-stat{display:flex;flex-direction:column;align-items:flex-end;min-width:60px}
+.dex-mint-stat .l{font:600 10px/1 'JetBrains Mono',monospace;letter-spacing:.05em;text-transform:uppercase;color:var(--text-soft,#6f6f79);margin-bottom:6px}
+/* #27: the sub-line under a mint was set in Hanken Grotesk 13/400 while the identical line in All
+   Trading Pairs -- same position, same colour, same job -- is JetBrains Mono 12.5/500. Side by side the
+   two cards read as belonging to different products. The pairs table is the one to match, since it is
+   the larger surface and the rest of this card's small print is already monospace. */
+.dex-mint-sub{font-family:'JetBrains Mono',monospace;font-size:12.5px;font-weight:500}
+.dex-mint-stat .v{font-weight:700;font-size:14px;color:var(--text,#0e0e10);white-space:nowrap;line-height:1.25;text-align:right}
+/* the dollar figure is a second line under the XLM price, not a continuation of it */
+.dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
+/* Price carries the longest string in the row, so it gets room; the counts stay narrow */
+.dex-mint-stat:first-child{min-width:104px}
 </style><script id="lx-devesc">(function(){try{var m=/[?&]lxdev=(d|m|0)(?:&|$)/.exec(location.search||"");if(!m)return;if(m[1]==="0")document.cookie="lxdev=;path=/;max-age=0;samesite=lax";else document.cookie="lxdev="+m[1]+";path=/;max-age=31536000;samesite=lax";var q=(location.search||"").replace(/([?&])lxdev=(?:d|m|0)(&|$)/,"$1").replace(/[?&]$/,"");location.replace(location.pathname+(q&&q!=="?"?q:"")+location.hash);}catch(_){}})();</script><script id="lx-devswap">(function(){try{if(/(?:^|; )lxdev=/.test(document.cookie||""))return;var coarse=false,hover=true;try{coarse=window.matchMedia("(pointer:coarse)").matches;}catch(_){}try{hover=window.matchMedia("(hover:hover)").matches;}catch(_){}if(!coarse||hover)return;if(!(navigator.maxTouchPoints>1))return;var w=(window.screen&&window.screen.width)||9999;if(w>1280)return;document.cookie="lxdev=m;path=/;max-age=31536000;samesite=lax";location.reload();}catch(_){}})();</script><style id="lx-livemarket">/*lxts:1.1*/
 .lumos-promo.lm-on{background:radial-gradient(120% 95% at 88% 6%,var(--accent-pale),transparent 52%),var(--surface) !important;border:1px solid var(--border) !important;min-height:300px;padding:0 !important}
 .lm{position:relative;width:100%;height:100%;min-height:300px;border-radius:15px;overflow:hidden}
@@ -3502,12 +3502,12 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
       
       
       <div class="user-chip">
-        <div class="avatar">RR</div>
-        <div class="name">Raza Rizvi</div>
+        <div class="avatar"></div>
+        <div class="name"></div>
       </div>
     </header>
 
-    <main class="page"><section class="lx-lp"><div class="lx-lp-head"><h2 class="lx-lp-h">Trade</h2><p class="lx-lp-sub">Swap assets and place limit orders on-chain. Choose a network to see its markets.</p></div><div class="lx-lp-grid"><a class="lx-lp-card" href="/trade/stellar" data-lxnet="stellar"><span class="lx-lp-ico" data-lxc="" data-logoed="1" style="background-image:url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+')"><svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg></span><span class="lx-lp-main"><span class="lx-lp-net">Stellar</span><span class="lx-lp-meta">Swaps and limit orders</span></span><span class="lx-lp-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a><a class="lx-lp-card" href="/trade/xrpl" data-lxnet="xrpl"><span class="lx-lp-ico" data-lxc="" data-logoed="1" style="background-image:url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzIzMjkyRiIvPjxwYXRoIGQ9Ik0yMy4wNyA4aDIuODlsLTYuMDE1IDUuOTU3YTUuNjIxIDUuNjIxIDAgMDEtNy44OSAwTDYuMDM1IDhIOC45M2w0LjU3IDQuNTIzYTMuNTU2IDMuNTU2IDAgMDA0Ljk5NiAwTDIzLjA3IDh6TTguODk1IDI0LjU2M0g2bDYuMDU1LTUuOTkzYTUuNjIxIDUuNjIxIDAgMDE3Ljg5IDBMMjYgMjQuNTYyaC0yLjg5NUwxOC41IDIwYTMuNTU2IDMuNTU2IDAgMDAtNC45OTYgMGwtNC42MSA0LjU2M3oiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+')"><svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg></span><span class="lx-lp-main"><span class="lx-lp-net">XRP Ledger</span><span class="lx-lp-meta">Live</span></span><span class="lx-lp-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a></div></section>
+    <main class="page"><section class="lx-lp"><div class="lx-lp-head"><h2 class="lx-lp-h">Trade</h2><p class="lx-lp-sub">Swap assets and place limit orders on-chain. Choose a network to see its markets.</p></div><div class="lx-lp-grid"><a class="lx-lp-card" href="/trade/stellar" data-lxnet="stellar"><span class="lx-lp-ico" data-lxc="" data-logoed="1" style="background-image:url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzAwMCIvPjxwYXRoIGQ9Ik0yMy4xMyA5LjI5MmwtMi40IDEuMjI0LTExLjU5OCA1LjkwN0E2LjkwOSA2LjkwOSAwIDAxMTkuMzUgOS40OThsMS4zNzQtLjcuMjA1LS4xMDVhOC40MzkgOC40MzkgMCAwMC0xMy4zNzEgNy40NzIgMS41MzUgMS41MzUgMCAwMS0uODM0IDEuNDg0bC0uNzI1LjM3djEuNzI0bDIuMTM0LTEuMDg4LjY5MS0uMzUzLjY4MS0uMzQ3IDEyLjIyNi02LjIzIDEuMzc0LS42OTkgMi44NC0xLjQ0N1Y3Ljg1NkwyMy4xMyA5LjI5MnptMi44MTYgMi4wMTJMMTAuMjAxIDE5LjMybC0xLjM3NC43TDYgMjEuNDYzdjEuNzIzbDIuODA4LTEuNDMgMi40MDEtMS4yMjQgMTEuNjEtNS45MTZhNi45MDkgNi45MDkgMCAwMS0xMC4yMjkgNi45M2wtLjA4NS4wNDUtMS40OS43NmE4LjQzOSA4LjQzOSAwIDAwMTMuMzcyLTcuNDc1IDEuNTM2IDEuNTM2IDAgMDEuODMzLTEuNDgzbC43MjYtLjM3di0xLjcxOHoiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+')"><svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg></span><span class="lx-lp-main"><span class="lx-lp-net">Stellar</span><span class="lx-lp-meta">Swaps and limit orders</span></span><span class="lx-lp-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a><a class="lx-lp-card" href="/trade/xrpl" data-lxnet="xrpl"><span class="lx-lp-ico" data-lxc="" data-logoed="1" style="background-image:url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSIxNiIgZmlsbD0iIzIzMjkyRiIvPjxwYXRoIGQ9Ik0yMy4wNyA4aDIuODlsLTYuMDE1IDUuOTU3YTUuNjIxIDUuNjIxIDAgMDEtNy44OSAwTDYuMDM1IDhIOC45M2w0LjU3IDQuNTIzYTMuNTU2IDMuNTU2IDAgMDA0Ljk5NiAwTDIzLjA3IDh6TTguODk1IDI0LjU2M0g2bDYuMDU1LTUuOTkzYTUuNjIxIDUuNjIxIDAgMDE3Ljg5IDBMMjYgMjQuNTYyaC0yLjg5NUwxOC41IDIwYTMuNTU2IDMuNTU2IDAgMDAtNC45OTYgMGwtNC42MSA0LjU2M3oiIGZpbGw9IiNGRkYiLz48L2c+PC9zdmc+')"><svg width="0" height="0" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg></span><span class="lx-lp-main"><span class="lx-lp-net">XRP Ledger</span><span class="lx-lp-meta">Swaps and limit orders</span></span><span class="lx-lp-go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg></span></a></div></section>
 
   <!-- Crumb -->
   <div class="crumb"><a href="/dashboard" data-lxback="1" data-lxdash="1"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg> Back to dashboard</a></div>
@@ -3642,7 +3642,11 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
         </div></div>
         <div class="ft-col">
           <h4>Menu</h4>
-          <a href="#">Home</a>
+          <a href="/">Home</a>
+          <a href="/trade">Trade</a>
+          <a href="/pools">Pools</a>
+          <a href="/bridge">Cross-Chain</a>
+          <a href="/launchpad">Launchpad</a>
           <a href="/blog">Blogs</a>
           <a href="/about">About</a>
         </div>
@@ -4059,35 +4063,10 @@ window.addEventListener("storage",ping);
 
 
 
-<script id="lx-searchassets" src="/assets/js/lx-8b66c87c3358.js" defer></script><script id="lx-chipcopy" src="/assets/js/lx-bf36fcf64e5c.js" defer></script><script id="lx-walletlogo" src="/assets/js/lx-8ce0a4150cc5.js" defer></script><script id="lx-pv" src="/assets/js/lx-4175581e70df.js" defer></script><script id="lx-connectgate">(function(){
-  if(window.__lxConnectGate) return; window.__lxConnectGate=1;
-  try{
-    // The same flag the auth gate treats as "connected" (lumoscore-authgate-redirect). NOT a
-    // G... address test: these pages are built for more than one network and an XRPL address
-    // would fail a Stellar-shaped check, silently gating a connected wallet.
-    function connected(){
-      try{ return !!(localStorage.getItem("lumos.wallet")||"").trim(); }catch(e){ return false; }
-    }
-    function chain(){
-      try{ return (window.lxGetChain&&window.lxGetChain())||"stellar"; }catch(e){ return "stellar"; }
-    }
-    var SEL="#openCreatePool,.lx-cplink,a[href='/launchpad'],a[href^='/launchpad/'],a[href^='/launchpad?']";
-    window.addEventListener("click",function(e){
-      var t=e.target; if(!t||!t.closest) return;
-      if(!t.closest(SEL)) return;
-      if(connected()) return;                       // let the design do whatever it normally does
-      e.preventDefault(); e.stopImmediatePropagation();
-      // The network chooser first where the page has one -- it is the step that decides which
-      // wallet list to show, and it is what the rest of the site opens from a signed-out action.
-      // location.href is handed over as the return target, so connecting resumes the click.
-      try{
-        if(window.lxChooseNetwork) window.lxChooseNetwork(location.href);
-        else if(window.lxwOpenWallet) window.lxwOpenWallet(chain(),location.href);
-      }catch(_){}
-    },true);
-  }catch(e){}
-})();</script><script id="lx-feerate" src="/assets/js/lx-3ee51ade2f75.js" defer></script><script id="lx-realconnect" src="/assets/js/lx-da30e13f1c23.js" defer></script><script id="lx-whead" src="/assets/js/lx-7d9cf248f5b3.js" defer></script><script id="lx-mc" src="/assets/js/lx-fe126e1f4088.js" defer></script><script id="lx-nofollow" src="/assets/js/lx-8ed1bca29860.js" defer></script>
+<script id="lx-searchassets" src="/assets/js/lx-8b66c87c3358.js" defer></script><script id="lx-chipcopy" src="/assets/js/lx-bf36fcf64e5c.js" defer></script><script id="lx-walletlogo" src="/assets/js/lx-8ce0a4150cc5.js" defer></script><script id="lx-pv" src="/assets/js/lx-4175581e70df.js" defer></script><script id="lx-feerate" src="/assets/js/lx-3ee51ade2f75.js" defer></script><script id="lx-realconnect" src="/assets/js/lx-da30e13f1c23.js" defer></script><script id="lx-whead" src="/assets/js/lx-7d9cf248f5b3.js" defer></script><script id="lx-nofollow" src="/assets/js/lx-8ed1bca29860.js" defer></script>
 
-<script id="lx-dexmain" src="/assets/js/lx-3260da37546f.js" defer></script>
-<script id="lx-hiw" src="/assets/js/lx-4a20ba50da13.js" defer></script><script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;var ROUTE={"home":"/","terms":"/terms","privacy":"/privacy"};function fix(){var scope=document.querySelectorAll("footer a[href=\u0022#\u0022], .footer a[href=\u0022#\u0022], [class*=footer] a[href=\u0022#\u0022]");[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}a.style.cursor="default";a.addEventListener("click",function(e){e.preventDefault();});});}if(document.readyState!=="loading")fix();else document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1200);})();</script><script id="lx-ammdata" src="/assets/js/lx-75fac744a4e5.js" defer></script><script src="/assets/js/lx-da73738cab33.js" defer></script></body>
+
+<script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;var ROUTE={"home":"/","terms":"/terms","privacy":"/privacy"};function fix(){var scope=document.querySelectorAll("footer a[href=\u0022#\u0022], .footer a[href=\u0022#\u0022], [class*=footer] a[href=\u0022#\u0022]");[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}a.style.cursor="default";a.addEventListener("click",function(e){e.preventDefault();});});}if(document.readyState!=="loading")fix();else document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1200);})();</script><script id="lx-ammdata" src="/assets/js/lx-75fac744a4e5.js" defer></script><script id="lx-mc" src="/assets/js/lx-7b1f46c0be6c.js" defer></script><script id="lx-connectgate" src="/assets/js/lx-8297cec8744f.js" defer></script>
+<script id="lx-dexmain" src="/assets/js/lx-7a6af5502d0c.js" defer></script>
+<script id="lx-hiw" src="/assets/js/lx-4a20ba50da13.js" defer></script><script src="/assets/js/lx-da73738cab33.js" defer></script></body>
 </html>

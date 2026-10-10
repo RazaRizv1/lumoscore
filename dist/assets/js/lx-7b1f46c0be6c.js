@@ -42,9 +42,17 @@ var SOON={};
 // The chain THIS build actually serves, and therefore the only one whose wallet list it can drive.
 // Everything else is a hand-off to the other build.
 var LOCAL_CHAIN='stellar';
-// THE AUTHGATED SECTIONS ARE IN NEITHER TABLE — dashboard, wallet and launchpad. They are ONE url each
-// now, served to whichever chain the reader is connected to, so "switch chain" there is not a
+// THE AUTHGATED SECTIONS ARE IN NEITHER TABLE — dashboard and wallet. They are ONE url each,
+// served to whichever chain the reader is connected to, so "switch chain" there is not a
 // navigation to a different path and cannot be expressed here.
+//
+// THE LAUNCHPAD IS NOW IN BOTH TABLES (2026-10-10). It used to belong to the group above — one shared
+// url, chain chosen by the lx_chain cookie — and it left for the reason the cookie exists at all: that
+// arrangement suits a PRIVATE page, and the launchpad is now public, indexed, and fronted by a network
+// chooser at the bare /launchpad. A url cannot be both the chooser and one of the choices, so with
+// lx_chain=xrpl the middleware served the XRPL file, which has no chooser in it, and the hub became
+// unreachable for anyone who had ever picked XRPL. It now has a real url per chain like every other
+// section, so switching chain on it is an ordinary navigation and belongs here.
 //
 // Nor should it be. Those pages show the connected wallet's own data, and you cannot be on the other
 // chain's dashboard without a wallet on that chain — re-serving it would only put the reader in front
@@ -52,9 +60,11 @@ var LOCAL_CHAIN='stellar';
 // connect, which is the step they actually need. chainFromPath benefits from the same omission: a bare
 // /dashboard genuinely does not name a chain any more, so it correctly defers to the saved one.
 var TO_XRPL={trade:'/trade/xrpl',pools:'/pools/xrpl',bridge:'/bridge/xrpl',rewards:'/rewards/xrpl',
-  lumos:'/lumos/xrpl',mcp:'/mcp/xrpl','list-your-token':'/list-your-token/xrpl'};
+  lumos:'/lumos/xrpl',mcp:'/mcp/xrpl','list-your-token':'/list-your-token/xrpl',
+  launchpad:'/launchpad/xrpl'};
 var TO_STELLAR={trade:'/trade/stellar',pools:'/pools/stellar',bridge:'/bridge/stellar',
-  rewards:'/rewards/stellar',lumos:'/lumos/stellar',mcp:'/mcp','list-your-token':'/list-your-token'};
+  rewards:'/rewards/stellar',lumos:'/lumos/stellar',mcp:'/mcp','list-your-token':'/list-your-token',
+  launchpad:'/launchpad/stellar'};
 // THE FALLBACK MUST BE A PUBLIC PAGE, and that is the whole reason it is not the dashboard.
 //
 // This is the branch the LANDING PAGE takes. "Choose a network" calls applyChain(net) from "/", which

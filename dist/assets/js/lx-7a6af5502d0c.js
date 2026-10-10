@@ -326,7 +326,25 @@
     var cached=nativeCached();
     if(cached){
       var addC=[];
-      cached.forEach(function(x){ var a=nativeMake(x.c,x.i,x.l,x.d,x.t); if(a)addC.push(a); });
+      // THE SAME PROVENANCE GATE AS THE FETCH PATH, and leaving it off here is why the first version of
+      // that gate did nothing for the person who reported the bug.
+      //
+      // This roster is written to localStorage and replayed on the next visit, and this branch RETURNS
+      // -- the network path below never runs on a warm load. So a forged entry that got in once was
+      // pinned in that reader's own browser and survived every deploy: I saw a clean list in a fresh
+      // profile and RAZA kept seeing yUSDC in his, which is exactly the shape of a cache the fix did
+      // not reach. Gating only the fetch fixed the source and left every existing copy alone.
+      //
+      // Re-checked on replay rather than trusted because it was checked once: the manifest is the
+      // authority, and an entry that is no longer in it should not come back from a cache either.
+      // LUMOS is unaffected -- it is pinned above by code, not created through nativeMake.
+      // Rejects only when the manifest is ACTUALLY LOADED. Refusing everything while it is still in
+      // flight would blank the tab for a beat and then refill it, which is the flash this codebase
+      // keeps re-learning; nativePurge() below removes anything unvouched the moment it lands.
+      cached.forEach(function(x){
+        if(_man&&!_man[x.c+"-"+x.i])return;
+        var a=nativeMake(x.c,x.i,x.l,x.d,x.t); if(a)addC.push(a);
+      });
       // Seed here as well. This path RETURNS, so seeding only in the fetch branch below meant a visitor
       // with a warm roster never saw an asset we had just registered -- FED, NEIRO and HULK were missing
       // for exactly that reason while RICHARD, PUMP, PEPE and ZBS happened to arrive via the late
@@ -341,6 +359,28 @@
         if(String(x.domain||"").toLowerCase()!=="lumoscore.com")return;
         var q0=String(x.asset||"").split("-"), code=q0[0], iss=q0[1];
         if(!code||!iss||code.length>12||iss.length!==56)return;
+        // A DOMAIN CLAIM IS NOT PROVENANCE, and this tab is headed "LumosCore Mints".
+        //
+        // RAZA 2026-10-11: "please remove yusdc from lumoscore mints". yUSDC is not our mint -- it is
+        // Ultra Capital's ticker -- and it appeared here because its issuer sets
+        // home_domain = lumoscore.com. The line above is the only check this path had, and
+        // home_domain is a self-declared field: anyone can point it at us and land in a list that
+        // tells readers we issued their token. That is the exact forgery
+        // functions/.well-known/stellar.toml.js refuses, with its own note saying "Declaring
+        // home_domain=lumoscore.com is not sufficient on its own".
+        //
+        // The manifest IS our assertion -- we write it, it is not fetched from the claimant -- so
+        // membership in it is the check this list was missing.
+        //
+        // NOTHING GENUINE IS LOST BY THIS. Measured on the live build before writing it: twelve
+        // assets currently claim our domain here and ALL TWELVE are already in the manifest, so the
+        // gate changes today's list by exactly nothing. And it cannot hide a mint even when the
+        // manifest lands after this response: addManifestNatives() adds every manifest entry on its
+        // own, and loadManifest() backfills the late case explicitly.
+        //
+        // An asset we do not claim can still be ENRICHED below if another path already holds it;
+        // what it cannot do is get itself CREATED here on its own say-so.
+        if(!(_man&&_man[code+"-"+iss])&&!byId[code+"|"+iss])return;
         // Retired and mistyped tickers linger in the index as husks: zero supply, no trustlines, no toml.
         // They cannot be traded, and padding the tab with dead rows buries the real ones.
         var tl=x.trustlines; tl=(tl&&typeof tl==="object"&&tl.length)?(+tl[0]||0):(+tl||0);
@@ -695,6 +735,13 @@
       // The manifest can land after the roster. Backfill then, or an asset only we know about would wait
       // for the next cold load to appear.
       if(nativeState){ var late=[]; addManifestNatives(late); if(late.length)nativePrice(late); }
+      // AND DROP ANYTHING THE MANIFEST DOES NOT VOUCH FOR. The roster may have been replayed from
+      // localStorage before this landed, and that cache can hold entries added under the old rule --
+      // when a self-declared home_domain was the only check. Purging here is what finally clears a
+      // forgery out of a browser that already has one: the gates stop it arriving, this removes the
+      // copy already sitting there. Without it, the reader who reported yUSDC would keep seeing it
+      // however many times we deploy.
+      nativePurge();
       try{ paintIcons(document); }catch(_e){}
       touch();                                                  // rows already drawn -> repaint with the real icons
     }).catch(function(){});
@@ -719,6 +766,26 @@
   //
   // The manifest knows CODE and ISSUER for everything we host, so anything missing from the roster is
   // added from there. Discovery only -- price, supply and holders still come from the ledger.
+  // Remove every native row the manifest does not vouch for, and rewrite the saved cache so the next
+  // load starts clean. LUMOS is exempt: it is the platform's own token, pinned in by code because its
+  // issuer still declares the pre-rename lumosdao.io, so it is in no manifest and never should be.
+  function nativePurge(){
+    if(!_man)return;
+    var drop=[];
+    for(var i=NATIVE.length-1;i>=0;i--){
+      var a=NATIVE[i];
+      if(!a||a.cat!=="native")continue;
+      if(a.code==="LUMOS")continue;
+      if(_man[a.code+"-"+a.issuer])continue;
+      drop.push(a.code);
+      NATIVE.splice(i,1);
+      try{ delete byId[a.code+"|"+a.issuer]; if(byCode[a.tkr]===a)delete byCode[a.tkr]; }catch(_e){}
+    }
+    if(!drop.length)return;
+    try{ nativeSave(NATIVE.filter(function(x){ return x.cat==="native"; })); }catch(_e){}
+    touch();
+  }
+
   function addManifestNatives(add){
     if(!_man)return;
     for(var k in _man){ if(!Object.prototype.hasOwnProperty.call(_man,k))continue;
