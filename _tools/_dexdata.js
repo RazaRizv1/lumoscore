@@ -765,6 +765,28 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
         if(String(x.domain||"").toLowerCase()!=="lumoscore.com")return;
         var q0=String(x.asset||"").split("-"), code=q0[0], iss=q0[1];
         if(!code||!iss||code.length>12||iss.length!==56)return;
+        // A DOMAIN CLAIM IS NOT PROVENANCE, and this tab is headed "LumosCore Mints".
+        //
+        // RAZA 2026-10-11: "please remove yusdc from lumoscore mints". yUSDC is not our mint -- it is
+        // Ultra Capital's ticker -- and it appeared here because its issuer sets
+        // home_domain = lumoscore.com. The line above is the only check this path had, and
+        // home_domain is a self-declared field: anyone can point it at us and land in a list that
+        // tells readers we issued their token. That is the exact forgery
+        // functions/.well-known/stellar.toml.js refuses, with its own note saying "Declaring
+        // home_domain=lumoscore.com is not sufficient on its own".
+        //
+        // The manifest IS our assertion -- we write it, it is not fetched from the claimant -- so
+        // membership in it is the check this list was missing.
+        //
+        // NOTHING GENUINE IS LOST BY THIS. Measured on the live build before writing it: twelve
+        // assets currently claim our domain here and ALL TWELVE are already in the manifest, so the
+        // gate changes today's list by exactly nothing. And it cannot hide a mint even when the
+        // manifest lands after this response: addManifestNatives() adds every manifest entry on its
+        // own, and loadManifest() backfills the late case explicitly.
+        //
+        // An asset we do not claim can still be ENRICHED below if another path already holds it;
+        // what it cannot do is get itself CREATED here on its own say-so.
+        if(!(_man&&_man[code+"-"+iss])&&!byId[code+"|"+iss])return;
         // Retired and mistyped tickers linger in the index as husks: zero supply, no trustlines, no toml.
         // They cannot be traded, and padding the tab with dead rows buries the real ones.
         var tl=x.trustlines; tl=(tl&&typeof tl==="object"&&tl.length)?(+tl[0]||0):(+tl||0);

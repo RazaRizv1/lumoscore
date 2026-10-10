@@ -317,6 +317,47 @@ async function candidates() {
   return out;
 }
 
+// WHAT THE TRADE-ASSET PAGE READS FOR AN ASSET WE PUBLISH, so our own copy reaches our own page.
+//
+// RAZA 2026-10-11: "fix lumos trade asset description according to toml."
+//
+// The page's description comes from assetFacts(), which asks stellar.expert, which resolves the
+// asset's home_domain and reads the toml it finds there. For LUMOS that is lumosdao.io -- the issuer
+// declares it on chain -- and that file still carries the pre-2026-10-10 wording. So the page was
+// faithfully showing the authoritative document; it was just not OUR document.
+//
+// This does not change which document is authoritative, and it must not: SEP-1 says the home_domain
+// copy is the one wallets read, and the two should be made to agree at the source. What it changes is
+// narrower and defensible -- on OUR OWN pages, for the assets OUR OWN toml describes, we prefer what
+// we publish over a third party's cached copy of someone else's file. Same thing xrplAssetMeta() does
+// for the XRP Ledger, so the two chains behave alike.
+//
+// SCOPE IS DELIBERATELY SMALL: the platform assets named in PLATFORM, and the mints in our icon
+// manifest -- which we write, so it cannot be forged by a token pointing home_domain at us. An asset
+// we do not publish is untouched and keeps whatever stellar.expert knows.
+export async function stellarAssetMeta(request, assetId) {
+  try {
+    const id = String(assetId || '');
+    const cut = id.indexOf('-');
+    if (cut < 1) return null;
+    const code = id.slice(0, cut), issuer = id.slice(cut + 1);
+
+    for (const p of PLATFORM) {
+      if (p.code === code && p.issuer === issuer) {
+        return { name: p.name || '', desc: p.desc || '', image: p.image || '' };
+      }
+    }
+
+    // Our own register of mints. Keyed CODE-ISSUER, so a ticker alone cannot match.
+    const man = await iconManifest(originOf(request));
+    const e = man && man[id];
+    if (e && (e.name || e.desc)) {
+      return { name: e.name || '', desc: e.desc || '', image: e.image || '' };
+    }
+  } catch (e) { /* no override is a valid answer */ }
+  return null;
+}
+
 export async function onRequestGet(ctx) {
   const origin = originOf(ctx && ctx.request);
   const head = [
