@@ -42,11 +42,17 @@ const STYLE = `<style id="lx-dexmain-css">
 .dex-mk-pair-link{color:inherit;text-decoration:none;display:block}
 .dex-mk-pair-link:hover{color:inherit;text-decoration:none}
 /* A20: the four chips the script removes, hidden from the FIRST paint. Keyed on the same data-filter
-   values the removal uses, so the two cannot drift apart. */
-.dex-mk-filter[data-filter="stables"],.mdx-mk-filter[data-filter="stables"],
-.dex-mk-filter[data-filter="memes"],.mdx-mk-filter[data-filter="memes"],
-.dex-mk-filter[data-filter="utility"],.mdx-mk-filter[data-filter="utility"],
-.dex-mk-filter[data-filter="native"],.mdx-mk-filter[data-filter="native"]{display:none!important}
+   values the removal uses, so the two cannot drift apart.
+   :not([data-lxmode]) IS LOAD-BEARING -- it is the same exemption trimFilters' kill map carries, and
+   leaving it off here is precisely the drift the line above promises cannot happen. The dropdown chip
+   stores the LIVE MODE in its own data-filter, so selecting "LumosCore Mints" made it match
+   [data-filter="native"] and this rule hid the control the reader had just used -- display:none, not
+   removed, which is why it came back on a refresh (RAZA, 2026-10-11). "Curated - Stables" went the
+   same way; only "Curated - All" survived, because "all" is the one value not on this list. */
+.dex-mk-filter[data-filter="stables"]:not([data-lxmode]),.mdx-mk-filter[data-filter="stables"]:not([data-lxmode]),
+.dex-mk-filter[data-filter="memes"]:not([data-lxmode]),.mdx-mk-filter[data-filter="memes"]:not([data-lxmode]),
+.dex-mk-filter[data-filter="utility"]:not([data-lxmode]),.mdx-mk-filter[data-filter="utility"]:not([data-lxmode]),
+.dex-mk-filter[data-filter="native"]:not([data-lxmode]),.mdx-mk-filter[data-filter="native"]:not([data-lxmode]){display:none!important}
 /* B12: the FAQ is static copy, so it painted while every data-backed block above it was still collapsed
    -- alone at the top of an empty page, which is what made it look oversized. It now waits for the rest.
    visibility, not display, so it holds its space and nothing below it jumps. */
