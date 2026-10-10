@@ -24,6 +24,15 @@ const LINKS = [
   ['Ecosystem LP Rewards', '/blog/lumoscore-ecosystem-liquidity-rewards'],
 ];
 
+// [ retired slug, where it should point now ] — the "Read the announcement" anchors, which the design
+// shipped pointing at three posts that were never published. Same destinations as LINKS above, so a
+// programme's heading and its announcement cannot disagree. See the note at the replace site.
+const ANN = [
+  ['introducing-native-lp-rewards-for-lumos', '/blog/earn-lumos-every-15-days-how-lumoscore-lp-rewards-work'],
+  ['introducing-whale-holder-rewards-for-lumos', '/blog/lumos-whale-holder-rewards-programme'],
+  ['introducing-ecosystem-lp-rewards-for-lumos', '/blog/lumoscore-ecosystem-liquidity-rewards'],
+];
+
 const FILES = ['lumoscore-aptos-desktop.html', 'lumoscore-aptos-mobile.html'];
 const problems = [];
 const staged = [];
@@ -66,14 +75,39 @@ for (const file of FILES) {
     //                                                       ^ a new tab for an internal link, and
     //                                                         without rel=noopener
     //
-    // The DESTINATION is deliberately unchanged -- only the form of the url. These point at
-    // different posts from the headings above (introducing-* against the three in LINKS) and whether
-    // that is intended is RAZA's call, not something to quietly normalise here.
+    // THE DESTINATION IS NOW CHANGED TOO, and this is the call the note above was waiting for. RAZA
+    // 2026-10-10, asked about renaming posts: "jsut make sure that no 404s anywhere."
+    //
+    // The three introducing-* posts do not exist. A crawl of every internal link on the site found
+    // exactly these three dead, on /rewards, /rewards/stellar and /rewards/xrpl -- nine links in all,
+    // and the only broken ones anywhere. They answer 410 now that the blog soft-404 is fixed, which
+    // is honest but still a dead "Read the announcement" on a page we promote.
+    //
+    // Each maps onto a post that DOES exist and covers that exact programme, confirmed by reading the
+    // card each link sits in rather than by matching names:
+    //
+    //   Native LP Rewards    "Provide liquidity to a LUMOS / NATIVE pool"      -> earn-lumos-every-15-days…
+    //   Ecosystem LP Rewards "Every 6 months, 10 pools are selected"           -> lumoscore-ecosystem-liquidity-rewards
+    //   Whale Holder Rewards "Simply hold 5,000,000+ LUMOS on any chain"       -> lumos-whale-holder-rewards-programme
+    //
+    // So each announcement now points at the same post as its heading, which is what the page was
+    // always trying to say. Keyed on the OLD SLUG rather than on position in the DOM: the slug names
+    // its programme unambiguously, and a card reordered by the design cannot mis-assign a link.
     const annBefore = (html.match(/<a class="blog"/g) || []).length;
     html = html.replace(
       /<a class="blog" href="https:\/\/lumoscore\.com\/blogs\/([A-Za-z0-9-]+)"[^>]*>/g,
       '<a class="blog" href="/blog/$1">');
+    // Runs after the form fix, so it catches both the original absolute spelling and the relative one
+    // an earlier run already produced.
+    for (const [dead, live] of ANN) {
+      html = html.split('<a class="blog" href="/blog/' + dead + '">')
+                 .join('<a class="blog" href="' + live + '">');
+    }
     const annAfter = (html.match(/<a class="blog" href="\/blog\//g) || []).length;
+    // Nothing may still point at a retired slug. This is the assertion the whole change exists for.
+    for (const [dead] of ANN) {
+      if (html.indexOf('/blog/' + dead) >= 0) problems.push(key + ': still links the dead slug ' + dead);
+    }
     // Tolerates a re-run: already-relative anchors simply do not match the pattern above.
     if (annBefore && annAfter !== annBefore) {
       problems.push(key + ': ' + annBefore + ' announcement link(s) but only ' + annAfter
