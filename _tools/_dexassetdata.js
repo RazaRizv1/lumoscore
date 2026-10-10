@@ -1213,6 +1213,15 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     clampSetup(q(".asset-description"));
     // description (TOML desc if present, else a generic per-asset line)
     var desc=q(".asset-description");
+    // OUR OWN WORDS ARE NOT OVERWRITTEN. The middleware stamps data-lxdescown on this element when
+    // the text it injected came from the toml LumosCore publishes, and that text is already correct
+    // and already on screen. The SEP-1 walk below reads the ISSUER's home_domain instead -- for LUMOS
+    // that is lumosdao.io, whose copy still carries the pre-2026-10-10 wording -- so letting it run
+    // replaced the right description with a stale one about five seconds after load. RAZA saw exactly
+    // that and reported the fix as not working, twice; a curl check could never show it, because the
+    // served HTML was right and only the browser rewrote it.
+    if(desc&&desc.getAttribute("data-lxdescown")){ try{ desc.classList.remove("lx-descwait"); clampDesc(desc); }catch(_e){} }
+    else {
     // Hold the line until the toml attempt has CONCLUDED. Writing the generic sentence first and swapping
     // it for the real one a moment later is a visible flash of copy that was never true for this asset.
     var descReady=(tomlDesc||tomlSettled||NATIVE);
@@ -1220,6 +1229,7 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
     if(desc&&descReady){ desc.classList.remove("lx-descwait"); var d=NATIVE?"XLM (Stellar Lumens) is the native asset of the Stellar network \\u2014 every other asset on this DEX trades against it. Market data is pulled live from CoinGecko and the Stellar network."
       :(tomlDesc||(CODE+" trades on the LumosCore DEX against XLM on Stellar mainnet. Live price, order book, trades and holders are pulled directly from the Stellar network.")); if(desc.textContent.trim()!==d.trim())desc.textContent=d;
       clampDesc(desc); }
+    }
     hdr.classList.add("lxda");
   }
 

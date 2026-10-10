@@ -1386,13 +1386,17 @@ function seoFor(pathname){
 // mode 'text' rewrites text nodes only, leaving child elements alone; a.website holds an SVG icon
 // beside the domain and would lose it otherwise.
 class TextSetter {
-  constructor(v, mode){
+  constructor(v, mode, mark){
     this.v = String(v == null ? '' : v);
     this.mode = mode === 'text' ? 'text' : 'inner';
     this.first = true;
+    // An attribute stamped alongside the text, so a later layer can tell where the text came from.
+    // Used for the asset description: see the note at the .asset-description handler.
+    this.mark = mark || null;
   }
   element(el){
     this.first = true;
+    if (this.mark) { try { el.setAttribute(this.mark, '1'); } catch (e) {} }
     if (this.mode === 'inner') el.setInnerContent(this.v);
   }
   text(chunk){
@@ -1891,9 +1895,11 @@ export async function onRequest(context){
     // the old description. Our toml is the one we control, so on our pages it wins for the assets it
     // actually describes: the platform tokens and the mints in our own icon manifest. Everything else
     // is untouched, and the price and trustline facts from stellar.expert are kept either way.
+    let mineDesc = '';
     if (stellar) {
       const mine = await stellarAssetMeta(request, want.id);
-      if (mine && (mine.desc || mine.name)) {
+      if (mine && mine.desc) mineDesc = mine.desc;
+      if (mine && (mine.desc || mine.name)) {   // eslint-disable-line
         f = Object.assign({ code: String(want.id).split('-')[0] }, f || {}, {
           desc: mine.desc || (f && f.desc) || '',
           name: mine.name || (f && f.name) || '',
@@ -1903,6 +1909,9 @@ export async function onRequest(context){
     }
     seo = assetSeo(f, want.id, want.chain);
     seo.facts = f;
+    // Carried on seo because that is the one object the HTMLRewriter block further down can see; it
+    // re-derives its own facts object from seo.facts and cannot reach anything else declared here.
+    seo.ownDesc = !!(mineDesc && f && f.desc === mineDesc);
     // EVERY Stellar asset advertises a card now. The gate here used to require a logo, because the
     // only fallback was that logo padded onto a plain rectangle and a missing one left an empty
     // field of brand colour. /lxapi/ogcard now answers with the trade page's own card when an asset
@@ -2295,8 +2304,26 @@ export async function onRequest(context){
           + (f && f.domain ? ', issued by ' + f.domain : '')
           + '. ' + (bits.length ? bits.join(' \u00b7 ') + '. ' : '')
           + 'Trade it non-custodially on LumosCore from your own wallet.');
+    // data-lxdescown MARKS A DESCRIPTION AS OURS, and the client layer leaves a marked one alone.
+    //
+    // The page does its own SEP-1 walk after load: issuer -> home_domain -> that domain's stellar.toml
+    // -> the [[CURRENCIES]] block. For LUMOS the home_domain is lumosdao.io, which still carries the
+    // pre-2026-10-10 wording, so the correct text this middleware had just injected was overwritten
+    // about five seconds later. Measured in a browser rather than with curl -- curl only ever sees the
+    // served HTML, which is why an earlier check of this called it fixed when a reader could plainly
+    // see that it was not.
+    //
+    // The attribute is only set when stellarAssetMeta() actually supplied the words, so it says
+    // something true: "this came from the toml LumosCore publishes". Every other asset is unmarked and
+    // the client walk behaves exactly as before.
+    // READ OFF seo, NOT off a variable from the fetch block. The first version of this referenced
+    // mineDesc directly and threw a ReferenceError on every asset page -- a 500, not a wrong
+    // description. The two blocks look adjacent in this file but are different scopes: the facts here are
+    // re-derived on its own line as seo.facts, which is exactly the clue I talked myself out of when a
+    // brace count said the scopes matched. That count was reading braces inside comments.
+    const ownDesc = !!(seo && seo.ownDesc);
     rw = rw.on('.asset-name', new TextSetter(code))
-           .on('.asset-description', new TextSetter(desc));
+           .on('.asset-description', new TextSetter(desc, 'inner', ownDesc ? 'data-lxdescown' : null));
     // Always rewritten, even to an empty string: an asset with no home domain was otherwise left
     // showing the design's placeholder, which claims the issuer is circle.com. Blank is honest.
     // Text mode because this anchor also holds the globe icon, which setInnerContent would delete.
