@@ -23,7 +23,12 @@ const SUMMARY = {
   '/docs/swaps': 'How swaps route, how price is found, and what slippage means here.',
   '/docs/limit-orders': 'Resting orders on the Stellar order book, and why they carry no platform fee.',
   '/docs/liquidity-pools': 'Adding and withdrawing liquidity, creating a pool, and divergence loss.',
-  '/docs/cross-chain': 'Moving USDC between Stellar and eight networks over Circle CCTP.',
+  // THREE ROUTES, NOT ONE, AND NOT EIGHT NETWORKS. This said "Moving USDC between Stellar and eight
+  // networks over Circle CCTP", which was true while CCTP was the only route and has been wrong since
+  // LayerZero and NEAR Intents went live on 2026-09-19. It matters more here than in most places: an
+  // answer engine quoting llms.txt states it as fact, and this is the file we publish BECAUSE we want
+  // it quoted. The same stale sentence was fixed in _seo.js on the same day.
+  '/docs/cross-chain': 'Moving assets from Stellar with Circle CCTP, LayerZero and NEAR Intents — three routes, each with its own chains.',
   '/docs/wallet': 'Balances, activity, sending and receiving without transferring custody.',
   '/docs/trustlines': 'Why Stellar requires a trustline, and the 0.5 XLM reserve each one holds.',
   '/docs/rewards': 'The three LUMOS reward programmes and how rounds pay.',
@@ -39,7 +44,7 @@ const SUMMARY = {
   '/blog': 'Guides and explainers on trading, pools, bridging and issuing assets on Stellar.',
   '/trade/stellar': 'Live Stellar markets: pairs, movers and recently issued assets.',
   '/pools/stellar': 'Stellar liquidity pools with reserves, TVL and volume.',
-  '/bridge': 'Cross-chain USDC transfers between Stellar and eight networks.',
+  '/bridge': 'Cross-chain transfers from Stellar to 52 networks via Circle CCTP, LayerZero and NEAR Intents.',
   '/wallet': 'Non-custodial wallet view: balances, activity, trustlines, claimable payments.',
   '/rewards': 'LUMOS reward programmes and current eligibility.',
   '/lumos': 'The LUMOS token: price, supply, holders and utility.',
