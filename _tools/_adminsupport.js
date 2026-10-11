@@ -210,6 +210,8 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-body p{margin:0 0 14px;white-space:pre-line}
 .lxm-body p:last-child{margin-bottom:0}
 .lxm-html{width:100%;min-height:280px;max-height:60vh;border:1px solid var(--border);border-radius:10px;background:#fff}
+.lxm-imgbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin:0 0 8px;border:1px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--muted)}
+.lxm-imgbar span{flex:1 1 220px}
 .lxm-acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
 /* Delete is the only irreversible control on this page, so it is the only one that is red -- and it
    only turns red on the SECOND click, once it is asking to be confirmed. A destructive button that
@@ -530,8 +532,35 @@ function open(id){
       });
     }
     else if(htmlWords){
-      body=document.createElement("iframe");
-      body.className="lxm-html";
+      // REMOTE IMAGES ARE BLOCKED UNTIL ASKED FOR. Showing HTML means a message can fetch things, and
+      // the first thing much of it fetches is a 1x1 pixel whose only purpose is to report that the
+      // mail was opened, from this IP, at this moment. Every ordinary mail client blocks that behind
+      // a button; this one now does too.
+      //
+      // ENFORCED WITH CSP, NOT BY REWRITING THE MARKUP. Stripping or renaming src attributes is a
+      // sanitiser, and sanitisers are a losing game against srcset, CSS url(), <picture>, <video
+      // poster>, @import and whatever is next. A policy the BROWSER enforces does not care how the
+      // reference was spelled. data: URIs stay allowed throughout -- those are already in the message
+      // and fetch nothing.
+      var Q=String.fromCharCode(39);
+      var csp=function(showImages){
+        return "default-src "+Q+"none"+Q+"; img-src data:"+(showImages?" https: http:":"")
+          +"; style-src "+Q+"unsafe-inline"+Q+"; font-src data:; form-action "+Q+"none"+Q;
+      };
+      var mailDoc=function(showImages){
+        return "<meta http-equiv=Content-Security-Policy content=" + '"' + csp(showImages) + '">'
+          +"<meta name=referrer content=no-referrer>"
+          // Every link opens in a new tab, so following one never replaces the admin panel.
+          +"<base target=_blank>"
+          +"<style>body{font:400 16.5px/1.7 system-ui,sans-serif;color:#333;margin:0;"
+          +"overflow-wrap:break-word;word-break:break-word}"
+          +"img{max-width:100%;height:auto}"
+          // Mail often ships fixed pixel widths that overflow this pane and hide the right-hand side.
+          +"table{max-width:100%!important}"
+          +"a{color:#0b57d0}</style>"+html;
+      };
+      var frame=document.createElement("iframe");
+      frame.className="lxm-html";
       // A STRANGER'S MARKUP, SO IT STAYS CAGED. Anyone can email support@, which makes every byte
       // here attacker-controlled -- and this page is the admin origin. The sandbox below grants
       // popups and NOTHING else: no allow-scripts, so nothing in the mail can run; no
@@ -543,19 +572,36 @@ function open(id){
       // itself and may not open a window, so the reader sees a link and cannot follow it. Escaping
       // the sandbox applies to the NEW tab only -- the destination is an ordinary site again, rather
       // than a crippled one -- and it still takes a deliberate click to get there.
-      body.setAttribute("sandbox","allow-popups allow-popups-to-escape-sandbox");
+      frame.setAttribute("sandbox","allow-popups allow-popups-to-escape-sandbox");
       // No referrer on anything the mail loads or opens: a tracking pixel should not be told which
       // admin page was being read, and neither should a link's destination.
-      body.setAttribute("referrerpolicy","no-referrer");
-      body.setAttribute("srcdoc","<meta name=referrer content=no-referrer>"
-        // Every link opens in a new tab, so following one never replaces the admin panel.
-        +"<base target=_blank>"
-        +"<style>body{font:400 16.5px/1.7 system-ui,sans-serif;color:#333;margin:0;"
-        +"overflow-wrap:break-word;word-break:break-word}"
-        +"img{max-width:100%;height:auto}"
-        // Mail often ships fixed pixel widths that overflow this pane and hide the right-hand side.
-        +"table{max-width:100%!important}"
-        +"a{color:#0b57d0}</style>"+html);
+      frame.setAttribute("referrerpolicy","no-referrer");
+      frame.setAttribute("srcdoc",mailDoc(false));
+      // Only say images are blocked when the message actually has some, so a plain HTML mail does
+      // not carry a warning about something it never asked for. indexOf rather than a regex: this
+      // file is emitted through a template literal, where a written backslash-s or backslash-( is
+      // mangled on the way out and the pattern silently stops matching.
+      var low=html.toLowerCase();
+      var hasRemote=(low.indexOf('src="http')>=0||low.indexOf("src="+Q+"http")>=0
+        ||low.indexOf("src=http")>=0||low.indexOf("srcset")>=0
+        ||low.indexOf("url(http")>=0||low.indexOf('url("http')>=0||low.indexOf("url("+Q+"http")>=0);
+      if(!hasRemote){ body=frame; }
+      else {
+        body=document.createElement("div");
+        var bar=document.createElement("div"); bar.className="lxm-imgbar";
+        var say=document.createElement("span");
+        say.textContent="Images are not loaded \\u2014 loading them tells the sender you opened this.";
+        var sb=document.createElement("button");
+        sb.className="adm-btn ghost"; sb.type="button"; sb.textContent="Show images";
+        // Per message, and never remembered: the next message starts blocked again.
+        sb.addEventListener("click",function(){
+          frame.setAttribute("srcdoc",mailDoc(true));
+          sb.remove();
+          say.textContent="Images shown for this message.";
+        });
+        bar.appendChild(say); bar.appendChild(sb);
+        body.appendChild(bar); body.appendChild(frame);
+      }
     }
     else {
       body=document.createElement("div"); body.className="lxm-body";
