@@ -489,7 +489,16 @@ function open(id){
     // <div dir="ltr"><br></div> for an empty message. Strip the tags to see whether there are words.
     var htmlWords=html.replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").trim();
     var body;
-    if(text){
+    // HTML WINS WHENEVER THERE IS ANY. This used to read "if(text)" first, and real mail is
+    // multipart/alternative -- it carries BOTH parts -- so text won every time and the HTML branch
+    // below was effectively dead code. What that showed was the plain-text alternative, where every
+    // link is spelled out inline in angle brackets: RAZA, 2026-10-11, a Google security notice whose
+    // readable sentence was buried under fourteen copies of an AccountDisavow url, one per language.
+    // "im unable to see the links properly. make it html instead of text based."
+    //
+    // The text path is still exactly right for mail that is genuinely text-only, which is what the
+    // condition now says.
+    if(!htmlWords&&text){
       body=document.createElement("div"); body.className="lxm-body";
       // Plain-text mail is HARD-WRAPPED by the sending client -- Gmail breaks at about 78 characters.
       // Rendering it with pre-wrap honours every one of those breaks, so the text kept its 78-column
@@ -523,9 +532,30 @@ function open(id){
     else if(htmlWords){
       body=document.createElement("iframe");
       body.className="lxm-html";
-      body.setAttribute("sandbox","");
-      body.setAttribute("srcdoc","<style>body{font:400 16.5px/1.7 system-ui,sans-serif;color:#333;margin:0}"
-        +"img{max-width:100%;height:auto}</style>"+html);
+      // A STRANGER'S MARKUP, SO IT STAYS CAGED. Anyone can email support@, which makes every byte
+      // here attacker-controlled -- and this page is the admin origin. The sandbox below grants
+      // popups and NOTHING else: no allow-scripts, so nothing in the mail can run; no
+      // allow-same-origin, so it cannot reach this document; no allow-forms, so a phishing form
+      // cannot be submitted from inside it.
+      //
+      // allow-popups + allow-popups-to-escape-sandbox is what makes LINKS WORK, which is the whole
+      // point of showing HTML. Without them a click does nothing at all: the frame may not navigate
+      // itself and may not open a window, so the reader sees a link and cannot follow it. Escaping
+      // the sandbox applies to the NEW tab only -- the destination is an ordinary site again, rather
+      // than a crippled one -- and it still takes a deliberate click to get there.
+      body.setAttribute("sandbox","allow-popups allow-popups-to-escape-sandbox");
+      // No referrer on anything the mail loads or opens: a tracking pixel should not be told which
+      // admin page was being read, and neither should a link's destination.
+      body.setAttribute("referrerpolicy","no-referrer");
+      body.setAttribute("srcdoc","<meta name=referrer content=no-referrer>"
+        // Every link opens in a new tab, so following one never replaces the admin panel.
+        +"<base target=_blank>"
+        +"<style>body{font:400 16.5px/1.7 system-ui,sans-serif;color:#333;margin:0;"
+        +"overflow-wrap:break-word;word-break:break-word}"
+        +"img{max-width:100%;height:auto}"
+        // Mail often ships fixed pixel widths that overflow this pane and hide the right-hand side.
+        +"table{max-width:100%!important}"
+        +"a{color:#0b57d0}</style>"+html);
     }
     else {
       body=document.createElement("div"); body.className="lxm-body";
