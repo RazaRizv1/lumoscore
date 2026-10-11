@@ -647,42 +647,49 @@ function donut(el,rows){
     +"<div class='lxan-dleg'>"+rows.map(function(r,i){ var k=String(r.key||""); return "<div><i style='background:"+PAL[i%PAL.length]+"'></i>"+esc(k.charAt(0).toUpperCase()+k.slice(1))+"<b>"+pctTxt(r.count/tot*100)+"</b></div>"; }).join("")+"</div>";
 }
 
+// ONE COUNTER FOR THE WHOLE GEOGRAPHY SECTION.
+//
+// The map and the list were both drawn from Cloudflare's country breakdown while the cities beneath
+// them, and the visitor column beside them, came from our own counter. The two disagree in both
+// directions and the card showed it plainly: a country WE saw and Cloudflare did not could not
+// appear at all (RAZA 2026-10-11: a visitor from Osaka minutes earlier and no Japan in the list,
+// "the other day it also happened with germany"), while Vietnam and Singapore carried Cloudflare
+// page views with an em dash for visitors because ours had never seen them.
+//
+// Worse than the gaps, the two numbers ON ONE ROW came from different counters, so "251 vis · 254
+// views" invited a reading -- about one page per visit -- that neither counter supports. A ratio is
+// only a ratio if both halves were counted the same way.
+//
+// So the section now runs entirely on our own page view table, which already records a country on
+// every row: same source as the cities, same source as the visitors, immediate rather than lagging
+// behind Cloudflare's pipeline. Cloudflare's figures remain everywhere else on the page, where they
+// are not mixed with ours.
+//
+// Views with no country attached are left out of the rows AND out of the percentage base, so the
+// shares still add to 100; the footer says how many they were rather than quietly dropping them.
+function ownCountries(d){
+  var cities=(d.own&&d.own.cities)||{}, rows=[], total=0, unknown=0;
+  Object.keys(cities).forEach(function(cc){
+    var v=0,s=0; (cities[cc]||[]).forEach(function(c){ v+=(+c.views||0); s+=(+c.sessions||0); });
+    if(!(v>0)) return;
+    if(!cc||cc==="??"){ unknown+=v; return; }
+    total+=v; rows.push({ key:cc, count:v, sessions:s });
+  });
+  rows.sort(function(a,b){ return b.count-a.count; });
+  return { rows:rows, total:total, unknown:unknown };
+}
+
 // COUNTRIES, each opening its cities; the same block serves the dashboard and the per-page panel
 function countries(el,d){
   if(!el) return; el.__d=d;
-  var rows=(d.countries||[]).filter(function(r){ return (r.count||0)>0; });
-  var cities=(d.own&&d.own.cities)||{};
-  // A COUNTRY ONLY WE SAW MUST STILL APPEAR. This list was built from Cloudflare's breakdown alone,
-  // and our own cities were merely attached to whatever Cloudflare had already reported -- so a
-  // country present in OUR counter and missing from theirs could not be shown at all, however much
-  // traffic it had. RAZA 2026-10-11: a visitor from Osaka minutes earlier, no Japan in the list;
-  // "the other day it also happened with germany".
-  //
-  // The two counters disagree in both directions and the row already showed it: Vietnam and
-  // Singapore carry page views with an em dash for visitors, which is the same gap seen from the
-  // other side -- Cloudflare's beacon loaded, ours did not. Neither is a superset of the other, so
-  // the list is the UNION. Appended rather than merged into the sort, because their view counts come
-  // from different counters and ordering them against each other would imply they are comparable.
-  var seen={}; rows.forEach(function(r){ seen[String(r.key||"").toUpperCase()]=1; });
-  var ownOnly=Object.keys(cities).filter(function(cc){ return cc&&cc!=="??"&&!seen[cc]; }).map(function(cc){
-    var v=0; (cities[cc]||[]).forEach(function(c){ v+=(+c.views||0); });
-    return { key:cc, count:v, ours:1 };
-  }).filter(function(r){ return r.count>0; }).sort(function(a,b){ return b.count-a.count; });
-  rows=rows.concat(ownOnly);
+  var oc=ownCountries(d), rows=oc.rows, cities=(d.own&&d.own.cities)||{};
   if(!rows.length){ el.innerHTML="<div class='lxadm-empty'>Nothing in this period.</div>"; return; }
-  var max=rows.reduce(function(m,r){ return Math.max(m,r.count||0); },0)||1, tot=d.pageViews||0;
+  var max=rows.reduce(function(m,r){ return Math.max(m,r.count||0); },0)||1, tot=oc.total;
   el.innerHTML="<div class='lxan-rows'>"+rows.map(function(r){
     var cc=String(r.key||"").toUpperCase(), w=Math.max(2,Math.round((r.count/max)*100)), nc=(cities[cc]||[]).length;
-    // UNIQUE VISITORS PER COUNTRY. Cloudflare's country breakdown is page views only, which is why
-    // the row used to end at a single number. Our own counter already records one row per view with
-    // a session id, and the endpoint already returns COUNT(DISTINCT sid) per city -- summing those
-    // for the country gives the visitors behind those views. Nothing new is queried.
-    //
-    // It is rendered as "N visitors" next to the view count rather than replacing it, and it is
-    // muted, because the two come from different sources: views from Cloudflare (people only, and
-    // only where its beacon loaded) and visitors from LumosCore's own counter, which started later.
-    // Presenting them as one matched pair would imply a precision neither has.
-    var vis=(cities[cc]||[]).reduce(function(a,c){ return a+(+c.sessions||0); },0);
+    // Both numbers now come from the same table, so the row finally reads as one measurement: these
+    // many visits produced these many views, and dividing them means something.
+    var vis=r.sessions||0;
     return "<div class='lxan-row lxan-ctry' tabindex='0' role='button' aria-expanded='false' data-cc='"+esc(cc)+"'>"
       +"<span class='lxan-chev'>\\u25b6</span>"+flag(cc)
       +"<div class='lxan-name'>"+esc(cname(cc))+(nc?" <span class='m'>\\u00b7 "+nc+" "+(nc===1?"city":"cities")+"</span>":"")+"</div>"
@@ -690,8 +697,10 @@ function countries(el,d){
       +"<div class='lxan-pc'>"+pctTxt(tot>0?r.count/tot*100:0)+"</div>"
       +"<div class='lxan-vis' title='unique visitors from this country, counted by LumosCore'>"
       +(vis>0?("<b>"+num(vis)+"</b> vis"):"\\u2014")+"</div>"
-      +"<div class='lxan-n' title='"+(r.ours?"page views, counted by LumosCore (Cloudflare did not record this country)":"page views, from Cloudflare")+"'>"+num(r.count)+"</div></div>";
-  }).join("")+"</div><div class='lxan-pager'><span>"+num(rows.length)+" "+(rows.length===1?"country":"countries")+"</span><span>cities: counted by LumosCore "+esc(sinceText(d.own))+"</span></div>";
+      +"<div class='lxan-n' title='page views, counted by LumosCore'>"+num(r.count)+"</div></div>";
+  }).join("")+"</div><div class='lxan-pager'><span>"+num(rows.length)+" "+(rows.length===1?"country":"countries")
+    +(oc.unknown>0?(" \\u00b7 "+num(oc.unknown)+" views with no country"):"")
+    +"</span><span>counted by LumosCore "+esc(sinceText(d.own))+"</span></div>";
   flagFallback(el);
   if(!el.__cw){ el.__cw=1;
     el.addEventListener("click",function(e){ var r=e.target&&e.target.closest&&e.target.closest(".lxan-ctry"); if(r) toggleCountry(el,r); });
@@ -787,7 +796,9 @@ function toggleSource(box,row){
 }
 function mapPaint(d){
   var wrap=q("#lxanMap"); if(!wrap) return; var svg=q("svg",wrap); if(!svg) return;
-  var m={}, mx=0; (d.countries||[]).forEach(function(r){ var cc=String(r.key||"").toUpperCase(); m[cc]=(m[cc]||0)+(r.count||0); if(m[cc]>mx) mx=m[cc]; });
+  // Same counter as the list beneath it -- see ownCountries. Shaded from Cloudflare's numbers while
+  // the list below was about to be redrawn from ours, the map would have disagreed with it.
+  var m={}, mx=0; ownCountries(d).rows.forEach(function(r){ var cc=String(r.key||"").toUpperCase(); m[cc]=(m[cc]||0)+(r.count||0); if(m[cc]>mx) mx=m[cc]; });
   qa("path",svg).forEach(function(p){ var v=m[p.getAttribute("data-cc")]||0; p.__v=v; p.classList.toggle("has",v>0); p.classList.remove("sel");
     p.style.fill=v>0?("rgba(234,106,44,"+(0.18+0.82*Math.sqrt(v/(mx||1))).toFixed(3)+")"):""; });
   var nC=Object.keys(m).filter(function(k){ return m[k]>0; }).length;
@@ -894,7 +905,9 @@ function render(d){
   sparkline(q("#lxanVisitsS"),bs.map(function(b){ return b.visits; }),C_VISIT); sparkline(q("#lxanViewsS"),bs.map(function(b){ return b.views; }),C_VIEW);
   mapPaint(d); channels(q("#lxanChan"),d); donut(q("#lxanDonut"),d.devices);
   var geo=q("#lxanGeo"); countries(geo,d);
-  var nC=(d.countries||[]).filter(function(r){ return (r.count||0)>0; }).length;
+  // The heading counted Cloudflare's countries while the list below it drew ours, so the two could
+  // state different totals on the same card -- "11 countries" above a list of twelve.
+  var nC=ownCountries(d).rows.length;
   setT("#lxanGeoSub",nC+" "+(nC===1?"country":"countries")+" \\u00b7 visitors \\u00b7 page views \\u00b7 tap one to see its cities");
   list(q("#lxanPages"),d.topPages,pv,pageName,{link:true});
   var src=sources(d), rb=q("#lxanRefs"); if(rb) rb.__ctx=""; list(rb,src,src.reduce(function(a,r){ return a+r.count; },0),refName,{src:true});
