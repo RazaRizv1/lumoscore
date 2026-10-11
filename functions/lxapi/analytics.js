@@ -160,7 +160,22 @@ async function ownStats(db, startMs, prevStartMs, path, hourly) {
         'SELECT COUNT(*) AS sessions, SUM(CASE WHEN n = 1 THEN 1 ELSE 0 END) AS bounces, SUM(n) AS views '
         + 'FROM (SELECT sid, COUNT(*) AS n FROM pageview WHERE ts >= ?1 AND ts < ?2 AND host = ?3 GROUP BY sid)'
       ).bind(w0, w1, H)).first();
-    const [cur, prev, cities, since, refs, series, exits] = await Promise.all([
+    // PEOPLE, not visits. "visits" counts session ids, so one person who comes back after lunch is
+    // two -- which is why a busy country can show more visits than it has visitors. The daily hash
+    // (pv.js) lets the same person be recognised WITHIN A DAY, so this counts each one once per day
+    // and reports how many of them came back later that day.
+    //
+    // Grouped per day on purpose. The salt rotates daily and the old one is destroyed, so the same
+    // person carries a different vid tomorrow and summing days would double-count them. The number
+    // is therefore "visitors per day, added up", not "distinct people over the period" -- which is
+    // not a thing this design can answer, deliberately. Rows written before the column existed have
+    // a null vid and are simply not counted here.
+    const people = db.prepare(
+      'SELECT COUNT(*) AS visitors, SUM(CASE WHEN n > 1 THEN 1 ELSE 0 END) AS returning FROM '
+      + '(SELECT day, vid, COUNT(DISTINCT sid) AS n FROM pageview '
+      + "WHERE ts >= ?1 AND host = ?2 AND vid IS NOT NULL AND vid <> '' GROUP BY day, vid)"
+    ).bind(startMs, H).first();
+    const [cur, prev, cities, since, refs, series, exits, ppl] = await Promise.all([
       sess(startMs, now + 60000),
       sess(prevStartMs, startMs),
       (path
@@ -196,6 +211,9 @@ async function ownStats(db, startMs, prevStartMs, path, hourly) {
         + 'LEFT JOIN (SELECT sid, MAX(ts) AS t FROM pageview WHERE ts >= ?1 AND host = ?2 GROUP BY sid) l '
         + 'ON l.sid = p.sid AND l.t = p.ts WHERE p.ts >= ?1 AND p.host = ?2 GROUP BY p.path ORDER BY views DESC LIMIT 500'
       ).bind(startMs, H).all(),
+      // The vid column is added lazily by pv.js, so on a database that has not taken a page view
+      // since the change it does not exist yet and this is a "no such column" error, not a failure.
+      people.catch(() => null),
     ]);
     const byCountry = {};
     ((cities && cities.results) || []).forEach((r) => {
@@ -205,6 +223,7 @@ async function ownStats(db, startMs, prevStartMs, path, hourly) {
     const pack = (x) => (x ? { sessions: +x.sessions || 0, bounces: +x.bounces || 0, views: +x.views || 0 } : null);
     // the counter went live on lumoscore.com at this moment (main 7c7c7074); before any row exists, that is the honest start
     return { since: since && since.first ? since.first : Date.parse('2026-09-22T16:59:00Z'), cur: pack(cur), prev: pack(prev), cities: byCountry,
+      people: ppl ? { visitors: +ppl.visitors || 0, returning: +ppl.returning || 0 } : null,
       refs: ((refs && refs.results) || []).map((r) => ({ ref: r.ref, views: r.views, sessions: r.sessions })),
       series: ((series && series.results) || []).map((r) => ({
         t: r.t, sessions: +r.sessions || 0, bounces: +r.bounces || 0, views: +r.views || 0,

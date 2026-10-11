@@ -35,6 +35,7 @@ const MAIN = `
         <div class="lxan-kpi"><div class="lxan-kl">Page views</div><div class="lxan-kvrow"><div class="lxan-kv" id="lxanViews">&mdash;</div><div class="lxan-spark" id="lxanViewsS"></div></div><div class="lxan-kd" id="lxanViewsD"></div><div class="lxan-kf">every page opened, by people</div></div>
         <div class="lxan-kpi"><div class="lxan-kl">Pages per visit</div><div class="lxan-kv" id="lxanPer">&mdash;</div><div class="lxan-kd" id="lxanPerD"></div><div class="lxan-kf">how far a visitor goes on average</div></div>
         <div class="lxan-kpi"><div class="lxan-kl">Bounce rate</div><div class="lxan-kv" id="lxanBounce">&mdash;</div><div class="lxan-kd" id="lxanBounceD"></div><div class="lxan-kf" id="lxanBounceF">visits that left after one page</div></div>
+        <div class="lxan-kpi"><div class="lxan-kl">Visitors</div><div class="lxan-kv" id="lxanPeople">&mdash;</div><div class="lxan-kd" id="lxanPeopleD"></div><div class="lxan-kf" id="lxanPeopleF">people per day, counted once however often they come back</div></div>
         <div class="lxan-kpi"><div class="lxan-kl">Bots filtered</div><div class="lxan-kv" id="lxanBots">&mdash;</div><div class="lxan-kd" id="lxanBotsD"></div><div class="lxan-kf">crawler page views, left out of every figure here</div></div>
       </div>
 
@@ -870,6 +871,21 @@ function render(d){
   var per=vi>0?pv/vi:null, pper=(pp.visits>0)?pp.pageViews/pp.visits:null;
   setT("#lxanPer",per!=null?per.toFixed(1):"\\u2014"); if(per!=null&&pper!=null) delta(q("#lxanPerD"),per,pper); else setH("#lxanPerD","");
   bounceInto(q("#lxanBounce"),q("#lxanBounceD"),q("#lxanBounceF"),d.own,false);
+  // VISITORS, as distinct from visits. A visit is a session id, so one person returning after lunch
+  // counts twice; this counts them once per day using the daily hash, and says how many came back.
+  // It is a per-day figure summed over the period, never "distinct people since September": the salt
+  // rotates every day and the old one is destroyed, so the same person is a different hash tomorrow.
+  // Blank until the column has data, rather than showing a zero that would read as "nobody".
+  var ppl=(d.own&&d.own.people)||null;
+  if(ppl&&ppl.visitors>0){
+    setT("#lxanPeople",num(ppl.visitors));
+    var rp=ppl.returning>0?(ppl.returning/ppl.visitors*100):0;
+    setH("#lxanPeopleD",ppl.returning>0?("<span class='fl'>"+num(ppl.returning)+" came back ("+rp.toFixed(rp<10?1:0)+"%)</span>"):"");
+    setT("#lxanPeopleF","people per day, counted once however often they come back");
+  } else {
+    setT("#lxanPeople","\\u2014"); setH("#lxanPeopleD","");
+    setT("#lxanPeopleF","starts counting from the first page view after this was switched on");
+  }
   var bots=d.botViews||0, all=bots+pv; setT("#lxanBots",all>0?((bots/all*100).toFixed(bots/all<0.1?1:0)+"%"):"\\u2014");
   setH("#lxanBotsD",bots>0?("<span class='fl'>"+num(bots)+" crawler views</span>"):"");
   reconcile(d);
