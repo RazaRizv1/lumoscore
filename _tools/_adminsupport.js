@@ -223,9 +223,16 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-body{word-break:break-word;font:400 16.5px/1.7 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}
 .lxm-body p{margin:0 0 14px;white-space:pre-line}
 .lxm-body p:last-child{margin-bottom:0}
-/* Now that the pane is a full viewport tall, let the message use it: the old 60vh cap sat inside an
-   820px pane, so a newsletter got about 500px and scrolled inside a box inside a box. */
-.lxm-html{width:100%;min-height:420px;max-height:72vh;border:1px solid var(--border);border-radius:10px;background:#fff}
+/* AN IFRAME NEEDS A HEIGHT. max-height never made this box taller, because max-height only CAPS a
+   box, and an iframe is a replaced element whose default height is 150px -- so with only a min and a
+   max it sat at its min-height forever, at 280px and then 420px, no matter how much room the pane
+   had. Enlarging the pane therefore changed nothing visible, which is exactly what RAZA reported:
+   "i think you just missed the whole point. i wanted to read the email more. just make that section
+   longer."
+   It now takes a real height, and a generous one: a viewport less the subject header and the images
+   notice, so reading gets the room and the reply box sits just below the fold -- the arrangement
+   every mail client uses. The floor keeps it usable on a short window. */
+.lxm-html{width:100%;height:calc(100vh - 260px);min-height:560px;border:1px solid var(--border);border-radius:10px;background:#fff}
 .lxm-imgbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin:0 0 8px;border:1px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--muted)}
 .lxm-imgbar span{flex:1 1 220px}
 .lxm-acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
