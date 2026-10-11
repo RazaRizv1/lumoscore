@@ -455,10 +455,40 @@ function when(b,hourly,long){ return hourly
   : b.t.toLocaleDateString(undefined,long?{weekday:"short",month:"short",day:"numeric"}:{month:"short",day:"numeric"}); }
 function nice(m){ if(!(m>0)) return 4; var e=Math.pow(10,Math.floor(Math.log(m)/Math.LN10)), f=m/e; return (f<=1?1:f<=2?2:f<=2.5?2.5:f<=5?5:10)*e; }
 function short(n){ n=+n||0; return n>=1e6?(n/1e6).toFixed(n>=1e7?0:1)+"M":n>=1e3?(n/1e3).toFixed(n>=1e4?0:1)+"k":String(Math.round(n)); }
-function smooth(pts,yMin,yMax){ if(!pts.length) return ""; var d="M"+pts[0][0].toFixed(1)+","+pts[0][1].toFixed(1);
-  function cy(v){ return Math.max(yMin,Math.min(yMax,v)).toFixed(1); }
-  for(var i=0;i<pts.length-1;i++){ var p0=pts[i-1]||pts[i], p1=pts[i], p2=pts[i+1], p3=pts[i+2]||p2;
-    d+=" C"+(p1[0]+(p2[0]-p0[0])/6).toFixed(1)+","+cy(p1[1]+(p2[1]-p0[1])/6)+" "+(p2[0]-(p3[0]-p1[0])/6).toFixed(1)+","+cy(p2[1]-(p3[1]-p1[1])/6)+" "+p2[0].toFixed(1)+","+p2[1].toFixed(1); }
+// MONOTONE CUBIC, because the previous curve drew traffic that never happened.
+//
+// This was Catmull-Rom: control points at p1+(p2-p0)/6 and p2-(p3-p1)/6. That spline OVERSHOOTS
+// around a sharp change -- between two hours it bulges past both of their values -- so a single
+// spike was rendered as a broad hill implying busy hours either side of it, and the climb back down
+// dipped below the neighbouring values into a trough that was equally invented. The old yMin/yMax
+// clamp only kept the curve inside the plot box; it did nothing about a peak fabricated within it.
+// RAZA 2026-10-11, on a 134-view spike at 11pm: "this chart doesn't really look right. can you
+// please check if the lines even make sense."
+//
+// Fritsch-Carlson tangents cannot overshoot: where consecutive deltas differ in sign or either is
+// zero the tangent is forced to zero, and otherwise it is limited to three times the smaller
+// neighbouring slope. The curve therefore stays within the values on both sides of every point, so
+// the only maxima it can draw are real ones. It still looks like a curve; it just cannot lie.
+function smooth(pts){ if(!pts.length) return "";
+  var n=pts.length; if(n===1) return "M"+pts[0][0].toFixed(1)+","+pts[0][1].toFixed(1);
+  var dx=[], dy=[], sl=[], i;
+  for(i=0;i<n-1;i++){ dx[i]=pts[i+1][0]-pts[i][0]; dy[i]=pts[i+1][1]-pts[i][1]; sl[i]=dx[i]?dy[i]/dx[i]:0; }
+  var m=[sl[0]];
+  for(i=1;i<n-1;i++){ m[i]=(sl[i-1]*sl[i]<=0)?0:(sl[i-1]+sl[i])/2; }
+  m[n-1]=sl[n-2];
+  for(i=0;i<n-1;i++){
+    if(sl[i]===0){ m[i]=0; m[i+1]=0; continue; }
+    var a=m[i]/sl[i], b=m[i+1]/sl[i];
+    var h=Math.sqrt(a*a+b*b);
+    if(h>3){ m[i]=3*a/h*sl[i]; m[i+1]=3*b/h*sl[i]; }
+  }
+  var d="M"+pts[0][0].toFixed(1)+","+pts[0][1].toFixed(1);
+  for(i=0;i<n-1;i++){
+    var t=dx[i]/3;
+    d+=" C"+(pts[i][0]+t).toFixed(1)+","+(pts[i][1]+m[i]*t).toFixed(1)
+      +" "+(pts[i+1][0]-t).toFixed(1)+","+(pts[i+1][1]-m[i+1]*t).toFixed(1)
+      +" "+pts[i+1][0].toFixed(1)+","+pts[i+1][1].toFixed(1);
+  }
   return d; }
 function areaChart(el,d,H0){
   if(!el) return; var bs=buckets(d);
@@ -620,8 +650,26 @@ function donut(el,rows){
 function countries(el,d){
   if(!el) return; el.__d=d;
   var rows=(d.countries||[]).filter(function(r){ return (r.count||0)>0; });
+  var cities=(d.own&&d.own.cities)||{};
+  // A COUNTRY ONLY WE SAW MUST STILL APPEAR. This list was built from Cloudflare's breakdown alone,
+  // and our own cities were merely attached to whatever Cloudflare had already reported -- so a
+  // country present in OUR counter and missing from theirs could not be shown at all, however much
+  // traffic it had. RAZA 2026-10-11: a visitor from Osaka minutes earlier, no Japan in the list;
+  // "the other day it also happened with germany".
+  //
+  // The two counters disagree in both directions and the row already showed it: Vietnam and
+  // Singapore carry page views with an em dash for visitors, which is the same gap seen from the
+  // other side -- Cloudflare's beacon loaded, ours did not. Neither is a superset of the other, so
+  // the list is the UNION. Appended rather than merged into the sort, because their view counts come
+  // from different counters and ordering them against each other would imply they are comparable.
+  var seen={}; rows.forEach(function(r){ seen[String(r.key||"").toUpperCase()]=1; });
+  var ownOnly=Object.keys(cities).filter(function(cc){ return cc&&cc!=="??"&&!seen[cc]; }).map(function(cc){
+    var v=0; (cities[cc]||[]).forEach(function(c){ v+=(+c.views||0); });
+    return { key:cc, count:v, ours:1 };
+  }).filter(function(r){ return r.count>0; }).sort(function(a,b){ return b.count-a.count; });
+  rows=rows.concat(ownOnly);
   if(!rows.length){ el.innerHTML="<div class='lxadm-empty'>Nothing in this period.</div>"; return; }
-  var cities=(d.own&&d.own.cities)||{}, max=rows.reduce(function(m,r){ return Math.max(m,r.count||0); },0)||1, tot=d.pageViews||0;
+  var max=rows.reduce(function(m,r){ return Math.max(m,r.count||0); },0)||1, tot=d.pageViews||0;
   el.innerHTML="<div class='lxan-rows'>"+rows.map(function(r){
     var cc=String(r.key||"").toUpperCase(), w=Math.max(2,Math.round((r.count/max)*100)), nc=(cities[cc]||[]).length;
     // UNIQUE VISITORS PER COUNTRY. Cloudflare's country breakdown is page views only, which is why
@@ -641,7 +689,7 @@ function countries(el,d){
       +"<div class='lxan-pc'>"+pctTxt(tot>0?r.count/tot*100:0)+"</div>"
       +"<div class='lxan-vis' title='unique visitors from this country, counted by LumosCore'>"
       +(vis>0?("<b>"+num(vis)+"</b> vis"):"\\u2014")+"</div>"
-      +"<div class='lxan-n' title='page views, from Cloudflare'>"+num(r.count)+"</div></div>";
+      +"<div class='lxan-n' title='"+(r.ours?"page views, counted by LumosCore (Cloudflare did not record this country)":"page views, from Cloudflare")+"'>"+num(r.count)+"</div></div>";
   }).join("")+"</div><div class='lxan-pager'><span>"+num(rows.length)+" "+(rows.length===1?"country":"countries")+"</span><span>cities: counted by LumosCore "+esc(sinceText(d.own))+"</span></div>";
   flagFallback(el);
   if(!el.__cw){ el.__cw=1;
