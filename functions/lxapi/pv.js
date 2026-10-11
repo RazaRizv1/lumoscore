@@ -8,14 +8,18 @@
 // WHAT IS STORED, one row per page view: the path (no query string), the host that referred the visitor (only when
 // it is another site), the country / region / city Cloudflare attaches to the request, a coarse device class, the
 // host the page was served on, and a random session id the page makes up and keeps in sessionStorage -- it lives
-// for that browsing session only and is not tied to anything else. NOT stored: the IP address, the user agent, any
-// cookie (there are none), the wallet address.
+// for that browsing session only and is not tied to anything else; and since 2026-10-11 a daily visitor hash, so a
+// person who comes back later the same day can be counted once rather than twice (see dailySalt below -- the salt
+// is random, rotates every day and the previous day's is deleted, which is what keeps the hashes unlinkable).
+// STILL NOT stored, and the hash does not change this: the IP address, the user agent, any cookie (there are
+// none), the wallet address. The IP and user agent go into the hash and are never written down.
 //
 // Unauthenticated, like /lxapi/ev and /lxapi/act -- the visitor is anonymous by design. It is capped WITHOUT the KV
 // rate limiter those use: KV allows 1,000 writes a day on this plan and the bridge record lives there too, while
 // page views are far more frequent than wallet connections. The caps are D1 reads instead: 60 views per session per
 // 10 minutes, and 2,000 an hour site-wide (real traffic is ~10 an hour). Rows older than 180 days are pruned.
 const SID_RE = /^[a-z0-9]{12,40}$/;
+let VID_READY = 0;
 const PER_SID_10MIN = 60;
 const PER_HOUR_ALL = 2000;
 const KEEP_MS = 180 * 86400000;
@@ -31,6 +35,52 @@ function json(body, status) {
   return new Response(JSON.stringify(body), {
     status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' },
   });
+}
+
+// ---- returning visitors, without ever storing an IP ---------------------------------------------
+//
+// RAZA asked to recognise returning visitors by IP. Storing the IP itself is the one thing not done
+// here, and it should stay that way: an IP is personal data, it would have to be declared, and it is
+// something that can be demanded later. The rest of this file is careful about exactly that -- the
+// header above lists the IP among what is NOT stored.
+//
+// So keep the ANSWER and throw away the question. vid = sha256(salt + ip + user agent + host), kept
+// to 16 hex characters: enough that a collision is not a practical concern at this traffic, short
+// enough to be useless as an identifier on its own. The IP never reaches the database.
+//
+// THE SALT IS RANDOM, PER DAY, AND DESTROYED WITH THE DAY. This is what makes the hashes
+// unlinkable: once a day's salt is gone, nobody -- including us -- can test an IP against the rows
+// it produced, or connect them to yesterday's. That is also the limit of the feature, deliberately:
+// it answers "did this person come back later today", never "is this the same person as last week".
+// A single fixed secret would make every day linkable forever and would simply be a pseudonymous IP.
+//
+// INSERT OR IGNORE then SELECT, rather than checking first: two requests arriving together at
+// midnight would otherwise generate two salts and split that day's visitors between them. The
+// primary key settles which one wins and both then read it back.
+async function dailySalt(db, day) {
+  try {
+    await db.prepare('CREATE TABLE IF NOT EXISTS pv_salt (day TEXT PRIMARY KEY, salt TEXT NOT NULL)').run();
+    const fresh = Array.from(crypto.getRandomValues(new Uint8Array(24)))
+      .map((b) => b.toString(16).padStart(2, '0')).join('');
+    await db.prepare('INSERT OR IGNORE INTO pv_salt (day, salt) VALUES (?1, ?2)').bind(day, fresh).run();
+    const row = await db.prepare('SELECT salt FROM pv_salt WHERE day = ?1').bind(day).first();
+    // Yesterday's salt is not kept "just in case". Keeping it is the whole thing this avoids.
+    try { await db.prepare('DELETE FROM pv_salt WHERE day < ?1').bind(day).run(); } catch (_) { }
+    return (row && row.salt) || '';
+  } catch (_) { return ''; }
+}
+
+async function visitorId(db, request, day, ua, host) {
+  try {
+    const ip = request.headers.get('cf-connecting-ip') || '';
+    if (!ip) return '';
+    const salt = await dailySalt(db, day);
+    if (!salt) return '';
+    const buf = new TextEncoder().encode(salt + '|' + ip + '|' + ua + '|' + host);
+    const dig = await crypto.subtle.digest('SHA-256', buf);
+    return Array.from(new Uint8Array(dig)).slice(0, 8)
+      .map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch (_) { return ''; }
 }
 function clip(s, n) { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) : s; }
 function deviceOf(ua) {
@@ -132,9 +182,14 @@ export async function onRequestPost({ request, env }) {
       'SELECT (SELECT COUNT(*) FROM pageview WHERE sid = ?1 AND ts > ?2) AS s, (SELECT COUNT(*) FROM pageview WHERE ts > ?3) AS h'
     ).bind(sid, now - 600000, now - 3600000).first();
     if (lim && ((+lim.s || 0) >= PER_SID_10MIN || (+lim.h || 0) >= PER_HOUR_ALL)) return json({ ok: false, reason: 'rate' }, 200);
+    const day = new Date(now).toISOString().slice(0, 10);
+    // Added to an existing table, so the column may not be there yet. Same lazy pattern sendmail.js
+    // uses: attempt it once per isolate and ignore the "duplicate column" that every later boot gets.
+    if (!VID_READY) { VID_READY = 1; try { await db.prepare('ALTER TABLE pageview ADD COLUMN vid TEXT').run(); } catch (_) { } }
+    const vid = await visitorId(db, request, day, ua, host);
     await db.prepare(
-      'INSERT INTO pageview (ts, day, sid, path, ref, country, region, city, device, host) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)'
-    ).bind(now, new Date(now).toISOString().slice(0, 10), sid, path, ref, country, region, city, deviceOf(ua), host).run();
+      'INSERT INTO pageview (ts, day, sid, path, ref, country, region, city, device, host, vid) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)'
+    ).bind(now, day, sid, path, ref, country, region, city, deviceOf(ua), host, vid).run();
     if (Math.random() < 0.005) await db.prepare('DELETE FROM pageview WHERE ts < ?1').bind(now - KEEP_MS).run();
   } catch (e) {
     return json({ ok: false, reason: 'write failed' }, 200);
