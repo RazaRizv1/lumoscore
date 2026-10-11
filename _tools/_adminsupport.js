@@ -160,12 +160,26 @@ const CSS = `<style id="lx-adminsupport-css">
    70vh while the reading pane grew with its message, so the two cards ended on different lines and
    the page looked unaligned however much was in it. A shared height is what makes a mail layout read
    as one object instead of two panels that happen to sit side by side. */
-.lxm-grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:18px;align-items:stretch}
+/* align-items:start, NOT stretch. The list is now far taller than the screen and the reading pane is
+   sticky; stretching would force the pane to the list's full height and sticky would have nothing to
+   slide against. */
+.lxm-grid{display:grid;grid-template-columns:minmax(0,380px) minmax(0,1fr);gap:18px;align-items:start}
 @media(max-width:1000px){.lxm-grid{grid-template-columns:minmax(0,1fr)}}
-.lxm-list,.lxm-read{display:flex;flex-direction:column;min-height:0;height:clamp(460px,72vh,820px)}
+.lxm-list,.lxm-read{display:flex;flex-direction:column;min-height:0}
+/* THE LIST IS A 25-ROW WINDOW, which is taller than the screen on purpose (RAZA 2026-10-11: "lets
+   show like 25 emails on the left side so that the right section is longer"). A row is a sender, a
+   subject, a snippet and a recipient -- about 122px -- so 25 of them is roughly 3,050px and the PAGE
+   scrolls. Both panes used to share one clamp capped at 820px, which is why the reading pane was
+   short enough to need its own scrollbar for an ordinary newsletter. */
+.lxm-list{height:calc(25 * 122px)}
+/* The message stays on screen while the list scrolls past it. Without this the pane would be 3,050px
+   of mostly empty card with a short email stranded at the top -- longer, and worse to read. */
+.lxm-read{position:sticky;top:12px;height:calc(100vh - 24px)}
 .lxm-lbody{flex:1;min-height:0;overflow-y:auto}
 .lxm-read>.adm-card-body{flex:1;min-height:0;overflow-y:auto}
-@media(max-width:1000px){.lxm-list,.lxm-read{height:auto;max-height:none}.lxm-lbody{max-height:60vh}}
+/* One column on a narrow screen, so neither a 25-row list nor a sticky pane makes sense: the list
+   goes back to a short scrolling box and the message simply follows it down the page. */
+@media(max-width:1000px){.lxm-list,.lxm-read{height:auto;max-height:none;position:static}.lxm-lbody{max-height:60vh}}
 
 /* The list header: one row that is the select-all control at rest and the bulk toolbar once anything
    is ticked, so the actions appear exactly where the selection was made. */
@@ -209,7 +223,9 @@ const CSS = `<style id="lx-adminsupport-css">
 .lxm-body{word-break:break-word;font:400 16.5px/1.7 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-soft,#6b6b76)}
 .lxm-body p{margin:0 0 14px;white-space:pre-line}
 .lxm-body p:last-child{margin-bottom:0}
-.lxm-html{width:100%;min-height:280px;max-height:60vh;border:1px solid var(--border);border-radius:10px;background:#fff}
+/* Now that the pane is a full viewport tall, let the message use it: the old 60vh cap sat inside an
+   820px pane, so a newsletter got about 500px and scrolled inside a box inside a box. */
+.lxm-html{width:100%;min-height:420px;max-height:72vh;border:1px solid var(--border);border-radius:10px;background:#fff}
 .lxm-imgbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:9px 12px;margin:0 0 8px;border:1px solid var(--border);border-radius:10px;font-size:13.5px;color:var(--muted)}
 .lxm-imgbar span{flex:1 1 220px}
 .lxm-acts{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap}
