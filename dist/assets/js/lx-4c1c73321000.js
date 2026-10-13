@@ -620,9 +620,48 @@
       .then(function(d){ return (!d||d.error)?pxDirect(a):d; })
       .catch(function(){ return pxDirect(a); });
   }
+  // A PRICE FROM A TRADE OF ALMOST NOTHING IS NOT A PRICE.
+  //
+  // This took the previous day's close and multiplied the whole holding by it, with no test of whether
+  // that close meant anything. On the bot's own test wallet that produced a $44.35M portfolio against
+  // 172 XLM of actual XLM. The top line, measured from the same candle the page prices off:
+  //
+  //   4T   bal 42        px 5,404,309 XLM    -> 226,978,731 XLM "held"
+  //        trade_count 10, base_volume 0.000004, counter_volume 21.5
+  //
+  // The whole day's trading in 4T was four MILLIONTHS of a unit, for 21.5 XLM in total. From that we
+  // derived a per-unit price and applied it to 42 units -- extrapolating the market by a factor of ten
+  // million. "18" was the same shape: 0.00004 units traded, priced at 216,891 XLM each.
+  //
+  // THE CANDLE ALREADY CARRIES WHAT IS NEEDED TO REFUSE THIS. base_volume is how many units changed
+  // hands; counter_volume is how much XLM did. Two conditions, both of which a real market clears
+  // easily and a single dust trade cannot:
+  //
+  //   counter_volume >= PX_MIN_XLM    real money moved, not a rounding error
+  //   base_volume    >= PX_MIN_FRAC x the balance we are valuing
+  //
+  // The second is the one that matters. A price is evidence about the quantity that traded; applying it
+  // to a holding thousands of times larger is not valuation, it is extrapolation. On this wallet the
+  // pair excludes 4T, 18, 9T, aTTaiN and 1018, and keeps H4 (2,274 trades, 113 XLM moved, 11% of the
+  // holding) -- which is the line in the right place.
+  //
+  // A REJECTED PRICE IS STILL SHOWN on the row; only the USD column and the portfolio total drop it,
+  // because those are claims about what the holding is WORTH. px stays so the asset is not silently
+  // blanked, and a.thin marks why for anything downstream.
+  //
+  // Both price paths (the edge candles and the direct Horizon fallback) return the same
+  // trade_aggregations record, so this one guard covers both.
+  var PX_MIN_XLM = 25;      // a day that moved less than this says nothing about a market
+  var PX_MIN_FRAC = 0.01;   // and it must have traded at least 1% of what we are valuing
   function loadAssetPx_(a){
     return pxAgg(a).then(function(d){
-      var r=recs(d)[0]; if(r){ a.px=+r.close||+r.avg||0; a.usd=a.bal*a.px*xlmUsd; }
+      var r=recs(d)[0];
+      if(r){
+        a.px=+r.close||+r.avg||0;
+        var cv=+r.counter_volume||0, bv=+r.base_volume||0;
+        a.thin=!(a.px>0&&cv>=PX_MIN_XLM&&bv>=a.bal*PX_MIN_FRAC);
+        a.usd=a.thin?null:a.bal*a.px*xlmUsd;
+      }
       // NOT renderAssets(): rebuilding here is what makes the list jump. Write this one value into the
       // row it belongs to and leave the order alone -- the sorted rebuild happens once, in pxEnd, when
       // every price has landed.
