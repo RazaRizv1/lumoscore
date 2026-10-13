@@ -131,7 +131,31 @@ const STYLE = '<style id="lx-lumosparent-css">'
 //   * /lumos     — Stellar's line quotes supply, and RAZA asked for supply to stay out of our copy
 //                  (it moves: anyone can burn LUMOS).
 // Inventing any of those three would put a number we do not charge, or cannot support, on the card.
-const XRPL_LIVE = { id: 'xrpl', name: 'XRP Ledger', href: '', live: true, meta: 'Live' };
+// A CHAIN IS OFFERED BY A BUILD THAT SHIPS ITS PAGES, AND BY NO OTHER.
+//
+// This was hardcoded live, so every hub advertised XRP Ledger whether or not the deploy contained a
+// single XRPL page. The plain Stellar build does not: /trade/xrpl, /pools/xrpl, /bridge/xrpl,
+// /rewards/xrpl, /lumos/xrpl and /launchpad/xrpl are all 404 on lumoscore.com right now. Six dead
+// links on every page, and nothing in the build would have said so -- the route table is fine, the
+// pages exist in SOMEONE's dist, and only the two together are wrong.
+//
+// Caught by pointing the health bot at a release candidate before shipping it: production has no
+// such links to crawl yet, because this release is what adds them.
+//
+// The XRPL pages come from _mergexrpl.js, which writes them into dist/x/ and adds their routes. A
+// build that runs it should set LX_XRPL_PUBLIC=1 so the chooser offers them; a build that does not
+// shows the card with an "Upcoming" badge and NO href, which cardHTML already supports and which is
+// the honest thing to show for a chain this deploy cannot reach.
+//
+// Defaults to off because that is the state that cannot ship a broken link. The failure mode of
+// forgetting the flag is a card that says "Upcoming" for a day; the failure mode of the old default
+// is six 404s on every page of the site.
+const XRPL_PUBLIC = process.env.LX_XRPL_PUBLIC === '1';
+const XRPL_LIVE = {
+  id: 'xrpl', name: 'XRP Ledger', href: '',
+  live: XRPL_PUBLIC,
+  meta: XRPL_PUBLIC ? 'Live' : 'Coming soon',
+};
 
 // key  — the container page key this chooser is baked into (base name, theme suffix stripped)
 // path — the bare url that shows it
@@ -241,8 +265,10 @@ function netsFor(hub) {
     Object.assign({ icon: chainLogo('xrpl') }, XRPL_LIVE, {
       href: bare ? hub.path : hub.path + '/xrpl',
       setChain: bare ? 'xrpl' : '',
-      // after XRPL_LIVE in the merge, so a hub that names one wins and a hub that does not keeps 'Live'
-      meta: hub.xrplMeta || XRPL_LIVE.meta,
+      // after XRPL_LIVE in the merge, so a hub that names one wins and a hub that does not keeps 'Live'.
+      // When the chain is not in this build the hub's own line is skipped: "Swaps and limit orders"
+      // under an Upcoming badge describes a page the visitor cannot open.
+      meta: XRPL_PUBLIC ? (hub.xrplMeta || XRPL_LIVE.meta) : XRPL_LIVE.meta,
     }),
   ];
 }
