@@ -148,7 +148,17 @@ background:var(--surface-2);color:var(--text-muted)}
 /* The flag renders as an emoji, so it needs a font stack that actually HAS the regional-indicator
    glyphs -- on a desktop without one the pair falls back to the bare letters "GB", which is still a
    correct answer rather than a pair of empty boxes. */
-.lxu-flag{font-size:18px;line-height:1;font-family:"Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji","Twemoji Mozilla",system-ui,sans-serif}
+/* Was an emoji glyph sized with font-size; it is an image and a name now - see flagOf(). The row
+   is inline-flex so the flag sits on the name's baseline band rather than above it. */
+.lxu-flag{display:inline-flex;align-items:center;gap:7px;line-height:1;white-space:nowrap}
+/* 4:3 at flagcdn's w40, with a hairline because several flags are white at the edge and would
+   otherwise bleed into a light surface. */
+.lxu-flagimg{width:20px;height:15px;object-fit:cover;border-radius:2px;flex:0 0 auto;
+  box-shadow:0 0 0 1px rgba(127,127,140,.28)}
+.lxu-cname{font-size:13.5px;color:var(--text);overflow:hidden;text-overflow:ellipsis;max-width:150px}
+/* The text swapped in when the image cannot load. */
+.lxu-cc{font:700 11px/1 "Hanken Grotesk",system-ui,sans-serif;letter-spacing:.04em;
+  color:var(--text-muted);padding:3px 5px;border-radius:4px;background:rgba(127,127,140,.14)}
 .lxu-noflag{color:var(--text-muted);font-size:13.5px}
 .lxu-tier{display:inline-block;font-weight:700;font-size:12px;letter-spacing:.02em;padding:4px 9px;border-radius:999px}
 .lxu-tier.on{background:rgba(34,197,94,.14);color:#22c55e}
@@ -1006,10 +1016,46 @@ function paintUsers(){
   // THE FLAG IS A UNICODE REGIONAL-INDICATOR PAIR, not an image: two code points per country, no
   // request, no sprite sheet, and nothing to 404. "GB" -> the two letters shifted into the regional
   // indicator block, which every platform renders as a flag.
+  // AN IMAGE, NOT AN EMOJI, AND THE COUNTRY'S FULL NAME (RAZA 2026-10-12: "also add country flag
+  // like you added on analytics section ... And why are you writing short form of country name").
+  //
+  // This used to build a regional-indicator pair -- 0x1F1E6 + letter -- which IS the correct way to
+  // write a flag emoji and renders as a flag on macOS, iOS and Android. Windows ships no flag-emoji
+  // font at all, so Chrome falls back to drawing the two letters, and the column read "PK", "CA",
+  // "SG". Nothing was broken; the platform simply had no glyph. The admin panel is used on Windows.
+  //
+  // The Analytics page already solved this with flagcdn images, which is why its flags looked right
+  // beside a Users column that did not. Same source, same fallback contract: if the image 404s or the
+  // network is down, the two-letter code is swapped back in rather than leaving an empty cell.
   function flagOf(cc){
     if(!/^[A-Za-z]{2}$/.test(cc||""))return "";
-    var s=String(cc).toUpperCase();
-    return String.fromCodePoint(0x1F1E6+s.charCodeAt(0)-65)+String.fromCodePoint(0x1F1E6+s.charCodeAt(1)-65);
+    var lo=String(cc).toLowerCase(), up=String(cc).toUpperCase();
+    return "<img class='lxu-flagimg' alt='' loading='lazy' src='https://flagcdn.com/w40/"+lo+".png' data-cc='"+up+"'>";
+  }
+  // Intl.DisplayNames is in every browser this panel runs in and needs no table of our own, which
+  // matters because a hand-kept country list is a list that goes stale. Built once, not per row.
+  var LXDN=null; try{ LXDN=new Intl.DisplayNames(["en"],{type:"region"}); }catch(_){}
+  function cnameOf(cc){
+    cc=String(cc||"").toUpperCase();
+    if(!cc)return "";
+    if(cc==="T1")return "Tor network";            // Cloudflare's own code, not an ISO country
+    if(cc==="XX"||cc==="(NONE)")return "Unknown";
+    try{ var n=LXDN&&LXDN.of(cc); if(n&&n!==cc)return n; }catch(_){}
+    return cc;                                    // an unknown code is shown as itself, never guessed
+  }
+  // The image can fail where the text never would, so the swap-back is wired once per render pass.
+  function flagImgFallback(root){
+    try{
+      [].slice.call((root||document).querySelectorAll("img.lxu-flagimg")).forEach(function(im){
+        if(im.__lxfb)return; im.__lxfb=1;
+        im.addEventListener("error",function(){
+          var s=document.createElement("span");
+          s.className="lxu-cc";
+          s.textContent=im.getAttribute("data-cc")||"?";
+          if(im.parentNode)im.parentNode.replaceChild(s,im);
+        });
+      });
+    }catch(_){}
   }
   // Three states, and they are NOT the same thing, so they do not look the same:
   //   still loading      -> nothing yet
@@ -1022,8 +1068,11 @@ function paintUsers(){
     if(GEO===null)return "";
     var g=GEO[addr];
     if(!g||!g.c)return "<span class='lxu-noflag' title='This wallet has not connected since LumosCore began recording where connections come from (2026-09-23). It fills in the next time they connect.'>—</span>";
-    return "<span class='lxu-flag' title='Last connected from "+esc(g.c)+" · "+esc(new Date(g.t).toLocaleString())
-      +(g.n>1?(" · "+g.n+" connects seen"):"")+"'>"+flagOf(g.c)+"</span>";
+    // The NAME sits beside the flag now. A flag alone asks the reader to recognise it, and this
+    // column is scanned rather than studied; the title keeps the timestamp and connect count.
+    return "<span class='lxu-flag' title='Last connected from "+esc(cnameOf(g.c))+" · "+esc(new Date(g.t).toLocaleString())
+      +(g.n>1?(" · "+g.n+" connects seen"):"")+"'>"+flagOf(g.c)
+      +"<span class='lxu-cname'>"+esc(cnameOf(g.c))+"</span></span>";
   }
   loadRevenue().then(function(rv){
     var w={};
@@ -1092,7 +1141,11 @@ function paintUsers(){
         +"<td class='num-cell' style='text-align:right' title='"+esc(paid)+"'>"+(u.usd==null?esc(paid):esc(usd(u.usd)))+"</td>"
         +"<td style='text-align:right'>"+tier+"</td>"
         +"<td style='text-align:right;color:var(--text-muted);font-size:13.5px'>"+esc(new Date(u.first).toLocaleDateString())+"</td>"
-        +"<td style='text-align:right;color:var(--text-muted);font-size:13.5px'>"+esc(ago(u.last))+"</td></tr>"; }).join(""); }
+        +"<td style='text-align:right;color:var(--text-muted);font-size:13.5px'>"+esc(ago(u.last))+"</td></tr>"; }).join("");
+    // Wired after every write, not once at startup: the table is re-rendered on search, sort and
+    // column click, and each pass creates fresh <img> nodes that have never had the handler attached.
+    // flagImgFallback marks what it has already wired, so repeating it is free.
+    flagImgFallback(tb); }
   // Delegated, so the row markup carries no inline handler and the address needs no quote juggling.
   if(tb&&!tb.__lxw){ tb.__lxw=1; tb.addEventListener("click",function(e){
     var tr=e.target.closest&&e.target.closest("tr[data-w]"); if(!tr)return;
