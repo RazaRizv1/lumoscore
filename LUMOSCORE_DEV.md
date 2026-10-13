@@ -31,10 +31,21 @@ Static multi-page HTML showcase (no framework, no bundler). One "source of truth
 ```
 # after editing any _tools/*.js transform:
 node _tools/<transform>.js
+node _tools/_donorfix.js                      # ALWAYS: re-guards the donor-clone pages (see below)
 node _tools/_nofollow.js                      # ALWAYS after any transform that emits <a> tags
 node _tools/_heromono.js                      # ALWAYS LAST of the style transforms
 node _tools/extract_site.js aptos --root      # builds to dist/ ROOT (the --root flag matters)
 node _tools/predeploy_check.js                # blocks on both of the above being out of order
+
+#   _donorfix.js is in this list because leaving it out is how it kept getting undone. /about,
+#   /whitepaper, /list-your-token, /mcp, /faq, the legal pages and all 17 /docs pages are built by
+#   cloning the MCP page and replacing <main>; the donor's own scripts survive and go looking for
+#   elements that lived in the <main> we removed. _donorfix guards those lookups. Any transform that
+#   rewrites one of those page keys restores the bare lookup, so this has to run AFTER them, every
+#   time -- it was applied once, reverted by the next rebuild, and threw
+#   "Cannot read properties of null (reading 'parentElement')" on 24 pages on the phone for days
+#   while the fix sat in the repo looking done. Idempotent and cheap: it skips any page that actually
+#   has the element.
 
 # serve locally (wallets need http://, not file://):
 node serve.js            # -> http://localhost:8080   (or double-click "Start LumosCore.bat")
