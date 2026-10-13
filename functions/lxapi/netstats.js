@@ -28,9 +28,30 @@ const ASSET_TTL = 21600;   // 6 h — the asset count barely moves, and this is 
 // this from -- 63 bytes, one request, and it states total_assets outright. Returns null rather than a
 // guess if the upstream is unreachable: a wrong total on a dashboard is worse than an absent one.
 const ASSET_STATS = 'https://api.stellar.expert/explorer/public/asset-stats/overall';
+
+// A DEADLINE, BECAUSE THE BIG ONE IS 1.5 MB. Neither fetch here had a timeout, so a slow upstream held
+// the worker until the platform gave up and answered 502 itself -- which is what the dashboard's stat
+// pills were reading when they sat on "—". Measured by the bot across tonight's runs: netstats 502s
+// intermittently, and three Dashboard rows fail together whenever it does.
+const SUB_TIMEOUT_MS = 6000;
+async function timed(url, opts) {
+  const ac = new AbortController();
+  const t = setTimeout(() => ac.abort(), SUB_TIMEOUT_MS);
+  try { return await fetch(url, { ...opts, signal: ac.signal }); } finally { clearTimeout(t); }
+}
+
+// THE LAST ANSWER THAT WAS TRUE, kept so a bad minute upstream is not served as a broken dashboard.
+// These are DAILY figures: yesterday's trade count does not change, so a reading from twenty minutes
+// ago is the same number, and showing it beats showing nothing. Returned with a short max-age so the
+// next request tries the upstream again rather than settling into the stale copy.
+//
+// This also stops the endpoint caching its own FAILURE. It used to answer 502 with
+// cache-control: max-age=60, so one upstream blip was re-served as an error to everyone for a minute.
+const LAST_GOOD = 'https://lumoscore.internal/__lastgood/netstats';
+
 async function assetCount() {
   try {
-    const r = await fetch(ASSET_STATS, { cf: { cacheTtlByStatus: { '200-299': ASSET_TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
+    const r = await timed(ASSET_STATS, { cf: { cacheTtlByStatus: { '200-299': ASSET_TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
     if (!r.ok) return null;
     const d = await r.json();
     return +d.total_assets > 0 ? +d.total_assets : null;
@@ -64,27 +85,53 @@ function json(body, status, ttl) {
   });
 }
 
-export async function onRequestGet() {
-  let txt = '';
+export async function onRequestGet(ctx) {
+  const cache = caches.default;
+  // Serve the previous good answer rather than an error. Only reached when this request could not
+  // produce one of its own.
+  const fallback = async (why) => {
+    try {
+      const hit = await cache.match(LAST_GOOD);
+      if (hit) {
+        return new Response(await hit.text(), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json',
+            'cache-control': 'public, max-age=60',   // short: try the upstream again soon
+            'access-control-allow-origin': '*',
+            'x-lx-stale': '1',                       // so a reader can tell, without the figures changing
+          },
+        });
+      }
+    } catch (_) {}
+    return json({ error: why }, 502, 0);             // 0: never cache a failure as an answer
+  };
+
+  // BOTH UPSTREAMS AT ONCE. assetCount() used to run only after the 1.5 MB download had finished, so
+  // the two waits were added together for no reason -- they share no data.
+  let txt = '', assets = null;
   try {
-    const r = await fetch(UPSTREAM, { cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
-    if (!r.ok) return json({ error: 'upstream ' + r.status }, 502, 60);
+    const [r, a] = await Promise.all([
+      timed(UPSTREAM, { cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } }),
+      assetCount(),
+    ]);
+    assets = a;
+    if (!r.ok) return fallback('upstream ' + r.status);
     txt = await r.text();
   } catch (e) {
-    return json({ error: 'upstream unreachable' }, 502, 60);
+    return fallback('upstream unreachable');
   }
   const recs = tailRecords(txt, 2);
-  if (!recs.length) return json({ error: 'no records' }, 502, 60);
+  if (!recs.length) return fallback('no records');
 
   // The final record is today, still filling. The one before it is the last day that is finished.
   const today = recs[recs.length - 1] || null;
   const full = recs.length > 1 ? recs[recs.length - 2] : null;
-  if (!full) return json({ error: 'no complete day' }, 502, 60);
+  if (!full) return fallback('no complete day');
 
   // Everything the dashboard strip needs about the NETWORK, from one record. These are all facts
   // about the last complete UTC day except `accounts`, which is a running total.
-  const assets = await assetCount();
-  return json({
+  const out = json({
     trades: +full.trades || 0,
     operations: +full.operations || 0,
     transactions: +full.transactions || 0,
@@ -97,4 +144,13 @@ export async function onRequestGet() {
     ts: +full.ts || 0,                                // start of that UTC day, seconds
     partial: today ? { trades: +today.trades || 0, ts: +today.ts || 0 } : null,
   }, 200, assets == null ? 60 : 900);
+
+  // Keep this answer for the next request that cannot get one. waitUntil so the write never delays
+  // the response; without it the put races the worker shutting down and silently does nothing.
+  try {
+    const save = out.clone();
+    if (ctx && ctx.waitUntil) ctx.waitUntil(cache.put(LAST_GOOD, save));
+    else await cache.put(LAST_GOOD, save);
+  } catch (_) {}
+  return out;
 }
