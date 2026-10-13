@@ -192,7 +192,16 @@ const STYLE='<style id="lx-swapcalc-css">'
 +'.lx-am-item:hover{background:rgba(255,255,255,.06)}'
 +'.lx-am-ic{width:25px;height:25px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;flex:0 0 auto;overflow:hidden}'
 +'.lx-am-ic img{width:100%;height:100%;object-fit:cover;display:block}'
-+'.lx-am-code{font-weight:600}'
++'.lx-am-code{font-weight:600;display:inline-flex;align-items:center;gap:4px}'
+// THE HOUSE MARK IS A FILLED GREEN DISC WITH A WHITE CHECK, not a bare tick (RAZA 2026-10-11: "the
+// curated icon is incorrect"). The limit picker in this same file already draws it that way --
+// .cd[data-v]::after, 13px, border-radius:50%, background #35c07f -- and so does the search popup.
+// A bare check in accent green read as a different badge meaning something else.
+// Same geometry and the same hex, so the four pickers and the search cannot drift apart. The SVG
+// keeps its stroke of currentColor, which is now white against the disc.
++'.lx-am-vt{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;'
++'flex:0 0 auto;border-radius:50%;background:#35c07f;color:#fff;padding:2.5px;box-sizing:border-box}'
++'.lx-am-vt svg{width:100%;height:100%;display:block}'
 // asset code alone cannot identify a Stellar asset — the picker now stacks the home domain / issuer under it
 +'.lx-am-txt{display:flex;flex-direction:column;gap:1px;min-width:0;overflow:hidden}'
 +'.lx-am-sub{font-size:10.5px;line-height:1.25;color:var(--text-muted,#8b90a0);font-family:JetBrains Mono,monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}'
@@ -517,6 +526,34 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'function qSame(a,b){return !!a&&!!b&&a.code===b.code&&(a.issuer||"")===(b.issuer||"");}'
 +'function qMsg(host,text){while(host.firstChild)host.removeChild(host.firstChild);'
 +'var d=document.createElement("div");d.className="h";d.textContent=text;host.appendChild(d);}'
+// Marks one node verified once the shared map lands. Reuses window.__lxCuratedV, the single cached
+// /lxapi/assetmeta promise the search layer created and the other pickers share, so this costs no
+// request of its own. Sets the SAME data-v attribute the roster path sets, so there is one piece of
+// CSS drawing the disc and no second style to keep in step.
+// SELF-CONTAINED, AND THAT IS NOT A STYLE CHOICE. The first version called lxVmap() and read _LXV,
+// which live in a DIFFERENT emitted <script> -- and each emitted script has its own scope, so both
+// were ReferenceErrors here. qRow() threw on the first non-native asset, the menu never got built,
+// and RAZA reported the You-sell dropdown simply not opening. A regression I caused, by the exact
+// trap already written down about this build step.
+//
+// So this touches nothing outside itself except window.__lxCuratedV, which is a GLOBAL and therefore
+// does cross script boundaries. Everything is wrapped: a failure here must cost a tick, never a
+// dropdown.
++'function qVtick(el,key){'
++'  try{'
++'    if(!el||!key)return;'
++'    var go=function(v){ try{ if(v&&v[key]&&v[key].v)el.setAttribute("data-v","1"); }catch(_e){} };'
++'    var c=window.__lxQV;'
++'    if(c&&Object.keys(c).length){go(c);return;}'
++'    window.__lxAM=window.__lxAM||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});'
++'    window.__lxCuratedV=window.__lxCuratedV||window.__lxAM.then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};});'
++'    window.__lxCuratedV.then(function(v){'
++'      window.__lxQV=v||{};'
++'      if(!Object.keys(window.__lxQV).length){ try{ window.__lxAM=null; window.__lxCuratedV=null; }catch(_e){} }'
++'      go(window.__lxQV);'
++'    }).catch(function(){});'
++'  }catch(_){}'
++'}'
 +'function qRow(a,right){'
 // Built with createElement, not innerHTML. This markup is three levels of quoting deep -- Node string,
 // emitted JS string, HTML attribute -- and the innerHTML version shipped `class="ic"` unescaped, which
@@ -530,7 +567,15 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var ic=document.createElement("span");ic.className="lxq-ic";ic.setAttribute("data-lxc",a.code||"");ic.textContent=(a.code||"?").slice(0,2);'
 +'var tx=document.createElement("span");tx.className="tx";'
 +'var cd=document.createElement("span");cd.className="cd";cd.textContent=a.code||"";'
-+'if(a.v)cd.setAttribute("data-v","1");'
+// a.v ONLY EXISTS ON THE HARDCODED ROSTER (RAZA 2026-10-11: "Limit tab doesn't have any curated
+// icon at all"). The entries written into this file carry v:1 -- USDC/centre.io, EURC/circle.com,
+// SHX, AQUA -- but the rows a reader actually sees here are built from their WALLET BALANCES, and
+// those objects have no v at all. So the list showed AQUA and EURC, both curated, with no mark.
+// The shared map answers for every curated asset, not just the ones spelled out here; a.v is still
+// honoured first so nothing that ticks today stops ticking.
+// a.native first: XLM has no issuer, is in no curated map, and is verified by definition.
++'if(a.v||a.native)cd.setAttribute("data-v","1");'
++'else if(a.code&&a.issuer&&typeof qVtick==="function")qVtick(cd,a.code+"-"+a.issuer);'
 +'var sub=(a.dom||(a.native?"native asset":qShort(a.issuer)));'
 +'if(a.dom&&!a.native)sub+=" \u00b7 "+qShort(a.issuer);'
 +'var sb=document.createElement("span");sb.className="s";sb.textContent=sub;'
@@ -1086,9 +1131,67 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 // home domain when the issuer publishes one, and always the shortened issuer key as the tiebreaker.
 +'function swAbbrK(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(2)+"K";return fmt(n);}'
 +'function _amSub(a){if(!a||a.native||a.code==="XLM")return "Stellar native";var k=a.iss||"";var sk=k?(k.slice(0,4)+"\u2026"+k.slice(-4)):"";return a.dom?(a.dom+(sk?(" \u00b7 "+sk):"")):sk;}'
-+'function menuItem(a){var b=document.createElement("button");b.type="button";b.className="lx-am-item";b.setAttribute("data-lx-noswap","");var lg=dashLogo(a);var ic=lg?(\'<span class="lx-am-ic"><img src="\'+esc(lg)+\'" data-code="\'+esc(a.code||"?")+\'" alt=""></span>\'):(\'<span class="lx-am-ic" style="background:\'+(a.native?"#8b5cf6":dashCol(a.code))+\'">\'+(a.native?"\\u2726":esc((a.code||"?").slice(0,1).toUpperCase()))+\'</span>\');b.innerHTML=ic+\'<span class="lx-am-txt"><span class="lx-am-code">\'+esc(a.code)+\'</span>\'+(_amSub(a)?(\'<span class="lx-am-sub">\'+esc(_amSub(a))+\'</span>\'):"")+\'</span>\'+((a.bal!=null)?\'<span style="margin-left:auto;font-family:JetBrains Mono,monospace;font-size:12px;color:var(--text-soft)">\'+swAbbrK(a.bal)+\'</span>\':"");return b;}'
+// VERIFIED TICKS IN THE ASSET PICKERS (RAZA 2026-10-11: "Assets that are curated by lumoscore are
+// not containing verified ticks in all of these dropdowns"). The market table and the search popup
+// both show a tick; these menus never did, so the same asset looked curated in one place and
+// unmarked in another.
+//
+// TWO PHASES, because the answer is async and the menu is not. The row is built with the asset id on
+// it and the tick is stamped afterwards -- building it inline would need the map at click time, and
+// the first open would always miss. Stamping is idempotent (it checks for an existing tick), so it
+// can run on every fill and again when the map lands.
+//
+// The map is the one the search layer already created: window.__lxCuratedV, itself derived from a
+// single shared window.__lxAM fetch of /lxapi/assetmeta. Reusing it means opening a picker costs no
+// request at all when search has run, and at most one when it has not. Keys are CODE-ISSUER (checked
+// against the live endpoint: 83 entries, dash-keyed, 58 with v truthy) and verified is r.v.
++'var _LXV=null;'
+// AN EMPTY MAP IS NOT AN ANSWER, SO IT IS NOT CACHED. The first version cached whatever came back,
+// and {} is truthy -- so one failed /lxapi/assetmeta (or one environment where it answers empty)
+// meant NO picker ever showed a tick again for the life of the page, with no retry. Measured on
+// staging, where CONTENT_KV is unbound in the Preview environment: the endpoint answers 200 with 28
+// bytes and verified={}. Caching that would turn a missing binding into a permanent silent wrong
+// answer -- which is the exact failure the project already has a rule about.
+// Only a map with entries is kept; an empty one falls through and the next open tries again.
++'function lxVmap(cb){'
++'  if(_LXV&&Object.keys(_LXV).length){try{cb(_LXV);}catch(_){} return;}'
++'  try{'
++'    window.__lxAM=window.__lxAM||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});'
++'    window.__lxCuratedV=window.__lxCuratedV||window.__lxAM.then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};});'
+// The shared promise resolves once, so an empty result would stick there too. When it comes back
+// empty the cached promises are dropped and the next call refetches, rather than replaying the
+// same nothing forever.
++'    window.__lxCuratedV.then(function(v){_LXV=v||{};if(!Object.keys(_LXV).length){try{window.__lxAM=null;window.__lxCuratedV=null;}catch(_e){}}try{cb(_LXV);}catch(_){}});'
++'  }catch(_){}'
++'}'
++'var AMTICK=\'<span class="lx-am-vt" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>\';'
++'function lxAmStamp(root){'
++'  if(!_LXV||!root||!root.querySelectorAll)return;'
++'  [].forEach.call(root.querySelectorAll(".lx-am-item[data-lxv]"),function(b){'
++'    if(b.querySelector(".lx-am-vt"))return;'
++'    var k=b.getAttribute("data-lxv")||"";'
+// The native asset is verified by definition -- it has no issuer to vouch for it and never appears
+// in the curated map, so it is answered here rather than looked up.
++'    if(k!=="native"){ var r=_LXV[k]; if(!r||!r.v)return; }'
++'    var c=b.querySelector(".lx-am-code");'
++'    if(c)c.insertAdjacentHTML("beforeend",AMTICK);'
++'  });'
++'}'
+// EXPORTED so the wallet layer's own picker uses this implementation rather than carrying a second
+// copy. _walletdata.js builds the same .lx-am-item rows from its own draw(), and two copies of a
+// rule like "which assets are verified" is two chances to drift. Guarded with || so whichever layer
+// parses first defines it and the other just calls it -- no load-order dependency either way.
++'window.__lxAmTick=window.__lxAmTick||function(root){lxVmap(function(){lxAmStamp(root);});};'
+// XLM carries no issuer and is not in the curated map, so it gets no key and never a tick -- the
+// native asset is not something an issuer vouches for.
+// XLM GETS THE TICK TOO (RAZA 2026-10-11: "you still havent added tick on stellar in swap popup").
+// It has no issuer, so it is in no curated map and every lookup here missed it -- the native asset
+// sat unmarked in a list where TDT, LUMOS and LMX were all ticked, which reads as XLM being the one
+// asset nobody vouched for. The sentinel key "native" is carried on the same attribute so one
+// stamper still does the work and there is no second path to keep in step.
++'function menuItem(a){var b=document.createElement("button");b.type="button";b.className="lx-am-item";b.setAttribute("data-lx-noswap","");if(a.native)b.setAttribute("data-lxv","native");else if(a.code&&a.iss)b.setAttribute("data-lxv",a.code+"-"+a.iss);var lg=dashLogo(a);var ic=lg?(\'<span class="lx-am-ic"><img src="\'+esc(lg)+\'" data-code="\'+esc(a.code||"?")+\'" alt=""></span>\'):(\'<span class="lx-am-ic" style="background:\'+(a.native?"#8b5cf6":dashCol(a.code))+\'">\'+(a.native?"\\u2726":esc((a.code||"?").slice(0,1).toUpperCase()))+\'</span>\');b.innerHTML=ic+\'<span class="lx-am-txt"><span class="lx-am-code">\'+esc(a.code)+\'</span>\'+(_amSub(a)?(\'<span class="lx-am-sub">\'+esc(_amSub(a))+\'</span>\'):"")+\'</span>\'+((a.bal!=null)?\'<span style="margin-left:auto;font-family:JetBrains Mono,monospace;font-size:12px;color:var(--text-soft)">\'+swAbbrK(a.bal)+\'</span>\':"");return b;}'
 +'function openMenu(which){var ex=document.querySelector(".lx-asset-menu");if(ex){ex.remove();return;}var chip=(which==="from")?payChip:recChip;var hs=(window.__lxHoldings||[]).slice().filter(function(a){return !window.lxIsCurated||a.native||a.code==="XLM"||window.lxIsCurated(a.code,a.iss||"");});if(!hs.length)hs=[{code:"XLM",native:true,bal:(window.__lxNative||null)},{code:"USDC",iss:lxIssuer("USDC"),native:false,bal:null}];var menu=document.createElement("div");menu.className="lx-asset-menu lx-swap-menu";menu.setAttribute("data-lx-noswap","");var sw=document.createElement("div");sw.className="lx-am-searchwrap";var si=document.createElement("input");si.className="lx-am-search";si.placeholder=(which==="from"?"Search your assets\\u2026":"Search any Stellar asset\\u2026");sw.innerHTML=\'<svg class="lx-am-searchic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>\';sw.appendChild(si);menu.appendChild(sw);var list=document.createElement("div");list.className="lx-am-list";menu.appendChild(list);'
-+'function fill(arr){list.innerHTML="";if(!arr.length){list.innerHTML=\'<div class="lx-am-empty">No matches</div>\';return;}var LXCAP=60,lxAll=arr.length;arr=arr.slice(0,LXCAP);arr.forEach(function(a){var b=menuItem(a);b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();menu.remove();pick(which,a);},true);list.appendChild(b);});if(lxAll>LXCAP){var lxn=document.createElement("div");lxn.className="lx-am-more";lxn.textContent="Showing "+LXCAP+" of "+lxAll+" \u2014 type to find the rest";list.appendChild(lxn);}}fill(hs);'
++'function fill(arr){list.innerHTML="";if(!arr.length){list.innerHTML=\'<div class="lx-am-empty">No matches</div>\';return;}var LXCAP=60,lxAll=arr.length;arr=arr.slice(0,LXCAP);arr.forEach(function(a){var b=menuItem(a);b.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();menu.remove();pick(which,a);},true);list.appendChild(b);});if(lxAll>LXCAP){var lxn=document.createElement("div");lxn.className="lx-am-more";lxn.textContent="Showing "+LXCAP+" of "+lxAll+" \u2014 type to find the rest";list.appendChild(lxn);}lxVmap(function(){lxAmStamp(list);});}fill(hs);'
 +'if(which==="from"){si.addEventListener("input",function(){var q=si.value.trim().toLowerCase();fill(q?hs.filter(function(h){return (h.code||"").toLowerCase().indexOf(q)>=0;}):hs);});}else{var tmr;si.addEventListener("input",function(){clearTimeout(tmr);var q=si.value.trim();if(!q){fill(hs);return;}tmr=setTimeout(function(){fetch("/lxapi/assetsearch?search="+encodeURIComponent(q)+"&limit=12").then(function(r){return r.json();}).then(function(d){var recs=(d._embedded&&d._embedded.records)||[];var arr=recs.map(function(rc){var p=(rc.asset||"").split("-");var ti=rc.tomlInfo||rc.toml_info||{};var lg=ti.image||ti.orgLogo||"";if(lg&&p[0]){window.__lxLogos=window.__lxLogos||{};window.__lxLogos[p[0]]=lg;}return{code:p[0],iss:p[1]||"",native:!p[1],bal:null,logo:lg,dom:(rc.domain||ti.orgName||"")};}).filter(function(x){return x.code&&x.iss;});fill(arr.length?arr:hs.filter(function(h){return h.code.toLowerCase().indexOf(q.toLowerCase())>=0;}));}).catch(function(){fill(hs.filter(function(h){return h.code.toLowerCase().indexOf(q.toLowerCase())>=0;}));});},260);});}'
 +'document.body.appendChild(menu);var rc=chip.getBoundingClientRect();menu.style.position="fixed";menu.style.top=(rc.bottom+6)+"px";menu.style.left=Math.max(8,Math.min(rc.left,window.innerWidth-240))+"px";menu.style.zIndex="100001";si.focus();}'
 // `.lx-asset-pick` IS IN THIS ALLOW-LIST BECAUSE THIS LISTENER DOES NOT OWN EVERY MENU IT CLOSES.
