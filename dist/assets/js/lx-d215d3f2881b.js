@@ -869,6 +869,43 @@ function lxBrValidateStep2(){
 }
 
 function lxIssShort(k){ if(k==="XLM")return "Native asset"; var C=window.__lxCCTP; if(k==="USDC")return (C&&C.usdcIssuer)?lxBrShort(C.usdcIssuer):"—"; var sp=(LX_ASSETS[k]||{}).spec; return (sp&&sp.issuer)?lxBrShort(sp.issuer):"—"; }
+// VERIFIED TICKS ON THE BRIDGE'S FROM LIST (RAZA 2026-10-11: "Cross-chain, step 2: also add
+// verification ticks on From side assets dropdown just like on XRPL"). The same mark the market
+// table, the search popup and the swap pickers show; this list was the one place a curated asset
+// looked uncurated.
+//
+// The full issuer, resolved the same three ways lxIssShort does above -- USDC's comes from the live
+// CCTP config rather than LX_ASSETS, and XLM has none at all. Kept beside it so the two can never
+// disagree about which issuer an entry means.
+function lxIssFull(k){ if(k==="XLM")return ""; var C=window.__lxCCTP; if(k==="USDC")return (C&&C.usdcIssuer)||""; var sp=(LX_ASSETS[k]||{}).spec; return (sp&&sp.issuer)||""; }
+// Reuses window.__lxCuratedV -- the single cached /lxapi/assetmeta promise the search layer created
+// and the swap pickers already share -- so opening this menu costs no request of its own and there
+// is one answer on the page to "is this asset verified". The DOM differs here (.anm, not
+// .lx-am-code), which is why this is its own stamper rather than a call to window.__lxAmTick.
+//
+// An EMPTY map is not cached: the endpoint answers empty wherever CONTENT_KV is unbound, and caching
+// that would turn a missing binding into a permanent silent "nothing is verified".
+var _LXBRV=null;
+function lxBrTicks(root){
+  if(!root)return;
+  var paint=function(v){
+    if(!v)return;
+    [].slice.call(root.querySelectorAll("[data-lxv]")).forEach(function(b){
+      if(b.querySelector(".avt"))return;
+      var k=b.getAttribute("data-lxv")||"";
+      // XLM is verified by definition: no issuer, so no curated-map entry to look up.
+      if(k!=="native"){ var r=v[k]; if(!r||!r.v)return; }
+      var nm=b.querySelector(".anm");
+      if(nm)nm.insertAdjacentHTML("beforeend",'<span class="avt" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>');
+    });
+  };
+  if(_LXBRV&&Object.keys(_LXBRV).length){ paint(_LXBRV); return; }
+  try{
+    window.__lxAM=window.__lxAM||fetch("/lxapi/assetmeta").then(function(r){return r.ok?r.json():null;}).catch(function(){return null;});
+    window.__lxCuratedV=window.__lxCuratedV||window.__lxAM.then(function(d){return (d&&d.verified)||{};}).catch(function(){return {};});
+    window.__lxCuratedV.then(function(v){ _LXBRV=v||{}; if(!Object.keys(_LXBRV).length){ try{ window.__lxAM=null; window.__lxCuratedV=null; }catch(_e){} } paint(_LXBRV); });
+  }catch(_){}
+}
 function lxBrAssetMenu(anchor){
   var m=document.getElementById("lx-br-amenu");
   if(!m){
@@ -885,12 +922,23 @@ function lxBrAssetMenu(anchor){
         +".lx-br-amenu .aic img{width:100%;height:100%;object-fit:cover;display:block}"
         +".lx-br-amenu .atx{display:flex;flex-direction:column;line-height:1.25;min-width:0}"
         +".lx-br-amenu .anm{font-size:14px;font-weight:600}"
-        +".lx-br-amenu .aiss{font-size:11px;color:var(--text-soft,#8a90a2);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}";
+        +".lx-br-amenu .aiss{font-size:11px;color:var(--text-soft,#8a90a2);font-family:ui-monospace,SFMono-Regular,Menlo,monospace}"
+        // .anm becomes the flex row so the tick sits on the code's baseline rather than below it;
+        // 11px against the 14px code, the same proportion the other pickers use.
+        +".lx-br-amenu .anm{display:inline-flex;align-items:center;gap:4px}"
+        // Filled green disc with a white check -- the house mark, matching .cd[data-v]::after in
+        // _swapcalc.js and the search popup. RAZA 2026-10-11: "the curated icon is incorrect".
+        +".lx-br-amenu .avt{display:inline-flex;align-items:center;justify-content:center;width:13px;height:13px;"
+        +"flex:0 0 auto;border-radius:50%;background:#35c07f;color:#fff;padding:2.5px;box-sizing:border-box}"
+        +".lx-br-amenu .avt svg{width:100%;height:100%;display:block}";
       document.head.appendChild(st); }
     m=document.createElement("div"); m.id="lx-br-amenu"; m.className="lx-br-amenu"; m.style.cssText="position:absolute;z-index:99999;min-width:236px;display:none";
     m.innerHTML='<div class="lx-amsearch"><input class="lx-amq" type="text" placeholder="Search asset or issuer" spellcheck="false" autocomplete="off"></div>'
-      +'<div class="lx-amlist">'+LX_AORDER.map(function(k){ return '<button type="button" data-ak="'+k+'"><span class="aic"><img src="'+LX_ASSETS[k].logo+'" alt=""></span><span class="atx"><span class="anm">'+k+'</span><span class="aiss">'+lxIssShort(k)+'</span></span></button>'; }).join("")+'</div>';
+      +'<div class="lx-amlist">'+LX_AORDER.map(function(k){ var _iv=lxIssFull(k); var _lv=(k==="XLM")?"native":(_iv?(k+"-"+_iv):""); return '<button type="button" data-ak="'+k+'"'+(_lv?(' data-lxv="'+_lv+'"'):'')+'><span class="aic"><img src="'+LX_ASSETS[k].logo+'" alt=""></span><span class="atx"><span class="anm">'+k+'</span><span class="aiss">'+lxIssShort(k)+'</span></span></button>'; }).join("")+'</div>';
     document.body.appendChild(m);
+    // Stamped once: the search box below only toggles display on the existing buttons, it does not
+    // rebuild them, so a tick put on now survives every filter.
+    lxBrTicks(m);
     m.addEventListener("click",function(e){ var b=e.target.closest("[data-ak]"); if(!b)return; window.__lxBr.srcKey=b.getAttribute("data-ak"); m.style.display="none"; lxBrRenderSource(); lxBrCalc(); });
     var q=m.querySelector(".lx-amq");
     if(q){ q.addEventListener("input",function(){ var v=(q.value||"").trim().toLowerCase(); [].slice.call(m.querySelectorAll(".lx-amlist button")).forEach(function(b){ var kk=b.getAttribute("data-ak").toLowerCase(); var iss=((b.querySelector(".aiss")||{}).textContent||"").toLowerCase(); b.style.display=(!v||kk.indexOf(v)>=0||iss.indexOf(v)>=0)?"flex":"none"; }); });

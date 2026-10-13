@@ -45,7 +45,7 @@
         </div>
       </td>
     `;
-    tbody.appendChild(tr);
+    if (tbody) tbody.appendChild(tr);
     const sp = tr.querySelector('.spark-cell svg');
     const trend = isUp ? 0.1 : (isZero ? 0 : -0.1);
     const sPts = []; let sv = 19;

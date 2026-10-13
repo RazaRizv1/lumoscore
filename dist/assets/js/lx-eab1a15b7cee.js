@@ -91,7 +91,7 @@
       tickerInput.addEventListener('input', function() {
         const v = tickerInput.value.trim().toUpperCase();
         previewTicker.textContent = '$' + (v || 'TICKER');
-        if (supplyTicker) supplyTicker.textContent = v || 'TOKEN';
+        if (supplyTicker) supplyTicker.textContent = v || 'TOKENS';
         if (!iconIsImage && previewIcon) {
           previewIcon.textContent = v ? v.slice(0, 3) : ''; previewIcon.classList.toggle('empty', !v);
         }

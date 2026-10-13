@@ -2227,150 +2227,6 @@ html body .pool-header-row .ph-icons>*{
 /* light-mode elevation: cards read as raised surfaces on light bg */
 [data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard){box-shadow:0 1px 2px rgba(16,17,20,.05),0 10px 28px -20px rgba(16,17,20,.16);}
 [data-theme="light"] :where(.product-card,.quick-card,.market-card,.insight-card,.activity-card,.lp-card,.tcard,.dex-mover-card,.dex-mints-card,.pools-card,.assets-card,.amm-snapshot-card,.lx-netcard):hover{box-shadow:0 2px 4px rgba(16,17,20,.06),0 16px 36px -20px rgba(16,17,20,.22);}
-</style><style id="lx-searchassets-css">
-.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
-.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
-.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
-.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
-.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
-.sp-row--asset.lx-searow .sp-ico img{display:block}
-.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
-/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
-/* #11: the per-kind section label. Quieter than the "Recent" head above it -- these divide a list,
-   they do not introduce a new one. */
-.lx-recgrp{padding:9px 14px 4px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
-  letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft,#8a8fa3)}
-.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
-  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
-.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
-  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
-.lx-rechead .lx-recclear:hover{color:var(--accent)}
-.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
-.lx-seavfd svg{width:9px;height:9px;display:block}
-/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
-   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
-.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
-  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
-  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
-  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
-.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
-</style><style id="lx-heromono-css">
-/* ---- the card ------------------------------------------------------------------------------- */
-/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
-   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
-   per-page background rules on both pages. */
-html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
-             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
-  border:1px solid rgba(255,255,255,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
-html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
-  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
-             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
-  border:1px solid rgba(16,16,22,.11)!important;
-  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
-/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
-   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
-.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
-
-/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
-/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
-   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
-   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
-   itself is untouched everywhere else it is used. */
-.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
-
-/* ---- type: the loudest thing on the card ----------------------------------------------------- */
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
-/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
-   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
-   and colour alone leaves it transparent. */
-.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
-.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
-  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
-html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
-html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
-  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
-
-/* ---- the headline, ONE size for both heroes ---------------------------------------------------- */
-/* #14: Pools drifted to 38px inside a 340px column (lx-amm-css) while Trade sat at 36px inside 420px,
-   so the same sentence broke onto a different number of lines and the two tops of the app stopped
-   looking like the same design. Trade's numbers are the ones both use now. This lives HERE, in the
-   sheet that already runs last and already owns the shared hero look, because that is what stops the
-   two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:36px!important;line-height:1.08!important;max-width:420px!important}
-@media(max-width:880px){
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:23px!important;line-height:1.14!important;max-width:100%!important}
-}
-@media(max-width:560px){
-.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
-  font-size:18px!important;line-height:1.18!important;max-width:100%!important}
-}
-
-/* ---- the chain mark -------------------------------------------------------------------------- */
-/* #2: the hairline ring here was written for a dark disc with a white glyph, which would have been
-   lost against a dark card. The mark that actually ships is the blue Stellar disc -- it carries its
-   own edge -- so the ring was not giving it one, it was drawing a white outline around it. Depth
-   only; nothing traces the artwork. */
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 10px 24px -12px rgba(0,0,0,.8)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
-  box-shadow:0 10px 26px -14px rgba(16,16,22,.5)!important}
-/* #8/#9: the mark is the first thing on the page and it was smaller than the headline beside it --
-   and the two heroes were not even the same size as each other (56 on Trade, 64 on Pools). One size,
-   large enough to lead, on both. */
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
-  width:76px!important;height:76px!important}
-@media(max-width:880px){
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
-  width:52px!important;height:52px!important}
-}
-@media(max-width:560px){
-.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
-  width:46px!important;height:46px!important}
-}
-
-/* ---- the stats strip -------------------------------------------------------------------------- */
-.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
-  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
-  border-top:1px solid rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
-  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
-  border-top:1px solid rgba(16,16,22,.10)!important}
-.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
-.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
-.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
-html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
-html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
-
-/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
-/* These two coins OVERLAP by 10px, and the ring is what keeps them reading as two coins.
-   The design drew it in near-black, which read as an outline drawn around each coin. A 0.8px
-   hairline fixed that and broke the other half: against a black XLM mark on a near-white card it is
-   invisible, so the pair merged into one blob wherever they overlap -- the broken edge.
-   The answer is the ring every overlapping-avatar stack uses: keep the design's 2px, but paint it in
-   the card's OWN ground, so it reads as a gap between the coins rather than a line around them.
-   The drop shadow goes with it -- on a light card it was just a grey smudge under each coin. */
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
-  border:2px solid #17171d!important;box-shadow:none!important}
-html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border:2px solid #ebebee!important;box-shadow:none!important}
-/* 2px of ring on a 16-17px phone mark is most of the coin; the design already steps this down. */
-@media(max-width:560px){
-.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span,
-html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
-  border-width:1.5px!important}
-}
-
-/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
-/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
-   card, which is the point -- the eye goes to the action. */
-.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
-html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
 </style><style id="lx-topwallet-css">/*lxts:1.1*/.lx-topwallet{display:inline-flex;align-items:center;gap:9.9px;height:42px;padding:0 14.3px 0 7.7px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);cursor:pointer;transition:.16s;flex-shrink:0}.lx-topwallet:hover{border-color:var(--border-strong)}.lx-topwallet .lx-tw-av{width:28px;height:28px;border-radius:8px;flex-shrink:0;display:grid;place-items:center;color:#fff;background:linear-gradient(135deg,#5b6bff,#8b5cf6)}.lx-topwallet .lx-tw-av svg{width:16px;height:16px}.lx-topwallet .lx-tw-addr{font:600 14.9px/1 'JetBrains Mono','JetBrains Mono',monospace;color:var(--text);white-space:nowrap}.lx-topwallet .lx-tw-dot{width:7px;height:7px;border-radius:50%;background:var(--green,#35c07f);flex-shrink:0}.nx-logout{display:flex;align-items:center;gap:11px;width:100%;margin-top:7.7px;padding:9.9px 12.1px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-soft);cursor:pointer;font:600 15.4px/1.1 inherit;transition:.16s;text-align:left}.nx-logout:hover{border-color:var(--border-strong);color:var(--text)}.nx-logout .nx-lo-ic{width:30px;height:30px;border-radius:9px;flex-shrink:0;display:grid;place-items:center;background:var(--bg);color:var(--text-soft)}.nx-side.nx-collapsed .nx-logout{justify-content:center;padding:9.9px 0;gap:0}@media (max-width:1080px){.lx-topwallet .lx-tw-addr{display:none}}</style><style id="lx-walletchip2-css">/*lxts:1.1*/.lx-topwallet .lx-tw-av{background:transparent !important;overflow:hidden;padding:0}.lx-topwallet .lx-tw-av img,.lx-topwallet .lx-tw-av svg{width:100%;height:100%;border-radius:8px;object-fit:cover;display:block}.lx-tw-copy{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:7px;border:1px solid var(--border);background:transparent;color:var(--text-soft);cursor:pointer;flex-shrink:0;padding:0;transition:.14s}.lx-tw-copy:hover{color:var(--text);border-color:var(--border-strong)}.lx-tw-copy.ok{color:var(--green,#35c07f);border-color:var(--green,#35c07f)}.nx-logout .nx-lo-ic{color:#e5484d;background:rgba(229,72,77,.12)}.nx-logout:hover{border-color:#e5484d}.nx-logout:hover .nx-lab{color:#e5484d}</style><style id="lx-walletlogo-css">
 /* The avatar is a background-image disc in both places. Swapping the image is enough -- size, radius
    and ring stay whatever each surface already sets. */
@@ -2392,7 +2248,36 @@ html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] 
    through as a light fringe -- the "white from the sides" on a dark chip. Both were the same element.
    Hidden only when a real wallet logo is behind it (.lx-haswl); with none, the chain mark still shows. */
 .mu-av.lx-haswl>img,.lx-tw-av.lx-haswl>img{display:none!important}
-</style><style id="lx-amm-css">
+</style><style id="lx-tabs-css">
+.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:2px}
+/* Sized UP. At 13px these read as punctuation beside the label rather than as marks in their own
+   right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
+   afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
+.lx-tabic svg{display:block;width:17px;height:17px}
+/* The chain mark reads as identity, not decoration: it is the one element on the chip that says WHICH
+   network these pairs are on, and at 17px inside a 31px chip it was the smallest thing in the row.
+   22px still clears the chip with room either side, and matches the weight of the asset marks in the
+   list beneath it. The svg icons on the other chips stay at 17 -- they are glyphs, not logos, and
+   growing an outline icon just makes it look heavy. */
+.lx-tabic-img img{display:block;width:22px;height:22px;border-radius:50%;object-fit:cover}
+/* Same on the phone, scaled to that chip: 15 -> 19. */
+.mdx-mk-filter .lx-tabic-img img{width:19px;height:19px}
+.mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
+#poolTabs .lx-tabic svg{width:18px;height:18px}
+@media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}
+/* Full colour on every tab. Dimming the inactive ones to .72 was what made a set of otherwise
+   saturated marks look washed out and cheap; the active tab is already carried by its filled
+   background, so the icons do not need to fade to say which one is on. */
+.lx-tabic{opacity:1}
+/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
+   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
+.lx-tabic+.lx-mk-star{display:none!important}
+/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
+   pushes the list down and reads as two groups. */
+.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.mdx-mk-filters::-webkit-scrollbar{display:none}
+.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
+</style><style id="lx-lumosparent-css">.lx-lp{position:relative;max-width:780px;margin:0 auto;padding:56px 0 76px}.lx-lp::before{content:"";position:absolute;left:-120px;right:-120px;top:-40px;height:300px;pointer-events:none;z-index:0;background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.14),transparent 72%)}[data-theme="light"] .lx-lp::before{background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.09),transparent 72%)}.lx-lp>*{position:relative;z-index:1}.lx-lp-head{text-align:center;margin:0 0 36px}.lx-lp-h{font:800 clamp(34px,4vw,46px)/1.08 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.032em;text-wrap:balance;margin:0 0 12px}.lx-lp-sub{font:500 17px/1.62 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);max-width:50ch;margin:0 auto;text-wrap:pretty}@media(max-width:640px){.lx-lp{padding:34px 0 52px}.lx-lp-h{font-size:30px}.lx-lp-sub{font-size:16px}}.lx-lp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}@media(max-width:640px){.lx-lp-grid{grid-template-columns:1fr}}.lx-lp-card{display:flex;align-items:center;gap:15px;padding:22px 20px;border-radius:16px;border:1px solid var(--border,#ececef);background:var(--surface,#fff);text-decoration:none;color:inherit;background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%);transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}.lx-lp-card:not(.soon){border-color:rgba(234,106,44,.30);background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%),linear-gradient(105deg,rgba(234,106,44,.085),rgba(234,106,44,0) 58%)}.lx-lp-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-3px);box-shadow:0 14px 32px rgba(0,0,0,.30)}.lx-lp-card:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:3px}.lx-lp-ico{width:46px;height:46px;flex:0 0 46px;border-radius:50%;background-size:cover;background-position:center;background-repeat:no-repeat;position:relative;box-shadow:0 0 0 1px rgba(127,127,140,.22)}.lx-lp-card:not(.soon) .lx-lp-ico{box-shadow:0 0 0 1px rgba(234,106,44,.34)}.lx-lp-ico{font-size:0!important;color:transparent!important}.lx-lp-ico>svg{width:0!important;height:0!important;position:absolute!important}.lx-lp-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:4px}.lx-lp-net{font:800 18px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.01em}.lx-lp-meta{font:600 13px/1.35 "JetBrains Mono",ui-monospace,monospace;color:var(--text-muted,#8a8fa3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lx-lp-go{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-2,#f4f5f7);color:var(--text-muted,#8a8fa3);transition:background .18s ease,color .18s ease,transform .18s ease}.lx-lp-go svg{width:14px;height:14px}.lx-lp-card:hover .lx-lp-go{background:var(--accent,#ea6a2c);color:#fff;transform:translateX(2px)}.lx-lp-card.soon{opacity:.8;pointer-events:none;background-image:none;border-style:dashed}.lx-lp-soon{margin-left:auto;flex:0 0 auto;padding:4px 9px;border-radius:99px;background:transparent;border:1px solid var(--border,#ececef);color:var(--text-muted,#8a8fa3);font:700 10.5px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}@media(prefers-reduced-motion:reduce){.lx-lp-card,.lx-lp-go{transition:none}.lx-lp-card:hover{transform:none}}.lx-lp-soon>svg{width:0!important;height:0!important;position:absolute!important}.lx-lp{display:none}html.lx-lp-on .lx-lp{display:block}html.lx-lp-on .page > *:not(.lx-lp):not(.crumb),html.lx-lp-on main > *:not(.lx-lp):not(.crumb),html.lx-lp-on .container > *:not(.lx-lp):not(.crumb){display:none!important}</style><script id="lx-lumosparent">(function(){try{var p=(location.pathname||"").replace(/\/+$/,"");var HUB="/trade", KEY="lumoscore-dex";var last=p.split("/").pop()||"";if(p!==HUB&&last.indexOf(KEY)!==0)return;var a="",c="";try{ a=localStorage.getItem("lumos.address")||"";c=(localStorage.getItem("lumos.chain")||"").toLowerCase(); }catch(_){}if(a&&(c===""||c==="stellar")){ location.replace(HUB+"/stellar"); return; }document.documentElement.classList.add("lx-lp-on");window.addEventListener("click",function(ev){try{var t=ev.target&&ev.target.closest?ev.target.closest("[data-lxsetchain]"):null; if(!t)return;var w=t.getAttribute("data-lxsetchain"); if(w!=="xrpl"&&w!=="stellar")return;document.cookie="lx_chain="+w+";path=/;max-age=31536000;samesite=lax";}catch(_){}} ,true);document.addEventListener("DOMContentLoaded",function(){try{document.title="Trade — Choose a network | LumosCore";}catch(_){}});try{document.title="Trade — Choose a network | LumosCore";}catch(_){}}catch(_){}})();</script><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><style id="lx-amm-css">
 /* ---- the three pool stat cards, as one set ---------------------------------------------------- */
 /* Next to Trade-Asset's stat cards these read as three different objects: the Liquidity value wrapped
    onto a second line while its neighbours stayed on one, and the sub-line was 13.5px -- close enough
@@ -2600,7 +2485,14 @@ html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapsh
    inline style -- so the pager stayed on screen under the My Pools list. Specificity here is the bug. */
 .lx-netpag{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   padding:14px 4px 2px;margin-top:6px;border-top:1px solid var(--border);
-  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:13.5px;color:var(--text-soft)}
+  /* MATCHES XRPL, WHICH IS THE DESIGN'S OWN VALUE (RAZA 2026-10-11: "Pagination & showing 50 of ...
+     is more clear on XRPL ... text color difference (grey instead of white) and seems bit smaller on
+     Stellar. Fix it"). The design ships .pagination{font-size:16.5px;color:var(--text-muted)} and the
+     XRPL build simply never overrode it; this rule did, with 13.5px and the dimmer --text-soft, so
+     the same control read smaller and greyer on one chain than the other. Measured on the live
+     pages before changing: Stellar 13.5px / rgb(110,109,120), XRPL inheriting 16.5px.
+     The layout half of this rule is kept -- only the two type declarations move. */
+  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16.5px;color:var(--text-muted)}
 .lx-netpag .lx-netpag-c{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .lx-netpag button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
   padding:6px 12px;font:inherit;font-weight:600;color:var(--text);cursor:pointer;transition:.16s}
@@ -2930,36 +2822,7 @@ table.pools tbody tr.lx-ammrow td:last-child{font-weight:700}
    NEVER write a selector or a declaration inside a comment in this block -- the comment stripper
    leaves the text behind and it becomes a live rule. That is how a 12.5px override reappeared here
    and beat the real fix on source order. */
-</style><style id="lx-tabs-css">
-.lx-tabic{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;margin-right:2px}
-/* Sized UP. At 13px these read as punctuation beside the label rather than as marks in their own
-   right -- and a 13px icon next to a 15.5px label is the one proportion that always looks like an
-   afterthought. Set a touch LARGER than the label so the icon leads the eye into it. */
-.lx-tabic svg{display:block;width:17px;height:17px}
-/* The chain mark reads as identity, not decoration: it is the one element on the chip that says WHICH
-   network these pairs are on, and at 17px inside a 31px chip it was the smallest thing in the row.
-   22px still clears the chip with room either side, and matches the weight of the asset marks in the
-   list beneath it. The svg icons on the other chips stay at 17 -- they are glyphs, not logos, and
-   growing an outline icon just makes it look heavy. */
-.lx-tabic-img img{display:block;width:22px;height:22px;border-radius:50%;object-fit:cover}
-/* Same on the phone, scaled to that chip: 15 -> 19. */
-.mdx-mk-filter .lx-tabic-img img{width:19px;height:19px}
-.mdx-mk-filter .lx-tabic svg{width:15px;height:15px}
-#poolTabs .lx-tabic svg{width:18px;height:18px}
-@media(max-width:880px){#poolTabs .lx-tabic svg{width:15px;height:15px}}
-/* Full colour on every tab. Dimming the inactive ones to .72 was what made a set of otherwise
-   saturated marks look washed out and cheap; the active tab is already carried by its filled
-   background, so the icons do not need to fade to say which one is on. */
-.lx-tabic{opacity:1}
-/* The native tab shipped a text star. It now has a drawn one, and two stars on one tab is one too
-   many -- hidden only where ours actually landed, so the authored markup still stands on its own. */
-.lx-tabic+.lx-mk-star{display:none!important}
-/* Five chips with icons do not fit across a phone. Scroll rather than wrap: a wrapped second row
-   pushes the list down and reads as two groups. */
-.mdx-mk-filters{display:flex!important;max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-.mdx-mk-filters::-webkit-scrollbar{display:none}
-.mdx-mk-filter{flex:0 0 auto;white-space:nowrap}
-</style><style id="lx-lumosparent-css">.lx-lp{position:relative;max-width:780px;margin:0 auto;padding:56px 0 76px}.lx-lp::before{content:"";position:absolute;left:-120px;right:-120px;top:-40px;height:300px;pointer-events:none;z-index:0;background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.14),transparent 72%)}[data-theme="light"] .lx-lp::before{background:radial-gradient(760px 240px at 50% 0%,rgba(234,106,44,.09),transparent 72%)}.lx-lp>*{position:relative;z-index:1}.lx-lp-head{text-align:center;margin:0 0 36px}.lx-lp-h{font:800 clamp(34px,4vw,46px)/1.08 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.032em;text-wrap:balance;margin:0 0 12px}.lx-lp-sub{font:500 17px/1.62 "Hanken Grotesk",system-ui,sans-serif;color:var(--text-muted,#8a8fa3);max-width:50ch;margin:0 auto;text-wrap:pretty}@media(max-width:640px){.lx-lp{padding:34px 0 52px}.lx-lp-h{font-size:30px}.lx-lp-sub{font-size:16px}}.lx-lp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}@media(max-width:640px){.lx-lp-grid{grid-template-columns:1fr}}.lx-lp-card{display:flex;align-items:center;gap:15px;padding:22px 20px;border-radius:16px;border:1px solid var(--border,#ececef);background:var(--surface,#fff);text-decoration:none;color:inherit;background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%);transition:border-color .18s ease,transform .18s ease,box-shadow .18s ease}.lx-lp-card:not(.soon){border-color:rgba(234,106,44,.30);background-image:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,0) 58%),linear-gradient(105deg,rgba(234,106,44,.085),rgba(234,106,44,0) 58%)}.lx-lp-card:hover{border-color:var(--accent,#ea6a2c);transform:translateY(-3px);box-shadow:0 14px 32px rgba(0,0,0,.30)}.lx-lp-card:focus-visible{outline:2px solid var(--accent,#ea6a2c);outline-offset:3px}.lx-lp-ico{width:46px;height:46px;flex:0 0 46px;border-radius:50%;background-size:cover;background-position:center;background-repeat:no-repeat;position:relative;box-shadow:0 0 0 1px rgba(127,127,140,.22)}.lx-lp-card:not(.soon) .lx-lp-ico{box-shadow:0 0 0 1px rgba(234,106,44,.34)}.lx-lp-ico{font-size:0!important;color:transparent!important}.lx-lp-ico>svg{width:0!important;height:0!important;position:absolute!important}.lx-lp-main{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;gap:4px}.lx-lp-net{font:800 18px/1.2 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10);letter-spacing:-.01em}.lx-lp-meta{font:600 13px/1.35 "JetBrains Mono",ui-monospace,monospace;color:var(--text-muted,#8a8fa3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.lx-lp-go{flex:0 0 auto;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--surface-2,#f4f5f7);color:var(--text-muted,#8a8fa3);transition:background .18s ease,color .18s ease,transform .18s ease}.lx-lp-go svg{width:14px;height:14px}.lx-lp-card:hover .lx-lp-go{background:var(--accent,#ea6a2c);color:#fff;transform:translateX(2px)}.lx-lp-card.soon{opacity:.8;pointer-events:none;background-image:none;border-style:dashed}.lx-lp-soon{margin-left:auto;flex:0 0 auto;padding:4px 9px;border-radius:99px;background:transparent;border:1px solid var(--border,#ececef);color:var(--text-muted,#8a8fa3);font:700 10.5px/1.4 "Hanken Grotesk",system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}@media(prefers-reduced-motion:reduce){.lx-lp-card,.lx-lp-go{transition:none}.lx-lp-card:hover{transform:none}}.lx-lp-soon>svg{width:0!important;height:0!important;position:absolute!important}.lx-lp{display:none}html.lx-lp-on .lx-lp{display:block}html.lx-lp-on .page > *:not(.lx-lp):not(.crumb),html.lx-lp-on main > *:not(.lx-lp):not(.crumb),html.lx-lp-on .container > *:not(.lx-lp):not(.crumb){display:none!important}</style><script id="lx-lumosparent">(function(){try{var p=(location.pathname||"").replace(/\/+$/,"");var HUB="/trade", KEY="lumoscore-dex";var last=p.split("/").pop()||"";if(p!==HUB&&last.indexOf(KEY)!==0)return;var a="",c="";try{ a=localStorage.getItem("lumos.address")||"";c=(localStorage.getItem("lumos.chain")||"").toLowerCase(); }catch(_){}if(a&&(c===""||c==="stellar")){ location.replace(HUB+"/stellar"); return; }document.documentElement.classList.add("lx-lp-on");window.addEventListener("click",function(ev){try{var t=ev.target&&ev.target.closest?ev.target.closest("[data-lxsetchain]"):null; if(!t)return;var w=t.getAttribute("data-lxsetchain"); if(w!=="xrpl"&&w!=="stellar")return;document.cookie="lx_chain="+w+";path=/;max-age=31536000;samesite=lax";}catch(_){}} ,true);document.addEventListener("DOMContentLoaded",function(){try{document.title="Trade — Choose a network | LumosCore";}catch(_){}});try{document.title="Trade — Choose a network | LumosCore";}catch(_){}}catch(_){}})();</script><style id="lx-dexmain-css">
+</style><style id="lx-dexmain-css">
 /* The asset cell is a real <a> so the browser can offer "open in new tab" and honour Ctrl/middle-click.
    It must look like nothing changed: inherit the colour, drop the underline, and keep the block layout
    the cell already had. display:block matters -- an inline anchor would collapse the flex row inside it.
@@ -3351,7 +3214,151 @@ html[data-theme="light"] .lx-mobhero .lx-dxpair span{border-color:rgba(255,255,2
 .dex-mint-stat .v .sub{display:block;font-weight:600;font-size:11.5px;color:var(--text-soft,#6f6f79);margin-top:3px;letter-spacing:0}
 /* Price carries the longest string in the row, so it gets room; the counts stay narrow */
 .dex-mint-stat:first-child{min-width:104px}
-</style><style id="lx-chainready-css">html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}html:not(.lx-chainready) img[src^="data:image/webp;base64,UklGRgwJAABXRUJQVlA4WAoAAAAQAAAAXwAAXwAAQUxQSGMDAAABoOxQsGnbqnV8Dxr32bZt2"]{visibility:hidden!important}</style><script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();</script><script id="lx-devesc">(function(){try{var m=/[?&]lxdev=(d|m|0)(?:&|$)/.exec(location.search||"");if(!m)return;if(m[1]==="0")document.cookie="lxdev=;path=/;max-age=0;samesite=lax";else document.cookie="lxdev="+m[1]+";path=/;max-age=31536000;samesite=lax";var q=(location.search||"").replace(/([?&])lxdev=(?:d|m|0)(&|$)/,"$1").replace(/[?&]$/,"");location.replace(location.pathname+(q&&q!=="?"?q:"")+location.hash);}catch(_){}})();</script><script id="lx-devswap">(function(){try{if(/(?:^|; )lxdev=/.test(document.cookie||""))return;var coarse=false,hover=true;try{coarse=window.matchMedia("(pointer:coarse)").matches;}catch(_){}try{hover=window.matchMedia("(hover:hover)").matches;}catch(_){}if(!coarse||hover)return;if(!(navigator.maxTouchPoints>1))return;var w=(window.screen&&window.screen.width)||9999;if(w>1280)return;document.cookie="lxdev=m;path=/;max-age=31536000;samesite=lax";location.reload();}catch(_){}})();</script><style id="lx-livemarket">/*lxts:1.1*/
+</style><style id="lx-searchassets-css">
+.sp-ico.lx-poolico,.lx-poolico{width:auto;min-width:66px;height:36px;display:inline-flex;flex-direction:row;flex-wrap:nowrap;grid-auto-flow:column;grid-template-columns:repeat(2,30px);align-items:center;align-items:center;justify-content:flex-start;gap:5px;overflow:visible;background:none;flex-shrink:0}
+.lx-poolico .lx-pi.lx-pi-fill{background-size:118% 118%}
+.lx-poolico .lx-pi{box-sizing:border-box;width:30px;height:30px;flex:0 0 30px;border-radius:50%;display:block;border:0;background-color:var(--surface-2);background-size:cover;background-position:center;background-repeat:no-repeat}
+.sp-row--asset.lx-searow{text-decoration:none;color:inherit}
+.sp-row--asset.lx-searow .sp-ico{display:grid;place-items:center;color:#fff;font-weight:800;font-family:'JetBrains Mono',monospace;overflow:hidden}
+.sp-row--asset.lx-searow .sp-ico img{display:block}
+.sp-seaempty{padding:20px 14px;text-align:center;color:var(--text-muted);font-size:13px}
+/* Recent-searches header. Self-contained: this row does not exist in the design, so nothing styles it. */
+/* #11: the per-kind section label. Quieter than the "Recent" head above it -- these divide a list,
+   they do not introduce a new one. */
+.lx-recgrp{padding:9px 14px 4px;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--text-soft,#8a8fa3)}
+.lx-rechead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px 6px;
+  font-size:11.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)}
+.lx-rechead .lx-recclear{background:none;border:0;padding:2px 4px;margin:0;cursor:pointer;font:inherit;
+  letter-spacing:inherit;text-transform:inherit;color:var(--text-muted)}
+.lx-rechead .lx-recclear:hover{color:var(--accent)}
+.lx-seavfd{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:var(--green,#35c07f);color:#fff;vertical-align:-2px}
+.lx-seavfd svg{width:9px;height:9px;display:block}
+/* #5: stellar.expert's directory flags an address as malicious/unsafe. When it flags the issuer of an
+   asset we are showing, say so, in the one colour that cannot be mistaken for a neutral label. */
+.lx-unsafetag{display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1.5px 7px;
+  border-radius:999px;background:var(--red-soft,rgba(255,91,91,.14));color:var(--red,#ff5b5b);
+  font:800 10.5px/1.5 'Hanken Grotesk',system-ui,sans-serif;letter-spacing:.3px;text-transform:uppercase;
+  vertical-align:1px;white-space:nowrap;flex:0 0 auto}
+.lx-unsafetag svg{width:11px;height:11px;display:block;flex:0 0 11px}
+</style><style id="lx-heromono-css">
+/* ---- the card ------------------------------------------------------------------------------- */
+/* Two layers, no hue: a highlight set off-centre so the card is lit from somewhere, over a diagonal
+   ramp from lighter top-left to darker bottom-right. Written at .lm-pools strength so it beats the
+   per-page background rules on both pages. */
+html .lumos-promo.lm-on,html .lumos-promo.lm-on.lm-pools,html .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,rgba(255,255,255,.085),rgba(255,255,255,0) 58%),
+             linear-gradient(158deg,#191920 0%,#111116 48%,#0a0a0e 100%)!important;
+  border:1px solid rgba(255,255,255,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.06)!important}
+html[data-theme="light"] .lumos-promo.lm-on,html[data-theme="light"] .lumos-promo.lm-on.lm-pools,html[data-theme="light"] .lumos-promo.lx-mobhero{
+  background:radial-gradient(122% 148% at 74% 12%,#ffffff,rgba(255,255,255,0) 60%),
+             linear-gradient(158deg,#fdfdfe 0%,#f4f4f6 48%,#eaeaee 100%)!important;
+  border:1px solid rgba(16,16,22,.11)!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.9)!important}
+/* The dark wedge behind the headline existed to keep type legible over busy orange art. Over a plain
+   ground it only dulls the card -- and in light mode it was the grey wash across the left half. */
+.lumos-promo.lm-on .lm::after,.lumos-promo.lx-mobhero .lm::after{display:none!important}
+
+/* ---- the horizontal rules: gone ---------------------------------------------------------------- */
+/* The design ships a 1px rule every 44px on .lm::before. Tried at three strengths and it never earned
+   its place on a card whose whole job is one headline and four numbers -- it read as banding across the
+   type rather than as texture. Removed on the pseudo-element so both heroes lose it together; the rule
+   itself is untouched everywhere else it is used. */
+.lumos-promo.lm-on .lm::before,.lumos-promo.lx-mobhero .lm::before{display:none!important}
+
+/* ---- type: the loudest thing on the card ----------------------------------------------------- */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{color:#fff!important}
+/* the accent word was the one orange in the copy; it is white now and carries by weight instead.
+   -webkit-text-fill-color too, because the Trade headline paints its accent as a clipped gradient
+   and colour alone leaves it transparent. */
+.lumos-promo.lm-on .lm-h em,.lumos-promo.lm-on .lm-h .grad,.lumos-promo.lm-on .lm-h .lumos-promo-hi,
+.lumos-promo.lx-mobhero .lm-h em,.lumos-promo.lx-mobhero .lm-h .grad{
+  color:#fff!important;background:none!important;-webkit-background-clip:border-box!important;-webkit-text-fill-color:#fff!important}
+html[data-theme="light"] .lumos-promo.lm-on .lm-h,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-h,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h em,html[data-theme="light"] .lumos-promo.lm-on .lm-h .grad,
+html[data-theme="light"] .lumos-promo.lm-on .lm-h .lumos-promo-hi{
+  color:#0d0d11!important;-webkit-text-fill-color:#0d0d11!important}
+
+/* ---- the headline, ONE size for both heroes ---------------------------------------------------- */
+/* #14: Pools drifted to 38px inside a 340px column (lx-amm-css) while Trade sat at 36px inside 420px,
+   so the same sentence broke onto a different number of lines and the two tops of the app stopped
+   looking like the same design. Trade's numbers are the ones both use now. This lives HERE, in the
+   sheet that already runs last and already owns the shared hero look, because that is what stops the
+   two drifting again: any per-page rule is at most two classes, and this is three plus !important. */
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:36px!important;line-height:1.08!important;max-width:420px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:23px!important;line-height:1.14!important;max-width:100%!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lm-h,.lumos-promo.lx-mobhero .lm-h{
+  font-size:18px!important;line-height:1.18!important;max-width:100%!important}
+}
+
+/* ---- the chain mark -------------------------------------------------------------------------- */
+/* #2: the hairline ring here was written for a dark disc with a white glyph, which would have been
+   lost against a dark card. The mark that actually ships is the blue Stellar disc -- it carries its
+   own edge -- so the ring was not giving it one, it was drawing a white outline around it. Depth
+   only; nothing traces the artwork. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 10px 24px -12px rgba(0,0,0,.8)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-heroico,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-heroico{
+  box-shadow:0 10px 26px -14px rgba(16,16,22,.5)!important}
+/* #8/#9: the mark is the first thing on the page and it was smaller than the headline beside it --
+   and the two heroes were not even the same size as each other (56 on Trade, 64 on Pools). One size,
+   large enough to lead, on both. */
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:76px!important;height:76px!important}
+@media(max-width:880px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:52px!important;height:52px!important}
+}
+@media(max-width:560px){
+.lumos-promo.lm-on .lx-heroico,.lumos-promo.lx-mobhero .lx-heroico,.lm-pools .lx-heroico{
+  width:46px!important;height:46px!important}
+}
+
+/* ---- the stats strip -------------------------------------------------------------------------- */
+.lumos-promo.lm-on .lx-dxstats,.lumos-promo.lx-mobhero .lx-dxstats,.lumos-promo.lm-on .lm-pools .lm-chip,.lm-pools.lm-on .lm-chip,.lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(255,255,255,.018),rgba(255,255,255,.055))!important;
+  border-top:1px solid rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstats,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstats,html[data-theme="light"] .lm-pools.lm-on .lm-chip,html[data-theme="light"] .lumos-promo.lx-mobhero .lm-chip{
+  background:linear-gradient(180deg,rgba(16,16,22,.018),rgba(16,16,22,.05))!important;
+  border-top:1px solid rgba(16,16,22,.10)!important}
+.lumos-promo.lm-on .lx-dxstat .v,.lumos-promo.lx-mobhero .lx-dxstat .v,.lm-pools .lx-hstat .v{color:#fff!important}
+.lumos-promo.lm-on .lx-dxstat .l,.lumos-promo.lx-mobhero .lx-dxstat .l,.lm-pools .lx-hstat .l{color:rgba(255,255,255,.56)!important}
+.lx-dxstat,.lm-pools .lx-hstat{border-left-color:rgba(255,255,255,.10)!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .v,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .v,html[data-theme="light"] .lm-pools .lx-hstat .v{color:#0d0d11!important}
+html[data-theme="light"] .lumos-promo.lm-on .lx-dxstat .l,html[data-theme="light"] .lumos-promo.lx-mobhero .lx-dxstat .l,html[data-theme="light"] .lm-pools .lx-hstat .l{color:rgba(28,28,36,.60)!important}
+html[data-theme="light"] .lx-dxstat,html[data-theme="light"] .lm-pools .lx-hstat{border-left-color:rgba(16,16,22,.10)!important}
+
+/* ---- the pair marks in Top Pool / Top Pair ---------------------------------------------------- */
+/* These two coins OVERLAP by 10px, and the ring is what keeps them reading as two coins.
+   The design drew it in near-black, which read as an outline drawn around each coin. A 0.8px
+   hairline fixed that and broke the other half: against a black XLM mark on a near-white card it is
+   invisible, so the pair merged into one blob wherever they overlap -- the broken edge.
+   The answer is the ring every overlapping-avatar stack uses: keep the design's 2px, but paint it in
+   the card's OWN ground, so it reads as a gap between the coins rather than a line around them.
+   The drop shadow goes with it -- on a light card it was just a grey smudge under each coin. */
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span{
+  border:2px solid #17171d!important;box-shadow:none!important}
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border:2px solid #ebebee!important;box-shadow:none!important}
+/* 2px of ring on a 16-17px phone mark is most of the coin; the design already steps this down. */
+@media(max-width:560px){
+.lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,.lx-dxpair span,
+html[data-theme="light"] .lm-pools .lx-hstat[data-k=top] .pair-icons .lx-ico,html[data-theme="light"] .lx-dxpair span{
+  border-width:1.5px!important}
+}
+
+/* ---- the CTAs: the only colour left ------------------------------------------------------------ */
+/* Unchanged on purpose. With the hue gone from everything else these are the one warm thing on the
+   card, which is the point -- the eye goes to the action. */
+.lx-dctas .dex-hero-btn.ghost,.lm-pools .lx-dctas .dex-hero-btn.ghost{color:rgba(255,255,255,.80)!important}
+html[data-theme="light"] .lx-dctas .dex-hero-btn.ghost,html[data-theme="light"] .lm-pools .lx-dctas .dex-hero-btn.ghost{color:#2b2b33!important}
+</style><script id="lx-devesc">(function(){try{var m=/[?&]lxdev=(d|m|0)(?:&|$)/.exec(location.search||"");if(!m)return;if(m[1]==="0")document.cookie="lxdev=;path=/;max-age=0;samesite=lax";else document.cookie="lxdev="+m[1]+";path=/;max-age=31536000;samesite=lax";var q=(location.search||"").replace(/([?&])lxdev=(?:d|m|0)(&|$)/,"$1").replace(/[?&]$/,"");location.replace(location.pathname+(q&&q!=="?"?q:"")+location.hash);}catch(_){}})();</script><script id="lx-devswap">(function(){try{if(/(?:^|; )lxdev=/.test(document.cookie||""))return;var coarse=false,hover=true;try{coarse=window.matchMedia("(pointer:coarse)").matches;}catch(_){}try{hover=window.matchMedia("(hover:hover)").matches;}catch(_){}if(!coarse||hover)return;if(!(navigator.maxTouchPoints>1))return;var w=(window.screen&&window.screen.width)||9999;if(w>1280)return;document.cookie="lxdev=m;path=/;max-age=31536000;samesite=lax";location.reload();}catch(_){}})();</script><style id="lx-livemarket">/*lxts:1.1*/
 .lumos-promo.lm-on{background:radial-gradient(120% 95% at 88% 6%,var(--accent-pale),transparent 52%),var(--surface) !important;border:1px solid var(--border) !important;min-height:300px;padding:0 !important}
 .lm{position:relative;width:100%;height:100%;min-height:300px;border-radius:15px;overflow:hidden}
 .lm *{box-sizing:border-box}
@@ -3453,7 +3460,7 @@ html[data-theme="light"] .lm-bg{opacity:.09}
 @media(max-width:640px){.lx-faq{padding:34px 16px 40px}.lx-faq h2{font-size:22px;margin-bottom:20px}
 .lx-faq-grid{gap:14px}.lx-faq-item{padding:18px 17px 19px;border-radius:14px}
 .lx-faq-a{padding-left:0}}
-</style><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}@media (max-width:560px){.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}.appbar .logo .logo-text{overflow:visible!important}.appbar .avatar-sm.lx-mav{flex:0 0 auto!important;min-width:0;overflow:visible}.appbar .logo{min-width:0;flex:0 1 auto;overflow:hidden}@media(max-width:430px){.appbar{padding-left:10px!important;padding-right:10px!important;gap:6px!important}.appbar .avatar-sm.lx-mav{gap:6px!important;padding-left:5px!important;padding-right:9px!important}.appbar .avatar-sm.lx-mav::after{font-size:12px!important}.appbar .avatar-sm.lx-mav::before{width:18px!important;height:18px!important}@media(max-width:390px){.appbar .logo-text{display:none!important}}}.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}.appbar .avatar-sm.lx-mav{white-space:nowrap}}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><style id="lx-hiw-css">
+</style><style id="lx-whead-css">.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}.lx-tw-cbtn svg{width:16px;height:16px}.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}.lx-launch:active{background:#d85f22;border-color:#d85f22}.lx-topwallet .lx-tw-addr:empty{display:inline-block;width:86px;height:11px;border-radius:6px;background:var(--border);opacity:.5;animation:lxTwSk 1.15s ease-in-out infinite}.lx-topwallet .lx-tw-copy[data-copy=""]{visibility:hidden}@keyframes lxTwSk{0%,100%{opacity:.28}50%{opacity:.6}}.avatar-sm.lx-mav{width:auto!important;height:auto!important;border-radius:999px;background:var(--surface-2,#1b1c22)!important;border:1px solid var(--border);display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 6px;font-size:0;color:transparent}.avatar-sm.lx-mav::before{content:"";width:20px;height:20px;border-radius:50%;flex:0 0 auto;background:var(--lx-netlogo) center/cover no-repeat}.avatar-sm.lx-mav::after{content:attr(data-addr);font:700 11.5px/1 "JetBrains Mono",ui-monospace,monospace;color:var(--text)}@media (max-width:560px){.appbar .logo{flex:0 0 auto!important;overflow:visible!important;min-width:0}.appbar .logo .logo-text{overflow:visible!important}.appbar .avatar-sm.lx-mav{flex:0 0 auto!important;min-width:0;overflow:visible}.appbar .logo{min-width:0;flex:0 1 auto;overflow:hidden}@media(max-width:430px){.appbar{padding-left:10px!important;padding-right:10px!important;gap:6px!important}.appbar .avatar-sm.lx-mav{gap:6px!important;padding-left:5px!important;padding-right:9px!important}.appbar .avatar-sm.lx-mav::after{font-size:12px!important}.appbar .avatar-sm.lx-mav::before{width:18px!important;height:18px!important}@media(max-width:390px){.appbar .logo-text{display:none!important}}}.appbar .avatar-sm.lx-mav::after{overflow:hidden;max-width:100%;white-space:nowrap}.appbar .avatar-sm.lx-mav{white-space:nowrap}}.topbar .search-box input{font-family:"Hanken Grotesk",sans-serif!important;line-height:24px!important}html:not(.lx-hdrdone) .avatar-sm{visibility:hidden!important}.mu-av.lx-mav-net{background:var(--lx-netlogo) center/cover no-repeat!important}.mu-av.lx-mav-net>svg{display:none!important}</style><style id="lx-mc-css">.lxmc{position:relative;flex-shrink:0}.lxmc-trig{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;font:600 14px/1 "Hanken Grotesk",system-ui,sans-serif;transition:.15s}.lxmc-trig:hover{border-color:var(--border-strong)}.lxmc-logo,.lxmc-ol{width:24px;height:24px;border-radius:50%;overflow:hidden;display:inline-flex;flex-shrink:0;background:var(--surface-3,#eee)}.lxmc-logo img,.lxmc-ol img{width:100%;height:100%;object-fit:cover;display:block}.lxmc-name{white-space:nowrap}.lxmc-trig svg{width:14px;height:14px;color:var(--text-soft)}.lxmc-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:200;min-width:216px;background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.28)}.lxmc-menu[hidden]{display:none}.lxmc-opt{width:100%;display:flex;align-items:center;gap:11px;padding:9px 11px;border:none;background:transparent;color:var(--text);border-radius:10px;cursor:pointer;font:600 14.5px/1 "Hanken Grotesk",system-ui,sans-serif;text-align:left}.lxmc-opt:hover{background:var(--surface-2)}.lxmc-opt.active{background:var(--accent-soft);color:var(--accent)}@media(max-width:1080px){.lxmc-name{display:none}.lxmc-trig{padding:0 9px}}.lxw-neti{overflow:hidden;background:var(--surface-3,#eee)!important}.lxw-neti img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}</style><style id="lx-realconnect-css">.lxw-cwallet-ico,.lxw-acct-ico{position:relative;overflow:hidden}.lxw-cwallet-ico .lx-wimg,.lxw-acct-ico .lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}.lxw-step{transition:background .28s ease,border-color .28s ease,color .28s ease}.lxw-step.is-done{color:var(--text,#fff)!important;border-color:rgba(52,192,127,.55)!important;background:rgba(52,192,127,.13)!important}.lxw-step.is-done::after{content:"\2713";margin-left:auto;color:#35c07f;font-weight:800;font-size:13px;line-height:1}</style><style id="lx-hiw-css">
 .lx-hiw{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px}
 .lx-hiw[hidden]{display:none}
 .lx-hiw-bd{position:absolute;inset:0;background:rgba(8,8,12,.62);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px)}
@@ -3489,7 +3496,7 @@ html[data-theme="light"] .lx-hiw-h,html[data-theme="light"] .lx-hiw-n{color:#a84
   @keyframes lxHiwUp{from{transform:translateY(14px);opacity:0}to{transform:none;opacity:1}}
   .lx-hiw-t{font-size:19px}
 }
-</style><style id="lx-mc-css">.lxmc{position:relative;flex-shrink:0}.lxmc-trig{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 12px;border-radius:12px;border:1px solid var(--border);background:var(--surface-2);color:var(--text);cursor:pointer;font:600 14px/1 "Hanken Grotesk",system-ui,sans-serif;transition:.15s}.lxmc-trig:hover{border-color:var(--border-strong)}.lxmc-logo,.lxmc-ol{width:24px;height:24px;border-radius:50%;overflow:hidden;display:inline-flex;flex-shrink:0;background:var(--surface-3,#eee)}.lxmc-logo img,.lxmc-ol img{width:100%;height:100%;object-fit:cover;display:block}.lxmc-name{white-space:nowrap}.lxmc-trig svg{width:14px;height:14px;color:var(--text-soft)}.lxmc-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:200;min-width:216px;background:var(--surface);border:1px solid var(--border-strong);border-radius:14px;padding:6px;box-shadow:0 18px 50px rgba(0,0,0,.28)}.lxmc-menu[hidden]{display:none}.lxmc-opt{width:100%;display:flex;align-items:center;gap:11px;padding:9px 11px;border:none;background:transparent;color:var(--text);border-radius:10px;cursor:pointer;font:600 14.5px/1 "Hanken Grotesk",system-ui,sans-serif;text-align:left}.lxmc-opt:hover{background:var(--surface-2)}.lxmc-opt.active{background:var(--accent-soft);color:var(--accent)}@media(max-width:1080px){.lxmc-name{display:none}.lxmc-trig{padding:0 9px}}.lxw-neti{overflow:hidden;background:var(--surface-3,#eee)!important}.lxw-neti img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}</style><style id="lx-realconnect-css">.lxw-cwallet-ico,.lxw-acct-ico{position:relative;overflow:hidden}.lxw-cwallet-ico .lx-wimg,.lxw-acct-ico .lx-wimg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border-radius:inherit}.lxw-step{transition:background .28s ease,border-color .28s ease,color .28s ease}.lxw-step.is-done{color:var(--text,#fff)!important;border-color:rgba(52,192,127,.55)!important;background:rgba(52,192,127,.13)!important}.lxw-step.is-done::after{content:"\2713";margin-left:auto;color:#35c07f;font-weight:800;font-size:13px;line-height:1}</style><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style><style id="lx-tiptheme">#themeToggle[data-tooltip]::before{bottom:auto;top:calc(100% + 8px);transform:translateX(-50%) translateY(-2px)}#themeToggle[data-tooltip]::after{bottom:auto;top:calc(100% + 2px);transform:translateX(-50%) translateY(-2px);border-top:0;border-bottom:5px solid var(--text)}#themeToggle[data-tooltip]:hover::before,#themeToggle[data-tooltip]:hover::after,#themeToggle[data-tooltip]:focus-visible::before,#themeToggle[data-tooltip]:focus-visible::after{transform:translateX(-50%) translateY(0)}</style></head>
+</style><style id="lx-themefix">html[data-theme="light"]{--surface-3:#ffffff}</style><style id="lx-tiptheme">#themeToggle[data-tooltip]::before{bottom:auto;top:calc(100% + 8px);transform:translateX(-50%) translateY(-2px)}#themeToggle[data-tooltip]::after{bottom:auto;top:calc(100% + 2px);transform:translateX(-50%) translateY(-2px);border-top:0;border-bottom:5px solid var(--text)}#themeToggle[data-tooltip]:hover::before,#themeToggle[data-tooltip]:hover::after,#themeToggle[data-tooltip]:focus-visible::before,#themeToggle[data-tooltip]:focus-visible::after{transform:translateX(-50%) translateY(0)}</style></head>
 <body>
 <div class="app">
   <aside class="nx-side"><div class="nx-brand"><div class="logo"><div class="logo-mark"></div><div class="logo-text">LUMOSCORE</div></div><button class="nx-collapse" aria-label="Collapse"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg></button></div><span class="nx-rail"></span><nav class="nx-nav"><a class="nx-item" data-id="dashboard" href="/dashboard" title="Dashboard"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1.6"/><rect x="13" y="3" width="8" height="5" rx="1.6"/><rect x="13" y="11" width="8" height="10" rx="1.6"/><rect x="3" y="14" width="8" height="7" rx="1.6"/></svg></span><span class="nx-lab">Dashboard</span></a><a class="nx-item active" data-id="trade" href="/trade" title="Trade"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 6v3"/><rect x="6" y="9" width="4" height="6" rx="1"/><path d="M8 15v3"/><path d="M16 4v2"/><rect x="14" y="6" width="4" height="9" rx="1"/><path d="M16 15v3"/></svg></span><span class="nx-lab">Trade</span></a><a class="nx-item" data-id="pools" href="/pools" title="Pools"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7.29 6.75 7 5.3c-.29 1.45-1.14 2.84-2.29 3.76S3 11.1 3 12.25c0 2.22 1.8 4.05 4 4.05z"/><path d="M12.56 6.6A11 11 0 0 0 14 3c.5 2.5 2 4.9 4 6.5s3 3.5 3 5.5a7 7 0 0 1-11.9 5"/></svg></span><span class="nx-lab">Pools</span></a><a class="nx-item" data-id="bridge" href="/bridge" title="Bridge"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9 1.5 12 4 15"/><path d="M20 9l2.5 3L20 15"/><path d="M2.5 12h19"/></svg></span><span class="nx-lab">Bridge</span></a><a class="nx-item" data-id="launchpad" href="/launchpad" title="Launchpad"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.9 12.9 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg></span><span class="nx-lab">Launchpad</span></a><a class="nx-item" data-id="lumos" href="/lumos" title="$LUMOS"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg></span><span class="nx-lab">$LUMOS</span></a><a class="nx-item" data-id="wallet" href="/wallet" title="Wallet"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H6a2 2 0 0 1 0-4h13v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M19 12a2 2 0 1 0 0 4h3v-4z"/></svg></span><span class="nx-lab">Wallet</span></a><a class="nx-item" data-id="rewards" href="/rewards" title="Rewards"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v9H4v-9"/><rect x="2" y="7" width="20" height="5" rx="1"/><path d="M12 22V7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></span><span class="nx-lab">Rewards</span></a><a class="nx-item" data-id="mcp" data-lxnonav="1" href="/mcp" title="MCP"><span class="nx-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4.9 4.9l2.8 2.8"/><path d="M16.3 16.3l2.8 2.8"/><path d="M2 12h4"/><path d="M18 12h4"/><circle cx="12" cy="12" r="3"/></svg></span><span class="nx-lab">MCP</span></a></nav><div class="nx-foot"><button class="nx-logout" type="button" title="Disconnect wallet" onclick="event.stopPropagation();if(window.__lxNav)__lxNav('lumoscore-signin.html')"><span class="nx-lo-ic"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></span><span class="nx-lab">Disconnect</span></button></div></aside><script id="lx-sc-early">(function(){try{var s=document.querySelector(".nx-side");if(s&&localStorage.getItem("lumos.side")==="1")s.classList.add("nx-collapsed");}catch(e){}})();</script>
@@ -4068,13 +4075,16 @@ window.addEventListener("storage",ping);
 
 
 
-<script id="lx-searchassets" src="/assets/js/lx-8b66c87c3358.js" defer></script><script id="lx-chipcopy" src="/assets/js/lx-bf36fcf64e5c.js" defer></script><script id="lx-walletlogo" src="/assets/js/lx-8ce0a4150cc5.js" defer></script><script id="lx-pv" src="/assets/js/lx-4175581e70df.js" defer></script><script id="lx-feerate" src="/assets/js/lx-3ee51ade2f75.js" defer></script><script id="lx-whead" src="/assets/js/lx-7d9cf248f5b3.js" defer></script><script id="lx-nofollow" src="/assets/js/lx-8ed1bca29860.js" defer></script>
+<script id="lx-chipcopy" src="/assets/js/lx-bf36fcf64e5c.js" defer></script><script id="lx-walletlogo" src="/assets/js/lx-8ce0a4150cc5.js" defer></script><script id="lx-pv" src="/assets/js/lx-4175581e70df.js" defer></script><script id="lx-feerate" src="/assets/js/lx-3ee51ade2f75.js" defer></script><script id="lx-whead" src="/assets/js/lx-7d9cf248f5b3.js" defer></script>
 
 
-<script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;var ROUTE={"home":"/","terms":"/terms","privacy":"/privacy"};function fix(){var scope=document.querySelectorAll("footer a[href=\u0022#\u0022], .footer a[href=\u0022#\u0022], [class*=footer] a[href=\u0022#\u0022]");[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}a.style.cursor="default";a.addEventListener("click",function(e){e.preventDefault();});});}if(document.readyState!=="loading")fix();else document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1200);})();</script><script id="lx-ammdata" src="/assets/js/lx-75fac744a4e5.js" defer></script><script id="lx-connectgate" src="/assets/js/lx-8297cec8744f.js" defer></script>
+<script id="lx-footerlinks">(function(){if(window.__lxFtl)return;window.__lxFtl=1;var ROUTE={"home":"/","terms":"/terms","privacy":"/privacy"};function fix(){var scope=document.querySelectorAll("footer a[href=\u0022#\u0022], .footer a[href=\u0022#\u0022], [class*=footer] a[href=\u0022#\u0022]");[].forEach.call(scope,function(a){if(a.__lxf)return;a.__lxf=1;var key=(a.textContent||"").trim().toLowerCase();if(ROUTE[key]){a.setAttribute("href",ROUTE[key]);return;}a.style.cursor="default";a.addEventListener("click",function(e){e.preventDefault();});});}if(document.readyState!=="loading")fix();else document.addEventListener("DOMContentLoaded",fix);setTimeout(fix,1200);})();</script><script id="lx-connectgate" src="/assets/js/lx-8297cec8744f.js" defer></script>
 
 
 
-<script id="lx-dexmain" src="/assets/js/lx-bdc6b1ecc427.js" defer></script>
-<script id="lx-hiw" src="/assets/js/lx-4a20ba50da13.js" defer></script><script id="lx-mc" src="/assets/js/lx-7286caa57a1a.js" defer></script><script id="lx-realconnect" src="/assets/js/lx-94e3a2af95fb.js" defer></script><script src="/assets/js/lx-da73738cab33.js" defer></script></body>
+
+<script id="lx-mc" src="/assets/js/lx-7286caa57a1a.js" defer></script><script id="lx-realconnect" src="/assets/js/lx-94e3a2af95fb.js" defer></script>
+
+<script id="lx-ammdata" src="/assets/js/lx-c4c63e3b2071.js" defer></script><script id="lx-dexmain" src="/assets/js/lx-a7cbb9da80eb.js" defer></script>
+<script id="lx-hiw" src="/assets/js/lx-4a20ba50da13.js" defer></script><script id="lx-searchassets" src="/assets/js/lx-648491a10146.js" defer></script><script id="lx-nofollow" src="/assets/js/lx-8ed1bca29860.js" defer></script><script src="/assets/js/lx-da73738cab33.js" defer></script></body>
 </html>
