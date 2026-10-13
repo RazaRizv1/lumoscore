@@ -70,7 +70,7 @@
 
   const tList = document.getElementById('trendingList');
 
-  function renderTrending(period) {
+  function renderTrending(period) { if (!tList) return;
     let data;
     if (period === '7d') {
       // Reorder + amplify changes for a "7 days" view
