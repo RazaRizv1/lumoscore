@@ -2757,7 +2757,11 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   }
   // clear the plot + show a subtle centered loader while the selected range's real series is fetched (no wrong flash)
   function chLoading(svg){
-    document.documentElement.classList.add("lx-chartready");
+    // NOT HERE EITHER. This runs while the range is still being fetched, and it clears the plot's
+    // paths but NOT the design's axis text -- so opening the gate here showed the design's scale over
+    // an empty plot, which is the flash chDraw's note above describes. The loader this function adds
+    // is .lx-chload, which the stylesheet gate exempts, so it is visible with the gate still shut:
+    // the reader gets "Loading pool history…" and no numbers, which is the true state.
     [].slice.call(svg.querySelectorAll(".lx-ch")).forEach(function(e){ if(e.parentNode)e.parentNode.removeChild(e); });
     [].slice.call(svg.querySelectorAll("path")).forEach(function(p){ if((p.getAttribute("class")||"").indexOf("lx-ch")<0)p.setAttribute("d",""); });
     [].slice.call(svg.querySelectorAll("rect,line")).forEach(function(x){ if((x.getAttribute("class")||"").indexOf("lx-ch")>=0&&x.parentNode)x.parentNode.removeChild(x); });
@@ -2811,7 +2815,31 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     return {t0:t0,bw:bw,buck:buck};
   }
   function chDraw(){
-    var svg=q("#tvlChart svg"); if(!svg)return; document.documentElement.classList.add("lx-chartready"); if(!DET)return;
+    // THE GATE OPENS WHEN THE LABELS ARE TRUE, NOT WHEN THIS FUNCTION STARTS.
+    //
+    // NO BACKTICKS IN THIS COMMENT -- this function is emitted through a template literal, and one
+    // here ends the string with a SyntaxError pointing at the comment instead of at the cause.
+    //
+    // It used to open on the first line, before the DET guard and before the axis text was
+    // rewritten. The y-axis labels are the DESIGN'S OWN text nodes, reused rather than replaced (see
+    // the _ax filter below), so lifting the gate early published the design's numbers as ours:
+    //
+    //   "3.99M XLM" -> "51.76M XLM"   (first seen at 2167ms, pool detail, both viewports)
+    //   "3.38M XLM" -> "50.29M XLM"
+    //   "2.78M XLM" -> "48.82M XLM"
+    //
+    // Five labels, a 13x rescale, and every one of them a plausible figure while it was wrong. The
+    // stylesheet gate at the top of this file exists precisely to prevent that and was being lifted
+    // before it had done its job.
+    //
+    // Every terminal state still opens it, so the chart cannot be left hidden:
+    //   drawn            -> the end of this function, after the labels carry real values
+    //   no traded pair   -> chPairEmpty(), which says so on the plot
+    //   detail failed    -> detailFail(), which says so and offers Retry
+    //   range not loaded -> stays shut; chLoading's own loader is .lx-chload, which the gate exempts,
+    //                       so the reader sees the loader and no numbers. chDraw re-runs when chAgg
+    //                       returns and opens it then.
+    var svg=q("#tvlChart svg"); if(!svg)return; if(!DET)return;
     // A pool of two credit assets now charts too — chAgg asks Horizon for that pair directly and
     // denominates the series in the pool's first asset — so this no longer bails on nonXlm. chAgg still
     // reports empty when Horizon has no trade history for the pair, and chPairEmpty says so honestly.
@@ -2930,6 +2958,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       pts:vals.map(function(p){ return {t:p.t,v:p.v,x:X(p.t),
         y:isVol?(H-padB-(H-padT-padB)*(mx>0?p.v/mx:0)):Y(p.v)}; }) };
     DET.__chSig=s.type+"|"+s.metric+"|"+s.range;
+    // Now, and not at the top: the axis labels above carry the series' own values, so there is nothing
+    // left on the plot that belongs to the design.
+    document.documentElement.classList.add("lx-chartready");
   }
   // ---- Chart hover -----------------------------------------------------------------------------------
   // The design shipped its own hover that claimed to read the rendered points but read ITS mock series and
