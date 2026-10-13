@@ -261,6 +261,27 @@
     try{ var el=q('.acc-stat .v[data-k="total"]'); if(el)el.classList.toggle("lx-counting",!!on); }catch(_){}
   }
   function renderStats(){
+    // NOTHING LOADED IS NOT THE SAME AS NOTHING HELD, and this function could not tell the two apart.
+    //
+    // boot() calls renderStats() as soon as the XLM price resolves, which is well before Horizon
+    // answers /accounts/<addr>. At that moment XLM is 0, ASSETS and POOLS are empty -- their declared
+    // starting values, not anything we learned -- so every line below printed a confident zero for an
+    // account we had not read yet. Measured on the candidate build:
+    //
+    //     0-300ms   — — — —                          the markup's own placeholders, correct
+    //     ~500ms    0 XLM / $0 / 1 / 0 trustlines    this function, on empty state
+    //     ~1200ms   172.4422 XLM / $33.05 / 65 / 64  the account
+    //
+    // The middle row is the bug GUARDRAILS §5a is about: a visitor reads a real-looking balance of
+    // zero for their own account, and a screenshot taken in that window says they hold nothing. The
+    // em dash says "not yet" and is the honest thing to leave on screen.
+    //
+    // Gated on ACCT rather than on a new flag because ACCT is exactly the fact in question: it is null
+    // until the account record lands and non-null afterwards. The price-driven call then no-ops, and
+    // boot() calls renderStats() again once the balances are in -- so nothing is lost, only the
+    // premature paint. A failed load leaves the dashes and calls fail(), which owns the page from
+    // there.
+    if(!ACCT) return;
     var tv=totalValue();
     var pc=priced();
     // Counting = we have not asked yet, or answers are still out. Either way the sum on hand is a
@@ -302,6 +323,14 @@
       },true); }
   }
   function renderAssets(){
+    // Same gate, same reason. This runs beside renderStats() on the price callback, and its first act
+    // is to write ASSETS.length+1 into the tab counter -- "1" for an account that holds 65, because
+    // the +1 is XLM and ASSETS is still the empty array it was declared as. The bot caught that one
+    // too, as "1" -> "65" on span#accAssetsN.
+    //
+    // Leaving early also leaves the table's own "Loading assets…" row in place, which is what should
+    // be on screen while we are in fact still loading them.
+    if(!ACCT) return;
     var tb=q("#accAssetsTbl tbody"); if(!tb)return;
     var n=q("#accAssetsN"); if(n)n.textContent=String(ASSETS.length+1);
     var all=sortAssets([{code:"XLM",issuer:"",dom:"Stellar",bal:XLM,px:1,usd:XLM*xlmUsd,native:true}].concat(ASSETS));
