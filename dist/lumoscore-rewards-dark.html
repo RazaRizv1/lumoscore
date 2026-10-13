@@ -2503,6 +2503,24 @@ html:not(.lx-detpr) .ph-stat .v, html:not(.lx-detpr) .ph-stat .s{visibility:hidd
 html:not(.lx-detpr) .ph-price .v,
 html:not(.lx-detpr) .ph-price .s,
 html:not(.lx-detpr) .ph-price .lc-money{visibility:hidden!important}
+/* THE PHONE'S PRICE BLOCK IS DIFFERENT MARKUP, and the three selectors above are all desktop-only.
+   Mobile draws .ph-price-row > div > .label/.value/.vs with NO .ph-price wrapper, so none of them
+   matched there and the design's mock survived the gate on every phone:
+
+     "0.000713 XLM" -> "5.2137 XLM"   first seen at 1907ms, pool detail, phone
+
+   0.000713 is the design's sample figure -- it is in the health bot's own forbiddenText list -- so a
+   yXLM/XLM pool announced a LUMOS price for two seconds. Exactly the fault the comment above
+   describes, fixed on desktop and left standing on the viewport most people use.
+
+   It only became visible after the chart-axis gate was fixed: this check had been reporting six
+   changed values, five of them axis labels, and this one was the sixth. Fixing the loud one exposed
+   the quiet one, which is an argument for reading what is left after every fix rather than ticking
+   the row off.
+
+   .label stays visible -- it reads "Pool Price" and is true before the number arrives. */
+html:not(.lx-detpr) .ph-price-row .value,
+html:not(.lx-detpr) .ph-price-row .vs{visibility:hidden!important}
 .lx-detfail{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:16px 0 0;padding:13px 16px;border:1px solid rgba(209,84,47,.35);border-left:3px solid #d1542f;border-radius:12px;background:rgba(209,84,47,.07);font-size:13.2px;line-height:1.5;color:var(--text,#0e0e10)}
 .lx-detfail span{flex:1 1 300px}
 .lx-detretry{padding:7px 15px;border-radius:9px;border:1px solid var(--border-strong,#d5d5dd);background:var(--surface-2,#f6f6f8);color:var(--text,#0e0e10);font:650 12.5px/1 inherit;cursor:pointer}
