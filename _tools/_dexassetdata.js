@@ -672,7 +672,43 @@ const SCRIPT = `<script id="lx-dxadata">(function(){document.addEventListener("i
   // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
   // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
   var DDOM=${JSON.stringify(DOMAIN_DISPLAY)};
-  function dispDom(c,i,d){ return lxBareHost(DDOM[(c||"")+"|"+(i||"")]||d||""); }
+  function dispDom(c,i,d){ return lxRootHost(lxBareHost(DDOM[(c||"")+"|"+(i||"")]||d||"")); }
+  // ROOT DOMAIN ONLY (RAZA 2026-10-11: "Its only supposed to show the root as homedomain (eg:
+  // paxos.com). No subdomains, only root."). PYUSD declares token-metadata.paxos.com, which is a
+  // metadata host rather than a name a reader recognises. 11 curated assets carry a subdomain today.
+  //
+  // DISPLAY ONLY, AND THAT IS LOAD-BEARING: a home_domain is where the SEP-1 toml lives, so reducing
+  // it would break metadata retrieval. The toml walk reads the raw a.home_domain from Horizon and
+  // never comes through here -- the note on DDOM above says the same thing for the same reason.
+  // This touches the label and the link built from it, nothing else.
+  //
+  // The last two labels are NOT the answer on a multi-part suffix: example.co.uk would reduce to
+  // "co.uk", which is a registry, not a site. The list below is the set that realistically appears on
+  // a token issuer; anything not on it takes the last two labels.
+  //
+  // "www." IS KEPT, by RAZA's call (2026-10-11: "keep www as it is"). It is technically a subdomain,
+  // so root-only would strip it, but it is also how some issuers present their own name and the
+  // lxBareHost note above had already preserved it on purpose. A host whose first label is www is
+  // therefore returned untouched rather than reduced -- the rule is "drop subdomains nobody reads",
+  // and www is not one of those.
+  var MULTI_TLD={"co.uk":1,"org.uk":1,"ac.uk":1,"gov.uk":1,"me.uk":1,"com.au":1,"net.au":1,"org.au":1,
+    "co.nz":1,"co.za":1,"co.jp":1,"or.jp":1,"ne.jp":1,"com.br":1,"com.mx":1,"com.ar":1,"com.tr":1,
+    "com.cn":1,"com.hk":1,"com.sg":1,"co.in":1,"co.kr":1,"com.tw":1,"co.il":1,"com.ua":1,"com.pl":1,
+    "co.th":1,"com.vn":1,"com.my":1,"com.ph":1,"co.id":1};
+  function lxRootHost(v){
+    try{
+      v=String(v==null?"":v).trim().toLowerCase();
+      if(!v)return "";
+      // An IP address or a single label has no root to reduce to; hand it back untouched rather than
+      // inventing one (1.2.3.4 would otherwise become "3.4").
+      if(/^[0-9.]+$/.test(v))return v;
+      var p=v.split(".").filter(Boolean);
+      if(p.length<3)return p.join(".");
+      if(p[0]==="www")return p.join(".");          // kept as declared -- see the note above
+      var lastTwo=p.slice(-2).join(".");
+      return MULTI_TLD[lastTwo]?p.slice(-3).join("."):lastTwo;
+    }catch(_){ return v||""; }
+  }
   // A home_domain is a bare host, but this value can come from our own asset record, where an admin
   // pasted a full URL (USDT0 holds "https://usdt0.to/"). The href is built as "https://"+value, so an
   // unnormalised one renders the scheme twice. Several sources race to set homeDomain and the first to
@@ -1830,7 +1866,23 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
     var host=q("#dxaChart,#mdxaChart"); if(host)host.classList.add("lxda-loading");
     var clear=function(){ if(live()&&host)host.classList.remove("lxda-loading"); };
     var again=function(){ loadChart._tok=myTok-1; loadChart(tf,1); };   // hand the token on to the retry
-    jAgg({res:cfg.res,order:"asc",limit:200,start:start,end:now}).then(function(d){
+    // END_TIME ROUNDED UP TO THE NEXT BUCKET BOUNDARY, AND THIS IS THE ACTUAL BUG BEHIND
+    // "the chart is stuck" on 1M and 1Y.
+    //
+    // Horizon drops the final bucket when end_time lands mid-bucket, so asking for end=now excludes
+    // the period we are currently IN. Proven by asking the same endpoint two ways at the same minute:
+    //    order=desc, no window        -> newest daily bucket Oct 11, newest weekly Oct 8   (current)
+    //    order=asc, start/end=now     -> newest daily bucket Oct 10, newest weekly Oct 1   (dropped)
+    // The chart used the second form.
+    //
+    // The damage scales with the bucket, which is why only the long tabs looked wrong: 1D loses 15
+    // minutes and 1W an hour, both invisible, while 1M loses TODAY and 1Y loses the whole current
+    // WEEK. RAZA's 1Y tooltip read Oct 1 against a header eleven days newer.
+    //
+    // Rounding up asks for a boundary Horizon will honour; it cannot pull in anything beyond now,
+    // because no trades exist in the future.
+    var endUp=(+cfg.res>0)?(Math.ceil(now/(+cfg.res))*(+cfg.res)):now;
+    jAgg({res:cfg.res,order:"asc",limit:200,start:start,end:endUp}).then(function(d){
       var r=(d&&d._embedded&&d._embedded.records)||[];
       // #15: the 1Y chart was drawing about a month.
       //
@@ -1852,6 +1904,37 @@ function cDenom(){ return window.__lxAsDenom || "xlm"; }
         o:(+x.open||0)*xlmUsd, h:(+x.high||0)*xlmUsd, l:(+x.low||0)*xlmUsd, c:(+x.close||0)*xlmUsd};}).filter(function(p){return p.v>0;});
       // #7: the delta cell reads the drawn series, so it has to be repainted whenever a new timeframe
       // lands -- otherwise switching to 1Y left yesterday's figure sitting under a year of chart.
+      // THE BUCKET THAT CONTAINS NOW CLOSES AT THE CURRENT PRICE (RAZA 2026-10-11: "its correct in
+      // day and week but not on month or year tab ... this can be confusing for the user").
+      //
+      // Horizon recomputes coarse trade_aggregations far less often than fine ones. Measured on
+      // production, same asset, same minute:
+      //    1h  bucket 18:00 today  close 0.0004175   <- matches the header
+      //    1d  bucket 00:00 today  close 0.0004007   <- behind
+      //    1w  bucket Oct 8        close 0.0003325   <- same figure as the PREVIOUS week's bucket
+      // So the in-progress bucket is returned at every resolution, but on 1M and 1Y its close is days
+      // old and the line ends well below the number printed directly above it. 1D and 1W look right
+      // only because their buckets are small and get recomputed often.
+      //
+      // Overriding it is MORE accurate, not less: the close of a period that has not ended yet IS the
+      // latest trade, and assetXlm is exactly that (it prefers the fresh /lxapi/lastprice). We are
+      // filling in a value Horizon has not got round to recalculating, not inventing one.
+      //
+      // Only the final bucket, only when it really does contain now, and only the fields that would
+      // otherwise contradict the header: v (the line, which reads avg first) and c. high/low are
+      // widened to keep the candle view consistent -- a close outside its own bucket's range would
+      // draw a wick that cannot exist.
+      if(pts.length&&assetXlm>0&&xlmUsd>0){
+        var _lp=pts[pts.length-1], _bw=+cfg.res||0;
+        if(_bw>0&&now>=_lp.t&&now<_lp.t+_bw){
+          var _liveUsd=assetXlm*xlmUsd;
+          if(_liveUsd>0){
+            _lp.v=_liveUsd; _lp.c=_liveUsd;
+            if(_lp.h<_liveUsd)_lp.h=_liveUsd;
+            if(!(_lp.l>0)||_lp.l>_liveUsd)_lp.l=_liveUsd;
+          }
+        }
+      }
       if(pts.length>=2){ clear(); drawChart(pts); try{ applyOhlc(); }catch(_){} return; }
       if(!attempt){ again(); return; }
       clear(); chartFromTrades(tf);
@@ -3840,7 +3923,18 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
         var feeXlmP=pa.native?Promise.resolve(null):j(H+"/paths/strict-send?"+srcP+"&source_amount="+fee.toFixed(7)+"&destination_assets=native").catch(function(){return null;});
         return Promise.all([j(H+"/accounts/"+addr), j(H+"/accounts/"+FEE_COLLECTOR).catch(function(){return null;}), feeXlmP]).then(function(res){
           var acc=res[0], collExists=!!res[1], feePd=res[2];
-          var dm=(freshOut>0?Math.max(1e-7,freshOut*(1-fr-0.01)):Math.max(1e-7,_dxMinRecv||1e-7)).toFixed(7);
+          /* THE FLOOR NOW MATCHES THE PROMISE. The panel advertises "0.5% slippage" and shows a minimum
+                       received of best*(1-SLIP/100), but destMin was freshOut*(1-fr-0.01) -- which is wrong twice over.
+                       The daily health bot measured the gap on 2026-10-12: destMin 23374.58 against 23635 shown, 1.10% below
+                       on a 0.1% fee tier, i.e. the extra 1% PLUS the fee.
+                       Double-counted the fee: freshOut comes from /paths/strict-send with source_amount=net, and net is
+                       already the amount AFTER the platform fee was taken off the input. Subtracting fr again charged
+                       the user for it a second time in the floor.
+                       Used 1% where the pane says 0.5%: a swap could legitimately deliver 1.1% less than the figure the user
+                       was shown and still succeed. A minimum that is not the minimum shown is the one number on this panel
+                       that must never be optimistic.
+                       One source of truth now -- SLIP, the same constant the displayed figure uses, so the two cannot drift. */
+                    var dm=(freshOut>0?Math.max(1e-7,freshOut*(1-SLIP/100)):Math.max(1e-7,_dxMinRecv||1e-7)).toFixed(7);
           var needTrust=!ra.native&&!window.__lxDXAhasTrust;
           var tb=new S.TransactionBuilder(new S.Account(addr,acc.sequence),{fee:"1000",networkPassphrase:WPASS_PUB});
           if(needTrust)tb.addOperation(S.Operation.changeTrust({asset:dest}));
@@ -4558,9 +4652,26 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       j(CG).then(function(d){ var u=(d&&d.stellar&&+d.stellar.usd)||0; if(u>0){ xlmUsd=u; try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_e){} applyAll(); } }).catch(function(){});
       try{ loadChart(chartTF); }catch(_){}
       try{ loadOrderbook(); }catch(_){}
-    setInterval(function(){ try{ loadOrderbook(); }catch(_){} },20000);
       try{ loadTrades(); }catch(_){}
     },60000);
+    // THE 20s ORDER BOOK POLLER, HOISTED OUT OF THE 60s ONE (RAZA 2026-10-11: "Why is the chart
+    // taking so long to update. The price has already dropped like 15 mins ago but its still
+    // showing like it hasn't").
+    //
+    // It used to sit INSIDE the 60-second callback, so every minute created ANOTHER permanent
+    // 20-second interval. They accumulate and none is ever cleared: after 15 minutes about fifteen
+    // of them are running, roughly 45 order-book reads a minute and climbing for as long as the tab
+    // stays open. That is why the complaint was always about a page that had been sitting a while.
+    //
+    // It starves the chart rather than the book. Horizon meters /trade_aggregations at 100 requests
+    // per 5 minutes per IP, loadChart() reads exactly that endpoint, and its failure is swallowed by
+    // the try/catch above -- so the refresh goes on being attempted and silently losing, the chart
+    // holds its last good render, and the header price keeps moving because it comes from CoinGecko
+    // on a different host and a different budget. One frozen panel beside a live number.
+    //
+    // Measured while diagnosing: the DATA was never stale. The newest hourly candle closed at
+    // 0.0004152 against a last price of 0.0004152 at the same minute. Nothing was wrong upstream.
+    setInterval(function(){ if(document.hidden)return; try{ loadOrderbook(); }catch(_){} },20000);
   }
   if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();<\/script>`;
