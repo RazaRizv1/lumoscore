@@ -64,9 +64,24 @@ export async function onRequestGet(ctx) {
 
     // 1. Candidates: assets with a deep enough XLM pool. The ranking is TVL-descending, so once a page
     //    drops below the bar every later page is below it too and the walk can stop.
+    // FETCHED TOGETHER, READ IN ORDER.
+    //
+    // This walked the pages one await at a time, and the 5s per-subrequest timeout I added earlier
+    // bounded each call without noticing there were a dozen of them in a row. Measured on production
+    // after that change: 33s cold, then 0.12s cached -- so the health check caught it warm and
+    // reported it fixed for two runs while it was not.
+    //
+    // At most 4 pages and 8 batches below, 12 subrequests against a 50 limit, so concurrency is free
+    // here. The early stop is kept exactly: the pages are read in order and the loop still breaks on
+    // the first one below the bar. It can now fetch up to three pages it would have skipped, which
+    // costs nothing in wall-clock because they were already in flight, and the stop was never about
+    // saving requests -- it was about not walking past the end of the ranking.
     const cand = new Map();
-    for (let p = 1; p <= POOL_PAGES; p++) {
-      const d = await j(origin, '/lxapi/pools?per=' + PER + '&page=' + p);
+    const pages = await Promise.all(
+      Array.from({ length: POOL_PAGES }, (_, i) => j(origin, '/lxapi/pools?per=' + PER + '&page=' + (i + 1))),
+    );
+    for (let p = 0; p < pages.length; p++) {
+      const d = pages[p];
       const rows = (d && d.rows) || [];
       if (!rows.length) break;
       let anyAbove = false;
@@ -88,11 +103,17 @@ export async function onRequestGet(ctx) {
     if (!cand.size) throw new Error('no candidates');
 
     // 2. Price them, and read the holder count from the same answer.
+    // Same again, and simpler: the batches are disjoint key groups, so nothing here was ever
+    // sequential by nature -- only by how it was written. MAX_CAND 128 over BATCH 16 caps this at 8.
     const keys = [...cand.keys()];
     const out = [];
-    for (let i = 0; i < keys.length; i += BATCH) {
-      const grp = keys.slice(i, i + BATCH);
-      const d = await j(origin, '/lxapi/dexassets?a=' + encodeURIComponent(grp.join(',')));
+    const groups = [];
+    for (let i = 0; i < keys.length; i += BATCH) groups.push(keys.slice(i, i + BATCH));
+    const answers = await Promise.all(
+      groups.map((grp) => j(origin, '/lxapi/dexassets?a=' + encodeURIComponent(grp.join(',')))),
+    );
+    for (let gi = 0; gi < groups.length; gi++) {
+      const grp = groups[gi], d = answers[gi];
       if (!d || !d.a) continue;
       for (const k of grp) {
         const v = d.a[k], c = cand.get(k);
