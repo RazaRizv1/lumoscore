@@ -9,7 +9,7 @@ const CDFIX='<script id="lx-cdfix">(function(){function nd(){var n=new Date(),y=
 
 const LPTICKER='<script id="lx-lpticker">(function(){function sync(){var t=document.getElementById("tokenTicker"),o=document.getElementById("supplyTicker");if(!o)return;var v=t&&t.value?t.value.toUpperCase().trim():"";o.textContent=v||"TOKENS";}var t=document.getElementById("tokenTicker");if(t)t.addEventListener("input",sync);if(document.readyState!=="loading")sync();else document.addEventListener("DOMContentLoaded",sync);})();</script>';
 
-let stats={countdown:0, lpticker:0, lumos:0, trending:0, soro:0, assetsTable:0};
+let stats={countdown:0, lpticker:0, lumos:0, trending:0, trendingDraw:0, trendingMob:0, soro:0, assetsTable:0};
 for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
   for(const dev of ['desktop','mobile']){
     const file=`lumoscore-${c}-${dev}.html`;
@@ -37,6 +37,46 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain']){
            .join("const trEl = document.getElementById('trendingList');"
                + " const card = trEl && trEl.closest('.market-card');");
         stats.trending++;
+      }
+
+      // THE GUARD ABOVE ONLY MOVED THE CRASH ONE LINE. Measured on the 2026-10-13 preview build:
+      // the home page stopped throwing "reading 'closest'" and started throwing
+      //   Uncaught TypeError: Cannot set properties of null (setting 'innerHTML') at renderTrending
+      // because `const tList = document.getElementById('trendingList')` is captured at module scope
+      // and renderTrending opens with `tList.innerHTML = ''`. Guarding the lookup let execution reach
+      // code that still assumes the element is there -- the same page, the same missing id, a
+      // different line. A guard that only stops the first throw is not a fix, it is a relocation.
+      //
+      // The function leaves when it has nothing to draw into. Nothing downstream needs its return
+      // value: every call site is a tab handler or the initial paint.
+      //
+      // NORMALISE, DO NOT WRAP. The replacement contains its own search string, so a plain
+      // split/join appends a second "if (!tList) return;" on every build. Strip first, then add once,
+      // which makes re-running this transform a no-op instead of a slow corruption.
+      if(h.indexOf('function renderTrending(period) {')>=0){
+        while(h.indexOf('function renderTrending(period) { if (!tList) return;')>=0){
+          h=h.split('function renderTrending(period) { if (!tList) return;')
+             .join('function renderTrending(period) {');
+        }
+        h=h.split('function renderTrending(period) {')
+           .join('function renderTrending(period) { if (!tList) return;');
+        stats.trendingDraw++;
+      }
+
+      // THE PHONE WRITES THE SAME BUG A DIFFERENT WAY, which is why the desktop guard never touched
+      // it and why both builds still threw "reading 'closest'" on /dashboard at mobile width.
+      // Desktop inlines the lookup:        document.getElementById('trendingList').closest(...)
+      // Mobile reuses the captured one:    tList.closest('.market-card')
+      // Same missing element, same crash, and a search string written for one form is blind to the
+      // other. Found by diffing the two containers only after a browser run showed desktop fixed and
+      // mobile unchanged -- the grep said the guard was applied, and the grep was answering about
+      // desktop.
+      //
+      // Naturally idempotent: "const card = tList.closest(" does not occur in the replacement.
+      if(h.indexOf("const card = tList.closest('.market-card');")>=0){
+        h=h.split("const card = tList.closest('.market-card');")
+           .join("const card = tList && tList.closest('.market-card');");
+        stats.trendingMob++;
       }
 
       // THE REWARDS PAGE LOST TEN FEATURES TO ONE DELETED BUTTON. Same bot run, same class of fault:
