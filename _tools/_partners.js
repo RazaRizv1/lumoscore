@@ -46,9 +46,12 @@ const HEAD = 'Partners';
 const SUB = 'The bridge routes your assets travel, and the wallets that sign for them.';
 
 // `logo` is relative to assets/ ; null means "no mark exists, use the wordmark".
+// `url`, where present, is the partner's own page for LumosCore — RAZA supplied these two
+// (2026-10-11). The rest have no page naming us, and a link to a company's front door would be a
+// link that says nothing; they stay plain until there is somewhere specific to point.
 const PARTNERS = [
-  { name: 'Circle CCTP', logo: 'tokens/circle.png' },
-  { name: 'NEAR Intents', logo: 'networks/near.png' },
+  { name: 'Circle CCTP', logo: 'tokens/circle.png', url: 'https://partners.circle.com/partner/lumoscore' },
+  { name: 'NEAR Intents', logo: 'networks/near.png', url: 'https://intents.near.org/ecosystem' },
   { name: 'LayerZero', logo: 'tokens/layerzero.png' },
   { name: 'Axelar', logo: 'tokens/axelar.png' },
   { name: 'THORChain', logo: 'networks/thorchain.png' },
@@ -67,7 +70,10 @@ function haveLogo(rel) {
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-const resolved = PARTNERS.map(p => ({ name: p.name, logo: haveLogo(p.logo) ? p.logo : null, want: p.logo }));
+// url is carried through explicitly. This line rebuilds each partner as a NEW object rather than
+// copying it, so any field not named here is silently dropped -- which is exactly what happened to
+// url on the first attempt: the CSS landed, the markup did not, and the page looked untouched.
+const resolved = PARTNERS.map(p => ({ name: p.name, logo: haveLogo(p.logo) ? p.logo : null, want: p.logo, url: p.url || '' }));
 const missing = resolved.filter(p => !p.logo).map(p => p.name + ' (' + p.want + ')');
 
 function item(p, dup) {
@@ -79,9 +85,22 @@ function item(p, dup) {
     ? '<img class="lx-pt-logo" src="/assets/' + esc(p.logo) + '" alt="" loading="lazy" '
       + 'width="26" height="26" decoding="async">'
     : '';
-  return '<li class="lx-pt' + (p.logo ? '' : ' lx-pt-nologo') + '"'
+  // A STRETCHED OVERLAY LINK, not a wrapper around the contents. `.lx-pt` is itself the inline-flex
+  // container that lays out the logo and the wordmark with a gap; putting an <a> between it and its
+  // children would leave it with ONE child and hand the layout to an element with no flex rules, so
+  // the mark and the name would collapse together. An absolutely positioned <a> covering the chip
+  // changes no boxes at all.
+  //
+  // It carries its own label because it has no text of its own, and the DUPLICATE track is the
+  // marquee's second copy: that one is aria-hidden, so its link is taken out of the tab order too —
+  // otherwise every partner would be reachable twice by keyboard, once invisibly.
+  const link = p.url
+    ? '<a class="lx-pt-link" href="' + esc(p.url) + '" target="_blank" rel="noopener noreferrer nofollow"'
+      + (dup ? ' tabindex="-1"' : '') + ' aria-label="' + esc(p.name) + ' — opens in a new tab"></a>'
+    : '';
+  return '<li class="lx-pt' + (p.logo ? '' : ' lx-pt-nologo') + (p.url ? ' lx-pt-has-link' : '') + '"'
     + (dup ? ' aria-hidden="true"' : '') + '>'
-    + img + '<span class="lx-pt-name">' + esc(p.name) + '</span></li>';
+    + img + '<span class="lx-pt-name">' + esc(p.name) + '</span>' + link + '</li>';
 }
 
 const ONE = resolved.map(p => item(p, false)).join('');
@@ -131,6 +150,14 @@ const CSS = '<style id="lx-partners-css">'
   + 'background:var(--surface);white-space:nowrap;'
   + 'transition:border-color .22s ease,background-color .22s ease}'
   + '.lx-pt:hover{border-color:var(--border-strong);background:var(--surface-2)}'
+  // position:relative ONLY on the chips that have a link, so the other six keep the exact box they
+  // had. The overlay covers the whole pill, so the hit target is the chip rather than the words.
+  + '.lx-pt-has-link{position:relative;cursor:pointer}'
+  + '.lx-pt-link{position:absolute;inset:0;border-radius:inherit;z-index:1}'
+  // The strip is a marquee that pauses on hover, so a keyboard user can land here while it is still
+  // moving; without a visible ring the focus is simply lost on a row of near-identical pills.
+  + '.lx-pt-link:focus-visible{outline:2px solid var(--accent);outline-offset:2px}'
+  + '.lx-pt-has-link:hover .lx-pt-name{color:var(--accent)}'
   + '.lx-pt-logo{width:26px;height:26px;border-radius:50%;object-fit:contain;flex:0 0 auto;'
   + 'background:var(--surface-2)}'
   + '.lx-pt-name{font-size:15.5px;font-weight:700;letter-spacing:-.2px;color:var(--text)}'
