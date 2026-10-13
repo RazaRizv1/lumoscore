@@ -7,7 +7,7 @@
     { ic:'PHX', col:'linear-gradient(135deg,#f43f5e,#be123c)', nm:'Wrapped Bitcoin', sb:'WBTC', p:'0.0₄13 APT', p2:'≈ $0.0₅18', c24:'-3.21', xlm:'523.45 APT', usd:'1.2M WBTC · ≈ $216.00' },
     { ic:'PAXG', col:'linear-gradient(135deg,#a855f7,#6d28d9)', nm:'PAX Gold', sb:'PAXG · Utility', p:'2.11 APT', p2:'≈ $0.87', c24:'+5.42', xlm:'51.02 APT', usd:'24.18 PAXG · ≈ $21.04' },
   ];
-  const tbody = document.getElementById('assetsTable');
+  const tbody = document.getElementById('assetsTable') || document.createElement('tbody');
   assets.forEach((a, i) => {
     const c24 = parseFloat(a.c24);
     const isUp = c24 > 0;
@@ -45,7 +45,7 @@
         </div>
       </td>
     `;
-    tbody.appendChild(tr);
+    if (tbody) tbody.appendChild(tr);
     const sp = tr.querySelector('.spark-cell svg');
     const trend = isUp ? 0.1 : (isZero ? 0 : -0.1);
     const sPts = []; let sv = 19;

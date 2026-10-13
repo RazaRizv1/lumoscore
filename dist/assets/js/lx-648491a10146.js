@@ -91,7 +91,37 @@
   // What WE show as an asset home domain where the on-chain value is stale (LUMOS still declares the
   // pre-rename lumosdao.io). Display only -- never the toml fetch, which 404s on the new domain.
   var DDOM={"LUMOS|GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S":"lumoscore.com"};
-  function dispDom(c,i,d){ return DDOM[(c||"")+"|"+(i||"")]||d||""; }
+  function dispDom(c,i,d){ return lxRootHost(lxBareHost(DDOM[(c||"")+"|"+(i||"")]||d||"")); }
+  // ROOT DOMAIN ONLY, HERE TOO (RAZA 2026-10-11: "You need to show the root as homedomain also in
+  // the search and recent searches"). The Trade-Asset page was fixed first; search kept showing
+  // token-metadata.paxos.com and stellar.spacexsi.exchange, so the same asset read differently
+  // depending on where you met it.
+  //
+  // Same two steps as _dexassetdata.js and the same reasons, repeated rather than shared because
+  // these layers are separate scripts with no common scope: strip any scheme or path first, then
+  // reduce to the registrable domain. "www." is KEPT by RAZA's call -- it is how some issuers write
+  // their own name. The last two labels are wrong on a multi-part suffix (example.co.uk would become
+  // "co.uk", a registry), so the list below is consulted first.
+  //
+  // DISPLAY ONLY. The SEP-1 toml lives AT the declared host, so the fetch must keep using the full
+  // one -- see the note on DDOM above, which says the same thing about the stale-domain map.
+  function lxBareHost(v){ try{ v=String(v==null?"":v).trim(); var i=v.indexOf("://"); if(i>=0)v=v.slice(i+3); var j=v.length; var marks=["/","?","#"]; for(var k=0;k<marks.length;k++){ var p=v.indexOf(marks[k]); if(p>=0&&p<j)j=p; } return v.slice(0,j).trim(); }catch(_){ return ""; } }
+  var MULTI_TLD={"co.uk":1,"org.uk":1,"ac.uk":1,"gov.uk":1,"me.uk":1,"com.au":1,"net.au":1,"org.au":1,
+    "co.nz":1,"co.za":1,"co.jp":1,"or.jp":1,"ne.jp":1,"com.br":1,"com.mx":1,"com.ar":1,"com.tr":1,
+    "com.cn":1,"com.hk":1,"com.sg":1,"co.in":1,"co.kr":1,"com.tw":1,"co.il":1,"com.ua":1,"com.pl":1,
+    "co.th":1,"com.vn":1,"com.my":1,"com.ph":1,"co.id":1};
+  function lxRootHost(v){
+    try{
+      v=String(v==null?"":v).trim().toLowerCase();
+      if(!v)return "";
+      if(/^[0-9.]+$/.test(v))return v;                 // an IP has no root to reduce to
+      var p=v.split(".").filter(Boolean);
+      if(p.length<3)return p.join(".");
+      if(p[0]==="www")return p.join(".");              // kept as declared
+      var lastTwo=p.slice(-2).join(".");
+      return MULTI_TLD[lastTwo]?p.slice(-3).join("."):lastTwo;
+    }catch(_){ return v||""; }
+  }
   var VTICK='<span class="lx-seavfd" title="Verified issuer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></span>';
   function row(t){
     var g=GRAD[(t.code.charCodeAt(0)||0)%GRAD.length];

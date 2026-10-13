@@ -62,7 +62,7 @@ document.addEventListener('DOMContentLoaded',function(){
   sel.addEventListener('change',function(){cur=+this.value;renderReport();});
   document.getElementById('netseg').addEventListener('click',function(e){var b=e.target.closest('.ns');if(!b)return;curNet=b.getAttribute('data-net');[].forEach.call(this.children,function(c){c.classList.toggle('active',c===b);});renderReport();});
   document.getElementById('ptabs').addEventListener('click',function(e){var b=e.target.closest('.pt');if(!b)return;curProg=b.getAttribute('data-prog');[].forEach.call(this.querySelectorAll('.pt'),function(c){c.classList.toggle('active',c===b);});renderReport();});
-  document.getElementById('soroBtn').addEventListener('click',openSoro);
+  var soroEl=document.getElementById('soroBtn');if(soroEl)soroEl.addEventListener('click',openSoro);
   document.getElementById('csvBtn').addEventListener('click',download);
   document.getElementById('moCsv').addEventListener('click',download);
   document.getElementById('moClose').addEventListener('click',function(){document.getElementById('ov').classList.remove('open');});

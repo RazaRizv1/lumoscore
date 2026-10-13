@@ -122,7 +122,7 @@
 
   // Hook up trending tabs (24h / 7d / 30d)
   (function(){
-    const card = document.getElementById('trendingList').closest('.market-card');
+    const trEl = document.getElementById('trendingList'); const card = trEl && trEl.closest('.market-card');
     if (!card) return;
     const badge = card.querySelector('.market-head .badge');
     const tabs = card.querySelectorAll('.tf-mini button');
