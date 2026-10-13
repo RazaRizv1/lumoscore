@@ -1775,7 +1775,10 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
     // card, and the dropdown's LumosCore Mints mode has to agree or the same page states two
     // different answers to the same question. Measured before this line existed: 26 rows with LUMOS
     // at the top, against the 25 the mints card counts.
-    if(f==="native")d=NATIVE.filter(function(a){ return a.cat==="native"; });
+    // "a.mint" is the curated-AND-ours case: an asset that arrived through the curated path keeps its
+    // own cat (stable/utility, which Stables and Utility filter on) and carries mint-ness beside it.
+    // See the d.mints block in curatedLive() for why these are two facts and not one.
+    if(f==="native")d=NATIVE.filter(function(a){ return a.cat==="native"||a.mint; });
     else if(f==="utility")d=allAssets().filter(function(a){return a.cat==="utility";});
     else if(f==="stables")d=allAssets().filter(function(a){return a.cat==="stable";});
     else if(f==="memes")d=[];
@@ -2180,6 +2183,40 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
           px:0,chg:null,vol:null,high:null,low:null,tvlUsd:null,
           holders:null,supply:null,spark:null,img:null,trades:null};
         byCode[tkr]=a; byId[code+"|"+iss]=a; ASSETS.push(a); added.push(a);
+      });
+      // MINT-NESS IS A SEPARATE FACT FROM CATEGORY, and conflating the two is what broke the trade
+      // page (RAZA 2026-10-14: "assets appearing twice on main trade page").
+      //
+      // TDT and Liberator are ours AND curated, so they reach ASSETS through the curated path and
+      // addManifestNatives then skips them -- nativeMake returns null when byId already holds the key,
+      // so they never enter NATIVE and the Mints chip cannot list them. That part of RAZA's 2026-10-11
+      // report was right.
+      //
+      // MY FIRST FIX WAS WRONG IN ITS SOURCE AND IN ITS EFFECT, and both are worth recording:
+      //
+      //   SOURCE. It drove mint-ness from _man (window.__lxTokenRegistry), which is NOT a mint list --
+      //   measured on the live page, 82 entries including USDC and SHX. Every one of them was being
+      //   stamped cat:"native". The authoritative list is d.mints, right here in the response this
+      //   function already fetches: 30 entries, USDC absent, TDT and Liberator present.
+      //
+      //   EFFECT. It wrote cat:"native" onto the shared object. cat is what Stables and Utility filter
+      //   on, so Circle's USDC became a LumosCore mint, and the later merge below stopped matching it
+      //   and pushed an ALIAS copy (tkr "USDC~GA5Z") into ASSETS. The "All" mode reads ASSETS directly,
+      //   so every curated asset rendered twice. I had written in that commit that nothing could
+      //   double-render "because allAssets() filters on cat" -- allAssets() is not what "All" calls.
+      //   Asserting the safety property instead of measuring it is the whole of that bug.
+      //
+      // So: a separate flag, never cat. The object is unchanged everywhere it already appears, and the
+      // Mints filter is what learns about it (see the f==="native" branch). Nothing can double-render:
+      // ASSETS is not touched, allAssets() dedupes on code|issuer, and NATIVE holds the SAME object
+      // once. nativePurge() leaves it alone too -- it only considers entries whose cat is "native",
+      // which is now exactly the ones it was always meant to police.
+      (d.mints||[]).forEach(function(id){
+        var i=id.lastIndexOf("-"); if(i<0)return;
+        var held=byId[id.slice(0,i)+"|"+id.slice(i+1)];
+        if(!held||held.mint)return;                      // absent here is fine: the roster path makes it
+        held.mint=1;
+        if(NATIVE.indexOf(held)<0)NATIVE.push(held);
       });
       try{ renderTable(); }catch(_){}                    // ticks land even when nothing was added
       if(!added.length)return;
