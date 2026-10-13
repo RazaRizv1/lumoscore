@@ -27,12 +27,32 @@ const MIN_HOLDERS = 250;
 const TTL = 600;
 const KEY = new Request('https://lumoscore.internal/lxapi/movers', { method: 'GET' });
 
+// EVERY SUBREQUEST IS ON A CLOCK. Measured 2026-10-12, this endpoint answered nothing at all for 90
+// seconds and was then abandoned by the client -- the daily health bot reported it as "This operation
+// was aborted". The dependencies are not the problem: /lxapi/pools answers in 0.10s and /lxapi/dexassets
+// in 1.0s when called from outside. What hangs is this Function fetching its OWN origin, which routes
+// back through the same zone's Worker.
+//
+// A deadline does not explain that, it contains it: an await with no timeout can hang for as long as the
+// platform allows, and every hit holds a Worker open for the duration. With one, a stall becomes a null
+// -- which every caller here already handles, because that is what a failed fetch has always returned.
+//
+// NOTE FOR WHOEVER REVIVES THIS: nothing on the site references /lxapi/movers (checked across _tools,
+// dist and functions -- only this file mentions it). It is unreachable dead code today, so this is
+// damage control on a hang, not a repair of the feature. The self-fetch is the thing to rethink.
+const SUB_TIMEOUT_MS = 5000;
+
 async function j(origin, path) {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), SUB_TIMEOUT_MS);
   try {
-    const r = await fetch(origin + path, { cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true } });
+    const r = await fetch(origin + path, {
+      signal: ac.signal,
+      cf: { cacheTtlByStatus: { '200-299': TTL, '300-399': 0, '400-599': 0 }, cacheEverything: true },
+    });
     if (!r.ok) return null;
     return await r.json();
-  } catch (_) { return null; }
+  } catch (_) { return null; } finally { clearTimeout(timer); }
 }
 
 export async function onRequestGet(ctx) {
