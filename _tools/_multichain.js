@@ -6,6 +6,16 @@ const CH=require(__dirname+'/_chains.json');
 
 let engine=fs.readFileSync(__dirname+'/_mc_engine.js','utf8');
 engine=engine.replace('/*CHAINS*/', JSON.stringify(CH));
+// WHICH CHAINS THIS DEPLOY CAN ACTUALLY OPEN. Same flag the hub choosers read in _lumosparent.js, so
+// one switch governs every place a chain is offered rather than each learning it separately -- which
+// is how the Launch App modal kept offering XRPL after the hubs stopped.
+//
+// Off by default: a build that does not carry the XRPL pages must not link to them. Set
+// LX_XRPL_PUBLIC=1 on a build that merges them (npm run merge:xrpl) and the row becomes clickable.
+// The inert row is not a hidden one -- it reads "Support is on the way" with a "Next up" tag, which
+// is both true and the state this flag describes.
+const XRPL_PUBLIC = process.env.LX_XRPL_PUBLIC === '1';
+engine=engine.replace('/*SOON*/', JSON.stringify(XRPL_PUBLIC ? {} : { xrpl: 1 }));
 const SCRIPT='<script id="lx-mc">'+engine+'</script>';
 
 // TARGETED anti-flash (NOT a full-body hide — that blanked heavy pages). The dist is the APTOS base and
