@@ -13,7 +13,21 @@ var ORDER=["stellar","xrpl"];
 // clickable button reading "Connect on XRP Ledger", which is a promise nothing behind it can keep.
 // There is now a complete XRPL build served from the same host under /<section>/xrpl, so the promise
 // is keepable and the row is a real one. Anything added here later gets the inert treatment again.
-var SOON={};
+// SUBSTITUTED AT BUILD TIME by _multichain.js from LX_XRPL_PUBLIC, because whether XRPL is offered
+// here is a fact about the DEPLOY and not about the code.
+//
+// This was hardcoded to {} on 2026-10-01 with the note above -- "there is now a complete XRPL build
+// served from the same host under /<section>/xrpl, so the promise is keepable". True of the COMBINED
+// build. The Stellar-only production deploy carries no XRPL pages at all, so on lumoscore.com the row
+// was a clickable button reading "Connect on XRP Ledger" that landed on /trade/xrpl -- a 404. Exactly
+// the promise the original comment said not to make, reintroduced by assuming every deploy is the
+// combined one.
+//
+// RAZA, minutes after the 2026-10-13 release: "When i click launch app -> XRPL : it take me to
+// trade/xrpl and also shows 404". Same root as the six dead hub links fixed earlier that day, in a
+// chooser that fix did not reach -- _lumosparent.js owns the hub pages, this owns the Launch App
+// modal, and they had to be found separately.
+var SOON=/*SOON*/;
 
 // WHERE A CHAIN LIVES. Stellar and XRPL are two BUILDS sharing one host: Stellar owns the bare routes
 // (/dashboard, /wallet) and the /stellar-suffixed ones, XRPL owns /<section>/xrpl. So changing chain
