@@ -953,7 +953,27 @@ function netNameShort(c){ return NET_NAME_SHORT[c] || NET_NAME_SHORT.stellar; }
 function netNative(c){ return NET_NATIVE[c] || NET_NATIVE.stellar; }
 
 function assetSeo(f, assetId, chain){
-  const code = f ? f.code : assetId.split('-')[0];
+  // NO BACKTICKS IN THIS COMMENT. This function is emitted through a template literal, so one here
+  // closes the string and the build dies with "SyntaxError: Unexpected identifier" pointing at the
+  // comment rather than at the cause. Writing this note cost exactly that.
+  //
+  // THE TERNARY TRUSTED f TO CARRY A CODE, AND ONLY STELLAR'S DOES. "f ? f.code : ..." reads its
+  // fallback as "no facts at all", but the two facts sources have different shapes: assetFacts()
+  // sets code, while xrplAssetMeta() returns {name, desc, image} and never did. So for an XRPL
+  // asset f was truthy with f.code undefined, the fallback was skipped, and the page published
+  // "undefined price, pools and holders on XRP Ledger" -- in the title, the description, og:title,
+  // og:description, twitter:title, twitter:description, og:image:alt and lx-seo-desc. Eight places,
+  // one missing property.
+  //
+  // IT HIT ONLY THE ASSETS WE DOCUMENT, which is why it survived: xrplAssetMeta() returns null for
+  // an issuer that is not in our toml, so every uncurated XRPL token took the fallback and looked
+  // right. Measured on the live build -- SOLO and CSC correct, LUMOS "undefined". The better we
+  // describe a token, the worse its title was.
+  //
+  // "||" rather than a longer ternary because an empty code is as useless as a missing one, and this
+  // is byte-identical for Stellar: assetFacts() always sets code to assetId.split("-")[0], the very
+  // value on the right.
+  const code = (f && f.code) || assetId.split('-')[0];
   const net = netName(chain);
   const bits = [];
   const px = f && fmtUsd(f.price);
