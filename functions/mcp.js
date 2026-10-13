@@ -60,6 +60,93 @@ const TTL = {
 // nothing serves.
 const keyFor = (origin, parts) => new Request(origin + '/__mcp/' + parts.map(encodeURIComponent).join('/'));
 
+// ---- what callers actually ask for ---------------------------------------------------------------
+//
+// RAZA 2026-10-11: "check what he tried to do with MCPs where our MCP wasnt capable enough ... i ask
+// this to improve the mcp based on what people need mcp for". That question could not be answered,
+// because this file computed the answer four times a request and threw it away every time:
+//
+//   handle() -32602  Unknown tool "X"      -- an agent naming a capability we do not have. THE signal.
+//   handle() isError Missing argument(s)   -- right tool, could not drive it: a schema/wording problem.
+//   handle() isError <tool threw>          -- Horizon flaking, or a tool genuinely broken.
+//   handle() -32601  Method not found: X   -- clients expecting resources/, prompts/, completion/.
+//
+// The first is the feature request, in the agent's own words. The second is the documentation bug.
+// Neither reaches us any other way: a POST here never renders the page, so /lxapi/pv is not called and
+// nothing lands in `pageview`. Cloudflare's own analytics has request counts and no bodies.
+//
+// WHAT IS STORED: the method, the tool name asked for, an outcome, a short detail, the MCP client's
+// self-reported name and version, the request's user agent, and the country. NOT the IP, NOT the
+// arguments -- an argument can carry a wallet address, which is the one field here that identifies a
+// person, and the tool NAME answers the question on its own.
+//
+// THE USER AGENT IS STORED, and that is a deliberate departure from lxapi/pv.js, which refuses it.
+// The difference is what is at the other end: pv.js counts people reading pages, this counts programs
+// calling an API. It is also the only way to tell two callers apart -- MCP over plain HTTP is
+// stateless, so `clientInfo` arrives on `initialize` and never again, and without the UA every
+// tools/call is anonymous and uncorrelatable.
+const LOG_CAP_HOUR = 5000;   // ceiling on *successful* rows; failures are always written
+const DETAIL_MAX = 300;
+const AGENT_MAX = 180;
+let MCP_TBL = 0;
+let OK_WINDOW = 0, OK_COUNT = 0;
+
+const DDL = 'CREATE TABLE IF NOT EXISTS mcp_call (ts INTEGER NOT NULL, day TEXT NOT NULL, '
+  + 'method TEXT NOT NULL, tool TEXT, outcome TEXT NOT NULL, detail TEXT, client TEXT, '
+  + 'client_version TEXT, protocol TEXT, agent TEXT, country TEXT)';
+
+// EVERY FREE-TEXT COLUMN HERE IS WRITTEN BY THE CALLER, and the caller is anonymous. `tool` is
+// whatever name they asked for, `detail` quotes their own argument back ("<img src=x onerror=…> is
+// not an asset id"), `agent` is their user agent, and `client`/`client_version` are the clientInfo
+// they declared on initialize. Only ts/day/method/outcome/country are ours.
+//
+// So the angle brackets and control characters come off at the WRITE, not at the read. Nothing
+// renders this table yet, which is exactly why now is the time: the first admin view that prints
+// `detail` would otherwise be stored XSS, and it would be written by someone who had no reason to
+// think a log column was hostile. Escaping at the boundary cannot be forgotten by a later reader.
+// An asset id, a tool name and a user agent never legitimately contain <, > or a control byte, so
+// this costs no diagnostic value.
+const clip = (s, n) => (s == null ? null : String(s)
+  .replace(/[<>]/g, '')
+  // eslint-disable-next-line no-control-regex
+  .replace(/[\u0000-\u001f\u007f]/g, ' ')
+  .slice(0, n));
+
+// Written AFTER the response, through waitUntil, so a caller never waits on our bookkeeping and a
+// broken database cannot turn a working read into a failure. One batch for the whole request: the
+// free plan meters subrequests per invocation and a batch of 8 messages must not become 8 writes.
+async function writeLog(env, rows) {
+  const db = env && env.ADMIN_DB;
+  if (!db || !rows.length) return;
+  try {
+    if (!MCP_TBL) { MCP_TBL = 1; await db.prepare(DDL).run(); }
+    const stmt = db.prepare('INSERT INTO mcp_call (ts, day, method, tool, outcome, detail, client, '
+      + 'client_version, protocol, agent, country) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11)');
+    // `method` is clipped HERE and not at the note() call: it is a caller-supplied JSON-RPC method
+    // string, so method_not_found can carry anything at all, and the first argument of note() was the
+    // one path that reached a column without passing through clip(). Everything else is already
+    // clipped at its creation site; this line is the backstop for all of them.
+    await db.batch(rows.map((r) => stmt.bind(
+      r.ts, r.day, clip(r.method, 80), clip(r.tool, 80), r.outcome, clip(r.detail, DETAIL_MAX),
+      clip(r.client, 80), clip(r.client_version, 40), clip(r.protocol, 40),
+      clip(r.agent, AGENT_MAX), r.country)));
+  } catch (_) {
+    // A log that cannot be written is not an error the caller should ever hear about.
+    MCP_TBL = 0;   // the table may not exist yet on this isolate; try the DDL again next time
+  }
+}
+
+// `ping` is excluded on purpose -- a keepalive every few seconds would bury the four rows that matter
+// under thousands that say nothing. Successful calls are capped per hour; failures never are, because
+// the failures ARE the dataset.
+function keep(outcome) {
+  if (outcome !== 'ok' && outcome !== 'ok_cached') return true;
+  const hour = Math.floor(Date.now() / 3600000);
+  if (hour !== OK_WINDOW) { OK_WINDOW = hour; OK_COUNT = 0; }
+  OK_COUNT += 1;
+  return OK_COUNT <= LOG_CAP_HOUR;
+}
+
 async function rateLimit(origin, ip) {
   const now = Math.floor(Date.now() / 1000);
   const start = now - (now % RL_WINDOW);
@@ -117,14 +204,35 @@ function schemaOf(t) {
   return { type: 'object', properties: props, required: (t.required || []).slice() };
 }
 
-async function handle(msg, origin) {
+// `ctx` carries the per-request facts the log needs (user agent, country, protocol) and the array the
+// rows are pushed onto. It is threaded rather than global because one POST can be a batch of eight,
+// and each message in it has its own outcome.
+async function handle(msg, origin, ctx) {
+  const note = (method, outcome, tool, detail) => {
+    if (!ctx || method === 'ping' || !keep(outcome)) return;
+    const now = Date.now();
+    ctx.log.push({
+      ts: now, day: new Date(now).toISOString().slice(0, 10),
+      method: method, tool: tool || null, outcome: outcome, detail: detail || null,
+      client: ctx.client, client_version: ctx.clientVersion,
+      protocol: ctx.protocol, agent: ctx.agent, country: ctx.country,
+    });
+  };
+
   if (!msg || msg.jsonrpc !== '2.0' || typeof msg.method !== 'string') {
+    note('(malformed)', 'bad_request', null, 'Not a JSON-RPC 2.0 request.');
     return error(msg && msg.id, -32600, 'Not a JSON-RPC 2.0 request.');
   }
   const { id, method, params } = msg;
 
   if (method === 'initialize') {
     const asked = params && params.protocolVersion;
+    // THE ONE PLACE THE CLIENT NAMES ITSELF. MCP over plain HTTP has no session, so clientInfo arrives
+    // here and never again -- recorded on this row, and on later rows only the user agent connects the
+    // calls back to it. Written onto ctx as well so a batched initialize+tools/list share it.
+    const ci = (params && params.clientInfo) || {};
+    if (ci.name) { ctx.client = clip(ci.name, 80); ctx.clientVersion = clip(ci.version, 40); }
+    note('initialize', 'ok', null, clip(asked, 40));
     return result(id, {
       protocolVersion: SUPPORTED.includes(asked) ? asked : LATEST,
       capabilities: { tools: { listChanged: false } },
@@ -140,6 +248,7 @@ async function handle(msg, origin) {
   if (method === 'ping') return result(id, {});
 
   if (method === 'tools/list') {
+    note('tools/list', 'ok', null, null);
     return result(id, {
       tools: TOOLS.map((t) => ({
         name: t.name,
@@ -153,10 +262,19 @@ async function handle(msg, origin) {
   if (method === 'tools/call') {
     const name = params && params.name;
     const tool = TOOLS.find((t) => t.name === name);
-    if (!tool) return error(id, -32602, `Unknown tool "${name}".`);
+    if (!tool) {
+      // THE ROW RAZA ASKED FOR. An agent reached this server, read the tool list, and still asked for
+      // something that is not on it -- so it names a capability somebody wanted and we do not have.
+      // Nothing else in the system records a wish; this is the only place one is ever spoken aloud.
+      note('tools/call', 'unknown_tool', clip(name, 80), null);
+      return error(id, -32602, `Unknown tool "${name}".`);
+    }
     const args = (params && params.arguments) || {};
     const missing = (tool.required || []).filter((k) => args[k] === undefined || args[k] === '');
     if (missing.length) {
+      // The ARGUMENT NAMES only, never their values: one of them is `account`, and a wallet address is
+      // the single field here that would identify a person. The names are what diagnoses the schema.
+      note('tools/call', 'missing_args', clip(name, 80), missing.join(','));
       // A protocol error would be wrong here: the call reached the right tool and it is the ARGUMENTS
       // that are short, which is something the agent can fix and retry. isError puts that in front of
       // the model instead of failing the transport.
@@ -166,12 +284,21 @@ async function handle(msg, origin) {
     if (ck) {
       try {
         const hit = await caches.default.match(ck);
-        if (hit) return result(id, await hit.json());
+        if (hit) {
+          // Logged separately from a fresh call: a cached answer still means somebody asked, and
+          // counting the two together would make the cache look like demand.
+          note('tools/call', 'ok_cached', clip(name, 80), null);
+          return result(id, await hit.json());
+        }
       } catch (_) { /* a cache miss and a broken cache are the same thing here: do the work */ }
     }
     try {
       const r = await tool.run(args);
       const payload = { content: r.content, isError: !!r.isError };
+      // A tool that ran and reported a problem is not the same as one that threw, and both are worth
+      // separating from "the agent asked for something we do not have".
+      note('tools/call', payload.isError ? 'tool_error' : 'ok', clip(name, 80),
+        payload.isError ? ((r.content && r.content[0] && r.content[0].text) || null) : null);
       // Only a good answer is kept. Caching a failure would hold a "could not reach Horizon" in front
       // of every caller for the rest of the window, long after the outage that caused it.
       if (ck && !payload.isError) {
@@ -185,12 +312,16 @@ async function handle(msg, origin) {
     } catch (e) {
       // A tool that cannot reach its upstream says so. Returning empty data would read to the agent as
       // "there are none", which is a different and much worse claim than "I could not look".
+      note('tools/call', 'tool_threw', clip(name, 80), (e && e.message) || 'Tool failed.');
       return result(id, { isError: true, content: [{ type: 'text', text: (e && e.message) || 'Tool failed.' }] });
     }
   }
 
   // Everything the spec defines that this server does not offer. Answering "method not found" is the
   // correct reply and lets a client fall back cleanly.
+  // Logged because it says which parts of MCP clients expect us to have -- resources/list and
+  // prompts/list turning up repeatedly would be a roadmap item, not an error.
+  note(method, 'method_not_found', null, clip(method, 80));
   return error(id, -32601, `Method not found: ${method}`);
 }
 
@@ -209,10 +340,28 @@ export async function onRequestGet(context) {
   return context.next();
 }
 
-export async function onRequestPost({ request }) {
+// TAKES THE WHOLE CONTEXT NOW, not just { request }: the log needs env.ADMIN_DB to write to and
+// waitUntil to write AFTER the response, so no caller ever pays for our bookkeeping.
+export async function onRequestPost(context) {
+  const { request, env } = context;
   const origin = new URL(request.url).origin;
   const version = request.headers.get('mcp-protocol-version');
   const hdr = { 'mcp-protocol-version': SUPPORTED.includes(version) ? version : LATEST };
+
+  const ctx = {
+    log: [],
+    agent: clip(request.headers.get('user-agent'), AGENT_MAX),
+    country: (request.cf && request.cf.country) || request.headers.get('cf-ipcountry') || null,
+    protocol: clip(version, 40),
+    client: null, clientVersion: null,
+  };
+  // waitUntil is absent when this file is exercised outside the Workers runtime; falling back to a
+  // bare call keeps that path working rather than throwing on a missing platform API.
+  const flush = () => {
+    if (!ctx.log.length) return;
+    const p = writeLog(env, ctx.log.splice(0));
+    if (context.waitUntil) context.waitUntil(p);
+  };
 
   const len = +(request.headers.get('content-length') || 0);
   if (len > MAX_BODY) return json(error(null, -32600, 'Request body too large.'), 413, hdr);
@@ -226,6 +375,15 @@ export async function onRequestPost({ request }) {
   });
   if (!rl.ok) {
     const wait = Math.max(1, rl.reset - Math.floor(Date.now() / 1000));
+    // Recorded so a caller being turned away is visible. The brake is known to be leaky (see the note
+    // on rateLimit), so a row here is also the only sign it ever engaged.
+    const now = Date.now();
+    ctx.log.push({
+      ts: now, day: new Date(now).toISOString().slice(0, 10), method: '(pre-parse)',
+      tool: null, outcome: 'rate_limited', detail: String(rl.n), client: null,
+      client_version: null, protocol: ctx.protocol, agent: ctx.agent, country: ctx.country,
+    });
+    flush();
     return json(error(null, -32029, `Rate limit exceeded: ${RL_LIMIT} requests per ${RL_WINDOW}s. Retry in ${wait}s.`),
       429, Object.assign({ 'retry-after': String(wait) }, hdr));
   }
@@ -245,10 +403,14 @@ export async function onRequestPost({ request }) {
     const calls = body.filter((m) => !isNotification(m));
     if (!calls.length) return new Response(null, { status: 202, headers: Object.assign({}, CORS, hdr) });
     const out = [];
-    for (const m of calls) out.push(await handle(m, origin));   // sequential: the free plan meters subrequests
+    for (const m of calls) out.push(await handle(m, origin, ctx));   // sequential: the free plan meters subrequests
+    // One flush for the whole batch, so eight messages are eight ROWS but a single D1 write.
+    flush();
     return json(out, 200, hdr);
   }
 
   if (isNotification(body)) return new Response(null, { status: 202, headers: Object.assign({}, CORS, hdr) });
-  return json(await handle(body, origin), 200, hdr);
+  const reply = await handle(body, origin, ctx);
+  flush();
+  return json(reply, 200, hdr);
 }
