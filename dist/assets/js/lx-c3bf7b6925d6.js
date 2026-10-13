@@ -1702,7 +1702,39 @@
       // "unknown", not 0. null is already this file's word for unknown (see volLater on the list page).
       if(trFail){ vol24Xlm=null; vol24Usd=null; fees24Xlm=null; fees24Usd=null; }
       var ops=(r[3]&&r[3]._embedded&&r[3]._embedded.records)||[];
-      function amt(arr){ var xx=0,tt=0; (arr||[]).forEach(function(rv){ if(rv.asset==="native")xx=+rv.amount; else tt=+rv.amount; }); return {x:xx,t:tt}; }
+      // "NATIVE AND THE OTHER ONE" IS NOT WHAT A POOL IS, and this helper was the last place still
+      // assuming it. RAZA 2026-10-14, on the LUMOS/xLMNR pool: "why its showing lumos deposited on
+      // this pool page ... its not 0 lumos deposited".
+      //
+      // It sorted each reserve by native-or-not: native to x, anything else to t. In a pool of two
+      // CREDIT assets neither side is native, so both fell into t and the second overwrote the first.
+      // x stayed 0 and t ended up as whichever asset Horizon listed last. Checked against the ledger:
+      //
+      //   deposit 2026-10-12T23:16:42Z   216,110.9806560 LUMOS + 103,376.9360064 xLMNR
+      //   the page showed                0 LUMOS          + 103,377 xLMNR
+      //
+      // Not a rounding or formatting fault -- the LUMOS figure was never read. And a deposit of zero
+      // on one side is not merely wrong, it is impossible: an AMM deposit takes both assets. The row
+      // described a transaction that cannot exist.
+      //
+      // The COLUMN HEADINGS already knew better: txCodeA() returns DET.a0.code for a two-credit pool,
+      // which is why the screenshot is correctly labelled LUMOS and xLMNR over the wrong numbers. Half
+      // the feature was taught about these pools and this half was not, so the labels got righter while
+      // the figures stayed wrong -- the combination that reads as trustworthy.
+      //
+      // Matched against a0/a1 AFTER the swap on the line above, so A/B here is the same A/B the
+      // renderer prints. XLM pools keep the original native test: txCodeA() hardcodes "XLM" for them,
+      // so deciding their sides any other way could flip the two columns against their own headings.
+      function amt(arr){
+        var xx=0,tt=0;
+        (arr||[]).forEach(function(rv){
+          if(!nonXlm){ if(rv.asset==="native")xx=+rv.amount; else tt=+rv.amount; return; }
+          var sp=String(rv.asset).split(":"), code=sp[0], iss=sp[1]||"";
+          if(a0&&code===a0.code&&iss===(a0.issuer||""))xx=+rv.amount;
+          else if(a1&&code===a1.code&&iss===(a1.issuer||""))tt=+rv.amount;
+        });
+        return {x:xx,t:tt};
+      }
       ops.forEach(function(o){
         var ts=Date.parse(o.created_at||"");
         if(o.type==="liquidity_pool_deposit"){ var a=amt(o.reserves_deposited); txs.push({type:"deposit",xlm:a.x,tok:a.t,who:o.source_account,time:ts,op:String(o.id||"")}); }
