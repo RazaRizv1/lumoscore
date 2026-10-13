@@ -218,7 +218,14 @@ html:not(.lx-ammready) .amm-snapshot-value *, html:not(.lx-ammready) .amm-snapsh
    inline style -- so the pager stayed on screen under the My Pools list. Specificity here is the bug. */
 .lx-netpag{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;
   padding:14px 4px 2px;margin-top:6px;border-top:1px solid var(--border);
-  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:13.5px;color:var(--text-soft)}
+  /* MATCHES XRPL, WHICH IS THE DESIGN'S OWN VALUE (RAZA 2026-10-11: "Pagination & showing 50 of ...
+     is more clear on XRPL ... text color difference (grey instead of white) and seems bit smaller on
+     Stellar. Fix it"). The design ships .pagination{font-size:16.5px;color:var(--text-muted)} and the
+     XRPL build simply never overrode it; this rule did, with 13.5px and the dimmer --text-soft, so
+     the same control read smaller and greyer on one chain than the other. Measured on the live
+     pages before changing: Stellar 13.5px / rgb(110,109,120), XRPL inheriting 16.5px.
+     The layout half of this rule is kept -- only the two type declarations move. */
+  font-family:'Hanken Grotesk',system-ui,sans-serif;font-size:16.5px;color:var(--text-muted)}
 .lx-netpag .lx-netpag-c{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .lx-netpag button{background:var(--surface-2);border:1px solid var(--border);border-radius:8px;
   padding:6px 12px;font:inherit;font-weight:600;color:var(--text);cursor:pointer;transition:.16s}
@@ -1125,7 +1132,25 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     var pairIco=nonX?icoPairG(p.a0,p.a1):icoPair(p.code,p.issuer);
     var pairName=nonX?(esc(p.a0.code)+' / '+esc(p.a1.code)):(esc(p.code)+' / XLM');
     var liqMain,liqSub;
+    // BOTH SIDES AS ASSETS, ON EVERY ROW (RAZA 2026-10-11: "the first 2 pools (USDC / XLM and
+    // AQUA / XLM) show the grey value in dollars and the remaining in assets, fix it. I want it to
+    // show the asset like #3 and so on").
+    //
+    // Only the non-XLM branch ever printed two reserves; a pool with an XLM side printed the XLM
+    // amount over a DOLLAR figure, so one column answered two different questions depending on the
+    // pair -- "how much of each do I own" for BOMB/FRANK and "what is it worth" for USDC/XLM.
+    //
+    // The token reserve was already there: poolFromRec() sets p.tok for the non-native side of every
+    // pool, beside p.xlm. Order follows the PAIR NAME above (p.code first, XLM second) rather than
+    // the Horizon reserve order, which is canonical and would print "XLM / USDC" under a row titled
+    // "USDC / XLM".
+    //
+    // The dollar figure is not lost -- it is on the pool's own page, and the Pool Share column next
+    // to this one already answers the proportional question.
     if(nonX){ liqMain=qty(p.a0.amount*p.mineFrac)+' '+esc(p.a0.code); liqSub=qty(p.a1.amount*p.mineFrac)+' '+esc(p.a1.code); }
+    // Guarded: a position whose token reserve did not come through would otherwise read "0 USDC",
+    // which is a claim about the holding rather than a gap in it. That case keeps the old dollar sub.
+    else if(p.tok>0&&p.code&&p.code!=="?"){ liqMain=qty(p.tok*p.mineFrac)+' '+esc(p.code); liqSub=qty(p.xlm*p.mineFrac)+' XLM'; }
     else { liqMain=qty(p.xlm*p.mineFrac)+' XLM'; liqSub=usd(p.tvlUsd*p.mineFrac); }
     // #19: both the row and its View link stay on our own pool page -- see myCard for why the explorer
     // detour was wrong. #18: and no fee-tier sub line under the pair, for the reason given there.
@@ -3803,6 +3828,48 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
     return (window.freighterApi&&window.freighterApi.getAddress?Promise.resolve(window.freighterApi):wMod("https://esm.sh/@stellar/freighter-api@6").then(function(m){return m.default||m;})).then(function(f){ return Promise.resolve(f.signTransaction(xdr,{networkPassphrase:WPASS,network:"PUBLIC",address:addr})); }).then(function(sig){ var s=(sig&&(sig.signedTxXdr||sig.signedXDR))||sig; if((sig&&sig.error)||typeof s!=="string")throw new Error("Signing cancelled."); return s; });
   }
   function wAmt(n){ var x=Number(n); if(!isFinite(x)||x<0)x=0; return x.toFixed(7); }
+
+  // A REAL PRICE BAND ON A POOL DEPOSIT. minPrice 1/1e9 .. maxPrice 1e9/1 is not a band -- it spans
+  // 10^18 and accepts any price the pool could conceivably be at, which is the same as sending no
+  // protection at all. Found by the daily health bot 2026-10-12.
+  //
+  // Stellar checks the pool's SPOT price against this range when the operation executes, not when it
+  // was signed. With no band the deposit lands at whatever the reserves say at inclusion time, so a
+  // sandwich can move the pool, take the other side of it, and the deposit still succeeds -- at the
+  // moved price, with the depositor absorbing the difference.
+  //
+  // Centred on the ratio the depositor is actually funding (amtA/amtB), which is the price the panel
+  // quoted them. Stellar wants int32 numerator and denominator, so the pair is scaled by HALVING
+  // until it fits: rounding to a fixed denominator loses the ratio completely when the price is very
+  // large or very small, and a pool's price can be either.
+  var LP_TOL = 0.01;                      // +/-1%, the band the deposit is allowed to drift within
+  // BOTH SIDES DIVIDED BY THE SAME FACTOR, which is the only reduction that preserves the ratio.
+  // Halving just the side that overflowed was the first attempt and it was wrong: for a price of
+  // 9.9e12 the numerator was shifted down twelve times while the denominator stayed at 1, landing
+  // the band nowhere near the real price -- which REJECTS a good deposit rather than protecting it.
+  //
+  // A price outside roughly [1/2.1e9, 2.1e9] cannot be written as int32/int32 at all, so it returns
+  // null and the caller keeps the old wide band. Refusing to deposit would be a worse regression
+  // than the gap being closed, and a pool that lopsided is already broken.
+  function fitRatio(n, d){
+    var MAX = 2147483647;
+    if (!(n > 0) || !(d > 0)) return null;
+    var f = Math.max(n / MAX, d / MAX, 1);
+    var N = Math.round(n / f), D = Math.round(d / f);
+    if (!(N >= 1) || !(D >= 1)) return null;
+    return { n: N, d: D };
+  }
+  function depositBand(amtA, amtB){
+    var A = Number(amtA) * 1e7, B = Number(amtB) * 1e7;
+    // An unknown ratio keeps the old wide band: refusing the deposit outright would be a worse
+    // regression than the gap this closes.
+    if (!isFinite(A) || !isFinite(B) || A <= 0 || B <= 0) {
+      return { minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1} };
+    }
+    var lo = fitRatio(A * (1 - LP_TOL), B), hi = fitRatio(A * (1 + LP_TOL), B);
+    if (!lo || !hi) return { minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1} };
+    return { minPrice: lo, maxPrice: hi };
+  }
   // FLOOR (not round) to the display precision: rounding 80.059072 -> "80.0591" exceeds the real balance and
   // trips the "Not enough" guard when MAX fills the field. Truncating guarantees the shown amount <= actual.
   // AUDIT: String(1e-7) is "1e-7" — Stellar rejects exponent-form amounts, so MAX on a tiny balance wrote an
@@ -4151,7 +4218,7 @@ function maxShares(dd){
           var hasTrust=(a.balances||[]).some(function(b){return b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===d.hex;});
           if(!hasTrust)ops.push(S.Operation.changeTrust({asset:poolAsset}));
           cpReserveGuard(a,ops.length);
-          ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:d.hex, maxAmountA:wAmt(amtA), maxAmountB:wAmt(amtB), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
+          var _bnd=depositBand(amtA,amtB); ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:d.hex, maxAmountA:wAmt(amtA), maxAmountB:wAmt(amtB), minPrice:_bnd.minPrice, maxPrice:_bnd.maxPrice}));
           return ops; }, {ok:"\\u2713 Added",okMsg:"Liquidity is added"}, function(){ var di=dInputs(); if(di[0])di[0].value=""; if(di[1])di[1].value=""; setTimeout(loadDetail,2600); });
       }
     });
@@ -4454,7 +4521,7 @@ function maxShares(dd){
         [sel[0],sel[1]].forEach(function(x){ if(!x.native){ var held=(a.balances||[]).some(function(b){return b.asset_code===x.code&&b.asset_issuer===x.issuer;}); if(!held)ops.push(S.Operation.changeTrust({asset:new S.Asset(x.code,x.issuer)})); } });
         if(!(a.balances||[]).some(function(b){return b.asset_type==="liquidity_pool_shares"&&b.liquidity_pool_id===poolId;}))ops.push(S.Operation.changeTrust({asset:poolAsset}));
         cpReserveGuard(a,ops.length);
-        ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:poolId, maxAmountA:wAmt(amtA), maxAmountB:wAmt(amtB), minPrice:{n:1,d:1000000000}, maxPrice:{n:1000000000,d:1}}));
+        var _bnd=depositBand(amtA,amtB); ops.push(S.Operation.liquidityPoolDeposit({liquidityPoolId:poolId, maxAmountA:wAmt(amtA), maxAmountB:wAmt(amtB), minPrice:_bnd.minPrice, maxPrice:_bnd.maxPrice}));
         return ops; }, {ok:"\\u2713 Pool created",okMsg:"Pool created & liquidity added"}, function(){ setTimeout(function(){ location.reload(); },2600); });
     });
   }
