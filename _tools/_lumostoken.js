@@ -62,11 +62,23 @@ background-size:400% 100%;animation:lxchsh 1.3s ease-in-out infinite}
 .hero-price-block:not(.lxlt) .price,.hero-price-block:not(.lxlt) .change,.hero-price-block:not(.lxlt) .sub-volume{visibility:hidden}
 .hero-price:not(.lxlt) .price,.hero-price:not(.lxlt) .change{visibility:hidden}
 .addr-row:not(.lxlt) .addr-value{visibility:hidden}
-.cstat:not(.lxlt) .lc-money,.cstat:not(.lxlt) .val,.cstat:not(.lxlt) .sub{visibility:hidden}
+.cstat:not(.lxlt) .lc-money,.cstat:not(.lxlt) .val,.cstat:not(.lxlt) .sub,.cstat:not(.lxlt) .small-sub{visibility:hidden}
+/* .small-sub IS THE PHONE'S NAME FOR .sub, and leaving it out meant the gate above protected the
+   desktop only: "on 2B total supply" -> "on 1.00B total supply" at 662ms on every phone. The design
+   ships 2B; the real figure is 1.00B, so the flash was not a near-miss, it was double.
+   The WRITER already knew about both -- card.querySelector(".sub")||card.querySelector(".small-sub")
+   down in the stat loop -- and only the gate was desktop-only. Second time today that exact split has
+   bitten (see the .ph-price-row note in _ammdata.js), so it is worth saying plainly: when a selector
+   list gates something, check it against the phone container too, because the code that WRITES the
+   value usually handles both and hides the gap. */
 /* AUDIT (flash sweep): .sub was left out of the gate above, so "+184 past 7 days" flashed before the real
    "unique addresses" label landed. Same for the allocation legend, which the engine rewrites 50M/5% -> 70M/7%. */
 .alloc-legend:not(.lxlt) .amount,.alloc-legend:not(.lxlt) .pct{visibility:hidden}
 .lt-cmp-row:not(.lxlt) .lt-cmp-v{visibility:hidden}
+/* The footer button carries a COUNT, and the design's is 14 against a real 65 -- measured flashing at
+   177ms on desktop. The row values beside it were gated and the button never was, because it reads as
+   a link rather than as data. It is both. */
+.lt-cmp-foot:not(.lxlt) button,.lt-cmp-foot:not(.lxlt) a{visibility:hidden}
 #poolsBody:not(.lxlt) tr{visibility:hidden}
 #priceChart:not(.lxlt) svg{visibility:hidden}
 /* also hide the design's OWN chart marks at all times (it draws a line for a frame on load before */
@@ -525,9 +537,12 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
         if(tl!=null){ setText(v, (hc!=null?num(hc):"…")+"  ·  "+num(tl)); done=true; }
       }
       else if(/active pools/i.test(l)){ if(activePools!=null){ setText(v, String(activePools)); done=true; } }
+      // REVEAL ONLY ONCE THE COUNT IS OURS. The gate above hides this button until its .lt-cmp-foot
+      // carries .lxlt, so the design's "View all 14 pools" is never read as a figure.
       if(poolCount!=null)qa(".lt-cmp-foot button,.lt-cmp-foot a").forEach(function(b){
         var want="View all "+poolCount+" pools \u2192";
-        if(b.textContent!==want)b.textContent=want; });
+        if(b.textContent!==want)b.textContent=want;
+        var ft=b.closest?b.closest(".lt-cmp-foot"):null; if(ft)ft.classList.add("lxlt"); });
       if(!done&&pxFailed&&(/^price/i.test(l)||/24h volume/i.test(l))){ setText(v,"—"); done=true; }
       if(done)r.classList.add("lxlt");
     });
@@ -1564,6 +1579,21 @@ const SCRIPT = `<script id="lx-ltdata">(function(){
   window.__lxLTdbg=function(){return {xlmUsd:xlmUsd,lumosXlm:lumosXlm,supply:supply,holders:holders,poolCount:poolCount,vol24Xlm:vol24Xlm,chg24:chg24};};
   function boot(){
     try{ installSwapGlobals(); }catch(_){}                // expose signing/util globals for _swapcalc before any confirm
+    // A GATE THAT NEVER LIFTS IS ALSO A BUG. The footer button is hidden until the pool count lands,
+    // which is right while the count is on its way and wrong for ever if the fetch fails -- that would
+    // trade a wrong number for a missing link, and the link works regardless of whether we can count.
+    //
+    // So: after six seconds, drop the COUNT rather than the button. "View all pools" is true without
+    // the figure, and it is the one wording that cannot be stale. Only fires if the real write never
+    // happened; once poolCount lands, .lxlt is already set and this finds nothing to do.
+    try{ setTimeout(function(){
+      var fts=document.querySelectorAll(".lt-cmp-foot:not(.lxlt)");
+      for(var i=0;i<fts.length;i++){
+        var b=fts[i].querySelector("button,a");
+        if(b)b.textContent="View all pools →";
+        fts[i].classList.add("lxlt");
+      }
+    },6000); }catch(_){}
     // prime the cached trustline result BEFORE the first paint so the Add-Trustline button shows instantly
     try{ var _a=ltAddr(); if(_a){ var _c=JSON.parse(localStorage.getItem("lumos.lt.trust."+_a)||"null"); if(_c&&(Date.now()-_c.ts<6e5))window.__lxHasTrust=_c.has; } }catch(_){}
     guardApply();                                        // paint whatever we have (fast)

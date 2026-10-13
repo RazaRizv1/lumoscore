@@ -298,9 +298,12 @@
         if(tl!=null){ setText(v, (hc!=null?num(hc):"…")+"  ·  "+num(tl)); done=true; }
       }
       else if(/active pools/i.test(l)){ if(activePools!=null){ setText(v, String(activePools)); done=true; } }
+      // REVEAL ONLY ONCE THE COUNT IS OURS. The gate above hides this button until its .lt-cmp-foot
+      // carries .lxlt, so the design's "View all 14 pools" is never read as a figure.
       if(poolCount!=null)qa(".lt-cmp-foot button,.lt-cmp-foot a").forEach(function(b){
         var want="View all "+poolCount+" pools →";
-        if(b.textContent!==want)b.textContent=want; });
+        if(b.textContent!==want)b.textContent=want;
+        var ft=b.closest?b.closest(".lt-cmp-foot"):null; if(ft)ft.classList.add("lxlt"); });
       if(!done&&pxFailed&&(/^price/i.test(l)||/24h volume/i.test(l))){ setText(v,"—"); done=true; }
       if(done)r.classList.add("lxlt");
     });
@@ -1337,6 +1340,21 @@
   window.__lxLTdbg=function(){return {xlmUsd:xlmUsd,lumosXlm:lumosXlm,supply:supply,holders:holders,poolCount:poolCount,vol24Xlm:vol24Xlm,chg24:chg24};};
   function boot(){
     try{ installSwapGlobals(); }catch(_){}                // expose signing/util globals for _swapcalc before any confirm
+    // A GATE THAT NEVER LIFTS IS ALSO A BUG. The footer button is hidden until the pool count lands,
+    // which is right while the count is on its way and wrong for ever if the fetch fails -- that would
+    // trade a wrong number for a missing link, and the link works regardless of whether we can count.
+    //
+    // So: after six seconds, drop the COUNT rather than the button. "View all pools" is true without
+    // the figure, and it is the one wording that cannot be stale. Only fires if the real write never
+    // happened; once poolCount lands, .lxlt is already set and this finds nothing to do.
+    try{ setTimeout(function(){
+      var fts=document.querySelectorAll(".lt-cmp-foot:not(.lxlt)");
+      for(var i=0;i<fts.length;i++){
+        var b=fts[i].querySelector("button,a");
+        if(b)b.textContent="View all pools →";
+        fts[i].classList.add("lxlt");
+      }
+    },6000); }catch(_){}
     // prime the cached trustline result BEFORE the first paint so the Add-Trustline button shows instantly
     try{ var _a=ltAddr(); if(_a){ var _c=JSON.parse(localStorage.getItem("lumos.lt.trust."+_a)||"null"); if(_c&&(Date.now()-_c.ts<6e5))window.__lxHasTrust=_c.has; } }catch(_){}
     guardApply();                                        // paint whatever we have (fast)
