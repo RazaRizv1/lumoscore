@@ -1270,9 +1270,54 @@ const SCRIPT = `<script id="lx-dexmain">(function(){
       var d=k.indexOf("-"); if(d<1)continue;
       var code=k.slice(0,d), iss=k.slice(d+1);
       if(!/^[A-Za-z0-9]{1,12}$/.test(code)||!/^G[A-Z2-7]{55}$/.test(iss))continue;
-      var dup=false;
-      for(var i=0;i<NATIVE.length;i++)if(NATIVE[i].code===code&&NATIVE[i].issuer===iss){dup=true;break;}
-      if(dup)continue;
+      // A DUPLICATE IS NOT A REASON TO SKIP, IT IS A REASON TO TAG (RAZA 2026-10-11: "Why are TDT and
+      // Liberator not showing up in LumosCore mints. They're also curated so they should show up in
+      // both curated all and lumoscore mints").
+      //
+      // Both ARE in the mints list that /lxapi/assetmeta returns -- the data was never wrong. They
+      // reach NATIVE through the CURATED path first, which stamps cat:"utility"; this loop then found
+      // them already present and skipped them, so the entry kept "utility" and nothing ever marked it
+      // as ours. Measured on the live table: data-cat="utility" on both rows, and ZERO rows on page 1
+      // carrying cat "native" at all. Every filter that means "is a LumosCore mint" tests
+      // cat==="native" (mintList, nativeSave, and the f==="native" branch that the chip uses), so the
+      // Mints chip could only ever be empty of curated assets.
+      //
+      // The manifest is our own record of what we minted, so membership in it is the authoritative
+      // answer to "is this ours" -- being curated as well does not make it less ours. Upgrading the
+      // existing entry only ever moves an asset utility->native, which is exactly the Mints chip's
+      // meaning; it cannot pull anything out of Stables, because a stable is never in the manifest.
+      //
+      // The reverse direction stays untouched and must: a mint is NOT automatically curated (see the
+      // note above nativeMake, and the yUSDC removal). This writes mint-ness onto a curated asset,
+      // never curation onto a mint.
+      // LOOK IN byId, NOT IN NATIVE. My first attempt scanned the NATIVE array and was a measured
+      // no-op: a curated asset lives in ASSETS, and the two rosters share ONE registry --
+      //    line 539  ASSETS.forEach(a => { byCode[a.code]=a; byId[a.code+"|"+a.issuer]=a; })
+      //    line 567  nativeMake: byCode[key]=a; byId[code+"|"+iss]=a; NATIVE.push(a);
+      // so a scan of NATIVE never saw it, nativeMake was called, and ITS own guard
+      // (an early return when byId already holds the key) silently returned null. Everything looked
+      // changed. The dedupe was never in the array I was reading.
+      var held=byId[code+"|"+iss];
+      if(held){
+        // TWO things are needed, and one without the other does nothing:
+        //   cat -> "native"  because every mint filter tests exactly that, and
+        //   push to NATIVE   because the Mints mode reads NATIVE, not ASSETS (see the f==="native"
+        //                    branch). Setting the flag alone leaves it invisible there.
+        // Same OBJECT in both arrays, not a copy, so its price, logo and sort key stay in step and a
+        // later update cannot make the two rows disagree. It keeps showing under Curated-All because
+        // that branch reads ASSETS.slice() and the object is still in ASSETS -- which is exactly what
+        // RAZA asked for: "they should show up in both curated all and lumoscore mints".
+        // Nothing double-renders: allAssets() (Stables/Utility) filters on cat, and "native" matches
+        // neither.
+        if(held.cat!=="native")held.cat="native";
+        var inNat=false;
+        for(var i=0;i<NATIVE.length;i++)if(NATIVE[i]===held){inNat=true;break;}
+        if(!inNat)NATIVE.push(held);
+        // NOT pushed onto the add list: that is what the callers hand to nativePrice(), and an asset
+        // that arrived through the curated path already has its price (both of these render one in
+        // the table). Re-listing it would buy a duplicate round trip and change nothing on screen.
+        continue;
+      }
       var a=nativeMake(code,iss,"","lumoscore.com",0);
       if(a&&add)add.push(a);
     }
