@@ -54,7 +54,7 @@
     return `<svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><path d="${path}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
   const tList = document.getElementById('trendingList');
-  function renderTrending(period) {
+  function renderTrending(period) { if (!tList) return;
     let data;
     if (period === '7d') {
       data = trending.slice().map(t => {
@@ -100,7 +100,7 @@
 
   // Wire timeframe tabs (24h / 7d / 30d)
   (function() {
-    const card = tList.closest('.market-card');
+    const card = tList && tList.closest('.market-card');
     if (!card) return;
     const badge = card.querySelector('.market-head .badge');
     const tabs = card.querySelectorAll('.tf-mini button');
