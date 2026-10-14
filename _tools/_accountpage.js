@@ -387,7 +387,8 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   function fetchJ(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
   function j(u){ return fetchJ(u).catch(function(e){
     if(u.indexOf("horizon.stellar.org")>=0)return fetchJ(u.replace("horizon.stellar.org","horizon.stellar.lobstr.co"));
-    throw e; }); }
+    throw e; }); }
+  function hhmm(ms){ try{ return new Date(ms).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}); }catch(_){ return "earlier"; } }
   function esc(s){return (String(s==null?"":s).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;")).split(String.fromCharCode(39)).join("&#39;");}
 
   // ---- address: /account/stellar/<G...> or ?address= ------------------------------------------------
@@ -569,8 +570,12 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     }).catch(function(){}); }
 
   // ---- state --------------------------------------------------------------------------------------
+  // 0 means the price on screen came from the network just now. Anything else is when the seeded
+  // price was taken, and the portfolio card prints it rather than letting the total read as current.
+  var xlmAt=0;
   var xlmUsd=(function(){ try{ var c=JSON.parse(localStorage.getItem("lumos.xlmUsd")||"null");
-    return (c&&+c.v>0&&(Date.now()-c.ts<216e5))?+c.v:0; }catch(e){ return 0; } })();
+    if(c&&+c.v>0&&(Date.now()-c.ts<216e5)){ xlmAt=+c.ts||0; return +c.v; }
+    return 0; }catch(e){ return 0; } })();
   var ASSETS=[], POOLS=[], ACTS=[], XLM=0, ACCT=null, DONE={};
   var PER=25, aShown=PER, pShown=PER, PRICE_CAP=75;
   // #6: the portfolio total is a SUM over lookups that land one at a time, and every one of them used
@@ -677,7 +682,9 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       markCounting(false);
       // "Estimated value" says the one thing that qualification was for. The exact XLM amount and the
       // per-asset detail are both a scroll away in the holdings table below.
-      setStat("total", usd(tv), "Estimated value");
+      // Which of the two it is. A seeded price names its own time instead of leaving the reader to
+      // assume the total is current -- the figure is the same either way, the claim about it is not.
+      setStat("total", usd(tv), xlmAt?("Estimated \u00b7 XLM price from "+hhmm(xlmAt)):"Estimated value");
     }
     setStat("xlm", amt(XLM)+" XLM", xlmUsd>0?usd(XLM*xlmUsd):"");
     // count what the Assets table shows -- XLM plus every funded trustline -- so the two agree
@@ -971,10 +978,43 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     var el=q("#accAddr"); if(el)el.textContent=ADDR||"No account";
   }
 
-  function loadPrice(){ return fetchJ(CG).then(function(d){
-    if(d&&d.stellar&&+d.stellar.usd){ xlmUsd=+d.stellar.usd;
-      try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_){} }
-  }).catch(function(){}); }
+  // ONE PRICE GATES EVERY DOLLAR ON THIS PAGE, SO IT GETS MORE THAN ONE LIVE SOURCE.
+  //
+  // xlmUsd multiplies the portfolio total, the XLM card and the VALUE column of every holding, so
+  // when it is 0 the page dashes all of them together and says "waiting for XLM price". That is the
+  // honest answer, and it is what the health bot caught on 2026-10-14: PORTFOLIO VALUE and all 65
+  // asset rows dashed at once, from one failed request.
+  //
+  // This asked CoinGecko and nothing else, from the BROWSER, so the quota belonged to the visitor's
+  // own IP. On a phone that is CGNAT -- the same shape that broke asset search -- and for a daily bot
+  // run it is the same address every time. One 429 and the account is worth nothing on screen.
+  //
+  // A VISITOR WHO HAS BEEN HERE BEFORE WAS ALREADY COVERED: xlmUsd is seeded from lumos.xlmUsd at
+  // declaration, up to 6h old. What had no cover at all was a cold profile -- a first visit, a
+  // private window, or the bot, which starts every run with empty storage. So this is not about
+  // adding a cache; it is about having a second LIVE source before falling back on one.
+  //
+  // /lxapi/xlm goes first: our own edge endpoint, Horizon-primary (that file explains why -- CoinGecko
+  // refuses datacenter egress, so a Worker cannot lean on it), cached 180s and SHARED between
+  // visitors rather than charged to this one, and already carrying its own CoinGecko fallback. It is
+  // also the price the Trade pages quote, so the two screens can no longer disagree about what XLM
+  // is worth. CoinGecko stays exactly where it was, as the second try.
+  function useXlm(v){
+    if(!(+v>0))return false;
+    xlmUsd=+v; xlmAt=0;   // live again: drop any "price from HH:MM" the seed left on the card
+    try{ localStorage.setItem("lumos.xlmUsd",JSON.stringify({v:xlmUsd,ts:Date.now()})); }catch(_){}
+    return true;
+  }
+  function loadPrice(){
+    return fetchJ("/lxapi/xlm").then(function(d){
+      if(!useXlm(d&&d.usd))throw new Error("no usd");
+    }).catch(function(){
+      return fetchJ(CG).then(function(d){
+        if(!useXlm(d&&d.stellar&&d.stellar.usd))throw new Error("no usd");
+      });
+    // Both live sources refused. Whatever the seed left in xlmUsd stands, and the card says so.
+    }).catch(function(){});
+  }
 
   // last trade close against XLM -- the same price the Trade pages quote, so a holding is worth the same
   // number on both screens
