@@ -1012,14 +1012,57 @@ const POOLID_RE = new RegExp('^[0-9a-fA-F]{64}$');
 // currency is either three characters or forty hex digits decoded back to as many as twenty, and
 // across the 398 assets currently in the sitemap the codes already use $, = and . besides letters and
 // digits. Constraining it to what today's roster happens to contain would 404 a legitimate token
-// tomorrow, so the rule is only what the url and the page actually require -- printable, no slash,
-// at most twenty characters. Built from char codes because a backslash does not survive the template
-// literal this file is emitted from, which is the same reason the three constants above avoid them.
-const X_PRINT = '[' + String.fromCharCode(33) + '-' + String.fromCharCode(46)
-  + String.fromCharCode(48) + '-' + String.fromCharCode(126) + ']';   // ! to ~, minus "/"
+// tomorrow, so the rule is only what the url and the page actually require -- no slash, nothing that
+// can end a string, at most twenty characters.
+//
+// IT WAS PRINTABLE ASCII, AND THAT 404ed REAL TOKENS. The sentence above already says a currency can
+// be "forty hex digits decoded back to as many as twenty" -- and those twenty are BYTES, decoded as
+// UTF-8. So a code is routinely not ASCII at all. Measured on staging 2026-10-14, from a link our own
+// /trade/xrpl page emits:
+//     /trade/xrpl/VOX(statue-of-liberty emoji)-rBnJ...   404
+//     /trade/xrpl/CAF(E-acute)-rBnJ...                   404
+//     /trade/xrpl/A B-rBnJ...                            404      (a space: code 32, just under "!")
+//     /trade/xrpl/VOX-rBnJ...                            200
+// The health bot found it as a dead internal link, which is what it is: we link to a token and then
+// refuse to serve it.
+//
+// WIDENING THIS DOES NOT WEAKEN THE BOUNDARY, and it is worth being precise about why. The old class
+// already admitted <, >, " and & -- every character that matters to an HTML or JSON-LD context is on
+// the ASCII side of it. Nothing here has ever been what makes the ld+json emitter safe; escaping is,
+// and that is where it belongs. What this check is for is SHAPE: refusing to serve a page for an id
+// that is not an id, which is how /trade/xrpl/totaljunk once answered 200.
+//
+// So the rule is now a denylist of the characters that break the url or the document, rather than an
+// allowlist of the ones a Latin keyboard happens to produce:
+//   * control characters and DEL -- never in a ticker, and they corrupt a header or a log line
+//   * "/" -- it would split the path and change which route this even is
+//   * U+2028 / U+2029 -- line separators, and in JSON-LD they can terminate a string literal
+// Length stays at twenty, counted in UTF-16 units, which cannot exceed twenty for a twenty-byte
+// UTF-8 code (a 4-byte sequence costs 2 units, never more).
+//
+// Written as a loop over char codes rather than a regex class, for the reason the old one gave --
+// a backslash does not survive the template literal this file is emitted from -- and because the two
+// separators would otherwise have to appear literally in the emitted source, where U+2028 inside a
+// string is exactly the hazard being guarded against.
 const X_ACCT = 'r[1-9A-HJ-NP-Za-km-z]{24,34}';
 const XACCT_RE = new RegExp('^' + X_ACCT + '$');
-const XASSET_RE = new RegExp('^' + X_PRINT + '{1,20}-' + X_ACCT + '$');
+function xCodeOk(code){
+  if (code.length < 1 || code.length > 20) return false;
+  for (let i = 0; i < code.length; i++){
+    const c = code.charCodeAt(i);
+    if (c < 32 || c === 127) return false;        // control characters and DEL
+    if (c === 47) return false;                   // "/"
+    if (c === 8232 || c === 8233) return false;   // U+2028, U+2029
+  }
+  return true;
+}
+// The asset page splits on the LAST dash, so this does too. base58 has no dash, so the last one is
+// always the boundary -- which is also what the old greedy regex arrived at by backtracking.
+function xAssetOk(id){
+  const i = id.lastIndexOf('-');
+  if (i < 1) return false;
+  return xCodeOk(id.slice(0, i)) && XACCT_RE.test(id.slice(i + 1));
+}
 function malformedId(pathname){
   const s = pathname.replace(/^\/+|\/+$/g, '').split('/').filter(Boolean);
   // A percent-encoded segment that will not decode is malformed by definition, so the original is
@@ -1042,7 +1085,7 @@ function malformedId(pathname){
 
   // ---- the same four shapes on XRPL ----
   if (s[0] === 'trade' && s[1] === 'xrpl' && s.length === 3){
-    return !XASSET_RE.test(dec(s[2]));
+    return !xAssetOk(dec(s[2]));
   }
   if (s[0] === 'account' && s[1] === 'xrpl' && s.length === 3){
     return !XACCT_RE.test(dec(s[2]));
@@ -1057,7 +1100,7 @@ function malformedId(pathname){
   // /pools/xrpl/native/RLUSD-rMxC… each answer 200 with "XRP / RLUSD liquidity pool" today, and a
   // guard that 404'd either would be breaking a working url to tidy up an unused one.
   if (s[0] === 'pools' && s[1] === 'xrpl' && s.length === 4){
-    const okX = (x) => x === 'native' || x === 'XRP' || XASSET_RE.test(x);
+    const okX = (x) => x === 'native' || x === 'XRP' || xAssetOk(x);
     return !(okX(dec(s[2])) && okX(dec(s[3])));
   }
   return false;
