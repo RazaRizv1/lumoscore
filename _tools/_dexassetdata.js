@@ -3124,7 +3124,7 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
     var v=dxaFunded(mx);
     if(v!=null&&holdersFunded!==v){ holdersFunded=v; try{ guardApply(); }catch(_){} }
   }
-  var dxaNameTried=false;
+  var dxaNameTried=false, dxaNameRetried=0;
   function dxaFetchName(){
     if(dxaNameTried||NATIVE||!ISSUER||!CODE)return; dxaNameTried=true;
     j("/lxapi/assetsearch?search="+encodeURIComponent(ISSUER)+"&limit=50").then(function(d){
@@ -3134,6 +3134,35 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       dxaPutName(CODE,ISSUER,ti.name);
       // Same record already in hand -- the funded holder count comes free, with no logo gate in the way.
       dxaSetFunded(m);
+    }).catch(function(){
+      // ONE RETRY, FOR THE SAME REASON loadHolders() HAS ONE -- and this is the fetch the Holders
+      // TAB COUNT depends on. holdersFunded is read off THIS record (dxaSetFunded above), not from
+      // the ranked walk further down, so when this request fails the badge has no other source.
+      //
+      // RAZA 2026-10-14: "I still see -- instead of holders count when i first open trade-asset page
+      // sometimes". Caught in the network log of a load that showed the dash:
+      //     GET /lxapi/assetsearch?search=...&limit=50  ->  429
+      // stellar.expert rate-limits our edge and assetsearch passes the 429 straight through.
+      // dxaNameTried is set BEFORE the request and this catch was empty, so a single 429 left
+      // holdersFunded null and the badge dashed for the rest of the page view -- nothing retried it,
+      // and nothing recorded that it had happened. The ranked walk below already recovers from
+      // exactly this failure; the one request the COUNT depends on did not.
+      //
+      // Same shape as that recovery, deliberately: a short wait, because a rate limit clears on its
+      // own and an immediate retry just repeats it. Deliberately the SAME url, so the edge can serve
+      // it from cache or from its last-good copy instead of charging the rate limit again. Still one, so a dead
+      // upstream costs one extra request rather than a loop.
+      dxaNameRetried = 1;
+      return new Promise(function(go){ setTimeout(go,1500); }).then(function(){
+        return j("/lxapi/assetsearch?search="+encodeURIComponent(ISSUER)+"&limit=50");
+      }).then(function(d2){
+        var recs2=(d2&&d2._embedded&&d2._embedded.records)||[];
+        var m2=recs2.filter(function(r){ return (r.asset||"").indexOf(CODE+"-"+ISSUER)===0; })[0];
+        if(!m2)return;
+        var ti2=(m2.tomlInfo||m2.toml_info)||{};
+        dxaPutName(CODE,ISSUER,ti2.name);
+        dxaSetFunded(m2);
+      });
     }).catch(function(){});
   }
   try{ setTimeout(dxaFetchName,900); }catch(_){}
