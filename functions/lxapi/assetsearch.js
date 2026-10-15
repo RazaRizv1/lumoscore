@@ -68,7 +68,12 @@ const keyFor = (search, limit) =>
 // before the namespace is bound to this project and improves the moment it is. On the free plan KV
 // operations also do not count against the 50-subrequest budget, while Cache API calls do.
 function mkStore(env) {
-  const kv = env && (env.LUMOS_KV || env.POOLS_KV);
+  // CONTENT_KV is in the list because it is what this project actually has bound. LUMOS_KV and
+  // POOLS_KV are kept first so a dedicated namespace wins if one is ever added; measured on
+  // production 2026-10-15, the only namespaces reaching this Function are ASSETS (Pages own static
+  // assets, not ours to write to) and CONTENT_KV. Keys here are prefixed and carry a TTL, so they
+  // expire on their own and cannot collide with the content the namespace is named for.
+  const kv = env && (env.LUMOS_KV || env.POOLS_KV || env.CONTENT_KV);
   if (kv) {
     return {
       kind: 'kv',

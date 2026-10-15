@@ -92,7 +92,7 @@ function mapRow(t) {
 // per-colo Cache API when it is not, so this is safe before the namespace is bound and fixes the
 // problem the moment it is.
 function mkIdxStore(env, url) {
-  const kv = env && (env.LUMOS_KV || env.POOLS_KV);
+  const kv = env && (env.LUMOS_KV || env.POOLS_KV || env.CONTENT_KV);
   if (kv) {
     return {
       kind: 'kv',
