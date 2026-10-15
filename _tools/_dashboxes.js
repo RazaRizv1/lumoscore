@@ -266,12 +266,18 @@ const SCRIPT = '<script id="lx-dashboxes">(function(){'
   // rule: per chain, by symbol, deprecated excluded), so the figure follows 1Click; 75 stands if that call fails.
   // Until LayerZero and NEAR Intents can send (LZ_LIVE), the card states CCTP alone: 8 networks, USDC, Circle CCTP.
   + (LZ_LIVE
-    ? 'set("cnet","16"); set("casset","75"); set("cvia","CCTP · LayerZero · NEAR Intents");'
+    ? 'set("cnet","16"); set("cvia","CCTP · LayerZero · NEAR Intents");'
       + 'fetch("/lxapi/oneclick?op=tokens").then(function(r){ return r.ok?r.json():null; }).then(function(d){'
       + ' var C={eth:1,arb:1,base:1,pol:1,op:1,avax:1,bera:1,monad:1,plasma:1}, seen={}, n=0;'
       + ' ((d&&d.tokens)||[]).forEach(function(t){ if(!t||!C[t.blockchain]||/DEPRECATED/i.test(t.symbol||""))return;'
       + '  var k=t.blockchain+":"+t.symbol; if(!seen[k]){ seen[k]=1; n++; } });'
-      + ' if(n>0) set("casset",String(2+n)); }).catch(function(){});'
+      + ' set("casset", n>0?String(2+n):"75"); }).catch(function(){ set("casset","75"); });'
+      // NOT BELT AND BRACES. Without this, a fetch that never settles leaves this one figure on its
+      // skeleton for ever, and a permanently blank stat is worse than a slightly stale one -- the
+      // same trade as the $LUMOS pool button, decided the same way. set() clears the "wait" class,
+      // so that class IS the "still counting" test; no second flag to keep in sync with the writer.
+      + 'try{ setTimeout(function(){ var _ca=row.querySelector(\'[data-k="casset"]\'); '
+      + 'if(_ca&&_ca.classList.contains("wait")) set("casset","75"); },6000); }catch(_){}'
     : 'set("cnet","8"); set("casset","USDC"); set("cvia","Circle CCTP");')
   + '})();</script>';
 
