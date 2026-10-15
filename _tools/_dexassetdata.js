@@ -4508,6 +4508,26 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
       // USD price (-> price/market-cap cells for assets with no XLM orderbook), 24h change from price7d, and
       // the toml home domain (-> website link when the Horizon issuer fetch fails or has no home_domain).
       if(mx){ if(+mx.price>0)seUsd=+mx.price;
+        // THE FUNDED COUNT, FROM THE RECORD WE ALREADY HAVE -- the same line loadSeChange has carried
+        // all along, and the reason the Holders badge was fragile on exactly the assets least likely
+        // to be noticed.
+        //
+        // The badge reads holdersFunded, which dxaFetchName sets from search=<ISSUER>&limit=50. When
+        // that one request fails the badge dashes. loadSeChange already covered that case -- but it
+        // is gated on LOGOS[CODE], so it runs only for assets we ship a curated logo for. Everything
+        // else takes THIS path instead, fetching the identical record from search=<CODE>&limit=20 and
+        // throwing the number away. So LUMOS had two sources and LIBERATOR had one.
+        //
+        // That is why the health bot caught it here and not on LUMOS, which is the whole reason a
+        // second, uncurated asset was added to the run. The edge's last-good cache helps once a colo
+        // has seen one success; it cannot help the first request in a cold colo, and that is the load
+        // that dashed.
+        //
+        // Same record, same statistic, no extra request: trustlines.funded is accounts actually
+        // holding a balance, never the trustline count. Showing permission-to-hold under a Holders
+        // label is the 2026-10-08 bug ("First it shows 111 and then changes to 83") and is why
+        // Horizon's accounts.authorized is NOT an acceptable substitute here.
+        dxaSetFunded(mx);
         var p7=mx.price7d; if(p7&&p7.length>=2){ var _a=+p7[p7.length-2][1],_b=+p7[p7.length-1][1]; if(_a>0&&_b>0){ chgSe=(_b/_a-1)*100; recomputeChg(); }
           var _f=+p7[0][1]; if(_f>0&&_b>0)chg7dU=(_b/_f-1)*100; }
         var dm=(mx.domain||"").trim(); if(dm&&homeDomain==null)homeDomain=dm; }
