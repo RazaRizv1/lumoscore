@@ -76,7 +76,16 @@ html:not(.lx-ammready) #poolsBody, html:not(.lx-ammready) #poolTabs .count{visib
    a figure is real (set by snapDone), so this count stays hidden until it is rather than guessing. The
    tab reads "My Pools" with no number for that moment, which is honest; the 7s give-up dashes it AND
    marks it real, so it can never stay hidden. */
-html.lx-ammready #poolTabs button[data-tab=mine] .count:not(.lx-snapd){visibility:hidden}
+/* …AND THE SAME IS TRUE OF THE "All Pools" COUNT, which this rule named only the mine tab for.
+   The health bot caught it on 2026-10-15: "100" -> "31,476", the design's template number held
+   265ms and then corrected. The rule above hides counts until lx-ammready, but lx-ammready is a
+   PAGE-level signal that lifts when the list is ready -- not when this particular figure has been
+   written -- so it opened on the baked 100 exactly as it once did on the mine tab.
+   Gating on .lx-snapd instead asks the right question of both: has anyone written a real number
+   into THIS cell. snapDone already stamps it (line ~1841 writes the All count and stamps it), and
+   the 7s give-up at the end of this file dashes AND stamps anything still unwritten, so neither
+   count can be stranded hidden. One rule now, because there was never a reason for two. */
+html.lx-ammready #poolTabs .count:not(.lx-snapd){visibility:hidden}
 /* #24: the cold-start overlay.
    The ranking is built by an endpoint that walks the whole network in resumable steps and answers
    {warming, scanned, phase} until it is done -- on a cold cache that is roughly twenty-five seconds.
