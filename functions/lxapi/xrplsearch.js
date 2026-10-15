@@ -74,20 +74,53 @@ function mapRow(t) {
 
 // The index: the ranked token list, fetched once and cached, then searched in here. Returns null when it cannot be built,
 // so the caller can fall back to asking the upstream about this one query.
-async function getIndex(url, env, ctx) {
+// THE INDEX IS CHARGED PER COLO, AND THE BUDGET IS NOT.
+//
+// The note above says a ten-minute index costs about 144 upstream requests a day "no matter how
+// many people search". That is true per COLO, and the 333/day limit is per IP for all of them.
+// The Cache API is per-colo on the free plan, so each Cloudflare location that serves a visitor
+// rebuilds this index on its own clock: two or three busy colos spend the entire day's budget,
+// and then search returns the rate-limit notice for everyone.
+//
+// RAZA hit exactly that on lumoscore.com within an hour of the XRPL launch, searching "lumos":
+//   "The market data provider is rate-limiting us. Searches for assets already looked at still work."
+// Which is the honest message, and the wrong thing to be honest about -- the budget was spent on
+// refetching one list N times, not on serving searches.
+//
+// KV is global, so ONE index serves every colo and the cost goes back to the ~144/day the design
+// assumed. Same mkStore shape as pools.js and assetsearch.js: KV when the binding is present, the
+// per-colo Cache API when it is not, so this is safe before the namespace is bound and fixes the
+// problem the moment it is.
+function mkIdxStore(env, url) {
+  const kv = env && (env.LUMOS_KV || env.POOLS_KV);
+  if (kv) {
+    return {
+      kind: 'kv',
+      async get() { try { return await kv.get('xrplsearch:index:v1', 'json'); } catch (_) { return null; } },
+      async put(body) {
+        try { await kv.put('xrplsearch:index:v1', JSON.stringify(body), { expirationTtl: Math.max(60, IDX_TTL) }); } catch (_) {}
+      },
+    };
+  }
   const cache = caches.default;
   const key = new Request(url.origin + url.pathname + '?index=v1');
-  const hit = await cache.match(key);
-  if (hit) {
-    const cached = await hit.json().catch(() => null);
-    if (cached && cached.rows && cached.rows.length) return cached;
-  }
+  return {
+    kind: 'cache',
+    async get() { try { const h = await cache.match(key); return h ? await h.json() : null; } catch (_) { return null; } },
+    async put(body) { try { await cache.put(key, json(body, IDX_TTL)); } catch (_) {} },
+  };
+}
+
+async function getIndex(url, env, ctx) {
+  const store = mkIdxStore(env, url);
+  const cached = await store.get();
+  if (cached && cached.rows && cached.rows.length) return cached;
   const r = await upstream('/tokens?limit=' + IDX_LIMIT + '&sort=vol24hxrp&order=desc', env);
   const rows = ((r && r.tokens) || []).map(mapRow).filter((t) => t.n && t.i);
   if (!rows.length) return null;
   const xrpPerUsd = Number(r && r.exch && r.exch.USD);
   const body = { at: Date.now(), usd: xrpPerUsd > 0 ? 1 / xrpPerUsd : null, rows };
-  ctx.waitUntil(cache.put(key, json(body, IDX_TTL)));
+  ctx.waitUntil(store.put(body));
   return body;
 }
 
