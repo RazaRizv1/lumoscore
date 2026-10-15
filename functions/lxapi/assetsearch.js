@@ -47,6 +47,51 @@ const LAST_GOOD = 'https://lumoscore.internal/__lastgood/assetsearch';
 const keyFor = (search, limit) =>
   LAST_GOOD + '?search=' + encodeURIComponent(search) + '&limit=' + limit;
 
+
+// A GLOBAL LAST-GOOD, NOT A PER-COLO ONE.
+//
+// The Cache API is per-colo on the free plan, so the previous last-good only helped a colo that had
+// already seen one success. It could not help the FIRST request in a cold colo -- which is exactly
+// the load the health bot caught dashing the Holders badge on 2026-10-15.
+//
+// Worse, the page asks this endpoint TWICE for the same asset (search=<CODE>&limit=20 for the code
+// lookup, search=<ISSUER>&limit=50 for the holders count) and both land within about a second:
+//     limit=20 200 @940ms  |  limit=50 200 @1647ms
+// So when stellar.expert throttles our edge they fail TOGETHER. Reading the number from either
+// response, which is what the client fix does, is redundancy that shares its failure mode.
+//
+// KV is global and survives both cases: any colo can serve the last count we actually saw, and a
+// throttled upstream stops mattering until the entry expires.
+//
+// Same shape as mkStore in pools.js, deliberately: KV when the binding is present, the per-colo
+// Cache API when it is not. The fallback is exactly the previous behaviour, so this is safe to ship
+// before the namespace is bound to this project and improves the moment it is. On the free plan KV
+// operations also do not count against the 50-subrequest budget, while Cache API calls do.
+function mkStore(env) {
+  const kv = env && (env.LUMOS_KV || env.POOLS_KV);
+  if (kv) {
+    return {
+      kind: 'kv',
+      async get(k) { try { return await kv.get(k); } catch (_) { return null; } },
+      async put(k, body) {
+        try { await kv.put(k, body, { expirationTtl: TTL_GOOD }); } catch (_) {}
+      },
+    };
+  }
+  const cache = caches.default;
+  return {
+    kind: 'cache',
+    async get(k) { try { const r = await cache.match(k); return r ? await r.text() : null; } catch (_) { return null; } },
+    async put(k, body) {
+      try {
+        await cache.put(k, new Response(body, {
+          headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + TTL_GOOD },
+        }));
+      } catch (_) {}
+    },
+  };
+}
+
 function hasRecords(body) {
   try {
     const d = JSON.parse(body);
@@ -80,21 +125,22 @@ export async function onRequestGet(ctx) {
 
   const url = UPSTREAM + '?search=' + encodeURIComponent(search) + '&limit=' + limit;
 
-  const cache = caches.default;
+  const store = mkStore(ctx && ctx.env);
   const key = keyFor(search, limit);
 
   // Only reached when this request could not get an answer of its own.
   const fallback = async (status) => {
     try {
-      const hit = await cache.match(key);
+      const hit = await store.get(key);
       if (hit) {
-        return new Response(await hit.text(), {
+        return new Response(hit, {
           status: 200,
           headers: {
             'content-type': 'application/json',
             'cache-control': 'public, max-age=30',   // short: try upstream again soon
             'access-control-allow-origin': '*',
             'x-lx-stale': '1',                       // a reader can tell, without the figures changing
+            'x-lx-store': store.kind,                // kv = global, cache = this colo only
           },
         });
       }
@@ -117,19 +163,19 @@ export async function onRequestGet(ctx) {
 
     const body = await r.text();
     const out = json(body, 200, TTL);
+    // Named on EVERY answer, not just a stale one. Whether LUMOS_KV is bound to this project is set
+    // in the Cloudflare dashboard, not in this repo, so from here it is unknowable -- and a global
+    // last-good that silently degraded to a per-colo one would look exactly like a working fix until
+    // the next cold colo. One header makes it answerable with a curl instead of an assumption.
+    try { out.headers.set('x-lx-store', store.kind); } catch (_) {}
 
     // Keep this answer for the next request that cannot get one. waitUntil so the write never
     // delays the response; without it the put races the worker shutting down and silently does
-    // nothing. Stored with its own long max-age, because a last-good that expired with the normal
-    // edge entry would be gone exactly when it is needed.
+    // nothing. Stored with its own long TTL, because a last-good that expired with the normal edge
+    // entry would be gone exactly when it is needed.
     if (hasRecords(body)) {
-      try {
-        const save = new Response(body, {
-          headers: { 'content-type': 'application/json', 'cache-control': 'public, max-age=' + TTL_GOOD },
-        });
-        if (ctx && ctx.waitUntil) ctx.waitUntil(cache.put(key, save));
-        else await cache.put(key, save);
-      } catch (_) {}
+      if (ctx && ctx.waitUntil) ctx.waitUntil(store.put(key, body));
+      else await store.put(key, body);
     }
     return out;
   } catch (e) {

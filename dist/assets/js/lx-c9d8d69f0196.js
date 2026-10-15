@@ -27,7 +27,7 @@ var ORDER=["stellar","xrpl"];
 // trade/xrpl and also shows 404". Same root as the six dead hub links fixed earlier that day, in a
 // chooser that fix did not reach -- _lumosparent.js owns the hub pages, this owns the Launch App
 // modal, and they had to be found separately.
-var SOON={"xrpl":1};
+var SOON={};
 
 // WHERE A CHAIN LIVES. Stellar and XRPL are two BUILDS sharing one host: Stellar owns the bare routes
 // (/dashboard, /wallet) and the /stellar-suffixed ones, XRPL owns /<section>/xrpl. So changing chain
