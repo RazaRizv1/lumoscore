@@ -1575,7 +1575,18 @@ function paintAssets(){
       return LR;
     }).catch(function(){ LR=[]; tabs(); if(MODE==="requests"){ render(); kpis(); } return LR; });
   }
-  function reqAmt(r){ return (+r.payAmount||0).toLocaleString(undefined,{maximumFractionDigits:2})+" XLM"; }
+  // HEDERA ROWS (network "hedera", from /lxapi/hederalisting): paid in HBAR, the asset is a token id,
+  // links go to HashScan, and the refund is sent from a Hedera wallet and recorded by transaction id --
+  // this panel signs Stellar only. No backslashes in this block: it is a template literal, which eats them.
+  function isH(r){ return r&&r.network==="hedera"; }
+  function reqUnit(r){ return isH(r)?"HBAR":"XLM"; }
+  function reqAmt(r){ return (+r.payAmount||0).toLocaleString(undefined,{maximumFractionDigits:2})+" "+reqUnit(r); }
+  function reqShort(r,a){ return isH(r)?String(a||""):shortG(a); }
+  var HS="https://hashscan.io/mainnet/";
+  function reqTxUrl(r,which){
+    if(isH(r)){ var t=which==="refund"?r.refundTxId:r.txId; return t?(HS+"transaction/"+encodeURIComponent(t)):""; }
+    return "https://stellar.expert/explorer/public/tx/"+encodeURIComponent(which==="refund"?r.refundHash:r.txHash);
+  }
   function reqWhen(t){ if(!t)return "—"; var d=new Date(+t);
     return d.toLocaleDateString(undefined,{day:"numeric",month:"short"})+", "+d.toLocaleTimeString(undefined,{hour:"2-digit",minute:"2-digit"}); }
 
@@ -1586,7 +1597,9 @@ function paintAssets(){
     + "payment is verified against the ledger before a request is stored, so nothing here arrived free. "
     + "Approving curates the asset immediately, which also gives it the tick; it reaches the public site "
     + "at the next publish. Declining does not send the money back: the row then shows a refund owed, "
-    + "and Refund pays it from the wallet connected here, to the account that actually paid.";
+    + "and Refund pays it from the wallet connected here, to the account that actually paid. "
+    + "Hedera requests are paid in HBAR: approve once the token is vouched in the Hedera build and deployed, "
+    + "and send a refund from HashPack or Kabila, then record it here by its transaction id.";
   function setNote(){
     var n=q(".lxadm-note"); if(!n)return;
     if(NOTE0===null)NOTE0=n.textContent;
@@ -1595,12 +1608,15 @@ function paintAssets(){
 
   function reqKpis(){
     setNote();
-    var L=LR||[], pend=0, owed=0, owedN=0, done=0;
+    var L=LR||[], pend=0, owedBy={}, owedN=0, done=0;
     L.forEach(function(r){
       if(r.status==="pending")pend++;
-      if(r.status==="rejected"){ owed+=(+r.payAmount||0); owedN++; }
+      // Per asset: XLM and HBAR owed are not one number.
+      if(r.status==="rejected"){ owedBy[reqUnit(r)]=(owedBy[reqUnit(r)]||0)+(+r.payAmount||0); owedN++; }
       if(r.status==="approved")done++;
     });
+    var owedTxt=Object.keys(owedBy).filter(function(u){ return owedBy[u]>0; }).map(function(u){
+      return owedBy[u].toLocaleString(undefined,{maximumFractionDigits:2})+" "+u; }).join(" + ");
     var cards=qa(".kpi-grid .kpi");
     function set(i,label,val,foot){ var c=cards[i]; if(!c)return;
       var l=c.querySelector(".kpi-label"); if(l)setT(l,label);
@@ -1610,7 +1626,7 @@ function paintAssets(){
     set(1,"Approved",LR===null?"…":String(done),"now curated");
     // Money we are holding that is not ours. It reads as a debt on purpose.
     set(2,"Refunds owed",LR===null?"…":String(owedN),"declined, not yet paid back");
-    set(3,"Owed back",LR===null?"…":(owed?owed.toLocaleString(undefined,{maximumFractionDigits:2})+" XLM":"none"),"to the accounts that paid");
+    set(3,"Owed back",LR===null?"…":(owedTxt||"none"),"to the accounts that paid");
     fixPager((LR||[]).length);
     var sub=q(".admin-page-sub"); if(sub)sub.textContent="Paid applications for a curated listing";
   }
@@ -1627,6 +1643,10 @@ function paintAssets(){
       if(r.status==="pending"){
         act="<button class='lxreq-btn go' type='button' title='Curate this asset and approve the request' data-lxap='"+esc(r.id)+"'>Approve</button>"
            +"<button class='lxreq-btn' type='button' title='Decline with a reason' data-lxrj='"+esc(r.id)+"'>Decline</button>";
+      } else if(r.status==="rejected"&&isH(r)){
+        // No HBAR signer here: the refund is sent from a Hedera wallet, then recorded and checked.
+        act="<button class='lxreq-btn go' type='button' title='Send "+esc(reqAmt(r))+" to "+esc(r.payer)+" from a Hedera wallet, then record it' data-lxrh='"+esc(r.id)+"'>Record refund</button>"
+           +"<button class='lxreq-btn' type='button' title='Put this back in the queue' data-lxro='"+esc(r.id)+"'>Reopen</button>";
       } else if(r.status==="rejected"){
         act="<button class='lxreq-btn go' type='button' title='Send "+esc(reqAmt(r))+" back to the account that paid' data-lxrf='"+esc(r.id)+"'>Refund</button>"
            +"<button class='lxreq-btn' type='button' title='Record a refund you sent from elsewhere' data-lxrh='"+esc(r.id)+"'>Have the hash</button>"
@@ -1634,7 +1654,7 @@ function paintAssets(){
       } else if(r.status==="approved"){
         act="<button class='lxreq-btn' type='button' title='Put this back in the queue' data-lxro='"+esc(r.id)+"'>Reopen</button>";
       } else {
-        act="<a class='ext-link' title='The refund transaction' target='_blank' rel='noopener' href='https://stellar.expert/explorer/public/tx/"+esc(r.refundHash)+"'>"+EXTICON+"</a>";
+        act=reqTxUrl(r,"refund")?("<a class='ext-link' title='The refund transaction' target='_blank' rel='noopener' href='"+esc(reqTxUrl(r,"refund"))+"'>"+EXTICON+"</a>"):"";
       }
       var img=r.logo?("<img class='lxa-ico' data-lxc='"+esc(r.code)+"' alt='' src='"+esc(r.logo)+"'>")
                     :("<img class='lxa-ico' data-lxc='"+esc(r.code)+"' alt='' src='"+esc(avatar(r.code))+"'>");
@@ -1643,17 +1663,18 @@ function paintAssets(){
           +"<div><div class='asset-name'>"+esc(r.code)+(r.curated?tickFor(r.asset):"")+"</div>"
           // Truncated with a copy button rather than printed in full: 56 characters would dominate the
           // row, and what you actually do with an issuer is paste it somewhere.
-          +"<div class='asset-sub mono'>"+esc(shortG(r.issuer))
-            +"<button class='lxreq-copy' type='button' title='Copy the issuing account' data-lxcp='"+esc(r.issuer)+"'>"+COPYICON+"</button>"
-            +"<a class='ext-link' title='The issuing account on stellar.expert' target='_blank' rel='noopener' href='https://stellar.expert/explorer/public/account/"+esc(r.issuer)+"'>"+EXTICON+"</a>"
+          +"<div class='asset-sub mono'>"+(isH(r)?"Hedera · ":"")+esc(reqShort(r,r.issuer))
+            +"<button class='lxreq-copy' type='button' title='"+(isH(r)?"Copy the token id":"Copy the issuing account")+"' data-lxcp='"+esc(r.issuer)+"'>"+COPYICON+"</button>"
+            +"<a class='ext-link' title='"+(isH(r)?"The token on HashScan":"The issuing account on stellar.expert")+"' target='_blank' rel='noopener' href='"
+              +esc(isH(r)?(HS+"token/"+encodeURIComponent(r.issuer)):("https://stellar.expert/explorer/public/account/"+encodeURIComponent(r.issuer)))+"'>"+EXTICON+"</a>"
           +"</div>"
           // The WHOLE description, not the first 120 characters. This is the review screen; deciding
           // whether a project describes itself honestly cannot be done from an ellipsis.
           +"<div class='lxreq-note' style='min-width:260px;max-width:360px'>"+esc(r.descr)+"</div>"
           +reqLinks(r)
         +"</div></div></td>"
-        +"<td><span class='mono' title='"+esc(r.payer)+"'>"+esc(shortG(r.payer))+"</span>"
-          +" <a class='ext-link' title='The payment' target='_blank' rel='noopener' href='https://stellar.expert/explorer/public/tx/"+esc(r.txHash)+"'>"+EXTICON+"</a></td>"
+        +"<td><span class='mono' title='"+esc(r.payer)+"'>"+esc(reqShort(r,r.payer))+"</span>"
+          +(reqTxUrl(r,"pay")?(" <a class='ext-link' title='The payment' target='_blank' rel='noopener' href='"+esc(reqTxUrl(r,"pay"))+"'>"+EXTICON+"</a>"):"")+"</td>"
         +"<td class='num-cell' style='text-align:right'>"+esc(reqAmt(r))+"</td>"
         +"<td style='text-align:right'>"+esc(reqWhen(r.createdAt))+"</td>"
         +"<td style='text-align:right'><span style='color:"+st.c+";font-weight:600'>"+esc(st.t)+"</span>"
@@ -1700,6 +1721,16 @@ function paintAssets(){
 
   function reqApprove(id,btn){
     var r=reqById(id); if(!r)return;
+    // Hedera: curation lives in the Hedera build (a vouch, a rebuild, a deploy), not in assetmeta, so
+    // this only records the decision -- and the endpoint refuses until the token is on that list.
+    if(isH(r)){
+      if(!confirm("Approve "+r.code+" ("+r.issuer+")? It must already be vouched in the Hedera build and deployed, or this is refused."))return;
+      btn.disabled=true; btn.textContent="Recording…";
+      reqAct(id,{action:"approve"})
+        .then(function(){ alert(r.code+" ("+r.issuer+") is approved."); })
+        .catch(function(e){ btn.disabled=false; btn.textContent="Approve"; alert(e.message); });
+      return;
+    }
     if(!confirm("Approve "+r.code+"? It is curated immediately, carries the tick, and appears on the public site at the next publish."))return;
     btn.disabled=true; btn.textContent="Curating…";
     // Description and logo travel with the approval, so the asset arrives on the public site wearing
@@ -1801,6 +1832,7 @@ function paintAssets(){
   // on-chain before it is accepted.
   function reqRefundHash(id){
     var r=reqById(id); if(!r||q(".lxmodal"))return;
+    if(isH(r))return reqRefundHedera(r);
     var m=document.createElement("div"); m.className="lxmodal";
     m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Record a refund</h3>"
       +"<p class='lxmodal-s'>For a refund sent from somewhere else. We check the ledger: it has to be an XLM payment to "+esc(shortG(r.payer))+" of at least "+esc(reqAmt(r))+", or it is not accepted.</p>"
@@ -1819,6 +1851,32 @@ function paintAssets(){
       if(!/^[0-9a-f]{64}$/.test(h)){ er.textContent="That is not a transaction hash."; return; }
       ok.disabled=true; ok.textContent="Checking…";
       reqAct(id,{action:"refund",refundHash:h}).then(close)
+        .catch(function(e){ ok.disabled=false; ok.textContent="Check and record"; er.textContent=e.message; });
+    });
+  }
+
+  // A Hedera refund: sent from HashPack or Kabila, then recorded by transaction id. Checked on the
+  // Mirror Node server-side (an HBAR credit to the payer of at least what was taken) before it closes.
+  function reqRefundHedera(r){
+    var m=document.createElement("div"); m.className="lxmodal";
+    m.innerHTML="<div class='lxmodal-box'><h3 class='lxmodal-t'>Record the HBAR refund</h3>"
+      +"<p class='lxmodal-s'>Send "+esc(reqAmt(r))+" to "+esc(r.payer)+" from HashPack or Kabila (memo: LumosCore refund), then paste its transaction id. We check Hedera: it has to be an HBAR payment to "+esc(r.payer)+" of at least "+esc(reqAmt(r))+", or it is not accepted.</p>"
+      +"<label class='lxmodal-l' for='lxrhTx'>Transaction id</label><input class='lxmodal-i' id='lxrhTx' placeholder='0.0.1234@1760000000.123456789' maxlength='120'>"
+      +"<p class='lxmodal-e' id='lxrhErr'></p>"
+      +"<div class='lxmodal-a'><button class='adm-btn ghost' type='button' id='lxrhCancel'>Cancel</button>"
+      +"<button class='adm-btn primary' type='button' id='lxrhOk'>Check and record</button></div></div>";
+    document.body.appendChild(m);
+    var inp=m.querySelector("#lxrhTx"), er=m.querySelector("#lxrhErr"), ok=m.querySelector("#lxrhOk");
+    inp.focus();
+    function close(){ m.remove(); }
+    m.addEventListener("click",function(e){ if(e.target===m)close(); });
+    m.querySelector("#lxrhCancel").addEventListener("click",close);
+    ok.addEventListener("click",function(){
+      // A HashScan link is accepted too: its last path segment is the id.
+      var h=(inp.value||"").trim().split("/").pop().split("?")[0];
+      if(!/^0[.]0[.][0-9]+[@-][0-9]+[.-][0-9]+$/.test(h)&&!/^[0-9a-fA-F]{96}$/.test(h)){ er.textContent="That is not a Hedera transaction id."; return; }
+      ok.disabled=true; ok.textContent="Checking…";
+      reqAct(r.id,{action:"refund",refundTxId:h}).then(close)
         .catch(function(e){ ok.disabled=false; ok.textContent="Check and record"; er.textContent=e.message; });
     });
   }

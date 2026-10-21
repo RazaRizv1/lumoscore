@@ -14,12 +14,52 @@
 //     the browser. What lands here is the resulting hash, and it is CHECKED against Horizon before the
 //     row is marked refunded: right payee, right asset, at least the amount taken. A refund we did not
 //     actually make must never be able to close a request.
+//
+// HEDERA ROWS (network = 'hedera', written by hederalisting.js) take the same three decisions with the
+// ledger-specific parts swapped, and the Stellar paths are untouched:
+//   * the asset is the TOKEN ID (issuer column); curated means it is in Hedera's curated list, which is
+//     baked into the Hedera build -- read here from /lxapi/hederamarket on the same origin. So approving
+//     is: vouch the id in C:\LumosCore-HEDERA\_tools\_hederacurate.js, rebuild, deploy, THEN approve.
+//     The same guarantee as Stellar's: never an approval this endpoint cannot see.
+//   * the refund is checked on the Hedera Mirror Node: an HBAR credit to the payer of at least what was
+//     taken. The panel cannot sign HBAR, so a Hedera refund is sent from HashPack/Kabila and recorded
+//     here by its transaction id.
+//   * tx_hash / refund_hash hold the 96-hex transaction hash; GET resolves each to its transaction id
+//     (what HashScan links by) through the Mirror Node.
 import { requireAdmin } from '../../_lib/adminauth.js';
 import { audit } from '../../_lib/audit.js';
+import { mirrorTxId, b64hex } from './hederalisting.js';
 
 const H = 'https://horizon.stellar.org';
 const LIST = 'assets:list';
 const HASH_RE = /^[0-9a-f]{64}$/i;
+const MIRROR = 'https://mainnet-public.mirrornode.hedera.com/api/v1';
+const HHASH_RE = /^[0-9a-f]{96}$/i;
+const MCF = { cf: { cacheTtlByStatus: { '200-299': 300, '300-399': 0, '400-599': 0 } } };
+
+// The Hedera curated set, as the Hedera build serves it. null when it cannot be read -- which is not
+// the same as "not curated", so approval says which (never-cache-a-failure-as-an-answer).
+async function hederaCurated(request) {
+  try {
+    const r = await fetch(new URL(request.url).origin + '/lxapi/hederamarket', MCF);
+    if (!r.ok) return null;
+    const d = await r.json();
+    if (!d || !d.ok || !Array.isArray(d.rows)) return null;
+    return new Set(d.rows.map((x) => x.i));
+  } catch (e) { return null; }
+}
+// 96-hex hash or a transaction id -> the parent Mirror record, or null.
+async function hederaTx(ref) {
+  const key = HHASH_RE.test(ref) ? ref.toLowerCase() : mirrorTxId(ref);
+  if (!key) return null;
+  const r = await fetch(MIRROR + '/transactions/' + key, MCF);
+  if (!r.ok) return null;
+  const j = await r.json();
+  return ((j && j.transactions) || []).filter((t) => !t.nonce && !t.scheduled)[0] || null;
+}
+function hashscanId(t) {
+  return t ? String(t.transaction_id || '').replace(/^(\d+\.\d+\.\d+)-(\d+)-(\d+)$/, '$1@$2.$3') : '';
+}
 const ID_RE = /^lr_[0-9a-f]{16}$/;
 const LIMITS = { note: 300 };
 
@@ -67,6 +107,16 @@ export async function onRequestGet({ request, env }) {
   try { curated = (await env.CONTENT_KV.get(LIST, 'json')) || []; } catch (e) { curated = []; }
   const on = new Set(curated);
 
+  // Hedera rows: the curated set from the Hedera build, and each stored hash back to its transaction id.
+  const hed = rows.filter((r) => r.network === 'hedera');
+  const hOn = hed.length ? await hederaCurated(request) : null;
+  const txIds = {};
+  if (hed.length) {
+    const refs = [];
+    hed.forEach((r) => { if (r.tx_hash) refs.push(r.tx_hash); if (r.refund_hash) refs.push(r.refund_hash); });
+    await Promise.all(refs.slice(0, 200).map((h) => hederaTx(h).then((t) => { txIds[h] = hashscanId(t); }, () => {})));
+  }
+
   return json({
     ok: true,
     requests: rows.map((r) => ({
@@ -74,7 +124,7 @@ export async function onRequestGet({ request, env }) {
       network: r.network,
       code: r.code,
       issuer: r.issuer,
-      asset: r.code + '-' + r.issuer,
+      asset: r.network === 'hedera' ? r.issuer : r.code + '-' + r.issuer,
       descr: r.descr || '',
       // The panel renders this straight into an <img src>. /lxapi/media is public and serves only what
       // was stored under a media: key, which is why the logo can be shown without a second auth hop.
@@ -95,7 +145,10 @@ export async function onRequestGet({ request, env }) {
       twitter: r.twitter || '',
       telegram: r.telegram || '',
       discord: r.discord || '',
-      curated: on.has(r.code + '-' + r.issuer),
+      curated: r.network === 'hedera' ? !!(hOn && hOn.has(r.issuer)) : on.has(r.code + '-' + r.issuer),
+      // Hedera only: transaction ids for HashScan links ('' when the Mirror Node did not answer).
+      txId: r.network === 'hedera' ? (txIds[r.tx_hash] || '') : undefined,
+      refundTxId: r.network === 'hedera' && r.refund_hash ? (txIds[r.refund_hash] || '') : undefined,
     })),
   }, 200);
 }
@@ -144,6 +197,26 @@ export async function onRequestPost({ request, env }) {
   } catch (e) { return json({ ok: false, error: 'could not read that request' }, 500); }
   if (!row) return json({ ok: false, error: 'unknown request' }, 404);
 
+  // ---- approve: Hedera -----------------------------------------------------------------------------
+  if (action === 'approve' && row.network === 'hedera') {
+    const set = await hederaCurated(request);
+    if (!set) return json({ ok: false, error: 'could not read the Hedera curated list just now — nothing was changed; try again' }, 503);
+    if (!set.has(row.issuer)) {
+      return json({
+        ok: false,
+        error: row.issuer + ' is not on the Hedera curated list yet. Vouch it in C:\\LumosCore-HEDERA\\_tools\\_hederacurate.js, '
+          + 'run npm run curate and the rebuild, deploy, then approve — the request stays pending until it is there',
+      }, 409);
+    }
+    try {
+      await db.prepare(
+        "UPDATE listing_request SET status='approved', decided_at=?2, note=?3 WHERE id=?1"
+      ).bind(id, Date.now(), note || row.note || null).run();
+    } catch (e) { return json({ ok: false, error: 'could not save that decision' }, 500); }
+    await audit(env, request, 'listing.approve', id, { asset: row.issuer, network: 'hedera', note: note || undefined });
+    return json({ ok: true, id, status: 'approved' }, 200);
+  }
+
   // ---- approve -------------------------------------------------------------------------------------
   if (action === 'approve') {
     const asset = row.code + '-' + row.issuer;
@@ -179,6 +252,35 @@ export async function onRequestPost({ request, env }) {
     } catch (e) { return json({ ok: false, error: 'could not save that decision' }, 500); }
     await audit(env, request, 'listing.decline', id, { asset: row.code + '-' + row.issuer, reason: note, owed: row.pay_amount });
     return json({ ok: true, id, status: 'rejected', owed: row.pay_amount, to: row.payer }, 200);
+  }
+
+  // ---- refund: Hedera ------------------------------------------------------------------------------
+  // Sent from a Hedera wallet, recorded by its transaction id (or hash), checked on the Mirror Node:
+  // succeeded, and credited the PAYER with at least the HBAR taken. Stored as its 96-hex hash.
+  if (action === 'refund' && row.network === 'hedera') {
+    const ref = String((b && (b.refundTxId || b.refundHash)) || '').trim();
+    if (!HHASH_RE.test(ref) && !mirrorTxId(ref)) return json({ ok: false, error: 'that is not a Hedera transaction id (0.0.x@seconds.nanos)' }, 400);
+    let t;
+    try { t = await hederaTx(ref); } catch (e) { return json({ ok: false, error: 'could not reach the Hedera mirror node' }, 503); }
+    if (!t) return json({ ok: false, error: 'that refund transaction is not on Hedera (yet — a new one can take a few seconds)' }, 400);
+    if (t.result !== 'SUCCESS') return json({ ok: false, error: 'that refund transaction did not succeed (' + t.result + ')' }, 400);
+    let tiny = 0;
+    for (const x of t.transfers || []) if (x.account === row.payer && +x.amount > 0) tiny += +x.amount;
+    if (!tiny) return json({ ok: false, error: 'that transaction contains no HBAR payment to ' + row.payer }, 400);
+    // A tinybar of rounding is not a short refund; a materially smaller one is.
+    if (tiny + 1 < Math.round(+row.pay_amount * 1e8)) {
+      return json({ ok: false, error: 'that refund is ' + (tiny / 1e8).toFixed(8) + ' HBAR, short of the ' + row.pay_amount + ' HBAR taken' }, 400);
+    }
+    const hash = b64hex(t.transaction_hash);
+    if (!HHASH_RE.test(hash)) return json({ ok: false, error: 'could not read that transaction hash' }, 502);
+    try {
+      await db.prepare(
+        "UPDATE listing_request SET status='refunded', refund_hash=?2, decided_at="
+        + 'COALESCE(decided_at, ?3) WHERE id=?1'
+      ).bind(id, hash, Date.now()).run();
+    } catch (e) { return json({ ok: false, error: 'could not record that refund' }, 500); }
+    await audit(env, request, 'listing.refund', id, { to: row.payer, amount: (tiny / 1e8).toFixed(8), tx: hashscanId(t), network: 'hedera' });
+    return json({ ok: true, id, status: 'refunded', refunded: (tiny / 1e8).toFixed(8) }, 200);
   }
 
   // ---- refund --------------------------------------------------------------------------------------
