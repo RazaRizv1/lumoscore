@@ -109,6 +109,28 @@ const STYLE = '<style id="lx-lumosparent-css">'
   + 'html.lx-lp-on .page > *:not(.lx-lp):not(.crumb),'
   + 'html.lx-lp-on main > *:not(.lx-lp):not(.crumb),'
   + 'html.lx-lp-on .container > *:not(.lx-lp):not(.crumb){display:none!important}'
+  // ...AND THE FIXED BARS, WHICH ARE NOT INSIDE ANY OF THOSE WRAPPERS (RAZA 2026-10-26, on the
+  // launchpad hub signed out: "Im not connected to any network at the moment and Im on the hub page
+  // for launchpad. So why's it showing me the cost in XLM").
+  //
+  // The rules above hide the CHILDREN of the content wrappers, and the launchpad's cost bar is
+  // position:fixed at body level -- a sibling of .page, not a descendant -- so nothing above could
+  // ever reach it. The hub therefore asked "which chain?" while a bar along the bottom quoted
+  // "149.36 XLM ≈ $25" and offered Connect wallet: a price on a chain the reader has not chosen,
+  // for a form that is not on screen, which is also the most expensive thing on the page to get
+  // wrong.
+  //
+  // Scoped to the hub only -- the chain pages share this file and still need their bar.
+  + 'html.lx-lp-on .summary-fixed,html.lx-lp-on #summaryFixed{display:none!important}'
+  // ...AND THE PHONE STEP INDICATOR, which survives for a different reason again: it is nested INSIDE
+  // `.crumb`, and `.crumb` is deliberately excluded above because a breadcrumb is navigation rather
+  // than content. The launchpad's "1 Details / 2 Review / 3 Confirm" sits in that wrapper on the
+  // phone layout only, so it rode along and the hub showed the form's progress through three steps
+  // above the words "Choose a network" -- a position in a flow the reader has not entered.
+  //
+  // Named rather than un-excluding `.crumb`, because the back link in there IS wanted on the hub.
+  // Phone only: the desktop layout has no stepper element at all, confirmed in both built pages.
+  + 'html.lx-lp-on .steps-mobile{display:none!important}'
   + '</style>';
 
 // One row per chain per hub. `live:false` renders as an announced-but-not-yet card rather than a dead
@@ -341,12 +363,37 @@ function scriptHTML(hub) {
     // HUB + "/stellar" -- is the network page and must render normally.
     + 'var last=p.split("/").pop()||"";'
     + 'if(p!==HUB&&last.indexOf(KEY)!==0)return;'
-    // Already connected on Stellar: answer the question rather than ask it. replace() so Back does not
-    // bounce between the chooser and the page it forwarded to.
-    + 'var a="",c="";'
+    // Already connected: answer the question rather than ask it. replace() so Back does not bounce
+    // between the chooser and the page it forwarded to.
+    //
+    // BOTH CHAINS NOW, NOT JUST STELLAR (RAZA 2026-10-16: "If im connected to XRPL, whys it even
+    // taking me to the hub page. It should just take me to XRPL trade main page instead of showing
+    // this. There's no need as its designed for not-connected users only").
+    //
+    // The old condition was `c===""||c==="stellar"`, so an XRPL reader fell through to the chooser
+    // and was asked a question they had already answered by connecting a wallet. The comment above
+    // this block always said "someone already connected is sent straight through" — it was only ever
+    // half-implemented, and it stayed that way because the chain that was missing did not exist yet
+    // when it was written.
+    //
+    // THE CONNECTED WALLET DECIDES, NOT lumos.chain. Those are two different facts and this file was
+    // reading the wrong one: `lumos.chain` is a VIEW preference the switcher writes, while
+    // `lumos.network` is the chain the connected address actually lives on. They disagree exactly
+    // when this bug shows — browsing Stellar pages with an XRPL wallet connected.
+    //
+    // The address shape is the backstop, because it cannot go stale the way a stored field can: an
+    // XRP Ledger address is r-prefixed base58, a Stellar one is G-prefixed base32. If a future
+    // connect path forgets to write lumos.network, this still resolves correctly.
+    + 'var a="",n="",c="";'
     + 'try{ a=localStorage.getItem("lumos.address")||"";'
+    + 'n=(localStorage.getItem("lumos.network")||"").toLowerCase();'
     + 'c=(localStorage.getItem("lumos.chain")||"").toLowerCase(); }catch(_){}'
-    + 'if(a&&(c===""||c==="stellar")){ location.replace(HUB+"/stellar"); return; }'
+    + 'if(n!=="xrpl"&&n!=="stellar"){ n=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)?"xrpl":(/^G[A-Z2-7]{55}$/.test(a)?"stellar":""); }'
+    + 'if(!n)n=(c==="xrpl"||c==="stellar")?c:"";'
+    // XRPL only when this build actually carries those pages. Forwarding to /xrpl on a Stellar-only
+    // build would replace a working chooser with a 404 — the chooser is the correct answer there.
+    + 'if(a&&n==="xrpl"&&' + JSON.stringify(XRPL_PUBLIC) + '){ location.replace(HUB+"/xrpl"); return; }'
+    + 'if(a&&(n===""||n==="stellar")){ location.replace(HUB+"/stellar"); return; }'
     + 'document.documentElement.classList.add("lx-lp-on");'
     // THE COOKIE IS THE CHOICE, on a hub whose two networks share one url. Only the launchpad is
     // like that -- see COOKIE_HUBS above -- and only its cards carry data-lxsetchain, so this is a

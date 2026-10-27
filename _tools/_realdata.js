@@ -519,13 +519,35 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'acode:acode(o,"source"),aiss:(o.source_asset_issuer||""),bcode:((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code),biss:(o.asset_issuer||""),inl:1};'
 +'if(o.type==="payment"&&o.asset_issuer&&o.asset_issuer===o.from)'
 +'return {ic:DROP,cls:"mint",act:"Mint",type:"<b>"+amt(+o.amount)+" "+aic(o.asset_code,o.asset_issuer)+esc(o.asset_code)+"</b> issued",inl:1};'
-+'if(o.type==="payment")'
+// TRANSFERS ARE NOT SHOWN (RAZA 2026-10-27: "lets remove the transfers trxs on dashboard. some users
+// might have privacy concerns").
+//
+// This row named BOTH ends of somebody's payment — "1.9K XLM, GDPM…DYKV -> GABF…JNL6" — on a public
+// dashboard. Every other row in this feed describes a trade with a market: a swap, a pool deposit, a
+// mint, a bridge. A Send is the one action that is simply one person paying another, and the two
+// addresses are the whole content of it. Publishing that is a different thing from publishing volume.
+//
+// Skipped rather than anonymised: a transfer with its addresses removed is an amount and nothing else,
+// which tells a reader nothing and still discloses that the payment happened, at that minute, for that
+// amount — enough to match against a ledger explorer. The honest version of "do not publish this" is
+// not publishing it.
+//
+// A MINT IS NOT CAUGHT BY THIS: the branch above returns first for a payment whose issuer is its
+// sender, which is what an issuance looks like. Bridges are recognised earlier still, by lxXc and the
+// record, so none of them reaches here.
++'if(o.type==="payment") return {skip:true};'
++'if(false)'
 // cls is "transfer", not "swap": both tags were reading the same purple, so a transfer and a swap
 // were indistinguishable at a glance. from/to are carried through so the row can name both ends --
 // a transfer with only one address does not say who was paid, which is the half that matters.
+// (Kept, unreachable, so the shape is on record if transfers are ever shown again in some other form.)
 +'return {ic:SWAP,cls:"transfer",act:"Transfer",from:(o.from||""),to:(o.to||""),type:"<b>"+amt(+o.amount)+" "+aic((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code,o.asset_issuer||"")+esc((o.asset_type==="native"||!o.asset_code)?"XLM":o.asset_code)+"</b>",inl:1};'
 +'if(o.type&&o.type.indexOf("offer")>=0)'
 +'{var oamt=+o.amount||0, isNew=String(o.offer_id||"0")==="0";'
+// A cancellation is an offer set to zero: no amount, no trade, nothing that happened on the market --
+// just a pair and the account that withdrew. Same empty disclosure as a trustline, so it goes the same
+// way. "Order placed" and "Order updated" stay: those carry a real size and a real intent.
++'if(oamt===0) return {skip:true};'
 +'var pair=aic(acode(o,"selling"),o.selling_asset_issuer||"")+esc(acode(o,"selling"))+" / "+aic(acode(o,"buying"),o.buying_asset_issuer||"")+esc(acode(o,"buying"));'
 +'return {ic:DROP,cls:"order",act:(oamt===0?"Order cancelled":(isNew?"Order placed":"Order updated")),'
 +'type:(oamt===0?("<b>"+pair+"</b>"):("<b>"+amt(oamt)+" "+pair+"</b>")),inl:1};}'
@@ -547,7 +569,12 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'return {ic:SWAP,cls:"xchain",act:"Cross-chain",type:"Cross-chain transfer"};'
 +'if(o.type==="create_claimable_balance")'
 +'return {ic:DROP,cls:"claim",act:"Claimable",type:"Payment set aside to be claimed"};'
-+'if(o.type==="change_trust")'
+// Same call as the transfer skip above. A trustline row carries an account and the exact asset that
+// account chose to hold, and nothing else -- no amount, no trade, no platform action. It is a
+// disclosure with no information in it, and one wallet opening five trustlines fills the whole feed
+// with five identical rows. (Shape kept, unreachable, in case they are ever shown differently.)
++'if(o.type==="change_trust") return {skip:true};'
++'if(false)'
 +'return {ic:DROP,cls:"trust",act:"Trustline",type:"Trustline "+esc(String(o.asset_code||""))};'
 +'return {ic:SWAP,cls:"swap",type:esc(String(o.type||"Activity").split("_").join(" "))};}'
 // A 5x3 block identicon inside a 22px circle is 11 rectangles in about 380 usable pixels -- there is
@@ -742,17 +769,90 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // never answers: the horizon chain below has no catch of its own, so without the timer a dead
 // upstream would turn a flash into a permanently empty card, which is the worse bug.
 +'var lxActReady=function(){try{list.setAttribute("data-lxact","1");}catch(e){}};'
-+'setTimeout(lxActReady,6000);'
+// THE CARD IS NEVER BLANK (RAZA 2026-10-19: "it takes too long for platform activity to even start
+// loading"). Everything above made the feed arrive sooner; none of it changed the fact that nothing at
+// all was drawn until the first two reads had landed, so the card sat empty for however long that took
+// and the work looked undone.
+//
+// A skeleton needs no data -- the row's shape is known before anything is fetched. Eight of them go in
+// at once, which also overwrites the design's mock rows on the first tick rather than at the ten-second
+// net, so the flash cannot happen even on a cold, slow load.
+//
+// _actPainted, not a DOM test, is what the net below reads: these placeholders carry data-lx-noswap
+// like every row this layer builds, so "is there a real row" can no longer be asked of the markup.
++'var _actPainted=0;'
++'try{ if(!list.querySelector("[data-lx-noswap]")){ var _sk="";'
++'for(var _s=0;_s<8;_s++)_sk+=feedRow({when:""});'
++'list.innerHTML=_sk; } }catch(e){}'
++'lxActReady();'
+// THE SAFETY NET MUST EMPTY THE LIST, NOT UNVEIL IT (RAZA 2026-10-19: "flash bug on Stellar dashboard
+// platform activity"). The note in _dashtop.js says this timer exists so a feed that never answers
+// "degrades to an empty card" -- but it only ever lifted the gate, and #activityList is the
+// second-writer shape: _dashblogs.js ships it empty and THE DESIGN'S OWN SCRIPT fills it with mock
+// rows. So at six seconds the gate opened over "MOD launched on Stellar", "Swap $6,120 CELL" and the
+// rest of the design's invented feed, presented as live platform activity.
+//
+// Exactly the fault, and exactly the fix, of the XRPL open-orders flash: a net that reveals whatever
+// is underneath is worse than no net. Our own rows carry data-lx-noswap, so their absence is the test
+// for "nothing real has painted yet", and then the honest empty state goes in before the gate lifts.
+// AND IT MUST NOT SAY ANYTHING IT DOES NOT KNOW (RAZA 2026-10-19: "why do we even have to show 'No
+// platform activity yet' when its just not true"). Right -- at six seconds this net knew only that the
+// feed had not answered YET, and it printed a verdict about the business. The empty-feed sentence has
+// a home already, on the path that has actually read the chain and found nothing; here the card is
+// simply cleared of the design's mock and left blank until the real rows land.
+//
+// Ten seconds rather than six, now that the slow read is gone: the net exists so a dead upstream can
+// never leave the card concealed for good, not to race a feed that is about to arrive.
+// AND IT NO LONGER EMPTIES THE CARD (RAZA 2026-10-19: "platform activity again went empty" ... "it loaded but
+// after too long"). Measured against Horizon at that moment: the payments read took 4,957 / 10,342 / 5,780 ms,
+// so on a slow draw this fired at ten seconds and wiped the skeleton a heartbeat before the rows arrived.
+//
+// Blanking was only ever for the design's mock rows, and the skeleton above now overwrites those on the first
+// tick -- so by the time this runs there is nothing left to clear and clearing can only destroy. A skeleton
+// still on screen says "loading", which is true; an empty card says "nothing here", which is not. All this
+// has left to do is make sure the gate is open.
++'setTimeout(lxActReady,10000);'
+// IN PARALLEL, NOT ONE AFTER THE OTHER (RAZA, same report: "platform activity is taking pathetically
+// long to load. it used to be fast"). These two reads have nothing to do with each other -- /lxapi/act
+// is our own cached endpoint and the Horizon call is a hundred payments with their transactions joined
+// -- yet the Horizon request was not even issued until our endpoint had answered. The critical path was
+// the SUM of the two round trips when it only ever needed to be the slower of them.
+//
+// The Horizon leg gets its own catch as well: j() throws on a non-2xx, so a bad response used to reject
+// the whole chain, nothing painted, and the six-second net above fired -- which is how a slow upstream
+// turned into the mock flash. Now it falls through to the empty state instead.
++'Promise.all(['
 +'j("/lxapi/act").then(function(av){'
 +'return ((av&&av.items)||[]).map(function(x){'
 +'return {transaction_hash:x.hash,from:x.addr,created_at:new Date(x.ts).toISOString()};});'
-+'}).catch(function(){return [];}).then(function(acts){'
-// join=transactions costs no extra request and brings back each payment's transaction, which is what
-// makes the operation-count test below possible without a second round trip per row.
-// limit=100, not 40: the 24h counter below counts these too, and a limit sized for the eight visible
-// rows would cap that number without ever saying it had.
-+'return j(\"https://horizon.stellar.org/accounts/\"+LX_FEEACCT+\"/payments?order=desc&limit=100&join=transactions\").then(function(d){'
-+'d.__acts=acts;return d;});'
++'}).catch(function(){return [];}),'
+// TWENTY-FIVE. The limit is the whole cost of this read and it is close to linear -- measured minutes apart:
+// limit=50 took 4,957 / 10,342 / 5,780 ms for 78 KB, limit=25 took 1,870 ms for 40 KB. The card shows eight
+// rows and scrolls to fifty, and /lxapi/act contributes to the same list, so twenty-five of these is ample
+// for what is drawn. The one thing it does cost is the "N in 24h" counter, which reads this list: above
+// twenty-five fee payments in a day that figure would quietly cap. Worth revisiting by fronting this with a
+// cached endpoint of our own -- it is public data, identical for every visitor, and nobody should wait five
+// seconds for it twice.
++'j("https://horizon.stellar.org/accounts/"+LX_FEEACCT+"/payments?order=desc&limit=25").catch(function(){return null;})'
++']).then(function(_p){var acts=_p[0]||[];'
+// NO join=transactions, AND NOT A HUNDRED (RAZA 2026-10-19: "Platform activity is taking forever to
+// load. 10+ seconds"). The note that stood here said the join "costs no extra request", which is true
+// about REQUESTS and was the wrong thing to count. Measured against Horizon just now:
+//
+//     limit=100 with join    46,351 ms   722 KB      <- what the dashboard was waiting on
+//     limit=50  with join    24,325 ms   355 KB
+//     limit=25  with join    10,188 ms   176 KB
+//     limit=100 no join      12,775 ms   156 KB
+//     limit=25  no join       1,870 ms    40 KB
+//
+// The join makes Horizon assemble every payment's transaction, and the cost is roughly linear in the
+// limit: thirty-five of those forty-six seconds buy two fields. Both fields -- operation_count and
+// memo -- are already available for free in the per-row /operations call below, which also joins its
+// transaction, so the test simply moves there and sets the row's own `hide`.
+//
+// Fifty, not a hundred: the 24h counter reads this list too, and fifty is three times the current
+// day's volume while costing a quarter of the time.
++'var d=_p[1]||{};d.__acts=acts;return d;'
 +'}).then(function(d){'
 +'var recs=((d._embedded&&d._embedded.records)||[]).filter(function(o){'
 // fees paid TO the collector, and never the collector shuffling its own balance
@@ -765,13 +865,20 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // unlabelled "Platform activity" stub, because the only operation it had was the one the describer
 // deliberately skips.
 // ...except LayerZero's deferred fee: a USDT0-sourced send pays its fee alone, in its own `lx:lz` transaction
-+'var tx=o.transaction; if(tx&&tx.operation_count===1&&tx.memo!=="lx:lz")return false;'
+//
+// BOTH TESTS NOW RUN PER ROW, not here: without join=transactions `o.transaction` is undefined, so the
+// two guards below are inert and are kept only to document what moved. The same test is applied in the
+// /operations handler further down, where the transaction arrives at no extra cost, and a row that
+// fails it sets its own `hide` instead of never being drawn.
+// Same prefix test as the live one further down, kept in step even though this guard is inert
+// without join=transactions — a documented copy that disagrees with the real rule is worse than none.
++'var tx=o.transaction; if(tx&&tx.operation_count===1&&String(tx.memo||"").indexOf("lx:")!==0)return false;'
 // No action on this platform is a hundred operations wide; dust spam always is.
 +'if(tx&&tx.operation_count>64)return false;'
 // And a single stroop is never a fee.
 +'if((o.asset_type==="native"||!o.asset_code)&&!(parseFloat(o.amount)>=0.0000002))return false;'
 +'return true;});'
-+'if(!recs.length&&!((d&&d.__acts)||[]).length){lxActReady();list.innerHTML=\'<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>\';return;}'
++'if(!recs.length&&!((d&&d.__acts)||[]).length){_actPainted=1;lxActReady();list.innerHTML=\'<div class="activity-feed-row" style="justify-content:center;color:var(--text-soft);font-size:14px">No platform activity yet.</div>\';return;}'
 +'var seenH={},merged=[];'
 +'((d&&d.__acts)||[]).concat(recs).forEach(function(o){'
 +'var hh=o.transaction_hash; if(!hh||seenH[hh])return; seenH[hh]=1; merged.push(o);});'
@@ -783,7 +890,8 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // Every row was painted as "Platform activity" and then replaced one by one as its transaction was read -- so the feed
 // opened as a column of identical placeholder text. The row is drawn as a loading shimmer instead: the time, the wallet
 // and the row's shape are already known and stay put, and nothing is claimed about what happened until it is.
-+'var rows=use.map(function(o){return {ic:SWAP,cls:"",type:"",pending:1,who:o.from,when:ago(o.created_at),hash:o.transaction_hash};});'
+// `ts` rides along so the 24h counter can be recomputed from what is actually DRAWN -- see _feedRender.
++'var rows=use.map(function(o){return {ic:SWAP,cls:"",type:"",pending:1,who:o.from,when:ago(o.created_at),ts:Date.parse(o.created_at),hash:o.transaction_hash};});'
 // ONE REPAINT PER BURST, NOT ONE PER ROW (RAZA 2026-09-22, Android tablet: "the dashboard kinda lags for ~5 seconds
 // until becoming smooth"). Every row that resolved rebuilt the WHOLE list and queued five more icon passes, so ~50 rows
 // arriving one by one meant ~50 rebuilds and ~250 passes -- measured at 8,000+ attribute writes in three seconds, each
@@ -791,9 +899,22 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // (at most every 120ms), and the delayed icon passes are re-armed rather than stacked.
 +'var _frT=0,_frP=[];'
 +'function _feedRender(){ if(_frT) return; _frT=setTimeout(function(){ _frT=0;'
-+' lxActReady();list.innerHTML=rows.filter(function(r){ return !r.hide; }).map(feedRow).join("");paintFeedIcons();feedFillLogos();'
+// THE COUNTER COUNTS WHAT IS ON SCREEN. paint24() runs on `merged`, before any row has been read, so
+// it necessarily counts things the list then drops -- which is how "2 in 24h" sat above one row
+// (RAZA 2026-10-27, and the liquidity deposit behind it was a real bug). Hiding transfers would have
+// re-opened exactly that gap, by design this time.
+//
+// Recounted here instead, from the rows that survive, every time the list repaints. The early
+// paint24() still runs so the figure is not blank while rows are resolving; this corrects it as they
+// settle. Same 24h window, same element.
++' var _vis=rows.filter(function(r){ return !r.hide; });'
++' try{ var _c24=document.querySelector(".activity-card .market-head .lx-act24");'
++'   if(_c24){ var _cut=Date.now()-864e5,_n=0; _vis.forEach(function(r){ if(r.ts>=_cut)_n++; });'
++'     _c24.textContent=(_n>=SOURCE_CAP?(SOURCE_CAP+"+"):String(_n))+" in 24h";'
++'     _c24.title=(_n===1?"1 transaction":_n+" transactions")+" through LumosCore in the last 24 hours"; } }catch(_){}'
++' _actPainted=1;lxActReady();list.innerHTML=_vis.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +' _frP.forEach(clearTimeout); _frP=[300,1200,3000,6000,10000].map(function(ms){ return setTimeout(paintFeedIcons,ms); }); },120); }'
-+'lxActReady();list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
++'_actPainted=1;lxActReady();list.innerHTML=rows.map(feedRow).join("");paintFeedIcons();feedFillLogos();'
 +'[300,1200,3000,6000,10000].forEach(function(ms){setTimeout(paintFeedIcons,ms);});'
 +'var C_USDC="GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN";'
 +'var _brMap=null,_brBurn={};'
@@ -802,13 +923,72 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'var m={},bm={}; ((d&&d.rows)||[]).forEach(function(x){ if(x&&x.feeHash)m[x.feeHash]=x; if(x&&x.burnHash)bm[x.burnHash]=x; }); _brMap=m; _brBurn=bm; return m;'
 +'}).catch(function(){ _brMap={}; return _brMap; }); }'
 +'var _eQ=[],_eA=0;'
-+'function _ePump(){ while(_eA<6&&_eQ.length){ _eA++; (_eQ.shift())(); } }'
+// Eight in flight, not six. Each row is now two small reads instead of one large one, and Horizon meters only
+// /trade_aggregations, so the ceiling here is the browser's own per-host limit rather than an upstream budget.
+// Fifty rows at six-deep was nine waves; at eight it is seven, and each wave is a fifth of what it was.
++'function _ePump(){ while(_eA<8&&_eQ.length){ _eA++; (_eQ.shift())(); } }'
 +'use.forEach(function(o,i){ _eQ.push(function(){'
-// join=transactions brings the memo, which is how a LayerZero or NEAR Intents transfer is recognised (lxXc)
-+'j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20&join=transactions").then(function(t){'
+// THE TRANSACTION ONCE, NOT ONCE PER OPERATION (RAZA 2026-10-19: "some transactions in platform activity still take
+// too long to load"). join=transactions here attaches the WHOLE transaction -- envelope and result XDR included -- to
+// every operation record, so a twenty-operation transaction ships the same object twenty times. Measured over six
+// consecutive rows:
+//
+//     with join    5,263 ms average, worst 24,706 ms / 269 KB
+//     without        768 ms average, worst  1,911 ms /  27 KB
+//
+// The memo (lxXc's cross-chain recognition) and operation_count (the lone-fee and dust tests) are properties of the
+// TRANSACTION, so one small /transactions/<hash> read beside the operations call gives both for 2.8 KB. The two run
+// together, so a row now settles in the slower of the pair rather than the sum -- and the pathological row is gone.
+// The fetched transaction is attached to each record afterwards, which is the shape lxXc already reads.
++'Promise.all(['
++'j("https://horizon.stellar.org/transactions/"+o.transaction_hash+"/operations?limit=20"),'
++'j("https://horizon.stellar.org/transactions/"+o.transaction_hash).catch(function(){return null;})'
++']).then(function(_q){ var t=_q[0]||{}, _txo=_q[1];'
++'try{ var _rr=(t._embedded&&t._embedded.records)||[]; if(_txo)for(var _z=0;_z<_rr.length;_z++)_rr[_z].transaction=_txo; }catch(_){}'
+// THE TEST THAT USED TO GATE THE LIST, now applied where its data is free. A lone payment to the
+// collector is somebody paying us for something, not platform activity, and a hundred-operation
+// transaction is dust spam -- see the note on the filter above, which this replaces.
++'var _r0=((t._embedded&&t._embedded.records)||[])[0], _tx0=_r0&&_r0.transaction;'
+// ANY `lx:` MARKER, NOT JUST LAYERZERO'S (RAZA 2026-10-27: "there has been a trade on crosschain
+// bridge on Stellar through CCTP. i can see it on cross chain recent trxs but not on Dashboard
+// platform activity. Its also recorded in admin panel revenue").
+//
+// The lone-operation test is right — a one-op payment to the collector is usually somebody paying us
+// a listing fee, not platform activity — and `lx:lz` was carved out of it when LayerZero turned out
+// to pay its fee in a transaction of its own. That carve-out was written as an equality test, so it
+// covered exactly the bridge that prompted it.
+//
+// Measured on his transfer: fee 0.0067508 USDC at 2026-10-26T20:02:33Z, exactly 0.2% of 3.3753978,
+// one operation, memo `lx:cctp`. It was reaching this line and being skipped. Three markers exist on
+// Stellar — lx:lz, lx:ni, lx:cctp — so TWO of the three bridges were invisible on the dashboard while
+// appearing correctly in the bridge's own Recent transactions and in admin revenue, which read the
+// receipt rather than the feed.
+//
+// A prefix test instead. The marker is ours and no third party writes it, so "starts with lx:" is the
+// honest shape of the rule the equality test was approximating, and a bridge added tomorrow is
+// covered without anyone remembering this line.
 +'var ops=((t._embedded&&t._embedded.records)||[]).filter(function(x){'
 // the fee payment itself is not the story; the operation beside it is
 +'return !(x.type==="payment"&&x.to===LX_FEEACCT);});'
+// ...AND THE SKIP ASKS WHAT IS LEFT, NOT HOW MANY THERE WERE (RAZA 2026-10-27: "check why it says 2
+// in 24h").
+//
+// The counter read 2 while the list showed 1. Both were right about their own input: paint24() counts
+// `merged` — /lxapi/act plus the collector's payments — while the list drops rows HERE, one by one, so
+// the two were never measuring the same set.
+//
+// The row being dropped was a `liquidity_pool_deposit`: one operation, no memo. Real platform
+// activity, and the describer below even has a branch for it ("Liquidity Added"). It never got there.
+//
+// The comment this replaces says what the test is FOR — "a lone payment to the collector is somebody
+// paying us for something, not platform activity" — and that is a statement about the OPERATION, not
+// the count. Implemented as `operation_count===1` it caught every single-operation transaction,
+// including every one-op action a user actually took.
+//
+// The fee payment has already been stripped one line up, so "nothing left" is exactly "the lone
+// payment WAS the fee". That is the rule the author meant, expressed in the filtering that was
+// already happening. An lx: marker still rescues a bridge, which genuinely does pay alone.
++'if(_tx0&&(_tx0.operation_count>64||(!ops.length&&String(_tx0.memo||"").indexOf("lx:")!==0))){ put({skip:true}); return; }'
 +'var _mint=ops.some(function(x){return x.type==="create_account";})&&ops.some(function(x){return x.type==="set_options"&&String(x.master_key_weight)==="0";});'
 +'var pick=(_mint&&ops.filter(function(x){return x.type==="payment"&&x.asset_issuer&&x.asset_issuer===x.from;})[0])'
 +'||ops.filter(function(x){return x.type&&x.type.indexOf("path_payment")===0;})[0]'
