@@ -137,7 +137,21 @@ const STYLE='<style id="lx-swapcalc-css">'
 +'.lx-smart-info h5{margin:0 0 6px;font-size:13.5px;font-weight:800;color:var(--text)}'
 +'.lx-smart-info p{margin:0;font-size:12.8px;line-height:1.5;color:var(--text-soft)}'
 // 2-step: hide the full picker on step 2, show a compact 2-line summary; bump review sizes
-+'#modalSwap:not(.lx-on-step2) .lx-swapd,#modalSwap:not(.lx-on-step2) .lx-step2-only{display:none!important}'
+// ONE STEP, NOT TWO (RAZA 2026-10-24, having compared the two swap boxes: "one-step on both").
+//
+// `.lx-swapd` is the details panel — rate, slippage, fees, minimum received — and it was gated behind
+// `.lx-on-step2`, so the wallet Swap dialog opened with the figures hidden and revealed them only when
+// Review was pressed. The DASHBOARD swap box (#swapModal, bootA) never had that gate and shows the
+// same figures immediately; the two boxes have simply disagreed since the review step was added.
+//
+// Ungated here rather than by forcing `.lx-on-step2` onto the modal, because three other places
+// REMOVE that class — the flip handler, the post-swap reset and the twin-closer — and any of them
+// would have snapped the panel shut again mid-use. The class now decides nothing on this dialog, so
+// those calls are harmless whatever they do.
+//
+// `.lx-step2-only` keeps its gate: nothing carries that class once the Review/Back pair below is not
+// built, and leaving the rule means a future step-2 element cannot leak onto step 1 by default.
++'#modalSwap:not(.lx-on-step2) .lx-step2-only{display:none!important}'
 +'#modalSwap.lx-on-step2 .lx-step1-only{display:none!important}'
 // STEP 2 KEEPS THE FIELDS (RAZA 2026-09-17: "Lumos token page -> Swap popup -> Step 2: Make it like on XRPL").
 // The review step used to replace the From/To pair with a compact YOU PAY / YOU RECEIVE card, so the amounts a reader
@@ -186,6 +200,30 @@ const STYLE='<style id="lx-swapcalc-css">'
 +'#modalSwap .modal-foot .btn-primary{transition:filter .15s ease,box-shadow .2s ease,transform .08s ease}'
 +'#modalSwap .modal-foot .btn-primary:not(:disabled):hover{filter:brightness(1.07);box-shadow:0 9px 24px rgba(234,106,44,.36)}'
 +'#modalSwap .modal-foot .btn-primary:not(:disabled):active{transform:translateY(1px)}'
+// THE AUTOFILLED AMOUNT FIELD, which goes solid white (RAZA 2026-10-16, relaying a user: "Entering a
+// token amount in the Custom Swap box causes the input background to turn solid white" — and, just as
+// usefully, "I dont see it though").
+//
+// THAT ASYMMETRY IS THE DIAGNOSIS. A bug one person sees and the developer cannot is rarely in the
+// page; it is in what the visitor's browser brings to it. #swapAmtIn is type="text" with NO
+// autocomplete attribute and a fully transparent background, which is exactly the shape Chrome's
+// autofill and every password manager look for. When one of them claims the field it paints its own
+// opaque background, and because ours is transparent there is nothing underneath to keep the dark
+// card look — the field turns into a white box with "1000" in it.
+//
+// NOT A background-color OVERRIDE, which is the fix everyone reaches for first and does not work:
+// the UA paints the autofill background below the author's, so `background:transparent!important`
+// changes nothing. The two things that DO win are an inset box-shadow painted over it, or clipping
+// the background to the glyphs. The shadow needs an opaque colour to paint, and this field sits on a
+// card whose colour it does not know, so it would have to guess one and would be wrong somewhere.
+// `background-clip:text` confines the autofill paint to the letters instead, which leaves the field
+// transparent exactly as designed, on any surface, in either theme.
+//
+// Scoped to the autofill pseudo-class only, so the normal state of every input is untouched.
++'input:-webkit-autofill,input:-webkit-autofill:hover,input:-webkit-autofill:focus,'
++'input:-webkit-autofill:active,textarea:-webkit-autofill,select:-webkit-autofill{'
++'-webkit-background-clip:text!important;background-clip:text!important;'
++'-webkit-text-fill-color:var(--text,#f6f5f3)!important;caret-color:var(--text,#f6f5f3)!important}'
 // dashboard #swapModal picker (base menu CSS — present via _walletdata on the wallet page, but the dashboard has no _walletdata)
 +'.lx-asset-menu{background:var(--surface,#171922);border:1px solid var(--border,rgba(255,255,255,.14));border-radius:12px;padding:6px;box-shadow:0 14px 44px rgba(0,0,0,.55);width:230px;max-height:290px;overflow-y:auto}'
 +'.lx-am-item{display:flex;align-items:center;gap:10px;width:100%;padding:8px 10px;background:none;border:none;border-radius:8px;cursor:pointer;color:var(--text,#fff);font-size:13.5px;text-align:left}'
@@ -320,6 +358,8 @@ const QSTYLE='<style id="lx-qorders-css">'
 +'.lxo-o button[disabled]{opacity:.5;cursor:default}'
 +'.lxo-empty{padding:30px 10px;text-align:center;color:var(--text-soft);font-size:13.5px;line-height:1.6}'
 +'.lxo-empty .sub{display:block;margin-top:5px;font-size:12.5px;color:var(--text-muted)}'
++'.lxo-retry{margin-top:12px;height:30px;padding:0 15px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:color .12s ease,border-color .12s ease,background .12s ease}'
++'.lxo-retry:hover{color:var(--accent,#7c8cff);border-color:var(--accent,#7c8cff);background:rgba(124,140,255,.08)}'
 +'</style>';
 
 const QSCRIPT='<script id="lx-qorders">(function(){'
@@ -831,10 +871,110 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'window.__lxHoldings=bals.filter(function(b){return b.asset_type==="native"||+b.balance>0;}).map(function(b){'
 +'var nat=(b.asset_type==="native");return{code:nat?"XLM":b.asset_code,iss:nat?"":(b.asset_issuer||""),bal:(nat?(+b.balance||0):Math.max(0,(+b.balance||0)-(+b.selling_liabilities||0))),total:(+b.balance||0),native:nat};'
 +'}).filter(function(h){return h.code;}).sort(function(x,y){return (y.native?1:0)-(x.native?1:0)||y.bal-x.bal;});'
++'try{if(window.__lxNftPrune)window.__lxNftPrune();}catch(_){}'
 +'if(window.__lxDashHoldings)window.__lxDashHoldings();}catch(_){}'
 +'try{qSync();}catch(_){}'
 +'try{if(window.__lxQOloadOrders)window.__lxQOloadOrders(true);}catch(_){}'
 +'}).catch(function(){});}'
+// HIDE SINGLE-UNIT NFTs FROM THE ASSET PICKERS (RAZA 2026-10-16: "Im holding an nft in my stellar
+// wallet. In quick actions, swap popup, assets dropdown, why am i seeing nft here in this list.
+// Hide nfts. Only tokens should show up.").
+//
+// THE TEST IS TOTAL SUPPLY, NOT BALANCE, and that distinction is the whole fix. The obvious rule —
+// "balance is one stroop" — is wrong, measured on RAZA's own wallet:
+//
+//   Answerly127   balance 0.0000001   supply       0.0000001   holders     1   <- the NFT
+//   USDT0         balance 0.0000001   supply   3,081,592       holders 28,593  <- a real stablecoin
+//   STONER        balance 0.0000001   supply  74,216,361       holders     92  <- a real token
+//
+// All three look identical in the list. Hiding on balance would have removed USDT0 and STONER from
+// the swap picker, which is a far worse bug than the one being fixed. An asset qualifies only when
+// the ENTIRE supply is one indivisible unit held by one account — a 1-of-1, which is what Stellar
+// NFTs are. Answerly127's toml confirms it independently: answerly.litemint.store, an NFT market.
+//
+// ONLY DUST BALANCES ARE EVER PROBED, which is what keeps this cheap. If the whole supply is one
+// stroop then nobody can hold more than one stroop, so an asset you hold more of CANNOT be a 1-of-1
+// and needs no lookup. RAZA's 26 holdings produce 3 probes, not 26, and the answers are cached: a
+// 1-of-1's supply is fixed for ever, so the cache never needs to expire.
+//
+// IT FAILS OPEN. A probe that errors, times out or is capped leaves the asset visible. Showing an
+// NFT in a picker is untidy; hiding a token someone wants to sell is a trading bug.
+//
+// /assets is not Horizon's metered endpoint -- only /trade_aggregations is -- so these few extra
+// reads do not compete with the price data (see [horizon-rate-limit]).
++'var LXNFT_K="lumos.nft.";'
++'var LXNFT_MAX=12;'                     // a wallet full of dust cannot turn this into a request storm
++'function lxNftCached(k){try{var v=localStorage.getItem(LXNFT_K+k);return v===null?null:(v==="1");}catch(_){return null;}}'
++'function lxNftSave(k,v){try{localStorage.setItem(LXNFT_K+k,v?"1":"0");}catch(_){}}'
+// The Horizon base is stated here rather than taken from `H`. There is no shared `H` in this script:
+// it is declared locally inside ensureTrust() and lxSwap(), and dashHeld() uses the same name for
+// the HOLDINGS ARRAY. Reaching for it from a new function would have picked up whichever happened to
+// be in scope -- the classic shadowing failure this codebase keeps meeting.
++'function lxNftProbe(h){'
++'  var k=h.code+"-"+h.iss;'
++'  var c=lxNftCached(k);'
++'  if(c!==null)return Promise.resolve(c);'
++'  var HZ="https://horizon.stellar.org";'
++'  var u=HZ+"/assets?asset_code="+encodeURIComponent(h.code)+"&asset_issuer="+encodeURIComponent(h.iss)+"&limit=1";'
++'  return fetch(u).then(function(r){return r.json();}).then(function(j){'
++'    var rec=(j&&j._embedded&&j._embedded.records&&j._embedded.records[0])||null;'
++'    if(!rec)return false;'
+       // Horizon splits both by authorisation state; the authorized bucket is the live supply.
++'    var sup=+(((rec.balances)||{}).authorized||0);'
++'    var acc=+(((rec.accounts)||{}).authorized||0);'
++'    var isNft=(sup>0&&sup<=0.0000001&&acc<=1);'
++'    lxNftSave(k,isNft);'
++'    return isNft;'
++'  }).catch(function(){return false;});'                    // fail open
++'}'
++'function lxNftPrune(){'
++'  var hs=window.__lxHoldings||[];'
++'  var dust=hs.filter(function(h){return !h.native&&h.iss&&(+h.total||0)<=0.0000001;}).slice(0,LXNFT_MAX);'
++'  if(!dust.length)return;'
++'  Promise.all(dust.map(function(h){return lxNftProbe(h).then(function(v){return v?(h.code+"-"+h.iss):null;});}))'
++'   .then(function(hits){'
++'     var drop={};var any=false;'
++'     hits.forEach(function(k){if(k){drop[k]=1;any=true;}});'
++'     if(!any)return;'
++'     window.__lxHoldings=(window.__lxHoldings||[]).filter(function(h){return !drop[h.code+"-"+h.iss];});'
+       // Repaint anything already on screen that was built from the old list.
++'     try{if(window.__lxDashHoldings)window.__lxDashHoldings();}catch(_){}'
++'     try{var m=document.querySelector(".lx-asset-menu");if(m)m.remove();}catch(_){}'
++'   });'
++'}'
+// AND THE FIELD SAYS "DO NOT FILL ME", which is the half that stops it happening rather than hiding
+// it. The CSS above contains the damage; this removes the reason. A field whose inputmode is decimal
+// or numeric is an AMOUNT — there is no address, no name and no password that belongs in it, so no
+// autofill of any kind is ever correct there. Chrome reads autocomplete; the three data- attributes
+// are the documented opt-outs for LastPass, 1Password and Dashlane, which have their own heuristics
+// and ignore autocomplete entirely.
+//
+// Bound on focusin rather than swept on a timer: these fields live in modals built long after load,
+// and focusin reaches every one of them at the only moment that matters — the user is about to type
+// — for the cost of a single delegated listener.
++'function lxNoFill(i){ if(!i||i.__lxnf)return; var m=(i.getAttribute("inputmode")||"").toLowerCase();'
++'  if(m!=="decimal"&&m!=="numeric")return;'
++'  i.__lxnf=1;'
++'  try{ i.setAttribute("autocomplete","off"); i.setAttribute("data-lpignore","true");'
++'       i.setAttribute("data-1p-ignore",""); i.setAttribute("data-form-type","other"); }catch(_){}'
++'}'
++'function lxNoFillAll(r){ try{ [].forEach.call((r||document).querySelectorAll("input[inputmode]"),lxNoFill); }catch(_){} }'
++'try{ document.addEventListener("focusin",function(e){ lxNoFill(e&&e.target); },true);'
++'     if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",function(){lxNoFillAll();});'
++'     else lxNoFillAll();'
++'     setTimeout(lxNoFillAll,2000); }catch(_){}'
++'window.__lxNoFillAll=lxNoFillAll;'
++'window.__lxNftPrune=lxNftPrune;'
+// AND IT RUNS ITSELF, because the call sites cannot be trusted to reach it. _externalize.js splits
+// this build's inline script into separate files and EACH GETS ITS OWN SCOPE, so a bare
+// `lxNftPrune()` written beside a holdings assignment in another transform resolves to nothing —
+// measured: the dashboard's second writer landed in a file that does not define it, the
+// ReferenceError went into its own try/catch, and the NFT stayed in the list while /wallet was
+// already correct. The window form fixes the name, but not ORDER: a file that assigns holdings
+// before this one has loaded still calls nothing. Two late passes close that, and they are free
+// when there is nothing to do — prune exits immediately unless a dust balance is present, and any
+// asset it has already judged is answered from localStorage without a request.
++'try{setTimeout(lxNftPrune,1500);setTimeout(lxNftPrune,5000);}catch(_){}'
 +'window.__lxQORefresh=qRefresh;'
 +'window.__lxQOlimit=function(){qBuildUi();qSync();qIcons().then(function(){qSync();});qLoadBal().then(function(){qSync();});};'
 
@@ -849,23 +989,72 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'function qOrdersUi(){'
 +'var pane=document.querySelector("#swapModal .lxo-pane[data-pane=\\"orders\\"]");if(!pane||pane.__b)return;pane.__b=1;'
 +'pane.innerHTML=\'<div class="lxo-list"><div class="lxo-empty">Loading\\u2026</div></div>\';'
-+'pane.addEventListener("click",function(e){var b=e.target&&e.target.closest?e.target.closest("[data-off]"):null;'
++'pane.addEventListener("click",function(e){var t=e.target&&e.target.closest?e.target:null;if(!t)return;'
++'var rt=t.closest("[data-lxoretry]");'
++'if(rt){e.preventDefault();e.stopImmediatePropagation();'
++'var l=qOEl(".lxo-list");if(l)l.innerHTML=\'<div class="lxo-empty">Loading\\u2026</div>\';'
++'window.__lxQOloadOrders();return;}'
++'var b=t.closest("[data-off]");'
 +'if(!b)return;e.preventDefault();e.stopImmediatePropagation();qCancel(b);},true);'
 +'}'
+// Horizon's /offers is not reliably fast. RAZA 2026-10-28: "Orders tab taking too long to load."
+// Measured from the live dialog, the SAME request for the same account five times in a row:
+//
+//   282ms   1259ms   21766ms   1387ms   290ms        (limit=200 came back in 702ms)
+//
+// so the page size is not the cost -- the endpoint itself is erratic, and nothing here was built for
+// that. Three faults turned it into a dialog that looks dead:
+//
+//  1. the artwork manifest was fetched FIRST and the offers request only started once it resolved, so a
+//     round trip for decoration sat in front of the data. Both start together now. The manifest is 9 KB
+//     and memoised, so this is the smallest of the three -- but it is pure serial waiting.
+//  2. there was NO deadline. The .catch below fires on a rejection, and a request that never answers is
+//     not a rejection, so "Loading..." stayed on screen for ever with no way back but a page refresh.
+//  3. nothing said it was still working, so twenty seconds of a real, succeeding request was
+//     indistinguishable from a hang.
+//
+// The deadline is 30s, chosen ABOVE the 21.8s worst case with headroom. A deadline shorter than the slow
+// call aborts requests that were going to succeed and reports nothing -- the trap xrpl's rpc() documents
+// at length, where a 12s limit silently killed one whole direction of the swap quote.
+//
+// QOSEQ makes the paint belong to the newest load: with up to 30s in flight, a cancel-triggered reload
+// can now overtake the request it replaced, and the loser must not paint its stale list over the winner.
++'var QOSEQ=0;'
 +'window.__lxQOloadOrders=function(){'
 +'var list=qOEl(".lxo-list");if(!list)return;'
 +'var addr=qAddr();'
 +'if(!addr){list.innerHTML=\'<div class="lxo-empty">Connect a wallet<span class="sub">Your open orders across every pair will show here.</span></div>\';return;}'
++'var seq=++QOSEQ;'
++'function qOStale(){return seq!==QOSEQ||!qOEl(".lxo-list");}'
++'var slow=setTimeout(function(){if(qOStale())return;var em=qOEl(".lxo-empty");if(!em)return;'
++'em.innerHTML=\'Still loading\\u2026<span class="sub">The Stellar network is answering slowly. This can take up to half a minute.</span>\';},4000);'
++'var ctl=null;try{ctl=new AbortController();}catch(_){}'
++'var dead=setTimeout(function(){try{ctl&&ctl.abort();}catch(_){}},30000);'
++'function qODone(){clearTimeout(slow);clearTimeout(dead);}'
 // cache:"no-store" because the reload right after a cancel asks for a URL the browser already has.
 // Served from that cache it returns the pre-cancel list, which is one of the two reasons a cancelled
 // order kept reappearing until a hard refresh.
-+'qIcons().then(function(){return fetch(QH+"/accounts/"+addr+"/offers?limit=50&order=desc",{cache:"no-store"});})'
-+'.then(function(r){return r.json();}).then(function(d){'
+// "NO OPEN ORDERS" MUST MEAN HORIZON SAID SO. Without the status check below, every HTTP error -- a 429,
+// a 5xx, a gateway page -- still parses as JSON, `_embedded` is simply absent, and the `||[]` further
+// down turned that into an empty list. The dialog then stated, as fact, that the account has no open
+// orders, during exactly the outage when it could not know. A trader who believes it places the order
+// again. One value must never mean both "nothing" and "couldn't ask".
+//
+// 404 is the one status that IS an answer: Horizon returns it for an account that has never been funded,
+// and such an account cannot hold an offer.
++'Promise.all([qIcons().catch(function(){}),'
++'fetch(QH+"/accounts/"+addr+"/offers?limit=50&order=desc",{cache:"no-store",signal:ctl?ctl.signal:undefined})'
++'.then(function(r){if(r.status===404)return{_embedded:{records:[]}};'
++'if(!r.ok)throw new Error("horizon "+r.status);return r.json();})])'
++'.then(function(qOa){qODone();if(qOStale())return;var d=qOa[1];'
+// Shape-checked too: a 200 that is not the document we expect is not an empty list either.
++'var qOrecs=d&&d._embedded&&d._embedded.records;'
++'if(Object.prototype.toString.call(qOrecs)!=="[object Array]")throw new Error("unexpected response");'
 // The other reason: even uncached, Horizon can still list an offer for a moment after the transaction
 // that deleted it was accepted. Ids we have cancelled ourselves are filtered out here rather than in
 // the row loop, so the "No open orders" branch below still fires when the last one goes. Stellar offer
 // ids are never reused, so an id suppressed here can never hide a real order later.
-+'var recs=((d&&d._embedded&&d._embedded.records)||[]).filter(function(o){'
++'var recs=qOrecs.filter(function(o){'
 +'return !(window.__lxQOcx&&window.__lxQOcx[String(o.id)]);});'
 +'if(!recs.length){list.innerHTML=\'<div class="lxo-empty">No open orders<span class="sub">A limit order stays here until it fills or you cancel it.</span></div>\';return;}'
 +'list.innerHTML="";'
@@ -929,7 +1118,19 @@ const QSCRIPT='<script id="lx-qorders">(function(){'
 +'var btn=cb;'
 +'btn.__o={id:String(o.id),s:s,b:b,price:String(o.price||"1")};'
 +'list.appendChild(row);});'
-+'}).catch(function(){list.innerHTML=\'<div class="lxo-empty">Could not load your orders.</div>\';});'
+// An abort and a network error read the same here on purpose: either way we do not know what the account
+// holds, and the one useful thing to offer is another go. Re-resolved rather than using the closure's
+// `list`, which is detached if the pane was rebuilt while the request was in flight.
+//
+// A FAILED REFRESH MUST NOT WIPE ROWS THAT ARE ALREADY ON SCREEN. This loader runs again after a cancel,
+// with the list painted, and the first version of this branch replaced those rows with an error after
+// 30s -- so a slow Horizon destroyed a correct list and told the user their orders could not be read,
+// which was worse than the hang it replaced. Caught by watching the pane through a stalled request
+// rather than by reading the diff. Rows stay; the toast carries the failure.
++'}).catch(function(){qODone();if(qOStale())return;var el=qOEl(".lxo-list");if(!el)return;'
++'if(el.querySelector(".lxo-o")){(window.lxToast||function(){})("Could not refresh your orders. The list below may be out of date.",true);return;}'
++'el.innerHTML=\'<div class="lxo-empty">Could not load your orders<span class="sub">The network did not answer in time. Your orders are safe \\u2014 this only failed to read them.</span>\''
++'+\'<button type="button" class="lxo-retry" data-lxoretry="1">Try again</button></div>\';});'
 +'};'
 +'function qCancel(btn){'
 +'var o=btn.__o;if(!o||btn.__busy)return;'
@@ -1098,7 +1299,7 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 +'if(w==="lobstr")return import("https://esm.sh/@lobstrco/signer-extension-api").then(function(m){var s=m.signTransaction||(m.default&&m.default.signTransaction);return s(xdr);}).then(function(r){return (r&&r.signedTransaction)||r;});'
 +'return Promise.reject(new Error("Reconnect your Stellar wallet to sign (unsupported: "+(w||"none")+")"));};}'
 +'var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}if(!ME)return;var H="https://horizon.stellar.org";'
-+'fetch(H+"/accounts/"+ME).then(function(r){return r.json();}).then(function(acc){if(!acc||!acc.balances)return;var bals=acc.balances;var nb=bals.filter(function(b){return b.asset_type==="native";})[0];window.__lxNative=+(nb&&nb.balance)||0;window.__lxAssets=window.__lxAssets||{};bals.forEach(function(b){if(b.asset_code&&b.asset_issuer)window.__lxAssets[b.asset_code]=b.asset_issuer;});var _LI=window.__lxLumosIssuer||"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";var lum=bals.filter(function(b){return b.asset_code==="LUMOS"&&b.asset_issuer===_LI;}).reduce(function(s,b){return s+(+b.balance||0);},0);if(window.__lxFeeTierSet)window.__lxFeeTierSet(lum);else{window.__lxLumosBal=lum;window.__lxFeeRate=lum>=250000?0.001:0.002;}var _sub=+acc.subentry_count||0,_spon=(+acc.num_sponsoring||0)-(+acc.num_sponsored||0),_res=(2+_sub+_spon)*0.5,_sl=+(nb&&nb.selling_liabilities)||0;window.__lxMaxXLM=Math.max(0,(window.__lxNative||0)-_res-_sl-0.001);window.__lxHoldings=bals.filter(function(b){return b.asset_type!=="liquidity_pool_shares"&&(b.asset_type==="native"||+b.balance>0);}).map(function(b){var nat=b.asset_type==="native";return{code:nat?"XLM":b.asset_code,iss:nat?"":(b.asset_issuer||""),bal:(nat?(+b.balance||0):Math.max(0,(+b.balance||0)-(+b.selling_liabilities||0))),total:(+b.balance||0),native:nat};}).filter(function(h){return h.code;}).sort(function(a,b){return (b.native?1:0)-(a.native?1:0)||b.bal-a.bal;});if(window.__lxDashHoldings)window.__lxDashHoldings();}).catch(function(){});}'
++'fetch(H+"/accounts/"+ME).then(function(r){return r.json();}).then(function(acc){if(!acc||!acc.balances)return;var bals=acc.balances;var nb=bals.filter(function(b){return b.asset_type==="native";})[0];window.__lxNative=+(nb&&nb.balance)||0;window.__lxAssets=window.__lxAssets||{};bals.forEach(function(b){if(b.asset_code&&b.asset_issuer)window.__lxAssets[b.asset_code]=b.asset_issuer;});var _LI=window.__lxLumosIssuer||"GB5T2EQC2VDG2XEYQ5C2CQJ2SCB5RFPPWALUU2GQ3R5HUEGOZST55B6S";var lum=bals.filter(function(b){return b.asset_code==="LUMOS"&&b.asset_issuer===_LI;}).reduce(function(s,b){return s+(+b.balance||0);},0);if(window.__lxFeeTierSet)window.__lxFeeTierSet(lum);else{window.__lxLumosBal=lum;window.__lxFeeRate=lum>=250000?0.001:0.002;}var _sub=+acc.subentry_count||0,_spon=(+acc.num_sponsoring||0)-(+acc.num_sponsored||0),_res=(2+_sub+_spon)*0.5,_sl=+(nb&&nb.selling_liabilities)||0;window.__lxMaxXLM=Math.max(0,(window.__lxNative||0)-_res-_sl-0.001);window.__lxHoldings=bals.filter(function(b){return b.asset_type!=="liquidity_pool_shares"&&(b.asset_type==="native"||+b.balance>0);}).map(function(b){var nat=b.asset_type==="native";return{code:nat?"XLM":b.asset_code,iss:nat?"":(b.asset_issuer||""),bal:(nat?(+b.balance||0):Math.max(0,(+b.balance||0)-(+b.selling_liabilities||0))),total:(+b.balance||0),native:nat};}).filter(function(h){return h.code;}).sort(function(a,b){return (b.native?1:0)-(a.native?1:0)||b.bal-a.bal;});try{if(window.__lxNftPrune)window.__lxNftPrune();}catch(_){}if(window.__lxDashHoldings)window.__lxDashHoldings();}).catch(function(){});}'
 +'function bootA(){var modal=document.getElementById("swapModal");if(!modal)return true;if(modal.__lxd)return true;'
 +'var inp=document.getElementById("swapAmtIn"),swapFrom=document.getElementById("swapFrom"),swapTo=document.getElementById("swapTo");if(!inp||!swapFrom||!swapTo)return true;modal.__lxd=1;dashBoot();'
 +'var out=document.getElementById("swapAmtOut"),rateEl=document.getElementById("swapRate"),go=document.getElementById("swapGo"),flip=document.getElementById("swapFlip");'
@@ -1430,7 +1631,12 @@ const SCRIPT='<script id="lx-swapcalc">(function(){'+'var SWSU="'+SW_STELLAR_URI
 // wire "Confirm Swap" to a real path-payment swap (uses the wallet page's shared signing helpers)
 +'var confirmBtn=[].slice.call(modal.querySelectorAll("button")).filter(function(x){return /confirm swap/i.test(x.textContent||"");})[0];'
 // 2-step flow: Review (step 1) advances to the review screen; Back (step 2) returns; Confirm executes on step 2
-+'if(confirmBtn&&!confirmBtn.__lxstep){confirmBtn.__lxstep=1;var _foot=confirmBtn.parentNode;_summary=document.createElement("div");_summary.className="lx-swap-summary";var _sp=modal.querySelector(".swap-pair");if(_sp&&_sp.parentNode)_sp.parentNode.insertBefore(_summary,_sp.nextSibling);_review=confirmBtn.cloneNode(true);confirmBtn.classList.add("lx-step2-only");_review.className=(_review.className||"").replace(/lx-step2-only/g,"").trim()+" lx-review-btn lx-step1-only";_review.removeAttribute("id");_review.innerHTML="Review Swap \\u2192";_review.disabled=confirmBtn.disabled;var _cancel=_foot?[].slice.call(_foot.querySelectorAll("button")).filter(function(x){return /^cancel$/i.test((x.textContent||"").trim());})[0]:null;if(_foot){if(_cancel){_cancel.classList.add("lx-step1-only");_back=_cancel.cloneNode(true);_back.className=(_back.className||"").replace(/lx-step1-only/g,"").trim()+" lx-back-btn lx-step2-only";_back.removeAttribute("id");_back.innerHTML="\\u2190 Back";_back.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();modal.classList.remove("lx-on-step2");},true);_foot.insertBefore(_back,_cancel.nextSibling);_foot.insertBefore(_review,_back.nextSibling);}else{_foot.insertBefore(_review,confirmBtn);}}_review.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();if(_review.disabled)return;var amt=parseFloat((fromInput.value||"").replace(/,/g,""))||0;if(!(amt>0)){(window.lxToast||function(){})("Enter an amount to swap");return;}fillSummary();modal.classList.add("lx-on-step2");},true);}'
+// The Review/Back pair is NOT built any more — see the CSS note above. Only the summary node is kept,
+// because fillSummary() writes into it and both are guarded against its absence; it is display:none in
+// every state, so it costs a node and shows nothing. confirmBtn deliberately does NOT get
+// .lx-step2-only and Cancel does NOT get .lx-step1-only, so both stay visible exactly as they do on
+// the dashboard box: fill the amounts, read the figures, press Confirm Swap.
++'if(confirmBtn&&!confirmBtn.__lxstep){confirmBtn.__lxstep=1;_summary=document.createElement("div");_summary.className="lx-swap-summary";var _sp=modal.querySelector(".swap-pair");if(_sp&&_sp.parentNode)_sp.parentNode.insertBefore(_summary,_sp.nextSibling);}'
 +'if(confirmBtn&&!confirmBtn.__lxswap){confirmBtn.__lxswap=1;_confirm=confirmBtn;confirmBtn.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();var toast=window.lxToast||function(m){};'
 // Never refuse in silence: show whichever reason the quote logic already wrote to the error line.
 +'if(confirmBtn.disabled){var _w=(errEl&&errEl.style.display!=="none"&&(errEl.textContent||"").trim())||"";'
