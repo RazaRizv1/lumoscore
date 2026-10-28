@@ -44,7 +44,10 @@ const CSS=`<style id="lx-trending-css">
 
 const SCRIPT=`<script id="lx-trending">(function(){
 if(window.__lxTrending)return;window.__lxTrending=1;
-function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}
+// lumos.network is only a chain name on builds since the multichain rework; a wallet connected
+// before it left "mainnet" behind for ever, which read naively is !== "stellar" and killed this
+// whole layer on production. Fall through to lumos.chain -- same rule as _lumosparent.js.
+function net(){try{var n=(localStorage.getItem("lumos.network")||"").toLowerCase();if(n!=="xrpl"&&n!=="stellar")n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n;}catch(_){return "";}}
 var nw=net();if(nw&&nw!=="stellar")return;
 var SE="https://api.stellar.expert/explorer/public/asset";
 var H="https://horizon.stellar.org";

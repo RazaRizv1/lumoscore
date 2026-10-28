@@ -406,7 +406,14 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 + 'var NETF=' + JSON.stringify(netLogoKeys()) + ';'
 + withNiFiles(lxXcBuild.toString()) + ';' + 'var LX_C_USDC="' + LX_C_USDC + '";' + lxXcRow.toString() + ';' + lxXc.toString() + ';' + lxFeedRow.toString() + ';'
 +'if(window.__lxRealData)return;window.__lxRealData=1;'
-+'function net(){try{return (localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();}catch(_){return "";}}'
+// TRUST lumos.network ONLY WHEN IT IS A CHAIN NAME. It is written by one place -- setConnected() in
+// _wallet_realconnect.js -- which today stores "stellar" or "xrpl". But the PRE-MULTICHAIN build used
+// that same key for mainnet-vs-testnet, so every wallet connected before the rework still carries
+// lumos.network="mainnet" and localStorage keeps it for ever. Read naively, "mainnet" !== "stellar"
+// and this whole layer returned: Platform Activity sat on its placeholder rows on PRODUCTION while
+// staging (a different origin, so a clean localStorage) looked fine. Falling through to lumos.chain
+// is the same rule _lumosparent.js already applies, and it self-heals with no migration.
++'function net(){try{var n=(localStorage.getItem("lumos.network")||"").toLowerCase();if(n!=="xrpl"&&n!=="stellar")n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n;}catch(_){return "";}}'
 +'if(net()!=="stellar")return;'                        // Stellar-only for now
 +'var SWAP=\''+SWAP+'\',DROP=\''+DROP+'\';'
 +'function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}'

@@ -5,7 +5,7 @@
 //  - Recent Activity: real operations (sent/received/swap/lp/order), grouped by day.
 //  - Holdings / open-orders / pools counts.
 // Public + CORS Horizon + CoinGecko. Stellar-only; leaves sample data otherwise. Idempotent.
-const fs=require('fs');const{read,getContents,VERIFIED}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
+const fs=require('fs');const{read,getContents,VERIFIED,DOMAIN_DISPLAY}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 // Vendored QR encoder (qrcode-generator, MIT) so the Receive popup QR is real, not decorative.
 const QRLIB='<script id="lx-qrlib">'+fs.readFileSync(__dirname+'/_qrlib.js','utf8')+'<\/script>';
 
@@ -462,7 +462,10 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'setTimeout(function(){[].forEach.call(document.querySelectorAll(LXWM),function(e){e.classList.add("lxp");});},6000);}'
 +'if(document.readyState!=="loading")lxWdUnmask();else document.addEventListener("DOMContentLoaded",lxWdUnmask);'
 +'if(window.__lxWalletData)return;window.__lxWalletData=1;'
-+'function netOK(){try{var n=(localStorage.getItem("lumos.network")||localStorage.getItem("lumos.chain")||"").toLowerCase();return n==="stellar";}catch(_){return false;}}'
+// lumos.network is only a chain name on builds since the multichain rework; a wallet connected
+// before it left "mainnet" behind for ever, which read naively is !== "stellar" and made netOK()
+// false on production. Fall through to lumos.chain -- same rule as _lumosparent.js.
++'function netOK(){try{var n=(localStorage.getItem("lumos.network")||"").toLowerCase();if(n!=="xrpl"&&n!=="stellar")n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n==="stellar";}catch(_){return false;}}'
 +'var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}'
 +'if(!netOK()||!/^G[A-Z2-7]{55}$/.test(ME)){reveal();return;}'
 +'var IC='+JSON.stringify(IC)+',STELLAR_URI='+JSON.stringify(STELLAR_URI)+',QA='+JSON.stringify(QA_ACTIONS)+',QARM='+JSON.stringify(QA_REMOVE)+',LPQA='+JSON.stringify(LP_ACTIONS)+';'
@@ -664,6 +667,20 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // so the truthiness test above answers "not verified" for exactly those. Same !==undefined rule the
 // Trade list and search already use.
 +'function lxVfdHas(code,iss){return !!(code&&iss)&&LX_VFD[code+"|"+iss]!==undefined;}'
+// WHAT WE SHOW WHERE THE CHAIN'S VALUE IS STALE (RAZA 2026-10-21: "on wallet page, my assets, Lumos
+// token still shows its domain as lumosdao.io. please change that to lumoscore.com").
+//
+// LUMOS's issuer declares the pre-rename lumosdao.io and genuinely does -- confirmed against Horizon,
+// so this is not an upstream error being corrected. lib.js has carried DOMAIN_DISPLAY for exactly this
+// since the rename, and it is deliberately SEPARATE from VERIFIED: that map decides whether an asset is
+// trusted (presence only, its value is never compared), this one decides what a reader sees. Folding
+// them together would let a display tweak grant or revoke a tick.
+//
+// This is the SEVENTH surface to need it. Six client layers had it, the generated middleware was fixed
+// on 2026-10-20 ([[middleware-is-generated]]), and the wallet row was still printing the raw map value.
+// When a shared display map exists, grep for its CONSUMERS rather than assuming the list is complete.
++'var DDOM='+JSON.stringify(DOMAIN_DISPLAY)+';'
++'function dispDom(c,i,d){return DDOM[(c||"")+"|"+(i||"")]||d||"";}'
 // everything else gets its home domain from the issuer account itself, cached a week
 +'var LX_HDQ={};'
 +'function lxHdFor(iss,cb){if(!iss)return;var k="lumos.hd."+iss;'
@@ -747,7 +764,8 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'function lxIssLine(code,iss,native){'
 +'if(native)return \'<span class="lx-asb-t">Stellar \\u00b7 native</span>\';'
 +'if(!iss)return \'<span class="lx-asb-t">Stellar asset</span>\';'
-+'var v=lxVfd(code,iss),vv=lxVfdHas(code,iss),h=\'<span class="lx-asb" data-vk="\'+esc(code+"|"+iss)+\'">\';'
+// dispDom wraps the VALUE only; vv (presence) is untouched, so the tick is decided exactly as before.
++'var v=dispDom(code,iss,lxVfd(code,iss)),vv=lxVfdHas(code,iss),h=\'<span class="lx-asb" data-vk="\'+esc(code+"|"+iss)+\'">\';'
 +'if(vv)h+=\'<span class="lx-vfd" title="Verified issuer\'+(v?" \\u00b7 "+esc(v):"")+\'">\'+LX_CKSVG+\'</span>\';'
 +'h+=\'<span class="lx-hd" data-hd="\'+esc(iss)+\'">\'+(v?esc(v):"")+\'</span>\';'
 +'h+=\'<span class="lx-iss" title="\'+esc(iss)+\'">\'+esc(shrt(iss))+\'</span>\';'
@@ -795,7 +813,12 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'var scope=root||document;'
 +'setTimeout(function(){try{[].slice.call(scope.querySelectorAll(".lx-hd[data-hd]")).forEach(function(el){'
 +'if(el.textContent)return;var iss=el.getAttribute("data-hd");el.removeAttribute("data-hd");'
-+'lxHdFor(iss,function(d){if(d)el.textContent=d;});});}catch(_){}} ,1200);'
+// The override applies here too, though today it never fires: this path only runs for rows whose
+// value is EMPTY, i.e. assets we do not vouch for, and the one override we have is on a verified
+// asset. Wired anyway so a future entry on an unverified asset does not need this found again. The
+// code comes from the row's own data-vk, which is already "CODE|ISSUER".
++'var par=el.closest&&el.closest(".lx-asb"),vk=(par&&par.getAttribute("data-vk"))||"",cd=vk.split("|")[0]||"";'
++'lxHdFor(iss,function(d){var s=dispDom(cd,iss,d);if(s)el.textContent=s;});});}catch(_){}} ,1200);'
 +'}catch(_){}}'
 +'function lxAssetMeta(code,iss,native){'
 +'if(native||!code||!iss)return "";'
@@ -890,6 +913,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
   +'window.__lxLps=lps;'
   +'window.__lxHoldings=bals.filter(function(bb){return bb.asset_type!=="liquidity_pool_shares"&&(bb.asset_type==="native"||+bb.balance>0);})'
   +'.map(function(bb){var nat=bb.asset_type==="native";return{code:nat?"XLM":bb.asset_code,iss:nat?"":(bb.asset_issuer||""),bal:+bb.balance,native:nat};});'
+  +'try{if(window.__lxNftPrune)window.__lxNftPrune();}catch(_){}'
   +'window.__lxWalletEarly=1;}catch(_){}'
 // Only ever looks up a holding of exactly one stroop, and only one it has not already judged, so on a
 // normal wallet this makes no requests at all.
@@ -911,6 +935,7 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // reconnect to a funded account clears it rather than leaving a stale "not active".
 +'try{window.__lxRows=rows;window.__lxLps=lps;window.__lxAcctMissing=(acc&&acc.__nf)?1:0;}catch(_){}'
 +'window.__lxHoldings=bals.filter(function(bb){return bb.asset_type!=="liquidity_pool_shares"&&(bb.asset_type==="native"||+bb.balance>0);}).map(function(bb){var nat=bb.asset_type==="native";return{code:nat?"XLM":bb.asset_code,iss:nat?"":(bb.asset_issuer||""),bal:+bb.balance,native:nat};}).filter(function(h){return h.code;}).sort(function(a,b){return (b.native?1:0)-(a.native?1:0)||b.bal-a.bal;});'
++'try{if(window.__lxNftPrune)window.__lxNftPrune();}catch(_){}'
 // ---- address ----
 +'var ad=document.querySelector(".wallet-chip .text");if(ad)ad.textContent=shrt(ME);'
 // ---- portfolio headline (real total) ----
@@ -1176,9 +1201,11 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // ---- My Assets row actions (Trade on DEX / Send / more) wired to finalized flows ----
 // row-menu (⋮) items: wire "View on Stellar Explorer" (asset page) and "Pin to top"
 +'function closeRowMenu(){var m=document.querySelector(".row-menu.open");if(m)m.classList.remove("open");}'
-+'function applyPins(){var tb=document.getElementById("assetsTable");if(!tb)return;var pinned;try{pinned=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");}catch(_){return;}for(var i=pinned.length-1;i>=0;i--){var rows=tb.querySelectorAll("tr");for(var j=0;j<rows.length;j++){var ic=rows[j].querySelector(".lx-aico");if(ic&&ic.getAttribute("data-lxc")===pinned[i]){var row=rows[j];tb.insertBefore(row,tb.firstChild);row.classList.add("lx-pinned");var nm=row.querySelector(".nm");if(nm&&!nm.querySelector(".lx-pin-badge")){var pb=document.createElement("span");pb.className="lx-pin-badge";pb.title="Pinned";pb.innerHTML=\'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>\';nm.appendChild(pb);}break;}}}}'
++'function lxPinKey(c,i){return i?(c+"-"+i):c;}'
++'function lxPinHit(entry,c,i){return entry===lxPinKey(c,i)||entry===c;}'
++'function applyPins(){var tb=document.getElementById("assetsTable");if(!tb)return;var pinned;try{pinned=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");}catch(_){return;}for(var i=pinned.length-1;i>=0;i--){var rows=tb.querySelectorAll("tr");for(var j=0;j<rows.length;j++){var ic=rows[j].querySelector(".lx-aico");if(ic&&lxPinHit(pinned[i],ic.getAttribute("data-lxc"),ic.getAttribute("data-lxi"))){var row=rows[j];tb.insertBefore(row,tb.firstChild);row.classList.add("lx-pinned");var nm=row.querySelector(".nm");if(nm&&!nm.querySelector(".lx-pin-badge")){var pb=document.createElement("span");pb.className="lx-pin-badge";pb.title="Pinned";pb.innerHTML=\'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"></path></svg>\';nm.appendChild(pb);}break;}}}}'
 +'function pinAsset(code){if(!code)return;var pinned;try{pinned=JSON.parse(localStorage.getItem("lumos.pinned")||"[]");}catch(_){pinned=[];}var ix=pinned.indexOf(code),unpin=ix>=0;if(unpin)pinned.splice(ix,1);else pinned.unshift(code);try{localStorage.setItem("lumos.pinned",JSON.stringify(pinned));}catch(_){}if(unpin){var tb=document.getElementById("assetsTable");if(tb){var rows=tb.querySelectorAll("tr");for(var i=0;i<rows.length;i++){var ic=rows[i].querySelector(".lx-aico");if(ic&&ic.getAttribute("data-lxc")===code){rows[i].classList.remove("lx-pinned");var bd=rows[i].querySelector(".lx-pin-badge");if(bd)bd.remove();break;}}}lxToast(code+" unpinned");}else{applyPins();lxToast(code+" pinned to top");}}'
-+'function wireRowMenu(){document.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest(".row-menu button"):null;if(!btn)return;var t=(btn.textContent||"").trim();var a=window.__lxActiveAsset||{};if(/View on Stellar Explorer/i.test(t)){e.preventDefault();e.stopPropagation();var u=(a.code&&a.iss)?("https://stellar.expert/explorer/public/asset/"+encodeURIComponent(a.code)+"-"+a.iss):("https://stellar.expert/explorer/public/account/"+ME);window.open(u,"_blank","noopener");closeRowMenu();return;}if(/Pin to top|Unpin/i.test(t)){e.preventDefault();e.stopPropagation();pinAsset(a.code);closeRowMenu();return;}},true);}'
++'function wireRowMenu(){document.addEventListener("click",function(e){var btn=e.target&&e.target.closest?e.target.closest(".row-menu button"):null;if(!btn)return;var t=(btn.textContent||"").trim();var a=window.__lxActiveAsset||{};if(/View on Stellar Explorer/i.test(t)){e.preventDefault();e.stopPropagation();var u=(a.code&&a.iss)?("https://stellar.expert/explorer/public/asset/"+encodeURIComponent(a.code)+"-"+a.iss):("https://stellar.expert/explorer/public/account/"+ME);window.open(u,"_blank","noopener");closeRowMenu();return;}if(/Pin to top|Unpin/i.test(t)){e.preventDefault();e.stopPropagation();pinAsset(lxPinKey(a.code,a.iss));closeRowMenu();return;}},true);}'
 // top-left wallet chip: the external-link icon opens the account on Stellar.Expert
 +'function wireWalletLink(){var row=document.querySelector(".hero-id-row");if(!row)return;var btns=row.querySelectorAll("button,a");for(var i=0;i<btns.length;i++){var b=btns[i];if(b.__lxlink)continue;var poly=b.querySelector("polyline");if(poly&&/15\\s+3\\s+21\\s+3\\s+21\\s+9/.test(poly.getAttribute("points")||"")){b.__lxlink=1;(function(bb){bb.addEventListener("click",function(e){e.preventDefault();e.stopPropagation();window.open("https://stellar.expert/explorer/public/account/"+ME,"_blank","noopener");},true);})(b);}}}'
 +'function wireNavGuard(){var lastClick=null;document.addEventListener("click",function(e){lastClick=e.target;},true);function bad(t){try{if(!t||!t.closest)return false;if(t.closest("a[href]"))return false;if(t.closest("main")||t.closest(".page")||t.closest(".assets-card")||t.closest(".lp-card")||t.closest(".hero")||t.closest(".insights-rail"))return true;var cl=(typeof t.className==="string"?t.className:"");if(t.tagName==="MAIN"||t.tagName==="BODY"||/(^|\\s)(app|page|main|content|wrap|shell|layout)(\\s|$)/.test(cl))return true;}catch(_){}return false;}var iv=setInterval(function(){if(typeof window.lxNavigate==="function"&&!window.__lxNavGuarded){window.__lxNavGuarded=1;var orig=window.lxNavigate;window.lxNavigate=function(c){var t=(window.event&&window.event.target)||lastClick;if(bad(t))return;return orig.apply(this,arguments);};clearInterval(iv);}},150);setTimeout(function(){clearInterval(iv);},7000);}'
@@ -1288,7 +1315,23 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 +'if(o.type&&(o.type.indexOf("trust")>=0||o.type.indexOf("flags")>=0))return{kind:"order",type:(o.type||"").replace(/_/g," "),meta:"",amt:"",day:day,st:st,stl:stl};'
 +'return{kind:"other",type:(o.type||"Operation").replace(/_/g," ").replace(/^./,function(m){return m.toUpperCase();}),meta:"",amt:"",day:day,st:st,stl:stl};}'
 // when the (hero) Send popup opens, replace its mock "Balance:" with the real native XLM balance
-+'function fixBalances(scope){if(window.__lxNative==null)return;scope=scope||document;var _fmtx=function(n){return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:7});};var _tot=window.__lxNative;var _sp=(window.__lxMaxXLM!=null)?window.__lxMaxXLM:_tot;var f=_fmtx(_sp)+" XLM";var _tip=(window.__lxMaxXLM!=null)?(_fmtx(_sp)+" XLM spendable \u2014 "+_fmtx(_tot)+" XLM total, "+_fmtx(Math.max(0,_tot-_sp))+" XLM locked as the Stellar account reserve"):"";var els=scope.querySelectorAll("span,div,p,label");for(var i=0;i<els.length;i++){var el=els[i];if(el.closest&&el.closest("#modalSwap"))continue;var st=el.querySelector?el.querySelector("strong"):null;if(st&&el.children.length===1&&/Balance:\\s*[\\d.,]+\\s*XLM(\\s|$)/.test(el.textContent||"")){st.textContent=f;if(_tip)el.title=_tip;continue;}if(el.children.length===0&&/Balance:\\s*[\\d.,]+\\s*XLM/.test(el.textContent||"")){el.textContent=(el.textContent).replace(/(Balance:\\s*)[\\d.,]+\\s*XLM/,"$1"+f);if(_tip)el.title=_tip;}}}'
+//
+// RETURNING EARLY LEFT THE MOCK ON SCREEN (2026-10-27). "if(window.__lxNative==null)return" made one
+// value mean two things -- "not loaded yet" and "could not be read" -- and in both cases the design's
+// baked "Balance: 25,420.18 XLM" stayed, visible, beside the Max button. Verified on production with
+// the Send dialog open: a balance belonging to nobody, on an account that does not hold it.
+//
+// Max itself was never wrong: it reads window.__lxMaxXLM / __lxNative, so with no balance known it
+// fills 0. Only the LINE lied, which is the worse half -- the number a reader believes.
+//
+// So an unknown balance now WRITES an em dash instead of leaving the fabrication: the dialog stays
+// usable and simply does not state a balance it does not know. Same choice as the Deposit/Withdraw
+// gate in _ammdata.js and as "Balance: --" in _dexassetdata.js, which this now matches.
+//
+// THE PATTERNS ACCEPT THE DASH TOO, which is what makes the markup change in _chaincopy.js safe: the
+// container no longer ships digits here, and a matcher that only knew [0-9.,] would have stopped
+// recognising the row and never written the real balance into it.
++'function fixBalances(scope){scope=scope||document;var _unk=(window.__lxNative==null);var _fmtx=function(n){return n.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:7});};var _tot=window.__lxNative;var _sp=(window.__lxMaxXLM!=null)?window.__lxMaxXLM:_tot;var f=_unk?"\u2014":(_fmtx(_sp)+" XLM");var _tip=(!_unk&&window.__lxMaxXLM!=null)?(_fmtx(_sp)+" XLM spendable \u2014 "+_fmtx(_tot)+" XLM total, "+_fmtx(Math.max(0,_tot-_sp))+" XLM locked as the Stellar account reserve"):"";var els=scope.querySelectorAll("span,div,p,label");for(var i=0;i<els.length;i++){var el=els[i];if(el.closest&&el.closest("#modalSwap"))continue;var st=el.querySelector?el.querySelector("strong"):null;if(st&&el.children.length===1&&/Balance:\\s*(?:[\\d.,]+\\s*XLM|\u2014)(\\s|$)/.test(el.textContent||"")){st.textContent=f;if(_tip)el.title=_tip;continue;}if(el.children.length===0&&/Balance:\\s*(?:[\\d.,]+\\s*XLM|\u2014)/.test(el.textContent||"")){el.textContent=(el.textContent).replace(/(Balance:\\s*)(?:[\\d.,]+\\s*XLM|\u2014)/,"$1"+f);if(_tip)el.title=_tip;}}}'
 // Send popup: replace the Network-fee row with a Memo field + add a Paste button to the recipient input
 // jsQR, self-hosted like the Stellar SDK and fetched only when someone actually taps Scan.
 +'var __qrP=null;function lxQrLib(){if(__qrP)return __qrP;'
