@@ -429,6 +429,34 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'var FEE_ASSETS={stellar:{XLM:1,USDC:1},xrpl:{XRP:1}};'
 +'function isFeeAsset(p){ var m=FEE_ASSETS[p.chain==="xrpl"?"xrpl":"stellar"]||{};'
 +'  return !!m[assetOf(p).code]; }'
+// ---- RECEIPTS THAT ARE NOT REVENUE, NAMED ONE BY ONE ------------------------------------------
+//
+// The asset rule above cannot catch these: we DO charge in XRP, so a hand-sent XRP payment looks
+// exactly like a fee. Nothing on the ledger separates them, and nothing is inferred -- a receipt
+// leaves the totals only because a person said so, by id, with a reason that is printed next to it.
+//
+// WHY A LIST IN THE SOURCE AND NOT THE BUTTON. A per-receipt exclude UI backed by KV was deployed on
+// 2026-10-19 (admin deployment 1ed976aa). Its source was never committed, it is no longer anywhere in
+// this tree, four later admin builds went out without it, and its KV key `revenue:excluded` has never
+// held a value -- so the flow was never completed once. This list is the part that survives a rebuild,
+// because it lives in the file the build is made from. The cost is honest: each new exclusion is a
+// code change, and RAZA cannot do one from the panel.
+//
+// EXCLUDED IS NOT HIDDEN. These stay in the fee ledger, dimmed and struck through, carrying the
+// reason -- a figure nobody can see is a figure nobody can question, and a row that silently vanished
+// is one nobody can put back.
++'var NOT_REVENUE={'
+// 2 XRP, 2026-09-06 02:56:51 UTC, from rp4XTcdzXG5jEP29UUW2kbgt7NaLFHU6RV, no memo. 91% of all XRP
+// the collector has ever received, sent during the September XRPL build window by the same account
+// that sent twelve dust payments around it. Our own code never pays this account without a memo.
+// RAZA, 2026-10-29: "exclude that 2 XRP".
++'  "xrpl:D8ADCB02EFFFB3D2439CD2334B9D71AC77C7CACDAFC85D20637816FEBB9AEF93":"sent by hand during the XRPL build \\u2014 not a platform fee"'
++'};'
+// Stellar can put several payments in one transaction, so the operation id is the identity and the
+// transaction hash is only the fallback; the XRP Ledger has one payment per transaction.
++'function rid(p){ return (p.chain==="xrpl"?"xrpl:":"stellar:")+String(p.id||p.transaction_hash||""); }'
++'function exReason(p){ var k=(p.chain==="xrpl"?"xrpl:":"stellar:");'
++'  return NOT_REVENUE[rid(p)]||NOT_REVENUE[k+String(p.transaction_hash||"")]||""; }'
 // SOK: DID HORIZON ACTUALLY ANSWER? (RAZA 2026-10-19: "where are all the stellar transactions?")
 //
 // `if(!d)return;` treated a failed page exactly like a finished one, so when Horizon refused -- which it
@@ -462,7 +490,12 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // SPLIT, not dropped. Everything the collector received is still in `other` and still counted in the
 // note below, so a transfer like the 1,000,000 LUMOS can be seen and queried -- it is simply not
 // revenue, and nothing above it is computed from it.
-+'      RV={ rows:all.filter(isFeeAsset), other:all.filter(function(p){ return !isFeeAsset(p); }) };'
+// THREE GROUPS, NOT TWO. `other` means "an asset we do not charge fees in" and `ex` means "a person
+// said this one is not revenue" -- they leave the totals the same way and for completely different
+// reasons, and the note above the page names them separately so neither is read as the other.
++'      RV={ rows:all.filter(function(p){ return isFeeAsset(p)&&!exReason(p); }),'
++'           other:all.filter(function(p){ return !isFeeAsset(p)&&!exReason(p); }),'
++'           ex:all.filter(function(p){ return !!exReason(p); }) };'
 +'      return RV; }); }); }'
 // ---- USD pricing: exact amounts, converted only where a real price exists ----
 // A LOOKUP THAT DID NOT COMPLETE IS NOT A PRICE OF NONE. Every callback is cb(px, unread): px null
@@ -538,9 +571,10 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // ---- Revenue page ----
 +'function paintRevenue(){ if(!q("#lxRevByAsset"))return;'
 +'  loadRevenue().then(function(rv){ var head=pageHead(); if(!head||q(".lxadm-note"))return;'
-+'    var other=(rv.other||[]).length, parts=[];'
++'    var other=(rv.other||[]).length, exn=(rv.ex||[]).length, parts=[];'
 +'    if(RV_SELF) parts.push(RV_SELF+" self-transfer(s) (the collector paying itself)");'
 +'    if(other) parts.push(other+" payment(s) in an asset we do not charge fees in");'
++'    if(exn) parts.push(exn+" receipt(s) marked not revenue by hand (still in the ledger below, struck through)");'
 // THE UNREACHABLE WARNING COMES FIRST AND LOOKS LIKE A WARNING. Everything else on this page is a
 // figure; this is the one line that says the figures are incomplete, and it has to outrank them.
 +'    var down=[]; if(SOK===false)down.push("Stellar"); if(XOK===false)down.push("the XRP Ledger");'
@@ -568,10 +602,11 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'    var tb=q("#lxRevLedger tbody");'
 // bithomp is the explorer the XRPL site already links everywhere else; matching it keeps one
 // explorer per chain instead of a third one that only the admin panel uses.
-// The ledger shows the excluded receipts TOO, struck through and carrying their reason. They are out
-// EVERY RECEIPT, fee or not, newest first -- a transfer the asset rule excluded is still visible here and
-// marked, because a figure nobody can see is a figure nobody can question. Only the totals ignore it.
-+'    var led=rows.concat(rv.other||[]).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
+// EVERY RECEIPT, fee or not, newest first. Both kinds that leave the totals are still here, dimmed and
+// struck through and carrying the reason they left: one the asset rule dropped, and one a person named
+// in NOT_REVENUE. A figure nobody can see is a figure nobody can question, and a row that silently
+// vanished is one nobody can put back. Only the totals ignore them.
++'    var led=rows.concat(rv.other||[]).concat(rv.ex||[]).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
 // FIFTY A PAGE (RAZA 2026-10-19: "add pagination for the fee ledger ... otherwise it will just keep
 // getting longer and might even affect page loading speed"). It was a flat slice of 60, so every
 // receipt past the sixtieth was simply unreachable -- and had the cap been lifted instead, the table
@@ -582,14 +617,14 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'    if(window.__lxLedPage>pages-1)window.__lxLedPage=pages-1;'
 +'    var from=window.__lxLedPage*LEDN, win=led.slice(from,from+LEDN);'
 +'    if(tb){ tb.innerHTML = led.length ? win.map(function(p){ var a=assetOf(p), xr=(p.chain==="xrpl");'
-+'        var nf=!isFeeAsset(p);'
++'        var exr=exReason(p), nf=!isFeeAsset(p)||!!exr;'
 +'        var acct=xr?("https://bithomp.com/explorer/"+encodeURIComponent(p.from)):("https://stellar.expert/explorer/public/account/"+encodeURIComponent(p.from));'
 +'        var txu=xr?("https://bithomp.com/explorer/"+encodeURIComponent(p.transaction_hash)):("https://stellar.expert/explorer/public/tx/"+encodeURIComponent(p.transaction_hash));'
 +'        return "<tr"+(nf?" style=\\"opacity:.55\\"":"")+">"'
 +'          +"<td>"+esc(new Date(p.created_at).toLocaleString())+"</td>"'
 +'          +"<td>"+(xr?"XRP Ledger":"Stellar")+"</td>"'
 +'          +"<td class=\\"mono\\"><a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc(acct)+"\\">"+esc(shortG(p.from))+"</a></td>"'
-+'          +"<td>"+esc(a.code)+(nf?"<div style=\\"font-size:11px;opacity:.85\\">not a fee asset · not counted</div>":"")+"</td>"'
++'          +"<td>"+esc(a.code)+(nf?("<div style=\\"font-size:11px;opacity:.85\\">"+(exr?esc(exr):"not a fee asset")+" \\u00b7 not counted</div>"):"")+"</td>"'
 +'          +"<td style=\\"text-align:right\\" class=\\"mono\\">"+(nf?("<s>"+esc(num(+p.amount))+"</s>"):esc(num(+p.amount)))+"</td>"'
 +'          +"<td style=\\"text-align:right\\"><a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc(txu)+"\\">view</a></td></tr>"; }).join("")'
 +'      : "<tr><td colspan=\\"6\\" class=\\"lxadm-empty\\">No fee receipts yet. Fees are paid to <span class=\\"mono\\">"+esc(shortG(FEE))+"</span> on Stellar and <span class=\\"mono\\">"+esc(shortG(XFEE))+"</span> on the XRP Ledger when users swap or add liquidity.</td></tr>"; }'
