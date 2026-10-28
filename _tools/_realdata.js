@@ -413,7 +413,10 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 // and this whole layer returned: Platform Activity sat on its placeholder rows on PRODUCTION while
 // staging (a different origin, so a clean localStorage) looked fine. Falling through to lumos.chain
 // is the same rule _lumosparent.js already applies, and it self-heals with no migration.
-+'function net(){try{var n=(localStorage.getItem("lumos.network")||"").toLowerCase();if(n!=="xrpl"&&n!=="stellar")n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n;}catch(_){return "";}}'
++'function net(){try{var n=(localStorage.getItem("lumos.network")||"").toLowerCase();'
++'if(n!=="xrpl"&&n!=="stellar"){var a=localStorage.getItem("lumos.address")||"";'
++'n=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)?"xrpl":(/^G[A-Z2-7]{55}$/.test(a)?"stellar":"");}'
++'if(!n)n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n;}catch(_){return "";}}'
 +'if(net()!=="stellar")return;'                        // Stellar-only for now
 +'var SWAP=\''+SWAP+'\',DROP=\''+DROP+'\';'
 +'function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}'

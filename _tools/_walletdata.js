@@ -465,7 +465,10 @@ const SCRIPT='<script id="lx-walletdata">(function(){'
 // lumos.network is only a chain name on builds since the multichain rework; a wallet connected
 // before it left "mainnet" behind for ever, which read naively is !== "stellar" and made netOK()
 // false on production. Fall through to lumos.chain -- same rule as _lumosparent.js.
-+'function netOK(){try{var n=(localStorage.getItem("lumos.network")||"").toLowerCase();if(n!=="xrpl"&&n!=="stellar")n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n==="stellar";}catch(_){return false;}}'
++'function netOK(){try{var n=(localStorage.getItem("lumos.network")||"").toLowerCase();'
++'if(n!=="xrpl"&&n!=="stellar"){var a=localStorage.getItem("lumos.address")||"";'
++'n=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)?"xrpl":(/^G[A-Z2-7]{55}$/.test(a)?"stellar":"");}'
++'if(!n)n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n==="stellar";}catch(_){return false;}}'
 +'var ME="";try{ME=localStorage.getItem("lumos.address")||"";}catch(_){}'
 +'if(!netOK()||!/^G[A-Z2-7]{55}$/.test(ME)){reveal();return;}'
 +'var IC='+JSON.stringify(IC)+',STELLAR_URI='+JSON.stringify(STELLAR_URI)+',QA='+JSON.stringify(QA_ACTIONS)+',QARM='+JSON.stringify(QA_REMOVE)+',LPQA='+JSON.stringify(LP_ACTIONS)+';'

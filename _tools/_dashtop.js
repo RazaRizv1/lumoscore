@@ -229,7 +229,10 @@ const SCRIPT = `<script id="lx-dashtop">(function(){
   // lumos.network is only a chain name on builds since the multichain rework; a wallet connected
   // before it left "mainnet" behind for ever, which read naively is !== "stellar" and killed this
   // whole layer on production. Fall through to lumos.chain -- same rule as _lumosparent.js.
-  function net(){try{var n=(localStorage.getItem("lumos.network")||"").toLowerCase();if(n!=="xrpl"&&n!=="stellar")n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n;}catch(_){return "";}}
+  function net(){try{var n=(localStorage.getItem("lumos.network")||"").toLowerCase();
+  if(n!=="xrpl"&&n!=="stellar"){var a=localStorage.getItem("lumos.address")||"";
+  n=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)?"xrpl":(/^G[A-Z2-7]{55}$/.test(a)?"stellar":"");}
+  if(!n)n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n;}catch(_){return "";}}
   // item 16 -- see the note in the transform. Only touches cards that are on screen right now.
   function lcmShowAbove(){
     try{
