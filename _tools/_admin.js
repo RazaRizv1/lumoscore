@@ -7,6 +7,10 @@
 //   2. inserts "Revenue" into the admin sidebar, right after Dashboard;
 //   3. injects a data layer that fills Revenue + the Dashboard KPIs from the chain.
 //
+// CHAINS: fee revenue is read from BOTH collectors (Stellar + XRP Ledger) as of 2026-10-15. Swap
+// VOLUME is still Stellar-only -- it is reconstructed from Stellar transaction envelopes and has no
+// XRPL equivalent here yet, so those tiles are labelled rather than left to read as platform-wide.
+//
 // WHERE THE MONEY COMES FROM: platform fees are paid to LX_FEE_COLLECTOR by _swapcalc.js. That account's
 // payment history IS the revenue ledger — on-chain, auditable, and impossible to fabricate. Nothing here
 // is estimated: per-asset totals are exact sums of real payments. USD is a CONVERSION of those exact
@@ -18,6 +22,16 @@
 const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');const B=String.fromCharCode(92);
 
 const FEE_COLLECTOR='GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD';
+
+// THE XRP LEDGER COLLECTOR. Added 2026-10-15, because until then this transform read the Stellar
+// collector ALONE and called the result the business's revenue. Every swap, mint and launch fee taken
+// on the XRP Ledger is paid here, and not one of them reached the Revenue page, the dashboard tiles,
+// the month bars, the CSV or the activity feed. Verified on-ledger the same day: 28 of the account's
+// last 30 transactions are successful fee receipts.
+//
+// Checksum-verified at build time in _tools/xrpladdr.js of the XRPL repo, which is where it is also
+// injected into the pages that PAY it; repeated here because this transform has no access to that repo.
+const XFEE_COLLECTOR='rBDV4nwHzg5ByAYJtPWrbBZnuUXSUtFr94';
 
 // ---- the Revenue page body (uses the admin design's own classes so it is visually native) -------------
 const REVENUE_MAIN=`
@@ -62,8 +76,8 @@ const REVENUE_MAIN=`
         <div class="adm-card-head"><div class="adm-card-title">Fee ledger</div><div class="adm-card-sub" id="lxRevLedgerSub"></div></div>
         <div class="adm-card-body" style="padding:0">
           <table class="adm-table" id="lxRevLedger" style="width:100%;border-collapse:collapse">
-            <thead><tr><th style="text-align:left">When</th><th style="text-align:left">From</th><th style="text-align:left">Asset</th><th style="text-align:right">Amount</th><th style="text-align:right">Tx</th></tr></thead>
-            <tbody><tr><td colspan="5" class="lxadm-empty">Loading fee receipts&hellip;</td></tr></tbody>
+            <thead><tr><th style="text-align:left">When</th><th style="text-align:left">Chain</th><th style="text-align:left">From</th><th style="text-align:left">Asset</th><th style="text-align:right">Amount</th><th style="text-align:right">Tx</th></tr></thead>
+            <tbody><tr><td colspan="6" class="lxadm-empty">Loading fee receipts&hellip;</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -99,8 +113,8 @@ const REVENUE_MOB=`
         <div class="adm-card-head"><div class="adm-card-title">Fee ledger</div><div class="adm-card-sub" id="lxRevLedgerSub"></div></div>
         <div class="adm-card-body" style="padding:0;overflow-x:auto">
           <table class="adm-table" id="lxRevLedger" style="width:100%;border-collapse:collapse">
-            <thead><tr><th style="text-align:left">When</th><th style="text-align:left">From</th><th style="text-align:left">Asset</th><th style="text-align:right">Amount</th><th style="text-align:right">Tx</th></tr></thead>
-            <tbody><tr><td colspan="5" class="lxadm-empty">Loading fee receipts&hellip;</td></tr></tbody>
+            <thead><tr><th style="text-align:left">When</th><th style="text-align:left">Chain</th><th style="text-align:left">From</th><th style="text-align:left">Asset</th><th style="text-align:right">Amount</th><th style="text-align:right">Tx</th></tr></thead>
+            <tbody><tr><td colspan="6" class="lxadm-empty">Loading fee receipts&hellip;</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -319,26 +333,178 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'  return "data:image/svg+xml,"+encodeURIComponent(\'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="hsl(\'+h+\',60%,50%)"/><text x="20" y="26" text-anchor="middle" font-family="system-ui,sans-serif" font-weight="800" font-size="15" fill="#fff">\'+t+\'</text></svg>\'); }'
 +'function avatarPart(code){ return avatar(code); }'
 +'function cssUrl(u){ return "url(\'"+String(u).split("\'").join("%27")+"\')"; }'
+// ---- the XRP Ledger side ----
+// Rows are normalised into Horizon's PAYMENT SHAPE deliberately: the grouping, the pricing, the
+// ledger table, the CSV and the feed are all already written against that shape, so one normalisation
+// point serves every surface instead of eight separate chain branches.
++'var XH="https://xrplcluster.com";'
++'var XFEE="'+XFEE_COLLECTOR+'";'
++'function xrpc(m,p){ return fetch(XH,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({method:m,params:[p]})}).then(function(r){return r.ok?r.json():null;}).catch(function(){return null;}); }'
+// XRPL stamps time in SECONDS SINCE 2000-01-01, not 1970. Read raw, every receipt dates to the
+// seventies and every month bar lands in the wrong bucket.
++'function xWhen(t){ return new Date((t+946684800)*1000).toISOString(); }'
+// THE CURRENCY AS UPSTREAM KEYS IT. Not "as hex" -- that was the first version's mistake, and it is
+// why this is no longer called xHex.
+//
+// The XRP Ledger carries a code of EXACTLY THREE characters literally, and everything else as 40 hex
+// characters. xrpl.to keys its tokens on whatever the ledger hands it, untouched (`slugOf` in
+// lxapi/xrplprices.js is `issuer + "-" + t.currency`), so the slug has to follow the same rule.
+//
+// Padding a 3-character code to 40 hex builds an id the upstream 404s on. Measured against the real
+// launchpad mints: POP, BRO and RAC returned NO DATA while NPENGU, LLAMA and XRLINK worked --
+// `…-POP` answers 200, `…-504F5000…` answers 404.
+//
+// The other half was an earlier mistake in the same function: testing "longer than 3" to recognise an
+// already-hex code let any 4-to-39-character ticker (RLUSD, SOLO) through unencoded.
++'function xCur(c){ c=String(c||"");'
++'  if(c.length===3)return c;'
++'  if(c.length===40&&/^[0-9a-fA-F]+$/.test(c))return c.toUpperCase();'
++'  var h=""; for(var i=0;i<c.length;i++)h+=("0"+c.charCodeAt(i).toString(16)).slice(-2);'
++'  return (h+"0000000000000000000000000000000000000000").slice(0,40).toUpperCase(); }'
++'var XSELF=0, XOK=null;'
+// WHAT AN XRPL FEE WAS FOR IS ON THE FEE ITSELF. Stellar's kind comes from parsing the transaction
+// envelope; the XRP Ledger hands us only the fee payment, and the swap it belongs to is a separate
+// transaction by a different account. But every site that pays this collector stamps a memo --
+// dxaswap.js, qorders.js and write.js all call feeMemo(), which writes "LumosCore platform fee N% -
+// ... swap is the next transaction", and the three bridge routes in nibridge.js write lx:ax / lx:th /
+// lx:ni ([[xrpl-bridge-marker-is-on-the-fee]]). That is already inside the account_tx response, so
+// this costs NOTHING: no pairing pass, no request per payer, none of the window-matching the XRPL
+// dashboard has to do.
+//
+// AND A RECEIPT WITH NO MEMO IS NOT AN UNREADABLE ONE. Our own code never pays this account without a
+// memo, so a bare payment did not come from a fee path at all -- it is someone sending XRP to the
+// collector by hand, which is exactly what "other on-chain" means. Measured over the collector's whole
+// history on 2026-10-29: 54 swap memos, 19 bridge markers, 13 bare. Twelve of the thirteen are dust
+// from a single account during the September build window; the thirteenth is a round 2 XRP, and it is
+// 91% of all XRP ever collected. See [[admin-revenue-exclusions]] -- the Stellar side has been here.
++'function xMemo(t){ try{ return (t.Memos||[]).map(function(e){ var h=String(((e||{}).Memo||{}).MemoData||""), s="";'
++'  for(var i=0;i+1<h.length;i+=2)s+=String.fromCharCode(parseInt(h.substr(i,2),16)); return s; }).join(" "); }catch(_){ return ""; } }'
++'function xKind(mo){ mo=String(mo||"");'
++'  if(/lx:(ax|th|ni)/.test(mo))return "bridge";'
++'  if(/LumosCore platform fee/.test(mo)&&/swap/i.test(mo))return "trade";'
++'  return "other"; }'
++'function xRow(x){ var t=x.tx||x.tx_json||{}, m=x.meta||{};'
++'  if(t.TransactionType!=="Payment"||m.TransactionResult!=="tesSUCCESS")return null;'
++'  if(t.Destination!==XFEE)return null;'
++'  if(t.Account===XFEE){ XSELF++; return null; }'
+// delivered_amount is what ARRIVED. Amount is what was asked for, and on a partial payment the two
+// differ -- reading Amount would report money we never received as revenue.
++'  var d=(m.delivered_amount!==undefined)?m.delivered_amount:((m.DeliveredAmount!==undefined)?m.DeliveredAmount:t.Amount);'
++'  if(d==null)return null;'
++'  var nat=(typeof d==="string");'
++'  return { chain:"xrpl", from:t.Account, to:t.Destination, type:"payment", memo:xMemo(t),'
++'    amount: nat?String(Number(d)/1e6):String(d.value),'
++'    asset_type: nat?"native":"credit_alphanum4",'
++'    asset_code: nat?"XRP":d.currency, asset_issuer: nat?"":d.issuer,'
++'    created_at: x.close_time_iso||xWhen(+t.date||0),'
++'    transaction_hash: x.hash||t.hash }; }'
+// XOK records whether the ledger actually answered. A failed RPC returning an empty list would look
+// exactly like "no XRPL fees yet", which is the one wrong answer worth guarding against: it would
+// quietly understate revenue and nobody would see a reason to doubt it.
++'function loadXrpl(){ var out=[]; XOK=true;'
++'  function page(marker,n){ var p={account:XFEE,limit:200,ledger_index_min:-1,ledger_index_max:-1,binary:false,forward:false};'
++'    if(marker)p.marker=marker;'
++'    return xrpc("account_tx",p).then(function(d){ var r=d&&d.result;'
++'      if(!r||r.error){ if(n===1)XOK=false; return out; }'
++'      (r.transactions||[]).forEach(function(x){ var row=xRow(x); if(row)out.push(row); });'
++'      if(r.marker&&n<10)return page(r.marker,n+1); return out; }); }'
++'  return page(null,1).catch(function(){ XOK=false; return out; }); }'
 // ---- fetch every fee receipt (paged) ----
 +'var RV=null, RV_SELF=0;'
-+'function loadRevenue(){ if(RV)return Promise.resolve(RV); var recs=[];'
-+'  function page(url,n){ return j(url).then(function(d){ if(!d)return; var r=(d._embedded&&d._embedded.records)||[]; recs=recs.concat(r);'
+// ---- WHAT COUNTS AS A FEE: THE ASSET IT ARRIVED IN ---------------------------------------------
+//
+// RAZA sent 1,000,000 LUMOS into the Stellar collector by hand on 2026-10-18 and the page booked it
+// as $74 of revenue -- 59.7% of the business. He asked twice for such transfers to stop being
+// recorded; I answered with a per-receipt exclude button on all 428 rows, which is a chore, not a fix.
+//
+// THE RULE HE ASKED FOR IS THE RIGHT ONE, and the code backs it. _swapcalc.js either pays the platform
+// fee directly in XLM or path-pays it with destAsset native, so a Stellar swap fee ALWAYS arrives as
+// XLM; bridge fees arrive as USDC; the XRPL collector takes XRP. Measured over the collector's whole
+// history: XLM 333 receipts, USDC 27, LUMOS exactly 1 -- his.
+//
+// So an asset we never charge in is not a fee, whoever sent it. Note the deliberate cost: if we ever
+// start charging in another asset, this skips it silently until the list below is updated. That is a
+// real trade and worth stating -- the alternative was a wallet rule, and that WOULD have been wrong,
+// because the same wallet also paid two genuine XLM fees.
++'var FEE_ASSETS={stellar:{XLM:1,USDC:1},xrpl:{XRP:1}};'
++'function isFeeAsset(p){ var m=FEE_ASSETS[p.chain==="xrpl"?"xrpl":"stellar"]||{};'
++'  return !!m[assetOf(p).code]; }'
+// SOK: DID HORIZON ACTUALLY ANSWER? (RAZA 2026-10-19: "where are all the stellar transactions?")
+//
+// `if(!d)return;` treated a failed page exactly like a finished one, so when Horizon refused -- which it
+// was doing repeatedly that afternoon, ECONNRESET on run after run -- `recs` stayed empty, `inc` was
+// empty, and the page reported **$0 revenue, 67 receipts, XRP only** with total composure. Not a blank
+// screen anybody would distrust: a confident, wrong set of business figures.
+//
+// The comment right below this one already said an XRPL failure "degrades to Stellar-only AND SAYS SO".
+// The Stellar side had no such guard. Same rule now applies to both, and nothing on the page is
+// presented as a total while a chain is missing.
++'var SOK=true;'
++'function loadRevenue(){ if(RV)return Promise.resolve(RV); var recs=[]; SOK=true;'
++'  function page(url,n){ return j(url).then(function(d){ if(!d){ SOK=false; return; } var r=(d._embedded&&d._embedded.records)||[]; recs=recs.concat(r);'
 +'    var nx=d._links&&d._links.next&&d._links.next.href; if(r.length===200&&nx&&n<10)return page(nx,n+1); }); }'
-+'  return page(H+"/accounts/"+FEE+"/payments?order=desc&limit=200&join=transactions",1).then(function(){'
-+'    var inc=recs.filter(function(p){ return p.to===FEE && p.from!==FEE && (p.type==="payment"||p.type==="path_payment_strict_send"||p.type==="path_payment_strict_receive"); });'
+// NO join=transactions HERE (RAZA 2026-10-19: "why is the admin revenue page loading so slowly").
+// Measured against this very account: limit=200 WITH the join is 7,956 ms and 1,326 KB; without it,
+// 544 ms and 297 KB. Fourteen times, and this pages up to ten times over.
+//
+// Nothing this function produces needs the envelope: the ledger, the KPIs, the by-asset table and the
+// totals all read amount, asset, sender and date, which the payment record already carries. Only the
+// "Revenue by source" breakdown parses envelope_xdr, and it now fetches those itself, bounded and in
+// the background, so one slow read no longer holds up the whole page.
++'  return page(H+"/accounts/"+FEE+"/payments?order=desc&limit=200",1).then(function(){'
++'    var inc=recs.filter(function(p){ return p.to===FEE && p.from!==FEE && (p.type==="payment"||p.type==="path_payment_strict_send"||p.type==="path_payment_strict_receive"); }).map(function(p){ p.chain="stellar"; return p; });'
 +'    RV_SELF=recs.filter(function(p){ return p.to===FEE && p.from===FEE; }).length;'
-+'    RV={rows:inc}; return RV; }); }'
+// One ledger, both chains, newest first. A Stellar failure already resolved above; an XRPL failure
+// resolves empty with XOK false, so the panel degrades to Stellar-only AND SAYS SO rather than
+// silently reporting a smaller business.
++'    return loadXrpl().then(function(xr){ RV_SELF+=XSELF;'
++'      var all=inc.concat(xr).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
+// SPLIT, not dropped. Everything the collector received is still in `other` and still counted in the
+// note below, so a transfer like the 1,000,000 LUMOS can be seen and queried -- it is simply not
+// revenue, and nothing above it is computed from it.
++'      RV={ rows:all.filter(isFeeAsset), other:all.filter(function(p){ return !isFeeAsset(p); }) };'
++'      return RV; }); }); }'
 // ---- USD pricing: exact amounts, converted only where a real price exists ----
+// A LOOKUP THAT DID NOT COMPLETE IS NOT A PRICE OF NONE. Every callback is cb(px, unread): px null
+// with unread 0 means the source answered and publishes no price for this asset; px null with
+// unread 1 means we could not ask at all. They used to be the same null, so a refused request was
+// reported to the reader as "no spot price published for this asset" -- a statement about the asset,
+// made on the strength of a failed network call. Same rule as the Orders tab's "could not load" and
+// the activity feed's unread row. Callers that want neither distinction can still ignore the second
+// argument, which is why every existing call site is untouched.
+// AND A FAILURE IS NEVER CACHED. PX[k] is only written when a source actually answered: caching the
+// null from a dropped request made one bad moment permanent for the rest of the page view, with no
+// way to retry short of a reload.
 +'var PX={}, LG={};'
 +'function priceUsd(code,iss,cb){ var k=code+"-"+(iss||"");'
-+'  if(PX[k]!==undefined){ cb(PX[k]); return; }'
-+'  if(code==="XLM"){ j("/lxapi/xlm").then(function(d){ if(d&&+d.usd>0){ PX[k]=+d.usd; cb(PX[k]); return null; } return j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd").then(function(g){ PX[k]=(g&&g.stellar&&+g.stellar.usd)||null; cb(PX[k]); }); }); return; }'
++'  if(PX[k]!==undefined){ cb(PX[k],0); return; }'
++'  if(code==="XLM"){ j("/lxapi/xlm").then(function(d){ if(d&&+d.usd>0){ PX[k]=+d.usd; cb(PX[k],0); return null; } return j("https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd").then(function(g){ var p=(g&&g.stellar&&+g.stellar.usd)||null; if(p==null){ cb(null,1); return; } PX[k]=p; cb(p,0); }); }); return; }'
 +'  j("https://api.stellar.expert/explorer/public/asset?search="+encodeURIComponent(code+"-"+iss)+"&limit=5").then(function(d){'
-+'    var rs=(d&&d._embedded&&d._embedded.records)||[];'
++'    if(!d){ cb(null,1); return; }'                                           // the request failed; it said nothing about the asset
++'    var rs=(d._embedded&&d._embedded.records)||[];'
 +'    var m=rs.filter(function(r){ return String(r.asset||"").indexOf(code+"-"+iss)===0; })[0];'
 +'    PX[k]=(m&&+m.price>0)?+m.price:null;'
 +'    var ti=(m&&(m.tomlInfo||m.toml_info))||{}; if(ti.image)LG[k]=ti.image;'   // same call already carries the artwork
-+'    cb(PX[k]); }); }'
++'    cb(PX[k],0); }); }'
+// ONE CALL CARRIES BOTH. /lxapi/xrplprices returns the XRP/USD rate in `usd` and every token's price
+// in XRP in `t`, and it refuses to publish USD at all unless a known stablecoin prices near $1 through
+// that same rate -- so a bad rate shows up as no USD rather than as a confident wrong revenue figure.
+// It is our own endpoint, cached, and admin serves /lxapi/*, so this costs one upstream batch per load.
++'var XPX=null;'
+// The promise is memoised so one page view costs one call -- but a REFUSAL is not memoised, or the
+// first bad answer would be the answer until reload, and this endpoint refuses routinely (it is the
+// anonymous rate-limit tier whenever XRPLTO_API_KEY is not bound to the project serving it, which is
+// exactly how the admin panel ran: the key is on `lumoscore` and was never on `lumoscore-admin`).
++'function xPrices(){ if(!XPX)XPX=j("/lxapi/xrplprices").then(function(d){ if(d&&d.ok)return d; XPX=null; return null; }); return XPX; }'
++'function priceUsdOn(chain,code,iss,cb){ if(chain!=="xrpl"){ priceUsd(code,iss,cb); return; }'
++'  xPrices().then(function(d){'
++'    if(!d){ cb(null,1); return; }'                                           // endpoint unreachable or refusing
+// usd null is the endpoint WITHHOLDING a rate it could not stand behind (its stablecoin check failed),
+// which is still "we could not price this", never "this asset has no price".
++'    var u=+d.usd; if(!(u>0)){ cb(null,1); return; }'
++'    if(code==="XRP"&&!iss){ cb(u,0); return; }'
++'    var row=d.t&&d.t[iss+"-"+xCur(code)];'
++'    cb((row&&+row[0]>0)?(+row[0])*u:null,0); }); }'
 +'var KN=[["USDC","GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"],["AQUA","GBNZILSTVQZ4R7IKQDGHYGY2QXL5QOFJYQMXPKWRRM5PAV7Y4M67AQUA"],["yXLM","GARDNV3Q7YGT4AKSDF25LT32YSCCW4EV22Y2TV3I2PU2MMXJTEDL5T55"],["EURC","GDHU6WRG4IEQXM5NZ4BMPKOXHW76MZM4Y2IEMFDVXBSDP6SJY4ITNPP2"],["yUSDC","GDGTVWSM4MGS4T7Z6W4RPWOCHE2I6RDFCIFZGS3DOA63LWQTRNZNTTFF"]];'
 // each curated pool is <asset>/XLM, so the XLM side doubled is the pool's total value in XLM
 +'var POOLS=null;'
@@ -363,62 +529,136 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'  if(info)info.innerHTML="<span class=\\"mono\\">"+(n?1:0)+"</span>\\u2013<span class=\\"mono\\">"+n+"</span> of <span class=\\"mono\\">"+n+"</span>"; }'
 +'function isMob(){ return !!q(".mob-page-title"); }'
 +'function isDash(){ return /^Dashboard/.test(pageTitle()) && !isMob(); }'
-+'function assetOf(p){ return p.asset_type==="native"?{code:"XLM",iss:""}:{code:p.asset_code||"?",iss:p.asset_issuer||""}; }'
+// THE NATIVE ASSET DEPENDS ON THE CHAIN. This read "native -> XLM" unconditionally, which was right
+// while there was one chain and silently wrong the moment XRPL receipts arrived: every XRP fee was
+// labelled XLM in the ledger, grouped under the XLM key, and then went looking for an XLM price for an
+// XRP amount. assetOf is the single place that decides a receipt's asset, so the ledger table, the
+// by-asset grouping, the month bars, the dashboard tile, the feed and the CSV are all fixed here.
++'function assetOf(p){ return p.asset_type==="native"?{code:(p.chain==="xrpl"?"XRP":"XLM"),iss:""}:{code:p.asset_code||"?",iss:p.asset_issuer||""}; }'
 // ---- Revenue page ----
 +'function paintRevenue(){ if(!q("#lxRevByAsset"))return;'
-+'  loadRevenue().then(function(rv){ if(!RV_SELF)return; var head=pageHead(); if(!head||q(".lxadm-note"))return;'
++'  loadRevenue().then(function(rv){ var head=pageHead(); if(!head||q(".lxadm-note"))return;'
++'    var other=(rv.other||[]).length, parts=[];'
++'    if(RV_SELF) parts.push(RV_SELF+" self-transfer(s) (the collector paying itself)");'
++'    if(other) parts.push(other+" payment(s) in an asset we do not charge fees in");'
+// THE UNREACHABLE WARNING COMES FIRST AND LOOKS LIKE A WARNING. Everything else on this page is a
+// figure; this is the one line that says the figures are incomplete, and it has to outrank them.
++'    var down=[]; if(SOK===false)down.push("Stellar"); if(XOK===false)down.push("the XRP Ledger");'
++'    if(down.length){ var w=document.createElement("div"); w.className="lxadm-note";'
++'      w.style.cssText="border-left:3px solid #e3a008;padding-left:11px;color:#e3a008";'
++'      w.textContent="\\u26a0 "+down.join(" and ")+" could not be read just now, so these figures are INCOMPLETE \\u2014 receipts from "+(down.length>1?"either chain":down[0])+" are missing and the totals are shown as \\u2014 rather than a number. Reload to try again.";'
++'      head.parentNode.insertBefore(w, head.nextSibling); }'
++'    if(!parts.length) return;'
 +'    var d=document.createElement("div"); d.className="lxadm-note";'
-+'    d.textContent="Excludes "+RV_SELF+" self-transfers — payments where the fee collector is both sender and recipient. Those move no money and are not revenue, so the totals here are lower than the raw account history on stellar.expert.";'
++'    d.textContent="Excludes "+parts.join(" and ")+". Fees arrive as XLM or USDC on Stellar and XRP on the XRP Ledger, so anything else paid into a collector is a transfer rather than revenue \\u2014 it is listed under Other on-chain and left out of the totals above.";'
 +'    head.parentNode.insertBefore(d, head.nextSibling); });'
 +'  loadRevenue().then(function(rv){ var rows=rv.rows;'
 +'    var now=new Date(), mStart=new Date(now.getFullYear(),now.getMonth(),1).getTime();'
 +'    var byA={}, wallets={}, monthRows=[];'
-+'    rows.forEach(function(p){ var a=assetOf(p), k=a.code+"-"+a.iss;'
-+'      byA[k]=byA[k]||{code:a.code,iss:a.iss,amt:0,month:0};'
++'    rows.forEach(function(p){ var a=assetOf(p), ch=p.chain||"stellar", k=ch+":"+a.code+"-"+a.iss;'
++'      byA[k]=byA[k]||{chain:ch,code:a.code,iss:a.iss,amt:0,month:0};'
 +'      byA[k].amt+=+p.amount||0; wallets[p.from]=1;'
 +'      if(Date.parse(p.created_at)>=mStart){ byA[k].month+=+p.amount||0; monthRows.push(p); } });'
 +'    setT(q("#lxRevCount"), num(rows.length));'
 +'    setT(q("#lxRevWallets"), num(Object.keys(wallets).length));'
 +'    var keys=Object.keys(byA);'
-+'    var sub=q("#lxRevLedgerSub"); if(sub)sub.textContent=rows.length?("newest first \\u00b7 "+rows.length+" receipts"):"";'
++'    var chains=(SOK===false?"XRP Ledger only":(XOK===false?"Stellar only":"both chains"));'
++'    var sub=q("#lxRevLedgerSub"); if(sub)sub.textContent=(rows.length?("newest first \\u00b7 "+rows.length+" receipts \\u00b7 "+chains):"")'
++'      +((SOK===false)?" \\u00b7 Stellar unreachable":"")+((XOK===false)?" \\u00b7 XRP Ledger unreachable":"");'
 +'    var tb=q("#lxRevLedger tbody");'
-+'    if(tb){ tb.innerHTML = rows.length ? rows.slice(0,60).map(function(p){ var a=assetOf(p);'
-+'        return "<tr><td>"+esc(new Date(p.created_at).toLocaleString())+"</td>"'
-+'          +"<td class=\\"mono\\"><a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\"https://stellar.expert/explorer/public/account/"+esc(p.from)+"\\">"+esc(shortG(p.from))+"</a></td>"'
-+'          +"<td>"+esc(a.code)+"</td>"'
-+'          +"<td style=\\"text-align:right\\" class=\\"mono\\">"+esc(num(+p.amount))+"</td>"'
-+'          +"<td style=\\"text-align:right\\"><a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\"https://stellar.expert/explorer/public/tx/"+esc(p.transaction_hash)+"\\">view</a></td></tr>"; }).join("")'
-+'      : "<tr><td colspan=\\"5\\" class=\\"lxadm-empty\\">No fee receipts yet. Fees are paid to <span class=\\"mono\\">"+esc(shortG(FEE))+"</span> when users swap or add liquidity.</td></tr>"; }'
-+'    var pending=keys.length, usdAll=0, usdMonth=0, priced=0, unpriced=[];'
+// bithomp is the explorer the XRPL site already links everywhere else; matching it keeps one
+// explorer per chain instead of a third one that only the admin panel uses.
+// The ledger shows the excluded receipts TOO, struck through and carrying their reason. They are out
+// EVERY RECEIPT, fee or not, newest first -- a transfer the asset rule excluded is still visible here and
+// marked, because a figure nobody can see is a figure nobody can question. Only the totals ignore it.
++'    var led=rows.concat(rv.other||[]).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
+// FIFTY A PAGE (RAZA 2026-10-19: "add pagination for the fee ledger ... otherwise it will just keep
+// getting longer and might even affect page loading speed"). It was a flat slice of 60, so every
+// receipt past the sixtieth was simply unreachable -- and had the cap been lifted instead, the table
+// would grow without limit and take the page down with it. The pager below is drawn from the same
+// array, so the count, the window and the rows cannot disagree.
++'    var LEDN=50; if(window.__lxLedPage==null)window.__lxLedPage=0;'
++'    var pages=Math.max(1,Math.ceil(led.length/LEDN));'
++'    if(window.__lxLedPage>pages-1)window.__lxLedPage=pages-1;'
++'    var from=window.__lxLedPage*LEDN, win=led.slice(from,from+LEDN);'
++'    if(tb){ tb.innerHTML = led.length ? win.map(function(p){ var a=assetOf(p), xr=(p.chain==="xrpl");'
++'        var nf=!isFeeAsset(p);'
++'        var acct=xr?("https://bithomp.com/explorer/"+encodeURIComponent(p.from)):("https://stellar.expert/explorer/public/account/"+encodeURIComponent(p.from));'
++'        var txu=xr?("https://bithomp.com/explorer/"+encodeURIComponent(p.transaction_hash)):("https://stellar.expert/explorer/public/tx/"+encodeURIComponent(p.transaction_hash));'
++'        return "<tr"+(nf?" style=\\"opacity:.55\\"":"")+">"'
++'          +"<td>"+esc(new Date(p.created_at).toLocaleString())+"</td>"'
++'          +"<td>"+(xr?"XRP Ledger":"Stellar")+"</td>"'
++'          +"<td class=\\"mono\\"><a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc(acct)+"\\">"+esc(shortG(p.from))+"</a></td>"'
++'          +"<td>"+esc(a.code)+(nf?"<div style=\\"font-size:11px;opacity:.85\\">not a fee asset · not counted</div>":"")+"</td>"'
++'          +"<td style=\\"text-align:right\\" class=\\"mono\\">"+(nf?("<s>"+esc(num(+p.amount))+"</s>"):esc(num(+p.amount)))+"</td>"'
++'          +"<td style=\\"text-align:right\\"><a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc(txu)+"\\">view</a></td></tr>"; }).join("")'
++'      : "<tr><td colspan=\\"6\\" class=\\"lxadm-empty\\">No fee receipts yet. Fees are paid to <span class=\\"mono\\">"+esc(shortG(FEE))+"</span> on Stellar and <span class=\\"mono\\">"+esc(shortG(XFEE))+"</span> on the XRP Ledger when users swap or add liquidity.</td></tr>"; }'
+// The pager sits under the table and is rebuilt with it. Only drawn when there is more than one page:
+// a "1 of 1" control is a control that does nothing.
++'    (function(){ var host=tb&&tb.closest?tb.closest(".adm-card"):null; if(!host)return;'
++'      var bar=host.querySelector(".lxled-pg");'
++'      if(pages<2){ if(bar&&bar.parentNode)bar.parentNode.removeChild(bar); return; }'
++'      if(!bar){ bar=document.createElement("div"); bar.className="lxled-pg";'
++'        bar.style.cssText="display:flex;align-items:center;gap:10px;justify-content:flex-end;padding:11px 14px;border-top:1px solid var(--border)";'
++'        host.appendChild(bar); }'
++'      var lo=from+1, hi=Math.min(from+LEDN,led.length);'
++'      bar.innerHTML="<span style=\\"margin-right:auto;color:var(--text-muted);font-size:13px\\">"'
++'        +lo+"\\u2013"+hi+" of "+led.length+"</span>"'
++'        +"<button type=\\"button\\" class=\\"adm-btn ghost\\" data-led=\\"prev\\""+(window.__lxLedPage<=0?" disabled":"")+">Previous</button>"'
++'        +"<span style=\\"color:var(--text-muted);font-size:13px\\">Page "+(window.__lxLedPage+1)+" of "+pages+"</span>"'
++'        +"<button type=\\"button\\" class=\\"adm-btn ghost\\" data-led=\\"next\\""+(window.__lxLedPage>=pages-1?" disabled":"")+">Next</button>";'
+// One delegated listener for the page, registered once: the bar is rebuilt on every repaint and a
+// listener bound to the buttons would go with it.
++'      if(!document.body.__lxLedW){ document.body.__lxLedW=1;'
++'        document.addEventListener("click",function(e){'
++'          var b=e.target&&e.target.closest?e.target.closest("[data-led]"):null; if(!b||b.disabled)return;'
++'          e.preventDefault();'
++'          window.__lxLedPage+=(b.getAttribute("data-led")==="next"?1:-1);'
++'          if(window.__lxLedPage<0)window.__lxLedPage=0;'
++'          try{ paintRevenue(); }catch(_){}'
++'        },true); } })();'
++'    var pending=keys.length, usdAll=0, usdMonth=0, priced=0, unpriced=[], noread=[];'
 +'    function render(){'
 +'      var tb2=q("#lxRevByAsset tbody"); if(!tb2)return;'
 +'      var tot=keys.reduce(function(s,k){ return s+(byA[k].usd||0); },0);'
 +'      tb2.innerHTML = keys.length ? keys.sort(function(x,y){ return (byA[y].usd||0)-(byA[x].usd||0); }).map(function(k){ var a=byA[k];'
 +'          var sh=tot>0&&a.usd!=null?((a.usd/tot*100).toFixed(1)+"%"):"\\u2014";'
-+'          return "<tr><td><span class=\\"lxadm-asset\\"><span class=\\"lxadm-ico\\" data-lxc=\\""+esc(a.code)+"\\"><img src=\\""+(LG[k]||avatar(a.code))+"\\" alt=\\"\\"></span>"+esc(a.code)+"</span></td>"'
++'          return "<tr><td><span class=\\"lxadm-asset\\"><span class=\\"lxadm-ico\\" data-lxc=\\""+esc(a.code)+"\\"><img src=\\""+(LG[k]||avatar(a.code))+"\\" alt=\\"\\"></span>"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:5px\\">"+(a.chain==="xrpl"?"XRPL":"Stellar")+"</span></span></td>"'
 +'            +"<td style=\\"text-align:right\\" class=\\"mono\\">"+esc(num(a.amt))+"</td>"'
-+'            +"<td style=\\"text-align:right\\" class=\\"mono\\">"+(a.usd==null?"<span title=\\"No spot price published for this asset \\u2014 counted in its own units, excluded from the USD total.\\">\\u2014</span>":esc(usd(a.usd)))+"</td>"'
+// THREE STATES, NOT TWO. A number, a dash for an asset nobody publishes a price for, and words for a
+// price we could not read. The dash and the words are both "no figure here", but only one of them is
+// a fact about the asset -- and the dash's tooltip asserted that fact either way.
++'            +"<td style=\\"text-align:right\\" class=\\"mono\\">"+(a.usd!=null?esc(usd(a.usd)):(a.unread'
++'              ?"<span style=\\"font-style:italic;color:var(--text-muted)\\" title=\\"The price source could not be reached, so this asset is left out of the USD total. The amount collected, on the left, is exact. Reload to try again.\\">couldn\\u2019t read</span>"'
++'              :"<span title=\\"No spot price published for this asset \\u2014 counted in its own units, excluded from the USD total.\\">\\u2014</span>"))+"</td>"'
 +'            +"<td style=\\"text-align:right\\">"+sh+"</td></tr>"; }).join("")'
 +'        : "<tr><td colspan=\\"4\\" class=\\"lxadm-empty\\">No fees collected yet.</td></tr>";'
-+'      setT(q("#lxRevAll"), keys.length?usd(usdAll):"\\u2014");'
-+'      setT(q("#lxRevMonth"), keys.length?usd(usdMonth):"\\u2014");'
+// A TOTAL WITH A CHAIN MISSING IS NOT A TOTAL. Showing "$0" or a part-figure invites it to be read,
+// quoted and acted on; a dash plus the warning above cannot be.
++'      var whole=(SOK!==false&&XOK!==false);'
++'      setT(q("#lxRevAll"), (whole&&keys.length)?usd(usdAll):"\\u2014");'
++'      setT(q("#lxRevMonth"), (whole&&keys.length)?usd(usdMonth):"\\u2014");'
 +'      var s1=q("#lxRevAllSub"), s2=q("#lxRevMonthSub");'
 +'      var uns=unpriced.length?(" \\u00b7 "+unpriced.length+" asset"+(unpriced.length>1?"s":"")+" unpriced"):"";'
-+'      if(s1)s1.textContent="across "+keys.length+" asset"+(keys.length===1?"":"s")+uns;'
-+'      if(s2)s2.textContent=new Date().toLocaleString(undefined,{month:"long"})+uns;'
-+'      var bs=q("#lxRevBySub"); if(bs)bs.textContent="exact on-chain amounts"+(unpriced.length?" \\u00b7 USD shown where a spot price exists":"");'
+// Reported separately from "unpriced" everywhere it is reported at all, because the reader's next move
+// differs: an unpriced asset will still be unpriced after a reload, an unread one may not be.
++'      var nrd=noread.length?(" \\u00b7 "+noread.length+" price"+(noread.length>1?"s":"")+" could not be read"):"";'
++'      if(s1)s1.textContent="across "+keys.length+" asset"+(keys.length===1?"":"s")+uns+nrd;'
++'      if(s2)s2.textContent=new Date().toLocaleString(undefined,{month:"long"})+uns+nrd;'
++'      var bs=q("#lxRevBySub"); if(bs)bs.textContent="exact on-chain amounts"+(unpriced.length?" \\u00b7 USD shown where a spot price exists":"")+nrd;'
 +'    }'
 +'    if(!pending){ render(); return; }'
 +'    keys.forEach(function(k){ var a=byA[k];'
-+'      priceUsd(a.code,a.iss,function(px){'
-+'        if(px!=null){ a.usd=a.amt*px; usdAll+=a.usd; usdMonth+=a.month*px; priced++; } else { a.usd=null; unpriced.push(a.code); }'
++'      priceUsdOn(a.chain,a.code,a.iss,function(px,unread){'
++'        if(px!=null){ a.usd=a.amt*px; usdAll+=a.usd; usdMonth+=a.month*px; priced++; a.unread=0; }'
++'        else { a.usd=null; a.unread=unread?1:0; (unread?noread:unpriced).push(a.code); }'
 +'        if(--pending===0)render(); }); });'
 +'  }); }'
 // ---- CSV export (real ledger, no backend needed) ----
 +'function wireCsv(){ var b=q("#lxRevCsv"); if(!b||b.__lx)return; b.__lx=1;'
 +'  b.addEventListener("click",function(){ loadRevenue().then(function(rv){'
-+'    var head="date,from,asset,issuer,amount,tx\\n";'
-+'    var body=rv.rows.map(function(p){ var a=assetOf(p); return [p.created_at,p.from,a.code,a.iss,p.amount,p.transaction_hash].join(","); }).join("\\n");'
++'    var head="chain,date,from,asset,issuer,amount,tx\\n";'
++'    var body=rv.rows.map(function(p){ var a=assetOf(p); return [(p.chain||"stellar"),p.created_at,p.from,a.code,a.iss,p.amount,p.transaction_hash].join(","); }).join("\\n");'
 +'    var blob=new Blob([head+body],{type:"text/csv"}); var u=URL.createObjectURL(blob);'
 +'    var el=document.createElement("a"); el.href=u; el.download="lumoscore-fees.csv"; el.click(); setTimeout(function(){URL.revokeObjectURL(u);},1000); }); }); }'
 // ---- Dashboard KPIs: fill what is real, dash what needs a backend ----
@@ -466,14 +706,81 @@ function loadBridge(){ if(BRIDGE)return Promise.resolve(BRIDGE);
     .then(function(d){ var m={}; ((d&&d.rows)||[]).forEach(function(x){ if(x&&x.feeHash)m[x.feeHash]=x; });
       BRIDGE=m; return m; })
     .catch(function(){ BRIDGE={}; return BRIDGE; }); }
-var VOL=null;
+var VOL=null, VOL_CAPPED=false, VOL_FAILED=false;
+// THE ENVELOPES, FETCHED ON THEIR OWN. loadRevenue dropped join=transactions because it costs fourteen
+// times the time for data only this breakdown uses. One joined page is fetched here instead -- bounded
+// at 200 receipts, roughly eight seconds, and nothing else on the page waits for it.
+//
+// The capped flag is recorded rather than hidden: if the collector ever holds more than 200 receipts
+// the breakdown covers the most recent 200 and the subtitle has to say so, or a partial split reads as
+// the whole business. Same rule as the unreachable-chain warning above.
+// (No backticks anywhere in this block -- it sits inside a template literal and one would end it.)
+var ENVP=null;
+function loadEnvelopes(){ if(ENVP)return ENVP;
+  ENVP=j(H+"/accounts/"+FEE+"/payments?order=desc&limit=200&join=transactions").then(function(d){
+    var recs=(d&&d._embedded&&d._embedded.records)||[], m={};
+    if(!d) return {map:{},capped:false,failed:true};
+    recs.forEach(function(p){ if(p.transaction_hash&&p.transaction)m[p.transaction_hash]=p.transaction; });
+    return {map:m,capped:recs.length>=200,failed:false};
+  }).catch(function(){ return {map:{},capped:false,failed:true}; });
+  return ENVP; }
+// EVERY RECEIPT, FROM OUR OWN ENDPOINT, with the 200-envelope page kept as the fallback.
+//
+// loadEnvelopes fetches ONE page of 200, so a receipt older than that returned null from grossOf and
+// contributed zero volume. Measured 2026-10-21: 366 inbound receipts, 200 envelopes, 166 silently
+// dropped. /lxapi/revvolume pages ALL of them at the edge, once per cache period, and reads Horizon's
+// JSON operations rather than parsing XDR -- same field-for-field logic, written out in that file.
+//
+// WHAT IT DID NOT FIX, recorded so nobody re-chases it: the dropped 166 were worth about nothing. The
+// full recomputation came to $1,684 against the capped page's $1.7K. RAZA's remembered ~$20K was a
+// DOUBLE COUNT removed on 2026-09-19 (cb05ea6b) -- bridges used to be added to swap volume AND to
+// cross-chain volume. This endpoint is correctness and headroom, not a restoration of that figure.
+//
+// STELLAR ONLY. rv.rows carries both chains; the endpoint reads the Stellar collector. An XRPL receipt
+// is simply not in the map and falls through to the path below, exactly as before.
+var RVOL=null;
+function loadRevVol(){ if(RVOL)return RVOL;
+  RVOL=j("/lxapi/revvolume").then(function(d){ return (d&&d.ok&&d.rows)?d:null; }).catch(function(){ return null; });
+  return RVOL; }
 function loadVolume(){ if(VOL)return Promise.resolve(VOL);
-  return Promise.all([loadRevenue(),sdk(),loadBridge()]).then(function(z){ var rv=z[0],S=z[1],BR=z[2]||{};
+  return Promise.all([loadRevenue(),sdk(),loadBridge(),loadEnvelopes(),loadRevVol()]).then(function(z){ var rv=z[0],S=z[1],BR=z[2]||{},EN=z[3]||{map:{}},RV=z[4];
     var out=[],miss=0;
+    // grossOf reads p.transaction, which the payment record no longer carries; put it back from the
+    // envelope page so the function itself is unchanged.
+    rv.rows.forEach(function(p){ if(!p.transaction&&EN.map[p.transaction_hash])p.transaction=EN.map[p.transaction_hash]; });
+    var RVM={}; if(RV)(RV.rows||[]).forEach(function(r){ if(r&&r.h)RVM[r.h]=r; });
+    // Capped only when we are still relying on the 200-page. A complete endpoint answer retires the
+    // warning; a failed one leaves it exactly as it was, because then the page really is capped.
+    VOL_CAPPED=RV?!!RV.capped:!!EN.capped; VOL_FAILED=!!EN.failed&&!RV;
     // Every receipt is kept now, not just the ones with a swap, because the revenue breakdown needs to
     // account for all of them. Volume still only counts rows with gross > 0; a mint fee is revenue but
     // it is not trading volume, and adding it to volume would overstate how much is being traded.
-    rv.rows.forEach(function(p){ var g=grossOf(S,p);
+    rv.rows.forEach(function(p){
+      // THE XRP LEDGER LEAVES BEFORE grossOf, WHICH IS WHY ITS FEES WERE MISSING ENTIRELY. grossOf
+      // reads p.transaction.envelope_xdr and returns null without one; an XRPL receipt has no
+      // envelope, so every single one hit the miss++ return below and never reached the rows at all.
+      // NO BACKTICKS IN THIS COMMENT -- it sits inside a template literal.
+      // "Revenue by source" therefore split a business it was only seeing half of, and the XRP was
+      // not merely unpriced there -- it was absent. (RAZA 2026-10-29.)
+      //
+      // It carries NO gross: valuing an XRPL swap needs the swap transaction, which we do not fetch.
+      // Zero keeps it out of volUsd and the per-asset volume maps, which both skip a row with no
+      // gross, so swap volume stays Stellar-only and labelled -- the documented behaviour at the top
+      // of this file, deliberately unchanged. The FEE is what this row is here to carry.
+      if(p.chain==="xrpl"){
+        out.push({t:Date.parse(p.created_at),from:p.from,code:null,iss:"",gross:0,chain:"xrpl",
+          kind:xKind(p.memo),fee:(+p.amount||0),feeCode:"XRP",feeIss:"",
+          // Deliberately not reconstructed from the marker. bridged feeds the cross-chain VOLUME
+          // figure and the per-route split, and we know the route but not one dollar of what crossed;
+          // a route named with nothing behind it reads as "Axelar: $0.00", which is worse than silent.
+          bridged:0,route:"",bridgeTo:""});
+        return;
+      }
+      // The endpoint's answer wins where it has one: it read the real transaction, and it read every
+      // receipt rather than the most recent 200. grossOf stays as the fallback for anything it did not
+      // cover -- a Stellar one it could not resolve.
+      var rvr=RVM[p.transaction_hash];
+      var g=rvr?{kind:rvr.kind,code:rvr.code,iss:rvr.iss||"",gross:+rvr.gross||0}:grossOf(S,p);
       if(!g){ miss++; return; }
       var br=BR[p.transaction_hash];
       // A registered bridge is a bridge, whatever its shape looked like. Its "gross" is the amount
@@ -482,7 +789,7 @@ function loadVolume(){ if(VOL)return Promise.resolve(VOL);
       if(br)g.kind="bridge";
       if(!g.gross&&!br)miss++;
       var fa=assetOf(p);
-      out.push({t:Date.parse(p.created_at),from:p.from,code:g.code,iss:g.iss,gross:g.gross,
+      out.push({t:Date.parse(p.created_at),from:p.from,code:g.code,iss:g.iss,gross:g.gross,chain:"stellar",
         kind:g.kind,fee:(+p.amount||0),feeCode:fa.code,feeIss:fa.iss,
         // IN DOLLARS, per route (RAZA 2026-09-19: add LayerZero and NEAR Intents fees to admin). CCTP moves USDC and
         // LayerZero USDT0 -- both dollars by construction; a NEAR Intents transfer can deliver ETH or MON, so its value
@@ -531,6 +838,32 @@ function loadTier(){ if(TIERC)return Promise.resolve(TIERC);
       if(nx&&depth<6)return page(nx,depth+1); }); }
   return page("",1).then(function(){ TIERC={n:(failed?null:n),excluded:excl,set:set}; return TIERC; })
    .catch(function(){ TIERC={n:null,excluded:0,set:{}}; return TIERC; }); }
+// THE XRP LEDGER FEE TIER — a different token, on a different chain, with the same threshold.
+// XRPL LUMOS is its own issuance (blackholed; see _tools/browser/feerate.js in the XRPL repo) and the
+// 250K check is made against THAT balance. Until this existed every XRPL wallet was tested against the
+// Stellar holder set, which can never contain an r-address, so the table printed "0.2%" from a check
+// that had not been made — an assertion, not a reading.
+//
+// PAGED IN FULL, unlike the Stellar side. stellar.expert returns holders sorted by balance descending,
+// which is why that loop may stop at the first wallet below the line; account_lines comes back in no
+// particular order, so stopping early would silently drop qualifying holders. Measured 2026-10-15:
+// 1727 trust lines over 5 pages, 77 wallets at or above the threshold.
+var XLUMOS_ISS="rsPqeamjpr3Bxu4LhtCgvJEAQusYRRg6Ha",XLUMOS_CUR="4C554D4F53000000000000000000000000000000";
+var XTIERC=null;
+function loadXTier(){ if(XTIERC)return Promise.resolve(XTIERC);
+  var n=0,set={},failed=false;
+  function page(marker,depth){
+    var p={account:XLUMOS_ISS,limit:400,ledger_index:"validated"}; if(marker)p.marker=marker;
+    return xrpc("account_lines",p).then(function(d){ var r=d&&d.result;
+      if(!r||r.error){ if(depth===1)failed=true; return; }
+      var ls=r.lines||[];
+      for(var i=0;i<ls.length;i++){ if(ls[i].currency!==XLUMOS_CUR)continue;
+        // An issuer sees its own obligation, so the holder's balance is the NEGATED line balance.
+        var bal=-(+ls[i].balance||0);
+        if(bal>=TIER){ n++; set[ls[i].account]=1; } }
+      if(r.marker&&depth<12)return page(r.marker,depth+1); }); }
+  return page(null,1).then(function(){ XTIERC={n:(failed?null:n),set:set}; return XTIERC; })
+   .catch(function(){ XTIERC={n:null,set:{}}; return XTIERC; }); }
 var WIN=[["24H",864e5],["7D",6048e5],["30D",2592e6],["Lifetime",0]], WI=0;
 function winSince(){ var ms=WIN[WI][1]; return ms?(Date.now()-ms):0; }
 function kpiTile(id,label,foot,tip){
@@ -572,12 +905,12 @@ function fillDash(){
     setT(q("#lxdTradesA"), num(rv.rows.length));
     var wAll={}; rv.rows.forEach(function(p){ wAll[p.from]=1; });
     // (fee-paying wallet count lives on the Users page; these two tiles are connections)
-    var byA={}; inWin.forEach(function(p){ var a=assetOf(p), k=a.code+"-"+a.iss;
-      byA[k]=byA[k]||{code:a.code,iss:a.iss,amt:0}; byA[k].amt+=+p.amount||0; });
+    var byA={}; inWin.forEach(function(p){ var a=assetOf(p), ch=p.chain||"stellar", k=ch+":"+a.code+"-"+a.iss;
+      byA[k]=byA[k]||{chain:ch,code:a.code,iss:a.iss,amt:0}; byA[k].amt+=+p.amount||0; });
     var ks=Object.keys(byA);
     if(!ks.length){ setT(q("#lxdRev"),usd(0)); return; }
     var pend=ks.length,tot=0;
-    ks.forEach(function(k){ var a=byA[k]; priceUsd(a.code,a.iss,function(px){
+    ks.forEach(function(k){ var a=byA[k]; priceUsdOn(a.chain,a.code,a.iss,function(px){
       if(px!=null)tot+=a.amt*px; if(--pend===0)setT(q("#lxdRev"),usd(tot)); }); });
   });
   loadVolume().then(function(v){
@@ -586,8 +919,25 @@ function fillDash(){
       // Some fee receipts carry no swap in their envelope -- real revenue, but not volume. That is why
       // revenue/volume lands above the 0.2% fee rate, so the count is shown rather than left to puzzle
       // over: an unexplained ratio invites someone to trust the wrong number.
-      var f=q("#lxdVolF"); if(f)f.innerHTML="swap volume"+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(v.missing>0?(" \u00b7 "+v.missing+" receipt(s) with no swap"):""); });
-    volUsd(v.rows,0,function(t){ setT(q("#lxdVolA"), usd(t)); });
+      // AND SAY WHEN THE FIGURE IS NOT ALL-TIME (RAZA 2026-10-21: "i sure the mentioned volume isnt
+      // correct. I used it was close to $20K combined alltime... why is it suddenly showing so less").
+      //
+      // It was not wrong, it was TRUNCATED. Volume needs each receipt's envelope to find the swap leg,
+      // and envelopes come from ONE page of 200 (loadEnvelopes). Measured against the ledger the same
+      // day: 366 inbound fee receipts, 200 envelopes fetched, so 166 receipts returned null from
+      // grossOf and contributed zero. "All time" was really "the most recent 200 receipts", and it
+      // shrinks on its own as new receipts push older swaps out of the window.
+      //
+      // VOL_CAPPED already existed and was printed on the revenue BREAKDOWN subtitle only -- so the one
+      // number a reader would quote was the one that never admitted its limit. Same fault as the
+      // bridge table and the pool chart that day: a surface stating something it has not established.
+      var f=q("#lxdVolF"); if(f)f.innerHTML="swap volume"+(un?(" \u00b7 "+un+" asset(s) unpriced"):"")+(v.missing>0?(" \u00b7 "+v.missing+" receipt(s) with no swap"):"")+(VOL_CAPPED?" \u00b7 <b>most recent 200 receipts only</b>":""); });
+    // THE ALL-TIME TILE IS THE ONE THAT LIED. Its foot is static markup reading "every swap since
+    // launch" and nothing ever rewrote it, so the capped figure carried an explicit claim to be
+    // complete. Corrected here rather than in kpiTile, because it is only untrue while capped.
+    volUsd(v.rows,0,function(t){ setT(q("#lxdVolA"), usd(t));
+      var af=q("#lxdVolAF");
+      if(af)af.innerHTML=VOL_CAPPED?"<b>most recent 200 receipts only</b> · not every swap":"every swap since launch"; });
     // Straight sum, no pricing step: CCTP moves USDC and nothing else.
     var brP=0,brA=0,brN=0,byR={};   // every bridged figure is already in dollars (see bridged); split by route
     v.rows.forEach(function(r){ var b=+r.bridged||0; if(!b)return;
@@ -636,7 +986,11 @@ var SRC_LABEL={trade:"Trading fees",mint:"Token minting",bridge:"Cross-chain fee
   ads:"Advertising",listing:"Token listings",sponsorship:"Sponsorships",other_manual:"Other"};
 var SRC_HOW={trade:"platform fee on each swap, read from the chain",
   mint:"launchpad issuance fee, read from the chain",
-  bridge:"CCTP bridge fee, matched to its burn on the chain",
+  // NOT "CCTP" ANY MORE, AND IT HAD NOT BEEN FOR A WHILE. The registry this row is built from carries
+  // LayerZero and NEAR Intents as well (measured 2026-10-29: 46 CCTP, 25 LayerZero, 21 NEAR Intents),
+  // and the XRPL half now adds Axelar and THORChain. Naming one route made the other four read as
+  // though they were not counted.
+  bridge:"bridge fee on any route, matched to the transfer on the chain",
   other:"payments to the fee collector with no swap, mint or bridge behind them",
   ads:"entered by hand",listing:"entered by hand",sponsorship:"entered by hand",other_manual:"entered by hand"};
 
@@ -651,22 +1005,40 @@ function paintSources(){
     if(v.missing<0){ tb.innerHTML="<tr><td colspan='4' class='lxadm-empty'>Could not read the transaction envelopes, so the on-chain split is unavailable.</td></tr>"; return; }
 
     // group the on-chain receipts by kind, then by fee asset, so each asset is priced once
+    // THE CHAIN IS PART OF THE KEY. Without it the lookup below used the Stellar-only priceUsd for
+    // everything, so XRP was sent to stellar.expert, which has never heard of it, and every XRPL fee
+    // was silently counted "unpriced" and left out of this card's total and shares.
     var byKind={};
     v.rows.forEach(function(r){ var k=r.kind||"other";
-      byKind[k]=byKind[k]||{}; var a=r.feeCode+"-"+r.feeIss;
+      byKind[k]=byKind[k]||{}; var a=(r.chain||"stellar")+"|"+r.feeCode+"-"+r.feeIss;
       byKind[k][a]=(byKind[k][a]||0)+r.fee; });
 
-    var pend=0, unpriced=0;
+    var pend=0, unpriced=0, noread=0, noreadKind={};
     Object.keys(byKind).forEach(function(k){ Object.keys(byKind[k]).forEach(function(){ pend++; }); });
     man.forEach(function(e){ add(e.source==="other"?"other_manual":e.source, parseFloat(e.amountUsd)||0); });
     if(!pend){ draw(); return; }
 
+    // DRAW ONCE, AND NEVER NOT AT ALL (RAZA 2026-10-19: this card sat on "Loading…"). The table only
+    // leaves that placeholder when draw() runs, and draw() only runs when every price callback has
+    // come back -- so a single lookup that never calls back leaves the card loading for ever, with no
+    // error and nothing to read. A deadline turns that into a result: whatever has priced is shown,
+    // and the ones that did not are reported in the subtitle.
+    //
+    // A LOOKUP THAT RAN OUT OF TIME IS AN UNREAD PRICE, NOT AN UNPRICED ASSET -- it used to be added
+    // to the unpriced count, which told the reader the asset has no published price when all we know is that
+    // we stopped waiting for it.
+    var drawn=false;
+    function drawOnce(){ if(drawn)return; drawn=true; clearTimeout(tmr); draw(); }
+    var tmr=setTimeout(function(){ noread+=pend; pend=0; drawOnce(); },20000);
+
     Object.keys(byKind).forEach(function(k){
       Object.keys(byKind[k]).forEach(function(a){
-        var i=a.lastIndexOf("-"), code=a.slice(0,i), iss=a.slice(i+1);
-        priceUsd(code,iss,function(px){
-          if(px!=null)add(k,byKind[k][a]*px); else unpriced++;
-          if(--pend===0)draw();
+        var b=a.indexOf("|"), chain=a.slice(0,b), rest=a.slice(b+1);
+        var i=rest.lastIndexOf("-"), code=rest.slice(0,i), iss=rest.slice(i+1);
+        priceUsdOn(chain,code,iss,function(px,unread){
+          if(drawn)return;
+          if(px!=null)add(k,byKind[k][a]*px); else if(unread){ noread++; noreadKind[k]=1; } else unpriced++;
+          if(--pend===0)drawOnce();
         });
       });
     });
@@ -683,10 +1055,17 @@ function paintSources(){
           // A zero from the chain means zero. A zero from a hand-entered category means nobody has
           // recorded one, which is a different statement and should not read as revenue of nil.
           if(!val&&manual)return "";
-          var share=total>0?((val/total*100).toFixed(1)+"%"):"\u2014";
+          // A ZERO WE CANNOT STAND BEHIND IS NOT A ZERO. This row has receipts in it; what it does not
+          // have is a price for them, so "$0 / 0.0%" states the one thing we know to be false. The
+          // subtitle already counts the unread prices -- this stops the row itself contradicting it.
+          var dead=!val&&noreadKind[k];
+          var share=dead?"\u2014":(total>0?((val/total*100).toFixed(1)+"%"):"\u2014");
+          var amt=dead
+            ? "<span style='font-style:italic;color:var(--text-muted)' title='There are fees in this row, but their price could not be read, so they are not in the total. Reload to try again.'>couldn\u2019t read</span>"
+            : esc(usd(val));
           return "<tr><td><b>"+esc(SRC_LABEL[k])+"</b></td>"
             +"<td style='color:var(--text-muted);font-size:13px'>"+esc(SRC_HOW[k])+"</td>"
-            +"<td class='num-cell' style='text-align:right'>"+esc(usd(val))+"</td>"
+            +"<td class='num-cell' style='text-align:right'>"+amt+"</td>"
             +"<td style='text-align:right'>"+share+"</td></tr>";
         }).join("");
       }
@@ -695,6 +1074,10 @@ function paintSources(){
         var noManual=!man.length;
         sub.textContent=usd(total)+" total"
           +(unpriced?(" \u00b7 "+unpriced+" asset(s) unpriced"):"")
+          +(noread?(" \u00b7 "+noread+" price"+(noread>1?"s":"")+" could not be read"):"")
+          // A split over the most recent 200 receipts is not a split of the business, and saying so is
+          // cheaper than letting the percentages be quoted as if it were.
+          +(VOL_CAPPED?" \u00b7 most recent 200 receipts only":"")
           +(noManual?" \u00b7 nothing entered for advertising or listings yet":"");
       }
     }
@@ -825,8 +1208,8 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'    for(var i=5;i>=0;i--){ var d=new Date(now.getFullYear(),now.getMonth()-i,1);'
 +'      var k=d.getFullYear()+"-"+d.getMonth();'
 +'      idx[k]=buckets.length; buckets.push({label:d.toLocaleString(undefined,{month:"short"}),usd:0}); }'
-+'    var byA={}; rv.rows.forEach(function(p){ var a=assetOf(p), k=a.code+"-"+a.iss;'
-+'      byA[k]=byA[k]||{code:a.code,iss:a.iss,amt:0,rows:[]}; byA[k].amt+=+p.amount||0; byA[k].rows.push(p); });'
++'    var byA={}; rv.rows.forEach(function(p){ var a=assetOf(p), ch=p.chain||"stellar", k=ch+":"+a.code+"-"+a.iss;'
++'      byA[k]=byA[k]||{chain:ch,code:a.code,iss:a.iss,amt:0,rows:[]}; byA[k].amt+=+p.amount||0; byA[k].rows.push(p); });'
 +'    var ks=Object.keys(byA), pend=ks.length, total=0;'
 +'    function drawBars(){'
 +'      var box=q("#lxDashBars"); if(!box)return;'
@@ -842,11 +1225,11 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'      if(!list.length||!total){ netBars.innerHTML="<div class=\\"lxadm-empty\\">No priced fee revenue yet.</div>"; return; }'
 +'      var C=["linear-gradient(90deg,#8b7bff,#2563eb)","linear-gradient(90deg,#35c07f,#15803d)","linear-gradient(90deg,#ea6a2c,#c2410c)","linear-gradient(90deg,#f59e0b,#b45309)","linear-gradient(90deg,#ec4899,#9d174d)"];'
 +'      netBars.innerHTML=list.slice(0,5).map(function(a,i){ var pc=a.usd/total*100;'
-+'        return "<div class=\\"net-bar\\"><div class=\\"net-bar-head\\"><span class=\\"net-bar-name\\">"+esc(a.code)+"</span>"'
++'        return "<div class=\\"net-bar\\"><div class=\\"net-bar-head\\"><span class=\\"net-bar-name\\">"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:5px\\">"+(a.chain==="xrpl"?"XRPL":"Stellar")+"</span></span>"'
 +'          +"<span class=\\"net-bar-val\\">"+usd(a.usd)+" \u00b7 "+pc.toFixed(1)+"%</span></div>"'
 +'          +"<div class=\\"net-bar-track\\"><div class=\\"net-bar-fill\\" style=\\"width:"+pc.toFixed(1)+"%;background:"+C[i%C.length]+"\\"></div></div></div>"; }).join(""); }'
 +'    if(!pend){ drawBars(); drawSplit(); } else {'
-+'      ks.forEach(function(k){ var a=byA[k]; priceUsd(a.code,a.iss,function(px){'
++'      ks.forEach(function(k){ var a=byA[k]; priceUsdOn(a.chain,a.code,a.iss,function(px){'
 +'        if(px!=null){ a.usd=a.amt*px; total+=a.usd;'
 +'          a.rows.forEach(function(p){ var d=new Date(Date.parse(p.created_at));'
 +'            var bk=idx[d.getFullYear()+"-"+d.getMonth()]; if(bk!=null)buckets[bk].usd+=(+p.amount||0)*px; }); }'
@@ -857,7 +1240,7 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'      else fd.innerHTML=rv.rows.slice(0,6).map(function(p){ var a=assetOf(p);'
 +'        return "<div class=\\"act-row\\"><span class=\\"act-ico green\\"></span><div class=\\"act-text\\">"'
 +'          +"<div class=\\"act-title\\"><span class=\\"mono\\">"+esc(shortG(p.from))+"</span> paid <span class=\\"mono\\">"+esc(num(+p.amount))+" "+esc(a.code)+"</span> in platform fees</div>"'
-+'          +"<div class=\\"act-meta\\"><span>Stellar mainnet</span><a class=\\"lxadm-link mono\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\"https://stellar.expert/explorer/public/tx/"+esc(p.transaction_hash)+"\\">tx: "+esc(String(p.transaction_hash).slice(0,4))+"\u2026"+esc(String(p.transaction_hash).slice(-4))+"</a></div>"'
++'          +"<div class=\\"act-meta\\"><span>"+((p.chain==="xrpl")?"XRP Ledger mainnet":"Stellar mainnet")+"</span><a class=\\"lxadm-link mono\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc((p.chain==="xrpl")?("https://bithomp.com/explorer/"+encodeURIComponent(p.transaction_hash)):("https://stellar.expert/explorer/public/tx/"+encodeURIComponent(p.transaction_hash)))+"\\">tx: "+esc(String(p.transaction_hash).slice(0,4))+"\u2026"+esc(String(p.transaction_hash).slice(-4))+"</a></div>"'
 +'          +"</div><span class=\\"act-time\\">"+esc(ago(p.created_at))+"</span></div>"; }).join(""); }'
 +'  });'
 // ---- largest pools strip ----
@@ -903,11 +1286,28 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'  var c2=cardByTitle("LUMOS Incentives");'
 +'  if(c2&&c2.getAttribute("data-lxbuilt")!=="1"){ c2.setAttribute("data-lxbuilt","1");'
 +'    retitle(c2.querySelector(".adm-card-head"),"System status");'
-+'    var SVC=[["Horizon (Stellar RPC)",H+"/assets?limit=1"],["stellar.expert index","https://api.stellar.expert/explorer/public/asset?search=XLM&limit=1"],["CoinGecko prices","https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd"]];'
+// A card called "System status" that only knew about Stellar. Since the XRPL launch half the platform
+// could be down and this would have sat there green.
+//
+// An entry is a url for a plain GET, or a FUNCTION when the check is not one: the ledger wants a POST,
+// which j() cannot do. A function resolves truthy for healthy and null for not, same contract as j().
+//
+// THE XRPL MARKET CHECK GOES THROUGH OUR OWN ENDPOINT, and through the cheap one. xrpl.to allows 333
+// upstream requests a day and /lxapi/xrplprices spends three of them on a miss (it pages the top 300);
+// /lxapi/xrpltoken spends one, caches for 60s, and answers the same question -- does our XRPL data
+// path work. A status panel that eats the budget it is meant to be watching would be its own outage.
++'    var SVC=[["Horizon (Stellar RPC)",H+"/assets?limit=1"],'
++'      ["stellar.expert index","https://api.stellar.expert/explorer/public/asset?search=XLM&limit=1"],'
++'      ["CoinGecko prices","https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd"],'
++'      ["XRP Ledger (xrplcluster)",function(){ return xrpc("server_info",{}).then(function(d){ return (d&&d.result&&d.result.info)?d:null; }); }],'
++'      ["xrpl.to market data",function(){ return j("/lxapi/xrpltoken?id=XRP").then(function(d){ return (d&&d.ok)?d:null; }); }]];'
 +'    var b2=cardBody(c2,SVC.map(function(x,i){ return "<div class=\\"lxstat-row\\" id=\\"lxsvc"+i+"\\"><span class=\\"lxstat-dot\\"></span><span class=\\"lxstat-name\\">"+esc(x[0])+"</span><span class=\\"lxstat-val\\">checking\u2026</span></div>"; }).join(""));'
 +'    b2.style.padding="0";'
 +'    SVC.forEach(function(x,i){ var t0=Date.now();'
-+'      j(x[1]).then(function(d){ var row=q("#lxsvc"+i); if(!row)return; var ms=Date.now()-t0;'
+// A probe that THROWS must read as unreachable, not leave the row stuck on "checking…" for ever --
+// which is what a bare .then() does, and it is the one state a status panel must never show.
++'      var p; try{ p=(typeof x[1]==="function")?x[1]():j(x[1]); }catch(e){ p=Promise.resolve(null); }'
++'      p.catch(function(){ return null; }).then(function(d){ var row=q("#lxsvc"+i); if(!row)return; var ms=Date.now()-t0;'
 +'        row.querySelector(".lxstat-dot").className="lxstat-dot "+(d?"ok":"bad");'
 +'        row.querySelector(".lxstat-val").textContent=d?(ms+"ms"):"unreachable"; }); }); }'
 // 3. Retention needed sessions and there are none, so that card sat admitting it had nothing to show.
@@ -1012,7 +1412,7 @@ function paintUsers(){
     nt.textContent="LumosCore has no sign-up, so there is no user table to read. A user here is a wallet that has paid a platform fee on-chain \u2014 the only record of someone having used the app. Everything on this page is Stellar mainnet; there is no second network to split by.";
     head.parentNode.insertBefore(nt, head.nextSibling); }
   qa(".admin-page-actions .adm-btn").forEach(function(b){ if(/invite/i.test(b.textContent)){ b.disabled=true; b.style.opacity="0.5"; b.style.cursor="not-allowed"; b.title="Needs a backend \u2014 there is nowhere to store an admin account or send an invite."; } });
-  var ROWS=[], SORT=0, TIERSET=null, SEG="all", GEO=null;
+  var ROWS=[], SORT=0, TIERSET=null, XTIERSET=null, SEG="all", GEO=null;
   // THE FLAG IS A UNICODE REGIONAL-INDICATOR PAIR, not an image: two code points per country, no
   // request, no sprite sheet, and nothing to 404. "GB" -> the two letters shifted into the regional
   // indicator block, which every platform renders as a flag.
@@ -1076,7 +1476,10 @@ function paintUsers(){
   }
   loadRevenue().then(function(rv){
     var w={};
-    rv.rows.forEach(function(p){ var a=assetOf(p), u=w[p.from]=w[p.from]||{addr:p.from,n:0,by:{},vol:{},first:p.created_at,last:p.created_at};
+    // A wallet address belongs to exactly one chain, so the chain is recorded on the WALLET and the
+    // per-asset tallies need no chain in their keys. That is what lets pricing, the tier check and the
+    // explorer link all route off one field.
+    rv.rows.forEach(function(p){ var a=assetOf(p), u=w[p.from]=w[p.from]||{addr:p.from,chain:(p.chain||"stellar"),n:0,by:{},vol:{},first:p.created_at,last:p.created_at};
       u.n++; u.by[a.code+"-"+a.iss]=(u.by[a.code+"-"+a.iss]||0)+(+p.amount||0);
       if(Date.parse(p.created_at)<Date.parse(u.first))u.first=p.created_at;
       if(Date.parse(p.created_at)>Date.parse(u.last))u.last=p.created_at; });
@@ -1091,15 +1494,24 @@ function paintUsers(){
     if(!ROWS.length){ if(tb)tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>No wallet has paid a fee yet.</td></tr>"; return; }
     sortRows(); render();
     // revenue: the fees this wallet actually paid us, priced per asset
-    var codes={}; ROWS.forEach(function(u){ Object.keys(u.by).forEach(function(k){ codes[k]=1; }); });
-    Object.keys(codes).forEach(function(k){ var pp=k.split("-");
-      priceUsd(pp[0],pp[1]||"",function(px){ if(px==null)return;
-        ROWS.forEach(function(u){ if(u.by[k]!=null){ u.usd=(u.usd||0)+u.by[k]*px; } }); sortRows(); render(); }); });
+    // Priced PER CHAIN. The same ticker exists on both, and the old version sent every asset to
+    // stellar.expert, so an XRPL wallet's fees priced to nothing and its Revenue column stayed on the
+    // raw amounts. lastIndexOf splits code from issuer because an XRPL 40-hex code never contains "-"
+    // but split("-") would still mangle anything that did.
+    var codes={}; ROWS.forEach(function(u){ Object.keys(u.by).forEach(function(k){ codes[u.chain+"|"+k]=1; }); });
+    Object.keys(codes).forEach(function(ck){ var bar=ck.indexOf("|"), ch=ck.slice(0,bar), k=ck.slice(bar+1), i=k.lastIndexOf("-");
+      priceUsdOn(ch,k.slice(0,i),k.slice(i+1),function(px){ if(px==null)return;
+        ROWS.forEach(function(u){ if(u.chain===ch&&u.by[k]!=null){ u.usd=(u.usd||0)+u.by[k]*px; } }); sortRows(); render(); }); });
     // volume: gross swap size per wallet, from the same decoded envelopes the dashboard uses
     loadVolume().then(function(v){
       var idx={}; ROWS.forEach(function(u){ idx[u.addr]=u; });
       var vcodes={};
-      v.rows.forEach(function(r){ var u=idx[r.from]; if(!u)return; var k=r.code+"-"+r.iss;
+      // A row with no gross has no asset either -- grossOf returns code:null for a receipt with no
+      // swap behind it, and an XRPL row never carries one. Without this guard they all keyed "null-",
+      // which then went to stellar.expert as an asset search for "null": one wasted request per page
+      // whose only possible answer was no match. Every other reader of these rows already skips them.
+      v.rows.forEach(function(r){ var u=idx[r.from]; if(!u)return; if(!r.code||!r.gross)return;
+        var k=r.code+"-"+r.iss;
         u.vol[k]=(u.vol[k]||0)+r.gross; vcodes[k]=1; });
       Object.keys(vcodes).forEach(function(k){ var pp=k.split("-");
         priceUsd(pp[0],pp[1]||"",function(px){ if(px==null)return;
@@ -1110,8 +1522,11 @@ function paintUsers(){
     // of dashes, never the table.
     j("/lxapi/walletgeo").then(function(d){ GEO=(d&&d.geo)||{}; render(); })
       .catch(function(){ GEO={}; render(); });
-    loadTier().then(function(ti){ TIERSET=ti.set||{};
-      var onTier=0; ROWS.forEach(function(u){ u.tier=!!TIERSET[u.addr]; if(u.tier)onTier++; });
+    // Each wallet is tested against ITS OWN chain's LUMOS holders. Checking an r-address against the
+    // Stellar set always answered "below the threshold", which reads on screen as a measurement.
+    Promise.all([loadTier(),loadXTier()]).then(function(r){ TIERSET=r[0].set||{}; XTIERSET=r[1].set||{};
+      var onTier=0; ROWS.forEach(function(u){ var s=(u.chain==="xrpl")?XTIERSET:TIERSET;
+        u.tier=!!s[u.addr]; if(u.tier)onTier++; });
       setT(q("#lxuTier"), String(onTier)); render(); });
   });
   function sortRows(){ ROWS.sort(function(x,y){
@@ -1132,11 +1547,18 @@ function paintUsers(){
       var tier=(u.tier==null)?"\u2014":(u.tier
         ?"<span class='lxu-tier on' title='Holds at least 250,000 LUMOS, so pays the reduced 0.1% platform fee.'>0.1%</span>"
         :"<span class='lxu-tier off' title='Below 250,000 LUMOS, so pays the standard 0.2% platform fee.'>0.2%</span>");
-      return "<tr class='clickable' data-w='"+esc(u.addr)+"'>"
+      // The chain is named on the wallet's own sub-line rather than in a new column, because the
+      // sortable-column map is keyed by column INDEX and a ninth column would shift every entry.
+      var xr=(u.chain==="xrpl");
+      return "<tr class='clickable' data-w='"+esc(u.addr)+"' data-c='"+esc(u.chain||"stellar")+"'>"
         +"<td><div class='user-cell'><img class='lxu-av' data-lxc='wallet' alt='' src='"+avatar(u.addr.slice(1,3))+"'>"
-        +"<div><div class='un mono'>"+esc(shortG(u.addr))+(u.tre?" <span class='lxu-tre' title='A LumosDAO treasury or burn wallet, not a customer. Its activity is real on-chain volume so it is counted, but it is not a trader.'>treasury</span>":"")+"</div><div class='um'>Stellar mainnet</div></div></div></td>"
+        +"<div><div class='un mono'>"+esc(shortG(u.addr))+(u.tre?" <span class='lxu-tre' title='A LumosDAO treasury or burn wallet, not a customer. Its activity is real on-chain volume so it is counted, but it is not a trader.'>treasury</span>":"")+"</div><div class='um'>"+(xr?"XRP Ledger mainnet":"Stellar mainnet")+"</div></div></div></td>"
         +"<td>"+flagCell(u.addr)+"</td>"
-        +"<td class='num-cell' style='text-align:right'>"+(u.volUsd==null?"\u2026":esc(usd(u.volUsd)))+"</td>"
+        // Swap volume is rebuilt from Stellar transaction envelopes and has no XRPL equivalent, so an
+        // XRPL wallet's volume never arrives. The ellipsis means "still loading" and would have sat
+        // there for ever; a dash with a reason is the honest cell.
+        +"<td class='num-cell' style='text-align:right'>"+(u.volUsd!=null?esc(usd(u.volUsd))
+          :(xr?"<span title='Swap volume is reconstructed from Stellar transaction envelopes. There is no XRP Ledger equivalent yet, so volume is not measured for this wallet \u2014 the fees it paid are.'>\u2014</span>":"\u2026"))+"</td>"
         +"<td class='num-cell' style='text-align:right'>"+u.n+"</td>"
         +"<td class='num-cell' style='text-align:right' title='"+esc(paid)+"'>"+(u.usd==null?esc(paid):esc(usd(u.usd)))+"</td>"
         +"<td style='text-align:right'>"+tier+"</td>"
@@ -1149,7 +1571,12 @@ function paintUsers(){
   // Delegated, so the row markup carries no inline handler and the address needs no quote juggling.
   if(tb&&!tb.__lxw){ tb.__lxw=1; tb.addEventListener("click",function(e){
     var tr=e.target.closest&&e.target.closest("tr[data-w]"); if(!tr)return;
-    if(window.__lxNav)window.__lxNav("lumoscore-admin-user-profile.html?w="+tr.getAttribute("data-w")); }); }
+    var ad=tr.getAttribute("data-w");
+    // The wallet profile reads Horizon balances and a Stellar fee history, so it can say nothing about
+    // an r-address. Sending one there would open a page of dashes that looks broken rather than
+    // inapplicable; bithomp is the explorer the XRPL side already uses everywhere else.
+    if(tr.getAttribute("data-c")==="xrpl"){ window.open("https://bithomp.com/explorer/"+encodeURIComponent(ad),"_blank","noopener"); return; }
+    if(window.__lxNav)window.__lxNav("lumoscore-admin-user-profile.html?w="+ad); }); }
   qa(".seg-chip").forEach(function(ch){ ch.addEventListener("click",function(){ qa(".seg-chip").forEach(function(o){ o.classList.remove("active"); }); ch.classList.add("active"); SEG=ch.getAttribute("data-seg")||"all"; render(); }); });   var si=q(".fs-search input"); if(si){ si.placeholder="Search by wallet address\u2026"; si.addEventListener("input",render); }
   qa(".filter-strip .fs-select").forEach(function(sel,i){
     if(i===0){ sel.innerHTML="<option>Sort: Volume</option><option>Sort: Trades</option><option>Sort: Revenue</option><option>Sort: Last seen</option>";
@@ -1159,8 +1586,8 @@ function paintUsers(){
   var more=qa(".filter-strip .adm-btn").filter(function(b){return /more/i.test(b.textContent);})[0]; if(more)more.remove();
   qa(".admin-page-actions .adm-btn").forEach(function(b){ if(!/export/i.test(b.textContent)||b.__lx)return; b.__lx=1;
     b.addEventListener("click",function(){
-      var head2="wallet,volume_usd,trades,revenue_usd,fee_rate,first_seen,last_seen\\n";
-      var body=ROWS.map(function(u){ return [u.addr,u.volUsd==null?"":u.volUsd.toFixed(6),u.n,u.usd==null?"":u.usd.toFixed(6),u.tier==null?"":(u.tier?"0.001":"0.002"),u.first,u.last].join(","); }).join("\\n");
+      var head2="chain,wallet,volume_usd,trades,revenue_usd,fee_rate,first_seen,last_seen\\n";
+      var body=ROWS.map(function(u){ return [(u.chain||"stellar"),u.addr,u.volUsd==null?"":u.volUsd.toFixed(6),u.n,u.usd==null?"":u.usd.toFixed(6),u.tier==null?"":(u.tier?"0.001":"0.002"),u.first,u.last].join(","); }).join("\\n");
       var bl=new Blob([head2+body],{type:"text/csv"}), url=URL.createObjectURL(bl);
       var el=document.createElement("a"); el.href=url; el.download="lumoscore-users.csv"; el.click();
       setTimeout(function(){URL.revokeObjectURL(url);},1000); }); });
@@ -1197,6 +1624,28 @@ function paintUsers(){
 +'    cb({code:code,iss:iss,price:+m.price||null,d1:chg(1),d7:chg(sr.length-1),'
 +'      vol7d:(+m.volume7d||0)/1e7,trust:lxTl(m.trustlines,"total"),'
 +'      funded:lxTl(m.trustlines,"funded"),domain:m.domain||"",img:ti.image||"",name:ti.name||""}); }); }'
+// THE SAME LOOKUP, ON THE OTHER LEDGER. aInfo asks stellar.expert, which has never heard of an
+// r-address: it answers with nothing, so every XRPL row rendered as a line of dashes AND spent a
+// request finding that out. /lxapi/xrpltoken is the XRPL equivalent and is already proxied, cached
+// and keyed the way xrpl.to expects.
+//
+// The callback shape is aInfo's, field for field, so render(), sortVal() and the search all keep
+// working without learning about chains -- the same trick the fee ledger uses for its rows.
+// An id ends in an r-address or a G-address, and only one of those is an XRP Ledger account. The same
+// test assetmeta.js uses, so the panel and the store agree on what an XRPL asset is.
+//
+// TOP LEVEL, not inside paintAssets. It started there, and the mobile Assets painter -- a separate
+// function in the same script -- threw "isXA is not defined" on its first draw, which killed the whole
+// list and left it reading "Loading…" for ever. Nothing above it in that call stack catches, so one
+// missing name takes the page with it.
++'function isXA(k){ return /-r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(String(k||"")); }'
++'function xInfo(code,iss,cb){ j("/lxapi/xrpltoken?id="+encodeURIComponent(iss+"-"+xCur(code))).then(function(d){'
++'    if(!d||!d.ok){ cb(null); return; }'
+// price is USD here because the table's column is USD, matching what stellar.expert returns for the
+// Stellar rows. `usd` can be null when the rate fails its check upstream -- that is a dash, not a 0.
++'    cb({code:code,iss:iss,price:(d.usd!=null?+d.usd:null),d1:(d.p24!=null?+d.p24:null),d7:(d.p7!=null?+d.p7:null),'
++'      vol7d:null,trust:(d.trustlines!=null?+d.trustlines:null),funded:(d.holders!=null?+d.holders:null),'
++'      domain:d.domain||"",img:"",name:d.name||""}); }).catch(function(){ cb(null); }); }'
 +'function pct(v){ if(v==null||!isFinite(v))return "<span style=\\"color:var(--text-muted)\\">\u2014</span>";'
 +'  var c=v>=0?"ch-up":"ch-down"; return "<span class=\\""+c+"\\">"+(v>=0?"+":"")+v.toFixed(2)+"%</span>"; }'
 +`
@@ -1447,7 +1896,9 @@ function paintAssets(){
   // CURATED and MINTS are different claims. Curated is what LumosCore chooses to list -- the set Trade
   // main shows. Mints are what was issued through our own launchpad: ours by definition, not a curation
   // decision. Merging them made the list look like we had hand-picked 55 assets.
-  var CUR=[], MINTS=[], MODE="curated", DATA={}, VER={}, LXV=null, PXA={}, LOGO={};
+  // MM is mintmeta: the name and artwork a mint was issued with, keyed by id. It is the only source
+  // of a logo for an XRPL mint, because /lxapi/assetlogo resolves a Stellar toml.
+  var CUR=[], MINTS=[], MODE="curated", DATA={}, VER={}, LXV=null, PXA={}, LOGO={}, MM={};
   // The curated-listing queue. null while it is still being fetched, so the chip can say so instead of
   // claiming zero.
   var LR=null;
@@ -1484,6 +1935,10 @@ function paintAssets(){
   // Doing it any other way here is how the table ended up wearing initials discs while every other
   // screen showed the real artwork.
   function logoFor(a,k){
+    // /lxapi/assetlogo resolves a Stellar toml and knows nothing about r-addresses, so asking it
+    // about an XRPL mint just burns a request. The mint's own artwork is already in hand: the
+    // launchpad stored it in mintmeta:xrpl and assetmeta now returns it alongside the ids.
+    if(isXA(k)){ var mm=MM[k]; return (mm&&mm.image)||avatar(a.code); }
     if(LOGO[k]===undefined){ LOGO[k]=null;
       j("/lxapi/assetlogo?asset="+encodeURIComponent(k)).then(function(d){
         var u=d&&d.image; if(u){ LOGO[k]=u; render(); } else delete LOGO[k]; }); }
@@ -1891,7 +2346,7 @@ function paintAssets(){
     // would silently persist a view preference as the list's real order.
     if(COL)LI.sort(bySort);
     if(!LI.length){ tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>"+(rows().length?"No asset matches that search.":"Nothing here yet.")+"</td></tr>"; return; }
-    tb.innerHTML=LI.map(function(a){ var k=key(a), v=DATA[k];
+    tb.innerHTML=LI.map(function(a){ var k=key(a), v=DATA[k], xa=isXA(k);
       // undefined means still looking; null means the lookup came back with nothing. Both used to
       // render an ellipsis, so a failed lookup sat there pretending to still be loading forever.
       var pend=(v===undefined), gone=(v===null);
@@ -1899,7 +2354,9 @@ function paintAssets(){
       return "<tr>"
         +"<td><div class='asset-cell'><img class='lxa-ico' data-lxc='"+esc(a.code)+"' alt='' src='"+esc(logoFor(a,k))+"'>"
         +"<div><div class='asset-name'>"+esc(a.code)+tickFor(k)+((v&&v.name&&v.name!==a.code)?" <span style='font-weight:500;color:var(--text-muted);font-size:13.5px'>"+esc(v.name)+"</span>":"")+"</div>"
-        +"<div class='asset-sub mono'>"+esc(shortG(a.iss))+"</div></div></div></td>"
+        // The ledger is named beside the issuer. Two chains in one table, and a G-address next to an
+        // r-address is only obvious to someone who already knows which is which.
+        +"<div class='asset-sub mono'>"+esc(shortG(a.iss))+"<span style='opacity:.55;font-size:11px;margin-left:6px;font-family:inherit'>"+(xa?"XRPL":"Stellar")+"</span></div></div></div></td>"
         +"<td>"+cell(v&&v.domain?("<a class='lxadm-link' target='_blank' rel='noopener' href='https://"+esc(v.domain)+"'>"+esc(v.domain)+"</a>"):"<span style='color:var(--text-muted)'>no home domain</span>")+"</td>"
         +"<td class='num-cell' style='text-align:right'>"+cell(v&&v.price?esc(usd(v.price)):"<span style='color:var(--text-muted)'>—</span>")+"</td>"
         +"<td style='text-align:right'>"+cell(pct(v&&v.d1))+"</td>"
@@ -1909,7 +2366,10 @@ function paintAssets(){
         +"<td class='num-cell' style='text-align:right'>"+volCell(k,"d30")+"</td>"
         +"<td class='num-cell' style='text-align:right'>"+cell(v?esc(num(v.trust)):"")+"</td>"
         +"<td style='text-align:right'><span class='row-act'>"
-        +"<a class='ext-link' title='Open asset page' href='lumoscore-dex-asset.html?asset="+esc(k)+"'>"+EXTICON+"</a>"
+        // ABSOLUTE, AND CHAIN-CORRECT. This was a relative link to lumoscore-dex-asset.html, a page
+        // the admin build does not contain -- so it 404'd on the admin origin for every row, on both
+        // chains. The public site serves these at /trade/<chain>/<asset>, both verified 200.
+        +"<a class='ext-link' title='Open the public asset page' target='_blank' rel='noopener' href='https://lumoscore.com/trade/"+(xa?"xrpl":"stellar")+"/"+encodeURIComponent(k)+"'>"+EXTICON+"</a>"
         +"<button class='row-act-btn' type='button' title='Edit description, logo and links' data-lxed='"+esc(k)+"'>✎</button>"
         // A mint is a record of what was issued, not a curation choice, and there is nowhere to
         // persist its removal -- it would simply reappear on the next load. So the tab does not
@@ -1926,7 +2386,7 @@ function paintAssets(){
       b.addEventListener("click",function(){ editAsset(b.getAttribute("data-lxed")); }); }); }
 
   function load(a){ var k=key(a); if(DATA[k]!==undefined)return;
-    aInfo(a.code,a.iss,function(v){ DATA[k]=v; render(); kpis(); }); }
+    (isXA(k)?xInfo:aInfo)(a.code,a.iss,function(v){ DATA[k]=v; render(); kpis(); }); }
 
   // Our own trades, over three windows, from the ledger the Revenue page already reconstructs.
   function loadLxVol(){ return loadVolume().then(function(V){
@@ -1952,6 +2412,7 @@ function paintAssets(){
     if(names.length){ CUR=names.map(parse); ASRV=true; try{ localStorage.setItem(AKEY,JSON.stringify(CUR)); }catch(_){} }
     else { CUR=aList(); ASRV=false; }
     MINTS=((d&&d.mints)||[]).map(parse);
+    MM=(d&&d.mintmeta)||{};
     PAINTED=true; tabs(); render(); kpis(); rows().forEach(load);
     window.__lxVER=VER; window.__lxRefresh=function(){ try{ render(); kpis(); }catch(_){} };
     loadLxVol();
@@ -2117,16 +2578,19 @@ function paintAssets(){
 +'    mobNote("LumosCore has no sign-up, so there is no user table. A user here is a wallet that has paid a platform fee on-chain \u2014 the only record that someone used the app.");'
 +'    var msi=q(".mob-filter-bar input"); if(msi)msi.placeholder="Search by wallet address…";'
 +'    loadRevenue().then(function(rv){ var w={};'
-+'      rv.rows.forEach(function(p){ var a=assetOf(p), u=w[p.from]=w[p.from]||{addr:p.from,n:0,codes:{},last:p.created_at};'
++'      rv.rows.forEach(function(p){ var a=assetOf(p), u=w[p.from]=w[p.from]||{addr:p.from,chain:(p.chain||"stellar"),n:0,codes:{},last:p.created_at};'
 +'        u.n++; u.codes[a.code]=1; if(Date.parse(p.created_at)>Date.parse(u.last))u.last=p.created_at; });'
 +'      var list=Object.keys(w).map(function(k){return w[k];}).sort(function(x,y){return y.n-x.n;});'
 +'      setT(q("#lxmAll"),String(list.length)); fixPager(list.length);'
 +'      var sub=q(".mob-page-sub"); if(sub)sub.innerHTML="<span class=\\"mono\\">"+list.length+"</span> fee-paying wallets";'
 +'      if(!list.length){ box.innerHTML="<div class=\\"lxadm-empty\\">No wallet has paid a fee yet.</div>"; return; }'
-+'      box.innerHTML=list.map(function(u){'
-+'        return "<a class=\\"lxm-card\\" href=\\"lumoscore-admin-user-profile-mobile.html?w="+esc(u.addr)+"\\">"'
+// The mobile list is a SEPARATE painter from the desktop table, so the chain fixes have to be made
+// twice. It listed XRPL wallets the moment loadRevenue gained them -- captioned "Stellar mainnet",
+// and each one linking to a profile page that can only read Horizon.
++'      box.innerHTML=list.map(function(u){ var xr=(u.chain==="xrpl");'
++'        return "<a class=\\"lxm-card\\""+(xr?" target=\\"_blank\\" rel=\\"noopener\\"":"")+" href=\\""+(xr?("https://bithomp.com/explorer/"+encodeURIComponent(u.addr)):("lumoscore-admin-user-profile-mobile.html?w="+esc(u.addr)))+"\\">"'
 +'          +"<div class=\\"lxm-top\\"><img class=\\"lxm-av\\" data-lxc=\\"wallet\\" alt=\\"\\" src=\\""+avatar(u.addr.slice(1,3))+"\\">"'
-+'          +"<div><div class=\\"lxm-name mono\\">"+esc(shortG(u.addr))+"</div><div class=\\"lxm-sub\\">Stellar mainnet</div></div></div>"'
++'          +"<div><div class=\\"lxm-name mono\\">"+esc(shortG(u.addr))+"</div><div class=\\"lxm-sub\\">"+(xr?"XRP Ledger mainnet":"Stellar mainnet")+"</div></div></div>"'
 +'          +"<div class=\\"lxm-stats\\"><div><div class=\\"lxm-sl\\">Fee payments</div><div class=\\"lxm-sv\\">"+u.n+"</div></div>"'
 +'          +"<div><div class=\\"lxm-sl\\">Paid in</div><div class=\\"lxm-sv\\">"+esc(Object.keys(u.codes).join(", "))+"</div></div>"'
 +'          +"<div><div class=\\"lxm-sl\\">Last seen</div><div class=\\"lxm-sv\\">"+esc(ago(u.last))+"</div></div></div></a>"; }).join(""); });'
@@ -2137,22 +2601,47 @@ function paintAssets(){
 +'    var abox=document.createElement("div"); abox.id="lxmAList"; ah.insertBefore(abox,aa.nextSibling||null);'
 +'    abox.innerHTML="<div class=\\"lxadm-empty\\">Loading\u2026</div>";'
 +'    mobKpis([["lxmaN","Listed","in your list"],["lxmaV","LumosCore 7d vol","traded with us"]]);'
-+'    mobNote("The curated list is stored on the server. A tick means the asset’s own issuer vouches for it. Volume is what has traded on LumosCore, not the whole Stellar DEX.");'
-+'    var maseg=q(".mob-seg-row"); if(maseg)maseg.innerHTML="<button class=\\"mob-seg-chip active\\" type=\\"button\\"><span class=\\"sc-label\\">Listed</span><span class=\\"sc-count\\" id=\\"lxmaSeg\\">\\u2014</span></button>";'
-+'    var mai=q(".mob-filter-bar input"); if(mai)mai.placeholder="Search by code or issuer…";'
-+'    var LIST=aList(), D={}, LXV=null;'
-+'    setT(q("#lxmaN"),String(LIST.length)); setT(q("#lxmaSeg"),String(LIST.length)); fixPager(LIST.length);'
-+'    var sub2=q(".mob-page-sub"); if(sub2)sub2.innerHTML="<span class=\\"mono\\">"+LIST.length+"</span> listed assets";'
-+'    function draw(){ abox.innerHTML=LIST.map(function(a){ var v=D[a.code+"-"+a.iss], ld=!v;'
-+'      return "<a class=\\"lxm-card\\" href=\\"lumoscore-dex-asset-mobile.html?asset="+esc(a.code+"-"+a.iss)+"\\">"'
-+'        +"<div class=\\"lxm-top\\"><img class=\\"lxm-av\\" data-lxc=\\""+esc(a.code)+"\\" alt=\\"\\" src=\\""+((v&&v.img)||avatar(a.code))+"\\">"'
-+'        +"<div><div class=\\"lxm-name\\">"+esc(a.code)+"</div><div class=\\"lxm-sub\\">"+(ld?"\u2026":esc(v.domain||"no home domain"))+"</div></div>"'
-+'        +"<div class=\\"lxm-right\\">"+(ld?"\u2026":(v.price?esc(usd(v.price)):"\u2014"))+"</div></div>"'
-+'        +"<div class=\\"lxm-stats\\"><div><div class=\\"lxm-sl\\">24h</div><div class=\\"lxm-sv\\">"+(ld?"\u2026":pct(v.d1))+"</div></div>"'
-+'        +"<div><div class=\\"lxm-sl\\">LumosCore 7d</div><div class=\\"lxm-sv\\">"+(LXV===null?"\u2026":(function(){ var r=LXV[a.code+"-"+a.iss]; return r&&r.amt?esc(num(Math.round(r.amt*100)/100)):"0"; })())+"</div></div>"'
-+'        +"<div><div class=\\"lxm-sl\\">Trustlines</div><div class=\\"lxm-sv\\">"+(ld?"\u2026":esc(num(v.trust)))+"</div></div></div></a>"; }).join(""); }'
-+'    draw();'
-+'    LIST.forEach(function(a){ aInfo(a.code,a.iss,function(v){ D[a.code+"-"+a.iss]=v; draw(); }); });'
++'    mobNote("The curated list and the launchpad mints are stored on the server. A tick means the asset’s own issuer vouches for it. Volume is what has traded on LumosCore, not the whole market, on either chain.");'
+// TWO TABS, AND THE SERVER'S LIST. This read aList() -- the DESKTOP's localStorage cache -- so on a
+// phone it showed whatever a desktop had last looked at, never the mints, and nothing from the XRP
+// Ledger. Both lists live on the server; this asks for them and falls back to the cache only when
+// that fails, which is exactly what it did before.
++'    var maseg=q(".mob-seg-row");'
++'    var mai=q(".mob-filter-bar input"); if(mai)mai.placeholder="Search by code or issuer\u2026";'
++'    var MCUR=[], MMINT=[], MMODE="curated", MMM={}, D={}, LXV=null;'
++'    function mrows(){ return MMODE==="mints"?MMINT:MCUR; }'
++'    function mseg(){ if(!maseg)return;'
++'      maseg.innerHTML="<button class=\\"mob-seg-chip"+(MMODE==="curated"?" active":"")+"\\" type=\\"button\\" data-lxmt=\\"curated\\"><span class=\\"sc-label\\">Listed</span><span class=\\"sc-count\\">"+MCUR.length+"</span></button>"'
++'        +"<button class=\\"mob-seg-chip"+(MMODE==="mints"?" active":"")+"\\" type=\\"button\\" data-lxmt=\\"mints\\"><span class=\\"sc-label\\">Mints</span><span class=\\"sc-count\\">"+MMINT.length+"</span></button>";'
++'      qa("[data-lxmt]").forEach(function(b){ if(b.__lx)return; b.__lx=1;'
++'        b.addEventListener("click",function(){ MMODE=b.getAttribute("data-lxmt"); mseg(); head(); draw(); mrows().forEach(mload); }); }); }'
++'    function head(){ var L=mrows();'
++'      setT(q("#lxmaN"),String(L.length)); fixPager(L.length);'
++'      var sub2=q(".mob-page-sub"); if(sub2)sub2.innerHTML="<span class=\\"mono\\">"+L.length+"</span> "+(MMODE==="mints"?"tokens issued through our launchpad":"listed assets"); }'
++'    function mload(a){ var k=a.code+"-"+a.iss; if(D[k]!==undefined)return;'
++'      (isXA(k)?xInfo:aInfo)(a.code,a.iss,function(v){ D[k]=v; draw(); }); }'
++'    function draw(){ var L=mrows();'
++'      if(!L.length){ abox.innerHTML="<div class=\\"lxadm-empty\\">"+(MMODE==="mints"?"No token has been issued through the launchpad yet.":"Nothing listed yet.")+"</div>"; return; }'
++'      abox.innerHTML=L.map(function(a){ var k=a.code+"-"+a.iss, v=D[k], ld=(v===undefined), xa=isXA(k);'
+// An XRPL mint's artwork comes from mintmeta, because /lxapi/assetlogo resolves a Stellar toml.
++'      var img=(xa?((MMM[k]&&MMM[k].image)||""):((v&&v.img)||""))||avatar(a.code);'
+// Absolute and chain-correct, for the same reason as the desktop table: lumoscore-dex-asset-mobile.html
+// is not in the admin build, so this link 404'd on every card.
++'      return "<a class=\\"lxm-card\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\"https://lumoscore.com/trade/"+(xa?"xrpl":"stellar")+"/"+encodeURIComponent(k)+"\\">"'
++'        +"<div class=\\"lxm-top\\"><img class=\\"lxm-av\\" data-lxc=\\""+esc(a.code)+"\\" alt=\\"\\" src=\\""+esc(img)+"\\">"'
++'        +"<div><div class=\\"lxm-name\\">"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:6px;font-weight:500\\">"+(xa?"XRPL":"Stellar")+"</span></div>"'
++'        +"<div class=\\"lxm-sub\\">"+(ld?"\u2026":esc((v&&v.domain)||"no home domain"))+"</div></div>"'
++'        +"<div class=\\"lxm-right\\">"+(ld?"\u2026":((v&&v.price)?esc(usd(v.price)):"\u2014"))+"</div></div>"'
++'        +"<div class=\\"lxm-stats\\"><div><div class=\\"lxm-sl\\">24h</div><div class=\\"lxm-sv\\">"+(ld?"\u2026":pct(v&&v.d1))+"</div></div>"'
++'        +"<div><div class=\\"lxm-sl\\">LumosCore 7d</div><div class=\\"lxm-sv\\">"+(LXV===null?"\u2026":(function(){ var r=LXV[k]; return r&&r.amt?esc(num(Math.round(r.amt*100)/100)):"0"; })())+"</div></div>"'
++'        +"<div><div class=\\"lxm-sl\\">Trustlines</div><div class=\\"lxm-sv\\">"+(ld?"\u2026":((v&&v.trust!=null)?esc(num(v.trust)):"\u2014"))+"</div></div></div></a>"; }).join(""); }'
++'    function mstart(){ mseg(); head(); draw(); mrows().forEach(mload); }'
++'    j("/lxapi/assetmeta").then(function(d){'
++'      var names=(d&&d.list)||[];'
++'      MCUR=names.length?names.map(parse):aList();'
++'      MMINT=((d&&d.mints)||[]).map(parse);'
++'      MMM=(d&&d.mintmeta)||{};'
++'      mstart(); }).catch(function(){ MCUR=aList(); mstart(); });'
 +'    loadVolume().then(function(V){ var since=Date.now()-7*86400000, m={};'
 +'      (V&&V.rows||[]).forEach(function(r){ if(!r.code||!r.gross||r.t<since)return;'
 +'        var k=r.code+"-"+r.iss; m[k]=m[k]||{amt:0,n:0}; m[k].amt+=r.gross; m[k].n++; });'
@@ -2181,9 +2670,16 @@ function paintAssets(){
 +'  var mail=q(".up-email")||q(".mob-up-email");'
 +'  var chips=q(".up-wallets")||q(".mob-up-wallets");'
 +'  var av=q(".up-av-lg")||q(".mob-up-av");'
+// An XRP Ledger address reaches this page only by a typed or saved URL -- both lists route r-addresses
+// to bithomp. It still has to answer honestly: this profile reads Horizon balances and a Stellar fee
+// history, so it cannot describe an r-address. "No wallet selected" would be a lie about a wallet that
+// was selected, and a page of dashes reads as broken rather than inapplicable.
++'  var isX=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(addr);'
 +'  if(!/^G[A-Z2-7]{55}$/.test(addr)){'
-+'    if(name)name.textContent="No wallet selected";'
-+'    if(mail)mail.innerHTML="Open this page from the Users list to inspect a wallet. <a class=\\"lxadm-link\\" href=\\""+usersHref+"\\">Back to Users</a>";'
++'    if(name)name.textContent=isX?"XRP Ledger wallet":"No wallet selected";'
++'    if(mail)mail.innerHTML=isX'
++'      ?("This profile reads Stellar mainnet, so it cannot describe an XRP Ledger wallet. <a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\"https://bithomp.com/explorer/"+encodeURIComponent(addr)+"\\">Open "+esc(shortG(addr))+" on bithomp</a> \\u00b7 <a class=\\"lxadm-link\\" href=\\""+usersHref+"\\">Back to Users</a>")'
++'      :("Open this page from the Users list to inspect a wallet. <a class=\\"lxadm-link\\" href=\\""+usersHref+"\\">Back to Users</a>");'
 +'    if(chips)chips.innerHTML="";'
 +'    if(av){ av.textContent=""; av.style.background="var(--surface-2)"; }'
 +'    qa(".up-mini-card, .mob-up-mini-card").forEach(function(c){'
