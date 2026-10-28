@@ -528,7 +528,25 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // first bad answer would be the answer until reload, and this endpoint refuses routinely (it is the
 // anonymous rate-limit tier whenever XRPLTO_API_KEY is not bound to the project serving it, which is
 // exactly how the admin panel ran: the key is on `lumoscore` and was never on `lumoscore-admin`).
-+'function xPrices(){ if(!XPX)XPX=j("/lxapi/xrplprices").then(function(d){ if(d&&d.ok)return d; XPX=null; return null; }); return XPX; }'
+// THE PUBLIC SITE'S COPY FIRST, AND THAT IS NOT A HACK -- it is where the API key is. The Function is
+// identical on both projects, but secrets are per-project: XRPLTO_API_KEY is bound to `lumoscore` and
+// not to `lumoscore-admin` ([[admin-project-has-its-own-secrets]]), so the admin copy runs on the
+// upstream's anonymous tier -- 333 requests a day shared across the whole colo -- and refuses most of
+// the time. That is what put "couldn't read" on every XRP figure in this panel (RAZA, 2026-10-29).
+//
+// Asking lumoscore.com instead fixes it with no secret to bind, nothing for RAZA to run, and no key
+// duplicated into a second project. It is cheaper too: production's edge cache is already warm from
+// real traffic, so this is usually zero upstream calls rather than up to thirty. The endpoint sends
+// access-control-allow-origin: *, the admin CSP sets no connect-src, and the request carries no
+// credentials and no admin data -- it is the same public price feed every visitor reads.
+//
+// The admin copy stays as the fallback, so binding the key here later would still work and so would a
+// day when the public site is unreachable. A refusal is still never memoised.
++'var XPX_SRC="https://lumoscore.com/lxapi/xrplprices";'
++'function xPrices(){ if(XPX)return XPX;'
++'  XPX=j(XPX_SRC).then(function(d){ if(d&&d.ok)return d;'
++'    return j("/lxapi/xrplprices").then(function(e){ if(e&&e.ok)return e; XPX=null; return null; }); });'
++'  return XPX; }'
 +'function priceUsdOn(chain,code,iss,cb){ if(chain!=="xrpl"){ priceUsd(code,iss,cb); return; }'
 +'  xPrices().then(function(d){'
 +'    if(!d){ cb(null,1); return; }'                                           // endpoint unreachable or refusing
