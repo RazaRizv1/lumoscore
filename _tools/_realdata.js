@@ -9,6 +9,9 @@ const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');cons
 
 const SWAP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10l-3 3 3 3"/><path d="M4 13h11"/><path d="M17 14l3-3-3-3"/><path d="M20 11H9"/></svg>';
 const DROP='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>';
+// The row whose transaction could NOT be read. Deliberately not a warning triangle: nothing is wrong with
+// the transaction or with the reader's money -- we just failed to fetch its description.
+const UNREAD='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4.5"/><path d="M12 16h.01"/></svg>';
 
 // CSS goes in <head> so the "hide value pills until the script paints them" rule applies BEFORE first
 // paint. When it was bundled with the script at body-end it loaded too late and the mock pills flashed.
@@ -165,6 +168,17 @@ const CSS='<style id="lx-realdata-css">/*lxts:1.1*/'
 +'.lx-actskel-s{height:11px;border-radius:5px}'
 +'@media(prefers-reduced-motion:reduce){.lx-actskel{animation:none}}'
 +'.lx-frwait .lx-fgt{background:rgba(127,127,140,.14)}'
+// The row we COULD NOT READ. It has to be legible as "we failed", not as a quiet kind of activity, and
+// it must not read as an alarm either -- so: the muted ink the meta line already uses, an italic
+// sentence (no other row is italic), and a plain outline glyph. Keeps its real time, wallet and
+// explorer link, because those came from our own record and are not in doubt.
+// Qualified with .activity-feed-row on purpose: the existing `.activity-feed-row.lx-fr .info .type`
+// sets font-style:normal at four classes, so a three-class `.lx-frfail .info .type` loses the cascade
+// and only the properties that rule does NOT set (colour) would have landed -- which is exactly how
+// this shipped italic-less the first time. Same weight, declared later, so these win.
++'.activity-feed-row.lx-frfail .lx-fgt{background:rgba(127,127,140,.10);color:var(--muted,#8b8b96)}'
++'.activity-feed-row.lx-frfail .info .type{font-style:italic;font-weight:500;color:var(--muted,#8b8b96)}'
++'.activity-feed-row.lx-frfail .lx-actverb{background:rgba(127,127,140,.14);color:var(--muted,#8b8b96)}'
 +'.status-row{opacity:0;animation:lxnsrev 0s linear 3s forwards}@keyframes lxnsrev{to{opacity:1}}.status-row.lx-ready{opacity:1!important;animation:none;transition:opacity .3s ease}'
 +'</style>';
 // ---- cross-chain rows: one format for every route (RAZA 2026-09-19) -----------------------------------------------
@@ -389,7 +403,7 @@ function lxFeedRow(r) {
     ? ('<div class="meta lx-actmeta">' + (r.act ? ('<span class="lx-actverb ' + esc(r.cls || '') + '">' + esc(r.act) + '</span>') : '') + via
       + actWho(r.who) + ((r.to && r.to !== r.who) ? ('<span class="lx-actarrow" aria-hidden="true">→</span>' + actWho(r.to)) : '') + '</div>')
     : '<div class="meta"></div>';
-  return '<div class="activity-feed-row lx-fr" data-lx-noswap="1">' + glyph
+  return '<div class="activity-feed-row lx-fr' + (r.unread ? ' lx-frfail' : '') + '" data-lx-noswap="1">' + glyph
     + '<div class="info"><div class="type">' + r.type + '</div>' + meta + '</div>'
     + '<div class="lx-frr"><div class="time">' + r.when + '</div>'
     + '<a class="lx-actlink" href="https://stellar.expert/explorer/public/tx/' + esc(r.hash) + '" target="_blank" rel="noopener" title="View transaction">' + XPI + '</a></div>'
@@ -418,7 +432,7 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'n=/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(a)?"xrpl":(/^G[A-Z2-7]{55}$/.test(a)?"stellar":"");}'
 +'if(!n)n=(localStorage.getItem("lumos.chain")||"").toLowerCase();return n;}catch(_){return "";}}'
 +'if(net()!=="stellar")return;'                        // Stellar-only for now
-+'var SWAP=\''+SWAP+'\',DROP=\''+DROP+'\';'
++'var SWAP=\''+SWAP+'\',DROP=\''+DROP+'\',UNREAD=\''+UNREAD+'\';'
 +'function j(u){return fetch(u).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}'
 +'function abbr(n){n=+n||0;var a=Math.abs(n);if(a>=1e9)return (n/1e9).toFixed(2)+"B";if(a>=1e6)return (n/1e6).toFixed(2)+"M";if(a>=1e3)return (n/1e3).toFixed(1)+"K";return String(Math.round(n));}'
 +'function usd(n){return "$"+abbr(n);}'
@@ -1035,7 +1049,15 @@ const SCRIPT='<script id="lx-realdata">(function(){'
 +'_feedRender(); }'
 // the fetch itself failed: put() lives inside the then() above and cannot be reached from here, so the row is settled
 // directly -- a waiting row must never be left waiting.
-+'}).catch(function(){ try{ rows[i].ic=SWAP; rows[i].cls="swap"; rows[i].type="Platform activity"; rows[i].pending=0;'
+// A FAILED READ IS NOT A KIND OF ACTIVITY. This used to land on the same "Platform activity" label as
+// a transaction we read and could not describe, so an outage rendered as ordinary content: the reader
+// saw a feed full of plausible rows and had no way to know the descriptions were missing rather than
+// absent. Horizon returning 429 to a whole IP (2026-10-29) made a dashboard of these look like data
+// loss. The two cases are now different sentences -- read-but-undescribed stays "Platform activity",
+// unread says so -- which is the same rule as the Orders tab's "could not load" vs "no open orders".
+// The next feed() pass is 60s away and re-reads every row, so this heals itself without a retry.
++'}).catch(function(){ try{ rows[i].ic=UNREAD; rows[i].cls="unread"; rows[i].unread=1;'
++'  rows[i].type="Couldn\\u2019t read this transaction"; rows[i].act=""; rows[i].pair=null; rows[i].pending=0;'
 +'  _feedRender(); }catch(_){} })'
 +'.then(function(){ _eA--; _ePump(); });});});'
 +'_brLoad().then(function(){ _ePump(); });'
