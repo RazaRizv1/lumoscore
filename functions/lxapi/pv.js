@@ -19,7 +19,7 @@
 // page views are far more frequent than wallet connections. The caps are D1 reads instead: 60 views per session per
 // 10 minutes, and 2,000 an hour site-wide (real traffic is ~10 an hour). Rows older than 180 days are pruned.
 const SID_RE = /^[a-z0-9]{12,40}$/;
-let VID_READY = 0;
+let COLS_READY = 0;
 const PER_SID_10MIN = 60;
 const PER_HOUR_ALL = 2000;
 const KEEP_MS = 180 * 86400000;
@@ -82,11 +82,75 @@ async function visitorId(db, request, day, ua, host) {
       .map((b) => b.toString(16).padStart(2, '0')).join('');
   } catch (_) { return ''; }
 }
+// ---- which chain the visitor was actually served ------------------------------------------------
+//
+// THE SAME RULE THE MIDDLEWARE USES TO CHOOSE THE BUILD -- see the chain block in
+// _tools/extract_site.js (functions/_middleware.js is generated from it, so that file is not the one
+// to edit). A chain named in the path wins; otherwise the lx_chain cookie, which both connect layers
+// write on connect and clear on disconnect; otherwise Stellar.
+//
+// DERIVED HERE RATHER THAN POSTED BY THE PAGE, for two reasons. The rule stays in step with the build
+// that was served, instead of becoming a second opinion that can disagree with it. And this endpoint
+// is unauthenticated by design, so a client-supplied chain would be one more field taken on trust --
+// the same reason the perf label above is built from numbers instead of a string the page sends.
+//
+// The path comes from the BODY, because request.url here is always /lxapi/pv. The cookie rides along:
+// sendBeacon and fetch both send cookies on a same-origin request.
+//
+// A bare /dashboard on XRPL is exactly why the cookie is needed -- the XRPL dashboard has no /xrpl in
+// its url, so path alone would file every XRPL dashboard view under Stellar.
+function chainOf(path, cookie) {
+  if (/\/stellar(\/|$)/.test(path)) return 'stellar';
+  if (/\/xrpl(\/|$)/.test(path)) return 'xrpl';
+  return /(?:^|;\s*)lx_chain=xrpl(?:;|$)/.test(cookie) ? 'xrpl' : 'stellar';
+}
 function clip(s, n) { s = String(s == null ? '' : s); return s.length > n ? s.slice(0, n) : s; }
+// ---- 'desktop' is a measurement, not a dumping ground -------------------------------------------
+//
+// RAZA 2026-10-31: "How come 100s of traffic all from desktop, all from different countries and all
+// visiting wallet page. that's definitely not real traffic."
+//
+// He was right, and THIS LINE is what hid it. Until now anything that was not matched as a phone or
+// a tablet fell through to 'desktop' -- so a user agent that is not a browser at all was filed as a
+// desktop visitor, and a column that should have been the loudest signal that something was wrong
+// instead read as perfectly ordinary. A fallback that cannot fail is not evidence.
+//
+// So the fallback now has to earn it: 'desktop' means a user agent carrying a recognisable browser
+// engine token, and everything else is 'unknown' and says so in the panel. This does not block
+// anything (the two header checks below do that) and it does not catch a forger who sends a full
+// Chrome string -- it stops the device column from quietly absorbing whatever it could not explain.
+const BROWSER_RE = /(?:Mozilla\/|AppleWebKit\/|Gecko\/|Chrome\/|Safari\/|Firefox\/|Edge?\/|OPR\/|Trident\/)/;
 function deviceOf(ua) {
   if (/iPad|Tablet|PlayBook|Silk|(Android(?!.*Mobile))/i.test(ua)) return 'tablet';
   if (/Mobi|iPhone|iPod|Android|Windows Phone/i.test(ua)) return 'mobile';
-  return 'desktop';
+  return BROWSER_RE.test(ua) ? 'desktop' : 'unknown';
+}
+
+// ---- a page view is something a PAGE does -------------------------------------------------------
+//
+// This endpoint takes the path from the request BODY, which is the only way the page can report
+// where it was -- request.url here is always /lxapi/pv. That is fine as long as the request really
+// came from a page on this site, and until now nothing checked that: a POST from anywhere with any
+// path was written down as a visit, and the country came from whoever sent it.
+//
+// Two headers settle it, and the browser -- not script -- writes both. A same-origin sendBeacon or
+// fetch carries Sec-Fetch-Site: same-origin, and a POST carries an Origin matching the host it was
+// sent to. Neither can be set from JavaScript, so this costs a real visitor nothing.
+//
+// ABSENT PASSES, PRESENT-AND-WRONG FAILS. Fetch Metadata is everywhere since Safari 16.4, but
+// rejecting on a missing header would silently stop counting anyone on something older, and losing
+// real people to catch a forger is the wrong trade. This is the floor: someone willing to set both
+// headers by hand still gets through, and the answer to that one is the device column above making
+// them visible rather than a check that pretends to be airtight.
+function notFromAPage(request) {
+  const sfs = request.headers.get('sec-fetch-site') || '';
+  if (sfs && sfs !== 'same-origin') return 'cross-site';
+  const origin = request.headers.get('origin') || '';
+  if (!origin) return '';
+  let oh = '\u0000', rh = '';
+  try { oh = new URL(origin).hostname.replace(/^www\./, ''); } catch (_) { }
+  try { rh = new URL(request.url).hostname.replace(/^www\./, ''); } catch (_) { }
+  return (oh && rh && oh === rh) ? '' : 'bad origin';
 }
 
 export async function onRequestPost({ request, env }) {
@@ -94,6 +158,10 @@ export async function onRequestPost({ request, env }) {
   if (!db) return json({ ok: false, reason: 'no db' }, 200);
   const ua = request.headers.get('user-agent') || '';
   if (!ua || BOT_RE.test(ua)) return json({ ok: false, reason: 'bot' }, 200);
+  // Before the body is even parsed: page views, clicks and slow-load reports all have to come from a
+  // page on this site. See notFromAPage above for what is checked and what is deliberately not.
+  const notPage = notFromAPage(request);
+  if (notPage) return json({ ok: false, reason: notPage }, 200);
 
   let b = null;
   try { b = JSON.parse(await request.text()); } catch (_) { return json({ ok: false, reason: 'bad body' }, 200); }
@@ -183,16 +251,28 @@ export async function onRequestPost({ request, env }) {
     ).bind(sid, now - 600000, now - 3600000).first();
     if (lim && ((+lim.s || 0) >= PER_SID_10MIN || (+lim.h || 0) >= PER_HOUR_ALL)) return json({ ok: false, reason: 'rate' }, 200);
     const day = new Date(now).toISOString().slice(0, 10);
-    // Added to an existing table, so the column may not be there yet. Same lazy pattern sendmail.js
+    // Added to an existing table, so the columns may not be there yet. Same lazy pattern sendmail.js
     // uses: attempt it once per isolate and ignore the "duplicate column" that every later boot gets.
-    if (!VID_READY) { VID_READY = 1; try { await db.prepare('ALTER TABLE pageview ADD COLUMN vid TEXT').run(); } catch (_) { } }
+    // Each ALTER is its own statement and its own catch -- one combined try would mean the duplicate
+    // error from the older column stopped the newer one from ever being added.
+    if (!COLS_READY) {
+      COLS_READY = 1;
+      try { await db.prepare('ALTER TABLE pageview ADD COLUMN vid TEXT').run(); } catch (_) { }
+      try { await db.prepare('ALTER TABLE pageview ADD COLUMN chain TEXT').run(); } catch (_) { }
+    }
     const vid = await visitorId(db, request, day, ua, host);
+    const chain = chainOf(path, request.headers.get('cookie') || '');
     await db.prepare(
-      'INSERT INTO pageview (ts, day, sid, path, ref, country, region, city, device, host, vid) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)'
-    ).bind(now, day, sid, path, ref, country, region, city, deviceOf(ua), host, vid).run();
+      'INSERT INTO pageview (ts, day, sid, path, ref, country, region, city, device, host, vid, chain) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)'
+    ).bind(now, day, sid, path, ref, country, region, city, deviceOf(ua), host, vid, chain).run();
     if (Math.random() < 0.005) await db.prepare('DELETE FROM pageview WHERE ts < ?1').bind(now - KEEP_MS).run();
+    // The derived chain is echoed back. It is not for the page -- the beacon ignores the response --
+    // but the derivation depends on a cookie arriving on a sendBeacon request, and "did the cookie
+    // get here" is otherwise unanswerable from outside: a missing cookie and a genuine Stellar visit
+    // both write 'stellar' and look identical in the table. One field makes it a question a browser
+    // can answer. Nothing secret: it is a word the visitor's own url and cookie already decided.
+    return json({ ok: true, chain }, 200);
   } catch (e) {
     return json({ ok: false, reason: 'write failed' }, 200);
   }
-  return json({ ok: true }, 200);
 }
