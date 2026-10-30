@@ -2255,6 +2255,27 @@ export async function onRequest(context){
   if (NOINDEX_PATHS.indexOf(cleanPath) >= 0) {
     out.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
   }
+  // ACCOUNT PAGES, by PREFIX rather than by exact path -- the list above cannot hold them.
+  //
+  // RAZA 2026-10-31: "tell me if we should even have wallet pages indexed on Google and other search
+  // engines." They should not: an account page shows somebody else's balances, pool positions and
+  // recent activity, and being readable on the ledger is not the same as being the top search result
+  // for an address. The reasoning in full is in _tools/_accountpage.js, which writes the meta tag.
+  //
+  // WHY NOT SITEMAP_SKIP. Every entry above is one literal url matched with indexOf on the cleaned
+  // path, because those five are single static pages. /account/stellar/:address is one route with an
+  // unbounded set of urls under it, so there is no string to put in that list -- it has to be a prefix
+  // test. It is also why the route was never in the sitemap to begin with: the generator drops every
+  // pattern containing a colon long before SITEMAP_SKIP is consulted.
+  //
+  // Both chains, hence the bare /account/ prefix: /account/stellar and /account/xrpl are the same page
+  // on the combined deploy, and a crawler carries no lx_chain cookie to tell them apart.
+  //
+  // This is the defence that does not depend on the markup being read. A meta tag is one line inside a
+  // 400KB document that a crawler has to parse and choose to honour; this is on the response itself.
+  if (cleanPath.indexOf('/account/') === 0) {
+    out.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+  }
 
   const canonPath = CANON_OF[cleanPath] || cleanPath;
   const canonical = PRIMARY_ORIGIN + canonPath;

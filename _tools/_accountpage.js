@@ -1391,6 +1391,28 @@ function buildPage(shell) {
   p = p.replace(/<title>[\s\S]*?<\/title>/, '<title>' + TITLE + '</title>');
   p = p.replace(/<meta name="description" content="[^"]*"/, '<meta name="description" content="' + DESC + '"');
 
+  // ---- NOT FOR SEARCH ENGINES -------------------------------------------------------------------
+  //
+  // RAZA 2026-10-31: "tell me if we should even have wallet pages indexed on Google and other search
+  // engines. I dont think there's any point for indexing them."
+  //
+  // There isn't, and the strongest reason is not an SEO one: THIS IS SOMEBODY ELSE'S WALLET. The page
+  // shows a stranger's balances, pool positions, portfolio value and last 50 operations, read off the
+  // public ledger. The ledger being public is not the same as being the first Google result for an
+  // address, and that is a line worth keeping on our side of.
+  //
+  // The rest follows anyway. Every account page carries the SAME title and description (TITLE/DESC
+  // above -- deliberately, because the builder cannot know whose address it is), so to a search engine
+  // they are thousands of near-duplicates competing with the pages that should rank. And nobody
+  // searches for a 56-character address, so there is no demand being served: these pages are only ever
+  // found by a crawler following a link.
+  //
+  // nofollow, NOT just noindex. The malformedId() gate in extract_site.js already stops the space being
+  // literally infinite, but every well-formed address still answers 200, and each account page links
+  // out to more of them. noindex alone keeps the crawl going and only hides the result; nofollow is
+  // what stops the expansion. Same pair /wallet already uses.
+  p = p.replace(/<meta name="robots" content="[^"]*"/, '<meta name="robots" content="noindex, nofollow"');
+
   if (p.indexOf('</head>') < 0) return null;
   p = p.replace('</head>', STYLE + '</head>');
   const bi = p.lastIndexOf('</body>');
