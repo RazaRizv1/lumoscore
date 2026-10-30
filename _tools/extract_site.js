@@ -4,6 +4,9 @@ const path = require('path');
 // repo's build, served by _redirects rewrites that _mergexrpl.js writes -- but the middleware has to
 // recognise them or they never reach the SEO head. Shared with that tool, not copied.
 const { PATTERNS: XRPL_PATTERNS } = require('./_xrplroutes.js');
+// What WE show as an asset's home domain where the on-chain value is stale. Defined once in lib.js
+// and embedded into the generated middleware below -- see the note at its use in assetFacts().
+const { DOMAIN_DISPLAY } = require('./lib.js');
 
 function read(f){ return fs.readFileSync(f, 'utf8'); }
 function getContents(data){
@@ -816,11 +819,18 @@ function middlewareJs(routePairs, mobileFiles, chainAlt, poolPairs){
 import { xrplAssetMeta } from './.well-known/xrp-ledger.toml.js';
 // Our own stellar.toml, for the assets it describes — see the call site.
 import { stellarAssetMeta } from './.well-known/stellar.toml.js';
+// Blog bodies carry links whose href is a pool ADDRESS rather than a url — see _lib/bloglinks.js.
+// The same repair runs in /lxapi/blog, because this page is rendered TWICE: here for a crawler, and
+// again by the client from that endpoint. Repairing only one of them would be undone by the other.
+import { repairBlogLinks } from '../_lib/bloglinks.js';
 const MOBILE = /Android|iPhone|iPod|IEMobile|BlackBerry|Opera Mini|Mobile Safari|Windows Phone/i;
 // [urlPattern, desktopFile, mobileFile|null] — "/" names both explicitly because its desktop file is
 // index (fetching /lumoscore-landing would hit the 301 back to "/" and loop).
 const ROUTES = ${JSON.stringify(routePairs, null, 2)};
 const HAS_MOBILE = new Set(${JSON.stringify(mobileFiles)});
+// What WE show as an asset's home domain, keyed CODE|ISSUER. Embedded from lib.js so this middleware
+// and the six client layers that already carry the same map cannot drift apart. See assetFacts().
+const DDOM = ${JSON.stringify(DOMAIN_DISPLAY)};
 // Paths that existed once, are indexed, and have no successor to redirect to. Answered 410 so Google
 // retires them instead of re-asking — see the note at the use site. Keep this short: anything with a
 // real successor belongs in a 301, not here.
@@ -926,7 +936,29 @@ async function assetFacts(assetId){
       // object, so it reported 0 for every asset. Both shapes read — see _searchassets.js, fixed earlier
       // for the same upstream change.
       trustlines: (function (t) { return !t ? 0 : (t.total != null ? +t.total || 0 : +t[0] || 0); })(m.trustlines),
-      domain: m.domain || '',
+      // THE DISPLAY DOMAIN WINS OVER THE CHAIN'S (RAZA 2026-10-20, on the LUMOS trade page: "in
+      // actuality the homedomain is lumosdao.io but we're showing lumoscore.com" -- "just rewrite the
+      // text").
+      //
+      // stellar.expert reports the issuer's on-chain home_domain, and for LUMOS that is lumosdao.io:
+      // confirmed against Horizon, so it is not an upstream error and nothing here is being corrected.
+      // It is the pre-rename domain, and changing it on chain would mean re-issuing the asset. lib.js
+      // has carried a DOMAIN_DISPLAY override for exactly this since the rename, and the six client
+      // layers all apply it -- which is why the issuer chip in the page header already reads
+      // lumoscore.com.
+      //
+      // THIS middleware was the one surface that did not, and it is the one that writes the body facts
+      // sentence ("It is issued by ...") and the a.website anchor. So a reader saw lumoscore.com beside
+      // the issuer and lumosdao.io one line below it, on the same page. Same asset, same page, two
+      // domains. The override belongs at the source, here, so every consumer downstream agrees.
+      //
+      // Display only. Nothing is written to the ledger and neither stellar.toml is touched: both
+      // lumoscore.com and lumosdao.io publish a [[CURRENCIES]] block for this exact issuer, so the
+      // domain shown is one that genuinely documents the asset, and an explorer still reports the
+      // chain's own value.
+      domain: DDOM[assetId.indexOf('-') < 0 ? assetId
+        : assetId.slice(0, assetId.indexOf('-')) + '|' + assetId.slice(assetId.indexOf('-') + 1)]
+        || m.domain || '',
       image: toml.image || '',
       name: toml.name || '',
       desc: String(toml.desc || toml.description || '').slice(0, 400),
@@ -1332,26 +1364,51 @@ function blogSeo(p, origin){
 // gate shows, so to a crawler that does not run JavaScript they would otherwise be the same document
 // down to the title -- the duplicate-pair problem the alias flag exists to prevent, reintroduced at
 // five new urls. These give each hub its own title and description at the edge.
+// A HUB AND ITS NETWORK PAGES WERE THE SAME DOCUMENT, measured 2026-10-27 on production: the served
+// text of /trade and /trade/stellar was 97.9% identical and the ONLY difference in the whole page was
+// the <title>. /launchpad vs /launchpad/stellar, 97.2%, same story.
+//
+// One file serves both, and the switch is a CSS class (lx-lp-on) that JavaScript adds to <html> after
+// load -- so a crawler fetching either url receives the same bytes. Google keeps one of a duplicate
+// pair and drops the other, which is exactly what RAZA was looking at: /trade indexed,
+// /trade/stellar and /trade/xrpl not.
+//
+// The same lesson as [[lumoscore-flash-pattern]]: a JS switch cannot separate two urls that ship the
+// same markup. It has to be done in the bytes, which is what the hub/net branches below do.
+//
+// h1 and intro ride in this table beside title and desc on purpose. The four of them are one piece of
+// copy about one page, and splitting them across _seo.js, _lumosparent.js and the page's own markup is
+// how /pools/xrpl ended up telling readers about "Stellar's on-chain AMM pools".
 const HUB_SEO = {
   '/trade': {
-    title: 'Trade on LumosCore — Choose a network',
-    desc: 'Swap assets and place limit orders on-chain across Stellar and the XRP Ledger. Choose a network to see its markets, prices and trading pairs.',
+    title: 'Trade on Stellar and XRP Ledger from 0.1% fees',
+    desc: 'Trade across Stellar and the XRP Ledger for as low as 0.1% per trade. Swap any asset, place limit orders, and discover new markets on both networks.',
+    h1: 'Trade on LumosCore',
+    intro: 'Swap assets and place limit orders across Stellar and the XRP Ledger, for as low as 0.1% per trade. Choose a network to see its assets, prices and pairs.',
   },
   '/pools': {
-    title: 'Liquidity Pools on LumosCore — Choose a network',
+    title: 'Liquidity Pools on Stellar and XRP Ledger',
     desc: 'Provide liquidity and earn a share of the trading fees. Choose a network to see its pools, total value locked, 24h volume and your own positions.',
+    h1: 'Liquidity Pools',
+    intro: 'Add liquidity to on-chain AMM pools and earn a share of every trade that routes through them. Choose a network to see its pools, value locked and 24h volume.',
   },
   '/bridge': {
     title: 'Bridge assets with LumosCore — Choose a network',
     desc: 'Move assets between chains with Circle CCTP, LayerZero, NEAR Intents, Axelar and THORChain. Choose the network you are bridging from to see its routes.',
+    h1: 'Bridge Assets',
+    intro: 'Move assets between networks with Circle CCTP, LayerZero, NEAR Intents, Axelar and THORChain. Choose the network you are bridging from.',
   },
   '/rewards': {
     title: 'LUMOS Rewards — Choose a network',
     desc: 'Liquidity and holder rewards, paid out each round. Choose a network to see its reward pools, the current round and what your position has earned.',
+    h1: 'LUMOS Rewards',
+    intro: 'Liquidity and holder rewards, paid out each round. Choose a network to see its reward pools and what your position has earned.',
   },
   '/lumos': {
-    title: 'LUMOS token — Choose a network',
-    desc: 'LumosCore’s native token, live on Stellar and the XRP Ledger. Choose a network to see its price, liquidity pools, holders and recent trades.',
+    title: 'LUMOS token — Price, Pools and Holders',
+    desc: 'LumosCore’s native token, live on Stellar and the XRP Ledger. Holding 250,000 LUMOS lowers your trading fee to 0.1%. Choose a network to see its price, pools and holders.',
+    h1: 'LUMOS',
+    intro: 'LumosCore’s native token, live on Stellar and the XRP Ledger. Holding 250,000 LUMOS lowers your trading fee to 0.1%. Choose a network to see its price, pools and holders.',
   },
   // MISSING UNTIL 2026-10-10, WHICH MADE TWO URLS SHARE ONE TITLE. /launchpad became a chooser the
   // same day but never got an entry here, so seoFor() did not recognise it as a hub and it fell
@@ -1363,9 +1420,134 @@ const HUB_SEO = {
   // duplicate, and that is the copy that counts. Found by auditing titles with Googlebot's user agent
   // rather than by looking at the tab.
   '/launchpad': {
-    title: 'Launch a Token — Choose a network',
-    desc: 'Issue your own token and open its first liquidity pool in minutes. Choose a network to launch on and see what it costs and what you receive.',
+    title: 'Launch a Token for $25 — Stellar or XRP Ledger',
+    desc: 'Launch a token for a flat $25, first liquidity pool included. Supported on Stellar and the XRP Ledger — set the name, supply and logo, then mint from your wallet.',
+    h1: 'Launch a Token',
+    intro: 'Issue your own token and open its first liquidity pool for a flat $25, on Stellar or the XRP Ledger. No code, and no contract to deploy.',
   },
+};
+
+// ---- the network pages under each hub ----------------------------------------------------------
+//
+// Twelve urls that have never been indexed. Before this they inherited whatever the shared file
+// happened to bake, which is how BOTH /pools urls came to carry the h1 "Automated Market Maker" and
+// BOTH /rewards urls "LUMOS Rewards" -- a duplicate title and a duplicate heading on the pair of
+// pages we most want told apart.
+//
+// Every number here was read off the live page or the code that computes it, not remembered:
+//   0.2% / 0.1% at 250,000 LUMOS   _feerate.js (0.002 / 0.001), and the live copy on both chains
+//   $25 flat                       the cost panel on BOTH launchpads: $5 token + $10 liquidity
+//                                  + $10 pool and network, paid in XLM on Stellar and XRP on XRPL
+//   0.30% Stellar AMM pool fee     protocol-fixed, see the SEO note in memory
+// No figure goes in the Rewards copy: the two chains show different per-round numbers and none of
+// them is a stable claim.
+//
+// h1 is HTML, because the design accents one word of it -- <em> in the DEX hero, <span class="hl">
+// on the launchpad. Writing it as plain text here would quietly strip the accent colour.
+const NET_SEO = {
+  '/trade/stellar': {
+    title: 'Trade Stellar Assets — from 0.1% fees',
+    desc: 'Trade Stellar assets for as low as 0.1% per trade. Discover every asset on the Stellar network, swap at the best available rate, or place a limit order. Non-custodial.',
+    h1: 'Trade <em>Stellar</em> Assets',
+    intro: 'Trade any Stellar asset for as low as 0.1% per trade. Market swaps and limit orders, routed across the Stellar DEX order book and its AMM pools.',
+  },
+  '/trade/xrpl': {
+    title: 'Trade XRP Ledger Assets — from 0.1% fees',
+    desc: 'Trade XRP Ledger assets for as low as 0.1% per trade. Discover every token on the XRP Ledger, swap at the best available rate, or place a limit order. Non-custodial.',
+    h1: 'Trade <em>XRP Ledger</em> Assets',
+    intro: 'Trade any XRP Ledger asset for as low as 0.1% per trade. Market swaps and limit orders, placed straight on the ledger’s own order book.',
+  },
+  '/pools/stellar': {
+    title: 'Stellar Liquidity Pools — TVL, Volume and Fees',
+    desc: 'Provide liquidity to Stellar AMM pools and earn a share of the 0.30% pool fee on every trade. See each pool’s value locked, 24h volume and your own positions.',
+    h1: '<em>Stellar</em> Liquidity Pools',
+    intro: 'Provide liquidity to Stellar’s on-chain AMM pools and earn a share of the 0.30% pool fee on every trade that routes through them.',
+  },
+  '/pools/xrpl': {
+    title: 'XRP Ledger Liquidity Pools — TVL, Volume, Fees',
+    desc: 'Provide liquidity to XRP Ledger AMM pools and earn a share of every trade that routes through them. See each pool’s value locked, 24h volume and your positions.',
+    h1: '<em>XRP Ledger</em> Liquidity Pools',
+    // The line this replaces read "Stellar's on-chain AMM pools" ON THE XRPL PAGE -- wrong-chain copy
+    // inherited with the markup, exactly the shape [[lumoscore-xrpl-wrong-chain-copy]] records.
+    intro: 'Provide liquidity to the XRP Ledger’s native AMM pools and earn a share of each pool’s trading fee.',
+  },
+  '/launchpad/stellar': {
+    title: 'Launch a Token on Stellar for $25',
+    desc: 'Launch a token on Stellar for a flat $25 in XLM, first liquidity pool included. Set the name, ticker, supply and logo, then mint straight from your wallet.',
+    h1: 'Launch a Token on <span class="hl">Stellar</span>',
+    // Keeps the How it works link: it is the only way into that dialog from this header.
+    intro: 'Issue a Stellar asset for a flat $25 in XLM, with its first liquidity pool included. <a class="ui-link" href="#">How it works</a>.',
+  },
+  '/launchpad/xrpl': {
+    title: 'Launch a Token on the XRP Ledger for $25',
+    desc: 'Launch a token on the XRP Ledger for a flat $25 in XRP, first liquidity pool included. Set the name, supply and metadata, then mint straight from your wallet.',
+    h1: 'Launch a Token on <span class="hl">XRP Ledger</span>',
+    intro: 'Issue a token on the XRP Ledger for a flat $25 in XRP, with its first liquidity pool included. <a class="ui-link" href="#">How it works</a>.',
+  },
+  '/bridge/stellar': {
+    title: 'Bridge Assets to 52 Chains from Stellar',
+    desc: 'Bridge USDC with Circle CCTP, USDT0 with LayerZero, or swap into XRP, Bitcoin, Solana and other major assets with NEAR Intents — all from a Stellar wallet.',
+    h1: 'Bridge from Stellar',
+    intro: 'Bridge USDC with Circle CCTP, USDT0 with LayerZero, or swap into XRP, Bitcoin, Solana and other major assets with NEAR Intents.',
+  },
+  '/bridge/xrpl': {
+    title: 'Bridge XRP to 39 Networks from the XRP Ledger',
+    desc: 'Bridge XRP to thirty-nine networks with NEAR Intents or THORChain, or move an Axelar ITS token to its home chain — all from an XRP Ledger wallet.',
+    h1: 'Bridge from the XRP Ledger',
+    intro: 'Bridge XRP to thirty-nine networks with NEAR Intents or THORChain, or move an Axelar ITS token to its home chain.',
+  },
+  '/rewards/stellar': {
+    title: 'LUMOS Rewards on Stellar — LP and Holders',
+    desc: 'Three reward programs on Stellar, paid out automatically on the 1st and 15th of every month. Provide liquidity or hold LUMOS to take a share of each round.',
+    h1: 'LUMOS Rewards on Stellar',
+    intro: 'Three reward programs on Stellar, paid out automatically on the 1st and 15th of every month.',
+  },
+  '/rewards/xrpl': {
+    title: 'LUMOS Rewards on the XRP Ledger',
+    desc: 'Three reward programs on the XRP Ledger, paid out automatically on the 1st and 15th of every month. Provide liquidity or hold LUMOS to take a share of each round.',
+    h1: 'LUMOS Rewards on the XRP Ledger',
+    intro: 'Three reward programs on the XRP Ledger, paid out automatically on the 1st and 15th of every month.',
+  },
+  // The LUMOS pages keep their own h1: it is a token identity block carrying the ticker pill, not a
+  // page heading, and rewriting it would read as a mistake rather than a fix. The line under it is
+  // already chain-specific, so only the fee tier is added.
+  '/lumos/stellar': {
+    title: 'LUMOS on Stellar — Price, Supply and Utility',
+    desc: 'LUMOS is LumosCore’s native token on Stellar. Holding 250,000 LUMOS lowers your trading fee to 0.1%. See its price, liquidity pools, holders and supply.',
+    h1: '',
+    intro: 'Native utility token · live on Stellar · 250,000 LUMOS lowers your trading fee to 0.1%',
+  },
+  '/lumos/xrpl': {
+    title: 'LUMOS on the XRP Ledger — Price and Pools',
+    desc: 'LUMOS is LumosCore’s native token on the XRP Ledger. Holding 250,000 LUMOS lowers your trading fee to 0.1%. See its price, liquidity pools, holders and supply.',
+    h1: '',
+    intro: 'Native utility token · live on the XRP Ledger · 250,000 LUMOS lowers your trading fee to 0.1%',
+  },
+};
+
+// Where each section keeps its heading and the line under it. Keyed by SECTION, because the two
+// CHAINS share the markup -- but the two DEVICES do not, which is the part that nearly shipped
+// half-done.
+//
+// THE PHONE IS A DIFFERENT FILE. Desktop and mobile are separate builds and the middleware picks one
+// by user agent, so a selector that matches on a laptop can quietly match nothing on a phone. Checked
+// by fetching all eighteen urls a second time with an iPhone agent, which is the only way to see it:
+// the first pass left /trade/stellar reading "Explore the Stellar DEX" and BOTH /pools urls reading
+// "Automated Market Maker" on phones, while every desktop page was already correct.
+//
+// Both sets are registered for every section. HTMLRewriter simply never fires a selector that does
+// not match, so the desktop pair is inert on a phone and the phone pair inert on a laptop; no page
+// has both, which was checked rather than assumed.
+const NET_SEL = {
+  '/trade':     { h1: ['section.dex-hero h1', 'h1.page-title'],    sub: ['.dex-hero-sub', 'p.page-subtitle'] },
+  '/pools':     { h1: ['section.dex-hero h1', 'h1.page-title'],    sub: ['.dex-hero-sub', 'p.page-subtitle'] },
+  '/launchpad': { h1: ['section.page-header h1', 'h1.page-title'], sub: ['section.page-header p', 'p.page-sub'] },
+  // These three use one structure on both devices, confirmed on the phone fetch.
+  '/bridge':    { h1: ['section.br-hero h1'],                      sub: ['section.br-hero .sub'] },
+  '/rewards':   { h1: ['.rwpage .head h1'],                        sub: ['.rwpage .head .sub'] },
+  // .lh-desc on its own for the phone, which has no .lumos-id wrapper. One match per page on both
+  // devices, counted -- so the bare class cannot reach anything else.
+  '/lumos':     { h1: ['.lumos-id h1'],                            sub: ['.lh-desc'] },
 };
 
 // A PATH SEGMENT IS ENCODED; AN ASSET ID IS NOT. A ticker may contain characters a url has to
@@ -1394,6 +1576,12 @@ function seoFor(pathname){
   if (segs[0] === 'blog' && segs[1]) return { kind: 'blog', slug: decSeg(segs[1]) };
   // exactly one segment, so /trade is the hub and /trade/stellar is not
   if (segs.length === 1 && HUB_SEO['/' + segs[0]]) return { kind: 'hub', id: '/' + segs[0] };
+  // ...and exactly two, which is the network page under it. Below the asset and pool rules above, so
+  // /trade/stellar/<ASSET> and /pools/stellar/<a>/<b> still reach their own branches first -- those
+  // need a third segment, so they cannot collide, but the order says so rather than relying on it.
+  if (segs.length === 2 && NET_SEO['/' + segs[0] + '/' + segs[1]]) {
+    return { kind: 'net', id: '/' + segs[0] + '/' + segs[1], section: '/' + segs[0] };
+  }
   return null;
 }
 
@@ -1437,13 +1625,153 @@ class HtmlSetter {
   element(el){ if (this.html) el.setInnerContent(this.html, { html: true }); }
 }
 
+// PREPENDED, NOT APPENDED, AND THAT IS THE WHOLE BUG. NO BACKTICKS IN THIS COMMENT.
+//
+// RAZA 2026-10-20, a WhatsApp share of /trade/xrpl: "Pending page share preview sucks. Make it like
+// the rest of the previews that we got." The card was fine, the tags were fine, and both were
+// delivered correctly to every preview crawler when asked for directly — og:image 200, image/png,
+// 1200x630, twitter:card summary_large_image. What was wrong was WHERE the tags sat.
+//
+// el.append puts them at the END of head, behind every inline stylesheet and script this build
+// emits. Measured on production, byte offset of og:image:
+//
+//     /                194 KB     preview works
+//     /pools/xrpl      282 KB
+//     /trade/xrpl      324 KB     the broken one
+//     /trade/stellar   347 KB
+//
+// Link-preview fetchers read a prefix of the document, not the whole thing — a few hundred KB — so
+// a page whose social tags live past that line unfurls as a bare icon no matter how correct they
+// are. It also explains why only SOME pages were wrong, which is what made it look like an XRPL
+// problem rather than a page-weight one: the landing page sits inside the window and Trade does not.
+//
+// Prepending costs nothing and puts every social tag in the first kilobyte. The right long-term fix
+// is the 1.2MB of inline script (see the page-weight notes), but no crawler needs to wait for that.
+//
+// Charset leads the block deliberately. The spec wants it in the first 1024 bytes; this document had
+// it at byte 2840 already and got away with it only because Cloudflare sends the charset in the
+// content-type header — verified. Emitting it first makes the document correct on its own, and a
+// later duplicate is ignored by every parser: the first declaration wins.
+//
+// And the irony, recorded because it is the third time this file has done it: the comment above
+// originally wrote el.append and the content-type in backticks, inside a region that IS a template
+// literal, and broke the build on the spot.
 class HeadInjector {
   constructor(html){ this.html = html; this.done = false; }
-  element(el){ if (this.done) return; this.done = true; el.append(this.html, { html: true }); }
+  element(el){
+    if (this.done) return;
+    this.done = true;
+    el.prepend('<meta charset="utf-8">' + this.html, { html: true });
+  }
 }
 class TitleSetter {
   constructor(t){ this.t = t; }
   element(el){ el.setInnerContent(this.t); }
+}
+
+// ---- making a hub and its network pages two different documents --------------------------------
+//
+// Adds a class without losing the ones already there. Used to set lx-lp-on at the edge, which the
+// page's own script would otherwise set a moment after load -- doing it here also removes the flick
+// of the network page that a reader saw before the chooser took over.
+class ClassAdder {
+  constructor(c){ this.c = c; }
+  element(el){
+    const v = el.getAttribute('class') || '';
+    if ((' ' + v + ' ').indexOf(' ' + this.c + ' ') < 0) el.setAttribute('class', (v + ' ' + this.c).trim());
+  }
+}
+class Dropper {
+  element(el){ el.remove(); }
+}
+// Removes every direct child of main.page except the ones named, which is the SAME set the stylesheet
+// already hides on a hub (.lx-lp and .crumb) -- so the bytes come to match what a reader has been
+// looking at all along, and nothing on screen changes.
+//
+// NEVER a script, a style or a footer, and that is the one place this is deliberately stricter than
+// the CSS. display:none does not stop a script running, so hiding one and deleting one are different
+// acts; and the footer is kept because on the phone builds of /pools and /lumos the content host is
+// a div.container whose extent I could not establish from the bytes -- my own parse mis-nested the
+// footer and the FAQ into main.page on desktop /lumos, and the live DOM said otherwise. A footer
+// left in the markup costs nothing here: it is boilerplate every page on the site already shares, so
+// it cannot be what makes two of them look like duplicates.
+class KeepOnly {
+  constructor(keep){ this.keep = keep; }
+  element(el){
+    const t = String(el.tagName || '').toLowerCase();
+    if (t === 'script' || t === 'style' || t === 'footer') return;
+    const v = ' ' + (el.getAttribute('class') || '') + ' ';
+    for (let i = 0; i < this.keep.length; i++) if (v.indexOf(' ' + this.keep[i] + ' ') >= 0) return;
+    el.remove();
+  }
+}
+
+// X WILL NOT DRAW A CARD WITHOUT A TITLE, and that is why most pages unfurled as a bare link
+// (RAZA 2026-10-17: "Social media preview is missing on most pages").
+//
+// A route with no seo entry gets a synthetic one carrying only an image, flagged imageOnly, and the
+// head builder then skips og:title, og:description, twitter:title and twitter:description for it.
+// The comment there explains the reasoning: "a crawler falls back to <title> and
+// <meta name="description"> for the card's text". Google does. X does not -- its card spec requires
+// twitter:title or og:title, and with neither present it renders no card at all. Measured on
+// production: every page on both chains served og:image, og:url, og:type and twitter:card, and ZERO
+// og:title. The tags, the 1200x630 images and robots.txt were all correct; the card still could not
+// be built.
+//
+// So the page's own title and description are read out of the stream and emitted as the social tags
+// they already should have been. Safe precisely here: TitleSetter only runs when seo.title is
+// non-empty, which for an imageOnly route it never is, so what is captured is the page's real title
+// and nothing is rewriting it underneath.
+//
+// Inserted before </head> rather than appended to <head>, because by then the title has streamed
+// past -- an append would have to know the text before it had been read.
+class OgTextFill {
+  constructor(){ this.t = ''; this.d = ''; }
+  static esc(s){
+    return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;').trim();
+  }
+  // HTMLRewriter hands back a text chunk's RAW SOURCE: entities are NOT decoded. So a title holding
+  // the numeric entity for an em dash arrived as those seven literal characters, esc() turned its
+  // ampersand into "&amp;", and the page shipped og:title="Stellar Account &amp;#8212; Balances..."
+  // -- the escape code visible as text in every share preview. The account pages were the only titles
+  // on the site carrying an entity (checked across the whole built output) and their source is now
+  // fixed, so this is a GUARD, not the repair: it stops the next title that happens to contain one
+  // from breaking the same way silently.
+  //
+  // Numeric entities only, because they are unambiguous. Decoding named ones would be a guess: a
+  // title meaning a literal "&amp;" cannot be told from one meaning "&". Verified inert against the
+  // current build -- no title or description contains a numeric entity, so nothing matches.
+  //
+  // TWO TRAPS LIVE HERE, both already paid for once. This class is SOURCE TEXT inside the generated
+  // middleware's template literal (see line ~817), so (1) a backtick anywhere in this block, comments
+  // included, closes that literal and the build dies, and (2) a backslash escape is EATEN on the way
+  // out -- a regex written with the \d shorthand would ship matching the letter d and quietly match
+  // nothing. Hence the explicit [0-9] character classes below. See LUMOSCORE_DEV.md note 8.
+  static decodeNum(s){
+    return String(s || '')
+      .replace(/&#([0-9]{1,7});/g, (m, n) => { try { return String.fromCodePoint(+n); } catch (_) { return m; } })
+      .replace(/&#x([0-9a-fA-F]{1,6});/g, (m, h) => { try { return String.fromCodePoint(parseInt(h, 16)); } catch (_) { return m; } });
+  }
+  titleHandler(){ const self = this; return { text(c){ self.t += c.text; } }; }
+  descHandler(){ const self = this; return { element(e){ if (!self.d) self.d = e.getAttribute('content') || ''; } }; }
+  headHandler(){
+    const self = this;
+    return { element(e){
+      try {
+        e.onEndTag((end) => {
+          const t = OgTextFill.esc(OgTextFill.decodeNum(self.t));
+          const d = OgTextFill.esc(OgTextFill.decodeNum(self.d));
+          let out = '';
+          if (t) out += '<meta property="og:title" content="' + t + '">'
+                      + '<meta name="twitter:title" content="' + t + '">';
+          if (d) out += '<meta property="og:description" content="' + d + '">'
+                      + '<meta name="twitter:description" content="' + d + '">';
+          if (out) end.before(out, { html: true });
+        });
+      } catch (_) { /* older runtime without onEndTag: the page keeps today's behaviour */ }
+    } };
+  }
 }
 
 // Legacy build filename -> clean url, as a REAL redirect.
@@ -2010,6 +2338,15 @@ export async function onRequest(context){
       image: SECTION_CARD[want.id] ? '/assets/og/s/' + SECTION_CARD[want.id] + '.png' : '',
     };
   }
+  // The network page under a hub. Its title and description used to come from whatever the shared
+  // file baked, which on /pools and /rewards was the SAME string on both chains.
+  else if (want && want.kind === 'net') {
+    seo = {
+      title: NET_SEO[want.id].title + ' | LumosCore',
+      desc: NET_SEO[want.id].desc,
+      image: SECTION_CARD[want.id] ? '/assets/og/s/' + SECTION_CARD[want.id] + '.png' : '',
+    };
+  }
   else if (want && want.kind === 'blog') {
     const look = await blogLookup(context.env, want.slug);
     if (look.post) seo = blogSeo(look.post, PRIMARY_ORIGIN);
@@ -2329,10 +2666,65 @@ export async function onRequest(context){
   // Checking the value means a card-only seo cannot touch the wording, and it also protects any
   // branch that ever computes an empty one.
   if (seo){
+    // The image-only routes are the ones with no wording of their own in the seo table, so they are
+    // exactly the ones whose title and description have to come out of the page itself.
+    if (seo.imageOnly) {
+      const fill = new OgTextFill();
+      rw = rw.on('title', fill.titleHandler())
+             .on('meta[name="description"]', fill.descHandler())
+             .on('head', fill.headHandler());
+    }
     if (seo.title) rw = rw.on('title', new TitleSetter(seo.title));
     if (seo.desc) rw = rw.on('meta[name="description"]', {
       element(el){ el.setAttribute('content', seo.desc); },
     });
+  }
+
+  // ---- the hub and the network page stop being the same document --------------------------------
+  //
+  // See the note on HUB_SEO. Until this ran, /trade and /trade/stellar differed by their <title> and
+  // nothing else, so only one of them could ever be indexed.
+  //
+  // A HUB serves the chooser and drops the network app. A NETWORK PAGE serves the app and drops the
+  // chooser. Both were already true on screen; neither was true in the bytes.
+  if (want && want.kind === 'hub' && HUB_SEO[want.id]) {
+    const hub = HUB_SEO[want.id];
+    // BOTH HOSTS, because the phone builds of /pools and /lumos wrap their content in a
+    // div.container where the desktop ones use main.page -- which is why those two hubs served TWO
+    // h1 elements to a phone, the chooser's and the network page's, until this was added. The
+    // stylesheet has always named .page, main and .container together for the same reason.
+    rw = rw.on('html', new ClassAdder('lx-lp-on'))
+           .on('main.page > *', new KeepOnly(['lx-lp', 'crumb']))
+           .on('div.container > *', new KeepOnly(['lx-lp', 'crumb']));
+    // The three the stylesheet has to name separately because they sit OUTSIDE every content
+    // wrapper -- the launchpad cost bar is position:fixed at body level and the phone stepper is
+    // nested inside .crumb. Both were found on 2026-10-26 by RAZA looking at the hub signed out.
+    rw = rw.on('.summary-fixed', new Dropper())
+           .on('#summaryFixed', new Dropper())
+           .on('.steps-mobile', new Dropper());
+    // The SAME CLASS OF MISS, found on 2026-10-27 by diffing the hub text against its network page:
+    // these two explainers are modal overlays at body level, so neither strip above reached them, and
+    // the /trade hub was serving 220 words of "How the Stellar DEX works" -- a single chain's prose on
+    // the page that exists to choose between chains, which held the hub at 78% shared text with
+    // /trade/stellar. Only these two are dropped. They are pure content, their wiring is guarded with
+    // if (!btn || !modal) return, and the button that opens each one lives in the page body the strip
+    // above has already removed, so the handler was dead on a hub either way. The wallet and pool FORM
+    // overlays are deliberately left in place: they are read by id from layers this file does not own.
+    rw = rw.on('#hiwModal', new Dropper())
+           .on('#ammHiwModal', new Dropper());
+    // One h1 per page, and on a hub it is the chooser's own heading. The shipped markup makes it an
+    // h2 because the same file also carries the network page, whose h1 this branch has just removed.
+    if (hub.h1) {
+      rw = rw.on('.lx-lp-head', new HtmlSetter(
+        '<h1 class="lx-lp-h">' + hub.h1 + '</h1><p class="lx-lp-sub">' + hub.intro + '</p>'));
+    }
+  }
+  else if (want && want.kind === 'net' && NET_SEO[want.id]) {
+    const net = NET_SEO[want.id];
+    const sel = NET_SEL[want.section];
+    rw = rw.on('section.lx-lp', new Dropper());
+    if (sel && net.h1) for (let i = 0; i < sel.h1.length; i++) rw = rw.on(sel.h1[i], new HtmlSetter(net.h1));
+    if (sel && net.intro) for (let i = 0; i < sel.sub.length; i++) rw = rw.on(sel.sub[i], new HtmlSetter(net.intro));
   }
   // The asset identity block ships as the design's USDC sample. Fill it with what this page is
   // actually about, so a crawler that never runs the page's JavaScript reads the right asset.
@@ -2387,6 +2779,96 @@ export async function onRequest(context){
     const ownDesc = !!(seo && seo.ownDesc);
     rw = rw.on('.asset-name', new TextSetter(code))
            .on('.asset-description', new TextSetter(desc, 'inner', ownDesc ? 'data-lxdescown' : null));
+    // THE NUMBERS BELONG IN THE BODY, NOT ONLY IN THE HEAD. NO BACKTICKS IN THIS COMMENT.
+    //
+    // Measured 2026-10-19 on the live AQUA page as an answer-engine crawler: price and trustline
+    // count present in the head, ABSENT from the body. A model quoting the page read 582 words of
+    // navigation and an issuer blurb -- not the data the page exists to show.
+    //
+    // The cause is just above. Those figures live in the FALLBACK description, which is skipped the
+    // moment an issuer publishes their own toml text -- and the better-documented the asset, the more
+    // certain it was to lose its numbers. The meta description kept them, which is why this looked
+    // solved from a head-only check.
+    //
+    // So they got their own line, built from the same facts and always emitted when any exist. Written
+    // as a sentence rather than a stat strip because that is the form a language model restates.
+    // Nothing is invented: each clause appears only when its value does, and an asset with no facts
+    // at all adds nothing instead of a line of dashes.
+    //
+    // ---- AND IT IS NO LONGER SHOWN TO READERS (RAZA 2026-10-20: "This is still there") ------------
+    //
+    // The sentence restates, in prose and under the description, numbers the page already shows as
+    // stat cells a few hundred pixels below it. For a person that is duplication with a rounding
+    // disagreement built in -- the cells are painted client-side from our own price path while these
+    // come per-request from stellar.expert, so the two legitimately differ by a few percent and read
+    // as a bug. Removed from the rendered page.
+    //
+    // NOT HIDDEN, REMOVED. Keeping the paragraph in the DOM behind a visually-hidden rule would serve
+    // a crawler text a reader cannot see, which is cloaking -- a far worse outcome for this site's
+    // search standing than losing one line of body copy.
+    //
+    // WHAT THE CRAWLER STILL GETS, measured on production before removing it:
+    //     meta description: Price $0.000071 - 1,472 trustlines - issued by <domain>. LUMOS price...
+    //     ld+json         : 2 blocks (Organization/WebSite, FAQPage)
+    // So the head keeps the price, the trustline count and the issuer domain; it is the BODY prose
+    // that goes, which is what the 2026-10-19 measurement above was about. If the body channel is
+    // wanted back, the right form is asset-level structured data (an ld+json block carrying price and
+    // holder count as declared metadata) rather than restoring this paragraph -- structured data is
+    // the sanctioned machine channel and is not duplicated visible text.
+    //
+    // The clauses are gone with it: nothing else read bodyBits. The meta description is built from the
+    // bits array further up, which is a different array and is untouched -- that is why the head keeps
+    // the numbers while the body loses them. NO BACKTICKS IN THIS COMMENT: it sits inside the
+    // middleware template literal, where one ends the string mid-function.
+    // AND THE DESIGN'S APTOS FIGURES COME OUT. NO BACKTICKS IN THIS COMMENT.
+    //
+    // Found 2026-10-19 while verifying the line above: the AQUA page served a crawler "Price 4.2271 APT
+    // $0.916142 · 24h Volume 4.14M APT · Market Cap $222.5M · FDV $232M · Supply 223.9M". Classified by
+    // region to be sure it was not CSS or script: THREE occurrences sit in real markup -- the stat row,
+    // the chart's price display, and the trade panel's "Market:" line.
+    //
+    // A browser never shows them: the client paints real values in, and the .lxp mask hides each cell
+    // until its own value lands. GPTBot, ClaudeBot and PerplexityBot run none of that, so the numbers
+    // they read are another chain's sample data -- and now they sit directly beneath a true sentence we
+    // just added, which makes the page MORE quotable, not less.
+    //
+    // This is the same fault the identity fields were fixed for in August (.asset-name, .asset-description,
+    // a.website, all rewritten right here because the design's USDC sample was reaching crawlers). The
+    // stat block was simply never included in that sweep.
+    //
+    // BLANKED, NOT FILLED. We hold price, trustlines and issuer at the edge -- not volume, market cap,
+    // FDV or supply -- so filling some and inventing the rest is the one outcome worse than blank. The
+    // client overwrites every one of these within a second for a real visitor, and the mask means an
+    // empty node looks exactly as it does today.
+    //
+    // AND BLANKING SUMMONED A LOGO. NO BACKTICKS IN THIS COMMENT.
+    //
+    // Reported 2026-10-20 on staging: the Price cell came back as a blue sphere with no label. The
+    // inherited nxnav healer walks every span/div/i/b and repaints any whose whitespace-stripped
+    // textContent is 1-5 characters and that looksLikeIcon -- a border-radius of 4px or more is enough,
+    // and these cells are rounded cards. Its place() then wipes the text and paints a background.
+    //
+    // Before the blanking the cell read Price4.2271APT$0.916142, far over the limit, so it was never a
+    // candidate. Removing the numbers left exactly Price -- five characters. The other three cells
+    // survived only because their labels are longer: 24hVolume, MarketCap, Supply.
+    //
+    // The escape is the healer's own first test, isCandidate bailing on any element that already holds
+    // an img or svg. One inert zero-size img per cell opts the cell out for good and does not depend on
+    // what the label happens to say. data-logoed is NOT an escape from this healer -- only from the
+    // separate logo engine -- which is recorded in the notes and was proved the hard way on the XRPL
+    // bridge, where the attribute pair was eaten along with the amount input.
+    //
+    // The client finds these cells by querySelector(".lbl"), so an extra child does not disturb it.
+    rw = rw.on('.stat-row .stat-cell', {
+      element(el){ el.prepend('<img alt="" aria-hidden="true" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none">', { html: true }); },
+    });
+    rw = rw.on('.stat-row .stat-cell .val', new TextSetter('', 'inner'))
+           .on('.stat-row .stat-cell .sub', new TextSetter('', 'inner'))
+           .on('.price-display .big', new TextSetter('', 'inner'))
+           .on('.dxa-trade-frow .mono', new TextSetter('', 'inner'));
+    // The <p class="lx-assetfacts" data-lxfacts="1"> that used to be inserted here is gone -- see the
+    // note above the clause list. It was placed with .after() on .asset-description, which put it
+    // directly beneath the Show more toggle, and that is where RAZA was pointing.
     // Always rewritten, even to an empty string: an asset with no home domain was otherwise left
     // showing the design's placeholder, which claims the issuer is circle.com. Blank is honest.
     // Text mode because this anchor also holds the globe icon, which setInnerContent would delete.
@@ -2406,7 +2888,7 @@ export async function onRequest(context){
   if (want && want.kind === 'blog' && seo && seo.post){
     const p = seo.post;
     if (p.title) rw = rw.on('.lx-post-head h1', new TextSetter(String(p.title)));
-    if (p.body) rw = rw.on('.lx-post-body', new HtmlSetter(p.body));
+    if (p.body) rw = rw.on('.lx-post-body', new HtmlSetter(repairBlogLinks(p.body)));
   }
 
   // THE BLOG INDEX, likewise. Same shape the client builds, so when its own render lands a moment

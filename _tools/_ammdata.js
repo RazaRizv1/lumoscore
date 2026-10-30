@@ -2362,9 +2362,32 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
       // stays valid with fresh numbers — this lets add/withdraw re-fetch+repaint with NO page reload.
       if(DET){for(var _k in _det)DET[_k]=_det[_k];}else{DET=_det;}
       // ONE SILENT RETRY BEFORE SAYING ANYTHING. A feed that failed once is usually a moment of rate limiting, and the
-      // warning is only true if it fails again -- so the whole detail is re-read once, quietly, and the note (gated on
-      // __lxTxRetried) appears only if that second read fails too.
-      try{ if(DET.txFail&&!window.__lxTxRetried){ window.__lxTxRetried=1; setTimeout(function(){ try{ loadDetail(); }catch(_e){} },2500); } }catch(_){}
+      // warning is only true if it fails again -- so the whole detail is re-read once, quietly, and the note appears
+      // only if that second read fails too.
+      //
+      // TWO FLAGS, BECAUSE ONE CANNOT SAY BOTH THINGS (RAZA 2026-10-30: "WHy am i getting this message 'some
+      // transactions couldnt be loaded'"). __lxTxRetried was doing double duty: it stopped the retry being scheduled
+      // twice AND gated the note. But it is set the moment the retry is SCHEDULED, and paintDetail() runs 4KB later in
+      // this same synchronous handler -- so by the time txFailNote checks it, it already reads "we retried", and the
+      // note painted on the FIRST failure. Verified in the live production bytes: flag, then paintDetail();reveal()
+      // 3,976 bytes on, no await between them. The silent retry was never silent.
+      //
+      //   __lxTxRetried   = a retry is scheduled  -> don't schedule another
+      //   __lxTxRetrying  = the retry is IN FLIGHT
+      //   __lxTxRetryDone = the retry has LANDED  -> the note may now speak
+      //
+      // "DONE" HAS TO MEAN LANDED, NOT STARTED. Setting it when the retry began still flashed the note on a hiccup
+      // that recovered: DET keeps the FAILED load's txFail=true until the fresh data arrives and overwrites it, so for
+      // the ~2s the re-read is in flight both conditions hold and any repaint in that window drew the note. Measured:
+      // block both feeds, let them recover at 5.5s -- note still appeared, then vanished when the data landed. A
+      // warning that appears and leaves on its own is the thing being reported.
+      //
+      // So the retry only raises a flag saying it is running, and the promotion to "done" happens HERE, at the top of
+      // a completed load -- the one place we know a second read has actually finished. In flight: Done is still 0, so
+      // the note stays suppressed. Landed clean: DET.txFail is false and txFailNote removes anything on screen.
+      // Landed failing: Done is 1 and the note appears, which is the only case where it is true.
+      try{ if(window.__lxTxRetrying){ window.__lxTxRetrying=0; window.__lxTxRetryDone=1; } }catch(_){}
+      try{ if(DET.txFail&&!window.__lxTxRetried){ window.__lxTxRetried=1; setTimeout(function(){ try{ window.__lxTxRetrying=1; loadDetail(); }catch(_e){} },2500); } }catch(_){}
       // Finish counting the day's volume behind the already-rendered page (see volDeepen).
       // The edge answers in one request; volDeepen is what it falls back to if that fails.
       try{ if(!volFast())volDeepen(); }catch(_){ try{ volDeepen(); }catch(_e){} }
@@ -2390,7 +2413,7 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
           var recs=(o&&o._embedded&&o._embedded.records)||[];
           if(o&&o.__failed){ DET.txFail=true;
             // same rule as above: one quiet retry first, and the note only if that fails too
-            try{ if(!window.__lxTxRetried){ window.__lxTxRetried=1; setTimeout(function(){ try{ loadDetail(); }catch(_e){} },2500); } }catch(_){}
+            try{ if(!window.__lxTxRetried){ window.__lxTxRetried=1; setTimeout(function(){ try{ window.__lxTxRetrying=1; loadDetail(); }catch(_e){} },2500); } }catch(_){}
             try{ txFailNote(q(".tx-card")); }catch(_){} return; }
           var add=[];
           recs.forEach(function(op){
@@ -3536,7 +3559,9 @@ const SCRIPT = `<script id="lx-ammdata">(function(){
   function txFailNote(host){
     if(!host)return;
     var n=host.querySelector(".lx-txfail");
-    if(!DET||!DET.txFail||!window.__lxTxRetried){ if(n&&n.parentNode)n.parentNode.removeChild(n); return; }
+    // __lxTxRetryDone, NOT __lxTxRetried -- see the two-flag note at the silent-retry site. This must mean "the retry
+    // has run and we still have nothing", never "a retry is on its way".
+    if(!DET||!DET.txFail||!window.__lxTxRetryDone){ if(n&&n.parentNode)n.parentNode.removeChild(n); return; }
     if(n)return;
     n=document.createElement("div"); n.className="lx-txfail";
     n.style.cssText="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 16px 12px;padding:9px 12px;border:1px solid rgba(234,106,44,.38);background:rgba(234,106,44,.10);border-radius:9px;font-size:12.5px;color:var(--text-muted)";

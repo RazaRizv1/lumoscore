@@ -53,7 +53,17 @@ const MAIN_INNER = `
         </span>
         <div class="acc-head-body">
           <div class="acc-title-row">
-            <h1 class="acc-addr" id="accAddr" title="">&#8212;</h1>
+            <!-- THE PLACEHOLDER IS WORDS, NOT A DASH (RAZA 2026-10-30, asking why account pages index
+                 the way they do). This file is ONE static page served for EVERY address -- the address
+                 is read from the URL by readAddr() and written in by paintHeader(), which boot() calls
+                 before any network request. So the served HTML cannot carry the address, and whatever
+                 sits here is what a reader sees who has not run the script yet: a crawler on its
+                 non-rendering pass, or anyone in the moment before boot(). That was a bare em dash, so
+                 every one of these pages shipped with an empty heading.
+                 "Stellar Account" is the honest answer to "whose page is this" when the address is not
+                 yet known, and it matches the <title>. paintHeader() overwrites it either way, so the
+                 rendered page is unchanged. -->
+            <h1 class="acc-addr" id="accAddr" title="">Stellar Account</h1>
             <!-- #6: copy, QR and Send were three loose siblings of a wrapping address, on a row set to
                  flex-start, so nothing lined up with anything. They are one group now, pinned to the
                  right, and the row centres on a shared axis.
@@ -387,7 +397,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   function fetchJ(u){ return fetch(u).then(function(r){ if(!r.ok)throw new Error(r.status); return r.json(); }); }
   function j(u){ return fetchJ(u).catch(function(e){
     if(u.indexOf("horizon.stellar.org")>=0)return fetchJ(u.replace("horizon.stellar.org","horizon.stellar.lobstr.co"));
-    throw e; }); }
+    throw e; }); }
   function hhmm(ms){ try{ return new Date(ms).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"}); }catch(_){ return "earlier"; } }
   function esc(s){return (String(s==null?"":s).split("&").join("&amp;").split("<").join("&lt;").split(">").join("&gt;").split('"').join("&quot;")).split(String.fromCharCode(39)).join("&#39;");}
 
@@ -727,9 +737,19 @@ const SCRIPT = `<script id="lx-accdata">(function(){
     // wave claims __px without ever calling fetchLogo -- so whichever ran first decided whether the asset
     // ever got a logo. That race is why some wallets showed initials and a bare issuer and others did not.
     // fetchLogo carries its own TRIED guard, so calling it on every visible row costs nothing extra.
+    // PRICED IN BATCHES, not one request per holding. A 65-asset wallet fired 65 /lxapi/candles
+    // calls, and that endpoint fronts /trade_aggregations -- the only METERED Horizon endpoint, 100
+    // per 5 minutes per IP. One big portfolio could spend most of the allowance on its own, and the
+    // browser's six-connection cap made it slow on top. Measured 2026-10-16: ~258 requests for one
+    // load of GAFB7IYP…36GD. Now 16 assets per call, so the same wallet costs 5.
+    //
+    // The per-asset path is kept and is still the fallback, so a host without the Function (localhost,
+    // any static mirror) behaves exactly as before.
+    var want=[];
     rows.forEach(function(a){ if(a.native)return;
       fetchLogo(a.code,a.issuer);
-      if(!a.__px){ a.__px=1; loadAssetPx(a); } });
+      if(!a.__px){ a.__px=1; want.push(a); } });
+    want.forEach(loadAssetPx);
     tb.innerHTML=rows.map(function(a){
       // The home domain is dropped here: it and the issuer were competing for one narrow cell, and the
       // row opens Trade-Asset, which states the domain properly. The issuer is the thing that actually
@@ -1019,6 +1039,77 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   // last trade close against XLM -- the same price the Trade pages quote, so a holding is worth the same
   // number on both screens
   function loadAssetPx(a){ pxStart(); return loadAssetPx_(a).then(pxEnd,pxEnd); }
+  // THE SAME WORK, FEWER REQUESTS. Each asset still ends up in applyPx() with a Horizon record of the
+  // same shape, so the dust guard below is untouched -- it is the last thing that should move, having
+  // once caught a $44.35M phantom portfolio.
+  //
+  // Only assets the edge validator accepts are batched; anything it would refuse keeps the per-asset
+  // path, which already falls back to Horizon directly. A batch that fails for any reason falls back
+  // the same way, per asset, so this can only reduce requests, never lose a price.
+  var PX_BATCH = 16;        // must not exceed MAX_ASSETS in functions/lxapi/candlesbatch.js
+  // ONE FETCH PER ASSET, however many places want it.
+  //
+  // Batching the holdings list alone was not enough: the pools list prices its own side per position,
+  // and this wallet has 131 of them against 65 holdings — overlapping heavily, since a pool's side is
+  // usually an asset the wallet also holds. Measured after the first fix, /lxapi/candles calls were
+  // still climbing (9 → 22 and rising) while the batch sat at 2, and Portfolio value still never
+  // filled. Deduplicating by asset is what actually bounds the work: the distinct assets, not the
+  // number of rows that mention them.
+  //
+  // Keyed on the PROMISE, not the result, so two callers racing the same asset still make one request.
+  var PXC = {};
+  function pxKey(code,iss){ return (code||"")+"-"+(iss||""); }
+
+  // THE BATCHING LIVES HERE, so every caller gets it without knowing. The holdings list asks for its
+  // assets in one burst and the pools list asks for its sides as each position resolves, a few at a
+  // time over several seconds — two shapes that no single call site could batch. A short queue in
+  // front of the cache collects both: whoever asks, their asset joins the next group.
+  //
+  // PX_WAIT is the whole design decision. Long enough that pools arriving together travel together,
+  // short enough that the first paint is not visibly held. A full group leaves immediately and does
+  // not wait out the timer.
+  var PX_WAIT = 120;
+  var PXQ = [], PXQT = null;
+  function pxFlush(){
+    if(PXQT){ clearTimeout(PXQT); PXQT=null; }
+    if(!PXQ.length)return;
+    var chunk=PXQ.splice(0,PX_BATCH);
+    if(PXQ.length)PXQT=setTimeout(pxFlush,PX_WAIT);
+    var empty={_embedded:{records:[]}};
+    fetch("/lxapi/candlesbatch?a="+encodeURIComponent(chunk.map(function(x){return x.id;}).join(",")))
+      .then(function(r){ return r.ok?r.json():null; })
+      .then(function(d){
+        if(!d||d.error)throw new Error("no batch");
+        chunk.forEach(function(x){ x.go(d[x.id]||empty); });
+      })
+      .catch(function(){
+        // EVERY QUEUED PROMISE MUST SETTLE, whatever happens. These gate pxEnd(), and one left pending
+        // holds the final re-sort open for ever — a hang with nothing on screen to explain it.
+        chunk.forEach(function(x){
+          pxAgg({code:x.code,issuer:x.iss}).then(x.go,function(){ x.go(empty); });
+        });
+      });
+  }
+  function pxCached(code,iss){
+    var k=pxKey(code,iss);
+    if(PXC[k])return PXC[k];
+    // Only ids the edge validator accepts can be batched; the rest keep the per-asset path, which
+    // already falls back to Horizon directly.
+    if(!pxIdOk({code:code,issuer:iss}))return (PXC[k]=pxAgg({code:code,issuer:iss}));
+    var go;
+    PXC[k]=new Promise(function(res){ go=res; });
+    PXQ.push({id:k,code:code,iss:iss,go:go});
+    if(PXQ.length>=PX_BATCH)pxFlush();
+    else if(!PXQT)PXQT=setTimeout(pxFlush,PX_WAIT);
+    return PXC[k];
+  }
+  function pxIdOk(a){
+    var code=a.code||"", iss=a.issuer||"";
+    if(!(code.length>0&&code.length<13&&iss.length===56&&iss.charAt(0)==="G"))return false;
+    for(var i=0;i<code.length;i++){ var ch=code.charAt(i);
+      if(!((ch>="A"&&ch<="Z")||(ch>="a"&&ch<="z")||(ch>="0"&&ch<="9")))return false; }
+    return true;
+  }
   // /lxapi/candles answers this at the edge, cached 300s and shared, so a 72-asset wallet costs the
   // network one request per ASSET-EVER rather than 72 per page view. Direct Horizon stays as the
   // fallback, so localhost and any static host still work.
@@ -1072,19 +1163,23 @@ const SCRIPT = `<script id="lx-accdata">(function(){
   // trade_aggregations record, so this one guard covers both.
   var PX_MIN_XLM = 25;      // a day that moved less than this says nothing about a market
   var PX_MIN_FRAC = 0.01;   // and it must have traded at least 1% of what we are valuing
+  // ONE PLACE DECIDES WHAT A CANDLE MEANS, so the batched path and the per-asset path cannot drift.
+  // Both hand it the same Horizon record; everything below this line is unchanged from when it was
+  // inline, deliberately.
+  function applyPx(a, r){
+    if(r){
+      a.px=+r.close||+r.avg||0;
+      var cv=+r.counter_volume||0, bv=+r.base_volume||0;
+      a.thin=!(a.px>0&&cv>=PX_MIN_XLM&&bv>=a.bal*PX_MIN_FRAC);
+      a.usd=a.thin?null:a.bal*a.px*xlmUsd;
+    }
+    // NOT renderAssets(): rebuilding here is what makes the list jump. Write this one value into the
+    // row it belongs to and leave the order alone -- the sorted rebuild happens once, in pxEnd, when
+    // every price has landed.
+    renderStats(); fillAssetValue(a);
+  }
   function loadAssetPx_(a){
-    return pxAgg(a).then(function(d){
-      var r=recs(d)[0];
-      if(r){
-        a.px=+r.close||+r.avg||0;
-        var cv=+r.counter_volume||0, bv=+r.base_volume||0;
-        a.thin=!(a.px>0&&cv>=PX_MIN_XLM&&bv>=a.bal*PX_MIN_FRAC);
-        a.usd=a.thin?null:a.bal*a.px*xlmUsd;
-      }
-      // NOT renderAssets(): rebuilding here is what makes the list jump. Write this one value into the
-      // row it belongs to and leave the order alone -- the sorted rebuild happens once, in pxEnd, when
-      // every price has landed.
-      renderStats(); fillAssetValue(a); }).catch(function(){}); }
+    return pxCached(a.code,a.issuer).then(function(d){ applyPx(a, recs(d)[0]); }).catch(function(){}); }
 
   // __ldDone marks "this one has finished, whatever it found". Without it a pool that resolves with no
   // USD value -- a credit/credit pair with no priced side -- would look permanently unloaded and hold
@@ -1107,7 +1202,7 @@ const SCRIPT = `<script id="lx-accdata">(function(){
       // no XLM side: price one side in XLM, then double that
       var s0=sides[0]; if(!s0||!s0.iss){ renderPools(); return; }
       var t0=s0.code.length<=4?"credit_alphanum4":"credit_alphanum12";
-        return pxAgg({code:s0.code,issuer:s0.iss}).then(function(pd){
+        return pxCached(s0.code,s0.iss).then(function(pd){
         var r=recs(pd)[0], px=r?(+r.close||+r.avg||0):0;
         if(px>0)settle(s0.amount*px); else renderPools();
       }).catch(function(){ renderPools(); });
@@ -1225,7 +1320,16 @@ const SCRIPT = `<script id="lx-accdata">(function(){
 // ---------------------------------------------------------------------------------------------------
 // BUILD
 // ---------------------------------------------------------------------------------------------------
-const TITLE = 'Stellar Account &#8212; Balances, Pools and Activity | LumosCore';
+// A REAL EM DASH, NOT THE ENTITY -- the entity broke og:title (RAZA 2026-10-30).
+// The numeric entity is correct inside <title>, which is why the tab and the Google result read fine. But
+// the edge builds og:title/twitter:title by copying the title's SOURCE TEXT (OgTextFill in
+// extract_site.js), and Cloudflare's HTMLRewriter does NOT decode entities in a text chunk -- so it
+// received the literal seven characters `&#8212;`, ran them through esc(), and shipped
+// `Stellar Account &amp;#8212; Balances...`. Every share preview of an account page showed the escape
+// code as text. Measured on production: <title> correct, og:title wrong, same string.
+// Checked across the whole built site: these account pages were the ONLY titles containing an entity.
+// String.fromCharCode is this file's own house style for an em dash (see the Soroban message in boot).
+const TITLE = 'Stellar Account ' + String.fromCharCode(8212) + ' Balances, Pools and Activity | LumosCore';
 const DESC = 'Public profile for any Stellar account: assets held and their value, liquidity pool positions, total portfolio worth and the last 50 operations.';
 
 // Walk forward from an opening <div ...> counting nested opens and closes, so we get ITS close tag and
