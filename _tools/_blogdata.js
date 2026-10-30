@@ -23,9 +23,6 @@ position:relative;z-index:2}
 .lx-post-cover,.lx-bp-cover{background:rgba(127,127,140,.10)}
 .lx-post-cover:empty{display:none}
 .lx-bp-when{display:flex;align-items:center;gap:8px}
-.lx-bp-when .lx-bp-chip{position:static;background:rgba(127,127,140,.16);border-color:transparent;
-color:var(--text-muted,#8a8fa3);backdrop-filter:none}
-.lx-bp-sep{width:3px;height:3px;border-radius:50%;background:currentColor;opacity:.5}
 .lx-post-tags{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:26px 0 0}
 .lx-post-tag{font:600 12px/1 "Hanken Grotesk",system-ui,sans-serif;padding:6px 10px;border-radius:999px;background:rgba(127,127,140,.12);color:var(--text-muted,#8a8fa3)}
 </style>`;
@@ -45,14 +42,51 @@ function when(t){ if(!t)return "";
   return new Date(t).toLocaleDateString(); }
 function j(u){ return fetch(u).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }); }
 
+// THIS PAGE DOES NOT READ THE READER'S NETWORK ANY MORE (RAZA 2026-10-30: "if im not connected and i
+// view /blog i dont see XRPL blog post on this page. And if i connect with XRPL and visit blog page,
+// it only shows the XRPL post instead of all posts").
+//
+// It used to. readerChain() resolved url -> localStorage -> lx_chain cookie, defaulting to "stellar",
+// and fillIndex dropped every post tagged for another network. Measured on production before this
+// change, against 16 published posts (14 Stellar, 2 XRPL, none untagged):
+//
+//   signed out, no cookie : 14 cards -- both XRPL posts hidden
+//   lx_chain=xrpl         :  2 cards -- all 14 Stellar posts hidden
+//
+// Neither is what a blog index is for. The filter came from "make the blog posts only visible to
+// their relevant network" (2026-10-28), and that reading is right for the two DASHBOARDS -- you are
+// already inside one chain's dashboard there, and each is served as its own file. It is wrong here:
+// /blog is a single SHARED page (combine.js lists it in SHARED, and /blog/xrpl is a 410), so there is
+// no other page the hidden posts are visible on. A reader on XRPL could not reach 14 published
+// articles from anywhere in the site.
+//
+// The article page never filtered -- netOf/readerChain were only ever called from fillIndex -- so a
+// hidden post was still readable by url, and Google indexes them. The index was hiding things the
+// rest of the web could see.
+//
+// Both functions are deleted rather than left unused: an orphaned chain-reader sitting here is an
+// invitation to wire it back in. The two dashboards keep their own copies, which is where the
+// per-network behaviour still belongs.
+//
+// NO BACKSLASHES IN THIS FILE. The whole script is a template literal, which eats an unrecognised
+// escape: a cookie test written with the usual regex would emit (?:^|;s*) and match nothing. That is
+// why the path tests say [/] elsewhere and cookies are split rather than matched.
+//
+// The lede named one network because the list only ever held one. It now describes the whole blog,
+// and says nothing that needs editing when a third network ships.
+function lede(){
+  return "Guides and explainers on trading, pools, bridging and issuing assets on LumosCore.";
+}
+
 // The placeholder cards carry their cover as a CSS gradient. A real post carries an image URL, so the
 // same slot has to render either -- an <img> inside the gradient block, which also keeps the 1200x630
 // crop the CSS already defines.
 function coverInto(el,post){
   if(!el)return;
   if(!post.cover){ el.remove(); return; }
-  // PREPEND, do not overwrite: the index cards keep their category chip inside this same slot, and
-  // replacing the contents wholesale deleted the chip from every card that had a picture.
+  // PREPEND, do not overwrite. This slot used to hold the category chip too, and an innerHTML
+  // assignment deleted it from every card that had a picture. The chip is gone now, but the rule
+  // stands: this function's job is to add the image, not to decide what else may live here.
   var img=document.createElement("img");
   img.className="lx-bd-cover-img";
   img.alt=post.coverAlt||"";
@@ -62,39 +96,39 @@ function coverInto(el,post){
 
 function fillIndex(posts){
   var grid=q(".lx-bp-grid"); if(!grid)return;
+  // EVERY PUBLISHED POST, WHOEVER IS READING. The network filter that used to sit here is gone --
+  // see the note above lede(). "No posts yet" below now means the blog is genuinely empty, which is
+  // the only thing it should ever have meant on a shared index.
+  var ld=q(".lx-bp-lede");
+  if(ld)ld.textContent=lede();
   if(!posts.length){
     grid.outerHTML="<div class='lx-bd-empty'><div class='t'>No posts yet</div>"
       +"<div class='s'>The first ones are being written. Check back shortly.</div></div>";
-    var lede=q(".lx-bp-lede");
-    if(lede)lede.textContent="Guides and explainers on trading, pools, bridging and issuing assets on Stellar.";
     return;
   }
+  // NO CATEGORY CHIP. The field holds the network now, and the network is not something a reader is
+  // shown -- they are already on one. Printing it would also contradict the filter: every chip on
+  // the page would read the same word.
   grid.innerHTML=posts.map(function(p){
-    // The category chip normally sits over the picture. A post with no picture has no slot to sit
-    // in -- the empty one is removed rather than shown as a blank frame -- so it moves to the date
-    // line instead of disappearing with it.
-    var chip=p.category?("<span class='lx-bp-chip' data-lxc=''>"+esc(p.category)+"</span>"):"";
     return "<a class='lx-bp-card' href='/blog/"+esc(p.slug)+"'>"
-      +"<div class='lx-bp-cover' data-cov='"+esc(p.slug)+"'>"+(p.cover?chip:"")+"</div>"
+      +"<div class='lx-bp-cover' data-cov='"+esc(p.slug)+"'></div>"
       +"<div class='lx-bp-title'>"+esc(p.title)+"</div>"
-      +"<div class='lx-bp-when'>"+(p.cover?"":(chip?chip+"<span class='lx-bp-sep'></span>":""))
-        +esc(when(p.publishedAt||p.createdAt))+"</div></a>";
+      +"<div class='lx-bp-when'>"+esc(when(p.publishedAt||p.createdAt))+"</div></a>";
   }).join("");
   posts.forEach(function(p){ coverInto(q(".lx-bp-cover[data-cov='"+p.slug+"']"),p); });
-  var lede=q(".lx-bp-lede");
-  if(lede)lede.textContent="Guides and explainers on trading, pools, bridging and issuing assets on Stellar.";
 }
 
 function fillPost(post){
   var root=q(".lx-post"); if(!root)return;
   var h1=q(".lx-post-head h1"); if(h1)h1.textContent=post.title;
-  var chip=q(".lx-post-chip");
-  if(chip){ if(post.category)chip.textContent=post.category; else chip.remove(); }
+  // The baked-in chip goes unconditionally: it holds the network now, which is not reader-facing.
+  // Removed rather than blanked -- an emptied element is still an element, and the logo healer
+  // repaints short icon-ish nodes it finds sitting empty.
+  var chip=q(".lx-post-chip"); if(chip)chip.remove();
   var meta=q(".lx-post-meta");
   if(meta){
     var dot="<span class='lx-post-dot'></span>";
     var bits=[];
-    if(post.category)bits.push("<span class='lx-bp-chip lx-post-chip' data-lxc=''>"+esc(post.category)+"</span>");
     bits.push(esc(when(post.publishedAt||post.createdAt)));
     if(post.readMins)bits.push(esc(post.readMins)+" min read");
     meta.innerHTML=bits.join(dot);

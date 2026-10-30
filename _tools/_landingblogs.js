@@ -83,7 +83,6 @@ const CSS = '<style id="lx-blogs-css">'
   + 'justify-content:center;gap:11px;min-width:0}'
   + '.lx-bl-meta{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;'
   + 'letter-spacing:.06em;text-transform:uppercase;color:var(--text-soft)}'
-  + '.lx-bl-cat{color:rgba(234,106,44,.9)}'
   + '.lx-bl-dot{opacity:.5}'
   + '.lx-bl-title{font-size:clamp(19px,1.7vw,25px);font-weight:800;line-height:1.28;'
   + 'letter-spacing:-.3px;margin:0;color:var(--text);text-wrap:pretty;'
@@ -91,7 +90,7 @@ const CSS = '<style id="lx-blogs-css">'
   + '.lx-bl-ex{font-size:15px;line-height:1.6;color:var(--text-muted);margin:0;max-width:56ch;'
   + 'display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}'
   + '.lx-bl-go{font-size:14.5px;font-weight:700;color:var(--accent);margin-top:3px}'
-  + '[data-theme="light"] .lx-bl-go,[data-theme="light"] .lx-bl-cat{color:#bd4e19}'
+  + '[data-theme="light"] .lx-bl-go{color:#bd4e19}'
   + '.lx-bl-slide:hover .lx-bl-title{text-decoration:underline;text-underline-offset:3px}'
 
   // ---- dots -----------------------------------------------------------------------------------
@@ -144,6 +143,23 @@ const JS = '<script id="lx-blogs-js">' + `(function(){
     .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
     .replace(/"/g,"&quot;").replace(/'/g,"&#39;"); }
 
+  // THE DECK NO LONGER READS THE READER'S NETWORK (RAZA 2026-10-30, after the same fix on /blog).
+  //
+  // readerChain() and netOf() used to live here -- url, then saved preference, then the lx_chain
+  // cookie, defaulting to "stellar" -- and every post tagged for another network was dropped before
+  // the slice. All 16 published posts carry a tag (14 Stellar, 2 XRPL), so there was no state that
+  // showed the whole blog: a signed-out visitor got Stellar posts only, and an XRPL reader got two.
+  //
+  // The argument is the same one that settled /blog. This deck sits on the LANDING page, which is
+  // one shared document for every reader and the first thing a signed-out visitor sees, and the
+  // "More posts" link goes to /blog -- which now shows everything. A deck that hides posts the page
+  // it links to will show is just a narrower front door onto the same list.
+  //
+  // Per-network selection still belongs on the two DASHBOARDS, which keep their own copies: those
+  // are served as separate files per chain, so the chain is decided before any script runs.
+  //
+  // Both helpers are deleted rather than left unused -- see the matching note in _blogdata.js.
+
   var MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   function when(p){
     var t = p.publishedAt || p.publishAt || p.createdAt;
@@ -155,10 +171,16 @@ const JS = '<script id="lx-blogs-js">' + `(function(){
 
   function slide(p, i){
     var bits = [];
-    if (p.category) bits.push('<span class="lx-bl-cat">' + esc(p.category) + "</span>");
+    // NO CATEGORY CHIP. The field holds the network now and the reader is already on one, so every
+    // chip in the deck would read the same word. That makes the separator conditional too: the
+    // date used to be the second item and could hard-code a leading dot, and now it is the first.
+    function add(html){
+      if (bits.length) bits.push('<span class="lx-bl-dot">&middot;</span>');
+      bits.push(html);
+    }
     var w = when(p);
-    if (w) bits.push('<span class="lx-bl-dot">&middot;</span><span>' + esc(w) + "</span>");
-    if (p.readMins) bits.push('<span class="lx-bl-dot">&middot;</span><span>' + esc(p.readMins) + " min</span>");
+    if (w) add("<span>" + esc(w) + "</span>");
+    if (p.readMins) add("<span>" + esc(p.readMins) + " min</span>");
 
     // alt="" on purpose: the cover is decorative, the title right beside it is the label, and a
     // screen reader should not hear the headline twice. The first cover loads eagerly because it is
@@ -188,6 +210,9 @@ const JS = '<script id="lx-blogs-js">' + `(function(){
     .then(function(d){
       var ps = (d && d.posts) || [];
       ps = ps.filter(function(p){ return p && p.slug && p.title && p.published !== false; });
+      // EVERY PUBLISHED POST IS A CANDIDATE. The network filter that stood here is gone (see the note
+      // above): the newest N are now genuinely the newest N, whichever chain they belong to, instead
+      // of the newest N of one chain.
       // Newest first. The endpoint's order is not contracted anywhere, so it is sorted here rather
       // than trusted -- publishedAt is the only field every post actually carries.
       ps.sort(function(a,b){ return (+b.publishedAt||+b.createdAt||0) - (+a.publishedAt||+a.createdAt||0); });
