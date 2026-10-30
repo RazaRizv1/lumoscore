@@ -11,9 +11,19 @@ const STYLE='<style id="lx-whead-css">'
 // !important because a later chip stylesheet (_topwallet / _walletchip2) also paints .lx-topwallet, and
 // it was winning — the disconnected chip lost its accent fill and rendered white label on near-white
 // (computed rgb(250,251,252)), so the button was present but unreadable.
-+'.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px}'
+// order:1 PUTS THE THEME TOGGLE ON THE LEFT (RAZA 2026-10-30: "the light/dark mode icon is on the
+// left, not right"). .topbar is flex with every child at order:0, so the pill sat where the markup
+// put it — after the toggle. Sending it to the end of the line moves the toggle to its left and
+// matches the landing header, without moving a node any other layer may be holding a reference to
+// (see reorder-in-css-not-by-moving-nodes). It rides on .lx-tw-disc, so connecting a wallet drops
+// the class and the real address chip returns to its own place with nothing to undo.
++'.lx-topwallet.lx-tw-disc{background:var(--accent,#ea6a2c)!important;border-color:var(--accent,#ea6a2c)!important;color:#fff!important;justify-content:center;padding:0 20px;gap:8px;order:1}'
 +'.lx-topwallet.lx-tw-disc:hover{background:#d85f22!important;border-color:#d85f22!important}'
-+'.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}'
+// 19.8px, NOT 13.5px — this is the whole of "bigger on the landing page". The pill's box already
+// matched (42px tall, 20px of side padding against the landing button's 19.8px); only the label had
+// been left at the app bar's own small type, so the same button read as two different sizes: 168px
+// wide on the landing page against 121px here. Measured on the landing button: 19.8px/700.
++'.lx-tw-cbtn{display:inline-flex;align-items:center;gap:8px;font:700 19.8px/1 "Hanken Grotesk",system-ui,sans-serif;color:#fff;letter-spacing:.01em}'
 +'.lx-tw-cbtn svg{width:16px;height:16px}'
 +'.lx-launch{display:inline-flex;align-items:center;justify-content:center;height:34px;padding:0 14px;border-radius:10px;border:1px solid var(--accent,#ea6a2c);background:var(--accent,#ea6a2c);color:#fff;font:700 13px/1 "Hanken Grotesk",system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0}'
 +'.lx-launch:active{background:#d85f22;border-color:#d85f22}'

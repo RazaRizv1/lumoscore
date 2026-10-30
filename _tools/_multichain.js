@@ -31,9 +31,36 @@ const SCRIPT='<script id="lx-mc">'+engine+'</script>';
 // logo, at which point the selector stops matching and the image reveals itself. One rule, every page,
 // nothing left to miss. The prefix is long enough to be unique to this asset.
 const APTOS_LOGO_PREFIX = CH.aptos.logo.slice(0, 96);
+// THE LOGO RULE IS NOT GATED ON lx-chainready, AND THAT IS THE WHOLE FIX (RAZA 2026-10-16: "There's a
+// flash bug on Pools, trade, main page ... its showing APTOS logo for split seconds ... These flashes
+// only appear when im connected to XRPL but visit any stellar page").
+//
+// The paragraph above already has the right idea — walkSwap rewrites the src, "at which point the
+// selector stops matching and the image reveals itself". The rule is SELF-CLEARING: it needs no class
+// to let a corrected image through, because a corrected image no longer matches it.
+//
+// So `html:not(.lx-chainready)` on this line bought nothing and cost the bug. boot() adds that class
+// immediately after adoptChain(), and there is a 3s failsafe that adds it regardless — after which
+// this rule is switched off for the rest of the page's life. Anything that paints an Aptos mark
+// AFTER that moment is unprotected, and reskin() only runs at 300/1200/3000ms, so the wrong logo is
+// on screen in between. A gate keyed on "the chain is decided" cannot protect a node repainted after
+// that; _bridgelogo.js reached the same conclusion and fixed its own page by rewriting the markup.
+//
+// WHY IT ONLY SHOWS WHEN CONNECTED: the topbar wallet chip (.lx-tw-av) only exists in the connected
+// state, and it is rendered by the wallet layer, which runs after boot. So it arrives carrying a
+// fresh Aptos src into a page whose gate has already opened — the one element the original rule
+// could never have covered, no matter how the selector was written.
+//
+// UNCONDITIONAL IS ALSO CORRECT, not merely convenient. ORDER is ["stellar","xrpl"], so `use` can
+// never resolve to aptos and this mark is never the right answer at any moment on any page. If
+// walkSwap never runs, hiding it forever is the outcome we want: an empty disc, not another chain's
+// logo. visibility (not display) keeps the box, so nothing reflows when it reveals.
+//
+// The class-based rules above KEEP their gate — those hide by element, not by src, so they have no
+// way to clear themselves and genuinely need lx-chainready to reveal.
 const HEAD='<style id="lx-chainready-css">'
 +'html:not(.lx-chainready) .lx-netcard img,html:not(.lx-chainready) .lx-netcard .val,html:not(.lx-chainready) .br-netbox .br-netchip{visibility:hidden!important}'
-+'html:not(.lx-chainready) img[src^="'+APTOS_LOGO_PREFIX+'"]{visibility:hidden!important}'
++'img[src^="'+APTOS_LOGO_PREFIX+'"]{visibility:hidden!important}'
 +'</style>'
 +'<script id="lx-chainready-js">(function(){try{setTimeout(function(){try{document.documentElement.classList.add("lx-chainready");}catch(_){}},3000);}catch(_){}})();<'+'/script>';
 
@@ -52,7 +79,16 @@ const STYLE='<style id="lx-mc-css">'
 +'.lxmc-opt.active{background:var(--accent-soft);color:var(--accent)}'
 +'@media(max-width:1080px){.lxmc-name{display:none}.lxmc-trig{padding:0 9px}}'
 // network-choice screen (lives INSIDE the .lxw connect modal, reuses its .lxw-row design)
-+'.lxw-neti{overflow:hidden;background:var(--surface-3,#eee)!important}'
+// The fallback has to be a DARK one. --surface-3 is defined on the landing page (#1d1d25) and
+// nowhere else, so every app page fell through to #eee and the chain logos sat on a light grey
+// tile with the inset ring around them -- the "not clean" halo RAZA reported on 2026-10-30, on an
+// otherwise identical modal. Measured: landing icon background rgb(29,29,37), /trade/stellar
+// rgb(238,238,238), same markup and same rule.
+//
+// --surface-2 is the app pages' own near-black (#1a1a1f), so the tile keeps the depth the inset
+// ring was drawn for instead of disappearing. Landing is UNCHANGED: --surface-3 still wins there.
+// A literal dark hex as the last resort, because a page defining neither must not get #eee again.
++'.lxw-neti{overflow:hidden;background:var(--surface-3,var(--surface-2,#1d1d25))!important}'
 +'.lxw-neti img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}'
 +'</style>';
 

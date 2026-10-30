@@ -409,12 +409,53 @@ function scriptHTML(hub) {
     // click first and this never saw it. Measured -- the cookie stayed unset on a dispatched click
     // while the handler was demonstrably installed. Same remedy the Trade dropdown needed today.
     + 'window.addEventListener("click",function(ev){try{'
-    + 'var t=ev.target&&ev.target.closest?ev.target.closest("[data-lxsetchain]"):null; if(!t)return;'
-    + 'var w=t.getAttribute("data-lxsetchain"); if(w!=="xrpl"&&w!=="stellar")return;'
-    + 'document.cookie="lx_chain="+w+";path=/;max-age=31536000;samesite=lax";'
+    + 'var t=ev.target&&ev.target.closest?ev.target.closest("[data-lxsetchain]"):null;'
+    + 'if(t){var w=t.getAttribute("data-lxsetchain");'
+    + 'if(w==="xrpl"||w==="stellar")document.cookie="lx_chain="+w+";path=/;max-age=31536000;samesite=lax";}'
+    // AND THE CARD'S OWN LINK HAS TO BE CLAIMED, or the chooser answers every click with Stellar.
+    //
+    // RAZA 2026-10-30: "If not signed in, and we visit lumoscore.com/trade and then click on XRP
+    // Ledger, it opens trade/stellar instead of trade/xrpl." Measured on the deployed site, signed
+    // out: the card's href was /trade/xrpl at window-capture time and the landing page was
+    // /trade/stellar, with the event never reaching the bubble phase -- so a handler in between
+    // cancelled the link and navigated somewhere of its own choosing.
+    //
+    // That handler is window.__lumosNav, the design's blanket row/card router. It resolves a
+    // destination through a Stellar-shaped resolver whose chain defaults to "stellar" for any route
+    // it does not recognise, which is every route in this build. Exactly the layer that sent pool
+    // rows to /pools/stellar in September -- see the lumosnav memory. The string /trade/stellar is
+    // in no file: it is assembled at runtime, so nothing about this is findable by grep.
+    //
+    // It is NOT only /trade. Every hub ships this same card, and /pools was verified failing the
+    // same way. It is also every reader the chooser exists for: a connected wallet is forwarded to
+    // its own chain by the block above, so only signed-out visitors ever see these cards at all.
+    //
+    // Window-capture is the only phase early enough -- document-level capture already lost this
+    // argument twice. stopImmediatePropagation so the router cannot also act on a click we handled.
+    + 'if(ev.defaultPrevented)return;'
+    + 'var c=ev.target&&ev.target.closest?ev.target.closest("a.lx-lp-card[href]"):null; if(!c)return;'
+    // Same-origin paths only. The card is ours and always points at a path, so anything else means
+    // the markup changed under this handler and the browser should keep its own behaviour.
+    + 'var u=c.getAttribute("href"); if(!u||u.charAt(0)!=="/")return;'
+    // Taken away from the router in BOTH cases -- a modifier click was being swallowed too, so
+    // open-in-new-tab did nothing on these cards. Stopping propagation without cancelling leaves the
+    // browser's own handling intact, which is what opens the new tab; only a plain click is steered
+    // from here. Reaching this line at all proves we ran before the router, because it bails above
+    // on an already-cancelled event and the plain-click case demonstrably navigates.
+    + 'ev.stopImmediatePropagation();'
+    + 'if(ev.button!==0||ev.metaKey||ev.ctrlKey||ev.shiftKey||ev.altKey)return;'
+    + 'ev.preventDefault();'
+    + 'location.href=u;'
     + '}catch(_){}} ,true);'
-    + 'document.addEventListener("DOMContentLoaded",function(){try{document.title=' + JSON.stringify(hub.title) + ';}catch(_){}});'
-    + 'try{document.title=' + JSON.stringify(hub.title) + ';}catch(_){}'
+    // THE CLIENT NO LONGER WRITES document.title, and that is the point (2026-10-27).
+    //
+    // It used to, because the shared file bakes the NETWORK page's title and the hub had no way to
+    // correct it. The middleware now sets the hub's title in the served bytes from HUB_SEO in
+    // extract_site.js -- which is the copy a crawler reads -- and these two lines then overwrote it a
+    // moment later with a DIFFERENT string from the table below. Two sources for one title, visibly
+    // disagreeing in the tab, which is the exact trap the HUB_SEO comment records from 2026-10-10.
+    //
+    // The table's `title` stays as the chooser's own fallback and is no longer applied here.
     + '}catch(_){}})();</script>';
 }
 
