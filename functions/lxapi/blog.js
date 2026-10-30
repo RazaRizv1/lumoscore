@@ -14,6 +14,7 @@
 // Keeping bodies out of the index is what stops the index growing into a megabyte payload that every
 // visitor downloads to render six cards.
 import { requireAdmin } from '../../_lib/adminauth.js';
+import { repairBlogLinks } from '../../_lib/bloglinks.js';
 import { audit } from '../../_lib/audit.js';
 
 const IDX = 'blog:index';
@@ -125,10 +126,24 @@ export async function onRequestGet({ request, env }) {
     try { post = await kv.get(POST + slug, 'json'); } catch (_) {}
     if (!post) return json({ error: 'not found' }, 404, 0);
     if (!isLive(post) && !all) return json({ error: 'not found' }, 404, 0);
+    // ON READ, NOT ON WRITE, because the posts that need it are already stored and this endpoint
+    // cannot rewrite them — writes go through requireAdmin() and a Cloudflare Access JWT. See
+    // _lib/bloglinks.js for what is repaired and why. New posts will not need it: the admin editor's
+    // tidyUrl no longer turns a pasted pool address into a hostname.
+    //
+    // NOT for `all` (the admin listing): the editor must show the author exactly what is stored, or
+    // saving would silently write back a body they never typed.
+    if (post.body && !all) post = Object.assign({}, post, { body: repairBlogLinks(post.body) });
     return json({ post }, 200, all ? 0 : 120);
   }
 
-  const idx = await readIndex(kv);
+  // readIndex() swallows a throw into [] for the write paths, which need a list to rewrite. The
+  // READER must not: a store we could not read is not an empty blog, and the page draws those two
+  // differently. Reported the same way as 'no kv' above, and never cached.
+  let idx = null;
+  try { idx = (await kv.get(IDX, 'json')) || []; } catch (_) { idx = null; }
+  if (!idx) return json({ posts: [], reason: 'kv error' }, 200, 0);
+
   const posts = all ? idx : idx.filter(isLive);
   return json({ posts }, 200, all ? 0 : 120);
 }

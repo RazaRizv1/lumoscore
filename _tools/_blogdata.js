@@ -18,6 +18,9 @@ const CSS = `<style id="lx-blogdata-css">
 .lx-bd-empty{padding:56px 20px;text-align:center;border:1px dashed var(--border,#ececef);border-radius:16px}
 .lx-bd-empty .t{font:700 17px/1.3 "Hanken Grotesk",system-ui,sans-serif;color:var(--text,#0e0e10)}
 .lx-bd-empty .s{margin-top:8px;font-size:14.5px;line-height:1.6;color:var(--text-muted,#8a8fa3)}
+.lx-bd-retry{margin-top:16px;font:700 13.5px/1 "Hanken Grotesk",system-ui,sans-serif;padding:10px 18px;border-radius:999px;border:1px solid var(--border-strong,#d7d7dc);background:transparent;color:var(--text,#0e0e10);cursor:pointer;transition:.15s}
+.lx-bd-retry:hover{border-color:var(--accent,#ea6a2c);color:var(--accent,#ea6a2c)}
+.lx-bd-retry[disabled]{opacity:.55;cursor:default}
 .lx-bd-cover-img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit;
 position:relative;z-index:2}
 .lx-post-cover,.lx-bp-cover{background:rgba(127,127,140,.10)}
@@ -40,7 +43,38 @@ function when(t){ if(!t)return "";
   if(d<30*day)return Math.floor(d/(7*day))+"w ago";
   if(d<365*day)return Math.floor(d/(30*day))+"mo ago";
   return new Date(t).toLocaleDateString(); }
-function j(u){ return fetch(u).then(function(r){ return r.ok?r.json():null; }).catch(function(){ return null; }); }
+// "WE COULD NOT ASK" IS NOT "THERE IS NOTHING" (RAZA 2026-10-30).
+//
+// This used to return null for every outcome -- a 500, a dropped connection, a parse error and a
+// genuine 404 all arrived identically. The two callers then said the most confident possible thing:
+// the index rendered "No posts yet", and an article rendered "Post not found" AND rewrote
+// document.title to match. Reproduced locally, where serve.js does not proxy /lxapi/blog: a 404 on
+// the endpoint printed "No posts yet" over 16 published posts.
+//
+// The article case is the worse one. Those urls are indexed and reachable from search, so a blip on
+// one fetch told a reader -- and any crawler that renders -- that a live article does not exist.
+//
+// 404 is the ONLY status that means "the server looked and there is no such thing". Everything else
+// is us failing to get an answer, and is reported as such.
+//
+// ONE QUIET RETRY FIRST, same reasoning as the pool page's transactions list: a single blip should
+// not produce a message at all. Only the second failure is worth telling anyone about.
+function jOnce(u){
+  return fetch(u).then(function(r){
+    if(r.ok)return r.json().catch(function(){ return {__failed:1}; });
+    if(r.status===404)return null;
+    return {__failed:1};
+  }).catch(function(){ return {__failed:1}; });
+}
+function j(u,n){
+  n=(n==null)?1:n;
+  return jOnce(u).then(function(d){
+    if(d&&d.__failed&&n>0){
+      return new Promise(function(rs){ setTimeout(rs,900); }).then(function(){ return j(u,n-1); });
+    }
+    return d;
+  });
+}
 
 // THIS PAGE DOES NOT READ THE READER'S NETWORK ANY MORE (RAZA 2026-10-30: "if im not connected and i
 // view /blog i dont see XRPL blog post on this page. And if i connect with XRPL and visit blog page,
@@ -155,6 +189,43 @@ function fillPost(post){
   }catch(e){}
 }
 
+// COULD NOT LOAD -- said plainly, and distinct from "there are none". Both of these replace the same
+// slot their success path would have filled, and both carry a Retry rather than making the reader
+// guess whether a reload would help.
+function retryBtn(fn){
+  var b=document.createElement("button");
+  b.type="button"; b.className="lx-bd-retry"; b.textContent="Retry";
+  b.addEventListener("click",function(){
+    b.disabled=true; b.textContent="Retrying...";
+    fn();
+  });
+  return b;
+}
+function failBox(title,msg,fn){
+  var d=document.createElement("div");
+  d.className="lx-bd-empty";
+  var t=document.createElement("div"); t.className="t"; t.textContent=title;
+  var s=document.createElement("div"); s.className="s"; s.textContent=msg;
+  d.appendChild(t); d.appendChild(s); d.appendChild(retryBtn(fn));
+  return d;
+}
+function indexFailed(){
+  var grid=q(".lx-bp-grid")||q(".lx-bd-empty"); if(!grid)return;
+  var ld=q(".lx-bp-lede"); if(ld)ld.textContent=lede();
+  var box=failBox("Couldn't load posts",
+    "We could not reach the blog just now. This is usually a moment, not an outage.",
+    loadIndex);
+  grid.parentNode.replaceChild(box,grid);
+}
+// NOTE the slot: the body, not the heading. notFound() rewrites the h1 and the document title, and
+// neither is safe here -- we do not know that anything is wrong with the post.
+function postFailed(){
+  var body=q(".lx-post-body"); if(!body)return;
+  body.innerHTML="";
+  body.appendChild(failBox("Couldn't load this post",
+    "The article could not be fetched just now. It has not gone anywhere.",
+    loadPost));
+}
 function notFound(){
   var root=q(".lx-post"); if(!root)return;
   var h1=q(".lx-post-head h1"); if(h1)h1.textContent="Post not found";
@@ -167,17 +238,39 @@ function notFound(){
   try{ document.title="Post not found | LumosCore Blog"; }catch(e){}
 }
 
+// The grid is REPLACED by whichever box gets drawn (outerHTML / replaceChild), so a successful retry
+// has nothing left to fill -- fillIndex returns early on a missing .lx-bp-grid and the reader is left
+// looking at the error. Put a fresh grid back before filling it.
+function restoreGrid(){
+  if(q(".lx-bp-grid"))return;
+  var box=q(".lx-bd-empty"); if(!box||!box.parentNode)return;
+  var g=document.createElement("div"); g.className="lx-bp-grid";
+  box.parentNode.replaceChild(g,box);
+}
+var SLUG="";
+// Three failures, one empty answer. A 404 (d===null) is a FAILURE here even though it is a real
+// answer for a post: the collection endpoint always replies 200 when it exists, so a 404 means the
+// function is missing. And "reason" is the server saying it could not read the store -- it has
+// always distinguished that from an empty blog ("no kv" / "kv error"), and reading it is the half
+// that was missing. Only a 200 with no reason and an empty list means "nothing published yet".
+function loadIndex(){
+  j("/lxapi/blog").then(function(d){
+    if(!d||d.__failed||d.reason){ indexFailed(); return; }
+    restoreGrid();
+    fillIndex(d.posts||[]);
+  });
+}
+function loadPost(){
+  j("/lxapi/blog?slug="+encodeURIComponent(SLUG)).then(function(d){
+    if(d&&d.__failed){ postFailed(); return; }
+    if(d&&d.post)fillPost(d.post); else notFound();
+  });
+}
 function boot(){
   var path=location.pathname.replace(/[/]+$/,"");
   var m=path.match(/[/]blog[/]([a-z0-9-]+)$/);
-  if(m){
-    j("/lxapi/blog?slug="+encodeURIComponent(m[1])).then(function(d){
-      if(d&&d.post)fillPost(d.post); else notFound(); });
-    return;
-  }
-  if(/[/]blog$/.test(path)||q(".lx-bp-grid")){
-    j("/lxapi/blog").then(function(d){ fillIndex((d&&d.posts)||[]); });
-  }
+  if(m){ SLUG=m[1]; loadPost(); return; }
+  if(/[/]blog$/.test(path)||q(".lx-bp-grid")){ loadIndex(); }
 }
 if(document.readyState!=="loading")boot(); else document.addEventListener("DOMContentLoaded",boot);
 })();` + '</' + 'script>';
