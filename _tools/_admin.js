@@ -7,9 +7,10 @@
 //   2. inserts "Revenue" into the admin sidebar, right after Dashboard;
 //   3. injects a data layer that fills Revenue + the Dashboard KPIs from the chain.
 //
-// CHAINS: fee revenue is read from BOTH collectors (Stellar + XRP Ledger) as of 2026-10-15. Swap
+// CHAINS: fee revenue is read from BOTH collectors (Stellar + XRP Ledger) as of 2026-10-15, and from
+// NEAR's (fees-lumoscore.near, through /lxapi/nearfees) as of 2026-11-10. Swap
 // VOLUME is still Stellar-only -- it is reconstructed from Stellar transaction envelopes and has no
-// XRPL equivalent here yet, so those tiles are labelled rather than left to read as platform-wide.
+// XRPL or NEAR equivalent here yet, so those tiles are labelled rather than left to read as platform-wide.
 //
 // WHERE THE MONEY COMES FROM: platform fees are paid to LX_FEE_COLLECTOR by _swapcalc.js. That account's
 // payment history IS the revenue ledger — on-chain, auditable, and impossible to fabricate. Nothing here
@@ -32,6 +33,11 @@ const FEE_COLLECTOR='GAMZFXIJD5E3PNRFCG6VPXCJNUOZAP5BY2P3MU3ZXXUSVM2UY5P6LJKD';
 // Checksum-verified at build time in _tools/xrpladdr.js of the XRPL repo, which is where it is also
 // injected into the pages that PAY it; repeated here because this transform has no access to that repo.
 const XFEE_COLLECTOR='rBDV4nwHzg5ByAYJtPWrbBZnuUXSUtFr94';
+
+// THE NEAR COLLECTOR. Added 2026-11-10: every NEAR swap and bridge fee since late October went here and
+// none of it reached this panel. Same constant as FEE_ACCOUNT in the NEAR repo's browser/nearswap.js.
+// The browser does not read it directly -- see the NEAR block in the data layer for why.
+const NFEE_COLLECTOR='fees-lumoscore.near';
 
 // ---- the Revenue page body (uses the admin design's own classes so it is visually native) -------------
 const REVENUE_MAIN=`
@@ -409,6 +415,36 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'      (r.transactions||[]).forEach(function(x){ var row=xRow(x); if(row)out.push(row); });'
 +'      if(r.marker&&n<10)return page(r.marker,n+1); return out; }); }'
 +'  return page(null,1).catch(function(){ XOK=false; return out; }); }'
+// ---- the NEAR side ----
+// READ BY OUR OWN FUNCTION, NOT FROM THE BROWSER. A NEAR fee is usually an ft_transfer, which executes on
+// the TOKEN's contract, not on the collector; finding them means FastNEAR's index plus every
+// transaction's receipts (~6 KB each). functions/lxapi/nearfees.js does that once per cache period and
+// answers in Horizon's payment shape, so it joins the ledger the way xRow() lets XRPL join it.
+//
+// NOK, like XOK: did NEAR actually answer? The Function says ok:false when it could not read, and
+// partial:true while it is still decoding history (it catches up a few dozen transactions per call).
+// Both leave NOK false, so the totals dash and the warning names NEAR -- rows already read are still
+// listed, because they are real, but a part-read chain is never summed as if it were the whole.
+//
+// WHAT A NEAR FEE WAS FOR IS ON ITS MEMO, as on XRPL. Fees arrive in the INPUT token of each trade, so
+// there is no fee-asset list to test against: every LumosCore path writes a memo instead --
+// nearswap.js "LumosCore platform fee 0.2%" (0.1% on the LUMOS tier), the router contract "lx:sw" (not
+// deployed yet), nibridge.js "lx:ni", nearbridges.js "lx:om" / "lx:wh". Limit orders charged
+// "LumosCore limit order fee 0.1%" until 2026-11-04 and are free since; the memo is still a fee memo.
+// The launchpad cannot write one -- the factory forwards the create fee as a bare NEAR transfer from its
+// callback -- so the Function recognises that receipt by shape and stamps lxkind "mint".
+// No memo means no LumosCore path paid it: it goes to Other, out of the totals.
++'var NFEE="'+NFEE_COLLECTOR+'", NOK=null, NPART=false, NSELF=0;'
++'function nKind(p){ if(p&&p.lxkind==="mint")return "mint"; var mo=String((p&&p.memo)||"");'
++'  if(/^lx:(ni|om|wh)$/.test(mo))return "bridge";'
++'  if(mo==="lx:sw"||/^LumosCore (platform|limit order) fee/.test(mo))return "trade";'
++'  return "other"; }'
++'function loadNear(){ NOK=true; NPART=false; NSELF=0;'
++'  return j("/lxapi/nearfees").then(function(d){'
++'    if(!d||!d.ok||!d.rows||typeof d.rows.filter!=="function"){ NOK=false; return []; }'
++'    NSELF=+d.self||0; if(d.partial){ NPART=true; NOK=false; }'
++'    return d.rows.filter(function(p){ return p&&p.to===NFEE&&p.from!==NFEE; }).map(function(p){ p.chain="near"; return p; }); })'
++'   .catch(function(){ NOK=false; return []; }); }'
 // ---- fetch every fee receipt (paged) ----
 +'var RV=null, RV_SELF=0;'
 // ---- WHAT COUNTS AS A FEE: THE ASSET IT ARRIVED IN ---------------------------------------------
@@ -427,7 +463,10 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // real trade and worth stating -- the alternative was a wallet rule, and that WOULD have been wrong,
 // because the same wallet also paid two genuine XLM fees.
 +'var FEE_ASSETS={stellar:{XLM:1,USDC:1},xrpl:{XRP:1}};'
-+'function isFeeAsset(p){ var m=FEE_ASSETS[p.chain==="xrpl"?"xrpl":"stellar"]||{};'
+// NEAR HAS NO LIST: its fees come in whatever token was swapped, so the memo decides instead (nKind).
+// The name stays isFeeAsset because every caller asks the same question -- "is this receipt a fee?".
++'function isFeeAsset(p){ if(p.chain==="near")return nKind(p)!=="other";'
++'  var m=FEE_ASSETS[p.chain==="xrpl"?"xrpl":"stellar"]||{};'
 +'  return !!m[assetOf(p).code]; }'
 // ---- RECEIPTS THAT ARE NOT REVENUE, NAMED ONE BY ONE ------------------------------------------
 //
@@ -450,12 +489,21 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // the collector has ever received, sent during the September XRPL build window by the same account
 // that sent twelve dust payments around it. Our own code never pays this account without a memo.
 // RAZA, 2026-10-29: "exclude that 2 XRP".
-+'  "xrpl:D8ADCB02EFFFB3D2439CD2334B9D71AC77C7CACDAFC85D20637816FEBB9AEF93":"sent by hand during the XRPL build \\u2014 not a platform fee"'
++'  "xrpl:D8ADCB02EFFFB3D2439CD2334B9D71AC77C7CACDAFC85D20637816FEBB9AEF93":"sent by hand during the XRPL build \\u2014 not a platform fee",'
+// 100,000 LUMOS, 2026-11-04 06:06 UTC, tx 7AbCY4ebTPapVo6DKUDb97tBhTBRZzn38N8AasqVUxXA, receipt below.
+// It DOES carry a LumosCore memo ("LumosCore limit order fee 0.1%"), so the memo rule counts it -- which
+// is why it is named here. treasury.lumoscore.near placed the first LUMOS limit order on NEAR (100M
+// LUMOS); the 0.1% fee transfer landed, DCL then refused the order (E600) and handed the 100M back, but
+// the fee stayed. That incident is why NEAR limit orders went free (browser/neardcl.js). It is our own
+// treasury's LUMOS moving between our own accounts, not money from a customer, and LUMOS has no NEAR
+// price yet, so it would have read as $0 today and as a fortune the day a pool opens.
++'  "near:4MkQerGzC7bujsqZQczPbtXs8o1FGtdKP2TmtM1SSyxB":"the treasury\\u2019s own first LUMOS limit order; DCL refused the order after the fee landed \\u2014 not customer revenue"'
 +'};'
 // Stellar can put several payments in one transaction, so the operation id is the identity and the
-// transaction hash is only the fallback; the XRP Ledger has one payment per transaction.
-+'function rid(p){ return (p.chain==="xrpl"?"xrpl:":"stellar:")+String(p.id||p.transaction_hash||""); }'
-+'function exReason(p){ var k=(p.chain==="xrpl"?"xrpl:":"stellar:");'
+// transaction hash is only the fallback; the XRP Ledger has one payment per transaction. NEAR rows carry
+// the RECEIPT id, since one NEAR transaction can pay the collector more than once.
++'function rid(p){ return (p.chain||"stellar")+":"+String(p.id||p.transaction_hash||""); }'
++'function exReason(p){ var k=(p.chain||"stellar")+":";'
 +'  return NOT_REVENUE[rid(p)]||NOT_REVENUE[k+String(p.transaction_hash||"")]||""; }'
 // SOK: DID HORIZON ACTUALLY ANSWER? (RAZA 2026-10-19: "where are all the stellar transactions?")
 //
@@ -482,11 +530,12 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'  return page(H+"/accounts/"+FEE+"/payments?order=desc&limit=200",1).then(function(){'
 +'    var inc=recs.filter(function(p){ return p.to===FEE && p.from!==FEE && (p.type==="payment"||p.type==="path_payment_strict_send"||p.type==="path_payment_strict_receive"); }).map(function(p){ p.chain="stellar"; return p; });'
 +'    RV_SELF=recs.filter(function(p){ return p.to===FEE && p.from===FEE; }).length;'
-// One ledger, both chains, newest first. A Stellar failure already resolved above; an XRPL failure
-// resolves empty with XOK false, so the panel degrades to Stellar-only AND SAYS SO rather than
-// silently reporting a smaller business.
-+'    return loadXrpl().then(function(xr){ RV_SELF+=XSELF;'
-+'      var all=inc.concat(xr).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
+// One ledger, every chain, newest first. A Stellar failure already resolved above; an XRPL or NEAR
+// failure resolves empty with XOK / NOK false, so the panel degrades to what it could read AND SAYS SO
+// rather than silently reporting a smaller business. The two are read side by side, not one after the
+// other: neither waits on the other's network.
++'    return Promise.all([loadXrpl(),loadNear()]).then(function(z){ var xr=z[0], nr=z[1]; RV_SELF+=XSELF+NSELF;'
++'      var all=inc.concat(xr).concat(nr).sort(function(a,b){ return Date.parse(b.created_at)-Date.parse(a.created_at); });'
 // SPLIT, not dropped. Everything the collector received is still in `other` and still counted in the
 // note below, so a transfer like the 1,000,000 LUMOS can be seen and queried -- it is simply not
 // revenue, and nothing above it is computed from it.
@@ -547,7 +596,26 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'  XPX=j(XPX_SRC).then(function(d){ if(d&&d.ok)return d;'
 +'    return j("/lxapi/xrplprices").then(function(e){ if(e&&e.ok)return e; XPX=null; return null; }); });'
 +'  return XPX; }'
-+'function priceUsdOn(chain,code,iss,cb){ if(chain!=="xrpl"){ priceUsd(code,iss,cb); return; }'
+// NEAR PRICES. NEAR itself and wNEAR (wrap.near, 1:1 with NEAR) come from CoinGecko's "near"; every
+// other NEP-141 token from prices.intear.tech, one public call that maps contract id -> USD for ~6,000
+// NEAR tokens (verified 2026-11-10: wrap.near 3.567, usdt.tether-token.near 1). Intear answers 0 for a
+// token it has no market for -- LUMOS on NEAR has no pool yet and reads 0 -- and 0 is NOT a price: it
+// becomes the dash, out of the USD total. A call that failed is the third state, "couldn't read", and
+// like every other source here it is never memoised, so the next paint asks again.
+// The response is ~260 KB, so it is fetched once per page view and only when a NEAR token needs it.
++'var NPX=null, NGP=null;'
++'function nPrices(){ if(NPX)return NPX;'
++'  NPX=j("https://prices.intear.tech/prices").then(function(d){ if(d&&typeof d==="object"&&d["wrap.near"]!==undefined)return d; NPX=null; return null; });'
++'  return NPX; }'
++'function nNear(){ if(NGP)return NGP;'
++'  NGP=j("https://api.coingecko.com/api/v3/simple/price?ids=near&vs_currencies=usd").then(function(g){ var p=g&&g.near&&+g.near.usd; if(p>0)return p;'
++'    return nPrices().then(function(d){ var w=d&&+d["wrap.near"]; if(w>0)return w; NGP=null; return null; }); });'
++'  return NGP; }'
++'function nearPrice(code,iss,cb){'
++'  if(!iss||iss==="wrap.near"){ nNear().then(function(p){ if(p==null){ cb(null,1); return; } cb(p,0); }); return; }'
++'  nPrices().then(function(d){ if(!d){ cb(null,1); return; } var v=+d[iss]; cb(v>0?v:null,0); }); }'
++'function priceUsdOn(chain,code,iss,cb){ if(chain==="near"){ nearPrice(code,iss,cb); return; }'
++'  if(chain!=="xrpl"){ priceUsd(code,iss,cb); return; }'
 +'  xPrices().then(function(d){'
 +'    if(!d){ cb(null,1); return; }'                                           // endpoint unreachable or refusing
 // usd null is the endpoint WITHHOLDING a rate it could not stand behind (its stablecoin check failed),
@@ -585,24 +653,38 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // labelled XLM in the ledger, grouped under the XLM key, and then went looking for an XLM price for an
 // XRP amount. assetOf is the single place that decides a receipt's asset, so the ledger table, the
 // by-asset grouping, the month bars, the dashboard tile, the feed and the CSV are all fixed here.
-+'function assetOf(p){ return p.asset_type==="native"?{code:(p.chain==="xrpl"?"XRP":"XLM"),iss:""}:{code:p.asset_code||"?",iss:p.asset_issuer||""}; }'
++'function assetOf(p){ return p.asset_type==="native"?{code:(p.chain==="xrpl"?"XRP":(p.chain==="near"?"NEAR":"XLM")),iss:""}:{code:p.asset_code||"?",iss:p.asset_issuer||""}; }'
+// ONE PLACE PER CHAIN FOR ITS NAME AND ITS EXPLORER. These were inline ternaries -- xrpl, else Stellar --
+// at every surface, and a third chain would have been labelled "Stellar" and linked to stellar.expert at
+// each one it was not caught. NearBlocks for NEAR: it is the explorer the NEAR site already links.
++'function chainName(c){ return c==="xrpl"?"XRP Ledger":(c==="near"?"NEAR":"Stellar"); }'
++'function chainTag(c){ return c==="xrpl"?"XRPL":(c==="near"?"NEAR":"Stellar"); }'
+// A NEAR account is usually a NAME (lumos01.near), and cutting it to four-and-four makes it unreadable;
+// only a long one -- a 64-hex implicit account -- is shortened like a G- or r-address.
++'function shortA(c,a){ a=String(a||""); return (c==="near"&&a.length<=24)?a:shortG(a); }'
++'function exAcct(c,a){ a=encodeURIComponent(a||""); return c==="xrpl"?("https://bithomp.com/explorer/"+a):(c==="near"?("https://nearblocks.io/address/"+a):("https://stellar.expert/explorer/public/account/"+a)); }'
++'function exTx(c,h){ h=encodeURIComponent(h||""); return c==="xrpl"?("https://bithomp.com/explorer/"+h):(c==="near"?("https://nearblocks.io/txns/"+h):("https://stellar.expert/explorer/public/tx/"+h)); }'
+// Every surface that dashes a total while a chain is missing asks this, so a fourth chain is one edit.
++'function allRead(){ return SOK!==false&&XOK!==false&&NOK!==false; }'
 // ---- Revenue page ----
 +'function paintRevenue(){ if(!q("#lxRevByAsset"))return;'
 +'  loadRevenue().then(function(rv){ var head=pageHead(); if(!head||q(".lxadm-note"))return;'
 +'    var other=(rv.other||[]).length, exn=(rv.ex||[]).length, parts=[];'
 +'    if(RV_SELF) parts.push(RV_SELF+" self-transfer(s) (the collector paying itself)");'
-+'    if(other) parts.push(other+" payment(s) in an asset we do not charge fees in");'
++'    if(other) parts.push(other+" payment(s) that are not fees");'
 +'    if(exn) parts.push(exn+" receipt(s) marked not revenue by hand (still in the ledger below, struck through)");'
 // THE UNREACHABLE WARNING COMES FIRST AND LOOKS LIKE A WARNING. Everything else on this page is a
 // figure; this is the one line that says the figures are incomplete, and it has to outrank them.
-+'    var down=[]; if(SOK===false)down.push("Stellar"); if(XOK===false)down.push("the XRP Ledger");'
+// NEAR has a second way to be incomplete: the Function answered, but is still decoding older history.
+// Named as such, because "could not be read" would send the reader looking for an outage.
++'    var down=[]; if(SOK===false)down.push("Stellar"); if(XOK===false)down.push("the XRP Ledger"); if(NOK===false)down.push(NPART?"NEAR (still being read \\u2014 only part of its history is in)":"NEAR");'
 +'    if(down.length){ var w=document.createElement("div"); w.className="lxadm-note";'
 +'      w.style.cssText="border-left:3px solid #e3a008;padding-left:11px;color:#e3a008";'
-+'      w.textContent="\\u26a0 "+down.join(" and ")+" could not be read just now, so these figures are INCOMPLETE \\u2014 receipts from "+(down.length>1?"either chain":down[0])+" are missing and the totals are shown as \\u2014 rather than a number. Reload to try again.";'
++'      w.textContent="\\u26a0 "+down.join(" and ")+" could not be read in full just now, so these figures are INCOMPLETE \\u2014 receipts from "+(down.length>1?"those chains":down[0].split(" (")[0])+" are missing and the totals are shown as \\u2014 rather than a number. Reload to try again.";'
 +'      head.parentNode.insertBefore(w, head.nextSibling); }'
 +'    if(!parts.length) return;'
 +'    var d=document.createElement("div"); d.className="lxadm-note";'
-+'    d.textContent="Excludes "+parts.join(" and ")+". Fees arrive as XLM or USDC on Stellar and XRP on the XRP Ledger, so anything else paid into a collector is a transfer rather than revenue \\u2014 it is listed under Other on-chain and left out of the totals above.";'
++'    d.textContent="Excludes "+parts.join(" and ")+". Fees arrive as XLM or USDC on Stellar, XRP on the XRP Ledger, and on NEAR in whatever token was swapped, carrying a LumosCore fee memo (a launch fee comes from the LumosCore factory instead) \\u2014 so anything else paid into a collector is a transfer rather than revenue. It is listed under Other on-chain and left out of the totals above.";'
 +'    head.parentNode.insertBefore(d, head.nextSibling); });'
 +'  loadRevenue().then(function(rv){ var rows=rv.rows;'
 +'    var now=new Date(), mStart=new Date(now.getFullYear(),now.getMonth(),1).getTime();'
@@ -614,9 +696,11 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'    setT(q("#lxRevCount"), num(rows.length));'
 +'    setT(q("#lxRevWallets"), num(Object.keys(wallets).length));'
 +'    var keys=Object.keys(byA);'
-+'    var chains=(SOK===false?"XRP Ledger only":(XOK===false?"Stellar only":"both chains"));'
+// Named by what WAS read, so a missing chain is visible in the subtitle as well as in the warning.
++'    var rd=[]; if(SOK!==false)rd.push("Stellar"); if(XOK!==false)rd.push("XRP Ledger"); if(NOK!==false)rd.push("NEAR");'
++'    var chains=(rd.length===3?"all three chains":(rd.length?(rd.join(" + ")+" only"):"no chain read"));'
 +'    var sub=q("#lxRevLedgerSub"); if(sub)sub.textContent=(rows.length?("newest first \\u00b7 "+rows.length+" receipts \\u00b7 "+chains):"")'
-+'      +((SOK===false)?" \\u00b7 Stellar unreachable":"")+((XOK===false)?" \\u00b7 XRP Ledger unreachable":"");'
++'      +((SOK===false)?" \\u00b7 Stellar unreachable":"")+((XOK===false)?" \\u00b7 XRP Ledger unreachable":"")+((NOK===false)?(NPART?" \\u00b7 NEAR still being read":" \\u00b7 NEAR unreachable"):"");'
 +'    var tb=q("#lxRevLedger tbody");'
 // bithomp is the explorer the XRPL site already links everywhere else; matching it keeps one
 // explorer per chain instead of a third one that only the admin panel uses.
@@ -634,18 +718,19 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'    var pages=Math.max(1,Math.ceil(led.length/LEDN));'
 +'    if(window.__lxLedPage>pages-1)window.__lxLedPage=pages-1;'
 +'    var from=window.__lxLedPage*LEDN, win=led.slice(from,from+LEDN);'
-+'    if(tb){ tb.innerHTML = led.length ? win.map(function(p){ var a=assetOf(p), xr=(p.chain==="xrpl");'
++'    if(tb){ tb.innerHTML = led.length ? win.map(function(p){ var a=assetOf(p), ch=(p.chain||"stellar");'
 +'        var exr=exReason(p), nf=!isFeeAsset(p)||!!exr;'
-+'        var acct=xr?("https://bithomp.com/explorer/"+encodeURIComponent(p.from)):("https://stellar.expert/explorer/public/account/"+encodeURIComponent(p.from));'
-+'        var txu=xr?("https://bithomp.com/explorer/"+encodeURIComponent(p.transaction_hash)):("https://stellar.expert/explorer/public/tx/"+encodeURIComponent(p.transaction_hash));'
++'        var acct=exAcct(ch,p.from), txu=exTx(ch,p.transaction_hash);'
+// "not a fee asset" is the wrong reason on NEAR, where any token can be a fee: there it was the memo.
++'        var why=exr?esc(exr):(ch==="near"?"no LumosCore fee memo":"not a fee asset");'
 +'        return "<tr"+(nf?" style=\\"opacity:.55\\"":"")+">"'
 +'          +"<td>"+esc(new Date(p.created_at).toLocaleString())+"</td>"'
-+'          +"<td>"+(xr?"XRP Ledger":"Stellar")+"</td>"'
-+'          +"<td class=\\"mono\\"><a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc(acct)+"\\">"+esc(shortG(p.from))+"</a></td>"'
-+'          +"<td>"+esc(a.code)+(nf?("<div style=\\"font-size:11px;opacity:.85\\">"+(exr?esc(exr):"not a fee asset")+" \\u00b7 not counted</div>"):"")+"</td>"'
++'          +"<td>"+chainName(ch)+"</td>"'
++'          +"<td class=\\"mono\\"><a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc(acct)+"\\" title=\\""+esc(p.from)+"\\">"+esc(shortA(ch,p.from))+"</a></td>"'
++'          +"<td>"+esc(a.code)+(nf?("<div style=\\"font-size:11px;opacity:.85\\">"+why+" \\u00b7 not counted</div>"):"")+"</td>"'
 +'          +"<td style=\\"text-align:right\\" class=\\"mono\\">"+(nf?("<s>"+esc(num(+p.amount))+"</s>"):esc(num(+p.amount)))+"</td>"'
 +'          +"<td style=\\"text-align:right\\"><a class=\\"lxadm-link\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc(txu)+"\\">view</a></td></tr>"; }).join("")'
-+'      : "<tr><td colspan=\\"6\\" class=\\"lxadm-empty\\">No fee receipts yet. Fees are paid to <span class=\\"mono\\">"+esc(shortG(FEE))+"</span> on Stellar and <span class=\\"mono\\">"+esc(shortG(XFEE))+"</span> on the XRP Ledger when users swap or add liquidity.</td></tr>"; }'
++'      : "<tr><td colspan=\\"6\\" class=\\"lxadm-empty\\">No fee receipts yet. Fees are paid to <span class=\\"mono\\">"+esc(shortG(FEE))+"</span> on Stellar, <span class=\\"mono\\">"+esc(shortG(XFEE))+"</span> on the XRP Ledger and <span class=\\"mono\\">"+esc(NFEE)+"</span> on NEAR when users swap or add liquidity.</td></tr>"; }'
 // The pager sits under the table and is rebuilt with it. Only drawn when there is more than one page:
 // a "1 of 1" control is a control that does nothing.
 +'    (function(){ var host=tb&&tb.closest?tb.closest(".adm-card"):null; if(!host)return;'
@@ -676,7 +761,7 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'      var tot=keys.reduce(function(s,k){ return s+(byA[k].usd||0); },0);'
 +'      tb2.innerHTML = keys.length ? keys.sort(function(x,y){ return (byA[y].usd||0)-(byA[x].usd||0); }).map(function(k){ var a=byA[k];'
 +'          var sh=tot>0&&a.usd!=null?((a.usd/tot*100).toFixed(1)+"%"):"\\u2014";'
-+'          return "<tr><td><span class=\\"lxadm-asset\\"><span class=\\"lxadm-ico\\" data-lxc=\\""+esc(a.code)+"\\"><img src=\\""+(LG[k]||avatar(a.code))+"\\" alt=\\"\\"></span>"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:5px\\">"+(a.chain==="xrpl"?"XRPL":"Stellar")+"</span></span></td>"'
++'          return "<tr><td><span class=\\"lxadm-asset\\"><span class=\\"lxadm-ico\\" data-lxc=\\""+esc(a.code)+"\\"><img src=\\""+(LG[k]||avatar(a.code))+"\\" alt=\\"\\"></span>"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:5px\\">"+chainTag(a.chain)+"</span></span></td>"'
 +'            +"<td style=\\"text-align:right\\" class=\\"mono\\">"+esc(num(a.amt))+"</td>"'
 // THREE STATES, NOT TWO. A number, a dash for an asset nobody publishes a price for, and words for a
 // price we could not read. The dash and the words are both "no figure here", but only one of them is
@@ -688,7 +773,7 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 +'        : "<tr><td colspan=\\"4\\" class=\\"lxadm-empty\\">No fees collected yet.</td></tr>";'
 // A TOTAL WITH A CHAIN MISSING IS NOT A TOTAL. Showing "$0" or a part-figure invites it to be read,
 // quoted and acted on; a dash plus the warning above cannot be.
-+'      var whole=(SOK!==false&&XOK!==false);'
++'      var whole=allRead();'
 +'      setT(q("#lxRevAll"), (whole&&keys.length)?usd(usdAll):"\\u2014");'
 +'      setT(q("#lxRevMonth"), (whole&&keys.length)?usd(usdMonth):"\\u2014");'
 +'      var s1=q("#lxRevAllSub"), s2=q("#lxRevMonthSub");'
@@ -829,6 +914,16 @@ function loadVolume(){ if(VOL)return Promise.resolve(VOL);
           bridged:0,route:"",bridgeTo:""});
         return;
       }
+      // NEAR, the same way and for the same reasons: no envelope, so no gross and no bridged value -- the
+      // fee is what this row carries, in whatever token it arrived in, and its kind comes off the memo.
+      // NO BACKTICKS IN THIS COMMENT -- it sits inside a template literal.
+      if(p.chain==="near"){
+        var na=assetOf(p);
+        out.push({t:Date.parse(p.created_at),from:p.from,code:null,iss:"",gross:0,chain:"near",
+          kind:nKind(p),fee:(+p.amount||0),feeCode:na.code,feeIss:na.iss,
+          bridged:0,route:"",bridgeTo:""});
+        return;
+      }
       // The endpoint's answer wins where it has one: it read the real transaction, and it read every
       // receipt rather than the most recent 200. grossOf stays as the fallback for anything it did not
       // cover -- a Stellar one it could not resolve.
@@ -960,6 +1055,10 @@ function fillDash(){
     // (fee-paying wallet count lives on the Users page; these two tiles are connections)
     var byA={}; inWin.forEach(function(p){ var a=assetOf(p), ch=p.chain||"stellar", k=ch+":"+a.code+"-"+a.iss;
       byA[k]=byA[k]||{chain:ch,code:a.code,iss:a.iss,amt:0}; byA[k].amt+=+p.amount||0; });
+    // A REVENUE FIGURE WITH A CHAIN MISSING IS NOT REVENUE -- the Revenue page's rule, now here too. This
+    // tile summed whatever arrived, so a NEAR read still catching up (or any chain refusing) would have
+    // shown a smaller business with no hint. The dash names where to look.
+    if(!allRead()){ setT(q("#lxdRev"),"—"); var rf=q("#lxdRevF"); if(rf)rf.textContent="a chain could not be read in full · see Revenue"; return; }
     var ks=Object.keys(byA);
     if(!ks.length){ setT(q("#lxdRev"),usd(0)); return; }
     var pend=ks.length,tot=0;
@@ -1061,9 +1160,12 @@ function paintSources(){
     // THE CHAIN IS PART OF THE KEY. Without it the lookup below used the Stellar-only priceUsd for
     // everything, so XRP was sent to stellar.expert, which has never heard of it, and every XRPL fee
     // was silently counted "unpriced" and left out of this card's total and shares.
+    // "|" BETWEEN ALL THREE PARTS, not "-" before the issuer: a NEAR token's issuer is a contract id and
+    // those carry hyphens (nearly-993927.nearlytrade.near, sol-0x....omdep.near), so splitting on the
+    // last "-" priced the wrong string. No code, issuer or account id on any of the three chains has a "|".
     var byKind={};
     v.rows.forEach(function(r){ var k=r.kind||"other";
-      byKind[k]=byKind[k]||{}; var a=(r.chain||"stellar")+"|"+r.feeCode+"-"+r.feeIss;
+      byKind[k]=byKind[k]||{}; var a=(r.chain||"stellar")+"|"+r.feeCode+"|"+r.feeIss;
       byKind[k][a]=(byKind[k][a]||0)+r.fee; });
 
     var pend=0, unpriced=0, noread=0, noreadKind={};
@@ -1086,8 +1188,7 @@ function paintSources(){
 
     Object.keys(byKind).forEach(function(k){
       Object.keys(byKind[k]).forEach(function(a){
-        var b=a.indexOf("|"), chain=a.slice(0,b), rest=a.slice(b+1);
-        var i=rest.lastIndexOf("-"), code=rest.slice(0,i), iss=rest.slice(i+1);
+        var pp=a.split("|"), chain=pp[0], code=pp[1], iss=pp[2]||"";
         priceUsdOn(chain,code,iss,function(px,unread){
           if(drawn)return;
           if(px!=null)add(k,byKind[k][a]*px); else if(unread){ noread++; noreadKind[k]=1; } else unpriced++;
@@ -1278,7 +1379,7 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'      if(!list.length||!total){ netBars.innerHTML="<div class=\\"lxadm-empty\\">No priced fee revenue yet.</div>"; return; }'
 +'      var C=["linear-gradient(90deg,#8b7bff,#2563eb)","linear-gradient(90deg,#35c07f,#15803d)","linear-gradient(90deg,#ea6a2c,#c2410c)","linear-gradient(90deg,#f59e0b,#b45309)","linear-gradient(90deg,#ec4899,#9d174d)"];'
 +'      netBars.innerHTML=list.slice(0,5).map(function(a,i){ var pc=a.usd/total*100;'
-+'        return "<div class=\\"net-bar\\"><div class=\\"net-bar-head\\"><span class=\\"net-bar-name\\">"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:5px\\">"+(a.chain==="xrpl"?"XRPL":"Stellar")+"</span></span>"'
++'        return "<div class=\\"net-bar\\"><div class=\\"net-bar-head\\"><span class=\\"net-bar-name\\">"+esc(a.code)+"<span style=\\"opacity:.55;font-size:11px;margin-left:5px\\">"+chainTag(a.chain)+"</span></span>"'
 +'          +"<span class=\\"net-bar-val\\">"+usd(a.usd)+" \u00b7 "+pc.toFixed(1)+"%</span></div>"'
 +'          +"<div class=\\"net-bar-track\\"><div class=\\"net-bar-fill\\" style=\\"width:"+pc.toFixed(1)+"%;background:"+C[i%C.length]+"\\"></div></div></div>"; }).join(""); }'
 +'    if(!pend){ drawBars(); drawSplit(); } else {'
@@ -1292,8 +1393,8 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'      if(!rv.rows.length){ fd.innerHTML="<div class=\\"lxadm-empty\\">No fee payments yet.</div>"; }'
 +'      else fd.innerHTML=rv.rows.slice(0,6).map(function(p){ var a=assetOf(p);'
 +'        return "<div class=\\"act-row\\"><span class=\\"act-ico green\\"></span><div class=\\"act-text\\">"'
-+'          +"<div class=\\"act-title\\"><span class=\\"mono\\">"+esc(shortG(p.from))+"</span> paid <span class=\\"mono\\">"+esc(num(+p.amount))+" "+esc(a.code)+"</span> in platform fees</div>"'
-+'          +"<div class=\\"act-meta\\"><span>"+((p.chain==="xrpl")?"XRP Ledger mainnet":"Stellar mainnet")+"</span><a class=\\"lxadm-link mono\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc((p.chain==="xrpl")?("https://bithomp.com/explorer/"+encodeURIComponent(p.transaction_hash)):("https://stellar.expert/explorer/public/tx/"+encodeURIComponent(p.transaction_hash)))+"\\">tx: "+esc(String(p.transaction_hash).slice(0,4))+"\u2026"+esc(String(p.transaction_hash).slice(-4))+"</a></div>"'
++'          +"<div class=\\"act-title\\"><span class=\\"mono\\">"+esc(shortA(p.chain,p.from))+"</span> paid <span class=\\"mono\\">"+esc(num(+p.amount))+" "+esc(a.code)+"</span> in platform fees</div>"'
++'          +"<div class=\\"act-meta\\"><span>"+chainName(p.chain)+" mainnet</span><a class=\\"lxadm-link mono\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc(exTx(p.chain,p.transaction_hash))+"\\">tx: "+esc(String(p.transaction_hash).slice(0,4))+"\u2026"+esc(String(p.transaction_hash).slice(-4))+"</a></div>"'
 +'          +"</div><span class=\\"act-time\\">"+esc(ago(p.created_at))+"</span></div>"; }).join(""); }'
 +'  });'
 // ---- largest pools strip ----
@@ -1323,16 +1424,18 @@ function paintDashboard(){ if(!isDash())return; var grid=q(".kpi-grid"); if(!gri
 +'    retitle(c1.querySelector(".adm-card-head"),"Fee-paying wallets");'
 +'    var b1=cardBody(c1,"<div class=\\"lxadm-empty\\">Loading\u2026</div>");'
 +'    loadRevenue().then(function(rv){ var w={};'
-+'      rv.rows.forEach(function(p){ var a=assetOf(p); w[p.from]=w[p.from]||{n:0,last:p.created_at,codes:{}};'
+// The link and the shortening follow the wallet's chain: every row here used to open stellar.expert,
+// which knows nothing of an r-address or a .near account.
++'      rv.rows.forEach(function(p){ var a=assetOf(p); w[p.from]=w[p.from]||{n:0,last:p.created_at,codes:{},chain:(p.chain||"stellar")};'
 +'        w[p.from].n++; w[p.from].codes[a.code]=1; });'
-+'      var list=Object.keys(w).map(function(k){ return {addr:k,n:w[k].n,codes:Object.keys(w[k].codes)}; })'
++'      var list=Object.keys(w).map(function(k){ return {addr:k,n:w[k].n,chain:w[k].chain,codes:Object.keys(w[k].codes)}; })'
 +'        .sort(function(x,y){ return y.n-x.n; });'
 +'      if(!list.length){ b1.innerHTML="<div class=\\"lxadm-empty\\">No wallet has paid a fee yet.</div>"; return; }'
 +'      b1.removeAttribute("style"); b1.style.padding="0";'
 +'      b1.innerHTML=list.slice(0,6).map(function(u){'
-+'        return "<a class=\\"lxwal-row\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\"https://stellar.expert/explorer/public/account/"+esc(u.addr)+"\\">"'
++'        return "<a class=\\"lxwal-row\\" target=\\"_blank\\" rel=\\"noopener\\" href=\\""+esc(exAcct(u.chain,u.addr))+"\\">"'
 +'          +"<img class=\\"lxwal-av\\" data-lxc=\\"wallet\\" alt=\\"\\" src=\\""+avatarPart(u.addr.slice(1,3))+"\\">"'
-+'          +"<div class=\\"lxwal-meta\\"><div class=\\"lxwal-addr\\">"+esc(shortG(u.addr))+"</div>"'
++'          +"<div class=\\"lxwal-meta\\"><div class=\\"lxwal-addr\\">"+esc(shortA(u.chain,u.addr))+"</div>"'
 +'          +"<div class=\\"lxwal-sub\\">paid in "+esc(u.codes.join(", "))+"</div></div>"'
 +'          +"<div class=\\"lxwal-val\\">"+u.n+" fees</div></a>"; }).join(""); }); }'
 // 2. LUMOS incentive emissions are not on-chain to read; API health is, and matters more to an operator
@@ -1533,7 +1636,8 @@ function paintUsers(){
     // per-asset tallies need no chain in their keys. That is what lets pricing, the tier check and the
     // explorer link all route off one field.
     rv.rows.forEach(function(p){ var a=assetOf(p), u=w[p.from]=w[p.from]||{addr:p.from,chain:(p.chain||"stellar"),n:0,by:{},vol:{},first:p.created_at,last:p.created_at};
-      u.n++; u.by[a.code+"-"+a.iss]=(u.by[a.code+"-"+a.iss]||0)+(+p.amount||0);
+      // "|", not "-": a NEAR issuer is a contract id and may itself contain hyphens.
+      u.n++; u.by[a.code+"|"+a.iss]=(u.by[a.code+"|"+a.iss]||0)+(+p.amount||0);
       if(Date.parse(p.created_at)<Date.parse(u.first))u.first=p.created_at;
       if(Date.parse(p.created_at)>Date.parse(u.last))u.last=p.created_at; });
     ROWS=Object.keys(w).map(function(k){return w[k];});
@@ -1552,7 +1656,7 @@ function paintUsers(){
     // raw amounts. lastIndexOf splits code from issuer because an XRPL 40-hex code never contains "-"
     // but split("-") would still mangle anything that did.
     var codes={}; ROWS.forEach(function(u){ Object.keys(u.by).forEach(function(k){ codes[u.chain+"|"+k]=1; }); });
-    Object.keys(codes).forEach(function(ck){ var bar=ck.indexOf("|"), ch=ck.slice(0,bar), k=ck.slice(bar+1), i=k.lastIndexOf("-");
+    Object.keys(codes).forEach(function(ck){ var bar=ck.indexOf("|"), ch=ck.slice(0,bar), k=ck.slice(bar+1), i=k.indexOf("|");
       priceUsdOn(ch,k.slice(0,i),k.slice(i+1),function(px){ if(px==null)return;
         ROWS.forEach(function(u){ if(u.chain===ch&&u.by[k]!=null){ u.usd=(u.usd||0)+u.by[k]*px; } }); sortRows(); render(); }); });
     // volume: gross swap size per wallet, from the same decoded envelopes the dashboard uses
@@ -1578,7 +1682,9 @@ function paintUsers(){
     // Each wallet is tested against ITS OWN chain's LUMOS holders. Checking an r-address against the
     // Stellar set always answered "below the threshold", which reads on screen as a measurement.
     Promise.all([loadTier(),loadXTier()]).then(function(r){ TIERSET=r[0].set||{}; XTIERSET=r[1].set||{};
-      var onTier=0; ROWS.forEach(function(u){ var s=(u.chain==="xrpl")?XTIERSET:TIERSET;
+      // NEAR is not tested at all: no NEAR LUMOS holder list is read here, and testing a .near account
+      // against either set would print "0.2%" from a check never made -- the trap XRPL fell into first.
+      var onTier=0; ROWS.forEach(function(u){ if(u.chain==="near"){ u.tier=null; return; } var s=(u.chain==="xrpl")?XTIERSET:TIERSET;
         u.tier=!!s[u.addr]; if(u.tier)onTier++; });
       setT(q("#lxuTier"), String(onTier)); render(); });
   });
@@ -1594,7 +1700,7 @@ function paintUsers(){
     if(UCOL)list.sort(uBy);
     if(!list.length){ tb.innerHTML="<tr><td colspan='"+TH.length+"' class='lxadm-empty'>No wallet matches that search.</td></tr>"; return; }
     tb.innerHTML=list.map(function(u){
-      var paid=Object.keys(u.by).map(function(k){ return num(u.by[k])+" "+k.split("-")[0]; }).join(", ");
+      var paid=Object.keys(u.by).map(function(k){ return num(u.by[k])+" "+k.split("|")[0]; }).join(", ");
       // A wallet whose LUMOS balance we have not resolved yet shows a dash, not "No" -- claiming someone
       // is off the discount before the check has finished would be a wrong answer, not a pending one.
       var tier=(u.tier==null)?"\u2014":(u.tier
@@ -1602,16 +1708,17 @@ function paintUsers(){
         :"<span class='lxu-tier off' title='Below 250,000 LUMOS, so pays the standard 0.2% platform fee.'>0.2%</span>");
       // The chain is named on the wallet's own sub-line rather than in a new column, because the
       // sortable-column map is keyed by column INDEX and a ninth column would shift every entry.
-      var xr=(u.chain==="xrpl");
+      var xr=((u.chain||"stellar")!=="stellar");   // any chain whose volume this page cannot rebuild
+      if(u.chain==="near"&&u.tier==null)tier="<span title='The 0.1% LUMOS tier is not checked for NEAR wallets here: no NEAR LUMOS holder list is read.'>—</span>";
       return "<tr class='clickable' data-w='"+esc(u.addr)+"' data-c='"+esc(u.chain||"stellar")+"'>"
         +"<td><div class='user-cell'><img class='lxu-av' data-lxc='wallet' alt='' src='"+avatar(u.addr.slice(1,3))+"'>"
-        +"<div><div class='un mono'>"+esc(shortG(u.addr))+(u.tre?" <span class='lxu-tre' title='A LumosDAO treasury or burn wallet, not a customer. Its activity is real on-chain volume so it is counted, but it is not a trader.'>treasury</span>":"")+"</div><div class='um'>"+(xr?"XRP Ledger mainnet":"Stellar mainnet")+"</div></div></div></td>"
+        +"<div><div class='un mono' title='"+esc(u.addr)+"'>"+esc(shortA(u.chain,u.addr))+(u.tre?" <span class='lxu-tre' title='A LumosDAO treasury or burn wallet, not a customer. Its activity is real on-chain volume so it is counted, but it is not a trader.'>treasury</span>":"")+"</div><div class='um'>"+chainName(u.chain)+" mainnet</div></div></div></td>"
         +"<td>"+flagCell(u.addr)+"</td>"
         // Swap volume is rebuilt from Stellar transaction envelopes and has no XRPL equivalent, so an
         // XRPL wallet's volume never arrives. The ellipsis means "still loading" and would have sat
         // there for ever; a dash with a reason is the honest cell.
         +"<td class='num-cell' style='text-align:right'>"+(u.volUsd!=null?esc(usd(u.volUsd))
-          :(xr?"<span title='Swap volume is reconstructed from Stellar transaction envelopes. There is no XRP Ledger equivalent yet, so volume is not measured for this wallet \u2014 the fees it paid are.'>\u2014</span>":"\u2026"))+"</td>"
+          :(xr?"<span title='Swap volume is reconstructed from Stellar transaction envelopes. There is no "+chainName(u.chain)+" equivalent yet, so volume is not measured for this wallet \u2014 the fees it paid are.'>\u2014</span>":"\u2026"))+"</td>"
         +"<td class='num-cell' style='text-align:right'>"+u.n+"</td>"
         +"<td class='num-cell' style='text-align:right' title='"+esc(paid)+"'>"+(u.usd==null?esc(paid):esc(usd(u.usd)))+"</td>"
         +"<td style='text-align:right'>"+tier+"</td>"
@@ -1628,7 +1735,9 @@ function paintUsers(){
     // The wallet profile reads Horizon balances and a Stellar fee history, so it can say nothing about
     // an r-address. Sending one there would open a page of dashes that looks broken rather than
     // inapplicable; bithomp is the explorer the XRPL side already uses everywhere else.
-    if(tr.getAttribute("data-c")==="xrpl"){ window.open("https://bithomp.com/explorer/"+encodeURIComponent(ad),"_blank","noopener"); return; }
+    // NEAR the same way, to NearBlocks.
+    var dc=tr.getAttribute("data-c");
+    if(dc==="xrpl"||dc==="near"){ window.open(exAcct(dc,ad),"_blank","noopener"); return; }
     if(window.__lxNav)window.__lxNav("lumoscore-admin-user-profile.html?w="+ad); }); }
   qa(".seg-chip").forEach(function(ch){ ch.addEventListener("click",function(){ qa(".seg-chip").forEach(function(o){ o.classList.remove("active"); }); ch.classList.add("active"); SEG=ch.getAttribute("data-seg")||"all"; render(); }); });   var si=q(".fs-search input"); if(si){ si.placeholder="Search by wallet address\u2026"; si.addEventListener("input",render); }
   qa(".filter-strip .fs-select").forEach(function(sel,i){
@@ -1815,7 +1924,17 @@ function editAsset(k){
   function paintVouch(vr){
     var b=m.querySelector("#lxeVouch"); if(!b)return;
     var VERx=window.__lxVER||{}; var rec=VERx[k]||null;
-    var granted=rec&&rec.v&&rec.s==="manual";
+    // A CURATED TICK ON A MINT IS WITHDRAWABLE TOO (RAZA 2026-11-07, on LFQP: "you cant just get a
+    // curated tick automatically just because you're minted on LumosCore"). This read only "manual",
+    // so the one asset he wanted unticked showed "Vouch for this asset" -- the button that GRANTS one.
+    // There was no way to take a curated tick off from the panel at all.
+    //
+    // Deliberately NOT widened to every curated tick: reconcileCurated still re-grants one to a curated
+    // asset that is not a mint, so offering Withdraw on FRED, Xoge or PYUSD would be a button that
+    // appears to work and silently undoes itself on the next read. A mint is now skipped there, so for
+    // those the withdrawal is permanent and the button is honest.
+    var minted=(window.__lxMINTIDS||[]).indexOf(k)>=0;
+    var granted=!!(rec&&rec.v&&(rec.s==="manual"||(rec.s==="curated"&&minted)));
     if(vr&&vr.verified&&!granted){ b.style.display="none"; return; }   // earned it; nothing to grant
     b.style.display="";
     b.textContent=granted?"Withdraw the tick":"Vouch for this asset";
@@ -2467,7 +2586,10 @@ function paintAssets(){
     MINTS=((d&&d.mints)||[]).map(parse);
     MM=(d&&d.mintmeta)||{};
     PAINTED=true; tabs(); render(); kpis(); rows().forEach(load);
-    window.__lxVER=VER; window.__lxRefresh=function(){ try{ render(); kpis(); }catch(_){} };
+    // Exposed for paintVouch, which has to know whether a withdrawal will STICK: a curated tick on a
+    // launchpad mint stays gone, a curated tick on anything else is re-granted on the next read.
+    window.__lxVER=VER; window.__lxMINTIDS=((d&&d.mints)||[]).slice();
+    window.__lxRefresh=function(){ try{ render(); kpis(); }catch(_){} };
     loadLxVol();
   }).catch(function(){ CUR=aList(); first(); });
 
@@ -2606,12 +2728,16 @@ function paintAssets(){
 +'    loadRevenue().then(function(rv){ var w={}; rv.rows.forEach(function(p){ w[p.from]=1; });'
 +'      setT(q("#lxmUsers"), num(Object.keys(w).length)); setT(q("#lxmTx"), num(rv.rows.length));'
 +'      var now=new Date(), mS=new Date(now.getFullYear(),now.getMonth(),1).getTime();'
-+'      var byA={}; rv.rows.forEach(function(p){ var a=assetOf(p), k=a.code+"-"+a.iss;'
-+'        byA[k]=byA[k]||{code:a.code,iss:a.iss,amt:0,month:0}; byA[k].amt+=+p.amount||0;'
+// The chain is in the key and the price comes from priceUsdOn, as on the desktop: this tile used the
+// Stellar-only priceUsd, so XRP and every NEAR token went to stellar.expert and silently priced to
+// nothing. And, as on the desktop, no total while a chain is missing.
++'      var byA={}; rv.rows.forEach(function(p){ var a=assetOf(p), ch=p.chain||"stellar", k=ch+":"+a.code+"|"+a.iss;'
++'        byA[k]=byA[k]||{chain:ch,code:a.code,iss:a.iss,amt:0,month:0}; byA[k].amt+=+p.amount||0;'
 +'        if(Date.parse(p.created_at)>=mS)byA[k].month+=+p.amount||0; });'
++'      if(!allRead()){ setT(q("#lxmRevM"),"\\u2014"); setT(q("#lxmRevA"),"\\u2014"); setT(q("#lxmRevAF"),"a chain could not be read in full"); return; }'
 +'      var ks=Object.keys(byA), pend=ks.length, all=0, mon=0;'
 +'      if(!pend){ setT(q("#lxmRevM"),usd(0)); setT(q("#lxmRevA"),usd(0)); return; }'
-+'      ks.forEach(function(k){ var a=byA[k]; priceUsd(a.code,a.iss,function(px){'
++'      ks.forEach(function(k){ var a=byA[k]; priceUsdOn(a.chain,a.code,a.iss,function(px){'
 +'        if(px!=null){ all+=a.amt*px; mon+=a.month*px; }'
 +'        if(--pend===0){ setT(q("#lxmRevA"),usd(all)); setT(q("#lxmRevM"),usd(mon)); } }); }); });'
 +'    loadPools().then(function(ps){ var x=0; ps.forEach(function(p){ x+=p.xlm; });'
@@ -2640,10 +2766,11 @@ function paintAssets(){
 // The mobile list is a SEPARATE painter from the desktop table, so the chain fixes have to be made
 // twice. It listed XRPL wallets the moment loadRevenue gained them -- captioned "Stellar mainnet",
 // and each one linking to a profile page that can only read Horizon.
-+'      box.innerHTML=list.map(function(u){ var xr=(u.chain==="xrpl");'
-+'        return "<a class=\\"lxm-card\\""+(xr?" target=\\"_blank\\" rel=\\"noopener\\"":"")+" href=\\""+(xr?("https://bithomp.com/explorer/"+encodeURIComponent(u.addr)):("lumoscore-admin-user-profile-mobile.html?w="+esc(u.addr)))+"\\">"'
+// A NEAR wallet goes to NearBlocks for the same reason an XRPL one goes to bithomp.
++'      box.innerHTML=list.map(function(u){ var xr=(u.chain==="xrpl"||u.chain==="near");'
++'        return "<a class=\\"lxm-card\\""+(xr?" target=\\"_blank\\" rel=\\"noopener\\"":"")+" href=\\""+(xr?esc(exAcct(u.chain,u.addr)):("lumoscore-admin-user-profile-mobile.html?w="+esc(u.addr)))+"\\">"'
 +'          +"<div class=\\"lxm-top\\"><img class=\\"lxm-av\\" data-lxc=\\"wallet\\" alt=\\"\\" src=\\""+avatar(u.addr.slice(1,3))+"\\">"'
-+'          +"<div><div class=\\"lxm-name mono\\">"+esc(shortG(u.addr))+"</div><div class=\\"lxm-sub\\">"+(xr?"XRP Ledger mainnet":"Stellar mainnet")+"</div></div></div>"'
++'          +"<div><div class=\\"lxm-name mono\\">"+esc(shortA(u.chain,u.addr))+"</div><div class=\\"lxm-sub\\">"+chainName(u.chain)+" mainnet</div></div></div>"'
 +'          +"<div class=\\"lxm-stats\\"><div><div class=\\"lxm-sl\\">Fee payments</div><div class=\\"lxm-sv\\">"+u.n+"</div></div>"'
 +'          +"<div><div class=\\"lxm-sl\\">Paid in</div><div class=\\"lxm-sv\\">"+esc(Object.keys(u.codes).join(", "))+"</div></div>"'
 +'          +"<div><div class=\\"lxm-sl\\">Last seen</div><div class=\\"lxm-sv\\">"+esc(ago(u.last))+"</div></div></div></a>"; }).join(""); });'
