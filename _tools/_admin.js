@@ -435,7 +435,8 @@ const SCRIPT='<script id="lx-admindata">(function(){'
 // callback -- so the Function recognises that receipt by shape and stamps lxkind "mint".
 // No memo means no LumosCore path paid it: it goes to Other, out of the totals.
 +'var NFEE="'+NFEE_COLLECTOR+'", NOK=null, NPART=false, NSELF=0;'
-+'function nKind(p){ if(p&&p.lxkind==="mint")return "mint"; var mo=String((p&&p.memo)||"");'
+// lxkind "trade": a swap fee Rhea paid as wNEAR, recognised by its transaction in /lxapi/nearfees (no memo of ours).
++'function nKind(p){ if(p&&p.lxkind==="mint")return "mint"; if(p&&p.lxkind==="trade")return "trade"; var mo=String((p&&p.memo)||"");'
 +'  if(/^lx:(ni|om|wh)$/.test(mo))return "bridge";'
 +'  if(mo==="lx:sw"||/^LumosCore (platform|limit order) fee/.test(mo))return "trade";'
 +'  return "other"; }'

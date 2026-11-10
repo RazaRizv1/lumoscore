@@ -126,12 +126,39 @@ function b64json(s) { try { return JSON.parse(atob(s || '')); } catch (e) { retu
 function okStatus(st) { return !!st && (st.SuccessValue !== undefined || st.SuccessReceiptId !== undefined); }
 
 // One transaction -> what it paid the collector, as compact entries [receipt id, ms, from, token|"near", raw, memo, tag].
-// tag: "" a payment, "s" the collector paying itself, "m" a launchpad create fee. An empty list still means "read".
+// tag: "" a payment, "s" the collector paying itself, "m" a launchpad create fee, "t" a swap fee paid as wNEAR by Rhea.
+// An empty list still means "read".
+//
+// THE wNEAR SWAP FEE (RAZA 2026-11-10: "the fee always arrives as wNEAR"). The NEAR swap now sells its fee slice through
+// Rhea with swap_out_recipient fees-lumoscore.near (NEAR repo, browser/nearswap.js), so the fee lands as Rhea's own
+// ft_transfer of wNEAR, with no memo of ours. It is recognised by the transaction's shape: the signer's ft_transfer_call
+// to v2.ref-finance.near whose msg names swap_out_recipient fees-lumoscore.near, and Rhea's ft_transfer on wrap.near to
+// the collector in that same transaction. Any other wNEAR from Rhea stays an unmarked row, which the admin files under
+// Other: a receipt from Rhea is never a fee unless the user's own msg says it is. The row is booked to the signer.
+const REF = 'v2.ref-finance.near', WNEAR = 'wrap.near';
+function asksFee(T) {
+  const signer = (T.transaction || {}).signer_id;
+  for (const R of (T.receipts || [])) {
+    const r = R.receipt || {}, A = r.receipt && r.receipt.Action;
+    if (!A || r.predecessor_id !== signer) continue;
+    for (const a of (A.actions || [])) {
+      const f = a && a.FunctionCall;
+      if (!f || f.method_name !== 'ft_transfer_call') continue;
+      const args = b64json(f.args);
+      if (!args || args.receiver_id !== REF) continue;
+      let m = null;
+      try { m = JSON.parse(String(args.msg || '')); } catch (e) {}
+      if (m && m.swap_out_recipient === FEE) return true;
+    }
+  }
+  return false;
+}
 function decode(T) {
   const tx = T.transaction || {};
   const selfTx = tx.signer_id === FEE;
   const first = (tx.actions || [])[0];
   const launch = tx.receiver_id === FACTORY && first && first.FunctionCall && first.FunctionCall.method_name === 'create_token';
+  const viaRef = asksFee(T);
   const out = [];
   for (const R of (T.receipts || [])) {
     const r = R.receipt || {}, eo = R.execution_outcome || {}, o = eo.outcome || {};
@@ -148,9 +175,11 @@ function decode(T) {
       const f = a && a.FunctionCall;
       if (f && f.method_name === 'ft_transfer') {
         const args = b64json(f.args);
-        if (args && args.receiver_id === FEE)
-          out.push([r.receipt_id, ms, r.predecessor_id, r.receiver_id, String(args.amount || '0'),
-            String(args.memo == null ? '' : args.memo).slice(0, 200), tag]);
+        if (args && args.receiver_id === FEE) {
+          const swapFee = !tag && viaRef && r.predecessor_id === REF && r.receiver_id === WNEAR;
+          out.push([r.receipt_id, ms, swapFee ? tx.signer_id : r.predecessor_id, r.receiver_id, String(args.amount || '0'),
+            String(args.memo == null ? '' : args.memo).slice(0, 200), swapFee ? 't' : tag]);
+        }
       }
     }
   }
@@ -205,6 +234,7 @@ async function build(cache) {
         memo: e[5], amount: amt, asset_type: nat ? 'native' : 'nep141', asset_code: nat ? 'NEAR' : m.s, asset_issuer: nat ? '' : e[3],
         created_at: new Date(e[1] || Math.floor(Number(x.tx_block_timestamp) / 1e6)).toISOString() };
       if (e[6] === 'm') row.lxkind = 'mint';
+      if (e[6] === 't') row.lxkind = 'trade';
       rows.push(row);
     }
   }
