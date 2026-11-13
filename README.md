@@ -109,6 +109,7 @@ WALLET_LOGIC.md  wallet page specification
 | `lxapi/` asset & market | Holder distribution, asset search and metadata, logos, prices, candles, movers, network stats |
 | `lxapi/` bridge | Route quotes and transfer status for CCTP, LayerZero, NEAR Intents and Axelar |
 | `lxapi/` launchpad & listing | Mint metadata, listing requests and their payment quotes |
+| `lxapi/` blog | Post index and bodies, plus news. Published posts are public; drafts are not — see Security notes |
 | `lxapi/` admin | Audit log, analytics and badge endpoints, reachable only from the private admin project |
 | `lxapi/xrpl*` | The XRPL build's data endpoints — served from here because the edge layer is shared |
 | `robots.txt.js`, `sitemap.xml.js`, `llms.txt.js` | Generated at the edge; the sitemap enumerates live assets and pools from the chain |
@@ -210,6 +211,18 @@ resembling a secret (API keys, Stellar seeds, AWS or GitHub tokens), oversized f
 - Asset codes, issuer domains and token names are **attacker-controlled input** — anyone can issue an
   asset and call it anything. They are escaped at every render site and never trusted for identity;
   verification comes from the curated list and the issuer's own `stellar.toml`.
+- **Privileged requests need `requireAdmin()`, which is two conditions, not one**: the request must
+  arrive on the admin hostname *and* carry a Cloudflare Access JWT that verifies against our team's
+  keys. The hostname alone proves nothing, because `functions/` is shared across all three Pages
+  projects — every endpoint in here also exists on `lumoscore.com`.
+- **A post that is not live yet is not public.** "Live" means `published` **and** `publishAt` in the
+  past, and that one test is applied in all three places a post can surface: the public API, the
+  index, and the edge SEO injection on an article's own url. Two gaps were closed on 2026-11-13 —
+  `lxapi/blog?all=1` honoured a request for drafts without checking who was asking, and the
+  middleware's own lookup tested `published` while ignoring `publishAt`, so a scheduled post's
+  headline and cover were injected at its direct url before its time. Asking for drafts without
+  admin credentials now returns 403. If a draft preview is ever built, it belongs on an
+  authenticated path, not on the public page.
 - There is no Content-Security-Policy. The design carries hundreds of inline scripts, so any workable
   policy would need `unsafe-inline` and would buy nothing. A real CSP requires extracting that inline
   code first.
