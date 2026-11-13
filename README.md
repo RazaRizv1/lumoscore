@@ -1,31 +1,56 @@
 # LumosCore
 
-A DeFi interface for the **Stellar mainnet** — trading, liquidity pools, cross-chain transfers,
-a wallet view, a token launchpad and rewards, served as a static site from Cloudflare Pages.
+A non-custodial, multi-network DeFi platform — trading, liquidity pools, cross-chain transfers, a
+wallet view, a token launchpad and rewards, served as a static site from Cloudflare Pages.
 
 Live at **<https://lumoscore.com>**.
 
-Every number in the UI is read from the chain or a public API at runtime. There is no backend
-database and no server-side account system: the app talks to Horizon, stellar.expert,
-CoinGecko and DefiLlama directly from the browser, and **every transaction is signed in the user's own
-wallet**. LumosCore never holds keys and never has custody.
+## Networks
+
+| Network | Status | Where it is built |
+|---|---|---|
+| **Stellar** | Live on mainnet | **This repository** |
+| **XRPL** | Live on mainnet | Its own repository; its edge Functions live here |
+| **NEAR** | Live on mainnet | Its own repository |
+
+One site serves every network. A chain switcher moves between them, and each network keeps its own
+assets, pools, wallets and data sources.
+
+This repository holds the **Stellar application** plus the **shared Cloudflare edge Functions** that
+every network calls: 28 of the 83 Functions serve a build other than this one, most of them XRPL.
+Each network's front-end is built separately, but the edge layer is common to all of them.
+
+Every number in the UI is read from the chain or a public API at runtime. There is no backend database
+and no server-side account system: the app talks to Horizon, Soroban RPC, stellar.expert, CoinGecko
+and DefiLlama, either directly from the browser or through a thin edge proxy where an upstream needs a
+server-side key or shelter from rate limits. **Every transaction is signed in the user's own wallet.**
+LumosCore never holds keys and never has custody.
 
 ---
 
 ## What's in it
+
+These are the sections of the Stellar app held in this repository. The XRPL build carries its own
+version of most of them, reading its own data sources.
 
 | Section | What it does |
 |---|---|
 | **Dashboard** | Network stats, trending assets, quick actions |
 | **Trade** | Asset pages with price/holders/pools, swaps on the Stellar SDEX orderbook via Horizon path-finding, plus limit orders |
 | **Pools** | Stellar AMM pools — browse, add liquidity, withdraw, create |
-| **Bridge** | Cross-chain USDC transfers via Circle CCTP |
+| **Bridge** | Cross-chain transfers over four routes: Circle CCTP, LayerZero/USDT0, NEAR Intents and Axelar ITS |
 | **Wallet** | Balances, send/receive, trustlines, activity |
 | **Launchpad** | Issue a new Stellar asset end to end |
 | **Rewards** | LUMOS staking/liquidity rewards |
 | **LUMOS** | The platform token's own page |
+| **Account** | Public per-address pages (excluded from search indexing) |
+| **Blog** | Posts served from the edge |
+| **FAQ** | Per-section question sets, rendered by one shared view |
+| **MCP** | A Model Context Protocol server exposing read-only and quote tools — see [`mcp/`](mcp/) |
 
-Wallets supported: Freighter, Rabet, Albedo, xBull and WalletConnect.
+Wallets supported on Stellar: Freighter, Rabet, Albedo, xBull, LOBSTR and WalletConnect. The XRPL
+build has its own set, Xaman among them. No build ever receives a private key — connecting returns an
+address, and signing happens inside the wallet.
 
 ---
 
@@ -42,7 +67,7 @@ into one file per page.
 lumoscore-aptos-desktop.html          design containers (not in this repo — see below)
 lumoscore-aptos-mobile.html
         |
-        |  _tools/*.js   ~100 transforms: data layers, theming, SEO, routing, fixes
+        |  _tools/*.js   246 transforms: data layers, theming, SEO, routing, fixes
         v
 _tools/extract_site.js                splits containers into pages, rewrites links,
         |                             emits _redirects / _headers / _routes.json / middleware
@@ -53,12 +78,21 @@ dist/                                 the deployed site  (committed — see belo
 Each transform is small and re-runnable: running one twice produces the same output as running it
 once. That is what makes it safe to replay the whole pipeline after changing any single step.
 
+A transform writes the **containers**, not `dist/`. Reading `dist/` straight after running one shows
+the previous build — rerun `extract_site.js` first.
+
 ### Repository layout
 
 ```
-_tools/          ~100 build transforms + extract_site.js + predeploy_check.js
+_tools/          246 build transforms + extract_site.js + predeploy_check.js
+_lib/            shared server-side helpers (admin auth, audit log, rate limiting, mail templates)
+_data/           static build inputs — admin schema, OG card manifest, map asset
 dist/            the built public site — this is what Cloudflare serves
 functions/       Cloudflare Pages Functions (see below)
+mcp/             the Model Context Protocol server
+relayer/         CCTP relayer worker (currently parked, not in the delivery path)
+cron-warm/       standalone Worker that keeps the pool ranking warm (Pages has no cron trigger)
+_email-worker/   transactional mail worker
 serve.js         local server that mirrors production behaviour
 LUMOSCORE_DEV.md development guide — read before changing anything
 GUARDRAILS.md    hard rules for this codebase
@@ -67,14 +101,26 @@ WALLET_LOGIC.md  wallet page specification
 
 ### Cloudflare Functions
 
-| Function | Purpose |
+83 Functions in total. The main groups:
+
+| Group | Purpose |
 |---|---|
 | `_middleware.js` | Clean-URL rewrites, legacy-filename 301s, device selection by User-Agent, edge SEO injection |
-| `lxapi/holders.js` | Holder-distribution proxy |
-| `robots.txt.js`, `sitemap.xml.js` | Generated at the edge; the sitemap enumerates live assets and pools from the chain |
+| `lxapi/` asset & market | Holder distribution, asset search and metadata, logos, prices, candles, movers, network stats |
+| `lxapi/` bridge | Route quotes and transfer status for CCTP, LayerZero, NEAR Intents and Axelar |
+| `lxapi/` launchpad & listing | Mint metadata, listing requests and their payment quotes |
+| `lxapi/` admin | Audit log, analytics and badge endpoints, reachable only from the private admin project |
+| `lxapi/xrpl*` | The XRPL build's data endpoints — served from here because the edge layer is shared |
+| `robots.txt.js`, `sitemap.xml.js`, `llms.txt.js` | Generated at the edge; the sitemap enumerates live assets and pools from the chain |
+| `.well-known/*.toml.js` | SEP-1 `stellar.toml` and the XRPL equivalent |
 
 `_middleware.js` and `_routes.json` are **generated** by `extract_site.js` from a single route table —
 don't hand-edit them.
+
+The convention for a `/lxapi/` endpoint is to answer **200 with an `ok: false` body** on failure rather
+than a 5xx, because Cloudflare replaces a real 5xx body with its own error page and the client can no
+longer read why it failed. 41 of the 75 endpoints follow it; the rest predate the convention and are
+being migrated.
 
 ---
 
@@ -117,8 +163,15 @@ anything routing-related with `wrangler pages dev` before deploying.
 
 ## Deploying
 
-Pushing to `main` deploys automatically via Cloudflare Pages (build command empty, build output
-directory `dist`).
+There are two paths to production, and both are live:
+
+1. **Pushing to `main`** triggers a Cloudflare Pages build (build command empty, build output
+   directory `dist`). Any other branch produces a preview deployment and cannot affect production.
+2. **A direct upload** of an already-built tree with `wrangler pages deploy`. Release builds are
+   published this way, because production is assembled from more than one build before it ships.
+
+Because of (2), a commit on `main` is not by itself proof of what is live. Verify a release against
+the deployed URL, not against the repository.
 
 A pre-deploy gate runs automatically before any manual deploy:
 
@@ -136,9 +189,12 @@ resembling a secret (API keys, Stellar seeds, AWS or GitHub tokens), oversized f
 
 - **The admin panel.** It lives in a separate private repository and deploys as its own Cloudflare
   Pages project behind Cloudflare Access. Its protection is that its files are not on any public
-  server, so publishing them here would defeat the point.
+  server, so publishing them here would defeat the point. The `lxapi/admin*` Functions are here, but
+  they authenticate against that project.
 - **The design containers** (~337 MB) and the wider source asset library — excluded for size.
   `dist/assets` holds everything the built site actually references.
+- **The XRPL and NEAR front-ends.** Only their shared edge Functions live here; each has its own
+  repository.
 - **Any secret.** Every third-party key lives as a Cloudflare secret and is read server-side by the
   Function that needs it; the browser never receives a credential. There are no keys in the git
   history to find.
@@ -148,8 +204,12 @@ resembling a secret (API keys, Stellar seeds, AWS or GitHub tokens), oversized f
 ## Security notes
 
 - The app is **non-custodial**. Transactions are built client-side and signed in the user's wallet.
+  This holds for every surface, the LUMOS wallet view included.
 - `X-Frame-Options: DENY` is set site-wide: this app triggers wallet signing prompts, and a framed
   signing flow is a clickjacking target.
+- Asset codes, issuer domains and token names are **attacker-controlled input** — anyone can issue an
+  asset and call it anything. They are escaped at every render site and never trusted for identity;
+  verification comes from the curated list and the issuer's own `stellar.toml`.
 - There is no Content-Security-Policy. The design carries hundreds of inline scripts, so any workable
   policy would need `unsafe-inline` and would buy nothing. A real CSP requires extracting that inline
   code first.
