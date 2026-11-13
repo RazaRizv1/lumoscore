@@ -1,7 +1,8 @@
-// Blog storage. Public reads, admin-only writes.
+// Blog storage. Public reads of LIVE posts; drafts and writes are admin-only.
 //
-// READS are open and cached: the public /blog index and article pages fetch from here, so this is on
-// the visitor path and has to be cheap.
+// READS of published posts are open and cached: the public /blog index and article pages fetch from
+// here, so this is on the visitor path and has to be cheap. Reads that ask for drafts (`all=1`) are
+// NOT open -- see the gate in onRequestGet.
 //
 // WRITES go through requireAdmin(), which checks both that the request arrived on the admin hostname
 // AND that it carries a Cloudflare Access JWT that verifies against our team's keys. This matters more
@@ -119,6 +120,22 @@ export async function onRequestGet({ request, env }) {
   const u = new URL(request.url);
   const slug = u.searchParams.get('slug') || '';
   const all = u.searchParams.get('all') === '1';   // admin listing wants drafts too
+
+  // `all` IS A PRIVILEGED PARAMETER AND USED TO BE UNGATED. It turns off the isLive() filter on both
+  // branches below, so until 2026-11-13 any visitor could ask lumoscore.com/lxapi/blog?all=1 and read
+  // every unpublished draft and every post scheduled for the future. Nothing leaked in practice only
+  // because the store happened to hold no drafts at the time -- the first one saved would have gone
+  // out with it. The write paths further down have always called requireAdmin(); the read path simply
+  // never did, and the file header said "public reads" as though that settled the question for every
+  // read this endpoint serves. It did not: a draft is not public.
+  //
+  // Checked here rather than at each use, so a future branch that honours `all` cannot miss the gate.
+  // requireAdmin() wants BOTH the admin hostname and a verifying Cloudflare Access JWT, and the admin
+  // editor reaches this as a RELATIVE /lxapi/blog?all=1 from the admin origin, so it keeps working.
+  if (all) {
+    const bad = await requireAdmin(request);
+    if (bad) return bad;
+  }
 
   if (slug) {
     if (!SLUG_RE.test(slug)) return json({ error: 'bad slug' }, 400, 0);
