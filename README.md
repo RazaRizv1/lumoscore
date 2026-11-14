@@ -269,6 +269,7 @@ through template literals, and the transform ordering rules.
 | Network | Repository |
 |---|---|
 | Stellar (and the shared edge Functions) | **This repository** |
+| XRPL | [RazaRizv1/lumoscore-xrpl](https://github.com/RazaRizv1/lumoscore-xrpl) |
 | NEAR | [RazaRizv1/lumoscore-near](https://github.com/RazaRizv1/lumoscore-near) |
 
 ## License
