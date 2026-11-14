@@ -286,11 +286,17 @@ Several attempts failed on exactly this.
 
 ## 7. Git and deploys
 
-- Commit with an explicit identity — **neither repo has one configured**:
-  ```bash
-  git -c user.name="RAZA" -c user.email="answerlynfts@gmail.com" commit -m "..."
-  ```
-- Push to `main` deploys automatically (~30s), then the edge rollout takes another ~60s.
+- Commit as **`RAZA <180388645+RazaRizv1@users.noreply.github.com>`** — GitHub's private noreply
+  address for this account. Every repo now has it in its local git config, so a plain `git commit`
+  is correct and nothing needs to be passed on the command line. **Never put a personal email
+  address in a commit here.** This repository is public: an author address in it is published to
+  anyone who clones, and cannot be taken back without rewriting every commit after it.
+- **Pushing to `main` does NOT publish a release, and must not be used as one.** Production is a
+  combined direct upload of the Stellar, XRPL and NEAR builds, assembled in the deploy repository
+  and uploaded with `wrangler pages deploy`. The Cloudflare git integration is still connected to
+  this branch, so a push **without `[skip ci]` in the commit subject** triggers a Pages build that
+  publishes the Stellar tree alone and drops XRPL and NEAR off `lumoscore.com`. Put `[skip ci]` in
+  the subject of every commit pushed to `main` unless you genuinely intend that.
 - The public repo does **not** contain the source containers (337 MB, gitignored). GitHub is a
   **deployment mechanism, not a backup**. Keep `_BACKUP_*` folders and an off-machine copy.
 - Write commit messages that explain the **root cause**. This history is the project's memory.
