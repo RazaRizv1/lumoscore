@@ -2804,9 +2804,20 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   // Horizon returns every account holding the asset, 200 at a time. Paging to the end gives the
   // COMPLETE set, and a complete set sorted by balance IS the true ranking -- which is the same
   // reasoning the holders<=HCAP branch already rests on, just no longer limited to one page.
-  // Bounded at 5 pages / 1,000 accounts so a giant asset still stops early and keeps the dash rather
-  // than pulling itself through Horizon forever; 243 needs two.
-  var HPAGES=5;
+  // Bounded so a giant asset still stops early and keeps the dash rather than pulling itself through
+  // Horizon forever; 243 needs two.
+  //
+  // RAISED 5 -> 10 (1,000 -> 2,000 accounts) on 2026-11-16. NO BACKTICKS IN THIS COMMENT: the whole
+  // layer is emitted from a template literal, so one would end it mid-file.
+  //
+  // "holders" is the TRUSTLINE count, which is the unit this walk pages -- NOT the funded count the
+  // KPI shows. LUMOS is 1,498 trustlines but 964 funded (holdersFunded, see the note at the Holders
+  // tab count), so the old cap of 1,000 put it out of reach by a figure that never appears on
+  // screen: the page said 964, the
+  // budget compared 1,498, and the walk took one page and dashed. It looked like the count had not
+  // loaded yet. It had -- supply comes from the SAME /assets record one line above, and supply was
+  // on screen the whole time.
+  var HPAGES=10;
   // HORIZON'S /accounts?asset= IS BRUTALLY SLOW ON A LARGE ASSET, and paging it was my mistake.
   // Measured 2026-09-30: ONE page of 200 took 61.6s on SCOP (35,444 holders) and 10.7s on PYUSD
   // (10,116). Paging that five times is up to five minutes of "Loading holders…" -- and on an asset
@@ -2816,7 +2827,15 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
   //
   // So the budget is ONE page unless the whole holder set is genuinely within reach. Paging only
   // earns its cost when it can finish; on a small asset those same queries return quickly.
-  function pageBudget(){ return (holders!=null && holders<=HPAGES*200) ? HPAGES : 1; }
+  // The null case is a REAL race, separate from the cap above: the count arrives on its own fetch, and
+  // a budget of 1 decided while it is still null can never be revisited -- loadHolders() returns early
+  // once a list is in hand, so that one page is final. Returning 2 lets the walk take one more page,
+  // and because this function is re-evaluated BEFORE EVERY page, the true budget applies the moment
+  // the count lands. Bounded either way: still unknown after two pages and it stops at two.
+  function pageBudget(){
+    if(holders==null)return 2;
+    return holders<=HPAGES*200 ? HPAGES : 1;
+  }
   function horizonHolders(){
     var acc=[], complete=false;
     function finish(){
@@ -4728,6 +4747,42 @@ function relTime(t){ var s=Math.max(0,(Date.now()-Date.parse(t))/1000); if(s<60)
 // ---- inject into every container that has the dex-asset keys ----
 const files = fs.readdirSync('.').filter(f => /^lumoscore-.*-(desktop|mobile)\.html$/.test(f));
 let n = 0, containers = 0;
+// Put BLOCK back exactly where the old copy sat. This is the whole reason this transform is safe to
+// run on its own: strip-then-append lands the layer at the end of the page, so the container's layer
+// order becomes "the order the transforms last ran in" and every layer that used to follow this one
+// moves. Swapping in place preserves the position byte for byte.
+//
+// last=true anchors on the LAST </body>, matching what the script insert did before; the stylesheet
+// keeps its first-</head> anchor and the same </body> fallback for a page with no head.
+//
+// Stale duplicates are removed rather than left: an older build that double-inserted a block would
+// otherwise keep the second copy for ever, and the second copy is the one that wins the cascade.
+function swapOrAppend(p, OPEN, CLOSE, BLOCK, ANCHOR, last) {
+  const at = p.indexOf(OPEN);
+  if (at >= 0) {
+    const end = p.indexOf(CLOSE, at);
+    if (end > at) {
+      p = p.slice(0, at) + BLOCK + p.slice(end + CLOSE.length);
+      let dup = p.indexOf(OPEN, at + BLOCK.length);
+      while (dup >= 0) {
+        const de = p.indexOf(CLOSE, dup);
+        if (de < dup) break;
+        p = p.slice(0, dup) + p.slice(de + CLOSE.length);
+        dup = p.indexOf(OPEN, dup);
+      }
+      return p;
+    }
+  }
+  if (last) {
+    const bi = p.lastIndexOf(ANCHOR);
+    if (bi >= 0) return p.slice(0, bi) + BLOCK + p.slice(bi);
+  } else if (p.indexOf(ANCHOR) >= 0) {
+    return p.replace(ANCHOR, BLOCK + ANCHOR);
+  }
+  const hb = p.lastIndexOf('</body>');
+  return hb >= 0 ? p.slice(0, hb) + BLOCK + p.slice(hb) : p + BLOCK;
+}
+
 for (const file of files) {
   let data; try { data = read(file); } catch (e) { continue; }
   const { json, s, e } = getContents(data);
@@ -4735,8 +4790,15 @@ for (const file of files) {
   for (const k of KEYS) {
     if (!json[k]) continue;
     let p = json[k];
-    p = p.replace(/<style id="lx-dxa-css">[\s\S]*?<\/style>/g, '')
-         .replace(/<script id="lx-dxadata">[\s\S]*?<\/script>/g, '');
+    // NO STRIP HERE ANY MORE. See the swap at the bottom of this loop: stripping at the top and
+    // re-appending at the end is what moves this layer to the end of the page and reorders every
+    // layer that used to follow it. Both of this file's blocks are now swapped where they already
+    // sit, so running this transform alone is order-neutral.
+    //
+    // Safe to leave them in place for the code between here and there: its six gates all anchor on
+    // MARKUP ('>Market Cap<', '<div class="chart-section">', '<div class="dxa-perf-card">'), never on
+    // a bare class name, so the stylesheet cannot satisfy one of them the way it could in
+    // _lumosutility.js. Checked before moving this, which is the trap that cost three pages there.
     // AUDIT #3 bug 15/52 (mobile residuals): the MOBILE page uses an mdxa- prefix none of the desktop
     // selectors match, so its mock trade panel ("Bal: 1,250 APT", "1 APT = …") and its filter chips
     // ("10+ APT" … "10K+ APT") shipped unrelabeled and flashed until a runtime pass caught them. Relabel
@@ -4916,10 +4978,11 @@ for (const file of files) {
       var closeLen = '</div>'.length;
       p = without.slice(0, end2 - closeLen) + block + without.slice(end2 - closeLen);
     })();
-    if (p.indexOf('</head>') >= 0) p = p.replace('</head>', STYLE + '</head>');
-    else { const hb = p.lastIndexOf('</body>'); p = p.slice(0, hb) + STYLE + p.slice(hb); }
-    const bi = p.lastIndexOf('</body>');
-    p = p.slice(0, bi) + SCRIPT + p.slice(bi);
+    // SWAP IN PLACE, never strip-and-append. A page that already carries the layer keeps its exact
+    // position; only a container that has never had it falls through to the append, which is correct
+    // and shows up as a SET DIFF rather than a MOVE.
+    p = swapOrAppend(p, '<style id="lx-dxa-css">', '</style>', STYLE, '</head>', false);
+    p = swapOrAppend(p, '<script id="lx-dxadata">', '</script>', SCRIPT, '</body>', true);
     json[k] = p; changed = true; n++;
   }
   if (changed) {
