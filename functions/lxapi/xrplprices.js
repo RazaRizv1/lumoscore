@@ -82,6 +82,39 @@ async function upstream(path, env) {
   throw new Error('upstream 429');
 }
 
+// SEVENTY-SEVEN KILOBYTES TO READ ONE NUMBER (RAZA 2026-11-16, of the XRPL launchpad on a phone:
+// "why isn't it showing the cost").
+//
+// The launchpad cannot quote a cost until it knows the XRP rate, and it gives that up to eight
+// seconds before it writes an em dash into every cost cell rather than risk showing a wrong price.
+// To get the rate it was fetching this whole response -- 601 tokens, ~77KB, measured at 1.65s on a
+// warm desktop connection -- and reading exactly two fields from it, `ok` and `usd`. On a phone,
+// competing with the rest of a ~1MB page, that is a race the rate can lose, and losing it turns the
+// launch cost into a dash.
+//
+// `?rate=1` answers with the envelope alone and no `t` map: the same numbers, ~200 bytes. It does
+// NOT make a second upstream call -- it is the same computation, cached under its own key, and a
+// rate request that finds the full answer already cached slims that instead of refetching. So the
+// upstream budget is unchanged (xrpl.to is 333/day per IP without a key) while the phone downloads
+// a fraction of what it did.
+//
+// Attribution rides along, because xrpl.to's terms require it on any surface showing this data and
+// the launchpad shows a price derived from it.
+function rateOnly(o) {
+  const out = {
+    ok: !!o.ok,
+    usd: o.usd == null ? null : o.usd,      // null still means "no USD", never a guessed one
+    usdCheck: o.usdCheck == null ? null : o.usdCheck,
+    asOf: o.asOf,
+    src: o.src,
+    attribution: o.attribution,
+    attributionUrl: o.attributionUrl,
+  };
+  // Only present on a stale answer, and a caller must still be able to tell.
+  if (o.stale) { out.stale = true; out.ageSec = o.ageSec; }
+  return out;
+}
+
 export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
@@ -91,8 +124,26 @@ export async function onRequest(context) {
   const key = new Request(url.origin + url.pathname + '?t=' + tParam, request);
   // Its own key, per token set, so the last good answer for one set is never handed to another.
   const lastKey = new Request(url.origin + url.pathname + '/__last?t=' + tParam, request);
+  // The rate does not depend on `t` at all -- it comes from the bulk pages' envelope -- so every
+  // token set shares one rate key, and a rate asked for by one page warms it for all of them.
+  const wantRate = url.searchParams.get('rate') === '1';
+  const rateKey = new Request(url.origin + url.pathname + '/__rate', request);
+
+  if (wantRate) {
+    const rhit = await cache.match(rateKey);
+    if (rhit) return rhit;
+  }
   const hit = await cache.match(key);
-  if (hit) return hit;
+  if (hit) {
+    if (!wantRate) return hit;
+    // The full answer is already here, so slimming it costs one parse and spends nothing upstream.
+    try {
+      const full = await hit.json();
+      const res = json(rateOnly(full), TTL);
+      context.waitUntil(cache.put(rateKey, res.clone()));
+      return res;
+    } catch (_) { /* unreadable cached body: fall through and recompute */ }
+  }
 
   let out;
   try {
@@ -183,7 +234,10 @@ export async function onRequest(context) {
           body.stale = true;
           body.ageSec = age;
           body.error = String((e && e.message) || e);
-          return new Response(JSON.stringify(body), {
+          // A rate caller gets the same stale answer, slimmed. Still `no-store` and still never
+          // written to the rate key, so a stale rate cannot install itself as the fresh one.
+          const staleBody = wantRate ? Object.assign(rateOnly(body), { error: body.error }) : body;
+          return new Response(JSON.stringify(staleBody), {
             headers: {
               'content-type': 'application/json; charset=utf-8',
               'cache-control': 'no-store',
@@ -203,7 +257,11 @@ export async function onRequest(context) {
   // fetch is refused — a last-good that expires with the fresh one would be gone exactly when needed.
   context.waitUntil(cache.put(key, res.clone()));
   context.waitUntil(cache.put(lastKey, json(out, STALE_MAX)));
-  return res;
+  // Both keys are filled from the SAME computation, so the slim answer can never disagree with the
+  // full one, and whichever a later caller asks for is already warm.
+  const rateRes = json(rateOnly(out), TTL);
+  context.waitUntil(cache.put(rateKey, rateRes.clone()));
+  return wantRate ? rateRes : res;
 }
 
 function num(v) {
