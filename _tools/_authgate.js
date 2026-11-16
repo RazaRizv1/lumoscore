@@ -17,10 +17,37 @@ const fs=require('fs');const{read,getContents}=require(__dirname+'/lib.js');cons
 // the landing page and the claim was lost (RAZA 2026-09-19); connecting LOBSTR there is impossible, since that browser
 // only carries an EVM wallet. And none is needed: the USDC is already burned on Stellar, and the claim is signed
 // entirely on the destination chain. Scoped to the bridge path AND a well-formed 64-hex hash, nothing wider.
+// REMEMBER A PREPARED ACTION BEFORE BOUNCING IT (2026-11-16).
+//
+// The MCP server hands back an approve link for every write, and for any pair without XLM that link
+// is /dashboard?swap=<from>,<to>,<amount>. The dashboard is gated, so an agent's user clicked
+// "approve your swap" and landed on the MARKETING PAGE with the whole request thrown away -- query
+// string and all. That is the user report behind "it doesn't create your trx": nothing was broken in
+// the MCP, the destination simply discarded what it was asked to do.
+//
+// So the url is parked before the redirect and picked up again the moment a wallet connects (see
+// lxPostConnectHome in _wallet_realconnect.js, and the landing gate below for the already-connected
+// case). sessionStorage, matching the lumos.connectOnArrive precedent in _mc_engine.js: it survives
+// the navigation, it is per-tab, and it cannot outlive the tab to fire on some later visit.
+//
+// NOT lumos.connDest, which already exists for this shape of problem -- four separate places write
+// it ("home" or "stay:<chain>") and the landing page's own Launch App button is one of them, so
+// parking a value there would be overwritten by the very click that starts the connect.
+//
+// ONLY URLS THAT CARRY A REQUEST. A bare /dashboard is already where connecting sends you, so
+// storing it would add a redirect to no purpose; the query string is what cannot be reconstructed.
+//
+// The value is "<timestamp>|<path>" and the reader re-validates it. A stored path is a redirect
+// target, so it is checked on the way OUT as well as in: it must begin with a single "/" -- a
+// leading "//" is protocol-relative and would send the user to another site entirely.
+const PARK='try{if(location.search&&location.search.length>1&&location.search.length<512)'
+  +'sessionStorage.setItem("lumos.returnTo",Date.now()+"|"+location.pathname+location.search);}catch(_){}';
 const GUARD='<script id="lx-authgate">(function(){try{'
   +'if(/bridge/i.test(location.pathname)&&/[?&]claim=[0-9a-fA-F]{64}(?![0-9a-fA-F])/.test(location.search))return;'
   +'if(/^\\/launchpad\\/?$/.test(location.pathname))return;'
-  +'if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address")))location.replace("/");}catch(_){}})();</script>';
+  +'if(!(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"))){'
+  + PARK
+  +'location.replace("/");}}catch(_){}})();</script>';
 // The INVERSE of the guard above. "/" is the marketing landing page, so a connected user opening the
 // site in a new tab — or from a bookmark, or by typing the domain — was dropped back on the front door
 // with no sign the app already knew who they were. Connected means past the front door: go to the
@@ -31,9 +58,19 @@ const GUARD='<script id="lx-authgate">(function(){try{'
 // and disconnect clears the keys BEFORE sending you to "/", so the landing stays put afterwards.
 // A ?stay=1 escape hatch keeps the landing reachable while connected — useful for checking the
 // marketing page without disconnecting.
+// It also honours a parked prepared action (see PARK above). Someone already connected in another
+// tab is bounced here by the guard and then straight back out again by this script -- without this
+// branch that second hop lands on the dashboard and the request is lost just the same, one step later.
+const TAKE='function(){var u="";try{var v=sessionStorage.getItem("lumos.returnTo");if(v){'
+  +'var i=v.indexOf("|"),t=+v.slice(0,i),p=v.slice(i+1);'
+  // Fifteen minutes. Long enough to install a wallet and come back, short enough that a link opened
+  // this morning cannot redirect a visit this afternoon.
+  +'if(i>0&&t&&(Date.now()-t)<900000&&p.charAt(0)==="/"&&p.charAt(1)!=="/")u=p;'
+  +'sessionStorage.removeItem("lumos.returnTo");}}catch(_){}return u;}';
 const HOMEGATE='<script id="lx-homegate">(function(){try{'
   +'if(location.search.indexOf("stay=1")>=0)return;'
-  +'if(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"))location.replace("/dashboard");'
+  +'if(localStorage.getItem("lumos.wallet")||localStorage.getItem("lumos.address"))'
+  +'location.replace((' + TAKE + ')()||"/dashboard");'
   +'}catch(_){}})();</scr'+'ipt>';
 
 const OLD_LAUNCH="window.top.lxNavigate(['lumoscore-signin.html','lumoscore-signin-mobile.html'])";
@@ -140,24 +177,61 @@ function isPublicPage(k){
 }
 
 let gated=0, rewired=0, homed=0;
+// SWAP THE BLOCK WHERE IT ALREADY SITS. Stripping it and re-inserting before </head> is not a
+// no-op: head layers have been added after this one over the years, so the gate had drifted to
+// index 26 of 87 on the dashboard and re-inserting put it at 40. Measured 2026-11-16 -- 16 pages
+// moved on a run that was only meant to change the script's contents.
+//
+// For THIS layer that is worse than a cosmetic reorder. It is a <head> guard whose whole purpose is
+// to redirect BEFORE the gated page paints; every layer that now runs ahead of it widens the window
+// in which a signed-out visitor can see the app. Flash is distance.
+//
+// A page that has never carried the block still falls through to the insert, which registers as a
+// set difference rather than a move.
+function swapOrInsert(p, OPEN, BLOCK, insert) {
+  const at = p.indexOf(OPEN);
+  if (at >= 0) {
+    const end = p.indexOf('</script>', at);
+    if (end > at) {
+      p = p.slice(0, at) + BLOCK + p.slice(end + '</script>'.length);
+      let dup = p.indexOf(OPEN, at + BLOCK.length);
+      while (dup >= 0) {
+        const de = p.indexOf('</script>', dup);
+        if (de < dup) break;
+        p = p.slice(0, dup) + p.slice(de + '</script>'.length);
+        dup = p.indexOf(OPEN, dup);
+      }
+      return { html: p, placed: true };
+    }
+  }
+  return { html: insert(p), placed: false };
+}
+
 for(const dev of ['desktop','mobile']){
   const file=`lumoscore-aptos-${dev}.html`;
   let data; try{ data=read(file); }catch(e){ continue; }
   const {json,s,e}=getContents(data);
   for(const k of Object.keys(json)){
     let h=json[k];
-    h=h.replace(/<script id="lx-authgate">[\s\S]*?<\/script>/g,''); // idempotent
     const isPublic=isPublicPage(k);
     if(isPublic){
+      // A page that has BECOME public still has to lose a guard it used to carry.
+      h=h.replace(/<script id="lx-authgate">[\s\S]*?<\/script>/g,'');
       if(/landing/.test(k)){
         if(h.indexOf(OLD_LAUNCH)>=0){ h=h.split(OLD_LAUNCH).join(NEW_LAUNCH); rewired++; }
         if(h.indexOf(PREV_LAUNCH)>=0){ h=h.split(PREV_LAUNCH).join(NEW_LAUNCH); rewired++; }
-        h=h.replace(/<script id="lx-homegate">[\s\S]*?<\/script>/g,'');   // idempotent
-        if(h.indexOf('</head>')>=0){ h=h.replace('</head>', HOMEGATE+'</head>'); homed++; }
+        const r=swapOrInsert(h,'<script id="lx-homegate">',HOMEGATE,
+          (p)=>p.indexOf('</head>')>=0?p.replace('</head>',HOMEGATE+'</head>'):p);
+        h=r.html; homed++;
       }
     } else {
-      if(h.indexOf('</head>')>=0){ h=h.replace('</head>', GUARD+'</head>'); gated++; }
-      else { const bi=h.indexOf('<body'); if(bi>=0){ const gt=h.indexOf('>',bi)+1; h=h.slice(0,gt)+GUARD+h.slice(gt); gated++; } }
+      const r=swapOrInsert(h,'<script id="lx-authgate">',GUARD,(p)=>{
+        if(p.indexOf('</head>')>=0)return p.replace('</head>',GUARD+'</head>');
+        const bi=p.indexOf('<body');
+        if(bi>=0){ const gt=p.indexOf('>',bi)+1; return p.slice(0,gt)+GUARD+p.slice(gt); }
+        return p;
+      });
+      h=r.html; gated++;
     }
     json[k]=h;
   }

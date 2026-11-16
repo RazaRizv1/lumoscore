@@ -727,6 +727,26 @@ function lxStayRefresh(){try{
 }catch(_){}}
 function lxPostConnectHome(){try{var _p=location.pathname||'';
   var _d=null;try{_d=sessionStorage.getItem('lumos.connDest');sessionStorage.removeItem('lumos.connDest');}catch(_){}
+  // A PREPARED ACTION THE AUTH GATE HAD TO BOUNCE takes priority over every destination below.
+  // The MCP hands back /dashboard?swap=... as the approve link; that page is gated, so a user who
+  // had not connected yet was dropped on the landing page with the request discarded. _authgate.js
+  // parks the url first and this is where it is redeemed -- the point where a wallet exists and the
+  // page can finally do what the link asked for.
+  //
+  // Read as a SEPARATE key, never lumos.connDest: the landing page's own Launch App writes "home"
+  // into connDest, and that is the very click that opens this modal, so a value parked there would
+  // already be gone by the time we got here.
+  //
+  // Re-validated on the way out, not just on the way in. This string becomes a redirect target, and
+  // a leading "//" is protocol-relative -- it would send someone who just connected a wallet to
+  // another site. Must be one slash, must be fresh. (No backticks in this comment: it sits inside a
+  // template literal, and a stray one ends the string.)
+  var _rt='';
+  try{var _v=sessionStorage.getItem('lumos.returnTo');
+    if(_v){var _i=_v.indexOf('|'),_t=+_v.slice(0,_i),_u=_v.slice(_i+1);
+      if(_i>0&&_t&&(Date.now()-_t)<900000&&_u.charAt(0)==='/'&&_u.charAt(1)!=='/')_rt=_u;
+      sessionStorage.removeItem('lumos.returnTo');}
+  }catch(_){}
   // Connecting from an in-page CTA (Swap on an asset, Add liquidity on a pool, Next on the bridge):
   // the page they were reading is only worth returning to if the wallet they picked is on the SAME
   // chain. Pick XRPL while reading a Stellar asset and that asset is not theirs to trade any more,
@@ -742,7 +762,9 @@ function lxPostConnectHome(){try{var _p=location.pathname||'';
     try{_now=String(localStorage.getItem('lumos.network')||localStorage.getItem('lumos.chain')||'').toLowerCase();}catch(_){}
     if(_was&&_now&&_was===_now){lxStayRefresh();return;}
   }
-  if(/dashboard|lumoscore-home|wallet/.test(_p))return;
+  // A parked action overrides this early return too: it is only ever set by the gate bouncing a
+  // gated url, so honouring it here cannot steal a connect that started on the dashboard itself.
+  if(!_rt&&/dashboard|lumoscore-home|wallet/.test(_p))return;
   // WAIT FOR THE BUTTON. This used to be setTimeout(..., 1100) -- a second after the Connected screen
   // appeared it navigated on its own, so the "Continue" sitting under the address was decorative: the
   // page changed whether or not it was pressed, and anyone reading the address they had just connected
@@ -759,6 +781,9 @@ function lxPostConnectHome(){try{var _p=location.pathname||'';
   if(!_done||_done.__lxHome)return;
   _done.__lxHome=1;
   _done.addEventListener('click',function(){
+    // The parked url is a real path with a query on it, so it goes through location directly --
+    // __lxNav takes a BUILT FILE NAME and would drop the query, which is the only part that matters.
+    if(_rt){ try{ location.href=_rt; return; }catch(_){} }
     try{ if(window.__lxNav){window.__lxNav('lumoscore-home.html');return;} }catch(_){}
     try{ location.href='/dashboard'; }catch(_){}
   });
@@ -946,6 +971,18 @@ for(const c of ['aptos','hedera','starknet','vechain','worldchain','stellar','xr
     for(const k of Object.keys(json)){
       let h=json[k];
       if(h.indexOf('window.lxwOpenWallet=')<0) continue;
+      // SWAP THE PAIR WHERE IT ALREADY SITS. Stripping both layers and re-appending them at
+      // </body> moved them on 573 of 575 pages the one time this ran after other transforms had
+      // added layers behind it -- the container's layer order becomes "the order the transforms
+      // last ran in". Swapping in place is position-preserving, so this file is safe to run alone.
+      // The two layers are adjacent wherever they appear, so they move as one slice.
+      const a=h.indexOf('<style id="lx-realconnect-css">');
+      if(a>=0){
+        const t=h.indexOf('<script id="lx-realconnect">',a);
+        const c=t>a?h.indexOf('</script>',t):-1;
+        if(c>t){ json[k]=h.slice(0,a)+SCRIPT+h.slice(c+'</script>'.length); n++; continue; }
+      }
+      // Never carried it before: append, which registers as a set difference rather than a move.
       h=h.replace(/<style id="lx-realconnect-css">[\s\S]*?<\/style>/g,'').replace(/<script id="lx-realconnect">[\s\S]*?<\/script>/g,'');
       const bi=h.lastIndexOf('</body>'); if(bi<0) continue;
       json[k]=h.slice(0,bi)+SCRIPT+h.slice(bi); n++;
