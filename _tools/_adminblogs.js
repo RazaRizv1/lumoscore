@@ -82,6 +82,11 @@ const MAIN = `
             <select class="lxb-i" id="lxbCat">
               <option value="Stellar">Stellar</option>
               <option value="XRPL">XRPL</option>
+              <!-- NEAR went live on 2026-11-14 and had no entry here, so the launch post was filed
+                   under LumosCore and the author had to reach for "Other…" to say otherwise. The
+                   category IS the network on this blog -- it is what decides which chain's surface a
+                   post appears on -- so a live chain missing from this list is a post filed wrong. -->
+              <option value="NEAR">NEAR</option>
               <option value="LumosCore">LumosCore</option>
               <option value="Guide">Guide</option>
               <option value="Walkthrough">Walkthrough</option>
@@ -178,7 +183,17 @@ function q(s){return document.querySelector(s);}
 function qa(s){return [].slice.call(document.querySelectorAll(s));}
 function esc(s){return (String(s==null?"":s).replace(/[<>&"]/g,function(c){return c==="<"?"&lt;":c===">"?"&gt;":c==="&"?"&amp;":"&quot;";})).split(String.fromCharCode(39)).join("&#39;");}
 function isPage(){var t=((q(".admin-page-title")||q(".mob-page-title")||{}).textContent||"").trim();return t.indexOf("Blog")===0;}
-function slugify(s){return String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,80);}
+// CUT AT A WORD, NOT AT CHARACTER 80. Slicing a hyphenated title to 80 lands wherever character 80
+// falls, and the NEAR launch post shipped the result: a title ending "in One Place" became a url
+// ending "in-one-p". The ^-|-$ trim runs before the slice, so it could also leave a trailing hyphen.
+// Must stay IDENTICAL to slugify() in functions/lxapi/blog.js -- that one decides the real slug when
+// the editor sends none, and this one only previews it, so a difference between them would show the
+// author a url that is not the one they get. No backslashes in this function: it is emitted through a
+// template literal, which eats them.
+function slugify(s){var full=String(s||"").toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"");
+  if(full.length<=80)return full;
+  var cut=full.slice(0,80),at=cut.lastIndexOf("-");
+  return (at>0?cut.slice(0,at):cut).replace(/-+$/,"");}
 function ago(t){var d=Date.now()-t; if(d<60000)return "just now"; if(d<3600000)return Math.floor(d/60000)+"m ago";
   if(d<86400000)return Math.floor(d/3600000)+"h ago"; return Math.floor(d/86400000)+"d ago"; }
 

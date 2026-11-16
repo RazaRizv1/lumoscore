@@ -86,8 +86,26 @@ function json(body, status, ttl) {
   return new Response(JSON.stringify(body), { status, headers: h });
 }
 
+// A SLUG IS CUT AT A WORD, NOT AT A CHARACTER COUNT.
+//
+// The old line hyphenated the title and then sliced to 80, which lands wherever character 80 happens
+// to fall. The NEAR launch post is what that looks like in public: the title ends "…in One Place" and
+// the published url ended "…in-one-p" -- a word chopped in half, in the one string a reader sees,
+// copies and shares. It can also leave a trailing hyphen, because the ^-|-$ trim above runs BEFORE
+// the slice, not after it.
+//
+// So: build the whole slug, and only if it is too long, step back to the last hyphen inside the limit
+// and cut there. A title with no hyphen in its first 80 characters is one enormous word, and a hard
+// cut is all that is left -- but that is a real edge case rather than every long title.
+//
+// THE 80 IS NOT ARBITRARY and must not be raised here alone: SLUG_RE above accepts at most 80
+// characters, and a slugify that produced 81 would fail validation instead of truncating.
 function slugify(s) {
-  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80);
+  const full = String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  if (full.length <= 80) return full;
+  const cut = full.slice(0, 80);
+  const at = cut.lastIndexOf('-');
+  return (at > 0 ? cut.slice(0, at) : cut).replace(/-+$/, '');
 }
 
 function isLive(p) {

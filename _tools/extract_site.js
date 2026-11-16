@@ -613,6 +613,17 @@ const CASE_FIXES = [
 const MOVED_PATHS = [
   ['/blog/new-to-wallets-a-beginner-s-guide-to-stellar-wallets',
    '/blog/new-to-wallets-a-beginner-s-guide-to-crypto-wallets'],
+  // The NEAR launch post published with a slug that had been cut off mid-word at eighty characters
+  // ("…defi-in-one-p"), because slugify() sliced the hyphenated title by character count. Both copies
+  // of slugify now cut at a word instead, and the post was renamed to a short readable slug.
+  //
+  // The rename was done in KV BEFORE this redirect existed, and the old key was deliberately left in
+  // place serving the same corrected article until it shipped: an article page reads blog:post:<slug>
+  // directly without consulting the index, so the already-published url never 404'd. The old key was
+  // deleted once this 301 was live on production -- leaving it would have served one article at two
+  // urls forever.
+  ['/blog/near-protocol-is-now-live-on-lumoscore-trade-bridge-launch-explore-defi-in-one-p',
+   '/blog/near-protocol-is-now-live-on-lumoscore'],
 ];
 
 function redirectsFile(){
