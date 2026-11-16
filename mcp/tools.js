@@ -9,6 +9,7 @@
 // can spend unattended. Every field is checked before the link is built, so a malformed request fails
 // here with a reason rather than in a wallet the user has already been asked to trust.
 import { api, horizon, parseAsset, G_RE, web, ApiError } from './api.js';
+import { XRPL } from './xrpl.js';
 
 const nf = (n, d = 7) => (n == null || !isFinite(n) ? null : +(+n).toFixed(d));
 
@@ -506,9 +507,15 @@ const postRow = (p) => ({
   url: web('/blog/' + p.slug),
 });
 
-async function listBlogPosts({ limit = 20, tag, category }) {
+async function listBlogPosts({ limit = 20, tag, category, _chain }) {
   const d = await api('/lxapi/blog');
   let posts = (d && d.posts) || [];
+  // Drop only the posts belonging to the OTHER network. See blogChain() for why this is not an
+  // equality test on the category.
+  if (_chain) {
+    const other = _chain === 'xrpl' ? 'stellar' : 'xrpl';
+    posts = posts.filter((p) => String(p.category || '').trim().toLowerCase() !== other);
+  }
   if (tag) {
     const t = String(tag).toLowerCase();
     posts = posts.filter((p) => (p.tags || []).some((x) => String(x).toLowerCase() === t));
@@ -669,41 +676,108 @@ function assetStr(a) { return !a || a.asset_type === 'native' ? 'XLM' : `${a.ass
 function ok(obj) { return { content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] }; }
 function fail(msg) { return { isError: true, content: [{ type: 'text', text: msg }] }; }
 
+// ---- chains -------------------------------------------------------------------------------------
+//
+// ONE SET OF TOOLS, TWO CHAINS. Every tool takes `chain`, and the implementation behind it is picked
+// here rather than inside each function -- see the header of xrpl.js for why the two are separate
+// files.
+//
+// AN UNKNOWN CHAIN IS REFUSED, NOT DEFAULTED. The tempting line is `chain === 'xrpl' ? xrpl : stellar`,
+// which turns a typo, and anything a later fork adds, into a silent Stellar answer: ask for `chain:
+// "near"` and get Stellar prices back with no indication they are the wrong network. On a site where
+// a wrong-chain action is the expensive kind of mistake, a refusal naming the chains that exist is
+// the only safe reading of an argument nobody recognises.
+const CHAINS = ['stellar', 'xrpl'];
+
+function pickChain(args) {
+  const c = String((args && args.chain) || 'stellar').trim().toLowerCase();
+  if (!CHAINS.includes(c)) {
+    return { error: `"${(args && args.chain)}" is not a chain this connector serves. `
+      + `Use one of: ${CHAINS.join(', ')}. Omitting chain means stellar.` };
+  }
+  return { chain: c };
+}
+
+// Wraps a Stellar implementation and its XRPL counterpart into one tool.
+function route(stellarFn, xrplFn) {
+  return async (args) => {
+    const p = pickChain(args);
+    if (p.error) return fail(p.error);
+    if (p.chain === 'xrpl') {
+      if (!xrplFn) {
+        return fail('That tool is Stellar-only for now. '
+          + 'The XRP Ledger has no equivalent surface on LumosCore yet.');
+      }
+      return xrplFn(args);
+    }
+    return stellarFn(args);
+  };
+}
+
+// The blog is ONE surface shared by both chains, so it is not routed the way a market or a pool is.
+// A post's category IS its network, and the site's own rule is the one mirrored here: a post tagged
+// for the OTHER chain is dropped, while an untagged post, an "All" post and an old topic tag like
+// "Guide" are not networks at all and stay. Filtering on an exact category match instead would hide
+// every general post the moment someone asked for chain:"xrpl".
+function blogChain(fn) {
+  return async (args) => {
+    const p = pickChain(args);
+    if (p.error) return fail(p.error);
+    return fn(Object.assign({}, args, { _chain: p.chain }));
+  };
+}
+
+// `chain` is spelled out on every tool rather than merged in by a loop, so that reading this table
+// tells you what each tool accepts. The description differs per tool where the two chains want
+// different inputs -- an asset id is CODE-ISSUER on both, but the issuer is a G-address on Stellar
+// and an r-address on the XRP Ledger, and an agent that is told so gets it right first time.
+const CHAIN = { type: 'string', enum: CHAINS, description: 'stellar (default) or xrpl' };
+
 export const TOOLS = [
-  { name: 'get_market', title: 'Live price, 24h stats, supply and market cap for a Stellar asset',
-    schema: { asset: { type: 'string', description: 'CODE-ISSUER, e.g. SHX-GDSTRSHX…' } }, required: ['asset'], run: getMarket },
-  { name: 'list_pools', title: 'Liquidity pools by TVL, optionally filtered to one asset',
-    schema: { limit: { type: 'number', description: 'Max pools to return (default 20, max 100)' },
-              page: { type: 'number', description: 'Page of the TVL ranking, 25 per page (default 1)' },
-              asset: { type: 'string', description: 'Only pools containing this asset. CODE-ISSUER, or a bare code if LumosCore curates exactly one asset with it' } }, required: [], run: listPools },
-  { name: 'get_portfolio', title: 'Balances, pool positions and open orders for a Stellar account',
-    schema: { address: { type: 'string', description: 'Stellar public key (G…)' } }, required: ['address'], run: getPortfolio },
-  { name: 'get_quote', title: 'Best-route price for a swap, from Stellar path finding',
-    schema: { from: { type: 'string' }, to: { type: 'string' }, amount: { type: 'number' } }, required: ['from', 'to', 'amount'], run: getQuote },
-  { name: 'list_curated_assets', title: 'Every asset LumosCore curates, with its verification state',
-    schema: { include_mints: { type: 'boolean', description: 'Also include launchpad mints (not curated)' },
-              verified_only: { type: 'boolean', description: 'Only assets that carry the tick' } }, required: [], run: listCuratedAssets },
-  { name: 'get_orderbook', title: 'Live bids, asks, spread and depth for an asset against XLM',
-    schema: { asset: { type: 'string', description: 'CODE-ISSUER, e.g. KALE-GBDVX4…' },
-              limit: { type: 'number', description: 'Rows per side (default 8, max 50)' } }, required: ['asset'], run: getOrderbook },
+  { name: 'get_market', title: 'Live price, 24h stats, supply and market cap for an asset on Stellar or the XRP Ledger',
+    schema: { chain: CHAIN,
+              asset: { type: 'string', description: 'CODE-ISSUER. Stellar: SHX-GDSTRSHX… — XRP Ledger: RLUSD-rMxCKbED…' } }, required: ['asset'], run: route(getMarket, XRPL.getMarket) },
+  { name: 'list_pools', title: 'Liquidity pools, optionally filtered to one asset (Stellar by TVL, XRP Ledger by 24h volume)',
+    schema: { chain: CHAIN,
+              limit: { type: 'number', description: 'Max pools to return (default 20, max 100)' },
+              page: { type: 'number', description: 'Stellar only: page of the TVL ranking, 25 per page (default 1)' },
+              asset: { type: 'string', description: 'Only pools containing this asset. CODE-ISSUER, or on Stellar a bare code if LumosCore curates exactly one asset with it' } }, required: [], run: route(listPools, XRPL.listPools) },
+  { name: 'get_portfolio', title: 'Balances, pool positions and open orders for an account',
+    schema: { chain: CHAIN,
+              address: { type: 'string', description: 'Stellar public key (G…) or XRP Ledger account (r…)' } }, required: ['address'], run: route(getPortfolio, XRPL.getPortfolio) },
+  { name: 'get_quote', title: 'Best-route price for a swap, from the chain\'s own path finder',
+    schema: { chain: CHAIN, from: { type: 'string' }, to: { type: 'string' }, amount: { type: 'number' },
+              address: { type: 'string', description: 'XRP Ledger only, and required there: ripple_path_find answers per account, because which routes exist depends on that account\'s trustlines and balances' } }, required: ['from', 'to', 'amount'], run: route(getQuote, XRPL.getQuote) },
+  { name: 'list_curated_assets', title: 'Assets LumosCore lists, with their verification state',
+    schema: { chain: CHAIN,
+              include_mints: { type: 'boolean', description: 'Stellar only: also include launchpad mints (not curated)' },
+              verified_only: { type: 'boolean', description: 'Only assets that carry the tick' },
+              limit: { type: 'number', description: 'XRP Ledger only: how many of the top tokens by volume (default 100, max 100)' } }, required: [], run: route(listCuratedAssets, XRPL.listCuratedAssets) },
+  { name: 'get_orderbook', title: 'Live bids, asks, spread and depth for an asset against the chain\'s native coin',
+    schema: { chain: CHAIN,
+              asset: { type: 'string', description: 'CODE-ISSUER. Quoted against XLM on Stellar, against XRP on the XRP Ledger' },
+              limit: { type: 'number', description: 'Rows per side (default 8, max 50)' } }, required: ['asset'], run: route(getOrderbook, XRPL.getOrderbook) },
   { name: 'list_blog_posts', title: 'LumosCore blog posts, newest first',
-    schema: { limit: { type: 'number', description: 'Max posts (default 20)' },
+    schema: { chain: CHAIN,
+              limit: { type: 'number', description: 'Max posts (default 20)' },
               tag: { type: 'string', description: 'Only posts carrying this tag' },
-              category: { type: 'string', description: 'Only posts in this category' } }, required: [], run: listBlogPosts },
+              category: { type: 'string', description: 'Only posts in this category' } }, required: [], run: blogChain(listBlogPosts) },
   { name: 'get_blog_post', title: 'Read one LumosCore blog post in full',
     schema: { slug: { type: 'string', description: 'Post slug from list_blog_posts' } }, required: ['slug'], run: getBlogPost },
   { name: 'get_rewards', title: 'LUMOS reward programs and the incentivized pool roster',
-    schema: { address: { type: 'string', description: 'Stellar public key (optional)' } }, required: [], run: getRewards },
+    schema: { chain: CHAIN,
+              address: { type: 'string', description: 'Stellar public key (G…) or XRP Ledger account (r…), optional' } }, required: [], run: route(getRewards, XRPL.getRewards) },
   { name: 'swap', title: 'Prepare a swap for you to approve (does not sign)',
-    schema: { from: { type: 'string' }, to: { type: 'string' }, amount: { type: 'number' } }, required: ['from', 'to', 'amount'], run: swap },
+    schema: { chain: CHAIN, from: { type: 'string' }, to: { type: 'string' }, amount: { type: 'number' },
+              address: { type: 'string', description: 'XRP Ledger only: your r… account, so the swap can carry a real quote' } }, required: ['from', 'to', 'amount'], run: route(swap, XRPL.swap) },
   { name: 'add_liquidity', title: 'Prepare an AMM deposit for you to approve (does not sign)',
-    schema: { a: { type: 'string' }, b: { type: 'string' }, amount_a: { type: 'number' }, amount_b: { type: 'number' } }, required: ['a', 'b', 'amount_a', 'amount_b'], run: addLiquidity },
+    schema: { chain: CHAIN, a: { type: 'string' }, b: { type: 'string' }, amount_a: { type: 'number' }, amount_b: { type: 'number' } }, required: ['a', 'b', 'amount_a', 'amount_b'], run: route(addLiquidity, XRPL.addLiquidity) },
   { name: 'remove_liquidity', title: 'Prepare an AMM withdrawal for you to approve (does not sign)',
-    schema: { a: { type: 'string' }, b: { type: 'string' } }, required: ['a', 'b'], run: removeLiquidity },
+    schema: { chain: CHAIN, a: { type: 'string' }, b: { type: 'string' } }, required: ['a', 'b'], run: route(removeLiquidity, XRPL.removeLiquidity) },
   { name: 'bridge', title: 'Prepare a cross-chain transfer for you to approve (does not sign)',
-    schema: { asset: { type: 'string' }, to_network: { type: 'string' }, amount: { type: 'number' }, recipient: { type: 'string' } }, required: ['asset', 'to_network', 'amount', 'recipient'], run: bridge },
+    schema: { chain: CHAIN, asset: { type: 'string' }, to_network: { type: 'string' }, amount: { type: 'number' }, recipient: { type: 'string' } }, required: ['asset', 'to_network', 'amount', 'recipient'], run: route(bridge, XRPL.bridge) },
   { name: 'launch_token', title: 'Prepare a token issuance for you to approve (does not sign)',
-    schema: { code: { type: 'string' }, supply: { type: 'number' } }, required: ['code', 'supply'], run: launchToken },
+    schema: { chain: CHAIN, code: { type: 'string' }, supply: { type: 'number' } }, required: ['code', 'supply'], run: route(launchToken, XRPL.launchToken) },
 ];
 
 export { ApiError };

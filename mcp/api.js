@@ -55,6 +55,78 @@ export async function api(path, { timeout = TIMEOUT_MS, _retried = false } = {})
   return body;
 }
 
+// A POST to our own edge. Only /lxapi/xrplpath needs it: ripple_path_find takes a body, and it is
+// deliberately not cached, because a path depends on the asking account's balances and on the live
+// book -- serving a neighbour's quote to someone else is how a swap gets signed at the wrong price.
+//
+// NOT RETRIED. The GET above retries a timeout because the work it abandoned is finishing anyway and
+// warming a cache. Nothing here is cached, so a retry is a second full path-find against a node that
+// is already slow, and the caller would wait twice for one answer.
+export async function apiPost(path, body, { timeout = TIMEOUT_MS } = {}) {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), timeout);
+  let r;
+  try {
+    r = await fetch(BASE + path, {
+      method: 'POST',
+      headers: { accept: 'application/json', 'content-type': 'application/json', 'user-agent': UA },
+      body: JSON.stringify(body), signal: ctl.signal,
+    });
+  } catch (e) {
+    clearTimeout(t);
+    throw new ApiError(e && e.name === 'AbortError'
+      ? `LumosCore did not respond within ${Math.round(timeout / 1000)}s (${path})`
+      : `Could not reach LumosCore (${path}): ${e && e.message}`, 0);
+  }
+  clearTimeout(t);
+  const text = await r.text();
+  let out = null;
+  try { out = text ? JSON.parse(text) : null; } catch (_) { out = null; }
+  if (!r.ok) throw new ApiError((out && (out.error || out.message)) || `${path} returned HTTP ${r.status}`, r.status);
+  if (out === null) throw new ApiError(`${path} did not return JSON`, r.status);
+  return out;
+}
+
+// The XRP Ledger, read straight from a public node.
+//
+// RIPPLE'S OWN NODES FIRST, and the order is measured rather than aesthetic. xrplcluster.com answers
+// a Cloudflare Worker with HTTP 418, so an endpoint that tried it first would fail on the remote /mcp
+// while working perfectly from a laptop -- which is the worst way for this to break. s1 and s2 answer
+// both. The same list and the same reasoning live in functions/lxapi/xrplparticipants.js.
+//
+// A rippled "error" in the body is a 200, so the status code alone proves nothing: actNotFound comes
+// back as a successful HTTP response carrying a failure, and reading only r.ok would report an
+// unfunded account as a working empty one.
+const XRPL_RPCS = ['https://s1.ripple.com:51234/', 'https://s2.ripple.com:51234/', 'https://xrplcluster.com/'];
+
+export async function xrplRpc(method, params, { timeout = TIMEOUT_MS } = {}) {
+  let last = null;
+  for (const node of XRPL_RPCS) {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), timeout);
+    try {
+      const r = await fetch(node, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'user-agent': UA },
+        body: JSON.stringify({ method, params: [params || {}] }), signal: ctl.signal,
+      });
+      clearTimeout(t);
+      if (!r.ok) { last = `HTTP ${r.status}`; continue; }
+      const j = await r.json().catch(() => null);
+      const res = j && j.result;
+      if (!res) { last = 'no result in response'; continue; }
+      // An account that does not exist is an ANSWER, so it is handed back for the caller to read
+      // rather than treated as this node having failed and retried against the next one.
+      if (res.error && res.error !== 'actNotFound') { last = res.error_message || res.error; continue; }
+      return res;
+    } catch (e) {
+      clearTimeout(t);
+      last = e && e.name === 'AbortError' ? `no response within ${Math.round(timeout / 1000)}s` : (e && e.message);
+    }
+  }
+  throw new ApiError(`Could not reach the XRP Ledger (${method}): ${last || 'all nodes failed'}`, 0);
+}
+
 // Horizon is read directly for balances: it is the ledger itself, so a portfolio answer cannot be
 // stale relative to some cache of ours.
 export async function horizon(path) {

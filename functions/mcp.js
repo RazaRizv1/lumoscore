@@ -200,6 +200,11 @@ function schemaOf(t) {
   for (const [k, v] of Object.entries(t.schema || {})) {
     props[k] = { type: v.type || 'string' };
     if (v.description) props[k].description = v.description;
+    // `enum` is the half of the schema that tells a client which values are legal. Dropping it here
+    // while the stdio server advertises it meant the two surfaces described the same tool
+    // differently: an agent on the remote endpoint saw `chain` as a free string and could send
+    // anything. It is carried through so both servers say the same thing.
+    if (Array.isArray(v.enum)) props[k].enum = v.enum.slice();
   }
   return { type: 'object', properties: props, required: (t.required || []).slice() };
 }
