@@ -1431,19 +1431,19 @@ const HUB_SEO = {
     title: 'Trade on Stellar and XRP Ledger from 0.1% fees',
     desc: 'Trade across Stellar and the XRP Ledger for as low as 0.1% per trade. Swap any asset, place limit orders, and discover new markets on both networks.',
     h1: 'Trade on LumosCore',
-    intro: 'Swap assets and place limit orders across Stellar and the XRP Ledger, for as low as 0.1% per trade. Choose a network to see its assets, prices and pairs.',
+    intro: 'Swap assets and place limit orders for as low as 0.1% per trade. Choose a network to see its markets.',
   },
   '/pools': {
     title: 'Liquidity Pools on Stellar and XRP Ledger',
     desc: 'Provide liquidity and earn a share of the trading fees. Choose a network to see its pools, total value locked, 24h volume and your own positions.',
     h1: 'Liquidity Pools',
-    intro: 'Add liquidity to on-chain AMM pools and earn a share of every trade that routes through them. Choose a network to see its pools, value locked and 24h volume.',
+    intro: 'Add liquidity and earn a share of every trade that routes through your pool. Choose a network to see its pools.',
   },
   '/bridge': {
     title: 'Bridge assets with LumosCore — Choose a network',
     desc: 'Move assets between chains with Circle CCTP, LayerZero, NEAR Intents, Axelar and THORChain. Choose the network you are bridging from to see its routes.',
     h1: 'Bridge Assets',
-    intro: 'Move assets between networks with Circle CCTP, LayerZero, NEAR Intents, Axelar and THORChain. Choose the network you are bridging from.',
+    intro: 'Move assets from one network to another. Choose the network you are bridging from.',
   },
   '/rewards': {
     title: 'LUMOS Rewards — Choose a network',
@@ -1455,7 +1455,7 @@ const HUB_SEO = {
     title: 'LUMOS token — Price, Pools and Holders',
     desc: 'LumosCore’s native token, live on Stellar and the XRP Ledger. Holding 250,000 LUMOS lowers your trading fee to 0.1%. Choose a network to see its price, pools and holders.',
     h1: 'LUMOS',
-    intro: 'LumosCore’s native token, live on Stellar and the XRP Ledger. Holding 250,000 LUMOS lowers your trading fee to 0.1%. Choose a network to see its price, pools and holders.',
+    intro: 'LumosCore’s native token. Holding 250,000 LUMOS lowers your trading fee to 0.1%. Choose a network to see its price, pools and holders.',
   },
   // MISSING UNTIL 2026-10-10, WHICH MADE TWO URLS SHARE ONE TITLE. /launchpad became a chooser the
   // same day but never got an entry here, so seoFor() did not recognise it as a hub and it fell
@@ -1470,7 +1470,7 @@ const HUB_SEO = {
     title: 'Launch a Token for $25 — Stellar or XRP Ledger',
     desc: 'Launch a token for a flat $25, first liquidity pool included. Supported on Stellar and the XRP Ledger — set the name, supply and logo, then mint from your wallet.',
     h1: 'Launch a Token',
-    intro: 'Issue your own token and open its first liquidity pool for a flat $25, on Stellar or the XRP Ledger. No code, and no contract to deploy.',
+    intro: 'Issue your own token and open its first liquidity pool for a flat $25. No code, and no contract to deploy.',
   },
 };
 

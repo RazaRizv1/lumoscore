@@ -90,6 +90,10 @@ const STYLE='<style id="lx-mc-css">'
 // A literal dark hex as the last resort, because a page defining neither must not get #eee again.
 +'.lxw-neti{overflow:hidden;background:var(--surface-3,var(--surface-2,#1d1d25))!important}'
 +'.lxw-neti img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}'
+// Network logos in a ROUND frame with no inset ring (RAZA 2026-11-17: "fix the white border around stellar and
+// hedera logos"). Stellar/Hedera are black circles; the rounded-square tile + its white inset ring drew
+// a halo around them. Drawn 12% larger so a logo file's own light rim (hedera.png on the hubs) is clipped.
++'.lxw-neti{border-radius:50%!important;box-shadow:none!important}.lxw-neti img{transform:scale(1.12)}'
 +'</style>';
 
 let n=0;
