@@ -38,6 +38,35 @@ const S2 = '.br-step[data-step="2"] ';
 const SRC = S2 + '.br-io > .br-side:first-child ';
 const DST = S2 + '.br-io > .br-side:last-child ';
 
+// THE STACKED LAYOUT, WRITTEN ONCE AND USED BY TWO QUERIES.
+//
+// It un-anchors the two labels: on the wide layout "Available to send" is absolutely positioned to the LEFT of the
+// 220px amount box and "You will receive" is dragged there by translateX(-246px), both with white-space:nowrap. Those
+// are fixed pixel offsets into a column the grid does not know is occupied, so when the panel is narrow they are drawn
+// straight over the asset name beside them. Stacked, each gets the full width and the labels sit inside the box.
+//
+// Emitted from one constant because it is now applied from two places (see the queries below). Two copies of fourteen
+// declarations would drift the first time one of them was touched.
+const STACK = SRC + '.br-asset{grid-column:1 / -1 !important}'
+  + SRC + '.br-amt{grid-column:1 / -1 !important;min-width:0;width:100% !important;box-sizing:border-box;padding:12px 18px !important}'
+  + DST + '.br-amt{transform:none}'
+  + S2 + '.br-io > .br-side{grid-template-columns:minmax(0,1fr) auto !important}'
+  + SRC + '.lx-balrow{position:static !important;transform:none;flex-direction:row !important;align-items:center;'
+  + 'justify-content:space-between;width:100%;margin-top:12px !important;padding-top:12px;border-top:1px solid var(--border)}'
+  + SRC + '.lx-balrow::before{margin-right:auto}'
+  // A long balance ("134,341,480.97 LUMOS" + MAX) is wider than the box: it pushed MAX out past the edge (RAZA
+  // 2026-09-19). The row may wrap now -- the balance and MAX drop to their own right-aligned line, inside the box.
+  + SRC + '.lx-balrow{flex-wrap:wrap !important;row-gap:6px;column-gap:10px;box-sizing:border-box;max-width:100%}'
+  + SRC + '.lx-balrow .bal{margin-left:auto;min-width:0;flex-wrap:wrap;justify-content:flex-end}'
+  // The figure and its dollar value on ONE line -- figure left, value right -- then "Available to send" beneath.
+  // Stacked, the box was three rows tall for two facts (RAZA 2026-09-19: "move 1000 to the left and the $value to the
+  // right").
+  + SRC + '.br-amt{display:grid !important;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px}'
+  + SRC + '.br-amt .v{grid-column:1;min-width:0}'
+  + SRC + '.br-amt .v,' + SRC + '.br-amt .v input{text-align:left !important}'
+  + SRC + '.br-amt .usd{grid-column:2;margin-top:0 !important;white-space:nowrap;text-align:right}'
+  + SRC + '.lx-balrow{grid-column:1 / -1}';
+
 // Stroke icons, drawn once and used as masks so they take the theme's colour rather than carrying their own.
 function mask(svg) { return 'url("data:image/svg+xml,' + encodeURIComponent(svg) + '")'; }
 const I = {
@@ -326,29 +355,48 @@ const CSS = '<style id="' + ID + '">'
   // "Available to send" moves inside the box under the figure, where it still reads as belonging to it.
   + '@media (max-width:720px){'
   + S2 + '.br-io{padding:18px}'
-  + SRC + '.br-asset{grid-column:1 / -1 !important}'
-  + SRC + '.br-amt{grid-column:1 / -1 !important;min-width:0;width:100% !important;box-sizing:border-box;padding:12px 18px !important}'
-  + DST + '.br-amt{transform:none}'
-  + S2 + '.br-io > .br-side{grid-template-columns:minmax(0,1fr) auto !important}'
-  + SRC + '.lx-balrow{position:static !important;transform:none;flex-direction:row !important;align-items:center;'
-  + 'justify-content:space-between;width:100%;margin-top:12px !important;padding-top:12px;border-top:1px solid var(--border)}'
-  + SRC + '.lx-balrow::before{margin-right:auto}'
-  // A long balance ("134,341,480.97 LUMOS" + MAX) is wider than the box: it pushed MAX out past the edge (RAZA
-  // 2026-09-19). The row may wrap now -- the balance and MAX drop to their own right-aligned line, inside the box.
-  + SRC + '.lx-balrow{flex-wrap:wrap !important;row-gap:6px;column-gap:10px;box-sizing:border-box;max-width:100%}'
-  + SRC + '.lx-balrow .bal{margin-left:auto;min-width:0;flex-wrap:wrap;justify-content:flex-end}'
-  // The figure and its dollar value on ONE line -- figure left, value right -- then "Available to send" beneath.
-  // Stacked, the box was three rows tall for two facts (RAZA 2026-09-19: "move 1000 to the left and the $value to the
-  // right").
-  + SRC + '.br-amt{display:grid !important;grid-template-columns:minmax(0,1fr) auto;align-items:center;column-gap:12px}'
-  + SRC + '.br-amt .v{grid-column:1;min-width:0}'
-  + SRC + '.br-amt .v,' + SRC + '.br-amt .v input{text-align:left !important}'
-  + SRC + '.br-amt .usd{grid-column:2;margin-top:0 !important;white-space:nowrap;text-align:right}'
-  + SRC + '.lx-balrow{grid-column:1 / -1}'
+  + STACK
   // the label keeps one line; a long value ("~5 seconds to claimable") wraps instead of squeezing it
   + '.lx-brs-row{grid-template-columns:20px auto minmax(0,1fr)}'
   + '.lx-brs-k{white-space:nowrap}.lx-brs-v{white-space:normal;font-size:15px}'
   + '}'
+
+  // ---- THE PANEL RUNS OUT OF ROOM, NOT THE WINDOW ---------------------------------------------------------
+  //
+  // The rule above keyed the stacked layout to the VIEWPORT, and the viewport is the wrong thing to measure: this
+  // panel's width is decoupled from it by the 1080px rule a few lines up, which gives the route panel its own
+  // column. Measured on the live page 2026-11-17, with a real balance and the longest name in FULL:
+  //
+  //     viewport   panel    "Available to send"
+  //      1026px    655px    clear by 40px
+  //      1100px    416px    OVERLAPS the asset by 149px     <- panel is NARROWER than at 1026
+  //      1200px    516px    OVERLAPS by 99px
+  //      1280px    580px    OVERLAPS by 35px
+  //      1366px    637px    clear by 21px
+  //      1440px    685px    clear by 69px
+  //
+  // So the labels collided on 1280x800 and 1100-1300 windows -- ordinary laptops -- while a phone and a 1440 desktop
+  // both looked fine, which is why a viewport breakpoint never caught it. There is no max-width that fixes this: at
+  // 1100 the panel is smaller than at 1026, so the condition is not monotonic in the viewport at all.
+  //
+  // A container query asks the only question that matters -- is THIS panel wide enough to put the label beside the
+  // box -- and it holds however the page around it is later rearranged.
+  //
+  // 600px IS A CONTENT-BOX WIDTH, which is the whole trick of this number. @container measures the container's
+  // CONTENT box, while the panel widths in the table above are border-box figures from getBoundingClientRect. This
+  // panel carries `padding:22px 26px`, so the two differ by 52px, and a threshold taken straight off the table
+  // fires 52px too early -- set to 640 it stacked the 1440px desktop, whose 685px panel is only 633px of content.
+  // In content-box terms the table reads: collides at 528 and below, clear at 585 and above. 600 keeps the wide
+  // layout at 1026px (603) and 1440px (633), and stacks 1366px (585), whose 21px of clearance was too thin to trust.
+  //
+  // The media query above is deliberately KEPT. A browser without container query support (pre-2023) then behaves
+  // exactly as it does today rather than losing the phone layout, so this is purely additive.
+  //
+  // Safe to contain: `container-type` also applies `contain: layout`, which would make this panel the containing
+  // block for any fixed-position descendant. Checked on the live page -- of the 65 nodes inside it, none is fixed or
+  // sticky, and its single absolutely positioned node (.lx-balrow) is already contained by .br-amt inside it.
+  + S2 + '.br-io{container-type:inline-size}'
+  + '@container (max-width:600px){' + STACK + '}'
   + '<' + '/style>';
 
 // ---- the runtime: only what cannot be CSS ------------------------------------------------------------------
